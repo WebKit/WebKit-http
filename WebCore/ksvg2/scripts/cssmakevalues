@@ -65,7 +65,7 @@ if ($nsFull ne "KDOM") {
 my @a = ();
 
 while (<IN>) {
-    s/[\r\n]+$//;
+    chomp;
     my $prop = $_;
 
 	if(not($prop =~ /#/) and (length($prop) > 0)) {

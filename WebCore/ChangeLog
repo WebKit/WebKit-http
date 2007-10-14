@@ -1,7 +1,1 @@
-2007-10-14  Satoshi Ueyama  <gyuque@gmail.com>
-
-        Reviewed by Adam Roben.
-
-        * ksvg2/scripts/cssmakevalues: Replaced chomp with regexp. chomp doesn't work well with CR-LF endings.
-
 == Rolled over to ChangeLog-2007-10-14 ==
