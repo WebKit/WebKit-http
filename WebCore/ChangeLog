@@ -1,5 +1,14 @@
 2007-10-16  Alice Liu  <alice.liu@apple.com>
 
+        rubber-stamped by Darin.
+
+        flipping my previous fix around so that mac is special-cased instead of win.
+
+        * dom/Document.cpp:
+        (WebCore::Document::defaultEventHandler):
+
+2007-10-16  Alice Liu  <alice.liu@apple.com>
+
         Reviewed by Adele.
 
         fixed <rdar://5085596> Accesskeys don't work
