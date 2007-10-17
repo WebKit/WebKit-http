@@ -761,4 +761,13 @@ sub buildQMakeGtkProject($$)
     return $result;
 }
 
+sub setPathForRunningWebKitApp
+{
+    my ($env) = @_;
+
+    return unless isCygwin();
+
+    $env->{PATH} = join(':', productDir(), dirname(installedSafariPath()), $env->{PATH} || "");
+}
+
 1;
