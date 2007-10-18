@@ -1,5 +1,13 @@
 2007-10-17  Adam Roben  <aroben@apple.com>
 
+        Import File::Basename in webkitdirs since we use it
+
+        Reviewed by NOBODY.
+
+        * Scripts/webkitdirs.pm:
+
+2007-10-17  Adam Roben  <aroben@apple.com>
+
         Build fix for VC++ Express
 
         Reviewed by NOBODY.
