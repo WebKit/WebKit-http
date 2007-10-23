@@ -40,6 +40,7 @@
 #include "HTMLNames.h"
 #include "HTMLPlugInElement.h"
 #include "KeyboardEvent.h"
+#include "MIMETypeRegistry.h"
 #include "MouseEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -56,7 +57,6 @@
 #include "Settings.h"
 #include <kjs/JSLock.h>
 #include <kjs/value.h>
-#include <WebCore/MIMETypeRegistry.h>
 
 using KJS::ExecState;
 using KJS::Interpreter;

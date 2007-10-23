@@ -1,3 +1,9 @@
+2007-10-22  Steve Falkenburg  <sfalken@apple.com>
+
+        Fix build.
+
+        * plugins/win/PluginViewWin.cpp:
+
 2007-10-22  Jon Honeycutt  <jhoneycutt@apple.com>
 
         Reviewed by Anders.
