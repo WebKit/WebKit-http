@@ -1,3 +1,25 @@
+2007-11-30  Adam Roben  <aroben@apple.com>
+
+        Merge r26734
+
+        2007-10-17  Adam Roben  <aroben@apple.com>
+
+                Make it possible to have Windows-specific tests and results
+
+                When searching for tests to run and the Skipped file, we will only
+                look in platform/win and the cross-platform directory. When looking
+                for expected results, we will look in platform/win, then
+                platform/mac-leopard, then platform/mac, then finally the
+                cross-platform directory.
+
+                Reviewed by Sam.
+
+                * Scripts/run-webkit-tests:
+                (sub expectedDirectoryForTest): Search in mac-leopard and mac before
+                searching in the cross-platform directory.
+                (sub buildPlatformHierarchy): Removed some unneeded calls to
+                dirname/basename.
+
 2007-10-19  Maciej Stachowiak  <mjs@apple.com>
 
         Rubber stamped by Adam.
