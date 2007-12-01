@@ -1,5 +1,22 @@
 2007-12-01  Mark Rowe  <mrowe@apple.com>
 
+    Merge r27433 from trunk to Safari-3-branch.
+
+    2007-11-04  Sam Weinig  <sam@webkit.org>
+
+        Rubber-stamped by Adam Roben.
+
+        Rename SecurityOrigin::allowsAccessFrom to SecurityOrigin::canAccess to 
+        clear up ambiguity.
+
+        * bindings/js/kjs_window.cpp:
+        (KJS::Window::isSafeScript):
+        * platform/SecurityOrigin.cpp:
+        (WebCore::SecurityOrigin::canAccess):
+        * platform/SecurityOrigin.h:
+
+2007-12-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r26780 from trunk to Safari-3-branch.
 
     2007-10-19  Sam Weinig  <sam@webkit.org>
@@ -90,7 +107,6 @@
         (WebCore::DatabaseTracker::fullPathForDatabase): Return the member variable
         * storage/DatabaseTracker.h:
 
->>>>>>> .r27005
 2007-10-24  David Hyatt  <hyatt@apple.com>
 
         Don't try to gap fill transformed selections.  Fix the invalidation of selection to use the clip to visible content
