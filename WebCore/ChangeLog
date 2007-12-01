@@ -1,5 +1,16 @@
 2007-12-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r26782 to Safari-3-branch.
+
+    2007-10-19  Sam Weinig  <sam@webkit.org>
+
+        Fix Windows, Qt and GTK builds.
+
+        * WebCore.pro:
+        * WebCore.vcproj/WebCore.vcproj:
+
+2007-12-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r28225 to Safari-3-branch.
 
     2007-11-29  Sam Weinig  <sam@webkit.org>
