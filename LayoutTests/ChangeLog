@@ -1,5 +1,29 @@
 2007-12-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r28056 to Safari-3-branch.
+
+    2007-11-26  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Darin.
+
+        Tests for <rdar://problem/5592988>
+
+        - Update and add tests for new tighter restrictions on what frames in other domains
+          can be navigated.
+
+        * http/tests/security/cross-frame-access-location-expected.txt:
+        * http/tests/security/frameNavigation: Added.
+        * http/tests/security/frameNavigation/resources: Added.
+        * http/tests/security/frameNavigation/resources/iframe-that-performs-parent-navigation.html: Added.
+        * http/tests/security/frameNavigation/resources/iframe-with-inner-frame-on-foreign-domain.html: Added.
+        * http/tests/security/frameNavigation/resources/navigation-changed-iframe.html: Added.
+        * http/tests/security/frameNavigation/xss-ALLOWED-parent-navigation-change-expected.txt: Added.
+        * http/tests/security/frameNavigation/xss-ALLOWED-parent-navigation-change.html: Added.
+        * http/tests/security/frameNavigation/xss-ALLOWED-targeted-subframe-navigation-change-expected.txt: Added.
+        * http/tests/security/frameNavigation/xss-ALLOWED-targeted-subframe-navigation-change.html: Added.
+
+2007-12-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r26780 from trunk to Safari-3-branch.
 
     2007-10-19  Sam Weinig  <sam@webkit.org>
