@@ -19,7 +19,7 @@
 			Name="Debug|Win32"
 			OutputDirectory="$(WebKitOutputDir)\include\WebKit"
 			IntermediateDirectory="$(WebKitOutputDir)\obj\WebKit\$(ConfigurationName)\$(ProjectName)"
-			ConfigurationType="1"
+			ConfigurationType="4"
 			InheritedPropertySheets=".\debug.vsprops"
 			CharacterSet="1"
 			>
@@ -69,17 +69,10 @@
 				Name="VCPreLinkEventTool"
 			/>
 			<Tool
-				Name="VCLinkerTool"
-				LinkIncremental="2"
-				GenerateDebugInformation="true"
-				SubSystem="2"
-				TargetMachine="1"
+				Name="VCLibrarianTool"
 			/>
 			<Tool
 				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
 			/>
 			<Tool
 				Name="VCXDCMakeTool"
@@ -89,12 +82,6 @@
 			/>
 			<Tool
 				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
