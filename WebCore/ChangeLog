@@ -1,3 +1,17 @@
+2008-02-14  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        - roll out changes to CSS2 system colors from r28775
+
+        * css/CSSStyleSelector.cpp:
+        (WebCore::):
+        (WebCore::colorForCSSValue):
+        * rendering/RenderTheme.cpp:
+        * rendering/RenderTheme.h:
+        * rendering/RenderThemeMac.h:
+        * rendering/RenderThemeMac.mm:
+
 2008-02-07  David Hyatt  <hyatt@apple.com>
 
         Fix for bug 6248, implement the nth-* CSS3 selectors.  Patch based on original KHTML work from Allan Jensen

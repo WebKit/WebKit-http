@@ -117,13 +117,12 @@ public:
     virtual Color inactiveListBoxSelectionBackgroundColor() const;
     virtual Color inactiveListBoxSelectionForegroundColor() const;
 
-    virtual void platformColorsDidChange();
+    void platformColorsDidChange();
 
     virtual double caretBlinkFrequency() const { return 0.5; }
 
-    // System fonts and colors for CSS.
+    // System fonts.
     virtual void systemFont(int cssValueId, FontDescription&) const = 0;
-    virtual Color systemColor(int cssValueId) const;
 
     virtual int minimumMenuListSize(RenderStyle*) const { return 0; }
 

@@ -1,3 +1,11 @@
+2008-02-14  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        - updated results after reverting CSS2 system colors changes from r28775
+
+        * platform/mac/tables/mozilla/bugs/bug103533-expected.txt:
+
 2008-02-07  Dan Bernstein  <mitz@apple.com>
 
         Reviewed by Dave Hyatt.
