@@ -1,3 +1,18 @@
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30087 to Safari-3-1-branch.
+
+    2008-02-06  Kimmo Kinnunen  <kimmok@iki.fi>
+
+        Reviewed by Tim Hatcher.
+
+        Test for: http://bugs.webkit.org/show_bug.cgi?id=17191
+        HTML5: Client-side database queries should return values of type number
+
+        * storage/sql-data-types-expected.txt: Added.
+        * storage/sql-data-types.html: Added.
+        * storage/sql-data-types.js: Added.
+
 2008-02-14  Dan Bernstein  <mitz@apple.com>
 
         Reviewed by Adele Peterson.
