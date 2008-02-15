@@ -1,5 +1,20 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30116 to Safari-3-1-branch.
+
+    2008-02-09  David Hyatt  <hyatt@apple.com>
+
+        Fix for bug 17254, nth-* selectors do not work with negative coefficients.
+
+        Reviewed by Mitz.
+
+        fast/css/negative-nth-child.html
+
+        * css/CSSStyleSelector.cpp:
+        (WebCore::parseNth):
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30112 to Safari-3-1-branch.
 
     2008-02-09  David Hyatt  <hyatt@apple.com>
