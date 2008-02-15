@@ -1,3 +1,23 @@
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30238 to Safari-3-1-branch.
+
+    2008-02-14  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by Geoff G and Weinig.
+
+        Add ability for DRT to report tests setting the status text.
+
+        * DumpRenderTree/LayoutTestController.cpp:
+        (LayoutTestController::LayoutTestController):
+        (dumpStatusCallbacksCallback):
+        (LayoutTestController::staticFunctions):
+        * DumpRenderTree/LayoutTestController.h:
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate webView:setStatusText:]):
+        * DumpRenderTree/win/UIDelegate.cpp:
+        * DumpRenderTree/win/UIDelegate.h:
+
 2008-02-07  Adam Roben  <aroben@apple.com>
 
         Fix error in bisect-builds when responding "broken" for the first
