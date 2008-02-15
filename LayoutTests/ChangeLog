@@ -1,5 +1,20 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30195 to Safari-3-1-branch.
+
+    2008-02-13  Alexey Proskuryakov  <ap@webkit.org>
+
+        Reviewed by Darin.
+
+        <rdar://problem/5740042> Database termination issues
+
+        * storage/close-during-stress-test-expected.txt: Added.
+        * storage/close-during-stress-test.html: Added.
+        * storage/resources: Added.
+        * storage/resources/stress-frame.html: Added.
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30191 to Safari-3-1-branch.
 
     2008-02-13  Oliver Hunt  <oliver@apple.com>
