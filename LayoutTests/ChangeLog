@@ -1,3 +1,13 @@
+2008-02-15  Adam Roben  <aroben@apple.com>
+
+        Disable postMessage tests since postMessage is disabled
+
+        Reviewed by Mitz.
+
+        * fast/dom/Window/window-properties-expected.txt: Updated result.
+        * platform/mac/Skipped: Skip tests that depend on postMessage
+        * platform/win/Skipped: Ditto.
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30096 to Safari-3-1-branch.

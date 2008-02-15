@@ -26,6 +26,12 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+# <rdar://5743854> Disable HTML 5 postMessage/MessageEvent support
+http/tests/security/postMessage
+http/tests/messaging/cross-domain-message-send.html
+http/tests/security/cross-frame-access-delete.html
+http/tests/security/cross-frame-access-history-put.html
+
 # Should be moved to platform/mac <rdar://5621425>
 http/tests/misc/willCacheResponse-delegate-callback.html
 
