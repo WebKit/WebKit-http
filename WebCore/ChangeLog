@@ -1,5 +1,20 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30240 to Safari-3-1-branch.
+
+    2008-02-14  Ada Chan  <adachan@apple.com>
+
+        <rdar://problem/5744728> Fix leaks of RegularExpression objects in Frame.cpp.
+        
+        Reviewed by Jon and Darin.
+
+        * page/Frame.cpp:
+        (WebCore::createRegExpForLabels):
+        (WebCore::Frame::searchForLabelsBeforeElement):
+        (WebCore::Frame::matchLabelsAgainstElement):
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30239 to Safari-3-1-branch.
 
     2008-02-14  Stephanie Lewis  <slewis@apple.com>
