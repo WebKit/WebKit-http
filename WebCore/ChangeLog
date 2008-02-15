@@ -1,3 +1,16 @@
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30075 to Safari-3-1-branch.
+
+    2008-02-06  Adam Roben  <aroben@apple.com>
+
+        Make KURL::isLocalFile treat the URL's protocol case-insensitively
+
+        Reviewed by Darin.
+
+        * platform/KURL.cpp:
+        (WebCore::KURL::isLocalFile): Use equalIgnoringCase instead of ==.
+
 2008-02-14  Dan Bernstein  <mitz@apple.com>
 
         Reviewed by Adele Peterson.
