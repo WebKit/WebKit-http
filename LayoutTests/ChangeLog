@@ -1,3 +1,12 @@
+2008-02-15  Adam Roben  <aroben@apple.com>
+
+        Remove MessageEvent output from window-properties.html since that
+        interface will be disabled as well
+
+        Reviewed by Sam.
+
+        * fast/dom/Window/window-properties-expected.txt:
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30116 to Safari-3-1-branch.
