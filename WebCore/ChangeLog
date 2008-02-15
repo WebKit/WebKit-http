@@ -1,5 +1,24 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30096 to Safari-3-1-branch.
+
+    2008-02-08  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Hyatt.
+
+        Fix for <rdar://problem/5732491>
+        http://bugs.webkit.org/show_bug.cgi?id=17213
+        The querySelectorAll method on an element node does not search only the element's descendants
+
+        Test: fast/dom/SelectorAPI/elementRoot.html
+
+        * dom/Node.cpp:
+        (WebCore::Node::querySelector): Make sure to stay within the root node when traversing the tree.
+        * dom/SelectorNodeList.cpp:
+        (WebCore::SelectorNodeList::SelectorNodeList): ditto.
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30087 to Safari-3-1-branch.
 
     2008-02-06  Kimmo Kinnunen  <kimmok@iki.fi>
