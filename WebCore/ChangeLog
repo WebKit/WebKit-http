@@ -1,5 +1,24 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30237 to Safari-3-1-branch.
+
+    2008-02-14  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Darin.
+
+        <rdar://problem/5721790>
+        Crash in WebCore::DeprecatedString::operator= + 31 at news.google.com
+        
+        Use pointers in the cache map tables. Otherwise when we rehash, 
+        we will end up destroying Cache objects that node lists might point to.
+        
+        * dom/Node.cpp:
+        (WebCore::NodeListsNodeData::~NodeListsNodeData):
+        (WebCore::Node::getElementsByName):
+        (WebCore::Node::getElementsByClassName):
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30233 to Safari-3-1-branch.
 
     2008-02-14  Timothy Hatcher  <timothy@apple.com>
