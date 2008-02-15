@@ -1,5 +1,15 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30173 to Safari-3-1-branch.
+
+    2008-02-12  Brady Eidson  <beidson@apple.com>
+
+        Release build fix
+
+        * storage/DatabaseTask.cpp:
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30172 to Safari-3-1-branch.
 
     2008-02-12  Alexey Proskuryakov <ap@webkit.org> and Brady Eidson <beidson@apple.com>
