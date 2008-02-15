@@ -1,5 +1,16 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30241 to Safari-3-1-branch.
+
+    2008-02-14  Darin Adler  <darin@apple.com>
+
+        - update this test further, so that it succeeds
+
+        * fast/dom/assign-to-window-status-expected.txt: Updated.
+        * fast/dom/assign-to-window-status.html: Updated.
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30238 to Safari-3-1-branch.
 
     2008-02-14  Oliver Hunt  <oliver@apple.com>
