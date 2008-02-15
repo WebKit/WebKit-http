@@ -1,5 +1,18 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30213 to Safari-3-1-branch.
+
+    2008-02-13  Justin Garcia  <justin.garcia@apple.com>
+
+        Reviewed by Adam Roben.
+        
+        <rdar://problem/5729680> REGRESSION (r27873): Removing the last character of a word in Mail or Safari also removes the following space
+
+        * editing/deleting/5729680-expected.txt: Added.
+        * editing/deleting/5729680.html: Added.
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30195 to Safari-3-1-branch.
 
     2008-02-13  Alexey Proskuryakov  <ap@webkit.org>
