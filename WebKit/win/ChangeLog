@@ -1,5 +1,19 @@
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30206 to Safari-3-1-branch.
+
+    2008-02-13  Ada Chan  <adachan@apple.com>
+
+        <rdar://problem/5740656> Leak in postDidAddIconNotification in WebIconDatabase
+
+        Reviewed by Darin.
+
+        * WebIconDatabase.cpp:
+        (postDidAddIconNotification): Need to adopt the newly created instance of CFDictionaryPropertyBag, 
+        which already has a ref count of 1.
+
+2008-02-15  Mark Rowe  <mrowe@apple.com>
+
         Merge r30086 to Safari-3-1-branch.
 
     2008-02-07  Ada Chan  <adachan@apple.com>
