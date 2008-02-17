@@ -1,5 +1,20 @@
 2008-02-17  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30326 to Safari-3-1-branch.
+
+    2008-02-15  Justin Garcia  <justin.garcia@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        <rdar://problem/5738768> REGRESSION (r30062): Crash in InlineTextBox::isLineBreak() when Undoing a replace
+        
+        Rolled out <http://trac.webkit.org/projects/webkit/changeset/29667>
+
+        * editing/SelectionController.cpp:
+        (WebCore::SelectionController::nodeWillBeRemoved):
+
+2008-02-17  Mark Rowe  <mrowe@apple.com>
+
         Merge r30325 to Safari-3-1-branch.
 
     2008-02-15  Alice Liu  <alice.liu@apple.com>
