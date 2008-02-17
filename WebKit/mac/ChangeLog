@@ -1,3 +1,23 @@
+2008-02-17  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30323 to Safari-3-1-branch.
+
+    2008-02-15  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Alexey Proskuryakov.
+
+        - WebKit part of fixing http://bugs.webkit.org/show_bug.cgi?id=17360
+          <rdar://problem/5743131> REGRESSION: mp4 file downloaded from server is downloaded as html
+
+        * WebView/WebDataSource.mm:
+        (+[WebDataSource _representationClassForMIMEType:]):
+        (-[WebDataSource _responseMIMEType]):
+        (-[WebDataSource subresources]):
+        (-[WebDataSource subresourceForURL:]):
+        * WebView/WebResource.mm:
+        (-[WebResource _initWithData:URL:response:]):
+        * WebView/WebResourcePrivate.h:
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30276 to Safari-3-1-branch.
