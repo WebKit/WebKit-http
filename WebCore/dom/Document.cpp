@@ -34,6 +34,7 @@
 #include "ClassNodeList.h"
 #include "Comment.h"
 #include "CookieJar.h"
+#include "Database.h"
 #include "DOMImplementation.h"
 #include "DocLoader.h"
 #include "DocumentFragment.h"
@@ -443,9 +444,8 @@ Document::~Document()
 
 #if ENABLE(DATABASE)
     if (m_databaseThread) {
-        RefPtr<DatabaseThread> databaseThread = m_databaseThread;
+        ASSERT(m_databaseThread->terminationRequested());
         m_databaseThread = 0;
-        databaseThread->requestTermination();
     }
 #endif
 
@@ -3769,6 +3769,25 @@ void Document::updateFocusAppearanceTimerFired(Timer<Document>*)
 }
 
 #if ENABLE(DATABASE)
+
+void Document::addOpenDatabase(Database* database)
+{
+    if (!m_openDatabaseSet)
+        m_openDatabaseSet.set(new DatabaseSet);
+
+    ASSERT(!m_openDatabaseSet->contains(database));
+    m_openDatabaseSet->add(database);
+}
+
+void Document::removeOpenDatabase(Database* database)
+{
+    ASSERT(m_openDatabaseSet && m_openDatabaseSet->contains(database));
+    if (!m_openDatabaseSet)
+        return;
+        
+    m_openDatabaseSet->remove(database);
+}
+
 DatabaseThread* Document::databaseThread()
 {
     if (!m_databaseThread && !m_hasOpenDatabases) {
@@ -3781,6 +3800,23 @@ DatabaseThread* Document::databaseThread()
 
     return m_databaseThread.get();
 }
+
+void Document::stopDatabases()
+{
+    if (m_openDatabaseSet) {
+        DatabaseSet::iterator i = m_openDatabaseSet->begin();
+        DatabaseSet::iterator end = m_openDatabaseSet->end();
+        for (; i != end; ++i) {
+            (*i)->stop();
+            if (m_databaseThread)
+                m_databaseThread->unscheduleDatabaseTasks(*i);
+        }
+    }
+    
+    if (m_databaseThread)
+        m_databaseThread->requestTermination();
+}
+
 #endif
 
 } // namespace WebCore
