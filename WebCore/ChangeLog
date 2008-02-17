@@ -1,5 +1,22 @@
 2008-02-17  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30329 to Safari-3-1-branch.
+
+    2008-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Alice.
+
+        <rdar://problem/5738678>
+        REGRESSION: "Loading" status remains when uploading file to .Mac iDisk via Safari
+        
+        Use the new CFNetwork functions for setting body parts.
+        
+        * platform/network/cf/FormDataStreamCFNet.cpp:
+        (WebCore::setHTTPBody):
+        (WebCore::httpBodyFromRequest):
+
+2008-02-17  Mark Rowe  <mrowe@apple.com>
+
         Merge r30328 to Safari-3-1-branch.
 
     2008-02-15  Geoffrey Garen  <ggaren@apple.com>
