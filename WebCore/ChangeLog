@@ -1,3 +1,35 @@
+2008-02-18  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30370 to Safari-3-1-branch.
+
+    2008-02-18  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Reviewed by Darin.
+
+        <rdar://problem/5744899> Crash in Flash when clicking "Yes" to abort
+        slow script Flash 9 dialog at http://www.kidzui.com
+
+        When navigating to a new page, we stop all outstanding PluginStreams.
+        Flash hangs in the call to NPP_URLNotify. It eventually displays the
+        "slow script" dialog, which relinquishes control to the system. While
+        this dialog is running, the request we are in the process of cancelling
+        completes, and we re-enter Flash to deliver the data. When the dialog
+        is dismissed, the internal state of Flash has changed, and Flash
+        crashes with a null dereference.
+
+        To work around this, we can defer loading before entering plug-in code,
+        so that even if a plug-in yields to the system, we won't get callbacks
+        while we're handling a callback.
+
+        * plugins/PluginStream.cpp:
+        (WebCore::PluginStream::startStream): Defers loads while calling into
+        plug-in.
+        (WebCore::PluginStream::destroyStream): Same.
+        (WebCore::PluginStream::deliverData): Same.
+        (WebCore::PluginStream::didFail): Protect 'this' from deletion by
+        destroyStream. Null out m_loader only after destroyStream returns.
+        (WebCore::PluginStream::didFinishLoading): Same.
+
 2008-02-17  Steve Falkenburg  <sfalken@apple.com>
 
         Build fix.
