@@ -1,3 +1,9 @@
+2008-02-17  Mark Rowe  <mrowe@apple.com>
+
+        Unreviewed.  Really make JavaScriptCore's FEATURE_DEFINES match WebCore's.
+
+        * Configurations/JavaScriptCore.xcconfig:
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30276 to Safari-3-1-branch.

@@ -1,5 +1,11 @@
 2008-02-17  Mark Rowe  <mrowe@apple.com>
 
+        Unreviewed.  Really make WebKit's FEATURE_DEFINES match WebCore's.
+
+        * Configurations/WebKit.xcconfig:
+
+2008-02-17  Mark Rowe  <mrowe@apple.com>
+
         Merge r30323 to Safari-3-1-branch.
 
     2008-02-15  Dan Bernstein  <mitz@apple.com>
