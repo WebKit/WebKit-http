@@ -1,3 +1,25 @@
+2008-02-18  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30395 to Safari-3-1-branch.
+
+    2008-02-18  Brady Eidson  <beidson@apple.com>
+
+        Changes by Geoff Garen, Reviewed by Darin
+
+        Fix for <rdar://5747529> - ObjC Exception can cause JSLock to never be released
+
+        DRT changes for test: platform/mac/plugins/webScriptObject-exception-deadlock.html
+
+        [WebScriptObject valueForKey:] might throw an exception, and previously might have "leaked" the global JSLock
+        This test calls valueForKey, then runs some arbitrary Javascript on a 2ndary thread.  If the lock has leaked,
+        this series of method calls will deadlock.  If things are good, it will complete successfully.
+
+        * DumpRenderTree/mac/ObjCController.m:
+        (runJavaScriptThread):
+        (+[ObjCController isSelectorExcludedFromWebScript:]):
+        (+[ObjCController webScriptNameForSelector:]):
+        (-[ObjCController testValueForKey]):
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30276 to Safari-3-1-branch.

@@ -1,5 +1,19 @@
 2008-02-18  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30395 to Safari-3-1-branch.
+
+    2008-02-18  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Darin
+
+        Fix for <rdar://5747529> - ObjC Exception can cause JSLock to never be released
+
+        * platform/mac-tiger/Skipped: Removed 2 hanging tests that now don't hang
+        * platform/mac/plugins/webScriptObject-exception-deadlock-expected.txt: Added.
+        * platform/mac/plugins/webScriptObject-exception-deadlock.html: Added.
+
+2008-02-18  Mark Rowe  <mrowe@apple.com>
+
         Merge r30392 to Safari-3-1-branch.
 
     2008-02-18  Dan Bernstein  <mitz@apple.com>
