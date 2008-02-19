@@ -1,5 +1,22 @@
 2008-02-18  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30392 to Safari-3-1-branch.
+
+    2008-02-18  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        - fix <rdar://problem/5736225> crash in svgFontAndFaceElementForFontData on digitalstrom.org/cms
+
+        Test: fast/css/font-face-multiple-remote-sources.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::fontLoaded):
+        * css/CSSSegmentedFontFace.cpp:
+        (WebCore::CSSSegmentedFontFace::fontLoaded):
+
+2008-02-18  Mark Rowe  <mrowe@apple.com>
+
         Merge r30389 to Safari-3-1-branch.
 
     2008-02-18  Stephanie Lewis  <slewis@apple.com>
