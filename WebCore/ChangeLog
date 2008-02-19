@@ -1,5 +1,18 @@
 2008-02-18  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30389 to Safari-3-1-branch.
+
+    2008-02-18  Stephanie Lewis  <slewis@apple.com>
+
+        Reviewed by Adam.
+
+        Remove workaround for <rdar://problem/5695848>.
+        
+        * platform/network/cf/ResourceResponseCFNet.cpp:
+        (WebCore::ResourceResponse::doUpdateResourceResponse):
+
+2008-02-18  Mark Rowe  <mrowe@apple.com>
+
         Merge r30370 to Safari-3-1-branch.
 
     2008-02-18  Jon Honeycutt  <jhoneycutt@apple.com>
