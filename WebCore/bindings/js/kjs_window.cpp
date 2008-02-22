@@ -824,7 +824,7 @@ bool Window::allowsAccessFrom(const JSGlobalObject* other) const
 {
     SecurityOrigin::Reason reason;
     String message;
-    if (allowsAccessFrom(other, reason, message))
+    if (allowsAccessFromPrivate(other, reason, message))
         return true;
     printErrorMessage(message);
     return false;
@@ -833,7 +833,7 @@ bool Window::allowsAccessFrom(const JSGlobalObject* other) const
 bool Window::allowsAccessFrom(ExecState* exec) const
 {
     String message;
-    if (allowsAccessFrom(exec, message))
+    if (allowsAccessFromPrivate(exec, message))
         return true;
     printErrorMessage(message);
     return false;
@@ -841,19 +841,24 @@ bool Window::allowsAccessFrom(ExecState* exec) const
 
 bool Window::allowsAccessFrom(ExecState* exec, String& message) const
 {
+    return allowsAccessFromPrivate(exec, message);
+}
+    
+inline bool Window::allowsAccessFromPrivate(ExecState* exec, String& message) const
+{
     SecurityOrigin::Reason reason;
-    if (allowsAccessFrom(exec->dynamicGlobalObject(), reason, message))
+    if (allowsAccessFromPrivate(exec->dynamicGlobalObject(), reason, message))
         return true;
     if (reason == SecurityOrigin::DomainSetInDOMMismatch) {
         // If the only reason the access failed was a domainSetInDOM bit mismatch, try again against 
         // lexical global object <rdar://problem/5698200>
-        if (allowsAccessFrom(exec->lexicalGlobalObject(), reason, message))
+        if (allowsAccessFromPrivate(exec->lexicalGlobalObject(), reason, message))
             return true;
     }
     return false;
 }
 
-bool Window::allowsAccessFrom(const JSGlobalObject* other, SecurityOrigin::Reason& reason, String& message) const
+inline bool Window::allowsAccessFromPrivate(const JSGlobalObject* other, SecurityOrigin::Reason& reason, String& message) const
 {
     const Frame* originFrame = static_cast<const Window*>(other)->impl()->frame();
     if (!originFrame) {
@@ -862,13 +867,14 @@ bool Window::allowsAccessFrom(const JSGlobalObject* other, SecurityOrigin::Reaso
     }
 
     const Frame* targetFrame = impl()->frame();
+
+    if (originFrame == targetFrame)
+        return true;
+    
     if (!targetFrame) {
         reason = SecurityOrigin::GenericMismatch;
         return false;
     }
-
-    if (originFrame == targetFrame)
-        return true;
 
     WebCore::Document* targetDocument = targetFrame->document();
 
