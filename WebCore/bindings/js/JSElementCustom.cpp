@@ -33,6 +33,7 @@
 #include "Attr.h"
 #include "Document.h"
 #include "Element.h"
+#include "CSSHelper.h"
 #include "ExceptionCode.h"
 #include "HTMLFrameElementBase.h"
 #include "HTMLNames.h"
@@ -46,7 +47,7 @@ using namespace HTMLNames;
 
 static inline bool allowSettingSrcToJavascriptURL(KJS::ExecState* exec, Element* element, String name, String value)
 {
-    if ((element->hasTagName(iframeTag) || element->hasTagName(frameTag)) && equalIgnoringCase(name, "src") && value.startsWith("javascript:", false)) {
+    if ((element->hasTagName(iframeTag) || element->hasTagName(frameTag)) && equalIgnoringCase(name, "src") && parseURL(value).startsWith("javascript:", false)) {
         HTMLFrameElementBase* frame = static_cast<HTMLFrameElementBase*>(element);
         if (!checkNodeSecurity(exec, frame->contentDocument()))
             return false;

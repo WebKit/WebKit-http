@@ -30,6 +30,7 @@
 #include "JSHTMLFrameElement.h"
 
 #include "Document.h"
+#include "CSSHelper.h"
 #include "HTMLFrameElement.h"
 #include "PlatformString.h"
 #include "kjs_binding.h"
@@ -39,12 +40,12 @@ namespace WebCore {
 
 static inline bool allowSettingJavascriptURL(KJS::ExecState* exec, HTMLFrameElement* imp, String value)
 {
-    if (value.startsWith("javascript:", false)) {
+    if (parseURL(value).startsWith("javascript:", false)) {
         if (!checkNodeSecurity(exec, imp->contentDocument()))
             return false;
     }
     return true;
-} 
+}
 
 void JSHTMLFrameElement::setSrc(KJS::ExecState* exec, KJS::JSValue* value)
 {

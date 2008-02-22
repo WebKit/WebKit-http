@@ -1,5 +1,27 @@
 2008-02-22  Timothy Hatcher  <timothy@apple.com>
 
+        Merge r30472 to Safari-3-1-branch.
+                                                                                                       
+    2008-02-21  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Anders Carlsson.
+
+        Fix for <rdar://problem/5757946>
+
+        - Parse URLs before checking whether they are javascript: urls
+          (which require security checks).
+
+        * bindings/js/JSAttrCustom.cpp:
+        (WebCore::JSAttr::setValue):
+        * bindings/js/JSElementCustom.cpp:
+        (WebCore::allowSettingSrcToJavascriptURL):
+        * bindings/js/JSHTMLFrameElementCustom.cpp:
+        (WebCore::allowSettingJavascriptURL):
+        * bindings/js/JSHTMLIFrameElementCustom.cpp:
+        (WebCore::JSHTMLIFrameElement::setSrc):
+
+2008-02-22  Timothy Hatcher  <timothy@apple.com>
+
         <rdar://problem/5758900> REGRESSION (Ceto-Fireclaw): Margins/padding expand on
         hover for some headlines on The Huffington Post
 

@@ -30,6 +30,7 @@
 #include "JSHTMLIFrameElement.h"
 
 #include "Document.h"
+#include "CSSHelper.h"
 #include "HTMLIFrameElement.h"
 #include "PlatformString.h"
 #include "kjs_binding.h"
@@ -40,8 +41,10 @@ namespace WebCore {
 void JSHTMLIFrameElement::setSrc(KJS::ExecState* exec, KJS::JSValue* value)
 {
     HTMLIFrameElement* imp = static_cast<HTMLIFrameElement*>(impl());
-    String srcValue = KJS::valueToStringWithNullCheck(exec, value); 
-    if (srcValue.startsWith("javascript:", false)) {
+
+    String srcValue = valueToStringWithNullCheck(exec, value);
+
+    if (parseURL(srcValue).startsWith("javascript:", false)) {
         if (!checkNodeSecurity(exec, imp->contentDocument()))
             return;
     }
