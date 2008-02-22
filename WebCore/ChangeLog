@@ -1,3 +1,19 @@
+2008-02-22  Timothy Hatcher  <timothy@apple.com>
+
+        <rdar://problem/5758900> REGRESSION (Ceto-Fireclaw): Margins/padding expand on
+        hover for some headlines on The Huffington Post
+
+        Roll out r29649.
+
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::computeLogicalBoxHeights):
+        (WebCore::InlineFlowBox::placeBoxesVertically):
+        (WebCore::InlineFlowBox::shrinkBoxesWithNoTextChildren):
+        * rendering/RenderObject.h:
+        * rendering/bidi.cpp:
+        (WebCore::inlineFlowRequiresLineBox):
+        (WebCore::RenderBlock::findNextLineBreak):
+
 2008-02-21  Mark Rowe  <mrowe@apple.com>
 
         Merge r30461 to Safari-3-1-branch.

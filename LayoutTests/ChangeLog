@@ -1,3 +1,15 @@
+2008-02-22  Timothy Hatcher  <timothy@apple.com>
+
+        <rdar://problem/5758900> REGRESSION (Ceto-Fireclaw): Margins/padding expand on
+        hover for some headlines on The Huffington Post
+
+        Roll out r29649.
+
+        * fast/inline/inline-padding-disables-text-quirk.html: Removed.
+        * platform/mac/fast/inline/inline-padding-disables-text-quirk-expected.checksum: Removed.
+        * platform/mac/fast/inline/inline-padding-disables-text-quirk-expected.png: Removed.
+        * platform/mac/fast/inline/inline-padding-disables-text-quirk-expected.txt: Removed.
+
 2008-02-21  Mark Rowe  <mrowe@apple.com>
 
         Merge r30458 to Safari-3-1-branch.
