@@ -731,7 +731,7 @@ static void runTest(const char* pathOrURL)
     if (FAILED(hr))
         goto exit;
 
-    request->initWithURL(urlBStr, WebURLRequestUseProtocolCachePolicy, 0);
+    request->initWithURL(urlBStr, WebURLRequestUseProtocolCachePolicy, 60);
 
     request->setHTTPMethod(methodBStr);
     frame->loadRequest(request.get());
