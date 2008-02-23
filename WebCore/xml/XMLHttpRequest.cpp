@@ -474,7 +474,7 @@ void XMLHttpRequest::send(const String& body, ExceptionCode& ec)
         ref();
 
         KJS::JSLock lock;
-        gcProtectNullTolerant(ScriptInterpreter::getDOMObject(this));
+        KJS::gcProtectNullTolerant(KJS::ScriptInterpreter::getDOMObject(this));
     }
 }
 
