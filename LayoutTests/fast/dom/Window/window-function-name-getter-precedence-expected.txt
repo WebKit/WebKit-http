@@ -20,7 +20,7 @@ PASS: typeof window.resizeTo should be function and is.
 PASS: typeof window.getComputedStyle should be function and is.
 PASS: typeof window.getMatchedCSSRules should be function and is.
 PASS: typeof window.openDatabase should be function and is.
-PASS: typeof window.postMessage should be function and is.
+FAIL: typeof window.postMessage should be function but instead is object
 PASS: typeof window.atob should be function and is.
 PASS: typeof window.btoa should be function and is.
 PASS: typeof window.open should be function and is.

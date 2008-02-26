@@ -1,5 +1,13 @@
 2008-02-26  Adam Roben  <aroben@apple.com>
 
+        Update results for a test that is sensitive to ENABLE_CROSS_DOCUMENT_MESSAGING
+
+        Reviewed by Anders.
+
+        * fast/dom/Window/window-function-name-getter-precedence-expected.txt:
+
+2008-02-26  Adam Roben  <aroben@apple.com>
+
         Enable two fixed tests
 
         Reviewed by Anders.
