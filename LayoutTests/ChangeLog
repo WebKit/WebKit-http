@@ -1,5 +1,18 @@
 2008-02-26  Adam Roben  <aroben@apple.com>
 
+        Merge r30320 to Safari-3-1-branch.
+
+    2008-02-15  Samuel Weinig  <sam@webkit.org>
+
+            Reviewed and rubber-stamped by Oliver Hunt.
+
+            Add leopard specific results for stroke-width-click.svg to work around
+            a CG regression.
+
+            * platform/mac-leopard/svg/custom/stroke-width-click-expected.txt: Added.
+
+2008-02-26  Adam Roben  <aroben@apple.com>
+
         Merge r30212 to Safari-3-1-branch.
 
     2008-02-13  Nikolas Zimmermann  <zimmermann@kde.org>
