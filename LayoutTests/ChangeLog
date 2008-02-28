@@ -1,3 +1,16 @@
+2008-02-28  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        <rdar://problem/5767534> REGRESSION (r29976): discovermagazine.com lays out incorrect (17564)
+
+        Roll r29977 and r29978 out of Safari-3-1-branch.
+
+        * fast/css/simple-selector-chain-parsing.html: Removed.
+        * platform/mac/fast/css/simple-selector-chain-parsing-expected.checksum: Removed.
+        * platform/mac/fast/css/simple-selector-chain-parsing-expected.png: Removed.
+        * platform/mac/fast/css/simple-selector-chain-parsing-expected.txt: Removed.
+
 2008-02-27  Mark Rowe  <mrowe@apple.com>
 
         Merge r30634 to Safari-3-1-branch.
