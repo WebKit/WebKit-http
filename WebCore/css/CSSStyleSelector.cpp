@@ -1446,11 +1446,6 @@ CSSStyleSelector::SelectorMatch CSSStyleSelector::checkSelector(CSSSelector* sel
         }
         case CSSSelector::DirectAdjacent:
         {
-            if (!m_collectRulesOnly && e->parentNode() && e->parentNode()->isElementNode()) {
-                RenderStyle* parentStyle = (m_element == e) ? m_parentStyle : e->parentNode()->renderStyle();
-                if (parentStyle)
-                    parentStyle->setChildrenAffectedByForwardPositionalRules();
-            }
             Node* n = e->previousSibling();
             while (n && !n->isElementNode())
                 n = n->previousSibling();
