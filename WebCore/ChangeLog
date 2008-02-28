@@ -1,3 +1,25 @@
+2008-02-27  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30634 to Safari-3-1-branch.
+
+    2008-02-27  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Darin.
+
+        Fix for <rdar://problem/5768769>
+
+        - Don't allow cross-origin calls using window.functionName.call(otherFrame)
+          syntax.
+
+        * bindings/js/JSLocation.cpp:
+        (WebCore::jsLocationProtoFuncToString): Do same-origin check.
+        * bindings/js/kjs_window.cpp:
+        (KJS::windowProtoFuncAToB): Ditto.
+        (KJS::windowProtoFuncBToA): Ditto.
+        (KJS::windowProtoFuncOpen): Ditto.
+        (KJS::windowProtoFuncClearTimeout): Ditto.
+        * bindings/scripts/CodeGeneratorJS.pm: Ditto.
+
 2008-02-26  Mark Rowe  <mrowe@apple.com>
 
         Merge r30617 to Safari-3-1-branch.
