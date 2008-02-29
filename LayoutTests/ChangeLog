@@ -1,3 +1,18 @@
+2008-02-29  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30475 to Safari-3-1-branch.
+
+    2008-02-22  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by Alexey P.
+
+        <rdar://problem/5759327> REGRESSION: while(NaN) acts like while(true)
+
+        Add test cases for pre/post-increment of NaN
+
+        * fast/js/convert-nan-to-bool-expected.txt:
+        * fast/js/resources/convert-nan-to-bool.js:
+
 2008-02-28  Mark Rowe  <mrowe@apple.com>
 
         Disable http/tests/security/cross-frame-access-location-put.html as postMessage support is disabled on Safari-3-1-branch.
