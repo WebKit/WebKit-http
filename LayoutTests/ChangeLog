@@ -1,5 +1,12 @@
 2008-02-28  Mark Rowe  <mrowe@apple.com>
 
+        Disable http/tests/security/cross-frame-access-location-put.html as postMessage support is disabled on Safari-3-1-branch.
+
+        * platform/mac/Skipped:
+        * platform/win/Skipped:
+
+2008-02-28  Mark Rowe  <mrowe@apple.com>
+
         Reviewed by Dave Hyatt.
 
         <rdar://problem/5767534> REGRESSION (r29976): discovermagazine.com lays out incorrect (17564)
