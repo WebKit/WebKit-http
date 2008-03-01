@@ -1,5 +1,18 @@
 2008-02-29  Mark Rowe  <mrowe@apple.com>
 
+        Merge r30692 to Safari-3-1-branch.
+
+    2008-02-29  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by build-fix karma
+
+        Bonehead mistake.  Revert function to previous version for all non-Windows+CFNetwork platforms
+
+        * platform/network/ProtectionSpace.cpp:
+        (WebCore::ProtectionSpace::receivesCredentialSecurely): Make my previous change conditionally
+
+2008-02-29  Mark Rowe  <mrowe@apple.com>
+
         Merge r30689 to Safari-3-1-branch.
 
     2008-02-29  Brady Eidson  <beidson@apple.com>
