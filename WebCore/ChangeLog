@@ -1,3 +1,17 @@
+2008-02-29  Mark Rowe  <mrowe@apple.com>
+
+        Merge r30689 to Safari-3-1-branch.
+
+    2008-02-29  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Darin
+
+        <rdar://problem/5771227> - Incorrect password handling text in credential sheet
+
+        * platform/network/ProtectionSpace.cpp:
+        (WebCore::ProtectionSpace::receivesCredentialSecurely): Call functional CFNetwork method to
+        get "secureness" of the auth challenge instead of figuring it out ourselves
+
 2008-02-28  Dave Hyatt  <hyatt@apple.com>
 
         Reviewed by Darin Adler.
