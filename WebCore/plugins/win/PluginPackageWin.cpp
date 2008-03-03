@@ -28,10 +28,14 @@
 #include "config.h"
 #include "PluginPackage.h"
 
-#include "Timer.h"
+#include "CString.h"
 #include "DeprecatedString.h"
+#include "MIMETypeRegistry.h"
 #include "npruntime_impl.h"
+#include "PluginDatabase.h"
 #include "PluginDebug.h"
+#include "Timer.h"
+#include <string.h>
 
 namespace WebCore {
 
@@ -110,6 +114,7 @@ PluginPackage::PluginPackage(const String& path, const FILETIME& lastModified)
     , m_freeLibraryTimer(this, &PluginPackage::freeLibraryTimerFired)
     , m_fileVersionLS(0)
     , m_fileVersionMS(0)
+    , m_allowsMultipleInstances(true)
 {
     m_fileName = String(PathFindFileName(m_path.charactersWithNullTermination()));
     m_parentDirectory = m_path.left(m_path.length() - m_fileName.length() - 1);
@@ -177,6 +182,12 @@ bool PluginPackage::fetchInfo()
         return false;
     }
 
+    // VLC 0.8.6d and 0.8.6e crash if multiple instances are created.
+    // <rdar://problem/5773070> tracks allowing multiple instances when this
+    // bug is fixed.
+    if (name() == "VLC Multimedia Plugin")
+        m_allowsMultipleInstances = false;
+
     storeFileVersion(versionInfoData);
 
     if (isPluginBlacklisted()) {
@@ -211,12 +222,38 @@ bool PluginPackage::fetchInfo()
     return true;
 }
 
+int PluginPackage::compare(const PluginPackage& compareTo) const
+{
+    // Sort plug-ins that allow multiple instances first.
+    bool AallowsMultipleInstances = allowsMultipleInstances();
+    bool BallowsMultipleInstances = compareTo.allowsMultipleInstances();
+    if (AallowsMultipleInstances != BallowsMultipleInstances)
+        return AallowsMultipleInstances ? -1 : 1;
+
+    // Sort plug-ins in a preferred path first.
+    bool AisInPreferredPath = PluginDatabase::isPreferredPluginPath(parentDirectory());
+    bool BisInPreferredPath = PluginDatabase::isPreferredPluginPath(compareTo.parentDirectory());
+    if (AisInPreferredPath != BisInPreferredPath)
+        return AisInPreferredPath ? -1 : 1;
+
+    int diff = strcmp(name().utf8().data(), compareTo.name().utf8().data());
+    if (diff)
+        return diff;
+
+    if (diff = compareFileVersion(compareTo.m_fileVersionLS, compareTo.m_fileVersionMS))
+        return diff;
+
+    return strcmp(parentDirectory().utf8().data(), compareTo.parentDirectory().utf8().data());
+}
+
 bool PluginPackage::load()
 {
     if (m_freeLibraryTimer.isActive()) {
         ASSERT(m_module);
         m_freeLibraryTimer.stop();
     } else if (m_isLoaded) {
+        if (!allowsMultipleInstances())
+            return false;
         m_loadCount++;
         return true;
     } else {

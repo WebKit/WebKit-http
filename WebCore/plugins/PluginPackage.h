@@ -50,6 +50,9 @@ namespace WebCore {
         String fileName() const { return m_fileName; }
         String parentDirectory() const { return m_parentDirectory; }
 
+        int compare(const PluginPackage&) const;
+        bool allowsMultipleInstances() const { return m_allowsMultipleInstances; }
+
         const MIMEToDescriptionsMap& mimeToDescriptions() const { return m_mimeToDescriptions; }
         const MIMEToExtensionsMap& mimeToExtensions() const { return m_mimeToExtensions; }
 
@@ -94,6 +97,8 @@ namespace WebCore {
         void freeLibrarySoon();
         void freeLibraryTimerFired(Timer<PluginPackage>*);
         Timer<PluginPackage> m_freeLibraryTimer;
+
+        bool m_allowsMultipleInstances;
     };
 
     struct PluginPackageHash {

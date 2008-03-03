@@ -48,6 +48,8 @@ namespace WebCore {
         static PluginDatabase* installedPlugins();
         PluginView* createPluginView(Frame* parentFrame, const IntSize&, Element* element, const KURL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually);
 
+        static bool isPreferredPluginPath(const String& path);
+
         bool refresh();
         Vector<PluginPackage*> plugins() const;
         bool isMIMETypeRegistered(const String& mimeType);
@@ -59,6 +61,8 @@ namespace WebCore {
         PluginPackage* findPlugin(const KURL& url, String& mimeType);
         PluginPackage* pluginForMIMEType(const String& mimeType);
         String MIMETypeForExtension(const String& extension) const;
+
+        static int preferredPluginCompare(const void*, const void*);
 
         static Vector<String> defaultPluginPaths();
 

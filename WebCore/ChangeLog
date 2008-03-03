@@ -1,3 +1,36 @@
+2008-03-03  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Reviewed by Darin, Anders.
+
+        Merge 30698 to Safari-3-1-branch.
+
+        * plugins/PluginDatabase.h: Added isPreferredPluginPath(),
+        preferredPluginCompare() qsort comparator.
+        * plugins/PluginPackage.h: Added bool m_allowsMultipleInstances.
+        (WebCore::PluginPackage::allowsMultipleInstances): Added; returns true
+        if plug-in can have multiple instances, false otherwise.
+        * plugins/win/PluginDatabaseWin.cpp:
+        (WebCore::PluginDatabase::preferredPluginCompare): qsort comparator
+        function, calls PluginPackage::compare().
+        (WebCore::PluginDatabase::pluginForMIMEType): Builds a list of plug-ins
+        for a MIME type, sorts them, and returns the first item.
+        (WebCore::PluginDatabase::MIMETypeForExtension): Builds a list of
+        plug-ins that handle this extension, sorts them, and returns the MIME
+        type the first plug-in in the list associates with this extension.
+        (WebCore::PluginDatabase::isPreferredPluginPath): Returns true if the
+        passed path is the "preferred" plug-in path.
+        * plugins/win/PluginPackageWin.cpp:
+        (WebCore::PluginPackage::PluginPackage): Set m_allowsMultipleInstances
+        to true.
+        (WebCore::PluginPackage::fetchInfo): If this is the VLC plug-in, set
+        m_allowsMultipleInstances to false.
+        (WebCore::PluginPackage::compare): Compare two plug-ins, first checking
+        whether a plug-in has an issue that should push it to the back, then
+        whether it's in a preferred directory that should move it to the front,
+        then by filename, version, and parent directory.
+        (WebCore::PluginPackage::load): If this plug-in doesn't allow multiple
+        instances, and the package has been loaded, return false.
+
 2008-02-29  Mark Rowe  <mrowe@apple.com>
 
         Merge r30692 to Safari-3-1-branch.
