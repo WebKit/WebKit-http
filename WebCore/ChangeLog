@@ -1,3 +1,17 @@
+2008-03-17  Mark Rowe  <mrowe@apple.com>
+
+        Merge r31069 to Safari-3-1-branch.
+
+    2008-03-14  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Mark Rowe.
+
+        - fix <rdar://problem/5797836> shadow offsets are smaller than specified
+
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::setShadow): Made the workaround for
+        <rdar://problem/5539388> unconditional.
+
 2008-03-03  Mark Rowe  <mrowe@apple.com>
 
         Merge r30992 to Safari-3-1-branch.
