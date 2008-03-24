@@ -3519,9 +3519,11 @@ noPromisedData:
 
     unsigned short keyCode = [event keyCode];
     //Don't make an event from the num lock and function keys
-    if (coreFrame && keyCode != 0 && keyCode != 10 && keyCode != 63)
+    if (coreFrame && keyCode != 0 && keyCode != 10 && keyCode != 63) {
         coreFrame->eventHandler()->keyEvent(PlatformKeyboardEvent(event));
-        
+        return;
+    }
+
     [super flagsChanged:event];
 }
 

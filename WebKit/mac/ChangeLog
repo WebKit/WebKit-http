@@ -1,3 +1,20 @@
+2008-03-24  Mark Rowe  <mrowe@apple.com>
+
+        Merge the modifier key part of r31236 to Safari-3-1-branch.
+
+    2008-03-23  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by Maciej.
+
+        Minimal fix for <rdar://problem/5642990> REGRESSION: shift key in Gmail Rich Text changes focus (16381)
+
+        If a document is present we prevent the flagsModified event from propagating up the frame tree,
+        this is correct behaviour and prevents us hitting the gmail code that incorrectly changes focus.
+        This is a subset of r31236
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView flagsChanged:]):
+
 2008-02-21  Mark Rowe  <mrowe@apple.com>
 
         Merge r30433 to Safari-3-1-branch.
