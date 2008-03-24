@@ -122,10 +122,9 @@ bool EventTargetNode::dispatchSubtreeModifiedEvent(bool sendChildrenChanged)
     document()->incDOMTreeVersion();
 
     // FIXME: Pull this whole if clause out of this function.
-    if (sendChildrenChanged) {
-        notifyNodeListsChildrenChanged();
+    if (sendChildrenChanged)
         childrenChanged();
-    } else
+    else
         notifyNodeListsAttributeChanged(); // FIXME: Can do better some day. Really only care about the name attribute changing.
     
     if (!document()->hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))

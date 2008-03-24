@@ -579,8 +579,6 @@ ContainerNode* ContainerNode::addChild(PassRefPtr<Node> newChild)
     document()->incDOMTreeVersion();
     if (inDocument())
         newChild->insertedIntoDocument();
-    if (document()->hasNodeLists())
-        notifyNodeListsChildrenChanged();
     childrenChanged(true);
     
     if (newChild->isElementNode())
@@ -672,6 +670,13 @@ void ContainerNode::removedFromTree(bool deep)
         for (Node *child = m_firstChild; child; child = child->nextSibling())
             child->removedFromTree(deep);
     }
+}
+
+void ContainerNode::childrenChanged(bool changedByParser)
+{
+    Node::childrenChanged(changedByParser);
+    if (document()->hasNodeListCaches())
+        notifyNodeListsChildrenChanged();
 }
 
 void ContainerNode::cloneChildNodes(ContainerNode *clone)

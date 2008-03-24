@@ -60,6 +60,8 @@ public:
     virtual void insertedIntoTree(bool deep);
     virtual void removedFromTree(bool deep);
 
+    virtual void childrenChanged(bool changedByParser = false);
+
     virtual bool removeChildren();
 
     void removeAllChildren();
