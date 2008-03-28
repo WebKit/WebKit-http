@@ -1,5 +1,25 @@
 2008-03-28  Mark Rowe  <mrowe@apple.com>
 
+        Merge r31358 to Safari-3-1-branch.
+
+    2008-03-26  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        - fix <rdar://problem/5816522> REGRESSION (r30111-30112): Tahoe web cam website has some text in Chinese or japanese
+
+        * html/HTMLParser.cpp:
+        (WebCore::HTMLParser::insertNode): Added call to beginParsingChildren()
+        on the new node.
+        (WebCore::HTMLParser::handleError): Ditto.
+        (WebCore::HTMLParser::reopenResidualStyleTags): Ditto.
+        (WebCore::HTMLParser::pushBlock): Removed incorrect call to
+        beginParsingChildren() on the current node.
+        * manual-tests/applet-finish-parsing-children.html: Added.
+        * manual-tests/resources/DrawMessage.class: Added.
+
+2008-03-28  Mark Rowe  <mrowe@apple.com>
+
         Merge r31336 to Safari-3-1-branch.
 
     2008-03-26  Justin Garcia  <justin.garcia@apple.com>
