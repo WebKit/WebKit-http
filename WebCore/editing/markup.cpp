@@ -1013,7 +1013,7 @@ PassRefPtr<DocumentFragment> createFragmentFromText(Range* context, const String
 
     // Break string into paragraphs. Extra line breaks turn into empty paragraphs.
     Node* block = enclosingBlock(context->startNode());
-    bool useClonesOfEnclosingBlock = !block->hasTagName(bodyTag);
+    bool useClonesOfEnclosingBlock = block && !block->hasTagName(bodyTag) && !block->hasTagName(htmlTag);
     
     DeprecatedStringList list = DeprecatedStringList::split('\n', string, true); // true gets us empty strings in the list
     while (!list.isEmpty()) {
