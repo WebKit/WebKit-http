@@ -1,3 +1,9 @@
+2008-03-28  Steve Falkenburg  <sfalken@apple.com>
+
+        Versioning.
+
+        * win/tools/scripts/PRODUCTVERSION:
+
 2008-02-15  Mark Rowe  <mrowe@apple.com>
 
         Merge r30084 to Safari-3-1-branch.
