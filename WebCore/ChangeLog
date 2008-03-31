@@ -1,5 +1,26 @@
 2008-03-31  Mark Rowe  <mrowe@apple.com>
 
+        Merge r31434 to Safari-3-1-branch.
+
+    2008-03-29  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Brady Eidson.
+
+        Fix crash when canceling a resource load while port blocked failure
+        timer is going.
+
+        Test: fast/loader/cancel-load-during-port-block-timer.html
+
+        * platform/network/ResourceHandle.cpp:
+        (WebCore::ResourceHandle::scheduleBlockedFailure):
+        (WebCore::ResourceHandle::fireBlockedFailure):
+        * platform/network/ResourceHandleInternal.h:
+        (WebCore::ResourceHandleInternal::ResourceHandleInternal):
+        Make the Timer a member variable of ResourceHandleInternal so
+        that it can be canceled if the ResourceHandle is destroyed.
+
+2008-03-31  Mark Rowe  <mrowe@apple.com>
+
         Merge r30722 to Safari-3-1-branch.
 
     2008-03-03  Mark Rowe  <mrowe@apple.com>

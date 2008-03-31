@@ -1,5 +1,19 @@
 2008-03-31  Mark Rowe  <mrowe@apple.com>
 
+        Merge r31434 to Safari-3-1-branch.
+
+    2008-03-29  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Brady Eidson.
+
+        Test for crash when canceling a resource load while port blocked failure
+        timer is going
+
+        * fast/loader/cancel-load-during-port-block-timer-expected.txt: Added.
+        * fast/loader/cancel-load-during-port-block-timer.html: Added.
+
+2008-03-31  Mark Rowe  <mrowe@apple.com>
+
         Merge r30722 to Safari-3-1-branch.
 
     2008-03-03  Mark Rowe  <mrowe@apple.com>
