@@ -291,11 +291,6 @@ void ResourceLoader::didFail(const ResourceError& error)
     releaseResources();
 }
 
-void ResourceLoader::wasBlocked()
-{
-    didFail(blockedError());
-}
-
 void ResourceLoader::didCancel(const ResourceError& error)
 {
     ASSERT(!m_cancelled);
@@ -352,6 +347,11 @@ ResourceError ResourceLoader::blockedError()
     return frameLoader()->blockedError(m_request);
 }
 
+ResourceError ResourceLoader::cannotShowURLError()
+{
+    return frameLoader()->cannotShowURLError(m_request);
+}
+
 void ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
     willSendRequest(request, redirectResponse);
@@ -379,7 +379,12 @@ void ResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
 
 void ResourceLoader::wasBlocked(ResourceHandle*)
 {
-    wasBlocked();
+    didFail(blockedError());
+}
+
+void ResourceLoader::cannotShowURL(ResourceHandle*)
+{
+    didFail(cannotShowURLError());
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)

@@ -75,6 +75,8 @@ public:
     bool isNull() const { return urlString.isNull(); }
     bool isEmpty() const { return urlString.isEmpty(); }
 
+    bool isValid() const { return m_isValid; }
+
     bool hasPath() const;
 
     String string() const { return urlString; }
