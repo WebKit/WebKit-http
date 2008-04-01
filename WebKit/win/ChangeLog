@@ -1,3 +1,18 @@
+2008-04-01  Steve Falkenburg  <sfalken@apple.com>
+
+        Merge r31015 to Safari-3-1-branch.
+
+2008-03-12  Ada Chan  <adachan@apple.com>
+
+        <rdar://problem/5795843> 
+        CFURLDownload needs to be cancelled if we don't have a destination path
+        to save resume information.
+
+        Reviewed by Brady.
+
+        * WebDownload.cpp:
+        (WebDownload::cancelForResume):
+
 2008-02-21  Mark Rowe  <mrowe@apple.com>
 
         Merge r30433 to Safari-3-1-branch.
