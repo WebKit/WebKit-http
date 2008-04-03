@@ -1,3 +1,23 @@
+2008-04-03  Mark Rowe  <mrowe@apple.com>
+
+        Merge r31320 to Safari-3-1-branch.
+
+    2008-03-26  Adam Roben  <aroben@apple.com>
+
+        Fix Bug 17768: REGRESSION (r30146): Inspector no longer shows elements
+        properties
+
+        <http://bugs.webkit.org/show_bug.cgi?id=17768>
+
+        We were throwing an exception from Object.describe because of some
+        undefined variables.
+
+        Reviewed by Tim Hatcher.
+
+        * page/inspector/utilities.js:
+        (Object.describe): Reinstate the type1 and type2 variables that were
+        removed in r30146. They're still used when formatting a function.
+
 2008-03-31  Mark Rowe  <mrowe@apple.com>
 
         Merge r31438 to Safari-3-1-branch.
