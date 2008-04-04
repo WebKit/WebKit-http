@@ -485,6 +485,8 @@ DOMImplementation* Document::implementation() const
 
 void Document::childrenChanged(bool changedByParser)
 {
+    ContainerNode::childrenChanged(changedByParser);
+    
     // invalidate the document element we have cached in case it was replaced
     m_documentElement = 0;
 }
