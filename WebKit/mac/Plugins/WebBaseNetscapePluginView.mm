@@ -2810,6 +2810,9 @@ static OSStatus TSMEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEve
         AGL_DEPTH_SIZE, 32,
         AGL_WINDOW,
         AGL_ACCELERATED,
+#ifndef BUILDING_ON_TIGER
+        AGL_ALLOW_OFFLINE_RENDERERS,
+#endif
         0
     };
     
@@ -2875,6 +2878,9 @@ static OSStatus TSMEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEve
         AGL_ALPHA_SIZE, 8,
         AGL_DEPTH_SIZE, 32,
         AGL_OFFSCREEN,
+#ifndef BUILDING_ON_TIGER
+        AGL_ALLOW_OFFLINE_RENDERERS,
+#endif
         0
     };
 
