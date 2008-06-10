@@ -27,7 +27,7 @@
 #include "PropertyNameArray.h"
 #include <wtf/Assertions.h>
 
-using std::min;
+using namespace std;
 
 namespace KJS {
 
@@ -46,7 +46,9 @@ static const unsigned maxArrayIndex = 0xFFFFFFFEU;
 // For all array indices under sparseArrayCutoff, we always use a vector.
 // When indices greater than sparseArrayCutoff are involved, we use a vector
 // as long as it is 1/8 full. If more sparse than that, we use a map.
-static const unsigned sparseArrayCutoff = 10000;
+// This value has to be a macro to be used in max() and min() without introducing
+// a PIC branch in Mach-O binaries, see <rdar://problem/5971391>.
+#define sparseArrayCutoff 10000U
 static const unsigned minDensityMultiplier = 8;
 
 static const unsigned copyingSortCutoff = 50000;
@@ -228,7 +230,24 @@ void ArrayInstance::put(ExecState* exec, unsigned i, JSValue* value, int attribu
         return;
     }
 
-    if (i < sparseArrayCutoff) {
+    SparseArrayValueMap* map = storage->m_sparseValueMap;
+
+    if (i >= sparseArrayCutoff) {
+        // We miss some cases where we could compact the storage, such as a large array that is being filled from the end
+        // (which will only be compacted as we reach indices that are less than cutoff) - but this makes the check much faster.
+        if (!isDenseEnoughForVector(i + 1, storage->m_numValuesInVector + 1)) {
+            if (!map) {
+                map = new SparseArrayValueMap;
+                storage->m_sparseValueMap = map;
+            }
+            map->set(i, value);
+            return;
+        }
+    }
+
+    // We have decided that we'll put the new item into the vector.
+    // Fast case is when there is no sparse map, so we can increase the vector size without moving values from it.
+    if (!map || map->isEmpty()) {
         increaseVectorLength(i + 1);
         storage = m_storage;
         ++storage->m_numValuesInVector;
@@ -236,38 +255,18 @@ void ArrayInstance::put(ExecState* exec, unsigned i, JSValue* value, int attribu
         return;
     }
 
-    SparseArrayValueMap* map = storage->m_sparseValueMap;
-    if (!map || map->isEmpty()) {
-        if (isDenseEnoughForVector(i + 1, storage->m_numValuesInVector + 1)) {
-            increaseVectorLength(i + 1);
-            storage = m_storage;
-            ++storage->m_numValuesInVector;
-            storage->m_vector[i] = value;
-            return;
-        }
-        if (!map) {
-            map = new SparseArrayValueMap;
-            storage->m_sparseValueMap = map;
-        }
-        map->set(i, value);
-        return;
-    }
-
+    // Decide how many values it would be best to move from the map.
     unsigned newNumValuesInVector = storage->m_numValuesInVector + 1;
-    if (!isDenseEnoughForVector(i + 1, newNumValuesInVector)) {
-        map->set(i, value);
-        return;
-    }
-
     unsigned newVectorLength = increasedVectorLength(i + 1);
-    for (unsigned j = m_vectorLength; j < newVectorLength; ++j)
+    for (unsigned j = max(m_vectorLength, sparseArrayCutoff); j < newVectorLength; ++j)
         newNumValuesInVector += map->contains(j);
-    newNumValuesInVector -= map->contains(i);
+    if (i >= sparseArrayCutoff)
+        newNumValuesInVector -= map->contains(i);
     if (isDenseEnoughForVector(newVectorLength, newNumValuesInVector)) {
         unsigned proposedNewNumValuesInVector = newNumValuesInVector;
         while (true) {
             unsigned proposedNewVectorLength = increasedVectorLength(newVectorLength + 1);
-            for (unsigned j = newVectorLength; j < proposedNewVectorLength; ++j)
+            for (unsigned j = max(newVectorLength, sparseArrayCutoff); j < proposedNewVectorLength; ++j)
                 proposedNewNumValuesInVector += map->contains(j);
             if (!isDenseEnoughForVector(proposedNewVectorLength, proposedNewNumValuesInVector))
                 break;
@@ -282,9 +281,12 @@ void ArrayInstance::put(ExecState* exec, unsigned i, JSValue* value, int attribu
     if (newNumValuesInVector == storage->m_numValuesInVector + 1) {
         for (unsigned j = vectorLength; j < newVectorLength; ++j)
             storage->m_vector[j] = 0;
-        map->remove(i);
+        if (i > sparseArrayCutoff)
+            map->remove(i);
     } else {
-        for (unsigned j = vectorLength; j < newVectorLength; ++j)
+        for (unsigned j = vectorLength; j < max(vectorLength, sparseArrayCutoff); ++j)
+            storage->m_vector[j] = 0;
+        for (unsigned j = max(vectorLength, sparseArrayCutoff); j < newVectorLength; ++j)
             storage->m_vector[j] = map->take(j);
     }
 
@@ -292,6 +294,8 @@ void ArrayInstance::put(ExecState* exec, unsigned i, JSValue* value, int attribu
 
     m_vectorLength = newVectorLength;
     storage->m_numValuesInVector = newNumValuesInVector;
+
+    m_storage = storage;
 }
 
 bool ArrayInstance::deleteProperty(ExecState* exec, const Identifier& propertyName)
@@ -359,6 +363,9 @@ void ArrayInstance::getPropertyNames(ExecState* exec, PropertyNameArray& propert
 
 void ArrayInstance::increaseVectorLength(unsigned newLength)
 {
+    // This function leaves the array in an internally inconsistent state, because it does not move any values from sparse value map
+    // to the vector. Callers have to account for that, because they can do it more efficiently.
+
     ArrayStorage* storage = m_storage;
 
     unsigned vectorLength = m_vectorLength;

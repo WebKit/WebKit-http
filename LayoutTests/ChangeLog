@@ -1,3 +1,18 @@
+2008-06-09  Mark Rowe  <mrowe@apple.com>
+
+        Merge r34204 to Safari-3-1-branch.
+
+    2008-05-29  Alexey Proskuryakov  <ap@webkit.org>
+
+        Reviewed by Darin.
+
+        https://bugs.webkit.org/show_bug.cgi?id=19294
+        <rdar://problem/5969062> A crash when iterating over a sparse array backwards.
+
+        * fast/js/array-iterate-backwards-expected.txt: Added.
+        * fast/js/array-iterate-backwards.html: Added.
+        * fast/js/resources/array-iterate-backwards.js: Added.
+
 2008-03-31  Mark Rowe  <mrowe@apple.com>
 
         Merge r31388 to Safari-3-1-branch.
