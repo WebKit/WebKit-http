@@ -3918,6 +3918,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         settings->setAuthorAndUserStylesEnabled(enabled);
     }
 
+    hr = prefsPrivate->inApplicationChromeMode(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setApplicationChromeMode(enabled);
+
     m_mainFrame->invalidate(); // FIXME
 
     hr = updateSharedSettingsFromPreferencesIfNeeded(preferences.get());

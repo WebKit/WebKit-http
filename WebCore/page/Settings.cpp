@@ -71,6 +71,7 @@ Settings::Settings(Page* page)
     , m_authorAndUserStylesEnabled(true)
     , m_needsSiteSpecificQuirks(false)
     , m_fontRenderingMode(0)
+    , m_inApplicationChromeMode(false)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString 
     // hash before trying to use it.
@@ -321,6 +322,12 @@ FontRenderingMode Settings::fontRenderingMode() const
 void Settings::setNeedsSiteSpecificQuirks(bool needsQuirks)
 {
     m_needsSiteSpecificQuirks = needsQuirks;
+}
+
+
+void Settings::setApplicationChromeMode(bool mode)
+{
+    m_inApplicationChromeMode = mode;
 }
 
 } // namespace WebCore
