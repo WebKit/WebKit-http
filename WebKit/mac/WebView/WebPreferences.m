@@ -332,6 +332,7 @@ static WebCacheModel cacheModelForMainBundle(void)
         [NSNumber numberWithInt:cacheModelForMainBundle()], WebKitCacheModelPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitDeveloperExtrasEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAuthorAndUserStylesEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitApplicationChromeModeEnabledPreferenceKey,
         nil];
 
     // This value shouldn't ever change, which is assumed in the initialization of WebKitPDFDisplayModePreferenceKey above
@@ -753,6 +754,16 @@ static WebCacheModel cacheModelForMainBundle(void)
 - (void)setAuthorAndUserStylesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitAuthorAndUserStylesEnabledPreferenceKey];
+}
+
+- (BOOL)applicationChromeModeEnabled
+{
+    return [self _boolValueForKey:WebKitApplicationChromeModeEnabledPreferenceKey];
+}
+
+- (void)setApplicationChromeModeEnabledEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitApplicationChromeModeEnabledPreferenceKey];
 }
 
 - (BOOL)respectStandardStyleKeyEquivalents
