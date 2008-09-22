@@ -1,3 +1,24 @@
+2008-09-21  Mark Rowe  <mrowe@apple.com>
+
+        Merge r35182.
+
+    2008-07-15  Adam Roben  <aroben@apple.com>
+
+        WebCore part of adding WebKit[Set]ShouldUseFontSmoothing functions
+
+        <rdar://6059127>
+
+        Reviewed by John Sullivan.
+
+        * platform/graphics/win/FontCGWin.cpp:
+        (WebCore::Font::drawGlyphs): Pass the result of
+        WebCoreShouldUseFontSmoothing() into wkSetFontSmoothingStyle.
+        * platform/win/WebCoreTextRenderer.cpp:
+        (WebCore::WebCoreSetShouldUseFontSmoothing):
+        (WebCore::WebCoreShouldUseFontSmoothing):
+        Added.
+        * platform/win/WebCoreTextRenderer.h:
+
 2008-09-14  Mark Rowe  <mrowe@apple.com>
 
         Merge r35950.

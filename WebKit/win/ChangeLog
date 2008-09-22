@@ -1,3 +1,24 @@
+2008-09-21  Mark Rowe  <mrowe@apple.com>
+
+        Merge r35182.
+
+    2008-07-15  Adam Roben  <aroben@apple.com>
+
+        Add WebKit[Set]ShouldUseFontSmoothing functions
+
+        <rdar://6059127>
+
+        Reviewed by John Sullivan.
+
+        * WebKit.vcproj/WebKit.def:
+        * WebKit.vcproj/WebKit_debug.def:
+        Export the new functions.
+        * WebKitGraphics.cpp:
+        (WebKitSetShouldUseFontSmoothing):
+        (WebKitShouldUseFontSmoothing):
+        Call through to the relevant WebCore functions.
+        * WebKitGraphics.h:
+
 2008-09-14  Mark Rowe  <mrowe@apple.com>
 
         Merge r32881.

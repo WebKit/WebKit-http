@@ -136,3 +136,13 @@ void RightTruncateStringToWidth(LPCTSTR text, int length, const WebFontDescripti
     memcpy(buffer, result.characters(), result.length() * sizeof(UChar));
     buffer[result.length()] = '\0';
 }
+
+void WebKitSetShouldUseFontSmoothing(bool smooth)
+{
+    WebCoreSetShouldUseFontSmoothing(smooth);
+}
+
+bool WebKitShouldUseFontSmoothing()
+{
+    return WebCoreShouldUseFontSmoothing();
+}
