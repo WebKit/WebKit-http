@@ -140,4 +140,6 @@ interface IWebViewPrivate : IUnknown
     HRESULT executeCoreCommandByName([in] BSTR name, [in] BSTR value);
 
     HRESULT windowAncestryDidChange();
+
+    HRESULT backingStore([out, retval] OLE_HANDLE* hBitmap);
 }

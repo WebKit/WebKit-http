@@ -634,6 +634,9 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE windowAncestryDidChange();
 
+    virtual HRESULT STDMETHODCALLTYPE backingStore(
+        /* [out, retval] */ OLE_HANDLE* hBitmap);
+
     // WebView
     WebCore::Page* page();
     bool handleMouseEvent(UINT, WPARAM, LPARAM);

@@ -4625,6 +4625,15 @@ HRESULT STDMETHODCALLTYPE WebView::windowAncestryDidChange()
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE WebView::backingStore(
+    /* [out, retval] */ OLE_HANDLE* hBitmap)
+{
+    if (!hBitmap)
+        return E_POINTER;
+    *hBitmap = (OLE_HANDLE)(ULONG64)m_backingStoreBitmap.get();
+    return S_OK;
+}
+
 class EnumTextMatches : public IEnumTextMatches
 {
     long m_ref;
