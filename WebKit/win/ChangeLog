@@ -1,3 +1,18 @@
+2008-10-02  Steve Falkenburg  <sfalken@apple.com>
+
+        Merge r31212 for fix <rdar://problem/6168976> visitCount not updated in History.plist
+
+    2008-03-21  Ada Chan  <adachan@apple.com>
+
+        <rdar://problem/5810324> visitCount not updated in History.plist
+        Call WebCore::HistoryItem::mergeAutoCompleteHints() in WebHistoryItem::mergeAutoCompleteHints().
+
+        Reviewed by Steve.
+
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::mergeAutoCompleteHints):
+        (WebHistoryItem::QueryInterface):
+
 2008-09-23  Mark Rowe  <mrowe@apple.com>
 
         Merge r35897.
