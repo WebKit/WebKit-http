@@ -1,3 +1,18 @@
+2008-06-09  Mark Rowe  <mrowe@apple.com>
+
+        Merge r31824.
+
+    2008-04-11  Antti Koivisto  <antti@apple.com>
+
+        Reviewed by Maciej.
+        
+        Add default hash for pairs of hashable types.
+
+        * wtf/HashFunctions.h:
+        (WTF::PairHash::hash):
+        (WTF::PairHash::equal):
+        (WTF::):
+
 2008-09-21  Steve Falkenburg  <sfalken@apple.com>
 
         Merge r36578.
