@@ -34,6 +34,7 @@
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <WebCore/WebCoreTextRenderer.h>
 
+#import <sys/param.h>
 #import <unicode/uchar.h>
 
 @implementation NSString (WebKitExtras)
@@ -338,6 +339,23 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
     }
 
     return path;
+}
+
++ (NSString *)_webkit_localCacheDirectoryWithBundleIdentifier:(NSString*)bundleIdentifier
+{
+    NSString* cacheDir = nil;
+    
+#ifdef BUILDING_ON_TIGER
+    cacheDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
+#else
+    char cacheDirectory[MAXPATHLEN];
+    size_t cacheDirectoryLen = confstr(_CS_DARWIN_USER_CACHE_DIR, cacheDirectory, MAXPATHLEN);
+    
+    if (cacheDirectoryLen)
+        cacheDir = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:cacheDirectory length:cacheDirectoryLen - 1];
+#endif
+
+    return [cacheDir stringByAppendingPathComponent:bundleIdentifier];
 }
 
 @end
