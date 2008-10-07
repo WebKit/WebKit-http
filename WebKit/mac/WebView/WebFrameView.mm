@@ -645,7 +645,8 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     NSString *characters = [event characters];
     int index, count;
     BOOL callSuper = YES;
-    BOOL maintainsBackForwardList = core([self webFrame])->page()->backForwardList()->enabled() ? YES : NO;
+    Frame* coreFrame = core([self webFrame]);
+    BOOL maintainsBackForwardList = coreFrame && coreFrame->page()->backForwardList()->enabled() ? YES : NO;
     
     count = [characters length];
     for (index = 0; index < count; ++index) {
