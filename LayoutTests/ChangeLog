@@ -1,3 +1,17 @@
+2008-10-07  Mark Rowe  <mrowe@apple.com>
+
+        Merge r35362.
+
+    2008-07-25  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Sam
+
+        Test for autocomplete attribute cleanup
+
+        * platform/win/Skipped:
+        * security/set-form-autocomplete-attribute-expected.txt: Added.
+        * security/set-form-autocomplete-attribute.html: Added.
+
 2008-10-06  Mark Rowe  <mrowe@apple.com>
 
         Merge r33567.

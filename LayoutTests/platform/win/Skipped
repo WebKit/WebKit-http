@@ -362,3 +362,7 @@ http/tests/xmlhttprequest/failed-auth.html
 http/tests/xmlhttprequest/connection-error-sync.html
 plugins/netscape-plugin-setwindow-size.html
 svg/custom/gradient-stop-style-change.svg
+
+# Need Windows DRT support for "elementDoesAutoCompleteForElementWithId()"
+security/set-form-autocomplete-attribute.html
+

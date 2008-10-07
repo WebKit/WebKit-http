@@ -66,6 +66,8 @@ public:
     void setPersistentUserStyleSheetLocation(JSStringRef path);
     void clearPersistentUserStyleSheet();
     int windowCount();
+    
+    bool elementDoesAutoCompleteForElementWithId(JSStringRef id);
 
     bool dumpAsText() const { return m_dumpAsText; }
     void setDumpAsText(bool dumpAsText) { m_dumpAsText = dumpAsText; }
