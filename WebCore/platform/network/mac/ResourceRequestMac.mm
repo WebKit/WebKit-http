@@ -82,7 +82,8 @@ void ResourceRequest::doUpdatePlatformRequest()
     wkSupportsMultipartXMixedReplace(nsRequest);
 
     [nsRequest setCachePolicy:(NSURLRequestCachePolicy)cachePolicy()];
-    [nsRequest setTimeoutInterval:timeoutInterval()];
+    if (timeoutInterval() != unspecifiedTimeoutInterval)
+        [nsRequest setTimeoutInterval:timeoutInterval()];
     [nsRequest setMainDocumentURL:mainDocumentURL().getNSURL()];
     if (!httpMethod().isEmpty())
         [nsRequest setHTTPMethod:httpMethod()];

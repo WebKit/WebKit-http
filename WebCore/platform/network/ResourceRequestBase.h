@@ -41,6 +41,8 @@ namespace WebCore {
         ReturnCacheDataDontLoad, // results of a post - allow stale data and only use cache
     };
 
+    const int unspecifiedTimeoutInterval = INT_MAX;
+
     class ResourceRequest;
 
     // Do not use this type directly.  Use ResourceRequest instead.
@@ -102,7 +104,7 @@ namespace WebCore {
         ResourceRequestBase(const KURL& url, ResourceRequestCachePolicy policy)
             : m_url(url)
             , m_cachePolicy(policy)
-            , m_timeoutInterval(defaultTimeoutInterval)
+            , m_timeoutInterval(unspecifiedTimeoutInterval)
             , m_httpMethod("GET")
             , m_allowHTTPCookies(true)
             , m_resourceRequestUpdated(true)
@@ -112,8 +114,6 @@ namespace WebCore {
 
         void updatePlatformRequest() const; 
         void updateResourceRequest() const; 
-
-        static const int defaultTimeoutInterval = 60;
 
         KURL m_url;
 
