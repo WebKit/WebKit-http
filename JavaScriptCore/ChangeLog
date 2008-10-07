@@ -1,3 +1,24 @@
+2008-10-06  Mark Rowe  <mrowe@apple.com>
+
+        Merge r33972.
+
+    2008-05-21  Darin Adler  <darin@apple.com>
+
+        Reviewed by Anders.
+
+        - fix <rdar://problem/5952721> bug in JavaScript arguments object property lookup
+
+        Test: fast/js/arguments-bad-index.html
+
+        * kjs/function.cpp:
+        (KJS::IndexToNameMap::IndexToNameMap): Use unsigned instead of int.
+        (KJS::IndexToNameMap::isMapped): Use unsigned instead of int, and also use the
+        strict version of the numeric conversion function, since we don't want to allow
+        trailing junk.
+        (KJS::IndexToNameMap::unMap): Ditto.
+        (KJS::IndexToNameMap::operator[]): Ditto.
+        * kjs/function.h: Changed IndexToNameMap::size type from int to unsigned.
+
 2008-10-04  Mark Rowe  <mrowe@apple.com>
 
         Merge r35278.
