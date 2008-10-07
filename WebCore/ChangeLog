@@ -1,5 +1,23 @@
 2008-10-06  Mark Rowe  <mrowe@apple.com>
 
+        Merge r33567.
+
+    2008-05-18  Darin Adler  <darin@apple.com>
+
+        Reviewed by Sam.
+
+        - fix <rdar://problem/5943569> crash due to stale ownerNode pointer
+
+        Test: fast/dom/StyleSheet/ownerNode-lifetime.html
+
+        * bindings/js/JSStyleSheetCustom.cpp:
+        (WebCore::JSStyleSheet::mark): Added code to mark ownerNode. Includes a comment about how
+        it would be even better to solve this in the DOM rather than just in the JavaScript binding.
+
+        * css/StyleSheet.idl: Added CustomMarkFunction attribute.
+
+2008-10-06  Mark Rowe  <mrowe@apple.com>
+
         Merge r36108.
 
     2008-09-04  Brady Eidson  <beidson@apple.com>
