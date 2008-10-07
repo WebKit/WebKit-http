@@ -2209,7 +2209,8 @@ static OSStatus TSMEventHandler(EventHandlerCallRef inHandlerRef, EventRef inEve
             // because this can cause the user to be redirected to a blank page (3424039).
             return NPERR_INVALID_PARAM;
         }
-    }
+    } else if (!FrameLoader::canLoad(URL, core([self webFrame])->document()))
+            return NPERR_GENERIC_ERROR;
         
     if (cTarget || JSString) {
         // Make when targetting a frame or evaluating a JS string, perform the request after a delay because we don't

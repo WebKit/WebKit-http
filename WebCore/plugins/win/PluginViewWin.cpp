@@ -951,7 +951,8 @@ NPError PluginView::load(const FrameLoadRequest& frameLoadRequest, bool sendNoti
             // For security reasons, only allow JS requests to be made on the frame that contains the plug-in.
             return NPERR_INVALID_PARAM;
         }
-    }
+    } else if (!FrameLoader::canLoad(url, m_parentFrame->document()))
+        return NPERR_GENERIC_ERROR;
 
     PluginRequest* request = new PluginRequest(frameLoadRequest, sendNotification, notifyData, arePopupsAllowed());
     scheduleRequest(request);

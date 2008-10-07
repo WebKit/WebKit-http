@@ -227,18 +227,18 @@ static bool pluginInvoke(NPObject *header, NPIdentifier name, const NPVariant *a
         if (argCount == 2 && NPVARIANT_IS_STRING(args[0]) && NPVARIANT_IS_STRING(args[1])) {
             NPUTF8* urlString = createCStringFromNPVariant(&args[0]);
             NPUTF8* targetString = createCStringFromNPVariant(&args[1]);
-            browser->geturl(obj->npp, urlString, targetString);
+            NPError npErr = browser->geturl(obj->npp, urlString, targetString);
             free(urlString);
             free(targetString);
 
-            VOID_TO_NPVARIANT(*result);
+            INT32_TO_NPVARIANT(npErr, *result);
             return true;
         } else if (argCount == 1 && NPVARIANT_IS_STRING(args[0])) {
             NPUTF8* urlString = createCStringFromNPVariant(&args[0]);
-            browser->geturl(obj->npp, urlString, 0);
+            NPError npErr = browser->geturl(obj->npp, urlString, 0);
             free(urlString);
 
-            VOID_TO_NPVARIANT(*result);
+            INT32_TO_NPVARIANT(npErr, *result);
             return true;
         }
     } else if (name == pluginMethodIdentifiers[ID_REMOVE_DEFAULT_METHOD]) {
