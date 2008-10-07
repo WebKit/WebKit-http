@@ -77,6 +77,9 @@ HTMLFormElement::HTMLFormElement(Document* doc)
 
 HTMLFormElement::~HTMLFormElement()
 {
+    if (!m_autocomplete)
+        document()->unregisterForCacheCallbacks(this);
+
     delete m_elementAliases;
     delete collectionInfo;
     
@@ -557,9 +560,13 @@ void HTMLFormElement::parseMappedAttribute(MappedAttribute *attr)
         m_acceptcharset = attr->value();
     else if (attr->name() == acceptAttr) {
         // ignore this one for the moment...
-    } else if (attr->name() == autocompleteAttr)
+    } else if (attr->name() == autocompleteAttr) {
         m_autocomplete = !equalIgnoringCase(attr->value(), "off");
-    else if (attr->name() == onsubmitAttr)
+        if (!m_autocomplete)
+            document()->registerForCacheCallbacks(this);    
+        else
+            document()->unregisterForCacheCallbacks(this);
+    } else if (attr->name() == onsubmitAttr)
         setHTMLEventListener(submitEvent, attr);
     else if (attr->name() == onresetAttr)
         setHTMLEventListener(resetEvent, attr);
@@ -730,6 +737,26 @@ void HTMLFormElement::getNamedElements(const AtomicString& name, Vector<RefPtr<N
     // name has been accessed, remember it
     if (namedItems.size() && aliasElem != namedItems.first())
         addElementAlias(static_cast<HTMLGenericFormElement*>(namedItems.first().get()), name);        
+}
+
+void HTMLFormElement::didRestoreFromCache()
+{
+    ASSERT(!m_autocomplete);
+    
+    for (unsigned i = 0; i < formElements.size(); ++i)
+        formElements[i]->reset();
+}
+
+void HTMLFormElement::willMoveToNewOwnerDocument()
+{
+    if (!m_autocomplete)
+        document()->unregisterForCacheCallbacks(this);
+}
+
+void HTMLFormElement::didMoveToNewOwnerDocument()
+{
+    if(m_autocomplete)
+        document()->registerForCacheCallbacks(this);
 }
 
 void HTMLFormElement::CheckedRadioButtons::addButton(HTMLGenericFormElement* element)
