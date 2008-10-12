@@ -4654,6 +4654,27 @@ HRESULT STDMETHODCALLTYPE WebView::transparent(BOOL* transparent)
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE WebView::setDefersCallbacks(BOOL defersCallbacks)
+{
+    if (!m_page)
+        return E_FAIL;
+
+    m_page->setDefersLoading(defersCallbacks);
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebView::defersCallbacks(BOOL* defersCallbacks)
+{
+    if (!defersCallbacks)
+        return E_POINTER;
+
+    if (!m_page)
+        return E_FAIL;
+
+    *defersCallbacks = m_page->defersLoading();
+    return S_OK;
+}
+
 class EnumTextMatches : public IEnumTextMatches
 {
     long m_ref;

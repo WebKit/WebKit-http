@@ -1,3 +1,19 @@
+2008-10-12  Mark Rowe  <mrowe@apple.com>
+
+        Merge r36005.
+
+    2008-08-30  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Dan Bernstein.
+
+        Add WebView SPI to defer loading callbacks.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::setDefersCallbacks):
+        (WebView::defersCallbacks):
+        * WebView.h:
+
 2008-10-02  Steve Falkenburg  <sfalken@apple.com>
 
         Merge r31212 for fix <rdar://problem/6168976> visitCount not updated in History.plist
