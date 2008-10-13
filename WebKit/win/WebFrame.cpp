@@ -1859,8 +1859,6 @@ void WebFrame::transitionToCommittedForNewPage()
     frame->setView(frameView);
     frameView->deref(); // FrameViews are created with a ref count of 1. Release this ref since we've assigned it to frame.
 
-    updateBackground();
-
     HWND viewWindow;
     if (SUCCEEDED(d->webView->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))))
         frameView->setContainingWindow(viewWindow);
@@ -2901,24 +2899,5 @@ void WebFrame::unmarkAllBadGrammar()
             return;
 
         doc->removeMarkers(DocumentMarker::Grammar);
-    }
-}
-
-WebView* WebFrame::webView() const
-{
-    return d->webView;
-}
-
-void WebFrame::updateBackground()
-{
-    Color backgroundColor = webView()->transparent() ? Color::transparent : Color::white;
-    Frame* coreFrame = core(this);
-    for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
-        FrameView* view = frame->view();
-        if (!view)
-            continue;
-
-        view->setTransparent(webView()->transparent());
-        view->setBaseBackgroundColor(backgroundColor);
     }
 }

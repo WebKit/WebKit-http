@@ -1,3 +1,21 @@
+2008-10-13  Steve Falkenburg  <sfalken@apple.com>
+
+        Roll out r36883, r36884.
+
+        Added unimplemented method to IWebViewPrivate (paintDocumentRectToContext) for nightly compatibility
+        (we need to preserve vtable order).
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebFrame.cpp:
+        (WebFrame::transitionToCommittedForNewPage):
+        (WebFrame::unmarkAllBadGrammar):
+        * WebFrame.h:
+        * WebView.cpp:
+        (WebView::WebView):
+        (WebView::paintIntoBackingStore):
+        (WebView::paintDocumentRectToContext):
+        * WebView.h:
+
 2008-10-12  Mark Rowe  <mrowe@apple.com>
 
         Merge r36005.
@@ -28,47 +46,6 @@
         * WebHistoryItem.cpp:
         (WebHistoryItem::mergeAutoCompleteHints):
         (WebHistoryItem::QueryInterface):
-
-2008-09-23  Mark Rowe  <mrowe@apple.com>
-
-        Merge r35897.
-
-    2008-08-18  Jon Honeycutt  <jhoneycutt@apple.com>
-
-        Add SPI to make a Windows WebView transparent.
-
-        Reviewed by Dan Bernstein.
-
-        * Interfaces/IWebViewPrivate.idl:
-        * WebCoreSupport/WebFrameLoaderClient.cpp:
-        (WebFrameLoaderClient::transitionToCommittedForNewPage): Call
-        updateBackground() when a new frame is attached, matching the Mac.
-        * WebFrame.cpp:
-        (WebFrame::updateBackground): Propagate WebView transparency to ourself
-        and our child frames.
-        * WebFrame.h:
-        * WebView.cpp:
-        (WebView::WebView):
-        (WebView::paintIntoBackingStore): Pass m_transparent when creating a
-        GraphicsContext, so the context will be created with an alpha channel.
-        (WebView::setTransparent):
-        (WebView::transparent):
-        * WebView.h:
-
-2008-09-23  Mark Rowe  <mrowe@apple.com>
-
-        Merge r35896.
-
-    2008-08-12  Jon Honeycutt  <jhoneycutt@apple.com>
-
-        Add SPI to get a handle to the WebView's backing store bitmap.
-
-        Reviewed by Dan Bernstein.
-
-        * Interfaces/IWebViewPrivate.idl:
-        * WebView.cpp:
-        (WebView::backingStore):
-        * WebView.h:
 
 2008-09-21  Mark Rowe  <mrowe@apple.com>
 

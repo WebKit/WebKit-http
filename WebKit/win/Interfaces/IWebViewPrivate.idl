@@ -141,10 +141,7 @@ interface IWebViewPrivate : IUnknown
 
     HRESULT windowAncestryDidChange();
 
-    HRESULT backingStore([out, retval] OLE_HANDLE* hBitmap);
-
-    HRESULT setTransparent([in] BOOL transparent);
-    HRESULT transparent([out, retval] BOOL* transparent);
+    HRESULT paintDocumentRectToContext([in] RECT rect, [in] OLE_HANDLE dc);
 
     HRESULT setDefersCallbacks([in] BOOL defersCallbacks);
     HRESULT defersCallbacks([out, retval] BOOL* defersCallbacks);

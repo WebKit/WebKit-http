@@ -634,14 +634,8 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE windowAncestryDidChange();
 
-    virtual HRESULT STDMETHODCALLTYPE backingStore(
-        /* [out, retval] */ OLE_HANDLE* hBitmap);
-
-    virtual HRESULT STDMETHODCALLTYPE setTransparent(
-        /* [in] */ BOOL transparent);
-
-    virtual HRESULT STDMETHODCALLTYPE transparent(
-        /* [out, retval] */ BOOL* transparent);
+    virtual HRESULT STDMETHODCALLTYPE paintDocumentRectToContext(
+        /*[in]*/ RECT rect, /*[in]*/ OLE_HANDLE dc);
 
     virtual HRESULT STDMETHODCALLTYPE setDefersCallbacks(
         /* [in] */ BOOL defersCallbacks);
@@ -679,8 +673,6 @@ public:
     void closeWindowSoon();
     void close();
     bool didClose() const { return m_didClose; }
-
-    bool transparent() const { return m_transparent; }
 
     bool onIMEStartComposition();
     bool onIMEComposition(LPARAM);
@@ -795,8 +787,6 @@ protected:
     unsigned m_inIMEComposition;
     HWND m_toolTipHwnd;
     WebCore::String m_toolTip;
-
-    bool m_transparent;
 
     static bool s_allowSiteSpecificHacks;
 

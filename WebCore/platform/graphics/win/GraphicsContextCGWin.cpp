@@ -38,7 +38,7 @@ using namespace std;
 
 namespace WebCore {
 
-static CGContextRef CGContextWithHDC(HDC hdc, bool hasAlpha)
+static CGContextRef CGContextWithHDC(HDC hdc)
 {
     HBITMAP bitmap = static_cast<HBITMAP>(GetCurrentObject(hdc, OBJ_BITMAP));
     CGColorSpaceRef deviceRGB = CGColorSpaceCreateDeviceRGB();
@@ -46,10 +46,8 @@ static CGContextRef CGContextWithHDC(HDC hdc, bool hasAlpha)
 
     GetObject(bitmap, sizeof(info), &info);
     ASSERT(info.bmBitsPixel == 32);
-
-    CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Little | (hasAlpha ? kCGImageAlphaPremultipliedFirst : kCGImageAlphaNoneSkipFirst);
     CGContextRef context = CGBitmapContextCreate(info.bmBits, info.bmWidth, info.bmHeight, 8,
-                                                 info.bmWidthBytes, deviceRGB, bitmapInfo);
+                                                 info.bmWidthBytes, deviceRGB, kCGBitmapByteOrder32Little | kCGImageAlphaNoneSkipFirst);
     CGColorSpaceRelease(deviceRGB);
 
     // Flip coords
@@ -62,9 +60,9 @@ static CGContextRef CGContextWithHDC(HDC hdc, bool hasAlpha)
     return context;
 }
 
-GraphicsContext::GraphicsContext(HDC hdc, bool hasAlpha)
+GraphicsContext::GraphicsContext(HDC hdc)
     : m_common(createGraphicsContextPrivate())
-    , m_data(new GraphicsContextPlatformPrivate(CGContextWithHDC(hdc, hasAlpha)))
+    , m_data(new GraphicsContextPlatformPrivate(CGContextWithHDC(hdc)))
 {
     CGContextRelease(m_data->m_cgContext);
     m_data->m_hdc = hdc;
