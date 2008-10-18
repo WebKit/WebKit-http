@@ -1,3 +1,11 @@
+2008-10-17  Mark Rowe  <mrowe@apple.com>
+
+        Rubber-stamped by Jon Honeycutt.
+
+        Export logging symbols in debug.
+
+        * WebKit.vcproj/WebKit_debug.def:
+
 2008-10-13  Steve Falkenburg  <sfalken@apple.com>
 
         Roll out r36883, r36884.

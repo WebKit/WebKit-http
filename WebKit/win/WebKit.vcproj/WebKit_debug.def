@@ -104,6 +104,8 @@ EXPORTS
         ?fastZeroedMalloc@WTF@@YAPAXI@Z
         ?fastFree@WTF@@YAXPAX@Z
         ?fastCalloc@WTF@@YAPAXII@Z
+        WTFLog
+        WTFReportArgumentAssertionFailure
         WTFReportAssertionFailure
         WTFReportError
 
