@@ -573,17 +573,34 @@ static NSString *createMacOSXVersionString()
     return [[NSString alloc] initWithFormat:@"%d", major];
 }
 
-+ (NSString *)_standardUserAgentWithApplicationName:(NSString *)applicationName andWebKitVersion:(NSString *)version
+static NSString *createUserVisibleWebKitVersionString()
 {
-    // Note: Do *not* move the initialization of osVersion into the declaration.
+    // If the version is 4 digits long or longer, then the first digit represents
+    // the version of the OS. Our user agent string should not include this first digit,
+    // so strip it off and report the rest as the version. <rdar://problem/4997547>
+    NSString *fullVersion = [[NSBundle bundleForClass:[WebView class]] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
+    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
+    if (nonDigitRange.location == NSNotFound && [fullVersion length] >= 4)
+        return [[fullVersion substringFromIndex:1] copy];
+    if (nonDigitRange.location != NSNotFound && nonDigitRange.location >= 4)
+        return [[fullVersion substringFromIndex:1] copy];
+    return [fullVersion copy];
+}
+
++ (NSString *)_standardUserAgentWithApplicationName:(NSString *)applicationName
+{
+    // Note: Do *not* move the initialization of osVersion nor webKitVersion into the declaration.
     // Garbage collection won't correctly mark the global variable in that case <rdar://problem/5733674>.
     static NSString *osVersion;
+    static NSString *webKitVersion;
     if (!osVersion)
         osVersion = createMacOSXVersionString();
+    if (!webKitVersion)
+        webKitVersion = createUserVisibleWebKitVersionString();
     NSString *language = [NSUserDefaults _webkit_preferredLanguageCode];
     if ([applicationName length])
-        return [NSString stringWithFormat:@"Mozilla/5.0 (Macintosh; U; " PROCESSOR " Mac OS X %@; %@) AppleWebKit/%@ (KHTML, like Gecko) %@", osVersion, language, version, applicationName];
-    return [NSString stringWithFormat:@"Mozilla/5.0 (Macintosh; U; " PROCESSOR " Mac OS X %@; %@) AppleWebKit/%@ (KHTML, like Gecko)", osVersion, language, version];
+        return [NSString stringWithFormat:@"Mozilla/5.0 (Macintosh; U; " PROCESSOR " Mac OS X %@; %@) AppleWebKit/%@ (KHTML, like Gecko) %@", osVersion, language, webKitVersion, applicationName];
+    return [NSString stringWithFormat:@"Mozilla/5.0 (Macintosh; U; " PROCESSOR " Mac OS X %@; %@) AppleWebKit/%@ (KHTML, like Gecko)", osVersion, language, webKitVersion];
 }
 
 #ifdef DEBUG_WIDGET_DRAWING
@@ -4103,20 +4120,6 @@ static WebFrameView *containingFrameView(NSView *view)
     [self _didChangeValueForKey:_WebMainFrameIconKey];
 }
 
-static NSString *createUserVisibleWebKitVersionString()
-{
-    // If the version is 4 digits long or longer, then the first digit represents
-    // the version of the OS. Our user agent string should not include this first digit,
-    // so strip it off and report the rest as the version. <rdar://problem/4997547>
-    NSString *fullVersion = [[NSBundle bundleForClass:[WebView class]] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
-    NSRange nonDigitRange = [fullVersion rangeOfCharacterFromSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]];
-    if (nonDigitRange.location == NSNotFound && [fullVersion length] >= 4)
-        return [[fullVersion substringFromIndex:1] copy];
-    if (nonDigitRange.location != NSNotFound && nonDigitRange.location >= 4)
-        return [[fullVersion substringFromIndex:1] copy];
-    return [fullVersion copy];
-}
-
 // Get the appropriate user-agent string for a particular URL.
 - (WebCore::String)_userAgentForURL:(const WebCore::KURL&)url
 {
@@ -4124,14 +4127,8 @@ static NSString *createUserVisibleWebKitVersionString()
         // No current site-specific spoofs.
     }
 
-    if (_private->userAgent->isNull()) {
-        // Note: Do *not* move the initialization of webKitVersion into the declaration.
-        // Garbage collection won't correctly mark the global variable in that case <rdar://problem/5733674>.
-        static NSString *webKitVersion;
-        if (!webKitVersion)
-            webKitVersion = createUserVisibleWebKitVersionString();
-        *_private->userAgent = [[self class] _standardUserAgentWithApplicationName:_private->applicationNameForUserAgent andWebKitVersion:webKitVersion];
-    }
+    if (_private->userAgent->isNull())
+        *_private->userAgent = [[self class] _standardUserAgentWithApplicationName:_private->applicationNameForUserAgent];
 
     return *_private->userAgent;
 }

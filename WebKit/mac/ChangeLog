@@ -1,5 +1,22 @@
 2008-10-18  Mark Rowe  <mrowe@apple.com>
 
+        Merge r37606.
+
+    2008-10-15  Timothy Hatcher  <timothy@apple.com>
+
+        Clean up user agent generation to simplify the _standardUserAgentWithApplicationName:
+        class method to not require a WebKit version.
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebView.mm:
+        (+[WebView _standardUserAgentWithApplicationName:]): Create the WebKit version.
+        (-[WebView WebCore::_userAgentForURL:]): Use the simplified _standardUserAgentWithApplicationName:.
+        Remove code that created the WebKit version.
+        * WebView/WebViewPrivate.h: Change the method name of _standardUserAgentWithApplicationName:.
+
+2008-10-18  Mark Rowe  <mrowe@apple.com>
+
         Merge r37598.
 
     2008-10-14  Timothy Hatcher  <timothy@apple.com>
