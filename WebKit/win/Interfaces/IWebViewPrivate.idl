@@ -145,4 +145,6 @@ interface IWebViewPrivate : IUnknown
 
     HRESULT setDefersCallbacks([in] BOOL defersCallbacks);
     HRESULT defersCallbacks([out, retval] BOOL* defersCallbacks);
+
+    HRESULT standardUserAgentWithApplicationName([in] BSTR applicationName, [retval][out] BSTR* groupName);
 }

@@ -602,6 +602,10 @@ public:
         IWebURLRequest *request,
         BOOL *result);
 
+    virtual HRESULT STDMETHODCALLTYPE standardUserAgentWithApplicationName( 
+        /* [in] */ BSTR applicationName,
+        /* [retval][out] */ BSTR *groupName);
+
     virtual HRESULT STDMETHODCALLTYPE clearFocusNode();
 
     virtual HRESULT STDMETHODCALLTYPE setInitialFocus(
@@ -694,6 +698,8 @@ public:
     const WebCore::String& userAgentForKURL(const WebCore::KURL& url);
 
     static bool canHandleRequest(const WebCore::ResourceRequest&);
+
+    static WebCore::String standardUserAgentWithApplicationName(const WebCore::String&);
 
     void setIsBeingDestroyed() { m_isBeingDestroyed = true; }
     bool isBeingDestroyed() const { return m_isBeingDestroyed; }
