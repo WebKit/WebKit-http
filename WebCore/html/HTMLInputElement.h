@@ -227,7 +227,7 @@ private:
     bool m_indeterminate : 1;
     bool m_haveType : 1;
     bool m_activeSubmit : 1;
-    AutoCompleteSetting m_autocomplete : 2;
+    unsigned m_autocomplete : 2; // AutoCompleteSetting
     bool m_autofilled : 1;
     bool m_inited : 1;
     
