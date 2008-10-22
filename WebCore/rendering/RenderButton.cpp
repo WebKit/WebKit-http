@@ -76,7 +76,7 @@ void RenderButton::setStyle(RenderStyle* style)
     if (!m_default && theme()->isDefault(this)) {
         if (!m_timer)
             m_timer.set(new Timer<RenderButton>(this, &RenderButton::timerFired));
-        m_timer->startRepeating(0.01);
+        m_timer->startRepeating(0.03);
         m_default = true;
     } else if (m_default && !theme()->isDefault(this)) {
         m_default = false;

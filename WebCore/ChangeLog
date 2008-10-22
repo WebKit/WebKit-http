@@ -1,5 +1,19 @@
 2008-10-21  Mark Rowe  <mrowe@apple.com>
 
+        Merge r37704.
+
+    2008-10-19  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Timothy Hatcher.
+
+        - lower the default button repaint frequency
+
+        * rendering/RenderButton.cpp:
+        (WebCore::RenderButton::styleDidChange): Changed the timer interval from
+        0.01 to 0.03.
+
+2008-10-21  Mark Rowe  <mrowe@apple.com>
+
         Merge r31577.
 
     2008-04-02  Mark Rowe  <mrowe@apple.com>
