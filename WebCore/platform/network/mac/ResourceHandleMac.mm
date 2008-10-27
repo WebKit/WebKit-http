@@ -155,11 +155,13 @@ bool ResourceHandle::start(Frame* frame)
 #endif
     d->m_connection = connection;
     [connection release];
-    if (d->m_defersLoading)
-        wkSetNSURLConnectionDefersCallbacks(d->m_connection.get(), YES);
-    
-    if (d->m_connection)
+
+    if (d->m_connection) {
+        if (d->m_defersLoading)
+            wkSetNSURLConnectionDefersCallbacks(d->m_connection.get(), YES);
+
         return true;
+    }
 
     END_BLOCK_OBJC_EXCEPTIONS;
 
@@ -174,7 +176,8 @@ void ResourceHandle::cancel()
 void ResourceHandle::setDefersLoading(bool defers)
 {
     d->m_defersLoading = defers;
-    wkSetNSURLConnectionDefersCallbacks(d->m_connection.get(), defers);
+    if (d->m_connection)
+        wkSetNSURLConnectionDefersCallbacks(d->m_connection.get(), defers);
 }
 
 WebCoreResourceHandleAsDelegate *ResourceHandle::delegate()

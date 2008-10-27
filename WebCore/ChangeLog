@@ -1,3 +1,19 @@
+2008-10-27  Mark Rowe  <mrowe@apple.com>
+
+        Merge r37897.
+
+    2008-10-27  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Kevin Decker.
+
+        <rdar://problem/6322650> Crash in fast/loader/simultaneous-reloads-assert.html
+        
+        Make sure to null check the NSURLConnection object.
+        
+        * platform/network/mac/ResourceHandleMac.mm:
+        (WebCore::ResourceHandle::start):
+        (WebCore::ResourceHandle::setDefersLoading):
+
 2008-10-22  Mark Rowe  <mrowe@apple.com>
 
         Merge r37793.
