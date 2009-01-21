@@ -408,6 +408,9 @@ void ResourceHandle::setClientCertificate(const String& host, CFDataRef cert)
 
 void ResourceHandle::setDefersLoading(bool defers)
 {
+    if (!d->m_connection)
+        return;
+
     if (defers)
         CFURLConnectionHalt(d->m_connection.get());
     else
