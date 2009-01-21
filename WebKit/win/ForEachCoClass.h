@@ -53,9 +53,11 @@
     macro(WebURLRequest) \
     macro(WebURLResponse) \
     macro(WebView) \
+    macro(WebCookieManager) \
     // end of macro
 
 #define WEBKITCLASS_MEMBER(cls) cls##Class,
+
 enum WebKitClass {
     FOR_EACH_COCLASS(WEBKITCLASS_MEMBER)
     WebKitClassSentinel

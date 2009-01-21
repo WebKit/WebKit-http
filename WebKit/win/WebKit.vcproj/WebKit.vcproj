@@ -616,6 +616,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\WebCookieManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\WebCookieManager.h"
+				>
+			</File>
+			<File
 				RelativePath="..\WebDatabaseManager.cpp"
 				>
 			</File>

@@ -618,6 +618,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\Interfaces\IWebCookieManager.idl"
+			>
+		</File>
+		<File
 			RelativePath="..\Interfaces\IWebDatabaseManager.idl"
 			>
 		</File>

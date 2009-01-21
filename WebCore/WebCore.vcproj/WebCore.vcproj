@@ -4211,6 +4211,14 @@
 						RelativePath="..\platform\network\win\CookieJarWin.cpp"
 						>
 					</File>
+					<File
+						RelativePath="..\platform\network\win\CookieStorageWin.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\network\win\CookieStorageWin.h"
+						>
+					</File>
 				</Filter>
 			</Filter>
 			<Filter
