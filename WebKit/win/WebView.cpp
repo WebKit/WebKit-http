@@ -4685,6 +4685,12 @@ HRESULT STDMETHODCALLTYPE WebView::defersCallbacks(BOOL* defersCallbacks)
     return S_OK;
 }
 
+HRESULT WebView::setJavaScriptURLsAreAllowed(BOOL areAllowed)
+{
+    m_page->setJavaScriptURLsAreAllowed(areAllowed);
+    return S_OK;
+}
+
 class EnumTextMatches : public IEnumTextMatches
 {
     long m_ref;

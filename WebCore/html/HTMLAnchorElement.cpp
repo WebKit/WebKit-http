@@ -36,6 +36,7 @@
 #include "KeyboardEvent.h"
 #include "MouseEvent.h"
 #include "MutationEvent.h"
+#include "Page.h"
 #include "RenderFlow.h"
 #include "RenderImage.h"
 #include "ResourceRequest.h"
@@ -271,6 +272,10 @@ void HTMLAnchorElement::parseMappedAttribute(MappedAttribute *attr)
         m_isLink = !attr->isNull();
         if (wasLink != m_isLink)
             setChanged();
+        if (m_isLink && document()->page() && !document()->page()->javaScriptURLsAreAllowed() && parseURL(attr->value()).startsWith("javascript:", false)) {
+            m_isLink = false;
+            attr->setValue(nullAtom);
+        }
     } else if (attr->name() == nameAttr ||
              attr->name() == titleAttr ||
              attr->name() == relAttr) {

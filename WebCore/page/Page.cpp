@@ -83,6 +83,7 @@ Page::Page(ChromeClient* chromeClient, ContextMenuClient* contextMenuClient, Edi
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
     , m_inLowQualityInterpolationMode(false)
+    , m_javaScriptURLsAreAllowed(true)
     , m_parentInspectorController(0)
     , m_didLoadUserStyleSheet(false)
     , m_userStyleSheetModificationTime(0)
@@ -358,6 +359,16 @@ const String& Page::userStyleSheet() const
     m_userStyleSheet = TextResourceDecoder("text/css").decode(data->data(), data->size());
 
     return m_userStyleSheet;
+}
+
+void Page::setJavaScriptURLsAreAllowed(bool areAllowed)
+{
+    m_javaScriptURLsAreAllowed = areAllowed;
+}
+
+bool Page::javaScriptURLsAreAllowed() const
+{
+    return m_javaScriptURLsAreAllowed;
 }
 
 } // namespace WebCore

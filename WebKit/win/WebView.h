@@ -647,6 +647,26 @@ public:
     virtual HRESULT STDMETHODCALLTYPE defersCallbacks(
         /* [out, retval] */ BOOL* defersCallbacks);
 
+    // The following methods exist to provide vtable layout compatibility with TOT.
+    virtual HRESULT STDMETHODCALLTYPE placeholder1() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder2() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder3() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder4() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder5() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder6() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder7() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder8() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder9() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder10() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder11() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder12() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder13() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder14() { return E_NOTIMPL; }
+    virtual HRESULT STDMETHODCALLTYPE placeholder15() { return E_NOTIMPL; }
+
+    virtual HRESULT STDMETHODCALLTYPE setJavaScriptURLsAreAllowed(
+        /* [in] */ BOOL areAllowed);
+
     // WebView
     WebCore::Page* page();
     bool handleMouseEvent(UINT, WPARAM, LPARAM);

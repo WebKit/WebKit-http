@@ -147,4 +147,23 @@ interface IWebViewPrivate : IUnknown
     HRESULT defersCallbacks([out, retval] BOOL* defersCallbacks);
 
     HRESULT standardUserAgentWithApplicationName([in] BSTR applicationName, [retval][out] BSTR* groupName);
+
+    // The following methods exist to provide vtable layout compatibility with TOT.
+    HRESULT placeholder1();
+    HRESULT placeholder2();
+    HRESULT placeholder3();
+    HRESULT placeholder4();
+    HRESULT placeholder5();
+    HRESULT placeholder6();
+    HRESULT placeholder7();
+    HRESULT placeholder8();
+    HRESULT placeholder9();
+    HRESULT placeholder10();
+    HRESULT placeholder11();
+    HRESULT placeholder12();
+    HRESULT placeholder13();
+    HRESULT placeholder14();
+    HRESULT placeholder15();
+
+    HRESULT setJavaScriptURLsAreAllowed([in] BOOL areAllowed);
 }

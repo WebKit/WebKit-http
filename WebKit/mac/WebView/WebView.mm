@@ -1508,6 +1508,11 @@ WebFrameLoadDelegateImplementationCache* WebViewGetFrameLoadDelegateImplementati
     return usesTestModeFocusRingColor();
 }
 
+- (void)_setJavaScriptURLsAreAllowed:(BOOL)areAllowed
+{
+    _private->page->setJavaScriptURLsAreAllowed(areAllowed);
+}
+
 // This is only used by older versions of Safari and should be removed in a future release. 
 + (NSString *)_minimumRequiredSafariBuildNumber
 {

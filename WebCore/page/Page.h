@@ -126,6 +126,9 @@ namespace WebCore {
         void userStyleSheetLocationChanged();
         const String& userStyleSheet() const;
 
+        void setJavaScriptURLsAreAllowed(bool);
+        bool javaScriptURLsAreAllowed() const;
+
 #if PLATFORM(WIN) || (PLATFORM(WX) && PLATFORM(WIN_OS))
         // The global DLL or application instance used for all windows.
         static void setInstanceHandle(HINSTANCE instanceHandle) { s_instanceHandle = instanceHandle; }
@@ -155,7 +158,9 @@ namespace WebCore {
         bool m_defersLoading;
 
         bool m_inLowQualityInterpolationMode;
-    
+
+        bool m_javaScriptURLsAreAllowed;
+
         InspectorController* m_parentInspectorController;
 
         String m_userStyleSheetPath;

@@ -723,6 +723,9 @@ bool FrameLoader::executeIfJavaScriptURL(const KURL& url, bool userGesture, bool
     if (!url.deprecatedString().startsWith("javascript:", false))
         return false;
 
+    if (m_frame->page() && !m_frame->page()->javaScriptURLsAreAllowed())
+        return true;
+
     String script = KURL::decode_string(url.deprecatedString().mid(strlen("javascript:")));
     JSValue* result = executeScript(script, userGesture);
 
