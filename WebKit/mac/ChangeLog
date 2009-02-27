@@ -1,5 +1,21 @@
 2009-02-26  Mark Rowe  <mrowe@apple.com>
 
+        Merge r41070.
+
+    2009-02-18  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Fix for <rdar://problem/6542390>
+
+        There's no need to call setDefersLoading here - we already defer anything a plug-in can do that
+        would cause a load to begin.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView sendEvent:isDrawRect:]):
+
+2009-02-26  Mark Rowe  <mrowe@apple.com>
+
         Merge r41190.
 
     2009-02-24  Sam Weinig  <sam@webkit.org>
