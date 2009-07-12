@@ -1,5 +1,11 @@
 2009-07-11  Mark Rowe  <mrowe@apple.com>
 
+        <rdar://problem/7047403> Disable channel messaging
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2009-07-11  Mark Rowe  <mrowe@apple.com>
+
         <rdar://problem/7048551> Disable datagrid
 
         * Configurations/FeatureDefines.xcconfig:

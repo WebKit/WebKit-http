@@ -1,12 +1,7 @@
+CONSOLE MESSAGE: line 27: ReferenceError: Can't find variable: MessageChannel
+FAIL: Timed out waiting for notifyDone to be called
 Tests various use cases when cloning MessagePorts.
 
 Should be a series of SUCCESS messages, followed with DONE.
 
-SUCCESS: Posting port to itself: Error: INVALID_STATE_ERR: DOM Exception 11
-SUCCESS: Posting entangled port: Error: INVALID_STATE_ERR: DOM Exception 11
-SUCCESS: Posting cloned port.
-SUCCESS: Posted messages to cloned port.
-SUCCESS: Cloned both endpoints of a channel.
-SUCCESS: Got closed port with event message closed
-DONE
 

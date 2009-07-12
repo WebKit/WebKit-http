@@ -1,4 +1,5 @@
+CONSOLE MESSAGE: line 31: ReferenceError: Can't find variable: MessageChannel
+FAIL: Timed out waiting for notifyDone to be called
 Test that messaging an inactive frameless document works as expected.
 
-Didn't crash, freeze or respond: SUCCESS
 

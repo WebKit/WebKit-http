@@ -1,3 +1,26 @@
+2009-07-12  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/7047403> Disable channel messaging
+
+        * fast/dom/Window/window-properties-expected.txt:
+        * fast/dom/constructors-cached-navigate-expected.txt:
+        * fast/events/message-channel-gc-2-expected.txt:
+        * fast/events/message-channel-gc-3-expected.txt:
+        * fast/events/message-channel-gc-4-expected.txt:
+        * fast/events/message-channel-gc-expected.txt:
+        * fast/events/message-channel-listener-circular-ownership-expected.txt:
+        * fast/events/message-port-clone-expected.txt:
+        * fast/events/message-port-deleted-document-expected.txt:
+        * fast/events/message-port-deleted-frame-expected.txt:
+        * fast/events/message-port-expected.txt:
+        * fast/events/message-port-inactive-document-expected.txt:
+        * fast/events/message-port-no-wrapper-expected.txt:
+        * fast/js/global-constructors-expected.txt:
+        * fast/workers/worker-cloneport-expected.txt:
+        * fast/workers/worker-messageport-expected.txt:
+        * fast/workers/worker-messageport-gc-expected.txt:
+        * http/tests/security/MessagePort/event-listener-context-expected.txt:
+
 2009-07-11  Mark Rowe  <mrowe@apple.com>
 
         <rdar://problem/7048551> Disable datagrid

@@ -1,5 +1,5 @@
+CONSOLE MESSAGE: line 18: ReferenceError: Can't find variable: MessageChannel
+FAIL: Timed out waiting for notifyDone to be called
 Test that workers stay reachable via message ports. Should print "DONE" when done.
 
-PASS: Worker is reachable.
-DONE
 

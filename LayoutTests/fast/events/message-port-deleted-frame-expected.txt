@@ -1,4 +1,5 @@
+CONSOLE MESSAGE: line 31: ReferenceError: Can't find variable: MessageChannel
+FAIL: Timed out waiting for notifyDone to be called
 Test that destroying a frame doesn't cause a crash when posting a message to a MessagePort it owned.
 
-Didn't crash: SUCCESS
 
