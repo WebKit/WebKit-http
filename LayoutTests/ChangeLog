@@ -1,3 +1,15 @@
+2009-07-11  Mark Rowe  <mrowe@apple.com>
+
+        <rdar://problem/7048551> Disable datagrid
+
+        Update test results for the disabling of datagrid.
+
+        * fast/dom/HTMLDataGridElement/DataGridColumns-basic-expected.txt:
+        * fast/dom/HTMLDataGridElement/DataGridColumns-dom-attributes-expected.txt:
+        * fast/dom/HTMLDataGridElement/DataGridColumns-dom-expected.txt:
+        * fast/dom/Window/window-properties-expected.txt:
+        * fast/js/global-constructors-expected.txt:
+
 2009-07-09  Oliver Hunt  <oliver@apple.com>
 
         Reviewed by Maciej Stachowiak.
