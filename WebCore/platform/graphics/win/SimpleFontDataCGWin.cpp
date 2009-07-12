@@ -116,16 +116,6 @@ void SimpleFontData::platformInit()
     }
 }
 
-void SimpleFontData::platformCharWidthInit()
-{
-    // GDI Fonts init charwidths in initGDIFont.
-    if (!m_platformData.useGDI()) {
-        m_avgCharWidth = 0.f;
-        m_maxCharWidth = 0.f;
-        initCharWidths();
-    }
-}
-
 float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
 {
     if (m_platformData.useGDI())

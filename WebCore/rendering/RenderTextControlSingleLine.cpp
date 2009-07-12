@@ -398,9 +398,6 @@ int RenderTextControlSingleLine::preferredContentWidth(float charWidth) const
 
     int result = static_cast<int>(ceilf(charWidth * factor));
 
-    // For text inputs, IE adds some extra width.
-    result += style()->font().primaryFont()->maxCharWidth() - charWidth;
-
     if (RenderBox* resultsRenderer = m_resultsButton ? m_resultsButton->renderBox() : 0)
         result += resultsRenderer->borderLeft() + resultsRenderer->borderRight() +
                   resultsRenderer->paddingLeft() + resultsRenderer->paddingRight();

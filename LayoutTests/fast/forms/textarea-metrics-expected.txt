@@ -36,7 +36,7 @@ PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').clientHeight is 48
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetWidth is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetHeight is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollWidth is 31
-PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollHeight is 104
+FAIL BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollHeight should be 104. Was 100.
 
 Properties = innerHTML: "A", disabled: "true",
 PASS BackCompatdoc.getElementById('-innerHTML-A-disabled-true-').clientWidth is 48
@@ -52,7 +52,7 @@ PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').clientH
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetWidth is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetHeight is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollWidth is 31
-PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollHeight is 104
+FAIL BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollHeight should be 104. Was 100.
 
 Properties = innerHTML: "A", style: "padding:8px",
 PASS BackCompatdoc.getElementById('-innerHTML-A-style-padding-8px-').clientWidth is 48
@@ -84,56 +84,56 @@ PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').clientHeight 
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetWidth is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetHeight is 50
 PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollWidth is 31
-PASS BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollHeight is 104
+FAIL BackCompatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollHeight should be 104. Was 100.
 
 Testing CSS1Compat document.
 Properties = none
-PASS CSS1Compatdoc.getElementById('no-styles').clientWidth is 54
-PASS CSS1Compatdoc.getElementById('no-styles').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('no-styles').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('no-styles').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('no-styles').scrollWidth is 54
-PASS CSS1Compatdoc.getElementById('no-styles').scrollHeight is 54
+FAIL CSS1Compatdoc.getElementById('no-styles').clientWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('no-styles').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('no-styles').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('no-styles').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('no-styles').scrollWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('no-styles').scrollHeight should be 54. Was 50.
 
 Properties = disabled: "true",
-PASS CSS1Compatdoc.getElementById('-disabled-true-').clientWidth is 54
-PASS CSS1Compatdoc.getElementById('-disabled-true-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-disabled-true-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-disabled-true-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-disabled-true-').scrollWidth is 54
-PASS CSS1Compatdoc.getElementById('-disabled-true-').scrollHeight is 54
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').clientWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').scrollWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-disabled-true-').scrollHeight should be 54. Was 50.
 
 Properties = innerHTML: "A",
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').clientWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').scrollWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-').scrollHeight is 54
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').clientWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').scrollWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-').scrollHeight should be 54. Was 50.
 
 Properties = innerHTML: "AAAAAAAAA",
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').clientWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollHeight is 64
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').clientWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-').scrollHeight should be 64. Was 100.
 
 Properties = innerHTML: "A", disabled: "true",
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').clientWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').scrollWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').scrollHeight is 54
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').clientWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').scrollWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-disabled-true-').scrollHeight should be 54. Was 50.
 
 Properties = innerHTML: "AAAAAAAAA", disabled: "true",
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').clientWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollHeight is 64
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').clientWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-disabled-true-').scrollHeight should be 64. Was 100.
 
 Properties = innerHTML: "A", style: "padding:8px",
 PASS CSS1Compatdoc.getElementById('-innerHTML-A-style-padding-8px-').clientWidth is 66
@@ -149,23 +149,23 @@ PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').cli
 PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').offsetWidth is 68
 PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').offsetHeight is 68
 PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').scrollWidth is 49
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').scrollHeight is 76
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-style-padding-8px-').scrollHeight should be 76. Was 116.
 
 Properties = innerHTML: "A", rows: "10",
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').clientWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').scrollWidth is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').scrollHeight is 54
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').clientWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').scrollWidth should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-A-rows-10-').scrollHeight should be 54. Was 50.
 
 Properties = innerHTML: "AAAAAAAAA", rows: "10",
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').clientWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').clientHeight is 54
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetWidth is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetHeight is 56
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollWidth is 37
-PASS CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollHeight is 64
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').clientWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').clientHeight should be 54. Was 50.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetWidth should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').offsetHeight should be 56. Was 52.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollWidth should be 37. Was 33.
+FAIL CSS1Compatdoc.getElementById('-innerHTML-AAAAAAAAA-rows-10-').scrollHeight should be 64. Was 100.
 
 PASS successfullyParsed is true
 
