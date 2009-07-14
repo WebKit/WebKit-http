@@ -1,3 +1,22 @@
+2009-07-14  Mark Rowe  <mrowe@apple.com>
+
+        Merge r45834.
+
+    2009-07-13  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Darin Adler and Kevin Decker.
+
+        <rdar://problem/7053687> Core Animation plug-ins continue to grow larger and larger when opening new tabs (32 bit-only)
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView setLayer:]):
+        Add a FIXME.
+        
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView setLayer:]):
+        Make sure to set the size of the layer before changing the autoresizing mask so it won't grow everytime it's inserted
+        into the layer tree.
+
 2009-07-12  Mark Rowe  <mrowe@apple.com>
 
         Merge r45745.
