@@ -52,3 +52,7 @@ AccessibilityUIElement AccessibilityController::rootElement()
     id accessibilityObject = [[mainFrame frameView] documentView];
     return AccessibilityUIElement(accessibilityObject);
 }
+
+void AccessibilityController::logFocusEvents()
+{
+}
