@@ -42,13 +42,12 @@ class WebCoreTextMarker;
 
 namespace WebCore {
 
+    class Document;
+    class Node;
+    class Page;
     class RenderObject;
     class String;
     class VisiblePosition;
-    class AccessibilityObject;
-    class Node;
-    
-    typedef unsigned AXID;
 
     struct TextMarkerData  {
         AXID axID;
@@ -59,9 +58,11 @@ namespace WebCore {
 
     class AXObjectCache {
     public:
-        AXObjectCache();
+        AXObjectCache(const Document*);
         ~AXObjectCache();
-        
+
+        static AccessibilityObject* focusedUIElementForPage(const Page*);
+
         // to be used with render objects
         AccessibilityObject* getOrCreate(RenderObject*);
         
@@ -94,6 +95,8 @@ namespace WebCore {
 
         void removeAXID(AccessibilityObject*);
         bool isIDinUse(AXID id) const { return m_idsInUse.contains(id); }
+        AXID platformGenerateAXID() const;
+        AccessibilityObject* objectFromAXID(AXID id) const { return m_objects.get(id).get(); }
 
     private:
         HashMap<AXID, RefPtr<AccessibilityObject> > m_objects;
@@ -109,6 +112,8 @@ namespace WebCore {
         
         AXID getAXID(AccessibilityObject*);
         bool nodeIsAriaType(Node* node, String role);
+
+        const Document* m_document;
     };
 
 #if !HAVE(ACCESSIBILITY)

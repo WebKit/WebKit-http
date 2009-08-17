@@ -87,6 +87,8 @@ class VisibleSelection;
 class String;
 class Widget;
 
+typedef unsigned AXID;
+
 enum AccessibilityRole {
     UnknownRole = 1,
     ButtonRole,
@@ -259,7 +261,7 @@ public:
     virtual int layoutCount() const;
     static bool isARIAControl(AccessibilityRole);
     static bool isARIAInput(AccessibilityRole);
-    unsigned axObjectID() const;
+    AXID axObjectID() const;
     
     virtual AccessibilityObject* doAccessibilityHitTest(const IntPoint&) const;
     virtual AccessibilityObject* focusedUIElement() const;
@@ -314,7 +316,7 @@ public:
     virtual FrameView* documentFrameView() const;
     virtual String language() const;
     
-    void setAXObjectID(unsigned);
+    void setAXObjectID(AXID);
     virtual void setFocused(bool);
     virtual void setSelectedText(const String&);
     virtual void setSelectedTextRange(const PlainTextRange&);
@@ -411,7 +413,7 @@ public:
     virtual void updateBackingStore();
     
 protected:
-    unsigned m_id;
+    AXID m_id;
     AccessibilityChildrenVector m_children;
     mutable bool m_haveChildren;
     
