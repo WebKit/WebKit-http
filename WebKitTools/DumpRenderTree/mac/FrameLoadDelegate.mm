@@ -122,6 +122,11 @@
         dump();
 }
 
+- (void)resetToConsistentState
+{
+    accessibilityController->resetToConsistentState();
+}
+
 - (void)webView:(WebView *)c locationChangeDone:(NSError *)error forDataSource:(WebDataSource *)dataSource
 {
     if ([dataSource webFrame] == topLoadingFrame) {

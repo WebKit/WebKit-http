@@ -1041,6 +1041,7 @@ static void resetWebViewToConsistentStateBeforeTesting()
     [webView setPolicyDelegate:nil];
     [policyDelegate setPermissive:NO];
     [policyDelegate setControllerToNotifyDone:0];
+    [frameLoadDelegate resetToConsistentState];
     [webView _setDashboardBehavior:WebDashboardBehaviorUseBackwardCompatibilityMode to:NO];
     [webView _clearMainFrameName];
     [[webView undoManager] removeAllActions];

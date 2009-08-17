@@ -53,6 +53,6 @@ AccessibilityUIElement AccessibilityController::rootElement()
     return AccessibilityUIElement(accessibilityObject);
 }
 
-void AccessibilityController::logFocusEvents()
+void AccessibilityController::setLogFocusEvents(bool)
 {
 }
