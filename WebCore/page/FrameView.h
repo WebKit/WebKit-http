@@ -187,6 +187,9 @@ public:
     virtual IntPoint convertFromRenderer(const RenderObject*, const IntPoint&) const;
     virtual IntPoint convertToRenderer(const RenderObject*, const IntPoint&) const;
 
+    bool isFrameViewScrollCorner(RenderScrollbarPart* scrollCorner) const { return m_scrollCorner == scrollCorner; }
+    void invalidateScrollCorner();
+
 private:
     FrameView(Frame*);
 
@@ -235,6 +238,9 @@ private:
     void scrollToAnchor();
     
     bool hasCustomScrollbars() const;
+
+    virtual void updateScrollCorner();
+    virtual void paintScrollCorner(GraphicsContext*, const IntRect& cornerRect);
 
     static double sCurrentPaintTimeStamp; // used for detecting decoded resource thrash in the cache
 
@@ -305,6 +311,9 @@ private:
     bool m_firstVisuallyNonEmptyLayoutCallbackPending;
 
     RefPtr<Node> m_maintainScrollPositionAnchor;
+
+    // Renderer to hold our custom scroll corner.
+    RenderScrollbarPart* m_scrollCorner;
 };
 
 } // namespace WebCore
