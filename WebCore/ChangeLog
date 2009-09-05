@@ -1,5 +1,20 @@
 2009-09-04  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48085.
+
+    2009-09-04  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        <rdar://problem/7201063>
+        
+        Detach any custom scrollbars before detaching the document.
+        
+        * page/Frame.cpp:
+        (WebCore::Frame::setView):
+
+2009-09-04  Mark Rowe  <mrowe@apple.com>
+
         Merge r48070.
 
     2009-09-04  Anders Carlsson  <andersca@apple.com>
