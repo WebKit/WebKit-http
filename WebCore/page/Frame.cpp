@@ -234,6 +234,9 @@ void Frame::setView(PassRefPtr<FrameView> view)
     }
     eventHandler()->clear();
 
+    if (m_view)
+        m_view->detachCustomScrollbars();
+
     m_view = view;
 
     // Only one form submission is allowed per view of a part.
