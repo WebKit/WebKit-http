@@ -1,3 +1,14 @@
+2009-09-04  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by Adele Petersen.
+
+        - Fix <rdar://problem/7192902>
+
+        Never throw away the first frame in an animation.
+
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::destroyDecodedData):
+
 2009-09-04  Mark Rowe  <mrowe@apple.com>
 
         Merge r48062.

@@ -76,7 +76,7 @@ void BitmapImage::destroyDecodedData(bool destroyAll)
 {
     int framesCleared = 0;
     const size_t clearBeforeFrame = destroyAll ? m_frames.size() : m_currentFrame;
-    for (size_t i = 0; i < clearBeforeFrame; ++i) {
+    for (size_t i = 1; i < clearBeforeFrame; ++i) {
         // The underlying frame isn't actually changing (we're just trying to
         // save the memory for the framebuffer data), so we don't need to clear
         // the metadata.
