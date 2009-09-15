@@ -64,6 +64,10 @@ void AXObjectCache::handleFocusedUIElementChanged()
     [[WebCoreViewFactory sharedFactory] accessibilityHandleFocusChanged];
 }
 
+void AXObjectCache::handleScrolledToAnchor(const Node*)
+{
+}
+
 }
 
 #endif // HAVE(ACCESSIBILITY)

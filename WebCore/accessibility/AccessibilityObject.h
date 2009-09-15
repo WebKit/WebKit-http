@@ -280,6 +280,8 @@ public:
     virtual bool isPresentationalChildOfAriaRole() const;
     virtual bool ariaRoleHasPresentationalChildren() const;
 
+    static AccessibilityObject* firstAccessibleObjectFromNode(const Node*);
+
     virtual AccessibilityRole roleValue() const;
     virtual AXObjectCache* axObjectCache() const;
     

@@ -87,6 +87,8 @@ namespace WebCore {
 #if PLATFORM(GTK)
         void handleFocusedUIElementChangedWithRenderers(RenderObject*, RenderObject*);
 #endif
+        void handleScrolledToAnchor(const Node* anchorNode);
+
         static void enableAccessibility() { gAccessibilityEnabled = true; }
         static void enableEnhancedUserInterfaceAccessibility() { gAccessibilityEnhancedUserInterfaceEnabled = true; }
         
@@ -128,6 +130,7 @@ namespace WebCore {
 #if PLATFORM(GTK)
     inline void AXObjectCache::handleFocusedUIElementChangedWithRenderers(RenderObject*, RenderObject*) { }
 #endif
+    inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
 #endif
 
 }
