@@ -1,5 +1,15 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46704.
+
+    2009-08-02  Geoffrey Garen  <ggaren@apple.com>
+
+        GTK build fix.
+
+        * jit/JITStubs.cpp: #include <stdarg.h>, for a definition of va_start.
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46703.
 
     2009-08-02  Geoffrey Garen  <ggaren@apple.com>
