@@ -1,5 +1,25 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48358.
+
+    2009-09-12  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        Add RenderWidgetProtector to simplify protecting a RenderWidget from destruction for the
+        duration of a function.  Deploy it within RenderWidget.
+
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::setWidgetGeometry):
+        (WebCore::RenderWidget::updateWidgetPosition): Use a RefPtr rather than explicitly
+        ref'ing and deref'ing the node.
+        * rendering/RenderWidget.h:
+        * rendering/RenderWidgetProtector.h:
+        (WebCore::RenderWidgetProtector::RenderWidgetProtector):
+        (WebCore::RenderWidgetProtector::~RenderWidgetProtector):
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46598.
 
     === End merge of nitro-extreme branch 2009-07-30 ===
