@@ -1,5 +1,18 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46705.
+
+    2009-08-02  Geoffrey Garen  <ggaren@apple.com>
+
+        Windows build fix.
+
+        Exported symbols for JSAPIValueWrapper.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore_debug.def:
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46704.
 
     2009-08-02  Geoffrey Garen  <ggaren@apple.com>
