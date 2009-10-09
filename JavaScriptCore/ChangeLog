@@ -1,5 +1,18 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r47604.
+
+    2009-08-20  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by NOBODY (Build fix).
+
+        Add new exports to windows jsc build
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore_debug.def:
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r47601.
 
     2009-08-20  Oliver Hunt  <oliver@apple.com>
