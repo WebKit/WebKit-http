@@ -1,5 +1,15 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46703.
+
+    2009-08-02  Geoffrey Garen  <ggaren@apple.com>
+
+        Qt build fix.
+        
+        * runtime/Collector.cpp: #include <limits.h>, for a definition of ULONG_MAX.
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46702.
 
     2009-08-02  Geoffrey Garen  <ggaren@apple.com>
