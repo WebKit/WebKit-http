@@ -1,5 +1,17 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r45933.
+
+    2009-07-15  Darin Adler  <darin@apple.com>
+
+        Fix a build for a particular Apple configuration.
+
+        * wtf/FastAllocBase.h: Change include to use "" style for
+        including another wtf header. This is the style we use for
+        including other public headers in the same directory.
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r45918.
 
     2009-07-15  Yong Li  <yong.li@torchmobile.com>
