@@ -1,5 +1,19 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46702.
+
+    2009-08-02  Geoffrey Garen  <ggaren@apple.com>
+
+        Windows build fix: Nixed JSImmediate::prototype, JSImmediate::toObject,
+        and JSImmediate::toThisObject, and removed their exported symbols.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore_debug.def:
+        * runtime/JSImmediate.cpp:
+        * runtime/JSImmediate.h:
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46701.
 
     2009-08-02  Geoffrey Garen  <ggaren@apple.com>
