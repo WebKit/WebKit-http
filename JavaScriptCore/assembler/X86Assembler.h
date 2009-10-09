@@ -1344,6 +1344,11 @@ public:
         return JmpDst(m_formatter.size());
     }
     
+    static JmpDst labelFor(JmpSrc jump, intptr_t offset = 0)
+    {
+        return JmpDst(jump.m_offset + offset);
+    }
+    
     JmpDst align(int alignment)
     {
         while (!m_formatter.isAligned(alignment))
@@ -1382,13 +1387,6 @@ public:
 
         setRel32(reinterpret_cast<char*>(code) + from.m_offset, to);
     }
-
-#if PLATFORM(X86_64)
-    static void linkPointerForCall(void* where, void* value)
-    {
-        reinterpret_cast<void**>(where)[-1] = value;
-    }
-#endif
 
     static void linkPointer(void* code, JmpDst where, void* value)
     {
