@@ -369,6 +369,8 @@ public:
         friend class LinkBuffer;
 
     public:
+        typedef Vector<Jump, 16> JumpVector;
+
         void link(AbstractMacroAssembler<AssemblerType>* masm)
         {
             size_t size = m_jumps.size();
@@ -399,9 +401,11 @@ public:
         {
             return !m_jumps.size();
         }
+        
+        const JumpVector& jumps() { return m_jumps; }
 
     private:
-        Vector<Jump, 16> m_jumps;
+        JumpVector m_jumps;
     };
 
 
