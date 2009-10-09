@@ -1,5 +1,16 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46601.
+
+    2009-07-30  Geoffrey Garen  <ggaren@apple.com>
+
+        Windows build fix: added missing symbols on Windows.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore_debug.def:
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46599.
 
     2009-07-30  Geoffrey Garen  <ggaren@apple.com>
