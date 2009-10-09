@@ -1,5 +1,24 @@
 2009-10-08  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46438.
+
+    2009-07-27  Gavin Barraclough  <barraclough@apple.com>
+
+        Rubber stamped by Oliver Hunt.
+
+        Fix tyop in JIT, renamed preverveReturnAddressAfterCall -> preserveReturnAddressAfterCall.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompile):
+        (JSC::JIT::privateCompileCTIMachineTrampolines):
+        * jit/JIT.h:
+        * jit/JITInlineMethods.h:
+        (JSC::JIT::preserveReturnAddressAfterCall):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::privateCompilePutByIdTransition):
+
+2009-10-08  Mark Rowe  <mrowe@apple.com>
+
         Merge r46347.
 
     2009-07-24  Csaba Osztrogonac  <oszi@inf.u-szeged.hu>
