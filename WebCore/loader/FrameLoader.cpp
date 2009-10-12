@@ -2427,6 +2427,20 @@ void FrameLoader::receivedData(const char* data, int length)
     activeDocumentLoader()->receivedData(data, length);
 }
 
+bool FrameLoader::willLoadMediaElementURL(KURL& url)
+{
+    ResourceRequest request(url);
+
+    unsigned long identifier;
+    ResourceError error;
+    requestFromDelegate(request, identifier, error);
+    sendRemainingDelegateMessages(identifier, ResourceResponse(url, String(), -1, String(), String()), -1, error);
+
+    url = request.url();
+
+    return error.isNull();
+}
+
 void FrameLoader::handleUnimplementablePolicy(const ResourceError& error)
 {
     m_delegateIsHandlingUnimplementablePolicy = true;

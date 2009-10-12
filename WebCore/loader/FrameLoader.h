@@ -190,6 +190,8 @@ namespace WebCore {
         void receivedMainResourceError(const ResourceError&, bool isComplete);
         void receivedData(const char*, int);
 
+        bool willLoadMediaElementURL(KURL&);
+
         void handleFallbackContent();
         bool isStopping() const;
 
