@@ -16824,6 +16824,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\loader\PlaceholderDocument.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\loader\PlaceholderDocument.h"
+				>
+			</File>
+			<File
 				RelativePath="..\loader\PluginDocument.cpp"
 				>
 			</File>
