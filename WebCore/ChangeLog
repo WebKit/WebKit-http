@@ -1,5 +1,16 @@
 2009-10-12  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48547.
+
+    2009-09-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix stylistic issue raised in code review for previous commit.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::hasNonZeroTransformOrigin):
+
+2009-10-12  Mark Rowe  <mrowe@apple.com>
+
         Merge r48546.
 
     2009-09-18  Simon Fraser  <simon.fraser@apple.com>
