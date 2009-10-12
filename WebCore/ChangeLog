@@ -1,5 +1,18 @@
 2009-10-12  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48956.
+
+    2009-09-30  Maciej Stachowiak  <mjs@apple.com>
+
+        Build fix, not reviewed.
+
+        Fix windows build for fix for https://bugs.webkit.org/show_bug.cgi?id=29943
+
+        * platform/network/cf/ResourceHandleCFNet.cpp:
+        (WebCore::willSendRequest):
+
+2009-10-12  Mark Rowe  <mrowe@apple.com>
+
         Merge r48953.
 
     2009-09-30  Maciej Stachowiak  <mjs@apple.com>
