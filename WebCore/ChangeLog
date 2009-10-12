@@ -1,5 +1,22 @@
 2009-10-12  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48743.
+
+    2009-09-24  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Fix <rdar://problem/7162000> Crash while trying to
+        calculate the horizontal position of image
+
+        Test: fast/inline-block/relative-positioned-rtl-crash.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::calcAbsoluteHorizontalReplaced): Corrected an
+        isInline() test to isRenderInline(). This is similar to r41259.
+
+2009-10-12  Mark Rowe  <mrowe@apple.com>
+
         Merge r46136.
 
     2009-07-20  Dan Bernstein  <mitz@apple.com>
