@@ -1,5 +1,20 @@
 2009-10-12  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48946.
+
+    2009-09-30  Sam Weinig  <sam@webkit.org>
+
+        Reviewed by Dan Bernstein.
+
+        Fix for <rdar://problem/7259706>
+        Need WebKit API or SPI on Mac and Windows to test whether it's safe to load a page in a new tab/window
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _allowsFollowingLink:]):
+        * WebView/WebFramePrivate.h:
+
+2009-10-12  Mark Rowe  <mrowe@apple.com>
+
         Merge r47551.
 
     2009-08-19  Mark Rowe  <mrowe@apple.com>

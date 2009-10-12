@@ -1151,6 +1151,13 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     [self _replaceSelectionWithFragment:fragment selectReplacement:selectReplacement smartReplace:smartReplace matchStyle:NO];
 }
 
+- (BOOL)_allowsFollowingLink:(NSURL *)URL
+{
+    if (!_private->coreFrame)
+        return YES;
+    return FrameLoader::canLoad(URL, String(), _private->coreFrame->document());
+}
+
 @end
 
 @implementation WebFrame
