@@ -198,6 +198,7 @@ private:
     // loading
     void selectMediaResource();
     void loadResource(const KURL&, ContentType&);
+    void scheduleNextSourceChild();
     void loadNextSourceChild();
     void userCancelledLoad();
     bool havePotentialSourceChild();
@@ -213,6 +214,8 @@ private:
     void loadInternal();
     void playInternal();
     void pauseInternal();
+
+    void prepareForLoad();
     
     bool processingUserGesture() const;
     bool processingMediaPlayerCallback() const { return m_processingMediaPlayerCallback > 0; }
