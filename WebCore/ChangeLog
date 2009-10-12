@@ -1,5 +1,24 @@
 2009-10-12  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48369.
+
+    2009-09-14  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by David Hyatt.
+
+        - Fix <rdar://problem/7182275>.
+
+        Make sure that the newly created scrollbar's style is up to date.
+        
+        * platform/win/PopupMenuWin.cpp:
+        (WebCore::PopupMenu::~PopupMenu):
+        Call setParent so that the scrollbar's parts are torn down correctly.
+        
+        (WebCore::PopupMenu::show):
+        Call styleChanged.
+
+2009-10-12  Mark Rowe  <mrowe@apple.com>
+
         Merge r46058.
 
     2009-07-17  Alexey Proskuryakov  <ap@webkit.org>
