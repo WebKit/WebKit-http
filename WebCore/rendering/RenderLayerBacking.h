@@ -105,6 +105,7 @@ public:
 
     IntRect compositedBounds() const;
     void setCompositedBounds(const IntRect&);
+    void updateCompositedBounds();
 
     FloatPoint graphicsLayerToContentsCoordinates(const GraphicsLayer*, const FloatPoint&);
     FloatPoint contentsToGraphicsLayerCoordinates(const GraphicsLayer*, const FloatPoint&);
@@ -168,6 +169,7 @@ private:
     IntRect m_compositedBounds;
 
     bool m_hasDirectlyCompositedContent;
+    bool m_artificiallyInflatedBounds;      // bounds had to be made non-zero to make transform-origin work
 };
 
 } // namespace WebCore
