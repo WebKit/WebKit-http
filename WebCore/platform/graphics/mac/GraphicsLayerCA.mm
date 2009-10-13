@@ -1134,9 +1134,9 @@ void GraphicsLayerCA::setContentsToImage(Image* image)
 
             static CGColorSpaceRef deviceRGB = CGColorSpaceCreateDeviceRGB();
             if (CFEqual(colorSpace, deviceRGB)) {
-                // CoreGraphics renders images tagged with DeviceRGB using GenericRGB. When we hand such
+                // CoreGraphics renders images tagged with DeviceRGB using the color space of the main display. When we hand such
                 // images to CA we need to tag them similarly so CA rendering matches CG rendering.
-                static CGColorSpaceRef genericRGB = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+                static CGColorSpaceRef genericRGB = CGDisplayCopyColorSpace(kCGDirectMainDisplay);
                 theImage.adoptCF(CGImageCreateCopyWithColorSpace(theImage.get(), genericRGB));
             }
 
