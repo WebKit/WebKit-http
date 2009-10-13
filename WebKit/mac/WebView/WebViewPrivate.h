@@ -443,6 +443,20 @@ Could be worth adding to the API.
 // Which pasteboard text is coming from in editing delegate methods such as shouldInsertNode.
 - (NSPasteboard *)_insertionPasteboard;
 
+/*!
+    @method cssAnimationsSuspended
+    @abstract Returns whether or not CSS Animations are suspended.
+    @result YES if CSS Animations are suspended.
+*/
+- (BOOL)cssAnimationsSuspended;
+
+/*!
+    @method setCSSAnimationsSuspended
+    @param paused YES to suspend animations, NO to resume animations.
+    @discussion Suspends or resumes all running animations and transitions in the page.
+*/
+- (void)setCSSAnimationsSuspended:(BOOL)suspended;
+
 @end
 
 @interface WebView (WebViewPrintingPrivate)

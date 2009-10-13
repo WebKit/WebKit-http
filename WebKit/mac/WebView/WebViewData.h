@@ -100,6 +100,7 @@ extern int pluginDatabaseClientCount;
     BOOL hoverFeedbackSuspended;
     BOOL usesPageCache;
     BOOL catchesDelegateExceptions;
+    BOOL cssAnimationsSuspended;
 
     NSColor *backgroundColor;
 
