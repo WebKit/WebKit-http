@@ -47,7 +47,7 @@ public:
     virtual void getPropertyNames(ExecState*, PropertyNameArray&);
 
     virtual void invalidate();
-    Bindings::Instance* getInternalInstance() const { return instance.get(); }
+    Bindings::Instance* getInternalInstance() const { return m_instance.get(); }
 
     static JSObject* throwInvalidAccessError(ExecState*);
 
@@ -73,7 +73,7 @@ private:
     static JSValue fieldGetter(ExecState*, const Identifier&, const PropertySlot&);
     static JSValue methodGetter(ExecState*, const Identifier&, const PropertySlot&);
 
-    RefPtr<Bindings::Instance> instance;
+    RefPtr<Bindings::Instance> m_instance;
 };
     
 } // namespace
