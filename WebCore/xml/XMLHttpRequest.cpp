@@ -583,7 +583,6 @@ void XMLHttpRequest::makeCrossOriginAccessRequestWithPreflight(ExceptionCode& ec
             }
 
             preflightRequest.setHTTPHeaderField("Access-Control-Request-Headers", String::adopt(headerBuffer));
-            preflightRequest.addHTTPHeaderFields(m_requestHeaders);
         }
 
         if (m_async) {
