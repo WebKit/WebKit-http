@@ -1,5 +1,19 @@
 2009-10-13  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46648.
+
+    2009-07-31  Ada Chan  <adachan@apple.com>
+
+        Fixes the Windows release-PGO build.
+
+        Reviewed by Jon Honeycutt.
+
+        * JavaScriptCore.vcproj/WTF/WTF.vcproj: Suppresses the warning about unreachable code that we get by adding "return 0" to WTF::TCMalloc_PageHeap::runScavengerThread().
+        * wtf/FastMalloc.cpp:
+        (WTF::TCMalloc_PageHeap::runScavengerThread): Fixes the error about the method not returning a value in the release-PGO build.
+
+2009-10-13  Mark Rowe  <mrowe@apple.com>
+
         Merge r46511.
 
     2009-07-28  Ada Chan  <adachan@apple.com>        
