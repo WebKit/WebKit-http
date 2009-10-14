@@ -362,6 +362,12 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setXSSAuditorEnabled(
     /* [in] */ BOOL enabled);
 
+    virtual HRESULT STDMETHODCALLTYPE setShouldUseHighResolutionTimers(
+    /* [in] */ BOOL useHighResolutionTimers);
+
+    virtual HRESULT STDMETHODCALLTYPE shouldUseHighResolutionTimers(
+    /* [retval][out] */ BOOL* useHighResolutionTimers);
+
     // WebPreferences
 
     // This method accesses a different preference key than developerExtrasEnabled.

@@ -125,3 +125,4 @@
 
 #define WebKitXSSAuditorEnabledPreferenceKey "WebKitXSSAuditorEnabled"
 
+#define WebKitUseHighResolutionTimersPreferenceKey "WebKitUseHighResolutionTimers"
