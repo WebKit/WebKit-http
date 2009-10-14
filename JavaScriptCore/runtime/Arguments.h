@@ -114,17 +114,16 @@ namespace JSC {
     {
         function = callFrame->callee();
     
-        CodeBlock* codeBlock = &function->body()->generatedBytecode();
-        int numParameters = codeBlock->m_numParameters;
+        int numParameters = function->body()->parameterCount();
         argc = callFrame->argumentCount();
 
         if (argc <= numParameters)
-            argv = callFrame->registers() - RegisterFile::CallFrameHeaderSize - numParameters + 1; // + 1 to skip "this"
+            argv = callFrame->registers() - RegisterFile::CallFrameHeaderSize - numParameters;
         else
-            argv = callFrame->registers() - RegisterFile::CallFrameHeaderSize - numParameters - argc + 1; // + 1 to skip "this"
+            argv = callFrame->registers() - RegisterFile::CallFrameHeaderSize - numParameters - argc;
 
         argc -= 1; // - 1 to skip "this"
-        firstParameterIndex = -RegisterFile::CallFrameHeaderSize - numParameters + 1; // + 1 to skip "this"
+        firstParameterIndex = -RegisterFile::CallFrameHeaderSize - numParameters;
     }
 
     inline Arguments::Arguments(CallFrame* callFrame)

@@ -70,13 +70,15 @@ namespace JSC {
 
     private:
         struct JSActivationData : public JSVariableObjectData {
-            JSActivationData(PassRefPtr<FunctionBodyNode> functionBody, Register* registers)
-                : JSVariableObjectData(&functionBody->generatedBytecode().symbolTable(), registers)
-                , functionBody(functionBody)
+            JSActivationData(PassRefPtr<FunctionBodyNode> _functionBody, Register* registers)
+                : JSVariableObjectData(&_functionBody->generatedBytecode().symbolTable(), registers)
+                , functionBody(_functionBody)
+                , numVars(functionBody->generatedBytecode().m_numVars)
             {
             }
 
             RefPtr<FunctionBodyNode> functionBody;
+            size_t numVars;
         };
         
         static JSValue argumentsGetter(ExecState*, const Identifier&, const PropertySlot&);
