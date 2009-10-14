@@ -154,6 +154,9 @@ void PopupMenu::show(const IntRect& r, FrameView* v, int index)
 void PopupMenu::hide()
 {
     ::ShowWindow(m_popup, SW_HIDE);
+
+    if (client())
+        client()->popupDidHide();
 }
 
 const int endOfLinePadding = 2;
@@ -626,13 +629,13 @@ static LRESULT CALLBACK PopupWndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
             }
             break;
         case WM_ACTIVATE:
-            if (popup && popup->client() && wParam == WA_INACTIVE)
-                popup->client()->hidePopup();
+            if (popup && wParam == WA_INACTIVE)
+                popup->hide();
             break;
         case WM_KILLFOCUS:
-            if (popup && popup->client() && (HWND)wParam != popup->popupHandle())
+            if (popup && (HWND)wParam != popup->popupHandle())
                 // Focus is going elsewhere, so hide
-                popup->client()->hidePopup();
+                popup->hide();
             break;
         case WM_KEYDOWN:
             if (popup && popup->client()) {
@@ -674,10 +677,10 @@ static LRESULT CALLBACK PopupWndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
                         break;
                     case VK_TAB:
                         ::SendMessage(popup->client()->hostWindow()->platformWindow(), message, wParam, lParam);
-                        popup->client()->hidePopup();
+                        popup->hide();
                         break;
                     case VK_ESCAPE:
-                        popup->client()->hidePopup();
+                        popup->hide();
                         break;
                     default:
                         if (isASCIIPrintable(wParam))
@@ -695,13 +698,13 @@ static LRESULT CALLBACK PopupWndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
                 int index;
                 switch (wParam) {
                     case 0x0D:   // Enter/Return
-                        popup->client()->hidePopup();
+                        popup->hide();
                         index = popup->focusedIndex();
                         ASSERT(index >= 0);
                         popup->client()->valueChanged(index);
                         break;
                     case 0x1B:   // Escape
-                        popup->client()->hidePopup();
+                        popup->hide();
                         break;
                     case 0x09:   // TAB
                     case 0x08:   // Backspace
@@ -784,7 +787,7 @@ static LRESULT CALLBACK PopupWndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
                 GetClientRect(popup->popupHandle(), &bounds);
                 if (popup->client() && ::PtInRect(&bounds, mousePoint)) {
                     ::ReleaseCapture();
-                    popup->client()->hidePopup();
+                    popup->hide();
                     int index = popup->focusedIndex();
                     if (index >= 0)
                         popup->client()->valueChanged(index);
