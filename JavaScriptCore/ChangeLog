@@ -1,5 +1,15 @@
 2009-10-13  Mark Rowe  <mrowe@apple.com>
 
+        Merge r46725.
+
+    2009-08-03  Ada Chan  <adachan@apple.com>
+
+        Fixed the Tiger build.
+
+        * wtf/FastMalloc.cpp:
+
+2009-10-13  Mark Rowe  <mrowe@apple.com>
+
         Merge r46724.
 
     2009-08-03  Ada Chan  <adachan@apple.com>
