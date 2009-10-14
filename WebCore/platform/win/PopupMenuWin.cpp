@@ -39,6 +39,7 @@
 #include "SimpleFontData.h"
 #include <tchar.h>
 #include <windows.h>
+#include <windowsx.h>
 
 using std::min;
 
