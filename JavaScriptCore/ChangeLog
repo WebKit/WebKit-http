@@ -1,3 +1,15 @@
+2009-10-15  Mark Rowe  <mrowe@apple.com>
+
+        Merge r46777.
+
+    2009-08-04  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by NOBODY (build fix).
+
+        PPC64 Build fix
+
+        * wtf/Platform.h:
+
 2009-10-14  Mark Rowe  <mrowe@apple.com>
 
         Merge r47620.
