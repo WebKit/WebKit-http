@@ -55,7 +55,7 @@ public:
 
     virtual bool isPointInOverflowControl(HitTestResult&, int x, int y, int tx, int ty);
 
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1.0f);
+    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1.0f, Node** stopNode = 0);
 
     virtual void calcPrefWidths();
     virtual int baselinePosition(bool firstLine, bool isRootLineBox) const;
