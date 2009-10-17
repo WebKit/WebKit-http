@@ -229,7 +229,7 @@ public:
 
     virtual int verticalScrollbarWidth() const;
     int horizontalScrollbarHeight() const;
-    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1.0f);
+    virtual bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1.0f, Node** stopNode = 0);
     virtual bool canBeProgramaticallyScrolled(bool) const;
     virtual void autoscroll();
     virtual void stopAutoscroll() { }
