@@ -1,5 +1,13 @@
 2009-10-23  Mark Rowe  <mrowe@apple.com>
 
+        Merge r50019.
+
+    Build fix.  Include config.h before including other files.
+
+        * AccessibleImage.cpp:
+
+2009-10-23  Mark Rowe  <mrowe@apple.com>
+
         Merge r50004.
 
     2009-10-23  Jon Honeycutt  <jhoneycutt@apple.com>
