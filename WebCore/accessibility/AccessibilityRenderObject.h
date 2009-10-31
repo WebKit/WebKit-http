@@ -218,7 +218,9 @@ public:
     virtual void updateBackingStore();
 
     virtual String stringValueForMSAA() const;
+    virtual String stringRoleForMSAA() const;
     virtual String nameForMSAA() const;
+    virtual String descriptionForMSAA() const;
 
 protected:
     RenderObject* m_renderer;
@@ -233,6 +235,7 @@ private:
     void ariaListboxSelectedChildren(AccessibilityChildrenVector&);
     void ariaListboxVisibleChildren(AccessibilityChildrenVector&);
     bool ariaIsHidden() const;
+    String positionalDescriptionForMSAA() const;
 
     Element* menuElementForMenuButton() const;
     Element* menuItemElementForMenu() const; 
