@@ -524,3 +524,9 @@ void AccessibilityUIElement::setSelectedTextRange(unsigned location, unsigned le
     NSValue *textRangeValue = [NSValue valueWithRange:textRange];
     [m_element accessibilitySetValue:textRangeValue forAttribute:NSAccessibilitySelectedTextRangeAttribute];
 }
+
+JSStringRef AccessibilityUIElement::accessibilityValue() const
+{
+    // FIXME: implement
+    return JSStringCreateWithCharacters(0, 0);
+}

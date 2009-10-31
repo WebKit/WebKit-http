@@ -339,3 +339,14 @@ bool AccessibilityUIElement::isAttributeSettable(JSStringRef attribute)
     return false;
 }
 
+JSStringRef AccessibilityUIElement::accessibilityValue() const
+{
+    BSTR valueBSTR;
+    if (FAILED(m_element->get_accValue(self(), &valueBSTR)) || !valueBSTR)
+        return JSStringCreateWithCharacters(0, 0);
+
+    wstring value(valueBSTR, SysStringLen(valueBSTR));
+    ::SysFreeString(valueBSTR);
+
+    return JSStringCreateWithCharacters(value.data(), value.length());
+}
