@@ -2640,10 +2640,13 @@ String AccessibilityRenderObject::stringRoleForMSAA() const
 
 String AccessibilityRenderObject::positionalDescriptionForMSAA() const
 {
+    if (!m_renderer)
+        return String();
+
     // See "positional descriptions",
     // https://wiki.mozilla.org/Accessibility/AT-Windows-API
     if (isHeading())
-        return "L" + String::number(headingLevel());
+        return "L" + String::number(headingLevel(m_renderer->node()));
 
     // FIXME: Add positional descriptions for other elements.
     return String();
