@@ -42,6 +42,10 @@
 #include <wx/graphics.h>
 #endif
 
+#if PLATFORM(WIN)
+typedef struct tagXFORM XFORM;
+#endif
+
 namespace WebCore {
 
 class IntRect;
