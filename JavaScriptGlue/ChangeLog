@@ -1,3 +1,15 @@
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
+        Merge r52749.
+
+    2010-01-04  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Ada Chan and Mark Rowe.
+
+        Updated copyright string
+
+        * Info.plist:
+
 2009-07-08  Darin Adler  <darin@apple.com>
 
         Reviewed by Dan Bernstein
