@@ -1,5 +1,20 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r51881.
+
+    2009-12-08  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Adam Roben.
+
+        WebCore source level debugging on Windows not reliable in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=32297
+
+        Customized pdb file name/location for WebCore static library.
+
+        * WebCore.vcproj/WebCoreCommon.vsprops: Add ProgramDataBaseFileName.
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r51205.
 
     2009-11-19  Oliver Hunt  <oliver@apple.com>
