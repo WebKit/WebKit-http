@@ -1,5 +1,22 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r51205.
+
+    2009-11-19  Oliver Hunt  <oliver@apple.com>
+
+        Reviewed by Dave Hyatt.
+
+        -webkit-user-drag: element Drag images include overflow decorations from incorrect nodes
+        https://bugs.webkit.org/show_bug.cgi?id=31656
+
+        Make sure we're a child of the painting root before drawing overflow features.
+
+        * manual-tests/user-drag-with-decorations.html: Added.
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::paint):
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r52749.
 
     2010-01-04  Dan Bernstein  <mitz@apple.com>
