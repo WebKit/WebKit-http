@@ -1,5 +1,21 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r51616.
+
+    2009-12-02  Timothy Hatcher  <timothy@apple.com>
+
+        Fixes a crash when scrolling a frame that goes away mid-scroll.
+
+        <rdar://problem/7400263>
+
+        Reviewed by John Sullivan.
+
+        * WebView/WebDynamicScrollBarsView.mm:
+        (-[WebDynamicScrollBarsView scrollWheel:]): Retain self incase the last
+        reference is released when calling super.
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r52749.
 
     2010-01-04  Dan Bernstein  <mitz@apple.com>
