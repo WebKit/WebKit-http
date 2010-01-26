@@ -1,5 +1,24 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r52527.
+
+    2009-12-23  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Darin Adler.
+
+        <rdar://problem/7487164> First line of text cannot be selected
+        https://bugs.webkit.org/show_bug.cgi?id=32749
+
+        Test: fast/text/remove-zero-length-run.html
+
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::positionLineBox): Changed code that assumed that if a box was being
+            removed, it was the only box in the RenderText. Instead, correctly preserve the list of
+            text boxes.
+        (WebCore::RenderText::checkConsistency): Updated for earlier rename.
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r53581.
 
     2010-01-20  Jon Honeycutt  <jhoneycutt@apple.com>
