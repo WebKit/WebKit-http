@@ -1,5 +1,21 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48810.
+
+    2009-09-28  Charles Wei  <charles.wei@torchmobile.com.cn>
+
+        Reviewed by Nikolas Zimmermann.
+
+        Fix the crash of SVG that crashes when use a non-exist symbol
+        https://bugs.webkit.org/show_bug.cgi?id=27693
+
+        Test: svg/custom/use-non-existing-symbol-crash.svg
+
+        * svg/SVGUseElement.cpp:
+        (WebCore::shadowTreeContainsChangedNodes):
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r51877.
 
     2009-12-08  Brady Eidson  <beidson@apple.com>
