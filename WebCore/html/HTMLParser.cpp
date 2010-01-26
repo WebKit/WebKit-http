@@ -1273,7 +1273,8 @@ void HTMLParser::handleResidualStyleCloseTagAcrossBlocks(HTMLStackElem* elem)
             prevMaxElem->next = elem;
             ASSERT(newNodePtr);
             prevMaxElem->node = newNodePtr;
-            prevMaxElem->didRefNode = false;
+            newNodePtr->ref();
+            prevMaxElem->didRefNode = true;
         } else
             delete elem;
     }

@@ -1,5 +1,22 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r52073.
+
+    2009-12-13  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        <rdar://problem/7341364> Crash at HTMLParser::popOneBlockCommon() after
+        handling misnested residual style tags
+
+        Test: fast/parser/residual-style-close-ref-clone.html
+
+        * html/HTMLParser.cpp:
+        (WebCore::HTMLParser::handleResidualStyleCloseTagAcrossBlocks): Gave the
+        block stack a strong reference to the cloned residual style element. 
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r48810.
 
     2009-09-28  Charles Wei  <charles.wei@torchmobile.com.cn>
