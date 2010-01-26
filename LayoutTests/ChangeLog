@@ -1,5 +1,19 @@
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
+        Merge r51877.
+
+    2009-12-08  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Navigating to a cached page can result in accessing a destroyed HTMLInputElement.
+        <rdar://problem/6856662> and https://webkit.org/b/32293
+
+        * fast/loader/input-element-page-cache-crash-expected.txt: Added.
+        * fast/loader/input-element-page-cache-crash.html: Added.
+
+2010-01-25  Mark Rowe  <mrowe@apple.com>
+
         Merge r51727.
 
     2009-12-05  Adam Langley  <agl@google.com>
