@@ -1,3 +1,17 @@
+2010-01-27  Mark Rowe  <mrowe@apple.com>
+
+        Merge r50196.
+
+    2009-10-27  Chris Fleizach  <cfleizach@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        WAI-ARIA: add support for 'presentation' role
+        https://bugs.webkit.org/show_bug.cgi?id=30806
+
+        * accessibility/aria-presentational-role-expected.txt: Added.
+        * accessibility/aria-presentational-role.html: Added.
+
 2010-01-25  Mark Rowe  <mrowe@apple.com>
 
         Merge r52527.

@@ -154,7 +154,8 @@ enum AccessibilityRole {
     TableHeaderContainerRole,
     DefinitionListTermRole,
     DefinitionListDefinitionRole,
-    AnnotationRole
+    AnnotationRole,
+    IgnoredRole,
 };
 
 struct VisiblePositionRange {

@@ -1219,6 +1219,9 @@ bool AccessibilityRenderObject::accessibilityIsIgnored() const
     if (isPresentationalChildOfAriaRole())
         return true;
         
+    if (roleValue() == IgnoredRole)
+        return true;
+    
     // ignore popup menu items because AppKit does
     for (RenderObject* parent = m_renderer->parent(); parent; parent = parent->parent()) {
         if (parent->isMenuList())
@@ -2163,6 +2166,7 @@ static const ARIARoleMap& createARIARoleMap()
         // "menuitem" isn't here because it may map to different roles depending on the parent element's role
         { "menuitemcheckbox", MenuItemRole },
         { "menuitemradio", MenuItemRole },
+        { "presentation", IgnoredRole },
         { "progressbar", ProgressIndicatorRole },
         { "radio", RadioButtonRole },
         { "row", RowRole },
