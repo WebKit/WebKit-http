@@ -157,6 +157,7 @@ enum AccessibilityRole {
     AnnotationRole,
     IgnoredRole,
     EditableTextRole,
+    ListItemRole,
 };
 
 struct VisiblePositionRange {

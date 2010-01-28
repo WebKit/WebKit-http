@@ -565,6 +565,8 @@ static long MSAARole(AccessibilityRole role)
         case WebCore::ImageMapRole:
         case WebCore::ImageRole:
             return ROLE_SYSTEM_GRAPHIC;
+        case WebCore::ListItemRole:
+            return ROLE_SYSTEM_LISTITEM;
         case WebCore::PopUpButtonRole:
             return ROLE_SYSTEM_COMBOBOX;
         default:

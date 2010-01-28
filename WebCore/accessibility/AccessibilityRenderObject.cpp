@@ -2684,6 +2684,9 @@ static AccessibilityRole msaaRoleForRenderer(const RenderObject* renderer)
     if (renderer->isText())
         return EditableTextRole;
 
+    if (renderer->isListItem())
+        return ListItemRole;
+
     return UnknownRole;
 }
 
