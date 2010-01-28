@@ -221,6 +221,7 @@ public:
     virtual String stringRoleForMSAA() const;
     virtual String nameForMSAA() const;
     virtual String descriptionForMSAA() const;
+    virtual AccessibilityRole roleValueForMSAA() const;
 
 protected:
     RenderObject* m_renderer;
@@ -248,6 +249,8 @@ private:
     AccessibilityObject* accessibilityParentForImageMap(HTMLMapElement* map) const;
 
     void markChildrenDirty() const { m_childrenDirty = true; }
+
+    mutable AccessibilityRole m_roleForMSAA;
 };
     
 } // namespace WebCore

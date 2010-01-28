@@ -1,5 +1,23 @@
 2010-01-27  Mark Rowe  <mrowe@apple.com>
 
+        Merge r52233.
+
+    2009-12-16  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        MSAA: Accessibility role of text nodes is wrong
+
+        https://bugs.webkit.org/show_bug.cgi?id=32631
+        <rdar://problem/7369084>
+
+        Reviewed by Alice Liu.
+
+        * platform/win/accessibility/text-role-expected.txt: Added.
+        * platform/win/accessibility/text-role.html: Added.
+        Check that the role of the text node that is the first child of the
+        <a> tag has the "editable text" role.
+
+2010-01-27  Mark Rowe  <mrowe@apple.com>
+
         Merge r50196.
 
     2009-10-27  Chris Fleizach  <cfleizach@apple.com>

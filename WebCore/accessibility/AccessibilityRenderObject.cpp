@@ -82,6 +82,7 @@ using namespace HTMLNames;
 AccessibilityRenderObject::AccessibilityRenderObject(RenderObject* renderer)
     : m_renderer(renderer)
     , m_ariaRole(UnknownRole)
+    , m_roleForMSAA(UnknownRole)
 {
     setAriaRole();
 #ifndef NDEBUG
@@ -2673,6 +2674,19 @@ String AccessibilityRenderObject::descriptionForMSAA() const
     }
 
     return String();
+}
+
+AccessibilityRole AccessibilityRenderObject::roleValueForMSAA() const
+{
+    if (m_roleForMSAA != UnknownRole)
+        return m_roleForMSAA;
+
+    if (m_renderer && m_renderer->isText())
+        m_roleForMSAA = EditableTextRole;
+    else
+        m_roleForMSAA = roleValue();
+
+    return m_roleForMSAA;
 }
 
 } // namespace WebCore

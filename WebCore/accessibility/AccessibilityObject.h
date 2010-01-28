@@ -156,6 +156,7 @@ enum AccessibilityRole {
     DefinitionListDefinitionRole,
     AnnotationRole,
     IgnoredRole,
+    EditableTextRole,
 };
 
 struct VisiblePositionRange {
@@ -396,6 +397,7 @@ public:
     virtual String stringRoleForMSAA() const { return String(); }
     virtual String nameForMSAA() const { return String(); }
     virtual String descriptionForMSAA() const { return String(); }
+    virtual AccessibilityRole roleValueForMSAA() const { return roleValue(); }
 
 #if HAVE(ACCESSIBILITY)
 #if PLATFORM(GTK)
