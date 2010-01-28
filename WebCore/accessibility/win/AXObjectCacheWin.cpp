@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2009, 2010 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -81,6 +81,8 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, const Str
         msaaEvent = EVENT_SYSTEM_SCROLLINGSTART;
     else if (notification == AXFocusedUIElementChanged())
         msaaEvent = EVENT_OBJECT_FOCUS;
+    else if (notification == AXMenuListValueChanged())
+        msaaEvent = EVENT_OBJECT_VALUECHANGE;
     else
         return;
 

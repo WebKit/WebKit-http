@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,6 +58,12 @@ using namespace HTMLNames;
     
 bool AXObjectCache::gAccessibilityEnabled = false;
 bool AXObjectCache::gAccessibilityEnhancedUserInterfaceEnabled = false;
+
+const String& AXObjectCache::AXMenuListValueChanged()
+{
+    DEFINE_STATIC_LOCAL(const String, value, ("AXMenuListValueChanged"));
+    return value;
+}
 
 AXObjectCache::AXObjectCache(const Document* document)
     : m_notificationPostTimer(this, &AXObjectCache::notificationPostTimerFired)
@@ -322,7 +328,7 @@ void AXObjectCache::notificationPostTimerFired(Timer<AXObjectCache>*)
 }
     
 #if HAVE(ACCESSIBILITY)
-void AXObjectCache::postNotification(RenderObject* renderer, const String& message, bool postToElement)
+void AXObjectCache::postNotification(RenderObject* renderer, const String& message, bool postToElement, PostType postType)
 {
     // Notifications for text input objects are sent to that object.
     // All others are sent to the top WebArea.
@@ -350,9 +356,12 @@ void AXObjectCache::postNotification(RenderObject* renderer, const String& messa
     if (!obj)
         return;
 
-    m_notificationsToPost.append(make_pair(obj, message));
-    if (!m_notificationPostTimer.isActive())
-        m_notificationPostTimer.startOneShot(0);
+    if (postType == PostAsynchronously) {
+        m_notificationsToPost.append(make_pair(obj, message));
+        if (!m_notificationPostTimer.isActive())
+            m_notificationPostTimer.startOneShot(0);
+    } else
+        postPlatformNotification(obj.get(), message);
 }
 
 void AXObjectCache::selectedChildrenChanged(RenderObject* renderer)

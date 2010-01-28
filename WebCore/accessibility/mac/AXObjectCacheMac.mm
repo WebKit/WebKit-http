@@ -55,7 +55,10 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, const Str
 {
     if (!obj)
         return;
-    
+ 
+    if (message == AXMenuListValueChanged())
+        return;
+   
     NSAccessibilityPostNotification(obj->wrapper(), message);
 }
 

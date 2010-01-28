@@ -56,12 +56,16 @@ namespace WebCore {
         EAffinity affinity;
     };
 
+    enum PostType { PostSynchronously, PostAsynchronously };
+
     class AXObjectCache {
     public:
         AXObjectCache(const Document*);
         ~AXObjectCache();
 
         static AccessibilityObject* focusedUIElementForPage(const Page*);
+
+        static const String& AXMenuListValueChanged();
 
         // to be used with render objects
         AccessibilityObject* getOrCreate(RenderObject*);
@@ -77,7 +81,7 @@ namespace WebCore {
 
         void detachWrapper(AccessibilityObject*);
         void attachWrapper(AccessibilityObject*);
-        void postNotification(RenderObject*, const String&, bool postToElement);
+        void postNotification(RenderObject*, const String&, bool postToElement, PostType = PostAsynchronously);
         void postPlatformNotification(AccessibilityObject*, const String&);
         void childrenChanged(RenderObject*);
         void selectedChildrenChanged(RenderObject*);
