@@ -309,7 +309,10 @@ void RenderMenuList::valueChanged(unsigned listIndex, bool fireOnChange)
 String RenderMenuList::itemText(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return String();
+    Element* element = listItems[listIndex];
     if (OptionGroupElement* optionGroupElement = toOptionGroupElement(element))
         return optionGroupElement->groupLabelText();
     else if (OptionElement* optionElement = toOptionElement(element))
@@ -320,7 +323,10 @@ String RenderMenuList::itemText(unsigned listIndex) const
 bool RenderMenuList::itemIsEnabled(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return false;
+    Element* element = listItems[listIndex];
     if (!isOptionElement(element))
         return false;
 
@@ -338,7 +344,18 @@ bool RenderMenuList::itemIsEnabled(unsigned listIndex) const
 PopupMenuStyle RenderMenuList::itemStyle(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size()) {
+        // If we are making an out of bounds access, then we want to use the style
+        // of a different option element (index 0). However, if there isn't an option element
+        // before at index 0, we fall back to the menu's style.
+        if (!listIndex)
+            return menuStyle();
+
+        // Try to retrieve the style of an option element we know exists (index 0).
+        listIndex = 0;
+    }
+    Element* element = listItems[listIndex];
     
     RenderStyle* style = element->renderStyle() ? element->renderStyle() : element->computedStyle();
     return style ? PopupMenuStyle(style->color(), itemBackgroundColor(listIndex), style->font(), style->visibility() == VISIBLE, style->textIndent(), style->direction()) : menuStyle();
@@ -347,7 +364,10 @@ PopupMenuStyle RenderMenuList::itemStyle(unsigned listIndex) const
 Color RenderMenuList::itemBackgroundColor(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return style()->backgroundColor();
+    Element* element = listItems[listIndex];
 
     Color backgroundColor;
     if (element->renderStyle())
@@ -428,21 +448,30 @@ void RenderMenuList::popupDidHide()
 bool RenderMenuList::itemIsSeparator(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return false;
+    Element* element = listItems[listIndex];
     return element->hasTagName(hrTag);
 }
 
 bool RenderMenuList::itemIsLabel(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return false;
+    Element* element = listItems[listIndex];
     return isOptionGroupElement(element);
 }
 
 bool RenderMenuList::itemIsSelected(unsigned listIndex) const
 {
     SelectElement* select = toSelectElement(static_cast<Element*>(node()));
-    Element* element = select->listItems()[listIndex];
+    const Vector<Element*>& listItems = select->listItems();
+    if (listIndex >= listItems.size())
+        return false;
+    Element* element = listItems[listIndex];
     if (OptionElement* optionElement = toOptionElement(element))
         return optionElement->selected();
     return false;
