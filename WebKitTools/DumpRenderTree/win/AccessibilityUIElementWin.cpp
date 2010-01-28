@@ -360,3 +360,22 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
 
     return JSStringCreateWithCharacters(value.data(), value.length());
 }
+
+bool AccessibilityUIElement::isSelected() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_SELECTED) == STATE_SYSTEM_SELECTED;
+}
+
+bool AccessibilityUIElement::isSelectable() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_SELECTABLE) == STATE_SYSTEM_SELECTABLE;
+}
+
+bool AccessibilityUIElement::isMultiSelectable() const
+{
+    DWORD multiSelectable = STATE_SYSTEM_EXTSELECTABLE | STATE_SYSTEM_MULTISELECTABLE;
+    DWORD state = accessibilityState(m_element);
+    return (state & multiSelectable) == multiSelectable;
+}

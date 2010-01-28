@@ -406,6 +406,14 @@ bool AccessibilityUIElement::isEnabled()
     return false;
 }
 
+bool AccessibilityUIElement::isSelected() const
+{
+    id value = [m_element accessibilityAttributeValue:NSAccessibilitySelectedAttribute];
+    if ([value isKindOfClass:[NSNumber class]])
+        return [value boolValue];
+    return false;
+}
+
 // parameterized attributes
 int AccessibilityUIElement::lineForIndex(int index)
 {
@@ -529,4 +537,15 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
 {
     // FIXME: implement
     return JSStringCreateWithCharacters(0, 0);
+}
+bool AccessibilityUIElement::isSelectable() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isMultiSelectable() const
+{
+    // FIXME: implement
+    return false;
 }

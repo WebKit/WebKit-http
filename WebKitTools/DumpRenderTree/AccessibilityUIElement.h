@@ -94,6 +94,7 @@ public:
     JSStringRef selectedTextRange();
     bool supportsPressAction();
     bool isEnabled();
+    bool isSelected() const;
     double clickPointX();
     double clickPointY();
 
@@ -113,6 +114,8 @@ public:
     JSStringRef boundsForRange(unsigned location, unsigned length);
     void setSelectedTextRange(unsigned location, unsigned length);
     
+    bool isSelectable() const;
+    bool isMultiSelectable() const;
     // Table-specific
     AccessibilityUIElement cellForColumnAndRow(unsigned column, unsigned row);
     
