@@ -538,6 +538,7 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
     // FIXME: implement
     return JSStringCreateWithCharacters(0, 0);
 }
+
 bool AccessibilityUIElement::isSelectable() const
 {
     // FIXME: implement
@@ -545,6 +546,30 @@ bool AccessibilityUIElement::isSelectable() const
 }
 
 bool AccessibilityUIElement::isMultiSelectable() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isVisible() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isOffScreen() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isCollapsed() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::hasPopup() const
 {
     // FIXME: implement
     return false;

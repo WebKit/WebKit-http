@@ -97,6 +97,10 @@ public:
     bool isSelected() const;
     double clickPointX();
     double clickPointY();
+    bool isVisible() const;
+    bool isOffScreen() const;
+    bool isCollapsed() const;
+    bool hasPopup() const;
 
     // Table-specific attributes
     JSStringRef attributesOfColumnHeaders();

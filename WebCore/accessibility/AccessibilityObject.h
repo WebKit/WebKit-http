@@ -158,6 +158,14 @@ enum AccessibilityRole {
     IgnoredRole,
     EditableTextRole,
     ListItemRole,
+    MenuListPopupRole,
+    MenuListOptionRole,
+};
+
+enum AccessibilityObjectPlatformInclusion {
+    IncludeObject,
+    IgnoreObject,
+    DefaultBehavior,
 };
 
 struct VisiblePositionRange {
@@ -232,7 +240,10 @@ public:
     virtual bool isTableCell() const { return false; };
     virtual bool isFieldset() const { return false; };
     virtual bool isGroup() const { return false; };
-    
+    virtual bool isMenuList() const { return false; }
+    virtual bool isMenuListPopup() const { return false; }
+    virtual bool isMenuListOption() const { return false; }
+
     virtual bool isChecked() const { return false; };
     virtual bool isEnabled() const { return false; };
     virtual bool isSelected() const { return false; };
@@ -246,6 +257,8 @@ public:
     virtual bool isReadOnly() const { return false; };
     virtual bool isVisited() const { return false; };
     virtual bool isLinked() const { return false; }
+    virtual bool isVisible() const { return true; }
+    virtual bool isCollapsed() const { return false; }
 
     virtual bool canSetFocusAttribute() const { return false; };
     virtual bool canSetTextRangeAttributes() const { return false; };
@@ -418,6 +431,13 @@ public:
     bool accessibilityIgnoreAttachment() const;
 #else
     bool accessibilityIgnoreAttachment() const { return true; }
+#endif
+
+    // gives platforms the opportunity to indicate if and how an object should be included
+#if HAVE(ACCESSIBILITY)
+    AccessibilityObjectPlatformInclusion accessibilityPlatformIncludesObject() const;
+#else
+    AccessibilityObjectPlatformInclusion accessibilityPlatformIncludesObject() const { return DefaultBehavior; }
 #endif
 
     // allows for an AccessibilityObject to update its render tree or perform

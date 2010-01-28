@@ -146,6 +146,19 @@ static VARIANT& self()
     return vSelf;
 }
 
+static DWORD accessibilityState(COMPtr<IAccessible> element)
+{
+    VARIANT state;
+    element->get_accState(self(), &state);
+
+    ASSERT(V_VT(&state) == VT_I4);
+
+    DWORD result = state.lVal;
+    VariantClear(&state);
+
+    return result;
+}
+
 JSStringRef AccessibilityUIElement::role()
 {
     VARIANT vRole;
@@ -262,7 +275,8 @@ bool AccessibilityUIElement::supportsPressAction()
 
 bool AccessibilityUIElement::isEnabled()
 {
-    return false;
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_UNAVAILABLE) != STATE_SYSTEM_UNAVAILABLE;
 }
 
 int AccessibilityUIElement::insertionPointLineNumber()
@@ -337,6 +351,8 @@ JSStringRef AccessibilityUIElement::selectedTextRange()
 
 void AccessibilityUIElement::setSelectedTextRange(unsigned location, unsigned length)
 {
+    ASSERT(hasPopup());
+    m_element->accDoDefaultAction(self());
 }
 
 JSStringRef AccessibilityUIElement::attributeValue(JSStringRef attribute)
@@ -378,4 +394,28 @@ bool AccessibilityUIElement::isMultiSelectable() const
     DWORD multiSelectable = STATE_SYSTEM_EXTSELECTABLE | STATE_SYSTEM_MULTISELECTABLE;
     DWORD state = accessibilityState(m_element);
     return (state & multiSelectable) == multiSelectable;
+}
+
+bool AccessibilityUIElement::isVisible() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_INVISIBLE) != STATE_SYSTEM_INVISIBLE;
+}
+
+bool AccessibilityUIElement::isOffScreen() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_OFFSCREEN) == STATE_SYSTEM_OFFSCREEN;
+}
+
+bool AccessibilityUIElement::isCollapsed() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_COLLAPSED) == STATE_SYSTEM_COLLAPSED;
+}
+
+bool AccessibilityUIElement::hasPopup() const
+{
+    DWORD state = accessibilityState(m_element);
+    return (state & STATE_SYSTEM_HASPOPUP) == STATE_SYSTEM_HASPOPUP;
 }
