@@ -2676,14 +2676,25 @@ String AccessibilityRenderObject::descriptionForMSAA() const
     return String();
 }
 
+static AccessibilityRole msaaRoleForRenderer(const RenderObject* renderer)
+{
+    if (!renderer)
+        return UnknownRole;
+
+    if (renderer->isText())
+        return EditableTextRole;
+
+    return UnknownRole;
+}
+
 AccessibilityRole AccessibilityRenderObject::roleValueForMSAA() const
 {
     if (m_roleForMSAA != UnknownRole)
         return m_roleForMSAA;
 
-    if (m_renderer && m_renderer->isText())
-        m_roleForMSAA = EditableTextRole;
-    else
+    m_roleForMSAA = msaaRoleForRenderer(m_renderer);
+
+    if (m_roleForMSAA == UnknownRole)
         m_roleForMSAA = roleValue();
 
     return m_roleForMSAA;
