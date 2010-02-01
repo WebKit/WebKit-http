@@ -1,5 +1,21 @@
 2010-02-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r53812.
+
+    2010-01-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Geoffrey Garen.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34076
+        An image remains accessible via form.property syntax after being removed from document.
+
+        * fast/forms/removed-image-as-property-expected.txt: Added.
+        * fast/forms/removed-image-as-property.html: Added.
+        * fast/forms/reparented-image-as-property-expected.txt: Added.
+        * fast/forms/reparented-image-as-property.html: Added.
+
+2010-02-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r50466.
 
     2009-11-02  Darin Adler  <darin@apple.com>
