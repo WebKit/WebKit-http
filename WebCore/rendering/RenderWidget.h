@@ -40,6 +40,9 @@ public:
 
     void updateWidgetPosition();
 
+    static void suspendWidgetHierarchyUpdates();
+    static void resumeWidgetHierarchyUpdates();
+
 protected:
     RenderWidget(Node*);
 
