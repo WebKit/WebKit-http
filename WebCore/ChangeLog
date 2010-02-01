@@ -1,5 +1,24 @@
 2010-02-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r51659.
+
+    2009-12-03  Enrica Casucci  <enrica@apple.com>
+
+        Reviewed by John Sullivan.
+
+        SpinTracer: 349 spins in Mail at WebCore::Editor::advanceToNextMisspelling(bool)
+        <rdar://problem/7198592>
+        https://bugs.webkit.org/show_bug.cgi?id=32129
+
+        Fixed the way the next paragraph is calculated.
+        I've added a repro case in Safari and attached it to the Bugzilla bug.
+
+        * editing/Editor.cpp:
+        (WebCore::findFirstMisspellingOrBadGrammarInRange): Changed the way we move to the
+        next paragraph in the loop.
+
+2010-02-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r53813.
 
     2010-01-25  Alexey Proskuryakov  <ap@apple.com>
