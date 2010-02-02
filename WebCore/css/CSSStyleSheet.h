@@ -93,6 +93,9 @@ public:
     void setStrictParsing(bool b) { m_strictParsing = b; }
     bool useStrictParsing() const { return m_strictParsing; }
 
+    void setHasSyntacticallyValidCSSHeader(bool b) { m_hasSyntacticallyValidCSSHeader = b; }
+    bool hasSyntacticallyValidCSSHeader() const { return m_hasSyntacticallyValidCSSHeader; }
+
 private:
     CSSStyleSheet(Node* ownerNode, const String& href, const String& charset);
     CSSStyleSheet(CSSStyleSheet* parentSheet, const String& href, const String& charset);
@@ -106,6 +109,7 @@ private:
     String m_charset;
     bool m_loadCompleted : 1;
     bool m_strictParsing : 1;
+    bool m_hasSyntacticallyValidCSSHeader : 1;
 };
 
 } // namespace

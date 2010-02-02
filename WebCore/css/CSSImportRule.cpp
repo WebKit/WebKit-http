@@ -26,6 +26,7 @@
 #include "DocLoader.h"
 #include "Document.h"
 #include "MediaList.h"
+#include "SecurityOrigin.h"
 
 namespace WebCore {
 
@@ -58,9 +59,18 @@ void CSSImportRule::setCSSStyleSheet(const String& url, const String& charset, c
         m_styleSheet->setParent(0);
     m_styleSheet = CSSStyleSheet::create(this, url, charset);
 
+    bool crossOriginCSS = false;
+    bool validMIMEType = false;
     CSSStyleSheet* parent = parentStyleSheet();
     bool strict = !parent || parent->useStrictParsing();
-    m_styleSheet->parseString(sheet->sheetText(strict), strict);
+    m_styleSheet->parseString(sheet->sheetText(strict, &validMIMEType), strict);
+
+    if (!parent || !parent->doc() || !parent->doc()->securityOrigin()->canRequest(KURL(url)))
+        crossOriginCSS = true;
+
+    if (crossOriginCSS && !validMIMEType && !m_styleSheet->hasSyntacticallyValidCSSHeader())
+        m_styleSheet = CSSStyleSheet::create(this, url, charset);
+
     m_loading = false;
 
     if (parent)

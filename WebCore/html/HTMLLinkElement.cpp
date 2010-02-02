@@ -246,13 +246,27 @@ void HTMLLinkElement::setCSSStyleSheet(const String& url, const String& charset,
 
     bool strictParsing = !document()->inCompatMode();
     bool enforceMIMEType = strictParsing;
+    bool crossOriginCSS = false;
+    bool validMIMEType = false;
 
     // Check to see if we should enforce the MIME type of the CSS resource in strict mode.
     // Running in iWeb 2 is one example of where we don't want to - <rdar://problem/6099748>
     if (enforceMIMEType && document()->page() && !document()->page()->settings()->enforceCSSMIMETypeInStrictMode())
         enforceMIMEType = false;
 
-    m_sheet->parseString(sheet->sheetText(enforceMIMEType), strictParsing);
+    m_sheet->parseString(sheet->sheetText(enforceMIMEType, &validMIMEType), strictParsing);
+
+    // If we're loading a stylesheet cross-origin, and the MIME type is not
+    // standard, require the CSS to at least start with a syntactically
+    // valid CSS rule.
+    // This prevents an attacker playing games by injecting CSS strings into
+    // HTML, XML, JSON, etc. etc.
+    if (!document()->securityOrigin()->canRequest(KURL(url)))
+        crossOriginCSS = true;
+
+    if (crossOriginCSS && !validMIMEType && !m_sheet->hasSyntacticallyValidCSSHeader())
+        m_sheet = CSSStyleSheet::create(this, url, charset);
+
     m_sheet->setTitle(title());
 
     RefPtr<MediaList> media = MediaList::createAllowingDescriptionSyntax(m_media);
