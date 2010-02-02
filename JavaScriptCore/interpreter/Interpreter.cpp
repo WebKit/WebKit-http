@@ -1089,6 +1089,11 @@ NEVER_INLINE void Interpreter::tryCacheGetByID(CallFrame* callFrame, CodeBlock* 
         if (baseObject->structure()->isDictionary())
             baseObject->setStructure(Structure::fromDictionaryTransition(baseObject->structure()));
 
+        if (baseObject->structure()->isDictionary()) {
+            vPC[0] = getOpcode(op_get_by_id_generic);
+            return;
+        }
+
         ASSERT(!baseObject->structure()->isUncacheableDictionary());
 
         vPC[0] = getOpcode(op_get_by_id_proto);

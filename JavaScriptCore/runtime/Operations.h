@@ -245,6 +245,9 @@ namespace JSC {
             if (cell->structure()->isDictionary())
                 asObject(cell)->setStructure(Structure::fromDictionaryTransition(cell->structure()));
 
+            if (cell->structure()->isDictionary())
+                return 0;
+
             ++count;
         }
         

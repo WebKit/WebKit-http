@@ -723,9 +723,16 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
         // should not be treated as a dictionary.
         if (slotBaseObject->structure()->isDictionary())
             slotBaseObject->setStructure(Structure::fromDictionaryTransition(slotBaseObject->structure()));
-        
+
+        if (slotBaseObject->structure()->isDictionary()) {
+            stubInfo->opcodeID = op_get_by_id_generic;
+            return;
+        }
+
         stubInfo->initGetByIdProto(structure, slotBaseObject->structure());
 
+        ASSERT(!structure->isDictionary());
+        ASSERT(!slotBaseObject->structure()->isDictionary());
         JIT::compileGetByIdProto(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, structure, slotBaseObject->structure(), slot.cachedOffset(), returnAddress);
         return;
     }
@@ -1155,6 +1162,9 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check_second)
         if (slotBaseObject->structure()->isDictionary())
             slotBaseObject->setStructure(Structure::fromDictionaryTransition(slotBaseObject->structure()));
 
+        if (slotBaseObject->structure()->isDictionary())
+            goto dictionaryConversionFailed;
+
         // The result fetched should always be the callee!
         ASSERT(result == JSValue(callee));
         MethodCallLinkInfo& methodCallLinkInfo = callFrame->codeBlock()->getMethodCallLinkInfo(STUB_RETURN_ADDRESS);
@@ -1174,6 +1184,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check_second)
         // For now let any other case be cached as a normal get_by_id.
     }
 
+dictionaryConversionFailed:
     // Revert the get_by_id op back to being a regular get_by_id - allow it to cache like normal, if it needs to.
     ctiPatchCallByReturnAddress(callFrame->codeBlock(), STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id));
 
@@ -1283,7 +1294,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
 
     CHECK_FOR_EXCEPTION();
 
-    if (!baseValue.isCell() || !slot.isCacheable() || asCell(baseValue)->structure()->isUncacheableDictionary()) {
+    if (!baseValue.isCell() || !slot.isCacheable() || asCell(baseValue)->structure()->isDictionary()) {
         ctiPatchCallByReturnAddress(callFrame->codeBlock(), STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
         return JSValue::encode(result);
     }
@@ -1298,10 +1309,16 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
     if (slot.slotBase() == baseValue)
         ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
     else if (slot.slotBase() == asCell(baseValue)->structure()->prototypeForLookup(callFrame)) {
+        ASSERT(!asCell(baseValue)->structure()->isDictionary());
         // Since we're accessing a prototype in a loop, it's a good bet that it
         // should not be treated as a dictionary.
         if (slotBaseObject->structure()->isDictionary())
             slotBaseObject->setStructure(Structure::fromDictionaryTransition(slotBaseObject->structure()));
+
+        if (slotBaseObject->structure()->isDictionary()) {
+            ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
+            return JSValue::encode(result);
+        }
 
         int listIndex;
         PolymorphicAccessStructureList* prototypeStructureList = getPolymorphicAccessStructureListSlot(stubInfo, listIndex);
@@ -1311,6 +1328,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
         if (listIndex == (POLYMORPHIC_LIST_CACHE_SIZE - 1))
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_list_full));
     } else if (size_t count = countPrototypeChainEntriesAndCheckForProxies(callFrame, baseValue, slot)) {
+        ASSERT(!asCell(baseValue)->structure()->isDictionary());
         StructureChain* protoChain = structure->prototypeChain(callFrame);
         if (!protoChain->isCacheable()) {
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_fail));
