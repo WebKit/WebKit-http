@@ -526,7 +526,6 @@ XMLTokenizer::XMLTokenizer(Document* _doc, FrameView* _view)
     , m_context(0)
     , m_pendingCallbacks(new PendingCallbacks)
     , m_currentNode(_doc)
-    , m_currentNodeIsReferenced(false)
     , m_sawError(false)
     , m_sawXSLTransform(false)
     , m_sawFirstElement(false)
@@ -553,7 +552,6 @@ XMLTokenizer::XMLTokenizer(DocumentFragment* fragment, Element* parentElement)
     , m_context(0)
     , m_pendingCallbacks(new PendingCallbacks)
     , m_currentNode(fragment)
-    , m_currentNodeIsReferenced(fragment)
     , m_sawError(false)
     , m_sawXSLTransform(false)
     , m_sawFirstElement(false)
@@ -572,8 +570,7 @@ XMLTokenizer::XMLTokenizer(DocumentFragment* fragment, Element* parentElement)
     , m_scriptStartLine(0)
     , m_parsingFragment(true)
 {
-    if (fragment)
-        fragment->ref();
+    fragment->ref();
     if (m_doc)
         m_doc->ref();
           
