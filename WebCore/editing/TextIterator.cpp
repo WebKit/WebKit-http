@@ -1587,7 +1587,6 @@ static inline VoicedSoundMarkType composedVoicedSoundMark(UChar character)
     case 0x30F8: // KATAKANA LETTER VI
     case 0x30F9: // KATAKANA LETTER VE
     case 0x30FA: // KATAKANA LETTER VO
-    case 0x30FE: // KATAKANA VOICED ITERATION MARK
         return VoicedSoundMark;
     case 0x3071: // HIRAGANA LETTER PA
     case 0x3074: // HIRAGANA LETTER PI
@@ -1757,7 +1756,14 @@ inline bool SearchBuffer::isBadMatch(const UChar* match, size_t matchLength) con
         ++b;
 
         // Check for differences in combining voiced sound marks found after the letter.
-        while (a != aEnd && b != bEnd && isCombiningVoicedSoundMark(*a) && isCombiningVoicedSoundMark(*b)) {
+        while (1) {
+            if (!(a != aEnd && isCombiningVoicedSoundMark(*a))) {
+                if (b != bEnd && isCombiningVoicedSoundMark(*b))
+                    return true;
+                break;
+            }
+            if (!(b != bEnd && isCombiningVoicedSoundMark(*b)))
+                return true;
             if (*a != *b)
                 return true;
             ++a;
