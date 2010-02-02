@@ -1,5 +1,15 @@
 2010-02-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r53116.
+
+    2010-01-11  Kent Tamura  <tkent@chromium.org>
+
+        Unreviewd. Remove a duplicated line in an expectation file.
+
+        * platform/mac-leopard/fast/text/find-kana-expected.txt:
+
+2010-02-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r53115.
 
     2010-01-11  Darin Adler  <darin@apple.com>
