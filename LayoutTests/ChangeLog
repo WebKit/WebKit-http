@@ -1,5 +1,16 @@
 2010-02-01  Mark Rowe  <mrowe@apple.com>
 
+        Merge r53093.
+
+    2010-01-11  Darin Adler  <darin@apple.com>
+
+        Try to get find-kana test passing on Tiger and Leopard.
+
+        * platform/mac-leopard/fast/text/find-kana-expected.txt: Copied from fast/text/find-kana-expected.txt.
+        Changed to expect failures due to an older version of ICU on those platforms.
+
+2010-02-01  Mark Rowe  <mrowe@apple.com>
+
         Merge r53078.
 
     2010-01-10  Darin Adler  <darin@apple.com>
