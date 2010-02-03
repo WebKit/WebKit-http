@@ -81,4 +81,7 @@ interface IWebPreferencesPrivate : IUnknown
 
     HRESULT setShouldUseHighResolutionTimers([in] BOOL useHighResolutionTimers);
     HRESULT shouldUseHighResolutionTimers([out, retval] BOOL* useHighResolutionTimers);
+
+    HRESULT setCustomDragCursorsEnabled([in] BOOL);
+    HRESULT customDragCursorsEnabled([out, retval] BOOL*);
 }
