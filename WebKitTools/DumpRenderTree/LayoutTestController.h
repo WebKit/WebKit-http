@@ -155,6 +155,15 @@ public:
     bool windowIsKey() const { return m_windowIsKey; }
     void setWindowIsKey(bool windowIsKey);
 
+    bool handlesAuthenticationChallenges() const { return m_handlesAuthenticationChallenges; }
+    void setHandlesAuthenticationChallenges(bool handlesAuthenticationChallenges) { m_handlesAuthenticationChallenges = handlesAuthenticationChallenges; }
+
+    const std::string& authenticationUsername() const { return m_authenticationUsername; }
+    void setAuthenticationUsername(std::string username) { m_authenticationUsername = username; }
+
+    const std::string& authenticationPassword() const { return m_authenticationPassword; }
+    void setAuthenticationPassword(std::string password) { m_authenticationPassword = password; }
+
     bool globalFlag() const { return m_globalFlag; }
     void setGlobalFlag(bool globalFlag) { m_globalFlag = globalFlag; }
     
@@ -192,7 +201,10 @@ private:
     bool m_windowIsKey;
 
     bool m_globalFlag;
+    bool m_handlesAuthenticationChallenges;
 
+    std::string m_authenticationUsername;
+    std::string m_authenticationPassword; 
     std::string m_testPathOrURL;
     std::string m_expectedPixelHash;    // empty string if no hash
     

@@ -171,7 +171,7 @@ void DocumentThreadableLoader::didFail(SubresourceLoader* loader, const Resource
 
 bool DocumentThreadableLoader::getShouldUseCredentialStorage(SubresourceLoader* loader, bool& shouldUseCredentialStorage)
 {
-    ASSERT_UNUSED(loader, loader == m_loader);
+    ASSERT_UNUSED(loader, loader == m_loader || !m_loader);
 
     if (!m_allowStoredCredentials) {
         shouldUseCredentialStorage = false;

@@ -826,6 +826,9 @@
 		519611780CAC56A80010A80C /* DatabaseThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 519611620CAC56570010A80C /* DatabaseThread.h */; };
 		519611EA0CAC749C0010A80C /* DatabaseTask.h in Headers */ = {isa = PBXBuildFile; fileRef = 519611E80CAC749C0010A80C /* DatabaseTask.h */; };
 		519611EB0CAC749C0010A80C /* DatabaseTask.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 519611E90CAC749C0010A80C /* DatabaseTask.cpp */; };
+		51A052331058774F00CC9E95 /* CredentialStorage.h in Headers */ = {isa = PBXBuildFile; fileRef = 51A052311058774F00CC9E95 /* CredentialStorage.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		51A052341058774F00CC9E95 /* CredentialStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51A052321058774F00CC9E95 /* CredentialStorage.cpp */; };
+		51A052561058874000CC9E95 /* ProtectionSpaceHash.h in Headers */ = {isa = PBXBuildFile; fileRef = 51A052551058874000CC9E95 /* ProtectionSpaceHash.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		51A45B560CAD7FD7000D2BE9 /* DatabaseAuthorizer.h in Headers */ = {isa = PBXBuildFile; fileRef = 51A45B540CAD7FD7000D2BE9 /* DatabaseAuthorizer.h */; };
 		51A45B570CAD7FD7000D2BE9 /* DatabaseAuthorizer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51A45B550CAD7FD7000D2BE9 /* DatabaseAuthorizer.cpp */; };
 		51A9267C0D53F0570063ECC2 /* OriginQuotaManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51A926780D53F0570063ECC2 /* OriginQuotaManager.cpp */; };
@@ -5802,6 +5805,9 @@
 		519611E90CAC749C0010A80C /* DatabaseTask.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseTask.cpp; sourceTree = "<group>"; };
 		519FE0A10DAD446E00A08F21 /* HTMLAttributeNames.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = HTMLAttributeNames.in; sourceTree = "<group>"; };
 		519FE0A20DAD446E00A08F21 /* HTMLTagNames.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = HTMLTagNames.in; sourceTree = "<group>"; };
+		51A052311058774F00CC9E95 /* CredentialStorage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CredentialStorage.h; sourceTree = "<group>"; };
+		51A052321058774F00CC9E95 /* CredentialStorage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CredentialStorage.cpp; sourceTree = "<group>"; };
+		51A052551058874000CC9E95 /* ProtectionSpaceHash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProtectionSpaceHash.h; sourceTree = "<group>"; };
 		51A45B540CAD7FD7000D2BE9 /* DatabaseAuthorizer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DatabaseAuthorizer.h; sourceTree = "<group>"; };
 		51A45B550CAD7FD7000D2BE9 /* DatabaseAuthorizer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseAuthorizer.cpp; sourceTree = "<group>"; };
 		51A926780D53F0570063ECC2 /* OriginQuotaManager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = OriginQuotaManager.cpp; sourceTree = "<group>"; };
@@ -10220,6 +10226,8 @@
 				934F71390D5A6F1000018D69 /* AuthenticationChallengeBase.h */,
 				514C76580CE923A1007EF3CD /* Credential.cpp */,
 				514C76590CE923A1007EF3CD /* Credential.h */,
+				51A052321058774F00CC9E95 /* CredentialStorage.cpp */,
+				51A052311058774F00CC9E95 /* CredentialStorage.h */,
 				B2F34FE50E82F81400F627CD /* DNS.h */,
 				514C765A0CE923A1007EF3CD /* FormData.cpp */,
 				514C765B0CE923A1007EF3CD /* FormData.h */,
@@ -10233,6 +10241,7 @@
 				1A7FA6180DDA3B3A0028F8A5 /* NetworkStateNotifier.h */,
 				514C765F0CE923A1007EF3CD /* ProtectionSpace.cpp */,
 				514C76600CE923A1007EF3CD /* ProtectionSpace.h */,
+				51A052551058874000CC9E95 /* ProtectionSpaceHash.h */,
 				934F713D0D5A6F2800018D69 /* ResourceErrorBase.cpp */,
 				934F713B0D5A6F1900018D69 /* ResourceErrorBase.h */,
 				514C76630CE923A1007EF3CD /* ResourceHandle.cpp */,
@@ -10243,6 +10252,11 @@
 				514C76680CE923A1007EF3CD /* ResourceRequestBase.h */,
 				514C76690CE923A1007EF3CD /* ResourceResponseBase.cpp */,
 				514C766A0CE923A1007EF3CD /* ResourceResponseBase.h */,
+				510D4A2D103165EE0049EA54 /* SocketStreamErrorBase.cpp */,
+				510D4A2E103165EE0049EA54 /* SocketStreamErrorBase.h */,
+				510D4A30103165EE0049EA54 /* SocketStreamHandleBase.cpp */,
+				510D4A31103165EE0049EA54 /* SocketStreamHandleBase.h */,
+				510D4A32103165EE0049EA54 /* SocketStreamHandleClient.h */,
 			);
 			path = network;
 			sourceTree = "<group>";
@@ -16962,6 +16976,8 @@
 				5DFF37451111727000B121E0 /* AccessibilityMenuList.h in Headers */,
 				5DFF37461111727000B121E0 /* AccessibilityMenuListPopup.h in Headers */,
 				5DFF37471111727000B121E0 /* AccessibilityMenuListOption.h in Headers */,
+				51A052331058774F00CC9E95 /* CredentialStorage.h in Headers */,
+				51A052561058874000CC9E95 /* ProtectionSpaceHash.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -18983,6 +18999,7 @@
 				76CDD2F21103DA6600680521 /* AccessibilityMenuList.cpp in Sources */,
 				76CDD2F41103DA6600680521 /* AccessibilityMenuListPopup.cpp in Sources */,
 				76CDD2F61103DA6600680521 /* AccessibilityMenuListOption.cpp in Sources */,
+				51A052341058774F00CC9E95 /* CredentialStorage.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
