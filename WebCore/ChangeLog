@@ -1,5 +1,19 @@
 2010-02-03  Mark Rowe  <mrowe@apple.com>
 
+        Merge r48364.
+
+    2009-09-14  Brady Eidson  <beidson@apple.com>
+
+        Windows build fix.
+
+        * platform/network/cf/ResourceHandleCFNet.cpp:
+        (WebCore::ResourceHandle::didReceiveAuthenticationChallenge):
+        (WebCore::ResourceHandle::receivedCredential):
+        (WebCore::WebCoreSynchronousLoader::didReceiveChallenge):
+        (WebCore::WebCoreSynchronousLoader::load):
+
+2010-02-03  Mark Rowe  <mrowe@apple.com>
+
         Merge r48363.
 
     2009-09-14  Brady Eidson  <beidson@apple.com>
