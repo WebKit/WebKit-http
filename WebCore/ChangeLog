@@ -1,5 +1,26 @@
 2010-02-03  Mark Rowe  <mrowe@apple.com>
 
+        Merge r54311.
+
+    2010-02-03  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        <rdar://problem/7577604> Drag and Drop: background elements are bleeding through
+        https://bugs.webkit.org/show_bug.cgi?id=34546
+
+        * manual-tests/drag-image-table-part-decorations.html: Added.
+        * rendering/RenderFieldset.cpp:
+        (WebCore::RenderFieldset::paintBoxDecorations): Bail out if this object shouldn’t
+        paint within the current painting root.
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::paintBoxDecorations): Ditto.
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::paintBackgroundsBehindCell): Ditto.
+        (WebCore::RenderTableCell::paintBoxDecorations): Ditto.
+
+2010-02-03  Mark Rowe  <mrowe@apple.com>
+
         Merge r54083.
 
     2010-01-29  Brian Weinstein  <bweinstein@apple.com>
