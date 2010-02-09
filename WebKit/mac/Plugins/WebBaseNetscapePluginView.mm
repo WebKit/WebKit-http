@@ -432,6 +432,22 @@ using namespace WebCore;
     [self destroyPlugin];
 }
 
+- (BOOL)superviewsHaveSuperviews
+{
+    NSView *contentView = [[self window] contentView];
+    for (NSView *view = self; view; view = [view superview]) { 
+        if (view == contentView) 
+            return YES;
+    }
+    return NO;
+}
+
+- (BOOL)shouldClipOutPlugin
+{
+    NSWindow *window = [self window];
+    return !window || [window isMiniaturized] || [NSApp isHidden] || ![self superviewsHaveSuperviews] || [self isHiddenOrHasHiddenAncestor];
+}
+
 - (void)viewWillMoveToWindow:(NSWindow *)newWindow
 {
     // We must remove the tracking rect before we move to the new window.
