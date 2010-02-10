@@ -373,7 +373,7 @@ bool AccessibilityRenderObject::isHovered() const
     return m_renderer->node() && m_renderer->node()->hovered();
 }
 
-bool AccessibilityRenderObject::isMultiSelect() const
+bool AccessibilityRenderObject::isMultiSelectable() const
 {
     ASSERT(m_renderer);
     if (!m_renderer->isListBox())

@@ -96,7 +96,7 @@ public:
     virtual bool isHovered() const;
     virtual bool isIndeterminate() const;
     virtual bool isLoaded() const;
-    virtual bool isMultiSelect() const;
+    virtual bool isMultiSelectable() const;
     virtual bool isOffScreen() const;
     virtual bool isPressed() const;
     virtual bool isReadOnly() const;
