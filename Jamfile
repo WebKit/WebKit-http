@@ -1,0 +1,29 @@
+SubDir TOP ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 USE_SYSTEM_MALLOC=1 ENABLE_XSLT=0 ] ;
+
+SubDirC++Flags $(defines) ;
+SubDirCcFlags $(defines) ;
+
+SubInclude TOP JavaScriptCore ;
+SubInclude TOP WebCore ;
+SubInclude TOP WebKit ;
+SubInclude TOP WebKitTools DumpRenderTree ;
+
+#-----------------------------------------------------------------------------
+# Installation rules
+#-----------------------------------------------------------------------------
+
+Install JavaScriptCore :
+    libjavascriptcore.so
+    jsc
+;
+
+Install WebCore :
+    libwebcore.so
+;
+
+Install WebKit :
+    libwebkit.so
+    HaikuLauncher
+;
