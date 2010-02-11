@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -29,40 +30,78 @@
 #include "FileSystem.h"
 
 #include "CString.h"
-#include "PlatformString.h"
-
 #include "NotImplemented.h"
+#include "PlatformString.h"
+#include "StringBuilder.h"
+
+#include <Directory.h>
+#include <Entry.h>
+#include <File.h>
+#include <FindDirectory.h>
+#include <Path.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fnmatch.h>
+#include <stdio.h>
+#include <sys/stat.h>
 
 
 namespace WebCore {
 
-CString fileSystemRepresentation(const String& string)
+CString fileSystemRepresentation(const String& path)
 {
-    return string.utf8();
+    return path.utf8();
 }
 
 String homeDirectoryPath()
 {
-    notImplemented();
-    return String();
+    BPath path;
+    if (find_directory(B_USER_DIRECTORY, &path) != B_OK)
+        return String();
+
+    return String(path.Path());
 }
 
 CString openTemporaryFile(const char* prefix, PlatformFileHandle& handle)
 {
-    notImplemented();
-    handle = invalidPlatformFileHandle;
+    int number = rand() % 10000 + 1;
+    CString filename;
+    do {
+        StringBuilder builder;
+        builder.append("/tmp/");
+        builder.append(prefix);
+        builder.append(String::number(number));
+        filename = builder.toString().utf8();
+        handle = open(filename.data(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+        number++;
+        
+        if (handle != -1)
+            return filename;
+    } while (errno == EEXIST);
+    
     return CString();
 }
 
-void closeFile(PlatformFileHandle&)
+void closeFile(PlatformFileHandle& handle)
 {
-    notImplemented();
+    if (isHandleValid(handle)) {
+        close(handle);
+        handle = invalidPlatformFileHandle;
+    }
 }
 
-int writeToFile(PlatformFileHandle, const char* data, int length)
+int writeToFile(PlatformFileHandle handle, const char* data, int length)
 {
-    notImplemented();
-    return 0;
+    int totalBytesWritten = 0;
+    while (totalBytesWritten < length) {
+        int bytesWritten = write(handle, data, (size_t)(length - totalBytesWritten));
+        if (bytesWritten < 0 && errno != EINTR)
+            return -1;
+        if (bytesWritten > 0)
+            totalBytesWritten += bytesWritten;
+    }
+
+    return totalBytesWritten;
 }
 
 bool unloadModule(PlatformModule)
@@ -74,7 +113,26 @@ bool unloadModule(PlatformModule)
 Vector<String> listDirectory(const String& path, const String& filter)
 {
     Vector<String> entries;
-    notImplemented();
+    CString cpath = path.utf8();
+    CString cfilter = filter.utf8();
+    DIR* dir = opendir(cpath.data());
+    if (dir) {
+        struct dirent* dp;
+        while ((dp = readdir(dir))) {
+            const char* name = dp->d_name;
+            if (!strcmp(name, ".") || !strcmp(name, ".."))
+                continue;
+            if (fnmatch(cfilter.data(), name, 0))
+                continue;
+            char filePath[B_PATH_NAME_LENGTH];
+            if ((int) (sizeof(filePath) - 1) < snprintf(filePath,
+                    sizeof(filePath), "%s/%s", cpath.data(), name)) {
+                continue; // buffer overflow
+            }
+            entries.append(filePath);
+        }
+        closedir(dir);
+    }
     return entries;
 }
 
