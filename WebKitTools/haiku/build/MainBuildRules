@@ -21,7 +21,7 @@ rule Application
 	Main $(app) : $(sources) ;
 	MakeLocate $(app) : $(LOCATE_MAIN_TARGET) ;
 	local linkFlags ;
-	linkFlags = -Xlinker -soname=\"_APP_\" ;
+	linkFlags = -Xlinker -no-undefined -Xlinker -soname=\"_APP_\" ;
 	LINKFLAGS on $(app) = [ on $(app) return $(LINKFLAGS) ] $(linkFlags) ;
 	LinkAgainst $(app) : $(libs) ;
 }
@@ -56,7 +56,7 @@ rule SharedLibrary
 	Main $(lib) : $(sources) ;
 	MakeLocate $(lib) : $(LOCATE_MAIN_TARGET) ;
 	local linkFlags ;
-	linkFlags = -nostart -Xlinker -soname=\"$(lib)\" ;
+	linkFlags = -nostart -Xlinker -no-undefined -Xlinker -soname=\"$(lib)\" ;
 	LINKFLAGS on $(lib) = [ on $(lib) return $(LINKFLAGS) ] $(linkFlags) ;
 	LinkAgainst $(lib) : $(libs) ;
 }
@@ -183,7 +183,7 @@ rule ResComp
 	# get defines
 	local defines ;
 	local localIncludesOption ;
-	
+
 	on $(1) { # use on $(1) variable values
 		defines = $(DEFINES) ;
 		localIncludesOption = $(TARGET_LOCAL_INCLUDES_OPTION) ;
@@ -191,9 +191,9 @@ rule ResComp
 
 	DEFINES on $(1) = $(defines) ;
 	CCDEFS on $(1) = [ FDefines $(defines) ] ;
-	HDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) 
+	HDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS)
 		: $(localIncludesOption) ] ;
-#	RCHDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) 
+#	RCHDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS)
 #		: "-I " ] ;
 
 	# set up other vars
