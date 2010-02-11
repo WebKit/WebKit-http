@@ -1,0 +1,217 @@
+# OverriddenJamRules
+#
+# Jam rules that need to be overridden for good reasons.
+
+# Overridden to allow for spaces in file names and to support resources.
+# Also set the on target LINKFLAGS variable to prevent later changes to
+# the global variable from having an effect on the setting for the target.
+rule Link
+{
+	local dbg = [ on $(1) return $(DEBUG) ] ;
+	if $(STRIP_APPS) && $(STRIP_APPS) != 0 && (!$(dbg) || $(dbg) = 0) {
+		# strip app if requested so and if not in debug mode!
+		Strip $(1) ;
+	}
+	# Note: RESFILES must be set before invocation.
+	MODE on $(1) = $(EXEMODE) ;
+	on $(1) XRes $(1) : $(RESFILES) ;
+	Chmod $(1) ;
+	MimeSet $(1) ;
+	LINKFLAGS on $(1) = [ on $(1) return $(LINKFLAGS) ] ;
+}
+
+actions Link bind NEEDLIBS
+{
+	$(LINK) $(LINKFLAGS) -o "$(1)" $(UNDEFS) "$(2)" "$(NEEDLIBS)" $(LINKLIBS)
+}
+
+
+# Overridden to allow for spaces in file names.
+actions Chmod1
+{
+	$(CHMOD) "$(MODE)" "$(1)"
+}
+
+# Overridden to allow for spaces in file names.
+actions piecemeal together existing Clean
+{
+	$(RM) "$(>)"
+}
+
+# Changes to rules for sake of discrimination between system and non-system
+# headers.
+
+if $(IS_GCC_4_PLATFORM) {
+	HDRS_INCLUDES_SEPARATOR = ;
+} else {
+	HDRS_INCLUDES_SEPARATOR = -I- ;
+}
+
+# FIncludes <dirs> ;
+#
+# Overridden for gcc 4 platforms to use the correct
+#
+if $(IS_GCC_4_PLATFORM) {
+	rule FIncludes { return "-iquote "$(1) ; }
+}
+
+rule Cc
+{
+	Depends $(<) : $(>) ;
+
+	# If the compiler's -o flag doesn't work, relocate the .o
+
+	if $(RELOCATE)
+	{
+	    CcMv $(<) : $(>) ;
+	}
+
+	# Just to clarify here: this sets the per-target CCFLAGS to
+	# be the current value of (global) CCFLAGS and SUBDIRCCFLAGS.
+	# CCHDRS and CCDEFS must be reformatted each time for some
+	# compiles (VMS, NT) that malign multiple -D or -I flags.
+
+	CCFLAGS on $(<) += $(CCFLAGS) $(SUBDIRCCFLAGS) $(OPTIM) ;
+
+	CCHDRS on $(<) = [ on $(<) FIncludes $(HDRS) ]
+		$(HDRS_INCLUDES_SEPARATOR) [ on $(<) FSysIncludes $(SYSHDRS) ] ;
+	CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
+}
+
+rule C++
+{
+	Depends $(<) : $(>) ;
+
+	if $(RELOCATE)
+	{
+	    CcMv $(<) : $(>) ;
+	}
+
+	C++FLAGS on $(<) += $(C++FLAGS) $(SUBDIRC++FLAGS) $(OPTIM) ;
+
+	CCHDRS on $(<) = [ on $(<) FIncludes $(HDRS) ]
+		$(HDRS_INCLUDES_SEPARATOR) [ on $(<) FSysIncludes $(SYSHDRS) ] ;
+	CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
+}
+
+rule Object
+{
+	# locate object and search for source, if wanted
+
+	Clean clean : $(<) ;
+
+	MakeLocate $(<) : $(LOCATE_TARGET) ;
+	SEARCH on $(>) = $(SEARCH_SOURCE) ;
+
+	# Save HDRS for -I$(HDRS) on compile.
+	# We shouldn't need -I$(SEARCH_SOURCE) as cc can find headers
+	# in the .c file's directory, but generated .c files (from
+	# yacc, lex, etc) are located in $(LOCATE_TARGET), possibly
+	# different from $(SEARCH_SOURCE).
+
+	HDRS on $(<) = $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) ;
+	SYSHDRS on $(<) = $(SUBDIRSYSHDRS) $(SYSHDRS) ;
+
+	# handle #includes for source: Jam scans for headers with
+	# the regexp pattern $(HDRSCAN) and then invokes $(HDRRULE)
+	# with the scanned file as the target and the found headers
+	# as the sources.  HDRSEARCH is the value of SEARCH used for
+	# the found header files.  Finally, if jam must deal with 
+	# header files of the same name in different directories,
+	# they can be distinguished with HDRGRIST.
+
+	# $(SEARCH_SOURCE:E) is where cc first looks for #include 
+	# "foo.h" files.  If the source file is in a distant directory, 
+	# look there.  Else, look in "" (the current directory).
+
+	HDRRULE on $(>) = HdrRule ;
+	HDRSCAN on $(>) = $(HDRPATTERN) ;
+	HDRSEARCH on $(>) = 
+		$(SEARCH_SOURCE:E) $(SUBDIRHDRS) $(HDRS) $(SYSHDRS) $(STDHDRS) ;
+
+	HDRGRIST on $(>) = $(HDRGRIST) ;
+
+	# propagate target specific-defines
+
+	DEFINES on $(<) += $(DEFINES) ;
+
+	# if source is not .c, generate .c with specific rule
+
+	switch $(>:S)
+	{
+	    case .asm : As $(<) : $(>) ;
+	    case .c :	Cc $(<) : $(>) ;
+	    case .C :	C++ $(<) : $(>) ;
+	    case .cc :	C++ $(<) : $(>) ;
+	    case .cpp : C++ $(<) : $(>) ;
+	    case .s :	As $(<) : $(>) ;
+	    case * :	UserObject $(<) : $(>) ;
+	}
+}
+
+rule ObjectHdrs
+{
+	local s ;
+	for s in [ FGristFiles $(<:S=$(SUFOBJ)) ] {
+		HDRS on $(s) += $(>) ;
+		CCHDRS on $(s) = [ on $(s) FIncludes $(HDRS) ]
+			$(HDRS_INCLUDES_SEPARATOR) [ on $(s) FSysIncludes $(SYSHDRS) ] ;
+	}
+}
+
+# Override Jam 2.5rc3 MakeLocate and MkDir to deal more intelligently
+# with grist set on the supplied directory name.
+rule MakeLocate
+{
+	if $(2[1])
+	{
+		local dir = $(2[1]) ;
+		if ! $(dir:G) {
+			dir = $(dir:G=dir) ;
+		}
+	    LOCATE on $(1) = $(dir:G=) ;
+	    Depends $(1) : $(dir) ;
+	    MkDir $(dir) ;
+	}
+}
+
+rule MkDir
+{
+	# If dir exists, don't update it
+	# Do this even for $(DOT).
+
+	local dir = $(<) ;
+	if ! $(dir:G) {
+		dir = $(dir:G=dir) ;
+	}
+
+	NoUpdate $(dir) ;
+
+	if $(dir:G=) != $(DOT) && ! $($(dir:G=)-mkdir) {
+		local s ;
+
+		# Cheesy gate to prevent multiple invocations on same dir
+		# MkDir1 has the actions 
+		# Arrange for jam dirs
+
+		$(dir:G=)-mkdir = true ;
+		MkDir1 $(dir) ;
+		Depends dirs : $(dir) ;
+
+		# Recursively make parent directories.
+		# $(dir:P) = $(dir)'s parent, & we recurse until root
+
+		s = $(dir:P) ;	# parent keeps grist
+	
+		if $(s:G=) && $(s) != $(dir) {
+			Depends $(dir) : $(s) ;
+			MkDir $(s) ;
+		} else if $(s) {
+			NotFile $(s) ;
+		}
+	}
+}
+
+# Add SUBDIRSYSHDRS to the variables that shall be reset automatically by the
+# SubDir rule.
+SUBDIRRESET += SYSHDRS ;

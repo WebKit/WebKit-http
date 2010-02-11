@@ -1,0 +1,1555 @@
+SubDir TOP WebCore ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 USE_SYSTEM_MALLOC=1
+    WTF_USE_PTHREADS=1 HAVE_POSIX_MEMALIGN=1 HAVE_SYS_TIME_H=1 ENABLE_DOM_STORAGE=1
+    ENABLE_SVG=1 ENABLE_SVG_ANIMATION=1 ENABLE_SVG_FONTS=1 ENABLE_SVG_FOREIGN_OBJECT=1 ENABLE_SVG_USE=1
+    TEXT_CARET=1 ] ;
+
+# To turn off debugging symbols export NDEBUG=1 in the environment
+SubDirC++Flags $(defines) ;
+SubDirCcFlags $(defines) ;
+
+# Define header locations
+SubDirSysHdrs /boot/common/include/libxml2/ ;
+
+SubDirSysHdrs $(TOP) ;
+SubDirSysHdrs $(TOP) JavaScriptCore ;
+SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) JavaScriptCore runtime ;
+SubDirSysHdrs $(TOP) JavaScriptCore wtf ;
+SubDirSysHdrs $(TOP) WebCore bindings js ;
+SubDirSysHdrs $(TOP) WebCore svg ;
+
+SubDirHdrs $(TOP) ;
+SubDirHdrs $(TOP) JavaScriptCore ;
+SubDirHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
+SubDirHdrs $(TOP) JavaScriptCore assembler ;
+SubDirHdrs $(TOP) JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) JavaScriptCore debugger ;
+SubDirHdrs $(TOP) JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) JavaScriptCore jit ;
+SubDirHdrs $(TOP) JavaScriptCore parser ;
+SubDirHdrs $(TOP) JavaScriptCore runtime ;
+SubDirHdrs $(TOP) JavaScriptCore wtf ;
+SubDirHdrs $(TOP) WebCore ;
+SubDirHdrs $(TOP) WebCore bridge ;
+SubDirHdrs $(TOP) WebCore bridge c ;
+SubDirHdrs $(TOP) WebCore bridge jsc ;
+SubDirHdrs $(TOP) WebCore ForwardingHeaders ;
+SubDirHdrs $(TOP) WebCore notifications ;
+SubDirHdrs $(TOP) WebCore platform image-decoders ;
+SubDirHdrs $(TOP) WebCore svg ;
+SubDirHdrs $(TOP) WebCore svg animation ;
+SubDirHdrs $(TOP) WebCore svg graphics ;
+
+# Define the source directories. Any headers included with quotes should be in
+# the following directories.
+local sourceDirs =
+    accessibility
+    bindings
+#    bindings/generic
+    bindings/js
+    bridge
+    bridge/jsc
+    css
+    DerivedSources/WebCore
+    dom
+    dom/default
+    editing
+    editing/haiku
+    history
+    html
+    html/canvas
+    inspector
+    loader
+    loader/appcache
+    loader/archive
+    loader/icon
+    page
+    page/animation
+    page/haiku
+    platform
+    platform/animation
+    platform/graphics
+    platform/graphics/haiku
+    platform/graphics/transforms
+    platform/haiku
+    platform/image-decoders
+    platform/image-decoders/bmp
+    platform/image-decoders/gif
+    platform/image-decoders/haiku
+    platform/image-decoders/ico
+    platform/image-decoders/jpeg
+    platform/image-decoders/png
+    platform/image-decoders/xbm
+    platform/mock
+    platform/network
+    platform/network/curl
+    platform/posix
+    platform/text
+    platform/text/haiku
+    platform/sql
+    plugins
+    rendering
+    rendering/style
+    storage
+    svg
+    svg/animation
+    svg/graphics
+    xml
+    workers
+;
+
+local sourceDir ;
+for sourceDir in $(sourceDirs) {
+        SEARCH_SOURCE += [ FDirName $(TOP) WebCore $(sourceDir) ] ;
+}
+
+#-----------------------------------------------------------------------------
+# The source files below are sorted by directory alphabetically, then by
+# file alphabetically. The directory each group of sources is in is shown
+# as a comment above them. Haiku related files have additional comments
+# describing what they are for and to what extent they are implemented.
+#-----------------------------------------------------------------------------
+
+# Parts of WebCore are built into these static libs first
+# because otherwise the link actions line gets too long
+StaticLibrary webcore1 :
+        # accessibility
+        AccessibilityARIAGrid.cpp
+        AccessibilityARIAGridCell.cpp
+        AccessibilityARIAGridRow.cpp
+        AccessibilityImageMapLink.cpp
+        AccessibilityList.cpp
+        AccessibilityListBox.cpp
+        AccessibilityListBoxOption.cpp
+        AccessibilityMediaControls.cpp
+        AccessibilityMenuList.cpp
+        AccessibilityMenuListOption.cpp
+        AccessibilityMenuListPopup.cpp
+        AccessibilityObject.cpp
+        AccessibilityRenderObject.cpp
+        AccessibilityScrollbar.cpp
+        AccessibilitySlider.cpp
+        AccessibilityTable.cpp
+        AccessibilityTableCell.cpp
+        AccessibilityTableColumn.cpp
+        AccessibilityTableHeaderContainer.cpp
+        AccessibilityTableRow.cpp
+        AXObjectCache.cpp
+
+        # bindings
+        ScriptControllerBase.cpp
+
+        # bindings/generic
+#        BindingSecurityBase.cpp
+#        RuntimeEnabledFeatures.cpp
+
+        # bindings/js
+        GCController.cpp
+        JSAttrCustom.cpp
+        JSAudioConstructor.cpp
+        JSCallbackData.cpp
+        JSCanvasRenderingContextCustom.cpp
+        JSCanvasRenderingContext2DCustom.cpp
+        JSCDATASectionCustom.cpp
+        JSClipboardCustom.cpp
+        JSConsoleCustom.cpp
+        JSCoordinatesCustom.cpp
+        JSCSSRuleCustom.cpp
+        JSCSSRuleListCustom.cpp
+        JSCSSStyleDeclarationCustom.cpp
+        JSCSSValueCustom.cpp
+        JSCustomPositionCallback.cpp
+        JSCustomPositionErrorCallback.cpp
+        JSCustomSQLStatementCallback.cpp
+        JSCustomSQLStatementErrorCallback.cpp
+        JSCustomSQLTransactionCallback.cpp
+        JSCustomSQLTransactionErrorCallback.cpp
+        JSCustomVoidCallback.cpp
+        JSCustomXPathNSResolver.cpp
+        JSDatabaseCustom.cpp
+        JSDataGridColumnListCustom.cpp
+        JSDataGridDataSource.cpp
+        JSDocumentCustom.cpp
+        JSDocumentFragmentCustom.cpp
+        JSDOMApplicationCacheCustom.cpp
+        JSDOMBinding.cpp
+        JSDOMGlobalObject.cpp
+        JSDOMWindowBase.cpp
+        JSDOMWindowCustom.cpp
+        JSDOMWindowShell.cpp
+        JSElementCustom.cpp
+        JSEventCustom.cpp
+        JSEventListener.cpp
+        JSEventTarget.cpp
+        JSExceptionBase.cpp
+        JSGeolocationCustom.cpp
+        JSHistoryCustom.cpp
+        JSHTMLAllCollectionCustom.cpp
+        JSHTMLAppletElementCustom.cpp
+        JSHTMLCanvasElementCustom.cpp
+        JSHTMLCollectionCustom.cpp
+        JSHTMLDataGridElementCustom.cpp
+        JSHTMLDocumentCustom.cpp
+        JSHTMLElementCustom.cpp
+        JSHTMLEmbedElementCustom.cpp
+        JSHTMLFormElementCustom.cpp
+        JSHTMLFrameElementCustom.cpp
+        JSHTMLFrameSetElementCustom.cpp
+        JSHTMLIFrameElementCustom.cpp
+        JSHTMLInputElementCustom.cpp
+        JSHTMLObjectElementCustom.cpp
+        JSHTMLOptionsCollectionCustom.cpp
+        JSHTMLSelectElementCustom.cpp
+        JSImageConstructor.cpp
+        JSImageDataCustom.cpp
+        JSInjectedScriptHostCustom.cpp
+        JSInspectorFrontendHostCustom.cpp
+        JSJavaScriptCallFrameCustom.cpp
+        JSLazyEventListener.cpp
+        JSLocationCustom.cpp
+        JSMessageChannelConstructor.cpp
+        JSMessageChannelCustom.cpp
+        JSMessageEventCustom.cpp
+        JSMessagePortCustom.cpp
+        JSMimeTypeArrayCustom.cpp
+        JSNamedNodeMapCustom.cpp
+        JSNavigatorCustom.cpp
+        JSNodeCustom.cpp
+        JSNodeFilterCondition.cpp
+        JSNodeFilterCustom.cpp
+        JSNodeIteratorCustom.cpp
+        JSNodeListCustom.cpp
+        JSOptionConstructor.cpp
+        JSPluginArrayCustom.cpp
+        JSPluginCustom.cpp
+        JSPluginElementFunctions.cpp
+        JSPopStateEventCustom.cpp
+        JSSharedWorkerConstructor.cpp
+        JSSharedWorkerCustom.cpp
+        JSSQLResultSetRowListCustom.cpp
+        JSSQLTransactionCustom.cpp
+        JSStorageCustom.cpp
+        JSStyleSheetCustom.cpp
+        JSStyleSheetListCustom.cpp
+        JSSVGElementInstanceCustom.cpp
+        JSSVGElementWrapperFactory.cpp
+        JSSVGLengthCustom.cpp
+        JSSVGMatrixCustom.cpp
+        JSSVGPathSegCustom.cpp
+        JSSVGPathSegListCustom.cpp
+        JSTextCustom.cpp
+        JSTreeWalkerCustom.cpp
+        JSWebKitCSSMatrixConstructor.cpp
+        JSWebKitPointConstructor.cpp
+        JSWorkerConstructor.cpp
+        JSWorkerContextBase.cpp
+        JSWorkerContextCustom.cpp
+        JSWorkerCustom.cpp
+        JSXMLHttpRequestConstructor.cpp
+        JSXMLHttpRequestCustom.cpp
+        JSXMLHttpRequestUploadCustom.cpp
+        JSXSLTProcessorConstructor.cpp
+        JSXSLTProcessorCustom.cpp
+        ScheduledAction.cpp
+        ScriptArray.cpp
+        ScriptCachedFrameData.cpp
+        ScriptCallFrame.cpp
+        ScriptCallStack.cpp
+        ScriptController.cpp
+        ScriptDebugServer.cpp
+        ScriptFunctionCall.cpp
+        ScriptObject.cpp
+        ScriptProfiler.cpp
+        ScriptState.cpp
+        ScriptValue.cpp
+        SerializedScriptValue.cpp
+        WorkerScriptController.cpp
+
+        # bridge
+        BridgeJSC.cpp
+        runtime_method.cpp
+        runtime_object.cpp
+        runtime_root.cpp
+
+        # css
+        CSSBorderImageValue.cpp
+        CSSCanvasValue.cpp
+        CSSCharsetRule.cpp
+        CSSComputedStyleDeclaration.cpp
+        CSSCursorImageValue.cpp
+        CSSFontFace.cpp
+        CSSFontFaceRule.cpp
+        CSSFontFaceSource.cpp
+        CSSFontFaceSrcValue.cpp
+        CSSFontSelector.cpp
+        CSSFunctionValue.cpp
+        CSSGradientValue.cpp
+        CSSHelper.cpp
+        CSSImageGeneratorValue.cpp
+        CSSImageValue.cpp
+        CSSImportRule.cpp
+        CSSInheritedValue.cpp
+        CSSInitialValue.cpp
+        CSSMediaRule.cpp
+        CSSMutableStyleDeclaration.cpp
+        CSSPageRule.cpp
+        CSSParser.cpp
+        CSSParserValues.cpp
+        CSSPrimitiveValue.cpp
+        CSSProperty.cpp
+        CSSPropertyLonghand.cpp
+        CSSReflectValue.cpp
+        CSSRule.cpp
+        CSSRuleList.cpp
+        CSSSegmentedFontFace.cpp
+        CSSSelector.cpp
+        CSSSelectorList.cpp
+        CSSStyleDeclaration.cpp
+        CSSStyleRule.cpp
+        CSSStyleSelector.cpp
+        CSSStyleSheet.cpp
+        CSSTimingFunctionValue.cpp
+        CSSUnicodeRangeValue.cpp
+        CSSValueList.cpp
+        CSSVariableDependentValue.cpp
+        CSSVariablesDeclaration.cpp
+        CSSVariablesRule.cpp
+        FontFamilyValue.cpp
+        FontValue.cpp
+        Media.cpp
+        MediaFeatureNames.cpp
+        MediaList.cpp
+        MediaQuery.cpp
+        MediaQueryEvaluator.cpp
+        MediaQueryExp.cpp
+        RGBColor.cpp
+        ShadowValue.cpp
+        StyleBase.cpp
+        StyleList.cpp
+        StyleSheet.cpp
+        StyleSheetList.cpp
+        SVGCSSComputedStyleDeclaration.cpp
+        SVGCSSParser.cpp
+        SVGCSSStyleSelector.cpp
+        WebKitCSSKeyframeRule.cpp
+        WebKitCSSKeyframesRule.cpp
+        WebKitCSSMatrix.cpp
+        WebKitCSSTransformValue.cpp
+
+        # DerivedSources/WebCore
+        # DerivedSources.cpp replaces all the long list of derived sources...
+        # ... but it kills concurency when compiling with more than one job!
+#        DerivedSources.cpp
+        JSAbstractWorker.cpp
+        JSAttr.cpp
+        JSBarInfo.cpp
+        JSBeforeLoadEvent.cpp
+        JSBlob.cpp
+        JSCanvasGradient.cpp
+        JSCanvasPattern.cpp
+        JSCanvasRenderingContext.cpp
+        JSCanvasRenderingContext2D.cpp
+        JSCDATASection.cpp
+        JSCharacterData.cpp
+        JSClientRect.cpp
+        JSClientRectList.cpp
+        JSClipboard.cpp
+        JSComment.cpp
+        JSCompositionEvent.cpp
+        JSConsole.cpp
+        JSCoordinates.cpp
+        JSCounter.cpp
+        JSCSSCharsetRule.cpp
+        JSCSSFontFaceRule.cpp
+        JSCSSImportRule.cpp
+        JSCSSMediaRule.cpp
+        JSCSSPageRule.cpp
+        JSCSSPrimitiveValue.cpp
+        JSCSSRule.cpp
+        JSCSSRuleList.cpp
+        JSCSSStyleDeclaration.cpp
+        JSCSSStyleRule.cpp
+        JSCSSStyleSheet.cpp
+        JSCSSValue.cpp
+        JSCSSValueList.cpp
+        JSCSSVariablesDeclaration.cpp
+        JSCSSVariablesRule.cpp
+        JSDatabase.cpp
+        JSDataGridColumn.cpp
+        JSDataGridColumnList.cpp
+        JSDedicatedWorkerContext.cpp
+        JSDocument.cpp
+        JSDocumentFragment.cpp
+        JSDocumentType.cpp
+        JSDOMApplicationCache.cpp
+        JSDOMCoreException.cpp
+        JSDOMImplementation.cpp
+        JSDOMParser.cpp
+        JSDOMSelection.cpp
+        JSDOMWindow.cpp
+        JSElement.cpp
+        JSEntity.cpp
+        JSEntityReference.cpp
+        JSErrorEvent.cpp
+        JSEvent.cpp
+        JSEventException.cpp
+        JSEventSource.cpp
+        JSFile.cpp
+        JSFileList.cpp
+        JSGeolocation.cpp
+        JSGeoposition.cpp
+        JSHistory.cpp
+        JSHTMLAllCollection.cpp
+        JSHTMLAnchorElement.cpp
+        JSHTMLAppletElement.cpp
+        JSHTMLAreaElement.cpp
+        JSHTMLAudioElement.cpp
+        JSHTMLBaseElement.cpp
+        JSHTMLBaseFontElement.cpp
+        JSHTMLBlockquoteElement.cpp
+        JSHTMLBodyElement.cpp
+        JSHTMLBRElement.cpp
+        JSHTMLButtonElement.cpp
+        JSHTMLCanvasElement.cpp
+        JSHTMLCollection.cpp
+        JSHTMLDataGridElement.cpp
+        JSHTMLDataGridCellElement.cpp
+        JSHTMLDataGridColElement.cpp
+        JSHTMLDataGridRowElement.cpp
+        JSHTMLDataListElement.cpp
+        JSHTMLDirectoryElement.cpp
+        JSHTMLDivElement.cpp
+        JSHTMLDListElement.cpp
+        JSHTMLDocument.cpp
+        JSHTMLElement.cpp
+        JSHTMLElementWrapperFactory.cpp
+        JSHTMLEmbedElement.cpp
+        JSHTMLFieldSetElement.cpp
+        JSHTMLFontElement.cpp
+        JSHTMLFormElement.cpp
+        JSHTMLFrameElement.cpp
+        JSHTMLFrameSetElement.cpp
+        JSHTMLHeadElement.cpp
+        JSHTMLHeadingElement.cpp
+        JSHTMLHRElement.cpp
+        JSHTMLHtmlElement.cpp
+        JSHTMLIFrameElement.cpp
+        JSHTMLImageElement.cpp
+        JSHTMLInputElement.cpp
+        JSHTMLIsIndexElement.cpp
+        JSHTMLLabelElement.cpp
+        JSHTMLLegendElement.cpp
+        JSHTMLLIElement.cpp
+        JSHTMLLinkElement.cpp
+        JSHTMLMapElement.cpp
+        JSHTMLMarqueeElement.cpp
+        JSHTMLMediaElement.cpp
+        JSHTMLMenuElement.cpp
+        JSHTMLMetaElement.cpp
+        JSHTMLModElement.cpp
+        JSHTMLObjectElement.cpp
+        JSHTMLOListElement.cpp
+        JSHTMLOptGroupElement.cpp
+        JSHTMLOptionElement.cpp
+        JSHTMLOptionsCollection.cpp
+        JSHTMLParagraphElement.cpp
+        JSHTMLParamElement.cpp
+        JSHTMLPreElement.cpp
+        JSHTMLQuoteElement.cpp
+        JSHTMLScriptElement.cpp
+        JSHTMLSelectElement.cpp
+        JSHTMLSourceElement.cpp
+        JSHTMLStyleElement.cpp
+        JSHTMLTableCaptionElement.cpp
+        JSHTMLTableCellElement.cpp
+        JSHTMLTableColElement.cpp
+        JSHTMLTableElement.cpp
+        JSHTMLTableRowElement.cpp
+        JSHTMLTableSectionElement.cpp
+        JSHTMLTextAreaElement.cpp
+        JSHTMLTitleElement.cpp
+        JSHTMLUListElement.cpp
+        JSHTMLVideoElement.cpp
+        JSImageData.cpp
+        JSJavaScriptCallFrame.cpp
+        JSKeyboardEvent.cpp
+        JSLocation.cpp
+        JSMedia.cpp
+        JSMediaError.cpp
+        JSMediaList.cpp
+        JSMessageChannel.cpp
+        JSMessageEvent.cpp
+        JSMessagePort.cpp
+        JSMimeType.cpp
+        JSMimeTypeArray.cpp
+        JSMouseEvent.cpp
+        JSMutationEvent.cpp
+        JSNamedNodeMap.cpp
+        JSNavigator.cpp
+        JSNode.cpp
+        JSNodeFilter.cpp
+        JSNodeIterator.cpp
+        JSNodeList.cpp
+        JSNotation.cpp
+        JSNotificationCenter.cpp
+        JSNotification.cpp
+        JSOverflowEvent.cpp
+        JSPageTransitionEvent.cpp
+        JSPlugin.cpp
+        JSPluginArray.cpp
+        JSPopStateEvent.cpp
+        JSPositionError.cpp
+        JSProcessingInstruction.cpp
+        JSProgressEvent.cpp
+        JSRange.cpp
+        JSRangeException.cpp
+        JSRect.cpp
+        JSRGBColor.cpp
+        JSScreen.cpp
+        JSSharedWorker.cpp
+        JSSharedWorkerContext.cpp
+        JSSQLError.cpp
+        JSSQLResultSet.cpp
+        JSSQLResultSetRowList.cpp
+        JSSQLTransaction.cpp
+        JSStorage.cpp
+        JSStorageEvent.cpp
+        JSStyleSheet.cpp
+        JSStyleSheetList.cpp
+        JSSVGAElement.cpp
+        JSSVGAltGlyphElement.cpp
+        JSSVGAngle.cpp
+        JSSVGAnimateColorElement.cpp
+        JSSVGAnimatedAngle.cpp
+        JSSVGAnimatedBoolean.cpp
+        JSSVGAnimatedEnumeration.cpp
+        JSSVGAnimatedInteger.cpp
+        JSSVGAnimatedLength.cpp
+        JSSVGAnimatedLengthList.cpp
+        JSSVGAnimatedNumber.cpp
+        JSSVGAnimatedNumberList.cpp
+        JSSVGAnimatedPreserveAspectRatio.cpp
+        JSSVGAnimatedRect.cpp
+        JSSVGAnimatedString.cpp
+        JSSVGAnimatedTransformList.cpp
+        JSSVGAnimateElement.cpp
+        JSSVGAnimateTransformElement.cpp
+        JSSVGAnimationElement.cpp
+        JSSVGCircleElement.cpp
+        JSSVGClipPathElement.cpp
+        JSSVGColor.cpp
+        JSSVGComponentTransferFunctionElement.cpp
+        JSSVGCursorElement.cpp
+        JSSVGDefsElement.cpp
+        JSSVGDescElement.cpp
+        JSSVGDocument.cpp
+        JSSVGElement.cpp
+        JSSVGElementInstance.cpp
+        JSSVGElementInstanceList.cpp
+        JSSVGEllipseElement.cpp
+        JSSVGException.cpp
+        JSSVGFEBlendElement.cpp
+        JSSVGFEColorMatrixElement.cpp
+        JSSVGFEComponentTransferElement.cpp
+        JSSVGFECompositeElement.cpp
+        JSSVGFEDiffuseLightingElement.cpp
+        JSSVGFEDisplacementMapElement.cpp
+        JSSVGFEDistantLightElement.cpp
+        JSSVGFEFloodElement.cpp
+        JSSVGFEFuncAElement.cpp
+        JSSVGFEFuncBElement.cpp
+        JSSVGFEFuncGElement.cpp
+        JSSVGFEFuncRElement.cpp
+        JSSVGFEGaussianBlurElement.cpp
+        JSSVGFEImageElement.cpp
+        JSSVGFEMergeElement.cpp
+        JSSVGFEMergeNodeElement.cpp
+        JSSVGFEMorphologyElement.cpp
+        JSSVGFEOffsetElement.cpp
+        JSSVGFEPointLightElement.cpp
+        JSSVGFESpecularLightingElement.cpp
+        JSSVGFESpotLightElement.cpp
+        JSSVGFETileElement.cpp
+        JSSVGFETurbulenceElement.cpp
+        JSSVGFilterElement.cpp
+        JSSVGFontElement.cpp
+        JSSVGFontFaceElement.cpp
+        JSSVGFontFaceFormatElement.cpp
+        JSSVGFontFaceNameElement.cpp
+        JSSVGFontFaceSrcElement.cpp
+        JSSVGFontFaceUriElement.cpp
+        JSSVGForeignObjectElement.cpp
+        JSSVGGElement.cpp
+        JSSVGGlyphElement.cpp
+        JSSVGGradientElement.cpp
+        JSSVGImageElement.cpp
+        JSSVGLength.cpp
+        JSSVGLengthList.cpp
+        JSSVGLinearGradientElement.cpp
+        JSSVGLineElement.cpp
+        JSSVGMarkerElement.cpp
+        JSSVGMaskElement.cpp
+        JSSVGMatrix.cpp
+        JSSVGMetadataElement.cpp
+        JSSVGMissingGlyphElement.cpp
+        JSSVGNumber.cpp
+        JSSVGNumberList.cpp
+        JSSVGPaint.cpp
+        JSSVGPathElement.cpp
+        JSSVGPathSeg.cpp
+        JSSVGPathSegArcAbs.cpp
+        JSSVGPathSegArcRel.cpp
+        JSSVGPathSegClosePath.cpp
+        JSSVGPathSegCurvetoCubicAbs.cpp
+        JSSVGPathSegCurvetoCubicRel.cpp
+        JSSVGPathSegCurvetoCubicSmoothAbs.cpp
+        JSSVGPathSegCurvetoCubicSmoothRel.cpp
+        JSSVGPathSegCurvetoQuadraticAbs.cpp
+        JSSVGPathSegCurvetoQuadraticRel.cpp
+        JSSVGPathSegCurvetoQuadraticSmoothAbs.cpp
+        JSSVGPathSegCurvetoQuadraticSmoothRel.cpp
+        JSSVGPathSegLinetoAbs.cpp
+        JSSVGPathSegLinetoHorizontalAbs.cpp
+        JSSVGPathSegLinetoHorizontalRel.cpp
+        JSSVGPathSegLinetoRel.cpp
+        JSSVGPathSegLinetoVerticalAbs.cpp
+        JSSVGPathSegLinetoVerticalRel.cpp
+        JSSVGPathSegList.cpp
+        JSSVGPathSegMovetoAbs.cpp
+        JSSVGPathSegMovetoRel.cpp
+        JSSVGPatternElement.cpp
+        JSSVGPoint.cpp
+        JSSVGPointList.cpp
+        JSSVGPolygonElement.cpp
+        JSSVGPolylineElement.cpp
+        JSSVGPreserveAspectRatio.cpp
+        JSSVGRadialGradientElement.cpp
+        JSSVGRect.cpp
+        JSSVGRectElement.cpp
+        JSSVGRenderingIntent.cpp
+        JSSVGScriptElement.cpp
+        JSSVGSetElement.cpp
+        JSSVGStopElement.cpp
+        JSSVGStringList.cpp
+        JSSVGStyleElement.cpp
+        JSSVGSVGElement.cpp
+        JSSVGSwitchElement.cpp
+        JSSVGSymbolElement.cpp
+        JSSVGTextContentElement.cpp
+        JSSVGTextElement.cpp
+        JSSVGTextPathElement.cpp
+        JSSVGTextPositioningElement.cpp
+        JSSVGTitleElement.cpp
+        JSSVGTransform.cpp
+        JSSVGTransformList.cpp
+        JSSVGTRefElement.cpp
+        JSSVGTSpanElement.cpp
+        JSSVGUnitTypes.cpp
+        JSSVGUseElement.cpp
+        JSSVGViewElement.cpp
+        JSSVGZoomEvent.cpp
+        JSText.cpp
+        JSTextEvent.cpp
+        JSTextMetrics.cpp
+        JSTimeRanges.cpp
+        JSTreeWalker.cpp
+        JSUIEvent.cpp
+        JSValidityState.cpp
+        JSWebKitAnimationEvent.cpp
+        JSWebKitCSSKeyframeRule.cpp
+        JSWebKitCSSKeyframesRule.cpp
+        JSWebKitCSSTransformValue.cpp
+        JSWebKitCSSMatrix.cpp
+        JSWebKitPoint.cpp
+        JSWebKitTransitionEvent.cpp
+        JSWebSocket.cpp
+        JSWheelEvent.cpp
+        JSWorker.cpp
+        JSWorkerContext.cpp
+        JSWorkerLocation.cpp
+        JSWorkerNavigator.cpp
+        JSXMLHttpRequest.cpp
+        JSXMLHttpRequestException.cpp
+        JSXMLHttpRequestProgressEvent.cpp
+        JSXMLHttpRequestUpload.cpp
+        JSXMLSerializer.cpp
+        JSXPathEvaluator.cpp
+        JSXPathException.cpp
+        JSXPathExpression.cpp
+        JSXPathNSResolver.cpp
+        JSXPathResult.cpp
+        JSXSLTProcessor.cpp
+        UserAgentStyleSheetsData.cpp
+        # end of DerivedSources.cpp
+
+        CSSGrammar.cpp
+        JSInjectedScriptHost.cpp
+        JSInspectorBackend.cpp
+        JSInspectorFrontendHost.cpp
+        HTMLEntityNames.c
+        HTMLNames.cpp
+        SVGNames.cpp
+        XLinkNames.cpp
+        XMLNames.cpp
+        XMLNSNames.cpp
+;
+
+StaticLibrary webcore2 :
+        # dom
+        ActiveDOMObject.cpp
+        Attr.cpp
+        Attribute.cpp
+        BeforeTextInsertedEvent.cpp
+        BeforeUnloadEvent.cpp
+        CDATASection.cpp
+        CharacterData.cpp
+        CheckedRadioButtons.cpp
+        ChildNodeList.cpp
+        ClassNodeList.cpp
+        ClientRect.cpp
+        ClientRectList.cpp
+        Clipboard.cpp
+        ClipboardEvent.cpp
+        Comment.cpp
+        CompositionEvent.cpp
+        ContainerNode.cpp
+        CSSMappedAttributeDeclaration.cpp
+        Document.cpp
+        DocumentFragment.cpp
+        DocumentType.cpp
+        DOMImplementation.cpp
+        DynamicNodeList.cpp
+        EditingText.cpp
+        Element.cpp
+        Entity.cpp
+        EntityReference.cpp
+        ErrorEvent.cpp
+        Event.cpp
+        EventNames.cpp
+        EventTarget.cpp
+        ExceptionBase.cpp
+        ExceptionCode.cpp
+        InputElement.cpp
+        KeyboardEvent.cpp
+        MappedAttribute.cpp
+        MessageChannel.cpp
+        MessageEvent.cpp
+        MessagePort.cpp
+        MessagePortChannel.cpp
+        MouseEvent.cpp
+        MouseRelatedEvent.cpp
+        MutationEvent.cpp
+        NamedAttrMap.cpp
+        NamedMappedAttrMap.cpp
+        NameNodeList.cpp
+        Node.cpp
+        NodeFilter.cpp
+        NodeFilterCondition.cpp
+        NodeIterator.cpp
+        Notation.cpp
+        OptionElement.cpp
+        OptionGroupElement.cpp
+        OverflowEvent.cpp
+        PageTransitionEvent.cpp
+        PopStateEvent.cpp
+        Position.cpp
+        PositionIterator.cpp
+        ProcessingInstruction.cpp
+        ProgressEvent.cpp
+        QualifiedName.cpp
+        Range.cpp
+        RegisteredEventListener.cpp
+        ScriptElement.cpp
+        ScriptExecutionContext.cpp
+        SelectElement.cpp
+        SelectorNodeList.cpp
+        SpaceSplitString.cpp
+        StaticNodeList.cpp
+        StyledElement.cpp
+        StyleElement.cpp
+        TagNodeList.cpp
+        Text.cpp
+        TextEvent.cpp
+        Traversal.cpp
+        TreeWalker.cpp
+        UIEvent.cpp
+        UIEventWithKeyState.cpp
+        WebKitAnimationEvent.cpp
+        WebKitTransitionEvent.cpp
+        WheelEvent.cpp
+        XMLTokenizer.cpp
+        XMLTokenizerLibxml2.cpp
+        XMLTokenizerScope.cpp
+
+        # dom/default
+        PlatformMessagePortChannel.cpp
+
+        # editing
+        AppendNodeCommand.cpp
+        ApplyStyleCommand.cpp
+        BreakBlockquoteCommand.cpp
+        CompositeEditCommand.cpp
+        CreateLinkCommand.cpp
+        DeleteButton.cpp
+        DeleteButtonController.cpp
+        DeleteFromTextNodeCommand.cpp
+        DeleteSelectionCommand.cpp
+        EditCommand.cpp
+        Editor.cpp
+        EditorCommand.cpp
+        FormatBlockCommand.cpp
+        htmlediting.cpp
+        HTMLInterchange.cpp
+        IndentOutdentCommand.cpp
+        InsertIntoTextNodeCommand.cpp
+        InsertLineBreakCommand.cpp
+        InsertListCommand.cpp
+        InsertNodeBeforeCommand.cpp
+        InsertParagraphSeparatorCommand.cpp
+        InsertTextCommand.cpp
+        JoinTextNodesCommand.cpp
+        markup.cpp
+        MergeIdenticalElementsCommand.cpp
+        ModifySelectionListLevel.cpp
+        MoveSelectionCommand.cpp
+        RemoveCSSPropertyCommand.cpp
+        RemoveFormatCommand.cpp
+        RemoveNodeCommand.cpp
+        RemoveNodePreservingChildrenCommand.cpp
+        ReplaceNodeWithSpanCommand.cpp
+        ReplaceSelectionCommand.cpp
+        SelectionController.cpp
+        SetNodeAttributeCommand.cpp
+        SmartReplace.cpp
+        SmartReplaceICU.cpp
+        SplitElementCommand.cpp
+        SplitTextNodeCommand.cpp
+        SplitTextNodeContainingElementCommand.cpp
+        TextIterator.cpp
+        TypingCommand.cpp
+        UnlinkCommand.cpp
+        visible_units.cpp
+        VisiblePosition.cpp
+        VisibleSelection.cpp
+        WrapContentsInDummySpanCommand.cpp
+
+        # editing/haiku
+        EditorHaiku.cpp
+
+        # history
+        BackForwardList.cpp
+        CachedFrame.cpp
+        CachedPage.cpp
+        HistoryItem.cpp
+        PageCache.cpp
+
+        # html
+        Blob.cpp
+        CollectionCache.cpp
+        DataGridColumn.cpp
+        DataGridColumnList.cpp
+        DateComponents.cpp
+        File.cpp
+        FileList.cpp
+        FormDataList.cpp
+        HTMLAllCollection.cpp
+        HTMLCollection.cpp
+        HTMLDocument.cpp
+        # HTMLElementsAllInOne.cpp replaces all the long list of HTML elements...
+        # ... but it kills concurency when compiling with more than one job!
+#        HTMLElementsAllInOne.cpp
+        HTMLAnchorElement.cpp
+        HTMLAppletElement.cpp
+        HTMLAreaElement.cpp
+        HTMLAudioElement.cpp
+        HTMLBRElement.cpp
+        HTMLBaseElement.cpp
+        HTMLBaseFontElement.cpp
+        HTMLBlockquoteElement.cpp
+        HTMLBodyElement.cpp
+        HTMLButtonElement.cpp
+        HTMLCanvasElement.cpp
+        HTMLDataGridElement.cpp
+        HTMLDataGridCellElement.cpp
+        HTMLDataGridColElement.cpp
+        HTMLDataGridRowElement.cpp
+        HTMLDListElement.cpp
+        HTMLDirectoryElement.cpp
+        HTMLDivElement.cpp
+        HTMLElement.cpp
+        HTMLEmbedElement.cpp
+        HTMLFieldSetElement.cpp
+        HTMLFontElement.cpp
+        HTMLFormControlElement.cpp
+        HTMLFormElement.cpp
+        HTMLFrameElement.cpp
+        HTMLFrameElementBase.cpp
+        HTMLFrameOwnerElement.cpp
+        HTMLFrameSetElement.cpp
+        HTMLHRElement.cpp
+        HTMLHeadElement.cpp
+        HTMLHeadingElement.cpp
+        HTMLHtmlElement.cpp
+        HTMLIFrameElement.cpp
+        HTMLImageElement.cpp
+        HTMLInputElement.cpp
+        HTMLIsIndexElement.cpp
+        HTMLKeygenElement.cpp
+        HTMLLIElement.cpp
+        HTMLLabelElement.cpp
+        HTMLLegendElement.cpp
+        HTMLLinkElement.cpp
+        HTMLMapElement.cpp
+        HTMLMarqueeElement.cpp
+        HTMLMediaElement.cpp
+        HTMLMenuElement.cpp
+        HTMLMetaElement.cpp
+        HTMLModElement.cpp
+        HTMLOListElement.cpp
+        HTMLObjectElement.cpp
+        HTMLOptGroupElement.cpp
+        HTMLOptionElement.cpp
+        HTMLParagraphElement.cpp
+        HTMLParamElement.cpp
+        HTMLPlugInElement.cpp
+        HTMLPlugInImageElement.cpp
+        HTMLPreElement.cpp
+        HTMLQuoteElement.cpp
+        HTMLScriptElement.cpp
+        HTMLSelectElement.cpp
+        HTMLSourceElement.cpp
+        HTMLStyleElement.cpp
+        HTMLTableCaptionElement.cpp
+        HTMLTableCellElement.cpp
+        HTMLTableColElement.cpp
+        HTMLTableElement.cpp
+        HTMLTablePartElement.cpp
+        HTMLTableRowElement.cpp
+        HTMLTableSectionElement.cpp
+        HTMLTextAreaElement.cpp
+        HTMLTitleElement.cpp
+        HTMLUListElement.cpp
+        HTMLVideoElement.cpp
+        # end of HTMLElementsAllInOne.cpp
+
+        HTMLFormCollection.cpp
+        HTMLImageLoader.cpp
+        HTMLNameCollection.cpp
+        HTMLNoScriptElement.cpp
+        HTMLOptionsCollection.cpp
+        HTMLParser.cpp
+        HTMLParserErrorCodes.cpp
+        HTMLTableRowsCollection.cpp
+        HTMLTokenizer.cpp
+        HTMLViewSourceDocument.cpp
+        ImageData.cpp
+        PreloadScanner.cpp
+        TimeRanges.cpp
+        ValidityState.cpp
+
+        # html/canvas
+        CanvasGradient.cpp
+        CanvasPattern.cpp
+        CanvasPixelArray.cpp
+        CanvasStyle.cpp
+        CanvasRenderingContext.cpp
+        CanvasRenderingContext2D.cpp
+;
+
+SharedLibrary libwebcore.so :
+        # inspector
+        ConsoleMessage.cpp
+        InjectedScript.cpp
+        InjectedScriptHost.cpp
+        InspectorBackend.cpp
+        InspectorController.cpp
+        InspectorDatabaseResource.cpp
+        InspectorDOMAgent.cpp
+        InspectorDOMStorageResource.cpp
+        InspectorFrontend.cpp
+        InspectorFrontendHost.cpp
+        InspectorResource.cpp
+        InspectorTimelineAgent.cpp
+        JavaScriptCallFrame.cpp
+        JavaScriptDebugServer.cpp
+        JavaScriptProfile.cpp
+        JavaScriptProfileNode.cpp
+        TimelineRecordFactory.cpp
+
+        # loader
+        Cache.cpp
+        CachedCSSStyleSheet.cpp
+        CachedFont.cpp
+        CachedImage.cpp
+        CachedResource.cpp
+        CachedResourceClientWalker.cpp
+        CachedResourceHandle.cpp
+        CachedScript.cpp
+        CachedXBLDocument.cpp
+        CachedXSLStyleSheet.cpp
+        CrossOriginAccessControl.cpp
+        CrossOriginPreflightResultCache.cpp
+        DocLoader.cpp
+        DocumentLoader.cpp
+        DocumentThreadableLoader.cpp
+        FormState.cpp
+        FrameLoader.cpp
+        FTPDirectoryDocument.cpp
+        FTPDirectoryParser.cpp
+        HistoryController.cpp
+        ImageDocument.cpp
+        ImageLoader.cpp
+        loader.cpp
+        MainResourceLoader.cpp
+        MediaDocument.cpp
+        NavigationAction.cpp
+        NetscapePlugInStreamLoader.cpp
+        PlaceholderDocument.cpp
+        PluginDocument.cpp
+        PolicyCallback.cpp
+        PolicyChecker.cpp
+        ProgressTracker.cpp
+        RedirectScheduler.cpp
+        Request.cpp
+        ResourceLoader.cpp
+        ResourceLoadNotifier.cpp
+        SubresourceLoader.cpp
+        TextDocument.cpp
+        TextResourceDecoder.cpp
+        ThreadableLoader.cpp
+        WorkerThreadableLoader.cpp
+
+        # loader/appcache
+        ApplicationCache.cpp
+        ApplicationCacheGroup.cpp
+        ApplicationCacheHost.cpp
+        ApplicationCacheResource.cpp
+        ApplicationCacheStorage.cpp
+        DOMApplicationCache.cpp
+        ManifestParser.cpp
+
+        # loader/archive
+        ArchiveFactory.cpp
+        ArchiveResource.cpp
+        ArchiveResourceCollection.cpp
+
+        # loader/icon
+        IconDatabase.cpp
+        IconFetcher.cpp
+        IconLoader.cpp
+        IconRecord.cpp
+        PageURLRecord.cpp
+
+        # page
+        BarInfo.cpp
+        Chrome.cpp
+        Console.cpp
+        ContextMenuController.cpp
+        DOMSelection.cpp
+        DOMTimer.cpp
+        DOMWindow.cpp
+        DragController.cpp
+        EventHandler.cpp
+        FocusController.cpp
+        Frame.cpp
+        FrameTree.cpp
+        FrameView.cpp
+        Geolocation.cpp
+        History.cpp
+        Location.cpp
+        MouseEventWithHitTestResults.cpp
+        Navigator.cpp
+        NavigatorBase.cpp
+        OriginAccessEntry.cpp
+        Page.cpp
+        PageGroup.cpp
+        PageGroupLoadDeferrer.cpp
+        PluginHalter.cpp
+        PrintContext.cpp
+        Screen.cpp
+        SecurityOrigin.cpp
+        Settings.cpp
+        UserContentURLPattern.cpp
+        WindowFeatures.cpp
+        WorkerNavigator.cpp
+        XSSAuditor.cpp
+
+        # page/animation
+        AnimationBase.cpp
+        AnimationController.cpp
+        CompositeAnimation.cpp
+        ImplicitAnimation.cpp
+        KeyframeAnimation.cpp
+
+        # page/haiku
+        DragControllerHaiku.cpp
+        EventHandlerHaiku.cpp
+        FrameHaiku.cpp
+
+        # platform
+        Arena.cpp
+        ContentType.cpp
+        ContextMenu.cpp
+        CrossThreadCopier.cpp
+        DeprecatedPtrListImpl.cpp
+        DragData.cpp
+        DragImage.cpp
+        FileChooser.cpp
+        GeolocationService.cpp
+        KURL.cpp
+        KURLGoogle.cpp
+        Length.cpp
+        LinkHash.cpp
+        LocalizedStringsHaiku.cpp
+        Logging.cpp
+        MIMETypeRegistry.cpp
+        Scrollbar.cpp
+        ScrollbarThemeComposite.cpp
+        ScrollView.cpp
+        SharedBuffer.cpp
+        Theme.cpp
+        ThreadGlobalData.cpp
+        ThreadTimers.cpp
+        Timer.cpp
+        Widget.cpp
+
+        # platform/animation
+        Animation.cpp
+        AnimationList.cpp
+
+        # platform/graphics
+        BitmapImage.cpp
+        Color.cpp
+        FloatPoint.cpp
+        FloatPoint3D.cpp
+        FloatQuad.cpp
+        FloatRect.cpp
+        FloatSize.cpp
+        Font.cpp
+        FontCache.cpp
+        FontData.cpp
+        FontDescription.cpp
+        FontFallbackList.cpp
+        FontFamily.cpp
+        FontFastPath.cpp
+        GeneratedImage.cpp
+        GlyphPageTreeNode.cpp
+        GlyphWidthMap.cpp
+        Gradient.cpp
+        GraphicsContext.cpp
+        GraphicsLayer.cpp
+        GraphicsTypes.cpp
+        Image.cpp
+        ImageBuffer.cpp
+        ImageSource.cpp
+        IntRect.cpp
+        MediaPlayer.cpp
+        Path.cpp
+        PathTraversalState.cpp
+        Pattern.cpp
+        Pen.cpp
+        SegmentedFontData.cpp
+        SimpleFontData.cpp
+        StringTruncator.cpp
+        WidthIterator.cpp
+
+        # platform/graphics/haiku
+        ColorHaiku.cpp
+        FloatPointHaiku.cpp
+        FloatRectHaiku.cpp
+        FontCacheHaiku.cpp
+        FontCustomPlatformData.cpp
+        FontHaiku.cpp
+        FontPlatformDataHaiku.cpp
+        GlyphPageTreeNodeHaiku.cpp
+        GradientHaiku.cpp
+        GraphicsContextHaiku.cpp
+        IconHaiku.cpp
+        ImageBufferHaiku.cpp
+        ImageHaiku.cpp
+        IntPointHaiku.cpp
+        IntRectHaiku.cpp
+        IntSizeHaiku.cpp
+        PathHaiku.cpp
+        SimpleFontDataHaiku.cpp
+
+        # platform/graphics/transforms
+        AffineTransform.cpp
+        Matrix3DTransformOperation.cpp
+        MatrixTransformOperation.cpp
+        PerspectiveTransformOperation.cpp
+        RotateTransformOperation.cpp
+        ScaleTransformOperation.cpp
+        SkewTransformOperation.cpp
+        TransformationMatrix.cpp
+        TransformOperations.cpp
+        TranslateTransformOperation.cpp
+
+        # platform/haiku
+        ClipboardHaiku.cpp
+        ContextMenuHaiku.cpp
+        ContextMenuItemHaiku.cpp
+        CookieJarHaiku.cpp
+        CursorHaiku.cpp
+        DragDataHaiku.cpp
+        DragImageHaiku.cpp
+        EventLoopHaiku.cpp
+        FileChooserHaiku.cpp
+        FileSystemHaiku.cpp
+        LoggingHaiku.cpp
+        MIMETypeRegistryHaiku.cpp
+        PasteboardHaiku.cpp
+        PlatformKeyboardEventHaiku.cpp
+        PlatformMouseEventHaiku.cpp
+        PlatformWheelEventHaiku.cpp
+        PopupMenuHaiku.cpp
+        RenderThemeHaiku.cpp
+        ScreenHaiku.cpp
+        ScrollbarThemeHaiku.cpp
+        SearchPopupMenuHaiku.cpp
+        SharedBufferHaiku.cpp
+        SharedTimerHaiku.cpp
+        SoundHaiku.cpp
+        TemporaryLinkStubs.cpp
+        #TranslatorDecoder.cpp
+        WidgetHaiku.cpp
+
+        # platform/image-decoders
+        ImageDecoder.cpp
+
+        # platform/image-decoders/bmp
+        BMPImageDecoder.cpp
+        BMPImageReader.cpp
+
+        # platform/image-decoders/gif
+        GIFImageDecoder.cpp
+        GIFImageReader.cpp
+
+        #platform/image-decoders/haiku
+        ImageDecoderHaiku.cpp
+
+        # platform/image-decoders/ico
+        ICOImageDecoder.cpp
+
+        # platform/image-decoders/jpeg
+        JPEGImageDecoder.cpp
+
+        # platform/image-decoders/png
+        PNGImageDecoder.cpp
+
+        # platform/mock
+        GeolocationServiceMock.cpp
+
+        # platform/network
+        AuthenticationChallengeBase.cpp
+        Credential.cpp
+        FormData.cpp
+        FormDataBuilder.cpp
+        HTTPHeaderMap.cpp
+        HTTPParsers.cpp
+        NetworkStateNotifier.cpp
+        ProtectionSpace.cpp
+        ResourceErrorBase.cpp
+        ResourceHandle.cpp
+        ResourceRequestBase.cpp
+        ResourceResponseBase.cpp
+
+        # platform/network/curl
+        #CookieJarCurl.cpp # same implementation in CookieJarHaiku.cpp
+        DNSCurl.cpp
+        FormDataStreamCurl.cpp
+        ResourceHandleCurl.cpp
+        ResourceHandleManager.cpp
+
+        # platform/posix
+        FileSystemPOSIX.cpp
+
+        # platform/text
+        AtomicString.cpp
+        Base64.cpp
+        BidiContext.cpp
+        CString.cpp
+        RegularExpression.cpp
+        SegmentedString.cpp
+        String.cpp
+        StringBuilder.cpp
+        StringImpl.cpp
+        TextBoundaries.cpp
+        TextBreakIteratorICU.cpp
+        TextCodec.cpp
+        TextCodecICU.cpp
+        TextCodecLatin1.cpp
+        TextCodecUserDefined.cpp
+        TextCodecUTF16.cpp
+        TextEncoding.cpp
+        TextEncodingDetectorICU.cpp
+        TextEncodingRegistry.cpp
+        TextStream.cpp
+        UnicodeRange.cpp
+
+        # platform/text/haiku
+        StringHaiku.cpp
+        TextBreakIteratorInternalICUHaiku.cpp
+
+        # platform/sql
+        SQLiteAuthorizer.cpp
+        SQLiteDatabase.cpp
+        SQLiteFileSystem.cpp
+        SQLiteStatement.cpp
+        SQLiteTransaction.cpp
+        SQLTransactionClient.cpp
+        SQLValue.cpp
+
+        # plugins
+        MimeType.cpp
+        MimeTypeArray.cpp
+        # NetscapePlugins API support is disabled (cf wtf/Platform.h)
+        #npapi.cpp
+        Plugin.cpp
+        PluginArray.cpp
+        PluginData.cpp
+        PluginDatabase.cpp
+        PluginDataNone.cpp
+        PluginDebug.cpp
+        PluginMainThreadScheduler.cpp
+        PluginPackage.cpp
+        PluginPackageNone.cpp
+        PluginStream.cpp
+        PluginView.cpp
+        PluginViewNone.cpp
+
+        # rendering
+        AutoTableLayout.cpp
+        break_lines.cpp
+        CounterNode.cpp
+        EllipsisBox.cpp
+        FixedTableLayout.cpp
+        HitTestResult.cpp
+        InlineBox.cpp
+        InlineFlowBox.cpp
+        InlineTextBox.cpp
+        LayoutState.cpp
+        MediaControlElements.cpp
+        PointerEventsHitRules.cpp
+        RenderApplet.cpp
+        RenderArena.cpp
+        RenderBlock.cpp
+        RenderBlockLineLayout.cpp
+        RenderBox.cpp
+        RenderBoxModelObject.cpp
+        RenderBR.cpp
+        RenderButton.cpp
+        RenderCounter.cpp
+        RenderDataGrid.cpp
+        RenderEmbeddedObject.cpp
+        RenderFieldset.cpp
+        RenderFileUploadControl.cpp
+        RenderFlexibleBox.cpp
+        RenderForeignObject.cpp
+        RenderFrame.cpp
+        RenderFrameSet.cpp
+        RenderHTMLCanvas.cpp
+        RenderImage.cpp
+        RenderImageGeneratedContent.cpp
+        RenderInline.cpp
+        RenderLayer.cpp
+        RenderLayerBacking.cpp
+        RenderLayerCompositor.cpp
+        RenderLineBoxList.cpp
+        RenderListBox.cpp
+        RenderListItem.cpp
+        RenderListMarker.cpp
+        RenderMarquee.cpp
+        RenderMedia.cpp
+        RenderMenuList.cpp
+        RenderObject.cpp
+        RenderObjectChildList.cpp
+        RenderPart.cpp
+        RenderPartObject.cpp
+        RenderPath.cpp
+        RenderReplaced.cpp
+        RenderReplica.cpp
+        RenderRuby.cpp
+        RenderRubyBase.cpp
+        RenderRubyRun.cpp
+        RenderRubyText.cpp
+        RenderScrollbar.cpp
+        RenderScrollbarPart.cpp
+        RenderScrollbarTheme.cpp
+        RenderSlider.cpp
+        RenderSVGBlock.cpp
+        RenderSVGContainer.cpp
+        RenderSVGGradientStop.cpp
+        RenderSVGHiddenContainer.cpp
+        RenderSVGImage.cpp
+        RenderSVGInline.cpp
+        RenderSVGInlineText.cpp
+        RenderSVGModelObject.cpp
+        RenderSVGRoot.cpp
+        RenderSVGShadowTreeRootContainer.cpp
+        RenderSVGText.cpp
+        RenderSVGTextPath.cpp
+        RenderSVGTransformableContainer.cpp
+        RenderSVGTSpan.cpp
+        RenderSVGViewportContainer.cpp
+        RenderTable.cpp
+        RenderTableCell.cpp
+        RenderTableCol.cpp
+        RenderTableRow.cpp
+        RenderTableSection.cpp
+        RenderText.cpp
+        RenderTextControl.cpp
+        RenderTextControlMultiLine.cpp
+        RenderTextControlSingleLine.cpp
+        RenderTextFragment.cpp
+        RenderTheme.cpp
+        RenderTreeAsText.cpp
+        RenderVideo.cpp
+        RenderView.cpp
+        RenderWidget.cpp
+        RenderWordBreak.cpp
+        RootInlineBox.cpp
+        ScrollBehavior.cpp
+        SVGCharacterLayoutInfo.cpp
+        SVGInlineFlowBox.cpp
+        SVGInlineTextBox.cpp
+        SVGMarkerLayoutInfo.cpp
+        SVGRenderSupport.cpp
+        SVGRenderTreeAsText.cpp
+        SVGRootInlineBox.cpp
+        SVGShadowTreeElements.cpp
+        TextControlInnerElements.cpp
+        TransformState.cpp
+
+        # rendering/style
+        BindingURI.cpp
+        ContentData.cpp
+        CounterDirectives.cpp
+        FillLayer.cpp
+        KeyframeList.cpp
+        NinePieceImage.cpp
+        RenderStyle.cpp
+        ShadowData.cpp
+        StyleBackgroundData.cpp
+        StyleBoxData.cpp
+        StyleCachedImage.cpp
+        StyleFlexibleBoxData.cpp
+        StyleGeneratedImage.cpp
+        StyleInheritedData.cpp
+        StyleMarqueeData.cpp
+        StyleMultiColData.cpp
+        StyleRareInheritedData.cpp
+        StyleRareNonInheritedData.cpp
+        StyleSurroundData.cpp
+        StyleTransformData.cpp
+        StyleVisualData.cpp
+        SVGRenderStyle.cpp
+        SVGRenderStyleDefs.cpp
+
+        # storage
+        ChangeVersionWrapper.cpp
+        Database.cpp
+        DatabaseAuthorizer.cpp
+        DatabaseTask.cpp
+        DatabaseThread.cpp
+        DatabaseTracker.cpp
+        LocalStorageTask.cpp
+        LocalStorageThread.cpp
+        OriginQuotaManager.cpp
+        OriginUsageRecord.cpp
+        SQLResultSet.cpp
+        SQLResultSetRowList.cpp
+        SQLStatement.cpp
+        SQLTransaction.cpp
+        SQLTransactionCoordinator.cpp
+        Storage.cpp
+        StorageAreaImpl.cpp
+        StorageAreaSync.cpp
+        StorageEvent.cpp
+        StorageEventDispatcher.cpp
+        StorageMap.cpp
+        StorageNamespace.cpp
+        StorageNamespaceImpl.cpp
+        StorageSyncManager.cpp
+
+        # svg
+        SVGAllInOne.cpp
+        SVGElementFactory.cpp
+
+        # svg/animation
+        SMILTime.cpp
+        SMILTimeContainer.cpp
+        SVGSMILElement.cpp
+
+        # svg/graphics
+        SVGImage.cpp
+        SVGPaintServer.cpp
+        SVGPaintServerGradient.cpp
+        SVGPaintServerLinearGradient.cpp
+        SVGPaintServerPattern.cpp
+        SVGPaintServerRadialGradient.cpp
+        SVGPaintServerSolid.cpp
+        SVGResource.cpp
+        SVGResourceClipper.cpp
+        SVGResourceFilter.cpp
+        SVGResourceMarker.cpp
+        SVGResourceMasker.cpp
+
+
+        # xml
+        DOMParser.cpp
+        NativeXPathNSResolver.cpp
+        XMLHttpRequest.cpp
+        XMLHttpRequestUpload.cpp
+        XMLSerializer.cpp
+        XPathEvaluator.cpp
+        XPathExpression.cpp
+        XPathExpressionNode.cpp
+        XPathFunctions.cpp
+        XPathNamespace.cpp
+        XPathNodeSet.cpp
+        XPathNSResolver.cpp
+        XPathParser.cpp
+        XPathPath.cpp
+        XPathPredicate.cpp
+        XPathResult.cpp
+        XPathStep.cpp
+        XPathUtil.cpp
+        XPathValue.cpp
+        XPathVariableReference.cpp
+        XSLImportRule.cpp
+        XSLTExtensions.cpp
+        XSLTProcessor.cpp
+        XSLTUnicodeSort.cpp
+
+        # workers
+        DedicatedWorkerContext.cpp
+        DedicatedWorkerThread.cpp
+        DefaultSharedWorkerRepository.cpp
+        SharedWorker.cpp
+        SharedWorkerContext.cpp
+        SharedWorkerThread.cpp
+        Worker.cpp
+        WorkerContext.cpp
+        WorkerLocation.cpp
+        WorkerMessagingProxy.cpp
+        WorkerRunLoop.cpp
+        WorkerScriptLoader.cpp
+        WorkerThread.cpp
+
+        # These files must be placed here to avoid some undefined references.
+        HTMLElementFactory.cpp
+        ScriptControllerHaiku.cpp
+        ScriptEventListener.cpp
+
+        :
+        webcore1.a webcore2.a
+        libjavascriptcore.so
+        # Other required libraries
+        curl icu-common icu-data icu-i18n jpeg png sqlite3 xml2 z
+        # Haiku libraries
+        be bsd network root textencoding translation
+;
+

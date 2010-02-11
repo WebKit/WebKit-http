@@ -1,0 +1,54 @@
+# Here we should check for dependencies
+
+# mkdir shall not fail, if the directory already exists.
+MKDIR = mkdir -p ;
+
+# Modify the main target dirs
+SetConfigVar LOCATE_MAIN_TARGET : TOP JavaScriptCore
+	: [ FDirName $(DISTRO_DIR) JavaScriptCore ] ;
+SetConfigVar LOCATE_MAIN_TARGET : TOP WebCore
+	: [ FDirName $(DISTRO_DIR) WebCore ] ;
+SetConfigVar LOCATE_MAIN_TARGET : TOP WebKit
+	: [ FDirName $(DISTRO_DIR) WebKit ] ;
+
+rule SetUpSubDirBuildSettings {
+	# SetUpSubDirBuildSettings <dir> ;
+	#
+	# Sets up the compiler flags and sets the locations for the targets (objects,
+	# libraries and executables).
+	#
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	#
+	local dir = $(1) ;
+
+	OBJECTS_DIR = [ FDirName $(DISTRO_DIR) objects ] ;
+
+	CCFLAGS += -Wall -Wextra -Wno-unused-parameter ;
+	C++FLAGS += -Wall -Wextra -Wno-unused-parameter ;
+	if ($(NDEBUG)) {
+		OPTIM ?= -O2 -DNDEBUG=1 ;
+	} else {
+		OPTIM ?= ;
+#		CCFLAGS += -g ;
+#		C++FLAGS += -g ;
+		CCFLAGS += ;
+		C++FLAGS += ;
+	}
+
+	# setup objects location
+	local objdir = [ FDirName $(OBJECTS_DIR) $(dir[2-]) ] ;
+	SEARCH_SOURCE += $(objdir) ;
+	LOCATE_SOURCE = $(objdir) ;
+	LOCATE_TARGET = $(objdir) ;
+
+	# setup main targets location
+	LOCATE_MAIN_TARGET ?= [ FDirName $(DISTRO_DIR) ] ;
+}
+
+# The LOCATE_MAIN_TARGET variable shall be reset for each subdirectory.
+AUTO_SET_UP_CONFIG_VARIABLES += LOCATE_MAIN_TARGET ;
+
+# Add the rules setting up the build settings for a subdirectory to the
+# rules invoked by SubDir.
+SUBDIRRULES += SetUpSubDirBuildSettings ;

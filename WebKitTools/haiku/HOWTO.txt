@@ -1,0 +1,61 @@
+How To build WebKit on Haiku
+============================
+
+Author:	Maxime Simon <simon.maxime@gmail.com>
+
+
+Requirements
+------------
+
+* WebKit, as you read this file I can assume that you already
+got it, but just in case:
+% git clone git://gitorious.org/haiku-webkit-port/haiku-webkit-port.git
+
+* GPerf, you can find the executable here:
+http://ryanleavengood.com/haiku/gperf
+
+* ICU, the unicode folder containing the needed headers
+is located here (you may need to do a svn checkout):
+http://dev.haiku-os.org/browser/haiku/trunk//headers/libs/icu
+
+* Curl, can be found here:
+http://haiku-files.org/files/optional-packages/curl-7.19.6-r1a1-x86-gcc2-2009-08-30.zip
+
+* Perl, is normally included in Haiku.
+
+* GCC4, is also normally included in Haiku. (WebKit can't build with GCC2)
+
+* Python and Ruby, are optional but may be needed if you want to
+go further with WebKit (testing, etc).
+
+
+Building
+--------
+
+Be sure to have all the requirements above before continuing,
+and to be placed in the directory where you checked out WebKit.
+
+* First step, generate derived sources:
+% sh WebKitTools/haiku/make-generated-sources.sh
+
+* Then, building WebKit:
+% jam -q <target>
+with target in:
+	- libjavascriptcore.so	(the JavaScriptCore library)
+	- jsc			(the JavaScriptCore executable shell)
+	- libwebcore.so		(the WebCore library, including
+				 libjavascriptcore.so)
+	- libwebkit.so		(the WebKit library including libwebcore.so,
+				 the API and some specific files)
+	- HaikuLauncher		(*default target* the test shell, including
+				 libwebkit.so and a simple browing window)
+        - DumpRenderTree        (the tree parsing tool, required to test
+                                 WebKit, including libwebkit.so)
+
+
+Caution
+-------
+
+The WebKit port evolves really fast, so you may run into troubles
+when building it with a recent version of WebKit.
+We are making our best for this not to happen, but you're warned. :)

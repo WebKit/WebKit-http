@@ -1,0 +1,24 @@
+# Check for GCC4
+#IS_GCC4_PLATFORM = ;
+#local hasLibStdC++.R4 = [ Glob /boot/develop/lib/x86 : libstdc++.r4.so ] ;
+#	if ! $(hasLibStdC++.R4) {
+#		IS_GCC_4_PLATFORM = 1 ;
+#	}
+
+# What if I use a gcc2/gcc4 hybrid platform?
+IS_GCC_4_PLATFORM = 1 ;
+
+# The directories used by the build
+BUILD_DIR = [ FDirName $(TOP) WebKitTools haiku build ] ;
+GENERATED_DIR = [ FDirName $(TOP) WebKitBuild Debug ] ;
+DISTRO_DIR = [ FDirName $(TOP) WebKitBuild Debug ] ;
+if ($(NDEBUG)) {
+	GENERATED_DIR = [ FDirName $(TOP) WebKitBuild Release ] ;
+	DISTRO_DIR = [ FDirName $(TOP) WebKitBuild Release ] ;
+}
+
+# The rules
+include [ FDirName $(BUILD_DIR) ConfigRules ] ;
+include [ FDirName $(BUILD_DIR) OverriddenJamRules ] ;
+include [ FDirName $(BUILD_DIR) MainBuildRules ] ;
+include [ FDirName $(BUILD_DIR) BuildSettings ] ;
