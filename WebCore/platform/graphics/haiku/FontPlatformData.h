@@ -5,6 +5,7 @@
  * Copyright (C) 2006 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -25,57 +26,112 @@
  *
  */
 
-#ifndef FontPlatformData_H
-#define FontPlatformData_H
+#ifndef FontPlatformData_h
+#define FontPlatformData_h
 
 #include "FontDescription.h"
 #include "GlyphBuffer.h"
+#include "RefCounted.h"
 #include <interface/Font.h>
+#include <stdio.h>
 
 namespace WebCore {
 
-    class FontPlatformData {
-    public:
-        FontPlatformData(WTF::HashTableDeletedValueType)
-            : m_font(hashTableDeletedFontValue())
-            { }
+class FontPlatformDataPrivate : public Noncopyable {
+public:
+    FontPlatformDataPrivate();
+    FontPlatformDataPrivate(const float size, const bool bold, const bool oblique);
+    FontPlatformDataPrivate(const BFont& font);
 
-        FontPlatformData()
-            : m_font(0)
-            { }
+    void update()
+    {
+        size = font.Size();
+        bold = font.Flags() & B_BOLD_FACE;
+        oblique = font.Flags() & B_ITALIC_FACE;
+    }
 
-        FontPlatformData(const FontDescription&, const AtomicString& family);
-        FontPlatformData(float size, bool bold, bool oblique);
-        FontPlatformData(const FontPlatformData&);
+    void deref()
+    {
+        --refCount;
+        if (!refCount)
+            delete this;
+    }
 
-        ~FontPlatformData();
+    unsigned refCount;
+    BFont font;
+    float size;
+    bool bold : 1;
+    bool oblique : 1;
 
-        BFont* font() const { return m_font; }
+private:
+    ~FontPlatformDataPrivate();
+};
 
-        bool isFixedPitch();
-        float size() const { return m_size; }
-        bool bold() const { return m_bold; }
-        bool oblique() const { return m_oblique; }
+class FontPlatformData : public FastAllocBase {
+public:
+    FontPlatformData(WTF::HashTableDeletedValueType)
+        : m_data(reinterpret_cast<FontPlatformDataPrivate*>(-1))
+    {
+   	}
 
-        unsigned hash() const;
-        bool isHashTableDeletedValue() const;
+//    FontPlatformData()
+//        : m_font(0)
+//    {
+//    }
+    FontPlatformData(const BFont& font)
+        : m_data(new FontPlatformDataPrivate(font))
+    {}
 
-        bool operator==(const FontPlatformData&) const;
+    FontPlatformData(const FontDescription&, const AtomicString& family);
+    FontPlatformData(float size, bool bold, bool oblique);
+    FontPlatformData(const FontPlatformData&);
 
-#ifndef NDEBUG
-        String description() const;
-#endif
+    ~FontPlatformData();
 
-        BFont* m_font;
-        float m_size;
-        bool m_bold;
-        bool m_oblique;
+    FontPlatformData& operator=(const FontPlatformData&);
+    bool operator==(const FontPlatformData&) const;
 
-    private:
-        static BFont* hashTableDeletedFontValue() { return reinterpret_cast<BFont*>(-1); }
-    };
+    const BFont* font() const { return &(m_data->font); }
+
+    bool isFixedPitch()
+    {
+        ASSERT(!isHashTableDeletedValue());
+        if (m_data)
+            return m_data->font.Spacing() == B_FIXED_SPACING;
+        return false;
+    }
+    float size() const
+    {
+        ASSERT(!isHashTableDeletedValue());
+        if (m_data)
+            return m_data->size;
+        return 0;
+    }
+    bool bold() const
+    {
+        ASSERT(!isHashTableDeletedValue());
+        if (m_data)
+            return m_data->bold;
+        return false;
+    }
+    bool oblique() const
+    {
+        ASSERT(!isHashTableDeletedValue());
+        if (m_data)
+            return m_data->oblique;
+        return false;
+    }
+
+    unsigned hash() const;
+    bool isHashTableDeletedValue() const;
+
+    String description() const;
+
+private:
+    FontPlatformDataPrivate* m_data;
+};
 
 } // namespace WebCore
 
-#endif
+#endif // FontPlatformData_h
 

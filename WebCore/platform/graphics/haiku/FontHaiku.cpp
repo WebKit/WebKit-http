@@ -70,11 +70,10 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
 {
     Color color = graphicsContext->fillColor();
     BView* view = graphicsContext->platformContext();
-    BFont* m_font = font->platformData().font();
 
     graphicsContext->setCompositeOperation(CompositeSourceOver);
     view->SetHighColor(color);
-    view->SetFont(m_font);
+    view->SetFont(font->platformData().font());
 
     GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));
     float offset = point.x();

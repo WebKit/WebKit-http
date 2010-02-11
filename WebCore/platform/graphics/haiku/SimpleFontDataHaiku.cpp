@@ -45,7 +45,7 @@ namespace WebCore {
 
 void SimpleFontData::platformInit()
 {
-    BFont* font = m_platformData.font();
+    const BFont* font = m_platformData.font();
     if (!font)
         return;
 
