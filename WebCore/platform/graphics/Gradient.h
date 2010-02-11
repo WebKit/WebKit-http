@@ -57,6 +57,9 @@ typedef cairo_pattern_t* PlatformGradient;
 class SkShader;
 typedef class SkShader* PlatformGradient;
 typedef class SkShader* PlatformPattern;
+#elif PLATFORM(HAIKU)
+class BGradient;
+typedef BGradient* PlatformGradient;
 #else
 typedef void* PlatformGradient;
 #endif
