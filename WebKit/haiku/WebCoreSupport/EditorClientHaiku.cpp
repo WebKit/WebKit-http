@@ -256,10 +256,7 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
     if (!start)
         return;
 
-printf("selection start is shadow node/tree, editable: %d/%d, %d\n",
-    start->isShadowNode(), start->isInShadowTree(), start->isContentEditable());
-
-    if (true /*start->isContentEditable()*/) {
+    if (start->isContentEditable()) {
         switch (kevent->windowsVirtualKeyCode()) {
         case VK_BACK:
             frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
