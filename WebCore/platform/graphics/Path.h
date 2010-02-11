@@ -48,8 +48,8 @@ typedef WebCore::CairoPath PlatformPath;
 class SkPath;
 typedef SkPath PlatformPath;
 #elif PLATFORM(HAIKU)
-class BRegion;
-typedef BRegion PlatformPath;
+class BShape;
+typedef BShape PlatformPath;
 #elif OS(WINCE)
 namespace WebCore {
     class PlatformPath;
