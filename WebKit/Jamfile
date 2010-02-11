@@ -1,14 +1,15 @@
 SubDir TOP WebKit ;
 
 local defines = [ FDefines BUILDING_HAIKU__=1 USE_SYSTEM_MALLOC=1
-	WTF_USE_PTHREADS=1 HAVE_POSIX_MEMALIGN=1 HAVE_SYS_TIME_H=1
-	ENABLE_DOM_STORAGE=1 ] ;
+	WTF_USE_PTHREADS=1 HAVE_POSIX_MEMALIGN=1 HAVE_SYS_TIME_H=1 ENABLE_DOM_STORAGE=1
+    ENABLE_SVG=1 ENABLE_SVG_ANIMATION=1 ENABLE_SVG_FONTS=1 ENABLE_SVG_FOREIGN_OBJECT=1 ENABLE_SVG_USE=1 ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) ;
 SubDirCcFlags $(defines) ;
 
 SubDirSysHdrs $(TOP) JavaScriptCore ;
+SubDirSysHdrs $(TOP) WebCore svg ;
 
 SubDirHdrs $(TOP) ;
 SubDirHdrs $(TOP) WebCore ;
@@ -47,6 +48,9 @@ SubDirHdrs $(TOP) WebCore platform text ;
 SubDirHdrs $(TOP) WebCore plugins ;
 SubDirHdrs $(TOP) WebCore rendering ;
 SubDirHdrs $(TOP) WebCore rendering style ;
+SubDirHdrs $(TOP) WebCore svg ;
+SubDirHdrs $(TOP) WebCore svg animation ;
+SubDirHdrs $(TOP) WebCore svg graphics ;
 
 
 #-----------------------------------------------------------------------------
