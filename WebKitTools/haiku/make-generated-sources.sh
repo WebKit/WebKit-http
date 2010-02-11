@@ -68,8 +68,16 @@ fi
 # __inline seems to be unsupported by Haiku GCC 4
 # Patch generated sources to use inline instead:
 
-#for file in CSSPropertyNames.cpp CSSValueKeywords.c ColorData.c DocTypeStrings.cpp HTMLEntityNames.c 
+#for file in CSSPropertyNames.cpp CSSValueKeywords.c ColorData.c DocTypeStrings.cpp HTMLEntityNames.c
 #do
 #	echo "Patching $file: __inline -> inline"
 #	sed --in-place=.unpatched -e 's/^__inline$/inline/g' "$file"
 #done
+
+# modify the checks around gnu_inline to include NDEBUG so that symbols are
+# generated for debug builds
+for file in CSSPropertyNames.cpp CSSValueKeywords.c ColorData.c DocTypeStrings.cpp HTMLEntityNames.c
+do
+	echo "Patching $file: wrap gnu_inline in NDEBUG check"
+	sed --in-place=.unpatched -e 's/__GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__/NDEBUG \&\& (__GNUC_STDC_INLINE__ || defined __GNUC_GNU_INLINE__)/g' "$file"
+done
