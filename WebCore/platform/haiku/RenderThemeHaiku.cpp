@@ -107,25 +107,28 @@ void RenderThemeHaiku::systemFont(int propId, FontDescription&) const
     notImplemented();
 }
 
-bool RenderThemeHaiku::paintCheckbox(RenderObject*, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintCheckbox(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
-        return false;
+        return true;
+
+    if (!be_control_look)
+        return true;
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     BRect rect = intRect;
     BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object);
 
-    if (!be_control_look)
-        return false;
-
-    be_control_look->DrawCheckBox(view, rect, rect, base);
-    return true;
+	view->PushState();
+    be_control_look->DrawCheckBox(view, rect, rect, base, flags);
+	view->PopState();
+    return false;
 }
 
 void RenderThemeHaiku::setCheckboxSize(RenderStyle* style) const
 {
-    int size = 10;
+    int size = 14;
 
     // If the width and height are both specified, then we have nothing to do.
     if (!style->width().isIntrinsicOrAuto() && !style->height().isAuto())
@@ -139,26 +142,98 @@ void RenderThemeHaiku::setCheckboxSize(RenderStyle* style) const
         style->setHeight(Length(size, Fixed));
 }
 
-bool RenderThemeHaiku::paintRadio(RenderObject*, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintRadio(RenderObject* object, const RenderObject::PaintInfo& info,
+	const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
-        return false;
+        return true;
+
+    if (!be_control_look)
+        return true;
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
     BRect rect = intRect;
     BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object);
 
-    if (!be_control_look)
-        return false;
-
-    be_control_look->DrawRadioButton(view, rect, rect, base);
-    return true;
+	view->PushState();
+    be_control_look->DrawRadioButton(view, rect, rect, base, flags);
+	view->PopState();
+    return false;
 }
 
 void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
 {
     // This is the same as checkboxes.
     setCheckboxSize(style);
+}
+
+void RenderThemeHaiku::adjustButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+{
+	RenderTheme::adjustButtonStyle(selector, style, element);
+}
+
+bool RenderThemeHaiku::paintButton(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+{
+    if (info.context->paintingDisabled())
+        return true;
+
+    if (!be_control_look)
+        return true;
+
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color background = base;
+    	// TODO: From PaintInfo?
+    BRect rect = intRect;
+    BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object);
+
+	view->PushState();
+    be_control_look->DrawButtonFrame(view, rect, rect, base, background, flags);
+    be_control_look->DrawButtonBackground(view, rect, rect, base, flags);
+    view->PopState();
+    return false;
+}
+
+void RenderThemeHaiku::setButtonSize(RenderStyle* style) const
+{
+	RenderTheme::setButtonSize(style);
+}
+
+void RenderThemeHaiku::adjustTextFieldStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+{
+	RenderTheme::adjustTextFieldStyle(selector, style, element);
+}
+
+bool RenderThemeHaiku::paintTextField(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+{
+    if (info.context->paintingDisabled())
+        return true;
+
+    if (!be_control_look)
+        return true;
+
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color background = base;
+    	// TODO: From PaintInfo?
+    BRect rect = intRect;
+    BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object) & ~BControlLook::B_CLICKED;
+
+	view->PushState();
+    be_control_look->DrawTextControlBorder(view, rect, rect, base, flags);
+    view->PopState();
+    return false;
+}
+
+void RenderThemeHaiku::adjustTextAreaStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+{
+	RenderTheme::adjustTextAreaStyle(selector, style, element);
+}
+
+bool RenderThemeHaiku::paintTextArea(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+{
+    return paintTextField(object, info, intRect);
 }
 
 void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector*, RenderStyle* style, Element*) const
@@ -172,7 +247,21 @@ void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector*, RenderStyle* style
 bool RenderThemeHaiku::paintMenuList(RenderObject*, const RenderObject::PaintInfo&, const IntRect&)
 {
     notImplemented();
-    return false;
+    return true;
+}
+
+unsigned RenderThemeHaiku::flagsForObject(RenderObject* object) const
+{
+    unsigned flags = BControlLook::B_BLEND_FRAME;
+    if (!isEnabled(object))
+    	flags |= BControlLook::B_DISABLED;
+    if (isFocused(object))
+    	flags |= BControlLook::B_FOCUSED;
+    if (isPressed(object))
+    	flags |= BControlLook::B_CLICKED;
+    if (isChecked(object))
+    	flags |= BControlLook::B_ACTIVATED;
+	return flags;
 }
 
 } // namespace WebCore
