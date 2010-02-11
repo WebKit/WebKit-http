@@ -34,6 +34,9 @@
 #include "SegmentedFontData.h"
 #include "SimpleFontData.h"
 #include <wtf/unicode/Unicode.h>
+#ifndef NDEBUG
+#include <stdio.h>
+#endif
 
 namespace WebCore {
 
