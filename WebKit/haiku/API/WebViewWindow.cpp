@@ -1,0 +1,214 @@
+/*
+ * Copyright (C) 2007 Andrea Anzani <andrea.anzani@gmail.com>
+ * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "config.h"
+#include "WebViewWindow.h"
+
+#include "WebView.h"
+#include "WebViewConstants.h"
+
+#include <Application.h>
+#include <Button.h>
+#include <GridLayoutBuilder.h>
+#include <GroupLayout.h>
+#include <GroupLayoutBuilder.h>
+#include <StringView.h>
+#include <TextControl.h>
+
+#include <stdio.h>
+
+using namespace WebCore;
+
+WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
+        window_feel feel, uint32 flags, uint32 workspace)
+    : BWindow(frame, name, look, feel, flags, workspace)
+    , m_webView(new WebView("web_view"))
+{
+    SetLayout(new BGroupLayout(B_HORIZONTAL));
+}
+
+WebViewWindow::~WebViewWindow()
+{
+}
+
+void WebViewWindow::MessageReceived(BMessage* message)
+{
+    switch (message->what) {
+    case LOAD_ONLOAD_HANDLE:
+        printf("LOAD_ONLOAD_HANDLE\n");
+        break;
+    case LOAD_DL_COMPLETED:
+        printf("LOAD_DL_COMPLETED\n");
+        break;
+    case LOAD_DOC_COMPLETED:
+        printf("LOAD_DOC_COMPLETED\n");
+        break;
+    case JAVASCRIPT_WINDOW_OBJECT_CLEARED:
+        printf("JAVASCRIPT_WINDOW_OBJECT_CLEARED\n");
+        break;
+    case NAVIGATION_REQUESTED: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            navigationRequested(url);
+        break;
+    }
+    case NEW_WINDOW_REQUESTED: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+        	newWindowRequested(url);
+        break;
+    }
+    case LOAD_NEGOCIATING: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            loadNegociating(url);
+        break;
+    }
+    case LOAD_TRANSFERRING: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            loadTransfering(url);
+        break;
+    }
+    case LOAD_PROGRESS: {
+        float progress;
+        if (message->FindFloat("progress", &progress) == B_OK)
+            loadProgress(progress);
+        break;
+    }
+    case LOAD_FAILED: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            loadFailed(url);
+        break;
+    }
+    case LOAD_FINISHED: {
+        BString title;
+        if (message->FindString("url", &title) == B_OK)
+            loadFinished(title);
+        break;
+    }
+    case TITLE_CHANGED: {
+        BString title;
+        if (message->FindString("title", &title) == B_OK)
+            titleChanged(title);
+        break;
+    }
+    case RESIZING_REQUESTED: {
+        BRect rect;
+        if (message->FindRect("rect", &rect) == B_OK)
+            resizeRequested(rect.Width(), rect.Height());
+        break;
+    }
+    case SET_STATUS_TEXT: {
+        BString text;
+        if (message->FindString("text", &text) == B_OK)
+            statusChanged(text);
+        break;
+    }
+    case UPDATE_NAVIGATION_INTERFACE: {
+        bool canGoBackward = false;
+        bool canGoForward = false;
+        bool canStop = false;
+        message->FindBool("can go backward", &canGoBackward);
+        message->FindBool("can go forward", &canGoForward);
+        message->FindBool("can stop", &canStop);
+        navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop);
+        break;
+    }
+
+    case B_MOUSE_WHEEL_CHANGED:
+        m_webView->MessageReceived(message);
+        break;
+    default:
+        BWindow::MessageReceived(message);
+        break;
+    }
+}
+
+bool WebViewWindow::QuitRequested()
+{
+	// TODO: Check for modified form data and ask user for confirmation, etc.
+
+    // Do this here, so WebKit tear down happens earlier.
+    m_webView->RemoveSelf();
+    delete m_webView;
+    m_webView = NULL;
+
+    return true;
+}
+
+void WebViewWindow::navigationRequested(const BString& url)
+{
+}
+
+void WebViewWindow::loadNegociating(const BString& url)
+{
+}
+
+void WebViewWindow::loadTransfering(const BString& url)
+{
+}
+
+void WebViewWindow::loadProgress(float progress)
+{
+}
+
+void WebViewWindow::loadFailed(const BString& url)
+{
+}
+
+void WebViewWindow::loadFinished(const BString& url)
+{
+}
+
+void WebViewWindow::titleChanged(const BString& title)
+{
+    SetTitle(title.String());
+}
+
+void WebViewWindow::resizeRequested(float width, float height)
+{
+    ResizeTo(width, height);
+}
+
+void WebViewWindow::statusChanged(const BString& statusText)
+{
+}
+
+void WebViewWindow::newWindowRequested(const BString& url)
+{
+}
+
+void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
+    bool canGoForward, bool canStop)
+{
+}
+
