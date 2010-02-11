@@ -36,10 +36,20 @@ Be sure to have all the requirements above before continuing,
 and to be placed in the directory where you checked out WebKit.
 
 * First step, generate derived sources:
-% sh WebKitTools/haiku/make-generated-sources.sh
+$ sh WebKitTools/haiku/make-generated-sources.sh
+
+Then you need to fix up some generated files. Point TextSearch to the
+folder WebCore/DerivedSources/WebCore and seach for "__gnu_inline__".
+Fix up the whole block where this is used to be wrapped in
+#ifdef NDEBUG ... #endif. This will fix compiling the debug version of the
+build.
+
+If you want to build the release version:
+
+$ export NDEBUG=1
 
 * Then, building WebKit:
-% jam -q <target>
+$ jam -q <target>
 with target in:
 	- libjavascriptcore.so	(the JavaScriptCore library)
 	- jsc			(the JavaScriptCore executable shell)
@@ -51,6 +61,16 @@ with target in:
 				 libwebkit.so and a simple browing window)
         - DumpRenderTree        (the tree parsing tool, required to test
                                  WebKit, including libwebkit.so)
+
+If you just run
+
+$ jam jsc
+
+followed by
+
+$ jam HaikuLaucher
+
+you will automatically build everything required for the browser.
 
 
 Caution
