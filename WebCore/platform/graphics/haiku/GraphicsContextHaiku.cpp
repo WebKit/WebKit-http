@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -33,11 +34,14 @@
 #include "Color.h"
 #include "Font.h"
 #include "FontData.h"
+#include "GraphicsContextPrivate.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "Pen.h"
+#include <Bitmap.h>
 #include <GraphicsDefs.h>
 #include <Region.h>
+#include <Shape.h>
 #include <View.h>
 #include <Window.h>
 #include <stdio.h>
@@ -50,16 +54,167 @@ public:
     GraphicsContextPlatformPrivate(BView* view);
     ~GraphicsContextPlatformPrivate();
 
-    BView* m_view;
+    struct Layer {
+    public:
+        Layer(BView* _view)
+            : view(_view)
+            , bitmap(0)
+            , globalAlpha(255)
+            , currentShape(0)
+            , locationInParent(B_ORIGIN)
+            , accumulatedOrigin(B_ORIGIN)
+            , previous(0)
+        {
+            strokeColor.red = 0;
+            strokeColor.green = 0;
+            strokeColor.blue = 0;
+            strokeColor.alpha = 0;
+
+            fillColor.red = 0;
+            fillColor.green = 0;
+            fillColor.blue = 0;
+            fillColor.alpha = 255;
+        }
+        Layer(Layer* previous)
+            : view(0)
+            , bitmap(0)
+            , globalAlpha(255)
+            , currentShape(0)
+            , locationInParent(B_ORIGIN)
+            , accumulatedOrigin(B_ORIGIN)
+            , previous(previous)
+        {
+            strokeColor.red = 0;
+            strokeColor.green = 0;
+            strokeColor.blue = 0;
+            strokeColor.alpha = 0;
+
+            fillColor.red = 0;
+            fillColor.green = 0;
+            fillColor.blue = 0;
+            fillColor.alpha = 255;
+
+            BRegion parentClipping;
+            previous->view->GetClippingRegion(&parentClipping);
+            BRect frameInParent = parentClipping.Frame();
+            if (!frameInParent.IsValid())
+                frameInParent = previous->view->Bounds();
+            BRect bounds = frameInParent.OffsetToCopy(B_ORIGIN);
+            locationInParent += frameInParent.LeftTop();
+            view = new BView(bounds, "WebCore transparency layer", 0, 0);
+            bitmap = new BBitmap(bounds, B_RGBA32, true);
+            bitmap->Lock();
+            bitmap->AddChild(view);
+            view->SetHighColor(0, 0, 0, 0);
+            view->FillRect(view->Bounds());
+            view->SetHighColor(previous->view->HighColor());
+            view->SetDrawingMode(previous->view->DrawingMode());
+            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+            // TODO: locationInParent and accumulatedOrigin can
+            // probably somehow be merged. But for now it works.
+            accumulatedOrigin.x = -frameInParent.left;
+            accumulatedOrigin.y = -frameInParent.top;
+            view->SetOrigin(previous->accumulatedOrigin + accumulatedOrigin);
+            view->SetScale(previous->view->Scale());
+            view->SetPenSize(previous->view->PenSize());
+        }
+        ~Layer()
+        {
+            if (bitmap) {
+                bitmap->Unlock();
+                // Deleting the bitmap will also take care of the view,
+                // if there is no bitmap, the view does not belong to us (initial layer).
+                delete bitmap;
+            }
+            delete currentShape;
+        }
+
+        BView* view;
+        BBitmap* bitmap;
+        rgb_color strokeColor;
+        rgb_color fillColor;
+        uint8 globalAlpha;
+        BShape* currentShape;
+        BPoint locationInParent;
+        BPoint accumulatedOrigin;
+
+        Layer* previous;
+    };
+
+    BView* view() const
+    {
+        return m_currentLayer->view;
+    }
+
+    void setShape(BShape* shape)
+    {
+        delete m_currentLayer->currentShape;
+        m_currentLayer->currentShape = shape;
+    }
+
+    BShape* shape() const
+    {
+        if (!m_currentLayer->currentShape)
+            m_currentLayer->currentShape = new BShape();
+        return m_currentLayer->currentShape;
+    }
+
+    void pushLayer(float opacity)
+    {
+        m_currentLayer = new Layer(m_currentLayer);
+        m_currentLayer->globalAlpha = (uint8)(opacity * 255.0);
+    }
+
+    void popLayer()
+    {
+        if (!m_currentLayer->previous)
+            return;
+        Layer* layer = m_currentLayer;
+        m_currentLayer = layer->previous;
+        if (layer->globalAlpha > 0) {
+            // Post process the bitmap in order to apply global alpha...
+            layer->view->Sync();
+            if (layer->globalAlpha < 255) {
+                uint8* bits = reinterpret_cast<uint8*>(layer->bitmap->Bits());
+                uint32 width = layer->bitmap->Bounds().IntegerWidth() + 1;
+                uint32 height = layer->bitmap->Bounds().IntegerHeight() + 1;
+                uint32 bpr = layer->bitmap->BytesPerRow();
+                uint8 alpha = layer->globalAlpha;
+                for (uint32 y = 0; y < height; y++) {
+                    uint8* p = bits;
+                    for (uint32 x = 0; x < width; x++) {
+                        // TODO: There is a method to do shifting without bit errors.
+                        p[0] = (uint8)((uint16)p[0] * alpha >> 8);
+                        p[1] = (uint8)((uint16)p[1] * alpha >> 8);
+                        p[2] = (uint8)((uint16)p[2] * alpha >> 8);
+                        p[3] = (uint8)((uint16)p[3] * alpha >> 8);
+                        p += 4;
+                    }
+                    bits += bpr;
+                }
+            }
+            BPoint bitmapLocation(layer->locationInParent);
+            bitmapLocation -= m_currentLayer->accumulatedOrigin;
+            m_currentLayer->view->DrawBitmap(layer->bitmap, bitmapLocation);
+        }
+        delete layer;
+    }
+
+    Layer* m_currentLayer;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
-    : m_view(view)
+    : m_currentLayer(new Layer(view))
 {
 }
 
 GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
 {
+    while (Layer* previous = m_currentLayer->previous) {
+        delete m_currentLayer;
+        m_currentLayer = previous;
+    }
+    delete m_currentLayer;
 }
 
 GraphicsContext::GraphicsContext(PlatformGraphicsContext* context)
@@ -77,17 +232,18 @@ GraphicsContext::~GraphicsContext()
 
 PlatformGraphicsContext* GraphicsContext::platformContext() const
 {
-    return m_data->m_view;
+    return m_data->view();
 }
 
 void GraphicsContext::savePlatformState()
 {
-    m_data->m_view->PushState();
+    m_data->view()->PushState();
 }
 
 void GraphicsContext::restorePlatformState()
 {
-    m_data->m_view->PopState();
+    m_data->m_currentLayer->accumulatedOrigin -= m_data->view()->Origin();
+    m_data->view()->PopState();
 }
 
 // Draws a filled rectangle with a stroked border.
@@ -96,21 +252,18 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    m_data->m_view->FillRect(rect);
+    m_data->view()->FillRect(rect);
     if (strokeStyle() != NoStroke)
-        m_data->m_view->StrokeRect(rect, getHaikuStrokeStyle());
+        m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
 }
 
 // This is only used to draw borders.
 void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
         return;
 
-    if (strokeStyle() == NoStroke)
-        return;
-
-    m_data->m_view->StrokeLine(point1, point2, getHaikuStrokeStyle());
+    m_data->view()->StrokeLine(point1, point2, getHaikuStrokeStyle());
 }
 
 // This method is only used to draw the little circles used in lists.
@@ -119,22 +272,74 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    m_data->m_view->FillEllipse(rect);
+    m_data->view()->FillEllipse(rect);
     if (strokeStyle() != NoStroke)
-        m_data->m_view->StrokeEllipse(rect, getHaikuStrokeStyle());
+        m_data->view()->StrokeEllipse(rect, getHaikuStrokeStyle());
 }
 
 void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSpan)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
         return;
 
-    m_data->m_view->StrokeArc(rect, startAngle, angleSpan, getHaikuStrokeStyle());
+    // TODO: The code below will only make round-corner boxen look nice. For an utterly shocking
+    // implementation of round corner drawing, see RenderBoxModelObject::paintBorder(). It tries
+    // to use one (or two) alpha mask(s) per box corner to cut off a thicker stroke and doubles
+    // the stroke with. All this to align the arc with the box sides...
+
+    m_data->view()->PushState();
+    float penSize = strokeThickness() / 2.0f;
+    m_data->view()->SetPenSize(penSize);
+    BRect bRect(rect.x(), rect.y(), rect.right(), rect.bottom());
+    if (startAngle >= 0 && startAngle < 90) {
+        bRect.right -= penSize;
+        bRect.top += penSize / 2.0f;
+        bRect.bottom -= penSize / 2.0f;
+    } else if (startAngle >= 90 && startAngle < 180) {
+        bRect.left += penSize / 2.0f;
+        bRect.top += penSize / 2.0f;
+        bRect.right -= penSize / 2.0f;
+        bRect.bottom -= penSize / 2.0f;
+    } else if (startAngle >= 180 && startAngle < 270) {
+        bRect.left += penSize / 2.0f;
+        bRect.right -= penSize / 2.0f;
+        bRect.bottom -= penSize;
+    } else if (startAngle >= 270 && startAngle < 360) {
+        bRect.right -= penSize;
+        bRect.bottom -= penSize;
+    }
+    bRect.OffsetTo(floorf(bRect.left), floorf(bRect.top));
+    uint32 flags = m_data->view()->Flags();
+    m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
+    m_data->view()->StrokeArc(bRect, startAngle, angleSpan, getHaikuStrokeStyle());
+    m_data->view()->SetFlags(flags);
+
+    m_data->view()->PopState();
 }
 
 void GraphicsContext::strokePath()
 {
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    if (!m_data->shape())
+        return;
+
+//    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
+    m_data->view()->MovePenTo(B_ORIGIN);
+
+    if (m_common->state.strokePattern || m_common->state.strokeGradient || strokeColor().alpha()) {
+        if (m_common->state.strokePattern)
+            notImplemented();
+        else if (m_common->state.strokeGradient) {
+            notImplemented();
+//            BGradient* gradient = m_common->state.strokeGradient->platformGradient();
+//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+//            m_data->view()->StrokeShape(m_data->shape(), *gradient);
+        } else
+            m_data->view()->StrokeShape(m_data->shape());
+    }
+    m_data->setShape(0);
 }
 
 void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* points, bool shouldAntialias)
@@ -146,10 +351,10 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
     for (size_t i = 0; i < pointsLength; i++)
         bPoints[i] = points[i];
 
-    m_data->m_view->FillPolygon(bPoints, pointsLength);
+    m_data->view()->FillPolygon(bPoints, pointsLength);
     if (strokeStyle() != NoStroke)
         // Stroke with low color
-        m_data->m_view->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
+        m_data->view()->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
@@ -157,16 +362,18 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (paintingDisabled())
         return;
 
-    rgb_color oldColor = m_data->m_view->HighColor();
-    m_data->m_view->SetHighColor(color);
-    m_data->m_view->FillRect(rect);
-    m_data->m_view->SetHighColor(oldColor);
+    rgb_color oldColor = m_data->view()->HighColor();
+    m_data->view()->SetHighColor(color);
+    m_data->view()->FillRect(rect);
+    m_data->view()->SetHighColor(oldColor);
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
 {
     if (paintingDisabled())
         return;
+
+    m_data->view()->FillRect(rect);
 }
 
 void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color& color, ColorSpace colorSpace)
@@ -174,25 +381,88 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     if (paintingDisabled() || !color.alpha())
         return;
 
-    notImplemented();
-    // FIXME: A simple implementation could just use FillRoundRect if all
-    // the sizes are the same, or even if they are not. Otherwise several
-    // FillRect and FillArc calls are needed.
+    BPoint points[3];
+    const float kRadiusBezierScale = 0.56f;
+
+    BShape shape;
+    shape.MoveTo(BPoint(rect.x() + topLeft.width(), rect.y()));
+    shape.LineTo(BPoint(rect.right() - topRight.width(), rect.y()));
+    points[0].x = rect.right() - kRadiusBezierScale * topRight.width();
+    points[0].y = rect.y();
+    points[1].x = rect.right();
+    points[1].y = rect.y() + kRadiusBezierScale * topRight.height();
+    points[2].x = rect.right();
+    points[2].y = rect.y() + topRight.height();
+    shape.BezierTo(points);
+    shape.LineTo(BPoint(rect.right(), rect.bottom() - bottomRight.height()));
+    points[0].x = rect.right();
+    points[0].y = rect.bottom() - kRadiusBezierScale * bottomRight.height();
+    points[1].x = rect.right() - kRadiusBezierScale * bottomRight.width();
+    points[1].y = rect.bottom();
+    points[2].x = rect.right() - bottomRight.width();
+    points[2].y = rect.bottom();
+    shape.BezierTo(points);
+    shape.LineTo(BPoint(rect.x() + bottomLeft.width(), rect.bottom()));
+    points[0].x = rect.x() + kRadiusBezierScale * bottomLeft.width();
+    points[0].y = rect.bottom();
+    points[1].x = rect.x();
+    points[1].y = rect.bottom() - kRadiusBezierScale * bottomRight.height();
+    points[2].x = rect.x();
+    points[2].y = rect.bottom() - bottomRight.height();
+    shape.BezierTo(points);
+    shape.LineTo(BPoint(rect.x(), rect.y() + topLeft.height()));
+    points[0].x = rect.x();
+    points[0].y = rect.y() - kRadiusBezierScale * topLeft.height();
+    points[1].x = rect.x() + kRadiusBezierScale * topLeft.width();
+    points[1].y = rect.y();
+    points[2].x = rect.x() + topLeft.width();
+    points[2].y = rect.y();
+    shape.BezierTo(points);
+    shape.Close();
+
+    rgb_color oldColor = m_data->view()->HighColor();
+    m_data->view()->SetHighColor(color);
+    m_data->view()->MovePenTo(B_ORIGIN);
+    m_data->view()->FillShape(&shape);
+    m_data->view()->SetHighColor(oldColor);
 }
 
 void GraphicsContext::fillPath()
 {
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    if (!m_data->shape())
+        return;
+
+//    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
+    m_data->view()->MovePenTo(B_ORIGIN);
+
+    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+//        drawFilledShadowPath(this, p, path); TODO: What's this shadow business?
+        if (m_common->state.fillPattern)
+            notImplemented();
+        else if (m_common->state.fillGradient) {
+            BGradient* gradient = m_common->state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+            m_data->view()->FillShape(m_data->shape(), *gradient);
+        } else
+            m_data->view()->FillShape(m_data->shape());
+    }
+    m_data->setShape(0);
 }
 
 void GraphicsContext::beginPath()
 {
-    notImplemented();
+    m_data->setShape(new BShape());
 }
 
 void GraphicsContext::addPath(const Path& path)
 {
-    notImplemented();
+    if (!m_data->shape())
+        m_data->setShape(new BShape(*path.platformPath()));
+    else
+        m_data->shape()->AddShape(path.platformPath());
 }
 
 void GraphicsContext::clip(const FloatRect& rect)
@@ -201,12 +471,23 @@ void GraphicsContext::clip(const FloatRect& rect)
         return;
 
     BRegion region(rect);
-    m_data->m_view->ConstrainClippingRegion(&region);
+    m_data->view()->ConstrainClippingRegion(&region);
+}
+
+void GraphicsContext::clipPath(WindRule clipRule)
+{
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
 }
 
 void GraphicsContext::drawFocusRing(const Vector<Path>& paths, int width, int offset, const Color& color)
 {
-    // FIXME: implement
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
 }
 
 void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width */, int /* offset */, const Color& color)
@@ -220,11 +501,11 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
 
     if (rects.size() > 1) {
         BRegion    region;
-        for (int i = 0; i < rectCount; ++i)
+        for (unsigned i = 0; i < rectCount; ++i)
             region.Include(BRect(rects[i]));
 
-        m_data->m_view->SetHighColor(color);
-        m_data->m_view->StrokeRect(region.Frame(), B_MIXED_COLORS);
+        m_data->view()->SetHighColor(color);
+        m_data->view()->StrokeRect(region.Frame(), B_MIXED_COLORS);
     }
 }
 
@@ -247,8 +528,12 @@ void GraphicsContext::drawLineForMisspellingOrBadGrammar(const IntPoint&, int wi
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect)
 {
-    notImplemented();
-    return rect;
+    FloatRect rounded(rect);
+    rounded.setX(roundf(rect.x()));
+    rounded.setY(roundf(rect.y()));
+    rounded.setWidth(roundf(rect.width()));
+    rounded.setHeight(roundf(rect.height()));
+    return rounded;
 }
 
 void GraphicsContext::beginTransparencyLayer(float opacity)
@@ -256,7 +541,7 @@ void GraphicsContext::beginTransparencyLayer(float opacity)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->pushLayer(opacity);
 }
 
 void GraphicsContext::endTransparencyLayer()
@@ -264,7 +549,7 @@ void GraphicsContext::endTransparencyLayer()
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->popLayer();
 }
 
 void GraphicsContext::clearRect(const FloatRect& rect)
@@ -272,7 +557,11 @@ void GraphicsContext::clearRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->view()->PushState();
+    m_data->view()->SetHighColor(0, 0, 0, 0);
+    m_data->view()->SetDrawingMode(B_OP_COPY);
+    m_data->view()->FillRect(rect);
+    m_data->view()->PopState();
 }
 
 void GraphicsContext::strokeRect(const FloatRect& rect, float width)
@@ -280,10 +569,10 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float width)
     if (paintingDisabled())
         return;
 
-    float oldSize = m_data->m_view->PenSize();
-    m_data->m_view->SetPenSize(width);
-    m_data->m_view->StrokeRect(rect, getHaikuStrokeStyle());
-    m_data->m_view->SetPenSize(oldSize);
+    float oldSize = m_data->view()->PenSize();
+    m_data->view()->SetPenSize(width);
+    m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
+    m_data->view()->SetPenSize(oldSize);
 }
 
 void GraphicsContext::setLineCap(LineCap lineCap)
@@ -304,7 +593,12 @@ void GraphicsContext::setLineCap(LineCap lineCap)
         break;
     }
 
-    m_data->m_view->SetLineMode(mode, m_data->m_view->LineJoinMode(), m_data->m_view->LineMiterLimit());
+    m_data->view()->SetLineMode(mode, m_data->view()->LineJoinMode(), m_data->view()->LineMiterLimit());
+}
+
+void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
+{
+    notImplemented();
 }
 
 void GraphicsContext::setLineJoin(LineJoin lineJoin)
@@ -325,7 +619,7 @@ void GraphicsContext::setLineJoin(LineJoin lineJoin)
         break;
     }
 
-    m_data->m_view->SetLineMode(m_data->m_view->LineCapMode(), mode, m_data->m_view->LineMiterLimit());
+    m_data->view()->SetLineMode(m_data->view()->LineCapMode(), mode, m_data->view()->LineMiterLimit());
 }
 
 void GraphicsContext::setMiterLimit(float limit)
@@ -333,7 +627,7 @@ void GraphicsContext::setMiterLimit(float limit)
     if (paintingDisabled())
         return;
 
-    m_data->m_view->SetLineMode(m_data->m_view->LineCapMode(), m_data->m_view->LineJoinMode(), limit);
+    m_data->view()->SetLineMode(m_data->view()->LineCapMode(), m_data->view()->LineJoinMode(), limit);
 }
 
 void GraphicsContext::setAlpha(float opacity)
@@ -341,7 +635,7 @@ void GraphicsContext::setAlpha(float opacity)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->m_currentLayer->globalAlpha = (uint8)(opacity * 255.0f);
 }
 
 void GraphicsContext::setCompositeOperation(CompositeOperator op)
@@ -362,7 +656,7 @@ void GraphicsContext::setCompositeOperation(CompositeOperator op)
         printf("GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
                 compositeOperatorName(op).utf8().data());
     }
-    m_data->m_view->SetDrawingMode(mode);
+    m_data->view()->SetDrawingMode(mode);
 }
 
 void GraphicsContext::clip(const Path& path)
@@ -370,7 +664,7 @@ void GraphicsContext::clip(const Path& path)
     if (paintingDisabled())
         return;
 
-    m_data->m_view->ConstrainClippingRegion(path.platformPath());
+    notImplemented();
 }
 
 void GraphicsContext::canvasClip(const Path& path)
@@ -393,8 +687,12 @@ void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
 
 AffineTransform GraphicsContext::getCTM() const
 {
-    notImplemented();
-    return AffineTransform();
+    // TODO: Maybe this needs to use the accumulated transform?
+    AffineTransform matrix;
+    BPoint origin = m_data->view()->Origin();
+    matrix.translate(origin.x, origin.y);
+    matrix.scale(m_data->view()->Scale());
+    return matrix;
 }
 
 void GraphicsContext::translate(float x, float y)
@@ -402,13 +700,18 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    m_data->m_currentLayer->accumulatedOrigin.x += x;
+    m_data->m_currentLayer->accumulatedOrigin.y += y;
+    BPoint origin(m_data->view()->Origin());
+    m_data->view()->SetOrigin(origin.x + x, origin.y + y);
+
+    // TODO: currentPath needs to be translated along, according to Qt implementation
 }
 
 IntPoint GraphicsContext::origin()
 {
-    notImplemented();
-    return IntPoint(0, 0);
+    BPoint origin = m_data->view()->Origin();
+    return IntPoint(origin.x, origin.y);
 }
 
 void GraphicsContext::rotate(float radians)
@@ -424,7 +727,8 @@ void GraphicsContext::scale(const FloatSize& size)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    // NOTE: Non-uniform scaling not supported on Haiku, yet.
+    m_data->view()->SetScale((size.width() + size.height()) / 2);
 }
 
 void GraphicsContext::clipOut(const IntRect& rect)
@@ -432,7 +736,9 @@ void GraphicsContext::clipOut(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    notImplemented();
+    BRegion region(m_data->view()->Bounds());
+    region.Exclude(rect);
+    m_data->view()->ConstrainClippingRegion(&region);
 }
 
 void GraphicsContext::clipOutEllipseInRect(const IntRect& rect)
@@ -447,6 +753,9 @@ void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness
 {
     if (paintingDisabled())
         return;
+
+    // NOTE: Used by RenderBoxModelObject to clip out the inner part of an arc when rending box corners...
+    // TODO: Use this method to detect if we are rendering a round-corner-box...
 
     notImplemented();
 }
@@ -478,7 +787,7 @@ void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
 
 void GraphicsContext::setPlatformFont(const Font& font)
 {
-    m_data->m_view->SetFont(font.primaryFont()->platformData().font());
+    m_data->view()->SetFont(font.primaryFont()->platformData().font());
 }
 
 void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colorSpace)
@@ -486,7 +795,7 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colo
     if (paintingDisabled())
         return;
 
-    m_data->m_view->SetHighColor(color);
+    m_data->view()->SetHighColor(color);
 }
 
 pattern GraphicsContext::getHaikuStrokeStyle()
@@ -520,7 +829,7 @@ void GraphicsContext::setPlatformStrokeThickness(float thickness)
     if (paintingDisabled())
         return;
 
-    m_data->m_view->SetPenSize(thickness);
+    m_data->view()->SetPenSize(thickness);
 }
 
 void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace colorSpace)
@@ -528,7 +837,7 @@ void GraphicsContext::setPlatformFillColor(const Color& color, ColorSpace colorS
     if (paintingDisabled())
         return;
 
-    m_data->m_view->SetHighColor(color);
+    m_data->view()->SetHighColor(color);
 }
 
 void GraphicsContext::clearPlatformShadow()
