@@ -89,7 +89,8 @@ void SharedTimerHaiku::start(double fireTime)
     double intervalInSeconds = fireTime - currentTime();
     bigtime_t intervalInMicroSeconds = intervalInSeconds < 0 ? 0 : intervalInSeconds * 1000000;
 
-    BMessageRunner::StartSending(Looper(), new BMessage(FIRE_MESSAGE), intervalInMicroSeconds, 1);
+    BMessage message(FIRE_MESSAGE);
+    BMessageRunner::StartSending(Looper(), &message, intervalInMicroSeconds, 1);
 }
 
 void SharedTimerHaiku::stop()
