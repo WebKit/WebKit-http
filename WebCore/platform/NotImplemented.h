@@ -38,6 +38,7 @@
     #define supressNotImplementedWarning() false
 #endif
 
+#if 1
 #if defined(NDEBUG)
     #define notImplemented() ((void)0)
 #else
@@ -51,5 +52,15 @@
     } while (0)
 
 #endif // NDEBUG
+#else
+#include <stdio.h>
+#define notImplemented() do { \
+        static bool havePrinted = false; \
+        if (!havePrinted && !supressNotImplementedWarning()) { \
+            printf("%s:%d, UNIMPLEMENTED:  %s\n", __FILE__, __LINE__, __PRETTY_FUNCTION__); \
+            havePrinted = true; \
+        } \
+    } while (0)
+#endif
 
 #endif // NotImplemented_h
