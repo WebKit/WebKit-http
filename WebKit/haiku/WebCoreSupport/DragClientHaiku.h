@@ -26,13 +26,14 @@
 
 #include "DragClient.h"
 
+class WebView;
 
 namespace WebCore {
 
     class DragClientHaiku : public DragClient {
     public:
-        virtual void willPerformDragDestinationAction(DragDestinationAction,
-                                                      DragData*);
+        DragClientHaiku(WebView*);
+        virtual void willPerformDragDestinationAction(DragDestinationAction, DragData*);
         virtual WebCore::DragDestinationAction actionMaskForDrag(DragData*);
         virtual void dragControllerDestroyed();
         virtual DragSourceAction dragSourceActionMaskForPoint(const IntPoint&);
@@ -40,6 +41,9 @@ namespace WebCore {
         virtual void startDrag(DragImageRef dragImage, const IntPoint& dragImageOrigin,
                                const IntPoint& eventPos, Clipboard*, Frame*, bool linkDrag = false);
         virtual DragImageRef createDragImageForLink(KURL&, const String& label, Frame*);
+
+    private:
+        WebView* m_webView;
     };
 
 } // namespace WebCore

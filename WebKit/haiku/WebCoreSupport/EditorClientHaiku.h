@@ -32,18 +32,17 @@
 #define EditorClientHaiku_H
 
 #include "EditorClient.h"
-#include "RefCounted.h"
 #include "Page.h"
+#include "RefCounted.h"
 
 #include <wtf/Forward.h>
-
 
 namespace WebCore {
 
     class EditorClientHaiku : public EditorClient {
     public:
         EditorClientHaiku();
-        void setPage( Page* page );
+        void setPage(Page* page);
 
         virtual void pageDestroyed();
 
@@ -116,6 +115,7 @@ namespace WebCore {
         Page* m_page;
         bool m_editing;
         bool m_inUndoRedo; // our undo stack works differently - don't re-enter!
+        bool m_crashInIsEditing;
     };
 
 } // namespace WebCore

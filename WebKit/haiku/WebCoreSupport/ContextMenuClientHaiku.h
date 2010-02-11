@@ -29,7 +29,6 @@
 
 #include "ContextMenuClient.h"
 
-
 namespace WebCore {
     class ContextMenu;
 
@@ -41,11 +40,11 @@ namespace WebCore {
         virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
 
         virtual void downloadURL(const KURL& url);
-        virtual void searchWithGoogle(const Frame*);
         virtual void lookUpInDictionary(Frame*);
         virtual void speak(const String&);
         virtual bool isSpeaking();
         virtual void stopSpeaking();
+        virtual void searchWithGoogle(const Frame*);
     };
 } // namespace WebCore
 

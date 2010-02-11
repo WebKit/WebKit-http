@@ -2,6 +2,8 @@
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2006 Apple Computer, Inc.  All rights reserved.
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com> All rights reserved.
+ * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com> All rights reserved.
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,18 +32,28 @@
 
 #include "Frame.h"
 #include "FrameLoadRequest.h"
+#include "FrameLoader.h"
+#include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
 #include "HitTestResult.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
+#include "WebFrame.h"
+#include "WebFramePrivate.h"
+#include "WebView.h"
+#include "WebViewWindow.h"
+#include "WindowFeatures.h"
 
 #include <Alert.h>
-#include <String.h>
+#include <FilePanel.h>
+#include <Region.h>
 
 
 namespace WebCore {
 
-ChromeClientHaiku::ChromeClientHaiku()
+ChromeClientHaiku::ChromeClientHaiku(WebProcess* webProcess, WebView* webView)
+    : m_webProcess(webProcess)
+    , m_webView(webView)
 {
 }
 
@@ -51,72 +63,98 @@ ChromeClientHaiku::~ChromeClientHaiku()
 
 void ChromeClientHaiku::chromeDestroyed()
 {
-    notImplemented();
+    delete this;
 }
 
-void ChromeClientHaiku::setWindowRect(const FloatRect&)
+void ChromeClientHaiku::setWindowRect(const FloatRect& rect)
 {
-    notImplemented();
+    m_webProcess->setWindowBounds(BRect(rect));
 }
 
 FloatRect ChromeClientHaiku::windowRect()
 {
-    notImplemented();
-    return FloatRect(0, 0, 200, 200);
+    return FloatRect(m_webProcess->windowBounds());
 }
 
 FloatRect ChromeClientHaiku::pageRect()
 {
-    notImplemented();
-    return FloatRect(0, 0, 200, 200);
+    return FloatRect(m_webProcess->contentsSize());
 }
 
 float ChromeClientHaiku::scaleFactor()
 {
     notImplemented();
-    return 1.0;
+    return 1;
 }
 
 void ChromeClientHaiku::focus()
 {
-    notImplemented();
+    if (m_webView->LockLooper()) {
+        m_webView->MakeFocus(true);
+        m_webView->UnlockLooper();
+    }
 }
 
 void ChromeClientHaiku::unfocus()
 {
-    notImplemented();
+    if (m_webView->LockLooper()) {
+        m_webView->MakeFocus(false);
+        m_webView->UnlockLooper();
+    }
 }
 
 bool ChromeClientHaiku::canTakeFocus(FocusDirection)
 {
-    notImplemented();
     return true;
 }
 
 void ChromeClientHaiku::takeFocus(FocusDirection)
 {
-    notImplemented();
 }
 
 void ChromeClientHaiku::focusedNodeChanged(Node*)
 {
+    focus();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest&, const WebCore::WindowFeatures&)
+Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
 {
-    notImplemented();
-    return 0;
-}
+    BRect frame;
+    if (features.xSet && features.ySet && features.widthSet && features.heightSet) {
+        frame.left = features.x;
+        frame.top = features.y;
+        frame.right = features.x + features.width - 1;
+        frame.bottom = features.y + features.height - 1;
+    } else
+        frame.Set(50, 50, 449, 449);
 
-Page* ChromeClientHaiku::createModalDialog(Frame*, const FrameLoadRequest&)
-{
-    notImplemented();
-    return 0;
+    window_look look = B_TITLED_WINDOW_LOOK;
+    window_feel feel = B_NORMAL_WINDOW_FEEL;
+    if (features.dialog) {
+        look = B_MODAL_WINDOW_LOOK;
+        feel = B_MODAL_APP_WINDOW_FEEL;
+    }
+    uint32 flags = B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS;
+    if (!features.resizable)
+        flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
+
+    WebViewWindow* window = new WebViewWindow(frame, "WebView", look, feel, flags);
+    WebView* view = window->webView();
+    window->AddChild(view);
+    window->Show();
+
+    view->webProcess()->loadURL(BString(request.resourceRequest().url().string()));
+
+    return view->webProcess()->page();
 }
 
 void ChromeClientHaiku::show()
 {
-    notImplemented();
+    if (m_webView->LockLooper()) {
+        if (m_webView->Window()->IsHidden())
+            m_webView->Window()->Show();
+        m_webView->UnlockLooper();
+    }
 }
 
 bool ChromeClientHaiku::canRunModal()
@@ -130,65 +168,49 @@ void ChromeClientHaiku::runModal()
     notImplemented();
 }
 
-void ChromeClientHaiku::setToolbarsVisible(bool)
+void ChromeClientHaiku::setToolbarsVisible(bool visible)
 {
-    notImplemented();
+    m_webView->setToolbarsVisible(visible);
 }
 
 bool ChromeClientHaiku::toolbarsVisible()
 {
-    notImplemented();
-    return false;
+    return m_webView->areToolbarsVisible();
 }
 
-void ChromeClientHaiku::setStatusbarVisible(bool)
+void ChromeClientHaiku::setStatusbarVisible(bool visible)
 {
-    notImplemented();
+    m_webView->setStatusbarVisible(visible);
 }
 
 bool ChromeClientHaiku::statusbarVisible()
 {
-    notImplemented();
-    return false;
+    return m_webView->isStatusbarVisible();
 }
 
-void ChromeClientHaiku::setScrollbarsVisible(bool)
+void ChromeClientHaiku::setScrollbarsVisible(bool visible)
 {
-    notImplemented();
+    m_webProcess->mainFrame()->setAllowsScrolling(visible);
 }
 
 bool ChromeClientHaiku::scrollbarsVisible()
 {
-    notImplemented();
-    return true;
+    return m_webProcess->mainFrame()->allowsScrolling();
 }
 
-void ChromeClientHaiku::setMenubarVisible(bool)
+void ChromeClientHaiku::setMenubarVisible(bool visible)
 {
-    notImplemented();
+    m_webView->setMenubarVisible(visible);
 }
 
 bool ChromeClientHaiku::menubarVisible()
 {
-    notImplemented();
-    return false;
+    return m_webView->isMenubarVisible();
 }
 
-void ChromeClientHaiku::setResizable(bool)
+void ChromeClientHaiku::setResizable(bool resizable)
 {
-    notImplemented();
-}
-
-void ChromeClientHaiku::addMessageToConsole(const String& message, unsigned int lineNumber,
-                                            const String& sourceID)
-{
-    printf("MESSAGE %s:%i %s\n", BString(sourceID).String(), lineNumber, BString(message).String());
-}
-
-void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageLevel, const String& message,
-                                            unsigned int lineNumber, const String& sourceID)
-{
-    printf("MESSAGE %s:%i %s\n", BString(sourceID).String(), lineNumber, BString(message).String());
+    m_webView->setResizable(resizable);
 }
 
 void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message,
@@ -199,19 +221,18 @@ void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageType, MessageL
 
 bool ChromeClientHaiku::canRunBeforeUnloadConfirmPanel()
 {
-    notImplemented();
-    return false;
+    return true;
 }
 
 bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame* frame)
 {
-    notImplemented();
-    return false;
+    return runJavaScriptConfirm(frame, message);
 }
 
 void ChromeClientHaiku::closeWindowSoon()
 {
-    notImplemented();
+    m_webProcess->mainFrame()->frame()->loader()->stopAllLoaders();
+    m_webView->closeWindow();
 }
 
 void ChromeClientHaiku::runJavaScriptAlert(Frame*, const String& msg)
@@ -228,13 +249,14 @@ bool ChromeClientHaiku::runJavaScriptConfirm(Frame*, const String& msg)
 
 bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result)
 {
+printf("ChromeClientHaiku::runJavaScriptPrompt()\n");
     notImplemented();
     return false;
 }
 
-void ChromeClientHaiku::setStatusbarText(const String&)
+void ChromeClientHaiku::setStatusbarText(const String& message)
 {
-    notImplemented();
+    m_webView->setStatusText(BString(message));
 }
 
 bool ChromeClientHaiku::shouldInterruptJavaScript()
@@ -253,70 +275,64 @@ IntRect ChromeClientHaiku::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientHaiku::repaint(const IntRect&, bool contentChanged, bool immediate, bool repaintContentOnly)
+void ChromeClientHaiku::repaint(const IntRect& rect, bool contentChanged, bool immediate, bool repaintContentOnly)
 {
-    notImplemented();
+    // TODO: This deadlocks when called from the app thread during init (fortunately immediate is false then)
+    if (immediate)
+        m_webProcess->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
+    else
+        m_webProcess->draw(BRect(rect));
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
 {
-    notImplemented();
+    // TODO: Find out how to tell WebCore not to repaint the area that we were able to scroll.
 }
 
-IntPoint ChromeClientHaiku::screenToWindow(const IntPoint&) const
+IntPoint ChromeClientHaiku::screenToWindow(const IntPoint& point) const
 {
-    notImplemented();
-    return IntPoint();
+    return IntPoint(m_webView->ConvertFromScreen(BPoint(point)));
 }
 
-IntRect ChromeClientHaiku::windowToScreen(const IntRect&) const
+IntRect ChromeClientHaiku::windowToScreen(const IntRect& rect) const
 {
-    notImplemented();
-    return IntRect();
+    return IntRect(m_webView->ConvertToScreen(BRect(rect)));
 }
 
 PlatformPageClient ChromeClientHaiku::platformPageClient() const
 {
-    notImplemented();
-    return PlatformWidget();
+    return m_webView;
 }
 
 void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize&) const
 {
-    notImplemented();
 }
 
 void ChromeClientHaiku::scrollRectIntoView(const IntRect&, const ScrollView*) const
 {
-    notImplemented();
+    // NOTE: Used for example to make the view scroll with the mouse when selecting.
 }
 
-void ChromeClientHaiku::addToDirtyRegion(const IntRect&)
+void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, unsigned /*modifierFlags*/)
 {
-}
-
-void ChromeClientHaiku::scrollBackingStore(int, int, const IntRect&, const IntRect&)
-{
-}
-
-void ChromeClientHaiku::updateBackingStore()
-{
-}
-
-void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& hit, unsigned /*modifierFlags*/)
-{
-    // Some extra info
-    notImplemented();
-}
-
-void ChromeClientHaiku::setToolTip(const String& tip)
-{
-    notImplemented();
+    TextDirection dir;
+    if (result.absoluteLinkURL() != lastHoverURL
+        || result.title(dir) != lastHoverTitle
+        || result.textContent() != lastHoverContent) {
+        lastHoverURL = result.absoluteLinkURL();
+        lastHoverTitle = result.title(dir);
+        lastHoverContent = result.textContent();
+        m_webView->linkHovered(lastHoverURL.prettyURL(), lastHoverTitle, lastHoverContent);
+    }
 }
 
 void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
 {
-    notImplemented();
+    if (!m_webView->LockLooper())
+        return;
+
+     m_webView->SetToolTip(BString(tip).String());
+     m_webView->UnlockLooper();
 }
 
 void ChromeClientHaiku::print(Frame*)
@@ -324,10 +340,12 @@ void ChromeClientHaiku::print(Frame*)
     notImplemented();
 }
 
+#if ENABLE(DATABASE)
 void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName)
 {
     notImplemented();
 }
+#endif
 
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
 void ChromeClientWx::reachedMaxAppCacheSize(int64_t spaceNeeded)
@@ -336,33 +354,24 @@ void ChromeClientWx::reachedMaxAppCacheSize(int64_t spaceNeeded)
 }
 #endif
 
-void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
+void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
-    notImplemented();
-}
-
-void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser>)
-{
+    // FIXME: This doesn't do anything else than opening a file panel.
+    // BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, 0, 0, 0, chooser->allowsMultipleFiles());
+    // panel->Show();
     notImplemented();
 }
 
 bool ChromeClientHaiku::setCursor(PlatformCursorHandle)
 {
+printf("ChromeClientHaiku::setCursor()\n");
     notImplemented();
     return false;
 }
 
-// Notification that the given form element has changed. This function
-// will be called frequently, so handling should be very fast.
-void ChromeClientHaiku::formStateDidChange(const Node*)
+void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
 {
     notImplemented();
-}
-
-PassOwnPtr<HTMLParserQuirks> ChromeClientHaiku::createHTMLParserQuirks()
-{
-    notImplemented();
-    return 0;
 }
 
 } // namespace WebCore

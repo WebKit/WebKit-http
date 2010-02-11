@@ -38,10 +38,9 @@
 #include "Frame.h"
 #include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "PlatformKeyboardEvent.h"
-
-#include "NotImplemented.h"
 
 
 namespace WebCore {
@@ -54,12 +53,13 @@ EditorClientHaiku::EditorClientHaiku()
 
 void EditorClientHaiku::setPage(Page* page)
 {
+printf("EditorClientHaiku::setPage()\n");
     m_page = page;
 }
 
 void EditorClientHaiku::pageDestroyed()
 {
-    notImplemented();
+    delete this;
 }
 
 bool EditorClientHaiku::shouldDeleteRange(Range*)
@@ -116,8 +116,8 @@ int EditorClientHaiku::spellCheckerDocumentTag()
 
 bool EditorClientHaiku::isEditable()
 {
-    // FIXME: should be controllable
-    return false;
+    notImplemented();
+    return true;
 }
 
 bool EditorClientHaiku::shouldBeginEditing(WebCore::Range*)
@@ -177,12 +177,17 @@ void EditorClientHaiku::respondToChangedContents()
 
 void EditorClientHaiku::respondToChangedSelection()
 {
+    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    if (!frame->editor()->ignoreCompositionSelectionChange()) {
+        // FIXME:
+        // notify "micro focus shanged" event
+    }
+
     notImplemented();
 }
 
 void EditorClientHaiku::didEndEditing()
 {
-    notImplemented();
     m_editing = false;
 }
 
@@ -251,8 +256,11 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
     if (!start)
         return;
 
-    if (start->isContentEditable()) {
-        switch(kevent->windowsVirtualKeyCode()) {
+printf("selection start is shadow node/tree, editable: %d/%d, %d\n",
+    start->isShadowNode(), start->isInShadowTree(), start->isContentEditable());
+
+    if (true /*start->isContentEditable()*/) {
+        switch (kevent->windowsVirtualKeyCode()) {
         case VK_BACK:
             frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
                                                  kevent->ctrlKey() ? WordGranularity : CharacterGranularity,
@@ -288,13 +296,16 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
                                        true);
             break;
         case VK_PRIOR:  // PageUp
-            frame->editor()->command("MoveUpByPageAndModifyCaret");
+            frame->editor()->command("MoveUpByPageAndModifyCaret").execute();
             break;
         case VK_NEXT:  // PageDown
-            frame->editor()->command("MoveDownByPageAndModifyCaret");
+            frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
             break;
         case VK_RETURN:
-            frame->editor()->command("InsertLineBreak");
+            if (kevent->shiftKey())
+                frame->editor()->command("InsertLineBreak").execute();
+            else
+                frame->editor()->command("InsertNewline").execute();
             break;
         case VK_TAB:
             return;
@@ -310,69 +321,71 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
             } else if (kevent->ctrlKey()) {
                 switch (kevent->windowsVirtualKeyCode()) {
                 case VK_A:
-                    frame->editor()->command("SelectAll");
+                    frame->editor()->command("SelectAll").execute();
                     break;
                 case VK_B:
-                    frame->editor()->command("ToggleBold");
+                    frame->editor()->command("ToggleBold").execute();
                     break;
                 case VK_C:
-                    frame->editor()->command("Copy");
+                    frame->editor()->command("Copy").execute();
                     break;
                 case VK_I:
-                    frame->editor()->command("ToggleItalic");
+                    frame->editor()->command("ToggleItalic").execute();
                     break;
                 case VK_V:
-                    frame->editor()->command("Paste");
+                    frame->editor()->command("Paste").execute();
                     break;
                 case VK_X:
-                    frame->editor()->command("Cut");
+                    frame->editor()->command("Cut").execute();
                     break;
                 case VK_Y:
-                    frame->editor()->command("Redo");
+                    frame->editor()->command("Redo").execute();
                     break;
                 case VK_Z:
-                    frame->editor()->command("Undo");
+                    frame->editor()->command("Undo").execute();
                     break;
                 default:
                     return;
                 }
-            } else return;
+            } else
+                return;
         }
     } else {
         switch (kevent->windowsVirtualKeyCode()) {
         case VK_UP:
-            frame->editor()->command("MoveUp");
+            frame->editor()->command("MoveUp").execute();
             break;
         case VK_DOWN:
-            frame->editor()->command("MoveDown");
+            frame->editor()->command("MoveDown").execute();
             break;
         case VK_PRIOR:  // PageUp
-            frame->editor()->command("MoveUpByPageAndModifyCaret");
+            frame->editor()->command("MoveUpByPageAndModifyCaret").execute();
             break;
         case VK_NEXT:  // PageDown
-            frame->editor()->command("MoveDownByPageAndModifyCaret");
+            frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
             break;
         case VK_HOME:
             if (kevent->ctrlKey())
-                frame->editor()->command("MoveToBeginningOfDocument");
+                frame->editor()->command("MoveToBeginningOfDocument").execute();
             break;
         case VK_END:
             if (kevent->ctrlKey())
-                frame->editor()->command("MoveToEndOfDocument");
+                frame->editor()->command("MoveToEndOfDocument").execute();
             break;
         default:
             if (kevent->ctrlKey()) {
-                switch(kevent->windowsVirtualKeyCode()) {
-                    case VK_A:
-                        frame->editor()->command("SelectAll");
-                        break;
-                    case VK_C: case VK_X:
-                        frame->editor()->command("Copy");
-                        break;
-                    default:
-                        return;
+                switch (kevent->windowsVirtualKeyCode()) {
+                case VK_A:
+                    frame->editor()->command("SelectAll").execute();
+                    break;
+                case VK_C: case VK_X:
+                    frame->editor()->command("Copy").execute();
+                    break;
+                default:
+                    return;
                 }
-            } else return;
+            } else
+                return;
         }
     }
     event->setDefaultHandled();
@@ -395,7 +408,6 @@ void EditorClientHaiku::textFieldDidEndEditing(Element*)
 
 void EditorClientHaiku::textDidChangeInTextField(Element*)
 {
-    notImplemented();
 }
 
 bool EditorClientHaiku::doTextFieldCommandFromEvent(Element*, KeyboardEvent*)

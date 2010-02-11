@@ -29,7 +29,6 @@
 #include "ContextMenu.h"
 #include "HitTestResult.h"
 #include "KURL.h"
-
 #include "NotImplemented.h"
 
 
@@ -37,7 +36,7 @@ namespace WebCore {
 
 void ContextMenuClientHaiku::contextMenuDestroyed()
 {
-    notImplemented();
+    delete this;
 }
 
 PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(ContextMenu* menu)

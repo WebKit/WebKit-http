@@ -28,9 +28,14 @@
 #include "DragClientHaiku.h"
 
 #include "NotImplemented.h"
+#include "WebView.h"
 
 
 namespace WebCore {
+
+DragClientHaiku::DragClientHaiku(WebView* webView)
+    : m_webView(webView)
+{}
 
 DragDestinationAction DragClientHaiku::actionMaskForDrag(DragData*)
 {
@@ -45,7 +50,7 @@ void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, Dr
 
 void DragClientHaiku::dragControllerDestroyed()
 {
-    notImplemented();
+    delete this;
 }
 
 DragSourceAction DragClientHaiku::dragSourceActionMaskForPoint(const IntPoint&)

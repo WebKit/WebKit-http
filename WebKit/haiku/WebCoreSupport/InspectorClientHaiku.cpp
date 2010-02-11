@@ -30,16 +30,15 @@
 #include "config.h"
 #include "InspectorClientHaiku.h"
 
-#include "PlatformString.h"
-
 #include "NotImplemented.h"
+#include "PlatformString.h"
 
 
 namespace WebCore {
 
 void InspectorClientHaiku::inspectorDestroyed()
 {
-    notImplemented();
+    delete this;
 }
 
 Page* InspectorClientHaiku::createPage()

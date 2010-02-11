@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com> All rights reserved.
+ * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com> All rights reserved.
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -30,32 +31,34 @@
 
 #include "ChromeClient.h"
 #include "FloatRect.h"
+#include "KURL.h"
 #include "RefCounted.h"
+#include "WebProcess.h"
 
 namespace WebCore {
 
-    class FloatRect;
     class Page;
+    class WindowFeatures;
     struct FrameLoadRequest;
 
     class ChromeClientHaiku : public ChromeClient {
     public:
-        ChromeClientHaiku();
+        ChromeClientHaiku(WebProcess*, WebView*);
         virtual ~ChromeClientHaiku();
-        void chromeDestroyed();
+        virtual void chromeDestroyed();
 
-        void setWindowRect(const FloatRect&);
-        FloatRect windowRect();
+        virtual void setWindowRect(const FloatRect&);
+        virtual FloatRect windowRect();
 
-        FloatRect pageRect();
+        virtual FloatRect pageRect();
 
-        float scaleFactor();
+        virtual float scaleFactor();
 
-        void focus();
-        void unfocus();
+        virtual void focus();
+        virtual void unfocus();
 
-        bool canTakeFocus(FocusDirection);
-        void takeFocus(FocusDirection);
+        virtual bool canTakeFocus(FocusDirection);
+        virtual void takeFocus(FocusDirection);
 
         void focusedNodeChanged(Node*);
 
@@ -63,52 +66,48 @@ namespace WebCore {
         Page* createModalDialog(Frame*, const FrameLoadRequest&);
         void show();
 
-        bool canRunModal();
-        void runModal();
+        virtual bool canRunModal();
+        virtual void runModal();
 
-        void setToolbarsVisible(bool);
-        bool toolbarsVisible();
+        virtual void setToolbarsVisible(bool);
+        virtual bool toolbarsVisible();
 
-        void setStatusbarVisible(bool);
-        bool statusbarVisible();
+        virtual void setStatusbarVisible(bool);
+        virtual bool statusbarVisible();
 
-        void setScrollbarsVisible(bool);
-        bool scrollbarsVisible();
+        virtual void setScrollbarsVisible(bool);
+        virtual bool scrollbarsVisible();
 
-        void setMenubarVisible(bool);
-        bool menubarVisible();
+        virtual void setMenubarVisible(bool);
+        virtual bool menubarVisible();
 
-        void setResizable(bool);
+        virtual void setResizable(bool);
 
-        void addMessageToConsole(const String& message, unsigned int lineNumber,
-                                 const String& sourceID);
-        void addMessageToConsole(MessageSource, MessageLevel, const String& message,
-                                 unsigned int lineNumber, const String& sourceID);
-        void addMessageToConsole(MessageSource, MessageType, MessageLevel,
-                                 const String&, unsigned int, const String&);
+        virtual void addMessageToConsole(MessageSource, MessageType, MessageLevel,
+                                         const String& message, unsigned int lineNumber, const String& sourceID);
 
-        bool canRunBeforeUnloadConfirmPanel();
+        virtual bool canRunBeforeUnloadConfirmPanel();
+        virtual bool runBeforeUnloadConfirmPanel(const String& message, Frame* frame);
 
-        bool runBeforeUnloadConfirmPanel(const String& message, Frame* frame);
+        virtual void closeWindowSoon();
 
-        void closeWindowSoon();
+        virtual void runJavaScriptAlert(Frame*, const String&);
+        virtual bool runJavaScriptConfirm(Frame*, const String&);
+        virtual bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result);
+        virtual bool shouldInterruptJavaScript();
 
-        void runJavaScriptAlert(Frame*, const String&);
-        bool runJavaScriptConfirm(Frame*, const String&);
-        bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result);
-        bool shouldInterruptJavaScript();
+        virtual void setStatusbarText(const WebCore::String&);
 
-        void setStatusbarText(const WebCore::String&);
-        bool tabsToLinks() const;
-        IntRect windowResizerRect() const;
+        virtual bool tabsToLinks() const;
+        virtual IntRect windowResizerRect() const;
 
-        void repaint(const IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
-        void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
-        IntPoint screenToWindow(const IntPoint&) const;
-        IntRect windowToScreen(const IntRect&) const;
-        PlatformPageClient platformPageClient() const;
-        void contentsSizeChanged(Frame*, const IntSize&) const;
-        void scrollRectIntoView(const IntRect&, const ScrollView*) const;
+        virtual void repaint(const IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
+        virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
+        virtual IntPoint screenToWindow(const IntPoint&) const;
+        virtual IntRect windowToScreen(const IntRect&) const;
+        virtual PlatformPageClient platformPageClient() const;
+        virtual void contentsSizeChanged(Frame*, const IntSize&) const;
+        virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const;
 
         void addToDirtyRegion(const IntRect&);
         void scrollBackingStore(int, int, const IntRect&, const IntRect&);
@@ -121,27 +120,29 @@ namespace WebCore {
 
         virtual void setToolTip(const String&, TextDirection);
 
-        void print(Frame*);
-
-        void exceededDatabaseQuota(Frame*, const String& databaseName);
-
+        virtual void print(Frame*);
+#if ENABLE(DATABASE)
+        virtual void exceededDatabaseQuota(Frame*, const String& databaseName);
+#endif
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
         virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
 #endif
+        virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
 
-        // This is an asynchronous call. The ChromeClient can display UI asking the user for permission
-        // to use Geolococation. The ChromeClient must call Geolocation::setShouldClearCache() appropriately.
-        void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
+        virtual void formStateDidChange(const Node*) { }
 
-        void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
+        virtual PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
 
-        bool setCursor(PlatformCursorHandle);
+        virtual bool setCursor(PlatformCursorHandle);
 
-        // Notification that the given form element has changed. This function
-        // will be called frequently, so handling should be very fast.
-        void formStateDidChange(const Node*);
+        virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
 
-        PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks();
+        WebProcess* m_webProcess;
+        WebView* m_webView;
+
+        WebCore::KURL lastHoverURL;
+        WebCore::String lastHoverTitle;
+        WebCore::String lastHoverContent;
     };
 
 } // namespace WebCore

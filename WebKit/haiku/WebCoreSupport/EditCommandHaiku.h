@@ -1,6 +1,8 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
- * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2008 Kevin Ollivier
+ * Copyright (C) 2009 Maxime Simon
+ *
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,45 +29,26 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorClientHaiku_h
-#define InspectorClientHaiku_h
+#ifndef EditCommandHaiku_h
+#define EditCommandHaiku_h
 
-#include "InspectorClient.h"
+#include "EditCommand.h"
 
-namespace WebCore {
-    class Node;
-    class Page;
-    class String;
+#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
-    class InspectorClientHaiku : public InspectorClient {
-    public:
-        virtual void inspectorDestroyed();
+class EditCommandHaiku {
+public:
+    EditCommandHaiku(WTF::PassRefPtr<WebCore::EditCommand> command)
+    {
+        m_editCommand = command;
+    }
 
-        virtual Page* createPage();
+    EditCommandHaiku() { }
+    WTF::PassRefPtr<WebCore::EditCommand> editCommand() { return m_editCommand; }
 
-        virtual String localizedStringsURL();
+private:
+    WTF::RefPtr<WebCore::EditCommand> m_editCommand;
+};
 
-        virtual String hiddenPanels();
-
-        virtual void showWindow();
-        virtual void closeWindow();
-
-        virtual void attachWindow();
-        virtual void detachWindow();
-
-        virtual void setAttachedWindowHeight(unsigned height);
-
-        virtual void highlight(Node*);
-        virtual void hideHighlight();
-
-        virtual void inspectedURLChanged(const String& newURL);
-
-        virtual void populateSetting(const WebCore::String& key, WebCore::String* value);
-        virtual void storeSetting(const WebCore::String& key, const WebCore::String& value);
-
-        virtual void inspectorWindowObjectCleared();
-    };
-} // namespace WebCore
-
-#endif // InspectorClientHaiku_h
-
+#endif // EditCommandHaiku_h

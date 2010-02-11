@@ -5,6 +5,7 @@
  * Copyright (C) 2007 Trolltech ASA
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com> All rights reserved.
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com> All rights reserved.
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,69 +33,64 @@
 #include "config.h"
 #include "FrameLoaderClientHaiku.h"
 
+#include "CString.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLFrameOwnerElement.h"
+#include "MouseEvent.h"
+#include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PlatformString.h"
+#include "PluginData.h"
+#include "PluginDatabase.h"
+#include "ProgressTracker.h"
+#include "RenderFrame.h"
 #include "ResourceRequest.h"
 #include "ScriptController.h"
+#include "Settings.h"
+#include "WebFrame.h"
+#include "WebProcess.h"
 #include "WebView.h"
+#include "WebViewConstants.h"
 
+#include <Alert.h>
+#include <Entry.h>
 #include <Message.h>
+#include <MimeType.h>
 #include <String.h>
-
-#include <app/Messenger.h>
 
 
 namespace WebCore {
 
-FrameLoaderClientHaiku::FrameLoaderClientHaiku()
-    : m_frame(0)
+FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebProcess* webProcess, WebFrame* webFrame)
+    : m_webProcess(webProcess)
+    , m_webFrame(webFrame)
+    , m_messenger()
 {
+printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
+    ASSERT(m_webProcess);
+    ASSERT(m_webFrame);
 }
 
-void FrameLoaderClientHaiku::setFrame(Frame* frame)
+void FrameLoaderClientHaiku::setDispatchTarget(BHandler* handler)
 {
-    m_frame = frame;
+    m_messenger = BMessenger(handler);
 }
 
-void FrameLoaderClientHaiku::setWebView(WebView* webview)
+void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
-    m_webView = webview;
-    m_messenger = new BMessenger(m_webView);
-    ASSERT(m_messenger->IsValid());
-}
-
-void FrameLoaderClientHaiku::detachFrameLoader()
-{
-    m_frame = 0;
+    m_webFrame = 0;
+    	// deleted by WebProcess
+    delete this;
 }
 
 bool FrameLoaderClientHaiku::hasWebView() const
 {
-    return m_webView;
-}
-
-bool FrameLoaderClientHaiku::hasBackForwardList() const
-{
-    notImplemented();
-    return true;
-}
-
-void FrameLoaderClientHaiku::resetBackForwardList()
-{
-    notImplemented();
-}
-
-bool FrameLoaderClientHaiku::provisionalItemIsTarget() const
-{
-    notImplemented();
-    return false;
+    return m_webProcess->webView();
 }
 
 void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
@@ -104,88 +100,104 @@ void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 
 void FrameLoaderClientHaiku::forceLayout()
 {
-    notImplemented();
+    FrameView* view = m_webFrame->frame()->view();
+    if (view)
+        view->forceLayout(true);
 }
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryForCommit()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryForBackForwardNavigation()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryForReload()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryForStandardLoad()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryForInternalLoad()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateHistoryAfterClientRedirect()
-{
-    notImplemented();
+    m_webFrame->frame()->view()->forceLayout();
 }
 
 void FrameLoaderClientHaiku::setCopiesOnScroll()
 {
-    // apparently mac specific
-    notImplemented();
-}
-
-LoadErrorResetToken* FrameLoaderClientHaiku::tokenForLoadErrorReset()
-{
-    notImplemented();
-    return 0;
-}
-
-void FrameLoaderClientHaiku::resetAfterLoadError(LoadErrorResetToken*)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::doNotResetAfterLoadError(LoadErrorResetToken*)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::willCloseDocument()
-{
+    // Other ports mention "apparently mac specific", but I believe it may have to
+    // do with achieving that WebCore does not repaint the parts that we can scroll
+    // by blitting.
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::detachedFromParent2()
 {
-    notImplemented();
 }
 
 void FrameLoaderClientHaiku::detachedFromParent3()
 {
+}
+
+void FrameLoaderClientHaiku::download(ResourceHandle*, const ResourceRequest&, const ResourceRequest&, const ResourceResponse&)
+{
+printf("FrameLoaderClientHaiku::download()\n");
     notImplemented();
+}
+
+bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int)
+{
+    notImplemented();
+    return false;
+}
+
+void FrameLoaderClientHaiku::dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest& request, const ResourceResponse& response)
+{
+    notImplemented();
+}
+
+bool FrameLoaderClientHaiku::shouldUseCredentialStorage(DocumentLoader*, unsigned long)
+{
+    notImplemented();
+    return false;
+}
+
+void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
+{
+printf("FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge()\n");
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
+{
+printf("FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge()\n");
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id, const ResourceResponse& response)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader, unsigned long id, int length)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader*, unsigned long)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsigned long, const ResourceError&)
+{
+    BMessage message(LOAD_FAILED);
+    message.AddString("url", loader->url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 {
-    if (m_webView) {
-        BMessage message(LOAD_ONLOAD_HANDLE);
-        message.AddString("url", m_frame->loader()->documentLoader()->request().url().string());
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(LOAD_ONLOAD_HANDLE);
+    message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveServerRedirectForProvisionalLoad()
@@ -205,7 +217,9 @@ void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, doub
 
 void FrameLoaderClientHaiku::dispatchDidChangeLocationWithinPage()
 {
-    notImplemented();
+    BMessage message(LOAD_DOC_COMPLETED);
+    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidPushStateWithinPage()
@@ -228,47 +242,63 @@ void FrameLoaderClientHaiku::dispatchWillClose()
     notImplemented();
 }
 
+void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
+{
+    notImplemented();
+}
+
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
-    if (m_webView) {
-        BMessage message(LOAD_NEGOCIATING);
-        message.AddString("url", m_frame->loader()->provisionalDocumentLoader()->request().url().string());
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(LOAD_NEGOCIATING);
+    message.AddString("url", m_webFrame->frame()->loader()->provisionalDocumentLoader()->request().url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 {
-    if (m_webView) {
-        m_webView->SetPageTitle(title);
+    m_webFrame->setTitle(title);
 
-        BMessage message(TITLE_CHANGED);
-        message.AddString("title", title);
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(TITLE_CHANGED);
+    message.AddString("title", title);
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
-    if (m_webView) {
-        BMessage message(LOAD_TRANSFERRING);
-        message.AddString("url", m_frame->loader()->documentLoader()->request().url().string());
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(LOAD_TRANSFERRING);
+    message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
+    m_messenger.SendMessage(&message);
+
+    // We should assume first the frame has no title. If it has, then the above
+    // dispatchDidReceiveTitle() will be called very soon with the correct title.
+    // This properly resets the title when we navigate to a URI without a title.
+    BMessage titleMessage(TITLE_CHANGED);
+    titleMessage.AddString("title", "");
+    m_messenger.SendMessage(&titleMessage);
+}
+
+void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError&)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError&)
+{
+    notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 {
-    if (m_webView) {
-        BMessage message(LOAD_DOC_COMPLETED);
-        message.AddString("url", m_frame->loader()->url().string());
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(LOAD_DOC_COMPLETED);
+    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishLoad()
 {
-    notImplemented();
+    BMessage message(LOAD_FINISHED);
+    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFirstLayout()
@@ -281,9 +311,91 @@ void FrameLoaderClientHaiku::dispatchDidFirstVisuallyNonEmptyLayout()
     notImplemented();
 }
 
+void FrameLoaderClientHaiku::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState>)
+{
+    notImplemented();
+    // FIXME: Send an event to allow for alerts and cancellation.
+    callPolicyFunction(function, PolicyUse);
+}
+
+void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
+{
+    notImplemented();
+}
+
+Frame* FrameLoaderClientHaiku::dispatchCreatePage()
+{
+printf("FrameLoaderClientHaiku::dispatchCreatePage()\n");
+    notImplemented();
+//    m_webFrame->webView()->createWebView();
+    return 0;
+}
+
 void FrameLoaderClientHaiku::dispatchShow()
 {
     notImplemented();
+}
+
+void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
+                                                             const ResourceRequest& request)
+{
+    // we need to call directly here
+    if (canShowMIMEType(mimetype))
+        callPolicyFunction(function, PolicyUse);
+    else
+        callPolicyFunction(function, PolicyDownload);
+}
+
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
+	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
+{
+printf("dispatchDecidePolicyForNewWindowAction\n");
+    BMessage message(NEW_WINDOW_REQUESTED);
+    message.AddString("url", request.url().string());
+    if (m_messenger.SendMessage(&message) != B_OK) {
+        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
+
+        if (action.type() == NavigationTypeLinkClicked) {
+            ResourceRequest emptyRequest;
+            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+        }
+
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
+    callPolicyFunction(function, PolicyUse);
+}
+
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
+	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
+{
+printf("dispatchDecidePolicyForNavigationAction\n");
+    uint32 what = NAVIGATION_REQUESTED;
+    if (action.event() && action.event()->isMouseEvent()) {
+        // Clicks with the middle mouse button shall open a new window
+        // (or tab respectively depending on browser)
+        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
+        if (mouseEvent && mouseEvent->button() == 1)
+            what = NEW_WINDOW_REQUESTED;
+    }
+    BMessage message(what);
+    message.AddString("url", request.url().string());
+    if (m_messenger.SendMessage(&message) != B_OK || what == NEW_WINDOW_REQUESTED) {
+        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
+
+        if (action.type() == NavigationTypeLinkClicked) {
+            ResourceRequest emptyRequest;
+            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+        }
+
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
+    callPolicyFunction(function, PolicyUse);
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
@@ -291,15 +403,7 @@ void FrameLoaderClientHaiku::cancelPolicyCheck()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState>)
-{
-    // FIXME: Send an event to allow for alerts and cancellation.
-    if (!m_frame)
-        return;
-    (m_frame->loader()->policyChecker()->*function)(PolicyUse);
-}
-
-void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
+void FrameLoaderClientHaiku::dispatchUnableToImplementPolicy(const ResourceError&)
 {
     notImplemented();
 }
@@ -309,36 +413,42 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
     notImplemented();
 }
 
+void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError& error)
+{
+	// FIXME: This should be moved into LauncherWindow.
+	BString errorString("Error loading ");
+	errorString << error.failingURL();
+	errorString << ":\n\n";
+	errorString << error.localizedDescription();
+    BAlert* alert = new BAlert("Main document error", errorString.String(), "OK");
+    alert->Go(NULL);
+}
+
 void FrameLoaderClientHaiku::postProgressStartedNotification()
 {
-    notImplemented();
+    if (m_webFrame && m_webFrame->frame()->page()) {
+        // A new load starts, so lets clear the previous error.
+//        m_loadError = ResourceError();
+        postProgressEstimateChangedNotification();
+    }
+    if (!m_webFrame || m_webFrame->frame()->tree()->parent())
+        return;
+    triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
-    notImplemented();
+	BMessage message(LOAD_PROGRESS);
+	message.AddFloat("progress", m_webFrame->frame()->page()->progress()->estimatedProgress() * 100);
+    m_messenger.SendMessage(&message);
 }
 
 void FrameLoaderClientHaiku::postProgressFinishedNotification()
 {
-    if (m_webView) {
-        BMessage message(LOAD_DL_COMPLETED);
-        message.AddString("url", m_frame->loader()->url().string());
-        m_messenger->SendMessage(&message);
-    }
+    BMessage message(LOAD_DL_COMPLETED);
+    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    m_messenger.SendMessage(&message);
 }
-
-void FrameLoaderClientHaiku::progressStarted()
-{
-    notImplemented();
-}
-
-
-void FrameLoaderClientHaiku::progressCompleted()
-{
-    notImplemented();
-}
-
 
 void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
 {
@@ -346,9 +456,15 @@ void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
     // this is only interesting once we provide an external API for the DOM
 }
 
+void FrameLoaderClientHaiku::startDownload(const ResourceRequest&)
+{
+printf("FrameLoaderClientHaiku::startDownload()\n");
+    notImplemented();
+}
+
 void FrameLoaderClientHaiku::willChangeTitle(DocumentLoader*)
 {
-    notImplemented();
+    // We act in didChangeTitle
 }
 
 void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
@@ -356,107 +472,24 @@ void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
     setTitle(docLoader->title(), docLoader->url());
 }
 
+void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
+{
+    Frame* frame = m_webFrame->frame();
+    if (!frame)
+        return;
+
+    // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
+    String encoding = frame->loader()->documentLoader()->overrideEncoding();
+    bool userChosen = !encoding.isNull();
+    if (!userChosen)
+        encoding = loader->response().textEncodingName();
+    frame->loader()->setEncoding(encoding, userChosen);
+
+    if (data)
+        frame->loader()->addData(data, length);
+}
+
 void FrameLoaderClientHaiku::finishedLoading(DocumentLoader*)
-{
-    notImplemented();
-}
-
-bool FrameLoaderClientHaiku::canShowMIMEType(const String& MIMEType) const
-{
-    notImplemented();
-    return true;
-}
-
-bool FrameLoaderClientHaiku::representationExistsForURLScheme(const String& URLScheme) const
-{
-    notImplemented();
-    return false;
-}
-
-String FrameLoaderClientHaiku::generatedMIMETypeForURLScheme(const String& URLScheme) const
-{
-    notImplemented();
-    return String();
-}
-
-void FrameLoaderClientHaiku::frameLoadCompleted()
-{
-    if (m_webView->LockLooper()) {
-        m_webView->Draw(m_webView->Bounds());
-        m_webView->UnlockLooper();
-    }
-}
-
-void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem*)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::restoreViewState()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::restoreScrollPositionAndViewState()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::provisionalLoadStarted()
-{
-    notImplemented();
-}
-
-bool FrameLoaderClientHaiku::shouldTreatURLAsSameAsCurrent(const KURL&) const
-{
-    notImplemented();
-    return false;
-}
-
-void FrameLoaderClientHaiku::addHistoryItemForFragmentScroll()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::didFinishLoad()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::prepareForDataSourceReplacement()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
-{
-    notImplemented();
-}
-
-String FrameLoaderClientHaiku::userAgent(const KURL&)
-{
-    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/420+ (KHTML, like Gecko)");
-}
-
-void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::frameLoaderDestroyed()
-{
-    m_frame = 0;
-    m_messenger = 0;
-    delete this;
-}
-
-bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
-{
-    notImplemented();
-    return true;
-}
-
-void FrameLoaderClientHaiku::partClearedInBegin()
 {
     notImplemented();
 }
@@ -468,7 +501,13 @@ void FrameLoaderClientHaiku::updateGlobalHistory()
 
 void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
 {
-    notImplemented();
+    WebCore::Frame* frame = m_webFrame->frame();
+    if (!frame)
+        return;
+
+    BMessage message(UPDATE_HISTORY);
+    message.AddString("url", frame->loader()->documentLoader()->urlForHistory().prettyURL());
+    m_messenger.SendMessage(&message);
 }
 
 bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
@@ -479,14 +518,17 @@ bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
 
 void FrameLoaderClientHaiku::dispatchDidAddBackForwardItem(WebCore::HistoryItem*) const
 {
+	triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::dispatchDidRemoveBackForwardItem(WebCore::HistoryItem*) const
 {
+	triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::dispatchDidChangeBackForwardIndex() const
 {
+	triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
@@ -494,24 +536,13 @@ void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::Histo
     notImplemented();
 }
 
-bool FrameLoaderClientHaiku::canCachePage() const
+void FrameLoaderClientHaiku::didDisplayInsecureContent()
 {
-    return false;
 }
 
-void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError&)
+void FrameLoaderClientHaiku::didRunInsecureContent(SecurityOrigin*)
 {
     notImplemented();
-}
-
-void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
-{
-    if (!m_frame)
-        return;
-
-    FrameLoader* frameLoader = loader->frameLoader();
-    frameLoader->setEncoding(m_response.textEncodingName(), false);
-    frameLoader->addData(data, length);
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
@@ -549,265 +580,93 @@ WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCo
     return ResourceError(String(), WebKitErrorCannotShowURL, response.url().string(), String());
 }
 
-bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
-{
-    notImplemented();
-    return false;
-}
-
-WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request,
-                                                                             const SubstituteData& substituteData)
-{
-    return DocumentLoader::create(request, substituteData);
-}
-
-void FrameLoaderClientHaiku::download(ResourceHandle*, const ResourceRequest&,
-                                      const ResourceRequest&, const ResourceResponse&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*,
-                                                              const ResourceRequest&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest& request,
-                                                     const ResourceResponse& response)
-{
-    notImplemented();
-}
-
-bool FrameLoaderClientHaiku::shouldUseCredentialStorage(DocumentLoader*, unsigned long)
-{
-    notImplemented();
-    return false;
-}
-
-void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*,
-                                                                       unsigned long, const AuthenticationChallenge&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLoader*,
-                                                                      unsigned long, const AuthenticationChallenge&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id,
-                                                        const ResourceResponse& response)
-{
-    notImplemented();
-    m_response = response;
-    m_firstData = true;
-}
-
-void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader,
-                                                             unsigned long id, int length)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader*, unsigned long)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader,
-                                                    unsigned long, const ResourceError&)
-{
-    if (m_webView) {
-        BMessage message(LOAD_FAILED);
-        message.AddString("url", m_frame->loader()->documentLoader()->request().url().string());
-        m_messenger->SendMessage(&message);
-    }
-}
-
-bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*,
-                                                                    const ResourceRequest&,
-                                                                    const ResourceResponse&, int)
-{
-    notImplemented();
-    return false;
-}
-
-void FrameLoaderClientHaiku::dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError&)
-{
-    notImplemented();
-}
-
-Frame* FrameLoaderClientHaiku::dispatchCreatePage()
-{
-    notImplemented();
-    return false;
-}
-
-void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function,
-                                                             const String& mimetype,
-                                                             const ResourceRequest& request)
-{
-    if (!m_frame)
-        return;
-
-    notImplemented();
-    (m_frame->loader()->policyChecker()->*function)(PolicyUse);
-}
-
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
-                                                                    const NavigationAction&,
-                                                                    const ResourceRequest& request,
-                                                                    PassRefPtr<FormState>, const String& targetName)
-{
-    if (!m_frame)
-        return;
-
-    if (m_webView) {
-        BMessage message(NEW_WINDOW_REQUESTED);
-        message.AddString("url", request.url().string());
-        if (m_messenger->SendMessage(&message)) {
-            (m_frame->loader()->policyChecker()->*function)(PolicyIgnore);
-            return;
-        }
-    }
-
-    (m_frame->loader()->policyChecker()->*function)(PolicyUse);
-}
-
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
-                                                                     const NavigationAction& action,
-                                                                     const ResourceRequest& request,
-                                                                     PassRefPtr<FormState>)
-{
-    if (!m_frame || !function)
-        return;
-
-    if (m_webView) {
-        BMessage message(NAVIGATION_REQUESTED);
-        message.AddString("url", request.url().string());
-        m_messenger->SendMessage(&message);
-
-        (m_frame->loader()->policyChecker()->*function)(PolicyUse);
-    }
-}
-
-void FrameLoaderClientHaiku::dispatchUnableToImplementPolicy(const ResourceError&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::startDownload(const ResourceRequest&)
-{
-    notImplemented();
-}
-
-PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const String& name,
-                                                      HTMLFrameOwnerElement* ownerElement,
-                                                      const String& referrer, bool allowsScrolling,
-                                                      int marginWidth, int marginHeight)
-{
-    // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
-
-    RefPtr<Frame> childFrame = Frame::create(m_frame->page(), ownerElement, this);
-    setFrame(childFrame.get());
-
-    RefPtr<FrameView> frameView = FrameView::create(childFrame.get());
-
-    frameView->setAllowsScrolling(allowsScrolling);
-    frameView->deref();
-    childFrame->setView(frameView.get());
-    childFrame->init();
-
-    childFrame->tree()->setName(name);
-    m_frame->tree()->appendChild(childFrame);
-
-    childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
-
-    // The frame's onload handler may have removed it from the document.
-    if (!childFrame->tree()->parent())
-        return 0;
-
-    return childFrame.release();
-
-    notImplemented();
-    return 0;
-}
-
-ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& mimeType)
-{
-    notImplemented();
-    return ObjectContentType();
-}
-
-PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*,
-                                                        const KURL&, const Vector<String>&,
-                                                        const Vector<String>&, const String&,
-                                                        bool loadManually)
-{
-    notImplemented();
-    return 0;
-}
-
-void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
-{
-    notImplemented();
-    return;
-}
-
 ResourceError FrameLoaderClientHaiku::pluginWillHandleLoadError(const ResourceResponse& response)
 {
     notImplemented();
     return ResourceError(String(), WebKitErrorCannotLoadPlugIn, response.url().string(), String());
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*,
-                                                       const KURL& baseURL,
-                                                       const Vector<String>& paramNames,
-                                                       const Vector<String>& paramValues)
+bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 {
     notImplemented();
-    return 0;
+    return false;
 }
 
-String FrameLoaderClientHaiku::overrideMediaType() const
+bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
+{
+    Frame* frame = m_webFrame->frame();
+    Page* page = frame->page();
+
+    return page && page->mainFrame() == frame;
+}
+
+bool FrameLoaderClientHaiku::canShowMIMEType(const String& MIMEType) const
+{
+    if (MIMETypeRegistry::isSupportedImageMIMEType(MIMEType))
+        return true;
+
+    if (MIMETypeRegistry::isSupportedNonImageMIMEType(MIMEType))
+        return true;
+
+	Frame* frame = m_webFrame->frame();
+    if (frame && frame->settings() && frame->settings()->arePluginsEnabled()
+        && PluginDatabase::installedPlugins()->isMIMETypeRegistered(MIMEType))
+        return true;
+
+    return false;
+}
+
+bool FrameLoaderClientHaiku::representationExistsForURLScheme(const String& URLScheme) const
+{
+    notImplemented();
+    return false;
+}
+
+String FrameLoaderClientHaiku::generatedMIMETypeForURLScheme(const String& URLScheme) const
 {
     notImplemented();
     return String();
 }
 
-void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
-{
-    if (world != mainThreadNormalWorld())
-        return;
-
-    if (m_webView) {
-        BMessage message(JAVASCRIPT_WINDOW_OBJECT_CLEARED);
-        m_messenger->SendMessage(&message);
-    }
-}
-
-void FrameLoaderClientHaiku::documentElementAvailable()
+void FrameLoaderClientHaiku::frameLoadCompleted()
 {
 }
 
-void FrameLoaderClientHaiku::didPerformFirstNavigation() const
+void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem*)
 {
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
+void FrameLoaderClientHaiku::restoreViewState()
+{
+printf("FrameLoaderClientHaiku::restoreViewState()\n");
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::provisionalLoadStarted()
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::didFinishLoad()
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::prepareForDataSourceReplacement()
+{
+    notImplemented();
+}
+
+WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
+{
+    RefPtr<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
+    if (substituteData.isValid())
+        loader->setDeferMainResourceDataLoad(false);
+    return loader.release();
+}
+
+void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
 {
     notImplemented();
 }
@@ -824,33 +683,160 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame*)
 
 void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 {
-    ASSERT(m_frame);
-    ASSERT(m_webView);
+    ASSERT(m_webFrame);
 
-    Page* page = m_frame->page();
-    ASSERT(page);
+    Frame* frame = m_webFrame->frame();
 
-    bool isMainFrame = m_frame == page->mainFrame();
+    BRect bounds = m_webProcess->viewBounds();
+    IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
-    m_frame->setView(0);
+    bool transparent = m_webFrame->isTransparent();
+    Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
-    RefPtr<FrameView> frameView;
-    if (isMainFrame) {
-        if (m_webView->LockLooper()) {
-            // We lock the looper in order to get the bounds of the WebView.
-            frameView = FrameView::create(m_frame, IntRect(m_webView->Bounds()).size());
-            m_webView->UnlockLooper();
+    frame->createView(size, backgroundColor, transparent, IntSize(), false);
+}
+
+String FrameLoaderClientHaiku::userAgent(const KURL&)
+{
+    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/420+ (KHTML, like Gecko)");
+}
+
+bool FrameLoaderClientHaiku::canCachePage() const
+{
+    return false;
+}
+
+PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
+    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+{
+    // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
+    ASSERT(m_webFrame);
+
+	WebFrame* frame = new WebFrame(m_webProcess, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
+	// As long as we don't return the Frame, we are responsible for deleting it.
+    RefPtr<Frame> childFrame = frame->frame();
+
+    // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
+	if (!childFrame->page()) {
+printf("   no page\n");
+		delete frame;
+		return 0;
+	}
+
+    childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
+
+    // The frame's onload handler may have removed it from the document.
+    if (!childFrame->tree()->parent()) {
+printf("   no parent\n");
+		delete frame;
+        return 0;
+    }
+
+    return childFrame.release();
+}
+
+ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType)
+{
+    if (url.isEmpty() && !originalMimeType.length())
+        return ObjectContentNone;
+
+    String mimeType = originalMimeType;
+    if (!mimeType.length()) {
+        entry_ref ref;
+        if (get_ref_for_path(url.path().utf8().data(), &ref) == B_OK) {
+            BMimeType type;
+            if (BMimeType::GuessMimeType(&ref, &type) == B_OK)
+                mimeType = type.Type();
         }
-    } else
-        frameView = FrameView::create(m_frame);
+    }
 
-    ASSERT(frameView);
-    m_frame->setView(frameView);
+    if (!mimeType.length())
+        return ObjectContentFrame;
 
-    frameView->setPlatformWidget(m_webView);
+    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
+        return ObjectContentImage;
 
-    if (HTMLFrameOwnerElement* owner = m_frame->ownerElement())
-        m_frame->view()->setScrollbarModes(owner->scrollingMode(), owner->scrollingMode());
+    if (PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
+        return ObjectContentNetscapePlugin;
+
+    if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
+        return ObjectContentFrame;
+
+    if (url.protocol() == "about")
+        return ObjectContentFrame;
+
+    return ObjectContentNone;
+}
+
+PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&,
+                                                        const Vector<String>&, const String&, bool loadManually)
+{
+    notImplemented();
+    return 0;
+}
+
+void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
+{
+    notImplemented();
+    return;
+}
+
+PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
+                                                                  const Vector<String>& paramNames, const Vector<String>& paramValues)
+{
+    notImplemented();
+    return 0;
+}
+
+String FrameLoaderClientHaiku::overrideMediaType() const
+{
+    notImplemented();
+    return String();
+}
+
+void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
+{
+    if (world != mainThreadNormalWorld())
+        return;
+
+    if (m_webFrame) {
+        BMessage message(JAVASCRIPT_WINDOW_OBJECT_CLEARED);
+        m_messenger.SendMessage(&message);
+    }
+}
+
+void FrameLoaderClientHaiku::documentElementAvailable()
+{
+}
+
+void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::didPerformFirstNavigation() const
+{
+    triggerNavigationHistoryUpdate();
+}
+
+// #pragma mark - private
+
+void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
+{
+    (m_webFrame->frame()->loader()->policyChecker()->*function)(action);
+}
+
+void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
+{
+    WebCore::Page* page = m_webFrame->frame()->page();
+    WebCore::FrameLoader* loader = m_webFrame->frame()->loader();
+    if (!page || !loader)
+        return;
+    BMessage message(UPDATE_NAVIGATION_INTERFACE);
+    message.AddBool("can go backward", page->canGoBackOrForward(-1));
+    message.AddBool("can go forward", page->canGoBackOrForward(1));
+    message.AddBool("can stop", loader->isLoading());
+    m_messenger.SendMessage(&message);
 }
 
 } // namespace WebCore
