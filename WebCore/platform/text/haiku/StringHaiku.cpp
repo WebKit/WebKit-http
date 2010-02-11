@@ -32,18 +32,10 @@
 namespace WebCore {
 
 // String conversions
-String::String(const BString& bstring)
+String::String(const BString& string)
 {
-    const UChar* str = reinterpret_cast<const UChar*>(bstring.String());
-    const size_t size = bstring.Length();
-
-    if (!str)
-        return;
-
-    if (!size)
-        m_impl = StringImpl::empty();
-    else
-        m_impl = StringImpl::create(str, size);
+	if (string.String())
+        m_impl = String::fromUTF8(string.String(), string.Length()).impl();
 }
 
 String::operator BString() const
