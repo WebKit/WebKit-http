@@ -38,10 +38,15 @@ void InitializeLoggingChannelsIfNecessary()
 
     haveInitializedLoggingChannels = true;
 
+#ifndef NDEBUG
     LogEvents.state = WTFLogChannelOn;
     LogFrames.state = WTFLogChannelOn;
     LogLoading.state = WTFLogChannelOn;
     LogPlatformLeaks.state = WTFLogChannelOn;
+//    LogNotYetImplemented.state = WTFLogChannelOn;
+#else
+//    LogNotYetImplemented.state = WTFLogChannelOn;
+#endif
 }
 
 } // namespace WebCore
