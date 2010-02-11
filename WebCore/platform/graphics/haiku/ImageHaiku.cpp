@@ -120,7 +120,7 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatR
         imageObserver()->didDraw(this);
 }
 
-void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& srcPoint, ColorSpace, CompositeOperator op, const FloatRect& dstRect)
+void Image::drawPattern(GraphicsContext* context, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, ColorSpace, CompositeOperator op, const FloatRect& dstRect)
 {
     BBitmap* image = nativeImageForCurrentFrame();
     if (!image || !image->IsValid()) // If the image hasn't fully loaded.
