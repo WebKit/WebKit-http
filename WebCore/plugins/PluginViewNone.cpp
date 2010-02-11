@@ -120,8 +120,4 @@ void PluginView::restart()
 {
 }
 
-void PluginView::keepAlive(NPP)
-{
-}
-
 } // namespace WebCore
