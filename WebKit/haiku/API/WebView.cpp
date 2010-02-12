@@ -368,9 +368,13 @@ void WebView::dispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
     if (!message || message->what != sanityWhat)
         return;
 
-	if (sanityWhat == B_MOUSE_UP)
+	if (sanityWhat == B_MOUSE_UP) {
+		// the activation click may contain no previous buttons
+		if (!m_lastMouseButtons)
+			return;
+
 		message->AddInt32("previous buttons", m_lastMouseButtons);
-	else
+	} else
 		message->FindInt32("buttons", (int32*)&m_lastMouseButtons);
 
     m_webProcess->mouseEvent(message, where, ConvertToScreen(where));
