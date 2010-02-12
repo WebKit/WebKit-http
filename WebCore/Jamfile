@@ -1323,6 +1323,7 @@ SharedLibrary libwebcore.so :
         # rendering
         AutoTableLayout.cpp
         break_lines.cpp
+        BidiRun.cpp
         CounterNode.cpp
         EllipsisBox.cpp
         FixedTableLayout.cpp
