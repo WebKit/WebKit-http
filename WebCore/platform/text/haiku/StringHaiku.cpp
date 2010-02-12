@@ -34,7 +34,7 @@ namespace WebCore {
 // String conversions
 String::String(const BString& string)
 {
-    if (string.String())
+    if (string.Length())
         m_impl = String::fromUTF8(string.String(), string.Length()).impl();
     else
         m_impl = StringImpl::empty();
