@@ -29,6 +29,7 @@
 #define WebDownload_h
 
 #include "Noncopyable.h"
+#include "RefPtr.h"
 #include "ResourceHandleClient.h"
 #include <File.h>
 #include <String.h>
@@ -36,25 +37,47 @@
 namespace WebCore {
 class ResourceError;
 class ResourceHandle;
+class ResourceRequest;
 class ResourceResponse;
 }
 
-class WebDownload : public Noncopyable, public ResourceHandleClient {
+using WebCore::ResourceError;
+using WebCore::ResourceHandle;
+using WebCore::ResourceRequest;
+using WebCore::ResourceResponse;
+
+class WebProcess;
+
+class WebDownload : public Noncopyable, public WebCore::ResourceHandleClient {
 public:
-    WebDownload();
+    enum {
+    	DOWNLOAD_FINISHED = 0,
+    	DOWNLOAD_FAILED,
+    	DOWNLOAD_BLOCKED,
+    	DOWNLOAD_CANNOT_SHOW_URL
+    };
 
-    virtual void didReceiveResponse(WebCore::ResourceHandle*, const WebCore::ResourceResponse&);
-    virtual void didReceiveData(WebCore::ResourceHandle*, const char*, int, int);
-    virtual void didFinishLoading(WebCore::ResourceHandle*);
-    virtual void didFail(WebCore::ResourceHandle*, const WebCore::ResourceError&);
-    virtual void wasBlocked(WebCore::ResourceHandle*);
-    virtual void cannotShowURL(WebCore::ResourceHandle*);
+    WebDownload(WebProcess* webProcess, const ResourceRequest& request);
+    WebDownload(WebProcess* webProcess, ResourceHandle* handle,
+        const ResourceRequest& request, const ResourceResponse& response);
 
+    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
+    virtual void didReceiveData(ResourceHandle*, const char*, int, int);
+    virtual void didFinishLoading(ResourceHandle*);
+    virtual void didFail(ResourceHandle*, const ResourceError&);
+    virtual void wasBlocked(ResourceHandle*);
+    virtual void cannotShowURL(ResourceHandle*);
+
+    void start();
     void cancel();
 
 private:
+    WebProcess* m_webPocess;
+
+    RefPtr<ResourceHandle> m_resourceHandle;
     BString m_suggestedFileName;
     off_t m_currentSize;
+    off_t m_expectedSize;
     BFile m_file;
     bigtime_t m_lastProgressReportTime;
 };

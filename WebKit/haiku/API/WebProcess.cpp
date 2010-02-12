@@ -52,8 +52,10 @@
 #include "PlatformMouseEvent.h"
 #include "PlatformString.h"
 #include "PlatformWheelEvent.h"
+#include "ResourceHandle.h"
 #include "Settings.h"
 #include "TextEncoding.h"
+#include "WebDownload.h"
 #include "WebFrame.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -298,7 +300,7 @@ void WebProcess::findString(const char* string, bool forward, bool caseSensitive
     Looper()->PostMessage(&message, this);
 }
 
-// #pragma mark - ChromeClientMethods
+// #pragma mark - WebCoreSupport methods
 
 WebFrame* WebProcess::mainFrame() const
 {
@@ -366,6 +368,26 @@ BString WebProcess::mainFrameTitle()
 BString WebProcess::mainFrameURL()
 {
     return m_mainFrame->url();
+}
+
+void WebProcess::requestDownload(const WebCore::ResourceRequest& request)
+{
+    WebDownload* download = new WebDownload(this, request);
+    download->start();
+}
+
+void WebProcess::requestDownload(WebCore::ResourceHandle* handle,
+    const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
+{
+    WebDownload* download = new WebDownload(this, handle, request, response);
+    download->start();
+}
+
+void WebProcess::downloadFinished(WebCore::ResourceHandle* handle,
+    WebDownload* download, uint32 status)
+{
+	handle->setClient(0);
+	delete download;
 }
 
 void WebProcess::paint(const BRect& rect, bool contentChanged, bool immediate,

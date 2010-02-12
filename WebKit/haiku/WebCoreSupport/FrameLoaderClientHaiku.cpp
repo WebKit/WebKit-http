@@ -130,12 +130,6 @@ void FrameLoaderClientHaiku::detachedFromParent3()
 {
 }
 
-void FrameLoaderClientHaiku::download(ResourceHandle*, const ResourceRequest&, const ResourceRequest&, const ResourceResponse&)
-{
-printf("FrameLoaderClientHaiku::download()\n");
-    notImplemented();
-}
-
 bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int)
 {
     notImplemented();
@@ -491,10 +485,14 @@ void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
     // this is only interesting once we provide an external API for the DOM
 }
 
-void FrameLoaderClientHaiku::startDownload(const ResourceRequest&)
+void FrameLoaderClientHaiku::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceRequest&, const ResourceResponse& response)
 {
-printf("FrameLoaderClientHaiku::startDownload()\n");
-    notImplemented();
+    m_webProcess->requestDownload(handle, request, response);
+}
+
+void FrameLoaderClientHaiku::startDownload(const ResourceRequest& request)
+{
+    m_webProcess->requestDownload(request);
 }
 
 void FrameLoaderClientHaiku::willChangeTitle(DocumentLoader*)

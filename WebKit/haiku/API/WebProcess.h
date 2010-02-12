@@ -33,11 +33,15 @@
 #include <Rect.h>
 #include <String.h>
 
+class WebDownload;
 class WebFrame;
 class WebView;
 
 namespace WebCore {
 class Page;
+class ResourceHandle;
+class ResourceRequest;
+class ResourceResponse;
 };
 
 enum {
@@ -93,6 +97,12 @@ public:
     void setViewBounds(const BRect& bounds);
     BString mainFrameTitle();
     BString mainFrameURL();
+
+    void requestDownload(const WebCore::ResourceRequest& request);
+    void requestDownload(WebCore::ResourceHandle* handle,
+        const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
+    void downloadFinished(WebCore::ResourceHandle* handle, WebDownload* download,
+        uint32 status);
 
     void paint(const BRect& rect, bool contentChanged, bool immediate,
         bool repaintContentOnly);

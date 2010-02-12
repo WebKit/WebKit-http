@@ -30,24 +30,60 @@
 
 #include "CString.h"
 #include "NotImplemented.h"
+#include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "WebProcess.h"
 #include <Entry.h>
+#include <NodeInfo.h>
+#include <Path.h>
 
-
-WebDownload::WebDownload()
-    : m_suggestedFileName()
+WebDownload::WebDownload(WebProcess* webProcess, const ResourceRequest& request)
+    : m_webPocess(webProcess)
+    , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
+    , m_suggestedFileName("Download")
     , m_currentSize(0)
+    , m_expectedSize(0)
     , m_file()
     , m_lastProgressReportTime(0)
 {
+printf("WebDownload::WebDownload()\n");
+}
+
+WebDownload::WebDownload(WebProcess* webProcess, ResourceHandle* handle,
+        const ResourceRequest& request, const ResourceResponse& response)
+    : m_webPocess(webProcess)
+    , m_resourceHandle(handle)
+    , m_suggestedFileName("Download")
+    , m_currentSize(0)
+    , m_expectedSize(0)
+    , m_file()
+    , m_lastProgressReportTime(0)
+{
+	m_resourceHandle->setClient(this);
+	// Call the hook manually to figure out the details of the request
+	didReceiveResponse(handle, response);
 }
 
 void WebDownload::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
-    if (!response.isNull() && !response.suggestedFilename().isEmpty())
-        m_suggestedFileName = response.suggestedFilename(); //.utf8().data();
+	BString mimeType("application/octet-stream");
+    if (!response.isNull()) {
+    	if (!response.suggestedFilename().isEmpty())
+            m_suggestedFileName = response.suggestedFilename();
+        else
+            m_suggestedFileName = response.url().lastPathComponent();
+        if (response.mimeType().length())
+            mimeType = response.mimeType();
+        m_expectedSize = response.expectedContentLength();
+    }
+    BPath path("/boot/home/Desktop/");
+    path.Append(m_suggestedFileName.String());
+	if (m_file.SetTo(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
+		BNodeInfo info(&m_file);
+		info.SetType(mimeType.String());
+	}
 }
 
 void WebDownload::didReceiveData(ResourceHandle*, const char* data, int length, int lengthReceived)
@@ -63,32 +99,41 @@ void WebDownload::didReceiveData(ResourceHandle*, const char* data, int length, 
     
 }
 
-void WebDownload::didFinishLoading(ResourceHandle*)
+void WebDownload::didFinishLoading(ResourceHandle* handle)
 {
-    // FIXME: Send notification
+printf("WebDownload::didFinishLoading()\n");
+    m_webPocess->downloadFinished(handle, this, DOWNLOAD_FINISHED);
 }
 
-void WebDownload::didFail(ResourceHandle*, const ResourceError& error)
+void WebDownload::didFail(ResourceHandle* handle, const ResourceError& error)
 {
-    // FIXME: Send notification
+printf("WebDownload::didFail()\n");
+    m_webPocess->downloadFinished(handle, this, DOWNLOAD_FAILED);
 }
 
-void WebDownload::wasBlocked(ResourceHandle*)
+void WebDownload::wasBlocked(ResourceHandle* handle)
 {
+printf("WebDownload::wasBlocked()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    notImplemented();
+    m_webPocess->downloadFinished(handle, this, DOWNLOAD_BLOCKED);
 }
 
-void WebDownload::cannotShowURL(ResourceHandle*)
+void WebDownload::cannotShowURL(ResourceHandle* handle)
 {
+printf("WebDownload::cannotShowURL()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    notImplemented();
+    m_webPocess->downloadFinished(handle, this, DOWNLOAD_CANNOT_SHOW_URL);
+}
+
+void WebDownload::start()
+{
+	// FIXME, the download is already running, and we cannot begin it paused...
 }
 
 void WebDownload::cancel()
 {
-    // FIXME: m_resourceHandle->cancel();
+    m_resourceHandle->cancel();
 }
 

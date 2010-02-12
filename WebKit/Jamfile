@@ -66,6 +66,7 @@ SharedLibrary libwebkit.so :
 	EditorClientHaiku.cpp
 	FrameLoaderClientHaiku.cpp
 	InspectorClientHaiku.cpp
+	WebDownload.cpp
 	WebFrame.cpp
 	WebProcess.cpp
 	WebView.cpp
@@ -86,6 +87,7 @@ SharedLibrary libwebkit.so :
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
 
 Application HaikuLauncher :
+    DownloadWindow.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
 
