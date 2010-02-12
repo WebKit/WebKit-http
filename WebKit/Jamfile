@@ -74,7 +74,7 @@ SharedLibrary libwebkit.so :
 	:
 	libjavascriptcore.so libwebcore.so
 	# Other required libraries
-	icu-common
+	icu-common stdc++
 	# Haiku libraries
 	be translation
 ;
@@ -85,7 +85,7 @@ SharedLibrary libwebkit.so :
 #-----------------------------------------------------------------------------
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
 
-Application HaikuLauncher : 
+Application HaikuLauncher :
 	LauncherApp.cpp
 	LauncherWindow.cpp
 
