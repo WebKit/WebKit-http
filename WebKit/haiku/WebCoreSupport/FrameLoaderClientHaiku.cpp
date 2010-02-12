@@ -415,6 +415,9 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
 
 void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError& error)
 {
+	if (error.isCancellation())
+		return;
+
 	// FIXME: This should be moved into LauncherWindow.
 	BString errorString("Error loading ");
 	errorString << error.failingURL();
@@ -548,7 +551,9 @@ void FrameLoaderClientHaiku::didRunInsecureContent(SecurityOrigin*)
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    error.setIsCancellation(true);
+    return error;
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
