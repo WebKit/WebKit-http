@@ -34,7 +34,6 @@
 #include <String.h>
 
 class BHandler;
-class WebFrameData;
 class WebProcess;
 
 namespace WebCore {
