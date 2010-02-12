@@ -33,6 +33,7 @@
 #include "config.h"
 #include "FrameLoaderClientHaiku.h"
 
+#include "CachedFrame.h"
 #include "CString.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
@@ -70,6 +71,7 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebProcess* webProcess, WebFrame*
     : m_webProcess(webProcess)
     , m_webFrame(webFrame)
     , m_messenger()
+    , m_firstData(false)
 {
 printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
     ASSERT(m_webProcess);
@@ -107,7 +109,9 @@ void FrameLoaderClientHaiku::forceLayout()
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    m_webFrame->frame()->view()->forceLayout();
+    FrameView* view = m_webFrame->frame()->view();
+    if (view)
+        view->forceLayout();
 }
 
 void FrameLoaderClientHaiku::setCopiesOnScroll()
@@ -155,6 +159,7 @@ void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader*, unsigned l
 
 bool FrameLoaderClientHaiku::shouldUseCredentialStorage(DocumentLoader*, unsigned long)
 {
+printf("FrameLoaderClientHaiku::shouldUseCredentialStorage()\n");
     notImplemented();
     return false;
 }
@@ -173,7 +178,10 @@ printf("FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge()\n");
 
 void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id, const ResourceResponse& response)
 {
-    notImplemented();
+    m_response = response;
+    m_firstData = true;
+    if (response.httpStatusCode() != 200)
+        printf("dispatchDidReceiveResponse(%s, %d)\n", response.url().string().utf8().data(), response.httpStatusCode());
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader, unsigned long id, int length)
@@ -191,6 +199,11 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
     BMessage message(LOAD_FAILED);
     message.AddString("url", loader->url().string());
     m_messenger.SendMessage(&message);
+
+    if (m_firstData) {
+        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
+        m_firstData = false;
+    }
 }
 
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
@@ -339,6 +352,10 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
                                                              const ResourceRequest& request)
 {
+    if (request.isNull()) {
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
     // we need to call directly here
     if (canShowMIMEType(mimetype))
         callPolicyFunction(function, PolicyUse);
@@ -350,6 +367,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
 	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
 {
 printf("dispatchDecidePolicyForNewWindowAction\n");
+    if (request.isNull()) {
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     if (m_messenger.SendMessage(&message) != B_OK) {
@@ -372,6 +394,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
 	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
 {
 printf("dispatchDecidePolicyForNavigationAction\n");
+    if (request.isNull()) {
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
     uint32 what = NAVIGATION_REQUESTED;
     if (action.event() && action.event()->isMouseEvent()) {
         // Clicks with the middle mouse button shall open a new window
@@ -413,10 +440,15 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader*, const WebCore::ResourceError& error)
+void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
 {
 	if (error.isCancellation())
 		return;
+
+    if (m_firstData) {
+        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
+        m_firstData = false;
+    }
 
 	// FIXME: This should be moved into LauncherWindow.
 	BString errorString("Error loading ");
@@ -488,13 +520,18 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
         encoding = loader->response().textEncodingName();
     frame->loader()->setEncoding(encoding, userChosen);
 
+    m_firstData = false;
+
     if (data)
         frame->loader()->addData(data, length);
 }
 
-void FrameLoaderClientHaiku::finishedLoading(DocumentLoader*)
+void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
 {
-    notImplemented();
+    if (m_firstData) {
+        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
+        m_firstData = false; 
+    }
 }
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
@@ -678,12 +715,25 @@ void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
 
 void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame*)
 {
-    notImplemented();
+	// Nothing to be done here for the moment.
 }
 
-void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame*)
+static void postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues)
 {
-    notImplemented();
+	// This method can be used to do adjustments on the main frame, since those
+	// are the only ones directly embedded into a WebView.
+	// Nothing to do here for the moment.
+}
+
+void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* cachedFrame)
+{
+    ASSERT(cachedFrame->view());
+
+    Frame* frame = m_webFrame->frame();
+    if (frame != frame->page()->mainFrame())
+        return;
+
+    postCommitFrameViewSetup(m_webFrame, cachedFrame->view(), false);
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
@@ -699,6 +749,12 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
     frame->createView(size, backgroundColor, transparent, IntSize(), false);
+
+    // We may need to do further manipulation on the FrameView if it was the mainFrame
+    if (frame != frame->page()->mainFrame())
+        return;
+
+    postCommitFrameViewSetup(m_webFrame, frame->view(), true);
 }
 
 String FrameLoaderClientHaiku::userAgent(const KURL&)
@@ -708,7 +764,7 @@ String FrameLoaderClientHaiku::userAgent(const KURL&)
 
 bool FrameLoaderClientHaiku::canCachePage() const
 {
-    return false;
+    return true;
 }
 
 PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement,

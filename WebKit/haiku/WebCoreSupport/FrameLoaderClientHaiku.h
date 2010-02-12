@@ -206,9 +206,13 @@ private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
 
+private:
     WebProcess* m_webProcess;
     WebFrame* m_webFrame;
     BMessenger m_messenger;
+
+    ResourceResponse m_response;
+    bool m_firstData;
 };
 
 } // namespace WebCore
