@@ -44,9 +44,15 @@ enum {
     FIND_STRING_RESULT = 'fsrs'
 };
 
+typedef enum {
+	WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER = 0,
+	WEBKIT_CACHE_MODEL_WEB_BROWSER
+} WebKitCacheModel;
+
 class WebProcess : public BHandler {
 public:
     static void initializeOnce();
+    static void setCacheModel(WebKitCacheModel model);
 
     WebProcess(WebView* webView);
 

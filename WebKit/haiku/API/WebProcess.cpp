@@ -30,6 +30,7 @@
 #include "WebProcess.h"
 
 #include "AtomicString.h"
+#include "Cache.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenuClientHaiku.h"
 #include "DOMTimer.h"
@@ -46,6 +47,7 @@
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "Page.h"
+#include "PageCache.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformString.h"
@@ -103,6 +105,39 @@ using namespace WebCore;
     WebCore::AtomicString::init();
     WebCore::DOMTimer::setMinTimerInterval(0.004);
     WebCore::UTF8Encoding();
+}
+
+/*static*/ void WebProcess::setCacheModel(WebKitCacheModel model)
+{
+    // FIXME: Add disk cache handling when CURL has the API
+    uint32 cacheTotalCapacity;
+    uint32 cacheMinDeadCapacity;
+    uint32 cacheMaxDeadCapacity;
+    double deadDecodedDataDeletionInterval;
+    uint32 pageCacheCapacity;
+
+    switch (model) {
+    case WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER:
+        pageCacheCapacity = 0;
+        cacheTotalCapacity = 0;
+        cacheMinDeadCapacity = 0;
+        cacheMaxDeadCapacity = 0;
+        deadDecodedDataDeletionInterval = 0;
+        break;
+    case WEBKIT_CACHE_MODEL_WEB_BROWSER:
+        pageCacheCapacity = 3;
+        cacheTotalCapacity = 32 * 1024 * 1024;
+        cacheMinDeadCapacity = cacheTotalCapacity / 4;
+        cacheMaxDeadCapacity = cacheTotalCapacity / 2;
+        deadDecodedDataDeletionInterval = 60;
+        break;
+    default:
+        return;
+    }
+
+    cache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    cache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    pageCache()->setCapacity(pageCacheCapacity);
 }
 
 WebProcess::WebProcess(WebView* webView)
@@ -163,7 +198,6 @@ void WebProcess::init()
 
 void WebProcess::shutdown()
 {
-printf("WebProcess::shutdown()\n");
     BMessage message(HANDLE_SHUTDOWN);
     Looper()->PostMessage(&message, this);
 }
