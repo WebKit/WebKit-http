@@ -92,7 +92,7 @@
 #if !(defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC) && defined(NDEBUG)
 #define FORCE_SYSTEM_MALLOC 0
 #else
-#define FORCE_SYSTEM_MALLOC 1
+#define FORCE_SYSTEM_MALLOC 0 // TODO: hacked to off also in debug build
 #endif
 
 // Use a background thread to periodically scavenge memory to release back to the system
