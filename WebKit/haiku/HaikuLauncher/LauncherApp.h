@@ -32,6 +32,7 @@
 #include <Rect.h>
 
 class BFile;
+class DownloadWindow;
 class LauncherWindow;
 
 class LauncherApp : public BApplication {
@@ -54,6 +55,8 @@ private:
     BRect m_lastWindowFrame;
     BMessage* m_launchRefsMessage;
     bool m_initialized;
+
+    DownloadWindow* m_downloadWindow;
 };
 
 extern const char* kApplicationSignature;

@@ -31,6 +31,7 @@
 #include "config.h"
 #include "LauncherWindow.h"
 
+#include "WebProcess.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 
@@ -75,7 +76,8 @@ static BLayoutItem* layoutItemFor(BView* view)
 	return layout->ItemAt(index);
 }
 
-LauncherWindow::LauncherWindow(BRect frame, ToolbarPolicy toolbarPolicy)
+LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
+        ToolbarPolicy toolbarPolicy)
     : WebViewWindow(frame, "HaikuLauncher",
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
@@ -186,6 +188,8 @@ LauncherWindow::LauncherWindow(BRect frame, ToolbarPolicy toolbarPolicy)
             .Add(webView())
         );
     }
+
+    webView()->webProcess()->setDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 

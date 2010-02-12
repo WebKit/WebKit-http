@@ -300,6 +300,11 @@ void WebProcess::findString(const char* string, bool forward, bool caseSensitive
     Looper()->PostMessage(&message, this);
 }
 
+void WebProcess::setDownloadListener(const BMessenger& listener)
+{
+    m_downloadListener = listener;
+}
+
 // #pragma mark - WebCoreSupport methods
 
 WebFrame* WebProcess::mainFrame() const
@@ -373,20 +378,38 @@ BString WebProcess::mainFrameURL()
 void WebProcess::requestDownload(const WebCore::ResourceRequest& request)
 {
     WebDownload* download = new WebDownload(this, request);
-    download->start();
+    downloadCreated(download);
 }
 
 void WebProcess::requestDownload(WebCore::ResourceHandle* handle,
     const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
 {
     WebDownload* download = new WebDownload(this, handle, request, response);
-    download->start();
+    downloadCreated(download);
+}
+
+void WebProcess::downloadCreated(WebDownload* download)
+{
+	download->start();
+	if (m_downloadListener.IsValid()) {
+        BMessage message(DOWNLOAD_ADDED);
+        // TODO: Make WebDownload referenceable and add reference!
+        message.AddPointer("download", download);
+        m_downloadListener.SendMessage(&message);
+	}
 }
 
 void WebProcess::downloadFinished(WebCore::ResourceHandle* handle,
     WebDownload* download, uint32 status)
 {
 	handle->setClient(0);
+	if (m_downloadListener.IsValid()) {
+        BMessage message(DOWNLOAD_REMOVED);
+        message.AddPointer("download", download);
+            // TODO: Make WebDownload referenceable and add reference!
+        m_downloadListener.SendMessage(&message);
+	}
+	// TODO: See above, release reference only!
 	delete download;
 }
 

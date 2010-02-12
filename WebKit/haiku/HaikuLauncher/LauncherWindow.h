@@ -55,7 +55,8 @@ enum {
 
 class LauncherWindow : public WebViewWindow {
 public:
-    LauncherWindow(BRect frame, ToolbarPolicy = HaveToolbar);
+    LauncherWindow(BRect frame, const BMessenger& downloadListener,
+        ToolbarPolicy = HaveToolbar);
     virtual ~LauncherWindow();
 
     virtual void MessageReceived(BMessage* message);

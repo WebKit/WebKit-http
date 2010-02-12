@@ -32,6 +32,7 @@
 #include "RefPtr.h"
 #include "ResourceHandleClient.h"
 #include <File.h>
+#include <Messenger.h>
 #include <String.h>
 
 namespace WebCore {
@@ -50,6 +51,10 @@ class WebProcess;
 
 class WebDownload : public Noncopyable, public WebCore::ResourceHandleClient {
 public:
+    enum {
+        DOWNLOAD_PROGRESS = 'dwnp'
+    };
+
     enum {
     	DOWNLOAD_FINISHED = 0,
     	DOWNLOAD_FAILED,
@@ -70,6 +75,11 @@ public:
 
     void start();
     void cancel();
+    void setProgressListener(const BMessenger&);
+
+    const BString& filename() const { return m_suggestedFileName; }
+    off_t currentSize() const { return m_currentSize; }
+    off_t expectedSize() const { return m_expectedSize; }
 
 private:
     WebProcess* m_webPocess;
@@ -80,6 +90,8 @@ private:
     off_t m_expectedSize;
     BFile m_file;
     bigtime_t m_lastProgressReportTime;
+
+    BMessenger m_progressListener;
 };
 
 #endif // WebDownload_h

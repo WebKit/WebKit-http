@@ -29,6 +29,7 @@
 #include "config.h"
 #include "LauncherApp.h"
 
+#include "DownloadWindow.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "LauncherWindow.h"
@@ -56,6 +57,7 @@ LauncherApp::LauncherApp()
     , m_lastWindowFrame(100, 100, 700, 750)
     , m_launchRefsMessage(0)
     , m_initialized(false)
+    , m_downloadWindow(0)
 {
 }
 
@@ -86,6 +88,8 @@ void LauncherApp::ReadyToRun()
     WebProcess::initializeOnce();
     WebProcess::setCacheModel(WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
+    m_downloadWindow = new DownloadWindow(BRect(100, 100, 300, 250));
+
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;
 	if (openSettingsFile(settingsFile, B_READ_ONLY)) {
@@ -102,7 +106,8 @@ void LauncherApp::ReadyToRun()
 		delete m_launchRefsMessage;
 		m_launchRefsMessage = 0;
 	} else {
-	    LauncherWindow* window = new LauncherWindow(m_lastWindowFrame);
+	    LauncherWindow* window = new LauncherWindow(m_lastWindowFrame,
+	        BMessenger(m_downloadWindow));
 	    window->Show();
 	}
 }
@@ -232,7 +237,8 @@ void LauncherApp::newWindow(const BString& url)
 	if (!BScreen().Frame().Contains(m_lastWindowFrame))
 		m_lastWindowFrame.OffsetTo(50, 50);
 
-	LauncherWindow* window = new LauncherWindow(m_lastWindowFrame);
+	LauncherWindow* window = new LauncherWindow(m_lastWindowFrame,
+	    BMessenger(m_downloadWindow));
 	window->Show();
 	if (url.Length())
 	    window->webView()->loadRequest(url.String());

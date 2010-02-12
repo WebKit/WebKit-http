@@ -421,6 +421,7 @@ printf("dispatchDecidePolicyForNavigationAction\n");
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
 {
+printf("FrameLoaderClientHaiku::cancelPolicyCheck()\n");
     notImplemented();
 }
 
@@ -599,6 +600,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceReques
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
+printf("FrameLoaderClientHaiku::cannotShowURLError()\n");
     return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
 }
 

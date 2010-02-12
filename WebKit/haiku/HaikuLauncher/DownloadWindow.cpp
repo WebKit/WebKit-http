@@ -28,6 +28,8 @@
 #include "config.h"
 #include "DownloadWindow.h"
 
+#include "WebDownload.h"
+#include "WebProcess.h"
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
@@ -35,7 +37,7 @@
 #include <MenuItem.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
-
+#include <StatusBar.h>
 #include <stdio.h>
 
 DownloadWindow::DownloadWindow(BRect frame)
@@ -43,6 +45,7 @@ DownloadWindow::DownloadWindow(BRect frame)
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
 {
+	SetLayout(new BGroupLayout(B_VERTICAL));
 	Minimize(true);
 	Show();
 }
@@ -54,6 +57,18 @@ DownloadWindow::~DownloadWindow()
 void DownloadWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
+    case DOWNLOAD_ADDED: {
+        WebDownload* download;
+        if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
+            downloadStarted(download);
+        break;
+    }
+    case DOWNLOAD_REMOVED: {
+        WebDownload* download;
+        if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
+            downloadFinished(download);
+        break;
+    }
     default:
         BWindow::MessageReceived(message);
         break;
@@ -65,4 +80,56 @@ bool DownloadWindow::QuitRequested()
 	if (!IsMinimized())
         Minimize(true);
     return false;
+}
+
+class DownloadProgressView : public BGroupView {
+public:
+    DownloadProgressView(WebDownload* download)
+        : BGroupView(B_HORIZONTAL)
+        , m_download(download)
+        , m_expectedSize(download->expectedSize())
+    {
+    	GroupLayout()->SetInsets(5, 5, 5, 5);
+    	m_statusBar = new BStatusBar("download progress", download->filename().String());
+    	m_statusBar->SetMaxValue(100);
+    	AddChild(m_statusBar);
+    }
+
+    virtual void AttachedToWindow()
+    {
+        m_download->setProgressListener(BMessenger(this));
+    }
+
+    virtual void MessageReceived(BMessage* message)
+    {
+        switch (message->what) {
+        case WebDownload::DOWNLOAD_PROGRESS: {
+        	float progress;
+        	if (message->FindFloat("progress", &progress) == B_OK)
+        	    m_statusBar->SetTo(progress);
+            break;
+        }
+        default:
+            BGroupView::MessageReceived(message);
+        }
+    }
+
+    WebDownload* download() const
+    {
+    	return m_download;
+    }
+
+private:
+    BStatusBar* m_statusBar;
+    WebDownload* m_download;
+    off_t m_expectedSize;
+};
+
+void DownloadWindow::downloadStarted(WebDownload* download)
+{
+	AddChild(new DownloadProgressView(download));
+}
+
+void DownloadWindow::downloadFinished(WebDownload* download)
+{
 }

@@ -36,6 +36,8 @@
 #include "ResourceResponse.h"
 #include "WebProcess.h"
 #include <Entry.h>
+#include <Message.h>
+#include <Messenger.h>
 #include <NodeInfo.h>
 #include <Path.h>
 
@@ -72,8 +74,12 @@ void WebDownload::didReceiveResponse(ResourceHandle*, const ResourceResponse& re
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())
             m_suggestedFileName = response.suggestedFilename();
-        else
-            m_suggestedFileName = response.url().lastPathComponent();
+        else {
+        	WebCore::KURL url(response.url());
+        	url.setQuery(WebCore::String());
+        	url.removeFragmentIdentifier();
+            m_suggestedFileName = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
+        }
         if (response.mimeType().length())
             mimeType = response.mimeType();
         m_expectedSize = response.expectedContentLength();
@@ -96,7 +102,9 @@ void WebDownload::didReceiveData(ResourceHandle*, const char* data, int length, 
     m_currentSize += length;
 
     // FIXME: Report total size update, if m_currentSize greater than previous total size
-    
+    BMessage message(DOWNLOAD_PROGRESS);
+    message.AddFloat("progress", m_currentSize * 100.0 / m_expectedSize);
+    m_progressListener.SendMessage(&message);
 }
 
 void WebDownload::didFinishLoading(ResourceHandle* handle)
@@ -137,3 +145,7 @@ void WebDownload::cancel()
     m_resourceHandle->cancel();
 }
 
+void WebDownload::setProgressListener(const BMessenger& listener)
+{
+	m_progressListener = listener;
+}

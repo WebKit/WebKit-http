@@ -30,6 +30,7 @@
 #define WebProcess_h
 
 #include <Handler.h>
+#include <Messenger.h>
 #include <Rect.h>
 #include <String.h>
 
@@ -45,7 +46,9 @@ class ResourceResponse;
 };
 
 enum {
-    FIND_STRING_RESULT = 'fsrs'
+    FIND_STRING_RESULT = 'fsrs',
+    DOWNLOAD_ADDED = 'dwna',
+    DOWNLOAD_REMOVED = 'dwnr'
 };
 
 typedef enum {
@@ -82,6 +85,8 @@ public:
     void findString(const char* string, bool forward, bool caseSensitive,
         bool wrapSelection, bool startInSelection);
 
+    void setDownloadListener(const BMessenger& listener);
+
     // The following methods are only supposed to be called by the
     // ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
     // thread!
@@ -101,6 +106,7 @@ public:
     void requestDownload(const WebCore::ResourceRequest& request);
     void requestDownload(WebCore::ResourceHandle* handle,
         const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
+    void downloadCreated(WebDownload* download);
     void downloadFinished(WebCore::ResourceHandle* handle, WebDownload* download,
         uint32 status);
 
@@ -128,6 +134,7 @@ private:
     void handleFindString(BMessage* message);
 
 private:
+    BMessenger m_downloadListener;
     WebView* m_webView;
     WebFrame* m_mainFrame;
     WebCore::Page* m_page;

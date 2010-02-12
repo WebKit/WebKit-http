@@ -30,6 +30,8 @@
 
 #include <Window.h>
 
+class WebDownload;
+
 class DownloadWindow : public BWindow {
 public:
     DownloadWindow(BRect frame);
@@ -37,6 +39,9 @@ public:
 
     virtual void MessageReceived(BMessage*);
     virtual bool QuitRequested();
+
+    void downloadStarted(WebDownload* download);
+    void downloadFinished(WebDownload* download);
 
 private:
 };
