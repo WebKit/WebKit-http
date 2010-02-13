@@ -117,7 +117,7 @@ int EditorClientHaiku::spellCheckerDocumentTag()
 bool EditorClientHaiku::isEditable()
 {
     notImplemented();
-    return true;
+    return false;
 }
 
 bool EditorClientHaiku::shouldBeginEditing(WebCore::Range*)
