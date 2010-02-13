@@ -33,6 +33,7 @@
 #include "ResourceHandleClient.h"
 #include <File.h>
 #include <Messenger.h>
+#include <Path.h>
 #include <String.h>
 
 namespace WebCore {
@@ -77,7 +78,8 @@ public:
     void cancel();
     void setProgressListener(const BMessenger&);
 
-    const BString& filename() const { return m_suggestedFileName; }
+    const BString& filename() const { return m_filename; }
+    const BPath& path() const { return m_path; }
     off_t currentSize() const { return m_currentSize; }
     off_t expectedSize() const { return m_expectedSize; }
 
@@ -88,6 +90,8 @@ private:
     BString m_suggestedFileName;
     off_t m_currentSize;
     off_t m_expectedSize;
+    BPath m_path;
+    BString m_filename;
     BFile m_file;
     bigtime_t m_lastProgressReportTime;
 

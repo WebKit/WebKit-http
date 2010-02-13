@@ -39,14 +39,14 @@
 #include <Message.h>
 #include <Messenger.h>
 #include <NodeInfo.h>
-#include <Path.h>
 
 WebDownload::WebDownload(WebProcess* webProcess, const ResourceRequest& request)
     : m_webPocess(webProcess)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
-    , m_suggestedFileName("Download")
     , m_currentSize(0)
     , m_expectedSize(0)
+    , m_path("/boot/home/Desktop/")
+    , m_filename("Download")
     , m_file()
     , m_lastProgressReportTime(0)
 {
@@ -57,9 +57,10 @@ WebDownload::WebDownload(WebProcess* webProcess, ResourceHandle* handle,
         const ResourceRequest& request, const ResourceResponse& response)
     : m_webPocess(webProcess)
     , m_resourceHandle(handle)
-    , m_suggestedFileName("Download")
     , m_currentSize(0)
     , m_expectedSize(0)
+    , m_path("/boot/home/Desktop/")
+    , m_filename("Download")
     , m_file()
     , m_lastProgressReportTime(0)
 {
@@ -73,20 +74,19 @@ void WebDownload::didReceiveResponse(ResourceHandle*, const ResourceResponse& re
 	BString mimeType("application/octet-stream");
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())
-            m_suggestedFileName = response.suggestedFilename();
+            m_filename = response.suggestedFilename();
         else {
         	WebCore::KURL url(response.url());
         	url.setQuery(WebCore::String());
         	url.removeFragmentIdentifier();
-            m_suggestedFileName = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
+            m_filename = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
         }
         if (response.mimeType().length())
             mimeType = response.mimeType();
         m_expectedSize = response.expectedContentLength();
     }
-    BPath path("/boot/home/Desktop/");
-    path.Append(m_suggestedFileName.String());
-	if (m_file.SetTo(path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
+    m_path.Append(m_filename.String());
+	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
 		BNodeInfo info(&m_file);
 		info.SetType(mimeType.String());
 	}

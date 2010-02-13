@@ -31,6 +31,7 @@
 #include <Window.h>
 
 class BButton;
+class BFile;
 class BGroupLayout;
 class WebDownload;
 
@@ -46,6 +47,9 @@ private:
     void downloadStarted(WebDownload* download);
     void downloadFinished(WebDownload* download);
     void removeFinishedDownloads();
+    void saveSettings();
+    void loadSettings();
+    bool openSettingsFile(BFile& file, uint32 mode);
 
 private:
     BGroupLayout* m_downloadViewsLayout;

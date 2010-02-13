@@ -30,12 +30,18 @@
 
 #include "WebDownload.h"
 #include "WebProcess.h"
+#include <Alert.h>
+#include <Bitmap.h>
 #include <Button.h>
+#include <Entry.h>
+#include <FindDirectory.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
+#include <NodeInfo.h>
+#include <Roster.h>
 #include <ScrollView.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
@@ -43,7 +49,278 @@
 #include <stdio.h>
 
 enum {
-    REMOVE_FINISHED_DOWNLOADS = 'rmfd'
+    REMOVE_FINISHED_DOWNLOADS = 'rmfd',
+    OPEN_DOWNLOAD = 'opdn',
+    REMOVE_DOWNLOAD = 'rmdn',
+    SAVE_SETTINGS = 'svst'
+};
+
+class IconView : public BView {
+public:
+    IconView(const BEntry& entry)
+        : BView("Download icon", B_WILL_DRAW)
+        , m_iconBitmap(BRect(0, 0, 31, 31), 0, B_RGBA32)
+    {
+    	BNode node(&entry);
+    	BNodeInfo info(&node);
+    	info.GetTrackerIcon(&m_iconBitmap, B_LARGE_ICON);
+    	SetDrawingMode(B_OP_OVER);
+    }
+
+    IconView(BMessage* archive)
+        : BView("Download icon", B_WILL_DRAW)
+        , m_iconBitmap(archive)
+    {
+    	SetDrawingMode(B_OP_OVER);
+    }
+
+    status_t saveSettings(BMessage* archive)
+    {
+    	return m_iconBitmap.Archive(archive);
+    }
+
+    virtual void AttachedToWindow()
+    {
+    	SetViewColor(Parent()->ViewColor());
+    }
+
+    virtual void Draw(BRect updateRect)
+    {
+    	DrawBitmapAsync(&m_iconBitmap);
+    }
+
+    virtual BSize MinSize()
+    {
+    	return BSize(m_iconBitmap.Bounds().Width(), m_iconBitmap.Bounds().Height());
+    }
+
+    virtual BSize PreferredSize()
+    {
+    	return MinSize();
+    }
+
+    virtual BSize MaxSize()
+    {
+    	return MinSize();
+    }
+
+private:
+    BBitmap m_iconBitmap;
+};
+
+class SmallButton : public BButton {
+public:
+    SmallButton(const char* label, BMessage* message = NULL)
+        : BButton(label, message)
+    {
+    	BFont font;
+    	GetFont(&font);
+    	float size = ceilf(font.Size() * 0.8);
+    	font.SetSize(max_c(8, size));
+    	SetFont(&font, B_FONT_SIZE);
+    }
+};
+
+class DownloadProgressView : public BGridView {
+public:
+    DownloadProgressView(WebDownload* download)
+        : BGridView(8, 3)
+        , m_download(download)
+        , m_path(download->path())
+        , m_expectedSize(download->expectedSize())
+    {
+    }
+
+    DownloadProgressView(const BMessage* archive)
+        : BGridView(8, 3)
+        , m_download(NULL)
+        , m_path()
+        , m_expectedSize(0)
+    {
+    	const char* path;
+    	if (archive->FindString("path", &path) == B_OK)
+    	    m_path.SetTo(path);
+    }
+
+    bool init(BMessage* archive = NULL)
+    {
+        BEntry entry(m_path.Path());
+        if (!entry.Exists() && !archive)
+        	return false;
+
+    	SetViewColor(245, 245, 245);
+    	SetFlags(Flags() | B_FULL_UPDATE_ON_RESIZE | B_WILL_DRAW);
+
+    	BGridLayout* layout = GridLayout();
+    	m_statusBar = new BStatusBar("download progress", m_path.Leaf());
+    	m_statusBar->SetMaxValue(100);
+    	if (archive) {
+    		float value;
+    		if (archive->FindFloat("value", &value) == B_OK)
+    	        m_statusBar->SetTo(value);
+    	}
+    	m_statusBar->SetBarHeight(12);
+
+        if (entry.Exists())
+            m_iconView = new IconView(entry);
+        else
+            m_iconView = new IconView(archive);
+
+        m_button1 = new SmallButton("Open", new BMessage(OPEN_DOWNLOAD));
+        m_button2 = new SmallButton("Remove", new BMessage(REMOVE_DOWNLOAD));
+        m_button1->SetEnabled(m_download == NULL);
+        m_button2->SetEnabled(m_download == NULL);
+
+		layout->SetInsets(8, 5, 5, 6);
+    	layout->AddView(m_iconView, 0, 0, 1, 2);
+    	layout->AddView(m_statusBar, 1, 0, 1, 2);
+    	layout->AddView(m_button1, 2, 0);
+    	layout->AddView(m_button2, 2, 1);
+
+    	return true;
+    }
+
+    status_t saveSettings(BMessage* archive)
+    {
+    	if (!archive)
+    	    return B_BAD_VALUE;
+    	status_t ret = archive->AddString("path", m_path.Path());
+    	if (ret == B_OK)
+    	    ret = archive->AddFloat("value", m_statusBar->CurrentValue());
+    	if (ret == B_OK)
+    	    ret = m_iconView->saveSettings(archive);
+    	return ret;
+    }
+
+    virtual void AttachedToWindow()
+    {
+    	if (m_download)
+            m_download->setProgressListener(BMessenger(this));
+        m_button1->SetTarget(this);
+        m_button2->SetTarget(this);
+    }
+
+    virtual void AllAttached()
+    {
+    	SetViewColor(B_TRANSPARENT_COLOR);
+    	SetLowColor(245, 245, 245);
+    	SetHighColor(tint_color(LowColor(), B_DARKEN_1_TINT));
+    }
+
+    virtual void Draw(BRect updateRect)
+    {
+    	BRect bounds(Bounds());
+    	bounds.bottom--;
+    	FillRect(bounds, B_SOLID_LOW);
+    	bounds.bottom++;
+    	StrokeLine(bounds.LeftBottom(), bounds.RightBottom());
+    }
+
+    virtual void MessageReceived(BMessage* message)
+    {
+        switch (message->what) {
+        case WebDownload::DOWNLOAD_PROGRESS: {
+        	float progress;
+        	if (message->FindFloat("progress", &progress) == B_OK)
+        	    m_statusBar->SetTo(progress);
+            break;
+        }
+        case OPEN_DOWNLOAD: {
+        	// TODO: In case of executable files, ask the user first!
+        	entry_ref ref;
+        	status_t status = get_ref_for_path(m_path.Path(), &ref);
+        	if (status == B_OK)
+        		status = be_roster->Launch(&ref);
+        	if (status != B_OK && status != B_ALREADY_RUNNING) {
+        		BAlert* alert = new BAlert("Open download error",
+        		    "The download could not be opened.", "OK");
+        		alert->Go(NULL);
+        	}
+            break;
+        }
+        case REMOVE_DOWNLOAD: {
+        	Window()->PostMessage(SAVE_SETTINGS);
+        	RemoveSelf();
+        	delete this;
+        	// TOAST!
+            return;
+        }
+        default:
+            BGridView::MessageReceived(message);
+        }
+    }
+
+    WebDownload* download() const
+    {
+    	return m_download;
+    }
+
+    void downloadFinished()
+    {
+    	m_download = NULL;
+    	m_button1->SetEnabled(true);
+    	m_button2->SetEnabled(true);
+    }
+
+private:
+    IconView* m_iconView;
+    BStatusBar* m_statusBar;
+    SmallButton* m_button1;
+    SmallButton* m_button2;
+    WebDownload* m_download;
+    BPath m_path;
+    off_t m_expectedSize;
+};
+
+class DownloadsContainerView : public BGroupView {
+public:
+	DownloadsContainerView()
+		: BGroupView(B_VERTICAL)
+	{
+	    SetViewColor(245, 245, 245);
+	    AddChild(BSpaceLayoutItem::CreateGlue());
+	}
+
+    virtual BSize MinSize()
+    {
+    	BSize minSize = BGroupView::MinSize();
+    	return BSize(minSize.width, 80);
+    }
+
+protected:
+	virtual void DoLayout()
+	{
+		BGroupView::DoLayout();
+		if (BScrollBar* scrollBar = ScrollBar(B_VERTICAL)) {
+			BSize minSize = BGroupView::MinSize();
+			float height = Bounds().Height();
+			float max = minSize.height - height;
+			scrollBar->SetRange(0, max);
+			if (minSize.height > 0)
+			    scrollBar->SetProportion(height / minSize.height);
+			else
+			    scrollBar->SetProportion(1);
+		}
+	}
+};
+
+class DownloadContainerScrollView : public BScrollView {
+public:
+    DownloadContainerScrollView(BView* target)
+        : BScrollView("Downloads scroll view", target, 0, false, true, B_NO_BORDER)
+    {
+    }
+
+protected:
+    virtual void DoLayout()
+    {
+    	BScrollView::DoLayout();
+        // Tweak scroll bar layout to hide part of the frame for better looks.
+        BScrollBar* scrollBar = ScrollBar(B_VERTICAL);
+        scrollBar->MoveBy(1, -1);
+        scrollBar->ResizeBy(0, 2);
+        Target()->ResizeBy(1, 0);
+    }
 };
 
 DownloadWindow::DownloadWindow(BRect frame, bool visible)
@@ -53,8 +330,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
 
-	BGroupView* downloadsGroupView = new BGroupView(B_VERTICAL);
-	downloadsGroupView->SetViewColor(245, 245, 245);
+	DownloadsContainerView* downloadsGroupView = new DownloadsContainerView();
 	m_downloadViewsLayout = downloadsGroupView->GroupLayout();
 
     BMenuBar* menuBar = new BMenuBar("Menu bar");
@@ -62,8 +338,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
     menu->AddItem(new BMenuItem("Minimize", new BMessage(B_QUIT_REQUESTED), 'M'));
     menuBar->AddItem(menu);
 
-    BScrollView* scrollView = new BScrollView("Downloads scroll view",
-        downloadsGroupView, 0, false, true, B_NO_BORDER);
+    BScrollView* scrollView = new DownloadContainerScrollView(downloadsGroupView);
 
     m_removeFinishedButton = new BButton("Remove finished",
         new BMessage(REMOVE_FINISHED_DOWNLOADS));
@@ -80,6 +355,10 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
         )
     );
 
+    loadSettings();
+    // Small trick to get the correct enabled status of the Remove finished button
+    downloadFinished(NULL);
+
 	if (!visible)
 	    Minimize(true);
 	Show();
@@ -87,6 +366,8 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
 
 DownloadWindow::~DownloadWindow()
 {
+	// Only necessary to save the current progress of unfinished downloads:
+	saveSettings();
 }
 
 void DownloadWindow::MessageReceived(BMessage* message)
@@ -107,6 +388,9 @@ void DownloadWindow::MessageReceived(BMessage* message)
     case REMOVE_FINISHED_DOWNLOADS:
         removeFinishedDownloads();
         break;
+    case SAVE_SETTINGS:
+        saveSettings();
+        break;
     default:
         BWindow::MessageReceived(message);
         break;
@@ -120,58 +404,13 @@ bool DownloadWindow::QuitRequested()
     return false;
 }
 
-class DownloadProgressView : public BGroupView {
-public:
-    DownloadProgressView(WebDownload* download)
-        : BGroupView(B_HORIZONTAL)
-        , m_download(download)
-        , m_expectedSize(download->expectedSize())
-    {
-    	SetViewColor(245, 245, 245);
-    	GroupLayout()->SetInsets(5, 5, 5, 5);
-    	m_statusBar = new BStatusBar("download progress", download->filename().String());
-    	m_statusBar->SetMaxValue(100);
-    	AddChild(m_statusBar);
-    }
-
-    virtual void AttachedToWindow()
-    {
-        m_download->setProgressListener(BMessenger(this));
-    }
-
-    virtual void MessageReceived(BMessage* message)
-    {
-        switch (message->what) {
-        case WebDownload::DOWNLOAD_PROGRESS: {
-        	float progress;
-        	if (message->FindFloat("progress", &progress) == B_OK)
-        	    m_statusBar->SetTo(progress);
-            break;
-        }
-        default:
-            BGroupView::MessageReceived(message);
-        }
-    }
-
-    WebDownload* download() const
-    {
-    	return m_download;
-    }
-
-    void downloadFinished()
-    {
-    	m_download = NULL;
-    }
-
-private:
-    BStatusBar* m_statusBar;
-    WebDownload* m_download;
-    off_t m_expectedSize;
-};
-
 void DownloadWindow::downloadStarted(WebDownload* download)
 {
-	m_downloadViewsLayout->AddView(new DownloadProgressView(download));
+	DownloadProgressView* view = new DownloadProgressView(download);
+	if (!view->init())
+		return;
+	m_downloadViewsLayout->AddView(0, view);
+	saveSettings();
 }
 
 void DownloadWindow::downloadFinished(WebDownload* download)
@@ -188,6 +427,8 @@ void DownloadWindow::downloadFinished(WebDownload* download)
             finishedCount++;
 	}
 	m_removeFinishedButton->SetEnabled(finishedCount > 0);
+	if (download)
+        saveSettings();
 }
 
 void DownloadWindow::removeFinishedDownloads()
@@ -203,4 +444,52 @@ void DownloadWindow::removeFinishedDownloads()
         }
 	}
 	m_removeFinishedButton->SetEnabled(false);
+	saveSettings();
 }
+
+void DownloadWindow::saveSettings()
+{
+	BFile file;
+	if (!openSettingsFile(file, B_ERASE_FILE | B_CREATE_FILE | B_WRITE_ONLY))
+	    return;
+	BMessage message;
+	for (int32 i = m_downloadViewsLayout->CountItems() - 1;
+	        BLayoutItem* item = m_downloadViewsLayout->ItemAt(i); i--) {
+        DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(item->View());
+        if (!view)
+            continue;
+       BMessage downloadArchive;
+       if (view->saveSettings(&downloadArchive) == B_OK)
+           message.AddMessage("download", &downloadArchive);
+	}
+	message.Flatten(&file);
+}
+
+void DownloadWindow::loadSettings()
+{
+	BFile file;
+	if (!openSettingsFile(file, B_READ_ONLY))
+	    return;
+	BMessage message;
+	if (message.Unflatten(&file) != B_OK)
+        return;
+    BMessage downloadArchive;
+	for (int32 i = 0; message.FindMessage("download", i, &downloadArchive) == B_OK; i++) {
+        DownloadProgressView* view = new DownloadProgressView(&downloadArchive);
+		if (!view->init(&downloadArchive))
+			continue;
+        m_downloadViewsLayout->AddView(0, view);
+	}
+}
+
+bool DownloadWindow::openSettingsFile(BFile& file, uint32 mode)
+{
+	BPath path;
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) != B_OK
+		|| path.Append("HaikuLauncher_Downloads") != B_OK) {
+		return false;
+	}
+	return file.SetTo(path.Path(), mode) == B_OK;
+}
+
+
