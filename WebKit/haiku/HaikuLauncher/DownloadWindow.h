@@ -30,6 +30,8 @@
 
 #include <Window.h>
 
+class BButton;
+class BGroupLayout;
 class WebDownload;
 
 class DownloadWindow : public BWindow {
@@ -40,10 +42,14 @@ public:
     virtual void MessageReceived(BMessage*);
     virtual bool QuitRequested();
 
+private:
     void downloadStarted(WebDownload* download);
     void downloadFinished(WebDownload* download);
+    void removeFinishedDownloads();
 
 private:
+    BGroupLayout* m_downloadViewsLayout;
+    BButton* m_removeFinishedButton;
 };
 
 #endif // DownloadWindow_h

@@ -393,9 +393,10 @@ void WebProcess::downloadCreated(WebDownload* download)
 	download->start();
 	if (m_downloadListener.IsValid()) {
         BMessage message(DOWNLOAD_ADDED);
-        // TODO: Make WebDownload referenceable and add reference!
         message.AddPointer("download", download);
-        m_downloadListener.SendMessage(&message);
+        // Block until the listener has pulled all the information...
+        BMessage reply;
+        m_downloadListener.SendMessage(&message, &reply);
 	}
 }
 
@@ -406,10 +407,10 @@ void WebProcess::downloadFinished(WebCore::ResourceHandle* handle,
 	if (m_downloadListener.IsValid()) {
         BMessage message(DOWNLOAD_REMOVED);
         message.AddPointer("download", download);
-            // TODO: Make WebDownload referenceable and add reference!
-        m_downloadListener.SendMessage(&message);
+        // Block until the listener has released the object on it's side...
+        BMessage reply;
+        m_downloadListener.SendMessage(&message, &reply);
 	}
-	// TODO: See above, release reference only!
 	delete download;
 }
 
