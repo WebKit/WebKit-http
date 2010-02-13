@@ -553,6 +553,10 @@ void WebProcess::MessageReceived(BMessage* message)
 
 void WebProcess::skipToLastMessage(BMessage*& message)
 {
+	// NOTE: All messages that are fast-forwarded like this
+	// need to be flagged with the intended target WebProcess,
+	// or else we steal or process messages intended for another
+	// WebProcess here!
     bool first = true;
     BMessageQueue* queue = Looper()->MessageQueue();
     int32 index = 0;
