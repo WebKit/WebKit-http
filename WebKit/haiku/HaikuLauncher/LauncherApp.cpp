@@ -173,8 +173,8 @@ void LauncherApp::MessageReceived(BMessage* message)
         uint32 workspaces;
         if (message->FindUInt32("workspaces", &workspaces) == B_OK)
             m_downloadWindow->SetWorkspaces(workspaces);
-        if (m_downloadWindow->IsMinimized())
-            m_downloadWindow->Minimize(false);
+        if (m_downloadWindow->IsHidden())
+            m_downloadWindow->Show();
         else
             m_downloadWindow->Activate();
     }
@@ -231,7 +231,7 @@ bool LauncherApp::QuitRequested()
 		settingsArchive.AddRect("window frame", m_lastWindowFrame);
 		if (m_downloadWindow->Lock()) {
     	    settingsArchive.AddRect("downloads window frame", m_downloadWindow->Frame());
-	        settingsArchive.AddBool("show downloads", !m_downloadWindow->IsMinimized());
+	        settingsArchive.AddBool("show downloads", !m_downloadWindow->IsHidden());
 	        m_downloadWindow->Unlock();
 		}
 		settingsArchive.Flatten(&settingsFile);

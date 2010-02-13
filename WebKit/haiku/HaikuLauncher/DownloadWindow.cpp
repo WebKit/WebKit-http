@@ -347,7 +347,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
 
     BMenuBar* menuBar = new BMenuBar("Menu bar");
     BMenu* menu = new BMenu("Window");
-    menu->AddItem(new BMenuItem("Minimize", new BMessage(B_QUIT_REQUESTED), 'M'));
+    menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'H'));
     menuBar->AddItem(menu);
 
     BScrollView* scrollView = new DownloadContainerScrollView(downloadsGroupView);
@@ -372,7 +372,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible)
     downloadFinished(NULL);
 
 	if (!visible)
-	    Minimize(true);
+	    Hide();
 	Show();
 }
 
@@ -411,8 +411,8 @@ void DownloadWindow::MessageReceived(BMessage* message)
 
 bool DownloadWindow::QuitRequested()
 {
-	if (!IsMinimized())
-        Minimize(true);
+	if (!IsHidden())
+        Hide();
     return false;
 }
 
@@ -437,6 +437,10 @@ void DownloadWindow::downloadStarted(WebDownload* download)
 		return;
 	m_downloadViewsLayout->AddView(index, view);
 	saveSettings();
+
+	SetWorkspaces(B_CURRENT_WORKSPACE);
+	if (IsHidden())
+		Show();
 }
 
 void DownloadWindow::downloadFinished(WebDownload* download)
