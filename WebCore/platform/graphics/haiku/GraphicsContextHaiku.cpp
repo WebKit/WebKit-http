@@ -362,10 +362,12 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (paintingDisabled())
         return;
 
-    rgb_color oldColor = m_data->view()->HighColor();
+    m_data->view()->PushState();
     m_data->view()->SetHighColor(color);
+    if (color.hasAlpha())
+        m_data->view()->SetDrawingMode(B_OP_ALPHA);
     m_data->view()->FillRect(rect);
-    m_data->view()->SetHighColor(oldColor);
+    m_data->view()->PopState();
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
