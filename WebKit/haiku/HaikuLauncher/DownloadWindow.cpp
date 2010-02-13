@@ -126,6 +126,7 @@ public:
     DownloadProgressView(WebDownload* download)
         : BGridView(8, 3)
         , m_download(download)
+        , m_url(download->url())
         , m_path(download->path())
         , m_expectedSize(download->expectedSize())
     {
@@ -134,12 +135,15 @@ public:
     DownloadProgressView(const BMessage* archive)
         : BGridView(8, 3)
         , m_download(NULL)
+        , m_url()
         , m_path()
         , m_expectedSize(0)
     {
-    	const char* path;
-    	if (archive->FindString("path", &path) == B_OK)
-    	    m_path.SetTo(path);
+    	const char* string;
+    	if (archive->FindString("path", &string) == B_OK)
+    	    m_path.SetTo(string);
+    	if (archive->FindString("url", &string) == B_OK)
+    	    m_url = string;
     }
 
     bool init(BMessage* archive = NULL)
@@ -185,6 +189,8 @@ public:
     	if (!archive)
     	    return B_BAD_VALUE;
     	status_t ret = archive->AddString("path", m_path.Path());
+    	if (ret == B_OK)
+    	    ret = archive->AddString("url", m_url.String());
     	if (ret == B_OK)
     	    ret = archive->AddFloat("value", m_statusBar->CurrentValue());
     	if (ret == B_OK)
@@ -255,6 +261,11 @@ public:
     	return m_download;
     }
 
+    const BString& url() const
+    {
+    	return m_url;
+    }
+
     void downloadFinished()
     {
     	m_download = NULL;
@@ -268,6 +279,7 @@ private:
     SmallButton* m_button1;
     SmallButton* m_button2;
     WebDownload* m_download;
+    BString m_url;
     BPath m_path;
     off_t m_expectedSize;
 };
@@ -406,10 +418,24 @@ bool DownloadWindow::QuitRequested()
 
 void DownloadWindow::downloadStarted(WebDownload* download)
 {
+	int32 finishedCount = 0;
+	int32 index = 0;
+	for (int32 i = m_downloadViewsLayout->CountItems() - 1;
+	        BLayoutItem* item = m_downloadViewsLayout->ItemAt(i); i--) {
+        DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(item->View());
+        if (!view)
+            continue;
+        if (view->url() == download->url()) {
+        	index = i;
+            view->RemoveSelf();
+            delete view;
+        }
+	}
+	m_removeFinishedButton->SetEnabled(finishedCount > 0);
 	DownloadProgressView* view = new DownloadProgressView(download);
 	if (!view->init())
 		return;
-	m_downloadViewsLayout->AddView(0, view);
+	m_downloadViewsLayout->AddView(index, view);
 	saveSettings();
 }
 

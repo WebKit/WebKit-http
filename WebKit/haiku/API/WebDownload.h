@@ -78,6 +78,7 @@ public:
     void cancel();
     void setProgressListener(const BMessenger&);
 
+    const BString& url() const { return m_url; }
     const BString& filename() const { return m_filename; }
     const BPath& path() const { return m_path; }
     off_t currentSize() const { return m_currentSize; }
@@ -90,6 +91,7 @@ private:
     BString m_suggestedFileName;
     off_t m_currentSize;
     off_t m_expectedSize;
+    BString m_url;
     BPath m_path;
     BString m_filename;
     BFile m_file;

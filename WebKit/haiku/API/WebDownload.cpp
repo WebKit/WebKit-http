@@ -45,6 +45,7 @@ WebDownload::WebDownload(WebProcess* webProcess, const ResourceRequest& request)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
+    , m_url()
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
     , m_file()
@@ -59,6 +60,7 @@ WebDownload::WebDownload(WebProcess* webProcess, ResourceHandle* handle,
     , m_resourceHandle(handle)
     , m_currentSize(0)
     , m_expectedSize(0)
+    , m_url()
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
     , m_file()
@@ -85,10 +87,12 @@ void WebDownload::didReceiveResponse(ResourceHandle*, const ResourceResponse& re
             mimeType = response.mimeType();
         m_expectedSize = response.expectedContentLength();
     }
+    m_url = response.url().string();
     m_path.Append(m_filename.String());
 	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
 		BNodeInfo info(&m_file);
 		info.SetType(mimeType.String());
+		m_file.WriteAttrString("META:url", &m_url);
 	}
 }
 
