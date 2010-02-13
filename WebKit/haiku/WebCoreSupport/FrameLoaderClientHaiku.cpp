@@ -339,15 +339,20 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
                                                              const ResourceRequest& request)
 {
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType() -> ");
     if (request.isNull()) {
+printf("ignore\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
     // we need to call directly here
-    if (canShowMIMEType(mimetype))
+    if (canShowMIMEType(mimetype)) {
+printf("use\n");
         callPolicyFunction(function, PolicyUse);
-    else
+    } else {
+printf("download\n");
         callPolicyFunction(function, PolicyDownload);
+    }
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
@@ -582,14 +587,16 @@ WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceReques
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
-printf("FrameLoaderClientHaiku::cannotShowURLError()\n");
+    notImplemented();
     return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange, request.url().string(), String());
+    ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange, request.url().string(), String());
+    error.setIsCancellation(true);
+    return error;
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
