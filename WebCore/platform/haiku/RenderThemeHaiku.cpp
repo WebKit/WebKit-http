@@ -80,27 +80,27 @@ bool RenderThemeHaiku::supportsFocusRing(const RenderStyle* style) const
 
 Color RenderThemeHaiku::platformActiveSelectionBackgroundColor() const
 {
-    return Color(ui_color(B_CONTROL_HIGHLIGHT_COLOR));
+    return Color(255, 206, 121, 170);
 }
 
 Color RenderThemeHaiku::platformInactiveSelectionBackgroundColor() const
 {
-    return Color(ui_color(B_CONTROL_HIGHLIGHT_COLOR));
+    return Color(255, 206, 121, 90);
 }
 
 Color RenderThemeHaiku::platformActiveSelectionForegroundColor() const
 {
-    return Color(ui_color(B_CONTROL_TEXT_COLOR));
+    return Color(0, 0, 0, 255);
 }
 
 Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
 {
-    return Color(ui_color(B_CONTROL_TEXT_COLOR));
+    return Color(0, 0, 0, 255);
 }
 
 Color RenderThemeHaiku::platformTextSearchHighlightColor() const
 {
-    return Color(ui_color(B_MENU_SELECTED_BACKGROUND_COLOR));
+    return Color(255, 195, 76, 200);
 }
 
 void RenderThemeHaiku::systemFont(int propId, FontDescription&) const
@@ -188,6 +188,8 @@ bool RenderThemeHaiku::paintButton(RenderObject* object, const RenderObject::Pai
     BRect rect = intRect;
     BView* view = info.context->platformContext();
     unsigned flags = flagsForObject(object);
+    if (isPressed(object))
+    	flags |= BControlLook::B_ACTIVATED;
 
 	view->PushState();
     be_control_look->DrawButtonFrame(view, rect, rect, base, background, flags);
