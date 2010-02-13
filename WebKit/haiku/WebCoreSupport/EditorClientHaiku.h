@@ -3,6 +3,7 @@
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2006 Apple Computer, Inc.
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -28,95 +29,108 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EditorClientHaiku_H
-#define EditorClientHaiku_H
+#ifndef EditorClientHaiku_h
+#define EditorClientHaiku_h
 
 #include "EditorClient.h"
 #include "Page.h"
 #include "RefCounted.h"
-
+#include <wtf/Deque.h>
 #include <wtf/Forward.h>
+#include <String.h>
 
 namespace WebCore {
 
-    class EditorClientHaiku : public EditorClient {
-    public:
-        EditorClientHaiku();
-        void setPage(Page* page);
+class EditorClientHaiku : public EditorClient {
+public:
+    EditorClientHaiku();
+    void setPage(Page* page);
 
-        virtual void pageDestroyed();
+    virtual void pageDestroyed();
 
-        virtual bool shouldDeleteRange(Range*);
-        virtual bool shouldShowDeleteInterface(HTMLElement*);
-        virtual bool smartInsertDeleteEnabled();
-        virtual bool isSelectTrailingWhitespaceEnabled();
-        virtual bool isContinuousSpellCheckingEnabled();
-        virtual void toggleContinuousSpellChecking();
-        virtual bool isGrammarCheckingEnabled();
-        virtual void toggleGrammarChecking();
-        virtual int spellCheckerDocumentTag();
+    virtual bool shouldDeleteRange(Range*);
+    virtual bool shouldShowDeleteInterface(HTMLElement*);
+    virtual bool smartInsertDeleteEnabled();
+    virtual bool isSelectTrailingWhitespaceEnabled();
+    virtual bool isContinuousSpellCheckingEnabled();
+    virtual void toggleContinuousSpellChecking();
+    virtual bool isGrammarCheckingEnabled();
+    virtual void toggleGrammarChecking();
+    virtual int spellCheckerDocumentTag();
 
-        virtual bool isEditable();
+    virtual bool isEditable();
 
-        virtual bool shouldBeginEditing(Range*);
-        virtual bool shouldEndEditing(Range*);
-        virtual bool shouldInsertNode(Node*, Range*, EditorInsertAction);
-        virtual bool shouldInsertText(const String&, Range*, EditorInsertAction);
-        virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange,
-                                               EAffinity, bool stillSelecting);
+    virtual bool shouldBeginEditing(Range*);
+    virtual bool shouldEndEditing(Range*);
+    virtual bool shouldInsertNode(Node*, Range*, EditorInsertAction);
+    virtual bool shouldInsertText(const String&, Range*, EditorInsertAction);
+    virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange,
+                                           EAffinity, bool stillSelecting);
 
-        virtual bool shouldApplyStyle(CSSStyleDeclaration*, Range*);
-        virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
+    virtual bool shouldApplyStyle(CSSStyleDeclaration*, Range*);
+    virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
 
-        virtual void didBeginEditing();
-        virtual void respondToChangedContents();
-        virtual void respondToChangedSelection();
-        virtual void didEndEditing();
-        virtual void didWriteSelectionToPasteboard();
-        virtual void didSetSelectionTypesForPasteboard();
+    virtual void didBeginEditing();
+    virtual void respondToChangedContents();
+    virtual void respondToChangedSelection();
+    virtual void didEndEditing();
+    virtual void didWriteSelectionToPasteboard();
+    virtual void didSetSelectionTypesForPasteboard();
 
-        virtual void registerCommandForUndo(PassRefPtr<EditCommand>);
-        virtual void registerCommandForRedo(PassRefPtr<EditCommand>);
-        virtual void clearUndoRedoOperations();
+    virtual void registerCommandForUndo(PassRefPtr<EditCommand>);
+    virtual void registerCommandForRedo(PassRefPtr<EditCommand>);
+    virtual void clearUndoRedoOperations();
 
-        virtual bool canUndo() const;
-        virtual bool canRedo() const;
+    virtual bool canUndo() const;
+    virtual bool canRedo() const;
 
-        virtual void undo();
-        virtual void redo();
+    virtual void undo();
+    virtual void redo();
 
-        virtual void handleKeyboardEvent(KeyboardEvent*);
-        virtual void handleInputMethodKeydown(KeyboardEvent*);
+    virtual void handleKeyboardEvent(KeyboardEvent*);
+    virtual void handleInputMethodKeydown(KeyboardEvent*);
 
-        virtual void textFieldDidBeginEditing(Element*);
-        virtual void textFieldDidEndEditing(Element*);
-        virtual void textDidChangeInTextField(Element*);
-        virtual bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*);
-        virtual void textWillBeDeletedInTextField(Element*);
-        virtual void textDidChangeInTextArea(Element*);
+    virtual void textFieldDidBeginEditing(Element*);
+    virtual void textFieldDidEndEditing(Element*);
+    virtual void textDidChangeInTextField(Element*);
+    virtual bool doTextFieldCommandFromEvent(Element*, KeyboardEvent*);
+    virtual void textWillBeDeletedInTextField(Element*);
+    virtual void textDidChangeInTextArea(Element*);
 
-        virtual void ignoreWordInSpellDocument(const String&);
-        virtual void learnWord(const String&);
-        virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
-                                           int* misspellingLength);
-        virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord);
-        virtual void checkGrammarOfString(const UChar*, int length, Vector<GrammarDetail>&,
-                                          int* badGrammarLocation, int* badGrammarLength);
-        virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
-        virtual void updateSpellingUIWithMisspelledWord(const String&);
-        virtual void showSpellingUI(bool show);
-        virtual bool spellingUIIsShowing();
-        virtual void getGuessesForWord(const String&, Vector<String>& guesses);
-        virtual void setInputMethodState(bool enabled);
+    virtual void ignoreWordInSpellDocument(const String&);
+    virtual void learnWord(const String&);
+    virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
+                                       int* misspellingLength);
+    virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord);
+    virtual void checkGrammarOfString(const UChar*, int length, Vector<GrammarDetail>&,
+                                      int* badGrammarLocation, int* badGrammarLength);
+    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
+    virtual void updateSpellingUIWithMisspelledWord(const String&);
+    virtual void showSpellingUI(bool show);
+    virtual bool spellingUIIsShowing();
+    virtual void getGuessesForWord(const String&, Vector<String>& guesses);
+    virtual void setInputMethodState(bool enabled);
 
-        bool isEditing() const;
+    bool isEditing() const;
 
-    private:
-        Page* m_page;
-        bool m_editing;
-        bool m_inUndoRedo; // our undo stack works differently - don't re-enter!
-        bool m_crashInIsEditing;
-    };
+private:
+    void setPendingComposition(const char* newComposition);
+    void setPendingPreedit(const char* newPreedit);
+    void clearPendingIMData();
+    void imContextCommitted(const char* str, EditorClient* client);
+    void imContextPreeditChanged(EditorClient* client);
+
+    Page* m_page;
+
+    WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > undoStack;
+    WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > redoStack;
+
+    bool m_editing;
+    bool m_isInRedo;
+
+    BString m_pendingComposition;
+    BString m_pendingPreedit;
+};
 
 } // namespace WebCore
 

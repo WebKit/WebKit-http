@@ -32,7 +32,6 @@
 #ifndef WebFramePrivate_h
 #define WebFramePrivate_h
 
-#include "EditCommandHaiku.h"
 #include "Frame.h"
 #include "Page.h"
 
@@ -53,9 +52,6 @@ public:
         , frame(0)
         , loaderClient(0)
     {}
-
-    WTF::Vector<EditCommandHaiku> undoStack;
-    WTF::Vector<EditCommandHaiku> redoStack;
 
     WebCore::String name;
     WebCore::HTMLFrameOwnerElement* ownerElement;
