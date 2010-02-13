@@ -71,7 +71,6 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebProcess* webProcess, WebFrame*
     : m_webProcess(webProcess)
     , m_webFrame(webFrame)
     , m_messenger()
-    , m_firstData(false)
 {
 printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
     ASSERT(m_webProcess);
@@ -173,7 +172,6 @@ printf("FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge()\n");
 void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id, const ResourceResponse& response)
 {
     m_response = response;
-    m_firstData = true;
     if (response.httpStatusCode() != 200)
         printf("dispatchDidReceiveResponse(%s, %d)\n", response.url().string().utf8().data(), response.httpStatusCode());
 }
@@ -193,11 +191,6 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
     BMessage message(LOAD_FAILED);
     message.AddString("url", loader->url().string());
     m_messenger.SendMessage(&message);
-
-    if (m_firstData) {
-        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
-        m_firstData = false;
-    }
 }
 
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
@@ -440,11 +433,6 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
 	if (error.isCancellation())
 		return;
 
-    if (m_firstData) {
-        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
-        m_firstData = false;
-    }
-
 	// FIXME: This should be moved into LauncherWindow.
 	BString errorString("Error loading ");
 	errorString << error.failingURL();
@@ -519,18 +507,12 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
         encoding = loader->response().textEncodingName();
     frame->loader()->setEncoding(encoding, userChosen);
 
-    m_firstData = false;
-
     if (data)
         frame->loader()->addData(data, length);
 }
 
 void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
 {
-    if (m_firstData) {
-        loader->frameLoader()->setEncoding(m_response.textEncodingName(), false);
-        m_firstData = false; 
-    }
 }
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
