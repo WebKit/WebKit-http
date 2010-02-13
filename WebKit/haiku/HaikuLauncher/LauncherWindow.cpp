@@ -93,6 +93,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     	newItem->SetTarget(be_app);
     	menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W'));
     	menu->AddSeparatorItem();
+    	menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
+    	menu->AddSeparatorItem();
     	BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
     	menu->AddItem(quitItem);
     	quitItem->SetTarget(be_app);
@@ -250,6 +252,11 @@ void LauncherWindow::MessageReceived(BMessage* message)
     case TEXT_HIDE_FIND_GROUP:
         if (m_findGroup->IsVisible())
             m_findGroup->SetVisible(false);
+        break;
+
+    case SHOW_DOWNLOAD_WINDOW:
+        message->AddUInt32("workspaces", Workspaces());
+        be_app->PostMessage(message);
         break;
 
     default:

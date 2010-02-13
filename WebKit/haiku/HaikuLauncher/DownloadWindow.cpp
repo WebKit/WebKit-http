@@ -40,13 +40,14 @@
 #include <StatusBar.h>
 #include <stdio.h>
 
-DownloadWindow::DownloadWindow(BRect frame)
+DownloadWindow::DownloadWindow(BRect frame, bool visible)
     : BWindow(frame, "Downloads",
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
-	Minimize(true);
+	if (!visible)
+	    Minimize(true);
 	Show();
 }
 

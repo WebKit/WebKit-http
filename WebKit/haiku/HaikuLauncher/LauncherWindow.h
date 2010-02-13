@@ -50,7 +50,8 @@ enum ToolbarPolicy {
 enum {
 	NEW_WINDOW = 'nwnd',
 	WINDOW_OPENED = 'wndo',
-	WINDOW_CLOSED = 'wndc'
+	WINDOW_CLOSED = 'wndc',
+    SHOW_DOWNLOAD_WINDOW = 'sdwd'
 };
 
 class LauncherWindow : public WebViewWindow {

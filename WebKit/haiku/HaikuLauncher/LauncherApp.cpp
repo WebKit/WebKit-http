@@ -36,14 +36,13 @@
 #include "WebProcess.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
-
 #include <Alert.h>
+#include <Autolock.h>
 #include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
 #include <Screen.h>
-
 #include <stdio.h>
 
 extern const char* kApplicationSignature = "application/x-vnd.RJL-HaikuLauncher";
@@ -88,16 +87,20 @@ void LauncherApp::ReadyToRun()
     WebProcess::initializeOnce();
     WebProcess::setCacheModel(WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
-    m_downloadWindow = new DownloadWindow(BRect(100, 100, 300, 250));
-
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;
+	BRect downloadWindowFrame(100, 100, 300, 250);
+	bool showDownloads = false;
 	if (openSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
 		settingsArchive.FindRect("window frame", &windowFrameFromSettings);
+		settingsArchive.FindRect("downloads window frame", &downloadWindowFrame);
+		settingsArchive.FindBool("show downloads", &showDownloads);
 	}
 	m_lastWindowFrame = windowFrameFromSettings;
+
+    m_downloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
 
 	m_initialized = true;
 
@@ -165,6 +168,17 @@ void LauncherApp::MessageReceived(BMessage* message)
     		PostMessage(B_QUIT_REQUESTED);
     	break;
 
+    case SHOW_DOWNLOAD_WINDOW: {
+    	BAutolock _(m_downloadWindow);
+        uint32 workspaces;
+        if (message->FindUInt32("workspaces", &workspaces) == B_OK)
+            m_downloadWindow->SetWorkspaces(workspaces);
+        if (m_downloadWindow->IsMinimized())
+            m_downloadWindow->Minimize(false);
+        else
+            m_downloadWindow->Activate();
+    }
+
     default:
         BApplication::MessageReceived(message);
         break;
@@ -215,6 +229,11 @@ bool LauncherApp::QuitRequested()
 	if (openSettingsFile(settingsFile, B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.AddRect("window frame", m_lastWindowFrame);
+		if (m_downloadWindow->Lock()) {
+    	    settingsArchive.AddRect("downloads window frame", m_downloadWindow->Frame());
+	        settingsArchive.AddBool("show downloads", !m_downloadWindow->IsMinimized());
+	        m_downloadWindow->Unlock();
+		}
 		settingsArchive.Flatten(&settingsFile);
 	}
 

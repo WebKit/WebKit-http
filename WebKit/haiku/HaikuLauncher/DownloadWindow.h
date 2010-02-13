@@ -34,7 +34,7 @@ class WebDownload;
 
 class DownloadWindow : public BWindow {
 public:
-    DownloadWindow(BRect frame);
+    DownloadWindow(BRect frame, bool visible);
     virtual ~DownloadWindow();
 
     virtual void MessageReceived(BMessage*);
