@@ -235,6 +235,7 @@ void WebProcess::goForward()
 void WebProcess::draw(const BRect& updateRect)
 {
     BMessage message(HANDLE_DRAW);
+    message.AddPointer("target", this);
     message.AddRect("update rect", updateRect);
     Looper()->PostMessage(&message, this);
 }
@@ -242,6 +243,7 @@ void WebProcess::draw(const BRect& updateRect)
 void WebProcess::frameResized(float width, float height)
 {
     BMessage message(HANDLE_FRAME_RESIZED);
+    message.AddPointer("target", this);
     message.AddFloat("width", width);
     message.AddFloat("height", height);
     Looper()->PostMessage(&message, this);
@@ -265,6 +267,7 @@ void WebProcess::mouseEvent(const BMessage* message,
     const BPoint& where, const BPoint& screenWhere)
 {
     BMessage copiedMessage(*message);
+    copiedMessage.AddPointer("target", this);
     Looper()->PostMessage(&copiedMessage, this);
 }
 
@@ -486,7 +489,15 @@ void WebProcess::MessageReceived(BMessage* message)
         BMessageQueue* queue = Looper()->MessageQueue();
         BRect updateRect;
         message->FindRect("update rect", &updateRect);
-        while (BMessage* nextMessage = queue->FindMessage(message->what)) {
+        int32 index = 0;
+        while (BMessage* nextMessage = queue->FindMessage(message->what, index)) {
+            BHandler* target = 0;
+            nextMessage->FindPointer("target", reinterpret_cast<void**>(&target));
+            if (target != this) {
+                index++;
+                continue;
+            }
+
             if (!first) {
                 delete message;
                 first = false;
@@ -544,7 +555,14 @@ void WebProcess::skipToLastMessage(BMessage*& message)
 {
     bool first = true;
     BMessageQueue* queue = Looper()->MessageQueue();
-    while (BMessage* nextMessage = queue->FindMessage(message->what)) {
+    int32 index = 0;
+    while (BMessage* nextMessage = queue->FindMessage(message->what, index)) {
+    	BHandler* target = 0;
+    	nextMessage->FindPointer("target", reinterpret_cast<void**>(&target));
+    	if (target != this) {
+    		index++;
+    	    continue;
+    	}
         if (!first)
             delete message;
         message = nextMessage;
