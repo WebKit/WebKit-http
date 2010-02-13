@@ -94,8 +94,9 @@ namespace WebCore {
     // See PlatformCursor.h
     typedef void* PlatformCursorHandle;
 #elif PLATFORM(HAIKU)
-    typedef BCursor* PlatformCursor;
-    typedef BCursor* PlatformCursorHandle;
+    typedef const BCursor* PlatformCursor;
+    typedef const BCursor* PlatformCursorHandle;
+    void initPlatformCursors();
 #else
     typedef void* PlatformCursor;
     typedef void* PlatformCursorHandle;

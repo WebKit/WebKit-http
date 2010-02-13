@@ -34,11 +34,36 @@
 #include "NotImplemented.h"
 #include <Control.h>
 #include <View.h>
-
+#include <stdio.h>
 
 namespace WebCore {
 
+class AutoPlatformWidgetLocker {
+public:
+    AutoPlatformWidgetLocker(PlatformWidget widget)
+        : m_widget(widget)
+    {
+    	if (!m_widget || m_widget->LockLooperWithTimeout(5000) != B_OK)
+    	   m_widget = 0; 
+    }
+
+    ~AutoPlatformWidgetLocker()
+    {
+    	if (m_widget)
+    	    m_widget->UnlockLooper();
+    }
+
+    bool isLocked() const
+    {
+    	return m_widget;
+    }
+
+private:
+    PlatformWidget m_widget;
+};
+
 Widget::Widget(PlatformWidget widget)
+    : m_topLevelPlatformWidget(0)
 {
     init(widget);
 }
@@ -59,26 +84,30 @@ void Widget::setFrameRect(const IntRect& rect)
 
 void Widget::setFocus()
 {
-    if (platformWidget())
-        platformWidget()->MakeFocus();
+    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
+    if (locker.isLocked())
+        topLevelPlatformWidget()->MakeFocus();
 }
 
 void Widget::setCursor(const Cursor& cursor)
 {
-    if (platformWidget())
-        platformWidget()->SetViewCursor(cursor.impl());
+    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
+    if (locker.isLocked())
+        topLevelPlatformWidget()->SetViewCursor(cursor.impl());
 }
 
 void Widget::show()
 {
-    if (platformWidget())
-        platformWidget()->Show();
+    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
+    if (locker.isLocked() && topLevelPlatformWidget()->IsHidden())
+        topLevelPlatformWidget()->Show();
 }
 
 void Widget::hide()
 {
-    if (platformWidget())
-        platformWidget()->Hide();
+    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
+    if (locker.isLocked() && !topLevelPlatformWidget()->IsHidden())
+        topLevelPlatformWidget()->Hide();
 }
 
 void Widget::paint(GraphicsContext* p, IntRect const& r)

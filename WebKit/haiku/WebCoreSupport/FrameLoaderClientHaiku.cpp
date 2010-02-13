@@ -707,13 +707,6 @@ void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame*)
 	// Nothing to be done here for the moment.
 }
 
-static void postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues)
-{
-	// This method can be used to do adjustments on the main frame, since those
-	// are the only ones directly embedded into a WebView.
-	// Nothing to do here for the moment.
-}
-
 void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* cachedFrame)
 {
     ASSERT(cachedFrame->view());
@@ -887,6 +880,13 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
     message.AddBool("can go forward", page->canGoBackOrForward(1));
     message.AddBool("can stop", loader->isLoading());
     m_messenger.SendMessage(&message);
+}
+
+void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues) const
+{
+	// This method can be used to do adjustments on the main frame, since those
+	// are the only ones directly embedded into a WebView.
+	view->setTopLevelPlatformWidget(m_webProcess->webView());
 }
 
 } // namespace WebCore

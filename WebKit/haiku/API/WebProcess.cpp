@@ -33,6 +33,7 @@
 #include "Cache.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenuClientHaiku.h"
+#include "Cursor.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
 #include "EditorClientHaiku.h"
@@ -101,12 +102,15 @@ using namespace WebCore;
 
 /*static*/ void WebProcess::initializeOnce()
 {
+	// NOTE: This needs to be called when the BApplication is ready.
+	// It won't work as static initialization.
     WebCore::InitializeLoggingChannelsIfNecessary();
     JSC::initializeThreading();
     WTF::initializeThreading();
     WebCore::AtomicString::init();
     WebCore::DOMTimer::setMinTimerInterval(0.004);
     WebCore::UTF8Encoding();
+    WebCore::initPlatformCursors();
 }
 
 /*static*/ void WebProcess::setCacheModel(WebKitCacheModel model)

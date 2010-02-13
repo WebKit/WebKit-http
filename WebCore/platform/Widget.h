@@ -126,6 +126,13 @@ public:
             retainPlatformWidget();
         }
     }
+#if PLATFORM(HAIKU)
+    PlatformWidget topLevelPlatformWidget() const { return m_topLevelPlatformWidget; }
+    void setTopLevelPlatformWidget(PlatformWidget widget)
+    { 
+        m_topLevelPlatformWidget = widget;
+    }
+#endif
 
     int x() const { return frameRect().x(); }
     int y() const { return frameRect().y(); }
@@ -225,6 +232,9 @@ private:
 
 #if PLATFORM(MAC)
     WidgetPrivate* m_data;
+#endif
+#if PLATFORM(HAIKU)
+    PlatformWidget m_topLevelPlatformWidget;
 #endif
 };
 

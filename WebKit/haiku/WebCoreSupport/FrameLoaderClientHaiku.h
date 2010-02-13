@@ -45,6 +45,7 @@ class AuthenticationChallenge;
 class DocumentLoader;
 class Element;
 class FormState;
+class FrameView;
 class HistoryItem;
 class NavigationAction;
 class ResourceLoader;
@@ -205,6 +206,7 @@ public:
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
+    void postCommitFrameViewSetup(WebFrame*, FrameView*, bool) const;
 
 private:
     WebProcess* m_webProcess;

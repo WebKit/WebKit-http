@@ -60,8 +60,14 @@ Cursor& Cursor::operator=(const Cursor& other)
     return *this;
 }
 
-static Cursor globalCursor = const_cast<BCursor*>(B_CURSOR_SYSTEM_DEFAULT);
-static Cursor ibeamCursor = const_cast<BCursor*>(B_CURSOR_I_BEAM);
+static Cursor globalCursor;
+static Cursor ibeamCursor;
+
+void initPlatformCursors()
+{
+	globalCursor = Cursor(B_CURSOR_SYSTEM_DEFAULT);
+	ibeamCursor = Cursor(B_CURSOR_I_BEAM);
+}
 
 const Cursor& pointerCursor()
 {
