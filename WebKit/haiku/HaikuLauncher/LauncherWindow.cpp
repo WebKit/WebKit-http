@@ -31,10 +31,10 @@
 #include "config.h"
 #include "LauncherWindow.h"
 
+#include "AuthenticationPanel.h"
 #include "WebProcess.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
-
 #include <Application.h>
 #include <Button.h>
 #include <CheckBox.h>
@@ -64,7 +64,9 @@ enum {
     TEXT_SHOW_FIND_GROUP = 'sfnd',
     TEXT_HIDE_FIND_GROUP = 'hfnd',
     TEXT_FIND_NEXT = 'fndn',
-    TEXT_FIND_PREVIOUS = 'fndp'
+    TEXT_FIND_PREVIOUS = 'fndp',
+
+    TEST_AUTHENTICATION_PANEL = 'tapn'
 };
 
 using namespace WebCore;
@@ -199,6 +201,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
     AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
     AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
+    AddShortcut('T', B_COMMAND_KEY, new BMessage(TEST_AUTHENTICATION_PANEL));
 
     navigationCapabilitiesChanged(false, false, false);
 
@@ -258,6 +261,23 @@ void LauncherWindow::MessageReceived(BMessage* message)
         message->AddUInt32("workspaces", Workspaces());
         be_app->PostMessage(message);
         break;
+
+    case TEST_AUTHENTICATION_PANEL: {
+    	BString realm("Realm");
+    	BString method("Method");
+    	BString previousUser;
+    	BString previousPass;
+    	bool rememberCredentials = false;
+    	bool badPassword = true;
+    	BString user;
+    	BString pass;
+        AuthenticationPanel* panel = new AuthenticationPanel(Frame());
+        bool success = panel->getAuthentication(realm, method, previousUser,
+            previousPass, rememberCredentials, badPassword, user, pass,
+            &rememberCredentials);
+        printf("success: %d\n", success);
+        break;
+    }
 
     default:
         WebViewWindow::MessageReceived(message);

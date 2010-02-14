@@ -58,6 +58,8 @@ LauncherApp::LauncherApp()
     , m_initialized(false)
     , m_downloadWindow(0)
 {
+	// Since we will essentially run the GUI...
+	set_thread_priority(Thread(), B_DISPLAY_PRIORITY);
 }
 
 LauncherApp::~LauncherApp()
