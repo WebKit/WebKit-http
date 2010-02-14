@@ -34,11 +34,14 @@
 #include "config.h"
 #include "ResourceHandleManager.h"
 
+#include "AuthenticationChallenge.h"
 #include "Base64.h"
+#include "Credential.h"
 #include "CString.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
+#include "ProtectionSpace.h"
 #include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
@@ -203,7 +206,7 @@ static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
     CURL* h = d->m_handle;
     long httpCode = 0;
     CURLcode err = curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &httpCode);
-    if (CURLE_OK == err && httpCode >= 300 && httpCode < 400)
+    if (CURLE_OK == err && ((httpCode >= 300 && httpCode < 400) || httpCode == 401))
         return totalSize;
 
     if (!d->m_response.responseFired()) {
@@ -285,6 +288,13 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
 
                 return totalSize;
             }
+        }
+
+        if (httpCode == 401) {
+            // HTTP auth is handled by creating an AuthenticationChallenge
+            // and then retrying the request with the supplied credentials
+            // in the downloadTimerCallback
+            return totalSize;
         }
 
         if (client)
@@ -398,6 +408,50 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
             continue;
 
         if (CURLE_OK == msg->data.result) {
+            long httpCode = 0;
+            err = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpCode);
+            if (httpCode == 401) {
+                // HTTP auth
+                KURL newURL = KURL(job->request().url());
+                ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
+                if (newURL.protocolIs("https"))
+                    serverType = ProtectionSpaceServerHTTPS;
+    
+                String challenge =  d->m_response.httpHeaderField("WWW-Authenticate");
+                ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
+                if (challenge.startsWith("Digest", false))
+                    scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
+                else if (challenge.startsWith("Basic", false))
+                    scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
+    
+                String realm;
+                int realmStart = challenge.find("realm=\"", 0, false);
+                if (realmStart > 0) {
+                    int realmEnd = challenge.find("\"", realmStart + 7);
+                    if (realmEnd >= 0)
+                        realm = challenge.substring(realmStart, realmEnd - realmStart);
+                }
+    
+                ProtectionSpace protectionSpace(newURL.host(), newURL.port(),
+                    serverType, realm, scheme);
+    
+                Credential proposedCredential;
+    
+                ResourceError resourceError(newURL.host(), httpCode, newURL.string(), String());
+    
+                AuthenticationChallenge authenticationChallenge(protectionSpace, proposedCredential, 0, d->m_response, resourceError);
+                authenticationChallenge.m_authenticationClient = job;
+                job->didReceiveAuthenticationChallenge(authenticationChallenge);
+                    // will sent m_user and m_pass in ResourceHandleInternal
+    
+                m_runningJobs--;
+                curl_multi_remove_handle(m_curlMultiHandle, handle);
+    
+                String userpass = d->m_user + ":" + d->m_pass;
+                curl_easy_setopt(handle, CURLOPT_USERPWD, userpass.utf8().data());
+                curl_easy_perform(handle);
+            }
+
             if (!d->m_response.responseFired()) {
                 handleLocalReceiveResponse(d->m_handle, job, d);
                 if (d->m_cancelled) {
@@ -743,11 +797,11 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     // and/or reporting SSL errors to the user.
 #if PLATFORM(HAIKU)
     if (!certificatePath().length()) {
-    	static bool warningPrinted = false;
-    	if (!warningPrinted) {
-    	    fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/ssl/certs.\n");
-    	    warningPrinted = true;
-    	}
+        static bool warningPrinted = false;
+        if (!warningPrinted) {
+            fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/ssl/certs.\n");
+            warningPrinted = true;
+        }
 #else
     if (ignoreSSLErrors)
 #endif
