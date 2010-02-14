@@ -87,6 +87,7 @@ SharedLibrary libwebkit.so :
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
 
 Application HaikuLauncher :
+    AuthenticationPanel.cpp
     DownloadWindow.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
