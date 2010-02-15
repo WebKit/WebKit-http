@@ -166,7 +166,7 @@ public:
     void setClipShape(BShape* shape)
     {
     	// NOTE: For proper clipping, the paths would have to
-    	// be combined with the previous layers. But this for now,
+    	// be combined with the previous layers. But for now,
     	// this is just supposed to support a small hack to get
     	// box elements with round corners to work properly. BView shall
     	// get proper clipping path support in the future.
