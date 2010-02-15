@@ -80,9 +80,9 @@ printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
     ASSERT(m_webFrame);
 }
 
-void FrameLoaderClientHaiku::setDispatchTarget(BHandler* handler)
+void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
 {
-    m_messenger = BMessenger(handler);
+    m_messenger = messenger;
 }
 
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
@@ -386,7 +386,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction
 {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType() -> ");
     if (request.isNull()) {
-printf("ignore\n");
+printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
@@ -398,7 +398,7 @@ printf("use\n");
 printf("download\n");
         callPolicyFunction(function, PolicyDownload);
     } else {
-printf("ignore (local)\n");
+printf("ignore (local URL)\n");
         callPolicyFunction(function, PolicyIgnore);
     }
 }
@@ -406,8 +406,9 @@ printf("ignore (local)\n");
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
 {
-printf("dispatchDecidePolicyForNewWindowAction\n");
+printf("dispatchDecidePolicyForNewWindowAction() -> ");
     if (request.isNull()) {
+printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
@@ -423,20 +424,29 @@ printf("dispatchDecidePolicyForNewWindowAction\n");
             m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
 
+printf("ignore (BMessenger error)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
 
+printf("use\n");
     callPolicyFunction(function, PolicyUse);
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
 {
-printf("dispatchDecidePolicyForNavigationAction\n");
+printf("dispatchDecidePolicyForNavigationAction() -> ");
     if (request.isNull()) {
+printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
+    }
+
+    if (!m_messenger.IsValid()) {
+printf("use (sub-frame)\n");
+    	callPolicyFunction(function, PolicyUse);
+    	return;
     }
 
     uint32 what = NAVIGATION_REQUESTED;
@@ -458,10 +468,12 @@ printf("dispatchDecidePolicyForNavigationAction\n");
             m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
 
+printf("ignore (BMessenger error)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
 
+printf("use\n");
     callPolicyFunction(function, PolicyUse);
 }
 
@@ -812,6 +824,8 @@ printf("   no page\n");
         delete frame;
         return 0;
     }
+
+//    frame->setDispatchTarget(m_messenger);
 
     childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
 

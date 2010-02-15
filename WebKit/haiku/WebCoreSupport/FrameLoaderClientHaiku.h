@@ -57,7 +57,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 public:
     FrameLoaderClientHaiku(WebProcess*, WebFrame*);
 
-    void setDispatchTarget(BHandler* handler);
+    void setDispatchTarget(const BMessenger& messenger);
 
     virtual void frameLoaderDestroyed();
 

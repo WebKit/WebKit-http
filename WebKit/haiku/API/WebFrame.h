@@ -33,7 +33,7 @@
 
 #include <String.h>
 
-class BHandler;
+class BMessenger;
 class WebProcess;
 
 namespace WebCore {
@@ -51,7 +51,7 @@ public:
         const WebCore::String& frameName = WebCore::String());
     virtual ~WebFrame();
 
-    void setDispatchTarget(BHandler* handler);
+    void setDispatchTarget(const BMessenger& messenger);
 
     void loadRequest(BString url);
     void loadRequest(WebCore::KURL);

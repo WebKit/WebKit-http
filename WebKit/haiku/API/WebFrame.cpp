@@ -82,9 +82,9 @@ WebFrame::~WebFrame()
 	delete m_impl;
 }
 
-void WebFrame::setDispatchTarget(BHandler* handler)
+void WebFrame::setDispatchTarget(const BMessenger& messenger)
 {
-    m_impl->loaderClient->setDispatchTarget(handler);
+    m_impl->loaderClient->setDispatchTarget(messenger);
 }
 
 

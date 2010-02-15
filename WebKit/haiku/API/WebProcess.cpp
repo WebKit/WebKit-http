@@ -208,9 +208,9 @@ void WebProcess::shutdown()
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::setDispatchTarget(BHandler* handler)
+void WebProcess::setDispatchTarget(const BMessenger& messenger)
 {
-    m_mainFrame->setDispatchTarget(handler);
+    m_mainFrame->setDispatchTarget(messenger);
 }
 
 void WebProcess::loadURL(const char* urlString)

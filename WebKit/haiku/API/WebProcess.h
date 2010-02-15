@@ -66,7 +66,7 @@ public:
     void init();
     void shutdown();
 
-    void setDispatchTarget(BHandler* handler);
+    void setDispatchTarget(const BMessenger& messenger);
 
     void loadURL(const char* urlString);
     void goBack();

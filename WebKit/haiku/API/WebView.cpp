@@ -68,7 +68,7 @@ WebView::~WebView()
 
 void WebView::AttachedToWindow()
 {
-    m_webProcess->setDispatchTarget(Window());
+    m_webProcess->setDispatchTarget(BMessenger(Window()));
 }
 
 void WebView::DetachedFromWindow()
