@@ -77,14 +77,13 @@ void LauncherApp::AboutRequested()
 void LauncherApp::ArgvReceived(int32 argc, char** argv)
 {
 	for (int i = 1; i < argc; i++) {
+		const char* url = argv[i];
 		BEntry entry(argv[i], true);
-		if (!entry.Exists())
-			continue;
 		BPath path;
-		if (entry.GetPath(&path) != B_OK)
-			continue;
+		if (entry.Exists() && entry.GetPath(&path) == B_OK)
+		    url = path.Path();
 	    BMessage message(LOAD_AT_STARTING);
-	    message.AddString("url", path.Path());
+	    message.AddString("url", url);
 	    message.AddBool("new window", m_initialized || i > 1);
 	    PostMessage(&message);
 	}
