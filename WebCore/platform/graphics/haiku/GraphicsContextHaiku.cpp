@@ -194,7 +194,10 @@ public:
             }
             BPoint bitmapLocation(layer->locationInParent);
             bitmapLocation -= m_currentLayer->accumulatedOrigin;
+            drawing_mode drawingMode = m_currentLayer->view->DrawingMode();
+            m_currentLayer->view->SetDrawingMode(B_OP_ALPHA);
             m_currentLayer->view->DrawBitmap(layer->bitmap, bitmapLocation);
+            m_currentLayer->view->SetDrawingMode(drawingMode);
         }
         delete layer;
     }
