@@ -32,9 +32,114 @@
 #include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
+#include <Message.h>
 #include <Path.h>
 #include <stdio.h>
 
+
+BrowsingHistoryItem::BrowsingHistoryItem(const BString& url)
+    : m_url(url)
+    , m_dateTime(BDateTime::CurrentDateTime(B_LOCAL_TIME))
+    , m_invokationCount(0)
+{
+}
+
+BrowsingHistoryItem::BrowsingHistoryItem(const BrowsingHistoryItem& other)
+{
+	*this = other;
+}
+
+BrowsingHistoryItem::BrowsingHistoryItem(const BMessage* archive)
+{
+	if (!archive)
+	    return;
+	BMessage dateTimeArchive;
+	if (archive->FindMessage("date time", &dateTimeArchive) == B_OK)
+	    m_dateTime = BDateTime(&dateTimeArchive);
+	archive->FindString("url", &m_url);
+	archive->FindUInt32("invokations", &m_invokationCount);
+}
+
+BrowsingHistoryItem::~BrowsingHistoryItem()
+{
+}
+
+status_t BrowsingHistoryItem::archive(BMessage* archive) const
+{
+	if (!archive)
+	    return B_BAD_VALUE;
+	BMessage dateTimeArchive;
+	status_t status = m_dateTime.Archive(&dateTimeArchive);
+	if (status == B_OK)
+	    status = archive->AddMessage("date time", &dateTimeArchive);
+	if (status == B_OK)
+	    status = archive->AddString("url", m_url.String());
+	if (status == B_OK)
+	    status = archive->AddUInt32("invokations", m_invokationCount);
+    return status;
+}
+
+BrowsingHistoryItem& BrowsingHistoryItem::operator=(const BrowsingHistoryItem& other)
+{
+    if (this == &other)
+        return *this;
+
+    m_url = other.m_url;
+    m_dateTime = other.m_dateTime;
+    m_invokationCount = other.m_invokationCount;
+
+    return *this;
+}
+
+bool BrowsingHistoryItem::operator==(const BrowsingHistoryItem& other) const
+{
+	if (this == &other)
+	    return true;
+
+	return m_url == other.m_url && m_dateTime == other.m_dateTime
+	    && m_invokationCount == other.m_invokationCount;
+}
+
+bool BrowsingHistoryItem::operator!=(const BrowsingHistoryItem& other) const
+{
+	return !(*this == other);
+}
+
+bool BrowsingHistoryItem::operator<(const BrowsingHistoryItem& other) const
+{
+	if (this == &other)
+	    return false;
+
+	return m_dateTime < other.m_dateTime || m_url < other.m_url;
+}
+
+bool BrowsingHistoryItem::operator<=(const BrowsingHistoryItem& other) const
+{
+	return (*this == other) || (*this < other);
+}
+
+bool BrowsingHistoryItem::operator>(const BrowsingHistoryItem& other) const
+{
+	if (this == &other)
+	    return false;
+
+	return m_dateTime > other.m_dateTime || m_url > other.m_url;
+}
+
+bool BrowsingHistoryItem::operator>=(const BrowsingHistoryItem& other) const
+{
+	return (*this == other) || (*this > other);
+}
+
+void BrowsingHistoryItem::increaseInvokationCount()
+{
+	// Eventually, we may overflow...
+	uint32 count = m_invokationCount + 1;
+	if (count > m_invokationCount)
+	    m_invokationCount = count;
+}
+
+// #pragma mark - BrowsingHistory
 
 BrowsingHistory BrowsingHistory::s_defaultInstance;
 

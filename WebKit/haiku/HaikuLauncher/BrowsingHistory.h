@@ -28,9 +28,40 @@
 #ifndef BrowsingHistory_h
 #define BrowsingHistory_h
 
+#include "DateTime.h"
 #include <Locker.h>
 
 class BFile;
+class BString;
+
+class BrowsingHistoryItem {
+public:
+    BrowsingHistoryItem(const BString& url);
+    BrowsingHistoryItem(const BrowsingHistoryItem& other);
+    BrowsingHistoryItem(const BMessage* archive);
+    ~BrowsingHistoryItem();
+
+    status_t archive(BMessage* archive) const;
+
+    BrowsingHistoryItem& operator=(const BrowsingHistoryItem& other);
+
+    bool operator==(const BrowsingHistoryItem& other) const;
+    bool operator!=(const BrowsingHistoryItem& other) const;
+    bool operator<(const BrowsingHistoryItem& other) const;
+    bool operator<=(const BrowsingHistoryItem& other) const;
+    bool operator>(const BrowsingHistoryItem& other) const;
+    bool operator>=(const BrowsingHistoryItem& other) const;
+
+    const BString& url() const { return m_url; }
+    const BDateTime& dateTime() const { return m_dateTime; }
+    uint32 invokationCount() const { return m_invokationCount; }
+    void increaseInvokationCount();
+
+private:
+    BString m_url;
+    BDateTime m_dateTime;
+    uint32 m_invokationCount;
+};
 
 class BrowsingHistory : public BLocker {
 public:
