@@ -205,7 +205,8 @@ static void handleHTTPAuthentication(ResourceHandle* job)
     String realm;
     int realmStart = challenge.find("realm=\"", 0, false);
     if (realmStart > 0) {
-        int realmEnd = challenge.find("\"", realmStart + 7);
+    	realmStart += 7;
+        int realmEnd = challenge.find("\"", realmStart);
         if (realmEnd >= 0)
             realm = challenge.substring(realmStart, realmEnd - realmStart);
     }
