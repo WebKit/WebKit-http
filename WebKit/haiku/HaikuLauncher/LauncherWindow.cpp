@@ -3,6 +3,7 @@
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
  *
  * All rights reserved.
  *
@@ -57,9 +58,9 @@ enum {
     GOTO_URL = 'goul',
     RELOAD = 'reld',
 
-	TEXT_SIZE_INCREASE = 'tsin',
-	TEXT_SIZE_DECREASE = 'tsdc',
-	TEXT_SIZE_RESET = 'tsrs',
+    TEXT_SIZE_INCREASE = 'tsin',
+    TEXT_SIZE_DECREASE = 'tsdc',
+    TEXT_SIZE_RESET = 'tsrs',
 
     TEXT_SHOW_FIND_GROUP = 'sfnd',
     TEXT_HIDE_FIND_GROUP = 'hfnd',
@@ -73,9 +74,9 @@ using namespace WebCore;
 
 static BLayoutItem* layoutItemFor(BView* view)
 {
-	BLayout* layout = view->Parent()->GetLayout();
-	int32 index = layout->IndexOfView(view);
-	return layout->ItemAt(index);
+    BLayout* layout = view->Parent()->GetLayout();
+    int32 index = layout->IndexOfView(view);
+    return layout->ItemAt(index);
 }
 
 LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
@@ -85,30 +86,30 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
     if (toolbarPolicy == HaveToolbar) {
-    	// Menu
-    	m_menuBar = new BMenuBar("Main menu");
-    	BMenu* menu = new BMenu("Window");
-    	BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
-    	newWindowMessage->AddString("url", "");
-    	BMenuItem* newItem = new BMenuItem("New", newWindowMessage, 'N');
-    	menu->AddItem(newItem);
-    	newItem->SetTarget(be_app);
-    	menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W'));
-    	menu->AddSeparatorItem();
-    	menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
-    	menu->AddSeparatorItem();
-    	BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
-    	menu->AddItem(quitItem);
-    	quitItem->SetTarget(be_app);
-    	m_menuBar->AddItem(menu);
+        // Menu
+        m_menuBar = new BMenuBar("Main menu");
+        BMenu* menu = new BMenu("Window");
+        BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
+        newWindowMessage->AddString("url", "");
+        BMenuItem* newItem = new BMenuItem("New", newWindowMessage, 'N');
+        menu->AddItem(newItem);
+        newItem->SetTarget(be_app);
+        menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W'));
+        menu->AddSeparatorItem();
+        menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
+        menu->AddSeparatorItem();
+        BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
+        menu->AddItem(quitItem);
+        quitItem->SetTarget(be_app);
+        m_menuBar->AddItem(menu);
 
-    	menu = new BMenu("Text");
-    	menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
-    	menu->AddSeparatorItem();
-    	menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
-    	menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
-    	menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
-    	m_menuBar->AddItem(menu);
+        menu = new BMenu("Text");
+        menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
+        menu->AddSeparatorItem();
+        menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
+        menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
+        menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
+        m_menuBar->AddItem(menu);
 
         // Back & Forward
         m_BackButton = new BButton("", "Back", new BMessage(GO_BACK));
@@ -126,16 +127,16 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText->SetAlignment(B_ALIGN_LEFT);
         m_statusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
         m_statusText->SetExplicitMinSize(BSize(150, 16));
-        	// Prevent the window from growing to fit a long status message...
+            // Prevent the window from growing to fit a long status message...
         BFont font(be_plain_font);
         font.SetSize(ceilf(font.Size() * 0.8));
         m_statusText->SetFont(&font, B_FONT_SIZE);
 
-		// Loading progress bar
-		m_loadingProgressBar = new BStatusBar("progress");
-		m_loadingProgressBar->SetMaxValue(100);
-		m_loadingProgressBar->Hide();
-		m_loadingProgressBar->SetBarHeight(10);
+        // Loading progress bar
+        m_loadingProgressBar = new BStatusBar("progress");
+        m_loadingProgressBar->SetMaxValue(100);
+        m_loadingProgressBar->Hide();
+        m_loadingProgressBar->SetBarHeight(10);
 
         const float kInsetSpacing = 5;
         const float kElementSpacing = 7;
@@ -158,7 +159,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         ;
         // Layout
         AddChild(BGroupLayoutBuilder(B_VERTICAL)
-        	.Add(m_menuBar)
+            .Add(m_menuBar)
             .Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
                 .Add(m_BackButton, 0, 0)
                 .Add(m_ForwardButton, 1, 0)
@@ -181,8 +182,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
 
         m_findGroup = layoutItemFor(findGroup);
     } else {
-    	m_BackButton = 0;
-    	m_ForwardButton = 0;
+        m_BackButton = 0;
+        m_ForwardButton = 0;
         m_url = 0;
         m_menuBar = 0;
         m_statusText = 0;
@@ -205,7 +206,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
 
     navigationCapabilitiesChanged(false, false, false);
 
-	be_app->PostMessage(WINDOW_OPENED);
+    be_app->PostMessage(WINDOW_OPENED);
 }
 
 LauncherWindow::~LauncherWindow()
@@ -262,23 +263,6 @@ void LauncherWindow::MessageReceived(BMessage* message)
         be_app->PostMessage(message);
         break;
 
-    case TEST_AUTHENTICATION_PANEL: {
-    	BString realm("Realm");
-    	BString method("Method");
-    	BString previousUser;
-    	BString previousPass;
-    	bool rememberCredentials = false;
-    	bool badPassword = true;
-    	BString user;
-    	BString pass;
-        AuthenticationPanel* panel = new AuthenticationPanel(Frame());
-        bool success = panel->getAuthentication(realm, method, previousUser,
-            previousPass, rememberCredentials, badPassword, user, pass,
-            &rememberCredentials);
-        printf("success: %d\n", success);
-        break;
-    }
-
     default:
         WebViewWindow::MessageReceived(message);
         break;
@@ -288,8 +272,8 @@ void LauncherWindow::MessageReceived(BMessage* message)
 bool LauncherWindow::QuitRequested()
 {
     if (WebViewWindow::QuitRequested()) {
-    	BMessage message(WINDOW_CLOSED);
-    	message.AddRect("window frame", Frame());
+        BMessage message(WINDOW_CLOSED);
+        message.AddRect("window frame", Frame());
         be_app->PostMessage(&message);
         return true;
     }
@@ -300,86 +284,113 @@ bool LauncherWindow::QuitRequested()
 
 void LauncherWindow::navigationRequested(const BString& url)
 {
-	m_loadedURL = url;
+    m_loadedURL = url;
     if (m_url)
         m_url->SetText(url.String());
 }
 
 void LauncherWindow::newWindowRequested(const BString& url)
 {
-	// Always open new windows in the application thread, since
-	// creating a WebView will try to grab the application lock.
-	// But our own WebProcess may already try to lock us from within
-	// the application thread -> dead-lock.
-	BMessage message(NEW_WINDOW);
-	message.AddString("url", url);
-	be_app->PostMessage(&message);
+    // Always open new windows in the application thread, since
+    // creating a WebView will try to grab the application lock.
+    // But our own WebProcess may already try to lock us from within
+    // the application thread -> dead-lock.
+    BMessage message(NEW_WINDOW);
+    message.AddString("url", url);
+    be_app->PostMessage(&message);
 }
 
 void LauncherWindow::loadNegociating(const BString& url)
 {
-	BString status("Requesting: ");
-	status << url;
-	statusChanged(status);
+    BString status("Requesting: ");
+    status << url;
+    statusChanged(status);
 }
 
 void LauncherWindow::loadTransfering(const BString& url)
 {
-	BString status("Loading: ");
-	status << url;
-	statusChanged(status);
+    BString status("Loading: ");
+    status << url;
+    statusChanged(status);
 }
 
 void LauncherWindow::loadProgress(float progress)
 {
-	if (m_loadingProgressBar) {
-	    if (progress < 100 && m_loadingProgressBar->IsHidden())
-	        m_loadingProgressBar->Show();
-	    m_loadingProgressBar->SetTo(progress);
-	}
+    if (m_loadingProgressBar) {
+        if (progress < 100 && m_loadingProgressBar->IsHidden())
+            m_loadingProgressBar->Show();
+        m_loadingProgressBar->SetTo(progress);
+    }
 }
 
 void LauncherWindow::loadFailed(const BString& url)
 {
-	BString status(url);
-	status << " failed.";
-	statusChanged(status);
-	if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
-	    m_loadingProgressBar->Hide();
+    BString status(url);
+    status << " failed.";
+    statusChanged(status);
+    if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
+        m_loadingProgressBar->Hide();
 }
 
 void LauncherWindow::loadFinished(const BString& url)
 {
-	m_loadedURL = url;
-	BString status(url);
-	status << " finished.";
-	statusChanged(status);
+    m_loadedURL = url;
+    BString status(url);
+    status << " finished.";
+    statusChanged(status);
     if (m_url)
         m_url->SetText(url.String());
-	if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
-	    m_loadingProgressBar->Hide();
+    if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
+        m_loadingProgressBar->Hide();
 }
 
 void LauncherWindow::titleChanged(const BString& title)
 {
-	BString windowTitle = title;
-	if (windowTitle.Length() > 0)
-		windowTitle << " - ";
-	windowTitle << "HaikuLauncher";
-	SetTitle(windowTitle.String());
+    BString windowTitle = title;
+    if (windowTitle.Length() > 0)
+        windowTitle << " - ";
+    windowTitle << "HaikuLauncher";
+    SetTitle(windowTitle.String());
 }
 
 void LauncherWindow::statusChanged(const BString& statusText)
 {
-	if (m_statusText)
+    if (m_statusText)
         m_statusText->SetText(statusText.String());
 }
 
 void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
     bool canGoForward, bool canStop)
 {
-	if (m_BackButton)
-	    m_BackButton->SetEnabled(canGoBackward);
-	if (m_ForwardButton)
-	    m_ForwardButton->SetEnabled(canGoForward);
+    if (m_BackButton)
+        m_BackButton->SetEnabled(canGoBackward);
+    if (m_ForwardButton)
+        m_ForwardButton->SetEnabled(canGoForward);
+}
+
+void LauncherWindow::authenticationChallenge(BMessage* message)
+{
+    BString text;
+    bool rememberCredentials = false;
+    uint32 failureCount = 0;
+    BString user;
+    BString password;
+
+    message->FindString("text", &text);
+    message->FindString("user", &user);
+    message->FindString("password", &password);
+    message->FindUInt32("failureCount", &failureCount);
+
+    AuthenticationPanel* panel = new AuthenticationPanel(Frame());
+    if (!panel->getAuthentication(text, user, password, rememberCredentials,
+            failureCount > 0, user, password, &rememberCredentials)) {
+        message->SendReply((uint32)0);
+        return;
+    }
+
+    BMessage reply;
+    reply.AddString("user", user);
+    reply.AddString("password", password);
+    reply.AddBool("rememberCredentials", rememberCredentials);
+    message->SendReply(&reply);
 }

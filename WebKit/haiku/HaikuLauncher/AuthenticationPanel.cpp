@@ -112,17 +112,12 @@ AuthenticationPanel::MessageReceived(BMessage* message)
 	}
 }
 
-bool AuthenticationPanel::getAuthentication(const BString& realm,
-    const BString& method, const BString& previousUser, const BString& previousPass,
+bool AuthenticationPanel::getAuthentication(const BString& text,
+    const BString& previousUser, const BString& previousPass,
 	bool previousRememberCredentials, bool badPassword,
 	BString& user, BString&  pass, bool* rememberCredentials)
 {
 	// Configure panel and layout controls.
-	BString infoText("Enter login information for: ");
-	infoText << realm << "\n\n";
-	infoText << "Authentication method: ";
-	infoText << method;
-
     m_usernameTextControl->SetText(previousUser.String());
 	m_passwordTextControl->TextView()->HideTyping(true);
 	// Ignore the previous password, if it didn't work.

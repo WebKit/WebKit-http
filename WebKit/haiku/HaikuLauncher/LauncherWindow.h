@@ -75,6 +75,7 @@ public:
     virtual void statusChanged(const BString& status);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop);
+    virtual void authenticationChallenge(BMessage* challenge);
 
 private:
     BMenuBar* m_menuBar;

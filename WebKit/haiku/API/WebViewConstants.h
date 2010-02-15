@@ -42,7 +42,8 @@ enum {
     NAVIGATION_REQUESTED =                              310,
     JAVASCRIPT_WINDOW_OBJECT_CLEARED =                  311,
     UPDATE_HISTORY =                                    312,
-    UPDATE_NAVIGATION_INTERFACE =                       313
+    UPDATE_NAVIGATION_INTERFACE =                       313,
+    AUTHENTICATION_CHALLENGE =                          314
 };
 
 enum {

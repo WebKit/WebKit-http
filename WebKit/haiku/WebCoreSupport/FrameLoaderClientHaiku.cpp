@@ -6,6 +6,7 @@
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com> All rights reserved.
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com> All rights reserved.
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
  *
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,6 +34,8 @@
 #include "config.h"
 #include "FrameLoaderClientHaiku.h"
 
+#include "AuthenticationChallenge.h"
+#include "Credential.h"
 #include "CachedFrame.h"
 #include "CString.h"
 #include "DocumentLoader.h"
@@ -85,7 +88,7 @@ void FrameLoaderClientHaiku::setDispatchTarget(BHandler* handler)
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
     m_webFrame = 0;
-    	// deleted by WebProcess
+        // deleted by WebProcess
     delete this;
 }
 
@@ -157,10 +160,52 @@ printf("FrameLoaderClientHaiku::shouldUseCredentialStorage()\n");
     return false;
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
+void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge& challenge)
 {
-printf("FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge()\n");
-    notImplemented();
+    const ProtectionSpace& space = challenge.protectionSpace();
+    String text = "Host \"" + space.host() + "\" requestes authentication for realm \"" + space.realm() + "\"\n";
+    text += "Authentication Scheme: ";
+    switch (space.authenticationScheme()) {
+    case ProtectionSpaceAuthenticationSchemeHTTPBasic:
+        text += "Basic (data will be sent as plain text)";
+        break;
+    case ProtectionSpaceAuthenticationSchemeHTTPDigest:
+        text += "Digest (data will not be sent plain text)";
+        break;
+    default:
+        text += "Unknown (possibly plaintext)";
+        break;
+    }
+
+    BMessage challengeMessage(AUTHENTICATION_CHALLENGE);
+    challengeMessage.AddString("text", space.realm());
+    challengeMessage.AddString("user", challenge.proposedCredential().user());
+    challengeMessage.AddString("password", challenge.proposedCredential().password());
+    challengeMessage.AddUInt32("failureCount", challenge.previousFailureCount());
+
+    BMessage authenticationReply;
+    m_messenger.SendMessage(&challengeMessage, &authenticationReply);
+
+    BString user;
+    BString password;
+    if (authenticationReply.FindString("user", &user) != B_OK
+        || authenticationReply.FindString("password", &password) != B_OK) {
+        challenge.authenticationClient()->receivedCancellation(challenge);
+    } else {
+        if (!user.Length() && !password.Length())
+            challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
+        else {
+            bool rememberCredentials = false;
+            CredentialPersistence persistence = CredentialPersistenceForSession;
+            if (authenticationReply.FindBool("rememberCredentials",
+                &rememberCredentials) == B_OK && rememberCredentials) {
+                persistence = CredentialPersistencePermanent;
+            }
+
+            Credential credential(user.String(), password.String(), persistence);
+            challenge.authenticationClient()->receivedCredential(challenge, credential);
+        }
+    }
 }
 
 void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
@@ -356,7 +401,7 @@ printf("download\n");
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
-	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
+    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
 {
 printf("dispatchDecidePolicyForNewWindowAction\n");
     if (request.isNull()) {
@@ -383,7 +428,7 @@ printf("dispatchDecidePolicyForNewWindowAction\n");
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
-	const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
+    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
 {
 printf("dispatchDecidePolicyForNavigationAction\n");
     if (request.isNull()) {
@@ -435,14 +480,14 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
 
 void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
 {
-	if (error.isCancellation())
-		return;
+    if (error.isCancellation())
+        return;
 
-	// FIXME: This should be moved into LauncherWindow.
-	BString errorString("Error loading ");
-	errorString << error.failingURL();
-	errorString << ":\n\n";
-	errorString << error.localizedDescription();
+    // FIXME: This should be moved into LauncherWindow.
+    BString errorString("Error loading ");
+    errorString << error.failingURL();
+    errorString << ":\n\n";
+    errorString << error.localizedDescription();
     BAlert* alert = new BAlert("Main document error", errorString.String(), "OK");
     alert->Go(NULL);
 }
@@ -461,8 +506,8 @@ void FrameLoaderClientHaiku::postProgressStartedNotification()
 
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
-	BMessage message(LOAD_PROGRESS);
-	message.AddFloat("progress", m_webFrame->frame()->page()->progress()->estimatedProgress() * 100);
+    BMessage message(LOAD_PROGRESS);
+    message.AddFloat("progress", m_webFrame->frame()->page()->progress()->estimatedProgress() * 100);
     m_messenger.SendMessage(&message);
 }
 
@@ -544,17 +589,17 @@ bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
 
 void FrameLoaderClientHaiku::dispatchDidAddBackForwardItem(WebCore::HistoryItem*) const
 {
-	triggerNavigationHistoryUpdate();
+    triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::dispatchDidRemoveBackForwardItem(WebCore::HistoryItem*) const
 {
-	triggerNavigationHistoryUpdate();
+    triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::dispatchDidChangeBackForwardIndex() const
 {
-	triggerNavigationHistoryUpdate();
+    triggerNavigationHistoryUpdate();
 }
 
 void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
@@ -639,7 +684,7 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& MIMEType) const
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(MIMEType))
         return true;
 
-	Frame* frame = m_webFrame->frame();
+    Frame* frame = m_webFrame->frame();
     if (frame && frame->settings() && frame->settings()->arePluginsEnabled()
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(MIMEType))
         return true;
@@ -704,7 +749,7 @@ void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
 
 void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame*)
 {
-	// Nothing to be done here for the moment.
+    // Nothing to be done here for the moment.
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* cachedFrame)
@@ -755,23 +800,23 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
     ASSERT(m_webFrame);
 
-	WebFrame* frame = new WebFrame(m_webProcess, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
-	// As long as we don't return the Frame, we are responsible for deleting it.
+    WebFrame* frame = new WebFrame(m_webProcess, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
+    // As long as we don't return the Frame, we are responsible for deleting it.
     RefPtr<Frame> childFrame = frame->frame();
 
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
-	if (!childFrame->page()) {
+    if (!childFrame->page()) {
 printf("   no page\n");
-		delete frame;
-		return 0;
-	}
+        delete frame;
+        return 0;
+    }
 
     childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
 
     // The frame's onload handler may have removed it from the document.
     if (!childFrame->tree()->parent()) {
 printf("   no parent\n");
-		delete frame;
+        delete frame;
         return 0;
     }
 
@@ -884,9 +929,9 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
 
 void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues) const
 {
-	// This method can be used to do adjustments on the main frame, since those
-	// are the only ones directly embedded into a WebView.
-	view->setTopLevelPlatformWidget(m_webProcess->webView());
+    // This method can be used to do adjustments on the main frame, since those
+    // are the only ones directly embedded into a WebView.
+    view->setTopLevelPlatformWidget(m_webProcess->webView());
 }
 
 } // namespace WebCore

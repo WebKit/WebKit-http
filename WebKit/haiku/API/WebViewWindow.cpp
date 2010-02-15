@@ -82,7 +82,7 @@ void WebViewWindow::MessageReceived(BMessage* message)
     case NEW_WINDOW_REQUESTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-        	newWindowRequested(url);
+            newWindowRequested(url);
         break;
     }
     case LOAD_NEGOCIATING: {
@@ -143,6 +143,11 @@ void WebViewWindow::MessageReceived(BMessage* message)
         navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop);
         break;
     }
+    case AUTHENTICATION_CHALLENGE:
+    {
+        authenticationChallenge(message);
+        break;
+    }
 
     case B_MOUSE_WHEEL_CHANGED:
         m_webView->MessageReceived(message);
@@ -155,7 +160,7 @@ void WebViewWindow::MessageReceived(BMessage* message)
 
 bool WebViewWindow::QuitRequested()
 {
-	// TODO: Check for modified form data and ask user for confirmation, etc.
+    // TODO: Check for modified form data and ask user for confirmation, etc.
 
     // Do this here, so WebKit tear down happens earlier.
     m_webView->RemoveSelf();
@@ -212,3 +217,6 @@ void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
 {
 }
 
+void WebViewWindow::authenticationChallenge(BMessage* challenge)
+{
+}
