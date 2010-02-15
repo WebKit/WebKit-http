@@ -61,6 +61,7 @@ public:
             , bitmap(0)
             , globalAlpha(255)
             , currentShape(0)
+            , clipShape(0)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
             , previous(0)
@@ -80,6 +81,7 @@ public:
             , bitmap(0)
             , globalAlpha(255)
             , currentShape(0)
+            , clipShape(previous->clipShape ? new BShape(*previous->clipShape) : 0)
             , locationInParent(B_ORIGIN)
             , accumulatedOrigin(B_ORIGIN)
             , previous(previous)
@@ -127,6 +129,7 @@ public:
                 delete bitmap;
             }
             delete currentShape;
+            delete clipShape;
         }
 
         BView* view;
@@ -135,6 +138,7 @@ public:
         rgb_color fillColor;
         uint8 globalAlpha;
         BShape* currentShape;
+        BShape* clipShape;
         BPoint locationInParent;
         BPoint accumulatedOrigin;
 
@@ -157,6 +161,24 @@ public:
         if (!m_currentLayer->currentShape)
             m_currentLayer->currentShape = new BShape();
         return m_currentLayer->currentShape;
+    }
+
+    void setClipShape(BShape* shape)
+    {
+    	// NOTE: For proper clipping, the paths would have to
+    	// be combined with the previous layers. But this for now,
+    	// this is just supposed to support a small hack to get
+    	// box elements with round corners to work properly. BView shall
+    	// get proper clipping path support in the future.
+        delete m_currentLayer->clipShape;
+        m_currentLayer->clipShape = shape;
+    }
+
+    BShape* clipShape() const
+    {
+        if (!m_currentLayer->clipShape)
+            m_currentLayer->clipShape = new BShape();
+        return m_currentLayer->clipShape;
     }
 
     void pushLayer(float opacity)
@@ -365,7 +387,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     m_data->view()->SetHighColor(color);
     if (color.hasAlpha())
         m_data->view()->SetDrawingMode(B_OP_ALPHA);
-    m_data->view()->FillRect(rect);
+    fillRect(rect);
     m_data->view()->PopState();
 }
 
@@ -374,6 +396,26 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
+    // NOTE: Trick to implement filling rects with clipping path
+    // (needed for box elements with round corners):
+    // When the rect extends outside the current clipping path on
+    // all sides, then we can fill the path instead of the rect.
+    if (m_data->clipShape()) {
+    	BRect bRect(rect);
+    	BRect clipPathBounds(m_data->clipShape()->Bounds());
+    	// NOTE: BShapes do not suffer the weird coordinate mixup
+    	// of other drawing primitives, since the conversion would be
+    	// too expensive in the app_server. Thus the right/bottom edge
+    	// can be considered one pixel smaller. On screen, it will be
+    	// the same again.
+    	clipPathBounds.right--;
+    	clipPathBounds.bottom--;
+    	if (bRect.Contains(clipPathBounds)) {
+    		m_data->view()->MovePenTo(B_ORIGIN);
+    		m_data->view()->FillShape(m_data->clipShape());
+    		return;
+    	}
+    }
     m_data->view()->FillRect(rect);
 }
 
@@ -466,6 +508,14 @@ void GraphicsContext::addPath(const Path& path)
         m_data->shape()->AddShape(path.platformPath());
 }
 
+void GraphicsContext::clipPath(WindRule clipRule)
+{
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
+}
+
 void GraphicsContext::clip(const FloatRect& rect)
 {
     if (paintingDisabled())
@@ -475,11 +525,34 @@ void GraphicsContext::clip(const FloatRect& rect)
     m_data->view()->ConstrainClippingRegion(&region);
 }
 
-void GraphicsContext::clipPath(WindRule clipRule)
+void GraphicsContext::clip(const Path& path)
 {
     if (paintingDisabled())
         return;
 
+    if (path.platformPath()->Bounds().IsValid())
+        m_data->setClipShape(new BShape(*path.platformPath()));
+    else
+        m_data->setClipShape(0);
+    // Clipping still not actually implemented...
+    notImplemented();
+}
+
+void GraphicsContext::canvasClip(const Path& path)
+{
+    clip(path);
+}
+
+void GraphicsContext::clipOut(const Path& path)
+{
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
+}
+
+void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
+{
     notImplemented();
 }
 
@@ -658,32 +731,6 @@ void GraphicsContext::setCompositeOperation(CompositeOperator op)
                 compositeOperatorName(op).utf8().data());
     }
     m_data->view()->SetDrawingMode(mode);
-}
-
-void GraphicsContext::clip(const Path& path)
-{
-    if (paintingDisabled())
-        return;
-
-    notImplemented();
-}
-
-void GraphicsContext::canvasClip(const Path& path)
-{
-    clip(path);
-}
-
-void GraphicsContext::clipOut(const Path& path)
-{
-    if (paintingDisabled())
-        return;
-
-    notImplemented();
-}
-
-void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
-{
-    notImplemented();
 }
 
 AffineTransform GraphicsContext::getCTM() const
