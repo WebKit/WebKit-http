@@ -29,6 +29,7 @@
 #define BrowsingHistory_h
 
 #include "DateTime.h"
+#include <List.h>
 #include <Locker.h>
 
 class BFile;
@@ -55,7 +56,7 @@ public:
     const BString& url() const { return m_url; }
     const BDateTime& dateTime() const { return m_dateTime; }
     uint32 invokationCount() const { return m_invokationCount; }
-    void increaseInvokationCount();
+    void invoked();
 
 private:
     BString m_url;
@@ -67,15 +68,23 @@ class BrowsingHistory : public BLocker {
 public:
     static BrowsingHistory* defaultInstance();
 
+    bool addItem(const BrowsingHistoryItem& item);
+
+    // Should Lock() the object when using these in some loop or so:
+    int32 countItems() const;
+    BrowsingHistoryItem historyItemAt(int32 index) const;
+    void clear();
+
 private:
     BrowsingHistory();
     virtual ~BrowsingHistory();
+    void privateClear();
 
     void saveSettings();
 	bool openSettingsFile(BFile& file, uint32 mode);
 
 private:
-    static BrowsingHistory s_defaultInstance;
+    BList m_historyItems;
 };
 
 #endif // BrowsingHistory_h

@@ -58,6 +58,7 @@ public:
     virtual void statusChanged(const BString& status);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop);
+    virtual void updateGlobalHistory(const BString& url);
     virtual void authenticationChallenge(BMessage* challenge);
 
 private:

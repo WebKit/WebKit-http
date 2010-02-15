@@ -570,11 +570,6 @@ void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
 {
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
-{
     WebCore::Frame* frame = m_webFrame->frame();
     if (!frame)
         return;
@@ -584,9 +579,13 @@ void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
     m_messenger.SendMessage(&message);
 }
 
+void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
+{
+	updateGlobalHistory();
+}
+
 bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
 {
-    notImplemented();
     return true;
 }
 

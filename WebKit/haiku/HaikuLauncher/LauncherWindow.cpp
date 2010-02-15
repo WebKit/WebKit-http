@@ -33,9 +33,11 @@
 #include "LauncherWindow.h"
 
 #include "AuthenticationPanel.h"
+#include "BrowsingHistory.h"
 #include "WebProcess.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+#include <Alert.h>
 #include <Application.h>
 #include <Button.h>
 #include <CheckBox.h>
@@ -59,6 +61,7 @@ enum {
     GO_FORWARD = 'gofo',
     GOTO_URL = 'goul',
     RELOAD = 'reld',
+    CLEAR_HISTORY = 'clhs',
 
     TEXT_SIZE_INCREASE = 'tsin',
     TEXT_SIZE_DECREASE = 'tsdc',
@@ -110,6 +113,9 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
         menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
         m_menuBar->AddItem(menu);
+
+        m_goMenu = new BMenu("Go");
+        m_menuBar->AddItem(m_goMenu);
 
         // Back & Forward
         m_BackButton = new BButton("", "Back", new BMessage(GO_BACK));
@@ -218,16 +224,30 @@ void LauncherWindow::MessageReceived(BMessage* message)
     case RELOAD:
         webView()->loadRequest(m_url->Text());
         break;
-    case GOTO_URL:
-        if (m_loadedURL != m_url->Text())
-            webView()->loadRequest(m_url->Text());
+    case GOTO_URL: {
+        BString url = m_url->Text();
+        message->FindString("url", &url);
+        if (m_loadedURL != url)
+            webView()->loadRequest(url.String());
         break;
+    }
     case GO_BACK:
         webView()->goBack();
         break;
     case GO_FORWARD:
         webView()->goForward();
         break;
+
+    case CLEAR_HISTORY: {
+    	BrowsingHistory* history = BrowsingHistory::defaultInstance();
+    	if (history->countItems() == 0)
+    	    break;
+    	BAlert* alert = new BAlert("Confirmation", "Do you really want to clear "
+    	    "the browsing history?", "Clear", "Cancel");
+    	if (alert->Go() == 0)
+    	    history->clear();
+        break;
+    }
 
     case B_SIMPLE_DATA: {
     	// User possibly dropped files on this window.
@@ -303,6 +323,35 @@ bool LauncherWindow::QuitRequested()
         return true;
     }
     return false;
+}
+
+void LauncherWindow::MenusBeginning()
+{
+	BMenuItem* menuItem;
+	while ((menuItem = m_goMenu->RemoveItem(0L)))
+	    delete menuItem;
+
+    BrowsingHistory* history = BrowsingHistory::defaultInstance();
+    if (!history->Lock())
+        return;
+
+    int32 count = history->countItems();
+    for (int32 i = 0; i < count; i++) {
+    	BrowsingHistoryItem historyItem = history->historyItemAt(i);
+    	BMessage* message = new BMessage(GOTO_URL);
+    	message->AddString("url", historyItem.url().String());
+    	// TODO: More sophisticated menu structure... sorted by days/weeks...
+    	menuItem = new BMenuItem(historyItem.url().String(), message);
+    	m_goMenu->AddItem(menuItem);
+    }
+
+
+    if (m_goMenu->CountItems() > 3) {
+        m_goMenu->AddSeparatorItem();
+        m_goMenu->AddItem(new BMenuItem("Clear history", new BMessage(CLEAR_HISTORY)));
+    }
+
+    history->Unlock();
 }
 
 // #pragma mark - Notification API
@@ -391,6 +440,11 @@ void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
         m_BackButton->SetEnabled(canGoBackward);
     if (m_ForwardButton)
         m_ForwardButton->SetEnabled(canGoForward);
+}
+
+void LauncherWindow::updateGlobalHistory(const BString& url)
+{
+	BrowsingHistory::defaultInstance()->addItem(BrowsingHistoryItem(url));
 }
 
 void LauncherWindow::authenticationChallenge(BMessage* message)

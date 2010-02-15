@@ -79,6 +79,12 @@ void WebViewWindow::MessageReceived(BMessage* message)
             navigationRequested(url);
         break;
     }
+    case UPDATE_HISTORY: {
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            updateGlobalHistory(url);
+        break;
+    }
     case NEW_WINDOW_REQUESTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
@@ -214,6 +220,10 @@ void WebViewWindow::newWindowRequested(const BString& url)
 
 void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
     bool canGoForward, bool canStop)
+{
+}
+
+void WebViewWindow::updateGlobalHistory(const BString& url)
 {
 }
 

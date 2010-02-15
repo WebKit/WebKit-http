@@ -62,6 +62,7 @@ public:
 
     virtual void MessageReceived(BMessage* message);
     virtual bool QuitRequested();
+    virtual void MenusBeginning();
 
     // WebViewWindow notification API implementations
     virtual void navigationRequested(const BString& url);
@@ -75,10 +76,12 @@ public:
     virtual void statusChanged(const BString& status);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop);
+    virtual void updateGlobalHistory(const BString& url);
     virtual void authenticationChallenge(BMessage* challenge);
 
 private:
     BMenuBar* m_menuBar;
+    BMenu* m_goMenu;
     BButton* m_BackButton;
     BButton* m_ForwardButton;
     BTextControl* m_url;

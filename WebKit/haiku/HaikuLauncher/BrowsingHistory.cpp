@@ -34,6 +34,7 @@
 #include <FindDirectory.h>
 #include <Message.h>
 #include <Path.h>
+#include <new>
 #include <stdio.h>
 
 
@@ -131,17 +132,16 @@ bool BrowsingHistoryItem::operator>=(const BrowsingHistoryItem& other) const
 	return (*this == other) || (*this > other);
 }
 
-void BrowsingHistoryItem::increaseInvokationCount()
+void BrowsingHistoryItem::invoked()
 {
 	// Eventually, we may overflow...
 	uint32 count = m_invokationCount + 1;
 	if (count > m_invokationCount)
 	    m_invokationCount = count;
+	m_dateTime = BDateTime::CurrentDateTime(B_LOCAL_TIME);
 }
 
 // #pragma mark - BrowsingHistory
-
-BrowsingHistory BrowsingHistory::s_defaultInstance;
 
 BrowsingHistory::BrowsingHistory()
     : BLocker("browsing history")
@@ -150,18 +150,91 @@ BrowsingHistory::BrowsingHistory()
 	if (openSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
-		// TODO: ...
+
+		BMessage historyItemArchive;
+		for (int32 i = 0; settingsArchive.FindMessage("history item", i, &historyItemArchive) == B_OK; i++) {
+			addItem(BrowsingHistoryItem(&historyItemArchive));
+			historyItemArchive.MakeEmpty();
+		}
 	}
 }
 
 BrowsingHistory::~BrowsingHistory()
 {
 	saveSettings();
+	privateClear();
 }
 
 /*static*/ BrowsingHistory* BrowsingHistory::defaultInstance()
 {
-	return &s_defaultInstance;
+    static BrowsingHistory defaultInstance;
+
+	return &defaultInstance;
+}
+
+bool BrowsingHistory::addItem(const BrowsingHistoryItem& item)
+{
+	BAutolock _(this);
+
+    int32 count = countItems();
+    int32 insertionIndex = count;
+    for (int32 i = 0; i < count; i++) {
+    	BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
+    	    m_historyItems.ItemAtFast(i));
+    	if (item.url() == existingItem->url()) {
+    		existingItem->invoked();
+    		return true;
+    	}
+    	if (item < *existingItem)
+    	    insertionIndex = i;
+    }
+    BrowsingHistoryItem* newItem = new(std::nothrow) BrowsingHistoryItem(item);
+    if (!newItem || !m_historyItems.AddItem(newItem, insertionIndex)) {
+    	delete newItem;
+        return false;
+    }
+
+    newItem->invoked();
+    saveSettings();
+
+    return true;
+}
+
+int32 BrowsingHistory::BrowsingHistory::countItems() const
+{
+	BAutolock _(const_cast<BrowsingHistory*>(this));
+
+    return m_historyItems.CountItems();
+}
+
+BrowsingHistoryItem BrowsingHistory::historyItemAt(int32 index) const
+{
+	BAutolock _(const_cast<BrowsingHistory*>(this));
+
+    BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
+        m_historyItems.ItemAt(index));
+    if (!existingItem)
+        return BrowsingHistoryItem(BString());
+
+    return BrowsingHistoryItem(*existingItem);
+}
+
+void BrowsingHistory::clear()
+{
+	BAutolock _(this);
+	privateClear();
+    saveSettings();
+}	
+
+void BrowsingHistory::privateClear()
+{
+	int32 count = countItems();
+	for (int32 i = 0; i < count; i++) {
+        BrowsingHistoryItem* item = reinterpret_cast<BrowsingHistoryItem*>(
+            m_historyItems.ItemAtFast(i));
+        delete item;
+	}
+	m_historyItems.MakeEmpty();
 }
 
 // #pragma mark - private
@@ -171,7 +244,16 @@ void BrowsingHistory::saveSettings()
 	BFile settingsFile;
 	if (openSettingsFile(settingsFile, B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
 		BMessage settingsArchive;
-		// TODO: ...
+		BMessage historyItemArchive;
+		int32 count = countItems();
+		for (int32 i = 0; i < count; i++) {
+			BrowsingHistoryItem item = historyItemAt(i);
+			if (item.archive(&historyItemArchive) != B_OK)
+			    break;
+			if (settingsArchive.AddMessage("history item", &historyItemArchive) != B_OK)
+			    break;
+			historyItemArchive.MakeEmpty();
+		}
 		settingsArchive.Flatten(&settingsFile);
 	}
 }
