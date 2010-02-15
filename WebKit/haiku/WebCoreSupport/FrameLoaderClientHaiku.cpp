@@ -178,7 +178,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentL
     }
 
     BMessage challengeMessage(AUTHENTICATION_CHALLENGE);
-    challengeMessage.AddString("text", space.realm());
+    challengeMessage.AddString("text", text);
     challengeMessage.AddString("user", challenge.proposedCredential().user());
     challengeMessage.AddString("password", challenge.proposedCredential().password());
     challengeMessage.AddUInt32("failureCount", challenge.previousFailureCount());
