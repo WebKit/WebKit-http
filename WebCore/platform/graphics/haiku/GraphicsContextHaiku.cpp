@@ -181,12 +181,9 @@ public:
                 uint32 bpr = layer->bitmap->BytesPerRow();
                 uint8 alpha = layer->globalAlpha;
                 for (uint32 y = 0; y < height; y++) {
-                    uint8* p = bits;
+                    uint8* p = bits + 3;
                     for (uint32 x = 0; x < width; x++) {
-                        p[0] = (uint8)((uint16)p[0] * alpha / 255);
-                        p[1] = (uint8)((uint16)p[1] * alpha / 255);
-                        p[2] = (uint8)((uint16)p[2] * alpha / 255);
-                        p[3] = (uint8)((uint16)p[3] * alpha / 255);
+                        *p = (uint8)((uint16)*p * alpha / 255);
                         p += 4;
                     }
                     bits += bpr;
