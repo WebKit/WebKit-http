@@ -95,7 +95,7 @@ WebCore::Frame* WebFrame::frame()
 
 void WebFrame::loadRequest(BString url)
 {
-    loadRequest(KURL(KURL(), url.String()));
+    loadRequest(KURL(KURL(), url.Trim().String()));
 }
 
 void WebFrame::loadRequest(KURL url)
