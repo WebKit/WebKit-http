@@ -183,10 +183,9 @@ FloatRect Path::boundingRect() const
     return m_path->Bounds();
 }
 
-void Path::moveTo(const FloatPoint& point)
+void Path::moveTo(const FloatPoint& p)
 {
-    BRect bounds = m_path->Bounds();
-    translate(FloatSize(point.x() - bounds.left, point.y() - bounds.top));
+    m_path->MoveTo(p);
 }
 
 void Path::addLineTo(const FloatPoint& p)
