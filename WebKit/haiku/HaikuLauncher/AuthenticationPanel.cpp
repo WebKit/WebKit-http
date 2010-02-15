@@ -53,7 +53,7 @@ AuthenticationPanel::AuthenticationPanel(BRect parentFrame)
 	, m_usernameTextControl(new BTextControl("user", "Username:", "", NULL))
 	, m_passwordTextControl(new BTextControl("pass", "Password:", "", NULL))
 	, m_hidePasswordCheckBox(new BCheckBox("hide", "Hide password text", new BMessage(kHidePassword)))
-	, m_remberCredentialsCheckBox(new BCheckBox("remember", "Rember username and password for this site", NULL))
+	, m_rememberCredentialsCheckBox(new BCheckBox("remember", "Remember username and password for this site", NULL))
 	, m_okButton(new BButton("ok", "OK", new BMessage(kMsgPanelOK)))
 	, m_cancelButton(new BButton("cancel", "Cancel", new BMessage(B_QUIT_REQUESTED)))
 	, m_cancelled(false)
@@ -133,7 +133,7 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	if (!badPassword)
 	    m_passwordTextControl->SetText(previousPass.String());
 	m_hidePasswordCheckBox->SetValue(B_CONTROL_ON);
-	m_remberCredentialsCheckBox->SetValue(previousRememberCredentials);
+	m_rememberCredentialsCheckBox->SetValue(previousRememberCredentials);
 
 	// create layout
 	SetLayout(new BGroupLayout(B_VERTICAL));
@@ -147,7 +147,7 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	        .Add(m_passwordTextControl->CreateTextViewLayoutItem(), 1, 2)
 	        .Add(BSpaceLayoutItem::CreateGlue(), 0, 3)
 	        .Add(m_hidePasswordCheckBox, 1, 3)
-	        .Add(m_remberCredentialsCheckBox, 0, 4, 2)
+	        .Add(m_rememberCredentialsCheckBox, 0, 4, 2)
 	        .SetInsets(spacing, spacing, spacing, spacing)
 	    )
 	    .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
@@ -209,7 +209,7 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	user = m_usernameTextControl->Text();
 	pass = m_passwordTextControl->Text();
 	if (rememberCredentials)
-        *rememberCredentials = m_remberCredentialsCheckBox->Value() == B_CONTROL_ON;
+        *rememberCredentials = m_rememberCredentialsCheckBox->Value() == B_CONTROL_ON;
 
     bool canceled = m_cancelled;
 	Quit();

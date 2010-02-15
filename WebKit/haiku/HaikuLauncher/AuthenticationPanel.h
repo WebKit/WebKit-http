@@ -53,7 +53,7 @@ private:
 	BTextControl* m_usernameTextControl;
 	BTextControl* m_passwordTextControl;
 	BCheckBox* m_hidePasswordCheckBox;
-	BCheckBox* m_remberCredentialsCheckBox;
+	BCheckBox* m_rememberCredentialsCheckBox;
 	BButton* m_okButton;
 	BButton* m_cancelButton;
 
