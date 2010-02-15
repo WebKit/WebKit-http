@@ -39,11 +39,13 @@
 #include <Application.h>
 #include <Button.h>
 #include <CheckBox.h>
+#include <Entry.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
+#include <Path.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
 #include <StatusBar.h>
@@ -229,6 +231,32 @@ void LauncherWindow::MessageReceived(BMessage* message)
     case GO_FORWARD:
         webView()->goForward();
         break;
+
+    case B_SIMPLE_DATA: {
+    	// User possibly dropped files on this window.
+    	// If there is more than one entry_ref, let the app handle it (open one
+    	// new page per ref). If there is one ref, open it in this window.
+        type_code type;
+        int32 countFound;
+        if (message->GetInfo("refs", &type, &countFound) != B_OK
+            || type != B_REF_TYPE) {
+            break;
+        }
+        if (countFound > 1) {
+            message->what = B_REFS_RECEIVED;
+            be_app->PostMessage(message);
+            break;
+        }
+        entry_ref ref;
+        if (message->FindRef("refs", &ref) != B_OK)
+            break;
+        BEntry entry(&ref, true);
+        BPath path;
+        if (!entry.Exists() || entry.GetPath(&path) != B_OK)
+            break;
+        webView()->loadRequest(path.Path());
+        break;
+    }
 
     case TEXT_SIZE_INCREASE:
         webView()->increaseTextSize();
