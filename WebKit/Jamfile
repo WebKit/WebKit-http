@@ -88,6 +88,7 @@ SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
 
 Application HaikuLauncher :
     AuthenticationPanel.cpp
+    BrowsingHistory.cpp
     DownloadWindow.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
