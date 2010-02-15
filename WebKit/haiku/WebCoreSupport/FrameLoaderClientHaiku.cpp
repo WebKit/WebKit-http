@@ -394,9 +394,12 @@ printf("ignore\n");
     if (canShowMIMEType(mimetype)) {
 printf("use\n");
         callPolicyFunction(function, PolicyUse);
-    } else {
+    } else if (!request.url().isLocalFile()) {
 printf("download\n");
         callPolicyFunction(function, PolicyDownload);
+    } else {
+printf("ignore (local)\n");
+        callPolicyFunction(function, PolicyIgnore);
     }
 }
 
