@@ -53,7 +53,7 @@ AuthenticationPanel::AuthenticationPanel(BRect parentFrame)
 	, m_usernameTextControl(new BTextControl("user", "Username:", "", NULL))
 	, m_passwordTextControl(new BTextControl("pass", "Password:", "", NULL))
 	, m_hidePasswordCheckBox(new BCheckBox("hide", "Hide password text", new BMessage(kHidePassword)))
-	, m_remberCredentialsCheckBox(new BCheckBox("remember", "Rember this username and password", NULL))
+	, m_remberCredentialsCheckBox(new BCheckBox("remember", "Rember username and password for this site", NULL))
 	, m_okButton(new BButton("ok", "OK", new BMessage(kMsgPanelOK)))
 	, m_cancelButton(new BButton("cancel", "Cancel", new BMessage(B_QUIT_REQUESTED)))
 	, m_cancelled(false)
@@ -118,6 +118,15 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	BString& user, BString&  pass, bool* rememberCredentials)
 {
 	// Configure panel and layout controls.
+	rgb_color infoColor = ui_color(B_PANEL_TEXT_COLOR);
+	BRect textBounds(0, 0, 250, 200);
+	BTextView* textView = new BTextView(textBounds, "text", textBounds,
+	    be_plain_font, &infoColor, B_FOLLOW_NONE, B_WILL_DRAW | B_SUPPORTS_LAYOUT);
+	textView->SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+	textView->SetText(text.String());
+	textView->MakeEditable(false);
+	textView->MakeSelectable(false);
+
     m_usernameTextControl->SetText(previousUser.String());
 	m_passwordTextControl->TextView()->HideTyping(true);
 	// Ignore the previous password, if it didn't work.
@@ -130,15 +139,15 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	SetLayout(new BGroupLayout(B_VERTICAL));
 	float spacing = be_control_look->DefaultItemSpacing();
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
-	    // TODO: Add text view here explaining realm and method...
 	    .Add(BGridLayoutBuilder(0, spacing)
-	        .Add(m_usernameTextControl->CreateLabelLayoutItem(), 0, 0)
-	        .Add(m_usernameTextControl->CreateTextViewLayoutItem(), 1, 0)
-	        .Add(m_passwordTextControl->CreateLabelLayoutItem(), 0, 1)
-	        .Add(m_passwordTextControl->CreateTextViewLayoutItem(), 1, 1)
-	        .Add(BSpaceLayoutItem::CreateGlue(), 0, 2)
-	        .Add(m_hidePasswordCheckBox, 1, 2)
-	        .Add(m_remberCredentialsCheckBox, 0, 3, 2)
+	        .Add(textView, 0, 0, 2)
+	        .Add(m_usernameTextControl->CreateLabelLayoutItem(), 0, 1)
+	        .Add(m_usernameTextControl->CreateTextViewLayoutItem(), 1, 1)
+	        .Add(m_passwordTextControl->CreateLabelLayoutItem(), 0, 2)
+	        .Add(m_passwordTextControl->CreateTextViewLayoutItem(), 1, 2)
+	        .Add(BSpaceLayoutItem::CreateGlue(), 0, 3)
+	        .Add(m_hidePasswordCheckBox, 1, 3)
+	        .Add(m_remberCredentialsCheckBox, 0, 4, 2)
 	        .SetInsets(spacing, spacing, spacing, spacing)
 	    )
 	    .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
@@ -150,8 +159,14 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	    )
 	);
 
+	float textHeight = textView->LineHeight(0) * textView->CountLines();
+	textView->SetExplicitMinSize(BSize(B_SIZE_UNSET, textHeight));
+
 	SetDefaultButton(m_okButton);
-	m_usernameTextControl->MakeFocus(true);
+	if (badPassword && previousUser.Length())
+	    m_passwordTextControl->MakeFocus(true);
+	else
+	    m_usernameTextControl->MakeFocus(true);
 
     if (m_parentWindowFrame.IsValid())
         CenterIn(m_parentWindowFrame);
@@ -166,9 +181,27 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 		PostMessage(kMsgJitter);
 
 	// Block calling thread
-	// TODO: When called from other window threads, this should periodically
-	// call UpdateIfNeeded()...
-	acquire_sem(m_exitSemaphore);
+	// Get the originating window, if it exists, to let it redraw itself.
+	BWindow* window = dynamic_cast<BWindow*>(BLooper::LooperForThread(find_thread(NULL)));
+	if (window) {
+		status_t err;
+		for (;;) {
+			do {
+				err = acquire_sem_etc(m_exitSemaphore, 1, B_RELATIVE_TIMEOUT, 10000);
+				// We've (probably) had our time slice taken away from us
+			} while (err == B_INTERRUPTED);
+
+			if (err != B_TIMED_OUT) {
+				// Semaphore was finally released or nuked.
+				break;
+			}
+			window->UpdateIfNeeded();
+		}
+	} else {
+		// No window to update, so just hang out until we're done.
+		while (acquire_sem(m_exitSemaphore) == B_INTERRUPTED) {
+		}
+	}
 
 	// AuthenticationPanel wants to quit.
 	Lock();
