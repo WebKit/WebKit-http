@@ -183,11 +183,10 @@ public:
                 for (uint32 y = 0; y < height; y++) {
                     uint8* p = bits;
                     for (uint32 x = 0; x < width; x++) {
-                        // TODO: There is a method to do shifting without bit errors.
-                        p[0] = (uint8)((uint16)p[0] * alpha >> 8);
-                        p[1] = (uint8)((uint16)p[1] * alpha >> 8);
-                        p[2] = (uint8)((uint16)p[2] * alpha >> 8);
-                        p[3] = (uint8)((uint16)p[3] * alpha >> 8);
+                        p[0] = (uint8)((uint16)p[0] * alpha / 255);
+                        p[1] = (uint8)((uint16)p[1] * alpha / 255);
+                        p[2] = (uint8)((uint16)p[2] * alpha / 255);
+                        p[3] = (uint8)((uint16)p[3] * alpha / 255);
                         p += 4;
                     }
                     bits += bpr;
