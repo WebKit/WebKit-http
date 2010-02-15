@@ -196,7 +196,19 @@ void Path::addLineTo(const FloatPoint& p)
 
 void Path::addQuadCurveTo(const FloatPoint& cp, const FloatPoint& p)
 {
-    notImplemented();
+	BPoint control = cp;
+
+	BPoint points[3];
+	points[0] = control;
+	points[0].x += (control.x - points[0].x) * (2.0 / 3.0);
+	points[0].y += (control.y - points[0].y) * (2.0 / 3.0);
+
+	points[1] = p;
+	points[1].x += (control.x - points[1].x) * (2.0 / 3.0);
+	points[1].y += (control.y - points[1].y) * (2.0 / 3.0);
+
+	points[2] = p;
+    m_path->BezierTo(points);
 }
 
 void Path::addBezierCurveTo(const FloatPoint& cp1, const FloatPoint& cp2, const FloatPoint& p)
