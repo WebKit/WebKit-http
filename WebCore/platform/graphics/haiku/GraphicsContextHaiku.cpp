@@ -410,7 +410,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     	// the same again.
     	clipPathBounds.right--;
     	clipPathBounds.bottom--;
-    	if (bRect.Contains(clipPathBounds)) {
+    	if (clipPathBounds.IsValid() && bRect.Contains(clipPathBounds)) {
     		m_data->view()->MovePenTo(B_ORIGIN);
     		m_data->view()->FillShape(m_data->clipShape());
     		return;
