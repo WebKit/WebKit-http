@@ -68,8 +68,6 @@ enum {
     TEXT_HIDE_FIND_GROUP = 'hfnd',
     TEXT_FIND_NEXT = 'fndn',
     TEXT_FIND_PREVIOUS = 'fndp',
-
-    TEST_AUTHENTICATION_PANEL = 'tapn'
 };
 
 using namespace WebCore;
@@ -204,7 +202,6 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
     AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
     AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
-    AddShortcut('T', B_COMMAND_KEY, new BMessage(TEST_AUTHENTICATION_PANEL));
 
     navigationCapabilitiesChanged(false, false, false);
 
