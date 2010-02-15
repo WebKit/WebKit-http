@@ -111,6 +111,7 @@ namespace WebCore {
             , m_customHeaders(0)
             , m_cancelled(false)
             , m_formDataStream(loader)
+            , m_authenticationCancelled(false)
 #endif
 #if USE(SOUP)
             , m_msg(0)
@@ -192,6 +193,8 @@ namespace WebCore {
 
         FormDataStream m_formDataStream;
         Vector<char> m_postBytes;
+
+        bool m_authenticationCancelled;
 #endif
 #if USE(SOUP)
         SoupMessage* m_msg;
