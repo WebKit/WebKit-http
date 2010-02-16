@@ -33,6 +33,7 @@
 #include "WebProcess.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
+#include <AppDefs.h>
 #include <Application.h>
 #include <Bitmap.h>
 #include <Region.h>
@@ -140,6 +141,22 @@ void WebView::MessageReceived(BMessage* message)
         m_webProcess->mouseEvent(&mouseMessage, where, screenWhere);
         break;
     }
+    case B_UNMAPPED_KEY_DOWN:
+        KeyDown("", 0);
+        break;
+    case B_UNMAPPED_KEY_UP:
+        KeyUp("", 0);
+        break;
+
+    case B_SELECT_ALL:
+    case B_COPY:
+    case B_CUT:
+    case B_PASTE:
+    case B_UNDO:
+    case B_REDO:
+        m_webProcess->standardShortcut(message);
+        break;
+
     case FIND_STRING_RESULT:
         Window()->PostMessage(message);
         break;

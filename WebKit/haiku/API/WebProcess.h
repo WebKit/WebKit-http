@@ -80,6 +80,7 @@ public:
     void mouseWheelChanged(const BMessage* message,
         const BPoint& where, const BPoint& screenWhere);
     void keyEvent(const BMessage* message);
+    void standardShortcut(const BMessage* message);
 
     void changeTextSize(float increment);
     void findString(const char* string, bool forward, bool caseSensitive,

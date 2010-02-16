@@ -287,6 +287,37 @@ void WebProcess::keyEvent(const BMessage* message)
     Looper()->PostMessage(&copiedMessage, this);
 }
 
+void WebProcess::standardShortcut(const BMessage* message)
+{
+	// Simulate a B_KEY_DOWN event. The message is not complete,
+	// but enough to trigger short cut generation in EditorClientHaiku.
+    BMessage keyDownMessage(B_KEY_DOWN);
+    keyDownMessage.AddInt32("modifiers", modifiers() | B_COMMAND_KEY);
+    const char* bytes = 0;
+    switch (message->what) {
+    case B_SELECT_ALL:
+        bytes = "a";
+       break;
+    case B_CUT:
+        bytes = "x";
+        break;
+    case B_COPY:
+        bytes = "c";
+        break;
+    case B_PASTE:
+        bytes = "v";
+        break;
+    case B_UNDO:
+        bytes = "z";
+        break;
+    case B_REDO:
+        bytes = "Z";
+        break;
+    }
+    keyDownMessage.AddString("bytes", bytes);
+    keyDownMessage.AddInt64("when", system_time());
+    Looper()->PostMessage(&keyDownMessage, this);
+}
 
 void WebProcess::changeTextSize(float increment)
 {
