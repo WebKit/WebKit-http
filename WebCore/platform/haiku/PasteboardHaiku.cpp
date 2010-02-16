@@ -27,6 +27,7 @@
 #include "config.h"
 #include "Pasteboard.h"
 
+#include "CString.h"
 #include "DocumentFragment.h"
 #include "Editor.h"
 #include "Frame.h"
@@ -37,6 +38,7 @@
 #include <Clipboard.h>
 #include <Message.h>
 #include <String.h>
+#include <stdio.h>
 
 
 namespace WebCore {
@@ -45,44 +47,56 @@ Pasteboard::Pasteboard()
 {
 }
 
+Pasteboard::~Pasteboard()
+{
+}
+
 Pasteboard* Pasteboard::generalPasteboard()
 {
-    static Pasteboard* pasteboard = new Pasteboard();
-    return pasteboard;
+    static Pasteboard pasteboard;
+    return &pasteboard;
 }
 
 void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete, Frame* frame)
 {
-    BClipboard clipboard("WebKit");
-    if (!clipboard.Lock())
+    if (!be_clipboard->Lock())
         return;
 
-    clipboard.Clear();
-    BMessage* data = clipboard.Data();
-    if (!data)
+    be_clipboard->Clear();
+    BMessage* data = be_clipboard->Data();
+    if (!data) {
+    	be_clipboard->Unlock();
         return;
+    }
 
-    data->AddString("text/plain", BString(frame->selectedText()));
-    clipboard.Commit();
+    BString string(frame->selectedText());
+    data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
 
-    clipboard.Unlock();
+    BString markupString(createMarkup(selectedRange, 0, AnnotateForInterchange));
+    data->AddData("text/html", B_MIME_TYPE, markupString.String(), markupString.Length());
+
+    be_clipboard->Commit();
+
+    be_clipboard->Unlock();
 }
 
 void Pasteboard::writePlainText(const String& text)
 {
-    BClipboard clipboard("WebKit");
-    if (!clipboard.Lock())
+    if (!be_clipboard->Lock())
         return;
 
-    clipboard.Clear();
-    BMessage* data = clipboard.Data();
-    if (!data)
+    be_clipboard->Clear();
+    BMessage* data = be_clipboard->Data();
+    if (!data) {
+    	be_clipboard->Unlock();
         return;
+    }
 
-    data->AddString("text/plain", BString(text));
-    clipboard.Commit();
+    BString string(text);
+    data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
+    be_clipboard->Commit();
 
-    clipboard.Unlock();
+    be_clipboard->Unlock();
 }
 
 bool Pasteboard::canSmartReplace()
@@ -93,18 +107,23 @@ bool Pasteboard::canSmartReplace()
 
 String Pasteboard::plainText(Frame* frame)
 {
-    BClipboard clipboard("WebKit");
-    if (!clipboard.Lock())
+    if (!be_clipboard->Lock())
         return String();
 
-    BMessage* data = clipboard.Data();
-    if (!data)
+    BMessage* data = be_clipboard->Data();
+    if (!data) {
+    	be_clipboard->Unlock();
         return String();
+    }
 
+    const char* buffer = 0;
+    ssize_t bufferLength;
     BString string;
-    data->FindString("text/plain", &string);
+    if (data->FindData("text/plain", B_MIME_TYPE, reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK) {
+    	string.Append(buffer, bufferLength);
+    }
 
-    clipboard.Unlock();
+    be_clipboard->Unlock();
 
     return string;
 }
@@ -118,20 +137,22 @@ PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefP
 
 void Pasteboard::writeURL(const KURL& url, const String&, Frame*)
 {
-    BClipboard clipboard("WebKit");
-    if (!clipboard.Lock())
+    if (!be_clipboard->Lock())
         return;
 
-    clipboard.Clear();
+    be_clipboard->Clear();
 
-    BMessage* data = clipboard.Data();
-    if (!data)
+    BMessage* data = be_clipboard->Data();
+    if (!data) {
+    	be_clipboard->Unlock();
         return;
+    }
 
-    data->AddString("text/plain", url.string());
-    clipboard.Commit();
+    BString string(url.string());
+    data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
+    be_clipboard->Commit();
 
-    clipboard.Unlock();
+    be_clipboard->Unlock();
 }
 
 void Pasteboard::writeImage(Node*, const KURL&, const String&)
@@ -141,14 +162,13 @@ void Pasteboard::writeImage(Node*, const KURL&, const String&)
 
 void Pasteboard::clear()
 {
-    BClipboard clipboard("WebKit");
-    if (!clipboard.Lock())
+    if (!be_clipboard->Lock())
         return;
 
-    clipboard.Clear();
-    clipboard.Commit();
+    be_clipboard->Clear();
+    be_clipboard->Commit();
 
-    clipboard.Unlock();
+    be_clipboard->Unlock();
 }
 
 } // namespace WebCore
