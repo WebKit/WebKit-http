@@ -60,8 +60,10 @@ Path::Path(const Path& other)
 
 Path& Path::operator=(const Path& other)
 {
-    if (&other != this)
-        m_path = other.platformPath();
+    if (&other != this) {
+        m_path->Clear();
+        m_path->AddShape(other.platformPath());
+    }
 
     return *this;
 }
