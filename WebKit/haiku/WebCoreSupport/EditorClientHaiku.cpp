@@ -488,10 +488,11 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
                     frame->editor()->command("Cut").execute();
                     break;
                 case VK_Y:
-                    frame->editor()->command("Redo").execute();
-                    break;
                 case VK_Z:
-                    frame->editor()->command("Undo").execute();
+                    if (kevent->shiftKey())
+                        frame->editor()->command("Redo").execute();
+                    else
+                        frame->editor()->command("Undo").execute();
                     break;
                 default:
                     return;

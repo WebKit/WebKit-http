@@ -52,6 +52,10 @@ WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
     , m_webView(new WebView("web_view"))
 {
     SetLayout(new BGroupLayout(B_HORIZONTAL));
+    AddShortcut('Z', B_COMMAND_KEY, new BMessage(B_UNDO));
+    AddShortcut('Y', B_COMMAND_KEY, new BMessage(B_UNDO));
+    AddShortcut('Z', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
+    AddShortcut('Y', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
 }
 
 WebViewWindow::~WebViewWindow()
