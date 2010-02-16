@@ -100,6 +100,9 @@ void WebFrame::loadRequest(BString url)
 
 void WebFrame::loadRequest(KURL url)
 {
+	if (url.isEmpty())
+		return;
+
     if (m_impl->frame && m_impl->frame->loader()) {
         if (url.protocol().isEmpty()) {
             if (BEntry(BString(url.string())).Exists()) {
