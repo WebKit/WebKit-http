@@ -141,12 +141,6 @@ void WebView::MessageReceived(BMessage* message)
         m_webProcess->mouseEvent(&mouseMessage, where, screenWhere);
         break;
     }
-    case B_UNMAPPED_KEY_DOWN:
-        KeyDown("", 0);
-        break;
-    case B_UNMAPPED_KEY_UP:
-        KeyUp("", 0);
-        break;
 
     case B_SELECT_ALL:
     case B_COPY:
