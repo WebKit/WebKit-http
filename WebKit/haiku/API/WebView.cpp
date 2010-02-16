@@ -81,7 +81,12 @@ void WebView::DetachedFromWindow()
 void WebView::Draw(BRect rect)
 {
     if (!m_offscreenViewClean) {
-        m_webProcess->draw(rect);
+// TODO: Disabled because WebCore manages invalidation internally and knows when
+// to redraw. Since we are drawing a fixed/independent bitmap anyway, we don't
+// need to manually trigger WebCore repaint events. These might be causing the
+// weird hang in BitmapImage::draw() -> startAnimation(). That's why I disable
+// it here for the time being to see if these hangs go away.
+//       m_webProcess->draw(rect);
         return;
     }
 
