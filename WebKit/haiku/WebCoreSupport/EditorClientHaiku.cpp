@@ -33,6 +33,7 @@
 #include "config.h"
 #include "EditorClientHaiku.h"
 
+#include "CString.h"
 #include "Document.h"
 #include "EditCommand.h"
 #include "Editor.h"
@@ -55,7 +56,6 @@ EditorClientHaiku::EditorClientHaiku()
 
 void EditorClientHaiku::setPage(Page* page)
 {
-printf("EditorClientHaiku::setPage()\n");
     m_page = page;
 }
 
@@ -369,174 +369,51 @@ static const char* interpretEditorCommandKeyEvent(const KeyboardEvent* evt)
 
 void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
 {
-    Frame* frame = m_page->focusController()->focusedOrMainFrame();
-    if (!frame || !frame->document()->focusedNode())
+    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    if (!platformEvent || platformEvent->type() == PlatformKeyboardEvent::KeyUp)
         return;
 
-    const PlatformKeyboardEvent* kevent = event->keyEvent();
-    if (!kevent || kevent->type() == PlatformKeyboardEvent::KeyUp)
+	if (handleEditingKeyboardEvent(event, platformEvent)) {
+	    event->setDefaultHandled();
+	    return;
+	}
+
+    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    if (!frame)
         return;
 
 #if 1
-    Node* start = frame->selection()->start().node();
-    if (!start)
-        return;
-
-    if (start->isContentEditable()) {
-        switch (kevent->windowsVirtualKeyCode()) {
-        case VK_BACK:
-            frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
-                                                 kevent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                                 false, true);
-            break;
-        case VK_DELETE:
-            frame->editor()->deleteWithDirection(SelectionController::FORWARD,
-                                                 kevent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                                 false, true);
-            break;
-        case VK_LEFT:
-            frame->selection()->modify(kevent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                       SelectionController::LEFT,
-                                       kevent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                       true);
-            break;
-        case VK_RIGHT:
-            frame->selection()->modify(kevent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                       SelectionController::RIGHT,
-                                       kevent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                       true);
-            break;
-        case VK_UP:
-            frame->selection()->modify(kevent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                       SelectionController::BACKWARD,
-                                       kevent->ctrlKey() ? ParagraphGranularity : LineGranularity,
-                                       true);
-            break;
-        case VK_DOWN:
-            frame->selection()->modify(kevent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                       SelectionController::FORWARD,
-                                       kevent->ctrlKey() ? ParagraphGranularity : LineGranularity,
-                                       true);
-            break;
-        case VK_HOME:
-            if (kevent->shiftKey() && kevent->ctrlKey())
-                frame->editor()->command("MoveToBeginningOfDocumentAndModifySelection").execute();
-            else if (kevent->shiftKey())
-                frame->editor()->command("MoveToBeginningOfLineAndModifySelection").execute();
-            else if (kevent->ctrlKey())
-                frame->editor()->command("MoveToBeginningOfDocument").execute();
-            else
-                frame->editor()->command("MoveToBeginningOfLine").execute();
-            break;
-        case VK_END:
-            if (kevent->shiftKey() && kevent->ctrlKey())
-                frame->editor()->command("MoveToEndOfDocumentAndModifySelection").execute();
-            else if (kevent->shiftKey())
-                frame->editor()->command("MoveToEndOfLineAndModifySelection").execute();
-            else if (kevent->ctrlKey())
+    switch (platformEvent->windowsVirtualKeyCode()) {
+    case VK_UP:
+        frame->editor()->command("MoveUp").execute();
+        break;
+    case VK_DOWN:
+        frame->editor()->command("MoveDown").execute();
+        break;
+    case VK_PRIOR:  // PageUp
+        frame->editor()->command("MoveUpByPageAndModifyCaret").execute();
+        break;
+    case VK_NEXT:  // PageDown
+        frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
+        break;
+    default:
+        if (platformEvent->ctrlKey()) {
+        	switch (platformEvent->windowsVirtualKeyCode()) {
+		    case VK_HOME:
+		        frame->editor()->command("MoveToBeginningOfDocument").execute();
+		        break;
+		    case VK_END:
                 frame->editor()->command("MoveToEndOfDocument").execute();
-            else
-                frame->editor()->command("MoveToEndOfLine").execute();
-            break;
-        case VK_PRIOR:  // PageUp
-            if (kevent->shiftKey())
-                frame->editor()->command("MovePageUpAndModifySelection").execute();
-            else
-                frame->editor()->command("MovePageUp").execute();
-            break;
-        case VK_NEXT:  // PageDown
-            if (kevent->shiftKey())
-                frame->editor()->command("MovePageDownAndModifySelection").execute();
-            else
-                frame->editor()->command("MovePageDown").execute();
-            break;
-        case VK_RETURN:
-            if (kevent->shiftKey())
-                frame->editor()->command("InsertLineBreak").execute();
-            else
-                frame->editor()->command("InsertNewline").execute();
-            break;
-        case VK_TAB:
+		        break;
+		    case VK_A:
+	            frame->editor()->command("SelectAll").execute();
+		        break;
+		    case VK_C: case VK_X:
+	            frame->editor()->command("Copy").execute();
+		        break;
+        	}
+        } else
             return;
-        default:
-            if (!kevent->ctrlKey() && !kevent->altKey() && !kevent->text().isEmpty()) {
-                if (kevent->text().length() == 1) {
-                    UChar ch = kevent->text()[0];
-                    // Don't insert null or control characters as they can result in unexpected behaviour
-                    if (ch < ' ')
-                        break;
-                }
-                frame->editor()->insertText(kevent->text(), event);
-            } else if (kevent->ctrlKey()) {
-                switch (kevent->windowsVirtualKeyCode()) {
-                case VK_A:
-                    frame->editor()->command("SelectAll").execute();
-                    break;
-                case VK_B:
-                    frame->editor()->command("ToggleBold").execute();
-                    break;
-                case VK_C:
-                    frame->editor()->command("Copy").execute();
-                    break;
-                case VK_I:
-                    frame->editor()->command("ToggleItalic").execute();
-                    break;
-                case VK_V:
-                    frame->editor()->command("Paste").execute();
-                    break;
-                case VK_X:
-                    frame->editor()->command("Cut").execute();
-                    break;
-                case VK_Y:
-                case VK_Z:
-                    if (kevent->shiftKey())
-                        frame->editor()->command("Redo").execute();
-                    else
-                        frame->editor()->command("Undo").execute();
-                    break;
-                default:
-                    return;
-                }
-            } else
-                return;
-        }
-    } else {
-        switch (kevent->windowsVirtualKeyCode()) {
-        case VK_UP:
-            frame->editor()->command("MoveUp").execute();
-            break;
-        case VK_DOWN:
-            frame->editor()->command("MoveDown").execute();
-            break;
-        case VK_PRIOR:  // PageUp
-            frame->editor()->command("MoveUpByPageAndModifyCaret").execute();
-            break;
-        case VK_NEXT:  // PageDown
-            frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
-            break;
-        case VK_HOME:
-            if (kevent->ctrlKey())
-                frame->editor()->command("MoveToBeginningOfDocument").execute();
-            break;
-        case VK_END:
-            if (kevent->ctrlKey())
-                frame->editor()->command("MoveToEndOfDocument").execute();
-            break;
-        default:
-            if (kevent->ctrlKey()) {
-                switch (kevent->windowsVirtualKeyCode()) {
-                case VK_A:
-                    frame->editor()->command("SelectAll").execute();
-                    break;
-                case VK_C: case VK_X:
-                    frame->editor()->command("Copy").execute();
-                    break;
-                default:
-                    return;
-                }
-            } else
-                return;
-        }
     }
     event->setDefaultHandled();
 #else
@@ -557,7 +434,7 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
         // On editor commands from key down events, we only want to let the event bubble up to
         // the DOM if it inserts text. If it doesn't insert text (e.g. Tab that changes focus)
         // we just want WebKit to handle it immediately without a DOM event.
-        if (kevent->type() == PlatformKeyboardEvent::RawKeyDown) {
+        if (platformEvent->type() == PlatformKeyboardEvent::RawKeyDown) {
             if (!command.isTextInsertion() && command.execute(event))
                 event->setDefaultHandled();
 
@@ -607,10 +484,10 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
                 return;
 
             // Don't insert anything if a modifier is pressed
-            if (kevent->ctrlKey() || kevent->altKey())
+            if (platformEvent->ctrlKey() || platformEvent->altKey())
                 return;
 
-            if (frame->editor()->insertText(kevent->text(), event))
+            if (frame->editor()->insertText(platformEvent->text(), event))
                 event->setDefaultHandled();
 #if ENABLE_INPUT_METHOD_STUFF
         }
@@ -713,6 +590,134 @@ void EditorClientHaiku::setInputMethodState(bool enabled)
 bool EditorClientHaiku::isEditing() const
 {
     return m_editing;
+}
+
+// #pragma mark -
+
+bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
+    const PlatformKeyboardEvent* platformEvent)
+{
+    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    if (!frame || !frame->document()->focusedNode())
+        return false;
+
+    Node* start = frame->selection()->start().node();
+    if (!start || !start->isContentEditable())
+        return false;
+
+    switch (platformEvent->windowsVirtualKeyCode()) {
+    case VK_BACK:
+        frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
+                                             platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                             false, true);
+        break;
+    case VK_DELETE:
+        frame->editor()->deleteWithDirection(SelectionController::FORWARD,
+                                             platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                             false, true);
+        break;
+    case VK_LEFT:
+        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
+                                   SelectionController::LEFT,
+                                   platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                   true);
+        break;
+    case VK_RIGHT:
+        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
+                                   SelectionController::RIGHT,
+                                   platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
+                                   true);
+        break;
+    case VK_UP:
+        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
+                                   SelectionController::BACKWARD,
+                                   platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
+                                   true);
+        break;
+    case VK_DOWN:
+        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
+                                   SelectionController::FORWARD,
+                                   platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
+                                   true);
+        break;
+    case VK_HOME:
+        if (platformEvent->shiftKey() && platformEvent->ctrlKey())
+            frame->editor()->command("MoveToBeginningOfDocumentAndModifySelection").execute();
+        else if (platformEvent->shiftKey())
+            frame->editor()->command("MoveToBeginningOfLineAndModifySelection").execute();
+        else if (platformEvent->ctrlKey())
+            frame->editor()->command("MoveToBeginningOfDocument").execute();
+        else
+            frame->editor()->command("MoveToBeginningOfLine").execute();
+        break;
+    case VK_END:
+        if (platformEvent->shiftKey() && platformEvent->ctrlKey())
+            frame->editor()->command("MoveToEndOfDocumentAndModifySelection").execute();
+        else if (platformEvent->shiftKey())
+            frame->editor()->command("MoveToEndOfLineAndModifySelection").execute();
+        else if (platformEvent->ctrlKey())
+            frame->editor()->command("MoveToEndOfDocument").execute();
+        else
+            frame->editor()->command("MoveToEndOfLine").execute();
+        break;
+    case VK_PRIOR:  // PageUp
+        if (platformEvent->shiftKey())
+            frame->editor()->command("MovePageUpAndModifySelection").execute();
+        else
+            frame->editor()->command("MovePageUp").execute();
+        break;
+    case VK_NEXT:  // PageDown
+        if (platformEvent->shiftKey())
+            frame->editor()->command("MovePageDownAndModifySelection").execute();
+        else
+            frame->editor()->command("MovePageDown").execute();
+        break;
+    case VK_RETURN:
+        if (platformEvent->shiftKey())
+            frame->editor()->command("InsertLineBreak").execute();
+        else
+            frame->editor()->command("InsertNewline").execute();
+        break;
+    case VK_TAB:
+        return false;
+    default:
+        if (!platformEvent->ctrlKey() && !platformEvent->altKey() && !platformEvent->text().isEmpty()) {
+            if (platformEvent->text().length() == 1) {
+                UChar ch = platformEvent->text()[0];
+                // Don't insert null or control characters as they can result in unexpected behaviour
+                if (ch < ' ')
+                    break;
+            }
+            frame->editor()->insertText(platformEvent->text(), event);
+        } else if (platformEvent->ctrlKey()) {
+            switch (platformEvent->windowsVirtualKeyCode()) {
+            case VK_B:
+                frame->editor()->command("ToggleBold").execute();
+                break;
+            case VK_I:
+                frame->editor()->command("ToggleItalic").execute();
+                break;
+            case VK_V:
+                frame->editor()->command("Paste").execute();
+                break;
+            case VK_X:
+                frame->editor()->command("Cut").execute();
+                break;
+            case VK_Y:
+            case VK_Z:
+                if (platformEvent->shiftKey())
+                    frame->editor()->command("Redo").execute();
+                else
+                    frame->editor()->command("Undo").execute();
+                break;
+            default:
+                return false;
+            }
+        } else
+            return false;
+    }
+
+    return true;
 }
 
 void EditorClientHaiku::setPendingComposition(const char* newComposition)

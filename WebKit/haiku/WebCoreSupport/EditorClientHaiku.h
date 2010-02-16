@@ -40,6 +40,7 @@
 #include <String.h>
 
 namespace WebCore {
+class PlatformKeyboardEvent;
 
 class EditorClientHaiku : public EditorClient {
 public:
@@ -114,6 +115,8 @@ public:
     bool isEditing() const;
 
 private:
+    bool handleEditingKeyboardEvent(KeyboardEvent* event,
+        const PlatformKeyboardEvent* platformEvent);
     void setPendingComposition(const char* newComposition);
     void setPendingPreedit(const char* newPreedit);
     void clearPendingIMData();
