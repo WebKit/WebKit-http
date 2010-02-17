@@ -47,6 +47,7 @@
 
 #include <Alert.h>
 #include <FilePanel.h>
+#include <GroupLayout.h>
 #include <Region.h>
 
 
@@ -143,6 +144,7 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
         flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
 
     WebViewWindow* window = new WebViewWindow(frame, "WebView", look, feel, flags);
+    window->SetLayout(new BGroupLayout(B_HORIZONTAL));
     WebView* view = window->webView();
     window->AddChild(view);
     window->Show();
@@ -295,12 +297,22 @@ void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectTo
 
 IntPoint ChromeClientHaiku::screenToWindow(const IntPoint& point) const
 {
-    return IntPoint(m_webView->ConvertFromScreen(BPoint(point)));
+    IntPoint windowPoint(point);
+    if (m_webView->LockLooperWithTimeout(5000) == B_OK) {
+        windowPoint = IntPoint(m_webView->ConvertFromScreen(BPoint(point)));
+        m_webView->UnlockLooper();
+    }
+    return windowPoint;
 }
 
 IntRect ChromeClientHaiku::windowToScreen(const IntRect& rect) const
 {
-    return IntRect(m_webView->ConvertToScreen(BRect(rect)));
+    IntRect screenRect(rect);
+    if (m_webView->LockLooperWithTimeout(5000) == B_OK) {
+        screenRect = IntRect(m_webView->ConvertToScreen(BRect(rect)));
+        m_webView->UnlockLooper();
+    }
+    return screenRect;
 }
 
 PlatformPageClient ChromeClientHaiku::platformPageClient() const
