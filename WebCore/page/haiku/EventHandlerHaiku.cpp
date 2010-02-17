@@ -2,6 +2,7 @@
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,8 +73,8 @@ bool EventHandler::tabsToAllControls(KeyboardEvent* event) const
 
 void EventHandler::focusDocumentView()
 {
-    BView* view = m_frame->view()->platformWidget();
-    if (view && view->LockLooper()) {
+    BView* view = m_frame->view()->topLevelPlatformWidget();
+    if (view && view->LockLooperWithTimeout(5000) == B_OK) {
         view->MakeFocus(true);
         view->UnlockLooper();
     }
@@ -154,6 +155,9 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
 
 unsigned EventHandler::accessKeyModifiers()
 {
+	// NOTE: On Haiku, the user can choose Alt or Ctrl as access key, but
+	// the PlatformKeyboardEvent already takes care of this, internally,
+	// we always use Alt.
     return PlatformKeyboardEvent::AltKey;
 }
 
