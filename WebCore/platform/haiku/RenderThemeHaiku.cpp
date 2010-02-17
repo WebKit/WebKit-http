@@ -171,6 +171,7 @@ void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
 
 void RenderThemeHaiku::adjustButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
+	// TODO: If this is the default button, extend the size.
 	RenderTheme::adjustButtonStyle(selector, style, element);
 }
 
@@ -190,6 +191,8 @@ bool RenderThemeHaiku::paintButton(RenderObject* object, const RenderObject::Pai
     unsigned flags = flagsForObject(object);
     if (isPressed(object))
     	flags |= BControlLook::B_ACTIVATED;
+    if (isDefault(object))
+    	flags |= BControlLook::B_DEFAULT_BUTTON;
 
 	view->PushState();
     be_control_look->DrawButtonFrame(view, rect, rect, base, background, flags);
@@ -239,18 +242,57 @@ bool RenderThemeHaiku::paintTextArea(RenderObject* object, const RenderObject::P
     return paintTextField(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector*, RenderStyle* style, Element*) const
+void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
-    // Leave some space for the arrow.
+    style->resetBorder();
+    adjustMenuListButtonStyle(selector, style, element);
+}
+
+bool RenderThemeHaiku::paintMenuList(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+{
+    return paintMenuListButton(object, info, intRect);
+}
+
+void RenderThemeHaiku::adjustMenuListButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+{
+	int labelSpacing = be_control_look ? static_cast<int>(be_control_look->DefaultLabelSpacing()) : 3;
+    // Position the text correctly within the select box and make the box wide enough to fit the dropdown button
+    style->setPaddingTop(Length(3, Fixed));
+    style->setPaddingLeft(Length(3 + labelSpacing, Fixed));
     style->setPaddingRight(Length(22, Fixed));
-    const int minHeight = 20;
+    style->setPaddingBottom(Length(3, Fixed));
+
+    // Height is locked to auto
+    style->setHeight(Length(Auto));
+
+    // Calculate our min-height
+    const int menuListButtonMinHeight = 20;
+    int minHeight = style->font().height();
+    minHeight = max(minHeight, menuListButtonMinHeight);
+
     style->setMinHeight(Length(minHeight, Fixed));
 }
 
-bool RenderThemeHaiku::paintMenuList(RenderObject*, const RenderObject::PaintInfo&, const IntRect&)
+bool RenderThemeHaiku::paintMenuListButton(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
 {
-    notImplemented();
-    return true;
+    if (info.context->paintingDisabled())
+        return true;
+
+    if (!be_control_look)
+        return true;
+
+    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color background = base;
+    	// TODO: From PaintInfo?
+    BRect rect = intRect;
+    BView* view = info.context->platformContext();
+    unsigned flags = flagsForObject(object) & ~BControlLook::B_CLICKED;
+
+	view->PushState();
+    be_control_look->DrawMenuFieldFrame(view, rect, rect, base, base, flags);
+    be_control_look->DrawMenuFieldBackground(view, rect, rect, base, true, flags);
+    view->PopState();
+    return false;
 }
 
 unsigned RenderThemeHaiku::flagsForObject(RenderObject* object) const

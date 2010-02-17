@@ -74,6 +74,9 @@ protected:
     virtual void adjustMenuListStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
     virtual bool paintMenuList(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
 
+    virtual void adjustMenuListButtonStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
+    virtual bool paintMenuListButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
+
 private:
 	unsigned flagsForObject(RenderObject*) const;
 };
