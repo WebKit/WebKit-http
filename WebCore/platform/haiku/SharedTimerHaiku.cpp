@@ -26,9 +26,9 @@
 #include "config.h"
 #include "SharedTimer.h"
 
+#include <Looper.h>
 #include <MessageFilter.h>
 #include <MessageRunner.h>
-#include <Looper.h>
 #include <support/Locker.h>
 #include <support/Autolock.h>
 #include <wtf/CurrentTime.h>
@@ -38,7 +38,7 @@
 
 namespace WebCore {
 
-class SharedTimerHaiku: public BMessageFilter {
+class SharedTimerHaiku : public BMessageFilter {
     friend void setSharedTimerFiredFunction(void (*f)());
 public:
     static SharedTimerHaiku* instance();
