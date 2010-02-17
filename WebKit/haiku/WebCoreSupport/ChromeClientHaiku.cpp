@@ -113,9 +113,12 @@ void ChromeClientHaiku::takeFocus(FocusDirection)
 {
 }
 
-void ChromeClientHaiku::focusedNodeChanged(Node*)
+void ChromeClientHaiku::focusedNodeChanged(Node* node)
 {
-    focus();
+    if (node)
+        focus();
+    else
+        unfocus();
 }
 
 Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
