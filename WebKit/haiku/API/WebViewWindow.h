@@ -55,6 +55,10 @@ public:
     virtual void loadFinished(const BString& url);
     virtual void titleChanged(const BString& title);
     virtual void resizeRequested(float width, float height);
+    virtual void setToolBarsVisible(bool flag);
+    virtual void setStatusBarVisible(bool flag);
+    virtual void setMenuBarVisible(bool flag);
+    virtual void setResizable(bool flag);
     virtual void statusChanged(const BString& status);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop);

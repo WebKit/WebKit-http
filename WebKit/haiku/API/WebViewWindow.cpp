@@ -153,9 +153,33 @@ void WebViewWindow::MessageReceived(BMessage* message)
         navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop);
         break;
     }
-    case AUTHENTICATION_CHALLENGE:
-    {
+    case AUTHENTICATION_CHALLENGE: {
         authenticationChallenge(message);
+        break;
+    }
+
+    case TOOLBARS_VISIBILITY: {
+        bool flag;
+        if (message->FindBool("flag", &flag) == B_OK)
+            setToolBarsVisible(flag);
+        break;
+    }
+    case STATUSBAR_VISIBILITY: {
+        bool flag;
+        if (message->FindBool("flag", &flag) == B_OK)
+            setStatusBarVisible(flag);
+        break;
+    }
+    case MENUBAR_VISIBILITY: {
+        bool flag;
+        if (message->FindBool("flag", &flag) == B_OK)
+            setMenuBarVisible(flag);
+        break;
+    }
+    case SET_RESIZABLE: {
+        bool flag;
+        if (message->FindBool("flag", &flag) == B_OK)
+            setResizable(flag);
         break;
     }
 
@@ -212,6 +236,26 @@ void WebViewWindow::titleChanged(const BString& title)
 void WebViewWindow::resizeRequested(float width, float height)
 {
     ResizeTo(width, height);
+}
+
+void WebViewWindow::setToolBarsVisible(bool flag)
+{
+}
+
+void WebViewWindow::setStatusBarVisible(bool flag)
+{
+}
+
+void WebViewWindow::setMenuBarVisible(bool flag)
+{
+}
+
+void WebViewWindow::setResizable(bool flag)
+{
+    if (flag)
+        SetFlags(Flags() & ~B_NOT_RESIZABLE);
+    else
+        SetFlags(Flags() | B_NOT_RESIZABLE);
 }
 
 void WebViewWindow::statusChanged(const BString& statusText)
