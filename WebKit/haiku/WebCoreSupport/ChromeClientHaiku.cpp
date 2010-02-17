@@ -30,6 +30,7 @@
 #include "config.h"
 #include "ChromeClientHaiku.h"
 
+#include "FileChooser.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -356,10 +357,11 @@ void ChromeClientWx::reachedMaxAppCacheSize(int64_t spaceNeeded)
 
 void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
-    // FIXME: This doesn't do anything else than opening a file panel.
-    // BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, 0, 0, 0, chooser->allowsMultipleFiles());
-    // panel->Show();
-    notImplemented();
+	BMessage message(B_REFS_RECEIVED);
+	message.AddPointer("chooser", chooser.get());
+	BMessenger target(m_webView->webProcess());
+    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, chooser->allowsMultipleFiles(), &message, NULL, true, true);
+    panel->Show();
 }
 
 bool ChromeClientHaiku::setCursor(PlatformCursorHandle)

@@ -77,7 +77,7 @@ SharedLibrary libwebkit.so :
 	# Other required libraries
 	icu-common stdc++
 	# Haiku libraries
-	be translation
+	be translation tracker
 ;
 
 

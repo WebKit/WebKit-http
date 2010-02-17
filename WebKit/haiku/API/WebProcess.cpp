@@ -37,6 +37,7 @@
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
 #include "EditorClientHaiku.h"
+#include "FileChooser.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -62,6 +63,7 @@
 #include "WebViewConstants.h"
 
 #include <Bitmap.h>
+#include <Entry.h>
 #include <Font.h>
 #include <Message.h>
 #include <MessageQueue.h>
@@ -576,6 +578,29 @@ void WebProcess::MessageReceived(BMessage* message)
     case HANDLE_FIND_STRING:
         handleFindString(message);
         break;
+        
+    case B_REFS_RECEIVED: {
+            // TODO: this probably needs to be grabbed with a RefPtr
+			FileChooser *chooser;
+            if (message->FindPointer("chooser", reinterpret_cast<void **>(&chooser)) == B_OK) {
+                type_code type;
+                int32 count = 0;
+                entry_ref ref;
+                message->GetInfo("refs", &type, &count);
+                if (count == 1) {
+                    message->FindRef("refs", &ref);
+                    chooser->chooseFile(String(ref.name));
+                } else {
+                	Vector<String> filenames;
+                	for (int32 i = 0; i < count; i++) {
+                		message->FindRef("refs", i, &ref);
+                		filenames.append(String(ref.name));
+                	}
+                	chooser->chooseFiles(filenames);
+                }
+            }
+        }
+    	break;
 
     default:
         BHandler::MessageReceived(message);
