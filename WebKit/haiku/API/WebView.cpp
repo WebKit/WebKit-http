@@ -67,6 +67,8 @@ WebView::~WebView()
 {
 }
 
+// #pragma mark - BView hooks
+
 void WebView::AttachedToWindow()
 {
     m_webProcess->setDispatchTarget(BMessenger(Window()));
@@ -199,11 +201,13 @@ void WebView::KeyUp(const char*, int32)
     dispatchKeyEvent(B_KEY_UP);
 }
 
+// #pragma mark - API
+
 void WebView::setBounds(BRect rect)
 {
     BMessage message(RESIZING_REQUESTED);
     message.AddRect("rect", rect);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 BRect WebView::contentsSize() const
@@ -242,7 +246,7 @@ void WebView::setToolbarsVisible(bool flag)
 
     BMessage message(TOOLBARS_VISIBILITY);
     message.AddBool("flag", flag);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 void WebView::setStatusbarVisible(bool flag)
@@ -251,7 +255,7 @@ void WebView::setStatusbarVisible(bool flag)
 
     BMessage message(STATUSBAR_VISIBILITY);
     message.AddBool("flag", flag);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 void WebView::setMenubarVisible(bool flag)
@@ -260,31 +264,31 @@ void WebView::setMenubarVisible(bool flag)
 
     BMessage message(MENUBAR_VISIBILITY);
     message.AddBool("flag", flag);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 void WebView::setResizable(bool flag)
 {
     BMessage message(SET_RESIZABLE);
     message.AddBool("flag", flag);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 void WebView::closeWindow()
 {
-    be_app->PostMessage(B_QUIT_REQUESTED);
+    Window()->PostMessage(B_QUIT_REQUESTED);
 }
 
 void WebView::setStatusText(const BString& text)
 {
     BMessage message(SET_STATUS_TEXT);
     message.AddString("text", text);
-    be_app->PostMessage(&message);
+    Window()->PostMessage(&message);
 }
 
 void WebView::linkHovered(const String& url, const String& title, const String& content)
 {
-	printf("linkHovered()\n");
+printf("linkHovered()\n");
     notImplemented();
 }
 
@@ -309,6 +313,8 @@ void WebView::findString(const char* string, bool forward ,
 	m_webProcess->findString(string, forward, caseSensitive,
 	    wrapSelection, startInSelection);
 }
+
+// #pragma mark - API for WebProcess only
 
 void WebView::setOffscreenViewClean(BRect cleanRect, bool immediate)
 {
