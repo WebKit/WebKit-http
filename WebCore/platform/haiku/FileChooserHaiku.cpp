@@ -32,22 +32,22 @@ namespace WebCore {
 
 String FileChooser::basenameForWidth(const Font& font, int width) const
 {
-	String result;
-	if (width <= 0 || m_filenames.isEmpty()) {
-    	result = "No files selected";
-	} else if (m_filenames.size() == 1) { 
+    String result;
+    if (width <= 0 || m_filenames.isEmpty()) {
+        result = "No files selected";
+    } else if (m_filenames.size() == 1) { 
         const BFont *currentFont = font.primaryFont()->platformData().font();
         CString data = UTF8Encoding().encode(m_filenames[0].characters(), m_filenames[0].length(), URLEncodedEntitiesForUnencodables);
         BString tempData(data.data());
         float currentWidth = currentFont->StringWidth(tempData);
         if (currentWidth > width)
-    	    currentFont->TruncateString(&tempData, B_TRUNCATE_BEGINNING, width);
+            currentFont->TruncateString(&tempData, B_TRUNCATE_BEGINNING, width);
     
         result = UTF8Encoding().decode(tempData.String(), tempData.Length());
     } else {
-    	char data[50];
-    	int size = snprintf(data, sizeof(data), "%ld file(s) selected", m_filenames.size());
-    	result = UTF8Encoding().decode(data, size);
+        char data[50];
+        int size = snprintf(data, sizeof(data), "%ld file(s) selected", m_filenames.size());
+        result = UTF8Encoding().decode(data, size);
     }
     
     return result;
