@@ -64,7 +64,7 @@ $ jam jsc
 
 followed by
 
-$ jam HaikuLaucher
+$ jam HaikuLauncher
 
 you will automatically build everything required for the browser.
 
