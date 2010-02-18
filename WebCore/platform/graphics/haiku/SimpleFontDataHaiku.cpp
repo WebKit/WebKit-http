@@ -100,7 +100,7 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
         return 0;
 
     float escapements[1];
-	CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
+    CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
     m_platformData.font()->GetEscapements(encoded.data(), 1, escapements);
     return escapements[0] * m_platformData.font()->Size();
 }
