@@ -30,16 +30,17 @@
 #include "config.h"
 #include "SimpleFontData.h"
 
+#include "CString.h"
 #include "FloatRect.h"
 #include "FontCache.h"
 #include "FontDescription.h"
 #include "NotImplemented.h"
+#include "TextEncoding.h"
+
 #include <Rect.h>
 #include <unicode/uchar.h>
 #include <unicode/unorm.h>
 
-
-extern int charUnicodeToUTF8HACK(unsigned short, char*);
 
 namespace WebCore {
 
@@ -98,11 +99,9 @@ float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
     if (!m_platformData.font())
         return 0;
 
-    char charArray[4];
     float escapements[1];
-
-    charUnicodeToUTF8HACK(glyph, charArray);
-    m_platformData.font()->GetEscapements(charArray, 1, escapements);
+	CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
+    m_platformData.font()->GetEscapements(encoded.data(), 1, escapements);
     return escapements[0] * m_platformData.font()->Size();
 }
 
