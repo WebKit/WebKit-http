@@ -580,27 +580,21 @@ void WebProcess::MessageReceived(BMessage* message)
         break;
         
     case B_REFS_RECEIVED: {
-            // TODO: this probably needs to be grabbed with a RefPtr
-			FileChooser *chooser;
+			RefPtr<FileChooser> *chooser;
             if (message->FindPointer("chooser", reinterpret_cast<void **>(&chooser)) == B_OK) {
                 type_code type;
                 int32 count = 0;
                 entry_ref ref;
                 BPath path;
                 message->GetInfo("refs", &type, &count);
-                if (count == 1) {
-                    message->FindRef("refs", &ref);
+                Vector<String> filenames;
+                for (int32 i = 0; i < count; i++) {
+                    message->FindRef("refs", i, &ref);
                     path.SetTo(&ref);
-                    chooser->chooseFile(String(path.Path()));
-                } else {
-                	Vector<String> filenames;
-                	for (int32 i = 0; i < count; i++) {
-                		message->FindRef("refs", i, &ref);
-                		path.SetTo(&ref);
-                		filenames.append(String(path.Path()));
-                	}
-                	chooser->chooseFiles(filenames);
+                    filenames.append(String(path.Path()));
                 }
+                (*chooser)->chooseFiles(filenames);
+                delete chooser;
             }
         }
     	break;

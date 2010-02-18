@@ -372,10 +372,11 @@ void ChromeClientWx::reachedMaxAppCacheSize(int64_t spaceNeeded)
 
 void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
-	BMessage message(B_REFS_RECEIVED);
-	message.AddPointer("chooser", chooser.get());
-	BMessenger target(m_webView->webProcess());
-    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, chooser->allowsMultipleFiles(), &message, NULL, true, true);
+    RefPtr<FileChooser> *ref = new RefPtr<FileChooser>(chooser);
+    BMessage message(B_REFS_RECEIVED);
+    message.AddPointer("chooser", ref);
+    BMessenger target(m_webView->webProcess());
+    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->allowsMultipleFiles(), &message, NULL, true, true);
     panel->Show();
 }
 
