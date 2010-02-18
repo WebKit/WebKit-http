@@ -41,7 +41,7 @@ String FileChooser::basenameForWidth(const Font& font, int width) const
         BString tempData(data.data());
         float currentWidth = currentFont->StringWidth(tempData);
         if (currentWidth > width)
-    	    currentFont->TruncateString(&tempData, B_TRUNCATE_MIDDLE, width);
+    	    currentFont->TruncateString(&tempData, B_TRUNCATE_BEGINNING, width);
     
         result = UTF8Encoding().decode(tempData.String(), tempData.Length());
     } else {
