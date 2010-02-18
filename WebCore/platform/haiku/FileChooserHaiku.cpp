@@ -20,18 +20,29 @@
  */
 
 #include "config.h"
+#include "CString.h"
 #include "FileChooser.h"
+#include "Font.h"
+#include "TextEncoding.h"
 
-#include "Icon.h"
-#include "NotImplemented.h"
-
+#include <Font.h>
+#include <String.h>
 
 namespace WebCore {
 
-String FileChooser::basenameForWidth(const Font&, int width) const
+String FileChooser::basenameForWidth(const Font& font, int width) const
 {
-    notImplemented();
-    return String();
+	if (width <= 0 || m_filenames.isEmpty())
+    	return String();
+    
+    const BFont *currentFont = font.primaryFont()->platformData().font();
+    CString data = UTF8Encoding().encode(m_filenames[0].characters(), m_filenames[0].length(), URLEncodedEntitiesForUnencodables);
+    BString result(data.data());
+    float currentWidth = currentFont->StringWidth(result);
+    if (currentWidth > width)
+    	currentFont->TruncateString(&result, B_TRUNCATE_MIDDLE, width);
+    
+    return UTF8Encoding().decode(result.String(), result.Length());
 }
 
 } // namespace WebCore
