@@ -27,6 +27,7 @@
 
 #include <Font.h>
 #include <String.h>
+#include <stdio.h>
 
 namespace WebCore {
 
@@ -36,7 +37,7 @@ String FileChooser::basenameForWidth(const Font& font, int width) const
     if (width <= 0 || m_filenames.isEmpty()) {
         result = "No files selected";
     } else if (m_filenames.size() == 1) { 
-        const BFont *currentFont = font.primaryFont()->platformData().font();
+        const BFont* currentFont = font.primaryFont()->platformData().font();
         CString data = UTF8Encoding().encode(m_filenames[0].characters(), m_filenames[0].length(), URLEncodedEntitiesForUnencodables);
         BString tempData(data.data());
         float currentWidth = currentFont->StringWidth(tempData);
