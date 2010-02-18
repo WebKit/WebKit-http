@@ -55,10 +55,10 @@ PlatformGradient Gradient::platformGradient()
     for (size_t i = 0; i < size; i++) {
         const ColorStop& stop = m_stops[i];
         rgb_color color;
-        color.red = (uint8)(stop.red * 255.0);
-        color.green = (uint8)(stop.green * 255.0);
-        color.blue = (uint8)(stop.blue * 255.0);
-        color.alpha = (uint8)(stop.alpha * 255.0);
+        color.red = static_cast<uint8>(stop.red * 255);
+        color.green = static_cast<uint8>(stop.green * 255);
+        color.blue = static_cast<uint8>(stop.blue * 255);
+        color.alpha = static_cast<uint8>(stop.alpha * 255);
         m_gradient->AddColor(color, stop.stop);
     }
     return m_gradient;

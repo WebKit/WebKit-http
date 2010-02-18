@@ -32,9 +32,9 @@
 #include <Message.h>
 #include <PopUpMenu.h>
 #include <String.h>
-#include <support/Locker.h>
-#include <support/Autolock.h>
 #include <Window.h>
+#include <support/Autolock.h>
+#include <support/Locker.h>
 
 namespace WebCore {
 
@@ -103,9 +103,9 @@ public:
         // Popuplate the menu from the client
         int itemCount = m_popupClient->listSize();
         for (int i = 0; i < itemCount; i++) {
-            if (m_popupClient->itemIsSeparator(i)) {
+            if (m_popupClient->itemIsSeparator(i))
                 AddSeparatorItem();
-            } else {
+            else {
                 // NOTE: WebCore distinguishes between "Group" and "Label"
                 // here, but both types of item (radio or check mark) currently
                 // look the same on Haiku.
@@ -120,7 +120,7 @@ public:
             }
         }
 
-        // We need to force a layout now, or the items frames will not be
+        // We need to force a layout now, or the item frames will not be
         // computed yet, so we cannot move the current item under the mouse.
         DoLayout();
 
@@ -157,8 +157,8 @@ PopupMenu::PopupMenu(PopupMenuClient* client)
     : m_popupClient(client)
     , m_menu(new PopupMenuHaiku(client))
 {
-	// We don't need additional references to the client, since we completely
-	// control any sub-objects we create that need it as well.
+    // We don't need additional references to the client, since we completely
+    // control any sub-objects we create that need it as well.
 }
 
 PopupMenu::~PopupMenu()
@@ -168,7 +168,7 @@ PopupMenu::~PopupMenu()
 
 void PopupMenu::show(const IntRect& rect, FrameView* view, int index)
 {
-	// The menu will update itself from the PopupMenuClient before showing.
+    // The menu will update itself from the PopupMenuClient before showing.
     m_menu->show(rect, view, index);
 }
 
