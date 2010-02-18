@@ -73,7 +73,7 @@ bool EventHandler::tabsToAllControls(KeyboardEvent* event) const
 
 void EventHandler::focusDocumentView()
 {
-    BView* view = m_frame->view()->topLevelPlatformWidget();
+    BView* view = m_frame->view()->platformWidget();
     if (view && view->LockLooperWithTimeout(5000) == B_OK) {
         view->MakeFocus(true);
         view->UnlockLooper();
@@ -86,15 +86,11 @@ void EventHandler::focusDocumentView()
 
 bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults& event)
 {
-//    // Figure out which view to send the event to.
-//    RenderObject* target = event.targetNode() ? event.targetNode()->renderer() : 0;
-//    if (!target || !target->isWidget())
-//        return false;
-//    return passMouseDownEventToWidget(toRenderWidget(target)->widget());
     // Figure out which view to send the event to.
-    if (!event.targetNode() || !event.targetNode()->renderer() || !event.targetNode()->renderer()->isWidget())
+    RenderObject* target = event.targetNode() ? event.targetNode()->renderer() : 0;
+    if (!target || !target->isWidget())
         return false;
-    return passMouseDownEventToWidget(toRenderWidget(event.targetNode()->renderer())->widget());
+    return passMouseDownEventToWidget(toRenderWidget(target)->widget());
 }
 
 bool EventHandler::passWidgetMouseDownEventToWidget(RenderWidget* renderWidget)
@@ -110,18 +106,12 @@ bool EventHandler::passMouseDownEventToWidget(Widget* widget)
 
 bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
 {
-	// On Haiku, clicks which activate the window in non focus-follows-mouse mode
-	// are not passed to the window, so any event we generate is not the activation
-	// event.
+    // On Haiku, clicks which activate the window in non focus-follows-mouse mode
+    // are not passed to the window, so any event we generate is not the activation
+    // event.
     return false;
 }
 
-//bool EventHandler::passSubframeEventToSubframe(MouseEventWithHitTestResults& event, Frame* subframe, HitTestResult*)
-//{
-//    notImplemented();
-//    return true;
-//}
-//
 bool EventHandler::passWheelEventToWidget(PlatformWheelEvent& event, Widget* widget)
 {
     if (!widget->isFrameView())
@@ -155,9 +145,9 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
 
 unsigned EventHandler::accessKeyModifiers()
 {
-	// NOTE: On Haiku, the user can choose Alt or Ctrl as access key, but
-	// the PlatformKeyboardEvent already takes care of this, internally,
-	// we always use Alt.
+    // NOTE: On Haiku, the user can choose Alt or Ctrl as access key, but
+    // the PlatformKeyboardEvent already takes care of this, internally,
+    // we always use Alt.
     return PlatformKeyboardEvent::AltKey;
 }
 
