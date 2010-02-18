@@ -25,7 +25,7 @@
 #include "FontPlatformData.h"
 
 #include "AtomicString.h"
-
+#include "CString.h"
 
 namespace WebCore {
 
@@ -37,8 +37,8 @@ static inline bool isEmtpyValue(const float size, const bool bold, const bool ob
 
 static void findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily)
 {
-    if (BFont().SetFamilyAndStyle(reinterpret_cast<const char*>(familyName.characters()), 0) == B_OK)
-        strncpy(*fontFamily, reinterpret_cast<const char*>(familyName.characters()), B_FONT_FAMILY_LENGTH + 1);
+    if (BFont().SetFamilyAndStyle(familyName.string().utf8().data(), 0) == B_OK)
+        strncpy(*fontFamily, familyName.string().utf8().data(), B_FONT_FAMILY_LENGTH + 1);
     else {
         // If no font family is found for the given name, we use a generic font.
         if (familyName.contains("Sans", false) != B_ERROR)
@@ -78,33 +78,80 @@ static void findMatchingFontStyle(const font_family& fontFamily, bool bold, bool
     memset(fontStyle, 0, sizeof(font_style));
 }
 
-FontPlatformDataPrivate::FontPlatformDataPrivate()
+// #pragma mark -
+
+class FontPlatformData::FontPlatformDataPrivate {
+public:
+    FontPlatformDataPrivate();
+    FontPlatformDataPrivate(const float size, const bool bold, const bool oblique);
+    FontPlatformDataPrivate(const BFont& font);
+
+    void update();
+
+    void deref();
+    void addRef();
+
+    BFont font;
+    float size;
+    bool bold : 1;
+    bool oblique : 1;
+
+private:
+    ~FontPlatformDataPrivate();
+
+private:
+    unsigned refCount;
+};
+
+FontPlatformData::FontPlatformDataPrivate::FontPlatformDataPrivate()
     : refCount(1)
 {
-	printf("%p->FontPlatformDataPrivate()\n", this);
 	update();
 }
 
-FontPlatformDataPrivate::FontPlatformDataPrivate(const float size, const bool bold, const bool oblique)
-    : refCount(1)
-    , size(size)
+FontPlatformData::FontPlatformDataPrivate::FontPlatformDataPrivate(const float size, const bool bold, const bool oblique)
+    : size(size)
     , bold(bold)
     , oblique(oblique)
+    , refCount(1)
 {
-	printf("%p->FontPlatformDataPrivate()\n", this);
 }
 
-FontPlatformDataPrivate::FontPlatformDataPrivate(const BFont& font)
-    : refCount(1)
-    , font(font)
+FontPlatformData::FontPlatformDataPrivate::FontPlatformDataPrivate(const BFont& font)
+    : font(font)
+    , refCount(1)
 {
-	printf("%p->FontPlatformDataPrivate()\n", this);
 	update();
 }
 
-FontPlatformDataPrivate::~FontPlatformDataPrivate()
+FontPlatformData::FontPlatformDataPrivate::~FontPlatformDataPrivate()
 {
-	printf("%p->~FontPlatformDataPrivate()\n", this);
+}
+
+void FontPlatformData::FontPlatformDataPrivate::update()
+{
+    size = font.Size();
+    bold = font.Flags() & B_BOLD_FACE;
+    oblique = font.Flags() & B_ITALIC_FACE;
+}
+
+void FontPlatformData::FontPlatformDataPrivate::deref()
+{
+    --refCount;
+    if (!refCount)
+        delete this;
+}
+
+void FontPlatformData::FontPlatformDataPrivate::addRef()
+{
+    ++refCount;
+}
+
+// #pragma mark -
+
+FontPlatformData::FontPlatformData()
+    : m_data(0)
+{
 }
 
 FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName)
@@ -123,9 +170,25 @@ FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const
     m_data->update();
 }
 
+FontPlatformData::FontPlatformData(WTF::HashTableDeletedValueType)
+    : m_data(reinterpret_cast<FontPlatformDataPrivate*>(-1))
+{
+}
+
+FontPlatformData::FontPlatformData(const BFont& font)
+    : m_data(new FontPlatformDataPrivate(font))
+{
+}
+
 FontPlatformData::FontPlatformData(float size, bool bold, bool oblique)
     : m_data(0)
 {
+    // NOTE: This constructor is used from FontCache to initialize an
+    // "empty" FontPlatformData. BUT FontDataCacheKeyTraits specifies
+    // "emptyValueIsZero" with true, which means this constructor isn't
+    // actually called for new FontPlatformData objects used as keys in
+    // the global gFontDataCache HashMap! This only works because we
+    // indeed don't need initialization for this case.
     if (!isEmtpyValue(size, bold, oblique))
         m_data = new FontPlatformDataPrivate(size, bold, oblique);
 }
@@ -134,7 +197,7 @@ FontPlatformData::FontPlatformData(const FontPlatformData& other)
     : m_data(other.m_data)
 {
     if (m_data && !isHashTableDeletedValue())
-        ++m_data->refCount;
+        m_data->addRef();
 }
 
 FontPlatformData::~FontPlatformData()
@@ -153,7 +216,7 @@ FontPlatformData& FontPlatformData::operator=(const FontPlatformData& other)
 
     m_data = other.m_data;
     if (m_data && !isHashTableDeletedValue())
-        ++m_data->refCount;
+        m_data->addRef();
     return *this;
 }
 
@@ -168,9 +231,46 @@ bool FontPlatformData::operator==(const FontPlatformData& other) const
     }
 
     return m_data->size == other.m_data->size
-                        && m_data->bold == other.m_data->bold
-                        && m_data->oblique == other.m_data->oblique
-                        && m_data->font == other.m_data->font;
+        && m_data->bold == other.m_data->bold
+        && m_data->oblique == other.m_data->oblique
+        && m_data->font == other.m_data->font;
+}
+
+const BFont* FontPlatformData::font() const
+{
+    return &(m_data->font);
+}
+
+bool FontPlatformData::isFixedPitch()
+{
+    ASSERT(!isHashTableDeletedValue());
+    if (m_data)
+        return m_data->font.Spacing() == B_FIXED_SPACING;
+    return false;
+}
+
+float FontPlatformData::size() const
+{
+    ASSERT(!isHashTableDeletedValue());
+    if (m_data)
+        return m_data->size;
+    return 0;
+}
+
+bool FontPlatformData::bold() const
+{
+    ASSERT(!isHashTableDeletedValue());
+    if (m_data)
+        return m_data->bold;
+    return false;
+}
+
+bool FontPlatformData::oblique() const
+{
+    ASSERT(!isHashTableDeletedValue());
+    if (m_data)
+        return m_data->oblique;
+    return false;
 }
 
 unsigned FontPlatformData::hash() const

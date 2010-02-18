@@ -36,8 +36,8 @@
 #include "FontData.h"
 #include "FontPlatformData.h"
 #include "NotImplemented.h"
+#include <Font.h>
 #include <String.h>
-
 
 namespace WebCore {
 
@@ -59,9 +59,12 @@ SimpleFontData* FontCache::getSimilarFontPlatformData(const Font& font)
 
 SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& fontDescription)
 {
-    // FIXME: Would be even better to somehow get the user's default font here.
+	font_family family;
+	font_style style;
+	be_plain_font->GetFamilyAndStyle(&family, &style);
+    // FIXME: Would be even better to somehow get the user's preferred font here.
     // For now we'll pick the default that the user would get without changing any prefs.
-    static AtomicString defaultString("DejaVu Serif");
+    AtomicString defaultString(family);
     return getCachedFontData(fontDescription, defaultString);
 }
 

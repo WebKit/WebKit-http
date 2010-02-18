@@ -31,57 +31,15 @@
 
 #include "FontDescription.h"
 #include "GlyphBuffer.h"
-#include "RefCounted.h"
 #include <interface/Font.h>
-#include <stdio.h>
 
 namespace WebCore {
 
-class FontPlatformDataPrivate : public Noncopyable {
+class FontPlatformData {
 public:
-    FontPlatformDataPrivate();
-    FontPlatformDataPrivate(const float size, const bool bold, const bool oblique);
-    FontPlatformDataPrivate(const BFont& font);
-
-    void update()
-    {
-        size = font.Size();
-        bold = font.Flags() & B_BOLD_FACE;
-        oblique = font.Flags() & B_ITALIC_FACE;
-    }
-
-    void deref()
-    {
-        --refCount;
-        if (!refCount)
-            delete this;
-    }
-
-    unsigned refCount;
-    BFont font;
-    float size;
-    bool bold : 1;
-    bool oblique : 1;
-
-private:
-    ~FontPlatformDataPrivate();
-};
-
-class FontPlatformData : public FastAllocBase {
-public:
-    FontPlatformData(WTF::HashTableDeletedValueType)
-        : m_data(reinterpret_cast<FontPlatformDataPrivate*>(-1))
-    {
-   	}
-
-//    FontPlatformData()
-//        : m_font(0)
-//    {
-//    }
-    FontPlatformData(const BFont& font)
-        : m_data(new FontPlatformDataPrivate(font))
-    {}
-
+    FontPlatformData();
+    FontPlatformData(WTF::HashTableDeletedValueType);
+    FontPlatformData(const BFont& font);
     FontPlatformData(const FontDescription&, const AtomicString& family);
     FontPlatformData(float size, bool bold, bool oblique);
     FontPlatformData(const FontPlatformData&);
@@ -91,36 +49,12 @@ public:
     FontPlatformData& operator=(const FontPlatformData&);
     bool operator==(const FontPlatformData&) const;
 
-    const BFont* font() const { return &(m_data->font); }
+    const BFont* font() const;
 
-    bool isFixedPitch()
-    {
-        ASSERT(!isHashTableDeletedValue());
-        if (m_data)
-            return m_data->font.Spacing() == B_FIXED_SPACING;
-        return false;
-    }
-    float size() const
-    {
-        ASSERT(!isHashTableDeletedValue());
-        if (m_data)
-            return m_data->size;
-        return 0;
-    }
-    bool bold() const
-    {
-        ASSERT(!isHashTableDeletedValue());
-        if (m_data)
-            return m_data->bold;
-        return false;
-    }
-    bool oblique() const
-    {
-        ASSERT(!isHashTableDeletedValue());
-        if (m_data)
-            return m_data->oblique;
-        return false;
-    }
+    bool isFixedPitch();
+    float size() const;
+    bool bold() const;
+    bool oblique() const;
 
     unsigned hash() const;
     bool isHashTableDeletedValue() const;
@@ -128,6 +62,7 @@ public:
     String description() const;
 
 private:
+    class FontPlatformDataPrivate;
     FontPlatformDataPrivate* m_data;
 };
 
