@@ -310,7 +310,7 @@ void LauncherWindow::MessageReceived(BMessage* message)
         break;
 
     default:
-        BWindow::MessageReceived(message);
+        WebViewWindow::MessageReceived(message);
         break;
     }
 }
