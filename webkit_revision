@@ -1,1 +1,5 @@
 r54986
+
+
+svn merge -$lastRevision:HEAD http://svn.webkit.org/repository/webkit/trunk local
+where $lastRevision is the last merged revision and local is your working copy
