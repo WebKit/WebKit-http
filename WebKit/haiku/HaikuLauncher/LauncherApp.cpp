@@ -53,6 +53,7 @@ enum {
 
 LauncherApp::LauncherApp()
     : BApplication(kApplicationSignature)
+    , m_windowCount(0)
     , m_lastWindowFrame(100, 100, 700, 750)
     , m_launchRefsMessage(0)
     , m_initialized(false)
