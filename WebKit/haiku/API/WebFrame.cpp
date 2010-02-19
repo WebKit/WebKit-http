@@ -43,11 +43,12 @@
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
-#include "WebFramePrivate.h"
 #include "WebProcess.h"
 #include "markup.h"
-
+#include "wtf/RefPtr.h"
+#include "wtf/Vector.h"
 #include <Entry.h>
+#include <String.h>
 
 static const float kMinimumTextSizeMultiplier = 0.5;
 static const float kMaximumTextSizeMultiplier = 3;
@@ -56,41 +57,59 @@ static const float kTextSizeMultiplierRatio = 1.1;
 using namespace WebCore;
 
 
+class WebFrame::PrivateData {
+public:
+    PrivateData()
+        : ownerElement(0)
+        , page(0)
+        , frame(0)
+        , loaderClient(0)
+    {}
+
+    WebCore::String name;
+    WebCore::HTMLFrameOwnerElement* ownerElement;
+    WebCore::Page* page;
+    WTF::RefPtr<WebCore::Frame> frame;
+    WebCore::FrameLoaderClientHaiku* loaderClient;
+};
+
+// #pragma mark -
+
 WebFrame::WebFrame(WebProcess* webProcess, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
         WebCore::HTMLFrameOwnerElement* ownerElement, const WebCore::String& frameName)
     : m_textMagnifier(1.0)
     , m_isEditable(true)
     , m_beingDestroyed(false)
     , m_title(0)
-    , m_impl(new WebFramePrivate())
+    , m_data(new PrivateData())
 {
-	m_impl->name = frameName;
-	m_impl->ownerElement = ownerElement;
-	m_impl->page = parentPage;
-	m_impl->loaderClient = new WebCore::FrameLoaderClientHaiku(webProcess, this);
-    m_impl->frame = WebCore::Frame::create(parentPage, ownerElement, m_impl->loaderClient);
+	m_data->name = frameName;
+	m_data->ownerElement = ownerElement;
+	m_data->page = parentPage;
+	m_data->loaderClient = new WebCore::FrameLoaderClientHaiku(webProcess, this);
+    m_data->frame = WebCore::Frame::create(parentPage, ownerElement, m_data->loaderClient);
 
-    m_impl->frame->tree()->setName(frameName);
+    m_data->frame->tree()->setName(frameName);
     if (parentFrame)
-        parentFrame->tree()->appendChild(m_impl->frame);
+        parentFrame->tree()->appendChild(m_data->frame);
 
-    m_impl->frame->init();
+    m_data->frame->init();
 }
 
 WebFrame::~WebFrame()
 {
-	delete m_impl;
+	delete m_data;
 }
 
 void WebFrame::setDispatchTarget(const BMessenger& messenger)
 {
-    m_impl->loaderClient->setDispatchTarget(messenger);
+    m_data->loaderClient->setDispatchTarget(messenger);
 }
 
 
 WebCore::Frame* WebFrame::frame()
 {
-    return m_impl->frame.get();
+    return m_data->frame.get();
 }
 
 void WebFrame::loadRequest(BString url)
@@ -103,7 +122,7 @@ void WebFrame::loadRequest(KURL url)
 	if (url.isEmpty())
 		return;
 
-    if (m_impl->frame && m_impl->frame->loader()) {
+    if (m_data->frame && m_data->frame->loader()) {
         if (url.protocol().isEmpty()) {
             if (BEntry(BString(url.string())).Exists()) {
                 url.setProtocol("file");
@@ -114,73 +133,78 @@ void WebFrame::loadRequest(KURL url)
             }
         }
 
-        m_impl->frame->loader()->load(url, false);
+        m_data->frame->loader()->load(url, false);
     }
+}
+
+BString WebFrame::url() const
+{
+    return m_data->frame->loader()->url().string();
 }
 
 void WebFrame::stopLoading()
 {
-    if (m_impl->frame && m_impl->frame->loader())
-        m_impl->frame->loader()->stop();
+    if (m_data->frame && m_data->frame->loader())
+        m_data->frame->loader()->stop();
 }
 
 void WebFrame::reload()
 {
-    if (m_impl->frame && m_impl->frame->loader())
-        m_impl->frame->loader()->reload();
+    if (m_data->frame && m_data->frame->loader())
+        m_data->frame->loader()->reload();
 }
 
 bool WebFrame::canGoBack()
 {
-    if (m_impl->frame && m_impl->frame->page() && m_impl->frame->page()->backForwardList())
-        return m_impl->frame->page()->canGoBackOrForward(-1);
+    if (m_data->frame && m_data->frame->page() && m_data->frame->page()->backForwardList())
+        return m_data->frame->page()->canGoBackOrForward(-1);
 
     return false;
 }
 
 bool WebFrame::canGoForward()
 {
-    if (m_impl->frame && m_impl->frame->page() && m_impl->frame->page()->backForwardList())
-        return m_impl->frame->page()->canGoBackOrForward(1);
+    if (m_data->frame && m_data->frame->page() && m_data->frame->page()->backForwardList())
+        return m_data->frame->page()->canGoBackOrForward(1);
 
     return false;
 }
 
 bool WebFrame::goBack()
 {
-    if (m_impl->frame && m_impl->frame->page())
-        return m_impl->frame->page()->goBack();
+    if (m_data->frame && m_data->frame->page())
+        return m_data->frame->page()->goBack();
 
     return false;
 }
 
 bool WebFrame::goForward()
 {
-    if (m_impl->frame && m_impl->frame->page())
-        return m_impl->frame->page()->goForward();
+    if (m_data->frame && m_data->frame->page())
+        return m_data->frame->page()->goForward();
 
     return false;
 }
 bool WebFrame::canCopy()
 {
-    if (m_impl->frame && m_impl->frame->view())
-        return m_impl->frame->editor()->canCopy() || m_impl->frame->editor()->canDHTMLCopy();
+    if (m_data->frame && m_data->frame->view())
+        return m_data->frame->editor()->canCopy() || m_data->frame->editor()->canDHTMLCopy();
 
     return false;
 }
 
 bool WebFrame::canCut()
 {
-    if (m_impl->frame && m_impl->frame->view())
-        return m_impl->frame->editor()->canCut() || m_impl->frame->editor()->canDHTMLCut();
+    if (m_data->frame && m_data->frame->view())
+        return m_data->frame->editor()->canCut() || m_data->frame->editor()->canDHTMLCut();
 
     return false;
 }
 
 bool WebFrame::canPaste()
 {
-    if (m_impl->frame && m_impl->frame->view())
-        return m_impl->frame->editor()->canPaste() || m_impl->frame->editor()->canDHTMLPaste();
+    if (m_data->frame && m_data->frame->view())
+        return m_data->frame->editor()->canPaste() || m_data->frame->editor()->canDHTMLPaste();
 
     return false;
 }
@@ -188,70 +212,70 @@ bool WebFrame::canPaste()
 void WebFrame::copy()
 {
     if (canCopy())
-        m_impl->frame->editor()->copy();
+        m_data->frame->editor()->copy();
 }
 
 void WebFrame::cut()
 {
     if (canCut())
-        m_impl->frame->editor()->cut();
+        m_data->frame->editor()->cut();
 }
 
 void WebFrame::paste()
 {
     if (canPaste())
-        m_impl->frame->editor()->paste();
+        m_data->frame->editor()->paste();
 }
 
 bool WebFrame::canUndo()
 {
-    if (m_impl->frame && m_impl->frame->editor())
-        return m_impl->frame->editor()->canUndo();
+    if (m_data->frame && m_data->frame->editor())
+        return m_data->frame->editor()->canUndo();
 
     return false;
 }
 
 bool WebFrame::canRedo()
 {
-    if (m_impl->frame && m_impl->frame->editor())
-        return m_impl->frame->editor()->canRedo();
+    if (m_data->frame && m_data->frame->editor())
+        return m_data->frame->editor()->canRedo();
 
     return false;
 }
 
 void WebFrame::undo()
 {
-    if (m_impl->frame && m_impl->frame->editor() && canUndo())
-        return m_impl->frame->editor()->undo();
+    if (m_data->frame && m_data->frame->editor() && canUndo())
+        return m_data->frame->editor()->undo();
 }
 
 void WebFrame::redo()
 {
-    if (m_impl->frame && m_impl->frame->editor() && canRedo())
-        return m_impl->frame->editor()->redo();
+    if (m_data->frame && m_data->frame->editor() && canRedo())
+        return m_data->frame->editor()->redo();
 }
 
 bool WebFrame::allowsScrolling()
 {
-    if (m_impl->frame && m_impl->frame->view())
-        return m_impl->frame->view()->canHaveScrollbars();
+    if (m_data->frame && m_data->frame->view())
+        return m_data->frame->view()->canHaveScrollbars();
 
     return false;
 }
 
 void WebFrame::setAllowsScrolling(bool flag)
 {
-    if (m_impl->frame && m_impl->frame->view())
-        m_impl->frame->view()->setCanHaveScrollbars(flag);
+    if (m_data->frame && m_data->frame->view())
+        m_data->frame->view()->setCanHaveScrollbars(flag);
 }
 
 const char* WebFrame::getPageSource()
 {
-    if (m_impl->frame) {
-        if (m_impl->frame->view() && m_impl->frame->view()->layoutPending())
-            m_impl->frame->view()->layout();
+    if (m_data->frame) {
+        if (m_data->frame->view() && m_data->frame->view()->layoutPending())
+            m_data->frame->view()->layout();
 
-        WebCore::Document* document = m_impl->frame->document();
+        WebCore::Document* document = m_data->frame->document();
 
         if (document) {
             BString source = createMarkup(document);
@@ -264,8 +288,8 @@ const char* WebFrame::getPageSource()
 
 void WebFrame::setPageSource(const char* source)
 {
-    if (m_impl->frame && m_impl->frame->loader()) {
-        WebCore::FrameLoader* loader = m_impl->frame->loader();
+    if (m_data->frame && m_data->frame->loader()) {
+        WebCore::FrameLoader* loader = m_data->frame->loader();
         loader->begin();
         loader->write(String(source));
         loader->end();
@@ -274,58 +298,58 @@ void WebFrame::setPageSource(const char* source)
 
 void WebFrame::setTransparent(bool transparent)
 {
-    if (m_impl->frame && m_impl->frame->view())
-        m_impl->frame->view()->setTransparent(transparent);
+    if (m_data->frame && m_data->frame->view())
+        m_data->frame->view()->setTransparent(transparent);
 }
 
 bool WebFrame::isTransparent() const
 {
-    if (m_impl->frame && m_impl->frame->view())
-        return m_impl->frame->view()->isTransparent();
+    if (m_data->frame && m_data->frame->view())
+        return m_data->frame->view()->isTransparent();
 
     return false;
 }
 
 BString WebFrame::getInnerText()
 {
-    FrameView* view = m_impl->frame->view();
+    FrameView* view = m_data->frame->view();
 
     if (view && view->layoutPending())
         view->layout();
 
-    WebCore::Element *documentElement = m_impl->frame->document()->documentElement();
+    WebCore::Element *documentElement = m_data->frame->document()->documentElement();
     return documentElement->innerText();
 }
 
 BString WebFrame::getAsMarkup()
 {
-    if (!m_impl->frame->document())
+    if (!m_data->frame->document())
         return String();
 
-    return createMarkup(m_impl->frame->document());
+    return createMarkup(m_data->frame->document());
 }
 
 BString WebFrame::getExternalRepresentation()
 {
-    FrameView* view = m_impl->frame->view();
+    FrameView* view = m_data->frame->view();
 
     if (view && view->layoutPending())
         view->layout();
 
-    return externalRepresentation(m_impl->frame.get());
+    return externalRepresentation(m_data->frame.get());
 }
 
 bool WebFrame::findString(const char* string, bool forward, bool caseSensitive, bool wrapSelection, bool startInSelection)
 {
-    if (m_impl->frame)
-        return m_impl->frame->findString(string, forward, caseSensitive, wrapSelection, startInSelection);
+    if (m_data->frame)
+        return m_data->frame->findString(string, forward, caseSensitive, wrapSelection, startInSelection);
 
     return false;
 }
 
 bool WebFrame::canIncreaseTextSize() const
 {
-    if (m_impl->frame)
+    if (m_data->frame)
         if (m_textMagnifier * kTextSizeMultiplierRatio <= kMaximumTextSizeMultiplier)
             return true;
 
@@ -334,7 +358,7 @@ bool WebFrame::canIncreaseTextSize() const
 
 bool WebFrame::canDecreaseTextSize() const
 {
-    if (m_impl->frame)
+    if (m_data->frame)
         return m_textMagnifier / kTextSizeMultiplierRatio >= kMinimumTextSizeMultiplier;
 
     return false;
@@ -344,7 +368,7 @@ void WebFrame::increaseTextSize()
 {
     if (canIncreaseTextSize()) {
         m_textMagnifier = m_textMagnifier * kTextSizeMultiplierRatio;
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+        m_data->frame->setZoomFactor(m_textMagnifier, true);
     }
 }
 
@@ -352,7 +376,7 @@ void WebFrame::decreaseTextSize()
 {
     if (canDecreaseTextSize()) {
         m_textMagnifier = m_textMagnifier / kTextSizeMultiplierRatio;
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+        m_data->frame->setZoomFactor(m_textMagnifier, true);
     }
 }
 
@@ -360,6 +384,6 @@ void WebFrame::resetTextSize()
 {
     m_textMagnifier = 1.0;
 
-    if (m_impl->frame)
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+    if (m_data->frame)
+        m_data->frame->setZoomFactor(m_textMagnifier, true);
 }

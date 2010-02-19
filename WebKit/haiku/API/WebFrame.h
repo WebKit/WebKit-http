@@ -29,8 +29,7 @@
 #ifndef WebFrame_h
 #define WebFrame_h
 
-#include "WebFramePrivate.h"
-
+#include "PlatformString.h"
 #include <String.h>
 
 class BMessenger;
@@ -41,6 +40,8 @@ class Frame;
 class FrameLoaderClientHaiku;
 class HTMLFrameOwnerElement;
 class KURL;
+class Page;
+class String;
 }
 
 class WebFrame {
@@ -55,6 +56,8 @@ public:
 
     void loadRequest(BString url);
     void loadRequest(WebCore::KURL);
+
+    BString url() const;
 
     void stopLoading();
     void reload();
@@ -110,10 +113,7 @@ public:
     BString title() const { return m_title; }
     void setTitle(BString title) { m_title = title; }
 
-    BString url() const { return m_impl->frame->loader()->url().string(); }
-
     WebCore::Frame* frame();
-//    WebCore::Page* page();
 
 private:
     float m_textMagnifier;
@@ -121,7 +121,9 @@ private:
     bool m_beingDestroyed;
     BString m_title;
 
-    WebFramePrivate* m_impl;
+    class PrivateData;
+
+    PrivateData* m_data;
 };
 
 #endif // WebFrame_h
