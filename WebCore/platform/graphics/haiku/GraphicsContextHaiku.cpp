@@ -134,6 +134,7 @@ public:
 
         BView* view;
         BBitmap* bitmap;
+        BRegion clipping;
         rgb_color strokeColor;
         rgb_color fillColor;
         uint8 globalAlpha;
@@ -148,6 +149,18 @@ public:
     BView* view() const
     {
         return m_currentLayer->view;
+    }
+
+    void setClipping(const BRegion& region)
+    {
+    	if (region == m_currentLayer->clipping)
+    	    return;
+
+    	m_currentLayer->clipping = region;
+    	if (m_currentLayer->clipping.Frame().IsValid())
+    	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+    	else
+    	    m_currentLayer->view->ConstrainClippingRegion(NULL);
     }
 
     void setShape(BShape* shape)
@@ -273,6 +286,7 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
+    // TODO: Should use fill + strokeRect().
     m_data->view()->FillRect(rect);
     if (strokeStyle() != NoStroke)
         m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
@@ -296,6 +310,17 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     m_data->view()->FillEllipse(rect);
     if (strokeStyle() != NoStroke)
         m_data->view()->StrokeEllipse(rect, getHaikuStrokeStyle());
+}
+
+void GraphicsContext::strokeRect(const FloatRect& rect, float width)
+{
+    if (paintingDisabled())
+        return;
+
+    float oldSize = m_data->view()->PenSize();
+    m_data->view()->SetPenSize(width);
+    m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
+    m_data->view()->SetPenSize(oldSize);
 }
 
 void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSpan)
@@ -346,7 +371,9 @@ void GraphicsContext::strokePath()
     if (!m_data->shape())
         return;
 
-//    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
+//    uint32 flags = m_data->view()->Flags();
+//    m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
+//    m_data->view()->MovePenTo(BPoint(0.5, 0.5));
     m_data->view()->MovePenTo(B_ORIGIN);
 
     if (m_common->state.strokePattern || m_common->state.strokeGradient || strokeColor().alpha()) {
@@ -360,6 +387,8 @@ void GraphicsContext::strokePath()
         } else
             m_data->view()->StrokeShape(m_data->shape());
     }
+
+//    m_data->view()->SetFlags(flags);
     m_data->setShape(0);
 }
 
@@ -383,12 +412,16 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (paintingDisabled())
         return;
 
-    m_data->view()->PushState();
+    rgb_color previousColor = m_data->view()->HighColor();
+    drawing_mode previousMode = m_data->view()->DrawingMode();
+
     m_data->view()->SetHighColor(color);
     if (color.hasAlpha())
         m_data->view()->SetDrawingMode(B_OP_ALPHA);
     fillRect(rect);
-    m_data->view()->PopState();
+
+    m_data->view()->SetHighColor(previousColor);
+    m_data->view()->SetDrawingMode(previousMode);
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
@@ -400,6 +433,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     // (needed for box elements with round corners):
     // When the rect extends outside the current clipping path on
     // all sides, then we can fill the path instead of the rect.
+    // (Clipping paths are simply not supported yet for anything else.)
     if (m_data->clipShape()) {
     	BRect bRect(rect);
     	BRect clipPathBounds(m_data->clipShape()->Bounds());
@@ -521,8 +555,7 @@ void GraphicsContext::clip(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    BRegion region(rect);
-    m_data->view()->ConstrainClippingRegion(&region);
+    m_data->setClipping(BRegion(rect));
 }
 
 void GraphicsContext::clip(const Path& path)
@@ -534,13 +567,20 @@ void GraphicsContext::clip(const Path& path)
         m_data->setClipShape(new BShape(*path.platformPath()));
     else
         m_data->setClipShape(0);
-    // Clipping still not actually implemented...
-    notImplemented();
+
+    // FIXME: Support actual clipping paths in the BView API...
+    FloatRect rect(path.platformPath()->Bounds());
+    clip(rect);
 }
 
 void GraphicsContext::canvasClip(const Path& path)
 {
     clip(path);
+}
+
+void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
+{
+    notImplemented();
 }
 
 void GraphicsContext::clipOut(const Path& path)
@@ -551,8 +591,31 @@ void GraphicsContext::clipOut(const Path& path)
     notImplemented();
 }
 
-void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
+void GraphicsContext::clipOut(const IntRect& rect)
 {
+    if (paintingDisabled())
+        return;
+
+    BRegion region(m_data->view()->Bounds());
+    region.Include(rect);
+    m_data->setClipping(region);
+}
+
+void GraphicsContext::clipOutEllipseInRect(const IntRect& rect)
+{
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
+}
+
+void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
+{
+    if (paintingDisabled())
+        return;
+
+    // NOTE: Used by RenderBoxModelObject to clip out the inner part of an arc when rending box corners...
+ 
     notImplemented();
 }
 
@@ -636,17 +699,6 @@ void GraphicsContext::clearRect(const FloatRect& rect)
     m_data->view()->SetDrawingMode(B_OP_COPY);
     m_data->view()->FillRect(rect);
     m_data->view()->PopState();
-}
-
-void GraphicsContext::strokeRect(const FloatRect& rect, float width)
-{
-    if (paintingDisabled())
-        return;
-
-    float oldSize = m_data->view()->PenSize();
-    m_data->view()->SetPenSize(width);
-    m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
-    m_data->view()->SetPenSize(oldSize);
 }
 
 void GraphicsContext::setLineCap(LineCap lineCap)
@@ -777,35 +829,6 @@ void GraphicsContext::scale(const FloatSize& size)
 
     // NOTE: Non-uniform scaling not supported on Haiku, yet.
     m_data->view()->SetScale((size.width() + size.height()) / 2);
-}
-
-void GraphicsContext::clipOut(const IntRect& rect)
-{
-    if (paintingDisabled())
-        return;
-
-    BRegion region(m_data->view()->Bounds());
-    region.Exclude(rect);
-    m_data->view()->ConstrainClippingRegion(&region);
-}
-
-void GraphicsContext::clipOutEllipseInRect(const IntRect& rect)
-{
-    if (paintingDisabled())
-        return;
-
-    notImplemented();
-}
-
-void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
-{
-    if (paintingDisabled())
-        return;
-
-    // NOTE: Used by RenderBoxModelObject to clip out the inner part of an arc when rending box corners...
-    // TODO: Use this method to detect if we are rendering a round-corner-box...
-
-    notImplemented();
 }
 
 void GraphicsContext::concatCTM(const AffineTransform& transform)
