@@ -208,6 +208,7 @@ private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
     void postCommitFrameViewSetup(WebFrame*, FrameView*, bool) const;
+    status_t dispatchMessage(BMessage& message) const;
 
 private:
     WebPage* m_webPage;

@@ -130,15 +130,14 @@ void LauncherApp::MessageReceived(BMessage* message)
         BString url;
         if (message->FindString("url", &url) != B_OK)
         	break;
-        bool newWindow;
-        if (message->FindBool("new window", &newWindow) != B_OK)
-        	newWindow = false;
-        WebViewWindow* webWindow = NULL;
+        bool openNewWindow = false;
+        message->FindBool("new window", &openNewWindow);
+        LauncherWindow* webWindow = NULL;
         for (int i = 0; BWindow* window = WindowAt(i); i++) {
-            webWindow = dynamic_cast<WebViewWindow*>(window);
+            webWindow = dynamic_cast<LauncherWindow*>(window);
             if (!webWindow)
             	continue;
-            if (!newWindow) {
+            if (!openNewWindow) {
             	// stop at the first window
 	            break;
             }
@@ -146,12 +145,12 @@ void LauncherApp::MessageReceived(BMessage* message)
         if (webWindow) {
         	// There should always be at least one window open. If not, maybe we are about
         	// to quit anyway...
-        	if (newWindow) {
+        	if (openNewWindow) {
         		// open a new window with an offset to the last window
-                webWindow->newWindowRequested(url);
+                newWindow(url);
         	} else {
             	// load the URL in the first window
-                webWindow->webView()->loadRequest(url.String());
+                webWindow->currentWebView()->loadRequest(url.String());
         	}
         }
         break;
@@ -218,7 +217,7 @@ void LauncherApp::RefsReceived(BMessage* message)
 bool LauncherApp::QuitRequested()
 {
     for (int i = 0; BWindow* window = WindowAt(i); i++) {
-        WebViewWindow* webWindow = dynamic_cast<WebViewWindow*>(window);
+        LauncherWindow* webWindow = dynamic_cast<LauncherWindow*>(window);
         if (!webWindow)
         	continue;
         if (!webWindow->Lock())
@@ -268,7 +267,7 @@ void LauncherApp::newWindow(const BString& url)
 	    BMessenger(m_downloadWindow));
 	window->Show();
 	if (url.Length())
-	    window->webView()->loadRequest(url.String());
+	    window->currentWebView()->loadRequest(url.String());
 }
 
 // #pragma mark -

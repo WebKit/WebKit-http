@@ -143,9 +143,9 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
         flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
 
     WebViewWindow* window = new WebViewWindow(frame, "WebView", look, feel, flags);
-    window->SetLayout(new BGroupLayout(B_HORIZONTAL));
-    WebView* view = window->webView();
+    WebView* view = new WebView("web view");
     window->AddChild(view);
+    window->setCurrentWebView(view);
     window->Show();
 
     view->webPage()->loadURL(BString(request.resourceRequest().url().string()));

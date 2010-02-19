@@ -96,11 +96,12 @@ public:
         bool caseSensitive = false, bool wrapSelection = true,
         bool startInSelection = false);
 
+private:
+    friend class WebPage;
     BView* offscreenView() const { return m_offscreenView; }
     void setOffscreenViewClean(BRect cleanRect, bool immediate);
     void invalidate();
 
-private:
     void resizeOffscreenView(int width, int height);
     void dispatchMouseEvent(const BPoint& where, uint32 sanityWhat);
     void dispatchKeyEvent(uint32 sanityWhat);

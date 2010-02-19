@@ -64,18 +64,24 @@ public:
     virtual bool QuitRequested();
     virtual void MenusBeginning();
 
-    // WebViewWindow notification API implementations
-    virtual void navigationRequested(const BString& url);
+private:
+    // WebPage notification API implementations
+    virtual void navigationRequested(const BString& url, WebView* view);
     virtual void newWindowRequested(const BString& url);
-    virtual void loadNegociating(const BString& url);
-    virtual void loadTransfering(const BString& url);
-    virtual void loadProgress(float progress);
-    virtual void loadFailed(const BString& url);
-    virtual void loadFinished(const BString& url);
-    virtual void titleChanged(const BString& title);
-    virtual void statusChanged(const BString& status);
+    virtual void loadNegociating(const BString& url, WebView* view);
+    virtual void loadTransfering(const BString& url, WebView* view);
+    virtual void loadProgress(float progress, WebView* view);
+    virtual void loadFailed(const BString& url, WebView* view);
+    virtual void loadFinished(const BString& url, WebView* view);
+    virtual void titleChanged(const BString& title, WebView* view);
+    virtual void resizeRequested(float width, float height, WebView* view);
+    virtual void setToolBarsVisible(bool flag, WebView* view);
+    virtual void setStatusBarVisible(bool flag, WebView* view);
+    virtual void setMenuBarVisible(bool flag, WebView* view);
+    virtual void setResizable(bool flag, WebView* view);
+    virtual void statusChanged(const BString& status, WebView* view);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
-        bool canGoForward, bool canStop);
+        bool canGoForward, bool canStop, WebView* view);
     virtual void updateGlobalHistory(const BString& url);
     virtual void authenticationChallenge(BMessage* challenge);
 

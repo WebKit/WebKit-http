@@ -88,6 +88,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
+	setCurrentWebView(new WebView("web_view"));
     if (toolbarPolicy == HaveToolbar) {
         // Menu
         m_menuBar = new BMenuBar("Main menu");
@@ -174,7 +175,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-            .Add(webView())
+            .Add(currentWebView())
             .Add(findGroup)
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
@@ -196,11 +197,11 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_loadingProgressBar = 0;
 
         AddChild(BGroupLayoutBuilder(B_VERTICAL, 7)
-            .Add(webView())
+            .Add(currentWebView())
         );
     }
 
-    webView()->webPage()->setDownloadListener(downloadListener);
+    currentWebView()->webPage()->setDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 
@@ -209,7 +210,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
     AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
 
-    navigationCapabilitiesChanged(false, false, false);
+    navigationCapabilitiesChanged(false, false, false, currentWebView());
 
     be_app->PostMessage(WINDOW_OPENED);
 }
@@ -222,20 +223,20 @@ void LauncherWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case RELOAD:
-        webView()->loadRequest(m_url->Text());
+        currentWebView()->loadRequest(m_url->Text());
         break;
     case GOTO_URL: {
         BString url = m_url->Text();
         message->FindString("url", &url);
         if (m_loadedURL != url)
-            webView()->loadRequest(url.String());
+            currentWebView()->loadRequest(url.String());
         break;
     }
     case GO_BACK:
-        webView()->goBack();
+        currentWebView()->goBack();
         break;
     case GO_FORWARD:
-        webView()->goForward();
+        currentWebView()->goForward();
         break;
 
     case CLEAR_HISTORY: {
@@ -271,26 +272,26 @@ void LauncherWindow::MessageReceived(BMessage* message)
         BPath path;
         if (!entry.Exists() || entry.GetPath(&path) != B_OK)
             break;
-        webView()->loadRequest(path.Path());
+        currentWebView()->loadRequest(path.Path());
         break;
     }
 
     case TEXT_SIZE_INCREASE:
-        webView()->increaseTextSize();
+        currentWebView()->increaseTextSize();
         break;
     case TEXT_SIZE_DECREASE:
-        webView()->decreaseTextSize();
+        currentWebView()->decreaseTextSize();
         break;
     case TEXT_SIZE_RESET:
-        webView()->resetTextSize();
+        currentWebView()->resetTextSize();
         break;
 
     case TEXT_FIND_NEXT:
-        webView()->findString(m_findTextControl->Text(), true,
+        currentWebView()->findString(m_findTextControl->Text(), true,
             m_findCaseSensitiveCheckBox->Value());
         break;
     case TEXT_FIND_PREVIOUS:
-        webView()->findString(m_findTextControl->Text(), false,
+        currentWebView()->findString(m_findTextControl->Text(), false,
             m_findCaseSensitiveCheckBox->Value());
         break;
     case TEXT_SHOW_FIND_GROUP:
@@ -309,20 +310,26 @@ void LauncherWindow::MessageReceived(BMessage* message)
         break;
 
     default:
-        WebViewWindow::MessageReceived(message);
+        BWindow::MessageReceived(message);
         break;
     }
 }
 
 bool LauncherWindow::QuitRequested()
 {
-    if (WebViewWindow::QuitRequested()) {
-        BMessage message(WINDOW_CLOSED);
-        message.AddRect("window frame", Frame());
-        be_app->PostMessage(&message);
-        return true;
-    }
-    return false;
+    // TODO: Check for modified form data and ask user for confirmation, etc.
+
+    // Do this here, so WebKit tear down happens earlier.
+    // TODO: Iterator over all WebViews, if there are more then one...
+    WebView* view = currentWebView();
+    view->RemoveSelf();
+    delete view;
+    setCurrentWebView(0);
+
+    BMessage message(WINDOW_CLOSED);
+    message.AddRect("window frame", Frame());
+    be_app->PostMessage(&message);
+    return true;
 }
 
 void LauncherWindow::MenusBeginning()
@@ -341,7 +348,9 @@ void LauncherWindow::MenusBeginning()
     	BMessage* message = new BMessage(GOTO_URL);
     	message->AddString("url", historyItem.url().String());
     	// TODO: More sophisticated menu structure... sorted by days/weeks...
-    	menuItem = new BMenuItem(historyItem.url().String(), message);
+        BString truncatedUrl(historyItem.url());
+        be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
+        menuItem = new BMenuItem(truncatedUrl, message);
     	m_goMenu->AddItem(menuItem);
     }
 
@@ -356,8 +365,9 @@ void LauncherWindow::MenusBeginning()
 
 // #pragma mark - Notification API
 
-void LauncherWindow::navigationRequested(const BString& url)
+void LauncherWindow::navigationRequested(const BString& url, WebView* view)
 {
+	// TODO: Move elsewhere, doesn't belong here.
     m_loadedURL = url;
     if (m_url)
         m_url->SetText(url.String());
@@ -374,22 +384,25 @@ void LauncherWindow::newWindowRequested(const BString& url)
     be_app->PostMessage(&message);
 }
 
-void LauncherWindow::loadNegociating(const BString& url)
+void LauncherWindow::loadNegociating(const BString& url, WebView* view)
 {
     BString status("Requesting: ");
     status << url;
-    statusChanged(status);
+    statusChanged(status, view);
 }
 
-void LauncherWindow::loadTransfering(const BString& url)
+void LauncherWindow::loadTransfering(const BString& url, WebView* view)
 {
     BString status("Loading: ");
     status << url;
-    statusChanged(status);
+    statusChanged(status, view);
 }
 
-void LauncherWindow::loadProgress(float progress)
+void LauncherWindow::loadProgress(float progress, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
     if (m_loadingProgressBar) {
         if (progress < 100 && m_loadingProgressBar->IsHidden())
             m_loadingProgressBar->Show();
@@ -397,29 +410,76 @@ void LauncherWindow::loadProgress(float progress)
     }
 }
 
-void LauncherWindow::loadFailed(const BString& url)
+void LauncherWindow::loadFailed(const BString& url, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
     BString status(url);
     status << " failed.";
-    statusChanged(status);
+    statusChanged(status, view);
     if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
         m_loadingProgressBar->Hide();
 }
 
-void LauncherWindow::loadFinished(const BString& url)
+void LauncherWindow::loadFinished(const BString& url, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
     m_loadedURL = url;
     BString status(url);
     status << " finished.";
-    statusChanged(status);
+    statusChanged(status, view);
     if (m_url)
         m_url->SetText(url.String());
     if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
         m_loadingProgressBar->Hide();
 }
 
-void LauncherWindow::titleChanged(const BString& title)
+void LauncherWindow::resizeRequested(float width, float height, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
+    // TODO: Ignore request when there is more than one WebView embedded!
+
+    ResizeTo(width, height);
+}
+
+void LauncherWindow::setToolBarsVisible(bool flag, WebView* view)
+{
+	// TODO
+    // TODO: Ignore request when there is more than one WebView embedded!
+}
+
+void LauncherWindow::setStatusBarVisible(bool flag, WebView* view)
+{
+	// TODO
+    // TODO: Ignore request when there is more than one WebView embedded!
+}
+
+void LauncherWindow::setMenuBarVisible(bool flag, WebView* view)
+{
+	// TODO
+    // TODO: Ignore request when there is more than one WebView embedded!
+}
+
+void LauncherWindow::setResizable(bool flag, WebView* view)
+{
+    // TODO: Ignore request when there is more than one WebView embedded!
+
+    if (flag)
+        SetFlags(Flags() & ~B_NOT_RESIZABLE);
+    else
+        SetFlags(Flags() | B_NOT_RESIZABLE);
+}
+
+void LauncherWindow::titleChanged(const BString& title, WebView* view)
+{
+	if (view != currentWebView())
+	    return;
+
     BString windowTitle = title;
     if (windowTitle.Length() > 0)
         windowTitle << " - ";
@@ -427,15 +487,21 @@ void LauncherWindow::titleChanged(const BString& title)
     SetTitle(windowTitle.String());
 }
 
-void LauncherWindow::statusChanged(const BString& statusText)
+void LauncherWindow::statusChanged(const BString& statusText, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
     if (m_statusText)
         m_statusText->SetText(statusText.String());
 }
 
 void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
-    bool canGoForward, bool canStop)
+    bool canGoForward, bool canStop, WebView* view)
 {
+	if (view != currentWebView())
+	    return;
+
     if (m_BackButton)
         m_BackButton->SetEnabled(canGoBackward);
     if (m_ForwardButton)

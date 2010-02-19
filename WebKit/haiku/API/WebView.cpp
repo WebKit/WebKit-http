@@ -207,6 +207,7 @@ void WebView::setBounds(BRect rect)
 {
     BMessage message(RESIZING_REQUESTED);
     message.AddRect("rect", rect);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 
@@ -246,6 +247,7 @@ void WebView::setToolbarsVisible(bool flag)
 
     BMessage message(TOOLBARS_VISIBILITY);
     message.AddBool("flag", flag);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 
@@ -255,6 +257,7 @@ void WebView::setStatusbarVisible(bool flag)
 
     BMessage message(STATUSBAR_VISIBILITY);
     message.AddBool("flag", flag);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 
@@ -264,6 +267,7 @@ void WebView::setMenubarVisible(bool flag)
 
     BMessage message(MENUBAR_VISIBILITY);
     message.AddBool("flag", flag);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 
@@ -271,6 +275,7 @@ void WebView::setResizable(bool flag)
 {
     BMessage message(SET_RESIZABLE);
     message.AddBool("flag", flag);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 
@@ -283,6 +288,7 @@ void WebView::setStatusText(const BString& text)
 {
     BMessage message(SET_STATUS_TEXT);
     message.AddString("text", text);
+    message.AddPointer("view", this);
     Window()->PostMessage(&message);
 }
 

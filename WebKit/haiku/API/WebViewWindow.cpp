@@ -49,9 +49,11 @@ using namespace WebCore;
 WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
         window_feel feel, uint32 flags, uint32 workspace)
     : BWindow(frame, name, look, feel, flags, workspace)
-    , m_webView(new WebView("web_view"))
+    , m_webView(0)
 {
     SetLayout(new BGroupLayout(B_HORIZONTAL));
+
+    // NOTE: Do NOT change these because you think Redo should be on Cmd-Y!
     AddShortcut('Z', B_COMMAND_KEY, new BMessage(B_UNDO));
     AddShortcut('Y', B_COMMAND_KEY, new BMessage(B_UNDO));
     AddShortcut('Z', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
@@ -80,7 +82,7 @@ void WebViewWindow::MessageReceived(BMessage* message)
     case NAVIGATION_REQUESTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            navigationRequested(url);
+            navigationRequested(url, webViewForMessage(message));
         break;
     }
     case UPDATE_HISTORY: {
@@ -98,49 +100,49 @@ void WebViewWindow::MessageReceived(BMessage* message)
     case LOAD_NEGOCIATING: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadNegociating(url);
+            loadNegociating(url, webViewForMessage(message));
         break;
     }
     case LOAD_TRANSFERRING: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadTransfering(url);
+            loadTransfering(url, webViewForMessage(message));
         break;
     }
     case LOAD_PROGRESS: {
         float progress;
         if (message->FindFloat("progress", &progress) == B_OK)
-            loadProgress(progress);
+            loadProgress(progress, webViewForMessage(message));
         break;
     }
     case LOAD_FAILED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadFailed(url);
+            loadFailed(url, webViewForMessage(message));
         break;
     }
     case LOAD_FINISHED: {
         BString title;
         if (message->FindString("url", &title) == B_OK)
-            loadFinished(title);
+            loadFinished(title, webViewForMessage(message));
         break;
     }
     case TITLE_CHANGED: {
         BString title;
         if (message->FindString("title", &title) == B_OK)
-            titleChanged(title);
+            titleChanged(title, webViewForMessage(message));
         break;
     }
     case RESIZING_REQUESTED: {
         BRect rect;
         if (message->FindRect("rect", &rect) == B_OK)
-            resizeRequested(rect.Width(), rect.Height());
+            resizeRequested(rect.Width(), rect.Height(), webViewForMessage(message));
         break;
     }
     case SET_STATUS_TEXT: {
         BString text;
         if (message->FindString("text", &text) == B_OK)
-            statusChanged(text);
+            statusChanged(text, webViewForMessage(message));
         break;
     }
     case UPDATE_NAVIGATION_INTERFACE: {
@@ -150,7 +152,7 @@ void WebViewWindow::MessageReceived(BMessage* message)
         message->FindBool("can go backward", &canGoBackward);
         message->FindBool("can go forward", &canGoForward);
         message->FindBool("can stop", &canStop);
-        navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop);
+        navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop, webViewForMessage(message));
         break;
     }
     case AUTHENTICATION_CHALLENGE: {
@@ -161,31 +163,32 @@ void WebViewWindow::MessageReceived(BMessage* message)
     case TOOLBARS_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setToolBarsVisible(flag);
+            setToolBarsVisible(flag, webViewForMessage(message));
         break;
     }
     case STATUSBAR_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setStatusBarVisible(flag);
+            setStatusBarVisible(flag, webViewForMessage(message));
         break;
     }
     case MENUBAR_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setMenuBarVisible(flag);
+            setMenuBarVisible(flag, webViewForMessage(message));
         break;
     }
     case SET_RESIZABLE: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setResizable(flag);
+            setResizable(flag, webViewForMessage(message));
         break;
     }
 
     case B_MOUSE_WHEEL_CHANGED:
-        m_webView->MessageReceived(message);
+        currentWebView()->MessageReceived(message);
         break;
+
     default:
         BWindow::MessageReceived(message);
         break;
@@ -194,71 +197,23 @@ void WebViewWindow::MessageReceived(BMessage* message)
 
 bool WebViewWindow::QuitRequested()
 {
-    // TODO: Check for modified form data and ask user for confirmation, etc.
-
     // Do this here, so WebKit tear down happens earlier.
-    m_webView->RemoveSelf();
-    delete m_webView;
-    m_webView = NULL;
+    if (WebView* view = currentWebView()) {
+        view->RemoveSelf();
+        delete view;
+    }
 
     return true;
 }
 
-void WebViewWindow::navigationRequested(const BString& url)
+// #pragma mark -
+
+void WebViewWindow::setCurrentWebView(WebView* view)
 {
+	m_webView = view;
 }
 
-void WebViewWindow::loadNegociating(const BString& url)
-{
-}
-
-void WebViewWindow::loadTransfering(const BString& url)
-{
-}
-
-void WebViewWindow::loadProgress(float progress)
-{
-}
-
-void WebViewWindow::loadFailed(const BString& url)
-{
-}
-
-void WebViewWindow::loadFinished(const BString& url)
-{
-}
-
-void WebViewWindow::titleChanged(const BString& title)
-{
-    SetTitle(title.String());
-}
-
-void WebViewWindow::resizeRequested(float width, float height)
-{
-    ResizeTo(width, height);
-}
-
-void WebViewWindow::setToolBarsVisible(bool flag)
-{
-}
-
-void WebViewWindow::setStatusBarVisible(bool flag)
-{
-}
-
-void WebViewWindow::setMenuBarVisible(bool flag)
-{
-}
-
-void WebViewWindow::setResizable(bool flag)
-{
-    if (flag)
-        SetFlags(Flags() & ~B_NOT_RESIZABLE);
-    else
-        SetFlags(Flags() | B_NOT_RESIZABLE);
-}
-
-void WebViewWindow::statusChanged(const BString& statusText)
+void WebViewWindow::navigationRequested(const BString& url, WebView* view)
 {
 }
 
@@ -266,8 +221,62 @@ void WebViewWindow::newWindowRequested(const BString& url)
 {
 }
 
+void WebViewWindow::loadNegociating(const BString& url, WebView* view)
+{
+}
+
+void WebViewWindow::loadTransfering(const BString& url, WebView* view)
+{
+}
+
+void WebViewWindow::loadProgress(float progress, WebView* view)
+{
+}
+
+void WebViewWindow::loadFailed(const BString& url, WebView* view)
+{
+}
+
+void WebViewWindow::loadFinished(const BString& url, WebView* view)
+{
+}
+
+void WebViewWindow::titleChanged(const BString& title, WebView* view)
+{
+    SetTitle(title.String());
+}
+
+void WebViewWindow::resizeRequested(float width, float height, WebView* view)
+{
+    ResizeTo(width, height);
+}
+
+void WebViewWindow::setToolBarsVisible(bool flag, WebView* view)
+{
+}
+
+void WebViewWindow::setStatusBarVisible(bool flag, WebView* view)
+{
+}
+
+void WebViewWindow::setMenuBarVisible(bool flag, WebView* view)
+{
+}
+
+void WebViewWindow::setResizable(bool flag, WebView* view)
+{
+    if (flag)
+        SetFlags(Flags() & ~B_NOT_RESIZABLE);
+    else
+        SetFlags(Flags() | B_NOT_RESIZABLE);
+}
+
+void WebViewWindow::statusChanged(const BString& statusText, WebView* view)
+{
+}
+
 void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
-    bool canGoForward, bool canStop)
+    bool canGoForward, bool canStop, WebView* view)
 {
 }
 
@@ -278,3 +287,14 @@ void WebViewWindow::updateGlobalHistory(const BString& url)
 void WebViewWindow::authenticationChallenge(BMessage* challenge)
 {
 }
+
+// #pragma mark - private
+
+WebView* WebViewWindow::webViewForMessage(const BMessage* message) const
+{
+	// Default to the current WebView if the message does not contain a view.
+	WebView* view = m_webView;
+	message->FindPointer("view", reinterpret_cast<void**>(&view));
+	return view;
+}
+

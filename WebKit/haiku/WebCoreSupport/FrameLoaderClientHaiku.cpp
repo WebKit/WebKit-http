@@ -235,14 +235,14 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
 {
     BMessage message(LOAD_FAILED);
     message.AddString("url", loader->url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 {
     BMessage message(LOAD_ONLOAD_HANDLE);
     message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveServerRedirectForProvisionalLoad()
@@ -264,7 +264,7 @@ void FrameLoaderClientHaiku::dispatchDidChangeLocationWithinPage()
 {
     BMessage message(LOAD_DOC_COMPLETED);
     message.AddString("url", m_webFrame->frame()->loader()->url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidPushStateWithinPage()
@@ -296,7 +296,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
     BMessage message(LOAD_NEGOCIATING);
     message.AddString("url", m_webFrame->frame()->loader()->provisionalDocumentLoader()->request().url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
@@ -305,21 +305,21 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 
     BMessage message(TITLE_CHANGED);
     message.AddString("title", title);
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
     BMessage message(LOAD_TRANSFERRING);
     message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 
     // We should assume first the frame has no title. If it has, then the above
     // dispatchDidReceiveTitle() will be called very soon with the correct title.
     // This properly resets the title when we navigate to a URI without a title.
     BMessage titleMessage(TITLE_CHANGED);
     titleMessage.AddString("title", "");
-    m_messenger.SendMessage(&titleMessage);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError&)
@@ -336,14 +336,14 @@ void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 {
     BMessage message(LOAD_DOC_COMPLETED);
     message.AddString("url", m_webFrame->frame()->loader()->url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishLoad()
 {
     BMessage message(LOAD_FINISHED);
     message.AddString("url", m_webFrame->frame()->loader()->url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFirstLayout()
@@ -415,7 +415,7 @@ printf("ignore (isNull)\n");
 
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
-    if (m_messenger.SendMessage(&message) != B_OK) {
+    if (dispatchMessage(message) != B_OK) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
             m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
 
@@ -459,7 +459,7 @@ printf("use (sub-frame)\n");
     }
     BMessage message(what);
     message.AddString("url", request.url().string());
-    if (m_messenger.SendMessage(&message) != B_OK || what == NEW_WINDOW_REQUESTED) {
+    if (dispatchMessage(message) != B_OK || what == NEW_WINDOW_REQUESTED) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
             m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
 
@@ -523,14 +523,14 @@ void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
     BMessage message(LOAD_PROGRESS);
     message.AddFloat("progress", m_webFrame->frame()->page()->progress()->estimatedProgress() * 100);
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::postProgressFinishedNotification()
 {
     BMessage message(LOAD_DL_COMPLETED);
     message.AddString("url", m_webFrame->frame()->loader()->url().string());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
@@ -588,7 +588,7 @@ void FrameLoaderClientHaiku::updateGlobalHistory()
 
     BMessage message(UPDATE_HISTORY);
     message.AddString("url", frame->loader()->documentLoader()->urlForHistory().prettyURL());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
@@ -909,7 +909,7 @@ void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
 
     if (m_webFrame) {
         BMessage message(JAVASCRIPT_WINDOW_OBJECT_CLEARED);
-        m_messenger.SendMessage(&message);
+        dispatchMessage(message);
     }
 }
 
@@ -944,7 +944,7 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
     message.AddBool("can go backward", page->canGoBackOrForward(-1));
     message.AddBool("can go forward", page->canGoBackOrForward(1));
     message.AddBool("can stop", loader->isLoading());
-    m_messenger.SendMessage(&message);
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues) const
@@ -952,6 +952,12 @@ void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView
     // This method can be used to do adjustments on the main frame, since those
     // are the only ones directly embedded into a WebView.
     view->setTopLevelPlatformWidget(m_webPage->webView());
+}
+
+status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
+{
+	message.AddPointer("view", m_webPage->webView());
+	return m_messenger.SendMessage(&message);
 }
 
 } // namespace WebCore
