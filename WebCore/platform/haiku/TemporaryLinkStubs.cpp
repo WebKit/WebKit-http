@@ -61,13 +61,9 @@ void getSupportedKeySizes(Vector<String>&)
 
 float userIdleTime()
 {
+	// This is for example used to determine if Pages are to be released from the PageCache...
     notImplemented();
     return 0;
-}
-
-void callOnMainThread(void (*)())
-{
-    notImplemented();
 }
 
 String KURL::fileSystemPath() const
