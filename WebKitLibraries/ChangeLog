@@ -1,3 +1,32 @@
+2010-02-18  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        WebKit on Windows needs a mechanism to listen for WM_SETTINGCHANGED messages
+        https://bugs.webkit.org/show_bug.cgi?id=35076
+
+        * win/include/WebKitSystemInterface/WebKitSystemInterface.h:
+        * win/lib/WebKitSystemInterface.lib: Updated to add wkSystemFontSmoothingChanged.
+        * win/lib/WebKitSystemInterface_debug.lib: Updated to add wkSystemFontSmoothingChanged.
+
+2010-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by NOBODY (Build fix).
+
+        Disable warnings preventing use of anonymous structs/onions -
+        don't take all my fun toys away, these are useful & awesome!
+
+        * win/tools/vsprops/common.vsprops:
+
+2010-02-11  Brian Weinstein  <bweinstein@apple.com>
+
+        Rubber-stamped by Eric Seidel.
+
+        Turn back on SVG Filters on Windows, as they were accidentally disabled and cause
+        test breakage.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
 2010-02-08  Maciej Stachowiak  <mjs@apple.com>
 
         Reviewed by Cameron Zwarich.

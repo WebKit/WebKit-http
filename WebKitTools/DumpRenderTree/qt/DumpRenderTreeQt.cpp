@@ -135,7 +135,7 @@ WebPage::WebPage(QObject* parent, DumpRenderTree* drt)
     globalSettings->setAttribute(QWebSettings::LocalContentCanAccessRemoteUrls, true);
     globalSettings->setAttribute(QWebSettings::JavascriptEnabled, true);
     globalSettings->setAttribute(QWebSettings::PrivateBrowsingEnabled, false);
-    globalSettings->setAttribute(QWebSettings::OfflineWebApplicationCacheEnabled, false);
+    globalSettings->setAttribute(QWebSettings::OfflineWebApplicationCacheEnabled, true);
 
     connect(this, SIGNAL(geometryChangeRequested(const QRect &)),
             this, SLOT(setViewGeometry(const QRect & )));
@@ -412,9 +412,22 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting()
     setlocale(LC_ALL, "");
 }
 
+static bool isWebInspectorTest(const QUrl& url)
+{
+    if (url.path().contains("inspector/"))
+        return true;
+    return false;
+}
+
 void DumpRenderTree::open(const QUrl& url)
 {
     resetToConsistentStateBeforeTesting();
+
+    if (isWebInspectorTest(m_page->mainFrame()->url()))
+        layoutTestController()->closeWebInspector();
+
+    if (isWebInspectorTest(url))
+        layoutTestController()->showWebInspector();
 
     // W3C SVG tests expect to be 480x360
     bool isW3CTest = url.toString().contains("svg/W3C-SVG-1.1");

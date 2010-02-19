@@ -46,7 +46,6 @@ class TimeRanges;
 
 class HTMLMediaElement : public HTMLElement, public MediaPlayerClient {
 public:
-    HTMLMediaElement(const QualifiedName&, Document*);
     virtual ~HTMLMediaElement();
 
     bool checkDTD(const Node* newChild);
@@ -63,7 +62,7 @@ public:
     
     MediaPlayer* player() const { return m_player.get(); }
     
-    virtual bool isVideo() const { return false; }
+    virtual bool isVideo() const = 0;
     virtual bool hasVideo() const { return false; }
     virtual bool hasAudio() const;
 
@@ -75,6 +74,9 @@ public:
     virtual bool supportsSave() const;
     
     PlatformMedia platformMedia() const;
+#if USE(ACCELERATED_COMPOSITING)
+    PlatformLayer* platformLayer() const;
+#endif
 
     void scheduleLoad();
     
@@ -174,12 +176,15 @@ public:
     bool processingUserGesture() const;
 
 protected:
+    HTMLMediaElement(const QualifiedName&, Document*);
+
     float getTimeOffsetAttribute(const QualifiedName&, float valueOnError) const;
     void setTimeOffsetAttribute(const QualifiedName&, float value);
     
     virtual void documentWillBecomeInactive();
     virtual void documentDidBecomeActive();
     virtual void mediaVolumeDidChange();
+    virtual void updatePosterImage() { }
     
     void setReadyState(MediaPlayer::ReadyState);
     void setNetworkState(MediaPlayer::NetworkState);
@@ -200,7 +205,7 @@ private: // MediaPlayerClient
     virtual void mediaPlayerSizeChanged(MediaPlayer*);
 #if USE(ACCELERATED_COMPOSITING)
     virtual bool mediaPlayerRenderingCanBeAccelerated(MediaPlayer*);
-    virtual GraphicsLayer* mediaPlayerGraphicsLayer(MediaPlayer*);
+    virtual void mediaPlayerRenderingModeChanged(MediaPlayer*);
 #endif
 
 private:

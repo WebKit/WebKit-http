@@ -50,7 +50,7 @@ PassRefPtr<UStringImpl> UStringImpl::create(const char* c)
     return result;
 }
 
-PassRefPtr<UStringImpl> UStringImpl::create(const char* c, int length)
+PassRefPtr<UStringImpl> UStringImpl::create(const char* c, unsigned length)
 {
     ASSERT(c);
 
@@ -59,12 +59,12 @@ PassRefPtr<UStringImpl> UStringImpl::create(const char* c, int length)
 
     UChar* d;
     PassRefPtr<UStringImpl> result = UStringImpl::createUninitialized(length, d);
-    for (int i = 0; i < length; i++)
+    for (unsigned i = 0; i < length; i++)
         d[i] = static_cast<unsigned char>(c[i]); // use unsigned char to zero-extend instead of sign-extend
     return result;
 }
 
-PassRefPtr<UStringImpl> UStringImpl::create(const UChar* buffer, int length)
+PassRefPtr<UStringImpl> UStringImpl::create(const UChar* buffer, unsigned length)
 {
     UChar* newBuffer;
     PassRefPtr<UStringImpl> impl = createUninitialized(length, newBuffer);
@@ -75,12 +75,14 @@ PassRefPtr<UStringImpl> UStringImpl::create(const UChar* buffer, int length)
 SharedUChar* UStringImpl::baseSharedBuffer()
 {
     ASSERT((bufferOwnership() == BufferShared)
-        || ((bufferOwnership() == BufferOwned) && !m_dataBuffer.asPtr<void*>()));
+        || ((bufferOwnership() == BufferOwned) && !m_buffer));
 
-    if (bufferOwnership() != BufferShared)
-        m_dataBuffer = UntypedPtrAndBitfield(SharedUChar::create(new OwnFastMallocPtr<UChar>(m_data)).releaseRef(), BufferShared);
+    if (bufferOwnership() != BufferShared) {
+        m_refCountAndFlags = (m_refCountAndFlags & ~s_refCountMaskBufferOwnership) | BufferShared;
+        m_bufferShared = SharedUChar::create(new OwnFastMallocPtr<UChar>(m_data)).releaseRef();
+    }
 
-    return m_dataBuffer.asPtr<SharedUChar*>();
+    return m_bufferShared;
 }
 
 SharedUChar* UStringImpl::sharedBuffer()
@@ -108,12 +110,43 @@ UStringImpl::~UStringImpl()
         if (bufferOwnership() == BufferOwned)
             fastFree(m_data);
         else if (bufferOwnership() == BufferSubstring)
-            m_dataBuffer.asPtr<UStringImpl*>()->deref();
+            m_bufferSubstring->deref();
         else {
             ASSERT(bufferOwnership() == BufferShared);
-            m_dataBuffer.asPtr<SharedUChar*>()->deref();
+            m_bufferShared->deref();
         }
     }
 }
 
+void URopeImpl::derefFibersNonRecursive(Vector<URopeImpl*, 32>& workQueue)
+{
+    unsigned length = fiberCount();
+    for (unsigned i = 0; i < length; ++i) {
+        Fiber& fiber = fibers(i);
+        if (fiber->isRope()) {
+            URopeImpl* nextRope = static_cast<URopeImpl*>(fiber);
+            if (nextRope->hasOneRef())
+                workQueue.append(nextRope);
+            else
+                nextRope->deref();
+        } else
+            static_cast<UStringImpl*>(fiber)->deref();
+    }
 }
+
+void URopeImpl::destructNonRecursive()
+{
+    Vector<URopeImpl*, 32> workQueue;
+
+    derefFibersNonRecursive(workQueue);
+    delete this;
+
+    while (!workQueue.isEmpty()) {
+        URopeImpl* rope = workQueue.last();
+        workQueue.removeLast();
+        rope->derefFibersNonRecursive(workQueue);
+        delete rope;
+    }
+}
+
+} // namespace JSC

@@ -741,9 +741,6 @@
         '../dom/StaticStringList.cpp',
         '../loader/icon/IconFetcher.cpp',
         '../loader/UserStyleSheetLoader.cpp',
-        '../platform/graphics/GraphicsLayer.cpp',
-        '../platform/graphics/RenderLayerBacking.cpp',
-        '../platform/graphics/RenderLayerCompositor.cpp',
 
         # We use a multi-process version from the WebKit API.
         '../dom/default/PlatformMessagePortChannel.cpp',
@@ -959,6 +956,7 @@
             '../platform/graphics/skia/FloatPointSkia.cpp',
             '../platform/graphics/skia/FloatRectSkia.cpp',
             '../platform/graphics/skia/GradientSkia.cpp',
+            '../platform/graphics/skia/GraphicsContext3DSkia.cpp',
             '../platform/graphics/skia/GraphicsContextSkia.cpp',
             '../platform/graphics/skia/ImageBufferSkia.cpp',
             '../platform/graphics/skia/ImageSkia.cpp',

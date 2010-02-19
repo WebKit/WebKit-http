@@ -1,3 +1,236 @@
+2010-02-18  Yury Semikhatsky  <yurys@chromium.org>
+
+        Reviewed by Pavel Feldman.
+
+        Don't truncate long lines when evaluating expressions on a breakpoint.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35102
+
+        * src/js/DebuggerAgent.js:
+
+2010-02-18  Jay Campan  <jcampan@google.com>
+
+        Reviewed by Adam Barth.
+
+        Exposing the title in WebDocument.
+        
+        https://bugs.webkit.org/show_bug.cgi?id=35058
+
+        * public/WebDocument.h:
+        * src/WebDocument.cpp:
+        (WebKit::WebDocument::title):
+
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * src/FrameLoaderClientImpl.cpp:
+        (WebKit::FrameLoaderClientImpl::detachedFromParent3):
+        (WebKit::FrameLoaderClientImpl::didTransferChildFrameToNewDocument):
+        Since Chromium's WebFrameClient is destroyed once a window is closed,
+        if Frame moves between Pages, the client of corresponding WebFrame
+        should be replaced as well.
+
+        * src/FrameLoaderClientImpl.h:
+        * src/WebFrameImpl.h:
+        (WebKit::WebFrameImpl::setClient):
+
+2010-02-17  Evan Martin  <evan@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        [chromium] expose cache-bypass flag in reload() API
+        https://bugs.webkit.org/show_bug.cgi?id=34969
+
+        This flag is used to force a reload to ignore caches.
+        (Aka "shift-reload".)
+
+        * public/WebFrame.h:
+        * src/WebFrameImpl.cpp:
+        (WebKit::WebFrameImpl::reload):
+        * src/WebFrameImpl.h:
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * src/ChromeClientImpl.cpp:
+        (WebKit::ChromeClientImpl::iconForFiles):
+        * src/ChromeClientImpl.h:
+
+2010-02-17  Kenneth Russell  <kbr@google.com>
+
+        Reviewed by Oliver Hunt.
+
+        Refactor texImage2D and texSubImage2D taking Image to use common code
+        https://bugs.webkit.org/show_bug.cgi?id=34458
+
+        Merged the Safari and Chromium code which extracts the data from
+        Image objects into common entry points on GraphicsContext3D. This
+        immediately fixes the following three problems:
+          - Chromium not implementing texSubImage2D taking Image.
+          - Safari not obeying the flipY parameter to texImage2D or
+            texSubImage2D taking Image.
+          - Safari not obeying the premultipyAlpha parameter to texImage2D
+            or texSubImage2D taking Image.
+        Added new test verifying the behavior of texImage2D and
+        texSubImage2D and the flipY parameter. The premultiplyAlpha
+        parameter can not be tested yet as the implementation is not yet
+        spec compliant. This will be fixed in a follow-on bug.
+
+        Ran all WebGL demos in demo repository on Safari and Chromium;
+        textures are now the right way up in both browsers, and
+        transparent textures in Particles demo now look correct in Safari.
+
+        * src/GraphicsContext3D.cpp:
+        (WebCore::GraphicsContext3D::texImage2D):
+        (WebCore::GraphicsContext3D::texSubImage2D):
+
+2010-02-17  Alok Priyadarshi  <alokp@chromium.org>
+
+        Reviewed by Ariya Hidayat.
+
+        Bug 34900: Implement accelerated compositing for chromium.
+        https://bugs.webkit.org/show_bug.cgi?id=34900
+
+        * features.gypi: Added WTF_USE_ACCELERATED_COMPOSITING flag.
+
+2010-02-17  Jian Li  <jianli@chromium.org>
+
+        Reviewed by Darin Fisher.
+
+        [chromium] Remove the obsolete chromium interface for handling DownloadURL.
+        https://bugs.webkit.org/show_bug.cgi?id=34982
+
+        * public/WebDragData.h:
+        * src/WebDragData.cpp:
+
+2010-02-16  James Hawkins  <jhawkins@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        [Chromium] Remove calls to releaseRef when passing PassRefPtrs to base
+        classes.  releaseRef releases the original pointer without decreasing
+        the reference count, and the base class constructor increases the
+        reference count, leading to a leak.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35000
+
+        * src/WebDocument.cpp:
+        (WebKit::WebDocument::WebDocument):
+        * src/WebElement.cpp:
+        (WebKit::WebElement::WebElement):
+        * src/WebFormElement.cpp:
+        (WebKit::WebFormElement::WebFormElement):
+        * src/WebInputElement.cpp:
+        (WebKit::WebInputElement::WebInputElement):
+
+2010-02-15  Jeremy Orlow  <jorlow@chromium.org>
+
+        Reviewed by Darin Fisher.
+
+        [Chromium] Fix StorageNamespaceProxy::copy() for test shell
+        https://bugs.webkit.org/show_bug.cgi?id=34949
+
+        Chromium passes back NULL when you call WebStorageNamespace::proxy()
+        but TestShell returns a valid object.  Both need to work via
+        the WebStorageNamespace.
+
+        * src/StorageNamespaceProxy.cpp:
+        (WebCore::StorageNamespaceProxy::copy):
+
+2010-02-14  Vangelis Kokkevis  <vangelis@chromium.org>
+
+        Reviewed by Darin Fisher.
+
+        [Chromium] Add support for the showDebugBorders setting to Chromium.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34906
+
+        * public/WebSettings.h: Add declaration for setShowDebugBorders
+        * src/WebSettingsImpl.cpp:
+        (WebKit::WebSettingsImpl::setShowDebugBorders): Add method implementation
+        * src/WebSettingsImpl.h: Added declaration for setShowDebugBorders
+
+2010-02-11  Darin Fisher  <darin@chromium.org>
+
+        Reviewed by Jeremy Orlow.
+
+        Introduce WebCookieJar, and provide for a frame specific cookie jar.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34878
+
+        * WebKit.gyp:
+        * public/WebCookieJar.h: Added.
+        * public/WebFrameClient.h:
+        (WebKit::WebFrameClient::cookieJar):
+        * public/WebKitClient.h:
+        (WebKit::WebKitClient::cookieJar):
+        (WebKit::WebKitClient::setCookies):
+        (WebKit::WebKitClient::cookies):
+        (WebKit::WebKitClient::rawCookies):
+        (WebKit::WebKitClient::deleteCookie):
+        (WebKit::WebKitClient::cookiesEnabled):
+        * src/ChromiumBridge.cpp:
+        (WebCore::getCookieJar):
+        (WebCore::ChromiumBridge::setCookies):
+        (WebCore::ChromiumBridge::cookies):
+        (WebCore::ChromiumBridge::rawCookies):
+        (WebCore::ChromiumBridge::deleteCookie):
+        (WebCore::ChromiumBridge::cookiesEnabled):
+
+2010-02-12  Pavel Feldman  <pfeldman@chromium.org>
+
+        Reviewed by David Levin.
+
+        Chromium: provide theme overrides for Chromium devtools on Mac.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34856
+
+        * src/js/devTools.css:
+
+2010-02-12  Jeremy Orlow  <jorlow@chromium.org>
+
+        Reviewed by Darin Fisher.
+
+        [Chromium] Add a blockedByPolicy output to WebStorageArea::setItem.
+        https://bugs.webkit.org/show_bug.cgi?id=34897
+
+        * public/WebStorageArea.h:
+        (WebKit::WebStorageArea::setItem):
+        * src/WebStorageAreaImpl.cpp:
+        (WebKit::WebStorageAreaImpl::setItem):
+        * src/WebStorageAreaImpl.h:
+
+2010-02-11  Jeremy Orlow  <jorlow@chromium.org>
+
+        Reviewed by David Levin.
+
+        [Chromium] Add ENABLE_RUBY to the feature defines gypi
+        https://bugs.webkit.org/show_bug.cgi?id=34841
+
+        * features.gypi:
+
+2010-02-12  Yury Semikhatsky  <yurys@chromium.org>
+
+        Reviewed by Pavel Feldman.
+
+        Chromium: Web Inspector on an element in a page where JS is blocked crashes the renderer
+
+        https://bugs.webkit.org/show_bug.cgi?id=34890
+
+        * src/DebuggerAgentImpl.cpp:
+        (WebKit::DebuggerAgentImpl::createUtilityContext):
+
 2010-02-11  Mikhail Naganov  <mnaganov@chromium.org>
 
         Reviewed by Pavel Feldman.

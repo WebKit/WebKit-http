@@ -1,3 +1,672 @@
+2010-02-18  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Particularly constructed WebFrames can try to access a null HistoryItem
+        <rdar://problem/7638892> and https://bugs.webkit.org/show_bug.cgi?id=35063
+
+        Add the specific ability to test this API pattern. 
+
+        For now only on Mac, perhaps on the main Windows port later, probably not relevant for other ports.
+
+        * DumpRenderTree/LayoutTestController.cpp:
+        (apiTestNewWindowDataLoadBaseURLCallback):
+        (LayoutTestController::staticFunctions):
+        * DumpRenderTree/LayoutTestController.h:
+
+        * DumpRenderTree/mac/LayoutTestControllerMac.mm:
+        (-[APITestDelegate initWithCompletionCondition:]):
+        (-[APITestDelegate webView:didFailLoadWithError:forFrame:]):
+        (-[APITestDelegate webView:didFailProvisionalLoadWithError:forFrame:]):
+        (-[APITestDelegate webView:didFinishLoadForFrame:]):
+        (LayoutTestController::apiTestNewWindowDataLoadBaseURL): Create a WebView, do a loadData: in its
+          mainFrame, and synchronously wait for main load completion.
+
+        * DumpRenderTree/win/LayoutTestControllerWin.cpp:
+        (LayoutTestController::apiTestNewWindowDataLoadBaseURL):
+        * DumpRenderTree/wx/LayoutTestControllerWx.cpp:
+        (LayoutTestController::apiTestNewWindowDataLoadBaseURL):
+        * DumpRenderTree/gtk/LayoutTestControllerGtk.cpp:
+        (LayoutTestController::apiTestNewWindowDataLoadBaseURL):
+
+2010-02-18  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Eric Seidel.
+
+        Teach resolve-ChangeLogs to act as a merge-driver for Git
+
+        https://bugs.webkit.org/show_bug.cgi?id=28721
+
+        To enable automatic merging of ChangeLog files, use the following command:
+
+        git config merge.changelog.driver "resolve-ChangeLogs --merge-driver %O %A %B"
+
+        The driver always works in "downstream" merge mode, meaning
+        it will always put the user's changelog entries on top.
+
+        * Scripts/resolve-ChangeLogs:
+
+2009-12-05  Gustavo Noronha Silva  <gns@gnome.org>
+
+        Reviewed by Eric Seidel.
+
+        Enable running of GTK+ API tests.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        * Scripts/run-gtk-tests: Added.
+
+2010-02-18  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        debug-safari doesn't pass --debug option to gdb-safari on MacOSX
+        https://bugs.webkit.org/show_bug.cgi?id=34411
+
+        * Scripts/webkitdirs.pm:
+
+2010-02-18  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        run-chromium-webkit-tests --platform=mac-leopard needs to run build-dumprendertree
+        https://bugs.webkit.org/show_bug.cgi?id=35053
+
+        * Scripts/webkitpy/layout_tests/port/base.py: Add script_path() function for finding scripts.
+        * Scripts/webkitpy/layout_tests/port/chromium.py: Remove unused argument.
+        * Scripts/webkitpy/layout_tests/port/mac.py:
+         - Make sure that calling webkit-build-directory works even if Scripts/ is not in the user's path.
+         - Call build-dumprendertree (and make sure it succeeds) before running the tests.
+
+2010-02-16  Chris Jerdonek  <cjerdonek@webkit.org>
+
+        Reviewed by Shinichiro Hamaji.
+
+        Refactored check-webkit-style's ProcessorOptions class into two
+        classes. This revision contains no new functionality.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34674
+
+        Divided the ProcessorOptions class into a CommandOptionValues
+        class (the result of parsing the command-line options) and
+        a StyleCheckerConfiguration class (which configures the main
+        StyleChecker).
+
+        * Scripts/check-webkit-style:
+          - Updated main() to convert the parsed command option values
+            to a StyleCheckConfiguration instance prior to constructing
+            a StyleChecker.
+
+        * Scripts/webkitpy/style/checker.py:
+          - Added check_webkit_style_configuration() to convert a
+            CommandOptionValues instance into a StyleCheckerConfiguration
+            instance.
+          - Renamed the ProcessorOptions class to CommandOptionValues.
+          - In the CommandOptionValues class--
+            - Replaced the filter_configuration attribute with the
+              simpler filter_rules attribute.
+            - Removed the max_reports_per_error attribute.
+            - Moved the is_reportable() method to the new
+              StyleCheckerConfiguration class.
+          - Removed the base_filter_rules attribute from the
+            DefaultCommandOptionValues class.
+          - In the ArgumentParser class--
+            - Added base_filter_rules to the constructor.
+            - Changed the parse() method to return a CommandOptionValues
+              instance instead of a ProcessorOptions instance.
+          - Created a StyleCheckerConfiguration class.
+            - Added the data attributes max_reports_per_category,
+              stderr_write, and verbosity.
+            - Added is_reportable() (moved from the ProcessorOptions
+              class) and write_style_error() (moved from the
+              DefaultStyleErrorHandler class).
+          - In the StyleChecker class--
+            - Replaced the ProcessorOptions options attribute with the
+              StyleCheckerConfiguration _configuration attribute.
+            - Removed the _stderr_write attribute.
+
+        * Scripts/webkitpy/style/checker_unittest.py:
+          - Updated the existing unit test classes as necessary.
+          - Added a StyleCheckerConfigurationTest class.
+
+        * Scripts/webkitpy/style/error_handlers.py:
+          - Updated the DefaultStyleErrorHandler class to accept a
+            StyleCheckerConfiguration instance instead of a ProcessorOptions
+            instance and an stderr_write method.
+
+        * Scripts/webkitpy/style/error_handlers_unittest.py:
+          - Updated the unit test classes as necessary.
+
+        * Scripts/webkitpy/style/filter.py:
+          - Addressed the FIXME in the FilterConfiguration class to change
+            the user_rules attribute to _user_rules (since it is now
+            accessed only internally).
+
+        * Scripts/webkitpy/style/filter_unittest.py:
+          - Updated to reflect the change from user_rules to _user_rules.
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Share the DRT values maxViewWidth/Height among ports
+        https://bugs.webkit.org/show_bug.cgi?id=34474
+
+        * DumpRenderTree/LayoutTestController.cpp:
+        (pageNumberForElementByIdCallback):
+        * DumpRenderTree/LayoutTestController.h:
+        (LayoutTestController::maxViewWidth):
+        (LayoutTestController::maxViewHeight):
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        (runTest):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (createWebViewAndOffscreenWindow):
+        (sizeWebViewForCurrentTest):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dump):
+        (createWebViewAndOffscreenWindow):
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        [Win] Implement test functions for printing
+        https://bugs.webkit.org/show_bug.cgi?id=34570
+
+        * DumpRenderTree/win/LayoutTestControllerWin.cpp:
+        (LayoutTestController::pageNumberForElementById):
+        (LayoutTestController::numberOfPages):
+
+2010-02-17  Fumitoshi Ukai  <ukai@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        websocket/tests/cookies/httponly-cookie.pl fails every time under run-chromium-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=35001
+
+        * Scripts/webkitpy/layout_tests/port/websocket_server.py: add -x flag to run pywebsocket.
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        check-webkit-style: Misses variables that contain underscores.
+        https://bugs.webkit.org/show_bug.cgi?id=33724
+
+        - Check identifiers whose types are unsigned.
+        - Check bitfields properly.
+
+        * Scripts/webkitpy/style/processors/cpp.py:
+        * Scripts/webkitpy/style/processors/cpp_unittest.py:
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        check-webkit-style should report the number of files checked
+        https://bugs.webkit.org/show_bug.cgi?id=34971
+
+        * Scripts/check-webkit-style:
+        * Scripts/webkitpy/style/checker.py:
+        * Scripts/webkitpy/style/checker_unittest.py:
+
+2010-02-17  Diego Gonzalez  <diego.gonzalez@openbossa.org>
+
+        Reviewed by Ariya Hidayat.
+
+        Make possible Qt DRT to get total number of pages to be printed
+
+        LayoutTests:
+            printing/numberOfPages.html
+
+        [Qt] DRT: Get total number of pages to be printed
+        https://bugs.webkit.org/show_bug.cgi?id=34955
+
+        * DumpRenderTree/qt/LayoutTestControllerQt.cpp:
+        (LayoutTestController::numberOfPages):
+        * DumpRenderTree/qt/LayoutTestControllerQt.h:
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Update to use new property name.
+
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+
+2010-02-17  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        Reviewed by Ariya Hidayat.
+
+        Remove some warnings seen when building Qt
+        https://bugs.webkit.org/show_bug.cgi?id=35017
+
+        Using a machine without the needed tools to build WebKit leads to
+        several errors and warnings.
+
+        * Scripts/webkitdirs.pm: Refactored the code testing the command's
+        presence into a commandExists routine. While doing so removed, stderr
+        output as it usually does not give anything more than our message. Also
+        added a Qt check for qmake that was missing.
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Rubber-stamped by Gustavo Noronha.
+
+        Disable Java by default in DRT.
+
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+
+2010-02-15  Chris Jerdonek  <cjerdonek@webkit.org>
+
+        Reviewed by Shinichiro Hamaji.
+
+        Some minor check-webkit-style code clean-ups.  This revision
+        contains no new functionality.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34932
+
+        * Scripts/check-webkit-style:
+          - Replaced the call to webkit_argument_defaults() with a
+            default parameter in the ArgumentParser constructor.
+
+        * Scripts/webkitpy/style/checker.py:
+          - Removed the WEBKIT prefix from the default global variables.
+          - Prefixed several of the global variables with an underscore
+            to reflect that they are used internally.
+          - Renamed _DEFAULT_FILTER_RULES to _BASE_FILTER_RULES.
+          - Addressed a FIXME by changing the _PATH_RULES_SPECIFIER
+            configuration from list-tuple pairs to list-list pairs.
+          - Renamed style_categories() to _all_categories().
+          - Renamed webkit_argument_defaults() to _check_webkit_style_defaults().
+          - Renamed the ArgumentDefaults class to DefaultCommandOptionValues.
+          - In the ArgumentParser class--
+            - Renamed the doc_print attribute to stderr_write.
+            - Other minor updates.
+
+        * Scripts/webkitpy/style/checker_unittest.py:
+          - Updated the import statements and unit test classes as necessary.
+          - Added assertions to test _PATH_RULES_SPECIFIER more fully.
+
+        * Scripts/webkitpy/style/error_handlers_unittest.py:
+          - Updated the unit test classes as necessary.
+          - Changed StyleErrorHandlerTestBase to store a list of error
+            messages rather than just the last one.
+
+        * Scripts/webkitpy/style/filter.py:
+          - Altered FilterConfiguration._path_rules_from_path()
+            to convert the path_rules list to a tuple.
+
+        * Scripts/webkitpy/style/filter_unittest.py:
+          - Updated the unit tests to reflect the change from tuples to
+            lists in the _PATH_RULES_SPECIFIER configuration variable.
+
+2010-02-16  Mark Rowe  <mrowe@apple.com>
+
+        Let's not check garbage in to common build scripts and hose the world now eh guys?
+
+        * Scripts/webkitdirs.pm:
+
+2010-02-16  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        re-factor Skipped list parsing code into multiple functions and unit test it
+        https://bugs.webkit.org/show_bug.cgi?id=34986
+
+        * Scripts/test-webkitpy: Add new unit test.
+        * Scripts/webkitpy/layout_tests/__init__.py: Copied from WebKitTools/QueueStatusServer/filters/__init__.py.
+        * Scripts/webkitpy/layout_tests/port/mac.py: Split parsing function into multiple functions for testing.
+        * Scripts/webkitpy/layout_tests/port/mac_unittest.py: Added.
+
+2010-02-16  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Enable 'auto-resize-window' in our DRT.
+
+        * DumpRenderTree/gtk/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+
+2010-02-15  Martin Robinson  <mrobinson@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        check-webkit-style should not complain about NULL sentinel in calls to g_strconcat and g_strjoin
+        https://bugs.webkit.org/show_bug.cgi?id=34834
+
+        * Scripts/webkitpy/style/processors/cpp.py:
+        * Scripts/webkitpy/style/processors/cpp_unittest.py:
+
+2010-02-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Kevin Decker.
+
+        <rdar://problem/7130641> Browser objects identity is not preserved by Safari
+
+        * DumpRenderTree/TestNetscapePlugIn.subproj/PluginObject.cpp:
+        (pluginInvoke): Added methods for checking object identity (via refcount).
+
+2010-02-15  Robert Hogan  <robert@roberthogan.net>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] DRT: Support evaluateInWebInspector(), setTimelineProfilingEnabled().
+
+        Support LayoutTestController.evaluateInWebInspector(), setTimelineProfilingEnabled() in Qt DRT.
+
+        https://bugs.webkit.org/show_bug.cgi?id=33096
+
+        This allows the following tests to pass:
+
+        inspector/console-format-collections.html
+        inspector/styles-iframe.html
+        inspector/syntax-highlight-css.html
+        inspector/syntax-highlight-javascript.html
+        inspector/timeline-enum-stability.html
+        inspector/timeline-layout.html
+        inspector/timeline-mark-timeline.html
+        inspector/timeline-paint.html
+        inspector/timeline-parse-html.html
+        inspector/timeline-recalculate-styles.html
+        inspector/timeline-script-tag-1.html
+        inspector/timeline-script-tag-2.html
+        inspector/timeline-trivial.html
+        inspector/cookie-resource-match.html
+        inspector/elements-img-tooltip.html
+        inspector/elements-panel-selection-on-refresh.html
+        inspector/inspected-objects-not-overriden.html
+        inspector/timeline-event-dispatch.html
+        inspector/timeline-network-resource.html
+        inspector/elements-panel-rewrite-href.html
+        inspector/console-dir.html
+        inspector/console-dirxml.html
+        inspector/console-format.html
+        inspector/console-tests.html
+        inspector/elements-panel-structure.html
+        inspector/evaluate-in-frontend.html
+        inspector/console-clear.html
+
+        * DumpRenderTree/qt/DumpRenderTreeQt.cpp:
+        (WebCore::DumpRenderTree::resetToConsistentStateBeforeTesting):
+        (WebCore::isWebInspectorTest):
+        (WebCore::DumpRenderTree::open):
+        * DumpRenderTree/qt/DumpRenderTreeQt.h:
+        (WebCore::DumpRenderTree::display):
+        * DumpRenderTree/qt/LayoutTestControllerQt.cpp:
+        (LayoutTestController::closeWebInspector):
+        (LayoutTestController::showWebInspector):
+        (LayoutTestController::evaluateInWebInspector):
+        (LayoutTestController::setTimelineProfilingEnabled):
+        (LayoutTestController::display):
+        * DumpRenderTree/qt/LayoutTestControllerQt.h:
+
+2010-02-14  Dirk Pranke  <dpranke@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Update rebaseline-chromium-webkit-tests to work with the new code
+        structure (port objects instead of path_utils and platform_utils).
+
+        Added a path_to_test_expectations_file() to the Port interface.
+  
+        Fixed a bug in the chromium_* platform implementations where the
+        'target' option was assumed to be set.
+
+        * Scripts/rebaseline-chromium-webkit-tests:
+        * Scripts/webkitpy/layout_tests/layout_package/test_expectations.py:
+        * Scripts/webkitpy/layout_tests/port/base.py:
+        * Scripts/webkitpy/layout_tests/port/chromium.py:
+        * Scripts/webkitpy/layout_tests/port/chromium_linux.py:
+        * Scripts/webkitpy/layout_tests/port/chromium_mac.py:
+        * Scripts/webkitpy/layout_tests/port/chromium_win.py:
+        * Scripts/webkitpy/layout_tests/port/test.py:
+        * Scripts/webkitpy/layout_tests/rebaseline_chromium_webkit_tests.py:
+
+2010-02-14  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        webkit-build-directory misuses terms
+        https://bugs.webkit.org/show_bug.cgi?id=34822
+
+        * Scripts/webkit-build-directory:
+         - Add --top-level and --configuration options and make using one of them required.
+        * Scripts/webkitpy/layout_tests/port/mac.py:
+         - Use --top-level instead of --base.
+
+2010-02-14  Chang Shu  <Chang.Shu@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] Enable appcache feature.
+        https://bugs.webkit.org/show_bug.cgi?id=34713
+
+        Re-land r54543 without the change in DumpRenderTree/qt/main.cpp.
+        Persistent storage for AppCache is already initialized in
+        DumpRenderTreeQt.cpp.
+
+        * DumpRenderTree/qt/DumpRenderTreeQt.cpp:
+        (WebCore::WebPage::WebPage):
+
+2010-02-12  Chang Shu  <Chang.Shu@nokia.com>
+
+        Not Reviewed.
+
+        Change case of my email address as a work-around for the following bug.
+        https://bugs.webkit.org/show_bug.cgi?id=34717
+
+        * Scripts/webkitpy/committers.py:
+
+2010-02-12  Darin Adler  <darin@apple.com>
+
+        Ignore compiled Python in more of webkitpy.
+
+        * Scripts/webkitpy/style/processors: Added property svn:ignore.
+
+2010-02-12  Diego Gonzalez  <diego.gonzalez@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Qt DRT now dump the frame loader callbacks when LayoutTestController()
+        method is called.
+
+        LayoutTests:
+            http/tests/security/mixedContent/data-url-script-in-iframe.html
+            http/tests/security/mixedContent/empty-url-plugin-in-frame.html
+            http/tests/security/mixedContent/insecure-css-in-iframe.html
+            http/tests/security/mixedContent/insecure-iframe-in-iframe.html
+            http/tests/security/mixedContent/insecure-image-in-iframe.html
+            http/tests/security/mixedContent/insecure-plugin-in-iframe.html
+            http/tests/security/mixedContent/insecure-script-in-iframe.html
+            http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe.html
+            http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe.html
+
+        [Qt] Make possible Qt DRT dump frame load callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=34702
+
+        * DumpRenderTree/qt/LayoutTestControllerQt.cpp:
+        (LayoutTestController::reset):
+        (LayoutTestController::dumpFrameLoadCallbacks):
+        * DumpRenderTree/qt/LayoutTestControllerQt.h:
+
+2010-02-12  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Antti Koivisto.
+
+        Make QtLauncher somewhat useable on S60.
+
+        Show the window fullscreen to make scrollbars appear, resize
+        the toolbar buttons to 16x16 to give more screen space to
+        web content and moved the location lineedit into a separate
+        line.
+
+        * QtLauncher/main.cpp:
+        (LauncherWindow::LauncherWindow):
+        * QtLauncher/mainwindow.cpp:
+        (MainWindow::buildUI):
+
+2010-02-12  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Support frameset flattening
+        https://bugs.webkit.org/show_bug.cgi?id=32717
+
+        Add FrameSet Flattening support to Mac DRT.
+
+        * DumpRenderTree/gtk/LayoutTestControllerGtk.cpp:
+        (LayoutTestController::setFrameSetFlatteningEnabled):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetDefaultsToConsistentValues):
+        * DumpRenderTree/win/LayoutTestControllerWin.cpp:
+        (LayoutTestController::setXSSAuditorEnabled):
+        * DumpRenderTree/wx/LayoutTestControllerWx.cpp:
+        (LayoutTestController::setFrameSetFlatteningEnabled):
+        * DumpRenderTree/LayoutTestController.cpp:
+        (setFrameSetFlatteningEnabledCallback):
+        (LayoutTestController::staticFunctions):
+        * DumpRenderTree/LayoutTestController.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetDefaultsToConsistentValues):
+        * DumpRenderTree/mac/LayoutTestControllerMac.mm:
+        (LayoutTestController::setFrameSetFlatteningEnabled):
+
+2010-02-12  Dirk Pranke  <dpranke@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Fix typos in driver_test.py 
+
+        https://bugs.webkit.org/show_bug.cgi?id=34810
+
+        * Scripts/webkitpy/layout_tests/driver_test.py:
+
+2010-02-12  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Make it possible to toggle the use of QGraphicsView in QtLauncher at run-time
+        https://bugs.webkit.org/show_bug.cgi?id=34844
+
+        * QtLauncher/main.cpp:
+        (LauncherWindow::LauncherWindow):
+        (LauncherWindow::initializeView):
+        (LauncherWindow::setupUI):
+        * QtLauncher/webview.cpp:
+        (WebViewGraphicsBased::WebViewGraphicsBased):
+
+2010-02-11  Fumitoshi Ukai  <ukai@chromium.org>
+
+        Reviewed by Alexey Proskuryakov.
+
+        WebSocket ignores HttpOnly cookies, but should use in Handshake.
+        https://bugs.webkit.org/show_bug.cgi?id=34289
+
+        Update pywebsocket to 0.4.8, which supports cgi directories.
+        run-webkit-tests and run-webkit-websocketserver will run
+        pywebsocket, specifying /websocket/test/cookies as cgi directory.
+
+        * Scripts/run-webkit-tests:
+        * Scripts/run-webkit-websocketserver:
+        * pywebsocket/mod_pywebsocket/standalone.py:
+        * pywebsocket/setup.py:
+
+2010-02-11  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        Reviewed by Dan Bernstein.
+
+        [Mac] Duplicated setXSSAuditorEnabled preference at Mac DRT
+        https://bugs.webkit.org/show_bug.cgi?id=34798
+
+        Remove duplicated setXSSAuditorEnabled preference at Mac DRT
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetDefaultsToConsistentValues):
+
+2010-02-11  Eric Seidel  <eric@webkit.org>
+
+        No review, build fix only.
+
+        webkitdirs.pm has a crazy amount of duplicated feature detection code
+        https://bugs.webkit.org/show_bug.cgi?id=34869
+
+        * Scripts/build-webkit: Fix typo which broke bots.
+
+2010-02-11  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        webkitdirs.pm has a crazy amount of duplicated feature detection code
+        https://bugs.webkit.org/show_bug.cgi?id=34869
+
+        * Scripts/build-webkit: Use the new hotness.
+        * Scripts/run-webkit-tests: ditto
+        * Scripts/webkitdirs.pm: Remove a bunch of bad duplicate code.
+        * Scripts/webkitperl/features.pm: Added.
+         - Simplified the 10 methods in webkitdirs.pm into 2 exported methods in this new file.
+
+2010-02-11  Daniel Bates  <dbates@rim.com>
+
+        Reviewed by Adam Barth.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34830
+
+        Makes method User.prompt static and adds the parameter repeat
+        to prompt the user up to repeat times.
+
+        * Scripts/test-webkitpy:
+        * Scripts/webkitpy/bugzilla.py: Substituted method User.prompt for method raw_input.
+        * Scripts/webkitpy/commands/upload.py: Ditto
+        * Scripts/webkitpy/credentials.py: Ditto
+        * Scripts/mock_bugzillatool.py: Updated prototype of MockUser.prompt to match User.prompt.
+        * Scripts/webkitpy/user.py: Made method prompt static and added parameter repeat.
+        * Scripts/webkitpy/user_unittest.py: Added.
+
+2010-02-10  Yuzo Fujishima  <yuzo@google.com>
+
+        Reviewed by Darin Adler.
+
+        Allow underscored identifiers in CSSParser.cpp
+
+        Flex (http://flex.sourceforge.net/) uses identifiers named as yy_*.
+        WebCore/css/CSSParser.cpp needs to handle some such identifiers.
+        We should relax the style rule for the file to allow underscored identifiers.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34787
+
+        * Scripts/webkitpy/style/checker.py:
+
+2010-02-11  Eric Seidel  <eric@webkit.org>
+
+        Rubber-stamped by Adam Barth.
+
+        Remove DrawTest, the application I used when bringing up SVG support on the Mac.
+        The code hasn't been touched (or used) in years.  No sense in keeping it in trunk.
+
+        * Scripts/build-drawtest: Removed.
+        * Scripts/run-drawtest: Removed.
+        * DrawTest: Removed.
+
+2010-02-11  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        Need a command to clear r+ on obsolete patches in the pending-commit queue.
+        https://bugs.webkit.org/show_bug.cgi?id=34863
+
+        Unfortunately our http://webkit.org/pending-commit bugzilla query is not
+        smart enough to ignore obsolete patches, so bugs show up there which are
+        still open, but do not have patches ready for landing on them.
+        This new command "clean-pending-commit" will remove r+ from obsolete patches
+        in the pending-commit list.
+
+        * Scripts/test-webkitpy: Add grammar_unittest
+        * Scripts/webkitpy/commands/upload.py: Add clean-pending-commit and make assign-to-committer ignore cq+'d patches.
+        * Scripts/webkitpy/grammar.py: Add join_with_separators
+        * Scripts/webkitpy/grammar_unittest.py: Added.
+
 2010-02-11  Eric Seidel  <eric@webkit.org>
 
         Reviewed by Adam Barth.

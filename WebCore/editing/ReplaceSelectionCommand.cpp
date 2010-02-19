@@ -468,6 +468,17 @@ void ReplaceSelectionCommand::negateStyleRulesThatAffectAppearance()
                 e->getInlineStyleDecl()->setProperty(CSSPropertyDisplay, CSSValueInline);
             if (e->renderer() && e->renderer()->style()->floating() != FNONE)
                 e->getInlineStyleDecl()->setProperty(CSSPropertyFloat, CSSValueNone);
+
+            // Undo the effects of page zoom if we have an absolute font size.  When we copy, we
+            // compute the new font size as an absolute size so pasting will cause the zoom to be
+            // applied twice.
+            if (e->renderer() && e->renderer()->style() && e->renderer()->style()->effectiveZoom() != 1.0
+                && e->renderer()->style()->fontDescription().isAbsoluteSize()) {
+                float newSize = e->renderer()->style()->fontDescription().specifiedSize() / e->renderer()->style()->effectiveZoom();
+                ExceptionCode ec = 0;
+                e->style()->setProperty(CSSPropertyFontSize, String::number(newSize), false, ec);
+                ASSERT(!ec);
+            }
         }
         if (node == m_lastLeafInserted)
             break;
@@ -638,10 +649,11 @@ void ReplaceSelectionCommand::handleStyleSpans()
     }
     
     // There are non-redundant styles on sourceDocumentStyleSpan, but there is no
-    // copiedRangeStyleSpan.  Clear the redundant styles from sourceDocumentStyleSpan
-    // and return.
+    // copiedRangeStyleSpan.  Remove the span, because it could be surrounding block elements,
+    // and apply the styles to its children.
     if (sourceDocumentStyle->length() > 0 && !copiedRangeStyleSpan) {
-        setNodeAttribute(static_cast<Element*>(sourceDocumentStyleSpan), styleAttr, sourceDocumentStyle->cssText());
+        copyStyleToChildren(sourceDocumentStyleSpan, sourceDocumentStyle.get()); 
+        removeNodePreservingChildren(sourceDocumentStyleSpan);
         return;
     }
     
@@ -671,6 +683,34 @@ void ReplaceSelectionCommand::handleStyleSpans()
     // FIXME: If font-family:-webkit-monospace is non-redundant, then the font-size should stay, even if it
     // appears redundant.
     setNodeAttribute(static_cast<Element*>(copiedRangeStyleSpan), styleAttr, copiedRangeStyle->cssText());
+}
+
+// Take the style attribute of a span and apply it to it's children instead.  This allows us to
+// convert invalid HTML where a span contains block elements into valid HTML while preserving
+// styles.
+void ReplaceSelectionCommand::copyStyleToChildren(Node* parentNode, const CSSMutableStyleDeclaration* parentStyle)
+{
+    ASSERT(parentNode->hasTagName(spanTag));
+    for (Node* childNode = parentNode->firstChild(); childNode; childNode = childNode->nextSibling()) {
+        if (childNode->isTextNode() || !isBlock(childNode) || childNode->hasTagName(preTag)) {
+            // In this case, put a span tag around the child node.
+            RefPtr<Node> newSpan = parentNode->cloneNode(false);
+            setNodeAttribute(static_cast<Element*>(newSpan.get()), styleAttr, parentStyle->cssText());
+            insertNodeAfter(newSpan, childNode);
+            ExceptionCode ec = 0;
+            newSpan->appendChild(childNode, ec);
+            ASSERT(!ec);
+            childNode = newSpan.get();
+        } else if (childNode->isHTMLElement()) {
+            // Copy the style attribute and merge them into the child node.  We don't want to override
+            // existing styles, so don't clobber on merge.
+            RefPtr<CSSMutableStyleDeclaration> newStyle = parentStyle->copy();
+            HTMLElement* childElement = static_cast<HTMLElement*>(childNode);
+            RefPtr<CSSMutableStyleDeclaration> existingStyles = childElement->getInlineStyleDecl()->copy();
+            existingStyles->merge(newStyle.get(), false);
+            setNodeAttribute(childElement, styleAttr, existingStyles->cssText());
+        }
+    }
 }
 
 void ReplaceSelectionCommand::mergeEndIfNeeded()
@@ -871,7 +911,8 @@ void ReplaceSelectionCommand::doApply()
     fragment.removeNode(refNode);
 
     Node* blockStart = enclosingBlock(insertionPos.node());
-    if (isListElement(refNode.get()) && blockStart->renderer()->isListItem())
+    if ((isListElement(refNode.get()) || (isStyleSpan(refNode.get()) && isListElement(refNode->firstChild())))
+        && blockStart->renderer()->isListItem())
         refNode = insertAsListItems(refNode, blockStart, insertionPos);
     else
         insertNodeAtAndUpdateNodesInserted(refNode, insertionPos);
@@ -1122,15 +1163,15 @@ void ReplaceSelectionCommand::insertNodeBeforeAndUpdateNodesInserted(PassRefPtr<
 
 // If the user is inserting a list into an existing list, instead of nesting the list,
 // we put the list items into the existing list.
-Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<Node> listElement, Node* insertionNode, const Position& p)
+Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<Node> listElement, Node* insertionBlock, const Position& insertPos)
 {
     while (listElement->hasChildNodes() && isListElement(listElement->firstChild()) && listElement->childNodeCount() == 1)
         listElement = listElement->firstChild();
 
-    bool isStart = isStartOfParagraph(p);
-    bool isEnd = isEndOfParagraph(p);
+    bool isStart = isStartOfParagraph(insertPos);
+    bool isEnd = isEndOfParagraph(insertPos);
 
-    Node* lastNode = insertionNode;
+    Node* lastNode = insertionBlock;
     while (RefPtr<Node> listItem = listElement->firstChild()) {
         ExceptionCode ec = 0;
         listElement->removeChild(listItem.get(), ec);

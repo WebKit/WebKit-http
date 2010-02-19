@@ -78,10 +78,12 @@ public:
     virtual void setShouldPaintCustomScrollbars(bool) = 0;
     virtual void setDatabasesEnabled(bool) = 0;
     virtual void setAllowUniversalAccessFromFileURLs(bool) = 0;
+    virtual void setAllowFileAccessFromFileURLs(bool) = 0;
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded() = 0;
     virtual void setOfflineWebApplicationCacheEnabled(bool) = 0;
     virtual void setExperimentalWebGLEnabled(bool) = 0;
     virtual void setGeolocationEnabled(bool) = 0;
+    virtual void setShowDebugBorders(bool) = 0;
 
 protected:
     ~WebSettings() { }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, 2009, Google Inc. All rights reserved.
+ * Copyright (c) 2010, Google Inc. All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -53,6 +53,8 @@ namespace WebCore {
     class Cursor;
     class Document;
     class Frame;
+    class GeolocationServiceBridge;
+    class GeolocationServiceChromium;
     class GraphicsContext;
     class Image;
     class IntRect;
@@ -83,11 +85,12 @@ namespace WebCore {
         static void clipboardWriteImage(NativeImagePtr, const KURL&, const String&);
 
         // Cookies ------------------------------------------------------------
-        static void setCookies(const KURL& url, const KURL& firstPartyForCookies, const String& value);
-        static String cookies(const KURL& url, const KURL& firstPartyForCookies);
-        static bool rawCookies(const KURL& url, const KURL& firstPartyForCookies, Vector<Cookie>*);
-        static void deleteCookie(const KURL& url, const String& cookieName);
-        static bool cookiesEnabled(const KURL& url, const KURL& firstPartyForCookies);
+        static void setCookies(const Document*, const KURL&, const String& value);
+        static String cookies(const Document*, const KURL&);
+        static String cookieRequestHeaderFieldValue(const Document*, const KURL&);
+        static bool rawCookies(const Document*, const KURL& url, Vector<Cookie>&);
+        static void deleteCookie(const Document*, const KURL& url, const String& cookieName);
+        static bool cookiesEnabled(const Document*);
 
         // DNS ----------------------------------------------------------------
         static void prefetchDNS(const String& hostname);
@@ -115,6 +118,9 @@ namespace WebCore {
 
         // Forms --------------------------------------------------------------
         static void notifyFormStateChanged(const Document*);
+
+        // Geolocation --------------------------------------------------------
+        static GeolocationServiceBridge* createGeolocationServiceBridge(GeolocationServiceChromium*);
 
         // HTML5 DB -----------------------------------------------------------
 #if ENABLE(DATABASE)

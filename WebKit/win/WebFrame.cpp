@@ -86,6 +86,7 @@
 #include <WebCore/PluginInfoStore.h>
 #include <WebCore/PluginDatabase.h>
 #include <WebCore/PluginView.h>
+#include <WebCore/PrintContext.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceHandleWin.h>
 #include <WebCore/ResourceRequest.h>
@@ -849,6 +850,44 @@ HRESULT STDMETHODCALLTYPE WebFrame::counterValueForElementById(
     return S_OK;
 }
 
+HRESULT STDMETHODCALLTYPE WebFrame::pageNumberForElementById(
+    /* [in] */ BSTR id,
+    /* [in] */ float pageWidthInPixels,
+    /* [in] */ float pageHeightInPixels,
+    /* [retval][out] */ int* result)
+{
+    if (!result)
+        return E_POINTER;
+
+    Frame* coreFrame = core(this);
+    if (!coreFrame)
+        return E_FAIL;
+
+    String coreId = String(id, SysStringLen(id));
+
+    Element* element = coreFrame->document()->getElementById(coreId);
+    if (!element)
+        return E_FAIL;
+    *result = PrintContext::pageNumberForElement(element, FloatSize(pageWidthInPixels, pageHeightInPixels));
+    return S_OK;
+}
+
+HRESULT STDMETHODCALLTYPE WebFrame::numberOfPages(
+    /* [in] */ float pageWidthInPixels,
+    /* [in] */ float pageHeightInPixels,
+    /* [retval][out] */ int* result)
+{
+    if (!result)
+        return E_POINTER;
+
+    Frame* coreFrame = core(this);
+    if (!coreFrame)
+        return E_FAIL;
+
+    *result = PrintContext::numberOfPages(coreFrame, FloatSize(pageWidthInPixels, pageHeightInPixels));
+    return S_OK;
+}
+
 HRESULT STDMETHODCALLTYPE WebFrame::scrollOffset(
         /* [retval][out] */ SIZE* offset)
 {
@@ -1189,6 +1228,24 @@ HRESULT WebFrame::pauseSVGAnimation(BSTR elementId, IDOMNode* node, double secon
     *animationWasRunning = FALSE;
 #endif
 
+    return S_OK;
+}
+
+HRESULT WebFrame::visibleContentRect(RECT* rect)
+{
+    if (!rect)
+        return E_POINTER;
+    SetRectEmpty(rect);
+
+    Frame* frame = core(this);
+    if (!frame)
+        return E_FAIL;
+
+    FrameView* view = frame->view();
+    if (!view)
+        return E_FAIL;
+
+    *rect = view->visibleContentRect(false);
     return S_OK;
 }
 

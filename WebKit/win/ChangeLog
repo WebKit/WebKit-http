@@ -1,3 +1,109 @@
+2010-02-17  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        WebKit on Windows needs a mechanism to listen for WM_SETTINGCHANGED messages
+        https://bugs.webkit.org/show_bug.cgi?id=35076
+
+        * WebKit.vcproj/WebKit.def: Added WebKitSystemParameterChanged.
+        * WebKit.vcproj/WebKit_debug.def: Added WebKitSystemParameterChanged.
+        * WebKitGraphics.cpp:
+        (WebKitSystemParameterChanged): Call through to wkSystemFontSmoothingChanged for font smoothing changes.
+        * WebKitGraphics.h: Added WebKitSystemParameterChanged.
+
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::didTransferChildFrameToNewDocument):
+        Added empty implementation of a new virtual method.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::iconForFiles):
+        * WebCoreSupport/WebChromeClient.h:
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Unreviewed. Touch WebKit.idl to fix the build.
+
+        [Win] Implement test functions for printing
+        https://bugs.webkit.org/show_bug.cgi?id=34570
+
+        * Interfaces/WebKit.idl:
+
+2010-02-17  Shinichiro Hamaji  <hamaji@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        [Win] Implement test functions for printing
+        https://bugs.webkit.org/show_bug.cgi?id=34570
+
+        * Interfaces/IWebFramePrivate.idl:
+        * WebFrame.cpp:
+        (WebFrame::pageNumberForElementById):
+        (WebFrame::numberOfPages):
+        * WebFrame.h:
+
+2010-02-16  Darin Adler  <darin@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Generalize delayed plug-in start for background tabs for use for other media
+        https://bugs.webkit.org/show_bug.cgi?id=34981
+
+        * WebView.cpp:
+        (WebView::setCanStartPlugins): Change to call setCanStartMedia.
+        In a later patch we can change the of the public function in the IDL file too,
+        but for now this should be enough.
+
+2010-02-15  Adam Roben  <aroben@apple.com>
+
+        Add IWebFramePrivate::visibleContentRect
+
+        Fixes <http://webkit.org/b/34956> Add API to get a WebFrame's visible
+        content rect
+
+        Reviewed by Jon Honeycutt.
+
+        * Interfaces/IWebFramePrivate.idl: Added visibleContentRect.
+
+        * Interfaces/WebKit.idl: Touched to force a build.
+
+        * WebFrame.cpp:
+        (WebFrame::visibleContentRect):
+        * WebFrame.h:
+        Added. Calls through to FrameView::visibleContentRect.
+
+2010-02-12  Brian Weinstein  <bweinstein@apple.com>
+
+        Reviewed by Adam Roben.
+
+        onmouseout fired when moving over tooltip on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=16794
+        <rdar://5762038>.
+        
+        Add WS_EX_TRANSPARENT to out tooltip HWND so it isn't subject to hit testing, and when
+        you mouse over the tooltip, it doesn't send a mouseout to the web content.
+
+        * WebView.cpp:
+        (WebView::initializeToolTipWindow): Add WS_EX_TRANSPARENT.
+
 2010-02-10  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
 
         Reviewed by Kenneth Rohde Christiansen.

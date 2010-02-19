@@ -236,6 +236,11 @@ void WebSettingsImpl::setAllowUniversalAccessFromFileURLs(bool allow)
     m_settings->setAllowUniversalAccessFromFileURLs(allow);
 }
 
+void WebSettingsImpl::setAllowFileAccessFromFileURLs(bool allow)
+{
+    m_settings->setAllowFileAccessFromFileURLs(allow);
+}
+
 void WebSettingsImpl::setTextDirectionSubmenuInclusionBehaviorNeverIncluded()
 {
     // FIXME: If you ever need more behaviors than this, then we should probably
@@ -252,6 +257,11 @@ void WebSettingsImpl::setOfflineWebApplicationCacheEnabled(bool enabled)
 void WebSettingsImpl::setExperimentalWebGLEnabled(bool enabled)
 {
     m_settings->setWebGLEnabled(enabled);
+}
+
+void WebSettingsImpl::setShowDebugBorders(bool show)
+{
+    m_settings->setShowDebugBorders(show);
 }
 
 void WebSettingsImpl::setGeolocationEnabled(bool enabled)

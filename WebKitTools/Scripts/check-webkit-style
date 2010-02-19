@@ -58,12 +58,11 @@ def main():
                                            codecs.getwriter('utf8'),
                                            'replace')
 
-    defaults = checker.webkit_argument_defaults()
-
-    parser = checker.ArgumentParser(defaults)
+    parser = checker.ArgumentParser()
     (files, options) = parser.parse(sys.argv[1:])
 
-    style_checker = checker.StyleChecker(options)
+    configuration = checker.check_webkit_style_configuration(options)
+    style_checker = checker.StyleChecker(configuration)
 
     if files:
         for filename in files:
@@ -87,8 +86,11 @@ def main():
         style_checker.check_patch(patch)
 
     error_count = style_checker.error_count
-    sys.stderr.write('Total errors found: %d\n' % error_count)
-    sys.exit(error_count > 0)
+    file_count = style_checker.file_count
+    sys.stderr.write('Total errors found: %d in %d files\n'
+                     % (error_count, file_count))
+    # We fail when style errors are found or there are no checked files.
+    sys.exit(error_count > 0 or file_count == 0)
 
 
 if __name__ == "__main__":

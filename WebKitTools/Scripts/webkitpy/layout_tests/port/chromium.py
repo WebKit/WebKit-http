@@ -88,6 +88,10 @@ class ChromiumPort(base.Port):
             self._chromium_base_dir = abspath[0:abspath.find('third_party')]
         return os.path.join(self._chromium_base_dir, *comps)
 
+    def path_to_test_expectations_file(self):
+        return self.path_from_chromium_base('webkit', 'tools', 'layout_tests',
+                                            'test_expectations.txt')
+
     def results_directory(self):
         return self.path_from_chromium_base('webkit', self._options.target,
                                             self._options.results_directory)
@@ -128,13 +132,12 @@ class ChromiumPort(base.Port):
     def test_base_platform_names(self):
         return ('linux', 'mac', 'win')
 
-    def test_expectations(self, options=None):
+    def test_expectations(self):
         """Returns the test expectations for this port.
 
         Basically this string should contain the equivalent of a
         test_expectations file. See test_expectations.py for more details."""
-        expectations_file = self.path_from_chromium_base('webkit', 'tools',
-            'layout_tests', 'test_expectations.txt')
+        expectations_file = self.path_to_test_expectations_file()
         return file(expectations_file, "r").read()
 
     def test_platform_names(self):
@@ -153,7 +156,6 @@ class ChromiumPort(base.Port):
             platform = self.name()
         return self.path_from_chromium_base('webkit', 'data', 'layout_tests',
             'platform', platform, 'LayoutTests')
-
 
 class ChromiumDriver(base.Driver):
     """Abstract interface for the DumpRenderTree interface."""

@@ -1,3 +1,30 @@
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * WebKitSupport/FrameLoaderClientWx.cpp:
+        (WebCore::FrameLoaderClientWx::didTransferChildFrameToNewDocument):
+        Added empty implementation of a new virtual method.
+
+        * WebKitSupport/FrameLoaderClientWx.h:
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * WebKitSupport/ChromeClientWx.cpp:
+        (WebCore::ChromeClientWx::iconForFiles):
+        * WebKitSupport/ChromeClientWx.h:
+
 2010-02-04  Kevin Ollivier  <kevino@theolliviers.com>
 
         Build fix after changes in r54345.

@@ -1,3 +1,603 @@
+2010-02-17  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35070
+        Addition of 2 strings of length 2^31 may result in a string of length 0.
+
+        Check for overflow when creating a new JSString as a result of an addition
+        or concatenation, throw an out of memory exception.
+
+        * runtime/JSString.h:
+        (JSC::):
+        * runtime/Operations.h:
+        (JSC::jsString):
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        [Linux] Webkit incompatible with Java plugins
+        https://bugs.webkit.org/show_bug.cgi?id=24912
+
+        Add support for GFile to GOwnPtr.
+
+        Based on original work by Gustavo Noronha.
+
+        * wtf/gtk/GOwnPtr.cpp:
+        (WTF::GFile):
+        * wtf/gtk/GOwnPtr.h:
+
+2010-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Mark Rowe.
+
+        Fix a handful of other leaks seen on the buildbot.
+
+        * runtime/UStringImpl.h:
+        (JSC::UStringOrRopeImpl::deref): Delegate through to the subclass version of deref to ensure that
+        the correct cleanup takes place.  This function previously featured some code that attempted to
+        skip deletion of static UStringImpl's.  Closer inspection revealed that it was in fact equivalent
+        to "if (false)", meaning that UStringImpl's which had their final deref performed via this function
+        were leaked.
+
+2010-02-16  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Gavin Barraclough.
+
+        Fix a handful of leaks seen on the buildbot.
+
+        * runtime/UStringImpl.h:
+        (JSC::UStringOrRopeImpl::deref): Call URopeImpl::destructNonRecursive rather than delete
+        to ensure that the rope's fibers are also destroyed.
+
+2010-02-16  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34964
+        Leaks tool reports false memory leaks due to Rope implementation.
+
+        A rope is a recursive data structure where each node in the rope holds a set of
+        pointers, each of which may reference either a string (in UStringImpl form) or
+        another rope node.  A low bit in each pointer is used to distinguish between
+        rope & string elements, in a fashion similar to the recently-removed
+        PtrAndFlags class (see https://bugs.webkit.org/show_bug.cgi?id=33731 ).  Again,
+        this causes a problem for Leaks – refactor to remove the magic pointer
+        mangling.
+
+        Move Rope out from JSString.h and rename to URopeImpl, to match UStringImpl.
+        Give UStringImpl and URopeImpl a common parent class, UStringOrRopeImpl.
+        Repurpose an otherwise invalid permutation to flags (static & should report
+        memory cost) to identify ropes.
+
+        This allows us to change the rope's fibers to interrogate the object rather
+        than storing a bool within the low bits of the pointer (or in some cases the
+        use of a common parent class removes the need to determine the type at all -
+        there is a common interface to ref or get the length of either ropes or strings).
+
+        * API/JSClassRef.cpp:
+        (OpaqueJSClass::OpaqueJSClass):
+        (OpaqueJSClassContextData::OpaqueJSClassContextData):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::keyForCharacterSwitch):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::privateExecute):
+        * jit/JITStubs.cpp:
+        (JSC::DEFINE_STUB_FUNCTION):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::equal):
+        (JSC::Identifier::addSlowCase):
+        * runtime/JSString.cpp:
+        (JSC::JSString::resolveRope):
+        * runtime/JSString.h:
+        (JSC::):
+        (JSC::RopeBuilder::JSString):
+        (JSC::RopeBuilder::~JSString):
+        (JSC::RopeBuilder::appendStringInConstruct):
+        (JSC::RopeBuilder::appendValueInConstructAndIncrementLength):
+        (JSC::RopeBuilder::JSStringFinalizerStruct::JSStringFinalizerStruct):
+        (JSC::RopeBuilder::JSStringFinalizerStruct::):
+        * runtime/UString.cpp:
+        (JSC::UString::toStrictUInt32):
+        (JSC::equal):
+        * runtime/UString.h:
+        (JSC::UString::isEmpty):
+        (JSC::UString::size):
+        * runtime/UStringImpl.cpp:
+        (JSC::URopeImpl::derefFibersNonRecursive):
+        (JSC::URopeImpl::destructNonRecursive):
+        * runtime/UStringImpl.h:
+        (JSC::UStringOrRopeImpl::isRope):
+        (JSC::UStringOrRopeImpl::length):
+        (JSC::UStringOrRopeImpl::ref):
+        (JSC::UStringOrRopeImpl::):
+        (JSC::UStringOrRopeImpl::operator new):
+        (JSC::UStringOrRopeImpl::UStringOrRopeImpl):
+        (JSC::UStringImpl::adopt):
+        (JSC::UStringImpl::createUninitialized):
+        (JSC::UStringImpl::tryCreateUninitialized):
+        (JSC::UStringImpl::data):
+        (JSC::UStringImpl::cost):
+        (JSC::UStringImpl::deref):
+        (JSC::UStringImpl::UStringImpl):
+        (JSC::UStringImpl::):
+        (JSC::URopeImpl::tryCreateUninitialized):
+        (JSC::URopeImpl::initializeFiber):
+        (JSC::URopeImpl::fiberCount):
+        (JSC::URopeImpl::fibers):
+        (JSC::URopeImpl::deref):
+        (JSC::URopeImpl::URopeImpl):
+        (JSC::URopeImpl::hasOneRef):
+        (JSC::UStringOrRopeImpl::deref):
+
+2010-02-15  Gabor Loki  <loki@webkit.org>
+
+        Reviewed by Gavin Barraclough.
+
+        Fix the SP at ctiOpThrowNotCaught on Thumb2 (JSVALUE32)
+        https://bugs.webkit.org/show_bug.cgi?id=34939
+
+        * jit/JITStubs.cpp:
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by NOBODY (Build Fix!).
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        Some general Rope related refactoring.
+
+        Rename Rope::m_ropeLength to m_fiberCount, to be more descriptive.
+        Rename Rope::m_stringLength to simply m_length (since this is the
+        more conventional name for the length of a string).  Move append
+        behaviour out into a new RopeBuilder class, so that Rope no longer
+        needs any knowledge of the JSString or UString implementation.
+
+        Make Rope no longer be nested within JSString.
+        (Rope now no-longer need reside within JSString.h, but leaving
+        the change of moving this out to a different header as a separate
+        change from these renames).
+
+        * JavaScriptCore.exp:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::privateCompileCTIMachineTrampolines):
+        * runtime/JSString.cpp:
+        (JSC::Rope::destructNonRecursive):
+        (JSC::Rope::~Rope):
+        (JSC::JSString::resolveRope):
+        (JSC::JSString::toBoolean):
+        (JSC::JSString::getStringPropertyDescriptor):
+        * runtime/JSString.h:
+        (JSC::Rope::Fiber::Fiber):
+        (JSC::Rope::Fiber::deref):
+        (JSC::Rope::Fiber::ref):
+        (JSC::Rope::Fiber::refAndGetLength):
+        (JSC::Rope::Fiber::isRope):
+        (JSC::Rope::Fiber::rope):
+        (JSC::Rope::Fiber::isString):
+        (JSC::Rope::Fiber::string):
+        (JSC::Rope::Fiber::nonFiber):
+        (JSC::Rope::tryCreateUninitialized):
+        (JSC::Rope::append):
+        (JSC::Rope::fiberCount):
+        (JSC::Rope::length):
+        (JSC::Rope::fibers):
+        (JSC::Rope::Rope):
+        (JSC::Rope::operator new):
+        (JSC::):
+        (JSC::RopeBuilder::JSString):
+        (JSC::RopeBuilder::~JSString):
+        (JSC::RopeBuilder::length):
+        (JSC::RopeBuilder::canGetIndex):
+        (JSC::RopeBuilder::appendStringInConstruct):
+        (JSC::RopeBuilder::appendValueInConstructAndIncrementLength):
+        (JSC::RopeBuilder::isRope):
+        (JSC::RopeBuilder::fiberCount):
+        (JSC::JSString::getStringPropertySlot):
+        * runtime/Operations.h:
+        (JSC::jsString):
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by NOBODY (Build fix).
+
+        Add missing cast for !YARR (PPC) builds.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::match):
+
+2010-02-14  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=33731
+        Many false leaks in release builds due to PtrAndFlags
+
+        StructureTransitionTable was effectively a smart pointer type,
+        one machine word in size and wholly contained as a member of
+        of Structure.  It either pointed to an actual table, or could
+        be used to describe a single transtion entry without use of a
+        table.
+
+        This, however, worked by using a PtrAndFlags, which is not
+        compatible with the leaks tool.  Since there is no clear way to
+        obtain another bit for 'free' here, and since there are bits
+        available up in Structure, merge this functionality back up into
+        Structure.  Having this in a separate class was quite clean
+        from an enacapsulation perspective, but this solution doesn't
+        seem to bad - all table access is now intermediated through the
+        Structure::structureTransitionTableFoo methods, keeping the
+        optimization fairly well contained.
+
+        This was the last use of PtrAndFlags, so removing the file too.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        (JSC::Structure::~Structure):
+        (JSC::Structure::addPropertyTransitionToExistingStructure):
+        (JSC::Structure::addPropertyTransition):
+        (JSC::Structure::hasTransition):
+        * runtime/Structure.h:
+        (JSC::Structure::):
+        (JSC::Structure::structureTransitionTableContains):
+        (JSC::Structure::structureTransitionTableGet):
+        (JSC::Structure::structureTransitionTableHasTransition):
+        (JSC::Structure::structureTransitionTableRemove):
+        (JSC::Structure::structureTransitionTableAdd):
+        (JSC::Structure::structureTransitionTable):
+        (JSC::Structure::setStructureTransitionTable):
+        (JSC::Structure::singleTransition):
+        (JSC::Structure::setSingleTransition):
+        * runtime/StructureTransitionTable.h:
+        * wtf/PtrAndFlags.h: Removed.
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Rubber Stamped by Geoff Garen.
+
+        Bug 34948 - tryMakeString should fail on error in length calculation
+
+        Ooops! - "bool overflow" argument should have been "bool& overflow".
+
+        * runtime/UString.h:
+        (JSC::sumWithOverflow):
+        (JSC::tryMakeString):
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by NOBODY (Build Fix (pt 2!)).
+
+        Some symbol names have changed, remove, will readd if required.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by NOBODY (Build Fix (pt 1?)).
+
+        Some symbol names have changed, remove, will readd if required.
+
+        * JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.def:
+
+2010-02-15  Geoffrey Garen  <ggaren@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        Removed some mistaken code added in http://trac.webkit.org/changeset/53860.
+
+        * API/APIShims.h:
+        (JSC::APICallbackShim::APICallbackShim):
+        (JSC::APICallbackShim::~APICallbackShim): No need to start/stop the
+        timeout checker when calling out from the API to the client; we want to
+        monitor the VM for timeouts, not the client. This mistake was harmless /
+        undetectable, since it's totally redundant with the APIEntryShim, which
+        also starts / stops the timeout checker.
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Geoff Garen.
+
+        Bug 34952 - String lengths in UString should be unsigned.
+        This matches WebCore::StringImpl, and better unifies behaviour throughout JSC.
+
+        * JavaScriptCore.exp:
+        * bytecode/EvalCodeCache.h:
+        * runtime/Identifier.cpp:
+        (JSC::Identifier::equal):
+        * runtime/Identifier.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncEscape):
+        * runtime/JSONObject.cpp:
+        (JSC::gap):
+        (JSC::Stringifier::indent):
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToFixed):
+        (JSC::numberProtoFuncToPrecision):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::match):
+        * runtime/StringPrototype.cpp:
+        (JSC::substituteBackreferencesSlow):
+        (JSC::stringProtoFuncReplace):
+        (JSC::stringProtoFuncSplit):
+        (JSC::trimString):
+        * runtime/UString.cpp:
+        (JSC::UString::UString):
+        (JSC::UString::from):
+        (JSC::UString::getCString):
+        (JSC::UString::ascii):
+        (JSC::UString::operator[]):
+        (JSC::UString::toStrictUInt32):
+        (JSC::UString::find):
+        (JSC::UString::rfind):
+        (JSC::UString::substr):
+        (JSC::operator<):
+        (JSC::operator>):
+        (JSC::compare):
+        (JSC::equal):
+        (JSC::UString::UTF8String):
+        * runtime/UString.h:
+        (JSC::UString::size):
+        (JSC::operator==):
+        * runtime/UStringImpl.cpp:
+        (JSC::UStringImpl::create):
+        * runtime/UStringImpl.h:
+        (JSC::UStringImpl::create):
+        (JSC::UStringImpl::size):
+        (JSC::UStringImpl::computeHash):
+        (JSC::UStringImpl::UStringImpl):
+
+2010-02-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Geoff Garen.
+
+        Bug 34948 - tryMakeString should fail on error in length calculation
+
+        The sum of the length of substrings could overflow.
+
+        * runtime/UString.h:
+        (JSC::sumWithOverflow):
+        (JSC::tryMakeString):
+
+2010-02-15  Geoffrey Garen  <ggaren@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        Fixed <rdar://problem/7628524> Crash beneath JSGlobalContextRelease when
+        typing in Google search field with GuardMalloc/full page heap enabled
+
+        * API/JSContextRef.cpp: Don't use APIEntryShim, since that requires
+        a JSGlobalData, which this function destroys. Do use setCurrentIdentifierTable
+        and JSLock instead, since those are the two features of APIEntryShim we
+        require.
+
+2010-02-15  Patrick Gansterer  <paroga@paroga.com>
+
+        Reviewed by Laszlo Gombos.
+
+        Added additional parameter to create_rvct_stubs 
+        for setting the offset of thunkReturnAddress.
+        https://bugs.webkit.org/show_bug.cgi?id=34657
+
+        * create_rvct_stubs:
+        * jit/JITStubs.cpp:
+
+2010-02-15  Jedrzej Nowacki  <jedrzej.nowacki@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        Fix QScriptValue::toIntXX methods.
+
+        More ECMA Script compliance.
+
+        [Qt] QScriptValue::toIntXX returns incorrect values
+        https://bugs.webkit.org/show_bug.cgi?id=34847
+
+        * qt/api/qscriptvalue_p.h:
+        (QScriptValuePrivate::toInteger):
+        (QScriptValuePrivate::toInt32):
+        (QScriptValuePrivate::toUInt32):
+        (QScriptValuePrivate::toUInt16):
+        * qt/tests/qscriptvalue/tst_qscriptvalue.h:
+        * qt/tests/qscriptvalue/tst_qscriptvalue_generated.cpp:
+        (tst_QScriptValue::toInteger_initData):
+        (tst_QScriptValue::toInteger_makeData):
+        (tst_QScriptValue::toInteger_test):
+        (tst_QScriptValue::toInt32_initData):
+        (tst_QScriptValue::toInt32_makeData):
+        (tst_QScriptValue::toInt32_test):
+        (tst_QScriptValue::toUInt32_initData):
+        (tst_QScriptValue::toUInt32_makeData):
+        (tst_QScriptValue::toUInt32_test):
+        (tst_QScriptValue::toUInt16_initData):
+        (tst_QScriptValue::toUInt16_makeData):
+        (tst_QScriptValue::toUInt16_test):
+
+2010-02-14  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Adam Barth.
+
+        Implement NEVER_INLINE and NO_RETURN for RVCT
+        https://bugs.webkit.org/show_bug.cgi?id=34740
+
+        * wtf/AlwaysInline.h:
+
+2010-02-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Oliver Hunt.
+
+        https://bugs.webkit.org/show_bug.cgi?id=33731
+        Remove uses of PtrAndFlags from JIT data stuctures.
+
+        These break the OS X Leaks tool.  Free up a bit in CallLinkInfo, and invalid
+        permutation of pointer states in MethodCallLinkInfo to represent the removed bits.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CallLinkInfo::seenOnce):
+        (JSC::CallLinkInfo::setSeen):
+        (JSC::MethodCallLinkInfo::MethodCallLinkInfo):
+        (JSC::MethodCallLinkInfo::seenOnce):
+        (JSC::MethodCallLinkInfo::setSeen):
+        * jit/JIT.cpp:
+        (JSC::JIT::unlinkCall):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::patchMethodCallProto):
+        * runtime/UString.h:
+
+2010-02-12  Gavin Barraclough  <barraclough@apple.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=33731
+        Many false leaks in release builds due to PtrAndFlags
+
+        Remove UntypedPtrAndBitfield (similar to PtrAndFlags) in UStringImpl,
+        and steal bits from the refCount instead.
+
+        * runtime/UStringImpl.cpp:
+        (JSC::UStringImpl::baseSharedBuffer):
+        (JSC::UStringImpl::~UStringImpl):
+        * runtime/UStringImpl.h:
+        (JSC::UStringImpl::cost):
+        (JSC::UStringImpl::isIdentifier):
+        (JSC::UStringImpl::setIsIdentifier):
+        (JSC::UStringImpl::ref):
+        (JSC::UStringImpl::deref):
+        (JSC::UStringImpl::UStringImpl):
+        (JSC::UStringImpl::bufferOwnerString):
+        (JSC::UStringImpl::bufferOwnership):
+        (JSC::UStringImpl::isStatic):
+        (JSC::UStringImpl::):
+
+2010-02-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Removed an unnecessary data dependency from my last patch.
+
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::markChildren): Since isAnyStringMarked being false
+        is a condition of entering the loop, we can just use '=' instead of '|='.
+
+2010-02-12  Janne Koskinen  <janne.p.koskinen@digia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        Additional refptr/passrefptr workarounds for WINSCW compiler
+        https://bugs.webkit.org/show_bug.cgi?id=28054
+
+        * wtf/PassRefPtr.h:
+        (WTF::refIfNotNull):
+        (WTF::PassRefPtr::PassRefPtr):
+        (WTF::PassRefPtr::~PassRefPtr):
+        (WTF::PassRefPtr::clear):
+        (WTF::::operator):
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr):
+        (WTF::::operator):
+
+2010-02-12  Janne Koskinen  <janne.p.koskinen@digia.com>
+
+        Reviewed by Simon Hausmann.
+
+        Don't import the cmath functions from std:: for WINSCW.
+
+        * wtf/MathExtras.h:
+
+2010-02-12  Kwang Yul Seo  <skyul@company100.net>
+
+        Reviewed by Adam Barth.
+
+        Typedef both JSChar and UChar to wchar_t in RVCT.
+        https://bugs.webkit.org/show_bug.cgi?id=34560
+
+        Define both JSChar and UChar to wchar_t as the size
+        of wchar_t is 2 bytes in RVCT.
+
+        * API/JSStringRef.h:
+        * wtf/unicode/qt4/UnicodeQt4.h:
+
+2010-02-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Reviewed by Oliver Hunt and Darin Adler.
+
+        The rest of the fix for
+        https://bugs.webkit.org/show_bug.cgi?id=34864 | <rdar://problem/7594198>
+        Many objects left uncollected after visiting mail.google.com and closing
+        window
+        
+        Don't unconditionally hang onto small strings. Instead, hang onto all
+        small strings as long as any small string is still referenced.
+        
+        SunSpider reports no change.
+
+        * runtime/Collector.cpp:
+        (JSC::Heap::markRoots): Mark the small strings cache last, so it can
+        check if anything else has kept any strings alive.
+
+        * runtime/SmallStrings.cpp:
+        (JSC::isMarked):
+        (JSC::SmallStrings::markChildren): Only keep our strings alive if some
+        other reference to at least one of them exists, too.
+
+2010-02-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Reviewed by Gavin Barraclough.
+
+        Some progress toward fixing
+        https://bugs.webkit.org/show_bug.cgi?id=34864 | <rdar://problem/7594198>
+        Many objects left uncollected after visiting mail.google.com and closing
+        window
+        
+        SunSpider reports no change.
+        
+        Keep weak references, rather than protected references, to cached for-in
+        property name enumerators.
+        
+        One problem with protected references is that a chain like 
+            [ gc object 1 ] => [ non-gc object ] => [ gc object 2 ]
+        takes two GC passes to break, since the first pass collects [ gc object 1 ],
+        releasing [ non-gc object ] and unprotecting [ gc object 2 ], and only
+        then can a second pass collect [ gc object 2 ].
+        
+        Another problem with protected references is that they can keep a bunch
+        of strings alive long after they're useful. In SunSpider and a few popular
+        websites, the size-speed tradeoff seems to favor weak references.
+
+        * runtime/JSPropertyNameIterator.cpp:
+        (JSC::JSPropertyNameIterator::JSPropertyNameIterator): Moved this constructor
+        into the .cpp file, since it's not used elsewhere.
+
+        (JSC::JSPropertyNameIterator::~JSPropertyNameIterator): Added a destructor
+        to support our weak reference.
+
+        * runtime/JSPropertyNameIterator.h:
+        (JSC::Structure::setEnumerationCache):
+        (JSC::Structure::clearEnumerationCache):
+        (JSC::Structure::enumerationCache): Added a function for clearing a
+        Structure's enumeration cache, used by our new destructor. Also fixed
+        indentation to match the rest of the file.
+
+        * runtime/Structure.h: Changed from protected pointer to weak pointer.
+
+2010-02-11  Chris Rogers  <crogers@google.com>
+
+        Reviewed by David Levin.
+
+        audio engine: add Complex number class
+        https://bugs.webkit.org/show_bug.cgi?id=34538
+
+        * wtf/Complex.h: Added.
+        (WebCore::complexFromMagnitudePhase):
+
 2010-02-10  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Oliver Hunt.

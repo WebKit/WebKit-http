@@ -31,7 +31,6 @@
 #include <wtf/CrossThreadRefCounted.h>
 #include <wtf/OwnFastMallocPtr.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/PtrAndFlags.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/unicode/Unicode.h>
@@ -83,8 +82,8 @@ namespace JSC {
     public:
         UString();
         UString(const char*); // Constructor for null-terminated string.
-        UString(const char*, int length);
-        UString(const UChar*, int length);
+        UString(const char*, unsigned length);
+        UString(const UChar*, unsigned length);
         UString(const Vector<UChar>& buffer);
 
         UString(const UString& s)
@@ -133,13 +132,13 @@ namespace JSC {
         const UChar* data() const { return m_rep->data(); }
 
         bool isNull() const { return m_rep == s_nullRep; }
-        bool isEmpty() const { return !m_rep->size(); }
+        bool isEmpty() const { return !m_rep->length(); }
 
         bool is8Bit() const;
 
-        int size() const { return m_rep->size(); }
+        unsigned size() const { return m_rep->length(); }
 
-        UChar operator[](int pos) const;
+        UChar operator[](unsigned pos) const;
 
         double toDouble(bool tolerateTrailingJunk, bool tolerateEmptyString) const;
         double toDouble(bool tolerateTrailingJunk) const;
@@ -151,12 +150,13 @@ namespace JSC {
 
         unsigned toArrayIndex(bool* ok = 0) const;
 
-        int find(const UString& f, int pos = 0) const;
-        int find(UChar, int pos = 0) const;
-        int rfind(const UString& f, int pos) const;
-        int rfind(UChar, int pos) const;
+        static const unsigned NotFound = 0xFFFFFFFFu;
+        unsigned find(const UString& f, unsigned pos = 0) const;
+        unsigned find(UChar, unsigned pos = 0) const;
+        unsigned rfind(const UString& f, unsigned pos) const;
+        unsigned rfind(UChar, unsigned pos) const;
 
-        UString substr(int pos = 0, int len = -1) const;
+        UString substr(unsigned pos = 0, unsigned len = 0xFFFFFFFF) const;
 
         static const UString& null() { return *s_nullUString; }
 
@@ -182,7 +182,7 @@ namespace JSC {
 
     ALWAYS_INLINE bool operator==(const UString& s1, const UString& s2)
     {
-        int size = s1.size();
+        unsigned size = s1.size();
         switch (size) {
         case 0:
             return !s2.size();
@@ -246,9 +246,7 @@ namespace JSC {
     // We'd rather not do shared substring append for small strings, since
     // this runs too much risk of a tiny initial string holding down a
     // huge buffer.
-    // FIXME: this should be size_t but that would cause warnings until we
-    // fix UString sizes to be size_t instead of int
-    static const int minShareSize = Heap::minExtraCost / sizeof(UChar);
+    static const unsigned minShareSize = Heap::minExtraCost / sizeof(UChar);
 
     struct IdentifierRepHash : PtrHash<RefPtr<JSC::UString::Rep> > {
         static unsigned hash(const RefPtr<JSC::UString::Rep>& key) { return key->existingHash(); }
@@ -327,6 +325,14 @@ namespace JSC {
         unsigned m_length;
     };
 
+    inline void sumWithOverflow(unsigned& total, unsigned addend, bool& overflow)
+    {
+        unsigned oldTotal = total;
+        total = oldTotal + addend;
+        if (total < oldTotal)
+            overflow = true;
+    }
+
     template<typename StringType1, typename StringType2>
     PassRefPtr<UStringImpl> tryMakeString(StringType1 string1, StringType2 string2)
     {
@@ -334,7 +340,11 @@ namespace JSC {
         StringTypeAdapter<StringType2> adapter2(string2);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -355,7 +365,12 @@ namespace JSC {
         StringTypeAdapter<StringType3> adapter3(string3);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -379,7 +394,13 @@ namespace JSC {
         StringTypeAdapter<StringType4> adapter4(string4);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length() + adapter4.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        sumWithOverflow(length, adapter4.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -406,7 +427,14 @@ namespace JSC {
         StringTypeAdapter<StringType5> adapter5(string5);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length() + adapter4.length() + adapter5.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        sumWithOverflow(length, adapter4.length(), overflow);
+        sumWithOverflow(length, adapter5.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -436,7 +464,15 @@ namespace JSC {
         StringTypeAdapter<StringType6> adapter6(string6);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length() + adapter4.length() + adapter5.length() + adapter6.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        sumWithOverflow(length, adapter4.length(), overflow);
+        sumWithOverflow(length, adapter5.length(), overflow);
+        sumWithOverflow(length, adapter6.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -469,7 +505,16 @@ namespace JSC {
         StringTypeAdapter<StringType7> adapter7(string7);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length() + adapter4.length() + adapter5.length() + adapter6.length() + adapter7.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        sumWithOverflow(length, adapter4.length(), overflow);
+        sumWithOverflow(length, adapter5.length(), overflow);
+        sumWithOverflow(length, adapter6.length(), overflow);
+        sumWithOverflow(length, adapter7.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;
@@ -505,7 +550,17 @@ namespace JSC {
         StringTypeAdapter<StringType8> adapter8(string8);
 
         UChar* buffer;
-        unsigned length = adapter1.length() + adapter2.length() + adapter3.length() + adapter4.length() + adapter5.length() + adapter6.length() + adapter7.length() + adapter8.length();
+        bool overflow = false;
+        unsigned length = adapter1.length();
+        sumWithOverflow(length, adapter2.length(), overflow);
+        sumWithOverflow(length, adapter3.length(), overflow);
+        sumWithOverflow(length, adapter4.length(), overflow);
+        sumWithOverflow(length, adapter5.length(), overflow);
+        sumWithOverflow(length, adapter6.length(), overflow);
+        sumWithOverflow(length, adapter7.length(), overflow);
+        sumWithOverflow(length, adapter8.length(), overflow);
+        if (overflow)
+            return 0;
         PassRefPtr<UStringImpl> resultImpl = UStringImpl::tryCreateUninitialized(length, buffer);
         if (!resultImpl)
             return 0;

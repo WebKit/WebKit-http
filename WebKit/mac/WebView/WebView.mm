@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2006 David Smith (catfish.man@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -630,6 +630,7 @@ static bool shouldEnableLoadDeferring()
 #endif
     _private->page = new Page(new WebChromeClient(self), new WebContextMenuClient(self), new WebEditorClient(self), new WebDragClient(self), new WebInspectorClient(self), new WebPluginHalterClient(self), geolocationControllerClient);
 
+    _private->page->setCanStartMedia([self window]);
     _private->page->settings()->setLocalStorageDatabasePath([[self preferences] _localStorageDatabasePath]);
 
     [WebFrame _createMainFrameWithPage:_private->page frameName:frameName frameView:frameView];
@@ -657,7 +658,8 @@ static bool shouldEnableLoadDeferring()
         [frameView setNextKeyView:nextKeyView];
     [super setNextKeyView:frameView];
 
-    ++WebViewCount;
+    if ([[self class] shouldIncludeInWebKitStatistics])
+        ++WebViewCount;
 
     [self _registerDraggedTypes];
 
@@ -1286,6 +1288,7 @@ static bool fastDocumentTeardownEnabled()
     settings->setJavaScriptEnabled([preferences isJavaScriptEnabled]);
     settings->setWebSecurityEnabled([preferences isWebSecurityEnabled]);
     settings->setAllowUniversalAccessFromFileURLs([preferences allowUniversalAccessFromFileURLs]);
+    settings->setAllowFileAccessFromFileURLs([preferences allowFileAccessFromFileURLs]);
     settings->setJavaScriptCanOpenWindowsAutomatically([preferences javaScriptCanOpenWindowsAutomatically]);
     settings->setMinimumFontSize([preferences minimumFontSize]);
     settings->setMinimumLogicalFontSize([preferences minimumLogicalFontSize]);
@@ -2743,8 +2746,9 @@ static bool needsWebViewInitThreadWorkaround()
     // this maintains our old behavior for existing applications
     [self close];
 
-    --WebViewCount;
-    
+    if ([[self class] shouldIncludeInWebKitStatistics])
+        --WebViewCount;
+
     if ([self _needsFrameLoadDelegateRetainQuirk])
         [_private->frameLoadDelegate release];
         
@@ -2824,8 +2828,10 @@ static bool needsWebViewInitThreadWorkaround()
         // and over, so do them when we move into a window.
         [window setAcceptsMouseMovedEvents:YES];
         WKSetNSWindowShouldPostEventNotifications(window, YES);
-    } else
+    } else {
+        _private->page->setCanStartMedia(false);
         _private->page->willMoveOffscreen();
+    }
         
     if (window != [self window]) {
         [self removeWindowObservers];
@@ -2842,8 +2848,10 @@ static bool needsWebViewInitThreadWorkaround()
     if (!_private || _private->closed)
         return;
 
-    if ([self window])
+    if ([self window]) {
+        _private->page->setCanStartMedia(true);
         _private->page->didMoveOnscreen();
+    }
     
     [self _updateActiveState];
 }
@@ -5334,6 +5342,11 @@ static WebFrameView *containingFrameView(NSView *view)
 @end
 
 @implementation WebView (WebViewInternal)
+
++ (BOOL)shouldIncludeInWebKitStatistics
+{
+    return NO;
+}
 
 - (BOOL)_becomingFirstResponderFromOutside
 {

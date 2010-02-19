@@ -839,6 +839,10 @@ printf("   no parent\n");
     return childFrame.release();
 }
 
+void FrameLoaderClientHaiku::didTransferChildFrameToNewDocument()
+{
+}
+
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType)
 {
     if (url.isEmpty() && !originalMimeType.length())

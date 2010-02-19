@@ -324,9 +324,19 @@ void LayoutTestController::setXSSAuditorEnabled(bool enabled)
     [[[mainFrame webView] preferences] setXSSAuditorEnabled:enabled];
 }
 
+void LayoutTestController::setFrameSetFlatteningEnabled(bool enabled)
+{
+    [[[mainFrame webView] preferences] setFrameSetFlatteningEnabled:enabled];
+}
+
 void LayoutTestController::setAllowUniversalAccessFromFileURLs(bool enabled)
 {
     [[[mainFrame webView] preferences] setAllowUniversalAccessFromFileURLs:enabled];
+}
+
+void LayoutTestController::setAllowFileAccessFromFileURLs(bool enabled)
+{
+    [[[mainFrame webView] preferences] setAllowFileAccessFromFileURLs:enabled];
 }
 
 void LayoutTestController::setPopupBlockingEnabled(bool popupBlockingEnabled)
@@ -611,4 +621,68 @@ void LayoutTestController::evaluateScriptInIsolatedWorld(unsigned worldID, JSObj
     }
 
     [mainFrame _stringByEvaluatingJavaScriptFromString:scriptNS withGlobalObject:globalObject inScriptWorld:world];
+}
+
+@interface APITestDelegate : NSObject
+{
+    bool* m_condition;
+}
+@end
+
+@implementation APITestDelegate
+
+- (id)initWithCompletionCondition:(bool*)condition
+{
+    [super init];
+    ASSERT(condition);
+    m_condition = condition;
+    *m_condition = false;
+    return self;
+}
+
+- (void)webView:(WebView *)sender didFailLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
+{
+    printf("API Test load failed\n");
+    *m_condition = true;
+}
+
+- (void)webView:(WebView *)sender didFailProvisionalLoadWithError:(NSError *)error forFrame:(WebFrame *)frame
+{
+    printf("API Test load failed provisional\n");
+    *m_condition = true;
+}
+
+- (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
+{
+    printf("API Test load succeeded\n");
+    *m_condition = true;
+}
+
+@end
+
+void LayoutTestController::apiTestNewWindowDataLoadBaseURL(JSStringRef utf8Data, JSStringRef baseURL)
+{
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    RetainPtr<CFStringRef> utf8DataCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, utf8Data));
+    RetainPtr<CFStringRef> baseURLCF(AdoptCF, JSStringCopyCFString(kCFAllocatorDefault, baseURL));
+    
+    WebView *webView = [[WebView alloc] initWithFrame:NSZeroRect frameName:@"" groupName:@""];
+
+    bool done = false;
+    APITestDelegate *delegate = [[APITestDelegate alloc] initWithCompletionCondition:&done];
+    [webView setFrameLoadDelegate:delegate];
+
+    [[webView mainFrame] loadData:[(NSString *)utf8DataCF.get() dataUsingEncoding:NSUTF8StringEncoding] MIMEType:@"text/html" textEncodingName:@"utf-8" baseURL:[NSURL URLWithString:(NSString *)baseURLCF.get()]];
+    
+    while (!done) {
+        NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+        [pool release];
+    }
+        
+    [webView close];
+    [webView release];
+    [delegate release];
+    [pool release];
 }

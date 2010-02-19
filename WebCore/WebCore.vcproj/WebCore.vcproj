@@ -39896,6 +39896,22 @@
 					</FileConfiguration>
 				</File>
 				<File
+					RelativePath="..\bindings\js\JavaScriptProfile.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\bindings\js\JavaScriptProfile.h"
+					>
+				</File>
+				<File
+					RelativePath="..\bindings\js\JavaScriptProfileNode.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\bindings\js\JavaScriptProfileNode.h"
+					>
+				</File>
+				<File
 					RelativePath="..\bindings\js\ScheduledAction.cpp"
 					>
 					<FileConfiguration
@@ -42681,22 +42697,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\inspector\JavaScriptProfile.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\inspector\JavaScriptProfile.h"
-				>
-			</File>
-			<File
-				RelativePath="..\inspector\JavaScriptProfileNode.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\inspector\JavaScriptProfileNode.h"
-				>
-			</File>
-			<File
 				RelativePath="..\inspector\TimelineRecordFactory.cpp"
 				>
 			</File>
@@ -42884,7 +42884,11 @@
 					>
 				</File>
 				<File
-					RelativePath="..\inspector\front-end\Popup.js"
+					RelativePath="..\inspector\front-end\popover.css"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\Popover.js"
 					>
 				</File>
 				<File

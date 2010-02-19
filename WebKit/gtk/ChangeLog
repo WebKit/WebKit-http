@@ -1,3 +1,176 @@
+2010-02-18  Diego Escalante Urrelo  <descalante@igalia.com>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [GTK] WebKitDownload documentation is incomplete
+        https://bugs.webkit.org/show_bug.cgi?id=35018
+
+        Concretely the error signal was undocumented. Also two relevant enums
+        were not included.
+
+        * docs/webkitgtk-sections.txt:
+        * docs/webkitgtk.types:
+        * webkit/webkitdownload.cpp:
+        (webkit_download_class_init):
+
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::didTransferChildFrameToNewDocument):
+        Added empty implementation of a new virtual method.
+
+        * WebCoreSupport/FrameLoaderClientGtk.h:
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::iconForFiles):
+        * WebCoreSupport/ChromeClientGtk.h:
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Rename 'enable-java' setting to 'enable-java-applet', since it
+        only controls whether <applet> is supported or not instead of
+        whether all Java content is supported or not.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        (webkit_web_settings_copy):
+        * webkit/webkitwebview.cpp:
+        (DNDContentsRequest::webkit_web_view_update_settings):
+        (DNDContentsRequest::webkit_web_view_settings_notify):
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        [Linux] Webkit incompatible with Java plugins
+        https://bugs.webkit.org/show_bug.cgi?id=24912
+
+        Implement FrameLoaderClient::createJavaAppletWidget.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit::FrameLoaderClient::createJavaAppletWidget):
+
+2010-02-17  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        [Linux] Webkit incompatible with Java plugins
+        https://bugs.webkit.org/show_bug.cgi?id=24912
+
+        Add a WebKitWebSetting to enable/disable the Java plugin support.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        (webkit_web_settings_copy):
+        * webkit/webkitwebview.cpp:
+        (webkit_web_view_update_settings):
+        (webkit_web_view_settings_notify):
+
+2010-02-17  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Reviewed by Xan Lopez.
+
+        Test that data URIs that cause downloads to be started do not crash.
+
+        * tests/testdownload.c:
+        (mime_type_policy_decision_requested_cb):
+        (idle_quit_loop_cb):
+        (test_webkit_download_data):
+        (main):
+
+2010-02-17  Philippe Normand  <pnormand@igalia.com>
+
+        Reviewed by Xan Lopez.
+
+        Missing property warning after r54873
+        https://bugs.webkit.org/show_bug.cgi?id=35023
+
+        Add a new WebKitWebSettings setting, 'enable-file-access-from-file-uris', set to
+        FALSE by default, that when enabled will assign each file:// URI
+        their own security domain.
+
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        (webkit_web_settings_copy):
+
+2010-02-16  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Reviewed by Xan Lopez.
+
+        Check if the handle has a SoupMessage before trying to use
+        it. This will be the case in non-HTTP(S) URLs.
+
+        * webkit/webkitdownload.cpp:
+        (webkit_download_new_with_handle):
+        (webkit_download_start):
+
+2010-02-16  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Add a new WebKitWebSettings setting, 'auto-resize-window', set to
+        FALSE by default, that when enabled will apply any resizes or
+        moves done by a page through various DOM methods (moveTo,
+        resizeTo, moveBy, resizeBy).
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        * webkit/webkitwebsettings.cpp:
+        (webkit_web_settings_class_init):
+        (webkit_web_settings_set_property):
+        (webkit_web_settings_get_property):
+        (webkit_web_settings_copy):
+
+2010-02-15  Emilio Pozuelo Monfort  <pochu27@gmail.com>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [GTK] Fails to build on GNU/Hurd because of PATH_MAX usage
+        https://bugs.webkit.org/show_bug.cgi?id=34920
+
+        Use dynamic allocation instead of fixed PATH_MAX size buffers to
+        fix the build on GNU/Hurd, where PATH_MAX is undefined.
+
+        * tests/testmimehandling.c:
+        (main):
+        * tests/testwebview.c:
+        (main):
+
+2010-02-14  Diego Escalante Urrelo  <descalante@igalia.com>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [gtk] WebKitDownload's currentSize property is guint, should be guint64
+        https://bugs.webkit.org/show_bug.cgi?id=34829
+
+        Actually use a guint64 for current-size property in WebKitDownload, we
+        were using a guint which is likely the cause for wrong sizes for files
+        over 4 Gb.
+
+        * webkit/webkitdownload.cpp:
+
 2010-02-09  Gustavo Noronha Silva  <gns@gnome.org>
 
         Reviewed by Xan Lopez.

@@ -157,14 +157,14 @@ class FilterConfigurationTest(unittest.TestCase):
         # Test that the attributes are getting set correctly.
         # We use parameter values that are different from the defaults.
         base_rules = ["-"]
-        path_specific = [(["path"], ("+a",))]
+        path_specific = [(["path"], ["+a"])]
         user_rules = ["+"]
 
         config = self._config(base_rules, path_specific, user_rules)
 
         self.assertEquals(base_rules, config._base_rules)
         self.assertEquals(path_specific, config._path_specific)
-        self.assertEquals(user_rules, config.user_rules)
+        self.assertEquals(user_rules, config._user_rules)
 
     def test_default_arguments(self):
         # Test that the attributes are getting set correctly to the defaults.
@@ -172,7 +172,7 @@ class FilterConfigurationTest(unittest.TestCase):
 
         self.assertEquals([], config._base_rules)
         self.assertEquals([], config._path_specific)
-        self.assertEquals([], config.user_rules)
+        self.assertEquals([], config._user_rules)
 
     def test_eq(self):
         """Test __eq__ method."""
@@ -185,7 +185,7 @@ class FilterConfigurationTest(unittest.TestCase):
 
         # These parameter values are different from the defaults.
         base_rules = ["-"]
-        path_specific = [(["path"], ("+a",))]
+        path_specific = [(["path"], ["+a"])]
         user_rules = ["+"]
 
         self.assertFalse(config.__eq__(FilterConfiguration(
@@ -219,8 +219,8 @@ class FilterConfigurationTest(unittest.TestCase):
     def test_path_specific(self):
         """Test effect of path_rules_specifier on should_check()."""
         base_rules = ["-"]
-        path_specific = [(["path1"], ("+b",)),
-                         (["path2"], ("+c",))]
+        path_specific = [(["path1"], ["+b"]),
+                         (["path2"], ["+c"])]
         user_rules = []
 
         config = self._config(base_rules, path_specific, user_rules)
@@ -233,7 +233,7 @@ class FilterConfigurationTest(unittest.TestCase):
     def test_path_with_different_case(self):
         """Test a path that differs only in case."""
         base_rules = ["-"]
-        path_specific = [(["Foo/"], ("+whitespace",))]
+        path_specific = [(["Foo/"], ["+whitespace"])]
         user_rules = []
 
         config = self._config(base_rules, path_specific, user_rules)

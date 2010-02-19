@@ -160,6 +160,8 @@ public:
     QPoint scrollPosition() const;
     void setScrollPosition(const QPoint &pos);
 
+    void scrollToAnchor(const QString& anchor);
+
     enum RenderLayer {
         ContentsLayer = 0x10,
         ScrollBarLayer = 0x20,
@@ -216,6 +218,8 @@ Q_SIGNALS:
 
     void loadStarted();
     void loadFinished(bool ok);
+
+    void pageChanged();
 
 private:
     friend class QWebPage;

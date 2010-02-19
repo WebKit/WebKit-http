@@ -170,7 +170,17 @@ void LayoutTestController::setXSSAuditorEnabled(bool enabled)
     // FIXME: implement
 }
 
+void LayoutTestController::setFrameSetFlatteningEnabled(bool enabled)
+{
+    // FIXME: implement
+}
+
 void LayoutTestController::setAllowUniversalAccessFromFileURLs(bool enabled)
+{
+    // FIXME: implement
+}
+
+void LayoutTestController::setAllowFileAccessFromFileURLs(bool enabled)
 {
     // FIXME: implement
 }
@@ -370,4 +380,9 @@ int LayoutTestController::numberOfPages(float, float)
 {
     // FIXME: implement
     return -1;
+}
+
+void LayoutTestController::apiTestNewWindowDataLoadBaseURL(JSStringRef utf8Data, JSStringRef baseURL)
+{
+
 }

@@ -66,6 +66,7 @@ class MyQObject : public QObject
     Q_PROPERTY(int readOnlyProperty READ readOnlyProperty)
     Q_PROPERTY(QKeySequence shortcut READ shortcut WRITE setShortcut)
     Q_PROPERTY(CustomType propWithCustomType READ propWithCustomType WRITE setPropWithCustomType)
+    Q_PROPERTY(QWebElement webElementProperty READ webElementProperty WRITE setWebElementProperty)
     Q_ENUMS(Policy Strategy)
     Q_FLAGS(Ability)
 
@@ -179,6 +180,14 @@ public:
     }
     void setShortcut(const QKeySequence &seq) {
         m_shortcut = seq;
+    }
+
+    QWebElement webElementProperty() const {
+        return m_webElement;
+    }
+
+    void setWebElementProperty(const QWebElement& element) {
+        m_webElement = element;
     }
 
     CustomType propWithCustomType() const {
@@ -433,6 +442,10 @@ public Q_SLOTS:
         m_qtFunctionInvoked = 35;
         m_actuals << arg;
     }
+    void myOverloadedSlot(const QWebElement &arg) {
+        m_qtFunctionInvoked = 36;
+        m_actuals << QVariant::fromValue<QWebElement>(arg);
+    }
 
     void qscript_call(int arg) {
         m_qtFunctionInvoked = 40;
@@ -467,6 +480,7 @@ private:
     int m_writeOnlyValue;
     int m_readOnlyValue;
     QKeySequence m_shortcut;
+    QWebElement m_webElement;
     CustomType m_customType;
     int m_qtFunctionInvoked;
     QVariantList m_actuals;
@@ -570,6 +584,7 @@ private slots:
     void hasSetFocus();
     void render();
     void scrollPosition();
+    void scrollToAnchor();
     void evaluateWillCauseRepaint();
     void qObjectWrapperWithSameIdentity();
     void scrollRecursively();
@@ -685,6 +700,7 @@ void tst_QWebFrame::cleanup()
 
 void tst_QWebFrame::getSetStaticProperty()
 {
+    m_page->mainFrame()->setHtml("<html><head><body></body></html>");
     QCOMPARE(evalJS("typeof myObject.noSuchProperty"), sUndefined);
 
     // initial value (set in MyQObject constructor)
@@ -824,6 +840,8 @@ void tst_QWebFrame::getSetStaticProperty()
     QCOMPARE(evalJS("myObject.stringListProperty[1]"), QLatin1String("two"));
     QCOMPARE(evalJS("typeof myObject.stringListProperty[2]"), sString);
     QCOMPARE(evalJS("myObject.stringListProperty[2]"), QLatin1String("true"));
+    evalJS("myObject.webElementProperty=document.body;");
+    QCOMPARE(evalJS("myObject.webElementProperty.tagName"), QLatin1String("BODY"));
 
     // try to delete
     QCOMPARE(evalJS("delete myObject.intProperty"), sFalse);
@@ -1886,6 +1904,12 @@ void tst_QWebFrame::overloadedSlots()
     f.call(QString(), QStringList() << m_engine->newVariant(QVariant("ciao")));
     QCOMPARE(m_myObject->qtFunctionInvoked(), 35);
     */
+
+    // should pick myOverloadedSlot(QRegExp)
+    m_myObject->resetQtFunctionInvoked();
+    evalJS("myObject.myOverloadedSlot(document.body)");
+    QCOMPARE(m_myObject->qtFunctionInvoked(), 36);
+
     // should pick myOverloadedSlot(QObject*)
     m_myObject->resetQtFunctionInvoked();
     evalJS("myObject.myOverloadedSlot(myObject)");
@@ -2739,6 +2763,38 @@ void tst_QWebFrame::scrollPosition()
     int y = frame->evaluateJavaScript("window.scrollY").toInt();
     QCOMPARE(x, 23);
     QCOMPARE(y, 29);
+}
+
+void tst_QWebFrame::scrollToAnchor()
+{
+    QWebPage page;
+    page.setViewportSize(QSize(480, 800));
+    QWebFrame* frame = page.mainFrame();
+
+    QString html("<html><body><p style=\"margin-bottom: 1500px;\">Hello.</p>"
+                 "<p><a id=\"foo\">This</a> is an anchor</p>"
+                 "<p style=\"margin-bottom: 1500px;\"><a id=\"bar\">This</a> is another anchor</p>"
+                 "</body></html>");
+    frame->setHtml(html);
+    frame->setScrollPosition(QPoint(0, 0));
+    QCOMPARE(frame->scrollPosition().x(), 0);
+    QCOMPARE(frame->scrollPosition().y(), 0);
+
+    QWebElement fooAnchor = frame->findFirstElement("a[id=foo]");
+
+    frame->scrollToAnchor("foo");
+    QCOMPARE(frame->scrollPosition().y(), fooAnchor.geometry().top());
+
+    frame->scrollToAnchor("bar");
+    frame->scrollToAnchor("foo");
+    QCOMPARE(frame->scrollPosition().y(), fooAnchor.geometry().top());
+
+    frame->scrollToAnchor("top");
+    QCOMPARE(frame->scrollPosition().y(), 0);
+
+    frame->scrollToAnchor("bar");
+    frame->scrollToAnchor("notexist");
+    QVERIFY(frame->scrollPosition().y() != 0);
 }
 
 void tst_QWebFrame::evaluateWillCauseRepaint()

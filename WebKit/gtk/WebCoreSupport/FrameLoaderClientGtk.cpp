@@ -491,6 +491,10 @@ PassRefPtr<Frame> FrameLoaderClient::createFrame(const KURL& url, const String& 
     return childFrame.release();
 }
 
+void FrameLoaderClient::didTransferChildFrameToNewDocument()
+{
+}
+
 void FrameLoaderClient::redirectDataToPlugin(Widget* pluginWidget)
 {
     ASSERT(!m_pluginView);
@@ -498,11 +502,9 @@ void FrameLoaderClient::redirectDataToPlugin(Widget* pluginWidget)
     m_hasSentResponseToPlugin = false;
 }
 
-PassRefPtr<Widget> FrameLoaderClient::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
-                                                  const Vector<String>& paramNames, const Vector<String>& paramValues)
+PassRefPtr<Widget> FrameLoaderClient::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const KURL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    notImplemented();
-    return 0;
+    return FrameLoaderClient::createPlugin(pluginSize, element, baseURL, paramNames, paramValues, "application/x-java-applet", false);
 }
 
 ObjectContentType FrameLoaderClient::objectContentType(const KURL& url, const String& mimeType)

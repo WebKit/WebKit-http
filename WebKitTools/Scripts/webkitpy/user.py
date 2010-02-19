@@ -32,8 +32,13 @@ import subprocess
 import webbrowser
 
 class User(object):
-    def prompt(self, message):
-        return raw_input(message)
+    @staticmethod
+    def prompt(message, repeat=1, raw_input=raw_input):
+        response = None
+        while (repeat and not response):
+            repeat -= 1
+            response = raw_input(message)
+        return response
 
     def edit(self, files):
         editor = os.environ.get("EDITOR") or "vi"

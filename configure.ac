@@ -2,7 +2,7 @@ AC_PREREQ(2.59)
 
 m4_define([webkit_major_version], [1])
 m4_define([webkit_minor_version], [1])
-m4_define([webkit_micro_version], [21])
+m4_define([webkit_micro_version], [22])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
@@ -131,12 +131,19 @@ fi
 AC_SUBST([JPEG_LIBS])
 
 # Check for libpng the way Gtk+ does it
-AC_MSG_CHECKING(for libpng12)
-if $PKG_CONFIG --exists libpng12 ; then
+for l in libpng libpng14 libpng12; do
+  AC_MSG_CHECKING(for $l)
+  if $PKG_CONFIG --exists $l ; then
     AC_MSG_RESULT(yes)
-    PNG_LIBS=`$PKG_CONFIG --libs libpng12`
-else
-  AC_MSG_RESULT(no)
+    PNG_LIBS=`$PKG_CONFIG --libs $l`
+    png_ok=yes
+    break
+  else
+    AC_MSG_RESULT(no)
+    png_ok=no
+  fi
+done
+if test "$png_ok" != yes; then
   AC_CHECK_LIB(png, png_read_info,
     [AC_CHECK_HEADER(png.h,
       png_ok=yes,
@@ -155,7 +162,7 @@ else
       AC_MSG_ERROR([PNG library (libpng) not found])
     fi
   else
-   AC_MSG_ERROR([PNG library (libpng) not found])
+    AC_MSG_ERROR([PNG library (libpng) not found])
   fi
 fi
 AC_SUBST([PNG_LIBS])
@@ -204,7 +211,7 @@ GTK_REQUIRED_VERSION=2.10
 LIBXSLT_REQUIRED_VERSION=1.1.7
 SQLITE_REQUIRED_VERSION=3.0
 GSTREAMER_REQUIRED_VERSION=0.10
-GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION=0.10.23
+GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION=0.10.25
 ENCHANT_REQUIRED_VERSION=0.22
 GAIL_REQUIRED_VERSION=1.8
 

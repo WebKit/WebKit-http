@@ -380,6 +380,7 @@ static gboolean parseDataUrl(gpointer callback_data)
     String charset = extractCharsetFromMediaType(mediaType);
 
     ResourceResponse response;
+    response.setURL(handle->request().url());
     response.setMimeType(mimeType);
 
     if (isBase64) {
@@ -387,7 +388,10 @@ static gboolean parseDataUrl(gpointer callback_data)
         response.setTextEncodingName(charset);
         client->didReceiveResponse(handle, response);
 
-        if (d->m_cancelled)
+        // The load may be cancelled, and the client may be destroyed
+        // by any of the client reporting calls, so we check, and bail
+        // out in either of those cases.
+        if (!handle->client() || d->m_cancelled)
             return false;
 
         // Use the GLib Base64, since WebCore's decoder isn't
@@ -404,15 +408,15 @@ static gboolean parseDataUrl(gpointer callback_data)
         response.setTextEncodingName("UTF-16");
         client->didReceiveResponse(handle, response);
 
-        if (d->m_cancelled)
+        if (!handle->client() || d->m_cancelled)
             return false;
 
         if (data.length() > 0)
             client->didReceiveData(handle, reinterpret_cast<const char*>(data.characters()), data.length() * sizeof(UChar), 0);
-
-        if (d->m_cancelled)
-            return false;
     }
+
+    if (!handle->client() || d->m_cancelled)
+        return false;
 
     client->didFinishLoading(handle);
 
@@ -564,6 +568,11 @@ static bool startHttp(ResourceHandle* handle)
 
     // balanced by a deref() in finishedCallback, which should always run
     handle->ref();
+
+    // Make sure we have an Accept header for subresources; some sites
+    // want this to serve some of their subresources
+    if (!soup_message_headers_get_one(d->m_msg->request_headers, "Accept"))
+        soup_message_headers_append(d->m_msg->request_headers, "Accept", "*/*");
 
     // Balanced in ResourceHandleInternal's destructor; we need to
     // keep our own ref, because after queueing the message, the

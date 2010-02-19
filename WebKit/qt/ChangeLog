@@ -1,3 +1,274 @@
+2010-02-18  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Minor improvement to hybrid QPixmap
+        https://bugs.webkit.org/show_bug.cgi?id=34507
+
+        * tests/hybridPixmap/test.html: use assignToHTMLImageElement on an
+        existing element instead of toHTMLImageElement which creates a new one
+
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * Api/qwebframe_p.h:
+        (QWebFramePrivate::setPage): Added.
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::didTransferChildFrameToNewDocument):
+        The QWebFrame caches a QWebPage which should be replaced when Frame is re-parented.
+        Also, the QWebFrame is a child (in QT terms) of QWebPage - so update that relationship as well.
+        Emit a signal that QWebFrame moved to a different QWebPage.
+
+        * WebCoreSupport/FrameLoaderClientQt.h:
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore::ChromeClientQt::iconForFiles):
+        * WebCoreSupport/ChromeClientQt.h:
+
+2010-02-17  Diego Gonzalez  <diego.gonzalez@openbossa.org>
+
+        Reviewed by Ariya Hidayat.
+
+        Make possible Qt DRT to get total number of pages to be printed
+
+        LayoutTests:
+            printing/numberOfPages.html
+
+        [Qt] DRT: Get total number of pages to be printed
+        https://bugs.webkit.org/show_bug.cgi?id=34955
+
+        * Api/qwebframe.cpp:
+        (qt_drt_numberOfPages):
+        (qt_drt_evaluateScriptInIsolatedWorld):
+
+2010-02-16  Ariya Hidayat  <ariya.hidayat@gmail.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Allow scrolling to an anchor programmatically.
+        https://bugs.webkit.org/show_bug.cgi?id=29856
+
+        * Api/qwebframe.cpp:
+        (QWebFrame::scrollToAnchor): New API function.
+        * Api/qwebframe.h:
+        * tests/qwebframe/tst_qwebframe.cpp: New tests for scrollToAnchor().
+
+2010-02-16  Ariya Hidayat  <ariya.hidayat@gmail.com>
+
+        Reviewed by Laszlo Gombos.
+
+        Fix building with Qt < 4.6.
+        https://bugs.webkit.org/show_bug.cgi?id=34885
+
+        * Api/qgraphicswebview.cpp:
+        (QGraphicsWebViewPrivate::updateResizesToContentsForPage):
+
+2010-02-16  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed Symbian build fix.
+
+        Updated the def file with two new exports used by QtLauncher.
+
+        * symbian/eabi/QtWebKitu.def:
+
+2010-02-16  Ismail Donmez  <ismail@namtrac.org>
+
+        Reviewed by Pavel Feldman.
+
+        Fix compilation with inspector disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=32724
+
+        * Api/qwebpage.cpp:
+        (qt_drt_webinspector_executeScript):
+        (qt_drt_webinspector_close):
+        (qt_drt_webinspector_show):
+        (qt_drt_setTimelineProfilingEnabled):
+
+2010-02-16  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausman.
+
+        [Qt] Fix include paths for forwarding headers in standalone builds.
+
+        * Api/DerivedSources.pro: Use relative paths for package builds and added some
+        documentation.
+
+2010-02-15  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] QtWebkit bridge: enable passing a QWebElement to a signal/slot/property
+        Add Q_DECLARE_METATYPE to QWebElement, add relevant tests to
+        tst_qwebframe
+        https://bugs.webkit.org/show_bug.cgi?id=34901
+
+        * Api/qwebelement.h: declare metatype
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (MyQObject::webElementProperty): new test for QWebElement
+        (MyQObject::setWebElementProperty): new test for QWebElement
+        (MyQObject::myOverloadedSlot): new test for QWebElement
+
+2010-02-15  Robert Hogan  <robert@roberthogan.net>, Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] DRT: Support evaluateInWebInspector(), setTimelineProfilingEnabled().
+
+        Support LayoutTestController.evaluateInWebInspector(), setTimelineProfilingEnabled() in Qt DRT.
+
+        https://bugs.webkit.org/show_bug.cgi?id=33096
+
+        This allows the following tests to pass:
+
+        inspector/console-format-collections.html
+        inspector/styles-iframe.html
+        inspector/syntax-highlight-css.html
+        inspector/syntax-highlight-javascript.html
+        inspector/timeline-enum-stability.html
+        inspector/timeline-layout.html
+        inspector/timeline-mark-timeline.html
+        inspector/timeline-paint.html
+        inspector/timeline-parse-html.html
+        inspector/timeline-recalculate-styles.html
+        inspector/timeline-script-tag-1.html
+        inspector/timeline-script-tag-2.html
+        inspector/timeline-trivial.html
+        inspector/cookie-resource-match.html
+        inspector/elements-img-tooltip.html
+        inspector/elements-panel-selection-on-refresh.html
+        inspector/inspected-objects-not-overriden.html
+        inspector/timeline-event-dispatch.html
+        inspector/timeline-network-resource.html
+        inspector/elements-panel-rewrite-href.html
+        inspector/console-dir.html
+        inspector/console-dirxml.html
+        inspector/console-format.html
+        inspector/console-tests.html
+        inspector/elements-panel-structure.html
+        inspector/evaluate-in-frontend.html
+        inspector/console-clear.html
+
+        * Api/qwebpage.cpp:
+        (qt_drt_webinspector_executeScript):
+        (qt_drt_webinspector_close):
+        (qt_drt_webinspector_show):
+        (qt_drt_setTimelineProfilingEnabled):
+
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (InspectorClientQt::createPage)
+
+2010-02-12  Antti Koivisto  <koivisto@iki.fi>
+
+        Reviewed by Kenneth Rohde Christiansen and Simon Hausmann.
+        
+        https://bugs.webkit.org/show_bug.cgi?id=34885
+        Add a QGraphicsWebView mode that makes it automatically resize itself to the size of the content.
+
+        This is useful for cases where the client wants to implement page panning and zooming by manipulating
+        the graphics item.
+        
+        Add a option to QGVLauncher to test this mode.
+
+        * Api/qgraphicswebview.cpp:
+        (QGraphicsWebViewPrivate::QGraphicsWebViewPrivate):
+        (QGraphicsWebViewPrivate::updateResizesToContentsForPage):
+        (QGraphicsWebViewPrivate::_q_contentsSizeChanged):
+        (QGraphicsWebView::setPage):
+        (QGraphicsWebView::setResizesToContents):
+        (QGraphicsWebView::resizesToContents):
+        * Api/qgraphicswebview.h:
+        * QGVLauncher/main.cpp:
+        (WebView::WebView):
+        (MainView::MainView):
+        (MainView::setMainWidget):
+        (MainView::resizeEvent):
+        (main):
+
+2010-02-12  Diego Gonzalez  <diego.gonzalez@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Qt DRT now dump the frame loader callbacks when LayoutTestController()
+        method is called.
+
+        LayoutTests:
+            http/tests/security/mixedContent/data-url-script-in-iframe.html
+            http/tests/security/mixedContent/empty-url-plugin-in-frame.html
+            http/tests/security/mixedContent/insecure-css-in-iframe.html
+            http/tests/security/mixedContent/insecure-iframe-in-iframe.html
+            http/tests/security/mixedContent/insecure-image-in-iframe.html
+            http/tests/security/mixedContent/insecure-plugin-in-iframe.html
+            http/tests/security/mixedContent/insecure-script-in-iframe.html
+            http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe.html
+            http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe.html
+
+        [Qt] Make possible Qt DRT dump frame load callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=34702
+
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::didDisplayInsecureContent):
+        (WebCore::FrameLoaderClientQt::didRunInsecureContent):
+
+2010-02-10  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Make qtlauncher and qgvlauncher use the generated headers
+        path to make sure they are correctly generated.
+
+        * tests/tests.pri:
+
+2010-02-10  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Ensure relative paths in generated .pri files to ensure that
+        a source package with pre-generated derived sources can be compiled.
+
+        - Re-add a separate headers.pri file for WEBKIT_API_HEADERS
+        - Rename the generated headers.pri to classheaders.pri to avoid
+        confusion with the one generated by synqt since they don't have the
+        same content.
+        - Remove private headers list variable from classheaders.pri
+        - Use $$PWD in classheaders.pri
+        - Remove classheaders.pri from the installed files
+
+        * Api/DerivedSources.pro:
+
+2010-02-10  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Minor fixes on QtWebKit headers generation.
+
+        - Adds QtWebKit to the generated headers destination path
+        - Improve compatibility with MinGW
+
+        * Api/DerivedSources.pro:
+
+2010-02-09  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by nobody, build fix.
+
+        [Qt] Fix standalone build with MinGW.
+
+        * tests/qwebelement/tst_qwebelement.cpp:
+        * tests/tests.pri:
+
 2010-02-10  Diego Gonzalez  <diego.gonzalez@openbossa.org>
 
         Reviewed by Kenneth Rohde Christiansen.

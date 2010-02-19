@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +24,6 @@
  */
 
 #include "config.h"
-
 #include "WebView.h"
 
 #include "CFDictionaryPropertyBag.h"
@@ -2596,7 +2595,7 @@ void WebView::initializeToolTipWindow()
     if (!initCommonControls())
         return;
 
-    m_toolTipHwnd = CreateWindowEx(0, TOOLTIPS_CLASS, 0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
+    m_toolTipHwnd = CreateWindowEx(WS_EX_TRANSPARENT, TOOLTIPS_CLASS, 0, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP,
                                    CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
                                    m_viewWindow, 0, 0, 0);
     if (!m_toolTipHwnd)
@@ -4622,6 +4621,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings->setAllowUniversalAccessFromFileURLs(!!enabled);
 
+    hr = prefsPrivate->allowFileAccessFromFileURLs(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setAllowFileAccessFromFileURLs(!!enabled);
+
     hr = prefsPrivate->isXSSAuditorEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5766,7 +5770,7 @@ HRESULT WebView::setJavaScriptURLsAreAllowed(BOOL areAllowed)
 
 HRESULT WebView::setCanStartPlugins(BOOL canStartPlugins)
 {
-    m_page->setCanStartPlugins(canStartPlugins);
+    m_page->setCanStartMedia(canStartPlugins);
     return S_OK;
 }
 

@@ -68,6 +68,7 @@
                 'WEBKIT_IMPLEMENTATION',
             ],
             'sources': [
+                'public/GeolocationServiceBridgeChromium.h',
                 'public/gtk/WebInputEventFactory.h',
                 'public/linux/WebFontRendering.h',
                 'public/linux/WebRenderTheme.h',
@@ -92,6 +93,7 @@
                 'public/WebConsoleMessage.h',
                 'public/WebContextMenuData.h',
                 'public/WebCookie.h',
+                'public/WebCookieJar.h',
                 'public/WebCrossOriginPreflightResultCache.h',
                 'public/WebCString.h',
                 'public/WebCursorInfo.h',
@@ -231,6 +233,7 @@
                 'src/EventListenerWrapper.h',
                 'src/FrameLoaderClientImpl.cpp',
                 'src/FrameLoaderClientImpl.h',
+                'src/GeolocationServiceBridgeChromium.cpp',		
                 'src/gtk/WebFontInfo.cpp',
                 'src/gtk/WebFontInfo.h',
                 'src/gtk/WebInputEventFactory.cpp',

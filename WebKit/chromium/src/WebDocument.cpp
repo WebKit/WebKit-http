@@ -53,7 +53,7 @@ using namespace WebCore;
 namespace WebKit {
 
 WebDocument::WebDocument(const PassRefPtr<Document>& elem)
-    : WebNode(elem.releaseRef())
+    : WebNode(elem)
 {
 }
 
@@ -96,6 +96,11 @@ WebElement WebDocument::body() const
 WebElement WebDocument::head()
 {
     return WebElement(unwrap<Document>()->head());
+}
+
+WebString WebDocument::title() const
+{
+    return WebString(constUnwrap<Document>()->title());
 }
 
 WebNodeCollection WebDocument::all()

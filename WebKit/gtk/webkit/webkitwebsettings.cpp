@@ -98,11 +98,14 @@ struct _WebKitWebSettingsPrivate {
     gboolean enable_offline_web_application_cache;
     WebKitEditingBehavior editing_behavior;
     gboolean enable_universal_access_from_file_uris;
+    gboolean enable_file_access_from_file_uris;
     gboolean enable_dom_paste;
     gboolean tab_key_cycles_through_elements;
     gboolean enable_default_context_menu;
     gboolean enable_site_specific_quirks;
     gboolean enable_page_cache;
+    gboolean auto_resize_window;
+    gboolean enable_java_applet;
 };
 
 #define WEBKIT_WEB_SETTINGS_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_WEB_SETTINGS, WebKitWebSettingsPrivate))
@@ -143,11 +146,14 @@ enum {
     PROP_ENABLE_OFFLINE_WEB_APPLICATION_CACHE,
     PROP_EDITING_BEHAVIOR,
     PROP_ENABLE_UNIVERSAL_ACCESS_FROM_FILE_URIS,
+    PROP_ENABLE_FILE_ACCESS_FROM_FILE_URIS,
     PROP_ENABLE_DOM_PASTE,
     PROP_TAB_KEY_CYCLES_THROUGH_ELEMENTS,
     PROP_ENABLE_DEFAULT_CONTEXT_MENU,
     PROP_ENABLE_SITE_SPECIFIC_QUIRKS,
-    PROP_ENABLE_PAGE_CACHE
+    PROP_ENABLE_PAGE_CACHE,
+    PROP_AUTO_RESIZE_WINDOW,
+    PROP_ENABLE_JAVA_APPLET
 };
 
 // Create a default user agent string
@@ -759,6 +765,60 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
                                                          FALSE,
                                                          flags));
 
+    /**
+    * WebKitWebSettings:auto-resize-window:
+    *
+    * Web pages can request to modify the size and position of the
+    * window containing the #WebKitWebView through various DOM methods
+    * (resizeTo, moveTo, resizeBy, moveBy). By default WebKit will not
+    * honor this requests, but you can set this property to %TRUE if
+    * you'd like it to do so. If you wish to handle this manually, you
+    * can connect to the notify signal for the
+    * #WebKitWebWindowFeatures of your #WebKitWebView.
+    * 
+    * Since: 1.1.22
+    */
+    g_object_class_install_property(gobject_class,
+                                    PROP_AUTO_RESIZE_WINDOW,
+                                    g_param_spec_boolean("auto-resize-window",
+                                                         _("Auto Resize Window"),
+                                                         _("Automatically resize the toplevel window when a page requests it"),
+                                                         FALSE,
+                                                         flags));
+
+    /**
+     * WebKitWebSettings:enable-file-access-from-file-uris:
+     *
+     * Boolean property to control file access for file:// URIs. If this
+     * option is enabled every file:// will have its own security unique domain.
+     *
+     * Since: 1.1.22
+     */
+     g_object_class_install_property(gobject_class,
+                                     PROP_ENABLE_FILE_ACCESS_FROM_FILE_URIS,
+                                     g_param_spec_boolean("enable-file-access-from-file-uris",
+                                                          "Enable file access from file URIs",
+                                                          "Controls file access for file:// URIs.",
+                                                          FALSE,
+                                                          flags));
+
+   /**
+    * WebKitWebSettings:enable-java-applet:
+    *
+    * Enable or disable support for the Java <applet> tag. Keep in
+    * mind that Java content can be still shown in the page through
+    * <object> or <embed>, which are the preferred tags for this task.
+    *
+    * Since: 1.1.22
+    */
+    g_object_class_install_property(gobject_class,
+                                    PROP_ENABLE_JAVA_APPLET,
+                                    g_param_spec_boolean("enable-java-applet",
+                                                         _("Enable Java Applet"),
+                                                         _("Whether Java Applet support through <applet> should be enabled"),
+                                                         TRUE,
+                                                         flags));
+
     g_type_class_add_private(klass, sizeof(WebKitWebSettingsPrivate));
 }
 
@@ -952,6 +1012,9 @@ static void webkit_web_settings_set_property(GObject* object, guint prop_id, con
     case PROP_ENABLE_UNIVERSAL_ACCESS_FROM_FILE_URIS:
         priv->enable_universal_access_from_file_uris = g_value_get_boolean(value);
         break;
+    case PROP_ENABLE_FILE_ACCESS_FROM_FILE_URIS:
+        priv->enable_file_access_from_file_uris = g_value_get_boolean(value);
+        break;
     case PROP_ENABLE_DOM_PASTE:
         priv->enable_dom_paste = g_value_get_boolean(value);
         break;
@@ -966,6 +1029,12 @@ static void webkit_web_settings_set_property(GObject* object, guint prop_id, con
         break;
     case PROP_ENABLE_PAGE_CACHE:
         priv->enable_page_cache = g_value_get_boolean(value);
+        break;
+    case PROP_AUTO_RESIZE_WINDOW:
+        priv->auto_resize_window = g_value_get_boolean(value);
+        break;
+    case PROP_ENABLE_JAVA_APPLET:
+        priv->enable_java_applet = g_value_get_boolean(value);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1069,14 +1138,17 @@ static void webkit_web_settings_get_property(GObject* object, guint prop_id, GVa
     case PROP_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY:
         g_value_set_boolean(value, priv->javascript_can_open_windows_automatically);
         break;
-   case PROP_ENABLE_OFFLINE_WEB_APPLICATION_CACHE:
+    case PROP_ENABLE_OFFLINE_WEB_APPLICATION_CACHE:
         g_value_set_boolean(value, priv->enable_offline_web_application_cache);
         break;
     case PROP_EDITING_BEHAVIOR:
         g_value_set_enum(value, priv->editing_behavior);
         break;
-   case PROP_ENABLE_UNIVERSAL_ACCESS_FROM_FILE_URIS:
+    case PROP_ENABLE_UNIVERSAL_ACCESS_FROM_FILE_URIS:
         g_value_set_boolean(value, priv->enable_universal_access_from_file_uris);
+        break;
+    case PROP_ENABLE_FILE_ACCESS_FROM_FILE_URIS:
+        g_value_set_boolean(value, priv->enable_file_access_from_file_uris);
         break;
     case PROP_ENABLE_DOM_PASTE:
         g_value_set_boolean(value, priv->enable_dom_paste);
@@ -1092,6 +1164,12 @@ static void webkit_web_settings_get_property(GObject* object, guint prop_id, GVa
         break;
     case PROP_ENABLE_PAGE_CACHE:
         g_value_set_boolean(value, priv->enable_page_cache);
+        break;
+    case PROP_AUTO_RESIZE_WINDOW:
+        g_value_set_boolean(value, priv->auto_resize_window);
+        break;
+    case PROP_ENABLE_JAVA_APPLET:
+        g_value_set_boolean(value, priv->enable_java_applet);
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
@@ -1157,11 +1235,14 @@ WebKitWebSettings* webkit_web_settings_copy(WebKitWebSettings* web_settings)
                  "enable-offline-web-application-cache", priv->enable_offline_web_application_cache,
                  "editing-behavior", priv->editing_behavior,
                  "enable-universal-access-from-file-uris", priv->enable_universal_access_from_file_uris,
+                 "enable-file-access-from-file-uris", priv->enable_file_access_from_file_uris,
                  "enable-dom-paste", priv->enable_dom_paste,
                  "tab-key-cycles-through-elements", priv->tab_key_cycles_through_elements,
                  "enable-default-context-menu", priv->enable_default_context_menu,
                  "enable-site-specific-quirks", priv->enable_site_specific_quirks,
                  "enable-page-cache", priv->enable_page_cache,
+                 "auto-resize-window", priv->auto_resize_window,
+                 "enable-java-applet", priv->enable_java_applet,
                  NULL));
 
     return copy;

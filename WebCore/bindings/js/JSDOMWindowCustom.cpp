@@ -912,13 +912,13 @@ JSValue JSDOMWindow::postMessage(ExecState* exec, const ArgList& args)
 
 JSValue JSDOMWindow::setTimeout(ExecState* exec, const ArgList& args)
 {
-    ScheduledAction* action = ScheduledAction::create(exec, args, currentWorld(exec));
+    OwnPtr<ScheduledAction> action = ScheduledAction::create(exec, args, currentWorld(exec));
     if (exec->hadException())
         return jsUndefined();
     int delay = args.at(1).toInt32(exec);
 
     ExceptionCode ec = 0;
-    int result = impl()->setTimeout(action, delay, ec);
+    int result = impl()->setTimeout(action.release(), delay, ec);
     setDOMException(exec, ec);
 
     return jsNumber(exec, result);
@@ -926,13 +926,13 @@ JSValue JSDOMWindow::setTimeout(ExecState* exec, const ArgList& args)
 
 JSValue JSDOMWindow::setInterval(ExecState* exec, const ArgList& args)
 {
-    ScheduledAction* action = ScheduledAction::create(exec, args, currentWorld(exec));
+    OwnPtr<ScheduledAction> action = ScheduledAction::create(exec, args, currentWorld(exec));
     if (exec->hadException())
         return jsUndefined();
     int delay = args.at(1).toInt32(exec);
 
     ExceptionCode ec = 0;
-    int result = impl()->setInterval(action, delay, ec);
+    int result = impl()->setInterval(action.release(), delay, ec);
     setDOMException(exec, ec);
 
     return jsNumber(exec, result);
@@ -954,7 +954,7 @@ JSValue JSDOMWindow::atob(ExecState* exec, const ArgList& args)
     }
 
     Vector<char> in(s.size());
-    for (int i = 0; i < s.size(); ++i)
+    for (unsigned i = 0; i < s.size(); ++i)
         in[i] = static_cast<char>(s.data()[i]);
     Vector<char> out;
 
@@ -980,7 +980,7 @@ JSValue JSDOMWindow::btoa(ExecState* exec, const ArgList& args)
     }
 
     Vector<char> in(s.size());
-    for (int i = 0; i < s.size(); ++i)
+    for (unsigned i = 0; i < s.size(); ++i)
         in[i] = static_cast<char>(s.data()[i]);
     Vector<char> out;
 

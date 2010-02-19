@@ -41,10 +41,11 @@ from webkitpy.bugzilla import parse_bug_id
 from webkitpy.commands.abstractsequencedcommand import AbstractSequencedCommand
 from webkitpy.comments import bug_comment_from_svn_revision
 from webkitpy.committers import CommitterList
-from webkitpy.grammar import pluralize
+from webkitpy.grammar import pluralize, join_with_separators
 from webkitpy.webkit_logging import error, log
 from webkitpy.mock import Mock
 from webkitpy.multicommandtool import AbstractDeclarativeCommand
+from webkitpy.user import User
 
 class CommitMessageForCurrentDiff(AbstractDeclarativeCommand):
     name = "commit-message"
@@ -54,10 +55,44 @@ class CommitMessageForCurrentDiff(AbstractDeclarativeCommand):
         os.chdir(tool.scm().checkout_root)
         print "%s" % tool.scm().commit_message_for_this_commit().message()
 
+class CleanPendingCommit(AbstractDeclarativeCommand):
+    name = "clean-pending-commit"
+    help_text = "Clear r+ on obsolete patches so they do not appear in the pending-commit list."
+
+    # NOTE: This was designed to be generic, but right now we're only processing patches from the pending-commit list, so only r+ matters.
+    def _flags_to_clear_on_patch(self, patch):
+        if not patch.is_obsolete():
+            return None
+        what_was_cleared = []
+        if patch.review() == "+":
+            if patch.reviewer():
+                what_was_cleared.append("%s's review+" % patch.reviewer().full_name)
+            else:
+                what_was_cleared.append("review+")
+        return join_with_separators(what_was_cleared)
+
+    def execute(self, options, args, tool):
+        committers = CommitterList()
+        for bug_id in tool.bugs.queries.fetch_bug_ids_from_pending_commit_list():
+            bug = self.tool.bugs.fetch_bug(bug_id)
+            patches = bug.patches(include_obsolete=True)
+            for patch in patches:
+                flags_to_clear = self._flags_to_clear_on_patch(patch)
+                if not flags_to_clear:
+                    continue
+                message = "Cleared %s from obsolete attachment %s so that this bug does not appear in http://webkit.org/pending-commit." % (flags_to_clear, patch.id())
+                self.tool.bugs.obsolete_attachment(patch.id(), message)
+
 
 class AssignToCommitter(AbstractDeclarativeCommand):
     name = "assign-to-committer"
     help_text = "Assign bug to whoever attached the most recent r+'d patch"
+
+    def _patches_have_commiters(self, reviewed_patches):
+        for patch in reviewed_patches:
+            if not patch.committer():
+                return False
+        return True
 
     def _assign_bug_to_last_patch_attacher(self, bug_id):
         committers = CommitterList()
@@ -71,6 +106,12 @@ class AssignToCommitter(AbstractDeclarativeCommand):
         if not reviewed_patches:
             log("Bug %s has no non-obsolete patches, ignoring." % bug_id)
             return
+
+        # We only need to do anything with this bug if one of the r+'d patches does not have a valid committer (cq+ set).
+        if self._patches_have_commiters(reviewed_patches):
+            log("All reviewed patches on bug %s already have commit-queue+, ignoring." % bug_id)
+            return
+
         latest_patch = reviewed_patches[-1]
         attacher_email = latest_patch.attacher_email()
         committer = committers.committer_by_email(attacher_email)
@@ -383,7 +424,7 @@ class CreateBug(AbstractDeclarativeCommand):
         bug_id = tool.bugs.create_bug(bug_title, comment_text, options.component, diff_file, "Patch", cc=options.cc, mark_for_review=options.review, mark_for_commit_queue=options.request_commit)
 
     def prompt_for_bug_title_and_comment(self):
-        bug_title = raw_input("Bug title: ")
+        bug_title = User.prompt("Bug title: ")
         print "Bug comment (hit ^D on blank line to end):"
         lines = sys.stdin.readlines()
         try:

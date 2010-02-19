@@ -1,3 +1,243 @@
+2010-02-17  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by David Levin, Darin Fisher, Simon Hausmann.
+
+        When a live iframe element is moved between pages, it still depends on the old page.
+        https://bugs.webkit.org/show_bug.cgi?id=34382
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        Added empty implementation of a new virtual method.
+
+        (WebFrameLoaderClient::didTransferChildFrameToNewDocument):
+
+2010-02-17  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Eric Seidel.
+
+        Introduces new Icon loading interface in order to support
+        asynchronous loading.
+        https://bugs.webkit.org/show_bug.cgi?id=32054
+
+        Add an empty implementation of ChromeClient::iconForFiles().
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::iconForFiles):
+
+2010-02-17  Timothy Hatcher  <timothy@apple.com>
+
+        Add a way for WebView and its dependancies to be selectively included
+        in WebKitStatistics leak tracking. By default WebView is not included and
+        you need to subclass WebView and implement +isIncludedInWebKitStatistics
+        to be included.
+
+        rdar://problem/7567677&7572900
+        https://webkit.org/b/35045
+
+        Reviewed by Adam Roben.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _initWithDocumentLoader:]): Increment WebDataSourceCount if the WebFrame is included in statistics.
+        (-[WebDataSource dealloc]): Only --WebDataSourceCount if _private->includedInWebKitStatistics is YES.
+        (-[WebDataSource finalize]): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _isIncludedInWebKitStatistics]): Return _private->includedInWebKitStatistics.
+        (-[WebFrame _initWithWebFrameView:webView:]): Increment WebFrameCount if the WebView's class is included in statistics.
+        (-[WebFrame dealloc]): Only --WebFrameCount if _private->includedInWebKitStatistics is YES.
+        (-[WebFrame finalize]): Ditto.
+        * WebView/WebFrameInternal.h:
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView _setWebFrame:]): Increment WebFrameViewCount if the WebFrame is included in statistics.
+        (-[WebFrameView initWithFrame:]): Move ++WebFrameViewCount from here since we don't
+        know what WebFrame we belong to yet.
+        (-[WebFrameView dealloc]): Only --WebFrameViewCount if _private->includedInWebKitStatistics is YES.
+        (-[WebFrameView finalize]): Ditto.
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation init]): Move ++WebHTMLRepresentationCount from here since we don't
+        know what WebFrame we belong to yet.
+        (-[WebHTMLRepresentation dealloc]): Only --WebHTMLRepresentationCount if _private->includedInWebKitStatistics is YES.
+        (-[WebHTMLRepresentation finalize]): Ditto.
+        (-[WebHTMLRepresentation setDataSource:]): Increment WebHTMLRepresentationCount if the WebFrame of the dataSource is
+        included in statistics.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:usesDocumentViews:]):
+        (-[WebView dealloc]):
+        (+[WebView shouldIncludeInWebKitStatistics]): Return NO, so any WebView wont be included.
+        Subclasses that care can return YES to be included.
+        * WebView/WebViewInternal.h:
+
+2010-02-16  Darin Adler  <darin@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Generalize delayed plug-in start for background tabs for use for other media
+        https://bugs.webkit.org/show_bug.cgi?id=34981
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView viewWillMoveToWindow:]): Added comment.
+        (-[WebHTMLView viewDidMoveToWindow]): Ditto.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:usesDocumentViews:]):
+        Call setCanStartMedia right away so that if this view is not in a window, it
+        will not start any media.
+        (-[WebView viewWillMoveToWindow:]): Call setCanStartMedia(false) when moving
+        to a window of nil.
+        (-[WebView viewDidMoveToWindow]): Call setCanStartMedia(true) when moved to
+        a window that is non-nil.
+
+2010-02-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34988
+        WebHTMLView.mm has two -willRemoveSubview: methods
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView willRemoveSubview:]): Consolidate the two copies of this method.
+
+2010-02-16  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Geoffrey Garen and Kevin Decker.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34989
+        <rdar://problem/7417965> Cursor disappears on scroll bars that are over plugin content
+
+        This fixes event dispatch for both Cocoa and Carbon event models (mouseEntered/mouseExited
+        in the former case, and adjustCursor in the latter).
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView handleMouseEntered:]):
+        (-[WebHostedNetscapePluginView handleMouseExited:]):
+        * Plugins/WebBaseNetscapePluginView.h:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView handleMouseEntered:]):
+        (-[WebBaseNetscapePluginView handleMouseExited:]):
+        * Plugins/WebNetscapePluginView.h:
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView handleMouseEntered:]):
+        (-[WebNetscapePluginView handleMouseExited:]):
+        AppKit cannot reliably dispatch events for overlapping views. We are now asking WebCore to
+        notify plug-in views of mouse entered/exited as part of DOM event dispatch.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm: (NetscapePluginWidget::handleEvent): Besides
+        mouse moved, dispatch plugin mouse entered/exit events in HTMLPlugInElement default event
+        handler. Other mouse events are passed down by EventHandler.
+
+2010-02-15  Alexey Proskuryakov  <ap@apple.com>
+
+        More build fixing (for what is actually a 64-bit failure, as 32-bit apparently includes
+        headers that aren't included in 64-bit).
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::contains):
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::get):
+        Move inline functions to .cpp; also made the class Noncopyable.
+
+2010-02-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Mac release build fix attempt.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::~LocalObjectMap):
+        Implement destructor in .cpp file, where necessary headers are already included.
+
+2010-02-12  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Kevin Decker.
+
+        <rdar://problem/7130641> Browser objects identity is not preserved by Safari
+
+        Out of process part.
+
+        To avoid excessive IPC, plugin process doesn't send each NPObject release/retain call to
+        Safari. It only sends one when the last one is removed, and it can destroy the proxy
+        NPObject.
+
+        However, the browser may be sending the same object out to plug-in as a function call
+        argument at the same time - neither side can know what the other one is up to. The solution
+        is to make the "destroying object" call return a boolean result, making it possible for 
+        the browser to make plugin host keep the proxy with zero refcount for a little longer.
+
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WKPCForgetBrowserObject): This function (that used to be named ReleaseObject) is only
+        called when plug-in releases all of its references, so renamed it. Its boolean result
+        is returned as call success or failure.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.h:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap): Made the numeric ID to JSObject map
+        two-way.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::idForObject): This method is tricky
+        in that it creates objects with refcount of 1, but doesn't increase refcount when returning
+        found objects. This extra count accounts for the "reference" kept by plugin process.
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::retain): Only retaining for the
+        duration of calls out to plug-in, which means that refcount is almost always equal to 1.
+        Note that we can't use "++" here, due to how std::pair works!
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::release): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::clear): Clear all references when
+        stopping plug-in.
+        (WebKit::NetscapePluginInstanceProxy::LocalObjectMap::forget): Like release(), but only
+        functional when recount is 1 (meaning that the object is not being sent out to plug-in at
+        the moment).
+        (WebKit::NetscapePluginInstanceProxy::NetscapePluginInstanceProxy): Updated for other changes.
+        (WebKit::NetscapePluginInstanceProxy::cleanup): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::getWindowNPObject): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::getPluginElementNPObject): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::forgetBrowserObjectID): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::evaluate): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::invoke): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::invokeDefault): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::construct): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::getProperty): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::setProperty): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::removeProperty): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::hasProperty): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::hasMethod): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::enumerate): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::demarshalValueFromArray): Ditto.
+        (WebKit::NetscapePluginInstanceProxy::retainLocalObject): Helper for calling retain when
+        making calls out to plug-in. No-op for objects that aren't wrapped to be sent (i.e. for
+        objects wrapping ProxyInstance wrappers for plug-in objects being sent bak).
+        (WebKit::NetscapePluginInstanceProxy::releaseLocalObject): Ditto.
+
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::invoke): Retain/release arguments during call. 
+        (WebKit::ProxyInstance::setFieldValue): Ditto.
+
+        * Plugins/Hosted/WebKitPluginClient.defs: Renamed PCReleaseObject to PCForgetBrowserObject.
+
+2010-02-12  Darin Adler  <darin@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Removed unneeded custom implementation of isDescendantOf.
+
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (-[WebBaseNetscapePluginView shouldClipOutPlugin]): Use the
+        -[NSView isDescendantOf:] method instead of our own method
+        named superviewsHaveSuperviews.
+
+2010-02-12  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Darin Adler.
+
+        <rdar://problem/7615234> REGRESSION (r48586): Loading an HTML page causes
+        PDFKit to be loaded
+
+        * WebView/WebPDFDocumentExtras.h: Removed the category declaration and
+        addWebPDFDocumentExtras(). Declare allScriptsInPDFDocument().
+        * WebView/WebPDFDocumentExtras.mm:
+        (allScriptsInPDFDocument): Changed the -_web_allScripts method into this function.
+        * WebView/WebPDFRepresentation.mm: Removed +initialize.
+        (-[WebPDFRepresentation finishedLoadingWithDataSource:]): Use
+        allScriptsInPDFDocument() instead of -_web_allScripts.
+
 2010-02-10  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Oliver Hunt.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008, Google Inc. All rights reserved.
+ * Copyright (c) 2010, Google Inc. All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -39,27 +39,32 @@ namespace WebCore {
 
 void setCookies(Document* document, const KURL& url, const String& value)
 {
-    ChromiumBridge::setCookies(url, document->firstPartyForCookies(), value);
+    ChromiumBridge::setCookies(document, url, value);
 }
 
 String cookies(const Document* document, const KURL& url)
 {
-    return ChromiumBridge::cookies(url, document->firstPartyForCookies());
+    return ChromiumBridge::cookies(document, url);
+}
+
+String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
+{
+    return ChromiumBridge::cookieRequestHeaderFieldValue(document, url);
 }
 
 bool cookiesEnabled(const Document* document)
 {
-    return ChromiumBridge::cookiesEnabled(document->cookieURL(), document->firstPartyForCookies());
+    return ChromiumBridge::cookiesEnabled(document);
 }
 
 bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
 {
-    return ChromiumBridge::rawCookies(url, document->firstPartyForCookies(), &rawCookies);
+    return ChromiumBridge::rawCookies(document, url, rawCookies);
 }
 
-void deleteCookie(const Document*, const KURL& url, const String& cookieName)
+void deleteCookie(const Document* document, const KURL& url, const String& cookieName)
 {
-    return ChromiumBridge::deleteCookie(url, cookieName);
+    return ChromiumBridge::deleteCookie(document, url, cookieName);
 }
 
 } // namespace WebCore

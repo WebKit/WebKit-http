@@ -1664,6 +1664,16 @@ void RenderBlock::paintChildren(PaintInfo& paintInfo, int tx, int ty)
             return;
         }
 
+        // Check for page-break-inside: avoid, and it it's set, break and bail.
+        if (isPrinting && !childrenInline() && child->style()->pageBreakInside() == PBAVOID
+            && inRootBlockContext()
+            && ty + child->y() > paintInfo.rect.y()
+            && ty + child->y() < paintInfo.rect.bottom()
+            && ty + child->y() + child->height() > paintInfo.rect.bottom()) {
+            view()->setBestTruncatedAt(ty + child->y(), this, true);
+            return;
+        }
+
         if (!child->hasSelfPaintingLayer() && !child->isFloating())
             child->paint(info, tx, ty);
 
@@ -1961,6 +1971,7 @@ void RenderBlock::paintSelection(PaintInfo& paintInfo, int tx, int ty)
                 if (!hasLayer()) {
                     FloatRect localBounds(gapRectsBounds);
                     gapRectsBounds = localToContainerQuad(localBounds, layer->renderer()).enclosingBoundingBox();
+                    gapRectsBounds.move(layer->scrolledContentOffset());
                 }
                 layer->addBlockSelectionGapsBounds(gapRectsBounds);
             }
@@ -3872,6 +3883,31 @@ void RenderBlock::adjustRectForColumns(IntRect& r) const
     }
 
     r = result;
+}
+
+void RenderBlock::adjustForColumns(IntSize& offset, const IntPoint& point) const
+{
+    if (!hasColumns())
+        return;
+
+    // FIXME: This is incorrect for right-to-left columns.
+
+    Vector<IntRect>& columnRects = *this->columnRects();
+
+    int gapWidth = columnGap();
+    int xOffset = 0;
+    int yOffset = 0;
+    size_t columnCount = columnRects.size();
+    for (size_t i = 0; i < columnCount; ++i) {
+        IntRect columnRect = columnRects[i];
+        if (point.y() < columnRect.bottom() + yOffset) {
+            offset.expand(xOffset, -yOffset);
+            return;
+        }
+
+        xOffset += columnRect.width() + gapWidth;
+        yOffset += columnRect.height();
+    }
 }
 
 void RenderBlock::calcPrefWidths()

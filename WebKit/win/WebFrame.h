@@ -162,6 +162,17 @@ public:
         /* [in] */ BSTR id,
         /* [retval][out] */ BSTR *result);
 
+    virtual HRESULT STDMETHODCALLTYPE pageNumberForElementById(
+        /* [in] */ BSTR id,
+        /* [in] */ float pageWidthInPixels,
+        /* [in] */ float pageHeightInPixels,
+        /* [retval][out] */ int* result);
+
+    virtual HRESULT STDMETHODCALLTYPE numberOfPages(
+        /* [in] */ float pageWidthInPixels,
+        /* [in] */ float pageHeightInPixels,
+        /* [retval][out] */ int* result);
+
     virtual HRESULT STDMETHODCALLTYPE scrollOffset(
         /* [retval][out] */ SIZE* offset);
 
@@ -251,6 +262,8 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld*, JSObjectRef globalObjectRef, BSTR script, BSTR* evaluationResult);
     virtual JSGlobalContextRef STDMETHODCALLTYPE globalContextForScriptWorld(IWebScriptWorld*);
+
+    virtual HRESULT STDMETHODCALLTYPE visibleContentRect(RECT*);
 
     // IWebDocumentText
     virtual HRESULT STDMETHODCALLTYPE supportsTextEncoding( 

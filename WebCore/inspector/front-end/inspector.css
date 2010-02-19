@@ -29,8 +29,11 @@
 
 body {
     cursor: default;
-    height: 100%;
-    width: 100%;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
     overflow: hidden;
     font-family: Lucida Grande, sans-serif;
     font-size: 10px;
@@ -1348,7 +1351,6 @@ body.inactive .placard.selected {
     margin: 0;
     padding: 2px 6px 3px;
     list-style: none;
-    background-color: white;
     min-height: 18px;
 }
 
@@ -1575,6 +1577,10 @@ li.editing .swatch, li.editing .enabled-button,  li.editing-sub-part .delete-but
 
 .section .properties .value.dimmed {
     color: rgb(100, 100, 100);
+}
+
+.section .properties .value.error {
+    color: red;
 }
 
 .section .properties .number, .event-properties .number {
@@ -2245,7 +2251,7 @@ body.inactive .data-grid th.sort-ascending, body.inactive .data-grid th.sort-des
     margin: 0 0 5px 20px;
 }
 
-.panel-enabler-view button:not(.status-bar-item), .pane button {
+.panel-enabler-view button:not(.status-bar-item), .pane button, button.show-all-nodes {
     color: rgb(6, 6, 6);
     background-color: transparent;
     border: 1px solid rgb(165, 165, 165);
@@ -2260,6 +2266,13 @@ body.inactive .data-grid th.sort-ascending, body.inactive .data-grid th.sort-des
     margin: 6px 0 0 0;
     padding: 3px 20px;
     height: 24px;
+}
+
+button.show-all-nodes {
+    font-size: 13px;
+    margin: 0;
+    padding: 0 20px;
+    height: 20px;
 }
 
 .panel-enabler-view.welcome {
@@ -2293,12 +2306,12 @@ body.inactive .data-grid th.sort-ascending, body.inactive .data-grid th.sort-des
     padding: 2px 9px;
 }
 
-.panel-enabler-view button:active:not(.status-bar-item), .pane button:active {
+.panel-enabler-view button:active:not(.status-bar-item), .pane button:active, button.show-all-nodes:active {
     background-color: rgb(215, 215, 215);
     background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(194, 194, 194)), to(rgb(239, 239, 239)));
 }
 
-body.inactive .panel-enabler-view button:not(.status-bar-item), .panel-enabler-view button:disabled:not(.status-bar-item), body.inactive .pane button, .pane button:disabled {
+body.inactive .panel-enabler-view button:not(.status-bar-item), .panel-enabler-view button:disabled:not(.status-bar-item), body.inactive .pane button, .pane button:disabled, body.inactive button.show-all-nodes {
     color: rgb(130, 130, 130);
     border-color: rgb(212, 212, 212);
     background-color: rgb(239, 239, 239);
@@ -3800,4 +3813,22 @@ ol.breakpoint-list {
     box-shadow: none !important;
     outline: none !important;
     -webkit-user-modify: read-write;
+}
+
+.source-frame-popover-title {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    font-weight: bold;
+    padding-left: 18px;
+}
+
+.source-frame-popover-tree {
+    border-top: 1px solid rgb(190, 190, 190);
+    overflow: auto;
+    position: absolute;
+    top: 15px;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }

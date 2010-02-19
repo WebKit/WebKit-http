@@ -233,6 +233,15 @@ int QWEBKIT_EXPORT qt_drt_pageNumberForElementById(QWebFrame* qFrame, const QStr
     return PrintContext::pageNumberForElement(element, FloatSize(width, height));
 }
 
+int QWEBKIT_EXPORT qt_drt_numberOfPages(QWebFrame* qFrame, float width, float height)
+{
+    Frame* frame = QWebFramePrivate::core(qFrame);
+    if (!frame)
+        return -1;
+
+    return PrintContext::numberOfPages(frame, FloatSize(width, height));
+}
+
 // Suspend active DOM objects in this frame.
 void QWEBKIT_EXPORT qt_suspendActiveDOMObjects(QWebFrame* qFrame)
 {
@@ -248,6 +257,13 @@ void QWEBKIT_EXPORT qt_resumeActiveDOMObjects(QWebFrame* qFrame)
     if (frame->document())
         frame->document()->resumeActiveDOMObjects();
 }                        
+
+void QWEBKIT_EXPORT qt_drt_evaluateScriptInIsolatedWorld(QWebFrame* qFrame, int worldId, const QString& script)
+{
+    Frame* frame = QWebFramePrivate::core(qFrame);
+    if (frame)
+        JSC::JSValue result = frame->script()->executeScriptInWorld(mainThreadNormalWorld(), script, true).jsValue();
+}
 
 QWebFrameData::QWebFrameData(WebCore::Page* parentPage, WebCore::Frame* parentFrame,
                              WebCore::HTMLFrameOwnerElement* ownerFrameElement,
@@ -280,6 +296,21 @@ void QWebFramePrivate::init(QWebFrame *qframe, QWebFrameData *frameData)
     frameLoaderClient->setFrame(qframe, frame);
 
     frame->init();
+}
+
+void QWebFramePrivate::setPage(QWebPage* newPage)
+{
+    if (page == newPage)
+        return;
+
+    // The QWebFrame is created as a child of QWebPage or a parent QWebFrame.
+    // That adds it to QObject's internal children list and ensures it will be
+    // deleted when parent QWebPage is deleted. Reparent if needed.
+    if (q->parent() == qobject_cast<QObject*>(page))
+        q->setParent(newPage);
+
+    page = newPage;
+    emit q->pageChanged();
 }
 
 WebCore::Scrollbar* QWebFramePrivate::horizontalScrollBar() const
@@ -1137,6 +1168,17 @@ void QWebFrame::setScrollPosition(const QPoint &pos)
     int dx = pos.x() - current.x();
     int dy = pos.y() - current.y();
     scroll(dx, dy);
+}
+
+/*!
+  \since 4.7
+  Scrolls the frame to the given \a anchor name.
+*/
+void QWebFrame::scrollToAnchor(const QString& anchor)
+{
+    FrameView *view = d->frame->view();
+    if (view)
+        view->scrollToAnchor(anchor);
 }
 
 /*!

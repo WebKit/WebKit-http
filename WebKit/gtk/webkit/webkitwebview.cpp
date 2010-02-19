@@ -2550,8 +2550,9 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
         enableScripts, enablePlugins, enableDeveloperExtras, resizableTextAreas,
         enablePrivateBrowsing, enableCaretBrowsing, enableHTML5Database, enableHTML5LocalStorage,
         enableXSSAuditor, javascriptCanOpenWindows, enableOfflineWebAppCache,
-        enableUniversalAccessFromFileURI, enableDOMPaste, tabKeyCyclesThroughElements,
-        enableSiteSpecificQuirks, usePageCache;
+        enableUniversalAccessFromFileURI, enableFileAccessFromFileURI,
+        enableDOMPaste, tabKeyCyclesThroughElements,
+        enableSiteSpecificQuirks, usePageCache, enableJavaApplet;
 
     WebKitEditingBehavior editingBehavior;
 
@@ -2580,10 +2581,12 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
                  "enable-offline-web-application-cache", &enableOfflineWebAppCache,
                  "editing-behavior", &editingBehavior,
                  "enable-universal-access-from-file-uris", &enableUniversalAccessFromFileURI,
+                 "enable-file-access-from-file-uris", &enableFileAccessFromFileURI,
                  "enable-dom-paste", &enableDOMPaste,
                  "tab-key-cycles-through-elements", &tabKeyCyclesThroughElements,
                  "enable-site-specific-quirks", &enableSiteSpecificQuirks,
                  "enable-page-cache", &usePageCache,
+                 "enable-java-applet", &enableJavaApplet,
                  NULL);
 
     settings->setDefaultTextEncodingName(defaultEncoding);
@@ -2610,9 +2613,11 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     settings->setOfflineWebApplicationCacheEnabled(enableOfflineWebAppCache);
     settings->setEditingBehavior(core(editingBehavior));
     settings->setAllowUniversalAccessFromFileURLs(enableUniversalAccessFromFileURI);
+    settings->setAllowFileAccessFromFileURLs(enableFileAccessFromFileURI);
     settings->setDOMPasteAllowed(enableDOMPaste);
     settings->setNeedsSiteSpecificQuirks(enableSiteSpecificQuirks);
     settings->setUsesPageCache(usePageCache);
+    settings->setJavaEnabled(enableJavaApplet);
 
     Page* page = core(webView);
     if (page)
@@ -2703,6 +2708,8 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
         settings->setEditingBehavior(core(static_cast<WebKitEditingBehavior>(g_value_get_enum(&value))));
     else if (name == g_intern_string("enable-universal-access-from-file-uris"))
         settings->setAllowUniversalAccessFromFileURLs(g_value_get_boolean(&value));
+    else if (name == g_intern_string("enable-file-access-from-file-uris"))
+        settings->setAllowFileAccessFromFileURLs(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-dom-paste"))
         settings->setDOMPasteAllowed(g_value_get_boolean(&value));
     else if (name == g_intern_string("tab-key-cycles-through-elements")) {
@@ -2713,6 +2720,8 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
         settings->setNeedsSiteSpecificQuirks(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-page-cache"))
         settings->setUsesPageCache(g_value_get_boolean(&value));
+    else if (name == g_intern_string("enable-java-applet"))
+        settings->setJavaEnabled(g_value_get_boolean(&value));
     else if (!g_object_class_find_property(G_OBJECT_GET_CLASS(webSettings), name))
         g_warning("Unexpected setting '%s'", name);
     g_value_unset(&value);

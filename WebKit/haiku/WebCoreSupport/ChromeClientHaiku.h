@@ -132,6 +132,7 @@ namespace WebCore {
         virtual void formStateDidChange(const Node*) { }
 
         virtual PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
+        void iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
 
         virtual bool setCursor(PlatformCursorHandle);
 

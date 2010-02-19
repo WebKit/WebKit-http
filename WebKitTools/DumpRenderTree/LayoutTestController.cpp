@@ -467,10 +467,8 @@ static JSValueRef notifyDoneCallback(JSContextRef context, JSObjectRef function,
 
 static bool parsePageParameters(JSContextRef context, int argumentCount, const JSValueRef* arguments, JSValueRef* exception, float& pageWidthInPixels, float& pageHeightInPixels)
 {
-    // FIXME: These values should sync with maxViewWidth/Height in
-    //        DumpRenderTree.mm. Factor these values out to somewhere.
-    pageWidthInPixels = 800;
-    pageHeightInPixels = 600;
+    pageWidthInPixels = LayoutTestController::maxViewWidth;
+    pageHeightInPixels = LayoutTestController::maxViewHeight;
     switch (argumentCount) {
     case 2:
         pageWidthInPixels = static_cast<float>(JSValueToNumber(context, arguments[0], exception));
@@ -916,6 +914,18 @@ static JSValueRef setXSSAuditorEnabledCallback(JSContextRef context, JSObjectRef
     return JSValueMakeUndefined(context);
 }
 
+static JSValueRef setFrameSetFlatteningEnabledCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    // Has mac & windows implementation
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+
+    LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
+    controller->setFrameSetFlatteningEnabled(JSValueToBoolean(context, arguments[0]));
+
+    return JSValueMakeUndefined(context);
+}
+
 static JSValueRef setAllowUniversalAccessFromFileURLsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     // Has mac & windows implementation
@@ -924,6 +934,18 @@ static JSValueRef setAllowUniversalAccessFromFileURLsCallback(JSContextRef conte
 
     LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
     controller->setAllowUniversalAccessFromFileURLs(JSValueToBoolean(context, arguments[0]));
+
+    return JSValueMakeUndefined(context);
+}
+
+static JSValueRef setAllowFileAccessFromFileURLsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    // Has mac & windows implementation
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+
+    LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
+    controller->setAllowFileAccessFromFileURLs(JSValueToBoolean(context, arguments[0]));
 
     return JSValueMakeUndefined(context);
 }
@@ -1240,6 +1262,22 @@ static JSValueRef addUserStyleSheetCallback(JSContextRef context, JSObjectRef, J
     return JSValueMakeUndefined(context);
 }
 
+static JSValueRef apiTestNewWindowDataLoadBaseURLCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (argumentCount != 2)
+        return JSValueMakeUndefined(context);
+
+    JSRetainPtr<JSStringRef> utf8Data(Adopt, JSValueToStringCopy(context, arguments[0], exception));
+    ASSERT(!*exception);
+
+    JSRetainPtr<JSStringRef> baseURL(Adopt, JSValueToStringCopy(context, arguments[1], exception));
+    ASSERT(!*exception);
+        
+    LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
+    controller->apiTestNewWindowDataLoadBaseURL(utf8Data.get(), baseURL.get());
+    return JSValueMakeUndefined(context);
+}
+
 // Static Values
 
 static JSValueRef getGlobalFlagCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
@@ -1316,6 +1354,7 @@ JSStaticFunction* LayoutTestController::staticFunctions()
         { "addDisallowedURL", addDisallowedURLCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "addUserScript", addUserScriptCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "addUserStyleSheet", addUserStyleSheetCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "apiTestNewWindowDataLoadBaseURL", apiTestNewWindowDataLoadBaseURLCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "clearAllDatabases", clearAllDatabasesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "clearBackForwardList", clearBackForwardListCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "clearPersistentUserStyleSheet", clearPersistentUserStyleSheetCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -1368,6 +1407,7 @@ JSStaticFunction* LayoutTestController::staticFunctions()
         { "repaintSweepHorizontally", repaintSweepHorizontallyCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAcceptsEditing", setAcceptsEditingCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowUniversalAccessFromFileURLs", setAllowUniversalAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "setAllowFileAccessFromFileURLs", setAllowFileAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAlwaysAcceptCookies", setAlwaysAcceptCookiesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAppCacheMaximumSize", setAppCacheMaximumSizeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete }, 
         { "setAuthenticationPassword", setAuthenticationPasswordCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -1393,6 +1433,7 @@ JSStaticFunction* LayoutTestController::staticFunctions()
         { "setPopupBlockingEnabled", setPopupBlockingEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setPrivateBrowsingEnabled", setPrivateBrowsingEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setXSSAuditorEnabled", setXSSAuditorEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "setFrameSetFlatteningEnabled", setFrameSetFlatteningEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setSelectTrailingWhitespaceEnabled", setSelectTrailingWhitespaceEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setSmartInsertDeleteEnabled", setSmartInsertDeleteEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setStopProvisionalFrameLoads", setStopProvisionalFrameLoadsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -1479,3 +1520,6 @@ void LayoutTestController::setPOSIXLocale(JSStringRef locale)
     JSStringGetUTF8CString(locale, localeBuf, sizeof(localeBuf));
     setlocale(LC_ALL, localeBuf);
 }
+
+const unsigned LayoutTestController::maxViewWidth = 800;
+const unsigned LayoutTestController::maxViewHeight = 600;

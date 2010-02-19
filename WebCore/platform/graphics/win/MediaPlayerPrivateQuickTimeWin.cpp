@@ -108,6 +108,13 @@ PlatformMedia MediaPlayerPrivate::platformMedia() const
     return p;
 }
 
+#if USE(ACCELERATED_COMPOSITING)
+PlatformLayer* MediaPlayerPrivate::platformLayer() const
+{
+    return m_qtVideoLayer->platformLayer();
+}
+#endif
+
 class TaskTimer : TimerBase {
 public:
     static void initialize();
@@ -745,6 +752,11 @@ void MediaPlayerPrivate::setUpVideoRendering()
 
     if (preferredMode == MediaRenderingMovieLayer)
         createLayerForMovie();
+
+#if USE(ACCELERATED_COMPOSITING)
+    if (currentMode == MediaRenderingMovieLayer || preferredMode == MediaRenderingMovieLayer)
+        m_player->mediaPlayerClient()->mediaPlayerRenderingModeChanged(m_player);
+#endif
 }
 
 void MediaPlayerPrivate::tearDownVideoRendering()
@@ -810,11 +822,6 @@ void MediaPlayerPrivate::createLayerForMovie()
     if (!m_qtMovie || m_qtVideoLayer)
         return;
 
-    // Do nothing if the parent layer hasn't been set up yet.
-    GraphicsLayer* videoGraphicsLayer = m_player->mediaPlayerClient()->mediaPlayerGraphicsLayer(m_player);
-    if (!videoGraphicsLayer)
-        return;
-
     // Create a GraphicsLayer that won't be inserted directly into the render tree, but will used 
     // as a wrapper for a WKCACFLayer which gets inserted as the content layer of the video 
     // renderer's GraphicsLayer.
@@ -829,9 +836,7 @@ void MediaPlayerPrivate::createLayerForMovie()
 #ifndef NDEBUG
     m_qtVideoLayer->setName("Video layer");
 #endif
-
-    // Hang the video layer from the render layer.
-    videoGraphicsLayer->setContentsToMedia(m_qtVideoLayer->platformLayer());
+    // The layer will get hooked up via RenderLayerBacking::updateGraphicsLayerConfiguration().
 #endif
 }
 
@@ -858,7 +863,7 @@ void MediaPlayerPrivate::acceleratedRenderingStateChanged()
 
 void MediaPlayerPrivate::notifySyncRequired(const GraphicsLayer*)
 {
-    GraphicsLayerCACF* videoGraphicsLayer = static_cast<GraphicsLayerCACF*>(m_player->mediaPlayerClient()->mediaPlayerGraphicsLayer(m_player));
+    GraphicsLayerCACF* videoGraphicsLayer = static_cast<GraphicsLayerCACF*>(m_qtVideoLayer.get());
     if (videoGraphicsLayer)
         videoGraphicsLayer->notifySyncRequired();
  }

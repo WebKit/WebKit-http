@@ -80,10 +80,12 @@ public:
     virtual void setShouldPaintCustomScrollbars(bool);
     virtual void setDatabasesEnabled(bool);
     virtual void setAllowUniversalAccessFromFileURLs(bool);
+    virtual void setAllowFileAccessFromFileURLs(bool);
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded();
     virtual void setOfflineWebApplicationCacheEnabled(bool);
     virtual void setExperimentalWebGLEnabled(bool);
     virtual void setGeolocationEnabled(bool);
+    virtual void setShowDebugBorders(bool);
 
 private:
     WebCore::Settings* m_settings;

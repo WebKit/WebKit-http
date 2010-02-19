@@ -42,12 +42,17 @@ RGBA32Buffer::RGBA32Buffer()
 {
 }
 
-// The image must not have format 8888 pre multiplied...
-void RGBA32Buffer::setDecodedImage(const QImage& image)
+RGBA32Buffer& RGBA32Buffer::operator=(const RGBA32Buffer& other)
 {
-    m_image = image;
-    m_size = image.size();
-    m_hasAlpha = image.hasAlphaChannel();
+    if (this == &other)
+        return *this;
+
+    copyBitmapData(other);
+    setRect(other.rect());
+    setStatus(other.status());
+    setDuration(other.duration());
+    setDisposalMethod(other.disposalMethod());
+    return *this;
 }
 
 void RGBA32Buffer::clear()
@@ -115,17 +120,12 @@ void RGBA32Buffer::setStatus(FrameStatus status)
     m_status = status;
 }
 
-RGBA32Buffer& RGBA32Buffer::operator=(const RGBA32Buffer& other)
+// The image must not have format 8888 pre multiplied...
+void RGBA32Buffer::setDecodedImage(const QImage& image)
 {
-    if (this == &other)
-        return *this;
-
-    copyBitmapData(other);
-    setRect(other.rect());
-    setStatus(other.status());
-    setDuration(other.duration());
-    setDisposalMethod(other.disposalMethod());
-    return *this;
+    m_image = image;
+    m_size = image.size();
+    m_hasAlpha = image.hasAlphaChannel();
 }
 
 int RGBA32Buffer::width() const

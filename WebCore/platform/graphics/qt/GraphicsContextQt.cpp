@@ -219,6 +219,7 @@ public:
     QStack<TransparencyLayer*> layers;
     QPainter* redirect;
 
+    // reuse this brush for solid color (to prevent expensive QBrush construction)
     QBrush solidColor;
 
     InterpolationQuality imageInterpolationQuality;
@@ -760,11 +761,30 @@ void GraphicsContext::drawLineForMisspellingOrBadGrammar(const IntPoint&, int, b
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& frect)
 {
-    QRectF rect(frect);
-    rect = m_data->p()->deviceMatrix().mapRect(rect);
+    // It is not enough just to round to pixels in device space. The rotation part of the
+    // affine transform matrix to device space can mess with this conversion if we have a
+    // rotating image like the hands of the world clock widget. We just need the scale, so
+    // we get the affine transform matrix and extract the scale.
+    QPainter* painter = platformContext();
+    QTransform deviceTransform = painter->deviceTransform();
+    if (deviceTransform.isIdentity())
+        return frect;
 
-    QRect result = rect.toRect(); //round it
-    return FloatRect(QRectF(result));
+    qreal deviceScaleX = sqrtf(deviceTransform.m11() * deviceTransform.m11() + deviceTransform.m12() * deviceTransform.m12());
+    qreal deviceScaleY = sqrtf(deviceTransform.m21() * deviceTransform.m21() + deviceTransform.m22() * deviceTransform.m22());
+
+    QPoint deviceOrigin(frect.x() * deviceScaleX, frect.y() * deviceScaleY);
+    QPoint deviceLowerRight(frect.right() * deviceScaleX, frect.bottom() * deviceScaleY);
+
+    // Don't let the height or width round to 0 unless either was originally 0
+    if (deviceOrigin.y() == deviceLowerRight.y() && frect.height())
+        deviceLowerRight.setY(deviceLowerRight.y() + 1);
+    if (deviceOrigin.x() == deviceLowerRight.x() && frect.width())
+        deviceLowerRight.setX(deviceLowerRight.x() + 1);
+
+    FloatPoint roundedOrigin = FloatPoint(deviceOrigin.x() / deviceScaleX, deviceOrigin.y() / deviceScaleY);
+    FloatPoint roundedLowerRight = FloatPoint(deviceLowerRight.x() / deviceScaleX, deviceLowerRight.y() / deviceScaleY);
+    return FloatRect(roundedOrigin, roundedLowerRight - roundedOrigin);
 }
 
 void GraphicsContext::setPlatformShadow(const IntSize& size, int, const Color&, ColorSpace)
@@ -949,7 +969,7 @@ void GraphicsContext::clipOut(const Path& path)
     QPainterPath newClip;
     newClip.setFillRule(Qt::OddEvenFill);
     if (p->hasClipping()) {
-        newClip.addRect(p->clipPath().boundingRect());
+        newClip.addRect(p->clipRegion().boundingRect());
         newClip.addPath(clippedOut);
         p->setClipPath(newClip, Qt::IntersectClip);
     } else {
@@ -1018,7 +1038,7 @@ void GraphicsContext::clipOut(const IntRect& rect)
     QPainterPath newClip;
     newClip.setFillRule(Qt::OddEvenFill);
     if (p->hasClipping()) {
-        newClip.addRect(p->clipPath().boundingRect());
+        newClip.addRect(p->clipRegion().boundingRect());
         newClip.addRect(QRect(rect));
         p->setClipPath(newClip, Qt::IntersectClip);
     } else {
@@ -1040,7 +1060,7 @@ void GraphicsContext::clipOutEllipseInRect(const IntRect& rect)
     QPainterPath newClip;
     newClip.setFillRule(Qt::OddEvenFill);
     if (p->hasClipping()) {
-        newClip.addRect(p->clipPath().boundingRect());
+        newClip.addRect(p->clipRegion().boundingRect());
         newClip.addEllipse(QRect(rect));
         p->setClipPath(newClip, Qt::IntersectClip);
     } else {
@@ -1112,7 +1132,8 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colo
         return;
     QPainter* p = m_data->p();
     QPen newPen(p->pen());
-    newPen.setColor(color);
+    m_data->solidColor.setColor(color);
+    newPen.setBrush(m_data->solidColor);
     p->setPen(newPen);
 }
 

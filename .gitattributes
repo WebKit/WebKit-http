@@ -1,3 +1,7 @@
+# To enable automatic merging of ChangeLog files, use the following command:
+# git config merge.changelog.driver "resolve-ChangeLogs --merge-driver %O %A %B"
+ChangeLog* merge=changelog
+
 JavaScriptCore/JavaScriptCore.vcproj/JavaScriptCore.sln -crlf
 JavaScriptCore/JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCore.vcproj -crlf
 JavaScriptCore/JavaScriptCore.vcproj/JavaScriptCore/JavaScriptCoreCF.vsprops -crlf
@@ -212,8 +216,6 @@ WebCore/platform/chromium/SuddenTerminationChromium.cpp -crlf
 WebCore/platform/network/win/NetworkStateNotifierWin.cpp -crlf
 WebCore/platform/wx/wxcode/non-kerned-drawing.h -crlf
 WebCore/rendering/RenderThemeChromiumWin.h -crlf
-WebCore/wml/WMLInputElement.cpp -crlf
-WebCore/wml/WMLInputElement.h -crlf
 WebKit/chromium/src/EventListenerWrapper.cpp -crlf
 WebKit/chromium/src/EventListenerWrapper.h -crlf
 WebKit/chromium/src/WebEventListener.cpp -crlf

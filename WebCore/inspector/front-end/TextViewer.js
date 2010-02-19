@@ -36,6 +36,7 @@ WebInspector.TextViewer = function(textModel, platform, url)
 
     this.element = document.createElement("div");
     this.element.className = "text-editor monospace";
+    this.element.tabIndex = 0;
 
     this.element.addEventListener("scroll", this._scroll.bind(this), false);
 
@@ -49,6 +50,9 @@ WebInspector.TextViewer = function(textModel, platform, url)
 
     this._defaultChunkSize = 50;
     this._paintCoalescingLevel = 0;
+
+    this.freeCachedElements();
+    this._buildChunks();
 }
 
 WebInspector.TextViewer.prototype = {
@@ -95,12 +99,14 @@ WebInspector.TextViewer.prototype = {
             this._rangeToMark = range;
             this.revealLine(range.startLine);
             this._paintLines(range.startLine, range.startLine + 1);
+            if (this._markedRangeElement)
+                this._markedRangeElement.scrollIntoViewIfNeeded();
         }
+        delete this._markedRangeElement;
     },
 
     highlightLine: function(lineNumber)
     {
-        // FIXME: restore animation.
         if (typeof this._highlightedLine === "number") {
             var chunk = this._makeLineAChunk(this._highlightedLine);
             chunk.removeDecoration("webkit-highlighted-line");
@@ -111,14 +117,20 @@ WebInspector.TextViewer.prototype = {
         chunk.addDecoration("webkit-highlighted-line");
     },
 
+    freeCachedElements: function()
+    {
+        this._cachedSpans = [];
+        this._cachedTextNodes = [];
+        this._cachedRows = [];
+    },
+
     _buildChunks: function()
     {
         this._linesContainerElement.removeChildren();
 
-        var paintLinesCallback = this._paintLines.bind(this);
         this._textChunks = [];
         for (var i = 0; i < this._textModel.linesCount; i += this._defaultChunkSize) {
-            var chunk = new WebInspector.TextChunk(this._textModel, i, i + this._defaultChunkSize, paintLinesCallback);
+            var chunk = new WebInspector.TextChunk(this, i, i + this._defaultChunkSize);
             this._textChunks.push(chunk);
             this._linesContainerElement.appendChild(chunk.element);
         }
@@ -140,23 +152,22 @@ WebInspector.TextViewer.prototype = {
         oldChunk.expanded = false;
 
         var insertIndex = oldChunk.chunkNumber + 1;
-        var paintLinesCallback = this._paintLines.bind(this);
 
         // Prefix chunk.
         if (lineNumber > oldChunk.startLine) {
-            var prefixChunk = new WebInspector.TextChunk(this._textModel, oldChunk.startLine, lineNumber, paintLinesCallback);
+            var prefixChunk = new WebInspector.TextChunk(this, oldChunk.startLine, lineNumber);
             this._textChunks.splice(insertIndex++, 0, prefixChunk);
             this._linesContainerElement.insertBefore(prefixChunk.element, oldChunk.element);
         }
 
         // Line chunk.
-        var lineChunk = new WebInspector.TextChunk(this._textModel, lineNumber, lineNumber + 1, paintLinesCallback);
+        var lineChunk = new WebInspector.TextChunk(this, lineNumber, lineNumber + 1);
         this._textChunks.splice(insertIndex++, 0, lineChunk);
         this._linesContainerElement.insertBefore(lineChunk.element, oldChunk.element);
 
         // Suffix chunk.
         if (oldChunk.startLine + oldChunk.linesCount > lineNumber + 1) {
-            var suffixChunk = new WebInspector.TextChunk(this._textModel, lineNumber + 1, oldChunk.startLine + oldChunk.linesCount, paintLinesCallback);
+            var suffixChunk = new WebInspector.TextChunk(this, lineNumber + 1, oldChunk.startLine + oldChunk.linesCount);
             this._textChunks.splice(insertIndex, 0, suffixChunk);
             this._linesContainerElement.insertBefore(suffixChunk.element, oldChunk.element);
         }
@@ -185,7 +196,11 @@ WebInspector.TextViewer.prototype = {
 
     _scroll: function()
     {
-        this._repaintAll();
+        var scrollTop = this.element.scrollTop;
+        setTimeout(function() {
+            if (scrollTop === this.element.scrollTop)
+                this._repaintAll();
+        }.bind(this), 50);
     },
 
     beginUpdates: function(enabled)
@@ -320,7 +335,7 @@ WebInspector.TextViewer.prototype = {
 
         if (!highlighterState) {
             if (this._rangeToMark && this._rangeToMark.startLine === lineNumber)
-                this._markRange(element, line, this._rangeToMark.startColumn, this._rangeToMark.endColumn);
+                this._markedRangeElement = highlightSearchResult(element, this._rangeToMark.startColumn, this._rangeToMark.endColumn - this._rangeToMark.startColumn);
             return;
         }
 
@@ -330,28 +345,51 @@ WebInspector.TextViewer.prototype = {
         for (var j = 0; j < line.length;) {
             if (j > 1000) {
                 // This line is too long - do not waste cycles on minified js highlighting.
+                plainTextStart = j;
                 break;
             }
             var attribute = highlighterState && highlighterState.attributes[j];
-            if (!attribute || !attribute.style) {
+            if (!attribute || !attribute.tokenType) {
                 if (plainTextStart === -1)
                     plainTextStart = j;
                 j++;
             } else {
                 if (plainTextStart !== -1) {
-                    element.appendChild(document.createTextNode(line.substring(plainTextStart, j)));
+                    this._appendTextNode(element, line.substring(plainTextStart, j));
                     plainTextStart = -1;
                 }
-                element.appendChild(this._createSpan(line.substring(j, j + attribute.length), attribute.tokenType));
+                this._appendSpan(element, line.substring(j, j + attribute.length), attribute.tokenType);
                 j += attribute.length;
             }
         }
         if (plainTextStart !== -1)
-            element.appendChild(document.createTextNode(line.substring(plainTextStart, line.length)));
+            this._appendTextNode(element, line.substring(plainTextStart, line.length));
         if (this._rangeToMark && this._rangeToMark.startLine === lineNumber)
-            this._markRange(element, line, this._rangeToMark.startColumn, this._rangeToMark.endColumn);
+            this._markedRangeElement = highlightSearchResult(element, this._rangeToMark.startColumn, this._rangeToMark.endColumn - this._rangeToMark.startColumn);
         if (lineRow.decorationsElement)
             element.appendChild(lineRow.decorationsElement);
+    },
+
+    _releaseLinesHighlight: function(fromLine, toLine)
+    {
+        for (var i = fromLine; i < toLine; ++i) {
+            var lineRow = this._textModel.getAttribute(i, "line-row");
+            if (!lineRow)
+                continue;
+            var element = lineRow.lastChild;
+            if ("spans" in element) {
+                var spans = element.spans;
+                for (var j = 0; j < spans.length; ++j)
+                    this._cachedSpans.push(spans[j]);
+                delete element.spans;
+            }
+            if ("textNodes" in element) {
+                var textNodes = element.textNodes;
+                for (var j = 0; j < textNodes.length; ++j)
+                    this._cachedTextNodes.push(textNodes[j]);
+                delete element.textNodes;
+            }
+        }
     },
 
     _getSelection: function()
@@ -447,15 +485,33 @@ WebInspector.TextViewer.prototype = {
         return { line: lineRow.lineNumber, column: column };
     },
 
-    _createSpan: function(content, className)
+    _appendSpan: function(element, content, className)
     {
-        if (className === "html-resource-link" || className === "html-external-link")
-            return this._createLink(content, className === "html-external-link");
+        if (className === "html-resource-link" || className === "html-external-link") {
+            element.appendChild(this._createLink(content, className === "html-external-link"));
+            return;
+        }
 
-        var span = document.createElement("span");
+        var span = this._cachedSpans.pop() || document.createElement("span");
         span.className = "webkit-" + className;
-        span.appendChild(document.createTextNode(content));
-        return span;
+        span.textContent = content;
+        element.appendChild(span);
+        if (!("spans" in element))
+            element.spans = [];
+        element.spans.push(span);
+    },
+
+    _appendTextNode: function(element, text)
+    {
+        var textNode = this._cachedTextNodes.pop();
+        if (textNode) {
+            textNode.nodeValue = text;
+        } else
+            textNode = document.createTextNode(text);
+        element.appendChild(textNode);
+        if (!("textNodes" in element))
+            element.textNodes = [];
+        element.textNodes.push(textNode);
     },
 
     _createLink: function(content, isExternal)
@@ -484,58 +540,19 @@ WebInspector.TextViewer.prototype = {
         return WebInspector.completeURL(this._url, hrefValue);
     },
 
-    _markRange: function(element, lineText, startOffset, endOffset)
-    {
-        var markNode = document.createElement("span");
-        markNode.className = "webkit-markup";
-        markNode.textContent = lineText.substring(startOffset, endOffset);
-
-        var markLength = endOffset - startOffset;
-        var boundary = element.rangeBoundaryForOffset(startOffset);
-        var textNode = boundary.container;
-        var text = textNode.textContent;
-
-        if (boundary.offset + markLength < text.length) {
-            // Selection belong to a single split mode.
-            textNode.textContent = text.substring(boundary.offset + markLength);
-            textNode.parentElement.insertBefore(markNode, textNode);
-            var prefixNode = document.createTextNode(text.substring(0, boundary.offset));
-            textNode.parentElement.insertBefore(prefixNode, markNode);
-            return;
-        }
-
-        var parentElement = textNode.parentElement;
-        var anchorElement = textNode.nextSibling;
-
-        markLength -= text.length - boundary.offset;
-        textNode.textContent = text.substring(0, boundary.offset);
-        textNode = textNode.traverseNextTextNode(element);
-
-        while (textNode) {
-            var text = textNode.textContent;
-            if (markLength < text.length) {
-                textNode.textContent = text.substring(markLength);
-                break;
-            }
-
-            markLength -= text.length;
-            textNode.textContent = "";
-            textNode = textNode.traverseNextTextNode(element);
-        }
-
-        parentElement.insertBefore(markNode, anchorElement);
-    },
-
     resize: function()
     {
         this._repaintAll();
     }
 }
 
-WebInspector.TextChunk = function(textModel, startLine, endLine, paintLinesCallback)
+var cachedSpans = [];
+
+WebInspector.TextChunk = function(textViewer, startLine, endLine)
 {
+    this._textViewer = textViewer;
     this.element = document.createElement("tr");
-    this._textModel = textModel;
+    this._textModel = textViewer._textModel;
     this.element.chunk = this;
     this.element.lineNumber = startLine;
 
@@ -545,7 +562,6 @@ WebInspector.TextChunk = function(textModel, startLine, endLine, paintLinesCallb
 
     this._lineNumberElement = document.createElement("td");
     this._lineNumberElement.className = "webkit-line-number";
-    this._lineNumberElement.textContent = this._lineNumberText(this.startLine);
     this.element.appendChild(this._lineNumberElement);
 
     this._lineContentElement = document.createElement("td");
@@ -554,11 +570,14 @@ WebInspector.TextChunk = function(textModel, startLine, endLine, paintLinesCallb
 
     this._expanded = false;
 
+    var lineNumbers = [];
     var lines = [];
-    for (var i = this.startLine; i < this.startLine + this.linesCount; ++i)
+    for (var i = startLine; i < endLine; ++i) {
+        lineNumbers.push(i + 1);
         lines.push(this._textModel.line(i));
+    }
+    this._lineNumberElement.textContent = lineNumbers.join("\n");
     this._lineContentElement.textContent = lines.join("\n");
-    this._paintLines = paintLinesCallback;
 }
 
 WebInspector.TextChunk.prototype = {
@@ -601,40 +620,30 @@ WebInspector.TextChunk.prototype = {
         if (this.linesCount === 1) {
             this._textModel.setAttribute(this.startLine, "line-row", this.element);
             if (expanded)
-                this._paintLines(this.startLine, this.startLine + 1);
+                this._textViewer._paintLines(this.startLine, this.startLine + 1);
             return;
         }
 
         if (expanded) {
             var parentElement = this.element.parentElement;
             for (var i = this.startLine; i < this.startLine + this.linesCount; ++i) {
-                var lineRow = document.createElement("tr");
-                lineRow.lineNumber = i;
-
-                var lineNumberElement = document.createElement("td");
-                lineNumberElement.className = "webkit-line-number";
-                lineNumberElement.textContent = this._lineNumberText(i);
-                lineRow.appendChild(lineNumberElement);
-
-                var lineContentElement = document.createElement("td");
-                lineContentElement.className = "webkit-line-content";
-                lineContentElement.textContent = this._textModel.line(i);
-                lineRow.appendChild(lineContentElement);
-
+                var lineRow = this._createRow(i);
                 this._textModel.setAttribute(i, "line-row", lineRow);
                 parentElement.insertBefore(lineRow, this.element);
             }
             parentElement.removeChild(this.element);
 
-            this._paintLines(this.startLine, this.startLine + this.linesCount);
+            this._textViewer._paintLines(this.startLine, this.startLine + this.linesCount);
         } else {
             var firstLine = this._textModel.getAttribute(this.startLine, "line-row");
             var parentElement = firstLine.parentElement;
+            this._textViewer._releaseLinesHighlight(this.startLine, this.startLine + this.linesCount);
 
             parentElement.insertBefore(this.element, firstLine);
             for (var i = this.startLine; i < this.startLine + this.linesCount; ++i) {
                 var lineRow = this._textModel.getAttribute(i, "line-row");
                 this._textModel.removeAttribute(i, "line-row");
+                this._textViewer._cachedRows.push(lineRow);
                 parentElement.removeChild(lineRow);
             }
         }
@@ -652,15 +661,28 @@ WebInspector.TextChunk.prototype = {
         return result;
     },
 
-    _lineNumberText: function(lineNumber)
+    _createRow: function(lineNumber)
     {
-        var totalDigits = Math.ceil(Math.log(this._textModel.linesCount + 1) / Math.log(10));
-        var digits = Math.ceil(Math.log(lineNumber + 2) / Math.log(10));
+        var cachedRows = this._textViewer._cachedRows;
+        if (cachedRows.length) {
+            var lineRow = cachedRows[cachedRows.length - 1];
+            cachedRows.length--;
+            var lineNumberElement = lineRow.firstChild;
+            var lineContentElement = lineRow.lastChild;
+        } else {
+            var lineRow = document.createElement("tr");
 
-        var text = "";
-        for (var i = digits; i < totalDigits; ++i)
-            text += " ";
-        text += lineNumber + 1;
-        return text;
+            var lineNumberElement = document.createElement("td");
+            lineNumberElement.className = "webkit-line-number";
+            lineRow.appendChild(lineNumberElement);
+
+            var lineContentElement = document.createElement("td");
+            lineContentElement.className = "webkit-line-content";
+            lineRow.appendChild(lineContentElement);        
+        }
+        lineRow.lineNumber = lineNumber;
+        lineNumberElement.textContent = lineNumber + 1;
+        lineContentElement.textContent = this._textModel.line(lineNumber);
+        return lineRow;
     }
 }

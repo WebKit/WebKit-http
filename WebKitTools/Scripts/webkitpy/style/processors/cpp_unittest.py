@@ -3392,12 +3392,25 @@ class WebKitStyleTest(CppStyleTestBase):
             '',
             'foo.m')
 
-        # Make sure that the NULL check does not apply to g_object_{set,get}
+        # Make sure that the NULL check does not apply to g_object_{set,get} and
+        # g_str{join,concat}
         self.assert_lint(
             'g_object_get(foo, "prop", &bar, NULL);',
             '')
         self.assert_lint(
             'g_object_set(foo, "prop", bar, NULL);',
+            '')
+        self.assert_lint(
+            'gchar* result = g_strconcat("part1", "part2", "part3", NULL);',
+            '')
+        self.assert_lint(
+            'gchar* result = g_strconcat("part1", NULL);',
+            '')
+        self.assert_lint(
+            'gchar* result = g_strjoin(",", "part1", "part2", "part3", NULL);',
+            '')
+        self.assert_lint(
+            'gchar* result = g_strjoin(",", "part1", NULL);',
             '')
 
         # 2. C++ and C bool values should be written as true and
@@ -3503,6 +3516,12 @@ class WebKitStyleTest(CppStyleTestBase):
                          '_length' + name_error_message)
         self.assert_lint('short length_;',
                          'length_' + name_error_message)
+        self.assert_lint('unsigned _length;',
+                         '_length' + name_error_message)
+        self.assert_lint('unsigned int _length;',
+                         '_length' + name_error_message)
+        self.assert_lint('unsigned long long _length;',
+                         '_length' + name_error_message)
 
         # Pointers, references, functions, templates, and adjectives.
         self.assert_lint('char* under_score;',
@@ -3598,6 +3617,10 @@ class WebKitStyleTest(CppStyleTestBase):
 
         # const_iterator is allowed as well.
         self.assert_lint('typedef VectorType::const_iterator const_iterator;', '')
+
+        # Bitfields.
+        self.assert_lint('unsigned _fillRule : 1;',
+                         '_fillRule' + name_error_message)
 
 
     def test_comments(self):

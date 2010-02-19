@@ -1,3 +1,74 @@
+2010-02-18  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        Reviewed by Eric Seidel.
+
+        Add .gitattributes file for custom ChangeLog merge-driver
+
+        * .gitattributes: Added.
+
+2010-02-17  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Ariya Hidayat.
+
+        [Qt] GraphicsLayer: support perspective and 3D transforms
+        https://bugs.webkit.org/show_bug.cgi?id=34960
+
+        * WebKit.pri: added appropriate define: ENABLED_3D_RENDERING
+
+2010-02-15  Philippe Normand  <pnormand@igalia.com>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [GStreamer] Should handle BUFFERING messages
+        https://bugs.webkit.org/show_bug.cgi?id=30004
+
+        * configure.ac: Bump gstreamer -core/-plugins-base requirements to
+        0.10.25 which is the minimum required version for on-disk buffering.
+
+2010-02-16  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Bump version to 1.1.22 so we can depend on it in applications.
+
+        * configure.ac:
+
+2010-02-12  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Reviewed by Holger Freyther.
+
+        Removed WMLInputElement.* from .gitattributes as the file is
+        now CRLF clean.
+
+        * .gitattributes:
+
+2010-02-10  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Make qtlauncher and qgvlauncher use the generated headers
+        path to make sure they are correctly generated.
+
+        * WebKit.pri:
+
+2010-02-10  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Manually add support for the install target on Symbian.
+
+        This is required to copy the headers over the ones in Qt.
+
+        * WebKit.pro:
+
+2010-02-11  Fridrich Strba  <fridrich.strba@bluewin.ch>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Detect properly different versions of libpng out there.
+
+        * configure.ac:
+
 2010-02-11  Xan Lopez  <xlopez@igalia.com>
 
         Try to fix GTK+ build.
