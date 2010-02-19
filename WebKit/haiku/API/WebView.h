@@ -33,7 +33,7 @@
 #include <String.h>
 #include <View.h>
 
-class WebProcess;
+class WebPage;
 
 namespace WebCore {
 class String;
@@ -62,7 +62,7 @@ public:
     virtual void KeyDown(const char*, int32);
     virtual void KeyUp(const char*, int32);
 
-    WebProcess* webProcess() const { return m_webProcess; }
+    WebPage* webPage() const { return m_webPage; }
 
     void setBounds(BRect);
     BRect contentsSize() const;
@@ -116,7 +116,7 @@ private:
     BView* m_offscreenView;
     bool m_offscreenViewClean;
 
-    WebProcess* m_webProcess;
+    WebPage* m_webPage;
 };
 
 #endif // WebView_h

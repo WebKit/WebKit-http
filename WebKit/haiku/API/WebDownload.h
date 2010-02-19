@@ -48,7 +48,7 @@ using WebCore::ResourceHandle;
 using WebCore::ResourceRequest;
 using WebCore::ResourceResponse;
 
-class WebProcess;
+class WebPage;
 
 class WebDownload : public Noncopyable, public WebCore::ResourceHandleClient {
 public:
@@ -63,8 +63,8 @@ public:
     	DOWNLOAD_CANNOT_SHOW_URL
     };
 
-    WebDownload(WebProcess* webProcess, const ResourceRequest& request);
-    WebDownload(WebProcess* webProcess, ResourceHandle* handle,
+    WebDownload(WebPage* webPage, const ResourceRequest& request);
+    WebDownload(WebPage* webPage, ResourceHandle* handle,
         const ResourceRequest& request, const ResourceResponse& response);
 
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
@@ -85,7 +85,7 @@ public:
     off_t expectedSize() const { return m_expectedSize; }
 
 private:
-    WebProcess* m_webPocess;
+    WebPage* m_webPage;
 
     RefPtr<ResourceHandle> m_resourceHandle;
     BString m_suggestedFileName;

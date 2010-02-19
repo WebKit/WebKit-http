@@ -69,7 +69,7 @@ SharedLibrary libwebkit.so :
 	InspectorClientHaiku.cpp
 	WebDownload.cpp
 	WebFrame.cpp
-	WebProcess.cpp
+	WebPage.cpp
 	WebView.cpp
 	WebViewWindow.cpp
 

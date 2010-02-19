@@ -30,7 +30,7 @@
 #include "WebView.h"
 
 #include "NotImplemented.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
 #include <AppDefs.h>
@@ -47,14 +47,14 @@ WebView::WebView(const char* name)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE | B_NAVIGABLE)
     , m_offscreenBitmap(0)
     , m_offscreenViewClean(false)
-    , m_webProcess(new WebProcess(this))
+    , m_webPage(new WebPage(this))
 {
-    m_webProcess->init();
+    m_webPage->init();
     // TODO: Should add this to the "current" looper, but that looper needs to
     // stay around regardless of windows opening/closing. Adding it to the
     // app looper is the safest bet for now.
     if (be_app->Lock()) {
-        be_app->AddHandler(m_webProcess);
+        be_app->AddHandler(m_webPage);
         be_app->Unlock();
     }
 
@@ -71,14 +71,14 @@ WebView::~WebView()
 
 void WebView::AttachedToWindow()
 {
-    m_webProcess->setDispatchTarget(BMessenger(Window()));
+    m_webPage->setDispatchTarget(BMessenger(Window()));
 }
 
 void WebView::DetachedFromWindow()
 {
 // TODO: Needs locking.
-//    m_webProcess->setDispatchTarget(0);
-    m_webProcess->shutdown();
+//    m_webPage->setDispatchTarget(0);
+    m_webPage->shutdown();
 }
 
 void WebView::Draw(BRect rect)
@@ -89,7 +89,7 @@ void WebView::Draw(BRect rect)
 // need to manually trigger WebCore repaint events. These might be causing the
 // weird hang in BitmapImage::draw() -> startAnimation(). That's why I disable
 // it here for the time being to see if these hangs go away.
-//       m_webProcess->draw(rect);
+//       m_webPage->draw(rect);
         return;
     }
 
@@ -109,7 +109,7 @@ void WebView::Draw(BRect rect)
 void WebView::FrameResized(float width, float height)
 {
     resizeOffscreenView(width + 1, height + 1);
-    m_webProcess->frameResized(width, height);
+    m_webPage->frameResized(width, height);
 }
 
 void WebView::GetPreferredSize(float* width, float* height)
@@ -131,7 +131,7 @@ void WebView::MessageReceived(BMessage* message)
         uint32 buttons;
         GetMouse(&where, &buttons);
         BPoint screenWhere = ConvertToScreen(where);
-        m_webProcess->mouseWheelChanged(message, where, screenWhere);
+        m_webPage->mouseWheelChanged(message, where, screenWhere);
         // NOTE: This solves a bug in WebKit itself, it should issue a mouse
         // event when scrolling by wheel event. The effects of the this bug
         // can be witnessed in Safari as well.
@@ -140,7 +140,7 @@ void WebView::MessageReceived(BMessage* message)
         mouseMessage.AddPoint("screen_where", screenWhere);
         mouseMessage.AddInt32("buttons", buttons);
         mouseMessage.AddInt32("modifiers", modifiers());
-        m_webProcess->mouseEvent(&mouseMessage, where, screenWhere);
+        m_webPage->mouseEvent(&mouseMessage, where, screenWhere);
         break;
     }
 
@@ -150,7 +150,7 @@ void WebView::MessageReceived(BMessage* message)
     case B_PASTE:
     case B_UNDO:
     case B_REDO:
-        m_webProcess->standardShortcut(message);
+        m_webPage->standardShortcut(message);
         break;
 
     case FIND_STRING_RESULT:
@@ -166,12 +166,12 @@ void WebView::MessageReceived(BMessage* message)
 void WebView::MakeFocus(bool focused)
 {
 	BView::MakeFocus(focused);
-	m_webProcess->focused(focused);
+	m_webPage->focused(focused);
 }
 
 void WebView::WindowActivated(bool activated)
 {
-    m_webProcess->activated(activated);
+    m_webPage->activated(activated);
 }
 
 void WebView::MouseMoved(BPoint where, uint32, const BMessage*)
@@ -212,32 +212,32 @@ void WebView::setBounds(BRect rect)
 
 BRect WebView::contentsSize() const
 {
-    return m_webProcess->contentsSize();
+    return m_webPage->contentsSize();
 }
 
 BString WebView::mainFrameTitle() const
 {
-    return m_webProcess->mainFrameTitle();
+    return m_webPage->mainFrameTitle();
 }
 
 BString WebView::mainFrameURL() const
 {
-    return m_webProcess->mainFrameURL();
+    return m_webPage->mainFrameURL();
 }
 
 void WebView::loadRequest(const char* urlString)
 {
-    m_webProcess->loadURL(urlString);
+    m_webPage->loadURL(urlString);
 }
 
 void WebView::goBack()
 {
-    m_webProcess->goBack();
+    m_webPage->goBack();
 }
 
 void WebView::goForward()
 {
-    m_webProcess->goForward();
+    m_webPage->goForward();
 }
 
 void WebView::setToolbarsVisible(bool flag)
@@ -294,27 +294,27 @@ printf("linkHovered()\n");
 
 void WebView::increaseTextSize()
 {
-	m_webProcess->changeTextSize(1);
+	m_webPage->changeTextSize(1);
 }
 
 void WebView::decreaseTextSize()
 {
-	m_webProcess->changeTextSize(-1);
+	m_webPage->changeTextSize(-1);
 }
 
 void WebView::resetTextSize()
 {
-	m_webProcess->changeTextSize(0);
+	m_webPage->changeTextSize(0);
 }
 
 void WebView::findString(const char* string, bool forward ,
     bool caseSensitive, bool wrapSelection, bool startInSelection)
 {
-	m_webProcess->findString(string, forward, caseSensitive,
+	m_webPage->findString(string, forward, caseSensitive,
 	    wrapSelection, startInSelection);
 }
 
-// #pragma mark - API for WebProcess only
+// #pragma mark - API for WebPage only
 
 void WebView::setOffscreenViewClean(BRect cleanRect, bool immediate)
 {
@@ -399,7 +399,7 @@ void WebView::dispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
 	} else
 		message->FindInt32("buttons", (int32*)&m_lastMouseButtons);
 
-    m_webProcess->mouseEvent(message, where, ConvertToScreen(where));
+    m_webPage->mouseEvent(message, where, ConvertToScreen(where));
 }
 
 void WebView::dispatchKeyEvent(uint32 sanityWhat)
@@ -408,6 +408,6 @@ void WebView::dispatchKeyEvent(uint32 sanityWhat)
     if (!message || message->what != sanityWhat)
         return;
 
-    m_webProcess->keyEvent(message);
+    m_webPage->keyEvent(message);
 }
 

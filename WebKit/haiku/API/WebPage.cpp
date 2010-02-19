@@ -27,7 +27,7 @@
 
 
 #include "config.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 
 #include "AtomicString.h"
 #include "Cache.h"
@@ -102,7 +102,7 @@ enum {
 
 using namespace WebCore;
 
-/*static*/ void WebProcess::initializeOnce()
+/*static*/ void WebPage::initializeOnce()
 {
 	// NOTE: This needs to be called when the BApplication is ready.
 	// It won't work as static initialization.
@@ -115,7 +115,7 @@ using namespace WebCore;
     WebCore::initPlatformCursors();
 }
 
-/*static*/ void WebProcess::setCacheModel(WebKitCacheModel model)
+/*static*/ void WebPage::setCacheModel(WebKitCacheModel model)
 {
     // FIXME: Add disk cache handling when CURL has the API
     uint32 cacheTotalCapacity;
@@ -148,7 +148,7 @@ using namespace WebCore;
     pageCache()->setCapacity(pageCacheCapacity);
 }
 
-WebProcess::WebProcess(WebView* webView)
+WebPage::WebPage(WebView* webView)
     : BHandler("WebView process")
     , m_webView(webView)
     , m_mainFrame(0)
@@ -190,51 +190,51 @@ WebProcess::WebProcess(WebView* webView)
     settings->setDefaultTextEncodingName("UTF-8");
 }
 
-WebProcess::~WebProcess()
+WebPage::~WebPage()
 {
-printf("~WebProcess()\n");
+printf("~WebPage()\n");
     delete m_mainFrame;
     delete m_page;
 }
 
 // #pragma mark - public
 
-void WebProcess::init()
+void WebPage::init()
 {
     m_mainFrame = new WebFrame(this, m_page);
 }
 
-void WebProcess::shutdown()
+void WebPage::shutdown()
 {
     BMessage message(HANDLE_SHUTDOWN);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::setDispatchTarget(const BMessenger& messenger)
+void WebPage::setDispatchTarget(const BMessenger& messenger)
 {
     m_mainFrame->setDispatchTarget(messenger);
 }
 
-void WebProcess::loadURL(const char* urlString)
+void WebPage::loadURL(const char* urlString)
 {
     BMessage message(HANDLE_LOAD_URL);
     message.AddString("url", urlString);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::goBack()
+void WebPage::goBack()
 {
     BMessage message(HANDLE_GO_BACK);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::goForward()
+void WebPage::goForward()
 {
     BMessage message(HANDLE_GO_FORWARD);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::draw(const BRect& updateRect)
+void WebPage::draw(const BRect& updateRect)
 {
     BMessage message(HANDLE_DRAW);
     message.AddPointer("target", this);
@@ -242,7 +242,7 @@ void WebProcess::draw(const BRect& updateRect)
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::frameResized(float width, float height)
+void WebPage::frameResized(float width, float height)
 {
     BMessage message(HANDLE_FRAME_RESIZED);
     message.AddPointer("target", this);
@@ -251,21 +251,21 @@ void WebProcess::frameResized(float width, float height)
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::focused(bool focused)
+void WebPage::focused(bool focused)
 {
     BMessage message(HANDLE_FOCUSED);
     message.AddBool("focused", focused);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::activated(bool activated)
+void WebPage::activated(bool activated)
 {
     BMessage message(HANDLE_ACTIVATED);
     message.AddBool("activated", activated);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::mouseEvent(const BMessage* message,
+void WebPage::mouseEvent(const BMessage* message,
     const BPoint& where, const BPoint& screenWhere)
 {
     BMessage copiedMessage(*message);
@@ -273,7 +273,7 @@ void WebProcess::mouseEvent(const BMessage* message,
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebProcess::mouseWheelChanged(const BMessage* message,
+void WebPage::mouseWheelChanged(const BMessage* message,
     const BPoint& where, const BPoint& screenWhere)
 {
     BMessage copiedMessage(*message);
@@ -283,13 +283,13 @@ void WebProcess::mouseWheelChanged(const BMessage* message,
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebProcess::keyEvent(const BMessage* message)
+void WebPage::keyEvent(const BMessage* message)
 {
     BMessage copiedMessage(*message);
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebProcess::standardShortcut(const BMessage* message)
+void WebPage::standardShortcut(const BMessage* message)
 {
 	// Simulate a B_KEY_DOWN event. The message is not complete,
 	// but enough to trigger short cut generation in EditorClientHaiku.
@@ -321,14 +321,14 @@ void WebProcess::standardShortcut(const BMessage* message)
     Looper()->PostMessage(&keyDownMessage, this);
 }
 
-void WebProcess::changeTextSize(float increment)
+void WebPage::changeTextSize(float increment)
 {
 	BMessage message(HANDLE_CHANGE_TEXT_SIZE);
 	message.AddFloat("increment", increment);
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::findString(const char* string, bool forward, bool caseSensitive,
+void WebPage::findString(const char* string, bool forward, bool caseSensitive,
     bool wrapSelection, bool startInSelection)
 {
 	BMessage message(HANDLE_FIND_STRING);
@@ -340,35 +340,35 @@ void WebProcess::findString(const char* string, bool forward, bool caseSensitive
     Looper()->PostMessage(&message, this);
 }
 
-void WebProcess::setDownloadListener(const BMessenger& listener)
+void WebPage::setDownloadListener(const BMessenger& listener)
 {
     m_downloadListener = listener;
 }
 
 // #pragma mark - WebCoreSupport methods
 
-WebFrame* WebProcess::mainFrame() const
+WebFrame* WebPage::mainFrame() const
 {
     return m_mainFrame;
 };
 
-WebCore::Page* WebProcess::page() const
+WebCore::Page* WebPage::page() const
 {
     return m_page;
 }
 
-WebView* WebProcess::webView() const
+WebView* WebPage::webView() const
 {
     return m_webView;
 }
 
-BRect WebProcess::contentsSize()
+BRect WebPage::contentsSize()
 {
 	IntSize viewSize = m_mainFrame->frame()->view()->contentsSize();
     return BRect(B_ORIGIN, BPoint(viewSize.width() - 1, viewSize.height() - 1));
 }
 
-BRect WebProcess::windowBounds()
+BRect WebPage::windowBounds()
 {
     BRect bounds;
     if (m_webView->LockLooper()) {
@@ -378,7 +378,7 @@ BRect WebProcess::windowBounds()
     return bounds;
 }
 
-void WebProcess::setWindowBounds(const BRect& bounds)
+void WebPage::setWindowBounds(const BRect& bounds)
 {
     if (m_webView->LockLooper()) {
         m_webView->Window()->MoveTo(bounds.LeftTop());
@@ -387,7 +387,7 @@ void WebProcess::setWindowBounds(const BRect& bounds)
     }
 }
 
-BRect WebProcess::viewBounds()
+BRect WebPage::viewBounds()
 {
     BRect bounds;
     if (m_webView->LockLooper()) {
@@ -397,7 +397,7 @@ BRect WebProcess::viewBounds()
     return bounds;
 }
 
-void WebProcess::setViewBounds(const BRect& bounds)
+void WebPage::setViewBounds(const BRect& bounds)
 {
     if (m_webView->LockLooper()) {
         // TODO: Implement this with layout management, i.e. SetExplicitMinSize() or something...
@@ -405,30 +405,30 @@ void WebProcess::setViewBounds(const BRect& bounds)
     }
 }
 
-BString WebProcess::mainFrameTitle()
+BString WebPage::mainFrameTitle()
 {
     return m_mainFrame->title();
 }
 
-BString WebProcess::mainFrameURL()
+BString WebPage::mainFrameURL()
 {
     return m_mainFrame->url();
 }
 
-void WebProcess::requestDownload(const WebCore::ResourceRequest& request)
+void WebPage::requestDownload(const WebCore::ResourceRequest& request)
 {
     WebDownload* download = new WebDownload(this, request);
     downloadCreated(download);
 }
 
-void WebProcess::requestDownload(WebCore::ResourceHandle* handle,
+void WebPage::requestDownload(WebCore::ResourceHandle* handle,
     const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
 {
     WebDownload* download = new WebDownload(this, handle, request, response);
     downloadCreated(download);
 }
 
-void WebProcess::downloadCreated(WebDownload* download)
+void WebPage::downloadCreated(WebDownload* download)
 {
 	download->start();
 	if (m_downloadListener.IsValid()) {
@@ -440,7 +440,7 @@ void WebProcess::downloadCreated(WebDownload* download)
 	}
 }
 
-void WebProcess::downloadFinished(WebCore::ResourceHandle* handle,
+void WebPage::downloadFinished(WebCore::ResourceHandle* handle,
     WebDownload* download, uint32 status)
 {
 	handle->setClient(0);
@@ -454,7 +454,7 @@ void WebProcess::downloadFinished(WebCore::ResourceHandle* handle,
 	delete download;
 }
 
-void WebProcess::paint(const BRect& rect, bool contentChanged, bool immediate,
+void WebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
     // NOTE: m_mainFrame can be 0 because init() eventually ends up calling
@@ -494,13 +494,13 @@ void WebProcess::paint(const BRect& rect, bool contentChanged, bool immediate,
 
 // #pragma mark - private
 
-void WebProcess::MessageReceived(BMessage* message)
+void WebPage::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case HANDLE_SHUTDOWN:
         // TODO: This message never arrives here when the BApplication is already
         // processing B_QUIT_REQUESTED. Then the view will be detached and instruct
-        // the WebProcess handler to shut itself down, but BApplication will not
+        // the WebPage handler to shut itself down, but BApplication will not
         // process additional messages. In that regard, it's hard to perform the
         // shutdown in the main thread...
         Looper()->RemoveHandler(this);
@@ -604,12 +604,12 @@ void WebProcess::MessageReceived(BMessage* message)
     }
 }
 
-void WebProcess::skipToLastMessage(BMessage*& message)
+void WebPage::skipToLastMessage(BMessage*& message)
 {
 	// NOTE: All messages that are fast-forwarded like this
-	// need to be flagged with the intended target WebProcess,
+	// need to be flagged with the intended target WebPage,
 	// or else we steal or process messages intended for another
-	// WebProcess here!
+	// WebPage here!
     bool first = true;
     BMessageQueue* queue = Looper()->MessageQueue();
     int32 index = 0;
@@ -628,7 +628,7 @@ void WebProcess::skipToLastMessage(BMessage*& message)
     }
 }
 
-void WebProcess::handleLoadURL(const BMessage* message)
+void WebPage::handleLoadURL(const BMessage* message)
 {
     const char* urlString;
     if (message->FindString("url", &urlString) != B_OK)
@@ -637,24 +637,24 @@ void WebProcess::handleLoadURL(const BMessage* message)
     m_mainFrame->loadRequest(urlString);
 }
 
-void WebProcess::handleGoBack(const BMessage* message)
+void WebPage::handleGoBack(const BMessage* message)
 {
     m_mainFrame->goBack();
 }
 
-void WebProcess::handleGoForward(const BMessage* message)
+void WebPage::handleGoForward(const BMessage* message)
 {
     m_mainFrame->goForward();
 }
 
-void WebProcess::handleDraw(const BMessage* message)
+void WebPage::handleDraw(const BMessage* message)
 {
     BRect rect;
     message->FindRect("update rect", &rect);
     paint(rect, true, false, true);
 }
 
-void WebProcess::handleFrameResized(const BMessage* message)
+void WebPage::handleFrameResized(const BMessage* message)
 {
     float width;
     float height;
@@ -670,7 +670,7 @@ void WebProcess::handleFrameResized(const BMessage* message)
     m_webView->invalidate();
 }
 
-void WebProcess::handleFocused(const BMessage* message)
+void WebPage::handleFocused(const BMessage* message)
 {
     bool focused;
     message->FindBool("focused", &focused);
@@ -681,7 +681,7 @@ void WebProcess::handleFocused(const BMessage* message)
         focusController->setFocusedFrame(m_mainFrame->frame());
 }
 
-void WebProcess::handleActivated(const BMessage* message)
+void WebPage::handleActivated(const BMessage* message)
 {
     bool activated;
     message->FindBool("activated", &activated);
@@ -690,7 +690,7 @@ void WebProcess::handleActivated(const BMessage* message)
     focusController->setActive(activated);
 }
 
-void WebProcess::handleMouseEvent(const BMessage* message)
+void WebPage::handleMouseEvent(const BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -711,7 +711,7 @@ void WebProcess::handleMouseEvent(const BMessage* message)
     }
 }
 
-void WebProcess::handleMouseWheelChanged(BMessage* message)
+void WebPage::handleMouseWheelChanged(BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -721,7 +721,7 @@ void WebProcess::handleMouseWheelChanged(BMessage* message)
     frame->eventHandler()->handleWheelEvent(event);
 }
 
-void WebProcess::handleKeyEvent(BMessage* message)
+void WebPage::handleKeyEvent(BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -731,7 +731,7 @@ void WebProcess::handleKeyEvent(BMessage* message)
     frame->eventHandler()->keyEvent(event);
 }
 
-void WebProcess::handleChangeTextSize(BMessage* message)
+void WebPage::handleChangeTextSize(BMessage* message)
 {
     float increment = 0;
     message->FindFloat("increment", &increment);
@@ -743,7 +743,7 @@ void WebProcess::handleChangeTextSize(BMessage* message)
     	m_mainFrame->resetTextSize();
 }
 
-void WebProcess::handleFindString(BMessage* message)
+void WebPage::handleFindString(BMessage* message)
 {
     BMessage reply(FIND_STRING_RESULT);
 

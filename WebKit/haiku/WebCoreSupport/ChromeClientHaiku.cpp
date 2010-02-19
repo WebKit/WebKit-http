@@ -40,7 +40,6 @@
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include "WebFrame.h"
-#include "WebFramePrivate.h"
 #include "WebView.h"
 #include "WebViewWindow.h"
 #include "WindowFeatures.h"
@@ -53,8 +52,8 @@
 
 namespace WebCore {
 
-ChromeClientHaiku::ChromeClientHaiku(WebProcess* webProcess, WebView* webView)
-    : m_webProcess(webProcess)
+ChromeClientHaiku::ChromeClientHaiku(WebPage* webPage, WebView* webView)
+    : m_webPage(webPage)
     , m_webView(webView)
 {
 }
@@ -70,17 +69,17 @@ void ChromeClientHaiku::chromeDestroyed()
 
 void ChromeClientHaiku::setWindowRect(const FloatRect& rect)
 {
-    m_webProcess->setWindowBounds(BRect(rect));
+    m_webPage->setWindowBounds(BRect(rect));
 }
 
 FloatRect ChromeClientHaiku::windowRect()
 {
-    return FloatRect(m_webProcess->windowBounds());
+    return FloatRect(m_webPage->windowBounds());
 }
 
 FloatRect ChromeClientHaiku::pageRect()
 {
-    return FloatRect(m_webProcess->contentsSize());
+    return FloatRect(m_webPage->contentsSize());
 }
 
 float ChromeClientHaiku::scaleFactor()
@@ -149,9 +148,9 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
     window->AddChild(view);
     window->Show();
 
-    view->webProcess()->loadURL(BString(request.resourceRequest().url().string()));
+    view->webPage()->loadURL(BString(request.resourceRequest().url().string()));
 
-    return view->webProcess()->page();
+    return view->webPage()->page();
 }
 
 void ChromeClientHaiku::show()
@@ -196,12 +195,12 @@ bool ChromeClientHaiku::statusbarVisible()
 
 void ChromeClientHaiku::setScrollbarsVisible(bool visible)
 {
-    m_webProcess->mainFrame()->setAllowsScrolling(visible);
+    m_webPage->mainFrame()->setAllowsScrolling(visible);
 }
 
 bool ChromeClientHaiku::scrollbarsVisible()
 {
-    return m_webProcess->mainFrame()->allowsScrolling();
+    return m_webPage->mainFrame()->allowsScrolling();
 }
 
 void ChromeClientHaiku::setMenubarVisible(bool visible)
@@ -237,7 +236,7 @@ bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame
 
 void ChromeClientHaiku::closeWindowSoon()
 {
-    m_webProcess->mainFrame()->frame()->loader()->stopAllLoaders();
+    m_webPage->mainFrame()->frame()->loader()->stopAllLoaders();
     m_webView->closeWindow();
 }
 
@@ -285,9 +284,9 @@ void ChromeClientHaiku::repaint(const IntRect& rect, bool contentChanged, bool i
 {
     // TODO: This deadlocks when called from the app thread during init (fortunately immediate is false then)
     if (immediate)
-        m_webProcess->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
+        m_webPage->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
     else
-        m_webProcess->draw(BRect(rect));
+        m_webPage->draw(BRect(rect));
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
@@ -375,7 +374,7 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     RefPtr<FileChooser> *ref = new RefPtr<FileChooser>(chooser);
     BMessage message(B_REFS_RECEIVED);
     message.AddPointer("chooser", ref);
-    BMessenger target(m_webView->webProcess());
+    BMessenger target(m_webView->webPage());
     BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->allowsMultipleFiles(), &message, NULL, true, true);
     panel->Show();
 }

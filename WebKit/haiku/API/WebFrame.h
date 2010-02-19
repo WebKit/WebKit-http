@@ -33,7 +33,7 @@
 #include <String.h>
 
 class BMessenger;
-class WebProcess;
+class WebPage;
 
 namespace WebCore {
 class Frame;
@@ -46,7 +46,7 @@ class String;
 
 class WebFrame {
 public:
-    WebFrame(WebProcess*, WebCore::Page* parentPage = 0,
+    WebFrame(WebPage*, WebCore::Page* parentPage = 0,
         WebCore::Frame* parentFrame = 0,
         WebCore::HTMLFrameOwnerElement* = 0,
         const WebCore::String& frameName = WebCore::String());

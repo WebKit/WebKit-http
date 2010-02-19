@@ -38,7 +38,7 @@
 #include <Messenger.h>
 
 class WebFrame;
-class WebProcess;
+class WebPage;
 
 namespace WebCore {
 class AuthenticationChallenge;
@@ -55,7 +55,7 @@ struct LoadErrorResetToken;
 
 class FrameLoaderClientHaiku : public FrameLoaderClient {
 public:
-    FrameLoaderClientHaiku(WebProcess*, WebFrame*);
+    FrameLoaderClientHaiku(WebPage*, WebFrame*);
 
     void setDispatchTarget(const BMessenger& messenger);
 
@@ -210,7 +210,7 @@ private:
     void postCommitFrameViewSetup(WebFrame*, FrameView*, bool) const;
 
 private:
-    WebProcess* m_webProcess;
+    WebPage* m_webPage;
     WebFrame* m_webFrame;
     BMessenger m_messenger;
 

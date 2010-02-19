@@ -33,7 +33,7 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "LauncherWindow.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
@@ -92,8 +92,8 @@ void LauncherApp::ArgvReceived(int32 argc, char** argv)
 
 void LauncherApp::ReadyToRun()
 {
-    WebProcess::initializeOnce();
-    WebProcess::setCacheModel(WEBKIT_CACHE_MODEL_WEB_BROWSER);
+    WebPage::initializeOnce();
+    WebPage::setCacheModel(WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;

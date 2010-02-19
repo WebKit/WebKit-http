@@ -33,7 +33,7 @@
 #include "FloatRect.h"
 #include "KURL.h"
 #include "RefCounted.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 
 namespace WebCore {
 
@@ -43,7 +43,7 @@ namespace WebCore {
 
     class ChromeClientHaiku : public ChromeClient {
     public:
-        ChromeClientHaiku(WebProcess*, WebView*);
+        ChromeClientHaiku(WebPage*, WebView*);
         virtual ~ChromeClientHaiku();
         virtual void chromeDestroyed();
 
@@ -138,7 +138,7 @@ namespace WebCore {
 
         virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
 
-        WebProcess* m_webProcess;
+        WebPage* m_webPage;
         WebView* m_webView;
 
         WebCore::KURL lastHoverURL;

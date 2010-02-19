@@ -26,8 +26,8 @@
  */
 
 
-#ifndef WebProcess_h
-#define WebProcess_h
+#ifndef WebPage_h
+#define WebPage_h
 
 #include <Handler.h>
 #include <Messenger.h>
@@ -56,12 +56,12 @@ typedef enum {
 	WEBKIT_CACHE_MODEL_WEB_BROWSER
 } WebKitCacheModel;
 
-class WebProcess : public BHandler {
+class WebPage : public BHandler {
 public:
     static void initializeOnce();
     static void setCacheModel(WebKitCacheModel model);
 
-    WebProcess(WebView* webView);
+    WebPage(WebView* webView);
 
     void init();
     void shutdown();
@@ -115,7 +115,7 @@ public:
         bool repaintContentOnly);
 
 private:
-    virtual ~WebProcess();
+    virtual ~WebPage();
 
     virtual void MessageReceived(BMessage* message);
 
@@ -141,4 +141,4 @@ private:
     WebCore::Page* m_page;
 };
 
-#endif // WebProcess_h
+#endif // WebPage_h

@@ -43,7 +43,7 @@
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include "markup.h"
 #include "wtf/RefPtr.h"
 #include "wtf/Vector.h"
@@ -75,7 +75,7 @@ public:
 
 // #pragma mark -
 
-WebFrame::WebFrame(WebProcess* webProcess, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
+WebFrame::WebFrame(WebPage* webPage, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
         WebCore::HTMLFrameOwnerElement* ownerElement, const WebCore::String& frameName)
     : m_textMagnifier(1.0)
     , m_isEditable(true)
@@ -86,7 +86,7 @@ WebFrame::WebFrame(WebProcess* webProcess, WebCore::Page* parentPage, WebCore::F
 	m_data->name = frameName;
 	m_data->ownerElement = ownerElement;
 	m_data->page = parentPage;
-	m_data->loaderClient = new WebCore::FrameLoaderClientHaiku(webProcess, this);
+	m_data->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
     m_data->frame = WebCore::Frame::create(parentPage, ownerElement, m_data->loaderClient);
 
     m_data->frame->tree()->setName(frameName);

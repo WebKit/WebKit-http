@@ -29,7 +29,7 @@
 #include "DownloadWindow.h"
 
 #include "WebDownload.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include <Alert.h>
 #include <Bitmap.h>
 #include <Button.h>

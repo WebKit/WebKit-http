@@ -57,7 +57,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "WebFrame.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 
@@ -70,13 +70,13 @@
 
 namespace WebCore {
 
-FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebProcess* webProcess, WebFrame* webFrame)
-    : m_webProcess(webProcess)
+FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebPage* webPage, WebFrame* webFrame)
+    : m_webPage(webPage)
     , m_webFrame(webFrame)
     , m_messenger()
 {
 printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
-    ASSERT(m_webProcess);
+    ASSERT(m_webPage);
     ASSERT(m_webFrame);
 }
 
@@ -88,13 +88,13 @@ void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
     m_webFrame = 0;
-        // deleted by WebProcess
+        // deleted by WebPage
     delete this;
 }
 
 bool FrameLoaderClientHaiku::hasWebView() const
 {
-    return m_webProcess->webView();
+    return m_webPage->webView();
 }
 
 void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
@@ -541,12 +541,12 @@ void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
 
 void FrameLoaderClientHaiku::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceRequest&, const ResourceResponse& response)
 {
-    m_webProcess->requestDownload(handle, request, response);
+    m_webPage->requestDownload(handle, request, response);
 }
 
 void FrameLoaderClientHaiku::startDownload(const ResourceRequest& request)
 {
-    m_webProcess->requestDownload(request);
+    m_webPage->requestDownload(request);
 }
 
 void FrameLoaderClientHaiku::willChangeTitle(DocumentLoader*)
@@ -783,7 +783,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
     Frame* frame = m_webFrame->frame();
 
-    BRect bounds = m_webProcess->viewBounds();
+    BRect bounds = m_webPage->viewBounds();
     IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
     bool transparent = m_webFrame->isTransparent();
@@ -814,7 +814,7 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
     ASSERT(m_webFrame);
 
-    WebFrame* frame = new WebFrame(m_webProcess, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
+    WebFrame* frame = new WebFrame(m_webPage, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
     // As long as we don't return the Frame, we are responsible for deleting it.
     RefPtr<Frame> childFrame = frame->frame();
 
@@ -951,7 +951,7 @@ void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView
 {
     // This method can be used to do adjustments on the main frame, since those
     // are the only ones directly embedded into a WebView.
-    view->setTopLevelPlatformWidget(m_webProcess->webView());
+    view->setTopLevelPlatformWidget(m_webPage->webView());
 }
 
 } // namespace WebCore

@@ -34,14 +34,14 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include <Entry.h>
 #include <Message.h>
 #include <Messenger.h>
 #include <NodeInfo.h>
 
-WebDownload::WebDownload(WebProcess* webProcess, const ResourceRequest& request)
-    : m_webPocess(webProcess)
+WebDownload::WebDownload(WebPage* webPage, const ResourceRequest& request)
+    : m_webPage(webPage)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
@@ -54,9 +54,9 @@ WebDownload::WebDownload(WebProcess* webProcess, const ResourceRequest& request)
 printf("WebDownload::WebDownload()\n");
 }
 
-WebDownload::WebDownload(WebProcess* webProcess, ResourceHandle* handle,
+WebDownload::WebDownload(WebPage* webPage, ResourceHandle* handle,
         const ResourceRequest& request, const ResourceResponse& response)
-    : m_webPocess(webProcess)
+    : m_webPage(webPage)
     , m_resourceHandle(handle)
     , m_currentSize(0)
     , m_expectedSize(0)
@@ -114,13 +114,13 @@ void WebDownload::didReceiveData(ResourceHandle*, const char* data, int length, 
 void WebDownload::didFinishLoading(ResourceHandle* handle)
 {
 printf("WebDownload::didFinishLoading()\n");
-    m_webPocess->downloadFinished(handle, this, DOWNLOAD_FINISHED);
+    m_webPage->downloadFinished(handle, this, DOWNLOAD_FINISHED);
 }
 
 void WebDownload::didFail(ResourceHandle* handle, const ResourceError& error)
 {
 printf("WebDownload::didFail()\n");
-    m_webPocess->downloadFinished(handle, this, DOWNLOAD_FAILED);
+    m_webPage->downloadFinished(handle, this, DOWNLOAD_FAILED);
 }
 
 void WebDownload::wasBlocked(ResourceHandle* handle)
@@ -128,7 +128,7 @@ void WebDownload::wasBlocked(ResourceHandle* handle)
 printf("WebDownload::wasBlocked()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    m_webPocess->downloadFinished(handle, this, DOWNLOAD_BLOCKED);
+    m_webPage->downloadFinished(handle, this, DOWNLOAD_BLOCKED);
 }
 
 void WebDownload::cannotShowURL(ResourceHandle* handle)
@@ -136,7 +136,7 @@ void WebDownload::cannotShowURL(ResourceHandle* handle)
 printf("WebDownload::cannotShowURL()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    m_webPocess->downloadFinished(handle, this, DOWNLOAD_CANNOT_SHOW_URL);
+    m_webPage->downloadFinished(handle, this, DOWNLOAD_CANNOT_SHOW_URL);
 }
 
 void WebDownload::start()

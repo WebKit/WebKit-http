@@ -34,7 +34,7 @@
 
 #include "AuthenticationPanel.h"
 #include "BrowsingHistory.h"
-#include "WebProcess.h"
+#include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
@@ -200,7 +200,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         );
     }
 
-    webView()->webProcess()->setDownloadListener(downloadListener);
+    webView()->webPage()->setDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 
@@ -367,7 +367,7 @@ void LauncherWindow::newWindowRequested(const BString& url)
 {
     // Always open new windows in the application thread, since
     // creating a WebView will try to grab the application lock.
-    // But our own WebProcess may already try to lock us from within
+    // But our own WebPage may already try to lock us from within
     // the application thread -> dead-lock.
     BMessage message(NEW_WINDOW);
     message.AddString("url", url);
