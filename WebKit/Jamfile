@@ -10,6 +10,7 @@ SubDirCcFlags $(defines) ;
 
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) WebCore svg ;
+SubDirSysHdrs $(TOP) WebCore bindings js ;
 
 SubDirHdrs $(TOP) ;
 SubDirHdrs $(TOP) WebCore ;

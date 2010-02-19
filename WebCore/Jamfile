@@ -147,6 +147,8 @@ StaticLibrary webcore1 :
 
         # bindings/js
         GCController.cpp
+        JavaScriptProfile.cpp
+        JavaScriptProfileNode.cpp
         JSAttrCustom.cpp
         JSAudioConstructor.cpp
         JSCallbackData.cpp
@@ -974,8 +976,6 @@ SharedLibrary libwebcore.so :
         InspectorTimelineAgent.cpp
         JavaScriptCallFrame.cpp
         JavaScriptDebugServer.cpp
-        JavaScriptProfile.cpp
-        JavaScriptProfileNode.cpp
         TimelineRecordFactory.cpp
 
         # loader
@@ -1139,6 +1139,7 @@ SharedLibrary libwebcore.so :
         GlyphWidthMap.cpp
         Gradient.cpp
         GraphicsContext.cpp
+        GraphicsContext3D.cpp
         GraphicsLayer.cpp
         GraphicsTypes.cpp
         Image.cpp
