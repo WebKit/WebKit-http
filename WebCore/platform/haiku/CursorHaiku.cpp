@@ -50,6 +50,7 @@ Cursor::~Cursor()
 }
 
 Cursor::Cursor(Image*, const IntPoint&)
+    : m_impl(0)
 {
     notImplemented();
 }
