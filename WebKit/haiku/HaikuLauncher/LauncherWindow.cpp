@@ -35,6 +35,7 @@
 
 #include "AuthenticationPanel.h"
 #include "BrowsingHistory.h"
+#include "LauncherApp.h"
 #include "WebPage.h"
 #include "WebTabView.h"
 #include "WebView.h"
@@ -329,9 +330,14 @@ void LauncherWindow::MessageReceived(BMessage* message)
 
     case NEW_TAB:
     {
-        m_tabView->AddTab(new WebView("web_view"));
+        BMessage reply;
+        be_app_messenger.SendMessage(CREATE_WEBVIEW, &reply);
+        WebView *view = NULL;
+        reply.FindPointer("view", reinterpret_cast<void **>(&view));
+        m_tabView->AddTab(view);
         m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New Tab");
         m_tabView->Select(m_tabView->CountTabs() - 1);
+        navigationCapabilitiesChanged(false, false, false, currentWebView());
         break;
     }
 
@@ -350,6 +356,11 @@ void LauncherWindow::MessageReceived(BMessage* message)
             m_tabView->ViewForTab(index)));
         updateTitle(m_tabView->TabAt(index)->Label());
         m_url->TextView()->SetText(currentWebView()->mainFrameURL());
+        BWebPage *page = currentWebView()->webPage();
+//        bool canGoForward = page->CanGoInDirection(1);
+//        bool canGoBackward = page->CanGoInDirection(-1);
+//        navigationCapabilitiesChanged(canGoForward, canGoBackward, false,
+//            currentWebView());
         break;
     }
 

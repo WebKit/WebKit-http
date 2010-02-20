@@ -36,6 +36,10 @@ class BFile;
 class DownloadWindow;
 class LauncherWindow;
 
+enum {
+    CREATE_WEBVIEW = 'crwb'
+};
+
 class LauncherApp : public BApplication {
 public:
     LauncherApp();

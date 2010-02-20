@@ -165,6 +165,12 @@ void LauncherApp::MessageReceived(BMessage* message)
     	newWindow(url);
     	break;
     }
+    case CREATE_WEBVIEW: {
+        BMessage reply;
+        reply.AddPointer("view", new WebView("web_view"));
+        message->SendReply(&reply);
+        break;
+    }
     case WINDOW_OPENED:
     	m_windowCount++;
     	break;
