@@ -4,6 +4,7 @@
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
+ * Copyright (C) 2010 Rene Gollent <rene@gollent.com>
  *
  * All rights reserved.
  *
@@ -72,6 +73,9 @@ enum {
     TEXT_HIDE_FIND_GROUP = 'hfnd',
     TEXT_FIND_NEXT = 'fndn',
     TEXT_FIND_PREVIOUS = 'fndp',
+
+    NEW_TAB = 'ntab',
+    CLOSE_TAB = 'ctab'
 };
 
 using namespace WebCore;
@@ -109,7 +113,10 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         newMenu->AddItem(newItem);
         newItem->SetTarget(this);
         menu->AddItem(newMenu);
-        menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W'));
+        BMenu *closeMenu = new BMenu("Close");
+        closeMenu->AddItem(new BMenuItem("Window", new BMessage(B_QUIT_REQUESTED), 'W'));
+        closeMenu->AddItem(new BMenuItem("Tab", new BMessage(CLOSE_TAB), 'W', B_SHIFT_KEY));
+        menu->AddItem(closeMenu);
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
         menu->AddSeparatorItem();
@@ -324,8 +331,15 @@ void LauncherWindow::MessageReceived(BMessage* message)
     {
         m_tabView->AddTab(new WebView("web_view"));
         m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New Tab");
-        m_tabView->DrawTabs();
         m_tabView->Select(m_tabView->CountTabs() - 1);
+        break;
+    }
+
+    case CLOSE_TAB:
+    {
+        if (m_tabView->CountTabs() > 0) {
+            delete m_tabView->RemoveTab(m_tabView->FocusTab());
+        }
         break;
     }
 
