@@ -95,9 +95,10 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
     m_tabView = new WebTabView("tabview", BMessenger(this));
-    WebView *webView = new WebView("web_view");
+    WebView* webView = new WebView("web_view");
     m_tabView->AddTab(webView);
     m_tabView->TabAt(0L)->SetLabel("New Tab");
+    m_tabView->setTarget(BMessenger(this));
     setCurrentWebView(webView);
 
     if (toolbarPolicy == HaveToolbar) {
@@ -106,20 +107,17 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         BMenu* menu = new BMenu("Window");
         BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
         newWindowMessage->AddString("url", "");
-        BMenu *newMenu = new BMenu("New");
-        BMenuItem* newItem = new BMenuItem("Window", newWindowMessage, 'N');
-        newMenu->AddItem(newItem);
+        BMenuItem* newItem = new BMenuItem("New window", newWindowMessage, 'N');
+        menu->AddItem(newItem);
         newItem->SetTarget(be_app);
-        newItem = new BMenuItem("Tab", new BMessage(NEW_TAB), 'T');
-        newMenu->AddItem(newItem);
+        newItem = new BMenuItem("New tab", new BMessage(NEW_TAB), 'T');
+        menu->AddItem(newItem);
         newItem->SetTarget(this);
-        menu->AddItem(newMenu);
-        BMenu *closeMenu = new BMenu("Close");
-        closeMenu->AddItem(new BMenuItem("Window", new BMessage(B_QUIT_REQUESTED), 'W'));
-        closeMenu->AddItem(new BMenuItem("Tab", new BMessage(CLOSE_TAB), 'W', B_SHIFT_KEY));
-        menu->AddItem(closeMenu);
         menu->AddSeparatorItem();
-        menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
+        menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W'));
+        menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W', B_SHIFT_KEY));
+        menu->AddSeparatorItem();
+        menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
         menu->AddSeparatorItem();
         BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
         menu->AddItem(quitItem);
@@ -152,7 +150,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText = new BStringView("status", "");
         m_statusText->SetAlignment(B_ALIGN_LEFT);
         m_statusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
-        m_statusText->SetExplicitMinSize(BSize(150, 16));
+        m_statusText->SetExplicitMinSize(BSize(150, 15));
             // Prevent the window from growing to fit a long status message...
         BFont font(be_plain_font);
         font.SetSize(ceilf(font.Size() * 0.8));
@@ -171,7 +169,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
             new BMessage(TEXT_FIND_NEXT));
         m_findCaseSensitiveCheckBox = new BCheckBox("Match case");
         BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
-            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
                 .Add(m_findTextControl)
                 .Add(new BButton("Previous", new BMessage(TEXT_FIND_PREVIOUS)))
@@ -193,10 +191,10 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
                 .Add(button, 3, 0)
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
-            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(m_tabView)
             .Add(findGroup)
-            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
                 .Add(m_statusText)
                 .Add(m_loadingProgressBar, 0.2)
@@ -328,30 +326,26 @@ void LauncherWindow::MessageReceived(BMessage* message)
         be_app->PostMessage(message);
         break;
 
-    case NEW_TAB:
-    {
+    case NEW_TAB: {
         BMessage reply;
         be_app_messenger.SendMessage(CREATE_WEBVIEW, &reply);
         WebView *view = NULL;
         reply.FindPointer("view", reinterpret_cast<void **>(&view));
         m_tabView->AddTab(view);
-        m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New Tab");
+        m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
         m_tabView->Select(m_tabView->CountTabs() - 1);
         navigationCapabilitiesChanged(false, false, false, currentWebView());
         m_url->MakeFocus(true);
         break;
     }
 
-    case CLOSE_TAB:
-    {
-        if (m_tabView->CountTabs() > 0) {
+    case CLOSE_TAB: {
+        if (m_tabView->CountTabs() > 0)
             delete m_tabView->RemoveTab(m_tabView->FocusTab());
-        }
         break;
     }
 
-    case TAB_CHANGED:
-    {
+    case TAB_CHANGED: {
         int32 index = message->FindInt32("index");
         setCurrentWebView(dynamic_cast<WebView *>(
             m_tabView->ViewForTab(index)));
@@ -377,9 +371,8 @@ bool LauncherWindow::QuitRequested()
 
     // Do this here, so WebKit tear down happens earlier.
     // TODO: Iterator over all WebViews, if there are more then one...
-    while (m_tabView->CountTabs() > 0) {
+    while (m_tabView->CountTabs() > 0)
         delete m_tabView->RemoveTab(0L);
-    }
     setCurrentWebView(0);
 
     BMessage message(WINDOW_CLOSED);
@@ -533,8 +526,7 @@ void LauncherWindow::setResizable(bool flag, WebView* view)
 
 void LauncherWindow::titleChanged(const BString& title, WebView* view)
 {
-    for (int32 i = 0; i < m_tabView->CountTabs(); i++)
-    {
+    for (int32 i = 0; i < m_tabView->CountTabs(); i++) {
         if (m_tabView->ViewForTab(i) == view) {
             m_tabView->TabAt(i)->SetLabel(title);
 			m_tabView->DrawTabs();

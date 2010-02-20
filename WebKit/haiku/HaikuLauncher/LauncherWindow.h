@@ -39,8 +39,8 @@ class BLayoutItem;
 class BMenu;
 class BStatusBar;
 class BStringView;
-class BTabView;
 class BTextControl;
+class WebTabView;
 class WebView;
 
 enum ToolbarPolicy {
@@ -99,7 +99,7 @@ private:
     BLayoutItem* m_findGroup;
     BTextControl* m_findTextControl;
     BCheckBox* m_findCaseSensitiveCheckBox;
-    BTabView* m_tabView;
+    WebTabView* m_tabView;
 };
 
 #endif // LauncherWindow_h

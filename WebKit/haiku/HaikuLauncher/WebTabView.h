@@ -41,8 +41,8 @@ public:
     virtual ~WebTabView(void);
     virtual void Select(int32 tab);
 
-    const BMessenger& Target(void) const;
-    void SetTarget(const BMessenger& target);
+    const BMessenger& target() const;
+    void setTarget(const BMessenger& target);
 
 private:
     BMessenger m_target;

@@ -27,18 +27,21 @@
 
 #include "WebTabView.h"
 
+#include <GroupLayout.h>
+
 WebTabView::WebTabView(const char *name, const BMessenger& target)
     : BTabView(name)
     , m_target(target)
 {
+	if (BGroupLayout* layout = dynamic_cast<BGroupLayout*>(GetLayout()))
+	    layout->SetInsets(2, 2 + TabHeight() - 1, 2, 2);
 }
 
 WebTabView::~WebTabView(void)
 {
 }
 
-void
-WebTabView::Select(int32 tab)
+void WebTabView::Select(int32 tab)
 {
     BTabView::Select(tab);
     BMessage message(TAB_CHANGED);
@@ -46,12 +49,12 @@ WebTabView::Select(int32 tab)
     m_target.SendMessage(&message);
 }
 
-const BMessenger& WebTabView::Target(void) const
+const BMessenger& WebTabView::target() const
 {
     return m_target;
 }
 
-void WebTabView::SetTarget(const BMessenger& target)
+void WebTabView::setTarget(const BMessenger& target)
 {
     m_target = target;
 }
