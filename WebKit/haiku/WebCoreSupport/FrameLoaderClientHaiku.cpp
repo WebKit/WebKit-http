@@ -295,7 +295,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
 
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
-    BMessage message(LOAD_NEGOCIATING);
+    BMessage message(LOAD_NEGOTIATING);
     message.AddString("url", m_webFrame->frame()->loader()->provisionalDocumentLoader()->request().url().string());
     dispatchMessage(message);
 }

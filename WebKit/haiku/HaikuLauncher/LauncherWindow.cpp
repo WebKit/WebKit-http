@@ -384,7 +384,7 @@ void LauncherWindow::newWindowRequested(const BString& url)
     be_app->PostMessage(&message);
 }
 
-void LauncherWindow::loadNegociating(const BString& url, WebView* view)
+void LauncherWindow::loadNegotiating(const BString& url, WebView* view)
 {
     BString status("Requesting: ");
     status << url;

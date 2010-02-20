@@ -30,7 +30,7 @@
 
 enum {
     LOAD_ONLOAD_HANDLE =                                300,
-    LOAD_NEGOCIATING =                                  301,
+    LOAD_NEGOTIATING =                                  301,
     TITLE_CHANGED =                                     302,
     LOAD_TRANSFERRING =                                 303,
     LOAD_PROGRESS =                                     304,
