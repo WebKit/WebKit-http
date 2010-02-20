@@ -39,6 +39,7 @@ class BLayoutItem;
 class BMenu;
 class BStatusBar;
 class BStringView;
+class BTabView;
 class BTextControl;
 class WebView;
 
@@ -48,9 +49,10 @@ enum ToolbarPolicy {
 };
 
 enum {
-	NEW_WINDOW = 'nwnd',
-	WINDOW_OPENED = 'wndo',
-	WINDOW_CLOSED = 'wndc',
+    NEW_WINDOW = 'nwnd',
+    NEW_TAB = 'ntab',
+    WINDOW_OPENED = 'wndo',
+    WINDOW_CLOSED = 'wndc',
     SHOW_DOWNLOAD_WINDOW = 'sdwd'
 };
 
@@ -84,6 +86,7 @@ private:
         bool canGoForward, bool canStop, WebView* view);
     virtual void updateGlobalHistory(const BString& url);
     virtual void authenticationChallenge(BMessage* challenge);
+    void updateTitle(const BString &title);
 
 private:
     BMenuBar* m_menuBar;
@@ -97,6 +100,7 @@ private:
     BLayoutItem* m_findGroup;
     BTextControl* m_findTextControl;
     BCheckBox* m_findCaseSensitiveCheckBox;
+    BTabView* m_tabView;
 };
 
 #endif // LauncherWindow_h

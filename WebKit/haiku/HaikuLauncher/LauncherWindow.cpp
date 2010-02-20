@@ -35,6 +35,7 @@
 #include "AuthenticationPanel.h"
 #include "BrowsingHistory.h"
 #include "WebPage.h"
+#include "WebTabView.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
@@ -88,16 +89,26 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
-	setCurrentWebView(new WebView("web_view"));
+    m_tabView = new WebTabView("tabview", BMessenger(this));
+    WebView *webView = new WebView("web_view");
+    m_tabView->AddTab(webView);
+    m_tabView->TabAt(0L)->SetLabel("New Tab");
+    setCurrentWebView(webView);
+
     if (toolbarPolicy == HaveToolbar) {
         // Menu
         m_menuBar = new BMenuBar("Main menu");
         BMenu* menu = new BMenu("Window");
         BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
         newWindowMessage->AddString("url", "");
-        BMenuItem* newItem = new BMenuItem("New", newWindowMessage, 'N');
-        menu->AddItem(newItem);
+        BMenu *newMenu = new BMenu("New");
+        BMenuItem* newItem = new BMenuItem("Window", newWindowMessage, 'N');
+        newMenu->AddItem(newItem);
         newItem->SetTarget(be_app);
+        newItem = new BMenuItem("Tab", new BMessage(NEW_TAB), 'T');
+        newMenu->AddItem(newItem);
+        newItem->SetTarget(this);
+        menu->AddItem(newMenu);
         menu->AddItem(new BMenuItem("Close", new BMessage(B_QUIT_REQUESTED), 'W'));
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Show Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
@@ -175,7 +186,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-            .Add(currentWebView())
+            .Add(m_tabView)
             .Add(findGroup)
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
@@ -240,20 +251,20 @@ void LauncherWindow::MessageReceived(BMessage* message)
         break;
 
     case CLEAR_HISTORY: {
-    	BrowsingHistory* history = BrowsingHistory::defaultInstance();
-    	if (history->countItems() == 0)
-    	    break;
-    	BAlert* alert = new BAlert("Confirmation", "Do you really want to clear "
-    	    "the browsing history?", "Clear", "Cancel");
-    	if (alert->Go() == 0)
-    	    history->clear();
+        BrowsingHistory* history = BrowsingHistory::defaultInstance();
+        if (history->countItems() == 0)
+            break;
+        BAlert* alert = new BAlert("Confirmation", "Do you really want to clear "
+            "the browsing history?", "Clear", "Cancel");
+        if (alert->Go() == 0)
+            history->clear();
         break;
     }
 
     case B_SIMPLE_DATA: {
-    	// User possibly dropped files on this window.
-    	// If there is more than one entry_ref, let the app handle it (open one
-    	// new page per ref). If there is one ref, open it in this window.
+        // User possibly dropped files on this window.
+        // If there is more than one entry_ref, let the app handle it (open one
+        // new page per ref). If there is one ref, open it in this window.
         type_code type;
         int32 countFound;
         if (message->GetInfo("refs", &type, &countFound) != B_OK
@@ -309,6 +320,24 @@ void LauncherWindow::MessageReceived(BMessage* message)
         be_app->PostMessage(message);
         break;
 
+    case NEW_TAB:
+    {
+        m_tabView->AddTab(new WebView("web_view"));
+        m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New Tab");
+        m_tabView->DrawTabs();
+        m_tabView->Select(m_tabView->CountTabs() - 1);
+        break;
+    }
+
+    case TAB_CHANGED:
+    {
+        int32 index = message->FindInt32("index");
+        setCurrentWebView(dynamic_cast<WebView *>(
+            m_tabView->ViewForTab(index)));
+        updateTitle(m_tabView->TabAt(index)->Label());
+        break;
+    }
+
     default:
         WebViewWindow::MessageReceived(message);
         break;
@@ -334,9 +363,9 @@ bool LauncherWindow::QuitRequested()
 
 void LauncherWindow::MenusBeginning()
 {
-	BMenuItem* menuItem;
-	while ((menuItem = m_goMenu->RemoveItem(0L)))
-	    delete menuItem;
+    BMenuItem* menuItem;
+    while ((menuItem = m_goMenu->RemoveItem(0L)))
+        delete menuItem;
 
     BrowsingHistory* history = BrowsingHistory::defaultInstance();
     if (!history->Lock())
@@ -344,14 +373,14 @@ void LauncherWindow::MenusBeginning()
 
     int32 count = history->countItems();
     for (int32 i = 0; i < count; i++) {
-    	BrowsingHistoryItem historyItem = history->historyItemAt(i);
-    	BMessage* message = new BMessage(GOTO_URL);
-    	message->AddString("url", historyItem.url().String());
-    	// TODO: More sophisticated menu structure... sorted by days/weeks...
+        BrowsingHistoryItem historyItem = history->historyItemAt(i);
+        BMessage* message = new BMessage(GOTO_URL);
+        message->AddString("url", historyItem.url().String());
+        // TODO: More sophisticated menu structure... sorted by days/weeks...
         BString truncatedUrl(historyItem.url());
         be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
         menuItem = new BMenuItem(truncatedUrl, message);
-    	m_goMenu->AddItem(menuItem);
+        m_goMenu->AddItem(menuItem);
     }
 
 
@@ -367,7 +396,7 @@ void LauncherWindow::MenusBeginning()
 
 void LauncherWindow::navigationRequested(const BString& url, WebView* view)
 {
-	// TODO: Move elsewhere, doesn't belong here.
+    // TODO: Move elsewhere, doesn't belong here.
     m_loadedURL = url;
     if (m_url)
         m_url->SetText(url.String());
@@ -400,8 +429,8 @@ void LauncherWindow::loadTransfering(const BString& url, WebView* view)
 
 void LauncherWindow::loadProgress(float progress, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     if (m_loadingProgressBar) {
         if (progress < 100 && m_loadingProgressBar->IsHidden())
@@ -412,8 +441,8 @@ void LauncherWindow::loadProgress(float progress, WebView* view)
 
 void LauncherWindow::loadFailed(const BString& url, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     BString status(url);
     status << " failed.";
@@ -424,8 +453,8 @@ void LauncherWindow::loadFailed(const BString& url, WebView* view)
 
 void LauncherWindow::loadFinished(const BString& url, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     m_loadedURL = url;
     BString status(url);
@@ -439,8 +468,8 @@ void LauncherWindow::loadFinished(const BString& url, WebView* view)
 
 void LauncherWindow::resizeRequested(float width, float height, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     // TODO: Ignore request when there is more than one WebView embedded!
 
@@ -449,19 +478,19 @@ void LauncherWindow::resizeRequested(float width, float height, WebView* view)
 
 void LauncherWindow::setToolBarsVisible(bool flag, WebView* view)
 {
-	// TODO
+    // TODO
     // TODO: Ignore request when there is more than one WebView embedded!
 }
 
 void LauncherWindow::setStatusBarVisible(bool flag, WebView* view)
 {
-	// TODO
+    // TODO
     // TODO: Ignore request when there is more than one WebView embedded!
 }
 
 void LauncherWindow::setMenuBarVisible(bool flag, WebView* view)
 {
-	// TODO
+    // TODO
     // TODO: Ignore request when there is more than one WebView embedded!
 }
 
@@ -477,20 +506,24 @@ void LauncherWindow::setResizable(bool flag, WebView* view)
 
 void LauncherWindow::titleChanged(const BString& title, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    for (int32 i = 0; i < m_tabView->CountTabs(); i++)
+    {
+        if (m_tabView->ViewForTab(i) == view) {
+            m_tabView->TabAt(i)->SetLabel(title);
+			m_tabView->DrawTabs();
+            break;
+        }
+    }
+    if (view != currentWebView())
+        return;
 
-    BString windowTitle = title;
-    if (windowTitle.Length() > 0)
-        windowTitle << " - ";
-    windowTitle << "HaikuLauncher";
-    SetTitle(windowTitle.String());
+    updateTitle(title);
 }
 
 void LauncherWindow::statusChanged(const BString& statusText, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     if (m_statusText)
         m_statusText->SetText(statusText.String());
@@ -499,8 +532,8 @@ void LauncherWindow::statusChanged(const BString& statusText, WebView* view)
 void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
     bool canGoForward, bool canStop, WebView* view)
 {
-	if (view != currentWebView())
-	    return;
+    if (view != currentWebView())
+        return;
 
     if (m_BackButton)
         m_BackButton->SetEnabled(canGoBackward);
@@ -510,7 +543,7 @@ void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
 
 void LauncherWindow::updateGlobalHistory(const BString& url)
 {
-	BrowsingHistory::defaultInstance()->addItem(BrowsingHistoryItem(url));
+    BrowsingHistory::defaultInstance()->addItem(BrowsingHistoryItem(url));
 }
 
 void LauncherWindow::authenticationChallenge(BMessage* message)
@@ -538,4 +571,13 @@ void LauncherWindow::authenticationChallenge(BMessage* message)
     reply.AddString("password", password);
     reply.AddBool("rememberCredentials", rememberCredentials);
     message->SendReply(&reply);
+}
+
+void LauncherWindow::updateTitle(const BString& title)
+{
+    BString windowTitle = title;
+    if (windowTitle.Length() > 0)
+        windowTitle << " - ";
+    windowTitle << "HaikuLauncher";
+    SetTitle(windowTitle.String());
 }

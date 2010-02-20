@@ -94,6 +94,7 @@ Application HaikuLauncher :
     DownloadWindow.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
+	WebTabView.cpp
 
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so
