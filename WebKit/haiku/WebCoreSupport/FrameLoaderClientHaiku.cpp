@@ -70,7 +70,7 @@
 
 namespace WebCore {
 
-FrameLoaderClientHaiku::FrameLoaderClientHaiku(WebPage* webPage, WebFrame* webFrame)
+FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, WebFrame* webFrame)
     : m_webPage(webPage)
     , m_webFrame(webFrame)
     , m_messenger()
@@ -88,7 +88,7 @@ void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
     m_webFrame = 0;
-        // deleted by WebPage
+        // deleted by BWebPage
     delete this;
 }
 
@@ -217,8 +217,6 @@ printf("FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge()\n");
 void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id, const ResourceResponse& response)
 {
     m_response = response;
-    if (response.httpStatusCode() != 200)
-        printf("dispatchDidReceiveResponse(%s, %d)\n", response.url().string().utf8().data(), response.httpStatusCode());
 }
 
 void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader, unsigned long id, int length)
@@ -247,16 +245,19 @@ void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveServerRedirectForProvisionalLoad()
 {
+printf("dispatchDidReceiveServerRedirectForProvisionalLoad()\n");
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchDidCancelClientRedirect()
 {
+printf("dispatchDidCancelClientRedirect()\n");
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, double interval, double fireDate)
 {
+printf("dispatchWillPerformClientRedirect()\n");
     notImplemented();
 }
 
@@ -406,6 +407,10 @@ printf("ignore (local URL)\n");
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
 {
+    ASSERT(function);
+    if (!function)
+        return;
+
 printf("dispatchDecidePolicyForNewWindowAction() -> ");
     if (request.isNull()) {
 printf("ignore (isNull)\n");
@@ -436,6 +441,10 @@ printf("use\n");
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
 {
+    ASSERT(function);
+    if (!function)
+        return;
+
 printf("dispatchDecidePolicyForNavigationAction() -> ");
     if (request.isNull()) {
 printf("ignore (isNull)\n");

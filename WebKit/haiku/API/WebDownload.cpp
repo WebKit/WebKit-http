@@ -40,7 +40,7 @@
 #include <Messenger.h>
 #include <NodeInfo.h>
 
-WebDownload::WebDownload(WebPage* webPage, const ResourceRequest& request)
+WebDownload::WebDownload(BWebPage* webPage, const ResourceRequest& request)
     : m_webPage(webPage)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
     , m_currentSize(0)
@@ -54,7 +54,7 @@ WebDownload::WebDownload(WebPage* webPage, const ResourceRequest& request)
 printf("WebDownload::WebDownload()\n");
 }
 
-WebDownload::WebDownload(WebPage* webPage, ResourceHandle* handle,
+WebDownload::WebDownload(BWebPage* webPage, ResourceHandle* handle,
         const ResourceRequest& request, const ResourceResponse& response)
     : m_webPage(webPage)
     , m_resourceHandle(handle)

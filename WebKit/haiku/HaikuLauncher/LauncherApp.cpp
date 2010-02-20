@@ -92,8 +92,8 @@ void LauncherApp::ArgvReceived(int32 argc, char** argv)
 
 void LauncherApp::ReadyToRun()
 {
-    WebPage::initializeOnce();
-    WebPage::setCacheModel(WEBKIT_CACHE_MODEL_WEB_BROWSER);
+    BWebPage::InitializeOnce();
+    BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;

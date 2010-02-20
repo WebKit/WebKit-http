@@ -45,18 +45,16 @@
 #include "Page.h"
 #include "PlatformKeyboardEvent.h"
 #include "Settings.h"
+#include "WebFrame.h"
+#include "WebPage.h"
 
 namespace WebCore {
 
-EditorClientHaiku::EditorClientHaiku()
-    : m_editing(false)
+EditorClientHaiku::EditorClientHaiku(BWebPage* page)
+    : m_page(page)
+    , m_editing(false)
     , m_isInRedo(false)
 {
-}
-
-void EditorClientHaiku::setPage(Page* page)
-{
-    m_page = page;
 }
 
 void EditorClientHaiku::pageDestroyed()
@@ -118,7 +116,8 @@ int EditorClientHaiku::spellCheckerDocumentTag()
 
 bool EditorClientHaiku::isEditable()
 {
-    notImplemented();
+	if (m_page->mainFrame())
+        return m_page->mainFrame()->isEditable();
     return false;
 }
 
@@ -179,7 +178,7 @@ void EditorClientHaiku::respondToChangedContents()
 
 void EditorClientHaiku::respondToChangedSelection()
 {
-    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    Frame* frame = m_page->page()->focusController()->focusedOrMainFrame();
     if (!frame->editor()->ignoreCompositionSelectionChange()) {
         // FIXME:
         // notify "micro focus shanged" event
@@ -378,7 +377,7 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
 	    return;
 	}
 
-    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    Frame* frame = m_page->page()->focusController()->focusedOrMainFrame();
     if (!frame)
         return;
 
@@ -597,7 +596,7 @@ bool EditorClientHaiku::isEditing() const
 bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     const PlatformKeyboardEvent* platformEvent)
 {
-    Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    Frame* frame = m_page->page()->focusController()->focusedOrMainFrame();
     if (!frame || !frame->document()->focusedNode())
         return false;
 

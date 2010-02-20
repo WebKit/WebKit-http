@@ -33,7 +33,7 @@
 #include <String.h>
 
 class BMessenger;
-class WebPage;
+class BWebPage;
 
 namespace WebCore {
 class Frame;
@@ -46,7 +46,7 @@ class String;
 
 class WebFrame {
 public:
-    WebFrame(WebPage*, WebCore::Page* parentPage = 0,
+    WebFrame(BWebPage*, WebCore::Page* parentPage = 0,
         WebCore::Frame* parentFrame = 0,
         WebCore::HTMLFrameOwnerElement* = 0,
         const WebCore::String& frameName = WebCore::String());
@@ -61,12 +61,6 @@ public:
 
     void stopLoading();
     void reload();
-
-    bool canGoBack();
-    bool canGoForward();
-
-    bool goBack();
-    bool goForward();
 
     bool canCopy();
     bool canCut();
@@ -107,7 +101,7 @@ public:
 
     void resetTextSize();
 
-    void makeEditable(bool editable) { m_isEditable = editable; }
+    void setEditable(bool editable) { m_isEditable = editable; }
     bool isEditable() const { return m_isEditable; }
 
     BString title() const { return m_title; }

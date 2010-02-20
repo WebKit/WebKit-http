@@ -7,10 +7,10 @@
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *	notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ *	notice, this list of conditions and the following disclaimer in the
+ *	documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -26,8 +26,8 @@
  */
 
 
-#ifndef WebPage_h
-#define WebPage_h
+#ifndef _WEB_PAGE_H
+#define _WEB_PAGE_H
 
 #include <Handler.h>
 #include <Messenger.h>
@@ -46,99 +46,104 @@ class ResourceResponse;
 };
 
 enum {
-    FIND_STRING_RESULT = 'fsrs',
-    DOWNLOAD_ADDED = 'dwna',
-    DOWNLOAD_REMOVED = 'dwnr'
+	B_FIND_STRING_RESULT	= 'fsrs',
+	B_DOWNLOAD_ADDED		= 'dwna',
+	B_DOWNLOAD_REMOVED		= 'dwnr'
 };
 
 typedef enum {
-	WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER = 0,
-	WEBKIT_CACHE_MODEL_WEB_BROWSER
-} WebKitCacheModel;
+	B_WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER = 0,
+	B_WEBKIT_CACHE_MODEL_WEB_BROWSER
+} BWebKitCacheModel;
 
-class WebPage : public BHandler {
+class BWebPage : public BHandler {
 public:
-    static void initializeOnce();
-    static void setCacheModel(WebKitCacheModel model);
+								BWebPage(WebView* webView);
 
-    WebPage(WebView* webView);
+	static	void				InitializeOnce();
+	static	void				SetCacheModel(BWebKitCacheModel model);
 
-    void init();
-    void shutdown();
+			void				Init();
+			void				Shutdown();
 
-    void setDispatchTarget(const BMessenger& messenger);
+			void				SetListener(const BMessenger& listener);
+			void				SetDownloadListener(const BMessenger& listener);
 
-    void loadURL(const char* urlString);
-    void goBack();
-    void goForward();
-    void draw(const BRect& updateRect);
-    void frameResized(float width, float height);
-    void focused(bool focused);
-    void activated(bool activated);
-    void mouseEvent(const BMessage* message, const BPoint& where,
+			void				LoadURL(const char* urlString);
+			bool				CanGoInDirection(int32 direction) const;
+			void				GoBack();
+			void				GoForward();
+
+			void				ChangeTextSize(float increment);
+			void				FindString(const char* string, bool forward,
+									bool caseSensitive, bool wrapSelection,
+									bool startInSelection);
+
+	// TODO: These calls should also be private, since they are called from
+	// the BWebView only.
+	void draw(const BRect& updateRect);
+	void frameResized(float width, float height);
+	void focused(bool focused);
+	void activated(bool activated);
+	void mouseEvent(const BMessage* message, const BPoint& where,
         const BPoint& screenWhere);
-    void mouseWheelChanged(const BMessage* message,
-        const BPoint& where, const BPoint& screenWhere);
-    void keyEvent(const BMessage* message);
-    void standardShortcut(const BMessage* message);
+	void mouseWheelChanged(const BMessage* message, const BPoint& where,
+        const BPoint& screenWhere);
+	void keyEvent(const BMessage* message);
+	void standardShortcut(const BMessage* message);
 
-    void changeTextSize(float increment);
-    void findString(const char* string, bool forward, bool caseSensitive,
-        bool wrapSelection, bool startInSelection);
+	// The following methods are only supposed to be called by the
+	// ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
+	// thread! This needs to go into a private class.
+	WebFrame* mainFrame() const;
+	WebCore::Page* page() const;
+	WebView* webView() const;
+		// NOTE: Using the WebView requires locking it's looper!
 
-    void setDownloadListener(const BMessenger& listener);
+	BRect contentsSize();
+	BRect windowBounds();
+	void setWindowBounds(const BRect& bounds);
+	BRect viewBounds();
+	void setViewBounds(const BRect& bounds);
+	BString mainFrameTitle();
+	BString mainFrameURL();
 
-    // The following methods are only supposed to be called by the
-    // ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
-    // thread!
-    WebFrame* mainFrame() const;
-    WebCore::Page* page() const;
-    WebView* webView() const;
-        // NOTE: Using the WebView requires locking it's looper!
+	void requestDownload(const WebCore::ResourceRequest& request);
+	void requestDownload(WebCore::ResourceHandle* handle,
+		const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
+	void downloadCreated(WebDownload* download);
+	void downloadFinished(WebCore::ResourceHandle* handle, WebDownload* download,
+		uint32 status);
 
-    BRect contentsSize();
-    BRect windowBounds();
-    void setWindowBounds(const BRect& bounds);
-    BRect viewBounds();
-    void setViewBounds(const BRect& bounds);
-    BString mainFrameTitle();
-    BString mainFrameURL();
-
-    void requestDownload(const WebCore::ResourceRequest& request);
-    void requestDownload(WebCore::ResourceHandle* handle,
-        const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
-    void downloadCreated(WebDownload* download);
-    void downloadFinished(WebCore::ResourceHandle* handle, WebDownload* download,
-        uint32 status);
-
-    void paint(const BRect& rect, bool contentChanged, bool immediate,
-        bool repaintContentOnly);
+	void paint(const BRect& rect, bool contentChanged, bool immediate,
+		bool repaintContentOnly);
 
 private:
-    virtual ~WebPage();
+	virtual ~BWebPage();
 
-    virtual void MessageReceived(BMessage* message);
+	virtual void MessageReceived(BMessage* message);
 
-    void skipToLastMessage(BMessage*& message);
+	void skipToLastMessage(BMessage*& message);
 
-    void handleLoadURL(const BMessage* message);
-    void handleGoBack(const BMessage* message);
-    void handleGoForward(const BMessage* message);
-    void handleDraw(const BMessage* message);
-    void handleFrameResized(const BMessage* message);
-    void handleFocused(const BMessage* message);
-    void handleActivated(const BMessage* message);
-    void handleMouseEvent(const BMessage* message);
-    void handleMouseWheelChanged(BMessage* message);
-    void handleKeyEvent(BMessage* message);
-    void handleChangeTextSize(BMessage* message);
-    void handleFindString(BMessage* message);
+	void handleLoadURL(const BMessage* message);
+	void handleCanGoInDirection(BMessage* message);
+	void handleGoBack(const BMessage* message);
+	void handleGoForward(const BMessage* message);
+	void handleDraw(const BMessage* message);
+	void handleFrameResized(const BMessage* message);
+	void handleFocused(const BMessage* message);
+	void handleActivated(const BMessage* message);
+	void handleMouseEvent(const BMessage* message);
+	void handleMouseWheelChanged(BMessage* message);
+	void handleKeyEvent(BMessage* message);
+	void handleChangeTextSize(BMessage* message);
+	void handleFindString(BMessage* message);
 
 private:
-    BMessenger m_downloadListener;
-    WebView* m_webView;
-    WebFrame* m_mainFrame;
-    WebCore::Page* m_page;
+	BMessenger m_downloadListener;
+	WebView* m_webView;
+	WebFrame* m_mainFrame;
+	WebCore::Page* m_page;
 };
 
-#endif // WebPage_h
+#endif // _WEB_PAGE_H

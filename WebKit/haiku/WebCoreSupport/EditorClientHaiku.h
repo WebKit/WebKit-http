@@ -39,14 +39,14 @@
 #include <wtf/Forward.h>
 #include <String.h>
 
+class BWebPage;
+
 namespace WebCore {
 class PlatformKeyboardEvent;
 
 class EditorClientHaiku : public EditorClient {
 public:
-    EditorClientHaiku();
-    void setPage(Page* page);
-
+    EditorClientHaiku(BWebPage* page);
     virtual void pageDestroyed();
 
     virtual bool shouldDeleteRange(Range*);
@@ -123,7 +123,7 @@ private:
     void imContextCommitted(const char* str, EditorClient* client);
     void imContextPreeditChanged(EditorClient* client);
 
-    Page* m_page;
+    BWebPage* m_page;
 
     WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > undoStack;
     WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > redoStack;

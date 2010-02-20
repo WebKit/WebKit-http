@@ -52,7 +52,7 @@
 
 namespace WebCore {
 
-ChromeClientHaiku::ChromeClientHaiku(WebPage* webPage, WebView* webView)
+ChromeClientHaiku::ChromeClientHaiku(BWebPage* webPage, WebView* webView)
     : m_webPage(webPage)
     , m_webView(webView)
 {
@@ -148,7 +148,7 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
     window->setCurrentWebView(view);
     window->Show();
 
-    view->webPage()->loadURL(BString(request.resourceRequest().url().string()));
+    view->webPage()->LoadURL(BString(request.resourceRequest().url().string()));
 
     return view->webPage()->page();
 }

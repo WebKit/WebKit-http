@@ -47,9 +47,9 @@ WebView::WebView(const char* name)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE | B_NAVIGABLE)
     , m_offscreenBitmap(0)
     , m_offscreenViewClean(false)
-    , m_webPage(new WebPage(this))
+    , m_webPage(new BWebPage(this))
 {
-    m_webPage->init();
+    m_webPage->Init();
     // TODO: Should add this to the "current" looper, but that looper needs to
     // stay around regardless of windows opening/closing. Adding it to the
     // app looper is the safest bet for now.
@@ -71,14 +71,14 @@ WebView::~WebView()
 
 void WebView::AttachedToWindow()
 {
-    m_webPage->setDispatchTarget(BMessenger(Window()));
+    m_webPage->SetListener(BMessenger(Window()));
 }
 
 void WebView::DetachedFromWindow()
 {
 // TODO: Needs locking.
 //    m_webPage->setDispatchTarget(0);
-    m_webPage->shutdown();
+    m_webPage->Shutdown();
 }
 
 void WebView::Draw(BRect rect)
@@ -153,7 +153,7 @@ void WebView::MessageReceived(BMessage* message)
         m_webPage->standardShortcut(message);
         break;
 
-    case FIND_STRING_RESULT:
+    case B_FIND_STRING_RESULT:
         Window()->PostMessage(message);
         break;
 
@@ -228,17 +228,17 @@ BString WebView::mainFrameURL() const
 
 void WebView::loadRequest(const char* urlString)
 {
-    m_webPage->loadURL(urlString);
+    m_webPage->LoadURL(urlString);
 }
 
 void WebView::goBack()
 {
-    m_webPage->goBack();
+    m_webPage->GoBack();
 }
 
 void WebView::goForward()
 {
-    m_webPage->goForward();
+    m_webPage->GoForward();
 }
 
 void WebView::setToolbarsVisible(bool flag)
@@ -300,23 +300,23 @@ printf("linkHovered()\n");
 
 void WebView::increaseTextSize()
 {
-	m_webPage->changeTextSize(1);
+	m_webPage->ChangeTextSize(1);
 }
 
 void WebView::decreaseTextSize()
 {
-	m_webPage->changeTextSize(-1);
+	m_webPage->ChangeTextSize(-1);
 }
 
 void WebView::resetTextSize()
 {
-	m_webPage->changeTextSize(0);
+	m_webPage->ChangeTextSize(0);
 }
 
 void WebView::findString(const char* string, bool forward ,
     bool caseSensitive, bool wrapSelection, bool startInSelection)
 {
-	m_webPage->findString(string, forward, caseSensitive,
+	m_webPage->FindString(string, forward, caseSensitive,
 	    wrapSelection, startInSelection);
 }
 

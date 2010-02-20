@@ -201,7 +201,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         );
     }
 
-    currentWebView()->webPage()->setDownloadListener(downloadListener);
+    currentWebView()->webPage()->SetDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 

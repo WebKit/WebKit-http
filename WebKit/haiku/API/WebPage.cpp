@@ -68,6 +68,7 @@
 #include <Message.h>
 #include <MessageQueue.h>
 #include <Messenger.h>
+#include <Region.h>
 #include <Window.h>
 
 #include <wtf/Assertions.h>
@@ -86,6 +87,7 @@ enum {
     HANDLE_SHUTDOWN = 'sdwn',
 
     HANDLE_LOAD_URL = 'lurl',
+    HANDLE_CAN_GO_IN_DIRECTION = 'cgdr',
     HANDLE_GO_BACK = 'back',
     HANDLE_GO_FORWARD = 'fwrd',
 
@@ -102,7 +104,7 @@ enum {
 
 using namespace WebCore;
 
-/*static*/ void WebPage::initializeOnce()
+/*static*/ void BWebPage::InitializeOnce()
 {
 	// NOTE: This needs to be called when the BApplication is ready.
 	// It won't work as static initialization.
@@ -115,7 +117,7 @@ using namespace WebCore;
     WebCore::initPlatformCursors();
 }
 
-/*static*/ void WebPage::setCacheModel(WebKitCacheModel model)
+/*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)
 {
     // FIXME: Add disk cache handling when CURL has the API
     uint32 cacheTotalCapacity;
@@ -125,14 +127,14 @@ using namespace WebCore;
     uint32 pageCacheCapacity;
 
     switch (model) {
-    case WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER:
+    case B_WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER:
         pageCacheCapacity = 0;
         cacheTotalCapacity = 0;
         cacheMinDeadCapacity = 0;
         cacheMaxDeadCapacity = 0;
         deadDecodedDataDeletionInterval = 0;
         break;
-    case WEBKIT_CACHE_MODEL_WEB_BROWSER:
+    case B_WEBKIT_CACHE_MODEL_WEB_BROWSER:
         pageCacheCapacity = 3;
         cacheTotalCapacity = 32 * 1024 * 1024;
         cacheMinDeadCapacity = cacheTotalCapacity / 4;
@@ -148,23 +150,19 @@ using namespace WebCore;
     pageCache()->setCapacity(pageCacheCapacity);
 }
 
-WebPage::WebPage(WebView* webView)
+BWebPage::BWebPage(WebView* webView)
     : BHandler("WebView process")
     , m_webView(webView)
     , m_mainFrame(0)
     , m_page(0)
 {
-    WebCore::EditorClientHaiku* editorClient = new WebCore::EditorClientHaiku();
-
     m_page = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
                                new WebCore::ContextMenuClientHaiku(),
-                               editorClient,
+                               new WebCore::EditorClientHaiku(this),
                                new WebCore::DragClientHaiku(webView),
                                new WebCore::InspectorClientHaiku(),
                                0,
                                0);
-
-    editorClient->setPage(m_page);
 
     // Default settings - We should have WebViewSettings class for this.
     WebCore::Settings* settings = m_page->settings();
@@ -190,51 +188,89 @@ WebPage::WebPage(WebView* webView)
     settings->setDefaultTextEncodingName("UTF-8");
 }
 
-WebPage::~WebPage()
+BWebPage::~BWebPage()
 {
-printf("~WebPage()\n");
+printf("~BWebPage()\n");
     delete m_mainFrame;
     delete m_page;
 }
 
 // #pragma mark - public
 
-void WebPage::init()
+void BWebPage::Init()
 {
     m_mainFrame = new WebFrame(this, m_page);
 }
 
-void WebPage::shutdown()
+void BWebPage::Shutdown()
 {
     BMessage message(HANDLE_SHUTDOWN);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::setDispatchTarget(const BMessenger& messenger)
+void BWebPage::SetListener(const BMessenger& listener)
 {
-    m_mainFrame->setDispatchTarget(messenger);
+    m_mainFrame->setDispatchTarget(listener);
 }
 
-void WebPage::loadURL(const char* urlString)
+void BWebPage::SetDownloadListener(const BMessenger& listener)
+{
+    m_downloadListener = listener;
+}
+
+void BWebPage::LoadURL(const char* urlString)
 {
     BMessage message(HANDLE_LOAD_URL);
     message.AddString("url", urlString);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::goBack()
+bool BWebPage::CanGoInDirection(int32 direction) const
+{
+    BMessage message(HANDLE_CAN_GO_IN_DIRECTION);
+    message.AddInt32("direction", direction);
+    BMessage reply;
+    BMessenger messenger(this);
+    bool result = false;
+    if (messenger.SendMessage(&message, &reply) == B_OK)
+        reply.FindBool("result", &result);
+    return result;
+}
+
+void BWebPage::GoBack()
 {
     BMessage message(HANDLE_GO_BACK);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::goForward()
+void BWebPage::GoForward()
 {
     BMessage message(HANDLE_GO_FORWARD);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::draw(const BRect& updateRect)
+void BWebPage::ChangeTextSize(float increment)
+{
+	BMessage message(HANDLE_CHANGE_TEXT_SIZE);
+	message.AddFloat("increment", increment);
+    Looper()->PostMessage(&message, this);
+}
+
+void BWebPage::FindString(const char* string, bool forward, bool caseSensitive,
+    bool wrapSelection, bool startInSelection)
+{
+	BMessage message(HANDLE_FIND_STRING);
+	message.AddString("string", string);
+	message.AddBool("forward", forward);
+	message.AddBool("case sensitive", caseSensitive);
+	message.AddBool("wrap selection", wrapSelection);
+	message.AddBool("start in selection", startInSelection);
+    Looper()->PostMessage(&message, this);
+}
+
+// #pragma mark - WebView API
+
+void BWebPage::draw(const BRect& updateRect)
 {
     BMessage message(HANDLE_DRAW);
     message.AddPointer("target", this);
@@ -242,7 +278,7 @@ void WebPage::draw(const BRect& updateRect)
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::frameResized(float width, float height)
+void BWebPage::frameResized(float width, float height)
 {
     BMessage message(HANDLE_FRAME_RESIZED);
     message.AddPointer("target", this);
@@ -251,21 +287,21 @@ void WebPage::frameResized(float width, float height)
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::focused(bool focused)
+void BWebPage::focused(bool focused)
 {
     BMessage message(HANDLE_FOCUSED);
     message.AddBool("focused", focused);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::activated(bool activated)
+void BWebPage::activated(bool activated)
 {
     BMessage message(HANDLE_ACTIVATED);
     message.AddBool("activated", activated);
     Looper()->PostMessage(&message, this);
 }
 
-void WebPage::mouseEvent(const BMessage* message,
+void BWebPage::mouseEvent(const BMessage* message,
     const BPoint& where, const BPoint& screenWhere)
 {
     BMessage copiedMessage(*message);
@@ -273,7 +309,7 @@ void WebPage::mouseEvent(const BMessage* message,
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebPage::mouseWheelChanged(const BMessage* message,
+void BWebPage::mouseWheelChanged(const BMessage* message,
     const BPoint& where, const BPoint& screenWhere)
 {
     BMessage copiedMessage(*message);
@@ -283,13 +319,13 @@ void WebPage::mouseWheelChanged(const BMessage* message,
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebPage::keyEvent(const BMessage* message)
+void BWebPage::keyEvent(const BMessage* message)
 {
     BMessage copiedMessage(*message);
     Looper()->PostMessage(&copiedMessage, this);
 }
 
-void WebPage::standardShortcut(const BMessage* message)
+void BWebPage::standardShortcut(const BMessage* message)
 {
 	// Simulate a B_KEY_DOWN event. The message is not complete,
 	// but enough to trigger short cut generation in EditorClientHaiku.
@@ -321,54 +357,30 @@ void WebPage::standardShortcut(const BMessage* message)
     Looper()->PostMessage(&keyDownMessage, this);
 }
 
-void WebPage::changeTextSize(float increment)
-{
-	BMessage message(HANDLE_CHANGE_TEXT_SIZE);
-	message.AddFloat("increment", increment);
-    Looper()->PostMessage(&message, this);
-}
-
-void WebPage::findString(const char* string, bool forward, bool caseSensitive,
-    bool wrapSelection, bool startInSelection)
-{
-	BMessage message(HANDLE_FIND_STRING);
-	message.AddString("string", string);
-	message.AddBool("forward", forward);
-	message.AddBool("case sensitive", caseSensitive);
-	message.AddBool("wrap selection", wrapSelection);
-	message.AddBool("start in selection", startInSelection);
-    Looper()->PostMessage(&message, this);
-}
-
-void WebPage::setDownloadListener(const BMessenger& listener)
-{
-    m_downloadListener = listener;
-}
-
 // #pragma mark - WebCoreSupport methods
 
-WebFrame* WebPage::mainFrame() const
+WebFrame* BWebPage::mainFrame() const
 {
     return m_mainFrame;
 };
 
-WebCore::Page* WebPage::page() const
+WebCore::Page* BWebPage::page() const
 {
     return m_page;
 }
 
-WebView* WebPage::webView() const
+WebView* BWebPage::webView() const
 {
     return m_webView;
 }
 
-BRect WebPage::contentsSize()
+BRect BWebPage::contentsSize()
 {
 	IntSize viewSize = m_mainFrame->frame()->view()->contentsSize();
     return BRect(B_ORIGIN, BPoint(viewSize.width() - 1, viewSize.height() - 1));
 }
 
-BRect WebPage::windowBounds()
+BRect BWebPage::windowBounds()
 {
     BRect bounds;
     if (m_webView->LockLooper()) {
@@ -378,7 +390,7 @@ BRect WebPage::windowBounds()
     return bounds;
 }
 
-void WebPage::setWindowBounds(const BRect& bounds)
+void BWebPage::setWindowBounds(const BRect& bounds)
 {
     if (m_webView->LockLooper()) {
         m_webView->Window()->MoveTo(bounds.LeftTop());
@@ -387,7 +399,7 @@ void WebPage::setWindowBounds(const BRect& bounds)
     }
 }
 
-BRect WebPage::viewBounds()
+BRect BWebPage::viewBounds()
 {
     BRect bounds;
     if (m_webView->LockLooper()) {
@@ -397,7 +409,7 @@ BRect WebPage::viewBounds()
     return bounds;
 }
 
-void WebPage::setViewBounds(const BRect& bounds)
+void BWebPage::setViewBounds(const BRect& bounds)
 {
     if (m_webView->LockLooper()) {
         // TODO: Implement this with layout management, i.e. SetExplicitMinSize() or something...
@@ -405,34 +417,34 @@ void WebPage::setViewBounds(const BRect& bounds)
     }
 }
 
-BString WebPage::mainFrameTitle()
+BString BWebPage::mainFrameTitle()
 {
     return m_mainFrame->title();
 }
 
-BString WebPage::mainFrameURL()
+BString BWebPage::mainFrameURL()
 {
     return m_mainFrame->url();
 }
 
-void WebPage::requestDownload(const WebCore::ResourceRequest& request)
+void BWebPage::requestDownload(const WebCore::ResourceRequest& request)
 {
     WebDownload* download = new WebDownload(this, request);
     downloadCreated(download);
 }
 
-void WebPage::requestDownload(WebCore::ResourceHandle* handle,
+void BWebPage::requestDownload(WebCore::ResourceHandle* handle,
     const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
 {
     WebDownload* download = new WebDownload(this, handle, request, response);
     downloadCreated(download);
 }
 
-void WebPage::downloadCreated(WebDownload* download)
+void BWebPage::downloadCreated(WebDownload* download)
 {
 	download->start();
 	if (m_downloadListener.IsValid()) {
-        BMessage message(DOWNLOAD_ADDED);
+        BMessage message(B_DOWNLOAD_ADDED);
         message.AddPointer("download", download);
         // Block until the listener has pulled all the information...
         BMessage reply;
@@ -440,12 +452,12 @@ void WebPage::downloadCreated(WebDownload* download)
 	}
 }
 
-void WebPage::downloadFinished(WebCore::ResourceHandle* handle,
+void BWebPage::downloadFinished(WebCore::ResourceHandle* handle,
     WebDownload* download, uint32 status)
 {
 	handle->setClient(0);
 	if (m_downloadListener.IsValid()) {
-        BMessage message(DOWNLOAD_REMOVED);
+        BMessage message(B_DOWNLOAD_REMOVED);
         message.AddPointer("download", download);
         // Block until the listener has released the object on it's side...
         BMessage reply;
@@ -454,7 +466,7 @@ void WebPage::downloadFinished(WebCore::ResourceHandle* handle,
 	delete download;
 }
 
-void WebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
+void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
     // NOTE: m_mainFrame can be 0 because init() eventually ends up calling
@@ -484,6 +496,8 @@ void WebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 
     view->layoutIfNeededRecursive();
     offscreenView->PushState();
+    BRegion region(rect);
+    offscreenView->ConstrainClippingRegion(&region);
     view->paint(&context, IntRect(rect));
     offscreenView->PopState();
     offscreenView->UnlockLooper();
@@ -494,21 +508,25 @@ void WebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 
 // #pragma mark - private
 
-void WebPage::MessageReceived(BMessage* message)
+void BWebPage::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case HANDLE_SHUTDOWN:
-        // TODO: This message never arrives here when the BApplication is already
+        // NOTE: This message never arrives here when the BApplication is already
         // processing B_QUIT_REQUESTED. Then the view will be detached and instruct
-        // the WebPage handler to shut itself down, but BApplication will not
-        // process additional messages. In that regard, it's hard to perform the
-        // shutdown in the main thread...
+        // the BWebPage handler to shut itself down, but BApplication will not
+        // process additional messages. That's why the windows containing WebViews
+        // are detaching the views already in their QuitRequested() hooks and
+        // LauncherApp calls these hooks already in its own QuitRequested() hook.
         Looper()->RemoveHandler(this);
         delete this;
         // TOAST!
         return;
     case HANDLE_LOAD_URL:
         handleLoadURL(message);
+        break;
+    case HANDLE_CAN_GO_IN_DIRECTION:
+        handleCanGoInDirection(message);
         break;
     case HANDLE_GO_BACK:
         handleGoBack(message);
@@ -604,12 +622,12 @@ void WebPage::MessageReceived(BMessage* message)
     }
 }
 
-void WebPage::skipToLastMessage(BMessage*& message)
+void BWebPage::skipToLastMessage(BMessage*& message)
 {
 	// NOTE: All messages that are fast-forwarded like this
-	// need to be flagged with the intended target WebPage,
+	// need to be flagged with the intended target BWebPage,
 	// or else we steal or process messages intended for another
-	// WebPage here!
+	// BWebPage here!
     bool first = true;
     BMessageQueue* queue = Looper()->MessageQueue();
     int32 index = 0;
@@ -628,7 +646,7 @@ void WebPage::skipToLastMessage(BMessage*& message)
     }
 }
 
-void WebPage::handleLoadURL(const BMessage* message)
+void BWebPage::handleLoadURL(const BMessage* message)
 {
     const char* urlString;
     if (message->FindString("url", &urlString) != B_OK)
@@ -637,24 +655,37 @@ void WebPage::handleLoadURL(const BMessage* message)
     m_mainFrame->loadRequest(urlString);
 }
 
-void WebPage::handleGoBack(const BMessage* message)
+void BWebPage::handleCanGoInDirection(BMessage* message)
 {
-    m_mainFrame->goBack();
+	int32 direction = 0;
+	message->FindInt32("direction", &direction);
+    bool result = false;
+    if (m_page->backForwardList())
+        result = m_page->canGoBackOrForward(direction);
+
+	BMessage reply;
+    reply.AddBool("result", result);
+    message->SendReply(&reply);
 }
 
-void WebPage::handleGoForward(const BMessage* message)
+void BWebPage::handleGoBack(const BMessage* message)
 {
-    m_mainFrame->goForward();
+    m_page->goBack();
 }
 
-void WebPage::handleDraw(const BMessage* message)
+void BWebPage::handleGoForward(const BMessage* message)
+{
+    m_page->goForward();
+}
+
+void BWebPage::handleDraw(const BMessage* message)
 {
     BRect rect;
     message->FindRect("update rect", &rect);
     paint(rect, true, false, true);
 }
 
-void WebPage::handleFrameResized(const BMessage* message)
+void BWebPage::handleFrameResized(const BMessage* message)
 {
     float width;
     float height;
@@ -670,7 +701,7 @@ void WebPage::handleFrameResized(const BMessage* message)
     m_webView->invalidate();
 }
 
-void WebPage::handleFocused(const BMessage* message)
+void BWebPage::handleFocused(const BMessage* message)
 {
     bool focused;
     message->FindBool("focused", &focused);
@@ -681,7 +712,7 @@ void WebPage::handleFocused(const BMessage* message)
         focusController->setFocusedFrame(m_mainFrame->frame());
 }
 
-void WebPage::handleActivated(const BMessage* message)
+void BWebPage::handleActivated(const BMessage* message)
 {
     bool activated;
     message->FindBool("activated", &activated);
@@ -690,7 +721,7 @@ void WebPage::handleActivated(const BMessage* message)
     focusController->setActive(activated);
 }
 
-void WebPage::handleMouseEvent(const BMessage* message)
+void BWebPage::handleMouseEvent(const BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -711,7 +742,7 @@ void WebPage::handleMouseEvent(const BMessage* message)
     }
 }
 
-void WebPage::handleMouseWheelChanged(BMessage* message)
+void BWebPage::handleMouseWheelChanged(BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -721,7 +752,7 @@ void WebPage::handleMouseWheelChanged(BMessage* message)
     frame->eventHandler()->handleWheelEvent(event);
 }
 
-void WebPage::handleKeyEvent(BMessage* message)
+void BWebPage::handleKeyEvent(BMessage* message)
 {
     WebCore::Frame* frame = m_mainFrame->frame();
     if (!frame->view() || !frame->document())
@@ -731,7 +762,7 @@ void WebPage::handleKeyEvent(BMessage* message)
     frame->eventHandler()->keyEvent(event);
 }
 
-void WebPage::handleChangeTextSize(BMessage* message)
+void BWebPage::handleChangeTextSize(BMessage* message)
 {
     float increment = 0;
     message->FindFloat("increment", &increment);
@@ -743,9 +774,9 @@ void WebPage::handleChangeTextSize(BMessage* message)
     	m_mainFrame->resetTextSize();
 }
 
-void WebPage::handleFindString(BMessage* message)
+void BWebPage::handleFindString(BMessage* message)
 {
-    BMessage reply(FIND_STRING_RESULT);
+    BMessage reply(B_FIND_STRING_RESULT);
 
     const char* string;
     bool forward;

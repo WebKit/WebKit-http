@@ -75,7 +75,7 @@ public:
 
 // #pragma mark -
 
-WebFrame::WebFrame(WebPage* webPage, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
+WebFrame::WebFrame(BWebPage* webPage, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
         WebCore::HTMLFrameOwnerElement* ownerElement, const WebCore::String& frameName)
     : m_textMagnifier(1.0)
     , m_isEditable(true)
@@ -154,37 +154,6 @@ void WebFrame::reload()
         m_data->frame->loader()->reload();
 }
 
-bool WebFrame::canGoBack()
-{
-    if (m_data->frame && m_data->frame->page() && m_data->frame->page()->backForwardList())
-        return m_data->frame->page()->canGoBackOrForward(-1);
-
-    return false;
-}
-
-bool WebFrame::canGoForward()
-{
-    if (m_data->frame && m_data->frame->page() && m_data->frame->page()->backForwardList())
-        return m_data->frame->page()->canGoBackOrForward(1);
-
-    return false;
-}
-
-bool WebFrame::goBack()
-{
-    if (m_data->frame && m_data->frame->page())
-        return m_data->frame->page()->goBack();
-
-    return false;
-}
-
-bool WebFrame::goForward()
-{
-    if (m_data->frame && m_data->frame->page())
-        return m_data->frame->page()->goForward();
-
-    return false;
-}
 bool WebFrame::canCopy()
 {
     if (m_data->frame && m_data->frame->view())

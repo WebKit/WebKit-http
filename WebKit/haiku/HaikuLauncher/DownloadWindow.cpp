@@ -385,13 +385,13 @@ DownloadWindow::~DownloadWindow()
 void DownloadWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
-    case DOWNLOAD_ADDED: {
+    case B_DOWNLOAD_ADDED: {
         WebDownload* download;
         if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
             downloadStarted(download);
         break;
     }
-    case DOWNLOAD_REMOVED: {
+    case B_DOWNLOAD_REMOVED: {
         WebDownload* download;
         if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
             downloadFinished(download);
