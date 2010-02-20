@@ -338,6 +338,7 @@ void LauncherWindow::MessageReceived(BMessage* message)
         m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New Tab");
         m_tabView->Select(m_tabView->CountTabs() - 1);
         navigationCapabilitiesChanged(false, false, false, currentWebView());
+        m_url->MakeFocus(true);
         break;
     }
 
