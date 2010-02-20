@@ -78,7 +78,7 @@ public:
 WebFrame::WebFrame(BWebPage* webPage, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
         WebCore::HTMLFrameOwnerElement* ownerElement, const WebCore::String& frameName)
     : m_textMagnifier(1.0)
-    , m_isEditable(true)
+    , m_isEditable(false)
     , m_beingDestroyed(false)
     , m_title(0)
     , m_data(new PrivateData())
