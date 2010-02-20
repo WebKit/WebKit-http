@@ -349,6 +349,7 @@ void LauncherWindow::MessageReceived(BMessage* message)
         setCurrentWebView(dynamic_cast<WebView *>(
             m_tabView->ViewForTab(index)));
         updateTitle(m_tabView->TabAt(index)->Label());
+        m_url->TextView()->SetText(currentWebView()->mainFrameURL());
         break;
     }
 
@@ -364,9 +365,9 @@ bool LauncherWindow::QuitRequested()
 
     // Do this here, so WebKit tear down happens earlier.
     // TODO: Iterator over all WebViews, if there are more then one...
-    WebView* view = currentWebView();
-    view->RemoveSelf();
-    delete view;
+    while (m_tabView->CountTabs() > 0) {
+        delete m_tabView->RemoveTab(0L);
+    }
     setCurrentWebView(0);
 
     BMessage message(WINDOW_CLOSED);
