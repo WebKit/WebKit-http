@@ -411,6 +411,8 @@ void LauncherWindow::newTab(const BString& url, bool select)
     WebView* webView = new WebView("web_view");
     m_tabView->AddTab(webView);
     m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
+    // TODO: Remove when BTabView is fixed...
+    m_tabView->InvalidateLayout();
 
 	if (url.Length())
 	    webView->loadRequest(url.String());
