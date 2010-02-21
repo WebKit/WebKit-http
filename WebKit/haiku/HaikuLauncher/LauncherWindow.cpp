@@ -345,11 +345,9 @@ void LauncherWindow::MessageReceived(BMessage* message)
         setCurrentWebView(dynamic_cast<WebView*>(m_tabView->ViewForTab(index)));
         updateTitle(m_tabView->TabAt(index)->Label());
         m_url->TextView()->SetText(currentWebView()->mainFrameURL());
-//        BWebPage* page = currentWebView()->webPage();
-//        bool canGoForward = page->CanGoInDirection(1);
-//        bool canGoBackward = page->CanGoInDirection(-1);
-//        navigationCapabilitiesChanged(canGoForward, canGoBackward, false,
-//            currentWebView());
+        // Trigger update of the interface to the new page, by requesting
+        // to resend all notifications.
+        currentWebView()->webPage()->ResendNotifications();
         break;
     }
 

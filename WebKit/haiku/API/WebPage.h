@@ -70,7 +70,6 @@ public:
 			void				SetDownloadListener(const BMessenger& listener);
 
 			void				LoadURL(const char* urlString);
-			bool				CanGoInDirection(int32 direction) const;
 			void				GoBack();
 			void				GoForward();
 
@@ -78,6 +77,8 @@ public:
 			void				FindString(const char* string, bool forward,
 									bool caseSensitive, bool wrapSelection,
 									bool startInSelection);
+
+			void				ResendNotifications();
 
 	// TODO: These calls should also be private, since they are called from
 	// the BWebView only.
@@ -126,7 +127,6 @@ private:
 	void skipToLastMessage(BMessage*& message);
 
 	void handleLoadURL(const BMessage* message);
-	void handleCanGoInDirection(BMessage* message);
 	void handleGoBack(const BMessage* message);
 	void handleGoForward(const BMessage* message);
 	void handleDraw(const BMessage* message);
@@ -138,8 +138,12 @@ private:
 	void handleKeyEvent(BMessage* message);
 	void handleChangeTextSize(BMessage* message);
 	void handleFindString(BMessage* message);
+	void handleResendNotifications(BMessage* message);
+
+    status_t dispatchMessage(BMessage& message) const;
 
 private:
+    BMessenger m_listener;
 	BMessenger m_downloadListener;
 	WebView* m_webView;
 	WebFrame* m_mainFrame;

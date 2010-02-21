@@ -87,7 +87,6 @@ enum {
     HANDLE_SHUTDOWN = 'sdwn',
 
     HANDLE_LOAD_URL = 'lurl',
-    HANDLE_CAN_GO_IN_DIRECTION = 'cgdr',
     HANDLE_GO_BACK = 'back',
     HANDLE_GO_FORWARD = 'fwrd',
 
@@ -99,7 +98,9 @@ enum {
     HANDLE_FRAME_RESIZED = 'rszd',
 
     HANDLE_CHANGE_TEXT_SIZE = 'txts',
-    HANDLE_FIND_STRING = 'find'
+    HANDLE_FIND_STRING = 'find',
+
+    HANDLE_RESEND_NOTIFICATIONS = 'rsnt'
 };
 
 using namespace WebCore;
@@ -210,6 +211,7 @@ void BWebPage::Shutdown()
 
 void BWebPage::SetListener(const BMessenger& listener)
 {
+	m_listener = listener;
     m_mainFrame->setDispatchTarget(listener);
 }
 
@@ -223,18 +225,6 @@ void BWebPage::LoadURL(const char* urlString)
     BMessage message(HANDLE_LOAD_URL);
     message.AddString("url", urlString);
     Looper()->PostMessage(&message, this);
-}
-
-bool BWebPage::CanGoInDirection(int32 direction) const
-{
-    BMessage message(HANDLE_CAN_GO_IN_DIRECTION);
-    message.AddInt32("direction", direction);
-    BMessage reply;
-    BMessenger messenger(this);
-    bool result = false;
-    if (messenger.SendMessage(&message, &reply) == B_OK)
-        reply.FindBool("result", &result);
-    return result;
 }
 
 void BWebPage::GoBack()
@@ -267,6 +257,13 @@ void BWebPage::FindString(const char* string, bool forward, bool caseSensitive,
 	message.AddBool("start in selection", startInSelection);
     Looper()->PostMessage(&message, this);
 }
+
+void BWebPage::ResendNotifications()
+{
+    BMessage message(HANDLE_RESEND_NOTIFICATIONS);
+    Looper()->PostMessage(&message, this);
+}
+
 
 // #pragma mark - WebView API
 
@@ -525,9 +522,6 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_LOAD_URL:
         handleLoadURL(message);
         break;
-    case HANDLE_CAN_GO_IN_DIRECTION:
-        handleCanGoInDirection(message);
-        break;
     case HANDLE_GO_BACK:
         handleGoBack(message);
         break;
@@ -596,26 +590,30 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_FIND_STRING:
         handleFindString(message);
         break;
-        
+
+    case HANDLE_RESEND_NOTIFICATIONS:
+        handleResendNotifications(message);
+        break;
+
     case B_REFS_RECEIVED: {
-			RefPtr<FileChooser> *chooser;
-            if (message->FindPointer("chooser", reinterpret_cast<void **>(&chooser)) == B_OK) {
-                type_code type;
-                int32 count = 0;
-                entry_ref ref;
-                BPath path;
-                message->GetInfo("refs", &type, &count);
-                Vector<String> filenames;
-                for (int32 i = 0; i < count; i++) {
-                    message->FindRef("refs", i, &ref);
-                    path.SetTo(&ref);
-                    filenames.append(String(path.Path()));
-                }
-                (*chooser)->chooseFiles(filenames);
-                delete chooser;
+		RefPtr<FileChooser>* chooser;
+        if (message->FindPointer("chooser", reinterpret_cast<void**>(&chooser)) == B_OK) {
+            type_code type;
+            int32 count = 0;
+            entry_ref ref;
+            BPath path;
+            message->GetInfo("refs", &type, &count);
+            Vector<String> filenames;
+            for (int32 i = 0; i < count; i++) {
+                message->FindRef("refs", i, &ref);
+                path.SetTo(&ref);
+                filenames.append(String(path.Path()));
             }
+            (*chooser)->chooseFiles(filenames);
+            delete chooser;
         }
     	break;
+    }
 
     default:
         BHandler::MessageReceived(message);
@@ -653,19 +651,6 @@ void BWebPage::handleLoadURL(const BMessage* message)
         return;
 
     m_mainFrame->loadRequest(urlString);
-}
-
-void BWebPage::handleCanGoInDirection(BMessage* message)
-{
-	int32 direction = 0;
-	message->FindInt32("direction", &direction);
-    bool result = false;
-    if (m_page->backForwardList())
-        result = m_page->canGoBackOrForward(direction);
-
-	BMessage reply;
-    reply.AddBool("result", result);
-    message->SendReply(&reply);
 }
 
 void BWebPage::handleGoBack(const BMessage* message)
@@ -797,3 +782,24 @@ void BWebPage::handleFindString(BMessage* message)
     reply.AddBool("result", result);
     message->SendReply(&reply);
 }
+
+void BWebPage::handleResendNotifications(BMessage*)
+{
+	// Prepare navigation capabilities notification
+    BMessage message(UPDATE_NAVIGATION_INTERFACE);
+    message.AddBool("can go backward", m_page->canGoBackOrForward(-1));
+    message.AddBool("can go forward", m_page->canGoBackOrForward(1));
+    if (WebCore::FrameLoader* loader = m_mainFrame->frame()->loader())
+        message.AddBool("can stop", loader->isLoading());
+    dispatchMessage(message);
+    // TODO: Other notifications...
+}
+
+// #pragma mark -
+
+status_t BWebPage::dispatchMessage(BMessage& message) const
+{
+	message.AddPointer("view", m_webView);
+	return m_listener.SendMessage(&message);
+}
+
