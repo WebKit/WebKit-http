@@ -110,6 +110,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         BMessage* newTabMessage = new BMessage(NEW_TAB);
         newTabMessage->AddString("url", "");
         newTabMessage->AddPointer("window", this);
+        newTabMessage->AddBool("select", true);
         newItem = new BMenuItem("New tab", newTabMessage, 'T');
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
