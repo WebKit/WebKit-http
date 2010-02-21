@@ -335,7 +335,6 @@ void LauncherWindow::MessageReceived(BMessage* message)
         break;
 
     case CLOSE_TAB: {
-    	printf("CLOSE_TAB\n");
         if (m_tabView->CountTabs() > 1)
             delete m_tabView->RemoveTab(m_tabView->Selection());
         break;
