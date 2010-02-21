@@ -92,6 +92,7 @@ Application HaikuLauncher :
     BrowsingHistory.cpp
     DateTime.cpp
     DownloadWindow.cpp
+    IconButton.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
 	WebTabView.cpp
@@ -101,7 +102,7 @@ Application HaikuLauncher :
 	# Other required libraries
 	curl icu-common icu-data png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd network root stdc++
+	be bsd network root stdc++ translation
 	:
 	Launcher.rdef
 ;

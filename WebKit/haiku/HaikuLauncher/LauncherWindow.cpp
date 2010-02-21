@@ -35,6 +35,7 @@
 
 #include "AuthenticationPanel.h"
 #include "BrowsingHistory.h"
+#include "IconButton.h"
 #include "LauncherApp.h"
 #include "WebPage.h"
 #include "WebTabView.h"
@@ -42,6 +43,7 @@
 #include "WebViewConstants.h"
 #include <Alert.h>
 #include <Application.h>
+#include <Bitmap.h>
 #include <Button.h>
 #include <CheckBox.h>
 #include <Entry.h>
@@ -136,8 +138,13 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_menuBar->AddItem(m_goMenu);
 
         // Back & Forward
-        m_BackButton = new BButton("", "Back", new BMessage(GO_BACK));
-        m_ForwardButton = new BButton("", "Forward", new BMessage(GO_FORWARD));
+        m_BackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
+        m_BackButton->SetIcon(201);
+        m_BackButton->TrimIcon();
+
+        m_ForwardButton = new IconButton("Forward", 0, NULL, new BMessage(GO_FORWARD));
+        m_ForwardButton->SetIcon(202);
+        m_ForwardButton->TrimIcon();
 
         // URL
         m_url = new BTextControl("url", "", "", new BMessage(GOTO_URL));
@@ -347,11 +354,10 @@ void LauncherWindow::MessageReceived(BMessage* message)
 
     case TAB_CHANGED: {
         int32 index = message->FindInt32("index");
-        setCurrentWebView(dynamic_cast<WebView *>(
-            m_tabView->ViewForTab(index)));
+        setCurrentWebView(dynamic_cast<WebView*>(m_tabView->ViewForTab(index)));
         updateTitle(m_tabView->TabAt(index)->Label());
         m_url->TextView()->SetText(currentWebView()->mainFrameURL());
-        BWebPage *page = currentWebView()->webPage();
+//        BWebPage* page = currentWebView()->webPage();
 //        bool canGoForward = page->CanGoInDirection(1);
 //        bool canGoBackward = page->CanGoInDirection(-1);
 //        navigationCapabilitiesChanged(canGoForward, canGoBackward, false,
@@ -480,8 +486,6 @@ void LauncherWindow::loadFinished(const BString& url, WebView* view)
     BString status(url);
     status << " finished.";
     statusChanged(status, view);
-    if (m_url)
-        m_url->SetText(url.String());
     if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
         m_loadingProgressBar->Hide();
 }

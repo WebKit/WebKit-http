@@ -40,6 +40,7 @@ class BMenu;
 class BStatusBar;
 class BStringView;
 class BTextControl;
+class IconButton;
 class WebTabView;
 class WebView;
 
@@ -90,8 +91,8 @@ private:
 private:
     BMenuBar* m_menuBar;
     BMenu* m_goMenu;
-    BButton* m_BackButton;
-    BButton* m_ForwardButton;
+    IconButton* m_BackButton;
+    IconButton* m_ForwardButton;
     BTextControl* m_url;
     BString m_loadedURL;
     BStringView* m_statusText;
