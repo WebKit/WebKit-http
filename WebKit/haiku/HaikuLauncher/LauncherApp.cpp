@@ -165,10 +165,13 @@ void LauncherApp::MessageReceived(BMessage* message)
     	newWindow(url);
     	break;
     }
-    case CREATE_WEBVIEW: {
-        BMessage reply;
-        reply.AddPointer("view", new WebView("web_view"));
-        message->SendReply(&reply);
+    case NEW_TAB: {
+    	LauncherWindow* window;
+		if (message->FindPointer("window", reinterpret_cast<void**>(&window)) != B_OK)
+			break;
+    	BString url;
+		message->FindString("url", &url);
+    	newTab(window, url);
         break;
     }
     case WINDOW_OPENED:
@@ -272,6 +275,17 @@ void LauncherApp::newWindow(const BString& url)
 	LauncherWindow* window = new LauncherWindow(m_lastWindowFrame,
 	    BMessenger(m_downloadWindow));
 	window->Show();
+	if (url.Length())
+	    window->currentWebView()->loadRequest(url.String());
+}
+
+void LauncherApp::newTab(LauncherWindow* window, const BString& url)
+{
+    if (!window->Lock())
+        return;
+    window->newTab();
+    window->Unlock();
+
 	if (url.Length())
 	    window->currentWebView()->loadRequest(url.String());
 }

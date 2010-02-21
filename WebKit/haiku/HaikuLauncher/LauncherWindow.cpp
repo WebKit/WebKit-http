@@ -77,7 +77,6 @@ enum {
     TEXT_FIND_NEXT = 'fndn',
     TEXT_FIND_PREVIOUS = 'fndp',
 
-    NEW_TAB = 'ntab',
     CLOSE_TAB = 'ctab'
 };
 
@@ -97,11 +96,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
     m_tabView = new WebTabView("tabview", BMessenger(this));
-    WebView* webView = new WebView("web_view");
-    m_tabView->AddTab(webView);
-    m_tabView->TabAt(0L)->SetLabel("New Tab");
     m_tabView->setTarget(BMessenger(this));
-    setCurrentWebView(webView);
 
     if (toolbarPolicy == HaveToolbar) {
         // Menu
@@ -112,9 +107,12 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         BMenuItem* newItem = new BMenuItem("New window", newWindowMessage, 'N');
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
-        newItem = new BMenuItem("New tab", new BMessage(NEW_TAB), 'T');
+        BMessage* newTabMessage = new BMessage(NEW_TAB);
+        newTabMessage->AddString("url", "");
+        newTabMessage->AddPointer("window", this);
+        newItem = new BMenuItem("New tab", newTabMessage, 'T');
         menu->AddItem(newItem);
-        newItem->SetTarget(this);
+        newItem->SetTarget(be_app);
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W'));
         menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W', B_SHIFT_KEY));
@@ -220,11 +218,15 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText = 0;
         m_loadingProgressBar = 0;
 
+        WebView* webView = new WebView("web_view");
+        setCurrentWebView(webView);
+
         AddChild(BGroupLayoutBuilder(B_VERTICAL, 7)
             .Add(currentWebView())
         );
     }
 
+    newTab();
     currentWebView()->webPage()->SetDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
@@ -233,8 +235,6 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
     AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
     AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
-
-    navigationCapabilitiesChanged(false, false, false, currentWebView());
 
     be_app->PostMessage(WINDOW_OPENED);
 }
@@ -333,21 +333,9 @@ void LauncherWindow::MessageReceived(BMessage* message)
         be_app->PostMessage(message);
         break;
 
-    case NEW_TAB: {
-        BMessage reply;
-        be_app_messenger.SendMessage(CREATE_WEBVIEW, &reply);
-        WebView *view = NULL;
-        reply.FindPointer("view", reinterpret_cast<void **>(&view));
-        m_tabView->AddTab(view);
-        m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
-        m_tabView->Select(m_tabView->CountTabs() - 1);
-        navigationCapabilitiesChanged(false, false, false, currentWebView());
-        m_url->MakeFocus(true);
-        break;
-    }
-
     case CLOSE_TAB: {
-        if (m_tabView->CountTabs() > 0)
+    	printf("CLOSE_TAB\n");
+        if (m_tabView->CountTabs() > 1)
             delete m_tabView->RemoveTab(m_tabView->FocusTab());
         break;
     }
@@ -416,6 +404,19 @@ void LauncherWindow::MenusBeginning()
     }
 
     history->Unlock();
+}
+
+void LauncherWindow::newTab()
+{
+	// Executed in app thread (new BWebPage needs to be created in app thread).
+    WebView* webView = new WebView("web_view");
+    m_tabView->AddTab(webView);
+    m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
+    m_tabView->Select(m_tabView->CountTabs() - 1);
+	setCurrentWebView(webView);
+    navigationCapabilitiesChanged(false, false, false, webView);
+    if (m_url)
+        m_url->MakeFocus(true);
 }
 
 // #pragma mark - Notification API

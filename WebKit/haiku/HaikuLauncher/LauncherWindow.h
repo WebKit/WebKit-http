@@ -51,6 +51,7 @@ enum ToolbarPolicy {
 
 enum {
     NEW_WINDOW = 'nwnd',
+    NEW_TAB = 'ntab',
     WINDOW_OPENED = 'wndo',
     WINDOW_CLOSED = 'wndc',
     SHOW_DOWNLOAD_WINDOW = 'sdwd'
@@ -65,6 +66,8 @@ public:
     virtual void MessageReceived(BMessage* message);
     virtual bool QuitRequested();
     virtual void MenusBeginning();
+
+    void newTab();
 
 private:
     // WebPage notification API implementations

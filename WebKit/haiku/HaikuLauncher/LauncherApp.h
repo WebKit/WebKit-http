@@ -36,10 +36,6 @@ class BFile;
 class DownloadWindow;
 class LauncherWindow;
 
-enum {
-    CREATE_WEBVIEW = 'crwb'
-};
-
 class LauncherApp : public BApplication {
 public:
     LauncherApp();
@@ -55,6 +51,7 @@ public:
 private:
 	bool openSettingsFile(BFile& file, uint32 mode);
 	void newWindow(const BString& url);
+	void newTab(LauncherWindow* window, const BString& url);
 
     int m_windowCount;
     BRect m_lastWindowFrame;
