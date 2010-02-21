@@ -226,7 +226,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         );
     }
 
-    newTab();
+    newTab("", true);
     currentWebView()->webPage()->SetDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
@@ -406,17 +406,23 @@ void LauncherWindow::MenusBeginning()
     history->Unlock();
 }
 
-void LauncherWindow::newTab()
+void LauncherWindow::newTab(const BString& url, bool select)
 {
 	// Executed in app thread (new BWebPage needs to be created in app thread).
     WebView* webView = new WebView("web_view");
     m_tabView->AddTab(webView);
     m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
-    m_tabView->Select(m_tabView->CountTabs() - 1);
-	setCurrentWebView(webView);
-    navigationCapabilitiesChanged(false, false, false, webView);
-    if (m_url)
-        m_url->MakeFocus(true);
+
+	if (url.Length())
+	    webView->loadRequest(url.String());
+
+    if (select) {
+	    m_tabView->Select(m_tabView->CountTabs() - 1);
+		setCurrentWebView(webView);
+        navigationCapabilitiesChanged(false, false, false, webView);
+        if (m_url)
+            m_url->MakeFocus(true);
+    }
 }
 
 // #pragma mark - Notification API
@@ -434,9 +440,12 @@ void LauncherWindow::newWindowRequested(const BString& url)
     // Always open new windows in the application thread, since
     // creating a WebView will try to grab the application lock.
     // But our own WebPage may already try to lock us from within
-    // the application thread -> dead-lock.
-    BMessage message(NEW_WINDOW);
+    // the application thread -> dead-lock. Thus we can't wait for
+    // a reply here.
+    BMessage message(NEW_TAB);
+    message.AddPointer("window", this);
     message.AddString("url", url);
+    message.AddBool("select", false);
     be_app->PostMessage(&message);
 }
 

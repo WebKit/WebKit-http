@@ -51,7 +51,7 @@ public:
 private:
 	bool openSettingsFile(BFile& file, uint32 mode);
 	void newWindow(const BString& url);
-	void newTab(LauncherWindow* window, const BString& url);
+	void newTab(LauncherWindow* window, const BString& url, bool select);
 
     int m_windowCount;
     BRect m_lastWindowFrame;

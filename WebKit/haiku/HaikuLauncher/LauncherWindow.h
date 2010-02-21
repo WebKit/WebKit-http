@@ -67,7 +67,7 @@ public:
     virtual bool QuitRequested();
     virtual void MenusBeginning();
 
-    void newTab();
+    void newTab(const BString& url, bool select);
 
 private:
     // WebPage notification API implementations

@@ -171,7 +171,9 @@ void LauncherApp::MessageReceived(BMessage* message)
 			break;
     	BString url;
 		message->FindString("url", &url);
-    	newTab(window, url);
+    	bool select = false;
+		message->FindBool("select", &select);
+    	newTab(window, url, select);
         break;
     }
     case WINDOW_OPENED:
@@ -279,15 +281,12 @@ void LauncherApp::newWindow(const BString& url)
 	    window->currentWebView()->loadRequest(url.String());
 }
 
-void LauncherApp::newTab(LauncherWindow* window, const BString& url)
+void LauncherApp::newTab(LauncherWindow* window, const BString& url, bool select)
 {
     if (!window->Lock())
         return;
-    window->newTab();
+    window->newTab(url, select);
     window->Unlock();
-
-	if (url.Length())
-	    window->currentWebView()->loadRequest(url.String());
 }
 
 // #pragma mark -
