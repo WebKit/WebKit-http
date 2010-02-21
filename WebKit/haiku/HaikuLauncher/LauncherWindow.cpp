@@ -115,8 +115,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
         menu->AddSeparatorItem();
-        menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W'));
-        menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W', B_SHIFT_KEY));
+        menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
+        menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
         menu->AddSeparatorItem();
@@ -337,6 +337,8 @@ void LauncherWindow::MessageReceived(BMessage* message)
     case CLOSE_TAB: {
         if (m_tabView->CountTabs() > 1)
             delete m_tabView->RemoveTab(m_tabView->Selection());
+        else
+            PostMessage(B_QUIT_REQUESTED);
         break;
     }
 
@@ -406,19 +408,19 @@ void LauncherWindow::MenusBeginning()
 
 void LauncherWindow::newTab(const BString& url, bool select)
 {
-	// Executed in app thread (new BWebPage needs to be created in app thread).
+    // Executed in app thread (new BWebPage needs to be created in app thread).
     WebView* webView = new WebView("web_view");
     m_tabView->AddTab(webView);
     m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
     // TODO: Remove when BTabView is fixed...
     m_tabView->InvalidateLayout();
 
-	if (url.Length())
-	    webView->loadRequest(url.String());
+    if (url.Length())
+        webView->loadRequest(url.String());
 
     if (select) {
-	    m_tabView->Select(m_tabView->CountTabs() - 1);
-		setCurrentWebView(webView);
+        m_tabView->Select(m_tabView->CountTabs() - 1);
+        setCurrentWebView(webView);
         navigationCapabilitiesChanged(false, false, false, webView);
         if (m_url)
             m_url->MakeFocus(true);
@@ -543,7 +545,7 @@ void LauncherWindow::titleChanged(const BString& title, WebView* view)
     for (int32 i = 0; i < m_tabView->CountTabs(); i++) {
         if (m_tabView->ViewForTab(i) == view) {
             m_tabView->TabAt(i)->SetLabel(title);
-			m_tabView->DrawTabs();
+            m_tabView->DrawTabs();
             break;
         }
     }
