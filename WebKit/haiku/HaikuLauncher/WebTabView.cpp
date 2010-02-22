@@ -33,8 +33,7 @@ WebTabView::WebTabView(const char *name, const BMessenger& target)
     : BTabView(name)
     , m_target(target)
 {
-	if (BGroupLayout* layout = dynamic_cast<BGroupLayout*>(GetLayout()))
-	    layout->SetInsets(2, 2 + TabHeight() - 1, 2, 2);
+	SetBorder(B_NO_BORDER);
 }
 
 WebTabView::~WebTabView(void)
