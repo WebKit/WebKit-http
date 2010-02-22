@@ -43,6 +43,10 @@
 #include <qimagereader.h>
 #include <qimagewriter.h>
 #endif
+#if PLATFORM(HAIKU)
+#include <TranslatorFormats.h>
+#include <TranslatorRoster.h>
+#endif
 
 namespace WebCore {
 
@@ -130,6 +134,8 @@ static void initializeSupportedImageMIMETypesForEncoding()
 {
     supportedImageMIMETypesForEncoding = new HashSet<String>;
 
+    // FIXME: Put the following code into platform code in order not to
+    // hide this place from porters.
 #if PLATFORM(CG)
 #if PLATFORM(MAC)
     RetainPtr<CFArrayRef> supportedTypes(AdoptCF, CGImageDestinationCopyTypeIdentifiers());
@@ -157,6 +163,37 @@ static void initializeSupportedImageMIMETypesForEncoding()
     supportedImageMIMETypesForEncoding->remove("application/octet-stream");
 #elif PLATFORM(CAIRO)
     supportedImageMIMETypesForEncoding->add("image/png");
+#elif PLATFORM(HAIKU)
+    BTranslatorRoster* roster = BTranslatorRoster::Default();
+    translator_id* translators;
+    int32 translatorCount;
+    roster->GetAllTranslators(&translators, &translatorCount);
+    for (int32 i = 0; i < translatorCount; i++) {
+    	// Skip translators that don't support archived BBitmaps as input data.
+        const translation_format* inputFormats;
+        int32 formatCount;
+        roster->GetInputFormats(translators[i], &inputFormats, &formatCount);
+        bool supportsBitmaps = false;
+        for (int32 j = 0; j < formatCount; j++) {
+            if (inputFormats[j].type == B_TRANSLATOR_BITMAP) {
+            	supportsBitmaps = true;
+                break;
+            }
+        }
+        if (!supportsBitmaps)
+            continue;
+
+    	// Add all MIME types of output formats in the bitmap group.
+        const translation_format* outputFormats;
+        roster->GetOutputFormats(translators[i], &outputFormats, &formatCount);
+        for (int32 j = 0; j < formatCount; j++) {
+            if (outputFormats[j].group == B_TRANSLATOR_BITMAP)
+                supportedImageMIMETypesForEncoding->add(outputFormats[j].MIME);
+        }
+    }
+    // Remove archived BBitmaps from supported formats, since it's likely rather
+    // useless for our purposes.
+    supportedImageMIMETypesForEncoding->remove("image/x-be-bitmap");
 #endif
 }
 
