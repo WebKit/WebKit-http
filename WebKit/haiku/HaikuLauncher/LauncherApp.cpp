@@ -59,8 +59,6 @@ LauncherApp::LauncherApp()
     , m_initialized(false)
     , m_downloadWindow(0)
 {
-	// Since we will essentially run the GUI...
-	set_thread_priority(Thread(), B_DISPLAY_PRIORITY);
 }
 
 LauncherApp::~LauncherApp()
@@ -92,6 +90,9 @@ void LauncherApp::ArgvReceived(int32 argc, char** argv)
 
 void LauncherApp::ReadyToRun()
 {
+	// Since we will essentially run the GUI...
+	set_thread_priority(Thread(), B_DISPLAY_PRIORITY);
+
     BWebPage::InitializeOnce();
     BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
