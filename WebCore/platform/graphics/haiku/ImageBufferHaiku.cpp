@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,22 +26,53 @@
 #include "config.h"
 #include "ImageBuffer.h"
 
+#include "Base64.h"
+#include "CString.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
+#include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
-
+#include "StillImageHaiku.h"
+#include <BitmapStream.h>
+#include <String.h>
+#include <TranslatorRoster.h>
+#include <stdio.h>
 
 namespace WebCore {
 
-ImageBufferData::ImageBufferData(const IntSize&)
+ImageBufferData::ImageBufferData(const IntSize& size)
+    : m_bitmap(BRect(0, 0, size.width() - 1, size.height() - 1), B_RGBA32, true)
+	, m_view(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0)
 {
+	// Always keep the bitmap locked, we are the only client.
+	m_bitmap.Lock();
+	m_bitmap.AddChild(&m_view);
+
+    // Fill with completely transparent color.
+	memset(m_bitmap.Bits(), 0, m_bitmap.BitsLength());
+
+    // Since ImageBuffer is used mainly for Canvas, explicitly initialize
+    // its view's graphics state with the corresponding canvas defaults
+    // NOTE: keep in sync with CanvasRenderingContext2D::State
+    m_view.SetLineMode(B_BUTT_CAP, B_MITER_JOIN, 10);
+    m_view.SetDrawingMode(B_OP_ALPHA);
+    m_view.SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
 }
 
-ImageBuffer::ImageBuffer(const IntSize&, ImageColorSpace imageColorSpace, bool& success)
-    : m_data(IntSize())
+ImageBufferData::~ImageBufferData()
 {
-    notImplemented();
-    success = false;
+	// Remove the view from the bitmap, this way, the reference counting can work
+	// and the view can survive beyond the bitmap's life cycle.
+	m_view.RemoveSelf();
+	m_bitmap.Unlock();
+}
+
+ImageBuffer::ImageBuffer(const IntSize& size, ImageColorSpace imageColorSpace, bool& success)
+    : m_data(size)
+    , m_size(size)
+{
+    m_context.set(new GraphicsContext(&m_data.m_view));
+    success = true;
 }
 
 ImageBuffer::~ImageBuffer()
@@ -50,47 +81,231 @@ ImageBuffer::~ImageBuffer()
 
 GraphicsContext* ImageBuffer::context() const
 {
-    notImplemented();
-    return 0;
-}
+    ASSERT(m_data.m_view.Window());
 
-PassRefPtr<ImageData> ImageBuffer::getUnmultipliedImageData(const IntRect& rect) const
-{
-    notImplemented();
-    return 0;
-}
-
-PassRefPtr<ImageData> ImageBuffer::getPremultipliedImageData(const IntRect& rect) const
-{
-    notImplemented();
-    return 0;
-}
-
-void ImageBuffer::putUnmultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
-{
-    notImplemented();
-}
-
-void ImageBuffer::putPremultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
-{
-    notImplemented();
-}
-
-String ImageBuffer::toDataURL(const String&) const
-{
-    notImplemented();
-    return String();
+    return m_context.get();
 }
 
 Image* ImageBuffer::image() const
 {
-    notImplemented();
-    return 0;
+    if (!m_image) {
+        // It's assumed that if image() is called, the actual rendering to the
+        // GraphicsContext must be done.
+        ASSERT(context());
+        m_data.m_view.Sync();
+        m_image = StillImage::create(m_data.m_bitmap);
+    }
+
+    return m_image.get();
 }
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
     notImplemented();
+}
+
+static inline void convertImageData(const uint8* sourceRows, unsigned sourceBytesPerRow,
+                                    uint8* destRows, unsigned destBytesPerRow,
+                                    unsigned rows, unsigned columns, bool premultiplied)
+{
+    if (premultiplied) {
+	    for (unsigned y = 0; y < rows; y++) {
+	    	const uint8* s = sourceRows;
+	    	uint8* d = destRows;
+	        for (unsigned x = 0; x < columns; x++) {
+	        	// RGBA -> BGRA or BGRA -> RGBA
+	            d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
+	            d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
+	            d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
+	            d[3] = s[3];
+	            d += 4;
+	            s += 4;
+	        }
+	        sourceRows += sourceBytesPerRow;
+	        destRows += destBytesPerRow;
+	    }
+    } else {
+	    for (unsigned y = 0; y < rows; y++) {
+	    	const uint8* s = sourceRows;
+	    	uint8* d = destRows;
+	        for (unsigned x = 0; x < columns; x++) {
+	        	// RGBA -> BGRA or BGRA -> RGBA
+	            d[0] = s[2];
+	            d[1] = s[1];
+	            d[2] = s[0];
+	            d[3] = s[3];
+	            d += 4;
+	            s += 4;
+	        }
+	        sourceRows += sourceBytesPerRow;
+	        destRows += destBytesPerRow;
+	    }
+    }
+}
+
+static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
+{
+    PassRefPtr<ImageData> result = ImageData::create(rect.width(), rect.height());
+    unsigned char* data = result->data()->data()->data();
+
+    // If the destination image is larger than the source image, the outside
+    // regions need to be transparent. This way is simply, although with a
+    // a slight overhead for the inside region.
+    if (rect.x() < 0 || rect.y() < 0 || (rect.x() + rect.width()) > size.width() || (rect.y() + rect.height()) > size.height())
+        memset(data, 0, result->data()->length());
+
+    // If the requested image is outside the source image, we can return at
+    // this point.
+    if (rect.x() > size.width() || rect.y() > size.height() || rect.right() < 0 || rect.bottom() < 0)
+        return result;
+
+    // Now we know there must be an intersection region which we need to extract.
+    BRect sourceRect(0, 0, size.width() - 1, size.height() - 1);
+    sourceRect = BRect(rect) & sourceRect;
+
+    unsigned destBytesPerRow = 4 * rect.width();
+    unsigned char* destRows = data;
+    // Offset the destination pointer to point at the first pixel of the
+    // intersection rect.
+    destRows += (rect.x() - (int)sourceRect.left) * 4 + (rect.y() - (int)sourceRect.top) * destBytesPerRow;
+
+    const uint8* sourceRows = reinterpret_cast<const uint8*>(imageData.m_bitmap.Bits());
+    uint32 sourceBytesPerRow = imageData.m_bitmap.BytesPerRow();
+    // Offset the source pointer to point at the first pixel of the
+    // intersection rect.
+    sourceRows += (int)sourceRect.left * 4 + (int)sourceRect.top * sourceBytesPerRow;
+
+    unsigned rows = sourceRect.IntegerHeight() + 1;
+    unsigned columns = sourceRect.IntegerWidth() + 1;
+    convertImageData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
+        rows, columns, premultiplied);
+
+    return result;
+}
+
+
+PassRefPtr<ImageData> ImageBuffer::getUnmultipliedImageData(const IntRect& rect) const
+{
+	// Make sure all asynchronous drawing has finished
+	m_data.m_view.Sync();
+    return getImageData(rect, m_data, m_size, false);
+}
+
+PassRefPtr<ImageData> ImageBuffer::getPremultipliedImageData(const IntRect& rect) const
+{
+	// Make sure all asynchronous drawing has finished
+	m_data.m_view.Sync();
+    return getImageData(rect, m_data, m_size, true);
+}
+
+static void putImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint, ImageBufferData& imageData, const IntSize& size, bool premultiplied)
+{
+    // If the source image is outside the destination image, we can return at
+    // this point.
+    // TODO: Check if this isn't already done in WebCore.
+    if (destPoint.x() > size.width() || destPoint.y() > size.height()
+        || destPoint.x() + sourceRect.width() < 0
+        || destPoint.y() + sourceRect.height() < 0) {
+        return;
+    }
+
+    const unsigned char* data = source->data()->data()->data();
+
+    unsigned sourceBytesPerRow = 4 * source->width();
+    const unsigned char* sourceRows = data;
+    // Offset the source pointer to the first pixel of the source rect.
+    sourceRows += sourceRect.x() * 4 + sourceRect.y() * sourceBytesPerRow;
+
+    // We know there must be an intersection region.
+    BRect destRect(destPoint.x(), destPoint.y(), sourceRect.width() - 1, sourceRect.height() - 1);
+    destRect = destRect & BRect(0, 0, size.width() - 1, size.height() - 1);
+
+    unsigned char* destRows = reinterpret_cast<unsigned char*>(imageData.m_bitmap.Bits());
+    uint32 destBytesPerRow = imageData.m_bitmap.BytesPerRow();
+    // Offset the source pointer to point at the first pixel of the
+    // intersection rect.
+    destRows += (int)destRect.left * 4 + (int)destRect.top * destBytesPerRow;
+
+    unsigned rows = sourceRect.height();
+    unsigned columns = sourceRect.width();
+    convertImageData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
+        rows, columns, premultiplied);
+}
+
+void ImageBuffer::putUnmultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
+{
+	// Make sure all asynchronous drawing has finished
+	m_data.m_view.Sync();
+	putImageData(source, sourceRect, destPoint, m_data, m_size, false);
+}
+
+void ImageBuffer::putPremultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
+{
+	// Make sure all asynchronous drawing has finished
+	m_data.m_view.Sync();
+	putImageData(source, sourceRect, destPoint, m_data, m_size, true);
+}
+
+String ImageBuffer::toDataURL(const String& mimeType) const
+{
+    if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
+        return "data:,";
+
+    BString mimeTypeString(mimeType);
+
+    translator_id foundTranslator = 0;
+    uint32 translatorType = 0;
+
+    BTranslatorRoster* roster = BTranslatorRoster::Default();
+    translator_id* translators;
+    int32 translatorCount;
+    roster->GetAllTranslators(&translators, &translatorCount);
+    for (int32 i = 0; i < translatorCount; i++) {
+    	// Skip translators that don't support archived BBitmaps as input data.
+        const translation_format* inputFormats;
+        int32 formatCount;
+        roster->GetInputFormats(translators[i], &inputFormats, &formatCount);
+        bool supportsBitmaps = false;
+        for (int32 j = 0; j < formatCount; j++) {
+            if (inputFormats[j].type == B_TRANSLATOR_BITMAP) {
+            	supportsBitmaps = true;
+                break;
+            }
+        }
+        if (!supportsBitmaps)
+            continue;
+
+        const translation_format* outputFormats;
+        roster->GetOutputFormats(translators[i], &outputFormats, &formatCount);
+        for (int32 j = 0; j < formatCount; j++) {
+            if (outputFormats[j].group == B_TRANSLATOR_BITMAP
+                && mimeTypeString == outputFormats[j].MIME) {
+                foundTranslator = translators[i];
+                translatorType = outputFormats[j].type;
+            }
+        }
+        if (foundTranslator != 0)
+            break;
+    }
+
+
+    BMallocIO translatedStream;
+    BBitmap* bitmap = const_cast<BBitmap*>(&m_data.m_bitmap);
+        // BBitmapStream doesn't take "const Bitmap*"...
+    BBitmapStream bitmapStream(bitmap);
+    if (roster->Translate(&bitmapStream, NULL, NULL, &translatedStream, translatorType,
+                          B_TRANSLATOR_BITMAP, mimeType.utf8().data()) != B_OK) {
+        return "data:,";
+    }
+
+    bitmapStream.DetachBitmap(&bitmap);
+
+    Vector<char> encodedBuffer;
+    base64Encode(reinterpret_cast<const char*>(translatedStream.Buffer()),
+                 translatedStream.BufferLength(), encodedBuffer);
+
+    return String::format("data:%s;base64,%s", mimeType.utf8().data(),
+                          encodedBuffer.data());
 }
 
 } // namespace WebCore
