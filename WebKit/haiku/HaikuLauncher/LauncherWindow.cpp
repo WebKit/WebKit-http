@@ -156,7 +156,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText = new BStringView("status", "");
         m_statusText->SetAlignment(B_ALIGN_LEFT);
         m_statusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
-        m_statusText->SetExplicitMinSize(BSize(150, 15));
+        m_statusText->SetExplicitMinSize(BSize(150, 16));
             // Prevent the window from growing to fit a long status message...
         BFont font(be_plain_font);
         font.SetSize(ceilf(font.Size() * 0.8));
@@ -175,7 +175,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
             new BMessage(TEXT_FIND_NEXT));
         m_findCaseSensitiveCheckBox = new BCheckBox("Match case");
         BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
-//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
                 .Add(m_findTextControl)
                 .Add(new BButton("Previous", new BMessage(TEXT_FIND_PREVIOUS)))
@@ -200,7 +200,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
 //            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(m_tabView)
             .Add(findGroup)
-//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
                 .Add(m_statusText)
                 .Add(m_loadingProgressBar, 0.2)
