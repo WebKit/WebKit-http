@@ -58,8 +58,6 @@ bool FrameData::clear(bool clearMetadata)
     if (m_frame) {
         delete m_frame;
         m_frame = 0;
-        m_duration = 0.0f;
-        m_hasAlpha = true;
         return true;
     }
 
