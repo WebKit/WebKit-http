@@ -1175,6 +1175,7 @@ SharedLibrary libwebcore.so :
         IntSizeHaiku.cpp
         PathHaiku.cpp
         SimpleFontDataHaiku.cpp
+        StillImageHaiku.cpp
 
         # platform/graphics/transforms
         AffineTransform.cpp
