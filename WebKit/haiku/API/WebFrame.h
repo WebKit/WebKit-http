@@ -79,8 +79,8 @@ public:
     bool allowsScrolling();
     void setAllowsScrolling(bool);
 
-    const char* getPageSource();
-    void setPageSource(const char* source);
+    BString getPageSource() const;
+    void setPageSource(const BString& source);
 
     void setTransparent(bool);
     bool isTransparent() const;

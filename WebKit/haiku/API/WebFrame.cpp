@@ -238,7 +238,7 @@ void WebFrame::setAllowsScrolling(bool flag)
         m_data->frame->view()->setCanHaveScrollbars(flag);
 }
 
-const char* WebFrame::getPageSource()
+BString WebFrame::getPageSource() const
 {
     if (m_data->frame) {
         if (m_data->frame->view() && m_data->frame->view()->layoutPending())
@@ -246,16 +246,14 @@ const char* WebFrame::getPageSource()
 
         WebCore::Document* document = m_data->frame->document();
 
-        if (document) {
-            BString source = createMarkup(document);
-            return source.String();
-        }
+        if (document)
+            return BString(createMarkup(document));
     }
 
-    return "";
+    return BString();
 }
 
-void WebFrame::setPageSource(const char* source)
+void WebFrame::setPageSource(const BString& source)
 {
     if (m_data->frame && m_data->frame->loader()) {
         WebCore::FrameLoader* loader = m_data->frame->loader();
