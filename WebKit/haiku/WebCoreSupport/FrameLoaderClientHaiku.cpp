@@ -416,7 +416,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     // Switch to the new tab immediately, since the new window action was caused by a primary click.
-    message.AddBool("select", false);
+    message.AddBool("select", true);
     if (dispatchMessage(message) != B_OK) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
             m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
