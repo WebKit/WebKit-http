@@ -678,10 +678,7 @@ void BWebPage::handleFrameResized(const BMessage* message)
     message->FindFloat("height", &height);
 
     WebCore::Frame* frame = m_mainFrame->frame();
-
     frame->view()->resize(width + 1, height + 1);
-    frame->view()->forceLayout();
-    frame->view()->adjustViewSize();
 
     m_webView->invalidate();
 }
