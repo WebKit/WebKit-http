@@ -30,7 +30,6 @@
 
 #include "GraphicsContext.h"
 #include "IntSize.h"
-
 #include <View.h>
 
 namespace WebCore {
@@ -42,11 +41,15 @@ StillImage::StillImage(const BBitmap& bitmap)
 
 void StillImage::destroyDecodedData(bool destroyAll)
 {
-    // TODO: Investigate what this is used for.
+    // This is used for "large" animations to free image data.
+    // It appears it would not apply to StillImage.
 }
 
 unsigned StillImage::decodedSize() const
 {
+    // TODO: It could be wise to return 0 here, since we don't want WebCore
+    // to think we eat up memory, since we are not freeing any in
+    // destroyDecodedData() either.
     return m_bitmap.BitsLength();
 }
 
@@ -57,7 +60,7 @@ IntSize StillImage::size() const
 
 NativeImagePtr StillImage::nativeImageForCurrentFrame()
 {
-    return const_cast<NativeImagePtr>(&m_bitmap);
+    return &m_bitmap;
 }
 
 void StillImage::draw(GraphicsContext* context, const FloatRect& destRect,

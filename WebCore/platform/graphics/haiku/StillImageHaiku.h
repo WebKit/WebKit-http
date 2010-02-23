@@ -40,8 +40,6 @@ public:
         return adoptRef(new StillImage(bitmap));
     }
 
-    // FIXME: StillImages are underreporting decoded sizes and will be unable
-    // to prune because these functions are not implemented yet.
     virtual void destroyDecodedData(bool = true);
     virtual unsigned decodedSize() const;
 
@@ -55,6 +53,6 @@ private:
     BBitmap m_bitmap;
 };
 
-}
+} // namespace WebCore
 
 #endif // StillImageHaiku_h

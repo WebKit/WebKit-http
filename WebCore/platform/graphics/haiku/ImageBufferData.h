@@ -45,7 +45,7 @@ public:
     BView m_view;
 };
 
-}  // namespace WebCore
+} // namespace WebCore
 
-#endif  // ImageBufferData_h
+#endif // ImageBufferData_h
 

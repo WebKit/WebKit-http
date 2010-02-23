@@ -41,14 +41,14 @@ namespace WebCore {
 
 ImageBufferData::ImageBufferData(const IntSize& size)
     : m_bitmap(BRect(0, 0, size.width() - 1, size.height() - 1), B_RGBA32, true)
-	, m_view(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0)
+    , m_view(m_bitmap.Bounds(), "WebKit ImageBufferData", 0, 0)
 {
-	// Always keep the bitmap locked, we are the only client.
-	m_bitmap.Lock();
-	m_bitmap.AddChild(&m_view);
+    // Always keep the bitmap locked, we are the only client.
+    m_bitmap.Lock();
+    m_bitmap.AddChild(&m_view);
 
     // Fill with completely transparent color.
-	memset(m_bitmap.Bits(), 0, m_bitmap.BitsLength());
+    memset(m_bitmap.Bits(), 0, m_bitmap.BitsLength());
 
     // Since ImageBuffer is used mainly for Canvas, explicitly initialize
     // its view's graphics state with the corresponding canvas defaults
@@ -60,9 +60,9 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 
 ImageBufferData::~ImageBufferData()
 {
-	// Remove the view from the bitmap, keeping it from being free'd twice.
-	m_view.RemoveSelf();
-	m_bitmap.Unlock();
+    // Remove the view from the bitmap, keeping it from being free'd twice.
+    m_view.RemoveSelf();
+    m_bitmap.Unlock();
 }
 
 ImageBuffer::ImageBuffer(const IntSize& size, ImageColorSpace imageColorSpace, bool& success)
@@ -125,10 +125,10 @@ static inline void convertFromData(const uint8* sourceRows, unsigned sourceBytes
                                    unsigned rows, unsigned columns)
 {
     for (unsigned y = 0; y < rows; y++) {
-    	const uint8* s = sourceRows;
-    	uint8* d = destRows;
+        const uint8* s = sourceRows;
+        uint8* d = destRows;
         for (unsigned x = 0; x < columns; x++) {
-        	// RGBA -> BGRA or BGRA -> RGBA
+            // RGBA -> BGRA or BGRA -> RGBA
             d[0] = s[2];
             d[1] = s[1];
             d[2] = s[0];
@@ -147,24 +147,24 @@ static inline void convertFromInternalData(const uint8* sourceRows, unsigned sou
                                            bool premultiplied)
 {
     if (premultiplied) {
-	    // Internal storage is not pre-multiplied, pre-multiply on the fly.
-	    for (unsigned y = 0; y < rows; y++) {
-	    	const uint8* s = sourceRows;
-	    	uint8* d = destRows;
-	        for (unsigned x = 0; x < columns; x++) {
-	        	// RGBA -> BGRA or BGRA -> RGBA
-	            d[0] = static_cast<uint16>(s[2]) * s[3] / 255;
-	            d[1] = static_cast<uint16>(s[1]) * s[3] / 255;
-	            d[2] = static_cast<uint16>(s[0]) * s[3] / 255;
-	            d[3] = s[3];
-	            d += 4;
-	            s += 4;
-	        }
-	        sourceRows += sourceBytesPerRow;
-	        destRows += destBytesPerRow;
-	    }
+        // Internal storage is not pre-multiplied, pre-multiply on the fly.
+        for (unsigned y = 0; y < rows; y++) {
+            const uint8* s = sourceRows;
+            uint8* d = destRows;
+            for (unsigned x = 0; x < columns; x++) {
+                // RGBA -> BGRA or BGRA -> RGBA
+                d[0] = static_cast<uint16>(s[2]) * s[3] / 255;
+                d[1] = static_cast<uint16>(s[1]) * s[3] / 255;
+                d[2] = static_cast<uint16>(s[0]) * s[3] / 255;
+                d[3] = s[3];
+                d += 4;
+                s += 4;
+            }
+            sourceRows += sourceBytesPerRow;
+            destRows += destBytesPerRow;
+        }
     } else {
-	    convertFromData(sourceRows, sourceBytesPerRow,
+        convertFromData(sourceRows, sourceBytesPerRow,
                         destRows, destBytesPerRow,
                         rows, columns);
     }
@@ -175,25 +175,25 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
                                          unsigned rows, unsigned columns,
                                          bool premultiplied)
 {
-	// Internal storage is not pre-multiplied, de-multiply source data.
+    // Internal storage is not pre-multiplied, de-multiply source data.
     if (premultiplied) {
-	    for (unsigned y = 0; y < rows; y++) {
-	    	const uint8* s = sourceRows;
-	    	uint8* d = destRows;
-	        for (unsigned x = 0; x < columns; x++) {
-	        	// RGBA -> BGRA or BGRA -> RGBA
-	            d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
-	            d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
-	            d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
-	            d[3] = s[3];
-	            d += 4;
-	            s += 4;
-	        }
-	        sourceRows += sourceBytesPerRow;
-	        destRows += destBytesPerRow;
-	    }
+        for (unsigned y = 0; y < rows; y++) {
+            const uint8* s = sourceRows;
+            uint8* d = destRows;
+            for (unsigned x = 0; x < columns; x++) {
+                // RGBA -> BGRA or BGRA -> RGBA
+                d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
+                d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
+                d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
+                d[3] = s[3];
+                d += 4;
+                s += 4;
+            }
+            sourceRows += sourceBytesPerRow;
+            destRows += destBytesPerRow;
+        }
     } else {
-	    convertFromData(sourceRows, sourceBytesPerRow,
+        convertFromData(sourceRows, sourceBytesPerRow,
                         destRows, destBytesPerRow,
                         rows, columns);
     }
@@ -242,15 +242,15 @@ static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBuffer
 
 PassRefPtr<ImageData> ImageBuffer::getUnmultipliedImageData(const IntRect& rect) const
 {
-	// Make sure all asynchronous drawing has finished
-	m_data.m_view.Sync();
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view.Sync();
     return getImageData(rect, m_data, m_size, false);
 }
 
 PassRefPtr<ImageData> ImageBuffer::getPremultipliedImageData(const IntRect& rect) const
 {
-	// Make sure all asynchronous drawing has finished
-	m_data.m_view.Sync();
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view.Sync();
     return getImageData(rect, m_data, m_size, true);
 }
 
@@ -288,16 +288,16 @@ static void putImageData(ImageData* source, const IntRect& sourceRect, const Int
 
 void ImageBuffer::putUnmultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
 {
-	// Make sure all asynchronous drawing has finished
-	m_data.m_view.Sync();
-	putImageData(source, sourceRect, destPoint, m_data, m_size, false);
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view.Sync();
+    putImageData(source, sourceRect, destPoint, m_data, m_size, false);
 }
 
 void ImageBuffer::putPremultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
 {
-	// Make sure all asynchronous drawing has finished
-	m_data.m_view.Sync();
-	putImageData(source, sourceRect, destPoint, m_data, m_size, true);
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view.Sync();
+    putImageData(source, sourceRect, destPoint, m_data, m_size, true);
 }
 
 String ImageBuffer::toDataURL(const String& mimeType) const
@@ -307,7 +307,6 @@ String ImageBuffer::toDataURL(const String& mimeType) const
 
     BString mimeTypeString(mimeType);
 
-    translator_id foundTranslator = 0;
     uint32 translatorType = 0;
 
     BTranslatorRoster* roster = BTranslatorRoster::Default();
@@ -315,14 +314,14 @@ String ImageBuffer::toDataURL(const String& mimeType) const
     int32 translatorCount;
     roster->GetAllTranslators(&translators, &translatorCount);
     for (int32 i = 0; i < translatorCount; i++) {
-    	// Skip translators that don't support archived BBitmaps as input data.
+        // Skip translators that don't support archived BBitmaps as input data.
         const translation_format* inputFormats;
         int32 formatCount;
         roster->GetInputFormats(translators[i], &inputFormats, &formatCount);
         bool supportsBitmaps = false;
         for (int32 j = 0; j < formatCount; j++) {
             if (inputFormats[j].type == B_TRANSLATOR_BITMAP) {
-            	supportsBitmaps = true;
+                supportsBitmaps = true;
                 break;
             }
         }
@@ -334,11 +333,10 @@ String ImageBuffer::toDataURL(const String& mimeType) const
         for (int32 j = 0; j < formatCount; j++) {
             if (outputFormats[j].group == B_TRANSLATOR_BITMAP
                 && mimeTypeString == outputFormats[j].MIME) {
-                foundTranslator = translators[i];
                 translatorType = outputFormats[j].type;
             }
         }
-        if (foundTranslator != 0)
+        if (translatorType)
             break;
     }
 
@@ -347,8 +345,9 @@ String ImageBuffer::toDataURL(const String& mimeType) const
     BBitmap* bitmap = const_cast<BBitmap*>(&m_data.m_bitmap);
         // BBitmapStream doesn't take "const Bitmap*"...
     BBitmapStream bitmapStream(bitmap);
-    if (roster->Translate(&bitmapStream, NULL, NULL, &translatedStream, translatorType,
+    if (roster->Translate(&bitmapStream, 0, 0, &translatedStream, translatorType,
                           B_TRANSLATOR_BITMAP, mimeType.utf8().data()) != B_OK) {
+        bitmapStream.DetachBitmap(&bitmap);
         return "data:,";
     }
 
