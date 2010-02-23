@@ -59,6 +59,8 @@ public:
         Layer(BView* _view)
             : view(_view)
             , bitmap(0)
+            , clipping()
+            , cippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
             , clipShape(0)
@@ -79,6 +81,8 @@ public:
         Layer(Layer* previous)
             : view(0)
             , bitmap(0)
+            , clipping()
+            , cippingSet(false)
             , globalAlpha(255)
             , currentShape(0)
             , clipShape(previous->clipShape ? new BShape(*previous->clipShape) : 0)
@@ -135,6 +139,7 @@ public:
         BView* view;
         BBitmap* bitmap;
         BRegion clipping;
+        bool cippingSet;
         rgb_color strokeColor;
         rgb_color fillColor;
         uint8 globalAlpha;
@@ -153,11 +158,22 @@ public:
 
     void setClipping(const BRegion& region)
     {
-    	if (region == m_currentLayer->clipping)
+    	// If we are supposed to set an empty region, but never
+    	// have set any region on this layer before, comparing
+    	// the two empty regions alone will prevent us from setting
+    	// the clipping, that's why there is the additional "cippingSet" flag.
+    	if (m_currentLayer->cippingSet && region == m_currentLayer->clipping)
     	    return;
 
+        m_currentLayer->cippingSet = true;
     	m_currentLayer->clipping = region;
   	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
+    }
+
+    void resetClipping()
+    {
+        m_currentLayer->cippingSet = false;
+    	m_currentLayer->clipping = BRegion();
     }
 
     void setShape(BShape* shape)
@@ -269,12 +285,14 @@ PlatformGraphicsContext* GraphicsContext::platformContext() const
 void GraphicsContext::savePlatformState()
 {
     m_data->view()->PushState();
+    m_data->resetClipping();
 }
 
 void GraphicsContext::restorePlatformState()
 {
     m_data->m_currentLayer->accumulatedOrigin -= m_data->view()->Origin();
     m_data->view()->PopState();
+    m_data->resetClipping();
 }
 
 // Draws a filled rectangle with a stroked border.
