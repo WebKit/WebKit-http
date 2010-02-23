@@ -382,7 +382,7 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
                                                              const ResourceRequest& request)
 {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType() -> ");
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ", BString(mimetype).String());
     if (request.isNull()) {
 printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
@@ -415,6 +415,8 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
 
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
+    // Switch to the new tab immediately, since the new window action was caused by a primary click.
+    message->AddBool("select", false);
     if (dispatchMessage(message) != B_OK) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
             m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
@@ -456,6 +458,8 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
         if (mouseEvent && mouseEvent->button() == 1) {
 		    BMessage message(NEW_WINDOW_REQUESTED);
 		    message.AddString("url", request.url().string());
+		    // Don't switch to the new tab, but load it in the background.
+            message->AddBool("select", false);
 		    dispatchMessage(message);
 	        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
 	            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
@@ -680,17 +684,17 @@ bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) c
     return true;
 }
 
-bool FrameLoaderClientHaiku::canShowMIMEType(const String& MIMEType) const
+bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
 {
-    if (MIMETypeRegistry::isSupportedImageMIMEType(MIMEType))
+    if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
         return true;
 
-    if (MIMETypeRegistry::isSupportedNonImageMIMEType(MIMEType))
+    if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return true;
 
     Frame* frame = m_webFrame->frame();
     if (frame && frame->settings() && frame->settings()->arePluginsEnabled()
-        && PluginDatabase::installedPlugins()->isMIMETypeRegistered(MIMEType))
+        && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         return true;
 
     return false;
