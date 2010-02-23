@@ -31,7 +31,6 @@
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
-#include "NotImplemented.h"
 #include "StillImageHaiku.h"
 #include <BitmapStream.h>
 #include <String.h>
@@ -61,8 +60,7 @@ ImageBufferData::ImageBufferData(const IntSize& size)
 
 ImageBufferData::~ImageBufferData()
 {
-	// Remove the view from the bitmap, this way, the reference counting can work
-	// and the view can survive beyond the bitmap's life cycle.
+	// Remove the view from the bitmap, keeping it from being free'd twice.
 	m_view.RemoveSelf();
 	m_bitmap.Unlock();
 }
@@ -101,13 +99,83 @@ Image* ImageBuffer::image() const
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
-    notImplemented();
+    uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap.Bits());
+    unsigned bytesPerRow = m_data.m_bitmap.BytesPerRow();
+    unsigned rows = m_size.height();
+    unsigned columns = m_size.width();
+    for (unsigned y = 0; y < rows; y++) {
+        uint8* pixel = rowData;
+        for (unsigned x = 0; x < columns; x++) {
+            // lookUpTable doesn't seem to support a LUT for each color channel
+            // separately (judging from the other ports). We don't need to
+            // convert from/to pre-multiplied color space since BBitmap storage
+            // is not pre-multiplied.
+            pixel[0] = lookUpTable[pixel[0]];
+            pixel[1] = lookUpTable[pixel[1]];
+            pixel[2] = lookUpTable[pixel[2]];
+            // alpha stays unmodified.
+            pixel += 4;
+        }
+        rowData += bytesPerRow;
+    }
 }
 
-static inline void convertImageData(const uint8* sourceRows, unsigned sourceBytesPerRow,
-                                    uint8* destRows, unsigned destBytesPerRow,
-                                    unsigned rows, unsigned columns, bool premultiplied)
+static inline void convertFromData(const uint8* sourceRows, unsigned sourceBytesPerRow,
+                                   uint8* destRows, unsigned destBytesPerRow,
+                                   unsigned rows, unsigned columns)
 {
+    for (unsigned y = 0; y < rows; y++) {
+    	const uint8* s = sourceRows;
+    	uint8* d = destRows;
+        for (unsigned x = 0; x < columns; x++) {
+        	// RGBA -> BGRA or BGRA -> RGBA
+            d[0] = s[2];
+            d[1] = s[1];
+            d[2] = s[0];
+            d[3] = s[3];
+            d += 4;
+            s += 4;
+        }
+        sourceRows += sourceBytesPerRow;
+        destRows += destBytesPerRow;
+    }
+}
+
+static inline void convertFromInternalData(const uint8* sourceRows, unsigned sourceBytesPerRow,
+                                           uint8* destRows, unsigned destBytesPerRow,
+                                           unsigned rows, unsigned columns,
+                                           bool premultiplied)
+{
+    if (premultiplied) {
+	    // Internal storage is not pre-multiplied, pre-multiply on the fly.
+	    for (unsigned y = 0; y < rows; y++) {
+	    	const uint8* s = sourceRows;
+	    	uint8* d = destRows;
+	        for (unsigned x = 0; x < columns; x++) {
+	        	// RGBA -> BGRA or BGRA -> RGBA
+	            d[0] = static_cast<uint16>(s[2]) * s[3] / 255;
+	            d[1] = static_cast<uint16>(s[1]) * s[3] / 255;
+	            d[2] = static_cast<uint16>(s[0]) * s[3] / 255;
+	            d[3] = s[3];
+	            d += 4;
+	            s += 4;
+	        }
+	        sourceRows += sourceBytesPerRow;
+	        destRows += destBytesPerRow;
+	    }
+    } else {
+	    convertFromData(sourceRows, sourceBytesPerRow,
+                        destRows, destBytesPerRow,
+                        rows, columns);
+    }
+}
+
+static inline void convertToInternalData(const uint8* sourceRows, unsigned sourceBytesPerRow,
+                                         uint8* destRows, unsigned destBytesPerRow,
+                                         unsigned rows, unsigned columns,
+                                         bool premultiplied)
+{
+	// Internal storage is not pre-multiplied, de-multiply source data.
     if (premultiplied) {
 	    for (unsigned y = 0; y < rows; y++) {
 	    	const uint8* s = sourceRows;
@@ -125,21 +193,9 @@ static inline void convertImageData(const uint8* sourceRows, unsigned sourceByte
 	        destRows += destBytesPerRow;
 	    }
     } else {
-	    for (unsigned y = 0; y < rows; y++) {
-	    	const uint8* s = sourceRows;
-	    	uint8* d = destRows;
-	        for (unsigned x = 0; x < columns; x++) {
-	        	// RGBA -> BGRA or BGRA -> RGBA
-	            d[0] = s[2];
-	            d[1] = s[1];
-	            d[2] = s[0];
-	            d[3] = s[3];
-	            d += 4;
-	            s += 4;
-	        }
-	        sourceRows += sourceBytesPerRow;
-	        destRows += destBytesPerRow;
-	    }
+	    convertFromData(sourceRows, sourceBytesPerRow,
+                        destRows, destBytesPerRow,
+                        rows, columns);
     }
 }
 
@@ -159,7 +215,7 @@ static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBuffer
     if (rect.x() > size.width() || rect.y() > size.height() || rect.right() < 0 || rect.bottom() < 0)
         return result;
 
-    // Now we know there must be an intersection region which we need to extract.
+    // Now we know there must be an intersection rect which we need to extract.
     BRect sourceRect(0, 0, size.width() - 1, size.height() - 1);
     sourceRect = BRect(rect) & sourceRect;
 
@@ -177,7 +233,7 @@ static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBuffer
 
     unsigned rows = sourceRect.IntegerHeight() + 1;
     unsigned columns = sourceRect.IntegerWidth() + 1;
-    convertImageData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
+    convertFromInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
         rows, columns, premultiplied);
 
     return result;
@@ -209,14 +265,12 @@ static void putImageData(ImageData* source, const IntRect& sourceRect, const Int
         return;
     }
 
-    const unsigned char* data = source->data()->data()->data();
-
+    const unsigned char* sourceRows = source->data()->data()->data();
     unsigned sourceBytesPerRow = 4 * source->width();
-    const unsigned char* sourceRows = data;
     // Offset the source pointer to the first pixel of the source rect.
     sourceRows += sourceRect.x() * 4 + sourceRect.y() * sourceBytesPerRow;
 
-    // We know there must be an intersection region.
+    // We know there must be an intersection rect.
     BRect destRect(destPoint.x(), destPoint.y(), sourceRect.width() - 1, sourceRect.height() - 1);
     destRect = destRect & BRect(0, 0, size.width() - 1, size.height() - 1);
 
@@ -228,7 +282,7 @@ static void putImageData(ImageData* source, const IntRect& sourceRect, const Int
 
     unsigned rows = sourceRect.height();
     unsigned columns = sourceRect.width();
-    convertImageData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
+    convertToInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
         rows, columns, premultiplied);
 }
 
