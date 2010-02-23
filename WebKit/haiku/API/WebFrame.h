@@ -29,32 +29,28 @@
 #ifndef WebFrame_h
 #define WebFrame_h
 
-#include "PlatformString.h"
 #include <String.h>
 
 class BMessenger;
 class BWebPage;
 
 namespace WebCore {
+class ChromeClientHaiku;
 class Frame;
 class FrameLoaderClientHaiku;
-class HTMLFrameOwnerElement;
 class KURL;
-class Page;
-class String;
 }
+
+class WebFramePrivate;
 
 class WebFrame {
 public:
-    WebFrame(BWebPage*, WebCore::Page* parentPage = 0,
-        WebCore::Frame* parentFrame = 0,
-        WebCore::HTMLFrameOwnerElement* = 0,
-        const WebCore::String& frameName = WebCore::String());
     virtual ~WebFrame();
 
-    void setDispatchTarget(const BMessenger& messenger);
+    void setListener(const BMessenger& listener);
 
     void loadRequest(BString url);
+    // TODO: Remove this as well (no WebCore API in public WebKit API):
     void loadRequest(WebCore::KURL);
 
     BString url() const;
@@ -107,7 +103,14 @@ public:
     BString title() const { return m_title; }
     void setTitle(BString title) { m_title = title; }
 
-    WebCore::Frame* frame();
+private:
+    friend class BWebPage;
+    friend class WebCore::ChromeClientHaiku;
+    friend class WebCore::FrameLoaderClientHaiku;
+
+    WebFrame(BWebPage*, WebFrame*, WebFramePrivate*);
+
+    WebCore::Frame* frame() const;
 
 private:
     float m_textMagnifier;
@@ -115,9 +118,7 @@ private:
     bool m_beingDestroyed;
     BString m_title;
 
-    class PrivateData;
-
-    PrivateData* m_data;
+    WebFramePrivate* m_data;
 };
 
 #endif // WebFrame_h

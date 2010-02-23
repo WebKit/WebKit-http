@@ -373,12 +373,10 @@ IconButton::SetIcon(int32 resourceID)
 	if (status != B_OK)
 		return status;
 
-printf("check\n");
 	size_t size;
 	const void* data = resources.LoadResource(B_VECTOR_ICON_TYPE, resourceID,
 		&size);
 	if (data != NULL) {
-printf("found resource\n");
 		BBitmap bitmap(BRect(0, 0, 31, 31), B_BITMAP_NO_SERVER_LINK, B_RGBA32);
 		status = bitmap.InitCheck();
 		if (status != B_OK)

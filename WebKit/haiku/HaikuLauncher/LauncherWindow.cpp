@@ -431,10 +431,6 @@ void LauncherWindow::newTab(const BString& url, bool select)
 
 void LauncherWindow::navigationRequested(const BString& url, WebView* view)
 {
-    // TODO: Move elsewhere, doesn't belong here.
-    m_loadedURL = url;
-    if (m_url)
-        m_url->SetText(url.String());
 }
 
 void LauncherWindow::newWindowRequested(const BString& url)
@@ -458,8 +454,12 @@ void LauncherWindow::loadNegotiating(const BString& url, WebView* view)
     statusChanged(status, view);
 }
 
-void LauncherWindow::loadTransfering(const BString& url, WebView* view)
+void LauncherWindow::loadCommited(const BString& url, WebView* view)
 {
+	// This hook is invoked when the load is commited.
+    if (m_url)
+        m_url->SetText(url.String());
+
     BString status("Loading: ");
     status << url;
     statusChanged(status, view);

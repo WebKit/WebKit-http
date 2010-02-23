@@ -43,6 +43,7 @@
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
+#include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "markup.h"
 #include "wtf/RefPtr.h"
@@ -56,42 +57,20 @@ static const float kTextSizeMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
-
-class WebFrame::PrivateData {
-public:
-    PrivateData()
-        : ownerElement(0)
-        , page(0)
-        , frame(0)
-        , loaderClient(0)
-    {}
-
-    WebCore::String name;
-    WebCore::HTMLFrameOwnerElement* ownerElement;
-    WebCore::Page* page;
-    WTF::RefPtr<WebCore::Frame> frame;
-    WebCore::FrameLoaderClientHaiku* loaderClient;
-};
-
-// #pragma mark -
-
-WebFrame::WebFrame(BWebPage* webPage, WebCore::Page* parentPage, WebCore::Frame* parentFrame,
-        WebCore::HTMLFrameOwnerElement* ownerElement, const WebCore::String& frameName)
+WebFrame::WebFrame(BWebPage* webPage, WebFrame* parentFrame, WebFramePrivate* data)
     : m_textMagnifier(1.0)
     , m_isEditable(false)
     , m_beingDestroyed(false)
     , m_title(0)
-    , m_data(new PrivateData())
+    , m_data(data)
 {
-	m_data->name = frameName;
-	m_data->ownerElement = ownerElement;
-	m_data->page = parentPage;
 	m_data->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
-    m_data->frame = WebCore::Frame::create(parentPage, ownerElement, m_data->loaderClient);
+    m_data->frame = WebCore::Frame::create(m_data->page, m_data->ownerElement,
+        m_data->loaderClient);
 
-    m_data->frame->tree()->setName(frameName);
+    m_data->frame->tree()->setName(m_data->name);
     if (parentFrame)
-        parentFrame->tree()->appendChild(m_data->frame);
+        parentFrame->frame()->tree()->appendChild(m_data->frame);
 
     m_data->frame->init();
 }
@@ -101,16 +80,11 @@ WebFrame::~WebFrame()
 	delete m_data;
 }
 
-void WebFrame::setDispatchTarget(const BMessenger& messenger)
+void WebFrame::setListener(const BMessenger& listener)
 {
-    m_data->loaderClient->setDispatchTarget(messenger);
+    m_data->loaderClient->setDispatchTarget(listener);
 }
 
-
-WebCore::Frame* WebFrame::frame()
-{
-    return m_data->frame.get();
-}
 
 void WebFrame::loadRequest(BString url)
 {
@@ -353,4 +327,11 @@ void WebFrame::resetTextSize()
 
     if (m_data->frame)
         m_data->frame->setZoomFactor(m_textMagnifier, true);
+}
+
+// #pragma mark - private
+
+WebCore::Frame* WebFrame::frame() const
+{
+    return m_data->frame.get();
 }

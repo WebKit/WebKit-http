@@ -50,7 +50,7 @@ public:
     virtual void navigationRequested(const BString& url, WebView* view);
     virtual void newWindowRequested(const BString& url);
     virtual void loadNegotiating(const BString& url, WebView* view);
-    virtual void loadTransferring(const BString& url, WebView* view);
+    virtual void loadCommited(const BString& url, WebView* view);
     virtual void loadProgress(float progress, WebView* view);
     virtual void loadFailed(const BString& url, WebView* view);
     virtual void loadFinished(const BString& url, WebView* view);

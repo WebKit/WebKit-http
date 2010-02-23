@@ -57,6 +57,7 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "WebFrame.h"
+#include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -75,7 +76,6 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, WebFrame* webF
     , m_webFrame(webFrame)
     , m_messenger()
 {
-printf("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku()\n", this);
     ASSERT(m_webPage);
     ASSERT(m_webFrame);
 }
@@ -245,19 +245,16 @@ void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveServerRedirectForProvisionalLoad()
 {
-printf("dispatchDidReceiveServerRedirectForProvisionalLoad()\n");
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchDidCancelClientRedirect()
 {
-printf("dispatchDidCancelClientRedirect()\n");
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, double interval, double fireDate)
 {
-printf("dispatchWillPerformClientRedirect()\n");
     notImplemented();
 }
 
@@ -311,7 +308,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
-    BMessage message(LOAD_TRANSFERRING);
+    BMessage message(LOAD_COMMITED);
     message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
 
@@ -411,9 +408,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     if (!function)
         return;
 
-printf("dispatchDecidePolicyForNewWindowAction() -> ");
     if (request.isNull()) {
-printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
@@ -429,12 +424,10 @@ printf("ignore (isNull)\n");
             m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
 
-printf("ignore (BMessenger error)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
 
-printf("use\n");
     callPolicyFunction(function, PolicyUse);
 }
 
@@ -445,50 +438,41 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
     if (!function)
         return;
 
-printf("dispatchDecidePolicyForNavigationAction() -> ");
     if (request.isNull()) {
-printf("ignore (isNull)\n");
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
 
     if (!m_messenger.IsValid()) {
-printf("use (sub-frame)\n");
     	callPolicyFunction(function, PolicyUse);
     	return;
     }
 
-    uint32 what = NAVIGATION_REQUESTED;
+    // Ignore the action if we want to load it into a new window or tab.
     if (action.event() && action.event()->isMouseEvent()) {
         // Clicks with the middle mouse button shall open a new window
         // (or tab respectively depending on browser)
         const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
-        if (mouseEvent && mouseEvent->button() == 1)
-            what = NEW_WINDOW_REQUESTED;
-    }
-    BMessage message(what);
-    message.AddString("url", request.url().string());
-    if (dispatchMessage(message) != B_OK || what == NEW_WINDOW_REQUESTED) {
-        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
-
-        if (action.type() == NavigationTypeLinkClicked) {
-            ResourceRequest emptyRequest;
-            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+        if (mouseEvent && mouseEvent->button() == 1) {
+		    BMessage message(NEW_WINDOW_REQUESTED);
+		    message.AddString("url", request.url().string());
+		    dispatchMessage(message);
+	        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+	            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
+	
+	        if (action.type() == NavigationTypeLinkClicked) {
+	            ResourceRequest emptyRequest;
+	            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+	        }
+            callPolicyFunction(function, PolicyIgnore);
         }
-
-printf("ignore (BMessenger error)\n");
-        callPolicyFunction(function, PolicyIgnore);
-        return;
     }
 
-printf("use\n");
     callPolicyFunction(function, PolicyUse);
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
 {
-printf("FrameLoaderClientHaiku::cancelPolicyCheck()\n");
     notImplemented();
 }
 
@@ -650,7 +634,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::Res
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    return ResourceError(String(), WebKitErrorCannotUseRestrictedPort, request.url().string(), String());
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
@@ -693,10 +677,7 @@ bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 
 bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
 {
-    Frame* frame = m_webFrame->frame();
-    Page* page = frame->page();
-
-    return page && page->mainFrame() == frame;
+    return true;
 }
 
 bool FrameLoaderClientHaiku::canShowMIMEType(const String& MIMEType) const
@@ -823,24 +804,27 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
     ASSERT(m_webFrame);
 
-    WebFrame* frame = new WebFrame(m_webPage, m_webFrame->frame()->page(), m_webFrame->frame(), ownerElement, name);
+    WebFramePrivate* data = new WebFramePrivate;
+    data->name = name;
+    data->ownerElement = ownerElement;
+    data->page = m_webPage->page();
+
+    WebFrame* frame = new WebFrame(m_webPage, m_webFrame, data);
     // As long as we don't return the Frame, we are responsible for deleting it.
     RefPtr<Frame> childFrame = frame->frame();
 
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
     if (!childFrame->page()) {
-printf("   no page\n");
         delete frame;
         return 0;
     }
 
-//    frame->setDispatchTarget(m_messenger);
+//    frame->setListener(m_messenger);
 
     childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
 
     // The frame's onload handler may have removed it from the document.
     if (!childFrame->tree()->parent()) {
-printf("   no parent\n");
         delete frame;
         return 0;
     }

@@ -103,10 +103,10 @@ void WebViewWindow::MessageReceived(BMessage* message)
             loadNegotiating(url, webViewForMessage(message));
         break;
     }
-    case LOAD_TRANSFERRING: {
+    case LOAD_COMMITED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadTransferring(url, webViewForMessage(message));
+            loadCommited(url, webViewForMessage(message));
         break;
     }
     case LOAD_PROGRESS: {
@@ -225,7 +225,7 @@ void WebViewWindow::loadNegotiating(const BString& url, WebView* view)
 {
 }
 
-void WebViewWindow::loadTransferring(const BString& url, WebView* view)
+void WebViewWindow::loadCommited(const BString& url, WebView* view)
 {
 }
 

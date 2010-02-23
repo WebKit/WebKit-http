@@ -59,6 +59,7 @@
 #include "TextEncoding.h"
 #include "WebDownload.h"
 #include "WebFrame.h"
+#include "WebFramePrivate.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 
@@ -200,7 +201,10 @@ printf("~BWebPage()\n");
 
 void BWebPage::Init()
 {
-    m_mainFrame = new WebFrame(this, m_page);
+	WebFramePrivate* data = new WebFramePrivate;
+	data->page = m_page;
+
+    m_mainFrame = new WebFrame(this, 0, data);
 }
 
 void BWebPage::Shutdown()
@@ -212,7 +216,7 @@ void BWebPage::Shutdown()
 void BWebPage::SetListener(const BMessenger& listener)
 {
 	m_listener = listener;
-    m_mainFrame->setDispatchTarget(listener);
+    m_mainFrame->setListener(listener);
 }
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)
