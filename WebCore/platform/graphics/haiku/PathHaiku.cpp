@@ -41,22 +41,124 @@
 #include <Shape.h>
 #include <View.h>
 
-
 namespace WebCore {
+
+// A one pixel sized BBitmap for drawing into. Default high-color of BViews
+// is black. So testing of any color channel for < 128 means the pixel was hit.
+class HitTestBitmap {
+public:
+    HitTestBitmap()
+        : m_bitmap(0)
+        , m_view(0)
+    {
+        // Do not create the bitmap here, since this object is initialized
+        // statically, and BBitmaps need a running BApplication to work.
+    }
+
+    ~HitTestBitmap()
+    {
+        // m_bitmap being 0 simply means WebCore never performed any hit-tests
+        // on Paths.
+        if (!m_bitmap)
+            return;
+
+        m_bitmap->Unlock();
+        // Will also delete the BView attached to the bitmap:
+        delete m_bitmap;
+    }
+
+    void init()
+    {
+        if (m_bitmap)
+            return;
+
+        m_bitmap = new BBitmap(BRect(0, 0, 0, 0), B_RGB32, true);
+        // Keep the dummmy window locked at all times, so we don't need
+        // to worry about it anymore.
+        m_bitmap->Lock();
+        // Add a BView which does any rendering.
+        m_view = new BView(m_bitmap->Bounds(), "WebCore hi-test view", 0, 0);
+        m_bitmap->AddChild(m_view);
+
+        clearToWhite();
+    }
+
+    void clearToWhite()
+    {
+        memset(m_bitmap->Bits(), 255, m_bitmap->BitsLength());
+    }
+
+    void prepareHitTest(float x, float y)
+    {
+        clearToWhite();
+        // The current pen location is used as the reference point for
+        // where the shape is rendered in the view. Obviously Be thought this
+        // was a neat idea for using BShapes as symbols, although it is
+        // inconsistent with drawing other primitives. SetOrigin() should
+        // be used instead, but this is cheaper:
+        m_view->MovePenTo(-x, -y);
+    }
+
+    bool hitTest(BShape* shape, float x, float y, WindRule rule)
+    {
+        prepareHitTest(x, y);
+
+        m_view->FillShape(shape);
+
+        return hitTestPixel();
+    }
+
+    bool hitTest(BShape* shape, float x, float y, StrokeStyleApplier* applier)
+    {
+        prepareHitTest(x, y);
+
+        GraphicsContext context(m_view);
+        applier->strokeStyle(&context);
+        m_view->StrokeShape(shape);
+
+        return hitTestPixel();
+    }
+
+    bool hitTestPixel() const
+    {
+        // Make sure the app_server has rendered everything already.
+        m_view->Sync();
+        // Bitmap is white before drawing, anti-aliasing threshold is mid-grey,
+        // then the pixel is considered within the black shape. Theoretically,
+        // it would be enough to test one color channel, but since the Haiku
+        // app_server renders all shapes with LCD sub-pixel anti-aliasing, the
+        // color channels can in fact differ at edge pixels.
+        const uint8* bits = reinterpret_cast<const uint8*>(m_bitmap->Bits());
+        return (static_cast<uint16>(bits[0]) + bits[1] + bits[2]) / 3 < 128;
+    }
+
+private:
+    BBitmap* m_bitmap;
+    BView* m_view;
+};
+
+// Reuse the same hit test bitmap for all paths. Initialization is lazy, and
+// needs to be, since BBitmaps need a running BApplication. If WebCore ever
+// runs each Document in it's own thread, we shall re-use the internal bitmap's
+// lock to synchronize access. Since the pointer is likely only sitting above
+// one document at a time, it seems unlikely to be a problem anyway.
+static HitTestBitmap gHitTestBitmap;
+
+// #pragma mark - Path
 
 Path::Path()
     : m_path(new BShape())
 {
 }
 
-Path::~Path()
-{
-    delete m_path;
-}
-
 Path::Path(const Path& other)
     : m_path(new BShape(*other.platformPath()))
 {
+}
+
+Path::~Path()
+{
+    delete m_path;
 }
 
 Path& Path::operator=(const Path& other)
@@ -76,56 +178,16 @@ bool Path::hasCurrentPoint() const
 
 bool Path::contains(const FloatPoint& point, WindRule rule) const
 {
-    // TODO: This is probably too expensive. Use one instance of a scratch
-    // image.
-    BBitmap bitmap(BRect(0, 0, 0, 0),
-        B_BITMAP_CLEAR_TO_WHITE | B_BITMAP_ACCEPTS_VIEWS, B_RGB32);
-    BView view(BRect(0, 0, 0, 0), "", 0, 0);
-    bitmap.Lock();
-    bitmap.AddChild(&view);
-    // Current pen location is used as origin for the shape.
-    view.MovePenTo(-point.x(), -point.y());
-    // TODO: Handle WindRule... (needs support in BView, the backend already
-    // support it.)
-    view.FillShape(m_path);
-    view.Sync();
-
-    uint8* bits = reinterpret_cast<uint8*>(bitmap.Bits());
-    bool result = bits[0] < 128;
-
-    view.RemoveSelf();
-    bitmap.Unlock();
-    return result;
+    gHitTestBitmap.init();
+    return gHitTestBitmap.hitTest(m_path, point.x(), point.y(), rule);
 }
 
 bool Path::strokeContains(StrokeStyleApplier* applier, const FloatPoint& point) const
 {
     ASSERT(applier);
 
-    // TODO: This is probably too expensive. Use one instance of a scratch
-    // image, see above.
-    // TODO: Code duplication above.
-    BBitmap bitmap(BRect(0, 0, 0, 0),
-        B_BITMAP_CLEAR_TO_WHITE | B_BITMAP_ACCEPTS_VIEWS, B_RGB32);
-    BView view(BRect(0, 0, 0, 0), "", 0, 0);
-    bitmap.Lock();
-    bitmap.AddChild(&view);
-    // Current pen location is used as origin for the shape.
-    view.MovePenTo(-point.x(), -point.y());
-    // TODO: Handle WindRule... (needs support in BView, the backend already
-    // support it.)
-    GraphicsContext context(&view);
-    applier->strokeStyle(&context);
-    
-    view.StrokeShape(m_path);
-    view.Sync();
-
-    uint8* bits = reinterpret_cast<uint8*>(bitmap.Bits());
-    bool result = bits[0] < 128;
-
-    view.RemoveSelf();
-    bitmap.Unlock();
-    return result;
+    gHitTestBitmap.init();
+    return gHitTestBitmap.hitTest(m_path, point.x(), point.y(), applier);
 }
 
 void Path::translate(const FloatSize& size)
@@ -141,6 +203,7 @@ void Path::translate(const FloatSize& size)
         virtual status_t IterateMoveTo(BPoint* point)
         {
             point->x += m_size.width();
+            point->y += m_size.height();
             return B_OK;
         }
 
