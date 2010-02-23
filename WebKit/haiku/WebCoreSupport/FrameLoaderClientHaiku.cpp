@@ -382,21 +382,22 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
                                                              const ResourceRequest& request)
 {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ", BString(mimetype).String());
     if (request.isNull()) {
-printf("ignore (isNull)\n");
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (isNull)",
+BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
     // we need to call directly here
     if (canShowMIMEType(mimetype)) {
-printf("use\n");
         callPolicyFunction(function, PolicyUse);
     } else if (!request.url().isLocalFile()) {
-printf("download\n");
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download",
+BString(mimetype).String());
         callPolicyFunction(function, PolicyDownload);
     } else {
-printf("ignore (local URL)\n");
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL)",
+BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
     }
 }
