@@ -157,10 +157,7 @@ public:
     	    return;
 
     	m_currentLayer->clipping = region;
-    	if (m_currentLayer->clipping.Frame().IsValid())
-    	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
-    	else
-    	    m_currentLayer->view->ConstrainClippingRegion(NULL);
+  	    m_currentLayer->view->ConstrainClippingRegion(&m_currentLayer->clipping);
     }
 
     void setShape(BShape* shape)
