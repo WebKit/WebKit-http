@@ -85,7 +85,7 @@ void CollectionCache::reset()
     hasNameCache = false;
 }
 
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || !defined(NDEBUG)
 void CollectionCache::checkConsistency()
 {
     idCache.checkConsistency();
