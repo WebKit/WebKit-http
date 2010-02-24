@@ -50,11 +50,9 @@ bool Font::canReturnFallbackFontsForComplexText()
 void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* font,
                       const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point) const
 {
-    Color color = graphicsContext->fillColor();
     BView* view = graphicsContext->platformContext();
 
-    graphicsContext->setCompositeOperation(CompositeSourceOver);
-    view->SetHighColor(color);
+    view->SetHighColor(graphicsContext->fillColor());
     view->SetFont(font->platformData().font());
 
     GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));
