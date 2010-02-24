@@ -37,7 +37,7 @@
 #include "ResourceResponse.h"
 #include <Messenger.h>
 
-class WebFrame;
+class BWebFrame;
 class BWebPage;
 
 namespace WebCore {
@@ -55,7 +55,7 @@ struct LoadErrorResetToken;
 
 class FrameLoaderClientHaiku : public FrameLoaderClient {
 public:
-    FrameLoaderClientHaiku(BWebPage*, WebFrame*);
+    FrameLoaderClientHaiku(BWebPage*, BWebFrame*);
 
     void setDispatchTarget(const BMessenger& messenger);
 
@@ -207,12 +207,12 @@ public:
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
-    void postCommitFrameViewSetup(WebFrame*, FrameView*, bool) const;
+    void postCommitFrameViewSetup(BWebFrame*, FrameView*, bool) const;
     status_t dispatchMessage(BMessage& message) const;
 
 private:
     BWebPage* m_webPage;
-    WebFrame* m_webFrame;
+    BWebFrame* m_webFrame;
     BMessenger m_messenger;
 
     ResourceResponse m_response;

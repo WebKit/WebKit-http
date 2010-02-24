@@ -25,9 +25,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _WEB_FRAME_H_
+#define _WEB_FRAME_H_
 
-#ifndef WebFrame_h
-#define WebFrame_h
 
 #include <String.h>
 
@@ -43,84 +43,87 @@ class KURL;
 
 class WebFramePrivate;
 
-class WebFrame {
+
+class BWebFrame {
 public:
-    virtual ~WebFrame();
+								~BWebFrame();
 
-    void setListener(const BMessenger& listener);
+			void				SetListener(const BMessenger& listener);
 
-    void loadRequest(BString url);
-    // TODO: Remove this as well (no WebCore API in public WebKit API):
-    void loadRequest(WebCore::KURL);
+			void				LoadURL(BString url);
 
-    BString RequestedURL() const;
-    BString URL() const;
+			void				StopLoading();
+			void				Reload();
 
-    void stopLoading();
-    void reload();
+			BString				RequestedURL() const;
+			BString				URL() const;
 
-    bool canCopy();
-    bool canCut();
-    bool canPaste();
+			bool				CanCopy() const;
+			bool				CanCut() const;
+			bool				CanPaste() const;
 
-    void copy();
-    void cut();
-    void paste();
+			void				Copy();
+			void				Cut();
+			void				Paste();
 
-    bool canUndo();
-    bool canRedo();
+			bool				CanUndo() const;
+			bool				CanRedo() const;
 
-    void undo();
-    void redo();
+			void				Undo();
+			void				Redo();
 
-    bool allowsScrolling();
-    void setAllowsScrolling(bool);
+			bool				AllowsScrolling() const;
+			void				SetAllowsScrolling(bool enable);
 
-    BString getPageSource() const;
-    void setPageSource(const BString& source);
+			BString				PageSource() const;
+			void				SetPageSource(const BString& source);
 
-    void setTransparent(bool);
-    bool isTransparent() const;
+			void				SetTransparent(bool transparent);
+			bool				IsTransparent() const;
 
-    BString getInnerText();
-    BString getAsMarkup();
-    BString getExternalRepresentation();
+			BString				InnerText() const;
+			BString				AsMarkup() const;
+			BString				ExternalRepresentation() const;
 
-    bool findString(const char* string, bool forward = true,
-        bool caseSensitive = false, bool wrapSelection = true,
-        bool startInSelection = true);
+			bool				FindString(const char* string,
+									bool forward = true,
+									bool caseSensitive = false,
+									bool wrapSelection = true,
+									bool startInSelection = true);
 
-    bool canIncreaseTextSize() const;
-    bool canDecreaseTextSize() const;
+			bool				CanIncreaseTextSize() const;
+			bool				CanDecreaseTextSize() const;
 
-    void increaseTextSize();
-    void decreaseTextSize();
+			void				IncreaseTextSize();
+			void				DecreaseTextSize();
 
-    void resetTextSize();
+			void				ResetTextSize();
 
-    void setEditable(bool editable) { m_isEditable = editable; }
-    bool isEditable() const { return m_isEditable; }
+			void				SetEditable(bool editable);
+			bool				IsEditable() const;
 
-    void SetTitle(const BString& title);
-    const BString& Title() const { return m_title; }
-
-private:
-    friend class BWebPage;
-
-    friend class WebCore::ChromeClientHaiku;
-    friend class WebCore::FrameLoaderClientHaiku;
-
-    WebFrame(BWebPage*, WebFrame*, WebFramePrivate*);
-
-    WebCore::Frame* frame() const;
+			void				SetTitle(const BString& title);
+			const BString&		Title() const;
 
 private:
-    float m_textMagnifier;
-    bool m_isEditable;
-    bool m_beingDestroyed;
-    BString m_title;
+	friend class BWebPage;
 
-    WebFramePrivate* m_data;
+	friend class WebCore::ChromeClientHaiku;
+	friend class WebCore::FrameLoaderClientHaiku;
+
+								BWebFrame(BWebPage* webPage,
+									BWebFrame* parentFrame,
+									WebFramePrivate* data);
+
+			void				LoadURL(WebCore::KURL);
+			WebCore::Frame*		Frame() const;
+
+private:
+			float				fTextMagnifier;
+			bool				fIsEditable;
+			BString				fTitle;
+
+			WebFramePrivate*	fData;
 };
 
-#endif // WebFrame_h
+#endif // _WEB_FRAME_H_

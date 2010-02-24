@@ -35,7 +35,7 @@
 #include <String.h>
 
 class WebDownload;
-class WebFrame;
+class BWebFrame;
 class BWebView;
 
 namespace WebCore {
@@ -74,7 +74,7 @@ public:
 			void				SetListener(const BMessenger& listener);
 			void				SetDownloadListener(const BMessenger& listener);
 
-			WebFrame*			MainFrame() const;
+			BWebFrame*			MainFrame() const;
 			BWebView*			WebView() const;
 				// NOTE: Using the BWebView requires locking it's looper!
 
@@ -97,7 +97,7 @@ public:
 
 private:
 	friend class WebDownload;
-	friend class WebFrame;
+	friend class BWebFrame;
 	friend class BWebView;
 
 								BWebPage(BWebView* webView);
@@ -182,7 +182,7 @@ private:
     BMessenger m_listener;
 	BMessenger m_downloadListener;
 	BWebView* m_webView;
-	WebFrame* m_mainFrame;
+	BWebFrame* m_mainFrame;
 	WebCore::Page* m_page;
 
 	bool m_toolbarsVisible;

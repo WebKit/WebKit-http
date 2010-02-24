@@ -26,7 +26,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-
 #include "config.h"
 #include "WebFrame.h"
 
@@ -57,176 +56,174 @@ static const float kTextSizeMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
-WebFrame::WebFrame(BWebPage* webPage, WebFrame* parentFrame, WebFramePrivate* data)
-    : m_textMagnifier(1.0)
-    , m_isEditable(false)
-    , m_beingDestroyed(false)
-    , m_title(0)
-    , m_data(data)
+BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate* data)
+    : fTextMagnifier(1.0)
+    , fIsEditable(false)
+    , fTitle(0)
+    , fData(data)
 {
-	m_data->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
-    m_data->frame = WebCore::Frame::create(m_data->page, m_data->ownerElement,
-        m_data->loaderClient);
+	fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
+    fData->frame = WebCore::Frame::create(fData->page, fData->ownerElement,
+        fData->loaderClient);
 
-    m_data->frame->tree()->setName(m_data->name);
+    fData->frame->tree()->setName(fData->name);
     if (parentFrame)
-        parentFrame->frame()->tree()->appendChild(m_data->frame);
+        parentFrame->Frame()->tree()->appendChild(fData->frame);
 
-    m_data->frame->init();
+    fData->frame->init();
 }
 
-WebFrame::~WebFrame()
+BWebFrame::~BWebFrame()
 {
-	delete m_data;
+	delete fData;
 }
 
-void WebFrame::setListener(const BMessenger& listener)
+void BWebFrame::SetListener(const BMessenger& listener)
 {
-    m_data->loaderClient->setDispatchTarget(listener);
+    fData->loaderClient->setDispatchTarget(listener);
 }
 
-
-void WebFrame::loadRequest(BString url)
+void BWebFrame::LoadURL(BString url)
 {
-    loadRequest(KURL(KURL(), url.Trim().String()));
+    LoadURL(KURL(KURL(), url.Trim().String()));
 }
 
-void WebFrame::loadRequest(KURL url)
+void BWebFrame::LoadURL(KURL url)
 {
 	if (url.isEmpty())
 		return;
 
-    if (m_data->frame && m_data->frame->loader()) {
+    if (!fData->frame || !fData->frame->loader())
+        return;
 
-        m_data->requestedURL = url.string();
+    fData->requestedURL = url.string();
 
-        if (url.protocol().isEmpty()) {
-            if (BEntry(BString(url.string())).Exists()) {
-                url.setProtocol("file");
-                url.setPath(url.path());
-            } else {
-                url.setProtocol("http");
-                url.setPath("//" + url.path());
-            }
+    if (url.protocol().isEmpty()) {
+        if (BEntry(BString(url.string())).Exists()) {
+            url.setProtocol("file");
+            url.setPath(url.path());
+        } else {
+            url.setProtocol("http");
+            url.setPath("//" + url.path());
         }
-
-        m_data->frame->loader()->load(url, false);
     }
+
+    fData->frame->loader()->load(url, false);
 }
 
-BString WebFrame::URL() const
+void BWebFrame::StopLoading()
 {
-    return m_data->frame->loader()->url().string();
+    if (fData->frame && fData->frame->loader())
+        fData->frame->loader()->stop();
 }
 
-BString WebFrame::RequestedURL() const
+void BWebFrame::Reload()
 {
-    return m_data->requestedURL;
+    if (fData->frame && fData->frame->loader())
+        fData->frame->loader()->reload();
 }
 
-void WebFrame::stopLoading()
+BString BWebFrame::URL() const
 {
-    if (m_data->frame && m_data->frame->loader())
-        m_data->frame->loader()->stop();
+    return fData->frame->loader()->url().string();
 }
 
-void WebFrame::reload()
+BString BWebFrame::RequestedURL() const
 {
-    if (m_data->frame && m_data->frame->loader())
-        m_data->frame->loader()->reload();
+    return fData->requestedURL;
 }
 
-bool WebFrame::canCopy()
+bool BWebFrame::CanCopy() const
 {
-    if (m_data->frame && m_data->frame->view())
-        return m_data->frame->editor()->canCopy() || m_data->frame->editor()->canDHTMLCopy();
+    if (fData->frame && fData->frame->view())
+        return fData->frame->editor()->canCopy() || fData->frame->editor()->canDHTMLCopy();
 
     return false;
 }
 
-bool WebFrame::canCut()
+bool BWebFrame::CanCut() const
 {
-    if (m_data->frame && m_data->frame->view())
-        return m_data->frame->editor()->canCut() || m_data->frame->editor()->canDHTMLCut();
+    if (fData->frame && fData->frame->view())
+        return fData->frame->editor()->canCut() || fData->frame->editor()->canDHTMLCut();
 
     return false;
 }
 
-bool WebFrame::canPaste()
+bool BWebFrame::CanPaste() const
 {
-    if (m_data->frame && m_data->frame->view())
-        return m_data->frame->editor()->canPaste() || m_data->frame->editor()->canDHTMLPaste();
+    if (fData->frame && fData->frame->view())
+        return fData->frame->editor()->canPaste() || fData->frame->editor()->canDHTMLPaste();
 
     return false;
 }
 
-void WebFrame::copy()
+void BWebFrame::Copy()
 {
-    if (canCopy())
-        m_data->frame->editor()->copy();
+    if (CanCopy())
+        fData->frame->editor()->copy();
 }
 
-void WebFrame::cut()
+void BWebFrame::Cut()
 {
-    if (canCut())
-        m_data->frame->editor()->cut();
+    if (CanCut())
+        fData->frame->editor()->cut();
 }
 
-void WebFrame::paste()
+void BWebFrame::Paste()
 {
-    if (canPaste())
-        m_data->frame->editor()->paste();
+    if (CanPaste())
+        fData->frame->editor()->paste();
 }
 
-bool WebFrame::canUndo()
+bool BWebFrame::CanUndo() const
 {
-    if (m_data->frame && m_data->frame->editor())
-        return m_data->frame->editor()->canUndo();
+    if (fData->frame && fData->frame->editor())
+        return fData->frame->editor()->canUndo();
 
     return false;
 }
 
-bool WebFrame::canRedo()
+bool BWebFrame::CanRedo() const
 {
-    if (m_data->frame && m_data->frame->editor())
-        return m_data->frame->editor()->canRedo();
+    if (fData->frame && fData->frame->editor())
+        return fData->frame->editor()->canRedo();
 
     return false;
 }
 
-void WebFrame::undo()
+void BWebFrame::Undo()
 {
-    if (m_data->frame && m_data->frame->editor() && canUndo())
-        return m_data->frame->editor()->undo();
+    if (CanUndo())
+        return fData->frame->editor()->undo();
 }
 
-void WebFrame::redo()
+void BWebFrame::Redo()
 {
-    if (m_data->frame && m_data->frame->editor() && canRedo())
-        return m_data->frame->editor()->redo();
+    if (CanRedo())
+        return fData->frame->editor()->redo();
 }
 
-bool WebFrame::allowsScrolling()
+bool BWebFrame::AllowsScrolling() const
 {
-    if (m_data->frame && m_data->frame->view())
-        return m_data->frame->view()->canHaveScrollbars();
+    if (fData->frame && fData->frame->view())
+        return fData->frame->view()->canHaveScrollbars();
 
     return false;
 }
 
-void WebFrame::setAllowsScrolling(bool flag)
+void BWebFrame::SetAllowsScrolling(bool flag)
 {
-    if (m_data->frame && m_data->frame->view())
-        m_data->frame->view()->setCanHaveScrollbars(flag);
+    if (fData->frame && fData->frame->view())
+        fData->frame->view()->setCanHaveScrollbars(flag);
 }
 
-BString WebFrame::getPageSource() const
+BString BWebFrame::PageSource() const
 {
-    if (m_data->frame) {
-        if (m_data->frame->view() && m_data->frame->view()->layoutPending())
-            m_data->frame->view()->layout();
+    if (fData->frame) {
+        if (fData->frame->view() && fData->frame->view()->layoutPending())
+            fData->frame->view()->layout();
 
-        WebCore::Document* document = m_data->frame->document();
+        WebCore::Document* document = fData->frame->document();
 
         if (document)
             return BString(createMarkup(document));
@@ -235,119 +232,137 @@ BString WebFrame::getPageSource() const
     return BString();
 }
 
-void WebFrame::setPageSource(const BString& source)
+void BWebFrame::SetPageSource(const BString& source)
 {
-    if (m_data->frame && m_data->frame->loader()) {
-        WebCore::FrameLoader* loader = m_data->frame->loader();
+    if (fData->frame && fData->frame->loader()) {
+        WebCore::FrameLoader* loader = fData->frame->loader();
         loader->begin();
         loader->write(String(source));
         loader->end();
     }
 }
 
-void WebFrame::setTransparent(bool transparent)
+void BWebFrame::SetTransparent(bool transparent)
 {
-    if (m_data->frame && m_data->frame->view())
-        m_data->frame->view()->setTransparent(transparent);
+    if (fData->frame && fData->frame->view())
+        fData->frame->view()->setTransparent(transparent);
 }
 
-bool WebFrame::isTransparent() const
+bool BWebFrame::IsTransparent() const
 {
-    if (m_data->frame && m_data->frame->view())
-        return m_data->frame->view()->isTransparent();
+    if (fData->frame && fData->frame->view())
+        return fData->frame->view()->isTransparent();
 
     return false;
 }
 
-BString WebFrame::getInnerText()
+BString BWebFrame::InnerText() const
 {
-    FrameView* view = m_data->frame->view();
+    FrameView* view = fData->frame->view();
 
     if (view && view->layoutPending())
         view->layout();
 
-    WebCore::Element *documentElement = m_data->frame->document()->documentElement();
+    WebCore::Element *documentElement = fData->frame->document()->documentElement();
     return documentElement->innerText();
 }
 
-BString WebFrame::getAsMarkup()
+BString BWebFrame::AsMarkup() const
 {
-    if (!m_data->frame->document())
-        return String();
+    if (!fData->frame->document())
+        return BString();
 
-    return createMarkup(m_data->frame->document());
+    return createMarkup(fData->frame->document());
 }
 
-BString WebFrame::getExternalRepresentation()
+BString BWebFrame::ExternalRepresentation() const
 {
-    FrameView* view = m_data->frame->view();
+    FrameView* view = fData->frame->view();
 
     if (view && view->layoutPending())
         view->layout();
 
-    return externalRepresentation(m_data->frame.get());
+    return externalRepresentation(fData->frame.get());
 }
 
-bool WebFrame::findString(const char* string, bool forward, bool caseSensitive, bool wrapSelection, bool startInSelection)
+bool BWebFrame::FindString(const char* string, bool forward, bool caseSensitive, bool wrapSelection, bool startInSelection)
 {
-    if (m_data->frame)
-        return m_data->frame->findString(string, forward, caseSensitive, wrapSelection, startInSelection);
+    if (fData->frame)
+        return fData->frame->findString(string, forward, caseSensitive, wrapSelection, startInSelection);
 
     return false;
 }
 
-bool WebFrame::canIncreaseTextSize() const
+bool BWebFrame::CanIncreaseTextSize() const
 {
-    if (m_data->frame)
-        if (m_textMagnifier * kTextSizeMultiplierRatio <= kMaximumTextSizeMultiplier)
+    if (fData->frame)
+        if (fTextMagnifier * kTextSizeMultiplierRatio <= kMaximumTextSizeMultiplier)
             return true;
 
     return false;
 }
 
-bool WebFrame::canDecreaseTextSize() const
+bool BWebFrame::CanDecreaseTextSize() const
 {
-    if (m_data->frame)
-        return m_textMagnifier / kTextSizeMultiplierRatio >= kMinimumTextSizeMultiplier;
+    if (fData->frame)
+        return fTextMagnifier / kTextSizeMultiplierRatio >= kMinimumTextSizeMultiplier;
 
     return false;
 }
 
-void WebFrame::increaseTextSize()
+void BWebFrame::IncreaseTextSize()
 {
-    if (canIncreaseTextSize()) {
-        m_textMagnifier = m_textMagnifier * kTextSizeMultiplierRatio;
-        m_data->frame->setZoomFactor(m_textMagnifier, true);
+    if (CanIncreaseTextSize()) {
+        fTextMagnifier = fTextMagnifier * kTextSizeMultiplierRatio;
+        fData->frame->setZoomFactor(fTextMagnifier, true);
     }
 }
 
-void WebFrame::decreaseTextSize()
+void BWebFrame::DecreaseTextSize()
 {
-    if (canDecreaseTextSize()) {
-        m_textMagnifier = m_textMagnifier / kTextSizeMultiplierRatio;
-        m_data->frame->setZoomFactor(m_textMagnifier, true);
+    if (CanDecreaseTextSize()) {
+        fTextMagnifier = fTextMagnifier / kTextSizeMultiplierRatio;
+        fData->frame->setZoomFactor(fTextMagnifier, true);
     }
 }
 
-void WebFrame::resetTextSize()
+void BWebFrame::ResetTextSize()
 {
-    m_textMagnifier = 1.0;
+    if (fTextMagnifier == 1)
+        return;
 
-    if (m_data->frame)
-        m_data->frame->setZoomFactor(m_textMagnifier, true);
+    fTextMagnifier = 1;
+
+    if (fData->frame)
+        fData->frame->setZoomFactor(fTextMagnifier, true);
 }
 
-void WebFrame::SetTitle(const BString& title)
+void BWebFrame::SetEditable(bool editable)
 {
-	if (m_title == title)
+    fIsEditable = editable;
+}
+
+bool BWebFrame::IsEditable() const
+{
+    return fIsEditable;
+}
+
+void BWebFrame::SetTitle(const BString& title)
+{
+	if (fTitle == title)
 	    return;
 
-    m_title = title;
+    fTitle = title;
+}
+
+const BString& BWebFrame::Title() const
+{
+    return fTitle;
 }
 
 // #pragma mark - private
 
-WebCore::Frame* WebFrame::frame() const
+WebCore::Frame* BWebFrame::Frame() const
 {
-    return m_data->frame.get();
+    return fData->frame.get();
 }

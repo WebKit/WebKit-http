@@ -71,7 +71,7 @@
 
 namespace WebCore {
 
-FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, WebFrame* webFrame)
+FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* webFrame)
     : m_webPage(webPage)
     , m_webFrame(webFrame)
     , m_messenger()
@@ -104,14 +104,14 @@ void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 
 void FrameLoaderClientHaiku::forceLayout()
 {
-    FrameView* view = m_webFrame->frame()->view();
+    FrameView* view = m_webFrame->Frame()->view();
     if (view)
         view->forceLayout(true);
 }
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    FrameView* view = m_webFrame->frame()->view();
+    FrameView* view = m_webFrame->Frame()->view();
     if (view)
         view->forceLayout();
 }
@@ -239,7 +239,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 {
     BMessage message(LOAD_ONLOAD_HANDLE);
-    message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
 }
 
@@ -261,7 +261,7 @@ void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, doub
 void FrameLoaderClientHaiku::dispatchDidChangeLocationWithinPage()
 {
     BMessage message(LOAD_DOC_COMPLETED);
-    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
 }
 
@@ -293,7 +293,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
     BMessage message(LOAD_NEGOTIATING);
-    message.AddString("url", m_webFrame->frame()->loader()->provisionalDocumentLoader()->request().url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->provisionalDocumentLoader()->request().url().string());
     dispatchMessage(message);
 }
 
@@ -309,7 +309,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
     BMessage message(LOAD_COMMITED);
-    message.AddString("url", m_webFrame->frame()->loader()->documentLoader()->request().url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
 
     // We should assume first the frame has no title. If it has, then the above
@@ -333,14 +333,14 @@ void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError&)
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 {
     BMessage message(LOAD_DOC_COMPLETED);
-    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishLoad()
 {
     BMessage message(LOAD_FINISHED);
-    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
 }
 
@@ -420,11 +420,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     message.AddBool("select", true);
     if (dispatchMessage(message) != B_OK) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
+            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
 
         if (action.type() == NavigationTypeLinkClicked) {
             ResourceRequest emptyRequest;
-            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
 
         callPolicyFunction(function, PolicyIgnore);
@@ -463,11 +463,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
             message.AddBool("select", false);
 		    dispatchMessage(message);
 	        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-	            m_webFrame->frame()->loader()->resetMultipleFormSubmissionProtection();
+	            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
 	
 	        if (action.type() == NavigationTypeLinkClicked) {
 	            ResourceRequest emptyRequest;
-	            m_webFrame->frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+	            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
 	        }
             callPolicyFunction(function, PolicyIgnore);
         }
@@ -507,12 +507,12 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
 
 void FrameLoaderClientHaiku::postProgressStartedNotification()
 {
-    if (m_webFrame && m_webFrame->frame()->page()) {
+    if (m_webFrame && m_webFrame->Frame()->page()) {
         // A new load starts, so lets clear the previous error.
 //        m_loadError = ResourceError();
         postProgressEstimateChangedNotification();
     }
-    if (!m_webFrame || m_webFrame->frame()->tree()->parent())
+    if (!m_webFrame || m_webFrame->Frame()->tree()->parent())
         return;
     triggerNavigationHistoryUpdate();
 }
@@ -520,14 +520,14 @@ void FrameLoaderClientHaiku::postProgressStartedNotification()
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
     BMessage message(LOAD_PROGRESS);
-    message.AddFloat("progress", m_webFrame->frame()->page()->progress()->estimatedProgress() * 100);
+    message.AddFloat("progress", m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
     dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::postProgressFinishedNotification()
 {
     BMessage message(LOAD_DL_COMPLETED);
-    message.AddString("url", m_webFrame->frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
 }
 
@@ -559,7 +559,7 @@ void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
 {
-    Frame* frame = m_webFrame->frame();
+    Frame* frame = m_webFrame->Frame();
     if (!frame)
         return;
 
@@ -580,7 +580,7 @@ void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
 {
-    WebCore::Frame* frame = m_webFrame->frame();
+    WebCore::Frame* frame = m_webFrame->Frame();
     if (!frame)
         return;
 
@@ -693,7 +693,7 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return true;
 
-    Frame* frame = m_webFrame->frame();
+    Frame* frame = m_webFrame->Frame();
     if (frame && frame->settings() && frame->settings()->arePluginsEnabled()
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         return true;
@@ -765,7 +765,7 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
 {
     ASSERT(cachedFrame->view());
 
-    Frame* frame = m_webFrame->frame();
+    Frame* frame = m_webFrame->Frame();
     if (frame != frame->page()->mainFrame())
         return;
 
@@ -776,12 +776,12 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 {
     ASSERT(m_webFrame);
 
-    Frame* frame = m_webFrame->frame();
+    Frame* frame = m_webFrame->Frame();
 
     BRect bounds = m_webPage->viewBounds();
     IntSize size = IntSize(bounds.IntegerWidth() + 1, bounds.IntegerHeight() + 1);
 
-    bool transparent = m_webFrame->isTransparent();
+    bool transparent = m_webFrame->IsTransparent();
     Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
     frame->createView(size, backgroundColor, transparent, IntSize(), false);
@@ -815,9 +815,9 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     data->ownerElement = ownerElement;
     data->page = m_webPage->page();
 
-    WebFrame* frame = new WebFrame(m_webPage, m_webFrame, data);
+    BWebFrame* frame = new BWebFrame(m_webPage, m_webFrame, data);
     // As long as we don't return the Frame, we are responsible for deleting it.
-    RefPtr<Frame> childFrame = frame->frame();
+    RefPtr<Frame> childFrame = frame->Frame();
 
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
     if (!childFrame->page()) {
@@ -930,13 +930,13 @@ void FrameLoaderClientHaiku::didPerformFirstNavigation() const
 
 void FrameLoaderClientHaiku::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
 {
-    (m_webFrame->frame()->loader()->policyChecker()->*function)(action);
+    (m_webFrame->Frame()->loader()->policyChecker()->*function)(action);
 }
 
 void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
 {
-    WebCore::Page* page = m_webFrame->frame()->page();
-    WebCore::FrameLoader* loader = m_webFrame->frame()->loader();
+    WebCore::Page* page = m_webFrame->Frame()->page();
+    WebCore::FrameLoader* loader = m_webFrame->Frame()->loader();
     if (!page || !loader)
         return;
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
@@ -946,7 +946,7 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues) const
+void FrameLoaderClientHaiku::postCommitFrameViewSetup(BWebFrame* frame, FrameView* view, bool resetValues) const
 {
     // This method can be used to do adjustments on the main frame, since those
     // are the only ones directly embedded into a BWebView.

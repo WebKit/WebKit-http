@@ -79,7 +79,7 @@ FloatRect ChromeClientHaiku::windowRect()
 
 FloatRect ChromeClientHaiku::pageRect()
 {
-	IntSize size = m_webPage->MainFrame()->frame()->view()->contentsSize();
+	IntSize size = m_webPage->MainFrame()->Frame()->view()->contentsSize();
 	return FloatRect(0, 0, size.width(), size.height());
 }
 
@@ -196,12 +196,12 @@ bool ChromeClientHaiku::statusbarVisible()
 
 void ChromeClientHaiku::setScrollbarsVisible(bool visible)
 {
-    m_webPage->MainFrame()->setAllowsScrolling(visible);
+    m_webPage->MainFrame()->SetAllowsScrolling(visible);
 }
 
 bool ChromeClientHaiku::scrollbarsVisible()
 {
-    return m_webPage->MainFrame()->allowsScrolling();
+    return m_webPage->MainFrame()->AllowsScrolling();
 }
 
 void ChromeClientHaiku::setMenubarVisible(bool visible)
@@ -237,7 +237,7 @@ bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame
 
 void ChromeClientHaiku::closeWindowSoon()
 {
-    m_webPage->MainFrame()->frame()->loader()->stopAllLoaders();
+    m_webPage->MainFrame()->Frame()->loader()->stopAllLoaders();
     m_webPage->closeWindow();
 }
 

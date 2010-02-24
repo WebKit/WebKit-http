@@ -47,7 +47,6 @@
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
-#include "NotImplemented.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PlatformKeyboardEvent.h"
@@ -207,7 +206,7 @@ void BWebPage::Init()
 	WebFramePrivate* data = new WebFramePrivate;
 	data->page = m_page;
 
-    m_mainFrame = new WebFrame(this, 0, data);
+    m_mainFrame = new BWebFrame(this, 0, data);
 }
 
 void BWebPage::Shutdown()
@@ -219,7 +218,7 @@ void BWebPage::Shutdown()
 void BWebPage::SetListener(const BMessenger& listener)
 {
 	m_listener = listener;
-    m_mainFrame->setListener(listener);
+    m_mainFrame->SetListener(listener);
 }
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)
@@ -271,7 +270,7 @@ void BWebPage::ResendNotifications()
     Looper()->PostMessage(&message, this);
 }
 
-WebFrame* BWebPage::MainFrame() const
+BWebFrame* BWebPage::MainFrame() const
 {
     return m_mainFrame;
 };
@@ -479,7 +478,6 @@ void BWebPage::setStatusText(const BString& text)
 void BWebPage::linkHovered(const BString& url, const BString& title, const BString& content)
 {
 printf("BWebPage::linkHovered()\n");
-    notImplemented();
 }
 
 void BWebPage::requestDownload(const WebCore::ResourceRequest& request)
@@ -525,11 +523,11 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
     // NOTE: m_mainFrame can be 0 because init() eventually ends up calling
-    // paint()! WebFrame seems to cause an initial page to be loaded, maybe
+    // paint()! BWebFrame seems to cause an initial page to be loaded, maybe
     // this ought to be avoided also for start-up speed reasons!
     if (!m_mainFrame)
         return;
-    WebCore::Frame* frame = m_mainFrame->frame();
+    WebCore::Frame* frame = m_mainFrame->Frame();
     WebCore::FrameView* view = frame->view();
 
     if (!view || !frame->contentRenderer())
@@ -708,7 +706,7 @@ void BWebPage::handleLoadURL(const BMessage* message)
     if (message->FindString("url", &urlString) != B_OK)
         return;
 
-    m_mainFrame->loadRequest(urlString);
+    m_mainFrame->LoadURL(urlString);
 }
 
 void BWebPage::handleGoBack(const BMessage* message)
@@ -735,7 +733,7 @@ void BWebPage::handleFrameResized(const BMessage* message)
     message->FindFloat("width", &width);
     message->FindFloat("height", &height);
 
-    WebCore::Frame* frame = m_mainFrame->frame();
+    WebCore::Frame* frame = m_mainFrame->Frame();
     frame->view()->resize(width + 1, height + 1);
 }
 
@@ -747,7 +745,7 @@ void BWebPage::handleFocused(const BMessage* message)
     FocusController* focusController = m_page->focusController();
     focusController->setFocused(focused);
     if (focused && !focusController->focusedFrame())
-        focusController->setFocusedFrame(m_mainFrame->frame());
+        focusController->setFocusedFrame(m_mainFrame->Frame());
 }
 
 void BWebPage::handleActivated(const BMessage* message)
@@ -761,7 +759,7 @@ void BWebPage::handleActivated(const BMessage* message)
 
 void BWebPage::handleMouseEvent(const BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->frame();
+    WebCore::Frame* frame = m_mainFrame->Frame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -782,7 +780,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
 
 void BWebPage::handleMouseWheelChanged(BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->frame();
+    WebCore::Frame* frame = m_mainFrame->Frame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -792,7 +790,7 @@ void BWebPage::handleMouseWheelChanged(BMessage* message)
 
 void BWebPage::handleKeyEvent(BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->frame();
+    WebCore::Frame* frame = m_mainFrame->Frame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -804,12 +802,12 @@ void BWebPage::handleChangeTextSize(BMessage* message)
 {
     float increment = 0;
     message->FindFloat("increment", &increment);
-    if (increment > 0 && m_mainFrame->canIncreaseTextSize())
-    	m_mainFrame->increaseTextSize();
-    else if (increment < 0 && m_mainFrame->canDecreaseTextSize())
-    	m_mainFrame->decreaseTextSize();
+    if (increment > 0)
+    	m_mainFrame->IncreaseTextSize();
+    else if (increment < 0)
+    	m_mainFrame->DecreaseTextSize();
     else
-    	m_mainFrame->resetTextSize();
+    	m_mainFrame->ResetTextSize();
 }
 
 void BWebPage::handleFindString(BMessage* message)
@@ -829,7 +827,7 @@ void BWebPage::handleFindString(BMessage* message)
         message->SendReply(&reply);
     }
 
-    bool result = m_mainFrame->findString(string, forward, caseSensitive,
+    bool result = m_mainFrame->FindString(string, forward, caseSensitive,
         wrapSelection, startInSelection);
 
     reply.AddBool("result", result);
@@ -842,7 +840,7 @@ void BWebPage::handleResendNotifications(BMessage*)
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
     message.AddBool("can go backward", m_page->canGoBackOrForward(-1));
     message.AddBool("can go forward", m_page->canGoBackOrForward(1));
-    if (WebCore::FrameLoader* loader = m_mainFrame->frame()->loader())
+    if (WebCore::FrameLoader* loader = m_mainFrame->Frame()->loader())
         message.AddBool("can stop", loader->isLoading());
     dispatchMessage(message);
     // TODO: Other notifications...
