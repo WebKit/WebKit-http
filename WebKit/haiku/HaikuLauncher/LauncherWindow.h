@@ -30,7 +30,7 @@
 #ifndef LauncherWindow_h
 #define LauncherWindow_h
 
-#include "WebViewWindow.h"
+#include "WebWindow.h"
 #include <Messenger.h>
 #include <String.h>
 
@@ -58,7 +58,7 @@ enum {
     SHOW_DOWNLOAD_WINDOW = 'sdwd'
 };
 
-class LauncherWindow : public WebViewWindow {
+class LauncherWindow : public BWebWindow {
 public:
     LauncherWindow(BRect frame, const BMessenger& downloadListener,
         ToolbarPolicy = HaveToolbar);
@@ -72,24 +72,25 @@ public:
 
 private:
     // WebPage notification API implementations
-    virtual void navigationRequested(const BString& url, BWebView* view);
-    virtual void newWindowRequested(const BString& url);
-    virtual void loadNegotiating(const BString& url, BWebView* view);
-    virtual void loadCommited(const BString& url, BWebView* view);
-    virtual void loadProgress(float progress, BWebView* view);
-    virtual void loadFailed(const BString& url, BWebView* view);
-    virtual void loadFinished(const BString& url, BWebView* view);
-    virtual void titleChanged(const BString& title, BWebView* view);
-    virtual void resizeRequested(float width, float height, BWebView* view);
-    virtual void setToolBarsVisible(bool flag, BWebView* view);
-    virtual void setStatusBarVisible(bool flag, BWebView* view);
-    virtual void setMenuBarVisible(bool flag, BWebView* view);
-    virtual void setResizable(bool flag, BWebView* view);
-    virtual void statusChanged(const BString& status, BWebView* view);
-    virtual void navigationCapabilitiesChanged(bool canGoBackward,
+    virtual void NavigationRequested(const BString& url, BWebView* view);
+    virtual void NewWindowRequested(const BString& url);
+    virtual void LoadNegotiating(const BString& url, BWebView* view);
+    virtual void LoadCommited(const BString& url, BWebView* view);
+    virtual void LoadProgress(float progress, BWebView* view);
+    virtual void LoadFailed(const BString& url, BWebView* view);
+    virtual void LoadFinished(const BString& url, BWebView* view);
+    virtual void TitleChanged(const BString& title, BWebView* view);
+    virtual void ResizeRequested(float width, float height, BWebView* view);
+    virtual void SetToolBarsVisible(bool flag, BWebView* view);
+    virtual void SetStatusBarVisible(bool flag, BWebView* view);
+    virtual void SetMenuBarVisible(bool flag, BWebView* view);
+    virtual void SetResizable(bool flag, BWebView* view);
+    virtual void StatusChanged(const BString& status, BWebView* view);
+    virtual void NavigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop, BWebView* view);
-    virtual void updateGlobalHistory(const BString& url);
-    virtual void authenticationChallenge(BMessage* challenge);
+    virtual void UpdateGlobalHistory(const BString& url);
+    virtual void AuthenticationChallenge(BMessage* challenge);
+
     void updateTitle(const BString &title);
 
 private:

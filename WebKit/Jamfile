@@ -71,7 +71,7 @@ SharedLibrary libwebkit.so :
 	WebFrame.cpp
 	WebPage.cpp
 	WebView.cpp
-	WebViewWindow.cpp
+	WebWindow.cpp
 
 	:
 	libjavascriptcore.so libwebcore.so

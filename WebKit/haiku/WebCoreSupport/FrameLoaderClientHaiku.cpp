@@ -308,7 +308,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
-    BMessage message(LOAD_COMMITED);
+    BMessage message(LOAD_COMMITTED);
     message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
 

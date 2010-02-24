@@ -29,7 +29,7 @@
  */
 
 #include "config.h"
-#include "WebViewWindow.h"
+#include "WebWindow.h"
 
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -44,10 +44,10 @@
 
 #include <stdio.h>
 
-WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
+BWebWindow::BWebWindow(BRect frame, const char* title, window_look look,
         window_feel feel, uint32 flags, uint32 workspace)
-    : BWindow(frame, name, look, feel, flags, workspace)
-    , m_webView(0)
+    : BWindow(frame, title, look, feel, flags, workspace)
+    , fWebView(0)
 {
     SetLayout(new BGroupLayout(B_HORIZONTAL));
 
@@ -58,11 +58,11 @@ WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
     AddShortcut('Y', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
 }
 
-WebViewWindow::~WebViewWindow()
+BWebWindow::~BWebWindow()
 {
 }
 
-void WebViewWindow::MessageReceived(BMessage* message)
+void BWebWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case LOAD_ONLOAD_HANDLE:
@@ -80,67 +80,67 @@ void WebViewWindow::MessageReceived(BMessage* message)
     case NAVIGATION_REQUESTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            navigationRequested(url, webViewForMessage(message));
+            NavigationRequested(url, _WebViewForMessage(message));
         break;
     }
     case UPDATE_HISTORY: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            updateGlobalHistory(url);
+            UpdateGlobalHistory(url);
         break;
     }
     case NEW_WINDOW_REQUESTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            newWindowRequested(url);
+            NewWindowRequested(url);
         break;
     }
     case LOAD_NEGOTIATING: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadNegotiating(url, webViewForMessage(message));
+            LoadNegotiating(url, _WebViewForMessage(message));
         break;
     }
-    case LOAD_COMMITED: {
+    case LOAD_COMMITTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadCommited(url, webViewForMessage(message));
+            LoadCommited(url, _WebViewForMessage(message));
         break;
     }
     case LOAD_PROGRESS: {
         float progress;
         if (message->FindFloat("progress", &progress) == B_OK)
-            loadProgress(progress, webViewForMessage(message));
+            LoadProgress(progress, _WebViewForMessage(message));
         break;
     }
     case LOAD_FAILED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            loadFailed(url, webViewForMessage(message));
+            LoadFailed(url, _WebViewForMessage(message));
         break;
     }
     case LOAD_FINISHED: {
-        BString title;
-        if (message->FindString("url", &title) == B_OK)
-            loadFinished(title, webViewForMessage(message));
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            LoadFinished(url, _WebViewForMessage(message));
         break;
     }
     case TITLE_CHANGED: {
         BString title;
         if (message->FindString("title", &title) == B_OK)
-            titleChanged(title, webViewForMessage(message));
+            TitleChanged(title, _WebViewForMessage(message));
         break;
     }
     case RESIZING_REQUESTED: {
         BRect rect;
         if (message->FindRect("rect", &rect) == B_OK)
-            resizeRequested(rect.Width(), rect.Height(), webViewForMessage(message));
+            ResizeRequested(rect.Width(), rect.Height(), _WebViewForMessage(message));
         break;
     }
     case SET_STATUS_TEXT: {
         BString text;
         if (message->FindString("text", &text) == B_OK)
-            statusChanged(text, webViewForMessage(message));
+            StatusChanged(text, _WebViewForMessage(message));
         break;
     }
     case UPDATE_NAVIGATION_INTERFACE: {
@@ -150,41 +150,42 @@ void WebViewWindow::MessageReceived(BMessage* message)
         message->FindBool("can go backward", &canGoBackward);
         message->FindBool("can go forward", &canGoForward);
         message->FindBool("can stop", &canStop);
-        navigationCapabilitiesChanged(canGoBackward, canGoForward, canStop, webViewForMessage(message));
+        NavigationCapabilitiesChanged(canGoBackward, canGoForward, canStop, _WebViewForMessage(message));
         break;
     }
     case AUTHENTICATION_CHALLENGE: {
-        authenticationChallenge(message);
+        AuthenticationChallenge(message);
         break;
     }
 
     case TOOLBARS_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setToolBarsVisible(flag, webViewForMessage(message));
+            SetToolBarsVisible(flag, _WebViewForMessage(message));
         break;
     }
     case STATUSBAR_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setStatusBarVisible(flag, webViewForMessage(message));
+            SetStatusBarVisible(flag, _WebViewForMessage(message));
         break;
     }
     case MENUBAR_VISIBILITY: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setMenuBarVisible(flag, webViewForMessage(message));
+            SetMenuBarVisible(flag, _WebViewForMessage(message));
         break;
     }
     case SET_RESIZABLE: {
         bool flag;
         if (message->FindBool("flag", &flag) == B_OK)
-            setResizable(flag, webViewForMessage(message));
+            SetResizable(flag, _WebViewForMessage(message));
         break;
     }
 
     case B_MOUSE_WHEEL_CHANGED:
-        currentWebView()->MessageReceived(message);
+    	if (fWebView)
+        	fWebView->MessageReceived(message);
         break;
 
     default:
@@ -193,12 +194,12 @@ void WebViewWindow::MessageReceived(BMessage* message)
     }
 }
 
-bool WebViewWindow::QuitRequested()
+bool BWebWindow::QuitRequested()
 {
     // Do this here, so WebKit tear down happens earlier.
-    if (BWebView* view = currentWebView()) {
-        view->RemoveSelf();
-        delete view;
+    if (fWebView) {
+        fWebView->RemoveSelf();
+        delete fWebView;
     }
 
     return true;
@@ -206,62 +207,69 @@ bool WebViewWindow::QuitRequested()
 
 // #pragma mark -
 
-void WebViewWindow::setCurrentWebView(BWebView* view)
+void BWebWindow::SetCurrentWebView(BWebView* view)
 {
-	m_webView = view;
+	fWebView = view;
 }
 
-void WebViewWindow::navigationRequested(const BString& url, BWebView* view)
+BWebView* BWebWindow::CurrentWebView() const
 {
+	return fWebView;
 }
 
-void WebViewWindow::newWindowRequested(const BString& url)
-{
-}
+// #pragma mark - Notification API
 
-void WebViewWindow::loadNegotiating(const BString& url, BWebView* view)
-{
-}
-
-void WebViewWindow::loadCommited(const BString& url, BWebView* view)
+void BWebWindow::NavigationRequested(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::loadProgress(float progress, BWebView* view)
+void BWebWindow::NewWindowRequested(const BString& url)
 {
 }
 
-void WebViewWindow::loadFailed(const BString& url, BWebView* view)
+void BWebWindow::LoadNegotiating(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::loadFinished(const BString& url, BWebView* view)
+void BWebWindow::LoadCommited(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::titleChanged(const BString& title, BWebView* view)
+void BWebWindow::LoadProgress(float progress, BWebView* view)
+{
+}
+
+void BWebWindow::LoadFailed(const BString& url, BWebView* view)
+{
+}
+
+void BWebWindow::LoadFinished(const BString& url, BWebView* view)
+{
+}
+
+void BWebWindow::TitleChanged(const BString& title, BWebView* view)
 {
     SetTitle(title.String());
 }
 
-void WebViewWindow::resizeRequested(float width, float height, BWebView* view)
+void BWebWindow::ResizeRequested(float width, float height, BWebView* view)
 {
     ResizeTo(width, height);
 }
 
-void WebViewWindow::setToolBarsVisible(bool flag, BWebView* view)
+void BWebWindow::SetToolBarsVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setStatusBarVisible(bool flag, BWebView* view)
+void BWebWindow::SetStatusBarVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setMenuBarVisible(bool flag, BWebView* view)
+void BWebWindow::SetMenuBarVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setResizable(bool flag, BWebView* view)
+void BWebWindow::SetResizable(bool flag, BWebView* view)
 {
     if (flag)
         SetFlags(Flags() & ~B_NOT_RESIZABLE);
@@ -269,29 +277,29 @@ void WebViewWindow::setResizable(bool flag, BWebView* view)
         SetFlags(Flags() | B_NOT_RESIZABLE);
 }
 
-void WebViewWindow::statusChanged(const BString& statusText, BWebView* view)
+void BWebWindow::StatusChanged(const BString& statusText, BWebView* view)
 {
 }
 
-void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
+void BWebWindow::NavigationCapabilitiesChanged(bool canGoBackward,
     bool canGoForward, bool canStop, BWebView* view)
 {
 }
 
-void WebViewWindow::updateGlobalHistory(const BString& url)
+void BWebWindow::UpdateGlobalHistory(const BString& url)
 {
 }
 
-void WebViewWindow::authenticationChallenge(BMessage* challenge)
+void BWebWindow::AuthenticationChallenge(BMessage* challenge)
 {
 }
 
 // #pragma mark - private
 
-BWebView* WebViewWindow::webViewForMessage(const BMessage* message) const
+BWebView* BWebWindow::_WebViewForMessage(const BMessage* message) const
 {
-	// Default to the current BWebView if the message does not contain a view.
-	BWebView* view = m_webView;
+	// Default to the current BWebView, if there is none in the message.
+	BWebView* view = fWebView;
 	message->FindPointer("view", reinterpret_cast<void**>(&view));
 	return view;
 }

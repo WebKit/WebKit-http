@@ -41,7 +41,7 @@
 #include "PlatformString.h"
 #include "WebFrame.h"
 #include "WebView.h"
-#include "WebViewWindow.h"
+#include "WebWindow.h"
 #include "WindowFeatures.h"
 
 #include <Alert.h>
@@ -143,10 +143,10 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
     if (!features.resizable)
         flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
 
-    WebViewWindow* window = new WebViewWindow(frame, "WebView", look, feel, flags);
+    BWebWindow* window = new BWebWindow(frame, "WebKit", look, feel, flags);
     BWebView* view = new BWebView("web view");
     window->AddChild(view);
-    window->setCurrentWebView(view);
+    window->SetCurrentWebView(view);
     window->Show();
 
     view->LoadURL(BString(request.resourceRequest().url().string()));
