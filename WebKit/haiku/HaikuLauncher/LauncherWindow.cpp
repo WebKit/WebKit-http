@@ -408,6 +408,7 @@ void LauncherWindow::MenusBeginning()
 
 void LauncherWindow::newTab(const BString& url, bool select)
 {
+printf("newTab(%s, %d)\n", url.String(), select);
     // Executed in app thread (new BWebPage needs to be created in app thread).
     BWebView* webView = new BWebView("web_view");
     webView->WebPage()->SetDownloadListener(m_downloadListener);
@@ -435,7 +436,7 @@ void LauncherWindow::NavigationRequested(const BString& url, BWebView* view)
 {
 }
 
-void LauncherWindow::NewWindowRequested(const BString& url)
+void LauncherWindow::NewWindowRequested(const BString& url, bool primaryAction)
 {
     // Always open new windows in the application thread, since
     // creating a BWebView will try to grab the application lock.
@@ -445,7 +446,7 @@ void LauncherWindow::NewWindowRequested(const BString& url)
     BMessage message(NEW_TAB);
     message.AddPointer("window", this);
     message.AddString("url", url);
-    message.AddBool("select", false);
+    message.AddBool("select", primaryAction);
     be_app->PostMessage(&message);
 }
 

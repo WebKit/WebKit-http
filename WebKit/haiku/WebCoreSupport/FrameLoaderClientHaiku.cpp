@@ -417,7 +417,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     // Switch to the new tab immediately, since the new window action was caused by a primary click.
-    message.AddBool("select", true);
+    message.AddBool("primary", !isTertiaryMouseButton(action));
     if (dispatchMessage(message) != B_OK) {
         if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
             m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
@@ -452,25 +452,23 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
     }
 
     // Ignore the action if we want to load it into a new window or tab.
-    if (action.event() && action.event()->isMouseEvent()) {
+    if (isTertiaryMouseButton(action)) {
         // Clicks with the middle mouse button shall open a new window
         // (or tab respectively depending on browser)
-        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
-        if (mouseEvent && mouseEvent->button() == 1) {
-		    BMessage message(NEW_WINDOW_REQUESTED);
-		    message.AddString("url", request.url().string());
-		    // Don't switch to the new tab, but load it in the background.
-            message.AddBool("select", false);
-		    dispatchMessage(message);
-	        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-	            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
-	
-	        if (action.type() == NavigationTypeLinkClicked) {
-	            ResourceRequest emptyRequest;
-	            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
-	        }
-            callPolicyFunction(function, PolicyIgnore);
+	    BMessage message(NEW_WINDOW_REQUESTED);
+	    message.AddString("url", request.url().string());
+	    // Don't switch to the new tab, but load it in the background.
+        message.AddBool("primary", false);
+	    dispatchMessage(message);
+        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
+
+        if (action.type() == NavigationTypeLinkClicked) {
+            ResourceRequest emptyRequest;
+            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
+        callPolicyFunction(function, PolicyIgnore);
+        return;
     }
 
     callPolicyFunction(function, PolicyUse);
@@ -957,6 +955,15 @@ status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
 {
 	message.AddPointer("view", m_webPage->WebView());
 	return m_messenger.SendMessage(&message);
+}
+
+bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
+{
+    if (action.event() && action.event()->isMouseEvent()) {
+        const MouseEvent* mouseEvent = dynamic_cast<const MouseEvent*>(action.event());
+        return (mouseEvent && mouseEvent->button() == 1);
+    }
+    return false;
 }
 
 } // namespace WebCore

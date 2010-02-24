@@ -55,7 +55,8 @@ public:
 	// Derived windows can implement this notification API.
 	virtual	void				NavigationRequested(const BString& url,
 									BWebView* view);
-	virtual	void				NewWindowRequested(const BString& url);
+	virtual	void				NewWindowRequested(const BString& url,
+									bool primaryAction);
 	virtual	void				LoadNegotiating(const BString& url,
 									BWebView* view);
 	virtual	void				LoadCommited(const BString& url,

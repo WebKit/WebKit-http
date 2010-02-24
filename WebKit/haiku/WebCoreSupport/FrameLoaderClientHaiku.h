@@ -209,6 +209,7 @@ private:
     void triggerNavigationHistoryUpdate() const;
     void postCommitFrameViewSetup(BWebFrame*, FrameView*, bool) const;
     status_t dispatchMessage(BMessage& message) const;
+    bool isTertiaryMouseButton(const NavigationAction& action) const;
 
 private:
     BWebPage* m_webPage;

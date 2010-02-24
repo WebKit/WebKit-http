@@ -90,9 +90,11 @@ void BWebWindow::MessageReceived(BMessage* message)
         break;
     }
     case NEW_WINDOW_REQUESTED: {
+        bool primaryAction = false;
+        message->FindBool("primary", &primaryAction);
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            NewWindowRequested(url);
+            NewWindowRequested(url, primaryAction);
         break;
     }
     case LOAD_NEGOTIATING: {
@@ -223,7 +225,7 @@ void BWebWindow::NavigationRequested(const BString& url, BWebView* view)
 {
 }
 
-void BWebWindow::NewWindowRequested(const BString& url)
+void BWebWindow::NewWindowRequested(const BString& url, bool primaryAction)
 {
 }
 
