@@ -70,9 +70,9 @@ public:
     {
     	// The reference counting is needed to delete the BBitmap when
     	// the last Path object is gone. The deletion needs to happen
-    	// here, and not in our destructors, because we are deleted on the
+    	// here, and not in our destructor, because we are deleted on the
     	// execution of global destructors, at which point the BApplication
-    	// is already gone, and deleting BBitmaps without BApplication
+    	// is already gone, and deleting BBitmaps without a BApplication
     	// invokes the debugger.
         m_referenceCount--;
 
