@@ -77,11 +77,6 @@ public:
             fillColor.green = 0;
             fillColor.blue = 0;
             fillColor.alpha = 255;
-
-            view->SetDrawingMode(B_OP_ALPHA);
-            // TODO: If the FrameView is transparent, we would have to
-            // use B_ALPHA_COMPOSITE
-            view->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
         }
         Layer(Layer* previous)
             : view(0)
