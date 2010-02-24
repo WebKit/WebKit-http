@@ -810,6 +810,7 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     ASSERT(m_webFrame);
 
     WebFramePrivate* data = new WebFramePrivate;
+    data->requestedURL = url.string();
     data->name = name;
     data->ownerElement = ownerElement;
     data->page = m_webPage->page();

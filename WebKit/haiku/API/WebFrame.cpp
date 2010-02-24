@@ -97,6 +97,9 @@ void WebFrame::loadRequest(KURL url)
 		return;
 
     if (m_data->frame && m_data->frame->loader()) {
+
+        m_data->requestedURL = url.string();
+
         if (url.protocol().isEmpty()) {
             if (BEntry(BString(url.string())).Exists()) {
                 url.setProtocol("file");
