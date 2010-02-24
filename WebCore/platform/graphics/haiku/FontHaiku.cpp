@@ -52,12 +52,19 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
 {
     BView* view = graphicsContext->platformContext();
 
+    rgb_color oldColor = view->HighColor();
+    drawing_mode oldMode = view->DrawingMode();
+
+    view->SetDrawingMode(B_OP_ALPHA);
     view->SetHighColor(graphicsContext->fillColor());
     view->SetFont(font->platformData().font());
 
     GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));
     CString converted = UTF8Encoding().encode((const UChar *)glyphs, numGlyphs, URLEncodedEntitiesForUnencodables);
     view->DrawString(converted.data(), converted.length(), BPoint(point.x(), point.y()));
+
+    view->SetHighColor(oldColor);
+    view->SetDrawingMode(oldMode);
 }
 
 void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const FloatPoint& point,
