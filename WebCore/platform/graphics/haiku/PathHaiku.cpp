@@ -40,6 +40,7 @@
 #include <Bitmap.h>
 #include <Shape.h>
 #include <View.h>
+#include <stdio.h>
 
 namespace WebCore {
 
@@ -50,6 +51,7 @@ public:
     HitTestBitmap()
         : m_bitmap(0)
         , m_view(0)
+        , m_referenceCount(0)
     {
         // Do not create the bitmap here, since this object is initialized
         // statically, and BBitmaps need a running BApplication to work.
@@ -57,14 +59,34 @@ public:
 
     ~HitTestBitmap()
     {
-        // m_bitmap being 0 simply means WebCore never performed any hit-tests
-        // on Paths.
-        if (!m_bitmap)
-            return;
+    }
 
-        m_bitmap->Unlock();
-        // Will also delete the BView attached to the bitmap:
-        delete m_bitmap;
+    void addReference()
+    {
+    	m_referenceCount++;
+    }
+
+    void removeReference()
+    {
+    	// The reference counting is needed to delete the BBitmap when
+    	// the last Path object is gone. The deletion needs to happen
+    	// here, and not in our destructors, because we are deleted on the
+    	// execution of global destructors, at which point the BApplication
+    	// is already gone, and deleting BBitmaps without BApplication
+    	// invokes the debugger.
+        m_referenceCount--;
+
+        if (m_referenceCount == 0) {
+            // m_bitmap being 0 simply means WebCore never performed any 
+            // hit-tests on Paths.
+            if (!m_bitmap)
+                return;
+
+            m_bitmap->Unlock();
+            // Will also delete the BView attached to the bitmap:
+            delete m_bitmap;
+            m_bitmap = 0;
+        }
     }
 
     void init()
@@ -135,6 +157,7 @@ public:
 private:
     BBitmap* m_bitmap;
     BView* m_view;
+    int m_referenceCount;
 };
 
 // Reuse the same hit test bitmap for all paths. Initialization is lazy, and
@@ -149,15 +172,18 @@ static HitTestBitmap gHitTestBitmap;
 Path::Path()
     : m_path(new BShape())
 {
+	gHitTestBitmap.addReference();
 }
 
 Path::Path(const Path& other)
     : m_path(new BShape(*other.platformPath()))
 {
+	gHitTestBitmap.addReference();
 }
 
 Path::~Path()
 {
+	gHitTestBitmap.removeReference();
     delete m_path;
 }
 
