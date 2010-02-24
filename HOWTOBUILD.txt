@@ -6,24 +6,25 @@ Author:	Maxime Simon <simon.maxime@gmail.com>
 
 Requirements
 ------------
-
-* WebKit, as you read this file I can assume that you already
-got it, but just in case:
-% git clone git://gitorious.org/haiku-webkit-port/haiku-webkit-port.git
+* GCC4, available on hybrid Haiku builds or gcc4-only builds.
 
 * GPerf, you can find the executable here:
 http://ryanleavengood.com/haiku/gperf
 
-* ICU, the unicode folder containing the needed headers
-is located here (you may need to do a svn checkout):
-http://dev.haiku-os.org/browser/haiku/trunk//headers/libs/icu
+* ICU, the libs are part of default Haiku builds since r33176. However you still need to install the development optional package, ICU-devel:
+$ installoptionalpackage -a ICU-devel
+(or http://haiku-files.org/files/optional-packages/)
 
-* Curl, can be found here:
-http://haiku-files.org/files/optional-packages/curl-7.19.6-r1a1-x86-gcc2-2009-08-30.zip
+Note that a due to a small ommission in the current ICU-devel package you'll have to manually create a few links for the libs:
+$ ln -s /boot/system/lib/libicu-*.so /boot/develop/abi/x86/gcc4/lib
 
-* Perl, is normally included in Haiku.
+* Curl, might be already present in your Haiku install, otherwise:
+$ installoptionalpackage -a Curl
+(or http://haiku-files.org/files/optional-packages/)
 
-* GCC4, is also normally included in Haiku. (WebKit can't build with GCC2)
+* Perl, might be already present in your Haiku install, otherwise:
+$ installoptionalpackage -a Perl
+(or http://haiku-files.org/files/optional-packages/)
 
 * Python and Ruby, are optional but may be needed if you want to
 go further with WebKit (testing, etc).
@@ -34,6 +35,9 @@ Building
 
 Be sure to have all the requirements above before continuing,
 and to be placed in the directory where you checked out WebKit.
+
+Don't forget to switch the current toolchain too gcc4 (unless you're on a pure gcc4 Haiku):
+$ setgcc gcc4
 
 * First step, generate derived sources:
 $ sh WebKitTools/haiku/make-generated-sources.sh
