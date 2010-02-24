@@ -111,9 +111,14 @@ void WebFrame::loadRequest(KURL url)
     }
 }
 
-BString WebFrame::url() const
+BString WebFrame::URL() const
 {
     return m_data->frame->loader()->url().string();
+}
+
+BString WebFrame::RequestedURL() const
+{
+    return m_data->requestedURL;
 }
 
 void WebFrame::stopLoading()
@@ -327,6 +332,14 @@ void WebFrame::resetTextSize()
 
     if (m_data->frame)
         m_data->frame->setZoomFactor(m_textMagnifier, true);
+}
+
+void WebFrame::SetTitle(const BString& title)
+{
+	if (m_title == title)
+	    return;
+
+    m_title = title;
 }
 
 // #pragma mark - private

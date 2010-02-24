@@ -7,10 +7,10 @@
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *	notice, this list of conditions and the following disclaimer.
+ *    notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *	notice, this list of conditions and the following disclaimer in the
- *	documentation and/or other materials provided with the distribution.
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -36,9 +36,16 @@
 
 class WebDownload;
 class WebFrame;
-class WebView;
+class BWebView;
 
 namespace WebCore {
+class ChromeClientHaiku;
+class ContextMenuClientHaiku;
+class DragClientHaiku;
+class EditorClientHaiku;
+class FrameLoaderClientHaiku;
+class InspectorClientHaiku;
+
 class Page;
 class ResourceHandle;
 class ResourceRequest;
@@ -56,10 +63,8 @@ typedef enum {
 	B_WEBKIT_CACHE_MODEL_WEB_BROWSER
 } BWebKitCacheModel;
 
-class BWebPage : public BHandler {
+class BWebPage : private BHandler {
 public:
-								BWebPage(WebView* webView);
-
 	static	void				InitializeOnce();
 	static	void				SetCacheModel(BWebKitCacheModel model);
 
@@ -69,19 +74,35 @@ public:
 			void				SetListener(const BMessenger& listener);
 			void				SetDownloadListener(const BMessenger& listener);
 
+			WebFrame*			MainFrame() const;
+			BWebView*			WebView() const;
+				// NOTE: Using the BWebView requires locking it's looper!
+
 			void				LoadURL(const char* urlString);
 			void				GoBack();
 			void				GoForward();
 
+			BString				MainFrameTitle() const;
+			BString				MainFrameRequestedURL() const;
+			BString				MainFrameURL() const;
+
 			void				ChangeTextSize(float increment);
-			void				FindString(const char* string, bool forward,
-									bool caseSensitive, bool wrapSelection,
-									bool startInSelection);
+			void				FindString(const char* string,
+									bool forward = true,
+									bool caseSensitive = false,
+									bool wrapSelection = true,
+									bool startInSelection = false);
 
 			void				ResendNotifications();
 
-	// TODO: These calls should also be private, since they are called from
-	// the BWebView only.
+private:
+	friend class WebDownload;
+	friend class WebFrame;
+	friend class BWebView;
+
+								BWebPage(BWebView* webView);
+
+	// These calls are private, since they are called from the BWebView only.
 	void draw(const BRect& updateRect);
 	void frameResized(float width, float height);
 	void focused(bool focused);
@@ -93,21 +114,37 @@ public:
 	void keyEvent(const BMessage* message);
 	void standardShortcut(const BMessage* message);
 
+private:
 	// The following methods are only supposed to be called by the
 	// ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
 	// thread! This needs to go into a private class.
-	WebFrame* mainFrame() const;
-	WebCore::Page* page() const;
-	WebView* webView() const;
-		// NOTE: Using the WebView requires locking it's looper!
+	friend class WebCore::ChromeClientHaiku;
+	friend class WebCore::ContextMenuClientHaiku;
+	friend class WebCore::DragClientHaiku;
+	friend class WebCore::EditorClientHaiku;
+	friend class WebCore::FrameLoaderClientHaiku;
+	friend class WebCore::InspectorClientHaiku;
 
-	BRect contentsSize();
+	WebCore::Page* page() const;
+
 	BRect windowBounds();
 	void setWindowBounds(const BRect& bounds);
 	BRect viewBounds();
 	void setViewBounds(const BRect& bounds);
-	BString mainFrameTitle();
-	BString mainFrameURL();
+
+	void setToolbarsVisible(bool);
+	bool areToolbarsVisible() const { return m_toolbarsVisible; }
+
+	void setStatusbarVisible(bool);
+	bool isStatusbarVisible() const { return m_statusbarVisible; }
+
+	void setMenubarVisible(bool);
+	bool isMenubarVisible() const { return m_menubarVisible; }
+
+	void setResizable(bool);
+	void closeWindow();
+	void setStatusText(const BString&);
+	void linkHovered(const BString&, const BString&, const BString&);
 
 	void requestDownload(const WebCore::ResourceRequest& request);
 	void requestDownload(WebCore::ResourceHandle* handle,
@@ -120,9 +157,8 @@ public:
 		bool repaintContentOnly);
 
 private:
-	virtual ~BWebPage();
-
-	virtual void MessageReceived(BMessage* message);
+	virtual						~BWebPage();
+	virtual	void				MessageReceived(BMessage* message);
 
 	void skipToLastMessage(BMessage*& message);
 
@@ -145,9 +181,13 @@ private:
 private:
     BMessenger m_listener;
 	BMessenger m_downloadListener;
-	WebView* m_webView;
+	BWebView* m_webView;
 	WebFrame* m_mainFrame;
 	WebCore::Page* m_page;
+
+	bool m_toolbarsVisible;
+	bool m_statusbarVisible;
+	bool m_menubarVisible;
 };
 
 #endif // _WEB_PAGE_H

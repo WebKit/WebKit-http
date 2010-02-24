@@ -43,18 +43,19 @@
 
 using namespace WebCore;
 
-WebView::WebView(const char* name)
+BWebView::BWebView(const char* name)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE | B_NAVIGABLE)
-    , m_offscreenBitmap(0)
-    , m_offscreenViewClean(false)
-    , m_webPage(new BWebPage(this))
+    , fLastMouseButtons(0)
+    , fOffscreenBitmap(0)
+    , fOffscreenViewClean(false)
+    , fWebPage(new BWebPage(this))
 {
-    m_webPage->Init();
+    fWebPage->Init();
     // TODO: Should add this to the "current" looper, but that looper needs to
     // stay around regardless of windows opening/closing. Adding it to the
     // app looper is the safest bet for now.
     if (be_app->Lock()) {
-        be_app->AddHandler(m_webPage);
+        be_app->AddHandler(fWebPage);
         be_app->Unlock();
     }
 
@@ -63,56 +64,57 @@ WebView::WebView(const char* name)
     SetViewColor(B_TRANSPARENT_COLOR);
 }
 
-WebView::~WebView()
+BWebView::~BWebView()
 {
 }
 
 // #pragma mark - BView hooks
 
-void WebView::AttachedToWindow()
+void BWebView::AttachedToWindow()
 {
-    m_webPage->SetListener(BMessenger(Window()));
+    fWebPage->SetListener(BMessenger(Window()));
 }
 
-void WebView::DetachedFromWindow()
+void BWebView::DetachedFromWindow()
 {
-// TODO: Needs locking.
-//    m_webPage->setDispatchTarget(0);
-    m_webPage->Shutdown();
+    fWebPage->Shutdown();
 }
 
-void WebView::Draw(BRect rect)
+void BWebView::Draw(BRect rect)
 {
-    if (!m_offscreenViewClean) {
-// TODO: Disabled because WebCore manages invalidation internally and knows when
-// to redraw. Since we are drawing a fixed/independent bitmap anyway, we don't
-// need to manually trigger WebCore repaint events. These might be causing the
-// weird hang in BitmapImage::draw() -> startAnimation(). That's why I disable
-// it here for the time being to see if these hangs go away.
-//       m_webPage->draw(rect);
+#if 0
+    if (!fOffscreenViewClean) {
+        fWebPage->draw(rect);
         return;
     }
 
-    if (!m_offscreenBitmap->Lock()) {
+    if (!fOffscreenBitmap->Lock()) {
         SetHighColor(255, 0, 0);
         FillRect(rect);
         return;
     }
+#else
+    if (!fOffscreenViewClean || !fOffscreenBitmap->Lock()) {
+        SetHighColor(255, 255, 255);
+        FillRect(rect);
+        return;
+    }
+#endif
 
-    m_offscreenView->Sync();
-    DrawBitmap(m_offscreenBitmap, m_offscreenView->Bounds(),
-        m_offscreenView->Bounds());
+    fOffscreenView->Sync();
+    DrawBitmap(fOffscreenBitmap, fOffscreenView->Bounds(),
+        fOffscreenView->Bounds());
 
-    m_offscreenBitmap->Unlock();
+    fOffscreenBitmap->Unlock();
 }
 
-void WebView::FrameResized(float width, float height)
+void BWebView::FrameResized(float width, float height)
 {
-    resizeOffscreenView(width + 1, height + 1);
-    m_webPage->frameResized(width, height);
+    _ResizeOffscreenView(width + 1, height + 1);
+    fWebPage->frameResized(width, height);
 }
 
-void WebView::GetPreferredSize(float* width, float* height)
+void BWebView::GetPreferredSize(float* width, float* height)
 {
 	// This needs to be implemented, since the default BView implementation
 	// is to return the current width/height of the view. The default
@@ -123,7 +125,7 @@ void WebView::GetPreferredSize(float* width, float* height)
 		*height = 100;
 }
 
-void WebView::MessageReceived(BMessage* message)
+void BWebView::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case B_MOUSE_WHEEL_CHANGED: {
@@ -131,7 +133,7 @@ void WebView::MessageReceived(BMessage* message)
         uint32 buttons;
         GetMouse(&where, &buttons);
         BPoint screenWhere = ConvertToScreen(where);
-        m_webPage->mouseWheelChanged(message, where, screenWhere);
+        fWebPage->mouseWheelChanged(message, where, screenWhere);
         // NOTE: This solves a bug in WebKit itself, it should issue a mouse
         // event when scrolling by wheel event. The effects of the this bug
         // can be witnessed in Safari as well.
@@ -140,7 +142,7 @@ void WebView::MessageReceived(BMessage* message)
         mouseMessage.AddPoint("screen_where", screenWhere);
         mouseMessage.AddInt32("buttons", buttons);
         mouseMessage.AddInt32("modifiers", modifiers());
-        m_webPage->mouseEvent(&mouseMessage, where, screenWhere);
+        fWebPage->mouseEvent(&mouseMessage, where, screenWhere);
         break;
     }
 
@@ -150,7 +152,7 @@ void WebView::MessageReceived(BMessage* message)
     case B_PASTE:
     case B_UNDO:
     case B_REDO:
-        m_webPage->standardShortcut(message);
+        fWebPage->standardShortcut(message);
         break;
 
     case B_FIND_STRING_RESULT:
@@ -163,169 +165,104 @@ void WebView::MessageReceived(BMessage* message)
     }
 }
 
-void WebView::MakeFocus(bool focused)
+void BWebView::MakeFocus(bool focused)
 {
 	BView::MakeFocus(focused);
-	m_webPage->focused(focused);
+	fWebPage->focused(focused);
 }
 
-void WebView::WindowActivated(bool activated)
+void BWebView::WindowActivated(bool activated)
 {
-    m_webPage->activated(activated);
+    fWebPage->activated(activated);
 }
 
-void WebView::MouseMoved(BPoint where, uint32, const BMessage*)
+void BWebView::MouseMoved(BPoint where, uint32, const BMessage*)
 {
-    dispatchMouseEvent(where, B_MOUSE_MOVED);
+    _DispatchMouseEvent(where, B_MOUSE_MOVED);
 }
 
-void WebView::MouseDown(BPoint where)
+void BWebView::MouseDown(BPoint where)
 {
 	MakeFocus(true);
     SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
-    dispatchMouseEvent(where, B_MOUSE_DOWN);
+    _DispatchMouseEvent(where, B_MOUSE_DOWN);
 }
 
-void WebView::MouseUp(BPoint where)
+void BWebView::MouseUp(BPoint where)
 {
-    dispatchMouseEvent(where, B_MOUSE_UP);
+    _DispatchMouseEvent(where, B_MOUSE_UP);
 }
 
-void WebView::KeyDown(const char*, int32)
+void BWebView::KeyDown(const char*, int32)
 {
-    dispatchKeyEvent(B_KEY_DOWN);
+    _DispatchKeyEvent(B_KEY_DOWN);
 }
 
-void WebView::KeyUp(const char*, int32)
+void BWebView::KeyUp(const char*, int32)
 {
-    dispatchKeyEvent(B_KEY_UP);
+    _DispatchKeyEvent(B_KEY_UP);
 }
 
-// #pragma mark - API
+// #pragma mark - public API
 
-void WebView::setBounds(BRect rect)
+BString BWebView::MainFrameTitle() const
 {
-    BMessage message(RESIZING_REQUESTED);
-    message.AddRect("rect", rect);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
+    return fWebPage->MainFrameTitle();
 }
 
-BRect WebView::contentsSize() const
+BString BWebView::MainFrameRequestedURL() const
 {
-    return m_webPage->contentsSize();
+    return fWebPage->MainFrameRequestedURL();
 }
 
-BString WebView::mainFrameTitle() const
+BString BWebView::MainFrameURL() const
 {
-    return m_webPage->mainFrameTitle();
+    return fWebPage->MainFrameURL();
 }
 
-BString WebView::mainFrameURL() const
+void BWebView::LoadURL(const char* urlString)
 {
-    return m_webPage->mainFrameURL();
+    fWebPage->LoadURL(urlString);
 }
 
-void WebView::loadRequest(const char* urlString)
+void BWebView::GoBack()
 {
-    m_webPage->LoadURL(urlString);
+    fWebPage->GoBack();
 }
 
-void WebView::goBack()
+void BWebView::GoForward()
 {
-    m_webPage->GoBack();
+    fWebPage->GoForward();
 }
 
-void WebView::goForward()
+void BWebView::IncreaseTextSize()
 {
-    m_webPage->GoForward();
+	fWebPage->ChangeTextSize(1);
 }
 
-void WebView::setToolbarsVisible(bool flag)
+void BWebView::DecreaseTextSize()
 {
-    m_toolbarsVisible = flag;
-
-    BMessage message(TOOLBARS_VISIBILITY);
-    message.AddBool("flag", flag);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
+	fWebPage->ChangeTextSize(-1);
 }
 
-void WebView::setStatusbarVisible(bool flag)
+void BWebView::ResetTextSize()
 {
-    m_statusbarVisible = flag;
-
-    BMessage message(STATUSBAR_VISIBILITY);
-    message.AddBool("flag", flag);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
+	fWebPage->ChangeTextSize(0);
 }
 
-void WebView::setMenubarVisible(bool flag)
-{
-    m_menubarVisible = flag;
-
-    BMessage message(MENUBAR_VISIBILITY);
-    message.AddBool("flag", flag);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
-}
-
-void WebView::setResizable(bool flag)
-{
-    BMessage message(SET_RESIZABLE);
-    message.AddBool("flag", flag);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
-}
-
-void WebView::closeWindow()
-{
-    Window()->PostMessage(B_QUIT_REQUESTED);
-}
-
-void WebView::setStatusText(const BString& text)
-{
-    BMessage message(SET_STATUS_TEXT);
-    message.AddString("text", text);
-    message.AddPointer("view", this);
-    Window()->PostMessage(&message);
-}
-
-void WebView::linkHovered(const String& url, const String& title, const String& content)
-{
-printf("linkHovered()\n");
-    notImplemented();
-}
-
-void WebView::increaseTextSize()
-{
-	m_webPage->ChangeTextSize(1);
-}
-
-void WebView::decreaseTextSize()
-{
-	m_webPage->ChangeTextSize(-1);
-}
-
-void WebView::resetTextSize()
-{
-	m_webPage->ChangeTextSize(0);
-}
-
-void WebView::findString(const char* string, bool forward ,
+void BWebView::FindString(const char* string, bool forward ,
     bool caseSensitive, bool wrapSelection, bool startInSelection)
 {
-	m_webPage->FindString(string, forward, caseSensitive,
+	fWebPage->FindString(string, forward, caseSensitive,
 	    wrapSelection, startInSelection);
 }
 
 // #pragma mark - API for WebPage only
 
-void WebView::setOffscreenViewClean(BRect cleanRect, bool immediate)
+void BWebView::SetOffscreenViewClean(BRect cleanRect, bool immediate)
 {
     if (LockLooper()) {
-        m_offscreenViewClean = true;
+        fOffscreenViewClean = true;
         if (immediate)
             Draw(cleanRect);
         else
@@ -334,10 +271,10 @@ void WebView::setOffscreenViewClean(BRect cleanRect, bool immediate)
     }
 }
 
-void WebView::invalidate()
+void BWebView::InvalidateOffscreenView()
 {
     if (LockLooper()) {
-        m_offscreenViewClean = false;
+        fOffscreenViewClean = false;
         Invalidate();
         UnlockLooper();
     }
@@ -345,52 +282,52 @@ void WebView::invalidate()
 
 // #pragma mark - private
 
-void WebView::resizeOffscreenView(int width, int height)
+void BWebView::_ResizeOffscreenView(int width, int height)
 {
     BRect bounds(0, 0, width - 1, height - 1);
-    if (m_offscreenBitmap) {
-        m_offscreenBitmap->Lock();
-        if (m_offscreenBitmap->Bounds().Contains(bounds)) {
+    if (fOffscreenBitmap) {
+        fOffscreenBitmap->Lock();
+        if (fOffscreenBitmap->Bounds().Contains(bounds)) {
             // Just resize the view and clear the exposed parts, but never
             // shrink the bitmap).
-            BRect oldViewBounds(m_offscreenView->Bounds());
-            m_offscreenView->ResizeTo(width - 1, height - 1);
-            BRegion exposed(m_offscreenView->Bounds());
+            BRect oldViewBounds(fOffscreenView->Bounds());
+            fOffscreenView->ResizeTo(width - 1, height - 1);
+            BRegion exposed(fOffscreenView->Bounds());
             exposed.Exclude(oldViewBounds);
-            m_offscreenView->FillRegion(&exposed, B_SOLID_LOW);
-            m_offscreenBitmap->Unlock();
+            fOffscreenView->FillRegion(&exposed, B_SOLID_LOW);
+            fOffscreenBitmap->Unlock();
             return;
         }
     }
-    BBitmap* oldBitmap = m_offscreenBitmap;
-    BView* oldView = m_offscreenView;
+    BBitmap* oldBitmap = fOffscreenBitmap;
+    BView* oldView = fOffscreenView;
 
-    m_offscreenBitmap = new BBitmap(bounds, B_RGB32, true);
-    if (m_offscreenBitmap->InitCheck() != B_OK) {
+    fOffscreenBitmap = new BBitmap(bounds, B_RGB32, true);
+    if (fOffscreenBitmap->InitCheck() != B_OK) {
         BAlert* alert = new BAlert("Internal error", "Unable to create off-screen bitmap for WebKit contents.", "OK");
         alert->Go();
         exit(1);
     }
-    m_offscreenView = new BView(bounds, "WebKit offscreen view", 0, 0);
-    m_offscreenBitmap->Lock();
-    m_offscreenBitmap->AddChild(m_offscreenView);
+    fOffscreenView = new BView(bounds, "WebKit offscreen view", 0, 0);
+    fOffscreenBitmap->Lock();
+    fOffscreenBitmap->AddChild(fOffscreenView);
 
     if (oldBitmap) {
         // Transfer the old bitmap contents (just the visible part) and
         // clear the rest.
-        BRegion region(m_offscreenView->Bounds());
+        BRegion region(fOffscreenView->Bounds());
         BRect oldViewBounds = oldView->Bounds();
         region.Exclude(oldViewBounds);
-        m_offscreenView->DrawBitmap(oldBitmap, oldViewBounds, oldViewBounds);
-        m_offscreenView->FillRegion(&region, B_SOLID_LOW);
+        fOffscreenView->DrawBitmap(oldBitmap, oldViewBounds, oldViewBounds);
+        fOffscreenView->FillRegion(&region, B_SOLID_LOW);
         delete oldBitmap;
-            // Takes care of old m_offscreenView too.
+            // Takes care of old fOffscreenView too.
     }
 
-    m_offscreenBitmap->Unlock();
+    fOffscreenBitmap->Unlock();
 }
 
-void WebView::dispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
+void BWebView::_DispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
 {
     BMessage* message = Looper()->CurrentMessage();
     if (!message || message->what != sanityWhat)
@@ -398,22 +335,22 @@ void WebView::dispatchMouseEvent(const BPoint& where, uint32 sanityWhat)
 
 	if (sanityWhat == B_MOUSE_UP) {
 		// the activation click may contain no previous buttons
-		if (!m_lastMouseButtons)
+		if (!fLastMouseButtons)
 			return;
 
-		message->AddInt32("previous buttons", m_lastMouseButtons);
+		message->AddInt32("previous buttons", fLastMouseButtons);
 	} else
-		message->FindInt32("buttons", (int32*)&m_lastMouseButtons);
+		message->FindInt32("buttons", (int32*)&fLastMouseButtons);
 
-    m_webPage->mouseEvent(message, where, ConvertToScreen(where));
+    fWebPage->mouseEvent(message, where, ConvertToScreen(where));
 }
 
-void WebView::dispatchKeyEvent(uint32 sanityWhat)
+void BWebView::_DispatchKeyEvent(uint32 sanityWhat)
 {
     BMessage* message = Looper()->CurrentMessage();
     if (!message || message->what != sanityWhat)
         return;
 
-    m_webPage->keyEvent(message);
+    fWebPage->keyEvent(message);
 }
 

@@ -25,99 +25,84 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _WEB_VIEW_H_
+#define _WEB_VIEW_H_
 
-
-#ifndef WebView_h
-#define WebView_h
 
 #include <String.h>
 #include <View.h>
 
 class BWebPage;
 
-namespace WebCore {
-class String;
-};
 
-class WebView : public BView {
+class BWebView : public BView {
 public:
-    WebView(const char* name);
-    ~WebView();
+								BWebView(const char* name);
+	virtual						~BWebView();
 
-    virtual void AttachedToWindow();
-    virtual void DetachedFromWindow();
+	// BView hooks
+	virtual	void				AttachedToWindow();
+	virtual	void				DetachedFromWindow();
 
-    virtual void Draw(BRect);
-    virtual void FrameResized(float width, float height);
-    virtual void GetPreferredSize(float* width, float* height);
-    virtual void MessageReceived(BMessage*);
+	virtual	void				Draw(BRect);
+	virtual	void				FrameResized(float width, float height);
+	virtual	void				GetPreferredSize(float* width, float* height);
+	virtual	void				MessageReceived(BMessage* message);
 
-    virtual void MakeFocus(bool = true);
-    virtual void WindowActivated(bool);
+	virtual	void				MakeFocus(bool focused = true);
+	virtual	void				WindowActivated(bool activated);
 
-    virtual void MouseMoved(BPoint, uint32, const BMessage*);
-    virtual void MouseDown(BPoint);
-    virtual void MouseUp(BPoint);
+	virtual	void				MouseMoved(BPoint where, uint32 transit,
+									const BMessage* dragMessage);
+	virtual	void				MouseDown(BPoint where);
+	virtual	void				MouseUp(BPoint where);
 
-    virtual void KeyDown(const char*, int32);
-    virtual void KeyUp(const char*, int32);
+	virtual	void				KeyDown(const char* bytes, int32 numBytes);
+	virtual	void				KeyUp(const char* bytes, int32 numBytes);
 
-    BWebPage* webPage() const { return m_webPage; }
+	// BWebPage API
+			BWebPage*			WebPage() const { return fWebPage; }
 
-    void setBounds(BRect);
-    BRect contentsSize() const;
+			BString				MainFrameTitle() const;
+			BString				MainFrameRequestedURL() const;
+			BString				MainFrameURL() const;
 
-    BString mainFrameTitle() const;
-    BString mainFrameURL() const;
+			void				LoadURL(const char* urlString);
+			void				GoBack();
+			void				GoForward();
 
-    void loadRequest(const char* urlString);
-    void goBack();
-    void goForward();
+			void				IncreaseTextSize();
+			void				DecreaseTextSize();
+			void				ResetTextSize();
 
-    void setToolbarsVisible(bool);
-    bool areToolbarsVisible() const { return m_toolbarsVisible; }
-
-    void setStatusbarVisible(bool);
-    bool isStatusbarVisible() const { return m_statusbarVisible; }
-
-    void setMenubarVisible(bool);
-    bool isMenubarVisible() const { return m_menubarVisible; }
-
-    void setResizable(bool);
-    void closeWindow();
-    void setStatusText(const BString&);
-    void linkHovered(const WebCore::String&, const WebCore::String&,
-        const WebCore::String&);
-
-    void increaseTextSize();
-    void decreaseTextSize();
-    void resetTextSize();
-    void findString(const char* string, bool forward = true,
-        bool caseSensitive = false, bool wrapSelection = true,
-        bool startInSelection = false);
+			void				FindString(const char* string,
+									bool forward = true,
+									bool caseSensitive = false,
+									bool wrapSelection = true,
+									bool startInSelection = false);
 
 private:
-    friend class BWebPage;
-    BView* offscreenView() const { return m_offscreenView; }
-    void setOffscreenViewClean(BRect cleanRect, bool immediate);
-    void invalidate();
-
-    void resizeOffscreenView(int width, int height);
-    void dispatchMouseEvent(const BPoint& where, uint32 sanityWhat);
-    void dispatchKeyEvent(uint32 sanityWhat);
+	friend class BWebPage;
+	inline	BView*				OffscreenView() const
+									{ return fOffscreenView; }
+			void				SetOffscreenViewClean(BRect cleanRect,
+									bool immediate);
+			void				InvalidateOffscreenView();
 
 private:
-    uint32 m_lastMouseButtons;
+			void				_ResizeOffscreenView(int width, int height);
+			void				_DispatchMouseEvent(const BPoint& where,
+									uint32 sanityWhat);
+			void				_DispatchKeyEvent(uint32 sanityWhat);
 
-    bool m_toolbarsVisible;
-    bool m_statusbarVisible;
-    bool m_menubarVisible;
+private:
+			uint32				fLastMouseButtons;
 
-    BBitmap* m_offscreenBitmap;
-    BView* m_offscreenView;
-    bool m_offscreenViewClean;
+			BBitmap*			fOffscreenBitmap;
+			BView*				fOffscreenView;
+			bool				fOffscreenViewClean;
 
-    BWebPage* m_webPage;
+			BWebPage*			fWebPage;
 };
 
-#endif // WebView_h
+#endif // _WEB_VIEW_H_

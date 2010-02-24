@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -31,7 +32,7 @@
 
 #include <Window.h>
 
-class WebView;
+class BWebView;
 
 class WebViewWindow : public BWindow {
 public:
@@ -43,33 +44,33 @@ public:
     virtual void MessageReceived(BMessage* message);
     virtual bool QuitRequested();
 
-    void setCurrentWebView(WebView* view);
-    WebView* currentWebView() const { return m_webView; }
+    void setCurrentWebView(BWebView* view);
+    BWebView* currentWebView() const { return m_webView; }
 
     // Derived windows should implement this notification API
-    virtual void navigationRequested(const BString& url, WebView* view);
+    virtual void navigationRequested(const BString& url, BWebView* view);
     virtual void newWindowRequested(const BString& url);
-    virtual void loadNegotiating(const BString& url, WebView* view);
-    virtual void loadCommited(const BString& url, WebView* view);
-    virtual void loadProgress(float progress, WebView* view);
-    virtual void loadFailed(const BString& url, WebView* view);
-    virtual void loadFinished(const BString& url, WebView* view);
-    virtual void titleChanged(const BString& title, WebView* view);
-    virtual void resizeRequested(float width, float height, WebView* view);
-    virtual void setToolBarsVisible(bool flag, WebView* view);
-    virtual void setStatusBarVisible(bool flag, WebView* view);
-    virtual void setMenuBarVisible(bool flag, WebView* view);
-    virtual void setResizable(bool flag, WebView* view);
-    virtual void statusChanged(const BString& status, WebView* view);
+    virtual void loadNegotiating(const BString& url, BWebView* view);
+    virtual void loadCommited(const BString& url, BWebView* view);
+    virtual void loadProgress(float progress, BWebView* view);
+    virtual void loadFailed(const BString& url, BWebView* view);
+    virtual void loadFinished(const BString& url, BWebView* view);
+    virtual void titleChanged(const BString& title, BWebView* view);
+    virtual void resizeRequested(float width, float height, BWebView* view);
+    virtual void setToolBarsVisible(bool flag, BWebView* view);
+    virtual void setStatusBarVisible(bool flag, BWebView* view);
+    virtual void setMenuBarVisible(bool flag, BWebView* view);
+    virtual void setResizable(bool flag, BWebView* view);
+    virtual void statusChanged(const BString& status, BWebView* view);
     virtual void navigationCapabilitiesChanged(bool canGoBackward,
-        bool canGoForward, bool canStop, WebView* view);
+        bool canGoForward, bool canStop, BWebView* view);
     virtual void updateGlobalHistory(const BString& url);
     virtual void authenticationChallenge(BMessage* challenge);
 
 private:
-    WebView* webViewForMessage(const BMessage* message) const;
+    BWebView* webViewForMessage(const BMessage* message) const;
 
-    WebView* m_webView;
+    BWebView* m_webView;
 };
 
 #endif // WebViewWindow_h

@@ -152,11 +152,14 @@ using namespace WebCore;
     pageCache()->setCapacity(pageCacheCapacity);
 }
 
-BWebPage::BWebPage(WebView* webView)
-    : BHandler("WebView process")
+BWebPage::BWebPage(BWebView* webView)
+    : BHandler("BWebPage")
     , m_webView(webView)
     , m_mainFrame(0)
     , m_page(0)
+    , m_toolbarsVisible(true)
+    , m_statusbarVisible(true)
+    , m_menubarVisible(true)
 {
     m_page = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
                                new WebCore::ContextMenuClientHaiku(),
@@ -268,8 +271,32 @@ void BWebPage::ResendNotifications()
     Looper()->PostMessage(&message, this);
 }
 
+WebFrame* BWebPage::MainFrame() const
+{
+    return m_mainFrame;
+};
 
-// #pragma mark - WebView API
+BWebView* BWebPage::WebView() const
+{
+    return m_webView;
+}
+
+BString BWebPage::MainFrameTitle() const
+{
+    return m_mainFrame->Title();
+}
+
+BString BWebPage::MainFrameRequestedURL() const
+{
+    return m_mainFrame->RequestedURL();
+}
+
+BString BWebPage::MainFrameURL() const
+{
+    return m_mainFrame->URL();
+}
+
+// #pragma mark - BWebView API
 
 void BWebPage::draw(const BRect& updateRect)
 {
@@ -330,8 +357,6 @@ void BWebPage::standardShortcut(const BMessage* message)
 {
 	// Simulate a B_KEY_DOWN event. The message is not complete,
 	// but enough to trigger short cut generation in EditorClientHaiku.
-    BMessage keyDownMessage(B_KEY_DOWN);
-    keyDownMessage.AddInt32("modifiers", modifiers() | B_COMMAND_KEY);
     const char* bytes = 0;
     switch (message->what) {
     case B_SELECT_ALL:
@@ -353,6 +378,8 @@ void BWebPage::standardShortcut(const BMessage* message)
         bytes = "Z";
         break;
     }
+    BMessage keyDownMessage(B_KEY_DOWN);
+    keyDownMessage.AddInt32("modifiers", modifiers() | B_COMMAND_KEY);
     keyDownMessage.AddString("bytes", bytes);
     keyDownMessage.AddInt64("when", system_time());
     Looper()->PostMessage(&keyDownMessage, this);
@@ -360,25 +387,9 @@ void BWebPage::standardShortcut(const BMessage* message)
 
 // #pragma mark - WebCoreSupport methods
 
-WebFrame* BWebPage::mainFrame() const
-{
-    return m_mainFrame;
-};
-
 WebCore::Page* BWebPage::page() const
 {
     return m_page;
-}
-
-WebView* BWebPage::webView() const
-{
-    return m_webView;
-}
-
-BRect BWebPage::contentsSize()
-{
-	IntSize viewSize = m_mainFrame->frame()->view()->contentsSize();
-    return BRect(B_ORIGIN, BPoint(viewSize.width() - 1, viewSize.height() - 1));
 }
 
 BRect BWebPage::windowBounds()
@@ -418,14 +429,57 @@ void BWebPage::setViewBounds(const BRect& bounds)
     }
 }
 
-BString BWebPage::mainFrameTitle()
+void BWebPage::setToolbarsVisible(bool flag)
 {
-    return m_mainFrame->title();
+    m_toolbarsVisible = flag;
+
+    BMessage message(TOOLBARS_VISIBILITY);
+    message.AddBool("flag", flag);
+    dispatchMessage(message);
 }
 
-BString BWebPage::mainFrameURL()
+void BWebPage::setStatusbarVisible(bool flag)
 {
-    return m_mainFrame->url();
+    m_statusbarVisible = flag;
+
+    BMessage message(STATUSBAR_VISIBILITY);
+    message.AddBool("flag", flag);
+    dispatchMessage(message);
+}
+
+void BWebPage::setMenubarVisible(bool flag)
+{
+    m_menubarVisible = flag;
+
+    BMessage message(MENUBAR_VISIBILITY);
+    message.AddBool("flag", flag);
+    dispatchMessage(message);
+}
+
+void BWebPage::setResizable(bool flag)
+{
+    BMessage message(SET_RESIZABLE);
+    message.AddBool("flag", flag);
+    dispatchMessage(message);
+}
+
+void BWebPage::closeWindow()
+{
+	BMessage message(B_QUIT_REQUESTED);
+    dispatchMessage(message);
+}
+
+void BWebPage::setStatusText(const BString& text)
+{
+    BMessage message(SET_STATUS_TEXT);
+    message.AddString("text", text);
+    dispatchMessage(message);
+}
+
+void BWebPage::linkHovered(const BString& url, const BString& title, const BString& content)
+{
+printf("BWebPage::linkHovered()\n");
+    notImplemented();
 }
 
 void BWebPage::requestDownload(const WebCore::ResourceRequest& request)
@@ -484,7 +538,7 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 //    if (m_webView->LockLooperWithTimeout(5000) != B_OK)
     if (!m_webView->LockLooper())
         return;
-    BView* offscreenView = m_webView->offscreenView();
+    BView* offscreenView = m_webView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
     // window locked. This cannot deadlock and makes sure
@@ -504,7 +558,7 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
     offscreenView->UnlockLooper();
 
     // Notify the window that it can now pull the bitmap in its own thread
-    m_webView->setOffscreenViewClean(rect, immediate);
+    m_webView->SetOffscreenViewClean(rect, immediate);
 }
 
 // #pragma mark - private
@@ -683,8 +737,6 @@ void BWebPage::handleFrameResized(const BMessage* message)
 
     WebCore::Frame* frame = m_mainFrame->frame();
     frame->view()->resize(width + 1, height + 1);
-
-    m_webView->invalidate();
 }
 
 void BWebPage::handleFocused(const BMessage* message)

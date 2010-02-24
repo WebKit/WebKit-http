@@ -219,7 +219,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText = 0;
         m_loadingProgressBar = 0;
 
-        WebView* webView = new WebView("web_view");
+        BWebView* webView = new BWebView("web_view");
         setCurrentWebView(webView);
 
         AddChild(BGroupLayoutBuilder(B_VERTICAL, 7)
@@ -228,7 +228,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     }
 
     newTab("", true);
-    currentWebView()->webPage()->SetDownloadListener(downloadListener);
+    currentWebView()->WebPage()->SetDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 
@@ -248,20 +248,20 @@ void LauncherWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case RELOAD:
-        currentWebView()->loadRequest(m_url->Text());
+        currentWebView()->LoadURL(m_url->Text());
         break;
     case GOTO_URL: {
         BString url = m_url->Text();
         message->FindString("url", &url);
         if (m_loadedURL != url)
-            currentWebView()->loadRequest(url.String());
+            currentWebView()->LoadURL(url.String());
         break;
     }
     case GO_BACK:
-        currentWebView()->goBack();
+        currentWebView()->GoBack();
         break;
     case GO_FORWARD:
-        currentWebView()->goForward();
+        currentWebView()->GoForward();
         break;
 
     case CLEAR_HISTORY: {
@@ -297,26 +297,26 @@ void LauncherWindow::MessageReceived(BMessage* message)
         BPath path;
         if (!entry.Exists() || entry.GetPath(&path) != B_OK)
             break;
-        currentWebView()->loadRequest(path.Path());
+        currentWebView()->LoadURL(path.Path());
         break;
     }
 
     case TEXT_SIZE_INCREASE:
-        currentWebView()->increaseTextSize();
+        currentWebView()->IncreaseTextSize();
         break;
     case TEXT_SIZE_DECREASE:
-        currentWebView()->decreaseTextSize();
+        currentWebView()->DecreaseTextSize();
         break;
     case TEXT_SIZE_RESET:
-        currentWebView()->resetTextSize();
+        currentWebView()->ResetTextSize();
         break;
 
     case TEXT_FIND_NEXT:
-        currentWebView()->findString(m_findTextControl->Text(), true,
+        currentWebView()->FindString(m_findTextControl->Text(), true,
             m_findCaseSensitiveCheckBox->Value());
         break;
     case TEXT_FIND_PREVIOUS:
-        currentWebView()->findString(m_findTextControl->Text(), false,
+        currentWebView()->FindString(m_findTextControl->Text(), false,
             m_findCaseSensitiveCheckBox->Value());
         break;
     case TEXT_SHOW_FIND_GROUP:
@@ -344,12 +344,12 @@ void LauncherWindow::MessageReceived(BMessage* message)
 
     case TAB_CHANGED: {
         int32 index = message->FindInt32("index");
-        setCurrentWebView(dynamic_cast<WebView*>(m_tabView->ViewForTab(index)));
+        setCurrentWebView(dynamic_cast<BWebView*>(m_tabView->ViewForTab(index)));
         updateTitle(m_tabView->TabAt(index)->Label());
-        m_url->TextView()->SetText(currentWebView()->mainFrameURL());
+        m_url->SetText(currentWebView()->MainFrameURL());
         // Trigger update of the interface to the new page, by requesting
         // to resend all notifications.
-        currentWebView()->webPage()->ResendNotifications();
+        currentWebView()->WebPage()->ResendNotifications();
         break;
     }
 
@@ -409,14 +409,14 @@ void LauncherWindow::MenusBeginning()
 void LauncherWindow::newTab(const BString& url, bool select)
 {
     // Executed in app thread (new BWebPage needs to be created in app thread).
-    WebView* webView = new WebView("web_view");
+    BWebView* webView = new BWebView("web_view");
     m_tabView->AddTab(webView);
     m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
     // TODO: Remove when BTabView is fixed...
     m_tabView->InvalidateLayout();
 
     if (url.Length())
-        webView->loadRequest(url.String());
+        webView->LoadURL(url.String());
 
     if (select) {
         m_tabView->Select(m_tabView->CountTabs() - 1);
@@ -429,14 +429,14 @@ void LauncherWindow::newTab(const BString& url, bool select)
 
 // #pragma mark - Notification API
 
-void LauncherWindow::navigationRequested(const BString& url, WebView* view)
+void LauncherWindow::navigationRequested(const BString& url, BWebView* view)
 {
 }
 
 void LauncherWindow::newWindowRequested(const BString& url)
 {
     // Always open new windows in the application thread, since
-    // creating a WebView will try to grab the application lock.
+    // creating a BWebView will try to grab the application lock.
     // But our own WebPage may already try to lock us from within
     // the application thread -> dead-lock. Thus we can't wait for
     // a reply here.
@@ -447,15 +447,20 @@ void LauncherWindow::newWindowRequested(const BString& url)
     be_app->PostMessage(&message);
 }
 
-void LauncherWindow::loadNegotiating(const BString& url, WebView* view)
+void LauncherWindow::loadNegotiating(const BString& url, BWebView* view)
 {
     BString status("Requesting: ");
     status << url;
     statusChanged(status, view);
 }
 
-void LauncherWindow::loadCommited(const BString& url, WebView* view)
+void LauncherWindow::loadCommited(const BString& url, BWebView* view)
 {
+    if (view != currentWebView())
+        return;
+
+    m_loadedURL = url;
+
 	// This hook is invoked when the load is commited.
     if (m_url)
         m_url->SetText(url.String());
@@ -465,7 +470,7 @@ void LauncherWindow::loadCommited(const BString& url, WebView* view)
     statusChanged(status, view);
 }
 
-void LauncherWindow::loadProgress(float progress, WebView* view)
+void LauncherWindow::loadProgress(float progress, BWebView* view)
 {
     if (view != currentWebView())
         return;
@@ -477,7 +482,7 @@ void LauncherWindow::loadProgress(float progress, WebView* view)
     }
 }
 
-void LauncherWindow::loadFailed(const BString& url, WebView* view)
+void LauncherWindow::loadFailed(const BString& url, BWebView* view)
 {
     if (view != currentWebView())
         return;
@@ -489,7 +494,7 @@ void LauncherWindow::loadFailed(const BString& url, WebView* view)
         m_loadingProgressBar->Hide();
 }
 
-void LauncherWindow::loadFinished(const BString& url, WebView* view)
+void LauncherWindow::loadFinished(const BString& url, BWebView* view)
 {
     if (view != currentWebView())
         return;
@@ -502,37 +507,37 @@ void LauncherWindow::loadFinished(const BString& url, WebView* view)
         m_loadingProgressBar->Hide();
 }
 
-void LauncherWindow::resizeRequested(float width, float height, WebView* view)
+void LauncherWindow::resizeRequested(float width, float height, BWebView* view)
 {
     if (view != currentWebView())
         return;
 
-    // TODO: Ignore request when there is more than one WebView embedded!
+    // TODO: Ignore request when there is more than one BWebView embedded!
 
     ResizeTo(width, height);
 }
 
-void LauncherWindow::setToolBarsVisible(bool flag, WebView* view)
+void LauncherWindow::setToolBarsVisible(bool flag, BWebView* view)
 {
     // TODO
-    // TODO: Ignore request when there is more than one WebView embedded!
+    // TODO: Ignore request when there is more than one BWebView embedded!
 }
 
-void LauncherWindow::setStatusBarVisible(bool flag, WebView* view)
+void LauncherWindow::setStatusBarVisible(bool flag, BWebView* view)
 {
     // TODO
-    // TODO: Ignore request when there is more than one WebView embedded!
+    // TODO: Ignore request when there is more than one BWebView embedded!
 }
 
-void LauncherWindow::setMenuBarVisible(bool flag, WebView* view)
+void LauncherWindow::setMenuBarVisible(bool flag, BWebView* view)
 {
     // TODO
-    // TODO: Ignore request when there is more than one WebView embedded!
+    // TODO: Ignore request when there is more than one BWebView embedded!
 }
 
-void LauncherWindow::setResizable(bool flag, WebView* view)
+void LauncherWindow::setResizable(bool flag, BWebView* view)
 {
-    // TODO: Ignore request when there is more than one WebView embedded!
+    // TODO: Ignore request when there is more than one BWebView embedded!
 
     if (flag)
         SetFlags(Flags() & ~B_NOT_RESIZABLE);
@@ -540,7 +545,7 @@ void LauncherWindow::setResizable(bool flag, WebView* view)
         SetFlags(Flags() | B_NOT_RESIZABLE);
 }
 
-void LauncherWindow::titleChanged(const BString& title, WebView* view)
+void LauncherWindow::titleChanged(const BString& title, BWebView* view)
 {
     for (int32 i = 0; i < m_tabView->CountTabs(); i++) {
         if (m_tabView->ViewForTab(i) == view) {
@@ -555,7 +560,7 @@ void LauncherWindow::titleChanged(const BString& title, WebView* view)
     updateTitle(title);
 }
 
-void LauncherWindow::statusChanged(const BString& statusText, WebView* view)
+void LauncherWindow::statusChanged(const BString& statusText, BWebView* view)
 {
     if (view != currentWebView())
         return;
@@ -565,7 +570,7 @@ void LauncherWindow::statusChanged(const BString& statusText, WebView* view)
 }
 
 void LauncherWindow::navigationCapabilitiesChanged(bool canGoBackward,
-    bool canGoForward, bool canStop, WebView* view)
+    bool canGoForward, bool canStop, BWebView* view)
 {
     if (view != currentWebView())
         return;

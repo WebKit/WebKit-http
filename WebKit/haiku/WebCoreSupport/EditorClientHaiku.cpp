@@ -116,8 +116,8 @@ int EditorClientHaiku::spellCheckerDocumentTag()
 
 bool EditorClientHaiku::isEditable()
 {
-	if (m_page->mainFrame())
-        return m_page->mainFrame()->isEditable();
+	if (m_page->MainFrame())
+        return m_page->MainFrame()->isEditable();
     return false;
 }
 

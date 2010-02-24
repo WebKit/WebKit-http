@@ -34,6 +34,7 @@ WebTabView::WebTabView(const char *name, const BMessenger& target)
     , m_target(target)
 {
 	SetBorder(B_NO_BORDER);
+	SetFlags(Flags() & ~B_FULL_UPDATE_ON_RESIZE);
 }
 
 WebTabView::~WebTabView(void)

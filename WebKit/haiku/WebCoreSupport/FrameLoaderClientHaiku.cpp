@@ -94,7 +94,7 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
 
 bool FrameLoaderClientHaiku::hasWebView() const
 {
-    return m_webPage->webView();
+    return m_webPage->WebView();
 }
 
 void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
@@ -299,7 +299,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 {
-    m_webFrame->setTitle(title);
+    m_webFrame->SetTitle(title);
 
     BMessage message(TITLE_CHANGED);
     message.AddString("title", title);
@@ -383,20 +383,20 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction
                                                              const ResourceRequest& request)
 {
     if (request.isNull()) {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (isNull)",
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (isNull)\n",
 BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
     // we need to call directly here
-    if (canShowMIMEType(mimetype)) {
+    if (canShowMIMEType(mimetype) || !mimetype.length()) {
         callPolicyFunction(function, PolicyUse);
     } else if (!request.url().isLocalFile()) {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download",
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download\n",
 BString(mimetype).String());
         callPolicyFunction(function, PolicyDownload);
     } else {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL)",
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL)\n",
 BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
     }
@@ -948,13 +948,13 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
 void FrameLoaderClientHaiku::postCommitFrameViewSetup(WebFrame* frame, FrameView* view, bool resetValues) const
 {
     // This method can be used to do adjustments on the main frame, since those
-    // are the only ones directly embedded into a WebView.
-    view->setTopLevelPlatformWidget(m_webPage->webView());
+    // are the only ones directly embedded into a BWebView.
+    view->setTopLevelPlatformWidget(m_webPage->WebView());
 }
 
 status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
 {
-	message.AddPointer("view", m_webPage->webView());
+	message.AddPointer("view", m_webPage->WebView());
 	return m_messenger.SendMessage(&message);
 }
 

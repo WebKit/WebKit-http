@@ -52,7 +52,7 @@
 
 namespace WebCore {
 
-ChromeClientHaiku::ChromeClientHaiku(BWebPage* webPage, WebView* webView)
+ChromeClientHaiku::ChromeClientHaiku(BWebPage* webPage, BWebView* webView)
     : m_webPage(webPage)
     , m_webView(webView)
 {
@@ -79,7 +79,8 @@ FloatRect ChromeClientHaiku::windowRect()
 
 FloatRect ChromeClientHaiku::pageRect()
 {
-    return FloatRect(m_webPage->contentsSize());
+	IntSize size = m_webPage->MainFrame()->frame()->view()->contentsSize();
+	return FloatRect(0, 0, size.width(), size.height());
 }
 
 float ChromeClientHaiku::scaleFactor()
@@ -143,14 +144,14 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
         flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
 
     WebViewWindow* window = new WebViewWindow(frame, "WebView", look, feel, flags);
-    WebView* view = new WebView("web view");
+    BWebView* view = new BWebView("web view");
     window->AddChild(view);
     window->setCurrentWebView(view);
     window->Show();
 
-    view->webPage()->LoadURL(BString(request.resourceRequest().url().string()));
+    view->LoadURL(BString(request.resourceRequest().url().string()));
 
-    return view->webPage()->page();
+    return view->WebPage()->page();
 }
 
 void ChromeClientHaiku::show()
@@ -175,47 +176,47 @@ void ChromeClientHaiku::runModal()
 
 void ChromeClientHaiku::setToolbarsVisible(bool visible)
 {
-    m_webView->setToolbarsVisible(visible);
+    m_webPage->setToolbarsVisible(visible);
 }
 
 bool ChromeClientHaiku::toolbarsVisible()
 {
-    return m_webView->areToolbarsVisible();
+    return m_webPage->areToolbarsVisible();
 }
 
 void ChromeClientHaiku::setStatusbarVisible(bool visible)
 {
-    m_webView->setStatusbarVisible(visible);
+    m_webPage->setStatusbarVisible(visible);
 }
 
 bool ChromeClientHaiku::statusbarVisible()
 {
-    return m_webView->isStatusbarVisible();
+    return m_webPage->isStatusbarVisible();
 }
 
 void ChromeClientHaiku::setScrollbarsVisible(bool visible)
 {
-    m_webPage->mainFrame()->setAllowsScrolling(visible);
+    m_webPage->MainFrame()->setAllowsScrolling(visible);
 }
 
 bool ChromeClientHaiku::scrollbarsVisible()
 {
-    return m_webPage->mainFrame()->allowsScrolling();
+    return m_webPage->MainFrame()->allowsScrolling();
 }
 
 void ChromeClientHaiku::setMenubarVisible(bool visible)
 {
-    m_webView->setMenubarVisible(visible);
+    m_webPage->setMenubarVisible(visible);
 }
 
 bool ChromeClientHaiku::menubarVisible()
 {
-    return m_webView->isMenubarVisible();
+    return m_webPage->isMenubarVisible();
 }
 
 void ChromeClientHaiku::setResizable(bool resizable)
 {
-    m_webView->setResizable(resizable);
+    m_webPage->setResizable(resizable);
 }
 
 void ChromeClientHaiku::addMessageToConsole(MessageSource, MessageType, MessageLevel, const String& message,
@@ -236,8 +237,8 @@ bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame
 
 void ChromeClientHaiku::closeWindowSoon()
 {
-    m_webPage->mainFrame()->frame()->loader()->stopAllLoaders();
-    m_webView->closeWindow();
+    m_webPage->MainFrame()->frame()->loader()->stopAllLoaders();
+    m_webPage->closeWindow();
 }
 
 void ChromeClientHaiku::runJavaScriptAlert(Frame*, const String& msg)
@@ -261,7 +262,7 @@ printf("ChromeClientHaiku::runJavaScriptPrompt()\n");
 
 void ChromeClientHaiku::setStatusbarText(const String& message)
 {
-    m_webView->setStatusText(BString(message));
+    m_webPage->setStatusText(BString(message));
 }
 
 bool ChromeClientHaiku::shouldInterruptJavaScript()
@@ -337,7 +338,7 @@ void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, uns
         lastHoverURL = result.absoluteLinkURL();
         lastHoverTitle = result.title(dir);
         lastHoverContent = result.textContent();
-        m_webView->linkHovered(lastHoverURL.prettyURL(), lastHoverTitle, lastHoverContent);
+        m_webPage->linkHovered(lastHoverURL.prettyURL(), lastHoverTitle, lastHoverContent);
     }
 }
 
@@ -374,7 +375,7 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     RefPtr<FileChooser> *ref = new RefPtr<FileChooser>(chooser);
     BMessage message(B_REFS_RECEIVED);
     message.AddPointer("chooser", ref);
-    BMessenger target(m_webView->webPage());
+    BMessenger target(m_webPage);
     BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->allowsMultipleFiles(), &message, NULL, true, true);
     panel->Show();
 }

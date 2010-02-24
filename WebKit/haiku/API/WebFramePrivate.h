@@ -53,6 +53,7 @@ public:
     {}
 
     WebCore::String name;
+    WebCore::String requestedURL;
     WebCore::HTMLFrameOwnerElement* ownerElement;
     WebCore::Page* page;
     WTF::RefPtr<WebCore::Frame> frame;

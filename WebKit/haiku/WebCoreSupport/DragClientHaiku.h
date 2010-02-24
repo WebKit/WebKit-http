@@ -26,13 +26,13 @@
 
 #include "DragClient.h"
 
-class WebView;
+class BWebView;
 
 namespace WebCore {
 
     class DragClientHaiku : public DragClient {
     public:
-        DragClientHaiku(WebView*);
+        DragClientHaiku(BWebView*);
         virtual void willPerformDragDestinationAction(DragDestinationAction, DragData*);
         virtual WebCore::DragDestinationAction actionMaskForDrag(DragData*);
         virtual void dragControllerDestroyed();
@@ -43,7 +43,7 @@ namespace WebCore {
         virtual DragImageRef createDragImageForLink(KURL&, const String& label, Frame*);
 
     private:
-        WebView* m_webView;
+        BWebView* m_webView;
     };
 
 } // namespace WebCore

@@ -33,7 +33,7 @@
 
 namespace WebCore {
 
-DragClientHaiku::DragClientHaiku(WebView* webView)
+DragClientHaiku::DragClientHaiku(BWebView* webView)
     : m_webView(webView)
 {}
 

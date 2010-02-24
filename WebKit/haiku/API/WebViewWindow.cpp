@@ -44,8 +44,6 @@
 
 #include <stdio.h>
 
-using namespace WebCore;
-
 WebViewWindow::WebViewWindow(BRect frame, const char* name, window_look look,
         window_feel feel, uint32 flags, uint32 workspace)
     : BWindow(frame, name, look, feel, flags, workspace)
@@ -198,7 +196,7 @@ void WebViewWindow::MessageReceived(BMessage* message)
 bool WebViewWindow::QuitRequested()
 {
     // Do this here, so WebKit tear down happens earlier.
-    if (WebView* view = currentWebView()) {
+    if (BWebView* view = currentWebView()) {
         view->RemoveSelf();
         delete view;
     }
@@ -208,12 +206,12 @@ bool WebViewWindow::QuitRequested()
 
 // #pragma mark -
 
-void WebViewWindow::setCurrentWebView(WebView* view)
+void WebViewWindow::setCurrentWebView(BWebView* view)
 {
 	m_webView = view;
 }
 
-void WebViewWindow::navigationRequested(const BString& url, WebView* view)
+void WebViewWindow::navigationRequested(const BString& url, BWebView* view)
 {
 }
 
@@ -221,49 +219,49 @@ void WebViewWindow::newWindowRequested(const BString& url)
 {
 }
 
-void WebViewWindow::loadNegotiating(const BString& url, WebView* view)
+void WebViewWindow::loadNegotiating(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::loadCommited(const BString& url, WebView* view)
+void WebViewWindow::loadCommited(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::loadProgress(float progress, WebView* view)
+void WebViewWindow::loadProgress(float progress, BWebView* view)
 {
 }
 
-void WebViewWindow::loadFailed(const BString& url, WebView* view)
+void WebViewWindow::loadFailed(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::loadFinished(const BString& url, WebView* view)
+void WebViewWindow::loadFinished(const BString& url, BWebView* view)
 {
 }
 
-void WebViewWindow::titleChanged(const BString& title, WebView* view)
+void WebViewWindow::titleChanged(const BString& title, BWebView* view)
 {
     SetTitle(title.String());
 }
 
-void WebViewWindow::resizeRequested(float width, float height, WebView* view)
+void WebViewWindow::resizeRequested(float width, float height, BWebView* view)
 {
     ResizeTo(width, height);
 }
 
-void WebViewWindow::setToolBarsVisible(bool flag, WebView* view)
+void WebViewWindow::setToolBarsVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setStatusBarVisible(bool flag, WebView* view)
+void WebViewWindow::setStatusBarVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setMenuBarVisible(bool flag, WebView* view)
+void WebViewWindow::setMenuBarVisible(bool flag, BWebView* view)
 {
 }
 
-void WebViewWindow::setResizable(bool flag, WebView* view)
+void WebViewWindow::setResizable(bool flag, BWebView* view)
 {
     if (flag)
         SetFlags(Flags() & ~B_NOT_RESIZABLE);
@@ -271,12 +269,12 @@ void WebViewWindow::setResizable(bool flag, WebView* view)
         SetFlags(Flags() | B_NOT_RESIZABLE);
 }
 
-void WebViewWindow::statusChanged(const BString& statusText, WebView* view)
+void WebViewWindow::statusChanged(const BString& statusText, BWebView* view)
 {
 }
 
 void WebViewWindow::navigationCapabilitiesChanged(bool canGoBackward,
-    bool canGoForward, bool canStop, WebView* view)
+    bool canGoForward, bool canStop, BWebView* view)
 {
 }
 
@@ -290,10 +288,10 @@ void WebViewWindow::authenticationChallenge(BMessage* challenge)
 
 // #pragma mark - private
 
-WebView* WebViewWindow::webViewForMessage(const BMessage* message) const
+BWebView* WebViewWindow::webViewForMessage(const BMessage* message) const
 {
-	// Default to the current WebView if the message does not contain a view.
-	WebView* view = m_webView;
+	// Default to the current BWebView if the message does not contain a view.
+	BWebView* view = m_webView;
 	message->FindPointer("view", reinterpret_cast<void**>(&view));
 	return view;
 }

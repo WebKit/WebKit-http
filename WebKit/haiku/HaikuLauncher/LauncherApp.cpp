@@ -151,7 +151,7 @@ void LauncherApp::MessageReceived(BMessage* message)
                 newWindow(url);
         	} else {
             	// load the URL in the first window
-                webWindow->currentWebView()->loadRequest(url.String());
+                webWindow->currentWebView()->LoadURL(url.String());
         	}
         }
         break;
@@ -279,7 +279,7 @@ void LauncherApp::newWindow(const BString& url)
 	    BMessenger(m_downloadWindow));
 	window->Show();
 	if (url.Length())
-	    window->currentWebView()->loadRequest(url.String());
+	    window->currentWebView()->LoadURL(url.String());
 }
 
 void LauncherApp::newTab(LauncherWindow* window, const BString& url, bool select)

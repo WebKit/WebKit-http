@@ -53,7 +53,8 @@ public:
     // TODO: Remove this as well (no WebCore API in public WebKit API):
     void loadRequest(WebCore::KURL);
 
-    BString url() const;
+    BString RequestedURL() const;
+    BString URL() const;
 
     void stopLoading();
     void reload();
@@ -100,11 +101,12 @@ public:
     void setEditable(bool editable) { m_isEditable = editable; }
     bool isEditable() const { return m_isEditable; }
 
-    BString title() const { return m_title; }
-    void setTitle(BString title) { m_title = title; }
+    void SetTitle(const BString& title);
+    const BString& Title() const { return m_title; }
 
 private:
     friend class BWebPage;
+
     friend class WebCore::ChromeClientHaiku;
     friend class WebCore::FrameLoaderClientHaiku;
 

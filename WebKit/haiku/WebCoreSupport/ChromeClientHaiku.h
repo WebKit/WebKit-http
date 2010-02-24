@@ -43,7 +43,7 @@ namespace WebCore {
 
     class ChromeClientHaiku : public ChromeClient {
     public:
-        ChromeClientHaiku(BWebPage*, WebView*);
+        ChromeClientHaiku(BWebPage*, BWebView*);
         virtual ~ChromeClientHaiku();
         virtual void chromeDestroyed();
 
@@ -139,7 +139,7 @@ namespace WebCore {
         virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
 
         BWebPage* m_webPage;
-        WebView* m_webView;
+        BWebView* m_webView;
 
         WebCore::KURL lastHoverURL;
         WebCore::String lastHoverTitle;
