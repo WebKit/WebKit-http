@@ -33,7 +33,7 @@
 class BButton;
 class BFile;
 class BGroupLayout;
-class WebDownload;
+class BWebDownload;
 
 class DownloadWindow : public BWindow {
 public:
@@ -44,8 +44,8 @@ public:
     virtual bool QuitRequested();
 
 private:
-    void downloadStarted(WebDownload* download);
-    void downloadFinished(WebDownload* download);
+    void downloadStarted(BWebDownload* download);
+    void downloadFinished(BWebDownload* download);
     void removeFinishedDownloads();
     void saveSettings();
     void loadSettings();

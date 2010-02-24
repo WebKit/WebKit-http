@@ -41,6 +41,7 @@
 #include <MenuBar.h>
 #include <MenuItem.h>
 #include <NodeInfo.h>
+#include <Path.h>
 #include <Roster.h>
 #include <ScrollView.h>
 #include <SeparatorView.h>
@@ -51,6 +52,8 @@
 enum {
     REMOVE_FINISHED_DOWNLOADS = 'rmfd',
     OPEN_DOWNLOAD = 'opdn',
+    RESTART_DOWNLOAD = 'rsdn',
+    CANCEL_DOWNLOAD = 'cndn',
     REMOVE_DOWNLOAD = 'rmdn',
     SAVE_SETTINGS = 'svst'
 };
@@ -123,12 +126,12 @@ public:
 
 class DownloadProgressView : public BGridView {
 public:
-    DownloadProgressView(WebDownload* download)
+    DownloadProgressView(BWebDownload* download)
         : BGridView(8, 3)
         , m_download(download)
-        , m_url(download->url())
-        , m_path(download->path())
-        , m_expectedSize(download->expectedSize())
+        , m_url(download->URL())
+        , m_path(download->Path())
+        , m_expectedSize(download->ExpectedSize())
     {
     }
 
@@ -170,10 +173,18 @@ public:
         else
             m_iconView = new IconView(archive);
 
-        m_button1 = new SmallButton("Open", new BMessage(OPEN_DOWNLOAD));
-        m_button2 = new SmallButton("Remove", new BMessage(REMOVE_DOWNLOAD));
-        m_button1->SetEnabled(m_download == NULL);
-        m_button2->SetEnabled(m_download == NULL);
+        if (!m_download && m_statusBar->CurrentValue() < 100)
+            m_button1 = new SmallButton("Restart", new BMessage(RESTART_DOWNLOAD));
+        else {
+            m_button1 = new SmallButton("Open", new BMessage(OPEN_DOWNLOAD));
+            m_button1->SetEnabled(m_download == NULL);
+        }
+        if (m_download)
+            m_button2 = new SmallButton("Cancel", new BMessage(CANCEL_DOWNLOAD));
+        else {
+            m_button2 = new SmallButton("Remove", new BMessage(REMOVE_DOWNLOAD));
+            m_button2->SetEnabled(m_download == NULL);
+        }
 
 		layout->SetInsets(8, 5, 5, 6);
     	layout->AddView(m_iconView, 0, 0, 1, 2);
@@ -201,7 +212,7 @@ public:
     virtual void AttachedToWindow()
     {
     	if (m_download)
-            m_download->setProgressListener(BMessenger(this));
+            m_download->SetProgressListener(BMessenger(this));
         m_button1->SetTarget(this);
         m_button2->SetTarget(this);
     }
@@ -225,7 +236,7 @@ public:
     virtual void MessageReceived(BMessage* message)
     {
         switch (message->what) {
-        case WebDownload::DOWNLOAD_PROGRESS: {
+        case B_DOWNLOAD_PROGRESS: {
         	float progress;
         	if (message->FindFloat("progress", &progress) == B_OK)
         	    m_statusBar->SetTo(progress);
@@ -244,6 +255,15 @@ public:
         	}
             break;
         }
+        case RESTART_DOWNLOAD:
+            // TODO: 
+            break;
+
+        case CANCEL_DOWNLOAD:
+        	m_download->Cancel();
+        	downloadCanceled();
+            break;
+
         case REMOVE_DOWNLOAD: {
         	Window()->PostMessage(SAVE_SETTINGS);
         	RemoveSelf();
@@ -256,7 +276,7 @@ public:
         }
     }
 
-    WebDownload* download() const
+    BWebDownload* download() const
     {
     	return m_download;
     }
@@ -270,6 +290,19 @@ public:
     {
     	m_download = NULL;
     	m_button1->SetEnabled(true);
+    	m_button2->SetLabel("Remove");
+    	m_button2->SetMessage(new BMessage(REMOVE_DOWNLOAD));
+    	m_button2->SetEnabled(true);
+    }
+
+    void downloadCanceled()
+    {
+    	m_download = NULL;
+    	m_button1->SetLabel("Restart");
+    	m_button1->SetMessage(new BMessage(RESTART_DOWNLOAD));
+    	m_button1->SetEnabled(true);
+    	m_button2->SetLabel("Remove");
+    	m_button2->SetMessage(new BMessage(REMOVE_DOWNLOAD));
     	m_button2->SetEnabled(true);
     }
 
@@ -278,7 +311,7 @@ private:
     BStatusBar* m_statusBar;
     SmallButton* m_button1;
     SmallButton* m_button2;
-    WebDownload* m_download;
+    BWebDownload* m_download;
     BString m_url;
     BPath m_path;
     off_t m_expectedSize;
@@ -386,13 +419,13 @@ void DownloadWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case B_DOWNLOAD_ADDED: {
-        WebDownload* download;
+        BWebDownload* download;
         if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
             downloadStarted(download);
         break;
     }
     case B_DOWNLOAD_REMOVED: {
-        WebDownload* download;
+        BWebDownload* download;
         if (message->FindPointer("download", reinterpret_cast<void**>(&download)) == B_OK)
             downloadFinished(download);
         break;
@@ -416,7 +449,7 @@ bool DownloadWindow::QuitRequested()
     return false;
 }
 
-void DownloadWindow::downloadStarted(WebDownload* download)
+void DownloadWindow::downloadStarted(BWebDownload* download)
 {
 	int32 finishedCount = 0;
 	int32 index = 0;
@@ -425,11 +458,12 @@ void DownloadWindow::downloadStarted(WebDownload* download)
         DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(item->View());
         if (!view)
             continue;
-        if (view->url() == download->url()) {
+        if (view->url() == download->URL()) {
         	index = i;
             view->RemoveSelf();
             delete view;
-        }
+        } else if (!view->download())
+            finishedCount++;
 	}
 	m_removeFinishedButton->SetEnabled(finishedCount > 0);
 	DownloadProgressView* view = new DownloadProgressView(download);
@@ -443,7 +477,7 @@ void DownloadWindow::downloadStarted(WebDownload* download)
 		Show();
 }
 
-void DownloadWindow::downloadFinished(WebDownload* download)
+void DownloadWindow::downloadFinished(BWebDownload* download)
 {
 	int32 finishedCount = 0;
 	for (int32 i = 0; BLayoutItem* item = m_downloadViewsLayout->ItemAt(i); i++) {

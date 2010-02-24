@@ -28,128 +28,62 @@
 #include "config.h"
 #include "WebDownload.h"
 
-#include "CString.h"
-#include "NotImplemented.h"
-#include "ResourceHandle.h"
-#include "ResourceHandleInternal.h"
-#include "ResourceRequest.h"
-#include "ResourceResponse.h"
+#include "WebDownloadPrivate.h"
 #include "WebPage.h"
-#include <Entry.h>
-#include <Message.h>
-#include <Messenger.h>
-#include <NodeInfo.h>
 
-WebDownload::WebDownload(BWebPage* webPage, const ResourceRequest& request)
-    : m_webPage(webPage)
-    , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
-    , m_currentSize(0)
-    , m_expectedSize(0)
-    , m_url()
-    , m_path("/boot/home/Desktop/")
-    , m_filename("Download")
-    , m_file()
-    , m_lastProgressReportTime(0)
+BWebDownload::BWebDownload(BPrivate::WebDownloadPrivate* data)
+    : fData(data)
 {
-printf("WebDownload::WebDownload()\n");
+	ASSERT(fData);
+
+	fData->setDownload(this);
 }
 
-WebDownload::WebDownload(BWebPage* webPage, ResourceHandle* handle,
-        const ResourceRequest& request, const ResourceResponse& response)
-    : m_webPage(webPage)
-    , m_resourceHandle(handle)
-    , m_currentSize(0)
-    , m_expectedSize(0)
-    , m_url()
-    , m_path("/boot/home/Desktop/")
-    , m_filename("Download")
-    , m_file()
-    , m_lastProgressReportTime(0)
+BWebDownload::~BWebDownload()
 {
-	m_resourceHandle->setClient(this);
-	// Call the hook manually to figure out the details of the request
-	didReceiveResponse(handle, response);
+	delete fData;
 }
 
-void WebDownload::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
+void BWebDownload::Start()
 {
-	BString mimeType("application/octet-stream");
-    if (!response.isNull()) {
-    	if (!response.suggestedFilename().isEmpty())
-            m_filename = response.suggestedFilename();
-        else {
-        	WebCore::KURL url(response.url());
-        	url.setQuery(WebCore::String());
-        	url.removeFragmentIdentifier();
-            m_filename = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
-        }
-        if (response.mimeType().length())
-            mimeType = response.mimeType();
-        m_expectedSize = response.expectedContentLength();
-    }
-    m_url = response.url().string();
-    m_path.Append(m_filename.String());
-	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
-		BNodeInfo info(&m_file);
-		info.SetType(mimeType.String());
-		m_file.WriteAttrString("META:url", &m_url);
-	}
+    fData->start();
 }
 
-void WebDownload::didReceiveData(ResourceHandle*, const char* data, int length, int lengthReceived)
+void BWebDownload::Cancel()
 {
-    ssize_t bytesWritten = m_file.Write(data, length);
-    if (bytesWritten != (ssize_t)length) {
-        // FIXME: Report error
-        return;
-    }
-    m_currentSize += length;
-
-    // FIXME: Report total size update, if m_currentSize greater than previous total size
-    BMessage message(DOWNLOAD_PROGRESS);
-    message.AddFloat("progress", m_currentSize * 100.0 / m_expectedSize);
-    m_progressListener.SendMessage(&message);
+	// This is invoked from the client, within any thread, so we need to
+	// dispatch this asynchronously so that it is actually handled in the
+	// main thread.
+    fData->webPage()->cancelDownload(this);
 }
 
-void WebDownload::didFinishLoading(ResourceHandle* handle)
+void BWebDownload::SetProgressListener(const BMessenger& listener)
 {
-printf("WebDownload::didFinishLoading()\n");
-    m_webPage->downloadFinished(handle, this, DOWNLOAD_FINISHED);
+	fData->setProgressListener(listener);
 }
 
-void WebDownload::didFail(ResourceHandle* handle, const ResourceError& error)
+const BString& BWebDownload::URL() const
 {
-printf("WebDownload::didFail()\n");
-    m_webPage->downloadFinished(handle, this, DOWNLOAD_FAILED);
+	return fData->url();
 }
 
-void WebDownload::wasBlocked(ResourceHandle* handle)
+const BPath& BWebDownload::Path() const
 {
-printf("WebDownload::wasBlocked()\n");
-    // FIXME: Implement this when we have the new frame loader signals
-    // and error handling.
-    m_webPage->downloadFinished(handle, this, DOWNLOAD_BLOCKED);
+	return fData->path();
 }
 
-void WebDownload::cannotShowURL(ResourceHandle* handle)
+const BString& BWebDownload::Filename() const
 {
-printf("WebDownload::cannotShowURL()\n");
-    // FIXME: Implement this when we have the new frame loader signals
-    // and error handling.
-    m_webPage->downloadFinished(handle, this, DOWNLOAD_CANNOT_SHOW_URL);
+	return fData->filename();
 }
 
-void WebDownload::start()
+off_t BWebDownload::CurrentSize() const
 {
-	// FIXME, the download is already running, and we cannot begin it paused...
+	return fData->currentSize();
 }
 
-void WebDownload::cancel()
+off_t BWebDownload::ExpectedSize() const
 {
-    m_resourceHandle->cancel();
+	return fData->expectedSize();
 }
 
-void WebDownload::setProgressListener(const BMessenger& listener)
-{
-	m_progressListener = listener;
-}

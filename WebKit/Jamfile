@@ -68,6 +68,7 @@ SharedLibrary libwebkit.so :
 	FrameLoaderClientHaiku.cpp
 	InspectorClientHaiku.cpp
 	WebDownload.cpp
+	WebDownloadPrivate.cpp
 	WebFrame.cpp
 	WebPage.cpp
 	WebView.cpp

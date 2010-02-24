@@ -24,80 +24,57 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef _WEB_DOWNLOAD_H_
+#define _WEB_DOWNLOAD_H_
 
-#ifndef WebDownload_h
-#define WebDownload_h
+#include <SupportDefs.h>
 
-#include "Noncopyable.h"
-#include "RefPtr.h"
-#include "ResourceHandleClient.h"
-#include <File.h>
-#include <Messenger.h>
-#include <Path.h>
-#include <String.h>
 
-namespace WebCore {
-class ResourceError;
-class ResourceHandle;
-class ResourceRequest;
-class ResourceResponse;
+namespace BPrivate {
+class WebDownloadPrivate;
 }
 
-using WebCore::ResourceError;
-using WebCore::ResourceHandle;
-using WebCore::ResourceRequest;
-using WebCore::ResourceResponse;
-
+class BMessenger;
+class BPath;
+class BString;
 class BWebPage;
 
-class WebDownload : public Noncopyable, public WebCore::ResourceHandleClient {
-public:
-    enum {
-        DOWNLOAD_PROGRESS = 'dwnp'
-    };
 
-    enum {
-    	DOWNLOAD_FINISHED = 0,
-    	DOWNLOAD_FAILED,
-    	DOWNLOAD_BLOCKED,
-    	DOWNLOAD_CANNOT_SHOW_URL
-    };
-
-    WebDownload(BWebPage* webPage, const ResourceRequest& request);
-    WebDownload(BWebPage* webPage, ResourceHandle* handle,
-        const ResourceRequest& request, const ResourceResponse& response);
-
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int);
-    virtual void didFinishLoading(ResourceHandle*);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
-    virtual void wasBlocked(ResourceHandle*);
-    virtual void cannotShowURL(ResourceHandle*);
-
-    void start();
-    void cancel();
-    void setProgressListener(const BMessenger&);
-
-    const BString& url() const { return m_url; }
-    const BString& filename() const { return m_filename; }
-    const BPath& path() const { return m_path; }
-    off_t currentSize() const { return m_currentSize; }
-    off_t expectedSize() const { return m_expectedSize; }
-
-private:
-    BWebPage* m_webPage;
-
-    RefPtr<ResourceHandle> m_resourceHandle;
-    BString m_suggestedFileName;
-    off_t m_currentSize;
-    off_t m_expectedSize;
-    BString m_url;
-    BPath m_path;
-    BString m_filename;
-    BFile m_file;
-    bigtime_t m_lastProgressReportTime;
-
-    BMessenger m_progressListener;
+enum {
+    B_DOWNLOAD_PROGRESS = 'dwnp'
 };
 
-#endif // WebDownload_h
+enum {
+	B_DOWNLOAD_FINISHED = 0,
+	B_DOWNLOAD_FAILED,
+	B_DOWNLOAD_BLOCKED,
+	B_DOWNLOAD_CANNOT_SHOW_URL
+};
+
+
+class BWebDownload {
+// TODO: Inherit from BReferenceable.
+public:
+			void				Start();
+			void				Cancel();
+
+			void				SetProgressListener(const BMessenger& listener);
+
+			const BString&		URL() const;
+			const BPath&		Path() const;
+			const BString&		Filename() const;
+
+			off_t				CurrentSize() const;
+			off_t				ExpectedSize() const;
+
+private:
+			friend class BWebPage;
+
+								BWebDownload(BPrivate::WebDownloadPrivate* data);
+								~BWebDownload();
+
+private:
+			BPrivate::WebDownloadPrivate* fData;
+};
+
+#endif // _WEB_DOWNLOAD_H_

@@ -57,6 +57,7 @@
 #include "Settings.h"
 #include "TextEncoding.h"
 #include "WebDownload.h"
+#include "WebDownloadPrivate.h"
 #include "WebFrame.h"
 #include "WebFramePrivate.h"
 #include "WebView.h"
@@ -100,7 +101,9 @@ enum {
     HANDLE_CHANGE_TEXT_SIZE = 'txts',
     HANDLE_FIND_STRING = 'find',
 
-    HANDLE_RESEND_NOTIFICATIONS = 'rsnt'
+    HANDLE_RESEND_NOTIFICATIONS = 'rsnt',
+
+    HANDLE_CANCEL_DOWNLOAD = 'cndn'
 };
 
 using namespace WebCore;
@@ -482,20 +485,20 @@ printf("BWebPage::linkHovered()\n");
 
 void BWebPage::requestDownload(const WebCore::ResourceRequest& request)
 {
-    WebDownload* download = new WebDownload(this, request);
+    BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(this, request));
     downloadCreated(download);
 }
 
 void BWebPage::requestDownload(WebCore::ResourceHandle* handle,
     const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
 {
-    WebDownload* download = new WebDownload(this, handle, request, response);
+    BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(this, handle, request, response));
     downloadCreated(download);
 }
 
-void BWebPage::downloadCreated(WebDownload* download)
+void BWebPage::downloadCreated(BWebDownload* download)
 {
-	download->start();
+	download->Start();
 	if (m_downloadListener.IsValid()) {
         BMessage message(B_DOWNLOAD_ADDED);
         message.AddPointer("download", download);
@@ -506,7 +509,7 @@ void BWebPage::downloadCreated(WebDownload* download)
 }
 
 void BWebPage::downloadFinished(WebCore::ResourceHandle* handle,
-    WebDownload* download, uint32 status)
+    BWebDownload* download, uint32 status)
 {
 	handle->setClient(0);
 	if (m_downloadListener.IsValid()) {
@@ -517,6 +520,13 @@ void BWebPage::downloadFinished(WebCore::ResourceHandle* handle,
         m_downloadListener.SendMessage(&message, &reply);
 	}
 	delete download;
+}
+
+void BWebPage::cancelDownload(BWebDownload* download)
+{
+	BMessage message(HANDLE_CANCEL_DOWNLOAD);
+	message.AddPointer("download", download);
+	Looper()->PostMessage(&message, this);
 }
 
 void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
@@ -670,6 +680,9 @@ void BWebPage::MessageReceived(BMessage* message)
         }
     	break;
     }
+    case HANDLE_CANCEL_DOWNLOAD:
+        handleCancelDownload(message);
+        break;
 
     default:
         BHandler::MessageReceived(message);
@@ -844,6 +857,15 @@ void BWebPage::handleResendNotifications(BMessage*)
         message.AddBool("can stop", loader->isLoading());
     dispatchMessage(message);
     // TODO: Other notifications...
+}
+
+void BWebPage::handleCancelDownload(BMessage* message)
+{
+	BWebDownload* download;
+	if (message->FindPointer("download", reinterpret_cast<void**>(&download)) != B_OK)
+	    return;
+
+    download->fData->cancel();
 }
 
 // #pragma mark -

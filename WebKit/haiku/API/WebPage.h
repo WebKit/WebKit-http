@@ -34,7 +34,7 @@
 #include <Rect.h>
 #include <String.h>
 
-class WebDownload;
+class BWebDownload;
 class BWebFrame;
 class BWebView;
 
@@ -50,6 +50,10 @@ class Page;
 class ResourceHandle;
 class ResourceRequest;
 class ResourceResponse;
+};
+
+namespace BPrivate {
+class WebDownloadPrivate;
 };
 
 enum {
@@ -96,9 +100,9 @@ public:
 			void				ResendNotifications();
 
 private:
-	friend class WebDownload;
 	friend class BWebFrame;
 	friend class BWebView;
+	friend class BPrivate::WebDownloadPrivate;
 
 								BWebPage(BWebView* webView);
 
@@ -146,12 +150,15 @@ private:
 	void setStatusText(const BString&);
 	void linkHovered(const BString&, const BString&, const BString&);
 
+	friend class BWebDownload;
+
 	void requestDownload(const WebCore::ResourceRequest& request);
 	void requestDownload(WebCore::ResourceHandle* handle,
 		const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
-	void downloadCreated(WebDownload* download);
-	void downloadFinished(WebCore::ResourceHandle* handle, WebDownload* download,
+	void downloadCreated(BWebDownload* download);
+	void downloadFinished(WebCore::ResourceHandle* handle, BWebDownload* download,
 		uint32 status);
+	void cancelDownload(BWebDownload* download);
 
 	void paint(const BRect& rect, bool contentChanged, bool immediate,
 		bool repaintContentOnly);
@@ -175,6 +182,7 @@ private:
 	void handleChangeTextSize(BMessage* message);
 	void handleFindString(BMessage* message);
 	void handleResendNotifications(BMessage* message);
+	void handleCancelDownload(BMessage* message);
 
     status_t dispatchMessage(BMessage& message) const;
 
