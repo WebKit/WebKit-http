@@ -31,6 +31,7 @@
 #define LauncherWindow_h
 
 #include "WebViewWindow.h"
+#include <Messenger.h>
 #include <String.h>
 
 class BButton;
@@ -92,6 +93,7 @@ private:
     void updateTitle(const BString &title);
 
 private:
+    BMessenger m_downloadListener;
     BMenuBar* m_menuBar;
     BMenu* m_goMenu;
     IconButton* m_BackButton;

@@ -94,6 +94,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     : WebViewWindow(frame, "HaikuLauncher",
         B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
+    , m_downloadListener(downloadListener)
 {
     m_tabView = new WebTabView("tabview", BMessenger(this));
     m_tabView->setTarget(BMessenger(this));
@@ -228,7 +229,6 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     }
 
     newTab("", true);
-    currentWebView()->WebPage()->SetDownloadListener(downloadListener);
 
     m_findGroup->SetVisible(false);
 
@@ -410,6 +410,8 @@ void LauncherWindow::newTab(const BString& url, bool select)
 {
     // Executed in app thread (new BWebPage needs to be created in app thread).
     BWebView* webView = new BWebView("web_view");
+    webView->WebPage()->SetDownloadListener(m_downloadListener);
+
     m_tabView->AddTab(webView);
     m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
     // TODO: Remove when BTabView is fixed...
