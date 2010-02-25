@@ -63,20 +63,20 @@ public:
 
     void addReference()
     {
-    	m_referenceCount++;
+        m_referenceCount++;
     }
 
     void removeReference()
     {
-    	// The reference counting is needed to delete the BBitmap when
-    	// the last Path object is gone. The deletion needs to happen
-    	// here, and not in our destructor, because we are deleted on the
-    	// execution of global destructors, at which point the BApplication
-    	// is already gone, and deleting BBitmaps without a BApplication
-    	// invokes the debugger.
+        // The reference counting is needed to delete the BBitmap when
+        // the last Path object is gone. The deletion needs to happen
+        // here, and not in our destructor, because we are deleted on the
+        // execution of global destructors, at which point the BApplication
+        // is already gone, and deleting BBitmaps without a BApplication
+        // invokes the debugger.
         m_referenceCount--;
 
-        if (m_referenceCount == 0) {
+        if (!m_referenceCount) {
             // m_bitmap being 0 simply means WebCore never performed any 
             // hit-tests on Paths.
             if (!m_bitmap)
@@ -86,6 +86,7 @@ public:
             // Will also delete the BView attached to the bitmap:
             delete m_bitmap;
             m_bitmap = 0;
+            m_view = 0;
         }
     }
 
@@ -172,18 +173,18 @@ static HitTestBitmap gHitTestBitmap;
 Path::Path()
     : m_path(new BShape())
 {
-	gHitTestBitmap.addReference();
+    gHitTestBitmap.addReference();
 }
 
 Path::Path(const Path& other)
     : m_path(new BShape(*other.platformPath()))
 {
-	gHitTestBitmap.addReference();
+    gHitTestBitmap.addReference();
 }
 
 Path::~Path()
 {
-	gHitTestBitmap.removeReference();
+    gHitTestBitmap.removeReference();
     delete m_path;
 }
 
