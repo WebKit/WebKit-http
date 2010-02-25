@@ -430,15 +430,16 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
         return;
     }
 
-// NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
-// current delegation policy is "DelegateExternalLinks":
-//    if (WebCore::SecurityOrigin::shouldTreatURLSchemeAsLocal(request.url().scheme())) {
-//        callPolicyFunction(function, PolicyUse);
-//        return;
-//    }
+    // NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
+    // current delegation policy is "DelegateExternalLinks". Must be good for something.
+    if (WebCore::SecurityOrigin::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
+        callPolicyFunction(function, PolicyUse);
+        return;
+    }
 
-    // Clicks with the middle mouse button shall open a new window,
-    // (or tab respectively depending on browser) - ignore the request for this page then.
+    // Clicks with the tertiary mouse button shall open a new window,
+    // (or tab respectively depending on browser) - *ignore* the request for this page
+    // then, since we create it ourself.
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     // Don't switch to the new tab, but load it in the background.
