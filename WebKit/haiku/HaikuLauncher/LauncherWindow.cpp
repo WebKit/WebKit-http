@@ -64,6 +64,7 @@
 enum {
     GO_BACK = 'goba',
     GO_FORWARD = 'gofo',
+    STOP = 'stop',
     GOTO_URL = 'goul',
     RELOAD = 'reld',
     CLEAR_HISTORY = 'clhs',
@@ -137,7 +138,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_goMenu = new BMenu("Go");
         m_menuBar->AddItem(m_goMenu);
 
-        // Back & Forward
+        // Back, Forward & Stop
         m_BackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
         m_BackButton->SetIcon(201);
         m_BackButton->TrimIcon();
@@ -145,6 +146,10 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_ForwardButton = new IconButton("Forward", 0, NULL, new BMessage(GO_FORWARD));
         m_ForwardButton->SetIcon(202);
         m_ForwardButton->TrimIcon();
+
+        m_StopButton = new IconButton("Stop", 0, NULL, new BMessage(STOP));
+        m_StopButton->SetIcon(204);
+        m_StopButton->TrimIcon();
 
         // URL
         m_url = new BTextControl("url", "", "", new BMessage(GOTO_URL));
@@ -194,8 +199,9 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
             .Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
                 .Add(m_BackButton, 0, 0)
                 .Add(m_ForwardButton, 1, 0)
-                .Add(m_url, 2, 0)
-                .Add(button, 3, 0)
+                .Add(m_StopButton, 2, 0)
+                .Add(m_url, 3, 0)
+                .Add(button, 4, 0)
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
 //            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
@@ -262,6 +268,9 @@ void LauncherWindow::MessageReceived(BMessage* message)
         break;
     case GO_FORWARD:
         CurrentWebView()->GoForward();
+        break;
+    case STOP:
+        CurrentWebView()->StopLoading();
         break;
 
     case CLEAR_HISTORY: {
@@ -507,6 +516,9 @@ void LauncherWindow::LoadFinished(const BString& url, BWebView* view)
     StatusChanged(status, view);
     if (m_loadingProgressBar && !m_loadingProgressBar->IsHidden())
         m_loadingProgressBar->Hide();
+
+    NavigationCapabilitiesChanged(m_BackButton->IsEnabled(),
+        m_ForwardButton->IsEnabled(), false, view);
 }
 
 void LauncherWindow::ResizeRequested(float width, float height, BWebView* view)
@@ -581,6 +593,8 @@ void LauncherWindow::NavigationCapabilitiesChanged(bool canGoBackward,
         m_BackButton->SetEnabled(canGoBackward);
     if (m_ForwardButton)
         m_ForwardButton->SetEnabled(canGoForward);
+    if (m_StopButton)
+        m_StopButton->SetEnabled(canStop);
 }
 
 void LauncherWindow::UpdateGlobalHistory(const BString& url)

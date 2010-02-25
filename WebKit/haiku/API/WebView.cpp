@@ -247,6 +247,11 @@ void BWebView::GoForward()
     fWebPage->GoForward();
 }
 
+void BWebView::StopLoading()
+{
+    fWebPage->StopLoading();
+}
+
 void BWebView::IncreaseTextSize()
 {
 	fWebPage->ChangeTextSize(1);

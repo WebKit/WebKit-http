@@ -85,6 +85,7 @@ public:
 			void				LoadURL(const char* urlString);
 			void				GoBack();
 			void				GoForward();
+			void				StopLoading();
 
 			BString				MainFrameTitle() const;
 			BString				MainFrameRequestedURL() const;
@@ -173,6 +174,7 @@ private:
 	void handleLoadURL(const BMessage* message);
 	void handleGoBack(const BMessage* message);
 	void handleGoForward(const BMessage* message);
+	void handleStop(const BMessage* message);
 	void handleSetVisible(const BMessage* message);
 	void handleDraw(const BMessage* message);
 	void handleFrameResized(const BMessage* message);

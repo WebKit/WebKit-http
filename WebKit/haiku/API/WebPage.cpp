@@ -90,6 +90,7 @@ enum {
     HANDLE_LOAD_URL = 'lurl',
     HANDLE_GO_BACK = 'back',
     HANDLE_GO_FORWARD = 'fwrd',
+    HANDLE_STOP_LOADING = 'stop',
 
     HANDLE_FOCUSED = 'focs',
     HANDLE_ACTIVATED = 'actd',
@@ -247,6 +248,12 @@ void BWebPage::GoBack()
 void BWebPage::GoForward()
 {
     BMessage message(HANDLE_GO_FORWARD);
+    Looper()->PostMessage(&message, this);
+}
+
+void BWebPage::StopLoading()
+{
+    BMessage message(HANDLE_STOP_LOADING);
     Looper()->PostMessage(&message, this);
 }
 
@@ -615,6 +622,9 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_GO_FORWARD:
         handleGoForward(message);
         break;
+    case HANDLE_STOP_LOADING:
+        handleStop(message);
+        break;
 
     case HANDLE_SET_VISIBLE:
         handleSetVisible(message);
@@ -755,6 +765,11 @@ void BWebPage::handleGoBack(const BMessage* message)
 void BWebPage::handleGoForward(const BMessage* message)
 {
     m_page->goForward();
+}
+
+void BWebPage::handleStop(const BMessage* message)
+{
+    m_mainFrame->StopLoading();
 }
 
 void BWebPage::handleSetVisible(const BMessage* message)

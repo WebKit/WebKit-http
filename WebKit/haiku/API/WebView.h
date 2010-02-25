@@ -73,6 +73,7 @@ public:
 			void				LoadURL(const char* urlString);
 			void				GoBack();
 			void				GoForward();
+			void				StopLoading();
 
 			void				IncreaseTextSize();
 			void				DecreaseTextSize();

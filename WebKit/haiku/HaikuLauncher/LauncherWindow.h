@@ -99,6 +99,7 @@ private:
     BMenu* m_goMenu;
     IconButton* m_BackButton;
     IconButton* m_ForwardButton;
+    IconButton* m_StopButton;
     BTextControl* m_url;
     BString m_loadedURL;
     BStringView* m_statusText;
