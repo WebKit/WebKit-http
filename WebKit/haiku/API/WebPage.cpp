@@ -116,7 +116,7 @@ using namespace WebCore;
     JSC::initializeThreading();
     WTF::initializeThreading();
     WebCore::AtomicString::init();
-    WebCore::DOMTimer::setMinTimerInterval(0.004);
+    WebCore::DOMTimer::setMinTimerInterval(0.008);
     WebCore::UTF8Encoding();
     WebCore::initPlatformCursors();
 }
@@ -546,6 +546,13 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 //    if (m_webView->LockLooperWithTimeout(5000) != B_OK)
     if (!m_webView->LockLooper())
         return;
+    // Block any drawing as long as the BWebView is hidden
+    // (should be extended to when the containing BWebWindow is not
+    // currently on screen either...)
+    if (m_webView->IsHidden()) {
+        m_webView->UnlockLooper();
+        return;
+    }
     BView* offscreenView = m_webView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
