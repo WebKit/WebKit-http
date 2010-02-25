@@ -93,7 +93,7 @@ static BLayoutItem* layoutItemFor(BView* view)
 LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         ToolbarPolicy toolbarPolicy)
     : BWebWindow(frame, "HaikuLauncher",
-        B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
+        B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
     , m_downloadListener(downloadListener)
 {
@@ -162,7 +162,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_statusText = new BStringView("status", "");
         m_statusText->SetAlignment(B_ALIGN_LEFT);
         m_statusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
-        m_statusText->SetExplicitMinSize(BSize(150, 16));
+        m_statusText->SetExplicitMinSize(BSize(150, 12));
             // Prevent the window from growing to fit a long status message...
         BFont font(be_plain_font);
         font.SetSize(ceilf(font.Size() * 0.8));
@@ -172,7 +172,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_loadingProgressBar = new BStatusBar("progress");
         m_loadingProgressBar->SetMaxValue(100);
         m_loadingProgressBar->Hide();
-        m_loadingProgressBar->SetBarHeight(10);
+        m_loadingProgressBar->SetBarHeight(12);
 
         const float kInsetSpacing = 5;
         const float kElementSpacing = 7;
@@ -211,6 +211,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
                 .Add(m_statusText)
                 .Add(m_loadingProgressBar, 0.2)
+                .AddStrut(12 - kElementSpacing)
                 .SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
             )
         );
