@@ -75,7 +75,7 @@ private:
     virtual void NavigationRequested(const BString& url, BWebView* view);
     virtual void NewWindowRequested(const BString& url, bool primaryAction);
     virtual void LoadNegotiating(const BString& url, BWebView* view);
-    virtual void LoadCommited(const BString& url, BWebView* view);
+    virtual void LoadCommitted(const BString& url, BWebView* view);
     virtual void LoadProgress(float progress, BWebView* view);
     virtual void LoadFailed(const BString& url, BWebView* view);
     virtual void LoadFinished(const BString& url, BWebView* view);

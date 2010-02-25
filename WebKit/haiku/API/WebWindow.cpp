@@ -111,7 +111,7 @@ void BWebWindow::MessageReceived(BMessage* message)
     case LOAD_COMMITTED: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
-            LoadCommited(url, _WebViewForMessage(message));
+            LoadCommitted(url, _WebViewForMessage(message));
         break;
     }
     case LOAD_PROGRESS: {
@@ -238,7 +238,7 @@ void BWebWindow::LoadNegotiating(const BString& url, BWebView* view)
 {
 }
 
-void BWebWindow::LoadCommited(const BString& url, BWebView* view)
+void BWebWindow::LoadCommitted(const BString& url, BWebView* view)
 {
 }
 

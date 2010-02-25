@@ -466,7 +466,7 @@ void LauncherWindow::LoadNegotiating(const BString& url, BWebView* view)
     StatusChanged(status, view);
 }
 
-void LauncherWindow::LoadCommited(const BString& url, BWebView* view)
+void LauncherWindow::LoadCommitted(const BString& url, BWebView* view)
 {
     if (view != CurrentWebView())
         return;
