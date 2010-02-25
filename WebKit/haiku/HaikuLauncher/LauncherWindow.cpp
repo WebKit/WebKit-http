@@ -408,7 +408,6 @@ void LauncherWindow::MenusBeginning()
 
 void LauncherWindow::newTab(const BString& url, bool select)
 {
-printf("newTab(%s, %d)\n", url.String(), select);
     // Executed in app thread (new BWebPage needs to be created in app thread).
     BWebView* webView = new BWebView("web_view");
     webView->WebPage()->SetDownloadListener(m_downloadListener);
