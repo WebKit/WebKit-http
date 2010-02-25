@@ -42,15 +42,15 @@ namespace WebCore {
 PlatformWheelEvent::PlatformWheelEvent(BMessage* message)
     : m_position(message->FindPoint("be:view_where"))
     , m_globalPosition(message->FindPoint("screen_where"))
-    , m_deltaX(message->FindFloat("be:wheel_delta_x"))
-    , m_deltaY(message->FindFloat("be:wheel_delta_y"))
+    , m_deltaX(-message->FindFloat("be:wheel_delta_x"))
+    , m_deltaY(-message->FindFloat("be:wheel_delta_y"))
     , m_wheelTicksX(m_deltaX)
     , m_wheelTicksY(m_deltaY)
     , m_granularity(ScrollByPixelWheelEvent)
     , m_isAccepted(false)
 {
-    m_deltaX *= -Scrollbar::pixelsPerLineStep();
-    m_deltaY *= -Scrollbar::pixelsPerLineStep();
+    m_deltaX *= Scrollbar::pixelsPerLineStep();
+    m_deltaY *= Scrollbar::pixelsPerLineStep();
 
     int32 modifiers = message->FindInt32("modifiers");
     m_shiftKey = modifiers & B_SHIFT_KEY;
