@@ -820,15 +820,21 @@ IconButton::_MakeBitmaps(const BBitmap* bitmap)
 						cBits[nOffset + 2] = (uint8)(nBits[nOffset + 2] * 0.8);
 						cBits[nOffset + 3] = fBits[fOffset + 3];
 						// disabled bits have less opacity
-						dBits[nOffset + 0] = fBits[fOffset + 0];
-						dBits[nOffset + 1] = fBits[fOffset + 1];
-						dBits[nOffset + 2] = fBits[fOffset + 2];
-						dBits[nOffset + 3] = (uint8)(fBits[fOffset + 3] * 0.5);
+
+						uint8 grey = ((uint16)nBits[nOffset + 0] + nBits[nOffset + 1]
+							+ nBits[nOffset + 2]) / 3;
+						float dist = (nBits[nOffset + 0] - grey) * 0.3;
+						dBits[nOffset + 0] = (uint8)(grey + dist);
+						dist = (nBits[nOffset + 1] - grey) * 0.3;
+						dBits[nOffset + 1] = (uint8)(grey + dist);
+						dist = (nBits[nOffset + 2] - grey) * 0.3;
+						dBits[nOffset + 2] = (uint8)(grey + dist);
+						dBits[nOffset + 3] = (uint8)(fBits[fOffset + 3] * 0.3);
 						// disabled bits have less contrast (lame method...)
-						dcBits[nOffset + 0] = (uint8)(nBits[nOffset + 0] * 0.8);
-						dcBits[nOffset + 1] = (uint8)(nBits[nOffset + 1] * 0.8);
-						dcBits[nOffset + 2] = (uint8)(nBits[nOffset + 2] * 0.8);
-						dcBits[nOffset + 3] = (uint8)(fBits[fOffset + 3] * 0.5);
+						dcBits[nOffset + 0] = (uint8)(dBits[nOffset + 0] * 0.8);
+						dcBits[nOffset + 1] = (uint8)(dBits[nOffset + 1] * 0.8);
+						dcBits[nOffset + 2] = (uint8)(dBits[nOffset + 2] * 0.8);
+						dcBits[nOffset + 3] = (uint8)(fBits[fOffset + 3] * 0.3);
 					}
 					nBits += nbpr;
 					dBits += nbpr;
