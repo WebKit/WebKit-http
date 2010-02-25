@@ -44,6 +44,9 @@ public:
 	virtual	void				AttachedToWindow();
 	virtual	void				DetachedFromWindow();
 
+	virtual	void				Show();
+	virtual	void				Hide();
+
 	virtual	void				Draw(BRect);
 	virtual	void				FrameResized(float width, float height);
 	virtual	void				GetPreferredSize(float* width, float* height);

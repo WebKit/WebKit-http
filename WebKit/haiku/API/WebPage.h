@@ -107,6 +107,7 @@ private:
 								BWebPage(BWebView* webView);
 
 	// These calls are private, since they are called from the BWebView only.
+	void setVisible(bool visible);
 	void draw(const BRect& updateRect);
 	void frameResized(float width, float height);
 	void focused(bool focused);
@@ -160,7 +161,7 @@ private:
 		uint32 status);
 	void cancelDownload(BWebDownload* download);
 
-	void paint(const BRect& rect, bool contentChanged, bool immediate,
+	void paint(BRect rect, bool contentChanged, bool immediate,
 		bool repaintContentOnly);
 
 private:
@@ -172,6 +173,7 @@ private:
 	void handleLoadURL(const BMessage* message);
 	void handleGoBack(const BMessage* message);
 	void handleGoForward(const BMessage* message);
+	void handleSetVisible(const BMessage* message);
 	void handleDraw(const BMessage* message);
 	void handleFrameResized(const BMessage* message);
 	void handleFocused(const BMessage* message);
@@ -192,6 +194,9 @@ private:
 	BWebView* m_webView;
 	BWebFrame* m_mainFrame;
 	WebCore::Page* m_page;
+
+    bool m_pageVisible;
+    bool m_pageDirty;
 
 	bool m_toolbarsVisible;
 	bool m_statusbarVisible;

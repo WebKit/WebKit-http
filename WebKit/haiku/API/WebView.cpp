@@ -80,6 +80,18 @@ void BWebView::DetachedFromWindow()
     fWebPage->Shutdown();
 }
 
+void BWebView::Show()
+{
+    BView::Show();
+    fWebPage->setVisible(true);
+}
+
+void BWebView::Hide()
+{
+	fWebPage->setVisible(false);
+    BView::Hide();
+}
+
 void BWebView::Draw(BRect rect)
 {
 #if 0

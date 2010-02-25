@@ -94,8 +94,8 @@ enum {
     HANDLE_FOCUSED = 'focs',
     HANDLE_ACTIVATED = 'actd',
 
+    HANDLE_SET_VISIBLE = 'vsbl',
     HANDLE_DRAW = 'draw',
-
     HANDLE_FRAME_RESIZED = 'rszd',
 
     HANDLE_CHANGE_TEXT_SIZE = 'txts',
@@ -159,6 +159,8 @@ BWebPage::BWebPage(BWebView* webView)
     , m_webView(webView)
     , m_mainFrame(0)
     , m_page(0)
+    , m_pageVisible(true)
+    , m_pageDirty(false)
     , m_toolbarsVisible(true)
     , m_statusbarVisible(true)
     , m_menubarVisible(true)
@@ -299,6 +301,13 @@ BString BWebPage::MainFrameURL() const
 }
 
 // #pragma mark - BWebView API
+
+void BWebPage::setVisible(bool visible)
+{
+    BMessage message(HANDLE_SET_VISIBLE);
+    message.AddBool("visible", visible);
+    Looper()->PostMessage(&message, this);
+}
 
 void BWebPage::draw(const BRect& updateRect)
 {
@@ -529,9 +538,17 @@ void BWebPage::cancelDownload(BWebDownload* download)
 	Looper()->PostMessage(&message, this);
 }
 
-void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
+void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
+    // Block any drawing as long as the BWebView is hidden
+    // (should be extended to when the containing BWebWindow is not
+    // currently on screen either...)
+    if (!m_pageVisible) {
+        m_pageDirty = true;
+        return;
+    }
+
     // NOTE: m_mainFrame can be 0 because init() eventually ends up calling
     // paint()! BWebFrame seems to cause an initial page to be loaded, maybe
     // this ought to be avoided also for start-up speed reasons!
@@ -546,13 +563,6 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 //    if (m_webView->LockLooperWithTimeout(5000) != B_OK)
     if (!m_webView->LockLooper())
         return;
-    // Block any drawing as long as the BWebView is hidden
-    // (should be extended to when the containing BWebWindow is not
-    // currently on screen either...)
-    if (m_webView->IsHidden()) {
-        m_webView->UnlockLooper();
-        return;
-    }
     BView* offscreenView = m_webView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
@@ -566,11 +576,15 @@ void BWebPage::paint(const BRect& rect, bool contentChanged, bool immediate,
 
     view->layoutIfNeededRecursive();
     offscreenView->PushState();
+    if (!rect.IsValid())
+        rect = offscreenView->Bounds();
     BRegion region(rect);
     offscreenView->ConstrainClippingRegion(&region);
     view->paint(&context, IntRect(rect));
     offscreenView->PopState();
     offscreenView->UnlockLooper();
+
+    m_pageDirty = false;
 
     // Notify the window that it can now pull the bitmap in its own thread
     m_webView->SetOffscreenViewClean(rect, immediate);
@@ -600,6 +614,10 @@ void BWebPage::MessageReceived(BMessage* message)
         break;
     case HANDLE_GO_FORWARD:
         handleGoForward(message);
+        break;
+
+    case HANDLE_SET_VISIBLE:
+        handleSetVisible(message);
         break;
 
     case HANDLE_DRAW: {
@@ -737,6 +755,17 @@ void BWebPage::handleGoBack(const BMessage* message)
 void BWebPage::handleGoForward(const BMessage* message)
 {
     m_page->goForward();
+}
+
+void BWebPage::handleSetVisible(const BMessage* message)
+{
+    message->FindBool("visible", &m_pageVisible);
+    if (m_mainFrame->Frame()->view())
+        m_mainFrame->Frame()->view()->setParentVisible(m_pageVisible);
+    // Trigger an internal repaint if the page was supposed to be repainted
+    // while it was invisible.
+    if (m_pageVisible && m_pageDirty)
+        paint(BRect(), false, false, true);
 }
 
 void BWebPage::handleDraw(const BMessage* message)
