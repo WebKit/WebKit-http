@@ -416,10 +416,11 @@ void LauncherWindow::MenusBeginning()
     history->Unlock();
 }
 
-void LauncherWindow::newTab(const BString& url, bool select)
+void LauncherWindow::newTab(const BString& url, bool select, BWebView* webView)
 {
     // Executed in app thread (new BWebPage needs to be created in app thread).
-    BWebView* webView = new BWebView("web_view");
+    if (!webView)
+        webView = new BWebView("web view");
     webView->WebPage()->SetDownloadListener(m_downloadListener);
 
     m_tabView->AddTab(webView);
@@ -457,6 +458,11 @@ void LauncherWindow::NewWindowRequested(const BString& url, bool primaryAction)
     message.AddString("url", url);
     message.AddBool("select", primaryAction);
     be_app->PostMessage(&message);
+}
+
+void LauncherWindow::NewPageCreated(BWebView* view)
+{
+    newTab(BString(), true, view);
 }
 
 void LauncherWindow::LoadNegotiating(const BString& url, BWebView* view)

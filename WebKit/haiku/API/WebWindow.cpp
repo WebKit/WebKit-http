@@ -102,6 +102,15 @@ void BWebWindow::MessageReceived(BMessage* message)
             NewWindowRequested(url, primaryAction);
         break;
     }
+    case NEW_PAGE_CREATED: {
+        // The FrameLoaderClient blocks until we have processed the message
+        // and sent a default reply. That's why the pointer is guaranteed
+        // to be still valid.
+        BWebView* view;
+        if (message->FindPointer("view", reinterpret_cast<void**>(&view)) == B_OK)
+            NewPageCreated(view);
+        break;
+    }
     case LOAD_NEGOTIATING: {
         BString url;
         if (message->FindString("url", &url) == B_OK)
@@ -232,6 +241,14 @@ void BWebWindow::NavigationRequested(const BString& url, BWebView* view)
 
 void BWebWindow::NewWindowRequested(const BString& url, bool primaryAction)
 {
+}
+
+void BWebWindow::NewPageCreated(BWebView* view)
+{
+    BWebWindow* window = new BWebWindow(Frame().OffsetByCopy(10, 10),
+        "WebKit window", B_TITLED_WINDOW_LOOK, Feel(), Flags());
+    window->AddChild(view);
+    window->Show();
 }
 
 void BWebWindow::LoadNegotiating(const BString& url, BWebView* view)

@@ -68,12 +68,13 @@ public:
     virtual bool QuitRequested();
     virtual void MenusBeginning();
 
-    void newTab(const BString& url, bool select);
+    void newTab(const BString& url, bool select, BWebView* webView = 0);
 
 private:
     // WebPage notification API implementations
     virtual void NavigationRequested(const BString& url, BWebView* view);
     virtual void NewWindowRequested(const BString& url, bool primaryAction);
+	virtual void NewPageCreated(BWebView* view);
     virtual void LoadNegotiating(const BString& url, BWebView* view);
     virtual void LoadCommitted(const BString& url, BWebView* view);
     virtual void LoadProgress(float progress, BWebView* view);

@@ -39,10 +39,12 @@
 #include "CachedFrame.h"
 #include "CString.h"
 #include "DocumentLoader.h"
+#include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameTree.h"
 #include "FrameView.h"
+#include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "MouseEvent.h"
 #include "MIMETypeRegistry.h"
@@ -368,10 +370,24 @@ void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage()
 {
-printf("FrameLoaderClientHaiku::dispatchCreatePage()\n");
-    notImplemented();
-//    m_webFrame->webView()->createWebView();
-    return 0;
+if (!m_messenger.IsValid()) {
+printf("FrameLoaderClientHaiku::dispatchCreatePage() - can't embed new page!!\n");
+return 0;
+}
+    // TODO: This doesn't work for sub-frames without valid BMessenger!
+
+    // Creating the BWebView in the application thread is exactly what we need anyway.
+	BWebView* view = new BWebView("web view");
+	BWebPage* page = view->WebPage();
+
+    BMessage message(NEW_PAGE_CREATED);
+    message.AddPointer("view", view);
+
+    // Block until some window has embedded this view.
+    BMessage reply;
+    m_messenger.SendMessage(&message, &reply);
+
+    return page->page()->mainFrame();
 }
 
 void FrameLoaderClientHaiku::dispatchShow()
@@ -403,35 +419,7 @@ BString(mimetype).String());
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>, const String& targetName)
-{
-    ASSERT(function);
-    if (!function)
-        return;
-
-	// TODO: Don't do this here, implement createPage() instead!
-    BMessage message(NEW_WINDOW_REQUESTED);
-    message.AddString("url", request.url().string());
-    // Switch to the new tab immediately, since the new window action was caused by a primary click.
-    message.AddBool("primary", !isTertiaryMouseButton(action));
-    if (dispatchMessage(message) != B_OK) {
-        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
-
-        if (action.type() == NavigationTypeLinkClicked) {
-            ResourceRequest emptyRequest;
-            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
-        }
-
-        callPolicyFunction(function, PolicyIgnore);
-        return;
-    }
-
-    callPolicyFunction(function, PolicyUse);
-}
-
-void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
-    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState>)
+    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState, const String& targetName)
 {
     ASSERT(function);
     if (!function)
@@ -449,13 +437,14 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
 //        return;
 //    }
 
-    // Clicks with the middle mouse button shall open a new window
+    // Clicks with the middle mouse button shall open a new window,
     // (or tab respectively depending on browser) - ignore the request for this page then.
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     // Don't switch to the new tab, but load it in the background.
     message.AddBool("primary", false);
     dispatchMessage(message);
+
     if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
         m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
 
@@ -463,7 +452,16 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
         ResourceRequest emptyRequest;
         m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
+
     callPolicyFunction(function, PolicyIgnore);
+}
+
+void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
+    const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
+{
+    // Potentially we want to open a new window, when the user clicked with the
+    // tertiary mouse button. That's why we can reuse the other method.
+	dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()

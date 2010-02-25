@@ -208,8 +208,9 @@ private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
     void triggerNavigationHistoryUpdate() const;
     void postCommitFrameViewSetup(BWebFrame*, FrameView*, bool) const;
-    status_t dispatchMessage(BMessage& message) const;
     bool isTertiaryMouseButton(const NavigationAction& action) const;
+
+    status_t dispatchMessage(BMessage& message) const;
 
 private:
     BWebPage* m_webPage;

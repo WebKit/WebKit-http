@@ -39,11 +39,12 @@ enum {
     LOAD_FAILED =                                       307,
     LOAD_FINISHED =                                     308,
     NEW_WINDOW_REQUESTED =                              309,
-    NAVIGATION_REQUESTED =                              310,
-    JAVASCRIPT_WINDOW_OBJECT_CLEARED =                  311,
-    UPDATE_HISTORY =                                    312,
-    UPDATE_NAVIGATION_INTERFACE =                       313,
-    AUTHENTICATION_CHALLENGE =                          314
+    NEW_PAGE_CREATED =                                  310,
+    NAVIGATION_REQUESTED =                              311,
+    JAVASCRIPT_WINDOW_OBJECT_CLEARED =                  312,
+    UPDATE_HISTORY =                                    313,
+    UPDATE_NAVIGATION_INTERFACE =                       314,
+    AUTHENTICATION_CHALLENGE =                          315
 };
 
 enum {
