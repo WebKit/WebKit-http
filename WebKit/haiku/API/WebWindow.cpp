@@ -66,16 +66,21 @@ void BWebWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
     case LOAD_ONLOAD_HANDLE:
-        printf("LOAD_ONLOAD_HANDLE\n");
+        // NOTE: Supposedly this notification is sent when the so-called
+        // "onload" event has been passed and executed to scripts in the
+        // site.
         break;
     case LOAD_DL_COMPLETED:
-        printf("LOAD_DL_COMPLETED\n");
+        // NOTE: All loading has finished. We currently handle this via
+        // the progress notification. But it doesn't hurt to call the hook
+        // one more time.
+        LoadProgress(100, _WebViewForMessage(message));
         break;
     case LOAD_DOC_COMPLETED:
-        printf("LOAD_DOC_COMPLETED\n");
+        // NOTE: This events means the DOM document is ready.
         break;
     case JAVASCRIPT_WINDOW_OBJECT_CLEARED:
-        printf("JAVASCRIPT_WINDOW_OBJECT_CLEARED\n");
+        // NOTE: No idea what this event actually means.
         break;
     case NAVIGATION_REQUESTED: {
         BString url;

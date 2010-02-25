@@ -200,7 +200,6 @@ BWebPage::BWebPage(BWebView* webView)
 
 BWebPage::~BWebPage()
 {
-printf("~BWebPage()\n");
     delete m_mainFrame;
     delete m_page;
 }
