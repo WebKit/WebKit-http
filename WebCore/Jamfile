@@ -1102,7 +1102,6 @@ SharedLibrary libwebcore.so :
         KURLGoogle.cpp
         Length.cpp
         LinkHash.cpp
-        LocalizedStringsHaiku.cpp
         Logging.cpp
         MIMETypeRegistry.cpp
         Scrollbar.cpp
@@ -1200,6 +1199,8 @@ SharedLibrary libwebcore.so :
         EventLoopHaiku.cpp
         FileChooserHaiku.cpp
         FileSystemHaiku.cpp
+        KURLHaiku.cpp
+        LocalizedStringsHaiku.cpp
         LoggingHaiku.cpp
         MIMETypeRegistryHaiku.cpp
         PasteboardHaiku.cpp

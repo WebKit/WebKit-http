@@ -32,38 +32,18 @@
  */
 
 #include "config.h"
-
 #include "KURL.h"
-#include "NotImplemented.h"
+
 #include "PlatformString.h"
-#include "SSLKeyGenerator.h"
-#include "SystemTime.h"
-
-using namespace WebCore;
-
-Vector<char> loadResourceIntoArray(const char*)
-{
-    notImplemented();
-    return Vector<char>();
-}
 
 namespace WebCore {
 
-String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String &challengeString, const KURL &url)
+String KURL::fileSystemPath() const
 {
-    return String();
-}
+    if (!isValid() || !protocolIs("file"))
+        return String();
 
-void getSupportedKeySizes(Vector<String>&)
-{
-    notImplemented();
-}
-
-float userIdleTime()
-{
-	// This is for example used to determine if Pages are to be released from the PageCache...
-    notImplemented();
-    return 0;
+    return String(path());
 }
 
 } // namespace WebCore
