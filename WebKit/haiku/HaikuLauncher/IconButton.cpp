@@ -821,8 +821,9 @@ IconButton::_MakeBitmaps(const BBitmap* bitmap)
 						cBits[nOffset + 3] = fBits[fOffset + 3];
 						// disabled bits have less opacity
 
-						uint8 grey = ((uint16)nBits[nOffset + 0] + nBits[nOffset + 1]
-							+ nBits[nOffset + 2]) / 3;
+						uint8 grey = ((uint16)nBits[nOffset + 0] * 10
+						    + nBits[nOffset + 1] * 60
+							+ nBits[nOffset + 2] * 30) / 100;
 						float dist = (nBits[nOffset + 0] - grey) * 0.3;
 						dBits[nOffset + 0] = (uint8)(grey + dist);
 						dist = (nBits[nOffset + 1] - grey) * 0.3;
