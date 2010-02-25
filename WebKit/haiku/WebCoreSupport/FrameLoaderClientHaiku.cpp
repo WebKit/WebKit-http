@@ -389,7 +389,7 @@ BString(mimetype).String());
         return;
     }
     // we need to call directly here
-    if (canShowMIMEType(mimetype) || !mimetype.length()) {
+    if (canShowMIMEType(mimetype)) {
         callPolicyFunction(function, PolicyUse);
     } else if (!request.url().isLocalFile()) {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download\n",
@@ -409,11 +409,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     if (!function)
         return;
 
-    if (request.isNull()) {
-        callPolicyFunction(function, PolicyIgnore);
-        return;
-    }
-
+	// TODO: Don't do this here, implement createPage() instead!
     BMessage message(NEW_WINDOW_REQUESTED);
     message.AddString("url", request.url().string());
     // Switch to the new tab immediately, since the new window action was caused by a primary click.
@@ -441,37 +437,33 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
     if (!function)
         return;
 
-    if (request.isNull()) {
-        callPolicyFunction(function, PolicyIgnore);
+    if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
+        callPolicyFunction(function, PolicyUse);
         return;
     }
 
-    if (!m_messenger.IsValid()) {
-    	callPolicyFunction(function, PolicyUse);
-    	return;
+// NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
+// current delegation policy is "DelegateExternalLinks":
+//    if (WebCore::SecurityOrigin::shouldTreatURLSchemeAsLocal(request.url().scheme())) {
+//        callPolicyFunction(function, PolicyUse);
+//        return;
+//    }
+
+    // Clicks with the middle mouse button shall open a new window
+    // (or tab respectively depending on browser) - ignore the request for this page then.
+    BMessage message(NEW_WINDOW_REQUESTED);
+    message.AddString("url", request.url().string());
+    // Don't switch to the new tab, but load it in the background.
+    message.AddBool("primary", false);
+    dispatchMessage(message);
+    if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
+        m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
+
+    if (action.type() == NavigationTypeLinkClicked) {
+        ResourceRequest emptyRequest;
+        m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
-
-    // Ignore the action if we want to load it into a new window or tab.
-    if (isTertiaryMouseButton(action)) {
-        // Clicks with the middle mouse button shall open a new window
-        // (or tab respectively depending on browser)
-	    BMessage message(NEW_WINDOW_REQUESTED);
-	    message.AddString("url", request.url().string());
-	    // Don't switch to the new tab, but load it in the background.
-        message.AddBool("primary", false);
-	    dispatchMessage(message);
-        if (action.type() == NavigationTypeFormSubmitted || action.type() == NavigationTypeFormResubmitted)
-            m_webFrame->Frame()->loader()->resetMultipleFormSubmissionProtection();
-
-        if (action.type() == NavigationTypeLinkClicked) {
-            ResourceRequest emptyRequest;
-            m_webFrame->Frame()->loader()->activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
-        }
-        callPolicyFunction(function, PolicyIgnore);
-        return;
-    }
-
-    callPolicyFunction(function, PolicyUse);
+    callPolicyFunction(function, PolicyIgnore);
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
@@ -685,6 +677,11 @@ bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) c
 
 bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
 {
+	// TODO: Usually, the mime type will have been detexted. This is supposed to work around
+	// downloading some empty files, that can be observed.
+	if (!mimeType.length())
+	    return true;
+
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
         return true;
 
@@ -793,7 +790,8 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
-    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/420+ (KHTML, like Gecko)");
+	// TODO: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
+    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/527+ (KHTML, like Gecko) WebPositive/527+ Safari/527+");
 }
 
 bool FrameLoaderClientHaiku::canCachePage() const
