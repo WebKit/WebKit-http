@@ -68,15 +68,6 @@ public:
             , accumulatedOrigin(B_ORIGIN)
             , previous(0)
         {
-            strokeColor.red = 0;
-            strokeColor.green = 0;
-            strokeColor.blue = 0;
-            strokeColor.alpha = 0;
-
-            fillColor.red = 0;
-            fillColor.green = 0;
-            fillColor.blue = 0;
-            fillColor.alpha = 255;
         }
         Layer(Layer* previous)
             : view(0)
@@ -90,16 +81,6 @@ public:
             , accumulatedOrigin(B_ORIGIN)
             , previous(previous)
         {
-            strokeColor.red = 0;
-            strokeColor.green = 0;
-            strokeColor.blue = 0;
-            strokeColor.alpha = 0;
-
-            fillColor.red = 0;
-            fillColor.green = 0;
-            fillColor.blue = 0;
-            fillColor.alpha = 255;
-
             BRegion parentClipping;
             previous->view->GetClippingRegion(&parentClipping);
             BRect frameInParent = parentClipping.Frame();
@@ -140,8 +121,6 @@ public:
         BBitmap* bitmap;
         BRegion clipping;
         bool cippingSet;
-        rgb_color strokeColor;
-        rgb_color fillColor;
         uint8 globalAlpha;
         BShape* currentShape;
         BShape* clipShape;
@@ -247,6 +226,11 @@ public:
         delete layer;
     }
 
+    bool inTransparencyLayer() const
+    {
+        return m_currentLayer->previous;
+    }
+
     Layer* m_currentLayer;
 };
 
@@ -301,9 +285,20 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    // TODO: Should use fill + strokeRect().
-    m_data->view()->FillRect(rect);
-    if (strokeStyle() != NoStroke)
+    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+//        TODO: What's this shadow business?
+        if (m_common->state.fillPattern)
+            notImplemented();
+        else if (m_common->state.fillGradient) {
+            BGradient* gradient = m_common->state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+            m_data->view()->FillRect(rect, *gradient);
+        } else
+            m_data->view()->FillRect(rect);
+    }
+
+    // TODO: Support gradients
+    if (strokeStyle() != NoStroke && strokeThickness() > 0.0f && strokeColor().alpha())
         m_data->view()->StrokeRect(rect, getHaikuStrokeStyle());
 }
 
@@ -322,14 +317,26 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    m_data->view()->FillEllipse(rect);
-    if (strokeStyle() != NoStroke)
+    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+//        TODO: What's this shadow business?
+        if (m_common->state.fillPattern)
+            notImplemented();
+        else if (m_common->state.fillGradient) {
+            BGradient* gradient = m_common->state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+            m_data->view()->FillEllipse(rect, *gradient);
+        } else
+            m_data->view()->FillEllipse(rect);
+    }
+
+    // TODO: Support gradients
+    if (strokeStyle() != NoStroke && strokeThickness() > 0.0f && strokeColor().alpha())
         m_data->view()->StrokeEllipse(rect, getHaikuStrokeStyle());
 }
 
 void GraphicsContext::strokeRect(const FloatRect& rect, float width)
 {
-    if (paintingDisabled())
+    if (paintingDisabled() || strokeStyle() == NoStroke || strokeThickness() <= 0.0f || !strokeColor().alpha())
         return;
 
     float oldSize = m_data->view()->PenSize();
@@ -881,7 +888,17 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color, ColorSpace colo
     if (paintingDisabled())
         return;
 
+    // NOTE: In theory, we should be able to use the low color and
+    // return B_SOLID_LOW for the SolidStroke case in getHaikuStrokeStyle()
+    // below. More stuff needs to be fixed, though, it will for example
+    // prevent the text caret from rendering.
+//    m_data->view()->SetLowColor(color);
     m_data->view()->SetHighColor(color);
+}
+
+bool GraphicsContext::inTransparencyLayer() const
+{
+	return m_data->inTransparencyLayer();
 }
 
 pattern GraphicsContext::getHaikuStrokeStyle()

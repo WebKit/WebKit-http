@@ -52,11 +52,15 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
 {
     BView* view = graphicsContext->platformContext();
 
+    rgb_color color = graphicsContext->fillColor();
     rgb_color oldColor = view->HighColor();
     drawing_mode oldMode = view->DrawingMode();
 
-    view->SetDrawingMode(B_OP_ALPHA);
-    view->SetHighColor(graphicsContext->fillColor());
+    if (color.alpha < 255 || graphicsContext->inTransparencyLayer())
+        view->SetDrawingMode(B_OP_ALPHA);
+    else if (oldMode != B_OP_OVER)
+        view->SetDrawingMode(B_OP_OVER);
+    view->SetHighColor(color);
     view->SetFont(font->platformData().font());
 
     GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));

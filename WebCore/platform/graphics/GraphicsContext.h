@@ -387,6 +387,7 @@ namespace WebCore {
 #endif
 
 #if PLATFORM(HAIKU)
+        bool inTransparencyLayer() const;
         pattern getHaikuStrokeStyle();
 #endif
 
