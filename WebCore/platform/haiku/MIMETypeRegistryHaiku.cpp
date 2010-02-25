@@ -31,7 +31,6 @@
 
 #include "CString.h"
 #include "PlatformString.h"
-
 #include <MimeType.h>
 
 namespace WebCore {
@@ -82,8 +81,8 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
     if (BMimeType::GuessMimeType(fakeFileName.utf8().data(), &type) == B_OK)
         return type.Type();
 
-    // unknown, let's just assume plain text
-    return "text/plain";
+    // unknown
+    return String();
 }
 } // namespace WebCore
 
