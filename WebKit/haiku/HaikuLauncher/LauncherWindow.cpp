@@ -382,8 +382,8 @@ bool LauncherWindow::QuitRequested()
 {
     // TODO: Check for modified form data and ask user for confirmation, etc.
 
+    // Iterate over all tabs to delete all BWebViews.
     // Do this here, so WebKit tear down happens earlier.
-    // TODO: Iterator over all WebViews, if there are more then one...
     while (m_tabView->CountTabs() > 0)
         delete m_tabView->RemoveTab(0L);
     SetCurrentWebView(0);
