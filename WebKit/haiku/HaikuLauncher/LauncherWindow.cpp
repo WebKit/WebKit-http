@@ -353,13 +353,22 @@ void LauncherWindow::MessageReceived(BMessage* message)
     }
 
     case TAB_CHANGED: {
-        int32 index = message->FindInt32("index");
-        SetCurrentWebView(dynamic_cast<BWebView*>(m_tabView->ViewForTab(index)));
-        updateTitle(m_tabView->TabAt(index)->Label());
-        m_url->SetText(CurrentWebView()->MainFrameURL());
-        // Trigger update of the interface to the new page, by requesting
-        // to resend all notifications.
-        CurrentWebView()->WebPage()->ResendNotifications();
+    	// This message may be received also when the last tab closed, i.e. with index == -1.
+        int32 index = -1;
+        message->FindInt32("index", &index);
+        BWebView* webView = dynamic_cast<BWebView*>(m_tabView->ViewForTab(index));
+        SetCurrentWebView(webView);
+        BTab* tab = m_tabView->TabAt(index);
+        if (tab)
+            updateTitle(tab->Label());
+        else
+            updateTitle("");
+        if (webView) {
+            m_url->SetText(webView->MainFrameURL());
+            // Trigger update of the interface to the new page, by requesting
+            // to resend all notifications.
+            webView->WebPage()->ResendNotifications();
+        }
         break;
     }
 
