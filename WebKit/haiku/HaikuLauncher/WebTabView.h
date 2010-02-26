@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Rene Gollent <rene@gollent.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -25,28 +25,52 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebTabView_h
-#define WebTabView_h
+#ifndef TAB_MANAGER_H
+#define TAB_MANAGER_H
 
 #include <Messenger.h>
 #include <TabView.h>
 
 enum {
-    TAB_CHANGED = 'tcha'
+    TAB_CHANGED = 'tcha',
+    CLOSE_TAB = 'cltb'
 };
 
-class WebTabView : public BTabView {
-public:
-    WebTabView(const char *name, const BMessenger& target);
-    virtual ~WebTabView(void);
-    virtual void Select(int32 tab);
+class BCardLayout;
+class BGroupView;
+class TabContainerView;
 
-    const BMessenger& target() const;
-    void setTarget(const BMessenger& target);
+class TabManager {
+public:
+    							TabManager(const BMessenger& target);
+	virtual						~TabManager();
+
+			void				SetTarget(const BMessenger& target);
+			const BMessenger&	Target() const;
+
+			BView*				TabGroup() const;
+			BView*				ContainerView() const;
+
+			BView*				ViewForTab(int32 tabIndex) const;
+
+			void				SelectTab(int32 tabIndex);
+			int32				SelectedTabIndex() const;
+			void				CloseTab(int32 tabIndex);
+
+			void				AddTab(BView* view, const char* label,
+									int32 index = -1);
+			BView*				RemoveTab(int32 index);
+			int32				CountTabs() const;
+
+			void				SetTabLabel(int32 tabIndex, const char* label);
 
 private:
-    BMessenger m_target;
+			BGroupView*			fTabContainerGroup;
+			TabContainerView*	fTabContainerView;
+			BView*				fContainerView;
+			BCardLayout*		fCardLayout;
+
+			BMessenger			fTarget;
 };
 
-#define WebTabView_h
-#endif // WebTabView_h
+#endif // TAB_MANAGER_H

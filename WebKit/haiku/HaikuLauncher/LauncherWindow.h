@@ -42,7 +42,7 @@ class BStatusBar;
 class BStringView;
 class BTextControl;
 class IconButton;
-class WebTabView;
+class TabManager;
 class BWebView;
 
 enum ToolbarPolicy {
@@ -93,6 +93,7 @@ private:
     virtual void AuthenticationChallenge(BMessage* challenge);
 
     void updateTitle(const BString &title);
+    void updateTabGroupVisibility();
 
 private:
     BMessenger m_downloadListener;
@@ -106,9 +107,10 @@ private:
     BStringView* m_statusText;
     BStatusBar* m_loadingProgressBar;
     BLayoutItem* m_findGroup;
+    BLayoutItem* m_tabGroup;
     BTextControl* m_findTextControl;
     BCheckBox* m_findCaseSensitiveCheckBox;
-    WebTabView* m_tabView;
+    TabManager* m_tabManager;
 };
 
 #endif // LauncherWindow_h

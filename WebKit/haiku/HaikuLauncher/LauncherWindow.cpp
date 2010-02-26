@@ -77,8 +77,6 @@ enum {
     TEXT_HIDE_FIND_GROUP = 'hfnd',
     TEXT_FIND_NEXT = 'fndn',
     TEXT_FIND_PREVIOUS = 'fndp',
-
-    CLOSE_TAB = 'ctab'
 };
 
 using namespace WebCore;
@@ -97,8 +95,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
     , m_downloadListener(downloadListener)
 {
-    m_tabView = new WebTabView("tabview", BMessenger(this));
-    m_tabView->setTarget(BMessenger(this));
+    m_tabManager = new TabManager(BMessenger(this));
 
     if (toolbarPolicy == HaveToolbar) {
         // Menu
@@ -196,6 +193,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         // Layout
         AddChild(BGroupLayoutBuilder(B_VERTICAL)
             .Add(m_menuBar)
+            .Add(m_tabManager->TabGroup())
             .Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
                 .Add(m_BackButton, 0, 0)
                 .Add(m_ForwardButton, 1, 0)
@@ -204,8 +202,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
                 .Add(button, 4, 0)
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
-//            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-            .Add(m_tabView)
+            .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+            .Add(m_tabManager->ContainerView())
             .Add(findGroup)
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
             .Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
@@ -219,6 +217,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_url->MakeFocus(true);
 
         m_findGroup = layoutItemFor(findGroup);
+        m_tabGroup = layoutItemFor(m_tabManager->TabGroup());
     } else {
         m_BackButton = 0;
         m_ForwardButton = 0;
@@ -344,23 +343,28 @@ void LauncherWindow::MessageReceived(BMessage* message)
         be_app->PostMessage(message);
         break;
 
-    case CLOSE_TAB: {
-        if (m_tabView->CountTabs() > 1)
-            delete m_tabView->RemoveTab(m_tabView->Selection());
-        else
+    case CLOSE_TAB:
+        if (m_tabManager->CountTabs() > 1) {
+	    	int32 index;
+    		if (message->FindInt32("tab index", &index) != B_OK)
+	    		index = m_tabManager->SelectedTabIndex();
+            delete m_tabManager->RemoveTab(index);
+            updateTabGroupVisibility();
+        } else
             PostMessage(B_QUIT_REQUESTED);
         break;
-    }
 
     case TAB_CHANGED: {
     	// This message may be received also when the last tab closed, i.e. with index == -1.
-        int32 index = -1;
-        message->FindInt32("index", &index);
-        BWebView* webView = dynamic_cast<BWebView*>(m_tabView->ViewForTab(index));
+        int32 index;
+        if (message->FindInt32("tab index", &index) != B_OK)
+            index = -1;
+        BWebView* webView = dynamic_cast<BWebView*>(m_tabManager->ViewForTab(index));
+        if (webView == CurrentWebView())
+        	break;
         SetCurrentWebView(webView);
-        BTab* tab = m_tabView->TabAt(index);
-        if (tab)
-            updateTitle(tab->Label());
+        if (webView)
+            updateTitle(webView->MainFrameTitle());
         else
             updateTitle("");
         if (webView) {
@@ -384,8 +388,8 @@ bool LauncherWindow::QuitRequested()
 
     // Iterate over all tabs to delete all BWebViews.
     // Do this here, so WebKit tear down happens earlier.
-    while (m_tabView->CountTabs() > 0)
-        delete m_tabView->RemoveTab(0L);
+    while (m_tabManager->CountTabs() > 0)
+        delete m_tabManager->RemoveTab(0L);
     SetCurrentWebView(0);
 
     BMessage message(WINDOW_CLOSED);
@@ -432,21 +436,22 @@ void LauncherWindow::newTab(const BString& url, bool select, BWebView* webView)
         webView = new BWebView("web view");
     webView->WebPage()->SetDownloadListener(m_downloadListener);
 
-    m_tabView->AddTab(webView);
-    m_tabView->TabAt(m_tabView->CountTabs() - 1)->SetLabel("New tab");
-    // TODO: Remove when BTabView is fixed...
-    m_tabView->Invalidate();
+    m_tabManager->AddTab(webView, "New tab");
 
     if (url.Length())
         webView->LoadURL(url.String());
 
     if (select) {
-        m_tabView->Select(m_tabView->CountTabs() - 1);
+        m_tabManager->SelectTab(m_tabManager->CountTabs() - 1);
         SetCurrentWebView(webView);
         NavigationCapabilitiesChanged(false, false, false, webView);
-        if (m_url)
+        if (m_url) {
+        	m_url->SetText(url.String());
             m_url->MakeFocus(true);
+        }
     }
+
+    updateTabGroupVisibility();
 }
 
 // #pragma mark - Notification API
@@ -577,10 +582,9 @@ void LauncherWindow::SetResizable(bool flag, BWebView* view)
 
 void LauncherWindow::TitleChanged(const BString& title, BWebView* view)
 {
-    for (int32 i = 0; i < m_tabView->CountTabs(); i++) {
-        if (m_tabView->ViewForTab(i) == view) {
-            m_tabView->TabAt(i)->SetLabel(title);
-            m_tabView->DrawTabs();
+    for (int32 i = 0; i < m_tabManager->CountTabs(); i++) {
+        if (m_tabManager->ViewForTab(i) == view) {
+            m_tabManager->SetTabLabel(i, title);
             break;
         }
     }
@@ -652,4 +656,12 @@ void LauncherWindow::updateTitle(const BString& title)
         windowTitle << " - ";
     windowTitle << "HaikuLauncher";
     SetTitle(windowTitle.String());
+}
+
+void LauncherWindow::updateTabGroupVisibility()
+{
+	if (Lock()) {
+	    m_tabGroup->SetVisible(m_tabManager->CountTabs() > 1);
+	    Unlock();
+	}
 }
