@@ -853,7 +853,7 @@ void BWebPage::handleMouseWheelChanged(BMessage* message)
 
 void BWebPage::handleKeyEvent(BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = m_page->focusController()->focusedOrMainFrame();
     if (!frame->view() || !frame->document())
         return;
 
