@@ -62,6 +62,7 @@
 #include <stdio.h>
 
 enum {
+	OPEN_LOCATION = 'open',
     GO_BACK = 'goba',
     GO_FORWARD = 'gofo',
     STOP = 'stop',
@@ -95,7 +96,11 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
     , m_downloadListener(downloadListener)
 {
-    m_tabManager = new TabManager(BMessenger(this));
+    BMessage* newTabMessage = new BMessage(NEW_TAB);
+    newTabMessage->AddString("url", "");
+    newTabMessage->AddPointer("window", this);
+    newTabMessage->AddBool("select", true);
+    m_tabManager = new TabManager(BMessenger(this), newTabMessage);
 
     if (toolbarPolicy == HaveToolbar) {
         // Menu
@@ -106,18 +111,15 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         BMenuItem* newItem = new BMenuItem("New window", newWindowMessage, 'N');
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
-        BMessage* newTabMessage = new BMessage(NEW_TAB);
-        newTabMessage->AddString("url", "");
-        newTabMessage->AddPointer("window", this);
-        newTabMessage->AddBool("select", true);
-        newItem = new BMenuItem("New tab", newTabMessage, 'T');
+        newItem = new BMenuItem("New tab", new BMessage(*newTabMessage), 'T');
         menu->AddItem(newItem);
         newItem->SetTarget(be_app);
+        menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
         menu->AddSeparatorItem();
         menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
         menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
         menu->AddSeparatorItem();
-        menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
+        menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
         menu->AddSeparatorItem();
         BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
         menu->AddItem(quitItem);
@@ -253,6 +255,14 @@ LauncherWindow::~LauncherWindow()
 void LauncherWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
+    case OPEN_LOCATION:
+        if (m_url) {
+        	if (m_url->TextView()->IsFocus())
+        	    m_url->TextView()->SelectAll();
+        	else
+        	    m_url->MakeFocus(true);
+        }
+    	break;
     case RELOAD:
         CurrentWebView()->LoadURL(m_url->Text());
         break;

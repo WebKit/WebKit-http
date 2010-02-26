@@ -42,7 +42,8 @@ class TabContainerView;
 
 class TabManager {
 public:
-    							TabManager(const BMessenger& target);
+    							TabManager(const BMessenger& target,
+    								BMessage* newTabMessage);
 	virtual						~TabManager();
 
 			void				SetTarget(const BMessenger& target);

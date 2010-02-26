@@ -29,7 +29,9 @@
 #include "WebTabView.h"
 
 #include "WebView.h"
+#include <Application.h>
 #include <AbstractLayoutItem.h>
+#include <Button.h>
 #include <CardLayout.h>
 #include <ControlLook.h>
 #include <GroupView.h>
@@ -884,11 +886,149 @@ TabManagerController::CloseTab(int32 index)
 }
 
 
+// #pragma mark - TabButton
+
+
+class TabButton : public BButton {
+public:
+	TabButton(BMessage* message)
+		: BButton("", message)
+	{
+	}
+
+	virtual BSize MinSize()
+	{
+		return BSize(12, 12);
+	}
+
+	virtual BSize MaxSize()
+	{
+		return BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED);
+	}
+
+	virtual BSize PreferredSize()
+	{
+		return MinSize();
+	}
+
+	virtual void Draw(BRect updateRect)
+	{
+		BRect bounds(Bounds());
+		rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+		SetHighColor(tint_color(base, B_DARKEN_2_TINT));
+		StrokeLine(bounds.LeftBottom(), bounds.RightBottom());
+		bounds.bottom--;
+		uint32 flags = be_control_look->Flags(this);
+		uint32 borders = BControlLook::B_TOP_BORDER
+			| BControlLook::B_BOTTOM_BORDER;
+		be_control_look->DrawInactiveTab(this, bounds, updateRect, base,
+			flags, borders);
+		if (IsEnabled()) {
+			rgb_color button = tint_color(base, 1.07);
+			be_control_look->DrawButtonBackground(this, bounds, updateRect,
+				button, flags, 0);
+		}
+
+		bounds.left = (bounds.left + bounds.right) / 2 - 6;
+		bounds.top = (bounds.top + bounds.bottom) / 2 - 6;
+		bounds.right = bounds.left + 12;
+		bounds.bottom = bounds.top + 12;
+		DrawSymbol(bounds, updateRect, base);
+	}
+
+	virtual void DrawSymbol(BRect frame, const BRect& updateRect,
+		const rgb_color& base)
+	{
+	}
+};
+
+
+class ScrollLeftTabButton : public TabButton {
+public:
+	ScrollLeftTabButton(BMessage* message)
+		: TabButton(message)
+	{
+	}
+
+	virtual void DrawSymbol(BRect frame, const BRect& updateRect,
+		const rgb_color& base)
+	{
+		be_control_look->DrawArrowShape(this, frame, updateRect,
+			base, BControlLook::B_LEFT_ARROW, 0, B_DARKEN_4_TINT);
+	}
+};
+
+
+class ScrollRightTabButton : public TabButton {
+public:
+	ScrollRightTabButton(BMessage* message)
+		: TabButton(message)
+	{
+	}
+
+	virtual void DrawSymbol(BRect frame, const BRect& updateRect,
+		const rgb_color& base)
+	{
+		be_control_look->DrawArrowShape(this, frame, updateRect,
+			base, BControlLook::B_RIGHT_ARROW, 0, B_DARKEN_4_TINT);
+	}
+};
+
+
+class NewTabButton : public TabButton {
+public:
+	NewTabButton(BMessage* message)
+		: TabButton(message)
+	{
+	}
+
+	virtual BSize MinSize()
+	{
+		return BSize(18, 12);
+	}
+
+	virtual void DrawSymbol(BRect frame, const BRect& updateRect,
+		const rgb_color& base)
+	{
+		SetHighColor(tint_color(base, B_DARKEN_4_TINT));
+		float inset = 3;
+		frame.InsetBy(2, 2);
+		frame.top++;
+		frame.left++;
+		FillRoundRect(BRect(frame.left, frame.top + inset,
+			frame.right, frame.bottom - inset), 1, 1);
+		FillRoundRect(BRect(frame.left + inset, frame.top,
+			frame.right - inset, frame.bottom), 1, 1);
+	}
+};
+
+
+class TabMenuTabButton : public TabButton {
+public:
+	TabMenuTabButton(BMessage* message)
+		: TabButton(message)
+	{
+	}
+
+	virtual BSize MinSize()
+	{
+		return BSize(18, 12);
+	}
+
+	virtual void DrawSymbol(BRect frame, const BRect& updateRect,
+		const rgb_color& base)
+	{
+		be_control_look->DrawArrowShape(this, frame, updateRect,
+			base, BControlLook::B_DOWN_ARROW, 0, B_DARKEN_4_TINT);
+	}
+};
+
+
 // #pragma mark - TabManager
 
 
 
-TabManager::TabManager(const BMessenger& target)
+TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
     :
     fTarget(target)
 {
@@ -900,6 +1040,12 @@ TabManager::TabManager(const BMessenger& target)
 	fTabContainerGroup = new BGroupView(B_HORIZONTAL);
 	fTabContainerGroup->GroupLayout()->SetInsets(0, 5, 0, 0);
 	fTabContainerGroup->GroupLayout()->AddView(fTabContainerView);
+//	fTabContainerGroup->GroupLayout()->AddView(new ScrollLeftTabButton(NULL), 0.0f);
+//	fTabContainerGroup->GroupLayout()->AddView(new ScrollRightTabButton(NULL), 0.0f);
+	NewTabButton* newTabButton = new NewTabButton(newTabMessage);
+	newTabButton->SetTarget(be_app);
+	fTabContainerGroup->GroupLayout()->AddView(newTabButton, 0.0f);
+//	fTabContainerGroup->GroupLayout()->AddView(new TabMenuTabButton(NULL), 0.0f);
 }
 
 
