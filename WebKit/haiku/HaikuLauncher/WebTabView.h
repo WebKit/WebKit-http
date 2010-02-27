@@ -56,6 +56,7 @@ public:
 			BView*				ViewForTab(int32 tabIndex) const;
 
 			void				SelectTab(int32 tabIndex);
+			void				SelectTab(BView* containedView);
 			int32				SelectedTabIndex() const;
 			void				CloseTab(int32 tabIndex);
 

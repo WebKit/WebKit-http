@@ -654,8 +654,14 @@ void LauncherWindow::UpdateGlobalHistory(const BString& url)
 }
 
 bool LauncherWindow::AuthenticationChallenge(BString message, BString& inOutUser,
-	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount)
+	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount,
+	BWebView* view)
 {
+	// Switch to the page for which this authentication is required.
+	if (view != CurrentWebView()) {
+		m_tabManager->SelectTab(view);
+		UpdateIfNeeded();
+	}
     AuthenticationPanel* panel = new AuthenticationPanel(Frame());
     	// Panel auto-destructs.
     return panel->getAuthentication(message, inOutUser, inOutPassword,

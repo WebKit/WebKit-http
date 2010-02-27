@@ -182,7 +182,7 @@ void BWebWindow::MessageReceived(BMessage* message)
 	    message->FindUInt32("failureCount", &failureCount);
 
         if (!AuthenticationChallenge(text, user, password, rememberCredentials,
-        		failureCount)) {
+        		failureCount, _WebViewForMessage(message))) {
         	message->SendReply((uint32)0);
         	break;
         }
@@ -336,7 +336,8 @@ void BWebWindow::UpdateGlobalHistory(const BString& url)
 }
 
 bool BWebWindow::AuthenticationChallenge(BString message, BString& inOutUser,
-	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount)
+	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount,
+	BWebView* view)
 {
 	return false;
 }

@@ -83,7 +83,7 @@ public:
 	virtual	bool				AuthenticationChallenge(BString message,
 									BString& inOutUser, BString& inOutPassword,
 									bool& inOutRememberCredentials,
-									uint32 failureCount);
+									uint32 failureCount, BWebView* view);
 
 private:
 			BWebView*			_WebViewForMessage(

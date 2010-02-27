@@ -93,7 +93,7 @@ private:
     virtual void UpdateGlobalHistory(const BString& url);
 	virtual bool AuthenticationChallenge(BString message, BString& inOutUser,
 		BString& inOutPassword, bool& inOutRememberCredentials,
-		uint32 failureCount);
+		uint32 failureCount, BWebView* view);
 
     void updateTitle(const BString &title);
     void updateTabGroupVisibility();

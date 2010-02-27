@@ -1137,6 +1137,20 @@ TabManager::SelectTab(int32 tabIndex)
 }
 
 
+void
+TabManager::SelectTab(BView* containedView)
+{
+	int32 count = fCardLayout->CountItems();
+	for (int32 i = 0; i < count; i++) {
+		BLayoutItem* item = fCardLayout->ItemAt(i);
+		if (item->View() == containedView) {
+			SelectTab(i);
+			break;
+		}
+	}
+}
+
+
 int32
 TabManager::SelectedTabIndex() const
 {
