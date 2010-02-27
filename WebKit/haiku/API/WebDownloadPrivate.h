@@ -55,8 +55,8 @@ namespace BPrivate {
 
 class WebDownloadPrivate : public Noncopyable, public WebCore::ResourceHandleClient {
 public:
-    WebDownloadPrivate(BWebPage*, const ResourceRequest&);
-    WebDownloadPrivate(BWebPage*, ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
+    WebDownloadPrivate(const ResourceRequest&);
+    WebDownloadPrivate(ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
 
     // ResourceHandleClient implementation
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
@@ -71,8 +71,6 @@ public:
     void cancel();
     void setProgressListener(const BMessenger&);
 
-	BWebPage* webPage() const { return m_webPage; }
-
     const BString& url() const { return m_url; }
     const BString& filename() const { return m_filename; }
     const BPath& path() const { return m_path; }
@@ -80,8 +78,10 @@ public:
     off_t expectedSize() const { return m_expectedSize; }
 
 private:
+	void handleFinished(WebCore::ResourceHandle* handle, uint32 status);
+
+private:
     BWebDownload* m_webDownload;
-    BWebPage* m_webPage;
 
     RefPtr<ResourceHandle> m_resourceHandle;
     BString m_suggestedFileName;

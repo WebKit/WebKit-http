@@ -159,9 +159,6 @@ private:
 	void requestDownload(WebCore::ResourceHandle* handle,
 		const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
 	void downloadCreated(BWebDownload* download);
-	void downloadFinished(WebCore::ResourceHandle* handle, BWebDownload* download,
-		uint32 status);
-	void cancelDownload(BWebDownload* download);
 
 	void paint(BRect rect, bool contentChanged, bool immediate,
 		bool repaintContentOnly);
@@ -188,7 +185,6 @@ private:
 	void handleChangeTextSize(BMessage* message);
 	void handleFindString(BMessage* message);
 	void handleResendNotifications(BMessage* message);
-	void handleCancelDownload(BMessage* message);
 
     status_t dispatchMessage(BMessage& message) const;
 

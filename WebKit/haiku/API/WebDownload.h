@@ -27,7 +27,7 @@
 #ifndef _WEB_DOWNLOAD_H_
 #define _WEB_DOWNLOAD_H_
 
-#include <SupportDefs.h>
+#include <Handler.h>
 
 
 namespace BPrivate {
@@ -52,7 +52,7 @@ enum {
 };
 
 
-class BWebDownload {
+class BWebDownload : public BHandler {
 // TODO: Inherit from BReferenceable.
 public:
 			void				Start();
@@ -69,9 +69,15 @@ public:
 
 private:
 			friend class BWebPage;
+			friend class BPrivate::WebDownloadPrivate;
 
 								BWebDownload(BPrivate::WebDownloadPrivate* data);
 								~BWebDownload();
+
+private:
+	virtual	void				MessageReceived(BMessage* message);
+
+			void				_HandleCancel();
 
 private:
 			BPrivate::WebDownloadPrivate* fData;

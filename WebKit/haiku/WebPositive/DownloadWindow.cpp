@@ -272,6 +272,12 @@ public:
         	// TOAST!
             return;
         }
+        case B_DOWNLOAD_REMOVED:
+            // TODO: This is a bit asymetric. The removed notification
+            // arrives here, but it would be nicer if it arrived
+            // at the window...
+            Window()->PostMessage(message);
+            break;
         default:
             BGridView::MessageReceived(message);
         }

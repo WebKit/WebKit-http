@@ -29,18 +29,32 @@
 #include "WebDownload.h"
 
 #include "WebDownloadPrivate.h"
-#include "WebPage.h"
+#include <Application.h>
+#include <stdio.h>
+
+enum {
+	HANDLE_CANCEL = 'hdlc'
+};
 
 BWebDownload::BWebDownload(BPrivate::WebDownloadPrivate* data)
     : fData(data)
 {
 	ASSERT(fData);
 
+	if (be_app->Lock()) {
+		be_app->AddHandler(this);
+		be_app->Unlock();
+	}
+
 	fData->setDownload(this);
 }
 
 BWebDownload::~BWebDownload()
 {
+	if (be_app->Lock()) {
+		be_app->RemoveHandler(this);
+		be_app->Unlock();
+	}
 	delete fData;
 }
 
@@ -54,7 +68,8 @@ void BWebDownload::Cancel()
 	// This is invoked from the client, within any thread, so we need to
 	// dispatch this asynchronously so that it is actually handled in the
 	// main thread.
-    fData->webPage()->cancelDownload(this);
+	BMessage message(HANDLE_CANCEL);
+	Looper()->PostMessage(&message, this);
 }
 
 void BWebDownload::SetProgressListener(const BMessenger& listener)
@@ -85,5 +100,23 @@ off_t BWebDownload::CurrentSize() const
 off_t BWebDownload::ExpectedSize() const
 {
 	return fData->expectedSize();
+}
+
+// #pragma mark - private
+
+void BWebDownload::MessageReceived(BMessage* message)
+{
+	switch (message->what) {
+	case HANDLE_CANCEL:
+		_HandleCancel();
+		break;
+	default:
+		BHandler::MessageReceived(message);
+	}
+}
+
+void BWebDownload::_HandleCancel()
+{
+	fData->cancel();
 }
 

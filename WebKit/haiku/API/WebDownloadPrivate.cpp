@@ -43,9 +43,8 @@
 
 namespace BPrivate {
 
-WebDownloadPrivate::WebDownloadPrivate(BWebPage* webPage, const ResourceRequest& request)
+WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     : m_webDownload(0)
-    , m_webPage(webPage)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
@@ -55,12 +54,11 @@ WebDownloadPrivate::WebDownloadPrivate(BWebPage* webPage, const ResourceRequest&
     , m_file()
     , m_lastProgressReportTime(0)
 {
-printf("WebDownloadPrivate::WebDownloadPrivate()\n");
 }
 
-WebDownloadPrivate::WebDownloadPrivate(BWebPage* webPage, ResourceHandle* handle,
+WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
         const ResourceRequest& request, const ResourceResponse& response)
-    : m_webPage(webPage)
+    : m_webDownload(0)
     , m_resourceHandle(handle)
     , m_currentSize(0)
     , m_expectedSize(0)
@@ -117,30 +115,26 @@ void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, int l
 
 void WebDownloadPrivate::didFinishLoading(ResourceHandle* handle)
 {
-printf("WebDownloadPrivate::didFinishLoading()\n");
-    m_webPage->downloadFinished(handle, m_webDownload, B_DOWNLOAD_FINISHED);
+    handleFinished(handle, B_DOWNLOAD_FINISHED);
 }
 
 void WebDownloadPrivate::didFail(ResourceHandle* handle, const ResourceError& error)
 {
-printf("WebDownloadPrivate::didFail()\n");
-    m_webPage->downloadFinished(handle, m_webDownload, B_DOWNLOAD_FAILED);
+    handleFinished(handle, B_DOWNLOAD_FAILED);
 }
 
 void WebDownloadPrivate::wasBlocked(ResourceHandle* handle)
 {
-printf("WebDownloadPrivate::wasBlocked()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    m_webPage->downloadFinished(handle, m_webDownload, B_DOWNLOAD_BLOCKED);
+    handleFinished(handle, B_DOWNLOAD_BLOCKED);
 }
 
 void WebDownloadPrivate::cannotShowURL(ResourceHandle* handle)
 {
-printf("WebDownloadPrivate::cannotShowURL()\n");
     // FIXME: Implement this when we have the new frame loader signals
     // and error handling.
-    m_webPage->downloadFinished(handle, m_webDownload, B_DOWNLOAD_CANNOT_SHOW_URL);
+    handleFinished(handle, B_DOWNLOAD_CANNOT_SHOW_URL);
 }
 
 void WebDownloadPrivate::setDownload(BWebDownload* download)
@@ -161,6 +155,21 @@ void WebDownloadPrivate::cancel()
 void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 {
 	m_progressListener = listener;
+}
+
+// #pragma mark - private
+
+void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 status)
+{
+	handle->setClient(0);
+	if (m_progressListener.IsValid()) {
+        BMessage message(B_DOWNLOAD_REMOVED);
+        message.AddPointer("download", m_webDownload);
+        // Block until the listener has released the object on it's side...
+        BMessage reply;
+        m_progressListener.SendMessage(&message, &reply);
+	}
+	delete m_webDownload;
 }
 
 } // namespace BPrivate
