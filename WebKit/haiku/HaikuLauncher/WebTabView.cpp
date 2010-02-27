@@ -84,7 +84,7 @@ public:
 	virtual void DrawContents(BView* owner, BRect frame,
 		const BRect& updateRect, bool isFirst, bool isLast, bool isFront);
 
-	virtual void MouseDown(BPoint where);
+	virtual void MouseDown(BPoint where, uint32 buttons);
 	virtual void MouseUp(BPoint where);
 	virtual void MouseMoved(BPoint where, uint32 transit,
 		const BMessage* dragMessage);
@@ -248,10 +248,13 @@ TabContainerView::Draw(BRect updateRect)
 void
 TabContainerView::MouseDown(BPoint where)
 {
+	uint32 buttons;
+	if (Window()->CurrentMessage()->FindInt32("buttons", (int32*)&buttons) != B_OK)
+		buttons = B_PRIMARY_MOUSE_BUTTON;
 	fMouseDown = true;
 	SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
 	if (fLastMouseEventTab)
-		fLastMouseEventTab->MouseDown(where);
+		fLastMouseEventTab->MouseDown(where, buttons);
 }
 
 
@@ -544,7 +547,7 @@ void TabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 		base, 0, BAlignment(B_ALIGN_LEFT, B_ALIGN_MIDDLE));
 }
 
-void TabView::MouseDown(BPoint where)
+void TabView::MouseDown(BPoint where, uint32 buttons)
 {
 	fContainerView->SelectTab(this);
 }
@@ -731,7 +734,7 @@ public:
 	virtual void DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 		bool isFirst, bool isLast, bool isFront);
 
-	virtual void MouseDown(BPoint where);
+	virtual void MouseDown(BPoint where, uint32 buttons);
 	virtual void MouseUp(BPoint where);
 	virtual void MouseMoved(BPoint where, uint32 transit,
 		const BMessage* dragMessage);
@@ -811,11 +814,16 @@ WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 
 
 void
-WebTabView::MouseDown(BPoint where)
+WebTabView::MouseDown(BPoint where, uint32 buttons)
 {
+	if (buttons & B_TERTIARY_MOUSE_BUTTON) {
+		fController->CloseTab(ContainerView()->IndexOf(this));
+		return;
+	}
+
 	BRect closeRect = _CloseRectFrame(Frame());
 	if (!closeRect.Contains(where)) {
-		TabView::MouseDown(where);
+		TabView::MouseDown(where, buttons);
 		return;
 	}
 
