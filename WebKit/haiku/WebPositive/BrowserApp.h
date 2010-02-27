@@ -8,10 +8,10 @@
  * modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
+ *	notice, this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ *	notice, this list of conditions and the following disclaimer in the
+ *	documentation and/or other materials provided with the distribution.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
@@ -25,39 +25,49 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef BROWSER_APP_H
+#define BROWSER_APP_H
 
-#ifndef LauncherApp_h
-#define LauncherApp_h
 
 #include <Application.h>
 #include <Rect.h>
 
 class BFile;
-class LauncherWindow;
+class DownloadWindow;
+class BrowserWindow;
 
-class LauncherApp : public BApplication {
+
+class BrowserApp : public BApplication {
 public:
-    LauncherApp();
-    virtual ~LauncherApp();
+								BrowserApp();
+	virtual						~BrowserApp();
 
-    virtual void AboutRequested();
-    virtual void ArgvReceived(int32, char**);
-    virtual void MessageReceived(BMessage*);
-    virtual void RefsReceived(BMessage*);
-    virtual void ReadyToRun();
-    virtual bool QuitRequested();
+	virtual	void				AboutRequested();
+	virtual	void				ArgvReceived(int32 agrc, char** argv);
+	virtual	void				MessageReceived(BMessage* message);
+	virtual	void				RefsReceived(BMessage* message);
+	virtual	void				ReadyToRun();
+	virtual	bool				QuitRequested();
 
 private:
-	bool openSettingsFile(BFile& file, uint32 mode);
-	void newWindow(const BString& url);
+			bool				_OpenSettingsFile(BFile& file, uint32 mode);
+			void				_CreateNewWindow(const BString& url);
+			void				_CreateNewTab(BrowserWindow* window,
+									const BString& url, bool select);
 
-    int m_windowCount;
-    BRect m_lastWindowFrame;
-    BMessage* m_launchRefsMessage;
-    bool m_initialized;
+private:
+			int					fWindowCount;
+			BRect				fLastWindowFrame;
+			BMessage*			fLaunchRefsMessage;
+			bool				fInitialized;
+
+			DownloadWindow*		fDownloadWindow;
 };
 
-extern const char* kApplicationSignature;
 
-#endif // LauncherApp_h
+extern const char* kApplicationSignature;
+extern const char* kApplicationName;
+
+
+#endif // BROWSER_APP_H
 

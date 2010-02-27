@@ -29,9 +29,6 @@
 #include "config.h"
 #include "LauncherApp.h"
 
-#include "DownloadWindow.h"
-#include "FrameView.h"
-#include "GraphicsContext.h"
 #include "LauncherWindow.h"
 #include "WebPage.h"
 #include "WebView.h"
@@ -45,7 +42,7 @@
 #include <Screen.h>
 #include <stdio.h>
 
-extern const char* kApplicationSignature = "application/x-vnd.RJL-HaikuLauncher";
+const char* kApplicationSignature = "application/x-vnd.RJL-HaikuLauncher";
 enum {
     LOAD_AT_STARTING = 'lost'
 };
@@ -57,7 +54,6 @@ LauncherApp::LauncherApp()
     , m_lastWindowFrame(100, 100, 700, 750)
     , m_launchRefsMessage(0)
     , m_initialized(false)
-    , m_downloadWindow(0)
 {
 }
 
@@ -98,18 +94,12 @@ void LauncherApp::ReadyToRun()
 
 	BFile settingsFile;
 	BRect windowFrameFromSettings = m_lastWindowFrame;
-	BRect downloadWindowFrame(100, 100, 300, 250);
-	bool showDownloads = false;
 	if (openSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
 		settingsArchive.FindRect("window frame", &windowFrameFromSettings);
-		settingsArchive.FindRect("downloads window frame", &downloadWindowFrame);
-		settingsArchive.FindBool("show downloads", &showDownloads);
 	}
 	m_lastWindowFrame = windowFrameFromSettings;
-
-    m_downloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
 
 	m_initialized = true;
 
@@ -118,8 +108,7 @@ void LauncherApp::ReadyToRun()
 		delete m_launchRefsMessage;
 		m_launchRefsMessage = 0;
 	} else {
-	    LauncherWindow* window = new LauncherWindow(m_lastWindowFrame,
-	        BMessenger(m_downloadWindow));
+	    LauncherWindow* window = new LauncherWindow(m_lastWindowFrame);
 	    window->Show();
 	}
 }
@@ -166,17 +155,6 @@ void LauncherApp::MessageReceived(BMessage* message)
     	newWindow(url);
     	break;
     }
-    case NEW_TAB: {
-    	LauncherWindow* window;
-		if (message->FindPointer("window", reinterpret_cast<void**>(&window)) != B_OK)
-			break;
-    	BString url;
-		message->FindString("url", &url);
-    	bool select = false;
-		message->FindBool("select", &select);
-    	newTab(window, url, select);
-        break;
-    }
     case WINDOW_OPENED:
     	m_windowCount++;
     	break;
@@ -186,17 +164,6 @@ void LauncherApp::MessageReceived(BMessage* message)
     	if (m_windowCount <= 0)
     		PostMessage(B_QUIT_REQUESTED);
     	break;
-
-    case SHOW_DOWNLOAD_WINDOW: {
-    	BAutolock _(m_downloadWindow);
-        uint32 workspaces;
-        if (message->FindUInt32("workspaces", &workspaces) == B_OK)
-            m_downloadWindow->SetWorkspaces(workspaces);
-        if (m_downloadWindow->IsHidden())
-            m_downloadWindow->Show();
-        else
-            m_downloadWindow->Activate();
-    }
 
     default:
         BApplication::MessageReceived(message);
@@ -248,11 +215,6 @@ bool LauncherApp::QuitRequested()
 	if (openSettingsFile(settingsFile, B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.AddRect("window frame", m_lastWindowFrame);
-		if (m_downloadWindow->Lock()) {
-    	    settingsArchive.AddRect("downloads window frame", m_downloadWindow->Frame());
-	        settingsArchive.AddBool("show downloads", !m_downloadWindow->IsHidden());
-	        m_downloadWindow->Unlock();
-		}
 		settingsArchive.Flatten(&settingsFile);
 	}
 
@@ -275,19 +237,10 @@ void LauncherApp::newWindow(const BString& url)
 	if (!BScreen().Frame().Contains(m_lastWindowFrame))
 		m_lastWindowFrame.OffsetTo(50, 50);
 
-	LauncherWindow* window = new LauncherWindow(m_lastWindowFrame,
-	    BMessenger(m_downloadWindow));
+	LauncherWindow* window = new LauncherWindow(m_lastWindowFrame);
 	window->Show();
 	if (url.Length())
 	    window->CurrentWebView()->LoadURL(url.String());
-}
-
-void LauncherApp::newTab(LauncherWindow* window, const BString& url, bool select)
-{
-    if (!window->Lock())
-        return;
-    window->newTab(url, select);
-    window->Unlock();
 }
 
 // #pragma mark -

@@ -89,14 +89,8 @@ SharedLibrary libwebkit.so :
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
 
 Application HaikuLauncher :
-    AuthenticationPanel.cpp
-    BrowsingHistory.cpp
-    DateTime.cpp
-    DownloadWindow.cpp
-    IconButton.cpp
 	LauncherApp.cpp
 	LauncherWindow.cpp
-	WebTabView.cpp
 
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so
@@ -106,4 +100,30 @@ Application HaikuLauncher :
 	be bsd network root stdc++ translation
 	:
 	Launcher.rdef
+;
+
+
+#-----------------------------------------------------------------------------
+# WebPositive
+#-----------------------------------------------------------------------------
+SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive ] ;
+
+Application WebPositive :
+    AuthenticationPanel.cpp
+    BrowsingHistory.cpp
+    DateTime.cpp
+    DownloadWindow.cpp
+    IconButton.cpp
+	BrowserApp.cpp
+	BrowserWindow.cpp
+	WebTabView.cpp
+
+	:
+	libjavascriptcore.so libwebcore.so libwebkit.so
+	# Other required libraries
+	curl icu-common icu-data png sqlite3 xml2 z
+	# Haiku libraries
+	be bsd network root stdc++ translation
+	:
+	WebPositive.rdef
 ;

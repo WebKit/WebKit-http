@@ -37,12 +37,10 @@
 class BButton;
 class BCheckBox;
 class BLayoutItem;
-class BMenu;
+class BMenuBar;
 class BStatusBar;
 class BStringView;
 class BTextControl;
-class IconButton;
-class TabManager;
 class BWebView;
 
 enum ToolbarPolicy {
@@ -52,24 +50,19 @@ enum ToolbarPolicy {
 
 enum {
     NEW_WINDOW = 'nwnd',
-    NEW_TAB = 'ntab',
     WINDOW_OPENED = 'wndo',
     WINDOW_CLOSED = 'wndc',
-    SHOW_DOWNLOAD_WINDOW = 'sdwd'
 };
 
 class LauncherWindow : public BWebWindow {
 public:
-    LauncherWindow(BRect frame, const BMessenger& downloadListener,
-        ToolbarPolicy = HaveToolbar);
+    LauncherWindow(BRect frame, ToolbarPolicy = HaveToolbar);
+    LauncherWindow(BRect frame, BWebView* view, ToolbarPolicy = HaveToolbar);
     virtual ~LauncherWindow();
 
 	virtual void DispatchMessage(BMessage* message, BHandler* target);
     virtual void MessageReceived(BMessage* message);
     virtual bool QuitRequested();
-    virtual void MenusBeginning();
-
-    void newTab(const BString& url, bool select, BWebView* webView = 0);
 
 private:
     // WebPage notification API implementations
@@ -82,38 +75,25 @@ private:
     virtual void LoadFailed(const BString& url, BWebView* view);
     virtual void LoadFinished(const BString& url, BWebView* view);
     virtual void TitleChanged(const BString& title, BWebView* view);
-    virtual void ResizeRequested(float width, float height, BWebView* view);
     virtual void SetToolBarsVisible(bool flag, BWebView* view);
     virtual void SetStatusBarVisible(bool flag, BWebView* view);
     virtual void SetMenuBarVisible(bool flag, BWebView* view);
-    virtual void SetResizable(bool flag, BWebView* view);
     virtual void StatusChanged(const BString& status, BWebView* view);
     virtual void NavigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop, BWebView* view);
-    virtual void UpdateGlobalHistory(const BString& url);
-	virtual bool AuthenticationChallenge(BString message, BString& inOutUser,
-		BString& inOutPassword, bool& inOutRememberCredentials,
-		uint32 failureCount, BWebView* view);
 
-    void updateTitle(const BString &title);
-    void updateTabGroupVisibility();
+    void init(BWebView* view, ToolbarPolicy);
+    void updateTitle(const BString& title);
 
 private:
-    BMessenger m_downloadListener;
     BMenuBar* m_menuBar;
-    BMenu* m_goMenu;
-    IconButton* m_BackButton;
-    IconButton* m_ForwardButton;
-    IconButton* m_StopButton;
+    BButton* m_BackButton;
+    BButton* m_ForwardButton;
+    BButton* m_StopButton;
     BButton* m_goButton;
     BTextControl* m_url;
     BStringView* m_statusText;
     BStatusBar* m_loadingProgressBar;
-    BLayoutItem* m_findGroup;
-    BLayoutItem* m_tabGroup;
-    BTextControl* m_findTextControl;
-    BCheckBox* m_findCaseSensitiveCheckBox;
-    TabManager* m_tabManager;
 };
 
 #endif // LauncherWindow_h

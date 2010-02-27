@@ -28,6 +28,7 @@
 #include "config.h"
 #include "BrowsingHistory.h"
 
+#include "BrowserApp.h"
 #include <Autolock.h>
 #include <Entry.h>
 #include <File.h>
@@ -262,7 +263,8 @@ bool BrowsingHistory::openSettingsFile(BFile& file, uint32 mode)
 {
 	BPath path;
 	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) != B_OK
-		|| path.Append("HaikuLauncher_BrowsingHistory") != B_OK) {
+		|| path.Append(kApplicationName) != B_OK
+		|| path.Append("BrowsingHistory") != B_OK) {
 		return false;
 	}
 	return file.SetTo(path.Path(), mode) == B_OK;

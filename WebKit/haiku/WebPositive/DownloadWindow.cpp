@@ -28,6 +28,7 @@
 #include "config.h"
 #include "DownloadWindow.h"
 
+#include "BrowserApp.h"
 #include "WebDownload.h"
 #include "WebPage.h"
 #include <Alert.h>
@@ -550,7 +551,8 @@ bool DownloadWindow::openSettingsFile(BFile& file, uint32 mode)
 {
 	BPath path;
 	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) != B_OK
-		|| path.Append("HaikuLauncher_Downloads") != B_OK) {
+		|| path.Append(kApplicationName) != B_OK
+		|| path.Append("Downloads") != B_OK) {
 		return false;
 	}
 	return file.SetTo(path.Path(), mode) == B_OK;
