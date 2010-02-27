@@ -244,7 +244,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
     AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
     AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
-
+    AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
+	
     be_app->PostMessage(WINDOW_OPENED);
 }
 
