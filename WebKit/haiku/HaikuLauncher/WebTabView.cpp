@@ -1010,6 +1010,7 @@ public:
 	NewTabButton(BMessage* message)
 		: TabButton(message)
 	{
+		SetToolTip("New tab (Cmd-T)");
 	}
 
 	virtual BSize MinSize()
