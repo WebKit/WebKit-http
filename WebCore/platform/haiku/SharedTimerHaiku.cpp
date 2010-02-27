@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +39,98 @@
 
 namespace WebCore {
 
-class SharedTimerHaiku : public BMessageFilter {
+class TimerThread : public BLocker {
+public:
+	TimerThread(const BMessenger& timer)
+		: m_timer(timer)
+		, m_timerThread(B_BAD_THREAD_ID)
+		, m_timerSem(B_BAD_SEM_ID)
+		, m_nextFireTime(0)
+		, m_threadWaitUntil(0)
+		, m_terminating(false)
+	{
+		m_timerSem = create_sem(0, "timer thread control");
+		if (m_timerSem >= 0) {
+			m_timerThread = spawn_thread(timerThreadEntry, "timer thread",
+				B_DISPLAY_PRIORITY + 1, this);
+			if (m_timerThread >= 0)
+				resume_thread(m_timerThread);
+		}
+	}
+
+	~TimerThread()
+	{
+		m_terminating = true;
+		if (delete_sem(m_timerSem) == B_OK) {
+			int32 dummy;
+			wait_for_thread(m_timerThread, &dummy);
+		}
+	}
+
+	bool isValid() const
+	{
+		return m_timerThread >= 0 && m_timerSem >= 0;
+	}
+
+	void setNextEventTime(bigtime_t time)
+	{
+		Lock();
+		m_nextFireTime = time;
+		if (m_nextFireTime < m_threadWaitUntil)
+			release_sem(m_timerSem);
+		Unlock();
+	}
+
+private:
+	static int32 timerThreadEntry(void *data)
+	{
+		return ((TimerThread*)data)->timerThread();
+	}
+
+	int32 timerThread()
+	{
+		bool running = true;
+		while (running) {
+			bigtime_t waitUntil = B_INFINITE_TIMEOUT;
+			if (Lock()) {
+				if (m_nextFireTime > 0)
+				    waitUntil = m_nextFireTime;
+				m_threadWaitUntil = waitUntil;
+				Unlock();
+			}
+			status_t err = acquire_sem_etc(m_timerSem, 1, B_ABSOLUTE_TIMEOUT, waitUntil);
+			switch (err) {
+				case B_TIMED_OUT:
+					// do events, that are supposed to go off
+					if (!m_terminating && Lock() && system_time() >= m_nextFireTime) {
+						m_nextFireTime = 0;
+						Unlock();
+						m_timer.SendMessage(FIRE_MESSAGE);
+					}
+					if (IsLocked())
+						Unlock();
+					break;
+				case B_BAD_SEM_ID:
+					running = false;
+					break;
+				case B_OK:
+				default:
+					break;
+			}
+		}
+		return 0;
+	}
+
+private:
+	BMessenger m_timer;
+	thread_id m_timerThread;
+	sem_id m_timerSem;
+	volatile bigtime_t m_nextFireTime;
+	volatile bigtime_t m_threadWaitUntil;
+	volatile bool m_terminating;
+};
+
+class SharedTimerHaiku : public BHandler {
     friend void setSharedTimerFiredFunction(void (*f)());
 public:
     static SharedTimerHaiku* instance();
@@ -46,8 +138,13 @@ public:
     void start(double);
     void stop();
 
+	void setTimerThread(TimerThread* thread)
+	{
+		m_timerThread = thread;
+	}
+
 protected:
-    virtual filter_result Filter(BMessage*, BHandler**);
+    virtual void MessageReceived(BMessage*);
 
 private:
     SharedTimerHaiku();
@@ -55,28 +152,33 @@ private:
 
     void (*m_timerFunction)();
     bool m_shouldRun;
+    TimerThread* m_timerThread;
 };
 
 SharedTimerHaiku::SharedTimerHaiku()
-    : BMessageFilter(FIRE_MESSAGE)
+    : BHandler("WebKit shared timer")
     , m_timerFunction(0)
     , m_shouldRun(false)
+    , m_timerThread(0)
 {
 }
 
 SharedTimerHaiku::~SharedTimerHaiku()
 {
+	delete m_timerThread;
 }
 
 SharedTimerHaiku* SharedTimerHaiku::instance()
 {
-    BLooper* looper = BLooper::LooperForThread(find_thread(0));
     static SharedTimerHaiku* timer;
 
     if (!timer) {
+        BLooper* looper = BLooper::LooperForThread(find_thread(0));
         BAutolock lock(looper);
         timer = new SharedTimerHaiku();
-        looper->AddCommonFilter(timer);
+        looper->AddHandler(timer);
+        // Only at this time, the timer can be a valid BMessenger.
+        timer->setTimerThread(new TimerThread(BMessenger(timer)));
     }
 
     return timer;
@@ -89,8 +191,7 @@ void SharedTimerHaiku::start(double fireTime)
     double intervalInSeconds = fireTime - currentTime();
     bigtime_t intervalInMicroSeconds = intervalInSeconds < 0 ? 0 : intervalInSeconds * 1000000;
 
-    BMessage message(FIRE_MESSAGE);
-    BMessageRunner::StartSending(Looper(), &message, intervalInMicroSeconds, 1);
+	m_timerThread->setNextEventTime(system_time() + intervalInMicroSeconds);
 }
 
 void SharedTimerHaiku::stop()
@@ -98,12 +199,10 @@ void SharedTimerHaiku::stop()
     m_shouldRun = false;
 }
 
-filter_result SharedTimerHaiku::Filter(BMessage*, BHandler**)
+void SharedTimerHaiku::MessageReceived(BMessage*)
 {
     if (m_shouldRun && m_timerFunction)
         m_timerFunction();
-
-    return B_SKIP_MESSAGE;
 }
 
 // WebCore functions
