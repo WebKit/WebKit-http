@@ -151,11 +151,11 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
         m_StopButton->TrimIcon();
 
         // URL
-        m_url = new BTextControl("url", "", "", new BMessage(GOTO_URL));
+        m_url = new BTextControl("url", "", "", NULL);
         m_url->SetDivider(50.0);
 
         // Go
-        BButton* button = new BButton("", "Go", new BMessage(RELOAD));
+        m_goButton = new BButton("", "Go", new BMessage(GOTO_URL));
 
         // Status Bar
         m_statusText = new BStringView("status", "");
@@ -201,7 +201,7 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
                 .Add(m_ForwardButton, 1, 0)
                 .Add(m_StopButton, 2, 0)
                 .Add(m_url, 3, 0)
-                .Add(button, 4, 0)
+                .Add(m_goButton, 4, 0)
                 .SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
             )
             .Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
@@ -223,6 +223,8 @@ LauncherWindow::LauncherWindow(BRect frame, const BMessenger& downloadListener,
     } else {
         m_BackButton = 0;
         m_ForwardButton = 0;
+        m_StopButton = 0;
+        m_goButton = 0;
         m_url = 0;
         m_menuBar = 0;
         m_statusText = 0;
@@ -253,6 +255,27 @@ LauncherWindow::~LauncherWindow()
 {
 }
 
+void LauncherWindow::DispatchMessage(BMessage* message, BHandler* target)
+{
+	if (m_url && message->what == B_KEY_DOWN && target == m_url->TextView()) {
+		// Handle B_RETURN in the URL text control. This is the easiest
+		// way to react *only* when the user presses the return key in the
+		// address bar, as opposed to trying to load whatever is in there when
+		// the text control just goes out of focus.
+	    const char* bytes;
+	    if (message->FindString("bytes", &bytes) == B_OK
+	    	&& bytes[0] == B_RETURN) {
+	    	// Do it in such a way that the user sees the Go-button go down.
+	    	m_goButton->SetValue(B_CONTROL_ON);
+	    	UpdateIfNeeded();
+	    	m_goButton->Invoke();
+	    	snooze(1000);
+	    	m_goButton->SetValue(B_CONTROL_OFF);
+	    }
+	}
+	BWebWindow::DispatchMessage(message, target);
+}
+
 void LauncherWindow::MessageReceived(BMessage* message)
 {
     switch (message->what) {
@@ -265,13 +288,13 @@ void LauncherWindow::MessageReceived(BMessage* message)
         }
     	break;
     case RELOAD:
-        CurrentWebView()->LoadURL(m_url->Text());
+        CurrentWebView()->Reload();
         break;
     case GOTO_URL: {
-        BString url = m_url->Text();
-        message->FindString("url", &url);
-        if (m_loadedURL != url)
-            CurrentWebView()->LoadURL(url.String());
+        BString url;
+        if (message->FindString("url", &url) != B_OK)
+        	url = m_url->Text();
+        CurrentWebView()->LoadURL(url.String());
         break;
     }
     case GO_BACK:
@@ -502,8 +525,6 @@ void LauncherWindow::LoadCommitted(const BString& url, BWebView* view)
     if (view != CurrentWebView())
         return;
 
-    m_loadedURL = url;
-
 	// This hook is invoked when the load is commited.
     if (m_url)
         m_url->SetText(url.String());
@@ -542,7 +563,6 @@ void LauncherWindow::LoadFinished(const BString& url, BWebView* view)
     if (view != CurrentWebView())
         return;
 
-    m_loadedURL = url;
     BString status(url);
     status << " finished.";
     StatusChanged(status, view);

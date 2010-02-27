@@ -83,6 +83,7 @@ public:
 				// NOTE: Using the BWebView requires locking it's looper!
 
 			void				LoadURL(const char* urlString);
+			void				Reload();
 			void				GoBack();
 			void				GoForward();
 			void				StopLoading();
@@ -172,6 +173,7 @@ private:
 	void skipToLastMessage(BMessage*& message);
 
 	void handleLoadURL(const BMessage* message);
+	void handleReload(const BMessage* message);
 	void handleGoBack(const BMessage* message);
 	void handleGoForward(const BMessage* message);
 	void handleStop(const BMessage* message);

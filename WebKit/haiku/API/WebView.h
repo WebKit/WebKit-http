@@ -71,6 +71,7 @@ public:
 			BString				MainFrameURL() const;
 
 			void				LoadURL(const char* urlString);
+			void				Reload();
 			void				GoBack();
 			void				GoForward();
 			void				StopLoading();

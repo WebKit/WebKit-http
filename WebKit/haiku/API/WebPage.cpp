@@ -88,6 +88,7 @@ enum {
     HANDLE_SHUTDOWN = 'sdwn',
 
     HANDLE_LOAD_URL = 'lurl',
+    HANDLE_RELOAD = 'reld',
     HANDLE_GO_BACK = 'back',
     HANDLE_GO_FORWARD = 'fwrd',
     HANDLE_STOP_LOADING = 'stop',
@@ -235,6 +236,12 @@ void BWebPage::LoadURL(const char* urlString)
 {
     BMessage message(HANDLE_LOAD_URL);
     message.AddString("url", urlString);
+    Looper()->PostMessage(&message, this);
+}
+
+void BWebPage::Reload()
+{
+    BMessage message(HANDLE_RELOAD);
     Looper()->PostMessage(&message, this);
 }
 
@@ -615,6 +622,9 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_LOAD_URL:
         handleLoadURL(message);
         break;
+    case HANDLE_RELOAD:
+    	handleReload(message);
+    	break;
     case HANDLE_GO_BACK:
         handleGoBack(message);
         break;
@@ -754,6 +764,11 @@ void BWebPage::handleLoadURL(const BMessage* message)
         return;
 
     m_mainFrame->LoadURL(urlString);
+}
+
+void BWebPage::handleReload(const BMessage* message)
+{
+    m_mainFrame->Reload();
 }
 
 void BWebPage::handleGoBack(const BMessage* message)

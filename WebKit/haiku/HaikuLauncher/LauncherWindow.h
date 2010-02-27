@@ -64,6 +64,7 @@ public:
         ToolbarPolicy = HaveToolbar);
     virtual ~LauncherWindow();
 
+	virtual void DispatchMessage(BMessage* message, BHandler* target);
     virtual void MessageReceived(BMessage* message);
     virtual bool QuitRequested();
     virtual void MenusBeginning();
@@ -102,8 +103,8 @@ private:
     IconButton* m_BackButton;
     IconButton* m_ForwardButton;
     IconButton* m_StopButton;
+    BButton* m_goButton;
     BTextControl* m_url;
-    BString m_loadedURL;
     BStringView* m_statusText;
     BStatusBar* m_loadingProgressBar;
     BLayoutItem* m_findGroup;

@@ -237,6 +237,11 @@ void BWebView::LoadURL(const char* urlString)
     fWebPage->LoadURL(urlString);
 }
 
+void BWebView::Reload()
+{
+    fWebPage->Reload();
+}
+
 void BWebView::GoBack()
 {
     fWebPage->GoBack();
