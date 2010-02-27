@@ -659,8 +659,8 @@ bool LauncherWindow::AuthenticationChallenge(BString message, BString& inOutUser
     AuthenticationPanel* panel = new AuthenticationPanel(Frame());
     	// Panel auto-destructs.
     return panel->getAuthentication(message, inOutUser, inOutPassword,
-    		inOutRememberCredentials, failureCount > 0, inOutUser, inOutPassword,
-    		&inOutRememberCredentials);
+    	inOutRememberCredentials, failureCount > 0, inOutUser, inOutPassword,
+    	&inOutRememberCredentials);
 }
 
 void LauncherWindow::updateTitle(const BString& title)
