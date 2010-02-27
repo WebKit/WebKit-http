@@ -653,31 +653,14 @@ void LauncherWindow::UpdateGlobalHistory(const BString& url)
     BrowsingHistory::defaultInstance()->addItem(BrowsingHistoryItem(url));
 }
 
-void LauncherWindow::AuthenticationChallenge(BMessage* message)
+bool LauncherWindow::AuthenticationChallenge(BString message, BString& inOutUser,
+	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount)
 {
-    BString text;
-    bool rememberCredentials = false;
-    uint32 failureCount = 0;
-    BString user;
-    BString password;
-
-    message->FindString("text", &text);
-    message->FindString("user", &user);
-    message->FindString("password", &password);
-    message->FindUInt32("failureCount", &failureCount);
-
     AuthenticationPanel* panel = new AuthenticationPanel(Frame());
-    if (!panel->getAuthentication(text, user, password, rememberCredentials,
-            failureCount > 0, user, password, &rememberCredentials)) {
-        message->SendReply((uint32)0);
-        return;
-    }
-
-    BMessage reply;
-    reply.AddString("user", user);
-    reply.AddString("password", password);
-    reply.AddBool("rememberCredentials", rememberCredentials);
-    message->SendReply(&reply);
+    	// Panel auto-destructs.
+    return panel->getAuthentication(message, inOutUser, inOutPassword,
+    		inOutRememberCredentials, failureCount > 0, inOutUser, inOutPassword,
+    		&inOutRememberCredentials);
 }
 
 void LauncherWindow::updateTitle(const BString& title)

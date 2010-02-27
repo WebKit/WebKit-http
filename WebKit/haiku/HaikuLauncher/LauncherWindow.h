@@ -91,7 +91,9 @@ private:
     virtual void NavigationCapabilitiesChanged(bool canGoBackward,
         bool canGoForward, bool canStop, BWebView* view);
     virtual void UpdateGlobalHistory(const BString& url);
-    virtual void AuthenticationChallenge(BMessage* challenge);
+	virtual bool AuthenticationChallenge(BString message, BString& inOutUser,
+		BString& inOutPassword, bool& inOutRememberCredentials,
+		uint32 failureCount);
 
     void updateTitle(const BString &title);
     void updateTabGroupVisibility();

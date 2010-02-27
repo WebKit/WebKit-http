@@ -170,7 +170,28 @@ void BWebWindow::MessageReceived(BMessage* message)
         break;
     }
     case AUTHENTICATION_CHALLENGE: {
-        AuthenticationChallenge(message);
+	    BString text;
+	    bool rememberCredentials = false;
+	    uint32 failureCount = 0;
+	    BString user;
+	    BString password;
+	
+	    message->FindString("text", &text);
+	    message->FindString("user", &user);
+	    message->FindString("password", &password);
+	    message->FindUInt32("failureCount", &failureCount);
+
+        if (!AuthenticationChallenge(text, user, password, rememberCredentials,
+        		failureCount)) {
+        	message->SendReply((uint32)0);
+        	break;
+        }
+
+	    BMessage reply;
+	    reply.AddString("user", user);
+	    reply.AddString("password", password);
+	    reply.AddBool("rememberCredentials", rememberCredentials);
+	    message->SendReply(&reply);
         break;
     }
 
@@ -314,8 +335,10 @@ void BWebWindow::UpdateGlobalHistory(const BString& url)
 {
 }
 
-void BWebWindow::AuthenticationChallenge(BMessage* challenge)
+bool BWebWindow::AuthenticationChallenge(BString message, BString& inOutUser,
+	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount)
 {
+	return false;
 }
 
 // #pragma mark - private
