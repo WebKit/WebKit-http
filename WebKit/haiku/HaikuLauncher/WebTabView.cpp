@@ -187,8 +187,6 @@ TabContainerView::TabContainerView(Controller* controller)
 
 TabContainerView::~TabContainerView()
 {
-	// TODO: Not so nice, that we take ownership of the controller.
-	delete fController;
 }
 
 
@@ -717,8 +715,19 @@ public:
 
 	void CloseTab(int32 index);
 
+	void SetCloseButtonsAvailable(bool available)
+	{
+		fCloseButtonsAvailable = available;
+	}
+
+	bool CloseButtonsAvailable() const
+	{
+		return fCloseButtonsAvailable;
+	}
+
 private:
 	TabManager* fManager;
+	bool fCloseButtonsAvailable;
 };
 
 
@@ -740,6 +749,8 @@ public:
 		const BMessage* dragMessage);
 
 private:
+	void _DrawCloseButton(BView* owner, BRect& frame, const BRect& updateRect,
+		bool isFirst, bool isLast, bool isFront);
 	BRect _CloseRectFrame(BRect frame) const;
 
 private:
@@ -772,6 +783,75 @@ WebTabView::MaxSize()
 void
 WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 	bool isFirst, bool isLast, bool isFront)
+{
+	if (fController->CloseButtonsAvailable())
+		_DrawCloseButton(owner, frame, updateRect, isFirst, isLast, isFront);
+
+	TabView::DrawContents(owner, frame, updateRect, isFirst, isLast, isFront);
+}
+
+
+void
+WebTabView::MouseDown(BPoint where, uint32 buttons)
+{
+	if (buttons & B_TERTIARY_MOUSE_BUTTON) {
+		fController->CloseTab(ContainerView()->IndexOf(this));
+		return;
+	}
+
+	BRect closeRect = _CloseRectFrame(Frame());
+	if (!fController->CloseButtonsAvailable() || !closeRect.Contains(where)) {
+		TabView::MouseDown(where, buttons);
+		return;
+	}
+
+	fClicked = true;
+	ContainerView()->Invalidate(closeRect);
+}
+
+
+void
+WebTabView::MouseUp(BPoint where)
+{
+	if (!fClicked) {
+		TabView::MouseUp(where);
+		return;
+	}
+
+	fClicked = false;
+
+	if (_CloseRectFrame(Frame()).Contains(where))
+		fController->CloseTab(ContainerView()->IndexOf(this));
+}
+
+
+void
+WebTabView::MouseMoved(BPoint where, uint32 transit,
+	const BMessage* dragMessage)
+{
+	if (fController->CloseButtonsAvailable()) {
+		BRect closeRect = _CloseRectFrame(Frame());
+		bool overCloseRect = closeRect.Contains(where);
+		if (overCloseRect != fOverCloseRect) {
+			fOverCloseRect = overCloseRect;
+			ContainerView()->Invalidate(closeRect);
+		}
+	}
+
+	TabView::MouseMoved(where, transit, dragMessage);
+}
+
+
+BRect
+WebTabView::_CloseRectFrame(BRect frame) const
+{
+	frame.left = frame.right - frame.Height();
+	return frame;
+}
+
+
+void WebTabView::_DrawCloseButton(BView* owner, BRect& frame,
+	const BRect& updateRect, bool isFirst, bool isLast, bool isFront)
 {
 	BRect closeRect = _CloseRectFrame(frame);
 	frame.right = closeRect.left - be_control_look->DefaultLabelSpacing();
@@ -808,65 +888,6 @@ WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 	owner->StrokeLine(closeRect.LeftTop(), closeRect.RightBottom());
 	owner->StrokeLine(closeRect.LeftBottom(), closeRect.RightTop());
 	owner->SetPenSize(1);
-
-	TabView::DrawContents(owner, frame, updateRect, isFirst, isLast, isFront);
-}
-
-
-void
-WebTabView::MouseDown(BPoint where, uint32 buttons)
-{
-	if (buttons & B_TERTIARY_MOUSE_BUTTON) {
-		fController->CloseTab(ContainerView()->IndexOf(this));
-		return;
-	}
-
-	BRect closeRect = _CloseRectFrame(Frame());
-	if (!closeRect.Contains(where)) {
-		TabView::MouseDown(where, buttons);
-		return;
-	}
-
-	fClicked = true;
-	ContainerView()->Invalidate(closeRect);
-}
-
-
-void
-WebTabView::MouseUp(BPoint where)
-{
-	if (!fClicked) {
-		TabView::MouseUp(where);
-		return;
-	}
-
-	fClicked = false;
-
-	if (_CloseRectFrame(Frame()).Contains(where))
-		fController->CloseTab(ContainerView()->IndexOf(this));
-}
-
-
-void
-WebTabView::MouseMoved(BPoint where, uint32 transit,
-	const BMessage* dragMessage)
-{
-	BRect closeRect = _CloseRectFrame(Frame());
-	bool overCloseRect = closeRect.Contains(where);
-	if (overCloseRect != fOverCloseRect) {
-		fOverCloseRect = overCloseRect;
-		ContainerView()->Invalidate(closeRect);
-	}
-
-	TabView::MouseMoved(where, transit, dragMessage);
-}
-
-
-BRect
-WebTabView::_CloseRectFrame(BRect frame) const
-{
-	frame.left = frame.right - frame.Height();
-	return frame;
 }
 
 
@@ -875,7 +896,8 @@ WebTabView::_CloseRectFrame(BRect frame) const
 
 TabManagerController::TabManagerController(TabManager* manager)
 	:
-	fManager(manager)
+	fManager(manager),
+	fCloseButtonsAvailable(false)
 {
 }
 
@@ -1038,13 +1060,14 @@ public:
 
 TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
     :
+    fController(new TabManagerController(this)),
     fTarget(target)
 {
 	fContainerView = new BView("web view container", 0);
 	fCardLayout = new BCardLayout();
 	fContainerView->SetLayout(fCardLayout);
 
-	fTabContainerView = new TabContainerView(new TabManagerController(this));
+	fTabContainerView = new TabContainerView(fController);
 	fTabContainerGroup = new BGroupView(B_HORIZONTAL);
 	fTabContainerGroup->GroupLayout()->SetInsets(0, 5, 0, 0);
 	fTabContainerGroup->GroupLayout()->AddView(fTabContainerView);
@@ -1059,6 +1082,7 @@ TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
 
 TabManager::~TabManager()
 {
+	delete fController;
 }
 
 
@@ -1167,5 +1191,15 @@ void
 TabManager::SetTabLabel(int32 tabIndex, const char* label)
 {
 	fTabContainerView->SetTabLabel(tabIndex, label);
+}
+
+
+void
+TabManager::SetCloseButtonsAvailable(bool available)
+{
+	if (available == fController->CloseButtonsAvailable())
+		return;
+	fController->SetCloseButtonsAvailable(available);
+	fTabContainerView->Invalidate();
 }
 

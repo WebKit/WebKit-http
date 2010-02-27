@@ -39,6 +39,7 @@ enum {
 class BCardLayout;
 class BGroupView;
 class TabContainerView;
+class TabManagerController;
 
 class TabManager {
 public:
@@ -64,12 +65,14 @@ public:
 			int32				CountTabs() const;
 
 			void				SetTabLabel(int32 tabIndex, const char* label);
+			void				SetCloseButtonsAvailable(bool available);
 
 private:
 			BGroupView*			fTabContainerGroup;
 			TabContainerView*	fTabContainerView;
 			BView*				fContainerView;
 			BCardLayout*		fCardLayout;
+			TabManagerController* fController;
 
 			BMessenger			fTarget;
 };

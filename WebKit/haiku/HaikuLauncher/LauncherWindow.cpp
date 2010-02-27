@@ -692,7 +692,8 @@ void LauncherWindow::updateTitle(const BString& title)
 void LauncherWindow::updateTabGroupVisibility()
 {
 	if (Lock()) {
-	    m_tabGroup->SetVisible(m_tabManager->CountTabs() > 1);
+	    //m_tabGroup->SetVisible(m_tabManager->CountTabs() > 1);
+	    m_tabManager->SetCloseButtonsAvailable(m_tabManager->CountTabs() > 1);
 	    Unlock();
 	}
 }
