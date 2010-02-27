@@ -26,4 +26,5 @@ Install WebCore :
 Install WebKit :
     libwebkit.so
     HaikuLauncher
+    WebPositive
 ;

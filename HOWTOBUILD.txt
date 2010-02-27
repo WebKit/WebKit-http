@@ -51,16 +51,17 @@ Don't export NDEBUG at all for a debug build.
 * Then, building WebKit:
 $ jam -q <target>
 with target in:
-	- libjavascriptcore.so	(the JavaScriptCore library)
-	- jsc			(the JavaScriptCore executable shell)
-	- libwebcore.so		(the WebCore library, including
-				 libjavascriptcore.so)
-	- libwebkit.so		(the WebKit library including libwebcore.so,
-				 the API and some specific files)
-	- HaikuLauncher		(*default target* the test shell, including
-				 libwebkit.so and a simple browing window)
-        - DumpRenderTree        (the tree parsing tool, required to test
-                                 WebKit, including libwebkit.so)
+	- libjavascriptcore.so  (the JavaScriptCore library)
+	- jsc                   (the JavaScriptCore executable shell)
+	- libwebcore.so         (the WebCore library, including
+                             libjavascriptcore.so)
+	- libwebkit.so          (the WebKit library including libwebcore.so,
+                             the API and some specific files)
+	- HaikuLauncher         (*default target* the test shell, including
+                             libwebkit.so and a simple browing window)
+    - DumpRenderTree        (the tree parsing tool, required to test
+                             WebKit, including libwebkit.so)
+    - WebPositive           (the Haiku browser)
 
 If you just run
 
@@ -68,7 +69,7 @@ $ jam jsc
 
 followed by
 
-$ jam HaikuLauncher
+$ jam WebPositive
 
 you will automatically build everything required for the browser.
 
@@ -78,7 +79,7 @@ system automatically!
 If you switch between Release and Debug build versions, make sure to always
 have matching libs in /boot/home/config/lib. For example, if you switch to
 release build, do something which updates libwebcore.so, it will be placed
-in /boot/home/config/lib, along with libwebkit.so and HaikuLauncher, since
+in /boot/home/config/lib, along with libwebkit.so and WebPositive, since
 they depend on it. But it won't update libjavascriptcore.so, since it didn't
 change. But you need the matching version. As long as our build system doesn't
 take care of that, you need to make sure of this manually.
