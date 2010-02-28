@@ -177,6 +177,7 @@ BrowserApp::MessageReceived(BMessage* message)
 			fDownloadWindow->Show();
 		else
 			fDownloadWindow->Activate();
+		break;
 	}
 
 	default:
