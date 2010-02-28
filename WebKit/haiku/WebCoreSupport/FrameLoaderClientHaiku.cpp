@@ -426,6 +426,13 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     if (!function)
         return;
 
+	// Ignore null requests as the Gtk port does. The Qt port doesn't and I have
+	// one URL where Arora crashes the same as WebPositive if not checked here.
+    if (request.isNull()) {
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
     if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
         callPolicyFunction(function, PolicyUse);
         return;
