@@ -52,7 +52,7 @@ public:
 		m_timerSem = create_sem(0, "timer thread control");
 		if (m_timerSem >= 0) {
 			m_timerThread = spawn_thread(timerThreadEntry, "timer thread",
-				B_DISPLAY_PRIORITY + 1, this);
+				B_URGENT_DISPLAY_PRIORITY, this);
 			if (m_timerThread >= 0)
 				resume_thread(m_timerThread);
 		}
