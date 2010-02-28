@@ -175,7 +175,6 @@ private:
 	void handleGoForward(const BMessage* message);
 	void handleStop(const BMessage* message);
 	void handleSetVisible(const BMessage* message);
-	void handleDraw(const BMessage* message);
 	void handleFrameResized(const BMessage* message);
 	void handleFocused(const BMessage* message);
 	void handleActivated(const BMessage* message);
@@ -197,6 +196,7 @@ private:
 
     bool m_pageVisible;
     bool m_pageDirty;
+    bool m_inPaint;
 
 	bool m_toolbarsVisible;
 	bool m_statusbarVisible;
