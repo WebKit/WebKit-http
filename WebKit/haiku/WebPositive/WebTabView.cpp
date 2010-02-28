@@ -35,6 +35,7 @@
 #include <CardLayout.h>
 #include <ControlLook.h>
 #include <GroupView.h>
+#include <MenuBar.h>
 #include <SpaceLayoutItem.h>
 #include <Window.h>
 #include <stdio.h>
@@ -863,10 +864,10 @@ void WebTabView::_DrawCloseButton(BView* owner, BRect& frame,
 
 	rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
 	float tint = B_DARKEN_1_TINT;
-	if (!IsFront())
+	if (!IsFront()) {
+		base = tint_color(base, tint);
 		tint *= 1.02;
-
-	base = tint_color(base, tint);
+	}
 
 	if (fOverCloseRect)
 		tint *= 1.2;
@@ -914,6 +915,30 @@ TabManagerController::CloseTab(int32 index)
 {
 	fManager->CloseTab(index);
 }
+
+
+// #pragma mark - TabButtonContainer
+
+
+class TabButtonContainer : public BGroupView {
+public:
+	TabButtonContainer()
+		: BGroupView(B_HORIZONTAL)
+	{
+		SetFlags(Flags() | B_WILL_DRAW);
+		SetViewColor(B_TRANSPARENT_COLOR);
+		SetLowColor(ui_color(B_PANEL_BACKGROUND_COLOR));
+		GroupLayout()->SetInsets(0, 6, 0, 0);
+	}
+
+	virtual void Draw(BRect updateRect)
+	{
+		BRect bounds(Bounds());
+		rgb_color base = LowColor();
+		be_control_look->DrawInactiveTab(this, bounds, updateRect,
+			base, 0, BControlLook::B_TOP_BORDER);
+	}
+};
 
 
 // #pragma mark - TabButton
@@ -1058,7 +1083,6 @@ public:
 // #pragma mark - TabManager
 
 
-
 TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
     :
     fController(new TabManagerController(this)),
@@ -1068,9 +1092,17 @@ TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
 	fCardLayout = new BCardLayout();
 	fContainerView->SetLayout(fCardLayout);
 
+	fMenu = new BMenu("Menu");
 	fTabContainerView = new TabContainerView(fController);
 	fTabContainerGroup = new BGroupView(B_HORIZONTAL);
-	fTabContainerGroup->GroupLayout()->SetInsets(0, 5, 0, 0);
+	fTabContainerGroup->GroupLayout()->SetInsets(0, 3, 0, 0);
+
+	BMenuBar* menuBar = new BMenuBar("Menu bar");
+	menuBar->AddItem(fMenu);
+	TabButtonContainer* menuBarContainer = new TabButtonContainer();
+	menuBarContainer->GroupLayout()->AddView(menuBar);
+	fTabContainerGroup->GroupLayout()->AddView(menuBarContainer, 0.0f);
+
 	fTabContainerGroup->GroupLayout()->AddView(fTabContainerView);
 //	fTabContainerGroup->GroupLayout()->AddView(new ScrollLeftTabButton(NULL), 0.0f);
 //	fTabContainerGroup->GroupLayout()->AddView(new ScrollRightTabButton(NULL), 0.0f);
@@ -1098,6 +1130,13 @@ const BMessenger&
 TabManager::Target() const
 {
     return fTarget;
+}
+
+
+BMenu*
+TabManager::Menu() const
+{
+	return fMenu;
 }
 
 

@@ -38,6 +38,7 @@ enum {
 
 class BCardLayout;
 class BGroupView;
+class BMenu;
 class TabContainerView;
 class TabManagerController;
 
@@ -49,6 +50,8 @@ public:
 
 			void				SetTarget(const BMessenger& target);
 			const BMessenger&	Target() const;
+
+			BMenu*				Menu() const;
 
 			BView*				TabGroup() const;
 			BView*				ContainerView() const;
@@ -69,6 +72,7 @@ public:
 			void				SetCloseButtonsAvailable(bool available);
 
 private:
+			BMenu*				fMenu;
 			BGroupView*			fTabContainerGroup;
 			TabContainerView*	fTabContainerView;
 			BView*				fContainerView;

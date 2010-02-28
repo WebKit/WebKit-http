@@ -106,7 +106,8 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 
 	if (toolbarPolicy == HaveToolbar) {
 		// Menu
-		fMenuBar = new BMenuBar("Main menu");
+//		BMenu* mainMenu = new BMenuBar("Main menu");
+		BMenu* mainMenu = fTabManager->Menu();
 		BMenu* menu = new BMenu("Window");
 		BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
 		newWindowMessage->AddString("url", "");
@@ -126,7 +127,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
 		menu->AddItem(quitItem);
 		quitItem->SetTarget(be_app);
-		fMenuBar->AddItem(menu);
+		mainMenu->AddItem(menu);
 
 		menu = new BMenu("Text");
 		menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
@@ -134,10 +135,10 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
 		menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
 		menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
-		fMenuBar->AddItem(menu);
+		mainMenu->AddItem(menu);
 
 		fGoMenu = new BMenu("Go");
-		fMenuBar->AddItem(fGoMenu);
+		mainMenu->AddItem(fGoMenu);
 
 		// Back, Forward & Stop
 		fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
@@ -175,8 +176,8 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		fLoadingProgressBar->Hide();
 		fLoadingProgressBar->SetBarHeight(12);
 
-		const float kInsetSpacing = 5;
-		const float kElementSpacing = 7;
+		const float kInsetSpacing = 3;
+		const float kElementSpacing = 5;
 
 		fFindTextControl = new BTextControl("find", "Find:", "",
 			new BMessage(TEXT_FIND_NEXT));
@@ -196,7 +197,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		;
 		// Layout
 		AddChild(BGroupLayoutBuilder(B_VERTICAL)
-			.Add(fMenuBar)
+//			.Add(mainMenu)
 			.Add(fTabManager->TabGroup())
 			.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
 				.Add(fBackButton, 0, 0)
@@ -228,7 +229,6 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		fStopButton = 0;
 		fGoButton = 0;
 		fURLTextControl = 0;
-		fMenuBar = 0;
 		fStatusText = 0;
 		fLoadingProgressBar = 0;
 

@@ -115,7 +115,6 @@ private:
 
 private:
 			BMessenger			fDownloadListener;
-			BMenuBar*			fMenuBar;
 			BMenu*				fGoMenu;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
