@@ -161,7 +161,6 @@ BWebPage::BWebPage(BWebView* webView)
     , m_page(0)
     , m_pageVisible(true)
     , m_pageDirty(false)
-    , m_inPaint(false)
     , m_toolbarsVisible(true)
     , m_statusbarVisible(true)
     , m_menubarVisible(true)
@@ -532,12 +531,6 @@ void BWebPage::downloadCreated(BWebDownload* download)
 void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
-	if (m_inPaint) {
-		printf("%p->BWebPage::paint(BRect(%.1f, %.1f, %.1f, %.1f), %d, %d, %d) - already painting!\n",
-			this, rect.left, rect.top, rect.right, rect.bottom, contentChanged, immediate,
-			repaintContentOnly);
-		return;
-	}
     // Block any drawing as long as the BWebView is hidden
     // (should be extended to when the containing BWebWindow is not
     // currently on screen either...)
@@ -557,13 +550,14 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     if (!view || !frame->contentRenderer())
         return;
 
-	m_inPaint = true;
+	// Since calling layoutIfNeededRecursive can cycle back into paint(),
+	// call this method before locking the window and before holding the
+	// offscreen view lock.
+	view->layoutIfNeededRecursive();
 
 //    if (m_webView->LockLooperWithTimeout(5000) != B_OK)
-    if (!m_webView->LockLooper()) {
-    	m_inPaint = false;
+    if (!m_webView->LockLooper())
         return;
-    }
     BView* offscreenView = m_webView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
@@ -588,8 +582,6 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
 
     // Notify the window that it can now pull the bitmap in its own thread
     m_webView->SetOffscreenViewClean(rect, immediate);
-
-   	m_inPaint = false;
 }
 
 // #pragma mark - private

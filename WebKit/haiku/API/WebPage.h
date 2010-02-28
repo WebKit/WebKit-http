@@ -196,7 +196,6 @@ private:
 
     bool m_pageVisible;
     bool m_pageDirty;
-    bool m_inPaint;
 
 	bool m_toolbarsVisible;
 	bool m_statusbarVisible;
