@@ -49,11 +49,6 @@ const char* kApplicationSignature = "application/x-vnd.Haiku-WebPositive";
 const char* kApplicationName = "WebPositive";
 
 
-enum {
-	LOAD_AT_STARTING = 'lost'
-};
-
-
 BrowserApp::BrowserApp()
 	: BApplication(kApplicationSignature)
 	, fWindowCount(0)
@@ -85,17 +80,18 @@ BrowserApp::AboutRequested()
 void
 BrowserApp::ArgvReceived(int32 argc, char** argv)
 {
+	BMessage message(B_REFS_RECEIVED);
 	for (int i = 1; i < argc; i++) {
 		const char* url = argv[i];
 		BEntry entry(argv[i], true);
 		BPath path;
 		if (entry.Exists() && entry.GetPath(&path) == B_OK)
 			url = path.Path();
-		BMessage message(LOAD_AT_STARTING);
 		message.AddString("url", url);
-		message.AddBool("new window", fInitialized || i > 1);
-		PostMessage(&message);
 	}
+	// Upon program launch, it will buffer a copy of the message, since
+	// ArgReceived() is called before ReadyToRun().
+	RefsReceived(&message);
 }
 
 
@@ -141,37 +137,8 @@ void
 BrowserApp::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
-	case LOAD_AT_STARTING: {
-		BString url;
-		if (message->FindString("url", &url) != B_OK)
-			break;
-		bool openNewWindow = false;
-		message->FindBool("new window", &openNewWindow);
-		BrowserWindow* webWindow = NULL;
-		for (int i = 0; BWindow* window = WindowAt(i); i++) {
-			webWindow = dynamic_cast<BrowserWindow*>(window);
-			if (!webWindow)
-				continue;
-			if (!openNewWindow) {
-				// stop at the first window
-				break;
-			}
-		}
-		if (webWindow) {
-			// There should always be at least one window open. If not, maybe we are about
-			// to quit anyway...
-			if (openNewWindow) {
-				// open a new window with an offset to the last window
-				_CreateNewWindow(url);
-			} else {
-				// load the URL in the first window
-				webWindow->CurrentWebView()->LoadURL(url.String());
-			}
-		}
-		break;
-	}
 	case B_SILENT_RELAUNCH:
-		_CreateNewWindow("");
+		_CreateNewPage("");
 		break;
 	case NEW_WINDOW: {
 		BString url;
@@ -238,8 +205,12 @@ BrowserApp::RefsReceived(BMessage* message)
 			continue;
 		BString url;
 		url << path.Path();
-		_CreateNewWindow(url);
+		_CreateNewPage(url);
 	}
+
+	BString url;
+	for (int32 i = 0; message->FindString("url", i, &url) == B_OK; i++)
+		_CreateNewPage(url);
 }
 
 
@@ -290,6 +261,31 @@ BrowserApp::_OpenSettingsFile(BFile& file, uint32 mode)
 	}
 
 	return file.SetTo(path.Path(), mode) == B_OK;
+}
+
+
+void
+BrowserApp::_CreateNewPage(const BString& url)
+{
+	uint32 workspace = 1 << current_workspace();
+
+	bool loadedInWindowOnCurrentWorkspace = false;
+	for (int i = 0; BWindow* window = WindowAt(i); i++) {
+		BrowserWindow* webWindow = dynamic_cast<BrowserWindow*>(window);
+		if (!webWindow)
+			continue;
+		if (webWindow->Lock()) {
+			if (webWindow->Workspaces() & workspace) {
+				webWindow->CreateNewTab(url, true);
+				webWindow->Activate();
+				loadedInWindowOnCurrentWorkspace = true;
+			}
+			webWindow->Unlock();
+		}
+		if (loadedInWindowOnCurrentWorkspace)
+			return;
+	}
+	_CreateNewWindow(url);
 }
 
 

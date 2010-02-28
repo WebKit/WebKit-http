@@ -51,6 +51,7 @@ public:
 
 private:
 			bool				_OpenSettingsFile(BFile& file, uint32 mode);
+			void				_CreateNewPage(const BString& url);
 			void				_CreateNewWindow(const BString& url);
 			void				_CreateNewTab(BrowserWindow* window,
 									const BString& url, bool select);
