@@ -800,6 +800,12 @@ void GraphicsContext::setCompositeOperation(CompositeOperator op)
     case CompositeSourceOver:
         mode = B_OP_OVER;
         break;
+    case CompositePlusLighter:
+        mode = B_OP_ADD;
+        break;
+    case CompositePlusDarker:
+        mode = B_OP_SUBTRACT;
+        break;
     default:
         printf("GraphicsContext::setCompositeOperation: Unsupported composite operation %s\n",
                 compositeOperatorName(op).utf8().data());
