@@ -58,6 +58,8 @@ enum {
 	SHOW_DOWNLOAD_WINDOW = 'sdwd'
 };
 
+#define INTEGRATE_MENU_INTO_TAB_BAR 0
+
 
 class BrowserWindow : public BWebWindow {
 public:

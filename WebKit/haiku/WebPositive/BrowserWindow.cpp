@@ -108,8 +108,11 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 
 	if (toolbarPolicy == HaveToolbar) {
 		// Menu
-//		BMenu* mainMenu = new BMenuBar("Main menu");
+#if INTEGRATE_MENU_INTO_TAB_BAR
 		BMenu* mainMenu = fTabManager->Menu();
+#else
+		BMenu* mainMenu = new BMenuBar("Main menu");
+#endif
 		BMenu* menu = new BMenu("Window");
 		BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
 		newWindowMessage->AddString("url", "");
@@ -199,7 +202,9 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		;
 		// Layout
 		AddChild(BGroupLayoutBuilder(B_VERTICAL)
-//			.Add(mainMenu)
+#if !INTEGRATE_MENU_INTO_TAB_BAR
+			.Add(mainMenu)
+#endif
 			.Add(fTabManager->TabGroup())
 			.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
 				.Add(fBackButton, 0, 0)

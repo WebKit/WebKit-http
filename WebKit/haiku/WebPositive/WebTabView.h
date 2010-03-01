@@ -51,7 +51,9 @@ public:
 			void				SetTarget(const BMessenger& target);
 			const BMessenger&	Target() const;
 
+#if INTEGRATE_MENU_INTO_TAB_BAR
 			BMenu*				Menu() const;
+#endif
 
 			BView*				TabGroup() const;
 			BView*				ContainerView() const;
@@ -72,7 +74,9 @@ public:
 			void				SetCloseButtonsAvailable(bool available);
 
 private:
+#if INTEGRATE_MENU_INTO_TAB_BAR
 			BMenu*				fMenu;
+#endif
 			BGroupView*			fTabContainerGroup;
 			TabContainerView*	fTabContainerView;
 			BView*				fContainerView;

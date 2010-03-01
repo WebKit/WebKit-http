@@ -1092,16 +1092,18 @@ TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
 	fCardLayout = new BCardLayout();
 	fContainerView->SetLayout(fCardLayout);
 
-	fMenu = new BMenu("Menu");
 	fTabContainerView = new TabContainerView(fController);
 	fTabContainerGroup = new BGroupView(B_HORIZONTAL);
 	fTabContainerGroup->GroupLayout()->SetInsets(0, 3, 0, 0);
 
+#if INTEGRATE_MENU_INTO_TAB_BAR
+	fMenu = new BMenu("Menu");
 	BMenuBar* menuBar = new BMenuBar("Menu bar");
 	menuBar->AddItem(fMenu);
 	TabButtonContainer* menuBarContainer = new TabButtonContainer();
 	menuBarContainer->GroupLayout()->AddView(menuBar);
 	fTabContainerGroup->GroupLayout()->AddView(menuBarContainer, 0.0f);
+#endif
 
 	fTabContainerGroup->GroupLayout()->AddView(fTabContainerView);
 //	fTabContainerGroup->GroupLayout()->AddView(new ScrollLeftTabButton(NULL), 0.0f);
@@ -1133,11 +1135,13 @@ TabManager::Target() const
 }
 
 
+#if INTEGRATE_MENU_INTO_TAB_BAR
 BMenu*
 TabManager::Menu() const
 {
 	return fMenu;
 }
+#endif
 
 
 BView*
