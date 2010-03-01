@@ -795,14 +795,18 @@ WebTabView::~WebTabView()
 }
 
 
+static const int kIconSize = 18;
+static const int kIconInset = 3;
+
+
 BSize
 WebTabView::MaxSize()
 {
 	// Account for icon.
 	BSize size(TabView::MaxSize());
-	size.height = max_c(size.height, 16 + 8);
+	size.height = max_c(size.height, kIconSize + kIconInset * 2);
 	if (fIcon)
-		size.width += 16 + 8;
+		size.width += kIconSize + kIconInset * 2;
 	// Account for close button.
 	size.width += size.height;
 	return size;
@@ -817,16 +821,16 @@ WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 		_DrawCloseButton(owner, frame, updateRect, isFirst, isLast, isFront);
 
 	if (fIcon) {
-		BRect iconBounds(0, 0, 15, 15);
+		BRect iconBounds(0, 0, kIconSize - 1, kIconSize - 1);
 		// clip to icon bounds, if they are smaller
 		if (iconBounds.Contains(fIcon->Bounds()))
 			iconBounds = fIcon->Bounds();
-		BPoint iconPos(frame.left + 4,
-			frame.top + (frame.Height() - iconBounds.Height()) / 2);
+		BPoint iconPos(frame.left + kIconInset - 1,
+			frame.top + floorf((frame.Height() - iconBounds.Height()) / 2));
 		iconBounds.OffsetTo(iconPos);
 		owner->SetDrawingMode(B_OP_OVER);
 		owner->DrawBitmap(fIcon, fIcon->Bounds(), iconBounds);
-	frame.left = frame.left + 16 + 8;
+		frame.left = frame.left + kIconSize + kIconInset * 2;
 	}
 
 	TabView::DrawContents(owner, frame, updateRect, isFirst, isLast, isFront);
