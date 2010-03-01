@@ -253,9 +253,12 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 	AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
 
 	// Add shortcuts to select a particular tab
-	for (int32 i = 1; i <= 9; i++) {
+	for (int32 i = 0; i <= 9; i++) {
 		BMessage *selectTab = new BMessage(SELECT_TAB);
-		selectTab->AddInt32("tab index", i - 1);
+		if (i == 0)
+			selectTab->AddInt32("tab index", 9);
+		else
+			selectTab->AddInt32("tab index", i - 1);
 		char numStr[2];
 		snprintf(numStr, sizeof(numStr), "%d", (int) i);
 		AddShortcut(numStr[0], B_COMMAND_KEY, selectTab);
