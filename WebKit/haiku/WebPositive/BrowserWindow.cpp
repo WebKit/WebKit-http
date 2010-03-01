@@ -79,6 +79,8 @@ enum {
 	TEXT_HIDE_FIND_GROUP = 'hfnd',
 	TEXT_FIND_NEXT = 'fndn',
 	TEXT_FIND_PREVIOUS = 'fndp',
+
+	SELECT_TAB = 'sltb',
 };
 
 
@@ -249,6 +251,15 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 	AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
 	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
 	AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
+
+	// Add shortcuts to select a particular tab
+	for (int32 i = 1; i <= 9; i++) {
+		BMessage *selectTab = new BMessage(SELECT_TAB);
+		selectTab->AddInt32("tab index", i - 1);
+		char numStr[2];
+		snprintf(numStr, sizeof(numStr), "%d", (int) i);
+		AddShortcut(numStr[0], B_COMMAND_KEY, selectTab);
+	}
 	
 	be_app->PostMessage(WINDOW_OPENED);
 }
@@ -395,6 +406,17 @@ BrowserWindow::MessageReceived(BMessage* message)
 		} else
 			PostMessage(B_QUIT_REQUESTED);
 		break;
+
+	case SELECT_TAB: {
+		int32 index;
+		if (message->FindInt32("tab index", &index) == B_OK
+			&& fTabManager->SelectedTabIndex() != index
+			&& fTabManager->CountTabs() > index) {
+			fTabManager->SelectTab(index);
+		}
+		
+		break;
+	}
 
 	case TAB_CHANGED: {
 		// This message may be received also when the last tab closed, i.e. with index == -1.
