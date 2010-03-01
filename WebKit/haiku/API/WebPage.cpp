@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
@@ -844,7 +845,50 @@ void BWebPage::handleKeyEvent(BMessage* message)
         return;
 
     PlatformKeyboardEvent event(message);
-    frame->eventHandler()->keyEvent(event);
+	// Try to let WebCore handle this event
+	if (!frame->eventHandler()->keyEvent(event)) {
+		// Handle keyboard scrolling (probably should be extracted to a method.)
+		ScrollDirection direction;
+		ScrollGranularity granularity;
+		BString bytes = message->FindString("bytes");
+		switch (bytes.ByteAt(0)) {
+			case B_UP_ARROW:
+				granularity = ScrollByLine;
+				direction = ScrollUp;
+				break;
+			case B_DOWN_ARROW:
+				granularity = ScrollByLine;
+				direction = ScrollDown;
+				break;
+			case B_LEFT_ARROW:
+				granularity = ScrollByLine;
+				direction = ScrollLeft;
+				break;
+			case B_RIGHT_ARROW:
+				granularity = ScrollByLine;
+				direction = ScrollRight;
+				break;
+			case B_HOME:
+				granularity = ScrollByDocument;
+				direction = ScrollUp;
+				break;
+			case B_END:
+				granularity = ScrollByDocument;
+				direction = ScrollDown;
+				break;
+			case B_PAGE_UP:
+				granularity = ScrollByPage;
+				direction = ScrollUp;
+				break;
+			case B_PAGE_DOWN:
+				granularity = ScrollByPage;
+				direction = ScrollDown;
+				break;
+			default:
+				return;
+		}
+		frame->eventHandler()->scrollRecursively(direction, granularity);
+	}
 }
 
 void BWebPage::handleChangeTextSize(BMessage* message)
