@@ -75,8 +75,8 @@ public:
 			bool				AllowsScrolling() const;
 			void				SetAllowsScrolling(bool enable);
 
-			BString				PageSource() const;
-			void				SetPageSource(const BString& source);
+			BString				FrameSource() const;
+			void				SetFrameSource(const BString& source);
 
 			void				SetTransparent(bool transparent);
 			bool				IsTransparent() const;

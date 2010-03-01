@@ -357,7 +357,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError& error)
 //    content << error.localizedDescription().utf8().data();
 //    content << "</body></html>";
 //
-//    m_webFrame->SetPageSource(content);
+//    m_webFrame->SetFrameSource(content);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()

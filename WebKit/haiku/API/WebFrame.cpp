@@ -217,7 +217,7 @@ void BWebFrame::SetAllowsScrolling(bool flag)
         fData->frame->view()->setCanHaveScrollbars(flag);
 }
 
-BString BWebFrame::PageSource() const
+BString BWebFrame::FrameSource() const
 {
     if (fData->frame) {
         if (fData->frame->view() && fData->frame->view()->layoutPending())
@@ -232,7 +232,7 @@ BString BWebFrame::PageSource() const
     return BString();
 }
 
-void BWebFrame::SetPageSource(const BString& source)
+void BWebFrame::SetFrameSource(const BString& source)
 {
     if (fData->frame && fData->frame->loader()) {
         WebCore::FrameLoader* loader = fData->frame->loader();
