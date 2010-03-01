@@ -77,6 +77,7 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* web
     : m_webPage(webPage)
     , m_webFrame(webFrame)
     , m_messenger()
+    , m_loadingErrorPage(false)
 {
     ASSERT(m_webPage);
     ASSERT(m_webFrame);
@@ -290,11 +291,17 @@ void FrameLoaderClientHaiku::dispatchWillClose()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
 {
+    if (m_loadingErrorPage)
+        return;
+
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
+    if (m_loadingErrorPage)
+        return;
+
     BMessage message(LOAD_NEGOTIATING);
     message.AddString("url", m_webFrame->Frame()->loader()->provisionalDocumentLoader()->request().url().string());
     dispatchMessage(message);
@@ -302,6 +309,9 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 {
+    if (m_loadingErrorPage)
+        return;
+
     m_webFrame->SetTitle(title);
 
     BMessage message(TITLE_CHANGED);
@@ -311,6 +321,9 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
+    if (m_loadingErrorPage)
+        return;
+
     BMessage message(LOAD_COMMITTED);
     message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
@@ -328,9 +341,23 @@ void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError&
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError&)
+void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError& error)
 {
-    notImplemented();
+    if (m_loadingErrorPage)
+        return;
+    if (!shouldFallBack(error))
+        return;
+
+    m_loadingErrorPage = true;
+
+	// NOTE: This could be used to display the error right in the page. However, I find
+	// the error alert somehow better to manage. For example, on a partial load error,
+	// at least some content stays readable if we don't overwrite it with the error text... :-)
+//    BString content("<html><body>");
+//    content << error.localizedDescription().utf8().data();
+//    content << "</body></html>";
+//
+//    m_webFrame->SetPageSource(content);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
@@ -342,6 +369,11 @@ void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 
 void FrameLoaderClientHaiku::dispatchDidFinishLoad()
 {
+    if (m_loadingErrorPage) {
+        m_loadingErrorPage = false;
+        return;
+    }
+
     BMessage message(LOAD_FINISHED);
     message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
@@ -354,6 +386,9 @@ void FrameLoaderClientHaiku::dispatchDidFirstLayout()
 
 void FrameLoaderClientHaiku::dispatchDidFirstVisuallyNonEmptyLayout()
 {
+    if (m_loadingErrorPage)
+        return;
+
     notImplemented();
 }
 
@@ -559,19 +594,21 @@ void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
 {
-    Frame* frame = m_webFrame->Frame();
-    if (!frame)
-        return;
-
     // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
-    String encoding = frame->loader()->documentLoader()->overrideEncoding();
+    String encoding = loader->overrideEncoding();
     bool userChosen = !encoding.isNull();
     if (!userChosen)
         encoding = loader->response().textEncodingName();
-    frame->loader()->setEncoding(encoding, userChosen);
 
+    FrameLoader* frameLoader = loader->frameLoader();
+    frameLoader->setEncoding(encoding, userChosen);
     if (data)
-        frame->loader()->addData(data, length);
+        frameLoader->addData(data, length);
+
+    // The Gtk port also does this, when it doesn't have a plugin view:
+    Frame* frame = loader->frame();
+    if (frame && frame->document() && frame->document()->isMediaDocument())
+        loader->cancelMainResourceLoad(frameLoader->client()->pluginWillHandleLoadError(loader->response()));
 }
 
 void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
@@ -616,6 +653,9 @@ void FrameLoaderClientHaiku::dispatchDidChangeBackForwardIndex() const
 
 void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
 {
+	// NOTE: I think we don't have anything to do here, since it a) obviously works already
+	// and b) it is probably for the case when using a native ScrollView as widget, which
+	// we don't do.
     notImplemented();
 }
 
@@ -631,7 +671,8 @@ void FrameLoaderClientHaiku::didRunInsecureContent(SecurityOrigin*)
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
     notImplemented();
-    ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL,
+                                        request.url().string(), "Load request cancelled");
     error.setIsCancellation(true);
     return error;
 }
@@ -639,19 +680,22 @@ WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::Res
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotUseRestrictedPort, request.url().string(), String());
+    return ResourceError(String(), WebKitErrorCannotUseRestrictedPort,
+                         request.url().string(), "Not allowed to use restricted network port");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowURL, request.url().string(), String());
+    return ResourceError(String(), WebKitErrorCannotShowURL,
+                         request.url().string(), "URL cannot be shown");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     notImplemented();
-    ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange, request.url().string(), String());
+    ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange,
+                                        request.url().string(), "Frame load was interrupted");
     error.setIsCancellation(true);
     return error;
 }
@@ -659,25 +703,33 @@ WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(con
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowMIMEType, response.url().string(), String());
+    // TODO: This can probably be used to automatically close pages that have no content,
+    // but only triggered a download. Since BWebPage is used for initiating a BWebDownload,
+    // it could remember doing so and then we could ask here if we are the main frame,
+    // have no content, but did download something -- then we could asked to be closed.
+    return ResourceError(String(), WebKitErrorCannotShowMIMEType,
+                         response.url().string(), "Content with the specified MIME type cannot be shown");
 }
 
 WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowURL, response.url().string(), String());
+    return ResourceError(String(), WebKitErrorCannotShowURL, 
+                         response.url().string(), "File does not exist");
 }
 
 ResourceError FrameLoaderClientHaiku::pluginWillHandleLoadError(const ResourceResponse& response)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotLoadPlugIn, response.url().string(), String());
+    return ResourceError(String(), WebKitErrorCannotLoadPlugIn,
+                         response.url().string(), "Cannot load plugin");
 }
 
 bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 {
-    notImplemented();
-    return false;
+    return !(error.isCancellation()
+             || error.errorCode() == WebKitErrorFrameLoadInterruptedByPolicyChange
+             || error.errorCode() == WebKitErrorCannotLoadPlugIn);
 }
 
 bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
