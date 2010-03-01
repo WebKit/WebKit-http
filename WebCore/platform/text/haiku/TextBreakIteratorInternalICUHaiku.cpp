@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,21 +21,34 @@
 #include "config.h"
 #include "TextBreakIteratorInternalICU.h"
 
-#include "NotImplemented.h"
-
+#include <Locale.h>
+#include <LocaleRoster.h>
 
 namespace WebCore {
 
+static const char* currentLocaleID()
+{
+    static BString local;
+    static bool initialized = false;
+    if (!initialized) {
+    	initialized = true;
+    	BLanguage* language;
+        if (be_locale_roster->GetDefaultLanguage(&language) == B_OK)
+            local = language->Code();
+        else
+            local = "en_US";
+    }
+    return local.String();
+}
+
 const char* currentSearchLocaleID()
 {
-    notImplemented();
-    return "";
+    return currentLocaleID();
 }
 
 const char* currentTextBreakLocaleID()
 {
-    notImplemented();
-    return "en_us";
+    return currentLocaleID();
 }
 
 } // namespace WebCore
