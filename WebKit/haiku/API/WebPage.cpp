@@ -181,6 +181,7 @@ BWebPage::BWebPage(BWebView* webView)
 
 BWebPage::~BWebPage()
 {
+    delete m_settings;
     delete m_mainFrame;
     delete m_page;
 }
