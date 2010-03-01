@@ -44,7 +44,8 @@ enum {
     JAVASCRIPT_WINDOW_OBJECT_CLEARED =                  312,
     UPDATE_HISTORY =                                    313,
     UPDATE_NAVIGATION_INTERFACE =                       314,
-    AUTHENTICATION_CHALLENGE =                          315
+    AUTHENTICATION_CHALLENGE =                          315,
+    ICON_RECEIVED =                                     316
 };
 
 enum {

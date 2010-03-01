@@ -46,6 +46,7 @@
 #include "FrameView.h"
 #include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "IconDatabase.h"
 #include "MouseEvent.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
@@ -65,6 +66,7 @@
 #include "WebViewConstants.h"
 
 #include <Alert.h>
+#include <Bitmap.h>
 #include <Entry.h>
 #include <Message.h>
 #include <MimeType.h>
@@ -294,7 +296,9 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
     if (m_loadingErrorPage)
         return;
 
-    notImplemented();
+    BMessage message(ICON_RECEIVED);
+	message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()

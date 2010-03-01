@@ -61,6 +61,7 @@
 #include "WebDownloadPrivate.h"
 #include "WebFrame.h"
 #include "WebFramePrivate.h"
+#include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 
@@ -159,6 +160,7 @@ BWebPage::BWebPage(BWebView* webView)
     : BHandler("BWebPage")
     , m_webView(webView)
     , m_mainFrame(0)
+    , m_settings(0)
     , m_page(0)
     , m_pageVisible(true)
     , m_pageDirty(false)
@@ -174,28 +176,7 @@ BWebPage::BWebPage(BWebView* webView)
                                0,
                                0);
 
-    // Default settings - We should have BWebSettings class for this.
-    WebCore::Settings* settings = m_page->settings();
-    settings->setLoadsImagesAutomatically(true);
-    settings->setMinimumFontSize(5);
-    settings->setMinimumLogicalFontSize(5);
-    settings->setShouldPrintBackgrounds(true);
-    settings->setJavaScriptEnabled(true);
-    settings->setShowsURLsInToolTips(true);
-    settings->setShouldPaintCustomScrollbars(true);
-    settings->setEditingBehavior(EditingMacBehavior);
-//    settings->setLocalStorageEnabled(true);
-//    settings->setLocalStorageDatabasePath();
-
-    settings->setDefaultFixedFontSize(14);
-    settings->setDefaultFontSize(14);
-
-    // TODO: Init from system fonts or application settings.
-    settings->setSerifFontFamily("DejaVu Serif");
-    settings->setSansSerifFontFamily("DejaVu Sans");
-    settings->setFixedFontFamily("DejaVu Sans Mono");
-    settings->setStandardFontFamily("DejaVu Serif");
-    settings->setDefaultTextEncodingName("UTF-8");
+    m_settings = new BWebSettings(m_page->settings());
 }
 
 BWebPage::~BWebPage()
@@ -290,6 +271,11 @@ void BWebPage::ResendNotifications()
 BWebFrame* BWebPage::MainFrame() const
 {
     return m_mainFrame;
+};
+
+BWebSettings* BWebPage::Settings() const
+{
+    return m_settings;
 };
 
 BWebView* BWebPage::WebView() const

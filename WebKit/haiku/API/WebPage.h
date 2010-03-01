@@ -36,6 +36,7 @@
 
 class BWebDownload;
 class BWebFrame;
+class BWebSettings;
 class BWebView;
 
 namespace WebCore {
@@ -79,6 +80,7 @@ public:
 			void				SetDownloadListener(const BMessenger& listener);
 
 			BWebFrame*			MainFrame() const;
+			BWebSettings*		Settings() const;
 			BWebView*			WebView() const;
 				// NOTE: Using the BWebView requires locking it's looper!
 
@@ -192,6 +194,7 @@ private:
 	BMessenger m_downloadListener;
 	BWebView* m_webView;
 	BWebFrame* m_mainFrame;
+	BWebSettings* m_settings;
 	WebCore::Page* m_page;
 
     bool m_pageVisible;

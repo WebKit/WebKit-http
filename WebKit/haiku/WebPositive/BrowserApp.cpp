@@ -32,8 +32,8 @@
 #include "BrowserWindow.h"
 #include "DownloadWindow.h"
 #include "WebPage.h"
+#include "WebSettings.h"
 #include "WebView.h"
-#include "WebViewConstants.h"
 #include <Alert.h>
 #include <Autolock.h>
 #include <Directory.h>
@@ -103,6 +103,8 @@ BrowserApp::ReadyToRun()
 
 	BWebPage::InitializeOnce();
 	BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
+
+	BWebSettings::SetPersistentStoragePath("/boot/home/config/settings/WebPositive");
 
 	BFile settingsFile;
 	BRect windowFrameFromSettings = fLastWindowFrame;

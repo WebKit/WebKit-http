@@ -68,6 +68,8 @@ public:
 									BWebView* view);
 	virtual	void				TitleChanged(const BString& title,
 									BWebView* view);
+	virtual	void				IconReceived(const BBitmap* icon,
+									BWebView* view);
 	virtual	void				ResizeRequested(float width, float height,
 									BWebView* view);
 	virtual	void				SetToolBarsVisible(bool flag, BWebView* view);
@@ -86,6 +88,8 @@ public:
 									uint32 failureCount, BWebView* view);
 
 private:
+			void				_FetchIconForURL(const BString& url,
+									const BMessage& message);
 			BWebView*			_WebViewForMessage(
 									const BMessage* message) const;
 

@@ -701,6 +701,13 @@ BrowserWindow::TitleChanged(const BString& title, BWebView* view)
 
 
 void
+BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
+{
+	printf("BrowserWindow::IconReceived(%p, %p)\n", icon, view);
+}
+
+
+void
 BrowserWindow::StatusChanged(const BString& statusText, BWebView* view)
 {
 	if (view != CurrentWebView())

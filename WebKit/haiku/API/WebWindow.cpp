@@ -31,10 +31,12 @@
 #include "config.h"
 #include "WebWindow.h"
 
+#include "WebSettings.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 
 #include <Application.h>
+#include <Bitmap.h>
 #include <Button.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
@@ -43,6 +45,10 @@
 #include <TextControl.h>
 
 #include <stdio.h>
+
+enum {
+    ICON_FOR_URL_RECEIVED = 'icfu'
+};
 
 BWebWindow::BWebWindow(BRect frame, const char* title, window_look look,
         window_feel feel, uint32 flags, uint32 workspace)
@@ -113,8 +119,10 @@ void BWebWindow::MessageReceived(BMessage* message)
     }
     case LOAD_NEGOTIATING: {
         BString url;
-        if (message->FindString("url", &url) == B_OK)
+        if (message->FindString("url", &url) == B_OK) {
             LoadNegotiating(url, _WebViewForMessage(message));
+            _FetchIconForURL(url, *message);
+        }
         break;
     }
     case LOAD_COMMITTED: {
@@ -146,6 +154,21 @@ void BWebWindow::MessageReceived(BMessage* message)
         if (message->FindString("title", &title) == B_OK)
             TitleChanged(title, _WebViewForMessage(message));
         break;
+    }
+    case ICON_RECEIVED: {
+    	// The icon is now in the database.
+        BString url;
+        if (message->FindString("url", &url) == B_OK)
+            _FetchIconForURL(url, *message);
+        break;
+    }
+    case ICON_FOR_URL_RECEIVED: {
+        BMessage iconArchive;
+        if (message->FindMessage("icon", &iconArchive) == B_OK) {
+        	BBitmap icon(&iconArchive);
+            IconReceived(&icon, _WebViewForMessage(message));
+        }
+    	break;
     }
     case RESIZING_REQUESTED: {
         BRect rect;
@@ -297,6 +320,10 @@ void BWebWindow::TitleChanged(const BString& title, BWebView* view)
     SetTitle(title.String());
 }
 
+void BWebWindow::IconReceived(const BBitmap* icon, BWebView* view)
+{
+}
+
 void BWebWindow::ResizeRequested(float width, float height, BWebView* view)
 {
     ResizeTo(width, height);
@@ -343,6 +370,14 @@ bool BWebWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 }
 
 // #pragma mark - private
+
+void BWebWindow::_FetchIconForURL(const BString& url, const BMessage& message)
+{
+	BMessage reply(message);
+	reply.what = ICON_FOR_URL_RECEIVED;
+	BMessenger target(this);
+	BWebSettings::SendIconForURL(url, reply, target);
+}
 
 BWebView* BWebWindow::_WebViewForMessage(const BMessage* message) const
 {
