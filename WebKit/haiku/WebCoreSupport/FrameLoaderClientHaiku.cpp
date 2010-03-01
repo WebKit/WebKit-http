@@ -507,6 +507,9 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
 {
+	BMessage message(NAVIGATION_REQUESTED);
+	message.AddString("url", request.url().string());
+	dispatchMessage(message);
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
 	dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());

@@ -90,8 +90,10 @@ void BWebWindow::MessageReceived(BMessage* message)
         break;
     case NAVIGATION_REQUESTED: {
         BString url;
-        if (message->FindString("url", &url) == B_OK)
+        if (message->FindString("url", &url) == B_OK) {
             NavigationRequested(url, _WebViewForMessage(message));
+            _FetchIconForURL(url, *message);
+        }
         break;
     }
     case UPDATE_HISTORY: {

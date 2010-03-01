@@ -321,6 +321,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 		BString url;
 		if (message->FindString("url", &url) != B_OK)
 			url = fURLTextControl->Text();
+		fTabManager->SetTabIcon(CurrentWebView(), NULL);
 		CurrentWebView()->LoadURL(url.String());
 		break;
 	}
@@ -703,7 +704,7 @@ BrowserWindow::TitleChanged(const BString& title, BWebView* view)
 void
 BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
 {
-	printf("BrowserWindow::IconReceived(%p, %p)\n", icon, view);
+	fTabManager->SetTabIcon(view, icon);
 }
 
 

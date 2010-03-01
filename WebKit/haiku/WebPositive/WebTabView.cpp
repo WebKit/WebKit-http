@@ -31,6 +31,7 @@
 #include "WebView.h"
 #include <Application.h>
 #include <AbstractLayoutItem.h>
+#include <Bitmap.h>
 #include <Button.h>
 #include <CardLayout.h>
 #include <ControlLook.h>
@@ -146,6 +147,7 @@ public:
 	void AddTab(const char* label, int32 index = -1);
 	void AddTab(TabView* tab, int32 index = -1);
 	TabView* RemoveTab(int32 index);
+	TabView* TabAt(int32 index) const;
 
 	int32 IndexOf(TabView* tab) const;
 
@@ -379,6 +381,17 @@ TabContainerView::RemoveTab(int32 index)
 	Invalidate(dirty);
 
 	return removedTab;
+}
+
+
+TabView*
+TabContainerView::TabAt(int32 index) const
+{
+	TabLayoutItem* item = dynamic_cast<TabLayoutItem*>(
+		GroupLayout()->ItemAt(index));
+	if (item)
+		return item->Parent();
+	return NULL;
 }
 
 
@@ -738,6 +751,7 @@ private:
 class WebTabView : public TabView {
 public:
 	WebTabView(TabManagerController* controller);
+	~WebTabView();
 
 	virtual BSize MaxSize();
 
@@ -749,12 +763,15 @@ public:
 	virtual void MouseMoved(BPoint where, uint32 transit,
 		const BMessage* dragMessage);
 
+	void SetIcon(const BBitmap* icon);
+
 private:
 	void _DrawCloseButton(BView* owner, BRect& frame, const BRect& updateRect,
 		bool isFirst, bool isLast, bool isFront);
 	BRect _CloseRectFrame(BRect frame) const;
 
 private:
+	BBitmap* fIcon;
 	TabManagerController* fController;
 	bool fOverCloseRect;
 	bool fClicked;
@@ -764,6 +781,7 @@ private:
 WebTabView::WebTabView(TabManagerController* controller)
 	:
 	TabView(),
+	fIcon(NULL),
 	fController(controller),
 	fOverCloseRect(false),
 	fClicked(false)
@@ -771,11 +789,21 @@ WebTabView::WebTabView(TabManagerController* controller)
 }
 
 
+WebTabView::~WebTabView()
+{
+	delete fIcon;
+}
+
+
 BSize
 WebTabView::MaxSize()
 {
-	// Account for close button.
+	// Account for icon.
 	BSize size(TabView::MaxSize());
+	size.height = max_c(size.height, 16 + 8);
+	if (fIcon)
+		size.width += 16 + 8;
+	// Account for close button.
 	size.width += size.height;
 	return size;
 }
@@ -787,6 +815,19 @@ WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 {
 	if (fController->CloseButtonsAvailable())
 		_DrawCloseButton(owner, frame, updateRect, isFirst, isLast, isFront);
+
+	if (fIcon) {
+		BRect iconBounds(0, 0, 15, 15);
+		// clip to icon bounds, if they are smaller
+		if (iconBounds.Contains(fIcon->Bounds()))
+			iconBounds = fIcon->Bounds();
+		BPoint iconPos(frame.left + 4,
+			frame.top + (frame.Height() - iconBounds.Height()) / 2);
+		iconBounds.OffsetTo(iconPos);
+		owner->SetDrawingMode(B_OP_OVER);
+		owner->DrawBitmap(fIcon, fIcon->Bounds(), iconBounds);
+	frame.left = frame.left + 16 + 8;
+	}
 
 	TabView::DrawContents(owner, frame, updateRect, isFirst, isLast, isFront);
 }
@@ -840,6 +881,18 @@ WebTabView::MouseMoved(BPoint where, uint32 transit,
 	}
 
 	TabView::MouseMoved(where, transit, dragMessage);
+}
+
+
+void
+WebTabView::SetIcon(const BBitmap* icon)
+{
+	delete fIcon;
+	if (icon)
+		fIcon = new BBitmap(icon);
+	else
+		fIcon = NULL;
+	LayoutItem()->InvalidateLayout();
 }
 
 
@@ -1181,16 +1234,11 @@ TabManager::SelectTab(int32 tabIndex)
 
 
 void
-TabManager::SelectTab(BView* containedView)
+TabManager::SelectTab(const BView* containedView)
 {
-	int32 count = fCardLayout->CountItems();
-	for (int32 i = 0; i < count; i++) {
-		BLayoutItem* item = fCardLayout->ItemAt(i);
-		if (item->View() == containedView) {
-			SelectTab(i);
-			break;
-		}
-	}
+	int32 tabIndex = _TabIndexForContainedView(containedView);
+	if (tabIndex > 0)
+		SelectTab(tabIndex);
 }
 
 
@@ -1253,11 +1301,34 @@ TabManager::SetTabLabel(int32 tabIndex, const char* label)
 
 
 void
+TabManager::SetTabIcon(const BView* containedView, const BBitmap* icon)
+{
+	WebTabView* tab = dynamic_cast<WebTabView*>(fTabContainerView->TabAt(
+		_TabIndexForContainedView(containedView)));
+	if (tab)
+		tab->SetIcon(icon);
+}
+
+
+void
 TabManager::SetCloseButtonsAvailable(bool available)
 {
 	if (available == fController->CloseButtonsAvailable())
 		return;
 	fController->SetCloseButtonsAvailable(available);
 	fTabContainerView->Invalidate();
+}
+
+
+int32
+TabManager::_TabIndexForContainedView(const BView* containedView) const
+{
+	int32 count = fCardLayout->CountItems();
+	for (int32 i = 0; i < count; i++) {
+		BLayoutItem* item = fCardLayout->ItemAt(i);
+		if (item->View() == containedView)
+			return i;
+	}
+	return -1;
 }
 

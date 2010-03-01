@@ -36,6 +36,7 @@ enum {
     CLOSE_TAB = 'cltb'
 };
 
+class BBitmap;
 class BCardLayout;
 class BGroupView;
 class BMenu;
@@ -61,7 +62,7 @@ public:
 			BView*				ViewForTab(int32 tabIndex) const;
 
 			void				SelectTab(int32 tabIndex);
-			void				SelectTab(BView* containedView);
+			void				SelectTab(const BView* containedView);
 			int32				SelectedTabIndex() const;
 			void				CloseTab(int32 tabIndex);
 
@@ -71,7 +72,13 @@ public:
 			int32				CountTabs() const;
 
 			void				SetTabLabel(int32 tabIndex, const char* label);
+			void				SetTabIcon(const BView* containedView,
+									const BBitmap* icon);
 			void				SetCloseButtonsAvailable(bool available);
+
+private:
+			int32				_TabIndexForContainedView(
+									const BView* containedView) const;
 
 private:
 #if INTEGRATE_MENU_INTO_TAB_BAR
