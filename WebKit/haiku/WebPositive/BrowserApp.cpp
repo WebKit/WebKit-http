@@ -30,6 +30,7 @@
 #include "BrowserApp.h"
 
 #include "BrowserWindow.h"
+#include "BrowsingHistory.h"
 #include "DownloadWindow.h"
 #include "WebPage.h"
 #include "WebSettings.h"
@@ -47,7 +48,7 @@
 
 const char* kApplicationSignature = "application/x-vnd.Haiku-WebPositive";
 const char* kApplicationName = "WebPositive";
-
+static const uint32 PRELOAD_BROWSING_HISTORY = 'plbh';
 
 BrowserApp::BrowserApp()
 	: BApplication(kApplicationSignature)
@@ -132,6 +133,7 @@ BrowserApp::ReadyToRun()
 			BMessenger(fDownloadWindow));
 		window->Show();
 	}
+	PostMessage(PRELOAD_BROWSING_HISTORY);
 }
 
 
@@ -139,6 +141,9 @@ void
 BrowserApp::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
+	case PRELOAD_BROWSING_HISTORY:
+		BrowsingHistory::defaultInstance();
+		break;
 	case B_SILENT_RELAUNCH:
 		_CreateNewPage("");
 		break;
