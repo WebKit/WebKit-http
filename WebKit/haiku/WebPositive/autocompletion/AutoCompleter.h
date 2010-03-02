@@ -5,9 +5,8 @@
  * Authors:
  *		Oliver Tappe <beam@hirschkaefer.de>
  */
-
-#ifndef AUTO_COMPLETEER_H
-#define AUTO_COMPLETEER_H
+#ifndef _AUTO_COMPLETER_H
+#define _AUTO_COMPLETER_H
 
 #include <MessageFilter.h>
 
@@ -153,4 +152,4 @@ private:
 };
 
 
-#endif // AUTO_COMPLETEER_H
+#endif // _AUTO_COMPLETER_H

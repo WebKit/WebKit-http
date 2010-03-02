@@ -5,9 +5,8 @@
  * Authors:
  *		Oliver Tappe <beam@hirschkaefer.de>
  */
-
-#ifndef AUTO_COMPLETER_DEFAULT_IMPL_H
-#define AUTO_COMPLETER_DEFAULT_IMPL_H
+#ifndef _AUTO_COMPLETER_DEFAULT_IMPL_H
+#define _AUTO_COMPLETER_DEFAULT_IMPL_H
 
 #include <ListView.h>
 #include <String.h>
@@ -90,4 +89,4 @@ private:
 			ListView*			fListView;
 };
 
-#endif // AUTO_COMPLETER_DEFAULT_IMPL_H
+#endif // _AUTO_COMPLETER_DEFAULT_IMPL_H
