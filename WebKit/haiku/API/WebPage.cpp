@@ -552,7 +552,10 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     // window locked. This cannot deadlock and makes sure
     // the window is not deleting the offscreen view right
     // after we unlock it and before locking the bitmap.
-    offscreenView->LockLooper();
+    if (!offscreenView->LockLooper()) {
+    	m_webView->UnlockLooper();
+    	return;
+    }
     m_webView->UnlockLooper();
 
     WebCore::GraphicsContext context(offscreenView);
