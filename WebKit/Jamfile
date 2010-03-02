@@ -113,8 +113,14 @@ Application HaikuLauncher :
 # WebPositive
 #-----------------------------------------------------------------------------
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive autocompletion ] ;
 
 Application WebPositive :
+	# autocompletion
+	AutoCompleter.cpp
+	AutoCompleterDefaultImpl.cpp
+	TextControlCompleter.cpp
+	# WebPositive
     AuthenticationPanel.cpp
     BrowsingHistory.cpp
     DateTime.cpp
