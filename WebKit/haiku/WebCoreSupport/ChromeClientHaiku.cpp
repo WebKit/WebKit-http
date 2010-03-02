@@ -283,16 +283,27 @@ IntRect ChromeClientHaiku::windowResizerRect() const
 
 void ChromeClientHaiku::repaint(const IntRect& rect, bool contentChanged, bool immediate, bool repaintContentOnly)
 {
+//printf("ChromeClientHaiku::repaint(rect(%d, %d, %d, %d), contentChanged: %d, "
+//"immediate: %d, repaintContentOnly: %d)\n",
+//rect.x(), rect.y(), rect.right(), rect.bottom(), contentChanged, immediate, repaintContentOnly);
     // TODO: This deadlocks when called from the app thread during init (fortunately immediate is false then)
-    if (immediate)
-        m_webPage->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
-    else
-        m_webPage->draw(BRect(rect));
+    // contentChanged == false is used for scrolling.
+    if (contentChanged) {
+	    if (immediate)
+	        m_webPage->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
+	    else
+	        m_webPage->draw(BRect(rect));
+    }
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
 {
-    // TODO: Find out how to tell WebCore not to repaint the area that we were able to scroll.
+//printf("ChromeClientHaiku::scroll(%d x %d, rectToScroll(%d, %d, %d, %d), "
+//"clipRect(%d, %d, %d, %d))\n", scrollDelta.width(), scrollDelta.height(),
+//rectToScroll.x(), rectToScroll.y(), rectToScroll.right(), rectToScroll.bottom(),
+//clipRect.x(), clipRect.y(), clipRect.right(), clipRect.bottom());
+    m_webPage->scroll(scrollDelta.width(), scrollDelta.height(), rectToScroll, clipRect);
+    m_webView->SendFakeMouseMovedEvent();
 }
 
 IntPoint ChromeClientHaiku::screenToWindow(const IntPoint& point) const

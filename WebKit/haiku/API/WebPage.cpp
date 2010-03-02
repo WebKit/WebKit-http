@@ -519,6 +519,8 @@ void BWebPage::downloadCreated(BWebDownload* download)
 void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     bool repaintContentOnly)
 {
+	if (!rect.IsValid())
+		return;
     // Block any drawing as long as the BWebView is hidden
     // (should be extended to when the containing BWebWindow is not
     // currently on screen either...)
@@ -558,21 +560,124 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     }
     m_webView->UnlockLooper();
 
-    WebCore::GraphicsContext context(offscreenView);
-
-    offscreenView->PushState();
     if (!rect.IsValid())
         rect = offscreenView->Bounds();
     BRegion region(rect);
-    offscreenView->ConstrainClippingRegion(&region);
-    view->paint(&context, IntRect(rect));
-    offscreenView->PopState();
+    internalPaint(offscreenView, &region);
+
     offscreenView->UnlockLooper();
 
     m_pageDirty = false;
 
     // Notify the window that it can now pull the bitmap in its own thread
     m_webView->SetOffscreenViewClean(rect, immediate);
+}
+
+void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
+	const BRect& clipRect)
+{
+    if (!m_webView->LockLooper())
+        return;
+    BBitmap* bitmap = m_webView->OffscreenBitmap();
+    BView* offscreenView = m_webView->OffscreenView();
+
+    // Lock the offscreen bitmap while we still have the
+    // window locked. This cannot deadlock and makes sure
+    // the window is not deleting the offscreen view right
+    // after we unlock it and before locking the bitmap.
+    if (!bitmap->Lock()) {
+    	m_webView->UnlockLooper();
+    	return;
+    }
+    m_webView->UnlockLooper();
+
+	BRect clip = offscreenView->Bounds();
+	BRect rectAtSrc = rectToScroll;
+	BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
+	BRegion repaintRegion(rectAtSrc);
+	if (clip.Intersects(rectAtSrc) && clip.Intersects(rectAtDst)) {
+		uint8* src = reinterpret_cast<uint8*>(bitmap->Bits());
+		uint32 bytesPerRow = bitmap->BytesPerRow();
+		// clip source rect
+		rectAtSrc = rectAtSrc & clip;
+		// clip dest rect
+		rectAtDst = rectAtDst & clip;
+		// move dest back over source and clip source to dest
+		rectAtDst.OffsetBy(-xOffset, -yOffset);
+		rectAtSrc = rectAtSrc & rectAtDst;
+		// remember the part that will be clean
+		rectAtDst.OffsetBy(xOffset, yOffset);
+		repaintRegion.Exclude(rectAtDst);
+
+		// calc offset in buffer
+		src += (int32)rectAtSrc.left * 4
+			+ (int32)rectAtSrc.top * bytesPerRow;
+
+		uint32 width = rectAtSrc.IntegerWidth() + 1;
+		uint32 height = rectAtSrc.IntegerHeight() + 1;
+
+		int32 xIncrement;
+		int32 yIncrement;
+	
+		if (yOffset == 0 && xOffset > 0) {
+			// copy from right to left
+			xIncrement = -1;
+			src += (width - 1) * 4;
+		} else {
+			// copy from left to right
+			xIncrement = 1;
+		}
+	
+		if (yOffset > 0) {
+			// copy from bottom to top
+			yIncrement = -bytesPerRow;
+			src += (height - 1) * bytesPerRow;
+		} else {
+			// copy from top to bottom
+			yIncrement = bytesPerRow;
+		}
+	
+		uint8* dst = src + yOffset * bytesPerRow + xOffset * 4;
+	
+		if (xIncrement == 1) {
+			for (uint32 y = 0; y < height; y++) {
+				memcpy(dst, src, width * 4);
+				src += yIncrement;
+				dst += yIncrement;
+			}
+		} else {
+			for (uint32 y = 0; y < height; y++) {
+				uint32* srcHandle = (uint32*)src;
+				uint32* dstHandle = (uint32*)dst;
+				for (uint32 x = 0; x < width; x++) {
+					*dstHandle = *srcHandle;
+					srcHandle += xIncrement;
+					dstHandle += xIncrement;
+				}
+				src += yIncrement;
+				dst += yIncrement;
+			}
+		}
+	}
+
+	if (repaintRegion.Frame().IsValid())
+		internalPaint(offscreenView, &repaintRegion);
+
+    bitmap->Unlock();
+
+    // Notify the view that it can now pull the bitmap in its own thread
+    m_webView->SetOffscreenViewClean(rectToScroll, false);
+}
+
+void BWebPage::internalPaint(BView* offscreenView, BRegion* dirty)
+{
+    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::FrameView* view = frame->view();
+    offscreenView->PushState();
+    offscreenView->ConstrainClippingRegion(dirty);
+    WebCore::GraphicsContext context(offscreenView);
+    view->paint(&context, IntRect(dirty->Frame()));
+    offscreenView->PopState();
 }
 
 // #pragma mark - private

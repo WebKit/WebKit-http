@@ -34,6 +34,8 @@
 #include <Rect.h>
 #include <String.h>
 
+class BRegion;
+class BView;
 class BWebDownload;
 class BWebFrame;
 class BWebSettings;
@@ -164,6 +166,9 @@ private:
 
 	void paint(BRect rect, bool contentChanged, bool immediate,
 		bool repaintContentOnly);
+	void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
+		const BRect& clipRect);
+	void internalPaint(BView* view, BRegion* dirty);
 
 private:
 	virtual						~BWebPage();

@@ -86,8 +86,12 @@ public:
 									bool wrapSelection = true,
 									bool startInSelection = false);
 
+			void				SendFakeMouseMovedEvent();
+
 private:
 	friend class BWebPage;
+	inline	BBitmap*			OffscreenBitmap() const
+									{ return fOffscreenBitmap; }
 	inline	BView*				OffscreenView() const
 									{ return fOffscreenView; }
 			void				SetOffscreenViewClean(BRect cleanRect,
@@ -98,8 +102,9 @@ private:
 			void				_ResizeOffscreenView(int width, int height);
 			void				_DispatchMouseEvent(const BPoint& where,
 									uint32 sanityWhat);
+			void				_DispatchFakeMouseMovedEvent(const BPoint& where,
+									const BPoint& screenWhere, uint32 buttons);
 			void				_DispatchKeyEvent(uint32 sanityWhat);
-
 private:
 			uint32				fLastMouseButtons;
 
