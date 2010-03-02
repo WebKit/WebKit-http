@@ -109,6 +109,8 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 		if (!history->Lock())
 			return;
 
+		BString lastBaseURL;
+
 		count = history->countItems();
 		for (int32 i = 0; i < count; i++) {
 			BrowsingHistoryItem item = history->historyItemAt(i);
@@ -116,6 +118,14 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 			int32 matchPos = choiceText.IFindFirst(pattern);
 			if (matchPos < 0)
 				continue;
+			if (lastBaseURL.Length() > 0
+				&& choiceText.FindFirst(lastBaseURL) >= 0) {
+				continue;
+			}
+			int32 baseURLStart = choiceText.FindFirst("://") + 3;
+			int32 baseURLEnd = choiceText.FindFirst("/", baseURLStart + 1);
+			lastBaseURL.SetTo(choiceText.String() + baseURLStart,
+				baseURLEnd - baseURLStart);
 			fChoices.AddItem(new BAutoCompleter::Choice(choiceText,
 				choiceText, matchPos, pattern.Length()));
 		}
