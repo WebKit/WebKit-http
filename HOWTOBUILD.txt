@@ -58,7 +58,7 @@ with target in:
 	- libwebkit.so          (the WebKit library including libwebcore.so,
                              the API and some specific files)
 	- HaikuLauncher         (*default target* the test shell, including
-                             libwebkit.so and a simple browing window)
+                             libwebkit.so and a simple browsing window)
     - DumpRenderTree        (the tree parsing tool, required to test
                              WebKit, including libwebkit.so)
     - WebPositive           (the Haiku browser)
