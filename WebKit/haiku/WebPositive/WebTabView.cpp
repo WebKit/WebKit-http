@@ -127,6 +127,7 @@ public:
 		virtual void TabSelected(int32 tabIndex) = 0;
 		virtual bool HasFrames() = 0;
 		virtual	TabView* CreateTabView() = 0;
+		virtual void DoubleClickOutsideTabs() = 0;
 	};
 
 public:
@@ -252,10 +253,15 @@ TabContainerView::MouseDown(BPoint where)
 	uint32 buttons;
 	if (Window()->CurrentMessage()->FindInt32("buttons", (int32*)&buttons) != B_OK)
 		buttons = B_PRIMARY_MOUSE_BUTTON;
+	uint32 clicks;
+	if (Window()->CurrentMessage()->FindInt32("clicks", (int32*)&clicks) != B_OK)
+		clicks = 1;
 	fMouseDown = true;
 	SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
 	if (fLastMouseEventTab)
 		fLastMouseEventTab->MouseDown(where, buttons);
+	else if (clicks > 1)
+		fController->DoubleClickOutsideTabs();
 }
 
 
@@ -715,6 +721,8 @@ class TabManagerController : public TabContainerView::Controller {
 public:
 	TabManagerController(TabManager* manager);
 
+	virtual ~TabManagerController();
+
 	virtual void TabSelected(int32 index)
 	{
 		fManager->SelectTab(index);
@@ -726,6 +734,8 @@ public:
 	}
 
 	virtual TabView* CreateTabView();
+
+	virtual void DoubleClickOutsideTabs();
 
 	void CloseTab(int32 index);
 
@@ -739,9 +749,14 @@ public:
 		return fCloseButtonsAvailable;
 	}
 
+	void SetDoubleClickOutsideTabsMessage(const BMessage& message,
+		const BMessenger& target);
+
 private:
 	TabManager* fManager;
 	bool fCloseButtonsAvailable;
+	BMessage* fDoubleClickOutsideTabsMessage;
+	BMessenger fTarget;
 };
 
 
@@ -955,8 +970,15 @@ void WebTabView::_DrawCloseButton(BView* owner, BRect& frame,
 TabManagerController::TabManagerController(TabManager* manager)
 	:
 	fManager(manager),
-	fCloseButtonsAvailable(false)
+	fCloseButtonsAvailable(false),
+	fDoubleClickOutsideTabsMessage(NULL)
 {
+}
+
+
+TabManagerController::~TabManagerController()
+{
+	delete fDoubleClickOutsideTabsMessage;
 }
 
 
@@ -968,9 +990,26 @@ TabManagerController::CreateTabView()
 
 
 void
+TabManagerController::DoubleClickOutsideTabs()
+{
+	fTarget.SendMessage(fDoubleClickOutsideTabsMessage);
+}
+
+
+void
 TabManagerController::CloseTab(int32 index)
 {
 	fManager->CloseTab(index);
+}
+
+
+void
+TabManagerController::SetDoubleClickOutsideTabsMessage(const BMessage& message,
+	const BMessenger& target)
+{
+	delete fDoubleClickOutsideTabsMessage;
+	fDoubleClickOutsideTabsMessage = new BMessage(message);
+	fTarget = target;
 }
 
 
@@ -1145,6 +1184,9 @@ TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
     fController(new TabManagerController(this)),
     fTarget(target)
 {
+	fController->SetDoubleClickOutsideTabsMessage(*newTabMessage,
+		be_app_messenger);
+
 	fContainerView = new BView("web view container", 0);
 	fCardLayout = new BCardLayout();
 	fContainerView->SetLayout(fCardLayout);
