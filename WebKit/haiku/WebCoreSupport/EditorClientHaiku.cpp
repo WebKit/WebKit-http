@@ -383,6 +383,8 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
 
 #if 1
     switch (platformEvent->windowsVirtualKeyCode()) {
+#if 0
+// Handled in upper layer
     case VK_UP:
         frame->editor()->command("MoveUp").execute();
         break;
@@ -395,15 +397,19 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
     case VK_NEXT:  // PageDown
         frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
         break;
+#endif
     default:
         if (platformEvent->ctrlKey()) {
         	switch (platformEvent->windowsVirtualKeyCode()) {
+#if 0
+// Handled in upper layer
 		    case VK_HOME:
 		        frame->editor()->command("MoveToBeginningOfDocument").execute();
 		        break;
 		    case VK_END:
                 frame->editor()->command("MoveToEndOfDocument").execute();
 		        break;
+#endif
 		    case VK_A:
 	            frame->editor()->command("SelectAll").execute();
 		        break;

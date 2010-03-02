@@ -833,7 +833,7 @@ void BWebPage::handleKeyEvent(BMessage* message)
 
     PlatformKeyboardEvent event(message);
 	// Try to let WebCore handle this event
-	if (!frame->eventHandler()->keyEvent(event)) {
+	if (!frame->eventHandler()->keyEvent(event) && message->what == B_KEY_DOWN) {
 		// Handle keyboard scrolling (probably should be extracted to a method.)
 		ScrollDirection direction;
 		ScrollGranularity granularity;
