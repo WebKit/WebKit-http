@@ -148,6 +148,16 @@ BAutoCompleter::SelectPrevious(bool wrap)
 }
 
 
+bool
+BAutoCompleter::IsChoiceSelected() const
+{
+	if (fCompletionStyle)
+		return fCompletionStyle->IsChoiceSelected();
+	else
+		return false;
+}
+
+
 void
 BAutoCompleter::ApplyChoice(bool hideChoices)
 {
@@ -210,3 +220,4 @@ BAutoCompleter::SetCompletionStyle(CompletionStyle* style)
 	delete fCompletionStyle;
 	fCompletionStyle = style;
 }
+

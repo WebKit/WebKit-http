@@ -36,6 +36,8 @@ private:
 	private:
 				BTextControl*	fTextControl;
 	};
+private:
+			BTextControl*		fTextControl;
 };
 
 #endif // TEXT_CONTROL_COMPLETER_H

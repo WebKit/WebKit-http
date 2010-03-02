@@ -43,6 +43,7 @@ class BStringView;
 class BTextControl;
 class IconButton;
 class TabManager;
+class TextControlCompleter;
 class BWebView;
 
 enum ToolbarPolicy {
@@ -125,6 +126,7 @@ private:
 			IconButton*			fStopButton;
 			BButton*			fGoButton;
 			BTextControl*		fURLTextControl;
+			TextControlCompleter* fURLAutoCompleter;
 			BStringView*		fStatusText;
 			BStatusBar*			fLoadingProgressBar;
 			BLayoutItem*		fFindGroup;

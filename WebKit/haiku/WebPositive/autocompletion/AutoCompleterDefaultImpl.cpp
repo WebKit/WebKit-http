@@ -96,6 +96,13 @@ BDefaultCompletionStyle::SelectPrevious(bool wrap)
 }
 
 
+bool
+BDefaultCompletionStyle::IsChoiceSelected() const
+{
+	return fSelectedIndex >= 0;
+}
+
+
 void
 BDefaultCompletionStyle::ApplyChoice(bool hideChoices)
 {
@@ -112,8 +119,10 @@ BDefaultCompletionStyle::ApplyChoice(bool hideChoices)
 	fEditView->SetEditViewState(completedText, 
 		fPatternStartPos+choiceStr.Length());
 
-	if (hideChoices)
+	if (hideChoices) {
 		fChoiceView->HideChoices();
+		Select(-1);
+	}
 }
 
 

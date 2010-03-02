@@ -35,6 +35,7 @@ public:
 	virtual	bool				Select(int32 index);
 	virtual	bool				SelectNext(bool wrap = false);
 	virtual	bool				SelectPrevious(bool wrap = false);
+	virtual	bool				IsChoiceSelected() const;
 
 	virtual	void				ApplyChoice(bool hideChoices = true);
 	virtual	void				CancelChoice();

@@ -97,6 +97,7 @@ public:
 		virtual	bool			Select(int32 index) = 0;
 		virtual	bool			SelectNext(bool wrap = false) = 0;
 		virtual	bool			SelectPrevious(bool wrap = false) = 0;
+		virtual	bool			IsChoiceSelected() const = 0;
 
 		virtual	void			ApplyChoice(bool hideChoices = true) = 0;
 		virtual	void			CancelChoice() = 0;
@@ -135,6 +136,7 @@ protected:
 			bool				Select(int32 index);
 			bool				SelectNext(bool wrap = false);
 			bool				SelectPrevious(bool wrap = false);
+			bool				IsChoiceSelected() const;
 		
 			void				ApplyChoice(bool hideChoices = true);
 			void				CancelChoice();

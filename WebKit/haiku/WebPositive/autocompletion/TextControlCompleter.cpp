@@ -10,6 +10,7 @@
 
 #include <Looper.h>
 #include <TextControl.h>
+#include <stdio.h>
 
 #include "AutoCompleterDefaultImpl.h"
 
@@ -58,7 +59,7 @@ TextControlCompleter::TextControlWrapper::GetAdjustmentFrame()
 {
 	BRect frame = fTextControl->TextView()->Bounds();
 	frame = fTextControl->TextView()->ConvertToScreen(frame);
-	frame.InsetBy(-1, -3);
+	frame.InsetBy(0, -3);
 	return frame;
 }
 
@@ -68,14 +69,16 @@ TextControlCompleter::TextControlCompleter(BTextControl* textControl,
 	:
 	BAutoCompleter(new TextControlWrapper(textControl), model, 
 		new BDefaultChoiceView(), patternSelector),
-	BMessageFilter(B_KEY_DOWN)
+	BMessageFilter(B_KEY_DOWN),
+	fTextControl(textControl)
 {
-	textControl->TextView()->AddFilter(this);
+	fTextControl->TextView()->AddFilter(this);
 }
 
 
 TextControlCompleter::~TextControlCompleter()
 {
+	fTextControl->TextView()->RemoveFilter(this);
 }
 
 
@@ -99,9 +102,12 @@ TextControlCompleter::Filter(BMessage* message, BHandler** target)
 			CancelChoice();
 			return B_SKIP_MESSAGE;
 		case B_RETURN:
-			ApplyChoice();
-			EditViewStateChanged();
-			return B_SKIP_MESSAGE;
+			if (IsChoiceSelected()) {
+				ApplyChoice();
+				EditViewStateChanged();
+			} else
+				CancelChoice();
+			return B_DISPATCH_MESSAGE;
 		case B_TAB: {
 			// make sure that the choices-view is closed when tabbing out:
 			CancelChoice();

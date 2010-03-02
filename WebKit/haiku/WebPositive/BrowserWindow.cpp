@@ -37,6 +37,7 @@
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
 #include "IconButton.h"
+#include "TextControlCompleter.h"
 #include "WebPage.h"
 #include "WebTabView.h"
 #include "WebView.h"
@@ -91,6 +92,66 @@ layoutItemFor(BView* view)
 	int32 index = layout->IndexOfView(view);
 	return layout->ItemAt(index);
 }
+
+
+class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
+	virtual void FetchChoicesFor(const BString& pattern)
+	{
+		int32 count = CountChoices();
+		for (int32 i = 0; i < count; i++) {
+			delete reinterpret_cast<BAutoCompleter::Choice*>(
+				fChoices.ItemAtFast(i));
+		}
+		fChoices.MakeEmpty();
+
+		// Search through BrowsingHistory for any matches.
+		BrowsingHistory* history = BrowsingHistory::defaultInstance();
+		if (!history->Lock())
+			return;
+
+		count = history->countItems();
+		for (int32 i = 0; i < count; i++) {
+			BrowsingHistoryItem item = history->historyItemAt(i);
+			const BString& choiceText = item.url();
+			int32 matchPos = choiceText.IFindFirst(pattern);
+			if (matchPos < 0)
+				continue;
+			fChoices.AddItem(new BAutoCompleter::Choice(choiceText,
+				choiceText, matchPos, pattern.Length()));
+		}
+
+		history->Unlock();
+	}
+
+	virtual int32 CountChoices() const
+	{
+		return fChoices.CountItems();
+	}
+
+	virtual const BAutoCompleter::Choice* ChoiceAt(int32 index) const
+	{
+		return reinterpret_cast<BAutoCompleter::Choice*>(
+			fChoices.ItemAt(index));
+	}
+
+private:
+	BList fChoices;
+};
+
+
+class BrowsingHistoryPatternSelector : public BAutoCompleter::PatternSelector {
+	virtual void SelectPatternBounds(const BString& text, int32 caretPos,
+		int32* start, int32* length)
+	{
+		if (!start || !length)
+			return;
+		*start = 0;
+		*length = text.Length();
+	}
+};
+
+
+// #pragma mark - BrowserWindow
 
 
 BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
@@ -228,6 +289,10 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 
 		fURLTextControl->MakeFocus(true);
 
+		fURLAutoCompleter = new TextControlCompleter(fURLTextControl,
+			new BrowsingHistoryChoiceModel(),
+			new BrowsingHistoryPatternSelector());
+
 		fFindGroup = layoutItemFor(findGroup);
 		fTabGroup = layoutItemFor(fTabManager->TabGroup());
 	} else {
@@ -236,6 +301,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		fStopButton = 0;
 		fGoButton = 0;
 		fURLTextControl = 0;
+		fURLAutoCompleter = 0;
 		fStatusText = 0;
 		fLoadingProgressBar = 0;
 
@@ -275,6 +341,8 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 
 BrowserWindow::~BrowserWindow()
 {
+	delete fURLAutoCompleter;
+	delete fTabManager;
 }
 
 
