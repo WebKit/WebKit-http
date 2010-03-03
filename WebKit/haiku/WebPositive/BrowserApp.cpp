@@ -32,6 +32,7 @@
 #include "BrowserWindow.h"
 #include "BrowsingHistory.h"
 #include "DownloadWindow.h"
+#include "SettingsMessage.h"
 #include "SettingsWindow.h"
 #include "WebPage.h"
 #include "WebSettings.h"
@@ -40,7 +41,6 @@
 #include <Autolock.h>
 #include <Directory.h>
 #include <Entry.h>
-#include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
 #include <Screen.h>
@@ -59,6 +59,7 @@ BrowserApp::BrowserApp()
 	fLastWindowFrame(100, 100, 700, 750),
 	fLaunchRefsMessage(0),
 	fInitialized(false),
+	fSettings(NULL),
 	fDownloadWindow(NULL),
 	fSettingsWindow(NULL)
 {
@@ -68,6 +69,7 @@ BrowserApp::BrowserApp()
 BrowserApp::~BrowserApp()
 {
 	delete fLaunchRefsMessage;
+	delete fSettings;
 }
 
 
@@ -109,31 +111,28 @@ BrowserApp::ReadyToRun()
 	BWebPage::InitializeOnce();
 	BWebPage::SetCacheModel(B_WEBKIT_CACHE_MODEL_WEB_BROWSER);
 
-	BWebSettings::SetPersistentStoragePath("/boot/home/config/settings/WebPositive");
+	BPath path;
+	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) == B_OK
+		&& path.Append(kApplicationName) == B_OK
+		&& create_directory(path.Path(), 0777) == B_OK) {
 
-	BFile settingsFile;
-	BRect windowFrameFromSettings = fLastWindowFrame;
-	BRect downloadWindowFrame(100, 100, 300, 250);
-	BRect settingsWindowFrame;
-	bool showDownloads = false;
-	if (_OpenSettingsFile(settingsFile, B_READ_ONLY)) {
-		BMessage settingsArchive;
-		settingsArchive.Unflatten(&settingsFile);
-		BRect rect;
-		if (settingsArchive.FindRect("window frame", &rect) == B_OK)
-			windowFrameFromSettings = rect;
-		if (settingsArchive.FindRect("downloads window frame", &rect) == B_OK)
-			downloadWindowFrame = rect;
-		if (settingsArchive.FindRect("settings window frame", &rect) == B_OK)
-			settingsWindowFrame = rect;
-		bool flag;
-		if (settingsArchive.FindBool("show downloads", &flag) == B_OK)
-			showDownloads = flag;
+		BWebSettings::SetPersistentStoragePath(path.Path());
 	}
-	fLastWindowFrame = windowFrameFromSettings;
+	
+	BString mainSettingsPath(kApplicationName);
+	mainSettingsPath << "/Application";
+	fSettings = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
+		mainSettingsPath.String());
+
+	fLastWindowFrame = fSettings->GetValue("window frame", fLastWindowFrame);
+	BRect downloadWindowFrame = fSettings->GetValue("downloads window frame",
+		BRect(100, 100, 300, 250));
+	BRect settingsWindowFrame = fSettings->GetValue("settings window frame",
+		BRect());
+	bool showDownloads = fSettings->GetValue("show downloads", false);
 
 	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
-	fSettingsWindow = new SettingsWindow(settingsWindowFrame);
+	fSettingsWindow = new SettingsWindow(settingsWindowFrame, fSettings);
 
 	fInitialized = true;
 
@@ -249,38 +248,18 @@ BrowserApp::QuitRequested()
 		}
 	}
 
-	BFile settingsFile;
-	if (_OpenSettingsFile(settingsFile, B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
-		BMessage settingsArchive;
-		settingsArchive.AddRect("window frame", fLastWindowFrame);
-		if (fDownloadWindow->Lock()) {
-			settingsArchive.AddRect("downloads window frame", fDownloadWindow->Frame());
-			settingsArchive.AddBool("show downloads", !fDownloadWindow->IsHidden());
-			fDownloadWindow->Unlock();
-		}
-		if (fSettingsWindow->Lock()) {
-			settingsArchive.AddRect("settings window frame", fSettingsWindow->Frame());
-			fSettingsWindow->Unlock();
-		}
-		settingsArchive.Flatten(&settingsFile);
+	fSettings->SetValue("window frame", fLastWindowFrame);
+	if (fDownloadWindow->Lock()) {
+		fSettings->SetValue("downloads window frame", fDownloadWindow->Frame());
+		fSettings->SetValue("show downloads", !fDownloadWindow->IsHidden());
+		fDownloadWindow->Unlock();
+	}
+	if (fSettingsWindow->Lock()) {
+		fSettings->SetValue("settings window frame", fSettingsWindow->Frame());
+		fSettingsWindow->Unlock();
 	}
 
 	return true;
-}
-
-
-bool
-BrowserApp::_OpenSettingsFile(BFile& file, uint32 mode)
-{
-	BPath path;
-	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) != B_OK
-		|| path.Append(kApplicationName) != B_OK
-		|| create_directory(path.Path(), 0777) != B_OK
-		|| path.Append("Application") != B_OK) {
-		return false;
-	}
-
-	return file.SetTo(path.Path(), mode) == B_OK;
 }
 
 

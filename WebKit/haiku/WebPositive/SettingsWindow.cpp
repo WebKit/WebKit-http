@@ -40,6 +40,8 @@
 #include <SpaceLayoutItem.h>
 #include <stdio.h>
 
+#include "SettingsMessage.h"
+
 
 enum {
 	MSG_OK			= 'aply',
@@ -48,10 +50,11 @@ enum {
 };
 
 
-SettingsWindow::SettingsWindow(BRect frame)
+SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 	:
 	BWindow(frame, "Settings", B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
+		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE),
+	fSettings(settings)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
 

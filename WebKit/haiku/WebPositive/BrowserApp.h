@@ -32,9 +32,9 @@
 #include <Application.h>
 #include <Rect.h>
 
-class BFile;
 class DownloadWindow;
 class BrowserWindow;
+class SettingsMessage;
 class SettingsWindow;
 
 
@@ -51,7 +51,6 @@ public:
 	virtual	bool				QuitRequested();
 
 private:
-			bool				_OpenSettingsFile(BFile& file, uint32 mode);
 			void				_CreateNewPage(const BString& url);
 			void				_CreateNewWindow(const BString& url);
 			void				_CreateNewTab(BrowserWindow* window,
@@ -64,6 +63,8 @@ private:
 			BRect				fLastWindowFrame;
 			BMessage*			fLaunchRefsMessage;
 			bool				fInitialized;
+
+			SettingsMessage*	fSettings;
 
 			DownloadWindow*		fDownloadWindow;
 			SettingsWindow*		fSettingsWindow;

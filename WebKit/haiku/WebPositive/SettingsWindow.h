@@ -30,11 +30,13 @@
 #include <Window.h>
 
 class BButton;
+class SettingsMessage;
 
 
 class SettingsWindow : public BWindow {
 public:
-								SettingsWindow(BRect frame);
+								SettingsWindow(BRect frame,
+									SettingsMessage* settings);
 	virtual						~SettingsWindow();
 
 	virtual	void				MessageReceived(BMessage* message);
@@ -45,6 +47,8 @@ private:
 			void				_RevertSettings();
 
 private:
+			SettingsMessage*	fSettings;
+
 			BButton*			fOkButton;
 			BButton*			fCancelButton;
 			BButton*			fRevertButton;
