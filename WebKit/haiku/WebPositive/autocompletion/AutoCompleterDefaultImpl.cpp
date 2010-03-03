@@ -243,15 +243,19 @@ void
 BDefaultChoiceView::ListItem::DrawItem(BView* owner, BRect frame,
 	bool complete)
 {
-	rgb_color textCol, backCol, matchCol;
+	rgb_color textColor;
+	rgb_color nonMatchTextColor;
+	rgb_color backColor;
+	rgb_color matchColor;
 	if (IsSelected()) {
-		textCol = ui_color(B_MENU_SELECTED_ITEM_TEXT_COLOR);
-		backCol = ui_color(B_MENU_SELECTED_BACKGROUND_COLOR);
+		textColor = ui_color(B_MENU_SELECTED_ITEM_TEXT_COLOR);
+		backColor = ui_color(B_MENU_SELECTED_BACKGROUND_COLOR);
 	} else {
-		textCol = ui_color(B_DOCUMENT_TEXT_COLOR);
-		backCol = ui_color(B_DOCUMENT_BACKGROUND_COLOR);
+		textColor = ui_color(B_DOCUMENT_TEXT_COLOR);
+		backColor = ui_color(B_DOCUMENT_BACKGROUND_COLOR);
 	}
-	matchCol = tint_color(backCol, (B_NO_TINT + B_DARKEN_1_TINT) / 2);
+	matchColor = tint_color(backColor, (B_NO_TINT + B_DARKEN_1_TINT) / 2);
+	nonMatchTextColor = tint_color(backColor, 1.7);
 
 	BFont font;
 	font_height fontHeight;
@@ -262,26 +266,28 @@ BDefaultChoiceView::ListItem::DrawItem(BView* owner, BRect frame,
 	float w;
 	if (fPreText.Length()) {
 		w = owner->StringWidth(fPreText.String());
-		owner->SetLowColor(backCol);
+		owner->SetLowColor(backColor);
 		owner->FillRect(BRect(xPos, frame.top, xPos + w - 1, frame.bottom),
 			B_SOLID_LOW);
-		owner->SetHighColor(textCol);
+		owner->SetHighColor(nonMatchTextColor);
 		owner->DrawString(fPreText.String(), BPoint(xPos, yPos));
 		xPos += w;
 	}
 	if (fMatchText.Length()) {
 		w = owner->StringWidth(fMatchText.String());
-		owner->SetLowColor(matchCol);
+		owner->SetLowColor(matchColor);
 		owner->FillRect(BRect(xPos, frame.top, xPos + w - 1, frame.bottom), 
 			B_SOLID_LOW);
+		owner->SetHighColor(textColor);
 		owner->DrawString(fMatchText.String(), BPoint(xPos, yPos));
 		xPos += w;
 	}
 	if (fPostText.Length()) {
 		w = owner->StringWidth(fPostText.String());
-		owner->SetLowColor(backCol);
+		owner->SetLowColor(backColor);
 		owner->FillRect(BRect(xPos, frame.top, xPos + w - 1, frame.bottom), 
 			B_SOLID_LOW);
+		owner->SetHighColor(nonMatchTextColor);
 		owner->DrawString(fPostText.String(), BPoint(xPos, yPos));
 	}
 }
