@@ -43,6 +43,7 @@
 #include <FindDirectory.h>
 #include <Path.h>
 #include <Screen.h>
+#include <debugger.h>
 #include <stdio.h>
 
 
@@ -329,9 +330,13 @@ BrowserApp::_CreateNewTab(BrowserWindow* window, const BString& url,
 int
 main(int, char**)
 {
-	new BrowserApp();
-	be_app->Run();
-	delete be_app;
+	try {
+		new BrowserApp();
+		be_app->Run();
+		delete be_app;
+	} catch (...) {
+		debugger("Exception caught.");
+	}
 
 	return 0;
 }
