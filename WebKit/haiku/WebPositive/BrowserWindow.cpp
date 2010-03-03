@@ -149,18 +149,6 @@ private:
 };
 
 
-class BrowsingHistoryPatternSelector : public BAutoCompleter::PatternSelector {
-	virtual void SelectPatternBounds(const BString& text, int32 caretPos,
-		int32* start, int32* length)
-	{
-		if (!start || !length)
-			return;
-		*start = 0;
-		*length = text.Length();
-	}
-};
-
-
 // #pragma mark - BrowserWindow
 
 
@@ -300,8 +288,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		fURLTextControl->MakeFocus(true);
 
 		fURLAutoCompleter = new TextControlCompleter(fURLTextControl,
-			new BrowsingHistoryChoiceModel(),
-			new BrowsingHistoryPatternSelector());
+			new BrowsingHistoryChoiceModel());
 
 		fFindGroup = layoutItemFor(findGroup);
 		fTabGroup = layoutItemFor(fTabManager->TabGroup());
