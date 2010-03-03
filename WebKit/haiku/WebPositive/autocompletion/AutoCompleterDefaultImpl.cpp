@@ -251,7 +251,7 @@ BDefaultChoiceView::ListItem::DrawItem(BView* owner, BRect frame,
 		textCol = ui_color(B_DOCUMENT_TEXT_COLOR);
 		backCol = ui_color(B_DOCUMENT_BACKGROUND_COLOR);
 	}
-	matchCol = tint_color(backCol, B_LIGHTEN_2_TINT);
+	matchCol = tint_color(backCol, (B_NO_TINT + B_DARKEN_1_TINT) / 2);
 
 	BFont font;
 	font_height fontHeight;
