@@ -35,6 +35,7 @@
 class BFile;
 class DownloadWindow;
 class BrowserWindow;
+class SettingsWindow;
 
 
 class BrowserApp : public BApplication {
@@ -55,6 +56,8 @@ private:
 			void				_CreateNewWindow(const BString& url);
 			void				_CreateNewTab(BrowserWindow* window,
 									const BString& url, bool select);
+			void				_ShowWindow(const BMessage* message,
+									BWindow* window);
 
 private:
 			int					fWindowCount;
@@ -63,6 +66,7 @@ private:
 			bool				fInitialized;
 
 			DownloadWindow*		fDownloadWindow;
+			SettingsWindow*		fSettingsWindow;
 };
 
 

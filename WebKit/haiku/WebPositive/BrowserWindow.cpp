@@ -187,6 +187,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
 		menu->AddSeparatorItem();
 		menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
+		menu->AddItem(new BMenuItem("Show settings", new BMessage(SHOW_SETTINGS_WINDOW)));
 		menu->AddSeparatorItem();
 		BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
 		menu->AddItem(quitItem);
@@ -473,6 +474,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 		break;
 
 	case SHOW_DOWNLOAD_WINDOW:
+	case SHOW_SETTINGS_WINDOW:
 		message->AddUInt32("workspaces", Workspaces());
 		be_app->PostMessage(message);
 		break;

@@ -32,6 +32,7 @@
 #include "BrowserWindow.h"
 #include "BrowsingHistory.h"
 #include "DownloadWindow.h"
+#include "SettingsWindow.h"
 #include "WebPage.h"
 #include "WebSettings.h"
 #include "WebView.h"
@@ -52,12 +53,14 @@ const char* kApplicationName = "WebPositive";
 static const uint32 PRELOAD_BROWSING_HISTORY = 'plbh';
 
 BrowserApp::BrowserApp()
-	: BApplication(kApplicationSignature)
-	, fWindowCount(0)
-	, fLastWindowFrame(100, 100, 700, 750)
-	, fLaunchRefsMessage(0)
-	, fInitialized(false)
-	, fDownloadWindow(0)
+	:
+	BApplication(kApplicationSignature),
+	fWindowCount(0),
+	fLastWindowFrame(100, 100, 700, 750),
+	fLaunchRefsMessage(0),
+	fInitialized(false),
+	fDownloadWindow(NULL),
+	fSettingsWindow(NULL)
 {
 }
 
@@ -111,17 +114,26 @@ BrowserApp::ReadyToRun()
 	BFile settingsFile;
 	BRect windowFrameFromSettings = fLastWindowFrame;
 	BRect downloadWindowFrame(100, 100, 300, 250);
+	BRect settingsWindowFrame;
 	bool showDownloads = false;
 	if (_OpenSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
-		settingsArchive.FindRect("window frame", &windowFrameFromSettings);
-		settingsArchive.FindRect("downloads window frame", &downloadWindowFrame);
-		settingsArchive.FindBool("show downloads", &showDownloads);
+		BRect rect;
+		if (settingsArchive.FindRect("window frame", &rect) == B_OK)
+			windowFrameFromSettings = rect;
+		if (settingsArchive.FindRect("downloads window frame", &rect) == B_OK)
+			downloadWindowFrame = rect;
+		if (settingsArchive.FindRect("settings window frame", &rect) == B_OK)
+			settingsWindowFrame = rect;
+		bool flag;
+		if (settingsArchive.FindBool("show downloads", &flag) == B_OK)
+			showDownloads = flag;
 	}
 	fLastWindowFrame = windowFrameFromSettings;
 
 	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
+	fSettingsWindow = new SettingsWindow(settingsWindowFrame);
 
 	fInitialized = true;
 
@@ -176,17 +188,12 @@ BrowserApp::MessageReceived(BMessage* message)
 			PostMessage(B_QUIT_REQUESTED);
 		break;
 
-	case SHOW_DOWNLOAD_WINDOW: {
-		BAutolock _(fDownloadWindow);
-		uint32 workspaces;
-		if (message->FindUInt32("workspaces", &workspaces) == B_OK)
-			fDownloadWindow->SetWorkspaces(workspaces);
-		if (fDownloadWindow->IsHidden())
-			fDownloadWindow->Show();
-		else
-			fDownloadWindow->Activate();
+	case SHOW_DOWNLOAD_WINDOW:
+		_ShowWindow(message, fDownloadWindow);
 		break;
-	}
+	case SHOW_SETTINGS_WINDOW:
+		_ShowWindow(message, fSettingsWindow);
+		break;
 
 	default:
 		BApplication::MessageReceived(message);
@@ -250,6 +257,10 @@ BrowserApp::QuitRequested()
 			settingsArchive.AddRect("downloads window frame", fDownloadWindow->Frame());
 			settingsArchive.AddBool("show downloads", !fDownloadWindow->IsHidden());
 			fDownloadWindow->Unlock();
+		}
+		if (fSettingsWindow->Lock()) {
+			settingsArchive.AddRect("settings window frame", fSettingsWindow->Frame());
+			fSettingsWindow->Unlock();
 		}
 		settingsArchive.Flatten(&settingsFile);
 	}
@@ -321,6 +332,20 @@ BrowserApp::_CreateNewTab(BrowserWindow* window, const BString& url,
 		return;
 	window->CreateNewTab(url, select);
 	window->Unlock();
+}
+
+
+void
+BrowserApp::_ShowWindow(const BMessage* message, BWindow* window)
+{
+	BAutolock _(window);
+	uint32 workspaces;
+	if (message->FindUInt32("workspaces", &workspaces) == B_OK)
+		window->SetWorkspaces(workspaces);
+	if (window->IsHidden())
+		window->Show();
+	else
+		window->Activate();
 }
 
 

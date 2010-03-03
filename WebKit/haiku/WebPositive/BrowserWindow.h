@@ -56,7 +56,8 @@ enum {
 	NEW_TAB = 'ntab',
 	WINDOW_OPENED = 'wndo',
 	WINDOW_CLOSED = 'wndc',
-	SHOW_DOWNLOAD_WINDOW = 'sdwd'
+	SHOW_DOWNLOAD_WINDOW = 'sdwd',
+	SHOW_SETTINGS_WINDOW = 'sswd'
 };
 
 #define INTEGRATE_MENU_INTO_TAB_BAR 0
