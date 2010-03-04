@@ -123,6 +123,7 @@ Application WebPositive :
 	TextControlCompleter.cpp
 	# support
     DateTime.cpp
+    FontSelectionView.cpp
     IconButton.cpp
     SettingsMessage.cpp
 	# WebPositive
@@ -139,7 +140,7 @@ Application WebPositive :
 	# Other required libraries
 	curl icu-common icu-data png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd network root stdc++ translation
+	be bsd locale network root stdc++ translation
 	:
 	WebPositive.rdef
 ;

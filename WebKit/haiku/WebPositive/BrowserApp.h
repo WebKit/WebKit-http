@@ -30,6 +30,7 @@
 
 
 #include <Application.h>
+#include <Catalog.h>
 #include <Rect.h>
 
 class DownloadWindow;
@@ -68,6 +69,8 @@ private:
 
 			DownloadWindow*		fDownloadWindow;
 			SettingsWindow*		fSettingsWindow;
+
+			BCatalog			fAppCatalog;
 };
 
 

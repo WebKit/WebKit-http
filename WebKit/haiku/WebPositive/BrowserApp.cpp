@@ -42,6 +42,7 @@
 #include <Directory.h>
 #include <Entry.h>
 #include <FindDirectory.h>
+#include <Locale.h>
 #include <Path.h>
 #include <Screen.h>
 #include <debugger.h>
@@ -63,6 +64,7 @@ BrowserApp::BrowserApp()
 	fDownloadWindow(NULL),
 	fSettingsWindow(NULL)
 {
+	be_locale->GetAppCatalog(&fAppCatalog);
 }
 
 

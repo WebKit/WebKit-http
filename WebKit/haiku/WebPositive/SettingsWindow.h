@@ -30,6 +30,9 @@
 #include <Window.h>
 
 class BButton;
+class BMenu;
+class BMenuField;
+class FontSelectionView;
 class SettingsMessage;
 
 
@@ -42,16 +45,33 @@ public:
 	virtual	void				MessageReceived(BMessage* message);
 	virtual	bool				QuitRequested();
 
+	virtual	void				Show();
+
 private:
 			void				_ApplySettings();
 			void				_RevertSettings();
 
+			void				_BuildSizesMenu(BMenu* menu,
+									uint32 messageWhat);
+			void				_SetSizesMenuValue(BMenu* menu, int32 value);
+			int32				_SizesMenuValue(BMenu* menu);
+
+			BFont				_FindDefaultSerifFont() const;
+
 private:
 			SettingsMessage*	fSettings;
 
-			BButton*			fOkButton;
+			FontSelectionView*	fStandardFontView;
+			FontSelectionView*	fSerifFontView;
+			FontSelectionView*	fSansSerifFontView;
+			FontSelectionView*	fFixedFontView;
+
+			BButton*			fApplyButton;
 			BButton*			fCancelButton;
 			BButton*			fRevertButton;
+
+			BMenuField*			fStandardSizesMenu;
+			BMenuField*			fFixedSizesMenu;
 };
 
 

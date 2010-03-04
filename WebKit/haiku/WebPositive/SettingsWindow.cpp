@@ -26,61 +26,132 @@
  */
 #include "SettingsWindow.h"
 
-#include "BrowserApp.h"
-#include "WebSettings.h"
-
 #include <Button.h>
 #include <ControlLook.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
 #include <MenuItem.h>
+#include <MenuField.h>
+#include <Message.h>
+#include <PopUpMenu.h>
 #include <ScrollView.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
+#include <debugger.h>
 #include <stdio.h>
 
+#include "BrowserApp.h"
+#include "FontSelectionView.h"
 #include "SettingsMessage.h"
+#include "WebSettings.h"
 
+
+#undef TR_CONTEXT
+#define TR_CONTEXT "Settings Window"
 
 enum {
-	MSG_OK			= 'aply',
-	MSG_CANCEL		= 'cncl',
-	MSG_REVERT		= 'rvrt',
+	MSG_APPLY							= 'aply',
+	MSG_CANCEL							= 'cncl',
+	MSG_REVERT							= 'rvrt',
+	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
+	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
 };
+
+static const int32 kDefaultFontSize = 14;
 
 
 SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 	:
-	BWindow(frame, "Settings", B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
+	BWindow(frame, TR("Settings"), B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE),
 	fSettings(settings)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
 
-	fOkButton = new BButton("OK", new BMessage(MSG_OK));
+	fStandardFontView = new FontSelectionView("standard", "Standard font:",
+		true, be_plain_font);
+	BFont defaultSerifFont = _FindDefaultSerifFont();
+	fSerifFontView = new FontSelectionView("serif", "Serif font:", true,
+		&defaultSerifFont);
+	fSansSerifFontView = new FontSelectionView("sans serif", "Sans serif font:",
+		true, be_plain_font);
+	fFixedFontView = new FontSelectionView("fixed", "Fixed font:", true,
+		be_fixed_font);
+
+	fStandardSizesMenu =  new BMenuField("standard font size",
+		TR("Default standard font size:"), new BPopUpMenu("sizes"), NULL);
+	_BuildSizesMenu(fStandardSizesMenu->Menu(), MSG_STANDARD_FONT_SIZE_SELECTED);
+
+	fFixedSizesMenu =  new BMenuField("fixed font size",
+		TR("Default fixed font size:"), new BPopUpMenu("sizes"), NULL);
+	_BuildSizesMenu(fFixedSizesMenu->Menu(), MSG_FIXED_FONT_SIZE_SELECTED);
+
+	fApplyButton = new BButton("Apply", new BMessage(MSG_APPLY));
 	fCancelButton = new BButton("Cancel", new BMessage(MSG_CANCEL));
 	fRevertButton = new BButton("Revert", new BMessage(MSG_REVERT));
 
 	float spacing = be_control_look->DefaultItemSpacing();
 
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
-		.Add(BGridLayoutBuilder(spacing, spacing)
+		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
+			.Add(fStandardFontView->CreateFontsLabelLayoutItem(), 0, 0)
+			.Add(fStandardFontView->CreateFontsMenuBarLayoutItem(), 1, 0)
+			.Add(fStandardFontView->PreviewBox(), 0, 1, 2)
+			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 2, 2)
+
+			.Add(fSerifFontView->CreateFontsLabelLayoutItem(), 0, 3)
+			.Add(fSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 3)
+			.Add(fSerifFontView->PreviewBox(), 0, 4, 2)
+			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 5, 2)
+
+			.Add(fSansSerifFontView->CreateFontsLabelLayoutItem(), 0, 6)
+			.Add(fSansSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 6)
+			.Add(fSansSerifFontView->PreviewBox(), 0, 7, 2)
+			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 8, 2)
+
+			.Add(fFixedFontView->CreateFontsLabelLayoutItem(), 0, 9)
+			.Add(fFixedFontView->CreateFontsMenuBarLayoutItem(), 1, 9)
+			.Add(fFixedFontView->PreviewBox(), 0, 10, 2)
+			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 11, 2)
+
+			.Add(fStandardSizesMenu->CreateLabelLayoutItem(), 0, 12)
+			.Add(fStandardSizesMenu->CreateMenuBarLayoutItem(), 1, 12)
+			.Add(fFixedSizesMenu->CreateLabelLayoutItem(), 0, 13)
+			.Add(fFixedSizesMenu->CreateMenuBarLayoutItem(), 1, 13)
+			.SetInsets(spacing, spacing, spacing, spacing)
 		)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, spacing)
 			.Add(fRevertButton)
 			.AddGlue()
 			.Add(fCancelButton)
-			.Add(fOkButton)
+			.Add(fApplyButton)
 			.SetInsets(spacing, spacing, spacing, spacing)
 		)
 	);
 
-	fOkButton->MakeDefault(true);
+	AddHandler(fStandardFontView);
+	fStandardFontView->AttachedToLooper();
+
+	AddHandler(fSerifFontView);
+	fSerifFontView->AttachedToLooper();
+
+	AddHandler(fSansSerifFontView);
+	fSansSerifFontView->AttachedToLooper();
+
+	AddHandler(fFixedFontView);
+	fFixedFontView->AttachedToLooper();
+
+	fApplyButton->MakeDefault(true);
 
 	if (!frame.IsValid())
 		CenterOnScreen();
+
+	// load settings from disk
+	_RevertSettings();
+	// apply to WebKit
+	_ApplySettings();
 
 	// Start hidden
 	Hide();
@@ -90,6 +161,14 @@ SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 
 SettingsWindow::~SettingsWindow()
 {
+	RemoveHandler(fStandardFontView);
+	delete fStandardFontView;
+	RemoveHandler(fSerifFontView);
+	delete fSerifFontView;
+	RemoveHandler(fSansSerifFontView);
+	delete fSansSerifFontView;
+	RemoveHandler(fFixedFontView);
+	delete fFixedFontView;
 }
 
 
@@ -97,9 +176,8 @@ void
 SettingsWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
-	case MSG_OK:
+	case MSG_APPLY:
 		_ApplySettings();
-		PostMessage(B_QUIT_REQUESTED);
 		break;
 	case MSG_CANCEL:
 		_RevertSettings();
@@ -108,6 +186,20 @@ SettingsWindow::MessageReceived(BMessage* message)
 	case MSG_REVERT:
 		_RevertSettings();
 		break;
+
+	case MSG_STANDARD_FONT_SIZE_SELECTED: {
+		int32 size = _SizesMenuValue(fStandardSizesMenu->Menu());
+		fStandardFontView->SetSize(size);
+		fSerifFontView->SetSize(size);
+		fSansSerifFontView->SetSize(size);
+		break;
+	}
+	case MSG_FIXED_FONT_SIZE_SELECTED: {
+		int32 size = _SizesMenuValue(fFixedSizesMenu->Menu());
+		fFixedFontView->SetSize(size);
+		break;
+	}
+
 	default:
 		BWindow::MessageReceived(message);
 		break;
@@ -124,18 +216,143 @@ SettingsWindow::QuitRequested()
 }
 
 
+void
+SettingsWindow::Show()
+{
+	// When showing the window, the this is always the
+	// point to which we can revert the settings.
+	_RevertSettings();
+	BWindow::Show();
+}
+
+
 // #pragma mark - private
 
 
 void
 SettingsWindow::_ApplySettings()
 {
+	// Store settings
+	fSettings->SetValue("standard font", fStandardFontView->Font());
+	fSettings->SetValue("serif font", fSerifFontView->Font());
+	fSettings->SetValue("sans serif font", fSansSerifFontView->Font());
+	fSettings->SetValue("fixed font", fFixedFontView->Font());
+	int32 standardFontSize = _SizesMenuValue(fStandardSizesMenu->Menu());
+	int32 fixedFontSize = _SizesMenuValue(fFixedSizesMenu->Menu());
+	fSettings->SetValue("standard font size", standardFontSize);
+	fSettings->SetValue("fixed font size", fixedFontSize);
+
+	fSettings->Save();
+
+	// Apply settings to default web page settings.
+	BWebSettings::Default()->SetStandardFont(fStandardFontView->Font());
+	BWebSettings::Default()->SetSerifFont(fSerifFontView->Font());
+	BWebSettings::Default()->SetSansSerifFont(fSansSerifFontView->Font());
+	BWebSettings::Default()->SetFixedFont(fFixedFontView->Font());
+	BWebSettings::Default()->SetDefaultStandardFontSize(standardFontSize);
+	BWebSettings::Default()->SetDefaultFixedFontSize(fixedFontSize);
+
+	// This will find all currently instantiated page settings and apply
+	// the default values, unless the page settings have local overrides.
+	BWebSettings::Default()->Apply();
 }
 
 
 void
 SettingsWindow::_RevertSettings()
 {
+	int32 defaultFontSize = fSettings->GetValue("standard font size",
+		kDefaultFontSize);
+	int32 defaultFixedFontSize = fSettings->GetValue("fixed font size",
+		kDefaultFontSize);
+
+	_SetSizesMenuValue(fStandardSizesMenu->Menu(), defaultFontSize);
+	_SetSizesMenuValue(fFixedSizesMenu->Menu(), defaultFixedFontSize);
+
+	fStandardFontView->SetFont(fSettings->GetValue("standard font",
+		*be_plain_font), defaultFontSize);
+	fSerifFontView->SetFont(fSettings->GetValue("serif font",
+		_FindDefaultSerifFont()), defaultFontSize);
+	fSansSerifFontView->SetFont(fSettings->GetValue("sans serif font",
+		*be_plain_font), defaultFontSize);
+	fFixedFontView->SetFont(fSettings->GetValue("fixed font",
+		*be_fixed_font), defaultFixedFontSize);
 }
 
 
+void
+SettingsWindow::_BuildSizesMenu(BMenu* menu, uint32 messageWhat)
+{
+	const float kMinSize = 8.0;
+	const float kMaxSize = 18.0;
+
+	const int32 kSizes[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 21, 24, 0};
+
+	for (int32 i = 0; kSizes[i]; i++) {
+		int32 size = kSizes[i];
+		if (size < kMinSize || size > kMaxSize)
+			continue;
+
+		char label[32];
+		snprintf(label, sizeof(label), "%ld", size);
+
+		BMessage* message = new BMessage(messageWhat);
+		message->AddInt32("size", size);
+
+		BMenuItem* item = new BMenuItem(label, message);
+
+		menu->AddItem(item);
+		item->SetTarget(this);
+	}
+}
+
+
+void
+SettingsWindow::_SetSizesMenuValue(BMenu* menu, int32 value)
+{
+	for (int32 i = 0; BMenuItem* item = menu->ItemAt(i); i++) {
+		bool marked = false;
+		if (BMessage* message = item->Message()) {
+			int32 size;
+			if (message->FindInt32("size", &size) == B_OK && size == value)
+				marked = true;
+		}
+		item->SetMarked(marked);
+	}
+}
+
+
+int32
+SettingsWindow::_SizesMenuValue(BMenu* menu)
+{
+	if (BMenuItem* item = menu->FindMarked()) {
+		if (BMessage* message = item->Message()) {
+			int32 size;
+			if (message->FindInt32("size", &size) == B_OK)
+				return size;
+		}
+	}
+	return kDefaultFontSize;
+}
+
+
+BFont
+SettingsWindow::_FindDefaultSerifFont() const
+{
+	// Default to the first "serif" font we find.
+	BFont serifFont(*be_plain_font);
+	font_family family;
+	int32 familyCount = count_font_families();
+	for (int32 i = 0; i < familyCount; i++) {
+		if (get_font_family(i, &family) == B_OK) {
+			BString familyString(family);
+			if (familyString.IFindFirst("sans") >= 0)
+				continue;
+			if (familyString.IFindFirst("serif") >= 0) {
+				serifFont.SetFamilyAndFace(family, B_REGULAR_FACE);
+				break;
+			}
+		}
+	}
+	return serifFont;
+}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2008, Stephan Aßmus <superstippi@gmx.de>.
+ * Copyright 2008-2010, Stephan Aßmus <superstippi@gmx.de>.
  * Copyright 1998, Eric Shepherd.
  * All rights reserved. Distributed under the terms of the Be Sample Code
  * license.
@@ -203,7 +203,30 @@ SettingsMessage::SetValue(const char* name, const BFlattenable* value)
 }
 
 
+status_t
+SettingsMessage::SetValue(const char* name, const BFont& value)
+{
+	font_family family;
+	font_style style;
+	value.GetFamilyAndStyle(&family, &style);
+
+	BMessage fontMessage;
+	status_t ret = fontMessage.AddString("family", family);
+	if (ret == B_OK)
+		ret = fontMessage.AddString("style", style);
+	if (ret == B_OK)
+		ret = fontMessage.AddFloat("size", value.Size());
+
+	if (ret == B_OK) {
+		if (ReplaceMessage(name, &fontMessage) != B_OK)
+			ret = AddMessage(name, &fontMessage);
+	}
+	return ret;
+}
+
+
 // #pragma mark -
+
 
 bool
 SettingsMessage::GetValue(const char* name, bool defaultValue) const
@@ -331,6 +354,32 @@ SettingsMessage::GetValue(const char* name, const BMessage& defaultValue) const
 	BMessage value;
 	if (FindMessage(name, &value) != B_OK)
 		return defaultValue;
+	return value;
+}
+
+
+BFont
+SettingsMessage::GetValue(const char* name, const BFont& defaultValue) const
+{
+	BMessage fontMessage;
+	if (FindMessage(name, &fontMessage) != B_OK)
+		return defaultValue;
+
+	const char* family;
+	const char* style;
+	float size;
+	if (fontMessage.FindString("family", &family) != B_OK
+		|| fontMessage.FindString("style", &style) != B_OK
+		|| fontMessage.FindFloat("size", &size) != B_OK) {
+		return defaultValue;
+	}
+
+	BFont value;
+	if (value.SetFamilyAndStyle(family, style) != B_OK)
+		return defaultValue;
+
+	value.SetSize(size);
+
 	return value;
 }
 

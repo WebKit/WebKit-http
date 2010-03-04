@@ -215,7 +215,7 @@ void BWebSettings::_PostFont(uint32 which, const BFont& font)
 	font_style style;
 	font.GetFamilyAndStyle(&family, &style);
 	BString string(family);
-	string << ' ' << style;
+//	string << ' ' << style;
 	message.AddString("font", string.String());
 
 	_PostMessage(this, &message);

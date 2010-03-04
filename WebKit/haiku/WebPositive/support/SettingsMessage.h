@@ -8,6 +8,7 @@
 #define SETTINGS_MESSAGE_H
 
 #include <FindDirectory.h>
+#include <Font.h>
 #include <Message.h>
 #include <Path.h>
 
@@ -43,6 +44,8 @@ public:
 									const BMessage* value);
 			status_t			SetValue(const char* name,
 									const BFlattenable* value);
+			status_t			SetValue(const char* name,
+									const BFont& value);
 
 			bool				GetValue(const char* name,
 									bool defaultValue) const;
@@ -70,6 +73,8 @@ public:
 									const entry_ref& defaultValue) const;
 			BMessage			GetValue(const char* name,
 									const BMessage& defaultValue) const;
+			BFont				GetValue(const char* name,
+									const BFont& defaultValue) const;
 
 private:
 			BPath				fPath;
