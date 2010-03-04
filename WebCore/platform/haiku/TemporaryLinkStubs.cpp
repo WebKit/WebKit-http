@@ -38,6 +38,7 @@
 #include "PlatformString.h"
 #include "SSLKeyGenerator.h"
 #include "SystemTime.h"
+#include <InterfaceDefs.h>
 
 using namespace WebCore;
 
@@ -62,8 +63,7 @@ void getSupportedKeySizes(Vector<String>&)
 float userIdleTime()
 {
 	// This is for example used to determine if Pages are to be released from the PageCache...
-    notImplemented();
-    return 0;
+    return idle_time() / 1000000.0f;
 }
 
 } // namespace WebCore
