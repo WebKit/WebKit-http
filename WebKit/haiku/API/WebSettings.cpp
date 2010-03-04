@@ -215,6 +215,8 @@ void BWebSettings::_PostFont(uint32 which, const BFont& font)
 	font_style style;
 	font.GetFamilyAndStyle(&family, &style);
 	BString string(family);
+// NOTE: WebCore is not interested in the style here, since it manages styles by itself.
+// Only the family is of interest to reference a font.
 //	string << ' ' << style;
 	message.AddString("font", string.String());
 
