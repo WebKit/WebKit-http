@@ -109,16 +109,18 @@ void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 
 void FrameLoaderClientHaiku::forceLayout()
 {
-    FrameView* view = m_webFrame->Frame()->view();
+    Frame* frame = m_webFrame->Frame();
+    if (frame->document() && frame->document()->inPageCache())
+        return;
+
+    FrameView* view = frame->view();
     if (view)
         view->forceLayout(true);
 }
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    FrameView* view = m_webFrame->Frame()->view();
-    if (view)
-        view->forceLayout();
+    forceLayout();
 }
 
 void FrameLoaderClientHaiku::setCopiesOnScroll()
@@ -788,7 +790,10 @@ void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem*)
 
 void FrameLoaderClientHaiku::restoreViewState()
 {
-printf("FrameLoaderClientHaiku::restoreViewState()\n");
+	// This seems unimportant, the Qt port mentions this for it's corresponding signal:
+	//   "This signal is emitted when the load of \a frame is finished and the application
+	//   may now update its state accordingly."
+	// Could be this is important for ports which use actual platform widgets.
     notImplemented();
 }
 
@@ -820,9 +825,9 @@ void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame*)
+void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame* cachedPage)
 {
-    // Nothing to be done here for the moment.
+    // Nothing to be done here for the moment. We don't associate any platform data
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* cachedFrame)
@@ -832,6 +837,9 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
     Frame* frame = m_webFrame->Frame();
     if (frame != frame->page()->mainFrame())
         return;
+
+	// TODO: I guess we would have to restore platform data from the cachedFrame here,
+	// data associated in savePlatformDataToCachedFrame().
 
     postCommitFrameViewSetup(m_webFrame, cachedFrame->view(), false);
 }
