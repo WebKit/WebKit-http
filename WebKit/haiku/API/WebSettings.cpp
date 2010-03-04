@@ -40,6 +40,7 @@
 #include <Directory.h>
 #include <Entry.h>
 #include <FindDirectory.h>
+#include <Font.h>
 #include <Path.h>
 #include <stdio.h>
 
@@ -52,7 +53,22 @@ enum {
 	HANDLE_SET_OFFLINE_STORAGE_DEFAULT_QUOTA = 'hsoq',
 	HANDLE_SET_OFFLINE_WEB_APPLICATION_CACHE_PATH = 'hsap',
 	HANDLE_SET_OFFLINE_WEB_APPLICATION_CACHE_QUOTA = 'hsaq',
-	HANDLE_SET_LOCAL_STORAGE_PATH = 'hslp'
+	HANDLE_SET_LOCAL_STORAGE_PATH = 'hslp',
+	HANDLE_SET_FONT = 'hsfn',
+	HANDLE_SET_FONT_SIZE = 'hsfs',
+	HANDLE_APPLY = 'hapl'
+};
+
+enum {
+	SERIF_FONT = 0,
+	SANS_SERIF_FONT,
+	FIXED_FONT,
+	STANDARD_FONT,
+};
+
+enum {
+	STANDARD_FONT_SIZE = 0,
+	FIXED_FONT_SIZE,
 };
 
 BWebSettings::BWebSettings()
@@ -139,27 +155,89 @@ void BWebSettings::SetLocalStoragePath(const BString& path)
 	_PostSetPath(this, HANDLE_SET_LOCAL_STORAGE_PATH, path);
 }
 
+void BWebSettings::SetSerifFont(const BFont& font)
+{
+    _PostFont(SERIF_FONT, font);
+}
+
+void BWebSettings::SetSansSerifFont(const BFont& font)
+{
+    _PostFont(SANS_SERIF_FONT, font);
+}
+
+void BWebSettings::SetFixedFont(const BFont& font)
+{
+    _PostFont(FIXED_FONT, font);
+}
+
+void BWebSettings::SetStandardFont(const BFont& font)
+{
+    _PostFont(STANDARD_FONT, font);
+}
+
+void BWebSettings::SetDefaultStandardFontSize(float size)
+{
+    _PostFontSize(STANDARD_FONT_SIZE, size);
+}
+
+void BWebSettings::SetDefaultFixedFontSize(float size)
+{
+    _PostFontSize(FIXED_FONT_SIZE, size);
+}
+
+void BWebSettings::Apply()
+{
+    Looper()->PostMessage(HANDLE_APPLY, this);
+}
+
 // #pragma mark - private
 
 void BWebSettings::_PostSetPath(BHandler* handler, uint32 what, const BString& path)
 {
 	BMessage message(what);
 	message.AddString("path", path.String());
-	if (find_thread(0) == handler->Looper()->Thread())
-	    handler->MessageReceived(&message);
-	else
-	    handler->Looper()->PostMessage(&message, handler);
+	_PostMessage(handler, &message);
 }
 
 void BWebSettings::_PostSetQuota(BHandler* handler, uint32 what, int64 maximumSize)
 {
 	BMessage message(what);
 	message.AddInt64("quota", maximumSize);
-	if (find_thread(0) == handler->Looper()->Thread())
-	    handler->MessageReceived(&message);
-	else
-	    handler->Looper()->PostMessage(&message, handler);
+	_PostMessage(handler, &message);
 }
+
+void BWebSettings::_PostFont(uint32 which, const BFont& font)
+{
+	BMessage message(HANDLE_SET_FONT);
+	message.AddInt32("which", which);
+
+	font_family family;
+	font_style style;
+	font.GetFamilyAndStyle(&family, &style);
+	BString string(family);
+	string << ' ' << style;
+	message.AddString("font", string.String());
+
+	_PostMessage(this, &message);
+}
+
+void BWebSettings::_PostFontSize(uint32 which, float size)
+{
+	BMessage message(HANDLE_SET_FONT_SIZE);
+	message.AddInt32("which", which);
+	message.AddFloat("size", size);
+	_PostMessage(this, &message);
+}
+
+void BWebSettings::_PostMessage(BHandler* handler, BMessage* message)
+{
+	if (find_thread(0) == handler->Looper()->Thread())
+	    handler->MessageReceived(message);
+	else
+	    handler->Looper()->PostMessage(message, handler);
+}
+
+// #pragma mark -
 
 void BWebSettings::MessageReceived(BMessage* message)
 {
@@ -213,6 +291,15 @@ void BWebSettings::MessageReceived(BMessage* message)
 		    _HandleSetLocalStoragePath(path);
 		break;
 	}
+	case HANDLE_SET_FONT:
+		_HandleSetFont(message);
+		break;
+	case HANDLE_SET_FONT_SIZE:
+		_HandleSetFontSize(message);
+		break;
+	case HANDLE_APPLY:
+		_HandleApply();
+		break;
 	default:
 		BHandler::MessageReceived(message);
 	}
@@ -220,7 +307,6 @@ void BWebSettings::MessageReceived(BMessage* message)
 
 void BWebSettings::_HandleSetPersistentStoragePath(const BString& path)
 {
-printf("BWebSettings::_HandleSetPersistentStoragePath(%s)\n", path.String());
     BPath storagePath;
 
     if (!path.Length())
@@ -323,3 +409,55 @@ void BWebSettings::_HandleSetLocalStoragePath(const BString& path)
     fData->apply();
 }
 
+void BWebSettings::_HandleSetFont(BMessage* message)
+{
+	int32 which;
+	if (message->FindInt32("which", &which) != B_OK)
+		return;
+	BString font;
+	if (message->FindString("font", &font) != B_OK)
+		return;
+	switch (which) {
+	case SERIF_FONT:
+        fData->serifFontFamily = font;
+        fData->serifFontFamilySet = true;
+        break;
+	case SANS_SERIF_FONT:
+        fData->sansSerifFontFamily = font;
+        fData->sansSerifFontFamilySet = true;
+        break;
+	case FIXED_FONT:
+        fData->fixedFontFamily = font;
+        fData->fixedFontFamilySet = true;
+        break;
+	case STANDARD_FONT:
+        fData->standardFontFamily = font;
+        fData->standardFontFamilySet = true;
+        break;
+	}
+}
+
+void BWebSettings::_HandleSetFontSize(BMessage* message)
+{
+	int32 which;
+	if (message->FindInt32("which", &which) != B_OK)
+		return;
+	float size;
+	if (message->FindFloat("size", &size) != B_OK)
+		return;
+	switch (which) {
+	case STANDARD_FONT_SIZE:
+        fData->defaultFontSize = size;
+        fData->defaultFontSizeSet = true;
+        break;
+	case FIXED_FONT_SIZE:
+        fData->defaultFixedFontSize = size;
+        fData->defaultFixedFontSizeSet = true;
+        break;
+	}
+}
+
+void BWebSettings::_HandleApply()
+{
+	fData->apply();
+}

@@ -52,6 +52,20 @@ public:
     bool databasesEnabled;
     bool offlineWebApplicationCacheEnabled;
 
+	BString serifFontFamily;
+	BString sansSerifFontFamily;
+	BString fixedFontFamily;
+	BString standardFontFamily;
+	float defaultFontSize;
+	float defaultFixedFontSize;
+
+	bool serifFontFamilySet : 1;
+	bool sansSerifFontFamilySet : 1;
+	bool fixedFontFamilySet : 1;
+	bool standardFontFamilySet : 1;
+	bool defaultFontSizeSet : 1;
+	bool defaultFixedFontSizeSet : 1;
+
 private:
 	static BList sAllSettings;
 };

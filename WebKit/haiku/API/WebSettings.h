@@ -32,6 +32,7 @@
 
 
 class BBitmap;
+class BFont;
 class BMessenger;
 class BWebPage;
 
@@ -72,6 +73,16 @@ public:
     
 			void				SetLocalStoragePath(const BString& path);
 
+			void				SetSerifFont(const BFont& font);
+			void				SetSansSerifFont(const BFont& font);
+			void				SetFixedFont(const BFont& font);
+			void				SetStandardFont(const BFont& font);
+
+			void				SetDefaultStandardFontSize(float size);
+			void				SetDefaultFixedFontSize(float size);
+
+			void				Apply();
+
 private:
 			friend class BWebPage;
 			friend class BPrivate::WebSettingsPrivate;
@@ -83,6 +94,9 @@ private:
 private:
 	static	void				_PostSetPath(BHandler* handler, uint32 what, const BString& path);
 	static	void				_PostSetQuota(BHandler* handler, uint32 what, int64 maximumSize);
+			void				_PostFont(uint32 which, const BFont& font);
+			void				_PostFontSize(uint32 which, float size);
+	static	void				_PostMessage(BHandler* handler, BMessage* message);
 
 	virtual	void				MessageReceived(BMessage* message);
 
@@ -95,6 +109,9 @@ private:
 			void				_HandleSetWebApplicationCachePath(const BString& path);
 			void				_HandleSetWebApplicationCacheQuota(int64 maximumSize);
 			void				_HandleSetLocalStoragePath(const BString& path);
+			void				_HandleSetFont(BMessage* message);
+			void				_HandleSetFontSize(BMessage* message);
+			void				_HandleApply();
 private:
 			BPrivate::WebSettingsPrivate* fData;
 };

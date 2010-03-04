@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WebSettingsPrivate.h"
 
+#include "PageCache.h"
 #include "PlatformString.h"
 #include "Settings.h"
 #include "WebSettings.h"
@@ -43,10 +44,26 @@ WebSettingsPrivate::WebSettingsPrivate(WebCore::Settings* settings)
     , localStorageEnabled(false)
     , databasesEnabled(false)
     , offlineWebApplicationCacheEnabled(false)
+    , serifFontFamilySet(false)
+    , sansSerifFontFamilySet(false)
+    , fixedFontFamilySet(false)
+    , standardFontFamilySet(false)
+    , defaultFontSizeSet(false)
+    , defaultFixedFontSizeSet(false)
 {
 	apply();
 	if (settings)
 	    sAllSettings.AddItem(this);
+	else {
+		// Initialize some default settings
+		// TODO: Get these from the system settings.
+		serifFontFamily = "DejaVu Serif";
+		sansSerifFontFamily = "DejaVu Sans";
+		fixedFontFamily = "DejaVu Sans Mono";
+		standardFontFamily = serifFontFamily;
+		defaultFontSize = 14;
+		defaultFixedFontSize = 14;
+	}
 }
 
 WebSettingsPrivate::~WebSettingsPrivate()
@@ -59,9 +76,7 @@ void WebSettingsPrivate::apply()
 {
 	if (settings) {
 		WebSettingsPrivate* global = BWebSettings::Default()->fData;
-	    // Default settings
-	    // TODO: Get attributes from hash map and fall back to global settings if
-	    // attributes are not set.
+	    // Apply default values
 	    settings->setLoadsImagesAutomatically(true);
 	    settings->setMinimumFontSize(5);
 	    settings->setMinimumLogicalFontSize(5);
@@ -72,15 +87,39 @@ void WebSettingsPrivate::apply()
 	    settings->setEditingBehavior(WebCore::EditingMacBehavior);
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);
 	    settings->setLocalStorageDatabasePath(global->localStoragePath);
-	
-	    settings->setDefaultFixedFontSize(14);
-	    settings->setDefaultFontSize(14);
-	
-	    settings->setSerifFontFamily("DejaVu Serif");
-	    settings->setSansSerifFontFamily("DejaVu Sans");
-	    settings->setFixedFontFamily("DejaVu Sans Mono");
-	    settings->setStandardFontFamily("DejaVu Serif");
 	    settings->setDefaultTextEncodingName("UTF-8");
+        settings->setUsesPageCache(WebCore::pageCache()->capacity());
+
+	    // Apply local or global settings
+		if (defaultFontSizeSet)
+            settings->setDefaultFontSize(defaultFontSize);
+		else
+            settings->setDefaultFontSize(global->defaultFontSize);
+
+		if (defaultFixedFontSizeSet)
+            settings->setDefaultFixedFontSize(defaultFixedFontSize);
+		else
+            settings->setDefaultFixedFontSize(global->defaultFixedFontSize);
+
+		if (serifFontFamilySet)
+            settings->setSerifFontFamily(serifFontFamily.String());
+		else
+            settings->setSerifFontFamily(global->serifFontFamily.String());
+
+		if (sansSerifFontFamilySet)
+            settings->setSansSerifFontFamily(sansSerifFontFamily.String());
+		else
+            settings->setSansSerifFontFamily(global->sansSerifFontFamily.String());
+
+		if (fixedFontFamilySet)
+            settings->setFixedFontFamily(fixedFontFamily.String());
+		else
+            settings->setFixedFontFamily(global->fixedFontFamily.String());
+
+		if (standardFontFamilySet)
+            settings->setStandardFontFamily(standardFontFamily.String());
+		else
+            settings->setStandardFontFamily(global->standardFontFamily.String());
 	} else {
 	    int32 count = sAllSettings.CountItems();
 	    for (int32 i = 0; i < count; i++) {
