@@ -94,6 +94,34 @@ layoutItemFor(BView* view)
 }
 
 
+class URLChoice : public BAutoCompleter::Choice {
+public:
+	URLChoice(const BString& choiceText, const BString& displayText,
+			int32 matchPos, int32 matchLen, int32 priority)
+		:
+		BAutoCompleter::Choice(choiceText, displayText, matchPos, matchLen),
+		fPriority(priority)
+	{
+	}
+
+	bool operator<(const URLChoice& other) const
+	{
+		if (fPriority > other.fPriority)
+			return true;
+		return DisplayText() < other.DisplayText();
+	}
+
+	bool operator==(const URLChoice& other) const
+	{
+		return fPriority == other.fPriority
+			&& DisplayText() < other.DisplayText();
+	}
+
+private:
+	int32 fPriority;
+};
+
+
 class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 	virtual void FetchChoicesFor(const BString& pattern)
 	{
@@ -110,6 +138,7 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 			return;
 
 		BString lastBaseURL;
+		int32 priority = INT_MAX;
 
 		count = history->countItems();
 		for (int32 i = 0; i < count; i++) {
@@ -120,17 +149,20 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 				continue;
 			if (lastBaseURL.Length() > 0
 				&& choiceText.FindFirst(lastBaseURL) >= 0) {
-				continue;
-			}
+				priority--;
+			} else
+				priority = INT_MAX;
 			int32 baseURLStart = choiceText.FindFirst("://") + 3;
 			int32 baseURLEnd = choiceText.FindFirst("/", baseURLStart + 1);
 			lastBaseURL.SetTo(choiceText.String() + baseURLStart,
 				baseURLEnd - baseURLStart);
-			fChoices.AddItem(new BAutoCompleter::Choice(choiceText,
-				choiceText, matchPos, pattern.Length()));
+			fChoices.AddItem(new URLChoice(choiceText,
+				choiceText, matchPos, pattern.Length(), priority));
 		}
 
 		history->Unlock();
+
+		fChoices.SortItems(_CompareChoices);
 	}
 
 	virtual int32 CountChoices() const
@@ -142,6 +174,17 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 	{
 		return reinterpret_cast<BAutoCompleter::Choice*>(
 			fChoices.ItemAt(index));
+	}
+
+	static int _CompareChoices(const void* a, const void* b)
+	{
+		const URLChoice* aChoice = *reinterpret_cast<const URLChoice* const *>(a);
+		const URLChoice* bChoice = *reinterpret_cast<const URLChoice* const *>(b);
+		if (*aChoice < *bChoice)
+			return -1;
+		else if (*aChoice == *bChoice)
+			return 0;
+		return 1;
 	}
 
 private:
