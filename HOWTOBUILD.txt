@@ -15,9 +15,6 @@ http://ryanleavengood.com/haiku/gperf
 $ installoptionalpackage -a ICU-devel
 (or http://haiku-files.org/files/optional-packages/)
 
-Note that a due to a small ommission in the current ICU-devel package you'll have to manually create a few links for the libs:
-$ ln -s /boot/system/lib/libicu-*.so /boot/develop/abi/x86/gcc4/lib
-
 * Curl, might be already present in your Haiku install, otherwise:
 $ installoptionalpackage -a Curl
 (or http://haiku-files.org/files/optional-packages/)
