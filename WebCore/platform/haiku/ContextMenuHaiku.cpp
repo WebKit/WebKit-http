@@ -39,7 +39,6 @@
 #include <Message.h>
 #include <Messenger.h>
 #include <wtf/Assertions.h>
-#include <stdio.h>
 
 namespace WebCore {
 
@@ -53,16 +52,13 @@ public:
 
     virtual void MessageReceived(BMessage* message)
     {
-        int result = message->what;
-        if (result != -1) {
-            BMenuItem* item = m_menu->platformDescription()->FindItem(result);
-            if (!item) {
-                printf("Error: Context menu item with code %i not found!\n", result);
-                return;
-            }
-            ContextMenuItem cmItem(item);
-            m_menu->controller()->contextMenuItemSelected(&cmItem);
-            cmItem.releasePlatformDescription();
+        if (message->what != ContextMenuItemTagNoAction) {
+        	// Create a temporary ContextMenuItem with a clone of the
+        	// message. The BMenuItem instance from which this message
+        	// originates may long be attached to another menu, and doing
+        	// it this way makes us completely independent of that.
+            ContextMenuItem item(new BMenuItem("", new BMessage(*message)));
+            m_menu->controller()->contextMenuItemSelected(&item);
         }
     }
 
@@ -101,6 +97,16 @@ unsigned ContextMenu::itemCount() const
     return m_platformDescription->CountItems();
 }
 
+static void setTargetForItemsRecursive(BMenu* menu, const BMessenger& target)
+{
+    if (!menu)
+        return;
+    for (int32 i = 0; BMenuItem* item = menu->ItemAt(i); i++) {
+        item->SetTarget(target);
+        setTargetForItemsRecursive(item->Submenu(), target);
+    }
+}
+
 void ContextMenu::insertItem(unsigned position, ContextMenuItem& item)
 {
     checkOrEnableIfNeeded(item);
@@ -108,7 +114,9 @@ void ContextMenu::insertItem(unsigned position, ContextMenuItem& item)
     BMenuItem* menuItem = item.releasePlatformDescription();
     if (menuItem) {
         m_platformDescription->AddItem(menuItem, position);
-        menuItem->SetTarget(BMessenger(m_menuHandler));
+        BMessenger target(m_menuHandler);
+        menuItem->SetTarget(target);
+        setTargetForItemsRecursive(menuItem->Submenu(), target);
     }
 }
 

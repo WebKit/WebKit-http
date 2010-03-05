@@ -28,13 +28,10 @@
 #include "ContextMenuItem.h"
 
 #include "ContextMenu.h"
-#include "NotImplemented.h"
-
 #include <Menu.h>
 #include <MenuItem.h>
 #include <Message.h>
 #include <String.h>
-
 
 using namespace WebCore;
 
@@ -55,16 +52,19 @@ ContextMenuItem::ContextMenuItem(ContextMenu* subMenu)
 ContextMenuItem::ContextMenuItem(ContextMenuItemType type, ContextMenuAction action,
                                  const String& title, ContextMenu* subMenu)
 {
-    if (type == ActionType)
+    if (type == ActionType || type == CheckableActionType)
         m_platformDescription = new BMenuItem(BString(title).String(), new BMessage(action));
     else if (type == SeparatorType)
         m_platformDescription = new BSeparatorItem();
-    else if (subMenu) {
-        m_platformDescription = new BMenuItem(subMenu->releasePlatformDescription(),
-            new BMessage(action));
+    else {
+    	BMenu* menu;
+    	if (subMenu)
+    	    menu = subMenu->releasePlatformDescription();
+    	else
+    	    menu = new BMenu("");
+        m_platformDescription = new BMenuItem(menu, new BMessage(action));
         m_platformDescription->SetLabel(BString(title).String());
-    } else
-        m_platformDescription = 0;
+    }
 }
 
 ContextMenuItem::~ContextMenuItem()
@@ -95,7 +95,7 @@ void ContextMenuItem::setType(ContextMenuItemType type)
     BMenu* subMenu = platformSubMenu();
     delete m_platformDescription;
 
-    if (type == ActionType)
+    if (type == ActionType || type == CheckableActionType)
         m_platformDescription = new BMenuItem(BString(theTitle).String(), new BMessage(theAction));
     else if (type == SeparatorType)
         m_platformDescription = new BSeparatorItem();
@@ -123,7 +123,7 @@ void ContextMenuItem::setAction(ContextMenuAction action)
 
 String ContextMenuItem::title() const
 {
-    if (m_platformDescription)
+    if (!m_platformDescription)
         return "";
     return BString(m_platformDescription->Label());
 }
