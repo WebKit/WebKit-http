@@ -45,8 +45,11 @@ ContextMenuItem::ContextMenuItem(PlatformMenuItemDescription item)
 
 ContextMenuItem::ContextMenuItem(ContextMenu* subMenu)
 {
-    m_platformDescription = new BMenuItem(subMenu->platformDescription(),
-                                          new BMessage(ContextMenuItemTagNoAction));
+    if (subMenu) {
+        m_platformDescription = new BMenuItem(subMenu->releasePlatformDescription(),
+                                              new BMessage(ContextMenuItemTagNoAction));
+    } else
+        m_platformDescription = 0;
 }
 
 ContextMenuItem::ContextMenuItem(ContextMenuItemType type, ContextMenuAction action,
@@ -56,10 +59,12 @@ ContextMenuItem::ContextMenuItem(ContextMenuItemType type, ContextMenuAction act
         m_platformDescription = new BMenuItem(BString(title).String(), new BMessage(action));
     else if (type == SeparatorType)
         m_platformDescription = new BSeparatorItem();
-    else {
-        m_platformDescription = new BMenuItem(subMenu->platformDescription(), new BMessage(action));
+    else if (subMenu) {
+        m_platformDescription = new BMenuItem(subMenu->releasePlatformDescription(),
+            new BMessage(action));
         m_platformDescription->SetLabel(BString(title).String());
-    }
+    } else
+        m_platformDescription = 0;
 }
 
 ContextMenuItem::~ContextMenuItem()
@@ -78,7 +83,7 @@ ContextMenuItemType ContextMenuItem::type() const
 {
     if (dynamic_cast<BSeparatorItem*>(m_platformDescription))
         return SeparatorType;
-    if (m_platformDescription->Submenu())
+    if (m_platformDescription && m_platformDescription->Submenu())
         return SubmenuType;
     return ActionType;
 }
@@ -105,14 +110,14 @@ void ContextMenuItem::setType(ContextMenuItemType type)
 
 ContextMenuAction ContextMenuItem::action() const
 {
-    if (!m_platformDescription)
-        return ContextMenuItemTagNoAction;
-    return static_cast<WebCore::ContextMenuAction>(m_platformDescription->Message()->what);
+    if (m_platformDescription && m_platformDescription->Message())
+        return static_cast<WebCore::ContextMenuAction>(m_platformDescription->Message()->what);
+    return ContextMenuItemTagNoAction;
 }
 
 void ContextMenuItem::setAction(ContextMenuAction action)
 {
-    if (m_platformDescription)
+    if (m_platformDescription && m_platformDescription->Message())
         m_platformDescription->Message()->what = action;
 }
 
@@ -126,20 +131,21 @@ String ContextMenuItem::title() const
 void ContextMenuItem::setTitle(const String& title)
 {
     // FIXME: We need to find a better way to convert WebKit Strings into c strings
-    m_platformDescription->SetLabel(BString(title).String());
+    if (m_platformDescription)
+        m_platformDescription->SetLabel(BString(title).String());
 }
 
 PlatformMenuDescription ContextMenuItem::platformSubMenu() const
 {
-    return m_platformDescription->Submenu();
+    return m_platformDescription ? m_platformDescription->Submenu() : 0;
 }
 
 void ContextMenuItem::setSubMenu(ContextMenu* menu)
 {
     // FIXME: We assume m_platformDescription is valid
-    const char* title = m_platformDescription->Label();
+    const char* title = m_platformDescription ? m_platformDescription->Label() : "";
     delete m_platformDescription;
-    m_platformDescription = new BMenuItem(menu->platformDescription(), new BMessage(action()));
+    m_platformDescription = new BMenuItem(menu->releasePlatformDescription(), new BMessage(action()));
     m_platformDescription->SetLabel(title);
 }
 
