@@ -129,9 +129,7 @@ public:
         if (BMenuItem* item = ItemAt(index))
             screenRect.OffsetBy(0, -item->Frame().top);
 
-        BRect openRect = Bounds().OffsetToSelf(screenRect.LeftTop());
-
-        Go(screenRect.LeftTop(), true, true, openRect, true);
+        Go(screenRect.LeftTop(), true, true, true);
     }
 
     void hide()
