@@ -34,10 +34,10 @@
 #include "FrameView.h"
 #include <Application.h>
 #include <Handler.h>
+#include <Menu.h>
 #include <MenuItem.h>
 #include <Message.h>
 #include <Messenger.h>
-#include <PopUpMenu.h>
 #include <wtf/Assertions.h>
 #include <stdio.h>
 
@@ -72,7 +72,7 @@ private:
 
 ContextMenu::ContextMenu(const HitTestResult& result)
     : m_hitTestResult(result)
-    , m_platformDescription(new BPopUpMenu("context_menu"))
+    , m_platformDescription(new BMenu("context_menu"))
     , m_menuHandler(new ContextMenuHandler(this))
 {
 	if (be_app->Lock()) {

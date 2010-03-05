@@ -947,12 +947,17 @@ void BWebPage::handleMouseEvent(const BMessage* message)
             // also swallow the event.
             ContextMenu* contextMenu = m_page->contextMenuController()->contextMenu();
             if (contextMenu) {
-            	// ContextMenuHaiku really creates BPopUpMenu instances.
-            	BPopUpMenu* popupMenu = static_cast<BPopUpMenu*>(
-            		contextMenu->platformDescription());
-            	if (popupMenu) {
+            	BMenu* platformMenu = contextMenu->releasePlatformDescription();
+            	if (platformMenu) {
+            		// Need to convert the BMenu into BPopUpMenu.
+	            	BPopUpMenu* popupMenu = new BPopUpMenu("context menu");
+					for (int32 i = platformMenu->CountItems() - 1; i >= 0; i--) {
+					    BMenuItem* item = platformMenu->RemoveItem(i);
+					    popupMenu->AddItem(item, 0);
+					}
             		BPoint screenLocation(event.globalX(), event.globalY());
             	    popupMenu->Go(screenLocation, true, true, true);
+            	    delete platformMenu;
             	}
             }
             break;
