@@ -33,7 +33,9 @@
 #include "AtomicString.h"
 #include "Cache.h"
 #include "ChromeClientHaiku.h"
+#include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
+#include "ContextMenuController.h"
 #include "Cursor.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
@@ -71,6 +73,7 @@
 #include <Message.h>
 #include <MessageQueue.h>
 #include <Messenger.h>
+#include <PopUpMenu.h>
 #include <Region.h>
 #include <Window.h>
 
@@ -400,6 +403,28 @@ void BWebPage::standardShortcut(const BMessage* message)
 WebCore::Page* BWebPage::page() const
 {
     return m_page;
+}
+
+WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resizable)
+{
+    // Creating the BWebView in the application thread is exactly what we need anyway.
+	BWebView* view = new BWebView("web view");
+	BWebPage* page = view->WebPage();
+
+    BMessage message(NEW_PAGE_CREATED);
+    message.AddPointer("view", view);
+    if (frame.IsValid())
+        message.AddRect("frame", frame);
+    if (modalDialog)
+        message.AddBool("modal", modalDialog);
+    if (!resizable)
+        message.AddBool("resizable", resizable);
+
+    // Block until some window has embedded this view.
+    BMessage reply;
+    m_listener.SendMessage(&message, &reply);
+
+    return page->page();
 }
 
 BRect BWebPage::windowBounds()
@@ -911,6 +936,28 @@ void BWebPage::handleMouseEvent(const BMessage* message)
     PlatformMouseEvent event(message);
     switch (message->what) {
     case B_MOUSE_DOWN:
+        // Handle context menus, if necessary.
+        if (event.button() == RightButton) {
+            m_page->contextMenuController()->clearContextMenu();
+
+            WebCore::Frame* focusedFrame = m_page->focusController()->focusedOrMainFrame();
+            focusedFrame->eventHandler()->sendContextMenuEvent(event);
+            // If the web page implements it's own context menu handling, then
+            // the contextMenu() pointer will be zero. In this case, we should
+            // also swallow the event.
+            ContextMenu* contextMenu = m_page->contextMenuController()->contextMenu();
+            if (contextMenu) {
+            	// ContextMenuHaiku really creates BPopUpMenu instances.
+            	BPopUpMenu* popupMenu = static_cast<BPopUpMenu*>(
+            		contextMenu->platformDescription());
+            	if (popupMenu) {
+            		BPoint screenLocation(event.globalX(), event.globalY());
+            	    popupMenu->Go(screenLocation, true, true, true);
+            	}
+            }
+            break;
+    	}
+    	// Handle regular mouse events.
         frame->eventHandler()->handleMousePressEvent(event);
         break;
     case B_MOUSE_UP:

@@ -412,24 +412,11 @@ void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage()
 {
-if (!m_messenger.IsValid()) {
-printf("FrameLoaderClientHaiku::dispatchCreatePage() - can't embed new page!!\n");
-return 0;
-}
-    // TODO: This doesn't work for sub-frames without valid BMessenger!
+	WebCore::Page* page = m_webPage->createNewPage();
+	if (page)
+		return page->mainFrame();
 
-    // Creating the BWebView in the application thread is exactly what we need anyway.
-	BWebView* view = new BWebView("web view");
-	BWebPage* page = view->WebPage();
-
-    BMessage message(NEW_PAGE_CREATED);
-    message.AddPointer("view", view);
-
-    // Block until some window has embedded this view.
-    BMessage reply;
-    m_messenger.SendMessage(&message, &reply);
-
-    return page->page()->mainFrame();
+    return 0;
 }
 
 void FrameLoaderClientHaiku::dispatchShow()

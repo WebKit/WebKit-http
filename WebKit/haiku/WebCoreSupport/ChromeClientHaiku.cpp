@@ -130,28 +130,13 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
         frame.top = features.y;
         frame.right = features.x + features.width - 1;
         frame.bottom = features.y + features.height - 1;
-    } else
-        frame.Set(50, 50, 449, 449);
-
-    window_look look = B_TITLED_WINDOW_LOOK;
-    window_feel feel = B_NORMAL_WINDOW_FEEL;
-    if (features.dialog) {
-        look = B_MODAL_WINDOW_LOOK;
-        feel = B_MODAL_APP_WINDOW_FEEL;
     }
-    uint32 flags = B_ASYNCHRONOUS_CONTROLS | B_AUTO_UPDATE_SIZE_LIMITS;
-    if (!features.resizable)
-        flags |= B_NOT_ZOOMABLE | B_NOT_RESIZABLE;
 
-    BWebWindow* window = new BWebWindow(frame, "WebKit", look, feel, flags);
-    BWebView* view = new BWebView("web view");
-    window->AddChild(view);
-    window->SetCurrentWebView(view);
-    window->Show();
+	WebCore::Page* page = m_webPage->createNewPage(frame, features.dialog, features.resizable);
+    if (page)
+        page->mainFrame()->loader()->load(request.resourceRequest(), false);
 
-    view->LoadURL(BString(request.resourceRequest().url().string()));
-
-    return view->WebPage()->page();
+    return page;
 }
 
 void ChromeClientHaiku::show()

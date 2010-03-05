@@ -32,31 +32,32 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
-#include <Looper.h>
-#include <Menu.h>
+#include <Application.h>
+#include <Handler.h>
+#include <MenuItem.h>
 #include <Message.h>
+#include <Messenger.h>
+#include <PopUpMenu.h>
 #include <wtf/Assertions.h>
-
+#include <stdio.h>
 
 namespace WebCore {
 
-// FIXME: This class isn't used yet
-class ContextMenuReceiver : public BLooper {
+class ContextMenu::ContextMenuHandler : public BHandler {
 public:
-    ContextMenuReceiver(ContextMenu* menu)
-        : BLooper("context_menu_receiver")
+    ContextMenuHandler(ContextMenu* menu)
+        : BHandler("context menu handler")
         , m_menu(menu)
-        , m_result(-1)
     {
     }
 
-    void HandleMessage(BMessage* msg)
+    virtual void MessageReceived(BMessage* message)
     {
-        m_result = msg->what;
-        if (m_result != -1) {
-            BMenuItem* item = m_menu->platformDescription()->FindItem(m_result);
+        int result = message->what;
+        if (result != -1) {
+            BMenuItem* item = m_menu->platformDescription()->FindItem(result);
             if (!item) {
-                printf("Error: Context menu item with code %i not found!\n", m_result);
+                printf("Error: Context menu item with code %i not found!\n", result);
                 return;
             }
             ContextMenuItem cmItem(item);
@@ -65,34 +66,34 @@ public:
         }
     }
 
-    int Result()
-    {
-        return m_result;
-    }
-
 private:
     ContextMenu* m_menu;
-    int m_result;
 };
 
 ContextMenu::ContextMenu(const HitTestResult& result)
     : m_hitTestResult(result)
-    , m_platformDescription(new BMenu("context_menu"))
+    , m_platformDescription(new BPopUpMenu("context_menu"))
+    , m_menuHandler(new ContextMenuHandler(this))
 {
+	if (be_app->Lock()) {
+		be_app->AddHandler(m_menuHandler);
+		be_app->Unlock();
+	}
 }
 
 ContextMenu::~ContextMenu()
 {
+	if (be_app->Lock()) {
+		be_app->RemoveHandler(m_menuHandler);
+		be_app->Unlock();
+	}
+	delete m_menuHandler;
     delete m_platformDescription;
 }
 
 void ContextMenu::appendItem(ContextMenuItem& item)
 {
-    checkOrEnableIfNeeded(item);
-
-    BMenuItem* menuItem = item.releasePlatformDescription();
-    if (menuItem)
-        m_platformDescription->AddItem(menuItem);
+	insertItem(itemCount(), item);
 }
 
 unsigned ContextMenu::itemCount() const
@@ -105,8 +106,10 @@ void ContextMenu::insertItem(unsigned position, ContextMenuItem& item)
     checkOrEnableIfNeeded(item);
 
     BMenuItem* menuItem = item.releasePlatformDescription();
-    if (menuItem)
+    if (menuItem) {
         m_platformDescription->AddItem(menuItem, position);
+        menuItem->SetTarget(BMessenger(m_menuHandler));
+    }
 }
 
 PlatformMenuDescription ContextMenu::platformDescription() const
@@ -116,11 +119,19 @@ PlatformMenuDescription ContextMenu::platformDescription() const
 
 void ContextMenu::setPlatformDescription(PlatformMenuDescription menu)
 {
-    if (static_cast<BMenu*>(menu) == m_platformDescription)
+    if (menu == m_platformDescription)
         return;
 
     delete m_platformDescription;
-    m_platformDescription = static_cast<BMenu*>(menu);
+    m_platformDescription = menu;
+}
+
+PlatformMenuDescription ContextMenu::releasePlatformDescription()
+{
+    PlatformMenuDescription description = m_platformDescription;
+    m_platformDescription = 0;
+
+    return description;
 }
 
 } // namespace WebCore

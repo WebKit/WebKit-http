@@ -83,6 +83,10 @@ namespace WebCore {
 #else
         PlatformMenuDescription m_platformDescription;
 #endif
+#if PLATFORM(HAIKU)
+        class ContextMenuHandler;
+        ContextMenuHandler* m_menuHandler;
+#endif
     };
 
 }
