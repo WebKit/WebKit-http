@@ -118,6 +118,7 @@ private:
 private:
 			void				_UpdateTitle(const BString &title);
 			void				_UpdateTabGroupVisibility();
+			void				_ShutdownTab(int32 index);
 
 private:
 			BMessenger			fDownloadListener;

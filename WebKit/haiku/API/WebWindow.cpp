@@ -259,10 +259,8 @@ void BWebWindow::MessageReceived(BMessage* message)
 bool BWebWindow::QuitRequested()
 {
     // Do this here, so WebKit tear down happens earlier.
-    if (fWebView) {
-        fWebView->RemoveSelf();
-        delete fWebView;
-    }
+    if (fWebView)
+        fWebView->Shutdown();
 
     return true;
 }

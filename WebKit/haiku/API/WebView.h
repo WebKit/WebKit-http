@@ -38,7 +38,11 @@ class BWebPage;
 class BWebView : public BView {
 public:
 								BWebView(const char* name);
-	virtual						~BWebView();
+
+	// The BWebView needs to be deleted by the BWebPage instance running
+	// on the application thread in order to prevent possible race conditions.
+	// Call Shutdown() to initiate the deletion.
+			void				Shutdown();
 
 	// BView hooks
 	virtual	void				AttachedToWindow();
@@ -90,6 +94,8 @@ public:
 
 private:
 	friend class BWebPage;
+	virtual						~BWebView();
+
 	inline	BBitmap*			OffscreenBitmap() const
 									{ return fOffscreenBitmap; }
 	inline	BView*				OffscreenView() const

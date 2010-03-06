@@ -184,9 +184,20 @@ BWebPage::BWebPage(BWebView* webView)
 
 BWebPage::~BWebPage()
 {
+	// We need to make sure there are no more timers running, since those
+	// arrive to a different, global handler (the timer handler), and the
+	// timer functions would then operate on stale pointers.
+    if (m_mainFrame && m_mainFrame->Frame())
+        m_mainFrame->Frame()->loader()->stopAllLoaders();
     delete m_settings;
     delete m_mainFrame;
     delete m_page;
+    // Deleting the BWebView is deferred here to keep it alive in
+    // case some timers still fired after the view calling Shutdown() but
+    // before we processed the shutdown message. If the BWebView had already
+    // deleted itself before we reach the shutdown message, there would be
+    // a race condition and chance to operate on a stale BWebView pointer.
+    delete m_webView;
 }
 
 // #pragma mark - public

@@ -72,6 +72,13 @@ BWebView::~BWebView()
 	}
 }
 
+void BWebView::Shutdown()
+{
+	if (Window())
+		RemoveSelf();
+    fWebPage->Shutdown();
+}
+
 // #pragma mark - BView hooks
 
 void BWebView::AttachedToWindow()
@@ -81,7 +88,6 @@ void BWebView::AttachedToWindow()
 
 void BWebView::DetachedFromWindow()
 {
-    fWebPage->Shutdown();
 }
 
 void BWebView::Show()

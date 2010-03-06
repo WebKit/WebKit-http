@@ -527,7 +527,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 			int32 index;
 			if (message->FindInt32("tab index", &index) != B_OK)
 				index = fTabManager->SelectedTabIndex();
-			delete fTabManager->RemoveTab(index);
+			_ShutdownTab(index);
 			_UpdateTabGroupVisibility();
 		} else
 			PostMessage(B_QUIT_REQUESTED);
@@ -581,7 +581,7 @@ BrowserWindow::QuitRequested()
 	// Iterate over all tabs to delete all BWebViews.
 	// Do this here, so WebKit tear down happens earlier.
 	while (fTabManager->CountTabs() > 0)
-		delete fTabManager->RemoveTab(0L);
+		_ShutdownTab(0);
 	SetCurrentWebView(0);
 
 	BMessage message(WINDOW_CLOSED);
@@ -899,4 +899,16 @@ BrowserWindow::_UpdateTabGroupVisibility()
 		fTabManager->SetCloseButtonsAvailable(fTabManager->CountTabs() > 1);
 		Unlock();
 	}
+}
+
+
+void
+BrowserWindow::_ShutdownTab(int32 index)
+{
+	BView* view = fTabManager->RemoveTab(index);
+	BWebView* webView = dynamic_cast<BWebView*>(view);
+	if (webView)
+		webView->Shutdown();
+	else
+		delete view;
 }
