@@ -96,6 +96,10 @@ BWebSettings::~BWebSettings()
 		be_app->RemoveHandler(this);
 		be_app->Unlock();
 	}
+    if (!fData->settings) {
+        // The global settings instance manages the icon database...
+        WebCore::iconDatabase()->close();
+    }
 	delete fData;
 }
 
