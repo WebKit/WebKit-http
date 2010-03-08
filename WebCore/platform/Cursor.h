@@ -41,6 +41,7 @@ typedef struct _GdkCursor GdkCursor;
 #elif PLATFORM(CHROMIUM)
 #include "PlatformCursor.h"
 #elif PLATFORM(HAIKU)
+#include <app/AppDefs.h>
 #include <app/Cursor.h>
 #endif
 
@@ -94,9 +95,8 @@ namespace WebCore {
     // See PlatformCursor.h
     typedef void* PlatformCursorHandle;
 #elif PLATFORM(HAIKU)
-    typedef const BCursor* PlatformCursor;
+    typedef BCursor PlatformCursor;
     typedef const BCursor* PlatformCursorHandle;
-    void initPlatformCursors();
 #else
     typedef void* PlatformCursor;
     typedef void* PlatformCursorHandle;
@@ -105,7 +105,9 @@ namespace WebCore {
     class Cursor {
     public:
         Cursor()
-#if !PLATFORM(QT)
+#if PLATFORM(HAIKU)
+        : m_impl(*B_CURSOR_SYSTEM_DEFAULT)
+#elif !PLATFORM(QT)
         : m_impl(0)
 #endif
         { }
@@ -116,7 +118,11 @@ namespace WebCore {
         Cursor& operator=(const Cursor&);
 
         Cursor(PlatformCursor);
+#if PLATFORM(HAIKU)
+        PlatformCursorHandle impl() const { return &m_impl; }
+#else
         PlatformCursor impl() const { return m_impl; }
+#endif
 
      private:
         PlatformCursor m_impl;

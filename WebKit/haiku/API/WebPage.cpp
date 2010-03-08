@@ -129,7 +129,6 @@ using namespace WebCore;
     WebCore::AtomicString::init();
     WebCore::DOMTimer::setMinTimerInterval(0.008);
     WebCore::UTF8Encoding();
-    WebCore::initPlatformCursors();
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)
