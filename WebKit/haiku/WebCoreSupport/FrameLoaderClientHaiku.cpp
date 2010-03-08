@@ -72,6 +72,11 @@
 #include <MimeType.h>
 #include <String.h>
 
+#if TRACE_SHUTDOWN_PROCESS
+#define TRACE_SHUTDOWN(x...) printf(x)
+#else
+#define TRACE_SHUTDOWN(x...) do {} while (false)
+#endif
 
 namespace WebCore {
 
@@ -81,6 +86,7 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* web
     , m_messenger()
     , m_loadingErrorPage(false)
 {
+TRACE_SHUTDOWN("%p->FrameLoaderClientHaiku::FrameLoaderClientHaiku(%p)\n", this, webPage);
     ASSERT(m_webPage);
     ASSERT(m_webFrame);
 }
@@ -92,9 +98,14 @@ void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
 
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
-    m_webFrame = 0;
-        // deleted by BWebPage
+TRACE_SHUTDOWN("%p->FrameLoaderClientHaiku::frameLoaderDestroyed()\n", this);
+    // No one else feels responsible for the BWebFrame instance that created us.
+    // Even cleaner would be introducing a BWebFrame method to forward this
+    // notification, so that BWebFrame deletes itself there, and us along,
+    // doesn't really matter though.
+    delete m_webFrame;
     delete this;
+TRACE_SHUTDOWN("%p->FrameLoaderClientHaiku::frameLoaderDestroyed() - done\n", this);
 }
 
 bool FrameLoaderClientHaiku::hasWebView() const
@@ -884,8 +895,6 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
         delete frame;
         return 0;
     }
-
-//    frame->setListener(m_messenger);
 
     childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
 

@@ -80,6 +80,12 @@
 #include <wtf/Assertions.h>
 #include <wtf/Threading.h>
 
+#if TRACE_SHUTDOWN_PROCESS
+#define TRACE_SHUTDOWN(x...) printf(x)
+#else
+#define TRACE_SHUTDOWN(x...) do {} while (false)
+#endif
+
 /*
      The basic idea here is to dispatch all public methods to the BLooper
      to which the handler is attached (should be the be_app), such that
@@ -184,13 +190,19 @@ BWebPage::BWebPage(BWebView* webView)
 
 BWebPage::~BWebPage()
 {
+TRACE_SHUTDOWN("%p->BWebPage::~BWebPage()\n", this);
 	// We need to make sure there are no more timers running, since those
 	// arrive to a different, global handler (the timer handler), and the
 	// timer functions would then operate on stale pointers.
+	// Calling detachFromParent() on the FrameLoader will recursively detach
+	// all child frames, as well as stop all loaders before doing that.
     if (m_mainFrame && m_mainFrame->Frame())
-        m_mainFrame->Frame()->loader()->stopAllLoaders();
+        m_mainFrame->Frame()->loader()->detachFromParent();
+
+// NOTE: The m_webFrame member should be deleted by the FrameLoaderClientHaiku,
+// but currently, we have an extra reference to the WebCore::Frame, which needs
+// to be fixed.
     delete m_settings;
-    delete m_mainFrame;
     delete m_page;
     // Deleting the BWebView is deferred here to keep it alive in
     // case some timers still fired after the view calling Shutdown() but
@@ -198,6 +210,7 @@ BWebPage::~BWebPage()
     // deleted itself before we reach the shutdown message, there would be
     // a race condition and chance to operate on a stale BWebView pointer.
     delete m_webView;
+TRACE_SHUTDOWN("%p->BWebPage::~BWebPage() - done\n", this);
 }
 
 // #pragma mark - public

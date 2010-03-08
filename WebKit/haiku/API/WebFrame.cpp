@@ -56,12 +56,19 @@ static const float kTextSizeMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
+#if TRACE_SHUTDOWN_PROCESS
+#define TRACE_SHUTDOWN(x...) printf(x)
+#else
+#define TRACE_SHUTDOWN(x...) do {} while (false)
+#endif
+
 BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate* data)
     : fTextMagnifier(1.0)
     , fIsEditable(false)
     , fTitle(0)
     , fData(data)
 {
+TRACE_SHUTDOWN("%p->BWebFrame::BWebFrame()\n", this);
 	fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
     fData->frame = WebCore::Frame::create(fData->page, fData->ownerElement,
         fData->loaderClient);
@@ -70,12 +77,21 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
     if (parentFrame)
         parentFrame->Frame()->tree()->appendChild(fData->frame);
 
+	// TODO: We will be left with an extra reference to the WebCore::Frame, but I have
+	// not yet fully understood how to get rid of it in the proper way.
+
     fData->frame->init();
 }
 
 BWebFrame::~BWebFrame()
 {
+TRACE_SHUTDOWN("%p->BWebFrame::~BWebFrame()\n", this);
+	// NOTE: This is currently never called, because we hage one
+	// reference too many on the WebCore::Frame. See above.
+    fData->frame->loader()->cancelAndClear();
+
 	delete fData;
+TRACE_SHUTDOWN("%p->BWebFrame::~BWebFrame() - done\n", this);
 }
 
 void BWebFrame::SetListener(const BMessenger& listener)
