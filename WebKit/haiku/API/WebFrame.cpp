@@ -56,42 +56,39 @@ static const float kTextSizeMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
-#if TRACE_SHUTDOWN_PROCESS
-#define TRACE_SHUTDOWN(x...) printf(x)
-#else
-#define TRACE_SHUTDOWN(x...) do {} while (false)
-#endif
-
 BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate* data)
     : fTextMagnifier(1.0)
     , fIsEditable(false)
     , fTitle(0)
     , fData(data)
 {
-TRACE_SHUTDOWN("%p->BWebFrame::BWebFrame()\n", this);
 	fData->loaderClient = new WebCore::FrameLoaderClientHaiku(webPage, this);
-    fData->frame = WebCore::Frame::create(fData->page, fData->ownerElement,
+    RefPtr<WebCore::Frame> frame = WebCore::Frame::create(fData->page, fData->ownerElement,
         fData->loaderClient);
+    // We don't keep the reference to the Frame, see WebFramePrivate.h.
+    fData->frame = frame.get();
 
     fData->frame->tree()->setName(fData->name);
     if (parentFrame)
         parentFrame->Frame()->tree()->appendChild(fData->frame);
-
-	// TODO: We will be left with an extra reference to the WebCore::Frame, but I have
-	// not yet fully understood how to get rid of it in the proper way.
 
     fData->frame->init();
 }
 
 BWebFrame::~BWebFrame()
 {
-TRACE_SHUTDOWN("%p->BWebFrame::~BWebFrame()\n", this);
-	// NOTE: This is currently never called, because we hage one
-	// reference too many on the WebCore::Frame. See above.
-    fData->frame->loader()->cancelAndClear();
+    delete fData->loaderClient;
+    delete fData;
+}
 
-	delete fData;
-TRACE_SHUTDOWN("%p->BWebFrame::~BWebFrame() - done\n", this);
+void
+BWebFrame::Shutdown()
+{
+	// The private method is only invoked from the FrameLoaderClient, as
+	// no one else keeps track of a BWebFrame object's lifetime, we tie
+	// to the WebCore::Frame/FrameLoader lifetime and shutdown via
+	// the FrameLoaderClient::frameLoaderDestroyed() hook.
+	delete this;
 }
 
 void BWebFrame::SetListener(const BMessenger& listener)
@@ -298,7 +295,7 @@ BString BWebFrame::ExternalRepresentation() const
     if (view && view->layoutPending())
         view->layout();
 
-    return externalRepresentation(fData->frame.get());
+    return externalRepresentation(fData->frame);
 }
 
 bool BWebFrame::FindString(const char* string, bool forward, bool caseSensitive, bool wrapSelection, bool startInSelection)
@@ -380,5 +377,5 @@ const BString& BWebFrame::Title() const
 
 WebCore::Frame* BWebFrame::Frame() const
 {
-    return fData->frame.get();
+    return fData->frame;
 }

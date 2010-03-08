@@ -46,8 +46,6 @@ class WebFramePrivate;
 
 class BWebFrame {
 public:
-								~BWebFrame();
-
 			void				SetListener(const BMessenger& listener);
 
 			void				LoadURL(BString url);
@@ -114,6 +112,9 @@ private:
 								BWebFrame(BWebPage* webPage,
 									BWebFrame* parentFrame,
 									WebFramePrivate* data);
+								~BWebFrame();
+
+			void				Shutdown();
 
 			void				LoadURL(WebCore::KURL);
 			WebCore::Frame*		Frame() const;

@@ -56,7 +56,13 @@ public:
     WebCore::String requestedURL;
     WebCore::HTMLFrameOwnerElement* ownerElement;
     WebCore::Page* page;
-    WTF::RefPtr<WebCore::Frame> frame;
+    // NOTE: We don't keep a reference pointer for the WebCore::Frame, since
+    // that will leave us with one too many references, which will in turn
+    // prevent the shutdown mechanism from working, since that one is only
+    // triggered from the FrameLoader destructor, i.e. when there are no more
+    // references around. (FrameLoader and Frame used to be one class, they
+    // can be considered as one object as far as object life-time goes.)
+    WebCore::Frame* frame;
     WebCore::FrameLoaderClientHaiku* loaderClient;
 };
 
