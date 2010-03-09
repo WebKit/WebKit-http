@@ -58,6 +58,7 @@ public:
     FrameLoaderClientHaiku(BWebPage*, BWebFrame*);
 
     void setDispatchTarget(const BMessenger& messenger);
+    BWebPage* page() const;
 
     virtual void frameLoaderDestroyed();
 

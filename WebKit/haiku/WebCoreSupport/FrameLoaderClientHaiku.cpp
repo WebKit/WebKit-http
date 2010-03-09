@@ -90,6 +90,11 @@ void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
     m_messenger = messenger;
 }
 
+BWebPage* FrameLoaderClientHaiku::page() const
+{
+	return m_webPage;
+}
+
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
     // No one else feels responsible for the BWebFrame instance that created us.
