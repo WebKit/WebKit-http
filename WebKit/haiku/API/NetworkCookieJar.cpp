@@ -28,6 +28,7 @@
 #include "config.h"
 #include "NetworkCookieJar.h"
 
+#include "NetworkCookie.h"
 #include "PlatformString.h"
 #include "StringHash.h"
 #include <Message.h>
@@ -97,6 +98,9 @@ status_t BNetworkCookieJar::Archive(BMessage* into, bool deep) const
 
 void BNetworkCookieJar::SetCookiesFor(const BString& url, const BString& value)
 {
+	// TODO: This replaces the previous cookie value, which means it's totally broken.
+	// What really needs to happen is that there needs to be a list of cookies, and
+	// cookies need to be appended.
 	fData->cookies.set(url, value);
 }
 
