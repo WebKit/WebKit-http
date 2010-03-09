@@ -41,7 +41,7 @@ public:
 			status_t			SetValue(const char* name, const BRect& value);
 			status_t			SetValue(const char* name, const entry_ref& value);
 			status_t			SetValue(const char* name,
-									const BMessage* value);
+									const BMessage& value);
 			status_t			SetValue(const char* name,
 									const BFlattenable* value);
 			status_t			SetValue(const char* name,

@@ -42,6 +42,11 @@ SubDirHdrs $(TOP) WebCore svg ;
 SubDirHdrs $(TOP) WebCore svg animation ;
 SubDirHdrs $(TOP) WebCore svg graphics ;
 
+# Needed for persistent cookie jar implementation. Actually
+# a layering violation. Maybe there ought to be a CookieJarClient interface.
+SubDirHdrs $(TOP) WebKit haiku API ;
+SubDirHdrs $(TOP) WebKit haiku WebCoreSupport ;
+
 # Define the source directories. Any headers included with quotes should be in
 # the following directories.
 local sourceDirs =

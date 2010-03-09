@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,43 +23,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CookieJar_h
-#define CookieJar_h
+#include "CookieJar.h"
 
-#include <wtf/Platform.h>
-#include <wtf/Vector.h>
+class BNetworkCookieJar;
 
 namespace WebCore {
 
-class Document;
-class KURL;
-class String;
-
-struct Cookie;
-
-// cookies omits HttpOnly cookies.
-String cookies(const Document*, const KURL&);
-String cookieRequestHeaderFieldValue(const Document*, const KURL&);
-void setCookies(Document*, const KURL&, const String&);
-bool cookiesEnabled(const Document*);
-bool getRawCookies(const Document*, const KURL&, Vector<Cookie>&);
-void deleteCookie(const Document*, const KURL&, const String&);
-
-#if PLATFORM(HAIKU)
-class CookieJarClient {
+class CookieJarClientHaiku : public CookieJarClient {
 public:
-    virtual ~CookieJarClient() {}
+	CookieJarClientHaiku(BNetworkCookieJar* cookieJar);
 
-    virtual String cookies(const Document*, const KURL&) = 0;
-    virtual String cookieRequestHeaderFieldValue(const Document*, const KURL&) = 0;
-    virtual void setCookies(Document*, const KURL&, const String&) = 0;
-    virtual bool cookiesEnabled(const Document*) = 0;
-    virtual bool getRawCookies(const Document*, const KURL&, Vector<Cookie>&) = 0;
-    virtual void deleteCookie(const Document*, const KURL&, const String&) = 0;
+    virtual String cookies(const Document*, const KURL&);
+    virtual String cookieRequestHeaderFieldValue(const Document*, const KURL&);
+    virtual void setCookies(Document*, const KURL&, const String&);
+    virtual bool cookiesEnabled(const Document*);
+    virtual bool getRawCookies(const Document*, const KURL&, Vector<Cookie>&);
+    virtual void deleteCookie(const Document*, const KURL&, const String&);
+
+private:
+    BNetworkCookieJar* m_cookieJar;
 };
 
-void setCookieJarClient(CookieJarClient*);
-#endif // PLATFORM(HAIKU)
-}
+} // namespace WebCore
 
-#endif

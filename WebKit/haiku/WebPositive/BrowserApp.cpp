@@ -34,6 +34,7 @@
 #include "DownloadWindow.h"
 #include "SettingsMessage.h"
 #include "SettingsWindow.h"
+#include "NetworkCookieJar.h"
 #include "WebPage.h"
 #include "WebSettings.h"
 #include "WebView.h"
@@ -61,6 +62,7 @@ BrowserApp::BrowserApp()
 	fLaunchRefsMessage(0),
 	fInitialized(false),
 	fSettings(NULL),
+	fCookieJar(NULL),
 	fDownloadWindow(NULL),
 	fSettingsWindow(NULL)
 {
@@ -72,6 +74,8 @@ BrowserApp::~BrowserApp()
 {
 	delete fLaunchRefsMessage;
 	delete fSettings;
+	delete fCookies;
+	delete fCookieJar;
 }
 
 
@@ -125,6 +129,14 @@ BrowserApp::ReadyToRun()
 	mainSettingsPath << "/Application";
 	fSettings = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
 		mainSettingsPath.String());
+	mainSettingsPath = kApplicationName;
+	mainSettingsPath << "/Cookies";
+	fCookies = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
+		mainSettingsPath.String());
+	BMessage cookieArchive;
+	cookieArchive = fCookies->GetValue("cookies", cookieArchive);
+	fCookieJar = new BNetworkCookieJar(cookieArchive);
+	BWebPage::SetCookieJar(fCookieJar);
 
 	fLastWindowFrame = fSettings->GetValue("window frame", fLastWindowFrame);
 	BRect downloadWindowFrame = fSettings->GetValue("downloads window frame",
@@ -260,6 +272,10 @@ BrowserApp::QuitRequested()
 		fSettings->SetValue("settings window frame", fSettingsWindow->Frame());
 		fSettingsWindow->Unlock();
 	}
+
+	BMessage cookieArchive;
+	if (fCookieJar->Archive(&cookieArchive) == B_OK)
+		fCookies->SetValue("cookies", cookieArchive);
 
 	return true;
 }

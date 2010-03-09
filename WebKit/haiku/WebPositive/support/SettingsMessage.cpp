@@ -186,11 +186,11 @@ SettingsMessage::SetValue(const char* name, const entry_ref& value)
 
 
 status_t
-SettingsMessage::SetValue(const char* name, const BMessage* value)
+SettingsMessage::SetValue(const char* name, const BMessage& value)
 {
-	if (ReplaceMessage(name, value) == B_OK)
+	if (ReplaceMessage(name, &value) == B_OK)
 		return B_OK;
-	return AddMessage(name, value);
+	return AddMessage(name, &value);
 }
 
 

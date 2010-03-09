@@ -33,6 +33,7 @@
 #include <Catalog.h>
 #include <Rect.h>
 
+class BNetworkCookieJar;
 class DownloadWindow;
 class BrowserWindow;
 class SettingsMessage;
@@ -66,6 +67,8 @@ private:
 			bool				fInitialized;
 
 			SettingsMessage*	fSettings;
+			SettingsMessage*	fCookies;
+			BNetworkCookieJar*	fCookieJar;
 
 			DownloadWindow*		fDownloadWindow;
 			SettingsWindow*		fSettingsWindow;

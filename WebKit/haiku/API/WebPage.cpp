@@ -36,6 +36,7 @@
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
 #include "ContextMenuController.h"
+#include "CookieJarClientHaiku.h"
 #include "Cursor.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
@@ -164,7 +165,6 @@ BWebPage::BWebPage(BWebView* webView)
     , m_mainFrame(0)
     , m_settings(0)
     , m_page(0)
-    , m_cookieJar(0)
     , m_pageVisible(true)
     , m_pageDirty(false)
     , m_toolbarsVisible(true)
@@ -233,9 +233,10 @@ void BWebPage::SetDownloadListener(const BMessenger& listener)
     m_downloadListener = listener;
 }
 
-void BWebPage::SetCookieJar(BNetworkCookieJar* cookieJar)
+/*static*/ void BWebPage::SetCookieJar(BNetworkCookieJar* cookieJar)
 {
-    m_cookieJar = cookieJar;
+	static WebCore::CookieJarClientHaiku cookieJarClient(cookieJar);
+	WebCore::setCookieJarClient(&cookieJarClient);
 }
 
 void BWebPage::LoadURL(const char* urlString)

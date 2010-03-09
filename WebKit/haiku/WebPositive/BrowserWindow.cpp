@@ -197,10 +197,11 @@ private:
 
 BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		ToolbarPolicy toolbarPolicy)
-	: BWebWindow(frame, kApplicationName,
+	:
+	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
-	, fDownloadListener(downloadListener)
+		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
+	fDownloadListener(downloadListener)
 {
 	BMessage* newTabMessage = new BMessage(NEW_TAB);
 	newTabMessage->AddString("url", "");
@@ -346,11 +347,8 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		fStatusText = 0;
 		fLoadingProgressBar = 0;
 
-		BWebView* webView = new BWebView("web_view");
-		SetCurrentWebView(webView);
-
-		AddChild(BGroupLayoutBuilder(B_VERTICAL, 7)
-			.Add(CurrentWebView())
+		AddChild(BGroupLayoutBuilder(B_VERTICAL)
+			.Add(fTabManager->ContainerView())
 		);
 	}
 

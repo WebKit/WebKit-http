@@ -68,6 +68,7 @@ SharedLibrary libwebkit.so :
 	# WebCoreSupport
 	ChromeClientHaiku.cpp
 	ContextMenuClientHaiku.cpp
+	CookieJarClientHaiku.cpp
 	DragClientHaiku.cpp
 	EditorClientHaiku.cpp
 	FrameLoaderClientHaiku.cpp

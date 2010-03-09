@@ -33,47 +33,66 @@
 #include "KURL.h"
 #include "PlatformString.h"
 #include "StringHash.h"
-
 #include <wtf/HashMap.h>
 
 
 namespace WebCore {
 
-// FIXME: Shouldn't this be saved to and restored from disk too?
+// This temporary cookie jar is used when the client has not provided one.
 static HashMap<String, String> cookieJar;
 
-void setCookies(Document*, const KURL& url, const String& value)
+// This global CookieJarClient will be used, if set.
+static CookieJarClient* gCookieJarClient;
+
+void setCookieJarClient(CookieJarClient* client)
 {
-    cookieJar.set(url.string(), value);
+    gCookieJarClient = client;
 }
 
-String cookies(const Document*, const KURL& url)
+void setCookies(Document* document, const KURL& url, const String& value)
 {
+    if (gCookieJarClient)
+        gCookieJarClient->setCookies(document, url, value);
+    else
+        cookieJar.set(url.string(), value);
+}
+
+String cookies(const Document* document, const KURL& url)
+{
+    if (gCookieJarClient)
+        return gCookieJarClient->cookies(document, url);
     return cookieJar.get(url.string());
 }
 
-String cookieRequestHeaderFieldValue(const Document*, const KURL& url)
+String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 {
-    // FIXME: include HttpOnly cookies.
+    if (gCookieJarClient)
+        return gCookieJarClient->cookieRequestHeaderFieldValue(document, url);
     return cookieJar.get(url.string());
 }
 
-bool cookiesEnabled(const Document*)
+bool cookiesEnabled(const Document* document)
 {
-    // FIXME: This should probably be a setting
+	if (gCookieJarClient)
+	    return gCookieJarClient->cookiesEnabled(document);
     return true;
 }
 
-bool getRawCookies(const Document*, const KURL&, Vector<Cookie>& rawCookies)
+bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
 {
+	if (gCookieJarClient)
+	    return gCookieJarClient->getRawCookies(document, url, rawCookies);
     // FIXME: Not yet implemented
     rawCookies.clear();
     return false; // return true when implemented
 }
 
-void deleteCookie(const Document*, const KURL&, const String&)
+void deleteCookie(const Document* document, const KURL& url, const String& name)
 {
-    // FIXME: Not yet implemented
+	if (gCookieJarClient)
+	    gCookieJarClient->deleteCookie(document, url, name);
+	else
+        // FIXME: Not yet implemented
 }
 
 } // namespace WebCore
