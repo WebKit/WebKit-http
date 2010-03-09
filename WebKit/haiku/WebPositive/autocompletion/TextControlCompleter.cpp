@@ -85,13 +85,14 @@ TextControlCompleter::~TextControlCompleter()
 filter_result
 TextControlCompleter::Filter(BMessage* message, BHandler** target)
 {
-	int32 rawChar, modifiers;
-	if (!target || message->FindInt32("raw_char", &rawChar) != B_OK
+	const char* bytes;
+	int32 modifiers;
+	if (!target || message->FindString("bytes", &bytes) != B_OK
 		|| message->FindInt32("modifiers", &modifiers) != B_OK) {
 		return B_DISPATCH_MESSAGE;
 	}
 	
-	switch (rawChar) {
+	switch (bytes[0]) {
 		case B_UP_ARROW:
 			SelectPrevious();
 			return B_SKIP_MESSAGE;
