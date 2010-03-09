@@ -47,6 +47,13 @@ BNetworkCookie::BNetworkCookie(const BMessage& archive)
 		_ParseRawValue(rawValue);
 }
 
+BNetworkCookie::BNetworkCookie(const BNetworkCookie& other)
+    : fExpirationDate()
+    , fRawValue()
+{
+	*this = other;
+}
+
 BNetworkCookie::~BNetworkCookie()
 {
 }
@@ -59,16 +66,129 @@ status_t BNetworkCookie::Archive(BMessage* into, bool deep) const
 	return into->AddString("raw value", AsRawValue().String());
 }
 
-BString BNetworkCookie::AsRawValue() const
+BNetworkCookie& BNetworkCookie::operator=(const BNetworkCookie& other)
 {
-	// TODO: Recompose the raw value, once parsing into individual fields
-	// is implemented.
-	return fRawValue;
+	if (this == &other)
+		return *this;
+
+	fExpirationDate = other.fExpirationDate;
+	fDomain = other.fDomain;
+	fPath = other.fPath;
+	fComment = other.fComment;
+	fName = other.fName;
+	fValue = other.fValue;
+	fIsSecure = other.fIsSecure;
+	fIsHTTPOnly = other.fIsHTTPOnly;
+	fRawValue = other.fRawValue;
+
+	return *this;
+}
+
+bool BNetworkCookie::operator==(const BNetworkCookie& other) const
+{
+	if (this == &other)
+		return true;
+
+	return fExpirationDate == other.fExpirationDate
+		&& fDomain == other.fDomain
+		&& fPath == other.fPath
+		&& fComment == other.fComment
+		&& fName == other.fName
+		&& fValue == other.fValue
+		&& fIsSecure == other.fIsSecure
+		&& fIsHTTPOnly == other.fIsHTTPOnly;
+}
+
+bool BNetworkCookie::operator!=(const BNetworkCookie& other) const
+{
+	return !(*this == other);
+}
+
+void BNetworkCookie::SetExpirationDate(const BDateTime& dateTime)
+{
+	fExpirationDate = dateTime;
 }
 
 const BDateTime& BNetworkCookie::ExpirationDate() const
 {
 	return fExpirationDate;
+}
+
+void BNetworkCookie::SetDomain(const BString& domain)
+{
+	fDomain = domain;
+}
+
+const BString& BNetworkCookie::Domain() const
+{
+	return fDomain;
+}
+
+void BNetworkCookie::SetPath(const BString& path)
+{
+	fPath = path;
+}
+
+const BString& BNetworkCookie::Path() const
+{
+	return fPath;
+}
+
+void BNetworkCookie::SetComment(const BString& comment)
+{
+	fComment = comment;
+}
+
+const BString& BNetworkCookie::Comment() const
+{
+	return fComment;
+}
+
+void BNetworkCookie::SetName(const BString& name)
+{
+	fName = name;
+}
+
+const BString& BNetworkCookie::Name() const
+{
+	return fName;
+}
+
+void BNetworkCookie::SetValue(const BString& value)
+{
+	fValue = value;
+}
+
+const BString& BNetworkCookie::Value() const
+{
+	return fValue;
+}
+
+void BNetworkCookie::SetIsSecure(bool isSecure)
+{
+	fIsSecure = isSecure;
+}
+
+bool BNetworkCookie::IsSecure() const
+{
+	return fIsSecure;
+}
+
+void BNetworkCookie::SetIsHTTPOnly(bool isHTTPOnly)
+{
+	fIsHTTPOnly = isHTTPOnly;
+}
+
+bool BNetworkCookie::IsHTTPOnly() const
+{
+	return fIsHTTPOnly;
+}
+
+BString BNetworkCookie::AsRawValue() const
+{
+	// TODO: Recompose the raw value, once parsing into individual fields
+	// is implemented.
+	return fRawValue;
 }
 
 // #pragma mark - private
