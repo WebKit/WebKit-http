@@ -30,10 +30,14 @@
 #include "CookieJar.h"
 
 #include "Cookie.h"
+#include "CString.h"
 #include "KURL.h"
 #include "PlatformString.h"
 #include "StringHash.h"
 #include <wtf/HashMap.h>
+#include <stdio.h>
+
+#define TRACE_COOKIE_JAR 0
 
 
 namespace WebCore {
@@ -51,6 +55,9 @@ void setCookieJarClient(CookieJarClient* client)
 
 void setCookies(Document* document, const KURL& url, const String& value)
 {
+#if TRACE_COOKIE_JAR
+printf("setCookies(%s): %s\n\n", url.string().utf8().data(), value.utf8().data());
+#endif
     if (gCookieJarClient)
         gCookieJarClient->setCookies(document, url, value);
     else
@@ -60,14 +67,30 @@ void setCookies(Document* document, const KURL& url, const String& value)
 String cookies(const Document* document, const KURL& url)
 {
     if (gCookieJarClient)
+#if TRACE_COOKIE_JAR
+{
+String result = gCookieJarClient->cookies(document, url);
+printf("cookies(%s): %s\n\n", url.string().utf8().data(), result.utf8().data());
+return result;
+}
+#else
         return gCookieJarClient->cookies(document, url);
+#endif
     return cookieJar.get(url.string());
 }
 
 String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 {
     if (gCookieJarClient)
+#if TRACE_COOKIE_JAR
+{
+String result = gCookieJarClient->cookieRequestHeaderFieldValue(document, url);
+printf("cookies(%s): %s\n\n", url.string().utf8().data(), result.utf8().data());
+return result;
+}
+#else
         return gCookieJarClient->cookieRequestHeaderFieldValue(document, url);
+#endif
     return cookieJar.get(url.string());
 }
 
@@ -91,8 +114,9 @@ void deleteCookie(const Document* document, const KURL& url, const String& name)
 {
 	if (gCookieJarClient)
 	    gCookieJarClient->deleteCookie(document, url, name);
-	else
+	else {
         // FIXME: Not yet implemented
+	}
 }
 
 } // namespace WebCore
