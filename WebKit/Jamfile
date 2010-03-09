@@ -65,12 +65,16 @@ SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku API ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebCoreSupport ] ;
 
 SharedLibrary libwebkit.so :
+	# WebCoreSupport
 	ChromeClientHaiku.cpp
 	ContextMenuClientHaiku.cpp
 	DragClientHaiku.cpp
 	EditorClientHaiku.cpp
 	FrameLoaderClientHaiku.cpp
 	InspectorClientHaiku.cpp
+	# API
+	NetworkCookie.cpp
+	NetworkCookieJar.cpp
 	WebDownload.cpp
 	WebDownloadPrivate.cpp
 	WebFrame.cpp

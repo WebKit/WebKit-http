@@ -34,6 +34,7 @@
 #include <Rect.h>
 #include <String.h>
 
+class BNetworkCookieJar;
 class BRegion;
 class BView;
 class BWebDownload;
@@ -80,6 +81,7 @@ public:
 
 			void				SetListener(const BMessenger& listener);
 			void				SetDownloadListener(const BMessenger& listener);
+			void				SetCookieJar(BNetworkCookieJar* cookieJar);
 
 			BWebFrame*			MainFrame() const;
 			BWebSettings*		Settings() const;
@@ -204,6 +206,7 @@ private:
 	BWebFrame* m_mainFrame;
 	BWebSettings* m_settings;
 	WebCore::Page* m_page;
+	BNetworkCookieJar* m_cookieJar;
 
     bool m_pageVisible;
     bool m_pageDirty;
