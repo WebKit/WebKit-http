@@ -111,7 +111,7 @@ private:
 private:
 	TabContainerView* fContainerView;
 	TabLayoutItem* fLayoutItem;
-	
+
 	BString fLabel;
 
 	bool fIsFirst;
@@ -145,6 +145,8 @@ public:
 	virtual void MouseMoved(BPoint where, uint32 transit,
 		const BMessage* dragMessage);
 
+	virtual void DoLayout();
+
 	void AddTab(const char* label, int32 index = -1);
 	void AddTab(TabView* tab, int32 index = -1);
 	TabView* RemoveTab(int32 index);
@@ -159,10 +161,13 @@ public:
 
 private:
 	TabView* _TabAt(const BPoint& where) const;
+	void _MouseMoved(BPoint where, uint32 transit,
+		const BMessage* dragMessage);
 
 private:
 	TabView* fLastMouseEventTab;
 	bool fMouseDown;
+	uint32 fClickCount;
 	TabView* fSelectedTab;
 	Controller* fController;
 };
@@ -179,6 +184,7 @@ TabContainerView::TabContainerView(Controller* controller)
 	BGroupView(B_HORIZONTAL),
 	fLastMouseEventTab(NULL),
 	fMouseDown(false),
+	fClickCount(0),
 	fSelectedTab(NULL),
 	fController(controller)
 {
@@ -260,8 +266,12 @@ TabContainerView::MouseDown(BPoint where)
 	SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
 	if (fLastMouseEventTab)
 		fLastMouseEventTab->MouseDown(where, buttons);
-	else if (clicks > 1)
-		fController->DoubleClickOutsideTabs();
+	else {
+		if (clicks > 1)
+			fClickCount++;
+		else
+			fClickCount = 1;
+	}
 }
 
 
@@ -271,6 +281,10 @@ TabContainerView::MouseUp(BPoint where)
 	fMouseDown = false;
 	if (fLastMouseEventTab)
 		fLastMouseEventTab->MouseUp(where);
+	else if (fClickCount > 1) {
+		fClickCount = 0;
+		fController->DoubleClickOutsideTabs();
+	}
 }
 
 
@@ -278,26 +292,21 @@ void
 TabContainerView::MouseMoved(BPoint where, uint32 transit,
 	const BMessage* dragMessage)
 {
-	TabView* tab = _TabAt(where);
-	if (fMouseDown) {
-		uint32 transit = tab == fLastMouseEventTab
-			? B_INSIDE_VIEW : B_OUTSIDE_VIEW;
-		if (fLastMouseEventTab)
-			fLastMouseEventTab->MouseMoved(where, transit, dragMessage);
-		return;
-	}
-
-	if (fLastMouseEventTab && fLastMouseEventTab == tab)
-		fLastMouseEventTab->MouseMoved(where, B_INSIDE_VIEW, dragMessage);
-	else {
-		if (fLastMouseEventTab)
-			fLastMouseEventTab->MouseMoved(where, B_EXITED_VIEW, dragMessage);
-		fLastMouseEventTab = tab;
-		if (fLastMouseEventTab)
-			fLastMouseEventTab->MouseMoved(where, B_ENTERED_VIEW, dragMessage);
-	}
+	_MouseMoved(where, transit, dragMessage);
 }
 
+
+void
+TabContainerView::DoLayout()
+{
+	BGroupView::DoLayout();
+
+	BPoint where;
+	uint32 buttons;
+	GetMouse(&where, &buttons, false);
+	if (Bounds().Contains(where))
+		_MouseMoved(where, B_INSIDE_VIEW, NULL);
+}
 
 void
 TabContainerView::AddTab(const char* label, int32 index)
@@ -416,7 +425,7 @@ TabContainerView::SelectTab(int32 index)
 		GroupLayout()->ItemAt(index));
 	if (item)
 		tab = item->Parent();
-	
+
 	SelectTab(tab);
 }
 
@@ -469,6 +478,31 @@ TabContainerView::_TabAt(const BPoint& where) const
 			return item->Parent();
 	}
 	return NULL;
+}
+
+
+void
+TabContainerView::_MouseMoved(BPoint where, uint32 _transit,
+	const BMessage* dragMessage)
+{
+	TabView* tab = _TabAt(where);
+	if (fMouseDown) {
+		uint32 transit = tab == fLastMouseEventTab
+			? B_INSIDE_VIEW : B_OUTSIDE_VIEW;
+		if (fLastMouseEventTab)
+			fLastMouseEventTab->MouseMoved(where, transit, dragMessage);
+		return;
+	}
+
+	if (fLastMouseEventTab && fLastMouseEventTab == tab)
+		fLastMouseEventTab->MouseMoved(where, B_INSIDE_VIEW, dragMessage);
+	else {
+		if (fLastMouseEventTab)
+			fLastMouseEventTab->MouseMoved(where, B_EXITED_VIEW, dragMessage);
+		fLastMouseEventTab = tab;
+		if (fLastMouseEventTab)
+			fLastMouseEventTab->MouseMoved(where, B_ENTERED_VIEW, dragMessage);
+	}
 }
 
 
