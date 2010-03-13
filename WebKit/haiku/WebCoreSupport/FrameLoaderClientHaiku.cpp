@@ -716,7 +716,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const Web
 WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotShowURL, 
+    return ResourceError(String(), WebKitErrorCannotShowURL,
                          response.url().string(), "File does not exist");
 }
 
@@ -827,10 +827,6 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
 {
     ASSERT(cachedFrame->view());
 
-    Frame* frame = m_webFrame->Frame();
-    if (frame != frame->page()->mainFrame())
-        return;
-
 	// TODO: I guess we would have to restore platform data from the cachedFrame here,
 	// data associated in savePlatformDataToCachedFrame().
 
@@ -850,10 +846,6 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
     frame->createView(size, backgroundColor, transparent, IntSize(), false);
-
-    // We may need to do further manipulation on the FrameView if it was the mainFrame
-    if (frame != frame->page()->mainFrame())
-        return;
 
     postCommitFrameViewSetup(m_webFrame, frame->view(), true);
 }
@@ -1015,8 +1007,6 @@ void FrameLoaderClientHaiku::triggerNavigationHistoryUpdate() const
 
 void FrameLoaderClientHaiku::postCommitFrameViewSetup(BWebFrame* frame, FrameView* view, bool resetValues) const
 {
-    // This method can be used to do adjustments on the main frame, since those
-    // are the only ones directly embedded into a BWebView.
     view->setTopLevelPlatformWidget(m_webPage->WebView());
 }
 
