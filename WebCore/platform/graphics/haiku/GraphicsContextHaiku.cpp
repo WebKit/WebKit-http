@@ -135,6 +135,11 @@ public:
         return m_currentLayer->view;
     }
 
+	uint8 globalAlpha() const
+	{
+		return m_currentLayer->globalAlpha;
+	}
+
     void setClipping(const BRegion& region)
     {
     	// If we are supposed to set an empty region, but never
@@ -406,8 +411,14 @@ void GraphicsContext::strokePath()
 //            BGradient* gradient = m_common->state.strokeGradient->platformGradient();
 //            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
 //            m_data->view()->StrokeShape(m_data->shape(), *gradient);
-        } else
+        } else {
+            drawing_mode mode = m_data->view()->DrawingMode();
+            if (m_data->view()->HighColor().alpha < 255)
+                m_data->view()->SetDrawingMode(B_OP_ALPHA);
+
             m_data->view()->StrokeShape(m_data->shape());
+            m_data->view()->SetDrawingMode(mode);
+        }
     }
 
 //    m_data->view()->SetFlags(flags);
@@ -545,8 +556,15 @@ void GraphicsContext::fillPath()
             BGradient* gradient = m_common->state.fillGradient->platformGradient();
 //            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
             m_data->view()->FillShape(m_data->shape(), *gradient);
-        } else
+        } else {
+            drawing_mode mode = m_data->view()->DrawingMode();
+            if (m_data->view()->HighColor().alpha < 255)
+                m_data->view()->SetDrawingMode(B_OP_ALPHA);
+
             m_data->view()->FillShape(m_data->shape());
+
+            m_data->view()->SetDrawingMode(mode);
+        }
     }
     m_data->setShape(0);
 }
@@ -637,7 +655,7 @@ void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness
         return;
 
     // NOTE: Used by RenderBoxModelObject to clip out the inner part of an arc when rending box corners...
- 
+
     notImplemented();
 }
 

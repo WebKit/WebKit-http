@@ -80,7 +80,7 @@ public:
 			void				Shutdown();
 
 			void				SetListener(const BMessenger& listener);
-			void				SetDownloadListener(const BMessenger& listener);
+	static	void				SetDownloadListener(const BMessenger& listener);
 
 	static	void				SetCookieJar(BNetworkCookieJar* cookieJar);
 
@@ -107,6 +107,8 @@ public:
 									bool startInSelection = false);
 
 			void				ResendNotifications();
+
+	static	void				RequestDownload(const BString& url);
 
 private:
 	friend class BWebFrame;
@@ -165,10 +167,14 @@ private:
 
 	friend class BWebDownload;
 
-	void requestDownload(const WebCore::ResourceRequest& request);
-	void requestDownload(WebCore::ResourceHandle* handle,
-		const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response);
-	void downloadCreated(BWebDownload* download);
+	static void requestDownload(const WebCore::ResourceRequest& request,
+		bool isAsynchronousRequest = false);
+	static void requestDownload(WebCore::ResourceHandle* handle,
+		const WebCore::ResourceRequest& request,
+		const WebCore::ResourceResponse& response,
+		bool isAsynchronousRequest = false);
+	static void downloadCreated(BWebDownload* download,
+		bool isAsynchronousRequest);
 
 	void paint(BRect rect, bool contentChanged, bool immediate,
 		bool repaintContentOnly);
@@ -202,7 +208,7 @@ private:
 
 private:
     BMessenger m_listener;
-	BMessenger m_downloadListener;
+	static BMessenger sDownloadListener;
 	BWebView* m_webView;
 	BWebFrame* m_mainFrame;
 	BWebSettings* m_settings;

@@ -124,7 +124,7 @@ BrowserApp::ReadyToRun()
 
 		BWebSettings::SetPersistentStoragePath(path.Path());
 	}
-	
+
 	BString mainSettingsPath(kApplicationName);
 	mainSettingsPath << "/Application";
 	fSettings = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
@@ -148,6 +148,8 @@ BrowserApp::ReadyToRun()
 	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
 	fSettingsWindow = new SettingsWindow(settingsWindowFrame, fSettings);
 
+	BWebPage::SetDownloadListener(BMessenger(fDownloadWindow));
+
 	fInitialized = true;
 
 	if (fLaunchRefsMessage) {
@@ -155,8 +157,7 @@ BrowserApp::ReadyToRun()
 		delete fLaunchRefsMessage;
 		fLaunchRefsMessage = 0;
 	} else {
-		BrowserWindow* window = new BrowserWindow(fLastWindowFrame,
-			BMessenger(fDownloadWindow));
+		BrowserWindow* window = new BrowserWindow(fLastWindowFrame);
 		window->Show();
 	}
 	PostMessage(PRELOAD_BROWSING_HISTORY);
@@ -313,8 +314,7 @@ BrowserApp::_CreateNewWindow(const BString& url)
 	if (!BScreen().Frame().Contains(fLastWindowFrame))
 		fLastWindowFrame.OffsetTo(50, 50);
 
-	BrowserWindow* window = new BrowserWindow(fLastWindowFrame,
-		BMessenger(fDownloadWindow));
+	BrowserWindow* window = new BrowserWindow(fLastWindowFrame);
 	window->Show();
 	if (url.Length())
 		window->CurrentWebView()->LoadURL(url.String());

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,23 +30,32 @@
 
 #include "ContextMenuClient.h"
 
+class BWebPage;
+
 namespace WebCore {
-    class ContextMenu;
 
-    class ContextMenuClientHaiku : public ContextMenuClient {
-    public:
-        virtual void contextMenuDestroyed();
+class ContextMenu;
 
-        virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*);
-        virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
+class ContextMenuClientHaiku : public ContextMenuClient {
+public:
+    ContextMenuClientHaiku(BWebPage*);
 
-        virtual void downloadURL(const KURL& url);
-        virtual void lookUpInDictionary(Frame*);
-        virtual void speak(const String&);
-        virtual bool isSpeaking();
-        virtual void stopSpeaking();
-        virtual void searchWithGoogle(const Frame*);
-    };
+    virtual void contextMenuDestroyed();
+
+    virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*);
+    virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
+
+    virtual void downloadURL(const KURL& url);
+    virtual void lookUpInDictionary(Frame*);
+    virtual void speak(const String&);
+    virtual bool isSpeaking();
+    virtual void stopSpeaking();
+    virtual void searchWithGoogle(const Frame*);
+
+private:
+    BWebPage* m_webPage;
+};
+
 } // namespace WebCore
 
 #endif // ContextMenuClientHaiku_h

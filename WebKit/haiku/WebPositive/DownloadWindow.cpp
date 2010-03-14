@@ -257,7 +257,7 @@ public:
             break;
         }
         case RESTART_DOWNLOAD:
-            // TODO: 
+            BWebPage::RequestDownload(m_url);
             break;
 
         case CANCEL_DOWNLOAD:

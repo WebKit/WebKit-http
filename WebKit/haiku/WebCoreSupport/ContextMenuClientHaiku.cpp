@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2006 Zack Rusin <zack@kde.org>
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,9 +31,16 @@
 #include "HitTestResult.h"
 #include "KURL.h"
 #include "NotImplemented.h"
+#include "ResourceRequest.h"
+#include "WebPage.h"
 
 
 namespace WebCore {
+
+ContextMenuClientHaiku::ContextMenuClientHaiku(BWebPage* webPage)
+    : m_webPage(webPage)
+{
+}
 
 void ContextMenuClientHaiku::contextMenuDestroyed()
 {
@@ -56,7 +64,8 @@ void ContextMenuClientHaiku::contextMenuItemSelected(ContextMenuItem*, const Con
 
 void ContextMenuClientHaiku::downloadURL(const KURL& url)
 {
-    notImplemented();
+	ResourceRequest request(url);
+    BWebPage::requestDownload(request);
 }
 
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)

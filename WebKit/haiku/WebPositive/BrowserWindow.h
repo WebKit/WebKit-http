@@ -66,7 +66,6 @@ enum {
 class BrowserWindow : public BWebWindow {
 public:
 								BrowserWindow(BRect frame,
-									const BMessenger& downloadListener,
 									ToolbarPolicy = HaveToolbar);
 	virtual						~BrowserWindow();
 
@@ -121,7 +120,6 @@ private:
 			void				_ShutdownTab(int32 index);
 
 private:
-			BMessenger			fDownloadListener;
 			BMenu*				fGoMenu;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;

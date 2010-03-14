@@ -23,7 +23,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 
@@ -115,6 +115,8 @@ enum {
 
 using namespace WebCore;
 
+BMessenger BWebPage::sDownloadListener;
+
 /*static*/ void BWebPage::InitializeOnce()
 {
 	// NOTE: This needs to be called when the BApplication is ready.
@@ -178,7 +180,7 @@ BWebPage::BWebPage(BWebView* webView)
     , m_menubarVisible(true)
 {
     m_page = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
-                               new WebCore::ContextMenuClientHaiku(),
+                               new WebCore::ContextMenuClientHaiku(this),
                                new WebCore::EditorClientHaiku(this),
                                new WebCore::DragClientHaiku(webView),
                                new WebCore::InspectorClientHaiku(),
@@ -236,7 +238,7 @@ void BWebPage::SetListener(const BMessenger& listener)
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)
 {
-    m_downloadListener = listener;
+    sDownloadListener = listener;
 }
 
 /*static*/ void BWebPage::SetCookieJar(BNetworkCookieJar* cookieJar)
@@ -299,6 +301,12 @@ void BWebPage::ResendNotifications()
 {
     BMessage message(HANDLE_RESEND_NOTIFICATIONS);
     Looper()->PostMessage(&message, this);
+}
+
+/*static*/ void BWebPage::RequestDownload(const BString& url)
+{
+	ResourceRequest request(url);
+	requestDownload(request, false);
 }
 
 BWebFrame* BWebPage::MainFrame() const
@@ -545,28 +553,35 @@ void BWebPage::linkHovered(const BString& url, const BString& title, const BStri
 printf("BWebPage::linkHovered()\n");
 }
 
-void BWebPage::requestDownload(const WebCore::ResourceRequest& request)
+/*static*/ void BWebPage::requestDownload(const WebCore::ResourceRequest& request,
+	bool isAsynchronousRequest)
 {
     BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(request));
-    downloadCreated(download);
+    downloadCreated(download, isAsynchronousRequest);
 }
 
-void BWebPage::requestDownload(WebCore::ResourceHandle* handle,
-    const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response)
+/*static*/ void BWebPage::requestDownload(WebCore::ResourceHandle* handle,
+    const WebCore::ResourceRequest& request,
+    const WebCore::ResourceResponse& response, bool isAsynchronousRequest)
 {
     BWebDownload* download = new BWebDownload(new BPrivate::WebDownloadPrivate(handle, request, response));
-    downloadCreated(download);
+    downloadCreated(download, isAsynchronousRequest);
 }
 
-void BWebPage::downloadCreated(BWebDownload* download)
+/*static*/ void BWebPage::downloadCreated(BWebDownload* download,
+	bool isAsynchronousRequest)
 {
 	download->Start();
-	if (m_downloadListener.IsValid()) {
+	if (sDownloadListener.IsValid()) {
         BMessage message(B_DOWNLOAD_ADDED);
         message.AddPointer("download", download);
-        // Block until the listener has pulled all the information...
-        BMessage reply;
-        m_downloadListener.SendMessage(&message, &reply);
+        if (isAsynchronousRequest) {
+	        // Block until the listener has pulled all the information...
+	        BMessage reply;
+	        sDownloadListener.SendMessage(&message, &reply);
+        } else {
+	        sDownloadListener.SendMessage(&message);
+        }
 	}
 }
 
@@ -672,7 +687,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 
 		int32 xIncrement;
 		int32 yIncrement;
-	
+
 		if (yOffset == 0 && xOffset > 0) {
 			// copy from right to left
 			xIncrement = -1;
@@ -681,7 +696,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 			// copy from left to right
 			xIncrement = 1;
 		}
-	
+
 		if (yOffset > 0) {
 			// copy from bottom to top
 			yIncrement = -bytesPerRow;
@@ -690,9 +705,9 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 			// copy from top to bottom
 			yIncrement = bytesPerRow;
 		}
-	
+
 		uint8* dst = src + yOffset * bytesPerRow + xOffset * 4;
-	
+
 		if (xIncrement == 1) {
 			for (uint32 y = 0; y < height; y++) {
 				memcpy(dst, src, width * 4);
@@ -788,7 +803,7 @@ void BWebPage::MessageReceived(BMessage* message)
                 delete message;
                 first = false;
             }
-            
+
             message = nextMessage;
             queue->RemoveMessage(message);
 

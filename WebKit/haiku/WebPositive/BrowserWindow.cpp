@@ -195,13 +195,11 @@ private:
 // #pragma mark - BrowserWindow
 
 
-BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
-		ToolbarPolicy toolbarPolicy)
+BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy)
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
-	fDownloadListener(downloadListener)
+		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
 {
 	BMessage* newTabMessage = new BMessage(NEW_TAB);
 	newTabMessage->AddString("url", "");
@@ -373,7 +371,7 @@ BrowserWindow::BrowserWindow(BRect frame, const BMessenger& downloadListener,
 		snprintf(numStr, sizeof(numStr), "%d", (int) i);
 		AddShortcut(numStr[0], B_COMMAND_KEY, selectTab);
 	}
-	
+
 	be_app->PostMessage(WINDOW_OPENED);
 }
 
@@ -538,7 +536,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 			&& fTabManager->CountTabs() > index) {
 			fTabManager->SelectTab(index);
 		}
-		
+
 		break;
 	}
 
@@ -629,7 +627,6 @@ BrowserWindow::CreateNewTab(const BString& url, bool select, BWebView* webView)
 	// Executed in app thread (new BWebPage needs to be created in app thread).
 	if (!webView)
 		webView = new BWebView("web view");
-	webView->WebPage()->SetDownloadListener(fDownloadListener);
 
 	fTabManager->AddTab(webView, "New tab");
 
@@ -675,7 +672,7 @@ BrowserWindow::NewWindowRequested(const BString& url, bool primaryAction)
 }
 
 
-void 
+void
 BrowserWindow::NewPageCreated(BWebView* view)
 {
 	CreateNewTab(BString(), true, view);
