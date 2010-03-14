@@ -175,17 +175,24 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
                                          unsigned rows, unsigned columns,
                                          bool premultiplied)
 {
-    // Internal storage is not pre-multiplied, de-multiply source data.
     if (premultiplied) {
+        // Internal storage is not pre-multiplied, de-multiply source data.
         for (unsigned y = 0; y < rows; y++) {
             const uint8* s = sourceRows;
             uint8* d = destRows;
             for (unsigned x = 0; x < columns; x++) {
                 // RGBA -> BGRA or BGRA -> RGBA
-                d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
-                d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
-                d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
-                d[3] = s[3];
+                if (s[3]) {
+                    d[0] = static_cast<uint16>(s[2]) * 255 / s[3];
+                    d[1] = static_cast<uint16>(s[1]) * 255 / s[3];
+                    d[2] = static_cast<uint16>(s[0]) * 255 / s[3];
+                    d[3] = s[3];
+                } else {
+                    d[0] = 0;
+                    d[1] = 0;
+                    d[2] = 0;
+                    d[3] = 0;
+                }
                 d += 4;
                 s += 4;
             }
