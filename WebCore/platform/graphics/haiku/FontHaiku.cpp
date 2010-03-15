@@ -64,8 +64,16 @@ void Font::drawGlyphs(GraphicsContext* graphicsContext, const SimpleFontData* fo
     view->SetFont(font->platformData().font());
 
     GlyphBufferGlyph* glyphs = const_cast<GlyphBufferGlyph*>(glyphBuffer.glyphs(from));
-    CString converted = UTF8Encoding().encode((const UChar *)glyphs, numGlyphs, URLEncodedEntitiesForUnencodables);
-    view->DrawString(converted.data(), converted.length(), BPoint(point.x(), point.y()));
+    CString converted = UTF8Encoding().encode((const UChar*)glyphs, numGlyphs, URLEncodedEntitiesForUnencodables);
+	BPoint offsets[numGlyphs];
+	float offset = point.x();
+    for (int i = 0; i < numGlyphs; i++) {
+        offsets[i].x = offset;
+        offsets[i].y = point.y();
+        offset += glyphBuffer.advanceAt(from + i);
+    }
+
+    view->DrawString(converted.data(), converted.length(), offsets, numGlyphs);
 
     view->SetHighColor(oldColor);
     view->SetDrawingMode(oldMode);
