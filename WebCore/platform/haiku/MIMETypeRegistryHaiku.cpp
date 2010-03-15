@@ -34,12 +34,13 @@
 #include <MimeType.h>
 
 namespace WebCore {
+
 struct ExtensionMap {
     const char* extension;
     const char* mimeType;
 };
 
-static const ExtensionMap extensionMap[] = {
+static const ExtensionMap sExtensionMap[] = {
     { "bmp", "image/bmp" },
     { "gif", "image/gif" },
     { "html", "text/html" },
@@ -60,13 +61,12 @@ static const ExtensionMap extensionMap[] = {
     { 0, 0 }
 };
 
-// FIXME: Use the Haiku MIME registry
-String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
+String MIMETypeRegistry::getMIMETypeForExtension(const String& ext)
 {
     String str = ext.lower();
 
-    // Try system built-in types
-    const ExtensionMap *extMap = extensionMap;
+    // Try built-in types
+    const ExtensionMap* extMap = sExtensionMap;
     while (extMap->extension) {
         if (str == extMap->extension)
             return extMap->mimeType;
@@ -84,5 +84,6 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
     // unknown
     return String();
 }
+
 } // namespace WebCore
 
