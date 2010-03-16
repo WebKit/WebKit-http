@@ -47,13 +47,18 @@
 #include <Bitmap.h>
 #include <Button.h>
 #include <CheckBox.h>
+#include <Directory.h>
 #include <Entry.h>
+#include <File.h>
+#include <FindDirectory.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
+#include <NodeInfo.h>
 #include <Path.h>
+#include <Roster.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
 #include <StatusBar.h>
@@ -71,6 +76,9 @@ enum {
 	GOTO_URL = 'goul',
 	RELOAD = 'reld',
 	CLEAR_HISTORY = 'clhs',
+
+	CREATE_BOOKMARK = 'crbm',
+	SHOW_BOOKMARKS = 'shbm',
 
 	TEXT_SIZE_INCREASE = 'tsin',
 	TEXT_SIZE_DECREASE = 'tsdc',
@@ -246,6 +254,14 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy)
 
 		fGoMenu = new BMenu("Go");
 		mainMenu->AddItem(fGoMenu);
+
+		fBookmarkMenu = new BMenu("Bookmarks");
+		fBookmarkMenu->AddItem(new BMenuItem("Bookmark this page",
+			new BMessage(CREATE_BOOKMARK), 'B'));
+		fBookmarkMenu->AddItem(new BMenuItem("Manage bookmarks",
+			new BMessage(SHOW_BOOKMARKS)));
+//		fBookmarkMenu->AddSeparatorItem();
+		mainMenu->AddItem(fBookmarkMenu);
 
 		// Back, Forward & Stop
 		fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
@@ -457,6 +473,13 @@ BrowserWindow::MessageReceived(BMessage* message)
 			history->clear();
 		break;
 	}
+
+	case CREATE_BOOKMARK:
+		_CreateBookmark();
+		break;
+	case SHOW_BOOKMARKS:
+		_ShowBookmarks();
+		break;
 
 	case B_SIMPLE_DATA: {
 		// User possibly dropped files on this window.
@@ -907,3 +930,129 @@ BrowserWindow::_ShutdownTab(int32 index)
 	else
 		delete view;
 }
+
+
+status_t
+BrowserWindow::_BookmarkPath(BPath& path) const
+{
+	status_t ret = find_directory(B_USER_SETTINGS_DIRECTORY, &path);
+	if (ret != B_OK)
+		return ret;
+
+	ret = path.Append(kApplicationName);
+	if (ret != B_OK)
+		return ret;
+
+	ret = path.Append("Bookmarks");
+	if (ret != B_OK)
+		return ret;
+
+	return create_directory(path.Path(), 0777);
+}
+
+
+void
+BrowserWindow::_CreateBookmark()
+{
+	BPath path;
+	status_t status = _BookmarkPath(path);
+	if (status != B_OK) {
+		BString message("There was an error retrieving the bookmark "
+			"folder.\n\n");
+		message << "Error: " << strerror(status);
+		BAlert* alert = new BAlert("Bookmark error", message.String(), "OK",
+			NULL, NULL, B_WIDTH_AS_USUAL, B_STOP_ALERT);
+		alert->Go();
+		return;
+	}
+	BWebView* webView = CurrentWebView();
+	BString url(webView->MainFrameURL());
+	// Create a bookmark file
+	BFile bookmarkFile;
+	BString bookmarkName(webView->MainFrameTitle());
+	BPath entryPath(path);
+	status = entryPath.Append(bookmarkName);
+	BEntry entry;
+	if (status == B_OK)
+		status = entry.SetTo(entryPath.Path(), true);
+	if (status == B_OK) {
+		if (entry.Exists()) {
+			BString storedURL;
+			if (bookmarkFile.SetTo(&entry, B_READ_ONLY) == B_OK
+				&& bookmarkFile.ReadAttrString("META:url",
+					&storedURL) == B_OK) {
+				// Just bail if the bookmark already exists
+				if (storedURL == url) {
+					BString message("A bookmark for this page (");
+					message << webView->MainFrameTitle();
+					message << ") already exists.";
+					BAlert* alert = new BAlert("Bookmark info",
+						message.String(), "OK");
+					alert->Go();
+					return;
+				}
+			}
+		}
+		int32 tries = 1;
+		while (entry.Exists()) {
+			// Find a unique name for the bookmark
+			bookmarkName = webView->MainFrameTitle();
+			bookmarkName << " " << tries++;
+			entryPath = path;
+			status = entryPath.Append(bookmarkName);
+			if (status == B_OK)
+				status = entry.SetTo(entryPath.Path(), true);
+			if (status != B_OK)
+				break;
+		}
+	}
+	if (status == B_OK) {
+		status = bookmarkFile.SetTo(&entry,
+			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
+	}
+
+	if (status == B_OK)
+		status = bookmarkFile.WriteAttrString("META:url", &url);
+	if (status == B_OK) {
+		BString title = webView->MainFrameTitle();
+		bookmarkFile.WriteAttrString("META:title", &title);
+	}
+
+	BNodeInfo nodeInfo(&bookmarkFile);
+	if (status == B_OK)
+		status = nodeInfo.SetType("application/x-vnd.Be-bookmark");
+
+	if (status != B_OK) {
+		BString message("There was an error creating the bookmark "
+			"file.\n\n");
+		message << "Error: " << strerror(status);
+		BAlert* alert = new BAlert("Bookmark error", message.String(), "OK",
+			NULL, NULL, B_WIDTH_AS_USUAL, B_STOP_ALERT);
+		alert->Go();
+		return;
+	}
+}
+
+
+void
+BrowserWindow::_ShowBookmarks()
+{
+	BPath path;
+	entry_ref ref;
+	status_t status = _BookmarkPath(path);
+	if (status == B_OK)
+		status = get_ref_for_path(path.Path(), &ref);
+	if (status == B_OK)
+		status = be_roster->Launch(&ref);
+	
+	if (status != B_OK && status != B_ALREADY_RUNNING) {
+		BString message("There was an error trying to show the Bookmarks "
+			"folder.\n\n");
+		message << "Error: " << strerror(status);
+		BAlert* alert = new BAlert("Bookmark error", message.String(), "OK",
+			NULL, NULL, B_WIDTH_AS_USUAL, B_STOP_ALERT);
+		alert->Go();
+		return;
+	}
+}
+

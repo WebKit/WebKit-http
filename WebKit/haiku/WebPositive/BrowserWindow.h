@@ -38,6 +38,7 @@ class BButton;
 class BCheckBox;
 class BLayoutItem;
 class BMenu;
+class BPath;
 class BStatusBar;
 class BStringView;
 class BTextControl;
@@ -119,8 +120,13 @@ private:
 			void				_UpdateTabGroupVisibility();
 			void				_ShutdownTab(int32 index);
 
+			status_t			_BookmarkPath(BPath& path) const;
+			void				_CreateBookmark();
+			void				_ShowBookmarks();
+
 private:
 			BMenu*				fGoMenu;
+			BMenu*				fBookmarkMenu;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;
