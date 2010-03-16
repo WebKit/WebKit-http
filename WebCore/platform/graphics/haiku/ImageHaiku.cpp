@@ -111,7 +111,12 @@ void BitmapImage::draw(GraphicsContext* ctxt, const FloatRect& dst, const FloatR
     // Test using example site at
     // http://www.meyerweb.com/eric/css/edge/complexspiral/demo.html
     ctxt->platformContext()->SetDrawingMode(B_OP_ALPHA);
-    ctxt->platformContext()->DrawBitmapAsync(image, srcRect, dstRect);
+    uint32 options = 0;
+    if (ctxt->imageInterpolationQuality() == InterpolationDefault
+        || ctxt->imageInterpolationQuality() > InterpolationLow) {
+        options |= B_FILTER_BITMAP_BILINEAR;
+    }
+    ctxt->platformContext()->DrawBitmapAsync(image, srcRect, dstRect, options);
     ctxt->restore();
 
     if (imageObserver())
