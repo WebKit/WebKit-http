@@ -37,6 +37,7 @@
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
 #include "IconButton.h"
+#include "NavMenu.h"
 #include "TextControlCompleter.h"
 #include "WebPage.h"
 #include "WebTabView.h"
@@ -200,6 +201,31 @@ private:
 };
 
 
+class BookmarkMenu : public BNavMenu {
+public:
+	BookmarkMenu(const char* title, BHandler* target, const entry_ref* navDir)
+		:
+		BNavMenu(title, B_REFS_RECEIVED, target)
+	{
+		SetNavDir(navDir);
+	}
+
+	virtual void AttachedToWindow()
+	{
+		RemoveItems(0, CountItems(), true);
+		ForceRebuild();
+		BNavMenu::AttachedToWindow();
+		if (CountItems() > 0)
+			AddItem(new BSeparatorItem(), 0);
+		AddItem(new BMenuItem("Manage bookmarks",
+			new BMessage(SHOW_BOOKMARKS)), 0);
+		AddItem(new BMenuItem("Bookmark this page",
+			new BMessage(CREATE_BOOKMARK), 'B'), 0);
+		DoLayout();
+	}
+};
+
+
 // #pragma mark - BrowserWindow
 
 
@@ -255,13 +281,14 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy)
 		fGoMenu = new BMenu("Go");
 		mainMenu->AddItem(fGoMenu);
 
-		fBookmarkMenu = new BMenu("Bookmarks");
-		fBookmarkMenu->AddItem(new BMenuItem("Bookmark this page",
-			new BMessage(CREATE_BOOKMARK), 'B'));
-		fBookmarkMenu->AddItem(new BMenuItem("Manage bookmarks",
-			new BMessage(SHOW_BOOKMARKS)));
-//		fBookmarkMenu->AddSeparatorItem();
-		mainMenu->AddItem(fBookmarkMenu);
+		BPath bookmarkPath;
+		entry_ref bookmarkRef;
+		if (_BookmarkPath(bookmarkPath) == B_OK
+			&& get_ref_for_path(bookmarkPath.Path(), &bookmarkRef) == B_OK) {
+			BMenu* bookmarkMenu
+				= new BookmarkMenu("Bookmarks", this, &bookmarkRef);
+			mainMenu->AddItem(bookmarkMenu);
+		}
 
 		// Back, Forward & Stop
 		fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
@@ -481,6 +508,31 @@ BrowserWindow::MessageReceived(BMessage* message)
 		_ShowBookmarks();
 		break;
 
+	case B_REFS_RECEIVED: {
+		// Currently only source of these messages is the bookmarks menu.
+		// Filter refs into urls, this also gets rid of refs for folders.
+		// For clicks on sub-folders in the bookmarks menu, we have Tracker
+		// open the corresponding folder.
+		entry_ref ref;
+		for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
+			BFile file(&ref, B_READ_ONLY);
+			bool isURL = false;
+			if (file.InitCheck() == B_OK) {
+				BString url;
+				if (file.ReadAttrString("META:url", &url) == B_OK) {
+					message->AddString("url", url.String());
+					isURL = true;
+				}
+			}
+			if (!isURL) {
+				// Must be a folder or something else, have the system open it.
+				be_roster->Launch(&ref);
+			}
+		}
+		message->RemoveName("refs");
+		be_app->PostMessage(message);
+		break;
+	}
 	case B_SIMPLE_DATA: {
 		// User possibly dropped files on this window.
 		// If there is more than one entry_ref, let the app handle it (open one

@@ -126,7 +126,6 @@ private:
 
 private:
 			BMenu*				fGoMenu;
-			BMenu*				fBookmarkMenu;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;
