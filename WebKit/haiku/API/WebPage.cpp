@@ -53,6 +53,7 @@
 #include "Logging.h"
 #include "Page.h"
 #include "PageCache.h"
+#include "PageGroup.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
 #include "PlatformString.h"
@@ -132,6 +133,8 @@ BMessenger BWebPage::sDownloadListener;
 	// At least it works better than our own broken implementation.
 	ResourceHandleManager::sharedInstance()->setCookieJarFileName(
 		"/boot/home/config/settings/WebPositive/Cookies.curl");
+
+    PageGroup::setShouldTrackVisitedLinks(true);
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)
