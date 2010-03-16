@@ -509,27 +509,48 @@ BrowserWindow::MessageReceived(BMessage* message)
 		break;
 
 	case B_REFS_RECEIVED: {
-		// Currently only source of these messages is the bookmarks menu.
-		// Filter refs into urls, this also gets rid of refs for folders.
+		// Currently the only source of these messages is the bookmarks menu.
+		// Filter refs into URLs, this also gets rid of refs for folders.
 		// For clicks on sub-folders in the bookmarks menu, we have Tracker
 		// open the corresponding folder.
 		entry_ref ref;
+		uint32 addedCount = 0;
 		for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
-			BFile file(&ref, B_READ_ONLY);
-			bool isURL = false;
-			if (file.InitCheck() == B_OK) {
+printf("B_REFS_RECEIVED: %s\n", ref.name);
+			BEntry entry(&ref);
+			uint32 addedSubCount = 0;
+			if (entry.IsDirectory()) {
+				BDirectory directory(&entry);
+printf("  directory ok\n");
+				_AddBookmarkURLsRecursively(directory, message, addedSubCount);
+			} else {
+				BFile file(&ref, B_READ_ONLY);
+printf("  file ok\n");
 				BString url;
-				if (file.ReadAttrString("META:url", &url) == B_OK) {
+				if (_ReadURLAttr(file, url)) {
 					message->AddString("url", url.String());
-					isURL = true;
+					addedSubCount++;
 				}
 			}
-			if (!isURL) {
-				// Must be a folder or something else, have the system open it.
+			if (addedSubCount == 0) {
+				// Don't know what to do with this entry, just pass it
+				// on to the system to handle. Note that this may result
+				// in us opening other supported files via the application
+				// mechanism.
 				be_roster->Launch(&ref);
 			}
+			addedCount += addedSubCount;
 		}
 		message->RemoveName("refs");
+		if (addedCount > 10) {
+			BString string;
+			string << "Do you want to open " << addedCount;
+			string << " bookmarks all at once?";
+			BAlert* alert = new BAlert("Open bookmarks confirmation",
+				string.String(), "Cancel", "Open all");
+			if (alert->Go() == 0)
+				break;
+		}
 		be_app->PostMessage(message);
 		break;
 	}
@@ -1022,32 +1043,36 @@ BrowserWindow::_CreateBookmark()
 	// Create a bookmark file
 	BFile bookmarkFile;
 	BString bookmarkName(webView->MainFrameTitle());
+	if (bookmarkName.Length() == 0) {
+		bookmarkName = url;
+		int32 leafPos = bookmarkName.FindLast('/');
+		if (leafPos >= 0)
+			bookmarkName.Remove(0, leafPos + 1);
+	}
+
+	// Check that the bookmark exists nowhere in the bookmark hierarchy,
+	// though the intended file name must match, we don't search the stored
+	// URLs, only for matching file names.
+	BDirectory directory(path.Path());
+	if (status == B_OK && _CheckBookmarkExists(directory, bookmarkName, url)) {
+		BString message("A bookmark for this page (");
+		message << bookmarkName;
+		message << ") already exists.";
+		BAlert* alert = new BAlert("Bookmark info", message.String(), "OK");
+		alert->Go();
+		return;
+	}
+
 	BPath entryPath(path);
 	status = entryPath.Append(bookmarkName);
 	BEntry entry;
 	if (status == B_OK)
 		status = entry.SetTo(entryPath.Path(), true);
 	if (status == B_OK) {
-		if (entry.Exists()) {
-			BString storedURL;
-			if (bookmarkFile.SetTo(&entry, B_READ_ONLY) == B_OK
-				&& bookmarkFile.ReadAttrString("META:url",
-					&storedURL) == B_OK) {
-				// Just bail if the bookmark already exists
-				if (storedURL == url) {
-					BString message("A bookmark for this page (");
-					message << webView->MainFrameTitle();
-					message << ") already exists.";
-					BAlert* alert = new BAlert("Bookmark info",
-						message.String(), "OK");
-					alert->Go();
-					return;
-				}
-			}
-		}
 		int32 tries = 1;
 		while (entry.Exists()) {
-			// Find a unique name for the bookmark
+			// Find a unique name for the bookmark, there may still be a
+			// file in the way that stores a different URL.
 			bookmarkName = webView->MainFrameTitle();
 			bookmarkName << " " << tries++;
 			entryPath = path;
@@ -1063,6 +1088,7 @@ BrowserWindow::_CreateBookmark()
 			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
 	}
 
+	// Write bookmark meta data
 	if (status == B_OK)
 		status = bookmarkFile.WriteAttrString("META:url", &url);
 	if (status == B_OK) {
@@ -1107,4 +1133,68 @@ BrowserWindow::_ShowBookmarks()
 		return;
 	}
 }
+
+
+bool BrowserWindow::_CheckBookmarkExists(BDirectory& directory,
+	const BString& bookmarkName, const BString& url) const
+{
+	BEntry entry;
+	while (directory.GetNextEntry(&entry) == B_OK) {
+		if (entry.IsDirectory()) {
+			BDirectory subBirectory(&entry);
+			// At least preserve the entry file handle when recursing into
+			// sub-folders... eventually we will run out, though, with very
+			// deep hierarchy.
+			entry.Unset();
+			if (_CheckBookmarkExists(subBirectory, bookmarkName, url))
+				return true;
+		} else {
+			char entryName[B_FILE_NAME_LENGTH];
+			if (entry.GetName(entryName) != B_OK || bookmarkName != entryName)
+				continue;
+			BString storedURL;
+			BFile file(&entry, B_READ_ONLY);
+			if (_ReadURLAttr(file, storedURL)) {
+				// Just bail if the bookmark already exists
+				if (storedURL == url)
+					return true;
+			}
+		}
+	}
+	return false;
+}
+
+
+bool
+BrowserWindow::_ReadURLAttr(BFile& bookmarkFile, BString& url) const
+{
+	return bookmarkFile.InitCheck() == B_OK
+		&& bookmarkFile.ReadAttrString("META:url", &url) == B_OK;
+}
+
+
+void
+BrowserWindow::_AddBookmarkURLsRecursively(BDirectory& directory,
+	BMessage* message, uint32& addedCount) const
+{
+	BEntry entry;
+	while (directory.GetNextEntry(&entry) == B_OK) {
+		if (entry.IsDirectory()) {
+			BDirectory subBirectory(&entry);
+			// At least preserve the entry file handle when recursing into
+			// sub-folders... eventually we will run out, though, with very
+			// deep hierarchy.
+			entry.Unset();
+			_AddBookmarkURLsRecursively(subBirectory, message, addedCount);
+		} else {
+			BString storedURL;
+			BFile file(&entry, B_READ_ONLY);
+			if (_ReadURLAttr(file, storedURL)) {
+				message->AddString("url", storedURL.String());
+				addedCount++;
+			}
+		}
+	}
+}
+
 

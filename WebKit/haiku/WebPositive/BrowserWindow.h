@@ -36,6 +36,8 @@
 
 class BButton;
 class BCheckBox;
+class BDirectory;
+class BFile;
 class BLayoutItem;
 class BMenu;
 class BPath;
@@ -123,6 +125,15 @@ private:
 			status_t			_BookmarkPath(BPath& path) const;
 			void				_CreateBookmark();
 			void				_ShowBookmarks();
+			bool				_CheckBookmarkExists(BDirectory& directory,
+									const BString& fileName,
+									const BString& url) const;
+			bool				_ReadURLAttr(BFile& bookmarkFile,
+									BString& url) const;
+			void				_AddBookmarkURLsRecursively(
+									BDirectory& directory,
+									BMessage* message,
+									uint32& addedCount) const;
 
 private:
 			BMenu*				fGoMenu;
