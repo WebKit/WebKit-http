@@ -130,6 +130,45 @@ public:
         Layer* previous;
     };
 
+    struct CustomGraphicsState {
+        CustomGraphicsState()
+            : previous(0)
+            , imageInterpolationQuality(InterpolationDefault)
+        {
+        }
+
+        CustomGraphicsState(CustomGraphicsState* previous)
+            : previous(previous)
+            , imageInterpolationQuality(previous->imageInterpolationQuality)
+        {
+        }
+
+        CustomGraphicsState* previous;
+        InterpolationQuality imageInterpolationQuality;
+    };
+
+    void pushState()
+    {
+    	m_graphicsState = new CustomGraphicsState(m_graphicsState);
+        view()->PushState();
+        resetClipping();
+    }
+
+    void popState()
+    {
+    	ASSERT(m_graphicsState->previous);
+    	if (!m_graphicsState->previous)
+    	    return;
+
+    	CustomGraphicsState* oldTop = m_graphicsState;
+    	m_graphicsState = oldTop->previous;
+    	delete oldTop;
+
+        m_currentLayer->accumulatedOrigin -= view()->Origin();
+        view()->PopState();
+        resetClipping();
+    }
+
     BView* view() const
     {
         return m_currentLayer->view;
@@ -237,10 +276,12 @@ public:
     }
 
     Layer* m_currentLayer;
+    CustomGraphicsState* m_graphicsState;
 };
 
 GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(BView* view)
     : m_currentLayer(new Layer(view))
+    , m_graphicsState(new CustomGraphicsState)
 {
 }
 
@@ -251,6 +292,12 @@ GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
         m_currentLayer = previous;
     }
     delete m_currentLayer;
+
+    while (CustomGraphicsState* previous = m_graphicsState->previous) {
+        delete m_graphicsState;
+        m_graphicsState = previous;
+    }
+    delete m_graphicsState;
 }
 
 GraphicsContext::GraphicsContext(PlatformGraphicsContext* context)
@@ -273,15 +320,12 @@ PlatformGraphicsContext* GraphicsContext::platformContext() const
 
 void GraphicsContext::savePlatformState()
 {
-    m_data->view()->PushState();
-    m_data->resetClipping();
+	m_data->pushState();
 }
 
 void GraphicsContext::restorePlatformState()
 {
-    m_data->m_currentLayer->accumulatedOrigin -= m_data->view()->Origin();
-    m_data->view()->PopState();
-    m_data->resetClipping();
+	m_data->popState();
 }
 
 // Draws a filled rectangle with a stroked border.
@@ -893,8 +937,14 @@ void GraphicsContext::setPlatformShouldAntialias(bool enable)
     notImplemented();
 }
 
-void GraphicsContext::setImageInterpolationQuality(InterpolationQuality)
+void GraphicsContext::setImageInterpolationQuality(InterpolationQuality quality)
 {
+    m_data->m_graphicsState->imageInterpolationQuality = quality;
+}
+
+InterpolationQuality GraphicsContext::imageInterpolationQuality() const
+{
+    return m_data->m_graphicsState->imageInterpolationQuality;
 }
 
 void GraphicsContext::setURLForRect(const KURL& link, const IntRect& destRect)
