@@ -38,7 +38,18 @@ const bigtime_t		kMicrosecondsPerDay			= 86400000000LL;
 	but be aware IsValid() will return false.
 */
 BTime::BTime()
-	: fMicroseconds(-1)
+	:
+	fMicroseconds(-1)
+{
+}
+
+
+/*!
+	Constructs a new BTime object as a copy of \c other.
+*/
+BTime::BTime(const BTime& other)
+	:
+	fMicroseconds(other.fMicroseconds)
 {
 }
 
@@ -51,7 +62,8 @@ BTime::BTime()
 	specified time is invalid, the time is not set and IsValid() returns false.
 */
 BTime::BTime(int32 hour, int32 minute, int32 second, int32 microsecond)
-	: fMicroseconds(-1)
+	:
+	fMicroseconds(-1)
 {
 	_SetTime(hour, minute, second, microsecond);
 }
@@ -61,7 +73,8 @@ BTime::BTime(int32 hour, int32 minute, int32 second, int32 microsecond)
 	Constructs a new BTime object from the provided BMessage archive.
 */
 BTime::BTime(const BMessage* archive)
-	: fMicroseconds(-1)
+	:
+	fMicroseconds(-1)
 {
 	if (archive == NULL)
 		return;
@@ -192,10 +205,11 @@ BTime::SetTime(int32 hour, int32 minute, int32 second, int32 microsecond)
 	Adds \c hours to the current time. If the passed value is negativ it will
 	become earlier. Note: The time will wrap if it passes midnight.
 */
-void
+BTime&
 BTime::AddHours(int32 hours)
 {
-	_AddMicroseconds(bigtime_t(hours % kHoursPerDay) * kMicrosecondsPerHour);
+	return _AddMicroseconds(bigtime_t(hours % kHoursPerDay)
+		* kMicrosecondsPerHour);
 }
 
 
@@ -203,11 +217,11 @@ BTime::AddHours(int32 hours)
 	Adds \c minutes to the current time. If the passed value is negativ it will
 	become earlier. Note: The time will wrap if it passes midnight.
 */
-void
+BTime&
 BTime::AddMinutes(int32 minutes)
 {
-	_AddMicroseconds(bigtime_t(minutes % kMinutesPerDay) *
-		kMicrosecondsPerMinute);
+	return _AddMicroseconds(bigtime_t(minutes % kMinutesPerDay)
+		* kMicrosecondsPerMinute);
 }
 
 
@@ -215,11 +229,11 @@ BTime::AddMinutes(int32 minutes)
 	Adds \c seconds to the current time. If the passed value is negativ it will
 	become earlier. Note: The time will wrap if it passes midnight.
 */
-void
+BTime&
 BTime::AddSeconds(int32 seconds)
 {
-	_AddMicroseconds(bigtime_t(seconds % kSecondsPerDay) *
-		kMicrosecondsPerSecond);
+	return _AddMicroseconds(bigtime_t(seconds % kSecondsPerDay)
+		* kMicrosecondsPerSecond);
 }
 
 
@@ -227,10 +241,11 @@ BTime::AddSeconds(int32 seconds)
 	Adds \c milliseconds to the current time. If the passed value is negativ it
 	will become earlier. Note: The time will wrap if it passes midnight.
 */
-void
+BTime&
 BTime::AddMilliseconds(int32 milliseconds)
 {
-	_AddMicroseconds(bigtime_t(milliseconds % kMillisecondsPerDay) * 1000);
+	return _AddMicroseconds(bigtime_t(milliseconds % kMillisecondsPerDay)
+		* 1000);
 }
 
 
@@ -238,10 +253,10 @@ BTime::AddMilliseconds(int32 milliseconds)
 	Adds \c microseconds to the current time. If the passed value is negativ it
 	will become earlier. Note: The time will wrap if it passes midnight.
 */
-void
+BTime&
 BTime::AddMicroseconds(int32 microseconds)
 {
-	_AddMicroseconds(microseconds);
+	return _AddMicroseconds(microseconds);
 }
 
 
@@ -396,7 +411,7 @@ BTime::operator>=(const BTime& time) const
 }
 
 
-void
+BTime&
 BTime::_AddMicroseconds(bigtime_t microseconds)
 {
 	bigtime_t count = 0;
@@ -405,6 +420,7 @@ BTime::_AddMicroseconds(bigtime_t microseconds)
 			kMicrosecondsPerDay;
 	}
 	fMicroseconds = (_Microseconds() + microseconds + count) % kMicrosecondsPerDay;
+	return *this;
 }
 
 
@@ -432,9 +448,22 @@ BTime::_SetTime(bigtime_t hour, bigtime_t minute, bigtime_t second,
 	Constructs a new BDate object. IsValid() will return false.
 */
 BDate::BDate()
-	: fDay(-1),
-	  fYear(0),
-	  fMonth(-1)
+	:
+	fDay(-1),
+	fYear(0),
+	fMonth(-1)
+{
+}
+
+
+/*!
+	Constructs a new BDate object as a copy of \c other.
+*/
+BDate::BDate(const BDate& other)
+	:
+	fDay(other.fDay),
+	fYear(other.fYear),
+	fMonth(other.fMonth)
 {
 }
 
@@ -458,9 +487,10 @@ BDate::BDate(int32 year, int32 month, int32 day)
 	Constructs a new BDate object from the provided archive.
 */
 BDate::BDate(const BMessage* archive)
-	: fDay(-1),
-	  fYear(0),
-	  fMonth(-1)
+	:
+	fDay(-1),
+	fYear(0),
+	fMonth(-1)
 {
 	if (archive == NULL)
 		return;
@@ -864,12 +894,22 @@ BDate::DaysInMonth() const
 
 
 /*!
+	Returns the short day name of this object.
+*/
+BString
+BDate::ShortDayName() const
+{
+	return ShortDayName(DayOfWeek());
+}
+
+
+/*!
 	Returns the short day name in case of an valid day, otherwise an empty
 	string. The passed \c day must be in the range of 1 to 7 while 1 stands for
 	monday.
 */
-BString
-BDate::ShortDayName(int32 day) const
+/*static*/ BString
+BDate::ShortDayName(int32 day)
 {
 	if (day < 1 || day > 7)
 		return BString();
@@ -886,11 +926,21 @@ BDate::ShortDayName(int32 day) const
 
 
 /*!
+	Returns the short month name of this object.
+*/
+BString
+BDate::ShortMonthName() const
+{
+	return ShortMonthName(Month());
+}
+
+
+/*!
 	Returns the short month name in case of an valid month, otherwise an empty
 	string. The passed \c month must be in the range of 1 to 12.
 */
-BString
-BDate::ShortMonthName(int32 month) const
+/*static*/ BString
+BDate::ShortMonthName(int32 month)
 {
 	if (month < 1 || month > 12)
 		return BString();
@@ -907,12 +957,22 @@ BDate::ShortMonthName(int32 month) const
 
 
 /*!
+	Returns the long day name of this object's week day.
+*/
+BString
+BDate::LongDayName() const
+{
+	return LongDayName(DayOfWeek());
+}
+
+
+/*!
 	Returns the long day name in case of an valid day, otherwise an empty
 	string. The passed \c day must be in the range of 1 to 7 while 1 stands for
 	monday.
 */
-BString
-BDate::LongDayName(int32 day) const
+/*static*/ BString
+BDate::LongDayName(int32 day)
 {
 	if (day < 1 || day > 7)
 		return BString();
@@ -929,11 +989,21 @@ BDate::LongDayName(int32 day) const
 
 
 /*!
+	Returns the long month name of this object's month.
+*/
+BString
+BDate::LongMonthName() const
+{
+	return LongMonthName(Month());
+}
+
+
+/*!
 	Returns the long month name in case of an valid month, otherwise an empty
 	string. The passed \c month must be in the range of 1 to 12.
 */
-BString
-BDate::LongMonthName(int32 month) const
+/*static*/ BString
+BDate::LongMonthName(int32 month)
 {
 	if (month < 1 || month > 12)
 		return BString();
@@ -1218,7 +1288,17 @@ BDateTime::SetDateTime(const BDate& date, const BTime& time)
 /*!
 	Returns the current date of this object.
 */
-BDate
+BDate&
+BDateTime::Date()
+{
+	return fDate;
+}
+
+
+/*!
+	Returns the current date of this object.
+*/
+const BDate&
 BDateTime::Date() const
 {
 	return fDate;
@@ -1238,7 +1318,17 @@ BDateTime::SetDate(const BDate& date)
 /*!
 	Returns the current time of this object.
 */
-BTime
+BTime&
+BDateTime::Time()
+{
+	return fTime;
+}
+
+
+/*!
+	Returns the current time of this object.
+*/
+const BTime&
 BDateTime::Time() const
 {
 	return fTime;
@@ -1328,7 +1418,11 @@ BDateTime::operator==(const BDateTime& dateTime) const
 bool
 BDateTime::operator<(const BDateTime& dateTime) const
 {
-	return fTime < dateTime.fTime && fDate < dateTime.fDate;
+	if (fDate < dateTime.fDate)
+		return true;
+	if (fDate == dateTime.fDate)
+		return fTime < dateTime.fTime;
+	return false;
 }
 
 
@@ -1339,7 +1433,11 @@ BDateTime::operator<(const BDateTime& dateTime) const
 bool
 BDateTime::operator<=(const BDateTime& dateTime) const
 {
-	return fTime <= dateTime.fTime && fDate <= dateTime.fDate;
+	if (fDate < dateTime.fDate)
+		return true;
+	if (fDate == dateTime.fDate)
+		return fTime <= dateTime.fTime;
+	return false;
 }
 
 
@@ -1349,7 +1447,11 @@ BDateTime::operator<=(const BDateTime& dateTime) const
 bool
 BDateTime::operator>(const BDateTime& dateTime) const
 {
-	return fTime > dateTime.fTime && fDate > dateTime.fDate;
+	if (fDate > dateTime.fDate)
+		return true;
+	if (fDate == dateTime.fDate)
+		return fTime > dateTime.fTime;
+	return false;
 }
 
 
@@ -1360,7 +1462,11 @@ BDateTime::operator>(const BDateTime& dateTime) const
 bool
 BDateTime::operator>=(const BDateTime& dateTime) const
 {
-	return fTime >= dateTime.fTime && fDate >= dateTime.fDate;
+	if (fDate > dateTime.fDate)
+		return true;
+	if (fDate == dateTime.fDate)
+		return fTime >= dateTime.fTime;
+	return false;
 }
 
 

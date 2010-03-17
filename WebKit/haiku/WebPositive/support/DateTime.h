@@ -33,6 +33,7 @@ enum diff_type {
 class BTime {
 public:
 								BTime();
+								BTime(const BTime& other);
 								BTime(int32 hour, int32 minute, int32 second,
 									int32 microsecond = 0);
 								BTime(const BMessage* archive);
@@ -52,11 +53,11 @@ public:
 			bool				SetTime(int32 hour, int32 minute, int32 second,
 									int32 microsecond = 0);
 
-			void				AddHours(int32 hours);
-			void				AddMinutes(int32 minutes);
-			void				AddSeconds(int32 seconds);
-			void				AddMilliseconds(int32 milliseconds);
-			void				AddMicroseconds(int32 microseconds);
+			BTime&				AddHours(int32 hours);
+			BTime&				AddMinutes(int32 minutes);
+			BTime&				AddSeconds(int32 seconds);
+			BTime&				AddMilliseconds(int32 milliseconds);
+			BTime&				AddMicroseconds(int32 microseconds);
 
 			int32				Hour() const;
 			int32				Minute() const;
@@ -77,7 +78,7 @@ public:
 
 private:
 			bigtime_t			_Microseconds() const;
-			void				_AddMicroseconds(bigtime_t microseconds);
+			BTime&				_AddMicroseconds(bigtime_t microseconds);
 			bool				_SetTime(bigtime_t hour, bigtime_t minute,
 									bigtime_t second, bigtime_t microsecond);
 
@@ -89,6 +90,7 @@ private:
 class BDate {
 public:
 								BDate();
+								BDate(const BDate& other);
 								BDate(int32 year, int32 month, int32 day);
 								BDate(const BMessage* archive);
 								~BDate();
@@ -126,11 +128,17 @@ public:
 			int32				DaysInYear() const;
 			int32				DaysInMonth() const;
 
-			BString				ShortDayName(int32 day) const;
-			BString				ShortMonthName(int32 month) const;
+			BString				ShortDayName() const;
+	static	BString				ShortDayName(int32 day);
 
-			BString				LongDayName(int32 day) const;
-			BString				LongMonthName(int32 month) const;
+			BString				ShortMonthName() const;
+	static	BString				ShortMonthName(int32 month);
+
+			BString				LongDayName() const;
+	static	BString				LongDayName(int32 day);
+
+			BString				LongMonthName() const;
+	static	BString				LongMonthName(int32 month);
 
 			int32				DateToJulianDay() const;
 	static	BDate				JulianDayToDate(int32 julianDay);
@@ -171,10 +179,12 @@ public:
 	static	BDateTime			CurrentDateTime(time_type type);
 			void				SetDateTime(const BDate &date, const BTime &time);
 
-			BDate				Date() const;
+			BDate&				Date();
+			const BDate&		Date() const;
 			void				SetDate(const BDate &date);
 
-			BTime				Time() const;
+			BTime&				Time();
+			const BTime&		Time() const;
 			void				SetTime(const BTime &time);
 
 			int32				Time_t() const;
