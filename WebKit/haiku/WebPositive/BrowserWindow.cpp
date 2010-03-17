@@ -683,6 +683,16 @@ BrowserWindow::QuitRequested()
 }
 
 
+static void
+addOrDeleteMenu(BMenu* menu, BMenu* toMenu)
+{
+	if (menu->CountItems() > 0)
+		toMenu->AddItem(menu);
+	else
+		delete menu;
+}
+
+
 void
 BrowserWindow::MenusBeginning()
 {
@@ -695,25 +705,78 @@ BrowserWindow::MenusBeginning()
 		return;
 
 	int32 count = history->countItems();
+	BMenuItem* clearHistoryItem = new BMenuItem("Clear history",
+		new BMessage(CLEAR_HISTORY));
+	clearHistoryItem->SetEnabled(count > 0);
+	fGoMenu->AddItem(clearHistoryItem);
+	if (count == 0) {
+		history->Unlock();
+		return;
+	}
+	fGoMenu->AddSeparatorItem();
+
+	BDateTime todayStart = BDateTime::CurrentDateTime(B_LOCAL_TIME);
+	todayStart.SetTime(BTime(0, 0, 0));
+
+	BDateTime oneDayAgoStart = todayStart;
+	oneDayAgoStart.Date().AddDays(-1);
+
+	BDateTime twoDaysAgoStart = oneDayAgoStart;
+	twoDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime threeDaysAgoStart = twoDaysAgoStart;
+	threeDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime fourDaysAgoStart = threeDaysAgoStart;
+	fourDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime fiveDaysAgoStart = fourDaysAgoStart;
+	fiveDaysAgoStart.Date().AddDays(-1);
+
+	BMenu* todayMenu = new BMenu("Today");
+	BMenu* yesterdayMenu = new BMenu("Yesterday");
+	BMenu* twoDaysAgoMenu = new BMenu(
+		twoDaysAgoStart.Date().LongDayName().String());
+	BMenu* threeDaysAgoMenu = new BMenu(
+		threeDaysAgoStart.Date().LongDayName().String());
+	BMenu* fourDaysAgoMenu = new BMenu(
+		fourDaysAgoStart.Date().LongDayName().String());
+	BMenu* fiveDaysAgoMenu = new BMenu(
+		fiveDaysAgoStart.Date().LongDayName().String());
+	BMenu* earlierMenu = new BMenu("Earlier");
+
 	for (int32 i = 0; i < count; i++) {
 		BrowsingHistoryItem historyItem = history->historyItemAt(i);
 		BMessage* message = new BMessage(GOTO_URL);
 		message->AddString("url", historyItem.url().String());
-		// TODO: More sophisticated menu structure... sorted by days/weeks...
+
 		BString truncatedUrl(historyItem.url());
 		be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
 		menuItem = new BMenuItem(truncatedUrl, message);
-		fGoMenu->AddItem(menuItem);
+
+		if (historyItem.dateTime() < fiveDaysAgoStart)
+			earlierMenu->AddItem(menuItem);
+		else if (historyItem.dateTime() < fourDaysAgoStart)
+			fiveDaysAgoMenu->AddItem(menuItem);
+		else if (historyItem.dateTime() < threeDaysAgoStart)
+			fourDaysAgoMenu->AddItem(menuItem);
+		else if (historyItem.dateTime() < twoDaysAgoStart)
+			threeDaysAgoMenu->AddItem(menuItem);
+		else if (historyItem.dateTime() < oneDayAgoStart)
+			twoDaysAgoMenu->AddItem(menuItem);
+		else if (historyItem.dateTime() < todayStart)
+			yesterdayMenu->AddItem(menuItem);
+		else
+			todayMenu->AddItem(menuItem);
 	}
-
-
-	if (fGoMenu->CountItems() > 3) {
-		fGoMenu->AddSeparatorItem();
-		fGoMenu->AddItem(new BMenuItem("Clear history",
-			new BMessage(CLEAR_HISTORY)));
-	}
-
 	history->Unlock();
+
+	addOrDeleteMenu(todayMenu, fGoMenu);
+	addOrDeleteMenu(yesterdayMenu, fGoMenu);
+	addOrDeleteMenu(twoDaysAgoMenu, fGoMenu);
+	addOrDeleteMenu(fourDaysAgoMenu, fGoMenu);
+	addOrDeleteMenu(fiveDaysAgoMenu, fGoMenu);
+	addOrDeleteMenu(earlierMenu, fGoMenu);
 }
 
 
