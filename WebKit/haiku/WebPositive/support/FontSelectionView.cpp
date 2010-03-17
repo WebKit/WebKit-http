@@ -77,11 +77,11 @@ FontSelectionView::FontSelectionView(const char* name, const char* label,
 	fPreviewText = new BStringView("preview text",
 		TR_CMT("The quick brown fox jumps over the lazy dog.","Don't translate this literally ! Use a phrase showing all chars from A to Z.")); 
 
-	fPreviewText->SetFont(&fCurrentFont);
 	fPreviewText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED)); 
 	fPreviewText->SetHighColor(tint_color(ui_color(B_PANEL_BACKGROUND_COLOR),
 		1.65));
 	fPreviewText->SetAlignment(B_ALIGN_RIGHT);
+	_UpdateFontPreview();
 }
 
 
