@@ -409,23 +409,22 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
     m_data->view()->SetPenSize(penSize);
     BRect bRect(rect.x(), rect.y(), rect.right(), rect.bottom());
     if (startAngle >= 0 && startAngle < 90) {
-        bRect.right -= penSize;
-        bRect.top += penSize / 2.0f;
-        bRect.bottom -= penSize / 2.0f;
+        bRect.right -= penSize / 2 + 0.5;
+        bRect.top += penSize / 2 - 0.5;
+        bRect.bottom -= penSize / 2 - 0.5;
     } else if (startAngle >= 90 && startAngle < 180) {
-        bRect.left += penSize / 2.0f;
-        bRect.top += penSize / 2.0f;
-        bRect.right -= penSize / 2.0f;
-        bRect.bottom -= penSize / 2.0f;
+        bRect.left += penSize / 2 - 0.5;
+        bRect.top += penSize / 2 - 0.5;
+        bRect.right -= penSize / 2 - 0.5;
+        bRect.bottom -= penSize / 2 - 0.5;
     } else if (startAngle >= 180 && startAngle < 270) {
-        bRect.left += penSize / 2.0f;
-        bRect.right -= penSize / 2.0f;
-        bRect.bottom -= penSize;
+        bRect.left += penSize / 2 - 0.5;
+        bRect.right -= penSize / 2 - 0.5;
+        bRect.bottom -= penSize / 2 + 0.5;
     } else if (startAngle >= 270 && startAngle < 360) {
-        bRect.right -= penSize;
-        bRect.bottom -= penSize;
+        bRect.right -= penSize / 2 + 0.5;
+        bRect.bottom -= penSize / 2 + 0.5;
     }
-    bRect.OffsetTo(floorf(bRect.left), floorf(bRect.top));
     uint32 flags = m_data->view()->Flags();
     m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
     m_data->view()->StrokeArc(bRect, startAngle, angleSpan, getHaikuStrokeStyle());
