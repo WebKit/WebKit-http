@@ -154,7 +154,7 @@ BrowsingHistory::BrowsingHistory()
 
 		BMessage historyItemArchive;
 		for (int32 i = 0; settingsArchive.FindMessage("history item", i, &historyItemArchive) == B_OK; i++) {
-			privateAddItem(BrowsingHistoryItem(&historyItemArchive), false);
+			privateAddItem(BrowsingHistoryItem(&historyItemArchive), true);
 			historyItemArchive.MakeEmpty();
 		}
 	}
@@ -206,6 +206,8 @@ void BrowsingHistory::clear()
     saveSettings();
 }	
 
+// #pragma mark - private
+
 void BrowsingHistory::privateClear()
 {
 	int32 count = countItems();
@@ -247,8 +249,6 @@ bool BrowsingHistory::privateAddItem(const BrowsingHistoryItem& item, bool inter
 
     return true;
 }
-
-// #pragma mark - private
 
 void BrowsingHistory::saveSettings()
 {
