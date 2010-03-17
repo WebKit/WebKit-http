@@ -79,6 +79,7 @@ private:
     BrowsingHistory();
     virtual ~BrowsingHistory();
     void privateClear();
+    bool privateAddItem(const BrowsingHistoryItem& item, bool invoke);
 
     void saveSettings();
 	bool openSettingsFile(BFile& file, uint32 mode);

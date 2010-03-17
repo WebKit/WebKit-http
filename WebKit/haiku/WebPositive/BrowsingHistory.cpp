@@ -154,7 +154,7 @@ BrowsingHistory::BrowsingHistory()
 
 		BMessage historyItemArchive;
 		for (int32 i = 0; settingsArchive.FindMessage("history item", i, &historyItemArchive) == B_OK; i++) {
-			addItem(BrowsingHistoryItem(&historyItemArchive));
+			privateAddItem(BrowsingHistoryItem(&historyItemArchive), false);
 			historyItemArchive.MakeEmpty();
 		}
 	}
@@ -177,28 +177,7 @@ bool BrowsingHistory::addItem(const BrowsingHistoryItem& item)
 {
 	BAutolock _(this);
 
-    int32 count = countItems();
-    int32 insertionIndex = count;
-    for (int32 i = 0; i < count; i++) {
-    	BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
-    	    m_historyItems.ItemAtFast(i));
-    	if (item.url() == existingItem->url()) {
-    		existingItem->invoked();
-    		return true;
-    	}
-    	if (item < *existingItem)
-    	    insertionIndex = i;
-    }
-    BrowsingHistoryItem* newItem = new(std::nothrow) BrowsingHistoryItem(item);
-    if (!newItem || !m_historyItems.AddItem(newItem, insertionIndex)) {
-    	delete newItem;
-        return false;
-    }
-
-    newItem->invoked();
-    saveSettings();
-
-    return true;
+    return privateAddItem(item, false);
 }
 
 int32 BrowsingHistory::BrowsingHistory::countItems() const
@@ -236,6 +215,37 @@ void BrowsingHistory::privateClear()
         delete item;
 	}
 	m_historyItems.MakeEmpty();
+}
+
+bool BrowsingHistory::privateAddItem(const BrowsingHistoryItem& item, bool internal)
+{
+    int32 count = countItems();
+    int32 insertionIndex = count;
+    for (int32 i = 0; i < count; i++) {
+    	BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
+    	    m_historyItems.ItemAtFast(i));
+    	if (item.url() == existingItem->url()) {
+    		if (!internal) {
+	    		existingItem->invoked();
+			    saveSettings();
+    		}
+    		return true;
+    	}
+    	if (item < *existingItem)
+    	    insertionIndex = i;
+    }
+    BrowsingHistoryItem* newItem = new(std::nothrow) BrowsingHistoryItem(item);
+    if (!newItem || !m_historyItems.AddItem(newItem, insertionIndex)) {
+    	delete newItem;
+        return false;
+    }
+
+    if (!internal) {
+	    newItem->invoked();
+	    saveSettings();
+    }
+
+    return true;
 }
 
 // #pragma mark - private
