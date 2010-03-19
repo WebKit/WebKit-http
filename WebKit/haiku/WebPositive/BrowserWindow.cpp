@@ -832,7 +832,7 @@ BrowserWindow::CreateNewTab(const BString& url, bool select, BWebView* webView)
 	if (select) {
 		fTabManager->SelectTab(fTabManager->CountTabs() - 1);
 		SetCurrentWebView(webView);
-		NavigationCapabilitiesChanged(false, false, false, webView);
+		webView->WebPage()->ResendNotifications();
 		if (fURLTextControl) {
 			fURLTextControl->SetText(url.String());
 			fURLTextControl->MakeFocus(true);
@@ -880,7 +880,7 @@ BrowserWindow::LoadNegotiating(const BString& url, BWebView* view)
 {
 	BString status("Requesting: ");
 	status << url;
-	StatusChanged(status, view);
+	view->WebPage()->SetStatusMessage(status);
 }
 
 
@@ -896,7 +896,7 @@ BrowserWindow::LoadCommitted(const BString& url, BWebView* view)
 
 	BString status("Loading: ");
 	status << url;
-	StatusChanged(status, view);
+	view->WebPage()->SetStatusMessage(status);
 }
 
 
@@ -909,6 +909,8 @@ BrowserWindow::LoadProgress(float progress, BWebView* view)
 	if (fLoadingProgressBar) {
 		if (progress < 100 && fLoadingProgressBar->IsHidden())
 			fLoadingProgressBar->Show();
+		else if (progress == 100 && !fLoadingProgressBar->IsHidden())
+			fLoadingProgressBar->Hide();
 		fLoadingProgressBar->SetTo(progress);
 	}
 }
@@ -922,7 +924,7 @@ BrowserWindow::LoadFailed(const BString& url, BWebView* view)
 
 	BString status(url);
 	status << " failed.";
-	StatusChanged(status, view);
+	view->WebPage()->SetStatusMessage(status);
 	if (fLoadingProgressBar && !fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
 }
@@ -936,7 +938,7 @@ BrowserWindow::LoadFinished(const BString& url, BWebView* view)
 
 	BString status(url);
 	status << " finished.";
-	StatusChanged(status, view);
+	view->WebPage()->SetStatusMessage(status);
 	if (fLoadingProgressBar && !fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
 

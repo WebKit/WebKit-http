@@ -106,6 +106,7 @@ public:
 									bool wrapSelection = true,
 									bool startInSelection = false);
 
+			void				SetStatusMessage(const BString& status);
 			void				ResendNotifications();
 
 	static	void				RequestDownload(const BString& url);
@@ -133,7 +134,7 @@ private:
 private:
 	// The following methods are only supposed to be called by the
 	// ChromeClientHaiku and FrameLoaderHaiku code! Not from within the window
-	// thread! This needs to go into a private class.
+	// thread! This coud go into a private class.
 	friend class WebCore::ChromeClientHaiku;
 	friend class WebCore::ContextMenuClientHaiku;
 	friend class WebCore::DragClientHaiku;
@@ -152,13 +153,13 @@ private:
 	void setViewBounds(const BRect& bounds);
 
 	void setToolbarsVisible(bool);
-	bool areToolbarsVisible() const { return m_toolbarsVisible; }
+	bool areToolbarsVisible() const { return fToolbarsVisible; }
 
 	void setStatusbarVisible(bool);
-	bool isStatusbarVisible() const { return m_statusbarVisible; }
+	bool isStatusbarVisible() const { return fStatusbarVisible; }
 
 	void setMenubarVisible(bool);
-	bool isMenubarVisible() const { return m_menubarVisible; }
+	bool isMenubarVisible() const { return fMenubarVisible; }
 
 	void setResizable(bool);
 	void closeWindow();
@@ -181,6 +182,9 @@ private:
 	void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
 		const BRect& clipRect);
 	void internalPaint(BView* view, BRegion* dirty);
+
+	void setLoadingProgress(float progress);
+	void setStatusMessage(const BString& message);
 
 private:
 	virtual						~BWebPage();
@@ -207,19 +211,22 @@ private:
     status_t dispatchMessage(BMessage& message) const;
 
 private:
-    BMessenger m_listener;
-	static BMessenger sDownloadListener;
-	BWebView* m_webView;
-	BWebFrame* m_mainFrame;
-	BWebSettings* m_settings;
-	WebCore::Page* m_page;
+    		BMessenger			fListener;
+	static	BMessenger			sDownloadListener;
+			BWebView*			fWebView;
+			BWebFrame*			fMainFrame;
+			BWebSettings*		fSettings;
+			WebCore::Page*		fPage;
 
-    bool m_pageVisible;
-    bool m_pageDirty;
+			float				fLoadingProgress;
+			BString				fStatusMessage;
 
-	bool m_toolbarsVisible;
-	bool m_statusbarVisible;
-	bool m_menubarVisible;
+		    bool				fPageVisible;
+		    bool				fPageDirty;
+
+			bool				fToolbarsVisible;
+			bool				fStatusbarVisible;
+			bool				fMenubarVisible;
 };
 
 #endif // _WEB_PAGE_H

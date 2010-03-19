@@ -111,6 +111,7 @@ enum {
     HANDLE_CHANGE_TEXT_SIZE = 'txts',
     HANDLE_FIND_STRING = 'find',
 
+    HANDLE_SET_STATUS_MESSAGE = 'stsm',
     HANDLE_RESEND_NOTIFICATIONS = 'rsnt'
 };
 
@@ -172,17 +173,19 @@ BMessenger BWebPage::sDownloadListener;
 
 BWebPage::BWebPage(BWebView* webView)
     : BHandler("BWebPage")
-    , m_webView(webView)
-    , m_mainFrame(0)
-    , m_settings(0)
-    , m_page(0)
-    , m_pageVisible(true)
-    , m_pageDirty(false)
-    , m_toolbarsVisible(true)
-    , m_statusbarVisible(true)
-    , m_menubarVisible(true)
+    , fWebView(webView)
+    , fMainFrame(0)
+    , fSettings(0)
+    , fPage(0)
+    , fLoadingProgress(100)
+    , fStatusMessage()
+    , fPageVisible(true)
+    , fPageDirty(false)
+    , fToolbarsVisible(true)
+    , fStatusbarVisible(true)
+    , fMenubarVisible(true)
 {
-    m_page = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
+    fPage = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
                                new WebCore::ContextMenuClientHaiku(this),
                                new WebCore::EditorClientHaiku(this),
                                new WebCore::DragClientHaiku(webView),
@@ -190,7 +193,7 @@ BWebPage::BWebPage(BWebView* webView)
                                0,
                                0);
 
-    m_settings = new BWebSettings(m_page->settings());
+    fSettings = new BWebSettings(fPage->settings());
 }
 
 BWebPage::~BWebPage()
@@ -200,21 +203,21 @@ BWebPage::~BWebPage()
 	// timer functions would then operate on stale pointers.
 	// Calling detachFromParent() on the FrameLoader will recursively detach
 	// all child frames, as well as stop all loaders before doing that.
-    if (m_mainFrame && m_mainFrame->Frame())
-        m_mainFrame->Frame()->loader()->detachFromParent();
+    if (fMainFrame && fMainFrame->Frame())
+        fMainFrame->Frame()->loader()->detachFromParent();
 
     // NOTE: The m_webFrame member will be deleted by the
     // FrameLoaderClientHaiku, when the WebCore::Frame/FrameLoader instance is
     // free'd. For sub-frames, we don't maintain them anyway, and for the
     // main frame, the same mechanism is used.
-    delete m_settings;
-    delete m_page;
+    delete fSettings;
+    delete fPage;
     // Deleting the BWebView is deferred here to keep it alive in
     // case some timers still fired after the view calling Shutdown() but
     // before we processed the shutdown message. If the BWebView had already
     // deleted itself before we reach the shutdown message, there would be
     // a race condition and chance to operate on a stale BWebView pointer.
-    delete m_webView;
+    delete fWebView;
 }
 
 // #pragma mark - public
@@ -222,9 +225,9 @@ BWebPage::~BWebPage()
 void BWebPage::Init()
 {
 	WebFramePrivate* data = new WebFramePrivate;
-	data->page = m_page;
+	data->page = fPage;
 
-    m_mainFrame = new BWebFrame(this, 0, data);
+    fMainFrame = new BWebFrame(this, 0, data);
 }
 
 void BWebPage::Shutdown()
@@ -235,8 +238,8 @@ void BWebPage::Shutdown()
 
 void BWebPage::SetListener(const BMessenger& listener)
 {
-	m_listener = listener;
-    m_mainFrame->SetListener(listener);
+	fListener = listener;
+    fMainFrame->SetListener(listener);
 }
 
 void BWebPage::SetDownloadListener(const BMessenger& listener)
@@ -300,6 +303,13 @@ void BWebPage::FindString(const char* string, bool forward, bool caseSensitive,
     Looper()->PostMessage(&message, this);
 }
 
+void BWebPage::SetStatusMessage(const BString& status)
+{
+    BMessage message(HANDLE_SET_STATUS_MESSAGE);
+    message.AddString("string", status);
+    Looper()->PostMessage(&message, this);
+}
+
 void BWebPage::ResendNotifications()
 {
     BMessage message(HANDLE_RESEND_NOTIFICATIONS);
@@ -314,32 +324,32 @@ void BWebPage::ResendNotifications()
 
 BWebFrame* BWebPage::MainFrame() const
 {
-    return m_mainFrame;
+    return fMainFrame;
 };
 
 BWebSettings* BWebPage::Settings() const
 {
-    return m_settings;
+    return fSettings;
 };
 
 BWebView* BWebPage::WebView() const
 {
-    return m_webView;
+    return fWebView;
 }
 
 BString BWebPage::MainFrameTitle() const
 {
-    return m_mainFrame->Title();
+    return fMainFrame->Title();
 }
 
 BString BWebPage::MainFrameRequestedURL() const
 {
-    return m_mainFrame->RequestedURL();
+    return fMainFrame->RequestedURL();
 }
 
 BString BWebPage::MainFrameURL() const
 {
-    return m_mainFrame->URL();
+    return fMainFrame->URL();
 }
 
 // #pragma mark - BWebView API
@@ -442,7 +452,7 @@ void BWebPage::standardShortcut(const BMessage* message)
 
 WebCore::Page* BWebPage::page() const
 {
-    return m_page;
+    return fPage;
 }
 
 WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resizable)
@@ -462,7 +472,7 @@ WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resiz
 
     // Block until some window has embedded this view.
     BMessage reply;
-    m_listener.SendMessage(&message, &reply);
+    fListener.SendMessage(&message, &reply);
 
     return page->page();
 }
@@ -470,43 +480,43 @@ WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resiz
 BRect BWebPage::windowBounds()
 {
     BRect bounds;
-    if (m_webView->LockLooper()) {
-        bounds = m_webView->Window()->Bounds();
-        m_webView->UnlockLooper();
+    if (fWebView->LockLooper()) {
+        bounds = fWebView->Window()->Bounds();
+        fWebView->UnlockLooper();
     }
     return bounds;
 }
 
 void BWebPage::setWindowBounds(const BRect& bounds)
 {
-    if (m_webView->LockLooper()) {
-        m_webView->Window()->MoveTo(bounds.LeftTop());
-        m_webView->Window()->ResizeTo(bounds.Width(), bounds.Height());
-        m_webView->UnlockLooper();
+    if (fWebView->LockLooper()) {
+        fWebView->Window()->MoveTo(bounds.LeftTop());
+        fWebView->Window()->ResizeTo(bounds.Width(), bounds.Height());
+        fWebView->UnlockLooper();
     }
 }
 
 BRect BWebPage::viewBounds()
 {
     BRect bounds;
-    if (m_webView->LockLooper()) {
-        bounds = m_webView->Bounds();
-        m_webView->UnlockLooper();
+    if (fWebView->LockLooper()) {
+        bounds = fWebView->Bounds();
+        fWebView->UnlockLooper();
     }
     return bounds;
 }
 
 void BWebPage::setViewBounds(const BRect& bounds)
 {
-    if (m_webView->LockLooper()) {
+    if (fWebView->LockLooper()) {
         // TODO: Implement this with layout management, i.e. SetExplicitMinSize() or something...
-        m_webView->UnlockLooper();
+        fWebView->UnlockLooper();
     }
 }
 
 void BWebPage::setToolbarsVisible(bool flag)
 {
-    m_toolbarsVisible = flag;
+    fToolbarsVisible = flag;
 
     BMessage message(TOOLBARS_VISIBILITY);
     message.AddBool("flag", flag);
@@ -515,7 +525,7 @@ void BWebPage::setToolbarsVisible(bool flag)
 
 void BWebPage::setStatusbarVisible(bool flag)
 {
-    m_statusbarVisible = flag;
+    fStatusbarVisible = flag;
 
     BMessage message(STATUSBAR_VISIBILITY);
     message.AddBool("flag", flag);
@@ -524,7 +534,7 @@ void BWebPage::setStatusbarVisible(bool flag)
 
 void BWebPage::setMenubarVisible(bool flag)
 {
-    m_menubarVisible = flag;
+    fMenubarVisible = flag;
 
     BMessage message(MENUBAR_VISIBILITY);
     message.AddBool("flag", flag);
@@ -596,17 +606,17 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
     // Block any drawing as long as the BWebView is hidden
     // (should be extended to when the containing BWebWindow is not
     // currently on screen either...)
-    if (!m_pageVisible) {
-        m_pageDirty = true;
+    if (!fPageVisible) {
+        fPageDirty = true;
         return;
     }
 
-    // NOTE: m_mainFrame can be 0 because init() eventually ends up calling
+    // NOTE: fMainFrame can be 0 because init() eventually ends up calling
     // paint()! BWebFrame seems to cause an initial page to be loaded, maybe
     // this ought to be avoided also for start-up speed reasons!
-    if (!m_mainFrame)
+    if (!fMainFrame)
         return;
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = fMainFrame->Frame();
     WebCore::FrameView* view = frame->view();
 
     if (!view || !frame->contentRenderer())
@@ -617,20 +627,20 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
 	// offscreen view lock.
 	view->layoutIfNeededRecursive();
 
-//    if (m_webView->LockLooperWithTimeout(5000) != B_OK)
-    if (!m_webView->LockLooper())
+//    if (fWebView->LockLooperWithTimeout(5000) != B_OK)
+    if (!fWebView->LockLooper())
         return;
-    BView* offscreenView = m_webView->OffscreenView();
+    BView* offscreenView = fWebView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
     // window locked. This cannot deadlock and makes sure
     // the window is not deleting the offscreen view right
     // after we unlock it and before locking the bitmap.
     if (!offscreenView->LockLooper()) {
-    	m_webView->UnlockLooper();
+    	fWebView->UnlockLooper();
     	return;
     }
-    m_webView->UnlockLooper();
+    fWebView->UnlockLooper();
 
     if (!rect.IsValid())
         rect = offscreenView->Bounds();
@@ -639,29 +649,29 @@ void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
 
     offscreenView->UnlockLooper();
 
-    m_pageDirty = false;
+    fPageDirty = false;
 
     // Notify the window that it can now pull the bitmap in its own thread
-    m_webView->SetOffscreenViewClean(rect, immediate);
+    fWebView->SetOffscreenViewClean(rect, immediate);
 }
 
 void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 	const BRect& clipRect)
 {
-    if (!m_webView->LockLooper())
+    if (!fWebView->LockLooper())
         return;
-    BBitmap* bitmap = m_webView->OffscreenBitmap();
-    BView* offscreenView = m_webView->OffscreenView();
+    BBitmap* bitmap = fWebView->OffscreenBitmap();
+    BView* offscreenView = fWebView->OffscreenView();
 
     // Lock the offscreen bitmap while we still have the
     // window locked. This cannot deadlock and makes sure
     // the window is not deleting the offscreen view right
     // after we unlock it and before locking the bitmap.
     if (!bitmap->Lock()) {
-    	m_webView->UnlockLooper();
+    	fWebView->UnlockLooper();
     	return;
     }
-    m_webView->UnlockLooper();
+    fWebView->UnlockLooper();
 
 	BRect clip = offscreenView->Bounds();
 	BRect rectAtSrc = rectToScroll;
@@ -738,18 +748,36 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
     bitmap->Unlock();
 
     // Notify the view that it can now pull the bitmap in its own thread
-    m_webView->SetOffscreenViewClean(rectToScroll, false);
+    fWebView->SetOffscreenViewClean(rectToScroll, false);
 }
 
 void BWebPage::internalPaint(BView* offscreenView, BRegion* dirty)
 {
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = fMainFrame->Frame();
     WebCore::FrameView* view = frame->view();
     offscreenView->PushState();
     offscreenView->ConstrainClippingRegion(dirty);
     WebCore::GraphicsContext context(offscreenView);
     view->paint(&context, IntRect(dirty->Frame()));
     offscreenView->PopState();
+}
+
+void BWebPage::setLoadingProgress(float progress)
+{
+	fLoadingProgress = progress;
+
+	BMessage message(LOAD_PROGRESS);
+	message.AddFloat("progress", progress);
+	dispatchMessage(message);
+}
+
+void BWebPage::setStatusMessage(const BString& statusMessage)
+{
+	fStatusMessage = statusMessage;
+
+	BMessage message(SET_STATUS_TEXT);
+	message.AddString("text", statusMessage);
+	dispatchMessage(message);
 }
 
 // #pragma mark - private
@@ -850,6 +878,13 @@ void BWebPage::MessageReceived(BMessage* message)
         handleFindString(message);
         break;
 
+	case HANDLE_SET_STATUS_MESSAGE: {
+		BString status;
+		if (message->FindString("string", &status) == B_OK)
+			setStatusMessage(status);
+		break;
+	}
+
     case HANDLE_RESEND_NOTIFICATIONS:
         handleResendNotifications(message);
         break;
@@ -909,37 +944,37 @@ void BWebPage::handleLoadURL(const BMessage* message)
     if (message->FindString("url", &urlString) != B_OK)
         return;
 
-    m_mainFrame->LoadURL(urlString);
+    fMainFrame->LoadURL(urlString);
 }
 
 void BWebPage::handleReload(const BMessage* message)
 {
-    m_mainFrame->Reload();
+    fMainFrame->Reload();
 }
 
 void BWebPage::handleGoBack(const BMessage* message)
 {
-    m_page->goBack();
+    fPage->goBack();
 }
 
 void BWebPage::handleGoForward(const BMessage* message)
 {
-    m_page->goForward();
+    fPage->goForward();
 }
 
 void BWebPage::handleStop(const BMessage* message)
 {
-    m_mainFrame->StopLoading();
+    fMainFrame->StopLoading();
 }
 
 void BWebPage::handleSetVisible(const BMessage* message)
 {
-    message->FindBool("visible", &m_pageVisible);
-    if (m_mainFrame->Frame()->view())
-        m_mainFrame->Frame()->view()->setParentVisible(m_pageVisible);
+    message->FindBool("visible", &fPageVisible);
+    if (fMainFrame->Frame()->view())
+        fMainFrame->Frame()->view()->setParentVisible(fPageVisible);
     // Trigger an internal repaint if the page was supposed to be repainted
     // while it was invisible.
-    if (m_pageVisible && m_pageDirty)
+    if (fPageVisible && fPageDirty)
         paint(BRect(), false, false, true);
 }
 
@@ -950,7 +985,7 @@ void BWebPage::handleFrameResized(const BMessage* message)
     message->FindFloat("width", &width);
     message->FindFloat("height", &height);
 
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = fMainFrame->Frame();
     frame->view()->resize(width + 1, height + 1);
 }
 
@@ -959,10 +994,10 @@ void BWebPage::handleFocused(const BMessage* message)
     bool focused;
     message->FindBool("focused", &focused);
 
-    FocusController* focusController = m_page->focusController();
+    FocusController* focusController = fPage->focusController();
     focusController->setFocused(focused);
     if (focused && !focusController->focusedFrame())
-        focusController->setFocusedFrame(m_mainFrame->Frame());
+        focusController->setFocusedFrame(fMainFrame->Frame());
 }
 
 void BWebPage::handleActivated(const BMessage* message)
@@ -970,13 +1005,13 @@ void BWebPage::handleActivated(const BMessage* message)
     bool activated;
     message->FindBool("activated", &activated);
 
-    FocusController* focusController = m_page->focusController();
+    FocusController* focusController = fPage->focusController();
     focusController->setActive(activated);
 }
 
 void BWebPage::handleMouseEvent(const BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = fMainFrame->Frame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -985,14 +1020,14 @@ void BWebPage::handleMouseEvent(const BMessage* message)
     case B_MOUSE_DOWN:
         // Handle context menus, if necessary.
         if (event.button() == RightButton) {
-            m_page->contextMenuController()->clearContextMenu();
+            fPage->contextMenuController()->clearContextMenu();
 
-            WebCore::Frame* focusedFrame = m_page->focusController()->focusedOrMainFrame();
+            WebCore::Frame* focusedFrame = fPage->focusController()->focusedOrMainFrame();
             focusedFrame->eventHandler()->sendContextMenuEvent(event);
             // If the web page implements it's own context menu handling, then
             // the contextMenu() pointer will be zero. In this case, we should
             // also swallow the event.
-            ContextMenu* contextMenu = m_page->contextMenuController()->contextMenu();
+            ContextMenu* contextMenu = fPage->contextMenuController()->contextMenu();
             if (contextMenu) {
             	BMenu* platformMenu = contextMenu->releasePlatformDescription();
             	if (platformMenu) {
@@ -1024,7 +1059,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
 
 void BWebPage::handleMouseWheelChanged(BMessage* message)
 {
-    WebCore::Frame* frame = m_mainFrame->Frame();
+    WebCore::Frame* frame = fMainFrame->Frame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -1034,7 +1069,7 @@ void BWebPage::handleMouseWheelChanged(BMessage* message)
 
 void BWebPage::handleKeyEvent(BMessage* message)
 {
-    WebCore::Frame* frame = m_page->focusController()->focusedOrMainFrame();
+    WebCore::Frame* frame = fPage->focusController()->focusedOrMainFrame();
     if (!frame->view() || !frame->document())
         return;
 
@@ -1090,11 +1125,11 @@ void BWebPage::handleChangeTextSize(BMessage* message)
     float increment = 0;
     message->FindFloat("increment", &increment);
     if (increment > 0)
-    	m_mainFrame->IncreaseTextSize();
+    	fMainFrame->IncreaseTextSize();
     else if (increment < 0)
-    	m_mainFrame->DecreaseTextSize();
+    	fMainFrame->DecreaseTextSize();
     else
-    	m_mainFrame->ResetTextSize();
+    	fMainFrame->ResetTextSize();
 }
 
 void BWebPage::handleFindString(BMessage* message)
@@ -1114,7 +1149,7 @@ void BWebPage::handleFindString(BMessage* message)
         message->SendReply(&reply);
     }
 
-    bool result = m_mainFrame->FindString(string, forward, caseSensitive,
+    bool result = fMainFrame->FindString(string, forward, caseSensitive,
         wrapSelection, startInSelection);
 
     reply.AddBool("result", result);
@@ -1125,11 +1160,14 @@ void BWebPage::handleResendNotifications(BMessage*)
 {
 	// Prepare navigation capabilities notification
     BMessage message(UPDATE_NAVIGATION_INTERFACE);
-    message.AddBool("can go backward", m_page->canGoBackOrForward(-1));
-    message.AddBool("can go forward", m_page->canGoBackOrForward(1));
-    if (WebCore::FrameLoader* loader = m_mainFrame->Frame()->loader())
+    message.AddBool("can go backward", fPage->canGoBackOrForward(-1));
+    message.AddBool("can go forward", fPage->canGoBackOrForward(1));
+    if (WebCore::FrameLoader* loader = fMainFrame->Frame()->loader())
         message.AddBool("can stop", loader->isLoading());
     dispatchMessage(message);
+	// Send loading progress and status text notifications
+    setLoadingProgress(fLoadingProgress);
+    setStatusMessage(fStatusMessage);
     // TODO: Other notifications...
 }
 
@@ -1137,7 +1175,7 @@ void BWebPage::handleResendNotifications(BMessage*)
 
 status_t BWebPage::dispatchMessage(BMessage& message) const
 {
-	message.AddPointer("view", m_webView);
-	return m_listener.SendMessage(&message);
+	message.AddPointer("view", fWebView);
+	return fListener.SendMessage(&message);
 }
 

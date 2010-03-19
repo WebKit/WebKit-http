@@ -169,7 +169,8 @@ void BWebWindow::MessageReceived(BMessage* message)
         if (message->FindMessage("icon", &iconArchive) == B_OK) {
         	BBitmap icon(&iconArchive);
             IconReceived(&icon, _WebViewForMessage(message));
-        }
+        } else
+            IconReceived(NULL, _WebViewForMessage(message));
     	break;
     }
     case RESIZING_REQUESTED: {

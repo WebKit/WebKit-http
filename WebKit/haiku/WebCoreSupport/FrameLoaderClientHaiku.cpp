@@ -553,9 +553,7 @@ void FrameLoaderClientHaiku::postProgressStartedNotification()
 
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
-    BMessage message(LOAD_PROGRESS);
-    message.AddFloat("progress", m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
-    dispatchMessage(message);
+	m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
 
     // Triggering this continually during loading progress makes stopping more reliably available.
     triggerNavigationHistoryUpdate();
