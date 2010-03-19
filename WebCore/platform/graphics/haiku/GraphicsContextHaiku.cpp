@@ -441,9 +441,6 @@ void GraphicsContext::strokePath()
     if (!m_data->shape())
         return;
 
-//    uint32 flags = m_data->view()->Flags();
-//    m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
-//    m_data->view()->MovePenTo(BPoint(0.5, 0.5));
     m_data->view()->MovePenTo(B_ORIGIN);
 
     if (m_common->state.strokePattern || m_common->state.strokeGradient || strokeColor().alpha()) {
@@ -464,7 +461,6 @@ void GraphicsContext::strokePath()
         }
     }
 
-//    m_data->view()->SetFlags(flags);
     m_data->setShape(0);
 }
 
