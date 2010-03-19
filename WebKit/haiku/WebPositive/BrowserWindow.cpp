@@ -711,7 +711,7 @@ addItemToMenuOrSubmenu(BMenu* menu, BMenuItem* newItem)
 				// Add common submenu for this base URL, clickable.
 				BMessage* message = new BMessage(GOTO_URL);
 				message->AddString("url", baseURLLabel.String());
-				menu->AddItem(new BMenuItem(subMenu, message));
+				menu->AddItem(new BMenuItem(subMenu, message), i);
 				return;
 			}
 		}
