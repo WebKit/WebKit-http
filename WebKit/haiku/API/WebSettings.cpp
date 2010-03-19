@@ -371,15 +371,14 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
     WebCore::Image* image = WebCore::iconDatabase()->iconForPageURL(url.String(),
         WebCore::IntSize(16, 16));
 
+    reply.AddString("url", url.String());
     if (image) {
         const BBitmap* bitmap = image->nativeImageForCurrentFrame();
         BMessage iconArchive;
-        if (bitmap && bitmap->Archive(&iconArchive) == B_OK) {
-            reply.AddString("url", url.String());
+        if (bitmap && bitmap->Archive(&iconArchive) == B_OK)
             reply.AddMessage("icon", &iconArchive);
-            target.SendMessage(&reply);
-        }
     }
+    target.SendMessage(&reply);
 }
 
 void BWebSettings::_HandleSetOfflineStoragePath(const BString& path)
