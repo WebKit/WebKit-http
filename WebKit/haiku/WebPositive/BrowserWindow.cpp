@@ -131,6 +131,17 @@ private:
 };
 
 
+static BString
+baseURL(const BString string)
+{
+	int32 baseURLStart = string.FindFirst("://") + 3;
+	int32 baseURLEnd = string.FindFirst("/", baseURLStart + 1);
+	BString result;
+	result.SetTo(string.String() + baseURLStart, baseURLEnd - baseURLStart);
+	return result;
+}
+
+
 class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 	virtual void FetchChoicesFor(const BString& pattern)
 	{
@@ -161,10 +172,7 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 				priority--;
 			} else
 				priority = INT_MAX;
-			int32 baseURLStart = choiceText.FindFirst("://") + 3;
-			int32 baseURLEnd = choiceText.FindFirst("/", baseURLStart + 1);
-			lastBaseURL.SetTo(choiceText.String() + baseURLStart,
-				baseURLEnd - baseURLStart);
+			lastBaseURL = baseURL(choiceText);
 			fChoices.AddItem(new URLChoice(choiceText,
 				choiceText, matchPos, pattern.Length(), priority));
 		}
@@ -684,6 +692,35 @@ BrowserWindow::QuitRequested()
 
 
 static void
+addItemToMenuOrSubmenu(BMenu* menu, BMenuItem* newItem)
+{
+	BString baseURLLabel = baseURL(BString(newItem->Label()));
+	for (int32 i = menu->CountItems() - 1; i >= 0; i--) {
+		BMenuItem* item = menu->ItemAt(i);
+		BString label = item->Label();
+		if (label.FindFirst(baseURLLabel) >= 0) {
+			if (item->Submenu()) {
+				// Submenu was already added in previous iteration.
+				item->Submenu()->AddItem(newItem);
+				return;
+			} else {
+				menu->RemoveItem(item);
+				BMenu* subMenu = new BMenu(baseURLLabel.String());
+				subMenu->AddItem(item);
+				subMenu->AddItem(newItem);
+				// Add common submenu for this base URL, clickable.
+				BMessage* message = new BMessage(GOTO_URL);
+				message->AddString("url", baseURLLabel.String());
+				menu->AddItem(new BMenuItem(subMenu, message));
+				return;
+			}
+		}
+	}
+	menu->AddItem(newItem);
+}
+
+
+static void
 addOrDeleteMenu(BMenu* menu, BMenu* toMenu)
 {
 	if (menu->CountItems() > 0)
@@ -755,19 +792,19 @@ BrowserWindow::MenusBeginning()
 		menuItem = new BMenuItem(truncatedUrl, message);
 
 		if (historyItem.dateTime() < fiveDaysAgoStart)
-			earlierMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(earlierMenu, menuItem);
 		else if (historyItem.dateTime() < fourDaysAgoStart)
-			fiveDaysAgoMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(fiveDaysAgoMenu, menuItem);
 		else if (historyItem.dateTime() < threeDaysAgoStart)
-			fourDaysAgoMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(fourDaysAgoMenu, menuItem);
 		else if (historyItem.dateTime() < twoDaysAgoStart)
-			threeDaysAgoMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(threeDaysAgoMenu, menuItem);
 		else if (historyItem.dateTime() < oneDayAgoStart)
-			twoDaysAgoMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(twoDaysAgoMenu, menuItem);
 		else if (historyItem.dateTime() < todayStart)
-			yesterdayMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(yesterdayMenu, menuItem);
 		else
-			todayMenu->AddItem(menuItem);
+			addItemToMenuOrSubmenu(todayMenu, menuItem);
 	}
 	history->Unlock();
 
