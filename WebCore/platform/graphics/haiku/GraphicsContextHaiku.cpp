@@ -409,8 +409,9 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
     m_data->view()->SetPenSize(penSize);
     BRect bRect(rect.x(), rect.y(), rect.right(), rect.bottom());
     if (startAngle >= 0 && startAngle < 90) {
-        bRect.right -= penSize / 2 + 0.5;
+		bRect.left += penSize / 2 - 0.5;
         bRect.top += penSize / 2 - 0.5;
+        bRect.right -= penSize / 2 + 0.5;
         bRect.bottom -= penSize / 2 - 0.5;
     } else if (startAngle >= 90 && startAngle < 180) {
         bRect.left += penSize / 2 - 0.5;
@@ -419,9 +420,12 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
         bRect.bottom -= penSize / 2 - 0.5;
     } else if (startAngle >= 180 && startAngle < 270) {
         bRect.left += penSize / 2 - 0.5;
+        bRect.top += penSize / 2 - 0.5;
         bRect.right -= penSize / 2 - 0.5;
         bRect.bottom -= penSize / 2 + 0.5;
     } else if (startAngle >= 270 && startAngle < 360) {
+        bRect.left += penSize / 2 - 0.5;
+        bRect.top += penSize / 2 - 0.5;
         bRect.right -= penSize / 2 + 0.5;
         bRect.bottom -= penSize / 2 + 0.5;
     }
