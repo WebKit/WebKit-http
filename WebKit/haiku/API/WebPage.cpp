@@ -126,7 +126,7 @@ BMessenger BWebPage::sDownloadListener;
     JSC::initializeThreading();
     WTF::initializeThreading();
     WebCore::AtomicString::init();
-    WebCore::DOMTimer::setMinTimerInterval(0.008);
+    WebCore::DOMTimer::setMinTimerInterval(0.004);
     WebCore::UTF8Encoding();
 
 	// TODO: This is a quick hack to enable cookie storage via CURL.
