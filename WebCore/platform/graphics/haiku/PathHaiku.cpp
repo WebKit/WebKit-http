@@ -482,7 +482,6 @@ String Path::debugString() const
 
 void Path::apply(void* info, PathApplierFunction function) const
 {
-    // BShapeIterator allows us to modify the path data "in place"
     class ApplyIterator : public BShapeIterator {
     public:
         ApplyIterator(void* info, PathApplierFunction function)
