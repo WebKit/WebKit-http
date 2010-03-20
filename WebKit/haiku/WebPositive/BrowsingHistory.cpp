@@ -177,6 +177,7 @@ BrowsingHistory::BrowsingHistory()
 	:
 	BLocker("browsing history"),
 	fHistoryItems(64),
+	fMaxHistoryItemAge(7),
 	fSettingsLoaded(false)
 {
 }
@@ -238,6 +239,24 @@ BrowsingHistory::Clear()
 	BAutolock _(this);
 	_Clear();
 	_SaveSettings();
+}	
+
+
+void
+BrowsingHistory::SetMaxHistoryItemAge(int32 days)
+{
+	BAutolock _(this);
+	if (fMaxHistoryItemAge != days) {
+		fMaxHistoryItemAge = days;
+		_SaveSettings();
+	}
+}	
+
+
+int32
+BrowsingHistory::MaxHistoryItemAge() const
+{
+	return fMaxHistoryItemAge;
 }	
 
 
@@ -303,11 +322,20 @@ BrowsingHistory::_LoadSettings()
 	if (_OpenSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
+		if (settingsArchive.FindInt32("max history item age",
+				&fMaxHistoryItemAge) != B_OK) {
+			fMaxHistoryItemAge = 7;
+		}
+		BDateTime oldestAllowedDateTime
+			= BDateTime::CurrentDateTime(B_LOCAL_TIME);
+		oldestAllowedDateTime.Date().AddDays(-fMaxHistoryItemAge);
 
 		BMessage historyItemArchive;
 		for (int32 i = 0; settingsArchive.FindMessage("history item", i,
 				&historyItemArchive) == B_OK; i++) {
-			_AddItem(BrowsingHistoryItem(&historyItemArchive), true);
+			BrowsingHistoryItem item(&historyItemArchive);
+			if (oldestAllowedDateTime < item.DateTime())
+				_AddItem(item, true);
 			historyItemArchive.MakeEmpty();
 		}
 	}
@@ -321,6 +349,7 @@ BrowsingHistory::_SaveSettings()
 	if (_OpenSettingsFile(settingsFile,
 			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
 		BMessage settingsArchive;
+		settingsArchive.AddInt32("max history item age", fMaxHistoryItemAge);
 		BMessage historyItemArchive;
 		int32 count = CountItems();
 		for (int32 i = 0; i < count; i++) {

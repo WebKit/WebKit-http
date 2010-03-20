@@ -84,6 +84,9 @@ public:
 			BrowsingHistoryItem	HistoryItemAt(int32 index) const;
 			void				Clear();
 
+			void				SetMaxHistoryItemAge(int32 days);
+			int32				MaxHistoryItemAge() const;
+
 private:
 								BrowsingHistory();
 	virtual						~BrowsingHistory();
@@ -98,8 +101,9 @@ private:
 
 private:
 			BList				fHistoryItems;
+			int32				fMaxHistoryItemAge;
 
-	static	BrowsingHistory		sDefaultInstance;		
+	static	BrowsingHistory		sDefaultInstance;
 			bool				fSettingsLoaded;
 };
 

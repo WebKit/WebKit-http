@@ -38,10 +38,15 @@
 #include <ScrollView.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
+#include <TabView.h>
+#include <TextControl.h>
 #include <debugger.h>
+
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "BrowserApp.h"
+#include "BrowsingHistory.h"
 #include "FontSelectionView.h"
 #include "SettingsMessage.h"
 #include "WebSettings.h"
@@ -56,6 +61,9 @@ enum {
 	MSG_REVERT							= 'rvrt',
 	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
 	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
+	MSG_DOWNLOAD_FOLDER_CHANGED			= 'dnfc',
+	MSG_NEW_PAGE_BEHAVIOR_CHANGED		= 'npbc',
+	MSG_GO_MENU_DAYS_CHANGED			= 'digm',
 };
 
 static const int32 kDefaultFontSize = 14;
@@ -69,67 +77,27 @@ SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
 
-	fStandardFontView = new FontSelectionView("standard", "Standard font:",
-		true, be_plain_font);
-	BFont defaultSerifFont = _FindDefaultSerifFont();
-	fSerifFontView = new FontSelectionView("serif", "Serif font:", true,
-		&defaultSerifFont);
-	fSansSerifFontView = new FontSelectionView("sans serif", "Sans serif font:",
-		true, be_plain_font);
-	fFixedFontView = new FontSelectionView("fixed", "Fixed font:", true,
-		be_fixed_font);
-
-	fStandardSizesMenu =  new BMenuField("standard font size",
-		TR("Default standard font size:"), new BPopUpMenu("sizes"), NULL);
-	_BuildSizesMenu(fStandardSizesMenu->Menu(), MSG_STANDARD_FONT_SIZE_SELECTED);
-
-	fFixedSizesMenu =  new BMenuField("fixed font size",
-		TR("Default fixed font size:"), new BPopUpMenu("sizes"), NULL);
-	_BuildSizesMenu(fFixedSizesMenu->Menu(), MSG_FIXED_FONT_SIZE_SELECTED);
-
-	fApplyButton = new BButton("Apply", new BMessage(MSG_APPLY));
-	fCancelButton = new BButton("Cancel", new BMessage(MSG_CANCEL));
-	fRevertButton = new BButton("Revert", new BMessage(MSG_REVERT));
+	fApplyButton = new BButton(TR("Apply"), new BMessage(MSG_APPLY));
+	fCancelButton = new BButton(TR("Cancel"), new BMessage(MSG_CANCEL));
+	fRevertButton = new BButton(TR("Revert"), new BMessage(MSG_REVERT));
 
 	float spacing = be_control_look->DefaultItemSpacing();
 
-	AddChild(BGroupLayoutBuilder(B_VERTICAL)
-		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
-			.Add(fStandardFontView->CreateFontsLabelLayoutItem(), 0, 0)
-			.Add(fStandardFontView->CreateFontsMenuBarLayoutItem(), 1, 0)
-			.Add(fStandardFontView->PreviewBox(), 0, 1, 2)
-			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 2, 2)
+	BTabView* tabView = new BTabView("settings pages", B_WIDTH_FROM_LABEL);
 
-			.Add(fSerifFontView->CreateFontsLabelLayoutItem(), 0, 3)
-			.Add(fSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 3)
-			.Add(fSerifFontView->PreviewBox(), 0, 4, 2)
-			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 5, 2)
-
-			.Add(fSansSerifFontView->CreateFontsLabelLayoutItem(), 0, 6)
-			.Add(fSansSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 6)
-			.Add(fSansSerifFontView->PreviewBox(), 0, 7, 2)
-			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 8, 2)
-
-			.Add(fFixedFontView->CreateFontsLabelLayoutItem(), 0, 9)
-			.Add(fFixedFontView->CreateFontsMenuBarLayoutItem(), 1, 9)
-			.Add(fFixedFontView->PreviewBox(), 0, 10, 2)
-			.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 11, 2)
-
-			.Add(fStandardSizesMenu->CreateLabelLayoutItem(), 0, 12)
-			.Add(fStandardSizesMenu->CreateMenuBarLayoutItem(), 1, 12)
-			.Add(fFixedSizesMenu->CreateLabelLayoutItem(), 0, 13)
-			.Add(fFixedSizesMenu->CreateMenuBarLayoutItem(), 1, 13)
-			.SetInsets(spacing, spacing, spacing, spacing)
-		)
-		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+	AddChild(BGroupLayoutBuilder(B_VERTICAL, spacing)
+		.Add(tabView)
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, spacing)
 			.Add(fRevertButton)
 			.AddGlue()
 			.Add(fCancelButton)
 			.Add(fApplyButton)
-			.SetInsets(spacing, spacing, spacing, spacing)
 		)
+		.SetInsets(spacing, spacing, spacing, spacing)
 	);
+
+	tabView->AddTab(_CreateGeneralPage(spacing));
+	tabView->AddTab(_CreateFontsPage(spacing));
 
 	AddHandler(fStandardFontView);
 	fStandardFontView->AttachedToLooper();
@@ -229,6 +197,118 @@ SettingsWindow::Show()
 // #pragma mark - private
 
 
+BView*
+SettingsWindow::_CreateGeneralPage(float spacing)
+{
+	fDownloadFolderControl = new BTextControl("download folder",
+		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
+fDownloadFolderControl->SetEnabled(false);
+
+	fNewPageBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
+		NULL);
+	fNewPageBehaviorCloneCurrentItem->SetEnabled(false);
+	fNewPageBehaviorOpenHomeItem = new BMenuItem(TR("Open home page"), NULL);
+	fNewPageBehaviorOpenHomeItem->SetEnabled(false);
+	fNewPageBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
+		NULL);
+	fNewPageBehaviorOpenSearchItem->SetEnabled(false);
+	fNewPageBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"), NULL);
+	fNewPageBehaviorOpenBlankItem->SetMarked(true);
+
+	BPopUpMenu* newPageBehaviorMenu = new BPopUpMenu("New pages");
+	newPageBehaviorMenu->AddItem(fNewPageBehaviorCloneCurrentItem);
+	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenHomeItem);
+	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenSearchItem);
+	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenBlankItem);
+	fNewPageBehaviorMenu = new BMenuField("new page behavior",
+		TR("New pages:"), newPageBehaviorMenu,
+		new BMessage(MSG_NEW_PAGE_BEHAVIOR_CHANGED));
+fNewPageBehaviorMenu->SetEnabled(false);
+
+	fDaysInGoMenuControl = new BTextControl("days in go menu",
+		TR("Number of days to keep links in Go menu:"), "",
+		new BMessage(MSG_GO_MENU_DAYS_CHANGED));
+	BString maxHistoryAge;
+	maxHistoryAge << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();
+	fDaysInGoMenuControl->SetText(maxHistoryAge.String());
+	for (uchar i = 0; i < '0'; i++)
+		fDaysInGoMenuControl->TextView()->DisallowChar(i);
+	for (uchar i = '9' + 1; i <= 128; i++)
+		fDaysInGoMenuControl->TextView()->DisallowChar(i);
+
+	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
+		.Add(fDownloadFolderControl->CreateLabelLayoutItem(), 0, 1)
+		.Add(fDownloadFolderControl->CreateTextViewLayoutItem(), 1, 1)
+
+		.Add(fNewPageBehaviorMenu->CreateLabelLayoutItem(), 0, 2)
+		.Add(fNewPageBehaviorMenu->CreateMenuBarLayoutItem(), 1, 2)
+
+		.Add(fDaysInGoMenuControl->CreateLabelLayoutItem(), 0, 3)
+		.Add(fDaysInGoMenuControl->CreateTextViewLayoutItem(), 1, 3)
+
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 4, 2)
+
+		.SetInsets(spacing, spacing, spacing, spacing)
+	;
+	view->SetName("General");
+	return view;
+}
+
+
+BView*
+SettingsWindow::_CreateFontsPage(float spacing)
+{
+	fStandardFontView = new FontSelectionView("standard", TR("Standard font:"),
+		true, be_plain_font);
+	BFont defaultSerifFont = _FindDefaultSerifFont();
+	fSerifFontView = new FontSelectionView("serif", TR("Serif font:"), true,
+		&defaultSerifFont);
+	fSansSerifFontView = new FontSelectionView("sans serif",
+		TR("Sans serif font:"), true, be_plain_font);
+	fFixedFontView = new FontSelectionView("fixed", TR("Fixed font:"), true,
+		be_fixed_font);
+
+	fStandardSizesMenu =  new BMenuField("standard font size",
+		TR("Default standard font size:"), new BPopUpMenu("sizes"), NULL);
+	_BuildSizesMenu(fStandardSizesMenu->Menu(), MSG_STANDARD_FONT_SIZE_SELECTED);
+
+	fFixedSizesMenu =  new BMenuField("fixed font size",
+		TR("Default fixed font size:"), new BPopUpMenu("sizes"), NULL);
+	_BuildSizesMenu(fFixedSizesMenu->Menu(), MSG_FIXED_FONT_SIZE_SELECTED);
+
+	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
+		.Add(fStandardFontView->CreateFontsLabelLayoutItem(), 0, 0)
+		.Add(fStandardFontView->CreateFontsMenuBarLayoutItem(), 1, 0)
+		.Add(fStandardFontView->PreviewBox(), 0, 1, 2)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 2, 2)
+
+		.Add(fSerifFontView->CreateFontsLabelLayoutItem(), 0, 3)
+		.Add(fSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 3)
+		.Add(fSerifFontView->PreviewBox(), 0, 4, 2)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 5, 2)
+
+		.Add(fSansSerifFontView->CreateFontsLabelLayoutItem(), 0, 6)
+		.Add(fSansSerifFontView->CreateFontsMenuBarLayoutItem(), 1, 6)
+		.Add(fSansSerifFontView->PreviewBox(), 0, 7, 2)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 8, 2)
+
+		.Add(fFixedFontView->CreateFontsLabelLayoutItem(), 0, 9)
+		.Add(fFixedFontView->CreateFontsMenuBarLayoutItem(), 1, 9)
+		.Add(fFixedFontView->PreviewBox(), 0, 10, 2)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 11, 2)
+
+		.Add(fStandardSizesMenu->CreateLabelLayoutItem(), 0, 12)
+		.Add(fStandardSizesMenu->CreateMenuBarLayoutItem(), 1, 12)
+		.Add(fFixedSizesMenu->CreateLabelLayoutItem(), 0, 13)
+		.Add(fFixedSizesMenu->CreateMenuBarLayoutItem(), 1, 13)
+
+		.SetInsets(spacing, spacing, spacing, spacing)
+	;
+	view->SetName("Fonts");
+	return view;
+}
+
+
 void
 SettingsWindow::_ApplySettings()
 {
@@ -255,6 +335,16 @@ SettingsWindow::_ApplySettings()
 	// This will find all currently instantiated page settings and apply
 	// the default values, unless the page settings have local overrides.
 	BWebSettings::Default()->Apply();
+
+	int32 maxHistoryAge = atoi(fDaysInGoMenuControl->Text());
+	if (maxHistoryAge <= 0)
+		maxHistoryAge = 1;
+	if (maxHistoryAge >= 35)
+		maxHistoryAge = 35;
+	BString text;
+	text << maxHistoryAge;
+	fDaysInGoMenuControl->SetText(text.String());
+	BrowsingHistory::DefaultInstance()->SetMaxHistoryItemAge(maxHistoryAge);
 }
 
 

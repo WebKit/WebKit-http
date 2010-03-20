@@ -32,6 +32,8 @@
 class BButton;
 class BMenu;
 class BMenuField;
+class BMenuItem;
+class BTextControl;
 class FontSelectionView;
 class SettingsMessage;
 
@@ -48,6 +50,9 @@ public:
 	virtual	void				Show();
 
 private:
+			BView*				_CreateGeneralPage(float spacing);
+			BView*				_CreateFontsPage(float spacing);
+
 			void				_ApplySettings();
 			void				_RevertSettings();
 
@@ -60,6 +65,14 @@ private:
 
 private:
 			SettingsMessage*	fSettings;
+
+			BTextControl*		fDownloadFolderControl;
+			BMenuField*			fNewPageBehaviorMenu;
+			BMenuItem*			fNewPageBehaviorCloneCurrentItem;
+			BMenuItem*			fNewPageBehaviorOpenHomeItem;
+			BMenuItem*			fNewPageBehaviorOpenSearchItem;
+			BMenuItem*			fNewPageBehaviorOpenBlankItem;
+			BTextControl*		fDaysInGoMenuControl;
 
 			FontSelectionView*	fStandardFontView;
 			FontSelectionView*	fSerifFontView;
