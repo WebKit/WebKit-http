@@ -25,251 +25,321 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "BrowsingHistory.h"
 
-#include "BrowserApp.h"
+#include <new>
+#include <stdio.h>
+
 #include <Autolock.h>
 #include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
 #include <Message.h>
 #include <Path.h>
-#include <new>
-#include <stdio.h>
+
+#include "BrowserApp.h"
 
 
 BrowsingHistoryItem::BrowsingHistoryItem(const BString& url)
-    : m_url(url)
-    , m_dateTime(BDateTime::CurrentDateTime(B_LOCAL_TIME))
-    , m_invokationCount(0)
+	:
+	fURL(url),
+	fDateTime(BDateTime::CurrentDateTime(B_LOCAL_TIME)),
+	fInvokationCount(0)
 {
 }
+
 
 BrowsingHistoryItem::BrowsingHistoryItem(const BrowsingHistoryItem& other)
 {
 	*this = other;
 }
 
+
 BrowsingHistoryItem::BrowsingHistoryItem(const BMessage* archive)
 {
 	if (!archive)
-	    return;
+		return;
 	BMessage dateTimeArchive;
 	if (archive->FindMessage("date time", &dateTimeArchive) == B_OK)
-	    m_dateTime = BDateTime(&dateTimeArchive);
-	archive->FindString("url", &m_url);
-	archive->FindUInt32("invokations", &m_invokationCount);
+		fDateTime = BDateTime(&dateTimeArchive);
+	archive->FindString("url", &fURL);
+	archive->FindUInt32("invokations", &fInvokationCount);
 }
+
 
 BrowsingHistoryItem::~BrowsingHistoryItem()
 {
 }
 
-status_t BrowsingHistoryItem::archive(BMessage* archive) const
+
+status_t
+BrowsingHistoryItem::Archive(BMessage* archive) const
 {
 	if (!archive)
-	    return B_BAD_VALUE;
+		return B_BAD_VALUE;
 	BMessage dateTimeArchive;
-	status_t status = m_dateTime.Archive(&dateTimeArchive);
+	status_t status = fDateTime.Archive(&dateTimeArchive);
 	if (status == B_OK)
-	    status = archive->AddMessage("date time", &dateTimeArchive);
+		status = archive->AddMessage("date time", &dateTimeArchive);
 	if (status == B_OK)
-	    status = archive->AddString("url", m_url.String());
+		status = archive->AddString("url", fURL.String());
 	if (status == B_OK)
-	    status = archive->AddUInt32("invokations", m_invokationCount);
-    return status;
+		status = archive->AddUInt32("invokations", fInvokationCount);
+	return status;
 }
 
-BrowsingHistoryItem& BrowsingHistoryItem::operator=(const BrowsingHistoryItem& other)
-{
-    if (this == &other)
-        return *this;
 
-    m_url = other.m_url;
-    m_dateTime = other.m_dateTime;
-    m_invokationCount = other.m_invokationCount;
-
-    return *this;
-}
-
-bool BrowsingHistoryItem::operator==(const BrowsingHistoryItem& other) const
+BrowsingHistoryItem&
+BrowsingHistoryItem::operator=(const BrowsingHistoryItem& other)
 {
 	if (this == &other)
-	    return true;
+		return *this;
 
-	return m_url == other.m_url && m_dateTime == other.m_dateTime
-	    && m_invokationCount == other.m_invokationCount;
+	fURL = other.fURL;
+	fDateTime = other.fDateTime;
+	fInvokationCount = other.fInvokationCount;
+
+	return *this;
 }
 
-bool BrowsingHistoryItem::operator!=(const BrowsingHistoryItem& other) const
+
+bool
+BrowsingHistoryItem::operator==(const BrowsingHistoryItem& other) const
+{
+	if (this == &other)
+		return true;
+
+	return fURL == other.fURL && fDateTime == other.fDateTime
+		&& fInvokationCount == other.fInvokationCount;
+}
+
+
+bool
+BrowsingHistoryItem::operator!=(const BrowsingHistoryItem& other) const
 {
 	return !(*this == other);
 }
 
-bool BrowsingHistoryItem::operator<(const BrowsingHistoryItem& other) const
+
+bool
+BrowsingHistoryItem::operator<(const BrowsingHistoryItem& other) const
 {
 	if (this == &other)
-	    return false;
+		return false;
 
-	return m_dateTime < other.m_dateTime || m_url < other.m_url;
+	return fDateTime < other.fDateTime || fURL < other.fURL;
 }
 
-bool BrowsingHistoryItem::operator<=(const BrowsingHistoryItem& other) const
+
+bool
+BrowsingHistoryItem::operator<=(const BrowsingHistoryItem& other) const
 {
 	return (*this == other) || (*this < other);
 }
 
-bool BrowsingHistoryItem::operator>(const BrowsingHistoryItem& other) const
+
+bool
+BrowsingHistoryItem::operator>(const BrowsingHistoryItem& other) const
 {
 	if (this == &other)
-	    return false;
+		return false;
 
-	return m_dateTime > other.m_dateTime || m_url > other.m_url;
+	return fDateTime > other.fDateTime || fURL > other.fURL;
 }
 
-bool BrowsingHistoryItem::operator>=(const BrowsingHistoryItem& other) const
+
+bool
+BrowsingHistoryItem::operator>=(const BrowsingHistoryItem& other) const
 {
 	return (*this == other) || (*this > other);
 }
 
-void BrowsingHistoryItem::invoked()
+
+void
+BrowsingHistoryItem::Invoked()
 {
 	// Eventually, we may overflow...
-	uint32 count = m_invokationCount + 1;
-	if (count > m_invokationCount)
-	    m_invokationCount = count;
-	m_dateTime = BDateTime::CurrentDateTime(B_LOCAL_TIME);
+	uint32 count = fInvokationCount + 1;
+	if (count > fInvokationCount)
+		fInvokationCount = count;
+	fDateTime = BDateTime::CurrentDateTime(B_LOCAL_TIME);
 }
+
 
 // #pragma mark - BrowsingHistory
 
+
+BrowsingHistory
+BrowsingHistory::sDefaultInstance;
+
+
 BrowsingHistory::BrowsingHistory()
-    : BLocker("browsing history")
+	:
+	BLocker("browsing history"),
+	fHistoryItems(64),
+	fSettingsLoaded(false)
 {
+}
+
+
+BrowsingHistory::~BrowsingHistory()
+{
+	_SaveSettings();
+	_Clear();
+}
+
+
+/*static*/ BrowsingHistory*
+BrowsingHistory::DefaultInstance()
+{
+	if (sDefaultInstance.Lock()) {
+		sDefaultInstance._LoadSettings();
+		sDefaultInstance.Unlock();
+	}
+	return &sDefaultInstance;
+}
+
+
+bool
+BrowsingHistory::AddItem(const BrowsingHistoryItem& item)
+{
+	BAutolock _(this);
+
+	return _AddItem(item, false);
+}
+
+
+int32
+BrowsingHistory::BrowsingHistory::CountItems() const
+{
+	BAutolock _(const_cast<BrowsingHistory*>(this));
+
+	return fHistoryItems.CountItems();
+}
+
+
+BrowsingHistoryItem
+BrowsingHistory::HistoryItemAt(int32 index) const
+{
+	BAutolock _(const_cast<BrowsingHistory*>(this));
+
+	BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
+		fHistoryItems.ItemAt(index));
+	if (!existingItem)
+		return BrowsingHistoryItem(BString());
+
+	return BrowsingHistoryItem(*existingItem);
+}
+
+
+void
+BrowsingHistory::Clear()
+{
+	BAutolock _(this);
+	_Clear();
+	_SaveSettings();
+}	
+
+
+// #pragma mark - private
+
+
+void
+BrowsingHistory::_Clear()
+{
+	int32 count = CountItems();
+	for (int32 i = 0; i < count; i++) {
+		BrowsingHistoryItem* item = reinterpret_cast<BrowsingHistoryItem*>(
+			fHistoryItems.ItemAtFast(i));
+		delete item;
+	}
+	fHistoryItems.MakeEmpty();
+}
+
+
+bool
+BrowsingHistory::_AddItem(const BrowsingHistoryItem& item, bool internal)
+{
+	int32 count = CountItems();
+	int32 insertionIndex = count;
+	for (int32 i = 0; i < count; i++) {
+		BrowsingHistoryItem* existingItem
+			= reinterpret_cast<BrowsingHistoryItem*>(
+			fHistoryItems.ItemAtFast(i));
+		if (item.URL() == existingItem->URL()) {
+			if (!internal) {
+				existingItem->Invoked();
+				_SaveSettings();
+			}
+			return true;
+		}
+		if (item < *existingItem)
+			insertionIndex = i;
+	}
+	BrowsingHistoryItem* newItem = new(std::nothrow) BrowsingHistoryItem(item);
+	if (!newItem || !fHistoryItems.AddItem(newItem, insertionIndex)) {
+		delete newItem;
+		return false;
+	}
+
+	if (!internal) {
+		newItem->Invoked();
+		_SaveSettings();
+	}
+
+	return true;
+}
+
+
+void
+BrowsingHistory::_LoadSettings()
+{
+	if (fSettingsLoaded)
+		return;
+
+	fSettingsLoaded = true;
+
 	BFile settingsFile;
-	if (openSettingsFile(settingsFile, B_READ_ONLY)) {
+	if (_OpenSettingsFile(settingsFile, B_READ_ONLY)) {
 		BMessage settingsArchive;
 		settingsArchive.Unflatten(&settingsFile);
 
 		BMessage historyItemArchive;
-		for (int32 i = 0; settingsArchive.FindMessage("history item", i, &historyItemArchive) == B_OK; i++) {
-			privateAddItem(BrowsingHistoryItem(&historyItemArchive), true);
+		for (int32 i = 0; settingsArchive.FindMessage("history item", i,
+				&historyItemArchive) == B_OK; i++) {
+			_AddItem(BrowsingHistoryItem(&historyItemArchive), true);
 			historyItemArchive.MakeEmpty();
 		}
 	}
 }
 
-BrowsingHistory::~BrowsingHistory()
-{
-	saveSettings();
-	privateClear();
-}
 
-/*static*/ BrowsingHistory* BrowsingHistory::defaultInstance()
-{
-    static BrowsingHistory defaultInstance;
-
-	return &defaultInstance;
-}
-
-bool BrowsingHistory::addItem(const BrowsingHistoryItem& item)
-{
-	BAutolock _(this);
-
-    return privateAddItem(item, false);
-}
-
-int32 BrowsingHistory::BrowsingHistory::countItems() const
-{
-	BAutolock _(const_cast<BrowsingHistory*>(this));
-
-    return m_historyItems.CountItems();
-}
-
-BrowsingHistoryItem BrowsingHistory::historyItemAt(int32 index) const
-{
-	BAutolock _(const_cast<BrowsingHistory*>(this));
-
-    BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
-        m_historyItems.ItemAt(index));
-    if (!existingItem)
-        return BrowsingHistoryItem(BString());
-
-    return BrowsingHistoryItem(*existingItem);
-}
-
-void BrowsingHistory::clear()
-{
-	BAutolock _(this);
-	privateClear();
-    saveSettings();
-}	
-
-// #pragma mark - private
-
-void BrowsingHistory::privateClear()
-{
-	int32 count = countItems();
-	for (int32 i = 0; i < count; i++) {
-        BrowsingHistoryItem* item = reinterpret_cast<BrowsingHistoryItem*>(
-            m_historyItems.ItemAtFast(i));
-        delete item;
-	}
-	m_historyItems.MakeEmpty();
-}
-
-bool BrowsingHistory::privateAddItem(const BrowsingHistoryItem& item, bool internal)
-{
-    int32 count = countItems();
-    int32 insertionIndex = count;
-    for (int32 i = 0; i < count; i++) {
-    	BrowsingHistoryItem* existingItem = reinterpret_cast<BrowsingHistoryItem*>(
-    	    m_historyItems.ItemAtFast(i));
-    	if (item.url() == existingItem->url()) {
-    		if (!internal) {
-	    		existingItem->invoked();
-			    saveSettings();
-    		}
-    		return true;
-    	}
-    	if (item < *existingItem)
-    	    insertionIndex = i;
-    }
-    BrowsingHistoryItem* newItem = new(std::nothrow) BrowsingHistoryItem(item);
-    if (!newItem || !m_historyItems.AddItem(newItem, insertionIndex)) {
-    	delete newItem;
-        return false;
-    }
-
-    if (!internal) {
-	    newItem->invoked();
-	    saveSettings();
-    }
-
-    return true;
-}
-
-void BrowsingHistory::saveSettings()
+void
+BrowsingHistory::_SaveSettings()
 {
 	BFile settingsFile;
-	if (openSettingsFile(settingsFile, B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
+	if (_OpenSettingsFile(settingsFile,
+			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY)) {
 		BMessage settingsArchive;
 		BMessage historyItemArchive;
-		int32 count = countItems();
+		int32 count = CountItems();
 		for (int32 i = 0; i < count; i++) {
-			BrowsingHistoryItem item = historyItemAt(i);
-			if (item.archive(&historyItemArchive) != B_OK)
-			    break;
-			if (settingsArchive.AddMessage("history item", &historyItemArchive) != B_OK)
-			    break;
+			BrowsingHistoryItem item = HistoryItemAt(i);
+			if (item.Archive(&historyItemArchive) != B_OK)
+				break;
+			if (settingsArchive.AddMessage("history item",
+					&historyItemArchive) != B_OK) {
+				break;
+			}
 			historyItemArchive.MakeEmpty();
 		}
 		settingsArchive.Flatten(&settingsFile);
 	}
 }
 
-bool BrowsingHistory::openSettingsFile(BFile& file, uint32 mode)
+
+bool
+BrowsingHistory::_OpenSettingsFile(BFile& file, uint32 mode)
 {
 	BPath path;
 	if (find_directory(B_USER_SETTINGS_DIRECTORY, &path) != B_OK

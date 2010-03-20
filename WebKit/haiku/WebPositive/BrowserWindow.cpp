@@ -153,17 +153,17 @@ class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
 		fChoices.MakeEmpty();
 
 		// Search through BrowsingHistory for any matches.
-		BrowsingHistory* history = BrowsingHistory::defaultInstance();
+		BrowsingHistory* history = BrowsingHistory::DefaultInstance();
 		if (!history->Lock())
 			return;
 
 		BString lastBaseURL;
 		int32 priority = INT_MAX;
 
-		count = history->countItems();
+		count = history->CountItems();
 		for (int32 i = 0; i < count; i++) {
-			BrowsingHistoryItem item = history->historyItemAt(i);
-			const BString& choiceText = item.url();
+			BrowsingHistoryItem item = history->HistoryItemAt(i);
+			const BString& choiceText = item.URL();
 			int32 matchPos = choiceText.IFindFirst(pattern);
 			if (matchPos < 0)
 				continue;
@@ -499,13 +499,13 @@ BrowserWindow::MessageReceived(BMessage* message)
 		break;
 
 	case CLEAR_HISTORY: {
-		BrowsingHistory* history = BrowsingHistory::defaultInstance();
-		if (history->countItems() == 0)
+		BrowsingHistory* history = BrowsingHistory::DefaultInstance();
+		if (history->CountItems() == 0)
 			break;
 		BAlert* alert = new BAlert("Confirmation", "Do you really want to "
 			"clear the browsing history?", "Clear", "Cancel");
 		if (alert->Go() == 0)
-			history->clear();
+			history->Clear();
 		break;
 	}
 
@@ -737,11 +737,11 @@ BrowserWindow::MenusBeginning()
 	while ((menuItem = fGoMenu->RemoveItem(0L)))
 		delete menuItem;
 
-	BrowsingHistory* history = BrowsingHistory::defaultInstance();
+	BrowsingHistory* history = BrowsingHistory::DefaultInstance();
 	if (!history->Lock())
 		return;
 
-	int32 count = history->countItems();
+	int32 count = history->CountItems();
 	BMenuItem* clearHistoryItem = new BMenuItem("Clear history",
 		new BMessage(CLEAR_HISTORY));
 	clearHistoryItem->SetEnabled(count > 0);
@@ -783,25 +783,25 @@ BrowserWindow::MenusBeginning()
 	BMenu* earlierMenu = new BMenu("Earlier");
 
 	for (int32 i = 0; i < count; i++) {
-		BrowsingHistoryItem historyItem = history->historyItemAt(i);
+		BrowsingHistoryItem historyItem = history->HistoryItemAt(i);
 		BMessage* message = new BMessage(GOTO_URL);
-		message->AddString("url", historyItem.url().String());
+		message->AddString("url", historyItem.URL().String());
 
-		BString truncatedUrl(historyItem.url());
+		BString truncatedUrl(historyItem.URL());
 		be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
 		menuItem = new BMenuItem(truncatedUrl, message);
 
-		if (historyItem.dateTime() < fiveDaysAgoStart)
+		if (historyItem.DateTime() < fiveDaysAgoStart)
 			addItemToMenuOrSubmenu(earlierMenu, menuItem);
-		else if (historyItem.dateTime() < fourDaysAgoStart)
+		else if (historyItem.DateTime() < fourDaysAgoStart)
 			addItemToMenuOrSubmenu(fiveDaysAgoMenu, menuItem);
-		else if (historyItem.dateTime() < threeDaysAgoStart)
+		else if (historyItem.DateTime() < threeDaysAgoStart)
 			addItemToMenuOrSubmenu(fourDaysAgoMenu, menuItem);
-		else if (historyItem.dateTime() < twoDaysAgoStart)
+		else if (historyItem.DateTime() < twoDaysAgoStart)
 			addItemToMenuOrSubmenu(threeDaysAgoMenu, menuItem);
-		else if (historyItem.dateTime() < oneDayAgoStart)
+		else if (historyItem.DateTime() < oneDayAgoStart)
 			addItemToMenuOrSubmenu(twoDaysAgoMenu, menuItem);
-		else if (historyItem.dateTime() < todayStart)
+		else if (historyItem.DateTime() < todayStart)
 			addItemToMenuOrSubmenu(yesterdayMenu, menuItem);
 		else
 			addItemToMenuOrSubmenu(todayMenu, menuItem);
@@ -1048,7 +1048,7 @@ BrowserWindow::NavigationCapabilitiesChanged(bool canGoBackward,
 void
 BrowserWindow::UpdateGlobalHistory(const BString& url)
 {
-	BrowsingHistory::defaultInstance()->addItem(BrowsingHistoryItem(url));
+	BrowsingHistory::DefaultInstance()->AddItem(BrowsingHistoryItem(url));
 }
 
 

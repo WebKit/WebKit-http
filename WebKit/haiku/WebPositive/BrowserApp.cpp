@@ -169,7 +169,8 @@ BrowserApp::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
 	case PRELOAD_BROWSING_HISTORY:
-		BrowsingHistory::defaultInstance();
+		// Accessing the default instance will load the history from disk.
+		BrowsingHistory::DefaultInstance();
 		break;
 	case B_SILENT_RELAUNCH:
 		_CreateNewPage("");

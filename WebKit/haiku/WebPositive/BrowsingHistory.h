@@ -24,9 +24,8 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef BrowsingHistory_h
-#define BrowsingHistory_h
+#ifndef BROWSING_HISTORY_H
+#define BROWSING_HISTORY_H
 
 #include "DateTime.h"
 #include <List.h>
@@ -35,58 +34,75 @@
 class BFile;
 class BString;
 
+
 class BrowsingHistoryItem {
 public:
-    BrowsingHistoryItem(const BString& url);
-    BrowsingHistoryItem(const BrowsingHistoryItem& other);
-    BrowsingHistoryItem(const BMessage* archive);
-    ~BrowsingHistoryItem();
+								BrowsingHistoryItem(const BString& url);
+								BrowsingHistoryItem(
+									const BrowsingHistoryItem& other);
+								BrowsingHistoryItem(const BMessage* archive);
+								~BrowsingHistoryItem();
 
-    status_t archive(BMessage* archive) const;
+			status_t			Archive(BMessage* archive) const;
 
-    BrowsingHistoryItem& operator=(const BrowsingHistoryItem& other);
+			BrowsingHistoryItem& operator=(const BrowsingHistoryItem& other);
 
-    bool operator==(const BrowsingHistoryItem& other) const;
-    bool operator!=(const BrowsingHistoryItem& other) const;
-    bool operator<(const BrowsingHistoryItem& other) const;
-    bool operator<=(const BrowsingHistoryItem& other) const;
-    bool operator>(const BrowsingHistoryItem& other) const;
-    bool operator>=(const BrowsingHistoryItem& other) const;
+			bool				operator==(
+									const BrowsingHistoryItem& other) const;
+			bool				operator!=(
+									const BrowsingHistoryItem& other) const;
+			bool				operator<(
+									const BrowsingHistoryItem& other) const;
+			bool				operator<=(
+									const BrowsingHistoryItem& other) const;
+			bool				operator>(
+									const BrowsingHistoryItem& other) const;
+			bool				operator>=(
+									const BrowsingHistoryItem& other) const;
 
-    const BString& url() const { return m_url; }
-    const BDateTime& dateTime() const { return m_dateTime; }
-    uint32 invokationCount() const { return m_invokationCount; }
-    void invoked();
+			const BString&		URL() const { return fURL; }
+			const BDateTime&	DateTime() const { return fDateTime; }
+			uint32				InvokationCount() const {
+									return fInvokationCount; }
+			void				Invoked();
 
 private:
-    BString m_url;
-    BDateTime m_dateTime;
-    uint32 m_invokationCount;
+			BString				fURL;
+			BDateTime			fDateTime;
+			uint32				fInvokationCount;
 };
+
 
 class BrowsingHistory : public BLocker {
 public:
-    static BrowsingHistory* defaultInstance();
+	static	BrowsingHistory*	DefaultInstance();
 
-    bool addItem(const BrowsingHistoryItem& item);
+			bool				AddItem(const BrowsingHistoryItem& item);
 
-    // Should Lock() the object when using these in some loop or so:
-    int32 countItems() const;
-    BrowsingHistoryItem historyItemAt(int32 index) const;
-    void clear();
-
-private:
-    BrowsingHistory();
-    virtual ~BrowsingHistory();
-    void privateClear();
-    bool privateAddItem(const BrowsingHistoryItem& item, bool invoke);
-
-    void saveSettings();
-	bool openSettingsFile(BFile& file, uint32 mode);
+	// Should Lock() the object when using these in some loop or so:
+			int32				CountItems() const;
+			BrowsingHistoryItem	HistoryItemAt(int32 index) const;
+			void				Clear();
 
 private:
-    BList m_historyItems;
+								BrowsingHistory();
+	virtual						~BrowsingHistory();
+
+			void				_Clear();
+			bool				_AddItem(const BrowsingHistoryItem& item,
+									bool invoke);
+
+			void				_LoadSettings();
+			void				_SaveSettings();
+			bool				_OpenSettingsFile(BFile& file, uint32 mode);
+
+private:
+			BList				fHistoryItems;
+
+	static	BrowsingHistory		sDefaultInstance;		
+			bool				fSettingsLoaded;
 };
 
-#endif // BrowsingHistory_h
+
+#endif // BROWSING_HISTORY_H
 
