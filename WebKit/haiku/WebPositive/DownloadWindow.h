@@ -34,13 +34,11 @@ class BButton;
 class BFile;
 class BGroupLayout;
 class BWebDownload;
-class SettingsMessage;
 
 
 class DownloadWindow : public BWindow {
 public:
-								DownloadWindow(BRect frame, bool visible,
-									SettingsMessage* settings);
+								DownloadWindow(BRect frame, bool visible);
 	virtual						~DownloadWindow();
 
 	virtual	void				MessageReceived(BMessage* message);
@@ -57,8 +55,6 @@ private:
 private:
 			BGroupLayout*		fDownloadViewsLayout;
 			BButton*			fRemoveFinishedButton;
-			SettingsMessage*	fSettings;
 };
-
 
 #endif // DOWNLOAD_WINDOW_H
