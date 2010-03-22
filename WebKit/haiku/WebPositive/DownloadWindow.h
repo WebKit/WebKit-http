@@ -24,9 +24,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#ifndef DOWNLOAD_WINDOW_H
+#define DOWNLOAD_WINDOW_H
 
-#ifndef DownloadWindow_h
-#define DownloadWindow_h
 
 #include <Window.h>
 
@@ -35,26 +35,27 @@ class BFile;
 class BGroupLayout;
 class BWebDownload;
 
+
 class DownloadWindow : public BWindow {
 public:
-    DownloadWindow(BRect frame, bool visible);
-    virtual ~DownloadWindow();
+								DownloadWindow(BRect frame, bool visible);
+	virtual						~DownloadWindow();
 
-    virtual void MessageReceived(BMessage*);
-    virtual bool QuitRequested();
-
-private:
-    void downloadStarted(BWebDownload* download);
-    void downloadFinished(BWebDownload* download);
-    void removeFinishedDownloads();
-    void saveSettings();
-    void loadSettings();
-    bool openSettingsFile(BFile& file, uint32 mode);
+	virtual	void				MessageReceived(BMessage* message);
+	virtual	bool				QuitRequested();
 
 private:
-    BGroupLayout* m_downloadViewsLayout;
-    BButton* m_removeFinishedButton;
+			void				_DownloadStarted(BWebDownload* download);
+			void				_DownloadFinished(BWebDownload* download);
+			void				_RemoveFinishedDownloads();
+			void				_SaveSettings();
+			void				_LoadSettings();
+			bool				_OpenSettingsFile(BFile& file, uint32 mode);
+
+private:
+			BGroupLayout*		fDownloadViewsLayout;
+			BButton*			fRemoveFinishedButton;
 };
 
-#endif // DownloadWindow_h
 
+#endif // DOWNLOAD_WINDOW_H
