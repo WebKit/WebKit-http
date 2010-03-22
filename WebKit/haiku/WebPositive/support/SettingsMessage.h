@@ -1,5 +1,5 @@
 /*
- * Copyright 2008 Stephan Aßmus <superstippi@gmx.de>.
+ * Copyright 2008-2010 Stephan Aßmus <superstippi@gmx.de>.
  * Copyright 1998 Eric Shepherd.
  * All rights reserved. Distributed under the terms of the Be Sample Code
  * license.
@@ -7,12 +7,21 @@
 #ifndef SETTINGS_MESSAGE_H
 #define SETTINGS_MESSAGE_H
 
+
 #include <FindDirectory.h>
 #include <Font.h>
+#include <List.h>
 #include <Message.h>
 #include <Path.h>
 
+class BMessenger;
 class BString;
+
+
+enum {
+	MSG_SETTINGS_VALUE_CHANGED = 'stvc'
+};
+
 
 class SettingsMessage : public BMessage {
 public:
@@ -24,6 +33,9 @@ public:
 			status_t			InitCheck() const;
 			status_t			Load();
 			status_t			Save() const;
+
+			bool				AddListener(const BMessenger& listener);
+			void				RemoveListener(const BMessenger& listener);
 
 			status_t			SetValue(const char* name, bool value);
 			status_t			SetValue(const char* name, int8 value);
@@ -77,8 +89,12 @@ public:
 									const BFont& defaultValue) const;
 
 private:
+			void				_NotifyValueChanged(const char* name) const;
+
+private:
 			BPath				fPath;
 			status_t			fStatus;
+			BList				fListeners;
 };
 
 #endif  // SETTINGS_MESSAGE_H

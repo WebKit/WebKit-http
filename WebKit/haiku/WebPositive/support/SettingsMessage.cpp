@@ -9,14 +9,19 @@
 
 #include "SettingsMessage.h"
 
+#include <new>
+
 #include <Entry.h>
 #include <File.h>
+#include <Messenger.h>
 #include <String.h>
 
 
 SettingsMessage::SettingsMessage(directory_which directory,
 		const char* filename)
-	: BMessage('pref')
+	:
+	BMessage('pref'),
+	fListeners(4)
 {
 	fStatus = find_directory(directory, &fPath);
 
@@ -31,6 +36,9 @@ SettingsMessage::SettingsMessage(directory_which directory,
 SettingsMessage::~SettingsMessage()
 {
 	Save();
+
+	for (int32 i = fListeners.CountItems() - 1; i >= 0; i--)
+		delete reinterpret_cast<BMessenger*>(fListeners.ItemAtFast(i));
 }
 
 
@@ -67,139 +75,212 @@ SettingsMessage::Save() const
 }
 
 
+bool
+SettingsMessage::AddListener(const BMessenger& listener)
+{
+	BMessenger* listenerCopy = new(std::nothrow) BMessenger(listener);
+	if (listenerCopy && fListeners.AddItem(listenerCopy))
+		return true;
+	delete listenerCopy;
+	return false;
+}
+
+
+void
+SettingsMessage::RemoveListener(const BMessenger& listener)
+{
+	for (int32 i = fListeners.CountItems() - 1; i >= 0; i--) {
+		BMessenger* listenerItem = reinterpret_cast<BMessenger*>(
+			fListeners.ItemAtFast(i));
+		if (*listenerItem == listener) {
+			fListeners.RemoveItem(i);
+			delete listenerItem;
+			return;
+		}
+	}
+}
+
+
 // #pragma mark -
 
 
 status_t
 SettingsMessage::SetValue(const char* name, bool value)
 {
-	if (ReplaceBool(name, value) == B_OK)
-		return B_OK;
-	return AddBool(name, value);
+	status_t ret = ReplaceBool(name, value);
+	if (ret != B_OK)
+		ret = AddBool(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, int8 value)
 {
-	if (ReplaceInt8(name, value) == B_OK)
-		return B_OK;
-	return AddInt8(name, value);
+	status_t ret = ReplaceInt8(name, value);
+	if (ret != B_OK)
+		ret = AddInt8(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, int16 value)
 {
-	if (ReplaceInt16(name, value) == B_OK)
-		return B_OK;
-	return AddInt16(name, value);
+	status_t ret = ReplaceInt16(name, value);
+	if (ret != B_OK)
+		ret = AddInt16(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, int32 value)
 {
-	if (ReplaceInt32(name, value) == B_OK)
-		return B_OK;
-	return AddInt32(name, value);
+	status_t ret = ReplaceInt32(name, value);
+	if (ret != B_OK)
+		ret = AddInt32(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, uint32 value)
 {
-	if (ReplaceInt32(name, (int32)value) == B_OK)
-		return B_OK;
-	return AddInt32(name, (int32)value);
+	status_t ret = ReplaceUInt32(name, value);
+	if (ret != B_OK)
+		ret = AddUInt32(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, int64 value)
 {
-	if (ReplaceInt64(name, value) == B_OK)
-		return B_OK;
-	return AddInt64(name, value);
+	status_t ret = ReplaceInt64(name, value);
+	if (ret != B_OK)
+		ret = AddInt64(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, float value)
 {
-	if (ReplaceFloat(name, value) == B_OK)
-		return B_OK;
-	return AddFloat(name, value);
+	status_t ret = ReplaceFloat(name, value);
+	if (ret != B_OK)
+		ret = AddFloat(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, double value)
 {
-	if (ReplaceDouble(name, value) == B_OK)
-		return B_OK;
-	return AddDouble(name, value);
+	status_t ret = ReplaceDouble(name, value);
+	if (ret != B_OK)
+		ret = AddDouble(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const char* value)
 {
-	if (ReplaceString(name, value) == B_OK)
-		return B_OK;
-	return AddString(name, value);
+	status_t ret = ReplaceString(name, value);
+	if (ret != B_OK)
+		ret = AddString(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const BString& value)
 {
-	return SetValue(name, value.String());
+	status_t ret = ReplaceString(name, value);
+	if (ret != B_OK)
+		ret = AddString(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const BPoint& value)
 {
-	if (ReplacePoint(name, value) == B_OK)
-		return B_OK;
-	return AddPoint(name, value);
+	status_t ret = ReplacePoint(name, value);
+	if (ret != B_OK)
+		ret = AddPoint(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const BRect& value)
 {
-	if (ReplaceRect(name, value) == B_OK)
-		return B_OK;
-	return AddRect(name, value);
+	status_t ret = ReplaceRect(name, value);
+	if (ret != B_OK)
+		ret = AddRect(name, value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const entry_ref& value)
 {
-	if (ReplaceRef(name, &value) == B_OK)
-		return B_OK;
-	return AddRef(name, &value);
+	status_t ret = ReplaceRef(name, &value);
+	if (ret != B_OK)
+		ret = AddRef(name, &value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const BMessage& value)
 {
-	if (ReplaceMessage(name, &value) == B_OK)
-		return B_OK;
-	return AddMessage(name, &value);
+	status_t ret = ReplaceMessage(name, &value);
+	if (ret != B_OK)
+		ret = AddMessage(name, &value);
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
 status_t
 SettingsMessage::SetValue(const char* name, const BFlattenable* value)
 {
-	if (ReplaceFlat(name, const_cast<BFlattenable*>(value)) == B_OK)
-		return B_OK;
-	return AddFlat(name, const_cast<BFlattenable*>(value));
+	status_t ret = ReplaceFlat(name, const_cast<BFlattenable*>(value));
+	if (ret != B_OK)
+		ret = AddFlat(name, const_cast<BFlattenable*>(value));
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
+	return ret;
 }
 
 
@@ -221,6 +302,8 @@ SettingsMessage::SetValue(const char* name, const BFont& value)
 		if (ReplaceMessage(name, &fontMessage) != B_OK)
 			ret = AddMessage(name, &fontMessage);
 	}
+	if (ret == B_OK)
+		_NotifyValueChanged(name);
 	return ret;
 }
 
@@ -381,5 +464,22 @@ SettingsMessage::GetValue(const char* name, const BFont& defaultValue) const
 	value.SetSize(size);
 
 	return value;
+}
+
+
+// #pragma mark - private
+
+
+void
+SettingsMessage::_NotifyValueChanged(const char* name) const
+{
+	BMessage message(MSG_SETTINGS_VALUE_CHANGED);
+	message.AddString("name", name);
+	int32 count = fListeners.CountItems();
+	for (int32 i = 0; i < count; i++) {
+		BMessenger* listener = reinterpret_cast<BMessenger*>(
+			fListeners.ItemAtFast(i));
+		listener->SendMessage(&message);
+	}
 }
 
