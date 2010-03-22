@@ -475,6 +475,16 @@ SettingsMessage::_NotifyValueChanged(const char* name) const
 {
 	BMessage message(MSG_SETTINGS_VALUE_CHANGED);
 	message.AddString("name", name);
+
+	// Add the value of that name to the notification.
+	type_code type;
+	if (GetInfo(name, &type) == B_OK) {
+		const void* data;
+		ssize_t numBytes;
+		if (FindData(name, type, &data, &numBytes) == B_OK)
+			message.AddData("value", type, data, numBytes);
+	}
+
 	int32 count = fListeners.CountItems();
 	for (int32 i = 0; i < count; i++) {
 		BMessenger* listener = reinterpret_cast<BMessenger*>(
