@@ -28,17 +28,20 @@
 #define DOWNLOAD_WINDOW_H
 
 
+#include <String.h>
 #include <Window.h>
 
 class BButton;
 class BFile;
 class BGroupLayout;
 class BWebDownload;
+class SettingsMessage;
 
 
 class DownloadWindow : public BWindow {
 public:
-								DownloadWindow(BRect frame, bool visible);
+								DownloadWindow(BRect frame, bool visible,
+									SettingsMessage* settings);
 	virtual						~DownloadWindow();
 
 	virtual	void				MessageReceived(BMessage* message);
@@ -55,6 +58,7 @@ private:
 private:
 			BGroupLayout*		fDownloadViewsLayout;
 			BButton*			fRemoveFinishedButton;
+			BString				fDownloadPath;
 };
 
 #endif // DOWNLOAD_WINDOW_H

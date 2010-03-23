@@ -145,7 +145,8 @@ BrowserApp::ReadyToRun()
 		BRect());
 	bool showDownloads = fSettings->GetValue("show downloads", false);
 
-	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads);
+	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads,
+		fSettings);
 	fSettingsWindow = new SettingsWindow(settingsWindowFrame, fSettings);
 
 	BWebPage::SetDownloadListener(BMessenger(fDownloadWindow));

@@ -72,6 +72,7 @@
 
 #include <Bitmap.h>
 #include <Entry.h>
+#include <FindDirectory.h>
 #include <Font.h>
 #include <Message.h>
 #include <MessageQueue.h>
@@ -584,7 +585,6 @@ printf("BWebPage::linkHovered()\n");
 /*static*/ void BWebPage::downloadCreated(BWebDownload* download,
 	bool isAsynchronousRequest)
 {
-	download->Start();
 	if (sDownloadListener.IsValid()) {
         BMessage message(B_DOWNLOAD_ADDED);
         message.AddPointer("download", download);
@@ -595,6 +595,10 @@ printf("BWebPage::linkHovered()\n");
         } else {
 	        sDownloadListener.SendMessage(&message);
         }
+	} else {
+		BPath desktopPath;
+		find_directory(B_DESKTOP_DIRECTORY, &desktopPath);
+        download->Start(desktopPath);
 	}
 }
 

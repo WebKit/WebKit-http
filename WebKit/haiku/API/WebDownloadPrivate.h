@@ -67,7 +67,7 @@ public:
     virtual void cannotShowURL(ResourceHandle*);
 
     void setDownload(BWebDownload*);
-    void start();
+    void start(const BPath& path);
     void cancel();
     void setProgressListener(const BMessenger&);
 
@@ -79,6 +79,7 @@ public:
 
 private:
 	void handleFinished(WebCore::ResourceHandle* handle, uint32 status);
+	void createFile();
 
 private:
     BWebDownload* m_webDownload;
@@ -90,6 +91,7 @@ private:
     BString m_url;
     BPath m_path;
     BString m_filename;
+    BString m_mimeType;
     BFile m_file;
     bigtime_t m_lastProgressReportTime;
 

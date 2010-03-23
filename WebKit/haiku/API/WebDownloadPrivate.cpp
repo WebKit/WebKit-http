@@ -48,12 +48,14 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
-    , m_url()
+    , m_url(request.url().string())
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
+    , m_mimeType("application/octet-stream")
     , m_file()
     , m_lastProgressReportTime(0)
 {
+printf("%p->WebDownloadPrivate(const ResourceRequest& request)\n", this);
 }
 
 WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
@@ -65,9 +67,11 @@ WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
     , m_url()
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
+    , m_mimeType("application/octet-stream")
     , m_file()
     , m_lastProgressReportTime(0)
 {
+printf("%p->WebDownloadPrivate(ResourceHandle* handle)\n", this);
 	m_resourceHandle->setClient(this);
 	// Call the hook manually to figure out the details of the request
 	didReceiveResponse(handle, response);
@@ -75,7 +79,7 @@ WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
 
 void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
-	BString mimeType("application/octet-stream");
+printf("%p->WebDownloadPrivate::didReceiveResponse()\n", this);
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())
             m_filename = response.suggestedFilename();
@@ -86,20 +90,18 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
             m_filename = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
         }
         if (response.mimeType().length())
-            mimeType = response.mimeType();
+            m_mimeType = response.mimeType();
         m_expectedSize = response.expectedContentLength();
     }
+
     m_url = response.url().string();
-    m_path.Append(m_filename.String());
-	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
-		BNodeInfo info(&m_file);
-		info.SetType(mimeType.String());
-		m_file.WriteAttrString("META:url", &m_url);
-	}
 }
 
 void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, int length, int lengthReceived)
 {
+	if (m_file.InitCheck() != B_OK)
+		createFile();
+
     ssize_t bytesWritten = m_file.Write(data, length);
     if (bytesWritten != (ssize_t)length) {
         // FIXME: Report error
@@ -142,9 +144,11 @@ void WebDownloadPrivate::setDownload(BWebDownload* download)
     m_webDownload = download;
 }
 
-void WebDownloadPrivate::start()
+void WebDownloadPrivate::start(const BPath& path)
 {
-	// FIXME, the download is already running, and we cannot begin it paused...
+printf("%p->Start(%s)\n", m_webDownload, path.Path());
+	if (path.InitCheck() == B_OK)
+		m_path = path;
 }
 
 void WebDownloadPrivate::cancel()
@@ -154,6 +158,7 @@ void WebDownloadPrivate::cancel()
 
 void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 {
+printf("%p->setProgressListener()\n", this);
 	m_progressListener = listener;
 }
 
@@ -170,6 +175,24 @@ void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 
         m_progressListener.SendMessage(&message, &reply);
 	}
 	delete m_webDownload;
+}
+
+void WebDownloadPrivate::createFile()
+{
+printf("%p->createFile()\n", this);
+    m_path.Append(m_filename.String());
+	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
+		BNodeInfo info(&m_file);
+		info.SetType(m_mimeType.String());
+		m_file.WriteAttrString("META:url", &m_url);
+	}
+
+    if (m_progressListener.IsValid()) {
+printf("  sending notification\n");
+        BMessage message(B_DOWNLOAD_STARTED);
+        message.AddString("path", m_path.Path());
+        m_progressListener.SendMessage(&message);
+    }
 }
 
 } // namespace BPrivate

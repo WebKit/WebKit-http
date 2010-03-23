@@ -202,7 +202,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 {
 	fDownloadFolderControl = new BTextControl("download folder",
 		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
-fDownloadFolderControl->SetEnabled(false);
+	fDownloadFolderControl->SetText(fSettings->GetValue("download path", ""));
 
 	fNewPageBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
 		NULL);
@@ -312,7 +312,20 @@ SettingsWindow::_CreateFontsPage(float spacing)
 void
 SettingsWindow::_ApplySettings()
 {
-	// Store settings
+	// Store general settings
+	int32 maxHistoryAge = atoi(fDaysInGoMenuControl->Text());
+	if (maxHistoryAge <= 0)
+		maxHistoryAge = 1;
+	if (maxHistoryAge >= 35)
+		maxHistoryAge = 35;
+	BString text;
+	text << maxHistoryAge;
+	fDaysInGoMenuControl->SetText(text.String());
+	BrowsingHistory::DefaultInstance()->SetMaxHistoryItemAge(maxHistoryAge);
+
+	fSettings->SetValue("download path", fDownloadFolderControl->Text());
+
+	// Store fond settings
 	fSettings->SetValue("standard font", fStandardFontView->Font());
 	fSettings->SetValue("serif font", fSerifFontView->Font());
 	fSettings->SetValue("sans serif font", fSansSerifFontView->Font());
@@ -335,16 +348,6 @@ SettingsWindow::_ApplySettings()
 	// This will find all currently instantiated page settings and apply
 	// the default values, unless the page settings have local overrides.
 	BWebSettings::Default()->Apply();
-
-	int32 maxHistoryAge = atoi(fDaysInGoMenuControl->Text());
-	if (maxHistoryAge <= 0)
-		maxHistoryAge = 1;
-	if (maxHistoryAge >= 35)
-		maxHistoryAge = 35;
-	BString text;
-	text << maxHistoryAge;
-	fDaysInGoMenuControl->SetText(text.String());
-	BrowsingHistory::DefaultInstance()->SetMaxHistoryItemAge(maxHistoryAge);
 }
 
 

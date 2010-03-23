@@ -11,6 +11,7 @@
 #include <FindDirectory.h>
 #include <Font.h>
 #include <List.h>
+#include <Locker.h>
 #include <Message.h>
 #include <Path.h>
 
@@ -19,11 +20,11 @@ class BString;
 
 
 enum {
-	MSG_SETTINGS_VALUE_CHANGED = 'stvc'
+	SETTINGS_VALUE_CHANGED = '_svc'
 };
 
 
-class SettingsMessage : public BMessage {
+class SettingsMessage : public BMessage, public BLocker {
 public:
 								SettingsMessage(directory_which directory,
 									const char* filename);
@@ -49,9 +50,11 @@ public:
 									const char* value);
 			status_t			SetValue(const char* name,
 									const BString& value);
-			status_t			SetValue(const char *name, const BPoint& value);
+			status_t			SetValue(const char *name,
+									const BPoint& value);
 			status_t			SetValue(const char* name, const BRect& value);
-			status_t			SetValue(const char* name, const entry_ref& value);
+			status_t			SetValue(const char* name,
+									const entry_ref& value);
 			status_t			SetValue(const char* name,
 									const BMessage& value);
 			status_t			SetValue(const char* name,
@@ -75,6 +78,8 @@ public:
 									float defaultValue) const;
 			double				GetValue(const char* name,
 									double defaultValue) const;
+			const char*			GetValue(const char* name,
+									const char* defaultValue) const;
 			BString				GetValue(const char* name,
 									const BString& defaultValue) const;
 			BPoint				GetValue(const char *name,

@@ -41,6 +41,7 @@ class BWebPage;
 
 
 enum {
+	B_DOWNLOAD_STARTED = 'dwns',
     B_DOWNLOAD_PROGRESS = 'dwnp'
 };
 
@@ -55,7 +56,7 @@ enum {
 class BWebDownload : public BHandler {
 // TODO: Inherit from BReferenceable.
 public:
-			void				Start();
+			void				Start(const BPath& path);
 			void				Cancel();
 
 			void				SetProgressListener(const BMessenger& listener);

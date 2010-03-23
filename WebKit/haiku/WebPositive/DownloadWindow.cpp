@@ -48,6 +48,7 @@
 #include <StatusBar.h>
 
 #include "BrowserApp.h"
+#include "SettingsMessage.h"
 #include "WebDownload.h"
 #include "WebPage.h"
 
@@ -64,15 +65,13 @@ enum {
 
 class IconView : public BView {
 public:
-	IconView(const BEntry& entry)
+	IconView()
 		:
 		BView("Download icon", B_WILL_DRAW),
 		fIconBitmap(BRect(0, 0, 31, 31), 0, B_RGBA32)
 	{
-		BNode node(&entry);
-		BNodeInfo info(&node);
-		info.GetTrackerIcon(&fIconBitmap, B_LARGE_ICON);
 		SetDrawingMode(B_OP_OVER);
+		memset(fIconBitmap.Bits(), 0, fIconBitmap.BitsLength());
 	}
 
 	IconView(BMessage* archive)
@@ -81,6 +80,14 @@ public:
 		fIconBitmap(archive)
 	{
 		SetDrawingMode(B_OP_OVER);
+	}
+
+	void SetTo(const BEntry& entry)
+	{
+		BNode node(&entry);
+		BNodeInfo info(&node);
+		info.GetTrackerIcon(&fIconBitmap, B_LARGE_ICON);
+		Invalidate();
 	}
 
 	status_t SaveSettings(BMessage* archive)
@@ -162,27 +169,24 @@ public:
 
 	bool Init(BMessage* archive = NULL)
 	{
-		BEntry entry(fPath.Path());
-		if (!entry.Exists() && !archive)
-			return false;
-
 		SetViewColor(245, 245, 245);
 		SetFlags(Flags() | B_FULL_UPDATE_ON_RESIZE | B_WILL_DRAW);
 
 		BGridLayout* layout = GridLayout();
-		fStatusBar = new BStatusBar("download progress", fPath.Leaf());
-		fStatusBar->SetMaxValue(100);
 		if (archive) {
+			fStatusBar = new BStatusBar("download progress", fPath.Leaf());
 			float value;
 			if (archive->FindFloat("value", &value) == B_OK)
 				fStatusBar->SetTo(value);
-		}
+		} else
+			fStatusBar = new BStatusBar("download progress", "Download");
+		fStatusBar->SetMaxValue(100);
 		fStatusBar->SetBarHeight(12);
 
-		if (entry.Exists())
-			fIconView = new IconView(entry);
-		else
+		if (archive)
 			fIconView = new IconView(archive);
+		else
+			fIconView = new IconView();
 
 		if (!fDownload && fStatusBar->CurrentValue() < 100)
 			fTopButton = new SmallButton("Restart", new BMessage(RESTART_DOWNLOAD));
@@ -247,6 +251,17 @@ public:
 	virtual void MessageReceived(BMessage* message)
 	{
 		switch (message->what) {
+			case B_DOWNLOAD_STARTED: {
+				BString path;
+				if (message->FindString("path", &path) != B_OK)
+					break;
+				fPath.SetTo(path);
+				BEntry entry(fPath.Path());
+				fIconView->SetTo(entry);
+printf("B_DOWNLOAD_STARTED: %s\n", fPath.Leaf());
+				fStatusBar->Reset(fPath.Leaf());
+				break;
+			};
 			case B_DOWNLOAD_PROGRESS: {
 				float progress;
 				if (message->FindFloat("progress", &progress) == B_OK)
@@ -391,11 +406,22 @@ protected:
 };
 
 
-DownloadWindow::DownloadWindow(BRect frame, bool visible)
+// #pragma mark -
+
+
+DownloadWindow::DownloadWindow(BRect frame, bool visible,
+		SettingsMessage* settings)
 	: BWindow(frame, "Downloads",
 		B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
 {
+	settings->AddListener(BMessenger(this));
+	BPath downloadPath;
+	if (find_directory(B_DESKTOP_DIRECTORY, &downloadPath) != B_OK)
+		downloadPath.SetTo("/boot/home/Desktop");
+	fDownloadPath = settings->GetValue("download path", downloadPath.Path());
+	settings->SetValue("download path", fDownloadPath);
+
 	SetLayout(new BGroupLayout(B_VERTICAL));
 
 	DownloadsContainerView* downloadsGroupView = new DownloadsContainerView();
@@ -445,7 +471,8 @@ void
 DownloadWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
-		case B_DOWNLOAD_ADDED: {
+		case B_DOWNLOAD_ADDED:
+		{
 			BWebDownload* download;
 			if (message->FindPointer("download", reinterpret_cast<void**>(
 					&download)) == B_OK) {
@@ -453,7 +480,8 @@ DownloadWindow::MessageReceived(BMessage* message)
 			}
 			break;
 		}
-		case B_DOWNLOAD_REMOVED: {
+		case B_DOWNLOAD_REMOVED:
+		{
 			BWebDownload* download;
 			if (message->FindPointer("download", reinterpret_cast<void**>(
 					&download)) == B_OK) {
@@ -467,6 +495,17 @@ DownloadWindow::MessageReceived(BMessage* message)
 		case SAVE_SETTINGS:
 			_SaveSettings();
 			break;
+
+		case SETTINGS_VALUE_CHANGED:
+		{
+			BString string;
+			if (message->FindString("name", &string) == B_OK 
+				&& string == "download path"
+				&& message->FindString("value", &string) == B_OK) {
+				fDownloadPath = string;
+			}
+			break;
+		}
 		default:
 			BWindow::MessageReceived(message);
 			break;
@@ -486,6 +525,8 @@ DownloadWindow::QuitRequested()
 void
 DownloadWindow::_DownloadStarted(BWebDownload* download)
 {
+	download->Start(BPath(fDownloadPath.String()));
+
 	int32 finishedCount = 0;
 	int32 index = 0;
 	for (int32 i = fDownloadViewsLayout->CountItems() - 1;

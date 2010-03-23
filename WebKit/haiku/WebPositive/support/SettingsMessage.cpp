@@ -11,6 +11,7 @@
 
 #include <new>
 
+#include <Autolock.h>
 #include <Entry.h>
 #include <File.h>
 #include <Messenger.h>
@@ -52,6 +53,8 @@ SettingsMessage::InitCheck() const
 status_t
 SettingsMessage::Load()
 {
+	BAutolock _(this);
+
 	BFile file(fPath.Path(), B_READ_ONLY);
 	status_t status = file.InitCheck();
 
@@ -65,6 +68,8 @@ SettingsMessage::Load()
 status_t
 SettingsMessage::Save() const
 {
+	BAutolock _(const_cast<SettingsMessage*>(this));
+
 	BFile file(fPath.Path(), B_WRITE_ONLY | B_CREATE_FILE | B_ERASE_FILE);
 	status_t status = file.InitCheck();
 
@@ -78,6 +83,8 @@ SettingsMessage::Save() const
 bool
 SettingsMessage::AddListener(const BMessenger& listener)
 {
+	BAutolock _(this);
+
 	BMessenger* listenerCopy = new(std::nothrow) BMessenger(listener);
 	if (listenerCopy && fListeners.AddItem(listenerCopy))
 		return true;
@@ -89,6 +96,8 @@ SettingsMessage::AddListener(const BMessenger& listener)
 void
 SettingsMessage::RemoveListener(const BMessenger& listener)
 {
+	BAutolock _(this);
+
 	for (int32 i = fListeners.CountItems() - 1; i >= 0; i--) {
 		BMessenger* listenerItem = reinterpret_cast<BMessenger*>(
 			fListeners.ItemAtFast(i));
@@ -401,6 +410,16 @@ SettingsMessage::GetValue(const char* name, const BString& defaultValue) const
 }
 
 
+const char*
+SettingsMessage::GetValue(const char* name, const char* defaultValue) const
+{
+	const char* value;
+	if (FindString(name, &value) != B_OK)
+		return defaultValue;
+	return value;
+}
+
+
 BPoint
 SettingsMessage::GetValue(const char *name, BPoint defaultValue) const
 {
@@ -473,7 +492,7 @@ SettingsMessage::GetValue(const char* name, const BFont& defaultValue) const
 void
 SettingsMessage::_NotifyValueChanged(const char* name) const
 {
-	BMessage message(MSG_SETTINGS_VALUE_CHANGED);
+	BMessage message(SETTINGS_VALUE_CHANGED);
 	message.AddString("name", name);
 
 	// Add the value of that name to the notification.

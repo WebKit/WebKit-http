@@ -58,9 +58,11 @@ BWebDownload::~BWebDownload()
 	delete fData;
 }
 
-void BWebDownload::Start()
+void BWebDownload::Start(const BPath& path)
 {
-    fData->start();
+	// Does not matter which thread this is invoked in, as long as the
+	// rest of the code is blocking...
+    fData->start(path);
 }
 
 void BWebDownload::Cancel()
