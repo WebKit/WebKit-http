@@ -32,6 +32,7 @@
 #include <Alert.h>
 #include <Bitmap.h>
 #include <Button.h>
+#include <Directory.h>
 #include <Entry.h>
 #include <FindDirectory.h>
 #include <GridLayoutBuilder.h>
@@ -381,12 +382,36 @@ public:
 							|| strlen(name) == 0) {
 							break;
 						}
+						// Construct the BEntry and update fPath
 						entry_ref ref(device, directory, name);
 						BEntry entry(&ref);
-						if (entry.GetPath(&fPath) == B_OK) {
-							fStatusBar->SetText(name);
-							Window()->PostMessage(SAVE_SETTINGS);
+						if (entry.GetPath(&fPath) != B_OK)
+							break;
+						// Find out if the directory is the Trash for this
+						// volume
+						char trashPath[B_PATH_NAME_LENGTH];
+						if (find_directory(B_TRASH_DIRECTORY, device, false,
+								trashPath, B_PATH_NAME_LENGTH) == B_OK) {
+							BPath trashDirectory(trashPath);
+							BPath parentDirectory;
+							fPath.GetParent(&parentDirectory);
+							if (parentDirectory == trashDirectory) {
+								// The entry was moved into the Trash.
+								// If the download is still in progress,
+								// cancel it.
+								if (fDownload)
+									fDownload->Cancel();
+								fIconView->SetIconDimmed(true);
+								DownloadCanceled();
+								break;
+							} else if (fIconView->IsIconDimmed()) {
+								// Maybe it was moved out of the trash.
+								fIconView->SetIconDimmed(false);
+							}
 						}
+
+						fStatusBar->SetText(name);
+						Window()->PostMessage(SAVE_SETTINGS);
 						break;
 					}
 					case B_ATTR_CHANGED:
