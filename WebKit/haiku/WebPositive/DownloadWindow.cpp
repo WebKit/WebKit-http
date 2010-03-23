@@ -435,6 +435,11 @@ protected:
 		scrollBar->MoveBy(1, -1);
 		scrollBar->ResizeBy(0, 2);
 		Target()->ResizeBy(1, 0);
+		// Set the scroll steps
+		if (BView* item = Target()->ChildAt(0)) {
+			scrollBar->SetSteps(item->MinSize().height + 1,
+				item->MinSize().height + 1);
+		}
 	}
 };
 
