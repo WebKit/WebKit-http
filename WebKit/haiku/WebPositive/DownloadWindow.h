@@ -51,6 +51,7 @@ private:
 			void				_DownloadStarted(BWebDownload* download);
 			void				_DownloadFinished(BWebDownload* download);
 			void				_RemoveFinishedDownloads();
+			void				_RemoveMissingDownloads();
 			void				_SaveSettings();
 			void				_LoadSettings();
 			bool				_OpenSettingsFile(BFile& file, uint32 mode);
@@ -58,6 +59,7 @@ private:
 private:
 			BGroupLayout*		fDownloadViewsLayout;
 			BButton*			fRemoveFinishedButton;
+			BButton*			fRemoveMissingButton;
 			BString				fDownloadPath;
 };
 
