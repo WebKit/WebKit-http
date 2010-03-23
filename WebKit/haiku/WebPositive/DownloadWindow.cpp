@@ -40,6 +40,7 @@
 #include <MenuBar.h>
 #include <MenuItem.h>
 #include <NodeInfo.h>
+#include <NodeMonitor.h>
 #include <Path.h>
 #include <Roster.h>
 #include <ScrollView.h>
@@ -264,6 +265,15 @@ public:
 			fDownload->SetProgressListener(BMessenger(this));
 		fTopButton->SetTarget(this);
 		fBottomButton->SetTarget(this);
+		
+		BEntry entry(fPath.Path());
+		if (entry.Exists())
+			_StartNodeMonitor(entry);
+	}
+
+	virtual void DetachedFromWindow()
+	{
+		_StopNodeMonitor();
 	}
 
 	virtual void AllAttached()
@@ -285,7 +295,8 @@ public:
 	virtual void MessageReceived(BMessage* message)
 	{
 		switch (message->what) {
-			case B_DOWNLOAD_STARTED: {
+			case B_DOWNLOAD_STARTED:
+			{
 				BString path;
 				if (message->FindString("path", &path) != B_OK)
 					break;
@@ -293,15 +304,18 @@ public:
 				BEntry entry(fPath.Path());
 				fIconView->SetTo(entry);
 				fStatusBar->Reset(fPath.Leaf());
+				_StartNodeMonitor(entry);
 				break;
 			};
-			case B_DOWNLOAD_PROGRESS: {
+			case B_DOWNLOAD_PROGRESS:
+			{
 				float progress;
 				if (message->FindFloat("progress", &progress) == B_OK)
 					fStatusBar->SetTo(progress);
 				break;
 			}
-			case OPEN_DOWNLOAD: {
+			case OPEN_DOWNLOAD:
+			{
 				// TODO: In case of executable files, ask the user first!
 				entry_ref ref;
 				status_t status = get_ref_for_path(fPath.Path(), &ref);
@@ -323,7 +337,8 @@ public:
 				DownloadCanceled();
 				break;
 	
-			case REMOVE_DOWNLOAD: {
+			case REMOVE_DOWNLOAD:
+			{
 				Window()->PostMessage(SAVE_SETTINGS);
 				RemoveSelf();
 				delete this;
@@ -336,6 +351,54 @@ public:
 				// at the window...
 				Window()->PostMessage(message);
 				break;
+			case B_NODE_MONITOR:
+			{
+				int32 opCode;
+				if (message->FindInt32("opcode", &opCode) != B_OK)
+					break;
+				switch (opCode) {
+					case B_ENTRY_REMOVED:
+						fIconView->SetIconDimmed(true);
+						DownloadCanceled();
+						break;
+					case B_ENTRY_MOVED:
+					{
+						int64 fromDirectory;
+						int64 toDirectory;
+						if (message->FindInt64("from directory",
+								&fromDirectory) != B_OK
+							|| message->FindInt64("to directory",
+								&toDirectory) != B_OK) {
+							break;
+						}
+						if (fromDirectory == toDirectory) {
+							// Entry was renamed
+							const char* name;
+							if (message->FindString("name", &name) != B_OK
+								|| strlen(name) == 0) {
+								break;
+							}
+							fPath.GetParent(&fPath);
+							fPath.Append(name);
+							fStatusBar->SetText(name);
+							Window()->PostMessage(SAVE_SETTINGS);
+						} else {
+							// Entry was moved elsewhere
+							fIconView->SetIconDimmed(true);
+							DownloadCanceled();
+						}
+						break;
+					}
+					case B_ATTR_CHANGED:
+					{
+						BEntry entry(fPath.Path());
+						fIconView->SetIconDimmed(false);
+						fIconView->SetTo(entry);
+						break;
+					}
+				}
+				break;
+			}
 			default:
 				BGridView::MessageReceived(message);
 		}
@@ -369,6 +432,19 @@ public:
 		fBottomButton->SetLabel("Remove");
 		fBottomButton->SetMessage(new BMessage(REMOVE_DOWNLOAD));
 		fBottomButton->SetEnabled(true);
+	}
+
+private:
+	void _StartNodeMonitor(const BEntry& entry)
+	{
+		node_ref nref;
+		if (entry.GetNodeRef(&nref) == B_OK)
+			watch_node(&nref, B_WATCH_ALL, this);
+	}
+
+	void _StopNodeMonitor()
+	{
+		stop_watching(this);
 	}
 
 private:
