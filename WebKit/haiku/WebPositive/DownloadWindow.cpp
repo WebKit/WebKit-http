@@ -363,29 +363,23 @@ public:
 						break;
 					case B_ENTRY_MOVED:
 					{
-						int64 fromDirectory;
-						int64 toDirectory;
-						if (message->FindInt64("from directory",
-								&fromDirectory) != B_OK
+						// Follow the entry to the new location
+						dev_t device;
+						ino_t directory;
+						const char* name;
+						if (message->FindInt32("device",
+								reinterpret_cast<int32*>(&device)) != B_OK
 							|| message->FindInt64("to directory",
-								&toDirectory) != B_OK) {
+								reinterpret_cast<int64*>(&directory)) != B_OK
+							|| message->FindString("name", &name) != B_OK
+							|| strlen(name) == 0) {
 							break;
 						}
-						if (fromDirectory == toDirectory) {
-							// Entry was renamed
-							const char* name;
-							if (message->FindString("name", &name) != B_OK
-								|| strlen(name) == 0) {
-								break;
-							}
-							fPath.GetParent(&fPath);
-							fPath.Append(name);
+						entry_ref ref(device, directory, name);
+						BEntry entry(&ref);
+						if (entry.GetPath(&fPath) == B_OK) {
 							fStatusBar->SetText(name);
 							Window()->PostMessage(SAVE_SETTINGS);
-						} else {
-							// Entry was moved elsewhere
-							fIconView->SetIconDimmed(true);
-							DownloadCanceled();
 						}
 						break;
 					}
