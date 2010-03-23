@@ -54,6 +54,8 @@
 
 
 enum {
+	INIT = 'init',
+	OPEN_DOWNLOADS_FOLDER = 'odnf',
 	REMOVE_FINISHED_DOWNLOADS = 'rmfd',
 	OPEN_DOWNLOAD = 'opdn',
 	RESTART_DOWNLOAD = 'rsdn',
@@ -65,10 +67,21 @@ enum {
 
 class IconView : public BView {
 public:
+	IconView(const BEntry& entry)
+		:
+		BView("Download icon", B_WILL_DRAW),
+		fIconBitmap(BRect(0, 0, 31, 31), 0, B_RGBA32),
+		fDimmedIcon(false)
+	{
+		SetDrawingMode(B_OP_OVER);
+		SetTo(entry);
+	}
+
 	IconView()
 		:
 		BView("Download icon", B_WILL_DRAW),
-		fIconBitmap(BRect(0, 0, 31, 31), 0, B_RGBA32)
+		fIconBitmap(BRect(0, 0, 31, 31), 0, B_RGBA32),
+		fDimmedIcon(false)
 	{
 		SetDrawingMode(B_OP_OVER);
 		memset(fIconBitmap.Bits(), 0, fIconBitmap.BitsLength());
@@ -77,7 +90,8 @@ public:
 	IconView(BMessage* archive)
 		:
 		BView("Download icon", B_WILL_DRAW),
-		fIconBitmap(archive)
+		fIconBitmap(archive),
+		fDimmedIcon(true)
 	{
 		SetDrawingMode(B_OP_OVER);
 	}
@@ -88,6 +102,14 @@ public:
 		BNodeInfo info(&node);
 		info.GetTrackerIcon(&fIconBitmap, B_LARGE_ICON);
 		Invalidate();
+	}
+
+	void SetIconDimmed(bool iconDimmed)
+	{
+		if (fDimmedIcon != iconDimmed) {
+			fDimmedIcon = iconDimmed;
+			Invalidate();
+		}
 	}
 
 	status_t SaveSettings(BMessage* archive)
@@ -102,6 +124,11 @@ public:
 
 	virtual void Draw(BRect updateRect)
 	{
+		if (fDimmedIcon) {
+			SetDrawingMode(B_OP_ALPHA);
+			SetBlendingMode(B_CONSTANT_ALPHA, B_ALPHA_OVERLAY);
+			SetHighColor(0, 0, 0, 100);
+		}
 		DrawBitmapAsync(&fIconBitmap);
 	}
 
@@ -121,7 +148,8 @@ public:
 	}
 
 private:
-	BBitmap fIconBitmap;
+	BBitmap	fIconBitmap;
+	bool	fDimmedIcon;
 };
 
 
@@ -183,12 +211,18 @@ public:
 		fStatusBar->SetMaxValue(100);
 		fStatusBar->SetBarHeight(12);
 
-		if (archive)
-			fIconView = new IconView(archive);
-		else
+		// fPath is only valid when constructed from archive (fDownload == NULL)
+		BEntry entry(fPath.Path());
+
+		if (archive) {
+			if (!entry.Exists())
+				fIconView = new IconView(archive);
+			else
+				fIconView = new IconView(entry);
+		} else
 			fIconView = new IconView();
 
-		if (!fDownload && fStatusBar->CurrentValue() < 100)
+		if (!fDownload && (fStatusBar->CurrentValue() < 100 || !entry.Exists()))
 			fTopButton = new SmallButton("Restart", new BMessage(RESTART_DOWNLOAD));
 		else {
 			fTopButton = new SmallButton("Open", new BMessage(OPEN_DOWNLOAD));
@@ -258,7 +292,6 @@ public:
 				fPath.SetTo(path);
 				BEntry entry(fPath.Path());
 				fIconView->SetTo(entry);
-printf("B_DOWNLOAD_STARTED: %s\n", fPath.Leaf());
 				fStatusBar->Reset(fPath.Leaf());
 				break;
 			};
@@ -428,7 +461,9 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 	fDownloadViewsLayout = downloadsGroupView->GroupLayout();
 
 	BMenuBar* menuBar = new BMenuBar("Menu bar");
-	BMenu* menu = new BMenu("Window");
+	BMenu* menu = new BMenu("Downloads");
+	menu->AddItem(new BMenuItem("Open downloads folder",
+		new BMessage(OPEN_DOWNLOADS_FOLDER)));
 	menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'H'));
 	menuBar->AddItem(menu);
 
@@ -450,9 +485,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 		)
 	);
 
-	_LoadSettings();
-	// Small trick to get the correct enabled status of the Remove finished button
-	_DownloadFinished(NULL);
+	PostMessage(INIT);
 
 	if (!visible)
 		Hide();
@@ -471,6 +504,14 @@ void
 DownloadWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
+		case INIT:
+		{
+			_LoadSettings();
+			// Small trick to get the correct enabled status of the Remove
+			// finished button
+			_DownloadFinished(NULL);
+			break;
+		}
 		case B_DOWNLOAD_ADDED:
 		{
 			BWebDownload* download;
@@ -486,6 +527,22 @@ DownloadWindow::MessageReceived(BMessage* message)
 			if (message->FindPointer("download", reinterpret_cast<void**>(
 					&download)) == B_OK) {
 				_DownloadFinished(download);
+			}
+			break;
+		}
+		case OPEN_DOWNLOADS_FOLDER:
+		{
+			entry_ref ref;
+			status_t status = get_ref_for_path(fDownloadPath.String(), &ref);
+			if (status == B_OK)
+				status = be_roster->Launch(&ref);
+			if (status != B_OK && status != B_ALREADY_RUNNING) {
+				BString errorString("The downloads folder could not be "
+					"opened.\n\n");
+				errorString << "Error: " << strerror(status);
+				BAlert* alert = new BAlert("Error opening downloads folder",
+					errorString.String(), "OK");
+				alert->Go(NULL);
 			}
 			break;
 		}

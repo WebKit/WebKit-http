@@ -55,7 +55,6 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     , m_file()
     , m_lastProgressReportTime(0)
 {
-printf("%p->WebDownloadPrivate(const ResourceRequest& request)\n", this);
 }
 
 WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
@@ -71,7 +70,6 @@ WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
     , m_file()
     , m_lastProgressReportTime(0)
 {
-printf("%p->WebDownloadPrivate(ResourceHandle* handle)\n", this);
 	m_resourceHandle->setClient(this);
 	// Call the hook manually to figure out the details of the request
 	didReceiveResponse(handle, response);
@@ -79,7 +77,6 @@ printf("%p->WebDownloadPrivate(ResourceHandle* handle)\n", this);
 
 void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
-printf("%p->WebDownloadPrivate::didReceiveResponse()\n", this);
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())
             m_filename = response.suggestedFilename();
@@ -146,7 +143,6 @@ void WebDownloadPrivate::setDownload(BWebDownload* download)
 
 void WebDownloadPrivate::start(const BPath& path)
 {
-printf("%p->Start(%s)\n", m_webDownload, path.Path());
 	if (path.InitCheck() == B_OK)
 		m_path = path;
 }
@@ -158,7 +154,6 @@ void WebDownloadPrivate::cancel()
 
 void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 {
-printf("%p->setProgressListener()\n", this);
 	m_progressListener = listener;
 }
 
@@ -179,7 +174,6 @@ void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 
 
 void WebDownloadPrivate::createFile()
 {
-printf("%p->createFile()\n", this);
     m_path.Append(m_filename.String());
 	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
 		BNodeInfo info(&m_file);
@@ -188,7 +182,6 @@ printf("%p->createFile()\n", this);
 	}
 
     if (m_progressListener.IsValid()) {
-printf("  sending notification\n");
         BMessage message(B_DOWNLOAD_STARTED);
         message.AddString("path", m_path.Path());
         m_progressListener.SendMessage(&message);
