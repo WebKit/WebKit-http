@@ -533,6 +533,7 @@ DownloadProgressView::DownloadCanceled()
 	fBottomButton->SetLabel("Remove");
 	fBottomButton->SetMessage(new BMessage(REMOVE_DOWNLOAD));
 	fBottomButton->SetEnabled(true);
+	fInfoView->SetText("");
 }
 
 
