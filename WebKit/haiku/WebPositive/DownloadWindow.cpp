@@ -315,11 +315,13 @@ DownloadWindow::_DownloadStarted(BWebDownload* download)
 		return;
 	}
 	fDownloadViewsLayout->AddView(index, view);
-	float viewHeight = view->MinSize().height + 1;
+
+	// Scroll new download into view
 	if (BScrollBar* scrollBar = fDownloadsScrollView->ScrollBar(B_VERTICAL)) {
 		float min;
 		float max;
 		scrollBar->GetRange(&min, &max);
+		float viewHeight = view->MinSize().height + 1;
 		float scrollOffset = min + index * viewHeight;
 		float scrollBarHeight = scrollBar->Bounds().Height() - 1;
 		float value = scrollBar->Value();
@@ -330,6 +332,7 @@ DownloadWindow::_DownloadStarted(BWebDownload* download)
 			scrollBar->SetValue(value + diff);
 		}
 	}
+
 	_SaveSettings();
 
 	SetWorkspaces(B_CURRENT_WORKSPACE);
