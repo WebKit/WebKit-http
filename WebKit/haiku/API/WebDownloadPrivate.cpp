@@ -109,6 +109,8 @@ void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, int l
     // FIXME: Report total size update, if m_currentSize greater than previous total size
     BMessage message(B_DOWNLOAD_PROGRESS);
     message.AddFloat("progress", m_currentSize * 100.0 / m_expectedSize);
+    message.AddInt64("current size", m_currentSize);
+    message.AddInt64("expected size", m_expectedSize);
     m_progressListener.SendMessage(&message);
 }
 
