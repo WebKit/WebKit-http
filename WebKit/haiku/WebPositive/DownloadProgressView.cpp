@@ -278,11 +278,6 @@ DownloadProgressView::Init(BMessage* archive)
 	fInfoView->SetFont(&font, B_FONT_SIZE);
 	fInfoView->SetHighColor(tint_color(fInfoView->LowColor(),
 		B_DARKEN_4_TINT));
-//	font_height fontHeight;
-//	font.GetHeight(&fontHeight);
-//	float textHeight = ceilf(fontHeight.ascent) + ceilf(fontHeight.descent);
-//	fInfoView->SetExplicitMinSize(BSize(B_SIZE_UNSET, textHeight));
-//	fInfoView->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, textHeight));
 	fInfoView->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
 
 	return true;
