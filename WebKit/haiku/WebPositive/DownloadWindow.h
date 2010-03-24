@@ -34,6 +34,7 @@
 class BButton;
 class BFile;
 class BGroupLayout;
+class BScrollView;
 class BWebDownload;
 class SettingsMessage;
 
@@ -58,6 +59,7 @@ private:
 			bool				_OpenSettingsFile(BFile& file, uint32 mode);
 
 private:
+			BScrollView*		fDownloadsScrollView;
 			BGroupLayout*		fDownloadViewsLayout;
 			BButton*			fRemoveFinishedButton;
 			BButton*			fRemoveMissingButton;

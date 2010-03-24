@@ -157,8 +157,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 	menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'H'));
 	menuBar->AddItem(menu);
 
-	BScrollView* scrollView = new DownloadContainerScrollView(
-		downloadsGroupView);
+	fDownloadsScrollView = new DownloadContainerScrollView(downloadsGroupView);
 
 	fRemoveFinishedButton = new BButton("Remove finished",
 		new BMessage(REMOVE_FINISHED_DOWNLOADS));
@@ -172,7 +171,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
 		.Add(menuBar)
-		.Add(scrollView)
+		.Add(fDownloadsScrollView)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, spacing)
 			.AddGlue()
@@ -280,6 +279,9 @@ DownloadWindow::QuitRequested()
 }
 
 
+// #pragma mark - private
+
+
 void
 DownloadWindow::_DownloadStarted(BWebDownload* download)
 {
@@ -308,9 +310,26 @@ DownloadWindow::_DownloadStarted(BWebDownload* download)
 	fRemoveFinishedButton->SetEnabled(finishedCount > 0);
 	fRemoveMissingButton->SetEnabled(missingCount > 0);
 	DownloadProgressView* view = new DownloadProgressView(download);
-	if (!view->Init())
+	if (!view->Init()) {
+		delete view;
 		return;
+	}
 	fDownloadViewsLayout->AddView(index, view);
+	float viewHeight = view->MinSize().height + 1;
+	if (BScrollBar* scrollBar = fDownloadsScrollView->ScrollBar(B_VERTICAL)) {
+		float min;
+		float max;
+		scrollBar->GetRange(&min, &max);
+		float scrollOffset = min + index * viewHeight;
+		float scrollBarHeight = scrollBar->Bounds().Height() - 1;
+		float value = scrollBar->Value();
+		if (scrollOffset < value)
+			scrollBar->SetValue(scrollOffset);
+		else if (scrollOffset + viewHeight > value + scrollBarHeight) {
+			float diff = scrollOffset + viewHeight - (value + scrollBarHeight);
+			scrollBar->SetValue(value + diff);
+		}
+	}
 	_SaveSettings();
 
 	SetWorkspaces(B_CURRENT_WORKSPACE);
