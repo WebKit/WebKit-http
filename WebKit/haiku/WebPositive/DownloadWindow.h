@@ -52,6 +52,7 @@ private:
 			void				_DownloadFinished(BWebDownload* download);
 			void				_RemoveFinishedDownloads();
 			void				_RemoveMissingDownloads();
+			void				_ValidateButtonStatus();
 			void				_SaveSettings();
 			void				_LoadSettings();
 			bool				_OpenSettingsFile(BFile& file, uint32 mode);

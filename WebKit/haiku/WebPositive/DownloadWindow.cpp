@@ -250,6 +250,7 @@ DownloadWindow::MessageReceived(BMessage* message)
 			_RemoveMissingDownloads();
 			break;
 		case SAVE_SETTINGS:
+			_ValidateButtonStatus();
 			_SaveSettings();
 			break;
 
@@ -387,6 +388,27 @@ DownloadWindow::_RemoveMissingDownloads()
 	fRemoveMissingButton->SetEnabled(false);
 	fRemoveFinishedButton->SetEnabled(finishedCount > 0);
 	_SaveSettings();
+}
+
+
+void
+DownloadWindow::_ValidateButtonStatus()
+{
+	int32 finishedCount = 0;
+	int32 missingCount = 0;
+	for (int32 i = fDownloadViewsLayout->CountItems() - 1;
+			BLayoutItem* item = fDownloadViewsLayout->ItemAt(i); i--) {
+		DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(
+			item->View());
+		if (!view)
+			continue;
+		if (view->IsFinished())
+			finishedCount++;
+		if (view->IsMissing())
+			missingCount++;
+	}
+	fRemoveFinishedButton->SetEnabled(finishedCount > 0);
+	fRemoveMissingButton->SetEnabled(missingCount > 0);
 }
 
 
