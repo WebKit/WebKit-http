@@ -131,6 +131,7 @@ Application WebPositive :
     FontSelectionView.cpp
     IconButton.cpp
     SettingsMessage.cpp
+    StringForSize.cpp
 	# WebPositive
     AuthenticationPanel.cpp
     BrowsingHistory.cpp

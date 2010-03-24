@@ -35,15 +35,17 @@
 #include <Directory.h>
 #include <Entry.h>
 #include <FindDirectory.h>
-#include <GridLayoutBuilder.h>
+#include <GroupLayoutBuilder.h>
 #include <NodeInfo.h>
 #include <NodeMonitor.h>
 #include <Roster.h>
 #include <SpaceLayoutItem.h>
 #include <StatusBar.h>
+#include <StringView.h>
 
 #include "WebDownload.h"
 #include "WebPage.h"
+#include "StringForSize.h"
 
 
 enum {
@@ -52,6 +54,14 @@ enum {
 	CANCEL_DOWNLOAD = 'cndn',
 	REMOVE_DOWNLOAD = 'rmdn',
 };
+
+const bigtime_t kMaxUpdateInterval = 100000LL;
+const bigtime_t kSpeedReferenceInterval = 500000LL;
+const bigtime_t kShowSpeedInterval = 8000000LL;
+const bigtime_t kShowEstimatedFinishInterval = 4000000LL;
+
+bigtime_t DownloadProgressView::sLastEstimatedFinishSpeedToggleTime = -1;
+bool DownloadProgressView::sShowSpeed = true;
 
 
 class IconView : public BView {
@@ -167,22 +177,20 @@ public:
 
 DownloadProgressView::DownloadProgressView(BWebDownload* download)
 	:
-	BGridView(8, 3),
+	BGroupView(B_HORIZONTAL, 8),
 	fDownload(download),
 	fURL(download->URL()),
-	fPath(download->Path()),
-	fExpectedSize(download->ExpectedSize())
+	fPath(download->Path())
 {
 }
 
 
 DownloadProgressView::DownloadProgressView(const BMessage* archive)
 	:
-	BGridView(8, 3),
+	BGroupView(B_HORIZONTAL, 8),
 	fDownload(NULL),
 	fURL(),
-	fPath(),
-	fExpectedSize(0)
+	fPath()
 {
 	const char* string;
 	if (archive->FindString("path", &string) == B_OK)
@@ -195,10 +203,22 @@ DownloadProgressView::DownloadProgressView(const BMessage* archive)
 bool
 DownloadProgressView::Init(BMessage* archive)
 {
+	fCurrentSize = 0;
+	fExpectedSize = 0;
+	fLastUpdateTime = 0;
+	fBytesPerSecond = 0.0;
+	for (size_t i = 0; i < kBytesPerSecondSlots; i++)
+		fBytesPerSecondSlot[i] = 0.0;
+	fCurrentBytesPerSecondSlot = 0;
+	fLastSpeedReferenceSize = 0;
+	fEstimatedFinishReferenceSize = 0;
+
+	fProcessStartTime = fLastSpeedReferenceTime = fEstimatedFinishReferenceTime
+		= system_time();
+
 	SetViewColor(245, 245, 245);
 	SetFlags(Flags() | B_FULL_UPDATE_ON_RESIZE | B_WILL_DRAW);
 
-	BGridLayout* layout = GridLayout();
 	if (archive) {
 		fStatusBar = new BStatusBar("download progress", fPath.Leaf());
 		float value;
@@ -233,11 +253,37 @@ DownloadProgressView::Init(BMessage* archive)
 		fBottomButton->SetEnabled(fDownload == NULL);
 	}
 
+	fInfoView = new BStringView("info view", "");
+
+	BGroupLayout* layout = GroupLayout();
 	layout->SetInsets(8, 5, 5, 6);
-	layout->AddView(fIconView, 0, 0, 1, 2);
-	layout->AddView(fStatusBar, 1, 0, 1, 2);
-	layout->AddView(fTopButton, 2, 0);
-	layout->AddView(fBottomButton, 2, 1);
+	layout->AddView(fIconView);
+	BView* verticalGroup = BGroupLayoutBuilder(B_VERTICAL, 3)
+		.Add(fStatusBar)
+		.Add(fInfoView)
+	;
+	verticalGroup->SetViewColor(ViewColor());
+	layout->AddView(verticalGroup);
+	verticalGroup = BGroupLayoutBuilder(B_VERTICAL, 3)
+		.Add(fTopButton)
+		.Add(fBottomButton)
+	;
+	verticalGroup->SetViewColor(ViewColor());
+	layout->AddView(verticalGroup);
+
+	BFont font;
+	fInfoView->GetFont(&font);
+	float fontSize = font.Size() * 0.8f;
+	font.SetSize(max_c(8.0f, fontSize));
+	fInfoView->SetFont(&font, B_FONT_SIZE);
+	fInfoView->SetHighColor(tint_color(fInfoView->LowColor(),
+		B_DARKEN_4_TINT));
+//	font_height fontHeight;
+//	font.GetHeight(&fontHeight);
+//	float textHeight = ceilf(fontHeight.ascent) + ceilf(fontHeight.descent);
+//	fInfoView->SetExplicitMinSize(BSize(B_SIZE_UNSET, textHeight));
+//	fInfoView->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, textHeight));
+	fInfoView->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
 
 	return true;
 }
@@ -314,13 +360,23 @@ DownloadProgressView::MessageReceived(BMessage* message)
 			fIconView->SetTo(entry);
 			fStatusBar->Reset(fPath.Leaf());
 			_StartNodeMonitor(entry);
+
+			// Immediately switch to speed display whenever a new download
+			// starts.
+			sShowSpeed = true;
+			sLastEstimatedFinishSpeedToggleTime
+				= fProcessStartTime = fLastSpeedReferenceTime
+				= fEstimatedFinishReferenceTime = system_time();
 			break;
 		};
 		case B_DOWNLOAD_PROGRESS:
 		{
-			float progress;
-			if (message->FindFloat("progress", &progress) == B_OK)
-				fStatusBar->SetTo(progress);
+			int64 currentSize;
+			int64 expectedSize;
+			if (message->FindInt64("current size", &currentSize) == B_OK
+				&& message->FindInt64("expected size", &expectedSize) == B_OK) {
+				_UpdateStatus(currentSize, expectedSize);
+			}
 			break;
 		}
 		case OPEN_DOWNLOAD:
@@ -427,7 +483,7 @@ DownloadProgressView::MessageReceived(BMessage* message)
 			break;
 		}
 		default:
-			BGridView::MessageReceived(message);
+			BGroupView::MessageReceived(message);
 	}
 }
 
@@ -468,6 +524,7 @@ DownloadProgressView::DownloadFinished()
 	fBottomButton->SetLabel("Remove");
 	fBottomButton->SetMessage(new BMessage(REMOVE_DOWNLOAD));
 	fBottomButton->SetEnabled(true);
+	fInfoView->SetText("");
 }
 
 
@@ -484,7 +541,169 @@ DownloadProgressView::DownloadCanceled()
 }
 
 
+/*static*/ void
+DownloadProgressView::SpeedVersusEstimatedFinishTogglePulse()
+{
+	bigtime_t now = system_time();
+	if (sShowSpeed
+		&& sLastEstimatedFinishSpeedToggleTime + kShowSpeedInterval
+			<= now) {
+		sShowSpeed = false;
+		sLastEstimatedFinishSpeedToggleTime = now;
+	} else if (!sShowSpeed
+		&& sLastEstimatedFinishSpeedToggleTime
+			+ kShowEstimatedFinishInterval <= now) {
+		sShowSpeed = true;
+		sLastEstimatedFinishSpeedToggleTime = now;
+	}
+}
+
+
 // #pragma mark - private
+
+
+void
+DownloadProgressView::_UpdateStatus(off_t currentSize, off_t expectedSize)
+{
+	fCurrentSize = currentSize;
+	fExpectedSize = expectedSize;
+
+	fStatusBar->SetTo(100.0 * currentSize / expectedSize);
+
+	bigtime_t currentTime = system_time();
+	if ((currentTime - fLastUpdateTime) > kMaxUpdateInterval) {
+		fLastUpdateTime = currentTime;
+
+		if (currentTime >= fLastSpeedReferenceTime + kSpeedReferenceInterval) {
+			// update current speed every kSpeedReferenceInterval
+			fCurrentBytesPerSecondSlot
+				= (fCurrentBytesPerSecondSlot + 1) % kBytesPerSecondSlots;
+			fBytesPerSecondSlot[fCurrentBytesPerSecondSlot]
+				= (double)(currentSize - fLastSpeedReferenceSize)
+					* 1000000LL / (currentTime - fLastSpeedReferenceTime);
+			fLastSpeedReferenceSize = currentSize;
+			fLastSpeedReferenceTime = currentTime;
+			fBytesPerSecond = 0.0;
+			size_t count = 0;
+			for (size_t i = 0; i < kBytesPerSecondSlots; i++) {
+				if (fBytesPerSecondSlot[i] != 0.0) {
+					fBytesPerSecond += fBytesPerSecondSlot[i];
+					count++;
+				}
+			}
+			if (count > 0)
+				fBytesPerSecond /= count;
+		}
+		_UpdateStatusText();
+	}
+}
+
+
+void
+DownloadProgressView::_UpdateStatusText()
+{
+	fInfoView->SetText("");
+	BString buffer;
+	if (sShowSpeed && fBytesPerSecond != 0.0) {
+		// Draw speed info
+		char sizeBuffer[128];
+		buffer = "(";
+		buffer << string_for_size((double)fCurrentSize, sizeBuffer,
+			sizeof(sizeBuffer));
+		buffer << " of ";
+		buffer << string_for_size((double)fExpectedSize, sizeBuffer,
+			sizeof(sizeBuffer));
+		buffer << ", ";
+		buffer << string_for_size(fBytesPerSecond, sizeBuffer,
+			sizeof(sizeBuffer));
+		buffer << "/s)";
+		float stringWidth = fInfoView->StringWidth(buffer.String());
+		if (stringWidth < fInfoView->Bounds().Width())
+			fInfoView->SetText(buffer.String());
+		else {
+			// complete string too wide, try with shorter version
+			buffer << string_for_size(fBytesPerSecond, sizeBuffer,
+				sizeof(sizeBuffer));
+			buffer << "/s";
+			stringWidth = fInfoView->StringWidth(buffer.String());
+			if (stringWidth < fInfoView->Bounds().Width())
+				fInfoView->SetText(buffer.String());
+		}
+	} else if (!sShowSpeed && fCurrentSize < fExpectedSize) {
+		double totalBytesPerSecond = (double)(fCurrentSize
+				- fEstimatedFinishReferenceSize)
+			* 1000000LL / (system_time() - fEstimatedFinishReferenceTime);
+		double secondsRemaining = (fExpectedSize - fCurrentSize)
+			/ totalBytesPerSecond;
+		time_t now = (time_t)real_time_clock();
+		time_t finishTime = (time_t)(now + secondsRemaining);
+
+		tm _time;
+		tm* time = localtime_r(&finishTime, &_time);
+		int32 year = time->tm_year + 1900;
+
+		char timeText[32];
+		time_t secondsPerDay = 24 * 60 * 60;
+		// TODO: Localization of time string...
+		if (now < finishTime - secondsPerDay) {
+			// process is going to take more than a day!
+			sprintf(timeText, "%0*d:%0*d %0*d/%0*d/%ld",
+				2, time->tm_hour, 2, time->tm_min,
+				2, time->tm_mon + 1, 2, time->tm_mday, year);
+		} else {
+			sprintf(timeText, "%0*d:%0*d",
+				2, time->tm_hour, 2, time->tm_min);
+		}
+
+		BString buffer1("Finish: ");
+		buffer1 << timeText;
+		finishTime -= now;
+		time = gmtime(&finishTime);
+
+		BString buffer2;
+		if (finishTime > secondsPerDay) {
+			int64 days = finishTime / secondsPerDay;
+			if (days == 1)
+				buffer2 << "Over 1 day";
+			else
+				buffer2 << "Over " << days << " days";
+		} else if (finishTime > 60 * 60) {
+			int64 hours = finishTime / (60 * 60);
+			if (hours == 1)
+				buffer2 << "Over 1 hour";
+			else
+				buffer2 << "Over " << hours << " hours";
+		} else if (finishTime > 60) {
+			int64 minutes = finishTime / 60;
+			if (minutes == 1)
+				buffer2 << "Over 1 minute";
+			else
+				buffer2 << minutes << " minutes";
+		} else {
+			if (finishTime == 1)
+				buffer2 << "1 second";
+			else
+				buffer2 << finishTime << " seconds";
+		}
+
+		buffer2 << " left";
+
+		buffer = "(";
+		buffer << buffer1 << " - " << buffer2 << ")";
+
+		float stringWidth = fInfoView->StringWidth(buffer.String());
+		if (stringWidth < fInfoView->Bounds().Width())
+			fInfoView->SetText(buffer.String());
+		else {
+			// complete string too wide, try with shorter version
+			buffer = "(";
+			buffer << buffer1 << ")";
+			stringWidth = fInfoView->StringWidth(buffer.String());
+			if (stringWidth < fInfoView->Bounds().Width())
+				fInfoView->SetText(buffer.String());
+		}
+	}
+}
 
 
 void

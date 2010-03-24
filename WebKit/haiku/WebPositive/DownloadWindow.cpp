@@ -31,6 +31,7 @@
 
 #include <Alert.h>
 #include <Button.h>
+#include <ControlLook.h>
 #include <Entry.h>
 #include <File.h>
 #include <FindDirectory.h>
@@ -65,6 +66,7 @@ public:
 		:
 		BGroupView(B_VERTICAL)
 	{
+		SetFlags(Flags() | B_PULSE_NEEDED);
 		SetViewColor(245, 245, 245);
 		AddChild(BSpaceLayoutItem::CreateGlue());
 	}
@@ -73,6 +75,11 @@ public:
 	{
 		BSize minSize = BGroupView::MinSize();
 		return BSize(minSize.width, 80);
+	}
+
+	virtual void Pulse()
+	{
+		DownloadProgressView::SpeedVersusEstimatedFinishTogglePulse();
 	}
 
 protected:
@@ -129,6 +136,8 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 		B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
 {
+	SetPulseRate(1000000);
+
 	settings->AddListener(BMessenger(this));
 	BPath downloadPath;
 	if (find_directory(B_DESKTOP_DIRECTORY, &downloadPath) != B_OK)
@@ -159,15 +168,17 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 		new BMessage(REMOVE_MISSING_DOWNLOADS));
 	fRemoveMissingButton->SetEnabled(false);
 
+	const float spacing = be_control_look->DefaultItemSpacing();
+
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
 		.Add(menuBar)
 		.Add(scrollView)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-		.Add(BGroupLayoutBuilder(B_HORIZONTAL)
+		.Add(BGroupLayoutBuilder(B_HORIZONTAL, spacing)
 			.AddGlue()
 			.Add(fRemoveMissingButton)
 			.Add(fRemoveFinishedButton)
-			.SetInsets(5, 5, 5, 5)
+			.SetInsets(12, 5, 12, 5)
 		)
 	);
 
