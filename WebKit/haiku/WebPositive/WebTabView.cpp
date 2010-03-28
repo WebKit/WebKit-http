@@ -874,11 +874,28 @@ WebTabView::DrawContents(BView* owner, BRect frame, const BRect& updateRect,
 		// clip to icon bounds, if they are smaller
 		if (iconBounds.Contains(fIcon->Bounds()))
 			iconBounds = fIcon->Bounds();
+		else {
+			// Try to scale down the icon by an even factor so the
+			// final size is between 14 and 18 pixel size. If this fails,
+			// the icon will simply be displayed at 18x18.
+			float scale = 2;
+			while ((fIcon->Bounds().Width() + 1) / scale > kIconSize)
+				scale *= 2;
+			if ((fIcon->Bounds().Width() + 1) / scale >= kIconSize - 4
+				&& (fIcon->Bounds().Height() + 1) / scale >= kIconSize - 4
+				&& (fIcon->Bounds().Height() + 1) / scale <= kIconSize) {
+				iconBounds.right = (fIcon->Bounds().Width() + 1) / scale - 1;
+				iconBounds.bottom = (fIcon->Bounds().Height() + 1) / scale - 1;
+			}
+		}
 		BPoint iconPos(frame.left + kIconInset - 1,
 			frame.top + floorf((frame.Height() - iconBounds.Height()) / 2));
 		iconBounds.OffsetTo(iconPos);
-		owner->SetDrawingMode(B_OP_OVER);
-		owner->DrawBitmap(fIcon, fIcon->Bounds(), iconBounds);
+		owner->SetDrawingMode(B_OP_ALPHA);
+		owner->SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
+		owner->DrawBitmap(fIcon, fIcon->Bounds(), iconBounds,
+			B_FILTER_BITMAP_BILINEAR);
+		owner->SetDrawingMode(B_OP_COPY);
 		frame.left = frame.left + kIconSize + kIconInset * 2;
 	}
 
