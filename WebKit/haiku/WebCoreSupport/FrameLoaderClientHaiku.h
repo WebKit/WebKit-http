@@ -211,6 +211,7 @@ private:
     void postCommitFrameViewSetup(BWebFrame*, FrameView*, bool) const;
     bool isTertiaryMouseButton(const NavigationAction& action) const;
 
+	status_t dispatchNavigationRequested(const ResourceRequest& request) const;
     status_t dispatchMessage(BMessage& message) const;
 
 private:

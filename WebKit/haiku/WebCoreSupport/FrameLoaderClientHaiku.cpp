@@ -468,6 +468,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     }
 
     if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
+        dispatchNavigationRequested(request);
         callPolicyFunction(function, PolicyUse);
         return;
     }
@@ -475,6 +476,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     // NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
     // current delegation policy is "DelegateExternalLinks". Must be good for something.
     if (WebCore::SecurityOrigin::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
+        dispatchNavigationRequested(request);
         callPolicyFunction(function, PolicyUse);
         return;
     }
@@ -502,9 +504,6 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicyFunction function,
     const NavigationAction& action, const ResourceRequest& request, PassRefPtr<FormState> formState)
 {
-	BMessage message(NAVIGATION_REQUESTED);
-	message.AddString("url", request.url().string());
-	dispatchMessage(message);
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
 	dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());
@@ -1008,12 +1007,6 @@ void FrameLoaderClientHaiku::postCommitFrameViewSetup(BWebFrame* frame, FrameVie
     view->setTopLevelPlatformWidget(m_webPage->WebView());
 }
 
-status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
-{
-	message.AddPointer("view", m_webPage->WebView());
-	return m_messenger.SendMessage(&message);
-}
-
 bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& action) const
 {
     if (action.event() && action.event()->isMouseEvent()) {
@@ -1021,6 +1014,19 @@ bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& actio
         return (mouseEvent && mouseEvent->button() == 1);
     }
     return false;
+}
+
+status_t FrameLoaderClientHaiku::dispatchNavigationRequested(const ResourceRequest& request) const
+{
+	BMessage message(NAVIGATION_REQUESTED);
+	message.AddString("url", request.url().string());
+	return dispatchMessage(message);
+}
+
+status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
+{
+	message.AddPointer("view", m_webPage->WebView());
+	return m_messenger.SendMessage(&message);
 }
 
 } // namespace WebCore
