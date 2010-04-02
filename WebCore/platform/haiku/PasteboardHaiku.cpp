@@ -21,7 +21,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -33,6 +33,7 @@
 #include "Frame.h"
 #include "KURL.h"
 #include "NotImplemented.h"
+#include "TextResourceDecoder.h"
 #include "markup.h"
 #include <support/Locker.h>
 #include <Clipboard.h>
@@ -71,6 +72,13 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
 
     BString string(frame->selectedText());
     data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
+
+//printf("text/plain: '%s'\n", string.String());
+//int32 charCount = min_c(string.Length(), 10);
+//const char* stringData = string.String();
+//for (int32 i = 0; i < charCount; i++) {
+//	printf("  %ld: '%c' %d\n", i, stringData[i], (int)stringData[i]);
+//}
 
     BString markupString(createMarkup(selectedRange, 0, AnnotateForInterchange));
     data->AddData("text/html", B_MIME_TYPE, markupString.String(), markupString.Length());
@@ -131,7 +139,51 @@ String Pasteboard::plainText(Frame* frame)
 PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame* frame, PassRefPtr<Range> context,
                                                           bool allowPlainText, bool& chosePlainText)
 {
-    notImplemented();
+    chosePlainText = false;
+
+    if (!be_clipboard->Lock())
+        return 0;
+
+    BMessage* data = be_clipboard->Data();
+    if (!data) {
+    	be_clipboard->Unlock();
+        return 0;
+    }
+
+    const char* buffer = 0;
+    ssize_t bufferLength;
+    if (data->FindData("text/html", B_MIME_TYPE, reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK) {
+        RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create("text/plain", "UTF-8", true);
+        String html = decoder->decode(buffer, bufferLength);
+        html += decoder->flush();
+
+        if (!html.isEmpty()) {
+            RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(frame->document(), html, "", FragmentScriptingNotAllowed);
+            if (fragment) {
+                be_clipboard->Unlock();
+                return fragment.release();
+            }
+        }
+    }
+
+    if (!allowPlainText) {
+        be_clipboard->Unlock();
+        return 0;
+    }
+
+    if (data->FindData("text/plain", B_MIME_TYPE, reinterpret_cast<const void**>(&buffer), &bufferLength) == B_OK) {
+    	BString plainText(buffer, bufferLength);
+
+        chosePlainText = true;
+        RefPtr<DocumentFragment> fragment = createFragmentFromText(context.get(), plainText);
+        if (fragment) {
+            be_clipboard->Unlock();
+            return fragment.release();
+        }
+    }
+
+    be_clipboard->Unlock();
+
     return 0;
 }
 
