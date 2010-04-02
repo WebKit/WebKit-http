@@ -919,14 +919,10 @@ void BWebPage::MessageReceived(BMessage* message)
     case B_REFS_RECEIVED: {
 		RefPtr<FileChooser>* chooser;
         if (message->FindPointer("chooser", reinterpret_cast<void**>(&chooser)) == B_OK) {
-            type_code type;
-            int32 count = 0;
             entry_ref ref;
             BPath path;
-            message->GetInfo("refs", &type, &count);
             Vector<String> filenames;
-            for (int32 i = 0; i < count; i++) {
-                message->FindRef("refs", i, &ref);
+            for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
                 path.SetTo(&ref);
                 filenames.append(String(path.Path()));
             }
