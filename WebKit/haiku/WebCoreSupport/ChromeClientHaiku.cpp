@@ -122,17 +122,31 @@ void ChromeClientHaiku::focusedNodeChanged(Node* node)
         unfocus();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
+Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
 {
-    BRect frame;
+	// TODO: I believe the frame is important for cloning session information.
+	// From looking through the Chromium port code, it is passed to the
+	// method that creates a new WebView. I didn't find createView() implemented
+	// anywhere, but only this comment:
+	//
+	// // Create a new related WebView.  This method must clone its session
+	// // storage so any subsequent calls to createSessionStorageNamespace
+	// // conform to the WebStorage specification.
+	// virtual WebView* createView(WebFrame* creator) { return 0; }
+	//
+	// (WebViewClient is probably what browsers or other embedders need to
+	// implement themselves, so this method is not implemented in the Chromium
+	// WebKit code.)
+
+    BRect windowFrame;
     if (features.xSet && features.ySet && features.widthSet && features.heightSet) {
-        frame.left = features.x;
-        frame.top = features.y;
-        frame.right = features.x + features.width - 1;
-        frame.bottom = features.y + features.height - 1;
+        windowFrame.left = features.x;
+        windowFrame.top = features.y;
+        windowFrame.right = features.x + features.width - 1;
+        windowFrame.bottom = features.y + features.height - 1;
     }
 
-	WebCore::Page* page = m_webPage->createNewPage(frame, features.dialog, features.resizable);
+	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable);
 	if (!page)
 	    return 0;
 
