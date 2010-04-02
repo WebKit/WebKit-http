@@ -365,6 +365,9 @@ void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
     if (!m_webView->LockLooper())
         return;
 
+	// TODO: Unless HideToolTip() is called here, changing the tool tip has no
+	// effect in BView. Remove when BView is fixed.
+	m_webView->HideToolTip();
     if (!tip.length())
         m_webView->SetToolTip(reinterpret_cast<BToolTip*>(NULL));
     else
