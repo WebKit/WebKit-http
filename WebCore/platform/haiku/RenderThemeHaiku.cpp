@@ -208,7 +208,11 @@ void RenderThemeHaiku::setButtonSize(RenderStyle* style) const
 
 void RenderThemeHaiku::adjustTextFieldStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
+#if 0
 	RenderTheme::adjustTextFieldStyle(selector, style, element);
+#else
+    style->setBackgroundColor(Color::transparent);
+#endif
 }
 
 bool RenderThemeHaiku::paintTextField(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
@@ -228,13 +232,21 @@ bool RenderThemeHaiku::paintTextField(RenderObject* object, const RenderObject::
 
 	view->PushState();
     be_control_look->DrawTextControlBorder(view, rect, rect, base, flags);
+    // Fill the background as well (we set it to transparent in
+    // adjustTextFieldStyle), otherwise it would draw over the border.
+    view->SetHighColor(255, 255, 255);
+    view->FillRect(rect);
     view->PopState();
     return false;
 }
 
 void RenderThemeHaiku::adjustTextAreaStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
+#if 0
 	RenderTheme::adjustTextAreaStyle(selector, style, element);
+#else
+	adjustTextFieldStyle(selector, style, element);
+#endif
 }
 
 bool RenderThemeHaiku::paintTextArea(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
