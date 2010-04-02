@@ -496,11 +496,15 @@ BRect BWebPage::windowBounds()
 
 void BWebPage::setWindowBounds(const BRect& bounds)
 {
-    if (fWebView->LockLooper()) {
-        fWebView->Window()->MoveTo(bounds.LeftTop());
-        fWebView->Window()->ResizeTo(bounds.Width(), bounds.Height());
-        fWebView->UnlockLooper();
-    }
+	BMessage message(RESIZING_REQUESTED);
+	message.AddRect("rect", bounds);
+	BMessenger windowMessenger(fWebView->Window());
+	if (windowMessenger.IsValid()) {
+		// Better make this synchronous, since I don't know if it is
+		// perhaps meant to be (called from ChromeClientHaiku::setWindowRect()).
+		BMessage reply;
+		windowMessenger.SendMessage(&message, &reply);
+	}
 }
 
 BRect BWebPage::viewBounds()
