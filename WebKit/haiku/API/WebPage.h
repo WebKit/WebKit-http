@@ -164,7 +164,6 @@ private:
 
 	void setResizable(bool);
 	void closeWindow();
-	void setStatusText(const BString&);
 	void linkHovered(const BString&, const BString&, const BString&);
 
 	friend class BWebDownload;
@@ -186,6 +185,7 @@ private:
 
 	void setLoadingProgress(float progress);
 	void setStatusMessage(const BString& message);
+	void setDisplayedStatusMessage(const BString& message, bool force = false);
 
 private:
 	virtual						~BWebPage();
@@ -221,6 +221,7 @@ private:
 
 			float				fLoadingProgress;
 			BString				fStatusMessage;
+			BString				fDisplayedStatusMessage;
 
 		    bool				fPageVisible;
 		    bool				fPageDirty;

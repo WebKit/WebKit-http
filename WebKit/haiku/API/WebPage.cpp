@@ -186,6 +186,7 @@ BWebPage::BWebPage(BWebView* webView)
     , fPage(0)
     , fLoadingProgress(100)
     , fStatusMessage()
+    , fDisplayedStatusMessage()
     , fPageVisible(true)
     , fPageDirty(false)
     , fToolbarsVisible(true)
@@ -565,16 +566,12 @@ void BWebPage::closeWindow()
     dispatchMessage(message);
 }
 
-void BWebPage::setStatusText(const BString& text)
-{
-    BMessage message(SET_STATUS_TEXT);
-    message.AddString("text", text);
-    dispatchMessage(message);
-}
-
 void BWebPage::linkHovered(const BString& url, const BString& title, const BString& content)
 {
-printf("BWebPage::linkHovered()\n");
+	if (url.Length())
+		setDisplayedStatusMessage(url);
+	else
+		setDisplayedStatusMessage(fStatusMessage);
 }
 
 /*static*/ void BWebPage::requestDownload(const WebCore::ResourceRequest& request,
@@ -789,12 +786,26 @@ void BWebPage::setLoadingProgress(float progress)
 
 void BWebPage::setStatusMessage(const BString& statusMessage)
 {
+	if (fStatusMessage == statusMessage)
+		return;
+
 	fStatusMessage = statusMessage;
+
+	setDisplayedStatusMessage(statusMessage);
+}
+
+void BWebPage::setDisplayedStatusMessage(const BString& statusMessage, bool force)
+{
+	if (fDisplayedStatusMessage == statusMessage && !force)
+		return;
+
+	fDisplayedStatusMessage = statusMessage;
 
 	BMessage message(SET_STATUS_TEXT);
 	message.AddString("text", statusMessage);
 	dispatchMessage(message);
 }
+
 
 // #pragma mark - private
 
@@ -1068,7 +1079,7 @@ void BWebPage::handleMouseEvent(const BMessage* message)
         break;
     case B_MOUSE_MOVED:
     default:
-        frame->eventHandler()->handleMouseMoveEvent(event);
+        frame->eventHandler()->mouseMoved(event);
         break;
     }
 }
@@ -1183,7 +1194,7 @@ void BWebPage::handleResendNotifications(BMessage*)
     dispatchMessage(message);
 	// Send loading progress and status text notifications
     setLoadingProgress(fLoadingProgress);
-    setStatusMessage(fStatusMessage);
+    setDisplayedStatusMessage(fStatusMessage, true);
     // TODO: Other notifications...
 }
 

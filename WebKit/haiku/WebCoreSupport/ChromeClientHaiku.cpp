@@ -269,7 +269,7 @@ printf("ChromeClientHaiku::runJavaScriptPrompt()\n");
 
 void ChromeClientHaiku::setStatusbarText(const String& message)
 {
-    m_webPage->setStatusText(BString(message));
+    m_webPage->setStatusMessage(BString(message));
 }
 
 bool ChromeClientHaiku::shouldInterruptJavaScript()
@@ -365,8 +365,12 @@ void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
     if (!m_webView->LockLooper())
         return;
 
-     m_webView->SetToolTip(BString(tip).String());
-     m_webView->UnlockLooper();
+    if (!tip.length())
+        m_webView->SetToolTip(reinterpret_cast<BToolTip*>(NULL));
+    else
+        m_webView->SetToolTip(BString(tip).String());
+
+    m_webView->UnlockLooper();
 }
 
 void ChromeClientHaiku::print(Frame*)
