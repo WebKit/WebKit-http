@@ -74,6 +74,7 @@ typedef enum {
 class BWebPage : private BHandler {
 public:
 	static	void				InitializeOnce();
+	static	void				ShutdownOnce();
 	static	void				SetCacheModel(BWebKitCacheModel model);
 
 			void				Init();

@@ -48,6 +48,7 @@
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "IconDatabase.h"
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
@@ -137,6 +138,11 @@ BMessenger BWebPage::sDownloadListener;
 		"/boot/home/config/settings/WebPositive/Cookies.curl");
 
     PageGroup::setShouldTrackVisitedLinks(true);
+}
+
+/*static*/ void BWebPage::ShutdownOnce()
+{
+    WebCore::iconDatabase()->close();
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)

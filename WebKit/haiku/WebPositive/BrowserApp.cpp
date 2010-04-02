@@ -54,6 +54,9 @@ const char* kApplicationSignature = "application/x-vnd.Haiku-WebPositive";
 const char* kApplicationName = "WebPositive";
 static const uint32 PRELOAD_BROWSING_HISTORY = 'plbh';
 
+#define ENABLE_NATIVE_COOKIES 0
+
+
 BrowserApp::BrowserApp()
 	:
 	BApplication(kApplicationSignature),
@@ -62,6 +65,7 @@ BrowserApp::BrowserApp()
 	fLaunchRefsMessage(0),
 	fInitialized(false),
 	fSettings(NULL),
+	fCookies(NULL),
 	fCookieJar(NULL),
 	fDownloadWindow(NULL),
 	fSettingsWindow(NULL)
@@ -129,6 +133,7 @@ BrowserApp::ReadyToRun()
 	mainSettingsPath << "/Application";
 	fSettings = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
 		mainSettingsPath.String());
+#if ENABLE_NATIVE_COOKIES
 	mainSettingsPath = kApplicationName;
 	mainSettingsPath << "/Cookies";
 	fCookies = new SettingsMessage(B_USER_SETTINGS_DIRECTORY,
@@ -137,6 +142,7 @@ BrowserApp::ReadyToRun()
 	cookieArchive = fCookies->GetValue("cookies", cookieArchive);
 	fCookieJar = new BNetworkCookieJar(cookieArchive);
 	BWebPage::SetCookieJar(fCookieJar);
+#endif
 
 	fLastWindowFrame = fSettings->GetValue("window frame", fLastWindowFrame);
 	BRect downloadWindowFrame = fSettings->GetValue("downloads window frame",
@@ -265,6 +271,8 @@ BrowserApp::QuitRequested()
 		}
 	}
 
+	BWebPage::ShutdownOnce();
+
 	fSettings->SetValue("window frame", fLastWindowFrame);
 	if (fDownloadWindow->Lock()) {
 		fSettings->SetValue("downloads window frame", fDownloadWindow->Frame());
@@ -277,7 +285,7 @@ BrowserApp::QuitRequested()
 	}
 
 	BMessage cookieArchive;
-	if (fCookieJar->Archive(&cookieArchive) == B_OK)
+	if (fCookieJar != NULL && fCookieJar->Archive(&cookieArchive) == B_OK)
 		fCookies->SetValue("cookies", cookieArchive);
 
 	return true;

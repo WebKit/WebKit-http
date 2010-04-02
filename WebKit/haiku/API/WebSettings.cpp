@@ -22,7 +22,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -96,10 +96,6 @@ BWebSettings::~BWebSettings()
 		be_app->RemoveHandler(this);
 		be_app->Unlock();
 	}
-    if (!fData->settings) {
-        // The global settings instance manages the icon database...
-        WebCore::iconDatabase()->close();
-    }
 	delete fData;
 }
 
@@ -371,6 +367,8 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
     WebCore::Image* image = WebCore::iconDatabase()->iconForPageURL(url.String(),
         WebCore::IntSize(16, 16));
 
+	reply.RemoveName("url");
+	reply.RemoveName("icon");
     reply.AddString("url", url.String());
     if (image) {
         const BBitmap* bitmap = image->nativeImageForCurrentFrame();
