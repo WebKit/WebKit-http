@@ -1224,7 +1224,7 @@ BrowserWindow::_ShowBookmarks()
 		status = get_ref_for_path(path.Path(), &ref);
 	if (status == B_OK)
 		status = be_roster->Launch(&ref);
-	
+
 	if (status != B_OK && status != B_ALREADY_RUNNING) {
 		BString message("There was an error trying to show the Bookmarks "
 			"folder.\n\n");

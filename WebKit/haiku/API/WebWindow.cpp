@@ -201,7 +201,7 @@ void BWebWindow::MessageReceived(BMessage* message)
 	    uint32 failureCount = 0;
 	    BString user;
 	    BString password;
-	
+
 	    message->FindString("text", &text);
 	    message->FindString("user", &user);
 	    message->FindString("password", &password);
