@@ -684,6 +684,8 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
     fWebView->UnlockLooper();
 
 	BRect clip = offscreenView->Bounds();
+	if (clipRect.IsValid())
+		clip = clip & clipRect;
 	BRect rectAtSrc = rectToScroll;
 	BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
 	BRegion repaintRegion(rectAtSrc);
