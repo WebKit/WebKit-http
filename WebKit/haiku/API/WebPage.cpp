@@ -985,7 +985,7 @@ void BWebPage::handleSetVisible(const BMessage* message)
     // Trigger an internal repaint if the page was supposed to be repainted
     // while it was invisible.
     if (fPageVisible && fPageDirty)
-        paint(BRect(), false, false, true);
+        paint(viewBounds(), false, false, true);
 }
 
 void BWebPage::handleFrameResized(const BMessage* message)
