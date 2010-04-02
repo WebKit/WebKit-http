@@ -73,6 +73,7 @@
 
 #include <Bitmap.h>
 #include <Entry.h>
+#include <FilePanel.h>
 #include <FindDirectory.h>
 #include <Font.h>
 #include <Message.h>
@@ -929,6 +930,18 @@ void BWebPage::MessageReceived(BMessage* message)
             (*chooser)->chooseFiles(filenames);
             delete chooser;
         }
+    	break;
+    }
+    case B_CANCEL: {
+    	int32 oldWhat;
+    	BFilePanel* panel;
+    	if (message->FindPointer("source", reinterpret_cast<void**>(&panel)) == B_OK
+    		&& message->FindInt32("old_what", &oldWhat) == B_OK
+    		&& oldWhat == B_REFS_RECEIVED) {
+    		// TODO: Eventually it would be nice to reuse the same file panel...
+    		// At least don't leak the file panel for now.
+    		delete panel;
+    	}
     	break;
     }
 
