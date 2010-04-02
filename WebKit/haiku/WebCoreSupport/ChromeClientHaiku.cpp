@@ -407,11 +407,15 @@ void ChromeClientHaiku::iconForFiles(const Vector<String>&, PassRefPtr<FileChoos
     notImplemented();
 }
 
-bool ChromeClientHaiku::setCursor(PlatformCursorHandle)
+bool ChromeClientHaiku::setCursor(PlatformCursorHandle cursorHandle)
 {
-printf("ChromeClientHaiku::setCursor()\n");
-    notImplemented();
-    return false;
+    if (!m_webView->LockLooper())
+        return false;
+
+    m_webView->SetViewCursor(cursorHandle);
+
+    m_webView->UnlockLooper();
+    return true;
 }
 
 void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
