@@ -256,7 +256,6 @@ bool RenderThemeHaiku::paintTextArea(RenderObject* object, const RenderObject::P
 
 void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
-    style->resetBorder();
     adjustMenuListButtonStyle(selector, style, element);
 }
 
@@ -267,6 +266,9 @@ bool RenderThemeHaiku::paintMenuList(RenderObject* object, const RenderObject::P
 
 void RenderThemeHaiku::adjustMenuListButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
 {
+    style->resetBorder();
+    style->resetBorderRadius();
+
 	int labelSpacing = be_control_look ? static_cast<int>(be_control_look->DefaultLabelSpacing()) : 3;
     // Position the text correctly within the select box and make the box wide enough to fit the dropdown button
     style->setPaddingTop(Length(3, Fixed));
