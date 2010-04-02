@@ -60,6 +60,7 @@
 #include <NodeInfo.h>
 #include <Path.h>
 #include <Roster.h>
+#include <Screen.h>
 #include <SeparatorView.h>
 #include <SpaceLayoutItem.h>
 #include <StatusBar.h>
@@ -953,8 +954,41 @@ BrowserWindow::ResizeRequested(float width, float height, BWebView* view)
 	if (view != CurrentWebView())
 		return;
 
-	// TODO: Ignore request when there is more than one BWebView embedded!
+	// Ignore request when there is more than one BWebView embedded.
+	if (fTabManager->CountTabs() > 1)
+		return;
 
+	// Make sure the new frame is not larger than the screen frame minus
+	// window decorator border.
+	BScreen screen(this);
+	BRect screenFrame = screen.Frame();
+	BRect decoratorFrame = DecoratorFrame();
+	BRect frame = Frame();
+
+	screenFrame.left += decoratorFrame.left - frame.left;
+	screenFrame.right += decoratorFrame.right - frame.right;
+	screenFrame.top += decoratorFrame.top - frame.top;
+	screenFrame.bottom += decoratorFrame.bottom - frame.bottom;
+
+	width = min_c(width, screen.Frame().Width());
+	height = min_c(height, screen.Frame().Height());
+
+	frame.right = frame.left + width;
+	frame.bottom = frame.top + height;
+
+	// frame is now not larger than screenFrame, but may still be partly outside
+	if (!screenFrame.Contains(frame)) {
+		if (frame.left < screenFrame.left)
+			frame.OffsetBy(screenFrame.left - frame.left, 0);
+		else if (frame.right > screenFrame.right)
+			frame.OffsetBy(screenFrame.right - frame.right, 0);
+		if (frame.top < screenFrame.top)
+			frame.OffsetBy(screenFrame.top - frame.top, 0);
+		else if (frame.bottom > screenFrame.bottom)
+			frame.OffsetBy(screenFrame.bottom - frame.bottom, 0);
+	}
+
+	MoveTo(frame.left, frame.top);
 	ResizeTo(width, height);
 }
 
