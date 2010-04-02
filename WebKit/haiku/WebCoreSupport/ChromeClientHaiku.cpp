@@ -124,9 +124,6 @@ void ChromeClientHaiku::focusedNodeChanged(Node* node)
 
 Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
 {
-	if (request.resourceRequest().isNull())
-	    return 0;
-
     BRect frame;
     if (features.xSet && features.ySet && features.widthSet && features.heightSet) {
         frame.left = features.x;
@@ -136,7 +133,10 @@ Page* ChromeClientHaiku::createWindow(Frame*, const FrameLoadRequest& request, c
     }
 
 	WebCore::Page* page = m_webPage->createNewPage(frame, features.dialog, features.resizable);
-    if (page && page->mainFrame() && page->mainFrame()->loader())
+	if (!page)
+	    return 0;
+
+    if (!request.resourceRequest().isEmpty() && page->mainFrame() && page->mainFrame()->loader())
         page->mainFrame()->loader()->load(request.resourceRequest(), false);
 
     return page;
@@ -225,7 +225,12 @@ bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame
 
 void ChromeClientHaiku::closeWindowSoon()
 {
+     // Make sure this Page can no longer be found by script code.
+    m_webPage->page()->setGroupName(String());
+
+    // Make sure all loading has stopped.
     m_webPage->MainFrame()->Frame()->loader()->stopAllLoaders();
+
     m_webPage->closeWindow();
 }
 
