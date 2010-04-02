@@ -71,8 +71,15 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     }
 
     BString string(frame->selectedText());
+
+	// Replace unwanted representation of blank lines
+	const char* utf8BlankLine = "\302\240\n";
+	string.ReplaceAll(utf8BlankLine, "\n");
+
     data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
 
+// Code which may help to find other unwanted parts in the selected plain text besides
+// "utf8BlankLine" above.
 //printf("text/plain: '%s'\n", string.String());
 //int32 charCount = min_c(string.Length(), 10);
 //const char* stringData = string.String();
