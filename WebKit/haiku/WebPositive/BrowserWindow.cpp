@@ -82,9 +82,10 @@ enum {
 	CREATE_BOOKMARK = 'crbm',
 	SHOW_BOOKMARKS = 'shbm',
 
-	TEXT_SIZE_INCREASE = 'tsin',
-	TEXT_SIZE_DECREASE = 'tsdc',
-	TEXT_SIZE_RESET = 'tsrs',
+	ZOOM_FACTOR_INCREASE = 'zfin',
+	ZOOM_FACTOR_DECREASE = 'zfdc',
+	ZOOM_FACTOR_RESET = 'zfrs',
+	ZOOM_TEXT_ONLY = 'zfto',
 
 	TEXT_SHOW_FIND_GROUP = 'sfnd',
 	TEXT_HIDE_FIND_GROUP = 'hfnd',
@@ -243,7 +244,8 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS)
+		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
+	fZoomTextOnly(true)
 {
 	BMessage* newTabMessage = new BMessage(NEW_TAB);
 	newTabMessage->AddString("url", "");
@@ -282,9 +284,13 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
 	menu = new BMenu("Text");
 	menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
-	menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
-	menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
+	menu->AddItem(new BMenuItem("Increase size", new BMessage(ZOOM_FACTOR_INCREASE), '+'));
+	menu->AddItem(new BMenuItem("Decrease size", new BMessage(ZOOM_FACTOR_DECREASE), '-'));
+	menu->AddItem(new BMenuItem("Reset size", new BMessage(ZOOM_FACTOR_RESET), '0'));
+	fZoomTextOnlyMenuItem = new BMenuItem("Zoom text only",
+		new BMessage(ZOOM_TEXT_ONLY));
+	fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
+	menu->AddItem(fZoomTextOnlyMenuItem);
 	mainMenu->AddItem(menu);
 
 	fGoMenu = new BMenu("Go");
@@ -593,14 +599,20 @@ printf("  file ok\n");
 		break;
 	}
 
-	case TEXT_SIZE_INCREASE:
-		CurrentWebView()->IncreaseTextSize();
+	case ZOOM_FACTOR_INCREASE:
+		CurrentWebView()->IncreaseZoomFactor(fZoomTextOnly);
 		break;
-	case TEXT_SIZE_DECREASE:
-		CurrentWebView()->DecreaseTextSize();
+	case ZOOM_FACTOR_DECREASE:
+		CurrentWebView()->DecreaseZoomFactor(fZoomTextOnly);
 		break;
-	case TEXT_SIZE_RESET:
-		CurrentWebView()->ResetTextSize();
+	case ZOOM_FACTOR_RESET:
+		CurrentWebView()->ResetZoomFactor();
+		break;
+	case ZOOM_TEXT_ONLY:
+		fZoomTextOnly = !fZoomTextOnly;
+		fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
+		// TODO: Would be nice to have an instant update if the page is already
+		// zoomed.
 		break;
 
 	case TEXT_FIND_NEXT:

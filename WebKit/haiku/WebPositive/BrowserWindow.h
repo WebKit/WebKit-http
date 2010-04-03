@@ -40,6 +40,7 @@ class BDirectory;
 class BFile;
 class BLayoutItem;
 class BMenu;
+class BMenuItem;
 class BPath;
 class BStatusBar;
 class BStringView;
@@ -142,6 +143,8 @@ private:
 
 private:
 			BMenu*				fGoMenu;
+			BMenuItem*			fZoomTextOnlyMenuItem;
+			bool				fZoomTextOnly;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;

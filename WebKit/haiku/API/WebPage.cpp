@@ -111,7 +111,7 @@ enum {
     HANDLE_DRAW = 'draw',
     HANDLE_FRAME_RESIZED = 'rszd',
 
-    HANDLE_CHANGE_TEXT_SIZE = 'txts',
+    HANDLE_CHANGE_ZOOM_FACTOR = 'zmfr',
     HANDLE_FIND_STRING = 'find',
 
     HANDLE_SET_STATUS_MESSAGE = 'stsm',
@@ -293,10 +293,11 @@ void BWebPage::StopLoading()
     Looper()->PostMessage(&message, this);
 }
 
-void BWebPage::ChangeTextSize(float increment)
+void BWebPage::ChangeZoomFactor(float increment, bool textOnly)
 {
-	BMessage message(HANDLE_CHANGE_TEXT_SIZE);
+	BMessage message(HANDLE_CHANGE_ZOOM_FACTOR);
 	message.AddFloat("increment", increment);
+	message.AddBool("text only", textOnly);
     Looper()->PostMessage(&message, this);
 }
 
@@ -904,8 +905,8 @@ void BWebPage::MessageReceived(BMessage* message)
         handleKeyEvent(message);
         break;
 
-	case HANDLE_CHANGE_TEXT_SIZE:
-		handleChangeTextSize(message);
+	case HANDLE_CHANGE_ZOOM_FACTOR:
+		handleChangeZoomFactor(message);
 		break;
     case HANDLE_FIND_STRING:
         handleFindString(message);
@@ -1161,16 +1162,22 @@ void BWebPage::handleKeyEvent(BMessage* message)
 	}
 }
 
-void BWebPage::handleChangeTextSize(BMessage* message)
+void BWebPage::handleChangeZoomFactor(BMessage* message)
 {
-    float increment = 0;
-    message->FindFloat("increment", &increment);
+    float increment;
+    if (message->FindFloat("increment", &increment) != B_OK)
+    	increment = 0;
+
+    bool textOnly;
+    if (message->FindBool("text only", &textOnly) != B_OK)
+    	textOnly = true;
+
     if (increment > 0)
-    	fMainFrame->IncreaseTextSize();
+    	fMainFrame->IncreaseZoomFactor(textOnly);
     else if (increment < 0)
-    	fMainFrame->DecreaseTextSize();
+    	fMainFrame->DecreaseZoomFactor(textOnly);
     else
-    	fMainFrame->ResetTextSize();
+    	fMainFrame->ResetZoomFactor();
 }
 
 void BWebPage::handleFindString(BMessage* message)

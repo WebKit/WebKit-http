@@ -23,7 +23,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -50,14 +50,14 @@
 #include <Entry.h>
 #include <String.h>
 
-static const float kMinimumTextSizeMultiplier = 0.5;
-static const float kMaximumTextSizeMultiplier = 3;
-static const float kTextSizeMultiplierRatio = 1.1;
+static const float kMinimumZoomFactorMultiplier = 0.5;
+static const float kMaximumZoomFactorMultiplier = 3;
+static const float kZoomFactorMultiplierRatio = 1.1;
 
 using namespace WebCore;
 
 BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate* data)
-    : fTextMagnifier(1.0)
+    : fZoomFactor(1.0)
     , fIsEditable(false)
     , fTitle(0)
     , fData(data)
@@ -306,48 +306,48 @@ bool BWebFrame::FindString(const char* string, bool forward, bool caseSensitive,
     return false;
 }
 
-bool BWebFrame::CanIncreaseTextSize() const
+bool BWebFrame::CanIncreaseZoomFactor() const
 {
     if (fData->frame)
-        if (fTextMagnifier * kTextSizeMultiplierRatio <= kMaximumTextSizeMultiplier)
+        if (fZoomFactor * kZoomFactorMultiplierRatio <= kMaximumZoomFactorMultiplier)
             return true;
 
     return false;
 }
 
-bool BWebFrame::CanDecreaseTextSize() const
+bool BWebFrame::CanDecreaseZoomFactor() const
 {
     if (fData->frame)
-        return fTextMagnifier / kTextSizeMultiplierRatio >= kMinimumTextSizeMultiplier;
+        return fZoomFactor / kZoomFactorMultiplierRatio >= kMinimumZoomFactorMultiplier;
 
     return false;
 }
 
-void BWebFrame::IncreaseTextSize()
+void BWebFrame::IncreaseZoomFactor(bool textOnly)
 {
-    if (CanIncreaseTextSize()) {
-        fTextMagnifier = fTextMagnifier * kTextSizeMultiplierRatio;
-        fData->frame->setZoomFactor(fTextMagnifier, true);
+    if (CanIncreaseZoomFactor()) {
+        fZoomFactor = fZoomFactor * kZoomFactorMultiplierRatio;
+        fData->frame->setZoomFactor(fZoomFactor, textOnly);
     }
 }
 
-void BWebFrame::DecreaseTextSize()
+void BWebFrame::DecreaseZoomFactor(bool textOnly)
 {
-    if (CanDecreaseTextSize()) {
-        fTextMagnifier = fTextMagnifier / kTextSizeMultiplierRatio;
-        fData->frame->setZoomFactor(fTextMagnifier, true);
+    if (CanDecreaseZoomFactor()) {
+        fZoomFactor = fZoomFactor / kZoomFactorMultiplierRatio;
+        fData->frame->setZoomFactor(fZoomFactor, textOnly);
     }
 }
 
-void BWebFrame::ResetTextSize()
+void BWebFrame::ResetZoomFactor()
 {
-    if (fTextMagnifier == 1)
+    if (fZoomFactor == 1)
         return;
 
-    fTextMagnifier = 1;
+    fZoomFactor = 1;
 
     if (fData->frame)
-        fData->frame->setZoomFactor(fTextMagnifier, true);
+        fData->frame->setZoomFactor(fZoomFactor, true);
 }
 
 void BWebFrame::SetEditable(bool editable)

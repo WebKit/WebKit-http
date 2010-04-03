@@ -80,9 +80,9 @@ public:
 			void				GoForward();
 			void				StopLoading();
 
-			void				IncreaseTextSize();
-			void				DecreaseTextSize();
-			void				ResetTextSize();
+			void				IncreaseZoomFactor(bool textOnly);
+			void				DecreaseZoomFactor(bool textOnly);
+			void				ResetZoomFactor();
 
 			void				FindString(const char* string,
 									bool forward = true,

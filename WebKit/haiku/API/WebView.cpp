@@ -267,19 +267,19 @@ void BWebView::StopLoading()
     fWebPage->StopLoading();
 }
 
-void BWebView::IncreaseTextSize()
+void BWebView::IncreaseZoomFactor(bool textOnly)
 {
-	fWebPage->ChangeTextSize(1);
+	fWebPage->ChangeZoomFactor(1, textOnly);
 }
 
-void BWebView::DecreaseTextSize()
+void BWebView::DecreaseZoomFactor(bool textOnly)
 {
-	fWebPage->ChangeTextSize(-1);
+	fWebPage->ChangeZoomFactor(-1, textOnly);
 }
 
-void BWebView::ResetTextSize()
+void BWebView::ResetZoomFactor()
 {
-	fWebPage->ChangeTextSize(0);
+	fWebPage->ChangeZoomFactor(0, false);
 }
 
 void BWebView::FindString(const char* string, bool forward ,

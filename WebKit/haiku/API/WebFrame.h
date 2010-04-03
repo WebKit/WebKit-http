@@ -89,13 +89,13 @@ public:
 									bool wrapSelection = true,
 									bool startInSelection = true);
 
-			bool				CanIncreaseTextSize() const;
-			bool				CanDecreaseTextSize() const;
+			bool				CanIncreaseZoomFactor() const;
+			bool				CanDecreaseZoomFactor() const;
 
-			void				IncreaseTextSize();
-			void				DecreaseTextSize();
+			void				IncreaseZoomFactor(bool textOnly);
+			void				DecreaseZoomFactor(bool textOnly);
 
-			void				ResetTextSize();
+			void				ResetZoomFactor();
 
 			void				SetEditable(bool editable);
 			bool				IsEditable() const;
@@ -120,7 +120,7 @@ private:
 			WebCore::Frame*		Frame() const;
 
 private:
-			float				fTextMagnifier;
+			float				fZoomFactor;
 			bool				fIsEditable;
 			BString				fTitle;
 

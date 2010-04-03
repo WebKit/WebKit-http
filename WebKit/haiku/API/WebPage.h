@@ -100,7 +100,8 @@ public:
 			BString				MainFrameRequestedURL() const;
 			BString				MainFrameURL() const;
 
-			void				ChangeTextSize(float increment);
+			void				ChangeZoomFactor(float increment,
+									bool textOnly);
 			void				FindString(const char* string,
 									bool forward = true,
 									bool caseSensitive = false,
@@ -206,7 +207,7 @@ private:
 	void handleMouseEvent(const BMessage* message);
 	void handleMouseWheelChanged(BMessage* message);
 	void handleKeyEvent(BMessage* message);
-	void handleChangeTextSize(BMessage* message);
+	void handleChangeZoomFactor(BMessage* message);
 	void handleFindString(BMessage* message);
 	void handleResendNotifications(BMessage* message);
 
