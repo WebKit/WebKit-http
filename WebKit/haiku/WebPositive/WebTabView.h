@@ -60,6 +60,7 @@ public:
 			BView*				ContainerView() const;
 
 			BView*				ViewForTab(int32 tabIndex) const;
+			int32				TabForView(const BView* containedView) const;
 
 			void				SelectTab(int32 tabIndex);
 			void				SelectTab(const BView* containedView);
@@ -75,10 +76,6 @@ public:
 			void				SetTabIcon(const BView* containedView,
 									const BBitmap* icon);
 			void				SetCloseButtonsAvailable(bool available);
-
-private:
-			int32				_TabIndexForContainedView(
-									const BView* containedView) const;
 
 private:
 #if INTEGRATE_MENU_INTO_TAB_BAR

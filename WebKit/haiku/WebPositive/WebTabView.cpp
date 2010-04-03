@@ -1318,6 +1318,19 @@ TabManager::ViewForTab(int32 tabIndex) const
 }
 
 
+int32
+TabManager::TabForView(const BView* containedView) const
+{
+	int32 count = fCardLayout->CountItems();
+	for (int32 i = 0; i < count; i++) {
+		BLayoutItem* item = fCardLayout->ItemAt(i);
+		if (item->View() == containedView)
+			return i;
+	}
+	return -1;
+}
+
+
 void
 TabManager::SelectTab(int32 tabIndex)
 {
@@ -1333,7 +1346,7 @@ TabManager::SelectTab(int32 tabIndex)
 void
 TabManager::SelectTab(const BView* containedView)
 {
-	int32 tabIndex = _TabIndexForContainedView(containedView);
+	int32 tabIndex = TabForView(containedView);
 	if (tabIndex > 0)
 		SelectTab(tabIndex);
 }
@@ -1401,7 +1414,7 @@ void
 TabManager::SetTabIcon(const BView* containedView, const BBitmap* icon)
 {
 	WebTabView* tab = dynamic_cast<WebTabView*>(fTabContainerView->TabAt(
-		_TabIndexForContainedView(containedView)));
+		TabForView(containedView)));
 	if (tab)
 		tab->SetIcon(icon);
 }
@@ -1416,16 +1429,4 @@ TabManager::SetCloseButtonsAvailable(bool available)
 	fTabContainerView->Invalidate();
 }
 
-
-int32
-TabManager::_TabIndexForContainedView(const BView* containedView) const
-{
-	int32 count = fCardLayout->CountItems();
-	for (int32 i = 0; i < count; i++) {
-		BLayoutItem* item = fCardLayout->ItemAt(i);
-		if (item->View() == containedView)
-			return i;
-	}
-	return -1;
-}
 
