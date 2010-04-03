@@ -110,7 +110,7 @@ public:
 			Invalidate();
 		}
 	}
-	
+
 	bool IsIconDimmed() const
 	{
 		return fDimmedIcon;
@@ -307,7 +307,7 @@ DownloadProgressView::AttachedToWindow()
 		fDownload->SetProgressListener(BMessenger(this));
 	fTopButton->SetTarget(this);
 	fBottomButton->SetTarget(this);
-	
+
 	BEntry entry(fPath.Path());
 	if (entry.Exists())
 		_StartNodeMonitor(entry);
@@ -604,11 +604,23 @@ DownloadProgressView::_UpdateStatusText()
 		// Draw speed info
 		char sizeBuffer[128];
 		buffer = "(";
-		buffer << string_for_size((double)fCurrentSize, sizeBuffer,
+		// Get strings for current and expected size and remove the unit
+		// from the current size string if it's the same as the expected
+		// size unit.
+		BString currentSize = string_for_size((double)fCurrentSize, sizeBuffer,
 			sizeof(sizeBuffer));
+		BString expectedSize = string_for_size((double)fExpectedSize, sizeBuffer,
+			sizeof(sizeBuffer));
+		int currentSizeUnitPos = currentSize.FindLast(' ');
+		int expectedSizeUnitPos = expectedSize.FindLast(' ');
+		if (currentSizeUnitPos >= 0 && expectedSizeUnitPos >= 0
+			&& strcmp(currentSize.String() + currentSizeUnitPos,
+				expectedSize.String() + expectedSizeUnitPos) == 0) {
+			currentSize.Truncate(currentSizeUnitPos);
+		}
+		buffer << currentSize;
 		buffer << " of ";
-		buffer << string_for_size((double)fExpectedSize, sizeBuffer,
-			sizeof(sizeBuffer));
+		buffer << expectedSize;
 		buffer << ", ";
 		buffer << string_for_size(fBytesPerSecond, sizeBuffer,
 			sizeof(sizeBuffer));
