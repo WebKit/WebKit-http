@@ -148,6 +148,7 @@ private:
 	WebCore::Page* createNewPage(BRect frame = BRect(),
 		bool modalDialog = false, bool resizable = true);
 
+	BRect windowFrame();
 	BRect windowBounds();
 	void setWindowBounds(const BRect& bounds);
 	BRect viewBounds();

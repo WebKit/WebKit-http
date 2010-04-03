@@ -486,14 +486,19 @@ WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resiz
     return page->page();
 }
 
-BRect BWebPage::windowBounds()
+BRect BWebPage::windowFrame()
 {
-    BRect bounds;
+    BRect frame;
     if (fWebView->LockLooper()) {
-        bounds = fWebView->Window()->Bounds();
+        frame = fWebView->Window()->Frame();
         fWebView->UnlockLooper();
     }
-    return bounds;
+    return frame;
+}
+
+BRect BWebPage::windowBounds()
+{
+    return windowFrame().OffsetToSelf(B_ORIGIN);
 }
 
 void BWebPage::setWindowBounds(const BRect& bounds)
