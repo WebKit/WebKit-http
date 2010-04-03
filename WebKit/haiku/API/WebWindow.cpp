@@ -115,8 +115,19 @@ void BWebWindow::MessageReceived(BMessage* message)
         // and sent a default reply. That's why the pointer is guaranteed
         // to be still valid.
         BWebView* view;
-        if (message->FindPointer("view", reinterpret_cast<void**>(&view)) == B_OK)
-            NewPageCreated(view);
+        if (message->FindPointer("view", reinterpret_cast<void**>(&view)) != B_OK)
+        	break;
+        BRect windowFrame;
+        if (message->FindRect("frame", &windowFrame) != B_OK)
+        	windowFrame = BRect();
+        bool modalDialog;
+        if (message->FindBool("modal", &modalDialog) != B_OK)
+        	modalDialog = false;
+        bool resizable;
+        if (message->FindBool("resizable", &resizable) != B_OK)
+        	resizable = true;
+
+        NewPageCreated(view, windowFrame, modalDialog, resizable);
         break;
     }
     case CLOSE_WINDOW_REQUESTED:
@@ -291,11 +302,32 @@ void BWebWindow::NewWindowRequested(const BString& url, bool primaryAction)
 {
 }
 
-void BWebWindow::NewPageCreated(BWebView* view)
+void BWebWindow::NewPageCreated(BWebView* view, BRect windowFrame,
+    bool modalDialog, bool resizable)
 {
-    BWebWindow* window = new BWebWindow(Frame().OffsetByCopy(10, 10),
-        "WebKit window", B_TITLED_WINDOW_LOOK, Feel(), Flags());
+	if (!windowFrame.IsValid())
+		windowFrame = Frame().OffsetByCopy(10, 10);
+
+	uint32 flags = Flags();
+
+	window_look look;
+	window_feel feel;
+	if (modalDialog) {
+		feel = B_MODAL_APP_WINDOW_FEEL;
+		look = B_BORDERED_WINDOW_LOOK;
+	} else {
+	    look = B_TITLED_WINDOW_LOOK;
+	    feel = B_NORMAL_WINDOW_FEEL;
+	}
+	if (!resizable)
+		flags |= B_NOT_RESIZABLE;
+
+    BWebWindow* window = new BWebWindow(windowFrame, "WebKit window",
+        look, feel, flags);
+
     window->AddChild(view);
+    window->SetCurrentWebView(view);
+
     window->Show();
 }
 

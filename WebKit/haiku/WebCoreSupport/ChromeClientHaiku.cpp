@@ -138,13 +138,24 @@ Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& requ
 	// implement themselves, so this method is not implemented in the Chromium
 	// WebKit code.)
 
+//printf("createWindow() - dialog: %d, resizable: %d\n", features.dialog, features.resizable);
+
     BRect windowFrame;
-    if (features.xSet && features.ySet && features.widthSet && features.heightSet) {
-        windowFrame.left = features.x;
-        windowFrame.top = features.y;
-        windowFrame.right = features.x + features.width - 1;
-        windowFrame.bottom = features.y + features.height - 1;
-    }
+    // If any frame property of the features is set, the windowFrame will be valid and
+    // starts of as an offseted copy of the window frame where this page is embedded.
+    if (features.xSet || features.ySet || features.widthSet || features.heightSet)
+    	windowFrame = m_webPage->windowFrame().OffsetByCopy(10, 10);
+
+    if (features.xSet)
+    	windowFrame.OffsetTo(features.x, windowFrame.top);
+    if (features.ySet)
+    	windowFrame.OffsetTo(windowFrame.left, features.y);
+    if (features.widthSet)
+        windowFrame.right = windowFrame.left + features.width - 1;
+    if (features.heightSet)
+        windowFrame.bottom = windowFrame.top + features.height - 1;
+
+//printf("  frame: "); windowFrame.PrintToStream();
 
 	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable);
 	if (!page)

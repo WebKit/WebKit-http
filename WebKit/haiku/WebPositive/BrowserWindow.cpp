@@ -238,7 +238,8 @@ public:
 // #pragma mark - BrowserWindow
 
 
-BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy)
+BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
+		BWebView* webView)
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
@@ -250,161 +251,164 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy)
 	newTabMessage->AddBool("select", true);
 	fTabManager = new TabManager(BMessenger(this), newTabMessage);
 
-	if (toolbarPolicy == HaveToolbar) {
-		// Menu
+	// Menu
 #if INTEGRATE_MENU_INTO_TAB_BAR
-		BMenu* mainMenu = fTabManager->Menu();
+	BMenu* mainMenu = fTabManager->Menu();
 #else
-		BMenu* mainMenu = new BMenuBar("Main menu");
+	BMenu* mainMenu = new BMenuBar("Main menu");
 #endif
-		BMenu* menu = new BMenu("Window");
-		BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
-		newWindowMessage->AddString("url", "");
-		BMenuItem* newItem = new BMenuItem("New window", newWindowMessage, 'N');
-		menu->AddItem(newItem);
-		newItem->SetTarget(be_app);
-		newItem = new BMenuItem("New tab", new BMessage(*newTabMessage), 'T');
-		menu->AddItem(newItem);
-		newItem->SetTarget(be_app);
-		menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
-		menu->AddSeparatorItem();
-		menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
-		menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
-		menu->AddSeparatorItem();
-		menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
-		menu->AddItem(new BMenuItem("Show settings", new BMessage(SHOW_SETTINGS_WINDOW)));
-		menu->AddSeparatorItem();
-		BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
-		menu->AddItem(quitItem);
-		quitItem->SetTarget(be_app);
-		mainMenu->AddItem(menu);
+	BMenu* menu = new BMenu("Window");
+	BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
+	newWindowMessage->AddString("url", "");
+	BMenuItem* newItem = new BMenuItem("New window", newWindowMessage, 'N');
+	menu->AddItem(newItem);
+	newItem->SetTarget(be_app);
+	newItem = new BMenuItem("New tab", new BMessage(*newTabMessage), 'T');
+	menu->AddItem(newItem);
+	newItem->SetTarget(be_app);
+	menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
+	menu->AddSeparatorItem();
+	menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
+	menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
+	menu->AddSeparatorItem();
+	menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
+	menu->AddItem(new BMenuItem("Show settings", new BMessage(SHOW_SETTINGS_WINDOW)));
+	menu->AddSeparatorItem();
+	BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
+	menu->AddItem(quitItem);
+	quitItem->SetTarget(be_app);
+	mainMenu->AddItem(menu);
 
-		menu = new BMenu("Text");
-		menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
-		menu->AddSeparatorItem();
-		menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
-		menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
-		menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
-		mainMenu->AddItem(menu);
+	menu = new BMenu("Text");
+	menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
+	menu->AddSeparatorItem();
+	menu->AddItem(new BMenuItem("Increase size", new BMessage(TEXT_SIZE_INCREASE), '+'));
+	menu->AddItem(new BMenuItem("Decrease size", new BMessage(TEXT_SIZE_DECREASE), '-'));
+	menu->AddItem(new BMenuItem("Reset size", new BMessage(TEXT_SIZE_RESET), '0'));
+	mainMenu->AddItem(menu);
 
-		fGoMenu = new BMenu("Go");
-		mainMenu->AddItem(fGoMenu);
+	fGoMenu = new BMenu("Go");
+	mainMenu->AddItem(fGoMenu);
 
-		BPath bookmarkPath;
-		entry_ref bookmarkRef;
-		if (_BookmarkPath(bookmarkPath) == B_OK
-			&& get_ref_for_path(bookmarkPath.Path(), &bookmarkRef) == B_OK) {
-			BMenu* bookmarkMenu
-				= new BookmarkMenu("Bookmarks", this, &bookmarkRef);
-			mainMenu->AddItem(bookmarkMenu);
-		}
-
-		// Back, Forward & Stop
-		fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
-		fBackButton->SetIcon(201);
-		fBackButton->TrimIcon();
-
-		fForwardButton = new IconButton("Forward", 0, NULL, new BMessage(GO_FORWARD));
-		fForwardButton->SetIcon(202);
-		fForwardButton->TrimIcon();
-
-		fStopButton = new IconButton("Stop", 0, NULL, new BMessage(STOP));
-		fStopButton->SetIcon(204);
-		fStopButton->TrimIcon();
-
-		// URL
-		fURLTextControl = new BTextControl("url", "", "", NULL);
-		fURLTextControl->SetDivider(50.0);
-
-		// Go
-		fGoButton = new BButton("", "Go", new BMessage(GOTO_URL));
-
-		// Status Bar
-		fStatusText = new BStringView("status", "");
-		fStatusText->SetAlignment(B_ALIGN_LEFT);
-		fStatusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
-		fStatusText->SetExplicitMinSize(BSize(150, 12));
-			// Prevent the window from growing to fit a long status message...
-		BFont font(be_plain_font);
-		font.SetSize(ceilf(font.Size() * 0.8));
-		fStatusText->SetFont(&font, B_FONT_SIZE);
-
-		// Loading progress bar
-		fLoadingProgressBar = new BStatusBar("progress");
-		fLoadingProgressBar->SetMaxValue(100);
-		fLoadingProgressBar->Hide();
-		fLoadingProgressBar->SetBarHeight(12);
-
-		const float kInsetSpacing = 3;
-		const float kElementSpacing = 5;
-
-		fFindTextControl = new BTextControl("find", "Find:", "",
-			new BMessage(TEXT_FIND_NEXT));
-		fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
-		BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
-			.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-			.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
-				.Add(fFindTextControl)
-				.Add(new BButton("Previous", new BMessage(TEXT_FIND_PREVIOUS)))
-				.Add(new BButton("Next", new BMessage(TEXT_FIND_NEXT)))
-				.Add(fFindCaseSensitiveCheckBox)
-				.Add(BSpaceLayoutItem::CreateGlue())
-				.Add(new BButton("Close", new BMessage(TEXT_HIDE_FIND_GROUP)))
-				.SetInsets(kInsetSpacing, kInsetSpacing,
-					kInsetSpacing, kInsetSpacing)
-			)
-		;
-		// Layout
-		AddChild(BGroupLayoutBuilder(B_VERTICAL)
-#if !INTEGRATE_MENU_INTO_TAB_BAR
-			.Add(mainMenu)
-#endif
-			.Add(fTabManager->TabGroup())
-			.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
-				.Add(fBackButton, 0, 0)
-				.Add(fForwardButton, 1, 0)
-				.Add(fStopButton, 2, 0)
-				.Add(fURLTextControl, 3, 0)
-				.Add(fGoButton, 4, 0)
-				.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
-			)
-			.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-			.Add(fTabManager->ContainerView())
-			.Add(findGroup)
-			.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-			.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
-				.Add(fStatusText)
-				.Add(fLoadingProgressBar, 0.2)
-				.AddStrut(12 - kElementSpacing)
-				.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
-			)
-		);
-
-		fURLTextControl->MakeFocus(true);
-
-		fURLAutoCompleter = new TextControlCompleter(fURLTextControl,
-			new BrowsingHistoryChoiceModel());
-
-		fFindGroup = layoutItemFor(findGroup);
-		fTabGroup = layoutItemFor(fTabManager->TabGroup());
-	} else {
-		fBackButton = 0;
-		fForwardButton = 0;
-		fStopButton = 0;
-		fGoButton = 0;
-		fURLTextControl = 0;
-		fURLAutoCompleter = 0;
-		fStatusText = 0;
-		fLoadingProgressBar = 0;
-
-		AddChild(BGroupLayoutBuilder(B_VERTICAL)
-			.Add(fTabManager->ContainerView())
-		);
+	BPath bookmarkPath;
+	entry_ref bookmarkRef;
+	if (_BookmarkPath(bookmarkPath) == B_OK
+		&& get_ref_for_path(bookmarkPath.Path(), &bookmarkRef) == B_OK) {
+		BMenu* bookmarkMenu
+			= new BookmarkMenu("Bookmarks", this, &bookmarkRef);
+		mainMenu->AddItem(bookmarkMenu);
 	}
 
-	CreateNewTab("", true);
+	// Back, Forward & Stop
+	fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
+	fBackButton->SetIcon(201);
+	fBackButton->TrimIcon();
+
+	fForwardButton = new IconButton("Forward", 0, NULL, new BMessage(GO_FORWARD));
+	fForwardButton->SetIcon(202);
+	fForwardButton->TrimIcon();
+
+	fStopButton = new IconButton("Stop", 0, NULL, new BMessage(STOP));
+	fStopButton->SetIcon(204);
+	fStopButton->TrimIcon();
+
+	// URL
+	fURLTextControl = new BTextControl("url", "", "", NULL);
+	fURLTextControl->SetDivider(50.0);
+
+	// Go
+	fGoButton = new BButton("", "Go", new BMessage(GOTO_URL));
+
+	// Status Bar
+	fStatusText = new BStringView("status", "");
+	fStatusText->SetAlignment(B_ALIGN_LEFT);
+	fStatusText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
+	fStatusText->SetExplicitMinSize(BSize(150, 12));
+		// Prevent the window from growing to fit a long status message...
+	BFont font(be_plain_font);
+	font.SetSize(ceilf(font.Size() * 0.8));
+	fStatusText->SetFont(&font, B_FONT_SIZE);
+
+	// Loading progress bar
+	fLoadingProgressBar = new BStatusBar("progress");
+	fLoadingProgressBar->SetMaxValue(100);
+	fLoadingProgressBar->Hide();
+	fLoadingProgressBar->SetBarHeight(12);
+
+	const float kInsetSpacing = 3;
+	const float kElementSpacing = 5;
+
+	fFindTextControl = new BTextControl("find", "Find:", "",
+		new BMessage(TEXT_FIND_NEXT));
+	fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
+	BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
+		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+			.Add(fFindTextControl)
+			.Add(new BButton("Previous", new BMessage(TEXT_FIND_PREVIOUS)))
+			.Add(new BButton("Next", new BMessage(TEXT_FIND_NEXT)))
+			.Add(fFindCaseSensitiveCheckBox)
+			.Add(BSpaceLayoutItem::CreateGlue())
+			.Add(new BButton("Close", new BMessage(TEXT_HIDE_FIND_GROUP)))
+			.SetInsets(kInsetSpacing, kInsetSpacing,
+				kInsetSpacing, kInsetSpacing)
+		)
+	;
+
+	BView* navigationGroup = BGroupLayoutBuilder(B_VERTICAL)
+		.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
+			.Add(fBackButton, 0, 0)
+			.Add(fForwardButton, 1, 0)
+			.Add(fStopButton, 2, 0)
+			.Add(fURLTextControl, 3, 0)
+			.Add(fGoButton, 4, 0)
+			.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
+		)
+		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+	;
+
+	BView* statusGroup = BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+		.Add(fStatusText)
+		.Add(fLoadingProgressBar, 0.2)
+		.AddStrut(12 - kElementSpacing)
+		.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
+	;
+
+	// Layout
+	AddChild(BGroupLayoutBuilder(B_VERTICAL)
+#if !INTEGRATE_MENU_INTO_TAB_BAR
+		.Add(mainMenu)
+#endif
+		.Add(fTabManager->TabGroup())
+		.Add(navigationGroup)
+		.Add(fTabManager->ContainerView())
+		.Add(findGroup)
+		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+		.Add(statusGroup)
+	);
+
+	fURLTextControl->MakeFocus(true);
+
+	fURLAutoCompleter = new TextControlCompleter(fURLTextControl,
+		new BrowsingHistoryChoiceModel());
+
+	fMenuGroup = layoutItemFor(mainMenu);
+	fTabGroup = layoutItemFor(fTabManager->TabGroup());
+	fNavigationGroup = layoutItemFor(navigationGroup);
+	fFindGroup = layoutItemFor(findGroup);
+	fStatusGroup = layoutItemFor(statusGroup);
+
+	CreateNewTab("", true, webView);
 
 	fFindGroup->SetVisible(false);
+
+	if (toolbarPolicy == DoNotHaveToolbar) {
+#if !INTEGRATE_MENU_INTO_TAB_BAR
+		fMenuGroup->SetVisible(false);
+#endif
+		fTabGroup->SetVisible(false);
+		fNavigationGroup->SetVisible(false);
+	}
 
 	AddShortcut('G', B_COMMAND_KEY, new BMessage(TEXT_FIND_NEXT));
 	AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
@@ -857,9 +861,15 @@ BrowserWindow::NewWindowRequested(const BString& url, bool primaryAction)
 
 
 void
-BrowserWindow::NewPageCreated(BWebView* view)
+BrowserWindow::NewPageCreated(BWebView* view, BRect windowFrame,
+    bool modalDialog, bool resizable)
 {
-	CreateNewTab(BString(), true, view);
+	if (windowFrame.IsValid()) {
+		BrowserWindow* window = new BrowserWindow(windowFrame,
+			DoNotHaveToolbar, view);
+		window->Show();
+	} else
+		CreateNewTab(BString(), true, view);
 }
 
 

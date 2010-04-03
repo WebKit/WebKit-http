@@ -69,7 +69,8 @@ enum {
 class BrowserWindow : public BWebWindow {
 public:
 								BrowserWindow(BRect frame,
-									ToolbarPolicy = HaveToolbar);
+									ToolbarPolicy = HaveToolbar,
+									BWebView* webView = NULL);
 	virtual						~BrowserWindow();
 
 	virtual	void				DispatchMessage(BMessage* message,
@@ -88,7 +89,9 @@ private:
 	virtual	void				NewWindowRequested(const BString& url,
 									bool primaryAction);
 	virtual	void				CloseWindowRequested(BWebView* view);
-	virtual	void				NewPageCreated(BWebView* view);
+	virtual	void				NewPageCreated(BWebView* view,
+									BRect windowFrame, bool modalDialog,
+									bool resizable);
 	virtual	void				LoadNegotiating(const BString& url,
 									BWebView* view);
 	virtual	void				LoadCommitted(const BString& url,
@@ -147,8 +150,13 @@ private:
 			TextControlCompleter* fURLAutoCompleter;
 			BStringView*		fStatusText;
 			BStatusBar*			fLoadingProgressBar;
-			BLayoutItem*		fFindGroup;
+
+			BLayoutItem*		fMenuGroup;
 			BLayoutItem*		fTabGroup;
+			BLayoutItem*		fNavigationGroup;
+			BLayoutItem*		fFindGroup;
+			BLayoutItem*		fStatusGroup;
+
 			BTextControl*		fFindTextControl;
 			BCheckBox*			fFindCaseSensitiveCheckBox;
 			TabManager*			fTabManager;

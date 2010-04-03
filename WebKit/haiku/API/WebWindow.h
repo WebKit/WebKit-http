@@ -58,7 +58,9 @@ public:
 	virtual	void				NewWindowRequested(const BString& url,
 									bool primaryAction);
 	virtual	void				CloseWindowRequested(BWebView* view);
-	virtual	void				NewPageCreated(BWebView* view);
+	virtual	void				NewPageCreated(BWebView* view,
+									BRect windowFrame, bool modalDialog,
+									bool resizable);
 	virtual	void				LoadNegotiating(const BString& url,
 									BWebView* view);
 	virtual	void				LoadCommitted(const BString& url,
