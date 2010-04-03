@@ -87,6 +87,7 @@ private:
 									BWebView* view);
 	virtual	void				NewWindowRequested(const BString& url,
 									bool primaryAction);
+	virtual	void				CloseWindowRequested(BWebView* view);
 	virtual	void				NewPageCreated(BWebView* view);
 	virtual	void				LoadNegotiating(const BString& url,
 									BWebView* view);
@@ -121,6 +122,7 @@ private:
 			void				_UpdateTitle(const BString &title);
 			void				_UpdateTabGroupVisibility();
 			void				_ShutdownTab(int32 index);
+			void				_TabChanged(int32 index);
 
 			status_t			_BookmarkPath(BPath& path) const;
 			void				_CreateBookmark();

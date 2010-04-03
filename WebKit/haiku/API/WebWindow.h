@@ -57,6 +57,7 @@ public:
 									BWebView* view);
 	virtual	void				NewWindowRequested(const BString& url,
 									bool primaryAction);
+	virtual	void				CloseWindowRequested(BWebView* view);
 	virtual	void				NewPageCreated(BWebView* view);
 	virtual	void				LoadNegotiating(const BString& url,
 									BWebView* view);

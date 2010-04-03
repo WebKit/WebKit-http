@@ -45,7 +45,8 @@ enum {
     UPDATE_HISTORY =                                    313,
     UPDATE_NAVIGATION_INTERFACE =                       314,
     AUTHENTICATION_CHALLENGE =                          315,
-    ICON_RECEIVED =                                     316
+    ICON_RECEIVED =                                     316,
+    CLOSE_WINDOW_REQUESTED =                            317
 };
 
 enum {

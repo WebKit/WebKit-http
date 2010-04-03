@@ -563,7 +563,7 @@ void BWebPage::setResizable(bool flag)
 
 void BWebPage::closeWindow()
 {
-	BMessage message(B_QUIT_REQUESTED);
+	BMessage message(CLOSE_WINDOW_REQUESTED);
     dispatchMessage(message);
 }
 

@@ -650,20 +650,7 @@ printf("  file ok\n");
 		int32 index;
 		if (message->FindInt32("tab index", &index) != B_OK)
 			index = -1;
-		BWebView* webView = dynamic_cast<BWebView*>(fTabManager->ViewForTab(index));
-		if (webView == CurrentWebView())
-			break;
-		SetCurrentWebView(webView);
-		if (webView)
-			_UpdateTitle(webView->MainFrameTitle());
-		else
-			_UpdateTitle("");
-		if (webView) {
-			fURLTextControl->SetText(webView->MainFrameURL());
-			// Trigger update of the interface to the new page, by requesting
-			// to resend all notifications.
-			webView->WebPage()->ResendNotifications();
-		}
+		_TabChanged(index);
 		break;
 	}
 
@@ -873,6 +860,20 @@ void
 BrowserWindow::NewPageCreated(BWebView* view)
 {
 	CreateNewTab(BString(), true, view);
+}
+
+
+void
+BrowserWindow::CloseWindowRequested(BWebView* view)
+{
+	int32 index = fTabManager->TabForView(view);
+	if (index < 0) {
+		// Tab is already gone.
+		return;
+	}
+	BMessage message(CLOSE_TAB);
+	message.AddInt32("tab index", index);
+	PostMessage(&message, this);
 }
 
 
@@ -1122,7 +1123,7 @@ void
 BrowserWindow::_UpdateTabGroupVisibility()
 {
 	if (Lock()) {
-		//fTabGroup->SetVisible(fTabManager->CountTabs() > 1);
+//		fTabGroup->SetVisible(fTabManager->CountTabs() > 1);
 		fTabManager->SetCloseButtonsAvailable(fTabManager->CountTabs() > 1);
 		Unlock();
 	}
@@ -1138,6 +1139,26 @@ BrowserWindow::_ShutdownTab(int32 index)
 		webView->Shutdown();
 	else
 		delete view;
+}
+
+
+void
+BrowserWindow::_TabChanged(int32 index)
+{
+	BWebView* webView = dynamic_cast<BWebView*>(fTabManager->ViewForTab(index));
+	if (webView == CurrentWebView())
+		return;
+	SetCurrentWebView(webView);
+	if (webView)
+		_UpdateTitle(webView->MainFrameTitle());
+	else
+		_UpdateTitle("");
+	if (webView) {
+		fURLTextControl->SetText(webView->MainFrameURL());
+		// Trigger update of the interface to the new page, by requesting
+		// to resend all notifications.
+		webView->WebPage()->ResendNotifications();
+	}
 }
 
 

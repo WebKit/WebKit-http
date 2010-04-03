@@ -119,6 +119,9 @@ void BWebWindow::MessageReceived(BMessage* message)
             NewPageCreated(view);
         break;
     }
+    case CLOSE_WINDOW_REQUESTED:
+        CloseWindowRequested(_WebViewForMessage(message));
+        break;
     case LOAD_NEGOTIATING: {
         BString url;
         if (message->FindString("url", &url) == B_OK) {
@@ -294,6 +297,11 @@ void BWebWindow::NewPageCreated(BWebView* view)
         "WebKit window", B_TITLED_WINDOW_LOOK, Feel(), Flags());
     window->AddChild(view);
     window->Show();
+}
+
+void BWebWindow::CloseWindowRequested(BWebView* view)
+{
+    PostMessage(B_QUIT_REQUESTED);
 }
 
 void BWebWindow::LoadNegotiating(const BString& url, BWebView* view)
