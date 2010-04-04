@@ -247,8 +247,11 @@ void BWebView::LoadURL(const char* urlString, bool aquireFocus)
     fWebPage->LoadURL(urlString);
 	// Always focus the web view after firing off a load request.
 	// This behavior is also observed in Firefox.
-	if (aquireFocus && !IsFocus())
-		MakeFocus(true);
+	if (LockLooper()) {
+		if (aquireFocus && !IsFocus())
+			MakeFocus(true);
+		UnlockLooper();
+	}
 }
 
 void BWebView::Reload()
