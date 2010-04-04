@@ -242,9 +242,13 @@ BString BWebView::MainFrameURL() const
     return fWebPage->MainFrameURL();
 }
 
-void BWebView::LoadURL(const char* urlString)
+void BWebView::LoadURL(const char* urlString, bool aquireFocus)
 {
     fWebPage->LoadURL(urlString);
+	// Always focus the web view after firing off a load request.
+	// This behavior is also observed in Firefox.
+	if (aquireFocus && !IsFocus())
+		MakeFocus(true);
 }
 
 void BWebView::Reload()

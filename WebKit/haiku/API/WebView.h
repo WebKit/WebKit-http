@@ -74,7 +74,8 @@ public:
 			BString				MainFrameRequestedURL() const;
 			BString				MainFrameURL() const;
 
-			void				LoadURL(const char* urlString);
+			void				LoadURL(const char* urlString,
+									bool aquireFocus = true);
 			void				Reload();
 			void				GoBack();
 			void				GoForward();
