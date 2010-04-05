@@ -166,13 +166,13 @@ void LauncherWindow::MessageReceived(BMessage* message)
     }
 
     case TEXT_SIZE_INCREASE:
-        CurrentWebView()->IncreaseTextSize();
+        CurrentWebView()->IncreaseZoomFactor(true);
         break;
     case TEXT_SIZE_DECREASE:
-        CurrentWebView()->DecreaseTextSize();
+        CurrentWebView()->DecreaseZoomFactor(true);
         break;
     case TEXT_SIZE_RESET:
-        CurrentWebView()->ResetTextSize();
+        CurrentWebView()->ResetZoomFactor();
         break;
 
     default:
@@ -207,10 +207,12 @@ void LauncherWindow::NewWindowRequested(const BString& url, bool primaryAction)
     be_app->PostMessage(&message);
 }
 
-void LauncherWindow::NewPageCreated(BWebView* view)
+void LauncherWindow::NewPageCreated(BWebView* view, BRect windowFrame,
+	bool modalDialog, bool resizable)
 {
-	LauncherWindow* window = new LauncherWindow(Frame().OffsetByCopy(10, 10),
-	    view, HaveToolbar);
+	if (!windowFrame.IsValid())
+		windowFrame = Frame().OffsetByCopy(10, 10);
+	LauncherWindow* window = new LauncherWindow(windowFrame, view, HaveToolbar);
 	window->Show();
 }
 
@@ -395,7 +397,7 @@ void LauncherWindow::init(BWebView* webView, ToolbarPolicy toolbarPolicy)
     }
 
     AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
-	
+
     be_app->PostMessage(WINDOW_OPENED);
 }
 

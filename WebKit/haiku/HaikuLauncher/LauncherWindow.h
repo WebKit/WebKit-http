@@ -68,7 +68,8 @@ private:
     // WebPage notification API implementations
     virtual void NavigationRequested(const BString& url, BWebView* view);
     virtual void NewWindowRequested(const BString& url, bool primaryAction);
-	virtual void NewPageCreated(BWebView* view);
+	virtual void NewPageCreated(BWebView* view, BRect windowFrame,
+		bool modalDialog, bool resizable);
     virtual void LoadNegotiating(const BString& url, BWebView* view);
     virtual void LoadCommitted(const BString& url, BWebView* view);
     virtual void LoadProgress(float progress, BWebView* view);
