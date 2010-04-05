@@ -34,6 +34,7 @@
 #include "DownloadWindow.h"
 #include "SettingsMessage.h"
 #include "SettingsWindow.h"
+#include "svn_revision.h"
 #include "NetworkCookieJar.h"
 #include "WebPage.h"
 #include "WebSettings.h"
@@ -86,9 +87,11 @@ BrowserApp::~BrowserApp()
 void
 BrowserApp::AboutRequested()
 {
-	BAlert* alert = new BAlert("About WebPositive",
-		"WebPositive\n\nby Ryan Leavengood, Andrea Anzani, "
-		"Maxime Simone, Michael Lotz, Rene Gollent and Stephan Aßmus",
+	BString aboutText("WebPositive\n\nby Ryan Leavengood, Andrea Anzani, "
+		"Maxime Simone, Michael Lotz, Rene Gollent and Stephan Aßmus");
+	aboutText << "\n\nSVN revision: " << kSVNRevision;
+
+	BAlert* alert = new BAlert("About WebPositive", aboutText.String(),
 		"Sweet!");
 	alert->Go();
 }

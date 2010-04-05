@@ -273,8 +273,11 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
 	menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
 	menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Show downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
-	menu->AddItem(new BMenuItem("Show settings", new BMessage(SHOW_SETTINGS_WINDOW)));
+	menu->AddItem(new BMenuItem("Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
+	menu->AddItem(new BMenuItem("Settings", new BMessage(SHOW_SETTINGS_WINDOW)));
+	BMenuItem* aboutItem = new BMenuItem("About", new BMessage(B_ABOUT_REQUESTED));
+	menu->AddItem(aboutItem);
+	aboutItem->SetTarget(be_app);
 	menu->AddSeparatorItem();
 	BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
 	menu->AddItem(quitItem);

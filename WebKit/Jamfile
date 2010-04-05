@@ -121,6 +121,12 @@ SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive autocompletion ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive support ] ;
 
+# SVN revision
+local svnRevisionFile = [ FGristFiles svn_revision ] ;
+MakeLocate $(svnRevisionFile) : $(LOCATE_TARGET) ;
+CreateSVNRevisionFile $(svnRevisionFile) ;
+
+
 Application WebPositive :
 	# autocompletion
 	AutoCompleter.cpp
@@ -140,6 +146,7 @@ Application WebPositive :
 	BrowserApp.cpp
 	BrowserWindow.cpp
 	SettingsWindow.cpp
+	svn_revision.cpp
 	WebTabView.cpp
 
 	:
