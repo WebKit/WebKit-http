@@ -30,6 +30,7 @@
 #include <Window.h>
 
 class BButton;
+class BCheckBox;
 class BMenu;
 class BMenuField;
 class BMenuItem;
@@ -73,6 +74,7 @@ private:
 			BMenuItem*			fNewPageBehaviorOpenSearchItem;
 			BMenuItem*			fNewPageBehaviorOpenBlankItem;
 			BTextControl*		fDaysInGoMenuControl;
+			BCheckBox*			fShowTabsIfOnlyOnePage;
 
 			FontSelectionView*	fStandardFontView;
 			FontSelectionView*	fSerifFontView;

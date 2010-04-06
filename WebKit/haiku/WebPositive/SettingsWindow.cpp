@@ -27,6 +27,7 @@
 #include "SettingsWindow.h"
 
 #include <Button.h>
+#include <CheckBox.h>
 #include <ControlLook.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
@@ -48,6 +49,7 @@
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
 #include "FontSelectionView.h"
+#include "SettingsKeys.h"
 #include "SettingsMessage.h"
 #include "WebSettings.h"
 
@@ -64,6 +66,7 @@ enum {
 	MSG_DOWNLOAD_FOLDER_CHANGED			= 'dnfc',
 	MSG_NEW_PAGE_BEHAVIOR_CHANGED		= 'npbc',
 	MSG_GO_MENU_DAYS_CHANGED			= 'digm',
+	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED	= 'tdbc',
 };
 
 static const int32 kDefaultFontSize = 14;
@@ -144,33 +147,39 @@ void
 SettingsWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
-	case MSG_APPLY:
-		_ApplySettings();
-		break;
-	case MSG_CANCEL:
-		_RevertSettings();
-		PostMessage(B_QUIT_REQUESTED);
-		break;
-	case MSG_REVERT:
-		_RevertSettings();
-		break;
+		case MSG_APPLY:
+			_ApplySettings();
+			break;
+		case MSG_CANCEL:
+			_RevertSettings();
+			PostMessage(B_QUIT_REQUESTED);
+			break;
+		case MSG_REVERT:
+			_RevertSettings();
+			break;
 
-	case MSG_STANDARD_FONT_SIZE_SELECTED: {
-		int32 size = _SizesMenuValue(fStandardSizesMenu->Menu());
-		fStandardFontView->SetSize(size);
-		fSerifFontView->SetSize(size);
-		fSansSerifFontView->SetSize(size);
-		break;
-	}
-	case MSG_FIXED_FONT_SIZE_SELECTED: {
-		int32 size = _SizesMenuValue(fFixedSizesMenu->Menu());
-		fFixedFontView->SetSize(size);
-		break;
-	}
+		case MSG_STANDARD_FONT_SIZE_SELECTED:
+		{
+			int32 size = _SizesMenuValue(fStandardSizesMenu->Menu());
+			fStandardFontView->SetSize(size);
+			fSerifFontView->SetSize(size);
+			fSansSerifFontView->SetSize(size);
+			break;
+		}
+		case MSG_FIXED_FONT_SIZE_SELECTED:
+		{
+			int32 size = _SizesMenuValue(fFixedSizesMenu->Menu());
+			fFixedFontView->SetSize(size);
+			break;
+		}
 
-	default:
-		BWindow::MessageReceived(message);
-		break;
+		case MSG_TAB_DISPLAY_BEHAVIOR_CHANGED:
+			// TODO: Some settings could change live, some others not?
+			break;
+
+		default:
+			BWindow::MessageReceived(message);
+			break;
 	}
 }
 
@@ -236,6 +245,11 @@ fNewPageBehaviorMenu->SetEnabled(false);
 	for (uchar i = '9' + 1; i <= 128; i++)
 		fDaysInGoMenuControl->TextView()->DisallowChar(i);
 
+	fShowTabsIfOnlyOnePage = new BCheckBox("show tabs if only one page",
+		TR("Show tabs if only page is open."),
+		new BMessage(MSG_TAB_DISPLAY_BEHAVIOR_CHANGED));
+	fShowTabsIfOnlyOnePage->SetValue(B_CONTROL_ON);
+
 	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
 		.Add(fDownloadFolderControl->CreateLabelLayoutItem(), 0, 1)
 		.Add(fDownloadFolderControl->CreateTextViewLayoutItem(), 1, 1)
@@ -246,7 +260,9 @@ fNewPageBehaviorMenu->SetEnabled(false);
 		.Add(fDaysInGoMenuControl->CreateLabelLayoutItem(), 0, 3)
 		.Add(fDaysInGoMenuControl->CreateTextViewLayoutItem(), 1, 3)
 
-		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 4, 2)
+		.Add(fShowTabsIfOnlyOnePage, 0, 4, 2)
+
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 5, 2)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
@@ -323,7 +339,9 @@ SettingsWindow::_ApplySettings()
 	fDaysInGoMenuControl->SetText(text.String());
 	BrowsingHistory::DefaultInstance()->SetMaxHistoryItemAge(maxHistoryAge);
 
-	fSettings->SetValue("download path", fDownloadFolderControl->Text());
+	fSettings->SetValue(kSettingsKeyDownloadPath, fDownloadFolderControl->Text());
+	fSettings->SetValue(kSettingsKeyShowTabsIfSinglePageOpen,
+		fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON);
 
 	// Store fond settings
 	fSettings->SetValue("standard font", fStandardFontView->Font());
@@ -354,6 +372,11 @@ SettingsWindow::_ApplySettings()
 void
 SettingsWindow::_RevertSettings()
 {
+	fDownloadFolderControl->SetText(
+		fSettings->GetValue(kSettingsKeyDownloadPath, ""));
+	fShowTabsIfOnlyOnePage->SetValue(
+		fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
+
 	int32 defaultFontSize = fSettings->GetValue("standard font size",
 		kDefaultFontSize);
 	int32 defaultFixedFontSize = fSettings->GetValue("fixed font size",

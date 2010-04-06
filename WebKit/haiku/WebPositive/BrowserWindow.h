@@ -45,10 +45,11 @@ class BPath;
 class BStatusBar;
 class BStringView;
 class BTextControl;
+class BWebView;
 class IconButton;
+class SettingsMessage;
 class TabManager;
 class TextControlCompleter;
-class BWebView;
 
 enum ToolbarPolicy {
 	HaveToolbar,
@@ -70,6 +71,7 @@ enum {
 class BrowserWindow : public BWebWindow {
 public:
 								BrowserWindow(BRect frame,
+									SettingsMessage* appSettings,
 									ToolbarPolicy = HaveToolbar,
 									BWebView* webView = NULL);
 	virtual						~BrowserWindow();
@@ -144,7 +146,6 @@ private:
 private:
 			BMenu*				fGoMenu;
 			BMenuItem*			fZoomTextOnlyMenuItem;
-			bool				fZoomTextOnly;
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;
@@ -163,6 +164,10 @@ private:
 			BTextControl*		fFindTextControl;
 			BCheckBox*			fFindCaseSensitiveCheckBox;
 			TabManager*			fTabManager;
+
+			SettingsMessage*	fAppSettings;
+			bool				fZoomTextOnly;
+			bool				fShowTabsIfSinglePageOpen;
 };
 
 

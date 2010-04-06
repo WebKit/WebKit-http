@@ -38,6 +38,8 @@
 #include "BrowsingHistory.h"
 #include "IconButton.h"
 #include "NavMenu.h"
+#include "SettingsKeys.h"
+#include "SettingsMessage.h"
 #include "TextControlCompleter.h"
 #include "WebPage.h"
 #include "WebTabView.h"
@@ -257,14 +259,21 @@ private:
 // #pragma mark - BrowserWindow
 
 
-BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
-		BWebView* webView)
+BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
+		ToolbarPolicy toolbarPolicy, BWebView* webView)
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
-	fZoomTextOnly(true)
+	fAppSettings(appSettings),
+	fZoomTextOnly(true),
+	fShowTabsIfSinglePageOpen(true)
 {
+	fAppSettings->AddListener(BMessenger(this));
+//	fZoomTextOnly = fAppSettings->GetValue("zoom text only", fZoomTextOnly);
+	fShowTabsIfSinglePageOpen = fAppSettings->GetValue(
+		kSettingsKeyShowTabsIfSinglePageOpen, fShowTabsIfSinglePageOpen);
+
 	BMessage* newTabMessage = new BMessage(NEW_TAB);
 	newTabMessage->AddString("url", "");
 	newTabMessage->AddPointer("window", this);
@@ -461,6 +470,7 @@ BrowserWindow::BrowserWindow(BRect frame, ToolbarPolicy toolbarPolicy,
 
 BrowserWindow::~BrowserWindow()
 {
+	fAppSettings->RemoveListener(BMessenger(this));
 	delete fURLAutoCompleter;
 	delete fTabManager;
 }
@@ -501,199 +511,220 @@ void
 BrowserWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
-	case OPEN_LOCATION:
-		if (fURLTextControl) {
-			if (fURLTextControl->TextView()->IsFocus())
-				fURLTextControl->TextView()->SelectAll();
-			else
-				fURLTextControl->MakeFocus(true);
-		}
-		break;
-	case RELOAD:
-		CurrentWebView()->Reload();
-		break;
-	case GOTO_URL: {
-		BString url;
-		if (message->FindString("url", &url) != B_OK)
-			url = fURLTextControl->Text();
-		fTabManager->SetTabIcon(CurrentWebView(), NULL);
-		CurrentWebView()->LoadURL(url.String());
-		break;
-	}
-	case GO_BACK:
-		CurrentWebView()->GoBack();
-		break;
-	case GO_FORWARD:
-		CurrentWebView()->GoForward();
-		break;
-	case STOP:
-		CurrentWebView()->StopLoading();
-		break;
-
-	case CLEAR_HISTORY: {
-		BrowsingHistory* history = BrowsingHistory::DefaultInstance();
-		if (history->CountItems() == 0)
+		case OPEN_LOCATION:
+			if (fURLTextControl) {
+				if (fURLTextControl->TextView()->IsFocus())
+					fURLTextControl->TextView()->SelectAll();
+				else
+					fURLTextControl->MakeFocus(true);
+			}
 			break;
-		BAlert* alert = new BAlert("Confirmation", "Do you really want to "
-			"clear the browsing history?", "Clear", "Cancel");
-		if (alert->Go() == 0)
-			history->Clear();
-		break;
-	}
-
-	case CREATE_BOOKMARK:
-		_CreateBookmark();
-		break;
-	case SHOW_BOOKMARKS:
-		_ShowBookmarks();
-		break;
-
-	case B_REFS_RECEIVED: {
-		// Currently the only source of these messages is the bookmarks menu.
-		// Filter refs into URLs, this also gets rid of refs for folders.
-		// For clicks on sub-folders in the bookmarks menu, we have Tracker
-		// open the corresponding folder.
-		entry_ref ref;
-		uint32 addedCount = 0;
-		for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
-printf("B_REFS_RECEIVED: %s\n", ref.name);
-			BEntry entry(&ref);
-			uint32 addedSubCount = 0;
-			if (entry.IsDirectory()) {
-				BDirectory directory(&entry);
-printf("  directory ok\n");
-				_AddBookmarkURLsRecursively(directory, message, addedSubCount);
-			} else {
-				BFile file(&ref, B_READ_ONLY);
-printf("  file ok\n");
-				BString url;
-				if (_ReadURLAttr(file, url)) {
-					message->AddString("url", url.String());
-					addedSubCount++;
-				}
-			}
-			if (addedSubCount == 0) {
-				// Don't know what to do with this entry, just pass it
-				// on to the system to handle. Note that this may result
-				// in us opening other supported files via the application
-				// mechanism.
-				be_roster->Launch(&ref);
-			}
-			addedCount += addedSubCount;
+		case RELOAD:
+			CurrentWebView()->Reload();
+			break;
+		case GOTO_URL:
+		{
+			BString url;
+			if (message->FindString("url", &url) != B_OK)
+				url = fURLTextControl->Text();
+			fTabManager->SetTabIcon(CurrentWebView(), NULL);
+			CurrentWebView()->LoadURL(url.String());
+			break;
 		}
-		message->RemoveName("refs");
-		if (addedCount > 10) {
-			BString string;
-			string << "Do you want to open " << addedCount;
-			string << " bookmarks all at once?";
-			BAlert* alert = new BAlert("Open bookmarks confirmation",
-				string.String(), "Cancel", "Open all");
-			if (alert->Go() == 0)
+		case GO_BACK:
+			CurrentWebView()->GoBack();
+			break;
+		case GO_FORWARD:
+			CurrentWebView()->GoForward();
+			break;
+		case STOP:
+			CurrentWebView()->StopLoading();
+			break;
+
+		case CLEAR_HISTORY: {
+			BrowsingHistory* history = BrowsingHistory::DefaultInstance();
+			if (history->CountItems() == 0)
 				break;
-		}
-		be_app->PostMessage(message);
-		break;
-	}
-	case B_SIMPLE_DATA: {
-		// User possibly dropped files on this window.
-		// If there is more than one entry_ref, let the app handle it (open one
-		// new page per ref). If there is one ref, open it in this window.
-		type_code type;
-		int32 countFound;
-		if (message->GetInfo("refs", &type, &countFound) != B_OK
-			|| type != B_REF_TYPE) {
+			BAlert* alert = new BAlert("Confirmation", "Do you really want to "
+				"clear the browsing history?", "Clear", "Cancel");
+			if (alert->Go() == 0)
+				history->Clear();
 			break;
 		}
-		if (countFound > 1) {
-			message->what = B_REFS_RECEIVED;
+
+		case CREATE_BOOKMARK:
+			_CreateBookmark();
+			break;
+		case SHOW_BOOKMARKS:
+			_ShowBookmarks();
+			break;
+
+		case B_REFS_RECEIVED:
+		{
+			// Currently the only source of these messages is the bookmarks menu.
+			// Filter refs into URLs, this also gets rid of refs for folders.
+			// For clicks on sub-folders in the bookmarks menu, we have Tracker
+			// open the corresponding folder.
+			entry_ref ref;
+			uint32 addedCount = 0;
+			for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
+				BEntry entry(&ref);
+				uint32 addedSubCount = 0;
+				if (entry.IsDirectory()) {
+					BDirectory directory(&entry);
+					_AddBookmarkURLsRecursively(directory, message,
+						addedSubCount);
+				} else {
+					BFile file(&ref, B_READ_ONLY);
+					BString url;
+					if (_ReadURLAttr(file, url)) {
+						message->AddString("url", url.String());
+						addedSubCount++;
+					}
+				}
+				if (addedSubCount == 0) {
+					// Don't know what to do with this entry, just pass it
+					// on to the system to handle. Note that this may result
+					// in us opening other supported files via the application
+					// mechanism.
+					be_roster->Launch(&ref);
+				}
+				addedCount += addedSubCount;
+			}
+			message->RemoveName("refs");
+			if (addedCount > 10) {
+				BString string;
+				string << "Do you want to open " << addedCount;
+				string << " bookmarks all at once?";
+				BAlert* alert = new BAlert("Open bookmarks confirmation",
+					string.String(), "Cancel", "Open all");
+				if (alert->Go() == 0)
+					break;
+			}
 			be_app->PostMessage(message);
 			break;
 		}
-		entry_ref ref;
-		if (message->FindRef("refs", &ref) != B_OK)
+		case B_SIMPLE_DATA:
+		{
+			// User possibly dropped files on this window.
+			// If there is more than one entry_ref, let the app handle it
+			// (open one new page per ref). If there is one ref, open it in
+			// this window.
+			type_code type;
+			int32 countFound;
+			if (message->GetInfo("refs", &type, &countFound) != B_OK
+				|| type != B_REF_TYPE) {
+				break;
+			}
+			if (countFound > 1) {
+				message->what = B_REFS_RECEIVED;
+				be_app->PostMessage(message);
+				break;
+			}
+			entry_ref ref;
+			if (message->FindRef("refs", &ref) != B_OK)
+				break;
+			BEntry entry(&ref, true);
+			BPath path;
+			if (!entry.Exists() || entry.GetPath(&path) != B_OK)
+				break;
+			CurrentWebView()->LoadURL(path.Path());
 			break;
-		BEntry entry(&ref, true);
-		BPath path;
-		if (!entry.Exists() || entry.GetPath(&path) != B_OK)
-			break;
-		CurrentWebView()->LoadURL(path.Path());
-		break;
-	}
-
-	case ZOOM_FACTOR_INCREASE:
-		CurrentWebView()->IncreaseZoomFactor(fZoomTextOnly);
-		break;
-	case ZOOM_FACTOR_DECREASE:
-		CurrentWebView()->DecreaseZoomFactor(fZoomTextOnly);
-		break;
-	case ZOOM_FACTOR_RESET:
-		CurrentWebView()->ResetZoomFactor();
-		break;
-	case ZOOM_TEXT_ONLY:
-		fZoomTextOnly = !fZoomTextOnly;
-		fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
-		// TODO: Would be nice to have an instant update if the page is already
-		// zoomed.
-		break;
-
-	case TEXT_FIND_NEXT:
-		CurrentWebView()->FindString(fFindTextControl->Text(), true,
-			fFindCaseSensitiveCheckBox->Value());
-		break;
-	case TEXT_FIND_PREVIOUS:
-		CurrentWebView()->FindString(fFindTextControl->Text(), false,
-			fFindCaseSensitiveCheckBox->Value());
-		break;
-	case TEXT_SHOW_FIND_GROUP:
-		if (!fFindGroup->IsVisible())
-			fFindGroup->SetVisible(true);
-		fFindTextControl->MakeFocus(true);
-		break;
-	case TEXT_HIDE_FIND_GROUP:
-		if (fFindGroup->IsVisible())
-			fFindGroup->SetVisible(false);
-		break;
-
-	case SHOW_DOWNLOAD_WINDOW:
-	case SHOW_SETTINGS_WINDOW:
-		message->AddUInt32("workspaces", Workspaces());
-		be_app->PostMessage(message);
-		break;
-
-	case CLOSE_TAB:
-		if (fTabManager->CountTabs() > 1) {
-			int32 index;
-			if (message->FindInt32("tab index", &index) != B_OK)
-				index = fTabManager->SelectedTabIndex();
-			_ShutdownTab(index);
-			_UpdateTabGroupVisibility();
-		} else
-			PostMessage(B_QUIT_REQUESTED);
-		break;
-
-	case SELECT_TAB: {
-		int32 index;
-		if (message->FindInt32("tab index", &index) == B_OK
-			&& fTabManager->SelectedTabIndex() != index
-			&& fTabManager->CountTabs() > index) {
-			fTabManager->SelectTab(index);
 		}
 
-		break;
-	}
+		case ZOOM_FACTOR_INCREASE:
+			CurrentWebView()->IncreaseZoomFactor(fZoomTextOnly);
+			break;
+		case ZOOM_FACTOR_DECREASE:
+			CurrentWebView()->DecreaseZoomFactor(fZoomTextOnly);
+			break;
+		case ZOOM_FACTOR_RESET:
+			CurrentWebView()->ResetZoomFactor();
+			break;
+		case ZOOM_TEXT_ONLY:
+			fZoomTextOnly = !fZoomTextOnly;
+			fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
+			// TODO: Would be nice to have an instant update if the page is
+			// already zoomed.
+			break;
 
-	case TAB_CHANGED: {
-		// This message may be received also when the last tab closed, i.e. with index == -1.
-		int32 index;
-		if (message->FindInt32("tab index", &index) != B_OK)
-			index = -1;
-		_TabChanged(index);
-		break;
-	}
+		case TEXT_FIND_NEXT:
+			CurrentWebView()->FindString(fFindTextControl->Text(), true,
+				fFindCaseSensitiveCheckBox->Value());
+			break;
+		case TEXT_FIND_PREVIOUS:
+			CurrentWebView()->FindString(fFindTextControl->Text(), false,
+				fFindCaseSensitiveCheckBox->Value());
+			break;
+		case TEXT_SHOW_FIND_GROUP:
+			if (!fFindGroup->IsVisible())
+				fFindGroup->SetVisible(true);
+			fFindTextControl->MakeFocus(true);
+			break;
+		case TEXT_HIDE_FIND_GROUP:
+			if (fFindGroup->IsVisible())
+				fFindGroup->SetVisible(false);
+			break;
 
-	default:
-		BWebWindow::MessageReceived(message);
-		break;
+		case SHOW_DOWNLOAD_WINDOW:
+		case SHOW_SETTINGS_WINDOW:
+			message->AddUInt32("workspaces", Workspaces());
+			be_app->PostMessage(message);
+			break;
+
+		case CLOSE_TAB:
+			if (fTabManager->CountTabs() > 1) {
+				int32 index;
+				if (message->FindInt32("tab index", &index) != B_OK)
+					index = fTabManager->SelectedTabIndex();
+				_ShutdownTab(index);
+				_UpdateTabGroupVisibility();
+			} else
+				PostMessage(B_QUIT_REQUESTED);
+			break;
+
+		case SELECT_TAB:
+		{
+			int32 index;
+			if (message->FindInt32("tab index", &index) == B_OK
+				&& fTabManager->SelectedTabIndex() != index
+				&& fTabManager->CountTabs() > index) {
+				fTabManager->SelectTab(index);
+			}
+
+			break;
+		}
+
+		case TAB_CHANGED:
+		{
+			// This message may be received also when the last tab closed,
+			// i.e. with index == -1.
+			int32 index;
+			if (message->FindInt32("tab index", &index) != B_OK)
+				index = -1;
+			_TabChanged(index);
+			break;
+		}
+
+		case SETTINGS_VALUE_CHANGED:
+		{
+			BString name;
+			if (message->FindString("name", &name) != B_OK)
+				break;
+			bool flag;
+			if (name == kSettingsKeyShowTabsIfSinglePageOpen
+				&& message->FindBool("value", &flag) == B_OK) {
+				if (fShowTabsIfSinglePageOpen != flag) {
+					fShowTabsIfSinglePageOpen = flag;
+					_UpdateTabGroupVisibility();
+				}
+			}
+			break;
+		}
+
+		default:
+			BWebWindow::MessageReceived(message);
+			break;
 	}
 }
 
@@ -898,7 +929,7 @@ BrowserWindow::NewPageCreated(BWebView* view, BRect windowFrame,
     bool modalDialog, bool resizable)
 {
 	if (windowFrame.IsValid()) {
-		BrowserWindow* window = new BrowserWindow(windowFrame,
+		BrowserWindow* window = new BrowserWindow(windowFrame, fAppSettings,
 			DoNotHaveToolbar, view);
 		window->Show();
 	} else
@@ -1166,7 +1197,8 @@ void
 BrowserWindow::_UpdateTabGroupVisibility()
 {
 	if (Lock()) {
-//		fTabGroup->SetVisible(fTabManager->CountTabs() > 1);
+		fTabGroup->SetVisible(fShowTabsIfSinglePageOpen
+			|| fTabManager->CountTabs() > 1);
 		fTabManager->SetCloseButtonsAvailable(fTabManager->CountTabs() > 1);
 		Unlock();
 	}

@@ -140,11 +140,12 @@ Application WebPositive :
     StringForSize.cpp
 	# WebPositive
     AuthenticationPanel.cpp
+	BrowserApp.cpp
+	BrowserWindow.cpp
     BrowsingHistory.cpp
     DownloadProgressView.cpp
     DownloadWindow.cpp
-	BrowserApp.cpp
-	BrowserWindow.cpp
+    SettingsKeys.cpp
 	SettingsWindow.cpp
 	svn_revision.cpp
 	WebTabView.cpp
