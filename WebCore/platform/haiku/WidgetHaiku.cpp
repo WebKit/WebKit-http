@@ -44,7 +44,7 @@ public:
         : m_widget(widget)
     {
     	if (!m_widget || m_widget->LockLooperWithTimeout(5000) != B_OK)
-    	   m_widget = 0; 
+    	   m_widget = 0;
     }
 
     ~AutoPlatformWidgetLocker()
@@ -98,16 +98,24 @@ void Widget::setCursor(const Cursor& cursor)
 
 void Widget::show()
 {
-    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
-    if (locker.isLocked() && topLevelPlatformWidget()->IsHidden())
-        topLevelPlatformWidget()->Show();
+    setSelfVisible(true);
+    if (!isParentVisible())
+    	return;
+
+    AutoPlatformWidgetLocker locker(platformWidget());
+    if (locker.isLocked() && platformWidget()->IsHidden())
+        platformWidget()->Show();
 }
 
 void Widget::hide()
 {
-    AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
-    if (locker.isLocked() && !topLevelPlatformWidget()->IsHidden())
-        topLevelPlatformWidget()->Hide();
+    setSelfVisible(false);
+    if (!isParentVisible())
+    	return;
+
+    AutoPlatformWidgetLocker locker(platformWidget());
+    if (locker.isLocked() && !platformWidget()->IsHidden())
+        platformWidget()->Hide();
 }
 
 void Widget::paint(GraphicsContext* p, IntRect const& r)
