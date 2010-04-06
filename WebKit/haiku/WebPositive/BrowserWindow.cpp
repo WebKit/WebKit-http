@@ -236,6 +236,24 @@ public:
 };
 
 
+class PageUserData : public BWebView::UserData {
+public:
+	PageUserData(BView* focusedView)
+		:
+		fFocusedView(focusedView)
+	{
+	}
+
+	BView* FocusedView() const
+	{
+		return fFocusedView;
+	}
+
+private:
+	BView* fFocusedView;
+};
+
+
 // #pragma mark - BrowserWindow
 
 
@@ -1173,7 +1191,17 @@ BrowserWindow::_TabChanged(int32 index)
 	BWebView* webView = dynamic_cast<BWebView*>(fTabManager->ViewForTab(index));
 	if (webView == CurrentWebView())
 		return;
+
+	CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+
 	SetCurrentWebView(webView);
+
+	PageUserData* userData = static_cast<PageUserData*>(webView->GetUserData());
+	if (userData)
+		userData->FocusedView()->MakeFocus(true);
+	else
+		webView->MakeFocus(true);
+
 	if (webView)
 		_UpdateTitle(webView->MainFrameTitle());
 	else
