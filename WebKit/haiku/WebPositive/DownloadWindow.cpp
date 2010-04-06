@@ -143,8 +143,9 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 	BPath downloadPath;
 	if (find_directory(B_DESKTOP_DIRECTORY, &downloadPath) != B_OK)
 		downloadPath.SetTo("/boot/home/Desktop");
-	fDownloadPath = settings->GetValue("download path", downloadPath.Path());
-	settings->SetValue("download path", fDownloadPath);
+	fDownloadPath = settings->GetValue(kSettingsKeyDownloadPath,
+		downloadPath.Path());
+	settings->SetValue(kSettingsKeyDownloadPath, fDownloadPath);
 
 	SetLayout(new BGroupLayout(B_VERTICAL));
 

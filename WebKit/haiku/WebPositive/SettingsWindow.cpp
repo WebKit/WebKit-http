@@ -211,7 +211,8 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 {
 	fDownloadFolderControl = new BTextControl("download folder",
 		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
-	fDownloadFolderControl->SetText(fSettings->GetValue("download path", ""));
+	fDownloadFolderControl->SetText(
+		fSettings->GetValue(kSettingsKeyDownloadPath, ""));
 
 	fNewPageBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
 		NULL);
