@@ -29,7 +29,7 @@ public:
 								SettingsMessage(directory_which directory,
 									const char* filename);
 	virtual  					~SettingsMessage();
-		
+
 
 			status_t			InitCheck() const;
 			status_t			Load();
