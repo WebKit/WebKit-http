@@ -37,6 +37,12 @@ class BWebPage;
 
 class BWebView : public BView {
 public:
+	class UserData {
+	public:
+		virtual					~UserData();
+	};
+
+public:
 								BWebView(const char* name);
 
 	// The BWebView needs to be deleted by the BWebPage instance running
@@ -67,7 +73,7 @@ public:
 	virtual	void				KeyDown(const char* bytes, int32 numBytes);
 	virtual	void				KeyUp(const char* bytes, int32 numBytes);
 
-	// BWebPage API
+	// BWebPage API exposure
 			BWebPage*			WebPage() const { return fWebPage; }
 
 			BString				MainFrameTitle() const;
@@ -91,7 +97,11 @@ public:
 									bool wrapSelection = true,
 									bool startInSelection = false);
 
+	// BWebview API
 			void				SendFakeMouseMovedEvent();
+
+			void				SetUserData(UserData* cookie);
+			UserData*			GetUserData() const;
 
 private:
 	friend class BWebPage;
@@ -120,6 +130,8 @@ private:
 			bool				fOffscreenViewClean;
 
 			BWebPage*			fWebPage;
+
+			UserData*			fUserData;
 };
 
 #endif // _WEB_VIEW_H_

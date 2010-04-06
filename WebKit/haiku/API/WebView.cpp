@@ -43,12 +43,17 @@
 
 using namespace WebCore;
 
+BWebView::UserData::~UserData()
+{
+}
+
 BWebView::BWebView(const char* name)
     : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE | B_NAVIGABLE)
     , fLastMouseButtons(0)
     , fOffscreenBitmap(0)
     , fOffscreenViewClean(false)
     , fWebPage(new BWebPage(this))
+    , fUserData(0)
 {
     fWebPage->Init();
     // TODO: Should add this to the "current" looper, but that looper needs to
@@ -70,6 +75,7 @@ BWebView::~BWebView()
 		fOffscreenBitmap->Lock();
 		delete fOffscreenBitmap;
 	}
+	SetUserData(0);
 }
 
 void BWebView::Shutdown()
@@ -307,6 +313,20 @@ void BWebView::SendFakeMouseMovedEvent()
     BPoint screenWhere = ConvertToScreen(where);
     _DispatchFakeMouseMovedEvent(where, screenWhere, buttons);
     UnlockLooper();
+}
+
+void BWebView::SetUserData(BWebView::UserData* userData)
+{
+	if (fUserData == userData)
+		return;
+
+	delete fUserData;
+	fUserData = userData;
+}
+
+BWebView::UserData* BWebView::GetUserData() const
+{
+	return fUserData;
 }
 
 // #pragma mark - API for WebPage only
