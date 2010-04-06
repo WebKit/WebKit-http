@@ -47,6 +47,7 @@
 
 #include "BrowserApp.h"
 #include "DownloadProgressView.h"
+#include "SettingsKeys.h"
 #include "SettingsMessage.h"
 #include "WebDownload.h"
 #include "WebPage.h"
@@ -256,8 +257,8 @@ DownloadWindow::MessageReceived(BMessage* message)
 		case SETTINGS_VALUE_CHANGED:
 		{
 			BString string;
-			if (message->FindString("name", &string) == B_OK 
-				&& string == "download path"
+			if (message->FindString("name", &string) == B_OK
+				&& string == kSettingsKeyDownloadPath
 				&& message->FindString("value", &string) == B_OK) {
 				fDownloadPath = string;
 			}
