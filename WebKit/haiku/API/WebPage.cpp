@@ -893,6 +893,7 @@ void BWebPage::MessageReceived(BMessage* message)
 
     case B_MOUSE_MOVED:
         skipToLastMessage(message);
+        // fall through
     case B_MOUSE_DOWN:
     case B_MOUSE_UP:
         handleMouseEvent(message);
