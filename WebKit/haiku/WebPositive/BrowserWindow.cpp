@@ -1228,12 +1228,9 @@ BrowserWindow::_TabChanged(int32 index)
 
 	SetCurrentWebView(webView);
 
-	if (webView)
-		_UpdateTitle(webView->MainFrameTitle());
-	else
-		_UpdateTitle("");
-
 	if (webView) {
+		_UpdateTitle(webView->MainFrameTitle());
+
 		PageUserData* userData = static_cast<PageUserData*>(
 			webView->GetUserData());
 		if (userData && userData->FocusedView() != NULL)
@@ -1245,7 +1242,8 @@ BrowserWindow::_TabChanged(int32 index)
 		// Trigger update of the interface to the new page, by requesting
 		// to resend all notifications.
 		webView->WebPage()->ResendNotifications();
-	}
+	} else
+		_UpdateTitle("");
 }
 
 
