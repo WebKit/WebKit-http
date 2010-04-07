@@ -162,11 +162,13 @@ BrowserApp::ReadyToRun()
 
 	fInitialized = true;
 
+	int32 pagesCreated = 0;
 	if (fLaunchRefsMessage) {
-		RefsReceived(fLaunchRefsMessage);
+		_RefsReceived(fLaunchRefsMessage, &pagesCreated);
 		delete fLaunchRefsMessage;
 		fLaunchRefsMessage = 0;
-	} else {
+	}
+	if (pagesCreated == 0) {
 		BrowserWindow* window = new BrowserWindow(fLastWindowFrame, fSettings);
 		window->Show();
 	}
@@ -236,22 +238,7 @@ BrowserApp::RefsReceived(BMessage* message)
 		return;
 	}
 
-	entry_ref ref;
-	for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
-		BEntry entry(&ref, true);
-		if (!entry.Exists())
-			continue;
-		BPath path;
-		if (entry.GetPath(&path) != B_OK)
-			continue;
-		BString url;
-		url << path.Path();
-		_CreateNewPage(url);
-	}
-
-	BString url;
-	for (int32 i = 0; message->FindString("url", i, &url) == B_OK; i++)
-		_CreateNewPage(url);
+	_RefsReceived(message);
 }
 
 
@@ -296,6 +283,36 @@ BrowserApp::QuitRequested()
 
 
 void
+BrowserApp::_RefsReceived(BMessage* message, int32* _pagesCreated)
+{
+	int32 pagesCreated = 0;
+
+	entry_ref ref;
+	for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
+		BEntry entry(&ref, true);
+		if (!entry.Exists())
+			continue;
+		BPath path;
+		if (entry.GetPath(&path) != B_OK)
+			continue;
+		BString url;
+		url << path.Path();
+		_CreateNewPage(url);
+		pagesCreated++;
+	}
+
+	BString url;
+	for (int32 i = 0; message->FindString("url", i, &url) == B_OK; i++) {
+		_CreateNewPage(url);
+		pagesCreated++;
+	}
+
+	if (_pagesCreated != NULL)
+		*_pagesCreated = pagesCreated;
+}
+
+
+void
 BrowserApp::_CreateNewPage(const BString& url)
 {
 	uint32 workspace = 1 << current_workspace();
@@ -323,7 +340,10 @@ BrowserApp::_CreateNewPage(const BString& url)
 void
 BrowserApp::_CreateNewWindow(const BString& url)
 {
-	fLastWindowFrame.OffsetBy(20, 20);
+	// Offset the window frame unless this is the first window created in the
+	// session.
+	if (fWindowCount > 0)
+		fLastWindowFrame.OffsetBy(20, 20);
 	if (!BScreen().Frame().Contains(fLastWindowFrame))
 		fLastWindowFrame.OffsetTo(50, 50);
 

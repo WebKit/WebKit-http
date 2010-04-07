@@ -53,6 +53,8 @@ public:
 	virtual	bool				QuitRequested();
 
 private:
+			void				_RefsReceived(BMessage* message,
+									int32* pagesCreated = NULL);
 			void				_CreateNewPage(const BString& url);
 			void				_CreateNewWindow(const BString& url);
 			void				_CreateNewTab(BrowserWindow* window,
