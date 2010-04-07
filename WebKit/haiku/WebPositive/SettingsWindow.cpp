@@ -247,7 +247,7 @@ fNewPageBehaviorMenu->SetEnabled(false);
 		fDaysInGoMenuControl->TextView()->DisallowChar(i);
 
 	fShowTabsIfOnlyOnePage = new BCheckBox("show tabs if only one page",
-		TR("Show tabs if only page is open."),
+		TR("Show tabs if only one page is open."),
 		new BMessage(MSG_TAB_DISPLAY_BEHAVIOR_CHANGED));
 	fShowTabsIfOnlyOnePage->SetValue(B_CONTROL_ON);
 
