@@ -1168,7 +1168,13 @@ BrowserWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 {
 	// Switch to the page for which this authentication is required.
 	if (view != CurrentWebView()) {
-		fTabManager->SelectTab(view);
+		int32 tabIndex = fTabManager->TabForView(view);
+		if (tabIndex < 0) {
+			// page seems to be gone already?
+			return false;
+		}
+		fTabManager->SelectTab(tabIndex);
+		_TabChanged(tabIndex);
 		UpdateIfNeeded();
 	}
 	AuthenticationPanel* panel = new AuthenticationPanel(Frame());
@@ -1210,7 +1216,7 @@ BrowserWindow::_ShutdownTab(int32 index)
 {
 	BView* view = fTabManager->RemoveTab(index);
 	BWebView* webView = dynamic_cast<BWebView*>(view);
-	if (webView)
+	if (webView != NULL)
 		webView->Shutdown();
 	else
 		delete view;
@@ -1229,12 +1235,12 @@ BrowserWindow::_TabChanged(int32 index)
 
 	SetCurrentWebView(webView);
 
-	if (webView) {
+	if (webView != NULL) {
 		_UpdateTitle(webView->MainFrameTitle());
 
 		PageUserData* userData = static_cast<PageUserData*>(
 			webView->GetUserData());
-		if (userData && userData->FocusedView() != NULL)
+		if (userData != NULL && userData->FocusedView() != NULL)
 			userData->FocusedView()->MakeFocus(true);
 		else
 			webView->MakeFocus(true);
