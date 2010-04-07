@@ -1228,17 +1228,19 @@ BrowserWindow::_TabChanged(int32 index)
 
 	SetCurrentWebView(webView);
 
-	PageUserData* userData = static_cast<PageUserData*>(webView->GetUserData());
-	if (userData)
-		userData->FocusedView()->MakeFocus(true);
-	else
-		webView->MakeFocus(true);
-
 	if (webView)
 		_UpdateTitle(webView->MainFrameTitle());
 	else
 		_UpdateTitle("");
+
 	if (webView) {
+		PageUserData* userData = static_cast<PageUserData*>(
+			webView->GetUserData());
+		if (userData && userData->FocusedView() != NULL)
+			userData->FocusedView()->MakeFocus(true);
+		else
+			webView->MakeFocus(true);
+
 		fURLTextControl->SetText(webView->MainFrameURL());
 		// Trigger update of the interface to the new page, by requesting
 		// to resend all notifications.
