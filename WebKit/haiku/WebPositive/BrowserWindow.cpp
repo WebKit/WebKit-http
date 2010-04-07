@@ -1224,7 +1224,8 @@ BrowserWindow::_TabChanged(int32 index)
 	if (webView == CurrentWebView())
 		return;
 
-	CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+	if (CurrentWebView() != NULL)
+		CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
 
 	SetCurrentWebView(webView);
 
