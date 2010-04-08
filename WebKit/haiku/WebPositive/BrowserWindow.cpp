@@ -243,11 +243,8 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fStopButton->SetIcon(204);
 	fStopButton->TrimIcon();
 
-	// URL
-	fURLInputGroup = new URLInputGroup();
-
-	// Go
-	fGoButton = new BButton("", "Go", new BMessage(GOTO_URL));
+	// URL input group
+	fURLInputGroup = new URLInputGroup(new BMessage(GOTO_URL));
 
 	// Status Bar
 	fStatusText = new BStringView("status", "");
@@ -291,7 +288,6 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 			.Add(fForwardButton, 1, 0)
 			.Add(fStopButton, 2, 0)
 			.Add(fURLInputGroup, 3, 0)
-			.Add(fGoButton, 4, 0)
 			.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
 		)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
@@ -381,11 +377,11 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 			// the text control just goes out of focus.
 			if (bytes[0] == B_RETURN) {
 				// Do it in such a way that the user sees the Go-button go down.
-				fGoButton->SetValue(B_CONTROL_ON);
+				fURLInputGroup->GoButton()->SetValue(B_CONTROL_ON);
 				UpdateIfNeeded();
-				fGoButton->Invoke();
+				fURLInputGroup->GoButton()->Invoke();
 				snooze(1000);
-				fGoButton->SetValue(B_CONTROL_OFF);
+				fURLInputGroup->GoButton()->SetValue(B_CONTROL_OFF);
 			}
 		} else if (bytes[0] == B_LEFT_ARROW && (modifiers & B_COMMAND_KEY) != 0) {
 			PostMessage(GO_BACK);

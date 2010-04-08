@@ -7,12 +7,13 @@
 
 #include <GroupView.h>
 
+class BButton;
 class BTextView;
 
 
 class URLInputGroup : public BGroupView {
 public:
-								URLInputGroup();
+								URLInputGroup(BMessage* goMessage);
 	virtual						~URLInputGroup();
 
 	virtual	void				AttachedToWindow();
@@ -24,10 +25,13 @@ public:
 			void				SetText(const char* text);
 			const char*			Text() const;
 
+			BButton*			GoButton() const;
+
 private:
 			class URLTextView;
 
 			URLTextView*		fTextView;
+			BButton*			fGoButton;
 			bool				fWindowActive;
 };
 
