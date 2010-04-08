@@ -131,8 +131,9 @@ Application WebPositive :
 	# autocompletion
 	AutoCompleter.cpp
 	AutoCompleterDefaultImpl.cpp
-	TextControlCompleter.cpp
+	TextViewCompleter.cpp
 	# support
+	BaseURL.cpp
     DateTime.cpp
     FontSelectionView.cpp
     IconButton.cpp
@@ -148,6 +149,7 @@ Application WebPositive :
     SettingsKeys.cpp
 	SettingsWindow.cpp
 	svn_revision.cpp
+	URLInputGroup.cpp
 	WebTabView.cpp
 
 	:

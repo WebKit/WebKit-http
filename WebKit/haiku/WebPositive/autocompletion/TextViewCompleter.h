@@ -13,31 +13,31 @@
 #include "AutoCompleter.h"
 
 
-class BTextControl;
+class BTextView;
 
-class TextControlCompleter : protected BAutoCompleter, public BMessageFilter {
+class TextViewCompleter : protected BAutoCompleter, public BMessageFilter {
 public:
-								TextControlCompleter(BTextControl* textControl,
+								TextViewCompleter(BTextView* textView,
 									ChoiceModel* choiceModel = NULL,
 									PatternSelector* patternSelector = NULL);
-	virtual						~TextControlCompleter();
-	
+	virtual						~TextViewCompleter();
+
 private:
 	virtual	filter_result		Filter(BMessage* message, BHandler** target);
-	
-	class TextControlWrapper : public EditView {
+
+	class TextViewWrapper : public EditView {
 	public:
-								TextControlWrapper(BTextControl* textControl);
+								TextViewWrapper(BTextView* textView);
 		virtual	BRect			GetAdjustmentFrame();
 		virtual	void			GetEditViewState(BString& text,
 									int32* caretPos);
 		virtual	void			SetEditViewState(const BString& text,
 									int32 caretPos, int32 selectionLength = 0);
 	private:
-				BTextControl*	fTextControl;
+				BTextView*		fTextView;
 	};
 private:
-			BTextControl*		fTextControl;
+			BTextView*			fTextView;
 };
 
 #endif // TEXT_CONTROL_COMPLETER_H

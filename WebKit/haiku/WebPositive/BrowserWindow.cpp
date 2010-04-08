@@ -34,13 +34,14 @@
 #include "BrowserWindow.h"
 
 #include "AuthenticationPanel.h"
+#include "BaseURL.h"
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
 #include "IconButton.h"
 #include "NavMenu.h"
 #include "SettingsKeys.h"
 #include "SettingsMessage.h"
-#include "TextControlCompleter.h"
+#include "URLInputGroup.h"
 #include "WebPage.h"
 #include "WebTabView.h"
 #include "WebView.h"
@@ -105,112 +106,6 @@ layoutItemFor(BView* view)
 	int32 index = layout->IndexOfView(view);
 	return layout->ItemAt(index);
 }
-
-
-class URLChoice : public BAutoCompleter::Choice {
-public:
-	URLChoice(const BString& choiceText, const BString& displayText,
-			int32 matchPos, int32 matchLen, int32 priority)
-		:
-		BAutoCompleter::Choice(choiceText, displayText, matchPos, matchLen),
-		fPriority(priority)
-	{
-	}
-
-	bool operator<(const URLChoice& other) const
-	{
-		if (fPriority > other.fPriority)
-			return true;
-		return DisplayText() < other.DisplayText();
-	}
-
-	bool operator==(const URLChoice& other) const
-	{
-		return fPriority == other.fPriority
-			&& DisplayText() < other.DisplayText();
-	}
-
-private:
-	int32 fPriority;
-};
-
-
-static BString
-baseURL(const BString string)
-{
-	int32 baseURLStart = string.FindFirst("://") + 3;
-	int32 baseURLEnd = string.FindFirst("/", baseURLStart + 1);
-	BString result;
-	result.SetTo(string.String() + baseURLStart, baseURLEnd - baseURLStart);
-	return result;
-}
-
-
-class BrowsingHistoryChoiceModel : public BAutoCompleter::ChoiceModel {
-	virtual void FetchChoicesFor(const BString& pattern)
-	{
-		int32 count = CountChoices();
-		for (int32 i = 0; i < count; i++) {
-			delete reinterpret_cast<BAutoCompleter::Choice*>(
-				fChoices.ItemAtFast(i));
-		}
-		fChoices.MakeEmpty();
-
-		// Search through BrowsingHistory for any matches.
-		BrowsingHistory* history = BrowsingHistory::DefaultInstance();
-		if (!history->Lock())
-			return;
-
-		BString lastBaseURL;
-		int32 priority = INT_MAX;
-
-		count = history->CountItems();
-		for (int32 i = 0; i < count; i++) {
-			BrowsingHistoryItem item = history->HistoryItemAt(i);
-			const BString& choiceText = item.URL();
-			int32 matchPos = choiceText.IFindFirst(pattern);
-			if (matchPos < 0)
-				continue;
-			if (lastBaseURL.Length() > 0
-				&& choiceText.FindFirst(lastBaseURL) >= 0) {
-				priority--;
-			} else
-				priority = INT_MAX;
-			lastBaseURL = baseURL(choiceText);
-			fChoices.AddItem(new URLChoice(choiceText,
-				choiceText, matchPos, pattern.Length(), priority));
-		}
-
-		history->Unlock();
-
-		fChoices.SortItems(_CompareChoices);
-	}
-
-	virtual int32 CountChoices() const
-	{
-		return fChoices.CountItems();
-	}
-
-	virtual const BAutoCompleter::Choice* ChoiceAt(int32 index) const
-	{
-		return reinterpret_cast<BAutoCompleter::Choice*>(
-			fChoices.ItemAt(index));
-	}
-
-	static int _CompareChoices(const void* a, const void* b)
-	{
-		const URLChoice* aChoice = *reinterpret_cast<const URLChoice* const *>(a);
-		const URLChoice* bChoice = *reinterpret_cast<const URLChoice* const *>(b);
-		if (*aChoice < *bChoice)
-			return -1;
-		else if (*aChoice == *bChoice)
-			return 0;
-		return 1;
-	}
-
-private:
-	BList fChoices;
-};
 
 
 class BookmarkMenu : public BNavMenu {
@@ -349,8 +244,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fStopButton->TrimIcon();
 
 	// URL
-	fURLTextControl = new BTextControl("url", "", "", NULL);
-	fURLTextControl->SetDivider(50.0);
+	fURLInputGroup = new URLInputGroup();
 
 	// Go
 	fGoButton = new BButton("", "Go", new BMessage(GOTO_URL));
@@ -396,7 +290,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 			.Add(fBackButton, 0, 0)
 			.Add(fForwardButton, 1, 0)
 			.Add(fStopButton, 2, 0)
-			.Add(fURLTextControl, 3, 0)
+			.Add(fURLInputGroup, 3, 0)
 			.Add(fGoButton, 4, 0)
 			.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
 		)
@@ -423,10 +317,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		.Add(statusGroup)
 	);
 
-	fURLTextControl->MakeFocus(true);
-
-	fURLAutoCompleter = new TextControlCompleter(fURLTextControl,
-		new BrowsingHistoryChoiceModel());
+	fURLInputGroup->MakeFocus(true);
 
 	fMenuGroup = layoutItemFor(mainMenu);
 	fTabGroup = layoutItemFor(fTabManager->TabGroup());
@@ -471,7 +362,6 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 BrowserWindow::~BrowserWindow()
 {
 	fAppSettings->RemoveListener(BMessenger(this));
-	delete fURLAutoCompleter;
 	delete fTabManager;
 }
 
@@ -484,7 +374,7 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 	if ((message->what == B_KEY_DOWN || message->what == B_UNMAPPED_KEY_DOWN)
 		&& message->FindString("bytes", &bytes) == B_OK
 		&& message->FindInt32("modifiers", &modifiers) == B_OK) {
-		if (fURLTextControl && target == fURLTextControl->TextView()) {
+		if (target == fURLInputGroup->TextView()) {
 			// Handle B_RETURN in the URL text control. This is the easiest
 			// way to react *only* when the user presses the return key in the
 			// address bar, as opposed to trying to load whatever is in there when
@@ -512,12 +402,10 @@ BrowserWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
 		case OPEN_LOCATION:
-			if (fURLTextControl) {
-				if (fURLTextControl->TextView()->IsFocus())
-					fURLTextControl->TextView()->SelectAll();
-				else
-					fURLTextControl->MakeFocus(true);
-			}
+			if (fURLInputGroup->TextView()->IsFocus())
+				fURLInputGroup->TextView()->SelectAll();
+			else
+				fURLInputGroup->MakeFocus(true);
 			break;
 		case RELOAD:
 			CurrentWebView()->Reload();
@@ -526,7 +414,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 		{
 			BString url;
 			if (message->FindString("url", &url) != B_OK)
-				url = fURLTextControl->Text();
+				url = fURLInputGroup->Text();
 			fTabManager->SetTabIcon(CurrentWebView(), NULL);
 			CurrentWebView()->LoadURL(url.String());
 			break;
@@ -889,10 +777,8 @@ BrowserWindow::CreateNewTab(const BString& url, bool select, BWebView* webView)
 		fTabManager->SelectTab(fTabManager->CountTabs() - 1);
 		SetCurrentWebView(webView);
 		webView->WebPage()->ResendNotifications();
-		if (fURLTextControl) {
-			fURLTextControl->SetText(url.String());
-			fURLTextControl->MakeFocus(true);
-		}
+		fURLInputGroup->SetText(url.String());
+		fURLInputGroup->MakeFocus(true);
 	}
 
 	_UpdateTabGroupVisibility();
@@ -967,8 +853,7 @@ BrowserWindow::LoadCommitted(const BString& url, BWebView* view)
 		return;
 
 	// This hook is invoked when the load is commited.
-	if (fURLTextControl)
-		fURLTextControl->SetText(url.String());
+	fURLInputGroup->SetText(url.String());
 
 	BString status("Loading: ");
 	status << url;
@@ -1170,7 +1055,7 @@ BrowserWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 	if (view != CurrentWebView()) {
 		int32 tabIndex = fTabManager->TabForView(view);
 		if (tabIndex < 0) {
-			// page seems to be gone already?
+			// Page seems to be gone already?
 			return false;
 		}
 		fTabManager->SelectTab(tabIndex);
@@ -1245,7 +1130,7 @@ BrowserWindow::_TabChanged(int32 index)
 		else
 			webView->MakeFocus(true);
 
-		fURLTextControl->SetText(webView->MainFrameURL());
+		fURLInputGroup->SetText(webView->MainFrameURL());
 		// Trigger update of the interface to the new page, by requesting
 		// to resend all notifications.
 		webView->WebPage()->ResendNotifications();

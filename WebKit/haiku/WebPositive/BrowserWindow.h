@@ -49,7 +49,7 @@ class BWebView;
 class IconButton;
 class SettingsMessage;
 class TabManager;
-class TextControlCompleter;
+class URLInputGroup;
 
 enum ToolbarPolicy {
 	HaveToolbar,
@@ -150,8 +150,7 @@ private:
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;
 			BButton*			fGoButton;
-			BTextControl*		fURLTextControl;
-			TextControlCompleter* fURLAutoCompleter;
+			URLInputGroup*		fURLInputGroup;
 			BStringView*		fStatusText;
 			BStatusBar*			fLoadingProgressBar;
 

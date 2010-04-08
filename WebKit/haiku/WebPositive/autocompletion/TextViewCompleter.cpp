@@ -6,7 +6,7 @@
  *		Oliver Tappe <beam@hirschkaefer.de>
  */
 
-#include "TextControlCompleter.h"
+#include "TextViewCompleter.h"
 
 #include <Looper.h>
 #include <TextControl.h>
@@ -15,75 +15,74 @@
 #include "AutoCompleterDefaultImpl.h"
 
 
-// #pragma mark - TextControlWrapper
+// #pragma mark - TextViewWrapper
 
 
-TextControlCompleter::TextControlWrapper::TextControlWrapper(
-		BTextControl* textControl)
+TextViewCompleter::TextViewWrapper::TextViewWrapper(BTextView* textView)
 	:
-	fTextControl(textControl)
+	fTextView(textView)
 {
 }
 
 
 void
-TextControlCompleter::TextControlWrapper::GetEditViewState(BString& text,
+TextViewCompleter::TextViewWrapper::GetEditViewState(BString& text,
 	int32* caretPos)
 {
-	if (fTextControl && fTextControl->LockLooper()) {
-		text = fTextControl->Text();
+	if (fTextView && fTextView->LockLooper()) {
+		text = fTextView->Text();
 		if (caretPos) {
 			int32 end;
-			fTextControl->TextView()->GetSelection(caretPos, &end);
+			fTextView->GetSelection(caretPos, &end);
 		}
-		fTextControl->UnlockLooper();
+		fTextView->UnlockLooper();
 	}
 }
 
 
 void
-TextControlCompleter::TextControlWrapper::SetEditViewState(const BString& text,
+TextViewCompleter::TextViewWrapper::SetEditViewState(const BString& text,
 	int32 caretPos, int32 selectionLength)
 {
-	if (fTextControl && fTextControl->LockLooper()) {
-		fTextControl->TextView()->SetText(text.String(), text.Length());
-		fTextControl->TextView()->Select(caretPos, caretPos + selectionLength);
-		fTextControl->TextView()->ScrollToSelection();
-		fTextControl->UnlockLooper();
+	if (fTextView && fTextView->LockLooper()) {
+		fTextView->SetText(text.String(), text.Length());
+		fTextView->Select(caretPos, caretPos + selectionLength);
+		fTextView->ScrollToSelection();
+		fTextView->UnlockLooper();
 	}
 }
 
 
 BRect
-TextControlCompleter::TextControlWrapper::GetAdjustmentFrame()
+TextViewCompleter::TextViewWrapper::GetAdjustmentFrame()
 {
-	BRect frame = fTextControl->TextView()->Bounds();
-	frame = fTextControl->TextView()->ConvertToScreen(frame);
+	BRect frame = fTextView->Bounds();
+	frame = fTextView->ConvertToScreen(frame);
 	frame.InsetBy(0, -3);
 	return frame;
 }
 
 
-TextControlCompleter::TextControlCompleter(BTextControl* textControl, 
-		ChoiceModel* model, PatternSelector* patternSelector)
+TextViewCompleter::TextViewCompleter(BTextView* textView, ChoiceModel* model,
+		PatternSelector* patternSelector)
 	:
-	BAutoCompleter(new TextControlWrapper(textControl), model, 
+	BAutoCompleter(new TextViewWrapper(textView), model,
 		new BDefaultChoiceView(), patternSelector),
 	BMessageFilter(B_KEY_DOWN),
-	fTextControl(textControl)
+	fTextView(textView)
 {
-	fTextControl->TextView()->AddFilter(this);
+	fTextView->AddFilter(this);
 }
 
 
-TextControlCompleter::~TextControlCompleter()
+TextViewCompleter::~TextViewCompleter()
 {
-	fTextControl->TextView()->RemoveFilter(this);
+	fTextView->RemoveFilter(this);
 }
 
 
 filter_result
-TextControlCompleter::Filter(BMessage* message, BHandler** target)
+TextViewCompleter::Filter(BMessage* message, BHandler** target)
 {
 	const char* bytes;
 	int32 modifiers;
@@ -91,7 +90,7 @@ TextControlCompleter::Filter(BMessage* message, BHandler** target)
 		|| message->FindInt32("modifiers", &modifiers) != B_OK) {
 		return B_DISPATCH_MESSAGE;
 	}
-	
+
 	switch (bytes[0]) {
 		case B_UP_ARROW:
 			SelectPrevious();
