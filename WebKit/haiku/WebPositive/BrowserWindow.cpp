@@ -836,6 +836,11 @@ BrowserWindow::CloseWindowRequested(BWebView* view)
 void
 BrowserWindow::LoadNegotiating(const BString& url, BWebView* view)
 {
+	if (view != CurrentWebView())
+		return;
+
+	fURLInputGroup->SetText(url.String());
+
 	BString status("Requesting: ");
 	status << url;
 	view->WebPage()->SetStatusMessage(status);
