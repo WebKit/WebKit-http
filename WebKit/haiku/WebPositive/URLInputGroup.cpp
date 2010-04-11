@@ -320,10 +320,10 @@ URLInputGroup::URLTextView::InsertText(const char* inText, int32 inLength,
 	char* buffer = NULL;
 
 	if (strpbrk(inText, "\r\n") && inLength <= 1024) {
-		buffer = (char*)malloc(inLength);
+		buffer = (char*)malloc(inLength + 1);
 
 		if (buffer) {
-			strcpy(buffer, inText);
+			strlcpy(buffer, inText, inLength);
 
 			for (int32 i = 0; i < inLength; i++) {
 				if (buffer[i] == '\r' || buffer[i] == '\n')
