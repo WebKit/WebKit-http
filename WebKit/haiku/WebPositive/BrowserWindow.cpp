@@ -366,15 +366,21 @@ void
 BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 {
 	const char* bytes;
-	int32 modifiers;
+	uint32 modifiers;
 	if ((message->what == B_KEY_DOWN || message->what == B_UNMAPPED_KEY_DOWN)
 		&& message->FindString("bytes", &bytes) == B_OK
-		&& message->FindInt32("modifiers", &modifiers) == B_OK) {
-		if (target == fURLInputGroup->TextView()) {
+		&& message->FindInt32("modifiers", (int32*)&modifiers) == B_OK) {
+
+		modifiers = modifiers & 0x000000ff;
+		if (bytes[0] == B_LEFT_ARROW && modifiers == B_COMMAND_KEY)
+			PostMessage(GO_BACK);
+		else if (bytes[0] == B_RIGHT_ARROW && modifiers == B_COMMAND_KEY)
+			PostMessage(GO_FORWARD);
+		else if (target == fURLInputGroup->TextView()) {
 			// Handle B_RETURN in the URL text control. This is the easiest
 			// way to react *only* when the user presses the return key in the
-			// address bar, as opposed to trying to load whatever is in there when
-			// the text control just goes out of focus.
+			// address bar, as opposed to trying to load whatever is in there
+			// when the text control just goes out of focus.
 			if (bytes[0] == B_RETURN) {
 				// Do it in such a way that the user sees the Go-button go down.
 				fURLInputGroup->GoButton()->SetValue(B_CONTROL_ON);
@@ -383,10 +389,6 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 				snooze(1000);
 				fURLInputGroup->GoButton()->SetValue(B_CONTROL_OFF);
 			}
-		} else if (bytes[0] == B_LEFT_ARROW && (modifiers & B_COMMAND_KEY) != 0) {
-			PostMessage(GO_BACK);
-		} else if (bytes[0] == B_RIGHT_ARROW && (modifiers & B_COMMAND_KEY) != 0) {
-			PostMessage(GO_FORWARD);
 		}
 	}
 	BWebWindow::DispatchMessage(message, target);
