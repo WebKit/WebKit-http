@@ -323,7 +323,7 @@ URLInputGroup::URLTextView::InsertText(const char* inText, int32 inLength,
 		buffer = (char*)malloc(inLength + 1);
 
 		if (buffer) {
-			strlcpy(buffer, inText, inLength);
+			strlcpy(buffer, inText, inLength + 1);
 
 			for (int32 i = 0; i < inLength; i++) {
 				if (buffer[i] == '\r' || buffer[i] == '\n')
