@@ -43,7 +43,7 @@ public:
     AutoPlatformWidgetLocker(PlatformWidget widget)
         : m_widget(widget)
     {
-    	if (!m_widget || m_widget->LockLooperWithTimeout(5000) != B_OK)
+    	if (!m_widget || !m_widget->LockLooper())
     	   m_widget = 0;
     }
 
