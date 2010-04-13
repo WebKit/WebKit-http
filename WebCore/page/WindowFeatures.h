@@ -48,6 +48,7 @@ namespace WebCore {
             , resizable(true)
             , fullscreen(false)
             , dialog(false)
+            , activate(true)
         {
         }
 
@@ -76,6 +77,7 @@ namespace WebCore {
 
         bool fullscreen;
         bool dialog;
+        bool activate;
     };
 
 } // namespace WebCore

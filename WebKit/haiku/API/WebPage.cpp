@@ -465,7 +465,8 @@ WebCore::Page* BWebPage::page() const
     return fPage;
 }
 
-WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resizable)
+WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog,
+    bool resizable, bool activate)
 {
     // Creating the BWebView in the application thread is exactly what we need anyway.
 	BWebView* view = new BWebView("web view");
@@ -475,10 +476,9 @@ WebCore::Page* BWebPage::createNewPage(BRect frame, bool modalDialog, bool resiz
     message.AddPointer("view", view);
     if (frame.IsValid())
         message.AddRect("frame", frame);
-    if (modalDialog)
-        message.AddBool("modal", modalDialog);
-    if (!resizable)
-        message.AddBool("resizable", resizable);
+    message.AddBool("modal", modalDialog);
+    message.AddBool("resizable", resizable);
+    message.AddBool("activate", activate);
 
     // Block until some window has embedded this view.
     BMessage reply;

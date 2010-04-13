@@ -810,14 +810,14 @@ BrowserWindow::NewWindowRequested(const BString& url, bool primaryAction)
 
 void
 BrowserWindow::NewPageCreated(BWebView* view, BRect windowFrame,
-    bool modalDialog, bool resizable)
+    bool modalDialog, bool resizable, bool activate)
 {
 	if (windowFrame.IsValid()) {
 		BrowserWindow* window = new BrowserWindow(windowFrame, fAppSettings,
 			DoNotHaveToolbar, view);
 		window->Show();
 	} else
-		CreateNewTab(BString(), true, view);
+		CreateNewTab(BString(), activate, view);
 }
 
 

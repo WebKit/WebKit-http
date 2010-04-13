@@ -147,7 +147,8 @@ private:
 	WebCore::Page* page() const;
 
 	WebCore::Page* createNewPage(BRect frame = BRect(),
-		bool modalDialog = false, bool resizable = true);
+		bool modalDialog = false, bool resizable = true,
+		bool activate = true);
 
 	BRect windowFrame();
 	BRect windowBounds();

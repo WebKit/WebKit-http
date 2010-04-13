@@ -126,8 +126,11 @@ void BWebWindow::MessageReceived(BMessage* message)
         bool resizable;
         if (message->FindBool("resizable", &resizable) != B_OK)
         	resizable = true;
+        bool activate;
+        if (message->FindBool("activate", &activate) != B_OK)
+        	activate = true;
 
-        NewPageCreated(view, windowFrame, modalDialog, resizable);
+        NewPageCreated(view, windowFrame, modalDialog, resizable, activate);
         break;
     }
     case CLOSE_WINDOW_REQUESTED:
@@ -303,7 +306,7 @@ void BWebWindow::NewWindowRequested(const BString& url, bool primaryAction)
 }
 
 void BWebWindow::NewPageCreated(BWebView* view, BRect windowFrame,
-    bool modalDialog, bool resizable)
+    bool modalDialog, bool resizable, bool activate)
 {
 	if (!windowFrame.IsValid())
 		windowFrame = Frame().OffsetByCopy(10, 10);
