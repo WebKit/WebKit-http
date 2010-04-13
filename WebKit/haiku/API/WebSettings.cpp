@@ -29,6 +29,7 @@
 #include "WebSettings.h"
 
 #include "ApplicationCacheStorage.h"
+#include "BitmapImage.h"
 #include "DatabaseTracker.h"
 #include "IconDatabase.h"
 #include "Image.h"
@@ -364,14 +365,29 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
 		|| message->FindMessenger("target", &target) != B_OK) {
 		return;
 	}
+	WebCore::IntSize iconSize(16, 16);
     WebCore::Image* image = WebCore::iconDatabase()->iconForPageURL(url.String(),
-        WebCore::IntSize(16, 16));
+        iconSize);
 
 	reply.RemoveName("url");
 	reply.RemoveName("icon");
     reply.AddString("url", url.String());
     if (image) {
-        const BBitmap* bitmap = image->nativeImageForCurrentFrame();
+        const BBitmap* bitmap = 0;
+    	if (image->isBitmapImage()) {
+    		WebCore::BitmapImage* bitmapImage = static_cast<WebCore::BitmapImage*>(image);
+    		size_t count = bitmapImage->frameCount();
+    		for (size_t i = 0; i < count; i++) {
+    			bitmap = bitmapImage->frameAtIndex(i);
+    			if (bitmap->Bounds().IntegerWidth() + 1 == iconSize.width()
+    				&& bitmap->Bounds().IntegerHeight() + 1 == iconSize.height()) {
+    				break;
+    			} else
+    				bitmap = 0;
+    		}
+    	}
+        if (!bitmap)
+        	bitmap = image->nativeImageForCurrentFrame();
         BMessage iconArchive;
         if (bitmap && bitmap->Archive(&iconArchive) == B_OK)
             reply.AddMessage("icon", &iconArchive);

@@ -178,6 +178,7 @@ protected:
     virtual BBitmap* getBBitmap() const;
 #endif
 
+public:
     size_t currentFrame() const { return m_currentFrame; }
     size_t frameCount();
     NativeImagePtr frameAtIndex(size_t);
@@ -185,6 +186,7 @@ protected:
     float frameDurationAtIndex(size_t);
     bool frameHasAlphaAtIndex(size_t); 
 
+protected:
     // Decodes and caches a frame. Never accessed except internally.
     void cacheFrame(size_t index);
 
