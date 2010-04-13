@@ -30,10 +30,10 @@ rule SetUpSubDirBuildSettings {
 		OPTIM ?= -O2 -DNDEBUG=1 ;
 	} else {
 		OPTIM ?= ;
-#		CCFLAGS += -g ;
-#		C++FLAGS += -g ;
-		CCFLAGS += ;
-		C++FLAGS += ;
+		CCFLAGS += -g ;
+		C++FLAGS += -g ;
+#		CCFLAGS += ;
+#		C++FLAGS += ;
 	}
 
 	# setup objects location
