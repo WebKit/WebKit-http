@@ -40,6 +40,7 @@ class BBitmap;
 class BCardLayout;
 class BGroupView;
 class BMenu;
+class TabContainerGroup;
 class TabContainerView;
 class TabManagerController;
 
@@ -81,7 +82,7 @@ private:
 #if INTEGRATE_MENU_INTO_TAB_BAR
 			BMenu*				fMenu;
 #endif
-			BGroupView*			fTabContainerGroup;
+			TabContainerGroup*	fTabContainerGroup;
 			TabContainerView*	fTabContainerView;
 			BView*				fContainerView;
 			BCardLayout*		fCardLayout;

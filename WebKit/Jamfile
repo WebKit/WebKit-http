@@ -1,9 +1,18 @@
 SubDir TOP WebKit ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ENABLE_YARR=1
-    WTF_USE_PTHREADS=1 HAVE_POSIX_MEMALIGN=1 HAVE_SYS_TIME_H=1 ENABLE_DOM_STORAGE=1
-    ENABLE_SVG=1 ENABLE_SVG_ANIMATION=1 ENABLE_SVG_FONTS=1 ENABLE_SVG_FOREIGN_OBJECT=1
-    ENABLE_SVG_USE=1 ] ;
+local defines = [ FDefines
+    BUILDING_HAIKU__=1
+    ENABLE_YARR=1
+    WTF_USE_PTHREADS=1
+    HAVE_POSIX_MEMALIGN=1
+    HAVE_SYS_TIME_H=1
+    ENABLE_DOM_STORAGE=1
+    ENABLE_SVG=1
+    ENABLE_SVG_ANIMATION=1
+    ENABLE_SVG_FONTS=1
+    ENABLE_SVG_FOREIGN_OBJECT=1
+    ENABLE_SVG_USE=1
+] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) ;
@@ -121,6 +130,7 @@ Application HaikuLauncher :
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive autocompletion ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive support ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive tabview ] ;
 
 # SVN revision
 local svnRevisionFile = [ FGristFiles svn_revision ] ;
@@ -140,6 +150,10 @@ Application WebPositive :
     IconButton.cpp
     SettingsMessage.cpp
     StringForSize.cpp
+    # tabview
+    TabContainerView.cpp
+    TabManager.cpp
+    TabView.cpp
 	# WebPositive
     AuthenticationPanel.cpp
 	BrowserApp.cpp
@@ -151,7 +165,6 @@ Application WebPositive :
 	SettingsWindow.cpp
 	svn_revision.cpp
 	URLInputGroup.cpp
-	WebTabView.cpp
 
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so
