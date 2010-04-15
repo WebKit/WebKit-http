@@ -44,6 +44,7 @@ WindowFeatures::WindowFeatures(const String& features)
     , heightSet(false)
     , fullscreen(false)
     , dialog(false)
+    , activate(true)
 {
     /*
      The IE rule is: all features except for channelmode and fullscreen default to YES, but
