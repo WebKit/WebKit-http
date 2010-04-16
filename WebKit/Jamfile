@@ -1,20 +1,6 @@
 SubDir TOP WebKit ;
 
-local defines = [ FDefines
-    BUILDING_HAIKU__=1
-    ENABLE_DATABASE=1
-    ENABLE_JAVASCRIPT_DEBUGGER=1
-    ENABLE_DOM_STORAGE=1
-    ENABLE_YARR=1
-    WTF_USE_PTHREADS=1
-    HAVE_POSIX_MEMALIGN=1
-    HAVE_SYS_TIME_H=1
-    ENABLE_SVG=1
-    ENABLE_SVG_ANIMATION=1
-    ENABLE_SVG_FONTS=1
-    ENABLE_SVG_FOREIGN_OBJECT=1
-    ENABLE_SVG_USE=1
-] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) ;

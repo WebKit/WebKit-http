@@ -1,6 +1,6 @@
 SubDir TOP WebKitTools DumpRenderTree ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 USE_SYSTEM_MALLOC=1 HAVE_POSIX_MEMALIGN=1 HAVE_SYS_TIME_H=1  ENABLE_DOM_STORAGE=1 WTF_USE_JSC=1 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
 # To turn on debugging symbols just add -ggdb to each of these
 SubDirC++Flags $(defines) ;

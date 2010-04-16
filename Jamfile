@@ -1,6 +1,6 @@
 SubDir TOP ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 USE_SYSTEM_MALLOC=1 ENABLE_XSLT=0 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
 SubDirC++Flags $(defines) ;
 SubDirCcFlags $(defines) ;
