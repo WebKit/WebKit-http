@@ -41,9 +41,9 @@
 #include "NavMenu.h"
 #include "SettingsKeys.h"
 #include "SettingsMessage.h"
+#include "TabManager.h"
 #include "URLInputGroup.h"
 #include "WebPage.h"
-#include "WebTabView.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include <Alert.h>
