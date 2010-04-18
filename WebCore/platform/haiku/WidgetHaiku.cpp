@@ -32,8 +32,8 @@
 #include "Cursor.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
+#include <AppDefs.h>
 #include <View.h>
-#include <stdio.h>
 
 namespace WebCore {
 
@@ -91,8 +91,12 @@ void Widget::setFocus()
 void Widget::setCursor(const Cursor& cursor)
 {
     AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
-    if (locker.isLocked())
-        topLevelPlatformWidget()->SetViewCursor(cursor.impl());
+    if (locker.isLocked()) {
+        if (cursor.impl())
+            topLevelPlatformWidget()->SetViewCursor(cursor.impl());
+        else
+            topLevelPlatformWidget()->SetViewCursor(B_CURSOR_SYSTEM_DEFAULT);
+    }
 }
 
 void Widget::show()
