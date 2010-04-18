@@ -102,8 +102,11 @@ public:
     virtual void scrollBackingStore(int dx, int dy, const IntRect& scrollViewRect, const IntRect& clipRect);
     virtual void updateBackingStore();
     
-    virtual void repaint(const IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
+    virtual void invalidateWindow(const IntRect&, bool);
+    virtual void invalidateContentsAndWindow(const IntRect&, bool);
+    virtual void invalidateContentsForSlowScroll(const IntRect&, bool);
     virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
+
     virtual IntPoint screenToWindow(const IntPoint&) const;
     virtual IntRect windowToScreen(const IntRect&) const;
     virtual PlatformPageClient platformPageClient() const;
@@ -125,7 +128,7 @@ public:
 #endif
 
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
-    virtual void iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
+    virtual void chooseIconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
 
     virtual void formStateDidChange(const Node*) { }
 
@@ -136,6 +139,7 @@ public:
     virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const {}
 
     virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
+    virtual void cancelGeolocationPermissionRequestForFrame(Frame*, Geolocation*) { }
 
 private:
     wxWebView* m_webView;

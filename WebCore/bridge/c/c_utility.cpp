@@ -30,6 +30,7 @@
 
 #include "c_utility.h"
 
+#include "CRuntimeObject.h"
 #include "JSDOMWindow.h"
 #include "NP_jsobject.h"
 #include "c_instance.h"
@@ -75,7 +76,7 @@ void convertValueToNPVariant(ExecState* exec, JSValue value, NPVariant* result)
     if (value.isString()) {
         UString ustring = value.toString(exec);
         CString cstring = ustring.UTF8String();
-        NPString string = { (const NPUTF8*)cstring.c_str(), static_cast<uint32_t>(cstring.size()) };
+        NPString string = { (const NPUTF8*)cstring.data(), static_cast<uint32_t>(cstring.length()) };
         NPN_InitializeVariantWithStringCopy(result, &string);
     } else if (value.isNumber()) {
         DOUBLE_TO_NPVARIANT(value.toNumber(exec), *result);
@@ -85,9 +86,9 @@ void convertValueToNPVariant(ExecState* exec, JSValue value, NPVariant* result)
         NULL_TO_NPVARIANT(*result);
     } else if (value.isObject()) {
         JSObject* object = asObject(value);
-        if (object->classInfo() == &RuntimeObjectImp::s_info) {
-            RuntimeObjectImp* imp = static_cast<RuntimeObjectImp*>(object);
-            CInstance* instance = static_cast<CInstance*>(imp->getInternalInstance());
+        if (object->classInfo() == &CRuntimeObject::s_info) {
+            CRuntimeObject* runtimeObject = static_cast<CRuntimeObject*>(object);
+            CInstance* instance = runtimeObject->getInternalCInstance();
             if (instance) {
                 NPObject* obj = instance->getObject();
                 _NPN_RetainObject(obj);
@@ -142,9 +143,9 @@ String convertNPStringToUTF16(const NPString* string)
     return String::fromUTF8WithLatin1Fallback(string->UTF8Characters, string->UTF8Length);
 }
 
-Identifier identifierFromNPIdentifier(const NPUTF8* name)
+Identifier identifierFromNPIdentifier(ExecState* exec, const NPUTF8* name)
 {
-    return Identifier(WebCore::JSDOMWindow::commonJSGlobalData(), convertUTF8ToUTF16WithLatin1Fallback(name, -1));
+    return Identifier(exec, convertUTF8ToUTF16WithLatin1Fallback(name, -1));
 }
 
 } }

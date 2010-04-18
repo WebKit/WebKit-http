@@ -35,6 +35,8 @@
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
+#include "WebFormControlElement.h"
+#include "WebInputElement.h"
 #include "WebString.h"
 #include "WebURL.h"
 #include <wtf/PassRefPtr.h>
@@ -42,25 +44,6 @@
 using namespace WebCore;
 
 namespace WebKit {
-
-class WebFormPrivate : public HTMLFormElement {
-};
-
-WebFormElement::WebFormElement(const WTF::PassRefPtr<HTMLFormElement>& e)
-    : WebElement(e)
-{
-}
-
-WebFormElement& WebFormElement::operator=(const WTF::PassRefPtr<HTMLFormElement>& e)
-{
-    WebNode::assign(e.releaseRef());
-    return *this;
-}
-
-WebFormElement::operator WTF::PassRefPtr<WebCore::HTMLFormElement>() const
-{
-    return PassRefPtr<HTMLFormElement>(static_cast<HTMLFormElement*>(m_private));
-}
 
 bool WebFormElement::autoComplete() const
 {
@@ -105,6 +88,34 @@ void WebFormElement::getInputElements(WebVector<WebInputElement>& result) const
                 form->formElements[i]));
     }
     result.assign(tempVector);
+}
+
+void WebFormElement::getFormControlElements(WebVector<WebFormControlElement>& result) const
+{
+    const HTMLFormElement* form = constUnwrap<HTMLFormElement>();
+    Vector<RefPtr<HTMLFormControlElement> > tempVector;
+    for (size_t i = 0; i < form->formElements.size(); i++) {
+        if (form->formElements[i]->hasLocalName(HTMLNames::inputTag)
+            || form->formElements[i]->hasLocalName(HTMLNames::selectTag))
+            tempVector.append(form->formElements[i]);
+    }
+    result.assign(tempVector);
+}
+
+WebFormElement::WebFormElement(const PassRefPtr<HTMLFormElement>& e)
+    : WebElement(e)
+{
+}
+
+WebFormElement& WebFormElement::operator=(const PassRefPtr<HTMLFormElement>& e)
+{
+    m_private = e;
+    return *this;
+}
+
+WebFormElement::operator PassRefPtr<HTMLFormElement>() const
+{
+    return static_cast<HTMLFormElement*>(m_private.get());
 }
 
 } // namespace WebKit

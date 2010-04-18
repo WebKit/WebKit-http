@@ -33,6 +33,7 @@
 #include <QVariant>
 #include <runtime_object.h>
 #include <runtime_root.h>
+#include <runtime_method.h>
 
 using namespace WebCore;
 namespace JSC {
@@ -142,9 +143,9 @@ struct QtPixmapMetaData {
 } qt_pixmap_metaData;
 
 // Derived RuntimeObject
-class QtPixmapRuntimeObjectImp : public RuntimeObjectImp {
+class QtPixmapRuntimeObject : public RuntimeObject {
 public:
-    QtPixmapRuntimeObjectImp(ExecState*, PassRefPtr<Instance>);
+    QtPixmapRuntimeObject(ExecState*, PassRefPtr<Instance>);
 
     static const ClassInfo s_info;
 
@@ -154,18 +155,18 @@ public:
     }
 
 protected:
-    static const unsigned StructureFlags = RuntimeObjectImp::StructureFlags | OverridesMarkChildren;
+    static const unsigned StructureFlags = RuntimeObject::StructureFlags | OverridesMarkChildren;
 
 private:
     virtual const ClassInfo* classInfo() const { return &s_info; }
 };
 
-QtPixmapRuntimeObjectImp::QtPixmapRuntimeObjectImp(ExecState* exec, PassRefPtr<Instance> instance)
-    : RuntimeObjectImp(exec, WebCore::deprecatedGetDOMStructure<QtPixmapRuntimeObjectImp>(exec), instance)
+QtPixmapRuntimeObject::QtPixmapRuntimeObject(ExecState* exec, PassRefPtr<Instance> instance)
+    : RuntimeObject(exec, WebCore::deprecatedGetDOMStructure<QtPixmapRuntimeObject>(exec), instance)
 {
 }
 
-const ClassInfo QtPixmapRuntimeObjectImp::s_info = { "QtPixmapRuntimeObject", &RuntimeObjectImp::s_info, 0, 0 };
+const ClassInfo QtPixmapRuntimeObject::s_info = { "QtPixmapRuntimeObject", &RuntimeObject::s_info, 0, 0 };
 
 QtPixmapClass::QtPixmapClass()
 {
@@ -177,8 +178,16 @@ Class* QtPixmapInstance::getClass() const
     return &qt_pixmap_metaData.cls;
 }
 
-JSValue QtPixmapInstance::invokeMethod(ExecState* exec, const MethodList& methods, const ArgList& args)
+JSValue QtPixmapInstance::getMethod(ExecState* exec, const Identifier& propertyName)
 {
+    MethodList methodList = getClass()->methodsNamed(propertyName, this);
+    return new (exec) RuntimeMethod(exec, propertyName, methodList);
+}
+
+JSValue QtPixmapInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod, const ArgList& args)
+{
+    const MethodList& methods = *runtimeMethod->methods();
+
     if (methods.size() == 1) {
         QtPixmapRuntimeMethod* method = static_cast<QtPixmapRuntimeMethod*>(methods[0]);
         return method->invoke(exec, this, args);
@@ -317,9 +326,9 @@ QVariant QtPixmapInstance::variantFromObject(JSObject* object, QMetaType::Type h
                   : QVariant::fromValue<QImage>(pixmap->toImage());
     }
 
-    if (object->inherits(&QtPixmapRuntimeObjectImp::s_info)) {
-        QtPixmapRuntimeObjectImp* imp = static_cast<QtPixmapRuntimeObjectImp*>(object);
-        QtPixmapInstance* instance = static_cast<QtPixmapInstance*>(imp->getInternalInstance());
+    if (object->inherits(&QtPixmapRuntimeObject::s_info)) {
+        QtPixmapRuntimeObject* runtimeObject = static_cast<QtPixmapRuntimeObject*>(object);
+        QtPixmapInstance* instance = static_cast<QtPixmapInstance*>(runtimeObject->getInternalInstance());
         if (!instance)
             goto returnEmptyVariant;
 
@@ -340,7 +349,7 @@ returnEmptyVariant:
 JSObject* QtPixmapInstance::createRuntimeObject(ExecState* exec, PassRefPtr<RootObject> root, const QVariant& data)
 {
     JSLock lock(SilenceAssertionsOnly);
-    return new(exec) QtPixmapRuntimeObjectImp(exec, new QtPixmapInstance(root, data));
+    return new(exec) QtPixmapRuntimeObject(exec, new QtPixmapInstance(root, data));
 }
 
 bool QtPixmapInstance::canHandle(QMetaType::Type hint)

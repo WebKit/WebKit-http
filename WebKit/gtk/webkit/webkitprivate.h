@@ -46,9 +46,9 @@
 
 #include "ArchiveResource.h"
 #include "BackForwardList.h"
-#include "CString.h"
 #include <enchant.h>
 #include "GOwnPtr.h"
+#include "Geolocation.h"
 #include "HistoryItem.h"
 #include "Settings.h"
 #include "Page.h"
@@ -60,6 +60,7 @@
 #include "ResourceResponse.h"
 #include "WindowFeatures.h"
 #include "SecurityOrigin.h"
+#include <wtf/text/CString.h>
 
 #include <atk/atk.h>
 #include <glib.h>
@@ -101,11 +102,6 @@ namespace WebKit {
 
     WebKit::PasteboardHelperGtk* pasteboardHelperInstance();
 }
-
-typedef struct {
-    EnchantBroker* config;
-    EnchantDict* speller;
-} SpellLanguage;
 
 extern "C" {
     void webkit_init();
@@ -276,6 +272,9 @@ extern "C" {
     WebKitNetworkResponse*
     webkit_network_response_new_with_core_response(const WebCore::ResourceResponse& resourceResponse);
 
+    WebKitGeolocationPolicyDecision*
+    webkit_geolocation_policy_decision_new(WebKitWebFrame*, WebCore::Geolocation*);
+
     // FIXME: move this to webkitnetworkrequest.h once the API is agreed upon.
     WEBKIT_API SoupMessage*
     webkit_network_request_get_message(WebKitNetworkRequest* request);
@@ -300,6 +299,9 @@ extern "C" {
 
     WEBKIT_API int
     webkit_web_frame_page_number_for_element_by_id(WebKitWebFrame* frame, const gchar* id, float pageWidth, float pageHeight);
+
+    WEBKIT_API int
+    webkit_web_frame_number_of_pages(WebKitWebFrame* frame, float pageWidth, float pageHeight);
 
     WEBKIT_API guint
     webkit_web_frame_get_pending_unload_event_count(WebKitWebFrame* frame);
@@ -332,7 +334,7 @@ extern "C" {
     webkit_web_settings_add_extra_plugin_directory (WebKitWebView *web_view, const gchar* directory);
 
     GSList*
-    webkit_web_settings_get_spell_languages(WebKitWebView* web_view);
+    webkit_web_settings_get_enchant_dicts(WebKitWebView* web_view);
 
     bool
     webkit_web_view_use_primary_for_paste(WebKitWebView* web_view);

@@ -183,7 +183,7 @@ void RenderBlock::destroy()
             // that will outlast this block. In the non-anonymous block case those
             // children will be destroyed by the time we return from this function.
             if (isAnonymousBlock()) {
-                for (InlineFlowBox* box = firstLineBox(); box; box = box->nextFlowBox()) {
+                for (InlineFlowBox* box = firstLineBox(); box; box = box->nextLineBox()) {
                     while (InlineBox* childBox = box->firstChild())
                         childBox->remove();
                 }
@@ -261,8 +261,14 @@ void RenderBlock::updateBeforeAfterContent(PseudoId pseudoId)
 void RenderBlock::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
     // Make sure we don't append things after :after-generated content if we have it.
-    if (!beforeChild && isAfterContent(lastChild()))
-        beforeChild = lastChild();
+    if (!beforeChild) {
+        RenderObject* lastRenderer = lastChild();
+
+        if (isAfterContent(lastRenderer))
+            beforeChild = lastRenderer;
+        else if (lastRenderer && lastRenderer->isAnonymousBlock() && isAfterContent(lastRenderer->lastChild()))
+            beforeChild = lastRenderer->lastChild();
+    }
 
     bool madeBoxesNonInline = false;
 
@@ -770,8 +776,7 @@ void RenderBlock::layoutBlock(bool relayoutChildren)
     if (previousHeight != height())
         relayoutChildren = true;
 
-    // It's weird that we're treating float information as normal flow overflow, but we do this because floatRect() isn't
-    // able to be propagated up the render tree yet.  Overflow information is however.  This check is designed to catch anyone
+    // This check is designed to catch anyone
     // who wasn't going to propagate float information up to the parent and yet could potentially be painted by its ancestor.
     if (isRoot() || expandsToEncloseOverhangingFloats())
         addOverflowFromFloats();
@@ -811,11 +816,7 @@ void RenderBlock::layoutBlock(bool relayoutChildren)
         
         if (hasOverflowClip()) {
             // Adjust repaint rect for scroll offset
-            int x = repaintRect.x();
-            int y = repaintRect.y();
-            layer()->subtractScrolledContentOffset(x, y);
-            repaintRect.setX(x);
-            repaintRect.setY(y);
+            repaintRect.move(-layer()->scrolledContentOffset());
 
             // Don't allow this rect to spill out of our overflow box.
             repaintRect.intersect(IntRect(0, 0, width(), height()));
@@ -1545,7 +1546,7 @@ void RenderBlock::paint(PaintInfo& paintInfo, int tx, int ty)
 
 void RenderBlock::paintColumnRules(PaintInfo& paintInfo, int tx, int ty)
 {
-    const Color& ruleColor = style()->columnRuleColor();
+    const Color& ruleColor = style()->visitedDependentColor(CSSPropertyWebkitColumnRuleColor);
     bool ruleTransparent = style()->columnRuleIsTransparent();
     EBorderStyle ruleStyle = style()->columnRuleStyle();
     int ruleWidth = style()->columnRuleWidth();
@@ -1580,7 +1581,7 @@ void RenderBlock::paintColumnRules(PaintInfo& paintInfo, int tx, int ty)
             int ruleTop = ty + borderTop() + paddingTop();
             int ruleBottom = ruleTop + contentHeight();
             drawLineForBoxSide(paintInfo.context, ruleStart, ruleTop, ruleEnd, ruleBottom,
-                               style()->direction() == LTR ? BSLeft : BSRight, ruleColor, style()->color(), ruleStyle, 0, 0);
+                               style()->direction() == LTR ? BSLeft : BSRight, ruleColor, ruleStyle, 0, 0);
         }
         
         ruleX = currXOffset;
@@ -1657,16 +1658,15 @@ void RenderBlock::paintChildren(PaintInfo& paintInfo, int tx, int ty)
 
     for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {        
         // Check for page-break-before: always, and if it's set, break and bail.
-        if (isPrinting && !childrenInline() && child->style()->pageBreakBefore() == PBALWAYS &&
-            inRootBlockContext() && (ty + child->y()) > paintInfo.rect.y() && 
-            (ty + child->y()) < paintInfo.rect.bottom()) {
+        if (isPrinting && !childrenInline() && child->style()->pageBreakBefore() == PBALWAYS
+            && (ty + child->y()) > paintInfo.rect.y()
+            && (ty + child->y()) < paintInfo.rect.bottom()) {
             view()->setBestTruncatedAt(ty + child->y(), this, true);
             return;
         }
 
         // Check for page-break-inside: avoid, and it it's set, break and bail.
         if (isPrinting && !childrenInline() && child->style()->pageBreakInside() == PBAVOID
-            && inRootBlockContext()
             && ty + child->y() > paintInfo.rect.y()
             && ty + child->y() < paintInfo.rect.bottom()
             && ty + child->y() + child->height() > paintInfo.rect.bottom()) {
@@ -1678,9 +1678,9 @@ void RenderBlock::paintChildren(PaintInfo& paintInfo, int tx, int ty)
             child->paint(info, tx, ty);
 
         // Check for page-break-after: always, and if it's set, break and bail.
-        if (isPrinting && !childrenInline() && child->style()->pageBreakAfter() == PBALWAYS && 
-            inRootBlockContext() && (ty + child->y() + child->height()) > paintInfo.rect.y() && 
-            (ty + child->y() + child->height()) < paintInfo.rect.bottom()) {
+        if (isPrinting && !childrenInline() && child->style()->pageBreakAfter() == PBALWAYS
+            && (ty + child->y() + child->height()) > paintInfo.rect.y()
+            && (ty + child->y() + child->height()) < paintInfo.rect.bottom()) {
             view()->setBestTruncatedAt(ty + child->y() + child->height() + max(0, child->collapsedMarginBottom()), this, true);
             return;
         }
@@ -1727,11 +1727,14 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, int tx, int ty)
     if (paintPhase == PaintPhaseBlockBackground)
         return;
 
-    // Adjust our painting position if we're inside a scrolled layer (e.g., an overflow:auto div).s
+    // Adjust our painting position if we're inside a scrolled layer (e.g., an overflow:auto div).
     int scrolledX = tx;
     int scrolledY = ty;
-    if (hasOverflowClip())
-        layer()->subtractScrolledContentOffset(scrolledX, scrolledY);
+    if (hasOverflowClip()) {
+        IntSize offset = layer()->scrolledContentOffset();
+        scrolledX -= offset.width();
+        scrolledY -= offset.height();
+    }
 
     // 2. paint contents
     if (paintPhase != PaintPhaseSelfOutline) {
@@ -1757,7 +1760,7 @@ void RenderBlock::paintObject(PaintInfo& paintInfo, int tx, int ty)
 
     // 5. paint outline.
     if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseSelfOutline) && hasOutline() && style()->visibility() == VISIBLE)
-        paintOutline(paintInfo.context, tx, ty, width(), height(), style());
+        paintOutline(paintInfo.context, tx, ty, width(), height());
 
     // 6. paint continuation outlines.
     if ((paintPhase == PaintPhaseOutline || paintPhase == PaintPhaseChildOutlines)) {
@@ -1943,18 +1946,16 @@ GapRects RenderBlock::selectionGapRectsForRepaint(RenderBoxModelObject* repaintC
     // FIXME: this is broken with transforms
     TransformState transformState(TransformState::ApplyTransformDirection, FloatPoint());
     mapLocalToContainer(repaintContainer, false, false, transformState);
-    FloatPoint offsetFromRepaintContainer = transformState.mappedPoint();
-    int x = offsetFromRepaintContainer.x();
-    int y = offsetFromRepaintContainer.y();
+    IntPoint offsetFromRepaintContainer = roundedIntPoint(transformState.mappedPoint());
 
     if (hasOverflowClip())
-        layer()->subtractScrolledContentOffset(x, y);
+        offsetFromRepaintContainer -= layer()->scrolledContentOffset();
 
     int lastTop = 0;
     int lastLeft = leftSelectionOffset(this, lastTop);
     int lastRight = rightSelectionOffset(this, lastTop);
     
-    return fillSelectionGaps(this, x, y, x, y, lastTop, lastLeft, lastRight);
+    return fillSelectionGaps(this, offsetFromRepaintContainer.x(), offsetFromRepaintContainer.y(), offsetFromRepaintContainer.x(), offsetFromRepaintContainer.y(), lastTop, lastLeft, lastRight);
 }
 
 void RenderBlock::paintSelection(PaintInfo& paintInfo, int tx, int ty)
@@ -2357,8 +2358,14 @@ void RenderBlock::removeFloatingObject(RenderBox* o)
         DeprecatedPtrListIterator<FloatingObject> it(*m_floatingObjects);
         while (it.current()) {
             if (it.current()->m_renderer == o) {
-                if (childrenInline())
-                    markLinesDirtyInVerticalRange(0, it.current()->m_bottom);
+                if (childrenInline()) {
+                    int bottom = it.current()->m_bottom;
+                    // Special-case zero- and less-than-zero-height floats: those don't touch
+                    // the line that they're on, but it still needs to be dirtied. This is
+                    // accomplished by pretending they have a height of 1.
+                    bottom = max(bottom, it.current()->m_top + 1);
+                    markLinesDirtyInVerticalRange(0, bottom);
+                }
                 m_floatingObjects->removeRef(it.current());
             }
             ++it;
@@ -2637,24 +2644,6 @@ RenderBlock::floatBottom() const
     return bottom;
 }
 
-IntRect RenderBlock::floatRect() const
-{
-    IntRect result;
-    if (!m_floatingObjects || hasOverflowClip() || hasColumns())
-        return result;
-    FloatingObject* r;
-    DeprecatedPtrListIterator<FloatingObject> it(*m_floatingObjects);
-    for (; (r = it.current()); ++it) {
-        if (r->m_shouldPaint && !r->m_renderer->hasSelfPaintingLayer()) {
-            IntRect childRect = r->m_renderer->visibleOverflowRect();
-            childRect.move(r->m_left + r->m_renderer->marginLeft(), r->m_top + r->m_renderer->marginTop());
-            result.unite(childRect);
-        }
-    }
-
-    return result;
-}
-
 int RenderBlock::lowestPosition(bool includeOverflowInterior, bool includeSelf) const
 {
     int bottom = includeSelf && width() > 0 ? height() : 0;
@@ -2823,7 +2812,7 @@ int RenderBlock::rightmostPosition(bool includeOverflowInterior, bool includeSel
     if (!includeSelf) {
         right = max(right, borderLeft() + paddingLeft() + paddingRight() + relativeOffset);
         if (childrenInline()) {
-            for (InlineRunBox* currBox = firstLineBox(); currBox; currBox = currBox->nextLineBox()) {
+            for (InlineFlowBox* currBox = firstLineBox(); currBox; currBox = currBox->nextLineBox()) {
                 int childRightEdge = currBox->x() + currBox->width();
                 
                 // If this node is a root editable element, then the rightmostPosition should account for a caret at the end.
@@ -2918,7 +2907,7 @@ int RenderBlock::leftmostPosition(bool includeOverflowInterior, bool includeSelf
     }
 
     if (!includeSelf && firstLineBox()) {
-        for (InlineRunBox* currBox = firstLineBox(); currBox; currBox = currBox->nextLineBox())
+        for (InlineFlowBox* currBox = firstLineBox(); currBox; currBox = currBox->nextLineBox())
             left = min(left, (int)currBox->x() + relativeOffset);
     }
     
@@ -3027,8 +3016,8 @@ void RenderBlock::clearFloats()
         addIntrudingFloats(block, xoffset, offset);
 
     if (childrenInline()) {
-        int changeTop = INT_MAX;
-        int changeBottom = INT_MIN;
+        int changeTop = numeric_limits<int>::max();
+        int changeBottom = numeric_limits<int>::min();
         if (m_floatingObjects) {
             for (FloatingObject* f = m_floatingObjects->first(); f; f = m_floatingObjects->next()) {
                 FloatingObject* oldFloatingObject = floatMap.get(f->m_renderer);
@@ -3205,6 +3194,32 @@ void RenderBlock::markAllDescendantsWithFloatsForLayout(RenderBox* floatToRemove
     }
 }
 
+int RenderBlock::visibleTopOfHighestFloatExtendingBelow(int bottom, int maxHeight) const
+{
+    int top = bottom;
+    if (m_floatingObjects) {
+        FloatingObject* floatingObject;
+        for (DeprecatedPtrListIterator<FloatingObject> it(*m_floatingObjects); (floatingObject = it.current()); ++it) {
+            RenderBox* floatingBox = floatingObject->m_renderer;
+            IntRect visibleOverflow = floatingBox->visibleOverflowRect();
+            visibleOverflow.move(floatingBox->x(), floatingBox->y());
+            if (visibleOverflow.y() < top && visibleOverflow.bottom() > bottom && visibleOverflow.height() <= maxHeight && floatingBox->containingBlock() == this)
+                top = visibleOverflow.y();
+        }
+    }
+
+    if (!childrenInline()) {
+        for (RenderObject* child = firstChild(); child; child = child->nextSibling()) {
+            if (child->isFloatingOrPositioned() || !child->isRenderBlock())
+                continue;
+            RenderBlock* childBlock = toRenderBlock(child);
+            top = min(top, childBlock->y() + childBlock->visibleTopOfHighestFloatExtendingBelow(bottom - childBlock->y(), maxHeight));
+        }
+    }
+
+    return top;
+}
+
 int RenderBlock::getClearDelta(RenderBox* child, int yPos)
 {
     // There is no need to compute clearance if we have no floats.
@@ -3296,8 +3311,11 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
         // Hit test descendants first.
         int scrolledX = tx;
         int scrolledY = ty;
-        if (hasOverflowClip())
-            layer()->subtractScrolledContentOffset(scrolledX, scrolledY);
+        if (hasOverflowClip()) {
+            IntSize offset = layer()->scrolledContentOffset();
+            scrolledX -= offset.width();
+            scrolledY -= offset.height();
+        }
 
         // Hit test contents if we don't have columns.
         if (!hasColumns() && hitTestContents(request, result, _x, _y, scrolledX, scrolledY, hitTestAction))
@@ -3572,15 +3590,16 @@ VisiblePosition RenderBlock::positionForPoint(const IntPoint& point)
 
 void RenderBlock::offsetForContents(int& tx, int& ty) const
 {
-    if (hasOverflowClip())
-        layer()->addScrolledContentOffset(tx, ty);
+    IntPoint contentsPoint(tx, ty);
 
-    if (hasColumns()) {
-        IntPoint contentsPoint(tx, ty);
+    if (hasOverflowClip())
+        contentsPoint += layer()->scrolledContentOffset();
+
+    if (hasColumns())
         adjustPointToColumnContents(contentsPoint);
-        tx = contentsPoint.x();
-        ty = contentsPoint.y();
-    }
+
+    tx = contentsPoint.x();
+    ty = contentsPoint.y();
 }
 
 int RenderBlock::availableWidth() const
@@ -3742,11 +3761,13 @@ int RenderBlock::layoutColumns(int endOfContent, int requestedColumnHeight)
 
         // This represents the real column position.
         IntRect colRect(currX, top, desiredColumnWidth, colHeight);
-        
+
+        int truncationPoint = visibleTopOfHighestFloatExtendingBelow(currY + colHeight, colHeight);
+
         // For the simulated paint, we pretend like everything is in one long strip.
-        IntRect pageRect(left, currY, desiredColumnWidth, colHeight);
+        IntRect pageRect(left, currY, desiredColumnWidth, truncationPoint - currY);
         v->setPrintRect(pageRect);
-        v->setTruncatedAt(currY + colHeight);
+        v->setTruncatedAt(truncationPoint);
         GraphicsContext context((PlatformGraphicsContext*)0);
         RenderObject::PaintInfo paintInfo(&context, pageRect, PaintPhaseForeground, false, 0, 0);
         
@@ -3761,7 +3782,7 @@ int RenderBlock::layoutColumns(int endOfContent, int requestedColumnHeight)
 
         int adjustedBottom = v->bestTruncatedAt();
         if (adjustedBottom <= currY)
-            adjustedBottom = currY + colHeight;
+            adjustedBottom = truncationPoint;
         
         colRect.setHeight(adjustedBottom - currY);
         
@@ -3836,8 +3857,20 @@ void RenderBlock::adjustPointToColumnContents(IntPoint& point) const
         // Add in half the column gap to the left and right of the rect.
         IntRect colRect = colRects->at(i);
         IntRect gapAndColumnRect(colRect.x() - leftGap, colRect.y(), colRect.width() + colGap, colRect.height());
-        
-        if (gapAndColumnRect.contains(point)) {
+
+        if (point.x() >= gapAndColumnRect.x() && point.x() < gapAndColumnRect.right()) {
+            // FIXME: The clamping that follows is not completely right for right-to-left
+            // content.
+            // Clamp everything above the column to its top left.
+            if (point.y() < gapAndColumnRect.y())
+                point = gapAndColumnRect.location();
+            // Clamp everything below the column to the next column's top left. If there is
+            // no next column, this still maps to just after this column.
+            else if (point.y() >= gapAndColumnRect.bottom()) {
+                point = gapAndColumnRect.location();
+                point.move(0, gapAndColumnRect.height());
+            }
+
             // We're inside the column.  Translate the x and y into our column coordinate space.
             point.move(columnPoint.x() - colRect.x(), yOffset);
             return;
@@ -4612,7 +4645,7 @@ void RenderBlock::updateFirstLetter()
 
     // Drill into inlines looking for our first text child.
     RenderObject* currChild = firstLetterBlock->firstChild();
-    while (currChild && currChild->needsLayout() && (!currChild->isReplaced() || currChild->isFloatingOrPositioned()) && !currChild->isText()) {
+    while (currChild && currChild->needsLayout() && ((!currChild->isReplaced() && !currChild->isRenderButton() && !currChild->isMenuList()) || currChild->isFloatingOrPositioned()) && !currChild->isText()) {
         if (currChild->isFloatingOrPositioned()) {
             if (currChild->style()->styleType() == FIRST_LETTER)
                 break;
@@ -4699,26 +4732,13 @@ void RenderBlock::updateFirstLetter()
             // construct text fragment for the first letter
             RenderTextFragment* letter = 
                 new (renderArena()) RenderTextFragment(remainingText->node() ? remainingText->node() : remainingText->document(), oldText.get(), 0, length);
-            RefPtr<RenderStyle> newStyle = RenderStyle::create();
-            newStyle->inheritFrom(pseudoStyle);
-            letter->setStyle(newStyle.release());
+            letter->setStyle(pseudoStyle);
             firstLetter->addChild(letter);
 
             textObj->destroy();
         }
         view()->enableLayoutState();
     }
-}
-
-bool RenderBlock::inRootBlockContext() const
-{
-    if (isTableCell() || isFloatingOrPositioned() || hasOverflowClip())
-        return false;
-    
-    if (isRoot() || isRenderView())
-        return true;
-    
-    return containingBlock()->inRootBlockContext();
 }
 
 // Helper methods for obtaining the last line, computing line counts and heights for line counts

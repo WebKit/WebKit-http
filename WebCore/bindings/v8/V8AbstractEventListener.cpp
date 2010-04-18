@@ -88,8 +88,6 @@ void V8AbstractEventListener::handleEvent(ScriptExecutionContext* context, Event
     v8::Handle<v8::Value> jsEvent = toV8(event);
 
     invokeEventHandler(context, event, jsEvent);
-
-    Document::updateStyleForAllDocuments();
 }
 
 void V8AbstractEventListener::disposeListenerObject()
@@ -147,11 +145,8 @@ void V8AbstractEventListener::invokeEventHandler(ScriptExecutionContext* context
         if (!tryCatch.CanContinue())
             return;
 
-        // If an error occurs while handling the event, it should be reported.
-        if (tryCatch.HasCaught()) {
-            reportException(0, tryCatch);
-            tryCatch.Reset();
-        }
+        // If an error occurs while handling the event, it should be reported in a regular way.
+        tryCatch.Reset();
 
         // Restore the old event. This must be done for all exit paths through this method.
         if (savedEvent.IsEmpty())

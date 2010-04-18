@@ -219,6 +219,17 @@ Element.prototype.positionAt = function(x, y)
     this.style.top = y + "px";
 }
 
+Element.prototype.pruneEmptyTextNodes = function()
+{
+    var sibling = this.firstChild;
+    while (sibling) {
+        var nextSibling = sibling.nextSibling;
+        if (sibling.nodeType === this.TEXT_NODE && sibling.nodeValue === "")
+            this.removeChild(sibling);
+        sibling = nextSibling;
+    }
+}
+
 Node.prototype.enclosingNodeOrSelfWithNodeNameInArray = function(nameArray)
 {
     for (var node = this; node && node !== this.ownerDocument; node = node.parentNode)
@@ -359,7 +370,7 @@ String.prototype.collapseWhitespace = function()
 
 String.prototype.trimURL = function(baseURLDomain)
 {
-    var result = this.replace(/^https?:\/\//i, "");
+    var result = this.replace(/^(https|http|file):\/\//i, "");
     if (baseURLDomain)
         result = result.replace(new RegExp("^" + baseURLDomain.escapeForRegExp(), "i"), "");
     return result;

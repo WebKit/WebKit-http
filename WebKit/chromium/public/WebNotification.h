@@ -71,8 +71,7 @@ public:
     // If HTML, the URL which contains the contents of the notification.
     WEBKIT_API WebURL url() const;
 
-    // If not HTML, the parameters for the icon-title-text notification.
-    WEBKIT_API WebString icon() const;
+    WEBKIT_API WebURL iconURL() const;
     WEBKIT_API WebString title() const;
     WEBKIT_API WebString body() const;
 

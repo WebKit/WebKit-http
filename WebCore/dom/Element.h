@@ -98,6 +98,8 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(touchcancel);
 #endif
 
+    virtual PassRefPtr<DocumentFragment> createContextualFragment(const String&, FragmentScriptingPermission = FragmentScriptingAllowed);
+
     const AtomicString& getIDAttribute() const;
     bool hasAttribute(const QualifiedName&) const;
     const AtomicString& getAttribute(const QualifiedName&) const;
@@ -263,6 +265,7 @@ public:
     virtual const AtomicString& formControlName() const { return nullAtom; }
     virtual const AtomicString& formControlType() const { return nullAtom; }
 
+    virtual bool shouldSaveAndRestoreFormControlState() const { return true; }
     virtual bool saveFormControlState(String&) const { return false; }
     virtual void restoreFormControlState(const String&) { }
 

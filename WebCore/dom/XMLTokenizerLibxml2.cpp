@@ -27,7 +27,6 @@
 #include "XMLTokenizer.h"
 
 #include "CDATASection.h"
-#include "CString.h"
 #include "CachedScript.h"
 #include "Comment.h"
 #include "DocLoader.h"
@@ -55,7 +54,7 @@
 #include "XMLTokenizerScope.h"
 #include <libxml/parser.h>
 #include <libxml/parserInternals.h>
-#include <wtf/Platform.h>
+#include <wtf/text/CString.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Threading.h>
 #include <wtf/UnusedParam.h>
@@ -786,7 +785,7 @@ void XMLTokenizer::startElementNs(const xmlChar* xmlLocalName, const xmlChar* xm
     }
 
     ScriptController* jsProxy = m_doc->frame() ? m_doc->frame()->script() : 0;
-    if (jsProxy && m_doc->frame()->script()->canExecuteScripts())
+    if (jsProxy && m_doc->frame()->script()->canExecuteScripts(NotAboutToExecuteScript))
         jsProxy->setEventHandlerLineNumber(lineNumber());
 
     handleElementAttributes(newElement.get(), libxmlAttributes, nb_attributes, ec, m_scriptingPermission);
@@ -1059,13 +1058,7 @@ void XMLTokenizer::internalSubset(const xmlChar* name, const xmlChar* externalID
         }
 #endif
 
-#if ENABLE(XHTMLMP)
-        m_doc->addChild(DocumentType::create(m_doc, dtdName, extId, toString(systemID)));
-#elif ENABLE(WML)
-        m_doc->addChild(DocumentType::create(m_doc, toString(name), extId, toString(systemID)));
-#else
         m_doc->addChild(DocumentType::create(m_doc, toString(name), toString(externalID), toString(systemID)));
-#endif
     }
 }
 
@@ -1252,7 +1245,7 @@ static void externalSubsetHandler(void* closure, const xmlChar*, const xmlChar* 
         || (extId == "-//W3C//DTD XHTML Basic 1.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN")
-#if !ENABLE(XHTMLMP)
+#if ENABLE(XHTMLMP)
         || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.0//EN")
 #endif
        )
@@ -1313,6 +1306,9 @@ void XMLTokenizer::doEnd()
         m_parserStopped = true;
     }
 #endif
+
+    if (m_parserStopped)
+        return;
 
     if (m_context) {
         // Tell libxml we're done.

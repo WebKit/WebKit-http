@@ -31,10 +31,10 @@
 #include "CSSParser.h"
 #include "CSSSelectorList.h"
 #include "CSSStyleSelector.h"
-#include "CString.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
 #include "Document.h"
+#include "DocumentFragment.h"
 #include "ElementRareData.h"
 #include "ExceptionCode.h"
 #include "FocusController.h"
@@ -42,6 +42,7 @@
 #include "FrameView.h"
 #include "HTMLElement.h"
 #include "HTMLNames.h"
+#include "HTMLTokenizer.h"
 #include "InspectorController.h"
 #include "NamedNodeMap.h"
 #include "NodeList.h"
@@ -51,6 +52,8 @@
 #include "RenderWidget.h"
 #include "TextIterator.h"
 #include "XMLNames.h"
+#include "XMLTokenizer.h"
+#include <wtf/text/CString.h>
 
 #if ENABLE(SVG)
 #include "SVGNames.h"
@@ -92,6 +95,51 @@ inline ElementRareData* Element::ensureRareData()
 NodeRareData* Element::createRareData()
 {
     return new ElementRareData;
+}
+
+PassRefPtr<DocumentFragment> Element::createContextualFragment(const String& markup, FragmentScriptingPermission scriptingPermission)
+{
+    RefPtr<DocumentFragment> fragment = DocumentFragment::create(document());
+    
+    if (document()->isHTMLDocument())
+        parseHTMLDocumentFragment(markup, fragment.get(), scriptingPermission);
+    else {
+        if (!parseXMLDocumentFragment(markup, fragment.get(), this, scriptingPermission))
+            // FIXME: We should propagate a syntax error exception out here.
+            return 0;
+    }
+    
+    // Exceptions are ignored because none ought to happen here.
+    ExceptionCode ignoredExceptionCode;
+    
+    // We need to pop <html> and <body> elements and remove <head> to
+    // accommodate folks passing complete HTML documents to make the
+    // child of an element.
+    
+    RefPtr<Node> nextNode;
+    for (RefPtr<Node> node = fragment->firstChild(); node; node = nextNode) {
+        nextNode = node->nextSibling();
+        if (node->hasTagName(htmlTag) || node->hasTagName(bodyTag)) {
+            Node* firstChild = node->firstChild();
+            if (firstChild)
+                nextNode = firstChild;
+            RefPtr<Node> nextChild;
+            for (RefPtr<Node> child = firstChild; child; child = nextChild) {
+                nextChild = child->nextSibling();
+                node->removeChild(child.get(), ignoredExceptionCode);
+                ASSERT(!ignoredExceptionCode);
+                fragment->insertBefore(child, node.get(), ignoredExceptionCode);
+                ASSERT(!ignoredExceptionCode);
+            }
+            fragment->removeChild(node.get(), ignoredExceptionCode);
+            ASSERT(!ignoredExceptionCode);
+        } else if (node->hasTagName(headTag)) {
+            fragment->removeChild(node.get(), ignoredExceptionCode);
+            ASSERT(!ignoredExceptionCode);
+        }
+    }
+    
+    return fragment.release();
 }
     
 PassRefPtr<Node> Element::cloneNode(bool deep)
@@ -600,7 +648,8 @@ void Element::updateAfterAttributeChanged(Attribute* attr)
     } else if (attrName == aria_labelAttr || attrName == aria_labeledbyAttr || attrName == altAttr || attrName == titleAttr) {
         // If the content of an element changes due to an attribute change, notify accessibility.
         document()->axObjectCache()->contentChanged(renderer());
-    }
+    } else if (attrName == aria_selectedAttr)
+        document()->axObjectCache()->selectedChildrenChanged(renderer());
 }
     
 void Element::recalcStyleIfNeededAfterAttributeChanged(Attribute* attr)
@@ -813,18 +862,25 @@ bool Element::pseudoStyleCacheIsInvalid(const RenderStyle* currentStyle, RenderS
     if (!renderer() || !currentStyle)
         return false;
 
-    RenderStyle::PseudoStyleCache pseudoStyleCache;
-    currentStyle->getPseudoStyleCache(pseudoStyleCache);
-    size_t cacheSize = pseudoStyleCache.size();
+    const PseudoStyleCache* pseudoStyleCache = currentStyle->cachedPseudoStyles();
+    if (!pseudoStyleCache)
+        return false;
+
+    size_t cacheSize = pseudoStyleCache->size();
     for (size_t i = 0; i < cacheSize; ++i) {
         RefPtr<RenderStyle> newPseudoStyle;
-        PseudoId pseudoId = pseudoStyleCache[i]->styleType();
-        if (pseudoId == FIRST_LINE || pseudoId == FIRST_LINE_INHERITED)
+        PseudoId pseudoId = pseudoStyleCache->at(i)->styleType();
+        if (pseudoId == VISITED_LINK) {
+            newPseudoStyle =  newStyle->getCachedPseudoStyle(VISITED_LINK); // This pseudo-style was aggressively computed already when we first called styleForElement on the new style.
+            if (!newPseudoStyle || *newPseudoStyle != *pseudoStyleCache->at(i))
+                return true;
+        } else if (pseudoId == FIRST_LINE || pseudoId == FIRST_LINE_INHERITED)
             newPseudoStyle = renderer()->uncachedFirstLineStyle(newStyle);
         else
             newPseudoStyle = renderer()->getUncachedPseudoStyle(pseudoId, newStyle, newStyle);
-
-        if (*newPseudoStyle != *pseudoStyleCache[i]) {
+        if (!newPseudoStyle)
+            return true;
+        if (*newPseudoStyle != *pseudoStyleCache->at(i)) {
             if (pseudoId < FIRST_INTERNAL_PSEUDOID)
                 newStyle->setHasPseudoStyle(pseudoId);
             newStyle->addCachedPseudoStyle(newPseudoStyle);
@@ -1288,13 +1344,8 @@ void Element::updateFocusAppearance(bool /*restorePreviousSelection*/)
             frame->selection()->setSelection(newSelection);
             frame->revealSelection();
         }
-    }
-    // FIXME: I'm not sure all devices will want this off, but this is
-    // currently turned off for Android.
-#if !ENABLE(DIRECTIONAL_PAD_NAVIGATION)
-    else if (renderer() && !renderer()->isWidget())
+    } else if (renderer() && !renderer()->isWidget())
         renderer()->enclosingLayer()->scrollRectToVisible(getRect());
-#endif
 }
 
 void Element::blur()
@@ -1359,7 +1410,7 @@ RenderStyle* Element::computedStyle()
 
     ElementRareData* data = ensureRareData();
     if (!data->m_computedStyle)
-        data->m_computedStyle = document()->styleSelector()->styleForElement(this, parent() ? parent()->computedStyle() : 0);
+        data->m_computedStyle = document()->styleForElementIgnoringPendingStylesheets(this);
     return data->m_computedStyle.get();
 }
 

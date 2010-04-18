@@ -13,6 +13,7 @@
     <file>Callback.js</file>
     <file>CallStackSidebarPane.js</file>
     <file>ChangesView.js</file>
+    <file>Checkbox.js</file>
     <file>Color.js</file>
     <file>ConsolePanel.js</file>
     <file>ConsoleView.js</file>
@@ -32,6 +33,7 @@
     <file>EventListenersSidebarPane.js</file>
     <file>FontView.js</file>
     <file>ImageView.js</file>
+    <file>InjectedFakeWorker.js</file>
     <file>InjectedScript.js</file>
     <file>InjectedScriptAccess.js</file>
     <file>inspector.js</file>
@@ -88,12 +90,20 @@
     <file>View.js</file>
     <file>WatchExpressionsSidebarPane.js</file>
     <file>WelcomeView.js</file>
+    <file>WorkersSidebarPane.js</file>
     <file>audits.css</file>
     <file>inspector.css</file>
     <file>inspectorSyntaxHighlight.css</file>
     <file>popover.css</file>
     <file>textViewer.css</file>
+    <file>Images/auditsIcon.png</file>
     <file>Images/back.png</file>
+    <file>Images/breakpointBorder.png</file>
+    <file>Images/breakpointConditionalBorder.png</file>
+    <file>Images/breakpointConditionalCounterBorder.png</file>
+    <file>Images/breakpointCounterBorder.png</file>
+    <file>Images/breakpointsActivateButtonGlyph.png</file>
+    <file>Images/breakpointsDeactivateButtonGlyph.png</file>
     <file>Images/checker.png</file>
     <file>Images/clearConsoleButtonGlyph.png</file>
     <file>Images/closeButtons.png</file>
@@ -151,6 +161,7 @@
     <file>Images/profilesIcon.png</file>
     <file>Images/profileSmallIcon.png</file>
     <file>Images/profilesSilhouette.png</file>
+    <file>Images/programCounterBorder.png</file>
     <file>Images/radioDot.png</file>
     <file>Images/recordButtonGlyph.png</file>
     <file>Images/recordToggledButtonGlyph.png</file>
@@ -178,6 +189,7 @@
     <file>Images/segmentSelected.png</file>
     <file>Images/segmentSelectedEnd.png</file>
     <file>Images/sessionStorage.png</file>
+    <file>Images/spinner.gif</file>
     <file>Images/splitviewDimple.png</file>
     <file>Images/splitviewDividerBackground.png</file>
     <file>Images/statusbarBackground.png</file>

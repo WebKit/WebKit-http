@@ -60,6 +60,7 @@ void initializeScriptFontMap(ScriptToFontMap& scriptFontMap)
         {USCRIPT_GREEK, L"times new roman"},
         {USCRIPT_CYRILLIC, L"times new roman"},
         {USCRIPT_SIMPLIFIED_HAN, L"simsun"},
+        {USCRIPT_TRADITIONAL_HAN, L"pmingliu"},
         {USCRIPT_HIRAGANA, L"ms pgothic"},
         {USCRIPT_KATAKANA, L"ms pgothic"},
         {USCRIPT_KATAKANA_OR_HIRAGANA, L"ms pgothic"},
@@ -106,14 +107,10 @@ void initializeScriptFontMap(ScriptToFontMap& scriptFontMap)
         localeFamily = scriptFontMap[USCRIPT_HIRAGANA];
     else if (locale == icu::Locale::getKorean())
         localeFamily = scriptFontMap[USCRIPT_HANGUL];
+    else if (locale == icu::Locale::getTraditionalChinese())
+        localeFamily = scriptFontMap[USCRIPT_TRADITIONAL_HAN];
     else {
-        // Use Simplified Chinese font for all other locales including
-        // Traditional Chinese because Simsun (SC font) has a wider
-        // coverage (covering both SC and TC) than PMingLiu (TC font).
-        // Note that |fontMap| does not have a separate entry for
-        // USCRIPT_TRADITIONAL_HAN for that reason.
-        // This also speeds up the TC version of Chrome when rendering SC
-        // pages.
+        // For other locales, use the simplified Chinese font for Han.
         localeFamily = scriptFontMap[USCRIPT_SIMPLIFIED_HAN];
     }
     if (localeFamily)
@@ -270,16 +267,27 @@ const UChar* getFallbackFamily(const UChar* characters,
     if (script == USCRIPT_COMMON)
         script = getScriptBasedOnUnicodeBlock(ucs4);
 
-    // Another lame work-around to cover non-BMP characters.
     const UChar* family = getFontFamilyForScript(script, generic);
-    if (!family) {
+    // Another lame work-around to cover non-BMP characters.
+    // If the font family for script is not found or the character is
+    // not in BMP (> U+FFFF), we resort to the hard-coded list of
+    // fallback fonts for now.
+    if (!family || ucs4 > 0xFFFF) {
         int plane = ucs4 >> 16;
         switch (plane) {
         case 1:
             family = L"code2001";
             break;
         case 2:
-            family = L"simsun-extb";
+            // Use a Traditional Chinese ExtB font if in Traditional Chinese locale.
+            // Otherwise, use a Simplified Chinese ExtB font. Windows Japanese
+            // fonts do support a small subset of ExtB (that are included in JIS X 0213),
+            // but its coverage is rather sparse.
+            // Eventually, this should be controlled by lang/xml:lang.
+            if (icu::Locale::getDefault() == icu::Locale::getTraditionalChinese())
+              family = L"pmingliu-extb";
+            else
+              family = L"simsun-extb";
             break;
         default:
             family = L"lucida sans unicode";

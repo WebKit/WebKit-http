@@ -55,10 +55,12 @@ public:
 
     virtual IntRect clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer);
     virtual void computeRectForRepaint(RenderBoxModelObject* repaintContainer, IntRect&, bool fixed = false);
-    virtual IntRect outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer) const;
+    virtual IntRect outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer, IntPoint*) const;
 
     virtual void absoluteRects(Vector<IntRect>& rects, int tx, int ty);
     virtual void absoluteQuads(Vector<FloatQuad>&);
+
+    virtual void destroy();
 
     virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&) const;
 

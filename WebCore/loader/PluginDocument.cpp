@@ -34,6 +34,7 @@
 #include "HTMLNames.h"
 #include "MainResourceLoader.h"
 #include "Page.h"
+#include "RenderEmbeddedObject.h"
 #include "RenderWidget.h"
 #include "SegmentedString.h"
 #include "Settings.h"
@@ -47,6 +48,7 @@ using namespace HTMLNames;
 class PluginTokenizer : public Tokenizer {
 public:
     PluginTokenizer(Document* doc) : m_doc(doc), m_embedElement(0) {}
+    static Widget* pluginWidgetFromDocument(Document* doc);
         
 private:
     virtual void write(const SegmentedString&, bool appendData);
@@ -62,7 +64,21 @@ private:
     Document* m_doc;
     HTMLEmbedElement* m_embedElement;
 };
-    
+
+Widget* PluginTokenizer::pluginWidgetFromDocument(Document* doc)
+{
+    ASSERT(doc);
+    RefPtr<Element> body = doc->body();
+    if (body) {
+        RefPtr<Node> node = body->firstChild();
+        if (node && node->renderer()) {
+            ASSERT(node->renderer()->isEmbeddedObject());
+            return toRenderEmbeddedObject(node->renderer())->widget();
+        }
+    }
+    return 0;
+}
+
 void PluginTokenizer::write(const SegmentedString&, bool)
 {
     ASSERT_NOT_REACHED();
@@ -104,7 +120,7 @@ bool PluginTokenizer::writeRawData(const char*, int)
 
     if (Frame* frame = m_doc->frame()) {
         Settings* settings = frame->settings();
-        if (settings && settings->arePluginsEnabled()) {
+        if (settings && frame->loader()->allowPlugins(NotAboutToInstantiatePlugin)) {
             m_doc->updateLayout();
 
             if (RenderWidget* renderer = toRenderWidget(m_embedElement->renderer())) {
@@ -146,5 +162,19 @@ Tokenizer* PluginDocument::createTokenizer()
 {
     return new PluginTokenizer(this);
 }
-    
+
+Widget* PluginDocument::pluginWidget()
+{
+    return PluginTokenizer::pluginWidgetFromDocument(this);
+}
+
+Node* PluginDocument::pluginNode()
+{
+    RefPtr<Element> body_element = body();
+    if (body_element)
+        return body_element->firstChild();
+
+    return 0;
+}
+
 }

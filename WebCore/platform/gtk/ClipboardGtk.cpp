@@ -18,16 +18,16 @@
 #include "ClipboardGtk.h"
 
 #include "CachedImage.h"
-#include "CString.h"
 #include "Editor.h"
 #include "Element.h"
 #include "FileList.h"
 #include "Frame.h"
-#include "markup.h"
+#include "Image.h"
 #include "NotImplemented.h"
 #include "RenderImage.h"
 #include "StringHash.h"
-
+#include "markup.h"
+#include <wtf/text/CString.h>
 #include <gtk/gtk.h>
 
 namespace WebCore {

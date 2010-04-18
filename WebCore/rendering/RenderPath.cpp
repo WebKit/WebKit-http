@@ -31,12 +31,10 @@
 #include "GraphicsContext.h"
 #include "PointerEventsHitRules.h"
 #include "RenderSVGContainer.h"
+#include "RenderSVGResourceMarker.h"
 #include "StrokeStyleApplier.h"
 #include "SVGPaintServer.h"
 #include "SVGRenderSupport.h"
-#include "SVGResourceFilter.h"
-#include "SVGResourceMarker.h"
-#include "SVGResourceMasker.h"
 #include "SVGStyledTransformableElement.h"
 #include "SVGTransformList.h"
 #include "SVGURIReference.h"
@@ -66,17 +64,10 @@ private:
 
 RenderPath::RenderPath(SVGStyledTransformableElement* node)
     : RenderSVGModelObject(node)
+    , m_needsBoundariesUpdate(false) // default is false, as this is only used when a RenderSVGResource tells us that the boundaries need to be recached
+    , m_needsPathUpdate(true) // default is true, so we grab a Path object once from SVGStyledTransformableElement
+    , m_needsTransformUpdate(true) // default is true, so we grab a AffineTransform object once from SVGStyledTransformableElement
 {
-}
-
-const AffineTransform& RenderPath::localToParentTransform() const
-{
-    return m_localTransform;
-}
-
-AffineTransform RenderPath::localTransform() const
-{
-    return m_localTransform;
 }
 
 bool RenderPath::fillContains(const FloatPoint& point, bool requiresFill) const
@@ -173,22 +164,34 @@ FloatRect RenderPath::repaintRectInLocalCoordinates() const
     return m_cachedLocalRepaintRect;
 }
 
-void RenderPath::setPath(const Path& newPath)
-{
-    m_path = newPath;
-    m_cachedLocalRepaintRect = FloatRect();
-    m_cachedLocalStrokeBBox = FloatRect();
-    m_cachedLocalFillBBox = FloatRect();
-    m_cachedLocalMarkerBBox = FloatRect();
-}
-
 void RenderPath::layout()
 {
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout() && selfNeedsLayout());
-
     SVGStyledTransformableElement* element = static_cast<SVGStyledTransformableElement*>(node());
-    m_localTransform = element->animatedLocalTransform();
-    setPath(element->toPathData());
+
+    // We need to update the Path object whenever the underlying SVGStyledTransformableElement uses relative values
+    // as the viewport size may have changed. It would be nice to optimize this to detect these changes, and only
+    // update when needed, even when using relative values.
+    if (!m_needsPathUpdate && element->hasRelativeValues())
+        m_needsPathUpdate = true;
+
+    bool needsUpdate = m_needsPathUpdate || m_needsTransformUpdate || m_needsBoundariesUpdate;
+
+    if (m_needsBoundariesUpdate)
+        m_needsBoundariesUpdate = false;
+
+    if (m_needsPathUpdate) {
+        m_path = element->toPathData();
+        m_needsPathUpdate = false;
+    }
+
+    if (m_needsTransformUpdate) {
+        m_localTransform = element->animatedLocalTransform();
+        m_needsTransformUpdate = false;
+    }
+
+    if (needsUpdate)
+        invalidateCachedBoundaries();
 
     repainter.repaintAfterLayout();
     setNeedsLayout(false);
@@ -225,29 +228,32 @@ void RenderPath::paint(PaintInfo& paintInfo, int, int)
         return;
 
     PaintInfo childPaintInfo(paintInfo);
-    childPaintInfo.context->save();
-    applyTransformToPaintInfo(childPaintInfo, m_localTransform);
-    SVGResourceFilter* filter = 0;
+    bool drawsOutline = style()->outlineWidth() && (childPaintInfo.phase == PaintPhaseOutline || childPaintInfo.phase == PaintPhaseSelfOutline);
+    if (drawsOutline || childPaintInfo.phase == PaintPhaseForeground) {
+        childPaintInfo.context->save();
+        applyTransformToPaintInfo(childPaintInfo, m_localTransform);
+        SVGResourceFilter* filter = 0;
 
-    if (childPaintInfo.phase == PaintPhaseForeground) {
-        PaintInfo savedInfo(childPaintInfo);
+        if (childPaintInfo.phase == PaintPhaseForeground) {
+            PaintInfo savedInfo(childPaintInfo);
 
-        if (prepareToRenderSVGContent(this, childPaintInfo, boundingBox, filter)) {
-            if (style()->svgStyle()->shapeRendering() == SR_CRISPEDGES)
-                childPaintInfo.context->setShouldAntialias(false);
-            fillAndStrokePath(m_path, childPaintInfo.context, style(), this);
+            if (prepareToRenderSVGContent(this, childPaintInfo, boundingBox, filter)) {
+                if (style()->svgStyle()->shapeRendering() == SR_CRISPEDGES)
+                    childPaintInfo.context->setShouldAntialias(false);
+                fillAndStrokePath(m_path, childPaintInfo.context, style(), this);
 
-            if (static_cast<SVGStyledElement*>(node())->supportsMarkers())
-                m_markerLayoutInfo.drawMarkers(childPaintInfo);
+                if (static_cast<SVGStyledElement*>(node())->supportsMarkers())
+                    m_markerLayoutInfo.drawMarkers(childPaintInfo);
+            }
+            finishRenderSVGContent(this, childPaintInfo, filter, savedInfo.context);
         }
-        finishRenderSVGContent(this, childPaintInfo, filter, savedInfo.context);
-    }
 
-    if ((childPaintInfo.phase == PaintPhaseOutline || childPaintInfo.phase == PaintPhaseSelfOutline) && style()->outlineWidth())
-        paintOutline(childPaintInfo.context, static_cast<int>(boundingBox.x()), static_cast<int>(boundingBox.y()),
-            static_cast<int>(boundingBox.width()), static_cast<int>(boundingBox.height()), style());
-    
-    childPaintInfo.context->restore();
+        if (drawsOutline)
+            paintOutline(childPaintInfo.context, static_cast<int>(boundingBox.x()), static_cast<int>(boundingBox.y()),
+                static_cast<int>(boundingBox.width()), static_cast<int>(boundingBox.height()));
+        
+        childPaintInfo.context->restore();
+    }
 }
 
 // This method is called from inside paintOutline() since we call paintOutline()
@@ -295,34 +301,48 @@ void RenderPath::calculateMarkerBoundsIfNeeded() const
         return;
 
     const SVGRenderStyle* svgStyle = style()->svgStyle();
-    AtomicString startMarkerId(svgStyle->startMarker());
-    AtomicString midMarkerId(svgStyle->midMarker());
-    AtomicString endMarkerId(svgStyle->endMarker());
+    AtomicString startMarkerId(svgStyle->markerStartResource());
+    AtomicString midMarkerId(svgStyle->markerMidResource());
+    AtomicString endMarkerId(svgStyle->markerEndResource());
 
-    SVGResourceMarker* startMarker = getMarkerById(doc, startMarkerId, this);
-    SVGResourceMarker* midMarker = getMarkerById(doc, midMarkerId, this);
-    SVGResourceMarker* endMarker = getMarkerById(doc, endMarkerId, this);
+    RenderSVGResourceMarker* startMarker = getRenderSVGResourceById<RenderSVGResourceMarker>(doc, startMarkerId);
+    RenderSVGResourceMarker* midMarker = getRenderSVGResourceById<RenderSVGResourceMarker>(doc, midMarkerId);
+    RenderSVGResourceMarker* endMarker = getRenderSVGResourceById<RenderSVGResourceMarker>(doc, endMarkerId);
 
     if (!startMarker && !startMarkerId.isEmpty())
         svgElement->document()->accessSVGExtensions()->addPendingResource(startMarkerId, styledElement);
     else if (startMarker)
-        startMarker->addClient(styledElement);
+        startMarker->addClient(this);
 
     if (!midMarker && !midMarkerId.isEmpty())
         svgElement->document()->accessSVGExtensions()->addPendingResource(midMarkerId, styledElement);
     else if (midMarker)
-        midMarker->addClient(styledElement);
+        midMarker->addClient(this);
 
     if (!endMarker && !endMarkerId.isEmpty())
         svgElement->document()->accessSVGExtensions()->addPendingResource(endMarkerId, styledElement);
     else if (endMarker)
-        endMarker->addClient(styledElement);
+        endMarker->addClient(this);
 
     if (!startMarker && !midMarker && !endMarker)
         return;
 
     float strokeWidth = SVGRenderStyle::cssPrimitiveToLength(this, svgStyle->strokeWidth(), 1.0f);
     m_cachedLocalMarkerBBox = m_markerLayoutInfo.calculateBoundaries(startMarker, midMarker, endMarker, strokeWidth, m_path);
+}
+
+void RenderPath::invalidateCachedBoundaries()
+{
+    m_cachedLocalRepaintRect = FloatRect();
+    m_cachedLocalStrokeBBox = FloatRect();
+    m_cachedLocalFillBBox = FloatRect();
+    m_cachedLocalMarkerBBox = FloatRect();
+}
+
+void RenderPath::styleWillChange(StyleDifference diff, const RenderStyle* newStyle)
+{
+    invalidateCachedBoundaries();
+    RenderSVGModelObject::styleWillChange(diff, newStyle);
 }
 
 }

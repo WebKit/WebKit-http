@@ -30,7 +30,6 @@
 #include "GraphicsContext.h"
 
 #include "AffineTransform.h"
-#include "CString.h"
 #include "Color.h"
 #include "Font.h"
 #include "FontData.h"
@@ -38,6 +37,7 @@
 #include "NotImplemented.h"
 #include "Path.h"
 #include "Pen.h"
+#include <wtf/text/CString.h>
 #include <Bitmap.h>
 #include <GraphicsDefs.h>
 #include <Region.h>

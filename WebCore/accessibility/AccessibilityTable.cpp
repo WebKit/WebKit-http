@@ -94,6 +94,11 @@ bool AccessibilityTable::isTableExposableThroughAccessibility()
     Node* tableNode = table->node();
     if (!tableNode || !tableNode->hasTagName(tableTag))
         return false;
+
+    // Gtk+ ATs expect all tables to be exposed as tables.
+#if PLATFORM(GTK)
+    return true;
+#endif
     
     // if there is a caption element, summary, THEAD, or TFOOT section, it's most certainly a data table
     HTMLTableElement* tableElement = static_cast<HTMLTableElement*>(tableNode);
@@ -193,10 +198,9 @@ bool AccessibilityTable::isTableExposableThroughAccessibility()
     
 void AccessibilityTable::clearChildren()
 {
-    m_children.clear();
+    AccessibilityRenderObject::clearChildren();
     m_rows.clear();
     m_columns.clear();
-    m_haveChildren = false;
 }
 
 void AccessibilityTable::addChildren()
@@ -251,7 +255,12 @@ void AccessibilityTable::addChildren()
                 
                 row->setRowIndex((int)m_rows.size());        
                 m_rows.append(row);
-                m_children.append(row);
+                if (!row->accessibilityIsIgnored())
+                    m_children.append(row);
+#if PLATFORM(GTK)
+                else
+                    m_children.append(row->children());
+#endif
                 appendedRows.add(row);
             }
         }
@@ -266,11 +275,12 @@ void AccessibilityTable::addChildren()
         column->setColumnIndex((int)i);
         column->setParentTable(this);
         m_columns.append(column);
-        m_children.append(column);
+        if (!column->accessibilityIsIgnored())
+            m_children.append(column);
     }
     
     AccessibilityObject* headerContainerObject = headerContainer();
-    if (headerContainerObject)
+    if (headerContainerObject && !headerContainerObject->accessibilityIsIgnored())
         m_children.append(headerContainerObject);
 }
     
@@ -287,17 +297,15 @@ AccessibilityObject* AccessibilityTable::headerContainer()
 
 AccessibilityObject::AccessibilityChildrenVector& AccessibilityTable::columns()
 {
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
         
     return m_columns;
 }
 
 AccessibilityObject::AccessibilityChildrenVector& AccessibilityTable::rows()
 {
-    if (!hasChildren())
-        addChildren();
-
+    updateChildrenIfNecessary();
+    
     return m_rows;
 }
     
@@ -306,8 +314,7 @@ void AccessibilityTable::rowHeaders(AccessibilityChildrenVector& headers)
     if (!m_renderer)
         return;
     
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     unsigned rowCount = m_rows.size();
     for (unsigned k = 0; k < rowCount; ++k) {
@@ -323,8 +330,7 @@ void AccessibilityTable::columnHeaders(AccessibilityChildrenVector& headers)
     if (!m_renderer)
         return;
     
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     unsigned colCount = m_columns.size();
     for (unsigned k = 0; k < colCount; ++k) {
@@ -340,8 +346,7 @@ void AccessibilityTable::cells(AccessibilityObject::AccessibilityChildrenVector&
     if (!m_renderer)
         return;
     
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     int numRows = m_rows.size();
     for (int row = 0; row < numRows; ++row) {
@@ -352,16 +357,14 @@ void AccessibilityTable::cells(AccessibilityObject::AccessibilityChildrenVector&
     
 unsigned AccessibilityTable::columnCount()
 {
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     return m_columns.size();    
 }
     
 unsigned AccessibilityTable::rowCount()
 {
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     return m_rows.size();
 }
@@ -371,8 +374,7 @@ AccessibilityTableCell* AccessibilityTable::cellForColumnAndRow(unsigned column,
     if (!m_renderer || !m_renderer->isTable())
         return 0;
     
-    if (!hasChildren())
-        addChildren();
+    updateChildrenIfNecessary();
     
     RenderTable* table = toRenderTable(m_renderer);
     RenderTableSection* tableSection = table->header();
@@ -448,9 +450,15 @@ AccessibilityRole AccessibilityTable::roleValue() const
     
 bool AccessibilityTable::accessibilityIsIgnored() const
 {
+    AccessibilityObjectInclusion decision = accessibilityIsIgnoredBase();
+    if (decision == IncludeObject)
+        return false;
+    if (decision == IgnoreObject)
+        return true;
+    
     if (!isDataTable())
         return AccessibilityRenderObject::accessibilityIsIgnored();
-    
+        
     return false;
 }
     

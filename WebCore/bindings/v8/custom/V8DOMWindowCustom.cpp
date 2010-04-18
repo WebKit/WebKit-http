@@ -31,7 +31,6 @@
 #include "config.h"
 #include "V8DOMWindow.h"
 
-#include "Base64.h"
 #include "Chrome.h"
 #include "Database.h"
 #include "DOMTimer.h"
@@ -55,7 +54,13 @@
 #include "V8BindingDOMWindow.h"
 #include "V8BindingState.h"
 #include "V8CustomEventListener.h"
+#include "V8Database.h"
+#include "V8DatabaseCallback.h"
+#include "V8GCForContextDispose.h"
+#include "V8HTMLAudioElementConstructor.h"
 #include "V8HTMLCollection.h"
+#include "V8HTMLImageElementConstructor.h"
+#include "V8HTMLOptionElementConstructor.h"
 #include "V8MessagePortCustom.h"
 #include "V8Node.h"
 #include "V8Proxy.h"
@@ -135,38 +140,14 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
         id = DOMTimer::install(scriptContext, new ScheduledAction(V8Proxy::context(imp->frame()), functionString), timeout, singleShot);
     }
 
+    // Try to do the idle notification before the timeout expires to get better
+    // use of any idle time. Aim for the middle of the interval for simplicity.
+    if (timeout > 0) {
+        double maximumFireInterval = static_cast<double>(timeout) / 1000 / 2;
+        V8GCForContextDispose::instance().notifyIdleSooner(maximumFireInterval);
+    }
+
     return v8::Integer::New(id);
-}
-
-static bool isAscii(const String& str)
-{
-    for (size_t i = 0; i < str.length(); i++) {
-        if (str[i] > 0xFF)
-            return false;
-    }
-    return true;
-}
-
-static v8::Handle<v8::Value> convertBase64(const String& str, bool encode)
-{
-    if (!isAscii(str)) {
-        V8Proxy::setDOMException(INVALID_CHARACTER_ERR);
-        return notHandledByInterceptor();
-    }
-
-    Vector<char> inputCharacters(str.length());
-    for (size_t i = 0; i < str.length(); i++)
-        inputCharacters[i] = static_cast<char>(str[i]);
-    Vector<char> outputCharacters;
-
-    if (encode)
-        base64Encode(inputCharacters, outputCharacters);
-    else {
-        if (!base64Decode(inputCharacters, outputCharacters))
-            return throwError("Cannot decode base64", V8Proxy::GeneralError);
-    }
-
-    return v8String(String(outputCharacters.data(), outputCharacters.size()));
 }
 
 v8::Handle<v8::Value> V8DOMWindow::eventAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
@@ -250,7 +231,7 @@ void V8DOMWindow::openerAccessorSetter(v8::Local<v8::String> name, v8::Local<v8:
 v8::Handle<v8::Value> V8DOMWindow::AudioAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
-    return V8DOMWrapper::getConstructor(V8ClassIndex::AUDIO, window);
+    return V8DOMWrapper::getConstructor(&V8HTMLAudioElementConstructor::info, window);
 }
 
 #endif
@@ -258,13 +239,13 @@ v8::Handle<v8::Value> V8DOMWindow::AudioAccessorGetter(v8::Local<v8::String> nam
 v8::Handle<v8::Value> V8DOMWindow::ImageAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
-    return V8DOMWrapper::getConstructor(V8ClassIndex::IMAGE, window);
+    return V8DOMWrapper::getConstructor(&V8HTMLImageElementConstructor::info, window);
 }
 
 v8::Handle<v8::Value> V8DOMWindow::OptionAccessorGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
-    return V8DOMWrapper::getConstructor(V8ClassIndex::OPTION, window);
+    return V8DOMWrapper::getConstructor(&V8HTMLOptionElementConstructor::info, window);
 }
 
 v8::Handle<v8::Value> V8DOMWindow::addEventListenerCallback(const v8::Arguments& args)
@@ -289,11 +270,11 @@ v8::Handle<v8::Value> V8DOMWindow::addEventListenerCallback(const v8::Arguments&
     if (!proxy)
         return v8::Undefined();
 
-    RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(proxy, args[1], false, ListenerFindOrCreate);
+    RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOrCreate);
 
     if (listener) {
         imp->addEventListener(eventType, listener, useCapture);
-        createHiddenDependency(args.Holder(), args[1], cacheIndex);
+        createHiddenDependency(args.Holder(), args[1], eventListenerCacheIndex);
     }
 
     return v8::Undefined();
@@ -321,11 +302,11 @@ v8::Handle<v8::Value> V8DOMWindow::removeEventListenerCallback(const v8::Argumen
     if (!proxy)
         return v8::Undefined();
 
-    RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(proxy, args[1], false, ListenerFindOnly);
+    RefPtr<EventListener> listener = V8DOMWrapper::getEventListener(args[1], false, ListenerFindOnly);
 
     if (listener) {
         imp->removeEventListener(eventType, listener.get(), useCapture);
-        removeHiddenDependency(args.Holder(), args[1], cacheIndex);
+        removeHiddenDependency(args.Holder(), args[1], eventListenerCacheIndex);
     }
 
     return v8::Undefined();
@@ -339,8 +320,11 @@ v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args
     DOMWindow* source = V8Proxy::retrieveFrameForCallingContext()->domWindow();
     ASSERT(source->frame());
 
-    v8::TryCatch tryCatch;
-    RefPtr<SerializedScriptValue> message = SerializedScriptValue::create(args[0]);
+    bool didThrow = false;
+    RefPtr<SerializedScriptValue> message = SerializedScriptValue::create(args[0], didThrow);
+    if (didThrow)
+        return v8::Undefined();
+
     MessagePortArray portArray;
     String targetOrigin;
 
@@ -348,6 +332,7 @@ v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args
     //   postMessage(message, port, targetOrigin);
     // or
     //   postMessage(message, targetOrigin);
+    v8::TryCatch tryCatch;
     if (args.Length() > 2) {
         if (!getMessagePortArray(args[1], portArray))
             return v8::Undefined();
@@ -362,44 +347,6 @@ v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args
     ExceptionCode ec = 0;
     window->postMessage(message.release(), &portArray, targetOrigin, source, ec);
     return throwError(ec);
-}
-
-v8::Handle<v8::Value> V8DOMWindow::atobCallback(const v8::Arguments& args)
-{
-    INC_STATS("DOM.DOMWindow.atob()");
-
-    if (args[0]->IsNull())
-        return v8String("");
-    String str = toWebCoreString(args[0]);
-
-    DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
-
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
-        return v8::Undefined();
-
-    if (args.Length() < 1)
-        return throwError("Not enough arguments", V8Proxy::SyntaxError);
-
-    return convertBase64(str, false);
-}
-
-v8::Handle<v8::Value> V8DOMWindow::btoaCallback(const v8::Arguments& args)
-{
-    INC_STATS("DOM.DOMWindow.btoa()");
-
-    if (args[0]->IsNull())
-        return v8String("");
-    String str = toWebCoreString(args[0]);
-
-    DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
-
-    if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
-        return v8::Undefined();
-
-    if (args.Length() < 1)
-        return throwError("Not enough arguments", V8Proxy::SyntaxError);
-
-    return convertBase64(str, true);
 }
 
 // FIXME(fqian): returning string is cheating, and we should
@@ -768,39 +715,35 @@ v8::Handle<v8::Value> V8DOMWindow::setIntervalCallback(const v8::Arguments& args
     return WindowSetTimeoutImpl(args, false);
 }
 
-
-void ClearTimeoutImpl(const v8::Arguments& args)
+v8::Handle<v8::Value> V8DOMWindow::openDatabaseCallback(const v8::Arguments& args)
 {
-    int handle = toInt32(args[0]);
+    INC_STATS("DOM.DOMWindow.openDatabase");
+    if (args.Length() < 4)
+        return v8::Undefined();
 
-    v8::Handle<v8::Object> holder = args.Holder();
-    DOMWindow* imp = V8DOMWindow::toNative(holder);
+    DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
     if (!V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), true))
-        return;
-    ScriptExecutionContext* context = static_cast<ScriptExecutionContext*>(imp->document());
-    if (!context)
-        return;
-    DOMTimer::removeById(context, handle);
+        return v8::Undefined();
+
+    ExceptionCode ec = 0;
+    String name = toWebCoreString(args[0]);
+    String version = toWebCoreString(args[1]);
+    String displayName = toWebCoreString(args[2]);
+    unsigned long estimatedSize = args[3]->IntegerValue();
+    RefPtr<DatabaseCallback> creationCallback;
+    if ((args.Length() >= 5) && args[4]->IsObject())
+        creationCallback = V8DatabaseCallback::create(args[4], imp->frame());
+
+    v8::Handle<v8::Value> result = toV8(imp->openDatabase(name, version, displayName, estimatedSize, creationCallback.release(), ec));
+    if (!ec && result.IsEmpty())
+        ec = SECURITY_ERR;
+
+    V8Proxy::setDOMException(ec);
+    return result;
 }
 
-
-v8::Handle<v8::Value> V8DOMWindow::clearTimeoutCallback(const v8::Arguments& args)
+bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
 {
-    INC_STATS("DOM.DOMWindow.clearTimeout");
-    ClearTimeoutImpl(args);
-    return v8::Undefined();
-}
-
-v8::Handle<v8::Value> V8DOMWindow::clearIntervalCallback(const v8::Arguments& args)
-{
-    INC_STATS("DOM.DOMWindow.clearInterval");
-    ClearTimeoutImpl(args);
-    return v8::Undefined();
-}
-
-bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value> data)
-{
-    ASSERT(V8ClassIndex::FromInt(data->Int32Value()) == V8ClassIndex::DOMWINDOW);
     v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), host);
     if (window.IsEmpty())
         return false;  // the frame is gone.
@@ -824,9 +767,8 @@ bool V8DOMWindow::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::V
     return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), target, false);
 }
 
-bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value> data)
+bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
 {
-    ASSERT(V8ClassIndex::FromInt(data->Int32Value()) == V8ClassIndex::DOMWINDOW);
     v8::Handle<v8::Object> window = V8DOMWrapper::lookupDOMWrapper(V8DOMWindow::GetTemplate(), host);
     if (window.IsEmpty())
         return false;

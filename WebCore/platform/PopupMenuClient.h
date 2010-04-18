@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  * Copyright (C) 2006 Apple Computer, Inc.
  *
  * This library is free software; you can redistribute it and/or
@@ -40,6 +41,7 @@ public:
 
     virtual String itemText(unsigned listIndex) const = 0;
     virtual String itemToolTip(unsigned listIndex) const = 0;
+    virtual String itemAccessibilityText(unsigned listIndex) const = 0;
     virtual bool itemIsEnabled(unsigned listIndex) const = 0;
     virtual PopupMenuStyle itemStyle(unsigned listIndex) const = 0;
     virtual PopupMenuStyle menuStyle() const = 0;
@@ -62,6 +64,15 @@ public:
     
     virtual PassRefPtr<Scrollbar> createScrollbar(ScrollbarClient*, ScrollbarOrientation, ScrollbarControlSize) = 0;
 };
+
+#if ENABLE(NO_LISTBOX_RENDERING)
+class ListPopupMenuClient : public PopupMenuClient {
+public:
+    virtual void listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow = true) = 0;
+    virtual bool multiple() = 0;
+};
+#endif
+
 
 }
 

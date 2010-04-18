@@ -73,9 +73,6 @@ public:
     void addNodesToSearchResult(const String& nodeIds);
     long pushNodeByPathToFrontend(const String& path);
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-    JavaScriptCallFrame* currentCallFrame() const;
-#endif
 #if ENABLE(DATABASE)
     Database* databaseForId(long databaseId);
     void selectDatabase(Database* database);
@@ -83,21 +80,31 @@ public:
 #if ENABLE(DOM_STORAGE)
     void selectDOMStorage(Storage* storage);
 #endif
+#if ENABLE(WORKERS)
+    long nextWorkerId();
+    void didCreateWorker(long id, const String& url, bool isSharedWorker);
+    void didDestroyWorker(long id);
+#endif
     void reportDidDispatchOnInjectedScript(long callId, SerializedScriptValue* result, bool isException);
 
+    pair<long, ScriptObject> injectScript(const String& source, ScriptState*);
     InjectedScript injectedScriptFor(ScriptState*);
     InjectedScript injectedScriptForId(long);
     void discardInjectedScripts();
     void releaseWrapperObjectGroup(long injectedScriptId, const String& objectGroup);
 
+    static bool canAccessInspectedWindow(ScriptState*);
+
 private:
     InjectedScriptHost(InspectorController* inspectorController);
     InspectorDOMAgent* inspectorDOMAgent();
     InspectorFrontend* inspectorFrontend();
+    ScriptObject createInjectedScript(const String& source, ScriptState* scriptState, long id);
 
     InspectorController* m_inspectorController;
     String m_injectedScriptSource;
     long m_nextInjectedScriptId;
+    long m_lastWorkerId;
     typedef HashMap<long, InjectedScript> IdToInjectedScriptMap;
     IdToInjectedScriptMap m_idToInjectedScript;
 };

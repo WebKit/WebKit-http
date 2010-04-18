@@ -31,20 +31,23 @@
 #include "config.h"
 
 #include "ScriptProfiler.h"
+#include "ScriptString.h"
+
+#include <v8-profiler.h>
 
 namespace WebCore {
 
 void ScriptProfiler::start(ScriptState* state, const String& title)
 {
-    v8::HandleScope scope;
-    v8::Context::Scope contextScope(v8::Context::GetCurrent());
-    v8::V8::ResumeProfiler();
+    v8::HandleScope hs;
+    v8::CpuProfiler::StartProfiling(v8String(title));
 }
 
 PassRefPtr<ScriptProfile> ScriptProfiler::stop(ScriptState* state, const String& title)
 {
-    v8::V8::PauseProfiler();
-    return 0;
+    v8::HandleScope hs;
+    const v8::CpuProfile* profile = v8::CpuProfiler::StopProfiling(v8String(title));
+    return profile ? ScriptProfile::create(profile) : 0;
 }
 
 } // namespace WebCore

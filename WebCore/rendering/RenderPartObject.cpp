@@ -35,6 +35,7 @@
 #include "Page.h"
 #include "RenderView.h"
 #include "RenderWidgetProtector.h"
+#include "Settings.h"
 #include "Text.h"
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -50,12 +51,75 @@ RenderPartObject::RenderPartObject(Element* element)
 {
 }
 
+bool RenderPartObject::flattenFrame()
+{
+    if (!node() || !node()->hasTagName(iframeTag))
+        return false;
+
+    HTMLIFrameElement* element = static_cast<HTMLIFrameElement*>(node());
+    bool isScrollable = element->scrollingMode() != ScrollbarAlwaysOff;
+
+    if (!isScrollable && style()->width().isFixed()
+        && style()->height().isFixed())
+        return false;
+
+    Frame* frame = element->document()->frame();
+    bool enabled = frame && frame->settings()->frameFlatteningEnabled();
+
+    if (!enabled || !frame->page())
+        return false;
+
+    FrameView* view = frame->page()->mainFrame()->view();
+    if (!view)
+        return false;
+
+    // Do not flatten offscreen inner frames during frame flattening.
+    return absoluteBoundingBoxRect().intersects(IntRect(IntPoint(0, 0), view->contentsSize()));
+}
+
+void RenderPartObject::calcHeight()
+{
+    RenderPart::calcHeight();
+    if (!flattenFrame())
+         return;
+
+    HTMLIFrameElement* frame = static_cast<HTMLIFrameElement*>(node());
+    bool isScrollable = frame->scrollingMode() != ScrollbarAlwaysOff;
+
+    if (isScrollable || !style()->height().isFixed()) {
+        FrameView* view = static_cast<FrameView*>(widget());
+        int border = borderTop() + borderBottom();
+        setHeight(max(height(), view->contentsHeight() + border));
+    }
+}
+
+void RenderPartObject::calcWidth()
+{
+    RenderPart::calcWidth();
+    if (!flattenFrame())
+        return;
+
+    HTMLIFrameElement* frame = static_cast<HTMLIFrameElement*>(node());
+    bool isScrollable = frame->scrollingMode() != ScrollbarAlwaysOff;
+
+    if (isScrollable || !style()->width().isFixed()) {
+        FrameView* view = static_cast<FrameView*>(widget());
+        int border = borderLeft() + borderRight();
+        setWidth(max(width(), view->contentsWidth() + border));
+    }
+}
+
 void RenderPartObject::layout()
 {
     ASSERT(needsLayout());
 
-    calcWidth();
-    calcHeight();
+    RenderPart::calcWidth();
+    RenderPart::calcHeight();
+
+    if (flattenFrame()) {
+        layoutWithFlattening(style()->width().isFixed(), style()->height().isFixed());
+        return;
+    }
 
     RenderPart::layout();
 

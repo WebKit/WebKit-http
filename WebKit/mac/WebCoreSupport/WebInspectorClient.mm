@@ -41,54 +41,102 @@
 #import <WebCore/Page.h>
 #import <WebKit/DOMExtensions.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/PassOwnPtr.h>
 
 using namespace WebCore;
-
-static const char* const inspectorStartsAttachedName = "inspectorStartsAttached";
 
 @interface WebInspectorWindowController : NSWindowController <NSWindowDelegate> {
 @private
     WebView *_inspectedWebView;
     WebView *_webView;
-    WebNodeHighlight *_currentHighlight;
+    WebInspectorFrontendClient* _frontendClient;
     BOOL _attachedToInspectedWebView;
     BOOL _shouldAttach;
     BOOL _visible;
-    BOOL _movingWindows;
+    BOOL _destroyingInspectorView;
 }
 - (id)initWithInspectedWebView:(WebView *)webView;
-- (BOOL)inspectorVisible;
 - (WebView *)webView;
 - (void)attach;
 - (void)detach;
+- (BOOL)attached;
+- (void)setFrontendClient:(WebInspectorFrontendClient*)frontendClient;
 - (void)setAttachedWindowHeight:(unsigned)height;
+- (void)destroyInspectorView;
+@end
+
+#pragma mark -
+
+@interface WebNodeHighlighter : NSObject {
+@private
+    WebView *_inspectedWebView;
+    WebNodeHighlight *_currentHighlight;
+}
+- (id)initWithInspectedWebView:(WebView *)webView;
 - (void)highlightNode:(DOMNode *)node;
 - (void)hideHighlight;
 @end
 
 #pragma mark -
 
+
 WebInspectorClient::WebInspectorClient(WebView *webView)
 : m_webView(webView)
+, m_highlighter(AdoptNS, [[WebNodeHighlighter alloc] initWithInspectedWebView:webView])
 {
 }
 
 void WebInspectorClient::inspectorDestroyed()
 {
-    [[m_windowController.get() webView] close];
     delete this;
 }
 
-Page* WebInspectorClient::createPage()
+void WebInspectorClient::openInspectorFrontend(InspectorController* inspectorController)
 {
-    if (m_windowController)
-        [[m_windowController.get() webView] close];
-    m_windowController.adoptNS([[WebInspectorWindowController alloc] initWithInspectedWebView:m_webView]);
+    RetainPtr<WebInspectorWindowController> windowController(AdoptNS, [[WebInspectorWindowController alloc] initWithInspectedWebView:m_webView]);
+    Page* frontendPage = core([windowController.get() webView]);
 
-    return core([m_windowController.get() webView]);
+    frontendPage->inspectorController()->setInspectorFrontendClient(new WebInspectorFrontendClient(m_webView, windowController.get(), inspectorController, frontendPage));
 }
 
-String WebInspectorClient::localizedStringsURL()
+void WebInspectorClient::highlight(Node* node)
+{
+    [m_highlighter.get() highlightNode:kit(node)];
+}
+
+void WebInspectorClient::hideHighlight()
+{
+    [m_highlighter.get() hideHighlight];
+}
+
+WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView, WebInspectorWindowController* windowController, InspectorController* inspectorController, Page* frontendPage)
+    : InspectorFrontendClientLocal(inspectorController,  frontendPage)
+    , m_inspectedWebView(inspectedWebView)
+    , m_windowController(windowController)
+{
+    [windowController setFrontendClient:this];
+}
+
+void WebInspectorFrontendClient::frontendLoaded()
+{
+    [m_windowController.get() showWindow:nil];
+    if ([m_windowController.get() attached])
+        restoreAttachedWindowHeight();
+
+    InspectorFrontendClientLocal::frontendLoaded();
+
+    WebFrame *frame = [m_inspectedWebView mainFrame];
+    
+    WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(m_inspectedWebView);
+    if (implementations->didClearInspectorWindowObjectForFrameFunc)
+        CallFrameLoadDelegate(implementations->didClearInspectorWindowObjectForFrameFunc, m_inspectedWebView,
+                              @selector(webView:didClearInspectorWindowObject:forFrame:), [frame windowObject], frame);
+
+    bool attached = [m_windowController.get() attached];
+    setAttachedWindow(attached);
+}
+
+String WebInspectorFrontendClient::localizedStringsURL()
 {
     NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebCore"] pathForResource:@"localizedStrings" ofType:@"js"];
     if (path)
@@ -96,7 +144,7 @@ String WebInspectorClient::localizedStringsURL()
     return String();
 }
 
-String WebInspectorClient::hiddenPanels()
+String WebInspectorFrontendClient::hiddenPanels()
 {
     NSString *hiddenPanels = [[NSUserDefaults standardUserDefaults] stringForKey:@"WebKitInspectorHiddenPanels"];
     if (hiddenPanels)
@@ -104,63 +152,47 @@ String WebInspectorClient::hiddenPanels()
     return String();
 }
 
-void WebInspectorClient::showWindow()
+void WebInspectorFrontendClient::bringToFront()
 {
     updateWindowTitle();
     [m_windowController.get() showWindow:nil];
 }
 
-void WebInspectorClient::closeWindow()
+void WebInspectorFrontendClient::closeWindow()
 {
-    [m_windowController.get() close];
+    [m_windowController.get() destroyInspectorView];
 }
 
-void WebInspectorClient::attachWindow()
+void WebInspectorFrontendClient::attachWindow()
 {
+    if ([m_windowController.get() attached])
+        return;
     [m_windowController.get() attach];
+    restoreAttachedWindowHeight();
 }
 
-void WebInspectorClient::detachWindow()
+void WebInspectorFrontendClient::detachWindow()
 {
     [m_windowController.get() detach];
 }
 
-void WebInspectorClient::setAttachedWindowHeight(unsigned height)
+void WebInspectorFrontendClient::setAttachedWindowHeight(unsigned height)
 {
     [m_windowController.get() setAttachedWindowHeight:height];
 }
 
-void WebInspectorClient::highlight(Node* node)
-{
-    [m_windowController.get() highlightNode:kit(node)];
-}
-
-void WebInspectorClient::hideHighlight()
-{
-    [m_windowController.get() hideHighlight];
-}
-
-void WebInspectorClient::inspectedURLChanged(const String& newURL)
+void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
 {
     m_inspectedURL = newURL;
     updateWindowTitle();
 }
 
-void WebInspectorClient::updateWindowTitle() const
+void WebInspectorFrontendClient::updateWindowTitle() const
 {
     NSString *title = [NSString stringWithFormat:UI_STRING("Web Inspector — %@", "Web Inspector window title"), (NSString *)m_inspectedURL];
     [[m_windowController.get() window] setTitle:title];
 }
 
-void WebInspectorClient::inspectorWindowObjectCleared()
-{
-    WebFrame *frame = [m_webView mainFrame];
-    
-    WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(m_webView);
-    if (implementations->didClearInspectorWindowObjectForFrameFunc)
-        CallFrameLoadDelegate(implementations->didClearInspectorWindowObjectForFrameFunc, m_webView,
-          @selector(webView:didClearInspectorWindowObject:forFrame:), [frame windowObject], frame);
-}
 
 #pragma mark -
 
@@ -223,17 +255,11 @@ void WebInspectorClient::inspectorWindowObjectCleared()
 
 - (void)dealloc
 {
-    ASSERT(!_currentHighlight);
     [_webView release];
     [super dealloc];
 }
 
 #pragma mark -
-
-- (BOOL)inspectorVisible
-{
-    return _visible;
-}
 
 - (WebView *)webView
 {
@@ -273,11 +299,7 @@ void WebInspectorClient::inspectorWindowObjectCleared()
 
 - (BOOL)windowShouldClose:(id)sender
 {
-    _visible = NO;
-
-    [_inspectedWebView page]->inspectorController()->setWindowVisible(false);
-
-    [self hideHighlight];
+    [self destroyInspectorView];
 
     return YES;
 }
@@ -288,11 +310,6 @@ void WebInspectorClient::inspectorWindowObjectCleared()
         return;
 
     _visible = NO;
-
-    if (!_movingWindows)
-        [_inspectedWebView page]->inspectorController()->setWindowVisible(false);
-
-    [self hideHighlight];
 
     if (_attachedToInspectedWebView) {
         if ([_inspectedWebView _isClosed])
@@ -327,8 +344,11 @@ void WebInspectorClient::inspectorWindowObjectCleared()
     _visible = YES;
     
     // If no preference is set - default to an attached window. This is important for inspector LayoutTests.
-    String shouldAttach = [_inspectedWebView page]->inspectorController()->setting(inspectorStartsAttachedName);
+    String shouldAttach = [_inspectedWebView page]->inspectorController()->setting(InspectorController::inspectorStartsAttachedSettingName());
     _shouldAttach = shouldAttach != "false";
+    
+    if (_shouldAttach && !_frontendClient->canAttachWindow())
+        _shouldAttach = NO;
 
     if (_shouldAttach) {
         WebFrameView *frameView = [[_inspectedWebView mainFrame] frameView];
@@ -351,8 +371,6 @@ void WebInspectorClient::inspectorWindowObjectCleared()
 
         [super showWindow:nil];
     }
-
-    [_inspectedWebView page]->inspectorController()->setWindowVisible(true, _shouldAttach);
 }
 
 #pragma mark -
@@ -362,13 +380,10 @@ void WebInspectorClient::inspectorWindowObjectCleared()
     if (_attachedToInspectedWebView)
         return;
 
-    [_inspectedWebView page]->inspectorController()->setSetting(inspectorStartsAttachedName, "true");
-    _movingWindows = YES;
+    [_inspectedWebView page]->inspectorController()->setSetting(InspectorController::inspectorStartsAttachedSettingName(), "true");
 
     [self close];
     [self showWindow:nil];
-
-    _movingWindows = NO;
 }
 
 - (void)detach
@@ -376,14 +391,20 @@ void WebInspectorClient::inspectorWindowObjectCleared()
     if (!_attachedToInspectedWebView)
         return;
 
-    [_inspectedWebView page]->inspectorController()->setSetting(inspectorStartsAttachedName, "false");
-    _movingWindows = YES;
+    [_inspectedWebView page]->inspectorController()->setSetting(InspectorController::inspectorStartsAttachedSettingName(), "false");
 
     [self close];
     [self showWindow:nil];
+}
 
-    _movingWindows = NO;
+- (BOOL)attached
+{
+    return _attachedToInspectedWebView;
+}
 
+- (void)setFrontendClient:(WebInspectorFrontendClient*)frontendClient
+{
+    _frontendClient = frontendClient;
 }
 
 - (void)setAttachedWindowHeight:(unsigned)height
@@ -404,29 +425,17 @@ void WebInspectorClient::inspectorWindowObjectCleared()
     [frameView setFrame:frameViewRect];
 }
 
-#pragma mark -
-
-- (void)highlightNode:(DOMNode *)node
+- (void)destroyInspectorView
 {
-    // The scrollview's content view stays around between page navigations, so target it
-    NSView *view = [[[[[_inspectedWebView mainFrame] frameView] documentView] enclosingScrollView] contentView];
-    if (![view window])
-        return; // skip the highlight if we have no window (e.g. hidden tab)
+    if (_destroyingInspectorView)
+        return;
+    _destroyingInspectorView = YES;
 
-    if (!_currentHighlight) {
-        _currentHighlight = [[WebNodeHighlight alloc] initWithTargetView:view inspectorController:[_inspectedWebView page]->inspectorController()];
-        [_currentHighlight setDelegate:self];
-        [_currentHighlight attach];
-    } else
-        [[_currentHighlight highlightView] setNeedsDisplay:YES];
-}
-
-- (void)hideHighlight
-{
-    [_currentHighlight detach];
-    [_currentHighlight setDelegate:nil];
-    [_currentHighlight release];
-    _currentHighlight = nil;
+    if (_attachedToInspectedWebView)
+        [self close];
+    _visible = NO;
+    [_inspectedWebView page]->inspectorController()->disconnectFrontend();
+    [_webView close];
 }
 
 #pragma mark -
@@ -495,4 +504,61 @@ void WebInspectorClient::inspectorWindowObjectCleared()
     return YES;
 }
 
+@end
+
+
+#pragma mark -
+
+@implementation WebNodeHighlighter
+- (id)initWithInspectedWebView:(WebView *)webView
+{
+    // Don't retain to avoid a circular reference
+    _inspectedWebView = webView;
+    return self;
+}
+
+- (void)dealloc
+{
+    ASSERT(!_currentHighlight);
+    [super dealloc];
+}
+
+#pragma mark -
+
+- (void)highlightNode:(DOMNode *)node
+{
+    // The scrollview's content view stays around between page navigations, so target it
+    NSView *view = [[[[[_inspectedWebView mainFrame] frameView] documentView] enclosingScrollView] contentView];
+    if (![view window])
+        return; // skip the highlight if we have no window (e.g. hidden tab)
+    
+    if (!_currentHighlight) {
+        _currentHighlight = [[WebNodeHighlight alloc] initWithTargetView:view inspectorController:[_inspectedWebView page]->inspectorController()];
+        [_currentHighlight setDelegate:self];
+        [_currentHighlight attach];
+    } else
+        [[_currentHighlight highlightView] setNeedsDisplay:YES];
+}
+
+- (void)hideHighlight
+{
+    [_currentHighlight detach];
+    [_currentHighlight setDelegate:nil];
+    [_currentHighlight release];
+    _currentHighlight = nil;
+}
+
+#pragma mark -
+#pragma mark WebNodeHighlight delegate
+
+- (void)didAttachWebNodeHighlight:(WebNodeHighlight *)highlight
+{
+    [_inspectedWebView setCurrentNodeHighlight:highlight];
+}
+
+- (void)willDetachWebNodeHighlight:(WebNodeHighlight *)highlight
+{
+    [_inspectedWebView setCurrentNodeHighlight:nil];
+}
+    
 @end

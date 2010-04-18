@@ -41,13 +41,13 @@ class WebGLUnsignedByteArray : public WebGLArray {
 
     static PassRefPtr<WebGLUnsignedByteArray> create(unsigned length);
     static PassRefPtr<WebGLUnsignedByteArray> create(unsigned char* array, unsigned length);
-    static PassRefPtr<WebGLUnsignedByteArray> create(PassRefPtr<WebGLArrayBuffer> buffer, int byteOffset, unsigned length);
+    static PassRefPtr<WebGLUnsignedByteArray> create(PassRefPtr<WebGLArrayBuffer> buffer, unsigned byteOffset, unsigned length);
 
     unsigned char* data() { return static_cast<unsigned char*>(baseAddress()); }
 
     virtual unsigned length() const;
     virtual unsigned byteLength() const;
-    virtual PassRefPtr<WebGLArray> slice(unsigned offset, unsigned length);
+    virtual PassRefPtr<WebGLArray> slice(int start, int end);
 
     void set(unsigned index, double value)
     {
@@ -86,7 +86,7 @@ class WebGLUnsignedByteArray : public WebGLArray {
     void set(WebGLUnsignedByteArray* array, unsigned offset, ExceptionCode& ec);
 
   private:
-    WebGLUnsignedByteArray(PassRefPtr<WebGLArrayBuffer> buffer, int byteOffset, unsigned length);
+    WebGLUnsignedByteArray(PassRefPtr<WebGLArrayBuffer> buffer, unsigned byteOffset, unsigned length);
     unsigned m_size;
 };
 

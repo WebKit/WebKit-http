@@ -24,8 +24,8 @@
 #define SVGDocumentExtensions_h
 
 #if ENABLE(SVG)
-#include <memory>
 
+#include <wtf/PassOwnPtr.h>
 #include <wtf/HashSet.h>
 #include <wtf/HashMap.h>
 
@@ -35,6 +35,7 @@
 namespace WebCore {
 
 class Document;
+class RenderSVGResource;
 class String;
 class SVGStyledElement;
 class SVGSMILElement;
@@ -47,7 +48,11 @@ public:
     
     void addTimeContainer(SVGSVGElement*);
     void removeTimeContainer(SVGSVGElement*);
-    
+
+    void addResource(const String& id, RenderSVGResource*);
+    void removeResource(const String& id);
+    RenderSVGResource* resourceById(const String& id) const;
+
     void startAnimations();
     void pauseAnimations();
     void unpauseAnimations();
@@ -59,6 +64,7 @@ public:
 private:
     Document* m_doc; // weak reference
     HashSet<SVGSVGElement*> m_timeContainers; // For SVG 1.2 support this will need to be made more general.
+    HashMap<String, RenderSVGResource*> m_resources;
     HashMap<String, HashSet<SVGStyledElement*>*> m_pendingResources;
 
     SVGDocumentExtensions(const SVGDocumentExtensions&);
@@ -70,7 +76,7 @@ public:
     // For instance, dynamically build gradients / patterns / clippers...
     void addPendingResource(const AtomicString& id, SVGStyledElement*);
     bool isPendingResource(const AtomicString& id) const;
-    std::auto_ptr<HashSet<SVGStyledElement*> > removePendingResource(const AtomicString& id);
+    PassOwnPtr<HashSet<SVGStyledElement*> > removePendingResource(const AtomicString& id);
 };
 
 }

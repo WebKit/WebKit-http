@@ -42,7 +42,6 @@ LOCAL_SRC_FILES += \
 	bindings/v8/DateExtension.cpp \
 	bindings/v8/DOMData.cpp \
 	bindings/v8/DOMDataStore.cpp \
-	bindings/v8/DerivedSourcesAllInOne.cpp \
 	bindings/v8/MainThreadDOMData.cpp \
 	bindings/v8/NPV8Object.cpp \
 	bindings/v8/RuntimeEnabledFeatures.cpp \
@@ -72,7 +71,6 @@ LOCAL_SRC_FILES += \
 	bindings/v8/V8GCController.cpp \
 	bindings/v8/V8Helpers.cpp \
 	bindings/v8/V8HiddenPropertyName.cpp \
-	bindings/v8/V8Index.cpp \
 	bindings/v8/V8IsolatedWorld.cpp \
 	bindings/v8/V8LazyEventListener.cpp \
 	bindings/v8/V8NPObject.cpp \
@@ -86,9 +84,7 @@ LOCAL_SRC_FILES += \
 	\
 	bindings/v8/npruntime.cpp \
 	\
-	bindings/v8/custom/V8AbstractWorkerCustom.cpp \
 	bindings/v8/custom/V8AttrCustom.cpp \
-	bindings/v8/custom/V8BarInfoCustom.cpp \
 	bindings/v8/custom/V8CSSRuleCustom.cpp \
 	bindings/v8/custom/V8CSSStyleDeclarationCustom.cpp \
 	bindings/v8/custom/V8CSSStyleSheetCustom.cpp \
@@ -106,10 +102,10 @@ LOCAL_SRC_FILES += \
 	bindings/v8/custom/V8CustomSQLTransactionCallback.cpp \
 	bindings/v8/custom/V8CustomSQLTransactionErrorCallback.cpp \
 	bindings/v8/custom/V8CustomVoidCallback.cpp \
-	bindings/v8/custom/V8DOMApplicationCacheCustom.cpp \
-	bindings/v8/custom/V8DOMSelectionCustom.cpp \
+  bindings/v8/custom/V8DOMFormDataCustom.cpp \
 	bindings/v8/custom/V8DOMWindowCustom.cpp \
 	bindings/v8/custom/V8DataGridColumnListCustom.cpp \
+	bindings/v8/custom/V8DatabaseCallback.cpp \
 	bindings/v8/custom/V8DatabaseCustom.cpp \
 	bindings/v8/custom/V8DedicatedWorkerContextCustom.cpp \
 	bindings/v8/custom/V8DocumentCustom.cpp \
@@ -117,7 +113,6 @@ LOCAL_SRC_FILES += \
 	bindings/v8/custom/V8ElementCustom.cpp \
 	bindings/v8/custom/V8EventCustom.cpp \
 	bindings/v8/custom/V8EventSourceConstructor.cpp \
-	bindings/v8/custom/V8EventSourceCustom.cpp \
 	bindings/v8/custom/V8FileListCustom.cpp \
 	bindings/v8/custom/V8GeolocationCustom.cpp \
 	bindings/v8/custom/V8HTMLAllCollectionCustom.cpp \
@@ -148,7 +143,6 @@ LOCAL_SRC_FILES += \
 	bindings/v8/custom/V8NodeFilterCustom.cpp \
 	bindings/v8/custom/V8NodeIteratorCustom.cpp \
 	bindings/v8/custom/V8NodeListCustom.cpp \
-	bindings/v8/custom/V8ScreenCustom.cpp \
 	bindings/v8/custom/V8SQLResultSetRowListCustom.cpp \
 	bindings/v8/custom/V8SQLTransactionCustom.cpp \
 	bindings/v8/custom/V8WebSocketCustom.cpp
@@ -157,7 +151,6 @@ ifeq ($(ENABLE_SVG), true)
 LOCAL_SRC_FILES += \
 	bindings/v8/custom/V8SVGDocumentCustom.cpp \
 	bindings/v8/custom/V8SVGElementCustom.cpp \
-	bindings/v8/custom/V8SVGElementInstanceCustom.cpp \
 	bindings/v8/custom/V8SVGLengthCustom.cpp \
 	bindings/v8/custom/V8SVGMatrixCustom.cpp
 	bindings/v8/custom/V8SVGPathSegCustom.cpp \
@@ -174,8 +167,7 @@ LOCAL_SRC_FILES += \
 	bindings/v8/custom/V8WorkerContextCustom.cpp \
 	bindings/v8/custom/V8WorkerCustom.cpp \
 	bindings/v8/custom/V8XMLHttpRequestConstructor.cpp \
-	bindings/v8/custom/V8XMLHttpRequestCustom.cpp \
-	bindings/v8/custom/V8XMLHttpRequestUploadCustom.cpp
+	bindings/v8/custom/V8XMLHttpRequestCustom.cpp
 
 LOCAL_SRC_FILES += \
 	bridge/jni/JNIBridge.cpp \

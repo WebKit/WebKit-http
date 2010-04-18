@@ -36,25 +36,25 @@ module core {
 
         void saveFrontendSettings(in DOMString settings);
 
-        void toggleNodeSearch();
-        boolean searchingForNode();
+        void enableSearchingForNode();
+        void disableSearchingForNode();
 
-        boolean resourceTrackingEnabled();
         void enableResourceTracking(in boolean always);
         void disableResourceTracking(in boolean always);
         void getResourceContent(in long callId, in unsigned long identifier);
+        void reloadPage();
 
         void startTimelineProfiler();
         void stopTimelineProfiler();
 
-#if defined(ENABLE_JAVASCRIPT_DEBUGGER) && ENABLE_JAVASCRIPT_DEBUGGER && !(defined(V8_BINDING) && V8_BINDING)
-        boolean debuggerEnabled();
+#if defined(ENABLE_JAVASCRIPT_DEBUGGER) && ENABLE_JAVASCRIPT_DEBUGGER
         void enableDebugger(in boolean always);
         void disableDebugger(in boolean always);
 
-        void addBreakpoint(in DOMString sourceID, in unsigned long lineNumber, in DOMString condition);
-        void updateBreakpoint(in DOMString sourceID, in unsigned long lineNumber, in DOMString condition);
+        void setBreakpoint(in DOMString sourceID, in unsigned long lineNumber, in boolean enabled, in DOMString condition);
         void removeBreakpoint(in DOMString sourceID, in unsigned long lineNumber);
+        void activateBreakpoints();
+        void deactivateBreakpoints();
 
         void pauseInDebugger();
         void resumeDebugger();
@@ -63,11 +63,8 @@ module core {
         void stepIntoStatementInDebugger();
         void stepOutOfFunctionInDebugger();
 
-        long pauseOnExceptionsState();
         void setPauseOnExceptionsState(in long pauseOnExceptionsState);
-#endif
-#if defined(ENABLE_JAVASCRIPT_DEBUGGER) && ENABLE_JAVASCRIPT_DEBUGGER
-        boolean profilerEnabled();
+
         void enableProfiler(in boolean always);
         void disableProfiler(in boolean always);
 
@@ -80,6 +77,9 @@ module core {
         void setInjectedScriptSource(in DOMString scriptSource);
         void dispatchOnInjectedScript(in long callId, in long injectedScriptId, in DOMString methodName, in DOMString arguments, in boolean async);
 
+        void addScriptToEvaluateOnLoad(in DOMString scriptSource);
+        void removeAllScriptsToEvaluateOnLoad();
+
         void getChildNodes(in long callId, in long nodeId);
         void setAttribute(in long callId, in long elementId, in DOMString name, in DOMString value);
         void removeAttribute(in long callId, in long elementId, in DOMString name);
@@ -87,8 +87,20 @@ module core {
         void getEventListenersForNode(in long callId, in long nodeId);
         void copyNode(in long nodeId);
         void removeNode(in long callId, in long nodeId);
+        void changeTagName(in long callId, in long nodeId, in DOMString newTagName, in boolean expanded);
         void highlightDOMNode(in long nodeId);
         void hideDOMNodeHighlight();
+
+        void getStyles(in long callId, in long nodeId, in boolean authOnly);
+        void getAllStyles(in long callId);
+        void getInlineStyle(in long callId, in long nodeId);
+        void getComputedStyle(in long callId, in long nodeId);
+        void applyStyleText(in long callId, in long styleId, in DOMString styleText, in DOMString propertyName);
+        void setStyleText(in long callId, in long styleId, in DOMString styleText);
+        void setStyleProperty(in long callId, in long styleId, in DOMString name, in DOMString value);
+        void toggleStyleEnabled(in long callId, in long styleId, in DOMString propertyName, in boolean disabled);
+        void setRuleSelector(in long callId, in long ruleId, in DOMString selector, in long selectedNodeId);
+        void addRule(in long callId, in DOMString selector, in long selectedNodeId);
 
         void getCookies(in long callId);
         void deleteCookie(in DOMString cookieName, in DOMString domain);

@@ -40,13 +40,13 @@ class WebGLFloatArray : public WebGLArray {
 
     static PassRefPtr<WebGLFloatArray> create(unsigned length);
     static PassRefPtr<WebGLFloatArray> create(float* array, unsigned length);
-    static PassRefPtr<WebGLFloatArray> create(PassRefPtr<WebGLArrayBuffer> buffer, int byteOffset, unsigned length);
+    static PassRefPtr<WebGLFloatArray> create(PassRefPtr<WebGLArrayBuffer> buffer, unsigned byteOffset, unsigned length);
 
     float* data() { return static_cast<float*>(baseAddress()); }
 
     virtual unsigned length() const;
     virtual unsigned byteLength() const;
-    virtual PassRefPtr<WebGLArray> slice(unsigned offset, unsigned length);
+    virtual PassRefPtr<WebGLArray> slice(int start, int end);
 
     void set(unsigned index, double value)
     {
@@ -86,7 +86,7 @@ class WebGLFloatArray : public WebGLArray {
     void set(WebGLFloatArray* array, unsigned offset, ExceptionCode& ec);
 
   private:
-    WebGLFloatArray(PassRefPtr<WebGLArrayBuffer> buffer, int byteOffset, unsigned length);
+    WebGLFloatArray(PassRefPtr<WebGLArrayBuffer> buffer, unsigned byteOffset, unsigned length);
     unsigned m_size;
 };
 

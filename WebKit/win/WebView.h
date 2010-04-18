@@ -761,9 +761,9 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE invalidateBackingStore(const RECT*);
 
-    virtual HRESULT STDMETHODCALLTYPE whiteListAccessFromOrigin(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains);
-    virtual HRESULT STDMETHODCALLTYPE resetOriginAccessWhiteLists();
-
+    virtual HRESULT STDMETHODCALLTYPE addOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains);
+    virtual HRESULT STDMETHODCALLTYPE removeOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains);
+    virtual HRESULT STDMETHODCALLTYPE resetOriginAccessWhitelists();
 
     virtual HRESULT STDMETHODCALLTYPE setHistoryDelegate(IWebHistoryDelegate* historyDelegate);
     virtual HRESULT STDMETHODCALLTYPE historyDelegate(IWebHistoryDelegate** historyDelegate);
@@ -779,6 +779,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE geolocationDidFailWithError(IWebError* error);
 
     virtual HRESULT STDMETHODCALLTYPE setDomainRelaxationForbiddenForURLScheme(BOOL forbidden, BSTR scheme);
+    virtual HRESULT STDMETHODCALLTYPE registerURLSchemeAsSecure(BSTR);
 
     // WebView
     bool shouldUseEmbeddedView(const WebCore::String& mimeType) const;
@@ -875,7 +876,7 @@ public:
 
 #if USE(ACCELERATED_COMPOSITING)
     void setRootLayerNeedsDisplay() { if (m_layerRenderer) m_layerRenderer->setNeedsDisplay(); }
-    void setRootChildLayer(WebCore::PlatformLayer* layer);
+    void setRootChildLayer(WebCore::WKCACFLayer* layer);
 #endif
 
     void enterFullscreenForNode(WebCore::Node*);

@@ -1,3 +1,162 @@
+2010-04-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r57468.
+        http://trac.webkit.org/changeset/57468
+        https://bugs.webkit.org/show_bug.cgi?id=37433
+
+        Broke the world...  Must have applied the patch wrong
+        (Requested by abarth on #webkit).
+
+        * WebKitSupport/FrameLoaderClientWx.cpp:
+        (WebCore::FrameLoaderClientWx::committedLoad):
+
+2010-04-11  Adam Barth  <abarth@webkit.org>
+
+        Reviewed by Eric Seidel.
+
+        Factor DocumentWriter out of FrameLoader
+        https://bugs.webkit.org/show_bug.cgi?id=37175
+
+        Update these callsites because the method moved to DocumentWriter.
+
+        * WebKitSupport/FrameLoaderClientWx.cpp:
+        (WebCore::FrameLoaderClientWx::committedLoad):
+
+2010-04-07  Andrey Kosyakov  <caseq@chromium.org>
+
+        Reviewed by Yury Semikhatsky.
+
+        Removed redundant FrameLoaderClient::dispatchDidLoadResourceByXMLHttpRequest()
+        https://bugs.webkit.org/show_bug.cgi?id=36949
+
+        * WebKitSupport/FrameLoaderClientWx.cpp:
+        * WebKitSupport/FrameLoaderClientWx.h:
+
+2010-03-31  Marcus Bulach  <bulach@chromium.org>
+
+        Reviewed by Jeremy Orlow.
+
+        Adds Geolocation param for cancelGeolocationPermissionRequestForFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=35031
+
+        * WebKitSupport/ChromeClientWx.h:
+        (WebCore::ChromeClientWx::cancelGeolocationPermissionRequestForFrame):
+
+2010-03-30  Gavin Barraclough  <barraclough@apple.com>
+
+        Rubber stamped by Sam Weinig.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36866
+        Move CString to WTF
+
+        * WebFrame.cpp:
+        * WebView.cpp:
+
+2010-03-30  Kevin Ollivier  <kevino@theolliviers.com>
+
+        [wx] Build fix after method name change.
+
+        * WebFrame.cpp:
+        (wxWebFrame::RunScript):
+
+2010-03-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix. Include WindowsKeyboardCodes.h instead of KeyboardCodes.h.
+
+        * WebKitSupport/EditorClientWx.cpp:
+
+2010-03-24  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Darin Adler.
+
+        Make Icon::createIconForFiles() optional.
+        https://bugs.webkit.org/show_bug.cgi?id=35072
+
+        - Rename iconForFiles() to chooseIconForFiles().
+        - Call Icon::createIconForFiles() from chooseIconForFiles().
+
+        * WebKitSupport/ChromeClientWx.cpp:
+        (WebCore::ChromeClientWx::chooseIconForFiles):
+        * WebKitSupport/ChromeClientWx.h:
+
+2010-03-20  Kevin Ollivier  <kevino@theolliviers.com>
+
+        [wx] Build fixes after recent changes, including move of setDatabasesEnabled from Settings.
+
+        * WebFrame.cpp:
+        (wxWebFrame::RunScript):
+        * WebKitSupport/InspectorClientWx.cpp:
+        (WebCore::InspectorClientWx::openInspectorFrontend):
+        * WebSettings.cpp:
+        * WebSettings.h:
+        * WebView.cpp:
+        (wxWebView::Create):
+        (wxWebView::SetDatabasesEnabled):
+        (wxWebView::AreDatabasesEnabled):
+        * WebView.h:
+
+2010-03-16  Yury Semikhatsky <yurys@chromium.org>
+
+        Reviewed by Pavel Feldman.
+
+        Introduce InspectorFrontendClient that provides InspectorFrontend with an interface to the embedder. InspectorClient now serves as a delegate for InspectorController and does not contain methods for managing inspector frontend window. That allows to create remote InspectorFrontendHost.
+
+        Introduce InspectorFrontendClient that would provide InspectorFrontend with an interface to the embedder
+        https://bugs.webkit.org/show_bug.cgi?id=35036
+
+        * WebKitSupport/InspectorClientWx.cpp:
+        * WebKitSupport/InspectorClientWx.h:
+
+2010-03-11  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by David Hyatt.
+
+        Remove invalidateContents, it isn't used and it never makes sense to only invalidate the contents.
+
+        * WebKitSupport/ChromeClientWx.cpp:
+        * WebKitSupport/ChromeClientWx.h:
+
+2010-03-02  Adam Treat  <atreat@rim.com>
+
+        Reviewed by Dave Hyatt.
+
+        Adapt the wx port to the refactoring of repaint methods.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34214
+
+        * WebKitSupport/ChromeClientWx.cpp:
+        (WebCore::ChromeClientWx::invalidateContents):
+        (WebCore::ChromeClientWx::invalidateWindow):
+        (WebCore::ChromeClientWx::invalidateContentsForSlowScroll):
+        (WebCore::ChromeClientWx::invalidateContentsAndWindow):
+        * WebKitSupport/ChromeClientWx.h:
+
+2010-03-01  Jakob Petsovits  <jpetsovits@rim.com>
+
+        Reviewed by Adam Barth.
+
+        Adapt to the new ZoomMode enum.
+        https://bugs.webkit.org/show_bug.cgi?id=35347
+
+        * WebFrame.cpp:
+        (wxWebFrame::IncreaseTextSize):
+        (wxWebFrame::DecreaseTextSize):
+        (wxWebFrame::ResetTextSize):
+
+2010-02-23  Steve Block  <steveblock@google.com>
+
+        Reviewed by Darin Adler.
+
+        Adds ChromeClient::cancelGeolocationPermissionRequestForFrame
+        https://bugs.webkit.org/show_bug.cgi?id=34962
+
+        This method is required so that a Geolocation object can cancel an
+        asynchronous permission request. This allows the chrome client to cancel
+        any UI it is showing for the permission request.
+
+        * WebKitSupport/ChromeClientWx.h:
+        (WebCore::ChromeClientWx::cancelGeolocationPermissionRequestForFrame):
+
 2010-02-17  Dmitry Titov  <dimich@chromium.org>
 
         Reviewed by David Levin, Darin Fisher, Simon Hausmann.

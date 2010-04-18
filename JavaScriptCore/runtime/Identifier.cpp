@@ -22,6 +22,7 @@
 #include "Identifier.h"
 
 #include "CallFrame.h"
+#include "NumericStrings.h"
 #include <new> // for placement new
 #include <string.h> // for strlen
 #include <wtf/Assertions.h>
@@ -42,7 +43,7 @@ public:
         for (HashSet<UString::Rep*>::iterator iter = m_table.begin(); iter != end; ++iter)
             (*iter)->setIsIdentifier(false);
     }
-    
+
     std::pair<HashSet<UString::Rep*>::iterator, bool> add(UString::Rep* value)
     {
         std::pair<HashSet<UString::Rep*>::iterator, bool> result = m_table.add(value);
@@ -80,7 +81,7 @@ void deleteIdentifierTable(IdentifierTable* table)
 bool Identifier::equal(const UString::Rep* r, const char* s)
 {
     int length = r->length();
-    const UChar* d = r->data();
+    const UChar* d = r->characters();
     for (int i = 0; i != length; ++i)
         if (d[i] != (unsigned char)s[i])
             return false;
@@ -91,7 +92,7 @@ bool Identifier::equal(const UString::Rep* r, const UChar* s, unsigned length)
 {
     if (r->length() != length)
         return false;
-    const UChar* d = r->data();
+    const UChar* d = r->characters();
     for (unsigned i = 0; i != length; ++i)
         if (d[i] != s[i])
             return false;
@@ -123,12 +124,10 @@ struct CStringTranslator {
 
 PassRefPtr<UString::Rep> Identifier::add(JSGlobalData* globalData, const char* c)
 {
-    ASSERT(c);
-
-    if (!c[0]) {
-        UString::Rep::empty().hash();
-        return &UString::Rep::empty();
-    }
+    if (!c)
+        return UString::null().rep();
+    if (!c[0])
+        return UString::Rep::empty();
     if (!c[1])
         return add(globalData, globalData->smallStrings.singleCharacterStringRep(static_cast<unsigned char>(c[0])));
 
@@ -189,10 +188,8 @@ PassRefPtr<UString::Rep> Identifier::add(JSGlobalData* globalData, const UChar* 
         if (c <= 0xFF)
             return add(globalData, globalData->smallStrings.singleCharacterStringRep(c));
     }
-    if (!length) {
-        UString::Rep::empty().hash();
-        return &UString::Rep::empty();
-    }
+    if (!length)
+        return UString::Rep::empty();
     UCharBuffer buf = {s, length}; 
     pair<HashSet<UString::Rep*>::iterator, bool> addResult = globalData->identifierTable->add<UCharBuffer, UCharBufferTranslator>(buf);
 
@@ -209,21 +206,18 @@ PassRefPtr<UString::Rep> Identifier::add(ExecState* exec, const UChar* s, int le
 PassRefPtr<UString::Rep> Identifier::addSlowCase(JSGlobalData* globalData, UString::Rep* r)
 {
     ASSERT(!r->isIdentifier());
+    // The empty & null strings are static singletons, and static strings are handled
+    // in ::add() in the header, so we should never get here with a zero length string.
+    ASSERT(r->length());
+
     if (r->length() == 1) {
-        UChar c = r->data()[0];
+        UChar c = r->characters()[0];
         if (c <= 0xFF)
             r = globalData->smallStrings.singleCharacterStringRep(c);
-            if (r->isIdentifier()) {
-#ifndef NDEBUG
-                checkSameIdentifierTable(globalData, r);
-#endif
+            if (r->isIdentifier())
                 return r;
-            }
     }
-    if (!r->length()) {
-        UString::Rep::empty().hash();
-        return &UString::Rep::empty();
-    }
+
     return *globalData->identifierTable->add(r).first;
 }
 
@@ -236,28 +230,42 @@ void Identifier::remove(UString::Rep* r)
 {
     currentIdentifierTable()->remove(r);
 }
+    
+Identifier Identifier::from(ExecState* exec, unsigned value)
+{
+    return Identifier(exec, exec->globalData().numericStrings.add(value));
+}
+
+Identifier Identifier::from(ExecState* exec, int value)
+{
+    return Identifier(exec, exec->globalData().numericStrings.add(value));
+}
+
+Identifier Identifier::from(ExecState* exec, double value)
+{
+    return Identifier(exec, exec->globalData().numericStrings.add(value));
+}
 
 #ifndef NDEBUG
 
-void Identifier::checkSameIdentifierTable(ExecState* exec, UString::Rep*)
+void Identifier::checkCurrentIdentifierTable(JSGlobalData* globalData)
 {
-    ASSERT_UNUSED(exec, exec->globalData().identifierTable == currentIdentifierTable());
+    // Check the identifier table accessible through the threadspecific matches the
+    // globalData's identifier table.
+    ASSERT_UNUSED(globalData, globalData->identifierTable == currentIdentifierTable());
 }
 
-void Identifier::checkSameIdentifierTable(JSGlobalData* globalData, UString::Rep*)
+void Identifier::checkCurrentIdentifierTable(ExecState* exec)
 {
-    ASSERT_UNUSED(globalData, globalData->identifierTable == currentIdentifierTable());
+    checkCurrentIdentifierTable(&exec->globalData());
 }
 
 #else
 
-void Identifier::checkSameIdentifierTable(ExecState*, UString::Rep*)
-{
-}
-
-void Identifier::checkSameIdentifierTable(JSGlobalData*, UString::Rep*)
-{
-}
+// These only exists so that our exports are the same for debug and release builds.
+// This would be an ASSERT_NOT_REACHED(), but we're in NDEBUG only code here!
+void Identifier::checkCurrentIdentifierTable(JSGlobalData*) { CRASH(); }
+void Identifier::checkCurrentIdentifierTable(ExecState*) { CRASH(); }
 
 #endif
 

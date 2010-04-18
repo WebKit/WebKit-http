@@ -29,8 +29,8 @@
 #if ENABLE(VIDEO)
 
 #include "HTMLElement.h"
+#include "MediaCanStartListener.h"
 #include "MediaPlayer.h"
-#include "Timer.h"
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
 #include "MediaPlayerProxy.h"
@@ -43,23 +43,16 @@ class HTMLSourceElement;
 class MediaError;
 class KURL;
 class TimeRanges;
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+class Widget;
+#endif
 
-class HTMLMediaElement : public HTMLElement, public MediaPlayerClient {
+// FIXME: The inheritance from MediaPlayerClient here should be private inheritance.
+// But it can't be until the Chromium WebMediaPlayerClientImpl class is fixed so it
+// no longer depends on typecasting a MediaPlayerClient to an HTMLMediaElement.
+
+class HTMLMediaElement : public HTMLElement, public MediaPlayerClient, private MediaCanStartListener {
 public:
-    virtual ~HTMLMediaElement();
-
-    bool checkDTD(const Node* newChild);
-    
-    void attributeChanged(Attribute*, bool preserveDecls);
-    void parseMappedAttribute(MappedAttribute *);
-
-    virtual bool rendererIsNeeded(RenderStyle*);
-    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
-    virtual void insertedIntoDocument();
-    virtual void removedFromDocument();
-    virtual void attach();
-    virtual void recalcStyle(StyleChange);
-    
     MediaPlayer* player() const { return m_player.get(); }
     
     virtual bool isVideo() const = 0;
@@ -71,6 +64,8 @@ public:
 
     // Eventually overloaded in HTMLVideoElement
     virtual bool supportsFullscreen() const { return false; };
+    virtual const KURL poster() const { return KURL(); }
+
     virtual bool supportsSave() const;
     
     PlatformMedia platformMedia() const;
@@ -79,11 +74,6 @@ public:
 #endif
 
     void scheduleLoad();
-    
-    virtual void defaultEventHandler(Event*);
-    
-    // Pauses playback without changing any states or generating events
-    void setPausedInternal(bool);
     
     MediaPlayer::MovieLoadType movieLoadType() const;
     
@@ -100,8 +90,9 @@ public:
 
     enum NetworkState { NETWORK_EMPTY, NETWORK_IDLE, NETWORK_LOADING, NETWORK_LOADED, NETWORK_NO_SOURCE };
     NetworkState networkState() const;
-    bool autobuffer() const;    
-    void setAutobuffer(bool);
+    
+    String preload() const;    
+    void setPreload(const String&);
 
     PassRefPtr<TimeRanges> buffered() const;
     void load(bool isUserGesture, ExceptionCode&);
@@ -150,22 +141,25 @@ public:
     void beginScrubbing();
     void endScrubbing();
 
-    const IntRect screenRect();
+    IntRect screenRect();
 
     bool canPlay() const;
 
     float percentLoaded() const;
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    void allocateMediaPlayerIfNecessary();
     void setNeedWidgetUpdate(bool needWidgetUpdate) { m_needWidgetUpdate = needWidgetUpdate; }
     void deliverNotification(MediaPlayerProxyNotificationType notification);
     void setMediaPlayerProxy(WebMediaPlayerProxy* proxy);
-    String initialURL();
+    void getPluginProxyParams(KURL& url, Vector<String>& names, Vector<String>& values);
     virtual void finishParsingChildren();
+    void createMediaPlayerProxy();
 #endif
 
     bool hasSingleSecurityOrigin() const { return !m_player || m_player->hasSingleSecurityOrigin(); }
     
+    bool isFullscreen() const { return m_isFullscreen; }
     void enterFullscreen();
     void exitFullscreen();
 
@@ -177,7 +171,25 @@ public:
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document*);
+    virtual ~HTMLMediaElement();
 
+    virtual void parseMappedAttribute(MappedAttribute*);
+    virtual void attach();
+
+    virtual void willMoveToNewOwnerDocument();
+    virtual void didMoveToNewOwnerDocument();
+
+private:
+    virtual bool checkDTD(const Node* newChild);    
+    virtual void attributeChanged(Attribute*, bool preserveDecls);
+    virtual bool rendererIsNeeded(RenderStyle*);
+    virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
+    virtual void insertedIntoDocument();
+    virtual void removedFromDocument();
+    virtual void recalcStyle(StyleChange);
+    
+    virtual void defaultEventHandler(Event*);
+    
     float getTimeOffsetAttribute(const QualifiedName&, float valueOnError) const;
     void setTimeOffsetAttribute(const QualifiedName&, float value);
     
@@ -189,10 +201,7 @@ protected:
     void setReadyState(MediaPlayer::ReadyState);
     void setNetworkState(MediaPlayer::NetworkState);
 
-    virtual void willMoveToNewOwnerDocument();
-    virtual void didMoveToNewOwnerDocument();
-
-private: // MediaPlayerClient
+    virtual Document* mediaPlayerOwningDocument();
     virtual void mediaPlayerNetworkStateChanged(MediaPlayer*);
     virtual void mediaPlayerReadyStateChanged(MediaPlayer*);
     virtual void mediaPlayerTimeChanged(MediaPlayer*);
@@ -208,7 +217,6 @@ private: // MediaPlayerClient
     virtual void mediaPlayerRenderingModeChanged(MediaPlayer*);
 #endif
 
-private:
     void loadTimerFired(Timer<HTMLMediaElement>*);
     void asyncEventTimerFired(Timer<HTMLMediaElement>*);
     void progressEventTimerFired(Timer<HTMLMediaElement>*);
@@ -263,15 +271,19 @@ private:
     float minTimeSeekable() const;
     float maxTimeSeekable() const;
 
-    // Restrictions to change default behaviors. This is a effectively a compile time choice at the moment
-    //  because there are no accessor methods.
+    // Pauses playback without changing any states or generating events
+    void setPausedInternal(bool);
+
+    virtual void mediaCanStart();
+
+    // Restrictions to change default behaviors. This is effectively a compile time choice at the moment
+    // because there are no accessor functions.
     enum BehaviorRestrictions {
         NoRestrictions = 0,
         RequireUserGestureForLoadRestriction = 1 << 0,
         RequireUserGestureForRateChangeRestriction = 1 << 1,
     };
 
-protected:
     Timer<HTMLMediaElement> m_loadTimer;
     Timer<HTMLMediaElement> m_asyncEventTimer;
     Timer<HTMLMediaElement> m_progressEventTimer;
@@ -303,17 +315,24 @@ protected:
     // loading state
     enum LoadState { WaitingForSource, LoadingFromSrcAttr, LoadingFromSourceElement };
     LoadState m_loadState;
-    HTMLSourceElement *m_currentSourceNode;
+    HTMLSourceElement* m_currentSourceNode;
     
     OwnPtr<MediaPlayer> m_player;
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    RefPtr<Widget> m_proxyWidget;
+#endif
 
     BehaviorRestrictions m_restrictions;
+    
+    MediaPlayer::Preload m_preload;
 
     bool m_playing;
 
-    // counter incremented while processing a callback from the media player, so we can avoid
-    //  calling the media engine recursively
+    // Counter incremented while processing a callback from the media player, so we can avoid
+    // calling the media engine recursively.
     int m_processingMediaPlayerCallback;
+
+    bool m_isWaitingUntilMediaCanStart;
 
     bool m_processingLoad : 1;
     bool m_delayingTheLoadEvent : 1;

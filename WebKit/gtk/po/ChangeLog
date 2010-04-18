@@ -1,3 +1,142 @@
+2010-04-05  Lucas Lommer  <llommer@svn.gnome.org>
+
+        Reviewed by Gustavo Noronha.
+
+        Czech translation for WebKitGtk
+        https://bugs.webkit.org/show_bug.cgi?id=36879
+
+        * cs.po: Added.
+
+2010-04-05  Christian Kirbach  <Christian.Kirbach@googlemail.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Updated German translation
+        https://bugs.webkit.org/show_bug.cgi?id=36453
+
+        * de.po:
+
+2010-04-05  Luca Ferretti  <elle.uca@libero.it>
+
+        Reviewed by Gustavo Noronha.
+
+        Italian translation for 1.1.90
+        https://bugs.webkit.org/show_bug.cgi?id=36323
+
+        * it.po:
+
+2010-03-25  Reinout van Schouwen  <reinouts@gnome.org>
+
+        Reviewed by Gustavo Noronha.
+
+        Updated Dutch translation
+        https://bugs.webkit.org/show_bug.cgi?id=36432
+
+        * nl.po:
+
+2010-03-24  Yuri Chornoivan  <yurchor@ukr.net>
+
+        Reviewed by Gustavo Noronha.
+
+        Ukrainian translation.
+
+        * uk.po: Added.
+
+2010-03-16  Matej Urbančič  <mateju@svn.gnome.org>
+
+        Reviewed by Gustavo Noronha.
+
+        Slovenian translation.
+
+        * sl.po: Added.
+
+2010-03-16  António Lima  <amrlima@gmail.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Translation for pt (Portuguese)
+        https://bugs.webkit.org/show_bug.cgi?id=36148
+
+        * pt.po: Added.
+
+2010-03-10  Priit Laes  <plaes@plaes.org>
+
+        Reviewed by Gustavo Noronha.
+
+        Estonian translation.
+
+        * et.po: Added.
+
+2010-03-09  Peteris Krisjanis  <pecisk@gmail.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Latvian translation.
+
+        * lv.po: Added.
+
+2010-03-09  Duy Nguyen  <pclouds@gmail.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Vietnamese translation update.
+
+        * vi.po:
+
+2010-03-09  Rimas Kudelis  <rq@akl.lt>
+
+        Reviewed by Gustavo Noronha.
+
+        Lithuanian translation update.
+
+        * lt.po:
+
+2010-02-25  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Updated to accomodate the change done to the localized string.
+
+        * de.po:
+        * en_GB.po:
+        * es.po:
+        * gu.po:
+        * he.po:
+        * it.po:
+        * lt.po:
+        * nl.po:
+        * pa.po:
+        * pt_BR.po:
+        * ru.po:
+        * sr.po:
+        * sr@latin.po:
+        * sv.po:
+        * vi.po:
+        * webkit.pot:
+        * zh_CN.po:
+
+2010-02-23  Mario Blättermann  <mariobl@freenet.de>
+
+        Reviewed by Gustavo Noronha.
+
+        German translation update.
+
+        * de.po:
+
+2010-02-23  Daniel Nylander  <po@danielnylander.se>
+
+        Reviewed by Gustavo Noronha.
+
+        Swedish translation update.
+
+        * sv.po:
+
+2010-02-23  Ankit Patel  <ankit@redhat.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Gujarati translation.
+
+        * gu.po: Added.
+
 2010-02-18  A S Alam  <amanpreet.alam@gmail.com>
 
         Punjabi translation.

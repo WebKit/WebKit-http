@@ -21,7 +21,6 @@
 #include "config.h"
 #include "ScriptController.h"
 
-#include "CString.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
@@ -37,6 +36,7 @@
 #include "ScriptValue.h"
 #include "Settings.h"
 #include "StorageNamespace.h"
+#include "WebCoreJSClientData.h"
 #include "XSSAuditor.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
@@ -81,14 +81,30 @@ ScriptController::ScriptController(Frame* frame)
 
 ScriptController::~ScriptController()
 {
+    disconnectPlatformScriptObjects();
+
+    // It's likely that destroying m_windowShells will create a lot of garbage.
     if (!m_windowShells.isEmpty()) {
-        m_windowShells.clear();
-    
-        // It's likely that releasing the global object has created a lot of garbage.
+        while (!m_windowShells.isEmpty())
+            destroyWindowShell(m_windowShells.begin()->first.get());
         gcController().garbageCollectSoon();
     }
+}
 
-    disconnectPlatformScriptObjects();
+void ScriptController::destroyWindowShell(DOMWrapperWorld* world)
+{
+    ASSERT(m_windowShells.contains(world));
+    m_windowShells.remove(world);
+    world->didDestroyWindowShell(this);
+}
+
+JSDOMWindowShell* ScriptController::createWindowShell(DOMWrapperWorld* world)
+{
+    ASSERT(!m_windowShells.contains(world));
+    JSDOMWindowShell* windowShell = new JSDOMWindowShell(m_frame->domWindow(), world);
+    m_windowShells.add(world, windowShell);
+    world->didCreateWindowShell(this);
+    return windowShell;
 }
 
 ScriptValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DOMWrapperWorld* world)
@@ -152,24 +168,9 @@ ScriptValue ScriptController::evaluate(const ScriptSourceCode& sourceCode)
     return evaluateInWorld(sourceCode, mainThreadNormalWorld());
 }
 
-// An DOMWrapperWorld other than the thread's normal world.
-class IsolatedWorld : public DOMWrapperWorld {
-public:
-    static PassRefPtr<IsolatedWorld> create(JSGlobalData* globalData) { return adoptRef(new IsolatedWorld(globalData)); }
-
-protected:
-    IsolatedWorld(JSGlobalData* globalData)
-        : DOMWrapperWorld(globalData, false)
-    {
-        JSGlobalData::ClientData* clientData = globalData->clientData;
-        ASSERT(clientData);
-        static_cast<WebCoreJSClientData*>(clientData)->rememberWorld(this);
-    }
-};
-
 PassRefPtr<DOMWrapperWorld> ScriptController::createWorld()
 {
-    return IsolatedWorld::create(JSDOMWindow::commonJSGlobalData());
+    return DOMWrapperWorld::create(JSDOMWindow::commonJSGlobalData());
 }
 
 void ScriptController::getAllWorlds(Vector<DOMWrapperWorld*>& worlds)
@@ -199,7 +200,7 @@ void ScriptController::clearWindowShell()
         }
     }
 
-    // There is likely to be a lot of garbage now.
+    // It's likely that resetting our windows created a lot of garbage.
     gcController().garbageCollectSoon();
 }
 
@@ -209,8 +210,8 @@ JSDOMWindowShell* ScriptController::initScript(DOMWrapperWorld* world)
 
     JSLock lock(SilenceAssertionsOnly);
 
-    JSDOMWindowShell* windowShell = new JSDOMWindowShell(m_frame->domWindow(), world);
-    m_windowShells.add(world, windowShell);
+    JSDOMWindowShell* windowShell = createWindowShell(world);
+
     windowShell->window()->updateDocument();
 
     if (Page* page = m_frame->page()) {
@@ -317,7 +318,7 @@ void ScriptController::updateSecurityOrigin()
 
 Bindings::RootObject* ScriptController::bindingRootObject()
 {
-    if (!canExecuteScripts())
+    if (!canExecuteScripts(NotAboutToExecuteScript))
         return 0;
 
     if (!m_bindingRootObject) {
@@ -344,7 +345,7 @@ PassRefPtr<Bindings::RootObject> ScriptController::createRootObject(void* native
 NPObject* ScriptController::windowScriptNPObject()
 {
     if (!m_windowScriptNPObject) {
-        if (canExecuteScripts()) {
+        if (canExecuteScripts(NotAboutToExecuteScript)) {
             // JavaScript is enabled, so there is a JavaScript window object.
             // Return an NPObject bound to the window object.
             JSC::JSLock lock(SilenceAssertionsOnly);
@@ -377,7 +378,7 @@ NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement
 JSObject* ScriptController::jsObjectForPluginElement(HTMLPlugInElement* plugin)
 {
     // Can't create JSObjects when JavaScript is disabled
-    if (!canExecuteScripts())
+    if (!canExecuteScripts(NotAboutToExecuteScript))
         return 0;
 
     // Create a JSObject bound to this element
@@ -444,7 +445,7 @@ ScriptValue ScriptController::executeScriptInWorld(DOMWrapperWorld* world, const
 {
     ScriptSourceCode sourceCode(script, forceUserGesture ? KURL() : m_frame->loader()->url());
 
-    if (!canExecuteScripts() || isPaused())
+    if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
         return ScriptValue();
 
     bool wasInExecuteScript = m_inExecuteScript;

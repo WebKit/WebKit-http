@@ -39,6 +39,8 @@ struct NPObject;
 #if WEBKIT_USING_V8
 namespace v8 {
 class Context;
+class Value;
+template <class T> class Handle;
 template <class T> class Local;
 }
 #endif
@@ -122,6 +124,9 @@ public:
 
     // NOTE: These routines do not force page layout so their results may
     // not be accurate if the page layout is out-of-date.
+
+    // If set to false, do not draw scrollbars on this frame's view.
+    virtual void setCanHaveScrollbars(bool) = 0;
 
     // The scroll offset from the top-left corner of the frame in pixels.
     virtual WebSize scrollOffset() const = 0;
@@ -222,6 +227,11 @@ public:
     virtual void collectGarbage() = 0;
 
 #if WEBKIT_USING_V8
+    // Executes script in the context of the current page and returns the value
+    // that the script evaluated to.
+    virtual v8::Handle<v8::Value> executeScriptAndReturnValue(
+        const WebScriptSource&) = 0;
+
     // Returns the V8 context for this frame, or an empty handle if there
     // is none.
     virtual v8::Local<v8::Context> mainWorldScriptContext() const = 0;
@@ -367,10 +377,14 @@ public:
 
     // Printing ------------------------------------------------------------
 
-    // Reformats the WebFrame for printing.  pageSize is the page size in
-    // pixels.  Returns the number of pages that can be printed at the
-    // given page size.
-    virtual int printBegin(const WebSize& pageSize) = 0;
+    // Reformats the WebFrame for printing. pageSize is the page size in
+    // points (a point in 1/72 of an inch). printerDPI is the user selected,
+    // DPI for the printer. Returns the number of pages that
+    // can be printed at the given page size. The out param useBrowserOverlays
+    // specifies whether the browser process should use its overlays (header,
+    // footer, margins etc) or whether the renderer controls this.
+    virtual int printBegin(const WebSize& pageSize, int printerDPI = 72,
+                           bool* useBrowserOverlays = 0) = 0;
 
     // Returns the page shrinking factor calculated by webkit (usually
     // between 1/1.25 and 1/2). Returns 0 if the page number is invalid or
@@ -491,6 +505,12 @@ public:
     virtual int pageNumberForElementById(const WebString& id,
                                          float pageWidthInPixels,
                                          float pageHeightInPixels) const = 0;
+
+    // Returns the bounds rect for current selection. If selection is performed
+    // on transformed text, the rect will still bound the selection but will
+    // not be transformed itself. If no selection is present, the rect will be
+    // empty ((0,0), (0,0)).
+    virtual WebRect selectionBoundsRect() const = 0;
 
 protected:
     ~WebFrame() { }

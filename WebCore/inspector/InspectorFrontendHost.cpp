@@ -41,11 +41,11 @@
 #include "FrameLoader.h"
 #include "HitTestResult.h"
 #include "HTMLFrameOwnerElement.h"
-#include "InspectorClient.h"
-#include "InspectorFrontend.h"
+#include "InspectorFrontendClient.h"
 #include "InspectorResource.h"
 #include "Page.h"
 #include "Pasteboard.h"
+#include "ScriptFunctionCall.h"
 
 #include <wtf/RefPtr.h>
 #include <wtf/StdLibExtras.h>
@@ -54,58 +54,142 @@ using namespace std;
 
 namespace WebCore {
 
-InspectorFrontendHost::InspectorFrontendHost(InspectorController* inspectorController, InspectorClient* client)
-    : m_inspectorController(inspectorController)
-    , m_client(client)
+#if ENABLE(CONTEXT_MENUS)
+class FrontendMenuProvider : public ContextMenuProvider {
+public:
+    static PassRefPtr<FrontendMenuProvider> create(InspectorFrontendHost* frontendHost, ScriptObject webInspector, const Vector<ContextMenuItem*>& items)
+    {
+        return adoptRef(new FrontendMenuProvider(frontendHost, webInspector, items));
+    }
+    
+    void disconnect()
+    {
+        m_webInspector = ScriptObject();
+        m_frontendHost = 0;
+    }
+    
+private:
+    FrontendMenuProvider(InspectorFrontendHost* frontendHost, ScriptObject webInspector,  const Vector<ContextMenuItem*>& items)
+        : m_frontendHost(frontendHost)
+        , m_webInspector(webInspector)
+        , m_items(items)
+    {
+    }
+
+    virtual ~FrontendMenuProvider()
+    {
+        contextMenuCleared();
+    }
+    
+    virtual void populateContextMenu(ContextMenu* menu)
+    {
+        for (size_t i = 0; i < m_items.size(); ++i)
+            menu->appendItem(*m_items[i]);
+    }
+    
+    virtual void contextMenuItemSelected(ContextMenuItem* item)
+    {
+        if (m_frontendHost) {
+            int itemNumber = item->action() - ContextMenuItemBaseCustomTag;
+
+            ScriptFunctionCall function(m_webInspector, "dispatch");
+            function.appendArgument("contextMenuItemSelected");
+            function.appendArgument(itemNumber);
+            function.call();
+        }
+    }
+    
+    virtual void contextMenuCleared()
+    {
+        if (m_frontendHost) {
+            ScriptFunctionCall function(m_webInspector, "dispatch");
+            function.appendArgument("contextMenuCleared");
+            function.call();
+
+            m_frontendHost->m_menuProvider = 0;
+        }
+        deleteAllValues(m_items);
+        m_items.clear();
+    }
+
+    InspectorFrontendHost* m_frontendHost;
+    ScriptObject m_webInspector;
+    Vector<ContextMenuItem*> m_items;
+};
+#endif
+
+InspectorFrontendHost::InspectorFrontendHost(InspectorFrontendClient* client, Page* frontendPage)
+    : m_client(client)
+    , m_frontendPage(frontendPage)
+#if ENABLE(CONTEXT_MENUS)
+    , m_menuProvider(0)
+#endif
 {
 }
 
 InspectorFrontendHost::~InspectorFrontendHost()
 {
+    ASSERT(!m_client);
+}
+
+void InspectorFrontendHost::disconnectClient()
+{
+    m_client = 0;
+#if ENABLE(CONTEXT_MENUS)
     if (m_menuProvider)
         m_menuProvider->disconnect();
+#endif
+    m_frontendPage = 0;
 }
 
 void InspectorFrontendHost::loaded()
 {
-    if (m_inspectorController)
-        m_inspectorController->scriptObjectReady();
+    if (m_client)
+        m_client->frontendLoaded();
 }
 
-void InspectorFrontendHost::attach()
+void InspectorFrontendHost::requestAttachWindow()
 {
-    if (m_inspectorController)
-        m_inspectorController->attachWindow();
+    if (m_client)
+        m_client->requestAttachWindow();
 }
 
-void InspectorFrontendHost::detach()
+void InspectorFrontendHost::requestDetachWindow()
 {
-    if (m_inspectorController)
-        m_inspectorController->detachWindow();
+    if (m_client)
+        m_client->requestDetachWindow();
 }
 
 void InspectorFrontendHost::closeWindow()
 {
-    if (m_inspectorController)
-        m_inspectorController->closeWindow();
+    if (m_client) {
+        m_client->closeWindow();
+        disconnectClient(); // Disconnect from client.
+    }
 }
 
-void InspectorFrontendHost::windowUnloading()
+void InspectorFrontendHost::bringToFront()
 {
-    if (m_inspectorController)
-        m_inspectorController->close();
+    if (m_client)
+        m_client->bringToFront();
+}
+
+void InspectorFrontendHost::inspectedURLChanged(const String& newURL)
+{
+    if (m_client)
+        m_client->inspectedURLChanged(newURL);
 }
 
 void InspectorFrontendHost::setAttachedWindowHeight(unsigned height)
 {
-    if (m_inspectorController)
-        m_inspectorController->setAttachedWindowHeight(height);
+    if (m_client)
+        m_client->changeAttachedWindowHeight(height);
 }
 
 void InspectorFrontendHost::moveWindowBy(float x, float y) const
 {
-    if (m_inspectorController)
-        m_inspectorController->moveWindowBy(x, y);
+    if (m_client)
+        m_client->moveWindowBy(x, y);
 }
 
 String InspectorFrontendHost::localizedStringsURL()
@@ -118,67 +202,27 @@ String InspectorFrontendHost::hiddenPanels()
     return m_client->hiddenPanels();
 }
 
-const String& InspectorFrontendHost::platform() const
-{
-#if PLATFORM(MAC)
-    DEFINE_STATIC_LOCAL(const String, platform, ("mac"));
-#elif OS(WINDOWS)
-    DEFINE_STATIC_LOCAL(const String, platform, ("windows"));
-#elif OS(LINUX)
-    DEFINE_STATIC_LOCAL(const String, platform, ("linux"));
-#else
-    DEFINE_STATIC_LOCAL(const String, platform, ("unknown"));
-#endif
-    return platform;
-}
-
-const String& InspectorFrontendHost::port() const
-{
-#if PLATFORM(QT)
-    DEFINE_STATIC_LOCAL(const String, port, ("qt"));
-#elif PLATFORM(GTK)
-    DEFINE_STATIC_LOCAL(const String, port, ("gtk"));
-#elif PLATFORM(WX)
-    DEFINE_STATIC_LOCAL(const String, port, ("wx"));
-#else
-    DEFINE_STATIC_LOCAL(const String, port, ("unknown"));
-#endif
-
-    return port;
-}
-
 void InspectorFrontendHost::copyText(const String& text)
 {
     Pasteboard::generalPasteboard()->writePlainText(text);
 }
 
+#if ENABLE(CONTEXT_MENUS)
 void InspectorFrontendHost::showContextMenu(Event* event, const Vector<ContextMenuItem*>& items)
 {
-    if (!m_inspectorController)
+    ASSERT(m_frontendPage);
+    ScriptState* frontendScriptState = scriptStateFromPage(debuggerWorld(), m_frontendPage);
+    ScriptObject webInspectorObj;
+    if (!ScriptGlobalObject::get(frontendScriptState, "WebInspector", webInspectorObj)) {
+        ASSERT_NOT_REACHED();
         return;
-    if (!m_inspectorController->windowVisible())
-        return;
-
-
-    m_menuProvider = MenuProvider::create(this, items);
-    ContextMenuController* menuController = m_inspectorController->m_page->contextMenuController();
-    menuController->showContextMenu(event, m_menuProvider);
-}
-
-void InspectorFrontendHost::contextMenuItemSelected(ContextMenuItem* item)
-{
-    if (m_inspectorController && m_inspectorController->windowVisible()) {
-        int itemNumber = item->action() - ContextMenuItemBaseCustomTag;
-        m_inspectorController->m_frontend->contextMenuItemSelected(itemNumber);
     }
+    RefPtr<FrontendMenuProvider> menuProvider = FrontendMenuProvider::create(this, webInspectorObj, items);
+    ContextMenuController* menuController = m_frontendPage->contextMenuController();
+    menuController->showContextMenu(event, menuProvider);
+    m_menuProvider = menuProvider.get();
 }
-
-void InspectorFrontendHost::contextMenuCleared()
-{
-    m_menuProvider = 0;
-    if (m_inspectorController && m_inspectorController->windowVisible())
-        m_inspectorController->m_frontend->contextMenuCleared();
-}
+#endif
 
 } // namespace WebCore
 

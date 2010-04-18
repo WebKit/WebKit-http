@@ -30,6 +30,7 @@
 #include "JSXMLHttpRequest.h"
 
 #include "Blob.h"
+#include "DOMFormData.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Event.h"
@@ -37,6 +38,7 @@
 #include "FrameLoader.h"
 #include "HTMLDocument.h"
 #include "JSBlob.h"
+#include "JSDOMFormData.h"
 #include "JSDOMWindowCustom.h"
 #include "JSDocument.h"
 #include "JSEvent.h"
@@ -67,21 +69,23 @@ JSValue JSXMLHttpRequest::open(ExecState* exec, const ArgList& args)
 
     const KURL& url = impl()->scriptExecutionContext()->completeURL(args.at(1).toString(exec));
     String method = args.at(0).toString(exec);
-    bool async = true;
-    if (args.size() >= 3)
-        async = args.at(2).toBoolean(exec);
 
     ExceptionCode ec = 0;
-    if (args.size() >= 4 && !args.at(3).isUndefined()) {
-        String user = valueToStringWithNullCheck(exec, args.at(3));
+    if (args.size() >= 3) {
+        bool async = args.at(2).toBoolean(exec);
 
-        if (args.size() >= 5 && !args.at(4).isUndefined()) {
-            String password = valueToStringWithNullCheck(exec, args.at(4));
-            impl()->open(method, url, async, user, password, ec);
+        if (args.size() >= 4 && !args.at(3).isUndefined()) {
+            String user = valueToStringWithNullCheck(exec, args.at(3));
+            
+            if (args.size() >= 5 && !args.at(4).isUndefined()) {
+                String password = valueToStringWithNullCheck(exec, args.at(4));
+                impl()->open(method, url, async, user, password, ec);
+            } else
+                impl()->open(method, url, async, user, ec);
         } else
-            impl()->open(method, url, async, user, ec);
+            impl()->open(method, url, async, ec);
     } else
-        impl()->open(method, url, async, ec);
+        impl()->open(method, url, ec);
 
     setDOMException(exec, ec);
     return jsUndefined();
@@ -111,6 +115,8 @@ JSValue JSXMLHttpRequest::send(ExecState* exec, const ArgList& args)
             impl()->send(toDocument(val), ec);
         else if (val.inherits(&JSBlob::s_info))
             impl()->send(toBlob(val), ec);
+        else if (val.inherits(&JSDOMFormData::s_info))
+            impl()->send(toDOMFormData(val), ec);
         else
             impl()->send(val.toString(exec), ec);
     }

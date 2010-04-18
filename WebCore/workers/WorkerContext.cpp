@@ -32,11 +32,13 @@
 #include "WorkerContext.h"
 
 #include "ActiveDOMObject.h"
-#include "Database.h"
 #include "DOMTimer.h"
 #include "DOMWindow.h"
+#include "Database.h"
+#include "ErrorEvent.h"
 #include "Event.h"
 #include "EventException.h"
+#include "InspectorController.h"
 #include "MessagePort.h"
 #include "NotImplemented.h"
 #include "ScriptSourceCode.h"
@@ -58,12 +60,31 @@
 
 namespace WebCore {
 
+class CloseWorkerContextTask : public ScriptExecutionContext::Task {
+public:
+    static PassOwnPtr<CloseWorkerContextTask> create()
+    {
+        return new CloseWorkerContextTask;
+    }
+
+    virtual void performTask(ScriptExecutionContext *context)
+    {
+        ASSERT(context->isWorkerContext());
+        WorkerContext* workerContext = static_cast<WorkerContext*>(context);
+        // Notify parent that this context is closed. Parent is responsible for calling WorkerThread::stop().
+        workerContext->thread()->workerReportingProxy().workerContextClosed();
+    }
+
+    virtual bool isCleanupTask() const { return true; }
+};
+
 WorkerContext::WorkerContext(const KURL& url, const String& userAgent, WorkerThread* thread)
     : m_url(url)
     , m_userAgent(userAgent)
     , m_script(new WorkerScriptController(this))
     , m_thread(thread)
     , m_closing(false)
+    , m_reportingException(false)
 {
     setSecurityOrigin(SecurityOrigin::create(url));
 }
@@ -121,8 +142,9 @@ void WorkerContext::close()
         return;
 
     m_closing = true;
-    // Notify parent that this context is closed. Parent is responsible for calling WorkerThread::stop().
-    thread()->workerReportingProxy().workerContextClosed();
+    // Let current script run to completion but prevent future script evaluations.
+    m_script->forbidExecution(WorkerScriptController::LetRunningScriptFinish);
+    postTask(CloseWorkerContextTask::create());
 }
 
 WorkerNavigator* WorkerContext::navigator() const
@@ -151,18 +173,6 @@ bool WorkerContext::hasPendingActivity() const
     return false;
 }
 
-void WorkerContext::resourceRetrievedByXMLHttpRequest(unsigned long, const ScriptString&)
-{
-    // FIXME: The implementation is pending the fixes in https://bugs.webkit.org/show_bug.cgi?id=23175
-    notImplemented();
-}
-
-void WorkerContext::scriptImported(unsigned long, const String&)
-{
-    // FIXME: The implementation is pending the fixes in https://bugs.webkit.org/show_bug.cgi?id=23175
-    notImplemented();
-}
-
 void WorkerContext::postTask(PassOwnPtr<Task> task)
 {
     thread()->runLoop().postTask(task);
@@ -188,12 +198,8 @@ void WorkerContext::clearInterval(int timeoutId)
     DOMTimer::removeById(scriptExecutionContext(), timeoutId);
 }
 
-void WorkerContext::importScripts(const Vector<String>& urls, const String& callerURL, int callerLine, ExceptionCode& ec)
+void WorkerContext::importScripts(const Vector<String>& urls, ExceptionCode& ec)
 {
-#if !ENABLE(INSPECTOR)
-    UNUSED_PARAM(callerURL);
-    UNUSED_PARAM(callerLine);
-#endif
     ec = 0;
     Vector<String>::const_iterator urlsEnd = urls.end();
     Vector<KURL> completedURLs;
@@ -217,9 +223,9 @@ void WorkerContext::importScripts(const Vector<String>& urls, const String& call
             return;
         }
 
-        scriptExecutionContext()->scriptImported(scriptLoader.identifier(), scriptLoader.script());
 #if ENABLE(INSPECTOR)
-        scriptExecutionContext()->addMessage(InspectorControllerDestination, JSMessageSource, LogMessageType, LogMessageLevel, "Worker script imported: \"" + *it + "\".", callerLine, callerURL);
+        if (InspectorController* inspector = scriptExecutionContext()->inspectorController())
+            inspector->scriptImported(scriptLoader.identifier(), scriptLoader.script());
 #endif
 
         ScriptValue exception;
@@ -234,16 +240,22 @@ void WorkerContext::importScripts(const Vector<String>& urls, const String& call
 void WorkerContext::reportException(const String& errorMessage, int lineNumber, const String& sourceURL)
 {
     bool errorHandled = false;
-    if (onerror())
-        errorHandled = onerror()->reportError(this, errorMessage, sourceURL, lineNumber);
-
+    if (!m_reportingException) {
+        if (onerror()) {
+            m_reportingException = true;
+            RefPtr<ErrorEvent> errorEvent(ErrorEvent::create(errorMessage, sourceURL, lineNumber));
+            onerror()->handleEvent(this, errorEvent.get());
+            errorHandled = errorEvent->defaultPrevented();
+            m_reportingException = false;
+        }
+    }
     if (!errorHandled)
         thread()->workerReportingProxy().postExceptionToWorkerObject(errorMessage, lineNumber, sourceURL);
 }
 
-void WorkerContext::addMessage(MessageDestination destination, MessageSource source, MessageType type, MessageLevel level, const String& message, unsigned lineNumber, const String& sourceURL)
+void WorkerContext::addMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, unsigned lineNumber, const String& sourceURL)
 {
-    thread()->workerReportingProxy().postConsoleMessageToWorkerObject(destination, source, type, level, message, lineNumber, sourceURL);
+    thread()->workerReportingProxy().postConsoleMessageToWorkerObject(source, type, level, message, lineNumber, sourceURL);
 }
 
 #if ENABLE(NOTIFICATIONS)
@@ -256,7 +268,7 @@ NotificationCenter* WorkerContext::webkitNotifications() const
 #endif
 
 #if ENABLE(DATABASE)
-PassRefPtr<Database> WorkerContext::openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, ExceptionCode& ec)
+PassRefPtr<Database> WorkerContext::openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode& ec)
 {
     if (!securityOrigin()->canAccessDatabase()) {
         ec = SECURITY_ERR;
@@ -267,7 +279,7 @@ PassRefPtr<Database> WorkerContext::openDatabase(const String& name, const Strin
     if (!Database::isAvailable())
         return 0;
 
-    return Database::openDatabase(this, name, version, displayName, estimatedSize, ec);
+    return Database::openDatabase(this, name, version, displayName, estimatedSize, creationCallback, ec);
 }
 #endif
 

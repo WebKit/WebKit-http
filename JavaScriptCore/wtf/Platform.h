@@ -79,13 +79,21 @@
 #endif
 
 /* COMPILER(MINGW) - MinGW GCC */
-#if defined(MINGW) || defined(__MINGW32__)
+/* COMPILER(MINGW64) - mingw-w64 GCC - only used as additional check to exclude mingw.org specific functions */
+#if defined(__MINGW32__)
 #define WTF_COMPILER_MINGW 1
-#endif
+#include <_mingw.h> /* private MinGW header */
+    #if defined(__MINGW64_VERSION_MAJOR) /* best way to check for mingw-w64 vs mingw.org */
+        #define WTF_COMPILER_MINGW64 1
+    #endif /* __MINGW64_VERSION_MAJOR */
+#endif /* __MINGW32__ */
 
 /* COMPILER(WINSCW) - CodeWarrior for Symbian emulator */
 #if defined(__WINSCW__)
 #define WTF_COMPILER_WINSCW 1
+/* cross-compiling, it is not really windows */
+#undef WIN32
+#undef _WIN32
 #endif
 
 
@@ -102,7 +110,28 @@
 /* CPU(IA64) - Itanium / IA-64 */
 #if defined(__ia64__)
 #define WTF_CPU_IA64 1
+/* 32-bit mode on Itanium */
+#if !defined(__LP64__)
+#define WTF_CPU_IA64_32 1
 #endif
+#endif
+
+/* CPU(MIPS) - MIPS 32-bit */
+/* Note: Only O32 ABI is tested, so we enable it for O32 ABI for now.  */
+#if (defined(mips) || defined(__mips__)) \
+    && defined(_ABIO32)
+#define WTF_CPU_MIPS 1
+#if defined(__MIPSEB__)
+#define WTF_CPU_BIG_ENDIAN 1
+#endif
+#define WTF_MIPS_PIC (defined __PIC__)
+#define WTF_MIPS_ARCH __mips
+#define WTF_MIPS_ISA(v) (defined WTF_MIPS_ARCH && WTF_MIPS_ARCH == v)
+#define WTF_MIPS_ISA_AT_LEAST(v) (defined WTF_MIPS_ARCH && WTF_MIPS_ARCH >= v)
+#define WTF_MIPS_ARCH_REV __mips_isa_rev
+#define WTF_MIPS_ISA_REV(v) (defined WTF_MIPS_ARCH_REV && WTF_MIPS_ARCH_REV == v)
+#define WTF_MIPS_DOUBLE_FLOAT (defined __mips_hard_float && !defined __mips_single_float)
+#endif /* MIPS */
 
 /* CPU(PPC) - PowerPC 32-bit */
 #if   defined(__ppc__)     \
@@ -142,7 +171,7 @@
 
 /* CPU(SPARC) - any SPARC, true for CPU(SPARC32) and CPU(SPARC64) */
 #if CPU(SPARC32) || CPU(SPARC64)
-#define WTF_CPU_SPARC
+#define WTF_CPU_SPARC 1
 #endif
 
 /* CPU(X86) - i386 / x86 32-bit */
@@ -162,7 +191,9 @@
 
 /* CPU(ARM) - ARM, any version*/
 #if   defined(arm) \
-    || defined(__arm__)
+    || defined(__arm__) \
+    || defined(ARM) \
+    || defined(_ARM_)
 #define WTF_CPU_ARM 1
 
 #if defined(__ARMEB__)
@@ -371,9 +402,6 @@
 
 /* OS(SYMBIAN) - Symbian */
 #if defined (__SYMBIAN32__)
-/* we are cross-compiling, it is not really windows */
-#undef WTF_OS_WINDOWS
-#undef WTF_PLATFORM_WIN
 #define WTF_OS_SYMBIAN 1
 #endif
 
@@ -537,6 +565,9 @@
 
 #if PLATFORM(QT)
 #define WTF_USE_QT4_UNICODE 1
+#if !defined(ENABLE_WIDGETS_10_SUPPORT)
+#define ENABLE_WIDGETS_10_SUPPORT 1
+#endif
 #elif OS(WINCE)
 #define WTF_USE_WINCE_UNICODE 1
 #elif PLATFORM(GTK)
@@ -562,10 +593,15 @@
 #define HAVE_RUNLOOP_TIMER 1
 #endif /* PLATFORM(MAC) && !PLATFORM(IPHONE) */
 
+#if PLATFORM(MAC)
+#define WTF_USE_CARBON_SECURE_INPUT_MODE 1
+#endif
+
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
 #define WTF_PLATFORM_CF 1
 #define WTF_USE_PTHREADS 1
 #define HAVE_PTHREAD_RWLOCK 1
+#define WTF_USE_CARBON_SECURE_INPUT_MODE 1
 #endif
 
 #if PLATFORM(QT) && OS(DARWIN)
@@ -607,6 +643,7 @@
 
 #if PLATFORM(WX)
 #define ENABLE_ASSEMBLER 1
+#define ENABLE_GLOBAL_FASTMALLOC_NEW 0
 #if OS(DARWIN)
 #define WTF_PLATFORM_CF 1
 #endif
@@ -755,6 +792,11 @@
 
 /* ENABLE macro defaults */
 
+#if PLATFORM(QT)
+// We musn't customize the global operator new and delete for the Qt port.
+#define ENABLE_GLOBAL_FASTMALLOC_NEW 0
+#endif
+
 /* fastMalloc match validation allows for runtime verification that
    new is matched by delete, fastMalloc is matched by fastFree, etc. */
 #if !defined(ENABLE_FAST_MALLOC_MATCH_VALIDATION)
@@ -789,6 +831,10 @@
 #define ENABLE_DASHBOARD_SUPPORT 0
 #endif
 
+#if !defined(ENABLE_WIDGETS_10_SUPPORT)
+#define ENABLE_WIDGETS_10_SUPPORT 0
+#endif
+
 #if !defined(ENABLE_INSPECTOR)
 #define ENABLE_INSPECTOR 1
 #endif
@@ -813,6 +859,10 @@
 #define ENABLE_OPCODE_STATS 0
 #endif
 
+#if !defined(ENABLE_GLOBAL_FASTMALLOC_NEW)
+#define ENABLE_GLOBAL_FASTMALLOC_NEW 1
+#endif
+
 #define ENABLE_SAMPLING_COUNTERS 0
 #define ENABLE_SAMPLING_FLAGS 0
 #define ENABLE_OPCODE_SAMPLING 0
@@ -832,6 +882,10 @@
 #define ENABLE_NOTIFICATIONS 0
 #endif
 
+#if PLATFORM(IPHONE)
+#define ENABLE_TEXT_CARET 0
+#endif
+
 #if !defined(ENABLE_TEXT_CARET)
 #define ENABLE_TEXT_CARET 1
 #endif
@@ -841,9 +895,12 @@
 #endif
 
 #if !defined(WTF_USE_JSVALUE64) && !defined(WTF_USE_JSVALUE32) && !defined(WTF_USE_JSVALUE32_64)
-#if (CPU(X86_64) && (OS(UNIX) || OS(WINDOWS))) || CPU(IA64) || CPU(ALPHA)
+#if (CPU(X86_64) && (OS(UNIX) || OS(WINDOWS))) \
+    || (CPU(IA64) && !CPU(IA64_32)) \
+    || CPU(ALPHA) \
+    || CPU(SPARC64)
 #define WTF_USE_JSVALUE64 1
-#elif CPU(ARM) || CPU(PPC64)
+#elif CPU(ARM) || CPU(PPC64) || CPU(MIPS)
 #define WTF_USE_JSVALUE32 1
 #elif OS(WINDOWS) && COMPILER(MINGW)
 /* Using JSVALUE32_64 causes padding/alignement issues for JITStubArg
@@ -869,6 +926,9 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
     #define WTF_USE_JIT_STUB_ARGUMENT_VA_LIST 1
 #elif CPU(ARM_THUMB2) && PLATFORM(IPHONE)
     #define ENABLE_JIT 1
+/* The JIT is tested & working on Android */
+#elif CPU(ARM_THUMB2) && PLATFORM(ANDROID) && ENABLE(ANDROID_JSC_JIT)
+    #define ENABLE_JIT 1
 /* The JIT is tested & working on x86 Windows */
 #elif CPU(X86) && PLATFORM(WIN)
     #define ENABLE_JIT 1
@@ -883,6 +943,8 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 #elif CPU(X86) && OS(WINDOWS) && COMPILER(MINGW) && GCC_VERSION >= 40100
     #define ENABLE_JIT 1
     #define WTF_USE_JIT_STUB_ARGUMENT_VA_LIST 1
+#elif CPU(X86_64) && OS(WINDOWS) && COMPILER(MINGW64) && GCC_VERSION >= 40100
+    #define ENABLE_JIT 1
 #elif CPU(X86) && OS(WINDOWS) && COMPILER(MSVC)
     #define ENABLE_JIT 1
     #define WTF_USE_JIT_STUB_ARGUMENT_REGISTER 1
@@ -893,6 +955,9 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
     #define ENABLE_JIT 1
 #elif CPU(ARM_TRADITIONAL) && OS(LINUX)
     #define ENABLE_JIT 1
+#elif CPU(MIPS) && OS(LINUX)
+    #define ENABLE_JIT 1
+    #define WTF_USE_JIT_STUB_ARGUMENT_VA_LIST 0
 #endif
 #endif /* PLATFORM(QT) */
 
@@ -948,6 +1013,7 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 #if (CPU(X86) && PLATFORM(MAC)) \
     || (CPU(X86_64) && PLATFORM(MAC)) \
     || (CPU(ARM_THUMB2) && PLATFORM(IPHONE)) \
+    || (CPU(ARM_THUMB2) && PLATFORM(ANDROID) && ENABLE(ANDROID_JSC_JIT)) \
     || (CPU(X86) && PLATFORM(WIN)) \
     || (CPU(X86) && PLATFORM(WX))
 #define ENABLE_YARR 1
@@ -956,10 +1022,12 @@ on MinGW. See https://bugs.webkit.org/show_bug.cgi?id=29268 */
 
 #if PLATFORM(QT)
 #if (CPU(X86) && OS(WINDOWS) && COMPILER(MINGW) && GCC_VERSION >= 40100) \
+    || (CPU(X86_64) && OS(WINDOWS) && COMPILER(MINGW64) && GCC_VERSION >= 40100) \
     || (CPU(X86) && OS(WINDOWS) && COMPILER(MSVC)) \
     || (CPU(X86) && OS(LINUX) && GCC_VERSION >= 40100) \
     || (CPU(X86_64) && OS(LINUX) && GCC_VERSION >= 40100) \
-    || (CPU(ARM_TRADITIONAL) && OS(LINUX))
+    || (CPU(ARM_TRADITIONAL) && OS(LINUX)) \
+    || (CPU(MIPS) && OS(LINUX))
 #define ENABLE_YARR 1
 #define ENABLE_YARR_JIT 1
 #endif

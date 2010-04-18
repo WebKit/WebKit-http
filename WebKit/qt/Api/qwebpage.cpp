@@ -80,6 +80,7 @@
 #include "Cache.h"
 #include "runtime/InitializeThreading.h"
 #include "PageGroup.h"
+#include "NotificationPresenterClientQt.h"
 #include "QWebPageClient.h"
 #include "WorkerThread.h"
 
@@ -119,81 +120,16 @@
 
 using namespace WebCore;
 
-void QWEBKIT_EXPORT qt_drt_overwritePluginDirectories()
+void QWEBKIT_EXPORT qt_wrt_setViewMode(QWebPage* page, const QString& mode)
 {
-    PluginDatabase* db = PluginDatabase::installedPlugins(/* populate */ false);
-
-    Vector<String> paths;
-    String qtPath(qgetenv("QTWEBKIT_PLUGIN_PATH").data());
-    qtPath.split(UChar(':'), /* allowEmptyEntries */ false, paths);
-
-    db->setPluginDirectories(paths);
-    db->refresh();
-}
-
-int QWEBKIT_EXPORT qt_drt_workerThreadCount()
-{
-#if ENABLE(WORKERS)
-    return WebCore::WorkerThread::workerThreadCount();
-#else
-    return 0;
-#endif
+    QWebPagePrivate::priv(page)->viewMode = mode;
+    WebCore::Frame* frame = QWebFramePrivate::core(page->mainFrame());
+    WebCore::FrameView* view = frame->view();
+    frame->document()->updateStyleSelector();
+    view->forceLayout();
 }
 
 bool QWebPagePrivate::drtRun = false;
-void QWEBKIT_EXPORT qt_drt_run(bool b)
-{
-    QWebPagePrivate::drtRun = b;
-}
-
-void QWEBKIT_EXPORT qt_drt_setFrameSetFlatteningEnabled(QWebPage* page, bool enabled)
-{
-    QWebPagePrivate::core(page)->settings()->setFrameSetFlatteningEnabled(enabled);
-}
-
-void QWEBKIT_EXPORT qt_webpage_setGroupName(QWebPage* page, const QString& groupName)
-{
-    page->handle()->page->setGroupName(groupName);
-}
-
-QString QWEBKIT_EXPORT qt_webpage_groupName(QWebPage* page)
-{
-    return page->handle()->page->groupName();
-}
-
-#if ENABLE(INSPECTOR)
-void QWEBKIT_EXPORT qt_drt_webinspector_executeScript(QWebPage* page, long callId, const QString& script)
-{
-    if (!page->handle()->page->inspectorController())
-        return;
-    page->handle()->page->inspectorController()->evaluateForTestInFrontend(callId, script);
-}
-
-void QWEBKIT_EXPORT qt_drt_webinspector_close(QWebPage* page)
-{
-    if (!page->handle()->page->inspectorController())
-        return;
-    page->handle()->page->inspectorController()->close();
-}
-
-void QWEBKIT_EXPORT qt_drt_webinspector_show(QWebPage* page)
-{
-    if (!page->handle()->page->inspectorController())
-        return;
-    page->handle()->page->inspectorController()->show();
-}
-
-void QWEBKIT_EXPORT qt_drt_setTimelineProfilingEnabled(QWebPage* page, bool enabled)
-{
-    InspectorController* controller = page->handle()->page->inspectorController();
-    if (!controller)
-        return;
-    if (enabled)
-        controller->startTimelineProfiler();
-    else
-        controller->stopTimelineProfiler();
-}
-#endif
 
 class QWebPageWidgetClient : public QWebPageClient {
 public:
@@ -202,6 +138,8 @@ public:
     {
         Q_ASSERT(view);
     }
+
+    virtual bool isQWidgetClient() const { return true; }
 
     virtual void scroll(int dx, int dy, const QRect&);
     virtual void update(const QRect& dirtyRect);
@@ -219,6 +157,7 @@ public:
     virtual QPalette palette() const;
     virtual int screenNumber() const;
     virtual QWidget* ownerWidget() const;
+    virtual QRect geometryRelativeToOwnerWidget() const;
 
     virtual QObject* pluginParent() const;
 
@@ -276,16 +215,19 @@ QPalette QWebPageWidgetClient::palette() const
 int QWebPageWidgetClient::screenNumber() const
 {
 #if defined(Q_WS_X11)
-    if (view)
-        return view->x11Info().screen();
+    return view->x11Info().screen();
 #endif
-
     return 0;
 }
 
 QWidget* QWebPageWidgetClient::ownerWidget() const
 {
     return view;
+}
+
+QRect QWebPageWidgetClient::geometryRelativeToOwnerWidget() const
+{
+    return view->geometry();
 }
 
 QObject* QWebPageWidgetClient::pluginParent() const
@@ -469,6 +411,10 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
     memset(actions, 0, sizeof(actions));
 
     PageGroup::setShouldTrackVisitedLinks(true);
+    
+#if ENABLE(NOTIFICATIONS)    
+    notificationPresenterClient = new NotificationPresenterClientQt();
+#endif
 }
 
 QWebPagePrivate::~QWebPagePrivate()
@@ -481,11 +427,20 @@ QWebPagePrivate::~QWebPagePrivate()
 #endif
     delete settings;
     delete page;
+    
+#if ENABLE(NOTIFICATIONS)
+    delete notificationPresenterClient;
+#endif
 }
 
 WebCore::Page* QWebPagePrivate::core(QWebPage* page)
 {
     return page->d->page;
+}
+
+QWebPagePrivate* QWebPagePrivate::priv(QWebPage* page)
+{
+    return page->d;
 }
 
 bool QWebPagePrivate::acceptNavigationRequest(QWebFrame *frame, const QNetworkRequest &request, QWebPage::NavigationType type)
@@ -542,7 +497,10 @@ static QWebPage::WebAction webActionForContextMenuAction(WebCore::ContextMenuAct
 QMenu *QWebPagePrivate::createContextMenu(const WebCore::ContextMenu *webcoreMenu,
         const QList<WebCore::ContextMenuItem> *items, QBitArray *visitedWebActions)
 {
-    QMenu* menu = new QMenu(q->view());
+    if (!client)
+        return 0;
+
+    QMenu* menu = new QMenu(client->ownerWidget());
     for (int i = 0; i < items->count(); ++i) {
         const ContextMenuItem &item = items->at(i);
         switch (item.type()) {
@@ -591,6 +549,7 @@ QMenu *QWebPagePrivate::createContextMenu(const WebCore::ContextMenu *webcoreMen
 }
 #endif // QT_NO_CONTEXTMENU
 
+#ifndef QT_NO_ACTION
 void QWebPagePrivate::_q_webActionTriggered(bool checked)
 {
     QAction *a = qobject_cast<QAction *>(q->sender());
@@ -599,6 +558,7 @@ void QWebPagePrivate::_q_webActionTriggered(bool checked)
     QWebPage::WebAction action = static_cast<QWebPage::WebAction>(a->data().toInt());
     q->triggerAction(action, checked);
 }
+#endif // QT_NO_ACTION
 
 void QWebPagePrivate::_q_cleanupLeakMessages()
 {
@@ -610,6 +570,9 @@ void QWebPagePrivate::_q_cleanupLeakMessages()
 
 void QWebPagePrivate::updateAction(QWebPage::WebAction action)
 {
+#ifdef QT_NO_ACTION
+    Q_UNUSED(action)
+#else
     QAction *a = actions[action];
     if (!a || !mainFrame)
         return;
@@ -669,6 +632,7 @@ void QWebPagePrivate::updateAction(QWebPage::WebAction action)
 
     if (a->isCheckable())
         a->setChecked(checked);
+#endif // QT_NO_ACTION
 }
 
 void QWebPagePrivate::updateNavigationActions()
@@ -769,6 +733,11 @@ void QWebPagePrivate::mousePressEvent(QGraphicsSceneMouseEvent* ev)
     if (!frame->view())
         return;
 
+    RefPtr<WebCore::Node> oldNode;
+    Frame* focusedFrame = page->focusController()->focusedFrame();
+    if (Document* focusedDocument = focusedFrame ? focusedFrame->document() : 0)
+        oldNode = focusedDocument->focusedNode();
+
     if (tripleClickTimer.isActive()
             && (ev->pos().toPoint() - tripleClick).manhattanLength()
                 < QApplication::startDragDistance()) {
@@ -782,6 +751,14 @@ void QWebPagePrivate::mousePressEvent(QGraphicsSceneMouseEvent* ev)
     if (mev.button() != NoButton)
         accepted = frame->eventHandler()->handleMousePressEvent(mev);
     ev->setAccepted(accepted);
+
+    RefPtr<WebCore::Node> newNode;
+    focusedFrame = page->focusController()->focusedFrame();
+    if (Document* focusedDocument = focusedFrame ? focusedFrame->document() : 0)
+        newNode = focusedDocument->focusedNode();
+
+    if (newNode && oldNode != newNode)
+        clickCausedFocus = true;
 }
 
 void QWebPagePrivate::mousePressEvent(QMouseEvent *ev)
@@ -791,9 +768,9 @@ void QWebPagePrivate::mousePressEvent(QMouseEvent *ev)
         return;
 
     RefPtr<WebCore::Node> oldNode;
-    if (page->focusController()->focusedFrame()
-        && page->focusController()->focusedFrame()->document())
-        oldNode = page->focusController()->focusedFrame()->document()->focusedNode();
+    Frame* focusedFrame = page->focusController()->focusedFrame();
+    if (Document* focusedDocument = focusedFrame ? focusedFrame->document() : 0)
+        oldNode = focusedDocument->focusedNode();
 
     if (tripleClickTimer.isActive()
             && (ev->pos() - tripleClick).manhattanLength()
@@ -810,9 +787,9 @@ void QWebPagePrivate::mousePressEvent(QMouseEvent *ev)
     ev->setAccepted(accepted);
 
     RefPtr<WebCore::Node> newNode;
-    if (page->focusController()->focusedFrame()
-        && page->focusController()->focusedFrame()->document())
-        newNode = page->focusController()->focusedFrame()->document()->focusedNode();
+    focusedFrame = page->focusController()->focusedFrame();
+    if (Document* focusedDocument = focusedFrame ? focusedFrame->document() : 0)
+        newNode = focusedDocument->focusedNode();
 
     if (newNode && oldNode != newNode)
         clickCausedFocus = true;
@@ -1050,10 +1027,8 @@ QWebPage::WebAction QWebPagePrivate::editorActionForKeyEvent(QKeyEvent* event)
         { QKeySequence::SelectEndOfDocument, QWebPage::SelectEndOfDocument },
         { QKeySequence::DeleteStartOfWord, QWebPage::DeleteStartOfWord },
         { QKeySequence::DeleteEndOfWord, QWebPage::DeleteEndOfWord },
-#if QT_VERSION >= 0x040500
         { QKeySequence::InsertParagraphSeparator, QWebPage::InsertParagraphSeparator },
         { QKeySequence::InsertLineSeparator, QWebPage::InsertLineSeparator },
-#endif
         { QKeySequence::SelectAll, QWebPage::SelectAll },
         { QKeySequence::UnknownKey, QWebPage::NoWebAction }
     };
@@ -1078,8 +1053,8 @@ void QWebPagePrivate::keyPressEvent(QKeyEvent *ev)
     if (!handled) {
         handled = true;
         QFont defaultFont;
-        if (q->view())
-            defaultFont = q->view()->font();
+        if (client)
+            defaultFont = client->ownerWidget()->font();
         QFontMetrics fm(defaultFont);
         if (!handleScrolling(ev, frame)) {
             switch (ev->key()) {
@@ -1294,7 +1269,7 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
         case QInputMethodEvent::TextFormat: {
             QTextCharFormat textCharFormat = a.value.value<QTextFormat>().toCharFormat();
             QColor qcolor = textCharFormat.underlineColor();
-            underlines.append(CompositionUnderline(a.start, a.length, Color(makeRGBA(qcolor.red(), qcolor.green(), qcolor.blue(), qcolor.alpha())), false));
+            underlines.append(CompositionUnderline(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)), Color(makeRGBA(qcolor.red(), qcolor.green(), qcolor.blue(), qcolor.alpha())), false));
             break;
         }
         case QInputMethodEvent::Cursor: {
@@ -1311,8 +1286,8 @@ void QWebPagePrivate::inputMethodEvent(QInputMethodEvent *ev)
 #if QT_VERSION >= 0x040600
         case QInputMethodEvent::Selection: {
             if (renderTextControl) {
-                renderTextControl->setSelectionStart(a.start);
-                renderTextControl->setSelectionEnd(a.start + a.length);
+                renderTextControl->setSelectionStart(qMin(a.start, (a.start + a.length)));
+                renderTextControl->setSelectionEnd(qMax(a.start, (a.start + a.length)));
             }
             break;
         }
@@ -1777,7 +1752,7 @@ QWebPage::QWebPage(QObject *parent)
     : QObject(parent)
     , d(new QWebPagePrivate(this))
 {
-    setView(qobject_cast<QWidget *>(parent));
+    setView(qobject_cast<QWidget*>(parent));
 
     connect(this, SIGNAL(loadProgress(int)), this, SLOT(_q_onLoadProgressChanged(int)));
 #ifndef NDEBUG
@@ -1861,21 +1836,28 @@ QWebHistory *QWebPage::history() const
 
     \sa view()
 */
-void QWebPage::setView(QWidget *view)
+void QWebPage::setView(QWidget* view)
 {
-    if (this->view() != view) {
-        d->view = view;
-        if (!view) {
-            delete d->client;
-            d->client = 0;
-        } else {
-            if (!d->client) 
-                d->client = new QWebPageWidgetClient(view);
-            else
-                static_cast<QWebPageWidgetClient*>(d->client)->view = view;
-        }
-        setViewportSize(view ? view->size() : QSize(0, 0));
+    if (this->view() == view)
+        return;
+
+    d->view = view;
+    setViewportSize(view ? view->size() : QSize(0, 0));
+
+    // If we have no client, we install a special client delegating
+    // the responsibility to the QWidget. This is the code path
+    // handling a.o. the "legacy" QWebView.
+    //
+    // If such a special delegate already exist, we substitute the view.
+
+    if (d->client) {
+        if (d->client->isQWidgetClient())
+            static_cast<QWebPageWidgetClient*>(d->client)->view = view;
+        return;
     }
+
+    if (view)
+        d->client = new QWebPageWidgetClient(view);
 }
 
 /*!
@@ -1916,7 +1898,8 @@ void QWebPage::javaScriptAlert(QWebFrame *frame, const QString& msg)
 {
     Q_UNUSED(frame)
 #ifndef QT_NO_MESSAGEBOX
-    QMessageBox::information(view(), tr("JavaScript Alert - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QMessageBox::Ok);
+    QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+    QMessageBox::information(parent, tr("JavaScript Alert - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QMessageBox::Ok);
 #endif
 }
 
@@ -1932,7 +1915,8 @@ bool QWebPage::javaScriptConfirm(QWebFrame *frame, const QString& msg)
 #ifdef QT_NO_MESSAGEBOX
     return true;
 #else
-    return QMessageBox::Yes == QMessageBox::information(view(), tr("JavaScript Confirm - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QMessageBox::Yes, QMessageBox::No);
+    QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+    return QMessageBox::Yes == QMessageBox::information(parent, tr("JavaScript Confirm - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QMessageBox::Yes, QMessageBox::No);
 #endif
 }
 
@@ -1951,7 +1935,8 @@ bool QWebPage::javaScriptPrompt(QWebFrame *frame, const QString& msg, const QStr
     Q_UNUSED(frame)
     bool ok = false;
 #ifndef QT_NO_INPUTDIALOG
-    QString x = QInputDialog::getText(view(), tr("JavaScript Prompt - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QLineEdit::Normal, defaultValue, &ok);
+    QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+    QString x = QInputDialog::getText(parent, tr("JavaScript Prompt - %1").arg(mainFrame()->url().host()), Qt::escape(msg), QLineEdit::Normal, defaultValue, &ok);
     if (ok && result)
         *result = x;
 #endif
@@ -1976,7 +1961,8 @@ bool QWebPage::shouldInterruptJavaScript()
 #ifdef QT_NO_MESSAGEBOX
     return false;
 #else
-    return QMessageBox::Yes == QMessageBox::information(view(), tr("JavaScript Problem - %1").arg(mainFrame()->url().host()), tr("The script on this page appears to have a problem. Do you want to stop the script?"), QMessageBox::Yes, QMessageBox::No);
+    QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+    return QMessageBox::Yes == QMessageBox::information(parent, tr("JavaScript Problem - %1").arg(mainFrame()->url().host()), tr("The script on this page appears to have a problem. Do you want to stop the script?"), QMessageBox::Yes, QMessageBox::No);
 #endif
 }
 
@@ -1995,7 +1981,7 @@ bool QWebPage::shouldInterruptJavaScript()
 */
 QWebPage *QWebPage::createWindow(WebWindowType type)
 {
-    QWebView *webView = qobject_cast<QWebView *>(view());
+    QWebView *webView = qobject_cast<QWebView*>(view());
     if (webView) {
         QWebView *newView = webView->createWindow(type);
         if (newView)
@@ -2260,6 +2246,7 @@ QString QWebPage::selectedText() const
     return d->page->focusController()->focusedOrMainFrame()->selectedText();
 }
 
+#ifndef QT_NO_ACTION
 /*!
    Returns a QAction for the specified WebAction \a action.
 
@@ -2279,7 +2266,7 @@ QAction *QWebPage::action(WebAction action) const
 
     QString text;
     QIcon icon;
-    QStyle *style = view() ? view()->style() : qApp->style();
+    QStyle *style = d->client ? d->client->style() : qApp->style();
     bool checkable = false;
 
     switch (action) {
@@ -2532,6 +2519,7 @@ QAction *QWebPage::action(WebAction action) const
     d->updateAction(action);
     return a;
 }
+#endif // QT_NO_ACTION
 
 /*!
     \property QWebPage::modified
@@ -2801,6 +2789,7 @@ bool QWebPage::swallowContextMenuEvent(QContextMenuEvent *event)
 */
 void QWebPage::updatePositionDependentActions(const QPoint &pos)
 {
+#ifndef QT_NO_ACTION
     // First we disable all actions, but keep track of which ones were originally enabled.
     QBitArray originallyEnabledWebActions(QWebPage::WebActionCount);
     for (int i = ContextMenuItemTagNoAction; i < ContextMenuItemBaseApplicationTag; ++i) {
@@ -2810,6 +2799,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
             a->setEnabled(false);
         }
     }
+#endif // QT_NO_ACTION
 
     d->createMainFrame();
     WebCore::Frame* focusedFrame = d->page->focusController()->focusedOrMainFrame();
@@ -2836,6 +2826,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     d->currentContextMenu = d->createContextMenu(&menu, menu.platformDescription(), &visitedWebActions);
 #endif // QT_NO_CONTEXTMENU
 
+#ifndef QT_NO_ACTION
     // Finally, we restore the original enablement for the actions that were not put into the menu.
     originallyEnabledWebActions &= ~visitedWebActions; // Mask out visited actions (they're part of the menu)
     for (int i = 0; i < QWebPage::WebActionCount; ++i) {
@@ -2844,6 +2835,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
                 a->setEnabled(true);
         }
     }
+#endif // QT_NO_ACTION
 
     // This whole process ensures that any actions put into to the context menu has the right
     // enablement, while also keeping the correct enablement for actions that were left out of
@@ -2976,7 +2968,8 @@ bool QWebPage::extension(Extension extension, const ExtensionOption *option, Ext
     if (extension == ChooseMultipleFilesExtension) {
         // FIXME: do not ignore suggestedFiles
         QStringList suggestedFiles = static_cast<const ChooseMultipleFilesExtensionOption*>(option)->suggestedFileNames;
-        QStringList names = QFileDialog::getOpenFileNames(view(), QString::null);
+        QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+        QStringList names = QFileDialog::getOpenFileNames(parent, QString::null);
         static_cast<ChooseMultipleFilesExtensionReturn*>(output)->fileNames = names;
         return true;
     }
@@ -3058,7 +3051,8 @@ QString QWebPage::chooseFile(QWebFrame *parentFrame, const QString& suggestedFil
 {
     Q_UNUSED(parentFrame)
 #ifndef QT_NO_FILEDIALOG
-    return QFileDialog::getOpenFileName(view(), QString::null, suggestedFile);
+    QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
+    return QFileDialog::getOpenFileName(parent, QString::null, suggestedFile);
 #else
     return QString::null;
 #endif
@@ -3128,6 +3122,8 @@ QWebPluginFactory *QWebPage::pluginFactory() const
     The default implementation returns the following value:
 
     "Mozilla/5.0 (%Platform%; %Security%; %Subplatform%; %Locale%) AppleWebKit/%WebKitVersion% (KHTML, like Gecko) %AppVersion Safari/%WebKitVersion%"
+
+    On mobile platforms such as Symbian S60 and Maemo, "Mobile Safari" is used instead of "Safari".
 
     In this string the following values are replaced at run-time:
     \list
@@ -3336,8 +3332,8 @@ QString QWebPage::userAgentForUrl(const QUrl& url) const
 
     // Language
     QLocale locale;
-    if (view())
-        locale = view()->locale();
+    if (d->client && d->client->ownerWidget())
+        locale = d->client->ownerWidget()->locale();
     QString name = locale.name();
     name[2] = QLatin1Char('-');
     ua.append(name);
@@ -3360,9 +3356,11 @@ QString QWebPage::userAgentForUrl(const QUrl& url) const
         ua.append(QLatin1String(qVersion()));
     }
 
-    ua.append(QString(QLatin1String(" Safari/%1"))
-                      .arg(qWebKitVersion()));
-
+#if defined(Q_WS_S60) || defined(Q_WS_MAEMO_5)
+    ua.append(QString(QLatin1String(" Mobile Safari/%1")).arg(qWebKitVersion()));
+#else
+    ua.append(QString(QLatin1String(" Safari/%1")).arg(qWebKitVersion()));
+#endif
     return ua;
 }
 
@@ -3515,7 +3513,11 @@ quint64 QWebPage::bytesReceived() const
 /*!
     \fn void QWebPage::unsupportedContent(QNetworkReply *reply)
 
-    This signal is emitted when WebKit cannot handle a link the user navigated to.
+    This signal is emitted when WebKit cannot handle a link the user navigated to or a
+    web server's response includes a "Content-Disposition" header with the 'attachment' 
+    directive. If "Content-Disposition" is present in \a reply, the web server is indicating
+    that the client should prompt the user to save the content regardless of content-type. 
+    See RFC 2616 sections 19.5.1 for details about Content-Disposition.
 
     At signal emission time the meta-data of the QNetworkReply \a reply is available.
 

@@ -23,7 +23,6 @@
 #include "config.h"
 #include "JSDOMWindowBase.h"
 
-#include "CString.h"
 #include "Chrome.h"
 #include "Console.h"
 #include "DOMWindow.h"
@@ -36,6 +35,8 @@
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "WebCoreJSClientData.h"
+#include <wtf/text/CString.h>
 
 using namespace JSC;
 
@@ -160,7 +161,7 @@ JSGlobalData* JSDOMWindowBase::commonJSGlobalData()
 #ifndef NDEBUG
         globalData->mainThreadOnly = true;
 #endif
-        globalData->clientData = new WebCoreJSClientData(globalData);
+        initNormalWorldClientData(globalData);
     }
 
     return globalData;

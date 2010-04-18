@@ -22,10 +22,10 @@
 #include "CookieJarSoup.h"
 
 #include "Cookie.h"
-#include "CString.h"
 #include "Document.h"
-#include "GOwnPtrGtk.h"
+#include "GOwnPtrSoup.h"
 #include "KURL.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -36,7 +36,11 @@ SoupCookieJar* defaultCookieJar()
 {
     if (!cookiesInitialized) {
         cookiesInitialized = true;
-        setDefaultCookieJar(soup_cookie_jar_new());
+
+        cookieJar = soup_cookie_jar_new();
+#ifdef HAVE_LIBSOUP_2_29_90
+        soup_cookie_jar_set_accept_policy(cookieJar, SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
+#endif
     }
 
     return cookieJar;

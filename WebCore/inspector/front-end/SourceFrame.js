@@ -288,8 +288,6 @@ WebInspector.SourceFrame.prototype = {
         if (!this._executionLine)
             return;
 
-        this._drawProgramCounterImageIfNeeded();
-
         if (this._executionLine < this._textModel.linesCount)
             this._textViewer.addDecoration(this._executionLine - 1, "webkit-execution-line");
     },
@@ -369,7 +367,6 @@ WebInspector.SourceFrame.prototype = {
 
         this._textModel.setAttribute(lineNumber, "breakpoint", breakpoint);
         breakpoint.sourceText = this._textModel.line(breakpoint.line - 1);
-        this._drawBreakpointImagesIfNeeded();
 
         this._textViewer.beginUpdates();
         this._textViewer.addDecoration(lineNumber, "webkit-breakpoint");
@@ -393,9 +390,10 @@ WebInspector.SourceFrame.prototype = {
 
     _contextMenu: function(event)
     {
-        if (event.target.className !== "webkit-line-number")
+        var target = event.target.enclosingNodeOrSelfWithClass("webkit-line-number");
+        if (!target)
             return;
-        var row = event.target.parentElement;
+        var row = target.parentElement;
 
         var lineNumber = row.lineNumber;
         var contextMenu = new WebInspector.ContextMenu();
@@ -435,18 +433,22 @@ WebInspector.SourceFrame.prototype = {
     {
         this._resetHoverTimer();
         this._hidePopup();
-        if (event.button != 0 || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+        if (event.button != 0 || event.altKey || event.ctrlKey || event.metaKey)
             return;
-        if (event.target.className !== "webkit-line-number")
+        var target = event.target.enclosingNodeOrSelfWithClass("webkit-line-number");
+        if (!target)
             return;
-        var row = event.target.parentElement;
+        var row = target.parentElement;
 
         var lineNumber = row.lineNumber;
 
         var breakpoint = this._textModel.getAttribute(lineNumber, "breakpoint");
-        if (breakpoint)
-            this._removeBreakpointDelegate(breakpoint);
-        else if (this._addBreakpointDelegate)
+        if (breakpoint) {
+            if (event.shiftKey)
+                breakpoint.enabled = !breakpoint.enabled;
+            else
+                this._removeBreakpointDelegate(breakpoint);
+        } else
             this._addBreakpointDelegate(lineNumber + 1);
         event.preventDefault();
     },
@@ -454,11 +456,10 @@ WebInspector.SourceFrame.prototype = {
     _mouseMove: function(event)
     {
         // Pretend that nothing has happened.
-        if (this._hoverElement === event.target)
+        if (this._hoverElement === event.target || event.target.hasStyleClass("source-frame-eval-expression"))
             return;
 
         this._resetHoverTimer();
-
         // User has 500ms to reach the popup.
         if (this._popup) {
             var self = this;
@@ -483,7 +484,7 @@ WebInspector.SourceFrame.prototype = {
         } else if (!this._hoverElement.hasStyleClass("webkit-javascript-ident"))
             return;
 
-        const toolTipDelay = 1500;
+        const toolTipDelay = this._popup ? 600 : 1000;
         this._hoverTimer = setTimeout(this._mouseHover.bind(this, this._hoverElement), toolTipDelay);
     },
 
@@ -497,11 +498,22 @@ WebInspector.SourceFrame.prototype = {
 
     _hidePopup: function()
     {
-        if (this._popup) {
-            this._popup.hide();
-            delete this._popup;
-            InspectorBackend.releaseWrapperObjectGroup(0, this._popoverObjectGroup);
+        if (!this._popup)
+            return;
+
+        // Replace higlight element with its contents inplace.
+        var parentElement = this._popup.highlightElement.parentElement;
+        var child = this._popup.highlightElement.firstChild;
+        while (child) {
+            var nextSibling = child.nextSibling;
+            parentElement.insertBefore(child, this._popup.highlightElement);
+            child = nextSibling;
         }
+        parentElement.removeChild(this._popup.highlightElement);
+
+        this._popup.hide();
+        delete this._popup;
+        InspectorBackend.releaseWrapperObjectGroup(0, this._popoverObjectGroup);
     },
 
     _mouseHover: function(element)
@@ -515,27 +527,26 @@ WebInspector.SourceFrame.prototype = {
         if (!lineRow)
             return;
 
-        // Find text offset of the hovered node (iterate over text nodes until we hit ours).
-        var offset = 0;
-        var node = lineRow.lastChild.traverseNextTextNode(lineRow.lastChild);
-        while (node && node !== element.firstChild) {
-            offset += node.nodeValue.length;
-            node = node.traverseNextTextNode(lineRow.lastChild);
+        // Collect tokens belonging to evaluated exression.
+        var tokens = [ element ];
+        var token = element.previousSibling;
+        while (token && (token.className === "webkit-javascript-ident" || token.className === "webkit-javascript-keyword" || token.textContent.trim() === ".")) {
+            tokens.push(token);
+            token = token.previousSibling;
         }
+        tokens.reverse();
 
-        // Imagine that the line is "foo(A.B.C.D)" and we hit C. Following code goes through following steps:
-        // "foo(A.B.C" -> "C.B.A(oof" -> "C.B.A" -> "A.B.C" (target eval expression).
-        var lineNumber = lineRow.lineNumber;
-        var prefix = this._textModel.line(lineNumber).substring(0, offset + element.textContent.length);
-        var reversedPrefix = prefix.split("").reverse().join("");
-        var match = /[a-zA-Z\x80-\xFF\_$0-9.]+/.exec(reversedPrefix);
-        if (!match)
-            return;
-        var expression = match[0].split("").reverse().join("");
-        this._showPopup(element, expression);
+        // Wrap them with highlight element.
+        var parentElement = element.parentElement;
+        var nextElement = element.nextSibling;
+        var container = document.createElement("span");
+        for (var i = 0; i < tokens.length; ++i)
+            container.appendChild(tokens[i]);
+        parentElement.insertBefore(container, nextElement);
+        this._showPopup(container);
     },
 
-    _showPopup: function(element, expression)
+    _showPopup: function(element)
     {
         function killHidePopupTimer()
         {
@@ -547,20 +558,6 @@ WebInspector.SourceFrame.prototype = {
                 // Discard pending command.
                 this._resetHoverTimer();
             }
-        }
-
-        function showTextPopup(text)
-        {
-            if (!WebInspector.panels.scripts.paused)
-                return;
-
-            var popupContentElement = document.createElement("span");
-            popupContentElement.className = "monospace";
-            popupContentElement.style.whiteSpace = "pre";
-            popupContentElement.textContent = text;
-            this._popup = new WebInspector.Popover(popupContentElement);
-            this._popup.show(element);
-            popupContentElement.addEventListener("mousemove", killHidePopupTimer.bind(this), true);
         }
 
         function showObjectPopup(result)
@@ -595,6 +592,8 @@ WebInspector.SourceFrame.prototype = {
                 const popupHeight = 250;
                 this._popup.show(element, popupWidth, popupHeight);
             }
+            this._popup.highlightElement = element;
+            this._popup.highlightElement.addStyleClass("source-frame-eval-expression");
             popupContentElement.addEventListener("mousemove", killHidePopupTimer.bind(this), true);
         }
 
@@ -606,7 +605,7 @@ WebInspector.SourceFrame.prototype = {
                 return;
             showObjectPopup.call(this, result);
         }
-        WebInspector.panels.scripts.evaluateInSelectedCallFrame(expression, false, this._popoverObjectGroup, evaluateCallback.bind(this));
+        WebInspector.panels.scripts.evaluateInSelectedCallFrame(element.textContent, false, this._popoverObjectGroup, evaluateCallback.bind(this));
     },
 
     _editBreakpointCondition: function(breakpoint)
@@ -695,134 +694,6 @@ WebInspector.SourceFrame.prototype = {
     {
         if (this._textViewer)
             this._textViewer.resize();
-    },
-
-    _drawProgramCounterInContext: function(ctx, glow)
-    {
-        if (glow)
-            ctx.save();
-
-        ctx.beginPath();
-        ctx.moveTo(17, 2);
-        ctx.lineTo(19, 2);
-        ctx.lineTo(19, 0);
-        ctx.lineTo(21, 0);
-        ctx.lineTo(26, 5.5);
-        ctx.lineTo(21, 11);
-        ctx.lineTo(19, 11);
-        ctx.lineTo(19, 9);
-        ctx.lineTo(17, 9);
-        ctx.closePath();
-        ctx.fillStyle = "rgb(142, 5, 4)";
-
-        if (glow) {
-            ctx.shadowBlur = 4;
-            ctx.shadowColor = "rgb(255, 255, 255)";
-            ctx.shadowOffsetX = -1;
-            ctx.shadowOffsetY = 0;
-        }
-
-        ctx.fill();
-        ctx.fill(); // Fill twice to get a good shadow and darker anti-aliased pixels.
-
-        if (glow)
-            ctx.restore();
-    },
-
-    _drawProgramCounterImageIfNeeded: function()
-    {
-        if (!this._needsProgramCounterImage)
-            return;
-
-        var ctx = document.getCSSCanvasContext("2d", "program-counter", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        this._drawProgramCounterInContext(ctx, true);
-
-        delete this._needsProgramCounterImage;
-    },
-
-    _drawBreakpointImagesIfNeeded: function(conditional)
-    {
-        if (!this._needsBreakpointImages)
-            return;
-
-        function drawBreakpoint(ctx, disabled, conditional)
-        {
-            ctx.beginPath();
-            ctx.moveTo(0, 2);
-            ctx.lineTo(2, 0);
-            ctx.lineTo(21, 0);
-            ctx.lineTo(26, 5.5);
-            ctx.lineTo(21, 11);
-            ctx.lineTo(2, 11);
-            ctx.lineTo(0, 9);
-            ctx.closePath();
-            ctx.fillStyle = conditional ? "rgb(217, 142, 1)" : "rgb(1, 142, 217)";
-            ctx.strokeStyle = conditional ? "rgb(205, 103, 0)" : "rgb(0, 103, 205)";
-            ctx.lineWidth = 3;
-            ctx.fill();
-            ctx.save();
-            ctx.clip();
-            ctx.stroke();
-            ctx.restore();
-
-            if (!disabled)
-                return;
-
-            ctx.save();
-            ctx.globalCompositeOperation = "destination-out";
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            ctx.fillRect(0, 0, 26, 11);
-            ctx.restore();
-        }
-
-
-        // Unconditional breakpoints.
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-program-counter", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx);
-        ctx.clearRect(20, 0, 6, 11);
-        this._drawProgramCounterInContext(ctx, true);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-disabled", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, true);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-disabled-program-counter", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, true);
-        ctx.clearRect(20, 0, 6, 11);
-        this._drawProgramCounterInContext(ctx, true);
-
-
-        // Conditional breakpoints.
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-conditional", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, false, true);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-conditional-program-counter", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, false, true);
-        ctx.clearRect(20, 0, 6, 11);
-        this._drawProgramCounterInContext(ctx, true);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-disabled-conditional", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, true, true);
-
-        var ctx = document.getCSSCanvasContext("2d", "breakpoint-disabled-conditional-program-counter", 26, 11);
-        ctx.clearRect(0, 0, 26, 11);
-        drawBreakpoint(ctx, true, true);
-        ctx.clearRect(20, 0, 6, 11);
-        this._drawProgramCounterInContext(ctx, true);
-
-        delete this._needsBreakpointImages;
     }
 }
 

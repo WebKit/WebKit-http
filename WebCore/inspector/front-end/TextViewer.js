@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -39,6 +40,9 @@ WebInspector.TextViewer = function(textModel, platform, url)
     this.element.tabIndex = 0;
 
     this.element.addEventListener("scroll", this._scroll.bind(this), false);
+    this.element.addEventListener("keydown", this._handleKeyDown.bind(this), false);
+    this.element.addEventListener("beforecopy", this._beforeCopy.bind(this), false);
+    this.element.addEventListener("copy", this._copy.bind(this), false);
 
     this._url = url;
 
@@ -202,6 +206,50 @@ WebInspector.TextViewer.prototype = {
                 this._repaintAll();
         }.bind(this), 50);
     },
+    
+    _handleKeyDown: function()
+    {
+        if (event.metaKey || event.shiftKey || event.ctrlKey || event.altKey)
+            return;
+        
+        var scrollValue = 0;
+        if (event.keyCode === WebInspector.KeyboardShortcut.KeyCodes.Up)
+            scrollValue = -1;
+        else if (event.keyCode == WebInspector.KeyboardShortcut.KeyCodes.Down)
+            scrollValue = 1;
+        
+        if (scrollValue) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.element.scrollByLines(scrollValue);
+            return;
+        }
+        
+        scrollValue = 0;
+        if (event.keyCode === WebInspector.KeyboardShortcut.KeyCodes.Left)
+            scrollValue = -40;
+        else if (event.keyCode == WebInspector.KeyboardShortcut.KeyCodes.Right)
+            scrollValue = 40;
+        
+        if (scrollValue) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.element.scrollLeft += scrollValue;
+        }
+    },
+
+    _beforeCopy: function(e)
+    {
+        e.preventDefault();
+    },
+
+    _copy: function(e)
+    {
+        var range = this._getSelection();
+        var text = this._textModel.copyRange(range);
+        InspectorFrontendHost.copyText(text);
+        e.preventDefault();
+    },
 
     beginUpdates: function(enabled)
     {
@@ -330,25 +378,25 @@ WebInspector.TextViewer.prototype = {
     _paintLine: function(lineRow, lineNumber)
     {
         var element = lineRow.lastChild;
-        var highlighterState = this._textModel.getAttribute(lineNumber, "highlighter-state");
-        var line = this._textModel.line(lineNumber);
-
-        if (!highlighterState) {
+        var highlight = this._textModel.getAttribute(lineNumber, "highlight");
+        if (!highlight) {
             if (this._rangeToMark && this._rangeToMark.startLine === lineNumber)
                 this._markedRangeElement = highlightSearchResult(element, this._rangeToMark.startColumn, this._rangeToMark.endColumn - this._rangeToMark.startColumn);
             return;
         }
 
         element.removeChildren();
+        var line = this._textModel.line(lineNumber);
 
         var plainTextStart = -1;
         for (var j = 0; j < line.length;) {
             if (j > 1000) {
                 // This line is too long - do not waste cycles on minified js highlighting.
-                plainTextStart = j;
+                if (plainTextStart === -1)
+                    plainTextStart = j;
                 break;
             }
-            var attribute = highlighterState && highlighterState.attributes[j];
+            var attribute = highlight[j];
             if (!attribute || !attribute.tokenType) {
                 if (plainTextStart === -1)
                     plainTextStart = j;
@@ -576,7 +624,18 @@ WebInspector.TextChunk = function(textViewer, startLine, endLine)
         lineNumbers.push(i + 1);
         lines.push(this._textModel.line(i));
     }
-    this._lineNumberElement.textContent = lineNumbers.join("\n");
+    if (this.linesCount === 1) {
+        // Single line chunks are typically created for decorations. Host line number in
+        // the sub-element in order to allow flexible border / margin management.
+        var innerSpan = document.createElement("span");
+        innerSpan.className = "webkit-line-number-inner";
+        innerSpan.textContent = startLine + 1;
+        var outerSpan = document.createElement("div");
+        outerSpan.className = "webkit-line-number-outer";
+        outerSpan.appendChild(innerSpan);
+        this._lineNumberElement.appendChild(outerSpan);
+    } else
+        this._lineNumberElement.textContent = lineNumbers.join("\n");
     this._lineContentElement.textContent = lines.join("\n");
 }
 

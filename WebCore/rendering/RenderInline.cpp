@@ -80,7 +80,7 @@ void RenderInline::destroy()
             // not have a parent that means they are either already disconnected or
             // root lines that can just be destroyed without disconnecting.
             if (firstLineBox()->parent()) {
-                for (InlineRunBox* box = firstLineBox(); box; box = box->nextLineBox())
+                for (InlineFlowBox* box = firstLineBox(); box; box = box->nextLineBox())
                     box->remove();
             }
         } else if (isInline() && parent())
@@ -410,7 +410,7 @@ void RenderInline::paint(PaintInfo& paintInfo, int tx, int ty)
 
 void RenderInline::absoluteRects(Vector<IntRect>& rects, int tx, int ty)
 {
-    if (InlineRunBox* curr = firstLineBox()) {
+    if (InlineFlowBox* curr = firstLineBox()) {
         for (; curr; curr = curr->nextLineBox())
             rects.append(IntRect(tx + curr->x(), ty + curr->y(), curr->width(), curr->height()));
     } else
@@ -429,7 +429,7 @@ void RenderInline::absoluteRects(Vector<IntRect>& rects, int tx, int ty)
 
 void RenderInline::absoluteQuads(Vector<FloatQuad>& quads)
 {
-    if (InlineRunBox* curr = firstLineBox()) {
+    if (InlineFlowBox* curr = firstLineBox()) {
         for (; curr; curr = curr->nextLineBox()) {
             FloatRect localRect(curr->x(), curr->y(), curr->width(), curr->height());
             quads.append(localToAbsoluteQuad(localRect));
@@ -534,7 +534,7 @@ IntRect RenderInline::linesBoundingBox() const
         // Return the width of the minimal left side and the maximal right side.
         int leftSide = 0;
         int rightSide = 0;
-        for (InlineRunBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
+        for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
             if (curr == firstLineBox() || curr->x() < leftSide)
                 leftSide = curr->x();
             if (curr == firstLineBox() || curr->x() + curr->width() > rightSide)
@@ -557,7 +557,7 @@ IntRect RenderInline::linesVisibleOverflowBoundingBox() const
     // Return the width of the minimal left side and the maximal right side.
     int leftSide = numeric_limits<int>::max();
     int rightSide = numeric_limits<int>::min();
-    for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextFlowBox()) {
+    for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
         leftSide = min(leftSide, curr->leftVisibleOverflow());
         rightSide = max(rightSide, curr->rightVisibleOverflow());
     }
@@ -599,11 +599,10 @@ IntRect RenderInline::clippedOverflowRectForRepaint(RenderBoxModelObject* repain
         // cb->height() is inaccurate if we're in the middle of a layout of |cb|, so use the
         // layer's size instead.  Even if the layer's size is wrong, the layer itself will repaint
         // anyway if its size does change.
-        int x = r.x();
-        int y = r.y();
+        IntRect repaintRect(r);
+        repaintRect.move(-cb->layer()->scrolledContentOffset()); // For overflow:auto/scroll/hidden.
+
         IntRect boxRect(0, 0, cb->layer()->width(), cb->layer()->height());
-        cb->layer()->subtractScrolledContentOffset(x, y); // For overflow:auto/scroll/hidden.
-        IntRect repaintRect(x, y, r.width(), r.height());
         r = intersection(repaintRect, boxRect);
     }
     
@@ -928,7 +927,7 @@ void RenderInline::imageChanged(WrappedImagePtr, const IntRect*)
 
 void RenderInline::addFocusRingRects(Vector<IntRect>& rects, int tx, int ty)
 {
-    for (InlineRunBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
+    for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
         RootInlineBox* root = curr->root();
         int top = max(root->lineTop(), curr->y());
         int bottom = min(root->lineBottom(), curr->y() + curr->height());
@@ -966,27 +965,26 @@ void RenderInline::paintOutline(GraphicsContext* graphicsContext, int tx, int ty
     if (!hasOutline())
         return;
     
-    if (style()->outlineStyleIsAuto() || hasOutlineAnnotation()) {
-        int ow = style()->outlineWidth();
-        Color oc = style()->outlineColor();
-        if (!oc.isValid())
-            oc = style()->color();
+    RenderStyle* styleToUse = style();
+    if (styleToUse->outlineStyleIsAuto() || hasOutlineAnnotation()) {
+        int ow = styleToUse->outlineWidth();
+        Color oc = styleToUse->visitedDependentColor(CSSPropertyOutlineColor);
 
         Vector<IntRect> focusRingRects;
         addFocusRingRects(focusRingRects, tx, ty);
-        if (style()->outlineStyleIsAuto())
-            graphicsContext->drawFocusRing(focusRingRects, ow, style()->outlineOffset(), oc);
+        if (styleToUse->outlineStyleIsAuto())
+            graphicsContext->drawFocusRing(focusRingRects, ow, styleToUse->outlineOffset(), oc);
         else
             addPDFURLRect(graphicsContext, unionRect(focusRingRects));
     }
 
-    if (style()->outlineStyleIsAuto() || style()->outlineStyle() == BNONE)
+    if (styleToUse->outlineStyleIsAuto() || styleToUse->outlineStyle() == BNONE)
         return;
 
     Vector<IntRect> rects;
 
     rects.append(IntRect());
-    for (InlineRunBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
+    for (InlineFlowBox* curr = firstLineBox(); curr; curr = curr->nextLineBox()) {
         RootInlineBox* root = curr->root();
         int top = max(root->lineTop(), curr->y());
         int bottom = min(root->lineBottom(), curr->y() + curr->height());
@@ -1001,11 +999,10 @@ void RenderInline::paintOutline(GraphicsContext* graphicsContext, int tx, int ty
 void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx, int ty,
                                        const IntRect& lastline, const IntRect& thisline, const IntRect& nextline)
 {
-    int ow = style()->outlineWidth();
-    EBorderStyle os = style()->outlineStyle();
-    Color oc = style()->outlineColor();
-    if (!oc.isValid())
-        oc = style()->color();
+    RenderStyle* styleToUse = style();
+    int ow = styleToUse->outlineWidth();
+    EBorderStyle os = styleToUse->outlineStyle();
+    Color oc = styleToUse->visitedDependentColor(CSSPropertyOutlineColor);
 
     int offset = style()->outlineOffset();
 
@@ -1021,7 +1018,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                l,
                b + (nextline.isEmpty() || thisline.x() <= nextline.x() || (nextline.right() - 1) <= thisline.x() ? ow : 0),
                BSLeft,
-               oc, style()->color(), os,
+               oc, os,
                (lastline.isEmpty() || thisline.x() < lastline.x() || (lastline.right() - 1) <= thisline.x() ? ow : -ow),
                (nextline.isEmpty() || thisline.x() <= nextline.x() || (nextline.right() - 1) <= thisline.x() ? ow : -ow));
     
@@ -1032,7 +1029,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                r + ow,
                b + (nextline.isEmpty() || nextline.right() <= thisline.right() || (thisline.right() - 1) <= nextline.x() ? ow : 0),
                BSRight,
-               oc, style()->color(), os,
+               oc, os,
                (lastline.isEmpty() || lastline.right() < thisline.right() || (thisline.right() - 1) <= lastline.x() ? ow : -ow),
                (nextline.isEmpty() || nextline.right() <= thisline.right() || (thisline.right() - 1) <= nextline.x() ? ow : -ow));
     // upper edge
@@ -1042,7 +1039,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                    t - ow,
                    min(r+ow, (lastline.isEmpty() ? 1000000 : tx + lastline.x())),
                    t ,
-                   BSTop, oc, style()->color(), os,
+                   BSTop, oc, os,
                    ow,
                    (!lastline.isEmpty() && tx + lastline.x() + 1 < r + ow) ? -ow : ow);
     
@@ -1052,7 +1049,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                    t - ow,
                    r + ow,
                    t ,
-                   BSTop, oc, style()->color(), os,
+                   BSTop, oc, os,
                    (!lastline.isEmpty() && l - ow < tx + lastline.right()) ? -ow : ow,
                    ow);
     
@@ -1063,7 +1060,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                    b,
                    min(r + ow, !nextline.isEmpty() ? tx + nextline.x() + 1 : 1000000),
                    b + ow,
-                   BSBottom, oc, style()->color(), os,
+                   BSBottom, oc, os,
                    ow,
                    (!nextline.isEmpty() && tx + nextline.x() + 1 < r + ow) ? -ow : ow);
     
@@ -1073,7 +1070,7 @@ void RenderInline::paintOutlineForLine(GraphicsContext* graphicsContext, int tx,
                    b,
                    r + ow,
                    b + ow,
-                   BSBottom, oc, style()->color(), os,
+                   BSBottom, oc, os,
                    (!nextline.isEmpty() && l - ow < tx + nextline.right()) ? -ow : ow,
                    ow);
 }

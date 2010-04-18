@@ -110,14 +110,15 @@ const char* DatabaseOpenTask::debugTaskName() const
 // *** DatabaseCloseTask ***
 // Closes the database.
 
-DatabaseCloseTask::DatabaseCloseTask(Database* database, DatabaseTaskSynchronizer* synchronizer)
+DatabaseCloseTask::DatabaseCloseTask(Database* database, Database::ClosePolicy closePolicy, DatabaseTaskSynchronizer* synchronizer)
     : DatabaseTask(database, synchronizer)
+    , m_closePolicy(closePolicy)
 {
 }
 
 void DatabaseCloseTask::doPerformTask()
 {
-    database()->close();
+    database()->close(m_closePolicy);
 }
 
 #ifndef NDEBUG

@@ -27,7 +27,6 @@
 #include "Cache.h"
 #include "CachedImage.h"
 #include "CachedResource.h"
-#include "CString.h"
 #include "DocLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -37,6 +36,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "SecurityOrigin.h"
+#include "SharedBuffer.h"
 #include "SubresourceLoader.h"
 #include <wtf/Assertions.h>
 #include <wtf/Vector.h>
@@ -286,6 +286,8 @@ void Loader::Host::nonCacheRequestComplete()
 {
     --m_nonCachedRequestsInFlight;
     ASSERT(m_nonCachedRequestsInFlight >= 0);
+
+    cache()->loader()->scheduleServePendingRequests();
 }
 
 bool Loader::Host::hasRequests() const
@@ -322,7 +324,6 @@ void Loader::Host::servePendingRequests(RequestQueue& requestsPending, bool& ser
         bool shouldLimitRequests = !m_name.isNull() || docLoader->doc()->parsing() || !docLoader->doc()->haveStylesheetsLoaded();
         if (shouldLimitRequests && m_requestsLoading.size() + m_nonCachedRequestsInFlight >= m_maxRequestsInFlight) {
             serveLowerPriority = false;
-            cache()->loader()->scheduleServePendingRequests();
             return;
         }
         requestsPending.removeFirst();

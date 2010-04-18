@@ -386,10 +386,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE pluginAllowedRunTime(
     /* [retval][out] */ UINT* allowedRunTime);
 
-    virtual HRESULT STDMETHODCALLTYPE isFrameSetFlatteningEnabled(
+    virtual HRESULT STDMETHODCALLTYPE isFrameFlatteningEnabled(
     /* [retval][out] */ BOOL* enabled);
 
-    virtual HRESULT STDMETHODCALLTYPE setFrameSetFlatteningEnabled(
+    virtual HRESULT STDMETHODCALLTYPE setFrameFlatteningEnabled(
     /* [in] */ BOOL enabled);
 
     virtual HRESULT STDMETHODCALLTYPE setPreferenceForTest(
@@ -402,7 +402,13 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setCustomDragCursorsEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE customDragCursorsEnabled(BOOL*);
 
-    // WebPreferences
+    virtual HRESULT STDMETHODCALLTYPE setShowDebugBorders(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE showDebugBorders(BOOL*);
+
+    virtual HRESULT STDMETHODCALLTYPE setShowRepaintCounter(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE showRepaintCounter(BOOL*);
+
+   // WebPreferences
 
     // This method accesses a different preference key than developerExtrasEnabled.
     // See <rdar://5343767> for the justification.

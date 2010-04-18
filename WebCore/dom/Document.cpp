@@ -34,13 +34,13 @@
 #include "CSSStyleSelector.h"
 #include "CSSStyleSheet.h"
 #include "CSSValueKeywords.h"
-#include "CString.h"
 #include "CachedCSSStyleSheet.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Comment.h"
 #include "Console.h"
 #include "CookieJar.h"
+#include "CustomEvent.h"
 #include "DOMImplementation.h"
 #include "DOMWindow.h"
 #include "DocLoader.h"
@@ -390,7 +390,7 @@ Document::Document(Frame* frame, bool isXHTML, bool isHTML)
     , m_normalWorldWrapperCache(0)
 #endif
     , m_usingGeolocation(false)
-    , m_storageEventTimer(this, &Document::storageEventTimerFired)
+    , m_pendingEventTimer(this, &Document::pendingEventTimerFired)
 #if ENABLE(WML)
     , m_containsWMLContent(false)
 #endif
@@ -428,6 +428,7 @@ Document::Document(Frame* frame, bool isXHTML, bool isHTML)
     m_usesFirstLetterRules = false;
     m_usesBeforeAfterRules = false;
     m_usesRemUnits = false;
+    m_usesLinkRules = false;
 
     m_gotoAnchorNeededAfterStylesheetsLoad = false;
  
@@ -451,7 +452,7 @@ Document::Document(Frame* frame, bool isXHTML, bool isHTML)
     static int docID = 0;
     m_docID = docID++;
 #if ENABLE(XHTMLMP)
-    m_shouldProcessNoScriptElement = settings() && !settings()->isJavaScriptEnabled();
+    m_shouldProcessNoScriptElement = m_frame->script()->canExecuteScripts(NotAboutToExecuteScript);
 #endif
 }
 
@@ -513,7 +514,7 @@ Document::~Document()
     removeAllEventListeners();
 
 #if USE(JSC)
-    forgetAllDOMNodesForDocument(this);
+    destroyAllWrapperCaches();
 #endif
 
     m_tokenizer.clear();
@@ -545,14 +546,29 @@ Document::~Document()
 #if USE(JSC)
 Document::JSWrapperCache* Document::createWrapperCache(DOMWrapperWorld* world)
 {
-    JSWrapperCache* wrapperCache = new JSWrapperCache();
+    JSWrapperCache* wrapperCache = new JSWrapperCache;
     m_wrapperCacheMap.set(world, wrapperCache);
     if (world->isNormal()) {
         ASSERT(!m_normalWorldWrapperCache);
         m_normalWorldWrapperCache = wrapperCache;
     }
-    world->rememberDocument(this);
+    world->didCreateWrapperCache(this);
     return wrapperCache;
+}
+
+void Document::destroyWrapperCache(DOMWrapperWorld* world)
+{
+    Document::JSWrapperCache* wrappers = wrapperCacheMap().take(world);
+    ASSERT(wrappers);
+    delete wrappers;
+    world->didDestroyWrapperCache(this);
+}
+
+void Document::destroyAllWrapperCaches()
+{
+    JSWrapperCacheMap& wrapperCacheMap = this->wrapperCacheMap();
+    while (!wrapperCacheMap.isEmpty())
+        destroyWrapperCache(wrapperCacheMap.begin()->first);
 }
 #endif
 
@@ -1197,7 +1213,7 @@ void Document::setTitle(const String& title, Element* titleElement)
     m_rawTitle = title;
     updateTitle();
 
-    if (m_titleSetExplicitly && m_titleElement && m_titleElement->hasTagName(titleTag))
+    if (m_titleSetExplicitly && m_titleElement && m_titleElement->hasTagName(titleTag) && !titleElement)
         static_cast<HTMLTitleElement*>(m_titleElement.get())->setText(m_title);
 }
 
@@ -1460,6 +1476,17 @@ void Document::updateLayoutIgnorePendingStylesheets()
     updateLayout();
 
     m_ignorePendingStylesheets = oldIgnore;
+}
+
+PassRefPtr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element* element)
+{
+    ASSERT_ARG(element, element->document() == this);
+
+    bool oldIgnore = m_ignorePendingStylesheets;
+    m_ignorePendingStylesheets = true;
+    RefPtr<RenderStyle> style = styleSelector()->styleForElement(element, element->parent() ? element->parent()->computedStyle() : 0);
+    m_ignorePendingStylesheets = oldIgnore;
+    return style.release();
 }
 
 void Document::createStyleSelector()
@@ -1809,9 +1836,9 @@ void Document::implicitClose()
     ImageLoader::dispatchPendingBeforeLoadEvents();
     ImageLoader::dispatchPendingLoadEvents();
     dispatchWindowLoadEvent();
-    dispatchWindowEvent(PageTransitionEvent::create(eventNames().pageshowEvent, false), this);
+    enqueuePageshowEvent(PageshowEventNotPersisted);
     if (m_pendingStateObject)
-        dispatchWindowEvent(PopStateEvent::create(m_pendingStateObject.release()));
+        enqueuePopstateEvent(m_pendingStateObject.release());
     
     if (f)
         f->loader()->handledOnloadEvents();
@@ -2471,7 +2498,13 @@ void Document::updateStyleSelector()
 #endif
 
     recalcStyleSelector();
+    // This recalcStyle initiates a new recalc cycle. We need to bracket it to
+    // make sure animations get the correct update time
+    if (m_frame)
+        m_frame->animation()->beginAnimationUpdate();
     recalcStyle(Force);
+    if (m_frame)
+        m_frame->animation()->endAnimationUpdate();
 
 #ifdef INSTRUMENT_LAYOUT_SCHEDULING
     if (!ownerElement())
@@ -2749,7 +2782,9 @@ bool Document::setFocusedNode(PassRefPtr<Node> newFocusedNode)
             focusChangeBlocked = true;
             newFocusedNode = 0;
         }
-        oldFocusedNode->dispatchUIEvent(eventNames().DOMFocusOutEvent, 0, 0);
+        
+        oldFocusedNode->dispatchUIEvent(eventNames().focusoutEvent, 0, 0); // DOM level 3 name for the bubbling blur event.
+
         if (m_focusedNode) {
             // handler shifted focus
             focusChangeBlocked = true;
@@ -2779,7 +2814,9 @@ bool Document::setFocusedNode(PassRefPtr<Node> newFocusedNode)
             focusChangeBlocked = true;
             goto SetFocusedNodeDone;
         }
-        m_focusedNode->dispatchUIEvent(eventNames().DOMFocusInEvent, 0, 0);
+
+        m_focusedNode->dispatchUIEvent(eventNames().focusinEvent, 0, 0); // DOM level 3 bubbling focus event.
+
         if (m_focusedNode != newFocusedNode) { 
             // handler shifted focus
             focusChangeBlocked = true;
@@ -2982,22 +3019,22 @@ void Document::dispatchWindowLoadEvent()
     domWindow->dispatchLoadEvent();
 }
 
-void Document::enqueueStorageEvent(PassRefPtr<Event> storageEvent)
+void Document::enqueueEvent(PassRefPtr<Event> event)
 {
-    m_storageEventQueue.append(storageEvent);
-    if (!m_storageEventTimer.isActive())
-        m_storageEventTimer.startOneShot(0);
+    m_pendingEventQueue.append(event);
+    if (!m_pendingEventTimer.isActive())
+        m_pendingEventTimer.startOneShot(0);
 }
 
-void Document::storageEventTimerFired(Timer<Document>*)
+void Document::pendingEventTimerFired(Timer<Document>*)
 {
-    ASSERT(!m_storageEventTimer.isActive());
-    Vector<RefPtr<Event> > storageEventQueue;
-    storageEventQueue.swap(m_storageEventQueue);
+    ASSERT(!m_pendingEventTimer.isActive());
+    Vector<RefPtr<Event> > eventQueue;
+    eventQueue.swap(m_pendingEventQueue);
 
     typedef Vector<RefPtr<Event> >::const_iterator Iterator;
-    Iterator end = storageEventQueue.end();
-    for (Iterator it = storageEventQueue.begin(); it != end; ++it)
+    Iterator end = eventQueue.end();
+    for (Iterator it = eventQueue.begin(); it != end; ++it)
         dispatchWindowEvent(*it);
 }
 
@@ -3006,6 +3043,8 @@ PassRefPtr<Event> Document::createEvent(const String& eventType, ExceptionCode& 
     RefPtr<Event> event;
     if (eventType == "Event" || eventType == "Events" || eventType == "HTMLEvents")
         event = Event::create();
+    else if (eventType == "CustomEvent")
+        event = CustomEvent::create();
     else if (eventType == "KeyboardEvent" || eventType == "KeyboardEvents")
         event = KeyboardEvent::create();
     else if (eventType == "MessageEvent")
@@ -3044,10 +3083,9 @@ PassRefPtr<Event> Document::createEvent(const String& eventType, ExceptionCode& 
     else if (eventType == "TouchEvent")
         event = TouchEvent::create();
 #endif
-    if (event) {
-        event->setCreatedByDOM(true);
+    if (event)
         return event.release();
-    }
+
     ec = NOT_SUPPORTED_ERR;
     return 0;
 }
@@ -4173,7 +4211,17 @@ void Document::finishedParsing()
 {
     setParsing(false);
     dispatchEvent(Event::create(eventNames().DOMContentLoadedEvent, true, false));
+
     if (Frame* f = frame()) {
+        // FrameLoader::finishedParsing() might end up calling Document::implicitClose() if all
+        // resource loads are complete. HTMLObjectElements can start loading their resources from
+        // post attach callbacks triggered by recalcStyle().  This means if we parse out an <object>
+        // tag and then reach the end of the document without updating styles, we might not have yet
+        // started the resource load and might fire the window load event too early.  To avoid this
+        // we force the styles to be up to date before calling FrameLoader::finishedParsing().
+        // See https://bugs.webkit.org/show_bug.cgi?id=36864 starting around comment 35.
+        updateStyleIfNeeded();
+
         f->loader()->finishedParsing();
 
 #if ENABLE(INSPECTOR)
@@ -4193,13 +4241,15 @@ Vector<String> Document::formElementsState() const
     typedef ListHashSet<Element*>::const_iterator Iterator;
     Iterator end = m_formElementsWithState.end();
     for (Iterator it = m_formElementsWithState.begin(); it != end; ++it) {
-        Element* e = *it;
+        Element* elementWithState = *it;
         String value;
-        if (e->saveFormControlState(value)) {
-            stateVector.append(e->formControlName().string());
-            stateVector.append(e->formControlType().string());
-            stateVector.append(value);
-        }
+        if (!elementWithState->shouldSaveAndRestoreFormControlState())
+            continue;
+        if (!elementWithState->saveFormControlState(value))
+            continue;
+        stateVector.append(elementWithState->formControlName().string());
+        stateVector.append(elementWithState->formControlType().string());
+        stateVector.append(value);
     }
     return stateVector;
 }
@@ -4369,7 +4419,7 @@ void Document::setUseSecureKeyboardEntryWhenActive(bool usesSecureKeyboard)
         return;
         
     m_useSecureKeyboardEntryWhenActive = usesSecureKeyboard;
-    m_frame->updateSecureKeyboardEntryIfActive();
+    m_frame->selection()->updateSecureKeyboardEntryIfActive();
 }
 
 bool Document::useSecureKeyboardEntryWhenActive() const
@@ -4420,7 +4470,7 @@ void Document::initSecurityContext()
         } else if (!settings->allowFileAccessFromFileURLs() && securityOrigin()->isLocal()) {
           // Some clients want file:// URLs to have even tighter restrictions by
           // default, and not be able to access other local files.
-          securityOrigin()->makeUnique();
+          securityOrigin()->enforceFilePathSeparation();
         }
     }
 
@@ -4490,7 +4540,7 @@ void Document::statePopped(SerializedScriptValue* stateObject)
         return;
     
     if (f->loader()->isComplete())
-        dispatchWindowEvent(PopStateEvent::create(stateObject));
+        enqueuePopstateEvent(stateObject);
     else
         m_pendingStateObject = stateObject;
 }
@@ -4629,69 +4679,14 @@ void Document::parseDNSPrefetchControlHeader(const String& dnsPrefetchControl)
 
 void Document::reportException(const String& errorMessage, int lineNumber, const String& sourceURL)
 {
+    addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, errorMessage, lineNumber, sourceURL);
+}
+
+void Document::addMessage(MessageSource source, MessageType type, MessageLevel level, const String& message, unsigned lineNumber, const String& sourceURL)
+{
     if (DOMWindow* window = domWindow())
-        window->console()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, errorMessage, lineNumber, sourceURL);
+        window->console()->addMessage(source, type, level, message, lineNumber, sourceURL);
 }
-
-void Document::addMessage(MessageDestination destination, MessageSource source, MessageType type, MessageLevel level, const String& message, unsigned lineNumber, const String& sourceURL)
-{
-    switch (destination) {
-#if ENABLE(INSPECTOR)
-    case InspectorControllerDestination:
-        if (page())
-            page()->inspectorController()->addMessageToConsole(source, type, level, message, lineNumber, sourceURL);
-        return;
-#endif
-    case ConsoleDestination:
-        if (DOMWindow* window = domWindow())
-            window->console()->addMessage(source, type, level, message, lineNumber, sourceURL);
-        return;
-    }
-    ASSERT_NOT_REACHED();
-}
-
-void Document::resourceRetrievedByXMLHttpRequest(unsigned long identifier, const ScriptString& sourceString)
-{
-#if ENABLE(INSPECTOR)
-    if (page())
-        page()->inspectorController()->resourceRetrievedByXMLHttpRequest(identifier, sourceString);
-#endif
-    Frame* frame = this->frame();
-    if (frame) {
-        FrameLoader* frameLoader = frame->loader();
-        frameLoader->notifier()->didLoadResourceByXMLHttpRequest(identifier, sourceString);
-    }
-}
-
-void Document::scriptImported(unsigned long identifier, const String& sourceString)
-{
-#if ENABLE(INSPECTOR)
-    if (page())
-        page()->inspectorController()->scriptImported(identifier, sourceString);
-#else
-    UNUSED_PARAM(identifier);
-    UNUSED_PARAM(sourceString);
-#endif
-}
-
-class ScriptExecutionContextTaskTimer : public TimerBase {
-public:
-    ScriptExecutionContextTaskTimer(PassRefPtr<Document> context, PassOwnPtr<ScriptExecutionContext::Task> task)
-        : m_context(context)
-        , m_task(task)
-    {
-    }
-
-private:
-    virtual void fired()
-    {
-        m_task->performTask(m_context.get());
-        delete this;
-    }
-
-    RefPtr<Document> m_context;
-    OwnPtr<ScriptExecutionContext::Task> m_task;
-};
 
 struct PerformTaskContext : Noncopyable {
     PerformTaskContext(PassRefPtr<DocumentWeakReference> documentReference, PassOwnPtr<ScriptExecutionContext::Task> task)
@@ -4719,12 +4714,7 @@ static void performTask(void* ctx)
 
 void Document::postTask(PassOwnPtr<Task> task)
 {
-    if (isMainThread()) {
-        ScriptExecutionContextTaskTimer* timer = new ScriptExecutionContextTaskTimer(static_cast<Document*>(this), task);
-        timer->startOneShot(0);
-    } else {
-        callOnMainThread(performTask, new PerformTaskContext(m_weakReference, task));
-    }
+    callOnMainThread(performTask, new PerformTaskContext(m_weakReference, task));
 }
 
 Element* Document::findAnchor(const String& name)
@@ -4770,6 +4760,26 @@ void Document::displayBufferModifiedByEncoding(UChar* buffer, unsigned len) cons
         m_decoder->encoding().displayBuffer(buffer, len);
 }
 
+void Document::enqueuePageshowEvent(PageshowEventPersistence persisted)
+{
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36334 Pageshow event needs to fire asynchronously.
+    dispatchWindowEvent(PageTransitionEvent::create(eventNames().pageshowEvent, persisted), this);
+}
+
+void Document::enqueueHashchangeEvent(const String& /*oldURL*/, const String& /*newURL*/)
+{
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36201 Hashchange event needs to fire asynchronously.
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36335 Hashchange event is now its own interface and takes two
+    //   URL arguments which we need to pass in here.
+    dispatchWindowEvent(Event::create(eventNames().hashchangeEvent, false, false));
+}
+
+void Document::enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject)
+{
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36202 Popstate event needs to fire asynchronously
+    dispatchWindowEvent(PopStateEvent::create(stateObject));
+}
+
 #if ENABLE(XHTMLMP)
 bool Document::isXHTMLMPDocument() const
 {
@@ -4777,8 +4787,9 @@ bool Document::isXHTMLMPDocument() const
         return false;
     // As per section 7.2 of OMA-WAP-XHTMLMP-V1_1-20061020-A.pdf, a conforming user agent
     // MUST accept XHTMLMP document identified as "application/vnd.wap.xhtml+xml"
-    // and SHOULD accept it identified as "application/xhtml+xml"
-    return frame()->loader()->responseMIMEType() == "application/vnd.wap.xhtml+xml" || frame()->loader()->responseMIMEType() == "application/xhtml+xml";
+    // and SHOULD accept it identified as "application/xhtml+xml" , "application/xhtml+xml" is a 
+    // general MIME type for all XHTML documents, not only for XHTMLMP
+    return frame()->loader()->responseMIMEType() == "application/vnd.wap.xhtml+xml";
 }
 #endif
 
@@ -4786,6 +4797,11 @@ bool Document::isXHTMLMPDocument() const
 InspectorTimelineAgent* Document::inspectorTimelineAgent() const 
 {
     return page() ? page()->inspectorTimelineAgent() : 0;
+}
+
+InspectorController* Document::inspectorController() const 
+{
+    return page() ? page()->inspectorController() : 0;
 }
 #endif
 

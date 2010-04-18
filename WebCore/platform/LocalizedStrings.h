@@ -128,6 +128,8 @@ namespace WebCore {
     String AXMenuListPopupActionVerb();
     String AXLinkActionVerb();
 
+    String missingPluginText();
+    String crashedPluginText();
     String multipleFileUploadText(unsigned numberOfFiles);
     String unknownFileSizeText();
 

@@ -74,8 +74,9 @@ enum PseudoId {
     MEDIA_CONTROLS_SEEK_BACK_BUTTON, MEDIA_CONTROLS_SEEK_FORWARD_BUTTON, MEDIA_CONTROLS_FULLSCREEN_BUTTON, MEDIA_CONTROLS_REWIND_BUTTON, 
     MEDIA_CONTROLS_RETURN_TO_REALTIME_BUTTON, MEDIA_CONTROLS_TOGGLE_CLOSED_CAPTIONS_BUTTON,
     MEDIA_CONTROLS_STATUS_DISPLAY, SCROLLBAR_THUMB, SCROLLBAR_BUTTON, SCROLLBAR_TRACK, SCROLLBAR_TRACK_PIECE, SCROLLBAR_CORNER, RESIZER,
-    INPUT_LIST_BUTTON, INNER_SPIN_BUTTON, OUTER_SPIN_BUTTON,
+    INPUT_LIST_BUTTON, INNER_SPIN_BUTTON, OUTER_SPIN_BUTTON, VISITED_LINK,
 
+    AFTER_LAST_INTERNAL_PSEUDOID,
     FIRST_PUBLIC_PSEUDOID = FIRST_LINE,
     FIRST_INTERNAL_PSEUDOID = FILE_UPLOAD_BUTTON,
     PUBLIC_PSEUDOID_MASK = ((1 << FIRST_INTERNAL_PSEUDOID) - 1) & ~((1 << FIRST_PUBLIC_PSEUDOID) - 1)
@@ -87,8 +88,6 @@ enum EBorderStyle { BNONE, BHIDDEN, INSET, GROOVE, RIDGE, OUTSET, DOTTED, DASHED
 
 enum EBorderPrecedence { BOFF, BTABLE, BCOLGROUP, BCOL, BROWGROUP, BROW, BCELL };
 
-enum PseudoState { PseudoUnknown, PseudoNone, PseudoAnyLink, PseudoLink, PseudoVisited};
-
 enum EPosition {
     StaticPosition, RelativePosition, AbsolutePosition, FixedPosition
 };
@@ -96,7 +95,6 @@ enum EPosition {
 enum EFloat {
     FNONE = 0, FLEFT, FRIGHT
 };
-
 
 enum EMarginCollapse { MCOLLAPSE, MSEPARATE, MDISCARD };
 
@@ -293,6 +291,8 @@ enum StyleContentType {
 
 enum EBorderFit { BorderFitBorder, BorderFitLines };
 
+enum EAnimationFillMode { AnimationFillModeNone, AnimationFillModeForwards, AnimationFillModeBackwards, AnimationFillModeBoth };
+
 enum EAnimPlayState {
     AnimPlayStatePlaying = 0x0,
     AnimPlayStatePaused = 0x1
@@ -386,6 +386,10 @@ enum EDisplay {
     NONE
 };
 
+enum EInsideLink {
+    NotInsideLink, InsideUnvisitedLink, InsideVisitedLink
+};
+    
 enum EPointerEvents {
     PE_NONE, PE_AUTO, PE_STROKE, PE_FILL, PE_PAINTED, PE_VISIBLE,
     PE_VISIBLE_STROKE, PE_VISIBLE_FILL, PE_VISIBLE_PAINTED, PE_ALL

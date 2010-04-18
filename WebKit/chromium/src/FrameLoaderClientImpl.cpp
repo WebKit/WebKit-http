@@ -32,12 +32,13 @@
 #include "FrameLoaderClientImpl.h"
 
 #include "Chrome.h"
-#include "CString.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "FormState.h"
 #include "FrameLoader.h"
 #include "FrameLoadRequest.h"
+#include "HTTPParsers.h"
+#include "HistoryItem.h"
 #include "HitTestResult.h"
 #include "HTMLAppletElement.h"
 #include "HTMLFormElement.h"  // needed by FormState.h
@@ -71,6 +72,7 @@
 #include "WindowFeatures.h"
 #include "WrappedResourceRequest.h"
 #include "WrappedResourceResponse.h"
+#include <wtf/text/CString.h>
 
 using namespace WebCore;
 
@@ -178,6 +180,18 @@ bool FrameLoaderClientImpl::allowImages(bool enabledPerSettings)
         return m_webFrame->client()->allowImages(m_webFrame, enabledPerSettings);
 
     return enabledPerSettings;
+}
+
+void FrameLoaderClientImpl::didNotAllowScript()
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didNotAllowScript(m_webFrame);
+}
+
+void FrameLoaderClientImpl::didNotAllowPlugins()
+{
+    if (m_webFrame->client())
+        m_webFrame->client()->didNotAllowPlugins(m_webFrame);
 }
 
 bool FrameLoaderClientImpl::hasWebView() const
@@ -392,12 +406,6 @@ bool FrameLoaderClientImpl::dispatchDidLoadResourceFromMemoryCache(
     return false;  // Do not suppress remaining notifications
 }
 
-void FrameLoaderClientImpl::dispatchDidLoadResourceByXMLHttpRequest(
-    unsigned long identifier,
-    const ScriptString& source)
-{
-}
-
 void FrameLoaderClientImpl::dispatchDidHandleOnloadEvents()
 {
     if (m_webFrame->client())
@@ -556,7 +564,7 @@ void FrameLoaderClientImpl::dispatchWillPerformClientRedirect(
     }
 }
 
-void FrameLoaderClientImpl::dispatchDidChangeLocationWithinPage()
+void FrameLoaderClientImpl::dispatchDidNavigateWithinPage()
 {
     // Anchor fragment navigations are not normal loads, so we need to synthesize
     // some events for our delegate.
@@ -567,11 +575,16 @@ void FrameLoaderClientImpl::dispatchDidChangeLocationWithinPage()
     // them for fragment redirection that happens in window.onload handler.
     // See https://bugs.webkit.org/show_bug.cgi?id=31838
     bool loaderCompleted =
-        !m_webFrame->frame()->page()->mainFrame()->loader()->isLoading();
+        !webView->page()->mainFrame()->loader()->activeDocumentLoader()->isLoadingInAPISense();
 
     // Generate didStartLoading if loader is completed.
     if (webView->client() && loaderCompleted)
         webView->client()->didStartLoading();
+
+    // We need to classify some hash changes as client redirects.
+    // FIXME: It seems wrong that the currentItem can sometimes be null.
+    HistoryItem* currentItem = m_webFrame->frame()->loader()->history()->currentItem();
+    bool isHashChange = !currentItem || !currentItem->stateObject();
 
     WebDataSourceImpl* ds = m_webFrame->dataSourceImpl();
     ASSERT(ds);  // Should not be null when navigating to a reference fragment!
@@ -583,27 +596,29 @@ void FrameLoaderClientImpl::dispatchDidChangeLocationWithinPage()
             ds->clearRedirectChain();
         }
 
-        // Figure out if this location change is because of a JS-initiated
-        // client redirect (e.g onload/setTimeout document.location.href=).
-        // FIXME: (bugs 1085325, 1046841) We don't get proper redirect
-        // performed/cancelled notifications across anchor navigations, so the
-        // other redirect-tracking code in this class (see
-        // dispatch*ClientRedirect() and dispatchDidStartProvisionalLoad) is
-        // insufficient to catch and properly flag these transitions. Once a
-        // proper fix for this bug is identified and applied the following
-        // block may no longer be required.
-        bool wasClientRedirect =
-            (url == m_expectedClientRedirectDest && chainEnd == m_expectedClientRedirectSrc)
-            || !m_webFrame->isProcessingUserGesture();
+        if (isHashChange) {
+            // Figure out if this location change is because of a JS-initiated
+            // client redirect (e.g onload/setTimeout document.location.href=).
+            // FIXME: (b/1085325, b/1046841) We don't get proper redirect
+            // performed/cancelled notifications across anchor navigations, so the
+            // other redirect-tracking code in this class (see
+            // dispatch*ClientRedirect() and dispatchDidStartProvisionalLoad) is
+            // insufficient to catch and properly flag these transitions. Once a
+            // proper fix for this bug is identified and applied the following
+            // block may no longer be required.
+            bool wasClientRedirect =
+                (url == m_expectedClientRedirectDest && chainEnd == m_expectedClientRedirectSrc)
+                || !m_webFrame->isProcessingUserGesture();
 
-        if (wasClientRedirect) {
-            if (m_webFrame->client())
-                m_webFrame->client()->didCompleteClientRedirect(m_webFrame, chainEnd);
-            ds->appendRedirect(chainEnd);
-            // Make sure we clear the expected redirect since we just effectively
-            // completed it.
-            m_expectedClientRedirectSrc = KURL();
-            m_expectedClientRedirectDest = KURL();
+            if (wasClientRedirect) {
+                if (m_webFrame->client())
+                    m_webFrame->client()->didCompleteClientRedirect(m_webFrame, chainEnd);
+                ds->appendRedirect(chainEnd);
+                // Make sure we clear the expected redirect since we just effectively
+                // completed it.
+                m_expectedClientRedirectSrc = KURL();
+                m_expectedClientRedirectDest = KURL();
+            }
         }
 
         // Regardless of how we got here, we are navigating to a URL so we need to
@@ -613,27 +628,38 @@ void FrameLoaderClientImpl::dispatchDidChangeLocationWithinPage()
 
     bool isNewNavigation;
     webView->didCommitLoad(&isNewNavigation);
-    if (m_webFrame->client())
-        m_webFrame->client()->didChangeLocationWithinPage(m_webFrame, isNewNavigation);
+    if (m_webFrame->client()) {
+        m_webFrame->client()->didNavigateWithinPage(m_webFrame, isNewNavigation);
+
+        // FIXME: Remove this notification once it is no longer consumed downstream.
+        if (isHashChange)
+            m_webFrame->client()->didChangeLocationWithinPage(m_webFrame, isNewNavigation);
+    }
 
     // Generate didStopLoading if loader is completed.
     if (webView->client() && loaderCompleted)
         webView->client()->didStopLoading();
 }
 
+void FrameLoaderClientImpl::dispatchDidChangeLocationWithinPage()
+{
+    if (m_webFrame)
+        m_webFrame->client()->didChangeLocationWithinPage(m_webFrame);
+}
+
 void FrameLoaderClientImpl::dispatchDidPushStateWithinPage()
 {
-    // FIXME
+    dispatchDidNavigateWithinPage();
 }
 
 void FrameLoaderClientImpl::dispatchDidReplaceStateWithinPage()
 {
-    // FIXME
+    dispatchDidNavigateWithinPage();
 }
 
 void FrameLoaderClientImpl::dispatchDidPopStateWithinPage()
 {
-    // FIXME
+    // Ignored since dispatchDidNavigateWithinPage was already called.
 }
 
 void FrameLoaderClientImpl::dispatchWillClose()
@@ -797,38 +823,6 @@ void FrameLoaderClientImpl::dispatchShow()
         webView->client()->show(webView->initialNavigationPolicy());
 }
 
-static bool shouldTreatAsAttachment(const ResourceResponse& response)
-{
-    const String& contentDisposition =
-        response.httpHeaderField("Content-Disposition");
-    if (contentDisposition.isEmpty())
-        return false;
-
-    // Some broken sites just send
-    // Content-Disposition: ; filename="file"
-    // screen those out here.
-    if (contentDisposition.startsWith(";"))
-        return false;
-
-    if (contentDisposition.startsWith("inline", false))
-        return false;
-
-    // Some broken sites just send
-    // Content-Disposition: filename="file"
-    // without a disposition token... screen those out.
-    if (contentDisposition.startsWith("filename", false))
-        return false;
-
-    // Also in use is Content-Disposition: name="file"
-    if (contentDisposition.startsWith("name", false))
-        return false;
-
-    // We have a content-disposition of "attachment" or unknown.
-    // RFC 2183, section 2.8 says that an unknown disposition
-    // value should be treated as "attachment"
-    return true;
-}
-
 void FrameLoaderClientImpl::dispatchDecidePolicyForMIMEType(
      FramePolicyFunction function,
      const String& mimeType,
@@ -843,7 +837,7 @@ void FrameLoaderClientImpl::dispatchDecidePolicyForMIMEType(
     if (statusCode == 204 || statusCode == 205) {
         // The server does not want us to replace the page contents.
         action = PolicyIgnore;
-    } else if (shouldTreatAsAttachment(response)) {
+    } else if (WebCore::contentDispositionType(response.httpHeaderField("Content-Disposition")) == WebCore::ContentDispositionAttachment) {
         // The server wants us to download instead of replacing the page contents.
         // Downloading is handled by the embedder, but we still get the initial
         // response so that we can ignore it and clean up properly.
@@ -898,51 +892,48 @@ void FrameLoaderClientImpl::dispatchDecidePolicyForNavigationAction(
     // The null check here is to fix a crash that seems strange
     // (see - https://bugs.webkit.org/show_bug.cgi?id=23554).
     if (m_webFrame->client() && !request.url().isNull()) {
-      WebNavigationPolicy navigationPolicy = WebNavigationPolicyCurrentTab;
-      actionSpecifiesNavigationPolicy(action, &navigationPolicy);
+        WebNavigationPolicy navigationPolicy = WebNavigationPolicyCurrentTab;
+        actionSpecifiesNavigationPolicy(action, &navigationPolicy);
 
-      // Give the delegate a chance to change the navigation policy.
-      const WebDataSourceImpl* ds = m_webFrame->provisionalDataSourceImpl();
-      if (ds) {
-          KURL url = ds->request().url();
-          if (url.protocolIs(backForwardNavigationScheme)) {
-              handleBackForwardNavigation(url);
-              navigationPolicy = WebNavigationPolicyIgnore;
-          } else {
-              bool isRedirect = ds->hasRedirectChain();
+        // Give the delegate a chance to change the navigation policy.
+        const WebDataSourceImpl* ds = m_webFrame->provisionalDataSourceImpl();
+        if (ds) {
+            KURL url = ds->request().url();
+            ASSERT(!url.protocolIs(backForwardNavigationScheme));
 
-              WebNavigationType webnavType =
-                  WebDataSourceImpl::toWebNavigationType(action.type());
+            bool isRedirect = ds->hasRedirectChain();
 
-              RefPtr<Node> node;
-              for (const Event* event = action.event(); event; event = event->underlyingEvent()) {
-                  if (event->isMouseEvent()) {
-                      const MouseEvent* mouseEvent =
-                          static_cast<const MouseEvent*>(event);
-                      node = m_webFrame->frame()->eventHandler()->hitTestResultAtPoint(
-                          mouseEvent->absoluteLocation(), false).innerNonSharedNode();
-                      break;
-                  }
-              }
-              WebNode originatingNode(node);
+            WebNavigationType webnavType =
+                WebDataSourceImpl::toWebNavigationType(action.type());
 
-              navigationPolicy = m_webFrame->client()->decidePolicyForNavigation(
-                  m_webFrame, ds->request(), webnavType, originatingNode,
-                  navigationPolicy, isRedirect);
-          }
-      }
+            RefPtr<Node> node;
+            for (const Event* event = action.event(); event; event = event->underlyingEvent()) {
+                if (event->isMouseEvent()) {
+                    const MouseEvent* mouseEvent =
+                        static_cast<const MouseEvent*>(event);
+                    node = m_webFrame->frame()->eventHandler()->hitTestResultAtPoint(
+                        mouseEvent->absoluteLocation(), false).innerNonSharedNode();
+                    break;
+                }
+            }
+            WebNode originatingNode(node);
 
-      if (navigationPolicy == WebNavigationPolicyCurrentTab)
-          policyAction = PolicyUse;
-      else if (navigationPolicy == WebNavigationPolicyDownload)
-          policyAction = PolicyDownload;
-      else {
-          if (navigationPolicy != WebNavigationPolicyIgnore) {
-              WrappedResourceRequest webreq(request);
-              m_webFrame->client()->loadURLExternally(m_webFrame, webreq, navigationPolicy);
-          }
-          policyAction = PolicyIgnore;
-      }
+            navigationPolicy = m_webFrame->client()->decidePolicyForNavigation(
+                m_webFrame, ds->request(), webnavType, originatingNode,
+                navigationPolicy, isRedirect);
+        }
+
+        if (navigationPolicy == WebNavigationPolicyCurrentTab)
+            policyAction = PolicyUse;
+        else if (navigationPolicy == WebNavigationPolicyDownload)
+            policyAction = PolicyDownload;
+        else {
+            if (navigationPolicy != WebNavigationPolicyIgnore) {
+                WrappedResourceRequest webreq(request);
+                m_webFrame->client()->loadURLExternally(m_webFrame, webreq, navigationPolicy);
+            }
+            policyAction = PolicyIgnore;
+        }
     }
 
     (m_webFrame->frame()->loader()->policyChecker()->*function)(policyAction);
@@ -1087,10 +1078,28 @@ void FrameLoaderClientImpl::updateGlobalHistoryRedirectLinks()
 {
 }
 
-bool FrameLoaderClientImpl::shouldGoToHistoryItem(HistoryItem*) const
+bool FrameLoaderClientImpl::shouldGoToHistoryItem(HistoryItem* item) const
 {
-    // FIXME
-    return true;
+    const KURL& url = item->url();
+    if (!url.protocolIs(backForwardNavigationScheme))
+        return true;
+
+    // Else, we'll punt this history navigation to the embedder.  It is
+    // necessary that we intercept this here, well before the FrameLoader
+    // has made any state changes for this history traversal.
+
+    bool ok;
+    int offset = url.lastPathComponent().toIntStrict(&ok);
+    if (!ok) {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    WebViewImpl* webview = m_webFrame->viewImpl();
+    if (webview->client())
+        webview->client()->navigateBackForwardSoon(offset);
+
+    return false;
 }
 
 void FrameLoaderClientImpl::dispatchDidAddBackForwardItem(HistoryItem*) const
@@ -1465,27 +1474,22 @@ bool FrameLoaderClientImpl::actionSpecifiesNavigationPolicy(
     const NavigationAction& action,
     WebNavigationPolicy* policy)
 {
-    if ((action.type() != NavigationTypeLinkClicked) || !action.event()->isMouseEvent())
+    const MouseEvent* event = 0;
+    if (action.type() == NavigationTypeLinkClicked
+        && action.event()->isMouseEvent())
+        event = static_cast<const MouseEvent*>(action.event());
+    else if (action.type() == NavigationTypeFormSubmitted
+             && action.event()
+             && action.event()->underlyingEvent()
+             && action.event()->underlyingEvent()->isMouseEvent())
+        event = static_cast<const MouseEvent*>(action.event()->underlyingEvent());
+
+    if (!event)
         return false;
 
-    const MouseEvent* event = static_cast<const MouseEvent*>(action.event());
     return WebViewImpl::navigationPolicyFromMouseEvent(
         event->button(), event->ctrlKey(), event->shiftKey(), event->altKey(),
         event->metaKey(), policy);
-}
-
-void FrameLoaderClientImpl::handleBackForwardNavigation(const KURL& url)
-{
-    ASSERT(url.protocolIs(backForwardNavigationScheme));
-
-    bool ok;
-    int offset = url.lastPathComponent().toIntStrict(&ok);
-    if (!ok)
-        return;
-
-    WebViewImpl* webview = m_webFrame->viewImpl();
-    if (webview->client())
-        webview->client()->navigateBackForwardSoon(offset);
 }
 
 PassOwnPtr<WebPluginLoadObserver> FrameLoaderClientImpl::pluginLoadObserver()

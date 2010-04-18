@@ -27,7 +27,6 @@
 #include "Position.h"
 
 #include "CSSComputedStyleDeclaration.h"
-#include "CString.h"
 #include "CharacterNames.h"
 #include "Logging.h"
 #include "PositionIterator.h"
@@ -38,6 +37,7 @@
 #include "htmlediting.h"
 #include "visible_units.h"
 #include <stdio.h>
+#include <wtf/text/CString.h>
   
 namespace WebCore {
 
@@ -946,14 +946,7 @@ Position Position::trailingWhitespacePosition(EAffinity, bool considerNonCollaps
 
 void Position::getInlineBoxAndOffset(EAffinity affinity, InlineBox*& inlineBox, int& caretOffset) const
 {
-    TextDirection primaryDirection = LTR;
-    for (RenderObject* r = node()->renderer(); r; r = r->parent()) {
-        if (r->isBlockFlow()) {
-            primaryDirection = r->style()->direction();
-            break;
-        }
-    }
-    getInlineBoxAndOffset(affinity, primaryDirection, inlineBox, caretOffset);
+    getInlineBoxAndOffset(affinity, primaryDirection(), inlineBox, caretOffset);
 }
 
 static bool isNonTextLeafChild(RenderObject* object)
@@ -1018,7 +1011,7 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
             inlineBox = toRenderBox(renderer)->inlineBoxWrapper();
             if (!inlineBox || (caretOffset > inlineBox->caretMinOffset() && caretOffset < inlineBox->caretMaxOffset()))
                 return;
-        } else if (node()->isContentEditable()) {
+        } else if (!node()->isLink() && node()->isContentEditable()) {
             Position pos = positionInParentBeforeNode(node()).upstream();
             pos.getInlineBoxAndOffset(DOWNSTREAM, primaryDirection, inlineBox, caretOffset);
             return;
@@ -1041,7 +1034,8 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
                 return;
             }
 
-            if ((caretOffset == caretMinOffset) ^ (affinity == UPSTREAM))
+            if (((caretOffset == caretMaxOffset) ^ (affinity == DOWNSTREAM))
+                || ((caretOffset == caretMinOffset) ^ (affinity == UPSTREAM)))
                 break;
 
             candidate = box;
@@ -1145,6 +1139,20 @@ void Position::getInlineBoxAndOffset(EAffinity affinity, TextDirection primaryDi
         }
     }
 }
+
+TextDirection Position::primaryDirection() const
+{
+    TextDirection primaryDirection = LTR;
+    for (const RenderObject* r = m_anchorNode->renderer(); r; r = r->parent()) {
+        if (r->isBlockFlow()) {
+            primaryDirection = r->style()->direction();
+            break;
+        }
+    }
+
+    return primaryDirection;
+}
+
 
 void Position::debugPosition(const char* msg) const
 {

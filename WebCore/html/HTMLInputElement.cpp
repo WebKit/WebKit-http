@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
  *
@@ -60,6 +60,7 @@
 #include "RenderText.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
+#include "StepRange.h"
 #include "StringHash.h"
 #include "TextEvent.h"
 #include <wtf/HashMap.h>
@@ -154,13 +155,14 @@ bool HTMLInputElement::autoComplete() const
 {
     if (m_autocomplete != Uninitialized)
         return m_autocomplete == On;
-    
-    // Assuming we're still in a Form, respect the Form's setting
-    if (HTMLFormElement* form = this->form())
-        return form->autoComplete();
-    
-    // The default is true
-    return true;
+    return HTMLTextFormControlElement::autoComplete();
+}
+
+static inline CheckedRadioButtons& checkedRadioButtons(const HTMLInputElement* element)
+{
+    if (HTMLFormElement* form = element->form())
+        return form->checkedRadioButtons();
+    return element->document()->checkedRadioButtons();
 }
 
 bool HTMLInputElement::valueMissing() const
@@ -187,7 +189,7 @@ bool HTMLInputElement::valueMissing() const
         case CHECKBOX:
             return !checked();
         case RADIO:
-            return !document()->checkedRadioButtons().checkedButtonForGroup(name());
+            return !checkedRadioButtons(this).checkedButtonForGroup(name());
         case COLOR:
             return false;
         case BUTTON:
@@ -267,7 +269,7 @@ bool HTMLInputElement::tooLong() const
         bool userEdited = !m_data.value().isNull();
         if (!userEdited)
             return false;
-        return value().numGraphemeClusters() > static_cast<unsigned>(max);
+        return numGraphemeClusters(value()) > static_cast<unsigned>(max);
     }
     case BUTTON:
     case CHECKBOX:
@@ -302,12 +304,13 @@ bool HTMLInputElement::rangeUnderflow() const
     case DATETIMELOCAL:
     case MONTH:
     case NUMBER:
-    case RANGE:
     case TIME:
     case WEEK: {
         double doubleValue = parseToDouble(value(), nan);
         return isfinite(doubleValue) && doubleValue < minimum();
     }
+    case RANGE: // Guaranteed by sanitization.
+        ASSERT(parseToDouble(value(), nan) >= minimum());
     case BUTTON:
     case CHECKBOX:
     case COLOR:
@@ -338,12 +341,13 @@ bool HTMLInputElement::rangeOverflow() const
     case DATETIMELOCAL:
     case MONTH:
     case NUMBER:
-    case RANGE:
     case TIME:
     case WEEK: {
         double doubleValue = parseToDouble(value(), nan);
-        return isfinite(doubleValue) && doubleValue >  maximum();
+        return isfinite(doubleValue) && doubleValue > maximum();
     }
+    case RANGE: // Guaranteed by sanitization.
+        ASSERT(parseToDouble(value(), nan) <= maximum());
     case BUTTON:
     case CHECKBOX:
     case COLOR:
@@ -496,7 +500,8 @@ bool HTMLInputElement::stepMismatch() const
     switch (inputType()) {
     case RANGE:
         // stepMismatch doesn't occur for RANGE. RenderSlider guarantees the
-        // value matches to step.
+        // value matches to step on user input, and sanitation takes care
+        // of the general case.
         return false;
     case NUMBER: {
         double doubleValue;
@@ -678,14 +683,6 @@ void HTMLInputElement::stepDown(int n, ExceptionCode& ec)
     applyStep(-n, ec);
 }
 
-static inline CheckedRadioButtons& checkedRadioButtons(const HTMLInputElement *element)
-{
-    if (HTMLFormElement* form = element->form())
-        return form->checkedRadioButtons();
-    
-    return element->document()->checkedRadioButtons();
-}
-
 bool HTMLInputElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     // If text fields can be focused, then they should always be keyboard focusable
@@ -802,7 +799,6 @@ void HTMLInputElement::setInputType(const String& t)
     // type change, otherwise a JavaScript programmer would be able to set a text
     // field's value to something like /etc/passwd and then change it to a file field.
     if (inputType() != newType) {
-        bool oldWillValidate = willValidate();
         if (newType == FILE && m_haveType)
             // Set the attribute back to the old value.
             // Useful in case we were called from inside parseMappedAttribute.
@@ -821,6 +817,7 @@ void HTMLInputElement::setInputType(const String& t)
             bool wasPasswordField = inputType() == PASSWORD;
             bool didRespectHeightAndWidth = respectHeightAndWidthAttrs();
             m_type = newType;
+            setNeedsWillValidateCheck();
             bool willStoreValue = storesValueSeparateFromAttribute();
             bool isPasswordField = inputType() == PASSWORD;
             bool willRespectHeightAndWidth = respectHeightAndWidthAttrs();
@@ -860,8 +857,6 @@ void HTMLInputElement::setInputType(const String& t)
         }
 
         setNeedsValidityCheck();
-        if (oldWillValidate != willValidate())
-            setNeedsWillValidateCheck();
         InputElement::notifyFormStateChanged(this);
     }
     m_haveType = true;
@@ -910,9 +905,6 @@ const AtomicString& HTMLInputElement::formControlType() const
 
 bool HTMLInputElement::saveFormControlState(String& result) const
 {
-    if (!autoComplete())
-        return false;
-
     switch (inputType()) {
         case BUTTON:
         case COLOR:
@@ -934,9 +926,13 @@ bool HTMLInputElement::saveFormControlState(String& result) const
         case TEXT:
         case TIME:
         case URL:
-        case WEEK:
-            result = value();
+        case WEEK: {
+            String currentValue = value();
+            if (currentValue == defaultValue())
+                return false;
+            result = currentValue;
             return true;
+        }
         case CHECKBOX:
         case RADIO:
             result = checked() ? "on" : "off";
@@ -1143,8 +1139,14 @@ void HTMLInputElement::parseMappedAttribute(MappedAttribute *attr)
                || attr->name() == incrementalAttr)
         setNeedsStyleRecalc();
     else if (attr->name() == minAttr
-             || attr->name() == maxAttr
-             || attr->name() == multipleAttr
+             || attr->name() == maxAttr) {
+        if (inputType() == RANGE) {
+            // Sanitize the value.
+            setValue(value());
+            setNeedsStyleRecalc();
+        }
+        setNeedsValidityCheck();
+    } else if (attr->name() == multipleAttr
              || attr->name() == patternAttr
              || attr->name() == precisionAttr
              || attr->name() == stepAttr)
@@ -1352,12 +1354,12 @@ bool HTMLInputElement::appendFormData(FormDataList& encoding, bool multipart)
             // If no filename at all is entered, return successful but empty.
             // Null would be more logical, but Netscape posts an empty file. Argh.
             if (!numFiles) {
-                encoding.appendFile(name(), File::create(""));
+                encoding.appendBlob(name(), File::create(""));
                 return true;
             }
 
             for (unsigned i = 0; i < numFiles; ++i)
-                encoding.appendFile(name(), m_fileList->item(i));
+                encoding.appendBlob(name(), m_fileList->item(i));
             return true;
         }
     }
@@ -1440,8 +1442,8 @@ void HTMLInputElement::setChecked(bool nowChecked, bool sendChangeEvent)
 
 void HTMLInputElement::setIndeterminate(bool _indeterminate)
 {
-    // Only checkboxes honor indeterminate.
-    if (inputType() != CHECKBOX || indeterminate() == _indeterminate)
+    // Only checkboxes and radio buttons honor indeterminate.
+    if (!allowsIndeterminate() || indeterminate() == _indeterminate)
         return;
 
     m_indeterminate = _indeterminate;
@@ -1483,10 +1485,16 @@ String HTMLInputElement::value() const
     String value = m_data.value();
     if (value.isNull()) {
         value = sanitizeValue(getAttribute(valueAttr));
-
-        // If no attribute exists, then just use "on" or "" based off the checked() state of the control.
-        if (value.isNull() && (inputType() == CHECKBOX || inputType() == RADIO))
-            return checked() ? "on" : "";
+        
+        // If no attribute exists, extra handling may be necessary.
+        // For Checkbox Types just use "on" or "" based off the checked() state of the control.
+        // For a Range Input use the calculated default value.
+        if (value.isNull()) {
+            if (inputType() == CHECKBOX || inputType() == RADIO)
+                return checked() ? "on" : "";
+            else if (inputType() == RANGE)
+                return serializeForNumberType(StepRange(this).defaultValue());
+        }
     }
 
     return value;
@@ -1568,17 +1576,14 @@ void HTMLInputElement::setValue(const String& value, bool sendChangeEvent)
             m_fileList->clear();
         else {
             m_data.setValue(sanitizeValue(value));
-            if (isTextField()) {
+            if (isTextField())
                 updatePlaceholderVisibility(false);
-                if (inDocument())
-                    document()->updateStyleIfNeeded();
-            }
         }
-        if (renderer())
-            renderer()->updateFromElement();
         setNeedsStyleRecalc();
     } else
         setAttribute(valueAttr, sanitizeValue(value));
+
+    setNeedsValidityCheck();
 
     if (isTextField()) {
         unsigned max = m_data.value().length();
@@ -1595,7 +1600,6 @@ void HTMLInputElement::setValue(const String& value, bool sendChangeEvent)
         dispatchFormControlChangeEvent();
 
     InputElement::notifyFormStateChanged(this);
-    setNeedsValidityCheck();
 }
 
 double HTMLInputElement::parseToDouble(const String& src, double defaultValue) const
@@ -1978,6 +1982,16 @@ bool HTMLInputElement::storesValueSeparateFromAttribute() const
     return false;
 }
 
+struct EventHandlingState {
+    RefPtr<HTMLInputElement> m_currRadio;
+    bool m_indeterminate;
+    bool m_checked;
+    
+    EventHandlingState(bool indeterminate, bool checked)
+        : m_indeterminate(indeterminate)
+        , m_checked(checked) { }
+};
+
 void* HTMLInputElement::preDispatchEventHandler(Event *evt)
 {
     // preventDefault or "return false" are used to reverse the automatic checking/selection we do here.
@@ -1985,17 +1999,14 @@ void* HTMLInputElement::preDispatchEventHandler(Event *evt)
     void* result = 0; 
     if ((inputType() == CHECKBOX || inputType() == RADIO) && evt->isMouseEvent()
             && evt->type() == eventNames().clickEvent && static_cast<MouseEvent*>(evt)->button() == LeftButton) {
+        
+        EventHandlingState* state = new EventHandlingState(indeterminate(), checked());
+
         if (inputType() == CHECKBOX) {
-            // As a way to store the state, we return 0 if we were unchecked, 1 if we were checked, and 2 for
-            // indeterminate.
-            if (indeterminate()) {
-                result = (void*)0x2;
+            if (indeterminate())
                 setIndeterminate(false);
-            } else {
-                if (checked())
-                    result = (void*)0x1;
+            else
                 setChecked(!checked(), true);
-            }
         } else {
             // For radio buttons, store the current selected radio object.
             // We really want radio groups to end up in sane states, i.e., to have something checked.
@@ -2005,11 +2016,13 @@ void* HTMLInputElement::preDispatchEventHandler(Event *evt)
             if (currRadio) {
                 // We have a radio button selected that is not us.  Cache it in our result field and ref it so
                 // that it can't be destroyed.
-                currRadio->ref();
-                result = currRadio;
+                state->m_currRadio = currRadio;
             }
+            if (indeterminate())
+                setIndeterminate(false);
             setChecked(true, true);
         }
+        result = state;
     }
     return result;
 }
@@ -2018,28 +2031,30 @@ void HTMLInputElement::postDispatchEventHandler(Event *evt, void* data)
 {
     if ((inputType() == CHECKBOX || inputType() == RADIO) && evt->isMouseEvent()
             && evt->type() == eventNames().clickEvent && static_cast<MouseEvent*>(evt)->button() == LeftButton) {
-        if (inputType() == CHECKBOX) {
-            // Reverse the checking we did in preDispatch.
-            if (evt->defaultPrevented() || evt->defaultHandled()) {
-                if (data == (void*)0x2)
-                    setIndeterminate(true);
-                else
-                    setChecked(data);
-            }
-        } else if (data) {
-            HTMLInputElement* input = static_cast<HTMLInputElement*>(data);
-            if (evt->defaultPrevented() || evt->defaultHandled()) {
-                // Restore the original selected radio button if possible.
-                // Make sure it is still a radio button and only do the restoration if it still
-                // belongs to our group.
+        
+        if (EventHandlingState* state = reinterpret_cast<EventHandlingState*>(data)) {
+            if (inputType() == CHECKBOX) {
+                // Reverse the checking we did in preDispatch.
+                if (evt->defaultPrevented() || evt->defaultHandled()) {
+                    setIndeterminate(state->m_indeterminate);
+                    setChecked(state->m_checked);
+                }
+            } else {
+                HTMLInputElement* input = state->m_currRadio.get();
+                if (evt->defaultPrevented() || evt->defaultHandled()) {
+                    // Restore the original selected radio button if possible.
+                    // Make sure it is still a radio button and only do the restoration if it still
+                    // belongs to our group.
 
-                if (input->form() == form() && input->inputType() == RADIO && input->name() == name()) {
-                    // Ok, the old radio button is still in our form and in our group and is still a 
-                    // radio button, so it's safe to restore selection to it.
-                    input->setChecked(true);
+                    if (input && input->form() == form() && input->inputType() == RADIO && input->name() == name()) {
+                        // Ok, the old radio button is still in our form and in our group and is still a 
+                        // radio button, so it's safe to restore selection to it.
+                        input->setChecked(true);
+                    }
+                    setIndeterminate(state->m_indeterminate);
                 }
             }
-            input->deref();
+            delete state;
         }
 
         // Left clicks on radio buttons and check boxes already performed default actions in preDispatchEventHandler(). 
@@ -2493,6 +2508,13 @@ String HTMLInputElement::sanitizeValue(const String& proposedValue) const
 {
     if (isTextField())
         return InputElement::sanitizeValue(this, proposedValue);
+
+    // If the proposedValue is null than this is a reset scenario and we
+    // want the range input's value attribute to take priority over the
+    // calculated default (middle) value.
+    if (inputType() == RANGE && !proposedValue.isNull())
+        return serializeForNumberType(StepRange(this).clampValue(proposedValue));
+
     return proposedValue;
 }
 
@@ -2580,6 +2602,9 @@ void HTMLInputElement::documentDidBecomeActive()
 
 void HTMLInputElement::willMoveToNewOwnerDocument()
 {
+    if (m_imageLoader)
+        m_imageLoader->elementWillMoveToNewOwnerDocument();
+
     // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
     if (needsActivationCallback())
         document()->unregisterForDocumentActivationCallbacks(this);
@@ -2603,11 +2628,10 @@ void HTMLInputElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) cons
     addSubresourceURL(urls, src());
 }
 
-bool HTMLInputElement::willValidate() const
+bool HTMLInputElement::recalcWillValidate() const
 {
-    // FIXME: This shall check for new WF2 input types too
-    return HTMLFormControlElementWithState::willValidate() && inputType() != HIDDEN &&
-           inputType() != BUTTON && inputType() != RESET;
+    return HTMLFormControlElementWithState::recalcWillValidate()
+        && inputType() != HIDDEN && inputType() != BUTTON && inputType() != RESET;
 }
 
 String HTMLInputElement::serializeForNumberType(double number)

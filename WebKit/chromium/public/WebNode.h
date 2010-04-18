@@ -32,12 +32,10 @@
 #define WebNode_h
 
 #include "WebCommon.h"
+#include "WebPrivatePtr.h"
 #include "WebString.h"
 
 namespace WebCore { class Node; }
-#if WEBKIT_IMPLEMENTATION
-namespace WTF { template <typename T> class PassRefPtr; }
-#endif
 
 namespace WebKit {
 class WebDocument;
@@ -51,8 +49,8 @@ class WebNode {
 public:
     virtual ~WebNode() { reset(); }
 
-    WebNode() : m_private(0) { }
-    WebNode(const WebNode& n) : m_private(0) { assign(n); }
+    WebNode() { }
+    WebNode(const WebNode& n) { assign(n); }
     WebNode& operator=(const WebNode& n)
     {
         assign(n);
@@ -62,13 +60,9 @@ public:
     WEBKIT_API void reset();
     WEBKIT_API void assign(const WebNode&);
 
-    bool isNull() const { return !m_private; }
+    WEBKIT_API bool equals(const WebNode&) const;
 
-#if WEBKIT_IMPLEMENTATION
-    WebNode(const WTF::PassRefPtr<WebCore::Node>&);
-    WebNode& operator=(const WTF::PassRefPtr<WebCore::Node>&);
-    operator WTF::PassRefPtr<WebCore::Node>() const;
-#endif
+    bool isNull() const { return m_private.isNull(); }
 
     enum NodeType {
         ElementNode = 1,
@@ -104,7 +98,10 @@ public:
     WEBKIT_API bool isElementNode() const;
     WEBKIT_API void addEventListener(const WebString& eventType, WebEventListener* listener, bool useCapture);
     WEBKIT_API void removeEventListener(const WebString& eventType, WebEventListener* listener, bool useCapture);
+    WEBKIT_API void simulateClick();
+    WEBKIT_API WebNodeList getElementsByTagName(const WebString&) const;
 
+    // Deprecated. Use to() instead.
     template<typename T> T toElement()
     {
         T res;
@@ -112,6 +109,7 @@ public:
         return res;
     }
 
+    // Deprecated. Use toConst() instead.
     template<typename T> const T toConstElement() const
     {
         T res;
@@ -119,21 +117,51 @@ public:
         return res;
     }
 
+    template<typename T> T to()
+    {
+        T res;
+        res.WebNode::assign(*this);
+        return res;
+    }
+
+    template<typename T> const T toConst() const
+    {
+        T res;
+        res.WebNode::assign(*this);
+        return res;
+    }
+
+#if WEBKIT_IMPLEMENTATION
+    WebNode(const WTF::PassRefPtr<WebCore::Node>&);
+    WebNode& operator=(const WTF::PassRefPtr<WebCore::Node>&);
+    operator WTF::PassRefPtr<WebCore::Node>() const;
+#endif
+
 protected:
-    typedef WebCore::Node WebNodePrivate;
-    void assign(WebNodePrivate*);
-    WebNodePrivate* m_private;
-    
+#if WEBKIT_IMPLEMENTATION
     template<typename T> T* unwrap()
     {
-        return static_cast<T*>(m_private);
+        return static_cast<T*>(m_private.get());
     }
 
     template<typename T> const T* constUnwrap() const
     {
-        return static_cast<const T*>(m_private);
+        return static_cast<const T*>(m_private.get());
     }
+#endif
+
+    WebPrivatePtr<WebCore::Node> m_private;
 };
+
+inline bool operator==(const WebNode& a, const WebNode& b)
+{
+    return a.equals(b);
+}
+
+inline bool operator!=(const WebNode& a, const WebNode& b)
+{
+    return !(a == b);
+}
 
 } // namespace WebKit
 

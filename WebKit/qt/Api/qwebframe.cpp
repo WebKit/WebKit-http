@@ -58,6 +58,7 @@
 #include "SelectionController.h"
 #include "SubstituteData.h"
 #include "SVGSMILElement.h"
+#include "TiledBackingStore.h"
 #include "htmlediting.h"
 #include "markup.h"
 #include "qt_instance.h"
@@ -87,182 +88,80 @@ QT_BEGIN_NAMESPACE
 extern Q_GUI_EXPORT int qt_defaultDpi();
 QT_END_NAMESPACE
 
-bool QWEBKIT_EXPORT qt_drt_hasDocumentElement(QWebFrame* qframe)
+static bool webframe_scrollOverflow(WebCore::Frame* frame, int dx, int dy, const QPoint& pos)
 {
-    return QWebFramePrivate::core(qframe)->document()->documentElement();
+    if (!frame || !frame->document() || !frame->view() || !frame->eventHandler())
+        return false;
+
+    QPoint contentsPos = frame->view()->windowToContents(pos);
+    Node* node = frame->document()->elementFromPoint(contentsPos.x(), contentsPos.y());
+    if (!node)
+        return false;
+
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+        return false;
+
+    if (renderer->isListBox())
+        return false;
+
+    RenderLayer* renderLayer = renderer->enclosingLayer();
+    if (!renderLayer)
+        return false;
+
+    bool scrolledHorizontal = false;
+    bool scrolledVertical = false;
+
+    if (dx > 0)
+        scrolledHorizontal = renderLayer->scroll(ScrollRight, ScrollByPixel, dx);
+    else if (dx < 0)
+        scrolledHorizontal = renderLayer->scroll(ScrollLeft, ScrollByPixel, qAbs(dx));
+
+    if (dy > 0)
+        scrolledVertical = renderLayer->scroll(ScrollDown, ScrollByPixel, dy);
+    else if (dy < 0)
+        scrolledVertical = renderLayer->scroll(ScrollUp, ScrollByPixel, qAbs(dy));
+
+    return (scrolledHorizontal || scrolledVertical);
 }
 
-void QWEBKIT_EXPORT qt_drt_setJavaScriptProfilingEnabled(QWebFrame* qframe, bool enabled)
+
+/*!
+  \internal
+  Scrolls nested frames starting at this frame, \a dx pixels to the right 
+  and \a dy pixels downward. Both \a dx and \a dy may be negative. First attempts
+  to scroll elements with CSS overflow at position pos, followed by this frame. If this 
+  frame doesn't scroll, attempts to scroll the parent
+*/
+void QWEBKIT_EXPORT qtwebkit_webframe_scrollRecursively(QWebFrame* qFrame, int dx, int dy, const QPoint& pos)
 {
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    Frame* frame = QWebFramePrivate::core(qframe);
-    InspectorController* controller = frame->page()->inspectorController();
-    if (!controller)
+    if (!qFrame)
         return;
-    if (enabled)
-        controller->enableProfiler();
-    else
-        controller->disableProfiler();
-#endif
-}
 
-// Pause a given CSS animation or transition on the target node at a specific time.
-// If the animation or transition is already paused, it will update its pause time.
-// This method is only intended to be used for testing the CSS animation and transition system.
-bool QWEBKIT_EXPORT qt_drt_pauseAnimation(QWebFrame *qframe, const QString &animationName, double time, const QString &elementId)
-{
-    Frame* frame = QWebFramePrivate::core(qframe);
-    if (!frame)
-        return false;
+    if (webframe_scrollOverflow(QWebFramePrivate::core(qFrame), dx, dy, pos))
+        return;
 
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
+    bool scrollHorizontal = false;
+    bool scrollVertical = false;
 
-    Document* doc = frame->document();
-    Q_ASSERT(doc);
+    do {
+        if (dx > 0)  // scroll right
+            scrollHorizontal = qFrame->scrollBarValue(Qt::Horizontal) < qFrame->scrollBarMaximum(Qt::Horizontal);
+        else if (dx < 0)  // scroll left
+            scrollHorizontal = qFrame->scrollBarValue(Qt::Horizontal) > qFrame->scrollBarMinimum(Qt::Horizontal);
 
-    Node* coreNode = doc->getElementById(elementId);
-    if (!coreNode || !coreNode->renderer())
-        return false;
+        if (dy > 0)  // scroll down
+            scrollVertical = qFrame->scrollBarValue(Qt::Vertical) < qFrame->scrollBarMaximum(Qt::Vertical);
+            else if (dy < 0) //scroll up
+            scrollVertical = qFrame->scrollBarValue(Qt::Vertical) > qFrame->scrollBarMinimum(Qt::Vertical);
 
-    return controller->pauseAnimationAtTime(coreNode->renderer(), animationName, time);
-}
+        if (scrollHorizontal || scrollVertical) {
+            qFrame->scroll(dx, dy);
+            return;
+        }
 
-bool QWEBKIT_EXPORT qt_drt_pauseTransitionOfProperty(QWebFrame *qframe, const QString &propertyName, double time, const QString &elementId)
-{
-    Frame* frame = QWebFramePrivate::core(qframe);
-    if (!frame)
-        return false;
-
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
-
-    Document* doc = frame->document();
-    Q_ASSERT(doc);
-
-    Node* coreNode = doc->getElementById(elementId);
-    if (!coreNode || !coreNode->renderer())
-        return false;
-
-    return controller->pauseTransitionAtTime(coreNode->renderer(), propertyName, time);
-}
-
-// Pause a given SVG animation on the target node at a specific time.
-// This method is only intended to be used for testing the SVG animation system.
-bool QWEBKIT_EXPORT qt_drt_pauseSVGAnimation(QWebFrame *qframe, const QString &animationId, double time, const QString &elementId)
-{
-#if !ENABLE(SVG)
-    return false;
-#else
-    Frame* frame = QWebFramePrivate::core(qframe);
-    if (!frame)
-        return false;
-
-    Document* doc = frame->document();
-    Q_ASSERT(doc);
-
-    if (!doc->svgExtensions())
-        return false;
-
-    Node* coreNode = doc->getElementById(animationId);
-    if (!coreNode || !SVGSMILElement::isSMILElement(coreNode))
-        return false;
-
-    return doc->accessSVGExtensions()->sampleAnimationAtTime(elementId, static_cast<SVGSMILElement*>(coreNode), time);
-#endif
-}
-
-// Returns the total number of currently running animations (includes both CSS transitions and CSS animations).
-int QWEBKIT_EXPORT qt_drt_numberOfActiveAnimations(QWebFrame *qframe)
-{
-    Frame* frame = QWebFramePrivate::core(qframe);
-    if (!frame)
-        return false;
-
-    AnimationController* controller = frame->animation();
-    if (!controller)
-        return false;
-
-    return controller->numberOfActiveAnimations();
-}
-
-void QWEBKIT_EXPORT qt_drt_clearFrameName(QWebFrame* qFrame)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    frame->tree()->clearName();
-}
-
-int QWEBKIT_EXPORT qt_drt_javaScriptObjectsCount()
-{
-    return JSDOMWindowBase::commonJSGlobalData()->heap.globalObjectCount();
-}
-
-void QWEBKIT_EXPORT qt_drt_garbageCollector_collect()
-{
-    gcController().garbageCollectNow();
-}
-
-void QWEBKIT_EXPORT qt_drt_garbageCollector_collectOnAlternateThread(bool waitUntilDone)
-{
-    gcController().garbageCollectOnAlternateThreadForDebugging(waitUntilDone);
-}
-
-// Returns the value of counter in the element specified by \a id.
-QString QWEBKIT_EXPORT qt_drt_counterValueForElementById(QWebFrame* qFrame, const QString& id)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (Document* document = frame->document()) {
-        Element* element = document->getElementById(id);
-        return WebCore::counterValueForElement(element);
-    }
-    return QString();
-}
-
-int QWEBKIT_EXPORT qt_drt_pageNumberForElementById(QWebFrame* qFrame, const QString& id, float width, float height)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (!frame)
-        return -1;
-
-    Element* element = frame->document()->getElementById(AtomicString(id));
-    if (!element)
-        return -1;
-
-    return PrintContext::pageNumberForElement(element, FloatSize(width, height));
-}
-
-int QWEBKIT_EXPORT qt_drt_numberOfPages(QWebFrame* qFrame, float width, float height)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (!frame)
-        return -1;
-
-    return PrintContext::numberOfPages(frame, FloatSize(width, height));
-}
-
-// Suspend active DOM objects in this frame.
-void QWEBKIT_EXPORT qt_suspendActiveDOMObjects(QWebFrame* qFrame)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (frame->document())
-        frame->document()->suspendActiveDOMObjects();
-}
-            
-// Resume active DOM objects in this frame.
-void QWEBKIT_EXPORT qt_resumeActiveDOMObjects(QWebFrame* qFrame)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (frame->document())
-        frame->document()->resumeActiveDOMObjects();
-}                        
-
-void QWEBKIT_EXPORT qt_drt_evaluateScriptInIsolatedWorld(QWebFrame* qFrame, int worldId, const QString& script)
-{
-    Frame* frame = QWebFramePrivate::core(qFrame);
-    if (frame)
-        JSC::JSValue result = frame->script()->executeScriptInWorld(mainThreadNormalWorld(), script, true).jsValue();
+        qFrame = qFrame->parentFrame();
+    } while (qFrame);
 }
 
 QWebFrameData::QWebFrameData(WebCore::Page* parentPage, WebCore::Frame* parentFrame,
@@ -327,8 +226,11 @@ WebCore::Scrollbar* QWebFramePrivate::verticalScrollBar() const
     return frame->view()->verticalScrollbar();
 }
 
-void QWebFramePrivate::renderContentsLayerAbsoluteCoords(GraphicsContext* context, const QRegion& clip)
+#if ENABLE(TILED_BACKING_STORE)
+void QWebFramePrivate::renderFromTiledBackingStore(GraphicsContext* context, const QRegion& clip)
 {
+    ASSERT(frame->tiledBackingStore());
+
     if (!frame->view() || !frame->contentRenderer())
         return;
 
@@ -339,21 +241,25 @@ void QWebFramePrivate::renderContentsLayerAbsoluteCoords(GraphicsContext* contex
     QPainter* painter = context->platformContext();
 
     WebCore::FrameView* view = frame->view();
-    view->layoutIfNeededRecursive();
+    
+    int scrollX = view->scrollX();
+    int scrollY = view->scrollY();
+    context->translate(-scrollX, -scrollY);
 
     for (int i = 0; i < vector.size(); ++i) {
         const QRect& clipRect = vector.at(i);
 
         painter->save();
-        painter->setClipRect(clipRect, Qt::IntersectClip);
+        
+        QRect rect = clipRect.translated(scrollX, scrollY);
+        painter->setClipRect(rect, Qt::IntersectClip);
 
-        context->save();
-        view->paintContents(context, clipRect);
-        context->restore();
+        frame->tiledBackingStore()->paint(context, rect);
 
         painter->restore();
     }
 }
+#endif
 
 void QWebFramePrivate::renderRelativeCoords(GraphicsContext* context, QWebFrame::RenderLayer layer, const QRegion& clip)
 {
@@ -419,45 +325,6 @@ void QWebFramePrivate::renderRelativeCoords(GraphicsContext* context, QWebFrame:
 
         painter->restore();
     }
-}
-
-bool QWebFramePrivate::scrollOverflow(int dx, int dy)
-{
-    if (!frame || !frame->document() || !frame->eventHandler())
-        return false;
-
-    Node* node = frame->document()->focusedNode();
-    if (!node)
-        node = frame->document()->elementFromPoint(frame->eventHandler()->currentMousePosition().x(),
-                                                   frame->eventHandler()->currentMousePosition().y());
-    if (!node)
-        return false;
-
-    RenderObject* renderer = node->renderer();
-    if (!renderer)
-        return false;
-
-    if (renderer->isListBox())
-        return false;
-
-    RenderLayer* renderLayer = renderer->enclosingLayer();
-    if (!renderLayer)
-        return false;
-
-    bool scrolledHorizontal = false;
-    bool scrolledVertical = false;
-
-    if (dx > 0)
-        scrolledHorizontal = renderLayer->scroll(ScrollRight, ScrollByPixel, dx);
-    else if (dx < 0)
-        scrolledHorizontal = renderLayer->scroll(ScrollLeft, ScrollByPixel, qAbs(dx));
-
-    if (dy > 0)
-        scrolledVertical = renderLayer->scroll(ScrollDown, ScrollByPixel, dy);
-    else if (dy < 0)
-        scrolledVertical = renderLayer->scroll(ScrollUp, ScrollByPixel, qAbs(dy));
-
-    return (scrolledHorizontal || scrolledVertical);
 }
 
 /*!
@@ -807,6 +674,8 @@ QString QWebFrame::frameName() const
 
 /*!
   The web page that contains this frame.
+
+  \sa pageChanged()
 */
 QWebPage *QWebFrame::page() const
 {
@@ -831,7 +700,7 @@ void QWebFrame::load(const QUrl &url)
 
   \a body is optional and is only used for POST operations.
 
-  \note The view remains the same until enough data has arrived to display the new \a url.
+  \note The view remains the same until enough data has arrived to display the new content.
 
   \sa setUrl()
 */
@@ -990,13 +859,13 @@ void QWebFrame::setScrollBarPolicy(Qt::Orientation orientation, Qt::ScrollBarPol
     if (orientation == Qt::Horizontal) {
         d->horizontalScrollBarPolicy = policy;
         if (d->frame->view()) {
-            d->frame->view()->setHorizontalScrollbarMode((ScrollbarMode)policy);
+            d->frame->view()->setHorizontalScrollbarMode((ScrollbarMode)policy, policy != Qt::ScrollBarAsNeeded /* lock */);
             d->frame->view()->updateCanHaveScrollbars();
         }
     } else {
         d->verticalScrollBarPolicy = policy;
         if (d->frame->view()) {
-            d->frame->view()->setVerticalScrollbarMode((ScrollbarMode)policy);
+            d->frame->view()->setVerticalScrollbarMode((ScrollbarMode)policy, policy != Qt::ScrollBarAsNeeded /* lock */);
             d->frame->view()->updateCanHaveScrollbars();
         }
     }
@@ -1099,55 +968,6 @@ void QWebFrame::scroll(int dx, int dy)
 }
 
 /*!
-  \since 4.7
-  Scrolls nested frames starting at this frame, \a dx pixels to the right 
-  and \a dy pixels downward. Both \a dx and \a dy may be negative. First attempts
-  to scroll elements with CSS overflow followed by this frame. If this 
-  frame doesn't scroll, attempts to scroll the parent
-
-  \sa QWebFrame::scroll
-*/
-bool QWebFrame::scrollRecursively(int dx, int dy)
-{
-    bool scrolledHorizontal = false;
-    bool scrolledVertical = false;
-    bool scrolledOverflow = d->scrollOverflow(dx, dy);
-
-    if (!scrolledOverflow) {
-        Frame* frame = d->frame;
-        if (!frame || !frame->view())
-            return false;
-
-        do {
-            IntSize scrollOffset = frame->view()->scrollOffset();
-            IntPoint maxScrollOffset = frame->view()->maximumScrollPosition();
-
-            if (dx > 0) // scroll right
-                scrolledHorizontal = scrollOffset.width() < maxScrollOffset.x();
-            else if (dx < 0) // scroll left
-                scrolledHorizontal = scrollOffset.width() > 0;
-
-            if (dy > 0) // scroll down
-                scrolledVertical = scrollOffset.height() < maxScrollOffset.y();
-            else if (dy < 0) //scroll up
-                scrolledVertical = scrollOffset.height() > 0;
-
-            if (scrolledHorizontal || scrolledVertical) {
-                frame->view()->scrollBy(IntSize(dx, dy));
-                return true;
-            }
-            frame = frame->tree()->parent(); 
-        } while (frame && frame->view());
-    }
-    return (scrolledHorizontal || scrolledVertical || scrolledOverflow);
-}
-
-bool QWEBKIT_EXPORT qtwebkit_webframe_scrollRecursively(QWebFrame* qFrame, int dx, int dy)
-{
-    return qFrame->scrollRecursively(dx, dy);
-}
-
-/*!
   \property QWebFrame::scrollPosition
   \since 4.5
   \brief the position the frame is currently scrolled to.
@@ -1245,7 +1065,7 @@ void QWebFrame::render(QPainter* painter)
 */
 void QWebFrame::setTextSizeMultiplier(qreal factor)
 {
-    d->frame->setZoomFactor(factor, /*isTextOnly*/true);
+    d->frame->setZoomFactor(factor, ZoomTextOnly);
 }
 
 /*!
@@ -1264,7 +1084,7 @@ qreal QWebFrame::textSizeMultiplier() const
 
 void QWebFrame::setZoomFactor(qreal factor)
 {
-    d->frame->setZoomFactor(factor, d->frame->isZoomFactorTextOnly());
+    d->frame->setZoomFactor(factor, d->frame->zoomMode());
 }
 
 qreal QWebFrame::zoomFactor() const
@@ -1618,6 +1438,15 @@ QWebFrame* QWebFramePrivate::kit(WebCore::Frame* coreFrame)
     \a ok will indicate whether the load was successful or any error occurred.
 
     \sa loadStarted()
+*/
+
+/*!
+    \fn void QWebFrame::pageChanged()
+    \since 4.7
+
+    This signal is emitted when this frame has been moved to a different QWebPage.
+
+    \sa page()
 */
 
 /*!

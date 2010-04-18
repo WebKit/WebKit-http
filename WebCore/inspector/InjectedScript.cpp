@@ -47,6 +47,11 @@ InjectedScript::InjectedScript(ScriptObject injectedScriptObject)
 void InjectedScript::dispatch(long callId, const String& methodName, const String& arguments, bool async, RefPtr<SerializedScriptValue>* result, bool* hadException) 
 {
     ASSERT(!hasNoValue());
+    if (!canAccessInspectedWindow()) {
+        *hadException = true;
+        return;
+    }
+
     ScriptFunctionCall function(m_injectedScriptObject, "dispatch");
     function.appendArgument(methodName);
     function.appendArgument(arguments);
@@ -71,10 +76,13 @@ PassRefPtr<SerializedScriptValue> InjectedScript::callFrames()
 PassRefPtr<SerializedScriptValue> InjectedScript::wrapForConsole(ScriptValue value)
 {
     ASSERT(!hasNoValue());
-    ScriptFunctionCall wrapFunction(m_injectedScriptObject, "wrapObject");
+    ScriptFunctionCall wrapFunction(m_injectedScriptObject, "wrapObjectForConsole");
     wrapFunction.appendArgument(value);
-    wrapFunction.appendArgument("console");
-    ScriptValue r = wrapFunction.call();
+    wrapFunction.appendArgument(canAccessInspectedWindow());
+    bool hadException = false;
+    ScriptValue r = wrapFunction.call(hadException);
+    if (hadException)
+        return SerializedScriptValue::create("<exception>");
     return r.serialize(m_injectedScriptObject.scriptState());
 }
 
@@ -84,6 +92,10 @@ void InjectedScript::releaseWrapperObjectGroup(const String& objectGroup)
     ScriptFunctionCall releaseFunction(m_injectedScriptObject, "releaseWrapperObjectGroup");
     releaseFunction.appendArgument(objectGroup);
     releaseFunction.call();
+}
+bool InjectedScript::canAccessInspectedWindow()
+{
+    return InjectedScriptHost::canAccessInspectedWindow(m_injectedScriptObject.scriptState());
 }
 
 } // namespace WebCore

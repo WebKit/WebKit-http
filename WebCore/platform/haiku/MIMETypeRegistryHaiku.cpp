@@ -29,18 +29,17 @@
 #include "config.h"
 #include "MIMETypeRegistry.h"
 
-#include "CString.h"
 #include "PlatformString.h"
 #include <MimeType.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
-
 struct ExtensionMap {
     const char* extension;
     const char* mimeType;
 };
 
-static const ExtensionMap sExtensionMap[] = {
+static const ExtensionMap extensionMap[] = {
     { "bmp", "image/bmp" },
     { "gif", "image/gif" },
     { "html", "text/html" },
@@ -65,15 +64,15 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String& ext)
 {
     String str = ext.lower();
 
-    // Try built-in types
-    const ExtensionMap* extMap = sExtensionMap;
+    // Try WebCore built-in types.
+    const ExtensionMap* extMap = extensionMap;
     while (extMap->extension) {
         if (str == extMap->extension)
             return extMap->mimeType;
         ++extMap;
     }
 
-    // Try system mime database
+    // Try system mime database.
     String fakeFileName("filename.");
     fakeFileName.append(str);
 
@@ -83,6 +82,11 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String& ext)
 
     // unknown
     return String();
+}
+
+bool MIMETypeRegistry::isApplicationPluginMIMEType(const String&)
+{
+    return false;
 }
 
 } // namespace WebCore

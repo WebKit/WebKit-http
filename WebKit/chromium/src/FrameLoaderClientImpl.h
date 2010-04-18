@@ -89,11 +89,11 @@ public:
     virtual void dispatchDidFinishLoading(WebCore::DocumentLoader*, unsigned long identifier);
     virtual void dispatchDidFailLoading(WebCore::DocumentLoader*, unsigned long identifier, const WebCore::ResourceError&);
     virtual bool dispatchDidLoadResourceFromMemoryCache(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, int length);
-    virtual void dispatchDidLoadResourceByXMLHttpRequest(unsigned long identifier, const WebCore::ScriptString&);
     virtual void dispatchDidHandleOnloadEvents();
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad();
     virtual void dispatchDidCancelClientRedirect();
     virtual void dispatchWillPerformClientRedirect(const WebCore::KURL&, double interval, double fireDate);
+    virtual void dispatchDidNavigateWithinPage();
     virtual void dispatchDidChangeLocationWithinPage();
     virtual void dispatchDidPushStateWithinPage();
     virtual void dispatchDidReplaceStateWithinPage();
@@ -195,6 +195,8 @@ public:
     virtual bool allowJavaScript(bool enabledPerSettings);
     virtual bool allowPlugins(bool enabledPerSettings);
     virtual bool allowImages(bool enabledPerSettings);
+    virtual void didNotAllowScript();
+    virtual void didNotAllowPlugins();
 
 private:
     void makeDocumentView();
@@ -203,9 +205,6 @@ private:
     // For example, a middle click means "open in background tab".
     static bool actionSpecifiesNavigationPolicy(
         const WebCore::NavigationAction& action, WebNavigationPolicy* policy);
-
-    // Called when a dummy back-forward navigation is intercepted.
-    void handleBackForwardNavigation(const WebCore::KURL&);
 
     PassOwnPtr<WebPluginLoadObserver> pluginLoadObserver();
 

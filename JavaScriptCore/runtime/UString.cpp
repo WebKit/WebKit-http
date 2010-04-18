@@ -57,108 +57,15 @@ namespace JSC {
 extern const double NaN;
 extern const double Inf;
 
-CString::CString(const char* c)
-    : m_length(strlen(c))
-    , m_data(new char[m_length + 1])
-{
-    memcpy(m_data, c, m_length + 1);
-}
-
-CString::CString(const char* c, size_t length)
-    : m_length(length)
-    , m_data(new char[length + 1])
-{
-    memcpy(m_data, c, m_length);
-    m_data[m_length] = 0;
-}
-
-CString::CString(const CString& b)
-{
-    m_length = b.m_length;
-    if (b.m_data) {
-        m_data = new char[m_length + 1];
-        memcpy(m_data, b.m_data, m_length + 1);
-    } else
-        m_data = 0;
-}
-
-CString::~CString()
-{
-    delete [] m_data;
-}
-
-CString CString::adopt(char* c, size_t length)
-{
-    CString s;
-    s.m_data = c;
-    s.m_length = length;
-    return s;
-}
-
-CString& CString::append(const CString& t)
-{
-    char* n;
-    n = new char[m_length + t.m_length + 1];
-    if (m_length)
-        memcpy(n, m_data, m_length);
-    if (t.m_length)
-        memcpy(n + m_length, t.m_data, t.m_length);
-    m_length += t.m_length;
-    n[m_length] = 0;
-
-    delete [] m_data;
-    m_data = n;
-
-    return *this;
-}
-
-CString& CString::operator=(const char* c)
-{
-    if (m_data)
-        delete [] m_data;
-    m_length = strlen(c);
-    m_data = new char[m_length + 1];
-    memcpy(m_data, c, m_length + 1);
-
-    return *this;
-}
-
-CString& CString::operator=(const CString& str)
-{
-    if (this == &str)
-        return *this;
-
-    if (m_data)
-        delete [] m_data;
-    m_length = str.m_length;
-    if (str.m_data) {
-        m_data = new char[m_length + 1];
-        memcpy(m_data, str.m_data, m_length + 1);
-    } else
-        m_data = 0;
-
-    return *this;
-}
-
-bool operator==(const CString& c1, const CString& c2)
-{
-    size_t len = c1.size();
-    return len == c2.size() && (len == 0 || memcmp(c1.c_str(), c2.c_str(), len) == 0);
-}
-
-// These static strings are immutable, except for rc, whose initial value is chosen to
-// reduce the possibility of it becoming zero due to ref/deref not being thread-safe.
-static UChar sharedEmptyChar;
-UStringImpl* UStringImpl::s_empty;
-
-UString::Rep* UString::s_nullRep;
+// The null string is immutable, except for refCount.
 UString* UString::s_nullUString;
 
 void initializeUString()
 {
-    UStringImpl::s_empty = new UStringImpl(&sharedEmptyChar, 0, UStringImpl::ConstructStaticString);
+    // UStringImpl::empty() does not construct its static string in a threadsafe fashion,
+    // so ensure it has been initialized from here.
+    UStringImpl::empty();
 
-    UString::s_nullRep = new UStringImpl(0, 0, UStringImpl::ConstructStaticString);
     UString::s_nullUString = new UString;
 }
 
@@ -173,11 +80,8 @@ UString::UString(const char* c, unsigned length)
 }
 
 UString::UString(const UChar* c, unsigned length)
+    : m_rep(Rep::create(c, length))
 {
-    if (length == 0)
-        m_rep = &Rep::empty();
-    else
-        m_rep = Rep::create(c, length);
 }
 
 UString UString::from(int i)
@@ -242,7 +146,7 @@ UString UString::from(long long i)
     return UString(p, static_cast<unsigned>(end - p));
 }
 
-UString UString::from(unsigned int u)
+UString UString::from(unsigned u)
 {
     UChar buf[sizeof(u) * 3];
     UChar* end = buf + sizeof(buf) / sizeof(UChar);
@@ -295,29 +199,6 @@ UString UString::from(double d)
     unsigned length;
     doubleToStringInJavaScriptFormat(d, buffer, &length);
     return UString(buffer, length);
-}
-
-bool UString::getCString(CStringBuffer& buffer) const
-{
-    unsigned length = size();
-    unsigned neededSize = length + 1;
-    buffer.resize(neededSize);
-    char* buf = buffer.data();
-
-    UChar ored = 0;
-    const UChar* p = data();
-    char* q = buf;
-    const UChar* limit = p + length;
-    while (p != limit) {
-        UChar c = p[0];
-        ored |= c;
-        *q = static_cast<char>(c);
-        ++p;
-        ++q;
-    }
-    *q = '\0';
-
-    return !(ored & 0xFF00);
 }
 
 char* UString::ascii() const
@@ -373,11 +254,7 @@ double UString::toDouble(bool tolerateTrailingJunk, bool tolerateEmptyString) co
         return NaN;
     }
 
-    // FIXME: If tolerateTrailingJunk is true, then we want to tolerate non-8-bit junk
-    // after the number, so this is too strict a check.
-    CStringBuffer s;
-    if (!getCString(s))
-        return NaN;
+    CString s = UTF8String();
     const char* c = s.data();
 
     // skip leading white space
@@ -498,7 +375,7 @@ uint32_t UString::toStrictUInt32(bool* ok) const
     unsigned len = m_rep->length();
     if (len == 0)
         return 0;
-    const UChar* p = m_rep->data();
+    const UChar* p = m_rep->characters();
     unsigned short c = p[0];
 
     // If the first digit is 0, only 0 itself is OK.
@@ -548,7 +425,7 @@ unsigned UString::find(const UString& f, unsigned pos) const
         const UChar* end = data() + size();
         for (const UChar* c = data() + pos; c < end; c++) {
             if (*c == ch)
-                return static_cast<int>(c - data());
+                return static_cast<unsigned>(c - data());
         }
         return NotFound;
     }
@@ -565,7 +442,7 @@ unsigned UString::find(const UString& f, unsigned pos) const
     ++fdata;
     for (const UChar* c = data() + pos; c <= end; c++) {
         if (c[0] == fchar && !memcmp(c + 1, fdata, fsizeminusone))
-            return static_cast<int>(c - data());
+            return static_cast<unsigned>(c - data());
     }
 
     return NotFound;
@@ -576,7 +453,7 @@ unsigned UString::find(UChar ch, unsigned pos) const
     const UChar* end = data() + size();
     for (const UChar* c = data() + pos; c < end; c++) {
         if (*c == ch)
-            return static_cast<int>(c - data());
+            return static_cast<unsigned>(c - data());
     }
 
     return NotFound;
@@ -596,7 +473,7 @@ unsigned UString::rfind(const UString& f, unsigned pos) const
     const UChar* fdata = f.data();
     for (const UChar* c = data() + pos; c >= data(); c--) {
         if (*c == *fdata && !memcmp(c + 1, fdata + 1, fsizeminusone))
-            return static_cast<int>(c - data());
+            return static_cast<unsigned>(c - data());
     }
 
     return NotFound;
@@ -610,7 +487,7 @@ unsigned UString::rfind(UChar ch, unsigned pos) const
         pos = size() - 1;
     for (const UChar* c = data() + pos; c >= data(); c--) {
         if (*c == ch)
-            return static_cast<int>(c - data());
+            return static_cast<unsigned>(c - data());
     }
 
     return NotFound;
@@ -715,8 +592,8 @@ bool equal(const UString::Rep* r, const UString::Rep* b)
     unsigned length = r->length();
     if (length != b->length())
         return false;
-    const UChar* d = r->data();
-    const UChar* s = b->data();
+    const UChar* d = r->characters();
+    const UChar* s = b->characters();
     for (unsigned i = 0; i != length; ++i) {
         if (d[i] != s[i])
             return false;

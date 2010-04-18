@@ -32,48 +32,53 @@
 
 namespace WebCore {
 
-    class SVGImageElement;
+class SVGImageElement;
 
-    class RenderSVGImage : public RenderImage, protected SVGRenderBase {
-    public:
-        RenderSVGImage(SVGImageElement*);
+class RenderSVGImage : public RenderImage, protected SVGRenderBase {
+public:
+    RenderSVGImage(SVGImageElement*);
 
-    private:
-        virtual const SVGRenderBase* toSVGRenderBase() const { return this; }
-        virtual const char* renderName() const { return "RenderSVGImage"; }
-        virtual bool isSVGImage() const { return true; }
+    virtual void setNeedsTransformUpdate() { m_needsTransformUpdate = true; }
 
-        virtual const AffineTransform& localToParentTransform() const { return m_localTransform; }
+private:
+    virtual const SVGRenderBase* toSVGRenderBase() const { return this; }
+    virtual const char* renderName() const { return "RenderSVGImage"; }
+    virtual bool isSVGImage() const { return true; }
 
-        virtual FloatRect objectBoundingBox() const;
-        virtual FloatRect strokeBoundingBox() const { return m_localBounds; }
-        virtual FloatRect repaintRectInLocalCoordinates() const;
+    virtual const AffineTransform& localToParentTransform() const { return m_localTransform; }
 
-        virtual IntRect clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer);
-        virtual void computeRectForRepaint(RenderBoxModelObject* repaintContainer, IntRect&, bool fixed = false);
+    virtual FloatRect objectBoundingBox() const;
+    virtual FloatRect strokeBoundingBox() const { return m_localBounds; }
+    virtual FloatRect repaintRectInLocalCoordinates() const;
 
-        virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&) const;
+    virtual IntRect clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer);
+    virtual void computeRectForRepaint(RenderBoxModelObject* repaintContainer, IntRect&, bool fixed = false);
 
-        virtual void absoluteRects(Vector<IntRect>&, int tx, int ty);
-        virtual void absoluteQuads(Vector<FloatQuad>&);
-        virtual void addFocusRingRects(Vector<IntRect>&, int tx, int ty);
+    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&) const;
 
-        virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
-        
-        virtual void layout();
-        virtual void paint(PaintInfo&, int parentX, int parentY);
+    virtual void absoluteRects(Vector<IntRect>&, int tx, int ty);
+    virtual void absoluteQuads(Vector<FloatQuad>&);
+    virtual void addFocusRingRects(Vector<IntRect>&, int tx, int ty);
 
-        virtual bool requiresLayer() const { return false; }
+    virtual void imageChanged(WrappedImagePtr, const IntRect* = 0);
+    
+    virtual void layout();
+    virtual void paint(PaintInfo&, int parentX, int parentY);
 
-        virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction);
-        virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, int x, int y, int tx, int ty, HitTestAction);
+    virtual void destroy();
 
-        virtual AffineTransform localTransform() const { return m_localTransform; }
+    virtual bool requiresLayer() const { return false; }
 
-        AffineTransform m_localTransform;
-        FloatRect m_localBounds;
-        mutable FloatRect m_cachedLocalRepaintRect;
-    };
+    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction);
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, int x, int y, int tx, int ty, HitTestAction);
+
+    virtual AffineTransform localTransform() const { return m_localTransform; }
+
+    bool m_needsTransformUpdate : 1;
+    AffineTransform m_localTransform;
+    FloatRect m_localBounds;
+    mutable FloatRect m_cachedLocalRepaintRect;
+};
 
 } // namespace WebCore
 

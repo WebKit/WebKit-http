@@ -285,7 +285,7 @@ void MainResourceLoader::continueAfterContentPolicy(PolicyAction policy)
 #if PLATFORM(QT)
 void MainResourceLoader::substituteMIMETypeFromPluginDatabase(const ResourceResponse& r)
 {
-    if (!m_frame->settings()->arePluginsEnabled())
+    if (!m_frame->loader()->allowPlugins(NotAboutToInstantiatePlugin))
         return;
 
     String filename = r.url().lastPathComponent();
@@ -517,7 +517,7 @@ bool MainResourceLoader::loadNow(ResourceRequest& r)
     else if (shouldLoadEmpty || frameLoader()->representationExistsForURLScheme(url.protocol()))
         handleEmptyLoad(url, !shouldLoadEmpty);
     else
-        m_handle = ResourceHandle::create(r, this, m_frame.get(), false, true, true);
+        m_handle = ResourceHandle::create(r, this, m_frame.get(), false, true);
 
     return false;
 }

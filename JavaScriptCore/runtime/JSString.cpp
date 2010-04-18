@@ -81,7 +81,7 @@ void JSString::resolveRope(ExecState* exec) const
             UStringImpl* string = static_cast<UStringImpl*>(currentFiber);
             unsigned length = string->length();
             position -= length;
-            UStringImpl::copyChars(position, string->data(), length);
+            UStringImpl::copyChars(position, string->characters(), length);
 
             // Was this the last item in the work queue?
             if (workQueue.isEmpty()) {
@@ -102,6 +102,18 @@ void JSString::resolveRope(ExecState* exec) const
             workQueue.removeLast();
         }
     }
+}
+
+JSString* JSString::getIndexSlowCase(ExecState* exec, unsigned i)
+{
+    ASSERT(isRope());
+    resolveRope(exec);
+    // Return a safe no-value result, this should never be used, since the excetion will be thrown.
+    if (exec->exception())
+        return jsString(exec, "");
+    ASSERT(!isRope());
+    ASSERT(i < m_value.size());
+    return jsSingleCharacterSubstring(exec, m_value, i);
 }
 
 JSValue JSString::toPrimitive(ExecState*, PreferredPrimitiveType) const
@@ -129,16 +141,6 @@ double JSString::toNumber(ExecState* exec) const
 UString JSString::toString(ExecState* exec) const
 {
     return value(exec);
-}
-
-UString JSString::toThisString(ExecState* exec) const
-{
-    return value(exec);
-}
-
-JSString* JSString::toThisJSString(ExecState*)
-{
-    return this;
 }
 
 inline StringObject* StringObject::create(ExecState* exec, JSString* string)
@@ -187,7 +189,7 @@ bool JSString::getStringPropertyDescriptor(ExecState* exec, const Identifier& pr
     bool isStrictUInt32;
     unsigned i = propertyName.toStrictUInt32(&isStrictUInt32);
     if (isStrictUInt32 && i < m_length) {
-        descriptor.setDescriptor(jsSingleCharacterSubstring(exec, value(exec), i), DontDelete | ReadOnly);
+        descriptor.setDescriptor(getIndex(exec, i), DontDelete | ReadOnly);
         return true;
     }
     

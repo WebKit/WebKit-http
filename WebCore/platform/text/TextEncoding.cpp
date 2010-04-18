@@ -28,7 +28,6 @@
 #include "config.h"
 #include "TextEncoding.h"
 
-#include "CString.h"
 #include "PlatformString.h"
 #include "TextCodec.h"
 #include "TextEncodingRegistry.h"
@@ -38,8 +37,9 @@
 #include <QString>
 #elif USE(GLIB_UNICODE)
 #include <glib.h>
-#include <wtf/gtk/GOwnPtr.h>
+#include "GOwnPtr.h"
 #endif
+#include <wtf/text/CString.h>
 #include <wtf/HashSet.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/StdLibExtras.h>

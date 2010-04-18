@@ -35,6 +35,7 @@
 #include "WebEditingAction.h"
 #include "WebFileChooserCompletion.h"
 #include "WebFileChooserParams.h"
+#include "WebPopupType.h"
 #include "WebString.h"
 #include "WebTextAffinity.h"
 #include "WebTextDirection.h"
@@ -46,7 +47,8 @@ class WebAccessibilityObject;
 class WebDragData;
 class WebFileChooserCompletion;
 class WebFrame;
-class WebGeolocationServiceInterface;
+class WebGeolocationService;
+class WebImage;
 class WebNode;
 class WebNotificationPresenter;
 class WebRange;
@@ -73,8 +75,12 @@ public:
 
     // Create a new WebPopupMenu.  In the second form, the client is
     // responsible for rendering the contents of the popup menu.
-    virtual WebWidget* createPopupMenu(bool activatable) { return 0; }
+    virtual WebWidget* createPopupMenu(WebPopupType) { return 0; }
     virtual WebWidget* createPopupMenu(const WebPopupMenuInfo&) { return 0; }
+    // Deprecated methods.
+    virtual WebWidget* createPopupMenu() { return 0; }
+    virtual WebWidget* createPopupMenu(bool activatable) { return 0; }
+
 
     // Create a session storage namespace object associated with this WebView.
     virtual WebStorageNamespace* createSessionStorageNamespace() { return 0; }
@@ -219,7 +225,7 @@ public:
 
     // Called when a drag-n-drop operation should begin.
     virtual void startDragging(
-        const WebPoint& from, const WebDragData&, WebDragOperationsMask) { }
+        const WebDragData&, WebDragOperationsMask, const WebImage&, const WebPoint&) { }
 
     // Called to determine if drag-n-drop operations may initiate a page
     // navigation.
@@ -278,10 +284,17 @@ public:
     virtual void removeAutofillSuggestions(const WebString& name,
                                            const WebString& value) { }
 
+    // Informs the browser that the user has selected an AutoFill suggestion
+    // for a WebNode.  |name| and |label| form a key into the set of AutoFill
+    // profiles.
+    virtual void didAcceptAutoFillSuggestion(const WebNode&,
+                                             const WebString& name,
+                                             const WebString& label) { }
+
     // Geolocation ---------------------------------------------------------
 
     // Access the embedder API for geolocation services.
-    virtual WebKit::WebGeolocationServiceInterface* getGeolocationService() { return 0; }
+    virtual WebKit::WebGeolocationService* geolocationService() { return 0; }
 
 protected:
     ~WebViewClient() { }

@@ -40,6 +40,16 @@ WebInspector.BreakpointsSidebarPane = function()
 }
 
 WebInspector.BreakpointsSidebarPane.prototype = {
+    reset: function()
+    {
+        this.breakpoints = {};
+        this.listElement.removeChildren();
+        if (this.listElement.parentElement) {
+            this.bodyElement.removeChild(this.listElement);
+            this.bodyElement.appendChild(this.emptyElement);
+        }
+    },
+
     addBreakpoint: function(breakpoint)
     {
         if (this.breakpoints[breakpoint.id])
@@ -58,11 +68,7 @@ WebInspector.BreakpointsSidebarPane.prototype = {
             this.bodyElement.appendChild(this.listElement);
         }
 
-        if (!InspectorBackend.debuggerEnabled() || !breakpoint.sourceID)
-            return;
-
-        if (breakpoint.enabled)
-            InspectorBackend.addBreakpoint(breakpoint.sourceID, breakpoint.line, breakpoint.condition);
+        InspectorBackend.setBreakpoint(breakpoint.sourceID, breakpoint.line, breakpoint.enabled, breakpoint.condition);
     },
 
     _appendBreakpointElement: function(breakpoint)
@@ -77,9 +83,7 @@ WebInspector.BreakpointsSidebarPane.prototype = {
 
         function breakpointClicked()
         {
-            var script = WebInspector.panels.scripts.scriptOrResourceForID(breakpoint.sourceID);
-            if (script)
-                WebInspector.panels.scripts.showScript(script, breakpoint.line);
+            WebInspector.panels.scripts.showSourceLine(breakpoint.url, breakpoint.line);
         }
 
         var breakpointElement = document.createElement("li");
@@ -135,9 +139,6 @@ WebInspector.BreakpointsSidebarPane.prototype = {
             this.bodyElement.appendChild(this.emptyElement);
         }
 
-        if (!InspectorBackend.debuggerEnabled() || !breakpoint.sourceID)
-            return;
-
         InspectorBackend.removeBreakpoint(breakpoint.sourceID, breakpoint.line);
     },
 
@@ -147,14 +148,7 @@ WebInspector.BreakpointsSidebarPane.prototype = {
 
         var checkbox = breakpoint._breakpointListElement.firstChild;
         checkbox.checked = breakpoint.enabled;
-
-        if (!InspectorBackend.debuggerEnabled() || !breakpoint.sourceID)
-            return;
-
-        if (breakpoint.enabled)
-            InspectorBackend.addBreakpoint(breakpoint.sourceID, breakpoint.line, breakpoint.condition);
-        else
-            InspectorBackend.removeBreakpoint(breakpoint.sourceID, breakpoint.line);
+        InspectorBackend.setBreakpoint(breakpoint.sourceID, breakpoint.line, breakpoint.enabled, breakpoint.condition);
     },
 
     _breakpointTextChanged: function(event)

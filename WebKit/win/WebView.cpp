@@ -66,13 +66,13 @@
 #include <WebCore/BString.h>
 #include <WebCore/BackForwardList.h>
 #include <WebCore/BitmapInfo.h>
-#include <WebCore/CString.h>
 #include <WebCore/Cache.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
 #include <WebCore/ContextMenuController.h>
 #include <WebCore/CookieStorageWin.h>
 #include <WebCore/Cursor.h>
+#include <WebCore/Database.h>
 #include <WebCore/Document.h>
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
@@ -150,6 +150,7 @@
 #include <tchar.h>
 #include <windowsx.h>
 #include <wtf/HashSet.h>
+#include <wtf/text/CString.h>
 
 // Soft link functions for gestures and panning feedback
 SOFT_LINK_LIBRARY(USER32);
@@ -735,6 +736,10 @@ void WebView::deleteBackingStore()
     }
     m_backingStoreBitmap.clear();
     m_backingStoreDirtyRegion.clear();
+#if USE(ACCELERATED_COMPOSITING)
+    if (m_layerRenderer)
+        m_layerRenderer->setBackingStoreDirty(false);
+#endif
 
     m_backingStoreSize.cx = m_backingStoreSize.cy = 0;
 }
@@ -782,6 +787,11 @@ void WebView::addToDirtyRegion(HRGN newRegion)
         m_backingStoreDirtyRegion.set(combinedRegion);
     } else
         m_backingStoreDirtyRegion.set(newRegion);
+
+#if USE(ACCELERATED_COMPOSITING)
+    if (m_layerRenderer)
+        m_layerRenderer->setBackingStoreDirty(true);
+#endif
 
     if (m_uiDelegatePrivate)
         m_uiDelegatePrivate->webViewDidInvalidate(this);
@@ -909,6 +919,10 @@ void WebView::updateBackingStore(FrameView* frameView, HDC dc, bool backingStore
             m_uiDelegatePrivate->webViewPainted(this);
 
         m_backingStoreDirtyRegion.clear();
+#if USE(ACCELERATED_COMPOSITING)
+        if (m_layerRenderer)
+            m_layerRenderer->setBackingStoreDirty(false);
+#endif
     }
 
     if (!dc) {
@@ -2879,9 +2893,9 @@ HRESULT STDMETHODCALLTYPE WebView::setPageSizeMultiplier(
 void WebView::setZoomMultiplier(float multiplier, bool isTextOnly)
 {
     m_zoomMultiplier = multiplier;
-    m_page->settings()->setZoomsTextOnly(isTextOnly);
+    m_page->settings()->setZoomMode(isTextOnly ? ZoomTextOnly : ZoomPage);
     if (Frame* coreFrame = core(m_mainFrame))
-        coreFrame->setZoomFactor(multiplier, isTextOnly);
+        coreFrame->setZoomFactor(multiplier, isTextOnly ? ZoomTextOnly : ZoomPage);
 }
 
 HRESULT STDMETHODCALLTYPE WebView::textSizeMultiplier( 
@@ -2900,7 +2914,8 @@ HRESULT STDMETHODCALLTYPE WebView::pageSizeMultiplier(
 
 float WebView::zoomMultiplier(bool isTextOnly)
 {
-    if (isTextOnly != m_page->settings()->zoomsTextOnly())
+    ZoomMode zoomMode = isTextOnly ? ZoomTextOnly : ZoomPage;
+    if (zoomMode != m_page->settings()->zoomMode())
         return 1.0f;
     return m_zoomMultiplier;
 }
@@ -3125,6 +3140,14 @@ HRESULT STDMETHODCALLTYPE WebView::preferencesIdentifier(
     return E_NOTIMPL;
 }
 
+static void systemParameterChanged(WPARAM parameter)
+{
+#if PLATFORM(CG)
+    if (parameter == SPI_SETFONTSMOOTHING || parameter == SPI_SETFONTSMOOTHINGTYPE || parameter == SPI_SETFONTSMOOTHINGCONTRAST || parameter == SPI_SETFONTSMOOTHINGORIENTATION)
+        wkSystemFontSmoothingChanged();
+#endif
+}
+
 void WebView::windowReceivedMessage(HWND, UINT message, WPARAM wParam, LPARAM)
 {
     switch (message) {
@@ -3132,6 +3155,9 @@ void WebView::windowReceivedMessage(HWND, UINT message, WPARAM wParam, LPARAM)
         updateActiveStateSoon();
         if (!wParam)
             deleteBackingStoreSoon();
+        break;
+    case WM_SETTINGCHANGE:
+        systemParameterChanged(wParam);
         break;
     }
 }
@@ -3402,6 +3428,9 @@ HRESULT STDMETHODCALLTYPE WebView::isLoading(
 
     *isLoading = FALSE;
 
+    if (!m_mainFrame)
+        return E_FAIL;
+
     if (SUCCEEDED(m_mainFrame->dataSource(&dataSource)))
         dataSource->isLoading(isLoading);
 
@@ -3669,7 +3698,7 @@ HRESULT STDMETHODCALLTYPE WebView::canMakeTextLarger(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    bool canGrowMore = canZoomIn(m_page->settings()->zoomsTextOnly());
+    bool canGrowMore = canZoomIn(m_page->settings()->zoomMode() == ZoomTextOnly);
     *result = canGrowMore ? TRUE : FALSE;
     return S_OK;
 }
@@ -3691,7 +3720,7 @@ bool WebView::canZoomIn(bool isTextOnly)
 HRESULT STDMETHODCALLTYPE WebView::makeTextLarger( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    return zoomIn(m_page->settings()->zoomsTextOnly());
+    return zoomIn(m_page->settings()->zoomMode() == ZoomTextOnly);
 }
 
 HRESULT STDMETHODCALLTYPE WebView::zoomPageIn( 
@@ -3712,7 +3741,7 @@ HRESULT STDMETHODCALLTYPE WebView::canMakeTextSmaller(
         /* [in] */ IUnknown* /*sender*/,
         /* [retval][out] */ BOOL* result)
 {
-    bool canShrinkMore = canZoomOut(m_page->settings()->zoomsTextOnly());
+    bool canShrinkMore = canZoomOut(m_page->settings()->zoomMode() == ZoomTextOnly);
     *result = canShrinkMore ? TRUE : FALSE;
     return S_OK;
 }
@@ -3734,7 +3763,7 @@ bool WebView::canZoomOut(bool isTextOnly)
 HRESULT STDMETHODCALLTYPE WebView::makeTextSmaller( 
         /* [in] */ IUnknown* /*sender*/)
 {
-    return zoomOut(m_page->settings()->zoomsTextOnly());
+    return zoomOut(m_page->settings()->zoomMode() == ZoomTextOnly);
 }
 
 HRESULT STDMETHODCALLTYPE WebView::zoomPageOut( 
@@ -4565,7 +4594,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = preferences->zoomsTextOnly(&enabled);
     if (FAILED(hr))
         return hr;
-    settings->setZoomsTextOnly(!!enabled);
+    settings->setZoomMode(enabled ? ZoomTextOnly : ZoomPage);
 
     settings->setShowsURLsInToolTips(false);
     settings->setForceFTPDirectoryListings(true);
@@ -4596,10 +4625,12 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings->setOfflineWebApplicationCacheEnabled(enabled);
 
+#if ENABLE(DATABASE)
     hr = prefsPrivate->databasesEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-    settings->setDatabasesEnabled(enabled);
+    Database::setIsAvailable(enabled);
+#endif
 
     hr = prefsPrivate->localStorageEnabled(&enabled);
     if (FAILED(hr))
@@ -4649,10 +4680,10 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings->setPluginAllowedRunTime(runTime);
 
-    hr = prefsPrivate->isFrameSetFlatteningEnabled(&enabled);
+    hr = prefsPrivate->isFrameFlatteningEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-    settings->setFrameSetFlatteningEnabled(enabled);
+    settings->setFrameFlatteningEnabled(enabled);
 
 #if USE(ACCELERATED_COMPOSITING)
     hr = prefsPrivate->acceleratedCompositingEnabled(&enabled);
@@ -4660,6 +4691,16 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings->setAcceleratedCompositingEnabled(enabled);
 #endif
+
+    hr = prefsPrivate->showDebugBorders(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setShowDebugBorders(enabled);
+
+    hr = prefsPrivate->showRepaintCounter(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setShowRepaintCounter(enabled);
 
 #if ENABLE(3D_CANVAS)
     settings->setWebGLEnabled(true);
@@ -5993,15 +6034,21 @@ HRESULT WebView::invalidateBackingStore(const RECT* rect)
     return S_OK;
 }
 
-HRESULT WebView::whiteListAccessFromOrigin(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains)
+HRESULT WebView::addOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityOrigin::whiteListAccessFromOrigin(*SecurityOrigin::createFromString(String(sourceOrigin, SysStringLen(sourceOrigin))), String(destinationProtocol, SysStringLen(destinationProtocol)), String(destinationHost, SysStringLen(destinationHost)), allowDestinationSubdomains);
+    SecurityOrigin::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(String(sourceOrigin, SysStringLen(sourceOrigin))), String(destinationProtocol, SysStringLen(destinationProtocol)), String(destinationHost, SysStringLen(destinationHost)), allowDestinationSubdomains);
     return S_OK;
 }
 
-HRESULT WebView::resetOriginAccessWhiteLists()
+HRESULT WebView::removeOriginAccessWhitelistEntry(BSTR sourceOrigin, BSTR destinationProtocol, BSTR destinationHost, BOOL allowDestinationSubdomains)
 {
-    SecurityOrigin::resetOriginAccessWhiteLists();
+    SecurityOrigin::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(String(sourceOrigin, SysStringLen(sourceOrigin))), String(destinationProtocol, SysStringLen(destinationProtocol)), String(destinationHost, SysStringLen(destinationHost)), allowDestinationSubdomains);
+    return S_OK;
+}
+
+HRESULT WebView::resetOriginAccessWhitelists()
+{
+    SecurityOrigin::resetOriginAccessWhitelists();
     return S_OK;
 }
  
@@ -6041,7 +6088,7 @@ void WebView::downloadURL(const KURL& url)
 }
 
 #if USE(ACCELERATED_COMPOSITING)
-void WebView::setRootChildLayer(WebCore::PlatformLayer* layer)
+void WebView::setRootChildLayer(WebCore::WKCACFLayer* layer)
 {
     setAcceleratedCompositing(layer ? true : false);
     if (m_layerRenderer)
@@ -6061,7 +6108,7 @@ void WebView::setAcceleratedCompositing(bool accelerated)
             // Create the root layer
             ASSERT(m_viewWindow);
             m_layerRenderer->setHostWindow(m_viewWindow);
-            updateRootLayerContents();
+            m_layerRenderer->createRenderer();
         }
     } else {
         m_layerRenderer = 0;
@@ -6100,7 +6147,7 @@ void WebView::updateRootLayerContents()
         return;
     FrameView* frameView = coreFrame->view();
 
-    m_layerRenderer->setScrollFrame(IntRect(frameView->scrollX(), frameView->scrollY(), frameView->layoutWidth(), frameView->layoutHeight()));
+    m_layerRenderer->setScrollFrame(IntPoint(frameView->scrollX(), frameView->scrollY()), IntSize(frameView->layoutWidth(), frameView->layoutHeight()));
 }
 #endif
 
@@ -6239,6 +6286,12 @@ HRESULT WebView::geolocationDidFailWithError(IWebError* error)
 HRESULT WebView::setDomainRelaxationForbiddenForURLScheme(BOOL forbidden, BSTR scheme)
 {
     SecurityOrigin::setDomainRelaxationForbiddenForURLScheme(forbidden, String(scheme, SysStringLen(scheme)));
+    return S_OK;
+}
+
+HRESULT WebView::registerURLSchemeAsSecure(BSTR scheme)
+{
+    SecurityOrigin::registerURLSchemeAsSecure(toString(scheme));
     return S_OK;
 }
 

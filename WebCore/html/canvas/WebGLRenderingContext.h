@@ -309,6 +309,8 @@ class WebKitCSSMatrix;
         bool validateIndexArrayPrecise(unsigned long count, unsigned long type, long offset, long& numElementsRequired);
         bool validateRenderingState(long numElements);
 
+        bool validateWebGLObject(CanvasObject* object);
+
         OwnPtr<GraphicsContext3D> m_context;
         bool m_needsUpdate;
         bool m_markedCanvasDirty;
@@ -341,6 +343,11 @@ class WebKitCSSMatrix;
         };
         TextureUnitState m_textureUnits[32];
         unsigned long m_activeTextureUnit;
+
+        int m_packAlignment;
+        int m_unpackAlignment;
+        unsigned long m_implementationColorReadFormat;
+        unsigned long m_implementationColorReadType;
 
         // Helpers for getParameter and others
         WebGLGetInfo getBooleanParameter(unsigned long pname);

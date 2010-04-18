@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +34,12 @@
 #include "DocumentType.h"
 #include "Entity.h"
 #include "EntityReference.h"
+#include "ExceptionCode.h"
 #include "HTMLElement.h"
 #include "JSAttr.h"
 #include "JSCDATASection.h"
 #include "JSComment.h"
+#include "JSDOMBinding.h"
 #include "JSDocument.h"
 #include "JSDocumentFragment.h"
 #include "JSDocumentType.h"
@@ -66,12 +68,53 @@ using namespace JSC;
 
 namespace WebCore {
 
-typedef int ExpectionCode;
+static inline bool isAttrFrameSrc(Element *element, const String& name)
+{
+    return element && (element->hasTagName(HTMLNames::iframeTag) || element->hasTagName(HTMLNames::frameTag)) && equalIgnoringCase(name, "src");
+}
+
+void JSNode::setNodeValue(JSC::ExecState* exec, JSC::JSValue value)
+{
+    Node* imp = static_cast<Node*>(impl());
+    String nodeValue = valueToStringWithNullCheck(exec, value);
+
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE) {
+        Element* ownerElement = static_cast<Attr*>(impl())->ownerElement();
+        if (ownerElement && !allowSettingSrcToJavascriptURL(exec, ownerElement, imp->nodeName(), nodeValue))
+            return;
+    }
+
+    ExceptionCode ec = 0;
+    imp->setNodeValue(nodeValue, ec);
+    setDOMException(exec, ec);
+}
+
+void JSNode::setTextContent(JSC::ExecState* exec, JSC::JSValue value)
+{
+    Node* imp = static_cast<Node*>(impl());
+    String nodeValue = valueToStringWithNullCheck(exec, value);
+
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE) {
+        Element* ownerElement = static_cast<Attr*>(impl())->ownerElement();
+        if (ownerElement && !allowSettingSrcToJavascriptURL(exec, ownerElement, imp->nodeName(), nodeValue))
+            return;
+    }
+
+    ExceptionCode ec = 0;
+    imp->setTextContent(nodeValue, ec);
+    setDOMException(exec, ec);
+}
 
 JSValue JSNode::insertBefore(ExecState* exec, const ArgList& args)
 {
+    Node* imp = static_cast<Node*>(impl());
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE && isAttrFrameSrc(static_cast<Attr*>(impl())->ownerElement(), imp->nodeName())) {
+        setDOMException(exec, NOT_SUPPORTED_ERR);
+        return jsNull();
+    }
+
     ExceptionCode ec = 0;
-    bool ok = impl()->insertBefore(toNode(args.at(0)), toNode(args.at(1)), ec, true);
+    bool ok = imp->insertBefore(toNode(args.at(0)), toNode(args.at(1)), ec, true);
     setDOMException(exec, ec);
     if (ok)
         return args.at(0);
@@ -80,8 +123,14 @@ JSValue JSNode::insertBefore(ExecState* exec, const ArgList& args)
 
 JSValue JSNode::replaceChild(ExecState* exec, const ArgList& args)
 {
+    Node* imp = static_cast<Node*>(impl());
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE && isAttrFrameSrc(static_cast<Attr*>(impl())->ownerElement(), imp->nodeName())) {
+        setDOMException(exec, NOT_SUPPORTED_ERR);
+        return jsNull();
+    }
+
     ExceptionCode ec = 0;
-    bool ok = impl()->replaceChild(toNode(args.at(0)), toNode(args.at(1)), ec, true);
+    bool ok = imp->replaceChild(toNode(args.at(0)), toNode(args.at(1)), ec, true);
     setDOMException(exec, ec);
     if (ok)
         return args.at(1);
@@ -90,8 +139,14 @@ JSValue JSNode::replaceChild(ExecState* exec, const ArgList& args)
 
 JSValue JSNode::removeChild(ExecState* exec, const ArgList& args)
 {
+    Node* imp = static_cast<Node*>(impl());
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE && isAttrFrameSrc(static_cast<Attr*>(impl())->ownerElement(), imp->nodeName())) {
+        setDOMException(exec, NOT_SUPPORTED_ERR);
+        return jsNull();
+    }
+
     ExceptionCode ec = 0;
-    bool ok = impl()->removeChild(toNode(args.at(0)), ec);
+    bool ok = imp->removeChild(toNode(args.at(0)), ec);
     setDOMException(exec, ec);
     if (ok)
         return args.at(0);
@@ -100,8 +155,14 @@ JSValue JSNode::removeChild(ExecState* exec, const ArgList& args)
 
 JSValue JSNode::appendChild(ExecState* exec, const ArgList& args)
 {
+    Node* imp = static_cast<Node*>(impl());
+    if (imp->nodeType() == Node::ATTRIBUTE_NODE && isAttrFrameSrc(static_cast<Attr*>(impl())->ownerElement(), imp->nodeName())) {
+        setDOMException(exec, NOT_SUPPORTED_ERR);
+        return jsNull();
+    }
+
     ExceptionCode ec = 0;
-    bool ok = impl()->appendChild(toNode(args.at(0)), ec, true);
+    bool ok = imp->appendChild(toNode(args.at(0)), ec, true);
     setDOMException(exec, ec);
     if (ok)
         return args.at(0);
@@ -162,6 +223,8 @@ void JSNode::markChildren(MarkStack& markStack)
     // case, the root of the detached subtree has a wrapper, so the tree will only
     // get marked once. Nodes that aren't outermost need to mark the outermost
     // in case it is otherwise unreachable.
+    // FIXME: In the non-common case of root not having a wrapper, this is still an O(n^2) algorithm,
+    // as we will traverse the whole tree as many times as there are nodes with wrappers in it.
     if (node != outermostNodeWithWrapper) {
         markDOMNodeWrapper(markStack, m_impl->document(), outermostNodeWithWrapper);
         return;
@@ -172,7 +235,7 @@ void JSNode::markChildren(MarkStack& markStack)
         markDOMNodeWrapper(markStack, m_impl->document(), nodeToMark);
 }
 
-static ALWAYS_INLINE JSValue createWrapper(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
+static ALWAYS_INLINE JSValue createWrapperInline(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
 {
     ASSERT(node);
     ASSERT(!getCachedDOMNodeWrapper(exec, node->document(), node));
@@ -228,25 +291,18 @@ static ALWAYS_INLINE JSValue createWrapper(ExecState* exec, JSDOMGlobalObject* g
 
     return wrapper;    
 }
+
+JSValue createWrapper(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
+{
+    return createWrapperInline(exec, globalObject, node);
+}
     
 JSValue toJSNewlyCreated(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
 {
     if (!node)
         return jsNull();
     
-    return createWrapper(exec, globalObject, node);
-}
-    
-JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, Node* node)
-{
-    if (!node)
-        return jsNull();
-
-    JSNode* wrapper = getCachedDOMNodeWrapper(exec, node->document(), node);
-    if (wrapper)
-        return wrapper;
-
-    return createWrapper(exec, globalObject, node);
+    return createWrapperInline(exec, globalObject, node);
 }
 
 } // namespace WebCore

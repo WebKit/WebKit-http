@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
- * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,10 +46,8 @@
 #include "InspectorResource.h"
 #include "Pasteboard.h"
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-#include "JavaScriptCallFrame.h"
-#include "JavaScriptDebugServer.h"
-using namespace JSC;
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+#include "ScriptDebugServer.h"
 #endif
 
 #if ENABLE(DATABASE)
@@ -72,6 +70,7 @@ namespace WebCore {
 InjectedScriptHost::InjectedScriptHost(InspectorController* inspectorController)
     : m_inspectorController(inspectorController)
     , m_nextInjectedScriptId(1)
+    , m_lastWorkerId(1 << 31) // Distinguish ids of fake workers from real ones, to minimize the chances they overlap.
 {
 }
 
@@ -129,13 +128,6 @@ long InjectedScriptHost::pushNodeByPathToFrontend(const String& path)
 
     return domAgent->pushNodePathToFrontend(node);
 }
-
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-JavaScriptCallFrame* InjectedScriptHost::currentCallFrame() const
-{
-    return JavaScriptDebugServer::shared().currentCallFrame();
-}
-#endif
 
 #if ENABLE(DATABASE)
 Database* InjectedScriptHost::databaseForId(long databaseId)
@@ -202,6 +194,31 @@ InspectorFrontend* InjectedScriptHost::inspectorFrontend()
         return 0;
     return m_inspectorController->m_frontend.get();
 }
+
+pair<long, ScriptObject> InjectedScriptHost::injectScript(const String& source, ScriptState* scriptState)
+{
+    long id = m_nextInjectedScriptId++;
+    return std::make_pair(id, createInjectedScript(source, scriptState, id));
+}
+
+#if ENABLE(WORKERS)
+long InjectedScriptHost::nextWorkerId()
+{
+    return ++m_lastWorkerId;
+}
+
+void InjectedScriptHost::didCreateWorker(long id, const String& url, bool isSharedWorker)
+{
+    if (m_inspectorController)
+        m_inspectorController->didCreateWorker(id, url, isSharedWorker);
+}
+
+void InjectedScriptHost::didDestroyWorker(long id)
+{
+    if (m_inspectorController)
+        m_inspectorController->didDestroyWorker(id);
+}
+#endif // ENABLE(WORKERS)
 
 } // namespace WebCore
 

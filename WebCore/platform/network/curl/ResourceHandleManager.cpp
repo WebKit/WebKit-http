@@ -38,7 +38,6 @@
 #include "AuthenticationChallenge.h"
 #include "Base64.h"
 #include "Credential.h"
-#include "CString.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
@@ -50,8 +49,12 @@
 
 #include <errno.h>
 #include <stdio.h>
+#if PLATFORM(CF)
+#include <wtf/RetainPtr.h>
+#endif
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 
 #if !OS(WINDOWS)
 #include <sys/param.h>
@@ -135,8 +138,8 @@ static void curl_unlock_callback(CURL* handle, curl_lock_data data, void* userPt
 ResourceHandleManager::ResourceHandleManager()
     : m_downloadTimer(this, &ResourceHandleManager::downloadTimerCallback)
     , m_cookieJarFileName(0)
+    , m_certificatePath(certificatePath())
     , m_runningJobs(0)
-    , m_certificatePath (certificatePath())
 {
     curl_global_init(CURL_GLOBAL_ALL);
     m_curlMultiHandle = curl_multi_init();

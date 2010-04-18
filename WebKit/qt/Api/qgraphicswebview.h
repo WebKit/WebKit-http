@@ -46,6 +46,7 @@ class QWEBKIT_EXPORT QGraphicsWebView : public QGraphicsWidget {
 
     Q_PROPERTY(bool modified READ isModified)
     Q_PROPERTY(bool resizesToContents READ resizesToContents WRITE setResizesToContents)
+    Q_PROPERTY(bool tiledBackingStoreFrozen READ isTiledBackingStoreFrozen WRITE setTiledBackingStoreFrozen)
 
 public:
     explicit QGraphicsWebView(QGraphicsItem* parent = 0);
@@ -82,6 +83,9 @@ public:
 
     bool resizesToContents() const;
     void setResizesToContents(bool enabled);
+    
+    bool isTiledBackingStoreFrozen() const;
+    void setTiledBackingStoreFrozen(bool frozen);
 
     virtual void setGeometry(const QRectF& rect);
     virtual void updateGeometry();
@@ -138,10 +142,13 @@ protected:
 
 private:
     Q_PRIVATE_SLOT(d, void _q_doLoadFinished(bool success))
+    Q_PRIVATE_SLOT(d, void _q_updateMicroFocus())
+    Q_PRIVATE_SLOT(d, void _q_pageDestroyed())
     // we don't want to change the moc based on USE() macro, so this function is here
     // but will be empty if ACCLERATED_COMPOSITING is disabled
     Q_PRIVATE_SLOT(d, void syncLayers())
     Q_PRIVATE_SLOT(d, void _q_contentsSizeChanged(const QSize&))
+    Q_PRIVATE_SLOT(d, void _q_scaleChanged())
 
     QGraphicsWebViewPrivate* const d;
     friend class QGraphicsWebViewPrivate;

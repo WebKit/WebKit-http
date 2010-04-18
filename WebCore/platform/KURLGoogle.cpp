@@ -40,13 +40,13 @@
 
 #include <algorithm>
 
-#include "CString.h"
 #include "StringHash.h"
 #include "NotImplemented.h"
 #include "TextEncoding.h"
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/CString.h>
 
 #include <googleurl/src/url_canon_internal.h>
 #include <googleurl/src/url_util.h>
@@ -56,6 +56,9 @@ using WTF::toASCIILower;
 using std::binary_search;
 
 namespace WebCore {
+
+static const int maximumValidPortNumber = 0xFFFE;
+static const int invalidPortNumber = 0xFFFF;
 
 // Wraps WebCore's text encoding in a character set converter for the
 // canonicalizer.
@@ -491,18 +494,21 @@ String KURL::host() const
     return m_url.componentString(m_url.m_parsed.host);
 }
 
-// Returns 0 when there is no port or it is invalid.
+// Returns 0 when there is no port.
 //
 // We treat URL's with out-of-range port numbers as invalid URLs, and they will
 // be rejected by the canonicalizer. KURL.cpp will allow them in parsing, but
-// return 0 from this port() function, so we mirror that behavior here.
+// return invalidPortNumber from this port() function, so we mirror that behavior here.
 unsigned short KURL::port() const
 {
     if (!m_url.m_isValid || m_url.m_parsed.port.len <= 0)
         return 0;
     int port = url_parse::ParsePort(m_url.utf8String().data(), m_url.m_parsed.port);
-    if (port == url_parse::PORT_UNSPECIFIED)
-        return 0;
+    ASSERT(port != url_parse::PORT_UNSPECIFIED); // Checked port.len <= 0 before.
+
+    if (port == url_parse::PORT_INVALID || port > maximumValidPortNumber) // Mimic KURL::port()
+        port = invalidPortNumber;
+
     return static_cast<unsigned short>(port);
 }
 
@@ -572,10 +578,32 @@ String KURL::path() const
 
 bool KURL::setProtocol(const String& protocol)
 {
+    // Firefox and IE remove everything after the first ':'.
+    int separatorPosition = protocol.find(':');
+    String newProtocol = protocol.substring(0, separatorPosition);
+
+    // If KURL is given an invalid scheme, it returns failure without modifying
+    // the URL at all. This is in contrast to most other setters which modify
+    // the URL and set "m_isValid."
+    url_canon::RawCanonOutputT<char> canonProtocol;
+    url_parse::Component protocolComponent;
+    if (!url_canon::CanonicalizeScheme(newProtocol.characters(),
+                                       url_parse::Component(0, newProtocol.length()),
+                                       &canonProtocol, &protocolComponent)
+        || !protocolComponent.is_nonempty())
+        return false;
+
     KURLGooglePrivate::Replacements replacements;
-    replacements.SetScheme(CharactersOrEmpty(protocol),
-                           url_parse::Component(0, protocol.length()));
+    replacements.SetScheme(CharactersOrEmpty(newProtocol),
+                           url_parse::Component(0, newProtocol.length()));
     m_url.replaceComponents(replacements);
+
+    // isValid could be false but we still return true here. This is because
+    // WebCore or JS scripts can build up a URL by setting individual
+    // components, and a JS exception is based on the return value of this
+    // function. We want to throw the exception and stop the script only when
+    // its trying to set a bad protocol, and not when it maybe just hasn't
+    // finished building up its final scheme.
     return true;
 }
 
@@ -622,7 +650,7 @@ void KURL::setPort(unsigned short i)
     KURLGooglePrivate::Replacements replacements;
     String portStr;
     if (i) {
-        portStr = String::number(static_cast<int>(i));
+        portStr = String::number(i);
         replacements.SetPort(
             reinterpret_cast<const url_parse::UTF16Char*>(portStr.characters()),
             url_parse::Component(0, portStr.length()));
@@ -831,6 +859,12 @@ bool portAllowed(const KURL& url)
         3659, // apple-sasl / PasswordServer [Apple addition]
         4045, // lockd
         6000, // X11
+        6665, // Alternate IRC [Apple addition]
+        6666, // Alternate IRC [Apple addition]
+        6667, // Standard IRC [Apple addition]
+        6668, // Alternate IRC [Apple addition]
+        6669, // Alternate IRC [Apple addition]
+        invalidPortNumber, // Used to block all invalid port numbers
     };
     const unsigned short* const blockedPortListEnd = blockedPortList + sizeof(blockedPortList) / sizeof(blockedPortList[0]);
 
@@ -1015,7 +1049,6 @@ bool KURL::isHierarchical() const
         return false;
     return url_util::IsStandard(
         &m_url.utf8String().data()[m_url.m_parsed.scheme.begin],
-        m_url.utf8String().length(),
         m_url.m_parsed.scheme);
 }
 
@@ -1094,12 +1127,10 @@ bool protocolIs(const String& url, const char* protocol)
 {
     // Do the comparison without making a new string object.
     assertProtocolIsGood(protocol);
-    for (int i = 0; ; ++i) {
-        if (!protocol[i])
-            return url[i] == ':';
-        if (toASCIILower(url[i]) != protocol[i])
-            return false;
-    }
+
+    // Check the scheme like GURL does.
+    return url_util::FindAndCompareScheme(url.characters(), url.length(), 
+        protocol, NULL); 
 }
 
 inline bool KURL::protocolIs(const String& string, const char* protocol)

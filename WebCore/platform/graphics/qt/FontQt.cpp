@@ -1,6 +1,6 @@
 /*
     Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
-    Copyright (C) 2008 Holger Hans Peter Freyther
+    Copyright (C) 2008, 2010 Holger Hans Peter Freyther
     Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
 
     This library is free software; you can redistribute it and/or
@@ -134,7 +134,7 @@ void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const Float
             clip.adjust(dx1, dx2, dy1, dy2);
         }
         p->save();
-        p->setClipRect(clip.toRect());
+        p->setClipRect(clip.toRect(), Qt::IntersectClip);
         QPointF pt(point.x(), point.y() - ascent);
         if (hasShadow) {
             p->save();
@@ -169,17 +169,24 @@ void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const Float
         p->drawText(pt, string, flags, run.padding());
 }
 
-float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>*) const
+float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>*, GlyphOverflow*) const
 {
     if (!run.length())
         return 0;
+
+    if (run.length() == 1 && treatAsSpace(run[0]))
+        return QFontMetrics(font()).width(run[0]) - m_wordSpacing + run.padding();
 
     String sanitized = Font::normalizeSpaces(String(run.characters(), run.length()));
     QString string = fromRawDataWithoutRef(sanitized);
 
     QTextLayout layout(string, font());
     QTextLine line = setupLayout(&layout, run);
+#if QT_VERSION >= QT_VERSION_CHECK(4, 7, 0)
+    int w = int(line.horizontalAdvance());
+#else
     int w = int(line.naturalTextWidth());
+#endif
     // WebKit expects us to ignore word spacing on the first character (as opposed to what Qt does)
     if (treatAsSpace(run[0]))
         w -= m_wordSpacing;
@@ -216,8 +223,10 @@ FloatRect Font::selectionRectForComplexText(const TextRun& run, const IntPoint& 
 QFont Font::font() const
 {
     QFont f = primaryFont()->getQtFont();
-    f.setLetterSpacing(QFont::AbsoluteSpacing, m_letterSpacing);
-    f.setWordSpacing(m_wordSpacing);
+    if (m_letterSpacing != 0)
+        f.setLetterSpacing(QFont::AbsoluteSpacing, m_letterSpacing);
+    if (m_wordSpacing != 0)
+        f.setWordSpacing(m_wordSpacing);
     return f;
 }
 

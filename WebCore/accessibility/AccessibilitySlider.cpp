@@ -99,6 +99,17 @@ const AtomicString& AccessibilitySlider::getAttribute(const QualifiedName& attri
     return element()->getAttribute(attribute);
 }
 
+bool AccessibilitySlider::accessibilityIsIgnored() const
+{
+    AccessibilityObjectInclusion decision = accessibilityIsIgnoredBase();
+    if (decision == IncludeObject)
+        return false;
+    if (decision == IgnoreObject)
+        return true;
+    
+    return false;
+}
+    
 float AccessibilitySlider::valueForRange() const
 {
     return element()->value().toFloat();

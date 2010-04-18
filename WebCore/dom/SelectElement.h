@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http//www.torchmobile.com/)
  *
  * This library is free software; you can redistribute it and/or
@@ -60,6 +61,8 @@ public:
     virtual void setSelectedIndex(int index, bool deselect = true) = 0;
     virtual void setSelectedIndexByUser(int index, bool deselect = true, bool fireOnChangeNow = false) = 0;
 
+    virtual void listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow = true) = 0;
+
 protected:
     virtual ~SelectElement() { }
 
@@ -95,6 +98,9 @@ protected:
     static void insertedIntoTree(SelectElementData&, Element*);
     static void accessKeySetSelectedIndex(SelectElementData&, Element*, int index);
     static unsigned optionCount(const SelectElementData&, const Element*);
+
+    static void updateSelectedState(SelectElementData& data, Element* element, int listIndex,
+                                    bool multi, bool shift);
  
 private:
     static void menuListDefaultEventHandler(SelectElementData&, Element*, Event*, HTMLFormElement*);
@@ -114,7 +120,14 @@ public:
     int size() const { return m_size; }
     void setSize(int value) { m_size = value; }
 
-    bool usesMenuList() const { return !m_multiple && m_size <= 1; }
+    bool usesMenuList() const
+    {
+#if ENABLE(NO_LISTBOX_RENDERING)
+        return true;
+#else
+        return !m_multiple && m_size <= 1;
+#endif
+    }
 
     int lastOnChangeIndex() const { return m_lastOnChangeIndex; }
     void setLastOnChangeIndex(int value) { m_lastOnChangeIndex = value; }

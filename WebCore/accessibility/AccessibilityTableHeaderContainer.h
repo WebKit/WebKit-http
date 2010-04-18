@@ -48,8 +48,6 @@ public:
     void setParentTable(AccessibilityTable* table) { m_parentTable = table; }
     virtual AccessibilityObject* parentObject() const { return m_parentTable; }
     
-    virtual bool accessibilityIsIgnored() const { return false; }
-    
     virtual const AccessibilityChildrenVector& children();
     virtual void addChildren();
     
@@ -60,6 +58,7 @@ private:
     AccessibilityTable* m_parentTable;
     IntRect m_headerRect;
     
+    virtual bool accessibilityIsIgnored() const;
 }; 
     
 } // namespace WebCore 

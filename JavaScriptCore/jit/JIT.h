@@ -26,8 +26,6 @@
 #ifndef JIT_h
 #define JIT_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(JIT)
 
 // We've run into some problems where changing the size of the class JIT leads to
@@ -268,6 +266,28 @@ namespace JSC {
         static const FPRegisterID fpRegT0 = ARMRegisters::d0;
         static const FPRegisterID fpRegT1 = ARMRegisters::d1;
         static const FPRegisterID fpRegT2 = ARMRegisters::d2;
+#elif CPU(MIPS)
+        static const RegisterID returnValueRegister = MIPSRegisters::v0;
+        static const RegisterID cachedResultRegister = MIPSRegisters::v0;
+        static const RegisterID firstArgumentRegister = MIPSRegisters::a0;
+
+        // regT0 must be v0 for returning a 32-bit value.
+        static const RegisterID regT0 = MIPSRegisters::v0;
+
+        // regT1 must be v1 for returning a pair of 32-bit value.
+        static const RegisterID regT1 = MIPSRegisters::v1;
+
+        static const RegisterID regT2 = MIPSRegisters::t4;
+
+        // regT3 must be saved in the callee, so use an S register.
+        static const RegisterID regT3 = MIPSRegisters::s2;
+
+        static const RegisterID callFrameRegister = MIPSRegisters::s0;
+        static const RegisterID timeoutCheckRegister = MIPSRegisters::s1;
+
+        static const FPRegisterID fpRegT0 = MIPSRegisters::f4;
+        static const FPRegisterID fpRegT1 = MIPSRegisters::f6;
+        static const FPRegisterID fpRegT2 = MIPSRegisters::f8;
 #else
     #error "JIT not supported on this platform."
 #endif
@@ -283,32 +303,32 @@ namespace JSC {
             return JIT(globalData, codeBlock).privateCompile();
         }
 
-        static void compileGetByIdProto(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, Structure* prototypeStructure, size_t cachedOffset, ReturnAddressPtr returnAddress)
+        static void compileGetByIdProto(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, Structure* prototypeStructure, const Identifier& ident, const PropertySlot& slot, size_t cachedOffset, ReturnAddressPtr returnAddress)
         {
             JIT jit(globalData, codeBlock);
-            jit.privateCompileGetByIdProto(stubInfo, structure, prototypeStructure, cachedOffset, returnAddress, callFrame);
+            jit.privateCompileGetByIdProto(stubInfo, structure, prototypeStructure, ident, slot, cachedOffset, returnAddress, callFrame);
         }
 
-        static void compileGetByIdSelfList(JSGlobalData* globalData, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* polymorphicStructures, int currentIndex, Structure* structure, size_t cachedOffset)
+        static void compileGetByIdSelfList(JSGlobalData* globalData, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* polymorphicStructures, int currentIndex, Structure* structure, const Identifier& ident, const PropertySlot& slot, size_t cachedOffset)
         {
             JIT jit(globalData, codeBlock);
-            jit.privateCompileGetByIdSelfList(stubInfo, polymorphicStructures, currentIndex, structure, cachedOffset);
+            jit.privateCompileGetByIdSelfList(stubInfo, polymorphicStructures, currentIndex, structure, ident, slot, cachedOffset);
         }
-        static void compileGetByIdProtoList(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, Structure* prototypeStructure, size_t cachedOffset)
+        static void compileGetByIdProtoList(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, Structure* prototypeStructure, const Identifier& ident, const PropertySlot& slot, size_t cachedOffset)
         {
             JIT jit(globalData, codeBlock);
-            jit.privateCompileGetByIdProtoList(stubInfo, prototypeStructureList, currentIndex, structure, prototypeStructure, cachedOffset, callFrame);
+            jit.privateCompileGetByIdProtoList(stubInfo, prototypeStructureList, currentIndex, structure, prototypeStructure, ident, slot, cachedOffset, callFrame);
         }
-        static void compileGetByIdChainList(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, StructureChain* chain, size_t count, size_t cachedOffset)
+        static void compileGetByIdChainList(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, PolymorphicAccessStructureList* prototypeStructureList, int currentIndex, Structure* structure, StructureChain* chain, size_t count, const Identifier& ident, const PropertySlot& slot, size_t cachedOffset)
         {
             JIT jit(globalData, codeBlock);
-            jit.privateCompileGetByIdChainList(stubInfo, prototypeStructureList, currentIndex, structure, chain, count, cachedOffset, callFrame);
+            jit.privateCompileGetByIdChainList(stubInfo, prototypeStructureList, currentIndex, structure, chain, count, ident, slot, cachedOffset, callFrame);
         }
 
-        static void compileGetByIdChain(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, StructureChain* chain, size_t count, size_t cachedOffset, ReturnAddressPtr returnAddress)
+        static void compileGetByIdChain(JSGlobalData* globalData, CallFrame* callFrame, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* structure, StructureChain* chain, size_t count, const Identifier& ident, const PropertySlot& slot, size_t cachedOffset, ReturnAddressPtr returnAddress)
         {
             JIT jit(globalData, codeBlock);
-            jit.privateCompileGetByIdChain(stubInfo, structure, chain, count, cachedOffset, returnAddress, callFrame);
+            jit.privateCompileGetByIdChain(stubInfo, structure, chain, count, ident, slot, cachedOffset, returnAddress, callFrame);
         }
         
         static void compilePutByIdTransition(JSGlobalData* globalData, CodeBlock* codeBlock, StructureStubInfo* stubInfo, Structure* oldStructure, Structure* newStructure, size_t cachedOffset, StructureChain* chain, ReturnAddressPtr returnAddress)
@@ -354,11 +374,11 @@ namespace JSC {
         void privateCompileLinkPass();
         void privateCompileSlowCases();
         JITCode privateCompile();
-        void privateCompileGetByIdProto(StructureStubInfo*, Structure*, Structure* prototypeStructure, size_t cachedOffset, ReturnAddressPtr returnAddress, CallFrame* callFrame);
-        void privateCompileGetByIdSelfList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, size_t cachedOffset);
-        void privateCompileGetByIdProtoList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, Structure* prototypeStructure, size_t cachedOffset, CallFrame* callFrame);
-        void privateCompileGetByIdChainList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, StructureChain* chain, size_t count, size_t cachedOffset, CallFrame* callFrame);
-        void privateCompileGetByIdChain(StructureStubInfo*, Structure*, StructureChain*, size_t count, size_t cachedOffset, ReturnAddressPtr returnAddress, CallFrame* callFrame);
+        void privateCompileGetByIdProto(StructureStubInfo*, Structure*, Structure* prototypeStructure, const Identifier&, const PropertySlot&, size_t cachedOffset, ReturnAddressPtr returnAddress, CallFrame* callFrame);
+        void privateCompileGetByIdSelfList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, const Identifier&, const PropertySlot&, size_t cachedOffset);
+        void privateCompileGetByIdProtoList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, Structure* prototypeStructure, const Identifier&, const PropertySlot&, size_t cachedOffset, CallFrame* callFrame);
+        void privateCompileGetByIdChainList(StructureStubInfo*, PolymorphicAccessStructureList*, int, Structure*, StructureChain* chain, size_t count, const Identifier&, const PropertySlot&, size_t cachedOffset, CallFrame* callFrame);
+        void privateCompileGetByIdChain(StructureStubInfo*, Structure*, StructureChain*, size_t count, const Identifier&, const PropertySlot&, size_t cachedOffset, ReturnAddressPtr returnAddress, CallFrame* callFrame);
         void privateCompilePutByIdTransition(StructureStubInfo*, Structure*, Structure*, size_t cachedOffset, StructureChain*, ReturnAddressPtr returnAddress);
 
         void privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executablePool, JSGlobalData* data, TrampolineStructure *trampolines);
@@ -686,6 +706,48 @@ namespace JSC {
         // sequencePutById
         static const int sequencePutByIdInstructionSpace = 28;
         static const int sequencePutByIdConstantSpace = 3;
+#elif CPU(MIPS)
+#if WTF_MIPS_ISA(1)
+        static const int patchOffsetPutByIdStructure = 16;
+        static const int patchOffsetPutByIdExternalLoad = 48;
+        static const int patchLengthPutByIdExternalLoad = 20;
+        static const int patchOffsetPutByIdPropertyMapOffset = 68;
+        static const int patchOffsetGetByIdStructure = 16;
+        static const int patchOffsetGetByIdBranchToSlowCase = 48;
+        static const int patchOffsetGetByIdExternalLoad = 48;
+        static const int patchLengthGetByIdExternalLoad = 20;
+        static const int patchOffsetGetByIdPropertyMapOffset = 68;
+        static const int patchOffsetGetByIdPutResult = 88;
+#if ENABLE(OPCODE_SAMPLING)
+        #error "OPCODE_SAMPLING is not yet supported"
+#else
+        static const int patchOffsetGetByIdSlowCaseCall = 40;
+#endif
+        static const int patchOffsetOpCallCompareToJump = 32;
+        static const int patchOffsetMethodCheckProtoObj = 32;
+        static const int patchOffsetMethodCheckProtoStruct = 56;
+        static const int patchOffsetMethodCheckPutFunction = 88;
+#else // WTF_MIPS_ISA(1)
+        static const int patchOffsetPutByIdStructure = 12;
+        static const int patchOffsetPutByIdExternalLoad = 44;
+        static const int patchLengthPutByIdExternalLoad = 16;
+        static const int patchOffsetPutByIdPropertyMapOffset = 60;
+        static const int patchOffsetGetByIdStructure = 12;
+        static const int patchOffsetGetByIdBranchToSlowCase = 44;
+        static const int patchOffsetGetByIdExternalLoad = 44;
+        static const int patchLengthGetByIdExternalLoad = 16;
+        static const int patchOffsetGetByIdPropertyMapOffset = 60;
+        static const int patchOffsetGetByIdPutResult = 76;
+#if ENABLE(OPCODE_SAMPLING)
+        #error "OPCODE_SAMPLING is not yet supported"
+#else
+        static const int patchOffsetGetByIdSlowCaseCall = 40;
+#endif
+        static const int patchOffsetOpCallCompareToJump = 32;
+        static const int patchOffsetMethodCheckProtoObj = 32;
+        static const int patchOffsetMethodCheckProtoStruct = 52;
+        static const int patchOffsetMethodCheckPutFunction = 84;
+#endif
 #endif
 #endif // USE(JSVALUE32_64)
 

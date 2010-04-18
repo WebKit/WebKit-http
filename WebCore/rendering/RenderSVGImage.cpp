@@ -37,14 +37,12 @@
 #include "SVGLength.h"
 #include "SVGPreserveAspectRatio.h"
 #include "SVGRenderSupport.h"
-#include "SVGResourceClipper.h"
-#include "SVGResourceFilter.h"
-#include "SVGResourceMasker.h"
 
 namespace WebCore {
 
 RenderSVGImage::RenderSVGImage(SVGImageElement* impl)
     : RenderImage(impl)
+    , m_needsTransformUpdate(true)
 {
 }
 
@@ -53,10 +51,13 @@ void RenderSVGImage::layout()
     ASSERT(needsLayout());
 
     LayoutRepainter repainter(*this, checkForRepaintDuringLayout());
-
     SVGImageElement* image = static_cast<SVGImageElement*>(node());
-    m_localTransform = image->animatedLocalTransform();
-    
+
+    if (m_needsTransformUpdate) {
+        m_localTransform = image->animatedLocalTransform();
+        m_needsTransformUpdate = false;
+    }
+
     // minimum height
     setHeight(errorOccurred() ? intrinsicSize().height() : 0);
 
@@ -98,9 +99,15 @@ void RenderSVGImage::paint(PaintInfo& paintInfo, int, int)
     }
 
     if ((paintInfo.phase == PaintPhaseOutline || paintInfo.phase == PaintPhaseSelfOutline) && style()->outlineWidth())
-        paintOutline(paintInfo.context, 0, 0, width(), height(), style());
+        paintOutline(paintInfo.context, 0, 0, width(), height());
 
     paintInfo.context->restore();
+}
+
+void RenderSVGImage::destroy()
+{
+    deregisterFromResources(this);
+    RenderImage::destroy();
 }
 
 bool RenderSVGImage::nodeAtFloatPoint(const HitTestRequest&, HitTestResult& result, const FloatPoint& pointInParent, HitTestAction hitTestAction)

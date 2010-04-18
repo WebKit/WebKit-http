@@ -32,12 +32,12 @@
 #include <gio/gio.h>
 #include <stdio.h>
 
-#include "CString.h"
 #include "GOwnPtr.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "npruntime_impl.h"
 #include "PluginDebug.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -69,6 +69,9 @@ bool PluginPackage::fetchInfo()
     }
 
     const gchar* types = NP_GetMIMEDescription();
+    if (!types)
+        return true;
+
     gchar** mimeDescs = g_strsplit(types, ";", -1);
     for (int i = 0; mimeDescs[i] && mimeDescs[i][0]; i++) {
         gchar** mimeData = g_strsplit(mimeDescs[i], ":", 3);
@@ -115,6 +118,14 @@ bool PluginPackage::load()
         GOwnPtr<GFile> resolvedFile(g_file_resolve_relative_path(file.get(), linkPath.get()));
         finalPath.set(g_file_get_path(resolvedFile.get()));
     }
+
+    // No joke. If there is a netscape component in the path, go back
+    // to the symlink, as flash breaks otherwise.
+    // See http://src.chromium.org/viewvc/chrome/trunk/src/webkit/glue/plugins/plugin_list_posix.cc
+    GOwnPtr<gchar> baseName(g_path_get_basename(finalPath.get()));
+    if (!g_strcmp0(baseName.get(), "libflashplayer.so")
+        && g_strstr_len(finalPath.get(), -1, "/netscape/"))
+        finalPath.set(g_strdup(m_path.utf8().data()));
 
     m_module = g_module_open(finalPath.get(), G_MODULE_BIND_LOCAL);
 

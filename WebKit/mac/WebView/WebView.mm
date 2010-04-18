@@ -101,11 +101,15 @@
 #import "WebVideoFullscreenController.h"
 #import <CoreFoundation/CFSet.h>
 #import <Foundation/NSURLConnection.h>
+#import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JSValueRef.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/BackForwardList.h>
 #import <WebCore/Cache.h>
 #import <WebCore/ColorMac.h>
+#import <WebCore/CSSComputedStyleDeclaration.h>
 #import <WebCore/Cursor.h>
+#import <WebCore/Database.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DragController.h>
@@ -123,6 +127,8 @@
 #import <WebCore/HTMLNames.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/IconDatabase.h>
+#import <WebCore/JSCSSStyleDeclaration.h>
+#import <WebCore/JSElement.h>
 #import <WebCore/Logging.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/Page.h>
@@ -558,6 +564,16 @@ static bool runningTigerMail()
     return NO;    
 }
 
+static bool coreVideoHas7228836Fix()
+{
+#ifdef BUILDING_ON_LEOPARD
+    NSBundle* coreVideoFrameworkBundle = [NSBundle bundleWithPath:@"/System/Library/Frameworks/CoreVideo.framework"];
+    double version = [[coreVideoFrameworkBundle objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] doubleValue];
+    return (version >= 48);
+#endif
+    return true;
+}
+
 static bool shouldEnableLoadDeferring()
 {
     return !applicationIsAdobeInstaller();
@@ -600,6 +616,7 @@ static bool shouldEnableLoadDeferring()
     _private->drawsBackground = YES;
     _private->backgroundColor = [[NSColor colorWithDeviceWhite:1 alpha:1] retain];
     _private->usesDocumentViews = usesDocumentViews;
+    _private->includesFlattenedCompositingLayersWhenDrawingToBitmap = YES;
 
     WebFrameView *frameView = nil;
     if (_private->usesDocumentViews) {
@@ -963,8 +980,6 @@ static bool shouldEnableLoadDeferring()
     WTF::RefCountedLeakCounter::suppressMessages("At least one WebView was closed with fast teardown.");
 #endif
 
-    _private->closed = YES;
-    
     [[NSDistributedNotificationCenter defaultCenter] removeObserver:self];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 
@@ -996,6 +1011,8 @@ static bool fastDocumentTeardownEnabled()
 {
     if (!_private || _private->closed)
         return;
+
+    _private->closed = YES;
 
     [self _closingEventHandling];
 
@@ -1029,9 +1046,6 @@ static bool fastDocumentTeardownEnabled()
     [self setUIDelegate:nil];
 
     [_private->inspector webViewClosed];
-
-    // setHostWindow:nil must be called before this value is set (see 5408186)
-    _private->closed = YES;
 
     // To avoid leaks, call removeDragCaret in case it wasn't called after moveDragCaretToPoint.
     [self removeDragCaret];
@@ -1293,7 +1307,9 @@ static bool fastDocumentTeardownEnabled()
     settings->setMinimumFontSize([preferences minimumFontSize]);
     settings->setMinimumLogicalFontSize([preferences minimumLogicalFontSize]);
     settings->setPluginsEnabled([preferences arePlugInsEnabled]);
-    settings->setDatabasesEnabled([preferences databasesEnabled]);
+#if ENABLE(DATABASE)
+    Database::setIsAvailable([preferences databasesEnabled]);
+#endif
     settings->setLocalStorageEnabled([preferences localStorageEnabled]);
     settings->setExperimentalNotificationsEnabled([preferences experimentalNotificationsEnabled]);
     settings->setPrivateBrowsingEnabled([preferences privateBrowsingEnabled]);
@@ -1328,16 +1344,19 @@ static bool fastDocumentTeardownEnabled()
     settings->setWebArchiveDebugModeEnabled([preferences webArchiveDebugModeEnabled]);
     settings->setLocalFileContentSniffingEnabled([preferences localFileContentSniffingEnabled]);
     settings->setOfflineWebApplicationCacheEnabled([preferences offlineWebApplicationCacheEnabled]);
-    settings->setZoomsTextOnly([preferences zoomsTextOnly]);
+    settings->setZoomMode([preferences zoomsTextOnly] ? ZoomTextOnly : ZoomPage);
     settings->setXSSAuditorEnabled([preferences isXSSAuditorEnabled]);
     settings->setEnforceCSSMIMETypeInStrictMode(!WKAppVersionCheckLessThan(@"com.apple.iWeb", -1, 2.1));
-    settings->setAcceleratedCompositingEnabled([preferences acceleratedCompositingEnabled]);
+    
+    // FIXME: Enabling accelerated compositing when WebGL is enabled causes tests to fail on Leopard which expect HW compositing to be disabled.
+    // Until we fix that, I will comment out the test (CFM)
+    settings->setAcceleratedCompositingEnabled((coreVideoHas7228836Fix() || [preferences webGLEnabled]) && [preferences acceleratedCompositingEnabled]);
     settings->setShowDebugBorders([preferences showDebugBorders]);
     settings->setShowRepaintCounter([preferences showRepaintCounter]);
     settings->setPluginAllowedRunTime([preferences pluginAllowedRunTime]);
     settings->setWebGLEnabled([preferences webGLEnabled]);
     settings->setLoadDeferringEnabled(shouldEnableLoadDeferring());
-    settings->setFrameSetFlatteningEnabled([preferences isFrameSetFlatteningEnabled]);
+    settings->setFrameFlatteningEnabled([preferences isFrameFlatteningEnabled]);
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -2144,19 +2163,42 @@ static inline IMP getMethod(id o, SEL s)
 - (BOOL)_isUsingAcceleratedCompositing
 {
 #if USE(ACCELERATED_COMPOSITING)
-    Frame* coreFrame = [self _mainCoreFrame];
     if (_private->usesDocumentViews) {
+        Frame* coreFrame = [self _mainCoreFrame];
         for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
             NSView *documentView = [[kit(frame) frameView] documentView];
             if ([documentView isKindOfClass:[WebHTMLView class]] && [(WebHTMLView *)documentView _isUsingAcceleratedCompositing])
                 return YES;
         }
     }
-
-    return NO;
-#else
-    return NO;
 #endif
+    return NO;
+}
+
+- (BOOL)_isSoftwareRenderable
+{
+#if USE(ACCELERATED_COMPOSITING)
+    if (_private->usesDocumentViews) {
+        Frame* coreFrame = [self _mainCoreFrame];
+        for (Frame* frame = coreFrame; frame; frame = frame->tree()->traverseNext(coreFrame)) {
+            if (FrameView* view = frame->view()) {
+                if (!view->isSoftwareRenderable())
+                    return NO;
+            }
+        }
+    }
+#endif
+    return YES;
+}
+
+- (void)_setIncludesFlattenedCompositingLayersWhenDrawingToBitmap:(BOOL)flag
+{
+    _private->includesFlattenedCompositingLayersWhenDrawingToBitmap = flag;
+}
+
+- (BOOL)_includesFlattenedCompositingLayersWhenDrawingToBitmap
+{
+    return _private->includesFlattenedCompositingLayersWhenDrawingToBitmap;
 }
 
 static WebBaseNetscapePluginView *_pluginViewForNode(DOMNode *node)
@@ -2205,14 +2247,19 @@ static WebBaseNetscapePluginView *_pluginViewForNode(DOMNode *node)
     return _private ? _private->insertionPasteboard : nil;
 }
 
-+ (void)_whiteListAccessFromOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
++ (void)_addOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    SecurityOrigin::whiteListAccessFromOrigin(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityOrigin::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
-+(void)_resetOriginAccessWhiteLists
++ (void)_removeOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains
 {
-    SecurityOrigin::resetOriginAccessWhiteLists();
+    SecurityOrigin::removeOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+}
+
++(void)_resetOriginAccessWhitelists
+{
+    SecurityOrigin::resetOriginAccessWhitelists();
 }
 
 - (void)_updateActiveState
@@ -2352,6 +2399,11 @@ static PassOwnPtr<Vector<String> > toStringVector(NSArray* patterns)
 + (void)_setDomainRelaxationForbidden:(BOOL)forbidden forURLScheme:(NSString *)scheme
 {
     SecurityOrigin::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme);
+}
+
++ (void)_registerURLSchemeAsSecure:(NSString *)scheme
+{
+    SecurityOrigin::registerURLSchemeAsSecure(scheme);
 }
 
 @end
@@ -3081,13 +3133,13 @@ static bool needsWebViewInitThreadWorkaround()
     _private->zoomMultiplier = m;
     ASSERT(_private->page);
     if (_private->page)
-        _private->page->settings()->setZoomsTextOnly(isTextOnly);
+        _private->page->settings()->setZoomMode(isTextOnly ? ZoomTextOnly : ZoomPage);
     
     // FIXME: it would be nice to rework this code so that _private->zoomMultiplier doesn't exist and callers
     // all access _private->page->settings().
     Frame* coreFrame = [self _mainCoreFrame];
     if (coreFrame)
-        coreFrame->setZoomFactor(m, isTextOnly);
+        coreFrame->setZoomFactor(m, isTextOnly ? ZoomTextOnly : ZoomPage);
 }
 
 - (float)_zoomMultiplier:(BOOL)isTextOnly
@@ -3107,7 +3159,7 @@ static bool needsWebViewInitThreadWorkaround()
     if (!_private->page)
         return NO;
     
-    return _private->page->settings()->zoomsTextOnly();
+    return _private->page->settings()->zoomMode() == ZoomTextOnly;
 }
 
 #define MinimumZoomMultiplier       0.5f
@@ -3294,7 +3346,7 @@ static bool needsWebViewInitThreadWorkaround()
 
 - (void)setHostWindow:(NSWindow *)hostWindow
 {
-    if (_private->closed)
+    if (_private->closed && hostWindow)
         return;
     if (hostWindow == _private->hostWindow)
         return;
@@ -5653,6 +5705,25 @@ static void layerSyncRunLoopObserverCallBack(CFRunLoopObserverRef, CFRunLoopActi
         _private->page->geolocationController()->errorOccurred(geolocatioError.get());
     }
 #endif
+}
+
+@end
+
+@implementation WebView (WebViewPrivateStyleInfo)
+
+- (JSValueRef)_computedStyleIncludingVisitedInfo:(JSContextRef)context forElement:(JSValueRef)value
+{
+    JSLock lock(SilenceAssertionsOnly);
+    ExecState* exec = toJS(context);
+    if (!value)
+        return JSValueMakeUndefined(context);
+    JSValue jsValue = toJS(exec, value);
+    if (!jsValue.inherits(&JSElement::s_info))
+        return JSValueMakeUndefined(context);
+    JSElement* jsElement = static_cast<JSElement*>(asObject(jsValue));
+    Element* element = jsElement->impl();
+    RefPtr<CSSComputedStyleDeclaration> style = computedStyle(element, true);
+    return toRef(exec, toJS(exec, jsElement->globalObject(), style.get()));
 }
 
 @end

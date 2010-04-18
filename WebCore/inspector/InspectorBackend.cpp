@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,18 +47,18 @@
 #include "InspectorDOMAgent.h"
 #include "InspectorFrontend.h"
 #include "InspectorResource.h"
+#include "Page.h"
 #include "Pasteboard.h"
 #include "ScriptArray.h"
+#include "ScriptBreakpoint.h"
 #include "SerializedScriptValue.h"
 
 #if ENABLE(DOM_STORAGE)
 #include "Storage.h"
 #endif
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-#include "JavaScriptCallFrame.h"
-#include "JavaScriptDebugServer.h"
-using namespace JSC;
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+#include "ScriptDebugServer.h"
 #endif
 
 #include "markup.h"
@@ -82,7 +82,7 @@ InspectorBackend::~InspectorBackend()
 void InspectorBackend::saveFrontendSettings(const String& settings)
 {
     if (m_inspectorController)
-        m_inspectorController->setSetting(InspectorController::FrontendSettingsSettingName, settings);
+        m_inspectorController->setSetting(InspectorController::frontendSettingsSettingName(), settings);
 }
 
 void InspectorBackend::storeLastActivePanel(const String& panelName)
@@ -91,24 +91,16 @@ void InspectorBackend::storeLastActivePanel(const String& panelName)
         m_inspectorController->storeLastActivePanel(panelName);
 }
 
-void InspectorBackend::toggleNodeSearch()
+void InspectorBackend::enableSearchingForNode()
 {
     if (m_inspectorController)
-        m_inspectorController->toggleSearchForNodeInPage();
+        m_inspectorController->setSearchingForNode(true);
 }
 
-bool InspectorBackend::searchingForNode()
+void InspectorBackend::disableSearchingForNode()
 {
     if (m_inspectorController)
-        return m_inspectorController->searchingForNodeInPage();
-    return false;
-}
-
-bool InspectorBackend::resourceTrackingEnabled() const
-{
-    if (m_inspectorController)
-        return m_inspectorController->resourceTrackingEnabled();
-    return false;
+        m_inspectorController->setSearchingForNode(false);
 }
 
 void InspectorBackend::enableResourceTracking(bool always)
@@ -136,6 +128,12 @@ void InspectorBackend::getResourceContent(long callId, unsigned long identifier)
         frontend->didGetResourceContent(callId, "");
 }
 
+void InspectorBackend::reloadPage()
+{
+    if (m_inspectorController)
+        m_inspectorController->m_inspectedPage->mainFrame()->redirectScheduler()->scheduleRefresh(true);
+}
+
 void InspectorBackend::startTimelineProfiler()
 {
     if (m_inspectorController)
@@ -148,13 +146,7 @@ void InspectorBackend::stopTimelineProfiler()
         m_inspectorController->stopTimelineProfiler();
 }
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-bool InspectorBackend::debuggerEnabled() const
-{
-    if (m_inspectorController)
-        return m_inspectorController->debuggerEnabled();
-    return false;
-}
+#if ENABLE(JAVASCRIPT_DEBUGGER)
 
 void InspectorBackend::enableDebugger(bool always)
 {
@@ -168,27 +160,31 @@ void InspectorBackend::disableDebugger(bool always)
         m_inspectorController->disableDebugger(always);
 }
 
-void InspectorBackend::addBreakpoint(const String& sourceID, unsigned lineNumber, const String& condition)
+void InspectorBackend::setBreakpoint(const String& sourceID, unsigned lineNumber, bool enabled, const String& condition)
 {
-    intptr_t sourceIDValue = sourceID.toIntPtr();
-    JavaScriptDebugServer::shared().addBreakpoint(sourceIDValue, lineNumber, condition);
-}
-
-void InspectorBackend::updateBreakpoint(const String& sourceID, unsigned lineNumber, const String& condition)
-{
-    intptr_t sourceIDValue = sourceID.toIntPtr();
-    JavaScriptDebugServer::shared().updateBreakpoint(sourceIDValue, lineNumber, condition);
+    if (m_inspectorController)
+        m_inspectorController->setBreakpoint(sourceID, lineNumber, enabled, condition);
 }
 
 void InspectorBackend::removeBreakpoint(const String& sourceID, unsigned lineNumber)
 {
-    intptr_t sourceIDValue = sourceID.toIntPtr();
-    JavaScriptDebugServer::shared().removeBreakpoint(sourceIDValue, lineNumber);
+    if (m_inspectorController)
+        m_inspectorController->removeBreakpoint(sourceID, lineNumber);
+}
+
+void InspectorBackend::activateBreakpoints()
+{
+    ScriptDebugServer::shared().setBreakpointsActivated(true);
+}
+
+void InspectorBackend::deactivateBreakpoints()
+{
+    ScriptDebugServer::shared().setBreakpointsActivated(false);
 }
 
 void InspectorBackend::pauseInDebugger()
 {
-    JavaScriptDebugServer::shared().pauseProgram();
+    ScriptDebugServer::shared().pauseProgram();
 }
 
 void InspectorBackend::resumeDebugger()
@@ -199,42 +195,29 @@ void InspectorBackend::resumeDebugger()
 
 void InspectorBackend::stepOverStatementInDebugger()
 {
-    JavaScriptDebugServer::shared().stepOverStatement();
+    ScriptDebugServer::shared().stepOverStatement();
 }
 
 void InspectorBackend::stepIntoStatementInDebugger()
 {
-    JavaScriptDebugServer::shared().stepIntoStatement();
+    ScriptDebugServer::shared().stepIntoStatement();
 }
 
 void InspectorBackend::stepOutOfFunctionInDebugger()
 {
-    JavaScriptDebugServer::shared().stepOutOfFunction();
-}
-
-long InspectorBackend::pauseOnExceptionsState()
-{
-    return JavaScriptDebugServer::shared().pauseOnExceptionsState();
+    ScriptDebugServer::shared().stepOutOfFunction();
 }
 
 void InspectorBackend::setPauseOnExceptionsState(long pauseState)
 {
-    JavaScriptDebugServer::shared().setPauseOnExceptionsState(static_cast<JavaScriptDebugServer::PauseOnExceptionsState>(pauseState));
+    ScriptDebugServer::shared().setPauseOnExceptionsState(static_cast<ScriptDebugServer::PauseOnExceptionsState>(pauseState));
+    if (InspectorFrontend* frontend = inspectorFrontend())
+        frontend->updatePauseOnExceptionsState(ScriptDebugServer::shared().pauseOnExceptionsState());
 }
 
-JavaScriptCallFrame* InspectorBackend::currentCallFrame() const
-{
-    return JavaScriptDebugServer::shared().currentCallFrame();
-}
 #endif
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
-bool InspectorBackend::profilerEnabled()
-{
-    if (m_inspectorController)
-        return m_inspectorController->profilerEnabled();
-    return false;
-}
 
 void InspectorBackend::enableProfiler(bool always)
 {
@@ -343,34 +326,77 @@ void InspectorBackend::copyNode(long nodeId)
     String markup = createMarkup(node);
     Pasteboard::generalPasteboard()->writePlainText(markup);
 }
-    
+
 void InspectorBackend::removeNode(long callId, long nodeId)
 {
-    InspectorFrontend* frontend = inspectorFrontend();
-    if (!frontend)
-        return;
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->removeNode(callId, nodeId);
+}
 
-    Node* node = nodeForId(nodeId);
-    if (!node) {
-        // Use -1 to denote an error condition.
-        frontend->didRemoveNode(callId, -1);
-        return;
-    }
+void InspectorBackend::changeTagName(long callId, long nodeId, const AtomicString& tagName, bool expanded)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->changeTagName(callId, nodeId, tagName, expanded);
+}
 
-    Node* parentNode = node->parentNode();
-    if (!parentNode) {
-        frontend->didRemoveNode(callId, -1);
-        return;
-    }
+void InspectorBackend::getStyles(long callId, long nodeId, bool authorOnly)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->getStyles(callId, nodeId, authorOnly);
+}
 
-    ExceptionCode code;
-    parentNode->removeChild(node, code);
-    if (code) {
-        frontend->didRemoveNode(callId, -1);
-        return;
-    }
+void InspectorBackend::getAllStyles(long callId)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->getAllStyles(callId);
+}
 
-    frontend->didRemoveNode(callId, nodeId);
+void InspectorBackend::getInlineStyle(long callId, long nodeId)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->getInlineStyle(callId, nodeId);
+}
+
+void InspectorBackend::getComputedStyle(long callId, long nodeId)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->getComputedStyle(callId, nodeId);
+}
+
+void InspectorBackend::applyStyleText(long callId, long styleId, const String& styleText, const String& propertyName)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->applyStyleText(callId, styleId, styleText, propertyName);
+}
+
+void InspectorBackend::setStyleText(long callId, long styleId, const String& cssText)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->setStyleText(callId, styleId, cssText);
+}
+
+void InspectorBackend::setStyleProperty(long callId, long styleId, const String& name, const String& value)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->setStyleProperty(callId, styleId, name, value);
+}
+
+void InspectorBackend::toggleStyleEnabled(long callId, long styleId, const String& propertyName, bool disabled)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->toggleStyleEnabled(callId, styleId, propertyName, disabled);
+}
+
+void InspectorBackend::setRuleSelector(long callId, long ruleId, const String& selector, long selectedNodeId)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->setRuleSelector(callId, ruleId, selector, selectedNodeId);
+}
+
+void InspectorBackend::addRule(long callId, const String& selector, long selectedNodeId)
+{
+    if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
+        domAgent->addRule(callId, selector, selectedNodeId);
 }
 
 void InspectorBackend::highlightDOMNode(long nodeId)
@@ -468,6 +494,18 @@ Node* InspectorBackend::nodeForId(long nodeId)
     if (InspectorDOMAgent* domAgent = inspectorDOMAgent())
         return domAgent->nodeForId(nodeId);
     return 0;
+}
+
+void InspectorBackend::addScriptToEvaluateOnLoad(const String& source)
+{
+    if (m_inspectorController)
+        m_inspectorController->addScriptToEvaluateOnLoad(source);
+}
+
+void InspectorBackend::removeAllScriptsToEvaluateOnLoad()
+{
+    if (m_inspectorController)
+        m_inspectorController->removeAllScriptsToEvaluateOnLoad();
 }
 
 } // namespace WebCore

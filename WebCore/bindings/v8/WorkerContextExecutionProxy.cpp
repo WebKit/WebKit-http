@@ -35,33 +35,20 @@
 
 #include "WorkerContextExecutionProxy.h"
 
-#include "DOMCoreException.h"
 #include "DedicatedWorkerContext.h"
 #include "Event.h"
-#include "EventSource.h"
-#include "Notification.h"
-#include "NotificationCenter.h"
-#include "EventException.h"
-#include "MessagePort.h"
-#include "RangeException.h"
 #include "SharedWorker.h"
 #include "SharedWorkerContext.h"
 #include "V8Binding.h"
+#include "V8ConsoleMessage.h"
 #include "V8DOMMap.h"
-#include "V8Index.h"
+#include "V8DedicatedWorkerContext.h"
 #include "V8Proxy.h"
-#include "V8WorkerContext.h"
-#include "V8WorkerContextEventListener.h"
-#if ENABLE(WEB_SOCKETS)
-#include "WebSocket.h"
-#endif
+#include "V8SharedWorkerContext.h"
 #include "Worker.h"
 #include "WorkerContext.h"
-#include "WorkerLocation.h"
-#include "WorkerNavigator.h"
 #include "WorkerScriptController.h"
-#include "XMLHttpRequest.h"
-#include "XMLHttpRequestException.h"
+#include "WrapperTypeInfo.h"
 
 namespace WebCore {
 
@@ -69,6 +56,26 @@ static void reportFatalErrorInV8(const char* location, const char* message)
 {
     // FIXME: We temporarily deal with V8 internal error situations such as out-of-memory by crashing the worker.
     CRASH();
+}
+
+static void v8MessageHandler(v8::Handle<v8::Message> message, v8::Handle<v8::Value> data)
+{
+    static bool isReportingException = false;
+    // Exceptions that occur in error handler should be ignored since in that case
+    // WorkerContext::reportException will send the exception to the worker object.
+    if (isReportingException)
+        return;
+    isReportingException = true;
+
+    // During the frame teardown, there may not be a valid context.
+    if (ScriptExecutionContext* context = getScriptExecutionContext()) {
+        String errorMessage = toWebCoreString(message->Get());
+        int lineNumber = message->GetLineNumber();
+        String sourceURL = toWebCoreString(message->GetScriptResourceName());
+        context->reportException(errorMessage, lineNumber, sourceURL);
+    }
+
+    isReportingException = false;
 }
 
 WorkerContextExecutionProxy::WorkerContextExecutionProxy(WorkerContext* workerContext)
@@ -100,21 +107,6 @@ void WorkerContextExecutionProxy::dispose()
     }
 }
 
-WorkerContextExecutionProxy* WorkerContextExecutionProxy::retrieve()
-{
-    // Happens on frame destruction, check otherwise GetCurrent() will crash.
-    if (!v8::Context::InContext())
-        return 0;
-    v8::Handle<v8::Context> context = v8::Context::GetCurrent();
-    v8::Handle<v8::Object> global = context->Global();
-    global = V8DOMWrapper::lookupDOMWrapper(V8WorkerContext::GetTemplate(), global);
-    // Return 0 if the current executing context is not the worker context.
-    if (global.IsEmpty())
-        return 0;
-    WorkerContext* workerContext = V8WorkerContext::toNative(global);
-    return workerContext->script()->proxy();
-}
-
 void WorkerContextExecutionProxy::initV8IfNeeded()
 {
     static bool v8Initialized = false;
@@ -134,46 +126,53 @@ void WorkerContextExecutionProxy::initV8IfNeeded()
     v8Initialized = true;
 }
 
-void WorkerContextExecutionProxy::initContextIfNeeded()
+bool WorkerContextExecutionProxy::initContextIfNeeded()
 {
     // Bail out if the context has already been initialized.
     if (!m_context.IsEmpty())
-        return;
+        return true;
+
+    // Setup the security handlers and message listener. This only has
+    // to be done once.
+    static bool isV8Initialized = false;
+    if (!isV8Initialized)
+        v8::V8::AddMessageListener(&v8MessageHandler);
 
     // Create a new environment
     v8::Persistent<v8::ObjectTemplate> globalTemplate;
     m_context = v8::Context::New(0, globalTemplate);
+    if (m_context.IsEmpty())
+        return false;
 
     // Starting from now, use local context only.
     v8::Local<v8::Context> context = v8::Local<v8::Context>::New(m_context);
+
     v8::Context::Scope scope(context);
 
-    // Allocate strings used during initialization.
-    v8::Handle<v8::String> implicitProtoString = v8::String::New("__proto__");
-
     // Create a new JS object and use it as the prototype for the shadow global object.
-    V8ClassIndex::V8WrapperType contextType = V8ClassIndex::DEDICATEDWORKERCONTEXT;
+    WrapperTypeInfo* contextType = &V8DedicatedWorkerContext::info;
 #if ENABLE(SHARED_WORKERS)
     if (!m_workerContext->isDedicatedWorkerContext())
-        contextType = V8ClassIndex::SHAREDWORKERCONTEXT;
+        contextType = &V8SharedWorkerContext::info;
 #endif
     v8::Handle<v8::Function> workerContextConstructor = V8DOMWrapper::getConstructorForContext(contextType, context);
     v8::Local<v8::Object> jsWorkerContext = SafeAllocation::newInstance(workerContextConstructor);
     // Bail out if allocation failed.
     if (jsWorkerContext.IsEmpty()) {
         dispose();
-        return;
+        return false;
     }
 
     // Wrap the object.
-    V8DOMWrapper::setDOMWrapper(jsWorkerContext, V8ClassIndex::ToInt(contextType), m_workerContext);
+    V8DOMWrapper::setDOMWrapper(jsWorkerContext, contextType, m_workerContext);
 
     V8DOMWrapper::setJSWrapperForDOMObject(m_workerContext, v8::Persistent<v8::Object>::New(jsWorkerContext));
     m_workerContext->ref();
 
     // Insert the object instance as the prototype of the shadow object.
-    v8::Handle<v8::Object> globalObject = m_context->Global();
-    globalObject->Set(implicitProtoString, jsWorkerContext);
+    v8::Handle<v8::Object> globalObject = v8::Handle<v8::Object>::Cast(m_context->Global()->GetPrototype());
+    globalObject->SetPrototype(jsWorkerContext);
+    return true;
 }
 
 bool WorkerContextExecutionProxy::forgetV8EventObject(Event* event)
@@ -189,7 +188,9 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
 {
     v8::HandleScope hs;
 
-    initContextIfNeeded();
+    if (!initContextIfNeeded())
+        return ScriptValue();
+
     v8::Context::Scope scope(m_context);
 
     v8::TryCatch exceptionCatcher;
@@ -197,6 +198,9 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
     v8::Local<v8::String> scriptString = v8ExternalString(script);
     v8::Handle<v8::Script> compiledScript = V8Proxy::compileScript(scriptString, fileName, baseLine);
     v8::Local<v8::Value> result = runScript(compiledScript);
+
+    if (!exceptionCatcher.CanContinue())
+        return ScriptValue();
 
     if (exceptionCatcher.HasCaught()) {
         v8::Local<v8::Message> message = exceptionCatcher.Message();
@@ -245,11 +249,6 @@ v8::Local<v8::Value> WorkerContextExecutionProxy::runScript(v8::Handle<v8::Scrip
         return v8::Local<v8::Value>();
 
     return result;
-}
-
-PassRefPtr<V8EventListener> WorkerContextExecutionProxy::findOrCreateEventListener(v8::Local<v8::Value> object, bool isInline, bool findOnly)
-{
-    return findOnly ? V8EventListenerList::findWrapper(object, isInline) : V8EventListenerList::findOrCreateWrapper<V8WorkerContextEventListener>(object, isInline);
 }
 
 void WorkerContextExecutionProxy::trackEvent(Event* event)

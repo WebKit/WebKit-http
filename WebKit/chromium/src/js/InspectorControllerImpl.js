@@ -38,23 +38,30 @@ if (!this.devtools)
 devtools.InspectorBackendImpl = function()
 {
     WebInspector.InspectorBackendStub.call(this);
+    this.installInspectorControllerDelegate_("addScriptToEvaluateOnLoad");
     this.installInspectorControllerDelegate_("clearMessages");
     this.installInspectorControllerDelegate_("copyNode");
     this.installInspectorControllerDelegate_("deleteCookie");
     this.installInspectorControllerDelegate_("didEvaluateForTestInFrontend");
     this.installInspectorControllerDelegate_("disableResourceTracking");
+    this.installInspectorControllerDelegate_("disableSearchingForNode");
     this.installInspectorControllerDelegate_("disableTimeline");
     this.installInspectorControllerDelegate_("enableResourceTracking");
+    this.installInspectorControllerDelegate_("enableSearchingForNode");
     this.installInspectorControllerDelegate_("enableTimeline");
     this.installInspectorControllerDelegate_("getChildNodes");
     this.installInspectorControllerDelegate_("getCookies");
     this.installInspectorControllerDelegate_("getDatabaseTableNames");
     this.installInspectorControllerDelegate_("getDOMStorageEntries");
     this.installInspectorControllerDelegate_("getEventListenersForNode");
+    this.installInspectorControllerDelegate_("getProfile");
+    this.installInspectorControllerDelegate_("getProfileHeaders");
     this.installInspectorControllerDelegate_("getResourceContent");
     this.installInspectorControllerDelegate_("highlightDOMNode");
     this.installInspectorControllerDelegate_("hideDOMNodeHighlight");
     this.installInspectorControllerDelegate_("releaseWrapperObjectGroup");
+    this.installInspectorControllerDelegate_("removeAllScriptsToEvaluateOnLoad");
+    this.installInspectorControllerDelegate_("reloadPage");
     this.installInspectorControllerDelegate_("removeAttribute");
     this.installInspectorControllerDelegate_("removeDOMStorageItem");
     this.installInspectorControllerDelegate_("removeNode");
@@ -63,25 +70,39 @@ devtools.InspectorBackendImpl = function()
     this.installInspectorControllerDelegate_("setDOMStorageItem");
     this.installInspectorControllerDelegate_("setInjectedScriptSource");
     this.installInspectorControllerDelegate_("setTextNodeValue");
+    this.installInspectorControllerDelegate_("startProfiling");
     this.installInspectorControllerDelegate_("startTimelineProfiler");
+    this.installInspectorControllerDelegate_("stopProfiling");
     this.installInspectorControllerDelegate_("stopTimelineProfiler");
     this.installInspectorControllerDelegate_("storeLastActivePanel");
-};
-devtools.InspectorBackendImpl.prototype.__proto__ = WebInspector.InspectorBackendStub.prototype;
 
+    this.installInspectorControllerDelegate_("getAllStyles");
+    this.installInspectorControllerDelegate_("getStyles");
+    this.installInspectorControllerDelegate_("getComputedStyle");
+    this.installInspectorControllerDelegate_("getInlineStyle");
+    this.installInspectorControllerDelegate_("applyStyleText");
+    this.installInspectorControllerDelegate_("setStyleText");
+    this.installInspectorControllerDelegate_("setStyleProperty");
+    this.installInspectorControllerDelegate_("toggleStyleEnabled");
+    this.installInspectorControllerDelegate_("setRuleSelector");
+    this.installInspectorControllerDelegate_("addRule");
 
-/**
- * {@inheritDoc}.
- */
-devtools.InspectorBackendImpl.prototype.toggleNodeSearch = function()
-{
-    WebInspector.InspectorBackendStub.prototype.toggleNodeSearch.call(this);
-    this.callInspectorController_.call(this, "toggleNodeSearch");
-    if (!this.searchingForNode()) {
-        // This is called from ElementsPanel treeOutline's focusNodeChanged().
-        DevToolsHost.activateWindow();
+    if (window.v8ScriptDebugServerEnabled) {
+    this.installInspectorControllerDelegate_("disableDebugger");
+    this.installInspectorControllerDelegate_("enableDebugger");
+    this.installInspectorControllerDelegate_("setBreakpoint");
+    this.installInspectorControllerDelegate_("removeBreakpoint");
+    this.installInspectorControllerDelegate_("activateBreakpoints");
+    this.installInspectorControllerDelegate_("deactivateBreakpoints");
+    this.installInspectorControllerDelegate_("pauseInDebugger");
+    this.installInspectorControllerDelegate_("resumeDebugger");
+    this.installInspectorControllerDelegate_("stepIntoStatementInDebugger");
+    this.installInspectorControllerDelegate_("stepOutOfFunctionInDebugger");
+    this.installInspectorControllerDelegate_("stepOverStatementInDebugger");
+    this.installInspectorControllerDelegate_("setPauseOnExceptionsState");
     }
 };
+devtools.InspectorBackendImpl.prototype.__proto__ = WebInspector.InspectorBackendStub.prototype;
 
 
 /**
@@ -102,9 +123,13 @@ devtools.InspectorBackendImpl.prototype.profilerEnabled = function()
 };
 
 
-devtools.InspectorBackendImpl.prototype.addBreakpoint = function(sourceID, line, condition)
+if (!window.v8ScriptDebugServerEnabled) {
+
+devtools.InspectorBackendImpl.prototype.setBreakpoint = function(sourceID, line, enabled, condition)
 {
-    devtools.tools.getDebuggerAgent().addBreakpoint(sourceID, line, condition);
+    this.removeBreakpoint(sourceID, line);
+    if (enabled)
+        devtools.tools.getDebuggerAgent().addBreakpoint(sourceID, line, condition);
 };
 
 
@@ -113,10 +138,18 @@ devtools.InspectorBackendImpl.prototype.removeBreakpoint = function(sourceID, li
     devtools.tools.getDebuggerAgent().removeBreakpoint(sourceID, line);
 };
 
-devtools.InspectorBackendImpl.prototype.updateBreakpoint = function(sourceID, line, condition)
+
+devtools.InspectorBackendImpl.prototype.activateBreakpoints = function()
 {
-    devtools.tools.getDebuggerAgent().updateBreakpoint(sourceID, line, condition);
+    devtools.tools.getDebuggerAgent().setBreakpointsActivated(true);
 };
+
+
+devtools.InspectorBackendImpl.prototype.deactivateBreakpoints = function()
+{
+    devtools.tools.getDebuggerAgent().setBreakpointsActivated(false);
+};
+
 
 devtools.InspectorBackendImpl.prototype.pauseInDebugger = function()
 {
@@ -155,16 +188,10 @@ devtools.InspectorBackendImpl.prototype.setPauseOnExceptionsState = function(sta
     this._setPauseOnExceptionsState = state;
     // TODO(yurys): support all three states. See http://crbug.com/32877
     var enabled = (state !== WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions);
-    return devtools.tools.getDebuggerAgent().setPauseOnExceptions(enabled);
+    WebInspector.updatePauseOnExceptionsState(enabled ? WebInspector.ScriptsPanel.PauseOnExceptionsState.PauseOnUncaughtExceptions : WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions);
+    devtools.tools.getDebuggerAgent().setPauseOnExceptions(enabled);
 };
 
-/**
- * @override
- */
-devtools.InspectorBackendImpl.prototype.pauseOnExceptionsState = function()
-{
-    return (this._setPauseOnExceptionsState || WebInspector.ScriptsPanel.PauseOnExceptionsState.DontPauseOnExceptions);
-};
 
 /**
  * @override
@@ -183,53 +210,7 @@ devtools.InspectorBackendImpl.prototype.setPauseOnExceptions = function(value)
     return devtools.tools.getDebuggerAgent().setPauseOnExceptions(value);
 };
 
-
-/**
- * @override
- */
-devtools.InspectorBackendImpl.prototype.startProfiling = function()
-{
-    devtools.tools.getProfilerAgent().startProfiling(devtools.ProfilerAgent.ProfilerModules.PROFILER_MODULE_CPU);
-};
-
-
-/**
- * @override
- */
-devtools.InspectorBackendImpl.prototype.stopProfiling = function()
-{
-    devtools.tools.getProfilerAgent().stopProfiling( devtools.ProfilerAgent.ProfilerModules.PROFILER_MODULE_CPU);
-};
-
-
-/**
- * @override
- */
-devtools.InspectorBackendImpl.prototype.getProfileHeaders = function(callId)
-{
-    WebInspector.didGetProfileHeaders(callId, []);
-};
-
-
-/**
- * Emulate WebKit InspectorController behavior. It stores profiles on renderer side,
- * and is able to retrieve them by uid using "getProfile".
- */
-devtools.InspectorBackendImpl.prototype.addFullProfile = function(profile)
-{
-    WebInspector.__fullProfiles = WebInspector.__fullProfiles || {};
-    WebInspector.__fullProfiles[profile.uid] = profile;
-};
-
-
-/**
- * @override
- */
-devtools.InspectorBackendImpl.prototype.getProfile = function(callId, uid)
-{
-    if (WebInspector.__fullProfiles && (uid in WebInspector.__fullProfiles))
-        WebInspector.didGetProfile(callId, WebInspector.__fullProfiles[uid]);
-};
+}
 
 
 /**

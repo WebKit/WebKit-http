@@ -26,6 +26,7 @@
 #include "JavaScriptCore.h"
 #include "JSBasePrivate.h"
 #include "JSContextRefPrivate.h"
+#include "JSObjectRefPrivate.h"
 #include <math.h>
 #define ASSERT_DISABLED 0
 #include <wtf/Assertions.h>
@@ -754,6 +755,8 @@ static void testInitializeFinalize()
 
 static JSValueRef jsNumberValue =  NULL;
 
+static JSObjectRef aHeapRef = NULL;
+
 static void makeGlobalNumberValue(JSContextRef context) {
     JSValueRef v = JSValueMakeNumber(context, 420);
     JSValueProtect(context, v);
@@ -870,8 +873,107 @@ int main(int argc, char* argv[])
     JSObjectSetProperty(context, globalObject, EmptyObjectIString, EmptyObject, kJSPropertyAttributeNone, NULL);
     JSStringRelease(EmptyObjectIString);
     
-    JSValueRef exception;
+    JSStringRef lengthStr = JSStringCreateWithUTF8CString("length");
+    aHeapRef = JSObjectMakeArray(context, 0, 0, 0);
+    JSObjectSetProperty(context, aHeapRef, lengthStr, JSValueMakeNumber(context, 10), 0, 0);
+    JSStringRef privatePropertyName = JSStringCreateWithUTF8CString("privateProperty");
+    if (!JSObjectSetPrivateProperty(context, myObject, privatePropertyName, aHeapRef)) {
+        printf("FAIL: Could not set private property.\n");
+        failed = 1;        
+    } else {
+        printf("PASS: Set private property.\n");
+    }
+    if (JSObjectSetPrivateProperty(context, aHeapRef, privatePropertyName, aHeapRef)) {
+        printf("FAIL: JSObjectSetPrivateProperty should fail on non-API objects.\n");
+        failed = 1;        
+    } else {
+        printf("PASS: Did not allow JSObjectSetPrivateProperty on a non-API object.\n");
+    }
+    if (JSObjectGetPrivateProperty(context, myObject, privatePropertyName) != aHeapRef) {
+        printf("FAIL: Could not retrieve private property.\n");
+        failed = 1;
+    } else
+        printf("PASS: Retrieved private property.\n");
+    if (JSObjectGetPrivateProperty(context, aHeapRef, privatePropertyName)) {
+        printf("FAIL: JSObjectGetPrivateProperty should return NULL when called on a non-API object.\n");
+        failed = 1;
+    } else
+        printf("PASS: JSObjectGetPrivateProperty return NULL.\n");
+    
+    if (JSObjectGetProperty(context, myObject, privatePropertyName, 0) == aHeapRef) {
+        printf("FAIL: Accessed private property through ordinary property lookup.\n");
+        failed = 1;
+    } else
+        printf("PASS: Cannot access private property through ordinary property lookup.\n");
+    
+    JSGarbageCollect(context);
+    
+    for (int i = 0; i < 10000; i++)
+        JSObjectMake(context, 0, 0);
 
+    if (JSValueToNumber(context, JSObjectGetProperty(context, aHeapRef, lengthStr, 0), 0) != 10) {
+        printf("FAIL: Private property has been collected.\n");
+        failed = 1;
+    } else
+        printf("PASS: Private property does not appear to have been collected.\n");
+    JSStringRelease(lengthStr);
+    
+    JSStringRef validJSON = JSStringCreateWithUTF8CString("{\"aProperty\":true}");
+    JSValueRef jsonObject = JSValueMakeFromJSONString(context, validJSON);
+    JSStringRelease(validJSON);
+    if (!JSValueIsObject(context, jsonObject)) {
+        printf("FAIL: Did not parse valid JSON correctly\n");
+        failed = 1;
+    } else
+        printf("PASS: Parsed valid JSON string.\n");
+    JSStringRef propertyName = JSStringCreateWithUTF8CString("aProperty");
+    assertEqualsAsBoolean(JSObjectGetProperty(context, JSValueToObject(context, jsonObject, 0), propertyName, 0), true);
+    JSStringRelease(propertyName);
+    JSStringRef invalidJSON = JSStringCreateWithUTF8CString("fail!");
+    if (JSValueMakeFromJSONString(context, invalidJSON)) {
+        printf("FAIL: Should return null for invalid JSON data\n");
+        failed = 1;
+    } else
+        printf("PASS: Correctly returned null for invalid JSON data.\n");
+    JSValueRef exception;
+    JSStringRef str = JSValueCreateJSONString(context, jsonObject, 0, 0);
+    if (!JSStringIsEqualToUTF8CString(str, "{\"aProperty\":true}")) {
+        printf("FAIL: Did not correctly serialise with indent of 0.\n");
+        failed = 1;
+    } else
+        printf("PASS: Correctly serialised with indent of 0.\n");
+    JSStringRelease(str);
+
+    str = JSValueCreateJSONString(context, jsonObject, 4, 0);
+    if (!JSStringIsEqualToUTF8CString(str, "{\n    \"aProperty\": true\n}")) {
+        printf("FAIL: Did not correctly serialise with indent of 4.\n");
+        failed = 1;
+    } else
+        printf("PASS: Correctly serialised with indent of 4.\n");
+    JSStringRelease(str);
+    JSStringRef src = JSStringCreateWithUTF8CString("({get a(){ throw '';}})");
+    JSValueRef unstringifiableObj = JSEvaluateScript(context, src, NULL, NULL, 1, NULL);
+    
+    str = JSValueCreateJSONString(context, unstringifiableObj, 4, 0);
+    if (str) {
+        printf("FAIL: Didn't return null when attempting to serialize unserializable value.\n");
+        JSStringRelease(str);
+        failed = 1;
+    } else
+        printf("PASS: returned null when attempting to serialize unserializable value.\n");
+    
+    str = JSValueCreateJSONString(context, unstringifiableObj, 4, &exception);
+    if (str) {
+        printf("FAIL: Didn't return null when attempting to serialize unserializable value.\n");
+        JSStringRelease(str);
+        failed = 1;
+    } else
+        printf("PASS: returned null when attempting to serialize unserializable value.\n");
+    if (!exception) {
+        printf("FAIL: Did not set exception on serialisation error\n");
+        failed = 1;
+    } else
+        printf("PASS: set exception on serialisation error\n");
     // Conversions that throw exceptions
     exception = NULL;
     ASSERT(NULL == JSValueToObject(context, jsNull, &exception));

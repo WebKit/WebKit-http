@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -38,6 +38,8 @@
 
 namespace WebKit {
 
+class WebApplicationCacheHost;
+class WebApplicationCacheHostClient;
 class WebCookieJar;
 class WebDataSource;
 class WebFormElement;
@@ -75,10 +77,14 @@ public:
     // May return null.
     virtual WebMediaPlayer* createMediaPlayer(WebFrame*, WebMediaPlayerClient*) { return 0; }
 
+    // May return null.
+    virtual WebApplicationCacheHost* createApplicationCacheHost(WebFrame*, WebApplicationCacheHostClient*) { return 0; }
+
     
     // Services ------------------------------------------------------------
 
-    // A frame specific cookie jar.  May return null.
+    // A frame specific cookie jar.  May return null, in which case
+    // WebKitClient::cookieJar() will be called to access cookies.
     virtual WebCookieJar* cookieJar() { return 0; }
 
 
@@ -89,6 +95,9 @@ public:
 
     // Controls whether plugins are allowed for this frame.
     virtual bool allowPlugins(WebFrame*, bool enabledPerSettings) { return enabledPerSettings; }
+
+    // Notifies the client that the frame would have instantiated a plug-in if plug-ins were enabled.
+    virtual void didNotAllowPlugins(WebFrame*) { }
 
     // Controls whether images are allowed for this frame.
     virtual bool allowImages(WebFrame*, bool enabledPerSettings) { return enabledPerSettings; }
@@ -195,9 +204,16 @@ public:
     // The frame's document and all of its subresources succeeded to load.
     virtual void didFinishLoad(WebFrame*) { }
 
+    // The navigation resulted in no change to the documents within the page.
+    // For example, the navigation may have just resulted in scrolling to a
+    // named anchor or a PopState event may have been dispatched.
+    virtual void didNavigateWithinPage(WebFrame*, bool isNewNavigation) { }
+
     // The navigation resulted in scrolling the page to a named anchor instead
     // of downloading a new document.
+    // FIXME: The isNewNavigation parameter is DEPRECATED.
     virtual void didChangeLocationWithinPage(WebFrame*, bool isNewNavigation) { }
+    virtual void didChangeLocationWithinPage(WebFrame*) { }
 
     // Called upon update to scroll position, document state, and other
     // non-navigational events related to the data held by WebHistoryItem.
@@ -251,6 +267,12 @@ public:
 
     // Controls whether scripts are allowed to execute for this frame.
     virtual bool allowScript(WebFrame*, bool enabledPerSettings) { return enabledPerSettings; }
+
+    // Controls whether access to Web Databases is allowed for this frame.
+    virtual bool allowDatabase(WebFrame*, const WebString& name, const WebString& displayName, unsigned long estimatedSize) { return true; }
+
+    // Notifies the client that the frame would have executed script if script were enabled.
+    virtual void didNotAllowScript(WebFrame*) { }
 
     // Script in the page tried to allocate too much memory.
     virtual void didExhaustMemoryAvailableForScript(WebFrame*) { }

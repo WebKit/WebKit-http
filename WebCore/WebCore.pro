@@ -4,11 +4,14 @@ CONFIG += depend_includepath
 
 symbian: {
     TARGET.EPOCALLOWDLLDATA=1
-    TARGET.EPOCHEAPSIZE = 0x20000 0x2000000 // Min 128kB, Max 32MB
     TARGET.CAPABILITY = All -Tcb
-    TARGET.UID3 = 0x200267C2
-
-    webkitlibs.sources = QtWebKit.dll
+    isEmpty(QT_LIBINFIX) {
+        TARGET.UID3 = 0x200267C2
+    } else {
+        TARGET.UID3 = 0xE00267C2
+    }
+    webkitlibs.sources = QtWebKit$${QT_LIBINFIX}.dll
+    CONFIG(QTDIR_build): webkitlibs.sources = $$QMAKE_LIBDIR_QT/$$webkitlibs.sources
     webkitlibs.path = /sys/bin
     vendorinfo = \
         "; Localised Vendor name" \
@@ -27,13 +30,16 @@ symbian: {
     # Need to guarantee that these come before system includes of /epoc32/include
     MMP_RULES += "USERINCLUDE rendering"
     MMP_RULES += "USERINCLUDE platform/text"
-    # RO text (code) section in qtwebkit.dll exceeds allocated space for gcce udeb target.
-    # Move RW-section base address to start from 0xE00000 instead of the toolchain default 0x400000.
-    QMAKE_LFLAGS.ARMCC += --rw-base 0xE00000
-    MMP_RULES += ALWAYS_BUILD_AS_ARM
-    QMAKE_CXXFLAGS.ARMCC += -OTime -O3
+    symbian-abld|symbian-sbsv2 {
+        # RO text (code) section in qtwebkit.dll exceeds allocated space for gcce udeb target.
+        # Move RW-section base address to start from 0xE00000 instead of the toolchain default 0x400000.
+        QMAKE_LFLAGS.ARMCC += --rw-base 0xE00000
+        MMP_RULES += ALWAYS_BUILD_AS_ARM
+    }
+    CONFIG(release, debug|release): QMAKE_CXXFLAGS.ARMCC += -OTime -O3
 }
 
+isEmpty(OUTPUT_DIR): OUTPUT_DIR = ..
 include($$PWD/../WebKit.pri)
 
 TEMPLATE = lib
@@ -41,19 +47,13 @@ TARGET = QtWebKit
 
 contains(QT_CONFIG, embedded):CONFIG += embedded
 
-isEmpty(OUTPUT_DIR): OUTPUT_DIR = ..
-
 CONFIG(standalone_package) {
     isEmpty(WC_GENERATED_SOURCES_DIR):WC_GENERATED_SOURCES_DIR = $$PWD/generated
     isEmpty(JSC_GENERATED_SOURCES_DIR):JSC_GENERATED_SOURCES_DIR = $$PWD/../JavaScriptCore/generated
 
-    CONFIG(QTDIR_build):include($$QT_SOURCE_TREE/src/qbase.pri)
-    else: VERSION = 4.7.0
-
     PRECOMPILED_HEADER = $$PWD/../WebKit/qt/WebKit_pch.h
-    DEFINES *= NDEBUG
 
-    symbian: CONFIG += def_files
+    symbian: TARGET += $${QT_LIBINFIX}
 } else {
     isEmpty(WC_GENERATED_SOURCES_DIR):WC_GENERATED_SOURCES_DIR = generated
     isEmpty(JSC_GENERATED_SOURCES_DIR):JSC_GENERATED_SOURCES_DIR = ../JavaScriptCore/generated
@@ -66,7 +66,11 @@ CONFIG(standalone_package) {
 
 }
 
-!CONFIG(QTDIR_build) {
+CONFIG(QTDIR_build) {
+    include($$QT_SOURCE_TREE/src/qbase.pri)
+    # Qt will set the version for us when building in Qt's tree
+} else {
+    VERSION = $${QT_MAJOR_VERSION}.$${QT_MINOR_VERSION}.$${QT_PATCH_VERSION}
     DESTDIR = $$OUTPUT_DIR/lib
     !static: DEFINES += QT_MAKEDLL
 }
@@ -95,7 +99,6 @@ win32-msvc2005|win32-msvc2008:{
     QMAKE_CXXFLAGS_RELEASE -= -GL
 }
 
-win32-*: DEFINES += _HAS_TR1=0
 wince* {
 #    DEFINES += ENABLE_SVG=0 ENABLE_XPATH=0 ENABLE_XBL=0 \
 #               ENABLE_SVG_ANIMATION=0 ENABLE_SVG_USE=0  \
@@ -125,17 +128,32 @@ RESOURCES += \
     RESOURCES += $$PWD/../WebCore/inspector/front-end/WebKit.qrc
 }
 
-mameo5|symbian|embedded {
+maemo5|symbian|embedded {
     DEFINES += ENABLE_FAST_MOBILE_SCROLLING=1
 }
 
-include($$PWD/../JavaScriptCore/JavaScriptCore.pri)
+maemo5 {
+    DEFINES += ENABLE_NO_LISTBOX_RENDERING=1
+}
 
-# Disable HTML5 media compilation if phonon is unavailable
-!contains(DEFINES, ENABLE_VIDEO=1) {
-    !contains(QT_CONFIG, phonon) {
-        DEFINES -= ENABLE_VIDEO=1
-        DEFINES += ENABLE_VIDEO=0
+include($$PWD/../JavaScriptCore/JavaScriptCore.pri)
+addJavaScriptCoreLib(../JavaScriptCore)
+
+
+# HTML5 Media Support
+# We require phonon for versions of Qt < 4.7
+# We require QtMultimedia for versions of Qt >= 4.7
+!contains(DEFINES, ENABLE_VIDEO=.) {
+    DEFINES -= ENABLE_VIDEO=1
+    DEFINES += ENABLE_VIDEO=0
+
+    lessThan(QT_MINOR_VERSION, 7):contains(QT_CONFIG, phonon) {
+        DEFINES -= ENABLE_VIDEO=0
+        DEFINES += ENABLE_VIDEO=1
+    }
+    !lessThan(QT_MINOR_VERSION, 7):contains(QT_CONFIG, multimedia) {
+        DEFINES -= ENABLE_VIDEO=0
+        DEFINES += ENABLE_VIDEO=1
     }
 }
 
@@ -243,6 +261,7 @@ SOURCES += \
     accessibility/AccessibilityList.cpp \    
     accessibility/AccessibilityListBox.cpp \    
     accessibility/AccessibilityListBoxOption.cpp \    
+    accessibility/AccessibilityProgressIndicator.cpp \    
     accessibility/AccessibilityRenderObject.cpp \    
     accessibility/AccessibilityScrollbar.cpp \
     accessibility/AccessibilitySlider.cpp \    
@@ -256,6 +275,8 @@ SOURCES += \
     accessibility/AccessibilityTableRow.cpp \    
     accessibility/AXObjectCache.cpp \
     bindings/js/GCController.cpp \
+    bindings/js/DOMObjectHashTableMap.cpp \
+    bindings/js/DOMWrapperWorld.cpp \
     bindings/js/JSCallbackData.cpp \
     bindings/js/JSAttrCustom.cpp \
     bindings/js/JSCDATASectionCustom.cpp \
@@ -274,12 +295,16 @@ SOURCES += \
     bindings/js/JSCustomXPathNSResolver.cpp \
     bindings/js/JSDataGridColumnListCustom.cpp \
     bindings/js/JSDataGridDataSource.cpp \
+    bindings/js/JSDebugWrapperSet.cpp \
+    bindings/js/JSDesktopNotificationsCustom.cpp \
     bindings/js/JSDocumentCustom.cpp \
     bindings/js/JSDocumentFragmentCustom.cpp \
+    bindings/js/JSDOMFormDataCustom.cpp \
     bindings/js/JSDOMGlobalObject.cpp \
     bindings/js/JSDOMWindowBase.cpp \
     bindings/js/JSDOMWindowCustom.cpp \
     bindings/js/JSDOMWindowShell.cpp \
+    bindings/js/JSDOMWrapper.cpp \
     bindings/js/JSElementCustom.cpp \
     bindings/js/JSEventCustom.cpp \
     bindings/js/JSEventSourceConstructor.cpp \
@@ -317,6 +342,7 @@ SOURCES += \
     bindings/js/JSNodeIteratorCustom.cpp \
     bindings/js/JSNodeListCustom.cpp \
     bindings/js/JSOptionConstructor.cpp \
+    bindings/js/JSScriptProfileNodeCustom.cpp \
     bindings/js/JSStyleSheetCustom.cpp \
     bindings/js/JSStyleSheetListCustom.cpp \
     bindings/js/JSTextCustom.cpp \
@@ -339,10 +365,7 @@ SOURCES += \
     bindings/js/JSLazyEventListener.cpp \
     bindings/js/JSPluginElementFunctions.cpp \
     bindings/js/JSPopStateEventCustom.cpp \
-    bindings/js/JavaScriptProfile.h \
-    bindings/js/JavaScriptProfileNode.h \
-    bindings/js/JavaScriptProfile.cpp \
-    bindings/js/JavaScriptProfileNode.cpp \
+    bindings/js/JSWorkerContextErrorHandler.cpp \
     bindings/js/ScriptArray.cpp \
     bindings/js/ScriptCachedFrameData.cpp \
     bindings/js/ScriptCallFrame.cpp \
@@ -352,7 +375,6 @@ SOURCES += \
     bindings/js/ScriptEventListener.cpp \
     bindings/js/ScriptFunctionCall.cpp \
     bindings/js/ScriptObject.cpp \
-    bindings/js/ScriptProfiler.cpp \
     bindings/js/ScriptState.cpp \
     bindings/js/ScriptValue.cpp \
     bindings/js/ScheduledAction.cpp \
@@ -365,6 +387,7 @@ SOURCES += \
     bridge/runtime_method.cpp \
     bridge/runtime_object.cpp \
     bridge/runtime_root.cpp \
+    bridge/c/CRuntimeObject.cpp \
     bridge/c/c_class.cpp \
     bridge/c/c_instance.cpp \
     bridge/c/c_runtime.cpp \
@@ -436,6 +459,7 @@ SOURCES += \
     dom/BeforeTextInsertedEvent.cpp \
     dom/BeforeUnloadEvent.cpp \
     dom/CDATASection.cpp \
+    dom/CanvasSurface.cpp \
     dom/CharacterData.cpp \
     dom/CheckedRadioButtons.cpp \
     dom/ChildNodeList.cpp \
@@ -448,6 +472,7 @@ SOURCES += \
     dom/CompositionEvent.cpp \
     dom/ContainerNode.cpp \
     dom/CSSMappedAttributeDeclaration.cpp \
+    dom/CustomEvent.cpp \
     dom/Document.cpp \
     dom/DocumentFragment.cpp \
     dom/DocumentType.cpp \
@@ -511,6 +536,7 @@ SOURCES += \
     dom/TreeWalker.cpp \
     dom/UIEvent.cpp \
     dom/UIEventWithKeyState.cpp \
+    dom/UserGestureIndicator.cpp \
     dom/WebKitAnimationEvent.cpp \
     dom/WebKitTransitionEvent.cpp \
     dom/WheelEvent.cpp \
@@ -582,8 +608,11 @@ SOURCES += \
     html/DataGridColumnList.cpp \
     html/DateComponents.cpp \
     html/DOMDataGridDataSource.cpp \
+    html/DOMFormData.cpp \
     html/File.cpp \
     html/FileList.cpp \
+    html/FileStream.cpp \
+    html/FileThread.cpp \
     html/FormDataList.cpp \
     html/HTMLAllCollection.cpp \
     html/HTMLAnchorElement.cpp \
@@ -649,6 +678,7 @@ SOURCES += \
     html/HTMLPlugInElement.cpp \
     html/HTMLPlugInImageElement.cpp \
     html/HTMLPreElement.cpp \
+    html/HTMLProgressElement.cpp \
     html/HTMLQuoteElement.cpp \
     html/HTMLScriptElement.cpp \
     html/HTMLSelectElement.cpp \
@@ -668,6 +698,7 @@ SOURCES += \
     html/HTMLViewSourceDocument.cpp \
     html/ImageData.cpp \
     html/PreloadScanner.cpp \
+    html/StepRange.cpp \
     html/ValidityState.cpp \
     inspector/ConsoleMessage.cpp \
     inspector/InjectedScript.cpp \
@@ -678,6 +709,7 @@ SOURCES += \
     inspector/InspectorDOMAgent.cpp \
     inspector/InspectorDOMStorageResource.cpp \
     inspector/InspectorFrontend.cpp \
+    inspector/InspectorFrontendClientLocal.cpp \
     inspector/InspectorFrontendHost.cpp \
     inspector/InspectorResource.cpp \
     inspector/InspectorTimelineAgent.cpp \
@@ -725,6 +757,8 @@ SOURCES += \
     loader/TextDocument.cpp \
     loader/TextResourceDecoder.cpp \
     loader/ThreadableLoader.cpp \
+    notifications/Notification.cpp \
+    notifications/NotificationCenter.cpp \
     page/animation/AnimationBase.cpp \
     page/animation/AnimationController.cpp \
     page/animation/CompositeAnimation.cpp \
@@ -748,6 +782,7 @@ SOURCES += \
     page/FrameView.cpp \
     page/Geolocation.cpp \
     page/GeolocationController.cpp \
+    page/GeolocationPositionCache.cpp \
     page/History.cpp \
     page/Location.cpp \
     page/MouseEventWithHitTestResults.cpp \
@@ -760,6 +795,7 @@ SOURCES += \
     page/SecurityOrigin.cpp \
     page/Screen.cpp \
     page/Settings.cpp \
+    page/SpatialNavigation.cpp \
     page/UserContentURLPattern.cpp \
     page/WindowFeatures.cpp \
     page/XSSAuditor.cpp \
@@ -778,7 +814,6 @@ SOURCES += \
     platform/ContentType.cpp \
     platform/ContextMenu.cpp \
     platform/CrossThreadCopier.cpp \
-    platform/text/CString.cpp \
     platform/DeprecatedPtrListImpl.cpp \
     platform/DragData.cpp \
     platform/DragImage.cpp \
@@ -812,6 +847,7 @@ SOURCES += \
     platform/graphics/Pen.cpp \
     platform/graphics/SegmentedFontData.cpp \
     platform/graphics/SimpleFontData.cpp \
+    platform/graphics/TiledBackingStore.cpp \
     platform/graphics/transforms/AffineTransform.cpp \
     platform/graphics/transforms/TransformationMatrix.cpp \
     platform/graphics/transforms/MatrixTransformOperation.cpp \
@@ -861,6 +897,7 @@ SOURCES += \
     platform/ThreadTimers.cpp \
     platform/Timer.cpp \
     platform/text/UnicodeRange.cpp \
+    platform/UUID.cpp \
     platform/Widget.cpp \
     plugins/PluginDatabase.cpp \
     plugins/PluginDebug.cpp \
@@ -910,6 +947,7 @@ SOURCES += \
     rendering/RenderObjectChildList.cpp \
     rendering/RenderPart.cpp \
     rendering/RenderPartObject.cpp \
+    rendering/RenderProgress.cpp \
     rendering/RenderReplaced.cpp \
     rendering/RenderReplica.cpp \
     rendering/RenderRuby.cpp \
@@ -963,6 +1001,7 @@ SOURCES += \
     rendering/style/StyleVisualData.cpp \
     xml/DOMParser.cpp \
     xml/XMLHttpRequest.cpp \
+    xml/XMLHttpRequestProgressEventThrottle.cpp \
     xml/XMLHttpRequestUpload.cpp \
     xml/XMLSerializer.cpp 
 
@@ -976,6 +1015,7 @@ HEADERS += \
     accessibility/AccessibilityList.h \
     accessibility/AccessibilityMediaControls.h \
     accessibility/AccessibilityObject.h \
+    accessibility/AccessibilityProgressIndicator.h \
     accessibility/AccessibilityRenderObject.h \
     accessibility/AccessibilityScrollbar.h \
     accessibility/AccessibilitySlider.h \
@@ -987,6 +1027,8 @@ HEADERS += \
     accessibility/AXObjectCache.h \
     bindings/js/CachedScriptSourceProvider.h \
     bindings/js/GCController.h \
+    bindings/js/DOMObjectHashTableMap.h \
+    bindings/js/DOMWrapperWorld.h \
     bindings/js/JSCallbackData.h \
     bindings/js/JSAudioConstructor.h \
     bindings/js/JSCSSStyleDeclarationCustom.h \
@@ -998,13 +1040,16 @@ HEADERS += \
     bindings/js/JSCustomSQLTransactionErrorCallback.h \
     bindings/js/JSCustomVoidCallback.h \
     bindings/js/JSCustomXPathNSResolver.h \
+    bindings/js/JSDatabaseCallback.h \
     bindings/js/JSDataGridDataSource.h \
+    bindings/js/JSDebugWrapperSet.h \
     bindings/js/JSDOMBinding.h \
     bindings/js/JSDOMGlobalObject.h \
     bindings/js/JSDOMWindowBase.h \
     bindings/js/JSDOMWindowBase.h \
     bindings/js/JSDOMWindowCustom.h \
     bindings/js/JSDOMWindowShell.h \
+    bindings/js/JSDOMWrapper.h \
     bindings/js/JSEventListener.h \
     bindings/js/JSEventSourceConstructor.h \
     bindings/js/JSEventTarget.h \
@@ -1018,6 +1063,7 @@ HEADERS += \
     bindings/js/JSLazyEventListener.h \
     bindings/js/JSLocationCustom.h \
     bindings/js/JSMessageChannelConstructor.h \
+    bindings/js/JSNodeCustom.h \
     bindings/js/JSNodeFilterCondition.h \
     bindings/js/JSOptionConstructor.h \
     bindings/js/JSPluginElementFunctions.h \
@@ -1027,7 +1073,7 @@ HEADERS += \
     bindings/js/JSWebKitPointConstructor.h \
     bindings/js/JSWorkerConstructor.h \
     bindings/js/JSWorkerContextBase.h \
-    bindings/js/JSWorkerContextBase.h \
+    bindings/js/JSWorkerContextErrorHandler.h \
     bindings/js/JSXMLHttpRequestConstructor.h \
     bindings/js/JSXSLTProcessorConstructor.h \
     bindings/js/ScheduledAction.h \
@@ -1038,7 +1084,11 @@ HEADERS += \
     bindings/js/ScriptController.h \
     bindings/js/ScriptEventListener.h \
     bindings/js/ScriptFunctionCall.h \
+    bindings/js/ScriptGCEvent.h \
     bindings/js/ScriptObject.h \
+    bindings/js/ScriptProfile.h \
+    bindings/js/ScriptProfileNode.h \
+    bindings/js/ScriptProfiler.h \
     bindings/js/ScriptSourceCode.h \
     bindings/js/ScriptSourceProvider.h \
     bindings/js/ScriptState.h \
@@ -1046,8 +1096,10 @@ HEADERS += \
     bindings/js/ScriptWrappable.h \
     bindings/js/SerializedScriptValue.h \
     bindings/js/StringSourceProvider.h \
+    bindings/js/WebCoreJSClientData.h \
     bindings/js/WorkerScriptController.h \
     bridge/Bridge.h \
+    bridge/c/CRuntimeObject.h \
     bridge/c/c_class.h \
     bridge/c/c_instance.h \
     bridge/c/c_runtime.h \
@@ -1141,6 +1193,7 @@ HEADERS += \
     dom/Comment.h \
     dom/ContainerNode.h \
     dom/CSSMappedAttributeDeclaration.h \
+    dom/CustomEvent.h \
     dom/default/PlatformMessagePortChannel.h \
     dom/DocumentFragment.h \
     dom/Document.h \
@@ -1204,6 +1257,7 @@ HEADERS += \
     dom/TreeWalker.h \
     dom/UIEvent.h \
     dom/UIEventWithKeyState.h \
+    dom/UserGestureIndicator.h \
     dom/WebKitAnimationEvent.h \
     dom/WebKitTransitionEvent.h \
     dom/WheelEvent.h \
@@ -1270,8 +1324,12 @@ HEADERS += \
     html/DataGridColumnList.h \
     html/DateComponents.h \
     html/DOMDataGridDataSource.h \
+    html/DOMFormData.h \
     html/File.h \
     html/FileList.h \
+    html/FileStream.h \
+    html/FileStreamClient.h \
+    html/FileThread.h \
     html/FormDataList.h \
     html/HTMLAllCollection.h \
     html/HTMLAnchorElement.h \
@@ -1339,6 +1397,7 @@ HEADERS += \
     html/HTMLPlugInElement.h \
     html/HTMLPlugInImageElement.h \
     html/HTMLPreElement.h \
+    html/HTMLProgressElement.h \
     html/HTMLQuoteElement.h \
     html/HTMLScriptElement.h \
     html/HTMLSelectElement.h \
@@ -1360,6 +1419,7 @@ HEADERS += \
     html/HTMLViewSourceDocument.h \
     html/ImageData.h \
     html/PreloadScanner.h \
+    html/StepRange.h \
     html/TimeRanges.h \
     html/ValidityState.h \
     inspector/ConsoleMessage.h \
@@ -1370,11 +1430,13 @@ HEADERS += \
     inspector/InspectorDatabaseResource.h \
     inspector/InspectorDOMStorageResource.h \
     inspector/InspectorFrontend.h \
+    inspector/InspectorFrontendClient.h \
+    inspector/InspectorFrontendClientLocal.h \
     inspector/InspectorFrontendHost.h \
     inspector/InspectorResource.h \
     inspector/InspectorTimelineAgent.h \
     inspector/JavaScriptCallFrame.h \
-    inspector/JavaScriptDebugServer.h \
+    inspector/ScriptGCEventListener.h \
     inspector/TimelineRecordFactory.h \
     loader/appcache/ApplicationCacheGroup.h \
     loader/appcache/ApplicationCacheHost.h \
@@ -1425,6 +1487,10 @@ HEADERS += \
     loader/TextResourceDecoder.h \
     loader/ThreadableLoader.h \
     loader/WorkerThreadableLoader.h \
+    notifications/Notification.h \
+    notifications/NotificationCenter.h \
+    notifications/NotificationPresenter.h \
+    notifications/NotificationContents.h \
     page/animation/AnimationBase.h \
     page/animation/AnimationController.h \
     page/animation/CompositeAnimation.h \
@@ -1447,6 +1513,7 @@ HEADERS += \
     page/FrameTree.h \
     page/FrameView.h \
     page/Geolocation.h \
+    page/GeolocationPositionCache.h \
     page/Geoposition.h \
     page/HaltablePlugin.h \
     page/History.h \
@@ -1463,9 +1530,11 @@ HEADERS += \
     page/Screen.h \
     page/SecurityOrigin.h \
     page/Settings.h \
+    page/SpatialNavigation.h \
     page/WindowFeatures.h \
     page/WorkerNavigator.h \
     page/XSSAuditor.h \
+    page/ZoomMode.h \
     platform/animation/Animation.h \
     platform/animation/AnimationList.h \
     platform/Arena.h \
@@ -1504,6 +1573,8 @@ HEADERS += \
     platform/graphics/GraphicsTypes.h \
     platform/graphics/Image.h \
     platform/graphics/ImageSource.h \
+    platform/graphics/IntPoint.h \
+    platform/graphics/IntPointHash.h \
     platform/graphics/IntRect.h \
     platform/graphics/MediaPlayer.h \
     platform/graphics/Path.h \
@@ -1515,6 +1586,9 @@ HEADERS += \
     platform/graphics/qt/StillImageQt.h \
     platform/graphics/SegmentedFontData.h \
     platform/graphics/SimpleFontData.h \
+    platform/graphics/Tile.h \
+    platform/graphics/TiledBackingStore.h \    
+    platform/graphics/TiledBackingStoreClient.h \
     platform/graphics/transforms/Matrix3DTransformOperation.h \
     platform/graphics/transforms/MatrixTransformOperation.h \
     platform/graphics/transforms/PerspectiveTransformOperation.h \
@@ -1548,6 +1622,7 @@ HEADERS += \
     platform/qt/ClipboardQt.h \
     platform/qt/QWebPageClient.h \
     platform/qt/QtAbstractWebPopup.h \
+    platform/qt/QtStyleOptionWebComboBox.h \
     platform/qt/RenderThemeQt.h \
     platform/qt/ScrollbarThemeQt.h \
     platform/Scrollbar.h \
@@ -1562,7 +1637,6 @@ HEADERS += \
     platform/text/AtomicString.h \
     platform/text/Base64.h \
     platform/text/BidiContext.h \
-    platform/text/CString.h \
     platform/text/qt/TextCodecQt.h \
     platform/text/RegularExpression.h \
     platform/text/SegmentedString.h \
@@ -1638,6 +1712,7 @@ HEADERS += \
     rendering/RenderPart.h \
     rendering/RenderPartObject.h \
     rendering/RenderPath.h \
+    rendering/RenderProgress.h \
     rendering/RenderReplaced.h \
     rendering/RenderReplica.h \
     rendering/RenderRuby.h \
@@ -1656,6 +1731,10 @@ HEADERS += \
     rendering/RenderSVGInline.h \
     rendering/RenderSVGInlineText.h \
     rendering/RenderSVGModelObject.h \
+    rendering/RenderSVGResource.h \
+    rendering/RenderSVGResourceClipper.h \
+    rendering/RenderSVGResourceMarker.h \
+    rendering/RenderSVGResourceMasker.h \
     rendering/RenderSVGRoot.h \
     rendering/RenderSVGShadowTreeRootContainer.h \
     rendering/RenderSVGText.h \
@@ -1743,11 +1822,8 @@ HEADERS += \
     svg/graphics/SVGPaintServerPattern.h \
     svg/graphics/SVGPaintServerRadialGradient.h \
     svg/graphics/SVGPaintServerSolid.h \
-    svg/graphics/SVGResourceClipper.h \
     svg/graphics/SVGResourceFilter.h \
     svg/graphics/SVGResource.h \
-    svg/graphics/SVGResourceMarker.h \
-    svg/graphics/SVGResourceMasker.h \
     svg/SVGAElement.h \
     svg/SVGAltGlyphElement.h \
     svg/SVGAngle.h \
@@ -1957,6 +2033,7 @@ HEADERS += \
     $$PWD/../WebKit/qt/Api/qwebplugindatabase_p.h \
     $$PWD/../WebKit/qt/WebCoreSupport/QtFallbackWebPopup.h \
     $$PWD/../WebKit/qt/WebCoreSupport/FrameLoaderClientQt.h \
+    $$PWD/../WebKit/qt/WebCoreSupport/NotificationPresenterClientQt.h \
     $$PWD/platform/network/qt/DnsPrefetchHelper.h
 
 SOURCES += \
@@ -2007,6 +2084,7 @@ SOURCES += \
     platform/graphics/qt/FontCustomPlatformDataQt.cpp \
     platform/graphics/qt/GlyphPageTreeNodeQt.cpp \
     platform/graphics/qt/SimpleFontDataQt.cpp \
+    platform/graphics/qt/TileQt.cpp \
     platform/qt/KURLQt.cpp \
     platform/qt/Localizations.cpp \
     platform/qt/MIMETypeRegistryQt.cpp \
@@ -2038,10 +2116,12 @@ SOURCES += \
     ../WebKit/qt/WebCoreSupport/ChromeClientQt.cpp \
     ../WebKit/qt/WebCoreSupport/ContextMenuClientQt.cpp \
     ../WebKit/qt/WebCoreSupport/DragClientQt.cpp \
+    ../WebKit/qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp \
     ../WebKit/qt/WebCoreSupport/EditorClientQt.cpp \
     ../WebKit/qt/WebCoreSupport/EditCommandQt.cpp \
     ../WebKit/qt/WebCoreSupport/FrameLoaderClientQt.cpp \
     ../WebKit/qt/WebCoreSupport/InspectorClientQt.cpp \
+    ../WebKit/qt/WebCoreSupport/NotificationPresenterClientQt.cpp \
     ../WebKit/qt/Api/qwebframe.cpp \
     ../WebKit/qt/Api/qgraphicswebview.cpp \
     ../WebKit/qt/Api/qwebpage.cpp \
@@ -2056,6 +2136,15 @@ SOURCES += \
     ../WebKit/qt/Api/qwebdatabase.cpp \
     ../WebKit/qt/Api/qwebinspector.cpp \
     ../WebKit/qt/Api/qwebkitversion.cpp
+
+maemo5 {
+    HEADERS += \
+        ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.h \
+        platform/qt/Maemo5Webstyle.h
+    SOURCES += \
+        ../WebKit/qt/WebCoreSupport/QtMaemoWebPopup.cpp \
+        platform/qt/Maemo5Webstyle.cpp
+}
 
 
     win32-*|wince*: SOURCES += platform/win/SystemTimeWin.cpp \
@@ -2072,8 +2161,8 @@ SOURCES += \
 
     win32-* {
         LIBS += -lgdi32
+        LIBS += -lOle32
         LIBS += -luser32
-        LIBS += -lwinmm
     }
     wince*: LIBS += -lmmtimer
 
@@ -2126,12 +2215,12 @@ contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
             INCLUDEPATH += $$PWD/plugins/win \
                            $$PWD/platform/win
     
-            SOURCES += page/win/PageWin.cpp \
-                       plugins/win/PluginDatabaseWin.cpp \
+            SOURCES += plugins/win/PluginDatabaseWin.cpp \
                        plugins/win/PluginPackageWin.cpp \
                        plugins/win/PluginMessageThrottlerWin.cpp \
                        plugins/win/PluginViewWin.cpp \
-                       platform/win/BitmapInfo.cpp
+                       platform/win/BitmapInfo.cpp \
+                       platform/win/WebCoreInstanceHandle.cpp
     
             LIBS += \
                 -ladvapi32 \
@@ -2199,6 +2288,7 @@ contains(DEFINES, ENABLE_DATABASE=1) {
         bindings/js/JSCustomSQLStatementErrorCallback.cpp \
         bindings/js/JSCustomSQLTransactionCallback.cpp \
         bindings/js/JSCustomSQLTransactionErrorCallback.cpp \
+        bindings/js/JSDatabaseCallback.cpp \
         bindings/js/JSDatabaseCustom.cpp \
         bindings/js/JSSQLResultSetRowListCustom.cpp \
         bindings/js/JSSQLTransactionCustom.cpp
@@ -2209,6 +2299,7 @@ contains(DEFINES, ENABLE_DOM_STORAGE=1) {
         storage/ChangeVersionWrapper.h \
         storage/DatabaseAuthorizer.h \
         storage/Database.h \
+        storage/DatabaseCallback.h \
         storage/DatabaseTask.h \
         storage/DatabaseThread.h \
         storage/DatabaseTracker.h \
@@ -2304,21 +2395,29 @@ contains(DEFINES, ENABLE_VIDEO=1) {
         rendering/RenderMedia.cpp \
         bindings/js/JSAudioConstructor.cpp
 
-        HEADERS += \
-            platform/graphics/qt/MediaPlayerPrivatePhonon.h
+        # QtMultimedia since 4.7
+        greaterThan(QT_MINOR_VERSION, 6) {
+            HEADERS += platform/graphics/qt/MediaPlayerPrivateQt.h
+            SOURCES += platform/graphics/qt/MediaPlayerPrivateQt.cpp
 
-        SOURCES += \
-            platform/graphics/qt/MediaPlayerPrivatePhonon.cpp
+            QT += multimedia
+        } else {
+            HEADERS += \
+                platform/graphics/qt/MediaPlayerPrivatePhonon.h
 
-        # Add phonon manually to prevent it from coming first in
-        # the include paths, as Phonon's path.h conflicts with
-        # WebCore's Path.h on case-insensitive filesystems.
-        qtAddLibrary(phonon)
-        INCLUDEPATH -= $$QMAKE_INCDIR_QT/phonon
-        INCLUDEPATH += $$QMAKE_INCDIR_QT/phonon
-        mac {
-            INCLUDEPATH -= $$QMAKE_LIBDIR_QT/phonon.framework/Headers
-            INCLUDEPATH += $$QMAKE_LIBDIR_QT/phonon.framework/Headers
+            SOURCES += \
+                platform/graphics/qt/MediaPlayerPrivatePhonon.cpp
+
+            # Add phonon manually to prevent it from coming first in
+            # the include paths, as Phonon's path.h conflicts with
+            # WebCore's Path.h on case-insensitive filesystems.
+            qtAddLibrary(phonon)
+            INCLUDEPATH -= $$QMAKE_INCDIR_QT/phonon
+            INCLUDEPATH += $$QMAKE_INCDIR_QT/phonon
+            mac {
+                INCLUDEPATH -= $$QMAKE_LIBDIR_QT/phonon.framework/Headers
+                INCLUDEPATH += $$QMAKE_LIBDIR_QT/phonon.framework/Headers
+            }
         }
 
 }
@@ -2594,11 +2693,8 @@ contains(DEFINES, ENABLE_SVG=1) {
         svg/graphics/SVGPaintServerPattern.cpp \
         svg/graphics/SVGPaintServerRadialGradient.cpp \
         svg/graphics/SVGPaintServerSolid.cpp \
-        svg/graphics/SVGResourceClipper.cpp \
         svg/graphics/SVGResource.cpp \
         svg/graphics/SVGResourceFilter.cpp \
-        svg/graphics/SVGResourceMarker.cpp \
-        svg/graphics/SVGResourceMasker.cpp \
         rendering/RenderForeignObject.cpp \
         rendering/RenderPath.cpp \
         rendering/RenderSVGBlock.cpp \
@@ -2609,6 +2705,9 @@ contains(DEFINES, ENABLE_SVG=1) {
         rendering/RenderSVGInline.cpp \
         rendering/RenderSVGInlineText.cpp \
         rendering/RenderSVGModelObject.cpp \
+        rendering/RenderSVGResourceClipper.cpp \
+        rendering/RenderSVGResourceMarker.cpp \
+        rendering/RenderSVGResourceMasker.cpp \
         rendering/RenderSVGRoot.cpp \
         rendering/RenderSVGShadowTreeRootContainer.cpp \
         rendering/RenderSVGText.cpp \
@@ -2628,8 +2727,8 @@ contains(DEFINES, ENABLE_SVG=1) {
 contains(DEFINES, ENABLE_JAVASCRIPT_DEBUGGER=1) {
     SOURCES += \
         bindings/js/JSJavaScriptCallFrameCustom.cpp \
+        bindings/js/ScriptProfiler.cpp \
         inspector/JavaScriptCallFrame.cpp \
-        inspector/JavaScriptDebugServer.cpp \
 }
 
 contains(DEFINES, ENABLE_OFFLINE_WEB_APPLICATIONS=1) {
@@ -2645,61 +2744,157 @@ SOURCES += \
 }
 
 contains(DEFINES, ENABLE_WEB_SOCKETS=1) {
-HEADERS += \
-    platform/network/qt/SocketStreamHandlePrivate.h \
+    HEADERS += \
+        websockets/ThreadableWebSocketChannel.h \
+        websockets/ThreadableWebSocketChannelClientWrapper.h \
+        websockets/WebSocket.h \
+        websockets/WebSocketChannel.h \
+        websockets/WebSocketChannelClient.h \
+        websockets/WebSocketHandshake.h \
+        websockets/WebSocketHandshakeRequest.h \
+        platform/network/qt/SocketStreamHandlePrivate.h
 
-SOURCES += \
-    websockets/WebSocket.cpp \
-    websockets/WebSocketChannel.cpp \
-    websockets/WebSocketHandshake.cpp \
-    websockets/ThreadableWebSocketChannel.cpp \
-    platform/network/SocketStreamErrorBase.cpp \
-    platform/network/SocketStreamHandleBase.cpp \
-    platform/network/qt/SocketStreamHandleQt.cpp \
-    bindings/js/JSWebSocketCustom.cpp \
-    bindings/js/JSWebSocketConstructor.cpp
+    SOURCES += \
+        websockets/WebSocket.cpp \
+        websockets/WebSocketChannel.cpp \
+        websockets/WebSocketHandshake.cpp \
+        websockets/WebSocketHandshakeRequest.cpp \
+        websockets/ThreadableWebSocketChannel.cpp \
+        platform/network/SocketStreamErrorBase.cpp \
+        platform/network/SocketStreamHandleBase.cpp \
+        platform/network/qt/SocketStreamHandleQt.cpp \
+        bindings/js/JSWebSocketCustom.cpp \
+        bindings/js/JSWebSocketConstructor.cpp
 
-contains(DEFINES, ENABLE_WORKERS=1) {
-SOURCES += \
-    websockets/WorkerThreadableWebSocketChannel.cpp
+    contains(DEFINES, ENABLE_WORKERS=1) {
+        HEADERS += \
+            websockets/WorkerThreadableWebSocketChannel.h
+
+        SOURCES += \
+            websockets/WorkerThreadableWebSocketChannel.cpp
+    }
 }
+
+contains(DEFINES, ENABLE_3D_CANVAS=1) {
+QT += opengl
+HEADERS += \
+	bindings/js/JSWebGLArrayBufferConstructor.h \
+	bindings/js/JSWebGLArrayHelper.h \
+	bindings/js/JSWebGLByteArrayConstructor.h \
+	bindings/js/JSWebGLFloatArrayConstructor.h \
+	bindings/js/JSWebGLIntArrayConstructor.h \
+	bindings/js/JSWebGLShortArrayConstructor.h \
+	bindings/js/JSWebGLUnsignedByteArrayConstructor.h \
+	bindings/js/JSWebGLUnsignedIntArrayConstructor.h \
+	bindings/js/JSWebGLUnsignedShortArrayConstructor.h \
+	html/canvas/CanvasContextAttributes.h \
+	html/canvas/CanvasObject.h \
+	html/canvas/WebGLActiveInfo.h \
+	html/canvas/WebGLArrayBuffer.h \
+	html/canvas/WebGLArray.h \
+	html/canvas/WebGLBuffer.h \
+	html/canvas/WebGLByteArray.h \
+	html/canvas/WebGLContextAttributes.h \
+	html/canvas/WebGLFloatArray.h \
+	html/canvas/WebGLFramebuffer.h \
+	html/canvas/WebGLGetInfo.h \
+	html/canvas/WebGLIntArray.h \
+	html/canvas/WebGLProgram.h \
+	html/canvas/WebGLRenderbuffer.h \
+	html/canvas/WebGLRenderingContext.h \
+	html/canvas/WebGLShader.h \
+	html/canvas/WebGLShortArray.h \
+	html/canvas/WebGLTexture.h \
+	html/canvas/WebGLUniformLocation.h \
+	html/canvas/WebGLUnsignedByteArray.h \
+	html/canvas/WebGLUnsignedIntArray.h \
+	html/canvas/WebGLUnsignedShortArray.h \
+    platform/graphics/GraphicsContext3D.h 
+
+SOURCES += \
+	bindings/js/JSWebGLArrayBufferConstructor.cpp \
+	bindings/js/JSWebGLArrayCustom.cpp \
+	bindings/js/JSWebGLByteArrayConstructor.cpp \
+	bindings/js/JSWebGLByteArrayCustom.cpp \
+	bindings/js/JSWebGLFloatArrayConstructor.cpp \
+	bindings/js/JSWebGLFloatArrayCustom.cpp \
+	bindings/js/JSWebGLIntArrayConstructor.cpp \
+	bindings/js/JSWebGLIntArrayCustom.cpp \
+	bindings/js/JSWebGLRenderingContextCustom.cpp \
+	bindings/js/JSWebGLShortArrayConstructor.cpp \
+	bindings/js/JSWebGLShortArrayCustom.cpp \
+	bindings/js/JSWebGLUnsignedByteArrayConstructor.cpp \
+	bindings/js/JSWebGLUnsignedByteArrayCustom.cpp \
+	bindings/js/JSWebGLUnsignedIntArrayConstructor.cpp \
+	bindings/js/JSWebGLUnsignedIntArrayCustom.cpp \
+	bindings/js/JSWebGLUnsignedShortArrayConstructor.cpp \
+	bindings/js/JSWebGLUnsignedShortArrayCustom.cpp \
+	html/canvas/CanvasContextAttributes.cpp \
+    html/canvas/CanvasObject.cpp \
+	html/canvas/WebGLArrayBuffer.cpp \
+	html/canvas/WebGLArray.cpp \
+	html/canvas/WebGLBuffer.cpp \
+	html/canvas/WebGLByteArray.cpp \
+	html/canvas/WebGLContextAttributes.cpp \
+	html/canvas/WebGLFloatArray.cpp \
+	html/canvas/WebGLFramebuffer.cpp \
+	html/canvas/WebGLGetInfo.cpp \
+	html/canvas/WebGLIntArray.cpp \
+	html/canvas/WebGLProgram.cpp \
+	html/canvas/WebGLRenderbuffer.cpp \
+	html/canvas/WebGLRenderingContext.cpp \
+	html/canvas/WebGLShader.cpp \
+	html/canvas/WebGLShortArray.cpp \
+	html/canvas/WebGLTexture.cpp \
+	html/canvas/WebGLUniformLocation.cpp \
+	html/canvas/WebGLUnsignedByteArray.cpp \
+	html/canvas/WebGLUnsignedIntArray.cpp \
+	html/canvas/WebGLUnsignedShortArray.cpp \
+    platform/graphics/GraphicsContext3D.cpp \
+    platform/graphics/qt/GraphicsContext3DQt.cpp \
+
+}
+
+contains(DEFINES, ENABLE_SYMBIAN_DIALOG_PROVIDERS) {
+    # this feature requires the S60 platform private BrowserDialogsProvider.h header file
+    # and is therefore not enabled by default but only meant for platform builds.
+    symbian {
+        LIBS += -lbrowserdialogsprovider
+    }
 }
 
 include($$PWD/../WebKit/qt/Api/headers.pri)
-include(../include/QtWebKit/classheaders.pri)
 HEADERS += $$WEBKIT_API_HEADERS
-WEBKIT_INSTALL_HEADERS = $$WEBKIT_API_HEADERS $$WEBKIT_CLASS_HEADERS
 
-!symbian {
-    headers.files = $$WEBKIT_INSTALL_HEADERS
-    headers.path = $$[QT_INSTALL_HEADERS]/QtWebKit
-    target.path = $$[QT_INSTALL_LIBS]
+!CONFIG(QTDIR_build) {
+    exists($$OUTPUT_DIR/include/QtWebKit/classheaders.pri): include($$OUTPUT_DIR/include/QtWebKit/classheaders.pri)
+    WEBKIT_INSTALL_HEADERS = $$WEBKIT_API_HEADERS $$WEBKIT_CLASS_HEADERS
 
-    INSTALLS += target headers
-} else {
-    # INSTALLS is not implemented in qmake's s60 generators, copy headers manually
-    inst_headers.commands = $$QMAKE_COPY ${QMAKE_FILE_NAME} ${QMAKE_FILE_OUT}
-    inst_headers.input = WEBKIT_INSTALL_HEADERS
-    inst_headers.output = $$[QT_INSTALL_HEADERS]/QtWebKit/${QMAKE_FILE_BASE}${QMAKE_FILE_EXT}
-    QMAKE_EXTRA_COMPILERS += inst_headers
+    !symbian {
+        headers.files = $$WEBKIT_INSTALL_HEADERS
+        headers.path = $$[QT_INSTALL_HEADERS]/QtWebKit
+        target.path = $$[QT_INSTALL_LIBS]
 
-    install.depends += compiler_inst_headers_make_all
-    QMAKE_EXTRA_TARGETS += install
-}
+        INSTALLS += target headers
+    } else {
+        # INSTALLS is not implemented in qmake's s60 generators, copy headers manually
+        inst_headers.commands = $$QMAKE_COPY ${QMAKE_FILE_NAME} ${QMAKE_FILE_OUT}
+        inst_headers.input = WEBKIT_INSTALL_HEADERS
+        inst_headers.output = $$[QT_INSTALL_HEADERS]/QtWebKit/${QMAKE_FILE_BASE}${QMAKE_FILE_EXT}
+        QMAKE_EXTRA_COMPILERS += inst_headers
 
-# Qt will set the version for us when building in Qt's tree
-!CONFIG(QTDIR_build): VERSION=$${QT_MAJOR_VERSION}.$${QT_MINOR_VERSION}.$${QT_PATCH_VERSION}
+        install.depends += compiler_inst_headers_make_all
+        QMAKE_EXTRA_TARGETS += install
+    }
 
-win32-*|wince* {
-    DLLDESTDIR = $$OUTPUT_DIR/bin
-    TARGET = $$qtLibraryTarget($$TARGET)
+    win32-*|wince* {
+        DLLDESTDIR = $$OUTPUT_DIR/bin
+        TARGET = $$qtLibraryTarget($$TARGET)
 
-    dlltarget.commands = $(COPY_FILE) $(DESTDIR_TARGET) $$[QT_INSTALL_BINS]
-    dlltarget.CONFIG = no_path
-    INSTALLS += dlltarget
-}
-
-!CONFIG(standalone_package) {
+        dlltarget.commands = $(COPY_FILE) $(DESTDIR_TARGET) $$[QT_INSTALL_BINS]
+        dlltarget.CONFIG = no_path
+        INSTALLS += dlltarget
+    }
 
     unix {
         CONFIG += create_pc create_prl
@@ -2734,8 +2929,7 @@ win32-*|wince* {
     }
 }
 
-CONFIG(standalone_package):isEqual(QT_MAJOR_VERSION, 4):greaterThan(QT_MINOR_VERSION, 4) {
-    # start with 4.5
+CONFIG(QTDIR_build) {
     # Remove the following 2 lines if you want debug information in WebCore
     CONFIG -= separate_debug_info
     CONFIG += no_debug_info
@@ -2775,6 +2969,8 @@ SOURCES += \
 symbian {
     shared {
         contains(CONFIG, def_files) {
+            DEF_FILE=../WebKit/qt/symbian
+            # defFilePath is for Qt4.6 compatibility
             defFilePath=../WebKit/qt/symbian
         } else {
             MMP_RULES += EXPORTUNFROZEN

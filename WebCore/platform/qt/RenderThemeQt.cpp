@@ -39,17 +39,27 @@
 #include "Font.h"
 #include "FontSelector.h"
 #include "GraphicsContext.h"
+#include "HTMLInputElement.h"
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
+#ifdef Q_WS_MAEMO_5
+#include "Maemo5Webstyle.h"
+#endif
 #include "NotImplemented.h"
 #include "Page.h"
+#include "QtStyleOptionWebComboBox.h"
 #include "QWebPageClient.h"
 #include "RenderBox.h"
+#if ENABLE(PROGRESS_TAG)
+#include "RenderProgress.h"
+#endif
 #include "RenderSlider.h"
 #include "RenderTheme.h"
+#include "TimeRanges.h"
 #include "ScrollbarThemeQt.h"
 #include "UserAgentStyleSheets.h"
 #include "qwebpage.h"
+
 
 #include <QApplication>
 #include <QColor>
@@ -61,6 +71,9 @@
 #include <QStyleFactory>
 #include <QStyleOptionButton>
 #include <QStyleOptionFrameV2>
+#if ENABLE(PROGRESS_TAG)
+#include <QStyleOptionProgressBarV2>
+#endif
 #include <QStyleOptionSlider>
 #include <QWidget>
 
@@ -129,6 +142,7 @@ PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page* page)
 RenderThemeQt::RenderThemeQt(Page* page)
     : RenderTheme()
     , m_page(page)
+    , m_lineEdit(0)
 {
     QPushButton button;
     button.setAttribute(Qt::WA_MacSmallSize);
@@ -139,13 +153,42 @@ RenderThemeQt::RenderThemeQt(Page* page)
     m_buttonFontPixelSize = fontInfo.pixelSize();
 #endif
 
+#ifdef Q_WS_MAEMO_5
+    m_fallbackStyle = new Maemo5WebStyle;
+#else
     m_fallbackStyle = QStyleFactory::create(QLatin1String("windows"));
+#endif
 }
 
 RenderThemeQt::~RenderThemeQt()
 {
     delete m_fallbackStyle;
+    delete m_lineEdit;
 }
+
+#ifdef Q_WS_MAEMO_5
+bool RenderThemeQt::isControlStyled(const RenderStyle* style, const BorderData& border, const FillLayer& fill, const Color& backgroundColor) const
+{
+    switch (style->appearance()) {
+    case PushButtonPart:
+    case ButtonPart:
+    case MenulistPart:
+    case TextFieldPart:
+    case TextAreaPart:
+        return true;
+    case CheckboxPart:
+    case RadioPart:
+        return false;
+    default:
+        return RenderTheme::isControlStyled(style, border, fill, backgroundColor);
+    }
+}
+
+int RenderThemeQt::popupInternalPaddingBottom(RenderStyle* style) const
+{
+    return 1;
+}
+#endif
 
 // for some widget painting, we need to fallback to Windows style
 QStyle* RenderThemeQt::fallbackStyle() const
@@ -167,6 +210,18 @@ QStyle* RenderThemeQt::qStyle() const
     }
 
     return QApplication::style();
+}
+
+String RenderThemeQt::extraDefaultStyleSheet()
+{
+    String result = RenderTheme::extraDefaultStyleSheet();
+#if ENABLE(NO_LISTBOX_RENDERING)
+    result += String(themeQtNoListboxesUserAgentStyleSheet, sizeof(themeQtNoListboxesUserAgentStyleSheet));
+#endif
+#ifdef Q_WS_MAEMO_5
+    result += String(themeQtMaemo5UserAgentStyleSheet, sizeof(themeQtMaemo5UserAgentStyleSheet));
+#endif
+    return result;
 }
 
 bool RenderThemeQt::supportsHover(const RenderStyle*) const
@@ -207,11 +262,13 @@ bool RenderThemeQt::supportsControlTints() const
     return true;
 }
 
-static int findFrameLineWidth(QStyle* style)
+int RenderThemeQt::findFrameLineWidth(QStyle* style) const
 {
-    QLineEdit lineEdit;
+    if (!m_lineEdit)
+        m_lineEdit = new QLineEdit();
+
     QStyleOptionFrameV2 opt;
-    return style->pixelMetric(QStyle::PM_DefaultFrameWidth, &opt, &lineEdit);
+    return style->pixelMetric(QStyle::PM_DefaultFrameWidth, &opt, m_lineEdit);
 }
 
 static QRect inflateButtonRect(const QRect& originalRect, QStyle* style)
@@ -289,13 +346,28 @@ int RenderThemeQt::minimumMenuListSize(RenderStyle*) const
 
 void RenderThemeQt::computeSizeBasedOnStyle(RenderStyle* renderStyle) const
 {
-    // If the width and height are both specified, then we have nothing to do.
-    if (!renderStyle->width().isIntrinsicOrAuto() && !renderStyle->height().isAuto())
-        return;
-
     QSize size(0, 0);
     const QFontMetrics fm(renderStyle->font().font());
     QStyle* style = qStyle();
+
+    switch (renderStyle->appearance()) {
+    case TextAreaPart:
+    case TextFieldPart: {
+        int padding = findFrameLineWidth(style);
+
+        renderStyle->setPaddingLeft(Length(padding, Fixed));
+        renderStyle->setPaddingRight(Length(padding, Fixed));
+        renderStyle->setPaddingTop(Length(padding, Fixed));
+        renderStyle->setPaddingBottom(Length(padding, Fixed));
+        break;
+    }
+    default:
+        break;
+    }
+
+    // If the width and height are both specified, then we have nothing to do.
+    if (!renderStyle->width().isIntrinsicOrAuto() && !renderStyle->height().isAuto())
+        return;
 
     switch (renderStyle->appearance()) {
     case CheckboxPart: {
@@ -339,23 +411,6 @@ void RenderThemeQt::computeSizeBasedOnStyle(RenderStyle* renderStyle) const
         QSize menuListSize = style->sizeFromContents(QStyle::CT_ComboBox,
                                                      &styleOption, QSize(0, contentHeight), 0);
         size.setHeight(menuListSize.height());
-        break;
-    }
-    case TextFieldPart: {
-        const int verticalMargin = 1;
-        const int horizontalMargin = 2;
-        int h = qMax(fm.lineSpacing(), 14) + 2*verticalMargin;
-        int w = fm.width(QLatin1Char('x')) * 17 + 2*horizontalMargin;
-        QStyleOptionFrameV2 opt;
-        opt.lineWidth = findFrameLineWidth(style);
-        QSize sz = style->sizeFromContents(QStyle::CT_LineEdit,
-                                           &opt,
-                                           QSize(w, h).expandedTo(QApplication::globalStrut()),
-                                           0);
-        size.setHeight(sz.height());
-
-        renderStyle->setPaddingLeft(Length(opt.lineWidth, Fixed));
-        renderStyle->setPaddingRight(Length(opt.lineWidth, Fixed));
         break;
     }
     default:
@@ -576,7 +631,7 @@ bool RenderThemeQt::paintMenuList(RenderObject* o, const RenderObject::PaintInfo
     if (!p.isValid())
         return true;
 
-    QStyleOptionComboBox opt;
+    QtStyleOptionWebComboBox opt(o);
     if (p.widget)
         opt.initFrom(p.widget);
     initializeCommonQStyleOptions(opt, o);
@@ -593,9 +648,11 @@ bool RenderThemeQt::paintMenuList(RenderObject* o, const RenderObject::PaintInfo
 
 void RenderThemeQt::adjustMenuListButtonStyle(CSSStyleSelector*, RenderStyle* style, Element*) const
 {
+#ifndef Q_WS_MAEMO_5
     // WORKAROUND because html.css specifies -webkit-border-radius for <select> so we override it here
     // see also http://bugs.webkit.org/show_bug.cgi?id=18399
     style->resetBorderRadius();
+#endif
 
     // Height is locked to auto.
     style->setHeight(Length(Auto));
@@ -616,7 +673,7 @@ bool RenderThemeQt::paintMenuListButton(RenderObject* o, const RenderObject::Pai
     if (!p.isValid())
         return true;
 
-    QStyleOptionComboBox option;
+    QtStyleOptionWebComboBox option(o);
     if (p.widget)
         option.initFrom(p.widget);
     initializeCommonQStyleOptions(option, o);
@@ -629,6 +686,75 @@ bool RenderThemeQt::paintMenuListButton(RenderObject* o, const RenderObject::Pai
 
     return false;
 }
+
+#if ENABLE(PROGRESS_TAG)
+double RenderThemeQt::animationRepeatIntervalForProgressBar(RenderProgress* renderProgress) const
+{
+    if (renderProgress->position() >= 0)
+        return 0;
+
+    // FIXME: Use hard-coded value until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed.
+    // Use the value from windows style which is 10 fps.
+    return 0.1;
+}
+
+double RenderThemeQt::animationDurationForProgressBar(RenderProgress* renderProgress) const
+{
+    if (renderProgress->position() >= 0)
+        return 0;
+
+    QStyleOptionProgressBarV2 option;
+    option.rect.setSize(renderProgress->size());
+    // FIXME: Until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed,
+    // we simulate one square animating across the progress bar.
+    return (option.rect.width() / qStyle()->pixelMetric(QStyle::PM_ProgressBarChunkWidth, &option)) * animationRepeatIntervalForProgressBar(renderProgress);
+}
+
+void RenderThemeQt::adjustProgressBarStyle(CSSStyleSelector*, RenderStyle* style, Element*) const
+{
+    style->setBoxShadow(0);
+}
+
+bool RenderThemeQt::paintProgressBar(RenderObject* o, const RenderObject::PaintInfo& pi, const IntRect& r)
+{
+    StylePainter p(this, pi);
+    if (!p.isValid())
+       return true;
+
+    QStyleOptionProgressBarV2 option;
+    if (p.widget)
+       option.initFrom(p.widget);
+    initializeCommonQStyleOptions(option, o);
+
+    RenderProgress* renderProgress = toRenderProgress(o);
+    option.rect = r;
+    option.maximum = std::numeric_limits<int>::max();
+    option.minimum = 0;
+    option.progress = (renderProgress->position() * std::numeric_limits<int>::max());
+
+    const QPoint topLeft = r.topLeft();
+    p.painter->translate(topLeft);
+    option.rect.moveTo(QPoint(0, 0));
+    option.rect.setSize(r.size());
+
+    if (option.progress < 0) {
+        // FIXME: Until http://bugreports.qt.nokia.com/browse/QTBUG-9171 is fixed,
+        // we simulate one square animating across the progress bar.
+        p.drawControl(QStyle::CE_ProgressBarGroove, option);
+        int chunkWidth = qStyle()->pixelMetric(QStyle::PM_ProgressBarChunkWidth, &option);
+        QColor color = (option.palette.highlight() == option.palette.background()) ? option.palette.color(QPalette::Active, QPalette::Highlight) : option.palette.color(QPalette::Highlight);
+        if (renderProgress->style()->direction() == RTL)
+            p.painter->fillRect(option.rect.right() - chunkWidth  - renderProgress->animationProgress() * option.rect.width(), 0, chunkWidth, option.rect.height(), color);
+        else
+            p.painter->fillRect(renderProgress->animationProgress() * option.rect.width(), 0, chunkWidth, option.rect.height(), color);
+    } else
+        p.drawControl(QStyle::CE_ProgressBar, option);
+
+    p.painter->translate(-topLeft);
+
+    return false;
+}
+#endif
 
 bool RenderThemeQt::paintSliderTrack(RenderObject* o, const RenderObject::PaintInfo& pi,
                                      const IntRect& r)
@@ -882,10 +1008,15 @@ HTMLMediaElement* RenderThemeQt::getMediaElementFromRenderObject(RenderObject* o
     return static_cast<HTMLMediaElement*>(mediaNode);
 }
 
+double RenderThemeQt::mediaControlsBaselineOpacity() const
+{
+    return 0.4;
+}
+
 void RenderThemeQt::paintMediaBackground(QPainter* painter, const IntRect& r) const
 {
     painter->setPen(Qt::NoPen);
-    static QColor transparentBlack(0, 0, 0, 100);
+    static QColor transparentBlack(0, 0, 0, mediaControlsBaselineOpacity() * 255);
     painter->setBrush(transparentBlack);
     painter->drawRoundedRect(r.x(), r.y(), r.width(), r.height(), 5.0, 5.0);
 }
@@ -921,13 +1052,8 @@ bool RenderThemeQt::paintMediaMuteButton(RenderObject* o, const RenderObject::Pa
     const QPointF speakerPolygon[6] = { QPointF(20, 30), QPointF(50, 30), QPointF(80, 0),
             QPointF(80, 100), QPointF(50, 70), QPointF(20, 70)};
 
-    p.painter->setBrush(getMediaControlForegroundColor(o));
+    p.painter->setBrush(mediaElement->muted() ? Qt::darkRed : getMediaControlForegroundColor(o));
     p.painter->drawPolygon(speakerPolygon, 6);
-
-    if (mediaElement->muted()) {
-        p.painter->setPen(Qt::red);
-        p.painter->drawLine(0, 100, 100, 0);
-    }
 
     return false;
 }
@@ -971,6 +1097,86 @@ bool RenderThemeQt::paintMediaSeekForwardButton(RenderObject*, const RenderObjec
     return false;
 }
 
+bool RenderThemeQt::paintMediaCurrentTime(RenderObject* o, const RenderObject::PaintInfo& paintInfo, const IntRect& r)
+{
+    StylePainter p(this, paintInfo);
+    if (!p.isValid())
+        return true;
+
+    p.painter->setRenderHint(QPainter::Antialiasing, true);
+    paintMediaBackground(p.painter, r);
+
+    return false;
+}
+
+String RenderThemeQt::formatMediaControlsCurrentTime(float currentTime, float duration) const
+{
+    return formatMediaControlsTime(currentTime) + " / " + formatMediaControlsTime(duration);
+}
+
+String RenderThemeQt::formatMediaControlsRemainingTime(float currentTime, float duration) const
+{
+    return String();
+}
+
+bool RenderThemeQt::paintMediaVolumeSliderTrack(RenderObject *o, const RenderObject::PaintInfo &paintInfo, const IntRect &r)
+{
+    StylePainter p(this, paintInfo);
+    if (!p.isValid())
+        return true;
+
+    p.painter->setRenderHint(QPainter::Antialiasing, true);
+
+    paintMediaBackground(p.painter, r);
+
+    if (!o->isSlider())
+        return false;
+
+    IntRect b = toRenderBox(o)->contentBoxRect();
+
+    // Position the outer rectangle
+    int top = r.y() + b.y();
+    int left = r.x() + b.x();
+    int width = b.width();
+    int height = b.height();
+
+    // Get the scale color from the page client
+    QPalette pal = QApplication::palette();
+    setPaletteFromPageClientIfExists(pal);
+    const QColor highlightText = pal.brush(QPalette::Active, QPalette::HighlightedText).color();
+    const QColor scaleColor(highlightText.red(), highlightText.green(), highlightText.blue(), mediaControlsBaselineOpacity() * 255);
+
+    // Draw the outer rectangle
+    p.painter->setBrush(scaleColor);
+    p.painter->drawRect(left, top, width, height);
+
+    if (!o->node() || !o->node()->hasTagName(inputTag))
+        return false;
+
+    HTMLInputElement* slider = static_cast<HTMLInputElement*>(o->node());
+
+    // Position the inner rectangle
+    height = height * slider->valueAsNumber();
+    top += b.height() - height;
+
+    // Draw the inner rectangle
+    p.painter->setPen(Qt::NoPen);
+    p.painter->setBrush(getMediaControlForegroundColor(o));
+    p.painter->drawRect(left, top, width, height);
+
+    return false;
+}
+
+bool RenderThemeQt::paintMediaVolumeSliderThumb(RenderObject *o, const RenderObject::PaintInfo &paintInfo, const IntRect &r)
+{
+    StylePainter p(this, paintInfo);
+    if (!p.isValid())
+        return true;
+
+    // Nothing to draw here, this is all done in the track
+    return false;
+}
+
 bool RenderThemeQt::paintMediaSliderTrack(RenderObject* o, const RenderObject::PaintInfo& paintInfo, const IntRect& r)
 {
     HTMLMediaElement* mediaElement = getMediaElementFromRenderObject(o);
@@ -985,15 +1191,31 @@ bool RenderThemeQt::paintMediaSliderTrack(RenderObject* o, const RenderObject::P
 
     paintMediaBackground(p.painter, r);
 
+#if QT_VERSION >= 0x040700
+    if (MediaPlayer* player = mediaElement->player()) {
+        // Get the buffered parts of the media
+        PassRefPtr<TimeRanges> buffered = player->buffered();
+        if (buffered->length() > 0 && player->duration() < std::numeric_limits<float>::infinity()) {
+            // Set the transform and brush
+            WorldMatrixTransformer transformer(p.painter, o, r);
+            p.painter->setBrush(getMediaControlForegroundColor());
+
+            // Paint each buffered section
+            ExceptionCode ex;
+            for (int i = 0; i < buffered->length(); i++) {
+                float startX = (buffered->start(i, ex) / player->duration()) * 100;
+                float width = ((buffered->end(i, ex) / player->duration()) * 100) - startX;
+                p.painter->drawRect(startX, 37, width, 26);
+            }
+        }
+    }
+#endif
+
     return false;
 }
 
 bool RenderThemeQt::paintMediaSliderThumb(RenderObject* o, const RenderObject::PaintInfo& paintInfo, const IntRect& r)
 {
-    HTMLMediaElement* mediaElement = getMediaElementFromRenderObject(o->parent());
-    if (!mediaElement)
-        return false;
-
     StylePainter p(this, paintInfo);
     if (!p.isValid())
         return true;
@@ -1019,6 +1241,13 @@ void RenderThemeQt::adjustSliderThumbSize(RenderObject* o) const
         int parentHeight = parentStyle->height().value();
         o->style()->setWidth(Length(parentHeight / 3, Fixed));
         o->style()->setHeight(Length(parentHeight, Fixed));
+    } else if (part == MediaVolumeSliderThumbPart) {
+        RenderStyle* parentStyle = o->parent()->style();
+        Q_ASSERT(parentStyle);
+
+        int parentWidth = parentStyle->width().value();
+        o->style()->setHeight(Length(parentWidth / 3, Fixed));
+        o->style()->setWidth(Length(parentWidth, Fixed));
     } else if (part == SliderThumbHorizontalPart || part == SliderThumbVerticalPart) {
         QStyleOptionSlider option;
         if (part == SliderThumbVerticalPart)

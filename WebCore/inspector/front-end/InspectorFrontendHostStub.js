@@ -48,6 +48,11 @@ WebInspector.InspectorFrontendHostStub.prototype = {
         return "unknown";
     },
 
+    bringToFront: function()
+    {
+        this._windowVisible = true;
+    },
+
     closeWindow: function()
     {
         this._windowVisible = false;
@@ -87,12 +92,17 @@ WebInspector.InspectorFrontendHostStub.prototype = {
         return "";
     },
 
-    windowUnloading: function()
+    inspectedURLChanged: function(url)
     {
     },
 
     copyText: function()
     {
+    },
+
+    canAttachWindow: function()
+    {
+        return false;
     }
 }
 

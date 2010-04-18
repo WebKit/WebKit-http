@@ -29,12 +29,12 @@
 #include "config.h"
 #include "TextCodecGtk.h"
 
-#include "CString.h"
+#include "GOwnPtr.h"
+#include "Logging.h"
 #include "PlatformString.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
-#include <wtf/gtk/GOwnPtr.h>
-#include "Logging.h"
+#include <wtf/text/CString.h>
 
 using std::min;
 
@@ -254,18 +254,14 @@ void TextCodecGtk::registerEncodingNames(EncodingNameRegistrar registrar, bool e
         const char *canonicalName;
         canonicalName = (*codecAliases)[codecCount];
 
-        if(!isEncodingAvailable(canonicalName)) {
-            LOG(TextConversion, "Canonical encoding %s not available, skipping.", canonicalName);
+        if (!isEncodingAvailable(canonicalName))
             continue;
-        }
         registrar(canonicalName, canonicalName);
 
         const char *currentAlias;
         while ((currentAlias = (*codecAliases)[++codecCount])) {
-            if (isEncodingAvailable(currentAlias)) {
-                LOG(TextConversion, "Registering encoding name alias %s to canonical %s", currentAlias, canonicalName);
+            if (isEncodingAvailable(currentAlias))
                 registrar(currentAlias, canonicalName);
-            }
         }
 
     }

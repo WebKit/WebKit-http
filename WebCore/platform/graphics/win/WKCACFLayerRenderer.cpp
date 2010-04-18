@@ -27,16 +27,22 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+#ifndef NDEBUG
+#define D3D_DEBUG_INFO
+#endif
+
 #include "WKCACFLayerRenderer.h"
 
 #include "WKCACFContextFlusher.h"
 #include "WKCACFLayer.h"
+#include "WebCoreInstanceHandle.h"
 #include <CoreGraphics/CGSRegion.h>
 #include <QuartzCore/CACFContext.h>
 #include <QuartzCore/CARenderOGL.h>
-#include <QuartzCoreInterface/QuartzCoreInterface.h>
 #include <wtf/HashMap.h>
 #include <wtf/OwnArrayPtr.h>
+#include <wtf/OwnPtr.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/StdLibExtras.h>
 #include <d3d9.h>
 #include <d3dx9.h>
@@ -75,6 +81,33 @@ inline static CGRect winRectToCGRect(RECT rc, RECT relativeToRect)
 
 namespace WebCore {
 
+// Subclass of WKCACFLayer to allow the root layer to have a back pointer to the layer renderer
+// to fire off a draw
+class WKCACFRootLayer : public WKCACFLayer {
+public:
+    WKCACFRootLayer(WKCACFLayerRenderer* renderer)
+        : WKCACFLayer(WKCACFLayer::Layer)
+    {
+        m_renderer = renderer;
+    }
+
+    static PassRefPtr<WKCACFRootLayer> create(WKCACFLayerRenderer* renderer)
+    {
+        if (!WKCACFLayerRenderer::acceleratedCompositingAvailable())
+            return 0;
+        return adoptRef(new WKCACFRootLayer(renderer));
+    }
+
+    virtual void setNeedsRender() { m_renderer->renderSoon(); }
+
+    // Overload this to avoid calling setNeedsDisplay on the layer, which would override the contents
+    // we have placed on the root layer.
+    virtual void setNeedsDisplay(const CGRect* dirtyRect) { setNeedsCommit(); }
+
+private:
+    WKCACFLayerRenderer* m_renderer;
+};
+
 typedef HashMap<CACFContextRef, WKCACFLayerRenderer*> ContextToWindowMap;
 
 static ContextToWindowMap& windowsForContexts()
@@ -95,6 +128,28 @@ static D3DPRESENT_PARAMETERS initialPresentationParameters()
     return parameters;
 }
 
+// FIXME: <rdar://6507851> Share this code with CoreAnimation.
+static bool hardwareCapabilitiesIndicateCoreAnimationSupport(const D3DCAPS9& caps)
+{
+    // CoreAnimation needs two or more texture units.
+    if (caps.MaxTextureBlendStages < 2)
+        return false;
+
+    // CoreAnimation needs non-power-of-two textures.
+    if ((caps.TextureCaps & D3DPTEXTURECAPS_POW2) && !(caps.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL))
+        return false;
+
+    // CoreAnimation needs vertex shader 2.0 or greater.
+    if (D3DSHADER_VERSION_MAJOR(caps.VertexShaderVersion) < 2)
+        return false;
+
+    // CoreAnimation needs pixel shader 2.0 or greater.
+    if (D3DSHADER_VERSION_MAJOR(caps.PixelShaderVersion) < 2)
+        return false;
+
+    return true;
+}
+
 bool WKCACFLayerRenderer::acceleratedCompositingAvailable()
 {
     static bool available;
@@ -104,17 +159,50 @@ bool WKCACFLayerRenderer::acceleratedCompositingAvailable()
         return available;
 
     tested = true;
-    HMODULE library = LoadLibrary(TEXT("d3d9.dll"));
-    if (!library)
-        return false;
 
-    FreeLibrary(library);
-    library = LoadLibrary(TEXT("QuartzCore.dll"));
-    if (!library)
-        return false;
-
-    FreeLibrary(library);
+    // Initialize available to true since this function will be called from a 
+    // propagation within createRenderer(). We want to be able to return true 
+    // when that happens so that the test can continue.
     available = true;
+    
+    HMODULE library = LoadLibrary(TEXT("d3d9.dll"));
+    if (!library) {
+        available = false;
+        return available;
+    }
+
+    FreeLibrary(library);
+#ifdef DEBUG_ALL
+    library = LoadLibrary(TEXT("QuartzCore_debug.dll"));
+#else
+    library = LoadLibrary(TEXT("QuartzCore.dll"));
+#endif
+    if (!library) {
+        available = false;
+        return available;
+    }
+
+    FreeLibrary(library);
+
+    // Make a dummy HWND.
+    WNDCLASSEX wcex = { 0 };
+    wcex.cbSize = sizeof(WNDCLASSEX);
+    wcex.lpfnWndProc = DefWindowProc;
+    wcex.hInstance = WebCore::instanceHandle();
+    wcex.lpszClassName = L"CoreAnimationTesterWindowClass";
+    ::RegisterClassEx(&wcex);
+    HWND testWindow = ::CreateWindow(L"CoreAnimationTesterWindowClass", L"CoreAnimationTesterWindow", WS_POPUP, -500, -500, 0, 0, 0, 0, 0, 0);
+
+    if (!testWindow) {
+        available = false;
+        return available;
+    }
+
+    OwnPtr<WKCACFLayerRenderer> testLayerRenderer = WKCACFLayerRenderer::create();
+    testLayerRenderer->setHostWindow(testWindow);
+    available = testLayerRenderer->createRenderer();
+    ::DestroyWindow(testWindow);
+
     return available;
 }
 
@@ -140,7 +228,9 @@ WKCACFLayerRenderer::WKCACFLayerRenderer()
     , m_renderer(0)
     , m_hostWindow(0)
     , m_renderTimer(this, &WKCACFLayerRenderer::renderTimerFired)
-    , m_scrollFrame(0, 0, 1, 1) // Default to 1 to avoid 0 size frames
+    , m_scrollPosition(0, 0)
+    , m_scrollSize(1, 1)
+    , m_backingStoreDirty(false)
 {
 #ifndef NDEBUG
     char* printTreeFlag = getenv("CA_PRINT_TREE");
@@ -153,15 +243,29 @@ WKCACFLayerRenderer::~WKCACFLayerRenderer()
     destroyRenderer();
 }
 
-void WKCACFLayerRenderer::setScrollFrame(const IntRect& scrollFrame)
+WKCACFLayer* WKCACFLayerRenderer::rootLayer() const
 {
-    m_scrollFrame = scrollFrame;
-    CGRect frameBounds = bounds();
-    m_scrollLayer->setBounds(CGRectMake(0, 0, m_scrollFrame.width(), m_scrollFrame.height()));
-    m_scrollLayer->setPosition(CGPointMake(0, frameBounds.size.height));
+    return m_rootLayer.get();
+}
 
-    if (m_rootChildLayer)
-        m_rootChildLayer->setPosition(CGPointMake(-m_scrollFrame.x(), m_scrollFrame.height() + m_scrollFrame.y()));
+void WKCACFLayerRenderer::setScrollFrame(const IntPoint& position, const IntSize& size)
+{
+    m_scrollSize = size;
+    m_scrollPosition = position;
+
+    updateScrollFrame();
+}
+
+void WKCACFLayerRenderer::updateScrollFrame()
+{
+    CGRect frameBounds = bounds();
+    m_clipLayer->setBounds(CGRectMake(0, 0, m_scrollSize.width(), m_scrollSize.height()));
+    m_clipLayer->setPosition(CGPointMake(0, frameBounds.size.height));
+    if (m_rootChildLayer) {
+        CGRect rootBounds = m_rootChildLayer->bounds();
+        m_scrollLayer->setBounds(rootBounds);
+    }
+    m_scrollLayer->setPosition(CGPointMake(-m_scrollPosition.x(), m_scrollPosition.y() + m_scrollSize.height()));
 }
 
 void WKCACFLayerRenderer::setRootContents(CGImageRef image)
@@ -171,7 +275,7 @@ void WKCACFLayerRenderer::setRootContents(CGImageRef image)
     renderSoon();
 }
 
-void WKCACFLayerRenderer::setRootChildLayer(WebCore::PlatformLayer* layer)
+void WKCACFLayerRenderer::setRootChildLayer(WKCACFLayer* layer)
 {
     if (!m_scrollLayer)
         return;
@@ -180,30 +284,28 @@ void WKCACFLayerRenderer::setRootChildLayer(WebCore::PlatformLayer* layer)
     m_rootChildLayer = layer;
     if (layer) {
         m_scrollLayer->addSublayer(layer);
-
-        // Set the frame
-        layer->setAnchorPoint(CGPointMake(0, 1));
-        setScrollFrame(m_scrollFrame);
+        // Adjust the scroll frame accordingly
+        updateScrollFrame();
     }
 }
    
 void WKCACFLayerRenderer::setNeedsDisplay()
 {
     ASSERT(m_rootLayer);
-    m_rootLayer->setNeedsDisplay();
+    m_rootLayer->setNeedsDisplay(0);
     renderSoon();
 }
 
-void WKCACFLayerRenderer::createRenderer()
+bool WKCACFLayerRenderer::createRenderer()
 {
     if (m_triedToCreateD3DRenderer)
-        return;
+        return m_d3dDevice;
 
     m_triedToCreateD3DRenderer = true;
     D3DPRESENT_PARAMETERS parameters = initialPresentationParameters();
 
     if (!d3d() || !::IsWindow(m_hostWindow))
-        return;
+        return false;
 
     // D3D doesn't like to make back buffers for 0 size windows. We skirt this problem if we make the
     // passed backbuffer width and height non-zero. The window will necessarily get set to a non-zero
@@ -216,8 +318,23 @@ void WKCACFLayerRenderer::createRenderer()
         parameters.BackBufferHeight = 1;
     }
 
-    if (FAILED(d3d()->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, m_hostWindow, D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE, &parameters, &m_d3dDevice)))
-        return;
+    COMPtr<IDirect3DDevice9> device;
+    if (FAILED(d3d()->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, m_hostWindow, D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_FPU_PRESERVE, &parameters, &device)))
+        return false;
+
+    // Now that we've created the IDirect3DDevice9 based on the capabilities we
+    // got from the IDirect3D9 global object, we requery the device for its
+    // actual capabilities. The capabilities returned by the device can
+    // sometimes be more complete, for example when using software vertex
+    // processing.
+    D3DCAPS9 deviceCaps;
+    if (FAILED(device->GetDeviceCaps(&deviceCaps)))
+        return false;
+
+    if (!hardwareCapabilitiesIndicateCoreAnimationSupport(deviceCaps))
+        return false;
+
+    m_d3dDevice = device;
 
     D3DXMATRIXA16 projection;
     D3DXMatrixOrthoOffCenterRH(&projection, rect.left, rect.right, rect.top, rect.bottom, -1.0f, 1.0f);
@@ -228,17 +345,32 @@ void WKCACFLayerRenderer::createRenderer()
     windowsForContexts().set(m_context.get(), this);
 
     m_renderContext = static_cast<CARenderContext*>(CACFContextGetRenderContext(m_context.get()));
-    m_renderer = CARenderOGLNew(wkqcCARenderOGLCallbacks(wkqckCARenderDX9Callbacks), m_d3dDevice.get(), 0);
+    m_renderer = CARenderOGLNew(&kCARenderDX9Callbacks, m_d3dDevice.get(), 0);
 
-    // Create the root hierarchy
-    m_rootLayer = WKCACFLayer::create(WKCACFLayer::Layer);
+    // Create the root hierarchy.
+    // Under the root layer, we have a clipping layer to clip the content,
+    // that contains a scroll layer that we use for scrolling the content.
+    // The root layer is the size of the client area of the window.
+    // The clipping layer is the size of the WebView client area (window less the scrollbars).
+    // The scroll layer is the size of the root child layer.
+    // Resizing the window will change the bounds of the rootLayer and the clip layer and will not
+    // cause any repositioning.
+    // Scrolling will affect only the position of the scroll layer without affecting the bounds.
+
+    m_rootLayer = WKCACFRootLayer::create(this);
     m_rootLayer->setName("WKCACFLayerRenderer rootLayer");
+
+    m_clipLayer = WKCACFLayer::create(WKCACFLayer::Layer);
+    m_clipLayer->setName("WKCACFLayerRenderer clipLayer");
+    
     m_scrollLayer = WKCACFLayer::create(WKCACFLayer::Layer);
     m_scrollLayer->setName("WKCACFLayerRenderer scrollLayer");
 
-    m_rootLayer->addSublayer(m_scrollLayer);
-    m_scrollLayer->setMasksToBounds(true);
+    m_rootLayer->addSublayer(m_clipLayer);
+    m_clipLayer->addSublayer(m_scrollLayer);
+    m_clipLayer->setMasksToBounds(true);
     m_scrollLayer->setAnchorPoint(CGPointMake(0, 1));
+    m_clipLayer->setAnchorPoint(CGPointMake(0, 1));
 
 #ifndef NDEBUG
     CGColorRef debugColor = createCGColor(Color(255, 0, 0, 204));
@@ -251,6 +383,8 @@ void WKCACFLayerRenderer::createRenderer()
 
     if (m_context)
         m_rootLayer->becomeRootLayerForContext(m_context.get());
+
+    return true;
 }
 
 void WKCACFLayerRenderer::destroyRenderer()
@@ -269,6 +403,7 @@ void WKCACFLayerRenderer::destroyRenderer()
 
     s_d3d = 0;
     m_rootLayer = 0;
+    m_clipLayer = 0;
     m_scrollLayer = 0;
     m_rootChildLayer = 0;
 
@@ -285,7 +420,7 @@ void WKCACFLayerRenderer::resize()
     if (m_rootLayer) {
         m_rootLayer->setFrame(bounds());
         WKCACFContextFlusher::shared().flushAllContexts();
-        setScrollFrame(m_scrollFrame);
+        updateScrollFrame();
     }
 }
 
@@ -330,6 +465,15 @@ void WKCACFLayerRenderer::paint()
 {
     if (!m_d3dDevice)
         return;
+
+    if (m_backingStoreDirty) {
+        // If the backing store is still dirty when we are about to draw the
+        // composited content, we need to force the window to paint into the
+        // backing store. The paint will only paint the dirty region that
+        // if being tracked in WebView.
+        UpdateWindow(m_hostWindow);
+        return;
+    }
 
     Vector<CGRect> dirtyRects;
     getDirtyRects(m_hostWindow, dirtyRects);

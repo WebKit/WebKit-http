@@ -39,6 +39,7 @@
 #include "ImageObserver.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
+#include "SharedBuffer.h"
 #include "TransformationMatrix.h"
 #include <Application.h>
 #include <Bitmap.h>

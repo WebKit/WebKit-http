@@ -273,7 +273,7 @@ bool InlineTextBox::nodeAtPoint(const HitTestRequest&, HitTestResult& result, in
     return false;
 }
 
-static void paintTextWithShadows(GraphicsContext* context, const Font& font, const TextRun& textRun, int startOffset, int endOffset, int truncationPoint, const IntPoint& textOrigin, int x, int y, int w, int h, ShadowData* shadow, bool stroked)
+static void paintTextWithShadows(GraphicsContext* context, const Font& font, const TextRun& textRun, int startOffset, int endOffset, int truncationPoint, const IntPoint& textOrigin, int x, int y, int w, int h, const ShadowData* shadow, bool stroked)
 {
     Color fillColor = context->fillColor();
     ColorSpace fillColorSpace = context->fillColorSpace();
@@ -285,11 +285,11 @@ static void paintTextWithShadows(GraphicsContext* context, const Font& font, con
         IntSize extraOffset;
 
         if (shadow) {
-            IntSize shadowOffset(shadow->x, shadow->y);
-            int shadowBlur = shadow->blur;
-            const Color& shadowColor = shadow->color;
+            IntSize shadowOffset(shadow->x(), shadow->y());
+            int shadowBlur = shadow->blur();
+            const Color& shadowColor = shadow->color();
 
-            if (shadow->next || stroked || !opaque) {
+            if (shadow->next() || stroked || !opaque) {
                 IntRect shadowRect(x, y, w, h);
                 shadowRect.inflate(shadowBlur);
                 shadowRect.move(shadowOffset);
@@ -315,12 +315,12 @@ static void paintTextWithShadows(GraphicsContext* context, const Font& font, con
         if (!shadow)
             break;
 
-        if (shadow->next || stroked || !opaque)
+        if (shadow->next() || stroked || !opaque)
             context->restore();
         else
             context->clearShadow();
 
-        shadow = shadow->next;
+        shadow = shadow->next();
     } while (shadow || stroked || !opaque);
 }
 
@@ -405,24 +405,20 @@ void InlineTextBox::paint(RenderObject::PaintInfo& paintInfo, int tx, int ty)
     Color textFillColor;
     Color textStrokeColor;
     float textStrokeWidth = styleToUse->textStrokeWidth();
-    ShadowData* textShadow = paintInfo.forceBlackText ? 0 : styleToUse->textShadow();
+    const ShadowData* textShadow = paintInfo.forceBlackText ? 0 : styleToUse->textShadow();
 
     if (paintInfo.forceBlackText) {
         textFillColor = Color::black;
         textStrokeColor = Color::black;
     } else {
-        textFillColor = styleToUse->textFillColor();
-        if (!textFillColor.isValid())
-            textFillColor = styleToUse->color();
-
+        textFillColor = styleToUse->visitedDependentColor(CSSPropertyWebkitTextFillColor);
+        
         // Make the text fill color legible against a white background
         if (styleToUse->forceBackgroundsToWhite())
             textFillColor = correctedTextColor(textFillColor, Color::white);
 
-        textStrokeColor = styleToUse->textStrokeColor();
-        if (!textStrokeColor.isValid())
-            textStrokeColor = styleToUse->color();
-
+        textStrokeColor = styleToUse->visitedDependentColor(CSSPropertyWebkitTextStrokeColor);
+        
         // Make the text stroke color legible against a white background
         if (styleToUse->forceBackgroundsToWhite())
             textStrokeColor = correctedTextColor(textStrokeColor, Color::white);
@@ -434,7 +430,7 @@ void InlineTextBox::paint(RenderObject::PaintInfo& paintInfo, int tx, int ty)
     Color selectionFillColor = textFillColor;
     Color selectionStrokeColor = textStrokeColor;
     float selectionStrokeWidth = textStrokeWidth;
-    ShadowData* selectionShadow = textShadow;
+    const ShadowData* selectionShadow = textShadow;
     if (haveSelection) {
         // Check foreground color first.
         Color foreground = paintInfo.forceBlackText ? Color::black : renderer()->selectionForegroundColor();
@@ -445,7 +441,7 @@ void InlineTextBox::paint(RenderObject::PaintInfo& paintInfo, int tx, int ty)
         }
 
         if (RenderStyle* pseudoStyle = renderer()->getCachedPseudoStyle(SELECTION)) {
-            ShadowData* shadow = paintInfo.forceBlackText ? 0 : pseudoStyle->textShadow();
+            const ShadowData* shadow = paintInfo.forceBlackText ? 0 : pseudoStyle->textShadow();
             if (shadow != selectionShadow) {
                 if (!paintSelectedTextOnly)
                     paintSelectedTextSeparately = true;
@@ -517,7 +513,7 @@ void InlineTextBox::paint(RenderObject::PaintInfo& paintInfo, int tx, int ty)
 
     // Paint decorations
     if (d != TDNONE && paintInfo.phase != PaintPhaseSelection && styleToUse->htmlHacks()) {
-        context->setStrokeColor(styleToUse->color(), styleToUse->colorSpace());
+        context->setStrokeColor(styleToUse->visitedDependentColor(CSSPropertyColor), styleToUse->colorSpace());
         paintDecoration(context, tx, ty, d, textShadow);
     }
 
@@ -577,7 +573,7 @@ void InlineTextBox::paintSelection(GraphicsContext* context, int tx, int ty, Ren
     if (sPos >= ePos)
         return;
 
-    Color textColor = style->color();
+    Color textColor = style->visitedDependentColor(CSSPropertyColor);
     Color c = renderer()->selectionBackgroundColor();
     if (!c.isValid() || c.alpha() == 0)
         return;
@@ -644,7 +640,7 @@ void InlineTextBox::paintCustomHighlight(int tx, int ty, const AtomicString& typ
 
 #endif
 
-void InlineTextBox::paintDecoration(GraphicsContext* context, int tx, int ty, int deco, ShadowData* shadow)
+void InlineTextBox::paintDecoration(GraphicsContext* context, int tx, int ty, int deco, const ShadowData* shadow)
 {
     tx += m_x;
     ty += m_y;
@@ -673,15 +669,15 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, int tx, int ty, in
 
     bool setClip = false;
     int extraOffset = 0;
-    if (!linesAreOpaque && shadow && shadow->next) {
+    if (!linesAreOpaque && shadow && shadow->next()) {
         context->save();
         IntRect clipRect(tx, ty, width, baseline + 2);
-        for (ShadowData* s = shadow; s; s = s->next) {
+        for (const ShadowData* s = shadow; s; s = s->next()) {
             IntRect shadowRect(tx, ty, width, baseline + 2);
-            shadowRect.inflate(s->blur);
-            shadowRect.move(s->x, s->y);
+            shadowRect.inflate(s->blur());
+            shadowRect.move(s->x(), s->y());
             clipRect.unite(shadowRect);
-            extraOffset = max(extraOffset, max(0, s->y) + s->blur);
+            extraOffset = max(extraOffset, max(0, s->y()) + s->blur());
         }
         context->save();
         context->clip(clipRect);
@@ -695,14 +691,14 @@ void InlineTextBox::paintDecoration(GraphicsContext* context, int tx, int ty, in
     
     do {
         if (shadow) {
-            if (!shadow->next) {
+            if (!shadow->next()) {
                 // The last set of lines paints normally inside the clip.
                 ty -= extraOffset;
                 extraOffset = 0;
             }
-            context->setShadow(IntSize(shadow->x, shadow->y - extraOffset), shadow->blur, shadow->color, colorSpace);
+            context->setShadow(IntSize(shadow->x(), shadow->y() - extraOffset), shadow->blur(), shadow->color(), colorSpace);
             setShadow = true;
-            shadow = shadow->next;
+            shadow = shadow->next();
         }
 
         if (deco & UNDERLINE) {
@@ -1029,30 +1025,48 @@ bool InlineTextBox::containsCaretOffset(int offset) const
     return true;
 }
 
-typedef HashMap<InlineTextBox*, Vector<const SimpleFontData*> > FallbackFontsMap;
-static FallbackFontsMap* gFallbackFontsMap;
-
 void InlineTextBox::setFallbackFonts(const HashSet<const SimpleFontData*>& fallbackFonts)
 {
-    if (!gFallbackFontsMap)
-        gFallbackFontsMap = new FallbackFontsMap;
+    if (!s_glyphOverflowAndFallbackFontsMap)
+        s_glyphOverflowAndFallbackFontsMap = new GlyphOverflowAndFallbackFontsMap;
 
-    FallbackFontsMap::iterator it = gFallbackFontsMap->set(this, Vector<const SimpleFontData*>()).first;
-    ASSERT(it->second.isEmpty());
-    copyToVector(fallbackFonts, it->second);
+    GlyphOverflowAndFallbackFontsMap::iterator it = s_glyphOverflowAndFallbackFontsMap->add(this, make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).first;
+    ASSERT(it->second.first.isEmpty());
+    copyToVector(fallbackFonts, it->second.first);
 }
 
-void InlineTextBox::takeFallbackFonts(Vector<const SimpleFontData*>& fallbackFonts)
+Vector<const SimpleFontData*>* InlineTextBox::fallbackFonts() const
 {
-    if (!gFallbackFontsMap)
-        return;
+    if (!s_glyphOverflowAndFallbackFontsMap)
+        return 0;
 
-    FallbackFontsMap::iterator it = gFallbackFontsMap->find(this);
-    if (it == gFallbackFontsMap->end())
-        return;
+    GlyphOverflowAndFallbackFontsMap::iterator it = s_glyphOverflowAndFallbackFontsMap->find(this);
+    if (it == s_glyphOverflowAndFallbackFontsMap->end())
+        return 0;
 
-    fallbackFonts.swap(it->second);
-    gFallbackFontsMap->remove(it);
+    return &it->second.first;
+}
+
+InlineTextBox::GlyphOverflowAndFallbackFontsMap* InlineTextBox::s_glyphOverflowAndFallbackFontsMap = 0;
+
+void InlineTextBox::setGlyphOverflow(const GlyphOverflow& glyphOverflow)
+{
+    if (!s_glyphOverflowAndFallbackFontsMap)
+        s_glyphOverflowAndFallbackFontsMap = new GlyphOverflowAndFallbackFontsMap;
+
+    GlyphOverflowAndFallbackFontsMap::iterator it = s_glyphOverflowAndFallbackFontsMap->add(this, make_pair(Vector<const SimpleFontData*>(), GlyphOverflow())).first;
+    it->second.second = glyphOverflow;
+}
+
+GlyphOverflow* InlineTextBox::glyphOverflow() const
+{
+    if (!s_glyphOverflowAndFallbackFontsMap)
+        return 0;
+    GlyphOverflowAndFallbackFontsMap::iterator it = s_glyphOverflowAndFallbackFontsMap->find(this);
+    if (it == s_glyphOverflowAndFallbackFontsMap->end())
+        return 0;
+
+    return &it->second.second;
 }
 
 } // namespace WebCore

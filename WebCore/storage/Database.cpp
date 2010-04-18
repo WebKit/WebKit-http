@@ -33,8 +33,8 @@
 
 #if ENABLE(DATABASE)
 #include "ChangeVersionWrapper.h"
-#include "CString.h"
 #include "DatabaseAuthorizer.h"
+#include "DatabaseCallback.h"
 #include "DatabaseTask.h"
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
@@ -73,7 +73,7 @@ const String& Database::databaseInfoTableName()
 
 #if ENABLE(DATABASE)
 
-static bool isDatabaseAvailable = false;
+static bool isDatabaseAvailable = true;
 
 void Database::setIsAvailable(bool available)
 {
@@ -132,7 +132,31 @@ static const String& databaseVersionKey()
 
 static int guidForOriginAndName(const String& origin, const String& name);
 
-PassRefPtr<Database> Database::openDatabase(ScriptExecutionContext* context, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, ExceptionCode& e)
+class DatabaseCreationCallbackTask : public ScriptExecutionContext::Task {
+public:
+    static PassOwnPtr<DatabaseCreationCallbackTask> create(PassRefPtr<Database> database)
+    {
+        return new DatabaseCreationCallbackTask(database);
+    }
+
+    virtual void performTask(ScriptExecutionContext*)
+    {
+        m_database->performCreationCallback();
+    }
+
+private:
+    DatabaseCreationCallbackTask(PassRefPtr<Database> database)
+        : m_database(database)
+    {
+    }
+
+    RefPtr<Database> m_database;
+};
+
+PassRefPtr<Database> Database::openDatabase(ScriptExecutionContext* context, const String& name,
+                                            const String& expectedVersion, const String& displayName,
+                                            unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback,
+                                            ExceptionCode& e)
 {
     if (!DatabaseTracker::tracker().canEstablishDatabase(context, name, displayName, estimatedSize)) {
         // FIXME: There should be an exception raised here in addition to returning a null Database object.  The question has been raised with the WHATWG.
@@ -140,7 +164,7 @@ PassRefPtr<Database> Database::openDatabase(ScriptExecutionContext* context, con
         return 0;
     }
 
-    RefPtr<Database> database = adoptRef(new Database(context, name, expectedVersion, displayName, estimatedSize));
+    RefPtr<Database> database = adoptRef(new Database(context, name, expectedVersion, displayName, estimatedSize, creationCallback));
 
     if (!database->openAndVerifyVersion(e)) {
         LOG(StorageAPI, "Failed to open and verify version (expected %s) of database %s", expectedVersion.ascii().data(), database->databaseDebugName().ascii().data());
@@ -160,10 +184,20 @@ PassRefPtr<Database> Database::openDatabase(ScriptExecutionContext* context, con
     }
 #endif
 
+    // If it's a new database and a creation callback was provided, reset the expected
+    // version to "" and schedule the creation callback. Because of some subtle String
+    // implementation issues, we have to reset m_expectedVersion here instead of doing
+    // it inside performOpenAndVerify() which is run on the DB thread.
+    if (database->isNew() && database->m_creationCallback.get()) {
+        database->m_expectedVersion = "";
+        LOG(StorageAPI, "Scheduling DatabaseCreationCallbackTask for database %p\n", database.get());
+        database->m_scriptExecutionContext->postTask(DatabaseCreationCallbackTask::create(database));
+    }
+
     return database;
 }
 
-Database::Database(ScriptExecutionContext* context, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize)
+Database::Database(ScriptExecutionContext* context, const String& name, const String& expectedVersion, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback)
     : m_transactionInProgress(false)
     , m_isTransactionQueueEnabled(true)
     , m_scriptExecutionContext(context)
@@ -175,6 +209,8 @@ Database::Database(ScriptExecutionContext* context, const String& name, const St
     , m_deleted(false)
     , m_stopped(false)
     , m_opened(false)
+    , m_new(false)
+    , m_creationCallback(creationCallback)
 {
     ASSERT(m_scriptExecutionContext.get());
     m_mainThreadSecurityOrigin = m_scriptExecutionContext->securityOrigin();
@@ -348,10 +384,14 @@ void Database::markAsDeletedAndClose()
     m_scriptExecutionContext->databaseThread()->unscheduleDatabaseTasks(this);
 
     DatabaseTaskSynchronizer synchronizer;
-    OwnPtr<DatabaseCloseTask> task = DatabaseCloseTask::create(this, &synchronizer);
+    OwnPtr<DatabaseCloseTask> task = DatabaseCloseTask::create(this, DoNotRemoveDatabaseFromContext, &synchronizer);
 
     m_scriptExecutionContext->databaseThread()->scheduleImmediateTask(task.release());
     synchronizer.waitForTaskCompletion();
+
+    // DatabaseCloseTask tells Database::close not to do these two removals so that we can do them here synchronously.
+    m_scriptExecutionContext->removeOpenDatabase(this);
+    DatabaseTracker::tracker().removeOpenDatabase(this);
 }
 
 class ContextRemoveOpenDatabaseTask : public ScriptExecutionContext::Task {
@@ -378,7 +418,7 @@ private:
     RefPtr<Database> m_database;
 };
 
-void Database::close()
+void Database::close(ClosePolicy policy)
 {
     RefPtr<Database> protect = this;
 
@@ -407,7 +447,8 @@ void Database::close()
     }
 
     m_scriptExecutionContext->databaseThread()->unscheduleDatabaseTasks(this);
-    m_scriptExecutionContext->postTask(ContextRemoveOpenDatabaseTask::create(this));
+    if (policy == RemoveDatabaseFromContext)
+        m_scriptExecutionContext->postTask(ContextRemoveOpenDatabaseTask::create(this));
 }
 
 void Database::stop()
@@ -497,7 +538,7 @@ void Database::performPolicyChecks()
 
 bool Database::performOpenAndVerify(ExceptionCode& e)
 {
-    if (!m_sqliteDatabase.open(m_filename)) {
+    if (!m_sqliteDatabase.open(m_filename, true)) {
         LOG_ERROR("Unable to open database at path %s", m_filename.ascii().data());
         e = INVALID_STATE_ERR;
         return false;
@@ -520,6 +561,8 @@ bool Database::performOpenAndVerify(ExceptionCode& e)
             LOG(StorageAPI, "No cached version for guid %i", m_guid);
 
             if (!m_sqliteDatabase.tableExists(databaseInfoTableName())) {
+                m_new = true;
+
                 if (!m_sqliteDatabase.executeCommand("CREATE TABLE " + databaseInfoTableName() + " (key TEXT NOT NULL ON CONFLICT FAIL UNIQUE ON CONFLICT REPLACE,value TEXT NOT NULL ON CONFLICT FAIL);")) {
                     LOG_ERROR("Unable to create table %s in database %s", databaseInfoTableName().ascii().data(), databaseDebugName().ascii().data());
                     e = INVALID_STATE_ERR;
@@ -538,7 +581,7 @@ bool Database::performOpenAndVerify(ExceptionCode& e)
             }
             if (currentVersion.length()) {
                 LOG(StorageAPI, "Retrieved current version %s from database %s", currentVersion.ascii().data(), databaseDebugName().ascii().data());
-            } else {
+            } else if (!m_new || !m_creationCallback) {
                 LOG(StorageAPI, "Setting version %s in database %s that was just created", m_expectedVersion.ascii().data(), databaseDebugName().ascii().data());
                 if (!setVersionInDatabase(m_expectedVersion)) {
                     LOG_ERROR("Failed to set version %s in database %s", m_expectedVersion.ascii().data(), databaseDebugName().ascii().data());
@@ -561,7 +604,7 @@ bool Database::performOpenAndVerify(ExceptionCode& e)
 
     // If the expected version isn't the empty string, ensure that the current database version we have matches that version. Otherwise, set an exception.
     // If the expected version is the empty string, then we always return with whatever version of the database we have.
-    if (m_expectedVersion.length() && m_expectedVersion != currentVersion) {
+    if ((!m_new || !m_creationCallback) && m_expectedVersion.length() && m_expectedVersion != currentVersion) {
         LOG(StorageAPI, "page expects version %s from database %s, which actually has version name %s - openDatabase() call will fail", m_expectedVersion.ascii().data(),
             databaseDebugName().ascii().data(), currentVersion.ascii().data());
         e = INVALID_STATE_ERR;
@@ -683,6 +726,11 @@ Vector<String> Database::performGetTableNames()
     }
 
     return tableNames;
+}
+
+void Database::performCreationCallback()
+{
+    m_creationCallback->handleEvent(m_scriptExecutionContext.get(), this);
 }
 
 SQLTransactionClient* Database::transactionClient() const

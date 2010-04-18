@@ -70,7 +70,7 @@ private:
         m_image = 0;
     }
 
-    virtual void repaint(const IntRect& r, bool, bool, bool)
+    virtual void invalidateContentsAndWindow(const IntRect& r, bool)
     {
         if (m_image && m_image->imageObserver())
             m_image->imageObserver()->changedInRect(m_image, r);
@@ -255,6 +255,7 @@ bool SVGImage::dataChanged(bool allDataReceived)
         frame->init();
         ResourceRequest fakeRequest(KURL(ParsedURLString, ""));
         FrameLoader* loader = frame->loader();
+        loader->setForcedSandboxFlags(SandboxAll);
         loader->load(fakeRequest, false); // Make sure the DocumentLoader is created
         loader->policyChecker()->cancelCheck(); // cancel any policy checks
         loader->commitProvisionalLoad(0);

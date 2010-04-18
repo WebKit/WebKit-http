@@ -31,7 +31,9 @@
 
 #include "GraphicsContext.h"
 #include "ImageObserver.h"
+#include "SharedBuffer.h"
 #include <wtf/MathExtras.h>
+#include <wtf/RetainPtr.h>
 
 #if !PLATFORM(MAC)
 #include "ImageSourceCG.h"
@@ -52,6 +54,11 @@ PDFDocumentImage::PDFDocumentImage()
 PDFDocumentImage::~PDFDocumentImage()
 {
     CGPDFDocumentRelease(m_document);
+}
+
+String PDFDocumentImage::filenameExtension() const
+{
+    return "pdf";
 }
 
 IntSize PDFDocumentImage::size() const

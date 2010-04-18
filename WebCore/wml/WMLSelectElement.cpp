@@ -22,7 +22,6 @@
 
 #if ENABLE(WML)
 #include "WMLSelectElement.h"
-#include "CString.h"
 #include "HTMLNames.h"
 #include "MappedAttribute.h"
 #include "OptionElement.h"
@@ -32,6 +31,7 @@
 #include "WMLNames.h"
 #include "WMLVariables.h"
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -543,6 +543,11 @@ String WMLSelectElement::iname() const
 String WMLSelectElement::ivalue() const
 {
     return parseValueSubstitutingVariableReferences(getAttribute(ivalueAttr));
+}
+
+void WMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow)
+{
+    /* Dummy implementation as listBoxSelectItem is pure virtual in SelectElement class */
 }
 
 }

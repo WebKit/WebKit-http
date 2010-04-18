@@ -31,10 +31,6 @@
 #include "SchedulePair.h"
 #endif
 
-#if PLATFORM(WIN) || (PLATFORM(WX) && OS(WINDOWS)) || (PLATFORM(QT) && defined(Q_WS_WIN))
-typedef struct HINSTANCE__* HINSTANCE;
-#endif
-
 namespace JSC {
     class Debugger;
 }
@@ -153,11 +149,6 @@ namespace WebCore {
 #endif
         Settings* settings() const { return m_settings.get(); }
         ProgressTracker* progress() const { return m_progress.get(); }
-
-#if ENABLE(INSPECTOR)
-        void setParentInspectorController(InspectorController* controller) { m_parentInspectorController = controller; }
-        InspectorController* parentInspectorController() const { return m_parentInspectorController; }
-#endif
         
         void setTabKeyCyclesThroughElements(bool b) { m_tabKeyCyclesThroughElements = b; }
         bool tabKeyCyclesThroughElements() const { return m_tabKeyCyclesThroughElements; }
@@ -197,6 +188,8 @@ namespace WebCore {
         void userStyleSheetLocationChanged();
         const String& userStyleSheet() const;
 
+        void privateBrowsingStateChanged();
+
         void didStartPlugin(HaltablePlugin*);
         void didStopPlugin(HaltablePlugin*);
         void pluginAllowedRunTimeChanged();
@@ -204,12 +197,6 @@ namespace WebCore {
         static void setDebuggerForAllPages(JSC::Debugger*);
         void setDebugger(JSC::Debugger*);
         JSC::Debugger* debugger() const { return m_debugger; }
-
-#if PLATFORM(WIN) || (PLATFORM(WX) && OS(WINDOWS)) || (PLATFORM(QT) && defined(Q_WS_WIN))
-        // The global DLL or application instance used for all windows.
-        static void setInstanceHandle(HINSTANCE instanceHandle) { s_instanceHandle = instanceHandle; }
-        static HINSTANCE instanceHandle() { return s_instanceHandle; }
-#endif
 
         static void removeAllVisitedLinks();
 
@@ -294,10 +281,6 @@ namespace WebCore {
 
         bool m_javaScriptURLsAreAllowed;
 
-#if ENABLE(INSPECTOR)
-        InspectorController* m_parentInspectorController;
-#endif
-
         String m_userStyleSheetPath;
         mutable String m_userStyleSheet;
         mutable bool m_didLoadUserStyleSheet;
@@ -318,10 +301,6 @@ namespace WebCore {
 
 #if ENABLE(DOM_STORAGE)
         RefPtr<StorageNamespace> m_sessionStorage;
-#endif
-
-#if PLATFORM(WIN) || (PLATFORM(WX) && defined(__WXMSW__)) || (PLATFORM(QT) && defined(Q_WS_WIN))
-        static HINSTANCE s_instanceHandle;
 #endif
 
 #if ENABLE(WML)

@@ -65,6 +65,7 @@
 #if OS(LINUX)
 #include "WebSandboxSupport.h"
 #include "WebFontInfo.h"
+#include "WebFontRenderStyle.h"
 #endif
 
 #if WEBKIT_USING_SKIA
@@ -74,12 +75,14 @@
 #include "BitmapImage.h"
 #include "Cookie.h"
 #include "FrameView.h"
-#include "GeolocationServiceBridgeChromium.h"
 #include "GraphicsContext.h"
+#include "IndexedDatabaseProxy.h"
 #include "KURL.h"
 #include "NotImplemented.h"
 #include "PlatformContextSkia.h"
 #include "PluginData.h"
+#include "SharedBuffer.h"
+#include "WebGeolocationServiceBridgeImpl.h"
 #include "Worker.h"
 #include "WorkerContextProxy.h"
 #include <wtf/Assertions.h>
@@ -91,6 +94,9 @@ namespace WebCore {
 
 static ChromeClientImpl* toChromeClientImpl(Widget* widget)
 {
+    if (!widget)
+        return 0;
+
     FrameView* view;
     if (widget->isFrameView())
         view = static_cast<FrameView*>(widget);
@@ -192,8 +198,6 @@ void ChromiumBridge::setCookies(const Document* document, const KURL& url,
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         cookieJar->setCookie(url, document->firstPartyForCookies(), value);
-    else
-        webKitClient()->setCookies(url, document->firstPartyForCookies(), value); // DEPRECATED
 }
 
 String ChromiumBridge::cookies(const Document* document, const KURL& url)
@@ -202,8 +206,6 @@ String ChromiumBridge::cookies(const Document* document, const KURL& url)
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         result = cookieJar->cookies(url, document->firstPartyForCookies());
-    else
-        result = webKitClient()->cookies(url, document->firstPartyForCookies()); // DEPRECATED
     return result;
 }
 
@@ -214,10 +216,6 @@ String ChromiumBridge::cookieRequestHeaderFieldValue(const Document* document,
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         result = cookieJar->cookieRequestHeaderFieldValue(url, document->firstPartyForCookies());
-    else {
-        // FIXME: This does not return http-only cookies
-        result = webKitClient()->cookies(url, document->firstPartyForCookies()); // DEPRECATED
-    }
     return result;
 }
 
@@ -229,8 +227,6 @@ bool ChromiumBridge::rawCookies(const Document* document, const KURL& url, Vecto
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         cookieJar->rawCookies(url, document->firstPartyForCookies(), webCookies);
-    else
-        webKitClient()->rawCookies(url, document->firstPartyForCookies(), &webCookies); // DEPRECATED
 
     for (unsigned i = 0; i < webCookies.size(); ++i) {
         const WebCookie& webCookie = webCookies[i];
@@ -252,18 +248,14 @@ void ChromiumBridge::deleteCookie(const Document* document, const KURL& url, con
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         cookieJar->deleteCookie(url, cookieName);
-    else
-        webKitClient()->deleteCookie(url, cookieName); // DEPRECATED
 }
 
 bool ChromiumBridge::cookiesEnabled(const Document* document)
 {
-    bool result;
+    bool result = false;
     WebCookieJar* cookieJar = getCookieJar(document);
     if (cookieJar)
         result = cookieJar->cookiesEnabled(document->cookieURL(), document->firstPartyForCookies());
-    else
-        result = webKitClient()->cookiesEnabled(document->cookieURL(), document->firstPartyForCookies()); // DEPRECATED
     return result;
 }
 
@@ -298,7 +290,11 @@ bool ChromiumBridge::getFileSize(const String& path, long long& result)
 
 bool ChromiumBridge::getFileModificationTime(const String& path, time_t& result)
 {
-    return webKitClient()->getFileModificationTime(path, result);
+    double modificationTime;
+    if (!webKitClient()->getFileModificationTime(path, modificationTime))
+        return false;
+    result = static_cast<time_t>(modificationTime);
+    return true;
 }
 
 String ChromiumBridge::directoryName(const String& path)
@@ -356,6 +352,18 @@ String ChromiumBridge::getFontFamilyForCharacters(const UChar* characters, size_
 
     return WebString();
 }
+
+void ChromiumBridge::getRenderStyleForStrike(const char* font, int sizeAndStyle, FontRenderStyle* result)
+{
+    WebFontRenderStyle style;
+
+    if (webKitClient()->sandboxSupport())
+        webKitClient()->sandboxSupport()->getRenderStyleForStrike(font, sizeAndStyle, &style);
+    else
+        WebFontInfo::renderStyleForStrike(font, sizeAndStyle, &style);
+
+    style.toFontRenderStyle(result);
+}
 #endif
 
 // Geolocation ----------------------------------------------------------------
@@ -388,6 +396,15 @@ long long ChromiumBridge::databaseGetFileSize(const String& vfsFileName)
     return webKitClient()->databaseGetFileSize(WebString(vfsFileName));
 }
 #endif
+
+// Indexed Database -----------------------------------------------------------
+
+PassRefPtr<IndexedDatabase> ChromiumBridge::indexedDatabase()
+{
+    // There's no reason why we need to allocate a new proxy each time, but
+    // there's also no strong reason not to.
+    return IndexedDatabaseProxy::create();
+}
 
 // Keygen ---------------------------------------------------------------------
 

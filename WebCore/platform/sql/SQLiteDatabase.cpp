@@ -48,6 +48,7 @@ SQLiteDatabase::SQLiteDatabase()
     : m_db(0)
     , m_pageSize(-1)
     , m_transactionInProgress(false)
+    , m_sharable(false)
     , m_openingThread(0)
 {
 }
@@ -57,11 +58,11 @@ SQLiteDatabase::~SQLiteDatabase()
     close();
 }
 
-bool SQLiteDatabase::open(const String& filename)
+bool SQLiteDatabase::open(const String& filename, bool forWebSQLDatabase)
 {
     close();
-    
-    m_lastError = SQLiteFileSystem::openDatabase(filename, &m_db);
+
+    m_lastError = SQLiteFileSystem::openDatabase(filename, &m_db, forWebSQLDatabase);
     if (m_lastError != SQLITE_OK) {
         LOG_ERROR("SQLite database failed to load from %s\nCause - %s", filename.ascii().data(),
             sqlite3_errmsg(m_db));
@@ -72,7 +73,7 @@ bool SQLiteDatabase::open(const String& filename)
 
     if (isOpen())
         m_openingThread = currentThread();
-    
+
     if (!SQLiteStatement(*this, "PRAGMA temp_store = MEMORY;").executeCommand())
         LOG_ERROR("SQLite database could not set temp_store to memory");
 
@@ -251,6 +252,18 @@ const char* SQLiteDatabase::lastErrorMsg()
 { 
     return sqlite3_errmsg(m_db);
 }
+
+#ifndef NDEBUG
+void SQLiteDatabase::disableThreadingChecks()
+{
+    // This doesn't guarantee that SQList was compiled with -DTHREADSAFE, or that you haven't turned off the mutexes.
+#if SQLITE_VERSION_NUMBER >= 3003001
+    m_sharable = true;
+#else
+    ASSERT(0); // Your SQLite doesn't support sharing handles across threads.
+#endif
+}
+#endif
 
 int SQLiteDatabase::authorizerFunction(void* userData, int actionCode, const char* parameter1, const char* parameter2, const char* /*databaseName*/, const char* /*trigger_or_view*/)
 {

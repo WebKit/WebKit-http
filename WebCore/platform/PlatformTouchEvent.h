@@ -56,7 +56,7 @@ public:
 #if PLATFORM(QT)
     PlatformTouchEvent(QTouchEvent*);
 #elif PLATFORM(ANDROID)
-    PlatformTouchEvent(const IntPoint& windowPos, TouchEventType, PlatformTouchPoint::State);
+    PlatformTouchEvent(const IntPoint& windowPos, TouchEventType, PlatformTouchPoint::State, int metaState);
 #endif
 
     TouchEventType type() const { return m_type; }
@@ -67,7 +67,7 @@ public:
     bool shiftKey() const { return m_shiftKey; }
     bool metaKey() const { return m_metaKey; }
 
-private:
+protected:
     TouchEventType m_type;
     Vector<PlatformTouchPoint> m_touchPoints;
     bool m_ctrlKey;

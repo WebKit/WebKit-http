@@ -27,6 +27,7 @@
 #include "Settings.h"
 
 #include "BackForwardList.h"
+#include "Database.h"
 #include "Frame.h"
 #include "FrameTree.h"
 #include "FrameView.h"
@@ -64,13 +65,14 @@ Settings::Settings(Page* page)
     , m_maximumDecodedImageSize(numeric_limits<size_t>::max())
     , m_localStorageQuota(5 * 1024 * 1024)  // Suggested by the HTML5 spec.
     , m_pluginAllowedRunTime(numeric_limits<unsigned>::max())
+    , m_zoomMode(ZoomPage)
+    , m_isSpatialNavigationEnabled(false)
     , m_isJavaEnabled(false)
     , m_loadsImagesAutomatically(false)
     , m_privateBrowsingEnabled(false)
     , m_caretBrowsingEnabled(false)
     , m_areImagesEnabled(true)
     , m_arePluginsEnabled(false)
-    , m_databasesEnabled(false)
     , m_localStorageEnabled(false)
     , m_isJavaScriptEnabled(false)
     , m_isWebSecurityEnabled(true)
@@ -96,13 +98,12 @@ Settings::Settings(Page* page)
     , m_authorAndUserStylesEnabled(true)
     , m_needsSiteSpecificQuirks(false)
     , m_fontRenderingMode(0)
-    , m_frameSetFlatteningEnabled(false)
+    , m_frameFlatteningEnabled(false)
     , m_webArchiveDebugModeEnabled(false)
     , m_localFileContentSniffingEnabled(false)
     , m_inApplicationChromeMode(false)
     , m_offlineWebApplicationCacheEnabled(false)
     , m_shouldPaintCustomScrollbars(false)
-    , m_zoomsTextOnly(false)
     , m_enforceCSSMIMETypeInStrictMode(true)
     , m_usesEncodingDetector(false)
     , m_allowScriptsToCloseWindows(false)
@@ -123,8 +124,8 @@ Settings::Settings(Page* page)
     , m_showRepaintCounter(false)
     , m_experimentalNotificationsEnabled(false)
     , m_webGLEnabled(false)
-    , m_geolocationEnabled(true)
     , m_loadDeferringEnabled(true)
+    , m_tiledBackingStoreEnabled(false)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString 
     // hash before trying to use it.
@@ -246,6 +247,11 @@ void Settings::setAllowFileAccessFromFileURLs(bool allowFileAccessFromFileURLs)
     m_allowFileAccessFromFileURLs = allowFileAccessFromFileURLs;
 }
 
+void Settings::setSpatialNavigationEnabled(bool isSpatialNavigationEnabled)
+{
+    m_isSpatialNavigationEnabled = isSpatialNavigationEnabled;
+}
+
 void Settings::setJavaEnabled(bool isJavaEnabled)
 {
     m_isJavaEnabled = isJavaEnabled;
@@ -261,11 +267,6 @@ void Settings::setPluginsEnabled(bool arePluginsEnabled)
     m_arePluginsEnabled = arePluginsEnabled;
 }
 
-void Settings::setDatabasesEnabled(bool databasesEnabled)
-{
-    m_databasesEnabled = databasesEnabled;
-}
-
 void Settings::setLocalStorageEnabled(bool localStorageEnabled)
 {
     m_localStorageEnabled = localStorageEnabled;
@@ -278,7 +279,11 @@ void Settings::setLocalStorageQuota(unsigned localStorageQuota)
 
 void Settings::setPrivateBrowsingEnabled(bool privateBrowsingEnabled)
 {
+    if (m_privateBrowsingEnabled == privateBrowsingEnabled)
+        return;
+
     m_privateBrowsingEnabled = privateBrowsingEnabled;
+    m_page->privateBrowsingStateChanged();
 }
 
 void Settings::setJavaScriptCanOpenWindowsAutomatically(bool javaScriptCanOpenWindowsAutomatically)
@@ -433,9 +438,9 @@ void Settings::setNeedsSiteSpecificQuirks(bool needsQuirks)
     m_needsSiteSpecificQuirks = needsQuirks;
 }
 
-void Settings::setFrameSetFlatteningEnabled(bool frameSetFlatteningEnabled)
+void Settings::setFrameFlatteningEnabled(bool frameFlatteningEnabled)
 {
-    m_frameSetFlatteningEnabled = frameSetFlatteningEnabled;
+    m_frameFlatteningEnabled = frameFlatteningEnabled;
 }
 
 void Settings::setWebArchiveDebugModeEnabled(bool enabled)
@@ -468,12 +473,12 @@ void Settings::setShouldPaintCustomScrollbars(bool shouldPaintCustomScrollbars)
     m_shouldPaintCustomScrollbars = shouldPaintCustomScrollbars;
 }
 
-void Settings::setZoomsTextOnly(bool zoomsTextOnly)
+void Settings::setZoomMode(ZoomMode mode)
 {
-    if (zoomsTextOnly == m_zoomsTextOnly)
+    if (mode == m_zoomMode)
         return;
     
-    m_zoomsTextOnly = zoomsTextOnly;
+    m_zoomMode = mode;
     setNeedsReapplyStylesInAllFrames(m_page);
 }
 
@@ -564,14 +569,18 @@ void Settings::setWebGLEnabled(bool enabled)
     m_webGLEnabled = enabled;
 }
 
-void Settings::setGeolocationEnabled(bool enabled)
-{
-    m_geolocationEnabled = enabled;
-}
-
 void Settings::setLoadDeferringEnabled(bool enabled)
 {
     m_loadDeferringEnabled = enabled;
+}
+
+void Settings::setTiledBackingStoreEnabled(bool enabled)
+{
+    m_tiledBackingStoreEnabled = enabled;
+#if ENABLE(TILED_BACKING_STORE)
+    if (m_page->mainFrame())
+        m_page->mainFrame()->setTiledBackingStoreEnabled(enabled);
+#endif
 }
 
 } // namespace WebCore

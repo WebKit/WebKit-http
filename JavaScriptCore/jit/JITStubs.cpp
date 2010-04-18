@@ -38,6 +38,7 @@
 #include "Collector.h"
 #include "Debugger.h"
 #include "ExceptionHelpers.h"
+#include "GetterSetter.h"
 #include "GlobalEvalFunction.h"
 #include "JIT.h"
 #include "JSActivation.h"
@@ -238,99 +239,20 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
 #error "JIT_STUB_ARGUMENT_VA_LIST not supported on ARMv7."
 #endif
 
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiTrampoline) "\n"
-HIDE_SYMBOL(ctiTrampoline) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiTrampoline) "\n"
-SYMBOL_STRING(ctiTrampoline) ":" "\n"
-    "sub sp, sp, #0x3c" "\n"
-    "str lr, [sp, #0x20]" "\n"
-    "str r4, [sp, #0x24]" "\n"
-    "str r5, [sp, #0x28]" "\n"
-    "str r6, [sp, #0x2c]" "\n"
-    "str r1, [sp, #0x30]" "\n"
-    "str r2, [sp, #0x34]" "\n"
-    "str r3, [sp, #0x38]" "\n"
-    "cpy r5, r2" "\n"
-    "mov r6, #512" "\n"
-    "blx r0" "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x3c" "\n"
-    "bx lr" "\n"
-);
-
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiVMThrowTrampoline) "\n"
-SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-    "cpy r0, sp" "\n"
-    "bl " SYMBOL_STRING_RELOCATION(cti_vm_throw) "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x3c" "\n"
-    "bx lr" "\n"
-);
-
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiOpThrowNotCaught) "\n"
-SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x3c" "\n"
-    "bx lr" "\n"
-);
+#define THUNK_RETURN_ADDRESS_OFFSET      0x3C
+#define PRESERVED_RETURN_ADDRESS_OFFSET  0x40
+#define PRESERVED_R4_OFFSET              0x44
+#define PRESERVED_R5_OFFSET              0x48
+#define PRESERVED_R6_OFFSET              0x4C
+#define REGISTER_FILE_OFFSET             0x50
+#define CALLFRAME_OFFSET                 0x54
+#define EXCEPTION_OFFSET                 0x58
+#define ENABLE_PROFILER_REFERENCE_OFFSET 0x64
 
 #elif COMPILER(GCC) && CPU(ARM_TRADITIONAL)
 
-asm volatile (
-".globl " SYMBOL_STRING(ctiTrampoline) "\n"
-SYMBOL_STRING(ctiTrampoline) ":" "\n"
-    "stmdb sp!, {r1-r3}" "\n"
-    "stmdb sp!, {r4-r8, lr}" "\n"
-    "sub sp, sp, #68" "\n"
-    "mov r4, r2" "\n"
-    "mov r5, #512" "\n"
-    // r0 contains the code
-    "mov lr, pc" "\n"
-    "mov pc, r0" "\n"
-    "add sp, sp, #68" "\n"
-    "ldmia sp!, {r4-r8, lr}" "\n"
-    "add sp, sp, #12" "\n"
-    "mov pc, lr" "\n"
-);
-
-asm volatile (
-".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-    "mov r0, sp" "\n"
-    "bl " SYMBOL_STRING(cti_vm_throw) "\n"
-
-// Both has the same return sequence
-".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
-SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
-    "add sp, sp, #68" "\n"
-    "ldmia sp!, {r4-r8, lr}" "\n"
-    "add sp, sp, #12" "\n"
-    "mov pc, lr" "\n"
-);
+#define THUNK_RETURN_ADDRESS_OFFSET 64
+#define PRESERVEDR4_OFFSET          68
 
 #elif COMPILER(MSVC) && CPU(X86)
 
@@ -543,102 +465,115 @@ SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
 #error "JIT_STUB_ARGUMENT_VA_LIST not supported on ARMv7."
 #endif
 
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiTrampoline) "\n"
-HIDE_SYMBOL(ctiTrampoline) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiTrampoline) "\n"
-SYMBOL_STRING(ctiTrampoline) ":" "\n"
-    "sub sp, sp, #0x40" "\n"
-    "str lr, [sp, #0x20]" "\n"
-    "str r4, [sp, #0x24]" "\n"
-    "str r5, [sp, #0x28]" "\n"
-    "str r6, [sp, #0x2c]" "\n"
-    "str r1, [sp, #0x30]" "\n"
-    "str r2, [sp, #0x34]" "\n"
-    "str r3, [sp, #0x38]" "\n"
-    "cpy r5, r2" "\n"
-    "mov r6, #512" "\n"
-    "blx r0" "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x40" "\n"
-    "bx lr" "\n"
-);
-
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiVMThrowTrampoline) "\n"
-SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-    "cpy r0, sp" "\n"
-    "bl " SYMBOL_STRING_RELOCATION(cti_vm_throw) "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x40" "\n"
-    "bx lr" "\n"
-);
-
-asm volatile (
-".text" "\n"
-".align 2" "\n"
-".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
-HIDE_SYMBOL(ctiOpThrowNotCaught) "\n"
-".thumb" "\n"
-".thumb_func " THUMB_FUNC_PARAM(ctiOpThrowNotCaught) "\n"
-SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
-    "ldr r6, [sp, #0x2c]" "\n"
-    "ldr r5, [sp, #0x28]" "\n"
-    "ldr r4, [sp, #0x24]" "\n"
-    "ldr lr, [sp, #0x20]" "\n"
-    "add sp, sp, #0x40" "\n"
-    "bx lr" "\n"
-);
+#define THUNK_RETURN_ADDRESS_OFFSET      0x1C
+#define PRESERVED_RETURN_ADDRESS_OFFSET  0x20
+#define PRESERVED_R4_OFFSET              0x24
+#define PRESERVED_R5_OFFSET              0x28
+#define PRESERVED_R6_OFFSET              0x2C
+#define REGISTER_FILE_OFFSET             0x30
+#define CALLFRAME_OFFSET                 0x34
+#define EXCEPTION_OFFSET                 0x38
+#define ENABLE_PROFILER_REFERENCE_OFFSET 0x40
 
 #elif COMPILER(GCC) && CPU(ARM_TRADITIONAL)
 
-asm volatile (
-".text\n"
+#define THUNK_RETURN_ADDRESS_OFFSET 32
+#define PRESERVEDR4_OFFSET          36
+
+#elif CPU(MIPS)
+
+#if USE(JIT_STUB_ARGUMENT_VA_LIST)
+#error "JIT_STUB_ARGUMENT_VA_LIST not supported on MIPS."
+#endif
+
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".set noreorder" "\n"
+".set nomacro" "\n"
+".set nomips16" "\n"
 ".globl " SYMBOL_STRING(ctiTrampoline) "\n"
-HIDE_SYMBOL(ctiTrampoline) "\n"
+".ent " SYMBOL_STRING(ctiTrampoline) "\n"
 SYMBOL_STRING(ctiTrampoline) ":" "\n"
-    "stmdb sp!, {r1-r3}" "\n"
-    "stmdb sp!, {r4-r8, lr}" "\n"
-    "sub sp, sp, #36" "\n"
-    "mov r4, r2" "\n"
-    "mov r5, #512" "\n"
-    "mov lr, pc" "\n"
-    "mov pc, r0" "\n"
-    "add sp, sp, #36" "\n"
-    "ldmia sp!, {r4-r8, lr}" "\n"
-    "add sp, sp, #12" "\n"
-    "mov pc, lr" "\n"
+    "addiu $29,$29,-72" "\n"
+    "sw    $31,44($29)" "\n"
+    "sw    $18,40($29)" "\n"
+    "sw    $17,36($29)" "\n"
+    "sw    $16,32($29)" "\n"
+#if WTF_MIPS_PIC
+    "sw    $28,28($29)" "\n"
+#endif
+    "move  $16,$6       # set callFrameRegister" "\n"
+    "li    $17,512      # set timeoutCheckRegister" "\n"
+    "move  $25,$4       # move executableAddress to t9" "\n"
+    "sw    $5,52($29)   # store registerFile to current stack" "\n"
+    "sw    $6,56($29)   # store callFrame to curent stack" "\n"
+    "sw    $7,60($29)   # store exception to current stack" "\n"
+    "lw    $8,88($29)   # load enableProfilerReference from previous stack" "\n"
+    "lw    $9,92($29)   # load globalData from previous stack" "\n"
+    "sw    $8,64($29)   # store enableProfilerReference to current stack" "\n"
+    "jalr  $25" "\n"
+    "sw    $9,68($29)   # store globalData to current stack" "\n"
+    "lw    $16,32($29)" "\n"
+    "lw    $17,36($29)" "\n"
+    "lw    $18,40($29)" "\n"
+    "lw    $31,44($29)" "\n"
+    "jr    $31" "\n"
+    "addiu $29,$29,72" "\n"
+".set reorder" "\n"
+".set macro" "\n"
+".end " SYMBOL_STRING(ctiTrampoline) "\n"
 );
 
-asm volatile (
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".set noreorder" "\n"
+".set nomacro" "\n"
+".set nomips16" "\n"
 ".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
-HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
+".ent " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
 SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
-    "mov r0, sp" "\n"
-    "bl " SYMBOL_STRING_RELOCATION(cti_vm_throw) "\n"
+#if WTF_MIPS_PIC
+    "lw    $28,28($29)" "\n"
+".set macro" "\n"
+    "la    $25," SYMBOL_STRING(cti_vm_throw) "\n"
+".set nomacro" "\n"
+    "bal " SYMBOL_STRING(cti_vm_throw) "\n"
+    "move  $4,$29" "\n"
+#else
+    "jal " SYMBOL_STRING(cti_vm_throw) "\n"
+    "move  $4,$29" "\n"
+#endif
+    "lw    $16,32($29)" "\n"
+    "lw    $17,36($29)" "\n"
+    "lw    $18,40($29)" "\n"
+    "lw    $31,44($29)" "\n"
+    "jr    $31" "\n"
+    "addiu $29,$29,72" "\n"
+".set reorder" "\n"
+".set macro" "\n"
+".end " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
+);
 
-// Both has the same return sequence
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".set noreorder" "\n"
+".set nomacro" "\n"
+".set nomips16" "\n"
 ".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
-HIDE_SYMBOL(ctiOpThrowNotCaught) "\n"
+".ent " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
 SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
-    "add sp, sp, #36" "\n"
-    "ldmia sp!, {r4-r8, lr}" "\n"
-    "add sp, sp, #12" "\n"
-    "mov pc, lr" "\n"
+    "lw    $16,32($29)" "\n"
+    "lw    $17,36($29)" "\n"
+    "lw    $18,40($29)" "\n"
+    "lw    $31,44($29)" "\n"
+    "jr    $31" "\n"
+    "addiu $29,$29,72" "\n"
+".set reorder" "\n"
+".set macro" "\n"
+".end " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
 );
 
 #elif COMPILER(RVCT) && CPU(ARM_TRADITIONAL)
@@ -749,6 +684,108 @@ extern "C" {
 
 #endif // USE(JSVALUE32_64)
 
+#if COMPILER(GCC) && CPU(ARM_THUMB2)
+
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".globl " SYMBOL_STRING(ctiTrampoline) "\n"
+HIDE_SYMBOL(ctiTrampoline) "\n"
+".thumb" "\n"
+".thumb_func " THUMB_FUNC_PARAM(ctiTrampoline) "\n"
+SYMBOL_STRING(ctiTrampoline) ":" "\n"
+    "sub sp, sp, #" STRINGIZE_VALUE_OF(ENABLE_PROFILER_REFERENCE_OFFSET) "\n"
+    "str lr, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "]" "\n"
+    "str r4, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R4_OFFSET) "]" "\n"
+    "str r5, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R5_OFFSET) "]" "\n"
+    "str r6, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R6_OFFSET) "]" "\n"
+    "str r1, [sp, #" STRINGIZE_VALUE_OF(REGISTER_FILE_OFFSET) "]" "\n"
+    "str r2, [sp, #" STRINGIZE_VALUE_OF(CALLFRAME_OFFSET) "]" "\n"
+    "str r3, [sp, #" STRINGIZE_VALUE_OF(EXCEPTION_OFFSET) "]" "\n"
+    "cpy r5, r2" "\n"
+    "mov r6, #512" "\n"
+    "blx r0" "\n"
+    "ldr r6, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R6_OFFSET) "]" "\n"
+    "ldr r5, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R5_OFFSET) "]" "\n"
+    "ldr r4, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R4_OFFSET) "]" "\n"
+    "ldr lr, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "]" "\n"
+    "add sp, sp, #" STRINGIZE_VALUE_OF(ENABLE_PROFILER_REFERENCE_OFFSET) "\n"
+    "bx lr" "\n"
+);
+
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
+HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
+".thumb" "\n"
+".thumb_func " THUMB_FUNC_PARAM(ctiVMThrowTrampoline) "\n"
+SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
+    "cpy r0, sp" "\n"
+    "bl " SYMBOL_STRING_RELOCATION(cti_vm_throw) "\n"
+    "ldr r6, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R6_OFFSET) "]" "\n"
+    "ldr r5, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R5_OFFSET) "]" "\n"
+    "ldr r4, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R4_OFFSET) "]" "\n"
+    "ldr lr, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "]" "\n"
+    "add sp, sp, #" STRINGIZE_VALUE_OF(ENABLE_PROFILER_REFERENCE_OFFSET) "\n"
+    "bx lr" "\n"
+);
+
+asm volatile(
+".text" "\n"
+".align 2" "\n"
+".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
+HIDE_SYMBOL(ctiOpThrowNotCaught) "\n"
+".thumb" "\n"
+".thumb_func " THUMB_FUNC_PARAM(ctiOpThrowNotCaught) "\n"
+SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
+    "ldr r6, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R6_OFFSET) "]" "\n"
+    "ldr r5, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R5_OFFSET) "]" "\n"
+    "ldr r4, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_R4_OFFSET) "]" "\n"
+    "ldr lr, [sp, #" STRINGIZE_VALUE_OF(PRESERVED_RETURN_ADDRESS_OFFSET) "]" "\n"
+    "add sp, sp, #" STRINGIZE_VALUE_OF(ENABLE_PROFILER_REFERENCE_OFFSET) "\n"
+    "bx lr" "\n"
+);
+
+#elif COMPILER(GCC) && CPU(ARM_TRADITIONAL)
+
+asm volatile(
+".globl " SYMBOL_STRING(ctiTrampoline) "\n"
+HIDE_SYMBOL(ctiTrampoline) "\n"
+SYMBOL_STRING(ctiTrampoline) ":" "\n"
+    "stmdb sp!, {r1-r3}" "\n"
+    "stmdb sp!, {r4-r8, lr}" "\n"
+    "sub sp, sp, #" STRINGIZE_VALUE_OF(PRESERVEDR4_OFFSET) "\n"
+    "mov r4, r2" "\n"
+    "mov r5, #512" "\n"
+    // r0 contains the code
+    "mov lr, pc" "\n"
+    "mov pc, r0" "\n"
+    "add sp, sp, #" STRINGIZE_VALUE_OF(PRESERVEDR4_OFFSET) "\n"
+    "ldmia sp!, {r4-r8, lr}" "\n"
+    "add sp, sp, #12" "\n"
+    "mov pc, lr" "\n"
+);
+
+asm volatile(
+".globl " SYMBOL_STRING(ctiVMThrowTrampoline) "\n"
+HIDE_SYMBOL(ctiVMThrowTrampoline) "\n"
+SYMBOL_STRING(ctiVMThrowTrampoline) ":" "\n"
+    "mov r0, sp" "\n"
+    "bl " SYMBOL_STRING(cti_vm_throw) "\n"
+
+// Both has the same return sequence
+".globl " SYMBOL_STRING(ctiOpThrowNotCaught) "\n"
+HIDE_SYMBOL(ctiOpThrowNotCaught) "\n"
+SYMBOL_STRING(ctiOpThrowNotCaught) ":" "\n"
+    "add sp, sp, #" STRINGIZE_VALUE_OF(PRESERVEDR4_OFFSET) "\n"
+    "ldmia sp!, {r4-r8, lr}" "\n"
+    "add sp, sp, #12" "\n"
+    "mov pc, lr" "\n"
+);
+
+#endif
+
 #if ENABLE(OPCODE_SAMPLING)
     #define CTI_SAMPLER stackFrame.globalData->interpreter->sampler()
 #else
@@ -763,18 +800,38 @@ JITThunks::JITThunks(JSGlobalData* globalData)
     // Unfortunate the arm compiler does not like the use of offsetof on JITStackFrame (since it contains non POD types),
     // and the OBJECT_OFFSETOF macro does not appear constantish enough for it to be happy with its use in COMPILE_ASSERT
     // macros.
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedReturnAddress) == 0x20);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR4) == 0x24);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR5) == 0x28);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR6) == 0x2c);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedReturnAddress) == PRESERVED_RETURN_ADDRESS_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR4) == PRESERVED_R4_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR5) == PRESERVED_R5_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR6) == PRESERVED_R6_OFFSET);
 
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, registerFile) == 0x30);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, callFrame) == 0x34);
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, exception) == 0x38);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, registerFile) == REGISTER_FILE_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, callFrame) == CALLFRAME_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, exception) == EXCEPTION_OFFSET);
     // The fifth argument is the first item already on the stack.
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, enabledProfilerReference) == 0x40);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, enabledProfilerReference) == ENABLE_PROFILER_REFERENCE_OFFSET);
 
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == 0x1C);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET);
+
+#elif CPU(ARM_TRADITIONAL)
+
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedR4) == PRESERVEDR4_OFFSET);
+
+
+#elif CPU(MIPS)
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedGP) == 28);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS0) == 32);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS1) == 36);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedS2) == 40);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, preservedReturnAddress) == 44);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == 48);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, registerFile) == 52);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, callFrame) == 56);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, exception) == 60);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, enabledProfilerReference) == 64);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, globalData) == 68);
+
 #endif
 }
 
@@ -874,8 +931,10 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
     if (slot.slotBase() == baseValue) {
         // set this up, so derefStructures can do it's job.
         stubInfo->initGetByIdSelf(structure);
-
-        JIT::patchGetByIdSelf(codeBlock, stubInfo, structure, slot.cachedOffset(), returnAddress);
+        if (slot.cachedPropertyType() != PropertySlot::Value)
+            ctiPatchCallByReturnAddress(codeBlock, returnAddress, FunctionPtr(cti_op_get_by_id_self_fail));
+        else
+            JIT::patchGetByIdSelf(codeBlock, stubInfo, structure, slot.cachedOffset(), returnAddress);
         return;
     }
 
@@ -901,7 +960,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
 
         ASSERT(!structure->isDictionary());
         ASSERT(!slotBaseObject->structure()->isDictionary());
-        JIT::compileGetByIdProto(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, structure, slotBaseObject->structure(), offset, returnAddress);
+        JIT::compileGetByIdProto(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, structure, slotBaseObject->structure(), propertyName, slot, offset, returnAddress);
         return;
     }
 
@@ -914,7 +973,7 @@ NEVER_INLINE void JITThunks::tryCacheGetByID(CallFrame* callFrame, CodeBlock* co
 
     StructureChain* prototypeChain = structure->prototypeChain(callFrame);
     stubInfo->initGetByIdChain(structure, prototypeChain);
-    JIT::compileGetByIdChain(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, structure, prototypeChain, count, offset, returnAddress);
+    JIT::compileGetByIdChain(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, structure, prototypeChain, count, propertyName, slot, offset, returnAddress);
 }
 
 #endif // ENABLE(JIT_OPTIMIZE_PROPERTY_ACCESS)
@@ -1024,22 +1083,73 @@ static NEVER_INLINE void throwStackOverflowError(CallFrame* callFrame, JSGlobalD
         ".thumb" "\n" \
         ".thumb_func " THUMB_FUNC_PARAM(cti_##op) "\n" \
         SYMBOL_STRING(cti_##op) ":" "\n" \
-        "str lr, [sp, #0x1c]" "\n" \
+        "str lr, [sp, #" STRINGIZE_VALUE_OF(THUNK_RETURN_ADDRESS_OFFSET) "]" "\n" \
         "bl " SYMBOL_STRING(JITStubThunked_##op) "\n" \
-        "ldr lr, [sp, #0x1c]" "\n" \
+        "ldr lr, [sp, #" STRINGIZE_VALUE_OF(THUNK_RETURN_ADDRESS_OFFSET) "]" "\n" \
         "bx lr" "\n" \
         ); \
     rtype JITStubThunked_##op(STUB_ARGS_DECLARATION) \
 
-#elif CPU(ARM_TRADITIONAL) && COMPILER(GCC)
+#elif CPU(MIPS)
+#if WTF_MIPS_PIC
+#define DEFINE_STUB_FUNCTION(rtype, op) \
+    extern "C" { \
+        rtype JITStubThunked_##op(STUB_ARGS_DECLARATION); \
+    }; \
+    asm volatile( \
+        ".text" "\n" \
+        ".align 2" "\n" \
+        ".set noreorder" "\n" \
+        ".set nomacro" "\n" \
+        ".set nomips16" "\n" \
+        ".globl " SYMBOL_STRING(cti_##op) "\n" \
+        ".ent " SYMBOL_STRING(cti_##op) "\n" \
+        SYMBOL_STRING(cti_##op) ":" "\n" \
+        "lw    $28,28($29)" "\n" \
+        "sw    $31,48($29)" "\n" \
+        ".set macro" "\n" \
+        "la    $25," SYMBOL_STRING(JITStubThunked_##op) "\n" \
+        ".set nomacro" "\n" \
+        "bal " SYMBOL_STRING(JITStubThunked_##op) "\n" \
+        "nop" "\n" \
+        "lw    $31,48($29)" "\n" \
+        "jr    $31" "\n" \
+        "nop" "\n" \
+        ".set reorder" "\n" \
+        ".set macro" "\n" \
+        ".end " SYMBOL_STRING(cti_##op) "\n" \
+        ); \
+    rtype JITStubThunked_##op(STUB_ARGS_DECLARATION)
 
-#if USE(JSVALUE32_64)
-#define THUNK_RETURN_ADDRESS_OFFSET 64
-#else
-#define THUNK_RETURN_ADDRESS_OFFSET 32
+#else // WTF_MIPS_PIC
+#define DEFINE_STUB_FUNCTION(rtype, op) \
+    extern "C" { \
+        rtype JITStubThunked_##op(STUB_ARGS_DECLARATION); \
+    }; \
+    asm volatile( \
+        ".text" "\n" \
+        ".align 2" "\n" \
+        ".set noreorder" "\n" \
+        ".set nomacro" "\n" \
+        ".set nomips16" "\n" \
+        ".globl " SYMBOL_STRING(cti_##op) "\n" \
+        ".ent " SYMBOL_STRING(cti_##op) "\n" \
+        SYMBOL_STRING(cti_##op) ":" "\n" \
+        "sw    $31,48($29)" "\n" \
+        "jal " SYMBOL_STRING(JITStubThunked_##op) "\n" \
+        "nop" "\n" \
+        "lw    $31,48($29)" "\n" \
+        "jr    $31" "\n" \
+        "nop" "\n" \
+        ".set reorder" "\n" \
+        ".set macro" "\n" \
+        ".end " SYMBOL_STRING(cti_##op) "\n" \
+        ); \
+    rtype JITStubThunked_##op(STUB_ARGS_DECLARATION)
+
 #endif
 
-COMPILE_ASSERT(offsetof(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET, JITStackFrame_thunkReturnAddress_offset_mismatch);
+#elif CPU(ARM_TRADITIONAL) && COMPILER(GCC)
 
 #define DEFINE_STUB_FUNCTION(rtype, op) \
     extern "C" { \
@@ -1147,15 +1257,18 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_pre_inc)
 DEFINE_STUB_FUNCTION(int, timeout_check)
 {
     STUB_INIT_STACK_FRAME(stackFrame);
-    
+
     JSGlobalData* globalData = stackFrame.globalData;
     TimeoutChecker& timeoutChecker = globalData->timeoutChecker;
 
-    if (timeoutChecker.didTimeOut(stackFrame.callFrame)) {
+    if (globalData->terminator.shouldTerminate()) {
+        globalData->exception = createTerminatedExecutionException(globalData);
+        VM_THROW_EXCEPTION_AT_END();
+    } else if (timeoutChecker.didTimeOut(stackFrame.callFrame)) {
         globalData->exception = createInterruptedExecutionException(globalData);
         VM_THROW_EXCEPTION_AT_END();
     }
-    
+
     return timeoutChecker.ticksUntilNextCheck();
 }
 
@@ -1289,7 +1402,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check)
     // If we successfully got something, then the base from which it is being accessed must
     // be an object.  (Assertion to ensure asObject() call below is safe, which comes after
     // an isCacheable() chceck.
-    ASSERT(!slot.isCacheable() || slot.slotBase().isObject());
+    ASSERT(!slot.isCacheableValue() || slot.slotBase().isObject());
 
     // Check that:
     //   * We're dealing with a JSCell,
@@ -1300,7 +1413,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_method_check)
     JSCell* specific;
     JSObject* slotBaseObject;
     if (baseValue.isCell()
-        && slot.isCacheable()
+        && slot.isCacheableValue()
         && !(structure = asCell(baseValue)->structure())->isUncacheableDictionary()
         && (slotBaseObject = asObject(slot.slotBase()))->getPropertySpecificValue(callFrame, ident, specific)
         && specific
@@ -1396,7 +1509,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_self_fail)
             stubInfo->u.getByIdSelfList.listSize++;
         }
 
-        JIT::compileGetByIdSelfList(callFrame->scopeChain()->globalData, codeBlock, stubInfo, polymorphicStructureList, listIndex, asCell(baseValue)->structure(), slot.cachedOffset());
+        JIT::compileGetByIdSelfList(callFrame->scopeChain()->globalData, codeBlock, stubInfo, polymorphicStructureList, listIndex, asCell(baseValue)->structure(), ident, slot, slot.cachedOffset());
 
         if (listIndex == (POLYMORPHIC_LIST_CACHE_SIZE - 1))
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_generic));
@@ -1432,6 +1545,37 @@ static PolymorphicAccessStructureList* getPolymorphicAccessStructureListSlot(Str
     
     ASSERT(listIndex < POLYMORPHIC_LIST_CACHE_SIZE);
     return prototypeStructureList;
+}
+
+DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_getter_stub)
+{
+    STUB_INIT_STACK_FRAME(stackFrame);
+    CallFrame* callFrame = stackFrame.callFrame;
+    GetterSetter* getterSetter = asGetterSetter(stackFrame.args[0].jsObject());
+    if (!getterSetter->getter())
+        return JSValue::encode(jsUndefined());
+    JSObject* getter = asObject(getterSetter->getter());
+    CallData callData;
+    CallType callType = getter->getCallData(callData);
+    JSValue result = call(callFrame, getter, callType, callData, stackFrame.args[1].jsObject(), ArgList());
+    if (callFrame->hadException())
+        returnToThrowTrampoline(&callFrame->globalData(), stackFrame.args[2].returnAddress(), STUB_RETURN_ADDRESS);
+
+    return JSValue::encode(result);
+}
+
+DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_custom_stub)
+{
+    STUB_INIT_STACK_FRAME(stackFrame);
+    CallFrame* callFrame = stackFrame.callFrame;
+    JSObject* slotBase = stackFrame.args[0].jsObject();
+    PropertySlot::GetValueFunc getter = reinterpret_cast<PropertySlot::GetValueFunc>(stackFrame.args[1].asPointer);
+    const Identifier& ident = stackFrame.args[2].identifier();
+    JSValue result = getter(callFrame, slotBase, ident);
+    if (callFrame->hadException())
+        returnToThrowTrampoline(&callFrame->globalData(), stackFrame.args[3].returnAddress(), STUB_RETURN_ADDRESS);
+    
+    return JSValue::encode(result);
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
@@ -1475,7 +1619,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
         int listIndex;
         PolymorphicAccessStructureList* prototypeStructureList = getPolymorphicAccessStructureListSlot(stubInfo, listIndex);
 
-        JIT::compileGetByIdProtoList(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, prototypeStructureList, listIndex, structure, slotBaseObject->structure(), offset);
+        JIT::compileGetByIdProtoList(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, prototypeStructureList, listIndex, structure, slotBaseObject->structure(), propertyName, slot, offset);
 
         if (listIndex == (POLYMORPHIC_LIST_CACHE_SIZE - 1))
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_list_full));
@@ -1485,7 +1629,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_get_by_id_proto_list)
         PolymorphicAccessStructureList* prototypeStructureList = getPolymorphicAccessStructureListSlot(stubInfo, listIndex);
 
         StructureChain* protoChain = structure->prototypeChain(callFrame);
-        JIT::compileGetByIdChainList(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, prototypeStructureList, listIndex, structure, protoChain, count, offset);
+        JIT::compileGetByIdChainList(callFrame->scopeChain()->globalData, callFrame, codeBlock, stubInfo, prototypeStructureList, listIndex, structure, protoChain, count, propertyName, slot, offset);
 
         if (listIndex == (POLYMORPHIC_LIST_CACHE_SIZE - 1))
             ctiPatchCallByReturnAddress(codeBlock, STUB_RETURN_ADDRESS, FunctionPtr(cti_op_get_by_id_proto_list_full));
@@ -2303,7 +2447,7 @@ DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve_global)
     PropertySlot slot(globalObject);
     if (globalObject->getPropertySlot(callFrame, ident, slot)) {
         JSValue result = slot.getValue(callFrame, ident);
-        if (slot.isCacheable() && !globalObject->structure()->isUncacheableDictionary() && slot.slotBase() == globalObject) {
+        if (slot.isCacheableValue() && !globalObject->structure()->isUncacheableDictionary() && slot.slotBase() == globalObject) {
             GlobalResolveInfo& globalResolveInfo = callFrame->codeBlock()->globalResolveInfo(globalResolveInfoIndex);
             if (globalResolveInfo.structure)
                 globalResolveInfo.structure->deref();
@@ -2517,10 +2661,9 @@ DEFINE_STUB_FUNCTION(int, op_eq)
 #endif // USE(JSVALUE32_64)
 }
 
-#if USE(JSVALUE32_64)
-
 DEFINE_STUB_FUNCTION(int, op_eq_strings)
 {
+#if USE(JSVALUE32_64)
     STUB_INIT_STACK_FRAME(stackFrame);
 
     JSString* string1 = stackFrame.args[0].jsString();
@@ -2529,9 +2672,12 @@ DEFINE_STUB_FUNCTION(int, op_eq_strings)
     ASSERT(string1->isString());
     ASSERT(string2->isString());
     return string1->value(stackFrame.callFrame) == string2->value(stackFrame.callFrame);
-}
-
+#else
+    UNUSED_PARAM(args);
+    ASSERT_NOT_REACHED();
+    return 0;
 #endif
+}
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_lshift)
 {
@@ -3024,7 +3170,7 @@ DEFINE_STUB_FUNCTION(void*, op_switch_char)
     if (scrutinee.isString()) {
         UString::Rep* value = asString(scrutinee)->value(callFrame).rep();
         if (value->length() == 1)
-            result = codeBlock->characterSwitchJumpTable(tableIndex).ctiForValue(value->data()[0]).executableAddress();
+            result = codeBlock->characterSwitchJumpTable(tableIndex).ctiForValue(value->characters()[0]).executableAddress();
     }
 
     return result;

@@ -31,7 +31,6 @@
 #include <wtf/Vector.h>
 
 #include "Console.h"
-#include "CString.h"
 #include "DocumentLoader.h"
 #include "DOMWindow.h"
 #include "Frame.h"
@@ -41,6 +40,7 @@
 #include "ScriptSourceCode.h"
 #include "Settings.h"
 #include "TextResourceDecoder.h"
+#include <wtf/text/CString.h>
 
 using namespace WTF;
 
@@ -70,6 +70,16 @@ static bool isIllegalURICharacter(UChar c)
     return (c == '\'' || c == '"' || c == '<' || c == '>');
 }
 
+String XSSAuditor::CachingURLCanonicalizer::canonicalizeURL(FormData* formData, const TextEncoding& encoding, bool decodeEntities, 
+                                                            bool decodeURLEscapeSequencesTwice)
+{
+    if (decodeEntities == m_decodeEntities && decodeURLEscapeSequencesTwice == m_decodeURLEscapeSequencesTwice 
+        && encoding == m_encoding && formData == m_formData)
+        return m_cachedCanonicalizedURL;
+    m_formData = formData;
+    return canonicalizeURL(formData->flattenToString(), encoding, decodeEntities, decodeURLEscapeSequencesTwice);
+}
+
 String XSSAuditor::CachingURLCanonicalizer::canonicalizeURL(const String& url, const TextEncoding& encoding, bool decodeEntities, 
                                                             bool decodeURLEscapeSequencesTwice)
 {
@@ -82,11 +92,19 @@ String XSSAuditor::CachingURLCanonicalizer::canonicalizeURL(const String& url, c
     m_encoding = encoding;
     m_decodeEntities = decodeEntities;
     m_decodeURLEscapeSequencesTwice = decodeURLEscapeSequencesTwice;
+    ++m_generation;
     return m_cachedCanonicalizedURL;
+}
+
+void XSSAuditor::CachingURLCanonicalizer::clear()
+{
+    m_formData.clear();
+    m_inputURL = String();
 }
 
 XSSAuditor::XSSAuditor(Frame* frame)
     : m_frame(frame)
+    , m_generationOfSuffixTree(-1)
 {
 }
 
@@ -290,21 +308,15 @@ bool XSSAuditor::isSameOriginResource(const String& url) const
     return (m_frame->document()->url().host() == resourceURL.host() && resourceURL.query().isEmpty());
 }
 
-bool XSSAuditor::shouldFullPageBlockForXSSProtectionHeader() const
+XSSProtectionDisposition XSSAuditor::xssProtection() const
 {
-    // If we detect an XSS attack and find the HTTP header "X-XSS-Protection: 12" then
-    // we will stop loading the page as opposed to ignoring the script. The value "12"
-    // came from a personal communication, see <https://bugs.webkit.org/show_bug.cgi?id=27312>
-    // for more details.
     DEFINE_STATIC_LOCAL(String, XSSProtectionHeader, ("X-XSS-Protection"));
 
     Frame* frame = m_frame;
     if (frame->document()->url() == blankURL())
         frame = m_frame->tree()->parent();
 
-    // We strip any whitespace characters to conform to the behavior in Internet Explorer.
-    String xssProtectionValue = frame->loader()->documentLoader()->response().httpHeaderField(XSSProtectionHeader).stripWhiteSpace();
-    return (xssProtectionValue.length() >= 2 && xssProtectionValue[0] == '1' && xssProtectionValue[1] == '2');
+    return parseXSSProtectionHeader(frame->loader()->documentLoader()->response().httpHeaderField(XSSProtectionHeader));
 }
 
 bool XSSAuditor::findInRequest(const FindTask& task) const
@@ -318,11 +330,24 @@ bool XSSAuditor::findInRequest(const FindTask& task) const
         result = findInRequest(m_frame, task);
         blockFrame = m_frame;
     }
-    if (result && blockFrame && shouldFullPageBlockForXSSProtectionHeader()) {
-        blockFrame->loader()->stopAllLoaders();
-        blockFrame->redirectScheduler()->scheduleLocationChange(blankURL(), String());
+    if (!result)
+        return false;
+
+    switch (xssProtection()) {
+    case XSSProtectionDisabled:
+        return false;
+    case XSSProtectionEnabled:
+        break;
+    case XSSProtectionBlockEnabled:
+        if (blockFrame) {
+            blockFrame->loader()->stopAllLoaders();
+            blockFrame->redirectScheduler()->scheduleLocationChange(blankURL(), String());
+        }
+        break;
+    default:
+        ASSERT_NOT_REACHED();
     }
-    return result;
+    return true;
 }
 
 bool XSSAuditor::findInRequest(Frame* frame, const FindTask& task) const
@@ -340,6 +365,12 @@ bool XSSAuditor::findInRequest(Frame* frame, const FindTask& task) const
     FormData* formDataObj = frame->loader()->documentLoader()->originalRequest().httpBody();
     const bool hasFormData = formDataObj && !formDataObj->isEmpty();
     String pageURL = frame->document()->url().string();
+
+    if (!hasFormData) {
+        // We clear out our form data caches, in case we're holding onto a bunch of memory.
+        m_formDataCache.clear();
+        m_formDataSuffixTree.clear();
+    }
 
     String canonicalizedString;
     if (!hasFormData && task.string.length() > 2 * pageURL.length()) {
@@ -368,7 +399,7 @@ bool XSSAuditor::findInRequest(Frame* frame, const FindTask& task) const
     if (!task.context.isEmpty())
         canonicalizedString = task.context + canonicalizedString;
 
-    String decodedPageURL = m_cache.canonicalizeURL(pageURL, frame->document()->decoder()->encoding(), task.decodeEntities, task.decodeURLEscapeSequencesTwice);
+    String decodedPageURL = m_pageURLCache.canonicalizeURL(pageURL, frame->document()->decoder()->encoding(), task.decodeEntities, task.decodeURLEscapeSequencesTwice);
 
     if (task.allowRequestIfNoIllegalURICharacters && !hasFormData && decodedPageURL.find(&isIllegalURICharacter, 0) == -1)
         return false; // Injection is impossible because the request does not contain any illegal URI characters.
@@ -377,7 +408,17 @@ bool XSSAuditor::findInRequest(Frame* frame, const FindTask& task) const
         return true; // We've found the string in the GET data.
 
     if (hasFormData) {
-        String decodedFormData = m_cache.canonicalizeURL(formDataObj->flattenToString(), frame->document()->decoder()->encoding(), task.decodeEntities, task.decodeURLEscapeSequencesTwice);
+        String decodedFormData = m_formDataCache.canonicalizeURL(formDataObj, frame->document()->decoder()->encoding(), task.decodeEntities, task.decodeURLEscapeSequencesTwice);
+
+        if (m_generationOfSuffixTree != m_formDataCache.generation()) {
+            m_formDataSuffixTree = new SuffixTree<ASCIICodebook>(decodedFormData, 5);
+            m_generationOfSuffixTree = m_formDataCache.generation();
+        }
+
+        // Try a fast-reject via the suffixTree.
+        if (m_formDataSuffixTree && !m_formDataSuffixTree->mightContain(canonicalizedString))
+            return false;
+
         if (decodedFormData.find(canonicalizedString, 0, false) != -1)
             return true; // We found the string in the POST data.
     }

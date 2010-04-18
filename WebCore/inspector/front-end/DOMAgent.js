@@ -211,30 +211,6 @@ WebInspector.DOMNode.prototype = {
         };
         this._attributesMap[name] = attr;
         this.attributes.push(attr);
-    },
-
-    _setStyles: function(computedStyle, inlineStyle, styleAttributes, matchedCSSRules)
-    {
-        this._computedStyle = new WebInspector.CSSStyleDeclaration(computedStyle);
-        this.style = new WebInspector.CSSStyleDeclaration(inlineStyle);
-
-        for (var name in styleAttributes) {
-            if (this._attributesMap[name])
-                this._attributesMap[name].style = new WebInspector.CSSStyleDeclaration(styleAttributes[name]);
-        }
-
-        this._matchedCSSRules = [];
-        for (var i = 0; i < matchedCSSRules.length; i++)
-            this._matchedCSSRules.push(WebInspector.CSSStyleDeclaration.parseRule(matchedCSSRules[i]));
-    },
-
-    _clearStyles: function()
-    {
-        this.computedStyle = null;
-        this.style = null;
-        for (var name in this._attributesMap)
-            this._attributesMap[name].style = null;
-        this._matchedCSSRules = null;
     }
 }
 
@@ -308,16 +284,6 @@ WebInspector.DOMWindow.prototype = {
 
     Object: function()
     {
-    },
-
-    getComputedStyle: function(node)
-    {
-        return node._computedStyle;
-    },
-
-    getMatchedCSSRules: function(node, pseudoElement, authorOnly)
-    {
-        return node._matchedCSSRules;
     }
 }
 
@@ -489,7 +455,7 @@ WebInspector.Cookies.buildCookiesFromString = function(rawCookieString)
 
 WebInspector.Cookies.cookieMatchesResourceURL = function(cookie, resourceURL)
 {
-    var match = resourceURL.match(WebInspector.URLRegExp);
+    var match = resourceURL.match(WebInspector.GenericURLRegExp);
     if (!match)
         return false;
     // See WebInspector.URLRegExp for definitions of the group index constants.
@@ -523,13 +489,20 @@ WebInspector.EventListeners.getEventListenersForNodeAsync = function(node, callb
 WebInspector.CSSStyleDeclaration = function(payload)
 {
     this.id = payload.id;
-    this.injectedScriptId = payload.injectedScriptId;
     this.width = payload.width;
     this.height = payload.height;
-    this.__disabledProperties = payload.__disabledProperties;
-    this.__disabledPropertyValues = payload.__disabledPropertyValues;
-    this.__disabledPropertyPriorities = payload.__disabledPropertyPriorities;
-    this.uniqueStyleProperties = payload.uniqueStyleProperties;
+    this.__disabledProperties = {};
+    this.__disabledPropertyValues = {};
+    this.__disabledPropertyPriorities = {};
+    if (payload.disabled) {
+        for (var i = 0; i < payload.disabled.length; ++i) {
+            var property = payload.disabled[i];
+            this.__disabledProperties[property.name] = true;
+            this.__disabledPropertyValues[property.name] = property.value;
+            this.__disabledPropertyPriorities[property.name] = property.priority;
+        }
+    }
+
     this._shorthandValues = payload.shorthandValues;
     this._propertyMap = {};
     this._longhandProperties = {};
@@ -540,12 +513,8 @@ WebInspector.CSSStyleDeclaration = function(payload)
         var name = property.name;
         this[i] = name;
         this._propertyMap[name] = property;
-    }
 
-    // Index longhand properties.
-    for (var i = 0; i < this.uniqueStyleProperties.length; ++i) {
-        var name = this.uniqueStyleProperties[i];
-        var property = this._propertyMap[name];
+        // Index longhand properties.
         if (property.shorthand) {
             var longhands = this._longhandProperties[property.shorthand];
             if (!longhands) {
@@ -566,13 +535,13 @@ WebInspector.CSSStyleDeclaration.parseRule = function(payload)
 {
     var rule = {};
     rule.id = payload.id;
-    rule.injectedScriptId = payload.injectedScriptId;
     rule.selectorText = payload.selectorText;
     rule.style = new WebInspector.CSSStyleDeclaration(payload.style);
     rule.style.parentRule = rule;
     rule.isUserAgent = payload.isUserAgent;
     rule.isUser = payload.isUser;
     rule.isViaInspector = payload.isViaInspector;
+    rule.sourceLine = payload.sourceLine;
     if (payload.parentStyleSheet)
         rule.parentStyleSheet = { href: payload.parentStyleSheet.href };
 
@@ -697,4 +666,17 @@ WebInspector.didPerformSearch = WebInspector.Callback.processCallback;
 WebInspector.didApplyDomChange = WebInspector.Callback.processCallback;
 WebInspector.didRemoveAttribute = WebInspector.Callback.processCallback;
 WebInspector.didSetTextNodeValue = WebInspector.Callback.processCallback;
+WebInspector.didRemoveNode = WebInspector.Callback.processCallback;
+WebInspector.didChangeTagName = WebInspector.Callback.processCallback;
 WebInspector.didGetEventListenersForNode = WebInspector.Callback.processCallback;
+
+WebInspector.didGetStyles = WebInspector.Callback.processCallback;
+WebInspector.didGetAllStyles = WebInspector.Callback.processCallback;
+WebInspector.didGetInlineStyle = WebInspector.Callback.processCallback;
+WebInspector.didGetComputedStyle = WebInspector.Callback.processCallback;
+WebInspector.didApplyStyleText = WebInspector.Callback.processCallback;
+WebInspector.didSetStyleText = WebInspector.Callback.processCallback;
+WebInspector.didSetStyleProperty = WebInspector.Callback.processCallback;
+WebInspector.didToggleStyleEnabled = WebInspector.Callback.processCallback;
+WebInspector.didSetRuleSelector = WebInspector.Callback.processCallback;
+WebInspector.didAddRule = WebInspector.Callback.processCallback;

@@ -54,6 +54,16 @@ class RegexGenerator : private MacroAssembler {
     static const RegisterID regT1 = ARMRegisters::r6;
 
     static const RegisterID returnRegister = ARMRegisters::r0;
+#elif CPU(MIPS)
+    static const RegisterID input = MIPSRegisters::a0;
+    static const RegisterID index = MIPSRegisters::a1;
+    static const RegisterID length = MIPSRegisters::a2;
+    static const RegisterID output = MIPSRegisters::a3;
+
+    static const RegisterID regT0 = MIPSRegisters::t4;
+    static const RegisterID regT1 = MIPSRegisters::t5;
+
+    static const RegisterID returnRegister = MIPSRegisters::v0;
 #elif CPU(X86)
     static const RegisterID input = X86Registers::eax;
     static const RegisterID index = X86Registers::edx;
@@ -1078,17 +1088,15 @@ class RegexGenerator : private MacroAssembler {
             break;
 
         case PatternTerm::TypeBackReference:
-            m_generationFailed = true;
+            ASSERT_NOT_REACHED();
             break;
 
         case PatternTerm::TypeForwardReference:
             break;
 
         case PatternTerm::TypeParenthesesSubpattern:
-            if ((term.quantityCount == 1) && !term.parentheses.isCopy)
-                generateParenthesesSingle(state);
-            else
-                m_generationFailed = true;
+            ASSERT((term.quantityCount == 1) && !term.parentheses.isCopy); // must fallback to pcre before this point
+            generateParenthesesSingle(state);
             break;
 
         case PatternTerm::TypeParentheticalAssertion:
@@ -1313,6 +1321,8 @@ class RegexGenerator : private MacroAssembler {
         push(ARMRegisters::r5);
         push(ARMRegisters::r6);
         move(ARMRegisters::r3, output);
+#elif CPU(MIPS)
+        // Do nothing.
 #endif
     }
 
@@ -1330,6 +1340,8 @@ class RegexGenerator : private MacroAssembler {
         pop(ARMRegisters::r6);
         pop(ARMRegisters::r5);
         pop(ARMRegisters::r4);
+#elif CPU(MIPS)
+        // Do nothing
 #endif
         ret();
     }
@@ -1337,7 +1349,6 @@ class RegexGenerator : private MacroAssembler {
 public:
     RegexGenerator(RegexPattern& pattern)
         : m_pattern(pattern)
-        , m_generationFailed(false)
     {
     }
 
@@ -1367,15 +1378,9 @@ public:
         jitObject.set(patchBuffer.finalizeCode());
     }
 
-    bool generationFailed()
-    {
-        return m_generationFailed;
-    }
-
 private:
     RegexPattern& m_pattern;
     Vector<AlternativeBacktrackRecord> m_backtrackRecords;
-    bool m_generationFailed;
 };
 
 void jitCompileRegex(JSGlobalData* globalData, RegexCodeBlock& jitObject, const UString& patternString, unsigned& numSubpatterns, const char*& error, bool ignoreCase, bool multiline)
@@ -1387,13 +1392,13 @@ void jitCompileRegex(JSGlobalData* globalData, RegexCodeBlock& jitObject, const 
 
     numSubpatterns = pattern.m_numSubpatterns;
 
-    RegexGenerator generator(pattern);
-    generator.compile(globalData, jitObject);
-
-    if (generator.generationFailed()) {
+    if (pattern.m_shouldFallBack) {
         JSRegExpIgnoreCaseOption ignoreCaseOption = ignoreCase ? JSRegExpIgnoreCase : JSRegExpDoNotIgnoreCase;
         JSRegExpMultilineOption multilineOption = multiline ? JSRegExpMultiline : JSRegExpSingleLine;
         jitObject.setFallback(jsRegExpCompile(reinterpret_cast<const UChar*>(patternString.data()), patternString.size(), ignoreCaseOption, multilineOption, &numSubpatterns, &error));
+    } else {
+        RegexGenerator generator(pattern);
+        generator.compile(globalData, jitObject);
     }
 }
 

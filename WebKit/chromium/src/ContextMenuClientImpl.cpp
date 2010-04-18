@@ -181,7 +181,15 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
             data.mediaFlags |= WebContextMenuData::MediaCanSave;
         if (mediaElement->hasAudio())
             data.mediaFlags |= WebContextMenuData::MediaHasAudio;
+        if (mediaElement->hasVideo())
+            data.mediaFlags |= WebContextMenuData::MediaHasVideo;
+        if (mediaElement->controls())
+            data.mediaFlags |= WebContextMenuData::MediaControls;
     }
+
+    data.isImageBlocked =
+        (data.mediaType == WebContextMenuData::MediaTypeImage) && !r.image();
+
     // If it's not a link, an image, a media element, or an image/media link,
     // show a selection menu or a more generic page menu.
     data.frameEncoding = selectedFrame->loader()->encoding();

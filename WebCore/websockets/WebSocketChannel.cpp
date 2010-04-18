@@ -34,7 +34,6 @@
 
 #include "WebSocketChannel.h"
 
-#include "CString.h"
 #include "CookieJar.h"
 #include "Document.h"
 #include "Logging.h"
@@ -44,7 +43,9 @@
 #include "SocketStreamHandle.h"
 #include "StringHash.h"
 #include "WebSocketChannelClient.h"
+#include "WebSocketHandshake.h"
 
+#include <wtf/text/CString.h>
 #include <wtf/Deque.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashMap.h>
@@ -102,7 +103,9 @@ void WebSocketChannel::close()
 void WebSocketChannel::disconnect()
 {
     LOG(Network, "WebSocketChannel %p disconnect", this);
+    m_handshake.clearScriptExecutionContext();
     m_client = 0;
+    m_context = 0;
     if (m_handle)
         m_handle->close();
 }
@@ -111,9 +114,11 @@ void WebSocketChannel::didOpen(SocketStreamHandle* handle)
 {
     LOG(Network, "WebSocketChannel %p didOpen", this);
     ASSERT(handle == m_handle);
+    if (!m_context)
+        return;
     const CString& handshakeMessage = m_handshake.clientHandshakeMessage();
     if (!handle->send(handshakeMessage.data(), handshakeMessage.length())) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error sending handshake message.", 0, m_handshake.clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error sending handshake message.", 0, m_handshake.clientOrigin());
         handle->close();
     }
 }
@@ -126,6 +131,7 @@ void WebSocketChannel::didClose(SocketStreamHandle* handle)
         unsigned long unhandledBufferedAmount = m_handle->bufferedAmount();
         WebSocketChannelClient* client = m_client;
         m_client = 0;
+        m_context = 0;
         m_handle = 0;
         if (client)
             client->didClose(unhandledBufferedAmount);
@@ -138,11 +144,14 @@ void WebSocketChannel::didReceiveData(SocketStreamHandle* handle, const char* da
     LOG(Network, "WebSocketChannel %p didReceiveData %d", this, len);
     RefPtr<WebSocketChannel> protect(this); // The client can close the channel, potentially removing the last reference.
     ASSERT(handle == m_handle);
-    if (!appendToBuffer(data, len)) {
-        handle->close();
+    if (!m_context) {
         return;
     }
     if (!m_client) {
+        handle->close();
+        return;
+    }
+    if (!appendToBuffer(data, len)) {
         handle->close();
         return;
     }
@@ -190,6 +199,9 @@ void WebSocketChannel::didReceiveData(SocketStreamHandle* handle, const char* da
             while (p < end) {
                 if (length > std::numeric_limits<int>::max() / 128) {
                     LOG(Network, "frame length overflow %d", length);
+                    m_client->didReceiveMessageError();
+                    if (!m_client)
+                        return;
                     handle->close();
                     return;
                 }
@@ -202,6 +214,9 @@ void WebSocketChannel::didReceiveData(SocketStreamHandle* handle, const char* da
             if (p + length < end) {
                 p += length;
                 nextFrame = p;
+                m_client->didReceiveMessageError();
+                if (!m_client)
+                    return;
             } else
                 break;
         } else {
@@ -211,6 +226,8 @@ void WebSocketChannel::didReceiveData(SocketStreamHandle* handle, const char* da
             if (p < end && *p == '\xff') {
                 if (frameByte == 0x00)
                     m_client->didReceiveMessage(String::fromUTF8(msgStart, p - msgStart));
+                else
+                    m_client->didReceiveMessageError();
                 if (!m_client)
                     return;
                 ++p;
@@ -248,7 +265,7 @@ bool WebSocketChannel::appendToBuffer(const char* data, int len)
         m_bufferSize += len;
         return true;
     }
-    m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, String::format("WebSocket frame (at %d bytes) is too long.", m_bufferSize + len), 0, m_handshake.clientOrigin());
+    m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, String::format("WebSocket frame (at %d bytes) is too long.", m_bufferSize + len), 0, m_handshake.clientOrigin());
     return false;
 }
 

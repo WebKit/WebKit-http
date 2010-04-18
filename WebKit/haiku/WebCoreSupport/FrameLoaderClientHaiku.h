@@ -77,14 +77,21 @@ public:
 
     virtual void assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&);
 
-    virtual void dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest&, const ResourceResponse&);
+    virtual void dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest&,
+                                         const ResourceResponse&);
     virtual bool shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier);
-    virtual void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long identifier, const AuthenticationChallenge&);
-    virtual void dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long identifier, const AuthenticationChallenge&);
-    virtual void dispatchDidReceiveResponse(DocumentLoader*, unsigned long, const ResourceResponse&);
+    virtual void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*,
+                                                           unsigned long identifier,
+                                                           const AuthenticationChallenge&);
+    virtual void dispatchDidCancelAuthenticationChallenge(DocumentLoader*,
+                                                          unsigned long identifier,
+                                                          const AuthenticationChallenge&);
+    virtual void dispatchDidReceiveResponse(DocumentLoader*, unsigned long,
+                                            const ResourceResponse&);
     virtual void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int);
     virtual void dispatchDidFinishLoading(DocumentLoader*, unsigned long);
-    virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long, const ResourceError&);
+    virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long,
+                                        const ResourceError&);
 
     virtual void dispatchDidHandleOnloadEvents();
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad();
@@ -123,7 +130,9 @@ public:
     virtual void dispatchDidLoadMainResource(DocumentLoader*);
     virtual void revertToProvisionalState(DocumentLoader*);
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&);
-    virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int);
+    virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*,
+                                                        const ResourceRequest&,
+                                                        const ResourceResponse&, int);
     virtual void dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&);
 
     virtual void postProgressStartedNotification();

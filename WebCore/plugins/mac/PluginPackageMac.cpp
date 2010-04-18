@@ -25,18 +25,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __LP64__
-
 #include "config.h"
 #include "PluginPackage.h"
 
 #include <wtf/RetainPtr.h>
-#include "CString.h"
 #include "MIMETypeRegistry.h"
 #include "npruntime_impl.h"
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
 #include "WebCoreNSStringExtras.h"
+#include <wtf/text/CString.h>
 
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -307,9 +305,3 @@ uint16 PluginPackage::NPVersion() const
     return NP_VERSION_MINOR;
 }
 } // namespace WebCore
-
-#else
-
-#include "../PluginPackageNone.cpp"
-
-#endif // !__LP64__

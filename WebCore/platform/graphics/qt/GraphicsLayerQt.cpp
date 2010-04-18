@@ -29,6 +29,7 @@
 #include "UnitBezier.h"
 #include <QtCore/qabstractanimation.h>
 #include <QtCore/qdebug.h>
+#include <QtCore/qmetaobject.h>
 #include <QtCore/qset.h>
 #include <QtCore/qtimer.h>
 #include <QtGui/qbitmap.h>
@@ -101,31 +102,37 @@ public:
     // modified by the compositor, so we can know what to look for in the next flush
     enum ChangeMask {
         NoChanges =                 0,
+
+        ParentChange =              (1L << 0),
         ChildrenChange =            (1L << 1),
         MaskLayerChange =           (1L << 2),
         PositionChange =            (1L << 3),
+
         AnchorPointChange =         (1L << 4),
         SizeChange  =               (1L << 5),
         TransformChange =           (1L << 6),
         ContentChange =             (1L << 7),
+
         GeometryOrientationChange = (1L << 8),
         ContentsOrientationChange = (1L << 9),
         OpacityChange =             (1L << 10),
         ContentsRectChange =        (1L << 11),
+
         Preserves3DChange =         (1L << 12),
         MasksToBoundsChange =       (1L << 13),
         DrawsContentChange =        (1L << 14),
         ContentsOpaqueChange =      (1L << 15),
+
         BackfaceVisibilityChange =  (1L << 16),
         ChildrenTransformChange =   (1L << 17),
         DisplayChange =             (1L << 18),
         BackgroundColorChange =     (1L << 19),
-        ParentChange =              (1L << 20),
-        DistributesOpacityChange =  (1L << 21)
+
+        DistributesOpacityChange =  (1L << 20)
     };
 
     // the compositor lets us special-case images and colors, so we try to do so
-    enum StaticContentType { HTMLContentType, PixmapContentType, ColorContentType};
+    enum StaticContentType { HTMLContentType, PixmapContentType, ColorContentType, MediaContentType};
 
     GraphicsLayerQtImpl(GraphicsLayerQt* newLayer);
     virtual ~GraphicsLayerQtImpl();
@@ -149,10 +156,6 @@ public:
     // or ChromeClientQt::scheduleCompositingLayerSync (meaning the sync will happen ASAP)
     void flushChanges(bool recursive = true, bool forceTransformUpdate = false);
 
-    // optimization: when we have an animation running on an element with no contents, that has child-elements with contents,
-    // ALL of them have to have ItemCoordinateCache and not DeviceCoordinateCache
-    void adjustCachingRecursively(bool animationIsRunning);
-
     // optimization: returns true if this or an ancestor has a transform animation running.
     // this enables us to use ItemCoordinatesCache while the animation is running, otherwise we have to recache for every frame
     bool isTransformAnimationRunning() const;
@@ -160,6 +163,9 @@ public:
 public slots:
     // we need to notify the client (aka the layer compositor) when the animation actually starts
     void notifyAnimationStarted();
+
+    // we notify WebCore of a layer changed asynchronously; otherwise we end up calling flushChanges too often.
+    void notifySyncRequired();
 
 signals:
     // optimization: we don't want to use QTimer::singleShot
@@ -179,6 +185,7 @@ public:
         bool updateAll;
         QColor contentsBackgroundColor;
         QColor backgroundColor;
+        QWeakPointer<QGraphicsObject> mediaLayer;
         StaticContentType contentType;
         float opacity;
         ContentData()
@@ -196,7 +203,9 @@ public:
     int m_changeMask;
 
     QSizeF m_size;
+#ifndef QT_NO_ANIMATION
     QList<QWeakPointer<QAbstractAnimation> > m_animations;
+#endif
     QTimer m_suspendTimer;
 
     struct State {
@@ -227,7 +236,9 @@ public:
         }
     } m_state;
 
+#ifndef QT_NO_ANIMATION
     friend class AnimationQtBase;
+#endif
 };
 
 GraphicsLayerQtImpl::GraphicsLayerQtImpl(GraphicsLayerQt* newLayer)
@@ -239,10 +250,13 @@ GraphicsLayerQtImpl::GraphicsLayerQtImpl(GraphicsLayerQt* newLayer)
 {
     // we use graphics-view for compositing, not for interactivity
     setAcceptedMouseButtons(Qt::NoButton);
-    setEnabled(false);
+    // we need to have the item enabled, or else wheel events are not
+    // passed to the parent class implementation of wheelEvent, where
+    // they are ignored and passed to the item below.
+    setEnabled(true);
 
     // we'll set the cache when we know what's going on
-    setCacheMode(NoCache);
+    setCacheMode(ItemCoordinateCache);
 
     connect(this, SIGNAL(notifyAnimationStartedAsync()), this, SLOT(notifyAnimationStarted()), Qt::QueuedConnection);
 }
@@ -260,26 +274,13 @@ GraphicsLayerQtImpl::~GraphicsLayerQtImpl()
             item->setParentItem(0);
         }
     }
-    
+
+#ifndef QT_NO_ANIMATION
     // we do, however, own the animations...
     for (QList<QWeakPointer<QAbstractAnimation> >::iterator it = m_animations.begin(); it != m_animations.end(); ++it)
         if (QAbstractAnimation* anim = it->data())
             delete anim;
-}
-
-void GraphicsLayerQtImpl::adjustCachingRecursively(bool animationIsRunning)
-{
-    // optimization: we make sure all our children have ItemCoordinateCache -
-    // otherwise we end up re-rendering them during the animation
-    const QList<QGraphicsItem*> children = childItems();
-
-    for (QList<QGraphicsItem*>::const_iterator it = children.begin(); it != children.end(); ++it) {
-        if (QGraphicsItem* item = *it)
-            if (GraphicsLayerQtImpl* layer = qobject_cast<GraphicsLayerQtImpl*>(item->toGraphicsObject())) {
-                if (layer->m_layer->drawsContent() && layer->m_currentContent.contentType == HTMLContentType)
-                    layer->setCacheMode(animationIsRunning ? QGraphicsItem::ItemCoordinateCache : QGraphicsItem::DeviceCoordinateCache);
-            }
-    }    
+#endif
 }
 
 void GraphicsLayerQtImpl::updateTransform()
@@ -304,29 +305,26 @@ QTransform GraphicsLayerQtImpl::computeTransform(const TransformationMatrix& bas
     // this has to do with how WebCore implements -webkit-perspective and -webkit-perspective-origin, which are the CSS
     // attribute that call setChildrenTransform
     QPointF offset = -pos() - boundingRect().bottomRight() / 2;
-    const GraphicsLayerQtImpl* ancestor = this;
-    while ((ancestor = qobject_cast<GraphicsLayerQtImpl*>(ancestor->parentObject()))) {
+
+    for (const GraphicsLayerQtImpl* ancestor = this; (ancestor = qobject_cast<GraphicsLayerQtImpl*>(ancestor->parentObject())); ) {
         if (!ancestor->m_state.childrenTransform.isIdentity()) {
-            offset += ancestor->boundingRect().bottomRight() / 2;
+            const QPointF offset = mapFromItem(ancestor, QPointF(ancestor->m_size.width() / 2, ancestor->m_size.height() / 2));
             computedTransform
                 .translate(offset.x(), offset.y())
                 .multLeft(ancestor->m_state.childrenTransform)
                 .translate(-offset.x(), -offset.y());
             break;
         }
-        offset -= ancestor->pos();
     }
-
-    computedTransform.multLeft(baseTransform);
 
     // webkit has relative-to-size originPoint, graphics-view has a pixel originPoint, here we convert
     // we have to manage this ourselves because QGraphicsView's transformOrigin is incompatible
     const qreal originX = m_state.anchorPoint.x() * m_size.width();
     const qreal originY = m_state.anchorPoint.y() * m_size.height();
-    computedTransform = TransformationMatrix()
-                            .translate(originX, originY)
-                            .multiply(computedTransform)
-                            .translate(-originX, -originY);
+    computedTransform
+            .translate3d(originX, originY, m_state.anchorPoint.z())
+            .multLeft(baseTransform)
+            .translate3d(-originX, -originY, -m_state.anchorPoint.z());
 
     // now we project to 2D
     return QTransform(computedTransform);
@@ -350,6 +348,7 @@ QPainterPath GraphicsLayerQtImpl::opaqueArea() const
     else {
         if (m_state.contentsOpaque
             || (m_currentContent.contentType == ColorContentType && m_currentContent.contentsBackgroundColor.alpha() == 0xff)
+            || (m_currentContent.contentType == MediaContentType)
             || (m_currentContent.contentType == PixmapContentType && !m_currentContent.pixmap.hasAlpha())) {
 
             painterPath.addRect(m_state.contentsRect);
@@ -366,14 +365,14 @@ QRectF GraphicsLayerQtImpl::boundingRect() const
 void GraphicsLayerQtImpl::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
     if (m_currentContent.backgroundColor.isValid())
-        painter->fillRect(option->exposedRect, QColor(m_currentContent.backgroundColor));
+        painter->fillRect(option->rect, QColor(m_currentContent.backgroundColor));
 
     switch (m_currentContent.contentType) {
     case HTMLContentType:
         if (m_state.drawsContent) {
             // this is the expensive bit. we try to minimize calls to this area by proper caching
             GraphicsContext gc(painter);
-            m_layer->paintGraphicsLayerContents(gc, option->exposedRect.toAlignedRect());
+            m_layer->paintGraphicsLayerContents(gc, option->rect);
         }
         break;
     case PixmapContentType:
@@ -382,17 +381,23 @@ void GraphicsLayerQtImpl::paint(QPainter* painter, const QStyleOptionGraphicsIte
     case ColorContentType:
         painter->fillRect(m_state.contentsRect, m_currentContent.contentsBackgroundColor);
         break;
+    case MediaContentType:
+        // we don't need to paint anything: we have a QGraphicsItem from the media element
+        break;
     }
+}
+
+void GraphicsLayerQtImpl::notifySyncRequired()
+{
+    if (m_layer->client())
+        m_layer->client()->notifySyncRequired(m_layer);
 }
 
 void GraphicsLayerQtImpl::notifyChange(ChangeMask changeMask)
 {
-    Q_ASSERT(this);
-
     m_changeMask |= changeMask;
-
-    if (m_layer->client())
-        m_layer->client()->notifySyncRequired(m_layer);
+    static QMetaMethod syncMethod = staticMetaObject.method(staticMetaObject.indexOfMethod("notifySyncRequired()"));
+    syncMethod.invoke(this, Qt::QueuedConnection);
 }
 
 void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform)
@@ -430,7 +435,7 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
                 w->setParentItem(this);
 
         for (QSet<QGraphicsItem*>::const_iterator it = childrenToRemove.begin(); it != childrenToRemove.end(); ++it)
-             if (QGraphicsItem* w = *it)
+             if (GraphicsLayerQtImpl* w = qobject_cast<GraphicsLayerQtImpl*>((*it)->toGraphicsObject()))
                 w->setParentItem(0);
 
         // children are ordered by z-value, let graphics-view know.
@@ -447,7 +452,6 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
         if (m_layer->maskLayer()) {
             if (GraphicsLayerQtImpl* mask = qobject_cast<GraphicsLayerQtImpl*>(m_layer->maskLayer()->platformLayer()->toGraphicsObject())) {
                 mask->m_maskEffect = new MaskEffectQt(this, mask);
-                mask->setCacheMode(NoCache);
                 setGraphicsEffect(mask->m_maskEffect.data());
             }
         }
@@ -462,7 +466,6 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
             m_size = QSizeF(m_layer->size().width(), m_layer->size().height());
         }
     }
-
     // FIXME: this is a hack, due to a probable QGraphicsScene bug when rapidly modifying the perspective
     // but without this line we get graphic artifacts
     if ((m_changeMask & ChildrenTransformChange) && m_state.childrenTransform != m_layer->childrenTransform())
@@ -480,11 +483,19 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
             update();
             setFlag(ItemHasNoContents, false);
 
+            // no point in caching a directly composited pixmap into another pixmap
+            setCacheMode(NoCache);
+
+            break;
+        case MediaContentType:
+            setFlag(ItemHasNoContents, true);
+            setCacheMode(NoCache);
+            m_pendingContent.mediaLayer.data()->setParentItem(this);
             break;
 
         case ColorContentType:
             // no point in caching a solid-color rectangle
-            setCacheMode(m_layer->maskLayer() ? QGraphicsItem::DeviceCoordinateCache : QGraphicsItem::NoCache);
+            setCacheMode(NoCache);
             if (m_pendingContent.contentType != m_currentContent.contentType || m_pendingContent.contentsBackgroundColor != m_currentContent.contentsBackgroundColor)
                 update();
             m_state.drawsContent = false;
@@ -497,19 +508,11 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
         case HTMLContentType:
             if (m_pendingContent.contentType != m_currentContent.contentType)
                 update();
-            if (!m_state.drawsContent && m_layer->drawsContent())
+            if (!m_state.drawsContent && m_layer->drawsContent()) {
                 update();
-                if (m_layer->drawsContent() && !m_maskEffect) {
-                    const QGraphicsItem::CacheMode mewCacheMode = isTransformAnimationRunning() ? ItemCoordinateCache : DeviceCoordinateCache;
-
-                    // optimization: QGraphicsItem doesn't always perform this test
-                    if (mewCacheMode != cacheMode())
-                        setCacheMode(mewCacheMode);
-
-                    // HTML content: we want to use exposedRect so we don't use WebCore rendering if we don't have to
-                    setFlag(QGraphicsItem::ItemUsesExtendedStyleOption, true);
-                }
-            else
+                if (m_layer->drawsContent() && !m_maskEffect)
+                    setCacheMode(ItemCoordinateCache);
+            } else if (!m_layer->drawsContent())
                 setCacheMode(NoCache);
 
             setFlag(ItemHasNoContents, !m_layer->drawsContent());
@@ -517,7 +520,7 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
         }
     }
 
-    if ((m_changeMask & OpacityChange) && m_state.opacity != m_layer->opacity())
+    if ((m_changeMask & OpacityChange) && m_state.opacity != m_layer->opacity() && !m_opacityAnimationRunning)
         setOpacity(m_layer->opacity());
 
     if (m_changeMask & ContentsRectChange) {
@@ -566,6 +569,7 @@ void GraphicsLayerQtImpl::flushChanges(bool recursive, bool forceUpdateTransform
     m_state.childrenTransform = m_layer->childrenTransform();
     m_currentContent.pixmap = m_pendingContent.pixmap;
     m_currentContent.contentType = m_pendingContent.contentType;
+    m_currentContent.mediaLayer = m_pendingContent.mediaLayer;
     m_currentContent.backgroundColor = m_pendingContent.backgroundColor;
     m_currentContent.regionToUpdate |= m_pendingContent.regionToUpdate;
     m_currentContent.contentsBackgroundColor = m_pendingContent.contentsBackgroundColor;
@@ -704,116 +708,140 @@ void GraphicsLayerQt::removeFromParent()
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setMaskLayer(GraphicsLayer* layer)
+void GraphicsLayerQt::setMaskLayer(GraphicsLayer* value)
 {
-    GraphicsLayer::setMaskLayer(layer);
+    if (value == maskLayer())
+        return;
+    GraphicsLayer::setMaskLayer(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::MaskLayerChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setPosition(const FloatPoint& p)
+void GraphicsLayerQt::setPosition(const FloatPoint& value)
 {
-    if (position() != p)
-       m_impl->notifyChange(GraphicsLayerQtImpl::PositionChange);
-    GraphicsLayer::setPosition(p);
+    if (value == position())
+        return;
+    GraphicsLayer::setPosition(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::PositionChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setAnchorPoint(const FloatPoint3D& p)
+void GraphicsLayerQt::setAnchorPoint(const FloatPoint3D& value)
 {
-    if (anchorPoint() != p)
-        m_impl->notifyChange(GraphicsLayerQtImpl::AnchorPointChange);
-    GraphicsLayer::setAnchorPoint(p);
+    if (value == anchorPoint())
+        return;
+    GraphicsLayer::setAnchorPoint(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::AnchorPointChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setSize(const FloatSize& size)
+void GraphicsLayerQt::setSize(const FloatSize& value)
 {
-    if (this->size() != size)
-        m_impl->notifyChange(GraphicsLayerQtImpl::SizeChange);
-    GraphicsLayer::setSize(size);
+    if (value == size())
+        return;
+    GraphicsLayer::setSize(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::SizeChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setTransform(const TransformationMatrix& t)
+void GraphicsLayerQt::setTransform(const TransformationMatrix& value)
 {
-    if (!m_impl->m_transformAnimationRunning && transform() != t)
-       m_impl->notifyChange(GraphicsLayerQtImpl::TransformChange);
-    GraphicsLayer::setTransform(t);
+    if (value == transform())
+        return;
+    GraphicsLayer::setTransform(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::TransformChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setChildrenTransform(const TransformationMatrix& t)
+void GraphicsLayerQt::setChildrenTransform(const TransformationMatrix& value)
 {
-    GraphicsLayer::setChildrenTransform(t);
+    if (value == childrenTransform())
+        return;
+    GraphicsLayer::setChildrenTransform(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::ChildrenTransformChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setPreserves3D(bool b)
+void GraphicsLayerQt::setPreserves3D(bool value)
 {
-    if (b != preserves3D());
-       m_impl->notifyChange(GraphicsLayerQtImpl::Preserves3DChange);
-    GraphicsLayer::setPreserves3D(b);
+    if (value == preserves3D())
+        return;
+    GraphicsLayer::setPreserves3D(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::Preserves3DChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setMasksToBounds(bool b)
+void GraphicsLayerQt::setMasksToBounds(bool value)
 {
-    GraphicsLayer::setMasksToBounds(b);
+    if (value == masksToBounds())
+        return;
+    GraphicsLayer::setMasksToBounds(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::MasksToBoundsChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setDrawsContent(bool b)
+void GraphicsLayerQt::setDrawsContent(bool value)
 {
+    if (value == drawsContent())
+        return;
     m_impl->notifyChange(GraphicsLayerQtImpl::DrawsContentChange);
-    GraphicsLayer::setDrawsContent(b);
+    GraphicsLayer::setDrawsContent(value);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setBackgroundColor(const Color& c)
+void GraphicsLayerQt::setBackgroundColor(const Color& value)
 {
+    if (value == m_impl->m_pendingContent.backgroundColor)
+        return;
+    m_impl->m_pendingContent.backgroundColor = value;
+    GraphicsLayer::setBackgroundColor(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::BackgroundColorChange);
-    m_impl->m_pendingContent.backgroundColor = c;
-    GraphicsLayer::setBackgroundColor(c);
 }
 
 // reimp from GraphicsLayer.h
 void GraphicsLayerQt::clearBackgroundColor()
 {
+    if (!m_impl->m_pendingContent.backgroundColor.isValid())
+        return;
     m_impl->m_pendingContent.backgroundColor = QColor();
-    m_impl->notifyChange(GraphicsLayerQtImpl::BackgroundColorChange);
     GraphicsLayer::clearBackgroundColor();
+    m_impl->notifyChange(GraphicsLayerQtImpl::BackgroundColorChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setContentsOpaque(bool b)
+void GraphicsLayerQt::setContentsOpaque(bool value)
 {
+    if (value == contentsOpaque())
+        return;
     m_impl->notifyChange(GraphicsLayerQtImpl::ContentsOpaqueChange);
-    GraphicsLayer::setContentsOpaque(b);
+    GraphicsLayer::setContentsOpaque(value);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setBackfaceVisibility(bool b)
+void GraphicsLayerQt::setBackfaceVisibility(bool value)
 {
+    if (value == backfaceVisibility())
+        return;
+    GraphicsLayer::setBackfaceVisibility(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::BackfaceVisibilityChange);
-    GraphicsLayer::setBackfaceVisibility(b);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setOpacity(float o)
+void GraphicsLayerQt::setOpacity(float value)
 {
-    if (!m_impl->m_opacityAnimationRunning && opacity() != o)
-       m_impl->notifyChange(GraphicsLayerQtImpl::OpacityChange);
-    GraphicsLayer::setOpacity(o);
+    if (value == opacity())
+        return;
+    GraphicsLayer::setOpacity(value);
+    m_impl->notifyChange(GraphicsLayerQtImpl::OpacityChange);
 }
 
 // reimp from GraphicsLayer.h
-void GraphicsLayerQt::setContentsRect(const IntRect& r)
+void GraphicsLayerQt::setContentsRect(const IntRect& value)
 {
+    if (value == contentsRect())
+        return;
+    GraphicsLayer::setContentsRect(value);
     m_impl->notifyChange(GraphicsLayerQtImpl::ContentsRectChange);
-    GraphicsLayer::setContentsRect(r);
 }
 
 // reimp from GraphicsLayer.h
@@ -841,6 +869,19 @@ void GraphicsLayerQt::setContentsBackgroundColor(const Color& color)
     m_impl->m_pendingContent.contentsBackgroundColor = QColor(color);
     GraphicsLayer::setContentsBackgroundColor(color);
 }
+
+void GraphicsLayerQt::setContentsToMedia(PlatformLayer* media)
+{
+    if (media) {
+        m_impl->m_pendingContent.contentType = GraphicsLayerQtImpl::MediaContentType;
+        m_impl->m_pendingContent.mediaLayer = media->toGraphicsObject();
+    } else
+        m_impl->m_pendingContent.contentType = GraphicsLayerQtImpl::HTMLContentType;
+
+    m_impl->notifyChange(GraphicsLayerQtImpl::ContentChange);
+    GraphicsLayer::setContentsToMedia(media);
+}
+
 
 // reimp from GraphicsLayer.h
 void GraphicsLayerQt::setGeometryOrientation(CompositingCoordinatesOrientation orientation)
@@ -910,18 +951,18 @@ static inline double solveCubicBezierFunction(qreal p1x, qreal p1y, qreal p2x, q
 
 // we want the timing function to be as close as possible to what the web-developer intended, so we're using the same function used by WebCore when compositing is disabled
 // Using easing-curves would probably work for some of the cases, but wouldn't really buy us anything as we'd have to convert the bezier function back to an easing curve
-static inline qreal applyTimingFunction(const TimingFunction& timingFunction, qreal progress, int duration)
+static inline qreal applyTimingFunction(const TimingFunction& timingFunction, qreal progress, double duration)
 {
-        if (timingFunction.type() == LinearTimingFunction)
-            return progress;
-        if (timingFunction.type() == CubicBezierTimingFunction) {
-            return solveCubicBezierFunction(timingFunction.x1(),
-                                            timingFunction.y1(),
-                                            timingFunction.x2(),
-                                            timingFunction.y2(),
-                                            double(progress), double(duration) / 1000);
-        }
+    if (timingFunction.type() == LinearTimingFunction)
         return progress;
+    if (timingFunction.type() == CubicBezierTimingFunction) {
+        return solveCubicBezierFunction(timingFunction.x1(),
+                                        timingFunction.y1(),
+                                        timingFunction.x2(),
+                                        timingFunction.y2(),
+                                        double(progress), double(duration) / 1000);
+    }
+    return progress;
 }
 
 // helper functions to safely get a value out of WebCore's AnimationValue*
@@ -940,6 +981,7 @@ static void webkitAnimationToQtAnimationValue(const AnimationValue* animationVal
     realValue = animationValue ? static_cast<const FloatAnimationValue*>(animationValue)->value() : 0;
 }
 
+#ifndef QT_NO_ANIMATION
 // we put a bit of the functionality in a base class to allow casting and to save some code size
 class AnimationQtBase : public QAbstractAnimation {
 public:
@@ -950,6 +992,7 @@ public:
         , m_duration(anim->duration() * 1000)
         , m_isAlternate(anim->direction() == Animation::AnimationDirectionAlternate)
         , m_webkitPropertyID(values.property())
+        , m_webkitAnimation(anim)
         , m_keyframesName(name)
     {
     }
@@ -970,6 +1013,9 @@ public:
     int m_duration;
     bool m_isAlternate;
     AnimatedPropertyID m_webkitPropertyID;
+
+    // we might need this in case the same animation is added again (i.e. resumed by WebCore)
+    const Animation* m_webkitAnimation;
     QString m_keyframesName;
 };
 
@@ -989,6 +1035,8 @@ public:
             KeyframeValueQt<T> keyframeValue;
             if (animationValue->timingFunction())
                 keyframeValue.timingFunction = *animationValue->timingFunction();
+            else
+                keyframeValue.timingFunction = anim->timingFunction();
             webkitAnimationToQtAnimationValue(animationValue, keyframeValue.value);
             m_keyframeValues[animationValue->keyTime()] = keyframeValue;
         }
@@ -1025,7 +1073,7 @@ protected:
 
         typename QMap<qreal, KeyframeValueQt<T> >::iterator it2 = it+1;
         if (it2 == m_keyframeValues.end())
-            it2 = m_keyframeValues.begin();
+            it2 = it;
         const KeyframeValueQt<T>& fromKeyframe = it.value();
         const KeyframeValueQt<T>& toKeyframe = it2.value();
 
@@ -1037,7 +1085,7 @@ protected:
         // we can now process the progress and apply the frame
         progress = (!progress || progress == 1 || it.key() == it2.key())
                                          ? progress
-                                         : applyTimingFunction(timingFunc, (progress - it.key()) / (it2.key() - it.key()), duration() / 1000);
+                                         : applyTimingFunction(timingFunc, (progress - it.key()) / (it2.key() - it.key()), duration());
         applyFrame(fromValue, toValue, progress);
     }
 
@@ -1074,13 +1122,25 @@ public:
             sourceOperations.apply(m_boxSize, sourceMatrix);
             transformMatrix = m_sourceMatrix;
             transformMatrix.blend(sourceMatrix, 1 - progress);
-        } else if (targetOperations.size() != sourceOperations.size()) {
-            transformMatrix = m_sourceMatrix;
-            targetOperations.apply(m_boxSize, transformMatrix);
-            transformMatrix.blend(m_sourceMatrix, progress);
         } else {
-            for (size_t i = 0; i < targetOperations.size(); ++i)
-                targetOperations.operations()[i]->blend(sourceOperations.at(i), progress)->apply(transformMatrix, m_boxSize);
+            bool validTransformLists = true;
+            const int sourceOperationCount = sourceOperations.size();
+            if (sourceOperationCount) {
+                if (targetOperations.size() != sourceOperationCount)
+                    validTransformLists = false;
+                else
+                    for (size_t j = 0; j < sourceOperationCount && validTransformLists; ++j)
+                        if (!sourceOperations.operations()[j]->isSameType(*targetOperations.operations()[j]))
+                            validTransformLists = false;
+            }
+
+            if (validTransformLists) {
+                for (size_t i = 0; i < targetOperations.size(); ++i)
+                    targetOperations.operations()[i]->blend(sourceOperations.at(i), progress)->apply(transformMatrix, m_boxSize);
+            } else {
+                targetOperations.apply(m_boxSize, transformMatrix);
+                transformMatrix.blend(m_sourceMatrix, progress);
+            }
         }
         m_layer.data()->setBaseTransform(transformMatrix);
     }
@@ -1097,10 +1157,8 @@ public:
         if (newState == QAbstractAnimation::Running) {
             m_sourceMatrix = m_layer.data()->m_layer->transform();
             m_layer.data()->m_transformAnimationRunning = true;
-            m_layer.data()->adjustCachingRecursively(true);
-        } else {
+        } else if (newState == QAbstractAnimation::Stopped) {
             m_layer.data()->m_transformAnimationRunning = false;
-            m_layer.data()->adjustCachingRecursively(false);
         }
     }
 
@@ -1116,7 +1174,14 @@ public:
 
     virtual void applyFrame(const qreal& fromValue, const qreal& toValue, qreal progress)
     {
-        m_layer.data()->setOpacity(qMin<qreal>(qMax<qreal>(fromValue + (toValue-fromValue)*progress, 0), 1));
+        qreal opacity = qBound(qreal(0), fromValue + (toValue-fromValue)*progress, qreal(1));
+
+        // FIXME: this is a hack, due to a probable QGraphicsScene bug.
+        // Without this the opacity change doesn't always have immediate effect.
+        if (!m_layer.data()->opacity() && opacity)
+            m_layer.data()->scene()->update();
+
+        m_layer.data()->setOpacity(opacity);
     }
 
     virtual void updateState(QAbstractAnimation::State newState, QAbstractAnimation::State oldState)
@@ -1133,32 +1198,45 @@ bool GraphicsLayerQt::addAnimation(const KeyframeValueList& values, const IntSiz
     if (!anim->duration() || !anim->iterationCount())
         return false;
 
-    QAbstractAnimation* newAnim;
+    QAbstractAnimation* newAnim = 0;
 
-    switch (values.property()) {
-    case AnimatedPropertyOpacity:
-        newAnim = new OpacityAnimationQt(m_impl.get(), values, boxSize, anim, keyframesName);
-        break;
-    case AnimatedPropertyWebkitTransform:
-        newAnim = new TransformAnimationQt(m_impl.get(), values, boxSize, anim, keyframesName);
-        break;
-    default:
-        return false;
+    // fixed: we might already have the Qt animation object associated with this WebCore::Animation object
+    for (QList<QWeakPointer<QAbstractAnimation> >::iterator it = m_impl->m_animations.begin(); it != m_impl->m_animations.end(); ++it) {
+        if (*it) {
+            AnimationQtBase* curAnimation = static_cast<AnimationQtBase*>(it->data());
+            if (curAnimation && curAnimation->m_webkitAnimation == anim)
+                newAnim = curAnimation;
+        }
     }
 
-    // we make sure WebCore::Animation and QAnimation are on the same terms
-    newAnim->setLoopCount(anim->iterationCount());
-    m_impl->m_animations.append(QWeakPointer<QAbstractAnimation>(newAnim));
-    QObject::connect(&m_impl->m_suspendTimer, SIGNAL(timeout()), newAnim, SLOT(resume()));
-    timeOffset += anim->delay();
+    if (!newAnim) {
+        switch (values.property()) {
+        case AnimatedPropertyOpacity:
+            newAnim = new OpacityAnimationQt(m_impl.get(), values, boxSize, anim, keyframesName);
+            break;
+        case AnimatedPropertyWebkitTransform:
+            newAnim = new TransformAnimationQt(m_impl.get(), values, boxSize, anim, keyframesName);
+            break;
+        default:
+            return false;
+        }
+
+        // we make sure WebCore::Animation and QAnimation are on the same terms
+        newAnim->setLoopCount(anim->iterationCount());
+        m_impl->m_animations.append(QWeakPointer<QAbstractAnimation>(newAnim));
+        QObject::connect(&m_impl->m_suspendTimer, SIGNAL(timeout()), newAnim, SLOT(resume()));
+    }
 
     // flush now or flicker...
     m_impl->flushChanges(false);
 
-    if (timeOffset)
-        QTimer::singleShot(timeOffset * 1000, newAnim, SLOT(start()));
+    if (anim->delay())
+        QTimer::singleShot(anim->delay() * 1000, newAnim, SLOT(start()));
     else
         newAnim->start();
+
+    // we synchronize the animation's clock to WebCore's timeOffset
+    newAnim->setCurrentTime(timeOffset * 1000);
 
     // we don't need to manage the animation object's lifecycle:
     // WebCore would call removeAnimations when it's time to delete.
@@ -1201,8 +1279,11 @@ void GraphicsLayerQt::pauseAnimation(const String& name, double timeOffset)
             continue;
 
         AnimationQtBase* anim = static_cast<AnimationQtBase*>((*it).data());
-        if (anim && anim->m_keyframesName == QString(name))
-            QTimer::singleShot(timeOffset * 1000, anim, SLOT(pause()));
+        if (anim && anim->m_keyframesName == QString(name)) {
+            // we synchronize the animation's clock to WebCore's timeOffset
+            anim->setCurrentTime(timeOffset * 1000);
+            anim->pause();
+        }
     }
 }
 
@@ -1232,6 +1313,7 @@ void GraphicsLayerQt::resumeAnimations()
     }
 }
 
+#endif // QT_NO_ANIMATION
 }
 
 #include <GraphicsLayerQt.moc>

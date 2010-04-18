@@ -28,8 +28,9 @@
 #include "JSConsole.h"
 
 #include "Console.h"
-#include "JavaScriptProfile.h"
+#include "JSScriptProfile.h"
 #include "ScriptCallStack.h"
+#include "ScriptProfile.h"
 #include <runtime/JSArray.h>
 
 using namespace JSC;
@@ -38,7 +39,7 @@ namespace WebCore {
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
 
-typedef Vector<RefPtr<JSC::Profile> > ProfilesArray;
+typedef Vector<RefPtr<ScriptProfile> > ProfilesArray;
 
 JSValue JSConsole::profiles(ExecState* exec) const
 {

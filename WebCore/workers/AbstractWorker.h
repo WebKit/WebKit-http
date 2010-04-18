@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -57,18 +57,21 @@ namespace WebCore {
         using RefCounted<AbstractWorker>::ref;
         using RefCounted<AbstractWorker>::deref;
 
+        virtual void contextDestroyed();
         AbstractWorker(ScriptExecutionContext*);
         virtual ~AbstractWorker();
 
     protected:
         // Helper function that converts a URL to an absolute URL and checks the result for validity.
         KURL resolveURL(const String& url, ExceptionCode& ec);
+        intptr_t asID() const { return reinterpret_cast<intptr_t>(this); }
 
     private:
         virtual void refEventTarget() { ref(); }
         virtual void derefEventTarget() { deref(); }
         virtual EventTargetData* eventTargetData();
         virtual EventTargetData* ensureEventTargetData();
+        void onDestroyWorker();
         
         EventTargetData m_eventTargetData;
     };

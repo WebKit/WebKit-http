@@ -60,7 +60,6 @@
 #import "WebNSURLExtras.h"
 #import "WebNetscapePluginView.h"
 #import "WebNetscapePluginPackage.h"
-#import "WebNullPluginView.h"
 #import "WebPanelAuthenticationHandler.h"
 #import "WebPluginController.h"
 #import "WebPluginPackage.h"
@@ -347,10 +346,6 @@ bool WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(DocumentLoader
 
     CallResourceLoadDelegate(implementations->didLoadResourceFromMemoryCacheFunc, webView, @selector(webView:didLoadResourceFromMemoryCache:response:length:fromDataSource:), request.nsURLRequest(), response.nsURLResponse(), length, dataSource(loader));
     return true;
-}
-
-void WebFrameLoaderClient::dispatchDidLoadResourceByXMLHttpRequest(unsigned long identifier, const ScriptString& sourceString)
-{
 }
 
 void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader* loader, const ResourceRequest& request)
@@ -1524,8 +1519,11 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
 
     WebView *webView = getWebView(m_webFrame.get());
     SEL selector = @selector(webView:plugInViewWithArguments:);
-    NSURL *URL = url;
 
+    Document* document = core(m_webFrame.get())->document();
+    NSURL *baseURL = document->baseURL();
+    NSURL *pluginURL = url;
+    
     if ([[webView UIDelegate] respondsToSelector:selector]) {
         NSMutableDictionary *attributes = [[NSMutableDictionary alloc] initWithObjects:kit(paramValues) forKeys:kit(paramNames)];
         NSDictionary *arguments = [[NSDictionary alloc] initWithObjectsAndKeys:
@@ -1533,7 +1531,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
             [NSNumber numberWithInt:loadManually ? WebPlugInModeFull : WebPlugInModeEmbed], WebPlugInModeKey,
             [NSNumber numberWithBool:!loadManually], WebPlugInShouldLoadMainResourceKey,
             kit(element), WebPlugInContainingElementKey,
-            URL, WebPlugInBaseURLKey, // URL might be nil, so add it last
+            baseURL, WebPlugInBaseURLKey,
             nil];
 
         NSView *view = CallUIDelegate(webView, selector, arguments);
@@ -1555,7 +1553,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
         pluginPackage = [webView _pluginForMIMEType:mimeType];
     }
     
-    NSString *extension = [[URL path] pathExtension];
+    NSString *extension = [[pluginURL path] pathExtension];
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     // don't allow proxy plug-in selection by file extension
     if (element->hasTagName(videoTag) || element->hasTagName(audioTag))
@@ -1573,8 +1571,6 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
 
     NSView *view = nil;
 
-    Document* document = core(m_webFrame.get())->document();
-    NSURL *baseURL = document->baseURL();
     if (pluginPackage) {
         if ([pluginPackage isKindOfClass:[WebPluginPackage class]])
             view = pluginView(m_webFrame.get(), (WebPluginPackage *)pluginPackage, kit(paramNames), kit(paramValues), baseURL, kit(element), loadManually);
@@ -1584,7 +1580,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
             WebBaseNetscapePluginView *pluginView = [[[NETSCAPE_PLUGIN_VIEW alloc]
                 initWithFrame:NSMakeRect(0, 0, size.width(), size.height())
                 pluginPackage:(WebNetscapePluginPackage *)pluginPackage
-                URL:URL
+                URL:pluginURL
                 baseURL:baseURL
                 MIMEType:MIMEType
                 attributeKeys:kit(paramNames)
@@ -1600,17 +1596,21 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLP
 
     if (!errorCode && !view)
         errorCode = WebKitErrorCannotLoadPlugIn;
+    
+    if (errorCode && m_webFrame) {
+        WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
+        if (implementations->plugInFailedWithErrorFunc) {
+            KURL pluginPageURL = document->completeURL(deprecatedParseURL(parameterValue(paramNames, paramValues, "pluginspage")));
+            if (!pluginPageURL.protocolInHTTPFamily())
+                pluginPageURL = KURL();
+            NSError *error = [[NSError alloc] _initWithPluginErrorCode:errorCode
+                                                            contentURL:pluginURL pluginPageURL:pluginPageURL pluginName:[pluginPackage name] MIMEType:MIMEType];
+            CallResourceLoadDelegate(implementations->plugInFailedWithErrorFunc, [m_webFrame.get() webView],
+                                     @selector(webView:plugInFailedWithError:dataSource:), error, [m_webFrame.get() _dataSource]);
+            [error release];
+        }
 
-    if (errorCode) {
-        KURL pluginPageURL = document->completeURL(deprecatedParseURL(parameterValue(paramNames, paramValues, "pluginspage")));
-        if (!pluginPageURL.protocolInHTTPFamily())
-            pluginPageURL = KURL();
-        NSError *error = [[NSError alloc] _initWithPluginErrorCode:errorCode
-            contentURL:URL pluginPageURL:pluginPageURL pluginName:[pluginPackage name] MIMEType:MIMEType];
-        WebNullPluginView *nullView = [[[WebNullPluginView alloc] initWithFrame:NSMakeRect(0, 0, size.width(), size.height())
-            error:error DOMElement:kit(element)] autorelease];
-        view = nullView;
-        [error release];
+        return 0;
     }
     
     ASSERT(view);
@@ -1691,14 +1691,13 @@ PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& s
     }
 
     if (!view) {
-        NSError *error = [[NSError alloc] _initWithPluginErrorCode:WebKitErrorJavaUnavailable
-            contentURL:nil
-            pluginPageURL:nil
-            pluginName:[pluginPackage name]
-            MIMEType:MIMEType];
-        view = [[[WebNullPluginView alloc] initWithFrame:NSMakeRect(0, 0, size.width(), size.height())
-            error:error DOMElement:kit(element)] autorelease];
-        [error release];
+        WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(getWebView(m_webFrame.get()));
+        if (implementations->plugInFailedWithErrorFunc) {
+            NSError *error = [[NSError alloc] _initWithPluginErrorCode:WebKitErrorJavaUnavailable contentURL:nil pluginPageURL:nil pluginName:[pluginPackage name] MIMEType:MIMEType];
+            CallResourceLoadDelegate(implementations->plugInFailedWithErrorFunc, [m_webFrame.get() webView],
+                                     @selector(webView:plugInFailedWithError:dataSource:), error, [m_webFrame.get() _dataSource]);
+            [error release];
+        }
     }
 
     ASSERT(view);

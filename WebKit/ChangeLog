@@ -1,3 +1,342 @@
+2010-04-15  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35915
+
+        * efl/WebCoreSupport/FrameLoaderClientEfl.cpp: Added.
+        * efl/WebCoreSupport/FrameLoaderClientEfl.h: Added.
+
+2010-04-15  Adam Roben  <aroben@apple.com>
+
+        Expose UserContentURLPattern as WebKit SPI
+
+        Fixes <http://webkit.org/b/37354>.
+
+        Reviewed by Tim Hatcher.
+
+        * WebKit.xcodeproj/project.pbxproj: Add WebUserContentURLPattern.
+
+2010-04-15  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35918
+
+        * efl/WebCoreSupport/EditorClientEfl.cpp: Added.
+        * efl/WebCoreSupport/EditorClientEfl.h: Added.
+
+2010-04-10  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Dan Bernstein.
+
+        <rdar://problem/7845305> Further adoption of formal protocols for delegates.
+
+        Move EmptyProtocolDefinitions.h down in to WebCore, and add the new protocols. Adopt the protocols in the appropriate places.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2010-04-07  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add ewk_view (the high level object to acces the WebKit-EFL browser
+        component) to efl/ewk.
+        http://webkit.org/b/35932
+
+        * efl/ewk/ewk_view.cpp: Added.
+        * efl/ewk/ewk_view.h: Added.
+
+2010-04-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37111
+        <rdar://problem/7790327> Draw replacement text when plug-in host crashes
+
+        https://bugs.webkit.org/show_bug.cgi?id=37111
+        <rdar://problem/7790327> Draw replacement text when plug-in host crashes
+
+        * English.lproj/Localizable.strings: Added a string for plug-in failure.
+
+2010-04-01  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add EFL's pkg-config metadata file file to efl/.
+        http://webkit.org/b/36766
+
+        * efl/ewebkit.pc.in: Added.
+
+2010-03-30  Gavin Barraclough  <barraclough@apple.com>
+
+        Rubber stamped by Sam Weinig.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36866
+        Move CString to WTF
+
+        * efl/WebCoreSupport/ChromeClientEfl.cpp:
+        * efl/ewk/ewk_frame.cpp:
+        (ewk_frame_name_get):
+        (ewk_frame_selection_get):
+        (ewk_frame_uri_changed):
+        * efl/ewk/ewk_history.cpp:
+        * efl/ewk/ewk_settings.cpp:
+
+2010-03-28  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix. Include WindowsKeyboardCodes.h instead of KeyboardCodes.h.
+
+        * efl/ewk/ewk_frame.cpp:
+
+2010-03-22  Kevin Decker  <kdecker@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36328
+
+        * WebKit.xcodeproj/project.pbxproj: Remove WebNullPluginView and nullplugin.tiff from the project.
+
+2010-03-22  Darin Adler  <darin@apple.com>
+
+        * StringsNotToBeLocalized.txt: Updated for recent changes.
+
+2010-03-22  Kevin Decker  <kdecker@apple.com>
+
+        Reviewed by John Sullivan.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36328
+
+        * English.lproj/Localizable.strings: Added "Missing Plug-in" string.
+
+2010-03-18  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35931
+
+        * efl/ewk/ewk_settings.cpp: Added.
+        * efl/ewk/ewk_settings.h: Added.
+
+2010-03-17  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add default theme files to efl/DefaultTheme.
+        http://webkit.org/b/36240
+
+        * efl/DefaultTheme/widget/radio/img_radio_on.png: Added.
+        * efl/DefaultTheme/radio/img_radio_off_hover.png: Added.
+        * efl/DefaultTheme/radio/img_radio_on_hover.png: Added.
+        * efl/DefaultTheme/radio/img_radio_off.png: Added.
+        * efl/DefaultTheme/radio/img_radio_off_focus.png: Added.
+        * efl/DefaultTheme/radio/img_radio_on_focus.png: Added.
+        * efl/DefaultTheme/combo/combo_normal.png: Added.
+        * efl/DefaultTheme/combo/combo_focus_button.png: Added.
+        * efl/DefaultTheme/combo/combo_hover_button.png: Added.
+        * efl/DefaultTheme/combo/combo_hover.png: Added.
+        * efl/DefaultTheme/combo/combo_focus.png: Added.
+        * efl/DefaultTheme/combo/combo_press_button.png: Added.
+        * efl/DefaultTheme/combo/combo_normal_button.png: Added.
+        * efl/DefaultTheme/combo/combo_press.png: Added.
+        * efl/DefaultTheme/combo/icon.png: Added.
+        * efl/DefaultTheme/file/file_normal.png: Added.
+        * efl/DefaultTheme/file/file_press.png: Added.
+        * efl/DefaultTheme/file/file_hover.png: Added.
+        * efl/DefaultTheme/file/file_focus.png: Added.
+        * efl/DefaultTheme/search/cancel/cancel_normal_button.png: Added.
+        * efl/DefaultTheme/search/cancel/cancel_normal_button2.png: Added.
+        * efl/DefaultTheme/search/decoration/decoration_normal_button.png: Added.
+        * efl/DefaultTheme/search/field/field_focused.png: Added.
+        * efl/DefaultTheme/search/field/field_normal.png: Added.
+        * efl/DefaultTheme/search/field/field_hovered.png: Added.
+        * efl/DefaultTheme/entry/img_normal.png: Added.
+        * efl/DefaultTheme/entry/img_hovered.png: Added.
+        * efl/DefaultTheme/entry/img_focused.png: Added.
+        * efl/DefaultTheme/check/img_check_off_hover.png: Added.
+        * efl/DefaultTheme/check/img_check_on.png: Added.
+        * efl/DefaultTheme/check/img_check_off_focus.png: Added.
+        * efl/DefaultTheme/check/img_check_on_focus.png: Added.
+        * efl/DefaultTheme/check/img_check_off.png: Added.
+        * efl/DefaultTheme/check/img_check_on_hover.png: Added.
+        * efl/DefaultTheme/scrollbar/scrollbar_knob_h.png: Added.
+        * efl/DefaultTheme/scrollbar/scrollbar_knob_v.png: Added.
+        * efl/DefaultTheme/scrollbar/scrollbar_hilight.png: Added.
+        * efl/DefaultTheme/scrollbar/scrollbar_v.png: Added.
+        * efl/DefaultTheme/scrollbar/scrollbar_h.png: Added.
+        * efl/DefaultTheme/button/img_button_normal.png: Added.
+        * efl/DefaultTheme/button/img_button_focus.png: Added.
+        * efl/DefaultTheme/button/img_button_hover.png: Added.
+        * efl/DefaultTheme/button/img_button_press.png: Added.
+
+2010-03-17  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL example browser to efl/EWebLauncher.
+        http://webkit.org/b/36176
+
+        * efl/EWebLauncher/main.c: Added.
+
+2010-03-16  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35916
+
+        * efl/WebCoreSupport/ContextMenuClientEfl.cpp: Added.
+        * efl/WebCoreSupport/ContextMenuClientEfl.h: Added.
+
+2010-03-16  Yury Semikhatsky  <yurys@chromium.org>
+
+        Reviewed by Pavel Feldman.
+
+        Introduce InspectorFrontendClient that provides InspectorFrontend with an interface to the embedder. InspectorClient now serves as a delegate for InspectorController and does not contain methods for managing inspector frontend window. That allows to create remote InspectorFrontendHost.
+
+        Introduce InspectorFrontendClient that would provide InspectorFrontend with an interface to the embedder
+        https://bugs.webkit.org/show_bug.cgi?id=35036
+
+        * efl/WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::InspectorClientEfl::openInspectorFrontend):
+        * efl/WebCoreSupport/InspectorClientEfl.h:
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35925
+
+        * efl/ewk/ewk_history.cpp: Added.
+        * efl/ewk/ewk_history.h: Added.
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35928
+
+        * efl/ewk/ewk_main.cpp: Added.
+        * efl/ewk/ewk_main.h: Added.
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35924
+
+        * efl/ewk/ewk_frame.cpp: Added.
+        * efl/ewk/ewk_frame.h: Added.
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35936
+
+        * efl/ewk/ewk_view_single.c: Added.
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35929
+
+        * efl/ewk/ewk_util.cpp: Added.
+        * efl/ewk/ewk_util.h: Added.
+
+2010-03-13  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Add EFL port files to efl/ewk.
+        http://webkit.org/b/35934
+
+        * efl/ewk/EWebKit.h: Added.
+        * efl/ewk/ewk_eapi.h: Added.
+        * efl/ewk/ewk_logging.h: Added.
+        * efl/ewk/ewk_private.h: Added.
+
+2010-03-11  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35917
+
+        * efl/WebCoreSupport/InspectorClientEfl.h: Added.
+        * efl/WebCoreSupport/InspectorClientEfl.cpp: Added.
+
+2010-03-11  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35914
+
+        * efl/WebCoreSupport/DragClientEfl.h: Added.
+        * efl/WebCoreSupport/DragClientEfl.cpp: Added.
+
+2010-03-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Reviewed by Mark Rowe.
+
+        Sort the project file.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2010-03-10  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Holger Freyther.
+
+        Add EFL port files to efl/WebCoreSupport.
+        http://webkit.org/b/35913
+
+        * efl/WebCoreSupport/ChromeClientEfl.cpp: Added.
+        * efl/WebCoreSupport/ChromeClientEfl.h: Added.
+
+2010-03-09  John Sullivan  <sullivan@apple.com>
+
+        Fixed localized string key collision. update-webkit-localized-strings now
+        runs without errors.
+
+        Reviewed by Adam Roben.
+
+        * English.lproj/Localizable.strings:
+        Regenerated.
+
+2010-03-09  John Sullivan  <sullivan@apple.com>
+
+        * StringsNotToBeLocalized.txt:
+        Brought this file up to date. update-webkit-localizable-strings still lists
+        one key collision, but that's a separate issue.
+
+2010-03-04  Mark Rowe  <mrowe@apple.com>
+
+        Reviewed by Sam Weinig.
+
+        Add a script to verify that WebKit framework headers are internally consistent.
+
+        * WebKit.xcodeproj/project.pbxproj: Run the script during the build and fail with
+        an error should the consistency check fail.
+
+2010-02-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Geoffrey Garen.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35394
+        <rdar://problem/7685262> Make passing objects between Java and plug-ins work
+
+        * WebKit.xcodeproj/project.pbxproj: Added new files.
+
 2010-02-04  Mark Rowe  <mrowe@apple.com>
 
         Reviewed by Timothy Hatcher.

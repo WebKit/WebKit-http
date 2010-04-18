@@ -37,6 +37,8 @@ class RenderSVGText : public RenderSVGBlock {
 public:
     RenderSVGText(SVGTextElement* node);
 
+    virtual void setNeedsTransformUpdate() { m_needsTransformUpdate = true; }
+
 private:
     virtual const char* renderName() const { return "RenderSVGText"; }
 
@@ -53,6 +55,8 @@ private:
     virtual bool requiresLayer() const { return false; }
     virtual void layout();
 
+    virtual void destroy();
+
     virtual void absoluteRects(Vector<IntRect>&, int tx, int ty);
     virtual void absoluteQuads(Vector<FloatQuad>&);
 
@@ -65,11 +69,11 @@ private:
     virtual FloatRect strokeBoundingBox() const;
     virtual FloatRect repaintRectInLocalCoordinates() const;
 
-    // FIXME: This can be removed when localTransform() is removed from RenderObject
     virtual AffineTransform localTransform() const { return m_localTransform; }
 
     virtual RootInlineBox* createRootInlineBox();
 
+    bool m_needsTransformUpdate : 1;
     AffineTransform m_localTransform;
 };
 

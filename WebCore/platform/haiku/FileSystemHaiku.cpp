@@ -29,10 +29,10 @@
 #include "config.h"
 #include "FileSystem.h"
 
-#include "CString.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include "StringBuilder.h"
+#include <wtf/text/CString.h>
 
 #include <Directory.h>
 #include <Entry.h>
@@ -80,28 +80,6 @@ CString openTemporaryFile(const char* prefix, PlatformFileHandle& handle)
     } while (errno == EEXIST);
     
     return CString();
-}
-
-void closeFile(PlatformFileHandle& handle)
-{
-    if (isHandleValid(handle)) {
-        close(handle);
-        handle = invalidPlatformFileHandle;
-    }
-}
-
-int writeToFile(PlatformFileHandle handle, const char* data, int length)
-{
-    int totalBytesWritten = 0;
-    while (totalBytesWritten < length) {
-        int bytesWritten = write(handle, data, (size_t)(length - totalBytesWritten));
-        if (bytesWritten < 0 && errno != EINTR)
-            return -1;
-        if (bytesWritten > 0)
-            totalBytesWritten += bytesWritten;
-    }
-
-    return totalBytesWritten;
 }
 
 bool unloadModule(PlatformModule)

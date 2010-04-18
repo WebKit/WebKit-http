@@ -24,8 +24,8 @@
 
 #include "Blob.h"
 #include "Cache.h"
-#include "CString.h"
 #include "CrossOriginAccessControl.h"
+#include "DOMFormData.h"
 #include "DOMImplementation.h"
 #include "Document.h"
 #include "Event.h"
@@ -33,6 +33,7 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "HTTPParsers.h"
+#include "InspectorController.h"
 #include "InspectorTimelineAgent.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
@@ -44,6 +45,7 @@
 #include "XMLHttpRequestProgressEvent.h"
 #include "XMLHttpRequestUpload.h"
 #include "markup.h"
+#include <wtf/text/CString.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/RefCountedLeakCounter.h>
 
@@ -127,6 +129,29 @@ static bool isSetCookieHeader(const AtomicString& name)
     return equalIgnoringCase(name, "set-cookie") || equalIgnoringCase(name, "set-cookie2");
 }
 
+static void setCharsetInMediaType(String& mediaType, const String& charsetValue)
+{
+    unsigned int pos = 0, len = 0;
+
+    findCharsetInMediaType(mediaType, pos, len);
+
+    if (!len) {
+        // When no charset found, append new charset.
+        mediaType.stripWhiteSpace();
+        if (mediaType[mediaType.length() - 1] != ';')
+            mediaType.append(";");
+        mediaType.append(" charset=");
+        mediaType.append(charsetValue);
+    } else {
+        // Found at least one existing charset, replace all occurrences with new charset.
+        while (len) {
+            mediaType.replace(pos, len, charsetValue);
+            unsigned int start = pos + charsetValue.length();
+            findCharsetInMediaType(mediaType, pos, len, start);
+        }
+    }
+}
+
 static const XMLHttpRequestStaticData* staticData = 0;
 
 static const XMLHttpRequestStaticData* createXMLHttpRequestStaticData()
@@ -157,6 +182,7 @@ XMLHttpRequest::XMLHttpRequest(ScriptExecutionContext* context)
     , m_receivedLength(0)
     , m_lastSendLineNumber(0)
     , m_exceptionCode(0)
+    , m_progressEventThrottle(this)
 {
     initializeXMLHttpRequestStaticData();
 #ifndef NDEBUG
@@ -214,7 +240,7 @@ Document* XMLHttpRequest::responseXML() const
             // The W3C spec requires this.
             m_responseXML = 0;
         } else {
-            m_responseXML = document()->implementation()->createDocument(0);
+            m_responseXML = Document::create(0);
             m_responseXML->open();
             m_responseXML->setURL(m_url);
             // FIXME: Set Last-Modified.
@@ -258,7 +284,7 @@ void XMLHttpRequest::callReadyStateChangeListener()
         timelineAgent->willChangeXHRReadyState(m_url.string(), m_state);
 #endif
 
-    dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().readystatechangeEvent));
+    m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().readystatechangeEvent), m_state == DONE ? FlushProgressEvent : DoNotFlushProgressEvent);
 
 #if ENABLE(INSPECTOR)
     if (callTimelineAgentOnReadyStateChange && (timelineAgent = InspectorTimelineAgent::retrieve(scriptExecutionContext())))
@@ -273,7 +299,7 @@ void XMLHttpRequest::callReadyStateChangeListener()
             timelineAgent->willLoadXHR(m_url.string());
 #endif
 
-        dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadEvent));
+        m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadEvent));
 
 #if ENABLE(INSPECTOR)
         if (callTimelineAgentOnLoad && (timelineAgent = InspectorTimelineAgent::retrieve(scriptExecutionContext())))
@@ -290,6 +316,11 @@ void XMLHttpRequest::setWithCredentials(bool value, ExceptionCode& ec)
     }
 
     m_includeCredentials = value;
+}
+
+void XMLHttpRequest::open(const String& method, const KURL& url, ExceptionCode& ec)
+{
+    open(method, url, true, ec);
 }
 
 void XMLHttpRequest::open(const String& method, const KURL& url, bool async, ExceptionCode& ec)
@@ -425,6 +456,9 @@ void XMLHttpRequest::send(const String& body, ExceptionCode& ec)
             else
 #endif
                 setRequestHeaderInternal("Content-Type", "application/xml");
+        } else {
+            setCharsetInMediaType(contentType, "UTF-8");
+            m_requestHeaders.set("Content-Type", contentType);
         }
 
         m_requestEntityBody = FormData::create(UTF8Encoding().encode(body.characters(), body.length(), EntitiesForUnencodables));
@@ -444,7 +478,30 @@ void XMLHttpRequest::send(Blob* body, ExceptionCode& ec)
         // FIXME: Should we set a Content-Type if one is not set.
         // FIXME: add support for uploading bundles.
         m_requestEntityBody = FormData::create();
+#if ENABLE(BLOB_SLICE)
+        m_requestEntityBody->appendFileRange(body->path(), body->start(), body->length(), body->modificationTime());
+#else
         m_requestEntityBody->appendFile(body->path(), false);
+#endif
+    }
+
+    createRequest(ec);
+}
+
+void XMLHttpRequest::send(DOMFormData* body, ExceptionCode& ec)
+{
+    if (!initSend(ec))
+        return;
+
+    if (m_method != "GET" && m_method != "HEAD" && m_url.protocolInHTTPFamily()) {
+        m_requestEntityBody = FormData::createMultiPart(*body, document());
+
+        String contentType = getRequestHeader("Content-Type");
+        if (contentType.isEmpty()) {
+            contentType = "multipart/form-data; boundary=";
+            contentType += m_requestEntityBody->boundary().data();
+            setRequestHeaderInternal("Content-Type", contentType);
+        }
     }
 
     createRequest(ec);
@@ -457,7 +514,7 @@ void XMLHttpRequest::createRequest(ExceptionCode& ec)
     // Also, only async requests support upload progress events.
     bool forcePreflight = false;
     if (m_async) {
-        dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadstartEvent));
+        m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadstartEvent));
         if (m_requestEntityBody && m_upload) {
             forcePreflight = m_upload->hasEventListeners();
             m_upload->dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().loadstartEvent));
@@ -549,7 +606,7 @@ void XMLHttpRequest::abort()
         m_state = UNSENT;
     }
 
-    dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
+    m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
     if (!m_uploadComplete) {
         m_uploadComplete = true;
         if (m_upload && m_uploadEventsAllowed)
@@ -603,7 +660,7 @@ void XMLHttpRequest::genericError()
 void XMLHttpRequest::networkError()
 {
     genericError();
-    dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().errorEvent));
+    m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().errorEvent));
     if (!m_uploadComplete) {
         m_uploadComplete = true;
         if (m_upload && m_uploadEventsAllowed)
@@ -615,7 +672,7 @@ void XMLHttpRequest::networkError()
 void XMLHttpRequest::abortError()
 {
     genericError();
-    dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
+    m_progressEventThrottle.dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().abortEvent));
     if (!m_uploadComplete) {
         m_uploadComplete = true;
         if (m_upload && m_uploadEventsAllowed)
@@ -651,7 +708,7 @@ static void reportUnsafeUsage(ScriptExecutionContext* context, const String& mes
         return;
     // FIXME: It's not good to report the bad usage without indicating what source line it came from.
     // We should pass additional parameters so we can tell the console where the mistake occurred.
-    context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, message, 1, String());
+    context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, message, 1, String());
 }
 
 void XMLHttpRequest::setRequestHeader(const AtomicString& name, const String& value, ExceptionCode& ec)
@@ -841,9 +898,9 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier)
     if (m_decoder)
         m_responseText += m_decoder->flush();
 
-    scriptExecutionContext()->resourceRetrievedByXMLHttpRequest(identifier, m_responseText);
 #if ENABLE(INSPECTOR)
-    scriptExecutionContext()->addMessage(InspectorControllerDestination, JSMessageSource, LogMessageType, LogMessageLevel, "XHR finished loading: \"" + m_url + "\".", m_lastSendLineNumber, m_lastSendURL);
+    if (InspectorController* inspector = scriptExecutionContext()->inspectorController())
+        inspector->resourceRetrievedByXMLHttpRequest(identifier, m_responseText);
 #endif
 
     bool hadLoader = m_loader;
@@ -918,9 +975,8 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
         long long expectedLength = m_response.expectedContentLength();
         m_receivedLength += len;
 
-        // FIXME: the spec requires that we dispatch the event according to the least
-        // frequent method between every 350ms (+/-200ms) and for every byte received.
-        dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().progressEvent, expectedLength && m_receivedLength <= expectedLength, static_cast<unsigned>(m_receivedLength), static_cast<unsigned>(expectedLength)));
+        bool lengthComputable = expectedLength && m_receivedLength <= expectedLength;
+        m_progressEventThrottle.dispatchProgressEvent(lengthComputable, static_cast<unsigned>(m_receivedLength), static_cast<unsigned>(expectedLength));
 
         if (m_state != LOADING)
             changeState(LOADING);
@@ -933,6 +989,16 @@ void XMLHttpRequest::didReceiveData(const char* data, int len)
 bool XMLHttpRequest::canSuspend() const
 {
     return !m_loader;
+}
+
+void XMLHttpRequest::suspend()
+{
+    m_progressEventThrottle.suspend();
+}
+
+void XMLHttpRequest::resume()
+{
+    m_progressEventThrottle.resume();
 }
 
 void XMLHttpRequest::stop()

@@ -699,6 +699,21 @@ String AXMenuListActionVerb()
     return String();
 }
 
+String missingPluginText()
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+    return [[WebCoreViewFactory sharedFactory] missingPluginText];
+    END_BLOCK_OBJC_EXCEPTIONS;
+    return String();
+}
+
+String crashedPluginText()
+{
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
+    return [[WebCoreViewFactory sharedFactory] crashedPluginText];
+    END_BLOCK_OBJC_EXCEPTIONS;
+    return String();
+}
 
 String multipleFileUploadText(unsigned numberOfFiles)
 {

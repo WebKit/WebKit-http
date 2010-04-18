@@ -53,6 +53,7 @@ local sourceDirs =
     wtf/haiku
     wtf/unicode
     wtf/unicode/icu
+    wtf/text
     yarr
 ;
 
@@ -73,6 +74,7 @@ SharedLibrary libjavascriptcore.so :
     JSObjectRef.cpp
     JSStringRef.cpp
     JSValueRef.cpp
+    JSWeakObjectMapRefPrivate.cpp
     OpaqueJSString.cpp
 
 	# DerivedSources/JavaScriptCore
@@ -237,6 +239,9 @@ SharedLibrary libjavascriptcore.so :
 
     #wtf/unicode/icu
     CollatorICU.cpp
+
+    #wtf/text
+    CString.cpp
 
     # yarr
     RegexCompiler.cpp

@@ -99,6 +99,22 @@ WebInspector.TextPrompt.prototype = {
                 }
                 defaultAction.call(this);
                 break;
+            case "U+0041": // Ctrl+A = Move caret to the start of prompt on non-Mac.
+                if (!WebInspector.isMac() && event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+                    handled = true;
+                    this._moveCaretToStartOfPrompt();
+                    break;
+                }
+                defaultAction.call(this);
+                break;
+            case "U+0045": // Ctrl+E = Move caret to the end of prompt on non-Mac.
+                if (!WebInspector.isMac() && event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+                    handled = true;
+                    this.moveCaretToEndOfPrompt();
+                    break;
+                }
+                defaultAction.call(this);
+                break;
             default:
                 defaultAction.call(this);
                 break;
@@ -149,6 +165,7 @@ WebInspector.TextPrompt.prototype = {
             return;
 
         this._userEnteredRange.deleteContents();
+        this.element.pruneEmptyTextNodes();
 
         var userTextNode = document.createTextNode(this._userEnteredText);
         this._userEnteredRange.insertNode(userTextNode);
@@ -171,7 +188,7 @@ WebInspector.TextPrompt.prototype = {
             this._completeTimeout = setTimeout(this.complete.bind(this, true), 250);
     },
 
-    complete: function(auto)
+    complete: function(auto, reverse)
     {
         this.clearAutoComplete(true);
         var selection = window.getSelection();
@@ -184,10 +201,10 @@ WebInspector.TextPrompt.prototype = {
         if (auto && !this.isCaretAtEndOfPrompt())
             return;
         var wordPrefixRange = selectionRange.startContainer.rangeOfWord(selectionRange.startOffset, this.completionStopCharacters, this.element, "backward");
-        this.completions(wordPrefixRange, auto, this._completionsReady.bind(this, selection, auto, wordPrefixRange));
+        this.completions(wordPrefixRange, auto, this._completionsReady.bind(this, selection, auto, wordPrefixRange, reverse));
     },
 
-    _completionsReady: function(selection, auto, originalWordPrefixRange, completions)
+    _completionsReady: function(selection, auto, originalWordPrefixRange, reverse, completions)
     {
         if (!completions || !completions.length)
             return;
@@ -211,10 +228,13 @@ WebInspector.TextPrompt.prototype = {
                 if (completions[i] === currentText)
                     foundIndex = i;
 
-            if (foundIndex === null || (foundIndex + 1) >= completions.length)
+            var nextIndex = foundIndex + (reverse ? -1 : 1);
+            if (foundIndex === null || nextIndex >= completions.length)
                 var completionText = completions[0];
+            else if (nextIndex < 0)
+                var completionText = completions[completions.length - 1];
             else
-                var completionText = completions[foundIndex + 1];
+                var completionText = completions[nextIndex];
         }
 
         var wordPrefixLength = originalWordPrefixRange.toString().length;
@@ -223,6 +243,7 @@ WebInspector.TextPrompt.prototype = {
         this._userEnteredText = fullWordRange.toString();
 
         fullWordRange.deleteContents();
+        this.element.pruneEmptyTextNodes();
 
         var finalSelectionRange = document.createRange();
 
@@ -334,6 +355,18 @@ WebInspector.TextPrompt.prototype = {
         return true;
     },
 
+    _moveCaretToStartOfPrompt: function()
+    {
+        var selection = window.getSelection();
+        var selectionRange = document.createRange();
+
+        selectionRange.setStart(this.element, 0);
+        selectionRange.setEnd(this.element, 0);
+
+        selection.removeAllRanges();
+        selection.addRange(selectionRange);
+    },
+
     moveCaretToEndOfPrompt: function()
     {
         var selection = window.getSelection();
@@ -352,7 +385,7 @@ WebInspector.TextPrompt.prototype = {
         event.preventDefault();
         event.stopPropagation();
 
-        this.complete();
+        this.complete(false, event.shiftKey);
     },
 
     _upKeyPressed: function(event)

@@ -1,3 +1,362 @@
+2010-04-09  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed crash fix.
+
+        Revert part of 57320 that would remove NDEBUG in release builds for
+        DRT, etc.
+
+        * WebKit.pri:
+
+2010-04-09  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Fix crashes with package builds in release
+
+        * WebKit.pri: Don't randomly add NDEBUG to the defines.
+
+2010-04-07  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Fix trunk (non-standalone) builds for Symbian
+        https://bugs.webkit.org/show_bug.cgi?id=37136
+
+        Test for source files before building instead of relying on
+        standalone_package config.
+
+        * WebKit.pro:
+
+2010-04-01  Kinuko Yasuda  <kinuko@chromium.org>
+
+        Reviewed by Dmitry Titov.
+
+        Add FileThread for async file operation support in FileReader and FileWriter
+        https://bugs.webkit.org/show_bug.cgi?id=36896
+
+        Add EANBEL_FILE_READER and ENABLE_FILE_WRITER flags.
+
+        * configure.ac:
+
+2010-04-01  Ojan Vafai  <ojan@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        autoinstalled should be git ignored
+        https://bugs.webkit.org/show_bug.cgi?id=36970
+
+        * .gitignore:
+
+2010-04-01  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt]Add -Wextra warning level to the QtWebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=36971
+
+        * WebKit.pri:
+
+2010-04-01  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Reviewed by Holger Freyther.
+
+        [GTK] webkit_get_default_session() should make sure webkit_init() is called
+        https://bugs.webkit.org/show_bug.cgi?id=36754
+
+        New API test.
+
+        * GNUmakefile.am:
+
+2010-03-26  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Simon Hausmann.
+
+        [Qt] Build JavaScriptCore as a static library.
+        https://bugs.webkit.org/show_bug.cgi?id=36590
+
+        This patch takes what was left of the unused JavaScriptCore.pro
+        and moved the compilation logic from JavaScriptCore.pri to
+        JavaScriptCore.pro.
+
+        * WebKit.pro:
+
+2010-03-16  Xan Lopez  <xlopez@igalia.com>
+
+        Rubber-stamped by Gustavo Noronha.
+
+        Update library version for 1.1.90 release.
+
+        * configure.ac:
+
+2010-03-16  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Bump version for 1.1.90 release.
+
+        * configure.ac:
+
+2010-03-16  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Add support for Fast Mobile Scrolling in the build system.
+
+        * configure.ac:
+
+2010-03-16  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Add WebKitTools/TestResultServer/index.yaml to gitattributes to ignore for crlf conversion.
+
+        * .gitattributes:
+
+2010-03-12  Scott Byer  <scottbyer@chromium.org>
+
+        Reviewed by David Levin.
+
+        Popup font size needs to be exposed to clients.
+        https://bugs.webkit.org/show_bug.cgi?id=35990
+
+        Add function to expose the popup menu font size, add a field to
+        WebPopupMenuInfo that receives that information to convey that to
+        the web view client's createPopupMenu() call.
+
+        * WebCore/platform/chromium/PopupMenuChromium.cpp:
+        * WebCore/platform/chromium/PopupMenuChromium.h:
+        * WebKit/chromium/public/WebPopupMenuInfo.h:
+        * WebKit/chromium/src/ChromeClientImpl.cpp:
+
+2010-03-11  Adam Roben  <aroben@apple.com>
+
+        Teach git about ObjC files
+
+        Fixes <http://webkit.org/b/36015>.
+
+        Reviewed by Tim Hatcher.
+
+        * .gitattributes: Set the diff attribute for .m and .mm files, and .h
+        files in Mac-specific directories. This can be used to generate
+        more-readable diffs of ObjC files.
+
+2010-03-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Unreviewed. Versioning for 1.1.23.
+
+        * configure.ac:
+
+2010-03-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Unreviewed distcheck fix.
+
+        * GNUmakefile.am:
+
+2010-03-08  Jian Li  <jianli@chromium.org>
+
+        Reviewed by Dmitry Titov.
+
+        Blob.slice support.
+        https://bugs.webkit.org/show_bug.cgi?id=32993
+
+        Add ENABLE_BLOB_SLICE feature define.
+
+        * configure.ac:
+
+2010-03-04  Fridrich Strba  <fridrich.strba@bluewin.ch>
+
+        Reviewed by Holger Freyther.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35726
+        Remove orphaned #ifdef WTF_USE_GLIB_ICU_UNICODE_HYBRID
+
+        Removing orphaned #if USE.
+
+        * GNUmakefile.am:
+
+2010-03-04  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        [Qt] Make the OUTPUT_DIR variable in qmake projects independent of build-webkit's logic.
+
+        This also allows shadow builds relying only on qmake to work properly.
+
+        * WebKit.pri:
+
+2010-03-03  Fridrich Strba  <fridrich.strba@bluewin.ch>
+
+        Reviewed by Xan Lopez.
+
+        Miscellaneous little fixes for the windows build of webkit-gtk
+        https://bugs.webkit.org/show_bug.cgi?id=35640
+
+        * GNUmakefile.am: On Windows with GCC, presence of
+        __declspec(dllexport) on some symbols disables the autoexport/autoimport
+        feature for all others. Using regex here assures that all symbols that 
+        need to be exported in the dll are actually exported.
+
+2010-03-02  Arno Renevier  <arno@renevier.net>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [Gtk] implements ChromeClient::requestGeolocationPermissionForFrame
+        https://bugs.webkit.org/show_bug.cgi?id=35210
+
+        * GNUmakefile.am:
+
+2010-03-02  Dmitry Titov  <dimich@chromium.org>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Ignore compiled Java test cases in .gitignore.
+        https://bugs.webkit.org/show_bug.cgi?id=35559
+
+        * .gitignore:
+
+2010-02-26  Arno Renevier  <arno@renevier.net>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [Gtk] ignore WebKit/gtk/docs/GNUmakefile.in in .gitignore
+        https://bugs.webkit.org/show_bug.cgi?id=35424
+
+        * .gitignore:
+
+2010-02-24  Sam Kerner  <skerner@chromium.org>
+
+        Reviewed by Darin Fisher.
+
+        Expose WebFrame::setCanHaveScrollbars().  This allows a view
+        which is being resized to not need scroll bars to ensure that
+        they are not drawn.
+
+        Existing function setAllowsScrolling() was renamed
+        setCanHaveScrollbars(), to be consistant with change 37159:
+        http://trac.webkit.org/changeset/37159
+
+        https://bugs.webkit.org/show_bug.cgi?id=35257
+
+        * WebKit/chromium/public/WebFrame.h:
+        * WebKit/chromium/src/ChromeClientImpl.cpp:
+        * WebKit/chromium/src/WebFrameImpl.cpp:
+        * WebKit/chromium/src/WebFrameImpl.h:
+
+2010-02-19  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Remove QGVLauncher
+
+        https://bugs.webkit.org/show_bug.cgi?id=35292
+
+        * WebKit.pro:
+
+2010-02-24  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Enable SharedWorkers by default, since that's been the default for
+        a long time in our build-webkit configuration.
+
+        * configure.ac:
+
+2010-02-23  James Choi  <jchoi42@pha.jhu.edu>
+
+        Add Solaris definitions
+        https://bugs.webkit.org/show_bug.cgi?id=35214
+
+        * WebKit/chromium/src/WebViewImpl.cpp
+        * WebKit/chromium/src/WebFrameImpl.cpp
+
+2010-02-23  Arno Renevier  <arno@renevier.net>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        [Gtk]: testwebview does not work when called with absolute path
+        https://bugs.webkit.org/show_bug.cgi?id=34940
+
+        When testwebview is called as absolute path, chdir to executable
+        directory before searching resource files.
+
+        * GNUmakefile.am:
+
+2010-02-23  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Changes references of GOwnPtr to reflect their new place.
+        http://webkit.org/b/35084
+
+        * JavaScriptCore/JavaScriptCore.gypi:
+        * JavaScriptCore/wtf/Threading.h:
+        * JavaScriptCore/wtf/unicode/glib/UnicodeGLib.h:
+
+2010-02-23  Leandro Pereira  <leandro@profusion.mobi>
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Fixes references to GOwnPtr and GRefPtr so the GTK+ port builds
+        again.
+        http://webkit.org/b/35084
+
+        * GNUmakefile.am:
+
+2010-02-23  Diego Escalante Urrelo  <descalante@igalia.com>
+
+        Reviewed by Eric Seidel.
+
+        [gtk] missing libsoup-2.4 package in gir generation
+        https://bugs.webkit.org/show_bug.cgi?id=35199
+
+        Include libsoup-2.4 package in gobject introspection .gir generation.
+
+        * GNUmakefile.am:
+
+2010-02-22  Huahui Wu  <hwu@google.com>
+
+        Reviewed by Eric Seidel.
+
+        Add code that enables SquirrelFish Extreme (a.k.a JSCX, JSC JIT)
+        in Android. It's disabled by default, but is enabled when the 
+        enveronment variable ENABLE_JSC_JIT is set to true.
+        https://bugs.webkit.org/show_bug.cgi?id=34855
+
+        * Android.mk:
+
+2010-02-22  Xan Lopez  <xlopez@igalia.com>
+
+        Reviewed by Gustavo Noronha.
+
+        Bump library versioning for 1.1.22 release.
+
+        * configure.ac:
+
+2010-02-22  Laszlo Gombos  <laszlo.1.gombos@nokia.com>
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        [Qt] Add support for layout tests on Symbian
+        https://bugs.webkit.org/show_bug.cgi?id=31589
+
+        * WebKit.pro:
+
+2010-02-20  Noam Rosenthal  <noam.rosenthal@nokia.com>
+
+        Reviewed by Laszlo Gombos.
+
+        [Qt] ENABLE_3D_RENDERING should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=35100
+
+        * WebKit.pri: ENABLE_3D_RENDERING moved to a proper feature test
+
+2010-02-19  Maciej Stachowiak  <mjs@apple.com>
+
+        Reviewed by David Levin.
+
+        Add an ENABLE flag for sandboxed iframes to make it possible to disable it in releases
+        https://bugs.webkit.org/show_bug.cgi?id=35147
+
+        * configure.ac:
+
 2010-02-18  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
 
         Reviewed by Eric Seidel.

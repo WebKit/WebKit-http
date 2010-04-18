@@ -28,8 +28,8 @@
 #include "config.h"
 #include "PlatformKeyboardEvent.h"
 
-#include "KeyboardCodes.h"
 #include "NotImplemented.h"
+#include "WindowsKeyboardCodes.h"
 
 #include <ctype.h>
 
@@ -127,6 +127,8 @@ static String keyIdentifierForQtKeyCode(int keyCode)
             // Standard says that DEL becomes U+007F.
         case Qt::Key_Delete:
             return "U+007F";
+        case Qt::Key_Backspace:
+            return "U+0008";
         case Qt::Key_Tab:
             return "U+0009";
         case Qt::Key_Backtab:
@@ -547,6 +549,15 @@ bool PlatformKeyboardEvent::currentCapsLockState()
 {
     notImplemented();
     return false;
+}
+
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+    notImplemented();
+    shiftKey = false;
+    ctrlKey = false;
+    altKey = false;
+    metaKey = false;
 }
 
 }

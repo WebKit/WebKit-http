@@ -131,8 +131,12 @@
 
 #define WebKitPluginAllowedRunTimePreferenceKey "WebKitPluginAllowedRunTime"
 
-#define WebKitFrameSetFlatteningEnabledPreferenceKey "WebKitFrameSetFlatteningEnabled"
+#define WebKitFrameFlatteningEnabledPreferenceKey "WebKitFrameFlatteningEnabled"
 
 #define WebKitAcceleratedCompositingEnabledPreferenceKey "WebKitAcceleratedCompositingEnabled"
+
+#define WebKitShowDebugBordersPreferenceKey "WebKitShowDebugBorders"
+
+#define WebKitShowRepaintCounterPreferenceKey "WebKitShowRepaintCounter"
 
 #define WebKitCustomDragCursorsEnabledPreferenceKey "WebKitCustomDragCursorsEnabled"

@@ -6,13 +6,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -41,7 +41,6 @@ class CachedResource;
 class Database;
 class InspectorDOMAgent;
 class InspectorFrontend;
-class JavaScriptCallFrame;
 class Node;
 class Storage;
 
@@ -62,40 +61,35 @@ public:
 
     void storeLastActivePanel(const String& panelName);
 
-    void toggleNodeSearch();
-    bool searchingForNode();
+    void enableSearchingForNode();
+    void disableSearchingForNode();
 
     void enableResourceTracking(bool always);
     void disableResourceTracking(bool always);
-    bool resourceTrackingEnabled() const;
     void getResourceContent(long callId, unsigned long identifier);
+    void reloadPage();
 
     void startTimelineProfiler();
     void stopTimelineProfiler();
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-    bool debuggerEnabled() const;
+#if ENABLE(JAVASCRIPT_DEBUGGER)
     void enableDebugger(bool always);
     void disableDebugger(bool always);
 
-    void addBreakpoint(const String& sourceID, unsigned lineNumber, const String& condition);
-    void updateBreakpoint(const String& sourceID, unsigned lineNumber, const String& condition);
+    void setBreakpoint(const String& sourceID, unsigned lineNumber, bool enabled, const String& condition);
     void removeBreakpoint(const String& sourceID, unsigned lineNumber);
+    void activateBreakpoints();
+    void deactivateBreakpoints();
 
     void pauseInDebugger();
     void resumeDebugger();
 
-    long pauseOnExceptionsState();
     void setPauseOnExceptionsState(long pauseState);
 
     void stepOverStatementInDebugger();
     void stepIntoStatementInDebugger();
     void stepOutOfFunctionInDebugger();
 
-    JavaScriptCallFrame* currentCallFrame() const;
-#endif
-#if ENABLE(JAVASCRIPT_DEBUGGER)
-    bool profilerEnabled();
     void enableProfiler(bool always);
     void disableProfiler(bool always);
 
@@ -108,6 +102,9 @@ public:
 
     void setInjectedScriptSource(const String& source);
     void dispatchOnInjectedScript(long callId, long injectedScriptId, const String& methodName, const String& arguments, bool async);
+    void addScriptToEvaluateOnLoad(const String& source);
+    void removeAllScriptsToEvaluateOnLoad();
+
     void getChildNodes(long callId, long nodeId);
     void setAttribute(long callId, long elementId, const String& name, const String& value);
     void removeAttribute(long callId, long elementId, const String& name);
@@ -115,6 +112,19 @@ public:
     void getEventListenersForNode(long callId, long nodeId);
     void copyNode(long nodeId);
     void removeNode(long callId, long nodeId);
+    void changeTagName(long callId, long nodeId, const AtomicString& tagName, bool expanded);
+
+    void getStyles(long callId, long nodeId, bool authOnly);
+    void getAllStyles(long callId);
+    void getInlineStyle(long callId, long nodeId);
+    void getComputedStyle(long callId, long nodeId);
+    void applyStyleText(long callId, long styleId, const String& styleText, const String& propertyName);
+    void setStyleText(long callId, long styleId, const String& cssText);
+    void setStyleProperty(long callId, long styleId, const String& name, const String& value);
+    void toggleStyleEnabled(long callId, long styleId, const String& propertyName, bool disabled);
+    void setRuleSelector(long callId, long ruleId, const String& selector, long selectedNodeId);
+    void addRule(long callId, const String& selector, long selectedNodeId);
+
     void highlightDOMNode(long nodeId);
     void hideDOMNodeHighlight();
 

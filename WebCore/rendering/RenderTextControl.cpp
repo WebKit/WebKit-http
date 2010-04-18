@@ -266,11 +266,6 @@ void RenderTextControl::setSelectionRange(int start, int end)
 
     if (Frame* frame = document()->frame())
         frame->selection()->setSelection(newSelection);
-
-    // FIXME: Granularity is stored separately on the frame, but also in the selection controller.
-    // The granularity in the selection controller should be used, and then this line of code would not be needed.
-    if (Frame* frame = document()->frame())
-        frame->setSelectionGranularity(CharacterGranularity);
 }
 
 VisibleSelection RenderTextControl::selection(int start, int end) const
@@ -372,8 +367,6 @@ String RenderTextControl::textWithHardLineBreaks()
     Node* firstChild = m_innerText->firstChild();
     if (!firstChild)
         return "";
-
-    document()->updateLayout();
 
     RenderObject* renderer = firstChild->renderer();
     if (!renderer)

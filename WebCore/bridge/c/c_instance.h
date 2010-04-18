@@ -59,7 +59,8 @@ public:
     virtual JSValue valueOf(ExecState*) const;
     virtual JSValue defaultValue(ExecState*, PreferredPrimitiveType) const;
 
-    virtual JSValue invokeMethod(ExecState*, const MethodList&, const ArgList&);
+    virtual JSValue getMethod(ExecState* exec, const Identifier& propertyName);
+    virtual JSValue invokeMethod(ExecState*, RuntimeMethod* method, const ArgList&);
     virtual bool supportsInvokeDefaultMethod() const;
     virtual JSValue invokeDefaultMethod(ExecState*, const ArgList&);
 
@@ -76,6 +77,8 @@ public:
 
 private:
     CInstance(NPObject*, PassRefPtr<RootObject>);
+
+    virtual RuntimeObject* newRuntimeObject(ExecState*);
 
     mutable CClass *_class;
     NPObject *_object;

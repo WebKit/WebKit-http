@@ -91,8 +91,11 @@ public:
     
     virtual WebCore::IntRect windowResizerRect() const;
 
-    virtual void repaint(const WebCore::IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
+    virtual void invalidateWindow(const WebCore::IntRect&, bool);
+    virtual void invalidateContentsAndWindow(const WebCore::IntRect&, bool);
+    virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&, bool);
     virtual void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& rectToScroll, const WebCore::IntRect& clipRect);
+
     virtual WebCore::IntPoint screenToWindow(const WebCore::IntPoint&) const;
     virtual WebCore::IntRect windowToScreen(const WebCore::IntRect&) const;
     virtual PlatformPageClient platformPageClient() const;
@@ -120,7 +123,7 @@ public:
 #endif
 
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>);
-    virtual void iconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>);
+    virtual void chooseIconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>);
 
     virtual bool setCursor(WebCore::PlatformCursorHandle) { return false; }
 
@@ -160,6 +163,7 @@ public:
 #endif
 
     virtual void requestGeolocationPermissionForFrame(WebCore::Frame*, WebCore::Geolocation*);
+    virtual void cancelGeolocationPermissionRequestForFrame(WebCore::Frame*, WebCore::Geolocation*) { }
 
 private:
     WebView *m_webView;

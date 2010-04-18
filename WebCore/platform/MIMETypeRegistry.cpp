@@ -242,11 +242,10 @@ static void initializeSupportedNonImageMimeTypes()
         "text/",
         "application/xml",
         "application/xhtml+xml",
-#if ENABLE(XHTMLMP)
         "application/vnd.wap.xhtml+xml",
-#endif
         "application/rss+xml",
         "application/atom+xml",
+        "application/json",
 #if ENABLE(SVG)
         "image/svg+xml",
 #endif
@@ -254,7 +253,12 @@ static void initializeSupportedNonImageMimeTypes()
         "application/x-ftp-directory",
 #endif
         "multipart/x-mixed-replace"
+        // Note: ADDING a new type here will probably render it as HTML. This can
+        // result in cross-site scripting.
     };
+    COMPILE_ASSERT(sizeof(types) / sizeof(types[0]) <= 16,
+                   nonimage_mime_types_must_be_less_than_or_equal_to_16);
+
     for (size_t i = 0; i < sizeof(types)/sizeof(types[0]); ++i)
         supportedNonImageMIMETypes->add(types[i]);
 
@@ -428,6 +432,8 @@ bool MIMETypeRegistry::isSupportedImageResourceMIMEType(const String& mimeType)
 
 bool MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(const String& mimeType)
 {
+    ASSERT(isMainThread());
+
     if (mimeType.isEmpty())
         return false;
     if (!supportedImageMIMETypesForEncoding)

@@ -970,7 +970,7 @@ String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterc
     
     Node* body = enclosingNodeWithTag(Position(commonAncestor, 0), bodyTag);
     // FIXME: Do this for all fully selected blocks, not just the body.
-    Node* fullySelectedRoot = body && *VisibleSelection::selectionFromContentsOfNode(body).toNormalizedRange() == *updatedRange ? body : 0;
+    Node* fullySelectedRoot = body && areRangesEqual(VisibleSelection::selectionFromContentsOfNode(body).toNormalizedRange().get(), updatedRange.get()) ? body : 0;
     RefPtr<CSSMutableStyleDeclaration> fullySelectedRootStyle = fullySelectedRoot ? styleFromMatchedRulesAndInlineDecl(fullySelectedRoot) : 0;
     if (annotate && fullySelectedRoot) {
         if (shouldIncludeWrapperForFullySelectedRoot(fullySelectedRoot, fullySelectedRootStyle.get()))
@@ -1058,11 +1058,7 @@ String createMarkup(const Range* range, Vector<Node*>* nodes, EAnnotateForInterc
 
 PassRefPtr<DocumentFragment> createFragmentFromMarkup(Document* document, const String& markup, const String& baseURL, FragmentScriptingPermission scriptingPermission)
 {
-    ASSERT(document->documentElement()->isHTMLElement());
-    // FIXME: What if the document element is not an HTML element?
-    HTMLElement *element = static_cast<HTMLElement*>(document->documentElement());
-
-    RefPtr<DocumentFragment> fragment = element->createContextualFragment(markup, scriptingPermission);
+    RefPtr<DocumentFragment> fragment = document->documentElement()->createContextualFragment(markup, scriptingPermission);
 
     if (fragment && !baseURL.isEmpty() && baseURL != blankURL() && baseURL != document->baseURL())
         completeURLs(fragment.get(), baseURL);

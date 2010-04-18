@@ -40,6 +40,7 @@
 #include "PlatformWheelEvent.h"
 #include "ScrollView.h"
 #include "WebInputEvent.h"
+#include "WheelEvent.h"
 #include "Widget.h"
 
 using namespace WebCore;
@@ -168,6 +169,64 @@ bool PlatformKeyboardEventBuilder::isCharacterKey() const
     return true;
 }
 
+#if ENABLE(TOUCH_EVENTS)
+static inline TouchEventType toPlatformTouchEventType(const WebInputEvent::Type type)
+{
+    switch (type) {
+    case WebInputEvent::TouchStart:
+        return TouchStart;
+    case WebInputEvent::TouchMove:
+        return TouchMove;
+    case WebInputEvent::TouchEnd:
+        return TouchEnd;
+    case WebInputEvent::TouchCancel:
+        return TouchCancel;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+    return TouchStart;
+}
+
+static inline PlatformTouchPoint::State toPlatformTouchPointState(const WebTouchPoint::State state)
+{
+    switch (state) {
+    case WebTouchPoint::StateReleased:
+        return PlatformTouchPoint::TouchReleased;
+    case WebTouchPoint::StatePressed:
+        return PlatformTouchPoint::TouchPressed;
+    case WebTouchPoint::StateMoved:
+        return PlatformTouchPoint::TouchMoved;
+    case WebTouchPoint::StateStationary:
+        return PlatformTouchPoint::TouchStationary;
+    case WebTouchPoint::StateCancelled:
+        return PlatformTouchPoint::TouchCancelled;
+    case WebTouchPoint::StateUndefined:
+        ASSERT_NOT_REACHED();
+    }
+    return PlatformTouchPoint::TouchReleased;
+}
+
+PlatformTouchPointBuilder::PlatformTouchPointBuilder(Widget* widget, const WebTouchPoint& point)
+{
+    m_id = point.id;
+    m_state = toPlatformTouchPointState(point.state);
+    m_pos = widget->convertFromContainingWindow(point.position);
+    m_screenPos = point.screenPosition;
+}
+
+PlatformTouchEventBuilder::PlatformTouchEventBuilder(Widget* widget, const WebTouchEvent& event)
+{
+    m_type = toPlatformTouchEventType(event.type);
+    m_ctrlKey = event.modifiers & WebInputEvent::ControlKey;
+    m_altKey = event.modifiers & WebInputEvent::AltKey;
+    m_shiftKey = event.modifiers & WebInputEvent::ShiftKey;
+    m_metaKey = event.modifiers & WebInputEvent::MetaKey;
+
+    for (int i = 0; i < event.touchPointsLength; ++i)
+        m_touchPoints.append(PlatformTouchPointBuilder(widget, event.touchPoints[i]));
+}
+#endif
+
 static int getWebInputModifiers(const UIEventWithKeyState& event)
 {
     int modifiers = 0;
@@ -230,6 +289,28 @@ WebMouseEventBuilder::WebMouseEventBuilder(const ScrollView* view, const MouseEv
     x = event.offsetX();
     y = event.offsetY();
     clickCount = event.detail();
+}
+
+WebMouseWheelEventBuilder::WebMouseWheelEventBuilder(const ScrollView* view, const WheelEvent& event)
+{
+    if (event.type() != eventNames().mousewheelEvent)
+        return;
+    type = WebInputEvent::MouseWheel;
+    timeStampSeconds = event.timeStamp() * 1.0e-3;
+    modifiers = getWebInputModifiers(event);
+    IntPoint p = view->contentsToWindow(IntPoint(event.pageX(), event.pageY()));
+    globalX = event.screenX();
+    globalY = event.screenY();
+    windowX = p.x();
+    windowY = p.y();
+    x = event.offsetX();
+    y = event.offsetY();
+    deltaX = static_cast<float>(event.rawDeltaX());
+    deltaY = static_cast<float>(event.rawDeltaY());
+    // The 120 is from WheelEvent::initWheelEvent().
+    wheelTicksX = static_cast<float>(event.wheelDeltaX()) / 120;
+    wheelTicksY = static_cast<float>(event.wheelDeltaY()) / 120;
+    scrollByPage = event.granularity() == WheelEvent::Page;
 }
 
 WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)

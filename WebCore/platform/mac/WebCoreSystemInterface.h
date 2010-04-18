@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -97,6 +97,7 @@ extern CFReadStreamRef (*wkCreateCustomCFReadStream)(void *(*formCreate)(CFReadS
     void (*formSchedule)(CFReadStreamRef, CFRunLoopRef, CFStringRef, void *), 
     void (*formUnschedule)(CFReadStreamRef, CFRunLoopRef, CFStringRef, void *),
     void *context);
+extern NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
 extern id (*wkCreateNSURLConnectionDelegateProxy)(void);
 extern void (*wkDrawBezeledTextFieldCell)(NSRect, BOOL enabled);
 extern void (*wkDrawTextFieldCellFocusRing)(NSTextFieldCell*, NSRect);
@@ -116,7 +117,7 @@ extern ATSUFontID (*wkGetNSFontATSUFontId)(NSFont*);
 extern double (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 extern NSDate *(*wkGetNSURLResponseLastModifiedDate)(NSURLResponse *response);
 extern BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
-extern void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, BOOL* continuous);
+extern void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, float* wheelTicksX, float* wheelTicksY, BOOL* continuous);
 extern BOOL (*wkHitTestMediaUIPart)(int part, int themeStyle, CGRect bounds, CGPoint point);
 extern void (*wkMeasureMediaUIPart)(int part, int themeStyle, CGRect *bounds, CGSize *naturalSize);
 extern BOOL (*wkMediaControllerThemeAvailable)(int themeStyle);
@@ -126,9 +127,10 @@ extern int (*wkQTMovieDataRate)(QTMovie*);
 extern float (*wkQTMovieMaxTimeLoaded)(QTMovie*);
 extern NSString *(*wkQTMovieMaxTimeLoadedChangeNotification)(void);
 extern float (*wkQTMovieMaxTimeSeekable)(QTMovie*);
-extern int (*wkQTMovieGetType)(QTMovie* movie);
-extern BOOL (*wkQTMovieHasClosedCaptions)(QTMovie* movie);
-extern void (*wkQTMovieSetShowClosedCaptions)(QTMovie* movie, BOOL showClosedCaptions);
+extern int (*wkQTMovieGetType)(QTMovie*);
+extern BOOL (*wkQTMovieHasClosedCaptions)(QTMovie*);
+extern void (*wkQTMovieSetShowClosedCaptions)(QTMovie*, BOOL);
+extern void (*wkQTMovieSelectPreferredAlternates)(QTMovie*);
 extern void (*wkQTMovieViewSetDrawSynchronously)(QTMovieView*, BOOL);
 extern void (*wkSetCGFontRenderingMode)(CGContextRef, NSFont*);
 extern void (*wkSetDragImage)(NSImage*, NSPoint offset);

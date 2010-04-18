@@ -29,13 +29,23 @@
 
 namespace WebCore {
 
-struct TimingFunction {
+struct TimingFunction : FastAllocBase {
     TimingFunction()
         : m_type(CubicBezierTimingFunction)
         , m_x1(0.25)
         , m_y1(0.1)
         , m_x2(0.25)
         , m_y2(1.0)
+    {
+    }
+
+    // This explicit copy constructor works around an inlining bug in GCC 4.2 (only reproed on mac, but may exist on other platforms).
+    TimingFunction(const TimingFunction& that)
+        : m_type(that.m_type)
+        , m_x1(that.m_x1)
+        , m_y1(that.m_y1)
+        , m_x2(that.m_x2)
+        , m_y2(that.m_y2)
     {
     }
 

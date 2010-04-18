@@ -39,7 +39,7 @@
 #include "V8DOMWindowShell.h"
 #include "V8DOMWrapper.h"
 #include "V8GCController.h"
-#include "V8Index.h"
+#include "WrapperTypeInfo.h"
 #include <v8.h>
 #include <wtf/PassRefPtr.h> // so generated bindings don't have to
 #include <wtf/Vector.h>
@@ -76,7 +76,7 @@ namespace WebCore {
         const char* const name;
         v8::AccessorGetter getter;
         v8::AccessorSetter setter;
-        V8ClassIndex::V8WrapperType data;
+        WrapperTypeInfo* data;
         v8::AccessControl settings;
         v8::PropertyAttribute attribute;
         bool onProto;
@@ -89,7 +89,7 @@ namespace WebCore {
         (attribute.onProto ? proto : instance)->SetAccessor(v8::String::New(attribute.name),
             attribute.getter,
             attribute.setter,
-            attribute.data == V8ClassIndex::INVALID_CLASS_INDEX ? v8::Handle<v8::Value>() : v8::Integer::New(V8ClassIndex::ToInt(attribute.data)),
+            v8::External::Wrap(attribute.data),
             attribute.settings,
             attribute.attribute);
     }
@@ -220,6 +220,9 @@ namespace WebCore {
         // Call the function with the given receiver and arguments.
         v8::Local<v8::Value> callFunction(v8::Handle<v8::Function>, v8::Handle<v8::Object>, int argc, v8::Handle<v8::Value> argv[]);
 
+        // Call the function with the given receiver and arguments.
+        static v8::Local<v8::Value> callFunctionWithoutFrame(v8::Handle<v8::Function>, v8::Handle<v8::Object>, int argc, v8::Handle<v8::Value> argv[]);
+
         // Call the function as constructor with the given arguments.
         v8::Local<v8::Value> newInstance(v8::Handle<v8::Function>, int argc, v8::Handle<v8::Value> argv[]);
 
@@ -290,25 +293,11 @@ namespace WebCore {
         // Schedule an error object to be thrown.
         static v8::Handle<v8::Value> throwError(ErrorType, const char* message);
 
-        // Create an instance of a function descriptor and set to the global object
-        // as a named property. Used by v8_test_shell.
-        static void bindJsObjectToWindow(Frame*, const char* name, int type, v8::Handle<v8::FunctionTemplate>, void*);
-
-        template <int tag, typename T>
-        static v8::Handle<v8::Value> constructDOMObject(const v8::Arguments&);
+        template <typename T>
+        static v8::Handle<v8::Value> constructDOMObject(const v8::Arguments&, WrapperTypeInfo*);
 
         // Process any pending JavaScript console messages.
         static void processConsoleMessages();
-
-        // Function for retrieving the line number and source name for the top
-        // JavaScript stack frame.
-        //
-        // It will return true if the line number was successfully retrieved and written
-        // into the |result| parameter, otherwise the function will return false. It may
-        // fail due to a stck overflow in the underlying JavaScript implentation, handling
-        // of such exception is up to the caller.
-        static bool sourceLineNumber(int& result);
-        static bool sourceName(String& result);
 
         v8::Local<v8::Context> context();
         v8::Local<v8::Context> mainWorldContext();
@@ -360,23 +349,10 @@ namespace WebCore {
         static const char* svgExceptionName(int exceptionCode);
 #endif
 
-        static void createUtilityContext();
-
-        // Returns a local handle of the utility context.
-        static v8::Local<v8::Context> utilityContext()
-        {
-            if (m_utilityContext.IsEmpty())
-                createUtilityContext();
-            return v8::Local<v8::Context>::New(m_utilityContext);
-        }
-
         Frame* m_frame;
 
         // For the moment, we have one of these.  Soon we will have one per DOMWrapperWorld.
         RefPtr<V8DOMWindowShell> m_windowShell;
-        
-        // Utility context holding JavaScript functions used internally.
-        static v8::Persistent<v8::Context> m_utilityContext;
 
         int m_handlerLineNumber;
 
@@ -410,8 +386,8 @@ namespace WebCore {
         IsolatedWorldMap m_isolatedWorlds;
     };
 
-    template <int tag, typename T>
-    v8::Handle<v8::Value> V8Proxy::constructDOMObject(const v8::Arguments& args)
+    template <typename T>
+    v8::Handle<v8::Value> V8Proxy::constructDOMObject(const v8::Arguments& args, WrapperTypeInfo* type)
     {
         if (!args.IsConstructCall())
             return throwError(V8Proxy::TypeError, "DOM object constructor cannot be called as a function.");
@@ -419,7 +395,7 @@ namespace WebCore {
         // Note: it's OK to let this RefPtr go out of scope because we also call
         // SetDOMWrapper(), which effectively holds a reference to obj.
         RefPtr<T> obj = T::create();
-        V8DOMWrapper::setDOMWrapper(args.Holder(), tag, obj.get());
+        V8DOMWrapper::setDOMWrapper(args.Holder(), type, obj.get());
         obj->ref();
         V8DOMWrapper::setJSWrapperForDOMObject(obj.get(), v8::Persistent<v8::Object>::New(args.Holder()));
         return args.Holder();
@@ -441,19 +417,22 @@ namespace WebCore {
     }
     inline v8::Handle<v8::Primitive> throwError(const char* message, V8Proxy::ErrorType type = V8Proxy::TypeError)
     {
-        V8Proxy::throwError(type, message);
+        if (!v8::V8::IsExecutionTerminating())
+            V8Proxy::throwError(type, message);
         return v8::Undefined();
     }
 
     inline v8::Handle<v8::Primitive> throwError(ExceptionCode ec)
     {
-        V8Proxy::setDOMException(ec);
+        if (!v8::V8::IsExecutionTerminating())
+            V8Proxy::setDOMException(ec);
         return v8::Undefined();
     }
 
     inline v8::Handle<v8::Primitive> throwError(v8::Local<v8::Value> exception)
     {
-        v8::ThrowException(exception);
+        if (!v8::V8::IsExecutionTerminating())
+            v8::ThrowException(exception);
         return v8::Undefined();
     }
 

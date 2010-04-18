@@ -120,6 +120,7 @@ WebInspector.ProfilesPanel = function()
     this.element.appendChild(this.welcomeView.element);
 
     this._profiles = [];
+    this._profilerEnabled = Preferences.profilerAlwaysEnabled;
     this.reset();
 }
 
@@ -163,6 +164,7 @@ WebInspector.ProfilesPanel.prototype = {
 
     populateInterface: function()
     {
+        this.reset();
         if (this.visible)
             this._populateProfiles();
         else
@@ -171,12 +173,19 @@ WebInspector.ProfilesPanel.prototype = {
 
     profilerWasEnabled: function()
     {
-        this.reset();
+        if (this._profilerEnabled)
+            return;
+
+        this._profilerEnabled = true;
         this.populateInterface();
     },
 
     profilerWasDisabled: function()
     {
+        if (!this._profilerEnabled)
+            return;
+
+        this._profilerEnabled = false;
         this.reset();
     },
 
@@ -230,7 +239,6 @@ WebInspector.ProfilesPanel.prototype = {
             container.appendChild(part1);
      
             var button = new WebInspector.StatusBarButton(profileType.buttonTooltip, profileType.buttonStyle, profileType.buttonCaption);
-            button.element.addEventListener("click", profileType.buttonClicked.bind(profileType), false);
             container.appendChild(button.element);
        
             var part2 = document.createElement("span");
@@ -429,7 +437,7 @@ WebInspector.ProfilesPanel.prototype = {
     _updateInterface: function()
     {
         // FIXME: Replace ProfileType-specific button visibility changes by a single ProfileType-agnostic "combo-button" visibility change.
-        if (InspectorBackend.profilerEnabled()) {
+        if (this._profilerEnabled) {
             this.enableToggleButton.title = WebInspector.UIString("Profiling enabled. Click to disable.");
             this.enableToggleButton.toggled = true;
             for (var typeId in this._profileTypeButtonsByIdMap)
@@ -448,14 +456,14 @@ WebInspector.ProfilesPanel.prototype = {
 
     _enableProfiling: function()
     {
-        if (InspectorBackend.profilerEnabled())
+        if (this._profilerEnabled)
             return;
         this._toggleProfiling(this.panelEnablerView.alwaysEnabled);
     },
 
     _toggleProfiling: function(optionalAlways)
     {
-        if (InspectorBackend.profilerEnabled())
+        if (this._profilerEnabled)
             InspectorBackend.disableProfiler(true);
         else
             InspectorBackend.enableProfiler(!!optionalAlways);

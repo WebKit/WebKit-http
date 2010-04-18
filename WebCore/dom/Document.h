@@ -175,6 +175,11 @@ struct FormElementKeyHashTraits : WTF::GenericHashTraits<FormElementKey> {
     static bool isDeletedValue(const FormElementKey& value) { return value.isHashTableDeletedValue(); }
 };
 
+enum PageshowEventPersistence {
+    PageshowEventNotPersisted = 0,
+    PageshowEventPersisted = 1
+};
+    
 class Document : public ContainerNode, public ScriptExecutionContext {
 public:
     static PassRefPtr<Document> create(Frame* frame)
@@ -435,6 +440,8 @@ public:
     void setUsesBeforeAfterRules(bool b) { m_usesBeforeAfterRules = b; }
     bool usesRemUnits() const { return m_usesRemUnits; }
     void setUsesRemUnits(bool b) { m_usesRemUnits = b; }
+    bool usesLinkRules() const { return linkColor() != visitedLinkColor() || m_usesLinkRules; }
+    void setUsesLinkRules(bool b) { m_usesLinkRules = b; }
 
     // Machinery for saving and restoring state when you leave and then go back to a page.
     void registerFormElementWithState(Element* e) { m_formElementsWithState.add(e); }
@@ -450,6 +457,7 @@ public:
     Settings* settings() const; // can be NULL
 #if ENABLE(INSPECTOR)
     InspectorTimelineAgent* inspectorTimelineAgent() const; // can be NULL
+    virtual InspectorController* inspectorController() const; // can be NULL
 #endif
 
     PassRefPtr<Range> createRange();
@@ -469,6 +477,7 @@ public:
     virtual void updateStyleIfNeeded();
     void updateLayout();
     void updateLayoutIgnorePendingStylesheets();
+    PassRefPtr<RenderStyle> styleForElementIgnoringPendingStylesheets(Element*);
     static void updateStyleForAllDocuments(); // FIXME: Try to reduce the # of calls to this function.
     DocLoader* docLoader() { return m_docLoader.get(); }
 
@@ -625,9 +634,6 @@ public:
     void dispatchWindowEvent(PassRefPtr<Event>, PassRefPtr<EventTarget> = 0);
     void dispatchWindowLoadEvent();
 
-    void enqueueStorageEvent(PassRefPtr<Event>);
-    void storageEventTimerFired(Timer<Document>*);
-
     PassRefPtr<Event> createEvent(const String& eventType, ExceptionCode&);
 
     // keep track of what types of event listeners are registered, so we don't
@@ -713,8 +719,28 @@ public:
 
     String lastModified() const;
 
+    // The cookieURL is used to query the cookie database for this document's
+    // cookies. For example, if the cookie URL is http://example.com, we'll
+    // use the non-Secure cookies for example.com when computing
+    // document.cookie.
+    //
+    // Q: How is the cookieURL different from the document's URL?
+    // A: The two URLs are the same almost all the time.  However, if one
+    //    document inherits the security context of another document, it
+    //    inherits its cookieURL but not its URL.
+    //
     const KURL& cookieURL() const { return m_cookieURL; }
 
+    // The firstPartyForCookies is used to compute whether this document
+    // appears in a "third-party" context for the purpose of third-party
+    // cookie blocking.  The document is in a third-party context if the
+    // cookieURL and the firstPartyForCookies are from different hosts.
+    //
+    // Note: Some ports (including possibly Apple's) only consider the
+    //       document in a third-party context if the cookieURL and the
+    //       firstPartyForCookies have a different registry-controlled
+    //       domain.
+    //
     const KURL& firstPartyForCookies() const { return m_firstPartyForCookies; }
     void setFirstPartyForCookies(const KURL& url) { m_firstPartyForCookies = url; }
     
@@ -844,9 +870,7 @@ public:
     void parseDNSPrefetchControlHeader(const String&);
 
     virtual void reportException(const String& errorMessage, int lineNumber, const String& sourceURL);
-    virtual void addMessage(MessageDestination, MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL);
-    virtual void resourceRetrievedByXMLHttpRequest(unsigned long identifier, const ScriptString& sourceString);
-    virtual void scriptImported(unsigned long, const String&);
+    virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL);
     virtual void postTask(PassOwnPtr<Task>); // Executes the task on context's thread asynchronously.
 
 #if USE(JSC)
@@ -855,6 +879,8 @@ public:
     JSWrapperCacheMap& wrapperCacheMap() { return m_wrapperCacheMap; }
     JSWrapperCache* getWrapperCache(DOMWrapperWorld* world);
     JSWrapperCache* createWrapperCache(DOMWrapperWorld*);
+    void destroyWrapperCache(DOMWrapperWorld*);
+    void destroyAllWrapperCaches();
 #endif
 
     virtual void finishedParsing();
@@ -938,6 +964,10 @@ public:
     bool containsValidityStyleRules() const { return m_containsValidityStyleRules; }
     void setContainsValidityStyleRules() { m_containsValidityStyleRules = true; }
 
+    void enqueueEvent(PassRefPtr<Event>);
+    void enqueuePageshowEvent(PageshowEventPersistence);
+    void enqueueHashchangeEvent(const String& oldURL, const String& newURL);
+
 protected:
     Document(Frame*, bool isXHTML, bool isHTML);
 
@@ -975,6 +1005,9 @@ private:
     void cacheDocumentElement() const;
 
     void createStyleSelector();
+
+    void enqueuePopstateEvent(PassRefPtr<SerializedScriptValue> stateObject);
+    void pendingEventTimerFired(Timer<Document>*);
 
     OwnPtr<CSSStyleSelector> m_styleSelector;
     bool m_didCalculateStyleSelector;
@@ -1072,6 +1105,7 @@ private:
     bool m_usesFirstLetterRules;
     bool m_usesBeforeAfterRules;
     bool m_usesRemUnits;
+    bool m_usesLinkRules;
     bool m_gotoAnchorNeededAfterStylesheetsLoad;
     bool m_isDNSPrefetchEnabled;
     bool m_haveExplicitlyDisabledDNSPrefetch;
@@ -1193,8 +1227,8 @@ private:
 
     bool m_usingGeolocation;
 
-    Timer<Document> m_storageEventTimer;
-    Vector<RefPtr<Event> > m_storageEventQueue;
+    Timer<Document> m_pendingEventTimer;
+    Vector<RefPtr<Event> > m_pendingEventQueue;
 
 #if ENABLE(WML)
     bool m_containsWMLContent;

@@ -41,9 +41,8 @@
 namespace WebCore {
 
 // Template function used by the WebGLArray*Constructor callbacks.
-template<class ArrayClass>
-v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args,
-                                          int classIndex)
+template<class ArrayClass, class ElementType>
+v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args, WrapperTypeInfo* type, v8::ExternalArrayType arrayType)
 {
     if (!args.IsConstructCall())
         return throwError("DOM object constructor cannot be called as a function.");
@@ -71,94 +70,62 @@ v8::Handle<v8::Value> constructWebGLArray(const v8::Arguments& args,
 
     // See whether the first argument is a WebGLArrayBuffer.
     if (V8WebGLArrayBuffer::HasInstance(args[0])) {
-        if (argLen > 3)
-            return throwError("Wrong number of arguments to new WebGL<T>Array(WebGLArrayBuffer, int, int)");
-
         WebGLArrayBuffer* buf = V8WebGLArrayBuffer::toNative(args[0]->ToObject());
-        if (buf == NULL)
+        if (!buf)
             return throwError("Could not convert argument 0 to a WebGLArrayBuffer");
         bool ok;
-        int offset = 0;
+        uint32_t offset = 0;
         if (argLen > 1) {
-            offset = toInt32(args[1], ok);
+            offset = toUInt32(args[1], ok);
             if (!ok)
-                return throwError("Could not convert argument 1 to an integer");
+                return throwError("Could not convert argument 1 to a number");
         }
-        int length = buf->byteLength() - offset;
+        uint32_t length = (buf->byteLength() - offset) / sizeof(ElementType);
         if (argLen > 2) {
-            length = toInt32(args[2], ok);
+            length = toUInt32(args[2], ok);
             if (!ok)
-                return throwError("Could not convert argument 2 to an integer");
+                return throwError("Could not convert argument 2 to a number");
         }
-        if (length < 0)
-            return throwError("Length / offset out of range");
 
         RefPtr<ArrayClass> array = ArrayClass::create(buf, offset, length);
-        if (array == NULL)
-            return throwError("Invalid arguments to new WebGL<T>Array(WebGLArrayBuffer, int, int)");
+        if (!array)
+            return throwError("Out-of-range offset and/or length");
         // Transform the holder into a wrapper object for the array.
-        V8DOMWrapper::setDOMWrapper(args.Holder(), classIndex, array.get());
-        V8DOMWrapper::setIndexedPropertiesToExternalArray(args.Holder(),
-                                                          classIndex,
-                                                          array.get()->baseAddress(),
-                                                          array.get()->length());
+        V8DOMWrapper::setDOMWrapper(args.Holder(), type, array.get());
+        args.Holder()->SetIndexedPropertiesToExternalArrayData(array.get()->baseAddress(), arrayType, array.get()->length());
         return toV8(array.release(), args.Holder());
     }
 
-    int len = 0;
+    uint32_t len = 0;
     v8::Handle<v8::Object> srcArray;
-    if (argLen != 1)
-        return throwError("Wrong number of arguments to new WebGL<T>Array(int / array)");
 
     if (args[0]->IsInt32()) {
-        len = toInt32(args[0]);
+        len = toUInt32(args[0]);
     } else if (args[0]->IsObject()) {
         srcArray = args[0]->ToObject();
         if (srcArray.IsEmpty())
-            return throwError("Could not convert argument 0 to an object");
-        len = toInt32(srcArray->Get(v8::String::New("length")));
+            return throwError("Could not convert argument 0 to an array");
+        len = toUInt32(srcArray->Get(v8::String::New("length")));
     } else
-        return throwError("Could not convert argument 0 to either an int32 or an object");
+        return throwError("Could not convert argument 0 to either a number or an array");
 
     RefPtr<ArrayClass> array = ArrayClass::create(len);
+    if (!array.get()) {
+        V8Proxy::setDOMException(INDEX_SIZE_ERR);
+        return v8::Undefined();
+    }
     if (!srcArray.IsEmpty()) {
         // Need to copy the incoming array into the newly created WebGLArray.
-        for (int i = 0; i < len; i++) {
-            v8::Local<v8::Value> val = srcArray->Get(v8::Integer::New(i));
+        for (unsigned i = 0; i < len; i++) {
+            v8::Local<v8::Value> val = srcArray->Get(v8::Integer::NewFromUnsigned(i));
             array->set(i, val->NumberValue());
         }
     }
 
     // Transform the holder into a wrapper object for the array.
-    V8DOMWrapper::setDOMWrapper(args.Holder(), classIndex, array.get());
-    V8DOMWrapper::setIndexedPropertiesToExternalArray(args.Holder(),
-                                                      classIndex,
-                                                      array.get()->baseAddress(),
-                                                      array.get()->length());
+    V8DOMWrapper::setDOMWrapper(args.Holder(), type, array.get());
+    args.Holder()->SetIndexedPropertiesToExternalArrayData(array.get()->baseAddress(), arrayType, array.get()->length());
     return toV8(array.release(), args.Holder());
-}
-
-template <class T, typename ElementType>
-v8::Handle<v8::Value> getWebGLArrayElement(const v8::Arguments& args,
-                                           V8ClassIndex::V8WrapperType wrapperType)
-{
-    if (args.Length() != 1) {
-        V8Proxy::setDOMException(SYNTAX_ERR);
-        return notHandledByInterceptor();
-    }
-    bool ok;
-    uint32_t index = toInt32(args[0], ok);
-    if (!ok) {
-        V8Proxy::setDOMException(SYNTAX_ERR);
-        return notHandledByInterceptor();
-    }
-    T* array = reinterpret_cast<T*>(args.Holder()->GetPointerFromInternalField(v8DOMWrapperObjectIndex));
-    if (index >= array->length())
-        return v8::Undefined();
-    ElementType result;
-    if (!array->get(index, result))
-        return v8::Undefined();
-    return v8::Number::New(result);
 }
 
 template <class T>
@@ -169,21 +136,23 @@ v8::Handle<v8::Value> setWebGLArrayFromArray(T* webGLArray, const v8::Arguments&
         v8::Local<v8::Object> array = args[0]->ToObject();
         uint32_t offset = 0;
         if (args.Length() == 2)
-            offset = toInt32(args[1]);
-        uint32_t length = toInt32(array->Get(v8::String::New("length")));
-        if (offset + length > webGLArray->length())
+            offset = toUInt32(args[1]);
+        uint32_t length = toUInt32(array->Get(v8::String::New("length")));
+        if (offset > webGLArray->length() ||
+            offset + length > webGLArray->length() ||
+            offset + length < offset)
+            // Out of range offset or overflow
             V8Proxy::setDOMException(INDEX_SIZE_ERR);
         else
             for (uint32_t i = 0; i < length; i++)
-                webGLArray->set(offset + i, array->Get(v8::Integer::New(i))->NumberValue());
+                webGLArray->set(offset + i, array->Get(v8::Integer::NewFromUnsigned(i))->NumberValue());
     }
 
     return v8::Undefined();
 }
 
 template <class CPlusPlusArrayType, class JavaScriptWrapperArrayType>
-v8::Handle<v8::Value> setWebGLArray(const v8::Arguments& args,
-                                    V8ClassIndex::V8WrapperType wrapperType)
+v8::Handle<v8::Value> setWebGLArray(const v8::Arguments& args)
 {
     if (args.Length() < 1 || args.Length() > 2) {
         V8Proxy::setDOMException(SYNTAX_ERR);
@@ -192,9 +161,10 @@ v8::Handle<v8::Value> setWebGLArray(const v8::Arguments& args,
 
     CPlusPlusArrayType* array = JavaScriptWrapperArrayType::toNative(args.Holder());
 
+    // FIXME: change to IsUInt32() when available
     if (args.Length() == 2 && args[0]->IsInt32()) {
         // void set(in unsigned long index, in {long|float} value);
-        uint32_t index = toInt32(args[0]);
+        uint32_t index = toUInt32(args[0]);
         array->set(index, args[1]->NumberValue());
         return v8::Undefined();
     }
@@ -204,7 +174,7 @@ v8::Handle<v8::Value> setWebGLArray(const v8::Arguments& args,
         CPlusPlusArrayType* src = JavaScriptWrapperArrayType::toNative(args[0]->ToObject());
         uint32_t offset = 0;
         if (args.Length() == 2)
-            offset = toInt32(args[1]);
+            offset = toUInt32(args[1]);
         ExceptionCode ec = 0;
         array->set(src, offset, ec);
         V8Proxy::setDOMException(ec);

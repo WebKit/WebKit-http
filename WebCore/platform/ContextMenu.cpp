@@ -34,7 +34,6 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSProperty.h"
 #include "CSSPropertyNames.h"
-#include "CString.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Editor.h"
@@ -49,7 +48,7 @@
 #include "SelectionController.h"
 #include "Settings.h"
 #include "TextIterator.h"
-#include <memory>
+#include <wtf/text/CString.h>
 
 using namespace std;
 using namespace WTF;
@@ -66,9 +65,9 @@ ContextMenuController* ContextMenu::controller() const
     return 0;
 }
 
-static auto_ptr<ContextMenuItem> separatorItem()
+static PassOwnPtr<ContextMenuItem> separatorItem()
 {
-    return auto_ptr<ContextMenuItem>(new ContextMenuItem(SeparatorType, ContextMenuItemTagNoAction, String()));
+    return new ContextMenuItem(SeparatorType, ContextMenuItemTagNoAction, String());
 }
 
 static void createAndAppendFontSubMenu(const HitTestResult& result, ContextMenuItem& fontMenuItem)
@@ -103,7 +102,7 @@ static void createAndAppendFontSubMenu(const HitTestResult& result, ContextMenuI
     fontMenuItem.setSubMenu(&fontMenu);
 }
 
-#ifndef BUILDING_ON_TIGER
+#if !defined(BUILDING_ON_TIGER) && !PLATFORM(GTK)
 static void createAndAppendSpellingAndGrammarSubMenu(const HitTestResult& result, ContextMenuItem& spellingAndGrammarMenuItem)
 {
     ContextMenu spellingAndGrammarMenu(result);
@@ -360,6 +359,9 @@ void ContextMenu::populate()
                 appendItem(SpeechMenuItem);
 #endif                
             } else {
+#if ENABLE(INSPECTOR)
+                if (!(frame->page() && frame->page()->inspectorController()->hasInspectorFrontendClient())) {
+#endif
 #if PLATFORM(GTK)
                 appendItem(BackItem);
                 appendItem(ForwardItem);
@@ -378,6 +380,9 @@ void ContextMenu::populate()
                     appendItem(StopItem);
                 else
                     appendItem(ReloadItem);
+#endif
+#if ENABLE(INSPECTOR)
+                }
 #endif
 
                 if (frame->page() && frame != frame->page()->mainFrame())
@@ -551,7 +556,6 @@ void ContextMenu::addInspectElementItem()
         return;
 
     ContextMenuItem InspectElementItem(ActionType, ContextMenuItemTagInspectElement, contextMenuItemTagInspectElement());
-    appendItem(*separatorItem());
     appendItem(InspectElementItem);
 }
 #endif // ENABLE(INSPECTOR)

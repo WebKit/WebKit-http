@@ -27,11 +27,11 @@
 #include "ImageBuffer.h"
 
 #include "Base64.h"
-#include "CString.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
 #include "StillImageHaiku.h"
+#include <wtf/text/CString.h>
 #include <BitmapStream.h>
 #include <String.h>
 #include <TranslatorRoster.h>

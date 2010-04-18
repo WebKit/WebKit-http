@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 #include "FrameLoaderTypes.h"
 #include "ScrollTypes.h"
 #include <wtf/Forward.h>
-#include <wtf/Platform.h>
 #include <wtf/Vector.h>
 
 typedef class _jobject* jobject;
@@ -56,6 +55,9 @@ namespace WebCore {
     class HistoryItem;
     class HTMLAppletElement;
     class HTMLFrameOwnerElement;
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    class HTMLMediaElement;
+#endif
     class HTMLPlugInElement;
     class IntSize;
     class KURL;
@@ -110,12 +112,12 @@ namespace WebCore {
         virtual void dispatchDidFinishLoading(DocumentLoader*, unsigned long identifier) = 0;
         virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long identifier, const ResourceError&) = 0;
         virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int length) = 0;
-        virtual void dispatchDidLoadResourceByXMLHttpRequest(unsigned long identifier, const ScriptString&) = 0;
 
         virtual void dispatchDidHandleOnloadEvents() = 0;
         virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() = 0;
         virtual void dispatchDidCancelClientRedirect() = 0;
         virtual void dispatchWillPerformClientRedirect(const KURL&, double interval, double fireDate) = 0;
+        virtual void dispatchDidNavigateWithinPage() { }
         virtual void dispatchDidChangeLocationWithinPage() = 0;
         virtual void dispatchDidPushStateWithinPage() = 0;
         virtual void dispatchDidReplaceStateWithinPage() = 0;
@@ -226,6 +228,9 @@ namespace WebCore {
         virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) = 0;
 
         virtual void dispatchDidFailToStartPlugin(const PluginView*) const { }
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+        virtual PassRefPtr<Widget> createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&) = 0;
+#endif
 
         virtual ObjectContentType objectContentType(const KURL& url, const String& mimeType) = 0;
         virtual String overrideMediaType() const = 0;
@@ -260,6 +265,15 @@ namespace WebCore {
         virtual bool allowJavaScript(bool enabledPerSettings) { return enabledPerSettings; }
         virtual bool allowPlugins(bool enabledPerSettings) { return enabledPerSettings; }
         virtual bool allowImages(bool enabledPerSettings) { return enabledPerSettings; }
+
+        // This callback notifies the client that the frame was about to run
+        // JavaScript but did not because allowJavaScript returned false. We
+        // have a separate callback here because there are a number of places
+        // that need to know if JavaScript is enabled but are not necessarily
+        // preparing to execute script.
+        virtual void didNotAllowScript() { }
+        // This callback is similar, but for plugins.
+        virtual void didNotAllowPlugins() { }
     };
 
 } // namespace WebCore

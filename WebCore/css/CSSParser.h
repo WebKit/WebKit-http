@@ -95,6 +95,7 @@ namespace WebCore {
         PassRefPtr<CSSValue> parseAnimationDelay();
         PassRefPtr<CSSValue> parseAnimationDirection();
         PassRefPtr<CSSValue> parseAnimationDuration();
+        PassRefPtr<CSSValue> parseAnimationFillMode();
         PassRefPtr<CSSValue> parseAnimationIterationCount();
         PassRefPtr<CSSValue> parseAnimationName();
         PassRefPtr<CSSValue> parseAnimationPlayState();
@@ -194,8 +195,10 @@ namespace WebCore {
         bool checkForVariables(CSSParserValueList*);
         void addUnresolvedProperty(int propId, bool important);
         void invalidBlockHit();
-        
+
         Vector<CSSSelector*>* reusableSelectorVector() { return &m_reusableSelectorVector; }
+
+        void updateLastSelectorLine() { m_lastSelectorLine = m_line; }
 
         bool m_strict;
         bool m_important;
@@ -226,6 +229,7 @@ namespace WebCore {
         int lex(void* yylval);
         int token() { return yyTok; }
         UChar* text(int* length);
+        void countLines();
         int lex();
         
     private:
@@ -252,6 +256,8 @@ namespace WebCore {
         int yyleng;
         int yyTok;
         int yy_start;
+        int m_line;
+        int m_lastSelectorLine;
 
         bool m_allowImportRules;
         bool m_allowVariablesRules;
@@ -313,6 +319,10 @@ namespace WebCore {
     private:
         CSSParser* m_parser;
     };
+
+    String quoteCSSString(const String&);
+    String quoteCSSStringIfNeeded(const String&);
+    String quoteCSSURLIfNeeded(const String&);
 
 } // namespace WebCore
 

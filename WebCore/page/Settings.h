@@ -30,6 +30,7 @@
 #include "AtomicString.h"
 #include "FontRenderingMode.h"
 #include "KURL.h"
+#include "ZoomMode.h"
 
 namespace WebCore {
 
@@ -104,6 +105,9 @@ namespace WebCore {
         bool loadsImagesAutomatically() const { return m_loadsImagesAutomatically; }
 
         void setJavaScriptEnabled(bool);
+        // Instead of calling isJavaScriptEnabled directly, please consider calling
+        // ScriptController::canExecuteScripts, which takes things like the
+        // HTML sandbox attribute into account.
         bool isJavaScriptEnabled() const { return m_isJavaScriptEnabled; }
 
         void setWebSecurityEnabled(bool);
@@ -118,6 +122,9 @@ namespace WebCore {
         void setJavaScriptCanOpenWindowsAutomatically(bool);
         bool javaScriptCanOpenWindowsAutomatically() const { return m_javaScriptCanOpenWindowsAutomatically; }
 
+        void setSpatialNavigationEnabled(bool);
+        bool isSpatialNavigationEnabled() const { return m_isSpatialNavigationEnabled; }
+
         void setJavaEnabled(bool);
         bool isJavaEnabled() const { return m_isJavaEnabled; }
 
@@ -126,9 +133,6 @@ namespace WebCore {
 
         void setPluginsEnabled(bool);
         bool arePluginsEnabled() const { return m_arePluginsEnabled; }
-
-        void setDatabasesEnabled(bool);
-        bool databasesEnabled() const { return m_databasesEnabled; }
 
         void setLocalStorageEnabled(bool);
         bool localStorageEnabled() const { return m_localStorageEnabled; }
@@ -204,8 +208,8 @@ namespace WebCore {
         void setDeveloperExtrasEnabled(bool);
         bool developerExtrasEnabled() const { return m_developerExtrasEnabled; }
 
-        void setFrameSetFlatteningEnabled(bool);
-        bool frameSetFlatteningEnabled() const { return m_frameSetFlatteningEnabled; }
+        void setFrameFlatteningEnabled(bool);
+        bool frameFlatteningEnabled() const { return m_frameFlatteningEnabled; }
 
         void setAuthorAndUserStylesEnabled(bool);
         bool authorAndUserStylesEnabled() const { return m_authorAndUserStylesEnabled; }
@@ -234,8 +238,8 @@ namespace WebCore {
         void setShouldPaintCustomScrollbars(bool);
         bool shouldPaintCustomScrollbars() const { return m_shouldPaintCustomScrollbars; }
 
-        void setZoomsTextOnly(bool);
-        bool zoomsTextOnly() const { return m_zoomsTextOnly; }
+        void setZoomMode(ZoomMode);
+        ZoomMode zoomMode() const { return m_zoomMode; }
         
         void setEnforceCSSMIMETypeInStrictMode(bool);
         bool enforceCSSMIMETypeInStrictMode() { return m_enforceCSSMIMETypeInStrictMode; }
@@ -284,11 +288,11 @@ namespace WebCore {
         void setWebGLEnabled(bool);
         bool webGLEnabled() const { return m_webGLEnabled; }
 
-        void setGeolocationEnabled(bool);
-        bool geolocationEnabled() const { return m_geolocationEnabled; }
-
         void setLoadDeferringEnabled(bool);
         bool loadDeferringEnabled() const { return m_loadDeferringEnabled; }
+        
+        void setTiledBackingStoreEnabled(bool);
+        bool tiledBackingStoreEnabled() const { return m_tiledBackingStoreEnabled; }
 
     private:
         Page* m_page;
@@ -312,13 +316,14 @@ namespace WebCore {
         size_t m_maximumDecodedImageSize;
         unsigned m_localStorageQuota;
         unsigned m_pluginAllowedRunTime;
+        ZoomMode m_zoomMode;
+        bool m_isSpatialNavigationEnabled : 1;
         bool m_isJavaEnabled : 1;
         bool m_loadsImagesAutomatically : 1;
         bool m_privateBrowsingEnabled : 1;
         bool m_caretBrowsingEnabled : 1;
         bool m_areImagesEnabled : 1;
         bool m_arePluginsEnabled : 1;
-        bool m_databasesEnabled : 1;
         bool m_localStorageEnabled : 1;
         bool m_isJavaScriptEnabled : 1;
         bool m_isWebSecurityEnabled : 1;
@@ -344,13 +349,12 @@ namespace WebCore {
         bool m_authorAndUserStylesEnabled : 1;
         bool m_needsSiteSpecificQuirks : 1;
         unsigned m_fontRenderingMode : 1;
-        bool m_frameSetFlatteningEnabled : 1;
+        bool m_frameFlatteningEnabled : 1;
         bool m_webArchiveDebugModeEnabled : 1;
         bool m_localFileContentSniffingEnabled : 1;
         bool m_inApplicationChromeMode : 1;
         bool m_offlineWebApplicationCacheEnabled : 1;
         bool m_shouldPaintCustomScrollbars : 1;
-        bool m_zoomsTextOnly : 1;
         bool m_enforceCSSMIMETypeInStrictMode : 1;
         bool m_usesEncodingDetector : 1;
         bool m_allowScriptsToCloseWindows : 1;
@@ -362,8 +366,8 @@ namespace WebCore {
         bool m_showRepaintCounter : 1;
         bool m_experimentalNotificationsEnabled : 1;
         bool m_webGLEnabled : 1;
-        bool m_geolocationEnabled : 1;
         bool m_loadDeferringEnabled : 1;
+        bool m_tiledBackingStoreEnabled : 1;
 
 #if USE(SAFARI_THEME)
         static bool gShouldPaintNativeControls;

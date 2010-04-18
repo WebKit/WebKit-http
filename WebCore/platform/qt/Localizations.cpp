@@ -350,6 +350,17 @@ String AXMenuListActionVerb()
 {
     return String();
 }
+    
+String missingPluginText()
+{
+    return QCoreApplication::translate("QWebPage", "Missing Plug-in", "Label text to be used when a plug-in is missing");
+}
+
+String crashedPluginText()
+{
+    notImplemented();
+    return String();
+}
 
 String multipleFileUploadText(unsigned)
 {

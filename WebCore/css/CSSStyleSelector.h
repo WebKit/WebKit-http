@@ -85,12 +85,12 @@ public:
                          bool strictParsing, bool matchAuthorAndUserStyles);
         ~CSSStyleSelector();
 
-        void initElementAndPseudoState(Element*);
+        void initElement(Element*);
         void initForStyleResolve(Element*, RenderStyle* parentStyle = 0, PseudoId = NOPSEUDO);
-        PassRefPtr<RenderStyle> styleForElement(Element*, RenderStyle* parentStyle = 0, bool allowSharing = true, bool resolveForRootDefault = false);
+        PassRefPtr<RenderStyle> styleForElement(Element*, RenderStyle* parentStyle = 0, bool allowSharing = true, bool resolveForRootDefault = false, bool matchVisitedLinks = false);
         void keyframeStylesForAnimation(Element*, const RenderStyle*, KeyframeList& list);
 
-        PassRefPtr<RenderStyle> pseudoStyleForElement(PseudoId, Element*, RenderStyle* parentStyle = 0);
+        PassRefPtr<RenderStyle> pseudoStyleForElement(PseudoId, Element*, RenderStyle* parentStyle = 0, bool matchVisitedLinks = false);
 
         static PassRefPtr<RenderStyle> styleForDocument(Document*);
 
@@ -110,7 +110,7 @@ public:
     public:
         // These methods will give back the set of rules that matched for a given element (or a pseudo-element).
         PassRefPtr<CSSRuleList> styleRulesForElement(Element*, bool authorOnly);
-        PassRefPtr<CSSRuleList> pseudoStyleRulesForElement(Element*, const String& pseudoStyle, bool authorOnly);
+        PassRefPtr<CSSRuleList> pseudoStyleRulesForElement(Element*, PseudoId, bool authorOnly);
 
         // Given a CSS keyword in the range (xx-small to -webkit-xxx-large), this function will return
         // the correct font size scaled relative to the user's default (medium).
@@ -196,11 +196,11 @@ public:
             SelectorChecker(Document*, bool strictParsing);
 
             bool checkSelector(CSSSelector*, Element*) const;
-            SelectorMatch checkSelector(CSSSelector*, Element*, HashSet<AtomicStringImpl*>* selectorAttrs, PseudoId& dynamicPseudo, bool isAncestor, bool isSubSelector, RenderStyle* = 0, RenderStyle* elementParentStyle = 0) const;
-            bool checkOneSelector(CSSSelector*, Element*, HashSet<AtomicStringImpl*>* selectorAttrs, PseudoId& dynamicPseudo, bool isAncestor, bool isSubSelector, RenderStyle*, RenderStyle* elementParentStyle) const;
-            PseudoState checkPseudoState(Element*, bool checkVisited = true) const;
+            SelectorMatch checkSelector(CSSSelector*, Element*, HashSet<AtomicStringImpl*>* selectorAttrs, PseudoId& dynamicPseudo, bool isSubSelector, bool encounteredLink, RenderStyle* = 0, RenderStyle* elementParentStyle = 0) const;
+            bool checkOneSelector(CSSSelector*, Element*, HashSet<AtomicStringImpl*>* selectorAttrs, PseudoId& dynamicPseudo, bool isSubSelector, RenderStyle*, RenderStyle* elementParentStyle) const;
             bool checkScrollbarPseudoClass(CSSSelector*, PseudoId& dynamicPseudo) const;
 
+            EInsideLink determineLinkState(Element* element) const;
             void allVisitedStateChanged();
             void visitedStateChanged(LinkHash visitedHash);
 
@@ -209,6 +209,7 @@ public:
             bool m_collectRulesOnly;
             PseudoId m_pseudoStyle;
             bool m_documentIsHTML;
+            mutable bool m_matchVisitedPseudoClass;
             mutable HashSet<LinkHash, LinkHashHash> m_linksCheckedForVisitedState;
         };
 
@@ -235,6 +236,7 @@ public:
         void mapAnimationDelay(Animation*, CSSValue*);
         void mapAnimationDirection(Animation*, CSSValue*);
         void mapAnimationDuration(Animation*, CSSValue*);
+        void mapAnimationFillMode(Animation*, CSSValue*);
         void mapAnimationIterationCount(Animation*, CSSValue*);
         void mapAnimationName(Animation*, CSSValue*);
         void mapAnimationPlayState(Animation*, CSSValue*);
@@ -278,7 +280,7 @@ public:
         CSSValue* m_lineHeightValue;
         bool m_fontDirty;
         bool m_matchAuthorAndUserStyles;
-
+        
         RefPtr<CSSFontSelector> m_fontSelector;
         HashSet<AtomicStringImpl*> m_selectorAttrs;
         Vector<CSSMutableStyleDeclaration*> m_additionalAttributeStyleDecls;

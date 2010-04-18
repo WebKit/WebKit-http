@@ -20,11 +20,11 @@
  */
 
 #include "config.h"
-#include "CString.h"
 #include "FileChooser.h"
 #include "Font.h"
 #include "TextEncoding.h"
 
+#include <wtf/text/CString.h>
 #include <Font.h>
 #include <String.h>
 #include <stdio.h>

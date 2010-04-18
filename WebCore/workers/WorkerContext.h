@@ -31,6 +31,7 @@
 
 #include "AtomicStringHash.h"
 #include "Database.h"
+#include "DatabaseCallback.h"
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
@@ -74,9 +75,6 @@ namespace WebCore {
 
         bool hasPendingActivity() const;
 
-        virtual void resourceRetrievedByXMLHttpRequest(unsigned long identifier, const ScriptString& sourceString);
-        virtual void scriptImported(unsigned long identifier, const String& sourceString);
-
         virtual void postTask(PassOwnPtr<Task>); // Executes the task on context's thread asynchronously.
 
         // WorkerGlobalScope
@@ -87,7 +85,7 @@ namespace WebCore {
         DEFINE_ATTRIBUTE_EVENT_LISTENER(error);
 
         // WorkerUtils
-        virtual void importScripts(const Vector<String>& urls, const String& callerURL, int callerLine, ExceptionCode&);
+        virtual void importScripts(const Vector<String>& urls, ExceptionCode&);
         WorkerNavigator* navigator() const;
 
         // Timers
@@ -98,7 +96,7 @@ namespace WebCore {
 
         // ScriptExecutionContext
         virtual void reportException(const String& errorMessage, int lineNumber, const String& sourceURL);
-        virtual void addMessage(MessageDestination, MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL);
+        virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL);
 
 #if ENABLE(NOTIFICATIONS)
         NotificationCenter* webkitNotifications() const;
@@ -106,7 +104,7 @@ namespace WebCore {
 
 #if ENABLE(DATABASE)
         // HTML 5 client-side database
-        PassRefPtr<Database> openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, ExceptionCode&);
+        PassRefPtr<Database> openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode&);
         // Not implemented yet.
         virtual bool isDatabaseReadOnly() const { return false; }
         // Not implemented yet.
@@ -153,6 +151,7 @@ namespace WebCore {
         mutable RefPtr<NotificationCenter> m_notifications;
 #endif
         bool m_closing;
+        bool m_reportingException;
         EventTargetData m_eventTargetData;
     };
 

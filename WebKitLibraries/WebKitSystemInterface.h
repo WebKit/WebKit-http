@@ -29,8 +29,9 @@ NSString *WKGetPreferredExtensionForMIMEType(NSString *type);
 NSArray *WKGetExtensionsForMIMEType(NSString *type);
 NSString *WKGetMIMETypeForExtension(NSString *extension);
 
-NSDate *WKGetNSURLResponseLastModifiedDate(NSURLResponse *response);
-NSTimeInterval WKGetNSURLResponseFreshnessLifetime(NSURLResponse *response);
+NSDate *WKGetNSURLResponseLastModifiedDate(NSURLResponse *);
+NSTimeInterval WKGetNSURLResponseFreshnessLifetime(NSURLResponse *);
+NSString *WKCopyNSURLResponseStatusLine(NSURLResponse *);
 
 CFStringEncoding WKGetWebDefaultCFStringEncoding(void);
 
@@ -176,7 +177,7 @@ BOOL WKSupportsMultipartXMixedReplace(NSMutableURLRequest *request);
 
 BOOL WKCGContextIsBitmapContext(CGContextRef context);
 
-void WKGetWheelEventDeltas(NSEvent *, float *deltaX, float *deltaY, BOOL *continuous);
+void WKGetWheelEventDeltas(NSEvent *, float *deltaX, float *deltaY, float *wheelTicksX, float *wheelTicksY, BOOL *continuous);
 
 BOOL WKAppVersionCheckLessThan(NSString *, int, double);
 
@@ -191,6 +192,8 @@ int WKQTMovieGetType(QTMovie* movie);
 
 BOOL WKQTMovieHasClosedCaptions(QTMovie* movie);
 void WKQTMovieSetShowClosedCaptions(QTMovie* movie, BOOL showClosedCaptions);
+void WKQTMovieSelectPreferredAlternates(QTMovie* movie);
+void WKQTMovieSelectPreferredAlternateTrackForMediaType(QTMovie* movie, NSString* mediaType);
 
 unsigned WKQTIncludeOnlyModernMediaFileTypes(void);
 int WKQTMovieDataRate(QTMovie* movie);
@@ -294,6 +297,7 @@ void WKWindowSetScaledFrame(NSWindow *window, NSRect scaleFrame, NSRect nonScale
 
 #if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD)
 NSMutableArray *WKNoteOpenPanelFiles(NSArray *paths);
+void WKSyncSurfaceToView(NSView *view);
 #endif
 
 #ifdef __cplusplus

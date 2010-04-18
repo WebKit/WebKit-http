@@ -103,11 +103,13 @@ DOM_CLASSES = \
     Console \
     Coordinates \
     Counter \
+    CustomEvent \
     DataGridColumn \
     DataGridColumnList \
     DedicatedWorkerContext \
     DOMApplicationCache \
     DOMCoreException \
+    DOMFormData \
     DOMImplementation \
     DOMParser \
     DOMSelection \
@@ -185,6 +187,7 @@ DOM_CLASSES = \
     HTMLParagraphElement \
     HTMLParamElement \
     HTMLPreElement \
+    HTMLProgressElement \
     HTMLQuoteElement \
     HTMLScriptElement \
     HTMLSelectElement \
@@ -240,6 +243,8 @@ DOM_CLASSES = \
     Rect \
     SharedWorker \
     SharedWorkerContext \
+    ScriptProfile \
+    ScriptProfileNode \
     SQLError \
     SQLResultSet \
     SQLResultSetRowList \
@@ -398,6 +403,9 @@ DOM_CLASSES = \
     TextEvent \
     TextMetrics \
     TimeRanges \
+    Touch \
+    TouchEvent \
+    TouchList \
     TreeWalker \
     UIEvent \
     ValidityState \
@@ -618,6 +626,10 @@ UserAgentStyleSheets.h : css/make-css-file-arrays.pl $(USER_AGENT_STYLE_SHEETS)
 
 ifeq ($(findstring ENABLE_DATALIST,$(FEATURE_DEFINES)), ENABLE_DATALIST)
     HTML_FLAGS := $(HTML_FLAGS) ENABLE_DATALIST=1
+endif
+
+ifeq ($(findstring ENABLE_PROGRESS_TAG,$(FEATURE_DEFINES)), ENABLE_PROGRESS_TAG)
+    HTML_FLAGS := $(HTML_FLAGS) ENABLE_PROGRESS_TAG=1
 endif
 
 ifeq ($(findstring ENABLE_VIDEO,$(FEATURE_DEFINES)), ENABLE_VIDEO)
@@ -863,6 +875,10 @@ endif
 
 ifeq ($(findstring ENABLE_CLIENT_BASED_GEOLOCATION,$(FEATURE_DEFINES)), ENABLE_CLIENT_BASED_GEOLOCATION)
     WEBCORE_EXPORT_DEPENDENCIES := $(WEBCORE_EXPORT_DEPENDENCIES) WebCore.ClientBasedGeolocation.exp
+endif
+
+ifeq ($(findstring ENABLE_GEOLOCATION,$(FEATURE_DEFINES)), ENABLE_GEOLOCATION)
+    WEBCORE_EXPORT_DEPENDENCIES := $(WEBCORE_EXPORT_DEPENDENCIES) WebCore.Geolocation.exp
 endif
 
 WebCore.exp : WebCore.base.exp $(WEBCORE_EXPORT_DEPENDENCIES)

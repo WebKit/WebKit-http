@@ -57,11 +57,36 @@ class UString;
 }
 #endif
 
+namespace WTF {
+class CString;
+}
+using WTF::CString;
+
 namespace WebCore {
 
-class CString;
 class SharedBuffer;
 struct StringHash;
+
+// Declarations of string operations
+
+bool charactersAreAllASCII(const UChar*, size_t);
+int charactersToIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
+unsigned charactersToUIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
+int64_t charactersToInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
+uint64_t charactersToUInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
+intptr_t charactersToIntPtrStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
+
+int charactersToInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+unsigned charactersToUInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+int64_t charactersToInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+uint64_t charactersToUInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+intptr_t charactersToIntPtr(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
+
+double charactersToDouble(const UChar*, size_t, bool* ok = 0);
+float charactersToFloat(const UChar*, size_t, bool* ok = 0);
+
+int find(const UChar*, size_t, UChar, int startPosition = 0);
+int reverseFind(const UChar*, size_t, UChar, int startPosition = -1);
 
 class String {
 public:
@@ -132,6 +157,10 @@ public:
     String& replace(UChar a, const String& b) { if (m_impl) m_impl = m_impl->replace(a, b.impl()); return *this; }
     String& replace(const String& a, const String& b) { if (m_impl) m_impl = m_impl->replace(a.impl(), b.impl()); return *this; }
     String& replace(unsigned index, unsigned len, const String& b) { if (m_impl) m_impl = m_impl->replace(index, len, b.impl()); return *this; }
+
+    void makeLower() { if (m_impl) m_impl = m_impl->lower(); }
+    void makeUpper() { if (m_impl) m_impl = m_impl->upper(); }
+    void makeSecure(UChar aChar) { if (m_impl) m_impl = m_impl->secure(aChar); }
 
     void truncate(unsigned len);
     void remove(unsigned pos, int len = 1);
@@ -248,13 +277,7 @@ public:
     // Determines the writing direction using the Unicode Bidi Algorithm rules P2 and P3.
     WTF::Unicode::Direction defaultWritingDirection() const { return m_impl ? m_impl->defaultWritingDirection() : WTF::Unicode::LeftToRight; }
 
-    // Counts the number of grapheme clusters. A surrogate pair or a sequence
-    // of a non-combining character and following combining characters is
-    // counted as 1 grapheme cluster.
-    unsigned numGraphemeClusters() const;
-    // Returns the number of characters which will be less than or equal to
-    // the specified grapheme cluster length.
-    unsigned numCharactersInGraphemeClusters(unsigned) const;
+    bool containsOnlyASCII() const { return charactersAreAllASCII(characters(), length()); }
 
 private:
     RefPtr<StringImpl> m_impl;
@@ -294,27 +317,7 @@ inline bool operator!(const String& str) { return str.isNull(); }
 
 inline void swap(String& a, String& b) { a.swap(b); }
 
-// String Operations
-
-bool charactersAreAllASCII(const UChar*, size_t);
-
-int charactersToIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
-unsigned charactersToUIntStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
-int64_t charactersToInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
-uint64_t charactersToUInt64Strict(const UChar*, size_t, bool* ok = 0, int base = 10);
-intptr_t charactersToIntPtrStrict(const UChar*, size_t, bool* ok = 0, int base = 10);
-
-int charactersToInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-unsigned charactersToUInt(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-int64_t charactersToInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-uint64_t charactersToUInt64(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-intptr_t charactersToIntPtr(const UChar*, size_t, bool* ok = 0); // ignores trailing garbage
-
-double charactersToDouble(const UChar*, size_t, bool* ok = 0);
-float charactersToFloat(const UChar*, size_t, bool* ok = 0);
-
-int find(const UChar*, size_t, UChar, int startPosition = 0);
-int reverseFind(const UChar*, size_t, UChar, int startPosition = -1);
+// Definitions of string operations
 
 #ifdef __OBJC__
 // This is for situations in WebKit where the long standing behavior has been
@@ -398,6 +401,13 @@ inline void appendNumber(Vector<UChar>& vector, unsigned char number)
 
 
 PassRefPtr<SharedBuffer> utf8Buffer(const String&);
+// Counts the number of grapheme clusters. A surrogate pair or a sequence
+// of a non-combining character and following combining characters is
+// counted as 1 grapheme cluster.
+unsigned numGraphemeClusters(const String& s);
+// Returns the number of characters which will be less than or equal to
+// the specified grapheme cluster length.
+unsigned numCharactersInGraphemeClusters(const String& s, unsigned);
 
 } // namespace WebCore
 

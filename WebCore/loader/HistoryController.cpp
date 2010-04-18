@@ -33,7 +33,6 @@
 
 #include "BackForwardList.h"
 #include "CachedPage.h"
-#include "CString.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -46,6 +45,7 @@
 #include "PageCache.h"
 #include "PageGroup.h"
 #include "Settings.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -445,6 +445,15 @@ void HistoryController::setCurrentItemTitle(const String& title)
         m_currentItem->setTitle(title);
 }
 
+bool HistoryController::currentItemShouldBeReplaced() const
+{
+    // From the HTML5 spec for location.assign():
+    //  "If the browsing context's session history contains only one Document,
+    //   and that was the about:blank Document created when the browsing context
+    //   was created, then the navigation must be done with replacement enabled."
+    return m_currentItem && !m_previousItem && equalIgnoringCase(m_currentItem->urlString(), blankURL());
+}
+
 void HistoryController::setProvisionalItem(HistoryItem* item)
 {
     m_provisionalItem = item;
@@ -656,15 +665,17 @@ void HistoryController::pushState(PassRefPtr<SerializedScriptValue> stateObject,
 
 void HistoryController::replaceState(PassRefPtr<SerializedScriptValue> stateObject, const String& title, const String& urlString)
 {
-    Page* page = m_frame->page();
-    ASSERT(page);
-    HistoryItem* current = page->backForwardList()->currentItem();
-    ASSERT(current);
+    // FIXME: We should always have m_currentItem here!!
+    // https://bugs.webkit.org/show_bug.cgi?id=36464
+    if (!m_currentItem) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
 
     if (!urlString.isEmpty())
-        current->setURLString(urlString);
-    current->setTitle(title);
-    current->setStateObject(stateObject);
+        m_currentItem->setURLString(urlString);
+    m_currentItem->setTitle(title);
+    m_currentItem->setStateObject(stateObject);
 }
 
 } // namespace WebCore

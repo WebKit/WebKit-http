@@ -30,16 +30,16 @@
 #include "config.h"
 #include "SimpleFontData.h"
 
-#include "CString.h"
 #include "FloatRect.h"
 #include "FontCache.h"
 #include "FontDescription.h"
 #include "NotImplemented.h"
 #include "TextEncoding.h"
 
-#include <Rect.h>
+#include <wtf/text/CString.h>
 #include <unicode/uchar.h>
 #include <unicode/unorm.h>
+#include <Rect.h>
 
 
 namespace WebCore {
@@ -94,15 +94,17 @@ void SimpleFontData::determinePitch()
     m_treatAsFixedPitch = m_platformData.font() && m_platformData.font()->IsFixed();
 }
 
-float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
+GlyphMetrics SimpleFontData::platformMetricsForGlyph(Glyph glyph, GlyphMetricsMode) const
 {
+    GlyphMetrics metrics;
     if (!m_platformData.font())
-        return 0;
+        return metrics;
 
     float escapements[1];
     CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
     m_platformData.font()->GetEscapements(encoded.data(), 1, escapements);
-    return escapements[0] * m_platformData.font()->Size();
+    metrics.horizontalAdvance = escapements[0] * m_platformData.font()->Size();
+    return metrics;
 }
 
 } // namespace WebCore

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 Holger Hans Peter Freyther
- * Copyright (C) 2009 Collabora Ltd.
+ * Copyright (C) 2009, 2010 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -17,6 +17,8 @@
  * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA 02110-1301, USA.
  */
+
+#include "test_utils.h"
 
 #include <errno.h>
 #include <unistd.h>
@@ -56,10 +58,10 @@ server_callback(SoupServer* server, SoupMessage* msg,
 
         soup_message_body_append(msg->response_body, SOUP_MEMORY_TAKE, contents, length);
     } else if (g_str_equal(path, "/bigdiv.html")) {
-        char* contents = g_strdup("<html><body><div style=\"background-color: green; height: 1200px;\"></div></body></html>");
+        char* contents = g_strdup("<html><body><a id=\"link\" href=\"http://abc.def\">test</a><div style=\"background-color: green; height: 1200px;\"></div></body></html>");
         soup_message_body_append(msg->response_body, SOUP_MEMORY_TAKE, contents, strlen(contents));
     } else if (g_str_equal(path, "/iframe.html")) {
-        char* contents = g_strdup("<html><body><div style=\"background-color: green; height: 50px;\"></div><iframe src=\"bigdiv.html\"></iframe></body></html>");
+        char* contents = g_strdup("<html><body id=\"some-content\"><div style=\"background-color: green; height: 50px;\"></div><iframe src=\"bigdiv.html\"></iframe></body></html>");
         soup_message_body_append(msg->response_body, SOUP_MEMORY_TAKE, contents, strlen(contents));
     } else {
         char* contents = g_strdup("<html><body>test</body></html>");
@@ -133,6 +135,61 @@ static gboolean map_event_cb(GtkWidget *widget, GdkEvent* event, gpointer data)
     g_main_loop_quit(loop);
 
     return FALSE;
+}
+
+static void test_webkit_web_view_grab_focus()
+{
+    char* uri = g_strconcat(base_uri, "iframe.html", NULL);
+    GtkWidget* window = gtk_window_new(GTK_WINDOW_POPUP);
+    GtkWidget* scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+    WebKitWebView* view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+    GtkAdjustment* adjustment;
+
+    gtk_window_set_default_size(GTK_WINDOW(window), 400, 200);
+
+    gtk_container_add(GTK_CONTAINER(window), scrolled_window);
+    gtk_container_add(GTK_CONTAINER(scrolled_window), GTK_WIDGET(view));
+
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window),
+                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+
+    loop = g_main_loop_new(NULL, TRUE);
+
+    g_signal_connect(view, "notify::progress", G_CALLBACK (idle_quit_loop_cb), NULL);
+
+    /* Wait for window to show up */
+    gtk_widget_show_all(window);
+    g_signal_connect(window, "map-event",
+                     G_CALLBACK(map_event_cb), loop);
+    g_main_loop_run(loop);
+
+    /* Load a page with a big div that will cause scrollbars to appear */
+    webkit_web_view_load_uri(view, uri);
+    g_main_loop_run(loop);
+
+    adjustment = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(scrolled_window));
+    g_assert_cmpfloat(gtk_adjustment_get_value(adjustment), ==, 0.0);
+
+    /* Since webkit_web_view_execute_script does not return a value,
+       it is impossible to know if an inner document has focus after
+       a node of it was focused via .focus() method.
+       The code below is an workaround: if the node has focus, a scroll
+       action is performed and afterward it is checked if the adjustment
+       has to be different from 0.
+    */
+    char script[] = "var innerDoc = document.defaultView.frames[0].document; \
+                     innerDoc.getElementById(\"link\").focus();              \
+                     if (innerDoc.hasFocus())                                \
+                        window.scrollBy(0, 100);";
+
+    /* Focus an element using JavaScript */
+    webkit_web_view_execute_script(view, script);
+
+    /* Make sure the ScrolledWindow noticed the scroll */
+    g_assert_cmpfloat(gtk_adjustment_get_value(adjustment), !=, 0.0);
+
+    g_free(uri);
+    gtk_widget_destroy(window);
 }
 
 static void do_test_webkit_web_view_adjustments(gboolean with_page_cache)
@@ -224,6 +281,61 @@ static void test_webkit_web_view_adjustments()
     do_test_webkit_web_view_adjustments(TRUE);
 }
 
+gboolean delayed_destroy(gpointer data)
+{
+    gtk_widget_destroy(GTK_WIDGET(data));
+    g_main_loop_quit(loop);
+    return FALSE;
+}
+
+static void test_webkit_web_view_destroy()
+{
+    GtkWidget* window;
+    GtkWidget* web_view;
+
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    web_view = webkit_web_view_new();
+
+    gtk_container_add(GTK_CONTAINER(window), web_view);
+
+    gtk_widget_show_all(window);
+
+    loop = g_main_loop_new(NULL, TRUE);
+
+    g_signal_connect(window, "map-event",
+                     G_CALLBACK(map_event_cb), loop);
+    g_main_loop_run(loop);
+
+    g_idle_add(delayed_destroy, web_view);
+    g_main_loop_run(loop);
+
+    gtk_widget_destroy(window);
+}
+
+static void test_webkit_web_view_window_features()
+{
+    GtkWidget* window;
+    GtkWidget* web_view;
+    
+    window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    web_view = webkit_web_view_new();
+    
+    gtk_container_add(GTK_CONTAINER(window), web_view);
+    
+    gtk_widget_show_all(window);
+    
+    loop = g_main_loop_new(NULL, TRUE);
+
+    g_signal_connect(window, "map-event",
+                     G_CALLBACK(map_event_cb), loop);
+    g_main_loop_run(loop);
+    
+    /* Bug #36144 */
+    g_object_set(G_OBJECT(web_view), "window-features", NULL, NULL);
+    
+    gtk_widget_destroy(window);
+}    
+
 int main(int argc, char** argv)
 {
     SoupServer* server;
@@ -233,16 +345,7 @@ int main(int argc, char** argv)
     gtk_test_init(&argc, &argv, NULL);
 
     /* Hopefully make test independent of the path it's called from. */
-    while (!g_file_test ("WebKit/gtk/tests/resources/test.html", G_FILE_TEST_EXISTS)) {
-        gchar *path_name;
-
-        g_chdir("..");
-
-        g_assert(!g_str_equal((path_name = g_get_current_dir()), "/"));
-        g_free(path_name);
-    }
-
-    g_chdir("WebKit/gtk/tests/resources/");
+    testutils_relative_chdir("WebKit/gtk/tests/resources/test.html", argv[0]);
 
     server = soup_server_new(SOUP_SERVER_PORT, 0, NULL);
     soup_server_run_async(server);
@@ -258,6 +361,9 @@ int main(int argc, char** argv)
     g_test_bug_base("https://bugs.webkit.org/");
     g_test_add_func("/webkit/webview/icon-uri", test_webkit_web_view_icon_uri);
     g_test_add_func("/webkit/webview/adjustments", test_webkit_web_view_adjustments);
+    g_test_add_func("/webkit/webview/destroy", test_webkit_web_view_destroy);
+    g_test_add_func("/webkit/webview/grab_focus", test_webkit_web_view_grab_focus);
+    g_test_add_func("/webkit/webview/window-features", test_webkit_web_view_window_features);
 
     return g_test_run ();
 }

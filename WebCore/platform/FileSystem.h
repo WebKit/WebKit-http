@@ -26,7 +26,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 #ifndef FileSystem_h
 #define FileSystem_h
 
@@ -45,12 +45,9 @@
 #include <CoreFoundation/CFBundle.h>
 #endif
 
-#include <time.h>
-
-#include <wtf/Platform.h>
-#include <wtf/Vector.h>
-
 #include "PlatformString.h"
+#include <time.h>
+#include <wtf/Vector.h>
 
 typedef const struct __CFData* CFDataRef;
 
@@ -62,9 +59,12 @@ typedef struct HINSTANCE__* HINSTANCE;
 typedef HINSTANCE HMODULE;
 #endif
 
-namespace WebCore {
-
+namespace WTF {
 class CString;
+}
+using WTF::CString;
+
+namespace WebCore {
 
 // PlatformModule
 #if OS(WINDOWS)
@@ -72,9 +72,11 @@ typedef HMODULE PlatformModule;
 #elif PLATFORM(QT)
 #if defined(Q_WS_MAC)
 typedef CFBundleRef PlatformModule;
-#else
+#elif !defined(QT_NO_LIBRARY)
 typedef QLibrary* PlatformModule;
-#endif // defined(Q_WS_MAC)
+#else
+typedef void* PlatformModule;
+#endif
 #elif PLATFORM(GTK)
 typedef GModule* PlatformModule;
 #elif PLATFORM(CF)
@@ -120,6 +122,17 @@ typedef int PlatformFileHandle;
 const PlatformFileHandle invalidPlatformFileHandle = -1;
 #endif
 
+enum FileOpenMode {
+    OpenForRead = 0,
+    OpenForWrite
+};
+
+enum FileSeekOrigin {
+    SeekFromBeginning = 0,
+    SeekFromCurrent,
+    SeekFromEnd
+};
+
 bool fileExists(const String&);
 bool deleteFile(const String&);
 bool deleteEmptyDirectory(const String&);
@@ -133,14 +146,21 @@ String directoryName(const String&);
 
 Vector<String> listDirectory(const String& path, const String& filter = String());
 
-CString fileSystemRepresentation(const String&);
+WTF::CString fileSystemRepresentation(const String&);
 
 inline bool isHandleValid(const PlatformFileHandle& handle) { return handle != invalidPlatformFileHandle; }
 
 // Prefix is what the filename should be prefixed with, not the full path.
-CString openTemporaryFile(const char* prefix, PlatformFileHandle&);
+WTF::CString openTemporaryFile(const char* prefix, PlatformFileHandle&);
+PlatformFileHandle openFile(const String& path, FileOpenMode);
 void closeFile(PlatformFileHandle&);
+// Returns the resulting offset from the beginning of the file if successful, -1 otherwise.
+long long seekFile(PlatformFileHandle, long long offset, FileSeekOrigin);
+bool truncateFile(PlatformFileHandle, long long offset);
+// Returns number of bytes actually read if successful, -1 otherwise.
 int writeToFile(PlatformFileHandle, const char* data, int length);
+// Returns number of bytes actually written if successful, -1 otherwise.
+int readFromFile(PlatformFileHandle, char* data, int length);
 
 // Methods for dealing with loadable modules
 bool unloadModule(PlatformModule);
@@ -160,6 +180,10 @@ String filenameForDisplay(const String&);
 
 #if PLATFORM(CHROMIUM)
 String pathGetDisplayFileName(const String&);
+#endif
+
+#if PLATFORM(EFL)
+char *filenameFromString(const String&);
 #endif
 
 } // namespace WebCore

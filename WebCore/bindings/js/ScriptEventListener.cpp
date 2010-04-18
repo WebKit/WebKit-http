@@ -59,12 +59,11 @@ PassRefPtr<JSLazyEventListener> createAttributeEventListener(Node* node, Attribu
 
     int lineNumber = 1;
     String sourceURL;
-    JSObject* wrapper = 0;
     
     // FIXME: We should be able to provide accurate source information for frameless documents, too (e.g. for importing nodes from XMLHttpRequest.responseXML).
     if (Frame* frame = node->document()->frame()) {
         ScriptController* scriptController = frame->script();
-        if (!scriptController->canExecuteScripts())
+        if (!scriptController->canExecuteScripts(AboutToExecuteScript))
             return 0;
 
         if (!scriptController->xssAuditor()->canCreateInlineEventListener(attr->localName().string(), attr->value())) {
@@ -74,13 +73,9 @@ PassRefPtr<JSLazyEventListener> createAttributeEventListener(Node* node, Attribu
 
         lineNumber = scriptController->eventHandlerLineNumber();
         sourceURL = node->document()->url().string();
-
-        JSC::JSLock lock(SilenceAssertionsOnly);
-        JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(node->document(), mainThreadNormalWorld());
-        wrapper = asObject(toJS(globalObject->globalExec(), globalObject, node));
     }
 
-    return JSLazyEventListener::create(attr->localName().string(), eventParameterName(node->isSVGElement()), attr->value(), node, sourceURL, lineNumber, wrapper, mainThreadNormalWorld());
+    return JSLazyEventListener::create(attr->localName().string(), eventParameterName(node->isSVGElement()), attr->value(), node, sourceURL, lineNumber, 0, mainThreadNormalWorld());
 }
 
 PassRefPtr<JSLazyEventListener> createAttributeEventListener(Frame* frame, Attribute* attr)
@@ -96,7 +91,7 @@ PassRefPtr<JSLazyEventListener> createAttributeEventListener(Frame* frame, Attri
     String sourceURL;
     
     ScriptController* scriptController = frame->script();
-    if (!scriptController->canExecuteScripts())
+    if (!scriptController->canExecuteScripts(AboutToExecuteScript))
         return 0;
 
     if (!scriptController->xssAuditor()->canCreateInlineEventListener(attr->localName().string(), attr->value())) {

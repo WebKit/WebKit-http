@@ -158,6 +158,10 @@ void SQLTransaction::checkAndHandleClosedDatabase()
     m_statementQueue.clear();
     m_nextStep = 0;
 
+    // The next steps should be executed only if we're on the DB thread.
+    if (currentThread() != database()->scriptExecutionContext()->databaseThread()->getThreadID())
+        return;
+
     // The current SQLite transaction should be stopped, as well
     if (m_sqliteTransaction) {
         m_sqliteTransaction->stop();
@@ -286,7 +290,7 @@ void SQLTransaction::deliverTransactionCallback()
 
     if (m_callback) {
         m_executeSqlAllowed = true;
-        m_callback->handleEvent(this, shouldDeliverErrorCallback);
+        m_callback->handleEvent(m_database->scriptExecutionContext(), this, shouldDeliverErrorCallback);
         m_executeSqlAllowed = false;
     } else
         shouldDeliverErrorCallback = true;
@@ -541,7 +545,7 @@ void SQLTransaction::deliverTransactionErrorCallback()
     // Transaction Step 12 - If exists, invoke error callback with the last
     // error to have occurred in this transaction.
     if (m_errorCallback)
-        m_errorCallback->handleEvent(m_transactionError.get());
+        m_errorCallback->handleEvent(m_database->scriptExecutionContext(), m_transactionError.get());
 
     m_nextStep = &SQLTransaction::cleanupAfterTransactionErrorCallback;
     LOG(StorageAPI, "Scheduling cleanupAfterTransactionErrorCallback for transaction %p\n", this);

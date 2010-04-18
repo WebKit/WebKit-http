@@ -36,9 +36,9 @@
 #include "ScriptController.h"
 #include "V8GCController.h"
 #include "V8Helpers.h"
-#include "V8Index.h"
 #include "V8NPUtils.h"
 #include "V8Proxy.h"
+#include "WrapperTypeInfo.h"
 #include "npruntime_impl.h"
 #include "npruntime_priv.h"
 
@@ -55,10 +55,20 @@
 using WebCore::npObjectInternalFieldCount;
 using WebCore::toV8Context;
 using WebCore::toV8Proxy;
-using WebCore::V8ClassIndex;
 using WebCore::V8DOMWrapper;
 using WebCore::V8GCController;
 using WebCore::V8Proxy;
+using WebCore::WrapperTypeInfo;
+
+namespace WebCore {
+
+WrapperTypeInfo* npObjectTypeInfo()
+{
+    static WrapperTypeInfo typeInfo = { 0, 0, false };
+    return &typeInfo;
+}
+
+}
 
 // FIXME: Comments on why use malloc and free.
 static NPObject* allocV8NPObject(NPP, NPClass*)
@@ -115,8 +125,8 @@ NPObject* npCreateV8ScriptObject(NPP npp, v8::Handle<v8::Object> object, WebCore
 {
     // Check to see if this object is already wrapped.
     if (object->InternalFieldCount() == npObjectInternalFieldCount) {
-        v8::Local<v8::Value> typeIndex = object->GetInternalField(WebCore::v8DOMWrapperTypeIndex);
-        if (typeIndex->IsNumber() && typeIndex->Uint32Value() == V8ClassIndex::NPOBJECT) {
+        WrapperTypeInfo* typeInfo = static_cast<WrapperTypeInfo*>(object->GetPointerFromInternalField(WebCore::v8DOMWrapperTypeIndex));
+        if (typeInfo == WebCore::npObjectTypeInfo()) {
 
             NPObject* returnValue = v8ObjectToNPObject(object);
             _NPN_RetainObject(returnValue);
@@ -299,6 +309,9 @@ bool _NPN_GetProperty(NPP npp, NPObject* npObject, NPIdentifier propertyName, NP
 
         v8::Handle<v8::Object> obj(object->v8Object);
         v8::Local<v8::Value> v8result = obj->Get(npIdentifierToV8Identifier(propertyName));
+        
+        if (v8result.IsEmpty())
+            return false;
 
         convertV8ObjectToNPVariant(v8result, npObject, result);
         return true;

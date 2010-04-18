@@ -104,6 +104,22 @@ static bool isInterchangeConvertedSpaceSpan(const Node *node)
            static_cast<const HTMLElement *>(node)->getAttribute(classAttr) == convertedSpaceSpanClassString;
 }
 
+static Position positionAvoidingPrecedingNodes(Position pos)
+{
+    // If we're already on a break, it's probably a placeholder and we shouldn't change our position.
+    if (pos.node()->hasTagName(brTag))
+        return pos;
+
+    // We also stop when changing block flow elements because even though the visual position is the
+    // same.  E.g.,
+    //   <div>foo^</div>^
+    // The two positions above are the same visual position, but we want to stay in the same block.
+    Node* stopNode = pos.node()->enclosingBlockFlowElement();
+    while (stopNode != pos.node() && VisiblePosition(pos) == VisiblePosition(pos.next()))
+        pos = pos.next();
+    return pos;
+}
+
 ReplacementFragment::ReplacementFragment(Document* document, DocumentFragment* fragment, bool matchStyle, const VisibleSelection& selection)
     : m_document(document),
       m_fragment(fragment),
@@ -885,7 +901,12 @@ void ReplaceSelectionCommand::doApply()
         frame->clearTypingStyle();
     
     bool handledStyleSpans = handleStyleSpansBeforeInsertion(fragment, insertionPos);
-    
+
+    // We don't want the destination to end up inside nodes that weren't selected.  To avoid that, we move the
+    // position forward without changing the visible position so we're still at the same visible location, but
+    // outside of preceding tags.
+    insertionPos = positionAvoidingPrecedingNodes(insertionPos);
+
     // FIXME: When pasting rich content we're often prevented from heading down the fast path by style spans.  Try
     // again here if they've been removed.
     
@@ -1170,26 +1191,34 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<Node> listElement, N
 
     bool isStart = isStartOfParagraph(insertPos);
     bool isEnd = isEndOfParagraph(insertPos);
-
+    bool isMiddle = !isStart && !isEnd;
     Node* lastNode = insertionBlock;
+
+    // If we're in the middle of a list item, we should split it into two separate
+    // list items and insert these nodes between them.
+    if (isMiddle) {
+        int textNodeOffset = insertPos.offsetInContainerNode();
+        if (insertPos.node()->isTextNode() && textNodeOffset > 0)
+            splitTextNode(static_cast<Text*>(insertPos.node()), textNodeOffset);
+        splitTreeToNode(insertPos.node(), lastNode, true);
+    }
+
     while (RefPtr<Node> listItem = listElement->firstChild()) {
         ExceptionCode ec = 0;
         listElement->removeChild(listItem.get(), ec);
         ASSERT(!ec);
-        if (isStart)
+        if (isStart || isMiddle)
             insertNodeBefore(listItem, lastNode);
         else if (isEnd) {
             insertNodeAfter(listItem, lastNode);
             lastNode = listItem.get();
-        } else {
-            // FIXME: If we're in the middle of a list item, we should split it into two separate
-            // list items and insert these nodes between them.  For now, just append the nodes.
-            insertNodeAfter(listItem, lastNode);
-            lastNode = listItem.get();
-        }
+        } else
+            ASSERT_NOT_REACHED();
     }
-    if (isStart)
+    if (isStart || isMiddle)
         lastNode = lastNode->previousSibling();
+    if (isMiddle)
+        insertNodeAfter(createListItemElement(document()), lastNode);
     updateNodesInserted(lastNode);
     return lastNode;
 }

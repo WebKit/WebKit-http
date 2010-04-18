@@ -74,6 +74,7 @@ public:
     void insertPositionedObject(RenderBox*);
     void removePositionedObject(RenderBox*);
     void removePositionedObjects(RenderBlock*);
+    ListHashSet<RenderBox*>* positionedObjects() const { return m_positionedObjects; }
 
     void addPercentHeightDescendant(RenderBox*);
     static void removePercentHeightDescendant(RenderBox*);
@@ -88,8 +89,6 @@ public:
 
     bool containsFloats() { return m_floatingObjects && !m_floatingObjects->isEmpty(); }
     bool containsFloat(RenderObject*);
-
-    IntRect floatRect() const;
 
     int lineWidth(int y, bool firstLine) const;
     
@@ -317,7 +316,6 @@ private:
     // Obtains the nearest enclosing block (including this block) that contributes a first-line style to our inline
     // children.
     virtual RenderBlock* firstLineBlock() const;
-    bool inRootBlockContext() const;
 
     virtual IntRect rectWithOutlineForRepaint(RenderBoxModelObject* repaintContainer, int outlineWidth);
     virtual RenderStyle* outlineStyleForRepaint() const;
@@ -374,6 +372,7 @@ private:
 
     void calcColumnWidth();
     int layoutColumns(int endOfContent = -1, int requestedColumnHeight = -1);
+    int visibleTopOfHighestFloatExtendingBelow(int bottom, int maxHeight) const;
 
     bool expandsToEncloseOverhangingFloats() const;
 

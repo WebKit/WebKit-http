@@ -44,7 +44,7 @@ namespace JSC {
 
         CallIdentifier(const UString& name, const UString& url, int lineNumber)
             : m_name(name)
-            , m_url(url)
+            , m_url(!url.isNull() ? url : "")
             , m_lineNumber(lineNumber)
         {
         }
@@ -71,7 +71,7 @@ namespace JSC {
 
 #ifndef NDEBUG
         operator const char*() const { return c_str(); }
-        const char* c_str() const { return m_name.UTF8String().c_str(); }
+        const char* c_str() const { return m_name.UTF8String().data(); }
 #endif
     };
 

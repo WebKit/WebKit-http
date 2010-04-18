@@ -41,6 +41,7 @@
 #include "DOMTimer.h"
 #include "V8DOMMap.h"
 #include "V8Proxy.h"
+#include "V8WorkerContext.h"
 #include "WorkerContext.h"
 #include "WorkerContextExecutionProxy.h"
 #include "WorkerObjectProxy.h"
@@ -85,16 +86,33 @@ ScriptValue WorkerScriptController::evaluate(const ScriptSourceCode& sourceCode,
     return result;
 }
 
-void WorkerScriptController::forbidExecution()
+void WorkerScriptController::forbidExecution(ForbidExecutionOption option)
 {
-    // This function is called from another thread.
+    // This function may be called from another thread.
     MutexLocker lock(m_sharedDataMutex);
     m_executionForbidden = true;
+    if (option == TerminateRunningScript)
+        v8::V8::TerminateExecution();
 }
 
 void WorkerScriptController::setException(ScriptValue exception)
 {
     throwError(*exception.v8Value());
+}
+
+WorkerScriptController* WorkerScriptController::controllerForContext()
+{
+    // Happens on frame destruction, check otherwise GetCurrent() will crash.
+    if (!v8::Context::InContext())
+        return 0;
+    v8::Handle<v8::Context> context = v8::Context::GetCurrent();
+    v8::Handle<v8::Object> global = context->Global();
+    global = V8DOMWrapper::lookupDOMWrapper(V8WorkerContext::GetTemplate(), global);
+    // Return 0 if the current executing context is not the worker context.
+    if (global.IsEmpty())
+        return 0;
+    WorkerContext* workerContext = V8WorkerContext::toNative(global);
+    return workerContext->script();
 }
 
 } // namespace WebCore

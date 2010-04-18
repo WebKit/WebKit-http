@@ -67,10 +67,14 @@ public:
         LocalStorageDatabaseEnabled = LocalStorageEnabled,
 #endif
         LocalContentCanAccessRemoteUrls,
-        LocalContentCanAccessFileUrls,
         DnsPrefetchEnabled,
-        XSSAuditorEnabled,
-        AcceleratedCompositingEnabled
+        XSSAuditingEnabled,
+        AcceleratedCompositingEnabled,
+        WebGLEnabled,
+        SpatialNavigationEnabled,
+        LocalContentCanAccessFileUrls,
+        TiledBackingStoreEnabled,
+        FrameFlatteningEnabled
     };
     enum WebGraphic {
         MissingImageGraphic,
@@ -132,6 +136,9 @@ public:
     
     void setLocalStoragePath(const QString& path);
     QString localStoragePath() const; 
+
+    void setInspectorUrl(const QUrl &location);
+    QUrl inspectorUrl() const;
 
     static void clearMemoryCaches();
 

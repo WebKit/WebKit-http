@@ -46,7 +46,6 @@
 #import <WebCore/BitmapImage.h>
 #import <WebCore/Credential.h>
 #import <WebCore/CredentialStorage.h>
-#import <WebCore/CString.h>
 #import <WebCore/Document.h>
 #import <WebCore/Element.h>
 #import <WebCore/Frame.h>
@@ -60,6 +59,7 @@
 #import <WebKit/DOMPrivate.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/Assertions.h>
+#import <wtf/text/CString.h>
 
 #define LoginWindowDidSwitchFromUserNotification    @"WebLoginWindowDidSwitchFromUserNotification"
 #define LoginWindowDidSwitchToUserNotification      @"WebLoginWindowDidSwitchToUserNotification"
@@ -337,13 +337,10 @@ String WebHaltablePlugin::pluginName() const
 - (NSRect)_windowClipRect
 {
     RenderObject* renderer = _element->renderer();
-    
-    if (renderer && renderer->view()) {
-        if (FrameView* frameView = renderer->view()->frameView())
-            return frameView->windowClipRectForLayer(renderer->enclosingLayer(), true);
-    }
-    
-    return NSZeroRect;
+    if (!renderer || !renderer->view())
+        return NSZeroRect;
+
+    return toRenderWidget(renderer)->windowClipRect();
 }
 
 - (NSRect)visibleRect
@@ -351,6 +348,11 @@ String WebHaltablePlugin::pluginName() const
     // WebCore may impose an additional clip (via CSS overflow or clip properties).  Fetch
     // that clip now.    
     return NSIntersectionRect([self convertRect:[self _windowClipRect] fromView:nil], [super visibleRect]);
+}
+
+- (void)visibleRectDidChange
+{
+    [self renewGState];
 }
 
 - (BOOL)acceptsFirstResponder
@@ -560,7 +562,30 @@ String WebHaltablePlugin::pluginName() const
     NSWindow *window = [self window];
     return !window || [window isMiniaturized] || [NSApp isHidden] || ![self isDescendantOf:[[self window] contentView]] || [self isHiddenOrHasHiddenAncestor];
 }
+
+- (BOOL)inFlatteningPaint
+{
+    RenderObject* renderer = _element->renderer();
+    if (renderer && renderer->view()) {
+        if (FrameView* frameView = renderer->view()->frameView())
+            return frameView->paintBehavior() & PaintBehaviorFlattenCompositingLayers;
+    }
+
+    return NO;
+}
+
+- (BOOL)supportsSnapshotting
+{
+    NSBundle *pluginBundle = [_pluginPackage.get() bundle];
+    if (![[pluginBundle bundleIdentifier] isEqualToString:@"com.macromedia.Flash Player.plugin"])
+        return YES;
     
+    // Flash has a bogus Info.plist entry for CFBundleVersionString, so use CFBundleShortVersionString.
+    NSString *versionString = [pluginBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    // Flash 10.1d51 has a crashing bug if sent a drawRect event when using the CA rendering model: <rdar://problem/7739922>
+    return ![versionString isEqual:@"10.1.51.95"];
+}
+
 - (BOOL)hasBeenHalted
 {
     return _hasBeenHalted;

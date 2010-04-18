@@ -24,18 +24,26 @@
 #include "config.h"
 #include "RenderEmbeddedObject.h"
 
+#include "CSSValueKeywords.h"
+#include "Font.h"
+#include "FontSelector.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
+#include "GraphicsContext.h"
 #include "HTMLEmbedElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParamElement.h"
+#include "LocalizedStrings.h"
 #include "MIMETypeRegistry.h"
 #include "Page.h"
+#include "Path.h"
 #include "PluginWidget.h"
+#include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderWidgetProtector.h"
+#include "Settings.h"
 #include "Text.h"
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
@@ -49,6 +57,12 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+    
+static const float replacementTextRoundedRectHeight = 18;
+static const float replacementTextRoundedRectLeftRightTextMargin = 6;
+static const float replacementTextRoundedRectOpacity = 0.20f;
+static const float replacementTextRoundedRectRadius = 5;
+static const float replacementTextTextOpacity = 0.55f;
 
 RenderEmbeddedObject::RenderEmbeddedObject(Element* element)
     : RenderPartObject(element)
@@ -141,6 +155,9 @@ static void mapDataParamToSrc(Vector<String>* paramNames, Vector<String>* paramV
 
 void RenderEmbeddedObject::updateWidget(bool onlyCreateNonNetscapePlugins)
 {
+    if (!m_replacementText.isNull() || !node()) // Check the node in case destroy() has been called.
+        return;
+
     String url;
     String serviceType;
     Vector<String> paramNames;
@@ -306,29 +323,86 @@ void RenderEmbeddedObject::updateWidget(bool onlyCreateNonNetscapePlugins)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)        
     else if (node()->hasTagName(videoTag) || node()->hasTagName(audioTag)) {
         HTMLMediaElement* mediaElement = static_cast<HTMLMediaElement*>(node());
+        KURL kurl;
 
+        mediaElement->getPluginProxyParams(kurl, paramNames, paramValues);
         mediaElement->setNeedWidgetUpdate(false);
-        if (node()->hasTagName(videoTag)) {
-            HTMLVideoElement* vid = static_cast<HTMLVideoElement*>(node());
-            String poster = vid->poster();
-            if (!poster.isEmpty()) {
-                paramNames.append("_media_element_poster_");
-                paramValues.append(poster);
-            }
-        }
-
-        url = mediaElement->initialURL();
-        if (!url.isEmpty()) {
-            paramNames.append("_media_element_src_");
-            paramValues.append(url);
-        }
-
-        serviceType = "application/x-media-element-proxy-plugin";
-        
-        if (mediaElement->dispatchBeforeLoadEvent(url))
-            frame->loader()->requestObject(this, url, nullAtom, serviceType, paramNames, paramValues);
+        frame->loader()->loadMediaPlayerProxyPlugin(node(), kurl, paramNames, paramValues);
     }
 #endif
+}
+
+void RenderEmbeddedObject::setShowsMissingPluginIndicator()
+{
+    m_replacementText = missingPluginText();
+}
+
+void RenderEmbeddedObject::setShowsCrashedPluginIndicator()
+{
+    m_replacementText = crashedPluginText();
+}
+
+void RenderEmbeddedObject::paint(PaintInfo& paintInfo, int tx, int ty)
+{
+    if (!m_replacementText.isNull()) {
+        RenderReplaced::paint(paintInfo, tx, ty);
+        return;
+    }
+    
+    RenderPartObject::paint(paintInfo, tx, ty);
+}
+
+void RenderEmbeddedObject::paintReplaced(PaintInfo& paintInfo, int tx, int ty)
+{
+    if (!m_replacementText)
+        return;
+
+    if (paintInfo.phase == PaintPhaseSelection)
+        return;
+    
+    GraphicsContext* context = paintInfo.context;
+    if (context->paintingDisabled())
+        return;
+    
+    FloatRect pluginRect = contentBoxRect();
+    pluginRect.move(tx, ty);
+    
+    FontDescription fontDescription;
+    RenderTheme::defaultTheme()->systemFont(CSSValueWebkitSmallControl, fontDescription);
+    fontDescription.setWeight(FontWeightBold);
+    Settings* settings = document()->settings();
+    ASSERT(settings);
+    if (!settings)
+        return;
+    fontDescription.setRenderingMode(settings->fontRenderingMode());
+    fontDescription.setComputedSize(fontDescription.specifiedSize());
+    Font font(fontDescription, 0, 0);
+    font.update(0);
+    
+    TextRun run(m_replacementText.characters(), m_replacementText.length());
+    run.disableRoundingHacks();
+    float textWidth = font.floatWidth(run);
+    
+    FloatRect replacementTextRect;
+    replacementTextRect.setSize(FloatSize(textWidth + replacementTextRoundedRectLeftRightTextMargin * 2, replacementTextRoundedRectHeight));
+    replacementTextRect.setLocation(FloatPoint((pluginRect.size().width() / 2 - replacementTextRect.size().width() / 2) + pluginRect.location().x(),
+                                             (pluginRect.size().height() / 2 - replacementTextRect.size().height() / 2) + pluginRect.location().y()));
+   
+    Path path = Path::createRoundedRectangle(replacementTextRect, FloatSize(replacementTextRoundedRectRadius, replacementTextRoundedRectRadius));
+    context->save();
+    context->clip(pluginRect);
+    context->beginPath();
+    context->addPath(path);  
+    context->setAlpha(replacementTextRoundedRectOpacity);
+    context->setFillColor(Color::white, style()->colorSpace());
+    context->fillPath();
+
+    FloatPoint labelPoint(roundf(replacementTextRect.location().x() + (replacementTextRect.size().width() - textWidth) / 2),
+                          roundf(replacementTextRect.location().y()+ (replacementTextRect.size().height() - font.height()) / 2 + font.ascent()));
+    context->setAlpha(replacementTextTextOpacity);
+    context->setFillColor(Color::black, style()->colorSpace());
+    context->drawBidiText(font, run, labelPoint);
+    context->restore();
 }
 
 void RenderEmbeddedObject::layout()

@@ -1,3 +1,957 @@
+2010-04-16  Adam Roben  <aroben@apple.com>
+
+        Make it possible for clients to instantiate a WebUserContentURLPattern
+
+        Reviewed by Tim Hatcher.
+
+        * ForEachCoClass.h: Added WebUserContentURLPattern to the FOR_EACH_COCLASS macro, which
+        lists all our instantiatable classes.
+
+        * WebKitClassFactory.cpp: Added a now-required #include.
+
+2010-04-15  Adam Roben  <aroben@apple.com>
+
+        Expose UserContentURLPattern as WebKit SPI
+
+        Fixes <http://webkit.org/b/37354>.
+
+        Reviewed by Tim Hatcher.
+
+        * Interfaces/IWebUserContentURLPattern.idl: Added.
+
+        * Interfaces/WebKit.idl: Added WebUserContentURLPattern.
+
+        * WebKit.vcproj/Interfaces.vcproj: Added IWebUserContentURLPattern.
+
+        * WebKit.vcproj/WebKit.vcproj: Added WebUserContentURLPattern.
+
+        * WebUserContentURLPattern.cpp: Added.
+        (WebUserContentURLPattern::WebUserContentURLPattern):
+        (WebUserContentURLPattern::~WebUserContentURLPattern):
+        (WebUserContentURLPattern::createInstance):
+        (WebUserContentURLPattern::AddRef):
+        (WebUserContentURLPattern::Release):
+        (WebUserContentURLPattern::QueryInterface):
+        Standard COM implementations.
+
+        (WebUserContentURLPattern::parse): Parse the string into a
+        UserContentURLPattern and store it.
+
+        (WebUserContentURLPattern::isValid):
+        (WebUserContentURLPattern::scheme):
+        (WebUserContentURLPattern::host):
+        (WebUserContentURLPattern::matchesSubdomains):
+        Call through to UserContentURLPattern.
+
+        * WebUserContentURLPattern.h: Added.
+
+2010-04-14  Adam Roben  <aroben@apple.com>
+
+        Expose DOMWrapperWorld::unregisterWorld as WebKit SPI on Windows
+
+        Fixes <http://webkit.org/b/37619>.
+
+        Reviewed by Steve Falkenburg.
+
+        * Interfaces/IWebScriptWorld.idl: Added unregisterWorld.
+
+        * Interfaces/WebKit.idl: Touched to force a build.
+
+        * WebScriptWorld.cpp:
+        (WebScriptWorld::unregisterWorld):
+        * WebScriptWorld.h:
+        Added. Just calls through to DOMWrapperWorld::unregisterWorld.
+
+2010-04-12  Timothy Hatcher  <timothy@apple.com>
+
+        SecurityOrigin needs a way to remove individual OriginAccessEntries
+        https://bugs.webkit.org/show_bug.cgi?id=37449
+
+        Reviewed by Dave Hyatt.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::removeOriginAccessWhitelistEntry): Call SecurityOrigin::removeOriginAccessWhitelistEntry.
+        * WebView.h: Added removeOriginAccessWhitelistEntry.
+
+2010-04-13  Timothy Hatcher  <timothy@apple.com>
+
+        Rename SecurityOrigin::whiteListAccessFromOrigin to addOriginAccessWhitelistEntry.
+        And SecurityOrigin::resetOriginAccessWhiteLists to resetOriginAccessWhitelists.
+
+        SecurityOrigin needs a way to remove individual OriginAccessEntries
+        https://bugs.webkit.org/show_bug.cgi?id=37449
+
+        Reviewed by Dave Hyatt.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::addOriginAccessWhitelistEntry):
+        (WebView::resetOriginAccessWhitelists):
+        * WebView.h:
+
+2010-04-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r57468.
+        http://trac.webkit.org/changeset/57468
+        https://bugs.webkit.org/show_bug.cgi?id=37433
+
+        Broke the world...  Must have applied the patch wrong
+        (Requested by abarth on #webkit).
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::receivedData):
+
+2010-04-11  Adam Barth  <abarth@webkit.org>
+
+        Reviewed by Eric Seidel.
+
+        Factor DocumentWriter out of FrameLoader
+        https://bugs.webkit.org/show_bug.cgi?id=37175
+
+        Update these callsites because the method moved to DocumentWriter.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::receivedData):
+
+2010-04-09  Adam Roben  <aroben@apple.com>
+
+        Windows Debug/Release build fix after r57244
+
+        * WebKit.vcproj/WebKit.vcproj: Don't delay-load QuartzCore.dll or
+        QuartzCoreInterface.dll in any configurations. r57244 made this change
+        only for Debug_Internal.
+
+2010-04-08  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Darin Adler.
+
+        WebView::isLoading should null check m_mainFrame
+        https://bugs.webkit.org/show_bug.cgi?id=37294
+
+        * WebView.cpp:
+        (WebView::isLoading):
+
+2010-04-07  Chris Marrin  <cmarrin@apple.com>
+
+        Reviewed by Steve Falkenburg.
+
+        Remove QuartzCoreInterface from the build
+        
+        No longer needed since QuartzCore.dll is now included in  the latest Safari release (4.0.5).
+
+        * WebKit.vcproj/WebKit.vcproj:Removed delay load for QuartzCore and QuartzCoreInterface
+
+2010-04-07  Andrey Kosyakov  <caseq@chromium.org>
+
+        Reviewed by Yury Semikhatsky.
+
+        Removed redundant FrameLoaderClient::dispatchDidLoadResourceByXMLHttpRequest()
+        https://bugs.webkit.org/show_bug.cgi?id=36949
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2010-04-05  Peter Nelson  <charn.opcode@gmail.com>
+
+        Reviewed by Eric Seidel.
+
+        Fixed style errors in DOMCoreClasses.h to bring it up to scratch
+        for https://bugs.webkit.org/show_bug.cgi?id=34979.
+
+        * DOMCoreClasses.h:
+        (DOMObject::throwException):
+        (DOMObject::callWebScriptMethod):
+        (DOMObject::evaluateWebScript):
+        (DOMObject::removeWebScriptKey):
+        (DOMObject::stringRepresentation):
+        (DOMObject::webScriptValueAtIndex):
+        (DOMObject::setWebScriptValueAtIndex):
+        (DOMObject::setException):
+        (DOMNodeList::throwException):
+        (DOMNodeList::callWebScriptMethod):
+        (DOMNodeList::evaluateWebScript):
+        (DOMNodeList::removeWebScriptKey):
+        (DOMNodeList::stringRepresentation):
+        (DOMNodeList::webScriptValueAtIndex):
+        (DOMNodeList::setWebScriptValueAtIndex):
+        (DOMNodeList::setException):
+        (DOMDocument::throwException):
+        (DOMDocument::callWebScriptMethod):
+        (DOMDocument::evaluateWebScript):
+        (DOMDocument::removeWebScriptKey):
+        (DOMDocument::stringRepresentation):
+        (DOMDocument::webScriptValueAtIndex):
+        (DOMDocument::setWebScriptValueAtIndex):
+        (DOMDocument::setException):
+        (DOMDocument::nodeName):
+        (DOMDocument::nodeValue):
+        (DOMDocument::setNodeValue):
+        (DOMDocument::nodeType):
+        (DOMDocument::parentNode):
+        (DOMDocument::childNodes):
+        (DOMDocument::firstChild):
+        (DOMDocument::lastChild):
+        (DOMDocument::previousSibling):
+        (DOMDocument::nextSibling):
+        (DOMDocument::attributes):
+        (DOMDocument::ownerDocument):
+        (DOMDocument::insertBefore):
+        (DOMDocument::replaceChild):
+        (DOMDocument::removeChild):
+        (DOMDocument::appendChild):
+        (DOMDocument::hasChildNodes):
+        (DOMDocument::cloneNode):
+        (DOMDocument::isSupported):
+        (DOMDocument::namespaceURI):
+        (DOMDocument::prefix):
+        (DOMDocument::setPrefix):
+        (DOMDocument::localName):
+        (DOMDocument::hasAttributes):
+        (DOMDocument::isSameNode):
+        (DOMDocument::isEqualNode):
+        (DOMDocument::textContent):
+        (DOMDocument::setTextContent):
+        (DOMElement::throwException):
+        (DOMElement::callWebScriptMethod):
+        (DOMElement::evaluateWebScript):
+        (DOMElement::removeWebScriptKey):
+        (DOMElement::stringRepresentation):
+        (DOMElement::webScriptValueAtIndex):
+        (DOMElement::setWebScriptValueAtIndex):
+        (DOMElement::setException):
+        (DOMElement::nodeName):
+        (DOMElement::nodeValue):
+        (DOMElement::setNodeValue):
+        (DOMElement::nodeType):
+        (DOMElement::parentNode):
+        (DOMElement::childNodes):
+        (DOMElement::firstChild):
+        (DOMElement::lastChild):
+        (DOMElement::previousSibling):
+        (DOMElement::nextSibling):
+        (DOMElement::attributes):
+        (DOMElement::ownerDocument):
+        (DOMElement::insertBefore):
+        (DOMElement::replaceChild):
+        (DOMElement::removeChild):
+        (DOMElement::appendChild):
+        (DOMElement::hasChildNodes):
+        (DOMElement::cloneNode):
+        (DOMElement::isSupported):
+        (DOMElement::namespaceURI):
+        (DOMElement::prefix):
+        (DOMElement::setPrefix):
+        (DOMElement::localName):
+        (DOMElement::hasAttributes):
+        (DOMElement::isSameNode):
+        (DOMElement::isEqualNode):
+        (DOMElement::textContent):
+        (DOMElement::setTextContent):
+
+2010-04-05  Alexey Proskuryakov  <ap@apple.com>
+
+        Reviewed by Darin Adler.
+
+        https://bugs.webkit.org/show_bug.cgi?id=37111
+        <rdar://problem/7790327> Draw replacement text when plug-in host crashes
+
+        * WebCoreLocalizedStrings.cpp: (WebCore::crashedPluginText): Added a stub string for plug-in
+        failure.
+
+2010-04-02  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Clean up unused calls after changes to checkPermission and requestPermission argument lists.
+
+        * WebCoreSupport/WebDesktopNotificationsDelegate.cpp:
+        (WebDesktopNotificationsDelegate::requestPermission):
+        * WebCoreSupport/WebDesktopNotificationsDelegate.h:
+
+2010-04-01  Chris Marrin  <cmarrin@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Added layerTreeAsText function to DRT (for Mac)
+        https://bugs.webkit.org/show_bug.cgi?id=36782
+
+        This is the WebKit side for Windows. It plumbs the
+        call from WebCore to DRT.
+
+        * Interfaces/IWebFramePrivate.idl:
+        * WebFrame.cpp:WebKit (Windows) side of plumbing
+        (WebFrame::layerTreeAsText):
+        * WebFrame.h:
+
+2010-03-31  Marcus Bulach  <bulach@chromium.org>
+
+        Reviewed by Jeremy Orlow.
+
+        Adds Geolocation param for cancelGeolocationPermissionRequestForFrame.
+        https://bugs.webkit.org/show_bug.cgi?id=35031
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::cancelGeolocationPermissionRequestForFrame):
+
+2010-03-30  Gavin Barraclough  <barraclough@apple.com>
+
+        Rubber stamped by Sam Weinig.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36866
+        Move CString to WTF
+
+        * WebDownload.cpp:
+        * WebDownloadCFNet.cpp:
+        * WebDownloadCurl.cpp:
+        * WebHistoryItem.cpp:
+        * WebLocalizableStrings.cpp:
+        * WebMutableURLRequest.cpp:
+        * WebPreferences.cpp:
+        (WebPreferences::migrateWebKitPreferencesToCFPreferences):
+        * WebView.cpp:
+
+2010-03-30  Adam Roben  <aroben@apple.com>
+
+        Windows build fix
+
+        * Interfaces/WebKit.idl: Touched this to force a build.
+
+2010-03-29  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Adele Peterson.
+
+        Default value of accelerated compositing should be false for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=36805
+
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+
+2010-03-29  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Reviewed by Adam Barth.
+
+        Change NotificationPresenter::checkPermission() to take the source frames full KURL,
+        rather than its SecurityOrigin. This will aid chromium in having more fine grained
+        permissions to control notification spam.
+
+        * WebCoreSupport/WebDesktopNotificationsDelegate.cpp:
+        (WebDesktopNotificationsDelegate::checkPermission):
+        * WebCoreSupport/WebDesktopNotificationsDelegate.h:
+
+2010-03-26  Kenneth Rohde Christiansen  <kenneth@webkit.org>
+
+        Reviewed by Antti Koivisto.
+
+        Change method name due to it dealing with both flattening
+        of frame sets and inner frames.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::isFrameFlatteningEnabled):
+        (WebPreferences::setFrameFlatteningEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2010-03-24  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        <rdar://problem/7780798> Missing plug-ins should be represented by text
+        only, instead of lego block
+
+        https://bugs.webkit.org/show_bug.cgi?id=36583
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createPlugin):
+        Return 0 if we failed to initialize the plug-in, which causes the new
+        "missing plug-in" text to draw.
+
+2010-03-24  Kent Tamura  <tkent@chromium.org>
+
+        Reviewed by Darin Adler.
+
+        Make Icon::createIconForFiles() optional.
+        https://bugs.webkit.org/show_bug.cgi?id=35072
+
+        - Rename iconForFiles() to chooseIconForFiles().
+        - Call Icon::createIconForFiles() from chooseIconForFiles().
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::chooseIconForFiles):
+        * WebCoreSupport/WebChromeClient.h:
+
+2010-03-22  Darin Adler  <darin@apple.com>
+
+        * WebCoreLocalizedStrings.cpp:
+        (WebCore::missingPluginText): Fixed localization helper text to match the same
+        string from Mac WebKit.
+
+2010-03-22  Kevin Decker  <kdecker@apple.com>
+
+        Reviewed by John Sullivan.
+
+        https://bugs.webkit.org/show_bug.cgi?id=36328
+        
+        * WebCoreLocalizedStrings.cpp:
+        (WebCore::missingPluginText): Added.
+
+2010-03-17  Enrica Casucci  <enrica@apple.com>
+
+        Reviewed by Darin Adler.
+
+        Missing support for showing compositing layers borders and repaint count on Windows.
+        <rdar://problem/7760736>
+        <https://bugs.webkit.org/show_bug.cgi?id=36197>
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::showDebugBorders):
+        (WebPreferences::setShowDebugBorders):
+        (WebPreferences::showRepaintCounter):
+        (WebPreferences::setShowRepaintCounter):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2010-03-16  Yury Semikhatsky <yurys@chromium.org>
+
+        Reviewed by Pavel Feldman.
+
+        Introduce InspectorFrontendClient that provides InspectorFrontend with an interface to the embedder. InspectorClient now serves as a delegate for InspectorController and does not contain methods for managing inspector frontend window. That allows to create remote InspectorFrontendHost.
+
+        Introduce InspectorFrontendClient that would provide InspectorFrontend with an interface to the embedder
+        https://bugs.webkit.org/show_bug.cgi?id=35036
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::WebInspectorClient):
+        (WebInspectorClient::~WebInspectorClient):
+        (WebInspectorClient::openInspectorFrontend):
+        (WebInspectorClient::highlight):
+        (WebInspectorClient::hideHighlight):
+        (WebInspectorClient::updateHighlight):
+        (WebInspectorFrontendClient::WebInspectorFrontendClient):
+        (WebInspectorFrontendClient::~WebInspectorFrontendClient):
+        (WebInspectorFrontendClient::frontendLoaded):
+        (WebInspectorFrontendClient::localizedStringsURL):
+        (WebInspectorFrontendClient::hiddenPanels):
+        (WebInspectorFrontendClient::bringToFront):
+        (WebInspectorFrontendClient::closeWindow):
+        (WebInspectorFrontendClient::attachWindow):
+        (WebInspectorFrontendClient::detachWindow):
+        (WebInspectorFrontendClient::setAttachedWindowHeight):
+        (WebInspectorFrontendClient::inspectedURLChanged):
+        (WebInspectorFrontendClient::closeWindowWithoutNotifications):
+        (WebInspectorFrontendClient::showWindowWithoutNotifications):
+        (WebInspectorFrontendClient::destroyInspectorView):
+        (WebInspectorFrontendClient::updateWindowTitle):
+        (WebInspectorFrontendClient::onGetMinMaxInfo):
+        (WebInspectorFrontendClient::onSize):
+        (WebInspectorFrontendClient::onClose):
+        (WebInspectorFrontendClient::onSetFocus):
+        (WebInspectorFrontendClient::onWebViewWindowPosChanging):
+        (WebInspectorWndProc):
+        (WebInspectorFrontendClient::windowReceivedMessage):
+        * WebCoreSupport/WebInspectorClient.h:
+        (WebInspectorClient::frontendClosing):
+        * WebInspector.cpp:
+        (WebInspector::attach):
+        (WebInspector::detach):
+
+2010-03-14  Dan Bernstein  <mitz@apple.com>
+
+        Reviewed by Darin Adler.
+
+        WebKit part of removing support for legacy versions of Core Graphics
+
+        * WebKitClassFactory.cpp:
+        (WebKitClassFactory::WebKitClassFactory): Removed call to populateFontDatabase().
+        * WebKitGraphics.cpp:
+        (makeFont): Ditto.
+        * WebTextRenderer.cpp:
+        (WebTextRenderer::registerPrivateFont): Removed call to wkAddFontsAtPath().
+
+2010-03-12  Enrica Casucci  <enrica@apple.com>
+
+        Fixed broken build on Windows.
+        Added contditional compilation for accelerated compositing.
+
+        * WebView.cpp:
+        (WebView::deleteBackingStore):
+        (WebView::addToDirtyRegion):
+        (WebView::updateBackingStore):
+
+2010-03-12  Beth Dakin  <bdakin@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Fix for https://bugs.webkit.org/show_bug.cgi?id=34942 Fullscreen 
+        API naming is inconsistent
+        -and corresponding-
+        <rdar://problem/7729165>
+
+        This patch changes all occurrences of "fullScreen" to the more 
+        popular "fullscreen."
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::onMouseDown):
+        (FullscreenVideoController::onMouseMove):
+        (FullscreenVideoController::onMouseUp):
+        * FullscreenVideoController.h:
+        (FullscreenVideoController::fullscreenToHUDCoordinates):
+
+2010-03-12  Beth Dakin  <bdakin@apple.com>
+
+        Reviewed by Adam Roben.
+
+        Fix for https://bugs.webkit.org/show_bug.cgi?id=33739 Fullscreen 
+        video HUD stays on top when switching to another window (e.g. via 
+        Alt-Tab)
+        -and corresponding-
+        <rdar://problem/7547574>
+
+        The HUD was always on top because it had the WS_EX_TOPMOST style. 
+        So I removed the style and made m_videoWindow the owner of 
+        m_hudWindow. This keeps m_hudWindow on top only when m_videoWindow 
+        is the focused window.
+
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::exitFullscreen): ASSERT that movie()->exitFullscreen() also destroyed the hud.
+        (FullscreenVideoController::createHUDWindow):
+
+2010-03-12  Enrica Casucci  <enrica@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Content of 3D tests appears at the bottom right corner sometimes.
+        <rdar://problem/7556244>
+        <https://bugs.webkit.org/show_bug.cgi?id=36027>
+
+        See detailed comments in WebCore/ChangeLog.
+
+        * WebView.cpp:
+        (WebView::deleteBackingStore): Reset the dirty flag when deleting the backing store.
+        (WebView::addToDirtyRegion): Set the dirty flag when adding dirty rectangles to the
+        backing store dirty region.
+        (WebView::updateBackingStore): Reset the dirty flag after painting into the backing store.
+        (WebView::setAcceleratedCompositing): Removed unnecessary call to updateRootLayerContents.
+        (WebView::updateRootLayerContents): Changed the way we pass parameters to setScrollFrame.
+        We are passing width and height of the view content together with the offset for the scrolling.
+        It was confusing to pass it all as a rectangle, when it is not a rectangle.
+        
+2010-03-11  Aaron Boodman  <aa@chromium.org>
+
+        Kill WebDocument::applicationID() (part 1).
+
+        Modify interface to WebCore::NotificationPresenter::checkPermission()
+        and remove implementation of WebDocument::applicationID(). Breaking
+        API changes will be in a subsequent change.
+        https://bugs.webkit.org/show_bug.cgi?id=35846
+
+        * WebCoreSupport/WebDesktopNotificationsDelegate.cpp:
+        (WebDesktopNotificationsDelegate::checkPermission):
+        * WebCoreSupport/WebDesktopNotificationsDelegate.h:
+
+2010-03-11  Anders Carlsson  <andersca@apple.com>
+
+        Reviewed by David Hyatt.
+
+        Remove invalidateContents, it isn't used and it never makes sense to only invalidate the contents.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        * WebCoreSupport/WebChromeClient.h:
+
+2010-03-10  Eric Uhrhane  <ericu@chromium.org>
+
+        Reviewed by David Levin.
+
+        The build fix for my patch on bug #35763 wasn't quite right--it removed
+        the call entirely, instead of replacing it with the new API.  This adds
+        the call to Database::setIsAvailable.
+
+        https://bugs.webkit.org/show_bug.cgi?id=35763
+
+        * WebView.cpp: Added a call to Database::setIsAvailable where change 55667 removed the old Settings API call <http://trac.webkit.org/changeset/55667>.
+        (WebView::notifyPreferencesChanged):
+
+2010-03-10  John Sullivan  <sullivan@apple.com>
+
+        Reviewed by Tim Hatcher.
+        
+        <rdar://problem/7735387> input type other than text won't work with autofill
+        <https://bugs.webkit.org/show_bug.cgi?id=35963>
+
+        * WebFrame.cpp:
+        (WebFrame::elementDoesAutoComplete):
+        Return true for any text field that's not a password, rather than only
+        for TEXT type.
+
+2010-03-09  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Tim Hatcher.
+
+        REGRESSION: WebInspector docking busted on Windows
+        <rdar://problem/7728433> and https://bugs.webkit.org/show_bug.cgi?id=35953
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::attachWindow): Use the InspectorController:: copy of the should attach settings key.
+        (WebInspectorClient::detachWindow): Ditto.
+        (WebInspectorClient::showWindowWithoutNotifications): Ditto.
+
+2010-03-09  John Sullivan  <sullivan@apple.com>
+
+        Fixed localized string key collision. update-webkit-localized-strings now
+        runs without errors.
+
+        Reviewed by Adam Roben.
+
+        * WebCoreLocalizedStrings.cpp:
+        (WebCore::AXMenuListPopupActionVerb):
+        Used LPCTSTR_UI_STRING_KEY for the 2nd use of "press".
+
+2010-03-08  Adam Treat  <atreat@rim.com>
+
+        Unreviewed build fix for Windows.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::invalidateContents):
+
+2010-03-02  Adam Treat  <atreat@rim.com>
+
+        Reviewed by Dave Hyatt.
+
+        Adapt the win port to the refactoring of repaint methods.
+
+        https://bugs.webkit.org/show_bug.cgi?id=34214
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::invalidateContents):
+        (WebChromeClient::invalidateWindow):
+        (WebChromeClient::invalidateContentsAndWindow):
+        (WebChromeClient::invalidateContentsForSlowScroll):
+        * WebCoreSupport/WebChromeClient.h:
+
+2010-03-08  Daniel Bates  <dbates@rim.com>
+
+        Unreviewed, build fix.
+
+        Attempt to fix the Windows builds by applying the corresponding change
+        made in bug #35763 <https://bugs.webkit.org/show_bug.cgi?id=35763>.
+
+        * WebView.cpp: Removed call to settings->setDatabasesEnabled since this
+        setting no longer exists following changeset 55666 <http://trac.webkit.org/changeset/55666>.
+        (WebView::notifyPreferencesChanged):
+
+2010-03-07  Mark Rowe  <mrowe@apple.com>
+
+        Windows build fix.
+
+        * WebKitPrefix.h: Include CoreFoundation/CoreFoundation.h from the Windows prefix header
+        since some WebCore headers rely on the types declared within being available via the prefix
+        header.
+
+2010-03-05  Chris Marrin  <cmarrin@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Got rid of platformLayer use in WebView.
+        https://bugs.webkit.org/show_bug.cgi?id=35798
+        
+        WKCACFLayer no longer depends on GraphicsLayer, so I got rid of
+        that dependency on WebView. Now WebChromeClient casts platformLayer
+        to WKCACFLayer which will always be the case on Windows.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::attachRootGraphicsLayer):
+        * WebView.cpp:
+        (WebView::setRootChildLayer):
+        * WebView.h:
+
+2010-03-04  Beth Dakin  <bdakin@apple.com>
+
+        Reviewed by Anders Carlsson.
+
+        WebCore::Page::setInstanceHandle() is now just 
+        WebCore::setInstanceHandle()
+
+        * WebKitDLL.cpp:
+        (DllMain):
+
+2010-03-03  Alice Liu  <alice.liu@apple.com>
+
+        Reviewed by Jon Honeycutt.
+
+        Add a way to get an iframe's content frame
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::createInstance):
+        Added case for DOMHTMLIFrameElement
+        * DOMHTMLClasses.cpp:
+        Adding the few DOMHTMLIFrameElement functions definitions that have 
+        distinct implementations (all others just call parent implementation)
+        (DOMHTMLIFrameElement::QueryInterface):
+        (DOMHTMLIFrameElement::contentFrame):
+        * DOMHTMLClasses.h:
+        Most of these function declarations have definitions that just call the parent implementation
+        (DOMHTMLIFrameElement::DOMHTMLIFrameElement):
+        (DOMHTMLIFrameElement::AddRef):
+        (DOMHTMLIFrameElement::Release):
+        (DOMHTMLIFrameElement::throwException):
+        (DOMHTMLIFrameElement::callWebScriptMethod):
+        (DOMHTMLIFrameElement::evaluateWebScript):
+        (DOMHTMLIFrameElement::removeWebScriptKey):
+        (DOMHTMLIFrameElement::stringRepresentation):
+        (DOMHTMLIFrameElement::webScriptValueAtIndex):
+        (DOMHTMLIFrameElement::setWebScriptValueAtIndex):
+        (DOMHTMLIFrameElement::setException):
+        (DOMHTMLIFrameElement::nodeName):
+        (DOMHTMLIFrameElement::nodeValue):
+        (DOMHTMLIFrameElement::setNodeValue):
+        (DOMHTMLIFrameElement::nodeType):
+        (DOMHTMLIFrameElement::parentNode):
+        (DOMHTMLIFrameElement::childNodes):
+        (DOMHTMLIFrameElement::firstChild):
+        (DOMHTMLIFrameElement::lastChild):
+        (DOMHTMLIFrameElement::previousSibling):
+        (DOMHTMLIFrameElement::nextSibling):
+        (DOMHTMLIFrameElement::attributes):
+        (DOMHTMLIFrameElement::ownerDocument):
+        (DOMHTMLIFrameElement::insertBefore):
+        (DOMHTMLIFrameElement::replaceChild):
+        (DOMHTMLIFrameElement::removeChild):
+        (DOMHTMLIFrameElement::appendChild):
+        (DOMHTMLIFrameElement::hasChildNodes):
+        (DOMHTMLIFrameElement::cloneNode):
+        (DOMHTMLIFrameElement::normalize):
+        (DOMHTMLIFrameElement::isSupported):
+        (DOMHTMLIFrameElement::namespaceURI):
+        (DOMHTMLIFrameElement::prefix):
+        (DOMHTMLIFrameElement::setPrefix):
+        (DOMHTMLIFrameElement::localName):
+        (DOMHTMLIFrameElement::hasAttributes):
+        (DOMHTMLIFrameElement::isSameNode):
+        (DOMHTMLIFrameElement::isEqualNode):
+        (DOMHTMLIFrameElement::textContent):
+        (DOMHTMLIFrameElement::setTextContent):
+        (DOMHTMLIFrameElement::tagName):
+        (DOMHTMLIFrameElement::getAttribute):
+        (DOMHTMLIFrameElement::setAttribute):
+        (DOMHTMLIFrameElement::removeAttribute):
+        (DOMHTMLIFrameElement::getAttributeNode):
+        (DOMHTMLIFrameElement::setAttributeNode):
+        (DOMHTMLIFrameElement::removeAttributeNode):
+        (DOMHTMLIFrameElement::getElementsByTagName):
+        (DOMHTMLIFrameElement::getAttributeNS):
+        (DOMHTMLIFrameElement::setAttributeNS):
+        (DOMHTMLIFrameElement::removeAttributeNS):
+        (DOMHTMLIFrameElement::getAttributeNodeNS):
+        (DOMHTMLIFrameElement::setAttributeNodeNS):
+        (DOMHTMLIFrameElement::getElementsByTagNameNS):
+        (DOMHTMLIFrameElement::hasAttribute):
+        (DOMHTMLIFrameElement::hasAttributeNS):
+        (DOMHTMLIFrameElement::focus):
+        (DOMHTMLIFrameElement::blur):
+        (DOMHTMLIFrameElement::idName):
+        (DOMHTMLIFrameElement::setIdName):
+        (DOMHTMLIFrameElement::title):
+        (DOMHTMLIFrameElement::setTitle):
+        (DOMHTMLIFrameElement::lang):
+        (DOMHTMLIFrameElement::setLang):
+        (DOMHTMLIFrameElement::dir):
+        (DOMHTMLIFrameElement::setDir):
+        (DOMHTMLIFrameElement::className):
+        (DOMHTMLIFrameElement::setClassName):
+        (DOMHTMLIFrameElement::innerHTML):
+        (DOMHTMLIFrameElement::setInnerHTML):
+        (DOMHTMLIFrameElement::innerText):
+        (DOMHTMLIFrameElement::setInnerText):
+        * Interfaces/DOMHTML.idl:
+        Added IDOMHTMLIFrameElement interface
+
+2010-03-03  Chris Marrin  <cmarrin@apple.com>
+
+        Reviewed by Simon Fraser.
+
+        Export acceleratedCompositing flag in IWebPreferences.
+        https://bugs.webkit.org/show_bug.cgi?id=35610
+
+        * Interfaces/IWebPreferences.idl:
+
+2010-03-02  Beth Dakin  <bdakin@apple.com>
+
+        Reviewed by Darin Adler and Adam Roben.
+
+        Tiny WebKit portion of fix for <rdar://problem/7485289> WebKit 
+        crashes on systems that don't support CoreAnimation
+
+        setHostWindow() no longer calls createRenderer(), so now that has 
+        to be called manually.
+
+        * WebView.cpp:
+        (WebView::setAcceleratedCompositing):
+
+2010-03-02  Adam Roben  <aroben@apple.com>
+
+        Add IWebViewPrivate::registerURLSchemeAsSecure
+
+        Fixes <http://webkit.org/b/35580> <rdar://problem/7706407> Expose
+        SecurityOrigin::registerURLSchemeAsSecure as WebKit SPI
+
+        Reviewed by Tim Hatcher.
+
+        * Interfaces/WebKit.idl: Touched to force a build.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::registerURLSchemeAsSecure):
+        * WebView.h:
+        Added. Calls through to SecurityOrigin::registerURLSchemeAsSecure.
+
+2010-03-01  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Remove Windows line endings from some files.
+
+        Rubber-stamped by Alice Liu.
+
+        * Interfaces/IWebEmbeddedView.idl:
+
+        * WebCoreSupport/EmbeddedWidget.cpp:
+        (EmbeddedWidget::create):
+        (EmbeddedWidget::~EmbeddedWidget):
+        (EmbeddedWidget::createWindow):
+        (EmbeddedWidget::invalidateRect):
+        (EmbeddedWidget::setFrameRect):
+        (EmbeddedWidget::frameRectsChanged):
+        (EmbeddedWidget::setFocus):
+        (EmbeddedWidget::show):
+        (EmbeddedWidget::hide):
+        (EmbeddedWidget::windowClipRect):
+        (EmbeddedWidget::setParent):
+        (EmbeddedWidget::attachToWindow):
+        (EmbeddedWidget::detachFromWindow):
+        (EmbeddedWidget::didReceiveResponse):
+        (EmbeddedWidget::didReceiveData):
+        (EmbeddedWidget::didFinishLoading):
+        (EmbeddedWidget::didFail):
+
+        * WebCoreSupport/EmbeddedWidget.h:
+        (EmbeddedWidget::EmbeddedWidget):
+
+2010-03-01  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        Some WebKit DOMNode API is unimplemented.
+        https://bugs.webkit.org/show_bug.cgi?id=35554
+
+        Reviewed by Alice Liu.
+
+        * DOMCoreClasses.cpp:
+        (DOMNode::nextSibling):
+        Create a DOMNode to wrap m_node's next sibling, and assign it to the
+        out param 'result'.
+        (DOMNode::insertBefore):
+        Query for the DOMNode for newChild, and return early if we fail. Query
+        refChild for DOMNode. Call insertBefore(), passing the newChild's
+        WebCore node and refChild's WebCore node (if refChild is non-null). If
+        we successfully insert the child, fill the result out param with
+        newChild, ref it, and return S_OK. Otherwise, return E_FAIL.
+        (DOMNode::removeChild):
+        Query oldChild for DOMNode. If we fail, return E_FAIL. Call
+        removeChild(), passing the node's WebCore node. If this fails, return
+        E_FAIL. Otherwise, fill the result out param with oldChild, ref it, and
+        return S_OK.
+
+2010-03-01  Jakob Petsovits  <jpetsovits@rim.com>
+
+        Reviewed by Adam Barth.
+
+        Adapt to the new ZoomMode enum.
+        https://bugs.webkit.org/show_bug.cgi?id=35347
+
+        * WebFrame.cpp:
+        (WebFrame::setTextSizeMultiplier):
+        * WebView.cpp:
+        (WebView::setZoomMultiplier):
+        (WebView::zoomMultiplier):
+        (WebView::canMakeTextLarger):
+        (WebView::makeTextLarger):
+        (WebView::canMakeTextSmaller):
+        (WebView::makeTextSmaller):
+        (WebView::notifyPreferencesChanged):
+
+2010-02-26  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        <rdar://problem/7703368> IWebUIDelegatePrivate::embeddedViewWithArguments
+        is passed wrong arguments
+
+        Reviewed by Adam Roben.
+
+        * Interfaces/IWebUIDelegatePrivate.idl:
+        Update copyright strings. Added a new key for the plug-in source URL.
+
+        * Interfaces/WebKit.idl:
+        Update copyright strings.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::createPlugin):
+        Pass the URL of the plug-in as the source URL. Pass the document's
+        base URI for the base URL.
+
+2010-02-23  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Tim Hatcher and Pavel Feldman.
+
+        Regression (r55107) - WebInspector docking is busted.
+        https://bugs.webkit.org/show_bug.cgi?id=35274
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::showWindowWithoutNotifications): Swap the order of the "should attach?" check
+          to get the expected behavior.
+
+2010-02-23  Steve Block  <steveblock@google.com>
+
+        Reviewed by Darin Adler.
+
+        Adds ChromeClient::cancelGeolocationPermissionRequestForFrame
+        https://bugs.webkit.org/show_bug.cgi?id=34962
+
+        This method is required so that a Geolocation object can cancel an
+        asynchronous permission request. This allows the chrome client to cancel
+        any UI it is showing for the permission request.
+
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient::cancelGeolocationPermissionRequestForFrame):
+
+2010-02-22  Steve Falkenburg  <sfalken@apple.com>
+
+        Reviewed by Darin Adler.
+
+        WebKit on Windows should pick up system setting changes without requiring explicit API calls
+        https://bugs.webkit.org/show_bug.cgi?id=35269
+
+        * WebKit.vcproj/WebKit.def: Removed WebKitSystemParameterChanged.
+        * WebKit.vcproj/WebKit_debug.def: Removed WebKitSystemParameterChanged.
+        * WebKitGraphics.cpp: Removed WebKitSystemParameterChanged.
+        * WebKitGraphics.h: Removed WebKitSystemParameterChanged.
+        * WebView.cpp:
+        (systemParameterChanged): Call through to wkSystemFontSmoothingChanged for font changes.
+        (WebView::windowReceivedMessage): Pick up WM_SETTINGCHANGE from windowReceivedMessage.
+
+2010-02-22  Brady Eidson  <beidson@apple.com>
+
+        Reviewed by Tim Hatcher.
+
+        Disable WebView docking to views that are too small.
+        <rdar://problem/7248409> and https://bugs.webkit.org/show_bug.cgi?id=35254
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorClient::showWindowWithoutNotifications): No matter the preference, don't open the inspector 
+          window attached if WebCore says it shouldn't be attached.
+
 2010-02-17  Steve Falkenburg  <sfalken@apple.com>
 
         Reviewed by Dan Bernstein.

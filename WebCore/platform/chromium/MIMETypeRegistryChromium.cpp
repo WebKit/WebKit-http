@@ -32,9 +32,9 @@
 #include "MIMETypeRegistry.h"
 
 #include "ChromiumBridge.h"
-#include "CString.h"
 #include "MediaPlayer.h"
 #include "PluginDataChromium.h"
+#include <wtf/text/CString.h>
 
 // NOTE: Unlike other ports, we don't use the shared implementation bits in
 // MIMETypeRegistry.cpp.  Instead, we need to route most functions via the
@@ -128,6 +128,11 @@ bool MIMETypeRegistry::isJavaAppletMIMEType(const String& mimeType)
 String MIMETypeRegistry::getMediaMIMETypeForExtension(const String&)
 {
     return String();
+}
+
+bool MIMETypeRegistry::isApplicationPluginMIMEType(const String&)
+{
+    return false;
 }
 
 static HashSet<String>& dummyHashSet()

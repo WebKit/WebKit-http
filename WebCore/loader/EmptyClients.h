@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Eric Seidel (eric@webkit.org)
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,12 +36,10 @@
 #include "EditorClient.h"
 #include "FloatRect.h"
 #include "FocusDirection.h"
-#include "FormState.h"
 #include "FrameLoaderClient.h"
 #include "InspectorClient.h"
 #include "PluginHalterClient.h"
 #include "ResourceError.h"
-#include "SharedBuffer.h"
 
 /*
  This file holds empty Client stubs for use by WebCore.
@@ -115,12 +113,12 @@ public:
     virtual bool tabsToLinks() const { return false; }
 
     virtual IntRect windowResizerRect() const { return IntRect(); }
-    virtual void addToDirtyRegion(const IntRect&) { }
-    virtual void scrollBackingStore(int, int, const IntRect&, const IntRect&) { }
-    virtual void updateBackingStore() { }
 
-    virtual void repaint(const IntRect&, bool, bool, bool) { }
+    virtual void invalidateWindow(const IntRect&, bool) { }
+    virtual void invalidateContentsAndWindow(const IntRect&, bool) { }
+    virtual void invalidateContentsForSlowScroll(const IntRect&, bool) {};
     virtual void scroll(const IntSize&, const IntRect&, const IntRect&) { }
+
     virtual IntPoint screenToWindow(const IntPoint& p) const { return p; }
     virtual IntRect windowToScreen(const IntRect& r) const { return r; }
     virtual PlatformPageClient platformPageClient() const { return 0; }
@@ -146,7 +144,7 @@ public:
 #endif
 
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) { }
-    virtual void iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>) { }
+    virtual void chooseIconForFiles(const Vector<String>&, PassRefPtr<FileChooser>) { }
 
     virtual void formStateDidChange(const Node*) { }
 
@@ -160,6 +158,7 @@ public:
     virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const {}
 
     virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*) {}
+    virtual void cancelGeolocationPermissionRequestForFrame(Frame*, Geolocation*) {}
 
 #if USE(ACCELERATED_COMPOSITING)
     virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*) {};
@@ -200,7 +199,6 @@ public:
     virtual void dispatchDidFinishLoading(DocumentLoader*, unsigned long) { }
     virtual void dispatchDidFailLoading(DocumentLoader*, unsigned long, const ResourceError&) { }
     virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int) { return false; }
-    virtual void dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&) { }
 
     virtual void dispatchDidHandleOnloadEvents() { }
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() { }
@@ -300,6 +298,9 @@ public:
     virtual void didTransferChildFrameToNewDocument() { }
     virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool) { return 0; }
     virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL&, const Vector<String>&, const Vector<String>&) { return 0; }
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    virtual PassRefPtr<Widget> createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&) { return 0; }
+#endif
 
     virtual ObjectContentType objectContentType(const KURL&, const String&) { return ObjectContentType(); }
     virtual String overrideMediaType() const { return String(); }
@@ -472,29 +473,14 @@ public:
     virtual ~EmptyInspectorClient() { }
 
     virtual void inspectorDestroyed() { }
-
-    virtual Page* createPage() { return 0; };
-
-    virtual String localizedStringsURL() { return String(); }
-
-    virtual String hiddenPanels() { return String(); }
-
-    virtual void showWindow() { }
-    virtual void closeWindow() { }
-
-    virtual void attachWindow() { }
-    virtual void detachWindow() { }
-
-    virtual void setAttachedWindowHeight(unsigned) { }
+    
+    virtual void openInspectorFrontend(InspectorController*) { }
 
     virtual void highlight(Node*) { }
     virtual void hideHighlight() { }
-    virtual void inspectedURLChanged(const String&) { }
 
     virtual void populateSetting(const String&, String*) { }
     virtual void storeSetting(const String&, const String&) { }
-
-    virtual void inspectorWindowObjectCleared() { }
 };
 
 }

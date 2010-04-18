@@ -34,9 +34,6 @@ WebInspector.InspectorBackendStub = function()
 {
     this._searchingForNode = false;
     this._attachedWindowHeight = 0;
-    this._debuggerEnabled = true;
-    this._profilerEnabled = true;
-    this._resourceTrackingEnabled = false;
     this._timelineEnabled = false;
 }
 
@@ -126,39 +123,42 @@ WebInspector.InspectorBackendStub.prototype = {
         return "";
     },
 
-    debuggerEnabled: function()
-    {
-        return this._debuggerEnabled;
-    },
-
     enableResourceTracking: function()
     {
-        this._resourceTrackingEnabled = true;
         WebInspector.resourceTrackingWasEnabled();
     },
 
     disableResourceTracking: function()
     {
-        this._resourceTrackingEnabled = false;
         WebInspector.resourceTrackingWasDisabled();
     },
 
-    resourceTrackingEnabled: function()
+
+    enableSearchingForNode: function()
     {
-        return this._resourceTrackingEnabled;
+        WebInspector.searchingForNodeWasEnabled();
+    },
+
+    disableSearchingForNode: function()
+    {
+        WebInspector.searchingForNodeWasDisabled();
+    },
+
+    reloadPage: function()
+    {
     },
 
     enableDebugger: function()
     {
-        this._debuggerEnabled = true;
+        WebInspector.debuggerWasEnabled();
     },
 
     disableDebugger: function()
     {
-        this._debuggerEnabled = false;
+        WebInspector.debuggerWasDisabled();
     },
 
-    addBreakpoint: function(sourceID, line, condition)
+    setBreakpoint: function(sourceID, line, enabled, condition)
     {
     },
 
@@ -166,40 +166,37 @@ WebInspector.InspectorBackendStub.prototype = {
     {
     },
 
-    updateBreakpoint: function(sourceID, line, condition)
+    activateBreakpoints: function()
     {
+        this._breakpointsActivated = true;
+    },
+
+    deactivateBreakpoints: function()
+    {
+        this._breakpointsActivated = false;
     },
 
     pauseInDebugger: function()
     {
     },
 
-    pauseOnExceptionsState: function()
-    {
-        return 0;
-    },
-
     setPauseOnExceptionsState: function(value)
     {
+        WebInspector.updatePauseOnExceptionsState(value);
     },
 
     resumeDebugger: function()
     {
     },
 
-    profilerEnabled: function()
-    {
-        return true;
-    },
-
     enableProfiler: function()
     {
-        this._profilerEnabled = true;
+        WebInspector.profilerWasEnabled();
     },
 
     disableProfiler: function()
     {
-        this._profilerEnabled = false;
+        WebInspector.profilerWasDisabled();
     },
 
     startProfiling: function()
@@ -217,10 +214,6 @@ WebInspector.InspectorBackendStub.prototype = {
 
     getProfile: function(callId, uid)
     {
-        if (WebInspector.__fullProfiles && (uid in WebInspector.__fullProfiles))
-        {
-            WebInspector.didGetProfile(callId, WebInspector.__fullProfiles[uid]);
-        }
     },
 
     takeHeapSnapshot: function()
@@ -257,6 +250,14 @@ WebInspector.InspectorBackendStub.prototype = {
     },
 
     setInjectedScriptSource: function()
+    {
+    },
+    
+    addScriptToEvaluateOnLoad: function()
+    {
+    },
+
+    removeAllScriptsToEvaluateOnLoad: function()
     {
     }
 }

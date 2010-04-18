@@ -470,6 +470,13 @@ Could be worth adding to the API.
 - (void)_setPostsAcceleratedCompositingNotifications:(BOOL)flag;
 - (BOOL)_isUsingAcceleratedCompositing;
 
+// Returns YES if NSView -displayRectIgnoringOpacity:inContext: will produce a faithful representation of the content.
+- (BOOL)_isSoftwareRenderable;
+// When drawing into a bitmap context, we normally flatten compositing layers (and distort 3D transforms).
+// Clients who are able to capture their own copy of the compositing layers need to be able to disable this.
+- (void)_setIncludesFlattenedCompositingLayersWhenDrawingToBitmap:(BOOL)flag;
+- (BOOL)_includesFlattenedCompositingLayersWhenDrawingToBitmap;
+
 // SPI for PluginHalter
 + (BOOL)_isNodeHaltedPlugin:(DOMNode *)node;
 + (BOOL)_hasPluginForNodeBeenHalted:(DOMNode *)node;
@@ -482,10 +489,11 @@ Could be worth adding to the API.
 // - destinationProtocol: The protocol to grant access to.
 // - destinationHost: The host to grant access to.
 // - allowDestinationSubdomains: If host is a domain, setting this to YES will whitelist host and all its subdomains, recursively.
-+ (void)_whiteListAccessFromOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains;
++ (void)_addOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains;
++ (void)_removeOriginAccessWhitelistEntryWithSourceOrigin:(NSString *)sourceOrigin destinationProtocol:(NSString *)destinationProtocol destinationHost:(NSString *)destinationHost allowDestinationSubdomains:(BOOL)allowDestinationSubdomains;
 
-// Removes all white list entries created with _whiteListAccessFromOrigin.
-+ (void)_resetOriginAccessWhiteLists;
+// Removes all white list entries created with _addOriginAccessWhitelistEntryWithSourceOrigin.
++ (void)_resetOriginAccessWhitelists;
 
 + (void)_addUserScriptToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url whitelist:(NSArray *)whitelist blacklist:(NSArray *)blacklist injectionTime:(WebUserScriptInjectionTime)injectionTime;
 + (void)_addUserStyleSheetToGroup:(NSString *)groupName world:(WebScriptWorld *)world source:(NSString *)source url:(NSURL *)url whitelist:(NSArray *)whitelist blacklist:(NSArray *)blacklist;
@@ -510,6 +518,7 @@ Could be worth adding to the API.
 - (void)setCSSAnimationsSuspended:(BOOL)suspended;
 
 + (void)_setDomainRelaxationForbidden:(BOOL)forbidden forURLScheme:(NSString *)scheme;
++ (void)_registerURLSchemeAsSecure:(NSString *)scheme;
 
 @end
 
@@ -589,6 +598,10 @@ Could be worth adding to the API.
 
 - (void)_geolocationDidChangePosition:(WebGeolocationPosition *)position;
 - (void)_geolocationDidFailWithError:(NSError *)error;
+@end
+
+@interface WebView (WebViewPrivateStyleInfo)
+- (JSValueRef)_computedStyleIncludingVisitedInfo:(JSContextRef)context forElement:(JSValueRef)value;
 @end
 
 @interface NSObject (WebFrameLoadDelegatePrivate)

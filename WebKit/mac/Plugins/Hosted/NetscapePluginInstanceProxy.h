@@ -72,14 +72,14 @@ public:
         
         return m_pluginID;
     }
-    uint32_t renderContextID() const { return m_renderContextID; }
+    uint32_t renderContextID() const { ASSERT(fastMallocSize(this)); return m_renderContextID; }
     void setRenderContextID(uint32_t renderContextID) { m_renderContextID = renderContextID; }
     
     bool useSoftwareRenderer() const { return m_useSoftwareRenderer; }
     void setUseSoftwareRenderer(bool useSoftwareRenderer) { m_useSoftwareRenderer = useSoftwareRenderer; }
     
-    WebHostedNetscapePluginView *pluginView() const { return m_pluginView; }
-    NetscapePluginHostProxy* hostProxy() const { return m_pluginHostProxy; }
+    WebHostedNetscapePluginView *pluginView() const { ASSERT(fastMallocSize(this)); return m_pluginView; }
+    NetscapePluginHostProxy* hostProxy() const { ASSERT(fastMallocSize(this)); return m_pluginHostProxy; }
     
     bool cancelStreamLoad(uint32_t streamID, NPReason);
     void disconnectStream(HostedNetscapePluginStream*);
@@ -89,7 +89,7 @@ public:
     
     void pluginHostDied();
     
-    void resize(NSRect size, NSRect clipRect, bool sync);
+    void resize(NSRect size, NSRect clipRect);
     void destroy();
     void focusChanged(bool hasFocus);
     void windowFocusChanged(bool hasFocus);
@@ -102,6 +102,7 @@ public:
     void syntheticKeyDownWithCommandModifier(int keyCode, char character);
     void flagsChanged(NSEvent *);
     void print(CGContextRef, unsigned width, unsigned height);
+    void snapshot(CGContextRef, unsigned width, unsigned height);
     
     void startTimers(bool throttleTimers);
     void stopTimers();
@@ -256,8 +257,9 @@ public:
     template <typename T>
     std::auto_ptr<T> waitForReply(uint32_t requestID)
     {
+        RefPtr<NetscapePluginInstanceProxy> protect(this); // Plug-in host may crash while we are waiting for reply, releasing all instances to the instance proxy.
+
         willCallPluginFunction();
-        
         m_waitingForReply = true;
 
         Reply* reply = processRequestsAndWaitForReply(requestID);

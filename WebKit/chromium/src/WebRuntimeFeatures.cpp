@@ -184,4 +184,30 @@ bool WebRuntimeFeatures::isIndexedDatabaseEnabled()
 #endif
 }
 
+void WebRuntimeFeatures::enableWebGL(bool enable)
+{
+#if ENABLE(3D_CANVAS)
+    RuntimeEnabledFeatures::setWebGLEnabled(enable);
+#endif
+}
+
+bool WebRuntimeFeatures::isWebGLEnabled()
+{
+#if ENABLE(3D_CANVAS)
+    return RuntimeEnabledFeatures::webGLRenderingContextEnabled();
+#else
+    return false;
+#endif
+}
+
+void WebRuntimeFeatures::enablePushState(bool enable)
+{
+    RuntimeEnabledFeatures::setPushStateEnabled(enable);
+}
+
+bool WebRuntimeFeatures::isPushStateEnabled(bool enable)
+{
+    return RuntimeEnabledFeatures::pushStateEnabled();
+}
+
 } // namespace WebKit

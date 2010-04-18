@@ -76,6 +76,12 @@ bool AccessibilityTableRow::isTableRow() const
     
 bool AccessibilityTableRow::accessibilityIsIgnored() const
 {    
+    AccessibilityObjectInclusion decision = accessibilityIsIgnoredBase();
+    if (decision == IncludeObject)
+        return false;
+    if (decision == IgnoreObject)
+        return true;
+    
     if (!isTableRow())
         return AccessibilityRenderObject::accessibilityIsIgnored();
 

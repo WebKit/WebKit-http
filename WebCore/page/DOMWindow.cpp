@@ -26,15 +26,16 @@
 #include "config.h"
 #include "DOMWindow.h"
 
+#include "Base64.h"
 #include "BarInfo.h"
 #include "BeforeUnloadEvent.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSRuleList.h"
 #include "CSSStyleSelector.h"
-#include "CString.h"
 #include "Chrome.h"
 #include "Console.h"
 #include "Database.h"
+#include "DatabaseCallback.h"
 #include "DOMApplicationCache.h"
 #include "DOMSelection.h"
 #include "DOMTimer.h"
@@ -52,6 +53,8 @@
 #include "FrameView.h"
 #include "HTMLFrameOwnerElement.h"
 #include "History.h"
+#include "IndexedDatabase.h"
+#include "IndexedDatabaseRequest.h"
 #include "InspectorController.h"
 #include "InspectorTimelineAgent.h"
 #include "Location.h"
@@ -73,6 +76,7 @@
 #include "SuddenTermination.h"
 #include "WebKitPoint.h"
 #include <algorithm>
+#include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
 
 using std::min;
@@ -466,6 +470,12 @@ void DOMWindow::clear()
         m_notifications->disconnectFrame();
     m_notifications = 0;
 #endif
+
+#if ENABLE(INDEXED_DATABASE)
+    if (m_indexedDatabaseRequest)
+        m_indexedDatabaseRequest->disconnectFrame();
+    m_indexedDatabaseRequest = 0;
+#endif
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -573,9 +583,6 @@ Storage* DOMWindow::sessionStorage() const
     Document* document = this->document();
     if (!document)
         return 0;
-    
-    if (!document->securityOrigin()->canAccessStorage())
-        return 0;
 
     Page* page = document->page();
     if (!page)
@@ -590,7 +597,7 @@ Storage* DOMWindow::sessionStorage() const
     return m_sessionStorage.get();
 }
 
-Storage* DOMWindow::localStorage() const
+Storage* DOMWindow::localStorage(ExceptionCode& ec) const
 {
     if (m_localStorage)
         return m_localStorage.get();
@@ -599,8 +606,10 @@ Storage* DOMWindow::localStorage() const
     if (!document)
         return 0;
     
-    if (!document->securityOrigin()->canAccessStorage())
+    if (!document->securityOrigin()->canAccessLocalStorage()) {
+        ec = SECURITY_ERR;
         return 0;
+    }
         
     Page* page = document->page();
     if (!page)
@@ -644,7 +653,23 @@ NotificationCenter* DOMWindow::webkitNotifications() const
 #if ENABLE(INDEXED_DATABASE)
 IndexedDatabaseRequest* DOMWindow::indexedDB() const
 {
-    return 0;
+    if (m_indexedDatabaseRequest)
+        return m_indexedDatabaseRequest.get();
+
+    Document* document = this->document();
+    if (!document)
+        return 0;
+
+    // FIXME: See if access is allowed.
+
+    Page* page = document->page();
+    if (!page)
+        return 0;
+
+    // FIXME: See if indexedDatabase access is allowed.
+
+    m_indexedDatabaseRequest = IndexedDatabaseRequest::create(page->group().indexedDatabase(), m_frame);
+    return m_indexedDatabaseRequest.get();
 }
 #endif
 
@@ -824,6 +849,57 @@ String DOMWindow::prompt(const String& message, const String& defaultValue)
         return returnValue;
 
     return String();
+}
+
+static bool isSafeToConvertCharList(const String& string)
+{
+    for (unsigned i = 0; i < string.length(); i++) {
+        if (string[i] > 0xFF)
+            return false;
+    }
+
+    return true;
+}
+
+String DOMWindow::btoa(const String& stringToEncode, ExceptionCode& ec)
+{
+    if (stringToEncode.isNull())
+        return String();
+
+    if (!isSafeToConvertCharList(stringToEncode)) {
+        ec = INVALID_CHARACTER_ERR;
+        return String();
+    }
+
+    Vector<char> in;
+    in.append(stringToEncode.characters(), stringToEncode.length());
+    Vector<char> out;
+
+    base64Encode(in, out);
+
+    return String(out.data(), out.size());
+}
+
+String DOMWindow::atob(const String& encodedString, ExceptionCode& ec)
+{
+    if (encodedString.isNull())
+        return String();
+
+    if (!isSafeToConvertCharList(encodedString)) {
+        ec = INVALID_CHARACTER_ERR;
+        return String();
+    }
+
+    Vector<char> in;
+    in.append(encodedString.characters(), encodedString.length());
+    Vector<char> out;
+
+    if (!base64Decode(in, out)) {
+        ec = INVALID_CHARACTER_ERR;
+        return String();
+    }
+
+    return String(out.data(), out.size());
 }
 
 bool DOMWindow::find(const String& string, bool caseSensitive, bool backwards, bool wrap, bool /*wholeWord*/, bool /*searchInFrames*/, bool /*showDialog*/) const
@@ -1076,15 +1152,12 @@ PassRefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element* elt, const 
     return computedStyle(elt);
 }
 
-PassRefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* elt, const String& pseudoElt, bool authorOnly) const
+PassRefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* elt, const String&, bool authorOnly) const
 {
     if (!m_frame)
         return 0;
 
     Document* doc = m_frame->document();
-
-    if (!pseudoElt.isEmpty())
-        return doc->styleSelector()->pseudoStyleRulesForElement(elt, pseudoElt, authorOnly);
     return doc->styleSelector()->styleRulesForElement(elt, authorOnly);
 }
 
@@ -1125,20 +1198,21 @@ double DOMWindow::devicePixelRatio() const
 }
 
 #if ENABLE(DATABASE)
-PassRefPtr<Database> DOMWindow::openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, ExceptionCode& ec)
+PassRefPtr<Database> DOMWindow::openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode& ec)
 {
     if (!m_frame)
         return 0;
 
+    if (!Database::isAvailable())
+        return 0;
+
     Document* document = m_frame->document();
-    if (!document->securityOrigin()->canAccessDatabase())
+    if (!document->securityOrigin()->canAccessDatabase()) {
+        ec = SECURITY_ERR;
         return 0;
+    }
 
-    Settings* settings = m_frame->settings();
-    if (!settings || !settings->databasesEnabled())
-        return 0;
-
-    return Database::openDatabase(document, name, version, displayName, estimatedSize, ec);
+    return Database::openDatabase(document, name, version, displayName, estimatedSize, creationCallback, ec);
 }
 #endif
 
@@ -1359,20 +1433,21 @@ bool DOMWindow::dispatchEvent(PassRefPtr<Event> prpEvent, PassRefPtr<EventTarget
     event->setEventPhase(Event::AT_TARGET);
 
 #if ENABLE(INSPECTOR)
-    InspectorTimelineAgent* timelineAgent = inspectorTimelineAgent();
-    bool timelineAgentIsActive = timelineAgent && hasEventListeners(event->type());
-    if (timelineAgentIsActive)
-        timelineAgent->willDispatchEvent(*event);
+    Page* inspectedPage = InspectorTimelineAgent::instanceCount() && frame() ? frame()->page() : 0;
+    if (inspectedPage) {
+        if (InspectorTimelineAgent* timelineAgent = hasEventListeners(event->type()) ? inspectedPage->inspectorTimelineAgent() : 0)
+            timelineAgent->willDispatchEvent(*event);
+        else
+            inspectedPage = 0;
+    }
 #endif
 
     bool result = fireEventListeners(event.get());
 
 #if ENABLE(INSPECTOR)
-    if (timelineAgentIsActive) {
-      timelineAgent = inspectorTimelineAgent();
-      if (timelineAgent)
+    if (inspectedPage)
+        if (InspectorTimelineAgent* timelineAgent = inspectedPage->inspectorTimelineAgent())
             timelineAgent->didDispatchEvent();
-    }
 #endif
 
     return result;

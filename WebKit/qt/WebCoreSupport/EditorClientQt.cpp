@@ -43,7 +43,6 @@
 #include "HTMLElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
-#include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -51,6 +50,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "QWebPageClient.h"
 #include "Range.h"
+#include "WindowsKeyboardCodes.h"
 
 #include <stdio.h>
 
@@ -384,18 +384,6 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
         } else
 #endif // QT_NO_SHORTCUT
         switch (kevent->windowsVirtualKeyCode()) {
-#if QT_VERSION < 0x040500
-            case VK_RETURN:
-#ifdef QT_WS_MAC
-                if (kevent->shiftKey() || kevent->metaKey())
-#else
-                if (kevent->shiftKey())
-#endif
-                    frame->editor()->command("InsertLineBreak").execute();
-                else
-                    frame->editor()->command("InsertNewline").execute();
-                break;
-#endif
             case VK_BACK:
                 frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
                         CharacterGranularity, false, true);
@@ -625,11 +613,11 @@ void EditorClientQt::setInputMethodState(bool active)
             }
         }
         webPageClient->setInputMethodHint(Qt::ImhHiddenText, isPasswordField);
-#ifdef Q_WS_MAEMO_5
-        // Maemo 5 MicroB Browser disables auto-uppercase and predictive text, thus, so do we.
+#if defined(Q_WS_MAEMO_5) || defined(Q_OS_SYMBIAN)
+        // disables auto-uppercase and predictive text for mobile devices
         webPageClient->setInputMethodHint(Qt::ImhNoAutoUppercase, true);
         webPageClient->setInputMethodHint(Qt::ImhNoPredictiveText, true);
-#endif // Q_WS_MAEMO_5
+#endif // Q_WS_MAEMO_5 || Q_OS_SYMBIAN
 #endif // QT_VERSION check
         webPageClient->setInputMethodEnabled(active);
     }

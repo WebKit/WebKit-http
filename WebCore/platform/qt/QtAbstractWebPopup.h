@@ -40,6 +40,8 @@ public:
     QString itemToolTip(int idx) const { return m_popupClient->itemToolTip(idx); }
     bool itemIsEnabled(int idx) const { return m_popupClient->itemIsEnabled(idx); }
     int itemCount() const { return m_popupClient->listSize(); }
+    bool itemIsSelected(int idx) const { return m_popupClient->itemIsSelected(idx); }
+
 
     QWebPageClient* pageClient() const { return m_pageClient; }
     QRect geometry() const { return m_geometry; }
@@ -53,6 +55,10 @@ public:
 
     void popupDidHide();
     void valueChanged(int index);
+
+    void selectItem(int index, bool allowMultiplySelections, bool shift);
+    bool multiple();
+
 
     QFont font() { return m_popupClient->menuStyle().font().font(); }
 

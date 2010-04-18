@@ -27,6 +27,7 @@
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
 
+#include "DNS.h"
 #include "Logging.h"
 #include "ResourceHandleClient.h"
 #include "Timer.h"
@@ -37,18 +38,18 @@ namespace WebCore {
 static bool shouldForceContentSniffing;
 
 ResourceHandle::ResourceHandle(const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading,
-         bool shouldContentSniff, bool mightDownloadFromHandle)
-    : d(new ResourceHandleInternal(this, request, client, defersLoading, shouldContentSniff, mightDownloadFromHandle))
+         bool shouldContentSniff)
+    : d(new ResourceHandleInternal(this, request, client, defersLoading, shouldContentSniff))
 {
 }
 
 PassRefPtr<ResourceHandle> ResourceHandle::create(const ResourceRequest& request, ResourceHandleClient* client,
-    Frame* frame, bool defersLoading, bool shouldContentSniff, bool mightDownloadFromHandle)
+    Frame* frame, bool defersLoading, bool shouldContentSniff)
 {
     if (shouldContentSniff)
         shouldContentSniff = shouldContentSniffURL(request.url());
 
-    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(request, client, defersLoading, shouldContentSniff, mightDownloadFromHandle)));
+    RefPtr<ResourceHandle> newHandle(adoptRef(new ResourceHandle(request, client, defersLoading, shouldContentSniff)));
 
     if (!request.url().isValid()) {
         newHandle->scheduleFailure(InvalidURLFailure);
@@ -104,6 +105,11 @@ const ResourceRequest& ResourceHandle::request() const
     return d->m_request;
 }
 
+const String& ResourceHandle::lastHTTPMethod() const
+{
+    return d->m_lastHTTPMethod;
+}
+
 void ResourceHandle::clearAuthentication()
 {
 #if PLATFORM(MAC)
@@ -131,5 +137,12 @@ void ResourceHandle::forceContentSniffing()
 {
     shouldForceContentSniffing = true;
 }
+
+#if !USE(SOUP)
+void ResourceHandle::prepareForURL(const KURL& url)
+{
+    return prefetchDNS(url.host());
+}
+#endif
 
 } // namespace WebCore

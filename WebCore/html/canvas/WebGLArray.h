@@ -26,7 +26,9 @@
 #ifndef WebGLArray_h
 #define WebGLArray_h
 
+#include <algorithm>
 #include "ExceptionCode.h"
+#include <limits.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -58,7 +60,7 @@ class WebGLArray : public RefCounted<WebGLArray> {
 
     virtual unsigned length() const = 0;
     virtual unsigned byteLength() const = 0;
-    virtual PassRefPtr<WebGLArray> slice(unsigned offset, unsigned length) = 0;
+    virtual PassRefPtr<WebGLArray> slice(int start, int end) = 0;
 
     virtual ~WebGLArray();
 
@@ -66,6 +68,48 @@ class WebGLArray : public RefCounted<WebGLArray> {
     WebGLArray(PassRefPtr<WebGLArrayBuffer> buffer, unsigned byteOffset);
 
     void setImpl(WebGLArray* array, unsigned byteOffset, ExceptionCode& ec);
+
+    void calculateOffsetAndLength(int start, int end, unsigned arraySize,
+                                  unsigned* offset, unsigned* length);
+
+    // Helper to verify that a given sub-range of an ArrayBuffer is
+    // within range.
+    template <typename T>
+    static bool verifySubRange(PassRefPtr<WebGLArrayBuffer> buffer,
+                               unsigned byteOffset,
+                               unsigned numElements)
+    {
+        if (!buffer)
+            return false;
+        if (sizeof(T) > 1 && byteOffset % sizeof(T))
+            return false;
+        if (byteOffset > buffer->byteLength())
+            return false;
+        unsigned remainingElements = (buffer->byteLength() - byteOffset) / sizeof(T);
+        if (numElements > remainingElements)
+            return false;
+        return true;
+    }
+
+    // Input offset is in number of elements from this array's view;
+    // output offset is in number of bytes from the underlying buffer's view.
+    template <typename T>
+    static void clampOffsetAndNumElements(PassRefPtr<WebGLArrayBuffer> buffer,
+                                          unsigned arrayByteOffset,
+                                          unsigned *offset,
+                                          unsigned *numElements)
+    {
+        unsigned maxOffset = (UINT_MAX - arrayByteOffset) / sizeof(T);
+        if (*offset > maxOffset) {
+            *offset = buffer->byteLength();
+            *numElements = 0;
+            return;
+        }
+        *offset = arrayByteOffset + *offset * sizeof(T);
+        *offset = std::min(buffer->byteLength(), *offset);
+        unsigned remainingElements = (buffer->byteLength() - *offset) / sizeof(T);
+        *numElements = std::min(remainingElements, *numElements);
+    }
 
     // This is the address of the WebGLArrayBuffer's storage, plus the byte offset.
     void* m_baseAddress;

@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -38,7 +38,7 @@ WTFLogChannel LogPopupBlocking =     { 0x00000040, "WebCoreLogLevel", WTFLogChan
 
 WTFLogChannel LogEvents =            { 0x00000080, "WebCoreLogLevel", WTFLogChannelOff };
 WTFLogChannel LogEditing =           { 0x00000100, "WebCoreLogLevel", WTFLogChannelOff };
-WTFLogChannel LogTextConversion =    { 0x00000200, "WebCoreLogLevel", WTFLogChannelOff };
+WTFLogChannel LogLiveConnect =       { 0x00000200, "WebCoreLogLevel", WTFLogChannelOff };
 
 WTFLogChannel LogIconDatabase =      { 0x00000400, "WebCoreLogLevel", WTFLogChannelOff };
 WTFLogChannel LogSQLDatabase =       { 0x00000800, "WebCoreLogLevel", WTFLogChannelOff };
@@ -60,6 +60,7 @@ WTFLogChannel LogMedia =             { 0x01000000, "WebCoreLogLevel", WTFLogChan
 WTFLogChannel LogPlugins =           { 0x02000000, "WebCoreLogLevel", WTFLogChannelOff };
 WTFLogChannel LogArchives =          { 0x04000000, "WebCoreLogLevel", WTFLogChannelOff };
 WTFLogChannel LogProgress =          { 0x08000000, "WebCoreLogLevel", WTFLogChannelOff };
+WTFLogChannel LogFileAPI =           { 0x10000000, "WebCoreLogLevel", WTFLogChannelOff };
 
 WTFLogChannel* getChannelFromName(const String& channelName)
 {
@@ -113,7 +114,7 @@ WTFLogChannel* getChannelFromName(const String& channelName)
 
     if (equalIgnoringCase(channelName, String("Progress")))
         return &LogProgress;
-        
+
     if (equalIgnoringCase(channelName, String("SpellingAndGrammar")))
         return &LogSpellingAndGrammar;
 
@@ -123,11 +124,14 @@ WTFLogChannel* getChannelFromName(const String& channelName)
     if (equalIgnoringCase(channelName, String("StorageAPI")))
         return &LogStorageAPI;
 
-    if (equalIgnoringCase(channelName, String("TextConversion")))
-        return &LogTextConversion;
+    if (equalIgnoringCase(channelName, String("LiveConnect")))
+        return &LogLiveConnect;
 
     if (equalIgnoringCase(channelName, String("Threading")))
         return &LogThreading;
+
+    if (equalIgnoringCase(channelName, String("FileAPI")))
+        return &LogFileAPI;
 
     return 0;
 }

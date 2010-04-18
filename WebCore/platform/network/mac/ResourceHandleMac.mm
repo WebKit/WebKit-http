@@ -30,9 +30,9 @@
 #import "AuthenticationMac.h"
 #import "Base64.h"
 #import "BlockExceptions.h"
-#import "CString.h"
 #import "CredentialStorage.h"
 #import "DocLoader.h"
+#import "EmptyProtocolDefinitions.h"
 #import "FormDataStreamMac.h"
 #import "Frame.h"
 #import "FrameLoader.h"
@@ -47,6 +47,7 @@
 #import "SubresourceLoader.h"
 #import "WebCoreSystemInterface.h"
 #import "WebCoreURLResponse.h"
+#import <wtf/text/CString.h>
 #import <wtf/UnusedParam.h>
 
 #ifdef BUILDING_ON_TIGER
@@ -55,12 +56,19 @@ typedef int NSInteger;
 
 using namespace WebCore;
 
-@interface WebCoreResourceHandleAsDelegate : NSObject
+@interface WebCoreResourceHandleAsDelegate : NSObject <NSURLConnectionDelegate>
 {
     ResourceHandle* m_handle;
 }
 - (id)initWithHandle:(ResourceHandle*)handle;
 - (void)detachHandle;
+@end
+
+// WebCoreNSURLConnectionDelegateProxy exists so that we can cast m_proxy to it in order
+// to disambiguate the argument type in the -setDelegate: call.  This avoids a spurious
+// warning that the compiler would otherwise emit.
+@interface WebCoreNSURLConnectionDelegateProxy : NSObject <NSURLConnectionDelegate>
+- (void)setDelegate:(id<NSURLConnectionDelegate>)delegate;
 @end
 
 @interface NSURLConnection (NSURLConnectionTigerPrivate)
@@ -73,7 +81,7 @@ using namespace WebCore;
 
 #ifndef BUILDING_ON_TIGER
 
-@interface WebCoreSynchronousLoader : NSObject {
+@interface WebCoreSynchronousLoader : NSObject <NSURLConnectionDelegate> {
     NSURL *m_url;
     NSString *m_user;
     NSString *m_pass;
@@ -166,17 +174,9 @@ bool ResourceHandle::start(Frame* frame)
     isInitializingConnection = YES;
 #endif
 
-    id delegate;
-    
-    if (d->m_mightDownloadFromHandle) {
-        ASSERT(!d->m_proxy);
-        d->m_proxy = wkCreateNSURLConnectionDelegateProxy();
-        [d->m_proxy.get() setDelegate:ResourceHandle::delegate()];
-        [d->m_proxy.get() release];
-        
-        delegate = d->m_proxy.get();
-    } else 
-        delegate = ResourceHandle::delegate();
+    ASSERT(!d->m_proxy);
+    d->m_proxy.adoptNS(wkCreateNSURLConnectionDelegateProxy());
+    [static_cast<WebCoreNSURLConnectionDelegateProxy*>(d->m_proxy.get()) setDelegate:ResourceHandle::delegate()];
 
     if ((!d->m_user.isEmpty() || !d->m_pass.isEmpty())
 #ifndef BUILDING_ON_TIGER
@@ -223,21 +223,27 @@ bool ResourceHandle::start(Frame* frame)
 
     d->m_needsSiteSpecificQuirks = frame->settings() && frame->settings()->needsSiteSpecificQuirks();
 
+    // If a URL already has cookies, then we'll relax the 3rd party cookie policy and accept new cookies.
+    NSHTTPCookieStorage *sharedStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    if ([sharedStorage cookieAcceptPolicy] == NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain
+        && [[sharedStorage cookiesForURL:d->m_request.url()] count])
+        d->m_request.setFirstPartyForCookies(d->m_request.url());
+
     NSURLConnection *connection;
     
     if (d->m_shouldContentSniff || frame->settings()->localFileContentSniffingEnabled()) 
 #ifdef BUILDING_ON_TIGER
-        connection = [[NSURLConnection alloc] initWithRequest:d->m_request.nsURLRequest() delegate:delegate];
+        connection = [[NSURLConnection alloc] initWithRequest:d->m_request.nsURLRequest() delegate:d->m_proxy.get()];
 #else
-        connection = [[NSURLConnection alloc] initWithRequest:d->m_request.nsURLRequest() delegate:delegate startImmediately:NO];
+        connection = [[NSURLConnection alloc] initWithRequest:d->m_request.nsURLRequest() delegate:d->m_proxy.get() startImmediately:NO];
 #endif
     else {
         NSMutableURLRequest *request = [d->m_request.nsURLRequest() mutableCopy];
         wkSetNSURLRequestShouldContentSniff(request, NO);
 #ifdef BUILDING_ON_TIGER
-        connection = [[NSURLConnection alloc] initWithRequest:request delegate:delegate];
+        connection = [[NSURLConnection alloc] initWithRequest:request delegate:d->m_proxy.get()];
 #else
-        connection = [[NSURLConnection alloc] initWithRequest:request delegate:delegate startImmediately:NO];
+        connection = [[NSURLConnection alloc] initWithRequest:request delegate:d->m_proxy.get() startImmediately:NO];
 #endif
         [request release];
     }
@@ -419,13 +425,22 @@ void ResourceHandle::loadResourceSynchronously(const ResourceRequest& request, S
 
     ASSERT(!request.isEmpty());
     
-    NSURLRequest *nsRequest;
+    NSMutableURLRequest *mutableRequest = nil;
     if (!shouldContentSniffURL(request.url())) {
-        NSMutableURLRequest *mutableRequest = [[request.nsURLRequest() mutableCopy] autorelease];
+        mutableRequest = [[request.nsURLRequest() mutableCopy] autorelease];
         wkSetNSURLRequestShouldContentSniff(mutableRequest, NO);
-        nsRequest = mutableRequest;
-    } else
-        nsRequest = request.nsURLRequest();
+    } 
+
+    // If a URL already has cookies, then we'll ignore the 3rd party cookie policy and accept new cookies.
+    NSHTTPCookieStorage *sharedStorage = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    if ([sharedStorage cookieAcceptPolicy] == NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain
+        && [[sharedStorage cookiesForURL:request.url()] count]) {
+        if (!mutableRequest)
+            mutableRequest = [[request.nsURLRequest() mutableCopy] autorelease];
+        [mutableRequest setMainDocumentURL:[mutableRequest URL]];
+    }
+    
+    NSURLRequest *nsRequest = mutableRequest ? mutableRequest : request.nsURLRequest();
             
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     
@@ -465,6 +480,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     const KURL& url = request.url();
     d->m_user = url.user();
     d->m_pass = url.pass();
+    d->m_lastHTTPMethod = request.httpMethod();
     request.removeCredentials();
 
     client()->willSendRequest(this, request, redirectResponse);
@@ -619,13 +635,13 @@ void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challen
 #endif
 
     if ([redirectResponse isKindOfClass:[NSHTTPURLResponse class]] && [(NSHTTPURLResponse *)redirectResponse statusCode] == 307) {
-        String originalMethod = m_handle->request().httpMethod();
-        if (!equalIgnoringCase(originalMethod, String([newRequest HTTPMethod]))) {
+        String lastHTTPMethod = m_handle->lastHTTPMethod();
+        if (!equalIgnoringCase(lastHTTPMethod, String([newRequest HTTPMethod]))) {
             NSMutableURLRequest *mutableRequest = [newRequest mutableCopy];
-            [mutableRequest setHTTPMethod:originalMethod];
+            [mutableRequest setHTTPMethod:lastHTTPMethod];
     
             FormData* body = m_handle->request().httpBody();
-            if (!equalIgnoringCase(originalMethod, "GET") && body && !body->isEmpty())
+            if (!equalIgnoringCase(lastHTTPMethod, "GET") && body && !body->isEmpty())
                 WebCore::setHTTPBody(mutableRequest, body);
 
             String originalContentType = m_handle->request().httpContentType();

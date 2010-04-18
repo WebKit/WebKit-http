@@ -26,6 +26,7 @@
 
 #include "Cache.h"
 #include "CrossOriginPreflightResultCache.h"
+#include "Database.h"
 #include "FontCache.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -73,6 +74,7 @@ public:
     QString localStoragePath;
     QString offlineWebApplicationCachePath;
     qint64 offlineStorageDefaultQuota;
+    QUrl inspectorLocation;
 
     void apply();
     WebCore::Settings* settings;
@@ -158,6 +160,13 @@ void QWebSettingsPrivate::apply()
 
         settings->setAcceleratedCompositingEnabled(value);
 #endif
+#if ENABLE(3D_CANVAS)
+        value = attributes.value(QWebSettings::WebGLEnabled,
+                                 global->attributes.value(QWebSettings::WebGLEnabled));
+
+        settings->setWebGLEnabled(value);
+#endif
+ 
         value = attributes.value(QWebSettings::JavascriptCanOpenWindows,
                                       global->attributes.value(QWebSettings::JavascriptCanOpenWindows));
         settings->setJavaScriptCanOpenWindowsAutomatically(value);
@@ -174,6 +183,10 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::PrivateBrowsingEnabled));
         settings->setPrivateBrowsingEnabled(value);
 
+        value = attributes.value(QWebSettings::SpatialNavigationEnabled,
+                                      global->attributes.value(QWebSettings::SpatialNavigationEnabled));
+        settings->setSpatialNavigationEnabled(value);
+
         value = attributes.value(QWebSettings::JavascriptCanAccessClipboard,
                                       global->attributes.value(QWebSettings::JavascriptCanAccessClipboard));
         settings->setDOMPasteAllowed(value);
@@ -181,6 +194,10 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::DeveloperExtrasEnabled,
                                       global->attributes.value(QWebSettings::DeveloperExtrasEnabled));
         settings->setDeveloperExtrasEnabled(value);
+
+        value = attributes.value(QWebSettings::FrameFlatteningEnabled,
+                                      global->attributes.value(QWebSettings::FrameFlatteningEnabled));
+        settings->setFrameFlatteningEnabled(value);
 
         QUrl location = !userStyleSheetLocation.isEmpty() ? userStyleSheetLocation : global->userStyleSheetLocation;
         settings->setUserStyleSheetLocation(WebCore::KURL(location));
@@ -193,15 +210,17 @@ void QWebSettingsPrivate::apply()
 
         value = attributes.value(QWebSettings::ZoomTextOnly,
                                  global->attributes.value(QWebSettings::ZoomTextOnly));
-        settings->setZoomsTextOnly(value);
+        settings->setZoomMode(value ? WebCore::ZoomTextOnly : WebCore::ZoomPage);
 
         value = attributes.value(QWebSettings::PrintElementBackgrounds,
                                       global->attributes.value(QWebSettings::PrintElementBackgrounds));
         settings->setShouldPrintBackgrounds(value);
 
+#if ENABLE(DATABASE)
         value = attributes.value(QWebSettings::OfflineStorageDatabaseEnabled,
                                       global->attributes.value(QWebSettings::OfflineStorageDatabaseEnabled));
-        settings->setDatabasesEnabled(value);
+        WebCore::Database::setIsAvailable(value);
+#endif
 
         value = attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled,
                                       global->attributes.value(QWebSettings::OfflineWebApplicationCacheEnabled));
@@ -219,9 +238,15 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::LocalContentCanAccessFileUrls));
         settings->setAllowFileAccessFromFileURLs(value);
 
-        value = attributes.value(QWebSettings::XSSAuditorEnabled,
-                                      global->attributes.value(QWebSettings::XSSAuditorEnabled));
+        value = attributes.value(QWebSettings::XSSAuditingEnabled,
+                                      global->attributes.value(QWebSettings::XSSAuditingEnabled));
         settings->setXSSAuditorEnabled(value);
+
+#if ENABLE(TILED_BACKING_STORE)
+        value = attributes.value(QWebSettings::TiledBackingStoreEnabled,
+                                      global->attributes.value(QWebSettings::TiledBackingStoreEnabled));
+        settings->setTiledBackingStoreEnabled(value);
+#endif
 
         settings->setUsesPageCache(WebCore::pageCache()->capacity());
     } else {
@@ -326,6 +351,7 @@ QWebSettings* QWebSettings::globalSettings()
     \value MissingPluginGraphic The replacement graphic shown when a plugin could not be loaded.
     \value DefaultFrameIconGraphic The default icon for QWebFrame::icon().
     \value TextAreaSizeGripCornerGraphic The graphic shown for the size grip of text areas.
+    \value DeleteButtonGraphic The graphic shown for the WebKit-Editing-Delete-Button in Deletion UI.
 */
 
 /*!
@@ -352,6 +378,13 @@ QWebSettings* QWebSettings::globalSettings()
         Currently this enables the "Inspect" element in the context menu as
         well as the use of QWebInspector which controls the WebKit WebInspector
         for web site debugging.
+    \value SpatialNavigationEnabled Enables or disables the Spatial Navigation
+        feature, which consists in the ability to navigate between focusable
+        elements in a Web page, such as hyperlinks and form controls, by using
+        Left, Right, Up and Down arrow keys. For example, if an user presses the
+        Right key, heuristics determine whether there is an element he might be
+        trying to reach towards the right, and if there are multiple elements,
+        which element he probably wants.
     \value LinksIncludedInFocusChain Specifies whether hyperlinks should be
         included in the keyboard focus chain.
     \value ZoomTextOnly Specifies whether the zoom factor on a frame applies to
@@ -367,8 +400,25 @@ QWebSettings* QWebSettings::globalSettings()
     \value LocalStorageDatabaseEnabled \e{This enum value is deprecated.} Use
         QWebSettings::LocalStorageEnabled instead.
     \value LocalContentCanAccessRemoteUrls Specifies whether locally loaded documents are allowed to access remote urls.
-    \value LocalContentCanAccessFileUrls Specifies whether locally loaded documents are allowed to access other local  urls.
-    \value XSSAuditorEnabled Specifies whether load requests should be monitored for cross-site scripting attempts.
+    \value LocalContentCanAccessFileUrls Specifies whether locally loaded documents are allowed to access other local urls.
+    \value XSSAuditingEnabled Specifies whether load requests should be monitored for cross-site scripting attempts.
+    \value AcceleratedCompositingEnabled This feature, when used in conjunction with
+        QGraphicsWebView, accelerates animations of web content. CSS animations of the transform and
+        opacity properties will be rendered by composing the cached content of the animated elements.
+        This feature is enabled by default
+    \value TiledBackingStoreEnabled This setting enables the tiled backing store feature
+        for a QGraphicsWebView. With the tiled backing store enabled, the web page contents in and around
+        the current visible area is speculatively cached to bitmap tiles. The tiles are automatically kept
+        in sync with the web page as it changes. Enabling tiling can significantly speed up painting heavy 
+        operations like scrolling. Enabling the feature increases memory consumption. It does not work well 
+        with contents using CSS fixed positioning (see also \l{QGraphicsWebView::}{resizesToContents} property).
+        \l{QGraphicsWebView::}{tiledBackingStoreFrozen} property allows application to temporarily freeze the contents of the backing store.
+    \value FrameFlatteningEnabled With this setting each subframe is expanded to its contents.
+        On touch devices, it is desired to not have any scrollable sub parts of the page
+        as it results in a confusing user experience, with scrolling sometimes scrolling sub parts
+        and at other times scrolling the page itself. For this reason iframes and framesets are
+        barely usable on touch devices. This will flatten all the frames to become one scrollable page.
+        Disabled by default.
 */
 
 /*!
@@ -392,6 +442,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::AutoLoadImages, true);
     d->attributes.insert(QWebSettings::DnsPrefetchEnabled, false);
     d->attributes.insert(QWebSettings::JavascriptEnabled, true);
+    d->attributes.insert(QWebSettings::SpatialNavigationEnabled, false);
     d->attributes.insert(QWebSettings::LinksIncludedInFocusChain, true);
     d->attributes.insert(QWebSettings::ZoomTextOnly, false);
     d->attributes.insert(QWebSettings::PrintElementBackgrounds, true);
@@ -400,7 +451,10 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::LocalStorageEnabled, false);
     d->attributes.insert(QWebSettings::LocalContentCanAccessRemoteUrls, false);
     d->attributes.insert(QWebSettings::LocalContentCanAccessFileUrls, true);
-    d->attributes.insert(QWebSettings::AcceleratedCompositingEnabled, false);
+    d->attributes.insert(QWebSettings::AcceleratedCompositingEnabled, true);
+    d->attributes.insert(QWebSettings::WebGLEnabled, false);
+    d->attributes.insert(QWebSettings::TiledBackingStoreEnabled, false);
+    d->attributes.insert(QWebSettings::FrameFlatteningEnabled, false);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
 }
@@ -469,7 +523,8 @@ void QWebSettings::resetFontSize(FontSize type)
     The \a location must be either a path on the local filesystem, or a data URL
     with UTF-8 and Base64 encoded data, such as:
 
-    "data:text/css;charset=utf-8;base64,cCB7IGJhY2tncm91bmQtY29sb3I6IHJlZCB9Ow==;"
+    "data:text/css;charset=utf-8;base64,cCB7IGJhY2tncm91bmQtY29sb3I6IHJlZCB9Ow=="
+    NOTE: In case the base 64 data is not valid the style will not be applied.
 
     \sa userStyleSheetUrl()
 */
@@ -902,6 +957,8 @@ QString QWebSettings::offlineWebApplicationCachePath()
 void QWebSettings::setOfflineWebApplicationCacheQuota(qint64 maximumSize)
 {
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
+    WebCore::cacheStorage().empty();
+    WebCore::cacheStorage().vacuumDatabaseFile();
     WebCore::cacheStorage().setMaximumSize(maximumSize);
 #endif
 }
@@ -941,6 +998,31 @@ void QWebSettings::setLocalStoragePath(const QString& path)
 }
 
 /*!
+    \since 4.7
+
+    Specifies the \a location of a frontend to load with each web page when using Web Inspector.
+
+    \sa inspectorUrl()
+*/
+void QWebSettings::setInspectorUrl(const QUrl& location)
+{
+    d->inspectorLocation = location;
+    d->apply();
+}
+
+/*!
+    \since 4.7
+
+    Returns the location of the Web Inspector frontend.
+
+    \sa setInspectorUrl()
+*/
+QUrl QWebSettings::inspectorUrl() const
+{
+    return d->inspectorLocation;
+}
+
+/*!
     \since 4.6
     \relates QWebSettings
 
@@ -969,8 +1051,9 @@ void QWebSettings::enablePersistentStorage(const QString& path)
     QString storagePath;
 
     if (path.isEmpty()) {
+#ifndef QT_NO_DESKTOPSERVICES
         storagePath = QDesktopServices::storageLocation(QDesktopServices::DataLocation);
-
+#endif
         if (storagePath.isEmpty())
             storagePath = WebCore::pathByAppendingComponent(QDir::homePath(), QCoreApplication::applicationName());
     } else

@@ -533,12 +533,10 @@ NPError PluginView::load(const FrameLoadRequest& frameLoadRequest, bool sendNoti
     String jsString = scriptStringIfJavaScriptURL(url);
 
     if (!jsString.isNull()) {
-        Settings* settings = m_parentFrame->settings();
-
         // Return NPERR_GENERIC_ERROR if JS is disabled. This is what Mozilla does.
-        if (!settings || !settings->isJavaScriptEnabled())
+        if (!m_parentFrame->script()->canExecuteScripts(NotAboutToExecuteScript))
             return NPERR_GENERIC_ERROR;
-        
+
         // For security reasons, only allow JS requests to be made on the frame that contains the plug-in.
         if (!targetFrameName.isNull() && m_parentFrame->tree()->find(targetFrameName) != m_parentFrame)
             return NPERR_INVALID_PARAM;
@@ -1289,6 +1287,7 @@ void PluginView::keepAlive()
     m_lifeSupportTimer.startOneShot(0);
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 void PluginView::keepAlive(NPP instance)
 {
     PluginView* view = instanceMap().get(instance);
@@ -1296,6 +1295,95 @@ void PluginView::keepAlive(NPP instance)
         return;
 
     view->keepAlive();
+}
+
+NPError PluginView::getValueStatic(NPNVariable variable, void* value)
+{
+    LOG(Plugins, "PluginView::getValueStatic(%s)", prettyNameForNPNVariable(variable).data());
+
+    NPError result;
+    if (platformGetValueStatic(variable, value, &result))
+        return result;
+
+    return NPERR_GENERIC_ERROR;
+}
+#endif
+
+NPError PluginView::getValue(NPNVariable variable, void* value)
+{
+    LOG(Plugins, "PluginView::getValue(%s)", prettyNameForNPNVariable(variable).data());
+
+    NPError result;
+    if (platformGetValue(variable, value, &result))
+        return result;
+
+    if (platformGetValueStatic(variable, value, &result))
+        return result;
+
+    switch (variable) {
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    case NPNVWindowNPObject: {
+        if (m_isJavaScriptPaused)
+            return NPERR_GENERIC_ERROR;
+
+        NPObject* windowScriptObject = m_parentFrame->script()->windowScriptNPObject();
+
+        // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugin/npruntime.html>
+        if (windowScriptObject)
+            _NPN_RetainObject(windowScriptObject);
+
+        void** v = (void**)value;
+        *v = windowScriptObject;
+
+        return NPERR_NO_ERROR;
+    }
+
+    case NPNVPluginElementNPObject: {
+        if (m_isJavaScriptPaused)
+            return NPERR_GENERIC_ERROR;
+
+        NPObject* pluginScriptObject = 0;
+
+        if (m_element->hasTagName(appletTag) || m_element->hasTagName(embedTag) || m_element->hasTagName(objectTag))
+            pluginScriptObject = static_cast<HTMLPlugInElement*>(m_element)->getNPObject();
+
+        // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugin/npruntime.html>
+        if (pluginScriptObject)
+            _NPN_RetainObject(pluginScriptObject);
+
+        void** v = (void**)value;
+        *v = pluginScriptObject;
+
+        return NPERR_NO_ERROR;
+    }
+#endif
+
+    case NPNVprivateModeBool: {
+        Page* page = m_parentFrame->page();
+        if (!page)
+            return NPERR_GENERIC_ERROR;
+        *((NPBool*)value) = !page->settings() || page->settings()->privateBrowsingEnabled();
+        return NPERR_NO_ERROR;
+    }
+
+    default:
+        return NPERR_GENERIC_ERROR;
+    }
+}
+
+void PluginView::privateBrowsingStateChanged(bool privateBrowsingEnabled)
+{
+    NPP_SetValueProcPtr setValue = m_plugin->pluginFuncs()->setvalue;
+    if (!setValue)
+        return;
+
+    PluginView::setCurrentPluginView(this);
+    JSC::JSLock::DropAllLocks dropAllLocks(JSC::SilenceAssertionsOnly);
+    setCallingPlugin(true);
+    NPBool value = privateBrowsingEnabled;
+    setValue(m_instance, NPNVprivateModeBool, &value);
+    setCallingPlugin(false);
+    PluginView::setCurrentPluginView(0);
 }
 
 } // namespace WebCore

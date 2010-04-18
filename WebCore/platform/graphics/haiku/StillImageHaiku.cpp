@@ -47,7 +47,7 @@ void StillImage::destroyDecodedData(bool destroyAll)
 
 unsigned StillImage::decodedSize() const
 {
-    // TODO: It could be wise to return 0 here, since we don't want WebCore
+    // FIXME: It could be wise to return 0 here, since we don't want WebCore
     // to think we eat up memory, since we are not freeing any in
     // destroyDecodedData() either.
     return m_bitmap.BitsLength();

@@ -38,10 +38,6 @@
 #include "RenderView.h"
 #include "SVGStyledElement.h"
 
-#if ENABLE(FILTERS)
-#include "SVGResourceFilter.h"
-#endif
-
 namespace WebCore {
 
 RenderSVGModelObject::RenderSVGModelObject(SVGStyledElement* node)
@@ -67,7 +63,7 @@ void RenderSVGModelObject::mapLocalToContainer(RenderBoxModelObject* repaintCont
 // Copied from RenderBox, this method likely requires further refactoring to work easily for both SVG and CSS Box Model content.
 // FIXME: This may also need to move into SVGRenderBase as the RenderBox version depends
 // on borderBoundingBox() which SVG RenderBox subclases (like SVGRenderBlock) do not implement.
-IntRect RenderSVGModelObject::outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer) const
+IntRect RenderSVGModelObject::outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer, IntPoint*) const
 {
     IntRect box = enclosingIntRect(repaintRectInLocalCoordinates());
     adjustRectForOutlineAndShadow(box);
@@ -84,6 +80,12 @@ void RenderSVGModelObject::absoluteRects(Vector<IntRect>& rects, int, int)
 void RenderSVGModelObject::absoluteQuads(Vector<FloatQuad>& quads)
 {
     quads.append(absoluteClippedOverflowRect());
+}
+
+void RenderSVGModelObject::destroy()
+{
+    deregisterFromResources(this);
+    RenderObject::destroy();
 }
 
 bool RenderSVGModelObject::nodeAtPoint(const HitTestRequest&, HitTestResult&, int, int, int, int, HitTestAction)

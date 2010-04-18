@@ -42,9 +42,20 @@ WebInspector.Script = function(sourceID, sourceURL, source, startingLine, errorL
         var match = pattern.exec(source);
 
         if (match)
-            this.sourceURL = WebInspector.UIString("(program): %s", match[1]);
+            this.sourceURL = match[1];
     }
 }
 
 WebInspector.Script.prototype = {
+    get linesCount()
+    {
+        if (!this.source)
+            return 0;
+        this._linesCount = 0;
+        var lastIndex = this.source.indexOf("\n");
+        while (lastIndex !== -1) {
+            lastIndex = this.source.indexOf("\n", lastIndex + 1)
+            this._linesCount++;
+        }
+    }
 }

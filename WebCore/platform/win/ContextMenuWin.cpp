@@ -26,11 +26,11 @@
 #include "config.h"
 #include "ContextMenu.h"
 
-#include "CString.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
 #include "Node.h"
+#include <wtf/text/CString.h>
 #include <tchar.h>
 #include <windows.h>
 
@@ -90,7 +90,8 @@ static ContextMenuItem* contextMenuItemByIdOrPosition(HMENU menu, unsigned id, B
 
     info->cbSize = sizeof(MENUITEMINFO);
     
-    info->fMask = MIIM_FTYPE | MIIM_ID | MIIM_STRING;
+    // Setting MIIM_DATA which is useful for WebKit clients who store data in this member for their custom menu items.
+    info->fMask = MIIM_FTYPE | MIIM_ID | MIIM_STRING | MIIM_DATA;
 
     if (!::GetMenuItemInfo(menu, id, byPosition, info)) {
         free(info);

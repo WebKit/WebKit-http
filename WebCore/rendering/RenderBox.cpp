@@ -146,6 +146,16 @@ void RenderBox::styleWillChange(StyleDifference diff, const RenderStyle* newStyl
                 removeFloatingOrPositionedChildFromBlockLists();
         }
     }
+    if (FrameView *frameView = view()->frameView()) {
+        bool newStyleIsFixed = newStyle && newStyle->position() == FixedPosition;
+        bool oldStyleIsFixed = style() && style()->position() == FixedPosition;
+        if (newStyleIsFixed != oldStyleIsFixed) {
+            if (newStyleIsFixed)
+                frameView->addFixedObject();
+            else
+                frameView->removeFixedObject();
+        }
+    }
 
     RenderBoxModelObject::styleWillChange(diff, newStyle);
 }
@@ -315,12 +325,17 @@ FloatQuad RenderBox::absoluteContentQuad() const
     return localToAbsoluteQuad(FloatRect(rect));
 }
 
-IntRect RenderBox::outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer) const
+IntRect RenderBox::outlineBoundsForRepaint(RenderBoxModelObject* repaintContainer, IntPoint* cachedOffsetToRepaintContainer) const
 {
     IntRect box = borderBoundingBox();
     adjustRectForOutlineAndShadow(box);
 
-    FloatQuad containerRelativeQuad = localToContainerQuad(FloatRect(box), repaintContainer);
+    FloatQuad containerRelativeQuad = FloatRect(box);
+    if (cachedOffsetToRepaintContainer)
+        containerRelativeQuad.move(cachedOffsetToRepaintContainer->x(), cachedOffsetToRepaintContainer->y());
+    else
+        containerRelativeQuad = localToContainerQuad(containerRelativeQuad, repaintContainer);
+
     box = containerRelativeQuad.enclosingBoundingBox();
 
     // FIXME: layoutDelta needs to be applied in parts before/after transforms and
@@ -423,7 +438,7 @@ bool RenderBox::scroll(ScrollDirection direction, ScrollGranularity granularity,
 
 bool RenderBox::canBeScrolledAndHasScrollableArea() const
 {
-   return canBeProgramaticallyScrolled(false) && (scrollHeight() != clientHeight() || scrollWidth() != clientWidth());
+    return canBeProgramaticallyScrolled(false) && (scrollHeight() != clientHeight() || scrollWidth() != clientWidth());
 }
     
 bool RenderBox::canBeProgramaticallyScrolled(bool) const
@@ -1169,10 +1184,9 @@ void RenderBox::computeRectForRepaint(RenderBoxModelObject* repaintContainer, In
     IntPoint topLeft = rect.location();
     topLeft.move(x(), y());
 
-    if (style()->position() == FixedPosition)
-        fixed = true;
+    EPosition position = style()->position();
 
-    if (o->isBlockFlow() && style()->position() != AbsolutePosition && style()->position() != FixedPosition) {
+    if (o->isBlockFlow() && position != AbsolutePosition && position != FixedPosition) {
         RenderBlock* cb = toRenderBlock(o);
         if (cb->hasColumns()) {
             IntRect repaintRect(topLeft, rect.size());
@@ -1185,16 +1199,17 @@ void RenderBox::computeRectForRepaint(RenderBoxModelObject* repaintContainer, In
     // We are now in our parent container's coordinate space.  Apply our transform to obtain a bounding box
     // in the parent's coordinate space that encloses us.
     if (layer() && layer()->transform()) {
-        fixed = false;
+        fixed = position == FixedPosition;
         rect = layer()->transform()->mapRect(rect);
         // FIXME: this clobbers topLeft adjustment done for multicol above
         topLeft = rect.location();
         topLeft.move(x(), y());
-    }
+    } else if (position == FixedPosition)
+        fixed = true;
 
-    if (style()->position() == AbsolutePosition && o->isRelPositioned() && o->isRenderInline())
+    if (position == AbsolutePosition && o->isRelPositioned() && o->isRenderInline())
         topLeft += toRenderInline(o)->relativePositionedInlineOffset(this);
-    else if (style()->position() == RelativePosition && layer()) {
+    else if (position == RelativePosition && layer()) {
         // Apply the relative position offset when invalidating a rectangle.  The layer
         // is translated, but the render box isn't, so we need to do this to get the
         // right dirty rect.  Since this is called from RenderObject::setStyle, the relative position

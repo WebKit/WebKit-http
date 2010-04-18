@@ -46,13 +46,33 @@ WebGLArray::~WebGLArray()
 
 void WebGLArray::setImpl(WebGLArray* array, unsigned byteOffset, ExceptionCode& ec)
 {
-    if (byteOffset + array->byteLength() > byteLength()) {
+    if (byteOffset > byteLength() ||
+        byteOffset + array->byteLength() > byteLength() ||
+        byteOffset + array->byteLength() < byteOffset) {
+        // Out of range offset or overflow
         ec = INDEX_SIZE_ERR;
         return;
     }
 
     char* base = static_cast<char*>(baseAddress());
-    memcpy(base + byteOffset, array->baseAddress(), array->byteLength());
+    memmove(base + byteOffset, array->baseAddress(), array->byteLength());
+}
+
+void WebGLArray::calculateOffsetAndLength(int start, int end, unsigned arraySize,
+                                          unsigned* offset, unsigned* length)
+{
+    if (start < 0)
+        start += arraySize;
+    if (start < 0)
+        start = 0;
+    if (end < 0)
+        end += arraySize;
+    if (end < 0)
+        end = 0;
+    if (end < start)
+        end = start;
+    *offset = static_cast<unsigned>(start);
+    *length = static_cast<unsigned>(end - start);
 }
 
 }

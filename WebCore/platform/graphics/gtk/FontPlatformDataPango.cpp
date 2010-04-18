@@ -25,9 +25,9 @@
 #include "config.h"
 #include "FontPlatformData.h"
 
-#include "CString.h"
 #include "PlatformString.h"
 #include "FontDescription.h"
+#include <wtf/text/CString.h>
 #include <cairo.h>
 #include <assert.h>
 
@@ -137,7 +137,7 @@ FontPlatformData::FontPlatformData(float size, bool bold, bool italic)
 {
 }
 
-FontPlatformData::FontPlatformData(cairo_font_face_t* fontFace, int size, bool bold, bool italic)
+FontPlatformData::FontPlatformData(cairo_font_face_t* fontFace, float size, bool bold, bool italic)
     : m_context(0)
     , m_font(0)
     , m_size(size)

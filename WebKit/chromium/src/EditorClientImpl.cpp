@@ -413,8 +413,10 @@ static const KeyDownEntry keyDownEntries[] = {
     { VKEY_DOWN,   0,                  "MoveDown"                             },
     { VKEY_DOWN,   ShiftKey,           "MoveDownAndModifySelection"           },
     { VKEY_NEXT,   ShiftKey,           "MovePageDownAndModifySelection"       },
+#if !OS(DARWIN)
     { VKEY_PRIOR,  0,                  "MovePageUp"                           },
     { VKEY_NEXT,   0,                  "MovePageDown"                         },
+#endif
     { VKEY_HOME,   0,                  "MoveToBeginningOfLine"                },
     { VKEY_HOME,   ShiftKey,
         "MoveToBeginningOfLineAndModifySelection"                             },
@@ -422,6 +424,8 @@ static const KeyDownEntry keyDownEntries[] = {
     { VKEY_LEFT,   CommandKey,         "MoveToBeginningOfLine"                },
     { VKEY_LEFT,   CommandKey | ShiftKey,
       "MoveToBeginningOfLineAndModifySelection"                               },
+    { VKEY_PRIOR,  OptionKey,          "MovePageUp"                           },
+    { VKEY_NEXT,   OptionKey,          "MovePageDown"                         },
 #endif
 #if OS(DARWIN)
     { VKEY_UP,     CommandKey,         "MoveToBeginningOfDocument"            },
@@ -703,8 +707,9 @@ bool EditorClientImpl::autofill(HTMLInputElement* inputElement,
 
     // Let's try to trigger autofill for that field, if applicable.
     if (!inputElement->isEnabledFormControl() || !inputElement->isTextField()
-        || inputElement->isPasswordField()
-        || !inputElement->autoComplete())
+        || inputElement->isPasswordField() || !inputElement->autoComplete()
+        || !inputElement->isEnabledFormControl()
+        || inputElement->isReadOnlyFormControl())
         return false;
 
     WebString name = WebInputElement(inputElement).nameForAutofill();
@@ -784,7 +789,7 @@ void EditorClientImpl::cancelPendingAutofill()
     m_autofillTimer.stop();
 }
 
-void EditorClientImpl::onAutofillSuggestionAccepted(HTMLInputElement* textField)
+void EditorClientImpl::onAutocompleteSuggestionAccepted(HTMLInputElement* textField)
 {
     WebFrameImpl* webframe = WebFrameImpl::fromFrame(textField->document()->frame());
     if (!webframe)

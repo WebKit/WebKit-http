@@ -25,9 +25,7 @@
 
 module core {
 
-    interface [OmitConstructor] Geolocation {
-        readonly attribute Geoposition lastPosition;
-
+    interface [Conditional=GEOLOCATION, OmitConstructor] Geolocation {
         [Custom] void getCurrentPosition(in PositionCallback successCallback, in PositionErrorCallback errorCallback, in PositionOptions options);
 
         [Custom] long watchPosition(in PositionCallback successCallback, in PositionErrorCallback errorCallback, in PositionOptions options);

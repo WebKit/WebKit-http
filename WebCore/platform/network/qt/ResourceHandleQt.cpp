@@ -28,24 +28,24 @@
  */
 
 #include "config.h"
-
-#include "Frame.h"
-#include "DocLoader.h"
 #include "ResourceHandle.h"
-#include "ResourceHandleClient.h"
-#include "ResourceHandleInternal.h"
-#include "qwebpage_p.h"
-#include "qwebframe_p.h"
+
 #include "ChromeClientQt.h"
+#include "DocLoader.h"
+#include "Frame.h"
 #include "FrameLoaderClientQt.h"
+#include "NotImplemented.h"
 #include "Page.h"
 #include "QNetworkReplyHandler.h"
+#include "ResourceHandleClient.h"
+#include "ResourceHandleInternal.h"
+#include "SharedBuffer.h"
 
-#include "NotImplemented.h"
+// FIXME: WebCore including these headers from WebKit is a massive layering violation.
+#include "qwebframe_p.h"
+#include "qwebpage_p.h"
 
-#if QT_VERSION >= 0x040500
 #include <QAbstractNetworkCache>
-#endif
 #include <QCoreApplication>
 #include <QUrl>
 #include <QNetworkAccessManager>
@@ -144,8 +144,10 @@ bool ResourceHandle::start(Frame* frame)
 
 void ResourceHandle::cancel()
 {
-    if (d->m_job)
+    if (d->m_job) {
         d->m_job->abort();
+        d->m_job = 0;
+    }
 }
 
 bool ResourceHandle::loadsBlocked()
@@ -158,7 +160,6 @@ bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame* frame)
     if (!frame)
         return false;
 
-#if QT_VERSION >= 0x040500
     QNetworkAccessManager* manager = QWebFramePrivate::kit(frame)->page()->networkAccessManager();
     QAbstractNetworkCache* cache = manager->cache();
 
@@ -172,9 +173,6 @@ bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame* frame)
     }
 
     return false;
-#else
-    return false;
-#endif
 }
 
 bool ResourceHandle::supportsBufferedData()
@@ -191,7 +189,7 @@ PassRefPtr<SharedBuffer> ResourceHandle::bufferedData()
 void ResourceHandle::loadResourceSynchronously(const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data, Frame* frame)
 {
     WebCoreSynchronousLoader syncLoader;
-    ResourceHandle handle(request, &syncLoader, true, false, true);
+    ResourceHandle handle(request, &syncLoader, true, false);
 
     ResourceHandleInternal *d = handle.getInternal();
     if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {

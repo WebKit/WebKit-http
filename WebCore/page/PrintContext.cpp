@@ -32,11 +32,13 @@ namespace WebCore {
 
 PrintContext::PrintContext(Frame* frame)
     : m_frame(frame)
+    , m_isPrinting(false)
 {
 }
 
 PrintContext::~PrintContext()
 {
+    ASSERT(!m_isPrinting);
     m_pageRects.clear();
 }
 
@@ -58,18 +60,18 @@ void PrintContext::computePageRects(const FloatRect& printRect, float headerHeig
     if (!m_frame->document() || !m_frame->view() || !m_frame->document()->renderer())
         return;
 
-    RenderView* root = toRenderView(m_frame->document()->renderer());
-
-    if (!root) {
-        LOG_ERROR("document to be printed has no renderer");
+    if (userScaleFactor <= 0) {
+        LOG_ERROR("userScaleFactor has bad value %.2f", userScaleFactor);
         return;
     }
+
+    RenderView* root = toRenderView(m_frame->document()->renderer());
 
     float ratio = printRect.height() / printRect.width();
 
     float pageWidth  = (float)root->rightLayoutOverflow();
     float pageHeight = pageWidth * ratio;
-    outPageHeight = pageHeight;   // this is the height of the page adjusted by margins
+    outPageHeight = pageHeight; // this is the height of the page adjusted by margins
     pageHeight -= headerHeight + footerHeight;
 
     if (pageHeight <= 0) {
@@ -77,26 +79,25 @@ void PrintContext::computePageRects(const FloatRect& printRect, float headerHeig
         return;
     }
 
-    computePageRectsWithPageSize(FloatSize(pageWidth, pageHeight), userScaleFactor);
+    computePageRectsWithPageSizeInternal(FloatSize(pageWidth / userScaleFactor, pageHeight / userScaleFactor), false);
 }
 
-void PrintContext::computePageRectsWithPageSize(const FloatSize& pageSizeInPixels, float userScaleFactor)
+void PrintContext::computePageRectsWithPageSize(const FloatSize& pageSizeInPixels, bool allowHorizontalMultiPages)
 {
+    m_pageRects.clear();
+    computePageRectsWithPageSizeInternal(pageSizeInPixels, allowHorizontalMultiPages);
+}
+
+void PrintContext::computePageRectsWithPageSizeInternal(const FloatSize& pageSizeInPixels, bool allowHorizontalMultiPages)
+{
+    if (!m_frame->document() || !m_frame->view() || !m_frame->document()->renderer())
+        return;
     RenderView* root = toRenderView(m_frame->document()->renderer());
 
-    if (!root) {
-        LOG_ERROR("document to be printed has no renderer");
-        return;
-    }
-
-    if (userScaleFactor <= 0) {
-        LOG_ERROR("userScaleFactor has bad value %.2f", userScaleFactor);
-        return;
-    }
-
-    float currPageHeight = pageSizeInPixels.height() / userScaleFactor;
-    float docHeight = root->layer()->height();
-    float currPageWidth = pageSizeInPixels.width() / userScaleFactor;
+    const float pageWidth = pageSizeInPixels.width();
+    const float docWidth = root->layer()->width();
+    const float docHeight = root->layer()->height();
+    float currPageHeight = pageSizeInPixels.height();
 
     // always return at least one page, since empty files should print a blank page
     float printedPagesHeight = 0;
@@ -104,14 +105,20 @@ void PrintContext::computePageRectsWithPageSize(const FloatSize& pageSizeInPixel
         float proposedBottom = std::min(docHeight, printedPagesHeight + pageSizeInPixels.height());
         m_frame->view()->adjustPageHeight(&proposedBottom, printedPagesHeight, proposedBottom, printedPagesHeight);
         currPageHeight = max(1.0f, proposedBottom - printedPagesHeight);
-
-        m_pageRects.append(IntRect(0, (int)printedPagesHeight, (int)currPageWidth, (int)currPageHeight));
+        if (allowHorizontalMultiPages) {
+            for (float curWidth = 0; curWidth < docWidth; curWidth += pageWidth)
+                m_pageRects.append(IntRect(curWidth, (int)printedPagesHeight, (int)pageWidth, (int)currPageHeight));
+        } else
+            m_pageRects.append(IntRect(0, (int)printedPagesHeight, (int)pageWidth, (int)currPageHeight));
         printedPagesHeight += currPageHeight;
     } while (printedPagesHeight < docHeight);
 }
 
 void PrintContext::begin(float width)
 {
+    ASSERT(!m_isPrinting);
+    m_isPrinting = true;
+
     // By imaging to a width a little wider than the available pixels,
     // thin pages will be scaled down a little, matching the way they
     // print in IE and Camino. This lets them use fewer sheets than they
@@ -148,6 +155,8 @@ void PrintContext::spoolPage(GraphicsContext& ctx, int pageNumber, float width)
 
 void PrintContext::end()
 {
+    ASSERT(m_isPrinting);
+    m_isPrinting = false;
     m_frame->setPrinting(false, 0, 0, true);
 }
 
@@ -175,17 +184,18 @@ int PrintContext::pageNumberForElement(Element* element, const FloatSize& pageSi
     FloatRect pageRect(FloatPoint(0, 0), pageSizeInPixels);
     PrintContext printContext(frame);
     printContext.begin(pageRect.width());
-    printContext.computePageRectsWithPageSize(pageSizeInPixels, 1);
+    printContext.computePageRectsWithPageSize(pageSizeInPixels, false);
 
     int top = box->offsetTop();
     int left = box->offsetLeft();
-    for (int pageNumber = 0; pageNumber < printContext.pageCount(); pageNumber++) {
+    int pageNumber = 0;
+    for (; pageNumber < printContext.pageCount(); pageNumber++) {
         const IntRect& page = printContext.pageRect(pageNumber);
         if (page.x() <= left && left < page.right() && page.y() <= top && top < page.bottom())
-            return pageNumber;
+            break;
     }
     printContext.end();
-    return -1;
+    return (pageNumber < printContext.pageCount() ? pageNumber : -1);
 }
 
 int PrintContext::numberOfPages(Frame* frame, const FloatSize& pageSizeInPixels)
@@ -195,7 +205,7 @@ int PrintContext::numberOfPages(Frame* frame, const FloatSize& pageSizeInPixels)
     FloatRect pageRect(FloatPoint(0, 0), pageSizeInPixels);
     PrintContext printContext(frame);
     printContext.begin(pageRect.width());
-    printContext.computePageRectsWithPageSize(pageSizeInPixels, 1);
+    printContext.computePageRectsWithPageSize(pageSizeInPixels, false);
     printContext.end();
     return printContext.pageCount();
 }

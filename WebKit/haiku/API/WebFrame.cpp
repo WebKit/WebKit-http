@@ -327,7 +327,7 @@ void BWebFrame::IncreaseZoomFactor(bool textOnly)
 {
     if (CanIncreaseZoomFactor()) {
         fZoomFactor = fZoomFactor * kZoomFactorMultiplierRatio;
-        fData->frame->setZoomFactor(fZoomFactor, textOnly);
+        fData->frame->setZoomFactor(fZoomFactor, textOnly ? ZoomTextOnly : ZoomPage);
     }
 }
 
@@ -335,7 +335,7 @@ void BWebFrame::DecreaseZoomFactor(bool textOnly)
 {
     if (CanDecreaseZoomFactor()) {
         fZoomFactor = fZoomFactor / kZoomFactorMultiplierRatio;
-        fData->frame->setZoomFactor(fZoomFactor, textOnly);
+        fData->frame->setZoomFactor(fZoomFactor, textOnly ? ZoomTextOnly : ZoomPage);
     }
 }
 
@@ -347,7 +347,7 @@ void BWebFrame::ResetZoomFactor()
     fZoomFactor = 1;
 
     if (fData->frame)
-        fData->frame->setZoomFactor(fZoomFactor, true);
+        fData->frame->setZoomFactor(fZoomFactor, ZoomPage);
 }
 
 void BWebFrame::SetEditable(bool editable)

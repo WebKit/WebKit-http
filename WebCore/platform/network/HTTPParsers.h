@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
+ * Copyright (C) 2009 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,13 +32,32 @@
 
 namespace WebCore {
 
-    class String;
+class String;
+class ResourceResponseBase;
 
-    bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& delay, String& url);
-    double parseDate(const String&);
-    String filenameFromHTTPContentDisposition(const String&); 
-    String extractMIMETypeFromMediaType(const String&);
-    String extractCharsetFromMediaType(const String&); 
+enum XSSProtectionDisposition {
+    XSSProtectionDisabled,
+    XSSProtectionEnabled,
+    XSSProtectionBlockEnabled
+};
+
+typedef enum {
+    ContentDispositionNone,
+    ContentDispositionInline,
+    ContentDispositionAttachment,
+    ContentDispositionOther
+} ContentDispositionType;
+
+ContentDispositionType contentDispositionType(const String&);
+bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& delay, String& url);
+double parseDate(const String&);
+String filenameFromHTTPContentDisposition(const String&); 
+String extractMIMETypeFromMediaType(const String&);
+String extractCharsetFromMediaType(const String&); 
+void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, unsigned int& charsetLen, unsigned int start = 0);
+XSSProtectionDisposition parseXSSProtectionHeader(const String&);
+String extractReasonPhraseFromHTTPStatusLine(const String&);
+
 }
 
 #endif

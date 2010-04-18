@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,8 +45,11 @@ class WorkerThread;
 
 namespace WebKit {
 class WebCommonWorkerClient;
+class WebSecurityOrigin;
+class WebString;
 class WebURL;
 class WebView;
+class WebWorker;
 class WebWorkerClient;
 
 // Base class for WebSharedWorkerImpl and WebWorkerImpl. It contains common
@@ -65,7 +68,7 @@ public:
     virtual void postExceptionToWorkerObject(
         const WebCore::String&, int, const WebCore::String&);
     virtual void postConsoleMessageToWorkerObject(
-        WebCore::MessageDestination, WebCore::MessageSource, WebCore::MessageType,
+        WebCore::MessageSource, WebCore::MessageType,
         WebCore::MessageLevel, const WebCore::String&, int, const WebCore::String&);
     virtual void confirmMessageFromWorkerObject(bool);
     virtual void reportPendingActivity(bool);
@@ -112,7 +115,6 @@ private:
     static void postConsoleMessageTask(
         WebCore::ScriptExecutionContext* context,
         WebWorkerBase* thisPtr,
-        int destination,
         int source,
         int type,
         int level,

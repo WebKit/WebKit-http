@@ -43,7 +43,9 @@
 #include "ContextMenuClientImpl.h"
 #include "DragClientImpl.h"
 #include "EditorClientImpl.h"
+#include "GraphicsLayer.h"
 #include "InspectorClientImpl.h"
+#include "LayerRendererChromium.h"
 #include "NotificationPresenterImpl.h"
 
 #include <wtf/OwnPtr.h>
@@ -72,10 +74,12 @@ class SuggestionsPopupMenuClient;
 class WebAccessibilityObject;
 class WebDevToolsAgentPrivate;
 class WebFrameImpl;
+class WebImage;
 class WebKeyboardEvent;
 class WebMouseEvent;
 class WebMouseWheelEvent;
 class WebSettingsImpl;
+class WebTouchEvent;
 
 class WebViewImpl : public WebView, public RefCounted<WebViewImpl> {
 public:
@@ -177,6 +181,7 @@ public:
     virtual void performCustomContextMenuAction(unsigned action);
     virtual void addUserScript(const WebString& sourceCode,
                                bool runAtStart);
+    virtual void addUserStyleSheet(const WebString& sourceCode);
     virtual void removeAllUserContent();
 
     // WebViewImpl
@@ -201,7 +206,7 @@ public:
         return m_client;
     }
 
-    // Returns the page object associated with this view.  This may be null when
+    // Returns the page object associated with this view. This may be null when
     // the page is shutting down, but will be valid at all other times.
     WebCore::Page* page() const
     {
@@ -210,7 +215,7 @@ public:
 
     WebCore::RenderTheme* theme() const;
 
-    // Returns the main frame associated with this view.  This may be null when
+    // Returns the main frame associated with this view. This may be null when
     // the page is shutting down, but will be valid at all other times.
     WebFrameImpl* mainFrameImpl();
 
@@ -229,16 +234,17 @@ public:
     void mouseWheel(const WebMouseWheelEvent&);
     bool keyEvent(const WebKeyboardEvent&);
     bool charEvent(const WebKeyboardEvent&);
+    bool touchEvent(const WebTouchEvent&);
 
     // Handles context menu events orignated via the the keyboard. These
-    // include the VK_APPS virtual key and the Shift+F10 combine.  Code is
+    // include the VK_APPS virtual key and the Shift+F10 combine. Code is
     // based on the Webkit function bool WebView::handleContextMenuEvent(WPARAM
     // wParam, LPARAM lParam) in webkit\webkit\win\WebView.cpp. The only
     // significant change in this function is the code to convert from a
     // Keyboard event to the Right Mouse button down event.
     bool sendContextMenuEvent(const WebKeyboardEvent&);
 
-    // Notifies the WebView that a load has been committed.  isNewNavigation
+    // Notifies the WebView that a load has been committed. isNewNavigation
     // will be true if a new session history item should be created for that
     // load.
     void didCommitLoad(bool* isNewNavigation);
@@ -270,9 +276,10 @@ public:
 
     // Start a system drag and drop operation.
     void startDragging(
-        const WebPoint& eventPos,
         const WebDragData& dragData,
-        WebDragOperationsMask dragSourceOperationMask);
+        WebDragOperationsMask mask,
+        const WebImage& dragImage,
+        const WebPoint& dragImageOffset);
 
     void suggestionsPopupDidHide()
     {
@@ -288,6 +295,10 @@ public:
     // was scrolled.
     bool propagateScroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);
 
+    // Notification that a popup was opened/closed.
+    void popupOpened(WebCore::PopupContainer* popupContainer);
+    void popupClosed(WebCore::PopupContainer* popupContainer);
+
     // HACK: currentInputEvent() is for ChromeClientImpl::show(), until we can
     // fix WebKit to pass enough information up into ChromeClient::show() so we
     // can decide if the window.open event was caused by a middle-mouse click
@@ -296,9 +307,21 @@ public:
         return m_currentInputEvent;
     }
 
+#if USE(ACCELERATED_COMPOSITING)
+    void setRootLayerNeedsDisplay();
+    void setRootGraphicsLayer(WebCore::PlatformLayer*);
+#endif
+
+    WebCore::PopupContainer* selectPopup() const { return m_selectPopup.get(); }
+
 private:
     friend class WebView;  // So WebView::Create can call our constructor
     friend class WTF::RefCounted<WebViewImpl>;
+
+    enum DragAction {
+      DragEnter,
+      DragOver
+    };
 
     WebViewImpl(WebViewClient* client);
     ~WebViewImpl();
@@ -306,20 +329,39 @@ private:
     // Returns true if the event was actually processed.
     bool keyEventDefault(const WebKeyboardEvent&);
 
+    // Returns true if the select popup has consumed the event.
+    bool selectPopupHandleKeyEvent(const WebKeyboardEvent&);
+
     // Returns true if the autocomple has consumed the event.
     bool autocompleteHandleKeyEvent(const WebKeyboardEvent&);
 
-    // Repaints the suggestions popup.  Should be called when the suggestions
-    // have changed.  Note that this should only be called when the suggestions
+    // Repaints the suggestions popup. Should be called when the suggestions
+    // have changed. Note that this should only be called when the suggestions
     // popup is showing.
     void refreshSuggestionsPopup();
 
     // Returns true if the view was scrolled.
     bool scrollViewWithKeyboard(int keyCode, int modifiers);
 
+    // Hides the select popup if one is opened.
+    void hideSelectPopup();
+
     // Converts |pos| from window coordinates to contents coordinates and gets
     // the HitTestResult for it.
     WebCore::HitTestResult hitTestResultForWindowPos(const WebCore::IntPoint&);
+
+    // Consolidate some common code between starting a drag over a target and
+    // updating a drag over a target. If we're starting a drag, |isEntering|
+    // should be true.
+    WebDragOperation dragTargetDragEnterOrOver(const WebPoint& clientPoint,
+                                               const WebPoint& screenPoint,
+                                               DragAction);
+
+#if USE(ACCELERATED_COMPOSITING)
+    void setAcceleratedCompositing(bool);
+    bool isAcceleratedCompositing() const { return m_isAcceleratedCompositing; }
+    void updateRootLayerContents(const WebRect&);
+#endif
 
     WebViewClient* m_client;
 
@@ -335,7 +377,7 @@ private:
     WebPoint m_lastMousePosition;
     OwnPtr<WebCore::Page> m_page;
 
-    // This flag is set when a new navigation is detected.  It is used to satisfy
+    // This flag is set when a new navigation is detected. It is used to satisfy
     // the corresponding argument to WebFrameClient::didCommitProvisionalLoad.
     bool m_observedNewNavigation;
 #ifndef NDEBUG
@@ -345,7 +387,7 @@ private:
 #endif
 
     // An object that can be used to manipulate m_page->settings() without linking
-    // against WebCore.  This is lazily allocated the first time GetWebSettings()
+    // against WebCore. This is lazily allocated the first time GetWebSettings()
     // is called.
     OwnPtr<WebSettingsImpl> m_webSettings;
 
@@ -361,7 +403,7 @@ private:
     // dragged by the time a drag is initiated.
     WebPoint m_lastMouseDownPoint;
 
-    // Keeps track of the current zoom level.  0 means no zoom, positive numbers
+    // Keeps track of the current zoom level. 0 means no zoom, positive numbers
     // mean zoom in, negative numbers mean zoom out.
     int m_zoomLevel;
 
@@ -391,7 +433,7 @@ private:
     // copied from the WebDropData object sent from the browser process.
     int m_dragIdentity;
 
-    // Valid when m_dragTargetDispatch is true.  Used to override the default
+    // Valid when m_dragTargetDispatch is true. Used to override the default
     // browser drop effect with the effects "none" or "copy".
     enum DragTargetDropEffect {
         DropEffectDefault = -1,
@@ -410,8 +452,8 @@ private:
     // Whether a suggestions popup is currently showing.
     bool m_suggestionsPopupShowing;
 
-    // A pointer to the current suggestions popup menu client.  This can be
-    // either an AutoFillPopupMenuClient or an AutocompletePopupMenuClient.  We
+    // A pointer to the current suggestions popup menu client. This can be
+    // either an AutoFillPopupMenuClient or an AutocompletePopupMenuClient. We
     // do not own this pointer.
     SuggestionsPopupMenuClient* m_suggestionsPopupClient;
 
@@ -421,8 +463,11 @@ private:
     // The Autocomplete popup client.
     OwnPtr<AutocompletePopupMenuClient> m_autocompletePopupClient;
 
-    // A pointer to the current suggestions popup.  We do not own this pointer.
+    // A pointer to the current suggestions popup. We do not own this pointer.
     WebCore::PopupContainer* m_suggestionsPopup;
+
+    // The popup associated with a select element.
+    RefPtr<WebCore::PopupContainer> m_selectPopup;
 
     // The AutoFill suggestions popup.
     RefPtr<WebCore::PopupContainer> m_autoFillPopup;
@@ -446,6 +491,12 @@ private:
     NotificationPresenterImpl m_notificationPresenter;
 #endif
 
+    bool m_haveMouseCapture;
+
+#if USE(ACCELERATED_COMPOSITING)
+    OwnPtr<WebCore::LayerRendererChromium> m_layerRenderer;
+    bool m_isAcceleratedCompositing;
+#endif
     static const WebInputEvent* m_currentInputEvent;
 };
 

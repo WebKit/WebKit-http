@@ -75,7 +75,7 @@
 #include <libkern/OSAtomic.h>
 #elif OS(ANDROID)
 #include <cutils/atomic.h>
-#elif COMPILER(GCC)
+#elif COMPILER(GCC) && !OS(SYMBIAN)
 #if (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 2))
 #include <ext/atomicity.h>
 #else
@@ -86,7 +86,7 @@
 #if USE(PTHREADS)
 #include <pthread.h>
 #elif PLATFORM(GTK)
-#include <wtf/gtk/GOwnPtr.h>
+#include "GOwnPtr.h"
 typedef struct _GMutex GMutex;
 typedef struct _GCond GCond;
 #endif
@@ -239,7 +239,7 @@ inline int atomicDecrement(int volatile* addend) { return OSAtomicDecrement32Bar
 inline int atomicIncrement(int volatile* addend) { return android_atomic_inc(addend); }
 inline int atomicDecrement(int volatile* addend) { return android_atomic_dec(addend); }
 
-#elif COMPILER(GCC) && !CPU(SPARC64) // sizeof(_Atomic_word) != sizeof(int) on sparc64 gcc
+#elif COMPILER(GCC) && !CPU(SPARC64) && !OS(SYMBIAN) // sizeof(_Atomic_word) != sizeof(int) on sparc64 gcc
 #define WTF_USE_LOCKFREE_THREADSAFESHARED 1
 
 inline int atomicIncrement(int volatile* addend) { return __gnu_cxx::__exchange_and_add(addend, 1) + 1; }

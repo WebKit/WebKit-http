@@ -13,6 +13,7 @@ SubDirSysHdrs $(TOP) WebCore bindings js ;
 SubDirHdrs $(TOP) ;
 SubDirHdrs $(TOP) WebCore ;
 
+SubDirHdrs $(TOP) JavaScriptCore API ;
 SubDirHdrs $(TOP) JavaScriptCore assembler ;
 SubDirHdrs $(TOP) JavaScriptCore bytecode ;
 SubDirHdrs $(TOP) JavaScriptCore interpreter ;

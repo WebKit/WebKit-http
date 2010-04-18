@@ -39,7 +39,6 @@
 #include "Editor.h"
 #include "FocusController.h"
 #include "Frame.h"
-#include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -47,6 +46,7 @@
 #include "Settings.h"
 #include "WebFrame.h"
 #include "WebPage.h"
+#include "WindowsKeyboardCodes.h"
 
 namespace WebCore {
 

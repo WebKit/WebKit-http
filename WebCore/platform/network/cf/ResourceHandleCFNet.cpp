@@ -32,7 +32,6 @@
 #include "AuthenticationCF.h"
 #include "AuthenticationChallenge.h"
 #include "Base64.h"
-#include "CString.h"
 #include "CookieStorageWin.h"
 #include "CredentialStorage.h"
 #include "DocLoader.h"
@@ -44,16 +43,15 @@
 #include "MIMETypeRegistry.h"
 #include "ResourceError.h"
 #include "ResourceResponse.h"
-
-#include <wtf/HashMap.h>
-#include <wtf/Threading.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <process.h> // for _beginthread()
-
+#include "SharedBuffer.h"
 #include <CFNetwork/CFNetwork.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
+#include <process.h> // for _beginthread()
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <wtf/HashMap.h>
+#include <wtf/Threading.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -136,11 +134,11 @@ CFURLRequestRef willSendRequest(CFURLConnectionRef conn, CFURLRequestRef cfReque
     if (cfRedirectResponse) {
         CFHTTPMessageRef httpMessage = CFURLResponseGetHTTPResponse(cfRedirectResponse);
         if (httpMessage && CFHTTPMessageGetResponseStatusCode(httpMessage) == 307) {
-            RetainPtr<CFStringRef> originalMethod(AdoptCF, handle->request().httpMethod().createCFString());
+            RetainPtr<CFStringRef> lastHTTPMethod(AdoptCF, handle->lastHTTPMethod().createCFString());
             RetainPtr<CFStringRef> newMethod(AdoptCF, CFURLRequestCopyHTTPRequestMethod(cfRequest));
-            if (CFStringCompareWithOptions(originalMethod.get(), newMethod.get(), CFRangeMake(0, CFStringGetLength(originalMethod.get())), kCFCompareCaseInsensitive)) {
+            if (CFStringCompareWithOptions(lastHTTPMethod.get(), newMethod.get(), CFRangeMake(0, CFStringGetLength(lastHTTPMethod.get())), kCFCompareCaseInsensitive)) {
                 RetainPtr<CFMutableURLRequestRef> mutableRequest(AdoptCF, CFURLRequestCreateMutableCopy(0, cfRequest));
-                CFURLRequestSetHTTPRequestMethod(mutableRequest.get(), originalMethod.get());
+                CFURLRequestSetHTTPRequestMethod(mutableRequest.get(), lastHTTPMethod.get());
 
                 FormData* body = handle->request().httpBody();
                 if (!equalIgnoringCase(handle->request().httpMethod(), "GET") && body && !body->isEmpty())
@@ -352,7 +350,16 @@ static CFURLRequestRef makeFinalRequest(const ResourceRequest& request, bool sho
 
     if (CFHTTPCookieStorageRef cookieStorage = currentCookieStorage()) {
         CFURLRequestSetHTTPCookieStorage(newRequest, cookieStorage);
-        CFURLRequestSetHTTPCookieStorageAcceptPolicy(newRequest, CFHTTPCookieStorageGetCookieAcceptPolicy(cookieStorage));
+        CFHTTPCookieStorageAcceptPolicy policy = CFHTTPCookieStorageGetCookieAcceptPolicy(cookieStorage);
+        CFURLRequestSetHTTPCookieStorageAcceptPolicy(newRequest, policy);
+
+        // If a URL already has cookies, then we'll relax the 3rd party cookie policy and accept new cookies.
+        if (policy == CFHTTPCookieStorageAcceptPolicyOnlyFromMainDocumentDomain) {
+            CFURLRef url = CFURLRequestGetURL(newRequest);
+            RetainPtr<CFArrayRef> cookies(AdoptCF, CFHTTPCookieStorageCopyCookiesForURL(cookieStorage, url, false));
+            if (CFArrayGetCount(cookies.get()))
+                CFURLRequestSetMainDocumentURL(newRequest, url);
+        }
     }
 
     return newRequest;
@@ -432,6 +439,7 @@ void ResourceHandle::willSendRequest(ResourceRequest& request, const ResourceRes
     const KURL& url = request.url();
     d->m_user = url.user();
     d->m_pass = url.pass();
+    d->m_lastHTTPMethod = request.httpMethod();
     request.removeCredentials();
 
     client()->willSendRequest(this, request, redirectResponse);

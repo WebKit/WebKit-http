@@ -76,10 +76,10 @@ WebURL WebNotification::url() const
     return m_private->url();
 }
 
-WebString WebNotification::icon() const
+WebURL WebNotification::iconURL() const
 {
     ASSERT(!isHTML());
-    return m_private->contents().icon();
+    return m_private->iconURL();
 }
 
 WebString WebNotification::title() const

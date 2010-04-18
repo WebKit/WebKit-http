@@ -26,7 +26,6 @@
 #include "CSSRule.h"
 #include "CSSRuleList.h"
 #include "CSSStyleRule.h"
-#include "CString.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "FrameView.h"
@@ -45,6 +44,7 @@
 #include "runtime_root.h"
 #include <parser/SourceCode.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 
 #include <QPainter>
 
@@ -864,25 +864,7 @@ QStringList QWebElement::classes() const
         return QStringList();
 
     QStringList classes =  attribute(QLatin1String("class")).simplified().split(QLatin1Char(' '), QString::SkipEmptyParts);
-#if QT_VERSION >= 0x040500
     classes.removeDuplicates();
-#else
-    int n = classes.size();
-    int j = 0;
-    QSet<QString> seen;
-    seen.reserve(n);
-    for (int i = 0; i < n; ++i) {
-        const QString& s = classes.at(i);
-        if (seen.contains(s))
-            continue;
-        seen.insert(s);
-        if (j != i)
-            classes[j] = s;
-        ++j;
-    }
-    if (n != j)
-        classes.erase(classes.begin() + j, classes.end());
-#endif
     return classes;
 }
 

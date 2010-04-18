@@ -27,12 +27,16 @@
 #include <QStyle>
 
 QT_BEGIN_NAMESPACE
+class QLineEdit;
 class QPainter;
 class QWidget;
 QT_END_NAMESPACE
 
 namespace WebCore {
 
+#if ENABLE(PROGRESS_TAG)
+class RenderProgress;
+#endif
 class RenderStyle;
 class HTMLMediaElement;
 class ScrollbarThemeQt;
@@ -44,6 +48,8 @@ private:
 
 public:
     static PassRefPtr<RenderTheme> create(Page*);
+
+    String extraDefaultStyleSheet();
 
     virtual bool supportsHover(const RenderStyle*) const;
     virtual bool supportsFocusRing(const RenderStyle* style) const;
@@ -71,6 +77,11 @@ public:
     virtual void adjustSliderThumbSize(RenderObject*) const;
 
     virtual double caretBlinkInterval() const;
+
+#ifdef Q_WS_MAEMO_5
+    virtual bool isControlStyled(const RenderStyle*, const BorderData&, const FillLayer&, const Color& backgroundColor) const;
+    virtual int popupInternalPaddingBottom(RenderStyle*) const;
+#endif
 
 #if ENABLE(VIDEO)
     virtual String extraMediaControlsStyleSheet();
@@ -101,6 +112,11 @@ protected:
     virtual bool paintMenuListButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
     virtual void adjustMenuListButtonStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
 
+#if ENABLE(PROGRESS_TAG)
+    virtual void adjustProgressBarStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
+    virtual bool paintProgressBar(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
+#endif
+
     virtual bool paintSliderTrack(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
     virtual void adjustSliderTrackStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
 
@@ -119,6 +135,13 @@ protected:
     virtual void adjustSearchFieldResultsDecorationStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
     virtual bool paintSearchFieldResultsDecoration(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
 
+#if ENABLE(PROGRESS_TAG)
+    // Returns the repeat interval of the animation for the progress bar.
+    virtual double animationRepeatIntervalForProgressBar(RenderProgress* renderProgress) const;
+    // Returns the duration of the animation for the progress bar.
+    virtual double animationDurationForProgressBar(RenderProgress* renderProgress) const;
+#endif
+
 #if ENABLE(VIDEO)
     virtual bool paintMediaFullscreenButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
     virtual bool paintMediaPlayButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
@@ -127,10 +150,15 @@ protected:
     virtual bool paintMediaSeekForwardButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
     virtual bool paintMediaSliderTrack(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
     virtual bool paintMediaSliderThumb(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
-
+    virtual bool paintMediaCurrentTime(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
+    virtual bool paintMediaVolumeSliderTrack(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
+    virtual bool paintMediaVolumeSliderThumb(RenderObject*, const RenderObject::PaintInfo&, const IntRect&);
+    virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const;
+    virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;
 private:
     HTMLMediaElement* getMediaElementFromRenderObject(RenderObject* o) const;
     void paintMediaBackground(QPainter* painter, const IntRect& r) const;
+    double mediaControlsBaselineOpacity() const;
     QColor getMediaControlForegroundColor(RenderObject* o = 0) const;
 #endif
     void computeSizeBasedOnStyle(RenderStyle* renderStyle) const;
@@ -145,6 +173,8 @@ private:
 
     void setPaletteFromPageClientIfExists(QPalette&) const;
 
+    int findFrameLineWidth(QStyle* style) const;
+
     QStyle* fallbackStyle() const;
 
     Page* m_page;
@@ -155,6 +185,7 @@ private:
     QString m_buttonFontFamily;
 
     QStyle* m_fallbackStyle;
+    mutable QLineEdit* m_lineEdit;
 };
 
 class StylePainter {

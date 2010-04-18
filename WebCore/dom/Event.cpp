@@ -24,6 +24,7 @@
 #include "Event.h"
 
 #include "AtomicString.h"
+#include "UserGestureIndicator.h"
 #include <wtf/CurrentTime.h>
 
 namespace WebCore {
@@ -32,10 +33,10 @@ Event::Event()
     : m_canBubble(false)
     , m_cancelable(false)
     , m_propagationStopped(false)
+    , m_immediatePropagationStopped(false)
     , m_defaultPrevented(false)
     , m_defaultHandled(false)
     , m_cancelBubble(false)
-    , m_createdByDOM(false)
     , m_eventPhase(0)
     , m_currentTarget(0)
     , m_createTime(static_cast<DOMTimeStamp>(currentTime() * 1000.0))
@@ -47,10 +48,10 @@ Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableAr
     , m_canBubble(canBubbleArg)
     , m_cancelable(cancelableArg)
     , m_propagationStopped(false)
+    , m_immediatePropagationStopped(false)
     , m_defaultPrevented(false)
     , m_defaultHandled(false)
     , m_cancelBubble(false)
-    , m_createdByDOM(false)
     , m_eventPhase(0)
     , m_currentTarget(0)
     , m_createTime(static_cast<DOMTimeStamp>(currentTime() * 1000.0))
@@ -69,6 +70,11 @@ void Event::initEvent(const AtomicString& eventTypeArg, bool canBubbleArg, bool 
     m_type = eventTypeArg;
     m_canBubble = canBubbleArg;
     m_cancelable = cancelableArg;
+}
+
+bool Event::isCustomEvent() const
+{
+    return false;
 }
 
 bool Event::isUIEvent() const
@@ -196,7 +202,7 @@ bool Event::isTouchEvent() const
 
 bool Event::fromUserGesture()
 {
-    if (createdByDOM())
+    if (!UserGestureIndicator::processingUserGesture())
         return false;
 
     const AtomicString& type = this->type();
@@ -245,6 +251,27 @@ void Event::setUnderlyingEvent(PassRefPtr<Event> ue)
         if (e == this)
             return;
     m_underlyingEvent = ue;
+}
+
+const AtomicString& Event::aliasedType() const
+{
+    if (type() == eventNames().focusinEvent)
+        return eventNames().DOMFocusInEvent;
+    if (type() == eventNames().focusoutEvent)
+        return eventNames().DOMFocusOutEvent;
+    if (type() == eventNames().DOMFocusInEvent)
+        return eventNames().focusinEvent;
+    if (type() == eventNames().DOMFocusOutEvent)
+        return eventNames().focusoutEvent;
+    
+    ASSERT_NOT_REACHED();
+    return type();
+}
+
+bool Event::hasAliasedType() const
+{
+    return type() == eventNames().focusinEvent || type() == eventNames().focusoutEvent ||
+           type() == eventNames().DOMFocusInEvent || type() == eventNames().DOMFocusOutEvent;
 }
 
 } // namespace WebCore

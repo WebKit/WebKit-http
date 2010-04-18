@@ -67,7 +67,7 @@ private:
     // GraphicsLayerClient methods
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& inClip);
     virtual void notifyAnimationStarted(const GraphicsLayer*, double time) { }
-    virtual void notifySyncRequired(const GraphicsLayer*);
+    virtual void notifySyncRequired(const GraphicsLayer*) { }
     virtual bool showDebugBorders() const { return false; }
     virtual bool showRepaintCounter() const { return false; }
 #endif 
@@ -157,6 +157,9 @@ private:
 
     void createLayerForMovie();
     void destroyLayerForMovie();
+
+    void setUpCookiesForQuickTime(const String& url);
+    String rfc2616DateStringFromTime(CFAbsoluteTime);
 
     MediaPlayer* m_player;
     OwnPtr<QTMovieWin> m_qtMovie;

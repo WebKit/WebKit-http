@@ -24,7 +24,6 @@
 #include "config.h"
 #include "ScheduledAction.h"
 
-#include "CString.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Frame.h"
@@ -117,7 +116,7 @@ void ScheduledAction::execute(Document* document)
         return;
 
     RefPtr<Frame> frame = window->impl()->frame();
-    if (!frame || !frame->script()->canExecuteScripts())
+    if (!frame || !frame->script()->canExecuteScripts(AboutToExecuteScript))
         return;
 
     frame->script()->setProcessingTimerCallback(true);

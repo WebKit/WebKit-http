@@ -14,7 +14,7 @@
 # Library General Public License for more details.
 # 
 # You should have received a copy of the GNU Library General Public License
-# aint with this library; see the file COPYING.LIB.  If not, write to
+# along with this library; see the file COPYING.LIB.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 # 
@@ -64,7 +64,14 @@ sub Parse
     $parentsOnly = shift;
 
     if (!$preprocessor) {
-        $preprocessor = "/usr/bin/gcc -E -P -x c++";
+        require Config;
+        my $gccLocation = "";
+        if (($Config::Config{'osname'}) =~ /solaris/i) {
+            $gccLocation = "/usr/sfw/bin/gcc";
+        } else {
+            $gccLocation = "/usr/bin/gcc";
+        }
+        $preprocessor = $gccLocation . " -E -P -x c++";
     }
 
     if (!$defines) {

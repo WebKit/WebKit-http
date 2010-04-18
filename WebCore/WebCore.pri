@@ -53,6 +53,14 @@ contains(DEFINES, ENABLE_SINGLE_THREADED=1) {
 !contains(DEFINES, ENABLE_DATAGRID=.): DEFINES += ENABLE_DATAGRID=0
 !contains(DEFINES, ENABLE_VIDEO=.): DEFINES += ENABLE_VIDEO=1
 !contains(DEFINES, ENABLE_RUBY=.): DEFINES += ENABLE_RUBY=1
+!contains(DEFINES, ENABLE_SANDBOX=.): DEFINES += ENABLE_SANDBOX=1
+!contains(DEFINES, ENABLE_PROGRESS_TAG=.): DEFINES += ENABLE_PROGRESS_TAG=1
+!contains(DEFINES, ENABLE_BLOB_SLICE=.): DEFINES += ENABLE_BLOB_SLICE=0
+!contains(DEFINES, ENABLE_NOTIFICATIONS=.): DEFINES += ENABLE_NOTIFICATIONS=1
+
+greaterThan(QT_MINOR_VERSION, 5) {
+    !contains(DEFINES, ENABLE_3D_RENDERING=.): DEFINES += ENABLE_3D_RENDERING=1
+}
 
 # SVG support
 !contains(DEFINES, ENABLE_SVG=0) {
@@ -72,6 +80,11 @@ contains(DEFINES, ENABLE_SINGLE_THREADED=1) {
 # HTML5 datalist support
 !contains(DEFINES, ENABLE_DATALIST=.): DEFINES += ENABLE_DATALIST=1
 
+# Tiled Backing Store support
+greaterThan(QT_MINOR_VERSION, 5) {
+    !contains(DEFINES, ENABLE_TILED_BACKING_STORE=.): DEFINES += ENABLE_TILED_BACKING_STORE=1
+}
+
 # Nescape plugins support (NPAPI)
 !contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=.) {
     unix|win32-*:!embedded:!wince*: {
@@ -86,7 +99,7 @@ contains(DEFINES, ENABLE_SINGLE_THREADED=1) {
 
 # XSLT support with QtXmlPatterns
 !contains(DEFINES, ENABLE_XSLT=.) {
-    contains(QT_CONFIG, xmlpatterns):!lessThan(QT_MINOR_VERSION, 5):DEFINES += ENABLE_XSLT=1
+    contains(QT_CONFIG, xmlpatterns):DEFINES += ENABLE_XSLT=1
     else:DEFINES += ENABLE_XSLT=0
 }
 
@@ -99,7 +112,8 @@ contains(DEFINES, ENABLE_SINGLE_THREADED=1) {
     }
 }
 
-DEFINES += WTF_CHANGES=1
+# Bearer management is part of Qt 4.7
+!lessThan(QT_MINOR_VERSION, 7):!contains(DEFINES, ENABLE_QT_BEARER=.):DEFINES += ENABLE_QT_BEARER=1
 
 # Enable touch event support with Qt 4.6
 !lessThan(QT_MINOR_VERSION, 6): DEFINES += ENABLE_TOUCH_EVENTS=1
@@ -125,6 +139,7 @@ contains(DEFINES, ENABLE_DASHBOARD_SUPPORT=0): DASHBOARDSUPPORTCSSPROPERTIES -= 
 contains(DEFINES, ENABLE_DATAGRID=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_DATAGRID=1
 contains(DEFINES, ENABLE_EVENTSOURCE=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_EVENTSOURCE=1
 contains(DEFINES, ENABLE_DATABASE=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_DATABASE=1
+contains(DEFINES, ENABLE_DATALIST=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_DATALIST=1
 contains(DEFINES, ENABLE_DOM_STORAGE=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_DOM_STORAGE=1
 contains(DEFINES, ENABLE_SHARED_SCRIPT=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_SHARED_SCRIPT=1
 contains(DEFINES, ENABLE_WORKERS=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_WORKERS=1
@@ -142,6 +157,8 @@ contains(DEFINES, ENABLE_JAVASCRIPT_DEBUGGER=1): FEATURE_DEFINES_JAVASCRIPT += E
 contains(DEFINES, ENABLE_OFFLINE_WEB_APPLICATIONS=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_OFFLINE_WEB_APPLICATIONS=1
 contains(DEFINES, ENABLE_WEB_SOCKETS=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_WEB_SOCKETS=1
 contains(DEFINES, ENABLE_TOUCH_EVENTS=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_TOUCH_EVENTS=1
+contains(DEFINES, ENABLE_TILED_BACKING_STORE=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_TILED_BACKING_STORE=1
+contains(DEFINES, ENABLE_NOTIFICATIONS=1): FEATURE_DEFINES_JAVASCRIPT += ENABLE_NOTIFICATIONS=1
 
 
 ## Derived source generators
@@ -192,7 +209,9 @@ STYLESHEETS_EMBED = \
     $$PWD/css/view-source.css \
     $$PWD/css/wml.css \
     $$PWD/css/mediaControls.css \
-    $$PWD/css/mediaControlsQt.css
+    $$PWD/css/mediaControlsQt.css \
+    $$PWD/css/themeQtNoListboxes.css \
+    $$PWD/css/themeQtMaemo5.css
 
 IDL_BINDINGS += \
     css/Counter.idl \
@@ -230,6 +249,7 @@ IDL_BINDINGS += \
     dom/CDATASection.idl \
     dom/Comment.idl \
     dom/CompositionEvent.idl \
+    dom/CustomEvent.idl \
     dom/DocumentFragment.idl \
     dom/Document.idl \
     dom/DocumentType.idl \
@@ -282,13 +302,23 @@ IDL_BINDINGS += \
     html/canvas/CanvasPattern.idl \
     html/canvas/CanvasRenderingContext.idl \
     html/canvas/CanvasRenderingContext2D.idl \
+    html/canvas/WebGLActiveInfo.idl \
+    html/canvas/WebGLBuffer.idl \
+    html/canvas/WebGLContextAttributes.idl \
+    html/canvas/WebGLFramebuffer.idl \
+    html/canvas/WebGLProgram.idl \
+    html/canvas/WebGLRenderbuffer.idl \
     html/canvas/WebGLRenderingContext.idl \
+    html/canvas/WebGLShader.idl \
     html/canvas/WebGLShortArray.idl \
+    html/canvas/WebGLTexture.idl \
+    html/canvas/WebGLUniformLocation.idl \
     html/canvas/WebGLUnsignedByteArray.idl \
     html/canvas/WebGLUnsignedIntArray.idl \
     html/canvas/WebGLUnsignedShortArray.idl \
     html/DataGridColumn.idl \
     html/DataGridColumnList.idl \
+    html/DOMFormData.idl \
     html/File.idl \
     html/FileList.idl \
     html/HTMLAllCollection.idl \
@@ -346,6 +376,7 @@ IDL_BINDINGS += \
     html/HTMLParagraphElement.idl \
     html/HTMLParamElement.idl \
     html/HTMLPreElement.idl \
+    html/HTMLProgressElement.idl \
     html/HTMLQuoteElement.idl \
     html/HTMLScriptElement.idl \
     html/HTMLSelectElement.idl \
@@ -371,7 +402,11 @@ IDL_BINDINGS += \
     inspector/InspectorBackend.idl \
     inspector/InspectorFrontendHost.idl \
     inspector/JavaScriptCallFrame.idl \
+    inspector/ScriptProfile.idl \
+    inspector/ScriptProfileNode.idl \
     loader/appcache/DOMApplicationCache.idl \
+    notifications/Notification.idl \
+    notifications/NotificationCenter.idl \
     page/BarInfo.idl \
     page/Console.idl \
     page/Coordinates.idl \
@@ -669,7 +704,7 @@ addExtraCompiler(colordata)
 stylesheets.wkScript = $$PWD/css/make-css-file-arrays.pl
 stylesheets.output = $${WC_GENERATED_SOURCES_DIR}/UserAgentStyleSheetsData.cpp
 stylesheets.input = stylesheets.wkScript
-stylesheets.commands = perl $$stylesheets.wkScript --preprocessor \"$${QMAKE_MOC} -E\" $${WC_GENERATED_SOURCES_DIR}/UserAgentStyleSheets.h ${QMAKE_FILE_OUT} $$STYLESHEETS_EMBED
+stylesheets.commands = perl $$stylesheets.wkScript $${WC_GENERATED_SOURCES_DIR}/UserAgentStyleSheets.h ${QMAKE_FILE_OUT} $$STYLESHEETS_EMBED
 stylesheets.depends = $$STYLESHEETS_EMBED
 stylesheets.clean = ${QMAKE_FILE_OUT} ${QMAKE_VAR_WC_GENERATED_SOURCES_DIR}/UserAgentStyleSheets.h
 addExtraCompiler(stylesheets, $${WC_GENERATED_SOURCES_DIR}/UserAgentStyleSheets.h)

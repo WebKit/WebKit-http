@@ -26,7 +26,9 @@
 #import "config.h"
 #import "objc_instance.h"
 
+#import "runtime_method.h"
 #import "FoundationExtras.h"
+#import "ObjCRuntimeObject.h"
 #import "WebScriptObject.h"
 #import <objc/objc-auto.h>
 #import <runtime/Error.h>
@@ -52,13 +54,18 @@ static NSMapTable *s_instanceWrapperCache;
 static NSMapTable *createInstanceWrapperCache()
 {
 #ifdef BUILDING_ON_TIGER
-    return NSCreateMapTable(NSNonRetainedObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
+    return NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
 #else
     // NSMapTable with zeroing weak pointers is the recommended way to build caches like this under garbage collection.
-    NSPointerFunctionsOptions keyOptions = NSPointerFunctionsZeroingWeakMemory | NSPointerFunctionsObjectPersonality;
+    NSPointerFunctionsOptions keyOptions = NSPointerFunctionsZeroingWeakMemory | NSPointerFunctionsOpaquePersonality;
     NSPointerFunctionsOptions valueOptions = NSPointerFunctionsOpaqueMemory | NSPointerFunctionsOpaquePersonality;
     return [[NSMapTable alloc] initWithKeyOptions:keyOptions valueOptions:valueOptions capacity:0];
 #endif
+}
+
+RuntimeObject* ObjcInstance::newRuntimeObject(ExecState* exec)
+{
+    return new (exec) ObjCRuntimeObject(exec, this);
 }
 
 void ObjcInstance::setGlobalException(NSString* exception, JSGlobalObject* exceptionEnvironment)
@@ -167,7 +174,41 @@ bool ObjcInstance::supportsInvokeDefaultMethod() const
     return [_instance.get() respondsToSelector:@selector(invokeDefaultMethodWithArguments:)];
 }
 
-JSValue ObjcInstance::invokeMethod(ExecState* exec, const MethodList &methodList, const ArgList &args)
+class ObjCRuntimeMethod : public RuntimeMethod {
+public:
+    ObjCRuntimeMethod(ExecState* exec, const Identifier& name, Bindings::MethodList& list)
+        : RuntimeMethod(exec, name, list)
+    {
+    }
+
+    virtual const ClassInfo* classInfo() const { return &s_info; }
+
+    static const ClassInfo s_info;
+};
+
+const ClassInfo ObjCRuntimeMethod::s_info = { "ObjCRuntimeMethod", &RuntimeMethod::s_info, 0, 0 };
+
+JSValue ObjcInstance::getMethod(ExecState* exec, const Identifier& propertyName)
+{
+    MethodList methodList = getClass()->methodsNamed(propertyName, this);
+    return new (exec) ObjCRuntimeMethod(exec, propertyName, methodList);
+}
+
+JSValue ObjcInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod, const ArgList &args)
+{
+    if (!asObject(runtimeMethod)->inherits(&ObjCRuntimeMethod::s_info))
+        return throwError(exec, TypeError, "Attempt to invoke non-plug-in method on plug-in object.");
+
+    const MethodList& methodList = *runtimeMethod->methods();
+
+    // Overloading methods is not allowed in ObjectiveC.  Should only be one
+    // name match for a particular method.
+    ASSERT(methodList.size() == 1);
+
+    return invokeObjcMethod(exec, static_cast<ObjcMethod*>(methodList[0]), args);
+}
+
+JSValue ObjcInstance::invokeObjcMethod(ExecState* exec, ObjcMethod* method, const ArgList &args)
 {
     JSValue result = jsUndefined();
     
@@ -175,13 +216,7 @@ JSValue ObjcInstance::invokeMethod(ExecState* exec, const MethodList &methodList
 
     setGlobalException(nil);
     
-    // Overloading methods is not allowed in ObjectiveC.  Should only be one
-    // name match for a particular method.
-    ASSERT(methodList.size() == 1);
-
 @try {
-    ObjcMethod* method = 0;
-    method = static_cast<ObjcMethod*>(methodList[0]);
     NSMethodSignature* signature = method->getMethodSignature();
     NSInvocation* invocation = [NSInvocation invocationWithMethodSignature:signature];
     [invocation setSelector:method->selector()];

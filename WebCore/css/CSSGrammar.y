@@ -246,6 +246,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 
 %type <integer> match
 %type <integer> unary_operator
+%type <integer> maybe_unary_operator
 %type <character> operator
 
 %type <valueList> expr
@@ -767,6 +768,11 @@ combinator:
   | '>' maybe_space { $$ = CSSSelector::Child; }
   ;
 
+maybe_unary_operator:
+    unary_operator { $$ = $1; }
+    | { $$ = 1; }
+    ;
+
 unary_operator:
     '-' { $$ = -1; }
   | '+' { $$ = 1; }
@@ -786,6 +792,7 @@ selector_list:
             deleteAllValues(*$$);
             $$->shrink(0);
             $$->append(p->sinkFloatingSelector($1));
+            p->updateLastSelectorLine();
         }
     }
     | selector_list ',' maybe_space selector %prec UNIMPORTANT_TOK {
@@ -793,6 +800,7 @@ selector_list:
             CSSParser* p = static_cast<CSSParser*>(parser);
             $$ = $1;
             $$->append(p->sinkFloatingSelector($4));
+            p->updateLastSelectorLine();
         } else
             $$ = 0;
     }
@@ -1087,6 +1095,10 @@ pseudo:
             CSSParser* p = static_cast<CSSParser*>(parser);
             if (Document* doc = p->document())
                 doc->setUsesBeforeAfterRules(true);
+        } else if (type == CSSSelector::PseudoLink || type == CSSSelector::PseudoVisited) {
+            CSSParser* p = static_cast<CSSParser*>(parser);
+            if (Document* doc = p->document())
+                doc->setUsesLinkRules(true);
         }
     }
     | ':' ':' IDENT {
@@ -1127,11 +1139,11 @@ pseudo:
         }
     }
     // used by :nth-*
-    | ':' FUNCTION maybe_space INTEGER maybe_space ')' {
+    | ':' FUNCTION maybe_space maybe_unary_operator INTEGER maybe_space ')' {
         CSSParser *p = static_cast<CSSParser*>(parser);
         $$ = p->createFloatingSelector();
         $$->m_match = CSSSelector::PseudoClass;
-        $$->setArgument(String::number($4));
+        $$->setArgument(String::number($4 * $5));
         $$->m_value = $2;
         CSSSelector::PseudoType type = $$->pseudoType();
         if (type == CSSSelector::PseudoUnknown)
@@ -1165,7 +1177,7 @@ pseudo:
     }
     // used by :not
     | ':' NOTFUNCTION maybe_space simple_selector maybe_space ')' {
-        if (!$4 || $4->simpleSelector() || $4->tagHistory())
+        if (!$4 || !$4->isSimple())
             $$ = 0;
         else {
             CSSParser* p = static_cast<CSSParser*>(parser);

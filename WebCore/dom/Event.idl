@@ -66,6 +66,10 @@ module events {
                                       in boolean canBubbleArg, 
                                       in boolean cancelableArg);
 
+        // DOM Level 3 Additions.
+        readonly attribute boolean defaultPrevented;
+        void stopImmediatePropagation();
+
         // IE Extensions
         readonly attribute EventTarget      srcElement;
                  attribute boolean          returnValue;

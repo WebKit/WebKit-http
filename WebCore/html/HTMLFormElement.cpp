@@ -26,8 +26,8 @@
 #include "HTMLFormElement.h"
 
 #include "CSSHelper.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
+#include "DOMFormData.h"
+#include "DOMWindow.h"
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
@@ -46,7 +46,6 @@
 #include "ScriptEventListener.h"
 #include "MIMETypeRegistry.h"
 #include "MappedAttribute.h"
-#include "Page.h"
 #include "RenderTextControl.h"
 #include "ValidityState.h"
 #include <limits>
@@ -201,83 +200,16 @@ TextEncoding HTMLFormElement::dataEncoding() const
     return m_formDataBuilder.dataEncoding(document());
 }
 
-PassRefPtr<FormData> HTMLFormElement::createFormData(const CString& boundary)
+PassRefPtr<FormData> HTMLFormElement::createFormData()
 {
-    Vector<char> encodedData;
-    TextEncoding encoding = dataEncoding().encodingForFormSubmission();
-
-    RefPtr<FormData> result = FormData::create();
-
+    RefPtr<DOMFormData> domFormData = DOMFormData::create(dataEncoding().encodingForFormSubmission());
     for (unsigned i = 0; i < formElements.size(); ++i) {
         HTMLFormControlElement* control = formElements[i];
-        FormDataList list(encoding);
-
-        if (!control->disabled() && control->appendFormData(list, m_formDataBuilder.isMultiPartForm())) {
-            size_t formDataListSize = list.list().size();
-            ASSERT(formDataListSize % 2 == 0);
-            for (size_t j = 0; j < formDataListSize; j += 2) {
-                const FormDataList::Item& key = list.list()[j];
-                const FormDataList::Item& value = list.list()[j + 1];
-                if (!m_formDataBuilder.isMultiPartForm()) {
-                    // Omit the name "isindex" if it's the first form data element.
-                    // FIXME: Why is this a good rule? Is this obsolete now?
-                    if (encodedData.isEmpty() && key.data() == "isindex")
-                        FormDataBuilder::encodeStringAsFormData(encodedData, value.data());
-                    else
-                        m_formDataBuilder.addKeyValuePairAsFormData(encodedData, key.data(), value.data());
-                } else {
-                    Vector<char> header;
-                    m_formDataBuilder.beginMultiPartHeader(header, boundary, key.data());
-
-                    bool shouldGenerateFile = false;
-                    // if the current type is FILE, then we also need to include the filename
-                    if (value.file()) {
-                        const String& path = value.file()->path();
-                        String fileName = value.file()->fileName();
-
-                        // Let the application specify a filename if it's going to generate a replacement file for the upload.
-                        if (!path.isEmpty()) {
-                            if (Page* page = document()->page()) {
-                                String generatedFileName;
-                                shouldGenerateFile = page->chrome()->client()->shouldReplaceWithGeneratedFileForUpload(path, generatedFileName);
-                                if (shouldGenerateFile)
-                                    fileName = generatedFileName;
-                            }
-                        }
-
-                        // We have to include the filename=".." part in the header, even if the filename is empty
-                        m_formDataBuilder.addFilenameToMultiPartHeader(header, encoding, fileName);
-
-                        if (!fileName.isEmpty()) {
-                            // FIXME: The MIMETypeRegistry function's name makes it sound like it takes a path,
-                            // not just a basename. But filename is not the path. But note that it's not safe to
-                            // just use path instead since in the generated-file case it will not reflect the
-                            // MIME type of the generated file.
-                            String mimeType = MIMETypeRegistry::getMIMETypeForPath(fileName);
-                            if (!mimeType.isEmpty())
-                                m_formDataBuilder.addContentTypeToMultiPartHeader(header, mimeType.latin1());
-                        }
-                    }
-
-                    m_formDataBuilder.finishMultiPartHeader(header);
-
-                    // Append body
-                    result->appendData(header.data(), header.size());
-                    if (size_t dataSize = value.data().length())
-                        result->appendData(value.data().data(), dataSize);
-                    else if (value.file() && !value.file()->path().isEmpty())
-                        result->appendFile(value.file()->path(), shouldGenerateFile);
-
-                    result->appendData("\r\n", 2);
-                }
-            }
-        }
+        if (!control->disabled())
+            control->appendFormData(*domFormData, m_formDataBuilder.isMultiPartForm());
     }
 
-    if (m_formDataBuilder.isMultiPartForm())
-        m_formDataBuilder.addBoundaryToMultiPartHeader(encodedData, boundary, true);
-
-    result->appendData(encodedData.data(), encodedData.size());
+    RefPtr<FormData> result = (m_formDataBuilder.isMultiPartForm()) ? FormData::createMultiPart(*domFormData, document()) : FormData::create(*domFormData);
 
     result->setIdentifier(generateFormDataIdentifier());
     return result;
@@ -288,6 +220,64 @@ bool HTMLFormElement::isMailtoForm() const
     return protocolIs(m_url, "mailto");
 }
 
+static inline HTMLFormControlElement* submitElementFromEvent(const Event* event)
+{
+    Node* targetNode = event->target()->toNode();
+    if (!targetNode || !targetNode->isElementNode())
+        return 0;
+    Element* targetElement = static_cast<Element*>(targetNode);
+    if (!targetElement->isFormControlElement())
+        return 0;
+    return static_cast<HTMLFormControlElement*>(targetElement);
+}
+
+bool HTMLFormElement::validateInteractively(Event* event)
+{
+    ASSERT(event);
+    if (noValidate())
+        return true;
+
+    HTMLFormControlElement* submitElement = submitElementFromEvent(event);
+    if (submitElement && submitElement->formNoValidate())
+        return true;
+
+    Vector<RefPtr<HTMLFormControlElement> > unhandledInvalidControls;
+    collectUnhandledInvalidControls(unhandledInvalidControls);
+    if (unhandledInvalidControls.isEmpty())
+        return true;
+    // If the form has invalid controls, abort submission.
+
+    RefPtr<HTMLFormElement> protector(this);
+    // Focus on the first focusable control.
+    for (unsigned i = 0; i < unhandledInvalidControls.size(); ++i) {
+        HTMLFormControlElement* unhandled = unhandledInvalidControls[i].get();
+        if (unhandled->isFocusable() && unhandled->inDocument()) {
+            RefPtr<Document> originalDocument(unhandled->document());
+            unhandled->scrollIntoViewIfNeeded(false);
+            // scrollIntoViewIfNeeded() dispatches events, so the state
+            // of 'unhandled' might be changed so it's no longer focusable or
+            // moved to another document.
+            if (unhandled->isFocusable() && unhandled->inDocument() && originalDocument == unhandled->document()) {
+                unhandled->focus();
+                break;
+            }
+        }
+    }
+    // Warn about all of unfocusable controls.
+    if (Frame* frame = document()->frame()) {
+        for (unsigned i = 0; i < unhandledInvalidControls.size(); ++i) {
+            HTMLFormControlElement* unhandled = unhandledInvalidControls[i].get();
+            if (unhandled->isFocusable() && unhandled->inDocument())
+                continue;
+            String message("An invalid form control with name='%name' is not focusable.");
+            message.replace("%name", unhandled->name());
+            frame->domWindow()->console()->addMessage(HTMLMessageSource, LogMessageType, ErrorMessageLevel, message, 0, document()->url().string());
+        }
+    }
+    m_insubmit = false;
+    return false;
+}
+
 bool HTMLFormElement::prepareSubmit(Event* event)
 {
     Frame* frame = document()->frame();
@@ -296,6 +286,10 @@ bool HTMLFormElement::prepareSubmit(Event* event)
 
     m_insubmit = true;
     m_doingsubmit = false;
+
+    // Interactive validation must be done before dispatching the submit event.
+    if (!validateInteractively(event))
+        return false;
 
     if (dispatchEvent(Event::create(eventNames().submitEvent, true, true)) && !m_doingsubmit)
         m_doingsubmit = true;
@@ -389,8 +383,8 @@ void HTMLFormElement::submit(Event* event, bool activateSubmitButton, bool lockH
             ASSERT(!m_formDataBuilder.isMultiPartForm());
         }
 
+        RefPtr<FormData> data = createFormData();
         if (!m_formDataBuilder.isMultiPartForm()) {
-            RefPtr<FormData> data = createFormData(CString());
 
             if (isMailtoForm()) {
                 // Convert the form data into a string that we put into the URL.
@@ -400,13 +394,11 @@ void HTMLFormElement::submit(Event* event, bool activateSubmitButton, bool lockH
             }
 
             frame->loader()->submitForm("POST", m_url, data.release(), m_target, m_formDataBuilder.encodingType(), String(), lockHistory, event, formState.release());
-        } else {
-            Vector<char> boundary = m_formDataBuilder.generateUniqueBoundaryString();
-            frame->loader()->submitForm("POST", m_url, createFormData(boundary.data()), m_target, m_formDataBuilder.encodingType(), boundary.data(), lockHistory, event, formState.release());
-        }
+        } else
+            frame->loader()->submitForm("POST", m_url, data.get(), m_target, m_formDataBuilder.encodingType(), data->boundary().data(), lockHistory, event, formState.release());
     } else {
         m_formDataBuilder.setIsMultiPartForm(false);
-        frame->loader()->submitForm("GET", m_url, createFormData(CString()), m_target, String(), String(), lockHistory, event, formState.release());
+        frame->loader()->submitForm("GET", m_url, createFormData(), m_target, String(), String(), lockHistory, event, formState.release());
     }
 
     if (needButtonActivation && firstSuccessfulSubmitButton)
@@ -612,16 +604,24 @@ HTMLFormControlElement* HTMLFormElement::defaultButton() const
 
 bool HTMLFormElement::checkValidity()
 {
-    // TODO: Check for unhandled invalid controls, see #27452 for tips.
+    Vector<RefPtr<HTMLFormControlElement> > controls;
+    collectUnhandledInvalidControls(controls);
+    return controls.isEmpty();
+}
 
-    bool hasOnlyValidControls = true;
-    for (unsigned i = 0; i < formElements.size(); ++i) {
-        HTMLFormControlElement* control = formElements[i];
-        if (!control->checkValidity())
-            hasOnlyValidControls = false;
+void HTMLFormElement::collectUnhandledInvalidControls(Vector<RefPtr<HTMLFormControlElement> >& unhandledInvalidControls)
+{
+    RefPtr<HTMLFormElement> protector(this);
+    // Copy formElements because event handlers called from
+    // HTMLFormControlElement::checkValidity() might change formElements.
+    Vector<RefPtr<HTMLFormControlElement> > elements;
+    elements.reserveCapacity(formElements.size());
+    for (unsigned i = 0; i < formElements.size(); ++i)
+        elements.append(formElements[i]);
+    for (unsigned i = 0; i < elements.size(); ++i) {
+        if (elements[i]->form() == this)
+            elements[i]->checkValidity(&unhandledInvalidControls);
     }
-
-    return hasOnlyValidControls;
 }
 
 PassRefPtr<HTMLFormControlElement> HTMLFormElement::elementForAlias(const AtomicString& alias)

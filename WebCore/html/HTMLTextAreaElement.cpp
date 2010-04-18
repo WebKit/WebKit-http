@@ -86,7 +86,10 @@ const AtomicString& HTMLTextAreaElement::formControlType() const
 
 bool HTMLTextAreaElement::saveFormControlState(String& result) const
 {
-    result = value();
+    String currentValue = value();
+    if (currentValue == defaultValue())
+        return false;
+    result = currentValue;
     return true;
 }
 
@@ -166,6 +169,8 @@ bool HTMLTextAreaElement::appendFormData(FormDataList& encoding, bool)
     if (name().isEmpty())
         return false;
 
+    document()->updateLayout();
+
     // FIXME: It's not acceptable to ignore the HardWrap setting when there is no renderer.
     // While we have no evidence this has ever been a practical problem, it would be best to fix it some day.
     RenderTextControl* control = toRenderTextControl(renderer());
@@ -235,8 +240,8 @@ void HTMLTextAreaElement::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*
         return;
     unsigned unsignedMaxLength = static_cast<unsigned>(signedMaxLength);
 
-    unsigned currentLength = toRenderTextControl(renderer())->text().numGraphemeClusters();
-    unsigned selectionLength = plainText(document()->frame()->selection()->selection().toNormalizedRange().get()).numGraphemeClusters();
+    unsigned currentLength = numGraphemeClusters(toRenderTextControl(renderer())->text());
+    unsigned selectionLength = numGraphemeClusters(plainText(document()->frame()->selection()->selection().toNormalizedRange().get()));
     ASSERT(currentLength >= selectionLength);
     unsigned baseLength = currentLength - selectionLength;
     unsigned appendableLength = unsignedMaxLength > baseLength ? unsignedMaxLength - baseLength : 0;
@@ -245,7 +250,7 @@ void HTMLTextAreaElement::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*
 
 String HTMLTextAreaElement::sanitizeUserInputValue(const String& proposedValue, unsigned maxLength)
 {
-    return proposedValue.left(proposedValue.numCharactersInGraphemeClusters(maxLength));
+    return proposedValue.left(numCharactersInGraphemeClusters(proposedValue, maxLength));
 }
 
 void HTMLTextAreaElement::rendererWillBeDestroyed()
@@ -291,13 +296,11 @@ void HTMLTextAreaElement::setNonDirtyValue(const String& value)
         return;
 
     m_value = normalizedValue;
+    updatePlaceholderVisibility(false);
+    setNeedsStyleRecalc();
+    setNeedsValidityCheck();
     m_isDirty = false;
     setFormControlValueMatchesRenderer(true);
-    updatePlaceholderVisibility(false);
-    if (inDocument())
-        document()->updateStyleIfNeeded();
-    if (renderer())
-        renderer()->updateFromElement();
 
     // Set the caret to the end of the text value.
     if (document()->focusedNode() == this) {
@@ -305,7 +308,6 @@ void HTMLTextAreaElement::setNonDirtyValue(const String& value)
         setSelectionRange(endOfString, endOfString);
     }
 
-    setNeedsValidityCheck();
     notifyFormStateChanged(this);
 }
 
@@ -380,7 +382,7 @@ bool HTMLTextAreaElement::tooLong() const
     int max = maxLength();
     if (max < 0)
         return false;
-    return value().numGraphemeClusters() > static_cast<unsigned>(max);
+    return numGraphemeClusters(value()) > static_cast<unsigned>(max);
 }
 
 void HTMLTextAreaElement::accessKeyAction(bool)

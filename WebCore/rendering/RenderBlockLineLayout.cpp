@@ -342,7 +342,8 @@ void RenderBlock::computeHorizontalPositionsForLine(RootInlineBox* lineBox, bool
                 needsWordSpacing = !isSpaceOrNewline(rt->characters()[r->m_stop - 1]) && r->m_stop == length;          
             }
             HashSet<const SimpleFontData*> fallbackFonts;
-            r->m_box->setWidth(rt->width(r->m_start, r->m_stop - r->m_start, totWidth, firstLine, &fallbackFonts));
+            GlyphOverflow glyphOverflow;
+            r->m_box->setWidth(rt->width(r->m_start, r->m_stop - r->m_start, totWidth, firstLine, &fallbackFonts, &glyphOverflow));
             if (!fallbackFonts.isEmpty()
 #if ENABLE(SVG)
                     && !isSVGText()
@@ -350,6 +351,14 @@ void RenderBlock::computeHorizontalPositionsForLine(RootInlineBox* lineBox, bool
             ) {
                 ASSERT(r->m_box->isText());
                 static_cast<InlineTextBox*>(r->m_box)->setFallbackFonts(fallbackFonts);
+            }
+            if ((glyphOverflow.top || glyphOverflow.bottom || glyphOverflow.left || glyphOverflow.right)
+#if ENABLE(SVG)
+                && !isSVGText()
+#endif
+            ) {
+                ASSERT(r->m_box->isText());
+                static_cast<InlineTextBox*>(r->m_box)->setGlyphOverflow(glyphOverflow);
             }
         } else if (!r->m_object->isRenderInline()) {
             RenderBox* renderBox = toRenderBox(r->m_object);
@@ -646,7 +655,6 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, int& repaintTop, i
         bool endLineMatched = false;
         bool checkForEndLineMatch = endLine;
         bool checkForFloatsFromLastLine = false;
-        int lastHeight = height();
 
         bool isLineEmpty = true;
 
@@ -735,6 +743,7 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, int& repaintTop, i
 
                         // Now position our text runs vertically.
                         computeVerticalPositionsForLine(lineBox, resolver.firstRun());
+                        InlineTextBox::clearGlyphOverflowAndFallbackFontMap();
 
 #if ENABLE(SVG)
                         // Special SVG text layout code
@@ -771,8 +780,7 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, int& repaintTop, i
                 } else
                     m_floatingObjects->first();
                 for (FloatingObject* f = m_floatingObjects->current(); f; f = m_floatingObjects->next()) {
-                    if (f->m_bottom > lastHeight)
-                        lastRootBox()->floats().append(f->m_renderer);
+                    lastRootBox()->floats().append(f->m_renderer);
                     ASSERT(f->m_renderer == floats[floatIndex].object);
                     // If a float's geometry has changed, give up on syncing with clean lines.
                     if (floats[floatIndex].rect != IntRect(f->m_left, f->m_top, f->m_width, f->m_bottom - f->m_top))
@@ -782,7 +790,6 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, int& repaintTop, i
                 lastFloat = m_floatingObjects->last();
             }
 
-            lastHeight = height();
             lineMidpointState.reset();
             resolver.setPosition(end);
         }
@@ -842,10 +849,8 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, int& repaintTop, i
                 m_floatingObjects->next();
             } else
                 m_floatingObjects->first();
-            for (FloatingObject* f = m_floatingObjects->current(); f; f = m_floatingObjects->next()) {
-                if (f->m_bottom > lastHeight)
-                    lastRootBox()->floats().append(f->m_renderer);
-            }
+            for (FloatingObject* f = m_floatingObjects->current(); f; f = m_floatingObjects->next())
+                lastRootBox()->floats().append(f->m_renderer);
             lastFloat = m_floatingObjects->last();
         }
         size_t floatCount = floats.size();

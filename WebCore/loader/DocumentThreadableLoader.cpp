@@ -217,6 +217,10 @@ void DocumentThreadableLoader::didReceiveData(SubresourceLoader* loader, const c
     ASSERT(m_client);
     ASSERT_UNUSED(loader, loader == m_loader);
 
+    // Ignore response body of preflight requests.
+    if (m_actualRequest)
+        return;
+
     m_client->didReceiveData(data, lengthReceived);
 }
 
@@ -287,6 +291,7 @@ void DocumentThreadableLoader::preflightSuccess()
 
 void DocumentThreadableLoader::preflightFailure()
 {
+    m_actualRequest = 0; // Prevent didFinishLoading() from bypassing access check.
     m_client->didFail(ResourceError());
 }
 

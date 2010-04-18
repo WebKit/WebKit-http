@@ -25,7 +25,6 @@
 
 #include "config.h"
 #include "BackForwardList.h"
-#include "CString.h"
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
@@ -50,6 +49,7 @@
 #include "JSDOMBinding.h"
 #include <runtime/JSValue.h>
 #include <runtime/UString.h>
+#include <wtf/text/CString.h>
 
 #include "EditorClientWx.h"
 #include "FrameLoaderClientWx.h"
@@ -201,12 +201,12 @@ wxString wxWebFrame::RunScript(const wxString& javascript)
         wxASSERT_MSG(hasLoaded, wxT("Document must be loaded before calling RunScript."));
         if (hasLoaded) {
             WebCore::ScriptController* controller = m_impl->frame->script();
-            bool jsEnabled = controller->canExecuteScripts(); 
+            bool jsEnabled = controller->canExecuteScripts(WebCore::AboutToExecuteScript); 
             wxASSERT_MSG(jsEnabled, wxT("RunScript requires JavaScript to be enabled."));
             if (jsEnabled) {
                 JSC::JSValue result = controller->executeScript(javascript, true).jsValue();
                 if (result)
-                    returnValue = wxString(result.toString(m_impl->frame->script()->globalObject(WebCore::mainThreadNormalWorld())->globalExec()).UTF8String().c_str(), wxConvUTF8);        
+                    returnValue = wxString(result.toString(m_impl->frame->script()->globalObject(WebCore::mainThreadNormalWorld())->globalExec()).UTF8String().data(), wxConvUTF8);        
             }
         }
     }
@@ -316,7 +316,7 @@ void wxWebFrame::IncreaseTextSize()
 {
     if (CanIncreaseTextSize()) {
         m_textMagnifier = m_textMagnifier*TextSizeMultiplierRatio;
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+        m_impl->frame->setZoomFactor(m_textMagnifier, WebCore::ZoomTextOnly);
     }
 }
 
@@ -333,7 +333,7 @@ void wxWebFrame::DecreaseTextSize()
 {        
     if (CanDecreaseTextSize()) {
         m_textMagnifier = m_textMagnifier/TextSizeMultiplierRatio;
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+        m_impl->frame->setZoomFactor(m_textMagnifier, WebCore::ZoomTextOnly);
     }
 }
 
@@ -341,7 +341,7 @@ void wxWebFrame::ResetTextSize()
 {
     m_textMagnifier = 1.0;
     if (m_impl->frame)
-        m_impl->frame->setZoomFactor(m_textMagnifier, true);
+        m_impl->frame->setZoomFactor(m_textMagnifier, WebCore::ZoomTextOnly);
 }
 
 void wxWebFrame::MakeEditable(bool enable)

@@ -45,17 +45,16 @@ namespace WebCore {
     class DatabaseThread;
 #endif
     class DOMTimer;
+#if ENABLE(FILE_READER) || ENABLE(FILE_WRITER)
+    class FileThread;
+#endif
     class MessagePort;
     class SecurityOrigin;
     class ScriptString;
     class String;
-
-    enum MessageDestination {
 #if ENABLE(INSPECTOR)
-        InspectorControllerDestination,
+    class InspectorController;
 #endif
-        ConsoleDestination,
-    };
 
     class ScriptExecutionContext {
     public:
@@ -84,11 +83,12 @@ namespace WebCore {
         virtual String userAgent(const KURL&) const = 0;
 
         SecurityOrigin* securityOrigin() const { return m_securityOrigin.get(); }
+#if ENABLE(INSPECTOR)
+        virtual InspectorController* inspectorController() const { return 0; }
+#endif
 
         virtual void reportException(const String& errorMessage, int lineNumber, const String& sourceURL) = 0;
-        virtual void addMessage(MessageDestination, MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL) = 0;
-        virtual void resourceRetrievedByXMLHttpRequest(unsigned long identifier, const ScriptString& sourceString) = 0;
-        virtual void scriptImported(unsigned long, const String&) = 0;
+        virtual void addMessage(MessageSource, MessageType, MessageLevel, const String& message, unsigned lineNumber, const String& sourceURL) = 0;
         
         // Active objects are not garbage collected even if inaccessible, e.g. because their activity may result in callbacks being invoked.
         bool canSuspendActiveDOMObjects();
@@ -130,6 +130,11 @@ namespace WebCore {
         JSC::JSGlobalData* globalData();
 #endif
 
+#if ENABLE(FILE_READER) || ENABLE(FILE_WRITER)
+        FileThread* fileThread();
+        void stopFileThread();
+#endif
+
     protected:
         // Explicitly override the security origin for this script context.
         // Note: It is dangerous to change the security origin of a script context
@@ -156,6 +161,10 @@ namespace WebCore {
         bool m_hasOpenDatabases; // This never changes back to false, even after the database thread is closed.
         typedef HashSet<Database* > DatabaseSet;
         OwnPtr<DatabaseSet> m_openDatabaseSet;
+#endif
+
+#if ENABLE(FILE_READER) || ENABLE(FILE_WRITER)
+        RefPtr<FileThread> m_fileThread;
 #endif
     };
 

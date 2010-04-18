@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * All rights reserved.
  *
@@ -29,10 +30,8 @@
 #include "Widget.h"
 
 #include "Cursor.h"
-#include "GraphicsContext.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
-#include <Control.h>
 #include <View.h>
 #include <stdio.h>
 
@@ -100,7 +99,7 @@ void Widget::show()
 {
     setSelfVisible(true);
     if (!isParentVisible())
-    	return;
+        return;
 
     AutoPlatformWidgetLocker locker(platformWidget());
     if (locker.isLocked() && platformWidget()->IsHidden())
@@ -111,14 +110,14 @@ void Widget::hide()
 {
     setSelfVisible(false);
     if (!isParentVisible())
-    	return;
+        return;
 
     AutoPlatformWidgetLocker locker(platformWidget());
     if (locker.isLocked() && !platformWidget()->IsHidden())
         platformWidget()->Hide();
 }
 
-void Widget::paint(GraphicsContext* p, IntRect const& r)
+void Widget::paint(GraphicsContext*, IntRect const&)
 {
     notImplemented();
 }

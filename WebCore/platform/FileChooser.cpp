@@ -39,9 +39,11 @@ FileChooserClient::~FileChooserClient()
 
 inline FileChooser::FileChooser(FileChooserClient* client, const Vector<String>& initialFilenames)
     : m_client(client)
+    , m_isInitializing(true)
 {
     m_filenames = initialFilenames;
     loadIcon();
+    m_isInitializing = false;
 }
 
 PassRefPtr<FileChooser> FileChooser::create(FileChooserClient* client, const Vector<String>& initialFilenames)
@@ -78,16 +80,14 @@ void FileChooser::chooseFiles(const Vector<String>& filenames)
 
 void FileChooser::loadIcon()
 {
-    m_icon = Icon::createIconForFiles(m_filenames);
-    // If synchronous icon loading failed, try asynchronous loading.
-    if (!m_icon && m_filenames.size() && m_client)
-        m_client->iconForFiles(m_filenames);
+    if (m_filenames.size() && m_client)
+        m_client->chooseIconForFiles(this, m_filenames);
 }
 
 void FileChooser::iconLoaded(PassRefPtr<Icon> icon)
 {
     m_icon = icon;
-    if (m_icon && m_client)
+    if (!m_isInitializing && m_icon && m_client)
         m_client->repaint();
 }
 

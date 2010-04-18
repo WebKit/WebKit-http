@@ -21,6 +21,7 @@
 module core {
 
     interface [
+        CustomHeader,
         CustomMarkFunction,
         CustomPushEventHandlerScope,
         CustomToJS,
@@ -50,7 +51,7 @@ module core {
         readonly attribute [ConvertNullStringTo=Null] DOMString        nodeName;
 
                  // FIXME: the spec says this can also raise on retrieval.
-                 attribute [ConvertNullStringTo=Null, ConvertNullToNullString] DOMString        nodeValue
+                 attribute [CustomSetter, ConvertNullStringTo=Null, ConvertNullToNullString] DOMString        nodeValue
                      setter raises(DOMException);
 
         readonly attribute unsigned short   nodeType;
@@ -95,7 +96,7 @@ module core {
         readonly attribute [ConvertNullStringTo=Null] DOMString       baseURI;
 
                  // FIXME: the spec says this can also raise on retrieval.
-                 attribute [ConvertNullStringTo=Null, ConvertNullToNullString] DOMString       textContent
+                 attribute [CustomSetter, ConvertNullStringTo=Null, ConvertNullToNullString] DOMString       textContent
                      setter raises(DOMException);
 
         boolean            isSameNode(in Node other);
@@ -132,12 +133,12 @@ module core {
 #endif /* defined(LANGUAGE_OBJECTIVE_C) */
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-        [Custom] void addEventListener(in DOMString type, 
-                                       in EventListener listener, 
-                                       in boolean useCapture);
-        [Custom] void removeEventListener(in DOMString type, 
+        [JSCCustom] void addEventListener(in DOMString type, 
                                           in EventListener listener, 
                                           in boolean useCapture);
+        [JSCCustom] void removeEventListener(in DOMString type, 
+                                             in EventListener listener, 
+                                             in boolean useCapture);
         boolean dispatchEvent(in Event event)
             raises(EventException);
 #endif

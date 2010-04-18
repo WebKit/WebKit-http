@@ -27,7 +27,6 @@
 #include "Clipboard.h"
 
 #include "CachedImage.h"
-#include "DOMImplementation.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "Image.h"
@@ -36,7 +35,7 @@ namespace WebCore {
 
 Clipboard::Clipboard(ClipboardAccessPolicy policy, bool isForDragging) 
     : m_policy(policy)
-    , m_dropEffect("none")
+    , m_dropEffect("uninitialized")
     , m_effectAllowed("uninitialized")
     , m_dragStarted(false)
     , m_forDragging(isForDragging)
@@ -66,7 +65,7 @@ static DragOperation dragOpFromIEOp(const String& op)
     if (op == "link")
         return DragOperationLink;
     if (op == "move")
-        return DragOperationGeneric;    // FIXME: Why is this DragOperationGeneric? <http://webkit.org/b/33697>
+        return (DragOperation)(DragOperationGeneric | DragOperationMove);
     if (op == "copyLink")
         return (DragOperation)(DragOperationCopy | DragOperationLink);
     if (op == "copyMove")
@@ -110,7 +109,7 @@ DragOperation Clipboard::sourceOperation() const
 DragOperation Clipboard::destinationOperation() const
 {
     DragOperation op = dragOpFromIEOp(m_dropEffect);
-    ASSERT(op == DragOperationCopy || op == DragOperationNone || op == DragOperationLink || op == DragOperationGeneric || op == DragOperationMove);
+    ASSERT(op == DragOperationCopy || op == DragOperationNone || op == DragOperationLink || op == (DragOperation)(DragOperationGeneric | DragOperationMove) || op == DragOperationEvery);
     return op;
 }
 
@@ -122,7 +121,7 @@ void Clipboard::setSourceOperation(DragOperation op)
 
 void Clipboard::setDestinationOperation(DragOperation op)
 {
-    ASSERT_ARG(op, op == DragOperationCopy || op == DragOperationNone || op == DragOperationLink || op == DragOperationGeneric || op == DragOperationMove);
+    ASSERT_ARG(op, op == DragOperationCopy || op == DragOperationNone || op == DragOperationLink || op == DragOperationGeneric || op == DragOperationMove || op == (DragOperation)(DragOperationGeneric | DragOperationMove));
     m_dropEffect = IEOpFromDragOp(op);
 }
 

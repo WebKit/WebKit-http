@@ -35,7 +35,6 @@
 #include "WebSocketHandshake.h"
 
 #include "AtomicString.h"
-#include "CString.h"
 #include "Cookie.h"
 #include "CookieJar.h"
 #include "Document.h"
@@ -45,6 +44,7 @@
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "StringBuilder.h"
+#include <wtf/text/CString.h>
 #include <wtf/StringExtras.h>
 #include <wtf/Vector.h>
 
@@ -85,6 +85,14 @@ static String resourceName(const KURL& url)
     ASSERT(!name.isEmpty());
     ASSERT(!name.contains(' '));
     return name;
+}
+
+static String trimConsoleMessage(const char* p, size_t len)
+{
+    String s = String(p, std::min<size_t>(len, 128));
+    if (len > 128)
+        s += "...";
+    return s;
 }
 
 WebSocketHandshake::WebSocketHandshake(const KURL& url, const String& protocol, ScriptExecutionContext* context)
@@ -130,11 +138,6 @@ bool WebSocketHandshake::secure() const
     return m_secure;
 }
 
-void WebSocketHandshake::setSecure(bool secure)
-{
-    m_secure = secure;
-}
-
 String WebSocketHandshake::clientOrigin() const
 {
     return m_context->securityOrigin()->toString();
@@ -158,6 +161,7 @@ String WebSocketHandshake::clientLocation() const
 
 CString WebSocketHandshake::clientHandshakeMessage() const
 {
+    // Keep the following consistent with clientHandshakeRequest().
     StringBuilder builder;
 
     builder.append("GET ");
@@ -167,11 +171,9 @@ CString WebSocketHandshake::clientHandshakeMessage() const
     builder.append("Connection: Upgrade\r\n");
     builder.append("Host: ");
     builder.append(m_url.host().lower());
-    if (m_url.port()) {
-        if ((!m_secure && m_url.port() != 80) || (m_secure && m_url.port() != 443)) {
-            builder.append(":");
-            builder.append(String::number(m_url.port()));
-        }
+    if (m_url.port() && ((!m_secure && m_url.port() != 80) || (m_secure && m_url.port() != 443))) {
+        builder.append(":");
+        builder.append(String::number(m_url.port()));
     }
     builder.append("\r\n");
     builder.append("Origin: ");
@@ -182,9 +184,8 @@ CString WebSocketHandshake::clientHandshakeMessage() const
         builder.append(m_clientProtocol);
         builder.append("\r\n");
     }
+
     KURL url = httpURLForAuthenticationAndCookies();
-    // FIXME: set authentication information or cookies for url.
-    // Set "Authorization: <credentials>" if authentication information exists for url.
     if (m_context->isDocument()) {
         Document* document = static_cast<Document*>(m_context);
         String cookie = cookieRequestHeaderFieldValue(document, url);
@@ -195,8 +196,26 @@ CString WebSocketHandshake::clientHandshakeMessage() const
         }
         // Set "Cookie2: <cookie>" if cookies 2 exists for url?
     }
+
     builder.append("\r\n");
     return builder.toString().utf8();
+}
+
+WebSocketHandshakeRequest WebSocketHandshake::clientHandshakeRequest() const
+{
+    // Keep the following consistent with clientHandshakeMessage().
+    WebSocketHandshakeRequest request(m_url, clientOrigin(), m_clientProtocol);
+
+    KURL url = httpURLForAuthenticationAndCookies();
+    if (m_context->isDocument()) {
+        Document* document = static_cast<Document*>(m_context);
+        String cookie = cookieRequestHeaderFieldValue(document, url);
+        if (!cookie.isEmpty())
+            request.addExtraHeaderField("Cookie", cookie);
+        // Set "Cookie2: <cookie>" if cookies 2 exists for url?
+    }
+
+    return request;
 }
 
 void WebSocketHandshake::reset()
@@ -208,6 +227,11 @@ void WebSocketHandshake::reset()
     m_wsProtocol = String();
     m_setCookie = String();
     m_setCookie2 = String();
+}
+
+void WebSocketHandshake::clearScriptExecutionContext()
+{
+    m_context = 0;
 }
 
 int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
@@ -222,27 +246,27 @@ int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
     else {
         const String& code = extractResponseCode(header, len);
         if (code.isNull()) {
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Short server handshake: " + String(header, len), 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Short server handshake: " + trimConsoleMessage(header, len), 0, clientOrigin());
             return -1;
         }
         if (code.isEmpty()) {
             m_mode = Failed;
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "No response code found: " + String(header, len), 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "No response code found: " + trimConsoleMessage(header, len), 0, clientOrigin());
             return len;
         }
         LOG(Network, "response code: %s", code.utf8().data());
         if (code == "401") {
             m_mode = Failed;
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Authentication required, but not implemented yet.", 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Authentication required, but not implemented yet.", 0, clientOrigin());
             return len;
         } else {
             m_mode = Failed;
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected response code:" + code, 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected response code:" + code, 0, clientOrigin());
             return len;
         }
     }
     const char* p = header + sizeof(webSocketServerHandshakeHeader) - 1;
-    const char* end = header + len + 1;
+    const char* end = header + len;
 
     if (m_mode == Normal) {
         size_t headerSize = end - p;
@@ -252,7 +276,7 @@ int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
         }
         if (memcmp(p, webSocketUpgradeHeader, sizeof(webSocketUpgradeHeader) - 1)) {
             m_mode = Failed;
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Bad Upgrade header: " + String(p, end - p), 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Bad Upgrade header: " + trimConsoleMessage(p, end - p), 0, clientOrigin());
             return p - header + sizeof(webSocketUpgradeHeader) - 1;
         }
         p += sizeof(webSocketUpgradeHeader) - 1;
@@ -264,7 +288,7 @@ int WebSocketHandshake::readServerHandshake(const char* header, size_t len)
         }
         if (memcmp(p, webSocketConnectionHeader, sizeof(webSocketConnectionHeader) - 1)) {
             m_mode = Failed;
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Bad Connection header: " + String(p, end - p), 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Bad Connection header: " + trimConsoleMessage(p, end - p), 0, clientOrigin());
             return p - header + sizeof(webSocketConnectionHeader) - 1;
         }
         p += sizeof(webSocketConnectionHeader) - 1;
@@ -375,13 +399,13 @@ const char* WebSocketHandshake::readHTTPHeaders(const char* start, const char* e
                 if (name.isEmpty()) {
                     if (p + 1 < end && *(p + 1) == '\n')
                         return p + 2;
-                    m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "CR doesn't follow LF at " + String(p, end - p), 0, clientOrigin());
+                    m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "CR doesn't follow LF at " + trimConsoleMessage(p, end - p), 0, clientOrigin());
                     return 0;
                 }
-                m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected CR in name at " + String(p, end - p), 0, clientOrigin());
+                m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected CR in name at " + trimConsoleMessage(p, end - p), 0, clientOrigin());
                 return 0;
             case '\n':
-                m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected LF in name at " + String(p, end - p), 0, clientOrigin());
+                m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected LF in name at " + trimConsoleMessage(p, end - p), 0, clientOrigin());
                 return 0;
             case ':':
                 break;
@@ -405,7 +429,7 @@ const char* WebSocketHandshake::readHTTPHeaders(const char* start, const char* e
             case '\r':
                 break;
             case '\n':
-                m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected LF in value at " + String(p, end - p), 0, clientOrigin());
+                m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Unexpected LF in value at " + trimConsoleMessage(p, end - p), 0, clientOrigin());
                 return 0;
             default:
                 value.append(*p);
@@ -416,7 +440,7 @@ const char* WebSocketHandshake::readHTTPHeaders(const char* start, const char* e
             }
         }
         if (p >= end || *p != '\n') {
-            m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "CR doesn't follow LF after value at " + String(p, end - p), 0, clientOrigin());
+            m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "CR doesn't follow LF after value at " + trimConsoleMessage(p, end - p), 0, clientOrigin());
             return 0;
         }
         AtomicString nameStr(String::fromUTF8(name.data(), name.size()));
@@ -459,24 +483,24 @@ void WebSocketHandshake::checkResponseHeaders()
     ASSERT(m_mode == Normal);
     m_mode = Failed;
     if (m_wsOrigin.isNull()) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: 'websocket-origin' header is missing", 0, clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: 'websocket-origin' header is missing", 0, clientOrigin());
         return;
     }
     if (m_wsLocation.isNull()) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: 'websocket-location' header is missing", 0, clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: 'websocket-location' header is missing", 0, clientOrigin());
         return;
     }
 
     if (clientOrigin() != m_wsOrigin) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: origin mismatch: " + clientOrigin() + " != " + m_wsOrigin, 0, clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: origin mismatch: " + clientOrigin() + " != " + m_wsOrigin, 0, clientOrigin());
         return;
     }
     if (clientLocation() != m_wsLocation) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: location mismatch: " + clientLocation() + " != " + m_wsLocation, 0, clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: location mismatch: " + clientLocation() + " != " + m_wsLocation, 0, clientOrigin());
         return;
     }
     if (!m_clientProtocol.isEmpty() && m_clientProtocol != m_wsProtocol) {
-        m_context->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: protocol mismatch: " + m_clientProtocol + " != " + m_wsProtocol, 0, clientOrigin());
+        m_context->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Error during WebSocket handshake: protocol mismatch: " + m_clientProtocol + " != " + m_wsProtocol, 0, clientOrigin());
         return;
     }
     m_mode = Connected;

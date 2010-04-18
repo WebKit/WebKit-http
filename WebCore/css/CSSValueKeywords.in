@@ -582,6 +582,7 @@ menulist-button
 menulist-text
 menulist-textfield
 outer-spin-button
+progress-bar
 slider-horizontal
 slider-vertical
 sliderthumb-horizontal
@@ -637,6 +638,13 @@ lines
 # CSS_PROP__WEBKIT_ANIMATION_DIRECTION
 #
 # alternate
+
+#
+# CSS_PROP__WEBKIT_ANIMATION_FILL_MODE
+#
+# forwards
+# backwards
+# both
 
 #
 # CSS_PROP__WEBKIT_ANIMATION_ITERATION_COUNT
@@ -701,3 +709,9 @@ geometricPrecision
 # -webkit-color-correction
 #default
 sRGB
+
+# (-webkit-view-mode:) media feature:
+mini
+floating
+application
+fullscreen

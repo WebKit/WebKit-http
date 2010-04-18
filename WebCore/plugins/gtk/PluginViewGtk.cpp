@@ -2,6 +2,7 @@
  * Copyright (C) 2006, 2007 Apple Inc.  All rights reserved.
  * Copyright (C) 2008 Collabora Ltd. All rights reserved.
  * Copyright (C) 2009, 2010 Kakai, Inc. <brian@kakai.com>
+ * Copyright (C) 2010 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -129,31 +130,22 @@ void PluginView::updatePluginWidget()
     m_clipRect = windowClipRect();
     m_clipRect.move(-m_windowRect.x(), -m_windowRect.y());
 
-    if (platformPluginWidget() && (m_windowRect != oldWindowRect || m_clipRect != oldClipRect))
-        setNPWindowIfNeeded();
+    if (m_windowRect == oldWindowRect && m_clipRect == oldClipRect)
+        return;
 
 #if defined(XP_UNIX)
-    if (!m_isWindowed && m_windowRect.size() != oldWindowRect.size()) {
+    if (!m_isWindowed) {
         if (m_drawable)
             XFreePixmap(GDK_DISPLAY(), m_drawable);
-
+            
         m_drawable = XCreatePixmap(GDK_DISPLAY(), getRootWindow(m_parentFrame.get()),
                                    m_windowRect.width(), m_windowRect.height(),
                                    ((NPSetWindowCallbackStruct*)m_npWindow.ws_info)->depth);
         XSync(GDK_DISPLAY(), False); // make sure that the server knows about the Drawable
     }
-
-    // do not call setNPWindowIfNeeded() immediately, will be called on paint()
-    m_hasPendingGeometryChange = true;
 #endif
 
-    // In order to move/resize the plugin window at the same time as the
-    // rest of frame during e.g. scrolling, we set the window geometry
-    // in the paint() function, but as paint() isn't called when the
-    // plugin window is outside the frame which can be caused by a
-    // scroll, we need to move/resize immediately.
-    if (!m_windowRect.intersects(frameView->frameRect()))
-        setNPWindowIfNeeded();
+    setNPWindowIfNeeded();
 }
 
 void PluginView::setFocus()
@@ -507,12 +499,6 @@ void PluginView::setNPWindowIfNeeded()
     if (m_isWindowed && !platformPluginWidget())
         return;
 
-#if defined(XP_UNIX)
-    if (!m_hasPendingGeometryChange)
-        return;
-    m_hasPendingGeometryChange = false;
-#endif
-
     if (m_isWindowed) {
         m_npWindow.x = m_windowRect.x();
         m_npWindow.y = m_windowRect.y();
@@ -601,10 +587,8 @@ NPError PluginView::handlePostReadFile(Vector<char>& buffer, uint32 len, const c
     return NPERR_NO_ERROR;
 }
 
-NPError PluginView::getValueStatic(NPNVariable variable, void* value)
+bool PluginView::platformGetValueStatic(NPNVariable variable, void* value, NPError* result)
 {
-    LOG(Plugins, "PluginView::getValueStatic(%s)", prettyNameForNPNVariable(variable).data());
-
     switch (variable) {
     case NPNVToolkit:
 #if defined(XP_UNIX)
@@ -612,7 +596,8 @@ NPError PluginView::getValueStatic(NPNVariable variable, void* value)
 #else
         *static_cast<uint32*>(value) = 0;
 #endif
-        return NPERR_NO_ERROR;
+        *result = NPERR_NO_ERROR;
+        return true;
 
     case NPNVSupportsXEmbedBool:
 #if defined(XP_UNIX)
@@ -620,11 +605,13 @@ NPError PluginView::getValueStatic(NPNVariable variable, void* value)
 #else
         *static_cast<NPBool*>(value) = false;
 #endif
-        return NPERR_NO_ERROR;
+        *result = NPERR_NO_ERROR;
+        return true;
 
     case NPNVjavascriptEnabledBool:
         *static_cast<NPBool*>(value) = true;
-        return NPERR_NO_ERROR;
+        *result = NPERR_NO_ERROR;
+        return true;
 
     case NPNVSupportsWindowless:
 #if defined(XP_UNIX)
@@ -632,17 +619,16 @@ NPError PluginView::getValueStatic(NPNVariable variable, void* value)
 #else
         *static_cast<NPBool*>(value) = false;
 #endif
-        return NPERR_NO_ERROR;
+        *result = NPERR_NO_ERROR;
+        return true;
 
     default:
-        return NPERR_GENERIC_ERROR;
+        return false;
     }
 }
 
-NPError PluginView::getValue(NPNVariable variable, void* value)
+bool PluginView::platformGetValue(NPNVariable variable, void* value, NPError* result)
 {
-    LOG(Plugins, "PluginView::getValue(%s)", prettyNameForNPNVariable(variable).data());
-
     switch (variable) {
     case NPNVxDisplay:
 #if defined(XP_UNIX)
@@ -650,56 +636,21 @@ NPError PluginView::getValue(NPNVariable variable, void* value)
             *(void **)value = (void *)GDK_DISPLAY();
         else
             *(void **)value = (void *)GTK_XTBIN(platformPluginWidget())->xtclient.xtdisplay;
-        return NPERR_NO_ERROR;
+        *result = NPERR_NO_ERROR;
 #else
-        return NPERR_GENERIC_ERROR;
+        *result = NPERR_GENERIC_ERROR;
 #endif
+        return true;
 
 #if defined(XP_UNIX)
     case NPNVxtAppContext:
         if (!m_needsXEmbed) {
             *(void **)value = XtDisplayToApplicationContext (GTK_XTBIN(platformPluginWidget())->xtclient.xtdisplay);
 
-            return NPERR_NO_ERROR;
+            *result = NPERR_NO_ERROR;
         } else
-            return NPERR_GENERIC_ERROR;
-#endif
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-        case NPNVWindowNPObject: {
-            if (m_isJavaScriptPaused)
-                return NPERR_GENERIC_ERROR;
-
-            NPObject* windowScriptObject = m_parentFrame->script()->windowScriptNPObject();
-
-            // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugin/npruntime.html>
-            if (windowScriptObject)
-                _NPN_RetainObject(windowScriptObject);
-
-            void** v = (void**)value;
-            *v = windowScriptObject;
-            
-            return NPERR_NO_ERROR;
-        }
-
-        case NPNVPluginElementNPObject: {
-            if (m_isJavaScriptPaused)
-                return NPERR_GENERIC_ERROR;
-
-            NPObject* pluginScriptObject = 0;
-
-            if (m_element->hasTagName(appletTag) || m_element->hasTagName(embedTag) || m_element->hasTagName(objectTag))
-                pluginScriptObject = static_cast<HTMLPlugInElement*>(m_element)->getNPObject();
-
-            // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugin/npruntime.html>
-            if (pluginScriptObject)
-                _NPN_RetainObject(pluginScriptObject);
-
-            void** v = (void**)value;
-            *v = pluginScriptObject;
-
-            return NPERR_NO_ERROR;
-        }
+            *result = NPERR_GENERIC_ERROR;
+        return true;
 #endif
 
         case NPNVnetscapeWindow: {
@@ -711,11 +662,12 @@ NPError PluginView::getValue(NPNVariable variable, void* value)
             HGDIOBJ* w = reinterpret_cast<HGDIOBJ*>(value);
             *w = GDK_WINDOW_HWND(m_parentFrame->view()->hostWindow()->platformPageClient()->window);
 #endif
-            return NPERR_NO_ERROR;
+            *result = NPERR_NO_ERROR;
+            return true;
         }
 
-        default:
-            return getValueStatic(variable, value);
+    default:
+        return false;
     }
 }
 
@@ -768,12 +720,6 @@ static Display* getPluginDisplay()
 #endif
 }
 
-static gboolean
-plug_removed_cb(GtkSocket* socket, gpointer)
-{
-    return TRUE;
-}
-
 #if defined(XP_UNIX)
 static void getVisualAndColormap(int depth, Visual** visual, Colormap* colormap)
 {
@@ -812,6 +758,27 @@ static void getVisualAndColormap(int depth, Visual** visual, Colormap* colormap)
 }
 #endif
 
+static gboolean plugRemovedCallback(GtkSocket* socket, gpointer)
+{
+    return TRUE;
+}
+
+static void plugAddedCallback(GtkSocket* socket, PluginView* view)
+{
+    if (!socket || !view)
+        return;
+
+    // FIXME: Java Plugins do not seem to draw themselves properly the
+    // first time unless we do a size-allocate after they have done
+    // the plug operation on their side, which in general does not
+    // happen since we do size-allocates before setting the
+    // NPWindow. Apply this workaround until we figure out a better
+    // solution, if any.
+    IntRect rect = view->frameRect();
+    GtkAllocation allocation = { rect.x(), rect.y(), rect.width(), rect.height() };
+    gtk_widget_size_allocate(GTK_WIDGET(socket), &allocation);
+}
+
 bool PluginView::platformStart()
 {
     ASSERT(m_isStarted);
@@ -828,15 +795,25 @@ bool PluginView::platformStart()
 
     if (m_isWindowed) {
 #if defined(XP_UNIX)
+        GtkWidget* pageClient = m_parentFrame->view()->hostWindow()->platformPageClient();
+
         if (m_needsXEmbed) {
+            // If our parent is not anchored the startup process will
+            // fail miserably for XEmbed plugins a bit later on when
+            // we try to get the ID of our window (since realize will
+            // fail), so let's just abort here.
+            if (!gtk_widget_get_parent(pageClient))
+                return false;
+
             setPlatformWidget(gtk_socket_new());
-            gtk_container_add(GTK_CONTAINER(m_parentFrame->view()->hostWindow()->platformPageClient()), platformPluginWidget());
-            g_signal_connect(platformPluginWidget(), "plug_removed", G_CALLBACK(plug_removed_cb), NULL);
+            gtk_container_add(GTK_CONTAINER(pageClient), platformPluginWidget());
+            g_signal_connect(platformPluginWidget(), "plug-added", G_CALLBACK(plugAddedCallback), this);
+            g_signal_connect(platformPluginWidget(), "plug-removed", G_CALLBACK(plugRemovedCallback), NULL);
         } else
-            setPlatformWidget(gtk_xtbin_new(m_parentFrame->view()->hostWindow()->platformPageClient()->window, 0));
+            setPlatformWidget(gtk_xtbin_new(pageClient->window, 0));
 #else
         setPlatformWidget(gtk_socket_new());
-        gtk_container_add(GTK_CONTAINER(m_parentFrame->view()->hostWindow()->platformPageClient()), platformPluginWidget());
+        gtk_container_add(GTK_CONTAINER(pageClient), platformPluginWidget());
 #endif
     } else {
         setPlatformWidget(0);
@@ -909,10 +886,8 @@ bool PluginView::platformStart()
 #endif
 
     // TODO remove in favor of null events, like mac port?
-    if (!(m_plugin->quirks().contains(PluginQuirkDeferFirstSetWindowCall))) {
+    if (!(m_plugin->quirks().contains(PluginQuirkDeferFirstSetWindowCall)))
         updatePluginWidget(); // was: setNPWindowIfNeeded(), but this doesn't produce 0x0 rects at first go
-        setNPWindowIfNeeded();
-    }
 
     return true;
 }

@@ -58,10 +58,6 @@ WebInspector.ElementsPanel = function()
         this.panel.updateProperties();
         this.panel.updateEventListeners();
 
-        if (InspectorBackend.searchingForNode()) {
-            InspectorBackend.toggleNodeSearch();
-            this.panel.nodeSearchButton.toggled = false;
-        }
         if (this._focusedDOMNode)
             InjectedScriptAccess.get(this._focusedDOMNode.injectedScriptId).addInspectedNode(this._focusedDOMNode.id, function() {});
     };
@@ -102,10 +98,8 @@ WebInspector.ElementsPanel = function()
     this.sidebarResizeElement.className = "sidebar-resizer-vertical";
     this.sidebarResizeElement.addEventListener("mousedown", this.rightSidebarResizerDragStart.bind(this), false);
 
-    this.nodeSearchButton = new WebInspector.StatusBarButton(WebInspector.UIString("Select an element in the page to inspect it."), "node-search-status-bar-item");
-    this.nodeSearchButton.addEventListener("click", this._nodeSearchButtonClicked.bind(this), false);
-
-    this.searchingForNode = false;
+    this._nodeSearchButton = new WebInspector.StatusBarButton(WebInspector.UIString("Select an element in the page to inspect it."), "node-search-status-bar-item");
+    this._nodeSearchButton.addEventListener("click", this._nodeSearchButtonClicked.bind(this), false);
 
     this.element.appendChild(this.contentElement);
     this.element.appendChild(this.sidebarElement);
@@ -126,7 +120,7 @@ WebInspector.ElementsPanel.prototype = {
 
     get statusBarItems()
     {
-        return [this.nodeSearchButton.element, this.crumbsElement];
+        return [this._nodeSearchButton.element, this.crumbsElement];
     },
 
     get defaultFocusedElement()
@@ -154,11 +148,7 @@ WebInspector.ElementsPanel.prototype = {
         WebInspector.Panel.prototype.hide.call(this);
 
         WebInspector.hoveredDOMNode = null;
-
-        if (InspectorBackend.searchingForNode()) {
-            InspectorBackend.toggleNodeSearch();
-            this.nodeSearchButton.toggled = false;
-        }
+        InspectorBackend.disableSearchingForNode();
     },
 
     resize: function()
@@ -184,11 +174,6 @@ WebInspector.ElementsPanel.prototype = {
         this.focusedDOMNode = null;
 
         WebInspector.hoveredDOMNode = null;
-
-        if (InspectorBackend.searchingForNode()) {
-            InspectorBackend.toggleNodeSearch();
-            this.nodeSearchButton.toggled = false;
-        }
 
         this.recentlyModifiedNodes = [];
 
@@ -268,7 +253,17 @@ WebInspector.ElementsPanel.prototype = {
         this._matchesCountUpdateTimeout = null;
         this._searchQuery = query;
 
-        InjectedScriptAccess.getDefault().performSearch(whitespaceTrimmedQuery, function() {});
+        InjectedScriptAccess.getDefault().performSearch(whitespaceTrimmedQuery, false, function() {});
+    },
+
+    searchingForNodeWasEnabled: function()
+    {
+        this._nodeSearchButton.toggled = true;
+    },
+
+    searchingForNodeWasDisabled: function()
+    {
+        this._nodeSearchButton.toggled = false;
     },
 
     _updateMatchesCount: function()
@@ -678,47 +673,7 @@ WebInspector.ElementsPanel.prototype = {
             var crumbTitle;
             switch (current.nodeType) {
                 case Node.ELEMENT_NODE:
-                    crumbTitle = current.nodeName.toLowerCase();
-
-                    var nameElement = document.createElement("span");
-                    nameElement.textContent = crumbTitle;
-                    crumb.appendChild(nameElement);
-
-                    var idAttribute = current.getAttribute("id");
-                    if (idAttribute) {
-                        var idElement = document.createElement("span");
-                        crumb.appendChild(idElement);
-
-                        var part = "#" + idAttribute;
-                        crumbTitle += part;
-                        idElement.appendChild(document.createTextNode(part));
-
-                        // Mark the name as extra, since the ID is more important.
-                        nameElement.className = "extra";
-                    }
-
-                    var classAttribute = current.getAttribute("class");
-                    if (classAttribute) {
-                        var classes = classAttribute.split(/\s+/);
-                        var foundClasses = {};
-
-                        if (classes.length) {
-                            var classesElement = document.createElement("span");
-                            classesElement.className = "extra";
-                            crumb.appendChild(classesElement);
-
-                            for (var i = 0; i < classes.length; ++i) {
-                                var className = classes[i];
-                                if (className && !(className in foundClasses)) {
-                                    var part = "." + className;
-                                    crumbTitle += part;
-                                    classesElement.appendChild(document.createTextNode(part));
-                                    foundClasses[className] = true;
-                                }
-                            }
-                        }
-                    }
-
+                    this.decorateNodeLabel(current, crumb);
                     break;
 
                 case Node.TEXT_NODE:
@@ -737,16 +692,15 @@ WebInspector.ElementsPanel.prototype = {
                     break;
 
                 default:
-                    crumbTitle = current.nodeName.toLowerCase();
+                    crumbTitle = this.treeOutline.nodeNameToCorrectCase(current.nodeName);
             }
 
             if (!crumb.childNodes.length) {
                 var nameElement = document.createElement("span");
                 nameElement.textContent = crumbTitle;
                 crumb.appendChild(nameElement);
+                crumb.title = crumbTitle;
             }
-
-            crumb.title = crumbTitle;
 
             if (foundRoot)
                 crumb.addStyleClass("dimmed");
@@ -762,6 +716,51 @@ WebInspector.ElementsPanel.prototype = {
             crumbs.lastChild.addStyleClass("start");
 
         this.updateBreadcrumbSizes();
+    },
+
+    decorateNodeLabel: function(node, parentElement)
+    {
+        var title = this.treeOutline.nodeNameToCorrectCase(node.nodeName);
+
+        var nameElement = document.createElement("span");
+        nameElement.textContent = title;
+        parentElement.appendChild(nameElement);
+
+        var idAttribute = node.getAttribute("id");
+        if (idAttribute) {
+            var idElement = document.createElement("span");
+            parentElement.appendChild(idElement);
+
+            var part = "#" + idAttribute;
+            title += part;
+            idElement.appendChild(document.createTextNode(part));
+
+            // Mark the name as extra, since the ID is more important.
+            nameElement.className = "extra";
+        }
+
+        var classAttribute = node.getAttribute("class");
+        if (classAttribute) {
+            var classes = classAttribute.split(/\s+/);
+            var foundClasses = {};
+
+            if (classes.length) {
+                var classesElement = document.createElement("span");
+                classesElement.className = "extra";
+                parentElement.appendChild(classesElement);
+
+                for (var i = 0; i < classes.length; ++i) {
+                    var className = classes[i];
+                    if (className && !(className in foundClasses)) {
+                        var part = "." + className;
+                        title += part;
+                        classesElement.appendChild(document.createTextNode(part));
+                        foundClasses[className] = true;
+                    }
+                }
+            }
+        }
+        parentElement.title = title;
     },
 
     updateBreadcrumbSizes: function(focusedCrumb)
@@ -1108,9 +1107,10 @@ WebInspector.ElementsPanel.prototype = {
 
     _nodeSearchButtonClicked: function(event)
     {
-        InspectorBackend.toggleNodeSearch();
-
-        this.nodeSearchButton.toggled = InspectorBackend.searchingForNode();
+        if (!this._nodeSearchButton.toggled)
+            InspectorBackend.enableSearchingForNode();
+        else
+            InspectorBackend.disableSearchingForNode();
     }
 }
 

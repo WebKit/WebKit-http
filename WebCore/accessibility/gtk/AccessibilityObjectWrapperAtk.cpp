@@ -42,7 +42,6 @@
 #include "AccessibilityTableColumn.h"
 #include "AccessibilityTableRow.h"
 #include "AtomicString.h"
-#include "CString.h"
 #include "Document.h"
 #include "DocumentType.h"
 #include "Editor.h"
@@ -57,6 +56,7 @@
 #include "NotImplemented.h"
 #include "RenderText.h"
 #include "TextEncoding.h"
+#include <wtf/text/CString.h>
 
 #include <atk/atk.h>
 #include <glib.h>
@@ -996,8 +996,13 @@ static gint webkit_accessible_text_get_caret_offset(AtkText* text)
     // coreObject is the unignored object whose offset the caller is requesting.
     // focusedObject is the object with the caret. It is likely ignored -- unless it's a link.
     AccessibilityObject* coreObject = core(text);
-    RenderObject* focusedNode = coreObject->selection().end().node()->renderer();
-    AccessibilityObject* focusedObject = coreObject->document()->axObjectCache()->getOrCreate(focusedNode);
+    Node* focusedNode = coreObject->selection().end().node();
+
+    if (!focusedNode)
+        return 0;
+
+    RenderObject* focusedRenderer = focusedNode->renderer();
+    AccessibilityObject* focusedObject = coreObject->document()->axObjectCache()->getOrCreate(focusedRenderer);
 
     int offset;
     // Don't ignore links if the offset is being requested for a link.
@@ -1563,7 +1568,7 @@ static const gchar* webkit_accessible_document_get_locale(AtkDocument* document)
 {
 
     // TODO: Should we fall back on lang xml:lang when the following comes up empty?
-    String language = static_cast<AccessibilityRenderObject*>(core(document))->language();
+    String language = core(document)->language();
     if (!language.isEmpty())
         return returnString(language);
 
@@ -1656,7 +1661,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
             interfaceMask |= 1 << WAI_TEXT;
             if (!coreObject->isReadOnly())
                 interfaceMask |= 1 << WAI_EDITABLE_TEXT;
-        } else if (static_cast<AccessibilityRenderObject*>(coreObject)->renderer()->childrenInline())
+        } else if (role != TableRole && static_cast<AccessibilityRenderObject*>(coreObject)->renderer()->childrenInline())
             interfaceMask |= 1 << WAI_TEXT;
 
     // Image

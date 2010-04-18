@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PluginView.h"
 
+#include "Bridge.h"
+
 using namespace WTF;
 
 namespace WebCore {
@@ -62,20 +64,25 @@ void PluginView::setNPWindowRect(const IntRect&)
 {
 }
 
+PassRefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
+{
+	return 0;
+}
+
 NPError PluginView::handlePostReadFile(Vector<char>&, uint32, const char*)
 {
     return 0;
 }
 
-NPError PluginView::getValue(NPNVariable, void*)
+bool PluginView::platformGetValue(NPNVariable, void*, NPError*)
 {
-    return 0;
+    return false;
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-NPError PluginView::getValueStatic(NPNVariable, void*)
+bool PluginView::platformGetValueStatic(NPNVariable, void*, NPError*)
 {
-    return 0;
+    return false;
 }
 #endif
 
@@ -117,6 +124,20 @@ void PluginView::halt()
 }
 
 void PluginView::restart()
+{
+}
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+void PluginView::keepAlive(NPP)
+{
+}
+#endif
+
+void PluginView::privateBrowsingStateChanged(bool)
+{
+}
+
+void PluginView::setJavaScriptPaused(bool)
 {
 }
 

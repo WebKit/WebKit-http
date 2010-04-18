@@ -27,9 +27,9 @@
 #ifndef ResourceResponse_h
 #define ResourceResponse_h
 
-#include "CString.h"
 #include "NotImplemented.h"
 #include "ResourceResponseBase.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -39,6 +39,7 @@ namespace WebCore {
             : m_isContentFiltered(false)
             , m_appCacheID(0)
             , m_wasFetchedViaSPDY(false)
+            , m_isMultipartPayload(false)
         {
         }
 
@@ -47,6 +48,7 @@ namespace WebCore {
             , m_isContentFiltered(false)
             , m_appCacheID(0)
             , m_wasFetchedViaSPDY(false)
+            , m_isMultipartPayload(false)
         {
         }
 
@@ -80,6 +82,12 @@ namespace WebCore {
             m_wasFetchedViaSPDY = value;
         }
 
+        bool isMultipartPayload() const { return m_isMultipartPayload; }
+        void setIsMultipartPayload(bool value)
+        {
+            m_isMultipartPayload = value;
+        }
+
     private:
         friend class ResourceResponseBase;
 
@@ -106,6 +114,9 @@ namespace WebCore {
         KURL m_appCacheManifestURL;
 
         bool m_wasFetchedViaSPDY;
+
+        // Set to true if this is part of a multipart response.
+        bool m_isMultipartPayload;
     };
 
 } // namespace WebCore

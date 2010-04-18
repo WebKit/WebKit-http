@@ -27,6 +27,8 @@
 #include "runtime_method.h"
 
 #include "JSDOMBinding.h"
+#include "JSHTMLElement.h"
+#include "JSPluginElementFunctions.h"
 #include "runtime_object.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
@@ -39,7 +41,7 @@ using namespace Bindings;
 
 ASSERT_CLASS_FITS_IN_CELL(RuntimeMethod);
 
-const ClassInfo RuntimeMethod::s_info = { "RuntimeMethod", 0, 0, 0 };
+const ClassInfo RuntimeMethod::s_info = { "RuntimeMethod", &InternalFunction::info, 0, 0 };
 
 RuntimeMethod::RuntimeMethod(ExecState* exec, const Identifier& ident, Bindings::MethodList& m)
     // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object
@@ -50,9 +52,9 @@ RuntimeMethod::RuntimeMethod(ExecState* exec, const Identifier& ident, Bindings:
 {
 }
 
-JSValue RuntimeMethod::lengthGetter(ExecState* exec, const Identifier&, const PropertySlot& slot)
+JSValue RuntimeMethod::lengthGetter(ExecState* exec, JSValue slotBase, const Identifier&)
 {
-    RuntimeMethod* thisObj = static_cast<RuntimeMethod*>(asObject(slot.slotBase()));
+    RuntimeMethod* thisObj = static_cast<RuntimeMethod*>(asObject(slotBase));
 
     // Ick!  There may be more than one method with this name.  Arbitrarily
     // just pick the first method.  The fundamental problem here is that 
@@ -66,7 +68,7 @@ JSValue RuntimeMethod::lengthGetter(ExecState* exec, const Identifier&, const Pr
 bool RuntimeMethod::getOwnPropertySlot(ExecState* exec, const Identifier& propertyName, PropertySlot &slot)
 {
     if (propertyName == exec->propertyNames().length) {
-        slot.setCustom(this, lengthGetter);
+        slot.setCacheableCustom(this, lengthGetter);
         return true;
     }
     
@@ -91,27 +93,27 @@ static JSValue JSC_HOST_CALL callRuntimeMethod(ExecState* exec, JSObject* functi
 
     if (method->methods()->isEmpty())
         return jsUndefined();
-    
-    RuntimeObjectImp* imp;
 
-    if (thisValue.inherits(&RuntimeObjectImp::s_info)) {
-        imp = static_cast<RuntimeObjectImp*>(asObject(thisValue));
+    RefPtr<Instance> instance;
+
+    if (thisValue.inherits(&RuntimeObject::s_info)) {
+        RuntimeObject* runtimeObject = static_cast<RuntimeObject*>(asObject(thisValue));
+        instance = runtimeObject->getInternalInstance();
+        if (!instance) 
+            return RuntimeObject::throwInvalidAccessError(exec);
     } else {
-        // If thisObj is the DOM object for a plugin, get the corresponding
-        // runtime object from the DOM object.
-        JSValue value = thisValue.get(exec, Identifier(exec, "__apple_runtime_object"));
-        if (value.inherits(&RuntimeObjectImp::s_info))    
-            imp = static_cast<RuntimeObjectImp*>(asObject(value));
-        else
+        // Calling a runtime object of a plugin element?
+        if (thisValue.inherits(&JSHTMLElement::s_info)) {
+            HTMLElement* element = static_cast<JSHTMLElement*>(asObject(thisValue))->impl();
+            instance = pluginInstance(element);
+        }
+        if (!instance)
             return throwError(exec, TypeError);
     }
+    ASSERT(instance);
 
-    RefPtr<Instance> instance = imp->getInternalInstance();
-    if (!instance) 
-        return RuntimeObjectImp::throwInvalidAccessError(exec);
-        
     instance->begin();
-    JSValue result = instance->invokeMethod(exec, *method->methods(), args);
+    JSValue result = instance->invokeMethod(exec, method, args);
     instance->end();
     return result;
 }

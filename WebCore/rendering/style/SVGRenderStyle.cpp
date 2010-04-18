@@ -1,6 +1,7 @@
 /*
     Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
                   2004, 2005 Rob Buis <buis@kde.org>
+    Copyright (C) Research In Motion Limited 2010. All rights reserved.
 
     Based on khtml code by:
     Copyright (C) 1999 Antti Koivisto (koivisto@kde.org)
@@ -25,6 +26,7 @@
 */
 
 #include "config.h"
+
 #if ENABLE(SVG)
 #include "SVGRenderStyle.h"
 
@@ -32,8 +34,6 @@
 #include "CSSValueList.h"
 #include "IntRect.h"
 #include "NodeRenderStyle.h"
-#include "RenderObject.h"
-#include "RenderStyle.h"
 #include "SVGStyledElement.h"
 
 using namespace std;
@@ -48,11 +48,10 @@ SVGRenderStyle::SVGRenderStyle()
     stroke = defaultStyle->stroke;
     text = defaultStyle->text;
     stops = defaultStyle->stops;
-    clip = defaultStyle->clip;
-    mask = defaultStyle->mask;
     misc = defaultStyle->misc;
-    markers = defaultStyle->markers;
     shadowSVG = defaultStyle->shadowSVG;
+    inheritedResources = defaultStyle->inheritedResources;
+    resources = defaultStyle->resources;
 
     setBitDefaults();
 }
@@ -65,11 +64,10 @@ SVGRenderStyle::SVGRenderStyle(CreateDefaultType)
     stroke.init();
     text.init();
     stops.init();
-    clip.init();
-    mask.init();
     misc.init();
-    markers.init();
     shadowSVG.init();
+    inheritedResources.init();
+    resources.init();
 }
 
 SVGRenderStyle::SVGRenderStyle(const SVGRenderStyle& other)
@@ -79,11 +77,10 @@ SVGRenderStyle::SVGRenderStyle(const SVGRenderStyle& other)
     stroke = other.stroke;
     text = other.text;
     stops = other.stops;
-    clip = other.clip;
-    mask = other.mask;
     misc = other.misc;
-    markers = other.markers;
     shadowSVG = other.shadowSVG;
+    inheritedResources = other.inheritedResources;
+    resources = other.resources;
 
     svg_inherited_flags = other.svg_inherited_flags;
     svg_noninherited_flags = other.svg_noninherited_flags;
@@ -93,22 +90,27 @@ SVGRenderStyle::~SVGRenderStyle()
 {
 }
 
-bool SVGRenderStyle::operator==(const SVGRenderStyle& o) const
+bool SVGRenderStyle::operator==(const SVGRenderStyle& other) const
 {
-    return (fill == o.fill && stroke == o.stroke && text == o.text &&
-        stops == o.stops && clip == o.clip && mask == o.mask &&
-        misc == o.misc && markers == o.markers && shadowSVG == o.shadowSVG &&
-        svg_inherited_flags == o.svg_inherited_flags &&
-        svg_noninherited_flags == o.svg_noninherited_flags);
+    return fill == other.fill
+        && stroke == other.stroke
+        && text == other.text
+        && stops == other.stops
+        && misc == other.misc
+        && shadowSVG == other.shadowSVG
+        && inheritedResources == other.inheritedResources
+        && resources == other.resources
+        && svg_inherited_flags == other.svg_inherited_flags
+        && svg_noninherited_flags == other.svg_noninherited_flags;
 }
 
 bool SVGRenderStyle::inheritedNotEqual(const SVGRenderStyle* other) const
 {
-    return (fill != other->fill
-            || stroke != other->stroke
-            || markers != other->markers
-            || text != other->text
-            || svg_inherited_flags != other->svg_inherited_flags);
+    return fill != other->fill
+        || stroke != other->stroke
+        || text != other->text
+        || inheritedResources != other->inheritedResources
+        || svg_inherited_flags != other->svg_inherited_flags;
 }
 
 void SVGRenderStyle::inheritFrom(const SVGRenderStyle* svgInheritParent)
@@ -118,8 +120,8 @@ void SVGRenderStyle::inheritFrom(const SVGRenderStyle* svgInheritParent)
 
     fill = svgInheritParent->fill;
     stroke = svgInheritParent->stroke;
-    markers = svgInheritParent->markers;
     text = svgInheritParent->text;
+    inheritedResources = svgInheritParent->inheritedResources;
 
     svg_inherited_flags = svgInheritParent->svg_inherited_flags;
 }
@@ -144,7 +146,6 @@ float SVGRenderStyle::cssPrimitiveToLength(const RenderObject* item, CSSValue* v
     return primitive->computeLengthFloat(const_cast<RenderStyle*>(item->style()), item->document()->documentElement()->renderStyle());
 }
 
-
 static void getSVGShadowExtent(ShadowData* shadow, int& top, int& right, int& bottom, int& left)
 {
     top = 0;
@@ -152,12 +153,12 @@ static void getSVGShadowExtent(ShadowData* shadow, int& top, int& right, int& bo
     bottom = 0;
     left = 0;
 
-    int blurAndSpread = shadow->blur + shadow->spread;
+    int blurAndSpread = shadow->blur() + shadow->spread();
 
-    top = min(top, shadow->y - blurAndSpread);
-    right = max(right, shadow->x + blurAndSpread);
-    bottom = max(bottom, shadow->y + blurAndSpread);
-    left = min(left, shadow->x - blurAndSpread);
+    top = min(top, shadow->y() - blurAndSpread);
+    right = max(right, shadow->x() + blurAndSpread);
+    bottom = max(bottom, shadow->y() + blurAndSpread);
+    left = min(left, shadow->x() - blurAndSpread);
 }
 
 void SVGRenderStyle::inflateForShadow(IntRect& repaintRect) const
@@ -197,5 +198,3 @@ void SVGRenderStyle::inflateForShadow(FloatRect& repaintRect) const
 }
 
 #endif // ENABLE(SVG)
-
-// vim:ts=4:noet

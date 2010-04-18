@@ -68,6 +68,12 @@ public:
     WEBKIT_API static void enableIndexedDatabase(bool);
     WEBKIT_API static bool isIndexedDatabaseEnabled();
 
+    WEBKIT_API static void enableWebGL(bool);
+    WEBKIT_API static bool isWebGLEnabled();
+
+    WEBKIT_API static void enablePushState(bool);
+    WEBKIT_API static bool isPushStateEnabled(bool);
+
 private:
     WebRuntimeFeatures();
 };

@@ -120,4 +120,20 @@ typedef enum {
 - (NSMutableDictionary *)_cacheabilityDictionary;
 
 - (BOOL)_allowsFollowingLink:(NSURL *)URL;
+
+// Sets whether the scrollbars, if any, should be shown inside the document's border 
+// (thus overlapping some content) or outside the webView's border (default behavior). 
+// Changing this flag changes the size of the contentView and maintains the size of the frameView.
+- (void)setAllowsScrollersToOverlapContent:(BOOL)flag;
+
+// Sets if the scrollbar is always hidden, regardless of other scrollbar visibility settings. 
+// This does not affect the scrollability of the document.
+- (void)setAlwaysHideHorizontalScroller:(BOOL)flag;
+- (void)setAlwaysHideVerticalScroller:(BOOL)flag;
+
+// Sets the name presented to accessibility clients for the web area object.
+- (void)setAccessibleName:(NSString *)name;
+
+- (NSString*)_layerTreeAsText;
+
 @end

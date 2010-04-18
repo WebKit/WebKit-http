@@ -20,6 +20,7 @@
 #include "config.h"
 #include "PainterOpenVG.h"
 
+#include "AffineTransform.h"
 #include "Color.h"
 #include "DashArray.h"
 #include "FloatPoint.h"
@@ -28,8 +29,8 @@
 #include "IntRect.h"
 #include "IntSize.h"
 #include "NotImplemented.h"
+#include "PlatformPathOpenVG.h"
 #include "SurfaceOpenVG.h"
-#include "TransformationMatrix.h"
 #include "VGUtils.h"
 
 #if PLATFORM(EGL)
@@ -43,12 +44,9 @@
 
 namespace WebCore {
 
-static bool isNonRotatedAffineTransformation(const TransformationMatrix& matrix)
+static bool isNonRotatedAffineTransformation(const AffineTransform& t)
 {
-    return matrix.m12() <= FLT_EPSILON && matrix.m13() <= FLT_EPSILON && matrix.m14() <= FLT_EPSILON
-        && matrix.m21() <= FLT_EPSILON && matrix.m23() <= FLT_EPSILON && matrix.m24() <= FLT_EPSILON
-        && matrix.m31() <= FLT_EPSILON && matrix.m32() <= FLT_EPSILON && matrix.m34() <= FLT_EPSILON
-        && matrix.m44() >= 1 - FLT_EPSILON;
+    return t.b() <= FLT_EPSILON && t.c() <= FLT_EPSILON;
 }
 
 static VGCapStyle toVGCapStyle(LineCap lineCap)
@@ -103,12 +101,16 @@ static void setVGSolidColor(VGPaintMode paintMode, const Color& color)
 
 
 struct PlatformPainterState {
-    TransformationMatrix surfaceTransformationMatrix;
+    AffineTransform surfaceTransformation;
     CompositeOperator compositeOperation;
     float opacity;
 
     bool scissoringEnabled;
     FloatRect scissorRect;
+#ifdef OPENVG_VERSION_1_1
+    bool maskingChangedAndEnabled;
+    VGMaskLayer mask;
+#endif
 
     Color fillColor;
     StrokeStyle strokeStyle;
@@ -120,12 +122,17 @@ struct PlatformPainterState {
     DashArray strokeDashArray;
     float strokeDashOffset;
 
+    int textDrawingMode;
     bool antialiasingEnabled;
 
     PlatformPainterState()
         : compositeOperation(CompositeSourceOver)
         , opacity(1.0)
         , scissoringEnabled(false)
+#ifdef OPENVG_VERSION_1_1
+        , maskingChangedAndEnabled(false)
+        , mask(VG_INVALID_HANDLE)
+#endif
         , fillColor(Color::black)
         , strokeStyle(NoStroke)
         , strokeThickness(0.0)
@@ -133,17 +140,38 @@ struct PlatformPainterState {
         , strokeLineJoin(MiterJoin)
         , strokeMiterLimit(4.0)
         , strokeDashOffset(0.0)
+        , textDrawingMode(cTextFill)
         , antialiasingEnabled(true)
     {
     }
 
+    ~PlatformPainterState()
+    {
+#ifdef OPENVG_VERSION_1_1
+        if (maskingChangedAndEnabled && mask != VG_INVALID_HANDLE) {
+            vgDestroyMaskLayer(mask);
+            ASSERT_VG_NO_ERROR();
+            mask = VG_INVALID_HANDLE;
+        }
+#endif
+    }
+
     PlatformPainterState(const PlatformPainterState& state)
     {
-        surfaceTransformationMatrix = state.surfaceTransformationMatrix;
+        surfaceTransformation = state.surfaceTransformation;
 
         scissoringEnabled = state.scissoringEnabled;
         scissorRect = state.scissorRect;
+#ifdef OPENVG_VERSION_1_1
+        maskingChangedAndEnabled = false;
+        mask = state.mask;
+#endif
         copyPaintState(&state);
+    }
+
+    inline bool maskingEnabled()
+    {
+        return maskingChangedAndEnabled || mask != VG_INVALID_HANDLE;
     }
 
     void copyPaintState(const PlatformPainterState* other)
@@ -161,6 +189,7 @@ struct PlatformPainterState {
         strokeDashArray = other->strokeDashArray;
         strokeDashOffset = other->strokeDashOffset;
 
+        textDrawingMode = other->textDrawingMode;
         antialiasingEnabled = other->antialiasingEnabled;
     }
 
@@ -184,8 +213,18 @@ struct PlatformPainterState {
         applyBlending(painter);
         applyStrokeStyle();
 
-        applyTransformationMatrix(painter);
+        applyTransformation(painter);
         applyScissorRect();
+
+#ifdef OPENVG_VERSION_1_1
+        if (maskingEnabled()) {
+            vgSeti(VG_MASKING, VG_TRUE);
+            if (mask != VG_INVALID_HANDLE)
+                vgMask(mask, VG_SET_MASK, 0, 0, painter->surface()->width(), painter->surface()->height());
+        } else
+            vgSeti(VG_MASKING, VG_FALSE);
+#endif
+        ASSERT_VG_NO_ERROR();
     }
 
     void applyBlending(PainterOpenVG* painter)
@@ -267,12 +306,12 @@ struct PlatformPainterState {
         ASSERT_VG_NO_ERROR();
     }
 
-    void applyTransformationMatrix(PainterOpenVG* painter)
+    void applyTransformation(PainterOpenVG* painter)
     {
         // There are *five* separate transforms that can be applied to OpenVG as of 1.1
         // but it is not clear that we need to set them separately.  Instead we set them
         // all right here and let this be a call to essentially set the world transformation!
-        VGMatrix vgMatrix(surfaceTransformationMatrix);
+        VGMatrix vgMatrix(surfaceTransformation);
         const VGfloat* vgFloatArray = vgMatrix.toVGfloat();
 
         vgSeti(VG_MATRIX_MODE, VG_MATRIX_PATH_USER_TO_SURFACE);
@@ -337,18 +376,36 @@ struct PlatformPainterState {
     {
         return (compositeOperation == CompositeSourceOver && !fillColor.alpha());
     }
+
+    void saveMaskIfNecessary(PainterOpenVG* painter)
+    {
+#ifdef OPENVG_VERSION_1_1
+        if (maskingChangedAndEnabled) {
+            if (mask != VG_INVALID_HANDLE) {
+                vgDestroyMaskLayer(mask);
+                ASSERT_VG_NO_ERROR();
+            }
+            mask = vgCreateMaskLayer(painter->surface()->width(), painter->surface()->height());
+            ASSERT(mask != VG_INVALID_HANDLE);
+            vgCopyMask(mask, 0, 0, 0, 0, painter->surface()->width(), painter->surface()->height());
+            ASSERT_VG_NO_ERROR();
+        }
+#endif
+    }
 };
 
 
 PainterOpenVG::PainterOpenVG()
     : m_state(0)
     , m_surface(0)
+    , m_currentPath(0)
 {
 }
 
 PainterOpenVG::PainterOpenVG(SurfaceOpenVG* surface)
     : m_state(0)
     , m_surface(0)
+    , m_currentPath(0)
 {
     ASSERT(surface);
     begin(surface);
@@ -357,6 +414,7 @@ PainterOpenVG::PainterOpenVG(SurfaceOpenVG* surface)
 PainterOpenVG::~PainterOpenVG()
 {
     end();
+    delete m_currentPath;
 }
 
 void PainterOpenVG::begin(SurfaceOpenVG* surface)
@@ -417,31 +475,53 @@ void PainterOpenVG::blitToSurface()
     m_surface->flush();
 }
 
-TransformationMatrix PainterOpenVG::transformationMatrix() const
+AffineTransform PainterOpenVG::transformation() const
 {
     ASSERT(m_state);
-    return m_state->surfaceTransformationMatrix;
+    return m_state->surfaceTransformation;
 }
 
-void PainterOpenVG::concatTransformationMatrix(const TransformationMatrix& matrix)
+void PainterOpenVG::concatTransformation(const AffineTransform& transformation)
 {
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    // We do the multiplication ourself using WebCore's TransformationMatrix rather than
-    // offloading this to VG via vgMultMatrix to keep things simple and so we can maintain
-    // state ourselves.
-    m_state->surfaceTransformationMatrix.multLeft(matrix);
-    m_state->applyTransformationMatrix(this);
+    // We do the multiplication ourself using WebCore's AffineTransform rather
+    // than offloading this to VG via vgMultMatrix() to keep things simple and
+    // so we can maintain state ourselves.
+    m_state->surfaceTransformation.multLeft(transformation);
+    m_state->applyTransformation(this);
 }
 
-void PainterOpenVG::setTransformationMatrix(const TransformationMatrix& matrix)
+void PainterOpenVG::setTransformation(const AffineTransform& transformation)
 {
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    m_state->surfaceTransformationMatrix = matrix;
-    m_state->applyTransformationMatrix(this);
+    m_state->surfaceTransformation = transformation;
+    m_state->applyTransformation(this);
+}
+
+void PainterOpenVG::transformPath(VGPath dst, VGPath src, const AffineTransform& transformation)
+{
+    vgSeti(VG_MATRIX_MODE, VG_MATRIX_PATH_USER_TO_SURFACE);
+
+    // Save the transform state
+    VGfloat currentMatrix[9];
+    vgGetMatrix(currentMatrix);
+    ASSERT_VG_NO_ERROR();
+
+    // Load the new transform
+    vgLoadMatrix(VGMatrix(transformation).toVGfloat());
+    ASSERT_VG_NO_ERROR();
+
+    // Apply the new transform
+    vgTransformPath(dst, src);
+    ASSERT_VG_NO_ERROR();
+
+    // Restore the transform state
+    vgLoadMatrix(currentMatrix);
+    ASSERT_VG_NO_ERROR();
 }
 
 CompositeOperator PainterOpenVG::compositeOperation() const
@@ -575,6 +655,18 @@ void PainterOpenVG::setFillColor(const Color& color)
     setVGSolidColor(VG_FILL_PATH, color);
 }
 
+int PainterOpenVG::textDrawingMode() const
+{
+    ASSERT(m_state);
+    return m_state->textDrawingMode;
+}
+
+void PainterOpenVG::setTextDrawingMode(int mode)
+{
+    ASSERT(m_state);
+    m_state->textDrawingMode = mode;
+}
+
 bool PainterOpenVG::antialiasingEnabled() const
 {
     ASSERT(m_state);
@@ -599,9 +691,9 @@ void PainterOpenVG::scale(const FloatSize& scaleFactors)
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    TransformationMatrix matrix = m_state->surfaceTransformationMatrix;
-    matrix.scaleNonUniform(scaleFactors.width(), scaleFactors.height());
-    setTransformationMatrix(matrix);
+    AffineTransform transformation = m_state->surfaceTransformation;
+    transformation.scaleNonUniform(scaleFactors.width(), scaleFactors.height());
+    setTransformation(transformation);
 }
 
 void PainterOpenVG::rotate(float radians)
@@ -609,9 +701,9 @@ void PainterOpenVG::rotate(float radians)
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    TransformationMatrix matrix = m_state->surfaceTransformationMatrix;
-    matrix.rotate(rad2deg(radians));
-    setTransformationMatrix(matrix);
+    AffineTransform transformation = m_state->surfaceTransformation;
+    transformation.rotate(rad2deg(radians));
+    setTransformation(transformation);
 }
 
 void PainterOpenVG::translate(float dx, float dy)
@@ -619,9 +711,50 @@ void PainterOpenVG::translate(float dx, float dy)
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    TransformationMatrix matrix = m_state->surfaceTransformationMatrix;
-    matrix.translate(dx, dy);
-    setTransformationMatrix(matrix);
+    AffineTransform transformation = m_state->surfaceTransformation;
+    transformation.translate(dx, dy);
+    setTransformation(transformation);
+}
+
+void PainterOpenVG::beginPath()
+{
+    delete m_currentPath;
+    m_currentPath = new Path();
+}
+
+void PainterOpenVG::addPath(const Path& path)
+{
+    m_currentPath->platformPath()->makeCompatibleContextCurrent();
+
+    vgAppendPath(m_currentPath->platformPath()->vgPath(), path.platformPath()->vgPath());
+    ASSERT_VG_NO_ERROR();
+}
+
+Path* PainterOpenVG::currentPath() const
+{
+    return m_currentPath;
+}
+
+void PainterOpenVG::drawPath(VGbitfield specifiedPaintModes, WindRule fillRule)
+{
+    ASSERT(m_state);
+
+    VGbitfield paintModes = 0;
+    if (!m_state->strokeDisabled())
+        paintModes |= VG_STROKE_PATH;
+    if (!m_state->fillDisabled())
+        paintModes |= VG_FILL_PATH;
+
+    paintModes &= specifiedPaintModes;
+
+    if (!paintModes)
+        return;
+
+    m_surface->makeCurrent();
+
+    vgSeti(VG_FILL_RULE, toVGFillRule(fillRule));
+    vgDrawPath(m_currentPath->platformPath()->vgPath(), paintModes);
+    ASSERT_VG_NO_ERROR();
 }
 
 void PainterOpenVG::intersectScissorRect(const FloatRect& rect)
@@ -649,7 +782,7 @@ void PainterOpenVG::intersectClipRect(const FloatRect& rect)
     ASSERT(m_state);
     m_surface->makeCurrent();
 
-    if (m_state->surfaceTransformationMatrix.isIdentity()) {
+    if (m_state->surfaceTransformation.isIdentity()) {
         // No transformation required, skip all the complex stuff.
         intersectScissorRect(rect);
         return;
@@ -660,16 +793,49 @@ void PainterOpenVG::intersectClipRect(const FloatRect& rect)
     // (potentially more expensive) path clipping. Note that scissoring is not
     // subject to transformations, so we need to do the transformation to
     // surface coordinates by ourselves.
-    FloatQuad effectiveScissorQuad =
-        m_state->surfaceTransformationMatrix.mapQuad(FloatQuad(rect));
+    FloatQuad effectiveScissorQuad = m_state->surfaceTransformation.mapQuad(FloatQuad(rect));
 
     if (effectiveScissorQuad.isRectilinear())
         intersectScissorRect(effectiveScissorQuad.boundingBox());
     else {
         // The transformed scissorRect cannot be represented as FloatRect
-        // anymore, so we need to perform masking instead. Not yet implemented.
-        notImplemented();
+        // anymore, so we need to perform masking instead.
+        Path scissorRectPath;
+        scissorRectPath.addRect(rect);
+        clipPath(scissorRectPath, PainterOpenVG::IntersectClip);
     }
+}
+
+void PainterOpenVG::clipPath(const Path& path, PainterOpenVG::ClipOperation maskOp, WindRule clipRule)
+{
+#ifdef OPENVG_VERSION_1_1
+    ASSERT(m_state);
+    m_surface->makeCurrent();
+
+    if (m_state->mask != VG_INVALID_HANDLE && !m_state->maskingChangedAndEnabled) {
+        // The parent's mask has been inherited - dispose the handle so that
+        // it won't be overwritten.
+        m_state->maskingChangedAndEnabled = true;
+        m_state->mask = VG_INVALID_HANDLE;
+    } else if (!m_state->maskingEnabled()) {
+        // None of the parent painter states had a mask enabled yet.
+        m_state->maskingChangedAndEnabled = true;
+        vgSeti(VG_MASKING, VG_TRUE);
+        // Make sure not to inherit previous mask state from previously written
+        // (but disabled) masks. For VG_FILL_MASK the first argument is ignored,
+        // we pass VG_INVALID_HANDLE which is what the OpenVG spec suggests.
+        vgMask(VG_INVALID_HANDLE, VG_FILL_MASK, 0, 0, m_surface->width(), m_surface->height());
+    }
+
+    // Intersect the path from the mask, or subtract it from there.
+    // (In either case we always decrease the visible area, never increase it,
+    // which means masking never has to modify scissor rectangles.)
+    vgSeti(VG_FILL_RULE, toVGFillRule(clipRule));
+    vgRenderToMask(path.platformPath()->vgPath(), VG_FILL_PATH, (VGMaskOperation) maskOp);
+    ASSERT_VG_NO_ERROR();
+#elseif
+    notImplemented();
+#endif
 }
 
 void PainterOpenVG::drawRect(const FloatRect& rect, VGbitfield specifiedPaintModes)
@@ -919,6 +1085,58 @@ void PainterOpenVG::drawPolygon(size_t numPoints, const FloatPoint* points, VGbi
     ASSERT_VG_NO_ERROR();
 }
 
+#ifdef OPENVG_VERSION_1_1
+void PainterOpenVG::drawText(VGFont vgFont, Vector<VGuint>& characters, VGfloat* adjustmentsX, VGfloat* adjustmentsY, const FloatPoint& point)
+{
+    ASSERT(m_state);
+
+    VGbitfield paintModes = 0;
+
+    if (m_state->textDrawingMode & cTextClip)
+        return; // unsupported for every port except CG at the time of writing
+    if (m_state->textDrawingMode & cTextFill && !m_state->fillDisabled())
+        paintModes |= VG_FILL_PATH;
+    if (m_state->textDrawingMode & cTextStroke && !m_state->strokeDisabled())
+        paintModes |= VG_STROKE_PATH;
+
+    m_surface->makeCurrent();
+
+    FloatPoint effectivePoint = m_state->surfaceTransformation.mapPoint(point);
+    FloatPoint p = point;
+    AffineTransform* originalTransformation = 0;
+
+    // In case the font isn't drawn at a pixel-exact baseline and we can easily
+    // fix that (which is the case for non-rotated affine transforms), let's
+    // align the starting point to the pixel boundary in order to prevent
+    // font rendering issues such as glyphs that appear off by a pixel.
+    // This causes us to have inconsistent spacing between baselines in a
+    // larger paragraph, but that seems to be the least of all evils.
+    if ((fmod(effectivePoint.x() + 0.01, 1.0) > 0.02 || fmod(effectivePoint.y() + 0.01, 1.0) > 0.02)
+        && isNonRotatedAffineTransformation(m_state->surfaceTransformation))
+    {
+        originalTransformation = new AffineTransform(m_state->surfaceTransformation);
+        setTransformation(AffineTransform(
+            m_state->surfaceTransformation.a(), 0,
+            0, m_state->surfaceTransformation.d(),
+            roundf(effectivePoint.x()), roundf(effectivePoint.y())));
+        p = FloatPoint();
+    }
+
+    const VGfloat vgPoint[2] = { p.x(), p.y() };
+    vgSetfv(VG_GLYPH_ORIGIN, 2, vgPoint);
+    ASSERT_VG_NO_ERROR();
+
+    vgDrawGlyphs(vgFont, characters.size(), characters.data(),
+        adjustmentsX, adjustmentsY, paintModes, VG_TRUE /* allow autohinting */);
+    ASSERT_VG_NO_ERROR();
+
+    if (originalTransformation) {
+        setTransformation(*originalTransformation);
+        delete originalTransformation;
+    }
+}
+#endif
+
 void PainterOpenVG::save(PainterOpenVG::SaveMode saveMode)
 {
     ASSERT(m_state);
@@ -930,15 +1148,18 @@ void PainterOpenVG::save(PainterOpenVG::SaveMode saveMode)
     m_surface->makeCurrent(SurfaceOpenVG::DontSaveOrApplyPainterState);
 
     if (saveMode == PainterOpenVG::CreateNewState) {
+        m_state->saveMaskIfNecessary(this);
         PlatformPainterState* state = new PlatformPainterState(*m_state);
         m_stateStack.append(state);
         m_state = m_stateStack.last();
-    } else { // if (saveMode == PainterOpenVG::CreateNewStateWithPaintStateOnly) {
+    } else if (saveMode == PainterOpenVG::CreateNewStateWithPaintStateOnly) {
+        m_state->saveMaskIfNecessary(this);
         PlatformPainterState* state = new PlatformPainterState();
         state->copyPaintState(m_state);
         m_stateStack.append(state);
         m_state = m_stateStack.last();
-    }
+    } else // if (saveMode == PainterOpenVG::KeepCurrentState)
+        m_state->saveMaskIfNecessary(this);
 }
 
 void PainterOpenVG::restore()

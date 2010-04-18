@@ -123,11 +123,6 @@ namespace WebCore {
         virtual int popupInternalPaddingTop(RenderStyle*) const;
         virtual int popupInternalPaddingBottom(RenderStyle*) const;
 
-        virtual int buttonInternalPaddingLeft() const;
-        virtual int buttonInternalPaddingRight() const;
-        virtual int buttonInternalPaddingTop() const;
-        virtual int buttonInternalPaddingBottom() const;
-
 #if ENABLE(VIDEO)
         // Media controls
         virtual bool shouldRenderMediaControlPart(ControlPart, Element*);
@@ -153,6 +148,7 @@ namespace WebCore {
     private:
         int menuListInternalPadding(RenderStyle*, int paddingType) const;
         bool paintMediaButtonInternal(GraphicsContext*, const IntRect&, Image*);
+        IntRect convertToPaintingRect(RenderObject* inputRenderer, const RenderObject* partRenderer, IntRect partRect, const IntRect& localOffset) const;
     };
 
 } // namespace WebCore

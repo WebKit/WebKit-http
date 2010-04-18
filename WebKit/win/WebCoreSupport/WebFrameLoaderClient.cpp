@@ -243,10 +243,6 @@ void WebFrameLoaderClient::dispatchDidFailLoading(DocumentLoader* loader, unsign
     resourceLoadDelegate->didFailLoadingWithError(webView, identifier, webError.get(), getWebDataSource(loader));
 }
 
-void WebFrameLoaderClient::dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&)
-{
-}
-
 bool WebFrameLoaderClient::shouldCacheResponse(DocumentLoader* loader, unsigned long identifier, const ResourceResponse& response, const unsigned char* data, const unsigned long long length)
 {
     WebView* webView = m_webFrame->webView();
@@ -841,7 +837,8 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize,
             HashMap<String, COMVariant> arguments;
 
             arguments.set(WebEmbeddedViewAttributesKey, viewArgumentsBag);
-            arguments.set(WebEmbeddedViewBaseURLKey, url.string());
+            arguments.set(WebEmbeddedViewSourceURLKey, url.string());
+            arguments.set(WebEmbeddedViewBaseURLKey, element->document()->baseURI().string());
             arguments.set(WebEmbeddedViewContainingElementKey, containingElement);
             arguments.set(WebEmbeddedViewMIMETypeKey, mimeType);
 
@@ -867,7 +864,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize,
 
     dispatchDidFailToStartPlugin(pluginView.get());
 
-    return pluginView;
+    return 0;
 }
 
 void WebFrameLoaderClient::redirectDataToPlugin(Widget* pluginWidget)

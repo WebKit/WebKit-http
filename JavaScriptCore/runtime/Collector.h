@@ -35,6 +35,10 @@
 #include <pthread.h>
 #endif
 
+#if OS(SYMBIAN)
+#include <wtf/symbian/BlockAllocatorSymbian.h>
+#endif
+
 #define ASSERT_CLASS_FITS_IN_CELL(class) COMPILE_ASSERT(sizeof(class) <= CELL_SIZE, class_fits_in_cell)
 
 namespace JSC {
@@ -91,7 +95,9 @@ namespace JSC {
         Statistics statistics() const;
 
         void protect(JSValue);
-        void unprotect(JSValue);
+        // Returns true if the value is no longer protected by any protect pointers
+        // (though it may still be alive due to heap/stack references).
+        bool unprotect(JSValue);
 
         static Heap* heap(JSValue); // 0 for immediate values
         static Heap* heap(JSCell*);
@@ -168,6 +174,11 @@ namespace JSC {
         pthread_key_t m_currentThreadRegistrar;
 #endif
 
+#if OS(SYMBIAN)
+        // Allocates collector blocks with correct alignment
+        WTF::AlignedBlockAllocator m_blockallocator; 
+#endif
+        
         JSGlobalData* m_globalData;
     };
 

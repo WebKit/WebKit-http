@@ -40,7 +40,9 @@ QT_END_NAMESPACE
 class QWebPageClient {
 public:
     virtual ~QWebPageClient() { }
-        
+
+    virtual bool isQWidgetClient() const { return false; }
+
     virtual void scroll(int dx, int dy, const QRect&) = 0;
     virtual void update(const QRect&) = 0;
     virtual void setInputMethodEnabled(bool enable) = 0;
@@ -80,6 +82,7 @@ public:
     virtual QPalette palette() const = 0;
     virtual int screenNumber() const = 0;
     virtual QWidget* ownerWidget() const = 0;
+    virtual QRect geometryRelativeToOwnerWidget() const = 0;
 
     virtual QObject* pluginParent() const = 0;
 

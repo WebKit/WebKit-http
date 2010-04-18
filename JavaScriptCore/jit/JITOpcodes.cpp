@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -282,6 +283,33 @@ void JIT::privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executable
     // r2 - callee
     // stack: this(JSValue) and a pointer to ArgList
 
+#if OS(WINCE)
+    // Setup arg4:
+    push(stackPointerRegister);
+
+    // Setup arg3:
+    // regT1 currently points to the first argument, regT1-sizeof(Register) points to 'this'
+    load32(Address(regT1, -(int32_t)sizeof(void*) * 2), ARMRegisters::r3);
+    push(ARMRegisters::r3);
+    load32(Address(regT1, -(int32_t)sizeof(void*)), regT3);
+    storePtr(regT3, Address(stackPointerRegister));
+
+    // Setup arg2:
+    emitGetFromCallFrameHeaderPtr(RegisterFile::Callee, regT2);
+
+    // Setup arg1:
+    move(callFrameRegister, regT1);
+
+    // Setup arg0:
+    move(stackPointerRegister, regT0);
+
+    call(Address(regT2, OBJECT_OFFSETOF(JSFunction, m_data)));
+
+    load32(Address(stackPointerRegister, 0), regT0);
+    load32(Address(stackPointerRegister, 4), regT1);
+
+    addPtr(Imm32(sizeof(ArgList) + 8), stackPointerRegister);
+#else // OS(WINCE)
     move(stackPointerRegister, regT3);
     subPtr(Imm32(8), stackPointerRegister);
     move(stackPointerRegister, regT0);
@@ -290,7 +318,7 @@ void JIT::privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executable
     // Setup arg4:
     storePtr(regT3, Address(stackPointerRegister, 8));
 
-    // Setup arg3
+    // Setup arg3:
     // regT1 currently points to the first argument, regT1-sizeof(Register) points to 'this'
     load32(Address(regT1, -(int32_t)sizeof(void*) * 2), regT3);
     storePtr(regT3, Address(stackPointerRegister, 0));
@@ -310,6 +338,8 @@ void JIT::privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executable
     load32(Address(stackPointerRegister, 20), regT1);
 
     addPtr(Imm32(sizeof(ArgList) + 16 + 8), stackPointerRegister);
+#endif // OS(WINCE)
+
 #endif
 
     // Check for an exception
@@ -486,7 +516,7 @@ void JIT::emit_op_instanceof(Instruction* currentInstruction)
 
     // Check that baseVal 'ImplementsDefaultHasInstance'.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT0);
-    addSlowCase(branchTest32(Zero, Address(regT0, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(ImplementsDefaultHasInstance)));
+    addSlowCase(branchTest8(Zero, Address(regT0, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(ImplementsDefaultHasInstance)));
 
     // Optimistically load the result true, and start looping.
     // Initially, regT1 still contains proto and regT2 still contains value.
@@ -839,7 +869,7 @@ void JIT::emit_op_jeq_null(Instruction* currentInstruction)
 
     // First, handle JSCell cases - check MasqueradesAsUndefined bit on the structure.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addJump(branchTest32(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
+    addJump(branchTest8(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
 
     Jump wasNotImmediate = jump();
 
@@ -866,7 +896,7 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
 
     // First, handle JSCell cases - check MasqueradesAsUndefined bit on the structure.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addJump(branchTest32(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
+    addJump(branchTest8(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
 
     Jump wasNotImmediate = jump();
 
@@ -1179,7 +1209,7 @@ void JIT::emit_op_get_pnames(Instruction* currentInstruction)
         isNotObject.append(branch32(NotEqual, regT1, Imm32(JSValue::CellTag)));
     if (base != m_codeBlock->thisRegister()) {
         loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-        isNotObject.append(branch32(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(ObjectType)));
+        isNotObject.append(branch8(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(ObjectType)));
     }
 
     // We could inline the case where you have a valid cache, but
@@ -1458,7 +1488,7 @@ void JIT::emit_op_convert_this(Instruction* currentInstruction)
     addSlowCase(branch32(NotEqual, regT1, Imm32(JSValue::CellTag)));
 
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addSlowCase(branchTest32(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(NeedsThisConversion)));
+    addSlowCase(branchTest8(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(NeedsThisConversion)));
 
     map(m_bytecodeIndex + OPCODE_LENGTH(op_convert_this), thisRegister, regT1, regT0);
 }
@@ -1764,7 +1794,30 @@ void JIT::privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executable
     // push pointer to arguments
     storePtr(regT1, Address(stackPointerRegister, OBJECT_OFFSETOF(ArgList, m_args)));
 
-    // Setup arg3: regT1 currently points to the first argument, regT1-sizeof(Register) points to 'this'
+    // regT1 currently points to the first argument, regT1-sizeof(Register) points to 'this'
+
+#if OS(WINCE)
+    // Setup arg3:
+    loadPtr(Address(regT1, -(int32_t)sizeof(Register)), ARMRegisters::r3);
+
+    // Setup arg2:
+    emitGetFromCallFrameHeaderPtr(RegisterFile::Callee, regT2);
+
+    // Setup arg1:
+    move(callFrameRegister, regT1);
+
+    // Setup arg0:
+    move(stackPointerRegister, regT0);
+    subPtr(Imm32(sizeof(Register)), stackPointerRegister);
+    storePtr(regT0, Address(stackPointerRegister));
+
+    call(Address(regT2, OBJECT_OFFSETOF(JSFunction, m_data)));
+
+    loadPtr(Address(regT0), regT0);
+
+    addPtr(Imm32(sizeof(Register) + sizeof(ArgList)), stackPointerRegister);
+#else // OS(WINCE)
+    // Setup arg3:
     loadPtr(Address(regT1, -(int32_t)sizeof(Register)), regT2);
 
     // Setup arg2:
@@ -1779,6 +1832,57 @@ void JIT::privateCompileCTIMachineTrampolines(RefPtr<ExecutablePool>* executable
     call(Address(regT1, OBJECT_OFFSETOF(JSFunction, m_data)));
 
     addPtr(Imm32(sizeof(ArgList)), stackPointerRegister);
+#endif // OS(WINCE)
+
+#elif CPU(MIPS)
+    emitGetFromCallFrameHeader32(RegisterFile::ArgumentCount, regT0);
+
+    // Allocate stack space for our arglist
+    COMPILE_ASSERT(!(sizeof(ArgList) & 0x7), ArgList_should_by_8byte_aligned);
+    subPtr(Imm32(sizeof(ArgList) + 24), stackPointerRegister);
+
+    // Set up arguments
+    subPtr(Imm32(1), regT0); // Don't include 'this' in argcount
+
+    // Push argcount to 24 + offset($sp)
+    storePtr(regT0, Address(stackPointerRegister, 24 + OBJECT_OFFSETOF(ArgList, m_argCount)));
+
+    // Calculate the start of the callframe header, and store in regT1
+    move(callFrameRegister, regT1);
+    sub32(Imm32(RegisterFile::CallFrameHeaderSize * (int32_t)sizeof(Register)), regT1);
+
+    // Calculate start of arguments as callframe header - sizeof(Register) * argcount (regT1)
+    mul32(Imm32(sizeof(Register)), regT0, regT0);
+    subPtr(regT0, regT1);
+
+    // push pointer to arguments to 24 + offset($sp)
+    storePtr(regT1, Address(stackPointerRegister, 24 + OBJECT_OFFSETOF(ArgList, m_args)));
+
+    // Setup arg3: regT1 currently points to the first argument, regT1-sizeof(Register) points to 'this'
+    loadPtr(Address(regT1, -(int32_t)sizeof(Register)), MIPSRegisters::a3);
+
+    // Setup arg2:
+    emitGetFromCallFrameHeaderPtr(RegisterFile::Callee, MIPSRegisters::a2);
+
+    // Setup arg1:
+    move(callFrameRegister, MIPSRegisters::a1);
+
+    // Setup arg4: ArgList is passed by reference.  At 16($sp), store ($sp + 24)
+    addPtr(Imm32(24), stackPointerRegister, regT2);
+    storePtr(regT2, Address(stackPointerRegister, 16));
+
+    // Setup arg0 as 20($sp) to hold the returned structure.
+    ASSERT(sizeof(JSValue) == 4);
+    addPtr(Imm32(20), stackPointerRegister, MIPSRegisters::a0);
+
+    // Call
+    call(Address(MIPSRegisters::a2, OBJECT_OFFSETOF(JSFunction, m_data)));
+
+    // Get returned value from 0($v0) which is the same as 20($sp)
+    loadPtr(Address(returnValueRegister, 0), returnValueRegister);
+
+    // Restore stack space
+    addPtr(Imm32(sizeof(ArgList) + 24), stackPointerRegister);
 
 #elif ENABLE(JIT_OPTIMIZE_NATIVE_CALL)
 #error "JIT_OPTIMIZE_NATIVE_CALL not yet supported on this platform."
@@ -1938,7 +2042,7 @@ void JIT::emit_op_instanceof(Instruction* currentInstruction)
 
     // Check that baseVal 'ImplementsDefaultHasInstance'.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT0);
-    addSlowCase(branchTest32(Zero, Address(regT0, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(ImplementsDefaultHasInstance)));
+    addSlowCase(branchTest8(Zero, Address(regT0, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(ImplementsDefaultHasInstance)));
 
     // Optimistically load the result true, and start looping.
     // Initially, regT1 still contains proto and regT2 still contains value.
@@ -2099,7 +2203,7 @@ void JIT::emit_op_construct_verify(Instruction* currentInstruction)
 
     emitJumpSlowCaseIfNotJSCell(regT0);
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addSlowCase(branch32(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo) + OBJECT_OFFSETOF(TypeInfo, m_type)), Imm32(ObjectType)));
+    addSlowCase(branch8(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(ObjectType)));
 
 }
 
@@ -2208,7 +2312,7 @@ void JIT::emit_op_jeq_null(Instruction* currentInstruction)
 
     // First, handle JSCell cases - check MasqueradesAsUndefined bit on the structure.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addJump(branchTest32(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
+    addJump(branchTest8(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
     Jump wasNotImmediate = jump();
 
     // Now handle the immediate cases - undefined & null
@@ -2229,7 +2333,7 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
 
     // First, handle JSCell cases - check MasqueradesAsUndefined bit on the structure.
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addJump(branchTest32(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
+    addJump(branchTest8(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined)), target);
     Jump wasNotImmediate = jump();
 
     // Now handle the immediate cases - undefined & null
@@ -2385,7 +2489,7 @@ void JIT::emit_op_get_pnames(Instruction* currentInstruction)
         isNotObject.append(emitJumpIfNotJSCell(regT0));
     if (base != m_codeBlock->thisRegister()) {
         loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-        isNotObject.append(branch32(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(ObjectType)));
+        isNotObject.append(branch8(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(ObjectType)));
     }
 
     // We could inline the case where you have a valid cache, but
@@ -2536,7 +2640,7 @@ void JIT::emit_op_to_jsnumber(Instruction* currentInstruction)
 
     emitJumpSlowCaseIfNotJSCell(regT0, srcVReg);
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    addSlowCase(branch32(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(NumberType)));
+    addSlowCase(branch8(NotEqual, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_type)), Imm32(NumberType)));
     
     wasImmediate.link(this);
 
@@ -2647,7 +2751,7 @@ void JIT::emit_op_eq_null(Instruction* currentInstruction)
     Jump isImmediate = emitJumpIfNotJSCell(regT0);
 
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    setTest32(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined), regT0);
+    setTest8(NonZero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined), regT0);
 
     Jump wasNotImmediate = jump();
 
@@ -2672,7 +2776,7 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
     Jump isImmediate = emitJumpIfNotJSCell(regT0);
 
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT2);
-    setTest32(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined), regT0);
+    setTest8(Zero, Address(regT2, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(MasqueradesAsUndefined), regT0);
 
     Jump wasNotImmediate = jump();
 
@@ -2732,7 +2836,7 @@ void JIT::emit_op_convert_this(Instruction* currentInstruction)
 
     emitJumpSlowCaseIfNotJSCell(regT0);
     loadPtr(Address(regT0, OBJECT_OFFSETOF(JSCell, m_structure)), regT1);
-    addSlowCase(branchTest32(NonZero, Address(regT1, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(NeedsThisConversion)));
+    addSlowCase(branchTest8(NonZero, Address(regT1, OBJECT_OFFSETOF(Structure, m_typeInfo.m_flags)), Imm32(NeedsThisConversion)));
 
 }
 

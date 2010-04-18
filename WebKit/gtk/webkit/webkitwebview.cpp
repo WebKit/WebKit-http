@@ -6,7 +6,7 @@
  *  Copyright (C) 2008 Jan Alonzo <jmalonzo@unpluggable.com>
  *  Copyright (C) 2008 Gustavo Noronha Silva <gns@gnome.org>
  *  Copyright (C) 2008 Nuanti Ltd.
- *  Copyright (C) 2008, 2009 Collabora Ltd.
+ *  Copyright (C) 2008, 2009, 2010 Collabora Ltd.
  *  Copyright (C) 2009 Igalia S.L.
  *  Copyright (C) 2009 Movial Creative Technologies Inc.
  *  Copyright (C) 2009 Bobby Powers
@@ -31,6 +31,7 @@
 
 #include "webkitdownload.h"
 #include "webkitenumtypes.h"
+#include "webkitgeolocationpolicydecision.h"
 #include "webkitmarshal.h"
 #include "webkitnetworkrequest.h"
 #include "webkitnetworkresponse.h"
@@ -40,45 +41,47 @@
 #include "webkitwebhistoryitem.h"
 
 #include "AXObjectCache.h"
-#include "NotImplemented.h"
 #include "BackForwardList.h"
 #include "Cache.h"
-#include "CString.h"
 #include "ChromeClientGtk.h"
-#include "ContextMenu.h"
 #include "ContextMenuClientGtk.h"
 #include "ContextMenuController.h"
+#include "ContextMenu.h"
 #include "Cursor.h"
+#include "Database.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DragClientGtk.h"
-#include "Editor.h"
 #include "EditorClientGtk.h"
+#include "Editor.h"
 #include "EventHandler.h"
 #include "FloatQuad.h"
 #include "FocusController.h"
+#include "FrameLoader.h"
 #include "FrameLoaderTypes.h"
+#include "FrameView.h"
+#include <glib/gi18n-lib.h>
+#include <GOwnPtr.h>
+#include "GraphicsContext.h"
+#include "GtkVersioning.h"
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
-#include <glib/gi18n-lib.h>
-#include "GraphicsContext.h"
 #include "IconDatabase.h"
 #include "InspectorClientGtk.h"
-#include "FrameLoader.h"
-#include "FrameView.h"
 #include "MouseEventWithHitTestResults.h"
+#include "NotImplemented.h"
 #include "PageCache.h"
 #include "Pasteboard.h"
-#include "PasteboardHelper.h"
 #include "PasteboardHelperGtk.h"
+#include "PasteboardHelper.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
 #include "ProgressTracker.h"
-#include "ResourceHandle.h"
 #include "RenderView.h"
+#include "ResourceHandle.h"
 #include "ScriptValue.h"
 #include "Scrollbar.h"
-#include <wtf/gtk/GOwnPtr.h>
+#include <wtf/text/CString.h>
 
 #include <gdk/gdkkeysyms.h>
 
@@ -158,6 +161,10 @@ enum {
     REDO,
     DATABASE_QUOTA_EXCEEDED,
     RESOURCE_REQUEST_STARTING,
+    DOCUMENT_LOAD_FINISHED,
+    GEOLOCATION_POLICY_DECISION_REQUESTED,
+    GEOLOCATION_POLICY_DECISION_CANCELLED,
+    ONLOAD_EVENT,
     LAST_SIGNAL
 };
 
@@ -201,33 +208,69 @@ static void destroy_menu_cb(GtkObject* object, gpointer data)
     priv->currentMenu = NULL;
 }
 
+static void PopupMenuPositionFunc(GtkMenu* menu, gint *x, gint *y, gboolean *pushIn, gpointer userData)
+{
+    WebKitWebView* view = WEBKIT_WEB_VIEW(userData);
+    WebKitWebViewPrivate* priv = WEBKIT_WEB_VIEW_GET_PRIVATE(view);
+    GdkScreen* screen = gtk_widget_get_screen(GTK_WIDGET(view));
+    GtkRequisition menuSize;
+
+    gtk_widget_size_request(GTK_WIDGET(menu), &menuSize);
+
+    *x = priv->lastPopupXPosition;
+    if ((*x + menuSize.width) >= gdk_screen_get_width(screen))
+      *x -= menuSize.width;
+
+    *y = priv->lastPopupYPosition;
+    if ((*y + menuSize.height) >= gdk_screen_get_height(screen))
+      *y -= menuSize.height;
+
+    *pushIn = FALSE;
+}
+
 static gboolean webkit_web_view_forward_context_menu_event(WebKitWebView* webView, const PlatformMouseEvent& event)
 {
     Page* page = core(webView);
     page->contextMenuController()->clearContextMenu();
-    Frame* focusedFrame = page->focusController()->focusedOrMainFrame();
+    Frame* focusedFrame;
+    Frame* mainFrame = page->mainFrame();
+    gboolean mousePressEventResult = FALSE;
 
-    if (!focusedFrame->view())
+    if (!mainFrame->view())
         return FALSE;
 
-    focusedFrame->view()->setCursor(pointerCursor());
+    mainFrame->view()->setCursor(pointerCursor());
+    if (page->frameCount()) {
+        HitTestRequest request(HitTestRequest::Active);
+        IntPoint point = mainFrame->view()->windowToContents(event.pos());
+        MouseEventWithHitTestResults mev = mainFrame->document()->prepareMouseEvent(request, point, event);
+
+        Frame* targetFrame = EventHandler::subframeForTargetNode(mev.targetNode());
+        if (!targetFrame)
+            targetFrame = mainFrame;
+
+        focusedFrame = page->focusController()->focusedOrMainFrame();
+        if (targetFrame != focusedFrame) {
+            page->focusController()->setFocusedFrame(targetFrame);
+            focusedFrame = targetFrame;
+        }
+    } else
+        focusedFrame = mainFrame;
+
+    if (focusedFrame->view() && focusedFrame->eventHandler()->handleMousePressEvent(event))
+        mousePressEventResult = TRUE;
+
+
     bool handledEvent = focusedFrame->eventHandler()->sendContextMenuEvent(event);
     if (!handledEvent)
         return FALSE;
 
     // If coreMenu is NULL, this means WebCore decided to not create
-    // the default context menu; this may still mean that the frame
-    // wants to consume the event - this happens when the page is
-    // handling the right-click for reasons other than a context menu,
-    // so we give it to it.
+    // the default context menu; this may happen when the page is
+    // handling the right-click for reasons other than the context menu.
     ContextMenu* coreMenu = page->contextMenuController()->contextMenu();
-    if (!coreMenu) {
-        Frame* frame = core(webView)->mainFrame();
-        if (frame->view() && frame->eventHandler()->handleMousePressEvent(PlatformMouseEvent(event)))
-            return TRUE;
-
-        return FALSE;
-    }
+    if (!coreMenu)
+        return mousePressEventResult;
 
     // If we reach here, it's because WebCore is going to show the
     // default context menu. We check our setting to figure out
@@ -261,8 +304,8 @@ static gboolean webkit_web_view_forward_context_menu_event(WebKitWebView* webVie
                      NULL);
 
     gtk_menu_popup(menu, NULL, NULL,
-                   NULL,
-                   priv, event.button() + 1, gtk_get_current_event_time());
+                   &PopupMenuPositionFunc,
+                   webView, event.button() + 1, gtk_get_current_event_time());
     return TRUE;
 }
 
@@ -272,17 +315,19 @@ static gboolean webkit_web_view_popup_menu_handler(GtkWidget* widget)
 
     // The context menu event was generated from the keyboard, so show the context menu by the current selection.
     Page* page = core(WEBKIT_WEB_VIEW(widget));
-    FrameView* view = page->mainFrame()->view();
+    Frame* frame = page->focusController()->focusedOrMainFrame();
+    FrameView* view = frame->view();
     if (!view)
         return FALSE;    
 
-    Position start = page->mainFrame()->selection()->selection().start();
-    Position end = page->mainFrame()->selection()->selection().end();
+    Position start = frame->selection()->selection().start();
+    Position end = frame->selection()->selection().end();
 
     int rightAligned = FALSE;
     IntPoint location;
 
-    if (!start.node() || !end.node())
+    if (!start.node() || !end.node()
+        || (frame->selection()->selection().isCaret() && !frame->selection()->selection().isContentEditable()))
         location = IntPoint(rightAligned ? view->contentsWidth() - contextMenuMargin : contextMenuMargin, contextMenuMargin);
     else {
         RenderObject* renderer = start.node()->renderer();
@@ -328,8 +373,17 @@ static gboolean webkit_web_view_popup_menu_handler(GtkWidget* widget)
     // FIXME: The IntSize(0, -1) is a hack to get the hit-testing to result in the selected element.
     // Ideally we'd have the position of a context menu event be separate from its target node.
     location = view->contentsToWindow(location) + IntSize(0, -1);
+    if (location.y() < 0)
+        location.setY(contextMenuMargin);
+    else if (location.y() > view->height())
+        location.setY(view->height() - contextMenuMargin);
+    if (location.x() < 0)
+        location.setX(contextMenuMargin);
+    else if (location.x() > view->width())
+        location.setX(view->width() - contextMenuMargin);
     IntPoint global = location + IntSize(x, y);
-    PlatformMouseEvent event(location, global, NoButton, MouseEventPressed, 0, false, false, false, false, gtk_get_current_event_time());
+
+    PlatformMouseEvent event(location, global, RightButton, MouseEventPressed, 0, false, false, false, false, gtk_get_current_event_time());
 
     return webkit_web_view_forward_context_menu_event(WEBKIT_WEB_VIEW(widget), event);
 }
@@ -510,12 +564,19 @@ static gboolean webkit_web_view_key_release_event(GtkWidget* widget, GdkEventKey
 {
     WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
 
+    // GTK+ IM contexts often require us to filter key release events, which
+    // WebCore does not do by default, so we filter the event here. We only block
+    // the event if we don't have a pending composition, because that means we
+    // are using a context like 'simple' which marks every keystroke as filtered.
+    WebKit::EditorClient* client = static_cast<WebKit::EditorClient*>(core(webView)->editorClient());
+    if (gtk_im_context_filter_keypress(webView->priv->imContext, event) && !client->hasPendingComposition())
+        return TRUE;
+
     Frame* frame = core(webView)->focusController()->focusedOrMainFrame();
     if (!frame->view())
         return FALSE;
 
     PlatformKeyboardEvent keyboardEvent(event);
-
     if (frame->eventHandler()->keyEvent(keyboardEvent))
         return TRUE;
 
@@ -632,15 +693,16 @@ static void webkit_web_view_size_allocate(GtkWidget* widget, GtkAllocation* allo
         return;
 
     frame->view()->resize(allocation->width, allocation->height);
-    frame->view()->forceLayout();
-    frame->view()->adjustViewSize();
 }
 
 static void webkit_web_view_grab_focus(GtkWidget* widget)
 {
-    if (GTK_WIDGET_IS_SENSITIVE(widget)) {
+
+    if (gtk_widget_is_sensitive(widget)) {
         WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
         FocusController* focusController = core(webView)->focusController();
+
+        focusController->setActive(true);
 
         if (focusController->focusedFrame())
             focusController->setFocused(true);
@@ -656,11 +718,7 @@ static gboolean webkit_web_view_focus_in_event(GtkWidget* widget, GdkEventFocus*
     // TODO: Improve focus handling as suggested in
     // http://bugs.webkit.org/show_bug.cgi?id=16910
     GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (gtk_widget_is_toplevel(toplevel) && gtk_window_has_toplevel_focus(GTK_WINDOW(toplevel))) {
-#else
-    if (GTK_WIDGET_TOPLEVEL(toplevel) && gtk_window_has_toplevel_focus(GTK_WINDOW(toplevel))) {
-#endif
         WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
         FocusController* focusController = core(webView)->focusController();
 
@@ -670,6 +728,8 @@ static gboolean webkit_web_view_focus_in_event(GtkWidget* widget, GdkEventFocus*
             focusController->setFocused(true);
         else
             focusController->setFocusedFrame(core(webView)->mainFrame());
+
+        gtk_im_context_focus_in(webView->priv->imContext);
     }
     return GTK_WIDGET_CLASS(webkit_web_view_parent_class)->focus_in_event(widget, event);
 }
@@ -678,8 +738,16 @@ static gboolean webkit_web_view_focus_out_event(GtkWidget* widget, GdkEventFocus
 {
     WebKitWebView* webView = WEBKIT_WEB_VIEW(widget);
 
-    core(webView)->focusController()->setActive(false);
-    core(webView)->focusController()->setFocused(false);
+    // We may hit this code while destroying the widget, and we might
+    // no longer have a page, then.
+    Page* page = core(webView);
+    if (page) {
+        page->focusController()->setActive(false);
+        page->focusController()->setFocused(false);
+    }
+
+    if (webView->priv->imContext)
+        gtk_im_context_focus_out(webView->priv->imContext);
 
     return GTK_WIDGET_CLASS(webkit_web_view_parent_class)->focus_out_event(widget, event);
 }
@@ -849,11 +917,7 @@ static gboolean webkit_web_view_script_dialog(WebKitWebView* webView, WebKitWebF
     }
 
     window = gtk_widget_get_toplevel(GTK_WIDGET(webView));
-#if GTK_CHECK_VERSION(2, 18, 0)
     dialog = gtk_message_dialog_new(gtk_widget_is_toplevel(window) ? GTK_WINDOW(window) : 0, GTK_DIALOG_DESTROY_WITH_PARENT, messageType, buttons, "%s", message);
-#else
-    dialog = gtk_message_dialog_new(GTK_WIDGET_TOPLEVEL(window) ? GTK_WINDOW(window) : 0, GTK_DIALOG_DESTROY_WITH_PARENT, messageType, buttons, "%s", message);
-#endif
     gchar* title = g_strconcat("JavaScript - ", webkit_web_frame_get_uri(frame), NULL);
     gtk_window_set_title(GTK_WINDOW(dialog), title);
     g_free(title);
@@ -1432,7 +1496,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @web_view: the object on which the signal is emitted
      * @frame: the #WebKitWebFrame that required the navigation
      * @request: a #WebKitNetworkRequest
-     * @navigation_action: a #WebKitWebNavigation
+     * @navigation_action: a #WebKitWebNavigationAction
      * @policy_decision: a #WebKitWebPolicyDecision
      *
      * Emitted when @frame requests opening a new window. With this
@@ -1479,7 +1543,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @web_view: the object on which the signal is emitted
      * @frame: the #WebKitWebFrame that required the navigation
      * @request: a #WebKitNetworkRequest
-     * @navigation_action: a #WebKitWebNavigation
+     * @navigation_action: a #WebKitWebNavigationAction
      * @policy_decision: a #WebKitWebPolicyDecision
      *
      * Emitted when @frame requests a navigation to another page.
@@ -1560,7 +1624,6 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @context: the #JSGlobalContextRef holding the global object and other
      * execution state; equivalent to the return value of
      * webkit_web_frame_get_global_context(@frame)
-     *
      * @window_object: the #JSObjectRef representing the frame's JavaScript
      * window object
      *
@@ -1714,6 +1777,23 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * Deprecated: Use the "load-status" property instead.
      */
     webkit_web_view_signals[LOAD_FINISHED] = g_signal_new("load-finished",
+            G_TYPE_FROM_CLASS(webViewClass),
+            (GSignalFlags)G_SIGNAL_RUN_LAST,
+            0,
+            NULL,
+            NULL,
+            g_cclosure_marshal_VOID__OBJECT,
+            G_TYPE_NONE, 1,
+            WEBKIT_TYPE_WEB_FRAME);
+
+    /**
+     * WebKitWebView::onload-event:
+     * @web_view: the object on which the signal is emitted
+     * @frame: the frame
+     *
+     * When a #WebKitWebFrame receives an onload event this signal is emitted.
+     */
+    webkit_web_view_signals[LOAD_STARTED] = g_signal_new("onload-event",
             G_TYPE_FROM_CLASS(webViewClass),
             (GSignalFlags)G_SIGNAL_RUN_LAST,
             0,
@@ -2075,7 +2155,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @uri: the URI to load
      * @param: a #GHashTable with additional attributes (strings)
      *
-     * The #WebKitWebView::create-plugin signal will be emitted to
+     * The #WebKitWebView::create-plugin-widget signal will be emitted to
      * create a plugin widget for embed or object HTML tags. This
      * allows to embed a GtkWidget as a plugin into HTML content. In
      * case of a textual selection of the GtkWidget WebCore will attempt
@@ -2102,7 +2182,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @frame: the relevant frame
      * @database: the #WebKitWebDatabase which exceeded the quota of its #WebKitSecurityOrigin
      *
-     * The #WebKitWebView::database-exceeded-quota signal will be emitted when
+     * The #WebKitWebView::database-quota-exceeded signal will be emitted when
      * a Web Database exceeds the quota of its security origin. This signal
      * may be used to increase the size of the quota before the originating
      * operation fails.
@@ -2158,6 +2238,72 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
             WEBKIT_TYPE_WEB_RESOURCE,
             WEBKIT_TYPE_NETWORK_REQUEST,
             WEBKIT_TYPE_NETWORK_RESPONSE);
+
+    /**
+     * WebKitWebView::geolocation-policy-decision-requested:
+     * @web_view: the object on which the signal is emitted
+     * @frame: the frame that requests permission
+     * @policy_decision: a WebKitGeolocationPolicyDecision
+     *
+     * When a @frame wants to get its geolocation permission.
+     * The receiver must reply with a boolean wether it handled or not the
+     * request. If the request is not handled, default behaviour is to deny
+     * geolocation.
+     *
+     * Since: 1.1.23
+     */
+    webkit_web_view_signals[GEOLOCATION_POLICY_DECISION_REQUESTED] = g_signal_new("geolocation-policy-decision-requested",
+            G_TYPE_FROM_CLASS(webViewClass),
+            (GSignalFlags)(G_SIGNAL_RUN_LAST),
+            0,
+            NULL, NULL,
+            webkit_marshal_BOOLEAN__OBJECT_OBJECT,
+            G_TYPE_BOOLEAN, 2,
+            WEBKIT_TYPE_WEB_FRAME,
+            WEBKIT_TYPE_GEOLOCATION_POLICY_DECISION);
+
+    /**
+     * WebKitWebView::geolocation-policy-decision-cancelled:
+     * @web_view: the object on which the signal is emitted
+     * @frame: the frame that cancels geolocation request.
+     *
+     * When a @frame wants to cancel geolocation permission it had requested
+     * before.
+     *
+     * Since: 1.1.23
+     */
+    webkit_web_view_signals[GEOLOCATION_POLICY_DECISION_CANCELLED] = g_signal_new("geolocation-policy-decision-cancelled",
+            G_TYPE_FROM_CLASS(webViewClass),
+            (GSignalFlags)(G_SIGNAL_RUN_LAST),
+            0,
+            NULL, NULL,
+            g_cclosure_marshal_VOID__OBJECT,
+            G_TYPE_NONE, 1,
+            WEBKIT_TYPE_WEB_FRAME);
+
+    /*
+     * DOM-related signals. These signals are experimental, for now,
+     * and may change API and ABI. Their comments lack one * on
+     * purpose, to make them not be catched by gtk-doc.
+     */
+
+    /*
+     * WebKitWebView::document-load-finished
+     * @web_view: the object which received the signal
+     * @web_frame: the #WebKitWebFrame whose load dispatched this request
+     *
+     * Emitted when the DOM document object load is finished for the
+     * given frame.
+     */
+    webkit_web_view_signals[DOCUMENT_LOAD_FINISHED] = g_signal_new("document-load-finished",
+            G_TYPE_FROM_CLASS(webViewClass),
+            (GSignalFlags)(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
+            0,
+            NULL, NULL,
+            g_cclosure_marshal_VOID__OBJECT,
+            G_TYPE_NONE, 1,
+            WEBKIT_TYPE_WEB_FRAME);
+
 
     /*
      * implementations of virtual methods
@@ -2549,7 +2695,7 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     gboolean autoLoadImages, autoShrinkImages, printBackgrounds,
         enableScripts, enablePlugins, enableDeveloperExtras, resizableTextAreas,
         enablePrivateBrowsing, enableCaretBrowsing, enableHTML5Database, enableHTML5LocalStorage,
-        enableXSSAuditor, javascriptCanOpenWindows, enableOfflineWebAppCache,
+        enableXSSAuditor, enableSpatialNavigation, javascriptCanOpenWindows, enableOfflineWebAppCache,
         enableUniversalAccessFromFileURI, enableFileAccessFromFileURI,
         enableDOMPaste, tabKeyCyclesThroughElements,
         enableSiteSpecificQuirks, usePageCache, enableJavaApplet;
@@ -2577,6 +2723,7 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
                  "enable-html5-database", &enableHTML5Database,
                  "enable-html5-local-storage", &enableHTML5LocalStorage,
                  "enable-xss-auditor", &enableXSSAuditor,
+                 "enable-spatial-navigation", &enableSpatialNavigation,
                  "javascript-can-open-windows-automatically", &javascriptCanOpenWindows,
                  "enable-offline-web-application-cache", &enableOfflineWebAppCache,
                  "editing-behavior", &editingBehavior,
@@ -2606,9 +2753,12 @@ static void webkit_web_view_update_settings(WebKitWebView* webView)
     settings->setDeveloperExtrasEnabled(enableDeveloperExtras);
     settings->setPrivateBrowsingEnabled(enablePrivateBrowsing);
     settings->setCaretBrowsingEnabled(enableCaretBrowsing);
-    settings->setDatabasesEnabled(enableHTML5Database);
+#if ENABLE(DATABASE)
+    Database::setIsAvailable(enableHTML5Database);
+#endif
     settings->setLocalStorageEnabled(enableHTML5LocalStorage);
     settings->setXSSAuditorEnabled(enableXSSAuditor);
+    settings->setSpatialNavigationEnabled(enableSpatialNavigation);
     settings->setJavaScriptCanOpenWindowsAutomatically(javascriptCanOpenWindows);
     settings->setOfflineWebApplicationCacheEnabled(enableOfflineWebAppCache);
     settings->setEditingBehavior(core(editingBehavior));
@@ -2694,12 +2844,17 @@ static void webkit_web_view_settings_notify(WebKitWebSettings* webSettings, GPar
         settings->setPrivateBrowsingEnabled(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-caret-browsing"))
         settings->setCaretBrowsingEnabled(g_value_get_boolean(&value));
-    else if (name == g_intern_string("enable-html5-database"))
-        settings->setDatabasesEnabled(g_value_get_boolean(&value));
+#if ENABLE(DATABASE)
+    else if (name == g_intern_string("enable-html5-database")) {
+        Database::setIsAvailable(g_value_get_boolean(&value));
+    }
+#endif
     else if (name == g_intern_string("enable-html5-local-storage"))
         settings->setLocalStorageEnabled(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-xss-auditor"))
         settings->setXSSAuditorEnabled(g_value_get_boolean(&value));
+    else if (name == g_intern_string("enable-spatial-navigation"))
+        settings->setSpatialNavigationEnabled(g_value_get_boolean(&value));
     else if (name == g_intern_string("javascript-can-open-windows-automatically"))
         settings->setJavaScriptCanOpenWindowsAutomatically(g_value_get_boolean(&value));
     else if (name == g_intern_string("enable-offline-web-application-cache"))
@@ -2866,8 +3021,11 @@ WebKitWebInspector* webkit_web_view_get_inspector(WebKitWebView* webView)
 static void webkit_web_view_set_window_features(WebKitWebView* webView, WebKitWebWindowFeatures* webWindowFeatures)
 {
     WebKitWebViewPrivate* priv = webView->priv;
+    
+    if (!webWindowFeatures)
+      return;
 
-    if(webkit_web_window_features_equal(priv->webWindowFeatures, webWindowFeatures))
+    if (webkit_web_window_features_equal(priv->webWindowFeatures, webWindowFeatures))
       return;
 
     g_object_unref(priv->webWindowFeatures);
@@ -3259,7 +3417,7 @@ gboolean webkit_web_view_search_text(WebKitWebView* webView, const gchar* string
  * @web_view: a #WebKitWebView
  * @string: a string to look for
  * @case_sensitive: whether to respect the case of text
- * @limit: the maximum number of strings to look for or %0 for all
+ * @limit: the maximum number of strings to look for or 0 for all
  *
  * Attempts to highlight all occurances of #string inside #web_view.
  *
@@ -3557,7 +3715,7 @@ void webkit_web_view_set_editable(WebKitWebView* webView, gboolean flag)
  *
  * This function returns the list of targets this #WebKitWebView can
  * provide for clipboard copying and as DND source. The targets in the list are
- * added with %info values from the #WebKitWebViewTargetInfo enum,
+ * added with values from the #WebKitWebViewTargetInfo enum,
  * using gtk_target_list_add() and
  * gtk_target_list_add_text_targets().
  *
@@ -3574,7 +3732,7 @@ GtkTargetList* webkit_web_view_get_copy_target_list(WebKitWebView* webView)
  *
  * This function returns the list of targets this #WebKitWebView can
  * provide for clipboard pasting and as DND destination. The targets in the list are
- * added with %info values from the #WebKitWebViewTargetInfo enum,
+ * added with values from the #WebKitWebViewTargetInfo enum,
  * using gtk_target_list_add() and
  * gtk_target_list_add_text_targets().
  *
@@ -3681,7 +3839,7 @@ static void webkit_web_view_apply_zoom_level(WebKitWebView* webView, gfloat zoom
         return;
 
     WebKitWebViewPrivate* priv = webView->priv;
-    frame->setZoomFactor(zoomLevel, !priv->zoomFullContent);
+    frame->setZoomFactor(zoomLevel, priv->zoomFullContent ? ZoomPage : ZoomTextOnly);
 }
 
 /**
@@ -3804,6 +3962,7 @@ void webkit_web_view_set_full_content_zoom(WebKitWebView* webView, gboolean zoom
  */
 SoupSession* webkit_get_default_session ()
 {
+    webkit_init();
     return ResourceHandle::defaultSession();
 }
 
@@ -4219,6 +4378,8 @@ G_CONST_RETURN gchar* webkit_web_view_get_icon_uri(WebKitWebView* webView)
  */
 void webkit_set_cache_model(WebKitCacheModel model)
 {
+    webkit_init();
+
     if (cacheModel == model)
         return;
 
@@ -4267,5 +4428,6 @@ void webkit_set_cache_model(WebKitCacheModel model)
  */
 WebKitCacheModel webkit_get_cache_model()
 {
+    webkit_init();
     return cacheModel;
 }

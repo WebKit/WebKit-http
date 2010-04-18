@@ -10,7 +10,6 @@ javascriptcore_cppflags += \
 	-I$(srcdir)/JavaScriptCore/pcre \
 	-I$(srcdir)/JavaScriptCore/profiler \
 	-I$(srcdir)/JavaScriptCore/runtime \
-	-I$(srcdir)/JavaScriptCore/wrec \
 	-I$(srcdir)/JavaScriptCore/jit \
 	-I$(srcdir)/JavaScriptCore/assembler \
 	-I$(srcdir)/JavaScriptCore/wtf/unicode \
@@ -84,6 +83,7 @@ javascriptcore_sources += \
 	JavaScriptCore/jit/JITCall.cpp \
 	JavaScriptCore/jit/JITCode.h \
 	JavaScriptCore/jit/JITPropertyAccess.cpp \
+	JavaScriptCore/jit/JITPropertyAccess32_64.cpp \
 	JavaScriptCore/jit/JITArithmetic.cpp \
 	JavaScriptCore/jit/ExecutableAllocator.cpp \
 	JavaScriptCore/jit/JIT.h \
@@ -209,19 +209,12 @@ javascriptcore_sources += \
 	JavaScriptCore/runtime/StructureChain.cpp \
 	JavaScriptCore/runtime/StructureChain.h \
 	JavaScriptCore/runtime/StructureTransitionTable.h \
+	JavaScriptCore/runtime/Terminator.h \
 	JavaScriptCore/runtime/TimeoutChecker.cpp \
 	JavaScriptCore/runtime/TimeoutChecker.h \
 	JavaScriptCore/runtime/JSTypeInfo.h \
 	JavaScriptCore/runtime/WeakGCMap.h \
 	JavaScriptCore/runtime/WeakGCPtr.h \
-	JavaScriptCore/wrec/CharacterClass.h \
-	JavaScriptCore/wrec/CharacterClassConstructor.h \
-	JavaScriptCore/wrec/Escapes.h \
-	JavaScriptCore/wrec/Quantifier.h \
-	JavaScriptCore/wrec/WREC.h \
-	JavaScriptCore/wrec/WRECFunctors.h \
-	JavaScriptCore/wrec/WRECGenerator.h \
-	JavaScriptCore/wrec/WRECParser.h \
 	JavaScriptCore/wtf/ASCIICType.h \
 	JavaScriptCore/wtf/AVLTree.h \
 	JavaScriptCore/wtf/AlwaysInline.h \
@@ -263,7 +256,6 @@ javascriptcore_sources += \
 	JavaScriptCore/wtf/PassRefPtr.h \
 	JavaScriptCore/wtf/Platform.h \
 	JavaScriptCore/wtf/PossiblyNull.h \
-	JavaScriptCore/wtf/PtrAndFlags.h \
 	JavaScriptCore/wtf/RandomNumber.cpp \
 	JavaScriptCore/wtf/RandomNumber.h \
 	JavaScriptCore/wtf/RandomNumberSeed.h \
@@ -292,12 +284,14 @@ javascriptcore_sources += \
 	JavaScriptCore/wtf/ValueCheck.h \
 	JavaScriptCore/wtf/Vector.h \
 	JavaScriptCore/wtf/VectorTraits.h \
-	JavaScriptCore/wtf/gtk/GOwnPtr.cpp \
-	JavaScriptCore/wtf/gtk/GOwnPtr.h \
-	JavaScriptCore/wtf/gtk/GRefPtr.cpp \
-	JavaScriptCore/wtf/gtk/GRefPtr.h \
+	JavaScriptCore/wtf/gobject/GOwnPtr.cpp \
+	JavaScriptCore/wtf/gobject/GOwnPtr.h \
+	JavaScriptCore/wtf/gobject/GRefPtr.cpp \
+	JavaScriptCore/wtf/gobject/GRefPtr.h \
 	JavaScriptCore/wtf/gtk/MainThreadGtk.cpp \
 	JavaScriptCore/wtf/gtk/ThreadingGtk.cpp \
+	JavaScriptCore/wtf/text/CString.cpp \
+	JavaScriptCore/wtf/text/CString.h \
 	JavaScriptCore/wtf/unicode/Collator.h \
 	JavaScriptCore/wtf/unicode/CollatorDefault.cpp \
 	JavaScriptCore/wtf/unicode/UTF8.cpp \

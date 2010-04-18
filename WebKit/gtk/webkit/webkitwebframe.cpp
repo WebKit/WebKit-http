@@ -35,7 +35,6 @@
 #include "AccessibilityObjectWrapperAtk.h"
 #include "AnimationController.h"
 #include "AXObjectCache.h"
-#include "CString.h"
 #include "DocumentLoader.h"
 #include "DocumentLoaderGtk.h"
 #include "FrameLoader.h"
@@ -45,6 +44,7 @@
 #include <glib/gi18n-lib.h>
 #include "GCController.h"
 #include "GraphicsContext.h"
+#include "GtkVersioning.h"
 #include "HTMLFrameOwnerElement.h"
 #include "JSDOMWindow.h"
 #include "JSLock.h"
@@ -60,6 +60,7 @@
 
 #include <atk/atk.h>
 #include <JavaScriptCore/APICast.h>
+#include <wtf/text/CString.h>
 
 /**
  * SECTION:webkitwebframe
@@ -867,6 +868,25 @@ int webkit_web_frame_page_number_for_element_by_id(WebKitWebFrame* frame, const 
 }
 
 /**
+ * webkit_web_frame_number_of_pages
+ * @frame: a #WebKitWebFrame
+ * @pageWidth: width of a page
+ * @pageHeight: height of a page
+ *
+ * Return value: The number of pages to be printed.
+ */
+int webkit_web_frame_number_of_pages(WebKitWebFrame* frame, float pageWidth, float pageHeight)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), NULL);
+
+    Frame* coreFrame = core(frame);
+    if (!coreFrame)
+        return -1;
+
+    return PrintContext::numberOfPages(coreFrame, FloatSize(pageWidth, pageHeight));
+}
+
+/**
  * webkit_web_frame_get_pending_unload_event_count:
  * @frame: a #WebKitWebFrame
  *
@@ -923,7 +943,7 @@ static void end_print_callback(GtkPrintOperation* op, GtkPrintContext* context, 
  * @action: the #GtkPrintOperationAction to be performed
  * @error: #GError for error return
  *
- * Prints the given #WebKitFrame, using the given #GtkPrintOperation
+ * Prints the given #WebKitWebFrame, using the given #GtkPrintOperation
  * and #GtkPrintOperationAction. This function wraps a call to
  * gtk_print_operation_run() for printing the contents of the
  * #WebKitWebFrame.
@@ -937,11 +957,7 @@ GtkPrintOperationResult webkit_web_frame_print_full(WebKitWebFrame* frame, GtkPr
 
     GtkWidget* topLevel = gtk_widget_get_toplevel(GTK_WIDGET(webkit_web_frame_get_web_view(frame)));
 
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (!gtk_widget_is_toplevel(topLevel))
-#else
-    if (!GTK_WIDGET_TOPLEVEL(topLevel))
-#endif
         topLevel = NULL;
 
     Frame* coreFrame = core(frame);
@@ -961,7 +977,7 @@ GtkPrintOperationResult webkit_web_frame_print_full(WebKitWebFrame* frame, GtkPr
  * webkit_web_frame_print:
  * @frame: a #WebKitWebFrame
  *
- * Prints the given #WebKitFrame, by presenting a print dialog to the
+ * Prints the given #WebKitWebFrame, by presenting a print dialog to the
  * user. If you need more control over the printing process, see
  * webkit_web_frame_print_full().
  *
@@ -980,19 +996,11 @@ void webkit_web_frame_print(WebKitWebFrame* frame)
 
     if (error) {
         GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(priv->webView));
-#if GTK_CHECK_VERSION(2, 18, 0)
         GtkWidget* dialog = gtk_message_dialog_new(gtk_widget_is_toplevel(window) ? GTK_WINDOW(window) : 0,
                                                    GTK_DIALOG_DESTROY_WITH_PARENT,
                                                    GTK_MESSAGE_ERROR,
                                                    GTK_BUTTONS_CLOSE,
                                                    "%s", error->message);
-#else
-        GtkWidget* dialog = gtk_message_dialog_new(GTK_WIDGET_TOPLEVEL(window) ? GTK_WINDOW(window) : 0,
-                                                   GTK_DIALOG_DESTROY_WITH_PARENT,
-                                                   GTK_MESSAGE_ERROR,
-                                                   GTK_BUTTONS_CLOSE,
-                                                   "%s", error->message);
-#endif
 
         g_error_free(error);
 

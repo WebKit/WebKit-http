@@ -54,11 +54,11 @@
 #include "WebURLCredential.h"
 #include "WebURLProtectionSpace.h"
 #include "WebURLResponse.h"
+#include "WebUserContentURLPattern.h"
 #include "WebView.h"
 #include "WebWorkersPrivate.h"
 #pragma warning(push, 0)
 #include <JavaScriptCore/InitializeThreading.h>
-#include <WebCore/FontDatabase.h>
 #include <WebCore/SoftLinking.h>
 #pragma warning(pop)
 
@@ -87,7 +87,6 @@ WebKitClassFactory::WebKitClassFactory(CLSID targetClass)
 #endif
 
     JSC::initializeThreading();
-    WebCore::populateFontDatabase();
 
     gClassCount++;
     gClassNameCount.add("WebKitClassFactory");

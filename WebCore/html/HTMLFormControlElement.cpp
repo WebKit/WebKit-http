@@ -49,14 +49,16 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Document* doc, HTMLFormElement* f)
-    : HTMLElement(tagName, doc)
+HTMLFormControlElement::HTMLFormControlElement(const QualifiedName& tagName, Document* doc, HTMLFormElement* f, ConstructionType constructionType)
+    : HTMLElement(tagName, doc, constructionType)
     , m_form(f)
-    , m_hasName(false)
     , m_disabled(false)
     , m_readOnly(false)
     , m_required(false)
     , m_valueMatchesRenderer(false)
+    , m_willValidateInitialized(false)
+    , m_willValidate(true)
+    , m_isValid(true)
 {
     if (!m_form)
         m_form = findFormAncestor();
@@ -90,10 +92,7 @@ ValidityState* HTMLFormControlElement::validity()
 
 void HTMLFormControlElement::parseMappedAttribute(MappedAttribute *attr)
 {
-    bool oldWillValidate = willValidate();
-    if (attr->name() == nameAttr)
-        m_hasName = !attr->isEmpty();
-    else if (attr->name() == disabledAttr) {
+    if (attr->name() == disabledAttr) {
         bool oldDisabled = m_disabled;
         m_disabled = !attr->isNull();
         if (oldDisabled != m_disabled) {
@@ -112,12 +111,13 @@ void HTMLFormControlElement::parseMappedAttribute(MappedAttribute *attr)
     } else if (attr->name() == requiredAttr) {
         bool oldRequired = m_required;
         m_required = !attr->isNull();
-        if (oldRequired != m_required)
-            setNeedsStyleRecalc();
+        if (oldRequired != m_required) {
+            setNeedsValidityCheck();
+            setNeedsStyleRecalc(); // Updates for :required :optional classes.
+        }
     } else
         HTMLElement::parseMappedAttribute(attr);
-    if (oldWillValidate != willValidate())
-        setNeedsWillValidateCheck();
+    setNeedsWillValidateCheck();
 }
 
 void HTMLFormControlElement::attach()
@@ -153,10 +153,9 @@ void HTMLFormControlElement::insertedIntoTree(bool deep)
         // setting a form, we will already have a non-null value for m_form, 
         // and so we don't need to do anything.
         m_form = findFormAncestor();
-        if (m_form) {
+        if (m_form)
             m_form->registerFormElement(this);
-            setNeedsWillValidateCheck();
-        } else
+        else
             document()->checkedRadioButtons().addButton(this);
     }
 
@@ -183,17 +182,9 @@ void HTMLFormControlElement::removedFromTree(bool deep)
     if (m_form && !(parser && parser->isHandlingResidualStyleAcrossBlocks()) && findRoot(this) != findRoot(m_form)) {
         m_form->removeFormElement(this);
         m_form = 0;
-        setNeedsWillValidateCheck();
     }
 
     HTMLElement::removedFromTree(deep);
-}
-
-void HTMLFormControlElement::formDestroyed()
-{
-    if (m_form)
-        setNeedsWillValidateCheck();
-    m_form = 0;
 }
 
 const AtomicString& HTMLFormControlElement::formControlName() const
@@ -299,13 +290,38 @@ short HTMLFormControlElement::tabIndex() const
     return Element::tabIndex();
 }
 
+bool HTMLFormControlElement::recalcWillValidate() const
+{
+    // FIXME: Should return false if this element has a datalist element as an
+    // ancestor. See HTML5 4.10.10 'The datalist element.'
+    return !m_disabled && !m_readOnly;
+}
+
 bool HTMLFormControlElement::willValidate() const
 {
-    // FIXME: Implementation shall be completed with these checks:
-    //      The control does not have a repetition template as an ancestor.
-    //      The control does not have a datalist element as an ancestor.
-    //      The control is not an output element.
-    return m_form && m_hasName && !m_disabled && !m_readOnly;
+    if (!m_willValidateInitialized) {
+        m_willValidateInitialized = true;
+        m_willValidate = recalcWillValidate();
+    } else {
+        // If the following assertion fails, setNeedsWillValidateCheck() is not
+        // called correctly when something which changes recalcWillValidate() result
+        // is updated.
+        ASSERT(m_willValidate == recalcWillValidate());
+    }
+    return m_willValidate;
+}
+
+void HTMLFormControlElement::setNeedsWillValidateCheck()
+{
+    // We need to recalculate willValidte immediately because willValidate
+    // change can causes style change.
+    bool newWillValidate = recalcWillValidate();
+    if (m_willValidateInitialized && m_willValidate == newWillValidate)
+        return;
+    m_willValidateInitialized = true;
+    m_willValidate = newWillValidate;
+    setNeedsStyleRecalc();
+    // FIXME: Show/hide a validation message.
 }
 
 String HTMLFormControlElement::validationMessage()
@@ -313,28 +329,35 @@ String HTMLFormControlElement::validationMessage()
     return validity()->validationMessage();
 }
 
-void HTMLFormControlElement::setNeedsWillValidateCheck()
+bool HTMLFormControlElement::checkValidity(Vector<RefPtr<HTMLFormControlElement> >* unhandledInvalidControls)
 {
-    setNeedsStyleRecalc();
-    // FIXME: Show/hide a validation message.
+    if (!willValidate() || isValidFormControlElement())
+        return true;
+    // An event handler can deref this object.
+    RefPtr<HTMLFormControlElement> protector(this);
+    RefPtr<Document> originalDocument(document());
+    bool needsDefaultAction = dispatchEvent(Event::create(eventNames().invalidEvent, false, true));
+    if (needsDefaultAction && unhandledInvalidControls && inDocument() && originalDocument == document())
+        unhandledInvalidControls->append(this);
+    return false;
 }
 
-bool HTMLFormControlElement::checkValidity()
+bool HTMLFormControlElement::isValidFormControlElement()
 {
-    if (willValidate() && !isValidFormControlElement()) {
-        dispatchEvent(Event::create(eventNames().invalidEvent, false, true));
-        return false;
-    }
-
-    return true;
+    // If the following assertion fails, setNeedsValidityCheck() is not called
+    // correctly when something which changes validity is updated.
+    ASSERT(m_isValid == validity()->valid());
+    return m_isValid;
 }
 
 void HTMLFormControlElement::setNeedsValidityCheck()
 {
-    if (willValidate()) {
+    bool newIsValid = validity()->valid();
+    if (willValidate() && newIsValid != m_isValid) {
         // Update style for pseudo classes such as :valid :invalid.
         setNeedsStyleRecalc();
     }
+    m_isValid = newIsValid;
     // FIXME: show/hide a validation message.
 }
 
@@ -345,16 +368,16 @@ void HTMLFormControlElement::setCustomValidity(const String& error)
     
 void HTMLFormControlElement::dispatchFocusEvent()
 {
-    if (document()->frame() && document()->frame()->page())
-        document()->frame()->page()->chrome()->client()->formDidFocus(this);
+    if (document()->page())
+        document()->page()->chrome()->client()->formDidFocus(this);
 
     HTMLElement::dispatchFocusEvent();
 }
 
 void HTMLFormControlElement::dispatchBlurEvent()
 {
-    if (document()->frame() && document()->frame()->page())
-        document()->frame()->page()->chrome()->client()->formDidBlur(this);
+    if (document()->page())
+        document()->page()->chrome()->client()->formDidBlur(this);
 
     HTMLElement::dispatchBlurEvent();
 }
@@ -367,11 +390,6 @@ HTMLFormElement* HTMLFormControlElement::virtualForm() const
 bool HTMLFormControlElement::isDefaultButtonForForm() const
 {
     return isSuccessfulSubmitButton() && m_form && m_form->defaultButton() == this;
-}
-
-bool HTMLFormControlElement::isValidFormControlElement()
-{
-    return validity()->valid();
 }
 
 void HTMLFormControlElement::removeFromForm()
@@ -405,9 +423,29 @@ void HTMLFormControlElementWithState::didMoveToNewOwnerDocument()
     HTMLFormControlElement::didMoveToNewOwnerDocument();
 }
 
+bool HTMLFormControlElementWithState::autoComplete() const
+{
+    if (!form())
+        return true;
+    return form()->autoComplete();
+}
+
+bool HTMLFormControlElementWithState::shouldSaveAndRestoreFormControlState() const
+{
+    // We don't save/restore control state in a form with autocomplete=off.
+    return autoComplete();
+}
+
 void HTMLFormControlElementWithState::finishParsingChildren()
 {
     HTMLFormControlElement::finishParsingChildren();
+
+    // We don't save state of a control with shouldSaveAndRestoreFormControlState()=false.
+    // But we need to skip restoring process too because a control in another
+    // form might have the same pair of name and type and saved its state.
+    if (!shouldSaveAndRestoreFormControlState())
+        return;
+
     Document* doc = document();
     if (doc->hasStateForNewFormElements()) {
         String state;
@@ -520,10 +558,6 @@ void HTMLTextFormControlElement::parseMappedAttribute(MappedAttribute* attr)
 {
     if (attr->name() == placeholderAttr)
         updatePlaceholderVisibility(true);
-    else if (attr->name() == onfocusAttr)
-        setAttributeEventListener(eventNames().focusEvent, createAttributeEventListener(this, attr));
-    else if (attr->name() == onblurAttr)
-        setAttributeEventListener(eventNames().blurEvent, createAttributeEventListener(this, attr));
     else if (attr->name() == onselectAttr)
         setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, attr));
     else if (attr->name() == onchangeAttr)

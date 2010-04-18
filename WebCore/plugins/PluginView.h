@@ -28,7 +28,6 @@
 #ifndef PluginView_h
 #define PluginView_h
 
-#include "CString.h"
 #include "FrameLoadRequest.h"
 #include "HaltablePlugin.h"
 #include "IntRect.h"
@@ -44,6 +43,7 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 
 #if OS(WINDOWS) && (PLATFORM(QT) || PLATFORM(WX))
 typedef struct HWND__* HWND;
@@ -156,6 +156,8 @@ namespace WebCore {
 
         void setJavaScriptPaused(bool);
 
+        void privateBrowsingStateChanged(bool);
+
         void disconnectStream(PluginStream*);
         void streamDidFinishLoading(PluginStream* stream) { disconnectStream(stream); }
 
@@ -212,7 +214,9 @@ namespace WebCore {
 
         bool start();
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
         static void keepAlive(NPP);
+#endif
         void keepAlive();
 
     private:
@@ -241,6 +245,9 @@ namespace WebCore {
         static HDC WINAPI hookedBeginPaint(HWND, PAINTSTRUCT*);
         static BOOL WINAPI hookedEndPaint(HWND, const PAINTSTRUCT*);
 #endif
+
+        static bool platformGetValueStatic(NPNVariable variable, void* value, NPError* result);
+        bool platformGetValue(NPNVariable variable, void* value, NPError* result);
 
         RefPtr<Frame> m_parentFrame;
         RefPtr<PluginPackage> m_plugin;
@@ -289,7 +296,7 @@ namespace WebCore {
         String m_pluginsPage;
 
         String m_mimeType;
-        CString m_userAgent;
+        WTF::CString m_userAgent;
 
         NPP m_instance;
         NPP_t m_instanceStruct;
@@ -337,6 +344,7 @@ private:
         void setNPWindowIfNeeded();
 #elif defined(XP_MACOSX)
         NP_CGContext m_npCgContext;
+        OwnPtr<Timer<PluginView> > m_nullEventTimer;
         NPDrawingModel m_drawingModel;
         NPEventModel m_eventModel;
         CGContextRef m_contextRef;
@@ -345,8 +353,11 @@ private:
         QPixmap m_pixmap;
 #endif
 
+        Point m_lastMousePos;
         void setNPWindowIfNeeded();
+        void nullEventTimerFired(Timer<PluginView>*);
         Point globalMousePosForPlugin() const;
+        Point mousePosForPlugin(MouseEvent* event = 0) const;
 #endif
 
 #if defined(XP_UNIX) && ENABLE(NETSCAPE_PLUGIN_API)

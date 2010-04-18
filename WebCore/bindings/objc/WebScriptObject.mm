@@ -33,6 +33,9 @@
 #import "Frame.h"
 #import "JSDOMWindow.h"
 #import "JSDOMWindowCustom.h"
+#import "JSHTMLElement.h"
+#import "JSPluginElementFunctions.h"
+#import "ObjCRuntimeObject.h"
 #import "PlatformString.h"
 #import "StringSourceProvider.h"
 #import "WebCoreObjCExtras.h"
@@ -508,18 +511,17 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
 {
     if (value.isObject()) {
         JSObject* object = asObject(value);
-        ExecState* exec = rootObject->globalObject()->globalExec();
         JSLock lock(SilenceAssertionsOnly);
-        
-        if (object->classInfo() != &RuntimeObjectImp::s_info) {
-            JSValue runtimeObject = object->get(exec, Identifier(exec, "__apple_runtime_object"));
-            if (runtimeObject && runtimeObject.isObject())
-                object = asObject(runtimeObject);
-        }
 
-        if (object->classInfo() == &RuntimeObjectImp::s_info) {
-            RuntimeObjectImp* imp = static_cast<RuntimeObjectImp*>(object);
-            ObjcInstance *instance = static_cast<ObjcInstance*>(imp->getInternalInstance());
+        if (object->inherits(&JSHTMLElement::s_info)) {
+            // Plugin elements cache the instance internally.
+            HTMLElement* el = static_cast<JSHTMLElement*>(object)->impl();
+            ObjcInstance* instance = static_cast<ObjcInstance*>(pluginInstance(el));
+            if (instance)
+                return instance->getObject();
+        } else if (object->inherits(&ObjCRuntimeObject::s_info)) {
+            ObjCRuntimeObject* runtimeObject = static_cast<ObjCRuntimeObject*>(object);
+            ObjcInstance* instance = runtimeObject->getInternalObjCInstance();
             if (instance)
                 return instance->getObject();
             return nil;

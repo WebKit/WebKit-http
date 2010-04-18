@@ -34,7 +34,6 @@
 #include "Range.h"
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
-#include <wtf/Platform.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -204,7 +203,7 @@ enum AccessibilityOrientation {
     AccessibilityOrientationHorizontal,
 };
     
-enum AccessibilityObjectPlatformInclusion {
+enum AccessibilityObjectInclusion {
     IncludeObject,
     IgnoreObject,
     DefaultBehavior,
@@ -326,6 +325,9 @@ public:
     
     virtual bool hasIntValue() const { return false; }
 
+    // A programmatic way to set a name on an AccessibleObject.
+    virtual void setAccessibleName(String&) { }
+    
     bool accessibilityShouldUseUniqueId() const { return true; }
     virtual bool accessibilityIsIgnored() const  { return true; }
 
@@ -347,8 +349,8 @@ public:
     virtual void ariaFlowToElements(AccessibilityChildrenVector&) const { }
     
     // ARIA drag and drop
-    virtual bool supportsARIADropping() { return false; }
-    virtual bool supportsARIADragging() { return false; }
+    virtual bool supportsARIADropping() const { return false; }
+    virtual bool supportsARIADragging() const { return false; }
     virtual bool isARIAGrabbed() { return false; }
     virtual void setARIAGrabbed(bool) { }
     virtual void determineARIADropEffects(Vector<String>&) { }
@@ -415,6 +417,7 @@ public:
     virtual FrameView* topDocumentFrameView() const { return 0; }
     virtual FrameView* documentFrameView() const;
     virtual String language() const;
+    String language(Node*) const;
     virtual unsigned hierarchicalLevel() const { return 0; }
     
     virtual void setFocused(bool) { }
@@ -446,7 +449,8 @@ public:
     virtual void handleActiveDescendantChanged() { }
 
     static AccessibilityRole ariaRoleToWebCoreRole(const String&);
-    
+    static const AtomicString& getAttribute(Node*, const QualifiedName&);
+
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
     virtual VisiblePositionRange visiblePositionRangeForLine(unsigned) const { return VisiblePositionRange(); }
     
@@ -518,6 +522,8 @@ public:
     virtual bool ariaLiveRegionAtomic() const { return false; }
     virtual bool ariaLiveRegionBusy() const { return false; }
     
+    bool supportsARIAAttributes() const;
+    
 #if HAVE(ACCESSIBILITY)
 #if PLATFORM(GTK)
     AccessibilityObjectWrapper* wrapper() const;
@@ -531,18 +537,14 @@ public:
 #endif
 #endif
 
-    // a platform-specific method for determining if an attachment is ignored
 #if HAVE(ACCESSIBILITY)
+    // a platform-specific method for determining if an attachment is ignored
     bool accessibilityIgnoreAttachment() const;
+    // gives platforms the opportunity to indicate if and how an object should be included
+    AccessibilityObjectInclusion accessibilityPlatformIncludesObject() const;
 #else
     bool accessibilityIgnoreAttachment() const { return true; }
-#endif
-
-    // gives platforms the opportunity to indicate if and how an object should be included
-#if HAVE(ACCESSIBILITY)
-    AccessibilityObjectPlatformInclusion accessibilityPlatformIncludesObject() const;
-#else
-    AccessibilityObjectPlatformInclusion accessibilityPlatformIncludesObject() const { return DefaultBehavior; }
+    AccessibilityObjectInclusion accessibilityPlatformIncludesObject() const { return DefaultBehavior; }
 #endif
 
     // allows for an AccessibilityObject to update its render tree or perform

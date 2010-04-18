@@ -49,6 +49,7 @@ module websockets {
         // networking
         attribute EventListener onopen;
         attribute EventListener onmessage;
+        attribute EventListener onerror;
         attribute EventListener onclose;
 
         [Custom] boolean send(in DOMString data)
@@ -56,12 +57,12 @@ module websockets {
         void close();
 
         // EventTarget interface
-        [Custom] void addEventListener(in DOMString type,
-                                       in EventListener listener,
-                                       in boolean useCapture);
-        [Custom] void removeEventListener(in DOMString type,
+        [JSCCustom] void addEventListener(in DOMString type,
                                           in EventListener listener,
                                           in boolean useCapture);
+        [JSCCustom] void removeEventListener(in DOMString type,
+                                             in EventListener listener,
+                                             in boolean useCapture);
         boolean dispatchEvent(in Event evt)
             raises(EventException);
     };

@@ -29,68 +29,33 @@
 
 #include "WKCACFLayer.h"
 
-#include "CString.h"
 #include "WKCACFContextFlusher.h"
 #include "WKCACFLayerRenderer.h"
+#include <wtf/text/CString.h>
 
 #include <stdio.h>
 #include <QuartzCore/CACFContext.h>
 #include <QuartzCore/CARender.h>
-#include <QuartzCoreInterface/QuartzCoreInterface.h>
 
 #ifndef NDEBUG
 #include <wtf/CurrentTime.h>
-#endif
-
-#ifdef DEBUG_ALL
-#pragma comment(lib, "QuartzCore_debug")
-#pragma comment(lib, "QuartzCoreInterface_debug")
-#else
-#pragma comment(lib, "QuartzCore")
-#pragma comment(lib, "QuartzCoreInterface")
 #endif
 
 namespace WebCore {
 
 using namespace std;
 
-static void displayInContext(CACFLayerRef layer, CGContextRef context)
+static void displayCallback(CACFLayerRef layer, CGContextRef context)
 {
     ASSERT_ARG(layer, WKCACFLayer::layer(layer));
-    WKCACFLayer::layer(layer)->display(context);
+    WKCACFLayer::layer(layer)->drawInContext(context);
 }
-
-#define STATIC_CACF_STRING(name) \
-    static CFStringRef name() \
-    { \
-        static CFStringRef name = wkqcCFStringRef(wkqc##name); \
-        return name; \
-    }
-
-STATIC_CACF_STRING(kCACFLayer)
-STATIC_CACF_STRING(kCACFTransformLayer)
-STATIC_CACF_STRING(kCACFGravityCenter)
-STATIC_CACF_STRING(kCACFGravityTop)
-STATIC_CACF_STRING(kCACFGravityBottom)
-STATIC_CACF_STRING(kCACFGravityLeft)
-STATIC_CACF_STRING(kCACFGravityRight)
-STATIC_CACF_STRING(kCACFGravityTopLeft)
-STATIC_CACF_STRING(kCACFGravityTopRight)
-STATIC_CACF_STRING(kCACFGravityBottomLeft)
-STATIC_CACF_STRING(kCACFGravityBottomRight)
-STATIC_CACF_STRING(kCACFGravityResize)
-STATIC_CACF_STRING(kCACFGravityResizeAspect)
-STATIC_CACF_STRING(kCACFGravityResizeAspectFill)
-STATIC_CACF_STRING(kCACFFilterLinear)
-STATIC_CACF_STRING(kCACFFilterNearest)
-STATIC_CACF_STRING(kCACFFilterTrilinear)
-STATIC_CACF_STRING(kCACFFilterLanczos)
 
 static CFStringRef toCACFLayerType(WKCACFLayer::LayerType type)
 {
     switch (type) {
-    case WKCACFLayer::Layer: return kCACFLayer();
-    case WKCACFLayer::TransformLayer: return kCACFTransformLayer();
+    case WKCACFLayer::Layer: return kCACFLayer;
+    case WKCACFLayer::TransformLayer: return kCACFTransformLayer;
     default: return 0;
     }
 }
@@ -98,55 +63,55 @@ static CFStringRef toCACFLayerType(WKCACFLayer::LayerType type)
 static CFStringRef toCACFContentsGravityType(WKCACFLayer::ContentsGravityType type)
 {
     switch (type) {
-    case WKCACFLayer::Center: return kCACFGravityCenter();
-    case WKCACFLayer::Top: return kCACFGravityTop();
-    case WKCACFLayer::Bottom: return kCACFGravityBottom();
-    case WKCACFLayer::Left: return kCACFGravityLeft();
-    case WKCACFLayer::Right: return kCACFGravityRight();
-    case WKCACFLayer::TopLeft: return kCACFGravityTopLeft();
-    case WKCACFLayer::TopRight: return kCACFGravityTopRight();
-    case WKCACFLayer::BottomLeft: return kCACFGravityBottomLeft();
-    case WKCACFLayer::BottomRight: return kCACFGravityBottomRight();
-    case WKCACFLayer::Resize: return kCACFGravityResize();
-    case WKCACFLayer::ResizeAspect: return kCACFGravityResizeAspect();
-    case WKCACFLayer::ResizeAspectFill: return kCACFGravityResizeAspectFill();
+    case WKCACFLayer::Center: return kCACFGravityCenter;
+    case WKCACFLayer::Top: return kCACFGravityTop;
+    case WKCACFLayer::Bottom: return kCACFGravityBottom;
+    case WKCACFLayer::Left: return kCACFGravityLeft;
+    case WKCACFLayer::Right: return kCACFGravityRight;
+    case WKCACFLayer::TopLeft: return kCACFGravityTopLeft;
+    case WKCACFLayer::TopRight: return kCACFGravityTopRight;
+    case WKCACFLayer::BottomLeft: return kCACFGravityBottomLeft;
+    case WKCACFLayer::BottomRight: return kCACFGravityBottomRight;
+    case WKCACFLayer::Resize: return kCACFGravityResize;
+    case WKCACFLayer::ResizeAspect: return kCACFGravityResizeAspect;
+    case WKCACFLayer::ResizeAspectFill: return kCACFGravityResizeAspectFill;
     default: return 0;
     }
 }
 
 static WKCACFLayer::ContentsGravityType fromCACFContentsGravityType(CFStringRef string)
 {
-    if (CFEqual(string, kCACFGravityTop()))
+    if (CFEqual(string, kCACFGravityTop))
         return WKCACFLayer::Top;
 
-    if (CFEqual(string, kCACFGravityBottom()))
+    if (CFEqual(string, kCACFGravityBottom))
         return WKCACFLayer::Bottom;
 
-    if (CFEqual(string, kCACFGravityLeft()))
+    if (CFEqual(string, kCACFGravityLeft))
         return WKCACFLayer::Left;
 
-    if (CFEqual(string, kCACFGravityRight()))
+    if (CFEqual(string, kCACFGravityRight))
         return WKCACFLayer::Right;
 
-    if (CFEqual(string, kCACFGravityTopLeft()))
+    if (CFEqual(string, kCACFGravityTopLeft))
         return WKCACFLayer::TopLeft;
 
-    if (CFEqual(string, kCACFGravityTopRight()))
+    if (CFEqual(string, kCACFGravityTopRight))
         return WKCACFLayer::TopRight;
 
-    if (CFEqual(string, kCACFGravityBottomLeft()))
+    if (CFEqual(string, kCACFGravityBottomLeft))
         return WKCACFLayer::BottomLeft;
 
-    if (CFEqual(string, kCACFGravityBottomRight()))
+    if (CFEqual(string, kCACFGravityBottomRight))
         return WKCACFLayer::BottomRight;
 
-    if (CFEqual(string, kCACFGravityResize()))
+    if (CFEqual(string, kCACFGravityResize))
         return WKCACFLayer::Resize;
 
-    if (CFEqual(string, kCACFGravityResizeAspect()))
+    if (CFEqual(string, kCACFGravityResizeAspect))
         return WKCACFLayer::ResizeAspect;
 
-    if (CFEqual(string, kCACFGravityResizeAspectFill()))
+    if (CFEqual(string, kCACFGravityResizeAspectFill))
         return WKCACFLayer::ResizeAspectFill;
 
     return WKCACFLayer::Center;
@@ -155,45 +120,44 @@ static WKCACFLayer::ContentsGravityType fromCACFContentsGravityType(CFStringRef 
 static CFStringRef toCACFFilterType(WKCACFLayer::FilterType type)
 {
     switch (type) {
-    case WKCACFLayer::Linear: return kCACFFilterLinear();
-    case WKCACFLayer::Nearest: return kCACFFilterNearest();
-    case WKCACFLayer::Trilinear: return kCACFFilterTrilinear();
-    case WKCACFLayer::Lanczos: return kCACFFilterLanczos();
+    case WKCACFLayer::Linear: return kCACFFilterLinear;
+    case WKCACFLayer::Nearest: return kCACFFilterNearest;
+    case WKCACFLayer::Trilinear: return kCACFFilterTrilinear;
+    case WKCACFLayer::Lanczos: return kCACFFilterLanczos;
     default: return 0;
     }
 }
 
 static WKCACFLayer::FilterType fromCACFFilterType(CFStringRef string)
 {
-    if (CFEqual(string, kCACFFilterNearest()))
+    if (CFEqual(string, kCACFFilterNearest))
         return WKCACFLayer::Nearest;
 
-    if (CFEqual(string, kCACFFilterTrilinear()))
+    if (CFEqual(string, kCACFFilterTrilinear))
         return WKCACFLayer::Trilinear;
 
-    if (CFEqual(string, kCACFFilterLanczos()))
+    if (CFEqual(string, kCACFFilterLanczos))
         return WKCACFLayer::Lanczos;
 
     return WKCACFLayer::Linear;
 }
 
-PassRefPtr<WKCACFLayer> WKCACFLayer::create(LayerType type, GraphicsLayerCACF* owner)
+PassRefPtr<WKCACFLayer> WKCACFLayer::create(LayerType type)
 {
     if (!WKCACFLayerRenderer::acceleratedCompositingAvailable())
         return 0;
-    return adoptRef(new WKCACFLayer(type, owner));
+    return adoptRef(new WKCACFLayer(type));
 }
 
 // FIXME: It might be good to have a way of ensuring that all WKCACFLayers eventually
 // get destroyed in debug builds. A static counter could accomplish this pretty easily.
 
-WKCACFLayer::WKCACFLayer(LayerType type, GraphicsLayerCACF* owner)
+WKCACFLayer::WKCACFLayer(LayerType type)
     : m_layer(AdoptCF, CACFLayerCreate(toCACFLayerType(type)))
     , m_needsDisplayOnBoundsChange(false)
-    , m_owner(owner)
 {
     CACFLayerSetUserData(layer(), this);
-    CACFLayerSetDisplayCallback(layer(), displayInContext);
+    CACFLayerSetDisplayCallback(layer(), displayCallback);
 }
 
 WKCACFLayer::~WKCACFLayer()
@@ -205,64 +169,6 @@ WKCACFLayer::~WKCACFLayer()
     CACFLayerSetDisplayCallback(layer(), 0);
 }
 
-void WKCACFLayer::display(PlatformGraphicsContext* context)
-{
-    if (!m_owner)
-        return;
-
-    CGContextSaveGState(context);
-
-    CGRect layerBounds = bounds();
-    if (m_owner->contentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown) {
-        CGContextScaleCTM(context, 1, -1);
-        CGContextTranslateCTM(context, 0, -layerBounds.size.height);
-    }
-
-    if (m_owner->client()) {
-        GraphicsContext graphicsContext(context);
-
-        // It's important to get the clip from the context, because it may be significantly
-        // smaller than the layer bounds (e.g. tiled layers)
-        CGRect clipBounds = CGContextGetClipBoundingBox(context);
-        IntRect clip(enclosingIntRect(clipBounds));
-        m_owner->paintGraphicsLayerContents(graphicsContext, clip);
-    }
-#ifndef NDEBUG
-    else {
-        ASSERT_NOT_REACHED();
-
-        // FIXME: ideally we'd avoid calling -setNeedsDisplay on a layer that is a plain color,
-        // so CA never makes backing store for it (which is what -setNeedsDisplay will do above).
-        CGContextSetRGBFillColor(context, 0.0f, 1.0f, 0.0f, 1.0f);
-        CGContextFillRect(context, layerBounds);
-    }
-#endif
-
-    if (m_owner->showRepaintCounter()) {
-        char text[16]; // that's a lot of repaints
-        _snprintf(text, sizeof(text), "%d", m_owner->incrementRepaintCount());
-
-        CGContextSaveGState(context);
-        CGContextSetRGBFillColor(context, 1.0f, 0.0f, 0.0f, 0.8f);
-        
-        CGRect aBounds = layerBounds;
-
-        aBounds.size.width = 10 + 12 * strlen(text);
-        aBounds.size.height = 25;
-        CGContextFillRect(context, aBounds);
-        
-        CGContextSetRGBFillColor(context, 0.0f, 0.0f, 0.0f, 1.0f);
-
-        CGContextSetTextMatrix(context, CGAffineTransformMakeScale(1.0f, -1.0f));
-        CGContextSelectFont(context, "Helvetica", 25, kCGEncodingMacRoman);
-        CGContextShowTextAtPoint(context, aBounds.origin.x + 3.0f, aBounds.origin.y + 20.0f, text, strlen(text));
-        
-        CGContextRestoreGState(context);        
-    }
-
-    CGContextRestoreGState(context);
-}
-
 void WKCACFLayer::becomeRootLayerForContext(CACFContextRef context)
 {
     CACFContextSetLayer(context, layer());
@@ -271,7 +177,9 @@ void WKCACFLayer::becomeRootLayerForContext(CACFContextRef context)
 
 void WKCACFLayer::setNeedsCommit()
 {
-    CACFContextRef context = CACFLayerGetContext(rootLayer()->layer());
+    WKCACFLayer* root = rootLayer();
+
+    CACFContextRef context = CACFLayerGetContext(root->layer());
 
     // The context might now be set yet. This happens if a property gets set
     // before placing the layer in the tree. In this case we don't need to 
@@ -280,16 +188,14 @@ void WKCACFLayer::setNeedsCommit()
     if (context)
         WKCACFContextFlusher::shared().addContext(context);
 
-    // Call notifySyncRequired(), which in this implementation plumbs through to
-    // call setRootLayerNeedsDisplay() on the WebView, which causes the CACFRenderer
-    // to render a frame.
-    if (m_owner)
-        m_owner->notifySyncRequired();
+    // Call setNeedsRender on the root layer, which will cause a render to 
+    // happen in WKCACFLayerRenderer
+    root->setNeedsRender();
 }
 
 bool WKCACFLayer::isTransformLayer() const
 {
-    return CACFLayerGetClass(layer()) == kCACFTransformLayer();
+    return CACFLayerGetClass(layer()) == kCACFTransformLayer;
 }
 
 void WKCACFLayer::addSublayer(PassRefPtr<WKCACFLayer> sublayer)
@@ -300,6 +206,7 @@ void WKCACFLayer::addSublayer(PassRefPtr<WKCACFLayer> sublayer)
 void WKCACFLayer::insertSublayer(PassRefPtr<WKCACFLayer> sublayer, size_t index)
 {
     index = min(index, numSublayers());
+    sublayer->removeFromSuperlayer();
     CACFLayerInsertSublayer(layer(), sublayer->layer(), index);
     setNeedsCommit();
 }
@@ -344,21 +251,17 @@ void WKCACFLayer::replaceSublayer(WKCACFLayer* reference, PassRefPtr<WKCACFLayer
     if (reference == newLayer)
         return;
 
-    if (!newLayer) {
-        removeSublayer(reference);
-        return;
-    }
-
-    newLayer->removeFromSuperlayer();
-
     int referenceIndex = indexOfSublayer(reference);
     ASSERT(referenceIndex != -1);
     if (referenceIndex == -1)
         return;
 
-    // FIXME: Can we make this more efficient? The current CACF API doesn't seem to give us a way to do so.
     reference->removeFromSuperlayer();
-    insertSublayer(newLayer, referenceIndex);
+
+    if (newLayer) {
+        newLayer->removeFromSuperlayer();
+        insertSublayer(newLayer, referenceIndex);
+    }
 }
 
 void WKCACFLayer::removeFromSuperlayer()
@@ -367,19 +270,8 @@ void WKCACFLayer::removeFromSuperlayer()
     if (!superlayer)
         return;
 
-    superlayer->removeSublayer(this);
     CACFLayerRemoveFromSuperlayer(layer());
     superlayer->setNeedsCommit();
-}
-
-void WKCACFLayer::removeSublayer(const WKCACFLayer* sublayer)
-{
-    int foundIndex = indexOfSublayer(sublayer);
-    if (foundIndex == -1)
-        return;
-
-    CACFLayerRemoveFromSuperlayer(sublayer->layer());
-    setNeedsCommit();
 }
 
 const WKCACFLayer* WKCACFLayer::sublayerAtIndex(int index) const
@@ -490,29 +382,18 @@ void WKCACFLayer::removeAllSublayers()
 
 void WKCACFLayer::setSublayers(const Vector<RefPtr<WKCACFLayer> >& sublayers)
 {
-    if (sublayers.isEmpty())
-        CACFLayerSetSublayers(layer(), 0);
-    else {
-        // Create a vector of CACFLayers.
-        Vector<const void*> layers;
-        for (size_t i = 0; i < sublayers.size(); i++)
-            layers.append(sublayers[i]->layer());
-    
-        RetainPtr<CFArrayRef> layersArray(AdoptCF, CFArrayCreate(0, layers.data(), layers.size(), 0));
-        CACFLayerSetSublayers(layer(), layersArray.get());
-    }
-    
+    // Remove all the current sublayers and add the passed layers
+    CACFLayerSetSublayers(layer(), 0);
+
+    // Perform removeFromSuperLayer in a separate pass. CACF requires superlayer to
+    // be null or CACFLayerInsertSublayer silently fails.
+    for (size_t i = 0; i < sublayers.size(); i++)
+        CACFLayerRemoveFromSuperlayer(sublayers[i]->layer());
+
+    for (size_t i = 0; i < sublayers.size(); i++)
+        CACFLayerInsertSublayer(layer(), sublayers[i]->layer(), i);
+
     setNeedsCommit();
-}
-
-void WKCACFLayer::moveSublayers(WKCACFLayer* fromLayer, WKCACFLayer* toLayer)
-{
-    if (!fromLayer || !toLayer)
-        return;
-
-    CACFLayerSetSublayers(toLayer->layer(), CACFLayerGetSublayers(fromLayer->layer()));
-    fromLayer->setNeedsCommit();
-    toLayer->setNeedsCommit();
 }
 
 WKCACFLayer* WKCACFLayer::superlayer() const
@@ -523,18 +404,15 @@ WKCACFLayer* WKCACFLayer::superlayer() const
     return WKCACFLayer::layer(super);
 }
 
-void WKCACFLayer::setNeedsDisplay(const CGRect& dirtyRect)
+void WKCACFLayer::setNeedsDisplay(const CGRect* dirtyRect)
 {
-    if (m_owner)
-        CACFLayerSetNeedsDisplay(layer(), &dirtyRect);
+    CACFLayerSetNeedsDisplay(layer(), dirtyRect);
     setNeedsCommit();
 }
 
 void WKCACFLayer::setNeedsDisplay()
 {
-    if (m_owner)
-        CACFLayerSetNeedsDisplay(layer(), 0);
-    setNeedsCommit();
+    setNeedsDisplay(0);
 }
 
 #ifndef NDEBUG
@@ -570,11 +448,11 @@ void WKCACFLayer::printLayer(int indent) const
     CGPoint layerAnchorPoint = anchorPoint();
     CGRect layerBounds = bounds();
     printIndent(indent);
-    fprintf(stderr, "(%s [%g %g %g] [%g %g %g %g] [%g %g %g]\n",
+    fprintf(stderr, "(%s [%g %g %g] [%g %g %g %g] [%g %g %g] superlayer=%p\n",
         isTransformLayer() ? "transform-layer" : "layer",
         layerPosition.x, layerPosition.y, zPosition(), 
         layerBounds.origin.x, layerBounds.origin.y, layerBounds.size.width, layerBounds.size.height,
-        layerAnchorPoint.x, layerAnchorPoint.y, anchorPointZ());
+        layerAnchorPoint.x, layerAnchorPoint.y, anchorPointZ(), superlayer());
 
     // Print name if needed
     String layerName = name();

@@ -142,6 +142,7 @@ global_cxxflags += \
 # It breaks the build on other platforms, so we use it conditionally
 if OS_WIN32
 no_undefined = -no-undefined
+version_script = -export-symbols-regex "^(webkit_|JS).*"
 endif
 
 if OS_GNU
@@ -162,6 +163,7 @@ javascriptcore_cppflags += \
 	-I$(srcdir)/JavaScriptCore/parser \
 	-I$(srcdir)/JavaScriptCore/wtf \
 	-I$(srcdir)/JavaScriptCore/wtf/gtk \
+	-I$(srcdir)/JavaScriptCore/wtf/gobject \
 	-I$(top_builddir)/DerivedSources
 
 nodist_EXTRA_libJavaScriptCore_la_SOURCES = \
@@ -270,16 +272,8 @@ global_cppflags += \
 endif
 
 if USE_GLIB_UNICODE
-# https://bugs.webkit.org/show_bug.cgi?id=15914
-# In patch 1/4 we are compiling a hybrid version of GLib WTF Unicode
-# functionality mixed with ICU-based text codecs and TextBreakIterator.
-# For the transition, introducing an interim HYBRID macro.
-# This macro is required for compiling WTF with GLib Unicode backend,
-# but at the same time keeping ICU dependency for codecs and break iterator.
-# It will be removed with patch 3/4 of the above bug.
 global_cppflags += \
-	-DWTF_USE_GLIB_UNICODE=1 \
-	-DWTF_USE_GLIB_ICU_UNICODE_HYBRID=1
+	-DWTF_USE_GLIB_UNICODE=1
 endif
 
 if !ENABLE_FAST_MALLOC
@@ -326,6 +320,7 @@ webkitgtk_h_api += \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebinspector.h \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebnavigationaction.h \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebpolicydecision.h \
+	$(srcdir)/WebKit/gtk/webkit/webkitgeolocationpolicydecision.h \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebresource.h \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebsettings.h \
 	$(srcdir)/WebKit/gtk/webkit/webkitwebwindowfeatures.h \
@@ -374,6 +369,7 @@ webkitgtk_sources += \
 	WebKit/gtk/webkit/webkitwebinspector.cpp \
 	WebKit/gtk/webkit/webkitwebnavigationaction.cpp \
 	WebKit/gtk/webkit/webkitwebpolicydecision.cpp \
+	WebKit/gtk/webkit/webkitgeolocationpolicydecision.cpp \
 	WebKit/gtk/webkit/webkitwebresource.cpp \
 	WebKit/gtk/webkit/webkitwebdatabase.cpp \
 	WebKit/gtk/webkit/webkitsecurityorigin.cpp \
@@ -425,6 +421,7 @@ $(WEBKIT_GIRSOURCES): $(JSCORE_GIRSOURCES) $(G_IR_SCANNER) libwebkit-1.0.la
 	     --libtool="$(LIBTOOL)" \
 	     --pkg gobject-2.0 \
 	     --pkg gtk+-2.0 \
+	     --pkg libsoup-2.4 \
 	     --output $@ \
 	     --add-include-path $(top_srcdir)/WebKit/gtk \
 	     -I$(top_srcdir)/WebKit/gtk \
@@ -527,7 +524,8 @@ EXTRA_DIST += \
 	$(srcdir)/WebKit/gtk/docs/version.xml.in \
 	$(srcdir)/WebKit/gtk/po/* \
 	$(srcdir)/WebKit/gtk/resources/* \
-	$(srcdir)/WebKit/gtk/tests/resources/*
+	$(srcdir)/WebKit/gtk/tests/resources/* \
+	$(srcdir)/WebKit/gtk/tests/test_utils.h
 
 # extra resource files
 resourcesdir = ${datadir}/webkit-1.0/resources
@@ -567,6 +565,7 @@ webkit_tests_ldflags = \
 
 TEST_PROGS += Programs/unittests/testhttpbackend \
 	Programs/unittests/testloading \
+	Programs/unittests/testglobals \
 	Programs/unittests/testmimehandling \
 	Programs/unittests/testnetworkrequest \
 	Programs/unittests/testnetworkresponse \
@@ -589,12 +588,17 @@ Programs_unittests_testhttpbackend_CFLAGS = $(webkit_tests_cflags)
 Programs_unittests_testhttpbackend_LDADD = $(webkit_tests_ldadd)
 Programs_unittests_testhttpbackend_LDFLAGS = $(webkit_tests_ldflags)
 
+Programs_unittests_testglobals_SOURCES = WebKit/gtk/tests/testglobals.c
+Programs_unittests_testglobals_CFLAGS = $(webkit_tests_cflags)
+Programs_unittests_testglobals_LDADD = $(webkit_tests_ldadd)
+Programs_unittests_testglobals_LDFLAGS = $(webkit_tests_ldflags)
+
 Programs_unittests_testloading_SOURCES = WebKit/gtk/tests/testloading.c
 Programs_unittests_testloading_CFLAGS = $(webkit_tests_cflags)
 Programs_unittests_testloading_LDADD = $(webkit_tests_ldadd)
 Programs_unittests_testloading_LDFLAGS = $(webkit_tests_ldflags)
 
-Programs_unittests_testmimehandling_SOURCES = WebKit/gtk/tests/testmimehandling.c
+Programs_unittests_testmimehandling_SOURCES = WebKit/gtk/tests/testmimehandling.c WebKit/gtk/tests/test_utils.c
 Programs_unittests_testmimehandling_CFLAGS = $(webkit_tests_cflags)
 Programs_unittests_testmimehandling_LDADD = $(webkit_tests_ldadd)
 Programs_unittests_testmimehandling_LDFLAGS = $(webkit_tests_ldflags)
@@ -652,7 +656,7 @@ Programs_unittests_testwebdatasource_SOURCES = WebKit/gtk/tests/testwebdatasourc
 Programs_unittests_testwebdatasource_CFLAGS = $(webkit_tests_cflags)
 Programs_unittests_testwebdatasource_LDADD = $(webkit_tests_ldadd)
 
-Programs_unittests_testwebview_SOURCES = WebKit/gtk/tests/testwebview.c
+Programs_unittests_testwebview_SOURCES = WebKit/gtk/tests/testwebview.c WebKit/gtk/tests/test_utils.c
 Programs_unittests_testwebview_CFLAGS = $(webkit_tests_cflags)
 Programs_unittests_testwebview_LDADD = $(webkit_tests_ldadd)
 Programs_unittests_testwebview_LDFLAGS = $(webkit_tests_ldflags)

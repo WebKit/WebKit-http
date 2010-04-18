@@ -106,11 +106,11 @@ private:
     static v8::Handle<v8::Value> jsOnRuntimeFeatureStateChanged(const v8::Arguments& args);
 
     void disposeUtilityContext();
-    void unhideResourcesPanelIfNecessary();
 
     void compileUtilityScripts();
     void initDevToolsAgentHost();
-    void resetInspectorFrontendProxy();
+    void createInspectorFrontendProxy();
+    void setInspectorFrontendProxyToInspectorController();
     void setApuAgentEnabled(bool enabled);
 
     WebCore::InspectorController* inspectorController();

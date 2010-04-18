@@ -51,19 +51,24 @@ void WebSecurityPolicy::registerURLSchemeAsNoAccess(const WebString& scheme)
     SecurityOrigin::registerURLSchemeAsNoAccess(scheme);
 }
 
+void WebSecurityPolicy::registerURLSchemeAsSecure(const WebString& scheme)
+{
+    SecurityOrigin::registerURLSchemeAsSecure(scheme);
+}
+
 void WebSecurityPolicy::whiteListAccessFromOrigin(const WebURL& sourceOrigin,
     const WebString& destinationProtocol,
     const WebString& destinationHost,
     bool allowDestinationSubdomains)
 {
-    SecurityOrigin::whiteListAccessFromOrigin(
+    SecurityOrigin::addOriginAccessWhitelistEntry(
         *SecurityOrigin::create(sourceOrigin), destinationProtocol,
         destinationHost, allowDestinationSubdomains);
 }
 
 void WebSecurityPolicy::resetOriginAccessWhiteLists()
 {
-    SecurityOrigin::resetOriginAccessWhiteLists();
+    SecurityOrigin::resetOriginAccessWhitelists();
 }
 
 bool WebSecurityPolicy::shouldHideReferrer(const WebURL& url, const WebString& referrer)

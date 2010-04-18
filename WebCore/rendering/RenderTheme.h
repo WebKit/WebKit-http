@@ -39,6 +39,9 @@ namespace WebCore {
 class Element;
 class PopupMenu;
 class RenderMenuList;
+#if ENABLE(PROGRESS_TAG)
+class RenderProgress;
+#endif
 class CSSStyleSheet;
 
 class RenderTheme : public RefCounted<RenderTheme> {
@@ -169,6 +172,13 @@ public:
     // Method for painting the caps lock indicator
     virtual bool paintCapsLockIndicator(RenderObject*, const RenderObject::PaintInfo&, const IntRect&) { return 0; };
 
+#if ENABLE(PROGRESS_TAG)
+    // Returns the repeat interval of the animation for the progress bar.
+    virtual double animationRepeatIntervalForProgressBar(RenderProgress*) const;
+    // Returns the duration of the animation for the progress bar.
+    virtual double animationDurationForProgressBar(RenderProgress*) const;
+#endif
+
 #if ENABLE(VIDEO)
     // Media controls
     virtual bool hitTestMediaControlPart(RenderObject*, const IntPoint& absPoint);
@@ -226,6 +236,11 @@ protected:
 
     virtual void adjustMenuListButtonStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
     virtual bool paintMenuListButton(RenderObject*, const RenderObject::PaintInfo&, const IntRect&) { return true; }
+
+#if ENABLE(PROGRESS_TAG)
+    virtual void adjustProgressBarStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
+    virtual bool paintProgressBar(RenderObject*, const RenderObject::PaintInfo&, const IntRect&) { return true; }
+#endif
 
     virtual void adjustSliderTrackStyle(CSSStyleSelector*, RenderStyle*, Element*) const;
     virtual bool paintSliderTrack(RenderObject*, const RenderObject::PaintInfo&, const IntRect&) { return true; }

@@ -34,7 +34,6 @@
 #if ENABLE(3D_CANVAS)
 #import "Canvas3DLayer.h"
 #endif
-#import "CString.h"
 #import "FloatConversion.h"
 #import "FloatRect.h"
 #import "Image.h"
@@ -769,7 +768,17 @@ void GraphicsLayerCA::pauseAnimation(const String& keyframesName, double timeOff
 void GraphicsLayerCA::setContentsToImage(Image* image)
 {
     if (image) {
-        m_pendingContentsImage = image->nativeImageForCurrentFrame();
+        CGImageRef newImage = image->nativeImageForCurrentFrame();
+        if (!newImage)
+            return;
+
+        // Check to see if the image changed; we have to do this because the call to
+        // CGImageCreateCopyWithColorSpace() below can create a new image every time.
+        if (m_uncorrectedContentsImage && m_uncorrectedContentsImage.get() == newImage)
+            return;
+        
+        m_uncorrectedContentsImage = newImage;
+        m_pendingContentsImage = newImage;
         CGColorSpaceRef colorSpace = CGImageGetColorSpace(m_pendingContentsImage.get());
 
         static CGColorSpaceRef deviceRGB = CGColorSpaceCreateDeviceRGB();
@@ -783,6 +792,7 @@ void GraphicsLayerCA::setContentsToImage(Image* image)
         if (!m_contentsLayer)
             noteSublayersChanged();
     } else {
+        m_uncorrectedContentsImage = 0;
         m_pendingContentsImage = 0;
         m_contentsLayerPurpose = NoContentsLayer;
         if (m_contentsLayer)
@@ -1716,7 +1726,7 @@ void GraphicsLayerCA::setContentsToGraphicsContext3D(const GraphicsContext3D* gr
 
     if (m_platformGraphicsContext3D != NullPlatformGraphicsContext3D && m_platformTexture != NullPlatform3DObject) {
         // create the inner 3d layer
-        m_contentsLayer.adoptNS([[Canvas3DLayer alloc] initWithContext:static_cast<CGLContextObj>(m_platformGraphicsContext3D) texture:static_cast<GLuint>(m_platformTexture)]);
+        m_contentsLayer.adoptNS([[Canvas3DLayer alloc] initWithContext:const_cast<GraphicsContext3D*>(graphicsContext3D)]);
 #ifndef NDEBUG
         [m_contentsLayer.get() setName:@"3D Layer"];
 #endif
@@ -1859,12 +1869,28 @@ void GraphicsLayerCA::setupAnimation(CAPropertyAnimation* propertyAnim, const An
     else if (anim->direction() == Animation::AnimationDirectionAlternate)
         repeatCount /= 2;
 
+    NSString* fillMode = 0;
+    switch (anim->fillMode()) {
+    case AnimationFillModeNone:
+        fillMode = kCAFillModeForwards; // Use "forwards" rather than "removed" because the style system will remove the animation when it is finished. This avoids a flash.
+        break;
+    case AnimationFillModeBackwards:
+        fillMode = kCAFillModeBoth; // Use "both" rather than "backwards" because the style system will remove the animation when it is finished. This avoids a flash.
+        break;
+    case AnimationFillModeForwards:
+       fillMode = kCAFillModeForwards;
+       break;
+    case AnimationFillModeBoth:
+       fillMode = kCAFillModeBoth;
+       break;
+    }
+
     [propertyAnim setDuration:duration];
     [propertyAnim setRepeatCount:repeatCount];
     [propertyAnim setAutoreverses:anim->direction()];
     [propertyAnim setRemovedOnCompletion:NO];
     [propertyAnim setAdditive:additive];
-    [propertyAnim setFillMode:@"extended"];
+    [propertyAnim setFillMode:fillMode];
 
     [propertyAnim setDelegate:m_animationDelegate.get()];
 }
@@ -2226,6 +2252,7 @@ void GraphicsLayerCA::setupContentsLayer(CALayer* contentsLayer)
 {
     // Turn off implicit animations on the inner layer.
     [contentsLayer setStyle:[NSDictionary dictionaryWithObject:nullActionsDictionary() forKey:@"actions"]];
+    [contentsLayer setMasksToBounds:YES];
 
     if (defaultContentsOrientation() == CompositingCoordinatesBottomUp) {
         CATransform3D flipper = {

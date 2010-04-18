@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008 Apple Computer, Inc. All rights reserved.
+ * Copyright 2006, 2007, 2008, 2010 Apple Computer, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 void (*wkAdvanceDefaultButtonPulseAnimation)(NSButtonCell *);
 BOOL (*wkCGContextGetShouldSmoothFonts)(CGContextRef);
+NSString* (*wkCopyNSURLResponseStatusLine)(NSURLResponse*);
 NSString* (*wkCreateURLPasteboardFlavorTypeName)(void);
 NSString* (*wkCreateURLNPasteboardFlavorTypeName)(void);
 void (*wkDrawBezeledTextFieldCell)(NSRect, BOOL enabled);
@@ -51,16 +52,17 @@ NSString* (*wkGetMIMETypeForExtension)(NSString*);
 NSTimeInterval (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 NSDate *(*wkGetNSURLResponseLastModifiedDate)(NSURLResponse *response);
 BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
-void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, BOOL* continuous);
+void (*wkGetWheelEventDeltas)(NSEvent*, float* deltaX, float* deltaY, float* wheelTicksX, float* wheelTicksY, BOOL* continuous);
 void (*wkPopupMenu)(NSMenu*, NSPoint location, float width, NSView*, int selectedItem, NSFont*);
 unsigned (*wkQTIncludeOnlyModernMediaFileTypes)(void);
 int (*wkQTMovieDataRate)(QTMovie*);
 float (*wkQTMovieMaxTimeLoaded)(QTMovie*);
 NSString *(*wkQTMovieMaxTimeLoadedChangeNotification)(void);
 float (*wkQTMovieMaxTimeSeekable)(QTMovie*);
-int (*wkQTMovieGetType)(QTMovie* movie);
-BOOL (*wkQTMovieHasClosedCaptions)(QTMovie* movie);
-void (*wkQTMovieSetShowClosedCaptions)(QTMovie* movie, BOOL showClosedCaptions);
+int (*wkQTMovieGetType)(QTMovie*);
+BOOL (*wkQTMovieHasClosedCaptions)(QTMovie*);
+void (*wkQTMovieSetShowClosedCaptions)(QTMovie*, BOOL);
+void (*wkQTMovieSelectPreferredAlternates)(QTMovie*);
 void (*wkQTMovieViewSetDrawSynchronously)(QTMovieView*, BOOL);
 void (*wkSetCGFontRenderingMode)(CGContextRef, NSFont*);
 void (*wkSetDragImage)(NSImage*, NSPoint offset);

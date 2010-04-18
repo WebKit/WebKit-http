@@ -29,15 +29,16 @@
 
 #include "Base64.h"
 #include "BitmapImage.h"
-#include "CString.h"
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
 #include "PlatformString.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <wtf/Assertions.h>
+#include <wtf/text/CString.h>
 #include <wtf/OwnArrayPtr.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/Threading.h>
 #include <math.h>
 
 using namespace std;
@@ -254,6 +255,8 @@ static RetainPtr<CFStringRef> utiFromMIMEType(const String& mimeType)
     RetainPtr<CFStringRef> mimeTypeCFString(AdoptCF, mimeType.createCFString());
     return RetainPtr<CFStringRef>(AdoptCF, UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, mimeTypeCFString.get(), 0));
 #else
+    ASSERT(isMainThread()); // It is unclear if CFSTR is threadsafe.
+
     // FIXME: Add Windows support for all the supported UTIs when a way to convert from MIMEType to UTI reliably is found.
     // For now, only support PNG, JPEG, and GIF. See <rdar://problem/6095286>.
     static const CFStringRef kUTTypePNG = CFSTR("public.png");

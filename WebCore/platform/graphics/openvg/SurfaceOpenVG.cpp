@@ -64,6 +64,25 @@ SurfaceOpenVG::SurfaceOpenVG(const IntSize& size, const EGLDisplay& display, EGL
     EGLDisplayOpenVG::registerPlatformSurface(this);
 }
 
+SurfaceOpenVG::SurfaceOpenVG(EGLClientBuffer buffer, EGLenum bufferType, const EGLDisplay& display, EGLConfig* confPtr, EGLint* errorCode)
+    : m_activePainter(0)
+    , m_eglDisplay(display)
+    , m_eglSurface(EGL_NO_SURFACE)
+    , m_eglContext(EGL_NO_CONTEXT)
+{
+    ASSERT(m_eglDisplay != EGL_NO_DISPLAY);
+
+    EGLDisplayOpenVG* displayManager = EGLDisplayOpenVG::forDisplay(m_eglDisplay);
+    EGLConfig config = confPtr ? (*confPtr) : displayManager->defaultPbufferConfig();
+    m_eglSurface = displayManager->createPbufferFromClientBuffer(buffer, bufferType, config, errorCode);
+
+    if (m_eglSurface == EGL_NO_SURFACE)
+        return;
+
+    m_eglContext = displayManager->contextForSurface(m_eglSurface);
+    EGLDisplayOpenVG::registerPlatformSurface(this);
+}
+
 SurfaceOpenVG::SurfaceOpenVG(EGLNativeWindowType window, const EGLDisplay& display, EGLConfig* confPtr)
     : m_activePainter(0)
     , m_eglDisplay(display)
@@ -173,6 +192,11 @@ void SurfaceOpenVG::makeCurrent(MakeCurrentMode mode)
     ASSERT_EGL_NO_ERROR();
 
     if (currentSurface != m_eglSurface) {
+        // Save other context before switching over.
+        if (s_currentPainter && mode != DontSaveOrApplyPainterState
+            && s_currentPainter->surface()->m_eglSurface == currentSurface)
+            s_currentPainter->save(PainterOpenVG::KeepCurrentState);
+
         eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext);
         ASSERT_EGL_NO_ERROR();
         s_currentPainter = 0;
@@ -202,6 +226,10 @@ void SurfaceOpenVG::makeCompatibleCurrent()
             s_currentPainter = m_activePainter;
         }
     } else if (!EGLDisplayOpenVG::forDisplay(m_eglDisplay)->surfacesCompatible(currentSurface, m_eglSurface)) {
+        // Save other context before switching over.
+        if (s_currentPainter && s_currentPainter->surface()->m_eglSurface == currentSurface)
+            s_currentPainter->save(PainterOpenVG::KeepCurrentState);
+
         eglMakeCurrent(m_eglDisplay, m_eglSurface, m_eglSurface, m_eglContext);
         ASSERT_EGL_NO_ERROR();
         s_currentPainter = 0;

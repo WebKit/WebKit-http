@@ -28,9 +28,12 @@
 #import "ProxyInstance.h"
 
 #import "NetscapePluginHostProxy.h"
+#import "ProxyRuntimeObject.h"
 #import <WebCore/IdentifierRep.h>
 #import <WebCore/JSDOMWindow.h>
 #import <WebCore/npruntime_impl.h>
+#import <WebCore/runtime_method.h>
+#import <runtime/Error.h>
 #import <runtime/PropertyNameArray.h>
 
 extern "C" {
@@ -128,7 +131,12 @@ ProxyInstance::~ProxyInstance()
     invalidate();
 }
     
-JSC::Bindings::Class *ProxyInstance::getClass() const
+RuntimeObject* ProxyInstance::newRuntimeObject(ExecState* exec)
+{
+    return new (exec) ProxyRuntimeObject(exec, this);
+}
+
+JSC::Bindings::Class* ProxyInstance::getClass() const
 {
     return proxyClass();
 }
@@ -147,16 +155,20 @@ JSValue ProxyInstance::invoke(JSC::ExecState* exec, InvokeType type, uint64_t id
 
     if (_WKPHNPObjectInvoke(m_instanceProxy->hostProxy()->port(), m_instanceProxy->pluginID(), requestID, m_objectID,
                             type, identifier, (char*)[arguments.get() bytes], [arguments.get() length]) != KERN_SUCCESS) {
-        for (unsigned i = 0; i < args.size(); i++)
-            m_instanceProxy->releaseLocalObject(args.at(i));
+        if (m_instanceProxy) {
+            for (unsigned i = 0; i < args.size(); i++)
+                m_instanceProxy->releaseLocalObject(args.at(i));
+        }
         return jsUndefined();
     }
     
     auto_ptr<NetscapePluginInstanceProxy::BooleanAndDataReply> reply = waitForReply<NetscapePluginInstanceProxy::BooleanAndDataReply>(requestID);
     NetscapePluginInstanceProxy::moveGlobalExceptionToExecState(exec);
 
-    for (unsigned i = 0; i < args.size(); i++)
-        m_instanceProxy->releaseLocalObject(args.at(i));
+    if (m_instanceProxy) {
+        for (unsigned i = 0; i < args.size(); i++)
+            m_instanceProxy->releaseLocalObject(args.at(i));
+    }
 
     if (!reply.get() || !reply->m_returnValue)
         return jsUndefined();
@@ -164,8 +176,33 @@ JSValue ProxyInstance::invoke(JSC::ExecState* exec, InvokeType type, uint64_t id
     return m_instanceProxy->demarshalValue(exec, (char*)CFDataGetBytePtr(reply->m_result.get()), CFDataGetLength(reply->m_result.get()));
 }
 
-JSValue ProxyInstance::invokeMethod(ExecState* exec, const MethodList& methodList, const ArgList& args)
+class ProxyRuntimeMethod : public RuntimeMethod {
+public:
+    ProxyRuntimeMethod(ExecState* exec, const Identifier& name, Bindings::MethodList& list)
+        : RuntimeMethod(exec, name, list)
+    {
+    }
+
+    virtual const ClassInfo* classInfo() const { return &s_info; }
+
+    static const ClassInfo s_info;
+};
+
+const ClassInfo ProxyRuntimeMethod::s_info = { "ProxyRuntimeMethod", &RuntimeMethod::s_info, 0, 0 };
+
+JSValue ProxyInstance::getMethod(JSC::ExecState* exec, const JSC::Identifier& propertyName)
 {
+    MethodList methodList = getClass()->methodsNamed(propertyName, this);
+    return new (exec) ProxyRuntimeMethod(exec, propertyName, methodList);
+}
+
+JSValue ProxyInstance::invokeMethod(ExecState* exec, JSC::RuntimeMethod* runtimeMethod, const ArgList& args)
+{
+    if (!asObject(runtimeMethod)->inherits(&ProxyRuntimeMethod::s_info))
+        return throwError(exec, TypeError, "Attempt to invoke non-plug-in method on plug-in object.");
+
+    const MethodList& methodList = *runtimeMethod->methods();
+
     ASSERT(methodList.size() == 1);
 
     ProxyMethod* method = static_cast<ProxyMethod*>(methodList[0]);
@@ -396,7 +433,8 @@ void ProxyInstance::setFieldValue(ExecState* exec, const Field* field, JSValue v
                                                 m_instanceProxy->pluginID(), requestID,
                                                 m_objectID, serverIdentifier, valueData, valueLength);
     mig_deallocate(reinterpret_cast<vm_address_t>(valueData), valueLength);
-    m_instanceProxy->releaseLocalObject(value);
+    if (m_instanceProxy)
+        m_instanceProxy->releaseLocalObject(value);
     if (kr != KERN_SUCCESS)
         return;
     

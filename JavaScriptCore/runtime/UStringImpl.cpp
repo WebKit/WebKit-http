@@ -27,6 +27,7 @@
 #include "UStringImpl.h"
 
 #include "Identifier.h"
+#include "StdLibExtras.h"
 #include "UString.h"
 #include <wtf/unicode/UTF8.h>
 
@@ -35,87 +36,126 @@ using namespace std;
 
 namespace JSC {
 
-PassRefPtr<UStringImpl> UStringImpl::create(const char* c)
-{
-    ASSERT(c);
-
-    if (!c[0])
-        return &UStringImpl::empty();
-
-    size_t length = strlen(c);
-    UChar* d;
-    PassRefPtr<UStringImpl> result = UStringImpl::createUninitialized(length, d);
-    for (size_t i = 0; i < length; i++)
-        d[i] = static_cast<unsigned char>(c[i]); // use unsigned char to zero-extend instead of sign-extend
-    return result;
-}
-
-PassRefPtr<UStringImpl> UStringImpl::create(const char* c, unsigned length)
-{
-    ASSERT(c);
-
-    if (!length)
-        return &UStringImpl::empty();
-
-    UChar* d;
-    PassRefPtr<UStringImpl> result = UStringImpl::createUninitialized(length, d);
-    for (unsigned i = 0; i < length; i++)
-        d[i] = static_cast<unsigned char>(c[i]); // use unsigned char to zero-extend instead of sign-extend
-    return result;
-}
-
-PassRefPtr<UStringImpl> UStringImpl::create(const UChar* buffer, unsigned length)
-{
-    UChar* newBuffer;
-    PassRefPtr<UStringImpl> impl = createUninitialized(length, newBuffer);
-    copyChars(newBuffer, buffer, length);
-    return impl;
-}
-
-SharedUChar* UStringImpl::baseSharedBuffer()
-{
-    ASSERT((bufferOwnership() == BufferShared)
-        || ((bufferOwnership() == BufferOwned) && !m_buffer));
-
-    if (bufferOwnership() != BufferShared) {
-        m_refCountAndFlags = (m_refCountAndFlags & ~s_refCountMaskBufferOwnership) | BufferShared;
-        m_bufferShared = SharedUChar::create(new OwnFastMallocPtr<UChar>(m_data)).releaseRef();
-    }
-
-    return m_bufferShared;
-}
-
-SharedUChar* UStringImpl::sharedBuffer()
-{
-    if (m_length < s_minLengthToShare)
-        return 0;
-    ASSERT(!isStatic());
-
-    UStringImpl* owner = bufferOwnerString();
-    if (owner->bufferOwnership() == BufferInternal)
-        return 0;
-
-    return owner->baseSharedBuffer();
-}
+static const unsigned minLengthToShare = 20;
 
 UStringImpl::~UStringImpl()
 {
     ASSERT(!isStatic());
-    checkConsistency();
 
     if (isIdentifier())
         Identifier::remove(this);
 
-    if (bufferOwnership() != BufferInternal) {
-        if (bufferOwnership() == BufferOwned)
-            fastFree(m_data);
-        else if (bufferOwnership() == BufferSubstring)
-            m_bufferSubstring->deref();
-        else {
-            ASSERT(bufferOwnership() == BufferShared);
-            m_bufferShared->deref();
+    BufferOwnership ownership = bufferOwnership();
+    if (ownership != BufferInternal) {
+        if (ownership == BufferOwned) {
+            ASSERT(!m_sharedBuffer);
+            ASSERT(m_data);
+            fastFree(const_cast<UChar*>(m_data));
+        } else if (ownership == BufferSubstring) {
+            ASSERT(m_substringBuffer);
+            m_substringBuffer->deref();
+        } else {
+            ASSERT(ownership == BufferShared);
+            ASSERT(m_sharedBuffer);
+            m_sharedBuffer->deref();
         }
     }
+}
+
+UStringImpl* UStringImpl::empty()
+{
+    // FIXME: This works around a bug in our port of PCRE, that a regular expression
+    // run on the empty string may still perform a read from the first element, and
+    // as such we need this to be a valid pointer. No code should ever be reading
+    // from a zero length string, so this should be able to be a non-null pointer
+    // into the zero-page.
+    // Replace this with 'reinterpret_cast<UChar*>(static_cast<intptr_t>(1))' once
+    // PCRE goes away.
+    static UChar emptyUCharData = 0;
+    DEFINE_STATIC_LOCAL(UStringImpl, emptyString, (&emptyUCharData, 0, ConstructStaticString));
+    return &emptyString;
+}
+
+PassRefPtr<UStringImpl> UStringImpl::createUninitialized(unsigned length, UChar*& data)
+{
+    if (!length) {
+        data = 0;
+        return empty();
+    }
+
+    // Allocate a single buffer large enough to contain the StringImpl
+    // struct as well as the data which it contains. This removes one 
+    // heap allocation from this call.
+    if (length > ((std::numeric_limits<size_t>::max() - sizeof(UStringImpl)) / sizeof(UChar)))
+        CRASH();
+    size_t size = sizeof(UStringImpl) + length * sizeof(UChar);
+    UStringImpl* string = static_cast<UStringImpl*>(fastMalloc(size));
+
+    data = reinterpret_cast<UChar*>(string + 1);
+    return adoptRef(new (string) UStringImpl(length));
+}
+
+PassRefPtr<UStringImpl> UStringImpl::create(const UChar* characters, unsigned length)
+{
+    if (!characters || !length)
+        return empty();
+
+    UChar* data;
+    PassRefPtr<UStringImpl> string = createUninitialized(length, data);
+    memcpy(data, characters, length * sizeof(UChar));
+    return string;
+}
+
+PassRefPtr<UStringImpl> UStringImpl::create(const char* characters, unsigned length)
+{
+    if (!characters || !length)
+        return empty();
+
+    UChar* data;
+    PassRefPtr<UStringImpl> string = createUninitialized(length, data);
+    for (unsigned i = 0; i != length; ++i) {
+        unsigned char c = characters[i];
+        data[i] = c;
+    }
+    return string;
+}
+
+PassRefPtr<UStringImpl> UStringImpl::create(const char* string)
+{
+    if (!string)
+        return empty();
+    return create(string, strlen(string));
+}
+
+PassRefPtr<UStringImpl> UStringImpl::create(PassRefPtr<SharedUChar> sharedBuffer, const UChar* buffer, unsigned length)
+{
+    if (!length)
+        return empty();
+    return adoptRef(new UStringImpl(buffer, length, sharedBuffer));
+}
+
+SharedUChar* UStringImpl::sharedBuffer()
+{
+    if (m_length < minLengthToShare)
+        return 0;
+    // All static strings are smaller that the minimim length to share.
+    ASSERT(!isStatic());
+
+    BufferOwnership ownership = bufferOwnership();
+
+    if (ownership == BufferInternal)
+        return 0;
+    if (ownership == BufferSubstring)
+        return m_substringBuffer->sharedBuffer();
+    if (ownership == BufferOwned) {
+        ASSERT(!m_sharedBuffer);
+        m_sharedBuffer = SharedUChar::create(new SharableUChar(m_data)).releaseRef();
+        m_refCountAndFlags = (m_refCountAndFlags & ~s_refCountMaskBufferOwnership) | BufferShared;
+    }
+
+    ASSERT(bufferOwnership() == BufferShared);
+    ASSERT(m_sharedBuffer);
+    return m_sharedBuffer;
 }
 
 void URopeImpl::derefFibersNonRecursive(Vector<URopeImpl*, 32>& workQueue)

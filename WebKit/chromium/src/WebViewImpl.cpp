@@ -87,6 +87,7 @@
 #include "WebDevToolsAgentPrivate.h"
 #include "WebDragData.h"
 #include "WebFrameImpl.h"
+#include "WebImage.h"
 #include "WebInputEvent.h"
 #include "WebInputEventConversion.h"
 #include "WebMediaPlayerAction.h"
@@ -100,13 +101,11 @@
 #include "WebViewClient.h"
 
 #if OS(WINDOWS)
-#include "KeyboardCodesWin.h"
 #include "RenderThemeChromiumWin.h"
 #else
 #if OS(LINUX)
 #include "RenderThemeChromiumLinux.h"
 #endif
-#include "KeyboardCodesPosix.h"
 #include "RenderTheme.h"
 #endif
 
@@ -149,11 +148,7 @@ COMPILE_ASSERT_MATCHING_ENUM(DragOperationMove);
 COMPILE_ASSERT_MATCHING_ENUM(DragOperationDelete);
 COMPILE_ASSERT_MATCHING_ENUM(DragOperationEvery);
 
-// Note that focusOnShow is false so that the suggestions popup is shown not
-// activated.  We need the page to still have focus so the user can keep typing
-// while the popup is showing.
 static const PopupContainerSettings suggestionsPopupSettings = {
-    false,  // focusOnShow
     false,  // setTextOnIndexChange
     false,  // acceptOnAbandon
     true,   // loopSelectionNavigation
@@ -245,6 +240,11 @@ WebViewImpl::WebViewImpl(WebViewClient* client)
     , m_suggestionsPopup(0)
     , m_isTransparent(false)
     , m_tabsToLinks(false)
+    , m_haveMouseCapture(false)
+#if USE(ACCELERATED_COMPOSITING)
+    , m_layerRenderer(0)
+    , m_isAcceleratedCompositing(false)
+#endif
 {
     // WebKit/win/WebView.cpp does the same thing, except they call the
     // KJS specific wrapper around this method. We need to have threading
@@ -326,7 +326,12 @@ void WebViewImpl::mouseDown(const WebMouseEvent& event)
     if (!mainFrameImpl() || !mainFrameImpl()->frameView())
         return;
 
+    // If there is a select popup opened, close it as the user is clicking on
+    // the page (outside of the popup).
+    hideSelectPopup();
+
     m_lastMouseDownPoint = WebPoint(event.x, event.y);
+    m_haveMouseCapture = true;
 
     // If a text field that has focus is clicked again, we should display the
     // suggestions popup.
@@ -346,6 +351,8 @@ void WebViewImpl::mouseDown(const WebMouseEvent& event)
             }
         }
     }
+
+    mainFrameImpl()->frame()->loader()->resetMultipleFormSubmissionProtection();
 
     mainFrameImpl()->frame()->eventHandler()->handleMousePressEvent(
         PlatformMouseEventBuilder(mainFrameImpl()->frameView(), event));
@@ -439,7 +446,6 @@ void WebViewImpl::mouseUp(const WebMouseEvent& event)
     }
 #endif
 
-    mouseCaptureLost();
     mainFrameImpl()->frame()->eventHandler()->handleMouseReleaseEvent(
         PlatformMouseEventBuilder(mainFrameImpl()->frameView(), event));
 
@@ -470,6 +476,10 @@ bool WebViewImpl::keyEvent(const WebKeyboardEvent& event)
     // event and a keyUp event. We reset this flag here as this is a new keyDown
     // event.
     m_suppressNextKeypressEvent = false;
+
+    // Give any select popup a chance at consuming the key event.
+    if (selectPopupHandleKeyEvent(event))
+        return true;
 
     // Give Autocomplete a chance to consume the key events it is interested in.
     if (autocompleteHandleKeyEvent(event))
@@ -507,12 +517,25 @@ bool WebViewImpl::keyEvent(const WebKeyboardEvent& event)
     PlatformKeyboardEventBuilder evt(event);
 
     if (handler->keyEvent(evt)) {
-        if (WebInputEvent::RawKeyDown == event.type)
-            m_suppressNextKeypressEvent = true;
+        if (WebInputEvent::RawKeyDown == event.type) {
+            // Suppress the next keypress event unless the focused node is a plug-in node.
+            // (Flash needs these keypress events to handle non-US keyboards.)
+            Node* node = frame->document()->focusedNode();
+            if (!node || !node->renderer() || !node->renderer()->isEmbeddedObject())
+                m_suppressNextKeypressEvent = true;
+        }
         return true;
     }
 
     return keyEventDefault(event);
+}
+
+bool WebViewImpl::selectPopupHandleKeyEvent(const WebKeyboardEvent& event)
+{
+    if (!m_selectPopup)
+        return false;
+    
+    return m_selectPopup->handleKeyEvent(PlatformKeyboardEventBuilder(event));
 }
 
 bool WebViewImpl::autocompleteHandleKeyEvent(const WebKeyboardEvent& event)
@@ -540,11 +563,11 @@ bool WebViewImpl::autocompleteHandleKeyEvent(const WebKeyboardEvent& event)
         int selectedIndex = m_suggestionsPopup->selectedIndex();
         HTMLInputElement* inputElement = static_cast<HTMLInputElement*>(element);
         WebString name = inputElement->name();
-        WebString value = m_autocompletePopupClient->itemText(selectedIndex);
+        WebString value = m_suggestionsPopupClient->itemText(selectedIndex);
         m_client->removeAutofillSuggestions(name, value);
         // Update the entries in the currently showing popup to reflect the
         // deletion.
-        m_autocompletePopupClient->removeSuggestionAtIndex(selectedIndex);
+        m_suggestionsPopupClient->removeSuggestionAtIndex(selectedIndex);
         refreshSuggestionsPopup();
         return false;
     }
@@ -603,6 +626,17 @@ bool WebViewImpl::charEvent(const WebKeyboardEvent& event)
 
     return true;
 }
+
+#if ENABLE(TOUCH_EVENTS)
+bool WebViewImpl::touchEvent(const WebTouchEvent& event)
+{
+    if (!mainFrameImpl() || !mainFrameImpl()->frameView())
+        return false;
+
+    PlatformTouchEventBuilder touchEventBuilder(mainFrameImpl()->frameView(), event);
+    return mainFrameImpl()->frame()->eventHandler()->handleTouchEvent(touchEventBuilder);
+}
+#endif
 
 // The WebViewImpl::SendContextMenuEvent function is based on the Webkit
 // function
@@ -774,6 +808,12 @@ bool WebViewImpl::scrollViewWithKeyboard(int keyCode, int modifiers)
     return propagateScroll(scrollDirection, scrollGranularity);
 }
 
+void WebViewImpl::hideSelectPopup()
+{
+    if (m_selectPopup.get())
+        m_selectPopup->hidePopup();
+}
+
 bool WebViewImpl::propagateScroll(ScrollDirection scrollDirection,
                                   ScrollGranularity scrollGranularity)
 {
@@ -791,6 +831,22 @@ bool WebViewImpl::propagateScroll(ScrollDirection scrollDirection,
         currentFrame = currentFrame->tree()->parent();
     }
     return scrollHandled;
+}
+
+void  WebViewImpl::popupOpened(WebCore::PopupContainer* popupContainer)
+{
+    if (popupContainer->popupType() == WebCore::PopupContainer::Select) {
+        ASSERT(!m_selectPopup);
+        m_selectPopup = popupContainer;
+    }
+}
+
+void  WebViewImpl::popupClosed(WebCore::PopupContainer* popupContainer)
+{
+    if (popupContainer->popupType() == WebCore::PopupContainer::Select) {
+        ASSERT(m_selectPopup.get());
+        m_selectPopup = 0;
+    }
 }
 
 Frame* WebViewImpl::focusedWebCoreFrame()
@@ -873,9 +929,26 @@ void WebViewImpl::layout()
 
 void WebViewImpl::paint(WebCanvas* canvas, const WebRect& rect)
 {
-    WebFrameImpl* webframe = mainFrameImpl();
-    if (webframe)
-        webframe->paint(canvas, rect);
+
+#if USE(ACCELERATED_COMPOSITING)
+    if (!isAcceleratedCompositing()) {
+#endif
+        WebFrameImpl* webframe = mainFrameImpl();
+        if (webframe)
+            webframe->paint(canvas, rect);
+#if USE(ACCELERATED_COMPOSITING)
+    } else {
+        // Draw the contents of the root layer.
+        updateRootLayerContents(rect);
+
+        // Composite everything into the canvas that's passed to us.
+#if PLATFORM(SKIA)
+        m_layerRenderer->drawLayersInCanvas(static_cast<skia::PlatformCanvas*>(canvas), IntRect(rect));
+#elif PLATFORM(CG)
+#error "Need to implement CG version"
+#endif
+    }
+#endif
 }
 
 // FIXME: m_currentInputEvent should be removed once ChromeClient::show() can
@@ -891,6 +964,38 @@ bool WebViewImpl::handleInputEvent(const WebInputEvent& inputEvent)
 
     if (m_ignoreInputEvents)
         return true;
+
+    if (m_haveMouseCapture && WebInputEvent::isMouseEventType(inputEvent.type)) {
+        // Not all platforms call mouseCaptureLost() directly.
+        if (inputEvent.type == WebInputEvent::MouseUp)
+            mouseCaptureLost();
+
+        Node* node = focusedWebCoreNode();
+        if (node && node->renderer() && node->renderer()->isEmbeddedObject()) {
+            AtomicString eventType;
+            switch (inputEvent.type) {
+            case WebInputEvent::MouseMove:
+                eventType = eventNames().mousemoveEvent;
+                break;
+            case WebInputEvent::MouseLeave:
+                eventType = eventNames().mouseoutEvent;
+                break;
+            case WebInputEvent::MouseDown:
+                eventType = eventNames().mousedownEvent;
+                break;
+            case WebInputEvent::MouseUp:
+                eventType = eventNames().mouseupEvent;
+                break;
+            default:
+                ASSERT_NOT_REACHED();
+            }
+
+            node->dispatchMouseEvent(
+                  PlatformMouseEventBuilder(mainFrameImpl()->frameView(), *static_cast<const WebMouseEvent*>(&inputEvent)),
+                  eventType);
+            return true;
+        }
+    }
 
     // FIXME: Remove m_currentInputEvent.
     // This only exists to allow ChromeClient::show() to know which mouse button
@@ -936,6 +1041,15 @@ bool WebViewImpl::handleInputEvent(const WebInputEvent& inputEvent)
         handled = charEvent(*static_cast<const WebKeyboardEvent*>(&inputEvent));
         break;
 
+#if ENABLE(TOUCH_EVENTS)
+    case WebInputEvent::TouchStart:
+    case WebInputEvent::TouchMove:
+    case WebInputEvent::TouchEnd:
+    case WebInputEvent::TouchCancel:
+        handled = touchEvent(*static_cast<const WebTouchEvent*>(&inputEvent));
+        break;
+#endif
+
     default:
         handled = false;
     }
@@ -947,6 +1061,7 @@ bool WebViewImpl::handleInputEvent(const WebInputEvent& inputEvent)
 
 void WebViewImpl::mouseCaptureLost()
 {
+    m_haveMouseCapture = false;
 }
 
 void WebViewImpl::setFocus(bool enable)
@@ -982,6 +1097,7 @@ void WebViewImpl::setFocus(bool enable)
         m_imeAcceptEvents = true;
     } else {
         hideSuggestionsPopup();
+        hideSelectPopup();
 
         // Clear focus on the currently focused frame if any.
         if (!m_page.get())
@@ -1302,7 +1418,7 @@ int WebViewImpl::setZoomLevel(bool textOnly, int zoomLevel)
     Frame* frame = mainFrameImpl()->frame();
     if (zoomFactor != frame->zoomFactor()) {
         m_zoomLevel = zoomLevel;
-        frame->setZoomFactor(zoomFactor, textOnly);
+        frame->setZoomFactor(zoomFactor, textOnly ? ZoomTextOnly : ZoomPage);
     }
     return m_zoomLevel;
 }
@@ -1330,6 +1446,9 @@ void WebViewImpl::performMediaPlayerAction(const WebMediaPlayerAction& action,
         break;
     case WebMediaPlayerAction::Loop:
         mediaElement->setLoop(action.enable);
+        break;
+    case WebMediaPlayerAction::Controls:
+        mediaElement->setControls(action.enable);
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -1392,26 +1511,7 @@ WebDragOperation WebViewImpl::dragTargetDragEnter(
     m_dragIdentity = identity;
     m_operationsAllowed = operationsAllowed;
 
-    DragData dragData(
-        m_currentDragData.get(),
-        clientPoint,
-        screenPoint,
-        static_cast<DragOperation>(operationsAllowed));
-
-    m_dropEffect = DropEffectDefault;
-    m_dragTargetDispatch = true;
-    DragOperation effect = m_page->dragController()->dragEntered(&dragData);
-    // Mask the operation against the drag source's allowed operations.
-    if ((effect & dragData.draggingSourceOperationMask()) != effect)
-        effect = DragOperationNone;
-    m_dragTargetDispatch = false;
-
-    if (m_dropEffect != DropEffectDefault) {
-        m_dragOperation = (m_dropEffect != DropEffectNone) ? WebDragOperationCopy
-                                                           : WebDragOperationNone;
-    } else
-        m_dragOperation = static_cast<WebDragOperation>(effect);
-    return m_dragOperation;
+    return dragTargetDragEnterOrOver(clientPoint, screenPoint, DragEnter);
 }
 
 WebDragOperation WebViewImpl::dragTargetDragOver(
@@ -1419,29 +1519,9 @@ WebDragOperation WebViewImpl::dragTargetDragOver(
     const WebPoint& screenPoint,
     WebDragOperationsMask operationsAllowed)
 {
-    ASSERT(m_currentDragData.get());
-
     m_operationsAllowed = operationsAllowed;
-    DragData dragData(
-        m_currentDragData.get(),
-        clientPoint,
-        screenPoint,
-        static_cast<DragOperation>(operationsAllowed));
 
-    m_dropEffect = DropEffectDefault;
-    m_dragTargetDispatch = true;
-    DragOperation effect = m_page->dragController()->dragUpdated(&dragData);
-    // Mask the operation against the drag source's allowed operations.
-    if ((effect & dragData.draggingSourceOperationMask()) != effect)
-        effect = DragOperationNone;
-    m_dragTargetDispatch = false;
-
-    if (m_dropEffect != DropEffectDefault) {
-        m_dragOperation = (m_dropEffect != DropEffectNone) ? WebDragOperationCopy
-                                                           : WebDragOperationNone;
-    } else
-        m_dragOperation = static_cast<WebDragOperation>(effect);
-    return m_dragOperation;
+    return dragTargetDragEnterOrOver(clientPoint, screenPoint, DragOver);
 }
 
 void WebViewImpl::dragTargetDragLeave()
@@ -1504,7 +1584,36 @@ int WebViewImpl::dragIdentity()
     return 0;
 }
 
-unsigned long WebViewImpl::createUniqueIdentifierForRequest() {
+WebDragOperation WebViewImpl::dragTargetDragEnterOrOver(const WebPoint& clientPoint, const WebPoint& screenPoint, DragAction dragAction)
+{
+    ASSERT(m_currentDragData.get());
+
+    DragData dragData(
+        m_currentDragData.get(),
+        clientPoint,
+        screenPoint,
+        static_cast<DragOperation>(m_operationsAllowed));
+
+    m_dropEffect = DropEffectDefault;
+    m_dragTargetDispatch = true;
+    DragOperation effect = dragAction == DragEnter ? m_page->dragController()->dragEntered(&dragData)
+                                                   : m_page->dragController()->dragUpdated(&dragData);
+    // Mask the operation against the drag source's allowed operations.
+    if (!(effect & dragData.draggingSourceOperationMask()))
+        effect = DragOperationNone;
+    m_dragTargetDispatch = false;
+
+    if (m_dropEffect != DropEffectDefault) {
+        m_dragOperation = (m_dropEffect != DropEffectNone) ? WebDragOperationCopy
+                                                           : WebDragOperationNone;
+    } else
+        m_dragOperation = static_cast<WebDragOperation>(effect);
+
+    return m_dragOperation;
+}
+
+unsigned long WebViewImpl::createUniqueIdentifierForRequest()
+{
     if (m_page)
         return m_page->progress()->createUniqueIdentifier();
     return 0;
@@ -1607,6 +1716,7 @@ void WebViewImpl::applyAutoFillSuggestions(
 
     if (!m_autoFillPopup.get()) {
         m_autoFillPopup = PopupContainer::create(m_suggestionsPopupClient,
+                                                 PopupContainer::Suggestion,
                                                  suggestionsPopupSettings);
     }
 
@@ -1662,6 +1772,7 @@ void WebViewImpl::applyAutocompleteSuggestions(
 
     if (!m_autocompletePopup.get()) {
         m_autocompletePopup = PopupContainer::create(m_suggestionsPopupClient,
+                                                     PopupContainer::Suggestion,
                                                      suggestionsPopupSettings);
     }
 
@@ -1775,6 +1886,13 @@ void WebViewImpl::addUserScript(const WebString& sourceCode, bool runAtStart)
                                     runAtStart ? InjectAtDocumentStart : InjectAtDocumentEnd);
 }
 
+void WebViewImpl::addUserStyleSheet(const WebString& sourceCode)
+{
+    PageGroup* pageGroup = PageGroup::pageGroup(pageGroupName);
+    RefPtr<DOMWrapperWorld> world(DOMWrapperWorld::create());
+    pageGroup->addUserStyleSheetToWorld(world.get(), sourceCode, WebURL(), 0, 0);
+}
+
 void WebViewImpl::removeAllUserContent()
 {
     PageGroup* pageGroup = PageGroup::pageGroup(pageGroupName);
@@ -1799,7 +1917,7 @@ bool WebViewImpl::navigationPolicyFromMouseEvent(unsigned short button,
                                                  bool alt, bool meta,
                                                  WebNavigationPolicy* policy)
 {
-#if OS(WINDOWS) || OS(LINUX) || OS(FREEBSD)
+#if OS(WINDOWS) || OS(LINUX) || OS(FREEBSD) || OS(SOLARIS)
     const bool newTabModifier = (button == 1) || ctrl;
 #elif OS(DARWIN)
     const bool newTabModifier = (button == 1) || meta;
@@ -1822,15 +1940,16 @@ bool WebViewImpl::navigationPolicyFromMouseEvent(unsigned short button,
     return true;
 }
 
-void WebViewImpl::startDragging(const WebPoint& eventPos,
-                                const WebDragData& dragData,
-                                WebDragOperationsMask mask)
+void WebViewImpl::startDragging(const WebDragData& dragData,
+                                WebDragOperationsMask mask,
+                                const WebImage& dragImage,
+                                const WebPoint& dragImageOffset)
 {
     if (!m_client)
         return;
     ASSERT(!m_doingDragAndDrop);
     m_doingDragAndDrop = true;
-    m_client->startDragging(eventPos, dragData, mask);
+    m_client->startDragging(dragData, mask, dragImage, dragImageOffset);
 }
 
 void WebViewImpl::setCurrentHistoryItem(HistoryItem* item)
@@ -1871,7 +1990,7 @@ void WebViewImpl::refreshSuggestionsPopup()
     ASSERT(m_suggestionsPopupShowing);
 
     // Hide the popup if it has become empty.
-    if (!m_autocompletePopupClient->listSize()) {
+    if (!m_suggestionsPopupClient->listSize()) {
         hideSuggestionsPopup();
         return;
     }
@@ -1915,5 +2034,77 @@ bool WebViewImpl::tabsToLinks() const
 {
     return m_tabsToLinks;
 }
+
+#if USE(ACCELERATED_COMPOSITING)
+void WebViewImpl::setRootGraphicsLayer(WebCore::PlatformLayer* layer)
+{
+    setAcceleratedCompositing(layer ? true : false);
+    if (m_layerRenderer)
+        m_layerRenderer->setRootLayer(layer);
+}
+
+void WebViewImpl::setAcceleratedCompositing(bool accelerated)
+{
+    if (m_isAcceleratedCompositing == accelerated)
+        return;
+
+    if (accelerated) {
+        m_layerRenderer = LayerRendererChromium::create();
+        if (m_layerRenderer)
+            m_isAcceleratedCompositing = true;
+    } else {
+        m_layerRenderer = 0;
+        m_isAcceleratedCompositing = false;
+    }
+}
+
+void WebViewImpl::updateRootLayerContents(const WebRect& rect)
+{
+    if (!isAcceleratedCompositing())
+        return;
+
+    WebFrameImpl* webframe = mainFrameImpl();
+    if (!webframe)
+        return;
+    FrameView* view = webframe->frameView();
+    if (!view)
+        return;
+
+    WebRect viewRect = view->frameRect();
+    SkIRect scrollFrame;
+    scrollFrame.set(view->scrollX(), view->scrollY(), view->layoutWidth() + view->scrollX(), view->layoutHeight() + view->scrollY());
+    m_layerRenderer->setScrollFrame(scrollFrame);
+    LayerChromium* rootLayer = m_layerRenderer->rootLayer();
+    if (rootLayer) {
+        IntRect visibleRect = view->visibleContentRect(true);
+
+        // Set the backing store size used by the root layer to be the size of the visible
+        // area. Note that the root layer bounds could be larger than the backing store size,
+        // but there's no reason to waste memory by allocating backing store larger than the
+        // visible portion.
+        rootLayer->setBackingStoreRect(IntSize(visibleRect.width(), visibleRect.height()));
+        GraphicsContext* rootLayerContext = rootLayer->graphicsContext();
+        rootLayerContext->save();
+
+        webframe->paintWithContext(*(rootLayer->graphicsContext()), rect);
+        rootLayerContext->restore();
+    }
+}
+
+void WebViewImpl::setRootLayerNeedsDisplay()
+{
+    // FIXME: For now we're posting a repaint event for the entire page which is an overkill.
+    if (WebFrameImpl* webframe = mainFrameImpl()) {
+        if (FrameView* view = webframe->frameView()) {
+            IntRect visibleRect = view->visibleContentRect(true);
+            m_client->didInvalidateRect(visibleRect);
+        }
+    }
+
+    if (m_layerRenderer)
+        m_layerRenderer->setNeedsDisplay();
+}
+
+#endif
 
 } // namespace WebKit

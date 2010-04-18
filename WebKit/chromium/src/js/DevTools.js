@@ -151,31 +151,12 @@ devtools.ToolsAgent.prototype.evaluate = function(expr)
 
 
 /**
- * Enables / disables resources panel in the ui.
- * @param {boolean} enabled New panel status.
- */
-WebInspector.setResourcesPanelEnabled = function(enabled)
-{
-    InspectorBackend._resourceTrackingEnabled = enabled;
-    WebInspector.panels.resources.reset();
-};
-
-
-/**
  * Prints string  to the inspector console or shows alert if the console doesn't
  * exist.
  * @param {string} text
  */
 function debugPrint(text) {
-    var console = WebInspector.console;
-    if (console) {
-        console.addMessage(new WebInspector.ConsoleMessage(
-            WebInspector.ConsoleMessage.MessageSource.JS,
-            WebInspector.ConsoleMessage.MessageType.Log,
-            WebInspector.ConsoleMessage.MessageLevel.Log,
-            1, "chrome://devtools/<internal>", undefined, -1, text));
-    } else
-        alert(text);
+    WebInspector.log(text);
 }
 
 
@@ -200,54 +181,17 @@ WebInspector.loaded = function()
     Preferences.ignoreWhitespace = false;
     Preferences.samplingCPUProfiler = true;
     Preferences.heapProfilerPresent = true;
+    Preferences.debuggerAlwaysEnabled = true;
+    Preferences.profilerAlwaysEnabled = true;
+    RemoteDebuggerAgent.setDebuggerScriptSource("(" + debuggerScriptConstructor + ")();");
+ 
     oldLoaded.call(this);
 
     InspectorFrontendHost.loaded();
 };
 
 
-(function()
-{
-
-    /**
-     * Handles an F3 keydown event to focus the Inspector search box.
-     * @param {KeyboardEvent} event Event to optionally handle
-     * @return {boolean} whether the event has been handled
-     */
-    function handleF3Keydown(event) {
-        if (event.keyIdentifier === "F3" && !event.altKey && !event.ctrlKey && !event.shiftKey && !event.metaKey) {
-            var searchField = document.getElementById("search");
-            searchField.focus();
-            searchField.select();
-            event.preventDefault();
-            return true;
-        }
-        return false;
-    }
-
-
-    var oldKeyDown = WebInspector.documentKeyDown;
-    /**
-     * This override allows to intercept keydown events we want to handle in a
-     * custom way. Some nested documents (iframes) delegate keydown handling to
-     * WebInspector.documentKeyDown (e.g. SourceFrame).
-     * @param {KeyboardEvent} event
-     * @override
-     */
-    WebInspector.documentKeyDown = function(event) {
-        var isHandled = handleF3Keydown(event);
-        if (!isHandled) {
-            // Mute refresh action.
-            if (event.keyIdentifier === "F5")
-                event.preventDefault();
-            else if (event.keyIdentifier === "U+0052" /* "R" */ && (event.ctrlKey || event.metaKey))
-                event.preventDefault();
-            else
-                oldKeyDown.call(this, event);
-        }
-    };
-})();
-
+if (!window.v8ScriptDebugServerEnabled) {
 
 /**
  * This override is necessary for adding script source asynchronously.
@@ -285,18 +229,6 @@ WebInspector.ScriptView.prototype.didResolveScriptSource_ = function()
 };
 
 
-/**
- * @param {string} type Type of the the property value("object" or "function").
- * @param {string} className Class name of the property value.
- * @constructor
- */
-WebInspector.UnresolvedPropertyValue = function(type, className)
-{
-    this.type = type;
-    this.className = className;
-};
-
-
 (function()
 {
     var oldShow = WebInspector.ScriptsPanel.prototype.show;
@@ -307,6 +239,47 @@ WebInspector.UnresolvedPropertyValue = function(type, className)
         oldShow.call(this);
     };
 })();
+
+
+(function () {
+var orig = InjectedScriptAccess.prototype.getProperties;
+InjectedScriptAccess.prototype.getProperties = function(objectProxy, ignoreHasOwnProperty, abbreviate, callback)
+{
+    if (objectProxy.isScope)
+        devtools.tools.getDebuggerAgent().resolveScope(objectProxy.objectId, callback);
+    else if (objectProxy.isV8Ref)
+        devtools.tools.getDebuggerAgent().resolveChildren(objectProxy.objectId, callback, false);
+    else
+        orig.apply(this, arguments);
+};
+})();
+
+
+(function()
+{
+InjectedScriptAccess.prototype.evaluateInCallFrame = function(callFrameId, code, objectGroup, callback)
+{
+    //TODO(pfeldman): remove once 49084 is rolled.
+    if (!callback)
+        callback = objectGroup;
+    devtools.tools.getDebuggerAgent().evaluateInCallFrame(callFrameId, code, callback);
+};
+})();
+
+
+(function()
+{
+var orig = InjectedScriptAccess.prototype.getCompletions;
+InjectedScriptAccess.prototype.getCompletions = function(expressionString, includeInspectorCommandLineAPI, callFrameId, reportCompletions)
+{
+    if (typeof callFrameId === "number")
+        devtools.tools.getDebuggerAgent().resolveCompletionsOnFrame(expressionString, callFrameId, reportCompletions);
+    else
+        return orig.apply(this, arguments);
+};
+})();
+
+}
 
 
 (function InterceptProfilesPanelEvents()
@@ -332,6 +305,17 @@ WebInspector.UIString = function(string)
 {
     return String.vsprintf(string, Array.prototype.slice.call(arguments, 1));
 };
+
+// Activate window upon node search complete. This will go away once InspectorFrontendClient is landed.
+(function() {
+    var original = WebInspector.searchingForNodeWasDisabled;
+    WebInspector.searchingForNodeWasDisabled = function()
+    {
+        if (this.panels.elements._nodeSearchButton.toggled)
+            InspectorFrontendHost.bringToFront();
+        original.apply(this, arguments);
+    }
+})();
 
 
 // There is no clear way of setting frame title yet. So sniffing main resource
@@ -392,81 +376,6 @@ WebInspector.UIString = function(string)
 })();
 
 
-(function () {
-var orig = InjectedScriptAccess.prototype.getProperties;
-InjectedScriptAccess.prototype.getProperties = function(objectProxy, ignoreHasOwnProperty, abbreviate, callback)
-{
-    if (objectProxy.isScope)
-        devtools.tools.getDebuggerAgent().resolveScope(objectProxy.objectId, callback);
-    else if (objectProxy.isV8Ref)
-        devtools.tools.getDebuggerAgent().resolveChildren(objectProxy.objectId, callback, false);
-    else
-        orig.apply(this, arguments);
-};
-})();
-
-
-(function()
-{
-InjectedScriptAccess.prototype.evaluateInCallFrame = function(callFrameId, code, objectGroup, callback)
-{
-    //TODO(pfeldman): remove once 49084 is rolled.
-    if (!callback)
-        callback = objectGroup;
-    devtools.tools.getDebuggerAgent().evaluateInCallFrame(callFrameId, code, callback);
-};
-})();
-
-
-WebInspector.resourceTrackingWasEnabled = function()
-{
-      InspectorBackend._resourceTrackingEnabled = true;
-      this.panels.resources.resourceTrackingWasEnabled();
-};
-
-WebInspector.resourceTrackingWasDisabled = function()
-{
-      InspectorBackend._resourceTrackingEnabled = false;
-      this.panels.resources.resourceTrackingWasDisabled();
-};
-
-(function()
-{
-var orig = WebInspector.ConsoleMessage.prototype.setMessageBody;
-WebInspector.ConsoleMessage.prototype.setMessageBody = function(args)
-{
-    for (var i = 0; i < args.length; ++i) {
-        if (typeof args[i] === "string")
-            args[i] = WebInspector.ObjectProxy.wrapPrimitiveValue(args[i]);
-    }
-    orig.call(this, args);
-};
-})();
-
-
-(function()
-{
-var orig = InjectedScriptAccess.prototype.getCompletions;
-InjectedScriptAccess.prototype.getCompletions = function(expressionString, includeInspectorCommandLineAPI, callFrameId, reportCompletions)
-{
-    if (typeof callFrameId === "number")
-        devtools.tools.getDebuggerAgent().resolveCompletionsOnFrame(expressionString, callFrameId, reportCompletions);
-    else
-        return orig.apply(this, arguments);
-};
-})();
-
-
-(function()
-{
-WebInspector.ElementsPanel.prototype._nodeSearchButtonClicked = function( event)
-{
-    InspectorBackend.toggleNodeSearch();
-    this.nodeSearchButton.toggled = !this.nodeSearchButton.toggled;
-};
-})();
-
-
 // We need to have a place for postponed tasks
 // which should be executed when all the messages between agent and frontend
 // are processed.
@@ -502,3 +411,93 @@ WebInspector.pausedScript = function(callFrames)
 {
     this.panels.scripts.debuggerPaused(callFrames);
 };
+
+// Chromium theme support.
+WebInspector.setToolbarColors = function(backgroundColor, color)
+{
+    if (!WebInspector._themeStyleElement) {
+        WebInspector._themeStyleElement = document.createElement("style");
+        document.head.appendChild(WebInspector._themeStyleElement);
+    }
+    WebInspector._themeStyleElement.textContent =
+        "body #toolbar, body.inactive #toolbar {\
+             background-image: none !important;\
+             background-color: " + backgroundColor + " !important;\
+         }\
+         \
+         body .status-bar {\
+             background-image: url(Images/statusbarBackgroundChromium2.png) !important;\
+             background-color: " + backgroundColor + " !important;\
+         }\
+         \
+         body button.status-bar-item {\
+             background-image: none !important;\
+         }\
+         \
+         button.status-bar-item {\
+             background-image: none;\
+             border-right: 1px solid " + backgroundColor + ";\
+         }\
+         \
+         .status-bar {\
+             background-image: none;\
+             color: " + color + ";\
+         }\
+         \
+         body #drawer {\
+             background-image: none !important;\
+         }\
+         \
+         #drawer-status-bar {\
+             background-image: url(Images/statusbarBackgroundChromium2.png);\
+             background-color: " + backgroundColor + ";\
+         }\
+         \
+         \
+         body.drawer-visible #main-status-bar {\
+             background-image: url(Images/statusbarBackgroundChromium2.png) !important;\
+         }\
+         \
+         body .crumbs .crumb, body .crumbs .crumb.end {\
+             -webkit-border-image: url(Images/segmentChromium2.png) 0 12 0 2 !important;\
+             background-color: " + backgroundColor + " !important;\
+         }\
+         \
+         body .crumbs .crumb:hover, body .crumbs .crumb.dimmed:hover {\
+             -webkit-border-image: url(Images/segmentHoverChromium2.png) 0 12 0 2 !important;\
+         }\
+         \
+         body .crumbs .crumb.end {\
+             -webkit-border-image: url(Images/segmentChromium2.png) 0 12 0 2 !important;\
+         }\
+         \
+         body .crumbs .crumb.selected:hover, body .crumbs .crumb.selected.end, .crumbs .crumb.selected.end:hover {\
+             -webkit-border-image: url(Images/segmentSelectedChromium2.png) 0 12 0 2 !important;\
+         }\
+         \
+         body select.status-bar-item {\
+             -webkit-border-image: url(Images/statusbarMenuButtonChromium2.png) 0 17 0 2 !important;\
+             background-color: " + backgroundColor + " !important;\
+             text-shadow: none !important;\
+         }\
+         \
+         .glyph {\
+             background-color: " + color + ";\
+         }\
+         \
+         button.status-bar-item .glyph.shadow {\
+             display: none;\
+         }\
+         \
+         .crumbs, .crumbs .crumb:hover, #drawer .scope-bar:not(.console-filter-top) li, .toolbar-label, select.status-bar-item {\
+             text-shadow: none;\
+             color: " + color + ";\
+         }";
+}
+
+WebInspector.resetToolbarColors = function()
+{
+    if (WebInspector._themeStyleElement)
+        WebInspector._themeStyleElement.textContent = "";
+
+}

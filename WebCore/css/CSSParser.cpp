@@ -25,7 +25,6 @@
 #include "config.h"
 #include "CSSParser.h"
 
-#include "CString.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSBorderImageValue.h"
 #include "CSSCanvasValue.h"
@@ -66,6 +65,7 @@
 #include "Pair.h"
 #include "Rect.h"
 #include "ShadowValue.h"
+#include "StringBuffer.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include "WebKitCSSTransformValue.h"
@@ -143,6 +143,8 @@ CSSParser::CSSParser(bool strictParsing)
     , m_defaultNamespace(starAtom)
     , m_data(0)
     , yy_start(1)
+    , m_line(0)
+    , m_lastSelectorLine(0)
     , m_allowImportRules(true)
     , m_allowVariablesRules(true)
     , m_allowNamespaceDeclarations(true)
@@ -369,7 +371,7 @@ bool CSSParser::parseMediaQuery(MediaList* queries, const String& string)
 
 void CSSParser::addProperty(int propId, PassRefPtr<CSSValue> value, bool important)
 {
-    auto_ptr<CSSProperty> prop(new CSSProperty(propId, value, important, m_currentShorthand, m_implicitShorthand));
+    OwnPtr<CSSProperty> prop(new CSSProperty(propId, value, important, m_currentShorthand, m_implicitShorthand));
     if (m_numParsedProperties >= m_maxParsedProperties) {
         m_maxParsedProperties += 32;
         if (m_maxParsedProperties > UINT_MAX / sizeof(CSSProperty*))
@@ -941,7 +943,7 @@ bool CSSParser::parseValue(int propId, bool important)
         if (id == CSSValueThin || id == CSSValueMedium || id == CSSValueThick)
             validPrimitive = true;
         else
-            validPrimitive = validUnit(value, FLength, m_strict);
+            validPrimitive = validUnit(value, FLength | FNonNeg, m_strict);
         break;
 
     case CSSPropertyLetterSpacing:       // normal | <length> | inherit
@@ -1393,6 +1395,7 @@ bool CSSParser::parseValue(int propId, bool important)
     case CSSPropertyWebkitAnimationDelay:
     case CSSPropertyWebkitAnimationDirection:
     case CSSPropertyWebkitAnimationDuration:
+    case CSSPropertyWebkitAnimationFillMode:
     case CSSPropertyWebkitAnimationName:
     case CSSPropertyWebkitAnimationPlayState:
     case CSSPropertyWebkitAnimationIterationCount:
@@ -1890,7 +1893,8 @@ bool CSSParser::parseAnimationShorthand(bool important)
                                 CSSPropertyWebkitAnimationTimingFunction,
                                 CSSPropertyWebkitAnimationDelay,
                                 CSSPropertyWebkitAnimationIterationCount,
-                                CSSPropertyWebkitAnimationDirection };
+                                CSSPropertyWebkitAnimationDirection,
+                                CSSPropertyWebkitAnimationFillMode };
     const int numProperties = sizeof(properties) / sizeof(properties[0]);
     
     ShorthandScope scope(this, CSSPropertyWebkitAnimation);
@@ -2571,6 +2575,14 @@ PassRefPtr<CSSValue> CSSParser::parseAnimationDuration()
     return 0;
 }
 
+PassRefPtr<CSSValue> CSSParser::parseAnimationFillMode()
+{
+    CSSParserValue* value = m_valueList->current();
+    if (value->id == CSSValueNone || value->id == CSSValueForwards || value->id == CSSValueBackwards || value->id == CSSValueBoth)
+        return CSSPrimitiveValue::createIdentifier(value->id);
+    return 0;
+}
+
 PassRefPtr<CSSValue> CSSParser::parseAnimationIterationCount()
 {
     CSSParserValue* value = m_valueList->current();
@@ -2710,6 +2722,11 @@ bool CSSParser::parseAnimationProperty(int propId, RefPtr<CSSValue>& result)
                 case CSSPropertyWebkitAnimationDuration:
                 case CSSPropertyWebkitTransitionDuration:
                     currValue = parseAnimationDuration();
+                    if (currValue)
+                        m_valueList->next();
+                    break;
+                case CSSPropertyWebkitAnimationFillMode:
+                    currValue = parseAnimationFillMode();
                     if (currValue)
                         m_valueList->next();
                     break;
@@ -3491,19 +3508,66 @@ bool CSSParser::parseFontFaceUnicodeRange()
     return true;
 }
 
+static inline bool isCSSWhitespace(UChar c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f';
+}
+
+static inline bool parseInt(const UChar*& string, const UChar* end, UChar terminator, int& value)
+{
+    const UChar* current = string;
+    int localValue = 0;
+    bool negative = false;
+    while (current != end && isCSSWhitespace(*current)) 
+        current++;
+    if (current != end && *current == '-') {
+        negative = true;
+        current++;
+    }
+    if (current == end || !isASCIIDigit(*current))
+        return false;
+    while (current != end && isASCIIDigit(*current))
+        localValue = localValue * 10 + *current++ - '0';
+    while (current != end && isCSSWhitespace(*current))
+        current++;
+    if (current == end || *current++ != terminator)
+        return false;
+    // Clamp negative values at zero.
+    value = negative ? 0 : localValue;
+    string = current;
+    return true;
+}
+
 bool CSSParser::parseColor(const String &name, RGBA32& rgb, bool strict)
 {
     if (!strict && Color::parseHexColor(name, rgb))
         return true;
 
-    // try a little harder
+    // Try rgb() syntax.
+    if (name.startsWith("rgb(")) {
+        const UChar* current = name.characters() + 4;
+        const UChar* end = name.characters() + name.length();
+        int red;
+        int green;
+        int blue;
+        if (!parseInt(current, end, ',', red))
+            return false;
+        if (!parseInt(current, end, ',', green))
+            return false;
+        if (!parseInt(current, end, ')', blue))
+            return false;
+        if (current != end)
+            return false;
+        rgb = makeRGB(red, green, blue);
+        return true;
+    }        
+    // Try named colors.
     Color tc;
     tc.setNamedColor(name);
     if (tc.isValid()) {
         rgb = tc.rgb();
         return true;
     }
-
     return false;
 }
 
@@ -3536,7 +3600,9 @@ bool CSSParser::parseColorParameters(CSSParserValue* value, int* colorArray, boo
         v = args->next();
         if (!validUnit(v, FNumber, true))
             return false;
-        colorArray[3] = static_cast<int>(max(0.0, min(1.0, v->fValue)) * 255);
+        // Convert the floating pointer number of alpha to an integer in the range [0, 256),
+        // with an equal distribution across all 256 values.
+        colorArray[3] = static_cast<int>(max(0.0, min(1.0, v->fValue)) * nextafter(256.0, 0.0));
     }
     return true;
 }
@@ -4628,7 +4694,7 @@ int CSSParser::lex(void* yylvalWithoutType)
 {
     YYSTYPE* yylval = static_cast<YYSTYPE*>(yylvalWithoutType);
     int length;
-    
+
     lex();
 
     UChar* t = text(&length);
@@ -4700,11 +4766,6 @@ int CSSParser::lex(void* yylvalWithoutType)
     }
 
     return token();
-}
-
-static inline bool isCSSWhitespace(UChar c)
-{
-    return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\f';
 }
 
 void CSSParser::recheckAtKeyword(const UChar* str, int len)
@@ -4856,6 +4917,14 @@ UChar* CSSParser::text(int *length)
         recheckAtKeyword(start, *length);
 
     return start;
+}
+
+void CSSParser::countLines()
+{
+    for (UChar* current = yytext; current < yytext + yyleng; ++current) {
+        if (*current == '\n')
+            ++m_line;
+    }
 }
 
 CSSSelector* CSSParser::createFloatingSelector()
@@ -5027,7 +5096,7 @@ CSSRule* CSSParser::createStyleRule(Vector<CSSSelector*>* selectors)
     m_allowImportRules = m_allowNamespaceDeclarations = m_allowVariablesRules = false;
     CSSStyleRule* result = 0;
     if (selectors) {
-        RefPtr<CSSStyleRule> rule = CSSStyleRule::create(m_styleSheet);
+        RefPtr<CSSStyleRule> rule = CSSStyleRule::create(m_styleSheet, m_lastSelectorLine);
         rule->adoptSelectorVector(*selectors);
         if (m_hasFontFaceOnlyValues)
             deleteFontFaceOnlyValues();
@@ -5330,6 +5399,120 @@ int cssValueKeywordID(const CSSParserString& string)
 
     const css_value* hashTableEntry = findValue(buffer, length);
     return hashTableEntry ? hashTableEntry->id : 0;
+}
+
+// "ident" from the CSS tokenizer, minus backslash-escape sequences
+static bool isCSSTokenizerIdentifier(const String& string)
+{
+    const UChar* p = string.characters();
+    const UChar* end = p + string.length();
+
+    // -?
+    if (p != end && p[0] == '-')
+        ++p;
+
+    // {nmstart}
+    if (p == end || !(p[0] == '_' || p[0] >= 128 || isASCIIAlpha(p[0])))
+        return false;
+    ++p;
+
+    // {nmchar}*
+    for (; p != end; ++p) {
+        if (!(p[0] == '_' || p[0] == '-' || p[0] >= 128 || isASCIIAlphanumeric(p[0])))
+            return false;
+    }
+
+    return true;
+}
+
+// "url" from the CSS tokenizer, minus backslash-escape sequences
+static bool isCSSTokenizerURL(const String& string)
+{
+    const UChar* p = string.characters();
+    const UChar* end = p + string.length();
+
+    for (; p != end; ++p) {
+        UChar c = p[0];
+        switch (c) {
+            case '!':
+            case '#':
+            case '$':
+            case '%':
+            case '&':
+                break;
+            default:
+                if (c < '*')
+                    return false;
+                if (c <= '~')
+                    break;
+                if (c < 128)
+                    return false;
+        }
+    }
+
+    return true;
+}
+
+// We use single quotes for now because markup.cpp uses double quotes.
+String quoteCSSString(const String& string)
+{
+    // For efficiency, we first pre-calculate the length of the quoted string, then we build the actual one.
+    // Please see below for the actual logic.
+    unsigned quotedStringSize = 2; // Two quotes surrounding the entire string.
+    bool afterEscape = false;
+    for (unsigned i = 0; i < string.length(); ++i) {
+        UChar ch = string[i];
+        if (ch == '\\' || ch == '\'') {
+            quotedStringSize += 2;
+            afterEscape = false;
+        } else if (ch < 0x20 || ch == 0x7F) {
+            quotedStringSize += 2 + (ch >= 0x10);
+            afterEscape = true;
+        } else {
+            quotedStringSize += 1 + (afterEscape && (isASCIIHexDigit(ch) || ch == ' '));
+            afterEscape = false;
+        }
+    }
+
+    StringBuffer buffer(quotedStringSize);
+    unsigned index = 0;
+    buffer[index++] = '\'';
+    afterEscape = false;
+    for (unsigned i = 0; i < string.length(); ++i) {
+        UChar ch = string[i];
+        if (ch == '\\' || ch == '\'') {
+            buffer[index++] = '\\';
+            buffer[index++] = ch;
+            afterEscape = false;
+        } else if (ch < 0x20 || ch == 0x7F) { // Control characters.
+            static const char hexDigits[17] = "0123456789abcdef";
+            buffer[index++] = '\\';
+            if (ch >= 0x10)
+                buffer[index++] = hexDigits[ch >> 4];
+            buffer[index++] = hexDigits[ch & 0xF];
+            afterEscape = true;
+        } else {
+            // Space character may be required to separate backslash-escape sequence and normal characters.
+            if (afterEscape && (isASCIIHexDigit(ch) || ch == ' '))
+                buffer[index++] = ' ';
+            buffer[index++] = ch;
+            afterEscape = false;
+        }
+    }
+    buffer[index++] = '\'';
+
+    ASSERT(quotedStringSize == index);
+    return String::adopt(buffer);
+}
+
+String quoteCSSStringIfNeeded(const String& string)
+{
+    return isCSSTokenizerIdentifier(string) ? string : quoteCSSString(string);
+}
+
+String quoteCSSURLIfNeeded(const String& string)
+{
+    return isCSSTokenizerURL(string) ? string : quoteCSSString(string);
 }
 
 #define YY_DECL int CSSParser::lex()

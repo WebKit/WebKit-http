@@ -172,7 +172,7 @@ void WebDesktopNotificationsDelegate::requestPermission(SecurityOrigin* origin, 
         notificationDelegate()->requestNotificationPermission(org);
 }
 
-NotificationPresenter::Permission WebDesktopNotificationsDelegate::checkPermission(const KURL& url, Document*)
+NotificationPresenter::Permission WebDesktopNotificationsDelegate::checkPermission(const KURL& url)
 {
     int out = 0;
     BString org(SecurityOrigin::create(url)->toString());

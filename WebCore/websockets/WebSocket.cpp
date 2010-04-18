@@ -34,7 +34,6 @@
 
 #include "WebSocket.h"
 
-#include "CString.h"
 #include "DOMWindow.h"
 #include "Event.h"
 #include "EventException.h"
@@ -46,6 +45,7 @@
 #include "StringBuilder.h"
 #include "ThreadableWebSocketChannel.h"
 #include "WebSocketChannel.h"
+#include <wtf/text/CString.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -119,32 +119,32 @@ void WebSocket::connect(const KURL& url, const String& protocol, ExceptionCode& 
     m_protocol = protocol;
 
     if (!m_url.isValid()) {
-        scriptExecutionContext()->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Invalid url for WebSocket " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
+        scriptExecutionContext()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Invalid url for WebSocket " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
         m_state = CLOSED;
         ec = SYNTAX_ERR;
         return;
     }
 
     if (!m_url.protocolIs("ws") && !m_url.protocolIs("wss")) {
-        scriptExecutionContext()->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Wrong url scheme for WebSocket " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
+        scriptExecutionContext()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Wrong url scheme for WebSocket " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
         m_state = CLOSED;
         ec = SYNTAX_ERR;
         return;
     }
     if (m_url.hasFragmentIdentifier()) {
-        scriptExecutionContext()->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "URL has fragment component " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
+        scriptExecutionContext()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "URL has fragment component " + url.string(), 0, scriptExecutionContext()->securityOrigin()->toString());
         m_state = CLOSED;
         ec = SYNTAX_ERR;
         return;
     }
     if (!isValidProtocolString(m_protocol)) {
-        scriptExecutionContext()->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, "Wrong protocol for WebSocket '" + encodeProtocolString(m_protocol) + "'", 0, scriptExecutionContext()->securityOrigin()->toString());
+        scriptExecutionContext()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, "Wrong protocol for WebSocket '" + encodeProtocolString(m_protocol) + "'", 0, scriptExecutionContext()->securityOrigin()->toString());
         m_state = CLOSED;
         ec = SYNTAX_ERR;
         return;
     }
     if (!portAllowed(url)) {
-        scriptExecutionContext()->addMessage(ConsoleDestination, JSMessageSource, LogMessageType, ErrorMessageLevel, String::format("WebSocket port %d blocked", url.port()), 0, scriptExecutionContext()->securityOrigin()->toString());
+        scriptExecutionContext()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, String::format("WebSocket port %d blocked", url.port()), 0, scriptExecutionContext()->securityOrigin()->toString());
         m_state = CLOSED;
         ec = SECURITY_ERR;
         return;
@@ -227,10 +227,11 @@ void WebSocket::stop()
 void WebSocket::didConnect()
 {
     LOG(Network, "WebSocket %p didConnect", this);
-    if (m_state != CONNECTING || !scriptExecutionContext()) {
+    if (m_state != CONNECTING) {
         didClose(0);
         return;
     }
+    ASSERT(scriptExecutionContext());
     m_state = OPEN;
     dispatchEvent(Event::create(eventNames().openEvent, false, false));
 }
@@ -238,11 +239,21 @@ void WebSocket::didConnect()
 void WebSocket::didReceiveMessage(const String& msg)
 {
     LOG(Network, "WebSocket %p didReceiveMessage %s", this, msg.utf8().data());
-    if (m_state != OPEN || !scriptExecutionContext())
+    if (m_state != OPEN)
         return;
+    ASSERT(scriptExecutionContext());
     RefPtr<MessageEvent> evt = MessageEvent::create();
     evt->initMessageEvent(eventNames().messageEvent, false, false, SerializedScriptValue::create(msg), "", "", 0, 0);
     dispatchEvent(evt);
+}
+
+void WebSocket::didReceiveMessageError()
+{
+    LOG(Network, "WebSocket %p didReceiveErrorMessage", this);
+    if (m_state != OPEN)
+        return;
+    ASSERT(scriptExecutionContext());
+    dispatchEvent(Event::create(eventNames().errorEvent, false, false));
 }
 
 void WebSocket::didClose(unsigned long unhandledBufferedAmount)
@@ -250,6 +261,7 @@ void WebSocket::didClose(unsigned long unhandledBufferedAmount)
     LOG(Network, "WebSocket %p didClose", this);
     m_state = CLOSED;
     m_bufferedAmountAfterClose += unhandledBufferedAmount;
+    ASSERT(scriptExecutionContext());
     dispatchEvent(Event::create(eventNames().closeEvent, false, false));
     m_channel = 0;
     if (hasPendingActivity())

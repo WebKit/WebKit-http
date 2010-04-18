@@ -165,6 +165,8 @@ void WebURLResponse::setHTTPHeaderField(const WebString& name, const WebString& 
 
 void WebURLResponse::addHTTPHeaderField(const WebString& name, const WebString& value)
 {
+    if (name.isNull() || value.isNull())
+        return;
     // FIXME: Add an addHTTPHeaderField method to ResourceResponse.
     const HTTPHeaderMap& map = m_private->m_resourceResponse->httpHeaderFields();
     String valueStr(value);
@@ -263,6 +265,16 @@ bool WebURLResponse::wasFetchedViaSPDY() const
 void WebURLResponse::setWasFetchedViaSPDY(bool value)
 {
     m_private->m_resourceResponse->setWasFetchedViaSPDY(value);
+}
+
+bool WebURLResponse::isMultipartPayload() const
+{
+    return m_private->m_resourceResponse->isMultipartPayload();
+}
+
+void WebURLResponse::setIsMultipartPayload(bool value)
+{
+    m_private->m_resourceResponse->setIsMultipartPayload(value);
 }
 
 void WebURLResponse::assign(WebURLResponsePrivate* p)

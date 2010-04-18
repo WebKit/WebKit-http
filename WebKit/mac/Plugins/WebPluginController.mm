@@ -351,21 +351,11 @@ static void cancelOutstandingCheck(const void *item, void *context)
     }
 }
 
-// For compatibility only.
-- (void)showURL:(NSURL *)URL inFrame:(NSString *)target
-{
-    [self webPlugInContainerLoadRequest:[NSURLRequest requestWithURL:URL] inFrame:target];
-}
-
 - (void)webPlugInContainerShowStatus:(NSString *)message
 {
-    if (!message) {
+    if (!message)
         message = @"";
-    }
-    if (!_documentView) {
-        LOG_ERROR("could not show status message (%@) because plug-in has already been destroyed", message);
-        return;
-    }
+
     WebView *v = [_dataSource _webView];
     [[v _UIDelegateForwarder] webView:v setStatusText:message];
 }

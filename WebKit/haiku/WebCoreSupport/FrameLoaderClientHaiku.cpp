@@ -168,7 +168,6 @@ void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader*, unsigned l
 
 bool FrameLoaderClientHaiku::shouldUseCredentialStorage(DocumentLoader*, unsigned long)
 {
-printf("FrameLoaderClientHaiku::shouldUseCredentialStorage()\n");
     notImplemented();
     return false;
 }

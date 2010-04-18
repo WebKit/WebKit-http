@@ -79,12 +79,12 @@ namespace WebCore {
 
         PassRefPtr<InspectorResource> appendRedirect(unsigned long identifier, const KURL& redirectURL);
         void updateScriptObject(InspectorFrontend* frontend);
-        void releaseScriptObject(InspectorFrontend* frontend, bool callRemoveResource);
+        void releaseScriptObject(InspectorFrontend* frontend);
 
         void updateRequest(const ResourceRequest&);
         void updateResponse(const ResourceResponse&);
 
-        void setXMLHttpResponseText(const ScriptString& data);
+        void setOverrideContent(const ScriptString& data, Type);
 
         String sourceString() const;
         PassRefPtr<SharedBuffer> resourceData(String* textEncodingName) const;
@@ -171,7 +171,8 @@ namespace WebCore {
         double m_endTime;
         double m_loadEventTime;
         double m_domContentEventTime;
-        ScriptString m_xmlHttpResponseText;
+        ScriptString m_overrideContent;
+        Type m_overrideContentType;
         Changes m_changes;
         bool m_isMainResource;
         String m_requestMethod;

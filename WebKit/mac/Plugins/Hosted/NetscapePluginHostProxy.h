@@ -43,8 +43,8 @@ class NetscapePluginHostProxy {
 public:
     NetscapePluginHostProxy(mach_port_t clientPort, mach_port_t pluginHostPort, const ProcessSerialNumber& pluginHostPSN, bool shouldCacheMissingPropertiesAndMethods);
     
-    mach_port_t port() const { return m_pluginHostPort; }
-    mach_port_t clientPort() const { return m_clientPort; }
+    mach_port_t port() const { ASSERT(fastMallocSize(this)); return m_pluginHostPort; }
+    mach_port_t clientPort() const { ASSERT(fastMallocSize(this)); return m_clientPort; }
 
     void addPluginInstance(NetscapePluginInstanceProxy*);
     void removePluginInstance(NetscapePluginInstanceProxy*);
@@ -54,15 +54,15 @@ public:
     bool isMenuBarVisible() const { return m_menuBarIsVisible; }
     void setMenuBarVisible(bool);
 
-    bool isFullScreenWindowShowing() const { return m_fullScreenWindowIsShowing; }
-    void setFullScreenWindowIsShowing(bool);
+    bool isFullscreenWindowShowing() const { return m_fullscreenWindowIsShowing; }
+    void setFullscreenWindowIsShowing(bool);
 
     void setModal(bool);
 
     void applicationDidBecomeActive();
     
     bool processRequests();
-    bool isProcessingRequests() const { return m_processingRequests; }
+    static bool isProcessingRequests() { return s_processingRequests; }
     
     bool shouldCacheMissingPropertiesAndMethods() const { return m_shouldCacheMissingPropertiesAndMethods; }
     
@@ -73,8 +73,8 @@ private:
     void beginModal();
     void endModal();
 
-    void didEnterFullScreen() const;
-    void didExitFullScreen() const;
+    void didEnterFullscreen() const;
+    void didExitFullscreen() const;
 
     static void deadNameNotificationCallback(CFMachPortRef, void *msg, CFIndex size, void *info);
 
@@ -96,10 +96,10 @@ private:
     RetainPtr<WebPlaceholderModalWindow *> m_placeholderWindow;
     unsigned m_isModal;
     bool m_menuBarIsVisible;
-    bool m_fullScreenWindowIsShowing;
+    bool m_fullscreenWindowIsShowing;
     const ProcessSerialNumber m_pluginHostPSN;
 
-    unsigned m_processingRequests;
+    static unsigned s_processingRequests;
 
     bool m_shouldCacheMissingPropertiesAndMethods;
 };

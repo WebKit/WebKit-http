@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
@@ -87,7 +88,25 @@ void HTMLSelectElement::setSelectedIndex(int optionIndex, bool deselect)
 
 void HTMLSelectElement::setSelectedIndexByUser(int optionIndex, bool deselect, bool fireOnChangeNow)
 {
+    // Bail out if this index is already the selected one, to avoid running unnecessary JavaScript that can mess up
+    // autofill, when there is no actual change (see https://bugs.webkit.org/show_bug.cgi?id=35256 and rdar://7467917 ).
+    // Perhaps this logic could be moved into SelectElement, but some callers of SelectElement::setSelectedIndex()
+    // seem to expect it to fire its change event even when the index was already selected.
+    if (optionIndex == selectedIndex())
+        return;
+    
     SelectElement::setSelectedIndex(m_data, this, optionIndex, deselect, fireOnChangeNow, true);
+}
+
+void HTMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelections, bool shift, bool fireOnChangeNow)
+{
+    if (!multiple())
+        setSelectedIndexByUser(listIndex, true, fireOnChangeNow);
+    else {
+        updateSelectedState(m_data, this, listIndex, allowMultiplySelections, shift);
+        if (fireOnChangeNow)
+            listBoxOnChange();
+    }
 }
 
 int HTMLSelectElement::activeSelectionStartListIndex() const
@@ -181,8 +200,13 @@ void HTMLSelectElement::parseMappedAttribute(MappedAttribute* attr)
         String attrSize = String::number(size);
         if (attrSize != attr->value())
             attr->setValue(attrSize);
+        size = max(size, 1);
 
-        m_data.setSize(max(size, 1));
+        // Ensure that we've determined selectedness of the items at least once prior to changing the size.
+        if (oldSize != size)
+            recalcListItemsIfNeeded();
+
+        m_data.setSize(size);
         if ((oldUsesMenuList != m_data.usesMenuList() || (!oldUsesMenuList && m_data.size() != oldSize)) && attached()) {
             detach();
             attach();
@@ -195,10 +219,6 @@ void HTMLSelectElement::parseMappedAttribute(MappedAttribute* attr)
     } else if (attr->name() == alignAttr) {
         // Don't map 'align' attribute.  This matches what Firefox, Opera and IE do.
         // See http://bugs.webkit.org/show_bug.cgi?id=12072
-    } else if (attr->name() == onfocusAttr) {
-        setAttributeEventListener(eventNames().focusEvent, createAttributeEventListener(this, attr));
-    } else if (attr->name() == onblurAttr) {
-        setAttributeEventListener(eventNames().blurEvent, createAttributeEventListener(this, attr));
     } else if (attr->name() == onchangeAttr) {
         setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attr));
     } else
@@ -411,11 +431,21 @@ void HTMLSelectElement::setLength(unsigned newLen, ExceptionCode& ec)
     } else {
         const Vector<Element*>& items = listItems();
 
+        // Removing children fires mutation events, which might mutate the DOM further, so we first copy out a list
+        // of elements that we intend to remove then attempt to remove them one at a time.
+        Vector<RefPtr<Element> > itemsToRemove;
         size_t optionIndex = 0;
-        for (size_t listIndex = 0; listIndex < items.size(); listIndex++) {
-            if (items[listIndex]->hasLocalName(optionTag) && optionIndex++ >= newLen) {
-                Element *item = items[listIndex];
+        for (size_t i = 0; i < items.size(); ++i) {
+            Element* item = items[i];
+            if (item->hasLocalName(optionTag) && optionIndex++ >= newLen) {
                 ASSERT(item->parentNode());
+                itemsToRemove.append(item);
+            }
+        }
+
+        for (size_t i = 0; i < itemsToRemove.size(); ++i) {
+            Element* item = itemsToRemove[i].get();
+            if (item->parentNode()) {
                 item->parentNode()->removeChild(item, ec);
             }
         }

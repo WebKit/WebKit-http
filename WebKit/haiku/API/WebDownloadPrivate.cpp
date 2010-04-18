@@ -45,7 +45,7 @@ namespace BPrivate {
 
 WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     : m_webDownload(0)
-    , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false, false))
+    , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
     , m_url(request.url().string())

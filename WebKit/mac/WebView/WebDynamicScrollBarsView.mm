@@ -1,29 +1,26 @@
 /*
- * Copyright (C) 2005, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2005, 2008, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
  *
- * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
- * 2.  Redistributions in binary form must reproduce the above copyright
- *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
- * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
- *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
- *
- * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL APPLE OR ITS CONTRIBUTORS BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #import "WebDynamicScrollBarsViewInternal.h"
@@ -41,31 +38,150 @@ using namespace WebCore;
 // FIXME: <rdar://problem/5898985> Mail expects a constant of this name to exist.
 const int WebCoreScrollbarAlwaysOn = ScrollbarAlwaysOn;
 
+#ifndef __OBJC2__
+// In <rdar://problem/7814899> we saw crashes because WebDynamicScrollBarsView increased in size, breaking ABI compatiblity.
+COMPILE_ASSERT(sizeof(WebDynamicScrollBarsView) == 0x8c, WebDynamicScrollBarsView_is_expected_size);
+#endif
+
+struct WebDynamicScrollBarsViewPrivate {
+    unsigned inUpdateScrollersLayoutPass;
+
+    WebCore::ScrollbarMode hScroll;
+    WebCore::ScrollbarMode vScroll;
+
+    bool hScrollModeLocked;
+    bool vScrollModeLocked;
+    bool suppressLayout;
+    bool suppressScrollers;
+    bool inUpdateScrollers;
+    bool verticallyPinnedByPreviousWheelEvent;
+    bool horizontallyPinnedByPreviousWheelEvent;
+
+    bool allowsScrollersToOverlapContent;
+    bool alwaysHideHorizontalScroller;
+    bool alwaysHideVerticalScroller;
+    bool horizontalScrollingAllowedButScrollerHidden;
+    bool verticalScrollingAllowedButScrollerHidden;
+};
+
 @implementation WebDynamicScrollBarsView
+
+- (id)initWithFrame:(NSRect)frame
+{
+    if (!(self = [super initWithFrame:frame]))
+        return nil;
+
+    _private = new WebDynamicScrollBarsViewPrivate;
+    memset(_private, 0, sizeof(WebDynamicScrollBarsViewPrivate));
+    return self;
+}
+
+- (id)initWithCoder:(NSCoder *)aDecoder
+{
+    if (!(self = [super initWithCoder:aDecoder]))
+        return nil;
+
+    _private = new WebDynamicScrollBarsViewPrivate;
+    memset(_private, 0, sizeof(WebDynamicScrollBarsViewPrivate));
+    return self;
+}
+
+- (void)dealloc
+{
+    delete _private;
+    [super dealloc];
+}
+
+- (void)finalize
+{
+    delete _private;
+    [super finalize];
+}
 
 - (void)setAllowsHorizontalScrolling:(BOOL)flag
 {
-    if (hScrollModeLocked)
+    if (_private->hScrollModeLocked)
         return;
-    if (flag && hScroll == ScrollbarAlwaysOff)
-        hScroll = ScrollbarAuto;
-    else if (!flag && hScroll != ScrollbarAlwaysOff)
-        hScroll = ScrollbarAlwaysOff;
+    if (flag && _private->hScroll == ScrollbarAlwaysOff)
+        _private->hScroll = ScrollbarAuto;
+    else if (!flag && _private->hScroll != ScrollbarAlwaysOff)
+        _private->hScroll = ScrollbarAlwaysOff;
     [self updateScrollers];
+}
+
+- (void)setAllowsScrollersToOverlapContent:(BOOL)flag
+{
+    if (_private->allowsScrollersToOverlapContent == flag)
+        return;
+
+    _private->allowsScrollersToOverlapContent = flag;
+
+    [[self contentView] setFrame:[self contentViewFrame]];
+    [[self documentView] setNeedsLayout:YES];
+    [[self documentView] layout];
+}
+
+- (void)setAlwaysHideHorizontalScroller:(BOOL)shouldBeHidden
+{
+    if (_private->alwaysHideHorizontalScroller == shouldBeHidden)
+        return;
+
+    _private->alwaysHideHorizontalScroller = shouldBeHidden;
+    [self updateScrollers];
+}
+
+- (void)setAlwaysHideVerticalScroller:(BOOL)shouldBeHidden
+{
+    if (_private->alwaysHideVerticalScroller == shouldBeHidden)
+        return;
+
+    _private->alwaysHideVerticalScroller = shouldBeHidden;
+    [self updateScrollers];
+}
+
+- (BOOL)horizontalScrollingAllowed
+{
+    return _private->horizontalScrollingAllowedButScrollerHidden || [self hasHorizontalScroller];
+}
+
+- (BOOL)verticalScrollingAllowed
+{
+    return _private->verticalScrollingAllowedButScrollerHidden || [self hasVerticalScroller];
 }
 
 @end
 
 @implementation WebDynamicScrollBarsView (WebInternal)
 
+- (NSRect)contentViewFrame
+{
+    NSRect frame = [[self contentView] frame];
+
+    if ([self hasHorizontalScroller])
+        frame.size.height = (_private->allowsScrollersToOverlapContent ? NSMaxY([[self horizontalScroller] frame]) : NSMinY([[self horizontalScroller] frame]));
+    if ([self hasVerticalScroller])
+        frame.size.width = (_private->allowsScrollersToOverlapContent ? NSMaxX([[self verticalScroller] frame]) : NSMinX([[self verticalScroller] frame]));
+    return frame;
+}
+
+- (void)tile
+{
+    [super tile];
+
+    // [super tile] sets the contentView size so that it does not overlap with the scrollers,
+    // we want to re-set the contentView to overlap scrollers before displaying.
+    if (_private->allowsScrollersToOverlapContent)
+        [[self contentView] setFrame:[self contentViewFrame]];
+}
+
 - (void)setSuppressLayout:(BOOL)flag;
 {
-    suppressLayout = flag;
+    _private->suppressLayout = flag;
 }
 
 - (void)setScrollBarsSuppressed:(BOOL)suppressed repaintOnUnsuppress:(BOOL)repaint
 {
-    suppressScrollers = suppressed;
+    _private->suppressScrollers = suppressed;
 
     // This code was originally changes for a Leopard performance imporvement. We decided to 
     // ifdef it to fix correctness issues on Tiger documented in <rdar://problem/5441823>.
@@ -74,13 +190,13 @@ const int WebCoreScrollbarAlwaysOn = ScrollbarAlwaysOn;
         [[self verticalScroller] setNeedsDisplay:NO];
         [[self horizontalScroller] setNeedsDisplay:NO];
     }
-        
+
     if (!suppressed && repaint)
         [super reflectScrolledClipView:[self contentView]];
 #else
-    if (suppressed || repaint) { 
-        [[self verticalScroller] setNeedsDisplay: !suppressed]; 
-        [[self horizontalScroller] setNeedsDisplay: !suppressed]; 
+    if (suppressed || repaint) {
+        [[self verticalScroller] setNeedsDisplay:!suppressed];
+        [[self horizontalScroller] setNeedsDisplay:!suppressed];
     }
 #endif
 }
@@ -94,42 +210,50 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
     // If we came in here with the view already needing a layout, then go ahead and do that
     // first.  (This will be the common case, e.g., when the page changes due to window resizing for example).
     // This layout will not re-enter updateScrollers and does not count towards our max layout pass total.
-    if (!suppressLayout && !suppressScrollers && [documentView isKindOfClass:[WebHTMLView class]]) {
+    if (!_private->suppressLayout && !_private->suppressScrollers && [documentView isKindOfClass:[WebHTMLView class]]) {
         WebHTMLView* htmlView = (WebHTMLView*)documentView;
         if ([htmlView _needsLayout]) {
-            inUpdateScrollers = YES;
+            _private->inUpdateScrollers = YES;
             [(id <WebDocumentView>)documentView layout];
-            inUpdateScrollers = NO;
+            _private->inUpdateScrollers = NO;
         }
     }
 
     BOOL hasHorizontalScroller = [self hasHorizontalScroller];
     BOOL hasVerticalScroller = [self hasVerticalScroller];
-    
+
     BOOL newHasHorizontalScroller = hasHorizontalScroller;
     BOOL newHasVerticalScroller = hasVerticalScroller;
-    
+
     if (!documentView) {
         newHasHorizontalScroller = NO;
         newHasVerticalScroller = NO;
-    } 
+    }
 
-    if (hScroll != ScrollbarAuto)
-        newHasHorizontalScroller = (hScroll == ScrollbarAlwaysOn);
-    if (vScroll != ScrollbarAuto)
-        newHasVerticalScroller = (vScroll == ScrollbarAlwaysOn);
-    
-    if (!documentView || suppressLayout || suppressScrollers || (hScroll != ScrollbarAuto && vScroll != ScrollbarAuto)) {
-        inUpdateScrollers = YES;
+    if (_private->hScroll != ScrollbarAuto)
+        newHasHorizontalScroller = (_private->hScroll == ScrollbarAlwaysOn);
+    if (_private->vScroll != ScrollbarAuto)
+        newHasVerticalScroller = (_private->vScroll == ScrollbarAlwaysOn);
+
+    if (!documentView || _private->suppressLayout || _private->suppressScrollers || (_private->hScroll != ScrollbarAuto && _private->vScroll != ScrollbarAuto)) {
+        _private->horizontalScrollingAllowedButScrollerHidden = newHasHorizontalScroller && _private->alwaysHideHorizontalScroller;
+        if (_private->horizontalScrollingAllowedButScrollerHidden)
+            newHasHorizontalScroller = NO;
+
+        _private->verticalScrollingAllowedButScrollerHidden = newHasVerticalScroller && _private->alwaysHideVerticalScroller;
+        if (_private->verticalScrollingAllowedButScrollerHidden)
+            newHasVerticalScroller = NO;
+
+        _private->inUpdateScrollers = YES;
         if (hasHorizontalScroller != newHasHorizontalScroller)
             [self setHasHorizontalScroller:newHasHorizontalScroller];
         if (hasVerticalScroller != newHasVerticalScroller)
             [self setHasVerticalScroller:newHasVerticalScroller];
-        if (suppressScrollers) {
+        if (_private->suppressScrollers) {
             [[self verticalScroller] setNeedsDisplay:NO];
             [[self horizontalScroller] setNeedsDisplay:NO];
         }
-        inUpdateScrollers = NO;
+        _private->inUpdateScrollers = NO;
         return;
     }
 
@@ -139,42 +263,50 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
     NSSize visibleSize = [self documentVisibleRect].size;
     NSSize frameSize = [self frame].size;
 
-    if (hScroll == ScrollbarAuto) {
+    if (_private->hScroll == ScrollbarAuto) {
         newHasHorizontalScroller = documentSize.width > visibleSize.width;
-        if (newHasHorizontalScroller && !inUpdateScrollersLayoutPass && documentSize.height <= frameSize.height && documentSize.width <= frameSize.width)
+        if (newHasHorizontalScroller && !_private->inUpdateScrollersLayoutPass && documentSize.height <= frameSize.height && documentSize.width <= frameSize.width)
             newHasHorizontalScroller = NO;
     }
-    
-    if (vScroll == ScrollbarAuto) {
+
+    if (_private->vScroll == ScrollbarAuto) {
         newHasVerticalScroller = documentSize.height > visibleSize.height;
-        if (newHasVerticalScroller && !inUpdateScrollersLayoutPass && documentSize.height <= frameSize.height && documentSize.width <= frameSize.width)
+        if (newHasVerticalScroller && !_private->inUpdateScrollersLayoutPass && documentSize.height <= frameSize.height && documentSize.width <= frameSize.width)
             newHasVerticalScroller = NO;
     }
 
     // Unless in ScrollbarsAlwaysOn mode, if we ever turn one scrollbar off, always turn the other one off too.
     // Never ever try to both gain/lose a scrollbar in the same pass.
-    if (!newHasHorizontalScroller && hasHorizontalScroller && vScroll != ScrollbarAlwaysOn)
+    if (!newHasHorizontalScroller && hasHorizontalScroller && _private->vScroll != ScrollbarAlwaysOn)
         newHasVerticalScroller = NO;
-    if (!newHasVerticalScroller && hasVerticalScroller && hScroll != ScrollbarAlwaysOn)
+    if (!newHasVerticalScroller && hasVerticalScroller && _private->hScroll != ScrollbarAlwaysOn)
         newHasHorizontalScroller = NO;
 
+    _private->horizontalScrollingAllowedButScrollerHidden = newHasHorizontalScroller && _private->alwaysHideHorizontalScroller;
+    if (_private->horizontalScrollingAllowedButScrollerHidden)
+        newHasHorizontalScroller = NO;
+
+    _private->verticalScrollingAllowedButScrollerHidden = newHasVerticalScroller && _private->alwaysHideVerticalScroller;
+    if (_private->verticalScrollingAllowedButScrollerHidden)
+        newHasVerticalScroller = NO;
+
     if (hasHorizontalScroller != newHasHorizontalScroller) {
-        inUpdateScrollers = YES;
+        _private->inUpdateScrollers = YES;
         [self setHasHorizontalScroller:newHasHorizontalScroller];
-        inUpdateScrollers = NO;
+        _private->inUpdateScrollers = NO;
         needsLayout = YES;
     }
 
     if (hasVerticalScroller != newHasVerticalScroller) {
-        inUpdateScrollers = YES;
+        _private->inUpdateScrollers = YES;
         [self setHasVerticalScroller:newHasVerticalScroller];
-        inUpdateScrollers = NO;
+        _private->inUpdateScrollers = NO;
         needsLayout = YES;
     }
 
-    if (needsLayout && inUpdateScrollersLayoutPass < cMaxUpdateScrollbarsPass && 
+    if (needsLayout && _private->inUpdateScrollersLayoutPass < cMaxUpdateScrollbarsPass &&
         [documentView conformsToProtocol:@protocol(WebDocumentView)]) {
-        inUpdateScrollersLayoutPass++;
+        _private->inUpdateScrollersLayoutPass++;
         [(id <WebDocumentView>)documentView setNeedsLayout:YES];
         [(id <WebDocumentView>)documentView layout];
         NSSize newDocumentSize = [documentView frame].size;
@@ -184,7 +316,7 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
             // Recur manually.
             [self updateScrollers];
         }
-        inUpdateScrollersLayoutPass--;
+        _private->inUpdateScrollersLayoutPass--;
     }
 }
 
@@ -192,6 +324,10 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
 - (void)reflectScrolledClipView:(NSClipView *)clipView
 {
     if (clipView == [self contentView]) {
+        // Prevent appearance of trails because of overlapping views
+        if (_private->allowsScrollersToOverlapContent)
+            [self setDrawsBackground:NO];
+
         // FIXME: This hack here prevents infinite recursion that takes place when we
         // gyrate between having a vertical scroller and not having one. A reproducible
         // case is clicking on the "the Policy Routing text" link at
@@ -199,7 +335,7 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
         // The underlying cause is some problem in the NSText machinery, but I was not
         // able to pin it down.
         NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
-        if (!inUpdateScrollers && (!currentContext || [currentContext isDrawingToScreen]))
+        if (!_private->inUpdateScrollers && (!currentContext || [currentContext isDrawingToScreen]))
             [self updateScrollers];
     }
 
@@ -207,15 +343,15 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
     // ifdef it to fix correctness issues on Tiger documented in <rdar://problem/5441823>.
 #ifndef BUILDING_ON_TIGER
     // Update the scrollers if they're not being suppressed.
-    if (!suppressScrollers)
+    if (!_private->suppressScrollers)
         [super reflectScrolledClipView:clipView];
 #else
-    [super reflectScrolledClipView:clipView]; 
-  
-    // Validate the scrollers if they're being suppressed. 
-    if (suppressScrollers) { 
-        [[self verticalScroller] setNeedsDisplay: NO]; 
-        [[self horizontalScroller] setNeedsDisplay: NO]; 
+    [super reflectScrolledClipView:clipView];
+
+    // Validate the scrollers if they're being suppressed.
+    if (_private->suppressScrollers) {
+        [[self verticalScroller] setNeedsDisplay:NO];
+        [[self horizontalScroller] setNeedsDisplay:NO];
     }
 #endif
 
@@ -231,28 +367,28 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
 
 - (BOOL)allowsHorizontalScrolling
 {
-    return hScroll != ScrollbarAlwaysOff;
+    return _private->hScroll != ScrollbarAlwaysOff;
 }
 
 - (BOOL)allowsVerticalScrolling
 {
-    return vScroll != ScrollbarAlwaysOff;
+    return _private->vScroll != ScrollbarAlwaysOff;
 }
 
 - (void)scrollingModes:(WebCore::ScrollbarMode*)hMode vertical:(WebCore::ScrollbarMode*)vMode
 {
-    *hMode = static_cast<ScrollbarMode>(hScroll);
-    *vMode = static_cast<ScrollbarMode>(vScroll);
+    *hMode = _private->hScroll;
+    *vMode = _private->vScroll;
 }
 
 - (ScrollbarMode)horizontalScrollingMode
 {
-    return static_cast<ScrollbarMode>(hScroll);
+    return _private->hScroll;
 }
 
 - (ScrollbarMode)verticalScrollingMode
 {
-    return static_cast<ScrollbarMode>(vScroll);
+    return _private->vScroll;
 }
 
 - (void)setHorizontalScrollingMode:(ScrollbarMode)horizontalMode andLock:(BOOL)lock
@@ -274,13 +410,13 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
 - (void)setScrollingModes:(ScrollbarMode)horizontalMode vertical:(ScrollbarMode)verticalMode andLock:(BOOL)lock
 {
     BOOL update = NO;
-    if (verticalMode != vScroll && !vScrollModeLocked) {
-        vScroll = verticalMode;
+    if (verticalMode != _private->vScroll && !_private->vScrollModeLocked) {
+        _private->vScroll = verticalMode;
         update = YES;
     }
 
-    if (horizontalMode != hScroll && !hScrollModeLocked) {
-        hScroll = horizontalMode;
+    if (horizontalMode != _private->hScroll && !_private->hScrollModeLocked) {
+        _private->hScroll = horizontalMode;
         update = YES;
     }
 
@@ -293,27 +429,27 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
 
 - (void)setHorizontalScrollingModeLocked:(BOOL)locked
 {
-    hScrollModeLocked = locked;
+    _private->hScrollModeLocked = locked;
 }
 
 - (void)setVerticalScrollingModeLocked:(BOOL)locked
 {
-    vScrollModeLocked = locked;
+    _private->vScrollModeLocked = locked;
 }
 
 - (void)setScrollingModesLocked:(BOOL)locked
 {
-    hScrollModeLocked = vScrollModeLocked = locked;
+    _private->hScrollModeLocked = _private->vScrollModeLocked = locked;
 }
 
 - (BOOL)horizontalScrollingModeLocked
 {
-    return hScrollModeLocked;
+    return _private->hScrollModeLocked;
 }
 
 - (BOOL)verticalScrollingModeLocked
 {
-    return vScrollModeLocked;
+    return _private->vScrollModeLocked;
 }
 
 - (BOOL)autoforwardsScrollWheelEvents
@@ -325,8 +461,10 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
 {
     float deltaX;
     float deltaY;
+    float wheelTicksX;
+    float wheelTicksY;
     BOOL isContinuous;
-    WKGetWheelEventDeltas(event, &deltaX, &deltaY, &isContinuous);
+    WKGetWheelEventDeltas(event, &deltaX, &deltaY, &wheelTicksX, &wheelTicksY, &isContinuous);
 
     BOOL isLatchingEvent = WKIsLatchingWheelEvent(event);
 
@@ -336,7 +474,7 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
             return;
         }
 
-        if (isLatchingEvent && !verticallyPinnedByPreviousWheelEvent) {
+        if (isLatchingEvent && !_private->verticallyPinnedByPreviousWheelEvent) {
             double verticalPosition = [[self verticalScroller] doubleValue];
             if ((deltaY >= 0.0 && verticalPosition == 0.0) || (deltaY <= 0.0 && verticalPosition == 1.0))
                 return;
@@ -347,7 +485,7 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
             return;
         }
 
-        if (isLatchingEvent && !horizontallyPinnedByPreviousWheelEvent) {
+        if (isLatchingEvent && !_private->horizontallyPinnedByPreviousWheelEvent) {
             double horizontalPosition = [[self horizontalScroller] doubleValue];
             if ((deltaX >= 0.0 && horizontalPosition == 0.0) || (deltaX <= 0.0 && horizontalPosition == 1.0))
                 return;
@@ -364,8 +502,8 @@ static const unsigned cMaxUpdateScrollbarsPass = 2;
         double verticalPosition = [[self verticalScroller] doubleValue];
         double horizontalPosition = [[self horizontalScroller] doubleValue];
 
-        verticallyPinnedByPreviousWheelEvent = (verticalPosition == 0.0 || verticalPosition == 1.0);
-        horizontallyPinnedByPreviousWheelEvent = (horizontalPosition == 0.0 || horizontalPosition == 1.0);
+        _private->verticallyPinnedByPreviousWheelEvent = (verticalPosition == 0.0 || verticalPosition == 1.0);
+        _private->horizontallyPinnedByPreviousWheelEvent = (horizontalPosition == 0.0 || horizontalPosition == 1.0);
     }
 
     [self release];

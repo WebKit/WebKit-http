@@ -33,7 +33,7 @@
 #include <wtf/PassOwnPtr.h>
 
 // FIXME: Find a better way to avoid the name confliction for NO_ERROR.
-#if ((PLATFORM(CHROMIUM) && OS(WINDOWS)) || PLATFORM(WIN))
+#if ((PLATFORM(CHROMIUM) && OS(WINDOWS)) || PLATFORM(WIN) || (PLATFORM(QT) && OS(WINDOWS)))
 #undef NO_ERROR
 #endif
 
@@ -43,6 +43,13 @@
 typedef void* PlatformGraphicsContext3D;
 const  PlatformGraphicsContext3D NullPlatformGraphicsContext3D = 0;
 typedef GLuint Platform3DObject;
+const Platform3DObject NullPlatform3DObject = 0;
+#elif PLATFORM(QT)
+#include <QtOpenGL/QtOpenGL>
+
+typedef void* PlatformGraphicsContext3D;
+const  PlatformGraphicsContext3D NullPlatformGraphicsContext3D = 0;
+typedef int Platform3DObject;
 const Platform3DObject NullPlatform3DObject = 0;
 #else
 typedef void* PlatformGraphicsContext3D;
@@ -65,6 +72,7 @@ namespace WebCore {
     class WebGLShader;
     class WebGLTexture;
     class Image;
+    class ImageData;
 
     struct ActiveInfo {
         String name;
@@ -73,7 +81,7 @@ namespace WebCore {
     };
 
     // FIXME: ideally this would be used on all platforms.
-#if PLATFORM(CHROMIUM)
+#if PLATFORM(CHROMIUM) || PLATFORM(QT)
     class GraphicsContext3DInternal;
 #endif
 
@@ -354,6 +362,7 @@ namespace WebCore {
             DEPTH_COMPONENT16 = 0x81A5,
             STENCIL_INDEX = 0x1901,
             STENCIL_INDEX8 = 0x8D48,
+            DEPTH_STENCIL = 0x84F9,
             RENDERBUFFER_WIDTH = 0x8D42,
             RENDERBUFFER_HEIGHT = 0x8D43,
             RENDERBUFFER_INTERNAL_FORMAT = 0x8D44,
@@ -370,6 +379,7 @@ namespace WebCore {
             COLOR_ATTACHMENT0 = 0x8CE0,
             DEPTH_ATTACHMENT = 0x8D00,
             STENCIL_ATTACHMENT = 0x8D20,
+            DEPTH_STENCIL_ATTACHMENT = 0x821A,
             NONE = 0,
             FRAMEBUFFER_COMPLETE = 0x8CD5,
             FRAMEBUFFER_INCOMPLETE_ATTACHMENT = 0x8CD6,
@@ -409,12 +419,20 @@ namespace WebCore {
 #elif PLATFORM(CHROMIUM)
         PlatformGraphicsContext3D platformGraphicsContext3D() const;
         Platform3DObject platformTexture() const;
+#elif PLATFORM(QT)
+        PlatformGraphicsContext3D platformGraphicsContext3D();
+        Platform3DObject platformTexture() const;
 #else
         PlatformGraphicsContext3D platformGraphicsContext3D() const { return NullPlatformGraphicsContext3D; }
         Platform3DObject platformTexture() const { return NullPlatform3DObject; }
 #endif
         void makeContextCurrent();
-        
+
+#if PLATFORM(MAC)
+        // With multisampling on, blit from multisampleFBO to regular FBO.
+        void prepareTexture();
+#endif
+
         // Helper to return the size in bytes of OpenGL data types
         // like GL_FLOAT, GL_INT, etc.
         int sizeInBytes(int type);
@@ -434,6 +452,14 @@ namespace WebCore {
                               Vector<uint8_t>& imageData,
                               unsigned int* format,
                               unsigned int* internalFormat);
+
+        // Extracts the contents of the given ImageData into the passed
+        // Vector, obeying the flipY and premultiplyAlpha flags.
+        // Returns true upon success.
+        bool extractImageData(ImageData*,
+                              bool flipY,
+                              bool premultiplyAlpha,
+                              Vector<uint8_t>& data);
 
         // Processes the given image data in preparation for uploading
         // via texImage2D or texSubImage2D. The input data must be in
@@ -566,7 +592,7 @@ namespace WebCore {
         void pixelStorei(unsigned long pname, long param);
         void polygonOffset(double factor, double units);
         
-        PassRefPtr<WebGLArray> readPixels(long x, long y, unsigned long width, unsigned long height, unsigned long format, unsigned long type);
+        void readPixels(long x, long y, unsigned long width, unsigned long height, unsigned long format, unsigned long type, void* data);
         
         void releaseShaderCompiler();
         void renderbufferStorage(unsigned long target, unsigned long internalformat, unsigned long width, unsigned long height);
@@ -689,6 +715,14 @@ namespace WebCore {
                           AlphaOp* neededAlphaOp,
                           unsigned int* format);
 
+#if PLATFORM(MAC)
+        // Take into account the user's requested context creation attributes,
+        // in particular stencil and antialias, and determine which could or
+        // could not be honored based on the capabilities of the OpenGL
+        // implementation.
+        void validateAttributes();
+#endif
+
         int m_currentWidth, m_currentHeight;
         
 #if PLATFORM(MAC)
@@ -698,13 +732,22 @@ namespace WebCore {
         CGLContextObj m_contextObj;
         GLuint m_texture;
         GLuint m_fbo;
-        GLuint m_depthBuffer;
+        GLuint m_depthStencilBuffer;
+
+        // For tracking which FBO is bound
+        GLuint m_boundFBO;
+
+        // For multisampling
+        GLuint m_multisampleFBO;
+        GLuint m_multisampleDepthStencilBuffer;
+        GLuint m_multisampleColorBuffer;
+
         // Errors raised by synthesizeGLError().
         ListHashSet<unsigned long> m_syntheticErrors;
 #endif        
 
         // FIXME: ideally this would be used on all platforms.
-#if PLATFORM(CHROMIUM)
+#if PLATFORM(CHROMIUM) || PLATFORM(QT)
         friend class GraphicsContext3DInternal;
         OwnPtr<GraphicsContext3DInternal> m_internal;
 #endif

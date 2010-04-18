@@ -1074,7 +1074,7 @@ void WebFrame::setTextSizeMultiplier(float multiplier)
 {
     Frame* coreFrame = core(this);
     ASSERT(coreFrame);
-    coreFrame->setZoomFactor(multiplier, true);
+    coreFrame->setZoomFactor(multiplier, ZoomTextOnly);
 }
 
 HRESULT WebFrame::inViewSourceMode(BOOL* flag)
@@ -1152,7 +1152,7 @@ HRESULT WebFrame::elementDoesAutoComplete(IDOMElement *element, BOOL *result)
     if (!inputElement)
         *result = false;
     else
-        *result = (inputElement->inputType() == HTMLInputElement::TEXT && inputElement->autoComplete());
+        *result = inputElement->isTextField() && inputElement->inputType() != HTMLInputElement::PASSWORD && inputElement->autoComplete();
 
     return S_OK;
 }
@@ -1433,6 +1433,21 @@ HRESULT WebFrame::canProvideDocumentSource(bool* result)
         }
     }
     return hr;
+}
+
+HRESULT STDMETHODCALLTYPE WebFrame::layerTreeAsText(BSTR* result)
+{
+    if (!result)
+        return E_POINTER;
+    *result = 0;
+
+    Frame* frame = core(this);
+    if (!frame)
+        return E_FAIL;
+
+    String text = frame->layerTreeAsText();
+    *result = BString(text).release();
+    return S_OK;
 }
 
 void WebFrame::frameLoaderDestroyed()
@@ -2473,3 +2488,4 @@ void WebFrame::updateBackground()
 
     coreFrame->view()->updateBackgroundRecursively(backgroundColor, webView()->transparent());
 }
+

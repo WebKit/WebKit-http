@@ -173,6 +173,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	dom/TreeWalker.cpp \
 	dom/UIEvent.cpp \
 	dom/UIEventWithKeyState.cpp \
+	dom/UserGestureIndicator.cpp \
 	dom/WebKitAnimationEvent.cpp \
 	dom/WebKitTransitionEvent.cpp \
 	dom/WheelEvent.cpp \
@@ -239,6 +240,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	\
 	html/Blob.cpp \
 	html/CollectionCache.cpp \
+	html/DOMFormData.cpp \
 	html/File.cpp \
 	html/FileList.cpp \
 	html/FormDataList.cpp \
@@ -336,6 +338,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	page/FrameTree.cpp \
 	page/FrameView.cpp \
 	page/Geolocation.cpp \
+	page/GeolocationPositionCache.cpp \
 	page/History.cpp \
 	page/Location.cpp \
 	page/MouseEventWithHitTestResults.cpp \
@@ -350,6 +353,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	page/Screen.cpp \
 	page/SecurityOrigin.cpp \
 	page/Settings.cpp \
+	page/SpatialNavigation.cpp \
 	page/UserContentURLPattern.cpp \
 	page/WindowFeatures.cpp \
 	page/WorkerNavigator.cpp \
@@ -432,7 +436,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/graphics/FontFastPath.cpp \
 	platform/graphics/GeneratedImage.cpp \
 	platform/graphics/GlyphPageTreeNode.cpp \
-	platform/graphics/GlyphWidthMap.cpp \
+	platform/graphics/GlyphMetricsMap.cpp \
 	platform/graphics/Gradient.cpp \
 	platform/graphics/GraphicsContext.cpp \
 	platform/graphics/GraphicsLayer.cpp \
@@ -510,7 +514,6 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	platform/text/AtomicString.cpp \
 	platform/text/Base64.cpp \
 	platform/text/BidiContext.cpp \
-	platform/text/CString.cpp \
 	platform/text/RegularExpression.cpp \
 	platform/text/SegmentedString.cpp \
 	platform/text/String.cpp \
@@ -602,6 +605,9 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	rendering/RenderSVGInline.cpp \
 	rendering/RenderSVGInlineText.cpp \
 	rendering/RenderSVGModelObject.cpp \
+	rendering/RenderSVGResourceClipper.cpp \
+	rendering/RenderSVGResourceMarker.cpp \
+	rendering/RenderSVGResourceMasker.cpp \
 	rendering/RenderSVGRoot.cpp \
 	rendering/RenderSVGShadowTreeRootContainer.cpp \
 	rendering/RenderSVGTSpan.cpp \
@@ -854,10 +860,7 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	svg/graphics/SVGPaintServerRadialGradient.cpp \
 	svg/graphics/SVGPaintServerSolid.cpp \
 	svg/graphics/SVGResource.cpp \
-	svg/graphics/SVGResourceClipper.cpp \
 	svg/graphics/SVGResourceFilter.cpp \
-	svg/graphics/SVGResourceMarker.cpp \
-	svg/graphics/SVGResourceMasker.cpp \
 	\
 	svg/graphics/filters/SVGFEConvolveMatrix.cpp \
 	svg/graphics/filters/SVGFEDiffuseLighting.cpp \
@@ -893,5 +896,6 @@ LOCAL_SRC_FILES := $(LOCAL_SRC_FILES) \
 	\
 	xml/DOMParser.cpp \
 	xml/XMLHttpRequest.cpp \
+	xml/XMLHttpRequestProgressEventThrottle.cpp \
 	xml/XMLHttpRequestUpload.cpp \
 	xml/XMLSerializer.cpp

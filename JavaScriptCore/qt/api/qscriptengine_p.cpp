@@ -21,6 +21,7 @@
 
 #include "qscriptengine_p.h"
 
+#include "qscriptprogram_p.h"
 #include "qscriptvalue_p.h"
 
 /*!
@@ -38,6 +39,19 @@ QScriptEnginePrivate::~QScriptEnginePrivate()
     JSGlobalContextRelease(m_context);
 }
 
+QScriptSyntaxCheckResultPrivate* QScriptEnginePrivate::checkSyntax(const QString& program)
+{
+    JSValueRef exception;
+    JSStringRef source = QScriptConverter::toString(program);
+    bool syntaxIsCorrect = JSCheckScriptSyntax(m_context, source, /* url */ 0, /* starting line */ 1, &exception);
+    JSStringRelease(source);
+    if (syntaxIsCorrect) {
+        return new QScriptSyntaxCheckResultPrivate(this);
+    }
+    JSValueProtect(m_context, exception);
+    return new QScriptSyntaxCheckResultPrivate(this, const_cast<JSObjectRef>(exception));
+}
+
 /*!
     Evaluates program and returns the result of the evaluation.
     \internal
@@ -46,9 +60,25 @@ QScriptValuePrivate* QScriptEnginePrivate::evaluate(const QString& program, cons
 {
     JSStringRef script = QScriptConverter::toString(program);
     JSStringRef file = QScriptConverter::toString(fileName);
-    JSValueRef exception;
-    JSValueRef result = JSEvaluateScript(m_context, script, /* Global Object */ 0, file, lineNumber, &exception);
-    if (!result)
-        return new QScriptValuePrivate(this, exception); // returns an exception
-    return new QScriptValuePrivate(this, result);
+    QScriptValuePrivate* result = new QScriptValuePrivate(this, evaluate(script, file, lineNumber));
+    JSStringRelease(script);
+    JSStringRelease(file);
+    return result;
+}
+
+/*!
+    Evaluates program and returns the result of the evaluation.
+    \internal
+*/
+QScriptValuePrivate* QScriptEnginePrivate::evaluate(const QScriptProgramPrivate* program)
+{
+    if (program->isNull())
+        return new QScriptValuePrivate;
+    return new QScriptValuePrivate(this, evaluate(program->program(), program->file(), program->line()));
+}
+
+QScriptValuePrivate* QScriptEnginePrivate::globalObject() const
+{
+    JSObjectRef globalObject = JSContextGetGlobalObject(context());
+    return new QScriptValuePrivate(this, globalObject, globalObject);
 }

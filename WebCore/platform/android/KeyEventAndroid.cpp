@@ -31,8 +31,8 @@
 #include "config.h"
 #include "PlatformKeyboardEvent.h"
 
-#include "KeyboardCodes.h"
 #include "NotImplemented.h"
+#include "WindowsKeyboardCodes.h"
 #include <ui/KeycodeLabels.h>
 
 namespace WebCore {
@@ -249,6 +249,15 @@ bool PlatformKeyboardEvent::currentCapsLockState()
 {
     notImplemented();
     return false;
+}
+
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+    notImplemented();
+    shiftKey = false;
+    ctrlKey = false;
+    altKey = false;
+    metaKey = false;
 }
 
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCompatibilityMode)

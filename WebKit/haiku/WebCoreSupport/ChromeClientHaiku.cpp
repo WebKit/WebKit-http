@@ -37,6 +37,7 @@
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
 #include "HitTestResult.h"
+#include "Icon.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include "WebFrame.h"
@@ -300,19 +301,25 @@ IntRect ChromeClientHaiku::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientHaiku::repaint(const IntRect& rect, bool contentChanged, bool immediate, bool repaintContentOnly)
+void ChromeClientHaiku::invalidateWindow(const IntRect&, bool)
 {
-//printf("ChromeClientHaiku::repaint(rect(%d, %d, %d, %d), contentChanged: %d, "
-//"immediate: %d, repaintContentOnly: %d)\n",
-//rect.x(), rect.y(), rect.right(), rect.bottom(), contentChanged, immediate, repaintContentOnly);
-    // TODO: This deadlocks when called from the app thread during init (fortunately immediate is false then)
-    // contentChanged == false is used for scrolling.
-    if (contentChanged) {
-	    if (immediate)
-	        m_webPage->paint(BRect(rect), contentChanged, immediate, repaintContentOnly);
-	    else
-	        m_webPage->draw(BRect(rect));
-    }
+	// Since the page does not draw by itself, this call cannot make sense
+	// in the Haiku port.
+	// TODO: Check what the booleans mean
+}
+
+void ChromeClientHaiku::invalidateContentsAndWindow(const IntRect& rect, bool)
+{
+	// TODO: Check what the booleans mean
+//    if (immediate)
+//        m_webPage->paint(BRect(rect));
+//    else
+        m_webPage->draw(BRect(rect));
+}
+
+void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect&, bool)
+{
+	// We can ignore this, since we implement fast scrolling.
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
@@ -359,6 +366,21 @@ void ChromeClientHaiku::scrollRectIntoView(const IntRect&, const ScrollView*) co
     // NOTE: Used for example to make the view scroll with the mouse when selecting.
 }
 
+void ChromeClientHaiku::addToDirtyRegion(const IntRect&)
+{
+    notImplemented();
+}
+
+void ChromeClientHaiku::scrollBackingStore(int, int, const IntRect&, const IntRect&)
+{
+    notImplemented();
+}
+
+void ChromeClientHaiku::updateBackingStore()
+{
+    notImplemented();
+}
+
 void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, unsigned /*modifierFlags*/)
 {
     TextDirection dir;
@@ -401,11 +423,16 @@ void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName
 #endif
 
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
-void ChromeClientWx::reachedMaxAppCacheSize(int64_t spaceNeeded)
+void ChromeClientHaiku::reachedMaxAppCacheSize(int64_t spaceNeeded)
 {
     notImplemented();
 }
 #endif
+
+void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
+{
+    notImplemented();
+}
 
 void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
 {
@@ -417,9 +444,9 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     panel->Show();
 }
 
-void ChromeClientHaiku::iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>)
+void ChromeClientHaiku::chooseIconForFiles(const Vector<String>& filenames, PassRefPtr<FileChooser> chooser)
 {
-    notImplemented();
+    chooser->iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 bool ChromeClientHaiku::setCursor(PlatformCursorHandle cursorHandle)
@@ -433,7 +460,7 @@ bool ChromeClientHaiku::setCursor(PlatformCursorHandle cursorHandle)
     return true;
 }
 
-void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
+void ChromeClientHaiku::formStateDidChange(const Node*)
 {
     notImplemented();
 }

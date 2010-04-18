@@ -30,11 +30,14 @@
 
 #include "config.h"
 #include "DragClientImpl.h"
-
+#include "DragImageRef.h"
 #include "ChromiumDataObject.h"
 #include "ClipboardChromium.h"
 #include "Frame.h"
+#include "NativeImageSkia.h"
+#include "WebCommon.h"
 #include "WebDragData.h"
+#include "WebImage.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
 
@@ -81,8 +84,16 @@ void DragClientImpl::startDrag(DragImageRef dragImage,
 
     DragOperation dragOperationMask = clipboard->sourceOperation();
 
+    IntSize offsetSize(eventPos - dragImageOrigin);
+    WebPoint offsetPoint(offsetSize.width(), offsetSize.height());
     m_webView->startDragging(
-        eventPos, dragData, static_cast<WebDragOperationsMask>(dragOperationMask));
+        dragData, static_cast<WebDragOperationsMask>(dragOperationMask),
+#if WEBKIT_USING_SKIA
+        dragImage ? WebImage(*dragImage) : WebImage(),
+#else
+        dragImage ? WebImage(dragImage) : WebImage(),
+#endif
+        offsetPoint);
 }
 
 DragImageRef DragClientImpl::createDragImageForLink(KURL&, const String& label, Frame*)

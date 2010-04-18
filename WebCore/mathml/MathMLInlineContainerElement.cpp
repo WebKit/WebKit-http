@@ -31,6 +31,11 @@
 
 #include "MathMLNames.h"
 #include "RenderMathMLBlock.h"
+#include "RenderMathMLFraction.h"
+#include "RenderMathMLMath.h"
+#include "RenderMathMLRow.h"
+#include "RenderMathMLSubSup.h"
+#include "RenderMathMLUnderOver.h"
 
 namespace WebCore {
     
@@ -48,8 +53,27 @@ PassRefPtr<MathMLInlineContainerElement> MathMLInlineContainerElement::create(co
 
 RenderObject* MathMLInlineContainerElement::createRenderer(RenderArena *arena, RenderStyle* style)
 {
-    // FIXME: This method will contain the specialized renderers based on element name
-    RenderObject* object = new (arena) RenderMathMLBlock(this);
+    RenderObject* object = 0;
+    if (hasLocalName(MathMLNames::mrowTag))
+        object = new (arena) RenderMathMLRow(this);
+    else if (hasLocalName(MathMLNames::mathTag))
+        object = new (arena) RenderMathMLMath(this);
+    else if (hasLocalName(MathMLNames::msubTag))
+        object = new (arena) RenderMathMLSubSup(this);
+    else if (hasLocalName(MathMLNames::msupTag))
+        object = new (arena) RenderMathMLSubSup(this);
+    else if (hasLocalName(MathMLNames::msubsupTag))
+        object = new (arena) RenderMathMLSubSup(this);
+    else if (hasLocalName(MathMLNames::moverTag))
+        object = new (arena) RenderMathMLUnderOver(this);
+    else if (hasLocalName(MathMLNames::munderTag))
+        object = new (arena) RenderMathMLUnderOver(this);
+    else if (hasLocalName(MathMLNames::munderoverTag))
+        object = new (arena) RenderMathMLUnderOver(this);
+    else if (hasLocalName(MathMLNames::mfracTag))
+        object = new (arena) RenderMathMLFraction(this);
+    else
+        object = new (arena) RenderMathMLBlock(this);
     object->setStyle(style);
     return object;
 }

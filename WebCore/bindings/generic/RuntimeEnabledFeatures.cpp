@@ -41,9 +41,11 @@ namespace WebCore {
 bool RuntimeEnabledFeatures::isLocalStorageEnabled = true;
 bool RuntimeEnabledFeatures::isSessionStorageEnabled = true;
 bool RuntimeEnabledFeatures::isWebkitNotificationsEnabled = false;
-bool RuntimeEnabledFeatures::isApplicationCacheEnabled = false;
-bool RuntimeEnabledFeatures::isGeolocationEnabled = false;
+bool RuntimeEnabledFeatures::isApplicationCacheEnabled = true;
+bool RuntimeEnabledFeatures::isGeolocationEnabled = true;
 bool RuntimeEnabledFeatures::isIndexedDBEnabled = false;
+bool RuntimeEnabledFeatures::isWebGLEnabled = false;
+bool RuntimeEnabledFeatures::isPushStateEnabled = false;
 
 #if ENABLE(VIDEO)
 

@@ -50,6 +50,7 @@ class QWebSecurityOrigin;
 class QWebElement;
 class QWebElementCollection;
 
+class DumpRenderTreeSupportQt;
 namespace WebCore {
     class WidgetPrivate;
     class FrameLoaderClientQt;
@@ -156,7 +157,6 @@ public:
     QRect scrollBarGeometry(Qt::Orientation orientation) const;
 
     void scroll(int, int);
-    bool scrollRecursively(int, int);
     QPoint scrollPosition() const;
     void setScrollPosition(const QPoint &pos);
 
@@ -222,9 +222,11 @@ Q_SIGNALS:
     void pageChanged();
 
 private:
+    friend class QGraphicsWebView;
     friend class QWebPage;
     friend class QWebPagePrivate;
     friend class QWebFramePrivate;
+    friend class DumpRenderTreeSupportQt;
     friend class WebCore::WidgetPrivate;
     friend class WebCore::FrameLoaderClientQt;
     friend class WebCore::ChromeClientQt;

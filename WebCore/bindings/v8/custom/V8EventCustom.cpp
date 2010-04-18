@@ -33,11 +33,13 @@
 
 #include "Clipboard.h"
 #include "ClipboardEvent.h"
+#include "CustomEvent.h"
 #include "Event.h"
 #include "V8BeforeLoadEvent.h"
 #include "V8Binding.h"
 #include "V8Clipboard.h"
 #include "V8CompositionEvent.h"
+#include "V8CustomEvent.h"
 #include "V8ErrorEvent.h"
 #include "V8KeyboardEvent.h"
 #include "V8MessageEvent.h"
@@ -48,7 +50,6 @@
 #include "V8PopStateEvent.h"
 #include "V8ProgressEvent.h"
 #include "V8Proxy.h"
-#include "V8SVGZoomEvent.h"
 #include "V8StorageEvent.h"
 #include "V8TextEvent.h"
 #include "V8TouchEvent.h"
@@ -57,6 +58,10 @@
 #include "V8WebKitTransitionEvent.h"
 #include "V8WheelEvent.h"
 #include "V8XMLHttpRequestProgressEvent.h"
+
+#if ENABLE(SVG)
+#include "V8SVGZoomEvent.h"
+#endif
 
 namespace WebCore {
 
@@ -140,6 +145,8 @@ v8::Handle<v8::Value> toV8(Event* impl)
 #endif
     if (impl->isBeforeLoadEvent())
         return toV8(static_cast<BeforeLoadEvent*>(impl));
+    if (impl->isCustomEvent())
+        return toV8(static_cast<CustomEvent*>(impl));
     return V8Event::wrap(impl);
 }
 } // namespace WebCore

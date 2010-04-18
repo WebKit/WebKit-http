@@ -30,9 +30,9 @@
 #include "config.h"
 #include "PlatformKeyboardEvent.h"
 
-#include "KeyboardCodes.h"
 #include "NotImplemented.h"
 #include "TextEncoding.h"
+#include "WindowsKeyboardCodes.h"
 
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
@@ -584,6 +584,15 @@ bool PlatformKeyboardEvent::currentCapsLockState()
 {
     notImplemented();
     return false;
+}
+
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+    notImplemented();
+    shiftKey = false;
+    ctrlKey = false;
+    altKey = false;
+    metaKey = false;
 }
 
 GdkEventKey* PlatformKeyboardEvent::gdkEventKey() const

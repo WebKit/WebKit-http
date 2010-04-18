@@ -205,7 +205,7 @@ WebInspector.HeapSnapshotView.prototype = {
         // Call searchCanceled since it will reset everything we need before doing a new search.
         this.searchCanceled();
 
-        query = query.trimWhitespace();
+        query = query.trim();
 
         if (!query.length)
             return;
@@ -937,7 +937,7 @@ WebInspector.HeapSnapshotProfileType.prototype = {
 
     get welcomeMessage()
     {
-        return WebInspector.UIString("Get a heap snapshot by pressing<br>the %s button on the status bar.");
+        return WebInspector.UIString("Get a heap snapshot by pressing the %s button on the status bar.");
     },
 
     createSidebarTreeElementForProfile: function(profile)

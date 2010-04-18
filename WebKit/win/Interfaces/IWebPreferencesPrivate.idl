@@ -79,8 +79,8 @@ interface IWebPreferencesPrivate : IUnknown
     HRESULT isXSSAuditorEnabled([out, retval] BOOL *enabled);
     HRESULT setXSSAuditorEnabled([in] BOOL enabled);
 
-    HRESULT isFrameSetFlatteningEnabled([out, retval] BOOL *enabled);
-    HRESULT setFrameSetFlatteningEnabled([in] BOOL enabled);
+    HRESULT isFrameFlatteningEnabled([out, retval] BOOL *enabled);
+    HRESULT setFrameFlatteningEnabled([in] BOOL enabled);
 
     HRESULT experimentalNotificationsEnabled([out, retval] BOOL *enabled);
     HRESULT setExperimentalNotificationsEnabled([in] BOOL enabled);
@@ -103,4 +103,10 @@ interface IWebPreferencesPrivate : IUnknown
 
     HRESULT allowFileAccessFromFileURLs([out, retval] BOOL *allowAccess);
     HRESULT setAllowFileAccessFromFileURLs([in] BOOL allowAccess);
+
+    HRESULT setShowDebugBorders([in] BOOL);
+    HRESULT showDebugBorders([out, retval] BOOL*);
+
+    HRESULT setShowRepaintCounter([in] BOOL);
+    HRESULT showRepaintCounter([out, retval] BOOL*);
 }

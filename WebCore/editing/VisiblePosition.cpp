@@ -26,7 +26,6 @@
 #include "config.h"
 #include "VisiblePosition.h"
 
-#include "CString.h"
 #include "Document.h"
 #include "FloatQuad.h"
 #include "HTMLElement.h"
@@ -38,6 +37,7 @@
 #include "htmlediting.h"
 #include "visible_units.h"
 #include <stdio.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
@@ -110,13 +110,7 @@ Position VisiblePosition::leftVisuallyDistinctCandidate() const
         return Position();
 
     Position downstreamStart = p.downstream();
-    TextDirection primaryDirection = LTR;
-    for (RenderObject* r = p.node()->renderer(); r; r = r->parent()) {
-        if (r->isBlockFlow()) {
-            primaryDirection = r->style()->direction();
-            break;
-        }
-    }
+    TextDirection primaryDirection = p.primaryDirection();
 
     while (true) {
         InlineBox* box;
@@ -252,13 +246,7 @@ Position VisiblePosition::rightVisuallyDistinctCandidate() const
         return Position();
 
     Position downstreamStart = p.downstream();
-    TextDirection primaryDirection = LTR;
-    for (RenderObject* r = p.node()->renderer(); r; r = r->parent()) {
-        if (r->isBlockFlow()) {
-            primaryDirection = r->style()->direction();
-            break;
-        }
-    }
+    TextDirection primaryDirection = p.primaryDirection();
 
     while (true) {
         InlineBox* box;
@@ -462,6 +450,7 @@ Position VisiblePosition::canonicalPosition(const Position& position)
     if (!node)
         return Position();
 
+    ASSERT(node->document());
     node->document()->updateLayoutIgnorePendingStylesheets();
 
     Position candidate = position.upstream();

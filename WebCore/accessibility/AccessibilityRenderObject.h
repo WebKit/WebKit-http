@@ -114,6 +114,10 @@ public:
 
     virtual bool hasIntValue() const;
     
+    virtual void setAccessibleName(String&);
+    
+    // Provides common logic used by all elements when determining isIgnored.
+    AccessibilityObjectInclusion accessibilityIsIgnoredBase() const;
     virtual bool accessibilityIsIgnored() const;
     
     virtual int headingLevel() const;
@@ -191,10 +195,11 @@ public:
     virtual Widget* widgetForAttachmentView() const;
     virtual void getDocumentLinks(AccessibilityChildrenVector&);
     virtual FrameView* documentFrameView() const;
-    virtual String language() const;
     virtual unsigned hierarchicalLevel() const;
 
     virtual const AccessibilityChildrenVector& children();
+    virtual void clearChildren();
+    void updateChildrenIfNecessary();
     
     virtual void setFocused(bool);
     virtual void setSelectedTextRange(const PlainTextRange&);
@@ -225,8 +230,8 @@ public:
     virtual bool supportsARIAFlowTo() const;
     virtual void ariaFlowToElements(AccessibilityChildrenVector&) const;
 
-    virtual bool supportsARIADropping();
-    virtual bool supportsARIADragging();
+    virtual bool supportsARIADropping() const;
+    virtual bool supportsARIADragging() const;
     virtual bool isARIAGrabbed();
     virtual void setARIAGrabbed(bool);
     virtual void determineARIADropEffects(Vector<String>&);
@@ -259,6 +264,7 @@ protected:
     
     void setRenderObject(RenderObject* renderer) { m_renderer = renderer; }
     void ariaLabeledByElements(Vector<Element*>& elements) const;
+    bool needsToUpdateChildren() const { return m_childrenDirty; }
     
     virtual bool isDetached() const { return !m_renderer; }
 
@@ -270,6 +276,7 @@ private:
     bool isAllowedChildOfTree() const;
     bool hasTextAlternative() const;
     String positionalDescriptionForMSAA() const;
+    virtual String language() const;
 
     Element* menuElementForMenuButton() const;
     Element* menuItemElementForMenu() const;
@@ -282,7 +289,8 @@ private:
     AccessibilityObject* internalLinkElement() const;
     AccessibilityObject* accessibilityImageMapHitTest(HTMLAreaElement*, const IntPoint&) const;
     AccessibilityObject* accessibilityParentForImageMap(HTMLMapElement* map) const;
-
+    bool renderObjectIsObservable(RenderObject*) const;
+    
     void ariaSelectedRows(AccessibilityChildrenVector&);
     
     bool elementAttributeValue(const QualifiedName&) const;
@@ -297,7 +305,6 @@ private:
     virtual bool ariaLiveRegionBusy() const;    
     
     void setNeedsToUpdateChildren() const { m_childrenDirty = true; }
-    bool needsToUpdateChildren() const { return m_childrenDirty; }
     
     mutable AccessibilityRole m_roleForMSAA;
 };

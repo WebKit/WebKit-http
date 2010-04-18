@@ -96,9 +96,9 @@ public:
     virtual bool shouldInterruptJavaScript();
     virtual bool tabsToLinks() const;
     virtual WebCore::IntRect windowResizerRect() const;
-    virtual void repaint(
-        const WebCore::IntRect&, bool contentChanged, bool immediate = false,
-        bool repaintContentOnly = false);
+    virtual void invalidateWindow(const WebCore::IntRect&, bool);
+    virtual void invalidateContentsAndWindow(const WebCore::IntRect&, bool);
+    virtual void invalidateContentsForSlowScroll(const WebCore::IntRect&, bool);
     virtual void scroll(
         const WebCore::IntSize& scrollDelta, const WebCore::IntRect& rectToScroll,
         const WebCore::IntRect& clipRect);
@@ -122,17 +122,34 @@ public:
     virtual WebCore::NotificationPresenter* notificationPresenter() const;
 #endif
     virtual void requestGeolocationPermissionForFrame(WebCore::Frame*, WebCore::Geolocation*);
+    virtual void cancelGeolocationPermissionRequestForFrame(WebCore::Frame*, WebCore::Geolocation*);
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>);
-    virtual void iconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>);
+    virtual void chooseIconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>);
     virtual bool setCursor(WebCore::PlatformCursorHandle) { return false; }
     virtual void formStateDidChange(const WebCore::Node*);
     virtual PassOwnPtr<WebCore::HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
+#if ENABLE(TOUCH_EVENTS)
+    // FIXME: All touch events are forwarded regardless of whether or not they are needed.
+    virtual void needTouchEvents(bool needTouchEvents) { }
+#endif
 
+#if USE(ACCELERATED_COMPOSITING)
+    // Pass 0 as the GraphicsLayer to detatch the root layer.
+    virtual void attachRootGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*);
+
+    // Sets a flag to specify that the next time content is drawn to the window,
+    // the changes appear on the screen in synchrony with updates to GraphicsLayers.
+    virtual void setNeedsOneShotDrawingSynchronization() { }
+
+    // Sets a flag to specify that the view needs to be updated, so we need
+    // to do an eager layout before the drawing.
+    virtual void scheduleCompositingLayerSync();
+#endif
     // ChromeClientChromium methods:
     virtual void popupOpened(WebCore::PopupContainer* popupContainer,
                              const WebCore::IntRect& bounds,
-                             bool activatable,
                              bool handleExternally);
+    virtual void popupClosed(WebCore::PopupContainer* popupContainer);
     virtual void didChangeAccessibilityObjectState(WebCore::AccessibilityObject*);
 
     // ChromeClientImpl:

@@ -312,14 +312,16 @@ void GraphicsContext::drawRect(const IntRect& rect)
     const bool antiAlias = p->testRenderHint(QPainter::Antialiasing);
     p->setRenderHint(QPainter::Antialiasing, m_data->antiAliasingForRectsAndLines);
 
-    IntSize shadowSize;
-    int shadowBlur;
-    Color shadowColor;
-    if (getShadow(shadowSize, shadowBlur, shadowColor)) {
-        IntRect shadowRect = rect;
-        shadowRect.move(shadowSize.width(), shadowSize.height());
-        shadowRect.inflate(static_cast<int>(p->pen().widthF()));
-        p->fillRect(shadowRect, QColor(shadowColor));
+    if (m_common->state.shadowColor.isValid()) {
+        IntSize shadowSize;
+        int shadowBlur;
+        Color shadowColor;
+        if (getShadow(shadowSize, shadowBlur, shadowColor)) {
+            IntRect shadowRect = rect;
+            shadowRect.move(shadowSize.width(), shadowSize.height());
+            shadowRect.inflate(static_cast<int>(p->pen().widthF()));
+            p->fillRect(shadowRect, QColor(shadowColor));
+        }
     }
 
     p->drawRect(rect);
@@ -410,7 +412,7 @@ void GraphicsContext::drawLine(const IntPoint& point1, const IntPoint& point2)
                     patternOffset = patWidth / 2;
             } else {
                 if (remainder)
-                    patternOffset = (patWidth - remainder)/2;
+                    patternOffset = (patWidth - remainder) / 2;
             }
         }
 
@@ -614,10 +616,20 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     QPainter* p = m_data->p();
 
     if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
-        drawBorderlessRectShadow(this, p, rect);
+        if (m_common->state.shadowColor.isValid())
+            drawBorderlessRectShadow(this, p, rect);
         if (m_common->state.fillPattern) {
             AffineTransform affine;
-            p->fillRect(rect, QBrush(m_common->state.fillPattern->createPlatformPattern(affine)));
+            FloatRect rectM(rect);
+            QBrush brush(m_common->state.fillPattern->createPlatformPattern(affine));
+            QPixmap* image = m_common->state.fillPattern->tileImage()->nativeImageForCurrentFrame();
+
+            if (!m_common->state.fillPattern->repeatX() && image)
+                rectM.setWidth(image->width());
+            if (!m_common->state.fillPattern->repeatY() && image)
+                rectM.setHeight(image->height());
+            p->fillRect(rectM, brush);
+
         } else if (m_common->state.fillGradient) {
             QBrush brush(*m_common->state.fillGradient->platformGradient());
             brush.setTransform(m_common->state.fillGradient->gradientSpaceTransform());
@@ -636,7 +648,8 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& c, ColorSpace
 
     m_data->solidColor.setColor(c);
     QPainter* p = m_data->p();
-    drawBorderlessRectShadow(this, p, rect);
+    if (m_common->state.shadowColor.isValid())
+        drawBorderlessRectShadow(this, p, rect);
     p->fillRect(rect, m_data->solidColor);
 }
 
@@ -1006,11 +1019,11 @@ void GraphicsContext::rotate(float radians)
     if (paintingDisabled())
         return;
 
-    m_data->p()->rotate(180/M_PI*radians);
+    m_data->p()->rotate(180 / M_PI*radians);
 
     if (!m_data->currentPath.isEmpty()) {
         QTransform matrix;
-        m_data->currentPath = m_data->currentPath * matrix.rotate(-180/M_PI*radians);
+        m_data->currentPath = m_data->currentPath * matrix.rotate(-180 / M_PI*radians);
         m_common->state.pathTransform.rotate(radians);
     }
 }

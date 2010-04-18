@@ -33,45 +33,13 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/text/CString.h>
 #include <wtf/unicode/Unicode.h>
 
 namespace JSC {
 
     using WTF::PlacementNewAdoptType;
     using WTF::PlacementNewAdopt;
-
-    class CString {
-    public:
-        CString()
-            : m_length(0)
-            , m_data(0)
-        {
-        }
-
-        CString(const char*);
-        CString(const char*, size_t);
-        CString(const CString&);
-
-        ~CString();
-
-        static CString adopt(char*, size_t); // buffer should be allocated with new[].
-
-        CString& append(const CString&);
-        CString& operator=(const char* c);
-        CString& operator=(const CString&);
-        CString& operator+=(const CString& c) { return append(c); }
-
-        size_t size() const { return m_length; }
-        const char* c_str() const { return m_data; }
-
-    private:
-        size_t m_length;
-        char* m_data;
-    };
-
-    bool operator==(const CString&, const CString&);
-
-    typedef Vector<char, 32> CStringBuffer;
 
     class UString {
         friend class JIT;
@@ -80,7 +48,7 @@ namespace JSC {
         typedef UStringImpl Rep;
     
     public:
-        UString();
+        UString() {}
         UString(const char*); // Constructor for null-terminated string.
         UString(const char*, unsigned length);
         UString(const UChar*, unsigned length);
@@ -97,10 +65,6 @@ namespace JSC {
         {
         }
 
-        ~UString()
-        {
-        }
-
         template<size_t inlineCapacity>
         static PassRefPtr<UStringImpl> adopt(Vector<UChar, inlineCapacity>& vector)
         {
@@ -109,11 +73,9 @@ namespace JSC {
 
         static UString from(int);
         static UString from(long long);
-        static UString from(unsigned int);
+        static UString from(unsigned);
         static UString from(long);
         static UString from(double);
-
-        bool getCString(CStringBuffer&) const;
 
         // NOTE: This method should only be used for *debugging* purposes as it
         // is neither Unicode safe nor free from side effects nor thread-safe.
@@ -129,14 +91,24 @@ namespace JSC {
          */
         CString UTF8String(bool strict = false) const;
 
-        const UChar* data() const { return m_rep->data(); }
+        const UChar* data() const
+        {
+            if (!m_rep)
+                return 0;
+            return m_rep->characters();
+        }
 
-        bool isNull() const { return m_rep == s_nullRep; }
-        bool isEmpty() const { return !m_rep->length(); }
+        unsigned size() const
+        {
+            if (!m_rep)
+                return 0;
+            return m_rep->length();
+        }
+
+        bool isNull() const { return !m_rep; }
+        bool isEmpty() const { return !m_rep || !m_rep->length(); }
 
         bool is8Bit() const;
-
-        unsigned size() const { return m_rep->length(); }
 
         UChar operator[](unsigned pos) const;
 
@@ -165,15 +137,18 @@ namespace JSC {
         UString(PassRefPtr<Rep> r)
             : m_rep(r)
         {
-            ASSERT(m_rep);
         }
 
-        size_t cost() const { return m_rep->cost(); }
+        size_t cost() const
+        {
+            if (!m_rep)
+                return 0;
+            return m_rep->cost();
+        }
 
     private:
         RefPtr<Rep> m_rep;
 
-        JS_EXPORTDATA static Rep* s_nullRep;
         static UString* s_nullUString;
 
         friend void initializeUString();
@@ -227,11 +202,6 @@ namespace JSC {
     }
 
     int compare(const UString&, const UString&);
-
-    inline UString::UString()
-        : m_rep(s_nullRep)
-    {
-    }
 
     // Rule from ECMA 15.2 about what an array index is.
     // Must exactly match string form of an unsigned integer, and be less than 2^32 - 1.
@@ -680,7 +650,12 @@ namespace WTF {
         typedef StrHash<RefPtr<JSC::UString::Rep> > Hash;
 
     };
-
+    
+    template <> struct VectorTraits<JSC::UString> : SimpleClassVectorTraits
+    {
+        static const bool canInitializeWithMemset = true;
+    };
+    
 } // namespace WTF
 
 #endif

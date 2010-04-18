@@ -86,7 +86,6 @@ using WebCore::ScriptObject;
 using WebCore::ScriptState;
 using WebCore::ScriptValue;
 using WebCore::String;
-using WebCore::V8ClassIndex;
 using WebCore::V8DOMWrapper;
 using WebCore::V8InspectorBackend;
 using WebCore::V8Proxy;
@@ -161,15 +160,6 @@ void WebDevToolsAgentImpl::disposeUtilityContext()
     }
 }
 
-void WebDevToolsAgentImpl::unhideResourcesPanelIfNecessary()
-{
-    InspectorController* ic = m_webViewImpl->page()->inspectorController();
-    ic->ensureResourceTrackingSettingsLoaded();
-    String command = String::format("[\"setResourcesPanelEnabled\", %s]",
-        ic->resourceTrackingEnabled() ? "true" : "false");
-    m_toolsAgentDelegateStub->dispatchOnClient(command);
-}
-
 void WebDevToolsAgentImpl::attach()
 {
     if (m_attached)
@@ -178,8 +168,8 @@ void WebDevToolsAgentImpl::attach()
         new DebuggerAgentImpl(m_webViewImpl,
                               m_debuggerAgentDelegateStub.get(),
                               this));
-    resetInspectorFrontendProxy();
-    unhideResourcesPanelIfNecessary();
+    createInspectorFrontendProxy();
+
     // Allow controller to send messages to the frontend.
     InspectorController* ic = inspectorController();
 
@@ -194,7 +184,7 @@ void WebDevToolsAgentImpl::attach()
         }
     }
 
-    ic->setWindowVisible(true, false);
+    setInspectorFrontendProxyToInspectorController();
     m_attached = true;
 }
 
@@ -202,6 +192,7 @@ void WebDevToolsAgentImpl::detach()
 {
     // Prevent controller from sending messages to the frontend.
     InspectorController* ic = m_webViewImpl->page()->inspectorController();
+    ic->disconnectFrontend();
     ic->hideHighlight();
     ic->close();
     disposeUtilityContext();
@@ -225,10 +216,8 @@ void WebDevToolsAgentImpl::didCommitProvisionalLoad(WebFrameImpl* webframe, bool
         ds->unreachableURL() :
         request.url();
     if (!webframe->parent()) {
-        resetInspectorFrontendProxy();
         m_toolsAgentDelegateStub->frameNavigate(WebCore::KURL(url).string());
         SetApuAgentEnabledInUtilityContext(m_utilityContext, m_apuAgentEnabled);
-        unhideResourcesPanelIfNecessary();
     }
 }
 
@@ -347,7 +336,6 @@ void WebDevToolsAgentImpl::initDevToolsAgentHost()
 
 v8::Local<v8::Object> WebDevToolsAgentImpl::createInspectorBackendV8Wrapper()
 {
-    V8ClassIndex::V8WrapperType descriptorType = V8ClassIndex::INSPECTORBACKEND;
     v8::Handle<v8::Function> function = V8InspectorBackend::GetTemplate()->GetFunction();
     if (function.IsEmpty()) {
         // Return if allocation failed.
@@ -359,7 +347,7 @@ v8::Local<v8::Object> WebDevToolsAgentImpl::createInspectorBackendV8Wrapper()
         return v8::Local<v8::Object>();
     }
     InspectorBackend* backend = m_webViewImpl->page()->inspectorController()->inspectorBackend();
-    V8DOMWrapper::setDOMWrapper(instance, V8ClassIndex::ToInt(descriptorType), backend);
+    V8DOMWrapper::setDOMWrapper(instance, &V8InspectorBackend::info, backend);
     // Create a weak reference to the v8 wrapper of InspectorBackend to deref
     // InspectorBackend when the wrapper is garbage collected.
     backend->ref();
@@ -368,19 +356,22 @@ v8::Local<v8::Object> WebDevToolsAgentImpl::createInspectorBackendV8Wrapper()
     return instance;
 }
 
-void WebDevToolsAgentImpl::resetInspectorFrontendProxy()
+void WebDevToolsAgentImpl::createInspectorFrontendProxy()
 {
     disposeUtilityContext();
-    m_debuggerAgentImpl->createUtilityContext(m_webViewImpl->page()->mainFrame(), &m_utilityContext);
+    m_utilityContext = v8::Context::New();
     compileUtilityScripts();
     initDevToolsAgentHost();
+}
 
+void WebDevToolsAgentImpl::setInspectorFrontendProxyToInspectorController()
+{
     v8::HandleScope scope;
-    v8::Context::Scope contextScope(m_utilityContext);
     ScriptState* state = ScriptState::forContext(
         v8::Local<v8::Context>::New(m_utilityContext));
     InspectorController* ic = inspectorController();
-    ic->setFrontendProxyObject(state, ScriptObject(state, m_utilityContext->Global()));
+    ic->setFrontend(new InspectorFrontend(
+        ScriptObject(state, m_utilityContext->Global())));
 }
 
 void WebDevToolsAgentImpl::setApuAgentEnabled(bool enabled)

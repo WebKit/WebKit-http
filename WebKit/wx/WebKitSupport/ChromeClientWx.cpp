@@ -35,6 +35,7 @@
 #include "FloatRect.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
+#include "Icon.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include "WindowFeatures.h"
@@ -336,14 +337,24 @@ IntRect ChromeClientWx::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientWx::repaint(const IntRect& rect, bool contentChanged, bool immediate, bool repaintContentOnly)
+void ChromeClientWx::invalidateWindow(const IntRect& rect, bool immediate)
+{
+    if (immediate)
+        m_webView->Update();
+}
+
+void ChromeClientWx::invalidateContentsForSlowScroll(const IntRect& rect, bool immediate)
+{
+    invalidateContentsAndWindow(rect, immediate);
+}
+
+void ChromeClientWx::invalidateContentsAndWindow(const IntRect& rect, bool immediate)
 {
     if (!m_webView)
         return;
-    
-    if (contentChanged)
-        m_webView->RefreshRect(rect);
-    
+
+    m_webView->RefreshRect(rect);
+
     if (immediate) {
         m_webView->Update();
     }
@@ -431,9 +442,9 @@ void ChromeClientWx::runOpenPanel(Frame*, PassRefPtr<FileChooser>)
     notImplemented();
 }
 
-void ChromeClientWx::iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>)
+void ChromeClientWx::chooseIconForFiles(const Vector<String>& filenames, PassRefPtr<FileChooser> chooser)
 {
-    notImplemented();
+    chooser->iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 bool ChromeClientWx::setCursor(PlatformCursorHandle)

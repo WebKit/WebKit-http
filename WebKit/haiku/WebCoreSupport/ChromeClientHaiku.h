@@ -60,10 +60,10 @@ namespace WebCore {
         virtual bool canTakeFocus(FocusDirection);
         virtual void takeFocus(FocusDirection);
 
-        void focusedNodeChanged(Node*);
+        virtual void focusedNodeChanged(Node*);
 
-        Page* createWindow(Frame*, const FrameLoadRequest&, const WebCore::WindowFeatures&);
-        void show();
+        virtual Page* createWindow(Frame*, const FrameLoadRequest&, const WebCore::WindowFeatures&);
+        virtual void show();
 
         virtual bool canRunModal();
         virtual void runModal();
@@ -100,22 +100,23 @@ namespace WebCore {
         virtual bool tabsToLinks() const;
         virtual IntRect windowResizerRect() const;
 
-        virtual void repaint(const IntRect&, bool contentChanged, bool immediate = false, bool repaintContentOnly = false);
+        virtual void invalidateWindow(const IntRect&, bool);
+        virtual void invalidateContentsAndWindow(const IntRect&, bool);
+        virtual void invalidateContentsForSlowScroll(const IntRect&, bool);
         virtual void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect);
+
         virtual IntPoint screenToWindow(const IntPoint&) const;
         virtual IntRect windowToScreen(const IntRect&) const;
         virtual PlatformPageClient platformPageClient() const;
         virtual void contentsSizeChanged(Frame*, const IntSize&) const;
         virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const;
 
-        void addToDirtyRegion(const IntRect&);
-        void scrollBackingStore(int, int, const IntRect&, const IntRect&);
-        void updateBackingStore();
+        virtual void addToDirtyRegion(const IntRect&);
+        virtual void scrollBackingStore(int, int, const IntRect&, const IntRect&);
+        virtual void updateBackingStore();
 
-        void scrollbarsModeDidChange() const { }
-        void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags);
-
-        void setToolTip(const String&);
+        virtual void scrollbarsModeDidChange() const { }
+        virtual void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags);
 
         virtual void setToolTip(const String&, TextDirection);
 
@@ -126,17 +127,24 @@ namespace WebCore {
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
         virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
 #endif
+        // This is an asynchronous call. The ChromeClient can display UI asking the user for permission
+        // to use Geolococation.
+        virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
+        virtual void cancelGeolocationPermissionRequestForFrame(Frame*, Geolocation*) { }
+
         virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
-
-        virtual void formStateDidChange(const Node*) { }
-
-        virtual PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
-        void iconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
+        // Asynchronous request to load an icon for specified filenames.
+        virtual void chooseIconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
 
         virtual bool setCursor(PlatformCursorHandle);
 
-        virtual void requestGeolocationPermissionForFrame(Frame*, Geolocation*);
+        // Notification that the given form element has changed. This function
+        // will be called frequently, so handling should be very fast.
+        virtual void formStateDidChange(const Node*);
 
+        virtual PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
+
+    private:
         BWebPage* m_webPage;
         BWebView* m_webView;
 

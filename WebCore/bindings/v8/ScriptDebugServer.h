@@ -31,16 +31,116 @@
 #ifndef ScriptDebugServer_h
 #define ScriptDebugServer_h
 
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+
+#include "PlatformString.h"
+#include "ScriptBreakpoint.h"
+#include "ScriptState.h"
+#include "StringHash.h"
+#include "Timer.h"
+#include <v8-debug.h>
+#include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
+class Page;
+class ScriptDebugListener;
+
 class ScriptDebugServer : public Noncopyable {
 public:
-    static void recompileAllJSFunctions();
-    static void recompileAllJSFunctionsSoon();
+    static ScriptDebugServer& shared();
+    
+    // Function for retrieving the source name, line number and function name for the top
+    // JavaScript stack frame.
+    //
+    // It will return true if the caller information was successfully retrieved and written
+    // into the function parameters, otherwise the function will return false. It may
+    // fail due to a stack overflow in the underlying JavaScript implementation, handling
+    // of such exception is up to the caller.
+    static bool topStackFrame(String& sourceName, int& lineNumber, String& functionName);
+
+    void addListener(ScriptDebugListener*, Page*);
+    void removeListener(ScriptDebugListener*, Page*);
+
+    void setBreakpoint(const String& sourceID, unsigned lineNumber, ScriptBreakpoint breakpoint);
+    void removeBreakpoint(const String& sourceID, unsigned lineNumber);
+    void clearBreakpoints();
+    void setBreakpointsActivated(bool activated);
+
+    enum PauseOnExceptionsState {
+        DontPauseOnExceptions,
+        PauseOnAllExceptions,
+        PauseOnUncaughtExceptions
+    };
+    PauseOnExceptionsState pauseOnExceptionsState() const { return m_pauseOnExceptionsState; }
+    void setPauseOnExceptionsState(PauseOnExceptionsState pauseOnExceptionsState) { m_pauseOnExceptionsState = pauseOnExceptionsState; }
+
+    void pauseProgram() { }
+    void continueProgram();
+    void stepIntoStatement();
+    void stepOverStatement();
+    void stepOutOfFunction();
+
+    void recompileAllJSFunctionsSoon() { }
+    void recompileAllJSFunctions(Timer<ScriptDebugServer>* = 0) { }
+
+    ScriptState* currentCallFrameState();
+
+    void pageCreated(Page*) { }
+
+    // v8-specific methods.
+    void setDebuggerScriptSource(const String& scriptSource);
+
+    typedef void (*MessageLoopDispatchHandler)(const Vector<WebCore::Page*>&);
+    static void setMessageLoopDispatchHandler(MessageLoopDispatchHandler messageLoopDispatchHandler) { s_messageLoopDispatchHandler = messageLoopDispatchHandler; }
+
+    v8::Handle<v8::Value> currentCallFrameV8();
+
+private:
+    ScriptDebugServer();
+    ~ScriptDebugServer() { }
+
+    static void onV8DebugMessage(const v8::Debug::Message& message);
+    static void onV8DebugHostDispatch();
+
+    void handleV8DebugMessage(const v8::Debug::Message& message);
+    void handleV8DebugHostDispatch();
+
+    void dispatchDidParseSource(ScriptDebugListener* listener, v8::Handle<v8::Object> sourceObject);
+    
+    void ensureDebuggerScriptCompiled();
+    void didResume();
+
+    static void createUtilityContext();
+
+    // Returns a local handle of the utility context.
+    static v8::Local<v8::Context> utilityContext()
+    {
+      if (s_utilityContext.IsEmpty())
+          createUtilityContext();
+      return v8::Local<v8::Context>::New(s_utilityContext);
+    }
+
+    // Utility context holding JavaScript functions used internally.
+    static v8::Persistent<v8::Context> s_utilityContext;
+
+    typedef HashMap<Page*, ScriptDebugListener*> ListenersMap;
+    ListenersMap m_listenersMap;
+    typedef HashMap<ScriptDebugListener*, String> ContextDataMap;
+    ContextDataMap m_contextDataMap;
+    String m_debuggerScriptSource;
+    PauseOnExceptionsState m_pauseOnExceptionsState;
+    v8::Persistent<v8::Object> m_debuggerScript;
+    ScriptState* m_currentCallFrameState;
+    v8::Persistent<v8::Value> m_currentCallFrame;
+    v8::Persistent<v8::Object> m_executionState;
+
+    static MessageLoopDispatchHandler s_messageLoopDispatchHandler;
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(JAVASCRIPT_DEBUGGER)
 
 #endif // ScriptDebugServer_h

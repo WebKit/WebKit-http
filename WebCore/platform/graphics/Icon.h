@@ -39,6 +39,8 @@ typedef struct HICON__* HICON;
 #include <QIcon>
 #elif PLATFORM(GTK)
 typedef struct _GdkPixbuf GdkPixbuf;
+#elif PLATFORM(EFL)
+#include <Evas.h>
 #elif PLATFORM(CHROMIUM)
 #include "PlatformIcon.h"
 #endif
@@ -51,8 +53,6 @@ class String;
     
 class Icon : public RefCounted<Icon> {
 public:
-    // Deprecated.  This function will be removed.
-    // FIXME: Remove it when all implementations are moved to ChromeClient::iconForFiles().
     static PassRefPtr<Icon> createIconForFiles(const Vector<String>& filenames);
 
     ~Icon();
@@ -76,6 +76,9 @@ private:
 #elif PLATFORM(GTK)
     Icon();
     GdkPixbuf* m_icon;
+#elif PLATFORM(EFL)
+    Icon();
+    Evas_Object* m_icon;
 #elif PLATFORM(CHROMIUM)
     Icon(const PlatformIcon&);
     PlatformIcon m_icon;

@@ -36,7 +36,7 @@ class VisibleSelection;
 
 class HTMLFormControlElement : public HTMLElement {
 public:
-    HTMLFormControlElement(const QualifiedName& tagName, Document*, HTMLFormElement*);
+    HTMLFormControlElement(const QualifiedName& tagName, Document*, HTMLFormElement*, ConstructionType = CreateElementZeroRefCount);
     virtual ~HTMLFormControlElement();
 
     virtual HTMLTagStatus endTagRequirement() const { return TagStatusRequired; }
@@ -108,7 +108,7 @@ public:
 
     virtual bool willValidate() const;
     String validationMessage();
-    bool checkValidity();
+    bool checkValidity(Vector<RefPtr<HTMLFormControlElement> >* unhandledInvalidControls = 0);
     // This must be called when a validation constraint or control value is changed.
     void setNeedsValidityCheck();
     void setCustomValidity(const String&);
@@ -116,7 +116,7 @@ public:
     virtual bool patternMismatch() const { return false; }
     virtual bool tooLong() const { return false; }
 
-    void formDestroyed();
+    void formDestroyed() { m_form = 0; }
 
     virtual void dispatchFocusEvent();
     virtual void dispatchBlurEvent();
@@ -125,6 +125,7 @@ protected:
     void removeFromForm();
     // This must be called any time the result of willValidate() has changed.
     void setNeedsWillValidateCheck();
+    virtual bool recalcWillValidate() const;
 
 private:
     virtual HTMLFormElement* virtualForm() const;
@@ -133,11 +134,18 @@ private:
 
     HTMLFormElement* m_form;
     OwnPtr<ValidityState> m_validityState;
-    bool m_hasName : 1;
     bool m_disabled : 1;
     bool m_readOnly : 1;
     bool m_required : 1;
     bool m_valueMatchesRenderer : 1;
+    // The initial value of m_willValidate depends on a subclass, and we can't
+    // initialize it with a virtual function in the constructor. m_willValidate
+    // is not deterministic during m_willValidateInitialized=false.
+    mutable bool m_willValidateInitialized: 1;
+    mutable bool m_willValidate : 1;
+    // Cache of validity()->valid().
+    // "candidate for constraint validation" doesn't affect to m_isValid.
+    bool m_isValid : 1;
 };
 
 class HTMLFormControlElementWithState : public HTMLFormControlElement {
@@ -145,6 +153,8 @@ public:
     HTMLFormControlElementWithState(const QualifiedName& tagName, Document*, HTMLFormElement*);
     virtual ~HTMLFormControlElementWithState();
 
+    virtual bool autoComplete() const;
+    virtual bool shouldSaveAndRestoreFormControlState() const;
     virtual void finishParsingChildren();
 
 protected:

@@ -49,8 +49,8 @@ public:
     virtual AccessibilityObject* parentObject() const { return m_parentTable; }
     AccessibilityObject* headerObject();
         
+    virtual bool accessibilityIsIgnored() const;
     virtual AccessibilityRole roleValue() const { return ColumnRole; }
-    virtual bool accessibilityIsIgnored() const { return false; }
     virtual bool isTableColumn() const { return true; }
     
     void setColumnIndex(int columnIndex) { m_columnIndex = columnIndex; }

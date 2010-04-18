@@ -30,7 +30,7 @@
 #include "MathMLTextElement.h"
 
 #include "MathMLNames.h"
-#include "RenderObject.h"
+#include "RenderMathMLOperator.h"
 
 namespace WebCore {
     
@@ -46,8 +46,14 @@ PassRefPtr<MathMLTextElement> MathMLTextElement::create(const QualifiedName& tag
     return new MathMLTextElement(tagName, document);
 }
 
-RenderObject* MathMLTextElement::createRenderer(RenderArena* , RenderStyle* style)
+RenderObject* MathMLTextElement::createRenderer(RenderArena* arena, RenderStyle* style)
 {
+    if (hasLocalName(MathMLNames::moTag)) {
+        RenderObject* object = new (arena) RenderMathMLOperator(this);
+        object->setStyle(style);
+        return object;
+    }
+
     return RenderObject::createObject(this, style);
 }
 

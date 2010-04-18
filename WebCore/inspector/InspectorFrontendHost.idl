@@ -33,21 +33,22 @@
 module core {
     interface [Conditional=INSPECTOR] InspectorFrontendHost {
         void loaded();
-        void attach();
-        void detach();
         void closeWindow();
-        void windowUnloading();
+        void bringToFront();
+        void inspectedURLChanged(in DOMString newURL);
 
+        void requestAttachWindow();
+        void requestDetachWindow();
         void setAttachedWindowHeight(in unsigned long height);
         void moveWindowBy(in float x, in float y);
 
         DOMString localizedStringsURL();
         DOMString hiddenPanels();
-        DOMString platform();
-        DOMString port();
 
         void copyText(in DOMString text);
 
+        [Custom] DOMString platform();
+        [Custom] DOMString port();
         [Custom] void showContextMenu(in MouseEvent event, in DOMObject items);
     };
 }

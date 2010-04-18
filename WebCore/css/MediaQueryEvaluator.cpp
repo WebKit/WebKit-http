@@ -29,6 +29,7 @@
 #include "MediaQueryEvaluator.h"
 
 #include "Chrome.h"
+#include "ChromeClient.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSStyleSelector.h"
 #include "CSSValueList.h"
@@ -47,7 +48,7 @@
 #include "PlatformScreen.h"
 #include <wtf/HashMap.h>
 
-#if ENABLE(3D_RENDERING)
+#if ENABLE(3D_RENDERING) && USE(ACCELERATED_COMPOSITING)
 #include "RenderLayerCompositor.h"
 #endif
 
@@ -474,8 +475,10 @@ static bool transform_3dMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* f
 
 #if ENABLE(3D_RENDERING)
     bool threeDEnabled = false;
+#if USE(ACCELERATED_COMPOSITING)
     if (RenderView* view = frame->contentRenderer())
         threeDEnabled = view->compositor()->hasAcceleratedCompositing();
+#endif
 
     returnValueIfNoParameter = threeDEnabled;
     have3dRendering = threeDEnabled ? 1 : 0;
@@ -491,6 +494,29 @@ static bool transform_3dMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* f
     }
     return returnValueIfNoParameter;
 }
+
+#if ENABLE(WIDGETS_10_SUPPORT)
+static bool view_modeMediaFeatureEval(CSSValue* value, RenderStyle*, Frame* frame, MediaFeaturePrefix op)
+{
+    if (value) {
+        String mode = static_cast<CSSPrimitiveValue*>(value)->getStringValue();
+        if (ChromeClient* client = frame->page()->chrome()->client()) {
+            if (mode == "windowed" && client->isWindowed())
+                return true;
+            if (mode == "floating" && client->isFloating())
+                return true;
+            if (mode == "fullscreen" && client->isFullscreen())
+                return true;
+            if (mode == "maximized" && client->isMaximized())
+                return true;
+            if (mode == "minimized" && client->isMinimized())
+                return true;
+            return false;
+        }
+    }
+    return true;
+}
+#endif
 
 static void createFunctionMap()
 {

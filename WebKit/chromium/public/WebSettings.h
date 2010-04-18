@@ -69,6 +69,7 @@ public:
     virtual void setJavaEnabled(bool) = 0;
     virtual void setAllowScriptsToCloseWindows(bool) = 0;
     virtual void setUserStyleSheetLocation(const WebURL&) = 0;
+    virtual void setAuthorAndUserStylesEnabled(bool) = 0;
     virtual void setUsesPageCache(bool) = 0;
     virtual void setDownloadableBinaryFontsEnabled(bool) = 0;
     virtual void setXSSAuditorEnabled(bool) = 0;
@@ -76,13 +77,11 @@ public:
     virtual void setEditableLinkBehaviorNeverLive() = 0;
     virtual void setFontRenderingModeNormal() = 0;
     virtual void setShouldPaintCustomScrollbars(bool) = 0;
-    virtual void setDatabasesEnabled(bool) = 0;
     virtual void setAllowUniversalAccessFromFileURLs(bool) = 0;
     virtual void setAllowFileAccessFromFileURLs(bool) = 0;
     virtual void setTextDirectionSubmenuInclusionBehaviorNeverIncluded() = 0;
     virtual void setOfflineWebApplicationCacheEnabled(bool) = 0;
     virtual void setExperimentalWebGLEnabled(bool) = 0;
-    virtual void setGeolocationEnabled(bool) = 0;
     virtual void setShowDebugBorders(bool) = 0;
 
 protected:

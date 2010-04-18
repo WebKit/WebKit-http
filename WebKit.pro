@@ -4,21 +4,18 @@ CONFIG += ordered
 include(WebKit.pri)
 
 SUBDIRS += \
-        WebCore \
-        WebKitTools/QtLauncher \
-        WebKit/qt/QGVLauncher
+        JavaScriptCore \
+        WebCore
 
-!CONFIG(standalone_package) {
-    SUBDIRS += JavaScriptCore/jsc.pro \
-        WebKit/qt/tests
+# If the source exists, built it
+exists($$PWD/WebKitTools/QtLauncher): SUBDIRS += WebKitTools/QtLauncher
+exists($$PWD/JavaScriptCore/jsc.pro): SUBDIRS += JavaScriptCore/jsc.pro
+exists($$PWD/WebKit/qt/tests): SUBDIRS += WebKit/qt/tests
+exists($$PWD/WebKitTools/DumpRenderTree/qt/DumpRenderTree.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/DumpRenderTree.pro
 
-    !symbian: SUBDIRS += WebKitTools/DumpRenderTree/qt/DumpRenderTree.pro
-
-    !win32:!symbian {
-        SUBDIRS += WebKitTools/DumpRenderTree/qt/ImageDiff.pro
-        SUBDIRS += WebKitTools/DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
-    }
-
+!win32:!symbian {
+    exists($$PWD/WebKitTools/DumpRenderTree/qt/ImageDiff.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/ImageDiff.pro
+    exists($$PWD/WebKitTools/DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
 }
 
 build-qtscript {

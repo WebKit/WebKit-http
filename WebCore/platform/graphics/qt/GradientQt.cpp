@@ -51,6 +51,8 @@ QGradient* Gradient::platformGradient()
     else
         m_gradient = new QLinearGradient(m_p0.x(), m_p0.y(), m_p1.x(), m_p1.y());
 
+    sortStopsIfNecessary();
+
     QColor stopColor;
     Vector<ColorStop>::iterator stopIterator = m_stops.begin();
     qreal lastStop(0.0);
@@ -64,7 +66,15 @@ QGradient* Gradient::platformGradient()
         if (m_radial && m_r0)
             lastStop = m_r0 / m_r1 + lastStop * (1.0f - m_r0 / m_r1);
         m_gradient->setColorAt(lastStop, stopColor);
+        // Keep the lastStop as orginal value, since the following stopColor depend it
+        lastStop = stopIterator->stop;
         ++stopIterator;
+    }
+
+    if (m_stops.isEmpty()) {
+        // The behavior of QGradient with no stops is defined differently from HTML5 spec,
+        // where the latter requires the gradient to be transparent black.
+        m_gradient->setColorAt(0.0, QColor(0, 0, 0, 0));
     }
 
     switch (m_spreadMethod) {

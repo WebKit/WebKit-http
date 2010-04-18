@@ -34,6 +34,7 @@
 #include "ScrollbarTheme.h"
 #include <wtf/StdLibExtras.h>
 
+
 using std::max;
 
 namespace WebCore {
@@ -41,6 +42,8 @@ namespace WebCore {
 ScrollView::ScrollView()
     : m_horizontalScrollbarMode(ScrollbarAuto)
     , m_verticalScrollbarMode(ScrollbarAuto)
+    , m_horizontalScrollbarLock(false)
+    , m_verticalScrollbarLock(false)
     , m_prohibitsScrolling(false)
     , m_canBlitOnScroll(true)
     , m_scrollbarsAvoidingResizer(0)
@@ -80,6 +83,9 @@ void ScrollView::removeChild(Widget* child)
 
 void ScrollView::setHasHorizontalScrollbar(bool hasBar)
 {
+    if (hasBar && avoidScrollbarCreation())
+        return;
+
     if (hasBar && !m_horizontalScrollbar) {
         m_horizontalScrollbar = createScrollbar(HorizontalScrollbar);
         addChild(m_horizontalScrollbar.get());
@@ -92,6 +98,9 @@ void ScrollView::setHasHorizontalScrollbar(bool hasBar)
 
 void ScrollView::setHasVerticalScrollbar(bool hasBar)
 {
+    if (hasBar && avoidScrollbarCreation())
+        return;
+
     if (hasBar && !m_verticalScrollbar) {
         m_verticalScrollbar = createScrollbar(VerticalScrollbar);
         addChild(m_verticalScrollbar.get());
@@ -108,12 +117,30 @@ PassRefPtr<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientati
     return Scrollbar::createNativeScrollbar(this, orientation, RegularScrollbar);
 }
 
-void ScrollView::setScrollbarModes(ScrollbarMode horizontalMode, ScrollbarMode verticalMode)
+void ScrollView::setScrollbarModes(ScrollbarMode horizontalMode, ScrollbarMode verticalMode,
+                                   bool horizontalLock, bool verticalLock)
 {
-    if (horizontalMode == horizontalScrollbarMode() && verticalMode == verticalScrollbarMode())
+    bool needsUpdate = false;
+
+    if (horizontalMode != horizontalScrollbarMode() && !m_horizontalScrollbarLock) {
+        m_horizontalScrollbarMode = horizontalMode;
+        needsUpdate = true;
+    }
+
+    if (verticalMode != verticalScrollbarMode() && !m_verticalScrollbarLock) {
+        m_verticalScrollbarMode = verticalMode;
+        needsUpdate = true;
+    }
+
+    if (horizontalLock)
+        setHorizontalScrollbarLock();
+
+    if (verticalLock)
+        setVerticalScrollbarLock();
+
+    if (!needsUpdate)
         return;
-    m_horizontalScrollbarMode = horizontalMode;
-    m_verticalScrollbarMode = verticalMode;
+
     if (platformWidget())
         platformSetScrollbarModes();
     else
@@ -448,8 +475,6 @@ void ScrollView::updateScrollbars(const IntSize& desiredOffset)
         int clientHeight = visibleHeight();
         m_verticalScrollbar->setEnabled(contentsHeight() > clientHeight);
         int pageStep = max(max<int>(clientHeight * Scrollbar::minFractionToStepWhenPaging(), clientHeight - Scrollbar::maxOverlapBetweenPages()), 1);
-        if (pageStep < 0)
-            pageStep = clientHeight;
         IntRect oldRect(m_verticalScrollbar->frameRect());
         IntRect vBarRect = IntRect(width() - m_verticalScrollbar->width(), 
                                    0,
@@ -501,31 +526,30 @@ void ScrollView::scrollContents(const IntSize& scrollDelta)
     updateRect.intersect(scrollViewRect);
 
     // Invalidate the window (not the backing store).
-    hostWindow()->repaint(updateRect, false);
+    hostWindow()->invalidateWindow(updateRect, false /*immediate*/);
 
     if (m_drawPanScrollIcon) {
         int panIconDirtySquareSizeLength = 2 * (panIconSizeLength + max(abs(scrollDelta.width()), abs(scrollDelta.height()))); // We only want to repaint what's necessary
         IntPoint panIconDirtySquareLocation = IntPoint(m_panScrollIconPoint.x() - (panIconDirtySquareSizeLength / 2), m_panScrollIconPoint.y() - (panIconDirtySquareSizeLength / 2));
         IntRect panScrollIconDirtyRect = IntRect(panIconDirtySquareLocation , IntSize(panIconDirtySquareSizeLength, panIconDirtySquareSizeLength));
         panScrollIconDirtyRect.intersect(clipRect);
-        hostWindow()->repaint(panScrollIconDirtyRect, true);
+        hostWindow()->invalidateContentsAndWindow(panScrollIconDirtyRect, false /*immediate*/);
     }
 
     if (canBlitOnScroll()) { // The main frame can just blit the WebView window
-       // FIXME: Find a way to blit subframes without blitting overlapping content
-       hostWindow()->scroll(-scrollDelta, scrollViewRect, clipRect);
+        // FIXME: Find a way to scroll subframes with this faster path
+        hostWindow()->scroll(-scrollDelta, scrollViewRect, clipRect);
     } else { 
        // We need to go ahead and repaint the entire backing store.  Do it now before moving the
        // windowed plugins.
-       hostWindow()->repaint(updateRect, true, false, true); // Invalidate the backing store and repaint it synchronously
+       hostWindow()->invalidateContentsForSlowScroll(updateRect, false);
     }
 
     // This call will move children with native widgets (plugins) and invalidate them as well.
     frameRectsChanged();
 
-    // Now update the window (which should do nothing but a blit of the backing store's updateRect and so should
-    // be very fast).
-    hostWindow()->paint();
+    // Now blit the backingstore into the window which should be very fast.
+    hostWindow()->invalidateWindow(IntRect(), true);
 }
 
 IntPoint ScrollView::windowToContents(const IntPoint& windowPoint) const
@@ -715,7 +739,7 @@ void ScrollView::repaintContentRectangle(const IntRect& rect, bool now)
     }
 
     if (hostWindow())
-        hostWindow()->repaint(contentsToWindow(paintRect), true, now);
+        hostWindow()->invalidateContentsAndWindow(contentsToWindow(paintRect), now /*immediate*/);
 }
 
 IntRect ScrollView::scrollCornerRect() const
@@ -933,7 +957,7 @@ void ScrollView::addPanScrollIcon(const IntPoint& iconPosition)
         return;
     m_drawPanScrollIcon = true;    
     m_panScrollIconPoint = IntPoint(iconPosition.x() - panIconSizeLength / 2 , iconPosition.y() - panIconSizeLength / 2) ;
-    hostWindow()->repaint(IntRect(m_panScrollIconPoint, IntSize(panIconSizeLength,panIconSizeLength)), true, true);    
+    hostWindow()->invalidateContentsAndWindow(IntRect(m_panScrollIconPoint, IntSize(panIconSizeLength, panIconSizeLength)), true /*immediate*/);
 }
 
 void ScrollView::removePanScrollIcon()
@@ -941,10 +965,10 @@ void ScrollView::removePanScrollIcon()
     if (!hostWindow())
         return;
     m_drawPanScrollIcon = false; 
-    hostWindow()->repaint(IntRect(m_panScrollIconPoint, IntSize(panIconSizeLength, panIconSizeLength)), true, true);
+    hostWindow()->invalidateContentsAndWindow(IntRect(m_panScrollIconPoint, IntSize(panIconSizeLength, panIconSizeLength)), true /*immediate*/);
 }
 
-#if !PLATFORM(WX) && !PLATFORM(GTK) && !PLATFORM(QT)
+#if !PLATFORM(WX) && !PLATFORM(GTK) && !PLATFORM(QT) && !PLATFORM(EFL)
 
 void ScrollView::platformInit()
 {

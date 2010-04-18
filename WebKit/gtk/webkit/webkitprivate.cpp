@@ -28,6 +28,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClientGtk.h"
+#include "GtkVersioning.h"
 #include "HitTestResult.h"
 #include "IconDatabase.h"
 #include <libintl.h>
@@ -223,11 +224,7 @@ static GtkWidget* currentToplevelCallback(WebKitSoupAuthDialog* feature, SoupMes
         return NULL;
 
     GtkWidget* toplevel =  gtk_widget_get_toplevel(GTK_WIDGET(frame->page()->chrome()->platformPageClient()));
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (gtk_widget_is_toplevel(toplevel))
-#else
-    if (GTK_WIDGET_TOPLEVEL(toplevel))
-#endif
         return toplevel;
     else
         return NULL;
@@ -296,10 +293,10 @@ void webkit_init()
 
 void webkit_white_list_access_from_origin(const gchar* sourceOrigin, const gchar* destinationProtocol, const gchar* destinationHost, bool allowDestinationSubdomains)
 {
-    SecurityOrigin::whiteListAccessFromOrigin(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    SecurityOrigin::addOriginAccessWhitelistEntry(*SecurityOrigin::createFromString(sourceOrigin), destinationProtocol, destinationHost, allowDestinationSubdomains);
 }
 
 void webkit_reset_origin_access_white_lists()
 {
-    SecurityOrigin::resetOriginAccessWhiteLists();
+    SecurityOrigin::resetOriginAccessWhitelists();
 }

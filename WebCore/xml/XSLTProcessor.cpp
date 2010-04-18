@@ -41,7 +41,6 @@
 #include "loader.h"
 #include "markup.h"
 #include <wtf/Assertions.h>
-#include <wtf/Platform.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -70,10 +69,10 @@ PassRefPtr<Document> XSLTProcessor::createDocumentFromSource(const String& sourc
 
     RefPtr<Document> result;
     if (sourceMIMEType == "text/plain") {
-        result = ownerDocument->implementation()->createDocument(frame);
+        result = Document::create(frame);
         transformTextStringToXHTMLDocumentString(documentSource);
     } else
-        result = ownerDocument->implementation()->createDocument(sourceMIMEType, frame, false);
+        result = DOMImplementation::createDocument(sourceMIMEType, frame, false);
 
     // Before parsing, we need to save & detach the old document and get the new document
     // in place. We have to do this only if we're rendering the result document.

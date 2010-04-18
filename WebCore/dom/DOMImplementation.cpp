@@ -31,6 +31,7 @@
 #include "Element.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
+#include "FrameLoaderClient.h"
 #include "FTPDirectoryDocument.h"
 #include "HTMLDocument.h"
 #include "HTMLNames.h"
@@ -272,16 +273,6 @@ PassRefPtr<CSSStyleSheet> DOMImplementation::createCSSStyleSheet(const String&, 
     return sheet.release();
 }
 
-PassRefPtr<Document> DOMImplementation::createDocument(Frame* frame)
-{
-    return Document::create(frame);
-}
-
-PassRefPtr<HTMLDocument> DOMImplementation::createHTMLDocument(Frame* frame)
-{
-    return HTMLDocument::create(frame);
-}
-
 bool DOMImplementation::isXMLMIMEType(const String& mimeType)
 {
     if (mimeType == "text/xml" || mimeType == "application/xml" || mimeType == "text/xsl")
@@ -293,9 +284,10 @@ bool DOMImplementation::isXMLMIMEType(const String& mimeType)
 
 bool DOMImplementation::isTextMIMEType(const String& mimeType)
 {
-    if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType) ||
-        (mimeType.startsWith("text/") && mimeType != "text/html" &&
-         mimeType != "text/xml" && mimeType != "text/xsl"))
+    if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType)
+        || mimeType == "application/json" // Render JSON as text/plain.
+        || (mimeType.startsWith("text/") && mimeType != "text/html"
+            && mimeType != "text/xml" && mimeType != "text/xsl"))
         return true;
 
     return false;
@@ -337,7 +329,7 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
 #endif
 
     PluginData* pluginData = 0;
-    if (frame && frame->page() && frame->page()->settings()->arePluginsEnabled())
+    if (frame && frame->page() && frame->loader()->allowPlugins(NotAboutToInstantiatePlugin))
         pluginData = frame->page()->pluginData();
 
     // PDF is one image type for which a plugin can override built-in support.

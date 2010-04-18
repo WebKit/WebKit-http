@@ -46,6 +46,10 @@ namespace WebCore {
     public:
         static ScriptObject createGenericRecord(InspectorFrontend*, double startTime);
 
+        static ScriptObject createGCEventData(InspectorFrontend* frontend, const size_t usedHeapSizeDelta);
+
+        static ScriptObject createFunctionCallData(InspectorFrontend*, const String& scriptName, int scriptLine);
+
         static ScriptObject createEventDispatchData(InspectorFrontend*, const Event&);
 
         static ScriptObject createGenericTimerData(InspectorFrontend*, int timerId);
@@ -65,6 +69,8 @@ namespace WebCore {
 
         static ScriptObject createResourceReceiveResponseData(InspectorFrontend*, unsigned long identifier, const ResourceResponse&);
 
+        static ScriptObject createReceiveResourceData(InspectorFrontend*, unsigned long identifier);
+        
         static ScriptObject createResourceFinishData(InspectorFrontend*, unsigned long identifier, bool didFail);
 
         static ScriptObject createPaintData(InspectorFrontend*, const IntRect&);

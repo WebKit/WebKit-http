@@ -213,5 +213,4 @@
     bridge between the WebKit and JavaScriptCore APIs.
 */
 - (JSGlobalContextRef)globalContext;
-
 @end

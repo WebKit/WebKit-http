@@ -34,6 +34,7 @@
 #include <QNetworkCookie>
 #include <qwebframe.h>
 #include <qwebpage.h>
+#include <wtf/text/CString.h>
 
 #include <QDebug>
 #include <QCoreApplication>
@@ -47,6 +48,7 @@
 #define SIGNAL_CONN Qt::QueuedConnection
 #endif
 
+static const int gMaxRecursionLimit = 10;
 
 namespace WebCore {
 
@@ -137,6 +139,7 @@ QNetworkReplyHandler::QNetworkReplyHandler(ResourceHandle* handle, LoadMode load
     , m_shouldFinish(false)
     , m_shouldSendResponse(false)
     , m_shouldForwardData(false)
+    , m_redirectionTries(gMaxRecursionLimit)
 {
     const ResourceRequest &r = m_resourceHandle->request();
 
@@ -151,6 +154,10 @@ QNetworkReplyHandler::QNetworkReplyHandler(ResourceHandle* handle, LoadMode load
 #if QT_VERSION >= 0x040600
     else if (r.httpMethod() == "DELETE")
         m_method = QNetworkAccessManager::DeleteOperation;
+#endif
+#if QT_VERSION >= 0x040700
+    else if (r.httpMethod() == "OPTIONS")
+        m_method = QNetworkAccessManager::CustomOperation;
 #endif
     else
         m_method = QNetworkAccessManager::UnknownOperation;
@@ -330,9 +337,18 @@ void QNetworkReplyHandler::sendResponseIfNeeded()
 
     QUrl redirection = m_reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
     if (redirection.isValid()) {
+        QUrl newUrl = m_reply->url().resolved(redirection);
+
+        m_redirectionTries--;
+        if (m_redirectionTries == 0) { // 10 or more redirections to the same url is considered infinite recursion
+            ResourceError error(newUrl.host(), 400 /*bad request*/,
+                                newUrl.toString(),
+                                QCoreApplication::translate("QWebPage", "Redirection limit reached"));
+            client->didFail(m_resourceHandle, error);
+            return;
+        }
         m_redirected = true;
 
-        QUrl newUrl = m_reply->url().resolved(redirection);
         ResourceRequest newRequest = m_resourceHandle->request();
         newRequest.setURL(newUrl);
 
@@ -436,6 +452,11 @@ void QNetworkReplyHandler::start()
             m_reply = manager->deleteResource(m_request);
             break;
         }
+#endif
+#if QT_VERSION >= 0x040700
+        case QNetworkAccessManager::CustomOperation:
+            m_reply = manager->sendCustomRequest(m_request, m_resourceHandle->request().httpMethod().latin1().data());
+            break;
 #endif
         case QNetworkAccessManager::UnknownOperation: {
             m_reply = 0;

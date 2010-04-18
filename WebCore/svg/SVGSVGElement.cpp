@@ -199,7 +199,7 @@ void SVGSVGElement::setCurrentScale(float scale)
         // Calling setCurrentScale() on the outermost <svg> element in a standalone SVG document
         // is allowed to change the page zoom factor, influencing the document size, scrollbars etc.
         if (parentNode() == document())
-            frame->setZoomFactor(scale, false);
+            frame->setZoomFactor(scale, ZoomPage);
         return;
     }
 
@@ -394,7 +394,8 @@ bool SVGSVGElement::checkEnclosure(SVGElement*, const FloatRect& rect)
 
 void SVGSVGElement::deselectAll()
 {
-    document()->frame()->selection()->clear();
+    if (Frame* frame = document()->frame())
+        frame->selection()->clear();
 }
 
 float SVGSVGElement::createSVGNumber()
@@ -437,53 +438,37 @@ SVGTransform SVGSVGElement::createSVGTransformFromMatrix(const AffineTransform& 
     return SVGTransform(matrix);
 }
 
-AffineTransform SVGSVGElement::getCTM() const
+AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const
 {
-    AffineTransform mat;
+    AffineTransform viewBoxTransform;
+    if (attributes()->getAttributeItem(SVGNames::viewBoxAttr))
+        viewBoxTransform = viewBoxToViewTransform(width().value(this), height().value(this));
+
+    AffineTransform transform;
     if (!isOutermostSVG())
-        mat.translate(x().value(this), y().value(this));
-
-    if (attributes()->getAttributeItem(SVGNames::viewBoxAttr)) {
-        AffineTransform viewBox = viewBoxToViewTransform(width().value(this), height().value(this));
-        mat = viewBox * mat;
-    }
-
-    return mat;
-}
-
-AffineTransform SVGSVGElement::getScreenCTM() const
-{
-    document()->updateLayoutIgnorePendingStylesheets();
-    FloatPoint rootLocation;
-
-    if (RenderObject* renderer = this->renderer()) {
-        if (isOutermostSVG()) {
+        transform.translate(x().value(this), y().value(this));
+    else if (mode == SVGLocatable::ScreenScope) {
+        if (RenderObject* renderer = this->renderer()) {
+            // Translate in our CSS parent coordinate space
             // FIXME: This doesn't work correctly with CSS transforms.
-            FloatPoint point;
-            if (renderer->parent())
-                point = renderer->localToAbsolute(point, false, true);
-            rootLocation.move(point.x(), point.y());
-        } else
-            rootLocation.move(x().value(this), y().value(this));
-    }
-    
-    AffineTransform mat = SVGStyledLocatableElement::getScreenCTM();
-    mat.translate(rootLocation.x(), rootLocation.y());
+            FloatPoint location = renderer->localToAbsolute(FloatPoint(), false, true);
 
-    if (attributes()->getAttributeItem(SVGNames::viewBoxAttr)) {
-        AffineTransform viewBox = viewBoxToViewTransform(width().value(this), height().value(this));
-        mat = viewBox * mat;
+            // Be careful here! localToAbsolute() includes the x/y offset coming from the viewBoxToViewTransform(), because
+            // RenderSVGRoot::localToBorderBoxTransform() (called through mapLocalToContainer(), called from localToAbsolute())
+            // also takes the viewBoxToViewTransform() into account, so we have to subtract it here (original cause of bug #27183)
+            transform.translate(location.x() - viewBoxTransform.e(), location.y() - viewBoxTransform.f());
+        }
     }
 
-    return mat;
+    return transform.multLeft(viewBoxTransform);
 }
 
 RenderObject* SVGSVGElement::createRenderer(RenderArena* arena, RenderStyle*)
 {
     if (isOutermostSVG())
         return new (arena) RenderSVGRoot(this);
-    else
-        return new (arena) RenderSVGViewportContainer(this);
+
+    return new (arena) RenderSVGViewportContainer(this);
 }
 
 void SVGSVGElement::insertedIntoDocument()

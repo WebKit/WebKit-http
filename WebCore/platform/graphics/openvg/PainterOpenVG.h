@@ -26,17 +26,17 @@
 #include <openvg.h>
 
 #include <wtf/Noncopyable.h>
-#include <wtf/Platform.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
+class AffineTransform;
 class FloatPoint;
 class FloatRect;
 class IntRect;
 class IntSize;
+class Path;
 class SurfaceOpenVG;
-class TransformationMatrix;
 
 struct PlatformPainterState;
 
@@ -47,7 +47,12 @@ public:
 
     enum SaveMode {
         CreateNewState,
+        KeepCurrentState,
         CreateNewStateWithPaintStateOnly // internal usage only, do not use outside PainterOpenVG
+    };
+    enum ClipOperation {
+        IntersectClip = VG_INTERSECT_MASK,
+        SubtractClip = VG_SUBTRACT_MASK
     };
 
     PainterOpenVG();
@@ -57,9 +62,11 @@ public:
     void begin(SurfaceOpenVG*);
     void end();
 
-    TransformationMatrix transformationMatrix() const;
-    void setTransformationMatrix(const TransformationMatrix&);
-    void concatTransformationMatrix(const TransformationMatrix&);
+    AffineTransform transformation() const;
+    void setTransformation(const AffineTransform&);
+    void concatTransformation(const AffineTransform&);
+
+    static void transformPath(VGPath dst, VGPath src, const AffineTransform&);
 
     CompositeOperator compositeOperation() const;
     void setCompositeOperation(CompositeOperator);
@@ -82,6 +89,9 @@ public:
     Color fillColor() const;
     void setFillColor(const Color&);
 
+    int textDrawingMode() const;
+    void setTextDrawingMode(int mode);
+
     bool antialiasingEnabled() const;
     void setAntialiasingEnabled(bool);
 
@@ -91,12 +101,21 @@ public:
     void drawArc(const IntRect& ellipseBounds, int startAngle, int angleSpan, VGbitfield paintModes = (VG_STROKE_PATH | VG_FILL_PATH));
     void drawEllipse(const IntRect& bounds, VGbitfield paintModes = (VG_STROKE_PATH | VG_FILL_PATH));
     void drawPolygon(size_t numPoints, const FloatPoint* points, VGbitfield paintModes = (VG_STROKE_PATH | VG_FILL_PATH));
+#ifdef OPENVG_VERSION_1_1
+    void drawText(VGFont, Vector<VGuint>& characters, VGfloat* adjustmentsX, VGfloat* adjustmentsY, const FloatPoint&);
+#endif
 
     void scale(const FloatSize& scaleFactors);
     void rotate(float radians);
     void translate(float dx, float dy);
 
+    void beginPath();
+    void addPath(const Path&);
+    Path* currentPath() const;
+    void drawPath(VGbitfield paintModes = (VG_STROKE_PATH | VG_FILL_PATH), WindRule fillRule = RULE_NONZERO);
+
     void intersectClipRect(const FloatRect&);
+    void clipPath(const Path&, PainterOpenVG::ClipOperation, WindRule clipRule = RULE_NONZERO);
 
     void save(PainterOpenVG::SaveMode saveMode = CreateNewState);
     void restore();
@@ -114,6 +133,7 @@ private:
     Vector<PlatformPainterState*> m_stateStack;
     PlatformPainterState* m_state;
     SurfaceOpenVG* m_surface;
+    Path* m_currentPath;
 };
 
 }

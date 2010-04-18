@@ -33,11 +33,10 @@
 
 #if ENABLE(NOTIFICATIONS)
 
-#include "Document.h"
+#include "KURL.h"
 #include "Notification.h"
 #include "SecurityOrigin.h"
 
-#include "WebDocument.h"
 #include "WebNotification.h"
 #include "WebNotificationPermissionCallback.h"
 #include "WebNotificationPresenter.h"
@@ -92,19 +91,15 @@ void NotificationPresenterImpl::notificationObjectDestroyed(Notification* notifi
     m_presenter->objectDestroyed(PassRefPtr<Notification>(notification));
 }
 
-NotificationPresenter::Permission NotificationPresenterImpl::checkPermission(const KURL& url, Document* document)
+NotificationPresenter::Permission NotificationPresenterImpl::checkPermission(const KURL& sourceURL)
 {
-    WebDocument webDocument;
-    if (document)
-        webDocument = document;
-
-    int result = m_presenter->checkPermission(url, document ? &webDocument : 0);
+    int result = m_presenter->checkPermission(sourceURL);
     return static_cast<NotificationPresenter::Permission>(result);
 }
 
 void NotificationPresenterImpl::requestPermission(SecurityOrigin* origin, PassRefPtr<VoidCallback> callback)
 {
-    m_presenter->requestPermission(origin->toString(), new VoidCallbackClient(callback));
+    m_presenter->requestPermission(WebSecurityOrigin(origin), new VoidCallbackClient(callback));
 }
 
 } // namespace WebKit

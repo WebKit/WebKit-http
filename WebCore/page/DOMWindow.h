@@ -45,6 +45,7 @@ namespace WebCore {
     class Console;
     class DOMSelection;
     class Database;
+    class DatabaseCallback;
     class Document;
     class Element;
     class Event;
@@ -139,6 +140,8 @@ namespace WebCore {
         void alert(const String& message);
         bool confirm(const String& message);
         String prompt(const String& message, const String& defaultValue);
+        String btoa(const String& stringToEncode, ExceptionCode&);
+        String atob(const String& encodedString, ExceptionCode&);
 
         bool find(const String&, bool caseSensitive, bool backwards, bool wrap, bool wholeWord, bool searchInFrames, bool showDialog) const;
 
@@ -198,13 +201,13 @@ namespace WebCore {
 
 #if ENABLE(DATABASE)
         // HTML 5 client-side database
-        PassRefPtr<Database> openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, ExceptionCode&);
+        PassRefPtr<Database> openDatabase(const String& name, const String& version, const String& displayName, unsigned long estimatedSize, PassRefPtr<DatabaseCallback> creationCallback, ExceptionCode&);
 #endif
 
 #if ENABLE(DOM_STORAGE)
         // HTML 5 key/value storage
         Storage* sessionStorage() const;
-        Storage* localStorage() const;
+        Storage* localStorage(ExceptionCode&) const;
 #endif
 
         Console* console() const;
@@ -397,6 +400,9 @@ namespace WebCore {
 #endif
 #if ENABLE(NOTIFICATIONS)
         mutable RefPtr<NotificationCenter> m_notifications;
+#endif
+#if ENABLE(INDEXED_DATABASE)
+        mutable RefPtr<IndexedDatabaseRequest> m_indexedDatabaseRequest;
 #endif
 
         EventTargetData m_eventTargetData;

@@ -26,8 +26,8 @@
 #include "config.h"
 #include "PlatformKeyboardEvent.h"
 
-#include "KeyboardCodes.h"
 #include "NotImplemented.h"
+#include "WindowsKeyboardCodes.h"
 
 #include <AEEEvent.h>
 #include <AEEStdDef.h>
@@ -170,5 +170,13 @@ bool PlatformKeyboardEvent::currentCapsLockState()
     return false;
 }
 
-} // namespace WebCore
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+    notImplemented();
+    shiftKey = false;
+    ctrlKey = false;
+    altKey = false;
+    metaKey = false;
+}
 
+} // namespace WebCore

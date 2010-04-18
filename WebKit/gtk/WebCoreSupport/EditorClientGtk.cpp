@@ -4,6 +4,7 @@
  *  Copyright (C) 2009 Diego Escalante Urrelo <diegoe@gnome.org>
  *  Copyright (C) 2006, 2007 Apple Inc.  All rights reserved.
  *  Copyright (C) 2009, Igalia S.L.
+ *  Copyright (C) 2010, Martin Robinson <mrobinson@webkit.org>
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -23,7 +24,6 @@
 #include "config.h"
 #include "EditorClientGtk.h"
 
-#include "CString.h"
 #include "DataObjectGtk.h"
 #include "EditCommand.h"
 #include "Editor.h"
@@ -32,14 +32,15 @@
 #include "FocusController.h"
 #include "Frame.h"
 #include <glib.h>
-#include "KeyboardCodes.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PasteboardHelperGtk.h"
 #include "PlatformKeyboardEvent.h"
+#include "WindowsKeyboardCodes.h"
 #include "markup.h"
 #include "webkitprivate.h"
+#include <wtf/text/CString.h>
 
 // Arbitrary depth limit for the undo stack, to keep it from using
 // unbounded memory.  This is the maximum number of distinct undoable
@@ -51,40 +52,48 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static gchar* pendingComposition = 0;
-static gchar* pendingPreedit = 0;
+static void imContextCommitted(GtkIMContext* context, const gchar* compositionString, EditorClient* client)
+{
+    Frame* frame = core(client->webView())->focusController()->focusedOrMainFrame();
+    if (!frame || !frame->editor()->canEdit())
+        return;
 
-static void setPendingComposition(gchar* newComposition)
-{
-    g_free(pendingComposition);
-    pendingComposition = newComposition;
-}
+    // If this signal fires during a keydown event when we are not in the middle
+    // of a composition, then treat this 'commit' as a normal key event and just
+    // change the editable area right before the keypress event.
+    if (client->treatContextCommitAsKeyEvent()) {
+        client->updatePendingComposition(compositionString);
+        return;
+    }
 
-static void setPendingPreedit(gchar* newPreedit)
-{
-    g_free(pendingPreedit);
-    pendingPreedit = newPreedit;
-}
-
-static void clearPendingIMData()
-{
-    setPendingComposition(0);
-    setPendingPreedit(0);
-}
-static void imContextCommitted(GtkIMContext* context, const gchar* str, EditorClient* client)
-{
-    // This signal will fire during a keydown event. We want the contents of the
-    // field to change right before the keyup event, so we wait until then to actually
-    // commit this composition.
-    setPendingComposition(g_strdup(str));
+    frame->editor()->confirmComposition(String::fromUTF8(compositionString));
+    client->clearPendingComposition();
 }
 
 static void imContextPreeditChanged(GtkIMContext* context, EditorClient* client)
 {
+    Frame* frame = core(client->webView())->focusController()->focusedOrMainFrame();
+    if (!frame || !frame->editor()->canEdit())
+        return;
+
     // We ignore the provided PangoAttrList for now.
-    gchar* newPreedit = 0;
-    gtk_im_context_get_preedit_string(context, &newPreedit, NULL, NULL);
-    setPendingPreedit(newPreedit);
+    GOwnPtr<gchar> newPreedit(0);
+    gtk_im_context_get_preedit_string(context, &newPreedit.outPtr(), 0, 0);
+
+    String preeditString = String::fromUTF8(newPreedit.get());
+    Vector<CompositionUnderline> underlines;
+    underlines.append(CompositionUnderline(0, preeditString.length(), Color(0, 0, 0), false));
+    frame->editor()->setComposition(preeditString, underlines, 0, 0);
+}
+
+void EditorClient::updatePendingComposition(const gchar* newComposition)
+{
+    // The IMContext may signal more than one completed composition in a row,
+    // in which case we want to append them, rather than overwrite the old one.
+    if (!m_pendingComposition)
+        m_pendingComposition.set(g_strdup(newComposition));
+    else
+        m_pendingComposition.set(g_strconcat(m_pendingComposition.get(), newComposition, NULL));
 }
 
 void EditorClient::setInputMethodState(bool active)
@@ -139,7 +148,7 @@ int EditorClient::spellCheckerDocumentTag()
 
 bool EditorClient::shouldBeginEditing(WebCore::Range*)
 {
-    clearPendingIMData();
+    clearPendingComposition();
 
     notImplemented();
     return true;
@@ -147,7 +156,7 @@ bool EditorClient::shouldBeginEditing(WebCore::Range*)
 
 bool EditorClient::shouldEndEditing(WebCore::Range*)
 {
-    clearPendingIMData();
+    clearPendingComposition();
 
     notImplemented();
     return true;
@@ -466,8 +475,12 @@ void EditorClient::handleKeyboardEvent(KeyboardEvent* event)
             if (!command.isTextInsertion() && command.execute(event))
                 event->setDefaultHandled();
 
+            clearPendingComposition();
             return;
-        } else if (command.execute(event)) {
+        }
+
+        if (command.execute(event)) {
+            clearPendingComposition();
             event->setDefaultHandled();
             return;
         }
@@ -478,25 +491,14 @@ void EditorClient::handleKeyboardEvent(KeyboardEvent* event)
     // be reflected in the contents of the field until the keyup DOM event.
     if (event->type() == eventNames().keypressEvent) {
 
-        if (pendingComposition) {
-            String compositionString = String::fromUTF8(pendingComposition);
-            frame->editor()->confirmComposition(compositionString);
-
-            clearPendingIMData();
-            event->setDefaultHandled();
-
-        } else if (pendingPreedit) {
-            String preeditString = String::fromUTF8(pendingPreedit);
-
-            // Don't use an empty preedit as it will destroy the current
-            // selection, even if the composition is cancelled or fails later on.
-            if (!preeditString.isEmpty()) {
-                Vector<CompositionUnderline> underlines;
-                underlines.append(CompositionUnderline(0, preeditString.length(), Color(0, 0, 0), false));
-                frame->editor()->setComposition(preeditString, underlines, 0, 0);
-            }
-
-            clearPendingIMData();
+        // If we have a pending composition at this point, it happened while
+        // filtering a keypress, so we treat it as a normal text insertion.
+        // This will also ensure that if the keypress event handler changed the
+        // currently focused node, the text is still inserted into the original
+        // node (insertText() has this logic, but confirmComposition() does not).
+        if (m_pendingComposition) {
+            frame->editor()->insertText(String::fromUTF8(m_pendingComposition.get()), event);
+            clearPendingComposition();
             event->setDefaultHandled();
 
         } else {
@@ -520,15 +522,53 @@ void EditorClient::handleInputMethodKeydown(KeyboardEvent* event)
     if (!targetFrame || !targetFrame->editor()->canEdit())
         return;
 
-    // TODO: We need to decide which filtered keystrokes should be treated as IM
-    // events and which should not.
     WebKitWebViewPrivate* priv = m_webView->priv;
-    gtk_im_context_filter_keypress(priv->imContext, event->keyEvent()->gdkEventKey());
+
+
+    // Some IM contexts (e.g. 'simple') will act as if they filter every
+    // keystroke and just issue a 'commit' signal during handling. In situations
+    // where the 'commit' signal happens during filtering and there is no active
+    // composition, act as if the keystroke was not filtered. The one exception to
+    // this is when the keyval parameter of the GdkKeyEvent is 0, which is often
+    // a key event sent by the IM context for committing the current composition.
+
+    // Here is a typical sequence of events for the 'simple' context:
+    // 1. GDK key press event -> webkit_web_view_key_press_event
+    // 2. Keydown event -> EditorClient::handleInputMethodKeydown
+    //     gtk_im_context_filter_keypress returns true, but there is a pending
+    //     composition so event->preventDefault is not called (below).
+    // 3. Keydown event bubbles through the DOM
+    // 4. Keydown event -> EditorClient::handleKeyboardEvent
+    //     No action taken.
+    // 4. GDK key release event -> webkit_web_view_key_release_event
+    // 5. gtk_im_context_filter_keypress is called on the release event.
+    //     Simple does not filter most key releases, so the event continues.
+    // 6. Keypress event bubbles through the DOM.
+    // 7. Keypress event -> EditorClient::handleKeyboardEvent
+    //     pending composition is inserted.
+    // 8. Keyup event bubbles through the DOM.
+    // 9. Keyup event -> EditorClient::handleKeyboardEvent
+    //     No action taken.
+
+    // There are two situations where we do filter the keystroke:
+    // 1. The IMContext instructed us to filter and we have no pending composition.
+    // 2. The IMContext did not instruct us to filter, but the keystroke caused a
+    //    composition in progress to finish. It seems that sometimes SCIM will finish
+    //    a composition and not mark the keystroke as filtered.
+    m_treatContextCommitAsKeyEvent = (!targetFrame->editor()->hasComposition())
+         && event->keyEvent()->gdkEventKey()->keyval;
+    clearPendingComposition();
+    if ((gtk_im_context_filter_keypress(priv->imContext, event->keyEvent()->gdkEventKey()) && !m_pendingComposition)
+        || (!m_treatContextCommitAsKeyEvent && !targetFrame->editor()->hasComposition()))
+        event->preventDefault();
+
+    m_treatContextCommitAsKeyEvent = false;
 }
 
 EditorClient::EditorClient(WebKitWebView* webView)
     : m_isInRedo(false)
     , m_webView(webView)
+    , m_treatContextCommitAsKeyEvent(false)
 {
     WebKitWebViewPrivate* priv = m_webView->priv;
     g_signal_connect(priv->imContext, "commit", G_CALLBACK(imContextCommitted), this);
@@ -571,30 +611,30 @@ void EditorClient::textDidChangeInTextArea(Element*)
 
 void EditorClient::ignoreWordInSpellDocument(const String& text)
 {
-    GSList* langs = webkit_web_settings_get_spell_languages(m_webView);
+    GSList* dicts = webkit_web_settings_get_enchant_dicts(m_webView);
 
-    for (; langs; langs = langs->next) {
-        SpellLanguage* lang = static_cast<SpellLanguage*>(langs->data);
+    for (; dicts; dicts = dicts->next) {
+        EnchantDict* dict = static_cast<EnchantDict*>(dicts->data);
 
-        enchant_dict_add_to_session(lang->speller, text.utf8().data(), -1);
+        enchant_dict_add_to_session(dict, text.utf8().data(), -1);
     }
 }
 
 void EditorClient::learnWord(const String& text)
 {
-    GSList* langs = webkit_web_settings_get_spell_languages(m_webView);
+    GSList* dicts = webkit_web_settings_get_enchant_dicts(m_webView);
 
-    for (; langs; langs = langs->next) {
-        SpellLanguage* lang = static_cast<SpellLanguage*>(langs->data);
+    for (; dicts; dicts = dicts->next) {
+        EnchantDict* dict = static_cast<EnchantDict*>(dicts->data);
 
-        enchant_dict_add_to_personal(lang->speller, text.utf8().data(), -1);
+        enchant_dict_add_to_personal(dict, text.utf8().data(), -1);
     }
 }
 
 void EditorClient::checkSpellingOfString(const UChar* text, int length, int* misspellingLocation, int* misspellingLength)
 {
-    GSList* langs = webkit_web_settings_get_spell_languages(m_webView);
-    if (!langs)
+    GSList* dicts = webkit_web_settings_get_enchant_dicts(m_webView);
+    if (!dicts)
         return;
 
     gchar* ctext = g_utf16_to_utf8(const_cast<gunichar2*>(text), length, 0, 0, 0);
@@ -623,8 +663,8 @@ void EditorClient::checkSpellingOfString(const UChar* text, int length, int* mis
             // check characters twice.
             i = end;
 
-            for (; langs; langs = langs->next) {
-                SpellLanguage* lang = static_cast<SpellLanguage*>(langs->data);
+            for (; dicts; dicts = dicts->next) {
+                EnchantDict* dict = static_cast<EnchantDict*>(dicts->data);
                 gchar* cstart = g_utf8_offset_to_pointer(ctext, start);
                 gint bytes = static_cast<gint>(g_utf8_offset_to_pointer(ctext, end) - cstart);
                 gchar* word = g_new0(gchar, bytes+1);
@@ -632,7 +672,7 @@ void EditorClient::checkSpellingOfString(const UChar* text, int length, int* mis
 
                 g_utf8_strncpy(word, cstart, end - start);
 
-                result = enchant_dict_check(lang->speller, word, -1);
+                result = enchant_dict_check(dict, word, -1);
                 g_free(word);
                 if (result) {
                     *misspellingLocation = start;
@@ -686,21 +726,21 @@ bool EditorClient::spellingUIIsShowing()
 
 void EditorClient::getGuessesForWord(const String& word, WTF::Vector<String>& guesses)
 {
-    GSList* langs = webkit_web_settings_get_spell_languages(m_webView);
+    GSList* dicts = webkit_web_settings_get_enchant_dicts(m_webView);
     guesses.clear();
 
-    for (; langs; langs = langs->next) {
+    for (; dicts; dicts = dicts->next) {
         size_t numberOfSuggestions;
         size_t i;
 
-        SpellLanguage* lang = static_cast<SpellLanguage*>(langs->data);
-        gchar** suggestions = enchant_dict_suggest(lang->speller, word.utf8().data(), -1, &numberOfSuggestions);
+        EnchantDict* dict = static_cast<EnchantDict*>(dicts->data);
+        gchar** suggestions = enchant_dict_suggest(dict, word.utf8().data(), -1, &numberOfSuggestions);
 
         for (i = 0; i < numberOfSuggestions && i < 10; i++)
             guesses.append(String::fromUTF8(suggestions[i]));
 
         if (numberOfSuggestions > 0)
-            enchant_dict_free_suggestions(lang->speller, suggestions);
+            enchant_dict_free_suggestions(dict, suggestions);
     }
 }
 

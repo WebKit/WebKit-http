@@ -174,6 +174,18 @@ String AXMenuListActionVerb()
 {
     return String();
 }
+    
+String missingPluginText()
+{
+    notImplemented();
+    return String("Missing Plug-in");
+}
+
+String crashedPluginText()
+{
+    notImplemented();
+    return String("Plug-in Failure");
+}
 
 String multipleFileUploadText(unsigned numberOfFiles)
 {

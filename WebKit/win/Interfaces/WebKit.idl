@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,7 +24,7 @@
  */
 
 cpp_quote("/*")
-cpp_quote(" * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.")
+cpp_quote(" * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.")
 cpp_quote(" *")
 cpp_quote(" * Redistribution and use in source and binary forms, with or without")
 cpp_quote(" * modification, are permitted provided that the following conditions")
@@ -134,6 +134,7 @@ import "ocidl.idl";
 #include "IWebURLResponsePrivate.idl"
 #include "IWebUndoManager.idl"
 #include "IWebUndoTarget.idl"
+#include "IWebUserContentURLPattern.idl"
 #include "IWebView.idl"
 #include "IWebViewPrivate.idl"
 #include "IWebWorkersPrivate.idl"
@@ -292,5 +293,10 @@ library WebKit
     [uuid(67712611-83CF-4703-89FC-07A0E2A19C0D)]
     coclass WebGeolocationPosition {
         [default] interface IWebGeolocationPosition;
+    }
+
+    [uuid(2D62AE25-DEAA-4945-A76E-CCE05E899664)]
+    coclass WebUserContentURLPattern {
+        [default] interface IWebUserContentURLPattern;
     }
 }

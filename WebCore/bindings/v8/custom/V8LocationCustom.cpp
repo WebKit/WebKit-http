@@ -75,9 +75,14 @@ void V8Location::hashAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::Va
 
     if (hash.startsWith("#"))
         hash = hash.substring(1);
-    if (oldRef == hash || (oldRef.isNull() && hash.isEmpty()))
-        return;
+
+    // Note that by parsing the URL and *then* comparing fragments, we are
+    // comparing fragments post-canonicalization, and so this handles the
+    // cases where fragment identifiers are ignored or invalid.
     url.setFragmentIdentifier(hash);
+    String newRef = url.fragmentIdentifier();
+    if (oldRef == newRef || (oldRef.isNull() && newRef.isEmpty()))
+        return;
 
     navigateIfAllowed(frame, url, false, false);
 }
@@ -185,7 +190,10 @@ void V8Location::protocolAccessorSetter(v8::Local<v8::String> name, v8::Local<v8
         return;
 
     KURL url = frame->loader()->url();
-    url.setProtocol(protocol);
+    if (!url.setProtocol(protocol)) {
+        throwError("Can't set protocol", V8Proxy::SyntaxError);
+        return;
+    }
 
     navigateIfAllowed(frame, url, false, false);
 }
@@ -342,17 +350,15 @@ v8::Handle<v8::Value> V8Location::toStringCallback(const v8::Arguments& args)
     return v8String(result);
 }
 
-bool V8Location::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value> data)
+bool V8Location::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)
 {
-    ASSERT(V8ClassIndex::FromInt(data->Int32Value()) == V8ClassIndex::LOCATION);
     // Only allow same origin access
     Location* imp =  V8Location::toNative(host);
     return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), false);
 }
 
-bool V8Location::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value> data)
+bool V8Location::namedSecurityCheck(v8::Local<v8::Object> host, v8::Local<v8::Value> key, v8::AccessType type, v8::Local<v8::Value>)
 {
-    ASSERT(V8ClassIndex::FromInt(data->Int32Value()) == V8ClassIndex::LOCATION);
     // Only allow same origin access
     Location* imp = V8Location::toNative(host);
     return V8BindingSecurity::canAccessFrame(V8BindingState::Only(), imp->frame(), false);
@@ -366,7 +372,7 @@ v8::Handle<v8::Value> toV8(Location* impl)
     if (wrapper.IsEmpty()) {
         wrapper = V8Location::wrap(impl);
         if (!wrapper.IsEmpty())
-            V8DOMWrapper::setHiddenWindowReference(impl->frame(), V8DOMWindow::locationIndex, wrapper);
+            V8DOMWrapper::setHiddenWindowReference(impl->frame(), wrapper);
     }
     return wrapper;
 }

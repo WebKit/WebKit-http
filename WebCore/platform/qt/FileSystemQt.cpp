@@ -32,8 +32,8 @@
 #include "config.h"
 #include "FileSystem.h"
 
-#include "CString.h"
 #include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 #include <QDateTime>
 #include <QFile>
@@ -154,11 +154,12 @@ bool unloadModule(PlatformModule module)
     return ::FreeLibrary(module);
 
 #else
+#ifndef QT_NO_LIBRARY
     if (module->unload()) {
         delete module;
         return true;
     }
-
+#endif
     return false;
 #endif
 }

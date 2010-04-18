@@ -65,7 +65,10 @@ class HTMLFrameOwnerElement;
 class IconLoader;
 class IntSize;
 class NavigationAction;
-class RenderPart;
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+class Node;
+#endif
+class RenderEmbeddedObject;
 class ResourceError;
 class ResourceLoader;
 class ResourceResponse;
@@ -211,7 +214,7 @@ public:
 
     void changeLocation(const KURL&, const String& referrer, bool lockHistory = true, bool lockBackForwardList = true, bool userGesture = false, bool refresh = false);
     void urlSelected(const ResourceRequest&, const String& target, PassRefPtr<Event>, bool lockHistory, bool lockBackForwardList, bool userGesture, ReferrerPolicy);
-    bool requestFrame(HTMLFrameOwnerElement*, const String& url, const AtomicString& frameName);
+    bool requestFrame(HTMLFrameOwnerElement*, const String& url, const AtomicString& frameName, bool lockHistory = true, bool lockBackForwardList = true);
 
     void submitForm(const char* action, const String& url,
         PassRefPtr<FormData>, const String& target, const String& contentType, const String& boundary,
@@ -256,6 +259,9 @@ public:
 
     bool isSandboxed(SandboxFlags mask) const { return m_sandboxFlags & mask; }
     SandboxFlags sandboxFlags() const { return m_sandboxFlags; }
+    // The following sandbox flags will be forced, regardless of changes to
+    // the sandbox attribute of any parent frames.
+    void setForcedSandboxFlags(SandboxFlags flags) { m_forcedSandboxFlags = flags; m_sandboxFlags |= flags; }
 
     // Mixed content related functions.
     static bool isMixedContent(SecurityOrigin* context, const KURL&);
@@ -280,6 +286,7 @@ public:
     void setResponseMIMEType(const String&);
     const String& responseMIMEType() const;
 
+    bool allowPlugins(ReasonForCallingAllowPlugins);
     bool containsPlugins() const;
 
     void loadDone();
@@ -290,7 +297,7 @@ public:
 
     bool isComplete() const;
 
-    bool requestObject(RenderPart* frame, const String& url, const AtomicString& frameName,
+    bool requestObject(RenderEmbeddedObject*, const String& url, const AtomicString& frameName,
         const String& serviceType, const Vector<String>& paramNames, const Vector<String>& paramValues);
 
     KURL completeURL(const String& url);
@@ -318,6 +325,10 @@ public:
     bool shouldInterruptLoadForXFrameOptions(const String&, const KURL&);
 
     void open(CachedFrameBase&);
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    PassRefPtr<Widget> loadMediaPlayerProxyPlugin(Node*, const KURL&, const Vector<String>& paramNames, const Vector<String>& paramValues);
+#endif
 
     // FIXME: Should these really be public?
     void completed();
@@ -348,8 +359,8 @@ private:
     void started();
 
     bool shouldUsePlugin(const KURL&, const String& mimeType, bool hasFallback, bool& useFallback);
-    bool loadPlugin(RenderPart*, const KURL&, const String& mimeType,
-    const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback);
+    bool loadPlugin(RenderEmbeddedObject*, const KURL&, const String& mimeType,
+        const Vector<String>& paramNames, const Vector<String>& paramValues, bool useFallback);
     
     void navigateWithinDocument(HistoryItem*);
     void navigateToDifferentDocument(HistoryItem*, FrameLoadType);
@@ -522,6 +533,7 @@ private:
     bool m_suppressOpenerInNewFrame;
     
     SandboxFlags m_sandboxFlags;
+    SandboxFlags m_forcedSandboxFlags;
 
 #ifndef NDEBUG
     bool m_didDispatchDidCommitLoad;

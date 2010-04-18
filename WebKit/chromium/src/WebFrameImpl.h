@@ -42,6 +42,7 @@
 #include "WebAnimationControllerImpl.h"
 
 namespace WebCore {
+class GraphicsContext;
 class HistoryItem;
 class KURL;
 class Node;
@@ -88,7 +89,7 @@ public:
     virtual WebFrame* findChildByExpression(const WebString&) const;
     virtual WebDocument document() const;
     virtual void forms(WebVector<WebFormElement>&) const;
-    virtual WebAnimationController* animationController(); 
+    virtual WebAnimationController* animationController();
     virtual WebSecurityOrigin securityOrigin() const;
     virtual void grantUniversalAccess();
     virtual NPObject* windowObject() const;
@@ -100,6 +101,8 @@ public:
     virtual void addMessageToConsole(const WebConsoleMessage&);
     virtual void collectGarbage();
 #if WEBKIT_USING_V8
+    virtual v8::Handle<v8::Value> executeScriptAndReturnValue(
+        const WebScriptSource&);
     virtual v8::Local<v8::Context> mainWorldScriptContext() const;
 #endif
     virtual bool insertStyleText(const WebString& css, const WebString& id);
@@ -142,7 +145,8 @@ public:
     virtual WebString selectionAsText() const;
     virtual WebString selectionAsMarkup() const;
     virtual bool selectWordAroundCaret();
-    virtual int printBegin(const WebSize& pageSize);
+    virtual int printBegin(const WebSize& pageSize, int printerDPI,
+                           bool* useBrowserOverlays);
     virtual float printPage(int pageToPrint, WebCanvas*);
     virtual float getPrintPageShrink(int page);
     virtual void printEnd();
@@ -167,6 +171,7 @@ public:
     virtual int pageNumberForElementById(const WebString& id,
                                          float pageWidthInPixels,
                                          float pageHeightInPixels) const;
+    virtual WebRect selectionBoundsRect() const;
 
     static PassRefPtr<WebFrameImpl> create(WebFrameClient* client);
     ~WebFrameImpl();
@@ -179,6 +184,7 @@ public:
 
     void layout();
     void paint(WebCanvas*, const WebRect&);
+    void paintWithContext(WebCore::GraphicsContext&, const WebRect&);
     void createFrameView();
 
     static WebFrameImpl* fromFrame(WebCore::Frame* frame);
@@ -212,7 +218,7 @@ public:
     // Sets whether the WebFrameImpl allows its document to be scrolled.
     // If the parameter is true, allow the document to be scrolled.
     // Otherwise, disallow scrolling.
-    void setAllowsScrolling(bool);
+    void setCanHaveScrollbars(bool);
 
     // Returns the password autocomplete listener associated with the passed
     // user name input element, or 0 if none available.

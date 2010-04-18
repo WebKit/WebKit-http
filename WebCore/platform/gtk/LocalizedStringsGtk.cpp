@@ -30,11 +30,11 @@
 #include "config.h"
 
 #include "LocalizedStrings.h"
-#include "CString.h"
 #include "GOwnPtr.h"
 #include "IntSize.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 #include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
@@ -67,7 +67,7 @@ String resetButtonDefaultLabel()
 
 String searchableIndexIntroduction()
 {
-    return String::fromUTF8(_("_Searchable Index"));
+    return String::fromUTF8(_("This is a searchable index. Enter search keywords: "));
 }
 
 String fileButtonChooseFileLabel()
@@ -334,6 +334,17 @@ String AXMenuListPopupActionVerb()
 String AXMenuListActionVerb()
 {
     return String();
+}
+    
+String missingPluginText()
+{
+    return String::fromUTF8(_("Missing Plug-in"));
+}
+
+String crashedPluginText()
+{
+    notImplemented();
+    return String::fromUTF8(_("Plug-in Failure"));
 }
 
 String multipleFileUploadText(unsigned numberOfFiles)

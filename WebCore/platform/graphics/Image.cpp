@@ -32,9 +32,9 @@
 #include "GraphicsContext.h"
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
-#include <wtf/StdLibExtras.h>
-
+#include "SharedBuffer.h"
 #include <math.h>
+#include <wtf/StdLibExtras.h>
 
 #if PLATFORM(CG)
 #include <CoreFoundation/CoreFoundation.h>
@@ -53,6 +53,7 @@ Image::~Image()
 
 Image* Image::nullImage()
 {
+    ASSERT(isMainThread());
     DEFINE_STATIC_LOCAL(RefPtr<Image>, nullImage, (BitmapImage::create()));;
     return nullImage.get();
 }

@@ -26,8 +26,6 @@
 #ifndef Cursor_h
 #define Cursor_h
 
-#include <wtf/Platform.h>
-
 #if PLATFORM(WIN)
 typedef struct HICON__* HICON;
 typedef HICON HCURSOR;
@@ -41,7 +39,6 @@ typedef struct _GdkCursor GdkCursor;
 #elif PLATFORM(CHROMIUM)
 #include "PlatformCursor.h"
 #elif PLATFORM(HAIKU)
-#include <app/AppDefs.h>
 #include <app/Cursor.h>
 #endif
 
@@ -85,6 +82,9 @@ namespace WebCore {
 #elif PLATFORM(GTK)
     typedef GdkCursor* PlatformCursor;
     typedef GdkCursor* PlatformCursorHandle;
+#elif PLATFORM(EFL)
+    typedef const char* PlatformCursor;
+    typedef const char* PlatformCursorHandle;
 #elif PLATFORM(QT) && !defined(QT_NO_CURSOR)
     typedef QCursor PlatformCursor;
     typedef QCursor* PlatformCursorHandle;
@@ -95,8 +95,8 @@ namespace WebCore {
     // See PlatformCursor.h
     typedef void* PlatformCursorHandle;
 #elif PLATFORM(HAIKU)
-    typedef BCursor PlatformCursor;
-    typedef const BCursor* PlatformCursorHandle;
+    typedef BCursor* PlatformCursor;
+    typedef BCursor* PlatformCursorHandle;
 #else
     typedef void* PlatformCursor;
     typedef void* PlatformCursorHandle;
@@ -105,9 +105,7 @@ namespace WebCore {
     class Cursor {
     public:
         Cursor()
-#if PLATFORM(HAIKU)
-        : m_impl(*B_CURSOR_SYSTEM_DEFAULT)
-#elif !PLATFORM(QT)
+#if !PLATFORM(QT) && !PLATFORM(EFL)
         : m_impl(0)
 #endif
         { }
@@ -118,11 +116,7 @@ namespace WebCore {
         Cursor& operator=(const Cursor&);
 
         Cursor(PlatformCursor);
-#if PLATFORM(HAIKU)
-        PlatformCursorHandle impl() const { return &m_impl; }
-#else
         PlatformCursor impl() const { return m_impl; }
-#endif
 
      private:
         PlatformCursor m_impl;

@@ -27,8 +27,6 @@
 #ifndef ARMAssembler_h
 #define ARMAssembler_h
 
-#include <wtf/Platform.h>
-
 #if ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
 
 #include "AssemblerBufferWithConstantPool.h"
@@ -155,6 +153,7 @@ namespace JSC {
             SET_CC = (1 << 20),
             OP2_OFSREG = (1 << 25),
             DT_UP = (1 << 23),
+            DT_BYTE = (1 << 22),
             DT_WB = (1 << 21),
             // This flag is inlcuded in LDR and STR
             DT_PRE = (1 << 24),
@@ -780,7 +779,7 @@ namespace JSC {
 
         // Memory load/store helpers
 
-        void dataTransfer32(bool isLoad, RegisterID srcDst, RegisterID base, int32_t offset);
+        void dataTransfer32(bool isLoad, RegisterID srcDst, RegisterID base, int32_t offset, bool bytes = false);
         void baseIndexTransfer32(bool isLoad, RegisterID srcDst, RegisterID base, RegisterID index, int scale, int32_t offset);
         void doubleTransfer(bool isLoad, FPRegisterID srcDst, RegisterID base, int32_t offset);
 

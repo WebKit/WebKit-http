@@ -39,6 +39,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "ScriptArray.h"
+#include "ScriptCallStack.h"
 #include "ScriptObject.h"
 
 namespace WebCore {
@@ -47,7 +48,31 @@ ScriptObject TimelineRecordFactory::createGenericRecord(InspectorFrontend* front
 {
     ScriptObject record = frontend->newScriptObject();
     record.set("startTime", startTime);
+
+    String sourceName;
+    int sourceLineNumber;
+    String functionName;
+    if (ScriptCallStack::callLocation(&sourceName, &sourceLineNumber, &functionName) && sourceName != "undefined") {
+        record.set("callerScriptName", sourceName);
+        record.set("callerScriptLine", sourceLineNumber);
+        record.set("callerFunctionName", functionName);
+    }
     return record;
+}
+
+ScriptObject TimelineRecordFactory::createGCEventData(InspectorFrontend* frontend, const size_t usedHeapSizeDelta)
+{
+    ScriptObject data = frontend->newScriptObject();
+    data.set("usedHeapSizeDelta", usedHeapSizeDelta);
+    return data;
+}
+
+ScriptObject TimelineRecordFactory::createFunctionCallData(InspectorFrontend* frontend, const String& scriptName, int scriptLine)
+{
+    ScriptObject data = frontend->newScriptObject();
+    data.set("scriptName", scriptName);
+    data.set("scriptLine", scriptLine);
+    return data;
 }
 
 ScriptObject TimelineRecordFactory::createEventDispatchData(InspectorFrontend* frontend, const Event& event)
@@ -132,6 +157,13 @@ ScriptObject TimelineRecordFactory::createResourceFinishData(InspectorFrontend* 
     return data;
 }
 
+ScriptObject TimelineRecordFactory::createReceiveResourceData(InspectorFrontend* frontend, unsigned long identifier)
+{
+    ScriptObject data = frontend->newScriptObject();
+    data.set("identifier", identifier);
+    return data;
+}
+    
 ScriptObject TimelineRecordFactory::createPaintData(InspectorFrontend* frontend, const IntRect& rect)
 {
     ScriptObject data = frontend->newScriptObject();

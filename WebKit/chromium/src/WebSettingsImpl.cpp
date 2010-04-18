@@ -185,6 +185,11 @@ void WebSettingsImpl::setUserStyleSheetLocation(const WebURL& location)
     m_settings->setUserStyleSheetLocation(location);
 }
 
+void WebSettingsImpl::setAuthorAndUserStylesEnabled(bool enabled)
+{
+    m_settings->setAuthorAndUserStylesEnabled(enabled);
+}
+
 void WebSettingsImpl::setUsesPageCache(bool usesPageCache)
 {
     m_settings->setUsesPageCache(usesPageCache);
@@ -226,11 +231,6 @@ void WebSettingsImpl::setShouldPaintCustomScrollbars(bool enabled)
     m_settings->setShouldPaintCustomScrollbars(enabled);
 }
 
-void WebSettingsImpl::setDatabasesEnabled(bool enabled)
-{
-    m_settings->setDatabasesEnabled(enabled);
-}
-
 void WebSettingsImpl::setAllowUniversalAccessFromFileURLs(bool allow)
 {
     m_settings->setAllowUniversalAccessFromFileURLs(allow);
@@ -262,11 +262,6 @@ void WebSettingsImpl::setExperimentalWebGLEnabled(bool enabled)
 void WebSettingsImpl::setShowDebugBorders(bool show)
 {
     m_settings->setShowDebugBorders(show);
-}
-
-void WebSettingsImpl::setGeolocationEnabled(bool enabled)
-{
-    m_settings->setGeolocationEnabled(enabled);
 }
 
 } // namespace WebKit

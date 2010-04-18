@@ -29,20 +29,131 @@
 
 #include "GraphicsLayerCACF.h"
 
-#include "CString.h"
 #include "FloatConversion.h"
 #include "FloatRect.h"
+#include "Font.h"
+#include "FontSelector.h"
 #include "Image.h"
 #include "PlatformString.h"
 #include "SystemTime.h"
 #include "WKCACFLayer.h"
-#include <QuartzCoreInterface/QuartzCoreInterface.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/StringExtras.h>
+#include <wtf/text/CString.h>
 
 using namespace std;
 
 namespace WebCore {
+
+class WebLayer : public WKCACFLayer {
+public:
+    static PassRefPtr<WKCACFLayer> create(LayerType layerType, GraphicsLayerCACF* owner)
+    {
+        return adoptRef(new WebLayer(layerType, owner));
+    }
+
+    virtual void setNeedsDisplay(const CGRect* dirtyRect)
+    {
+        if (m_owner) {
+            if (m_owner->showRepaintCounter()) {
+                CGRect layerBounds = bounds();
+                CGRect repaintCounterRect = layerBounds;
+                // We assume a maximum of 4 digits and a font size of 22.
+                repaintCounterRect.size.width = 48;
+                repaintCounterRect.size.height = 25;
+                if (m_owner->contentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown)
+                    repaintCounterRect.origin.y = layerBounds.size.height - (layerBounds.origin.y + repaintCounterRect.size.height);
+                WKCACFLayer::setNeedsDisplay(&repaintCounterRect);
+            }
+            if (dirtyRect && m_owner->contentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown) {
+                CGRect flippedDirtyRect = *dirtyRect;
+                flippedDirtyRect.origin.y = bounds().size.height - (flippedDirtyRect.origin.y + flippedDirtyRect.size.height);
+                WKCACFLayer::setNeedsDisplay(&flippedDirtyRect);
+                return;
+            }
+        }
+        WKCACFLayer::setNeedsDisplay(dirtyRect);
+    }
+
+    virtual void drawInContext(PlatformGraphicsContext* context)
+    {
+        if (!m_owner)
+            return;
+
+        CGContextSaveGState(context);
+
+        CGRect layerBounds = bounds();
+        if (m_owner->contentsOrientation() == WebCore::GraphicsLayer::CompositingCoordinatesTopDown) {
+            CGContextScaleCTM(context, 1, -1);
+            CGContextTranslateCTM(context, 0, -layerBounds.size.height);
+        }
+
+        if (m_owner->client()) {
+            GraphicsContext graphicsContext(context);
+
+            // It's important to get the clip from the context, because it may be significantly
+            // smaller than the layer bounds (e.g. tiled layers)
+            CGRect clipBounds = CGContextGetClipBoundingBox(context);
+            IntRect clip(enclosingIntRect(clipBounds));
+            m_owner->paintGraphicsLayerContents(graphicsContext, clip);
+        }
+#ifndef NDEBUG
+        else {
+            ASSERT_NOT_REACHED();
+
+            // FIXME: ideally we'd avoid calling -setNeedsDisplay on a layer that is a plain color,
+            // so CA never makes backing store for it (which is what -setNeedsDisplay will do above).
+            CGContextSetRGBFillColor(context, 0.0f, 1.0f, 0.0f, 1.0f);
+            CGContextFillRect(context, layerBounds);
+        }
+#endif
+
+        if (m_owner->showRepaintCounter()) {
+            String text = String::format("%d", m_owner->incrementRepaintCount());;
+
+            CGContextSaveGState(context);
+            CGContextSetRGBFillColor(context, 1.0f, 0.0f, 0.0f, 0.8f);
+            
+            CGRect aBounds = layerBounds;
+
+            aBounds.size.width = 10 + 12 * text.length();
+            aBounds.size.height = 25;
+            CGContextFillRect(context, aBounds);
+            
+            FontDescription desc;
+
+            NONCLIENTMETRICS metrics;
+            metrics.cbSize = sizeof(metrics);
+            SystemParametersInfo(SPI_GETNONCLIENTMETRICS, metrics.cbSize, &metrics, 0);
+            FontFamily family;
+            family.setFamily(metrics.lfSmCaptionFont.lfFaceName);
+            desc.setFamily(family);
+
+            desc.setComputedSize(22);
+            
+            Font font = Font(desc, 0, 0);
+            font.update(0);
+
+            GraphicsContext cg(context);
+            cg.setFillColor(Color::black, DeviceColorSpace);
+            cg.drawText(font, TextRun(text), IntPoint(aBounds.origin.x + 3, aBounds.origin.y + 20));
+
+            CGContextRestoreGState(context);        
+        }
+
+        CGContextRestoreGState(context);
+    }
+
+protected:
+    WebLayer(LayerType layerType, GraphicsLayerCACF* owner)
+     : WKCACFLayer(layerType)
+     , m_owner(owner)
+    {
+    }
+
+private:
+    GraphicsLayer* m_owner;
+};
 
 static inline void copyTransform(CATransform3D& toT3D, const TransformationMatrix& t)
 {
@@ -124,7 +235,7 @@ GraphicsLayerCACF::GraphicsLayerCACF(GraphicsLayerClient* client)
     , m_contentsLayerPurpose(NoContentsLayer)
     , m_contentsLayerHasBackgroundColor(false)
 {
-    m_layer = WKCACFLayer::create(WKCACFLayer::Layer, this);
+    m_layer = WebLayer::create(WKCACFLayer::Layer, this);
     
     updateDebugIndicators();
 }
@@ -142,12 +253,12 @@ GraphicsLayerCACF::~GraphicsLayerCACF()
         m_transformLayer->removeFromSuperlayer();
 }
 
-void GraphicsLayerCACF::setName(const String& inName)
+void GraphicsLayerCACF::setName(const String& name)
 {
-    String name = String::format("CALayer(%p) GraphicsLayer(%p) ", m_layer.get(), this) + inName;
-    GraphicsLayer::setName(name);
+    String longName = String::format("CALayer(%p) GraphicsLayer(%p) ", m_layer.get(), this) + name;
+    GraphicsLayer::setName(longName);
     
-    m_layer->setName(inName);
+    m_layer->setName(longName);
 }
 
 NativeLayer GraphicsLayerCACF::nativeLayer() const
@@ -331,8 +442,10 @@ void GraphicsLayerCACF::setNeedsDisplay()
 
 void GraphicsLayerCACF::setNeedsDisplayInRect(const FloatRect& rect)
 {
-    if (drawsContent())
-        m_layer->setNeedsDisplay(rect);
+    if (drawsContent()) {
+        CGRect cgRect = rect;
+        m_layer->setNeedsDisplay(&cgRect);
+    }
 }
 
 void GraphicsLayerCACF::setContentsRect(const IntRect& rect)
@@ -537,7 +650,7 @@ void GraphicsLayerCACF::updateLayerPreserves3D()
 {
     if (m_preserves3D && !m_transformLayer) {
         // Create the transform layer.
-        m_transformLayer = WKCACFLayer::create(WKCACFLayer::TransformLayer, this);
+        m_transformLayer = WebLayer::create(WKCACFLayer::TransformLayer, this);
 
 #ifndef NDEBUG
         m_transformLayer->setName(String().format("Transform Layer CATransformLayer(%p) GraphicsLayer(%p)", m_transformLayer.get(), this));
@@ -553,7 +666,7 @@ void GraphicsLayerCACF::updateLayerPreserves3D()
         m_layer->setPosition(point);
 
         m_layer->setAnchorPoint(CGPointMake(0.5f, 0.5f));
-        m_layer->setTransform(wkqcCATransform3DIdentity());
+        m_layer->setTransform(CATransform3DIdentity);
         
         // Set the old layer to opacity of 1. Further down we will set the opacity on the transform layer.
         m_layer->setOpacity(1);
@@ -610,7 +723,7 @@ void GraphicsLayerCACF::updateContentsImage()
 {
     if (m_pendingContentsImage) {
         if (!m_contentsLayer.get()) {
-            RefPtr<WKCACFLayer> imageLayer = WKCACFLayer::create(WKCACFLayer::Layer, this);
+            RefPtr<WKCACFLayer> imageLayer = WebLayer::create(WKCACFLayer::Layer, this);
 #ifndef NDEBUG
             imageLayer->setName("Image Layer");
 #endif

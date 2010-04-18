@@ -20,6 +20,7 @@ SubDirSysHdrs $(TOP) WebCore svg ;
 SubDirHdrs $(TOP) ;
 SubDirHdrs $(TOP) JavaScriptCore ;
 SubDirHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
+SubDirHdrs $(TOP) JavaScriptCore API ;
 SubDirHdrs $(TOP) JavaScriptCore assembler ;
 SubDirHdrs $(TOP) JavaScriptCore bytecode ;
 SubDirHdrs $(TOP) JavaScriptCore debugger ;
@@ -130,6 +131,7 @@ StaticLibrary webcore1 :
         AccessibilityMenuListOption.cpp
         AccessibilityMenuListPopup.cpp
         AccessibilityObject.cpp
+        AccessibilityProgressIndicator.cpp
         AccessibilityRenderObject.cpp
         AccessibilityScrollbar.cpp
         AccessibilitySlider.cpp
@@ -148,9 +150,9 @@ StaticLibrary webcore1 :
 #        RuntimeEnabledFeatures.cpp
 
         # bindings/js
+        DOMObjectHashTableMap.cpp
+        DOMWrapperWorld.cpp
         GCController.cpp
-        JavaScriptProfile.cpp
-        JavaScriptProfileNode.cpp
         JSAttrCustom.cpp
         JSAudioConstructor.cpp
         JSCallbackData.cpp
@@ -172,17 +174,21 @@ StaticLibrary webcore1 :
         JSCustomSQLTransactionErrorCallback.cpp
         JSCustomVoidCallback.cpp
         JSCustomXPathNSResolver.cpp
+        JSDatabaseCallback.cpp
         JSDatabaseCustom.cpp
         JSDataGridColumnListCustom.cpp
         JSDataGridDataSource.cpp
+        JSDebugWrapperSet.cpp
         JSDocumentCustom.cpp
         JSDocumentFragmentCustom.cpp
         JSDOMApplicationCacheCustom.cpp
         JSDOMBinding.cpp
+        JSDOMFormDataCustom.cpp
         JSDOMGlobalObject.cpp
         JSDOMWindowBase.cpp
         JSDOMWindowCustom.cpp
         JSDOMWindowShell.cpp
+        JSDOMWrapper.cpp
         JSElementCustom.cpp
         JSEventCustom.cpp
         JSEventListener.cpp
@@ -230,6 +236,7 @@ StaticLibrary webcore1 :
         JSPluginCustom.cpp
         JSPluginElementFunctions.cpp
         JSPopStateEventCustom.cpp
+        JSScriptProfileNodeCustom.cpp
         JSSharedWorkerConstructor.cpp
         JSSharedWorkerCustom.cpp
         JSSQLResultSetRowListCustom.cpp
@@ -250,6 +257,7 @@ StaticLibrary webcore1 :
         JSWorkerConstructor.cpp
         JSWorkerContextBase.cpp
         JSWorkerContextCustom.cpp
+        JSWorkerContextErrorHandler.cpp
         JSWorkerCustom.cpp
         JSXMLHttpRequestConstructor.cpp
         JSXMLHttpRequestCustom.cpp
@@ -380,6 +388,7 @@ StaticLibrary webcore1 :
         JSCSSValueList.cpp
         JSCSSVariablesDeclaration.cpp
         JSCSSVariablesRule.cpp
+        JSCustomEvent.cpp
         JSDatabase.cpp
         JSDataGridColumn.cpp
         JSDataGridColumnList.cpp
@@ -389,6 +398,7 @@ StaticLibrary webcore1 :
         JSDocumentType.cpp
         JSDOMApplicationCache.cpp
         JSDOMCoreException.cpp
+        JSDOMFormData.cpp
         JSDOMImplementation.cpp
         JSDOMParser.cpp
         JSDOMSelection.cpp
@@ -461,6 +471,7 @@ StaticLibrary webcore1 :
         JSHTMLParagraphElement.cpp
         JSHTMLParamElement.cpp
         JSHTMLPreElement.cpp
+        JSHTMLProgressElement.cpp
         JSHTMLQuoteElement.cpp
         JSHTMLScriptElement.cpp
         JSHTMLSelectElement.cpp
@@ -512,6 +523,8 @@ StaticLibrary webcore1 :
         JSRect.cpp
         JSRGBColor.cpp
         JSScreen.cpp
+        JSScriptProfile.cpp
+        JSScriptProfileNode.cpp
         JSSharedWorker.cpp
         JSSharedWorkerContext.cpp
         JSSQLError.cpp
@@ -658,6 +671,9 @@ StaticLibrary webcore1 :
         JSTextEvent.cpp
         JSTextMetrics.cpp
         JSTimeRanges.cpp
+        JSTouch.cpp
+        JSTouchEvent.cpp
+        JSTouchList.cpp
         JSTreeWalker.cpp
         JSUIEvent.cpp
         JSValidityState.cpp
@@ -707,6 +723,7 @@ StaticLibrary webcore2 :
         Attribute.cpp
         BeforeTextInsertedEvent.cpp
         BeforeUnloadEvent.cpp
+        CanvasSurface.cpp
         CDATASection.cpp
         CharacterData.cpp
         CheckedRadioButtons.cpp
@@ -719,6 +736,7 @@ StaticLibrary webcore2 :
         Comment.cpp
         CompositionEvent.cpp
         ContainerNode.cpp
+        CustomEvent.cpp
         CSSMappedAttributeDeclaration.cpp
         Document.cpp
         DocumentFragment.cpp
@@ -780,6 +798,7 @@ StaticLibrary webcore2 :
         TreeWalker.cpp
         UIEvent.cpp
         UIEventWithKeyState.cpp
+        UserGestureIndicator.cpp
         WebKitAnimationEvent.cpp
         WebKitTransitionEvent.cpp
         WheelEvent.cpp
@@ -855,8 +874,10 @@ StaticLibrary webcore2 :
         DataGridColumn.cpp
         DataGridColumnList.cpp
         DateComponents.cpp
+        DOMFormData.cpp
         File.cpp
         FileList.cpp
+        FileStream.cpp
         FormDataList.cpp
         HTMLAllCollection.cpp
         HTMLCollection.cpp
@@ -917,6 +938,7 @@ StaticLibrary webcore2 :
         HTMLOptionElement.cpp
         HTMLParagraphElement.cpp
         HTMLParamElement.cpp
+        HTMLProgressElement.cpp
         HTMLPlugInElement.cpp
         HTMLPlugInImageElement.cpp
         HTMLPreElement.cpp
@@ -950,6 +972,7 @@ StaticLibrary webcore2 :
         HTMLViewSourceDocument.cpp
         ImageData.cpp
         PreloadScanner.cpp
+        StepRange.cpp
         TimeRanges.cpp
         ValidityState.cpp
 
@@ -973,11 +996,13 @@ SharedLibrary libwebcore.so :
         InspectorDOMAgent.cpp
         InspectorDOMStorageResource.cpp
         InspectorFrontend.cpp
+        InspectorFrontendClientLocal.cpp
         InspectorFrontendHost.cpp
         InspectorResource.cpp
         InspectorTimelineAgent.cpp
         JavaScriptCallFrame.cpp
-        JavaScriptDebugServer.cpp
+        JavaScriptProfile.cpp
+        JavaScriptProfileNode.cpp
         TimelineRecordFactory.cpp
 
         # loader
@@ -1073,6 +1098,7 @@ SharedLibrary libwebcore.so :
         Screen.cpp
         SecurityOrigin.cpp
         Settings.cpp
+        SpatialNavigation.cpp
         UserContentURLPattern.cpp
         WindowFeatures.cpp
         WorkerNavigator.cpp
@@ -1109,11 +1135,13 @@ SharedLibrary libwebcore.so :
         Scrollbar.cpp
         ScrollbarThemeComposite.cpp
         ScrollView.cpp
+        SecureTextInput.cpp
         SharedBuffer.cpp
         Theme.cpp
         ThreadGlobalData.cpp
         ThreadTimers.cpp
         Timer.cpp
+        UUID.cpp
         Widget.cpp
 
         # platform/animation
@@ -1136,8 +1164,8 @@ SharedLibrary libwebcore.so :
         FontFamily.cpp
         FontFastPath.cpp
         GeneratedImage.cpp
+        GlyphMetricsMap.cpp
         GlyphPageTreeNode.cpp
-        GlyphWidthMap.cpp
         Gradient.cpp
         GraphicsContext.cpp
         GraphicsContext3D.cpp
@@ -1275,7 +1303,6 @@ SharedLibrary libwebcore.so :
         AtomicString.cpp
         Base64.cpp
         BidiContext.cpp
-        CString.cpp
         RegularExpression.cpp
         SegmentedString.cpp
         String.cpp
@@ -1304,7 +1331,6 @@ SharedLibrary libwebcore.so :
         SQLiteFileSystem.cpp
         SQLiteStatement.cpp
         SQLiteTransaction.cpp
-        SQLTransactionClient.cpp
         SQLValue.cpp
 
         # plugins
@@ -1322,7 +1348,7 @@ SharedLibrary libwebcore.so :
         PluginPackage.cpp
         PluginPackageNone.cpp
         PluginStream.cpp
-        PluginView.cpp
+#        PluginView.cpp
         PluginViewNone.cpp
 
         # rendering
@@ -1375,6 +1401,7 @@ SharedLibrary libwebcore.so :
         RenderPart.cpp
         RenderPartObject.cpp
         RenderPath.cpp
+        RenderProgress.cpp
         RenderReplaced.cpp
         RenderReplica.cpp
         RenderRuby.cpp
@@ -1393,6 +1420,9 @@ SharedLibrary libwebcore.so :
         RenderSVGInline.cpp
         RenderSVGInlineText.cpp
         RenderSVGModelObject.cpp
+        RenderSVGResourceClipper.cpp
+        RenderSVGResourceMarker.cpp
+        RenderSVGResourceMasker.cpp
         RenderSVGRoot.cpp
         RenderSVGShadowTreeRootContainer.cpp
         RenderSVGText.cpp
@@ -1461,6 +1491,11 @@ SharedLibrary libwebcore.so :
         DatabaseTask.cpp
         DatabaseThread.cpp
         DatabaseTracker.cpp
+        IDBDatabase.cpp
+        IDBDatabaseRequest.cpp
+        IndexedDatabase.cpp
+        IndexedDatabaseImpl.cpp
+        IndexedDatabaseRequest.cpp
         LocalStorageTask.cpp
         LocalStorageThread.cpp
         OriginQuotaManager.cpp
@@ -1469,6 +1504,7 @@ SharedLibrary libwebcore.so :
         SQLResultSetRowList.cpp
         SQLStatement.cpp
         SQLTransaction.cpp
+        SQLTransactionClient.cpp
         SQLTransactionCoordinator.cpp
         Storage.cpp
         StorageAreaImpl.cpp
@@ -1628,16 +1664,14 @@ SharedLibrary libwebcore.so :
         SVGPaintServerRadialGradient.cpp
         SVGPaintServerSolid.cpp
         SVGResource.cpp
-        SVGResourceClipper.cpp
         SVGResourceFilter.cpp
-        SVGResourceMarker.cpp
-        SVGResourceMasker.cpp
 
 
         # xml
         DOMParser.cpp
         NativeXPathNSResolver.cpp
         XMLHttpRequest.cpp
+        XMLHttpRequestProgressEventThrottle.cpp
         XMLHttpRequestUpload.cpp
         XMLSerializer.cpp
         XPathEvaluator.cpp

@@ -34,6 +34,7 @@
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "InspectorTimelineAgent.h"
 #include "Page.h"
 #include "ProgressTracker.h"
 #include "ResourceHandle.h"
@@ -111,6 +112,17 @@ bool ResourceLoader::load(const ResourceRequest& r)
     ASSERT(!m_documentLoader->isSubstituteLoadPending(this));
     
     ResourceRequest clientRequest(r);
+    
+    // https://bugs.webkit.org/show_bug.cgi?id=26391
+    // The various plug-in implementations call directly to ResourceLoader::load() instead of piping requests
+    // through FrameLoader. As a result, they miss the FrameLoader::addExtraFieldsToRequest() step which sets
+    // up the 1st party for cookies URL. Until plug-in implementations can be reigned in to pipe through that
+    // method, we need to make sure there is always a 1st party for cookies set.
+    if (clientRequest.firstPartyForCookies().isNull()) {
+        if (Document* document = m_frame->document())
+            clientRequest.setFirstPartyForCookies(document->firstPartyForCookies());
+    }
+
     willSendRequest(clientRequest, ResourceResponse());
     if (clientRequest.isNull()) {
         didFail(frameLoader()->cancelledError(r));
@@ -130,7 +142,7 @@ bool ResourceLoader::load(const ResourceRequest& r)
         return true;
     }
     
-    m_handle = ResourceHandle::create(clientRequest, this, m_frame.get(), m_defersLoading, m_shouldContentSniff, true);
+    m_handle = ResourceHandle::create(clientRequest, this, m_frame.get(), m_defersLoading, m_shouldContentSniff);
 
     return true;
 }
@@ -386,16 +398,44 @@ void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, 
 
 void ResourceLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
 {
+#if ENABLE(INSPECTOR)
+    if (InspectorTimelineAgent::instanceCount()) {
+        InspectorTimelineAgent* timelineAgent = m_frame->page() ? m_frame->page()->inspectorTimelineAgent() : 0;
+        if (timelineAgent)
+            timelineAgent->willReceiveResourceResponse(identifier(), response);
+    }
+#endif
 #if ENABLE(OFFLINE_WEB_APPLICATIONS)
     if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(this, response))
         return;
 #endif
     didReceiveResponse(response);
+#if ENABLE(INSPECTOR)
+    if (InspectorTimelineAgent::instanceCount()) {
+        InspectorTimelineAgent* timelineAgent = m_frame->page() ? m_frame->page()->inspectorTimelineAgent() : 0;
+        if (timelineAgent)
+            timelineAgent->didReceiveResourceResponse();
+    }
+#endif
 }
 
 void ResourceLoader::didReceiveData(ResourceHandle*, const char* data, int length, int lengthReceived)
 {
+#if ENABLE(INSPECTOR)
+    if (InspectorTimelineAgent::instanceCount()) {
+        InspectorTimelineAgent* timelineAgent = m_frame->page() ? m_frame->page()->inspectorTimelineAgent() : 0;
+        if (timelineAgent)
+            timelineAgent->willReceiveResourceData(identifier());
+    }
+#endif
     didReceiveData(data, length, lengthReceived, false);
+#if ENABLE(INSPECTOR)
+    if (InspectorTimelineAgent::instanceCount()) {
+        InspectorTimelineAgent* timelineAgent = m_frame->page() ? m_frame->page()->inspectorTimelineAgent() : 0;
+        if (timelineAgent)
+            timelineAgent->didReceiveResourceData();
+    }
+#endif
 }
 
 void ResourceLoader::didFinishLoading(ResourceHandle*)

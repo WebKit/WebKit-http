@@ -101,6 +101,7 @@
 #include "markup.h"
 #include "Page.h"
 #include "PlatformContextSkia.h"
+#include "PluginDocument.h"
 #include "PrintContext.h"
 #include "RenderFrame.h"
 #include "RenderTreeAsText.h"
@@ -130,6 +131,7 @@
 #include "WebHistoryItem.h"
 #include "WebInputElement.h"
 #include "WebPasswordAutocompleteListener.h"
+#include "WebPluginContainerImpl.h"
 #include "WebRange.h"
 #include "WebRect.h"
 #include "WebScriptSource.h"
@@ -246,7 +248,20 @@ static void frameContentAsPlainText(size_t maxChars, Frame* frame,
     }
 }
 
-// Simple class to override some of PrintContext behavior.
+// If the frame hosts a PluginDocument, this method returns the WebPluginContainerImpl
+// that hosts the plugin.
+static WebPluginContainerImpl* pluginContainerFromFrame(Frame* frame)
+{
+    if (!frame)
+        return 0;
+    if (!frame->document() || !frame->document()->isPluginDocument())
+        return 0;
+    PluginDocument* pluginDocument = static_cast<PluginDocument*>(frame->document());
+    return static_cast<WebPluginContainerImpl *>(pluginDocument->pluginWidget());
+}
+
+// Simple class to override some of PrintContext behavior. Some of the methods
+// made virtual so that they can be overriden by ChromePluginPrintContext.
 class ChromePrintContext : public PrintContext, public Noncopyable {
 public:
     ChromePrintContext(Frame* frame)
@@ -255,28 +270,38 @@ public:
     {
     }
 
-    void begin(float width)
+    virtual void begin(float width)
     {
         ASSERT(!m_printedPageWidth);
         m_printedPageWidth = width;
         PrintContext::begin(m_printedPageWidth);
     }
 
-    float getPageShrink(int pageNumber) const
+    virtual void end()
+    {
+        PrintContext::end();
+    }
+
+    virtual float getPageShrink(int pageNumber) const
     {
         IntRect pageRect = m_pageRects[pageNumber];
         return m_printedPageWidth / pageRect.width();
     }
 
-    // Spools the printed page, a subrect of m_frame.  Skip the scale step.
+    // Spools the printed page, a subrect of m_frame. Skip the scale step.
     // NativeTheme doesn't play well with scaling. Scaling is done browser side
-    // instead.  Returns the scale to be applied.
-    float spoolPage(GraphicsContext& ctx, int pageNumber)
+    // instead. Returns the scale to be applied.
+    // On Linux, we don't have the problem with NativeTheme, hence we let WebKit
+    // do the scaling and ignore the return value.
+    virtual float spoolPage(GraphicsContext& ctx, int pageNumber)
     {
         IntRect pageRect = m_pageRects[pageNumber];
         float scale = m_printedPageWidth / pageRect.width();
 
         ctx.save();
+#if OS(LINUX)
+        ctx.scale(WebCore::FloatSize(scale, scale));
+#endif
         ctx.translate(static_cast<float>(-pageRect.x()),
                       static_cast<float>(-pageRect.y()));
         ctx.clip(pageRect);
@@ -285,9 +310,93 @@ public:
         return scale;
     }
 
+    virtual void computePageRects(const FloatRect& printRect, float headerHeight, float footerHeight, float userScaleFactor, float& outPageHeight)
+    {
+        return PrintContext::computePageRects(printRect, headerHeight, footerHeight, userScaleFactor, outPageHeight);
+    }
+
+    virtual int pageCount() const
+    {
+        return PrintContext::pageCount();
+    }
+
+    virtual bool shouldUseBrowserOverlays() const
+    {
+        return true;
+    }
+
 private:
     // Set when printing.
     float m_printedPageWidth;
+};
+
+// Simple class to override some of PrintContext behavior. This is used when
+// the frame hosts a plugin that supports custom printing. In this case, we
+// want to delegate all printing related calls to the plugin.
+class ChromePluginPrintContext : public ChromePrintContext {
+public:
+    ChromePluginPrintContext(Frame* frame, int printerDPI)
+        : ChromePrintContext(frame), m_pageCount(0), m_printerDPI(printerDPI)
+    {
+        // This HAS to be a frame hosting a full-mode plugin
+        ASSERT(frame->document()->isPluginDocument());
+    }
+
+    virtual void begin(float width)
+    {
+    }
+
+    virtual void end()
+    {
+        WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(m_frame);
+        if (pluginContainer && pluginContainer->supportsPaginatedPrint())
+            pluginContainer->printEnd();
+        else
+            ASSERT_NOT_REACHED();
+    }
+
+    virtual float getPageShrink(int pageNumber) const
+    {
+        // We don't shrink the page (maybe we should ask the widget ??)
+        return 1.0;
+    }
+
+    virtual void computePageRects(const FloatRect& printRect, float headerHeight, float footerHeight, float userScaleFactor, float& outPageHeight)
+    {
+        WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(m_frame);
+        if (pluginContainer && pluginContainer->supportsPaginatedPrint())
+            m_pageCount = pluginContainer->printBegin(IntRect(printRect), m_printerDPI);
+        else
+            ASSERT_NOT_REACHED();
+    }
+
+    virtual int pageCount() const
+    {
+        return m_pageCount;
+    }
+
+    // Spools the printed page, a subrect of m_frame.  Skip the scale step.
+    // NativeTheme doesn't play well with scaling. Scaling is done browser side
+    // instead.  Returns the scale to be applied.
+    virtual float spoolPage(GraphicsContext& ctx, int pageNumber)
+    {
+        WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(m_frame);
+        if (pluginContainer && pluginContainer->supportsPaginatedPrint())
+            pluginContainer->printPage(pageNumber, &ctx);
+        else
+            ASSERT_NOT_REACHED();
+        return 1.0;
+    }
+
+    virtual bool shouldUseBrowserOverlays() const
+    {
+        return false;
+    }
+
+private:
+    // Set when printing.
+    int m_pageCount;
+    int m_printerDPI;
 };
 
 static WebDataSource* DataSourceForDocLoader(DocumentLoader* loader)
@@ -553,13 +662,18 @@ void WebFrameImpl::forms(WebVector<WebFormElement>& results) const
         return;
 
     RefPtr<HTMLCollection> forms = m_frame->document()->forms();
-    size_t formCount = forms->length();
+    size_t formCount = 0;
+    for (size_t i = 0; i < forms->length(); ++i) {
+        Node* node = forms->item(i);
+        if (node && node->isHTMLElement())
+            ++formCount;
+    }
 
     WebVector<WebFormElement> temp(formCount);
     for (size_t i = 0; i < formCount; ++i) {
         Node* node = forms->item(i);
         // Strange but true, sometimes item can be 0.
-        if (node)
+        if (node && node->isHTMLElement())
             temp[i] = static_cast<HTMLFormElement*>(node);
     }
     results.swap(temp);
@@ -596,7 +710,7 @@ NPObject* WebFrameImpl::windowObject() const
 void WebFrameImpl::bindToWindowObject(const WebString& name, NPObject* object)
 {
     ASSERT(m_frame);
-    if (!m_frame || !m_frame->script()->canExecuteScripts())
+    if (!m_frame || !m_frame->script()->canExecuteScripts(NotAboutToExecuteScript))
         return;
 
     String key = name;
@@ -670,6 +784,13 @@ void WebFrameImpl::collectGarbage()
 }
 
 #if USE(V8)
+v8::Handle<v8::Value> WebFrameImpl::executeScriptAndReturnValue(
+    const WebScriptSource& source)
+{
+    return m_frame->script()->executeScript(
+        ScriptSourceCode(source.code, source.url, source.startLine)).v8Value();
+}
+
 // Returns the V8 context for this frame, or an empty handle if there is none.
 v8::Local<v8::Context> WebFrameImpl::mainWorldScriptContext() const
 {
@@ -716,9 +837,6 @@ bool WebFrameImpl::insertStyleText(
 void WebFrameImpl::reload(bool ignoreCache)
 {
     m_frame->loader()->history()->saveDocumentAndScrollState();
-
-    stopLoading();  // Make sure existing activity stops.
-
     m_frame->loader()->reload(ignoreCache);
 }
 
@@ -732,7 +850,6 @@ void WebFrameImpl::loadRequest(const WebURLRequest& request)
         return;
     }
 
-    stopLoading();  // Make sure existing activity stops.
     m_frame->loader()->load(resourceRequest, false);
 }
 
@@ -740,8 +857,6 @@ void WebFrameImpl::loadHistoryItem(const WebHistoryItem& item)
 {
     RefPtr<HistoryItem> historyItem = PassRefPtr<HistoryItem>(item);
     ASSERT(historyItem.get());
-
-    stopLoading();  // Make sure existing activity stops.
 
     // If there is no currentItem, which happens when we are navigating in
     // session history after a crash, we need to manufacture one otherwise WebKit
@@ -778,8 +893,6 @@ void WebFrameImpl::loadData(const WebData& data,
     if (replace && !unreachableURL.isEmpty())
         request = m_frame->loader()->originalRequest();
     request.setURL(baseURL);
-
-    stopLoading();  // Make sure existing activity stops.
 
     m_frame->loader()->load(request, substData, false);
     if (replace) {
@@ -848,7 +961,12 @@ WebHistoryItem WebFrameImpl::previousHistoryItem() const
 
 WebHistoryItem WebFrameImpl::currentHistoryItem() const
 {
-    m_frame->loader()->history()->saveDocumentAndScrollState();
+    // If we are still loading, then we don't want to clobber the current
+    // history item as this could cause us to lose the scroll position and 
+    // document state.  However, it is OK for new navigations.
+    if (m_frame->loader()->loadType() == FrameLoadTypeStandard
+        || !m_frame->loader()->activeDocumentLoader()->isLoadingInAPISense())
+        m_frame->loader()->history()->saveDocumentAndScrollState();
 
     return WebHistoryItem(m_frame->page()->backForwardList()->currentItem());
 }
@@ -1083,11 +1201,10 @@ void WebFrameImpl::selectWordAroundPosition(Frame* frame, VisiblePosition pos)
     VisibleSelection selection(pos);
     selection.expandUsingGranularity(WordGranularity);
 
-    if (selection.isRange())
-        frame->setSelectionGranularity(WordGranularity);
-
-    if (frame->shouldChangeSelection(selection))
-        frame->selection()->setSelection(selection);
+    if (frame->shouldChangeSelection(selection)) {
+        TextGranularity granularity = selection.isRange() ? WordGranularity : CharacterGranularity;
+        frame->selection()->setSelection(selection, granularity);
+    }
 }
 
 bool WebFrameImpl::selectWordAroundCaret()
@@ -1100,11 +1217,17 @@ bool WebFrameImpl::selectWordAroundCaret()
     return true;
 }
 
-int WebFrameImpl::printBegin(const WebSize& pageSize)
+int WebFrameImpl::printBegin(const WebSize& pageSize, int printerDPI, bool *useBrowserOverlays)
 {
     ASSERT(!frame()->document()->isFrameSet());
+    // If this is a plugin document, check if the plugin supports its own
+    // printing. If it does, we will delegate all printing to that.
+    WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(frame());
+    if (pluginContainer && pluginContainer->supportsPaginatedPrint())
+        m_printContext.set(new ChromePluginPrintContext(frame(), printerDPI));
+    else
+        m_printContext.set(new ChromePrintContext(frame()));
 
-    m_printContext.set(new ChromePrintContext(frame()));
     FloatRect rect(0, 0, static_cast<float>(pageSize.width),
                          static_cast<float>(pageSize.height));
     m_printContext->begin(rect.width());
@@ -1112,6 +1235,9 @@ int WebFrameImpl::printBegin(const WebSize& pageSize)
     // We ignore the overlays calculation for now since they are generated in the
     // browser. pageHeight is actually an output parameter.
     m_printContext->computePageRects(rect, 0, 0, 1.0, pageHeight);
+    if (useBrowserOverlays)
+        *useBrowserOverlays = m_printContext->shouldUseBrowserOverlays();
+
     return m_printContext->pageCount();
 }
 
@@ -1134,7 +1260,7 @@ float WebFrameImpl::printPage(int page, WebCanvas* canvas)
         return 0;
     }
 
-#if OS(WINDOWS) || OS(LINUX) || OS(FREEBSD)
+#if OS(WINDOWS) || OS(LINUX) || OS(FREEBSD) || OS(SOLARIS)
     PlatformContextSkia context(canvas);
     GraphicsContext spool(&context);
 #elif OS(DARWIN)
@@ -1208,6 +1334,9 @@ bool WebFrameImpl::find(int identifier,
             // WebKit draws the highlighting for all matches.
             executeCommand(WebString::fromUTF8("Unselect"));
         }
+
+        // Make sure no node is focused. See http://crbug.com/38700.
+        frame()->document()->setFocusedNode(0);
 
         if (!options.findNext || activeSelection) {
             // This is either a Find operation or a Find-next from a new start point
@@ -1534,6 +1663,14 @@ int WebFrameImpl::pageNumberForElementById(const WebString& id,
     return PrintContext::pageNumberForElement(element, pageSize);
 }
 
+WebRect WebFrameImpl::selectionBoundsRect() const
+{
+    if (hasSelection())
+        return IntRect(frame()->selectionBounds(false));
+
+    return WebRect();
+}
+
 // WebFrameImpl public ---------------------------------------------------------
 
 PassRefPtr<WebFrameImpl> WebFrameImpl::create(WebFrameClient* client)
@@ -1635,11 +1772,23 @@ void WebFrameImpl::layout()
         view->layoutIfNeededRecursive();
 }
 
+void WebFrameImpl::paintWithContext(GraphicsContext& gc, const WebRect& rect)
+{
+    IntRect dirtyRect(rect);
+    gc.save();
+    if (m_frame->document() && frameView()) {
+        gc.clip(dirtyRect);
+        frameView()->paint(&gc, dirtyRect);
+        m_frame->page()->inspectorController()->drawNodeHighlight(gc);
+    } else
+        gc.fillRect(dirtyRect, Color::white, DeviceColorSpace);
+    gc.restore();
+}
+
 void WebFrameImpl::paint(WebCanvas* canvas, const WebRect& rect)
 {
     if (rect.isEmpty())
         return;
-    IntRect dirtyRect(rect);
 #if WEBKIT_USING_CG
     GraphicsContext gc(canvas);
     LocalCurrentGraphicsContext localContext(&gc);
@@ -1651,14 +1800,7 @@ void WebFrameImpl::paint(WebCanvas* canvas, const WebRect& rect)
 #else
     notImplemented();
 #endif
-    gc.save();
-    if (m_frame->document() && frameView()) {
-        gc.clip(dirtyRect);
-        frameView()->paint(&gc, dirtyRect);
-        m_frame->page()->inspectorController()->drawNodeHighlight(gc);
-    } else
-        gc.fillRect(dirtyRect, Color::white, DeviceColorSpace);
-    gc.restore();
+    paintWithContext(gc, rect);
 }
 
 void WebFrameImpl::createFrameView()
@@ -1720,7 +1862,7 @@ WebFrameImpl* WebFrameImpl::fromFrameOwnerElement(Element* element)
         static_cast<HTMLFrameOwnerElement*>(element);
     return fromFrame(frameElement->contentFrame());
 }
-    
+
 WebViewImpl* WebFrameImpl::viewImpl() const
 {
     if (!m_frame)
@@ -1795,9 +1937,9 @@ void WebFrameImpl::didFail(const ResourceError& error, bool wasProvisional)
         client()->didFailLoad(this, webError);
 }
 
-void WebFrameImpl::setAllowsScrolling(bool flag)
+void WebFrameImpl::setCanHaveScrollbars(bool canHaveScrollbars)
 {
-    m_frame->view()->setCanHaveScrollbars(flag);
+    m_frame->view()->setCanHaveScrollbars(canHaveScrollbars);
 }
 
 void WebFrameImpl::registerPasswordListener(
@@ -1833,6 +1975,8 @@ void WebFrameImpl::invalidateArea(AreaToInvalidate area)
         if ((area & InvalidateContentArea) == InvalidateContentArea) {
             IntRect contentArea(
                 view->x(), view->y(), view->visibleWidth(), view->visibleHeight());
+            IntRect frameRect = view->frameRect();
+            contentArea.move(-frameRect.topLeft().x(), -frameRect.topLeft().y());
             view->invalidateRect(contentArea);
         }
 
@@ -1842,6 +1986,8 @@ void WebFrameImpl::invalidateArea(AreaToInvalidate area)
                 view->x() + view->visibleWidth(), view->y(),
                 ScrollbarTheme::nativeTheme()->scrollbarThickness(),
                 view->visibleHeight());
+            IntRect frameRect = view->frameRect();
+            scrollBarVert.move(-frameRect.topLeft().x(), -frameRect.topLeft().y());
             view->invalidateRect(scrollBarVert);
         }
     }

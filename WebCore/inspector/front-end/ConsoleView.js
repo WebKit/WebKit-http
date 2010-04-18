@@ -48,6 +48,7 @@ WebInspector.ConsoleView = function(drawer)
     this.promptElement.className = "source-code";
     this.promptElement.addEventListener("keydown", this._promptKeyDown.bind(this), true);
     this.prompt = new WebInspector.TextPrompt(this.promptElement, this.completions.bind(this), ExpressionStopCharacters + ".");
+    WebInspector.settings.addEventListener("loaded", this._settingsLoaded, this);
 
     this.topGroup = new WebInspector.ConsoleGroup(null, 0);
     this.messagesElement.insertBefore(this.topGroup.element, this.promptElement);
@@ -92,11 +93,13 @@ WebInspector.ConsoleView = function(drawer)
     this._shortcuts = {};
 
     var shortcut;
-    var clearConsoleHandler = this.requestClearMessages.bind(this);
 
     shortcut = WebInspector.KeyboardShortcut.makeKey("k", WebInspector.KeyboardShortcut.Modifiers.Meta);
-    this._shortcuts[shortcut] = clearConsoleHandler;
+    // This case requires a separate bound function as its isMacOnly property should not be shared among different shortcut handlers.
+    this._shortcuts[shortcut] = this.requestClearMessages.bind(this);
     this._shortcuts[shortcut].isMacOnly = true;
+
+    var clearConsoleHandler = this.requestClearMessages.bind(this);
     shortcut = WebInspector.KeyboardShortcut.makeKey("l", WebInspector.KeyboardShortcut.Modifiers.Ctrl);
     this._shortcuts[shortcut] = clearConsoleHandler;
 
@@ -115,6 +118,10 @@ WebInspector.ConsoleView = function(drawer)
 }
 
 WebInspector.ConsoleView.prototype = {
+    _settingsLoaded: function()
+    {
+        this.prompt.history = WebInspector.settings.consoleHistory;
+    },
     
     _updateFilter: function(e)
     {
@@ -215,6 +222,19 @@ WebInspector.ConsoleView.prototype = {
         this.toggleConsoleButton.title = WebInspector.UIString("Show console.");
     },
 
+    _scheduleScrollIntoView: function()
+    {
+        if (this._scrollIntoViewTimer)
+            return;
+
+        function scrollIntoView()
+        {
+            this.promptElement.scrollIntoView(false);
+            delete this._scrollIntoViewTimer;
+        }
+        this._scrollIntoViewTimer = setTimeout(scrollIntoView.bind(this), 20);
+    },
+
     addMessage: function(msg)
     {
         if (msg instanceof WebInspector.ConsoleMessage && !(msg instanceof WebInspector.ConsoleCommandResult)) {
@@ -256,7 +276,7 @@ WebInspector.ConsoleView.prototype = {
             this.currentGroup.addMessage(msg);
         }
 
-        this.promptElement.scrollIntoView(false);
+        this._scheduleScrollIntoView();
     },
 
     updateMessageRepeatCount: function(count)
@@ -491,6 +511,9 @@ WebInspector.ConsoleView.prototype = {
             self.prompt.history.push(str);
             self.prompt.historyOffset = 0;
             self.prompt.text = "";
+
+            WebInspector.settings.consoleHistory = self.prompt.history.slice(-30);
+
             self.addMessage(new WebInspector.ConsoleCommandResult(result, exception, commandMessage));
         }
         this.evalInInspectedWindow(str, "console", printResult);
@@ -504,7 +527,7 @@ WebInspector.ConsoleView.prototype = {
         var formatter = this._customFormatters[type];
         if (!formatter || !isProxy) {
             formatter = this._formatvalue;
-            output = output.description || output;
+            output = output.description;
         }
 
         var span = document.createElement("span");
@@ -568,7 +591,7 @@ WebInspector.ConsoleView.prototype = {
         for (var i = 0; i < properties.length; ++i) {
             var name = properties[i].name;
             if (name == parseInt(name))
-                elements[name] = this._format(properties[i].value);
+                elements[name] = this._formatAsArrayEntry(properties[i].value);
         }
 
         elem.appendChild(document.createTextNode("["));
@@ -582,6 +605,13 @@ WebInspector.ConsoleView.prototype = {
                 elem.appendChild(document.createTextNode(", "));
         }
         elem.appendChild(document.createTextNode("]"));
+    },
+
+    _formatAsArrayEntry: function(output)
+    {
+        var type = Object.proxyType(output);
+        // Prevent infinite expansion of cross-referencing arrays.
+        return this._format(output, type === "array");
     }
 }
 

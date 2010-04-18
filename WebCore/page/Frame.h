@@ -38,9 +38,14 @@
 #include "ScrollBehavior.h"
 #include "SelectionController.h"
 #include "UserScriptTypes.h"
+#include "ZoomMode.h"
 
 #if PLATFORM(WIN)
 #include "FrameWin.h"
+#endif
+
+#if ENABLE(TILED_BACKING_STORE)
+#include "TiledBackingStoreClient.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -62,8 +67,14 @@ namespace WebCore {
     class CSSMutableStyleDeclaration;
     class HTMLTableCellElement;
     class RegularExpression;
+    class RenderPart;
+    class TiledBackingStore;
 
-    class Frame : public RefCounted<Frame> {
+    class Frame : public RefCounted<Frame>
+#if ENABLE(TILED_BACKING_STORE)
+        , public TiledBackingStoreClient
+#endif
+    {
     public:
         static PassRefPtr<Frame> create(Page* page, HTMLFrameOwnerElement* ownerElement, FrameLoaderClient* client)
         {
@@ -108,9 +119,12 @@ namespace WebCore {
         void setExcludeFromTextSearch(bool);
 
         void createView(const IntSize&, const Color&, bool, const IntSize &, bool,
-                        ScrollbarMode = ScrollbarAuto, ScrollbarMode = ScrollbarAuto);
+                        ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
+                        ScrollbarMode = ScrollbarAuto, bool verticalLock = false);
 
         void injectUserScripts(UserScriptInjectionTime);
+        
+        String layerTreeAsText() const;
 
     private:
         void injectUserScriptsForWorld(DOMWrapperWorld*, const UserScriptVector&, UserScriptInjectionTime);
@@ -163,15 +177,20 @@ namespace WebCore {
             return document() ? document()->displayStringModifiedByEncoding(str) : str;
         }
 
+#if ENABLE(TILED_BACKING_STORE)
+        TiledBackingStore* tiledBackingStore() const { return m_tiledBackingStore.get(); }
+        void setTiledBackingStoreEnabled(bool);
+#endif
+
     private:
         void lifeSupportTimerFired(Timer<Frame>*);
 
     // === to be moved into FrameView
 
     public:
-        void setZoomFactor(float scale, bool isTextOnly);
+        void setZoomFactor(float scale, ZoomMode);
         float zoomFactor() const;
-        bool isZoomFactorTextOnly() const;
+        ZoomMode zoomMode() const;
         bool shouldApplyTextZoom() const;
         bool shouldApplyPageZoom() const;
         float pageZoomFactor() const { return shouldApplyPageZoom() ? zoomFactor() : 1.0f; }
@@ -232,7 +251,6 @@ namespace WebCore {
 
     public:
         TextGranularity selectionGranularity() const;
-        void setSelectionGranularity(TextGranularity);
 
         bool shouldChangeSelection(const VisibleSelection&) const;
         bool shouldDeleteSelection(const VisibleSelection&) const;
@@ -242,8 +260,6 @@ namespace WebCore {
         void paintDragCaret(GraphicsContext*, int tx, int ty, const IntRect& clipRect) const;
 
         bool isContentEditable() const; // if true, everything in frame is editable
-
-        void updateSecureKeyboardEntryIfActive();
 
         CSSMutableStyleDeclaration* typingStyle() const;
         void setTypingStyle(CSSMutableStyleDeclaration*);
@@ -258,8 +274,6 @@ namespace WebCore {
         void revealSelection(const ScrollAlignment& = ScrollAlignment::alignCenterIfNeeded, bool revealExtent = false);
         void setSelectionFromNone();
 
-        void setUseSecureKeyboardEntry(bool);
-
         SelectionController* dragCaretController() const;
 
         String searchForLabelsAboveCell(RegularExpression*, HTMLTableCellElement*, size_t* resultDistanceFromStartOfCell);
@@ -268,6 +282,15 @@ namespace WebCore {
 
         VisiblePosition visiblePositionForPoint(const IntPoint& framePoint);
         Document* documentAtPoint(const IntPoint& windowPoint);
+        
+    private:
+#if ENABLE(TILED_BACKING_STORE)
+        // TiledBackingStoreClient interface
+        virtual void tiledBackingStorePaintBegin();
+        virtual void tiledBackingStorePaint(GraphicsContext*, const IntRect&);
+        virtual void tiledBackingStorePaintEnd(const Vector<IntRect>& paintedArea);
+        virtual IntRect tiledBackingStoreContentsRect();
+#endif
 
     #if PLATFORM(MAC)
 
@@ -325,8 +348,6 @@ namespace WebCore {
 
         float m_zoomFactor;
 
-        TextGranularity m_selectionGranularity;
-
         mutable SelectionController m_selectionController;
         mutable VisibleSelection m_mark;
         mutable Editor m_editor;
@@ -346,6 +367,10 @@ namespace WebCore {
         bool m_needsReapplyStyles;
         bool m_isDisconnected;
         bool m_excludeFromTextSearch;
+
+#if ENABLE(TILED_BACKING_STORE)        
+        OwnPtr<TiledBackingStore> m_tiledBackingStore;
+#endif
     };
 
 } // namespace WebCore

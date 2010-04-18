@@ -31,52 +31,64 @@
 #define InspectorClientQt_h
 
 #include "InspectorClient.h"
+#include "InspectorFrontendClientLocal.h"
 #include "OwnPtr.h"
+#include "PassOwnPtr.h"
 #include <QtCore/QString>
 
 class QWebPage;
 class QWebView;
 
 namespace WebCore {
-    class Node;
-    class Page;
-    class String;
+class Node;
+class Page;
+class String;
 
-    class InspectorClientQt : public InspectorClient {
-    public:
-        InspectorClientQt(QWebPage*);
+class InspectorClientQt : public InspectorClient {
+public:
+    InspectorClientQt(QWebPage*);
 
-        virtual void inspectorDestroyed();
+    virtual void inspectorDestroyed();
 
-        virtual Page* createPage();
+    virtual void openInspectorFrontend(WebCore::InspectorController*);
 
-        virtual String localizedStringsURL();
+    virtual void highlight(Node*);
+    virtual void hideHighlight();
 
-        virtual String hiddenPanels();
+    virtual void populateSetting(const String& key, String* value);
+    virtual void storeSetting(const String& key, const String& value);
 
-        virtual void showWindow();
-        virtual void closeWindow();
+private:
+    QWebPage* m_inspectedWebPage;
+};
 
-        virtual void attachWindow();
-        virtual void detachWindow();
+class InspectorFrontendClientQt : public InspectorFrontendClientLocal {
+public:
+    InspectorFrontendClientQt(QWebPage* inspectedWebPage, PassOwnPtr<QWebView> inspectorView);
 
-        virtual void setAttachedWindowHeight(unsigned height);
+    virtual void frontendLoaded();
 
-        virtual void highlight(Node*);
-        virtual void hideHighlight();
-        virtual void inspectedURLChanged(const String& newURL);
+    virtual String localizedStringsURL();
 
-        virtual void populateSetting(const String& key, String* value);
-        virtual void storeSetting(const String& key, const String& value);
+    virtual String hiddenPanels();
 
-        virtual void inspectorWindowObjectCleared();
+    virtual void bringToFront();
+    virtual void closeWindow();
 
-    private:
-        void updateWindowTitle();
-        QWebPage* m_inspectedWebPage;
-        OwnPtr<QWebView> m_inspectorView;
-        QString m_inspectedURL;
-    };
+    virtual void attachWindow();
+    virtual void detachWindow();
+
+    virtual void setAttachedWindowHeight(unsigned height);
+
+    virtual void inspectedURLChanged(const String& newURL);
+
+private:
+    void updateWindowTitle();
+    QWebPage* m_inspectedWebPage;
+    OwnPtr<QWebView> m_inspectorView;
+    QString m_inspectedURL;
+    bool m_destroyingInspectorView;
+};
 }
 
 #endif

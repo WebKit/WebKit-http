@@ -36,6 +36,8 @@
 #include <CoreGraphics/CGAffineTransform.h>
 #elif PLATFORM(CAIRO)
 #include <cairo.h>
+#elif PLATFORM(OPENVG)
+#include "VGUtils.h"
 #elif PLATFORM(QT)
 #include <QTransform>
 #elif PLATFORM(SKIA)
@@ -74,6 +76,7 @@ public:
     IntRect mapRect(const IntRect&) const;
 
     FloatRect mapRect(const FloatRect&) const;
+    FloatQuad mapQuad(const FloatQuad&) const;
 
     bool isIdentity() const;
 
@@ -120,6 +123,11 @@ public:
     {
         return m_transform[0] == 1 && m_transform[1] == 0 && m_transform[2] == 0 && m_transform[3] == 1;
     }
+    
+    bool isIdentityOrTranslationOrFlipped() const
+    {
+        return m_transform[0] == 1 && m_transform[1] == 0 && m_transform[2] == 0 && (m_transform[3] == 1 || m_transform[3] == -1);
+    }
 
     bool operator== (const AffineTransform& m2) const
     {
@@ -152,6 +160,8 @@ public:
     operator CGAffineTransform() const;
 #elif PLATFORM(CAIRO)
     operator cairo_matrix_t() const;
+#elif PLATFORM(OPENVG)
+    operator VGMatrix() const;
 #elif PLATFORM(QT)
     operator QTransform() const;
 #elif PLATFORM(SKIA)

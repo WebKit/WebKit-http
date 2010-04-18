@@ -35,6 +35,7 @@
 
 #include "KURL.h"
 #include "PlatformString.h"
+#include "WebSocketHandshakeRequest.h"
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -58,14 +59,15 @@ namespace WebCore {
         void setClientProtocol(const String& protocol);
 
         bool secure() const;
-        void setSecure(bool secure);
 
         String clientOrigin() const;
         String clientLocation() const;
 
         CString clientHandshakeMessage() const;
+        WebSocketHandshakeRequest clientHandshakeRequest() const;
 
         void reset();
+        void clearScriptExecutionContext();
 
         int readServerHandshake(const char* header, size_t len);
         Mode mode() const;

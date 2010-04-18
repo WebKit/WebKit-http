@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2010 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -36,7 +36,6 @@
 #include "WebLocalizedString.h"
 #include "WebString.h"
 #include "WebURL.h"
-#include "WebVector.h"
 
 #include <time.h>
 
@@ -50,6 +49,8 @@ class WebApplicationCacheHost;
 class WebApplicationCacheHostClient;
 class WebClipboard;
 class WebCookieJar;
+class WebGraphicsContext3D;
+class WebIndexedDatabase;
 class WebMessagePortChannel;
 class WebMimeRegistry;
 class WebPluginListBuilder;
@@ -59,8 +60,6 @@ class WebSocketStreamHandle;
 class WebStorageNamespace;
 class WebThemeEngine;
 class WebURLLoader;
-struct WebCookie;
-template <typename T> class WebVector;
 
 class WebKitClient {
 public:
@@ -78,12 +77,6 @@ public:
 
     // May return null.
     virtual WebCookieJar* cookieJar() { return 0; }
-
-
-    // Application Cache --------------------------------------------
-
-    // May return null if the process type doesn't involve appcaching.
-    virtual WebApplicationCacheHost* createApplicationCacheHost(WebApplicationCacheHostClient*) { return 0; }
 
 
     // DOM Storage --------------------------------------------------
@@ -109,7 +102,7 @@ public:
     virtual bool deleteFile(const WebString& path) { return false; }
     virtual bool deleteEmptyDirectory(const WebString& path) { return false; }
     virtual bool getFileSize(const WebString& path, long long& result) { return false; }
-    virtual bool getFileModificationTime(const WebString& path, time_t& result) { return false; }
+    virtual bool getFileModificationTime(const WebString& path, double& result) { return false; }
     virtual WebString directoryName(const WebString& path) { return WebString(); }
     virtual WebString pathByAppendingComponent(const WebString& path, const WebString& component) { return WebString(); }
     virtual bool makeAllDirectories(const WebString& path) { return false; }
@@ -130,7 +123,7 @@ public:
     virtual bool isLinkVisited(unsigned long long linkHash) { return false; }
 
 
-    // Database ------------------------------------------------------------
+    // HTML5 Database ------------------------------------------------------
 
 #ifdef WIN32
     typedef HANDLE FileHandle;
@@ -151,6 +144,11 @@ public:
 
     // Returns the size of the given database file
     virtual long long databaseGetFileSize(const WebString& vfsFileName) { return 0; }
+
+
+    // Indexed Database ----------------------------------------------------
+
+    virtual WebIndexedDatabase* indexedDatabase() { return 0; }
 
 
     // Keygen --------------------------------------------------------------
@@ -180,13 +178,6 @@ public:
 
 
     // Network -------------------------------------------------------------
-
-    // These cookie methods are DEPRECATED in favor of cookieJar accessor.
-    virtual void setCookies(const WebURL&, const WebURL& firstPartyForCookies, const WebString& cookies) { }
-    virtual WebString cookies(const WebURL&, const WebURL& firstPartyForCookies) { return WebString(); }
-    virtual bool rawCookies(const WebURL&, const WebURL& firstPartyForCookies, WebVector<WebCookie>*) { return false; }
-    virtual void deleteCookie(const WebURL&, const WebString& cookieName) { }
-    virtual bool cookiesEnabled(const WebURL&, const WebURL& firstPartyForCookies) { return true; }
 
     // A suggestion to prefetch IP information for the given hostname.
     virtual void prefetchHostName(const WebString&) { }
@@ -272,6 +263,12 @@ public:
 
     // Callable from a background WebKit thread.
     virtual void callOnMainThread(void (*func)()) { }
+
+    // WebGL --------------------------------------------------------------
+
+    // May return null if WebGL is not supported.
+    // Returns newly allocated WebGraphicsContext3D instance.
+    virtual WebGraphicsContext3D* createGraphicsContext3D() { return 0; }
 
 protected:
     ~WebKitClient() { }

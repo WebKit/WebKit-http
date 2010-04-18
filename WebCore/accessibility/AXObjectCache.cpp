@@ -38,8 +38,9 @@
 #include "AccessibilityListBoxOption.h"
 #include "AccessibilityMediaControls.h"
 #include "AccessibilityMenuList.h"
-#include "AccessibilityMenuListPopup.h"
 #include "AccessibilityMenuListOption.h"
+#include "AccessibilityMenuListPopup.h"
+#include "AccessibilityProgressIndicator.h"
 #include "AccessibilityRenderObject.h"
 #include "AccessibilityScrollbar.h"
 #include "AccessibilitySlider.h"
@@ -59,6 +60,7 @@
 #include "InputElement.h"
 #include "Page.h"
 #include "RenderObject.h"
+#include "RenderProgress.h"
 #include "RenderView.h"
 
 #include <wtf/PassRefPtr.h>
@@ -159,7 +161,7 @@ AccessibilityObject* AXObjectCache::get(RenderObject* renderer)
     return obj;
 }
     
-bool AXObjectCache::nodeIsAriaType(Node* node, String role)
+bool AXObjectCache::nodeHasRole(Node* node, const AtomicString& role)
 {
     if (!node || !node->isElementNode())
         return false;
@@ -183,16 +185,16 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
             newObj = AccessibilityMenuList::create(renderer);
 
         // If the node is aria role="list" or the aria role is empty and its a ul/ol/dl type (it shouldn't be a list if aria says otherwise). 
-        else if (node && ((nodeIsAriaType(node, "list") || nodeIsAriaType(node, "directory"))
-                          || (nodeIsAriaType(node, nullAtom) && (node->hasTagName(ulTag) || node->hasTagName(olTag) || node->hasTagName(dlTag)))))
+        else if (node && ((nodeHasRole(node, "list") || nodeHasRole(node, "directory"))
+                          || (nodeHasRole(node, nullAtom) && (node->hasTagName(ulTag) || node->hasTagName(olTag) || node->hasTagName(dlTag)))))
             newObj = AccessibilityList::create(renderer);
         
         // aria tables
-        else if (nodeIsAriaType(node, "grid") || nodeIsAriaType(node, "treegrid"))
+        else if (nodeHasRole(node, "grid") || nodeHasRole(node, "treegrid"))
             newObj = AccessibilityARIAGrid::create(renderer);
-        else if (nodeIsAriaType(node, "row"))
+        else if (nodeHasRole(node, "row"))
             newObj = AccessibilityARIAGridRow::create(renderer);
-        else if (nodeIsAriaType(node, "gridcell") || nodeIsAriaType(node, "columnheader") || nodeIsAriaType(node, "rowheader"))
+        else if (nodeHasRole(node, "gridcell") || nodeHasRole(node, "columnheader") || nodeHasRole(node, "rowheader"))
             newObj = AccessibilityARIAGridCell::create(renderer);
 
         // standard tables
@@ -207,6 +209,12 @@ AccessibilityObject* AXObjectCache::getOrCreate(RenderObject* renderer)
         // media controls
         else if (renderer->node() && renderer->node()->isMediaControlElement())
             newObj = AccessibilityMediaControl::create(renderer);
+#endif
+
+#if ENABLE(PROGRESS_TAG)
+        // progress bar
+        else if (renderer->isProgress())
+            newObj = AccessibilityProgressIndicator::create(toRenderProgress(renderer));
 #endif
 
         // input type=range
@@ -441,7 +449,9 @@ void AXObjectCache::postNotification(AccessibilityObject* object, Document* docu
 
 void AXObjectCache::selectedChildrenChanged(RenderObject* renderer)
 {
-    postNotification(renderer, AXSelectedChildrenChanged, true);
+    // postToElement is false so that you can pass in any child of an element and it will go up the parent tree
+    // to find the container which should send out the notification.
+    postNotification(renderer, AXSelectedChildrenChanged, false);
 }
 #endif
 

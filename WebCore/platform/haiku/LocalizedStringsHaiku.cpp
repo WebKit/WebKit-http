@@ -303,6 +303,16 @@ String AXMenuListActionVerb()
     return String();
 }
 
+String missingPluginText()
+{
+    return "Missing Plug-in";
+}
+
+String crashedPluginText()
+{
+    return "Plug-in Failure";
+}
+
 String imageTitle(const String& filename, const IntSize& size)
 {
     return String(filename);

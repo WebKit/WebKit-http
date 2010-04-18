@@ -34,10 +34,14 @@
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "NodeRenderStyle.h"
+#include "Path.h"
 #include "RenderImage.h"
 #include "RenderPath.h"
 #include "RenderSVGContainer.h"
 #include "RenderSVGInlineText.h"
+#include "RenderSVGResourceClipper.h"
+#include "RenderSVGResourceMarker.h"
+#include "RenderSVGResourceMasker.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGText.h"
 #include "RenderTreeAsText.h"
@@ -46,7 +50,6 @@
 #include "SVGPaintServerGradient.h"
 #include "SVGPaintServerPattern.h"
 #include "SVGPaintServerSolid.h"
-#include "SVGResourceClipper.h"
 #include "SVGRootInlineBox.h"
 #include "SVGStyledElement.h"
 #include <math.h>
@@ -195,6 +198,54 @@ TextStream& operator<<(TextStream& ts, const AffineTransform& transform)
     return ts;
 }
 
+static TextStream& operator<<(TextStream& ts, const WindRule rule)
+{
+    switch (rule) {
+    case RULE_NONZERO:
+        ts << "NON-ZERO";
+        break;
+    case RULE_EVENODD:
+        ts << "EVEN-ODD";
+        break;
+    }
+
+    return ts;
+}
+
+static TextStream& operator<<(TextStream& ts, const SVGUnitTypes::SVGUnitType& unitType)
+{
+    switch (unitType) {
+    case SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN:
+        ts << "unknown";
+        break;
+    case SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE:
+        ts << "userSpaceOnUse";
+        break;
+    case SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX:
+        ts << "objectBoundingBox";
+        break;
+    }
+
+    return ts;
+}
+
+static TextStream& operator<<(TextStream& ts, const SVGMarkerElement::SVGMarkerUnitsType& markerUnit)
+{
+    switch (markerUnit) {
+    case SVGMarkerElement::SVG_MARKERUNITS_UNKNOWN:
+        ts << "unknown";
+        break;
+    case SVGMarkerElement::SVG_MARKERUNITS_USERSPACEONUSE:
+        ts << "userSpaceOnUse";
+        break;
+    case SVGMarkerElement::SVG_MARKERUNITS_STROKEWIDTH:
+        ts << "strokeWidth";
+        break;
+    }
+
+    return ts;
+}
+
 TextStream& operator<<(TextStream& ts, const Color& c)
 {
     return ts << c.name();
@@ -298,14 +349,13 @@ static void writeStyle(TextStream& ts, const RenderObject& object)
             writeIfNotDefault(ts, "fill rule", svgStyle->fillRule(), RULE_NONZERO);
             ts << "}]";
         }
+        writeIfNotDefault(ts, "clip rule", svgStyle->clipRule(), RULE_NONZERO);
     }
 
-    if (!svgStyle->clipPath().isEmpty())
-        writeNameAndQuotedValue(ts, "clip path", svgStyle->clipPath());
-    writeIfNotEmpty(ts, "start marker", svgStyle->startMarker());
-    writeIfNotEmpty(ts, "middle marker", svgStyle->midMarker());
-    writeIfNotEmpty(ts, "end marker", svgStyle->endMarker());
-    writeIfNotEmpty(ts, "filter", svgStyle->filter());
+    writeIfNotEmpty(ts, "start marker", svgStyle->markerStartResource());
+    writeIfNotEmpty(ts, "middle marker", svgStyle->markerMidResource());
+    writeIfNotEmpty(ts, "end marker", svgStyle->markerEndResource());
+    writeIfNotEmpty(ts, "filter", svgStyle->filterResource());
 }
 
 static TextStream& writePositionAndStyle(TextStream& ts, const RenderObject& object)
@@ -464,11 +514,47 @@ static void writeChildren(TextStream& ts, const RenderObject& object, int indent
         write(ts, *child, indent + 1);
 }
 
+void writeSVGResource(TextStream& ts, const RenderObject& object, int indent)
+{
+    writeStandardPrefix(ts, object, indent);
+
+    Element* element = static_cast<Element*>(object.node());
+    const AtomicString& id = element->getIDAttribute();
+    writeNameAndQuotedValue(ts, "id", id);    
+
+    RenderSVGResource* resource = const_cast<RenderObject&>(object).toRenderSVGResource();
+    if (resource->resourceType() == MaskerResourceType) {
+        RenderSVGResourceMasker* masker = static_cast<RenderSVGResourceMasker*>(resource);
+        ASSERT(masker);
+        writeNameValuePair(ts, "maskUnits", masker->maskUnits());
+        writeNameValuePair(ts, "maskContentUnits", masker->maskContentUnits());
+    } else if (resource->resourceType() == ClipperResourceType) {
+        RenderSVGResourceClipper* clipper = static_cast<RenderSVGResourceClipper*>(resource);
+        ASSERT(clipper);
+        writeNameValuePair(ts, "clipPathUnits", clipper->clipPathUnits());
+    } else if (resource->resourceType() == MarkerResourceType) {
+        RenderSVGResourceMarker* marker = static_cast<RenderSVGResourceMarker*>(resource);
+        ASSERT(marker);
+        writeNameValuePair(ts, "markerUnits", marker->markerUnits());
+        ts << " [ref at " << marker->referencePoint() << "]";
+        ts << " [angle=";
+        if (marker->angle() == -1)
+            ts << "auto" << "]";
+        else
+            ts << marker->angle() << "]";
+    }
+
+    // FIXME: Handle other RenderSVGResource* classes here, after converting them from SVGResource*.
+    ts << "\n";
+    writeChildren(ts, object, indent);
+}
+
 void writeSVGContainer(TextStream& ts, const RenderObject& container, int indent)
 {
     writeStandardPrefix(ts, container, indent);
     writePositionAndStyle(ts, container);
     ts << "\n";
+    writeResources(ts, container, indent);
     writeChildren(ts, container, indent);
 }
 
@@ -484,6 +570,7 @@ void writeSVGText(TextStream& ts, const RenderBlock& text, int indent)
     writeStandardPrefix(ts, text, indent);
     writeRenderSVGTextBox(ts, text);
     ts << "\n";
+    writeResources(ts, text, indent);
     writeChildren(ts, text, indent);
 }
 
@@ -493,13 +580,8 @@ void writeSVGInlineText(TextStream& ts, const RenderText& text, int indent)
 
     // Why not just linesBoundingBox()?
     ts << " " << FloatRect(text.firstRunOrigin(), text.linesBoundingBox().size()) << "\n";
+    writeResources(ts, text, indent);
     writeSVGInlineTextBoxes(ts, text, indent);
-}
-
-void write(TextStream& ts, const RenderPath& path, int indent)
-{
-    writeStandardPrefix(ts, path, indent);
-    ts << path << "\n";
 }
 
 void writeSVGImage(TextStream& ts, const RenderImage& image, int indent)
@@ -507,6 +589,42 @@ void writeSVGImage(TextStream& ts, const RenderImage& image, int indent)
     writeStandardPrefix(ts, image, indent);
     writePositionAndStyle(ts, image);
     ts << "\n";
+    writeResources(ts, image, indent);
+}
+
+void write(TextStream& ts, const RenderPath& path, int indent)
+{
+    writeStandardPrefix(ts, path, indent);
+    ts << path << "\n";
+    writeResources(ts, path, indent);
+}
+
+void writeResources(TextStream& ts, const RenderObject& object, int indent)
+{
+    const RenderStyle* style = object.style();
+    const SVGRenderStyle* svgStyle = style->svgStyle();
+
+    if (!svgStyle->maskerResource().isEmpty()) {
+        if (RenderSVGResourceMasker* masker = getRenderSVGResourceById<RenderSVGResourceMasker>(object.document(), svgStyle->maskerResource())) {
+            writeIndent(ts, indent);
+            ts << " ";
+            writeNameAndQuotedValue(ts, "masker", svgStyle->maskerResource());
+            ts << " ";
+            writeStandardPrefix(ts, *masker, 0);
+            ts << " " << masker->resourceBoundingBox(object.objectBoundingBox()) << "\n";
+        }
+    }
+    if (!svgStyle->clipperResource().isEmpty()) {
+        if (RenderSVGResourceClipper* clipper = getRenderSVGResourceById<RenderSVGResourceClipper>(object.document(), svgStyle->clipperResource())) {
+            writeIndent(ts, indent);
+            ts << " ";
+            writeNameAndQuotedValue(ts, "clipPath", svgStyle->clipperResource());
+            ts << " ";
+            writeStandardPrefix(ts, *clipper, 0);
+            ts << " " << clipper->resourceBoundingBox(object.objectBoundingBox()) << "\n";
+        }
+    }
+    // FIXME: Handle other RenderSVGResource* classes here, after converting them from SVGResource*.
 }
 
 void writeRenderResources(TextStream& ts, Node* parent)

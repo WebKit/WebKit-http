@@ -295,19 +295,19 @@ TestSuite.prototype.testResourceContentLength = function()
             var resource = WebInspector.resources[identifier];
             if (!resource || !resource.url)
                 return;
-            if (resource.url.search("image.html$") !== -1) {
+            if (resource.url.search("image.html") !== -1) {
               var expectedLength = 87;
               test.assertTrue(
-                  resource.contentLength <= expectedLength,
+                  resource.resourceSize <= expectedLength,
                   "image.html content length is greater thatn expected.");
-              if (expectedLength === resource.contentLength)
+              if (expectedLength === resource.resourceSize)
                   html = true;
             } else if (resource.url.search("image.png") !== -1) {
               var expectedLength = 257796;
               test.assertTrue(
-                  resource.contentLength <= expectedLength,
+                  resource.resourceSize <= expectedLength,
                   "image.png content length is greater than expected.");
-              if (expectedLength === resource.contentLength)
+              if (expectedLength === resource.resourceSize)
                   png = true;
             }
             if (html && png) {
@@ -425,39 +425,38 @@ TestSuite.prototype.testProfilerTab = function()
 {
     this.showPanel("profiles");
 
+    var panel = WebInspector.panels.profiles;
     var test = this;
-    this.addSniffer(WebInspector.panels.profiles, "addProfileHeader",
-        function(typeOrProfile, profile) {
-            if (!profile)
-                profile = typeOrProfile;
-            var panel = WebInspector.panels.profiles;
-            panel.showProfile(profile);
-            var node = panel.visibleView.profileDataGridTree.children[0];
-            // Iterate over displayed functions and search for a function
-            // that is called "fib" or "eternal_fib". If found, it will mean
-            // that we actually have profiled page's code.
-            while (node) {
-                if (node.functionName.indexOf("fib") !== -1)
-                    test.releaseControl();
-                node = node.traverseNextNode(true, null, true);
-            }
 
-            test.fail();
-        });
-    var ticksCount = 0;
-    var tickRecord = "\nt,";
-    this.addSniffer(RemoteProfilerAgent, "didGetLogLines",
-        function(posIgnored, log) {
-            var pos = 0;
-            while ((pos = log.indexOf(tickRecord, pos)) !== -1) {
-                pos += tickRecord.length;
-                ticksCount++;
-            }
-            if (ticksCount > 100)
-                InspectorBackend.stopProfiling();
-        }, true);
+    function findDisplayedNode() {
+        var node = panel.visibleView.profileDataGridTree.children[0];
+        if (!node) {
+            // Profile hadn't been queried yet, re-schedule.
+            window.setTimeout(findDisplayedNode, 100);
+            return;
+        }
 
-    InspectorBackend.startProfiling();
+        // Iterate over displayed functions and search for a function
+        // that is called "fib" or "eternal_fib". If found, this will mean
+        // that we actually have profiled page's code.
+        while (node) {
+            if (node.functionName.indexOf("fib") !== -1)
+                test.releaseControl();
+            node = node.traverseNextNode(true, null, true);
+        }
+
+        test.fail();
+    }
+
+    function findVisibleView() {
+        if (!panel.visibleView) {
+            setTimeout(findVisibleView, 0);
+            return;
+        }
+        setTimeout(findDisplayedNode, 0);            
+    }
+
+    findVisibleView();
     this.takeControl();
 };
 
@@ -470,7 +469,7 @@ TestSuite.prototype.testShowScriptsTab = function()
     this.showPanel("scripts");
     var test = this;
     // There should be at least main page script.
-    this._waitUntilScriptsAreParsed(["debugger_test_page.html$"],
+    this._waitUntilScriptsAreParsed(["debugger_test_page.html"],
         function() {
             test.releaseControl();
         });
@@ -502,7 +501,7 @@ TestSuite.prototype.testScriptsTabIsPopulatedOnInspectedPageRefresh = function()
         var parsed = devtools.tools.getDebuggerAgent().parsedScripts_;
         for (var id in parsed) {
             var url = parsed[id].getUrl();
-            if (url && url.search("debugger_test_page.html$") !== -1) {
+            if (url && url.search("debugger_test_page.html") !== -1) {
                 checkScriptsPanel();
                 return;
             }
@@ -512,7 +511,7 @@ TestSuite.prototype.testScriptsTabIsPopulatedOnInspectedPageRefresh = function()
 
     function checkScriptsPanel() {
         test.showPanel("scripts");
-        test.assertTrue(test._scriptsAreParsed(["debugger_test_page.html$"]), "Inspected script not found in the scripts list");
+        test.assertTrue(test._scriptsAreParsed(["debugger_test_page.html"]), "Inspected script not found in the scripts list");
         test.releaseControl();
     }
 
@@ -530,7 +529,7 @@ TestSuite.prototype.testContentScriptIsPresent = function()
     var test = this;
 
     test._waitUntilScriptsAreParsed(
-        ["page_with_content_script.html$", "simple_content_script.js$"],
+        ["page_with_content_script.html", "simple_content_script.js"],
         function() {
           test.releaseControl();
         });
@@ -568,7 +567,7 @@ TestSuite.prototype.testNoScriptDuplicatesOnPanelSwitch = function()
 
     function checkScriptsPanel() {
         test.assertTrue(!!WebInspector.panels.scripts.visibleView, "No visible script view.");
-        test.assertTrue(test._scriptsAreParsed(["debugger_test_page.html$"]), "Some scripts are missing.");
+        test.assertTrue(test._scriptsAreParsed(["debugger_test_page.html"]), "Some scripts are missing.");
         checkNoDuplicates();
         test.releaseControl();
     }
@@ -584,7 +583,7 @@ TestSuite.prototype.testNoScriptDuplicatesOnPanelSwitch = function()
     }
 
     test._waitUntilScriptsAreParsed(
-        ["debugger_test_page.html$"],
+        ["debugger_test_page.html"],
         function() {
             checkNoDuplicates();
             setTimeout(switchToElementsTab, 0);
@@ -635,15 +634,15 @@ TestSuite.prototype.testPauseOnException = function()
 
     // TODO(yurys): remove else branch once the states are supported.
     if (WebInspector.ScriptsPanel.PauseOnExceptionsState) {
-        while (WebInspector.currentPanel.pauseOnExceptionButton.state !== WebInspector.ScriptsPanel.PauseOnExceptionsState.PauseOnUncaughtExceptions)
-            WebInspector.currentPanel.pauseOnExceptionButton.element.click();
+        while (WebInspector.currentPanel._pauseOnExceptionButton.state !== WebInspector.ScriptsPanel.PauseOnExceptionsState.PauseOnUncaughtExceptions)
+            WebInspector.currentPanel._pauseOnExceptionButton.element.click();
     } else {
         // Make sure pause on exceptions is on.
-        if (!WebInspector.currentPanel.pauseOnExceptionButton.toggled)
-            WebInspector.currentPanel.pauseOnExceptionButton.element.click();
+        if (!WebInspector.currentPanel._pauseOnExceptionButton.toggled)
+            WebInspector.currentPanel._pauseOnExceptionButton.element.click();
     }
 
-    this._executeCodeWhenScriptsAreParsed("handleClick()", ["pause_on_exception.html$"]);
+    this._executeCodeWhenScriptsAreParsed("handleClick()", ["pause_on_exception.html"]);
 
     this._waitForScriptPause(
         {
@@ -913,7 +912,7 @@ TestSuite.prototype.testCompletionOnPause = function()
 {
     this.showPanel("scripts");
     var test = this;
-    this._executeCodeWhenScriptsAreParsed("handleClick()", ["completion_on_pause.html$"]);
+    this._executeCodeWhenScriptsAreParsed("handleClick()", ["completion_on_pause.html"]);
 
     this._waitForScriptPause(
         {
@@ -974,7 +973,7 @@ TestSuite.prototype.testAutoContinueOnSyntaxError = function()
         // InjectedScript._ensureCommandLineAPIInstalled) since the page script
         // contains a syntax error.
         for (var i = 0 ; i < options.length; i++) {
-            if (options[i].text.search("script_syntax_error.html$") !== -1)
+            if (options[i].text.search("script_syntax_error.html") !== -1)
                 test.fail("Script with syntax error should not be in the list of parsed scripts.");
         }
     }
@@ -1173,7 +1172,7 @@ TestSuite.prototype._waitUntilScriptsAreParsed = function(expectedScripts, callb
  */
 TestSuite.prototype._executeFunctionForStepTest = function()
 {
-    this._executeCodeWhenScriptsAreParsed("a()", ["debugger_step.html$", "debugger_step.js$"]);
+    this._executeCodeWhenScriptsAreParsed("a()", ["debugger_step.html", "debugger_step.js"]);
 };
 
 
@@ -1437,7 +1436,7 @@ TestSuite.prototype.testExpandScope = function()
     this.showPanel("scripts");
     var test = this;
 
-    this._executeCodeWhenScriptsAreParsed("handleClick()", ["debugger_closure.html$"]);
+    this._executeCodeWhenScriptsAreParsed("handleClick()", ["debugger_closure.html"]);
 
     this._waitForScriptPause(
         {
@@ -1551,7 +1550,7 @@ TestSuite.prototype.testDebugIntrinsicProperties = function()
     this.showPanel("scripts");
     var test = this;
 
-    this._executeCodeWhenScriptsAreParsed("handleClick()", ["debugger_intrinsic_properties.html$"]);
+    this._executeCodeWhenScriptsAreParsed("handleClick()", ["debugger_intrinsic_properties.html"]);
 
     this._waitForScriptPause(
         {

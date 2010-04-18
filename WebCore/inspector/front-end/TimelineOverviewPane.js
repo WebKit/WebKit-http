@@ -92,7 +92,6 @@ WebInspector.TimelineOverviewPane = function(categories)
     this.windowRight = 1.0;
 }
 
-
 WebInspector.TimelineOverviewPane.prototype = {
     _onCheckboxClicked: function (category, event) {
         if (event.target.checked)
@@ -103,8 +102,9 @@ WebInspector.TimelineOverviewPane.prototype = {
         this.dispatchEventToListeners("filter changed");
     },
 
-    update: function(records)
+    update: function(records, showShortEvents)
     {
+        this._showShortEvents = showShortEvents;
         // Clear summary bars.
         var timelines = {};
         for (var category in this._categories) {
@@ -128,6 +128,8 @@ WebInspector.TimelineOverviewPane.prototype = {
 
         function markTimeline(record)
         {
+            if (!(this._showShortEvents || record.isLong()))
+                return;
             var percentages = this._overviewCalculator.computeBarGraphPercentages(record);
 
             var end = Math.round(percentages.end);
@@ -161,6 +163,18 @@ WebInspector.TimelineOverviewPane.prototype = {
         this._overviewGrid.updateDividers(true, this._overviewCalculator);
     },
 
+    updateEventDividers: function(records, dividerConstructor)
+    {
+        this._overviewGrid.removeEventDividers();
+        for (var i = 0; i < records.length; ++i) {
+            var record = records[i];
+            var positions = this._overviewCalculator.computeBarGraphPercentages(record);
+            var divider = dividerConstructor(record);
+            divider.style.left = positions.start + "%";
+            this._overviewGrid.addEventDivider(divider);
+        }
+    },
+
     setSidebarWidth: function(width)
     {
         this._overviewSidebarElement.style.width = width + "px";
@@ -175,7 +189,10 @@ WebInspector.TimelineOverviewPane.prototype = {
     {
         this.windowLeft = 0.0;
         this.windowRight = 1.0;
-        this._setWindowPosition(0, this._overviewGrid.element.clientWidth);
+        this._overviewWindowElement.style.left = "0%";
+        this._overviewWindowElement.style.width = "100%";
+        this._leftResizeElement.style.left = "0%";
+        this._rightResizeElement.style.left = "100%";
         this._overviewCalculator.reset();
         this._overviewGrid.updateDividers(true, this._overviewCalculator);
     },

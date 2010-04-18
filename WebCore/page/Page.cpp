@@ -30,10 +30,10 @@
 #include "ContextMenuController.h"
 #include "DOMWindow.h"
 #include "DragController.h"
-#include "ExceptionCode.h"
 #include "EditorClient.h"
-#include "EventNames.h"
 #include "Event.h"
+#include "EventNames.h"
+#include "ExceptionCode.h"
 #include "FileSystem.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -52,12 +52,14 @@
 #include "PageGroup.h"
 #include "PluginData.h"
 #include "PluginHalter.h"
+#include "PluginView.h"
 #include "ProgressTracker.h"
-#include "RenderWidget.h"
 #include "RenderTheme.h"
+#include "RenderWidget.h"
 #include "ScriptController.h"
 #include "SelectionController.h"
 #include "Settings.h"
+#include "SharedBuffer.h"
 #include "StringHash.h"
 #include "TextResourceDecoder.h"
 #include "Widget.h"
@@ -70,8 +72,8 @@
 #include "StorageNamespace.h"
 #endif
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-#include "JavaScriptDebugServer.h"
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+#include "ScriptDebugServer.h"
 #endif
 
 #if ENABLE(WML)
@@ -136,9 +138,6 @@ Page::Page(ChromeClient* chromeClient, ContextMenuClient* contextMenuClient, Edi
     , m_areMemoryCacheClientCallsEnabled(true)
     , m_mediaVolume(1)
     , m_javaScriptURLsAreAllowed(true)
-#if ENABLE(INSPECTOR)
-    , m_parentInspectorController(0)
-#endif
     , m_didLoadUserStyleSheet(false)
     , m_userStyleSheetModificationTime(0)
     , m_group(0)
@@ -174,8 +173,8 @@ Page::Page(ChromeClient* chromeClient, ContextMenuClient* contextMenuClient, Edi
         m_pluginHalter->setPluginAllowedRunTime(m_settings->pluginAllowedRunTime());
     }
 
-#if ENABLE(JAVASCRIPT_DEBUGGER) && USE(JSC)
-    JavaScriptDebugServer::shared().pageCreated(this);
+#if ENABLE(JAVASCRIPT_DEBUGGER)
+    ScriptDebugServer::shared().pageCreated(this);
 #endif
 
 #ifndef NDEBUG
@@ -194,8 +193,6 @@ Page::~Page()
 
     m_editorClient->pageDestroyed();
 #if ENABLE(INSPECTOR)
-    if (m_parentInspectorController)
-        m_parentInspectorController->pageDestroyed();
     m_inspectorController->inspectedPageDestroyed();
 #endif
 
@@ -292,7 +289,7 @@ void Page::goToItem(HistoryItem* item, FrameLoadType type)
 {
     // Abort any current load unless we're navigating the current document to a new state object
     HistoryItem* currentItem = m_mainFrame->loader()->history()->currentItem();
-    if (!item->stateObject() || !currentItem || item->documentSequenceNumber() != currentItem->documentSequenceNumber()) {
+    if (!item->stateObject() || !currentItem || item->documentSequenceNumber() != currentItem->documentSequenceNumber() || item == currentItem) {
         // Define what to do with any open database connections. By default we stop them and terminate the database thread.
         DatabasePolicy databasePolicy = DatabasePolicyStop;
 
@@ -389,7 +386,7 @@ void Page::refreshPlugins(bool reload)
 
 PluginData* Page::pluginData() const
 {
-    if (!settings()->arePluginsEnabled())
+    if (!mainFrame()->loader()->allowPlugins(NotAboutToInstantiatePlugin))
         return 0;
     if (!m_pluginData)
         m_pluginData = PluginData::create(this);
@@ -774,6 +771,35 @@ InspectorTimelineAgent* Page::inspectorTimelineAgent() const
     return m_inspectorController->timelineAgent();
 }
 #endif
+
+void Page::privateBrowsingStateChanged()
+{
+    bool privateBrowsingEnabled = m_settings->privateBrowsingEnabled();
+
+    // Collect the PluginViews in to a vector to ensure that action the plug-in takes
+    // from below privateBrowsingStateChanged does not affect their lifetime.
+
+    Vector<RefPtr<PluginView>, 32> pluginViews;
+    for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
+        FrameView* view = frame->view();
+        if (!view)
+            return;
+
+        const HashSet<RefPtr<Widget> >* children = view->children();
+        ASSERT(children);
+
+        HashSet<RefPtr<Widget> >::const_iterator end = children->end();
+        for (HashSet<RefPtr<Widget> >::const_iterator it = children->begin(); it != end; ++it) {
+            Widget* widget = (*it).get();
+            if (!widget->isPluginView())
+                continue;
+            pluginViews.append(static_cast<PluginView*>(widget));
+        }
+    }
+
+    for (size_t i = 0; i < pluginViews.size(); i++)
+        pluginViews[i]->privateBrowsingStateChanged(privateBrowsingEnabled);
+}
 
 void Page::pluginAllowedRunTimeChanged()
 {

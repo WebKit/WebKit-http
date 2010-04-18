@@ -20,7 +20,6 @@
 
 #include "config.h"
 
-#include "CString.h"
 #include <glib/gi18n-lib.h>
 #include "GRefPtr.h"
 #include "Noncopyable.h"
@@ -34,8 +33,13 @@
 #include "webkitmarshal.h"
 #include "webkitnetworkresponse.h"
 #include "webkitprivate.h"
+#include <wtf/text/CString.h>
 
 #include <glib/gstdio.h>
+
+#ifdef ERROR
+#undef ERROR
+#endif
 
 using namespace WebKit;
 using namespace WebCore;
@@ -480,7 +484,7 @@ void webkit_download_start(WebKitDownload* download)
     g_return_if_fail(priv->timer == NULL);
 
     if (!priv->resourceHandle)
-        priv->resourceHandle = ResourceHandle::create(core(priv->networkRequest), priv->downloadClient, 0, false, false, false);
+        priv->resourceHandle = ResourceHandle::create(core(priv->networkRequest), priv->downloadClient, 0, false, false);
     else {
         priv->resourceHandle->setClient(priv->downloadClient);
 

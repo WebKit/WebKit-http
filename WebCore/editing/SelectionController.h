@@ -37,6 +37,8 @@ namespace WebCore {
 class Frame;
 class GraphicsContext;
 class RenderObject;
+class RenderView;
+class Settings;
 class VisiblePosition;
 
 class SelectionController : public Noncopyable {
@@ -58,7 +60,8 @@ public:
     void moveTo(const Position&, const Position&, EAffinity, bool userTriggered = false);
 
     const VisibleSelection& selection() const { return m_selection; }
-    void setSelection(const VisibleSelection&, bool closeTyping = true, bool clearTypingStyle = true, bool userTriggered = false);
+    void setSelection(const VisibleSelection&, bool closeTyping = true, bool clearTypingStyle = true, bool userTriggered = false, TextGranularity = CharacterGranularity);
+    void setSelection(const VisibleSelection& selection, TextGranularity granularity) { setSelection(selection, true, true, false, granularity); }
     bool setSelectedRange(Range*, EAffinity, bool closeTyping);
     void selectAll();
     void clear();
@@ -74,8 +77,11 @@ public:
 
     bool modify(EAlteration, EDirection, TextGranularity, bool userTriggered = false);
     bool modify(EAlteration, int verticalDistance, bool userTriggered = false);
-    bool expandUsingGranularity(TextGranularity);
+    TextGranularity granularity() const { return m_granularity; }
 
+    void setStart(const VisiblePosition &, bool userTriggered = false);
+    void setEnd(const VisiblePosition &, bool userTriggered = false);
+    
     void setBase(const VisiblePosition&, bool userTriggered = false);
     void setBase(const Position&, EAffinity, bool userTriggered = false);
     void setExtent(const VisiblePosition&, bool userTriggered = false);
@@ -95,7 +101,7 @@ public:
     IntRect absoluteCaretBounds();
     void setNeedsLayout(bool flag = true);
 
-    void setLastChangeWasHorizontalExtension(bool b) { m_lastChangeWasHorizontalExtension = b; }
+    void setIsDirectional(bool);
     void willBeModified(EAlteration, EDirection);
     
     bool isNone() const { return m_selection.isNone(); }
@@ -130,6 +136,8 @@ public:
     // Painting.
     void updateAppearance();
 
+    void updateSecureKeyboardEntryIfActive();
+
 #ifndef NDEBUG
     void formatForDebugger(char* buffer, unsigned length) const;
     void showTreeForThis() const;
@@ -144,6 +152,8 @@ private:
     VisiblePosition startForPlatform() const;
     VisiblePosition endForPlatform() const;
 
+    bool modify(EAlteration, EDirection, TextGranularity, bool userTriggered, Settings*);
+
     VisiblePosition modifyExtendingRight(TextGranularity);
     VisiblePosition modifyExtendingForward(TextGranularity);
     VisiblePosition modifyMovingRight(TextGranularity);
@@ -155,6 +165,7 @@ private:
 
     void layout();
     IntRect caretRepaintRect() const;
+    bool shouldRepaintCaret(const RenderView* view) const;
 
     int xPosForVerticalArrowNavigation(EPositionType);
     
@@ -167,11 +178,14 @@ private:
 
     void caretBlinkTimerFired(Timer<SelectionController>*);
 
+    void setUseSecureKeyboardEntry(bool);
+
     Frame* m_frame;
 
     int m_xPosForVerticalArrowNavigation;
 
     VisibleSelection m_selection;
+    TextGranularity m_granularity;
 
     Timer<SelectionController> m_caretBlinkTimer;
 
@@ -181,7 +195,7 @@ private:
     
     bool m_needsLayout; // true if m_caretRect and m_absCaretBounds need to be calculated
     bool m_absCaretBoundsDirty;
-    bool m_lastChangeWasHorizontalExtension;
+    bool m_isDirectional;
     bool m_isDragCaretController;
     bool m_isCaretBlinkingSuspended;
     bool m_focused;

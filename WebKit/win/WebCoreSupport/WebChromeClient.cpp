@@ -46,7 +46,11 @@
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/Geolocation.h>
+#if USE(ACCELERATED_COMPOSITING)
+#include <WebCore/GraphicsLayer.h>
+#endif
 #include <WebCore/HTMLNames.h>
+#include <WebCore/Icon.h>
 #include <WebCore/LocalizedStrings.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
@@ -451,10 +455,22 @@ IntRect WebChromeClient::windowResizerRect() const
     return IntRect();
 }
 
-void WebChromeClient::repaint(const IntRect& windowRect, bool contentChanged, bool immediate, bool repaintContentOnly)
+void WebChromeClient::invalidateWindow(const IntRect& windowRect, bool immediate)
 {
     ASSERT(core(m_webView->topLevelFrame()));
-    m_webView->repaint(windowRect, contentChanged, immediate, repaintContentOnly);
+    m_webView->repaint(windowRect, false /*contentChanged*/, immediate, false /*repaintContentOnly*/);
+}
+
+void WebChromeClient::invalidateContentsAndWindow(const IntRect& windowRect, bool immediate)
+{
+    ASSERT(core(m_webView->topLevelFrame()));
+    m_webView->repaint(windowRect, true /*contentChanged*/, immediate /*immediate*/, false /*repaintContentOnly*/);
+}
+
+void WebChromeClient::invalidateContentsForSlowScroll(const IntRect& windowRect, bool immediate)
+{
+    ASSERT(core(m_webView->topLevelFrame()));
+    m_webView->repaint(windowRect, true /*contentChanged*/, immediate, true /*repaintContentOnly*/);
 }
 
 void WebChromeClient::scroll(const IntSize& delta, const IntRect& scrollViewRect, const IntRect& clipRect)
@@ -734,10 +750,9 @@ void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChoose
     // FIXME: Show some sort of error if too many files are selected and the buffer is too small.  For now, this will fail silently.
 }
 
-void WebChromeClient::iconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>)
+void WebChromeClient::chooseIconForFiles(const Vector<WebCore::String>& filenames, PassRefPtr<WebCore::FileChooser> chooser)
 {
-    // FIXME: Move the code of Icon::createIconForFiles() here.
-    notImplemented();
+    chooser->iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 bool WebChromeClient::setCursor(PlatformCursorHandle cursor)
@@ -783,7 +798,7 @@ void WebChromeClient::requestGeolocationPermissionForFrame(Frame* frame, Geoloca
 #if USE(ACCELERATED_COMPOSITING)
 void WebChromeClient::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)
 {
-    m_webView->setRootChildLayer(graphicsLayer ? graphicsLayer->platformLayer() : 0);
+    m_webView->setRootChildLayer(graphicsLayer ? static_cast<WKCACFLayer*>(graphicsLayer->platformLayer()) : 0);
 }
 
 void WebChromeClient::scheduleCompositingLayerSync()

@@ -57,6 +57,7 @@ namespace WebCore {
     class GeolocationServiceChromium;
     class GraphicsContext;
     class Image;
+    class IndexedDatabase;
     class IntRect;
     class KURL;
     class String;
@@ -64,6 +65,7 @@ namespace WebCore {
 
     struct Cookie;
     struct PluginInfo;
+    struct FontRenderStyle;
 
     // An interface to the embedding layer, which has the ability to answer
     // questions about the system and so on...
@@ -113,6 +115,7 @@ namespace WebCore {
         static bool ensureFontLoaded(HFONT font);
 #endif
 #if OS(LINUX)
+        static void getRenderStyleForStrike(const char* family, int sizeAndStyle, FontRenderStyle* result);
         static String getFontFamilyForCharacters(const UChar*, size_t numCharacters);
 #endif
 
@@ -133,6 +136,9 @@ namespace WebCore {
         // Returns the size of the DB file
         static long long databaseGetFileSize(const String& vfsFileName);
 #endif
+
+        // IndexedDB ----------------------------------------------------------
+        static PassRefPtr<IndexedDatabase> indexedDatabase();
 
         // JavaScript ---------------------------------------------------------
         static void notifyJSOutOfMemory(Frame*);

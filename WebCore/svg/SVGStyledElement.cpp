@@ -26,20 +26,22 @@
 #include "Attr.h"
 #include "CSSParser.h"
 #include "CSSStyleSelector.h"
-#include "CString.h"
 #include "Document.h"
 #include "HTMLNames.h"
 #include "MappedAttribute.h"
 #include "PlatformString.h"
 #include "RenderObject.h"
+#include "RenderSVGResource.h"
+#include "RenderSVGResourceClipper.h"
+#include "RenderSVGResourceMasker.h"
 #include "SVGElement.h"
 #include "SVGElementInstance.h"
 #include "SVGElementRareData.h"
 #include "SVGNames.h"
 #include "SVGRenderStyle.h"
-#include "SVGResourceClipper.h"
+#include "SVGRenderSupport.h"
+#include "SVGResource.h"
 #include "SVGResourceFilter.h"
-#include "SVGResourceMasker.h"
 #include "SVGSVGElement.h"
 #include <wtf/Assertions.h>
 
@@ -198,6 +200,14 @@ void SVGStyledElement::svgAttributeChanged(const QualifiedName& attrName)
     if (attrName.matches(HTMLNames::classAttr))
         classAttributeChanged(className());
 
+    if (attrName == idAttributeName()) {
+        // Notify resources about id changes, this is important as we cache resources by id in SVGDocumentExtensions
+        if (renderer() && renderer()->isSVGResource()) {
+            RenderSVGResource* resource = renderer()->toRenderSVGResource();
+            resource->idChanged();
+        }
+    }
+
     // If we're the child of a resource element, be sure to invalidate it.
     invalidateResourcesInAncestorChain();
 
@@ -222,25 +232,18 @@ void SVGStyledElement::invalidateResources()
     if (!object)
         return;
 
-    const SVGRenderStyle* svgStyle = object->style()->svgStyle();
     Document* document = this->document();
 
     if (document->parsing())
         return;
 
 #if ENABLE(FILTERS)
-    SVGResourceFilter* filter = getFilterById(document, svgStyle->filter(), object);
+    SVGResourceFilter* filter = getFilterById(document, object->style()->svgStyle()->filterResource(), object);
     if (filter)
         filter->invalidate();
 #endif
 
-    SVGResourceMasker* masker = getMaskerById(document, svgStyle->maskElement(), object);
-    if (masker)
-        masker->invalidate();
-
-    SVGResourceClipper* clipper = getClipperById(document, svgStyle->clipPath(), object);
-    if (clipper)
-        clipper->invalidate();
+    deregisterFromResources(object);
 }
 
 void SVGStyledElement::invalidateResourcesInAncestorChain() const
@@ -260,7 +263,15 @@ void SVGStyledElement::invalidateResourcesInAncestorChain() const
 
 void SVGStyledElement::invalidateCanvasResources()
 {
-    if (SVGResource* resource = canvasResource(renderer()))
+    RenderObject* object = renderer();
+    if (!object)
+        return;
+
+    if (object->isSVGResource())
+        object->toRenderSVGResource()->invalidateClients();
+
+    // The following lines will be removed soon, once all resources are handled by renderers.
+    if (SVGResource* resource = canvasResource(object))
         resource->invalidate();
 }
 
@@ -319,6 +330,13 @@ void SVGStyledElement::setInstanceUpdatesBlocked(bool value)
 {
     if (hasRareSVGData())
         rareSVGData()->setInstanceUpdatesBlocked(value);
+}
+
+AffineTransform SVGStyledElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope) const
+{
+    // To be overriden by SVGStyledLocatableElement/SVGStyledTransformableElement (or as special case SVGTextElement)
+    ASSERT_NOT_REACHED();
+    return AffineTransform();
 }
 
 }

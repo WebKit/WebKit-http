@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2008 Alp Toker <alp@atoker.com>
  * Copyright (C) 2008 Xan Lopez <xan@gnome.org>
- * Copyright (C) 2008 Collabora Ltd.
+ * Copyright (C) 2008, 2010 Collabora Ltd.
  * Copyright (C) 2009 Holger Hans Peter Freyther
  * Copyright (C) 2009 Gustavo Noronha Silva <gns@gnome.org>
  * Copyright (C) 2009 Christian Dywan <christian@imendio.com>
@@ -28,13 +28,12 @@
 #include "ResourceHandle.h"
 
 #include "Base64.h"
-#include "CookieJarSoup.h"
 #include "ChromeClient.h"
-#include "CString.h"
+#include "CookieJarSoup.h"
 #include "DocLoader.h"
 #include "FileSystem.h"
 #include "Frame.h"
-#include "GOwnPtrGtk.h"
+#include "GOwnPtrSoup.h"
 #include "HTTPParsers.h"
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
@@ -44,7 +43,9 @@
 #include "ResourceHandleClient.h"
 #include "ResourceHandleInternal.h"
 #include "ResourceResponse.h"
+#include "SharedBuffer.h"
 #include "TextEncoding.h"
+#include <wtf/text/CString.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -145,6 +146,16 @@ ResourceHandle::~ResourceHandle()
     cleanupGioOperation(this, true);
 }
 
+void ResourceHandle::prepareForURL(const KURL &url)
+{
+#ifdef HAVE_LIBSOUP_2_29_90
+    GOwnPtr<SoupURI> soupURI(soup_uri_new(url.prettyURL().utf8().data()));
+    if (!soupURI)
+        return;
+    soup_session_prepare_for_uri(ResourceHandle::defaultSession(), soupURI.get());
+#endif
+}
+
 // All other kinds of redirections, except for the *304* status code
 // (SOUP_STATUS_NOT_MODIFIED) which needs to be fed into WebCore, will be
 // handled by soup directly.
@@ -160,24 +171,7 @@ static gboolean statusWillBeHandledBySoup(guint statusCode)
 
 static void fillResponseFromMessage(SoupMessage* msg, ResourceResponse* response)
 {
-    SoupMessageHeadersIter iter;
-    const char* name = 0;
-    const char* value = 0;
-    soup_message_headers_iter_init(&iter, msg->response_headers);
-    while (soup_message_headers_iter_next(&iter, &name, &value))
-        response->setHTTPHeaderField(name, value);
-
-    String contentType = soup_message_headers_get_one(msg->response_headers, "Content-Type");
-    response->setMimeType(extractMIMETypeFromMediaType(contentType));
-
-    char* uri = soup_uri_to_string(soup_message_get_uri(msg), false);
-    response->setURL(KURL(KURL(), uri));
-    g_free(uri);
-    response->setTextEncodingName(extractCharsetFromMediaType(contentType));
-    response->setExpectedContentLength(soup_message_headers_get_content_length(msg->response_headers));
-    response->setHTTPStatusCode(msg->status_code);
-    response->setHTTPStatusText(msg->reason_phrase);
-    response->setSuggestedFilename(filenameFromHTTPContentDisposition(response->httpHeaderField("Content-Disposition")));
+    response->updateFromSoupMessage(msg);
 }
 
 // Called each time the message is going to be sent again except the first time.
@@ -391,7 +385,7 @@ static gboolean parseDataUrl(gpointer callback_data)
         // The load may be cancelled, and the client may be destroyed
         // by any of the client reporting calls, so we check, and bail
         // out in either of those cases.
-        if (!handle->client() || d->m_cancelled)
+        if (d->m_cancelled || !handle->client())
             return false;
 
         // Use the GLib Base64, since WebCore's decoder isn't
@@ -408,14 +402,14 @@ static gboolean parseDataUrl(gpointer callback_data)
         response.setTextEncodingName("UTF-16");
         client->didReceiveResponse(handle, response);
 
-        if (!handle->client() || d->m_cancelled)
+        if (d->m_cancelled || !handle->client())
             return false;
 
         if (data.length() > 0)
             client->didReceiveData(handle, reinterpret_cast<const char*>(data.characters()), data.length() * sizeof(UChar), 0);
     }
 
-    if (!handle->client() || d->m_cancelled)
+    if (d->m_cancelled || !handle->client())
         return false;
 
     client->didFinishLoading(handle);
@@ -431,7 +425,7 @@ static bool startData(ResourceHandle* handle, String urlString)
 
     // If parseDataUrl is called synchronously the job is not yet effectively started
     // and webkit won't never know that the data has been parsed even didFinishLoading is called.
-    d->m_idleHandler = g_idle_add(parseDataUrl, handle);
+    d->m_idleHandler = g_timeout_add(0, parseDataUrl, handle);
     return true;
 }
 
@@ -664,7 +658,7 @@ bool ResourceHandle::willLoadFromCache(ResourceRequest&, Frame*)
 void ResourceHandle::loadResourceSynchronously(const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data, Frame* frame)
 {
     WebCoreSynchronousLoader syncLoader(error, response, data);
-    ResourceHandle handle(request, &syncLoader, true, false, true);
+    ResourceHandle handle(request, &syncLoader, true, false);
 
     handle.start(frame);
     syncLoader.run();

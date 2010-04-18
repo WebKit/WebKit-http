@@ -42,24 +42,24 @@
 
 namespace WebCore {
 
-Notification::Notification(const String& url, ScriptExecutionContext* context, ExceptionCode& ec, NotificationPresenter* provider)
+Notification::Notification(const KURL& url, ScriptExecutionContext* context, ExceptionCode& ec, NotificationPresenter* provider)
     : ActiveDOMObject(context, this)
     , m_isHTML(true)
     , m_isShowing(false)
     , m_presenter(provider)
 {
     ASSERT(m_presenter);
-    Document* document = context->isDocument() ? static_cast<Document*>(context) : 0;
-    if (m_presenter->checkPermission(context->url(), document) != NotificationPresenter::PermissionAllowed) {
+    if (m_presenter->checkPermission(context->url()) != NotificationPresenter::PermissionAllowed) {
         ec = SECURITY_ERR;
         return;
     }
 
-    m_notificationURL = context->completeURL(url);
-    if (url.isEmpty() || !m_notificationURL.isValid()) {
+    if (url.isEmpty() || !url.isValid()) {
         ec = SYNTAX_ERR;
         return;
     }
+
+    m_notificationURL = url;
 }
 
 Notification::Notification(const NotificationContents& contents, ScriptExecutionContext* context, ExceptionCode& ec, NotificationPresenter* provider)
@@ -70,14 +70,12 @@ Notification::Notification(const NotificationContents& contents, ScriptExecution
     , m_presenter(provider)
 {
     ASSERT(m_presenter);
-    Document* document = context->isDocument() ? static_cast<Document*>(context) : 0;
-    if (m_presenter->checkPermission(context->url(), document) != NotificationPresenter::PermissionAllowed) {
+    if (m_presenter->checkPermission(context->url()) != NotificationPresenter::PermissionAllowed) {
         ec = SECURITY_ERR;
         return;
     }
-    
-    KURL icon = context->completeURL(contents.icon());
-    if (!icon.isEmpty() && !icon.isValid()) {
+
+    if (!contents.icon().isEmpty() && !contents.icon().isValid()) {
         ec = SYNTAX_ERR;
         return;
     }

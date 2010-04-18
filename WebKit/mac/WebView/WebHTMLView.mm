@@ -148,26 +148,52 @@ using namespace std;
 - (BOOL)receivedUnhandledCommand;
 @end
 
-static IMP oldSetCursorIMP = NULL;
+// if YES, do the standard NSView hit test (which can't give the right result when HTML overlaps a view)
+static BOOL forceNSViewHitTest;
 
-#ifdef BUILDING_ON_TIGER
+// if YES, do the "top WebHTMLView" hit test (which we'd like to do all the time but can't because of Java requirements [see bug 4349721])
+static BOOL forceWebHTMLViewHitTest;
 
-static IMP oldResetCursorRectsIMP = NULL;
+static WebHTMLView *lastHitView;
+
+static bool needsCursorRectsSupportAtPoint(NSWindow* window, NSPoint point)
+{
+    forceNSViewHitTest = YES;
+    NSView* view = [[window _web_borderView] hitTest:point];
+    forceNSViewHitTest = NO;
+
+    // WebHTMLView doesn't use cursor rects.
+    if ([view isKindOfClass:[WebHTMLView class]])
+        return false;
+
+    // Neither do NPAPI plug-ins.
+    if ([view isKindOfClass:[WebBaseNetscapePluginView class]])
+        return false;
+
+    // Non-Web content, WebPDFView, and WebKit plug-ins use normal cursor handling.
+    return true;
+}
+
+#ifndef BUILDING_ON_TIGER
+
+static IMP oldSetCursorForMouseLocationIMP;
+
+// Overriding an internal method is a hack; <rdar://problem/7662987> tracks finding a better solution.
+static void setCursor(NSWindow* self, SEL cmd, NSPoint point)
+{
+    if (needsCursorRectsSupportAtPoint(self, point))
+        oldSetCursorForMouseLocationIMP(self, cmd, point);
+}
+
+#else
+
+static IMP oldResetCursorRectsIMP;
+static IMP oldSetCursorIMP;
 static BOOL canSetCursor = YES;
 
 static void resetCursorRects(NSWindow* self, SEL cmd)
 {
-    NSPoint point = [self mouseLocationOutsideOfEventStream];
-    NSView* view = [[self _web_borderView] hitTest:point];
-    if ([view isKindOfClass:[WebHTMLView class]]) {
-        WebHTMLView *htmlView = (WebHTMLView*)view;
-        NSPoint localPoint = [htmlView convertPoint:point fromView:nil];
-        NSDictionary *dict = [htmlView elementAtPoint:localPoint allowShadowContent:NO];
-        DOMElement *element = [dict objectForKey:WebElementDOMNodeKey];
-        if (![element isKindOfClass:[DOMHTMLAppletElement class]] && ![element isKindOfClass:[DOMHTMLObjectElement class]] &&
-            ![element isKindOfClass:[DOMHTMLEmbedElement class]])
-            canSetCursor = NO;
-    }
+    canSetCursor = needsCursorRectsSupportAtPoint(self, [self mouseLocationOutsideOfEventStream]);
     oldResetCursorRectsIMP(self, cmd);
     canSetCursor = YES;
 }
@@ -176,23 +202,6 @@ static void setCursor(NSCursor* self, SEL cmd)
 {
     if (canSetCursor)
         oldSetCursorIMP(self, cmd);
-}
-
-#else
-
-static void setCursor(NSWindow* self, SEL cmd, NSPoint point)
-{
-    NSView* view = [[self _web_borderView] hitTest:point];
-    if ([view isKindOfClass:[WebHTMLView class]]) {
-        WebHTMLView *htmlView = (WebHTMLView*)view;
-        NSPoint localPoint = [htmlView convertPoint:point fromView:nil];
-        NSDictionary *dict = [htmlView elementAtPoint:localPoint allowShadowContent:NO];
-        DOMElement *element = [dict objectForKey:WebElementDOMNodeKey];
-        if (![element isKindOfClass:[DOMHTMLAppletElement class]] && ![element isKindOfClass:[DOMHTMLObjectElement class]] &&
-            ![element isKindOfClass:[DOMHTMLEmbedElement class]])
-            return;
-    }
-    oldSetCursorIMP(self, cmd, point);
 }
 
 #endif
@@ -241,13 +250,13 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 // print in IE and Camino. This lets them use fewer sheets than they
 // would otherwise, which is presumably why other browsers do this.
 // Wide pages will be scaled down more than this.
-#define PrintingMinimumShrinkFactor     1.25f
+const float _WebHTMLViewPrintingMinimumShrinkFactor = 1.25;
 
 // This number determines how small we are willing to reduce the page content
 // in order to accommodate the widest line. If the page would have to be
 // reduced smaller to make the widest line fit, we just clip instead (this
 // behavior matches MacIE and Mozilla, at least)
-#define PrintingMaximumShrinkFactor     2.0f
+const float _WebHTMLViewPrintingMaximumShrinkFactor = 2;
 
 // This number determines how short the last printed page of a multi-page print session
 // can be before we try to shrink the scale in order to reduce the number of pages, and
@@ -294,14 +303,6 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 @implementation WebCoreScrollView
 @end
 
-// if YES, do the standard NSView hit test (which can't give the right result when HTML overlaps a view)
-static BOOL forceNSViewHitTest;
-
-// if YES, do the "top WebHTMLView" hit test (which we'd like to do all the time but can't because of Java requirements [see bug 4349721])
-static BOOL forceWebHTMLViewHitTest;
-
-static WebHTMLView *lastHitView;
-
 // We need this to be able to safely reference the CachedImage for the promised drag data
 static CachedResourceClient* promisedDataClient()
 {
@@ -321,7 +322,6 @@ static CachedResourceClient* promisedDataClient()
 - (BOOL)_shouldInsertFragment:(DOMDocumentFragment *)fragment replacingDOMRange:(DOMRange *)range givenAction:(WebViewInsertAction)action;
 - (BOOL)_shouldInsertText:(NSString *)text replacingDOMRange:(DOMRange *)range givenAction:(WebViewInsertAction)action;
 - (BOOL)_shouldReplaceSelectionWithText:(NSString *)text givenAction:(WebViewInsertAction)action;
-- (float)_calculatePrintHeight;
 - (DOMRange *)_selectedRange;
 - (BOOL)_shouldDeleteRange:(DOMRange *)range;
 - (NSView *)_hitViewForEvent:(NSEvent *)event;
@@ -428,6 +428,9 @@ struct WebHTMLViewInterpretKeyEventsParameters {
     BOOL exposeInputContext;
 
     NSPoint lastScrollPosition;
+#ifndef BUILDING_ON_TIGER
+    BOOL inScrollPositionChanged;
+#endif
 
     WebPluginController *pluginController;
     
@@ -490,20 +493,21 @@ static NSCellStateValue kit(TriState state)
 #ifndef BUILDING_ON_TIGER
     WebCoreObjCFinalizeOnMainThread(self);
 #endif
-
-    if (!oldSetCursorIMP) {
-#ifdef BUILDING_ON_TIGER
-        Method setCursorMethod = class_getInstanceMethod([NSCursor class], @selector(set));
-#else
+    
+#ifndef BUILDING_ON_TIGER
+    if (!oldSetCursorForMouseLocationIMP) {
         Method setCursorMethod = class_getInstanceMethod([NSWindow class], @selector(_setCursorForMouseLocation:));
-#endif
         ASSERT(setCursorMethod);
-
+        oldSetCursorForMouseLocationIMP = method_setImplementation(setCursorMethod, (IMP)setCursor);
+        ASSERT(oldSetCursorForMouseLocationIMP);
+    }
+#else
+    if (!oldSetCursorIMP) {
+        Method setCursorMethod = class_getInstanceMethod([NSCursor class], @selector(set));
+        ASSERT(setCursorMethod);
         oldSetCursorIMP = method_setImplementation(setCursorMethod, (IMP)setCursor);
         ASSERT(oldSetCursorIMP);
     }
-    
-#ifdef BUILDING_ON_TIGER
     if (!oldResetCursorRectsIMP) {
         Method resetCursorRectsMethod = class_getInstanceMethod([NSWindow class], @selector(resetCursorRects));
         ASSERT(resetCursorRectsMethod);
@@ -896,17 +900,6 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
     return [self _shouldInsertText:text replacingDOMRange:[self _selectedRange] givenAction:action];
 }
 
-// Calculate the vertical size of the view that fits on a single page
-- (float)_calculatePrintHeight
-{
-    // Obtain the print info object for the current operation
-    NSPrintInfo *pi = [[NSPrintOperation currentOperation] printInfo];
-    
-    // Calculate the page height in points
-    NSSize paperSize = [pi paperSize];
-    return paperSize.height - [pi topMargin] - [pi bottomMargin];
-}
-
 - (DOMRange *)_selectedRange
 {
     Frame* coreFrame = core([self _frame]);
@@ -1169,8 +1162,15 @@ static void _updateMouseoverTimerCallback(CFRunLoopTimerRef timer, void *info)
     NSPoint origin = [[self superview] bounds].origin;
     if (!NSEqualPoints(_private->lastScrollPosition, origin)) {
         if (Frame* coreFrame = core([self _frame])) {
-            if (FrameView* coreView = coreFrame->view())
+            if (FrameView* coreView = coreFrame->view()) {
+#ifndef BUILDING_ON_TIGER
+                _private->inScrollPositionChanged = YES;
+#endif
                 coreView->scrollPositionChanged();
+#ifndef BUILDING_ON_TIGER
+                _private->inScrollPositionChanged = NO;
+#endif
+            }
         }
     
         [_private->completionController endRevertingChange:NO moveLeft:NO];
@@ -1290,11 +1290,15 @@ static void _updateMouseoverTimerCallback(CFRunLoopTimerRef timer, void *info)
     // There are known cases where -viewWillDraw is not called on all views being drawn.
     // See <rdar://problem/6964278> for example. Performing layout at this point prevents us from
     // trying to paint without layout (which WebCore now refuses to do, instead bailing out without
-    // drawing at all), but we may still fail to update and regions dirtied by the layout which are
+    // drawing at all), but we may still fail to update any regions dirtied by the layout which are
     // not already dirty. 
     if ([self _needsLayout]) {
-        LOG_ERROR("View needs layout. Either -viewWillDraw wasn't called or layout was invalidated during the display operation. Performing layout now.");
-        [self _web_layoutIfNeededRecursive];
+        NSInteger rectCount;
+        [self getRectsBeingDrawn:0 count:&rectCount];
+        if (rectCount) {
+            LOG_ERROR("View needs layout. Either -viewWillDraw wasn't called or layout was invalidated during the display operation. Performing layout now.");
+            [self _web_layoutIfNeededRecursive];
+        }
     }
 #else
     // Because Tiger does not have viewWillDraw we need to do layout here.
@@ -1421,6 +1425,7 @@ static void _updateMouseoverTimerCallback(CFRunLoopTimerRef timer, void *info)
     else if (forceWebHTMLViewHitTest)
         captureHitsOnSubviews = YES;
     else {
+        // FIXME: Why doesn't this include mouse entered/exited events, or other mouse button events?
         NSEvent *event = [[self window] currentEvent];
         captureHitsOnSubviews = !([event type] == NSMouseMoved
             || [event type] == NSRightMouseDown
@@ -2185,6 +2190,59 @@ static void _updateMouseoverTimerCallback(CFRunLoopTimerRef timer, void *info)
 #endif
 }
 
+- (BOOL)_isInPrintMode
+{
+    return _private->printing;
+}
+
+- (BOOL)_beginPrintModeWithPageWidth:(float)pageWidth shrinkToFit:(BOOL)shrinkToFit
+{
+    Frame* frame = core([self _frame]);
+    if (!frame)
+        return NO;
+
+    float minLayoutWidth = 0;
+    float maxLayoutWidth = 0;
+
+    // If we are a frameset just print with the layout we have onscreen, otherwise relayout
+    // according to the page width.
+    if (!frame->document() || !frame->document()->isFrameSet()) {
+        minLayoutWidth = shrinkToFit ? pageWidth * _WebHTMLViewPrintingMinimumShrinkFactor : pageWidth;
+        maxLayoutWidth = shrinkToFit ? pageWidth * _WebHTMLViewPrintingMaximumShrinkFactor : pageWidth;
+    }
+    [self _setPrinting:YES minimumPageWidth:minLayoutWidth maximumPageWidth:maxLayoutWidth adjustViewSize:YES];
+
+    return YES;
+}
+
+- (void)_endPrintMode
+{
+    [self _setPrinting:NO minimumPageWidth:0 maximumPageWidth:0 adjustViewSize:YES];
+}
+
+- (CGFloat)_adjustedBottomOfPageWithTop:(CGFloat)top bottom:(CGFloat)bottom limit:(CGFloat)bottomLimit
+{
+    Frame* frame = core([self _frame]);
+    if (!frame)
+        return bottom;
+
+    FrameView* view = frame->view();
+    if (!view)
+        return bottom;
+
+    float newBottom;
+    view->adjustPageHeight(&newBottom, top, bottom, bottomLimit);
+
+#ifdef __LP64__
+    // If the new bottom is equal to the old bottom (when both are treated as floats), we just return the original
+    // bottom. This prevents rounding errors that can occur when converting newBottom to a double.
+    if (fabs(static_cast<float>(bottom) - newBottom) <= numeric_limits<float>::epsilon()) 
+        return bottom;
+    else
+#endif
+        return newBottom;
+}
+
 @end
 
 @implementation NSView (WebHTMLViewFileInternal)
@@ -2522,7 +2580,13 @@ WEBCORE_COMMAND(yankAndSelect)
 - (id)validRequestorForSendType:(NSString *)sendType returnType:(NSString *)returnType
 {
     BOOL isSendTypeOK = !sendType || ([[self pasteboardTypesForSelection] containsObject:sendType] && [self _hasSelection]);
-    BOOL isReturnTypeOK = !returnType || ([[[self class] _insertablePasteboardTypes] containsObject:returnType] && [self _isEditable]);
+    BOOL isReturnTypeOK = NO;
+    if (!returnType)
+        isReturnTypeOK = YES;
+    else if ([[[self class] _insertablePasteboardTypes] containsObject:returnType] && [self _isEditable]) {
+        // We can insert strings in any editable context.  We can insert other types, like images, only in rich edit contexts.
+        isReturnTypeOK = [returnType isEqualToString:NSStringPboardType] || [self _canEditRichly];
+    }
     if (isSendTypeOK && isReturnTypeOK)
         return self;
     return [[self nextResponder] validRequestorForSendType:sendType returnType:returnType];
@@ -3130,11 +3194,29 @@ WEBCORE_COMMAND(yankAndSelect)
     return [[self _webView] drawsBackground];
 }
 
+#if !LOG_DISABLED
 - (void)setNeedsDisplay:(BOOL)flag
 {
     LOG(View, "%@ setNeedsDisplay:%@", self, flag ? @"YES" : @"NO");
     [super setNeedsDisplay:flag];
 }
+#endif
+
+#ifndef BUILDING_ON_TIGER
+- (void)setNeedsDisplayInRect:(NSRect)invalidRect
+{
+    if (_private->inScrollPositionChanged) {
+        // When scrolling, the dirty regions are adjusted for the scroll only
+        // after NSViewBoundsDidChangeNotification is sent. Translate the invalid
+        // rect to pre-scrolled coordinates in order to get the right dirty region
+        // after adjustment. See <rdar://problem/7678927>.
+        NSPoint origin = [[self superview] bounds].origin;
+        invalidRect.origin.x -= _private->lastScrollPosition.x - origin.x;
+        invalidRect.origin.y -= _private->lastScrollPosition.y - origin.y;
+    }
+    [super setNeedsDisplayInRect:invalidRect];
+}
+#endif
 
 - (void)setNeedsLayout: (BOOL)flag
 {
@@ -3720,7 +3802,7 @@ static BOOL isInPasswordField(Frame* coreFrame)
         }
     }
 
-    if (printing != _private->printing) {
+    if (printing || _private->printing) {
         [_private->pageRects release];
         _private->pageRects = nil;
         _private->printing = printing;
@@ -3751,21 +3833,8 @@ static BOOL isInPasswordField(Frame* coreFrame)
     if (!wasInPrintingMode)
         [self _setPrinting:YES minimumPageWidth:0.0f maximumPageWidth:0.0f adjustViewSize:NO];
 
-    float newBottomFloat = *newBottom;
-    if (Frame* frame = core([self _frame])) {
-        if (FrameView* view = frame->view())
-            view->adjustPageHeight(&newBottomFloat, oldTop, oldBottom, bottomLimit);
-    }
+    *newBottom = [self _adjustedBottomOfPageWithTop:oldTop bottom:oldBottom limit:bottomLimit];
 
-#ifdef __LP64__
-    // If the new bottom is equal to the old bottom (when both are treated as floats), we just copy
-    // oldBottom over to newBottom. This prevents rounding errors that can occur when converting newBottomFloat to a double.
-    if (fabs((float)oldBottom - newBottomFloat) <= numeric_limits<float>::epsilon()) 
-        *newBottom = oldBottom;
-    else
-#endif
-        *newBottom = newBottomFloat;
-    
     if (!wasInPrintingMode) {
         NSPrintOperation *currenPrintOperation = [NSPrintOperation currentOperation];
         if (currenPrintOperation)
@@ -3777,12 +3846,6 @@ static BOOL isInPasswordField(Frame* coreFrame)
     }
 }
 
-- (float)_availablePaperWidthForPrintOperation:(NSPrintOperation *)printOperation
-{
-    NSPrintInfo *printInfo = [printOperation printInfo];
-    return [printInfo paperSize].width - [printInfo leftMargin] - [printInfo rightMargin];
-}
-
 - (float)_scaleFactorForPrintOperation:(NSPrintOperation *)printOperation
 {
     float viewWidth = NSWidth([self bounds]);
@@ -3792,8 +3855,8 @@ static BOOL isInPasswordField(Frame* coreFrame)
     }
 
     float userScaleFactor = [printOperation _web_pageSetupScaleFactor];
-    float maxShrinkToFitScaleFactor = 1.0f / PrintingMaximumShrinkFactor;
-    float shrinkToFitScaleFactor = [self _availablePaperWidthForPrintOperation:printOperation]/viewWidth;
+    float maxShrinkToFitScaleFactor = 1.0f / _WebHTMLViewPrintingMaximumShrinkFactor;
+    float shrinkToFitScaleFactor = [printOperation _web_availablePaperWidth] / viewWidth;
     float shrinkToAvoidOrphan = _private->avoidingPrintOrphan ? (1.0f / PrintingOrphanShrinkAdjustment) : 1.0f;
     return userScaleFactor * max(maxShrinkToFitScaleFactor, shrinkToFitScaleFactor) * shrinkToAvoidOrphan;
 }
@@ -3813,9 +3876,9 @@ static BOOL isInPasswordField(Frame* coreFrame)
     [self _setPrinting:YES minimumPageWidth:pageWidth maximumPageWidth:pageWidth adjustViewSize:YES];
 }
 
-- (void)_endPrintMode
+- (void)_endPrintModeAndRestoreWindowAutodisplay
 {
-    [self _setPrinting:NO minimumPageWidth:0.0f maximumPageWidth:0.0f adjustViewSize:YES];
+    [self _endPrintMode];
     [[self window] setAutodisplay:YES];
 }
 
@@ -3841,7 +3904,7 @@ static BOOL isInPasswordField(Frame* coreFrame)
         // cancelled, beginDocument and endDocument must not have been called, and we need to clean up
         // the print mode here.
         ASSERT(currentOperation == nil);
-        [self _endPrintMode];
+        [self _endPrintModeAndRestoreWindowAutodisplay];
     }
 }
 
@@ -3851,22 +3914,12 @@ static BOOL isInPasswordField(Frame* coreFrame)
     // Must do this explicit display here, because otherwise the view might redisplay while the print
     // sheet was up, using printer fonts (and looking different).
     [self displayIfNeeded];
-    [[self window] setAutodisplay:NO];
-    
-    // If we are a frameset just print with the layout we have onscreen, otherwise relayout
-    // according to the paper size
-    float minLayoutWidth = 0.0f;
-    float maxLayoutWidth = 0.0f;
-    Frame* frame = core([self _frame]);
-    if (!frame)
-        return NO;
-    if (!frame->document() || !frame->document()->isFrameSet()) {
-        float paperWidth = [self _availablePaperWidthForPrintOperation:[NSPrintOperation currentOperation]];
-        minLayoutWidth = paperWidth * PrintingMinimumShrinkFactor;
-        maxLayoutWidth = paperWidth * PrintingMaximumShrinkFactor;
-    }
-    [self _setPrinting:YES minimumPageWidth:minLayoutWidth maximumPageWidth:maxLayoutWidth adjustViewSize:YES]; // will relayout
+    [[self window] setAutodisplay:NO];    
+
     NSPrintOperation *printOperation = [NSPrintOperation currentOperation];
+    if (![self _beginPrintModeWithPageWidth:[printOperation _web_availablePaperWidth] shrinkToFit:YES])
+        return NO;
+
     // Certain types of errors, including invalid page ranges, can cause beginDocument and
     // endDocument to be skipped after we've put ourselves in print mode (see 4145905). In those cases
     // we need to get out of print mode without relying on any more callbacks from the printing mechanism.
@@ -3884,9 +3937,9 @@ static BOOL isInPasswordField(Frame* coreFrame)
     float totalScaleFactor = [self _scaleFactorForPrintOperation:printOperation];
     float userScaleFactor = [printOperation _web_pageSetupScaleFactor];
     [_private->pageRects release];
-    float fullPageHeight = floorf([self _calculatePrintHeight]/totalScaleFactor);
-    NSArray *newPageRects = [[self _frame] _computePageRectsWithPrintWidthScaleFactor:userScaleFactor
-                                                                          printHeight:fullPageHeight];
+    float fullPageHeight = floorf([printOperation _web_availablePaperHeight] / totalScaleFactor);
+    WebFrame *frame = [self _frame];
+    NSArray *newPageRects = [frame _computePageRectsWithPrintWidthScaleFactor:userScaleFactor printHeight:fullPageHeight];
     
     // AppKit gets all messed up if you give it a zero-length page count (see 3576334), so if we
     // hit that case we'll pass along a degenerate 1 pixel square to print. This will print
@@ -3899,8 +3952,7 @@ static BOOL isInPasswordField(Frame* coreFrame)
         // content onto one fewer page. If it does, use the adjusted scale. If not, use the original scale.
         float lastPageHeight = NSHeight([[newPageRects lastObject] rectValue]);
         if (lastPageHeight/fullPageHeight < LastPrintedPageOrphanRatio) {
-            NSArray *adjustedPageRects = [[self _frame] _computePageRectsWithPrintWidthScaleFactor:userScaleFactor
-                                                                                       printHeight:fullPageHeight*PrintingOrphanShrinkAdjustment];
+            NSArray *adjustedPageRects = [frame _computePageRectsWithPrintWidthScaleFactor:userScaleFactor printHeight:fullPageHeight * PrintingOrphanShrinkAdjustment];
             // Use the adjusted rects only if the page count went down
             if ([adjustedPageRects count] < [newPageRects count]) {
                 newPageRects = adjustedPageRects;
@@ -3940,7 +3992,7 @@ static BOOL isInPasswordField(Frame* coreFrame)
     } @catch (NSException *localException) {
         // Exception during [super beginDocument] means that endDocument will not get called,
         // so we need to clean up our "print mode" here.
-        [self _endPrintMode];
+        [self _endPrintModeAndRestoreWindowAutodisplay];
     }
 }
 
@@ -3948,7 +4000,7 @@ static BOOL isInPasswordField(Frame* coreFrame)
 {
     [super endDocument];
     // Note sadly at this point [NSGraphicsContext currentContextDrawingToScreen] is still NO 
-    [self _endPrintMode];
+    [self _endPrintModeAndRestoreWindowAutodisplay];
 }
 
 - (void)keyDown:(NSEvent *)event
@@ -4986,22 +5038,21 @@ static BOOL writingDirectionKeyBindingsEnabled()
 {
     // FIXME: NSTextView bails out if becoming or resigning first responder, for which it has ivar flags. Not
     // sure if we need to do something similar.
-    
+
     if (![self _canEdit])
         return;
-    
+
     NSWindow *window = [self window];
     // FIXME: is this first-responder check correct? What happens if a subframe is editable and is first responder?
-    if ([NSApp keyWindow] != window || [window firstResponder] != self)
+    if (![window isKeyWindow] || [window firstResponder] != self)
         return;
-    
+
     bool multipleFonts = false;
     NSFont *font = nil;
     if (Frame* coreFrame = core([self _frame])) {
         if (const SimpleFontData* fd = coreFrame->editor()->fontForSelection(multipleFonts))
             font = fd->getNSFont();
     }
-    
 
     // FIXME: for now, return a bogus font that distinguishes the empty selection from the non-empty
     // selection. We should be able to remove this once the rest of this code works properly.

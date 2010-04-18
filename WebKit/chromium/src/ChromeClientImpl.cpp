@@ -45,8 +45,9 @@
 #include "FrameView.h"
 #include "Geolocation.h"
 #include "GeolocationService.h"
-#include "GeolocationServiceBridgeChromium.h"
+#include "WebGeolocationService.h"
 #include "GeolocationServiceChromium.h"
+#include "GraphicsLayer.h"
 #include "HitTestResult.h"
 #include "IntRect.h"
 #include "Node.h"
@@ -67,6 +68,7 @@
 #include "WebKit.h"
 #include "WebPopupMenuImpl.h"
 #include "WebPopupMenuInfo.h"
+#include "WebPopupType.h"
 #include "WebRect.h"
 #include "WebTextDirection.h"
 #include "WebURLRequest.h"
@@ -78,6 +80,20 @@
 using namespace WebCore;
 
 namespace WebKit {
+
+// Converts a WebCore::PopupContainerType to a WebKit::WebPopupType.
+static WebPopupType convertPopupType(PopupContainer::PopupType type)
+{
+    switch (type) {
+    case PopupContainer::Select:
+        return WebPopupTypeSelect;
+    case PopupContainer::Suggestion:
+        return WebPopupTypeSuggestion;
+    default:
+        ASSERT_NOT_REACHED();
+        return WebPopupTypeNone;
+    }
+}
 
 ChromeClientImpl::ChromeClientImpl(WebViewImpl* webView)
     : m_webView(webView)
@@ -327,7 +343,7 @@ void ChromeClientImpl::setScrollbarsVisible(bool value)
     m_scrollbarsVisible = value;
     WebFrameImpl* web_frame = static_cast<WebFrameImpl*>(m_webView->mainFrame());
     if (web_frame)
-        web_frame->setAllowsScrolling(value);
+        web_frame->setCanHaveScrollbars(value);
 }
 
 bool ChromeClientImpl::scrollbarsVisible()
@@ -466,15 +482,22 @@ IntRect ChromeClientImpl::windowResizerRect() const
     return result;
 }
 
-void ChromeClientImpl::repaint(
-    const IntRect& paintRect, bool contentChanged, bool immediate,
-    bool repaintContentOnly)
+void ChromeClientImpl::invalidateWindow(const IntRect&, bool)
 {
-    // Ignore spurious calls.
-    if (!contentChanged || paintRect.isEmpty())
+    notImplemented();
+}
+
+void ChromeClientImpl::invalidateContentsAndWindow(const IntRect& updateRect, bool /*immediate*/)
+{
+    if (updateRect.isEmpty())
         return;
     if (m_webView->client())
-        m_webView->client()->didInvalidateRect(paintRect);
+        m_webView->client()->didInvalidateRect(updateRect);
+}
+
+void ChromeClientImpl::invalidateContentsForSlowScroll(const IntRect& updateRect, bool immediate)
+{
+    invalidateContentsAndWindow(updateRect, immediate);
 }
 
 void ChromeClientImpl::scroll(
@@ -580,14 +603,13 @@ void ChromeClientImpl::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> fileCh
     chooserCompletion->didChooseFile(WebVector<WebString>());
 }
 
-void ChromeClientImpl::iconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>)
+void ChromeClientImpl::chooseIconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>)
 {
     notImplemented();
 }
 
 void ChromeClientImpl::popupOpened(PopupContainer* popupContainer,
                                    const IntRect& bounds,
-                                   bool activatable,
                                    bool handleExternally)
 {
     if (!m_webView->client())
@@ -598,10 +620,24 @@ void ChromeClientImpl::popupOpened(PopupContainer* popupContainer,
         WebPopupMenuInfo popupInfo;
         getPopupMenuInfo(popupContainer, &popupInfo);
         webwidget = m_webView->client()->createPopupMenu(popupInfo);
-    } else
-        webwidget = m_webView->client()->createPopupMenu(activatable);
-
+    } else {
+        webwidget = m_webView->client()->createPopupMenu(
+            convertPopupType(popupContainer->popupType()));
+        // Try the deprecated methods.
+        // FIXME: Remove the deprecated methods once the Chromium side use the
+        //        new method.
+        if (!webwidget)
+            webwidget = m_webView->client()->createPopupMenu();
+        if (!webwidget)
+            webwidget = m_webView->client()->createPopupMenu(false);
+    }
+    m_webView->popupOpened(popupContainer);
     static_cast<WebPopupMenuImpl*>(webwidget)->Init(popupContainer, bounds);
+}
+
+void ChromeClientImpl::popupClosed(WebCore::PopupContainer* popupContainer)
+{
+    m_webView->popupClosed(popupContainer);
 }
 
 void ChromeClientImpl::setCursor(const WebCursorInfo& cursor)
@@ -664,6 +700,7 @@ void ChromeClientImpl::getPopupMenuInfo(PopupContainer* popupContainer,
     }
 
     info->itemHeight = popupContainer->menuItemHeight();
+    info->itemFontSize = popupContainer->menuItemFontSize();
     info->selectedIndex = popupContainer->selectedIndex();
     info->items.swap(outputItems);
 }
@@ -675,7 +712,6 @@ void ChromeClientImpl::didChangeAccessibilityObjectState(AccessibilityObject* ob
         m_webView->client()->didChangeAccessibilityObjectState(WebAccessibilityObject(obj));
 }
 
-
 #if ENABLE(NOTIFICATIONS)
 NotificationPresenter* ChromeClientImpl::notificationPresenter() const
 {
@@ -685,8 +721,26 @@ NotificationPresenter* ChromeClientImpl::notificationPresenter() const
 
 void ChromeClientImpl::requestGeolocationPermissionForFrame(Frame* frame, Geolocation* geolocation)
 {
-    GeolocationServiceChromium* geolocationService = reinterpret_cast<GeolocationServiceChromium*>(geolocation->getGeolocationService());
-    m_webView->client()->getGeolocationService()->requestPermissionForFrame(geolocationService->geolocationServiceBridge()->getBridgeId(), frame->document()->url());
+    GeolocationServiceChromium* geolocationService = static_cast<GeolocationServiceChromium*>(geolocation->getGeolocationService());
+    m_webView->client()->geolocationService()->requestPermissionForFrame(geolocationService->geolocationServiceBridge()->getBridgeId(), frame->document()->url());
 }
+
+void ChromeClientImpl::cancelGeolocationPermissionRequestForFrame(Frame* frame, Geolocation* geolocation)
+{
+    GeolocationServiceChromium* geolocationService = static_cast<GeolocationServiceChromium*>(geolocation->getGeolocationService());
+    m_webView->client()->geolocationService()->cancelPermissionRequestForFrame(geolocationService->geolocationServiceBridge()->getBridgeId(), frame->document()->url());
+}
+
+#if USE(ACCELERATED_COMPOSITING)
+void ChromeClientImpl::attachRootGraphicsLayer(Frame* frame, GraphicsLayer* graphicsLayer)
+{
+    m_webView->setRootGraphicsLayer(graphicsLayer ? graphicsLayer->platformLayer() : 0);
+}
+
+void ChromeClientImpl::scheduleCompositingLayerSync()
+{
+    m_webView->setRootLayerNeedsDisplay();
+}
+#endif
 
 } // namespace WebKit

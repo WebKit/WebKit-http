@@ -25,7 +25,7 @@
 #include "FontPlatformData.h"
 
 #include "AtomicString.h"
-#include "CString.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 

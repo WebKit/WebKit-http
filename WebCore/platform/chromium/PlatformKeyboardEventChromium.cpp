@@ -37,6 +37,10 @@
 
 namespace WebCore {
 
+#if OS(WINDOWS)
+static const unsigned short HIGH_BIT_MASK_SHORT = 0x8000;
+#endif
+
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCompatibilityMode)
 {
 #if OS(WINDOWS)
@@ -79,6 +83,24 @@ bool PlatformKeyboardEvent::currentCapsLockState()
 #else
     notImplemented();
     return false;
+#endif
+}
+
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+#if OS(WINDOWS)
+    shiftKey = GetKeyState(VK_SHIFT) & HIGH_BIT_MASK_SHORT;
+    ctrlKey = GetKeyState(VK_CONTROL) & HIGH_BIT_MASK_SHORT;
+    altKey = GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT;
+    metaKey = false;
+#elif OS(DARWIN)
+    UInt32 currentModifiers = GetCurrentKeyModifiers();
+    shiftKey = currentModifiers & ::shiftKey;
+    ctrlKey = currentModifiers & ::controlKey;
+    altKey = currentModifiers & ::optionKey;
+    metaKey = currentModifiers & ::cmdKey;
+#else
+    notImplemented();
 #endif
 }
 

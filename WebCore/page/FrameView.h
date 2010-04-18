@@ -77,6 +77,8 @@ public:
 
     virtual PassRefPtr<Scrollbar> createScrollbar(ScrollbarOrientation);
 
+    virtual bool avoidScrollbarCreation();
+
     virtual void setContentsSize(const IntSize&);
 
     void layout(bool allowSubtree = true);
@@ -105,6 +107,10 @@ public:
     // Only used with accelerated compositing, but outside the #ifdef to make linkage easier.
     // Returns true if the sync was completed.
     bool syncCompositingStateRecursive();
+
+    // Returns true when a paint with the PaintBehaviorFlattenCompositingLayers flag set gives
+    // a faithful representation of the content.
+    bool isSoftwareRenderable() const;
 
     void didMoveOnscreen();
     void willMoveOffscreen();
@@ -137,6 +143,7 @@ public:
 
     String mediaType() const;
     void setMediaType(const String&);
+    void adjustMediaTypeForPrinting(bool printing);
 
     void setUseSlowRepaints();
     void setIsOverlapped(bool);
@@ -144,6 +151,9 @@ public:
 
     void addSlowRepaintObject();
     void removeSlowRepaintObject();
+
+    void addFixedObject();
+    void removeFixedObject();
 
     void beginDeferredRepaints();
     void endDeferredRepaints();
@@ -170,7 +180,7 @@ public:
 
     virtual void paintContents(GraphicsContext*, const IntRect& damageRect);
     void setPaintBehavior(PaintBehavior);
-    PaintBehavior paintBehavior() const { return m_paintBehavior; }
+    PaintBehavior paintBehavior() const;
     bool isPainting() const;
     void setNodeToDraw(Node*);
 
@@ -210,6 +220,8 @@ private:
     friend class RenderWidget;
     bool useSlowRepaints() const;
     bool useSlowRepaintsIfNotOverlapped() const;
+
+    bool hasFixedObjects() const { return m_fixedObjectCount > 0; }
 
     void applyOverflowToViewport(RenderObject*, ScrollbarMode& hMode, ScrollbarMode& vMode);
 
@@ -268,6 +280,7 @@ private:
     bool m_isOverlapped;
     bool m_contentIsOpaque;
     unsigned m_slowRepaintObjectCount;
+    unsigned m_fixedObjectCount;
 
     int m_borderX, m_borderY;
 
@@ -289,7 +302,8 @@ private:
     float m_lastZoomFactor;
 
     String m_mediaType;
-    
+    String m_mediaTypeWhenNotPrinting;
+
     unsigned m_enqueueEvents;
     Vector<ScheduledEvent*> m_scheduledEvents;
     

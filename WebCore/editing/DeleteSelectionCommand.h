@@ -51,6 +51,7 @@ private:
     virtual bool preservesTypingStyle() const;
 
     void initializeStartEnd(Position&, Position&);
+    void setStartingSelectionOnSmartDelete(const Position&, const Position&);
     void initializePositionData();
     void saveTypingStyleState();
     void insertPlaceholderForAncestorBlockContent();

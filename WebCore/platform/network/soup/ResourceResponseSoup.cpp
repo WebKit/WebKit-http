@@ -21,9 +21,11 @@
 #include "config.h"
 #include "ResourceResponse.h"
 
-#include "CString.h"
 #include "GOwnPtr.h"
+#include "HTTPParsers.h"
+#include "MIMETypeRegistry.h"
 #include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 using namespace std;
 
@@ -38,13 +40,15 @@ SoupMessage* ResourceResponse::toSoupMessage() const
 
     soupMessage->status_code = httpStatusCode();
 
-    HTTPHeaderMap headers = httpHeaderFields();
+    const HTTPHeaderMap& headers = httpHeaderFields();
     SoupMessageHeaders* soupHeaders = soupMessage->response_headers;
     if (!headers.isEmpty()) {
         HTTPHeaderMap::const_iterator end = headers.end();
         for (HTTPHeaderMap::const_iterator it = headers.begin(); it != end; ++it)
             soup_message_headers_append(soupHeaders, it->first.string().utf8().data(), it->second.utf8().data());
     }
+
+    soup_message_set_flags(soupMessage, m_soupFlags);
 
     // Body data is not in the message.
     return soupMessage;
@@ -65,6 +69,16 @@ void ResourceResponse::updateFromSoupMessage(SoupMessage* soupMessage)
     soup_message_headers_iter_init(&headersIter, soupMessage->response_headers);
     while (soup_message_headers_iter_next(&headersIter, &headerName, &headerValue))
         m_httpHeaderFields.set(String::fromUTF8(headerName), String::fromUTF8(headerValue));
+
+    m_soupFlags = soup_message_get_flags(soupMessage);
+
+    String contentType = soup_message_headers_get_one(soupMessage->response_headers, "Content-Type");
+    setMimeType(extractMIMETypeFromMediaType(contentType));
+
+    setTextEncodingName(extractCharsetFromMediaType(contentType));
+    setExpectedContentLength(soup_message_headers_get_content_length(soupMessage->response_headers));
+    setHTTPStatusText(soupMessage->reason_phrase);
+    setSuggestedFilename(filenameFromHTTPContentDisposition(httpHeaderField("Content-Disposition")));
 }
 
 }

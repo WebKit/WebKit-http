@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2009, 2010 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #define EventHandler_h
 
 #include "DragActions.h"
+#include "FocusDirection.h"
 #include "PlatformMouseEvent.h"
 #include "ScrollTypes.h"
 #include "Timer.h"
@@ -37,13 +38,19 @@
 class NSView;
 #endif
 
+#if ENABLE(TOUCH_EVENTS)
+#include <wtf/HashMap.h>
+#endif
+
 namespace WebCore {
 
 class AtomicString;
 class Clipboard;
 class Cursor;
 class Event;
+class EventTarget;
 class FloatPoint;
+class FloatQuad;
 class Frame;
 class HitTestRequest;
 class HitTestResult;
@@ -62,6 +69,7 @@ class String;
 class SVGElementInstance;
 class TextEvent;
 class TouchEvent;
+class WheelEvent;
 class Widget;
     
 #if ENABLE(DRAG_SUPPORT)
@@ -94,6 +102,8 @@ public:
     void stopAutoscrollTimer(bool rendererIsBeingDestroyed = false);
     RenderObject* autoscrollRenderer() const;
     void updateAutoscrollRenderer();
+
+    void dispatchFakeMouseMoveEventSoonInQuad(const FloatQuad&);
 
     HitTestResult hitTestResultAtPoint(const IntPoint&, bool allowShadowContent, bool ignoreClipping = false, HitTestScrollbars scrollbars = DontHitTestScrollbars);
 
@@ -141,6 +151,7 @@ public:
     bool handleMouseMoveEvent(const PlatformMouseEvent&, HitTestResult* hoveredNode = 0);
     bool handleMouseReleaseEvent(const PlatformMouseEvent&);
     bool handleWheelEvent(PlatformWheelEvent&);
+    void defaultWheelEventHandler(Node*, WheelEvent*);
 
 #if ENABLE(CONTEXT_MENUS)
     bool sendContextMenuEvent(const PlatformMouseEvent&);
@@ -258,6 +269,9 @@ private:
     void setAutoscrollRenderer(RenderObject*);
     void autoscrollTimerFired(Timer<EventHandler>*);
 
+    void fakeMouseMoveEventTimerFired(Timer<EventHandler>*);
+    void cancelFakeMouseMoveEvent();
+
     void invalidateClick();
 
     Node* nodeUnderMouse() const;
@@ -301,6 +315,7 @@ private:
 
     void defaultSpaceEventHandler(KeyboardEvent*);
     void defaultTabEventHandler(KeyboardEvent*);
+    void defaultArrowEventHandler(FocusDirection, KeyboardEvent*);
 
 #if ENABLE(DRAG_SUPPORT)
     void allowDHTMLDrag(bool& flagDHTML, bool& flagUA) const;
@@ -322,6 +337,8 @@ private:
     void updateLastScrollbarUnderMouse(Scrollbar*, bool);
     
     void setFrameWasScrolledByUser();
+
+    FocusDirection focusDirectionForKey(const AtomicString&) const;
 
     bool capturesDragging() const { return m_capturesDragging; }
 
@@ -361,6 +378,8 @@ private:
     bool m_autoscrollInProgress;
     bool m_mouseDownMayStartAutoscroll;
     bool m_mouseDownWasInSubframe;
+
+    Timer<EventHandler> m_fakeMouseMoveEventTimer;
 
 #if ENABLE(SVG)
     bool m_svgPan;
@@ -408,9 +427,8 @@ private:
     int m_activationEventNumber;
 #endif
 #if ENABLE(TOUCH_EVENTS)
-    RefPtr<Node> m_touchEventTarget;
-    IntPoint m_firstTouchScreenPos;
-    IntPoint m_firstTouchPagePos;
+    typedef HashMap<int, RefPtr<EventTarget> > TouchTargetMap;
+    TouchTargetMap m_originatingTouchPointTargets;
 #endif
 };
 

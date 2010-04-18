@@ -25,17 +25,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "config.h"
 #include "IndexedDatabaseRequest.h"
 
-#if ENABLE(INDEXED_DATABASE)
-
 #include "ExceptionCode.h"
-#include "IDBRequest.h"
+#include "IDBDatabase.h"
+#include "IndexedDatabase.h"
+
+#if ENABLE(INDEXED_DATABASE)
 
 namespace WebCore {
 
-IndexedDatabaseRequest::IndexedDatabaseRequest()
+IndexedDatabaseRequest::IndexedDatabaseRequest(IndexedDatabase* indexedDatabase, Frame* frame)
+    : m_indexedDatabase(indexedDatabase)
+    , m_frame(frame)
 {
 }
 
@@ -43,8 +47,9 @@ IndexedDatabaseRequest::~IndexedDatabaseRequest()
 {
 }
 
-void IndexedDatabaseRequest::open(const String& name, const String& description, bool modifyDatabase, ExceptionCode& exception)
+void IndexedDatabaseRequest::open(const String& name, const String& description, bool modifyDatabase, PassRefPtr<IDBDatabaseCallbacks> callbacks, ExceptionCode& exception)
 {
+    m_indexedDatabase->open(name, description, modifyDatabase, callbacks, m_frame, exception);
 }
 
 } // namespace WebCore

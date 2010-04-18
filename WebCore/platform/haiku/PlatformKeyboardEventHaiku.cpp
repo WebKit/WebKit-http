@@ -30,12 +30,12 @@
 #include "config.h"
 #include "PlatformKeyboardEvent.h"
 
-#include "CString.h"
-#include "KeyboardCodes.h"
 #include "NotImplemented.h"
+#include "WindowsKeyboardCodes.h"
 #include <InterfaceDefs.h>
 #include <Message.h>
 #include <String.h>
+#include <wtf/text/CString.h>
 
 
 namespace WebCore {
@@ -375,6 +375,15 @@ void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCom
 bool PlatformKeyboardEvent::currentCapsLockState()
 {
     return ::modifiers() & B_CAPS_LOCK;
+}
+
+void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
+{
+    uint32 modifiers = ::modifiers();
+    shiftKey = modifiers & B_SHIFT_KEY;
+    ctrlKey = modifiers & B_COMMAND_KEY;
+    altKey = modifiers & B_CONTROL_KEY;
+    metaKey = modifiers & B_OPTION_KEY;
 }
 
 } // namespace WebCore

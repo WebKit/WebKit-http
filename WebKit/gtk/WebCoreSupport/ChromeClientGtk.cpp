@@ -28,11 +28,13 @@
 #include "FileChooser.h"
 #include "FloatRect.h"
 #include "FrameLoadRequest.h"
+#include "GtkVersioning.h"
 #include "IntRect.h"
 #include "PlatformString.h"
-#include "CString.h"
 #include "HitTestResult.h"
+#include "Icon.h"
 #include "KURL.h"
+#include "webkitgeolocationpolicydecision.h"
 #include "webkitwebview.h"
 #include "webkitnetworkrequest.h"
 #include "webkitprivate.h"
@@ -41,6 +43,7 @@
 #if ENABLE(DATABASE)
 #include "DatabaseTracker.h"
 #endif
+#include <wtf/text/CString.h>
 
 #include <glib.h>
 #include <glib/gi18n-lib.h>
@@ -64,11 +67,7 @@ void ChromeClient::chromeDestroyed()
 FloatRect ChromeClient::windowRect()
 {
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (gtk_widget_is_toplevel(window)) {
-#else
-    if (GTK_WIDGET_TOPLEVEL(window)) {
-#endif
         gint left, top, width, height;
         gtk_window_get_position(GTK_WINDOW(window), &left, &top);
         gtk_window_get_size(GTK_WINDOW(window), &width, &height);
@@ -97,11 +96,7 @@ void ChromeClient::setWindowRect(const FloatRect& rect)
         return;
 
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (gtk_widget_is_toplevel(window)) {
-#else
-    if (GTK_WIDGET_TOPLEVEL(window)) {
-#endif
         gtk_window_move(GTK_WINDOW(window), intrect.x(), intrect.y());
         gtk_window_resize(GTK_WINDOW(window), intrect.width(), intrect.height());
     }
@@ -127,11 +122,7 @@ void ChromeClient::focus()
 void ChromeClient::unfocus()
 {
     GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(m_webView));
-#if GTK_CHECK_VERSION(2, 18, 0)
     if (gtk_widget_is_toplevel(window))
-#else
-    if (GTK_WIDGET_TOPLEVEL(window))
-#endif
         gtk_window_set_focus(GTK_WINDOW(window), NULL);
 }
 
@@ -259,11 +250,7 @@ void ChromeClient::closeWindowSoon()
 
 bool ChromeClient::canTakeFocus(FocusDirection)
 {
-#if GTK_CHECK_VERSION(2, 18, 0)
     return gtk_widget_get_can_focus(GTK_WIDGET(m_webView));
-#else
-    return GTK_WIDGET_CAN_FOCUS(m_webView);
-#endif
 }
 
 void ChromeClient::takeFocus(FocusDirection)
@@ -341,18 +328,27 @@ IntRect ChromeClient::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClient::repaint(const IntRect& windowRect, bool contentChanged, bool immediate, bool repaintContentOnly)
+void ChromeClient::invalidateWindow(const IntRect&, bool)
 {
-    GdkRectangle rect = windowRect;
+    notImplemented();
+}
+
+void ChromeClient::invalidateContentsAndWindow(const IntRect& updateRect, bool immediate)
+{
+    GdkRectangle rect = updateRect;
     GdkWindow* window = GTK_WIDGET(m_webView)->window;
 
     if (window) {
-        if (contentChanged)
-            gdk_window_invalidate_rect(window, &rect, FALSE);
+        gdk_window_invalidate_rect(window, &rect, FALSE);
         // We don't currently do immediate updates since they delay other UI elements.
         //if (immediate)
         //    gdk_window_process_updates(window, FALSE);
     }
+}
+
+void ChromeClient::invalidateContentsForSlowScroll(const IntRect& updateRect, bool immediate)
+{
+    invalidateContentsAndWindow(updateRect, immediate);
 }
 
 void ChromeClient::scroll(const IntSize& delta, const IntRect& rectToScroll, const IntRect& clipRect)
@@ -429,9 +425,9 @@ void ChromeClient::contentsSizeChanged(Frame* frame, const IntSize& size) const
     // We need to queue a resize request only if the size changed,
     // otherwise we get into an infinite loop!
     GtkWidget* widget = GTK_WIDGET(m_webView);
-    if (GTK_WIDGET_REALIZED(widget) &&
-        (widget->requisition.height != size.height()) &&
-        (widget->requisition.width != size.width()))
+    if (gtk_widget_get_realized(widget)
+        && (widget->requisition.height != size.height())
+        || (widget->requisition.width != size.width()))
         gtk_widget_queue_resize_no_redraw(widget);
 }
 
@@ -563,10 +559,9 @@ void ChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> prpFileChooser)
     gtk_widget_destroy(dialog);
 }
 
-void ChromeClient::iconForFiles(const Vector<WebCore::String>&, PassRefPtr<WebCore::FileChooser>)
+void ChromeClient::chooseIconForFiles(const Vector<WebCore::String>& filenames, PassRefPtr<WebCore::FileChooser> chooser)
 {
-    // FIXME: Move the code in Icon::createIconForFiles() here.
-    notImplemented();
+    chooser->iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 bool ChromeClient::setCursor(PlatformCursorHandle)
@@ -575,10 +570,24 @@ bool ChromeClient::setCursor(PlatformCursorHandle)
     return false;
 }
 
-void ChromeClient::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
+void ChromeClient::requestGeolocationPermissionForFrame(Frame* frame, Geolocation* geolocation)
 {
-    // See the comment in WebCore/page/ChromeClient.h
-    notImplemented();
+    WebKitWebFrame* webFrame = kit(frame);
+    WebKitWebView* webView = getViewFromFrame(webFrame);
+
+    WebKitGeolocationPolicyDecision* policyDecision = webkit_geolocation_policy_decision_new(webFrame, geolocation);
+
+    gboolean isHandled = FALSE;
+    g_signal_emit_by_name(webView, "geolocation-policy-decision-requested", webFrame, policyDecision, &isHandled);
+    if (!isHandled)
+        webkit_geolocation_policy_deny(policyDecision);
+}
+
+void ChromeClient::cancelGeolocationPermissionRequestForFrame(WebCore::Frame* frame, WebCore::Geolocation*)
+{
+    WebKitWebFrame* webFrame = kit(frame);
+    WebKitWebView* webView = getViewFromFrame(webFrame);
+    g_signal_emit_by_name(webView, "geolocation-policy-decision-cancelled", webFrame);
 }
 
 }

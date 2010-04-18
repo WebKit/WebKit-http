@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ClipboardWin.h"
 
-#include "CString.h"
 #include "CachedImage.h"
 #include "ClipboardUtilitiesWin.h"
 #include "Document.h"
@@ -49,15 +48,15 @@
 #include "Range.h"
 #include "RenderImage.h"
 #include "ResourceResponse.h"
+#include "SharedBuffer.h"
 #include "StringHash.h"
 #include "WCDataObject.h"
 #include "csshelper.h"
 #include "markup.h"
-
 #include <shlwapi.h>
 #include <wininet.h>
-
 #include <wtf/RefPtr.h>
+#include <wtf/text/CString.h>
 
 using namespace std;
 

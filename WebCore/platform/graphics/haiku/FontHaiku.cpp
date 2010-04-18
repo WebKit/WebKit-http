@@ -27,7 +27,6 @@
 
 #include "config.h"
 
-#include "CString.h"
 #include "Font.h"
 #include "FontData.h"
 #include "FontDescription.h"
@@ -35,6 +34,7 @@
 #include "GraphicsContext.h"
 #include "TextEncoding.h"
 #include "NotImplemented.h"
+#include <wtf/text/CString.h>
 #include <Font.h>
 #include <String.h>
 #include <View.h>
@@ -86,7 +86,7 @@ void Font::drawComplexText(GraphicsContext* ctx, const TextRun& run, const Float
 }
 
 
-float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts) const
+float Font::floatWidthForComplexText(const TextRun& run, HashSet<const SimpleFontData*>* fallbackFonts, GlyphOverflow* glyphOverflow) const
 {
     notImplemented();
     return 0;

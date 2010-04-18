@@ -14,7 +14,7 @@
  *     * Neither the name of Google Inc. nor the names of its
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -44,6 +44,8 @@
 
 namespace WebCore {
 
+WrapperTypeInfo V8HTMLAudioElementConstructor::info = { V8HTMLAudioElementConstructor::GetTemplate, 0, false };
+
 static v8::Handle<v8::Value> v8HTMLAudioElementConstructorCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.HTMLAudioElement.Contructor");
@@ -60,17 +62,16 @@ static v8::Handle<v8::Value> v8HTMLAudioElementConstructorCallback(const v8::Arg
         return throwError("Audio constructor associated document is unavailable", V8Proxy::ReferenceError);
 
     // Make sure the document is added to the DOM Node map. Otherwise, the HTMLAudioElement instance
-    // may end up being the only node in the map and get garbage-ccollected prematurely.
+    // may end up being the only node in the map and get garbage-collected prematurely.
     toV8(document);
 
-    RefPtr<HTMLAudioElement> audio = new HTMLAudioElement(HTMLNames::audioTag, document);
-    audio->setAutobuffer(true);
-    if (args.Length() > 0) {
-        audio->setSrc(toWebCoreString(args[0]));
-        audio->scheduleLoad();
-    }
 
-    V8DOMWrapper::setDOMWrapper(args.Holder(), V8ClassIndex::ToInt(V8ClassIndex::AUDIO), audio.get());
+    String src;
+    if (args.Length() > 0)
+        src = toWebCoreString(args[0]);
+    RefPtr<HTMLAudioElement> audio = HTMLAudioElement::createForJSConstructor(document, src);
+
+    V8DOMWrapper::setDOMWrapper(args.Holder(), &V8HTMLAudioElementConstructor::info, audio.get());
     audio->ref();
     V8DOMWrapper::setJSWrapperForDOMNode(audio.get(), v8::Persistent<v8::Object>::New(args.Holder()));
     return args.Holder();

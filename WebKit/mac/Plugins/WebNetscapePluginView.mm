@@ -50,7 +50,6 @@
 #import "WebPluginContainerCheck.h"
 #import "WebNetscapeContainerCheckContextInfo.h"
 #import "WebNetscapePluginEventHandler.h"
-#import "WebNullPluginView.h"
 #import "WebPreferences.h"
 #import "WebPluginRequest.h"
 #import "WebViewInternal.h"
@@ -59,7 +58,6 @@
 #import <runtime/JSLock.h>
 #import <WebCore/npruntime_impl.h>
 #import <WebCore/CookieJar.h>
-#import <WebCore/CString.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Element.h>
 #import <WebCore/Frame.h> 
@@ -77,12 +75,13 @@
 #import <WebKit/WebUIDelegate.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/Assertions.h>
+#import <wtf/text/CString.h>
 #import <objc/objc-runtime.h>
 
 #define LoginWindowDidSwitchFromUserNotification    @"WebLoginWindowDidSwitchFromUserNotification"
 #define LoginWindowDidSwitchToUserNotification      @"WebLoginWindowDidSwitchToUserNotification"
 #define WKNVSupportsCompositingCoreAnimationPluginsBool 74656  /* TRUE if the browser supports hardware compositing of Core Animation plug-ins  */
-static const int WKNVSilverlightFullScreenPerformanceIssueFixed = 7288546; /* TRUE if Siverlight addressed its underlying  bug in <rdar://problem/7288546> */
+static const int WKNVSilverlightFullscreenPerformanceIssueFixed = 7288546; /* TRUE if Siverlight addressed its underlying  bug in <rdar://problem/7288546> */
 
 using namespace WebCore;
 using namespace WebKit;
@@ -754,6 +753,9 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     if (!_isStarted)
         return;
 
+    // Set cursor to arrow. Plugins often handle cursor internally, but those that don't will just get this default one.
+    [[NSCursor arrowCursor] set];
+
     _eventHandler->mouseEntered(theEvent);
 }
 
@@ -1394,7 +1396,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
 - (void)drawRect:(NSRect)rect
 {
-    if (drawingModel == NPDrawingModelCoreAnimation)
+    if (drawingModel == NPDrawingModelCoreAnimation && (![self inFlatteningPaint] || ![self supportsSnapshotting]))
         return;
 
     if (!_isStarted)
@@ -1904,12 +1906,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
 -(void)status:(const char *)message
 {    
-    if (!message) {
-        LOG_ERROR("NPN_Status passed a NULL status message");
-        return;
-    }
-
-    CFStringRef status = CFStringCreateWithCString(NULL, message, kCFStringEncodingUTF8);
+    CFStringRef status = CFStringCreateWithCString(NULL, message ? message : "", kCFStringEncodingUTF8);
     if (!status) {
         LOG_ERROR("NPN_Status: the message was not valid UTF-8");
         return;
@@ -2281,7 +2278,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
 - (char*)resolveURL:(const char*)url forTarget:(const char*)target
 {
-    WebCore::CString location = [self resolvedURLStringForURL:url target:target];
+    CString location = [self resolvedURLStringForURL:url target:target];
 
     if (location.isNull())
         return 0;
@@ -2312,13 +2309,13 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 // 1) Microsoft releases a genuine fix for 7288546.
 // 2) Enough Silverlight users update to the new Silverlight.
 // For now, we'll distinguish older broken versions of Silverlight by asking the plug-in if it resolved its full screen badness.
-- (void)_workaroundSilverlightFullScreenBug:(BOOL)initializedPlugin
+- (void)_workaroundSilverlightFullscreenBug:(BOOL)initializedPlugin
 {
 #if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD)
     ASSERT(_isSilverlight);
-    NPBool isFullScreenPerformanceIssueFixed = 0;
+    NPBool isFullscreenPerformanceIssueFixed = 0;
     NPPluginFuncs *pluginFuncs = [_pluginPackage.get() pluginFuncs];
-    if (pluginFuncs->getvalue && pluginFuncs->getvalue(plugin, static_cast<NPPVariable>(WKNVSilverlightFullScreenPerformanceIssueFixed), &isFullScreenPerformanceIssueFixed) == NPERR_NO_ERROR && isFullScreenPerformanceIssueFixed)
+    if (pluginFuncs->getvalue && pluginFuncs->getvalue(plugin, static_cast<NPPVariable>(WKNVSilverlightFullscreenPerformanceIssueFixed), &isFullscreenPerformanceIssueFixed) == NPERR_NO_ERROR && isFullscreenPerformanceIssueFixed)
         return;
     
     static CGLPixelFormatObj pixelFormatObject = 0;
@@ -2359,7 +2356,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     NPError npErr = [_pluginPackage.get() pluginFuncs]->newp((char *)[_MIMEType.get() cString], plugin, _mode, argsCount, cAttributes, cValues, NULL);
     [[self class] setCurrentPluginView:nil];
     if (_isSilverlight)
-        [self _workaroundSilverlightFullScreenBug:YES];
+        [self _workaroundSilverlightFullscreenBug:YES];
     LOG(Plugins, "NPP_New: %d", npErr);
     return npErr;
 }
@@ -2369,7 +2366,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     PluginMainThreadScheduler::scheduler().unregisterPlugin(plugin);
     
     if (_isSilverlight)
-        [self _workaroundSilverlightFullScreenBug:NO];
+        [self _workaroundSilverlightFullscreenBug:NO];
     
     NPError npErr;
     npErr = ![_pluginPackage.get() pluginFuncs]->destroy(plugin, NULL);

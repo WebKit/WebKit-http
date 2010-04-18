@@ -37,6 +37,10 @@
 #include "Document.h"
 #include "TimeRanges.h"
 
+#if PLATFORM(QT)
+#include <QtGlobal>
+#endif
+
 #if PLATFORM(MAC)
 #include "MediaPlayerPrivateQTKit.h"
 #elif OS(WINCE) && !PLATFORM(QT)
@@ -46,7 +50,11 @@
 #elif PLATFORM(GTK)
 #include "MediaPlayerPrivateGStreamer.h"
 #elif PLATFORM(QT)
+#if QT_VERSION < 0x040700
 #include "MediaPlayerPrivatePhonon.h"
+#else
+#include "MediaPlayerPrivateQt.h"
+#endif
 #elif PLATFORM(CHROMIUM)
 #include "MediaPlayerPrivateChromium.h"
 #endif
@@ -151,7 +159,14 @@ static Vector<MediaPlayerFactory*>& installedMediaEngines()
 
     if (!enginesQueried) {
         enginesQueried = true;
+#if USE(GSTREAMER)
+        MediaPlayerPrivateGStreamer::registerMediaEngine(addMediaEngine);
+#else
+        // FIXME: currently all the MediaEngines are named
+        // MediaPlayerPrivate. This code will need an update when bug
+        // 36663 is adressed.
         MediaPlayerPrivate::registerMediaEngine(addMediaEngine);
+#endif
 
         // register additional engines here
     }
@@ -196,12 +211,12 @@ MediaPlayer::MediaPlayer(MediaPlayerClient* client)
     , m_private(createNullMediaPlayer(this))
     , m_currentMediaEngine(0)
     , m_frameView(0)
+    , m_preload(Auto)
     , m_visible(false)
     , m_rate(1.0f)
     , m_volume(1.0f)
     , m_muted(false)
     , m_preservesPitch(true)
-    , m_autobuffer(false)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
     , m_playerProxy(0)
 #endif
@@ -252,7 +267,7 @@ void MediaPlayer::load(const String& url, const ContentType& contentType)
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
         m_private->setMediaPlayerProxy(m_playerProxy);
 #endif
-        m_private->setAutobuffer(autobuffer());
+        m_private->setPreload(m_preload);
         m_private->setPreservesPitch(preservesPitch());
     }
 
@@ -390,7 +405,9 @@ float MediaPlayer::volume() const
 void MediaPlayer::setVolume(float volume)
 {
     m_volume = volume;
-    m_private->setVolume(volume);   
+
+    if (m_private->supportsMuting() || !m_muted)
+        m_private->setVolume(volume);
 }
 
 bool MediaPlayer::muted() const
@@ -398,15 +415,14 @@ bool MediaPlayer::muted() const
     return m_muted;
 }
 
-bool MediaPlayer::supportsMuting() const
-{
-    return m_private->supportsMuting();
-}
-
 void MediaPlayer::setMuted(bool muted)
 {
     m_muted = muted;
-    m_private->setMuted(muted);
+
+    if (m_private->supportsMuting())
+        m_private->setMuted(muted);
+    else
+        m_private->setVolume(muted ? 0 : m_volume);
 }
 
 bool MediaPlayer::hasClosedCaptions() const
@@ -473,17 +489,15 @@ void MediaPlayer::setVisible(bool b)
     m_private->setVisible(b);
 }
 
-bool MediaPlayer::autobuffer() const
+MediaPlayer::Preload MediaPlayer::preload() const
 {
-    return m_autobuffer;
+    return m_preload;
 }
 
-void MediaPlayer::setAutobuffer(bool b)
+void MediaPlayer::setPreload(MediaPlayer::Preload preload)
 {
-    if (m_autobuffer != b) {
-        m_autobuffer = b;
-        m_private->setAutobuffer(b);
-    }
+    m_preload = preload;
+    m_private->setPreload(preload);
 }
 
 void MediaPlayer::paint(GraphicsContext* p, const IntRect& r)

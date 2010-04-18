@@ -33,6 +33,7 @@
 
 #include "KURL.h"
 #include "PlatformString.h"
+#include "SharedBuffer.h"
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -54,9 +55,33 @@ namespace WebCore {
         }
 
         void clear();
+        void clearAllExceptFiles();
         bool hasData() const;
 
-        KURL url;
+        void clearURL()
+        {
+            url = KURL();
+            uriList.clear();
+            urlTitle = "";
+        }
+
+        bool hasValidURL() const
+        {
+            return url.isValid();
+        }
+
+        KURL getURL() const
+        {
+            return url;
+        }
+
+        void setURL(const KURL& newURL)
+        {
+            url = newURL;
+            uriList.clear();
+            uriList.append(newURL.string());
+        }
+
         String urlTitle;
 
         String downloadMetadata;
@@ -73,8 +98,14 @@ namespace WebCore {
         RefPtr<SharedBuffer> fileContent;
 
     private:
+        // URL and uri-list are linked, so they should not be accessed individually.
+        KURL url;
+        Vector<String> uriList;
+
         ChromiumDataObject() {}
         ChromiumDataObject(const ChromiumDataObject&);
+
+        friend class ClipboardChromium;
     };
 
 } // namespace WebCore

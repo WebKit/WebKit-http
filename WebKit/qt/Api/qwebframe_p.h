@@ -84,9 +84,9 @@ public:
     static QWebFrame* kit(WebCore::Frame*);
 
     void renderRelativeCoords(WebCore::GraphicsContext*, QWebFrame::RenderLayer, const QRegion& clip);
-    void renderContentsLayerAbsoluteCoords(WebCore::GraphicsContext*, const QRegion& clip);
-
-    bool scrollOverflow(int dx, int dy);
+#if ENABLE(TILED_BACKING_STORE)
+    void renderFromTiledBackingStore(WebCore::GraphicsContext*, const QRegion& clip);
+#endif
 
     QWebFrame *q;
     Qt::ScrollBarPolicy horizontalScrollBarPolicy;

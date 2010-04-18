@@ -29,11 +29,19 @@
 #ifndef DragImageRef_h
 #define DragImageRef_h
 
+#if OS(DARWIN)
+typedef struct CGImage* CGImageRef;
+#else
+class SkBitmap;
+#endif
+
 namespace WebCore {
 
-    // FIXME: Need to support image drag-n-drop.  For now, we just allow things
-    // to compile by defining this dummy type.
-    typedef void* DragImageRef;
+#if OS(DARWIN)
+typedef CGImageRef DragImageRef;
+#else
+typedef SkBitmap* DragImageRef;
+#endif
 
 } // namespace WebCore
 

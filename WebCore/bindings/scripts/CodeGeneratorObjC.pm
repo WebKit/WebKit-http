@@ -17,7 +17,7 @@
 # Library General Public License for more details.
 # 
 # You should have received a copy of the GNU Library General Public License
-# aint with this library; see the file COPYING.LIB.  If not, write to
+# along with this library; see the file COPYING.LIB.  If not, write to
 # the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 #
@@ -222,7 +222,13 @@ sub ReadPublicInterfaces
     %publicInterfaces = ();
 
     my $fileName = "WebCore/bindings/objc/PublicDOMInterfaces.h";
-    open FILE, "-|", "/usr/bin/gcc", "-E", "-P", "-x", "objective-c", 
+    my $gccLocation = "";
+    if (($Config::Config{'osname'}) =~ /solaris/i) {
+        $gccLocation = "/usr/sfw/bin/gcc";
+    } else {
+        $gccLocation = "/usr/bin/gcc";
+    }
+    open FILE, "-|", $gccLocation, "-E", "-P", "-x", "objective-c",
         (map { "-D$_" } split(/ +/, $defines)), "-DOBJC_CODE_GENERATION", $fileName or die "Could not open $fileName";
     my @documentContent = <FILE>;
     close FILE;

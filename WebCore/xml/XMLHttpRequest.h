@@ -29,12 +29,14 @@
 #include "ResourceResponse.h"
 #include "ScriptString.h"
 #include "ThreadableLoaderClient.h"
+#include "XMLHttpRequestProgressEventThrottle.h"
 #include <wtf/OwnPtr.h>
 
 namespace WebCore {
 
 class Blob;
 class Document;
+class DOMFormData;
 class ResourceRequest;
 class TextResourceDecoder;
 class ThreadableLoader;
@@ -57,6 +59,8 @@ public:
 
     virtual void contextDestroyed();
     virtual bool canSuspend() const;
+    virtual void suspend();
+    virtual void resume();
     virtual void stop();
 
     virtual ScriptExecutionContext* scriptExecutionContext() const;
@@ -66,6 +70,7 @@ public:
     State readyState() const;
     bool withCredentials() const { return m_includeCredentials; }
     void setWithCredentials(bool, ExceptionCode&);
+    void open(const String& method, const KURL&, ExceptionCode&);
     void open(const String& method, const KURL&, bool async, ExceptionCode&);
     void open(const String& method, const KURL&, bool async, const String& user, ExceptionCode&);
     void open(const String& method, const KURL&, bool async, const String& user, const String& password, ExceptionCode&);
@@ -73,6 +78,7 @@ public:
     void send(Document*, ExceptionCode&);
     void send(const String&, ExceptionCode&);
     void send(Blob*, ExceptionCode&);
+    void send(DOMFormData*, ExceptionCode&);
     void abort();
     void setRequestHeader(const AtomicString& name, const String& value, ExceptionCode&);
     void overrideMimeType(const String& override);
@@ -184,6 +190,8 @@ private:
     ExceptionCode m_exceptionCode;
 
     EventTargetData m_eventTargetData;
+
+    XMLHttpRequestProgressEventThrottle m_progressEventThrottle;
 };
 
 } // namespace WebCore

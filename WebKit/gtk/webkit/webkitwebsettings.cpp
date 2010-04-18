@@ -30,11 +30,11 @@
 #include "webkitprivate.h"
 #include "webkitversion.h"
 
-#include "CString.h"
 #include "FileSystem.h"
 #include "PluginDatabase.h"
 #include "Language.h"
 #include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 #include <glib/gi18n-lib.h>
 #if OS(UNIX)
@@ -88,11 +88,12 @@ struct _WebKitWebSettingsPrivate {
     gboolean enable_private_browsing;
     gboolean enable_spell_checking;
     gchar* spell_checking_languages;
-    GSList* spell_checking_languages_list;
+    GSList* enchant_dicts;
     gboolean enable_caret_browsing;
     gboolean enable_html5_database;
     gboolean enable_html5_local_storage;
     gboolean enable_xss_auditor;
+    gboolean enable_spatial_navigation;
     gchar* user_agent;
     gboolean javascript_can_open_windows_automatically;
     gboolean enable_offline_web_application_cache;
@@ -141,6 +142,7 @@ enum {
     PROP_ENABLE_HTML5_DATABASE,
     PROP_ENABLE_HTML5_LOCAL_STORAGE,
     PROP_ENABLE_XSS_AUDITOR,
+    PROP_ENABLE_SPATIAL_NAVIGATION,
     PROP_USER_AGENT,
     PROP_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY,
     PROP_ENABLE_OFFLINE_WEB_APPLICATION_CACHE,
@@ -568,7 +570,25 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
                                                          _("Whether to enable teh XSS auditor"),
                                                          TRUE,
                                                          flags));
-
+    /**
+    * WebKitWebSettings:enable-spatial-navigation
+    *
+    * Whether to enable the Spatial Navigation. This feature consists in the ability
+    * to navigate between focusable elements in a Web page, such as hyperlinks and
+    * form controls, by using Left, Right, Up and Down arrow keys. For example, if
+    * an user presses the Right key, heuristics determine whether there is an element
+    * he might be trying to reach towards the right, and if there are multiple elements,
+    * which element he probably wants.
+    *
+    * Since: 1.1.23
+    */
+    g_object_class_install_property(gobject_class,
+                                    PROP_ENABLE_SPATIAL_NAVIGATION,
+                                    g_param_spec_boolean("enable-spatial-navigation",
+                                                         _("Enable Spatial Navigation"),
+                                                         _("Whether to enable Spatial Navigation"),
+                                                         FALSE,
+                                                         flags));
     /**
      * WebKitWebSettings:user-agent:
      *
@@ -805,9 +825,9 @@ static void webkit_web_settings_class_init(WebKitWebSettingsClass* klass)
    /**
     * WebKitWebSettings:enable-java-applet:
     *
-    * Enable or disable support for the Java <applet> tag. Keep in
+    * Enable or disable support for the Java &lt;applet&gt; tag. Keep in
     * mind that Java content can be still shown in the page through
-    * <object> or <embed>, which are the preferred tags for this task.
+    * &lt;object&gt; or &lt;embed&gt;, which are the preferred tags for this task.
     *
     * Since: 1.1.22
     */
@@ -827,16 +847,21 @@ static void webkit_web_settings_init(WebKitWebSettings* web_settings)
     web_settings->priv = WEBKIT_WEB_SETTINGS_GET_PRIVATE(web_settings);
 }
 
+static EnchantBroker* get_enchant_broker()
+{
+    static EnchantBroker* broker = 0;
+    if (!broker)
+        broker = enchant_broker_init();
+
+    return broker;
+}
+
 static void free_spell_checking_language(gpointer data, gpointer user_data)
 {
-    SpellLanguage* language = static_cast<SpellLanguage*>(data);
-    if (language->config) {
-        if (language->speller)
-            enchant_broker_free_dict(language->config, language->speller);
+    EnchantDict* dict = static_cast<EnchantDict*>(data);
+    EnchantBroker* broker = get_enchant_broker();
 
-        enchant_broker_free(language->config);
-    }
-    g_slice_free(SpellLanguage, language);
+    enchant_broker_free_dict(broker, dict);
 }
 
 static void webkit_web_settings_finalize(GObject* object)
@@ -854,8 +879,8 @@ static void webkit_web_settings_finalize(GObject* object)
     g_free(priv->user_stylesheet_uri);
     g_free(priv->spell_checking_languages);
 
-    g_slist_foreach(priv->spell_checking_languages_list, free_spell_checking_language, NULL);
-    g_slist_free(priv->spell_checking_languages_list);
+    g_slist_foreach(priv->enchant_dicts, free_spell_checking_language, 0);
+    g_slist_free(priv->enchant_dicts);
 
     g_free(priv->user_agent);
 
@@ -867,8 +892,8 @@ static void webkit_web_settings_set_property(GObject* object, guint prop_id, con
     WebKitWebSettings* web_settings = WEBKIT_WEB_SETTINGS(object);
     WebKitWebSettingsPrivate* priv = web_settings->priv;
     EnchantBroker* broker;
-    SpellLanguage* lang;
-    GSList* spellLanguages = NULL;
+    EnchantDict* dict;
+    GSList* spellDictionaries = 0;
 
     switch(prop_id) {
     case PROP_DEFAULT_ENCODING:
@@ -958,40 +983,35 @@ static void webkit_web_settings_set_property(GObject* object, guint prop_id, con
         priv->enable_spell_checking = g_value_get_boolean(value);
         break;
     case PROP_SPELL_CHECKING_LANGUAGES:
+        g_free(priv->spell_checking_languages);
         priv->spell_checking_languages = g_strdup(g_value_get_string(value));
 
-        broker = enchant_broker_init();
+        broker = get_enchant_broker();
         if (priv->spell_checking_languages) {
             char** langs = g_strsplit(priv->spell_checking_languages, ",", -1);
             for (int i = 0; langs[i]; i++) {
                 if (enchant_broker_dict_exists(broker, langs[i])) {
-                    lang = g_slice_new0(SpellLanguage);
-                    lang->config = enchant_broker_init();
-                    lang->speller = enchant_broker_request_dict(lang->config, langs[i]);
-
-                    spellLanguages = g_slist_append(spellLanguages, lang);
+                    dict = enchant_broker_request_dict(broker, langs[i]);
+                    spellDictionaries = g_slist_append(spellDictionaries, dict);
                 }
             }
-
             g_strfreev(langs);
         } else {
             const char* language = pango_language_to_string(gtk_get_default_language());
-
             if (enchant_broker_dict_exists(broker, language)) {
-                lang = g_slice_new0(SpellLanguage);
-                lang->config = enchant_broker_init();
-                lang->speller = enchant_broker_request_dict(lang->config, language);
-
-                spellLanguages = g_slist_append(spellLanguages, lang);
+                dict = enchant_broker_request_dict(broker, language);
+                spellDictionaries = g_slist_append(spellDictionaries, dict);
             }
         }
-        enchant_broker_free(broker);
-        g_slist_foreach(priv->spell_checking_languages_list, free_spell_checking_language, NULL);
-        g_slist_free(priv->spell_checking_languages_list);
-        priv->spell_checking_languages_list = spellLanguages;
+        g_slist_foreach(priv->enchant_dicts, free_spell_checking_language, 0);
+        g_slist_free(priv->enchant_dicts);
+        priv->enchant_dicts = spellDictionaries;
         break;
     case PROP_ENABLE_XSS_AUDITOR:
         priv->enable_xss_auditor = g_value_get_boolean(value);
+        break;
+    case PROP_ENABLE_SPATIAL_NAVIGATION:
+        priv->enable_spatial_navigation = g_value_get_boolean(value);
         break;
     case PROP_USER_AGENT:
         g_free(priv->user_agent);
@@ -1132,6 +1152,9 @@ static void webkit_web_settings_get_property(GObject* object, guint prop_id, GVa
     case PROP_ENABLE_XSS_AUDITOR:
         g_value_set_boolean(value, priv->enable_xss_auditor);
         break;
+    case PROP_ENABLE_SPATIAL_NAVIGATION:
+        g_value_set_boolean(value, priv->enable_spatial_navigation);
+        break;
     case PROP_USER_AGENT:
         g_value_set_string(value, priv->user_agent);
         break;
@@ -1225,11 +1248,11 @@ WebKitWebSettings* webkit_web_settings_copy(WebKitWebSettings* web_settings)
                  "enable-private-browsing", priv->enable_private_browsing,
                  "enable-spell-checking", priv->enable_spell_checking,
                  "spell-checking-languages", priv->spell_checking_languages,
-                 "spell-checking-languages-list", priv->spell_checking_languages_list,
                  "enable-caret-browsing", priv->enable_caret_browsing,
                  "enable-html5-database", priv->enable_html5_database,
                  "enable-html5-local-storage", priv->enable_html5_local_storage,
                  "enable-xss-auditor", priv->enable_xss_auditor,
+                 "enable-spatial-navigation", priv->enable_spatial_navigation,
                  "user-agent", webkit_web_settings_get_user_agent(web_settings),
                  "javascript-can-open-windows-automatically", priv->javascript_can_open_windows_automatically,
                  "enable-offline-web-application-cache", priv->enable_offline_web_application_cache,
@@ -1265,23 +1288,21 @@ void webkit_web_settings_add_extra_plugin_directory(WebKitWebView* webView, cons
 }
 
 /**
- * webkit_web_settings_get_spell_languages:
+ * webkit_web_settings_get_enchant_dicts:
  * @web_view: a #WebKitWebView
  *
- * Internal use only. Retrieves a GSList of SpellLanguages from the
+ * Internal use only. Retrieves a GSList of EnchantDicts from the
  * #WebKitWebSettings of @web_view.
  *
- * Since: 1.1.6
+ * Since: 1.1.22
  */
-GSList* webkit_web_settings_get_spell_languages(WebKitWebView *web_view)
+GSList* webkit_web_settings_get_enchant_dicts(WebKitWebView* webView)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(web_view), 0);
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
 
-    WebKitWebSettings* settings = webkit_web_view_get_settings(web_view);
-    WebKitWebSettingsPrivate* priv = settings->priv;
-    GSList* list = priv->spell_checking_languages_list;
+    WebKitWebSettings* settings = webkit_web_view_get_settings(webView);
 
-    return list;
+    return settings->priv->enchant_dicts;
 }
 
 /**
