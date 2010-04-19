@@ -88,7 +88,9 @@ void WebSettingsPrivate::apply()
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);
 	    settings->setLocalStorageDatabasePath(global->localStoragePath);
 	    settings->setDefaultTextEncodingName("UTF-8");
-        settings->setUsesPageCache(WebCore::pageCache()->capacity());
+//        settings->setUsesPageCache(WebCore::pageCache()->capacity());
+settings->setUsesPageCache(false);
+        settings->setNeedsSiteSpecificQuirks(true);
 
 	    // Apply local or global settings
 		if (defaultFontSizeSet)
