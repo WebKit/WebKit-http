@@ -48,6 +48,7 @@ class FormState;
 class FrameView;
 class HistoryItem;
 class NavigationAction;
+class PluginView;
 class ResourceLoader;
 class String;
 
@@ -230,6 +231,10 @@ private:
 
     ResourceResponse m_response;
     bool m_loadingErrorPage;
+
+    // Plugin view to redirect data to
+    WebCore::PluginView* m_pluginView;
+    bool m_hasSentResponseToPlugin;
 };
 
 } // namespace WebCore

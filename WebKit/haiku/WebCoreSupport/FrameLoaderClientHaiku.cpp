@@ -54,6 +54,7 @@
 #include "PlatformString.h"
 #include "PluginData.h"
 #include "PluginDatabase.h"
+#include "PluginView.h"
 #include "ProgressTracker.h"
 #include "RenderFrame.h"
 #include "ResourceRequest.h"
@@ -80,6 +81,8 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* web
     , m_webFrame(webFrame)
     , m_messenger()
     , m_loadingErrorPage(false)
+    , m_pluginView(0)
+    , m_hasSentResponseToPlugin(false)
 {
     ASSERT(m_webPage);
     ASSERT(m_webFrame);
@@ -525,6 +528,12 @@ void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
 
 void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
 {
+    if (m_pluginView) {
+        m_pluginView->didFail(error);
+        m_pluginView = 0;
+        m_hasSentResponseToPlugin = false;
+    }
+
     if (error.isCancellation())
         return;
 
@@ -592,25 +601,52 @@ void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
 {
-    // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
-    String encoding = loader->overrideEncoding();
-    bool userChosen = !encoding.isNull();
-    if (!userChosen)
-        encoding = loader->response().textEncodingName();
+    if (!m_pluginView) {
+        ASSERT(loader->frame());
+        // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
+        String encoding = loader->overrideEncoding();
+        bool userChosen = !encoding.isNull();
+        if (!userChosen)
+            encoding = loader->response().textEncodingName();
 
-    FrameLoader* frameLoader = loader->frameLoader();
-    frameLoader->setEncoding(encoding, userChosen);
-    if (data)
-        frameLoader->addData(data, length);
+        FrameLoader* frameLoader = loader->frameLoader();
+        frameLoader->setEncoding(encoding, userChosen);
+        if (data)
+            frameLoader->addData(data, length);
 
-    // The Gtk port also does this, when it doesn't have a plugin view:
-    Frame* frame = loader->frame();
-    if (frame && frame->document() && frame->document()->isMediaDocument())
-        loader->cancelMainResourceLoad(frameLoader->client()->pluginWillHandleLoadError(loader->response()));
+        // The Gtk port also does this, when it doesn't have a plugin view:
+        Frame* frame = loader->frame();
+        if (frame && frame->document() && frame->document()->isMediaDocument())
+            loader->cancelMainResourceLoad(frameLoader->client()->pluginWillHandleLoadError(loader->response()));
+    }
+
+	// m_pluginView needs to be checked again, since it can have been
+	// created by the block above.
+    if (m_pluginView && m_pluginView->isPluginView()) {
+        if (!m_hasSentResponseToPlugin) {
+            m_pluginView->didReceiveResponse(loader->response());
+            // didReceiveResponse sets up a new stream to the plug-in. On a full-page
+            // plug-in, a failure in setting up this stream can cause the main
+            // document load to be cancelled, setting m_pluginView to NULL.
+            if (!m_pluginView)
+                return;
+            m_hasSentResponseToPlugin = true;
+        }
+
+        m_pluginView->didReceiveData(data, length);
+    }
 }
 
-void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* loader)
+void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* documentLoader)
 {
+    if (!m_pluginView) {
+        FrameLoader* loader = documentLoader->frameLoader();
+        loader->setEncoding(m_response.textEncodingName(), false);
+    } else {
+        m_pluginView->didFinishLoading();
+        m_pluginView = 0;
+        m_hasSentResponseToPlugin = false;
+    }
 }
 
 void FrameLoaderClientHaiku::updateGlobalHistory()
@@ -877,18 +913,14 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
     RefPtr<Frame> childFrame = frame->Frame();
 
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
-    if (!childFrame->page()) {
-        delete frame;
+    if (!childFrame->page())
         return 0;
-    }
 
     childFrame->loader()->loadURLIntoChildFrame(url, referrer, childFrame.get());
 
     // The frame's onload handler may have removed it from the document.
-    if (!childFrame->tree()->parent()) {
-        delete frame;
+    if (!childFrame->tree()->parent())
         return 0;
-    }
 
     return childFrame.release();
 }
@@ -939,8 +971,9 @@ PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlug
 
 void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
 {
-    notImplemented();
-    return;
+    ASSERT(!m_pluginView);
+    m_pluginView = static_cast<PluginView*>(pluginWidget);
+    m_hasSentResponseToPlugin = false;
 }
 
 PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
