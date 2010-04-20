@@ -1452,9 +1452,9 @@ BrowserWindow::_UpdateClipboardItems()
 		// there anyway. This works so fast that the user can never see
 		// the wrong enabled state when the menu opens until the result
 		// message arrives.
-		fCutMenuItem->SetEnabled(false);
-		fCopyMenuItem->SetEnabled(false);
-		fPasteMenuItem->SetEnabled(false);
+		fCutMenuItem->SetEnabled(true);
+		fCopyMenuItem->SetEnabled(true);
+		fPasteMenuItem->SetEnabled(true);
 
 		CurrentWebView()->WebPage()->SendEditingCapabilities();
 	}
