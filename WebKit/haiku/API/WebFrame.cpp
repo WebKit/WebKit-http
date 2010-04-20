@@ -39,16 +39,17 @@
 #include "HTMLFrameOwnerElement.h"
 #include "KURL.h"
 #include "Page.h"
+#include "PlatformString.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
 #include "RenderView.h"
 #include "WebFramePrivate.h"
 #include "WebPage.h"
 #include "markup.h"
-#include "wtf/RefPtr.h"
-#include "wtf/Vector.h"
+#include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
 #include <Entry.h>
-#include <String.h>
+#include <support/String.h>
 
 static const float kMinimumZoomFactorMultiplier = 0.5;
 static const float kMaximumZoomFactorMultiplier = 3;
@@ -68,10 +69,10 @@ BWebFrame::BWebFrame(BWebPage* webPage, BWebFrame* parentFrame, WebFramePrivate*
     // We don't keep the reference to the Frame, see WebFramePrivate.h.
     fData->frame = frame.get();
 
-    fData->frame->tree()->setName(fData->name);
     if (parentFrame)
         parentFrame->Frame()->tree()->appendChild(fData->frame);
 
+    fData->frame->tree()->setName(fData->name);
     fData->frame->init();
 }
 
