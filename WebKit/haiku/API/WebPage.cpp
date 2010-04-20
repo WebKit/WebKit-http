@@ -616,8 +616,7 @@ void BWebPage::linkHovered(const BString& url, const BString& title, const BStri
 	}
 }
 
-void BWebPage::paint(BRect rect, bool contentChanged, bool immediate,
-    bool repaintContentOnly)
+void BWebPage::paint(BRect rect, bool immediate)
 {
 	if (!rect.IsValid())
 		return;
@@ -876,7 +875,7 @@ void BWebPage::MessageReceived(BMessage* message)
             message->FindRect("update rect", &rect);
             updateRect = updateRect | rect;
         }
-        paint(updateRect, true, false, true);
+        paint(updateRect, false);
         break;
     }
     case HANDLE_FRAME_RESIZED:
@@ -1021,7 +1020,7 @@ void BWebPage::handleSetVisible(const BMessage* message)
     // Trigger an internal repaint if the page was supposed to be repainted
     // while it was invisible.
     if (fPageVisible && fPageDirty)
-        paint(viewBounds(), false, false, true);
+        paint(viewBounds(), false);
 }
 
 void BWebPage::handleFrameResized(const BMessage* message)

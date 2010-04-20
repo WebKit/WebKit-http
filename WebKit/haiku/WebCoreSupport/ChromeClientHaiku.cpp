@@ -125,7 +125,7 @@ void ChromeClientHaiku::focusedNodeChanged(Node* node)
 
 Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
 {
-	// TODO: I believe the frame is important for cloning session information.
+	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the
 	// method that creates a new WebView. I didn't find createView() implemented
 	// anywhere, but only this comment:
@@ -305,30 +305,35 @@ void ChromeClientHaiku::invalidateWindow(const IntRect&, bool)
 {
 	// Since the page does not draw by itself, this call cannot make sense
 	// in the Haiku port.
-	// TODO: Check what the booleans mean
 }
 
-void ChromeClientHaiku::invalidateContentsAndWindow(const IntRect& rect, bool)
+void ChromeClientHaiku::invalidateContentsAndWindow(const IntRect& rect,
+                                                    bool immediate)
 {
-	// TODO: Check what the booleans mean
-//    if (immediate)
-//        m_webPage->paint(BRect(rect));
-//    else
+	if (immediate)
+        m_webPage->paint(BRect(rect), true);
+    else
         m_webPage->draw(BRect(rect));
 }
 
-void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect&, bool)
+void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect,
+                                                        bool immediate)
 {
-	// We can ignore this, since we implement fast scrolling.
+	// FIXME: We should be able to ignore this,
+	// since we implement fast scrolling.
+    invalidateContentsAndWindow(rect, immediate);
 }
 
-void ChromeClientHaiku::scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
+void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
+                               const IntRect& rectToScroll,
+                               const IntRect& clipRect)
 {
 //printf("ChromeClientHaiku::scroll(%d x %d, rectToScroll(%d, %d, %d, %d), "
 //"clipRect(%d, %d, %d, %d))\n", scrollDelta.width(), scrollDelta.height(),
 //rectToScroll.x(), rectToScroll.y(), rectToScroll.right(), rectToScroll.bottom(),
 //clipRect.x(), clipRect.y(), clipRect.right(), clipRect.bottom());
-    m_webPage->scroll(scrollDelta.width(), scrollDelta.height(), rectToScroll, clipRect);
+    m_webPage->scroll(scrollDelta.width(), scrollDelta.height(), rectToScroll,
+                      clipRect);
     m_webView->SendFakeMouseMovedEvent();
 }
 
@@ -399,7 +404,7 @@ void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
     if (!m_webView->LockLooper())
         return;
 
-	// TODO: Unless HideToolTip() is called here, changing the tool tip has no
+	// FIXME: Unless HideToolTip() is called here, changing the tool tip has no
 	// effect in BView. Remove when BView is fixed.
 	m_webView->HideToolTip();
     if (!tip.length())

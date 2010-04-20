@@ -183,8 +183,7 @@ private:
 	static void downloadCreated(BWebDownload* download,
 		bool isAsynchronousRequest);
 
-	void paint(BRect rect, bool contentChanged, bool immediate,
-		bool repaintContentOnly);
+	void paint(BRect rect, bool immediate);
 	void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
 		const BRect& clipRect);
 	void internalPaint(BView* view, BRegion* dirty);
