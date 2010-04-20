@@ -33,6 +33,7 @@
 #include <support/Locker.h>
 #include <support/Autolock.h>
 #include <wtf/CurrentTime.h>
+#include <stdio.h>
 
 #define FIRE_MESSAGE 'fire'
 
@@ -103,9 +104,11 @@ private:
 				case B_TIMED_OUT:
 					// do events, that are supposed to go off
 					if (!m_terminating && Lock() && system_time() >= m_nextFireTime) {
+						bool sendMessage = m_nextFireTime > 0;
 						m_nextFireTime = 0;
 						Unlock();
-						m_timer.SendMessage(FIRE_MESSAGE);
+						if (sendMessage)
+                            m_timer.SendMessage(FIRE_MESSAGE);
 					}
 					if (IsLocked())
 						Unlock();
@@ -197,6 +200,7 @@ void SharedTimerHaiku::start(double fireTime)
 void SharedTimerHaiku::stop()
 {
     m_shouldRun = false;
+    m_timerThread->setNextEventTime(0);
 }
 
 void SharedTimerHaiku::MessageReceived(BMessage*)
