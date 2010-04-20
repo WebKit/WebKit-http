@@ -269,6 +269,10 @@ URLInputGroup::URLTextView::KeyDown(const char* bytes, int32 numBytes)
 			SelectAll();
 			break;
 
+		case B_RETURN:
+			// Don't let this through to the text view.
+			break;
+
 		default:
 			BTextView::KeyDown(bytes, numBytes);
 			break;
