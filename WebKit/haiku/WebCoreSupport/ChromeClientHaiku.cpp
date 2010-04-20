@@ -303,8 +303,8 @@ IntRect ChromeClientHaiku::windowResizerRect() const
 
 void ChromeClientHaiku::invalidateWindow(const IntRect&, bool)
 {
-	// Since the page does not draw by itself, this call cannot make sense
-	// in the Haiku port.
+	// FIXME: This can be used to blit the BWebView bitmap contents
+	// to the screen. If rect is invalid, blit everything.
 }
 
 void ChromeClientHaiku::invalidateContentsAndWindow(const IntRect& rect,
