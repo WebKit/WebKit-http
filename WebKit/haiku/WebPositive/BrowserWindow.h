@@ -81,6 +81,7 @@ public:
 	virtual	void				MessageReceived(BMessage* message);
 	virtual	bool				QuitRequested();
 	virtual	void				MenusBeginning();
+	virtual	void				MenusEnded();
 
 			void				CreateNewTab(const BString& url, bool select,
 									BWebView* webView = 0);
@@ -156,6 +157,8 @@ private:
 			BMenuItem*			fFindPreviousMenuItem;
 			BMenuItem*			fFindNextMenuItem;
 			BMenuItem*			fZoomTextOnlyMenuItem;
+			BMenuItem*			fBackMenuItem;
+			BMenuItem*			fForwardMenuItem;
 
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;

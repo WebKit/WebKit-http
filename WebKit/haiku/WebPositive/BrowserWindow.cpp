@@ -239,8 +239,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	mainMenu->AddItem(menu);
 
 	fHistoryMenu = new BMenu("History");
-	fHistoryMenu->AddItem(new BMenuItem("Back", new BMessage(GO_BACK), B_LEFT_ARROW));
-	fHistoryMenu->AddItem(new BMenuItem("Forward", new BMessage(GO_FORWARD), B_RIGHT_ARROW));
+	fHistoryMenu->AddItem(fBackMenuItem = new BMenuItem("Back",
+		new BMessage(GO_BACK), B_LEFT_ARROW));
+	fHistoryMenu->AddItem(fForwardMenuItem = new BMenuItem("Forward",
+		new BMessage(GO_FORWARD), B_RIGHT_ARROW));
 	fHistoryMenu->AddSeparatorItem();
 	fHistoryMenuFixedItemCount = fHistoryMenu->CountItems();
 	mainMenu->AddItem(fHistoryMenu);
@@ -594,6 +596,29 @@ BrowserWindow::MessageReceived(BMessage* message)
 			break;
 		}
 
+		case B_EDITING_CAPABILITIES_RESULT:
+		{
+			BWebView* webView;
+			if (message->FindPointer("view",
+					reinterpret_cast<void**>(&webView)) != B_OK
+				|| webView != CurrentWebView()) {
+				break;
+			}
+			bool canCut;
+			bool canCopy;
+			bool canPaste;
+			if (message->FindBool("can cut", &canCut) != B_OK)
+				canCut = false;
+			if (message->FindBool("can copy", &canCopy) != B_OK)
+				canCopy = false;
+			if (message->FindBool("can paste", &canPaste) != B_OK)
+				canPaste = false;
+			fCutMenuItem->SetEnabled(canCut);
+			fCopyMenuItem->SetEnabled(canCopy);
+			fPasteMenuItem->SetEnabled(canPaste);
+			break;
+		}
+
 		case SHOW_DOWNLOAD_WINDOW:
 		case SHOW_SETTINGS_WINDOW:
 			message->AddUInt32("workspaces", Workspaces());
@@ -680,6 +705,19 @@ BrowserWindow::MenusBeginning()
 {
 	_UpdateHistoryMenu();
 	_UpdateClipboardItems();
+}
+
+
+void
+BrowserWindow::MenusEnded()
+{
+	// Reenabled the clipboard items, since we don't update them when
+	// the capabilities really change, but only when the menu is opened.
+	// The shortcuts need to work when the capabilities change without
+	// the Edit menu being opened meanwhile.
+	fCutMenuItem->SetEnabled(true);
+	fCopyMenuItem->SetEnabled(true);
+	fPasteMenuItem->SetEnabled(true);
 }
 
 
@@ -957,12 +995,12 @@ BrowserWindow::NavigationCapabilitiesChanged(bool canGoBackward,
 	if (view != CurrentWebView())
 		return;
 
-	if (fBackButton)
-		fBackButton->SetEnabled(canGoBackward);
-	if (fForwardButton)
-		fForwardButton->SetEnabled(canGoForward);
-	if (fStopButton)
-		fStopButton->SetEnabled(canStop);
+	fBackButton->SetEnabled(canGoBackward);
+	fForwardButton->SetEnabled(canGoForward);
+	fStopButton->SetEnabled(canStop);
+
+	fBackMenuItem->SetEnabled(canGoBackward);
+	fForwardMenuItem->SetEnabled(canGoForward);
 }
 
 
@@ -1405,9 +1443,16 @@ BrowserWindow::_UpdateClipboardItems()
 		fCutMenuItem->SetEnabled(hasSelection);
 		fCopyMenuItem->SetEnabled(hasSelection);
 		fPasteMenuItem->SetEnabled(canPaste);
-	} else if (CurrentFocus() != CurrentWebView()) {
+	} else if (CurrentWebView() != NULL) {
+		// Trigger update of the clipboard items, even if the
+		// BWebView doesn't have focus, we'll dispatch these message
+		// there anyway. This works so fast that the user can never see
+		// the wrong enabled state when the menu opens until the result
+		// message arrives.
 		fCutMenuItem->SetEnabled(false);
 		fCopyMenuItem->SetEnabled(false);
 		fPasteMenuItem->SetEnabled(false);
+
+		CurrentWebView()->WebPage()->SendEditingCapabilities();
 	}
 }

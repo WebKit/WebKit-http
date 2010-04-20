@@ -61,9 +61,10 @@ class WebDownloadPrivate;
 };
 
 enum {
-	B_FIND_STRING_RESULT	= 'fsrs',
-	B_DOWNLOAD_ADDED		= 'dwna',
-	B_DOWNLOAD_REMOVED		= 'dwnr'
+	B_FIND_STRING_RESULT			= 'fsrs',
+	B_DOWNLOAD_ADDED				= 'dwna',
+	B_DOWNLOAD_REMOVED				= 'dwnr',
+	B_EDITING_CAPABILITIES_RESULT	= 'cedr'
 };
 
 typedef enum {
@@ -110,6 +111,8 @@ public:
 
 			void				SetStatusMessage(const BString& status);
 			void				ResendNotifications();
+
+			void				SendEditingCapabilities();
 
 	static	void				RequestDownload(const BString& url);
 
@@ -211,6 +214,7 @@ private:
 	void handleChangeZoomFactor(BMessage* message);
 	void handleFindString(BMessage* message);
 	void handleResendNotifications(BMessage* message);
+	void handleSendEditingCapabilities(BMessage* message);
 
     status_t dispatchMessage(BMessage& message) const;
 

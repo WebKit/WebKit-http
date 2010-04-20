@@ -115,7 +115,8 @@ enum {
     HANDLE_FIND_STRING = 'find',
 
     HANDLE_SET_STATUS_MESSAGE = 'stsm',
-    HANDLE_RESEND_NOTIFICATIONS = 'rsnt'
+    HANDLE_RESEND_NOTIFICATIONS = 'rsnt',
+    HANDLE_SEND_EDITING_CAPABILITIES = 'sedc'
 };
 
 using namespace WebCore;
@@ -241,8 +242,7 @@ void BWebPage::Init()
 
 void BWebPage::Shutdown()
 {
-    BMessage message(HANDLE_SHUTDOWN);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_SHUTDOWN, this);
 }
 
 void BWebPage::SetListener(const BMessenger& listener)
@@ -271,26 +271,22 @@ void BWebPage::LoadURL(const char* urlString)
 
 void BWebPage::Reload()
 {
-    BMessage message(HANDLE_RELOAD);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_RELOAD, this);
 }
 
 void BWebPage::GoBack()
 {
-    BMessage message(HANDLE_GO_BACK);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_GO_BACK, this);
 }
 
 void BWebPage::GoForward()
 {
-    BMessage message(HANDLE_GO_FORWARD);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_GO_FORWARD, this);
 }
 
 void BWebPage::StopLoading()
 {
-    BMessage message(HANDLE_STOP_LOADING);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_STOP_LOADING, this);
 }
 
 void BWebPage::ChangeZoomFactor(float increment, bool textOnly)
@@ -322,8 +318,12 @@ void BWebPage::SetStatusMessage(const BString& status)
 
 void BWebPage::ResendNotifications()
 {
-    BMessage message(HANDLE_RESEND_NOTIFICATIONS);
-    Looper()->PostMessage(&message, this);
+    Looper()->PostMessage(HANDLE_RESEND_NOTIFICATIONS, this);
+}
+
+void BWebPage::SendEditingCapabilities()
+{
+    Looper()->PostMessage(HANDLE_SEND_EDITING_CAPABILITIES, this);
 }
 
 /*static*/ void BWebPage::RequestDownload(const BString& url)
@@ -923,6 +923,9 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_RESEND_NOTIFICATIONS:
         handleResendNotifications(message);
         break;
+    case HANDLE_SEND_EDITING_CAPABILITIES:
+        handleSendEditingCapabilities(message);
+        break;
 
     case B_REFS_RECEIVED: {
 		RefPtr<FileChooser>* chooser;
@@ -1218,6 +1221,29 @@ void BWebPage::handleResendNotifications(BMessage*)
     setLoadingProgress(fLoadingProgress);
     setDisplayedStatusMessage(fStatusMessage, true);
     // TODO: Other notifications...
+}
+
+void BWebPage::handleSendEditingCapabilities(BMessage*)
+{
+    bool canCut = false;
+    bool canCopy = false;
+    bool canPaste = false;
+
+    WebCore::Frame* frame = fPage->focusController()->focusedOrMainFrame();
+    if (frame && frame->editor()) {
+        WebCore::Editor* editor = frame->editor();
+
+        canCut = editor->canCut() || editor->canDHTMLCut();
+        canCopy = editor->canCopy() || editor->canDHTMLCopy();
+        canPaste = editor->canPaste() || editor->canDHTMLPaste();
+    }
+
+    BMessage message(B_EDITING_CAPABILITIES_RESULT);
+    message.AddBool("can cut", canCut);
+    message.AddBool("can copy", canCopy);
+    message.AddBool("can paste", canPaste);
+
+    dispatchMessage(message);
 }
 
 // #pragma mark -
