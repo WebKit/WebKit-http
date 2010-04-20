@@ -200,7 +200,8 @@ void SharedTimerHaiku::start(double fireTime)
 void SharedTimerHaiku::stop()
 {
     m_shouldRun = false;
-    m_timerThread->setNextEventTime(0);
+// FIXME: This breaks scrolling. Why?
+//    m_timerThread->setNextEventTime(0);
 }
 
 void SharedTimerHaiku::MessageReceived(BMessage*)
