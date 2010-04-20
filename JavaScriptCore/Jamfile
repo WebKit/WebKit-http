@@ -108,6 +108,7 @@ SharedLibrary libjavascriptcore.so :
     JITArithmetic.cpp
     JITCall.cpp
     JITOpcodes.cpp
+    JITPropertyAccess32_64.cpp
     JITPropertyAccess.cpp
     JITStubs.cpp
 
