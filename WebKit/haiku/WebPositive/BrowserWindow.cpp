@@ -712,19 +712,6 @@ BrowserWindow::MenusBeginning()
 
 
 void
-BrowserWindow::MenusEnded()
-{
-	// Reenabled the clipboard items, since we don't update them when
-	// the capabilities really change, but only when the menu is opened.
-	// The shortcuts need to work when the capabilities change without
-	// the Edit menu being opened meanwhile.
-	fCutMenuItem->SetEnabled(true);
-	fCopyMenuItem->SetEnabled(true);
-	fPasteMenuItem->SetEnabled(true);
-}
-
-
-void
 BrowserWindow::CreateNewTab(const BString& url, bool select, BWebView* webView)
 {
 	// Executed in app thread (new BWebPage needs to be created in app thread).
@@ -1451,7 +1438,10 @@ BrowserWindow::_UpdateClipboardItems()
 		// BWebView doesn't have focus, we'll dispatch these message
 		// there anyway. This works so fast that the user can never see
 		// the wrong enabled state when the menu opens until the result
-		// message arrives.
+		// message arrives. The initial state needs to be enabled, since
+		// standard shortcut handling is always wrapped inside MenusBeginning()
+		// and MenusEnded(), and since we update items asynchronously, we need
+		// to have them enabled to begin with.
 		fCutMenuItem->SetEnabled(true);
 		fCopyMenuItem->SetEnabled(true);
 		fPasteMenuItem->SetEnabled(true);
