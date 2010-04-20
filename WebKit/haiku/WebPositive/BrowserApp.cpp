@@ -93,7 +93,7 @@ BrowserApp::AboutRequested()
 
 	BAlert* alert = new BAlert("About WebPositive", aboutText.String(),
 		"Sweet!");
-	alert->Go();
+	alert->Go(NULL);
 }
 
 
