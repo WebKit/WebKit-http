@@ -143,9 +143,20 @@ private:
 									BMessage* message,
 									uint32& addedCount) const;
 
+			void				_UpdateHistoryMenu();
+			void				_UpdateClipboardItems();
+
 private:
-			BMenu*				fGoMenu;
+			BMenu*				fHistoryMenu;
+			int32				fHistoryMenuFixedItemCount;
+
+			BMenuItem*			fCutMenuItem;
+			BMenuItem*			fCopyMenuItem;
+			BMenuItem*			fPasteMenuItem;
+			BMenuItem*			fFindPreviousMenuItem;
+			BMenuItem*			fFindNextMenuItem;
 			BMenuItem*			fZoomTextOnlyMenuItem;
+
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;

@@ -51,6 +51,7 @@
 #include <Bitmap.h>
 #include <Button.h>
 #include <CheckBox.h>
+#include <Clipboard.h>
 #include <Directory.h>
 #include <Entry.h>
 #include <File.h>
@@ -90,10 +91,11 @@ enum {
 	ZOOM_FACTOR_RESET = 'zfrs',
 	ZOOM_TEXT_ONLY = 'zfto',
 
-	TEXT_SHOW_FIND_GROUP = 'sfnd',
-	TEXT_HIDE_FIND_GROUP = 'hfnd',
-	TEXT_FIND_NEXT = 'fndn',
-	TEXT_FIND_PREVIOUS = 'fndp',
+	EDIT_SHOW_FIND_GROUP = 'sfnd',
+	EDIT_HIDE_FIND_GROUP = 'hfnd',
+	EDIT_FIND_NEXT = 'fndn',
+	EDIT_FIND_PREVIOUS = 'fndp',
+	FIND_TEXT_CHANGED = 'ftxt',
 
 	SELECT_TAB = 'sltb',
 };
@@ -206,8 +208,26 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	quitItem->SetTarget(be_app);
 	mainMenu->AddItem(menu);
 
-	menu = new BMenu("Text");
-	menu->AddItem(new BMenuItem("Find", new BMessage(TEXT_SHOW_FIND_GROUP), 'F'));
+	menu = new BMenu("Edit");
+	menu->AddItem(fCutMenuItem = new BMenuItem("Cut", new BMessage(B_CUT),
+		'X'));
+	menu->AddItem(fCopyMenuItem = new BMenuItem("Copy", new BMessage(B_COPY),
+		'C'));
+	menu->AddItem(fPasteMenuItem = new BMenuItem("Paste", new BMessage(B_PASTE),
+		'V'));
+	menu->AddSeparatorItem();
+	menu->AddItem(new BMenuItem("Find", new BMessage(EDIT_SHOW_FIND_GROUP),
+		'F'));
+	menu->AddItem(fFindPreviousMenuItem = new BMenuItem("Find previous",
+		new BMessage(EDIT_FIND_PREVIOUS), 'G', B_SHIFT_KEY));
+	menu->AddItem(fFindNextMenuItem = new BMenuItem("Find next",
+		new BMessage(EDIT_FIND_NEXT), 'G'));
+	mainMenu->AddItem(menu);
+	fFindPreviousMenuItem->SetEnabled(false);
+	fFindNextMenuItem->SetEnabled(false);
+
+	menu = new BMenu("View");
+	menu->AddItem(new BMenuItem("Reload", new BMessage(RELOAD), 'R'));
 	menu->AddSeparatorItem();
 	menu->AddItem(new BMenuItem("Increase size", new BMessage(ZOOM_FACTOR_INCREASE), '+'));
 	menu->AddItem(new BMenuItem("Decrease size", new BMessage(ZOOM_FACTOR_DECREASE), '-'));
@@ -218,8 +238,12 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	menu->AddItem(fZoomTextOnlyMenuItem);
 	mainMenu->AddItem(menu);
 
-	fGoMenu = new BMenu("Go");
-	mainMenu->AddItem(fGoMenu);
+	fHistoryMenu = new BMenu("History");
+	fHistoryMenu->AddItem(new BMenuItem("Back", new BMessage(GO_BACK), B_LEFT_ARROW));
+	fHistoryMenu->AddItem(new BMenuItem("Forward", new BMessage(GO_FORWARD), B_RIGHT_ARROW));
+	fHistoryMenu->AddSeparatorItem();
+	fHistoryMenuFixedItemCount = fHistoryMenu->CountItems();
+	mainMenu->AddItem(fHistoryMenu);
 
 	BPath bookmarkPath;
 	entry_ref bookmarkRef;
@@ -265,23 +289,26 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	const float kInsetSpacing = 3;
 	const float kElementSpacing = 5;
 
+	// Find group
 	fFindTextControl = new BTextControl("find", "Find:", "",
-		new BMessage(TEXT_FIND_NEXT));
+		new BMessage(EDIT_FIND_NEXT));
+	fFindTextControl->SetModificationMessage(new BMessage(FIND_TEXT_CHANGED));
 	fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
 	BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
 			.Add(fFindTextControl)
-			.Add(new BButton("Previous", new BMessage(TEXT_FIND_PREVIOUS)))
-			.Add(new BButton("Next", new BMessage(TEXT_FIND_NEXT)))
+			.Add(new BButton("Previous", new BMessage(EDIT_FIND_PREVIOUS)))
+			.Add(new BButton("Next", new BMessage(EDIT_FIND_NEXT)))
 			.Add(fFindCaseSensitiveCheckBox)
 			.Add(BSpaceLayoutItem::CreateGlue())
-			.Add(new BButton("Close", new BMessage(TEXT_HIDE_FIND_GROUP)))
+			.Add(new BButton("Close", new BMessage(EDIT_HIDE_FIND_GROUP)))
 			.SetInsets(kInsetSpacing, kInsetSpacing,
 				kInsetSpacing, kInsetSpacing)
 		)
 	;
 
+	// Navigation group
 	BView* navigationGroup = BGroupLayoutBuilder(B_VERTICAL)
 		.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
 			.Add(fBackButton, 0, 0)
@@ -333,11 +360,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		fNavigationGroup->SetVisible(false);
 	}
 
-	AddShortcut('G', B_COMMAND_KEY, new BMessage(TEXT_FIND_NEXT));
-	AddShortcut('G', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_FIND_PREVIOUS));
-	AddShortcut('F', B_COMMAND_KEY, new BMessage(TEXT_SHOW_FIND_GROUP));
-	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(TEXT_HIDE_FIND_GROUP));
-	AddShortcut('R', B_COMMAND_KEY, new BMessage(RELOAD));
+	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(EDIT_HIDE_FIND_GROUP));
 
 	// Add shortcuts to select a particular tab
 	for (int32 i = 0; i <= 9; i++) {
@@ -534,23 +557,42 @@ BrowserWindow::MessageReceived(BMessage* message)
 			// already zoomed.
 			break;
 
-		case TEXT_FIND_NEXT:
+		case EDIT_FIND_NEXT:
 			CurrentWebView()->FindString(fFindTextControl->Text(), true,
 				fFindCaseSensitiveCheckBox->Value());
 			break;
-		case TEXT_FIND_PREVIOUS:
+		case FIND_TEXT_CHANGED:
+		{
+			bool findTextAvailable = strlen(fFindTextControl->Text()) > 0;
+			fFindPreviousMenuItem->SetEnabled(findTextAvailable);
+			fFindNextMenuItem->SetEnabled(findTextAvailable);
+			break;
+		}
+		case EDIT_FIND_PREVIOUS:
 			CurrentWebView()->FindString(fFindTextControl->Text(), false,
 				fFindCaseSensitiveCheckBox->Value());
 			break;
-		case TEXT_SHOW_FIND_GROUP:
+		case EDIT_SHOW_FIND_GROUP:
 			if (!fFindGroup->IsVisible())
 				fFindGroup->SetVisible(true);
 			fFindTextControl->MakeFocus(true);
 			break;
-		case TEXT_HIDE_FIND_GROUP:
+		case EDIT_HIDE_FIND_GROUP:
 			if (fFindGroup->IsVisible())
 				fFindGroup->SetVisible(false);
 			break;
+
+		case B_CUT:
+		case B_COPY:
+		case B_PASTE:
+		{
+			BTextView* textView = dynamic_cast<BTextView*>(CurrentFocus());
+			if (textView != NULL)
+				textView->MessageReceived(message);
+			else if (CurrentWebView() != NULL)
+				CurrentWebView()->MessageReceived(message);
+			break;
+		}
 
 		case SHOW_DOWNLOAD_WINDOW:
 		case SHOW_SETTINGS_WINDOW:
@@ -633,129 +675,11 @@ BrowserWindow::QuitRequested()
 }
 
 
-static void
-addItemToMenuOrSubmenu(BMenu* menu, BMenuItem* newItem)
-{
-	BString baseURLLabel = baseURL(BString(newItem->Label()));
-	for (int32 i = menu->CountItems() - 1; i >= 0; i--) {
-		BMenuItem* item = menu->ItemAt(i);
-		BString label = item->Label();
-		if (label.FindFirst(baseURLLabel) >= 0) {
-			if (item->Submenu()) {
-				// Submenu was already added in previous iteration.
-				item->Submenu()->AddItem(newItem);
-				return;
-			} else {
-				menu->RemoveItem(item);
-				BMenu* subMenu = new BMenu(baseURLLabel.String());
-				subMenu->AddItem(item);
-				subMenu->AddItem(newItem);
-				// Add common submenu for this base URL, clickable.
-				BMessage* message = new BMessage(GOTO_URL);
-				message->AddString("url", baseURLLabel.String());
-				menu->AddItem(new BMenuItem(subMenu, message), i);
-				return;
-			}
-		}
-	}
-	menu->AddItem(newItem);
-}
-
-
-static void
-addOrDeleteMenu(BMenu* menu, BMenu* toMenu)
-{
-	if (menu->CountItems() > 0)
-		toMenu->AddItem(menu);
-	else
-		delete menu;
-}
-
-
 void
 BrowserWindow::MenusBeginning()
 {
-	BMenuItem* menuItem;
-	while ((menuItem = fGoMenu->RemoveItem(0L)))
-		delete menuItem;
-
-	BrowsingHistory* history = BrowsingHistory::DefaultInstance();
-	if (!history->Lock())
-		return;
-
-	int32 count = history->CountItems();
-	BMenuItem* clearHistoryItem = new BMenuItem("Clear history",
-		new BMessage(CLEAR_HISTORY));
-	clearHistoryItem->SetEnabled(count > 0);
-	fGoMenu->AddItem(clearHistoryItem);
-	if (count == 0) {
-		history->Unlock();
-		return;
-	}
-	fGoMenu->AddSeparatorItem();
-
-	BDateTime todayStart = BDateTime::CurrentDateTime(B_LOCAL_TIME);
-	todayStart.SetTime(BTime(0, 0, 0));
-
-	BDateTime oneDayAgoStart = todayStart;
-	oneDayAgoStart.Date().AddDays(-1);
-
-	BDateTime twoDaysAgoStart = oneDayAgoStart;
-	twoDaysAgoStart.Date().AddDays(-1);
-
-	BDateTime threeDaysAgoStart = twoDaysAgoStart;
-	threeDaysAgoStart.Date().AddDays(-1);
-
-	BDateTime fourDaysAgoStart = threeDaysAgoStart;
-	fourDaysAgoStart.Date().AddDays(-1);
-
-	BDateTime fiveDaysAgoStart = fourDaysAgoStart;
-	fiveDaysAgoStart.Date().AddDays(-1);
-
-	BMenu* todayMenu = new BMenu("Today");
-	BMenu* yesterdayMenu = new BMenu("Yesterday");
-	BMenu* twoDaysAgoMenu = new BMenu(
-		twoDaysAgoStart.Date().LongDayName().String());
-	BMenu* threeDaysAgoMenu = new BMenu(
-		threeDaysAgoStart.Date().LongDayName().String());
-	BMenu* fourDaysAgoMenu = new BMenu(
-		fourDaysAgoStart.Date().LongDayName().String());
-	BMenu* fiveDaysAgoMenu = new BMenu(
-		fiveDaysAgoStart.Date().LongDayName().String());
-	BMenu* earlierMenu = new BMenu("Earlier");
-
-	for (int32 i = 0; i < count; i++) {
-		BrowsingHistoryItem historyItem = history->HistoryItemAt(i);
-		BMessage* message = new BMessage(GOTO_URL);
-		message->AddString("url", historyItem.URL().String());
-
-		BString truncatedUrl(historyItem.URL());
-		be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
-		menuItem = new BMenuItem(truncatedUrl, message);
-
-		if (historyItem.DateTime() < fiveDaysAgoStart)
-			addItemToMenuOrSubmenu(earlierMenu, menuItem);
-		else if (historyItem.DateTime() < fourDaysAgoStart)
-			addItemToMenuOrSubmenu(fiveDaysAgoMenu, menuItem);
-		else if (historyItem.DateTime() < threeDaysAgoStart)
-			addItemToMenuOrSubmenu(fourDaysAgoMenu, menuItem);
-		else if (historyItem.DateTime() < twoDaysAgoStart)
-			addItemToMenuOrSubmenu(threeDaysAgoMenu, menuItem);
-		else if (historyItem.DateTime() < oneDayAgoStart)
-			addItemToMenuOrSubmenu(twoDaysAgoMenu, menuItem);
-		else if (historyItem.DateTime() < todayStart)
-			addItemToMenuOrSubmenu(yesterdayMenu, menuItem);
-		else
-			addItemToMenuOrSubmenu(todayMenu, menuItem);
-	}
-	history->Unlock();
-
-	addOrDeleteMenu(todayMenu, fGoMenu);
-	addOrDeleteMenu(yesterdayMenu, fGoMenu);
-	addOrDeleteMenu(twoDaysAgoMenu, fGoMenu);
-	addOrDeleteMenu(fourDaysAgoMenu, fGoMenu);
-	addOrDeleteMenu(fiveDaysAgoMenu, fGoMenu);
-	addOrDeleteMenu(earlierMenu, fGoMenu);
+	_UpdateHistoryMenu();
+	_UpdateClipboardItems();
 }
 
 
@@ -1335,3 +1259,155 @@ BrowserWindow::_AddBookmarkURLsRecursively(BDirectory& directory,
 }
 
 
+static void
+addItemToMenuOrSubmenu(BMenu* menu, BMenuItem* newItem)
+{
+	BString baseURLLabel = baseURL(BString(newItem->Label()));
+	for (int32 i = menu->CountItems() - 1; i >= 0; i--) {
+		BMenuItem* item = menu->ItemAt(i);
+		BString label = item->Label();
+		if (label.FindFirst(baseURLLabel) >= 0) {
+			if (item->Submenu()) {
+				// Submenu was already added in previous iteration.
+				item->Submenu()->AddItem(newItem);
+				return;
+			} else {
+				menu->RemoveItem(item);
+				BMenu* subMenu = new BMenu(baseURLLabel.String());
+				subMenu->AddItem(item);
+				subMenu->AddItem(newItem);
+				// Add common submenu for this base URL, clickable.
+				BMessage* message = new BMessage(GOTO_URL);
+				message->AddString("url", baseURLLabel.String());
+				menu->AddItem(new BMenuItem(subMenu, message), i);
+				return;
+			}
+		}
+	}
+	menu->AddItem(newItem);
+}
+
+
+static void
+addOrDeleteMenu(BMenu* menu, BMenu* toMenu)
+{
+	if (menu->CountItems() > 0)
+		toMenu->AddItem(menu);
+	else
+		delete menu;
+}
+
+
+void
+BrowserWindow::_UpdateHistoryMenu()
+{
+	BMenuItem* menuItem;
+	while ((menuItem = fHistoryMenu->RemoveItem(fHistoryMenuFixedItemCount)))
+		delete menuItem;
+
+	BrowsingHistory* history = BrowsingHistory::DefaultInstance();
+	if (!history->Lock())
+		return;
+
+	int32 count = history->CountItems();
+	BMenuItem* clearHistoryItem = new BMenuItem("Clear history",
+		new BMessage(CLEAR_HISTORY));
+	clearHistoryItem->SetEnabled(count > 0);
+	fHistoryMenu->AddItem(clearHistoryItem);
+	if (count == 0) {
+		history->Unlock();
+		return;
+	}
+	fHistoryMenu->AddSeparatorItem();
+
+	BDateTime todayStart = BDateTime::CurrentDateTime(B_LOCAL_TIME);
+	todayStart.SetTime(BTime(0, 0, 0));
+
+	BDateTime oneDayAgoStart = todayStart;
+	oneDayAgoStart.Date().AddDays(-1);
+
+	BDateTime twoDaysAgoStart = oneDayAgoStart;
+	twoDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime threeDaysAgoStart = twoDaysAgoStart;
+	threeDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime fourDaysAgoStart = threeDaysAgoStart;
+	fourDaysAgoStart.Date().AddDays(-1);
+
+	BDateTime fiveDaysAgoStart = fourDaysAgoStart;
+	fiveDaysAgoStart.Date().AddDays(-1);
+
+	BMenu* todayMenu = new BMenu("Today");
+	BMenu* yesterdayMenu = new BMenu("Yesterday");
+	BMenu* twoDaysAgoMenu = new BMenu(
+		twoDaysAgoStart.Date().LongDayName().String());
+	BMenu* threeDaysAgoMenu = new BMenu(
+		threeDaysAgoStart.Date().LongDayName().String());
+	BMenu* fourDaysAgoMenu = new BMenu(
+		fourDaysAgoStart.Date().LongDayName().String());
+	BMenu* fiveDaysAgoMenu = new BMenu(
+		fiveDaysAgoStart.Date().LongDayName().String());
+	BMenu* earlierMenu = new BMenu("Earlier");
+
+	for (int32 i = 0; i < count; i++) {
+		BrowsingHistoryItem historyItem = history->HistoryItemAt(i);
+		BMessage* message = new BMessage(GOTO_URL);
+		message->AddString("url", historyItem.URL().String());
+
+		BString truncatedUrl(historyItem.URL());
+		be_plain_font->TruncateString(&truncatedUrl, B_TRUNCATE_END, 480);
+		menuItem = new BMenuItem(truncatedUrl, message);
+
+		if (historyItem.DateTime() < fiveDaysAgoStart)
+			addItemToMenuOrSubmenu(earlierMenu, menuItem);
+		else if (historyItem.DateTime() < fourDaysAgoStart)
+			addItemToMenuOrSubmenu(fiveDaysAgoMenu, menuItem);
+		else if (historyItem.DateTime() < threeDaysAgoStart)
+			addItemToMenuOrSubmenu(fourDaysAgoMenu, menuItem);
+		else if (historyItem.DateTime() < twoDaysAgoStart)
+			addItemToMenuOrSubmenu(threeDaysAgoMenu, menuItem);
+		else if (historyItem.DateTime() < oneDayAgoStart)
+			addItemToMenuOrSubmenu(twoDaysAgoMenu, menuItem);
+		else if (historyItem.DateTime() < todayStart)
+			addItemToMenuOrSubmenu(yesterdayMenu, menuItem);
+		else
+			addItemToMenuOrSubmenu(todayMenu, menuItem);
+	}
+	history->Unlock();
+
+	addOrDeleteMenu(todayMenu, fHistoryMenu);
+	addOrDeleteMenu(yesterdayMenu, fHistoryMenu);
+	addOrDeleteMenu(twoDaysAgoMenu, fHistoryMenu);
+	addOrDeleteMenu(fourDaysAgoMenu, fHistoryMenu);
+	addOrDeleteMenu(fiveDaysAgoMenu, fHistoryMenu);
+	addOrDeleteMenu(earlierMenu, fHistoryMenu);
+}
+
+
+void
+BrowserWindow::_UpdateClipboardItems()
+{
+	BTextView* focusTextView = dynamic_cast<BTextView*>(CurrentFocus());
+	if (focusTextView != NULL) {
+		int32 selectionStart;
+		int32 selectionEnd;
+		focusTextView->GetSelection(&selectionStart, &selectionEnd);
+		bool hasSelection = selectionStart < selectionEnd;
+		bool canPaste = false;
+		// A BTextView has the focus.
+		if (be_clipboard->Lock()) {
+			BMessage* data = be_clipboard->Data();
+			if (data != NULL)
+				canPaste = data->HasData("text/plain", B_MIME_TYPE);
+			be_clipboard->Unlock();
+		}
+		fCutMenuItem->SetEnabled(hasSelection);
+		fCopyMenuItem->SetEnabled(hasSelection);
+		fPasteMenuItem->SetEnabled(canPaste);
+	} else if (CurrentFocus() != CurrentWebView()) {
+		fCutMenuItem->SetEnabled(false);
+		fCopyMenuItem->SetEnabled(false);
+		fPasteMenuItem->SetEnabled(false);
+	}
+}
