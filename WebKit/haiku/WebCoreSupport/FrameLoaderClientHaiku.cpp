@@ -255,7 +255,6 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 {
     BMessage message(LOAD_ONLOAD_HANDLE);
-    message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
     dispatchMessage(message);
 }
 
@@ -737,7 +736,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(con
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
 {
     notImplemented();
-    // TODO: This can probably be used to automatically close pages that have no content,
+    // FIXME: This can probably be used to automatically close pages that have no content,
     // but only triggered a download. Since BWebPage is used for initiating a BWebDownload,
     // it could remember doing so and then we could ask here if we are the main frame,
     // have no content, but did download something -- then we could asked to be closed.
@@ -773,7 +772,7 @@ bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) c
 
 bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
 {
-	// TODO: Usually, the mime type will have been detexted. This is supposed to work around
+	// FIXME: Usually, the mime type will have been detexted. This is supposed to work around
 	// downloading some empty files, that can be observed.
 	if (!mimeType.length())
 	    return true;
@@ -859,7 +858,7 @@ void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* c
 {
     ASSERT(cachedFrame->view());
 
-	// TODO: I guess we would have to restore platform data from the cachedFrame here,
+	// FIXME: I guess we would have to restore platform data from the cachedFrame here,
 	// data associated in savePlatformDataToCachedFrame().
 
     postCommitFrameViewSetup(m_webFrame, cachedFrame->view(), false);
@@ -884,8 +883,8 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
-	// TODO: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
-    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/527+ (KHTML, like Gecko) WebPositive/527+ Safari/527+");
+	// FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
+    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/528+ (KHTML, like Gecko) WebPositive/528+ Safari/528+");
 }
 
 bool FrameLoaderClientHaiku::canCachePage() const

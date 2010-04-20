@@ -432,7 +432,7 @@ void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
         Editor::Command command = frame->editor()->command(editorCommandString);
 
 #if 0
-// TODO: This doesn't work correctly, since for example VK_RETURN ends up here as
+// FIXME: This doesn't work correctly, since for example VK_RETURN ends up here as
 // PlatformKeyboardEvent::RawKeyDown and isTextInsertion() on the other hand, so it
 // doesn't get executed. Can't say if the error is somehow that it ends up being a
 // RawKeyDown, or if this code (from GTK) is broken.
@@ -752,7 +752,7 @@ void EditorClientHaiku::imContextCommitted(const char* str, EditorClient* client
 void EditorClientHaiku::imContextPreeditChanged(EditorClient* client)
 {
     const char* newPreedit = 0;
-    // TODO: get pre edit
+    // FIXME: get pre edit
     setPendingPreedit(newPreedit);
 }
 
