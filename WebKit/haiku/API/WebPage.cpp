@@ -191,6 +191,7 @@ BWebPage::BWebPage(BWebView* webView)
     , fDisplayedStatusMessage()
     , fPageVisible(true)
     , fPageDirty(false)
+    , fLayoutingView(false)
     , fToolbarsVisible(true)
     , fStatusbarVisible(true)
     , fMenubarVisible(true)
@@ -618,7 +619,7 @@ void BWebPage::linkHovered(const BString& url, const BString& title, const BStri
 
 void BWebPage::paint(BRect rect, bool immediate)
 {
-	if (!rect.IsValid())
+	if (fLayoutingView || !rect.IsValid())
 		return;
     // Block any drawing as long as the BWebView is hidden
     // (should be extended to when the containing BWebWindow is not
@@ -642,9 +643,10 @@ void BWebPage::paint(BRect rect, bool immediate)
 	// Since calling layoutIfNeededRecursive can cycle back into paint(),
 	// call this method before locking the window and before holding the
 	// offscreen view lock.
+	fLayoutingView = true;
 	view->layoutIfNeededRecursive();
+	fLayoutingView = false;
 
-//    if (fWebView->LockLooperWithTimeout(5000) != B_OK)
     if (!fWebView->LockLooper())
         return;
     BView* offscreenView = fWebView->OffscreenView();
@@ -662,7 +664,7 @@ void BWebPage::paint(BRect rect, bool immediate)
     if (!rect.IsValid())
         rect = offscreenView->Bounds();
     BRegion region(rect);
-    internalPaint(offscreenView, &region);
+    internalPaint(offscreenView, view, &region);
 
     offscreenView->UnlockLooper();
 
@@ -697,8 +699,6 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 	BRect rectAtDst = rectAtSrc.OffsetByCopy(xOffset, yOffset);
 	BRegion repaintRegion(rectAtSrc);
 	if (clip.Intersects(rectAtSrc) && clip.Intersects(rectAtDst)) {
-		uint8* src = reinterpret_cast<uint8*>(bitmap->Bits());
-		uint32 bytesPerRow = bitmap->BytesPerRow();
 		// clip source rect
 		rectAtSrc = rectAtSrc & clip;
 		// clip dest rect
@@ -710,59 +710,20 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
 		rectAtDst.OffsetBy(xOffset, yOffset);
 		repaintRegion.Exclude(rectAtDst);
 
-		// calc offset in buffer
-		src += (int32)rectAtSrc.left * 4
-			+ (int32)rectAtSrc.top * bytesPerRow;
-
-		uint32 width = rectAtSrc.IntegerWidth() + 1;
-		uint32 height = rectAtSrc.IntegerHeight() + 1;
-
-		int32 xIncrement;
-		int32 yIncrement;
-
-		if (yOffset == 0 && xOffset > 0) {
-			// copy from right to left
-			xIncrement = -1;
-			src += (width - 1) * 4;
-		} else {
-			// copy from left to right
-			xIncrement = 1;
-		}
-
-		if (yOffset > 0) {
-			// copy from bottom to top
-			yIncrement = -bytesPerRow;
-			src += (height - 1) * bytesPerRow;
-		} else {
-			// copy from top to bottom
-			yIncrement = bytesPerRow;
-		}
-
-		uint8* dst = src + yOffset * bytesPerRow + xOffset * 4;
-
-		if (xIncrement == 1) {
-			for (uint32 y = 0; y < height; y++) {
-				memcpy(dst, src, width * 4);
-				src += yIncrement;
-				dst += yIncrement;
-			}
-		} else {
-			for (uint32 y = 0; y < height; y++) {
-				uint32* srcHandle = (uint32*)src;
-				uint32* dstHandle = (uint32*)dst;
-				for (uint32 x = 0; x < width; x++) {
-					*dstHandle = *srcHandle;
-					srcHandle += xIncrement;
-					dstHandle += xIncrement;
-				}
-				src += yIncrement;
-				dst += yIncrement;
-			}
-		}
+		offscreenView->CopyBits(rectAtSrc, rectAtDst);
 	}
 
-	if (repaintRegion.Frame().IsValid())
-		internalPaint(offscreenView, &repaintRegion);
+	if (repaintRegion.Frame().IsValid()) {
+        WebCore::Frame* frame = fMainFrame->Frame();
+        WebCore::FrameView* view = frame->view();
+        // Make sure the view is layouted, since it will refuse to paint
+        // otherwise.
+        fLayoutingView = true;
+        view->layoutIfNeededRecursive();
+        fLayoutingView = false;
+
+		internalPaint(offscreenView, view, &repaintRegion);
+	}
 
     bitmap->Unlock();
 
@@ -770,14 +731,14 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
     fWebView->SetOffscreenViewClean(rectToScroll, false);
 }
 
-void BWebPage::internalPaint(BView* offscreenView, BRegion* dirty)
+void BWebPage::internalPaint(BView* offscreenView,
+                             WebCore::FrameView* frameView, BRegion* dirty)
 {
-    WebCore::Frame* frame = fMainFrame->Frame();
-    WebCore::FrameView* view = frame->view();
+    ASSERT(!frameView->needsLayout());
     offscreenView->PushState();
     offscreenView->ConstrainClippingRegion(dirty);
     WebCore::GraphicsContext context(offscreenView);
-    view->paint(&context, IntRect(dirty->Frame()));
+    frameView->paint(&context, IntRect(dirty->Frame()));
     offscreenView->PopState();
 }
 

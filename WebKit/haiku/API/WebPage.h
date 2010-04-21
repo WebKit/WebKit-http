@@ -50,6 +50,7 @@ class EditorClientHaiku;
 class FrameLoaderClientHaiku;
 class InspectorClientHaiku;
 
+class FrameView;
 class Page;
 class ResourceHandle;
 class ResourceRequest;
@@ -186,7 +187,8 @@ private:
 	void paint(BRect rect, bool immediate);
 	void scroll(int scrollDeltaX, int scrollDeltaY, const BRect& rectToScroll,
 		const BRect& clipRect);
-	void internalPaint(BView* view, BRegion* dirty);
+	void internalPaint(BView* view, WebCore::FrameView* frameView,
+		BRegion* dirty);
 
 	void setLoadingProgress(float progress);
 	void setStatusMessage(const BString& message);
@@ -231,6 +233,7 @@ private:
 
 		    bool				fPageVisible;
 		    bool				fPageDirty;
+		    bool				fLayoutingView;
 
 			bool				fToolbarsVisible;
 			bool				fStatusbarVisible;
