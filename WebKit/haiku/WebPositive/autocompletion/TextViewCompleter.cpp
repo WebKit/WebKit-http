@@ -94,9 +94,15 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 	switch (bytes[0]) {
 		case B_UP_ARROW:
 			SelectPrevious();
+			// Insert the current choice into the text view, so the user can
+			// continue typing. This will not trigger another evaluation, since
+			// we don't invoke EditViewStateChanged().
+			ApplyChoice(false);
 			return B_SKIP_MESSAGE;
 		case B_DOWN_ARROW:
 			SelectNext();
+			// See above.
+			ApplyChoice(false);
 			return B_SKIP_MESSAGE;
 		case B_ESCAPE:
 			CancelChoice();
