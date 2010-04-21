@@ -90,6 +90,7 @@ void BWebView::Shutdown()
 void BWebView::AttachedToWindow()
 {
     fWebPage->SetListener(BMessenger(Window()));
+    fWebPage->activated(Window()->IsActive());
 }
 
 void BWebView::DetachedFromWindow()
