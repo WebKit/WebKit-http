@@ -694,7 +694,7 @@ BrowserWindow::QuitRequested()
 	// Do this here, so WebKit tear down happens earlier.
 	while (fTabManager->CountTabs() > 0)
 		_ShutdownTab(0);
-	SetCurrentWebView(0);
+	SetCurrentWebView(NULL);
 
 	BMessage message(WINDOW_CLOSED);
 	message.AddRect("window frame", Frame());
@@ -1056,6 +1056,8 @@ BrowserWindow::_ShutdownTab(int32 index)
 {
 	BView* view = fTabManager->RemoveTab(index);
 	BWebView* webView = dynamic_cast<BWebView*>(view);
+	if (webView == CurrentWebView())
+		SetCurrentWebView(NULL);
 	if (webView != NULL)
 		webView->Shutdown();
 	else
