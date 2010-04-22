@@ -603,7 +603,8 @@ URLInputGroup::TextView() const
 void
 URLInputGroup::SetText(const char* text)
 {
-	fTextView->SetText(text);
+	if (!text || !Text() || strcmp(Text(), text) != 0)
+		fTextView->SetText(text);
 }
 
 
