@@ -88,7 +88,20 @@ void WebSettingsPrivate::apply()
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);
 	    settings->setLocalStorageDatabasePath(global->localStoragePath);
 	    settings->setDefaultTextEncodingName("UTF-8");
+#if 0
+// FIXME: Using the PageCache will reliably crash searching something
+// on www.google.com, following a picture link which opens the website
+// with the picture in a sub-frame, and then navigating back. This may
+// either point to a problem with the PageCache implementation, or with
+// the Haiku port. It is already a known issue that the Haiku port may
+// instantiate more DOM Document instances for the same navigation sequence
+// compared to the Gtk port. Perhaps there is a problem with the same data
+// being referenced by more than one Document, leading to crashes eventually,
+// when restoring those Document(s) from the PageCache.
         settings->setUsesPageCache(WebCore::pageCache()->capacity());
+#else
+        settings->setUsesPageCache(false);
+#endif
         settings->setNeedsSiteSpecificQuirks(true);
 
 	    // Apply local or global settings
