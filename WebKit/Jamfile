@@ -107,7 +107,7 @@ Application HaikuLauncher :
 	# Other required libraries
 	curl icu-common icu-data png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd network root stdc++ translation
+	be bsd network stdc++ translation
 	:
 	Launcher.rdef
 ;
@@ -160,7 +160,7 @@ Application WebPositive :
 	# Other required libraries
 	curl icu-common icu-data png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd locale network root stdc++ tracker translation
+	be bsd locale network stdc++ tracker translation
 	:
 	WebPositive.rdef
 ;

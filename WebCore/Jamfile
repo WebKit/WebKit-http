@@ -1720,6 +1720,6 @@ SharedLibrary libwebcore.so :
         # Other required libraries
         curl icu-common icu-data icu-i18n jpeg locale png sqlite3 xml2 z stdc++
         # Haiku libraries
-        be bsd network root textencoding translation
+        be bsd network textencoding translation
 ;
 
