@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2007 Kevin Ollivier
  * Copyright (C) 2009 Maxime Simon
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,20 +31,51 @@
 #include "config.h"
 #include "MainThread.h"
 
-#include "NotImplemented.h"
+#include <Application.h>
+#include <Handler.h>
 
 namespace WTF {
 
+class MainThreadHandler : public BHandler {
+public:
+    static const uint32 kDispatchCommand = 'dpch';
+
+    MainThreadHandler()
+        : BHandler("WebCore main thread handler")
+    {
+    }
+
+    virtual void MessageReceived(BMessage* message)
+    {
+        if (message->what == kDispatchCommand)
+            dispatchFunctionsFromMainThread();
+        else
+            BHandler::MessageReceived(message);
+    }
+};
+
+static MainThreadHandler* mainThreadHandler;
+static BLooper* mainThreadLooper;
+
 void initializeMainThreadPlatform()
 {
-	// TODO: this is not available in libjavascriptcore.so alone
-    //notImplemented();
+	// This handler is leaked at application exit time.
+	mainThreadHandler = new MainThreadHandler();
+	// initializeMainThreadPlatform() needs to be called on a valid BLooper thread.
+	mainThreadLooper = BLooper::LooperForThread(find_thread(0));
+	ASSERT(mainThreadLooper);
+	mainThreadLooper->AddHandler(mainThreadHandler);
 }
 
 void scheduleDispatchFunctionsOnMainThread()
 {
-	// TODO: this is not available in libjavascriptcore.so alone
-    //notImplemented();
+	// This method shall allow to process user events on the main thread
+	// before calling dispatchFunctionsFromMainThread(). The message
+	// we sent here will be inserted at the end of the message queue, so
+	// even if we are the main thread itself, the purpose of this method
+	// is achieved.
+	mainThreadLooper->PostMessage(MainThreadHandler::kDispatchCommand,
+	                              mainThreadHandler);
 }
 
 } // namespace WTF
