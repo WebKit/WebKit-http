@@ -342,6 +342,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		.Add(statusGroup)
 	);
 
+	// TODO: Small hack for fixing some invalidation problems with BMenuBar...
+	mainMenu->SetFlags(mainMenu->Flags() | B_FULL_UPDATE_ON_RESIZE);
+	mainMenu->SetViewColor(B_TRANSPARENT_COLOR);
+
 	fURLInputGroup->MakeFocus(true);
 
 	fMenuGroup = layoutItemFor(mainMenu);
