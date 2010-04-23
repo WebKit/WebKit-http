@@ -62,7 +62,7 @@ BrowserApp::BrowserApp()
 	:
 	BApplication(kApplicationSignature),
 	fWindowCount(0),
-	fLastWindowFrame(100, 100, 700, 750),
+	fLastWindowFrame(50, 50, 950, 750),
 	fLaunchRefsMessage(0),
 	fInitialized(false),
 	fSettings(NULL),
