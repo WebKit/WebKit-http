@@ -363,10 +363,10 @@ SettingsMessage::GetValue(const char* name, int32 defaultValue) const
 uint32
 SettingsMessage::GetValue(const char* name, uint32 defaultValue) const
 {
-	int32 value;
-	if (FindInt32(name, &value) != B_OK)
+	uint32 value;
+	if (FindUInt32(name, &value) != B_OK)
 		return defaultValue;
-	return (uint32)value;
+	return value;
 }
 
 
