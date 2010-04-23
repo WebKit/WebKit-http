@@ -53,14 +53,23 @@ public:
 private:
 			BView*				_CreateGeneralPage(float spacing);
 			BView*				_CreateFontsPage(float spacing);
-
-			void				_ApplySettings();
-			void				_RevertSettings();
-
 			void				_BuildSizesMenu(BMenu* menu,
 									uint32 messageWhat);
+			void				_SetupFontSelectionView(
+									FontSelectionView* view,
+									BMessage* message);
+
+			bool				_CanApplySettings() const;
+			void				_ApplySettings();
+			void				_RevertSettings();
+			void				_ValidateButtonsEnabled();
+
+			uint32				_NewWindowPolicy() const;
+			uint32				_NewTabPolicy() const;
+			int32				_MaxHistoryAge() const;
+
 			void				_SetSizesMenuValue(BMenu* menu, int32 value);
-			int32				_SizesMenuValue(BMenu* menu);
+			int32				_SizesMenuValue(BMenu* menu) const;
 
 			BFont				_FindDefaultSerifFont() const;
 

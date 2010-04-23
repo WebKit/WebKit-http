@@ -62,8 +62,7 @@ enum {
 	MSG_APPLY							= 'aply',
 	MSG_CANCEL							= 'cncl',
 	MSG_REVERT							= 'rvrt',
-	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
-	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
+
 	MSG_START_PAGE_CHANGED				= 'hpch',
 	MSG_SEARCH_PAGE_CHANGED				= 'spch',
 	MSG_DOWNLOAD_FOLDER_CHANGED			= 'dnfc',
@@ -71,6 +70,14 @@ enum {
 	MSG_NEW_TABS_BEHAVIOR_CHANGED		= 'ntbc',
 	MSG_HISTORY_MENU_DAYS_CHANGED		= 'digm',
 	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED	= 'tdbc',
+
+	MSG_STANDARD_FONT_CHANGED			= 'stfc',
+	MSG_SERIF_FONT_CHANGED				= 'sefc',
+	MSG_SANS_SERIF_FONT_CHANGED			= 'ssfc',
+	MSG_FIXED_FONT_CHANGED				= 'ffch',
+
+	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
+	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
 };
 
 static const int32 kDefaultFontSize = 14;
@@ -106,17 +113,14 @@ SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 	tabView->AddTab(_CreateGeneralPage(spacing));
 	tabView->AddTab(_CreateFontsPage(spacing));
 
-	AddHandler(fStandardFontView);
-	fStandardFontView->AttachedToLooper();
-
-	AddHandler(fSerifFontView);
-	fSerifFontView->AttachedToLooper();
-
-	AddHandler(fSansSerifFontView);
-	fSansSerifFontView->AttachedToLooper();
-
-	AddHandler(fFixedFontView);
-	fFixedFontView->AttachedToLooper();
+	_SetupFontSelectionView(fStandardFontView,
+		new BMessage(MSG_STANDARD_FONT_CHANGED));
+	_SetupFontSelectionView(fSerifFontView,
+		new BMessage(MSG_SERIF_FONT_CHANGED));
+	_SetupFontSelectionView(fSansSerifFontView,
+		new BMessage(MSG_SANS_SERIF_FONT_CHANGED));
+	_SetupFontSelectionView(fFixedFontView,
+		new BMessage(MSG_FIXED_FONT_CHANGED));
 
 	fApplyButton->MakeDefault(true);
 
@@ -168,17 +172,30 @@ SettingsWindow::MessageReceived(BMessage* message)
 			fStandardFontView->SetSize(size);
 			fSerifFontView->SetSize(size);
 			fSansSerifFontView->SetSize(size);
+			_ValidateButtonsEnabled();
 			break;
 		}
 		case MSG_FIXED_FONT_SIZE_SELECTED:
 		{
 			int32 size = _SizesMenuValue(fFixedSizesMenu->Menu());
 			fFixedFontView->SetSize(size);
+			_ValidateButtonsEnabled();
 			break;
 		}
 
+		case MSG_START_PAGE_CHANGED:
+		case MSG_SEARCH_PAGE_CHANGED:
+		case MSG_DOWNLOAD_FOLDER_CHANGED:
+		case MSG_NEW_WINDOWS_BEHAVIOR_CHANGED:
+		case MSG_NEW_TABS_BEHAVIOR_CHANGED:
+		case MSG_HISTORY_MENU_DAYS_CHANGED:
 		case MSG_TAB_DISPLAY_BEHAVIOR_CHANGED:
+		case MSG_STANDARD_FONT_CHANGED:
+		case MSG_SERIF_FONT_CHANGED:
+		case MSG_SANS_SERIF_FONT_CHANGED:
+		case MSG_FIXED_FONT_CHANGED:
 			// TODO: Some settings could change live, some others not?
+			_ValidateButtonsEnabled();
 			break;
 
 		default:
@@ -215,32 +232,40 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 {
 	fStartPageControl = new BTextControl("start page",
 		TR("Start page:"), "", new BMessage(MSG_START_PAGE_CHANGED));
+	fStartPageControl->SetModificationMessage(
+		new BMessage(MSG_START_PAGE_CHANGED));
 	fStartPageControl->SetText(
 		fSettings->GetValue(kSettingsKeyStartPageURL, kDefaultStartPageURL));
 
 	fSearchPageControl = new BTextControl("search page",
 		TR("Search page:"), "", new BMessage(MSG_SEARCH_PAGE_CHANGED));
+	fSearchPageControl->SetModificationMessage(
+		new BMessage(MSG_SEARCH_PAGE_CHANGED));
 	fSearchPageControl->SetText(
 		fSettings->GetValue(kSettingsKeySearchPageURL, kDefaultSearchPageURL));
 
 	fDownloadFolderControl = new BTextControl("download folder",
 		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
+	fDownloadFolderControl->SetModificationMessage(
+		new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
 	fDownloadFolderControl->SetText(
 		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 
 	fNewWindowBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"),
-		NULL);
+		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
 	fNewWindowBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
-		NULL);
+		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
 	fNewWindowBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"),
-		NULL);
+		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
 
 	fNewTabBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
-		NULL);
-	fNewTabBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"), NULL);
+		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
+	fNewTabBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"),
+		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
 	fNewTabBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
-		NULL);
-	fNewTabBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"), NULL);
+		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
+	fNewTabBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"),
+		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
 
 	fNewWindowBehaviorOpenHomeItem->SetMarked(true);
 	fNewTabBehaviorOpenBlankItem->SetMarked(true);
@@ -250,8 +275,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenSearchItem);
 	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenBlankItem);
 	fNewWindowBehaviorMenu = new BMenuField("new window behavior",
-		TR("New windows:"), newWindowBehaviorMenu,
-		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
+		TR("New windows:"), newWindowBehaviorMenu);
 
 	BPopUpMenu* newTabBehaviorMenu = new BPopUpMenu("New tabs");
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenBlankItem);
@@ -259,11 +283,12 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenSearchItem);
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorCloneCurrentItem);
 	fNewTabBehaviorMenu = new BMenuField("new tab behavior",
-		TR("New tabs:"), newTabBehaviorMenu,
-		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
+		TR("New tabs:"), newTabBehaviorMenu);
 
 	fDaysInHistoryMenuControl = new BTextControl("days in history",
 		TR("Number of days to keep links in History menu:"), "",
+		new BMessage(MSG_HISTORY_MENU_DAYS_CHANGED));
+	fDaysInHistoryMenuControl->SetModificationMessage(
 		new BMessage(MSG_HISTORY_MENU_DAYS_CHANGED));
 	BString maxHistoryAge;
 	maxHistoryAge << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();
@@ -364,14 +389,108 @@ SettingsWindow::_CreateFontsPage(float spacing)
 
 
 void
+SettingsWindow::_BuildSizesMenu(BMenu* menu, uint32 messageWhat)
+{
+	const float kMinSize = 8.0;
+	const float kMaxSize = 18.0;
+
+	const int32 kSizes[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 21, 24, 0};
+
+	for (int32 i = 0; kSizes[i]; i++) {
+		int32 size = kSizes[i];
+		if (size < kMinSize || size > kMaxSize)
+			continue;
+
+		char label[32];
+		snprintf(label, sizeof(label), "%ld", size);
+
+		BMessage* message = new BMessage(messageWhat);
+		message->AddInt32("size", size);
+
+		BMenuItem* item = new BMenuItem(label, message);
+
+		menu->AddItem(item);
+		item->SetTarget(this);
+	}
+}
+
+
+void
+SettingsWindow::_SetupFontSelectionView(FontSelectionView* view,
+	BMessage* message)
+{
+	AddHandler(view);
+	view->AttachedToLooper();
+	view->SetMessage(message);
+	view->SetTarget(this);
+}
+
+
+// #pragma mark -
+
+
+bool
+SettingsWindow::_CanApplySettings() const
+{
+	bool canApply = false;
+
+	// General settings
+	canApply = canApply || (strcmp(fStartPageControl->Text(),
+		fSettings->GetValue(kSettingsKeyStartPageURL,
+			kDefaultStartPageURL)) != 0);
+
+	canApply = canApply || (strcmp(fSearchPageControl->Text(),
+		fSettings->GetValue(kSettingsKeySearchPageURL,
+			kDefaultSearchPageURL)) != 0);
+
+	canApply = canApply || (strcmp(fDownloadFolderControl->Text(),
+		fSettings->GetValue(kSettingsKeyDownloadPath,
+			kDefaultDownloadPath)) != 0);
+
+	canApply = canApply || ((fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON)
+		!= fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
+
+	canApply = canApply || (_MaxHistoryAge()
+		!= BrowsingHistory::DefaultInstance()->MaxHistoryItemAge());
+
+	// New window policy
+	canApply = canApply || (_NewWindowPolicy()
+		!= fSettings->GetValue(kSettingsKeyNewWindowPolicy,
+			(uint32)OpenStartPage));
+
+	// New tab policy
+	canApply = canApply || (_NewTabPolicy()
+		!= fSettings->GetValue(kSettingsKeyNewTabPolicy,
+			(uint32)OpenBlankPage));
+
+	// Font settings
+	canApply = canApply || (fStandardFontView->Font()
+		!= fSettings->GetValue("standard font", *be_plain_font));
+
+	canApply = canApply || (fSerifFontView->Font()
+		!= fSettings->GetValue("serif font", _FindDefaultSerifFont()));
+
+	canApply = canApply || (fSansSerifFontView->Font()
+		!= fSettings->GetValue("sans serif font", *be_plain_font));
+
+	canApply = canApply || (fFixedFontView->Font()
+		!= fSettings->GetValue("fixed font", *be_fixed_font));
+
+	canApply = canApply || (_SizesMenuValue(fStandardSizesMenu->Menu())
+		!= fSettings->GetValue("standard font size", kDefaultFontSize));
+
+	canApply = canApply || (_SizesMenuValue(fFixedSizesMenu->Menu())
+		!= fSettings->GetValue("fixed font size", kDefaultFontSize));
+
+	return canApply;
+}
+
+
+void
 SettingsWindow::_ApplySettings()
 {
 	// Store general settings
-	int32 maxHistoryAge = atoi(fDaysInHistoryMenuControl->Text());
-	if (maxHistoryAge <= 0)
-		maxHistoryAge = 1;
-	if (maxHistoryAge >= 35)
-		maxHistoryAge = 35;
+	int32 maxHistoryAge = _MaxHistoryAge();
 	BString text;
 	text << maxHistoryAge;
 	fDaysInHistoryMenuControl->SetText(text.String());
@@ -383,25 +502,9 @@ SettingsWindow::_ApplySettings()
 	fSettings->SetValue(kSettingsKeyShowTabsIfSinglePageOpen,
 		fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON);
 
-	// New window policy
-	uint32 newWindowPolicy = OpenStartPage;
-	BMenuItem* markedItem = fNewWindowBehaviorMenu->Menu()->FindMarked();
-	if (markedItem == fNewWindowBehaviorOpenSearchItem)
-		newWindowPolicy = OpenSearchPage;
-	else if (markedItem == fNewWindowBehaviorOpenBlankItem)
-		newWindowPolicy = OpenBlankPage;
-	fSettings->SetValue(kSettingsKeyNewWindowPolicy, newWindowPolicy);
-
-	// New tab policy
-	uint32 newTabPolicy = OpenBlankPage;
-	markedItem = fNewTabBehaviorMenu->Menu()->FindMarked();
-	if (markedItem == fNewTabBehaviorCloneCurrentItem)
-		newTabPolicy = CloneCurrentPage;
-	else if (markedItem == fNewTabBehaviorOpenHomeItem)
-		newTabPolicy = OpenStartPage;
-	else if (markedItem == fNewTabBehaviorOpenSearchItem)
-		newTabPolicy = OpenSearchPage;
-	fSettings->SetValue(kSettingsKeyNewTabPolicy, newTabPolicy);
+	// New page policies
+	fSettings->SetValue(kSettingsKeyNewWindowPolicy, _NewWindowPolicy());
+	fSettings->SetValue(kSettingsKeyNewTabPolicy, _NewTabPolicy());
 
 	// Store fond settings
 	fSettings->SetValue("standard font", fStandardFontView->Font());
@@ -426,6 +529,9 @@ SettingsWindow::_ApplySettings()
 	// This will find all currently instantiated page settings and apply
 	// the default values, unless the page settings have local overrides.
 	BWebSettings::Default()->Apply();
+
+
+	_ValidateButtonsEnabled();
 }
 
 
@@ -442,6 +548,10 @@ SettingsWindow::_RevertSettings()
 		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 	fShowTabsIfOnlyOnePage->SetValue(
 		fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
+
+	BString text;
+	text << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();
+	fDaysInHistoryMenuControl->SetText(text.String());
 
 	// New window policy
 	uint32 newWindowPolicy = fSettings->GetValue(kSettingsKeyNewWindowPolicy,
@@ -495,33 +605,63 @@ SettingsWindow::_RevertSettings()
 		*be_plain_font), defaultFontSize);
 	fFixedFontView->SetFont(fSettings->GetValue("fixed font",
 		*be_fixed_font), defaultFixedFontSize);
+
+	_ValidateButtonsEnabled();
 }
 
 
 void
-SettingsWindow::_BuildSizesMenu(BMenu* menu, uint32 messageWhat)
+SettingsWindow::_ValidateButtonsEnabled()
 {
-	const float kMinSize = 8.0;
-	const float kMaxSize = 18.0;
+	bool canApply = _CanApplySettings();
+	fApplyButton->SetEnabled(canApply);
+	fRevertButton->SetEnabled(canApply);
+	// Let the Cancel button be enabled always, as another way to close the
+	// window...
+	fCancelButton->SetEnabled(true);
+}
 
-	const int32 kSizes[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 21, 24, 0};
 
-	for (int32 i = 0; kSizes[i]; i++) {
-		int32 size = kSizes[i];
-		if (size < kMinSize || size > kMaxSize)
-			continue;
+// #pragma mark -
 
-		char label[32];
-		snprintf(label, sizeof(label), "%ld", size);
 
-		BMessage* message = new BMessage(messageWhat);
-		message->AddInt32("size", size);
+uint32
+SettingsWindow::_NewWindowPolicy() const
+{
+	uint32 newWindowPolicy = OpenStartPage;
+	BMenuItem* markedItem = fNewWindowBehaviorMenu->Menu()->FindMarked();
+	if (markedItem == fNewWindowBehaviorOpenSearchItem)
+		newWindowPolicy = OpenSearchPage;
+	else if (markedItem == fNewWindowBehaviorOpenBlankItem)
+		newWindowPolicy = OpenBlankPage;
+	return newWindowPolicy;
+}
 
-		BMenuItem* item = new BMenuItem(label, message);
 
-		menu->AddItem(item);
-		item->SetTarget(this);
-	}
+uint32
+SettingsWindow::_NewTabPolicy() const
+{
+	uint32 newTabPolicy = OpenBlankPage;
+	BMenuItem* markedItem = fNewTabBehaviorMenu->Menu()->FindMarked();
+	if (markedItem == fNewTabBehaviorCloneCurrentItem)
+		newTabPolicy = CloneCurrentPage;
+	else if (markedItem == fNewTabBehaviorOpenHomeItem)
+		newTabPolicy = OpenStartPage;
+	else if (markedItem == fNewTabBehaviorOpenSearchItem)
+		newTabPolicy = OpenSearchPage;
+	return newTabPolicy;
+}
+
+
+int32
+SettingsWindow::_MaxHistoryAge() const
+{
+	int32 maxHistoryAge = atoi(fDaysInHistoryMenuControl->Text());
+	if (maxHistoryAge <= 0)
+		maxHistoryAge = 1;
+	if (maxHistoryAge >= 35)
+		maxHistoryAge = 35;
+	return maxHistoryAge;
 }
 
 
@@ -541,7 +681,7 @@ SettingsWindow::_SetSizesMenuValue(BMenu* menu, int32 value)
 
 
 int32
-SettingsWindow::_SizesMenuValue(BMenu* menu)
+SettingsWindow::_SizesMenuValue(BMenu* menu) const
 {
 	if (BMenuItem* item = menu->FindMarked()) {
 		if (BMessage* message = item->Message()) {
