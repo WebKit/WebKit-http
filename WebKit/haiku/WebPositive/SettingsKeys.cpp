@@ -30,3 +30,15 @@
 const char* kSettingsKeyDownloadPath = "download path";
 const char* kSettingsKeyShowTabsIfSinglePageOpen
 	= "show tabs if single page open";
+
+const char* kSettingsKeyNewWindowPolicy = "new window policy";
+const char* kSettingsKeyNewTabPolicy = "new tab policy";
+const char* kSettingsKeyStartPageURL = "start page url";
+const char* kSettingsKeySearchPageURL = "search page url";
+
+
+const char* kDefaultDownloadPath = "/boot/home/Desktop/";
+const char* kDefaultStartPageURL
+	= "file:///boot/system/documentation/welcome/welcome_en.html";
+const char* kDefaultSearchPageURL = "http://www.google.com";
+

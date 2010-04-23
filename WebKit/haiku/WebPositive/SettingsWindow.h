@@ -67,13 +67,22 @@ private:
 private:
 			SettingsMessage*	fSettings;
 
+			BTextControl*		fStartPageControl;
+			BTextControl*		fSearchPageControl;
 			BTextControl*		fDownloadFolderControl;
-			BMenuField*			fNewPageBehaviorMenu;
-			BMenuItem*			fNewPageBehaviorCloneCurrentItem;
-			BMenuItem*			fNewPageBehaviorOpenHomeItem;
-			BMenuItem*			fNewPageBehaviorOpenSearchItem;
-			BMenuItem*			fNewPageBehaviorOpenBlankItem;
-			BTextControl*		fDaysInGoMenuControl;
+
+			BMenuField*			fNewWindowBehaviorMenu;
+			BMenuItem*			fNewWindowBehaviorOpenHomeItem;
+			BMenuItem*			fNewWindowBehaviorOpenSearchItem;
+			BMenuItem*			fNewWindowBehaviorOpenBlankItem;
+
+			BMenuField*			fNewTabBehaviorMenu;
+			BMenuItem*			fNewTabBehaviorCloneCurrentItem;
+			BMenuItem*			fNewTabBehaviorOpenHomeItem;
+			BMenuItem*			fNewTabBehaviorOpenSearchItem;
+			BMenuItem*			fNewTabBehaviorOpenBlankItem;
+
+			BTextControl*		fDaysInHistoryMenuControl;
 			BCheckBox*			fShowTabsIfOnlyOnePage;
 
 			FontSelectionView*	fStandardFontView;

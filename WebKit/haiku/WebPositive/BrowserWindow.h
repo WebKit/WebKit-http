@@ -56,6 +56,13 @@ enum ToolbarPolicy {
 	DoNotHaveToolbar
 };
 
+enum NewPagePolicy {
+	OpenBlankPage		= 0,
+	OpenStartPage		= 1,
+	OpenSearchPage		= 2,
+	CloneCurrentPage	= 3
+};
+
 enum {
 	NEW_WINDOW = 'nwnd',
 	NEW_TAB = 'ntab',
@@ -176,9 +183,14 @@ private:
 			BCheckBox*			fFindCaseSensitiveCheckBox;
 			TabManager*			fTabManager;
 
+			// cached settings
 			SettingsMessage*	fAppSettings;
 			bool				fZoomTextOnly;
 			bool				fShowTabsIfSinglePageOpen;
+			uint32				fNewWindowPolicy;
+			uint32				fNewTabPolicy;
+			BString				fStartPageURL;
+			BString				fSearchPageURL;
 };
 
 

@@ -48,6 +48,7 @@
 
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
+#include "BrowserWindow.h"
 #include "FontSelectionView.h"
 #include "SettingsKeys.h"
 #include "SettingsMessage.h"
@@ -63,9 +64,12 @@ enum {
 	MSG_REVERT							= 'rvrt',
 	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
 	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
+	MSG_START_PAGE_CHANGED				= 'hpch',
+	MSG_SEARCH_PAGE_CHANGED				= 'spch',
 	MSG_DOWNLOAD_FOLDER_CHANGED			= 'dnfc',
-	MSG_NEW_PAGE_BEHAVIOR_CHANGED		= 'npbc',
-	MSG_GO_MENU_DAYS_CHANGED			= 'digm',
+	MSG_NEW_WINDOWS_BEHAVIOR_CHANGED	= 'nwbc',
+	MSG_NEW_TABS_BEHAVIOR_CHANGED		= 'ntbc',
+	MSG_HISTORY_MENU_DAYS_CHANGED		= 'digm',
 	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED	= 'tdbc',
 };
 
@@ -209,61 +213,94 @@ SettingsWindow::Show()
 BView*
 SettingsWindow::_CreateGeneralPage(float spacing)
 {
+	fStartPageControl = new BTextControl("start page",
+		TR("Start page:"), "", new BMessage(MSG_START_PAGE_CHANGED));
+	fStartPageControl->SetText(
+		fSettings->GetValue(kSettingsKeyStartPageURL, kDefaultStartPageURL));
+
+	fSearchPageControl = new BTextControl("search page",
+		TR("Search page:"), "", new BMessage(MSG_SEARCH_PAGE_CHANGED));
+	fSearchPageControl->SetText(
+		fSettings->GetValue(kSettingsKeySearchPageURL, kDefaultSearchPageURL));
+
 	fDownloadFolderControl = new BTextControl("download folder",
 		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
 	fDownloadFolderControl->SetText(
-		fSettings->GetValue(kSettingsKeyDownloadPath, ""));
+		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 
-	fNewPageBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
+	fNewWindowBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"),
 		NULL);
-	fNewPageBehaviorCloneCurrentItem->SetEnabled(false);
-	fNewPageBehaviorOpenHomeItem = new BMenuItem(TR("Open home page"), NULL);
-	fNewPageBehaviorOpenHomeItem->SetEnabled(false);
-	fNewPageBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
+	fNewWindowBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
 		NULL);
-	fNewPageBehaviorOpenSearchItem->SetEnabled(false);
-	fNewPageBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"), NULL);
-	fNewPageBehaviorOpenBlankItem->SetMarked(true);
+	fNewWindowBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"),
+		NULL);
 
-	BPopUpMenu* newPageBehaviorMenu = new BPopUpMenu("New pages");
-	newPageBehaviorMenu->AddItem(fNewPageBehaviorCloneCurrentItem);
-	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenHomeItem);
-	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenSearchItem);
-	newPageBehaviorMenu->AddItem(fNewPageBehaviorOpenBlankItem);
-	fNewPageBehaviorMenu = new BMenuField("new page behavior",
-		TR("New pages:"), newPageBehaviorMenu,
-		new BMessage(MSG_NEW_PAGE_BEHAVIOR_CHANGED));
-fNewPageBehaviorMenu->SetEnabled(false);
+	fNewTabBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
+		NULL);
+	fNewTabBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"), NULL);
+	fNewTabBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
+		NULL);
+	fNewTabBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"), NULL);
 
-	fDaysInGoMenuControl = new BTextControl("days in go menu",
-		TR("Number of days to keep links in Go menu:"), "",
-		new BMessage(MSG_GO_MENU_DAYS_CHANGED));
+	fNewWindowBehaviorOpenHomeItem->SetMarked(true);
+	fNewTabBehaviorOpenBlankItem->SetMarked(true);
+
+	BPopUpMenu* newWindowBehaviorMenu = new BPopUpMenu("New windows");
+	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenHomeItem);
+	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenSearchItem);
+	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenBlankItem);
+	fNewWindowBehaviorMenu = new BMenuField("new window behavior",
+		TR("New windows:"), newWindowBehaviorMenu,
+		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
+
+	BPopUpMenu* newTabBehaviorMenu = new BPopUpMenu("New tabs");
+	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenBlankItem);
+	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenHomeItem);
+	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenSearchItem);
+	newTabBehaviorMenu->AddItem(fNewTabBehaviorCloneCurrentItem);
+	fNewTabBehaviorMenu = new BMenuField("new tab behavior",
+		TR("New tabs:"), newTabBehaviorMenu,
+		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
+
+	fDaysInHistoryMenuControl = new BTextControl("days in history",
+		TR("Number of days to keep links in History menu:"), "",
+		new BMessage(MSG_HISTORY_MENU_DAYS_CHANGED));
 	BString maxHistoryAge;
 	maxHistoryAge << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();
-	fDaysInGoMenuControl->SetText(maxHistoryAge.String());
+	fDaysInHistoryMenuControl->SetText(maxHistoryAge.String());
 	for (uchar i = 0; i < '0'; i++)
-		fDaysInGoMenuControl->TextView()->DisallowChar(i);
+		fDaysInHistoryMenuControl->TextView()->DisallowChar(i);
 	for (uchar i = '9' + 1; i <= 128; i++)
-		fDaysInGoMenuControl->TextView()->DisallowChar(i);
+		fDaysInHistoryMenuControl->TextView()->DisallowChar(i);
 
 	fShowTabsIfOnlyOnePage = new BCheckBox("show tabs if only one page",
 		TR("Show tabs if only one page is open."),
 		new BMessage(MSG_TAB_DISPLAY_BEHAVIOR_CHANGED));
 	fShowTabsIfOnlyOnePage->SetValue(B_CONTROL_ON);
 
-	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
-		.Add(fDownloadFolderControl->CreateLabelLayoutItem(), 0, 1)
-		.Add(fDownloadFolderControl->CreateTextViewLayoutItem(), 1, 1)
+	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
+		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
+			.Add(fStartPageControl->CreateLabelLayoutItem(), 0, 0)
+			.Add(fStartPageControl->CreateTextViewLayoutItem(), 1, 0)
 
-		.Add(fNewPageBehaviorMenu->CreateLabelLayoutItem(), 0, 2)
-		.Add(fNewPageBehaviorMenu->CreateMenuBarLayoutItem(), 1, 2)
+			.Add(fSearchPageControl->CreateLabelLayoutItem(), 0, 1)
+			.Add(fSearchPageControl->CreateTextViewLayoutItem(), 1, 1)
 
-		.Add(fDaysInGoMenuControl->CreateLabelLayoutItem(), 0, 3)
-		.Add(fDaysInGoMenuControl->CreateTextViewLayoutItem(), 1, 3)
+			.Add(fDownloadFolderControl->CreateLabelLayoutItem(), 0, 2)
+			.Add(fDownloadFolderControl->CreateTextViewLayoutItem(), 1, 2)
 
-		.Add(fShowTabsIfOnlyOnePage, 0, 4, 2)
+			.Add(fNewWindowBehaviorMenu->CreateLabelLayoutItem(), 0, 3)
+			.Add(fNewWindowBehaviorMenu->CreateMenuBarLayoutItem(), 1, 3)
 
-		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing), 0, 5, 2)
+			.Add(fNewTabBehaviorMenu->CreateLabelLayoutItem(), 0, 4)
+			.Add(fNewTabBehaviorMenu->CreateMenuBarLayoutItem(), 1, 4)
+		)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
+		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
+		.Add(fShowTabsIfOnlyOnePage)
+		.Add(fDaysInHistoryMenuControl)
+		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
@@ -330,19 +367,41 @@ void
 SettingsWindow::_ApplySettings()
 {
 	// Store general settings
-	int32 maxHistoryAge = atoi(fDaysInGoMenuControl->Text());
+	int32 maxHistoryAge = atoi(fDaysInHistoryMenuControl->Text());
 	if (maxHistoryAge <= 0)
 		maxHistoryAge = 1;
 	if (maxHistoryAge >= 35)
 		maxHistoryAge = 35;
 	BString text;
 	text << maxHistoryAge;
-	fDaysInGoMenuControl->SetText(text.String());
+	fDaysInHistoryMenuControl->SetText(text.String());
 	BrowsingHistory::DefaultInstance()->SetMaxHistoryItemAge(maxHistoryAge);
 
+	fSettings->SetValue(kSettingsKeyStartPageURL, fStartPageControl->Text());
+	fSettings->SetValue(kSettingsKeySearchPageURL, fSearchPageControl->Text());
 	fSettings->SetValue(kSettingsKeyDownloadPath, fDownloadFolderControl->Text());
 	fSettings->SetValue(kSettingsKeyShowTabsIfSinglePageOpen,
 		fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON);
+
+	// New window policy
+	uint32 newWindowPolicy = OpenStartPage;
+	BMenuItem* markedItem = fNewWindowBehaviorMenu->Menu()->FindMarked();
+	if (markedItem == fNewWindowBehaviorOpenSearchItem)
+		newWindowPolicy = OpenSearchPage;
+	else if (markedItem == fNewWindowBehaviorOpenBlankItem)
+		newWindowPolicy = OpenBlankPage;
+	fSettings->SetValue(kSettingsKeyNewWindowPolicy, newWindowPolicy);
+
+	// New tab policy
+	uint32 newTabPolicy = OpenBlankPage;
+	markedItem = fNewTabBehaviorMenu->Menu()->FindMarked();
+	if (markedItem == fNewTabBehaviorCloneCurrentItem)
+		newTabPolicy = CloneCurrentPage;
+	else if (markedItem == fNewTabBehaviorOpenHomeItem)
+		newTabPolicy = OpenStartPage;
+	else if (markedItem == fNewTabBehaviorOpenSearchItem)
+		newTabPolicy = OpenSearchPage;
+	fSettings->SetValue(kSettingsKeyNewTabPolicy, newTabPolicy);
 
 	// Store fond settings
 	fSettings->SetValue("standard font", fStandardFontView->Font());
@@ -373,11 +432,53 @@ SettingsWindow::_ApplySettings()
 void
 SettingsWindow::_RevertSettings()
 {
+	fStartPageControl->SetText(
+		fSettings->GetValue(kSettingsKeyStartPageURL, kDefaultStartPageURL));
+
+	fSearchPageControl->SetText(
+		fSettings->GetValue(kSettingsKeySearchPageURL, kDefaultSearchPageURL));
+
 	fDownloadFolderControl->SetText(
-		fSettings->GetValue(kSettingsKeyDownloadPath, ""));
+		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 	fShowTabsIfOnlyOnePage->SetValue(
 		fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
 
+	// New window policy
+	uint32 newWindowPolicy = fSettings->GetValue(kSettingsKeyNewWindowPolicy,
+		(uint32)OpenStartPage);
+	switch (newWindowPolicy) {
+		default:
+		case OpenStartPage:
+			fNewWindowBehaviorOpenHomeItem->SetMarked(true);
+			break;
+		case OpenSearchPage:
+			fNewWindowBehaviorOpenSearchItem->SetMarked(true);
+			break;
+		case OpenBlankPage:
+			fNewWindowBehaviorOpenBlankItem->SetMarked(true);
+			break;
+	}
+
+	// New tab policy
+	uint32 newTabPolicy = fSettings->GetValue(kSettingsKeyNewTabPolicy,
+		(uint32)OpenBlankPage);
+	switch (newTabPolicy) {
+		default:
+		case OpenBlankPage:
+			fNewTabBehaviorOpenBlankItem->SetMarked(true);
+			break;
+		case OpenStartPage:
+			fNewTabBehaviorOpenHomeItem->SetMarked(true);
+			break;
+		case OpenSearchPage:
+			fNewTabBehaviorOpenSearchItem->SetMarked(true);
+			break;
+		case CloneCurrentPage:
+			fNewTabBehaviorCloneCurrentItem->SetMarked(true);
+			break;
+	}
+
+	// Font settings
 	int32 defaultFontSize = fSettings->GetValue("standard font size",
 		kDefaultFontSize);
 	int32 defaultFixedFontSize = fSettings->GetValue("fixed font size",

@@ -33,5 +33,13 @@
 extern const char* kSettingsKeyDownloadPath;
 extern const char* kSettingsKeyShowTabsIfSinglePageOpen;
 
+extern const char* kSettingsKeyNewWindowPolicy;
+extern const char* kSettingsKeyNewTabPolicy;
+extern const char* kSettingsKeyStartPageURL;
+extern const char* kSettingsKeySearchPageURL;
+
+extern const char* kDefaultDownloadPath;
+extern const char* kDefaultStartPageURL;
+extern const char* kDefaultSearchPageURL;
 
 #endif	// SETTINGS_KEYS_H

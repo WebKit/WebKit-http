@@ -166,11 +166,22 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fZoomTextOnly(true),
 	fShowTabsIfSinglePageOpen(true)
 {
+	// Begin listening to settings changes and read some current values.
 	fAppSettings->AddListener(BMessenger(this));
 //	fZoomTextOnly = fAppSettings->GetValue("zoom text only", fZoomTextOnly);
 	fShowTabsIfSinglePageOpen = fAppSettings->GetValue(
 		kSettingsKeyShowTabsIfSinglePageOpen, fShowTabsIfSinglePageOpen);
 
+	fNewWindowPolicy = fAppSettings->GetValue(kSettingsKeyNewWindowPolicy,
+		(uint32)OpenStartPage);
+	fNewTabPolicy = fAppSettings->GetValue(kSettingsKeyNewTabPolicy,
+		(uint32)OpenBlankPage);
+	fStartPageURL = fAppSettings->GetValue(kSettingsKeyStartPageURL,
+		kDefaultStartPageURL);
+	fSearchPageURL = fAppSettings->GetValue(kSettingsKeySearchPageURL,
+		kDefaultSearchPageURL);
+
+	// Create the interface elements
 	BMessage* newTabMessage = new BMessage(NEW_TAB);
 	newTabMessage->AddString("url", "");
 	newTabMessage->AddPointer("window", this);
@@ -672,12 +683,26 @@ BrowserWindow::MessageReceived(BMessage* message)
 			if (message->FindString("name", &name) != B_OK)
 				break;
 			bool flag;
+			BString string;
+			uint32 value;
 			if (name == kSettingsKeyShowTabsIfSinglePageOpen
 				&& message->FindBool("value", &flag) == B_OK) {
 				if (fShowTabsIfSinglePageOpen != flag) {
 					fShowTabsIfSinglePageOpen = flag;
 					_UpdateTabGroupVisibility();
 				}
+			} else if (name == kSettingsKeyStartPageURL
+				&& message->FindString("value", &string) == B_OK) {
+				fStartPageURL = string;
+			} else if (name == kSettingsKeySearchPageURL
+				&& message->FindString("value", &string) == B_OK) {
+				fSearchPageURL = string;
+			} else if (name == kSettingsKeyNewWindowPolicy
+				&& message->FindUInt32("value", &value) == B_OK) {
+				fNewWindowPolicy = value;
+			} else if (name == kSettingsKeyNewTabPolicy
+				&& message->FindUInt32("value", &value) == B_OK) {
+				fNewTabPolicy = value;
 			}
 			break;
 		}
@@ -716,15 +741,38 @@ BrowserWindow::MenusBeginning()
 
 
 void
-BrowserWindow::CreateNewTab(const BString& url, bool select, BWebView* webView)
+BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 {
 	// Executed in app thread (new BWebPage needs to be created in app thread).
 	if (!webView)
 		webView = new BWebView("web view");
 
+	bool isNewWindow = fTabManager->CountTabs() == 0;
+
 	fTabManager->AddTab(webView, "New tab");
 
-	if (url.Length())
+	BString url(_url);
+	if (url.Length() == 0) {
+		uint32 policy = isNewWindow ? fNewWindowPolicy : fNewTabPolicy;
+		// Implement new page policy
+		switch (policy) {
+			case OpenStartPage:
+				url = fStartPageURL;
+				break;
+			case OpenSearchPage:
+				url = fSearchPageURL;
+				break;
+			case CloneCurrentPage:
+				if (CurrentWebView() != NULL)
+					url = CurrentWebView()->MainFrameURL();
+				break;
+			default:
+			case OpenBlankPage:
+				break;
+		}
+	}
+
+	if (url.Length() > 0)
 		webView->LoadURL(url.String());
 
 	if (select) {
