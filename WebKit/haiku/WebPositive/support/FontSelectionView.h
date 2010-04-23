@@ -35,6 +35,9 @@ public:
 			void				AttachedToLooper();
 	virtual void				MessageReceived(BMessage* message);
 
+			void				SetMessage(BMessage* message);
+			void				SetTarget(BHandler* target);
+
 			void				SetFont(const BFont& font, float size);
 			void				SetFont(const BFont& font);
 			void				SetSize(float size);
@@ -59,6 +62,8 @@ public:
 			BView*				PreviewBox() const;
 			
 private:
+			void				_Invoke();
+
 			BFont				_DefaultFont() const;
 			void				_SelectCurrentFont(bool select);
 			void				_SelectCurrentSize(bool select);
@@ -78,6 +83,9 @@ protected:
 
 			BFont				fSavedFont;
 			BFont				fCurrentFont;
+
+			BMessage*			fMessage;
+			BHandler*			fTarget;
 };
 
 #endif	// FONT_SELECTION_VIEW_H

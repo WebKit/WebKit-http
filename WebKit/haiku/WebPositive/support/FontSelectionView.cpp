@@ -15,6 +15,7 @@
 #include <Box.h>
 #include <Catalog.h>
 #include <Locale.h>
+#include <Looper.h>
 #include <MenuField.h>
 #include <MenuItem.h>
 #include <PopUpMenu.h>
@@ -43,7 +44,9 @@ static const int32 kMsgSetSize = 'size';
 FontSelectionView::FontSelectionView(const char* name, const char* label,
 		bool separateStyles, const BFont* currentFont)
 	:
-	BHandler(name)
+	BHandler(name),
+	fMessage(NULL),
+	fTarget(NULL)
 {
 	if (currentFont == NULL)
 		fCurrentFont = _DefaultFont();
@@ -96,6 +99,8 @@ FontSelectionView::~FontSelectionView()
 		delete fStylesMenuField;
 	if (!fFontsMenuField->Window())
 		delete fFontsMenuField;
+
+	delete fMessage;
 }
 
 
@@ -120,6 +125,7 @@ FontSelectionView::MessageReceived(BMessage* message)
 
 			fCurrentFont.SetSize(size);
 			_UpdateFontPreview();
+			_Invoke();
 			break;
 		}
 
@@ -153,6 +159,8 @@ FontSelectionView::MessageReceived(BMessage* message)
 				if (fStylesMenuField != NULL)
 					_AddStylesToMenu(fCurrentFont, fStylesMenuField->Menu());
 			}
+
+			_Invoke();
 			break;
 		}
 
@@ -173,12 +181,28 @@ FontSelectionView::MessageReceived(BMessage* message)
 
 			fCurrentFont.SetFamilyAndStyle(family, style);
 			_UpdateFontPreview();
+			_Invoke();
 			break;
 		}
 
 		default:
 			BHandler::MessageReceived(message);
 	}
+}
+
+
+void
+FontSelectionView::SetMessage(BMessage* message)
+{
+	delete fMessage;
+	fMessage = message;
+}
+
+
+void
+FontSelectionView::SetTarget(BHandler* target)
+{
+	fTarget = target;
 }
 
 
@@ -377,6 +401,16 @@ FontSelectionView::PreviewBox() const
 
 
 // #pragma mark - private
+
+
+void
+FontSelectionView::_Invoke()
+{
+	if (fTarget != NULL && fTarget->Looper() != NULL && fMessage != NULL) {
+		BMessage message(*fMessage);
+		fTarget->Looper()->PostMessage(&message, fTarget);
+	}
+}
 
 
 BFont
