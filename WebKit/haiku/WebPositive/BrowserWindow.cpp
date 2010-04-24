@@ -743,8 +743,9 @@ BrowserWindow::MenusBeginning()
 void
 BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 {
+	bool applyNewPagePolicy = webView == NULL;
 	// Executed in app thread (new BWebPage needs to be created in app thread).
-	if (!webView)
+	if (webView == NULL)
 		webView = new BWebView("web view");
 
 	bool isNewWindow = fTabManager->CountTabs() == 0;
@@ -752,7 +753,7 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 	fTabManager->AddTab(webView, "New tab");
 
 	BString url(_url);
-	if (url.Length() == 0) {
+	if (applyNewPagePolicy && url.Length() == 0) {
 		uint32 policy = isNewWindow ? fNewWindowPolicy : fNewTabPolicy;
 		// Implement new page policy
 		switch (policy) {
