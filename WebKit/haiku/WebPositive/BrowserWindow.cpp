@@ -1193,6 +1193,9 @@ BrowserWindow::_CreateBookmark()
 		if (leafPos >= 0)
 			bookmarkName.Remove(0, leafPos + 1);
 	}
+	// Make sure the bookmark title does not contain chars that are not
+	// allowed in file names.
+	bookmarkName.ReplaceAll('/', '-');
 
 	// Check that the bookmark exists nowhere in the bookmark hierarchy,
 	// though the intended file name must match, we don't search the stored
