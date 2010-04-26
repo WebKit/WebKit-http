@@ -14,11 +14,8 @@ resource app_flags B_SINGLE_LAUNCH;
 
 resource file_types message {
 	"types" = "text/html",
-	"types" = "image/gif",
-	"types" = "image/jpeg",
-	"types" = "image/png",
+	"types" = "image/svg+xml",
 	"types" = "application/x-vnd.Be-bookmark",
-	"types" = "text",
 	"types" = "application/x-vnd.Be-doc_bookmark",
 	"types" = "application/x-vnd.Be.URL.file",
 	"types" = "application/x-vnd.Be.URL.ftp",
