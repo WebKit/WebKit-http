@@ -598,8 +598,11 @@ BrowserWindow::MessageReceived(BMessage* message)
 			fFindTextControl->MakeFocus(true);
 			break;
 		case EDIT_HIDE_FIND_GROUP:
-			if (fFindGroup->IsVisible())
+			if (fFindGroup->IsVisible()) {
 				fFindGroup->SetVisible(false);
+				if (CurrentWebView() != NULL)
+					CurrentWebView()->MakeFocus(true);
+			}
 			break;
 
 		case B_CUT:
