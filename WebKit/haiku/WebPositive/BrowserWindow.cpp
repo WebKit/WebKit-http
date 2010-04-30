@@ -750,9 +750,9 @@ BrowserWindow::QuitRequested()
 
 	// Iterate over all tabs to delete all BWebViews.
 	// Do this here, so WebKit tear down happens earlier.
+	SetCurrentWebView(NULL);
 	while (fTabManager->CountTabs() > 0)
 		_ShutdownTab(0);
-	SetCurrentWebView(NULL);
 
 	BMessage message(WINDOW_CLOSED);
 	message.AddRect("window frame", Frame());
@@ -766,6 +766,69 @@ BrowserWindow::MenusBeginning()
 {
 	_UpdateHistoryMenu();
 	_UpdateClipboardItems();
+}
+
+
+static bool
+viewIsChild(const BView* parent, const BView* view)
+{
+	if (parent == view)
+		return true;
+
+	int32 count = parent->CountChildren();
+	for (int32 i = 0; i < count; i++) {
+		BView* child = parent->ChildAt(i);
+		if (viewIsChild(child, view))
+			return true;
+	}
+	return false;
+}
+
+
+void
+BrowserWindow::SetCurrentWebView(BWebView* webView)
+{
+	if (webView == CurrentWebView())
+		return;
+
+	if (CurrentWebView() != NULL) {
+		// Remember the currently focused view before switching tabs,
+		// so that we can revert the focus when switching back to this tab
+		// later.
+		PageUserData* userData = static_cast<PageUserData*>(
+			CurrentWebView()->GetUserData());
+		if (userData)
+			userData->SetFocusedView(CurrentFocus());
+		else
+			CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+	}
+
+	BWebWindow::SetCurrentWebView(webView);
+
+	if (webView != NULL) {
+		_UpdateTitle(webView->MainFrameTitle());
+
+		// Restore the previous focus or focus the web view.
+		PageUserData* userData = static_cast<PageUserData*>(
+			webView->GetUserData());
+		BView* focusedView = NULL;
+		if (userData != NULL) {
+			focusedView = userData->FocusedView();
+			fURLInputGroup->SetPageIcon(userData->PageIcon());
+		}
+
+		if (focusedView != NULL
+			&& viewIsChild(GetLayout()->View(), focusedView)) {
+			focusedView->MakeFocus(true);
+		} else
+			webView->MakeFocus(true);
+
+		fURLInputGroup->SetText(webView->MainFrameURL());
+		// Trigger update of the interface to the new page, by requesting
+		// to resend all notifications.
+		webView->WebPage()->ResendNotifications();
+	} else
+		_UpdateTitle("");
 }
 
 
@@ -1150,47 +1213,7 @@ BrowserWindow::_ShutdownTab(int32 index)
 void
 BrowserWindow::_TabChanged(int32 index)
 {
-	BWebView* webView = dynamic_cast<BWebView*>(fTabManager->ViewForTab(index));
-	if (webView == CurrentWebView())
-		return;
-
-	if (CurrentWebView() != NULL) {
-		// Remember the currently focused view before switching tabs,
-		// so that we can revert the focus when switching back to this tab
-		// later.
-		PageUserData* userData = static_cast<PageUserData*>(
-			webView->GetUserData());
-		if (userData)
-			userData->SetFocusedView(CurrentFocus());
-		else
-			CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
-	}
-
-	SetCurrentWebView(webView);
-
-	if (webView != NULL) {
-		_UpdateTitle(webView->MainFrameTitle());
-
-		// Restore the previous focus or focus the web view.
-		PageUserData* userData = static_cast<PageUserData*>(
-			webView->GetUserData());
-		BView* focusedView = NULL;
-		if (userData != NULL) {
-			focusedView = userData->FocusedView();
-			fURLInputGroup->SetPageIcon(userData->PageIcon());
-		}
-		
-		if (focusedView != NULL)
-			focusedView->MakeFocus(true);
-		else
-			webView->MakeFocus(true);
-
-		fURLInputGroup->SetText(webView->MainFrameURL());
-		// Trigger update of the interface to the new page, by requesting
-		// to resend all notifications.
-		webView->WebPage()->ResendNotifications();
-	} else
-		_UpdateTitle("");
+	SetCurrentWebView(dynamic_cast<BWebView*>(fTabManager->ViewForTab(index)));
 }
 
 

@@ -49,7 +49,7 @@ public:
 	// You can have as many BWebViews in your derived window as you want,
 	// but for some situations, the BWebWindow needs to know the current one,
 	// so always make it known here.
-			void				SetCurrentWebView(BWebView* view);
+	virtual	void				SetCurrentWebView(BWebView* view);
 			BWebView*			CurrentWebView() const;
 
 	// Derived windows can implement this notification API.

@@ -89,6 +89,8 @@ public:
 	virtual	bool				QuitRequested();
 	virtual	void				MenusBeginning();
 
+	virtual	void				SetCurrentWebView(BWebView* view);
+
 			void				CreateNewTab(const BString& url, bool select,
 									BWebView* webView = 0);
 
