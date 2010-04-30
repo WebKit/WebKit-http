@@ -150,6 +150,9 @@ private:
 									BMessage* message,
 									uint32& addedCount) const;
 
+			void				_SetPageIcon(BWebView* view,
+									const BBitmap* icon);
+
 			void				_UpdateHistoryMenu();
 			void				_UpdateClipboardItems();
 

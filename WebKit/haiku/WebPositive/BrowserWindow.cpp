@@ -139,8 +139,19 @@ class PageUserData : public BWebView::UserData {
 public:
 	PageUserData(BView* focusedView)
 		:
-		fFocusedView(focusedView)
+		fFocusedView(focusedView),
+		fPageIcon(NULL)
 	{
+	}
+
+	~PageUserData()
+	{
+		delete fPageIcon;
+	}
+
+	void SetFocusedView(BView* focusedView)
+	{
+		fFocusedView = focusedView;
 	}
 
 	BView* FocusedView() const
@@ -148,8 +159,23 @@ public:
 		return fFocusedView;
 	}
 
+	void SetPageIcon(const BBitmap* icon)
+	{
+		delete fPageIcon;
+		if (icon)
+			fPageIcon = new BBitmap(icon);
+		else
+			fPageIcon = NULL;
+	}
+
+	const BBitmap* PageIcon() const
+	{
+		return fPageIcon;
+	}
+
 private:
-	BView* fFocusedView;
+	BView*		fFocusedView;
+	BBitmap*	fPageIcon;
 };
 
 
@@ -456,7 +482,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 			BString url;
 			if (message->FindString("url", &url) != B_OK)
 				url = fURLInputGroup->Text();
-			fTabManager->SetTabIcon(CurrentWebView(), NULL);
+			_SetPageIcon(CurrentWebView(), NULL);
 			CurrentWebView()->LoadURL(url.String());
 			break;
 		}
@@ -1019,7 +1045,7 @@ BrowserWindow::TitleChanged(const BString& title, BWebView* view)
 void
 BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
 {
-	fTabManager->SetTabIcon(view, icon);
+	_SetPageIcon(view, icon);
 }
 
 
@@ -1128,14 +1154,24 @@ BrowserWindow::_TabChanged(int32 index)
 	if (webView == CurrentWebView())
 		return;
 
-	if (CurrentWebView() != NULL)
-		CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+	if (CurrentWebView() != NULL) {
+		// Remember the currently focused view before switching tabs,
+		// so that we can revert the focus when switching back to this tab
+		// later.
+		PageUserData* userData = static_cast<PageUserData*>(
+			webView->GetUserData());
+		if (userData)
+			userData->SetFocusedView(CurrentFocus());
+		else
+			CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+	}
 
 	SetCurrentWebView(webView);
 
 	if (webView != NULL) {
 		_UpdateTitle(webView->MainFrameTitle());
 
+		// Restore the previous focus or focus the web view.
 		PageUserData* userData = static_cast<PageUserData*>(
 			webView->GetUserData());
 		if (userData != NULL && userData->FocusedView() != NULL)
@@ -1247,8 +1283,53 @@ BrowserWindow::_CreateBookmark()
 	}
 
 	BNodeInfo nodeInfo(&bookmarkFile);
-	if (status == B_OK)
+	if (status == B_OK) {
 		status = nodeInfo.SetType("application/x-vnd.Be-bookmark");
+		if (status == B_OK) {
+			PageUserData* userData = static_cast<PageUserData*>(
+				webView->GetUserData());
+			if (userData != NULL && userData->PageIcon() != NULL) {
+				BBitmap miniIcon(BRect(0, 0, 15, 15), B_BITMAP_NO_SERVER_LINK,
+					B_CMAP8);
+				status_t ret = miniIcon.ImportBits(userData->PageIcon());
+				if (ret == B_OK)
+					ret = nodeInfo.SetIcon(&miniIcon, B_MINI_ICON);
+				if (ret != B_OK) {
+					fprintf(stderr, "Failed to store mini icon for bookmark: "
+						"%s\n", strerror(ret));
+				}
+				BBitmap largeIcon(BRect(0, 0, 31, 31), B_BITMAP_NO_SERVER_LINK,
+					B_CMAP8);
+				// TODO: Store 32x32 favicon which is often provided by sites.
+				const uint8* src = (const uint8*)miniIcon.Bits();
+				uint32 srcBPR = miniIcon.BytesPerRow();
+				uint8* dst = (uint8*)largeIcon.Bits();
+				uint32 dstBPR = largeIcon.BytesPerRow();
+				for (uint32 y = 0; y < 16; y++) {
+					const uint8* s = src;
+					uint8* d = dst;
+					for (uint32 x = 0; x < 16; x++) {
+						*d++ = *s;
+						*d++ = *s++;
+					}
+					dst += dstBPR;
+					s = src;
+					for (uint32 x = 0; x < 16; x++) {
+						*d++ = *s;
+						*d++ = *s++;
+					}
+					dst += dstBPR;
+					src += srcBPR;
+				}
+				if (ret == B_OK)
+					ret = nodeInfo.SetIcon(&largeIcon, B_LARGE_ICON);
+				if (ret != B_OK) {
+					fprintf(stderr, "Failed to store large icon for bookmark: "
+						"%s\n", strerror(ret));
+				}
+			}
+		}
+	}
 
 	if (status != B_OK) {
 		BString message("There was an error creating the bookmark "
@@ -1345,6 +1426,23 @@ BrowserWindow::_AddBookmarkURLsRecursively(BDirectory& directory,
 			}
 		}
 	}
+}
+
+
+void
+BrowserWindow::_SetPageIcon(BWebView* view, const BBitmap* icon)
+{
+	PageUserData* userData = static_cast<PageUserData*>(view->GetUserData());
+	if (userData == NULL) {
+		userData = new(std::nothrow) PageUserData(NULL);
+		if (userData == NULL)
+			return;
+		view->SetUserData(userData);
+	}
+	// The PageUserData makes a copy of the icon, which we pass on to
+	// the TabManager for display in the respective tab.
+	userData->SetPageIcon(icon);
+	fTabManager->SetTabIcon(view, userData->PageIcon());
 }
 
 
