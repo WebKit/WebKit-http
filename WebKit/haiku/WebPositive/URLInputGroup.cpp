@@ -529,7 +529,7 @@ class URLInputGroup::PageIconView : public BView {
 public:
 	PageIconView()
 		:
-		BView("page icon view", B_WILL_DRAW),
+		BView("page icon view", B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE),
 		fIcon(NULL)
 	{
 		SetDrawingMode(B_OP_OVER);
@@ -578,13 +578,14 @@ public:
 	{
 		if (icon == NULL && fIcon == NULL)
 			return;
+		if (!(fIcon != NULL && icon != NULL))
+			InvalidateLayout();
 		delete fIcon;
 		if (icon)
 			fIcon = new BBitmap(icon);
 		else
 			fIcon = NULL;
 		Invalidate();
-		InvalidateLayout();
 	}
 
 private:
