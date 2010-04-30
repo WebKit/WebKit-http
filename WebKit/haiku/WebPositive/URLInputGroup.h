@@ -27,9 +27,13 @@ public:
 
 			BButton*			GoButton() const;
 
+			void				SetPageIcon(const BBitmap* icon);
+
 private:
+			class PageIconView;
 			class URLTextView;
 
+			PageIconView*		fIconView;
 			URLTextView*		fTextView;
 			BButton*			fGoButton;
 			bool				fWindowActive;

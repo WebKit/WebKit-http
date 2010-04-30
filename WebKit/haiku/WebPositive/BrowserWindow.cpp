@@ -1174,8 +1174,14 @@ BrowserWindow::_TabChanged(int32 index)
 		// Restore the previous focus or focus the web view.
 		PageUserData* userData = static_cast<PageUserData*>(
 			webView->GetUserData());
-		if (userData != NULL && userData->FocusedView() != NULL)
-			userData->FocusedView()->MakeFocus(true);
+		BView* focusedView = NULL;
+		if (userData != NULL) {
+			focusedView = userData->FocusedView();
+			fURLInputGroup->SetPageIcon(userData->PageIcon());
+		}
+		
+		if (focusedView != NULL)
+			focusedView->MakeFocus(true);
 		else
 			webView->MakeFocus(true);
 
@@ -1443,6 +1449,8 @@ BrowserWindow::_SetPageIcon(BWebView* view, const BBitmap* icon)
 	// the TabManager for display in the respective tab.
 	userData->SetPageIcon(icon);
 	fTabManager->SetTabIcon(view, userData->PageIcon());
+	if (view == CurrentWebView())
+		fURLInputGroup->SetPageIcon(icon);
 }
 
 

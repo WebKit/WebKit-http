@@ -128,7 +128,7 @@ private:
 // #pragma mark - URLTextView
 
 
-static const float kHorizontalTextRectInset = 3.0;
+static const float kHorizontalTextRectInset = 4.0;
 
 
 class URLInputGroup::URLTextView : public BTextView {
@@ -505,15 +505,90 @@ public:
 			SetHighColor(0, 0, 0, 120);
 		}
 
-		BPoint bitmapLocation(kFrameInset, kFrameInset);
-		if (Value() == B_CONTROL_ON)
-			bitmapLocation += BPoint(1, 1);
+		if (fBitmap == NULL)
+			return;
+		BRect bitmapBounds(fBitmap->Bounds());
+		BPoint bitmapLocation(
+			floorf((bounds.left + bounds.right
+				- (bitmapBounds.left + bitmapBounds.right)) / 2 + 0.5f),
+			floorf((bounds.top + bounds.bottom
+				- (bitmapBounds.top + bitmapBounds.bottom)) / 2 + 0.5f));
 
 		DrawBitmap(fBitmap, bitmapLocation);
 	}
 
 private:
 	BBitmap* fBitmap;
+};
+
+
+// #pragma mark - IconView
+
+
+class URLInputGroup::PageIconView : public BView {
+public:
+	PageIconView()
+		:
+		BView("page icon view", B_WILL_DRAW),
+		fIcon(NULL)
+	{
+		SetDrawingMode(B_OP_OVER);
+	}
+
+	~PageIconView()
+	{
+		delete fIcon;
+	}
+
+	virtual void Draw(BRect updateRect)
+	{
+		if (fIcon == NULL)
+			return;
+
+		BRect bounds(Bounds());
+		BRect iconBounds(fIcon->Bounds());
+		BPoint iconPos(
+			floorf((bounds.left + bounds.right
+				- (iconBounds.left + iconBounds.right)) / 2 + 0.5f),
+			floorf((bounds.top + bounds.bottom
+				- (iconBounds.top + iconBounds.bottom)) / 2 + 0.5f));
+		DrawBitmap(fIcon, iconPos);
+	}
+
+	virtual BSize MinSize()
+	{
+		if (fIcon != NULL) {
+			return BSize(fIcon->Bounds().Width() + 3,
+				fIcon->Bounds().Height() + 3);
+		}
+		return BSize(0, 0);
+	}
+
+	virtual BSize MaxSize()
+	{
+		return BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED);
+	}
+
+	virtual BSize PreferredSize()
+	{
+		return MinSize();
+	}
+
+	void SetIcon(const BBitmap* icon)
+	{
+		if (icon == NULL && fIcon == NULL)
+			return;
+		delete fIcon;
+		if (icon)
+			fIcon = new BBitmap(icon);
+		else
+			fIcon = NULL;
+		Invalidate();
+		InvalidateLayout();
+	}
+
+private:
+	BBitmap* fIcon;
 };
 
 
@@ -527,6 +602,9 @@ URLInputGroup::URLInputGroup(BMessage* goMessage)
 {
 	GroupLayout()->SetInsets(2, 2, 2, 2);
 
+	fIconView = new PageIconView();
+	GroupLayout()->AddView(fIconView, 0.0f);
+
 	fTextView = new URLTextView(this);
 	AddChild(fTextView);
 
@@ -537,7 +615,7 @@ URLInputGroup::URLInputGroup(BMessage* goMessage)
 //	fGoButton = new BitmapButton("kActionGo", NULL);
 	fGoButton = new BitmapButton(kGoBitmapBits, kGoBitmapWidth,
 		kGoBitmapHeight, kGoBitmapFormat, goMessage);
-	GroupLayout()->AddView(fGoButton, 0.0);
+	GroupLayout()->AddView(fGoButton, 0.0f);
 
 	SetFlags(Flags() | B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE);
 	SetLowColor(ViewColor());
@@ -621,4 +699,10 @@ URLInputGroup::GoButton() const
 	return fGoButton;
 }
 
+
+void
+URLInputGroup::SetPageIcon(const BBitmap* icon)
+{
+	fIconView->SetIcon(icon);
+}
 
