@@ -42,4 +42,8 @@ extern const char* kDefaultDownloadPath;
 extern const char* kDefaultStartPageURL;
 extern const char* kDefaultSearchPageURL;
 
+extern const char* kSettingsKeyUseProxy;
+extern const char* kSettingsKeyProxyAddress;
+extern const char* kSettingsKeyProxyPort;
+
 #endif	// SETTINGS_KEYS_H

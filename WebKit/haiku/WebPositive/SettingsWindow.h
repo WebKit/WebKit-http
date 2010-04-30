@@ -53,6 +53,7 @@ public:
 private:
 			BView*				_CreateGeneralPage(float spacing);
 			BView*				_CreateFontsPage(float spacing);
+			BView*				_CreateProxyPage(float spacing);
 			void				_BuildSizesMenu(BMenu* menu,
 									uint32 messageWhat);
 			void				_SetupFontSelectionView(
@@ -62,7 +63,7 @@ private:
 			bool				_CanApplySettings() const;
 			void				_ApplySettings();
 			void				_RevertSettings();
-			void				_ValidateButtonsEnabled();
+			void				_ValidateControlsEnabledStatus();
 
 			uint32				_NewWindowPolicy() const;
 			uint32				_NewTabPolicy() const;
@@ -72,6 +73,8 @@ private:
 			int32				_SizesMenuValue(BMenu* menu) const;
 
 			BFont				_FindDefaultSerifFont() const;
+
+			uint32				_ProxyPort() const;
 
 private:
 			SettingsMessage*	fSettings;
@@ -98,6 +101,10 @@ private:
 			FontSelectionView*	fSerifFontView;
 			FontSelectionView*	fSansSerifFontView;
 			FontSelectionView*	fFixedFontView;
+
+			BCheckBox*			fUseProxyCheckBox;
+			BTextControl*		fProxyAddressControl;
+			BTextControl*		fProxyPortControl;
 
 			BButton*			fApplyButton;
 			BButton*			fCancelButton;

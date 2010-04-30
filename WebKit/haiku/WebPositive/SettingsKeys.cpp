@@ -42,3 +42,6 @@ const char* kDefaultStartPageURL
 	= "file:///boot/system/documentation/welcome/welcome_en.html";
 const char* kDefaultSearchPageURL = "http://www.google.com";
 
+const char* kSettingsKeyUseProxy = "use http proxy";
+const char* kSettingsKeyProxyAddress = "http proxy address";
+const char* kSettingsKeyProxyPort = "http proxy port";

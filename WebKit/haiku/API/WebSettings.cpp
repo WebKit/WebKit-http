@@ -34,6 +34,7 @@
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
+#include "ResourceHandleManager.h"
 #include "Settings.h"
 #include "WebSettingsPrivate.h"
 #include <Application.h>
@@ -57,6 +58,7 @@ enum {
 	HANDLE_SET_LOCAL_STORAGE_PATH = 'hslp',
 	HANDLE_SET_FONT = 'hsfn',
 	HANDLE_SET_FONT_SIZE = 'hsfs',
+	HANDLE_SET_PROXY_INFO = 'hspi',
 	HANDLE_APPLY = 'hapl'
 };
 
@@ -186,6 +188,18 @@ void BWebSettings::SetDefaultFixedFontSize(float size)
     _PostFontSize(FIXED_FONT_SIZE, size);
 }
 
+void BWebSettings::SetProxyInfo(const BString& host, uint32 port,
+	BProxyType type, const BString& username, const BString& password)
+{
+	BMessage message(HANDLE_SET_PROXY_INFO);
+	message.AddString("host", host);
+	message.AddUInt32("port", port);
+	message.AddUInt32("type", type);
+	message.AddString("username", username);
+	message.AddString("password", password);
+	_PostMessage(Default(), &message);
+}
+
 void BWebSettings::Apply()
 {
     Looper()->PostMessage(HANDLE_APPLY, this);
@@ -300,6 +314,11 @@ void BWebSettings::MessageReceived(BMessage* message)
 	case HANDLE_SET_FONT_SIZE:
 		_HandleSetFontSize(message);
 		break;
+
+	case HANDLE_SET_PROXY_INFO:
+		_HandleSetProxyInfo(message);
+		break;
+
 	case HANDLE_APPLY:
 		_HandleApply();
 		break;
@@ -474,6 +493,43 @@ void BWebSettings::_HandleSetFontSize(BMessage* message)
         fData->defaultFixedFontSizeSet = true;
         break;
 	}
+}
+
+void BWebSettings::_HandleSetProxyInfo(BMessage* message)
+{
+	BString host;
+	uint32 port;
+	BProxyType type;
+	BString username;
+	BString password;
+	if (message->FindString("host", &host) != B_OK
+		|| message->FindUInt32("port", &port) != B_OK
+		|| message->FindUInt32("type", reinterpret_cast<uint32*>(&type)) != B_OK
+		|| message->FindString("username", &username) != B_OK
+		|| message->FindString("password", &password) != B_OK)
+		return;
+
+	WebCore::ResourceHandleManager::ProxyType curlProxyType;
+	switch (type) {
+	case B_PROXY_TYPE_HTTP:
+		curlProxyType = WebCore::ResourceHandleManager::HTTP;
+		break;
+	case B_PROXY_TYPE_SOCKS4:
+		curlProxyType = WebCore::ResourceHandleManager::Socks4;
+		break;
+	case B_PROXY_TYPE_SOCKS4A:
+		curlProxyType = WebCore::ResourceHandleManager::Socks4A;
+		break;
+	case B_PROXY_TYPE_SOCKS5:
+		curlProxyType = WebCore::ResourceHandleManager::Socks5;
+		break;
+	case B_PROXY_TYPE_SOCKS5_HOSTNAME:
+		curlProxyType = WebCore::ResourceHandleManager::Socks5Hostname;
+		break;
+	}
+
+	WebCore::ResourceHandleManager::sharedInstance()->setProxyInfo(host, port,
+		curlProxyType, username, password);
 }
 
 void BWebSettings::_HandleApply()

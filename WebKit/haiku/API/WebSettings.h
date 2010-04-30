@@ -44,6 +44,16 @@ namespace BPrivate {
 class WebSettingsPrivate;
 }
 
+
+enum BProxyType {
+	B_PROXY_TYPE_HTTP = 0,
+	B_PROXY_TYPE_SOCKS4 = 1,
+	B_PROXY_TYPE_SOCKS4A = 2,
+	B_PROXY_TYPE_SOCKS5 = 3,
+	B_PROXY_TYPE_SOCKS5_HOSTNAME = 4
+};
+
+
 class BWebSettings : public BHandler {
 // TODO: Inherit from BReferenceable.
 public:
@@ -81,6 +91,12 @@ public:
 			void				SetDefaultStandardFontSize(float size);
 			void				SetDefaultFixedFontSize(float size);
 
+	static	void				SetProxyInfo(const BString& host = "",
+									uint32 port = 0,
+									BProxyType type = B_PROXY_TYPE_HTTP,
+									const BString& username = "",
+									const BString& password = "");
+
 			void				Apply();
 
 private:
@@ -111,6 +127,7 @@ private:
 			void				_HandleSetLocalStoragePath(const BString& path);
 			void				_HandleSetFont(BMessage* message);
 			void				_HandleSetFontSize(BMessage* message);
+			void				_HandleSetProxyInfo(BMessage* message);
 			void				_HandleApply();
 private:
 			BPrivate::WebSettingsPrivate* fData;

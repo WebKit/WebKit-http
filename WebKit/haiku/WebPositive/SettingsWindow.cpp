@@ -78,6 +78,10 @@ enum {
 
 	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
 	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
+
+	MSG_USE_PROXY_CHANGED				= 'upsc',
+	MSG_PROXY_ADDRESS_CHANGED			= 'psac',
+	MSG_PROXY_PORT_CHANGED				= 'pspc',
 };
 
 static const int32 kDefaultFontSize = 14;
@@ -112,6 +116,7 @@ SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 
 	tabView->AddTab(_CreateGeneralPage(spacing));
 	tabView->AddTab(_CreateFontsPage(spacing));
+	tabView->AddTab(_CreateProxyPage(spacing));
 
 	_SetupFontSelectionView(fStandardFontView,
 		new BMessage(MSG_STANDARD_FONT_CHANGED));
@@ -172,14 +177,14 @@ SettingsWindow::MessageReceived(BMessage* message)
 			fStandardFontView->SetSize(size);
 			fSerifFontView->SetSize(size);
 			fSansSerifFontView->SetSize(size);
-			_ValidateButtonsEnabled();
+			_ValidateControlsEnabledStatus();
 			break;
 		}
 		case MSG_FIXED_FONT_SIZE_SELECTED:
 		{
 			int32 size = _SizesMenuValue(fFixedSizesMenu->Menu());
 			fFixedFontView->SetSize(size);
-			_ValidateButtonsEnabled();
+			_ValidateControlsEnabledStatus();
 			break;
 		}
 
@@ -194,8 +199,11 @@ SettingsWindow::MessageReceived(BMessage* message)
 		case MSG_SERIF_FONT_CHANGED:
 		case MSG_SANS_SERIF_FONT_CHANGED:
 		case MSG_FIXED_FONT_CHANGED:
+		case MSG_USE_PROXY_CHANGED:
+		case MSG_PROXY_ADDRESS_CHANGED:
+		case MSG_PROXY_PORT_CHANGED:
 			// TODO: Some settings could change live, some others not?
-			_ValidateButtonsEnabled();
+			_ValidateControlsEnabledStatus();
 			break;
 
 		default:
@@ -329,7 +337,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
-	view->SetName("General");
+	view->SetName(TR("General"));
 	return view;
 }
 
@@ -383,7 +391,48 @@ SettingsWindow::_CreateFontsPage(float spacing)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
-	view->SetName("Fonts");
+	view->SetName(TR("Fonts"));
+	return view;
+}
+
+
+BView*
+SettingsWindow::_CreateProxyPage(float spacing)
+{
+	fUseProxyCheckBox = new BCheckBox("use proxy",
+		TR("Use proxy server to connect to the internet."),
+		new BMessage(MSG_USE_PROXY_CHANGED));
+	fUseProxyCheckBox->SetValue(B_CONTROL_ON);
+
+	fProxyAddressControl = new BTextControl("proxy address",
+		TR("Proxy server address:"), "",
+		new BMessage(MSG_PROXY_ADDRESS_CHANGED));
+	fProxyAddressControl->SetModificationMessage(
+		new BMessage(MSG_PROXY_ADDRESS_CHANGED));
+	fProxyAddressControl->SetText(
+		fSettings->GetValue(kSettingsKeyProxyAddress, ""));
+
+	fProxyPortControl = new BTextControl("proxy port",
+		TR("Proxy server port:"), "", new BMessage(MSG_PROXY_PORT_CHANGED));
+	fProxyPortControl->SetModificationMessage(
+		new BMessage(MSG_PROXY_PORT_CHANGED));
+	fProxyPortControl->SetText(
+		fSettings->GetValue(kSettingsKeyProxyAddress, ""));
+
+	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
+		.Add(fUseProxyCheckBox)
+		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
+			.Add(fProxyAddressControl->CreateLabelLayoutItem(), 0, 0)
+			.Add(fProxyAddressControl->CreateTextViewLayoutItem(), 1, 0)
+		
+			.Add(fProxyPortControl->CreateLabelLayoutItem(), 0, 1)
+			.Add(fProxyPortControl->CreateTextViewLayoutItem(), 1, 1)
+		)
+		.Add(BSpaceLayoutItem::CreateGlue())
+
+		.SetInsets(spacing, spacing, spacing, spacing)
+	;
+	view->SetName(TR("Proxy server"));
 	return view;
 }
 
@@ -482,6 +531,16 @@ SettingsWindow::_CanApplySettings() const
 	canApply = canApply || (_SizesMenuValue(fFixedSizesMenu->Menu())
 		!= fSettings->GetValue("fixed font size", kDefaultFontSize));
 
+	// Proxy settings
+	canApply = canApply || ((fUseProxyCheckBox->Value() == B_CONTROL_ON)
+		!= fSettings->GetValue(kSettingsKeyUseProxy, false));
+
+	canApply = canApply || (strcmp(fProxyAddressControl->Text(),
+		fSettings->GetValue(kSettingsKeyProxyAddress, "")) != 0);
+
+	canApply = canApply || (_ProxyPort()
+		!= fSettings->GetValue(kSettingsKeyProxyPort, (uint32)0));
+
 	return canApply;
 }
 
@@ -516,6 +575,15 @@ SettingsWindow::_ApplySettings()
 	fSettings->SetValue("standard font size", standardFontSize);
 	fSettings->SetValue("fixed font size", fixedFontSize);
 
+	// Store proxy settings
+
+	fSettings->SetValue(kSettingsKeyUseProxy,
+		fUseProxyCheckBox->Value() == B_CONTROL_ON);
+	fSettings->SetValue(kSettingsKeyProxyAddress,
+		fProxyAddressControl->Text());
+	uint32 proxyPort = _ProxyPort();
+	fSettings->SetValue(kSettingsKeyProxyPort, proxyPort);
+
 	fSettings->Save();
 
 	// Apply settings to default web page settings.
@@ -526,12 +594,18 @@ SettingsWindow::_ApplySettings()
 	BWebSettings::Default()->SetDefaultStandardFontSize(standardFontSize);
 	BWebSettings::Default()->SetDefaultFixedFontSize(fixedFontSize);
 
+	if (fUseProxyCheckBox->Value() == B_CONTROL_ON) {
+		BWebSettings::Default()->SetProxyInfo(fProxyAddressControl->Text(),
+			proxyPort, B_PROXY_TYPE_HTTP, "", "");
+	} else
+		BWebSettings::Default()->SetProxyInfo();
+
 	// This will find all currently instantiated page settings and apply
 	// the default values, unless the page settings have local overrides.
 	BWebSettings::Default()->Apply();
 
 
-	_ValidateButtonsEnabled();
+	_ValidateControlsEnabledStatus();
 }
 
 
@@ -606,12 +680,21 @@ SettingsWindow::_RevertSettings()
 	fFixedFontView->SetFont(fSettings->GetValue("fixed font",
 		*be_fixed_font), defaultFixedFontSize);
 
-	_ValidateButtonsEnabled();
+	// Proxy settings
+	fUseProxyCheckBox->SetValue(fSettings->GetValue(kSettingsKeyUseProxy,
+		false));
+	fProxyAddressControl->SetText(fSettings->GetValue(kSettingsKeyProxyAddress,
+		""));
+	text = "";
+	text << fSettings->GetValue(kSettingsKeyProxyPort, (uint32)0);
+	fProxyPortControl->SetText(text.String());
+
+	_ValidateControlsEnabledStatus();
 }
 
 
 void
-SettingsWindow::_ValidateButtonsEnabled()
+SettingsWindow::_ValidateControlsEnabledStatus()
 {
 	bool canApply = _CanApplySettings();
 	fApplyButton->SetEnabled(canApply);
@@ -619,6 +702,10 @@ SettingsWindow::_ValidateButtonsEnabled()
 	// Let the Cancel button be enabled always, as another way to close the
 	// window...
 	fCancelButton->SetEnabled(true);
+
+	bool useProxy = fUseProxyCheckBox->Value() == B_CONTROL_ON;
+	fProxyAddressControl->SetEnabled(useProxy);
+	fProxyPortControl->SetEnabled(useProxy);
 }
 
 
@@ -714,3 +801,12 @@ SettingsWindow::_FindDefaultSerifFont() const
 	}
 	return serifFont;
 }
+
+
+uint32
+SettingsWindow::_ProxyPort() const
+{
+	return atoul(fProxyPortControl->Text());
+}
+
+
