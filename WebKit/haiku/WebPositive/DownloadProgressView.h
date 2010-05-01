@@ -57,6 +57,8 @@ public:
 	virtual	void				DetachedFromWindow();
 	virtual	void				AllAttached();
 
+	virtual	void				MouseDown(BPoint where);
+
 	virtual	void				Draw(BRect updateRect);
 
 	virtual	void				MessageReceived(BMessage* message);

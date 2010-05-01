@@ -32,12 +32,15 @@
 #include <Alert.h>
 #include <Bitmap.h>
 #include <Button.h>
+#include <Clipboard.h>
 #include <Directory.h>
 #include <Entry.h>
 #include <FindDirectory.h>
 #include <GroupLayoutBuilder.h>
+#include <MenuItem.h>
 #include <NodeInfo.h>
 #include <NodeMonitor.h>
+#include <PopUpMenu.h>
 #include <Roster.h>
 #include <SpaceLayoutItem.h>
 #include <StatusBar.h>
@@ -49,10 +52,12 @@
 
 
 enum {
-	OPEN_DOWNLOAD = 'opdn',
-	RESTART_DOWNLOAD = 'rsdn',
-	CANCEL_DOWNLOAD = 'cndn',
-	REMOVE_DOWNLOAD = 'rmdn',
+	OPEN_DOWNLOAD			= 'opdn',
+	RESTART_DOWNLOAD		= 'rsdn',
+	CANCEL_DOWNLOAD			= 'cndn',
+	REMOVE_DOWNLOAD			= 'rmdn',
+	COPY_URL_TO_CLIPBOARD	= 'curl',
+	OPEN_CONTAINING_FOLDER	= 'opfd',
 };
 
 const bigtime_t kMaxUpdateInterval = 100000LL;
@@ -203,6 +208,10 @@ DownloadProgressView::DownloadProgressView(const BMessage* archive)
 bool
 DownloadProgressView::Init(BMessage* archive)
 {
+	// We need to receive mouse events even for the areas of children views,
+	// so we can pop up a context menu.
+	SetEventMask(B_POINTER_EVENTS);
+
 	fCurrentSize = 0;
 	fExpectedSize = 0;
 	fLastUpdateTime = 0;
@@ -327,6 +336,35 @@ DownloadProgressView::AllAttached()
 	SetViewColor(B_TRANSPARENT_COLOR);
 	SetLowColor(245, 245, 245);
 	SetHighColor(tint_color(LowColor(), B_DARKEN_1_TINT));
+}
+
+
+void
+DownloadProgressView::MouseDown(BPoint where)
+{
+	if (!Bounds().Contains(where))
+		return;
+
+	int32 buttons;
+	if (Window()->CurrentMessage()->FindInt32("buttons", &buttons) != B_OK)
+		return;
+
+	if ((buttons & B_SECONDARY_MOUSE_BUTTON) == 0)
+		return;
+
+	where = ConvertToScreen(where) + BPoint(2, 2);
+
+	BPopUpMenu* contextMenu = new BPopUpMenu("download context");
+	BMenuItem* copyURL = new BMenuItem("Copy URL to clipboard",
+		new BMessage(COPY_URL_TO_CLIPBOARD));
+	copyURL->SetEnabled(fURL.Length() > 0);
+	contextMenu->AddItem(copyURL);
+	BMenuItem* openFolder = new BMenuItem("Open containing folder",
+		new BMessage(OPEN_CONTAINING_FOLDER));
+	contextMenu->AddItem(openFolder);
+
+	contextMenu->SetTargetForItems(this);
+	contextMenu->Go(where, true, true, true);
 }
 
 
@@ -477,6 +515,71 @@ DownloadProgressView::MessageReceived(BMessage* message)
 			}
 			break;
 		}
+
+		// Context menu messages
+		case COPY_URL_TO_CLIPBOARD:
+			if (be_clipboard->Lock()) {
+				BMessage* data = be_clipboard->Data();
+				if (data != NULL) {
+					be_clipboard->Clear();
+					data->AddData("text/plain", B_MIME_TYPE, fURL.String(),
+						fURL.Length());
+				}
+				be_clipboard->Commit();
+				be_clipboard->Unlock();
+			}
+			break;
+		case OPEN_CONTAINING_FOLDER:
+			if (fPath.InitCheck() == B_OK) {
+				BPath containingFolder;
+				if (fPath.GetParent(&containingFolder) != B_OK)
+					break;
+				BEntry entry(containingFolder.Path());
+				if (!entry.Exists())
+					break;
+				entry_ref ref;
+				if (entry.GetRef(&ref) != B_OK)
+					break;
+				be_roster->Launch(&ref);
+
+				// Use Tracker scripting and select the download pose
+				// in the window.
+				// TODO: We should somehow get the window that just openend.
+				// Using the name like this is broken when there are multiple
+				// windows open with this name. Also Tracker does not scroll
+				// to this entry.
+				BString windowName = ref.name;
+				BString fullWindowName = containingFolder.Path();
+
+				BMessenger trackerMessenger("application/x-vnd.Be-TRAK");
+				if (trackerMessenger.IsValid()
+					&& get_ref_for_path(fPath.Path(), &ref) == B_OK) {
+					// We need to wait a bit until the folder is open.
+					// TODO: This is also too fragile... we should be able
+					// to wait for the roster message.
+					snooze(250000);
+					int32 tries = 2;
+					while (tries > 0) {
+						BMessage selectionCommand(B_SET_PROPERTY);
+						selectionCommand.AddSpecifier("Selection");
+						selectionCommand.AddSpecifier("Poses");
+						selectionCommand.AddSpecifier("Window",
+							windowName.String());
+						selectionCommand.AddRef("data", &ref);
+						BMessage reply;
+						trackerMessenger.SendMessage(&selectionCommand, &reply);
+						int32 error;
+						if (reply.FindInt32("error", &error) != B_OK
+							|| error == B_OK) {
+							break;
+						}
+						windowName = fullWindowName;
+						tries--;
+					}
+				}
+			}
+			break;
+
 		default:
 			BGroupView::MessageReceived(message);
 	}
@@ -534,6 +637,7 @@ DownloadProgressView::DownloadCanceled()
 	fBottomButton->SetMessage(new BMessage(REMOVE_DOWNLOAD));
 	fBottomButton->SetEnabled(true);
 	fInfoView->SetText("");
+	fPath.Unset();
 }
 
 
