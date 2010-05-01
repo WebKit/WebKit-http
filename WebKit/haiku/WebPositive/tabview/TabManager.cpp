@@ -366,6 +366,7 @@ private:
 	TabManagerController* fController;
 	bool fOverCloseRect;
 	bool fClicked;
+	bool fCloseOnMouseUp;
 };
 
 
@@ -375,7 +376,8 @@ WebTabView::WebTabView(TabManagerController* controller)
 	fIcon(NULL),
 	fController(controller),
 	fOverCloseRect(false),
-	fClicked(false)
+	fClicked(false),
+	fCloseOnMouseUp(false)
 {
 }
 
@@ -449,7 +451,7 @@ void
 WebTabView::MouseDown(BPoint where, uint32 buttons)
 {
 	if (buttons & B_TERTIARY_MOUSE_BUTTON) {
-		fController->CloseTab(ContainerView()->IndexOf(this));
+		fCloseOnMouseUp = true;
 		return;
 	}
 
@@ -467,12 +469,20 @@ WebTabView::MouseDown(BPoint where, uint32 buttons)
 void
 WebTabView::MouseUp(BPoint where)
 {
-	if (!fClicked) {
+	if (!fClicked && !fCloseOnMouseUp) {
 		TabView::MouseUp(where);
 		return;
 	}
 
+	if (fCloseOnMouseUp && Frame().Contains(where)) {
+		fCloseOnMouseUp = false;
+		fController->CloseTab(ContainerView()->IndexOf(this));
+		// Probably this object is toast now, better return here.
+		return;
+	}
+
 	fClicked = false;
+	fCloseOnMouseUp = false;
 
 	if (_CloseRectFrame(Frame()).Contains(where))
 		fController->CloseTab(ContainerView()->IndexOf(this));

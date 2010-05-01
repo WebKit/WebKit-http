@@ -440,7 +440,7 @@ TabContainerView::_MouseMoved(BPoint where, uint32 _transit,
 		return;
 	}
 
-	if (fLastMouseEventTab && fLastMouseEventTab == tab)
+	if (fLastMouseEventTab != NULL && fLastMouseEventTab == tab)
 		fLastMouseEventTab->MouseMoved(where, B_INSIDE_VIEW, dragMessage);
 	else {
 		if (fLastMouseEventTab)
