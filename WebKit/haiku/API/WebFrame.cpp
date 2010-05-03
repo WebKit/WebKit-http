@@ -97,9 +97,21 @@ void BWebFrame::SetListener(const BMessenger& listener)
     fData->loaderClient->setDispatchTarget(listener);
 }
 
-void BWebFrame::LoadURL(BString url)
+void BWebFrame::LoadURL(BString urlString)
 {
-    LoadURL(KURL(KURL(), url.Trim().String()));
+	KURL url;
+    if (BEntry(urlString.String()).Exists()) {
+        url.setProtocol("file");
+        url.setPath(urlString);
+    } else
+		url = KURL(KURL(), urlString.Trim().String());
+
+	if (!url.protocolInHTTPFamily() && !url.isLocalFile()) {
+		url = KURL();
+		url.setProtocol("http");
+		url.setHostAndPort(urlString);
+	}
+    LoadURL(url);
 }
 
 void BWebFrame::LoadURL(KURL url)
@@ -111,16 +123,6 @@ void BWebFrame::LoadURL(KURL url)
         return;
 
     fData->requestedURL = url.string();
-
-    if (url.protocol().isEmpty()) {
-        if (BEntry(BString(url.string())).Exists()) {
-            url.setProtocol("file");
-            url.setPath(url.path());
-        } else {
-            url.setProtocol("http");
-            url.setPath("//" + url.path());
-        }
-    }
 
     fData->frame->loader()->load(url, false);
 }
