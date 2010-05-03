@@ -183,7 +183,7 @@ private:
 
 
 BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
-		ToolbarPolicy toolbarPolicy, BWebView* webView)
+		const BString& url, ToolbarPolicy toolbarPolicy, BWebView* webView)
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
@@ -391,7 +391,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFindGroup = layoutItemFor(findGroup);
 	fStatusGroup = layoutItemFor(statusGroup);
 
-	CreateNewTab("", true, webView);
+	CreateNewTab(url, true, webView);
 
 	fFindGroup->SetVisible(false);
 
@@ -911,7 +911,7 @@ BrowserWindow::NewPageCreated(BWebView* view, BRect windowFrame,
 {
 	if (windowFrame.IsValid()) {
 		BrowserWindow* window = new BrowserWindow(windowFrame, fAppSettings,
-			DoNotHaveToolbar, view);
+			BString(), DoNotHaveToolbar, view);
 		window->Show();
 	} else
 		CreateNewTab(BString(), activate, view);

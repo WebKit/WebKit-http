@@ -79,6 +79,7 @@ class BrowserWindow : public BWebWindow {
 public:
 								BrowserWindow(BRect frame,
 									SettingsMessage* appSettings,
+									const BString& url,
 									ToolbarPolicy = HaveToolbar,
 									BWebView* webView = NULL);
 	virtual						~BrowserWindow();
