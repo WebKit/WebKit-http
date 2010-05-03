@@ -532,7 +532,8 @@ public:
 		BView("page icon view", B_WILL_DRAW | B_FULL_UPDATE_ON_RESIZE),
 		fIcon(NULL)
 	{
-		SetDrawingMode(B_OP_OVER);
+		SetDrawingMode(B_OP_ALPHA);
+		SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_OVERLAY);
 	}
 
 	~PageIconView()
@@ -546,21 +547,20 @@ public:
 			return;
 
 		BRect bounds(Bounds());
-		BRect iconBounds(fIcon->Bounds());
-		BPoint iconPos(
+		BRect iconBounds(0, 0, 15, 15);
+		iconBounds.OffsetTo(
 			floorf((bounds.left + bounds.right
 				- (iconBounds.left + iconBounds.right)) / 2 + 0.5f),
 			floorf((bounds.top + bounds.bottom
 				- (iconBounds.top + iconBounds.bottom)) / 2 + 0.5f));
-		DrawBitmap(fIcon, iconPos);
+		DrawBitmap(fIcon, fIcon->Bounds(), iconBounds,
+			B_FILTER_BITMAP_BILINEAR);
 	}
 
 	virtual BSize MinSize()
 	{
-		if (fIcon != NULL) {
-			return BSize(fIcon->Bounds().Width() + 3,
-				fIcon->Bounds().Height() + 3);
-		}
+		if (fIcon != NULL)
+			return BSize(18, 18);
 		return BSize(0, 0);
 	}
 
