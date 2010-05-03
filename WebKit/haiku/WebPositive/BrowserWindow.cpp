@@ -37,6 +37,7 @@
 #include "BaseURL.h"
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
+#include "CredentialsStorage.h"
 #include "IconButton.h"
 #include "NavMenu.h"
 #include "SettingsKeys.h"
@@ -1151,6 +1152,27 @@ BrowserWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 	BString& inOutPassword, bool& inOutRememberCredentials, uint32 failureCount,
 	BWebView* view)
 {
+	CredentialsStorage* persistentStorage
+		= CredentialsStorage::PersistentInstance();
+	CredentialsStorage* sessionStorage
+		= CredentialsStorage::SessionInstance();
+
+	// TODO: Using the message as key here is not so smart.
+	HashKeyString key(message);
+
+	if (failureCount == 0) {
+		if (persistentStorage->Contains(key)) {
+			Credentials credentials = persistentStorage->GetCredentials(key);
+			inOutUser = credentials.Username();
+			inOutPassword = credentials.Password();
+			return true;
+		} else if (sessionStorage->Contains(key)) {
+			Credentials credentials = sessionStorage->GetCredentials(key);
+			inOutUser = credentials.Username();
+			inOutPassword = credentials.Password();
+			return true;
+		}
+	}
 	// Switch to the page for which this authentication is required.
 	if (view != CurrentWebView()) {
 		int32 tabIndex = fTabManager->TabForView(view);
@@ -1164,9 +1186,17 @@ BrowserWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 	}
 	AuthenticationPanel* panel = new AuthenticationPanel(Frame());
 		// Panel auto-destructs.
-	return panel->getAuthentication(message, inOutUser, inOutPassword,
+	bool success = panel->getAuthentication(message, inOutUser, inOutPassword,
 		inOutRememberCredentials, failureCount > 0, inOutUser, inOutPassword,
 		&inOutRememberCredentials);
+	if (success) {
+		Credentials credentials(inOutUser, inOutPassword);
+		if (inOutRememberCredentials)
+			persistentStorage->PutCredentials(key, credentials);
+		else
+			sessionStorage->PutCredentials(key, credentials);
+	}
+	return success;
 }
 
 

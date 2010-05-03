@@ -148,6 +148,7 @@ Application WebPositive :
 	BrowserApp.cpp
 	BrowserWindow.cpp
     BrowsingHistory.cpp
+    CredentialsStorage.cpp
     DownloadProgressView.cpp
     DownloadWindow.cpp
     SettingsKeys.cpp
