@@ -501,7 +501,9 @@ DownloadProgressView::MessageReceived(BMessage* message)
 						}
 					}
 
-					fStatusBar->SetText(name);
+					float value = fStatusBar->CurrentValue();
+					fStatusBar->Reset(name);
+					fStatusBar->SetTo(value);
 					Window()->PostMessage(SAVE_SETTINGS);
 					break;
 				}
