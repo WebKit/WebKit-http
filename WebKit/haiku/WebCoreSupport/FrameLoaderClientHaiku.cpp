@@ -245,8 +245,10 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader*, unsigned 
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsigned long, const ResourceError&)
+void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsigned long, const ResourceError& error)
 {
+    if (error.isCancellation())
+        return;
     BMessage message(LOAD_FAILED);
     message.AddString("url", loader->url().string());
     dispatchMessage(message);
