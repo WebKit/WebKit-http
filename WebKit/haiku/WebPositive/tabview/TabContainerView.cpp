@@ -151,9 +151,16 @@ TabContainerView::MouseUp(BPoint where)
 	if (fLastMouseEventTab)
 		fLastMouseEventTab->MouseUp(where);
 	else if (fClickCount > 1) {
+		// NOTE: fClickCount is >= 1 only if the first click was outside
+		// any tab. So even if fLastMouseEventTab has been reset to NULL
+		// because this tab was removed during mouse down, we wouldn't
+		// run the "outside tabs" code below.
 		fClickCount = 0;
 		fController->DoubleClickOutsideTabs();
 	}
+	// Always check the tab under the mouse again, since we don't update
+	// it with fMouseDown == true.
+	_SendFakeMouseMoved();
 }
 
 
