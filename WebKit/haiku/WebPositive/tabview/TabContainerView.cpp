@@ -136,8 +136,11 @@ TabContainerView::MouseDown(BPoint where)
 	if (fLastMouseEventTab)
 		fLastMouseEventTab->MouseDown(where, buttons);
 	else {
-		if (clicks > 1)
-			fClickCount++;
+		if ((buttons & B_TERTIARY_MOUSE_BUTTON) != 0) {
+			// Middle click outside tabs should always open a new tab.
+			fClickCount = 2;
+		} else if (clicks > 1)
+			fClickCount = fClickCount++;
 		else
 			fClickCount = 1;
 	}
@@ -148,15 +151,16 @@ void
 TabContainerView::MouseUp(BPoint where)
 {
 	fMouseDown = false;
-	if (fLastMouseEventTab)
+	if (fLastMouseEventTab) {
 		fLastMouseEventTab->MouseUp(where);
-	else if (fClickCount > 1) {
+		fClickCount = 0;
+	} else if (fClickCount > 1) {
 		// NOTE: fClickCount is >= 1 only if the first click was outside
 		// any tab. So even if fLastMouseEventTab has been reset to NULL
 		// because this tab was removed during mouse down, we wouldn't
 		// run the "outside tabs" code below.
-		fClickCount = 0;
 		fController->DoubleClickOutsideTabs();
+		fClickCount = 0;
 	}
 	// Always check the tab under the mouse again, since we don't update
 	// it with fMouseDown == true.
