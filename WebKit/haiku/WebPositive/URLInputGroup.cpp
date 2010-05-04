@@ -16,13 +16,13 @@
 #include <PopUpMenu.h>
 #include <SeparatorView.h>
 #include <TextView.h>
-#include <TranslationUtils.h>
 #include <Window.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "BaseURL.h"
+#include "BitmapButton.h"
 #include "BrowsingHistory.h"
 #include "IconButton.h"
 #include "TextViewCompleter.h"
@@ -382,9 +382,6 @@ URLInputGroup::URLTextView::_AlignTextRect()
 }
 
 
-// #pragma mark - GoButton
-
-
 const uint32 kGoBitmapWidth = 14;
 const uint32 kGoBitmapHeight = 14;
 const color_space kGoBitmapFormat = B_RGBA32;
@@ -442,87 +439,7 @@ const unsigned char kGoBitmapBits[] = {
 };
 
 
-class BitmapButton : public BButton {
-	static const float kFrameInset = 2;
-
-public:
-	BitmapButton(const char* resourceName, BMessage* message)
-		:
-		BButton("", message),
-		fBitmap(BTranslationUtils::GetBitmap(resourceName))
-	{
-	}
-
-	BitmapButton(const uint8* bits, uint32 width, uint32 height,
-			color_space format, BMessage* message)
-		:
-		BButton("", message),
-		fBitmap(new BBitmap(BRect(0, 0, width - 1, height - 1), 0, format))
-	{
-		memcpy(fBitmap->Bits(), bits, fBitmap->BitsLength());
-	}
-
-	~BitmapButton()
-	{
-		delete fBitmap;
-	}
-
-	virtual BSize MinSize()
-	{
-		BSize min(0, 0);
-		if (fBitmap) {
-			min.width = fBitmap->Bounds().Width();
-			min.height = fBitmap->Bounds().Height();
-		}
-		min.width += kFrameInset * 2;
-		min.height += kFrameInset * 2;
-		return min;
-	}
-
-	virtual BSize MaxSize()
-	{
-		return BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED);
-	}
-
-	virtual BSize PreferredSize()
-	{
-		return MinSize();
-	}
-
-	virtual void Draw(BRect updateRect)
-	{
-		BRect bounds(Bounds());
-		rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
-		uint32 flags = be_control_look->Flags(this);
-
-		be_control_look->DrawButtonBackground(this, bounds, updateRect, base,
-			flags);
-
-		SetDrawingMode(B_OP_ALPHA);
-
-		if (!IsEnabled()) {
-			SetBlendingMode(B_CONSTANT_ALPHA, B_ALPHA_OVERLAY);
-			SetHighColor(0, 0, 0, 120);
-		}
-
-		if (fBitmap == NULL)
-			return;
-		BRect bitmapBounds(fBitmap->Bounds());
-		BPoint bitmapLocation(
-			floorf((bounds.left + bounds.right
-				- (bitmapBounds.left + bitmapBounds.right)) / 2 + 0.5f),
-			floorf((bounds.top + bounds.bottom
-				- (bitmapBounds.top + bitmapBounds.bottom)) / 2 + 0.5f));
-
-		DrawBitmap(fBitmap, bitmapLocation);
-	}
-
-private:
-	BBitmap* fBitmap;
-};
-
-
-// #pragma mark - IconView
+// #pragma mark - PageIconView
 
 
 class URLInputGroup::PageIconView : public BView {

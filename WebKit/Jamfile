@@ -134,6 +134,7 @@ Application WebPositive :
 	TextViewCompleter.cpp
 	# support
 	BaseURL.cpp
+    BitmapButton.cpp
     DateTime.cpp
     FontSelectionView.cpp
     IconButton.cpp
