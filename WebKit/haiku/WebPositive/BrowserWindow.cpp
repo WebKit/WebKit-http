@@ -1010,6 +1010,43 @@ BrowserWindow::LoadFinished(const BString& url, BWebView* view)
 
 
 void
+BrowserWindow::MainDocumentError(const BString& failingURL,
+	const BString& localizedDescription, BWebView* view)
+{
+	// Make sure we show the page that contains the view.
+	if (!_ShowPage(view))
+		return;
+
+	BWebWindow::MainDocumentError(failingURL, localizedDescription, view);
+
+	// TODO: Remove the failing URL from the BrowsingHistory!
+}
+
+
+void
+BrowserWindow::TitleChanged(const BString& title, BWebView* view)
+{
+	for (int32 i = 0; i < fTabManager->CountTabs(); i++) {
+		if (fTabManager->ViewForTab(i) == view) {
+			fTabManager->SetTabLabel(i, title);
+			break;
+		}
+	}
+	if (view != CurrentWebView())
+		return;
+
+	_UpdateTitle(title);
+}
+
+
+void
+BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
+{
+	_SetPageIcon(view, icon);
+}
+
+
+void
 BrowserWindow::ResizeRequested(float width, float height, BWebView* view)
 {
 	if (view != CurrentWebView())
@@ -1091,29 +1128,6 @@ BrowserWindow::SetResizable(bool flag, BWebView* view)
 
 
 void
-BrowserWindow::TitleChanged(const BString& title, BWebView* view)
-{
-	for (int32 i = 0; i < fTabManager->CountTabs(); i++) {
-		if (fTabManager->ViewForTab(i) == view) {
-			fTabManager->SetTabLabel(i, title);
-			break;
-		}
-	}
-	if (view != CurrentWebView())
-		return;
-
-	_UpdateTitle(title);
-}
-
-
-void
-BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
-{
-	_SetPageIcon(view, icon);
-}
-
-
-void
 BrowserWindow::StatusChanged(const BString& statusText, BWebView* view)
 {
 	if (view != CurrentWebView())
@@ -1174,16 +1188,9 @@ BrowserWindow::AuthenticationChallenge(BString message, BString& inOutUser,
 		}
 	}
 	// Switch to the page for which this authentication is required.
-	if (view != CurrentWebView()) {
-		int32 tabIndex = fTabManager->TabForView(view);
-		if (tabIndex < 0) {
-			// Page seems to be gone already?
-			return false;
-		}
-		fTabManager->SelectTab(tabIndex);
-		_TabChanged(tabIndex);
-		UpdateIfNeeded();
-	}
+	if (!_ShowPage(view))
+		return false;
+
 	AuthenticationPanel* panel = new AuthenticationPanel(Frame());
 		// Panel auto-destructs.
 	bool success = panel->getAuthentication(message, inOutUser, inOutPassword,
@@ -1668,4 +1675,21 @@ BrowserWindow::_UpdateClipboardItems()
 
 		CurrentWebView()->WebPage()->SendEditingCapabilities();
 	}
+}
+
+
+bool
+BrowserWindow::_ShowPage(BWebView* view)
+{
+	if (view != CurrentWebView()) {
+		int32 tabIndex = fTabManager->TabForView(view);
+		if (tabIndex < 0) {
+			// Page seems to be gone already?
+			return false;
+		}
+		fTabManager->SelectTab(tabIndex);
+		_TabChanged(tabIndex);
+		UpdateIfNeeded();
+	}
+	return true;
 }

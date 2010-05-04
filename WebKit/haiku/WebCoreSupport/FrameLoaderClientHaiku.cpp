@@ -538,13 +538,10 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
     if (error.isCancellation())
         return;
 
-    // FIXME: This should be moved into LauncherWindow.
-    BString errorString("Error loading ");
-    errorString << error.failingURL();
-    errorString << ":\n\n";
-    errorString << error.localizedDescription();
-    BAlert* alert = new BAlert("Main document error", errorString.String(), "OK");
-    alert->Go(NULL);
+	BMessage message(MAIN_DOCUMENT_ERROR);
+	message.AddString("url", error.failingURL());
+	message.AddString("error", error.localizedDescription());
+    dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::postProgressStartedNotification()
@@ -668,6 +665,8 @@ void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
 
 bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
 {
+    // FIXME: Should probably be refuse to go to the item when it contains
+    // form data that has already been sent or something.
     return true;
 }
 

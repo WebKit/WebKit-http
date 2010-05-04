@@ -35,6 +35,7 @@
 #include "WebView.h"
 #include "WebViewConstants.h"
 
+#include <Alert.h>
 #include <Application.h>
 #include <Bitmap.h>
 #include <Button.h>
@@ -166,6 +167,16 @@ void BWebWindow::MessageReceived(BMessage* message)
         BString url;
         if (message->FindString("url", &url) == B_OK)
             LoadFinished(url, _WebViewForMessage(message));
+        break;
+    }
+    case MAIN_DOCUMENT_ERROR: { 
+        BString failingURL;
+        BString localizedErrorString;
+        if (message->FindString("url", &failingURL) == B_OK
+        	&& message->FindString("error", &localizedErrorString) == B_OK) {
+            MainDocumentError(failingURL, localizedErrorString,
+                _WebViewForMessage(message));
+        }
         break;
     }
     case TITLE_CHANGED: {
@@ -357,6 +368,18 @@ void BWebWindow::LoadFailed(const BString& url, BWebView* view)
 
 void BWebWindow::LoadFinished(const BString& url, BWebView* view)
 {
+}
+
+void BWebWindow::MainDocumentError(const BString& failingURL,
+	const BString& localizedDescription, BWebView* view)
+{
+    BString errorString("Error loading ");
+    errorString << failingURL;
+    errorString << ":\n\n";
+    errorString << localizedDescription;
+    BAlert* alert = new BAlert("Main document error", errorString.String(),
+        "OK");
+    alert->Go(NULL);
 }
 
 void BWebWindow::TitleChanged(const BString& title, BWebView* view)

@@ -113,6 +113,9 @@ private:
 	virtual	void				LoadFailed(const BString& url, BWebView* view);
 	virtual	void				LoadFinished(const BString& url,
 									BWebView* view);
+	virtual	void				MainDocumentError(const BString& failingURL,
+									const BString& localizedDescription,
+									BWebView* view);
 	virtual	void				TitleChanged(const BString& title,
 									BWebView* view);
 	virtual	void				IconReceived(const BBitmap* icon,
@@ -158,6 +161,8 @@ private:
 
 			void				_UpdateHistoryMenu();
 			void				_UpdateClipboardItems();
+
+			bool				_ShowPage(BWebView* view);
 
 private:
 			BMenu*				fHistoryMenu;
