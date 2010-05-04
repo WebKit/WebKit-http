@@ -35,6 +35,7 @@
 
 #include "AuthenticationPanel.h"
 #include "BaseURL.h"
+#include "BitmapButton.h"
 #include "BrowserApp.h"
 #include "BrowsingHistory.h"
 #include "CredentialsStorage.h"
@@ -47,6 +48,7 @@
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
+#include "WindowIcon.h"
 #include <Alert.h>
 #include <Application.h>
 #include <Bitmap.h>
@@ -376,10 +378,18 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
 	;
 
+	BitmapButton* toggleFullscreenButton = new BitmapButton(kWindowIconBits,
+		kWindowIconWidth, kWindowIconHeight, kWindowIconFormat,
+		new BMessage(TOGGLE_FULLSCREEN));
+	toggleFullscreenButton->SetBackgroundMode(BitmapButton::MENUBAR_BACKGROUND);
+
 	// Layout
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
 #if !INTEGRATE_MENU_INTO_TAB_BAR
-		.Add(mainMenu)
+		.Add(BGroupLayoutBuilder(B_HORIZONTAL)
+			.Add(mainMenu)
+			.Add(toggleFullscreenButton, 0.0f)
+		)
 #endif
 		.Add(fTabManager->TabGroup())
 		.Add(navigationGroup)
@@ -400,10 +410,12 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fNavigationGroup = layoutItemFor(navigationGroup);
 	fFindGroup = layoutItemFor(findGroup);
 	fStatusGroup = layoutItemFor(statusGroup);
-
-	CreateNewTab(url, true, webView);
+	fToggleFullscreenButton = layoutItemFor(toggleFullscreenButton);
 
 	fFindGroup->SetVisible(false);
+	fToggleFullscreenButton->SetVisible(false);
+
+	CreateNewTab(url, true, webView);
 
 	if (toolbarPolicy == DoNotHaveToolbar) {
 #if !INTEGRATE_MENU_INTO_TAB_BAR
@@ -1750,6 +1762,7 @@ BrowserWindow::_ToggleFullscreen()
 	}
 	fIsFullscreen = !fIsFullscreen;
 	fFullscreenItem->SetMarked(fIsFullscreen);
+	fToggleFullscreenButton->SetVisible(fIsFullscreen);
 }
 
 

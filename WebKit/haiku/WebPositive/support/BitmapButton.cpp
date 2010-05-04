@@ -80,6 +80,9 @@ BitmapButton::Draw(BRect updateRect)
 		be_control_look->DrawButtonBackground(this, bounds, updateRect, base,
 			flags);
 	} else {
+		SetHighColor(tint_color(base, B_DARKEN_2_TINT));
+		StrokeLine(bounds.LeftBottom(), bounds.RightBottom());
+		bounds.bottom--;
 		be_control_look->DrawMenuBarBackground(this, bounds, updateRect, base,
 			flags);
 	}

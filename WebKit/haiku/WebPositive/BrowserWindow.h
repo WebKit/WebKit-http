@@ -199,6 +199,7 @@ private:
 			BLayoutItem*		fNavigationGroup;
 			BLayoutItem*		fFindGroup;
 			BLayoutItem*		fStatusGroup;
+			BLayoutItem*		fToggleFullscreenButton;
 
 			BTextControl*		fFindTextControl;
 			BCheckBox*			fFindCaseSensitiveCheckBox;
