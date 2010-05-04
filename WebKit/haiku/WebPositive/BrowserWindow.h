@@ -41,6 +41,7 @@ class BFile;
 class BLayoutItem;
 class BMenu;
 class BMenuItem;
+class BMessageRunner;
 class BPath;
 class BStatusBar;
 class BStringView;
@@ -51,25 +52,29 @@ class SettingsMessage;
 class TabManager;
 class URLInputGroup;
 
-enum ToolbarPolicy {
-	HaveToolbar,
-	DoNotHaveToolbar
+enum {
+	INTERFACE_ELEMENT_MENU			= 1 << 0,
+	INTERFACE_ELEMENT_TABS			= 1 << 1,
+	INTERFACE_ELEMENT_NAVIGATION	= 1 << 2,
+	INTERFACE_ELEMENT_STATUS		= 1 << 3,
+
+	INTERFACE_ELEMENT_ALL			= 0xffff
 };
 
 enum NewPagePolicy {
-	OpenBlankPage		= 0,
-	OpenStartPage		= 1,
-	OpenSearchPage		= 2,
-	CloneCurrentPage	= 3
+	OpenBlankPage					= 0,
+	OpenStartPage					= 1,
+	OpenSearchPage					= 2,
+	CloneCurrentPage				= 3
 };
 
 enum {
-	NEW_WINDOW = 'nwnd',
-	NEW_TAB = 'ntab',
-	WINDOW_OPENED = 'wndo',
-	WINDOW_CLOSED = 'wndc',
-	SHOW_DOWNLOAD_WINDOW = 'sdwd',
-	SHOW_SETTINGS_WINDOW = 'sswd'
+	NEW_WINDOW						= 'nwnd',
+	NEW_TAB							= 'ntab',
+	WINDOW_OPENED					= 'wndo',
+	WINDOW_CLOSED					= 'wndc',
+	SHOW_DOWNLOAD_WINDOW			= 'sdwd',
+	SHOW_SETTINGS_WINDOW			= 'sswd'
 };
 
 #define INTEGRATE_MENU_INTO_TAB_BAR 0
@@ -80,7 +85,8 @@ public:
 								BrowserWindow(BRect frame,
 									SettingsMessage* appSettings,
 									const BString& url,
-									ToolbarPolicy = HaveToolbar,
+									uint32 interfaceElements
+										= INTERFACE_ELEMENT_ALL,
 									BWebView* webView = NULL);
 	virtual						~BrowserWindow();
 
@@ -172,6 +178,9 @@ private:
 
 			void				_ToggleFullscreen();
 			void				_ResizeToScreen();
+			void				_SetAutoHideInterfaceInFullscreen(bool doIt);
+			void				_CheckAutoHideInterface();
+			void				_ShowInterface(bool show);
 
 private:
 			BMenu*				fHistoryMenu;
@@ -184,6 +193,7 @@ private:
 			BMenuItem*			fFindNextMenuItem;
 			BMenuItem*			fZoomTextOnlyMenuItem;
 			BMenuItem*			fFullscreenItem;
+			BMenuItem*			fAutoHideInterfaceInFullscreenItem;
 			BMenuItem*			fBackMenuItem;
 			BMenuItem*			fForwardMenuItem;
 
@@ -207,11 +217,16 @@ private:
 
 			bool				fIsFullscreen;
 			BRect				fNonFullscreenWindowFrame;
+			BMessageRunner*		fPulseRunner;
+			uint32				fVisibleInterfaceElements;
+			bigtime_t			fLastMouseMovedTime;
+			BPoint				fLastMousePos;
 
 			// cached settings
 			SettingsMessage*	fAppSettings;
 			bool				fZoomTextOnly;
 			bool				fShowTabsIfSinglePageOpen;
+			bool				fAutoHideInterfaceInFullscreenMode;
 			uint32				fNewWindowPolicy;
 			uint32				fNewTabPolicy;
 			BString				fStartPageURL;

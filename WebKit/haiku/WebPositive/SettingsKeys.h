@@ -46,4 +46,6 @@ extern const char* kSettingsKeyUseProxy;
 extern const char* kSettingsKeyProxyAddress;
 extern const char* kSettingsKeyProxyPort;
 
+extern const char* kAutoHideInterfaceInFullscreenMode;
+
 #endif	// SETTINGS_KEYS_H

@@ -45,3 +45,6 @@ const char* kDefaultSearchPageURL = "http://www.google.com";
 const char* kSettingsKeyUseProxy = "use http proxy";
 const char* kSettingsKeyProxyAddress = "http proxy address";
 const char* kSettingsKeyProxyPort = "http proxy port";
+
+const char* kAutoHideInterfaceInFullscreenMode
+	= "auto hide interface in full screen mode";

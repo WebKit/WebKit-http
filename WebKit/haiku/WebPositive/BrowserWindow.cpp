@@ -64,6 +64,7 @@
 #include <GroupLayoutBuilder.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
+#include <MessageRunner.h>
 #include <NodeInfo.h>
 #include <Path.h>
 #include <Roster.h>
@@ -78,31 +79,33 @@
 
 
 enum {
-	OPEN_LOCATION				= 'open',
-	GO_BACK						= 'goba',
-	GO_FORWARD					= 'gofo',
-	STOP						= 'stop',
-	GOTO_URL					= 'goul',
-	RELOAD						= 'reld',
-	CLEAR_HISTORY				= 'clhs',
+	OPEN_LOCATION								= 'open',
+	GO_BACK										= 'goba',
+	GO_FORWARD									= 'gofo',
+	STOP										= 'stop',
+	GOTO_URL									= 'goul',
+	RELOAD										= 'reld',
+	CLEAR_HISTORY								= 'clhs',
 
-	CREATE_BOOKMARK				= 'crbm',
-	SHOW_BOOKMARKS				= 'shbm',
+	CREATE_BOOKMARK								= 'crbm',
+	SHOW_BOOKMARKS								= 'shbm',
 
-	ZOOM_FACTOR_INCREASE		= 'zfin',
-	ZOOM_FACTOR_DECREASE		= 'zfdc',
-	ZOOM_FACTOR_RESET			= 'zfrs',
-	ZOOM_TEXT_ONLY				= 'zfto',
+	ZOOM_FACTOR_INCREASE						= 'zfin',
+	ZOOM_FACTOR_DECREASE						= 'zfdc',
+	ZOOM_FACTOR_RESET							= 'zfrs',
+	ZOOM_TEXT_ONLY								= 'zfto',
 
-	TOGGLE_FULLSCREEN			= 'tgfs',
+	TOGGLE_FULLSCREEN							= 'tgfs',
+	TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN	= 'tgah',
+	CHECK_AUTO_HIDE_INTERFACE					= 'cahi',
 
-	EDIT_SHOW_FIND_GROUP		= 'sfnd',
-	EDIT_HIDE_FIND_GROUP		= 'hfnd',
-	EDIT_FIND_NEXT				= 'fndn',
-	EDIT_FIND_PREVIOUS			= 'fndp',
-	FIND_TEXT_CHANGED			= 'ftxt',
+	EDIT_SHOW_FIND_GROUP						= 'sfnd',
+	EDIT_HIDE_FIND_GROUP						= 'hfnd',
+	EDIT_FIND_NEXT								= 'fndn',
+	EDIT_FIND_PREVIOUS							= 'fndp',
+	FIND_TEXT_CHANGED							= 'ftxt',
 
-	SELECT_TAB					= 'sltb',
+	SELECT_TAB									= 'sltb',
 };
 
 
@@ -188,15 +191,18 @@ private:
 
 
 BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
-		const BString& url, ToolbarPolicy toolbarPolicy, BWebView* webView)
+		const BString& url, uint32 interfaceElements, BWebView* webView)
 	:
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
 	fIsFullscreen(false),
+	fPulseRunner(NULL),
+	fVisibleInterfaceElements(interfaceElements),
 	fAppSettings(appSettings),
 	fZoomTextOnly(true),
-	fShowTabsIfSinglePageOpen(true)
+	fShowTabsIfSinglePageOpen(true),
+	fAutoHideInterfaceInFullscreenMode(false)
 {
 	// Begin listening to settings changes and read some current values.
 	fAppSettings->AddListener(BMessenger(this));
@@ -284,6 +290,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFullscreenItem = new BMenuItem("Fullscreen",
 		new BMessage(TOGGLE_FULLSCREEN), B_RETURN);
 	menu->AddItem(fFullscreenItem);
+	fAutoHideInterfaceInFullscreenItem = new BMenuItem("Auto hide interface "
+		"in fullscreen mode",
+		new BMessage(TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN));
+	menu->AddItem(fAutoHideInterfaceInFullscreenItem);
 
 	mainMenu->AddItem(menu);
 
@@ -371,11 +381,15 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 	;
 
-	BView* statusGroup = BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
-		.Add(fStatusText)
-		.Add(fLoadingProgressBar, 0.2)
-		.AddStrut(12 - kElementSpacing)
-		.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
+	// Status bar group
+	BView* statusGroup = BGroupLayoutBuilder(B_VERTICAL)
+		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+			.Add(fStatusText)
+			.Add(fLoadingProgressBar, 0.2)
+			.AddStrut(12 - kElementSpacing)
+			.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
+		)
 	;
 
 	BitmapButton* toggleFullscreenButton = new BitmapButton(kWindowIconBits,
@@ -383,19 +397,20 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		new BMessage(TOGGLE_FULLSCREEN));
 	toggleFullscreenButton->SetBackgroundMode(BitmapButton::MENUBAR_BACKGROUND);
 
+	BView* menuBarGroup = BGroupLayoutBuilder(B_HORIZONTAL)
+		.Add(mainMenu)
+		.Add(toggleFullscreenButton, 0.0f)
+	;
+
 	// Layout
 	AddChild(BGroupLayoutBuilder(B_VERTICAL)
 #if !INTEGRATE_MENU_INTO_TAB_BAR
-		.Add(BGroupLayoutBuilder(B_HORIZONTAL)
-			.Add(mainMenu)
-			.Add(toggleFullscreenButton, 0.0f)
-		)
+		.Add(menuBarGroup)
 #endif
 		.Add(fTabManager->TabGroup())
 		.Add(navigationGroup)
 		.Add(fTabManager->ContainerView())
 		.Add(findGroup)
-		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(statusGroup)
 	);
 
@@ -405,7 +420,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 
 	fURLInputGroup->MakeFocus(true);
 
-	fMenuGroup = layoutItemFor(mainMenu);
+	fMenuGroup = layoutItemFor(menuBarGroup);
 	fTabGroup = layoutItemFor(fTabManager->TabGroup());
 	fNavigationGroup = layoutItemFor(navigationGroup);
 	fFindGroup = layoutItemFor(findGroup);
@@ -416,14 +431,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fToggleFullscreenButton->SetVisible(false);
 
 	CreateNewTab(url, true, webView);
-
-	if (toolbarPolicy == DoNotHaveToolbar) {
-#if !INTEGRATE_MENU_INTO_TAB_BAR
-		fMenuGroup->SetVisible(false);
-#endif
-		fTabGroup->SetVisible(false);
-		fNavigationGroup->SetVisible(false);
-	}
+	_ShowInterface(true);
+	_SetAutoHideInterfaceInFullscreen(fAppSettings->GetValue(
+		kAutoHideInterfaceInFullscreenMode,
+		fAutoHideInterfaceInFullscreenMode));
 
 	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(EDIT_HIDE_FIND_GROUP));
 
@@ -447,6 +458,7 @@ BrowserWindow::~BrowserWindow()
 {
 	fAppSettings->RemoveListener(BMessenger(this));
 	delete fTabManager;
+	delete fPulseRunner;
 }
 
 
@@ -481,6 +493,13 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 				return;
 			}
 		}
+	}
+	if (message->what == B_MOUSE_MOVED || message->what == B_MOUSE_DOWN
+		|| message->what == B_MOUSE_UP) {
+		message->FindPoint("where", &fLastMousePos);
+		if (message->FindInt64("when", &fLastMouseMovedTime) != B_OK)
+			fLastMouseMovedTime = system_time();
+		_CheckAutoHideInterface();
 	}
 	BWebWindow::DispatchMessage(message, target);
 }
@@ -629,6 +648,15 @@ BrowserWindow::MessageReceived(BMessage* message)
 			_ToggleFullscreen();
 			break;
 
+		case TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN:
+			_SetAutoHideInterfaceInFullscreen(
+				!fAutoHideInterfaceInFullscreenMode);
+			break;
+
+		case CHECK_AUTO_HIDE_INTERFACE:
+			_CheckAutoHideInterface();
+			break;
+
 		case EDIT_FIND_NEXT:
 			CurrentWebView()->FindString(fFindTextControl->Text(), true,
 				fFindCaseSensitiveCheckBox->Value());
@@ -758,6 +786,9 @@ BrowserWindow::MessageReceived(BMessage* message)
 			} else if (name == kSettingsKeyNewTabPolicy
 				&& message->FindUInt32("value", &value) == B_OK) {
 				fNewTabPolicy = value;
+			} else if (name == kAutoHideInterfaceInFullscreenMode
+				&& message->FindBool("value", &flag) == B_OK) {
+				_SetAutoHideInterfaceInFullscreen(flag);
 			}
 			break;
 		}
@@ -960,7 +991,7 @@ BrowserWindow::NewPageCreated(BWebView* view, BRect windowFrame,
 {
 	if (windowFrame.IsValid()) {
 		BrowserWindow* window = new BrowserWindow(windowFrame, fAppSettings,
-			BString(), DoNotHaveToolbar, view);
+			BString(), INTERFACE_ELEMENT_STATUS, view);
 		window->Show();
 	} else
 		CreateNewTab(BString(), activate, view);
@@ -1016,13 +1047,11 @@ BrowserWindow::LoadProgress(float progress, BWebView* view)
 	if (view != CurrentWebView())
 		return;
 
-	if (fLoadingProgressBar) {
-		if (progress < 100 && fLoadingProgressBar->IsHidden())
-			fLoadingProgressBar->Show();
-		else if (progress == 100 && !fLoadingProgressBar->IsHidden())
-			fLoadingProgressBar->Hide();
-		fLoadingProgressBar->SetTo(progress);
-	}
+	if (progress < 100 && fLoadingProgressBar->IsHidden())
+		fLoadingProgressBar->Show();
+	else if (progress == 100 && !fLoadingProgressBar->IsHidden())
+		fLoadingProgressBar->Hide();
+	fLoadingProgressBar->SetTo(progress);
 }
 
 
@@ -1035,7 +1064,7 @@ BrowserWindow::LoadFailed(const BString& url, BWebView* view)
 	BString status(url);
 	status << " failed.";
 	view->WebPage()->SetStatusMessage(status);
-	if (fLoadingProgressBar && !fLoadingProgressBar->IsHidden())
+	if (!fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
 }
 
@@ -1049,7 +1078,7 @@ BrowserWindow::LoadFinished(const BString& url, BWebView* view)
 	BString status(url);
 	status << " finished.";
 	view->WebPage()->SetStatusMessage(status);
-	if (fLoadingProgressBar && !fLoadingProgressBar->IsHidden())
+	if (!fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
 
 	NavigationCapabilitiesChanged(fBackButton->IsEnabled(),
@@ -1753,6 +1782,8 @@ BrowserWindow::_ToggleFullscreen()
 
 		SetFlags(Flags() & ~(B_NOT_RESIZABLE | B_NOT_MOVABLE));
 		SetLook(B_DOCUMENT_WINDOW_LOOK);
+
+		_ShowInterface(true);
 	} else {
 		fNonFullscreenWindowFrame = Frame();
 		_ResizeToScreen();
@@ -1772,5 +1803,81 @@ BrowserWindow::_ResizeToScreen()
 	BScreen screen(this);
 	MoveTo(0, 0);
 	ResizeTo(screen.Frame().Width(), screen.Frame().Height());
+}
+
+
+void
+BrowserWindow::_SetAutoHideInterfaceInFullscreen(bool doIt)
+{
+	if (fAutoHideInterfaceInFullscreenMode == doIt)
+		return;
+
+	fAutoHideInterfaceInFullscreenMode = doIt;
+	fAutoHideInterfaceInFullscreenItem->SetMarked(doIt);
+	if (fAppSettings->GetValue(kAutoHideInterfaceInFullscreenMode, doIt)
+		!= doIt) {
+		fAppSettings->SetValue(kAutoHideInterfaceInFullscreenMode, doIt);
+	}
+
+	if (fAutoHideInterfaceInFullscreenMode) {
+		BMessage message(CHECK_AUTO_HIDE_INTERFACE);
+		fPulseRunner = new BMessageRunner(BMessenger(this), &message, 300000);
+	} else {
+		delete fPulseRunner;
+		fPulseRunner = NULL;
+	}
+}
+
+
+void
+BrowserWindow::_CheckAutoHideInterface()
+{
+	if (!fIsFullscreen || !fAutoHideInterfaceInFullscreenMode)
+		return;
+
+	bigtime_t now = system_time();
+	float navigationGroupBottom = fNavigationGroup->IsVisible() ?
+		fNavigationGroup->Frame().bottom : 0;
+	if (fLastMousePos.y > navigationGroupBottom
+		&& now - fLastMouseMovedTime > 1500000) {
+		be_app->ObscureCursor();
+	}
+
+	if (fLastMousePos.y == 0)
+		_ShowInterface(true);
+	else if (fNavigationGroup->IsVisible()
+		&& fLastMousePos.y > fNavigationGroup->Frame().bottom
+		&& now - fLastMouseMovedTime > 3000000) {
+		// NOTE: Do not re-use navigationGroupBottom in the above
+		// check, since we only want to hide the interface when it is visible.
+		_ShowInterface(false);
+	}
+}
+
+
+void
+BrowserWindow::_ShowInterface(bool show)
+{
+	if (show) {
+#if !INTEGRATE_MENU_INTO_TAB_BAR
+		fMenuGroup->SetVisible(
+			(fVisibleInterfaceElements & INTERFACE_ELEMENT_MENU) != 0);
+#endif
+		fTabGroup->SetVisible(
+			(fVisibleInterfaceElements & INTERFACE_ELEMENT_TABS) != 0);
+		fNavigationGroup->SetVisible(
+			(fVisibleInterfaceElements & INTERFACE_ELEMENT_NAVIGATION) != 0);
+		fStatusGroup->SetVisible(
+			(fVisibleInterfaceElements & INTERFACE_ELEMENT_STATUS) != 0);
+	} else {
+		fMenuGroup->SetVisible(false);
+		fTabGroup->SetVisible(false);
+		fNavigationGroup->SetVisible(false);
+		fStatusGroup->SetVisible(false);
+	}
+	// TODO: Setting the group visible seems to unhide the status bar.
+	// Fix in Haiku?
+	if (!fLoadingProgressBar->IsHidden())
+		fLoadingProgressBar->Hide();
 }
 
