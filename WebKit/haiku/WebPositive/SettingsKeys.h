@@ -32,6 +32,7 @@
 
 extern const char* kSettingsKeyDownloadPath;
 extern const char* kSettingsKeyShowTabsIfSinglePageOpen;
+extern const char* kSettingsKeyAutoHideInterfaceInFullscreenMode;
 
 extern const char* kSettingsKeyNewWindowPolicy;
 extern const char* kSettingsKeyNewTabPolicy;
@@ -45,7 +46,5 @@ extern const char* kDefaultSearchPageURL;
 extern const char* kSettingsKeyUseProxy;
 extern const char* kSettingsKeyProxyAddress;
 extern const char* kSettingsKeyProxyPort;
-
-extern const char* kAutoHideInterfaceInFullscreenMode;
 
 #endif	// SETTINGS_KEYS_H

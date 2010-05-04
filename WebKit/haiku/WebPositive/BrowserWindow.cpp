@@ -197,6 +197,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
 	fIsFullscreen(false),
+	fInterfaceVisible(false),
 	fPulseRunner(NULL),
 	fVisibleInterfaceElements(interfaceElements),
 	fAppSettings(appSettings),
@@ -290,11 +291,6 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFullscreenItem = new BMenuItem("Fullscreen",
 		new BMessage(TOGGLE_FULLSCREEN), B_RETURN);
 	menu->AddItem(fFullscreenItem);
-	fAutoHideInterfaceInFullscreenItem = new BMenuItem("Auto hide interface "
-		"in fullscreen mode",
-		new BMessage(TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN));
-	menu->AddItem(fAutoHideInterfaceInFullscreenItem);
-
 	mainMenu->AddItem(menu);
 
 	fHistoryMenu = new BMenu("History");
@@ -433,7 +429,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	CreateNewTab(url, true, webView);
 	_ShowInterface(true);
 	_SetAutoHideInterfaceInFullscreen(fAppSettings->GetValue(
-		kAutoHideInterfaceInFullscreenMode,
+		kSettingsKeyAutoHideInterfaceInFullscreenMode,
 		fAutoHideInterfaceInFullscreenMode));
 
 	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(EDIT_HIDE_FIND_GROUP));
@@ -786,7 +782,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 			} else if (name == kSettingsKeyNewTabPolicy
 				&& message->FindUInt32("value", &value) == B_OK) {
 				fNewTabPolicy = value;
-			} else if (name == kAutoHideInterfaceInFullscreenMode
+			} else if (name == kSettingsKeyAutoHideInterfaceInFullscreenMode
 				&& message->FindBool("value", &flag) == B_OK) {
 				_SetAutoHideInterfaceInFullscreen(flag);
 			}
@@ -956,6 +952,7 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 		fURLInputGroup->MakeFocus(true);
 	}
 
+	_ShowInterface(true);
 	_UpdateTabGroupVisibility();
 }
 
@@ -1302,8 +1299,10 @@ void
 BrowserWindow::_UpdateTabGroupVisibility()
 {
 	if (Lock()) {
-		fTabGroup->SetVisible(fShowTabsIfSinglePageOpen
-			|| fTabManager->CountTabs() > 1);
+		if (fInterfaceVisible) {
+			fTabGroup->SetVisible(fShowTabsIfSinglePageOpen
+				|| fTabManager->CountTabs() > 1);
+		}
 		fTabManager->SetCloseButtonsAvailable(fTabManager->CountTabs() > 1);
 		Unlock();
 	}
@@ -1813,10 +1812,10 @@ BrowserWindow::_SetAutoHideInterfaceInFullscreen(bool doIt)
 		return;
 
 	fAutoHideInterfaceInFullscreenMode = doIt;
-	fAutoHideInterfaceInFullscreenItem->SetMarked(doIt);
-	if (fAppSettings->GetValue(kAutoHideInterfaceInFullscreenMode, doIt)
-		!= doIt) {
-		fAppSettings->SetValue(kAutoHideInterfaceInFullscreenMode, doIt);
+	if (fAppSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
+			doIt) != doIt) {
+		fAppSettings->SetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
+			doIt);
 	}
 
 	if (fAutoHideInterfaceInFullscreenMode) {
@@ -1858,13 +1857,19 @@ BrowserWindow::_CheckAutoHideInterface()
 void
 BrowserWindow::_ShowInterface(bool show)
 {
+	if (fInterfaceVisible == show)
+		return;
+
+	fInterfaceVisible = show;
+
 	if (show) {
 #if !INTEGRATE_MENU_INTO_TAB_BAR
 		fMenuGroup->SetVisible(
 			(fVisibleInterfaceElements & INTERFACE_ELEMENT_MENU) != 0);
 #endif
-		fTabGroup->SetVisible(
-			(fVisibleInterfaceElements & INTERFACE_ELEMENT_TABS) != 0);
+		fTabGroup->SetVisible((fShowTabsIfSinglePageOpen
+				|| fTabManager->CountTabs() > 1)
+			&& (fVisibleInterfaceElements & INTERFACE_ELEMENT_TABS) != 0);
 		fNavigationGroup->SetVisible(
 			(fVisibleInterfaceElements & INTERFACE_ELEMENT_NAVIGATION) != 0);
 		fStatusGroup->SetVisible(

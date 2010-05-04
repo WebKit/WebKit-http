@@ -70,6 +70,7 @@ enum {
 	MSG_NEW_TABS_BEHAVIOR_CHANGED		= 'ntbc',
 	MSG_HISTORY_MENU_DAYS_CHANGED		= 'digm',
 	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED	= 'tdbc',
+	MSG_AUTO_HIDE_BEHAVIOR_CHANGED		= 'ahbc',
 
 	MSG_STANDARD_FONT_CHANGED			= 'stfc',
 	MSG_SERIF_FONT_CHANGED				= 'sefc',
@@ -195,6 +196,7 @@ SettingsWindow::MessageReceived(BMessage* message)
 		case MSG_NEW_TABS_BEHAVIOR_CHANGED:
 		case MSG_HISTORY_MENU_DAYS_CHANGED:
 		case MSG_TAB_DISPLAY_BEHAVIOR_CHANGED:
+		case MSG_AUTO_HIDE_BEHAVIOR_CHANGED:
 		case MSG_STANDARD_FONT_CHANGED:
 		case MSG_SERIF_FONT_CHANGED:
 		case MSG_SANS_SERIF_FONT_CHANGED:
@@ -311,6 +313,11 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		new BMessage(MSG_TAB_DISPLAY_BEHAVIOR_CHANGED));
 	fShowTabsIfOnlyOnePage->SetValue(B_CONTROL_ON);
 
+	fAutoHideInterfaceInFullscreenMode = new BCheckBox("auto-hide interface",
+		TR("Auto-hide interface in fullscreen mode."),
+		new BMessage(MSG_AUTO_HIDE_BEHAVIOR_CHANGED));
+	fAutoHideInterfaceInFullscreenMode->SetValue(B_CONTROL_OFF);
+
 	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
 		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
 			.Add(fStartPageControl->CreateLabelLayoutItem(), 0, 0)
@@ -332,6 +339,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 		.Add(fShowTabsIfOnlyOnePage)
+		.Add(fAutoHideInterfaceInFullscreenMode)
 		.Add(fDaysInHistoryMenuControl)
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 
@@ -499,6 +507,11 @@ SettingsWindow::_CanApplySettings() const
 	canApply = canApply || ((fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON)
 		!= fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
 
+	canApply = canApply || (
+		(fAutoHideInterfaceInFullscreenMode->Value() == B_CONTROL_ON)
+		!= fSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
+			false));
+
 	canApply = canApply || (_MaxHistoryAge()
 		!= BrowsingHistory::DefaultInstance()->MaxHistoryItemAge());
 
@@ -560,6 +573,8 @@ SettingsWindow::_ApplySettings()
 	fSettings->SetValue(kSettingsKeyDownloadPath, fDownloadFolderControl->Text());
 	fSettings->SetValue(kSettingsKeyShowTabsIfSinglePageOpen,
 		fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON);
+	fSettings->SetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
+		fAutoHideInterfaceInFullscreenMode->Value() == B_CONTROL_ON);
 
 	// New page policies
 	fSettings->SetValue(kSettingsKeyNewWindowPolicy, _NewWindowPolicy());
@@ -622,6 +637,9 @@ SettingsWindow::_RevertSettings()
 		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 	fShowTabsIfOnlyOnePage->SetValue(
 		fSettings->GetValue(kSettingsKeyShowTabsIfSinglePageOpen, true));
+	fAutoHideInterfaceInFullscreenMode->SetValue(
+		fSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
+			false));
 
 	BString text;
 	text << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();

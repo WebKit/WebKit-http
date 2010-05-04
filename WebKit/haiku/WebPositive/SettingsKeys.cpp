@@ -30,6 +30,8 @@
 const char* kSettingsKeyDownloadPath = "download path";
 const char* kSettingsKeyShowTabsIfSinglePageOpen
 	= "show tabs if single page open";
+const char* kSettingsKeyAutoHideInterfaceInFullscreenMode
+	= "auto hide interface in full screen mode";
 
 const char* kSettingsKeyNewWindowPolicy = "new window policy";
 const char* kSettingsKeyNewTabPolicy = "new tab policy";
@@ -45,6 +47,3 @@ const char* kDefaultSearchPageURL = "http://www.google.com";
 const char* kSettingsKeyUseProxy = "use http proxy";
 const char* kSettingsKeyProxyAddress = "http proxy address";
 const char* kSettingsKeyProxyPort = "http proxy port";
-
-const char* kAutoHideInterfaceInFullscreenMode
-	= "auto hide interface in full screen mode";

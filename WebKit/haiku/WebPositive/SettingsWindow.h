@@ -96,6 +96,7 @@ private:
 
 			BTextControl*		fDaysInHistoryMenuControl;
 			BCheckBox*			fShowTabsIfOnlyOnePage;
+			BCheckBox*			fAutoHideInterfaceInFullscreenMode;
 
 			FontSelectionView*	fStandardFontView;
 			FontSelectionView*	fSerifFontView;

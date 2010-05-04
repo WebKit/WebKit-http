@@ -193,7 +193,6 @@ private:
 			BMenuItem*			fFindNextMenuItem;
 			BMenuItem*			fZoomTextOnlyMenuItem;
 			BMenuItem*			fFullscreenItem;
-			BMenuItem*			fAutoHideInterfaceInFullscreenItem;
 			BMenuItem*			fBackMenuItem;
 			BMenuItem*			fForwardMenuItem;
 
@@ -216,6 +215,7 @@ private:
 			TabManager*			fTabManager;
 
 			bool				fIsFullscreen;
+			bool				fInterfaceVisible;
 			BRect				fNonFullscreenWindowFrame;
 			BMessageRunner*		fPulseRunner;
 			uint32				fVisibleInterfaceElements;
