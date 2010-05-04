@@ -30,8 +30,6 @@
 #define BROWSER_WINDOW_H
 
 
-#include "HashKeys.h"
-#include "HashMap.h"
 #include "WebWindow.h"
 #include <Messenger.h>
 #include <String.h>
