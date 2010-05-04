@@ -76,29 +76,31 @@
 
 
 enum {
-	OPEN_LOCATION = 'open',
-	GO_BACK = 'goba',
-	GO_FORWARD = 'gofo',
-	STOP = 'stop',
-	GOTO_URL = 'goul',
-	RELOAD = 'reld',
-	CLEAR_HISTORY = 'clhs',
+	OPEN_LOCATION				= 'open',
+	GO_BACK						= 'goba',
+	GO_FORWARD					= 'gofo',
+	STOP						= 'stop',
+	GOTO_URL					= 'goul',
+	RELOAD						= 'reld',
+	CLEAR_HISTORY				= 'clhs',
 
-	CREATE_BOOKMARK = 'crbm',
-	SHOW_BOOKMARKS = 'shbm',
+	CREATE_BOOKMARK				= 'crbm',
+	SHOW_BOOKMARKS				= 'shbm',
 
-	ZOOM_FACTOR_INCREASE = 'zfin',
-	ZOOM_FACTOR_DECREASE = 'zfdc',
-	ZOOM_FACTOR_RESET = 'zfrs',
-	ZOOM_TEXT_ONLY = 'zfto',
+	ZOOM_FACTOR_INCREASE		= 'zfin',
+	ZOOM_FACTOR_DECREASE		= 'zfdc',
+	ZOOM_FACTOR_RESET			= 'zfrs',
+	ZOOM_TEXT_ONLY				= 'zfto',
 
-	EDIT_SHOW_FIND_GROUP = 'sfnd',
-	EDIT_HIDE_FIND_GROUP = 'hfnd',
-	EDIT_FIND_NEXT = 'fndn',
-	EDIT_FIND_PREVIOUS = 'fndp',
-	FIND_TEXT_CHANGED = 'ftxt',
+	TOGGLE_FULLSCREEN			= 'tgfs',
 
-	SELECT_TAB = 'sltb',
+	EDIT_SHOW_FIND_GROUP		= 'sfnd',
+	EDIT_HIDE_FIND_GROUP		= 'hfnd',
+	EDIT_FIND_NEXT				= 'fndn',
+	EDIT_FIND_PREVIOUS			= 'fndp',
+	FIND_TEXT_CHANGED			= 'ftxt',
+
+	SELECT_TAB					= 'sltb',
 };
 
 
@@ -189,6 +191,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	BWebWindow(frame, kApplicationName,
 		B_DOCUMENT_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
 		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS),
+	fIsFullscreen(false),
 	fAppSettings(appSettings),
 	fZoomTextOnly(true),
 	fShowTabsIfSinglePageOpen(true)
@@ -274,6 +277,12 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		new BMessage(ZOOM_TEXT_ONLY));
 	fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
 	menu->AddItem(fZoomTextOnlyMenuItem);
+
+	menu->AddSeparatorItem();
+	fFullscreenItem = new BMenuItem("Fullscreen",
+		new BMessage(TOGGLE_FULLSCREEN), B_RETURN);
+	menu->AddItem(fFullscreenItem);
+
 	mainMenu->AddItem(menu);
 
 	fHistoryMenu = new BMenu("History");
@@ -604,6 +613,10 @@ BrowserWindow::MessageReceived(BMessage* message)
 			// already zoomed.
 			break;
 
+		case TOGGLE_FULLSCREEN:
+			_ToggleFullscreen();
+			break;
+
 		case EDIT_FIND_NEXT:
 			CurrentWebView()->FindString(fFindTextControl->Text(), true,
 				fFindCaseSensitiveCheckBox->Value());
@@ -767,6 +780,29 @@ BrowserWindow::MenusBeginning()
 {
 	_UpdateHistoryMenu();
 	_UpdateClipboardItems();
+}
+
+
+void
+BrowserWindow::Zoom(BPoint origin, float width, float height)
+{
+	_ToggleFullscreen();
+}
+
+
+void
+BrowserWindow::ScreenChanged(BRect screenSize, color_space format)
+{
+	if (fIsFullscreen)
+		_ResizeToScreen();
+}
+
+
+void
+BrowserWindow::WorkspacesChanged(uint32 oldWorkspaces, uint32 newWorkspaces)
+{
+	if (fIsFullscreen)
+		_ResizeToScreen();
 }
 
 
@@ -1693,3 +1729,35 @@ BrowserWindow::_ShowPage(BWebView* view)
 	}
 	return true;
 }
+
+
+void
+BrowserWindow::_ToggleFullscreen()
+{
+	if (fIsFullscreen) {
+		MoveTo(fNonFullscreenWindowFrame.LeftTop());
+		ResizeTo(fNonFullscreenWindowFrame.Width(),
+			fNonFullscreenWindowFrame.Height());
+
+		SetFlags(Flags() & ~(B_NOT_RESIZABLE | B_NOT_MOVABLE));
+		SetLook(B_DOCUMENT_WINDOW_LOOK);
+	} else {
+		fNonFullscreenWindowFrame = Frame();
+		_ResizeToScreen();
+
+		SetFlags(Flags() | (B_NOT_RESIZABLE | B_NOT_MOVABLE));
+		SetLook(B_TITLED_WINDOW_LOOK);
+	}
+	fIsFullscreen = !fIsFullscreen;
+	fFullscreenItem->SetMarked(fIsFullscreen);
+}
+
+
+void
+BrowserWindow::_ResizeToScreen()
+{
+	BScreen screen(this);
+	MoveTo(0, 0);
+	ResizeTo(screen.Frame().Width(), screen.Frame().Height());
+}
+

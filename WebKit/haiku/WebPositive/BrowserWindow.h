@@ -90,6 +90,12 @@ public:
 	virtual	bool				QuitRequested();
 	virtual	void				MenusBeginning();
 
+	virtual	void				Zoom(BPoint origin, float width, float height);
+	virtual void				ScreenChanged(BRect screenSize,
+									color_space format);
+	virtual void				WorkspacesChanged(uint32 oldWorkspaces,
+									uint32 newWorkspaces);
+
 	virtual	void				SetCurrentWebView(BWebView* view);
 
 			void				CreateNewTab(const BString& url, bool select,
@@ -164,6 +170,9 @@ private:
 
 			bool				_ShowPage(BWebView* view);
 
+			void				_ToggleFullscreen();
+			void				_ResizeToScreen();
+
 private:
 			BMenu*				fHistoryMenu;
 			int32				fHistoryMenuFixedItemCount;
@@ -174,6 +183,7 @@ private:
 			BMenuItem*			fFindPreviousMenuItem;
 			BMenuItem*			fFindNextMenuItem;
 			BMenuItem*			fZoomTextOnlyMenuItem;
+			BMenuItem*			fFullscreenItem;
 			BMenuItem*			fBackMenuItem;
 			BMenuItem*			fForwardMenuItem;
 
@@ -193,6 +203,9 @@ private:
 			BTextControl*		fFindTextControl;
 			BCheckBox*			fFindCaseSensitiveCheckBox;
 			TabManager*			fTabManager;
+
+			bool				fIsFullscreen;
+			BRect				fNonFullscreenWindowFrame;
 
 			// cached settings
 			SettingsMessage*	fAppSettings;
