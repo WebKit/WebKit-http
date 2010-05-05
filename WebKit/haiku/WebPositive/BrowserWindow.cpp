@@ -935,8 +935,8 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 				if (CurrentWebView() != NULL)
 					url = CurrentWebView()->MainFrameURL();
 				break;
-			default:
 			case OpenBlankPage:
+			default:
 				break;
 		}
 	}
@@ -948,6 +948,7 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 		fTabManager->SelectTab(fTabManager->CountTabs() - 1);
 		SetCurrentWebView(webView);
 		webView->WebPage()->ResendNotifications();
+		fURLInputGroup->SetPageIcon(NULL);
 		fURLInputGroup->SetText(url.String());
 		fURLInputGroup->MakeFocus(true);
 	}
