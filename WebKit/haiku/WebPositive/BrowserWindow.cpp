@@ -1300,13 +1300,19 @@ void
 BrowserWindow::_UpdateTabGroupVisibility()
 {
 	if (Lock()) {
-		if (fInterfaceVisible) {
-			fTabGroup->SetVisible(fShowTabsIfSinglePageOpen
-				|| fTabManager->CountTabs() > 1);
-		}
+		if (fInterfaceVisible)
+			fTabGroup->SetVisible(_TabGroupShouldBeVisible());
 		fTabManager->SetCloseButtonsAvailable(fTabManager->CountTabs() > 1);
 		Unlock();
 	}
+}
+
+
+bool
+BrowserWindow::_TabGroupShouldBeVisible() const
+{
+	return (fShowTabsIfSinglePageOpen || fTabManager->CountTabs() > 1)
+		&& (fVisibleInterfaceElements & INTERFACE_ELEMENT_TABS) != 0;
 }
 
 
@@ -1868,9 +1874,7 @@ BrowserWindow::_ShowInterface(bool show)
 		fMenuGroup->SetVisible(
 			(fVisibleInterfaceElements & INTERFACE_ELEMENT_MENU) != 0);
 #endif
-		fTabGroup->SetVisible((fShowTabsIfSinglePageOpen
-				|| fTabManager->CountTabs() > 1)
-			&& (fVisibleInterfaceElements & INTERFACE_ELEMENT_TABS) != 0);
+		fTabGroup->SetVisible(_TabGroupShouldBeVisible());
 		fNavigationGroup->SetVisible(
 			(fVisibleInterfaceElements & INTERFACE_ELEMENT_NAVIGATION) != 0);
 		fStatusGroup->SetVisible(

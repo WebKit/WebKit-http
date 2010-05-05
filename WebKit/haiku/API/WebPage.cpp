@@ -1043,7 +1043,8 @@ void BWebPage::handleMouseEvent(const BMessage* message)
 					    BMenuItem* item = platformMenu->RemoveItem(i);
 					    popupMenu->AddItem(item, 0);
 					}
-            		BPoint screenLocation(event.globalX(), event.globalY());
+            		BPoint screenLocation(event.globalX() + 2,
+            			event.globalY() + 2);
             	    popupMenu->Go(screenLocation, true, true, true);
             	    delete platformMenu;
             	}

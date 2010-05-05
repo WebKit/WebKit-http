@@ -199,6 +199,36 @@ DownloadWindow::~DownloadWindow()
 
 
 void
+DownloadWindow::DispatchMessage(BMessage* message, BHandler* target)
+{
+	// We need to intercept mouse down events inside the area of download
+	// progress views (regardless of whether they have children at the click),
+	// so that they may display a context menu.
+	BPoint where;
+	int32 buttons;
+	if (message->what == B_MOUSE_DOWN
+		&& message->FindPoint("screen_where", &where) == B_OK
+		&& message->FindInt32("buttons", &buttons) == B_OK
+		&& (buttons & B_SECONDARY_MOUSE_BUTTON) != 0) {
+		for (int32 i = fDownloadViewsLayout->CountItems() - 1;
+				BLayoutItem* item = fDownloadViewsLayout->ItemAt(i); i--) {
+			DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(
+				item->View());
+			if (!view)
+				continue;
+			BPoint viewWhere(where);
+			view->ConvertFromScreen(&viewWhere);
+			if (view->Bounds().Contains(viewWhere)) {
+				view->ShowContextMenu(where);
+				return;
+			}
+		}
+	}
+	BWindow::DispatchMessage(message, target);
+}
+
+
+void
 DownloadWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {

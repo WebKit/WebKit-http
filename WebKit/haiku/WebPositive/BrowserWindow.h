@@ -152,6 +152,7 @@ private:
 private:
 			void				_UpdateTitle(const BString &title);
 			void				_UpdateTabGroupVisibility();
+			bool				_TabGroupShouldBeVisible() const;
 			void				_ShutdownTab(int32 index);
 			void				_TabChanged(int32 index);
 

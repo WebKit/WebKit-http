@@ -45,6 +45,8 @@ public:
 									SettingsMessage* settings);
 	virtual						~DownloadWindow();
 
+	virtual	void				DispatchMessage(BMessage* message,
+									BHandler* target);
 	virtual	void				MessageReceived(BMessage* message);
 	virtual	bool				QuitRequested();
 

@@ -208,10 +208,6 @@ DownloadProgressView::DownloadProgressView(const BMessage* archive)
 bool
 DownloadProgressView::Init(BMessage* archive)
 {
-	// We need to receive mouse events even for the areas of children views,
-	// so we can pop up a context menu.
-	SetEventMask(B_POINTER_EVENTS);
-
 	fCurrentSize = 0;
 	fExpectedSize = 0;
 	fLastUpdateTime = 0;
@@ -336,35 +332,6 @@ DownloadProgressView::AllAttached()
 	SetViewColor(B_TRANSPARENT_COLOR);
 	SetLowColor(245, 245, 245);
 	SetHighColor(tint_color(LowColor(), B_DARKEN_1_TINT));
-}
-
-
-void
-DownloadProgressView::MouseDown(BPoint where)
-{
-	if (!Bounds().Contains(where))
-		return;
-
-	int32 buttons;
-	if (Window()->CurrentMessage()->FindInt32("buttons", &buttons) != B_OK)
-		return;
-
-	if ((buttons & B_SECONDARY_MOUSE_BUTTON) == 0)
-		return;
-
-	where = ConvertToScreen(where) + BPoint(2, 2);
-
-	BPopUpMenu* contextMenu = new BPopUpMenu("download context");
-	BMenuItem* copyURL = new BMenuItem("Copy URL to clipboard",
-		new BMessage(COPY_URL_TO_CLIPBOARD));
-	copyURL->SetEnabled(fURL.Length() > 0);
-	contextMenu->AddItem(copyURL);
-	BMenuItem* openFolder = new BMenuItem("Open containing folder",
-		new BMessage(OPEN_CONTAINING_FOLDER));
-	contextMenu->AddItem(openFolder);
-
-	contextMenu->SetTargetForItems(this);
-	contextMenu->Go(where, true, true, true);
 }
 
 
@@ -585,6 +552,25 @@ DownloadProgressView::MessageReceived(BMessage* message)
 		default:
 			BGroupView::MessageReceived(message);
 	}
+}
+
+
+void
+DownloadProgressView::ShowContextMenu(BPoint screenWhere)
+{
+	screenWhere += BPoint(2, 2);
+
+	BPopUpMenu* contextMenu = new BPopUpMenu("download context");
+	BMenuItem* copyURL = new BMenuItem("Copy URL to clipboard",
+		new BMessage(COPY_URL_TO_CLIPBOARD));
+	copyURL->SetEnabled(fURL.Length() > 0);
+	contextMenu->AddItem(copyURL);
+	BMenuItem* openFolder = new BMenuItem("Open containing folder",
+		new BMessage(OPEN_CONTAINING_FOLDER));
+	contextMenu->AddItem(openFolder);
+
+	contextMenu->SetTargetForItems(this);
+	contextMenu->Go(screenWhere, true, true, true);
 }
 
 
