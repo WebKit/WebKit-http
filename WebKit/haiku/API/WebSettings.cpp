@@ -511,6 +511,7 @@ void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 
 	WebCore::ResourceHandleManager::ProxyType curlProxyType;
 	switch (type) {
+    default:
 	case B_PROXY_TYPE_HTTP:
 		curlProxyType = WebCore::ResourceHandleManager::HTTP;
 		break;
