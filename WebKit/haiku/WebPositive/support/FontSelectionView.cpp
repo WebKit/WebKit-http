@@ -26,8 +26,8 @@
 
 #include <stdio.h>
 
-#undef TR_CONTEXT
-#define TR_CONTEXT "Font Selection view"
+#undef B_TRANSLATE_CONTEXT
+#define B_TRANSLATE_CONTEXT "Font Selection view"
 
 
 static const float kMinSize = 8.0;
@@ -65,22 +65,26 @@ FontSelectionView::FontSelectionView(const char* name, const char* label,
 	// styles menu, if desired
 	if (separateStyles) {
 		fStylesMenu = new BPopUpMenu("styles menu");
-		fStylesMenuField = new BMenuField("styles", TR("Style:"), fStylesMenu,
-			NULL);
+		fStylesMenuField = new BMenuField("styles", B_TRANSLATE("Style:"), 
+			fStylesMenu, NULL);
 	} else {
 		fStylesMenu = NULL;
 		fStylesMenuField = NULL;
 	}
 
 	// size menu
-	fSizesMenuField = new BMenuField("size", TR("Size:"), fSizesMenu, NULL);
+	fSizesMenuField = new BMenuField("size", B_TRANSLATE("Size:"), fSizesMenu,
+		NULL);
 	fSizesMenuField->SetAlignment(B_ALIGN_RIGHT);
 
 	// preview
 	fPreviewText = new BStringView("preview text",
-		TR_CMT("The quick brown fox jumps over the lazy dog.","Don't translate this literally ! Use a phrase showing all chars from A to Z.")); 
+		B_TRANSLATE_COMMENT("The quick brown fox jumps over the lazy dog.",
+		"Don't translate this literally ! Use a phrase showing all "
+		"chars from A to Z.")); 
 
-	fPreviewText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNLIMITED)); 
+	fPreviewText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED,
+		B_SIZE_UNLIMITED)); 
 	fPreviewText->SetHighColor(tint_color(ui_color(B_PANEL_BACKGROUND_COLOR),
 		1.65));
 	fPreviewText->SetAlignment(B_ALIGN_RIGHT);

@@ -55,8 +55,8 @@
 #include "WebSettings.h"
 
 
-#undef TR_CONTEXT
-#define TR_CONTEXT "Settings Window"
+#undef B_TRANSLATE_CONTEXT
+#define B_TRANSLATE_CONTEXT "Settings Window"
 
 enum {
 	MSG_APPLY							= 'aply',
@@ -90,15 +90,18 @@ static const int32 kDefaultFontSize = 14;
 
 SettingsWindow::SettingsWindow(BRect frame, SettingsMessage* settings)
 	:
-	BWindow(frame, TR("Settings"), B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE),
+	BWindow(frame, B_TRANSLATE("Settings"), B_TITLED_WINDOW_LOOK,
+		B_NORMAL_WINDOW_FEEL, B_AUTO_UPDATE_SIZE_LIMITS
+			| B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE),
 	fSettings(settings)
 {
 	SetLayout(new BGroupLayout(B_VERTICAL));
 
-	fApplyButton = new BButton(TR("Apply"), new BMessage(MSG_APPLY));
-	fCancelButton = new BButton(TR("Cancel"), new BMessage(MSG_CANCEL));
-	fRevertButton = new BButton(TR("Revert"), new BMessage(MSG_REVERT));
+	fApplyButton = new BButton(B_TRANSLATE("Apply"), new BMessage(MSG_APPLY));
+	fCancelButton = new BButton(B_TRANSLATE("Cancel"),
+		new BMessage(MSG_CANCEL));
+	fRevertButton = new BButton(B_TRANSLATE("Revert"),
+		new BMessage(MSG_REVERT));
 
 	float spacing = be_control_look->DefaultItemSpacing();
 
@@ -241,40 +244,49 @@ BView*
 SettingsWindow::_CreateGeneralPage(float spacing)
 {
 	fStartPageControl = new BTextControl("start page",
-		TR("Start page:"), "", new BMessage(MSG_START_PAGE_CHANGED));
+		B_TRANSLATE("Start page:"), "", new BMessage(MSG_START_PAGE_CHANGED));
 	fStartPageControl->SetModificationMessage(
 		new BMessage(MSG_START_PAGE_CHANGED));
 	fStartPageControl->SetText(
 		fSettings->GetValue(kSettingsKeyStartPageURL, kDefaultStartPageURL));
 
 	fSearchPageControl = new BTextControl("search page",
-		TR("Search page:"), "", new BMessage(MSG_SEARCH_PAGE_CHANGED));
+		B_TRANSLATE("Search page:"), "",
+		new BMessage(MSG_SEARCH_PAGE_CHANGED));
 	fSearchPageControl->SetModificationMessage(
 		new BMessage(MSG_SEARCH_PAGE_CHANGED));
 	fSearchPageControl->SetText(
 		fSettings->GetValue(kSettingsKeySearchPageURL, kDefaultSearchPageURL));
 
 	fDownloadFolderControl = new BTextControl("download folder",
-		TR("Download folder:"), "", new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
+		B_TRANSLATE("Download folder:"), "",
+		new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
 	fDownloadFolderControl->SetModificationMessage(
 		new BMessage(MSG_DOWNLOAD_FOLDER_CHANGED));
 	fDownloadFolderControl->SetText(
 		fSettings->GetValue(kSettingsKeyDownloadPath, kDefaultDownloadPath));
 
-	fNewWindowBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"),
+	fNewWindowBehaviorOpenHomeItem = new BMenuItem(
+		B_TRANSLATE("Open start page"),
 		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
-	fNewWindowBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
+	fNewWindowBehaviorOpenSearchItem = new BMenuItem(
+		B_TRANSLATE("Open search page"),
 		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
-	fNewWindowBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"),
+	fNewWindowBehaviorOpenBlankItem = new BMenuItem(
+		B_TRANSLATE("Open blank page"),
 		new BMessage(MSG_NEW_WINDOWS_BEHAVIOR_CHANGED));
 
-	fNewTabBehaviorCloneCurrentItem = new BMenuItem(TR("Clone current page"),
+	fNewTabBehaviorCloneCurrentItem = new BMenuItem(
+		B_TRANSLATE("Clone current page"),
 		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
-	fNewTabBehaviorOpenHomeItem = new BMenuItem(TR("Open start page"),
+	fNewTabBehaviorOpenHomeItem = new BMenuItem(
+		B_TRANSLATE("Open start page"),
 		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
-	fNewTabBehaviorOpenSearchItem = new BMenuItem(TR("Open search page"),
+	fNewTabBehaviorOpenSearchItem = new BMenuItem(
+		B_TRANSLATE("Open search page"),
 		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
-	fNewTabBehaviorOpenBlankItem = new BMenuItem(TR("Open blank page"),
+	fNewTabBehaviorOpenBlankItem = new BMenuItem(
+		B_TRANSLATE("Open blank page"),
 		new BMessage(MSG_NEW_TABS_BEHAVIOR_CHANGED));
 
 	fNewWindowBehaviorOpenHomeItem->SetMarked(true);
@@ -285,7 +297,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenSearchItem);
 	newWindowBehaviorMenu->AddItem(fNewWindowBehaviorOpenBlankItem);
 	fNewWindowBehaviorMenu = new BMenuField("new window behavior",
-		TR("New windows:"), newWindowBehaviorMenu);
+		B_TRANSLATE("New windows:"), newWindowBehaviorMenu);
 
 	BPopUpMenu* newTabBehaviorMenu = new BPopUpMenu("New tabs");
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenBlankItem);
@@ -293,10 +305,10 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorOpenSearchItem);
 	newTabBehaviorMenu->AddItem(fNewTabBehaviorCloneCurrentItem);
 	fNewTabBehaviorMenu = new BMenuField("new tab behavior",
-		TR("New tabs:"), newTabBehaviorMenu);
+		B_TRANSLATE("New tabs:"), newTabBehaviorMenu);
 
 	fDaysInHistoryMenuControl = new BTextControl("days in history",
-		TR("Number of days to keep links in History menu:"), "",
+		B_TRANSLATE("Number of days to keep links in History menu:"), "",
 		new BMessage(MSG_HISTORY_MENU_DAYS_CHANGED));
 	fDaysInHistoryMenuControl->SetModificationMessage(
 		new BMessage(MSG_HISTORY_MENU_DAYS_CHANGED));
@@ -309,12 +321,12 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		fDaysInHistoryMenuControl->TextView()->DisallowChar(i);
 
 	fShowTabsIfOnlyOnePage = new BCheckBox("show tabs if only one page",
-		TR("Show tabs if only one page is open."),
+		B_TRANSLATE("Show tabs if only one page is open."),
 		new BMessage(MSG_TAB_DISPLAY_BEHAVIOR_CHANGED));
 	fShowTabsIfOnlyOnePage->SetValue(B_CONTROL_ON);
 
 	fAutoHideInterfaceInFullscreenMode = new BCheckBox("auto-hide interface",
-		TR("Auto-hide interface in fullscreen mode."),
+		B_TRANSLATE("Auto-hide interface in fullscreen mode."),
 		new BMessage(MSG_AUTO_HIDE_BEHAVIOR_CHANGED));
 	fAutoHideInterfaceInFullscreenMode->SetValue(B_CONTROL_OFF);
 
@@ -345,7 +357,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
-	view->SetName(TR("General"));
+	view->SetName(B_TRANSLATE("General"));
 	return view;
 }
 
@@ -353,22 +365,25 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 BView*
 SettingsWindow::_CreateFontsPage(float spacing)
 {
-	fStandardFontView = new FontSelectionView("standard", TR("Standard font:"),
-		true, be_plain_font);
+	fStandardFontView = new FontSelectionView("standard",
+		B_TRANSLATE("Standard font:"), true, be_plain_font);
 	BFont defaultSerifFont = _FindDefaultSerifFont();
-	fSerifFontView = new FontSelectionView("serif", TR("Serif font:"), true,
-		&defaultSerifFont);
+	fSerifFontView = new FontSelectionView("serif",
+		B_TRANSLATE("Serif font:"), true, &defaultSerifFont);
 	fSansSerifFontView = new FontSelectionView("sans serif",
-		TR("Sans serif font:"), true, be_plain_font);
-	fFixedFontView = new FontSelectionView("fixed", TR("Fixed font:"), true,
-		be_fixed_font);
+		B_TRANSLATE("Sans serif font:"), true, be_plain_font);
+	fFixedFontView = new FontSelectionView("fixed",
+		B_TRANSLATE("Fixed font:"), true, be_fixed_font);
 
 	fStandardSizesMenu =  new BMenuField("standard font size",
-		TR("Default standard font size:"), new BPopUpMenu("sizes"), NULL);
-	_BuildSizesMenu(fStandardSizesMenu->Menu(), MSG_STANDARD_FONT_SIZE_SELECTED);
+		B_TRANSLATE("Default standard font size:"), new BPopUpMenu("sizes"),
+		NULL);
+	_BuildSizesMenu(fStandardSizesMenu->Menu(),
+		MSG_STANDARD_FONT_SIZE_SELECTED);
 
 	fFixedSizesMenu =  new BMenuField("fixed font size",
-		TR("Default fixed font size:"), new BPopUpMenu("sizes"), NULL);
+		B_TRANSLATE("Default fixed font size:"), new BPopUpMenu("sizes"),
+		NULL);
 	_BuildSizesMenu(fFixedSizesMenu->Menu(), MSG_FIXED_FONT_SIZE_SELECTED);
 
 	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
@@ -399,7 +414,7 @@ SettingsWindow::_CreateFontsPage(float spacing)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
-	view->SetName(TR("Fonts"));
+	view->SetName(B_TRANSLATE("Fonts"));
 	return view;
 }
 
@@ -408,12 +423,12 @@ BView*
 SettingsWindow::_CreateProxyPage(float spacing)
 {
 	fUseProxyCheckBox = new BCheckBox("use proxy",
-		TR("Use proxy server to connect to the internet."),
+		B_TRANSLATE("Use proxy server to connect to the internet."),
 		new BMessage(MSG_USE_PROXY_CHANGED));
 	fUseProxyCheckBox->SetValue(B_CONTROL_ON);
 
 	fProxyAddressControl = new BTextControl("proxy address",
-		TR("Proxy server address:"), "",
+		B_TRANSLATE("Proxy server address:"), "",
 		new BMessage(MSG_PROXY_ADDRESS_CHANGED));
 	fProxyAddressControl->SetModificationMessage(
 		new BMessage(MSG_PROXY_ADDRESS_CHANGED));
@@ -421,7 +436,8 @@ SettingsWindow::_CreateProxyPage(float spacing)
 		fSettings->GetValue(kSettingsKeyProxyAddress, ""));
 
 	fProxyPortControl = new BTextControl("proxy port",
-		TR("Proxy server port:"), "", new BMessage(MSG_PROXY_PORT_CHANGED));
+		B_TRANSLATE("Proxy server port:"), "",
+		new BMessage(MSG_PROXY_PORT_CHANGED));
 	fProxyPortControl->SetModificationMessage(
 		new BMessage(MSG_PROXY_PORT_CHANGED));
 	fProxyPortControl->SetText(
@@ -440,7 +456,7 @@ SettingsWindow::_CreateProxyPage(float spacing)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
 	;
-	view->SetName(TR("Proxy server"));
+	view->SetName(B_TRANSLATE("Proxy server"));
 	return view;
 }
 
