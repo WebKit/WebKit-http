@@ -56,7 +56,7 @@ enum {
     WebKitErrorFrameLoadInterruptedByPolicyChange =     102,
     WebKitErrorCannotUseRestrictedPort =                103,
     WebKitErrorCannotFindPlugIn =                       200,
-    WebKitErrorCannotLoadPlugIn =                       201,
+    WebKitErrorPlugInWillHandleLoad =                   201,
     WebKitErrorJavaUnavailable =                        202
 };
 

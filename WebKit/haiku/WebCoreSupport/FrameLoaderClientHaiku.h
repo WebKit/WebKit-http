@@ -134,7 +134,6 @@ public:
     virtual bool dispatchDidLoadResourceFromMemoryCache(DocumentLoader*,
                                                         const ResourceRequest&,
                                                         const ResourceResponse&, int);
-    virtual void dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&);
 
     virtual void postProgressStartedNotification();
     virtual void postProgressEstimateChangedNotification();

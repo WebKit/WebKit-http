@@ -74,6 +74,15 @@
 #include <String.h>
 #include <debugger.h>
 
+//#define TRACE_FRAME_LOADER_CLIENT
+#ifdef TRACE_FRAME_LOADER_CLIENT
+#   define CLASS_NAME "FLC"
+#   include "FunctionTracer.h"
+#else
+#    define CALLED(x...)
+#    define TRACE(x...)
+#endif
+
 namespace WebCore {
 
 FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* webFrame)
@@ -84,6 +93,7 @@ FrameLoaderClientHaiku::FrameLoaderClientHaiku(BWebPage* webPage, BWebFrame* web
     , m_pluginView(0)
     , m_hasSentResponseToPlugin(false)
 {
+    CALLED("BWebPage: %p, BWebFrame: %p", webPage, webFrame);
     ASSERT(m_webPage);
     ASSERT(m_webFrame);
 }
@@ -95,11 +105,12 @@ void FrameLoaderClientHaiku::setDispatchTarget(const BMessenger& messenger)
 
 BWebPage* FrameLoaderClientHaiku::page() const
 {
-	return m_webPage;
+    return m_webPage;
 }
 
 void FrameLoaderClientHaiku::frameLoaderDestroyed()
 {
+    CALLED();
     // No one else feels responsible for the BWebFrame instance that created us.
     // Through Shutdown(), we initiate the deletion sequence, after this method returns,
     // this object will be gone.
@@ -118,6 +129,8 @@ void FrameLoaderClientHaiku::makeRepresentation(DocumentLoader*)
 
 void FrameLoaderClientHaiku::forceLayout()
 {
+    CALLED();
+
     Frame* frame = m_webFrame->Frame();
     if (frame->document() && frame->document()->inPageCache())
         return;
@@ -129,7 +142,7 @@ void FrameLoaderClientHaiku::forceLayout()
 
 void FrameLoaderClientHaiku::forceLayoutForNonHTML()
 {
-    forceLayout();
+    notImplemented();
 }
 
 void FrameLoaderClientHaiku::setCopiesOnScroll()
@@ -148,24 +161,31 @@ void FrameLoaderClientHaiku::detachedFromParent3()
 {
 }
 
-bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader*, const ResourceRequest&, const ResourceResponse&, int)
+bool FrameLoaderClientHaiku::dispatchDidLoadResourceFromMemoryCache(DocumentLoader* loader,
+                                                                    const ResourceRequest& request,
+                                                                    const ResourceResponse& response,
+                                                                    int length)
 {
+    CALLED("DocumentLoader: %p, request: %s, length: %d", loader,
+           request.url().string().utf8().data(), length);
     notImplemented();
     return false;
 }
 
-void FrameLoaderClientHaiku::dispatchDidLoadResourceByXMLHttpRequest(unsigned long, const ScriptString&)
+void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long identifier,
+                                                              DocumentLoader* loader,
+                                                              const ResourceRequest& request)
 {
+//    CALLED("identifier: %u, DocumentLoader: %p", identifier, loader);
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&)
+void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader* loader, unsigned long identifier,
+                                                     ResourceRequest& request,
+                                                     const ResourceResponse& redirectResponse)
 {
-    notImplemented();
-}
-
-void FrameLoaderClientHaiku::dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest& request, const ResourceResponse& response)
-{
+    CALLED("DocumentLoader: %p, identifier: %u, request: %s, redirectResponse: %d", loader, identifier,
+           request.url().string().utf8().data(), redirectResponse.url().string().utf8().data());
     notImplemented();
 }
 
@@ -226,22 +246,28 @@ void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentL
 
 void FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
 {
-printf("FrameLoaderClientHaiku::dispatchDidCancelAuthenticationChallenge()\n");
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader, unsigned long id, const ResourceResponse& response)
+void FrameLoaderClientHaiku::dispatchDidReceiveResponse(DocumentLoader* loader,
+                                                        unsigned long identifier,
+                                                        const ResourceResponse& response)
 {
+//    CALLED("DocumentLoader: %p, identifier: %u, response: %d", loader, identifier,
+//           response.url().string().utf8().data());
     m_response = response;
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader, unsigned long id, int length)
+void FrameLoaderClientHaiku::dispatchDidReceiveContentLength(DocumentLoader* loader,
+                                                             unsigned long id, int length)
 {
+//    CALLED("DocumentLoader: %p, identifier: %u, length: %d", loader, id, length);
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader*, unsigned long)
+void FrameLoaderClientHaiku::dispatchDidFinishLoading(DocumentLoader* loader, unsigned long identifier)
 {
+    CALLED("DocumentLoader: %p, identifier: %u", loader, identifier);
     notImplemented();
 }
 
@@ -256,6 +282,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoading(DocumentLoader* loader, unsi
 
 void FrameLoaderClientHaiku::dispatchDidHandleOnloadEvents()
 {
+    CALLED();
     BMessage message(LOAD_ONLOAD_HANDLE);
     dispatchMessage(message);
 }
@@ -308,14 +335,17 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
         return;
 
     BMessage message(ICON_RECEIVED);
-	message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
     dispatchMessage(message);
 }
 
 void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 {
-    if (m_loadingErrorPage)
+    CALLED();
+    if (m_loadingErrorPage) {
+        TRACE("m_loadingErrorPage\n");
         return;
+    }
 
     BMessage message(LOAD_NEGOTIATING);
     message.AddString("url", m_webFrame->Frame()->loader()->provisionalDocumentLoader()->request().url().string());
@@ -324,8 +354,11 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
 
 void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 {
-    if (m_loadingErrorPage)
+    CALLED();
+    if (m_loadingErrorPage) {
+        TRACE("m_loadingErrorPage\n");
         return;
+    }
 
     m_webFrame->SetTitle(title);
 
@@ -336,8 +369,11 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
 
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
-    if (m_loadingErrorPage)
+    CALLED();
+    if (m_loadingErrorPage) {
+        TRACE("m_loadingErrorPage\n");
         return;
+    }
 
     BMessage message(LOAD_COMMITTED);
     message.AddString("url", m_webFrame->Frame()->loader()->documentLoader()->request().url().string());
@@ -351,23 +387,28 @@ void FrameLoaderClientHaiku::dispatchDidCommitLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError&)
+void FrameLoaderClientHaiku::dispatchDidFailProvisionalLoad(const ResourceError& error)
 {
-    notImplemented();
+    dispatchDidFailLoad(error);
 }
 
 void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError& error)
 {
-    if (m_loadingErrorPage)
+    CALLED();
+    if (m_loadingErrorPage) {
+        TRACE("m_loadingErrorPage\n");
         return;
-    if (!shouldFallBack(error))
+    }
+    if (!shouldFallBack(error)) {
+        TRACE("should not fall back\n");
         return;
+    }
 
     m_loadingErrorPage = true;
 
-	// NOTE: This could be used to display the error right in the page. However, I find
-	// the error alert somehow better to manage. For example, on a partial load error,
-	// at least some content stays readable if we don't overwrite it with the error text... :-)
+    // NOTE: This could be used to display the error right in the page. However, I find
+    // the error alert somehow better to manage. For example, on a partial load error,
+    // at least some content stays readable if we don't overwrite it with the error text... :-)
 //    BString content("<html><body>");
 //    content << error.localizedDescription().utf8().data();
 //    content << "</body></html>";
@@ -384,8 +425,10 @@ void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 
 void FrameLoaderClientHaiku::dispatchDidFinishLoad()
 {
+    CALLED();
     if (m_loadingErrorPage) {
         m_loadingErrorPage = false;
+        TRACE("m_loadingErrorPage\n");
         return;
     }
 
@@ -409,6 +452,7 @@ void FrameLoaderClientHaiku::dispatchDidFirstVisuallyNonEmptyLayout()
 
 void FrameLoaderClientHaiku::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState>)
 {
+    CALLED();
     notImplemented();
     // FIXME: Send an event to allow for alerts and cancellation.
     callPolicyFunction(function, PolicyUse);
@@ -421,15 +465,17 @@ void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage()
 {
-	WebCore::Page* page = m_webPage->createNewPage();
-	if (page)
-		return page->mainFrame();
+    CALLED();
+    WebCore::Page* page = m_webPage->createNewPage();
+    if (page)
+        return page->mainFrame();
 
     return 0;
 }
 
 void FrameLoaderClientHaiku::dispatchShow()
 {
+    CALLED();
     notImplemented();
 }
 
@@ -463,8 +509,8 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
     if (!function)
         return;
 
-	// Ignore null requests as the Gtk port does. The Qt port doesn't and I have
-	// one URL where Arora crashes the same as WebPositive if not checked here.
+    // Ignore null requests as the Gtk port does. The Qt port doesn't and I have
+    // one URL where Arora crashes the same as WebPositive if not checked here.
     if (request.isNull()) {
         callPolicyFunction(function, PolicyIgnore);
         return;
@@ -509,26 +555,30 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(FramePolicy
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
-	dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());
+    dispatchDecidePolicyForNewWindowAction(function, action, request, formState, String());
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
 {
+    CALLED();
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::dispatchUnableToImplementPolicy(const ResourceError&)
 {
+    CALLED();
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::revertToProvisionalState(DocumentLoader*)
 {
+    CALLED();
     notImplemented();
 }
 
 void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loader, const WebCore::ResourceError& error)
 {
+    CALLED();
     if (m_pluginView) {
         m_pluginView->didFail(error);
         m_pluginView = 0;
@@ -538,9 +588,9 @@ void FrameLoaderClientHaiku::setMainDocumentError(WebCore::DocumentLoader* loade
     if (error.isCancellation())
         return;
 
-	BMessage message(MAIN_DOCUMENT_ERROR);
-	message.AddString("url", error.failingURL());
-	message.AddString("error", error.localizedDescription());
+    BMessage message(MAIN_DOCUMENT_ERROR);
+    message.AddString("url", error.failingURL());
+    message.AddString("error", error.localizedDescription());
     dispatchMessage(message);
 }
 
@@ -558,7 +608,7 @@ void FrameLoaderClientHaiku::postProgressStartedNotification()
 
 void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 {
-	m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
+    m_webPage->setLoadingProgress(m_webFrame->Frame()->page()->progress()->estimatedProgress() * 100);
 
     // Triggering this continually during loading progress makes stopping more reliably available.
     triggerNavigationHistoryUpdate();
@@ -599,7 +649,10 @@ void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
 {
+    CALLED();
+
     if (!m_pluginView) {
+        TRACE("!m_pluginView\n");
         ASSERT(loader->frame());
         // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
         String encoding = loader->overrideEncoding();
@@ -618,16 +671,19 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
             loader->cancelMainResourceLoad(frameLoader->client()->pluginWillHandleLoadError(loader->response()));
     }
 
-	// m_pluginView needs to be checked again, since it can have been
-	// created by the block above.
+    // m_pluginView needs to be checked again, since it can have been
+    // created by the block above.
     if (m_pluginView && m_pluginView->isPluginView()) {
+        TRACE("m_pluginView\n");
         if (!m_hasSentResponseToPlugin) {
             m_pluginView->didReceiveResponse(loader->response());
             // didReceiveResponse sets up a new stream to the plug-in. On a full-page
             // plug-in, a failure in setting up this stream can cause the main
             // document load to be cancelled, setting m_pluginView to NULL.
-            if (!m_pluginView)
+            if (!m_pluginView) {
+                TRACE("m_pluginView lost\n");
                 return;
+            }
             m_hasSentResponseToPlugin = true;
         }
 
@@ -637,10 +693,14 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
 
 void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* documentLoader)
 {
+    CALLED();
+
     if (!m_pluginView) {
+        TRACE("!m_pluginView\n");
         FrameLoader* loader = documentLoader->frameLoader();
         loader->setEncoding(m_response.textEncodingName(), false);
     } else {
+        TRACE("m_pluginView\n");
         m_pluginView->didFinishLoading();
         m_pluginView = 0;
         m_hasSentResponseToPlugin = false;
@@ -660,7 +720,7 @@ void FrameLoaderClientHaiku::updateGlobalHistory()
 
 void FrameLoaderClientHaiku::updateGlobalHistoryRedirectLinks()
 {
-	updateGlobalHistory();
+    updateGlobalHistory();
 }
 
 bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
@@ -687,9 +747,9 @@ void FrameLoaderClientHaiku::dispatchDidChangeBackForwardIndex() const
 
 void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
 {
-	// NOTE: I think we don't have anything to do here, since it a) obviously works already
-	// and b) it is probably for the case when using a native ScrollView as widget, which
-	// we don't do.
+    // NOTE: I think we don't have anything to do here, since it a) obviously works already
+    // and b) it is probably for the case when using a native ScrollView as widget, which
+    // we don't do.
     notImplemented();
 }
 
@@ -704,6 +764,7 @@ void FrameLoaderClientHaiku::didRunInsecureContent(SecurityOrigin*)
 
 WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::ResourceRequest& request)
 {
+    CALLED();
     notImplemented();
     ResourceError error = ResourceError(String(), WebKitErrorCannotShowURL,
                                         request.url().string(), "Load request cancelled");
@@ -713,6 +774,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cancelledError(const WebCore::Res
 
 WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceRequest& request)
 {
+    CALLED();
     notImplemented();
     return ResourceError(String(), WebKitErrorCannotUseRestrictedPort,
                          request.url().string(), "Not allowed to use restricted network port");
@@ -720,6 +782,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::blockedError(const ResourceReques
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
+    CALLED();
     notImplemented();
     return ResourceError(String(), WebKitErrorCannotShowURL,
                          request.url().string(), "URL cannot be shown");
@@ -727,6 +790,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore:
 
 WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
+    CALLED();
     notImplemented();
     ResourceError error = ResourceError(String(), WebKitErrorFrameLoadInterruptedByPolicyChange,
                                         request.url().string(), "Frame load was interrupted");
@@ -736,6 +800,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(con
 
 WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
 {
+    CALLED();
     notImplemented();
     // FIXME: This can probably be used to automatically close pages that have no content,
     // but only triggered a download. Since BWebPage is used for initiating a BWebDownload,
@@ -747,6 +812,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowMIMETypeError(const Web
 
 WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
+    CALLED();
     notImplemented();
     return ResourceError(String(), WebKitErrorCannotShowURL,
                          response.url().string(), "File does not exist");
@@ -754,16 +820,17 @@ WebCore::ResourceError FrameLoaderClientHaiku::fileDoesNotExistError(const WebCo
 
 ResourceError FrameLoaderClientHaiku::pluginWillHandleLoadError(const ResourceResponse& response)
 {
+    CALLED();
     notImplemented();
-    return ResourceError(String(), WebKitErrorCannotLoadPlugIn,
-                         response.url().string(), "Cannot load plugin");
+    return ResourceError(String(), WebKitErrorPlugInWillHandleLoad,
+                         response.url().string(), "Plugin will handle load");
 }
 
 bool FrameLoaderClientHaiku::shouldFallBack(const WebCore::ResourceError& error)
 {
     return !(error.isCancellation()
              || error.errorCode() == WebKitErrorFrameLoadInterruptedByPolicyChange
-             || error.errorCode() == WebKitErrorCannotLoadPlugIn);
+             || error.errorCode() == WebKitErrorPlugInWillHandleLoad);
 }
 
 bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) const
@@ -773,10 +840,11 @@ bool FrameLoaderClientHaiku::canHandleRequest(const WebCore::ResourceRequest&) c
 
 bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
 {
-	// FIXME: Usually, the mime type will have been detexted. This is supposed to work around
-	// downloading some empty files, that can be observed.
-	if (!mimeType.length())
-	    return true;
+    CALLED("%s", mimeType.utf8().data());
+    // FIXME: Usually, the mime type will have been detexted. This is supposed to work around
+    // downloading some empty files, that can be observed.
+    if (!mimeType.length())
+        return true;
 
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
         return true;
@@ -815,10 +883,10 @@ void FrameLoaderClientHaiku::saveViewStateToItem(HistoryItem*)
 
 void FrameLoaderClientHaiku::restoreViewState()
 {
-	// This seems unimportant, the Qt port mentions this for it's corresponding signal:
-	//   "This signal is emitted when the load of \a frame is finished and the application
-	//   may now update its state accordingly."
-	// Could be this is important for ports which use actual platform widgets.
+    // This seems unimportant, the Qt port mentions this for it's corresponding signal:
+    //   "This signal is emitted when the load of \a frame is finished and the application
+    //   may now update its state accordingly."
+    // Could be this is important for ports which use actual platform widgets.
     notImplemented();
 }
 
@@ -839,9 +907,11 @@ void FrameLoaderClientHaiku::prepareForDataSourceReplacement()
 
 WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
 {
+    CALLED("request: %s", request.url().string().utf8().data());
     RefPtr<DocumentLoader> loader = DocumentLoader::create(request, substituteData);
-    if (substituteData.isValid())
-        loader->setDeferMainResourceDataLoad(false);
+// NOTE: The Gtk port does not do this, so I commented it out for now:
+//    if (substituteData.isValid())
+//        loader->setDeferMainResourceDataLoad(false);
     return loader.release();
 }
 
@@ -852,21 +922,24 @@ void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
 
 void FrameLoaderClientHaiku::savePlatformDataToCachedFrame(CachedFrame* cachedPage)
 {
+    CALLED();
     // Nothing to be done here for the moment. We don't associate any platform data
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedFromCachedFrame(CachedFrame* cachedFrame)
 {
+    CALLED();
     ASSERT(cachedFrame->view());
 
-	// FIXME: I guess we would have to restore platform data from the cachedFrame here,
-	// data associated in savePlatformDataToCachedFrame().
+    // FIXME: I guess we would have to restore platform data from the cachedFrame here,
+    // data associated in savePlatformDataToCachedFrame().
 
     postCommitFrameViewSetup(m_webFrame, cachedFrame->view(), false);
 }
 
 void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 {
+    CALLED();
     ASSERT(m_webFrame);
 
     Frame* frame = m_webFrame->Frame();
@@ -884,7 +957,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
-	// FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
+    // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
     return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/528+ (KHTML, like Gecko) WebPositive/528+ Safari/528+");
 }
 
@@ -896,6 +969,7 @@ bool FrameLoaderClientHaiku::canCachePage() const
 PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement* ownerElement,
     const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
 {
+    CALLED();
     // FIXME: We should apply the right property to the frameView. (scrollbar,margins)
     ASSERT(m_webFrame);
 
@@ -927,10 +1001,12 @@ PassRefPtr<Frame> FrameLoaderClientHaiku::createFrame(const KURL& url, const Str
 
 void FrameLoaderClientHaiku::didTransferChildFrameToNewDocument()
 {
+    CALLED();
 }
 
 ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType)
 {
+    CALLED();
     if (url.isEmpty() && !originalMimeType.length())
         return ObjectContentNone;
 
@@ -965,12 +1041,14 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, con
 PassRefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&,
                                                         const Vector<String>&, const String&, bool loadManually)
 {
+    CALLED();
     notImplemented();
     return 0;
 }
 
 void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
 {
+    CALLED();
     ASSERT(!m_pluginView);
     m_pluginView = static_cast<PluginView*>(pluginWidget);
     m_hasSentResponseToPlugin = false;
@@ -1050,15 +1128,15 @@ bool FrameLoaderClientHaiku::isTertiaryMouseButton(const NavigationAction& actio
 
 status_t FrameLoaderClientHaiku::dispatchNavigationRequested(const ResourceRequest& request) const
 {
-	BMessage message(NAVIGATION_REQUESTED);
-	message.AddString("url", request.url().string());
-	return dispatchMessage(message);
+    BMessage message(NAVIGATION_REQUESTED);
+    message.AddString("url", request.url().string());
+    return dispatchMessage(message);
 }
 
 status_t FrameLoaderClientHaiku::dispatchMessage(BMessage& message) const
 {
-	message.AddPointer("view", m_webPage->WebView());
-	return m_messenger.SendMessage(&message);
+    message.AddPointer("view", m_webPage->WebView());
+    return m_messenger.SendMessage(&message);
 }
 
 } // namespace WebCore
