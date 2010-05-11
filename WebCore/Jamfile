@@ -1230,6 +1230,7 @@ SharedLibrary libwebcore.so :
         FileChooserHaiku.cpp
         FileSystemHaiku.cpp
         KURLHaiku.cpp
+        Language.cpp
         LocalizedStringsHaiku.cpp
         LoggingHaiku.cpp
         MIMETypeRegistryHaiku.cpp

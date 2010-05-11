@@ -21,34 +21,20 @@
 #include "config.h"
 #include "TextBreakIteratorInternalICU.h"
 
-#include <Locale.h>
-#include <LocaleRoster.h>
+#include "Language.h"
+#include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 
-static const char* currentLocaleID()
-{
-    static BString local;
-    static bool initialized = false;
-    if (!initialized) {
-    	initialized = true;
-    	BLanguage* language;
-        if (be_locale_roster->GetDefaultLanguage(&language) == B_OK)
-            local = language->Code();
-        else
-            local = "en_US";
-    }
-    return local.String();
-}
-
 const char* currentSearchLocaleID()
 {
-    return currentLocaleID();
+    return defaultLanguage().utf8().data();
 }
 
 const char* currentTextBreakLocaleID()
 {
-    return currentLocaleID();
+    return defaultLanguage().utf8().data();
 }
 
 } // namespace WebCore

@@ -48,11 +48,6 @@ String resetButtonDefaultLabel()
     return "Reset";
 }
 
-String defaultLanguage()
-{
-    return "en";
-}
-
 String searchableIndexIntroduction()
 {
     return "Searchable Index";
