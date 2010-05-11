@@ -43,7 +43,7 @@ void InitializeLoggingChannelsIfNecessary()
     LogFrames.state = WTFLogChannelOn;
     LogLoading.state = WTFLogChannelOn;
     LogPlatformLeaks.state = WTFLogChannelOn;
-//    LogNotYetImplemented.state = WTFLogChannelOn;
+    LogNotYetImplemented.state = WTFLogChannelOn;
 #else
 //    LogNotYetImplemented.state = WTFLogChannelOn;
 #endif
