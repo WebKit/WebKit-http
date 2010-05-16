@@ -470,12 +470,9 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(EDIT_HIDE_FIND_GROUP));
 
 	// Add shortcuts to select a particular tab
-	for (int32 i = 0; i <= 9; i++) {
+	for (int32 i = 1; i <= 9; i++) {
 		BMessage *selectTab = new BMessage(SELECT_TAB);
-		if (i == 0)
-			selectTab->AddInt32("tab index", 9);
-		else
-			selectTab->AddInt32("tab index", i - 1);
+		selectTab->AddInt32("tab index", i - 1);
 		char numStr[2];
 		snprintf(numStr, sizeof(numStr), "%d", (int) i);
 		AddShortcut(numStr[0], B_COMMAND_KEY, selectTab);
