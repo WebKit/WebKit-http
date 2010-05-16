@@ -73,6 +73,8 @@ public:
 	virtual	void				KeyDown(const char* bytes, int32 numBytes);
 	virtual	void				KeyUp(const char* bytes, int32 numBytes);
 
+	virtual	void				Pulse();
+
 	// BWebPage API exposure
 			BWebPage*			WebPage() const { return fWebPage; }
 
@@ -100,6 +102,8 @@ public:
 	// BWebview API
 			void				SendFakeMouseMovedEvent();
 
+			void				SetAutoHidePointer(bool doIt);
+
 			void				SetUserData(UserData* cookie);
 			UserData*			GetUserData() const;
 
@@ -124,6 +128,9 @@ private:
 			void				_DispatchKeyEvent(uint32 sanityWhat);
 private:
 			uint32				fLastMouseButtons;
+			bigtime_t			fLastMouseMovedTime;
+			BPoint				fLastMousePos;
+			bool				fAutoHidePointer;
 
 			BBitmap*			fOffscreenBitmap;
 			BView*				fOffscreenView;

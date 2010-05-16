@@ -59,30 +59,31 @@
 #define B_TRANSLATE_CONTEXT "Settings Window"
 
 enum {
-	MSG_APPLY							= 'aply',
-	MSG_CANCEL							= 'cncl',
-	MSG_REVERT							= 'rvrt',
+	MSG_APPLY									= 'aply',
+	MSG_CANCEL									= 'cncl',
+	MSG_REVERT									= 'rvrt',
 
-	MSG_START_PAGE_CHANGED				= 'hpch',
-	MSG_SEARCH_PAGE_CHANGED				= 'spch',
-	MSG_DOWNLOAD_FOLDER_CHANGED			= 'dnfc',
-	MSG_NEW_WINDOWS_BEHAVIOR_CHANGED	= 'nwbc',
-	MSG_NEW_TABS_BEHAVIOR_CHANGED		= 'ntbc',
-	MSG_HISTORY_MENU_DAYS_CHANGED		= 'digm',
-	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED	= 'tdbc',
-	MSG_AUTO_HIDE_BEHAVIOR_CHANGED		= 'ahbc',
+	MSG_START_PAGE_CHANGED						= 'hpch',
+	MSG_SEARCH_PAGE_CHANGED						= 'spch',
+	MSG_DOWNLOAD_FOLDER_CHANGED					= 'dnfc',
+	MSG_NEW_WINDOWS_BEHAVIOR_CHANGED			= 'nwbc',
+	MSG_NEW_TABS_BEHAVIOR_CHANGED				= 'ntbc',
+	MSG_HISTORY_MENU_DAYS_CHANGED				= 'digm',
+	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED			= 'tdbc',
+	MSG_AUTO_HIDE_INTERFACE_BEHAVIOR_CHANGED	= 'ahic',
+	MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED		= 'ahpc',
 
-	MSG_STANDARD_FONT_CHANGED			= 'stfc',
-	MSG_SERIF_FONT_CHANGED				= 'sefc',
-	MSG_SANS_SERIF_FONT_CHANGED			= 'ssfc',
-	MSG_FIXED_FONT_CHANGED				= 'ffch',
+	MSG_STANDARD_FONT_CHANGED					= 'stfc',
+	MSG_SERIF_FONT_CHANGED						= 'sefc',
+	MSG_SANS_SERIF_FONT_CHANGED					= 'ssfc',
+	MSG_FIXED_FONT_CHANGED						= 'ffch',
 
-	MSG_STANDARD_FONT_SIZE_SELECTED		= 'sfss',
-	MSG_FIXED_FONT_SIZE_SELECTED		= 'ffss',
+	MSG_STANDARD_FONT_SIZE_SELECTED				= 'sfss',
+	MSG_FIXED_FONT_SIZE_SELECTED				= 'ffss',
 
-	MSG_USE_PROXY_CHANGED				= 'upsc',
-	MSG_PROXY_ADDRESS_CHANGED			= 'psac',
-	MSG_PROXY_PORT_CHANGED				= 'pspc',
+	MSG_USE_PROXY_CHANGED						= 'upsc',
+	MSG_PROXY_ADDRESS_CHANGED					= 'psac',
+	MSG_PROXY_PORT_CHANGED						= 'pspc',
 };
 
 static const int32 kDefaultFontSize = 14;
@@ -199,7 +200,8 @@ SettingsWindow::MessageReceived(BMessage* message)
 		case MSG_NEW_TABS_BEHAVIOR_CHANGED:
 		case MSG_HISTORY_MENU_DAYS_CHANGED:
 		case MSG_TAB_DISPLAY_BEHAVIOR_CHANGED:
-		case MSG_AUTO_HIDE_BEHAVIOR_CHANGED:
+		case MSG_AUTO_HIDE_INTERFACE_BEHAVIOR_CHANGED:
+		case MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED:
 		case MSG_STANDARD_FONT_CHANGED:
 		case MSG_SERIF_FONT_CHANGED:
 		case MSG_SANS_SERIF_FONT_CHANGED:
@@ -327,8 +329,13 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 
 	fAutoHideInterfaceInFullscreenMode = new BCheckBox("auto-hide interface",
 		B_TRANSLATE("Auto-hide interface in fullscreen mode."),
-		new BMessage(MSG_AUTO_HIDE_BEHAVIOR_CHANGED));
+		new BMessage(MSG_AUTO_HIDE_INTERFACE_BEHAVIOR_CHANGED));
 	fAutoHideInterfaceInFullscreenMode->SetValue(B_CONTROL_OFF);
+
+	fAutoHidePointer = new BCheckBox("auto-hide pointer",
+		B_TRANSLATE("Auto-hide mouse pointer."),
+		new BMessage(MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED));
+	fAutoHidePointer->SetValue(B_CONTROL_ON);
 
 	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
 		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
@@ -352,6 +359,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 		.Add(fShowTabsIfOnlyOnePage)
 		.Add(fAutoHideInterfaceInFullscreenMode)
+		.Add(fAutoHidePointer)
 		.Add(fDaysInHistoryMenuControl)
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 
@@ -528,6 +536,10 @@ SettingsWindow::_CanApplySettings() const
 		!= fSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
 			false));
 
+	canApply = canApply || (
+		(fAutoHidePointer->Value() == B_CONTROL_ON)
+		!= fSettings->GetValue(kSettingsKeyAutoHidePointer, true));
+
 	canApply = canApply || (_MaxHistoryAge()
 		!= BrowsingHistory::DefaultInstance()->MaxHistoryItemAge());
 
@@ -591,6 +603,8 @@ SettingsWindow::_ApplySettings()
 		fShowTabsIfOnlyOnePage->Value() == B_CONTROL_ON);
 	fSettings->SetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
 		fAutoHideInterfaceInFullscreenMode->Value() == B_CONTROL_ON);
+	fSettings->SetValue(kSettingsKeyAutoHidePointer,
+		fAutoHidePointer->Value() == B_CONTROL_ON);
 
 	// New page policies
 	fSettings->SetValue(kSettingsKeyNewWindowPolicy, _NewWindowPolicy());
@@ -656,6 +670,8 @@ SettingsWindow::_RevertSettings()
 	fAutoHideInterfaceInFullscreenMode->SetValue(
 		fSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
 			false));
+	fAutoHidePointer->SetValue(
+		fSettings->GetValue(kSettingsKeyAutoHidePointer, true));
 
 	BString text;
 	text << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();

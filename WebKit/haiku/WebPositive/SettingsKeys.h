@@ -33,6 +33,7 @@
 extern const char* kSettingsKeyDownloadPath;
 extern const char* kSettingsKeyShowTabsIfSinglePageOpen;
 extern const char* kSettingsKeyAutoHideInterfaceInFullscreenMode;
+extern const char* kSettingsKeyAutoHidePointer;
 
 extern const char* kSettingsKeyNewWindowPolicy;
 extern const char* kSettingsKeyNewTabPolicy;

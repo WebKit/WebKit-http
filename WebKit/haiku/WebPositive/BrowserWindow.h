@@ -228,6 +228,7 @@ private:
 			bool				fZoomTextOnly;
 			bool				fShowTabsIfSinglePageOpen;
 			bool				fAutoHideInterfaceInFullscreenMode;
+			bool				fAutoHidePointer;
 			uint32				fNewWindowPolicy;
 			uint32				fNewTabPolicy;
 			BString				fStartPageURL;

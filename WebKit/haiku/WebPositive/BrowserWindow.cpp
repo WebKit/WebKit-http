@@ -203,13 +203,17 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fAppSettings(appSettings),
 	fZoomTextOnly(true),
 	fShowTabsIfSinglePageOpen(true),
-	fAutoHideInterfaceInFullscreenMode(false)
+	fAutoHideInterfaceInFullscreenMode(false),
+	fAutoHidePointer(true)
 {
 	// Begin listening to settings changes and read some current values.
 	fAppSettings->AddListener(BMessenger(this));
 //	fZoomTextOnly = fAppSettings->GetValue("zoom text only", fZoomTextOnly);
 	fShowTabsIfSinglePageOpen = fAppSettings->GetValue(
 		kSettingsKeyShowTabsIfSinglePageOpen, fShowTabsIfSinglePageOpen);
+
+	fAutoHidePointer = fAppSettings->GetValue(kSettingsKeyAutoHidePointer,
+		fAutoHidePointer);
 
 	fNewWindowPolicy = fAppSettings->GetValue(kSettingsKeyNewWindowPolicy,
 		(uint32)OpenStartPage);
@@ -506,6 +510,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 {
 	switch (message->what) {
 		case OPEN_LOCATION:
+			_ShowInterface(true);
 			if (fURLInputGroup->TextView()->IsFocus())
 				fURLInputGroup->TextView()->SelectAll();
 			else
@@ -770,6 +775,11 @@ BrowserWindow::MessageReceived(BMessage* message)
 					fShowTabsIfSinglePageOpen = flag;
 					_UpdateTabGroupVisibility();
 				}
+			} else if (name == kSettingsKeyAutoHidePointer
+				&& message->FindBool("value", &flag) == B_OK) {
+				fAutoHidePointer = flag;
+				if (CurrentWebView())
+					CurrentWebView()->SetAutoHidePointer(fAutoHidePointer);
 			} else if (name == kSettingsKeyStartPageURL
 				&& message->FindString("value", &string) == B_OK) {
 				fStartPageURL = string;
@@ -882,6 +892,8 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 	BWebWindow::SetCurrentWebView(webView);
 
 	if (webView != NULL) {
+		webView->SetAutoHidePointer(fAutoHidePointer);
+
 		_UpdateTitle(webView->MainFrameTitle());
 
 		// Restore the previous focus or focus the web view.
@@ -1838,22 +1850,16 @@ BrowserWindow::_SetAutoHideInterfaceInFullscreen(bool doIt)
 void
 BrowserWindow::_CheckAutoHideInterface()
 {
-	if (!fIsFullscreen || !fAutoHideInterfaceInFullscreenMode)
+	if (!fIsFullscreen || !fAutoHideInterfaceInFullscreenMode
+		|| (CurrentWebView() != NULL && !CurrentWebView()->IsFocus())) {
 		return;
-
-	bigtime_t now = system_time();
-	float navigationGroupBottom = fNavigationGroup->IsVisible() ?
-		fNavigationGroup->Frame().bottom : 0;
-	if (fLastMousePos.y > navigationGroupBottom
-		&& now - fLastMouseMovedTime > 1500000) {
-		be_app->ObscureCursor();
 	}
 
 	if (fLastMousePos.y == 0)
 		_ShowInterface(true);
 	else if (fNavigationGroup->IsVisible()
 		&& fLastMousePos.y > fNavigationGroup->Frame().bottom
-		&& now - fLastMouseMovedTime > 3000000) {
+		&& system_time() - fLastMouseMovedTime > 3000000) {
 		// NOTE: Do not re-use navigationGroupBottom in the above
 		// check, since we only want to hide the interface when it is visible.
 		_ShowInterface(false);
@@ -1887,7 +1893,7 @@ BrowserWindow::_ShowInterface(bool show)
 	}
 	// TODO: Setting the group visible seems to unhide the status bar.
 	// Fix in Haiku?
-	if (!fLoadingProgressBar->IsHidden())
+	while (!fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
 }
 

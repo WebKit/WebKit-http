@@ -48,8 +48,12 @@ BWebView::UserData::~UserData()
 }
 
 BWebView::BWebView(const char* name)
-    : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE | B_NAVIGABLE)
+    : BView(name, B_WILL_DRAW | B_FRAME_EVENTS | B_FULL_UPDATE_ON_RESIZE
+    	| B_NAVIGABLE | B_PULSE_NEEDED)
     , fLastMouseButtons(0)
+    , fLastMouseMovedTime(-2000000)
+    , fLastMousePos(0, 0)
+    , fAutoHidePointer(false)
     , fOffscreenBitmap(0)
     , fOffscreenViewClean(false)
     , fWebPage(new BWebPage(this))
@@ -207,6 +211,8 @@ void BWebView::WindowActivated(bool activated)
 
 void BWebView::MouseMoved(BPoint where, uint32, const BMessage*)
 {
+	fLastMousePos = where;
+	fLastMouseMovedTime = system_time();
     _DispatchMouseEvent(where, B_MOUSE_MOVED);
 }
 
@@ -224,12 +230,27 @@ void BWebView::MouseUp(BPoint where)
 
 void BWebView::KeyDown(const char*, int32)
 {
+	if (Bounds().Contains(fLastMousePos))
+		be_app->ObscureCursor();
+	HideToolTip();
+
     _DispatchKeyEvent(B_KEY_DOWN);
 }
 
 void BWebView::KeyUp(const char*, int32)
 {
     _DispatchKeyEvent(B_KEY_UP);
+}
+
+void BWebView::Pulse()
+{
+	if (!fAutoHidePointer || !IsFocus() || !Window()->IsActive())
+		return;
+
+	if (Bounds().Contains(fLastMousePos)
+		&& system_time() - fLastMouseMovedTime > 2000000) {
+		be_app->ObscureCursor();
+	}
 }
 
 // #pragma mark - public API
@@ -314,6 +335,11 @@ void BWebView::SendFakeMouseMovedEvent()
     BPoint screenWhere = ConvertToScreen(where);
     _DispatchFakeMouseMovedEvent(where, screenWhere, buttons);
     UnlockLooper();
+}
+
+void BWebView::SetAutoHidePointer(bool doIt)
+{
+	fAutoHidePointer = doIt;
 }
 
 void BWebView::SetUserData(BWebView::UserData* userData)
