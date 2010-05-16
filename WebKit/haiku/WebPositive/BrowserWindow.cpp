@@ -148,7 +148,9 @@ public:
 	PageUserData(BView* focusedView)
 		:
 		fFocusedView(focusedView),
-		fPageIcon(NULL)
+		fPageIcon(NULL),
+		fURLInputSelectionStart(-1),
+		fURLInputSelectionEnd(-1)
 	{
 	}
 
@@ -181,9 +183,38 @@ public:
 		return fPageIcon;
 	}
 
+	void SetURLInputContents(const char* text)
+	{
+		fURLInputContents = text;
+	}
+
+	const char* URLInputContents() const
+	{
+		return fURLInputContents.String();
+	}
+
+	void SetURLInputSelection(int32 selectionStart, int32 selectionEnd)
+	{
+		fURLInputSelectionStart = selectionStart;
+		fURLInputSelectionEnd = selectionEnd;
+	}
+
+	int32 URLInputSelectionStart() const
+	{
+		return fURLInputSelectionStart;
+	}
+
+	int32 URLInputSelectionEnd() const
+	{
+		return fURLInputSelectionEnd;
+	}
+
 private:
 	BView*		fFocusedView;
 	BBitmap*	fPageIcon;
+	BString		fURLInputContents;
+	int32		fURLInputSelectionStart;
+	int32		fURLInputSelectionEnd;
 };
 
 
@@ -883,10 +914,17 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 		// later.
 		PageUserData* userData = static_cast<PageUserData*>(
 			CurrentWebView()->GetUserData());
-		if (userData)
-			userData->SetFocusedView(CurrentFocus());
-		else
-			CurrentWebView()->SetUserData(new PageUserData(CurrentFocus()));
+		if (userData == NULL) {
+			userData = new PageUserData(CurrentFocus());
+			CurrentWebView()->SetUserData(userData);
+		}
+		userData->SetFocusedView(CurrentFocus());
+		userData->SetURLInputContents(fURLInputGroup->Text());
+		int32 selectionStart;
+		int32 selectionEnd;
+		fURLInputGroup->TextView()->GetSelection(&selectionStart,
+			&selectionEnd);
+		userData->SetURLInputSelection(selectionStart, selectionEnd);
 	}
 
 	BWebWindow::SetCurrentWebView(webView);
@@ -900,10 +938,8 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 		PageUserData* userData = static_cast<PageUserData*>(
 			webView->GetUserData());
 		BView* focusedView = NULL;
-		if (userData != NULL) {
+		if (userData != NULL)
 			focusedView = userData->FocusedView();
-			fURLInputGroup->SetPageIcon(userData->PageIcon());
-		}
 
 		if (focusedView != NULL
 			&& viewIsChild(GetLayout()->View(), focusedView)) {
@@ -911,7 +947,19 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 		} else
 			webView->MakeFocus(true);
 
-		fURLInputGroup->SetText(webView->MainFrameURL());
+		if (userData != NULL) {
+			fURLInputGroup->SetPageIcon(userData->PageIcon());
+			fURLInputGroup->SetText(userData->URLInputContents());
+			if (userData->URLInputSelectionStart() >= 0) {
+				fURLInputGroup->TextView()->Select(
+					userData->URLInputSelectionStart(),
+					userData->URLInputSelectionEnd());
+			}
+		} else {
+			fURLInputGroup->SetPageIcon(NULL);
+			fURLInputGroup->SetText(webView->MainFrameURL());
+		}
+
 		// Trigger update of the interface to the new page, by requesting
 		// to resend all notifications.
 		webView->WebPage()->ResendNotifications();
