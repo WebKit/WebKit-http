@@ -958,7 +958,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
-    return String("Mozilla/5.0 (compatible; U; InfiNet 0.1; Haiku) AppleWebKit/528+ (KHTML, like Gecko) WebPositive/528+ Safari/528+");
+    return String("Mozilla/5.0 (compatible; U; WebPositive/528+; Haiku) AppleWebKit/528+ (KHTML, like Gecko) Safari/528+");
 }
 
 bool FrameLoaderClientHaiku::canCachePage() const
