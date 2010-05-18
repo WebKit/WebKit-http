@@ -248,7 +248,7 @@ void BWebView::Pulse()
 		return;
 
 	if (Bounds().Contains(fLastMousePos)
-		&& system_time() - fLastMouseMovedTime > 2000000) {
+		&& system_time() - fLastMouseMovedTime > 800000) {
 		be_app->ObscureCursor();
 	}
 }

@@ -1904,7 +1904,7 @@ BrowserWindow::_CheckAutoHideInterface()
 		_ShowInterface(true);
 	else if (fNavigationGroup->IsVisible()
 		&& fLastMousePos.y > fNavigationGroup->Frame().bottom
-		&& system_time() - fLastMouseMovedTime > 3000000) {
+		&& system_time() - fLastMouseMovedTime > 1000000) {
 		// NOTE: Do not re-use navigationGroupBottom in the above
 		// check, since we only want to hide the interface when it is visible.
 		_ShowInterface(false);
