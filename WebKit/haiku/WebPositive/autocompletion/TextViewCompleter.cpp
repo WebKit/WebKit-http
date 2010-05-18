@@ -122,6 +122,23 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 			// See above.
 			ApplyChoice(false);
 			return B_SKIP_MESSAGE;
+		case B_PAGE_UP:
+		{
+			int32 index = SelectedChoiceIndex() - CountVisibleChoices();
+			index = max_c(index, 0);
+			Select(index);
+			ApplyChoice(false);
+			return B_SKIP_MESSAGE;
+		}
+		case B_PAGE_DOWN:
+		{
+			int32 index = SelectedChoiceIndex() + CountVisibleChoices();
+			index = min_c(index, CountChoices() - 1);
+			Select(index);
+			ApplyChoice(false);
+			return B_SKIP_MESSAGE;
+		}
+
 		case B_ESCAPE:
 			CancelChoice();
 			return B_SKIP_MESSAGE;

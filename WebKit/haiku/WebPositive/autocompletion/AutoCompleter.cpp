@@ -158,6 +158,36 @@ BAutoCompleter::IsChoiceSelected() const
 }
 
 
+int32
+BAutoCompleter::CountChoices() const
+{
+	if (fCompletionStyle && fCompletionStyle->GetChoiceModel())
+		return fCompletionStyle->GetChoiceModel()->CountChoices();
+	else
+		return 0;
+}
+
+
+int32
+BAutoCompleter::CountVisibleChoices() const
+{
+	if (fCompletionStyle && fCompletionStyle->GetChoiceView())
+		return fCompletionStyle->GetChoiceView()->CountVisibleChoices();
+	else
+		return 0;
+}
+
+
+int32
+BAutoCompleter::SelectedChoiceIndex() const
+{
+	if (fCompletionStyle)
+		return fCompletionStyle->SelectedChoiceIndex();
+	else
+		return -1;
+}
+
+
 void
 BAutoCompleter::ApplyChoice(bool hideChoices)
 {

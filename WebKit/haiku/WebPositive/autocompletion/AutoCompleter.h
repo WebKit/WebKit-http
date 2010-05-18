@@ -83,6 +83,7 @@ public:
 									= 0;
 		virtual	void			HideChoices() = 0;
 		virtual	bool			ChoicesAreShown() = 0;
+		virtual int32			CountVisibleChoices() const = 0;
 	};
 
 	class CompletionStyle {
@@ -97,6 +98,7 @@ public:
 		virtual	bool			SelectNext(bool wrap = false) = 0;
 		virtual	bool			SelectPrevious(bool wrap = false) = 0;
 		virtual	bool			IsChoiceSelected() const = 0;
+		virtual	int32			SelectedChoiceIndex() const = 0;
 
 		virtual	void			ApplyChoice(bool hideChoices = true) = 0;
 		virtual	void			CancelChoice() = 0;
@@ -137,6 +139,9 @@ protected:
 			bool				SelectNext(bool wrap = false);
 			bool				SelectPrevious(bool wrap = false);
 			bool				IsChoiceSelected() const;
+			int32				CountChoices() const;
+			int32				CountVisibleChoices() const;
+			int32				SelectedChoiceIndex() const;
 		
 			void				ApplyChoice(bool hideChoices = true);
 			void				CancelChoice();

@@ -35,6 +35,7 @@ public:
 	virtual	bool				SelectNext(bool wrap = false);
 	virtual	bool				SelectPrevious(bool wrap = false);
 	virtual	bool				IsChoiceSelected() const;
+	virtual	int32				SelectedChoiceIndex() const;
 
 	virtual	void				ApplyChoice(bool hideChoices = true);
 	virtual	void				CancelChoice();
@@ -60,6 +61,7 @@ protected:
 		virtual	void			MessageReceived(BMessage* msg);
 		virtual	void			MouseDown(BPoint point);
 		virtual	void			AttachedToWindow();
+
 	private:
 				BAutoCompleter::CompletionStyle* fCompleter;
 	};
@@ -84,10 +86,15 @@ public:
 									BAutoCompleter::CompletionStyle* completer);
 	virtual	void				HideChoices();
 	virtual	bool				ChoicesAreShown();
+	virtual int32				CountVisibleChoices() const;
+
+				void			SetMaxVisibleChoices(int32 choices);
+				int32			MaxVisibleChoices() const;
 
 private:
 			BWindow*			fWindow;
 			ListView*			fListView;
+			int32				fMaxVisibleChoices;
 };
 
 #endif // _AUTO_COMPLETER_DEFAULT_IMPL_H

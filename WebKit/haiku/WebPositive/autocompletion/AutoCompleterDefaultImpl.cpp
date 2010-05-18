@@ -105,6 +105,13 @@ BDefaultCompletionStyle::IsChoiceSelected() const
 }
 
 
+int32
+BDefaultCompletionStyle::SelectedChoiceIndex() const
+{
+	return fSelectedIndex;
+}
+
+
 void
 BDefaultCompletionStyle::ApplyChoice(bool hideChoices)
 {
@@ -187,13 +194,13 @@ BDefaultCompletionStyle::EditViewStateChanged(bool updateChoices)
 // #pragma mark - BDefaultChoiceView::ListView
 
 
-static const int32 BM_INVOKED = 'bmin';
+static const int32 MSG_INVOKED = 'invk';
 
 
 BDefaultChoiceView::ListView::ListView(
 		BAutoCompleter::CompletionStyle* completer)
 	:
-	BListView(BRect(0,0,100,100), "ChoiceViewList"),
+	BListView(BRect(0, 0, 100, 100), "ChoiceViewList"),
 	fCompleter(completer)
 {
 	// we need to check if user clicks outside of window-bounds:
@@ -205,7 +212,7 @@ void
 BDefaultChoiceView::ListView::AttachedToWindow()
 {
 	SetTarget(this);
-	SetInvocationMessage(new BMessage(BM_INVOKED));
+	SetInvocationMessage(new BMessage(MSG_INVOKED));
 	BListView::AttachedToWindow();
 }
 
@@ -221,7 +228,7 @@ void
 BDefaultChoiceView::ListView::MessageReceived(BMessage* message)
 {
 	switch(message->what) {
-		case BM_INVOKED:
+		case MSG_INVOKED:
 			fCompleter->ApplyChoice();
 			break;
 		default:
@@ -316,7 +323,8 @@ BDefaultChoiceView::ListItem::DrawItem(BView* owner, BRect frame,
 BDefaultChoiceView::BDefaultChoiceView()
 	:
 	fWindow(NULL),
-	fListView(NULL)
+	fListView(NULL),
+	fMaxVisibleChoices(5)
 {
 	
 }
@@ -359,7 +367,7 @@ BDefaultChoiceView::ShowChoices(BAutoCompleter::CompletionStyle* completer)
 
 	fListView = new ListView(completer);
 	int32 count = choiceModel->CountChoices();
-	for(int32 i=0; i<count; ++i) {
+	for(int32 i = 0; i<count; ++i) {
 		fListView->AddItem(
 			new ListItem(choiceModel->ChoiceAt(i))
 		);
@@ -370,7 +378,7 @@ BDefaultChoiceView::ShowChoices(BAutoCompleter::CompletionStyle* completer)
 			| B_AVOID_FOCUS | B_ASYNCHRONOUS_CONTROLS);
 	fWindow->AddChild(fListView);
 
-	int32 visibleCount = min_c(count, 5);
+	int32 visibleCount = min_c(count, fMaxVisibleChoices);
 	float listHeight = fListView->ItemFrame(visibleCount - 1).bottom + 1;
 
 	BRect pvRect = editView->GetAdjustmentFrame();
@@ -405,5 +413,33 @@ bool
 BDefaultChoiceView::ChoicesAreShown()
 {
 	return (fWindow != NULL);
+}
+
+
+int32
+BDefaultChoiceView::CountVisibleChoices() const
+{
+	return min_c(fMaxVisibleChoices, fListView->CountItems());
+}
+
+
+void
+BDefaultChoiceView::SetMaxVisibleChoices(int32 choices)
+{
+	if (choices < 1)
+		choices = 1;
+	if (choices == fMaxVisibleChoices)
+		return;
+
+	fMaxVisibleChoices = choices;
+
+	// TODO: Update live?
+}
+
+
+int32
+BDefaultChoiceView::MaxVisibleChoices() const
+{
+	return fMaxVisibleChoices;
 }
 
