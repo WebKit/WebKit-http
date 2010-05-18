@@ -148,10 +148,14 @@ public:
 	virtual	BSize				MinSize();
 	virtual	BSize				MaxSize();
 
+			void				SetUpdateAutoCompleterChoices(bool update);
+
 protected:
 	virtual	void				InsertText(const char* inText, int32 inLength,
 									int32 inOffset,
 									const text_run_array* inRuns);
+	virtual	void				DeleteText(int32 fromOffset, int32 toOffset);
+
 private:
 			void				_AlignTextRect();
 
@@ -159,6 +163,7 @@ private:
 			URLInputGroup*		fURLInputGroup;
 			TextViewCompleter*	fURLAutoCompleter;
 			BString				fPreviousText;
+			bool				fUpdateAutoCompleterChoices;
 };
 
 
@@ -168,10 +173,12 @@ URLInputGroup::URLTextView::URLTextView(URLInputGroup* parent)
 	fURLInputGroup(parent),
 	fURLAutoCompleter(new TextViewCompleter(this,
 		new BrowsingHistoryChoiceModel())),
-	fPreviousText("")
+	fPreviousText(""),
+	fUpdateAutoCompleterChoices(true)
 {
 	MakeResizable(true);
 	SetStylable(true);
+	fURLAutoCompleter->SetModificationsReported(true);
 }
 
 
@@ -319,6 +326,13 @@ URLInputGroup::URLTextView::MaxSize()
 
 
 void
+URLInputGroup::URLTextView::SetUpdateAutoCompleterChoices(bool update)
+{
+	fUpdateAutoCompleterChoices = update;
+}
+
+
+void
 URLInputGroup::URLTextView::InsertText(const char* inText, int32 inLength,
 	int32 inOffset, const text_run_array* inRuns)
 {
@@ -360,6 +374,17 @@ URLInputGroup::URLTextView::InsertText(const char* inText, int32 inLength,
 		font.SetFace(B_REGULAR_FACE);
 		SetFontAndColor(baseUrlEnd, TextLength(), &font, B_FONT_ALL, &gray);
 	}
+
+	fURLAutoCompleter->TextModified(fUpdateAutoCompleterChoices);
+}
+
+
+void
+URLInputGroup::URLTextView::DeleteText(int32 fromOffset, int32 toOffset)
+{
+	BTextView::DeleteText(fromOffset, toOffset);
+
+	fURLAutoCompleter->TextModified(fUpdateAutoCompleterChoices);
 }
 
 
@@ -599,8 +624,11 @@ URLInputGroup::TextView() const
 void
 URLInputGroup::SetText(const char* text)
 {
-	if (!text || !Text() || strcmp(Text(), text) != 0)
+	if (!text || !Text() || strcmp(Text(), text) != 0) {
+		fTextView->SetUpdateAutoCompleterChoices(false);
 		fTextView->SetText(text);
+		fTextView->SetUpdateAutoCompleterChoices(true);
+	}
 }
 
 

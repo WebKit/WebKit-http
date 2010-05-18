@@ -101,7 +101,7 @@ public:
 		virtual	void			ApplyChoice(bool hideChoices = true) = 0;
 		virtual	void			CancelChoice() = 0;
 
-		virtual	void			EditViewStateChanged() = 0;
+		virtual	void			EditViewStateChanged(bool updateChoices) = 0;
 
 				void			SetEditView(EditView* view);
 				void			SetPatternSelector(PatternSelector* selector);
@@ -130,7 +130,8 @@ protected:
 									PatternSelector* patternSelector);
 	virtual						~BAutoCompleter();
 	
-			void				EditViewStateChanged();
+			void				EditViewStateChanged(
+									bool updateChoices = true);
 		
 			bool				Select(int32 index);
 			bool				SelectNext(bool wrap = false);

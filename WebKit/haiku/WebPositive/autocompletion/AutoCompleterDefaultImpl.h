@@ -39,13 +39,14 @@ public:
 	virtual	void				ApplyChoice(bool hideChoices = true);
 	virtual	void				CancelChoice();
 
-	virtual	void				EditViewStateChanged();
+	virtual	void				EditViewStateChanged(bool updateChoices);
 
 private:
 			BString				fFullEnteredText;
 			int32				fSelectedIndex;
 			int32				fPatternStartPos;
 			int32				fPatternLength;
+			bool				fIgnoreEditViewStateChanges;
 };
 
 

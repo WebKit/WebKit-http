@@ -15,6 +15,7 @@
 
 // #pragma mark - BDefaultPatternSelector
 
+
 void
 BDefaultPatternSelector::SelectPatternBounds(const BString& text,
 	int32 caretPos, int32* start, int32* length)
@@ -38,7 +39,8 @@ BDefaultCompletionStyle::BDefaultCompletionStyle(
 	CompletionStyle(editView, choiceModel, choiceView, patternSelector),
 	fSelectedIndex(-1),
 	fPatternStartPos(0),
-	fPatternLength(0)
+	fPatternLength(0),
+	fIgnoreEditViewStateChanges(false)
 {
 }
 
@@ -114,15 +116,19 @@ BDefaultCompletionStyle::ApplyChoice(bool hideChoices)
 	const BString& choiceStr = fChoiceModel->ChoiceAt(fSelectedIndex)->Text();
 	completedText.Insert(choiceStr, fPatternStartPos);
 
+	fIgnoreEditViewStateChanges = true;
+
 	fFullEnteredText = completedText;
 	fPatternLength = choiceStr.Length();
 	fEditView->SetEditViewState(completedText, 
-		fPatternStartPos+choiceStr.Length());
+		fPatternStartPos + choiceStr.Length());
 
 	if (hideChoices) {
 		fChoiceView->HideChoices();
 		Select(-1);
 	}
+
+	fIgnoreEditViewStateChanges = false;
 }
 
 
@@ -132,25 +138,36 @@ BDefaultCompletionStyle::CancelChoice()
 	if (!fChoiceView || !fEditView)
 		return;
 	if (fChoiceView->ChoicesAreShown()) {
-		fEditView->SetEditViewState(fFullEnteredText, 
-			fPatternStartPos+fPatternLength);
+		fIgnoreEditViewStateChanges = true;
+
+		fEditView->SetEditViewState(fFullEnteredText,
+			fPatternStartPos + fPatternLength);
 		fChoiceView->HideChoices();
 		Select(-1);
+
+		fIgnoreEditViewStateChanges = false;
 	}
 }
 
 void
-BDefaultCompletionStyle::EditViewStateChanged()
+BDefaultCompletionStyle::EditViewStateChanged(bool updateChoices)
 {
-	if (!fChoiceModel || !fChoiceView || !fEditView)
+	if (fIgnoreEditViewStateChanges || !fChoiceModel || !fChoiceView
+		|| !fEditView) {
 		return;
+	}
 
 	BString text;
 	int32 caretPos;
 	fEditView->GetEditViewState(text, &caretPos);
 	if (fFullEnteredText == text)
 		return;
+
 	fFullEnteredText = text;
+
+	if (!updateChoices)
+		return;
+
 	fPatternSelector->SelectPatternBounds(text, caretPos, &fPatternStartPos, 
 		&fPatternLength);
 	BString pattern(text.String() + fPatternStartPos, fPatternLength);

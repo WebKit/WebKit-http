@@ -22,6 +22,9 @@ public:
 									PatternSelector* patternSelector = NULL);
 	virtual						~TextViewCompleter();
 
+			void				SetModificationsReported(bool reported);
+			void				TextModified(bool updateChoices);
+
 private:
 	virtual	filter_result		Filter(BMessage* message, BHandler** target);
 
@@ -36,8 +39,10 @@ private:
 	private:
 				BTextView*		fTextView;
 	};
+
 private:
 			BTextView*			fTextView;
+			bool				fModificationsReported;
 };
 
 #endif // TEXT_CONTROL_COMPLETER_H

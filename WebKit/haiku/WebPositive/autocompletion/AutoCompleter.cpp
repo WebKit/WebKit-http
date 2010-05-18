@@ -175,10 +175,10 @@ BAutoCompleter::CancelChoice()
 
 
 void
-BAutoCompleter::EditViewStateChanged()
+BAutoCompleter::EditViewStateChanged(bool updateChoices)
 {
 	if (fCompletionStyle)
-		fCompletionStyle->EditViewStateChanged();
+		fCompletionStyle->EditViewStateChanged(updateChoices);
 }
 
 

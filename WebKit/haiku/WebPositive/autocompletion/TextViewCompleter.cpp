@@ -63,13 +63,17 @@ TextViewCompleter::TextViewWrapper::GetAdjustmentFrame()
 }
 
 
+// #pragma mark -
+
+
 TextViewCompleter::TextViewCompleter(BTextView* textView, ChoiceModel* model,
 		PatternSelector* patternSelector)
 	:
 	BAutoCompleter(new TextViewWrapper(textView), model,
 		new BDefaultChoiceView(), patternSelector),
 	BMessageFilter(B_KEY_DOWN),
-	fTextView(textView)
+	fTextView(textView),
+	fModificationsReported(false)
 {
 	fTextView->AddFilter(this);
 }
@@ -78,6 +82,20 @@ TextViewCompleter::TextViewCompleter(BTextView* textView, ChoiceModel* model,
 TextViewCompleter::~TextViewCompleter()
 {
 	fTextView->RemoveFilter(this);
+}
+
+
+void
+TextViewCompleter::SetModificationsReported(bool reported)
+{
+	fModificationsReported = reported;
+}
+
+
+void
+TextViewCompleter::TextModified(bool updateChoices)
+{
+	EditViewStateChanged(updateChoices);
 }
 
 
@@ -120,11 +138,13 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 			return B_DISPATCH_MESSAGE;
 		}
 		default:
-			// dispatch message to textview manually...
-			Looper()->DispatchMessage(message, *target);
-			// ...and propagate the new state to the auto-completer:
-			EditViewStateChanged();
-			return B_SKIP_MESSAGE;
+			if (!fModificationsReported) {
+				// dispatch message to textview manually...
+				Looper()->DispatchMessage(message, *target);
+				// ...and propagate the new state to the auto-completer:
+				EditViewStateChanged();
+				return B_SKIP_MESSAGE;
+			}
+			return B_DISPATCH_MESSAGE;
 	}
-	return B_DISPATCH_MESSAGE;
 }
