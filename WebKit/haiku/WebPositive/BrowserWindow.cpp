@@ -188,9 +188,9 @@ public:
 		fURLInputContents = text;
 	}
 
-	const char* URLInputContents() const
+	const BString& URLInputContents() const
 	{
-		return fURLInputContents.String();
+		return fURLInputContents;
 	}
 
 	void SetURLInputSelection(int32 selectionStart, int32 selectionEnd)
@@ -946,7 +946,10 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 
 		if (userData != NULL) {
 			fURLInputGroup->SetPageIcon(userData->PageIcon());
-			fURLInputGroup->SetText(userData->URLInputContents());
+			if (userData->URLInputContents().Length())
+				fURLInputGroup->SetText(userData->URLInputContents());
+			else
+				fURLInputGroup->SetText(webView->MainFrameURL());
 			if (userData->URLInputSelectionStart() >= 0) {
 				fURLInputGroup->TextView()->Select(
 					userData->URLInputSelectionStart(),
