@@ -43,6 +43,7 @@ public:
 		virtual	void			DoubleClickOutsideTabs() = 0;
 		virtual	void			UpdateTabScrollability(bool canScrollLeft,
 									bool canScrollRight) = 0;
+		virtual	void			SetToolTip(const BString& text) = 0;
 	};
 
 public:

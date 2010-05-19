@@ -58,6 +58,7 @@ public:
 #endif
 
 			BView*				TabGroup() const;
+			BView*				GetTabContainerView() const;
 			BView*				ContainerView() const;
 
 			BView*				ViewForTab(int32 tabIndex) const;

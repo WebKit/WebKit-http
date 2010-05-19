@@ -307,6 +307,17 @@ public:
 		fTabContainerGroup->EnableScrollButtons(canScrollLeft, canScrollRight);
 	}
 
+	virtual	void SetToolTip(const BString& text)
+	{
+		if (fCurrentToolTip == text)
+			return;
+		fCurrentToolTip = text;
+		fManager->GetTabContainerView()->HideToolTip();
+		fManager->GetTabContainerView()->SetToolTip(
+			reinterpret_cast<BToolTip*>(NULL));
+		fManager->GetTabContainerView()->SetToolTip(fCurrentToolTip.String());
+	}
+
 	void CloseTab(int32 index);
 
 	void SetCloseButtonsAvailable(bool available)
@@ -333,6 +344,7 @@ private:
 	bool				fCloseButtonsAvailable;
 	BMessage*			fDoubleClickOutsideTabsMessage;
 	BMessenger			fTarget;
+	BString				fCurrentToolTip;
 };
 
 
@@ -501,6 +513,8 @@ WebTabView::MouseMoved(BPoint where, uint32 transit,
 			ContainerView()->Invalidate(closeRect);
 		}
 	}
+
+	fController->SetToolTip(Label());
 
 	TabView::MouseMoved(where, transit, dragMessage);
 }
@@ -692,6 +706,13 @@ BView*
 TabManager::TabGroup() const
 {
 	return fTabContainerGroup;
+}
+
+
+BView*
+TabManager::GetTabContainerView() const
+{
+	return fTabContainerView;
 }
 
 
