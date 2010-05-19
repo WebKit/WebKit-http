@@ -54,9 +54,12 @@ public:
 
 private:
 			void				_RefsReceived(BMessage* message,
-									int32* pagesCreated = NULL);
-			void				_CreateNewPage(const BString& url);
-			void				_CreateNewWindow(const BString& url);
+									int32* pagesCreated = NULL,
+									bool* fullscreen = NULL);
+			void				_CreateNewPage(const BString& url,
+									bool fullscreen = false);
+			void				_CreateNewWindow(const BString& url,
+									bool fullscreen = false);
 			void				_CreateNewTab(BrowserWindow* window,
 									const BString& url, bool select);
 			void				_ShowWindow(const BMessage* message,

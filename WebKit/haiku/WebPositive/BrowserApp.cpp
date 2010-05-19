@@ -102,6 +102,11 @@ BrowserApp::ArgvReceived(int32 argc, char** argv)
 {
 	BMessage message(B_REFS_RECEIVED);
 	for (int i = 1; i < argc; i++) {
+		if (strcmp("-f", argv[i]) == 0
+			|| strcmp("--fullscreen", argv[i]) == 0) {
+			message.AddBool("fullscreen", true);
+			continue;
+		}
 		const char* url = argv[i];
 		BEntry entry(argv[i], true);
 		BPath path;
@@ -163,16 +168,15 @@ BrowserApp::ReadyToRun()
 	fInitialized = true;
 
 	int32 pagesCreated = 0;
+	bool fullscreen = false;
 	if (fLaunchRefsMessage) {
-		_RefsReceived(fLaunchRefsMessage, &pagesCreated);
+		_RefsReceived(fLaunchRefsMessage, &pagesCreated, &fullscreen);
 		delete fLaunchRefsMessage;
-		fLaunchRefsMessage = 0;
+		fLaunchRefsMessage = NULL;
 	}
-	if (pagesCreated == 0) {
-		BrowserWindow* window = new BrowserWindow(fLastWindowFrame, fSettings,
-			"");
-		window->Show();
-	}
+	if (pagesCreated == 0)
+		_CreateNewWindow("", fullscreen);
+
 	PostMessage(PRELOAD_BROWSING_HISTORY);
 }
 
@@ -284,9 +288,14 @@ BrowserApp::QuitRequested()
 
 
 void
-BrowserApp::_RefsReceived(BMessage* message, int32* _pagesCreated)
+BrowserApp::_RefsReceived(BMessage* message, int32* _pagesCreated,
+	bool* _fullscreen)
 {
 	int32 pagesCreated = 0;
+
+	bool fullscreen;
+	if (message->FindBool("fullscreen", &fullscreen) != B_OK)
+		fullscreen = false;
 
 	entry_ref ref;
 	for (int32 i = 0; message->FindRef("refs", i, &ref) == B_OK; i++) {
@@ -298,23 +307,25 @@ BrowserApp::_RefsReceived(BMessage* message, int32* _pagesCreated)
 			continue;
 		BString url;
 		url << path.Path();
-		_CreateNewPage(url);
+		_CreateNewPage(url, fullscreen);
 		pagesCreated++;
 	}
 
 	BString url;
 	for (int32 i = 0; message->FindString("url", i, &url) == B_OK; i++) {
-		_CreateNewPage(url);
+		_CreateNewPage(url, fullscreen);
 		pagesCreated++;
 	}
 
 	if (_pagesCreated != NULL)
 		*_pagesCreated = pagesCreated;
+	if (_fullscreen != NULL)
+		*_fullscreen = fullscreen;
 }
 
 
 void
-BrowserApp::_CreateNewPage(const BString& url)
+BrowserApp::_CreateNewPage(const BString& url, bool fullscreen)
 {
 	uint32 workspace = 1 << current_workspace();
 
@@ -334,12 +345,12 @@ BrowserApp::_CreateNewPage(const BString& url)
 		if (loadedInWindowOnCurrentWorkspace)
 			return;
 	}
-	_CreateNewWindow(url);
+	_CreateNewWindow(url, fullscreen);
 }
 
 
 void
-BrowserApp::_CreateNewWindow(const BString& url)
+BrowserApp::_CreateNewWindow(const BString& url, bool fullscreen)
 {
 	// Offset the window frame unless this is the first window created in the
 	// session.
@@ -350,6 +361,8 @@ BrowserApp::_CreateNewWindow(const BString& url)
 
 	BrowserWindow* window = new BrowserWindow(fLastWindowFrame, fSettings,
 		url);
+	if (fullscreen)
+		window->ToggleFullscreen();
 	window->Show();
 }
 

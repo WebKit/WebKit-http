@@ -109,6 +109,8 @@ public:
 
 			BRect				WindowFrame() const;
 
+			void				ToggleFullscreen();
+
 private:
 	// WebPage notification API implementations
 	virtual	void				NavigationRequested(const BString& url,

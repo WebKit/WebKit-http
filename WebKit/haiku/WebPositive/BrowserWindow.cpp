@@ -674,7 +674,7 @@ BrowserWindow::MessageReceived(BMessage* message)
 			break;
 
 		case TOGGLE_FULLSCREEN:
-			_ToggleFullscreen();
+			ToggleFullscreen();
 			break;
 
 		case TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN:
@@ -863,7 +863,7 @@ BrowserWindow::MenusBeginning()
 void
 BrowserWindow::Zoom(BPoint origin, float width, float height)
 {
-	_ToggleFullscreen();
+	ToggleFullscreen();
 }
 
 
@@ -1025,6 +1025,31 @@ BrowserWindow::WindowFrame() const
 		return fNonFullscreenWindowFrame;
 	else
 		return Frame();
+}
+
+
+void
+BrowserWindow::ToggleFullscreen()
+{
+	if (fIsFullscreen) {
+		MoveTo(fNonFullscreenWindowFrame.LeftTop());
+		ResizeTo(fNonFullscreenWindowFrame.Width(),
+			fNonFullscreenWindowFrame.Height());
+
+		SetFlags(Flags() & ~(B_NOT_RESIZABLE | B_NOT_MOVABLE));
+		SetLook(B_DOCUMENT_WINDOW_LOOK);
+
+		_ShowInterface(true);
+	} else {
+		fNonFullscreenWindowFrame = Frame();
+		_ResizeToScreen();
+
+		SetFlags(Flags() | (B_NOT_RESIZABLE | B_NOT_MOVABLE));
+		SetLook(B_TITLED_WINDOW_LOOK);
+	}
+	fIsFullscreen = !fIsFullscreen;
+	fFullscreenItem->SetMarked(fIsFullscreen);
+	fToggleFullscreenButton->SetVisible(fIsFullscreen);
 }
 
 
@@ -1845,31 +1870,6 @@ BrowserWindow::_ShowPage(BWebView* view)
 		UpdateIfNeeded();
 	}
 	return true;
-}
-
-
-void
-BrowserWindow::_ToggleFullscreen()
-{
-	if (fIsFullscreen) {
-		MoveTo(fNonFullscreenWindowFrame.LeftTop());
-		ResizeTo(fNonFullscreenWindowFrame.Width(),
-			fNonFullscreenWindowFrame.Height());
-
-		SetFlags(Flags() & ~(B_NOT_RESIZABLE | B_NOT_MOVABLE));
-		SetLook(B_DOCUMENT_WINDOW_LOOK);
-
-		_ShowInterface(true);
-	} else {
-		fNonFullscreenWindowFrame = Frame();
-		_ResizeToScreen();
-
-		SetFlags(Flags() | (B_NOT_RESIZABLE | B_NOT_MOVABLE));
-		SetLook(B_TITLED_WINDOW_LOOK);
-	}
-	fIsFullscreen = !fIsFullscreen;
-	fFullscreenItem->SetMarked(fIsFullscreen);
-	fToggleFullscreenButton->SetVisible(fIsFullscreen);
 }
 
 
