@@ -846,7 +846,7 @@ BrowserWindow::QuitRequested()
 		_ShutdownTab(0);
 
 	BMessage message(WINDOW_CLOSED);
-	message.AddRect("window frame", Frame());
+	message.AddRect("window frame", WindowFrame());
 	be_app->PostMessage(&message);
 	return true;
 }
@@ -1015,6 +1015,16 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 
 	_ShowInterface(true);
 	_UpdateTabGroupVisibility();
+}
+
+
+BRect
+BrowserWindow::WindowFrame() const
+{
+	if (fIsFullscreen)
+		return fNonFullscreenWindowFrame;
+	else
+		return Frame();
 }
 
 

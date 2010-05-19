@@ -253,7 +253,7 @@ BrowserApp::QuitRequested()
 		if (!webWindow->Lock())
 			continue;
 		if (webWindow->QuitRequested()) {
-			fLastWindowFrame = webWindow->Frame();
+			fLastWindowFrame = webWindow->WindowFrame();
 			webWindow->Quit();
 			i--;
 		} else {

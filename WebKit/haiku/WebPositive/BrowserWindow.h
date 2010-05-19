@@ -107,6 +107,8 @@ public:
 			void				CreateNewTab(const BString& url, bool select,
 									BWebView* webView = 0);
 
+			BRect				WindowFrame() const;
+
 private:
 	// WebPage notification API implementations
 	virtual	void				NavigationRequested(const BString& url,
