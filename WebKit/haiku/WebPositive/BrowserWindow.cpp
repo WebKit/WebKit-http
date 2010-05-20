@@ -474,7 +474,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		kSettingsKeyAutoHideInterfaceInFullscreenMode,
 		fAutoHideInterfaceInFullscreenMode));
 
-	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(EDIT_HIDE_FIND_GROUP));
+	AddShortcut('F', B_COMMAND_KEY | B_SHIFT_KEY,
+		new BMessage(EDIT_HIDE_FIND_GROUP));
+	// TODO: Should be a different shortcut, H is usually for Find selection.
+	AddShortcut('H', B_COMMAND_KEY,	new BMessage(HOME));
 
 	// Add shortcuts to select a particular tab
 	for (int32 i = 1; i <= 9; i++) {
@@ -993,6 +996,17 @@ BrowserWindow::SetCurrentWebView(BWebView* webView)
 }
 
 
+bool
+BrowserWindow::IsBlankTab() const
+{
+	if (CurrentWebView() == NULL)
+		return false;
+	BString requestedURL = CurrentWebView()->MainFrameRequestedURL();
+	return requestedURL.Length() == 0
+		|| requestedURL == _NewTabURL(fTabManager->CountTabs() == 1);
+}
+
+
 void
 BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 {
@@ -1006,25 +1020,8 @@ BrowserWindow::CreateNewTab(const BString& _url, bool select, BWebView* webView)
 	fTabManager->AddTab(webView, "New tab");
 
 	BString url(_url);
-	if (applyNewPagePolicy && url.Length() == 0) {
-		uint32 policy = isNewWindow ? fNewWindowPolicy : fNewTabPolicy;
-		// Implement new page policy
-		switch (policy) {
-			case OpenStartPage:
-				url = fStartPageURL;
-				break;
-			case OpenSearchPage:
-				url = fSearchPageURL;
-				break;
-			case CloneCurrentPage:
-				if (CurrentWebView() != NULL)
-					url = CurrentWebView()->MainFrameURL();
-				break;
-			case OpenBlankPage:
-			default:
-				break;
-		}
-	}
+	if (applyNewPagePolicy && url.Length() == 0)
+		url = _NewTabURL(isNewWindow);
 
 	if (url.Length() > 0)
 		webView->LoadURL(url.String());
@@ -1980,3 +1977,27 @@ BrowserWindow::_ShowInterface(bool show)
 		fLoadingProgressBar->Hide();
 }
 
+
+BString
+BrowserWindow::_NewTabURL(bool isNewWindow) const
+{
+	BString url;
+	uint32 policy = isNewWindow ? fNewWindowPolicy : fNewTabPolicy;
+	// Implement new page policy
+	switch (policy) {
+		case OpenStartPage:
+			url = fStartPageURL;
+			break;
+		case OpenSearchPage:
+			url = fSearchPageURL;
+			break;
+		case CloneCurrentPage:
+			if (CurrentWebView() != NULL)
+				url = CurrentWebView()->MainFrameURL();
+			break;
+		case OpenBlankPage:
+		default:
+			break;
+	}
+	return url;
+}

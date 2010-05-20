@@ -104,6 +104,7 @@ public:
 
 	virtual	void				SetCurrentWebView(BWebView* view);
 
+			bool				IsBlankTab() const;
 			void				CreateNewTab(const BString& url, bool select,
 									BWebView* webView = 0);
 
@@ -186,6 +187,8 @@ private:
 			void				_SetAutoHideInterfaceInFullscreen(bool doIt);
 			void				_CheckAutoHideInterface();
 			void				_ShowInterface(bool show);
+
+			BString				_NewTabURL(bool isNewWindow) const;
 
 private:
 			BMenu*				fHistoryMenu;

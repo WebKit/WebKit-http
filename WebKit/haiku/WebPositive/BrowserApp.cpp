@@ -336,7 +336,10 @@ BrowserApp::_CreateNewPage(const BString& url, bool fullscreen)
 			continue;
 		if (webWindow->Lock()) {
 			if (webWindow->Workspaces() & workspace) {
-				webWindow->CreateNewTab(url, true);
+				if (webWindow->IsBlankTab())
+					webWindow->CurrentWebView()->LoadURL(url);
+				else
+					webWindow->CreateNewTab(url, true);
 				webWindow->Activate();
 				loadedInWindowOnCurrentWorkspace = true;
 			}
