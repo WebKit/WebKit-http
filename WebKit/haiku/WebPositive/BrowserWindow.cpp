@@ -506,6 +506,21 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 		} else if (bytes[0] == B_RIGHT_ARROW && modifiers == B_COMMAND_KEY) {
 			PostMessage(GO_FORWARD);
 			return;
+		} else if (bytes[0] == B_FUNCTION_KEY) {
+			// Some function key Firefox compatibility
+			int32 key;
+			if (message->FindInt32("key", &key) == B_OK) {
+				switch (key) {
+					case B_F5_KEY:
+						PostMessage(RELOAD);
+						break;
+					case B_F11_KEY:
+						PostMessage(TOGGLE_FULLSCREEN);
+						break;
+					default:
+						break;
+				}
+			}
 		} else if (target == fURLInputGroup->TextView()) {
 			// Handle B_RETURN in the URL text control. This is the easiest
 			// way to react *only* when the user presses the return key in the
