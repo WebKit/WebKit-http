@@ -135,7 +135,7 @@ public:
 		if (CountItems() > 0)
 			AddItem(new BSeparatorItem(), 0);
 		AddItem(new BMenuItem("Manage bookmarks",
-			new BMessage(SHOW_BOOKMARKS)), 0);
+			new BMessage(SHOW_BOOKMARKS), 'M'), 0);
 		AddItem(new BMenuItem("Bookmark this page",
 			new BMessage(CREATE_BOOKMARK), 'B'), 0);
 		DoLayout();
