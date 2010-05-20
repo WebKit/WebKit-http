@@ -83,6 +83,7 @@ enum {
 	GO_BACK										= 'goba',
 	GO_FORWARD									= 'gofo',
 	STOP										= 'stop',
+	HOME										= 'home',
 	GOTO_URL									= 'goul',
 	RELOAD										= 'reld',
 	CLEAR_HISTORY								= 'clhs',
@@ -359,6 +360,10 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fStopButton->SetIcon(204);
 	fStopButton->TrimIcon();
 
+	fHomeButton = new IconButton("Home", 0, NULL, new BMessage(HOME));
+	fHomeButton->SetIcon(206);
+	fHomeButton->TrimIcon();
+
 	// URL input group
 	fURLInputGroup = new URLInputGroup(new BMessage(GOTO_URL));
 
@@ -402,12 +407,14 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 
 	// Navigation group
 	BView* navigationGroup = BGroupLayoutBuilder(B_VERTICAL)
-		.Add(BGridLayoutBuilder(kElementSpacing, kElementSpacing)
-			.Add(fBackButton, 0, 0)
-			.Add(fForwardButton, 1, 0)
-			.Add(fStopButton, 2, 0)
-			.Add(fURLInputGroup, 3, 0)
-			.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing, kInsetSpacing)
+		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+			.Add(fBackButton)
+			.Add(fForwardButton)
+			.Add(fStopButton)
+			.Add(fHomeButton)
+			.Add(fURLInputGroup)
+			.SetInsets(kInsetSpacing, kInsetSpacing, kInsetSpacing,
+				kInsetSpacing)
 		)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 	;
@@ -579,6 +586,9 @@ BrowserWindow::MessageReceived(BMessage* message)
 			break;
 		case STOP:
 			CurrentWebView()->StopLoading();
+			break;
+		case HOME:
+			CurrentWebView()->LoadURL(fStartPageURL);
 			break;
 
 		case CLEAR_HISTORY: {

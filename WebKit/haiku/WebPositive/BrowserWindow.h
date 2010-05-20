@@ -204,6 +204,7 @@ private:
 			IconButton*			fBackButton;
 			IconButton*			fForwardButton;
 			IconButton*			fStopButton;
+			IconButton*			fHomeButton;
 			URLInputGroup*		fURLInputGroup;
 			BStringView*		fStatusText;
 			BStatusBar*			fLoadingProgressBar;
