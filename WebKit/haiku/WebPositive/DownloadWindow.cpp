@@ -46,6 +46,7 @@
 #include <SpaceLayoutItem.h>
 
 #include "BrowserApp.h"
+#include "BrowserWindow.h"
 #include "DownloadProgressView.h"
 #include "SettingsKeys.h"
 #include "SettingsMessage.h"
@@ -135,7 +136,8 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 		SettingsMessage* settings)
 	: BWindow(frame, "Downloads",
 		B_TITLED_WINDOW_LOOK, B_NORMAL_WINDOW_FEEL,
-		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE)
+		B_AUTO_UPDATE_SIZE_LIMITS | B_ASYNCHRONOUS_CONTROLS | B_NOT_ZOOMABLE),
+	fMinimizeOnClose(false)
 {
 	SetPulseRate(1000000);
 
@@ -156,6 +158,13 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 	BMenu* menu = new BMenu("Downloads");
 	menu->AddItem(new BMenuItem("Open downloads folder",
 		new BMessage(OPEN_DOWNLOADS_FOLDER)));
+	BMessage* newWindowMessage = new BMessage(NEW_WINDOW);
+	newWindowMessage->AddString("url", "");
+	BMenuItem* newWindowItem = new BMenuItem("New browser window",
+		newWindowMessage, 'N');
+	menu->AddItem(newWindowItem);
+	newWindowItem->SetTarget(be_app);
+	menu->AddSeparatorItem();
 	menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'J'));
 	menuBar->AddItem(menu);
 
@@ -305,9 +314,49 @@ DownloadWindow::MessageReceived(BMessage* message)
 bool
 DownloadWindow::QuitRequested()
 {
-	if (!IsHidden())
-		Hide();
+	if (fMinimizeOnClose) {
+		if (!IsMinimized())
+			Minimize(true);
+	} else {
+		if (!IsHidden())
+			Hide();
+	}
 	return false;
+}
+
+
+bool
+DownloadWindow::DownloadsInProgress()
+{
+	bool downloadsInProgress = false;
+	if (!Lock())
+		return downloadsInProgress;
+
+	for (int32 i = fDownloadViewsLayout->CountItems() - 1;
+			BLayoutItem* item = fDownloadViewsLayout->ItemAt(i); i--) {
+		DownloadProgressView* view = dynamic_cast<DownloadProgressView*>(
+			item->View());
+		if (!view)
+			continue;
+		if (view->Download() != NULL) {
+			downloadsInProgress = true;
+			break;
+		}
+	}
+
+	Unlock();
+
+	return downloadsInProgress;
+}
+
+
+void
+DownloadWindow::SetMinimizeOnClose(bool minimize)
+{
+	if (Lock()) {
+		fMinimizeOnClose = minimize;
+		Unlock();
+	}
 }
 
 

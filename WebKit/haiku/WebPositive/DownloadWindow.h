@@ -50,6 +50,9 @@ public:
 	virtual	void				MessageReceived(BMessage* message);
 	virtual	bool				QuitRequested();
 
+			bool				DownloadsInProgress();
+			void				SetMinimizeOnClose(bool minimize);
+
 private:
 			void				_DownloadStarted(BWebDownload* download);
 			void				_DownloadFinished(BWebDownload* download);
@@ -66,6 +69,7 @@ private:
 			BButton*			fRemoveFinishedButton;
 			BButton*			fRemoveMissingButton;
 			BString				fDownloadPath;
+			bool				fMinimizeOnClose;
 };
 
 #endif // DOWNLOAD_WINDOW_H

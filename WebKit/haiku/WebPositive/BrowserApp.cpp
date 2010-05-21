@@ -212,6 +212,7 @@ BrowserApp::MessageReceived(BMessage* message)
 	}
 	case WINDOW_OPENED:
 		fWindowCount++;
+		fDownloadWindow->SetMinimizeOnClose(false);
 		break;
 	case WINDOW_CLOSED:
 		fWindowCount--;
@@ -250,6 +251,28 @@ BrowserApp::RefsReceived(BMessage* message)
 bool
 BrowserApp::QuitRequested()
 {
+	if (fDownloadWindow->DownloadsInProgress()) {
+		BAlert* alert = new BAlert("Downloads in progress",
+			"There are still downloads in progress, do you really want to "
+			"quit WebPositive now?", "Quit", "Continue downloads");
+		int32 choice = alert->Go();
+		if (choice == 1) {
+			if (fWindowCount == 0) {
+				if (fDownloadWindow->Lock()) {
+					fDownloadWindow->SetWorkspaces(1 << current_workspace());
+					if (fDownloadWindow->IsHidden())
+						fDownloadWindow->Show();
+					else
+						fDownloadWindow->Activate();
+					fDownloadWindow->SetMinimizeOnClose(true);
+					fDownloadWindow->Unlock();
+					return false;
+				}
+			} else
+				return false;
+		}
+	}
+
 	for (int i = 0; BWindow* window = WindowAt(i); i++) {
 		BrowserWindow* webWindow = dynamic_cast<BrowserWindow*>(window);
 		if (!webWindow)
