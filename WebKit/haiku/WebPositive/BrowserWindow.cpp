@@ -390,16 +390,21 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFindTextControl = new BTextControl("find", "Find:", "",
 		new BMessage(EDIT_FIND_NEXT));
 	fFindTextControl->SetModificationMessage(new BMessage(FIND_TEXT_CHANGED));
+	fFindPreviousButton = new BButton("Previous",
+		new BMessage(EDIT_FIND_PREVIOUS));
+	fFindNextButton = new BButton("Next", new BMessage(EDIT_FIND_NEXT));
+	fFindCloseButton = new BButton("Close",
+		new BMessage(EDIT_HIDE_FIND_GROUP));
 	fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
 	BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
 			.Add(fFindTextControl)
-			.Add(new BButton("Previous", new BMessage(EDIT_FIND_PREVIOUS)))
-			.Add(new BButton("Next", new BMessage(EDIT_FIND_NEXT)))
+			.Add(fFindPreviousButton)
+			.Add(fFindNextButton)
 			.Add(fFindCaseSensitiveCheckBox)
 			.Add(BSpaceLayoutItem::CreateGlue())
-			.Add(new BButton("Close", new BMessage(EDIT_HIDE_FIND_GROUP)))
+			.Add(fFindCloseButton)
 			.SetInsets(kInsetSpacing, kInsetSpacing,
 				kInsetSpacing, kInsetSpacing)
 		)
@@ -538,11 +543,19 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 			// when the text control just goes out of focus.
 			if (bytes[0] == B_RETURN) {
 				// Do it in such a way that the user sees the Go-button go down.
-				fURLInputGroup->GoButton()->SetValue(B_CONTROL_ON);
-				UpdateIfNeeded();
-				fURLInputGroup->GoButton()->Invoke();
-				snooze(1000);
-				fURLInputGroup->GoButton()->SetValue(B_CONTROL_OFF);
+				_InvokeButtonVisibly(fURLInputGroup->GoButton());
+				return;
+			}
+		} else if (target == fFindTextControl->TextView()) {
+			// Handle B_RETURN when the find text control has focus.
+			if (bytes[0] == B_RETURN) {
+				if ((modifiers & B_SHIFT_KEY) != 0)
+					_InvokeButtonVisibly(fFindPreviousButton);
+				else
+					_InvokeButtonVisibly(fFindNextButton);
+				return;
+			} else if (bytes[0] == B_ESCAPE) {
+				_InvokeButtonVisibly(fFindCloseButton);
 				return;
 			}
 		}
@@ -1975,6 +1988,17 @@ BrowserWindow::_ShowInterface(bool show)
 	// Fix in Haiku?
 	while (!fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
+}
+
+
+void
+BrowserWindow::_InvokeButtonVisibly(BButton* button)
+{
+	button->SetValue(B_CONTROL_ON);
+	UpdateIfNeeded();
+	button->Invoke();
+	snooze(1000);
+	button->SetValue(B_CONTROL_OFF);
 }
 
 

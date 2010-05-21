@@ -187,6 +187,7 @@ private:
 			void				_SetAutoHideInterfaceInFullscreen(bool doIt);
 			void				_CheckAutoHideInterface();
 			void				_ShowInterface(bool show);
+			void				_InvokeButtonVisibly(BButton* button);
 
 			BString				_NewTabURL(bool isNewWindow) const;
 
@@ -220,6 +221,9 @@ private:
 			BLayoutItem*		fToggleFullscreenButton;
 
 			BTextControl*		fFindTextControl;
+			BButton*			fFindPreviousButton;
+			BButton*			fFindNextButton;
+			BButton*			fFindCloseButton;
 			BCheckBox*			fFindCaseSensitiveCheckBox;
 			TabManager*			fTabManager;
 
