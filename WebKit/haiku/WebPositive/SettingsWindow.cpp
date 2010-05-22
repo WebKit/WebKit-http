@@ -335,7 +335,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 	fAutoHidePointer = new BCheckBox("auto-hide pointer",
 		B_TRANSLATE("Auto-hide mouse pointer."),
 		new BMessage(MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED));
-	fAutoHidePointer->SetValue(B_CONTROL_ON);
+	fAutoHidePointer->SetValue(B_CONTROL_OFF);
 
 	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
 		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
@@ -538,7 +538,7 @@ SettingsWindow::_CanApplySettings() const
 
 	canApply = canApply || (
 		(fAutoHidePointer->Value() == B_CONTROL_ON)
-		!= fSettings->GetValue(kSettingsKeyAutoHidePointer, true));
+		!= fSettings->GetValue(kSettingsKeyAutoHidePointer, false));
 
 	canApply = canApply || (_MaxHistoryAge()
 		!= BrowsingHistory::DefaultInstance()->MaxHistoryItemAge());
@@ -671,7 +671,7 @@ SettingsWindow::_RevertSettings()
 		fSettings->GetValue(kSettingsKeyAutoHideInterfaceInFullscreenMode,
 			false));
 	fAutoHidePointer->SetValue(
-		fSettings->GetValue(kSettingsKeyAutoHidePointer, true));
+		fSettings->GetValue(kSettingsKeyAutoHidePointer, false));
 
 	BString text;
 	text << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();

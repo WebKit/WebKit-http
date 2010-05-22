@@ -236,7 +236,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fZoomTextOnly(true),
 	fShowTabsIfSinglePageOpen(true),
 	fAutoHideInterfaceInFullscreenMode(false),
-	fAutoHidePointer(true)
+	fAutoHidePointer(false)
 {
 	// Begin listening to settings changes and read some current values.
 	fAppSettings->AddListener(BMessenger(this));
