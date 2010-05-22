@@ -116,7 +116,8 @@ enum {
 
     HANDLE_SET_STATUS_MESSAGE = 'stsm',
     HANDLE_RESEND_NOTIFICATIONS = 'rsnt',
-    HANDLE_SEND_EDITING_CAPABILITIES = 'sedc'
+    HANDLE_SEND_EDITING_CAPABILITIES = 'sedc',
+    HANDLE_SEND_PAGE_SOURCE = 'spsc'
 };
 
 using namespace WebCore;
@@ -325,6 +326,11 @@ void BWebPage::ResendNotifications()
 void BWebPage::SendEditingCapabilities()
 {
     Looper()->PostMessage(HANDLE_SEND_EDITING_CAPABILITIES, this);
+}
+
+void BWebPage::SendPageSource()
+{
+	Looper()->PostMessage(HANDLE_SEND_PAGE_SOURCE, this);
 }
 
 /*static*/ void BWebPage::RequestDownload(const BString& url)
@@ -886,6 +892,9 @@ void BWebPage::MessageReceived(BMessage* message)
     case HANDLE_SEND_EDITING_CAPABILITIES:
         handleSendEditingCapabilities(message);
         break;
+    case HANDLE_SEND_PAGE_SOURCE:
+        handleSendPageSource(message);
+        break;
 
     case B_REFS_RECEIVED: {
 		RefPtr<FileChooser>* chooser;
@@ -1203,6 +1212,15 @@ void BWebPage::handleSendEditingCapabilities(BMessage*)
     message.AddBool("can cut", canCut);
     message.AddBool("can copy", canCopy);
     message.AddBool("can paste", canPaste);
+
+    dispatchMessage(message);
+}
+
+void BWebPage::handleSendPageSource(BMessage*)
+{
+    BMessage message(B_PAGE_SOURCE_RESULT);
+    message.AddString("source", fMainFrame->FrameSource());
+    message.AddString("url", fMainFrame->URL());
 
     dispatchMessage(message);
 }

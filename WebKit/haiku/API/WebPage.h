@@ -65,7 +65,8 @@ enum {
 	B_FIND_STRING_RESULT			= 'fsrs',
 	B_DOWNLOAD_ADDED				= 'dwna',
 	B_DOWNLOAD_REMOVED				= 'dwnr',
-	B_EDITING_CAPABILITIES_RESULT	= 'cedr'
+	B_EDITING_CAPABILITIES_RESULT	= 'cedr',
+	B_PAGE_SOURCE_RESULT			= 'psrc'
 };
 
 typedef enum {
@@ -114,6 +115,7 @@ public:
 			void				ResendNotifications();
 
 			void				SendEditingCapabilities();
+			void				SendPageSource();
 
 	static	void				RequestDownload(const BString& url);
 
@@ -216,6 +218,7 @@ private:
 	void handleFindString(BMessage* message);
 	void handleResendNotifications(BMessage* message);
 	void handleSendEditingCapabilities(BMessage* message);
+	void handleSendPageSource(BMessage* message);
 
     status_t dispatchMessage(BMessage& message) const;
 
