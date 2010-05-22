@@ -191,6 +191,9 @@ private:
 
 			BString				_NewTabURL(bool isNewWindow) const;
 
+			void				_HandlePageSourceResult(
+									const BMessage* message);
+
 private:
 			BMenu*				fHistoryMenu;
 			int32				fHistoryMenuFixedItemCount;

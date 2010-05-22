@@ -100,6 +100,8 @@ enum {
 	TOGGLE_AUTO_HIDE_INTERFACE_IN_FULLSCREEN	= 'tgah',
 	CHECK_AUTO_HIDE_INTERFACE					= 'cahi',
 
+	SHOW_PAGE_SOURCE							= 'spgs',
+
 	EDIT_SHOW_FIND_GROUP						= 'sfnd',
 	EDIT_HIDE_FIND_GROUP						= 'hfnd',
 	EDIT_FIND_NEXT								= 'fndn',
@@ -315,9 +317,12 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	menu = new BMenu("View");
 	menu->AddItem(new BMenuItem("Reload", new BMessage(RELOAD), 'R'));
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Increase size", new BMessage(ZOOM_FACTOR_INCREASE), '+'));
-	menu->AddItem(new BMenuItem("Decrease size", new BMessage(ZOOM_FACTOR_DECREASE), '-'));
-	menu->AddItem(new BMenuItem("Reset size", new BMessage(ZOOM_FACTOR_RESET), '0'));
+	menu->AddItem(new BMenuItem("Increase size",
+		new BMessage(ZOOM_FACTOR_INCREASE), '+'));
+	menu->AddItem(new BMenuItem("Decrease size",
+		new BMessage(ZOOM_FACTOR_DECREASE), '-'));
+	menu->AddItem(new BMenuItem("Reset size",
+		new BMessage(ZOOM_FACTOR_RESET), '0'));
 	fZoomTextOnlyMenuItem = new BMenuItem("Zoom text only",
 		new BMessage(ZOOM_TEXT_ONLY));
 	fZoomTextOnlyMenuItem->SetMarked(fZoomTextOnly);
@@ -327,6 +332,8 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFullscreenItem = new BMenuItem("Fullscreen",
 		new BMessage(TOGGLE_FULLSCREEN), B_RETURN);
 	menu->AddItem(fFullscreenItem);
+	menu->AddItem(new BMenuItem("Page source",
+		new BMessage(SHOW_PAGE_SOURCE), 'U'));
 	mainMenu->AddItem(menu);
 
 	fHistoryMenu = new BMenu("History");
@@ -347,7 +354,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		mainMenu->AddItem(bookmarkMenu);
 	}
 
-	// Back, Forward & Stop
+	// Back, Forward, Stop & Home buttons
 	fBackButton = new IconButton("Back", 0, NULL, new BMessage(GO_BACK));
 	fBackButton->SetIcon(201);
 	fBackButton->TrimIcon();
@@ -725,6 +732,13 @@ BrowserWindow::MessageReceived(BMessage* message)
 
 		case CHECK_AUTO_HIDE_INTERFACE:
 			_CheckAutoHideInterface();
+			break;
+
+		case SHOW_PAGE_SOURCE:
+			CurrentWebView()->WebPage()->SendPageSource();
+			break;
+		case B_PAGE_SOURCE_RESULT:
+			_HandlePageSourceResult(message);
 			break;
 
 		case EDIT_FIND_NEXT:
@@ -2025,3 +2039,78 @@ BrowserWindow::_NewTabURL(bool isNewWindow) const
 	}
 	return url;
 }
+
+
+void
+BrowserWindow::_HandlePageSourceResult(const BMessage* message)
+{
+	// TODO: This should be done in an extra thread perhaps. Doing it in
+	// the application thread is not much better, since it actually draws
+	// the pages...
+
+	BPath pathToPageSource;
+
+	BString url;
+	status_t ret = message->FindString("url", &url);
+	if (ret == B_OK && url.FindFirst("file://") == 0) {
+		// Local file
+		url.Remove(0, strlen("file://"));
+		pathToPageSource.SetTo(url.String());
+	} else {
+		// Something else, store it.
+		// TODO: What if it isn't HTML, but for example SVG?
+		BString source;
+		ret = message->FindString("source", &source);
+	
+		if (ret == B_OK)
+			ret = find_directory(B_COMMON_TEMP_DIRECTORY, &pathToPageSource);
+	
+		BString tmpFileName("PageSource_");
+		tmpFileName << system_time() << ".html";
+		if (ret == B_OK)
+			ret = pathToPageSource.Append(tmpFileName.String());
+	
+		BFile pageSourceFile(pathToPageSource.Path(),
+			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
+		if (ret == B_OK)
+			ret = pageSourceFile.InitCheck();
+	
+		if (ret == B_OK) {
+			ssize_t written = pageSourceFile.Write(source.String(),
+				source.Length());
+			if (written != source.Length())
+				ret = (status_t)written;
+		}
+	
+		if (ret == B_OK) {
+			const char* type = "text/html";
+			size_t size = strlen(type);
+			pageSourceFile.WriteAttr("BEOS:TYPE", B_STRING_TYPE, 0, type, size);
+				// If it fails we don't care.
+		}
+	}
+
+	entry_ref ref;
+	if (ret == B_OK)
+		ret = get_ref_for_path(pathToPageSource.Path(), &ref);
+
+	if (ret == B_OK) {
+		BMessage refsMessage(B_REFS_RECEIVED);
+		ret = refsMessage.AddRef("refs", &ref);
+		if (ret == B_OK) {
+			ret = be_roster->Launch("text/x-source-code", &refsMessage);
+			if (ret == B_ALREADY_RUNNING)
+				ret = B_OK;
+		}
+	}
+
+	if (ret != B_OK) {
+		char buffer[1024];
+		snprintf(buffer, sizeof(buffer), "Failed to show the "
+			"page source: %s\n", strerror(ret));
+		BAlert* alert = new BAlert("Page source error", buffer, "OK");
+		alert->Go(NULL);
+	}
+}
+
+
