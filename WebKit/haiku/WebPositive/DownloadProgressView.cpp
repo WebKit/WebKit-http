@@ -308,14 +308,18 @@ DownloadProgressView::SaveSettings(BMessage* archive)
 void
 DownloadProgressView::AttachedToWindow()
 {
-	if (fDownload)
+	if (fDownload) {
 		fDownload->SetProgressListener(BMessenger(this));
+		// Will start node monitor upon receiving the B_DOWNLOAD_STARTED
+		// message.
+	} else {
+		BEntry entry(fPath.Path());
+		if (entry.Exists())
+			_StartNodeMonitor(entry);
+	}
+
 	fTopButton->SetTarget(this);
 	fBottomButton->SetTarget(this);
-
-	BEntry entry(fPath.Path());
-	if (entry.Exists())
-		_StartNodeMonitor(entry);
 }
 
 
