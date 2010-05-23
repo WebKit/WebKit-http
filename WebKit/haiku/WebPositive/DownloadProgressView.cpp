@@ -372,7 +372,7 @@ DownloadProgressView::MessageReceived(BMessage* message)
 				= fProcessStartTime = fLastSpeedReferenceTime
 				= fEstimatedFinishReferenceTime = system_time();
 			break;
-		};
+		}
 		case B_DOWNLOAD_PROGRESS:
 		{
 			int64 currentSize;
@@ -383,6 +383,12 @@ DownloadProgressView::MessageReceived(BMessage* message)
 			}
 			break;
 		}
+		case B_DOWNLOAD_REMOVED:
+			// TODO: This is a bit asymetric. The removed notification
+			// arrives here, but it would be nicer if it arrived
+			// at the window...
+			Window()->PostMessage(message);
+			break;
 		case OPEN_DOWNLOAD:
 		{
 			// TODO: In case of executable files, ask the user first!
@@ -414,12 +420,6 @@ DownloadProgressView::MessageReceived(BMessage* message)
 			// TOAST!
 			return;
 		}
-		case B_DOWNLOAD_REMOVED:
-			// TODO: This is a bit asymetric. The removed notification
-			// arrives here, but it would be nicer if it arrived
-			// at the window...
-			Window()->PostMessage(message);
-			break;
 		case B_NODE_MONITOR:
 		{
 			int32 opCode;
@@ -610,6 +610,10 @@ void
 DownloadProgressView::DownloadFinished()
 {
 	fDownload = NULL;
+	if (fExpectedSize == -1) {
+		fStatusBar->SetTo(100.0);
+		fExpectedSize = fCurrentSize;
+	}
 	fTopButton->SetEnabled(true);
 	fBottomButton->SetLabel("Remove");
 	fBottomButton->SetMessage(new BMessage(REMOVE_DOWNLOAD));
