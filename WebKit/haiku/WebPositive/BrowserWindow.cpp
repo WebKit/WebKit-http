@@ -1950,6 +1950,7 @@ BrowserWindow::_SetAutoHideInterfaceInFullscreen(bool doIt)
 	} else {
 		delete fPulseRunner;
 		fPulseRunner = NULL;
+		_ShowInterface(true);
 	}
 }
 
