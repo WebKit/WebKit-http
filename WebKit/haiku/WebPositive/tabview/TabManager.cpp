@@ -746,6 +746,13 @@ TabManager::TabForView(const BView* containedView) const
 }
 
 
+bool
+TabManager::HasView(const BView* containedView) const
+{
+	return TabForView(containedView) >= 0;
+}
+
+
 void
 TabManager::SelectTab(int32 tabIndex)
 {

@@ -1245,12 +1245,12 @@ BrowserWindow::MainDocumentError(const BString& failingURL,
 void
 BrowserWindow::TitleChanged(const BString& title, BWebView* view)
 {
-	for (int32 i = 0; i < fTabManager->CountTabs(); i++) {
-		if (fTabManager->ViewForTab(i) == view) {
-			fTabManager->SetTabLabel(i, title);
-			break;
-		}
-	}
+	int32 tabIndex = fTabManager->TabForView(view);
+	if (tabIndex < 0)
+		return;
+
+	fTabManager->SetTabLabel(tabIndex, title);
+
 	if (view != CurrentWebView())
 		return;
 
@@ -1261,6 +1261,11 @@ BrowserWindow::TitleChanged(const BString& title, BWebView* view)
 void
 BrowserWindow::IconReceived(const BBitmap* icon, BWebView* view)
 {
+	// The view may already be gone, since this notification arrives
+	// asynchronously.
+	if (!fTabManager->HasView(view))
+		return;
+
 	_SetPageIcon(view, icon);
 }
 
