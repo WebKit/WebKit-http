@@ -165,7 +165,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 	menu->AddItem(newWindowItem);
 	newWindowItem->SetTarget(be_app);
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'J'));
+	menu->AddItem(new BMenuItem("Hide", new BMessage(B_QUIT_REQUESTED), 'D'));
 	menuBar->AddItem(menu);
 
 	fDownloadsScrollView = new DownloadContainerScrollView(downloadsGroupView);

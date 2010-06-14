@@ -280,18 +280,24 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	newItem = new BMenuItem("New tab", new BMessage(*newTabMessage), 'T');
 	menu->AddItem(newItem);
 	newItem->SetTarget(be_app);
-	menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION), 'L'));
+	menu->AddItem(new BMenuItem("Open location", new BMessage(OPEN_LOCATION),
+		'L'));
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED), 'W', B_SHIFT_KEY));
+	menu->AddItem(new BMenuItem("Close window", new BMessage(B_QUIT_REQUESTED),
+		'W', B_SHIFT_KEY));
 	menu->AddItem(new BMenuItem("Close tab", new BMessage(CLOSE_TAB), 'W'));
 	menu->AddSeparatorItem();
-	menu->AddItem(new BMenuItem("Downloads", new BMessage(SHOW_DOWNLOAD_WINDOW), 'J'));
-	menu->AddItem(new BMenuItem("Settings", new BMessage(SHOW_SETTINGS_WINDOW)));
-	BMenuItem* aboutItem = new BMenuItem("About", new BMessage(B_ABOUT_REQUESTED));
+	menu->AddItem(new BMenuItem("Downloads",
+		new BMessage(SHOW_DOWNLOAD_WINDOW), 'D'));
+	menu->AddItem(new BMenuItem("Settings",
+		new BMessage(SHOW_SETTINGS_WINDOW)));
+	BMenuItem* aboutItem = new BMenuItem("About",
+		new BMessage(B_ABOUT_REQUESTED));
 	menu->AddItem(aboutItem);
 	aboutItem->SetTarget(be_app);
 	menu->AddSeparatorItem();
-	BMenuItem* quitItem = new BMenuItem("Quit", new BMessage(B_QUIT_REQUESTED), 'Q');
+	BMenuItem* quitItem = new BMenuItem("Quit",
+		new BMessage(B_QUIT_REQUESTED), 'Q');
 	menu->AddItem(quitItem);
 	quitItem->SetTarget(be_app);
 	mainMenu->AddItem(menu);
