@@ -398,6 +398,8 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
     		size_t count = bitmapImage->frameCount();
     		for (size_t i = 0; i < count; i++) {
     			bitmap = bitmapImage->frameAtIndex(i);
+    			if (!bitmap)
+    			    continue;
     			if (bitmap->Bounds().IntegerWidth() + 1 == iconSize.width()
     				&& bitmap->Bounds().IntegerHeight() + 1 == iconSize.height()) {
     				break;
