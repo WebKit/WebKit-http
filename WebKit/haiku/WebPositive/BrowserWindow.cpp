@@ -918,6 +918,7 @@ BrowserWindow::MenusBeginning()
 {
 	_UpdateHistoryMenu();
 	_UpdateClipboardItems();
+	_ShowInterface(true);
 }
 
 
