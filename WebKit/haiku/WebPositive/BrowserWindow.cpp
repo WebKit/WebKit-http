@@ -127,6 +127,10 @@ public:
 		:
 		BNavMenu(title, B_REFS_RECEIVED, target)
 	{
+		// Add these items here already, so the shortcuts work even when
+		// the menu has never been opened yet.
+		_AddStaticItems();
+
 		SetNavDir(navDir);
 	}
 
@@ -137,11 +141,17 @@ public:
 		BNavMenu::AttachedToWindow();
 		if (CountItems() > 0)
 			AddItem(new BSeparatorItem(), 0);
+		_AddStaticItems();
+		DoLayout();
+	}
+
+private:
+	void _AddStaticItems()
+	{
 		AddItem(new BMenuItem("Manage bookmarks",
 			new BMessage(SHOW_BOOKMARKS), 'M'), 0);
 		AddItem(new BMenuItem("Bookmark this page",
 			new BMessage(CREATE_BOOKMARK), 'B'), 0);
-		DoLayout();
 	}
 };
 
