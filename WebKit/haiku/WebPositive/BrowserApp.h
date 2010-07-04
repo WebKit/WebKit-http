@@ -77,8 +77,6 @@ private:
 
 			DownloadWindow*		fDownloadWindow;
 			SettingsWindow*		fSettingsWindow;
-
-			BCatalog			fAppCatalog;
 };
 
 

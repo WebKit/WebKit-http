@@ -71,7 +71,6 @@ BrowserApp::BrowserApp()
 	fDownloadWindow(NULL),
 	fSettingsWindow(NULL)
 {
-	be_locale->GetAppCatalog(&fAppCatalog);
 }
 
 
