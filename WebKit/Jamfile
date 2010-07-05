@@ -162,7 +162,7 @@ Application WebPositive :
 	# Other required libraries
 	curl icu-common icu-data png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd locale network liblocalestub.a stdc++ tracker translation
+	be bsd locale localestub network stdc++ tracker translation
 	:
 	WebPositive.rdef
 ;
