@@ -420,13 +420,9 @@ int32
 BDefaultChoiceView::CountVisibleChoices() const
 {
 	if (fListView)
-	{
 		return min_c(fMaxVisibleChoices, fListView->CountItems());
-	}
 	else
-	{
 		return 0;
-	}
 }
 
 
