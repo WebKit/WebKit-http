@@ -419,7 +419,14 @@ BDefaultChoiceView::ChoicesAreShown()
 int32
 BDefaultChoiceView::CountVisibleChoices() const
 {
-	return min_c(fMaxVisibleChoices, fListView->CountItems());
+	if (fListView)
+	{
+		return min_c(fMaxVisibleChoices, fListView->CountItems());
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 
