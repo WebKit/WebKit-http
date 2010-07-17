@@ -251,7 +251,7 @@ SharedLibrary libjavascriptcore.so :
 
     :
     # Other required libraries
-    icu-common icu-data icu-i18n stdc++
+    icuuc icudata icui18n stdc++
     # Haiku libraries
     be
 ;

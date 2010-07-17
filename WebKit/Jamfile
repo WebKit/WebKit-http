@@ -160,7 +160,7 @@ Application WebPositive :
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so
 	# Other required libraries
-	curl icu-common icu-data png sqlite3 xml2 z
+	curl icuuc icudata png sqlite3 xml2 z
 	# Haiku libraries
 	be bsd locale localestub network stdc++ tracker translation
 	:
