@@ -344,7 +344,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
     CALLED();
     if (m_loadingErrorPage) {
         TRACE("m_loadingErrorPage\n");
-        return;
+        m_loadingErrorPage = false;
     }
 
     BMessage message(LOAD_NEGOTIATING);
@@ -958,7 +958,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
-    return String("Mozilla/5.0 (compatible; U; WebPositive/528+; Haiku) AppleWebKit/528+ (KHTML, like Gecko) Safari/528+");
+    return String("Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/533.4 (KHTML, like Gecko) Chrome/5.0.375.55 Safari/533.4");
 }
 
 bool FrameLoaderClientHaiku::canCachePage() const
