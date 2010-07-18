@@ -87,7 +87,7 @@ SharedLibrary libwebkit.so :
 	:
 	libjavascriptcore.so libwebcore.so
 	# Other required libraries
-	icu-common stdc++
+	icuuc stdc++
 	# Haiku libraries
 	be translation tracker
 ;
@@ -105,7 +105,7 @@ Application HaikuLauncher :
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so
 	# Other required libraries
-	curl icu-common icu-data png sqlite3 xml2 z
+	curl icuuc icudt png sqlite3 xml2 z
 	# Haiku libraries
 	be bsd network stdc++ translation
 	:
