@@ -32,6 +32,7 @@
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
+#include <Locale.h>
 #include <MenuItem.h>
 #include <MenuField.h>
 #include <Message.h>
