@@ -27,6 +27,12 @@
 #include "Language.h"
 
 #include "PlatformString.h"
+
+// JavascriptCore also has a Locker.h which is taking precedence over ours
+// hence the explicit path declaration
+// otherwise BLanguage fails to build since its BLocker include fails.
+
+#include <support/Locker.h>
 #include <Locale.h>
 #include <LocaleRoster.h>
 #include <stdio.h>
