@@ -429,9 +429,14 @@ TabContainerView::_TabAt(const BPoint& where) const
 	BGroupLayout* layout = GroupLayout();
 	int32 count = layout->CountItems() - 1;
 	for (int32 i = 0; i < count; i++) {
-		TabLayoutItem* item = dynamic_cast<TabLayoutItem*>(
-			layout->ItemAt(i));
-		if (item && item->IsVisible() && item->Frame().Contains(where))
+		TabLayoutItem* item = dynamic_cast<TabLayoutItem*>(layout->ItemAt(i));
+		if (item == NULL || !item->IsVisible())
+			continue;
+		// Account for the fact that the tab frame does not contain the
+		// visible bottom border.
+		BRect frame = item->Frame();
+		frame.bottom++;
+		if (frame.Contains(where))
 			return item->Parent();
 	}
 	return NULL;
