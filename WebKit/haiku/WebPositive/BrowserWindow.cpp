@@ -544,6 +544,9 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 		} else if (bytes[0] == B_RIGHT_ARROW && modifiers == B_COMMAND_KEY) {
 			PostMessage(GO_FORWARD);
 			return;
+		} else if (bytes[0] == B_ESCAPE) {
+			PostMessage(STOP);
+			return;
 		} else if (bytes[0] == B_FUNCTION_KEY) {
 			// Some function key Firefox compatibility
 			int32 key;
@@ -2084,27 +2087,27 @@ BrowserWindow::_HandlePageSourceResult(const BMessage* message)
 		// TODO: What if it isn't HTML, but for example SVG?
 		BString source;
 		ret = message->FindString("source", &source);
-	
+
 		if (ret == B_OK)
 			ret = find_directory(B_COMMON_TEMP_DIRECTORY, &pathToPageSource);
-	
+
 		BString tmpFileName("PageSource_");
 		tmpFileName << system_time() << ".html";
 		if (ret == B_OK)
 			ret = pathToPageSource.Append(tmpFileName.String());
-	
+
 		BFile pageSourceFile(pathToPageSource.Path(),
 			B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY);
 		if (ret == B_OK)
 			ret = pageSourceFile.InitCheck();
-	
+
 		if (ret == B_OK) {
 			ssize_t written = pageSourceFile.Write(source.String(),
 				source.Length());
 			if (written != source.Length())
 				ret = (status_t)written;
 		}
-	
+
 		if (ret == B_OK) {
 			const char* type = "text/html";
 			size_t size = strlen(type);
