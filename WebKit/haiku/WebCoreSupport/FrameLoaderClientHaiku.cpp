@@ -198,7 +198,7 @@ bool FrameLoaderClientHaiku::shouldUseCredentialStorage(DocumentLoader*, unsigne
 void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge& challenge)
 {
     const ProtectionSpace& space = challenge.protectionSpace();
-    String text = "Host \"" + space.host() + "\" requestes authentication for realm \"" + space.realm() + "\"\n";
+    String text = "Host \"" + space.host() + "\" requests authentication for realm \"" + space.realm() + "\"\n";
     text += "Authentication Scheme: ";
     switch (space.authenticationScheme()) {
     case ProtectionSpaceAuthenticationSchemeHTTPBasic:
