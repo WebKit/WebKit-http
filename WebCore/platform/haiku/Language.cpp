@@ -28,11 +28,6 @@
 
 #include "PlatformString.h"
 
-// JavascriptCore also has a Locker.h which is taking precedence over ours
-// hence the explicit path declaration
-// otherwise BLanguage fails to build since its BLocker include fails.
-
-#include <support/Locker.h>
 #include <Locale.h>
 #include <LocaleRoster.h>
 #include <stdio.h>
@@ -45,9 +40,9 @@ String defaultLanguage()
     static bool initialized = false;
     if (!initialized) {
     	initialized = true;
-    	BLanguage* language;
+    	BLanguage language;
         if (be_locale_roster->GetDefaultLanguage(&language) == B_OK)
-            local = language->ID();
+            local = language.ID();
         else
             local = "en_US";
 	    local.ReplaceAll('_', '-');
