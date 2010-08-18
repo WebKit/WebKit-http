@@ -431,6 +431,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 			.SetInsets(kInsetSpacing, kInsetSpacing,
 				kInsetSpacing, kInsetSpacing)
 		)
+		.TopView()
 	;
 
 	// Navigation group
@@ -445,6 +446,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 				kInsetSpacing)
 		)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
+		.TopView()
 	;
 
 	// Status bar group
@@ -456,6 +458,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 			.AddStrut(12 - kElementSpacing)
 			.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
 		)
+		.TopView()
 	;
 
 	BitmapButton* toggleFullscreenButton = new BitmapButton(kWindowIconBits,
@@ -466,6 +469,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	BView* menuBarGroup = BGroupLayoutBuilder(B_HORIZONTAL)
 		.Add(mainMenu)
 		.Add(toggleFullscreenButton, 0.0f)
+		.TopView()
 	;
 
 	// Layout

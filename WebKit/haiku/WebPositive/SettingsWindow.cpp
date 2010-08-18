@@ -365,6 +365,8 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 
 		.SetInsets(spacing, spacing, spacing, spacing)
+
+		.TopView()
 	;
 	view->SetName(B_TRANSLATE("General"));
 	return view;
@@ -422,6 +424,8 @@ SettingsWindow::_CreateFontsPage(float spacing)
 		.Add(fFixedSizesMenu->CreateMenuBarLayoutItem(), 1, 13)
 
 		.SetInsets(spacing, spacing, spacing, spacing)
+
+		.View()
 	;
 	view->SetName(B_TRANSLATE("Fonts"));
 	return view;
@@ -464,6 +468,8 @@ SettingsWindow::_CreateProxyPage(float spacing)
 		.Add(BSpaceLayoutItem::CreateGlue())
 
 		.SetInsets(spacing, spacing, spacing, spacing)
+
+		.TopView()
 	;
 	view->SetName(B_TRANSLATE("Proxy server"));
 	return view;

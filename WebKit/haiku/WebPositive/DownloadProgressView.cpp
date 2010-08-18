@@ -266,12 +266,14 @@ DownloadProgressView::Init(BMessage* archive)
 	BView* verticalGroup = BGroupLayoutBuilder(B_VERTICAL, 3)
 		.Add(fStatusBar)
 		.Add(fInfoView)
+		.TopView()
 	;
 	verticalGroup->SetViewColor(ViewColor());
 	layout->AddView(verticalGroup);
 	verticalGroup = BGroupLayoutBuilder(B_VERTICAL, 3)
 		.Add(fTopButton)
 		.Add(fBottomButton)
+		.TopView()
 	;
 	verticalGroup->SetViewColor(ViewColor());
 	layout->AddView(verticalGroup);
