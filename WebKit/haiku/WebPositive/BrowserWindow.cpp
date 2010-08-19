@@ -62,6 +62,7 @@
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
+#include <LayoutBuilder.h>
 #include <MenuBar.h>
 #include <MenuItem.h>
 #include <MessageRunner.h>
@@ -419,7 +420,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFindCloseButton = new BButton("Close",
 		new BMessage(EDIT_HIDE_FIND_GROUP));
 	fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
-	BView* findGroup = BGroupLayoutBuilder(B_VERTICAL)
+	BGroupLayout* findGroup = BLayoutBuilder::Group<>(B_VERTICAL)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
 			.Add(fFindTextControl)
@@ -431,12 +432,11 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 			.SetInsets(kInsetSpacing, kInsetSpacing,
 				kInsetSpacing, kInsetSpacing)
 		)
-		.TopView()
 	;
 
 	// Navigation group
-	BView* navigationGroup = BGroupLayoutBuilder(B_VERTICAL)
-		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+	BGroupLayout* navigationGroup = BLayoutBuilder::Group<>(B_VERTICAL)
+		.Add(BLayoutBuilder::Group<>(B_HORIZONTAL, kElementSpacing)
 			.Add(fBackButton)
 			.Add(fForwardButton)
 			.Add(fStopButton)
@@ -446,19 +446,17 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 				kInsetSpacing)
 		)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-		.TopView()
 	;
 
 	// Status bar group
-	BView* statusGroup = BGroupLayoutBuilder(B_VERTICAL)
+	BGroupLayout* statusGroup = BLayoutBuilder::Group<>(B_VERTICAL)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
-		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
+		.Add(BLayoutBuilder::Group<>(B_HORIZONTAL, kElementSpacing)
 			.Add(fStatusText)
 			.Add(fLoadingProgressBar, 0.2)
 			.AddStrut(12 - kElementSpacing)
 			.SetInsets(kInsetSpacing, 0, kInsetSpacing, 0)
 		)
-		.TopView()
 	;
 
 	BitmapButton* toggleFullscreenButton = new BitmapButton(kWindowIconBits,
@@ -466,14 +464,13 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		new BMessage(TOGGLE_FULLSCREEN));
 	toggleFullscreenButton->SetBackgroundMode(BitmapButton::MENUBAR_BACKGROUND);
 
-	BView* menuBarGroup = BGroupLayoutBuilder(B_HORIZONTAL)
+	BGroupLayout* menuBarGroup = BLayoutBuilder::Group<>(B_HORIZONTAL)
 		.Add(mainMenu)
 		.Add(toggleFullscreenButton, 0.0f)
-		.TopView()
 	;
-
+	
 	// Layout
-	AddChild(BGroupLayoutBuilder(B_VERTICAL)
+	AddChild(BLayoutBuilder::Group<>(B_VERTICAL)
 #if !INTEGRATE_MENU_INTO_TAB_BAR
 		.Add(menuBarGroup)
 #endif
@@ -489,12 +486,12 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	mainMenu->SetViewColor(B_TRANSPARENT_COLOR);
 
 	fURLInputGroup->MakeFocus(true);
-
-	fMenuGroup = layoutItemFor(menuBarGroup);
-	fTabGroup = layoutItemFor(fTabManager->TabGroup());
-	fNavigationGroup = layoutItemFor(navigationGroup);
-	fFindGroup = layoutItemFor(findGroup);
-	fStatusGroup = layoutItemFor(statusGroup);
+	
+	fMenuGroup = menuBarGroup;
+	fTabGroup = fTabManager->TabGroup()->GetLayout();
+	fNavigationGroup = navigationGroup;
+	fFindGroup = findGroup;
+	fStatusGroup = statusGroup;
 	fToggleFullscreenButton = layoutItemFor(toggleFullscreenButton);
 
 	fFindGroup->SetVisible(false);
