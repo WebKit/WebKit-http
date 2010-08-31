@@ -28,6 +28,9 @@
 
 #include "PlatformString.h"
 
+// JavaScriptCore's Locker.h winds up taking precedence over ours
+// hence the explicit path
+#include <os/support/Locker.h>
 #include <Locale.h>
 #include <LocaleRoster.h>
 #include <stdio.h>
@@ -41,7 +44,7 @@ String defaultLanguage()
     if (!initialized) {
     	initialized = true;
     	BLanguage language;
-        if (be_locale_roster->GetDefaultLanguage(&language) == B_OK)
+        if (be_locale->GetLanguage(&language) == B_OK)
             local = language.ID();
         else
             local = "en_US";
