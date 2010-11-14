@@ -44,7 +44,7 @@ String defaultLanguage()
     if (!initialized) {
     	initialized = true;
     	BLanguage language;
-        if (be_locale->GetLanguage(&language) == B_OK)
+        if (BLocale::Default()->GetLanguage(&language) == B_OK)
             local = language.ID();
         else
             local = "en_US";
