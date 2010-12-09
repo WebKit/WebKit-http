@@ -66,7 +66,7 @@ class DownloadsContainerView : public BGroupView {
 public:
 	DownloadsContainerView()
 		:
-		BGroupView(B_VERTICAL)
+		BGroupView(B_VERTICAL, 0.0)
 	{
 		SetFlags(Flags() | B_PULSE_NEEDED);
 		SetViewColor(245, 245, 245);
@@ -149,7 +149,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 		downloadPath.Path());
 	settings->SetValue(kSettingsKeyDownloadPath, fDownloadPath);
 
-	SetLayout(new BGroupLayout(B_VERTICAL));
+	SetLayout(new BGroupLayout(B_VERTICAL, 0.0));
 
 	DownloadsContainerView* downloadsGroupView = new DownloadsContainerView();
 	fDownloadViewsLayout = downloadsGroupView->GroupLayout();
@@ -180,7 +180,7 @@ DownloadWindow::DownloadWindow(BRect frame, bool visible,
 
 	const float spacing = be_control_look->DefaultItemSpacing();
 
-	AddChild(BGroupLayoutBuilder(B_VERTICAL)
+	AddChild(BGroupLayoutBuilder(B_VERTICAL, 0.0)
 		.Add(menuBar)
 		.Add(fDownloadsScrollView)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))

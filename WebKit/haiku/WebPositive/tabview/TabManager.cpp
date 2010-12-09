@@ -197,7 +197,7 @@ class TabContainerGroup : public BGroupView {
 public:
 	TabContainerGroup(TabContainerView* tabContainerView)
 		:
-		BGroupView(B_HORIZONTAL),
+		BGroupView(B_HORIZONTAL, 0.0),
 		fTabContainerView(tabContainerView),
 		fScrollLeftTabButton(NULL),
 		fScrollRightTabButton(NULL)
@@ -263,7 +263,7 @@ class TabButtonContainer : public BGroupView {
 public:
 	TabButtonContainer()
 		:
-		BGroupView(B_HORIZONTAL)
+		BGroupView(B_HORIZONTAL, 0.0)
 	{
 		SetFlags(Flags() | B_WILL_DRAW);
 		SetViewColor(B_TRANSPARENT_COLOR);

@@ -49,7 +49,7 @@ static const float kLeftTabInset = 4;
 
 TabContainerView::TabContainerView(Controller* controller)
 	:
-	BGroupView(B_HORIZONTAL),
+	BGroupView(B_HORIZONTAL, 0.0),
 	fLastMouseEventTab(NULL),
 	fMouseDown(false),
 	fClickCount(0),

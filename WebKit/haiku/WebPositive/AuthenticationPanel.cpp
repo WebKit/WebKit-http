@@ -136,9 +136,9 @@ bool AuthenticationPanel::getAuthentication(const BString& text,
 	m_rememberCredentialsCheckBox->SetValue(previousRememberCredentials);
 
 	// create layout
-	SetLayout(new BGroupLayout(B_VERTICAL));
+	SetLayout(new BGroupLayout(B_VERTICAL, 0.0));
 	float spacing = be_control_look->DefaultItemSpacing();
-	AddChild(BGroupLayoutBuilder(B_VERTICAL)
+	AddChild(BGroupLayoutBuilder(B_VERTICAL, 0.0)
 	    .Add(BGridLayoutBuilder(0, spacing)
 	        .Add(textView, 0, 0, 2)
 	        .Add(m_usernameTextControl->CreateLabelLayoutItem(), 0, 1)

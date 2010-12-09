@@ -540,7 +540,7 @@ private:
 
 URLInputGroup::URLInputGroup(BMessage* goMessage)
 	:
-	BGroupView(B_HORIZONTAL),
+	BGroupView(B_HORIZONTAL, 0.0),
 	fWindowActive(false)
 {
 	GroupLayout()->SetInsets(2, 2, 2, 2);

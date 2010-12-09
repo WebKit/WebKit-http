@@ -420,7 +420,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fFindCloseButton = new BButton("Close",
 		new BMessage(EDIT_HIDE_FIND_GROUP));
 	fFindCaseSensitiveCheckBox = new BCheckBox("Match case");
-	BGroupLayout* findGroup = BLayoutBuilder::Group<>(B_VERTICAL)
+	BGroupLayout* findGroup = BLayoutBuilder::Group<>(B_VERTICAL, 0.0)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BGroupLayoutBuilder(B_HORIZONTAL, kElementSpacing)
 			.Add(fFindTextControl)
@@ -435,7 +435,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	;
 
 	// Navigation group
-	BGroupLayout* navigationGroup = BLayoutBuilder::Group<>(B_VERTICAL)
+	BGroupLayout* navigationGroup = BLayoutBuilder::Group<>(B_VERTICAL, 0.0)
 		.Add(BLayoutBuilder::Group<>(B_HORIZONTAL, kElementSpacing)
 			.Add(fBackButton)
 			.Add(fForwardButton)
@@ -449,7 +449,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	;
 
 	// Status bar group
-	BGroupLayout* statusGroup = BLayoutBuilder::Group<>(B_VERTICAL)
+	BGroupLayout* statusGroup = BLayoutBuilder::Group<>(B_VERTICAL, 0.0)
 		.Add(new BSeparatorView(B_HORIZONTAL, B_PLAIN_BORDER))
 		.Add(BLayoutBuilder::Group<>(B_HORIZONTAL, kElementSpacing)
 			.Add(fStatusText)
@@ -470,7 +470,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	;
 	
 	// Layout
-	AddChild(BLayoutBuilder::Group<>(B_VERTICAL)
+	AddChild(BLayoutBuilder::Group<>(B_VERTICAL, 0.0)
 #if !INTEGRATE_MENU_INTO_TAB_BAR
 		.Add(menuBarGroup)
 #endif
