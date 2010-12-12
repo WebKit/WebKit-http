@@ -1211,9 +1211,9 @@ BrowserWindow::LoadProgress(float progress, BWebView* view)
 		return;
 
 	if (progress < 100 && fLoadingProgressBar->IsHidden())
-		fLoadingProgressBar->Show();
+		_ShowProgressBar(true);
 	else if (progress == 100 && !fLoadingProgressBar->IsHidden())
-		fLoadingProgressBar->Hide();
+		_ShowProgressBar(false);
 	fLoadingProgressBar->SetTo(progress);
 }
 
@@ -2033,6 +2033,24 @@ BrowserWindow::_ShowInterface(bool show)
 	// Fix in Haiku?
 	while (!fLoadingProgressBar->IsHidden())
 		fLoadingProgressBar->Hide();
+}
+
+
+void
+BrowserWindow::_ShowProgressBar(bool show)
+{
+	if (show) {
+		if (!fStatusGroup->IsVisible() && (fVisibleInterfaceElements & INTERFACE_ELEMENT_STATUS) != 0)
+			fStatusGroup->SetVisible(true);
+		fLoadingProgressBar->Show();
+	} else {
+		if (!fInterfaceVisible)
+			fStatusGroup->SetVisible(false);
+		// TODO: This is also used in _ShowInterface. Without it the status bar
+		// doesn't always hide again. It may be an Interface Kit bug.
+		while (!fLoadingProgressBar->IsHidden())
+			fLoadingProgressBar->Hide();
+	}
 }
 
 

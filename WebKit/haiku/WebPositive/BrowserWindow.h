@@ -187,6 +187,7 @@ private:
 			void				_SetAutoHideInterfaceInFullscreen(bool doIt);
 			void				_CheckAutoHideInterface();
 			void				_ShowInterface(bool show);
+			void				_ShowProgressBar(bool);
 			void				_InvokeButtonVisibly(BButton* button);
 
 			BString				_NewTabURL(bool isNewWindow) const;
