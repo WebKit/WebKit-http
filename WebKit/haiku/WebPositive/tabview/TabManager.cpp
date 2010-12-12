@@ -831,6 +831,15 @@ TabManager::SetTabLabel(int32 tabIndex, const char* label)
 	fTabContainerView->SetTabLabel(tabIndex, label);
 }
 
+const BString&
+TabManager::TabLabel(int32 tabIndex)
+{
+	TabView* tab = fTabContainerView->TabAt(tabIndex);
+	if (tab)
+		return tab->Label();
+	else
+		return "";
+}
 
 void
 TabManager::SetTabIcon(const BView* containedView, const BBitmap* icon)

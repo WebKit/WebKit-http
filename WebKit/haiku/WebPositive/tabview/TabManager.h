@@ -76,6 +76,7 @@ public:
 			int32				CountTabs() const;
 
 			void				SetTabLabel(int32 tabIndex, const char* label);
+	const	BString&			TabLabel(int32);
 			void				SetTabIcon(const BView* containedView,
 									const BBitmap* icon);
 			void				SetCloseButtonsAvailable(bool available);

@@ -1246,6 +1246,10 @@ BrowserWindow::LoadFinished(const BString& url, BWebView* view)
 
 	NavigationCapabilitiesChanged(fBackButton->IsEnabled(),
 		fForwardButton->IsEnabled(), false, view);
+
+	int32 tabIndex = fTabManager->TabForView(view);
+	if (tabIndex > 0 && strcmp("New tab", fTabManager->TabLabel(tabIndex)) == 0)
+		fTabManager->SetTabLabel(tabIndex, url);
 }
 
 
