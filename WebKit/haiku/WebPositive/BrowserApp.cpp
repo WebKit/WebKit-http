@@ -358,9 +358,10 @@ BrowserApp::_CreateNewPage(const BString& url, bool fullscreen)
 			continue;
 		if (webWindow->Lock()) {
 			if (webWindow->Workspaces() & workspace) {
-				if (webWindow->IsBlankTab())
-					webWindow->CurrentWebView()->LoadURL(url);
-				else
+				if (webWindow->IsBlankTab()) {
+					if (url.Length() != 0)
+						webWindow->CurrentWebView()->LoadURL(url);
+				} else
 					webWindow->CreateNewTab(url, true);
 				webWindow->Activate();
 				webWindow->CurrentWebView()->MakeFocus(true);
