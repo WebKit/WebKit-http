@@ -152,13 +152,7 @@ BrowserApp::ReadyToRun()
 #endif
 
 	fLastWindowFrame = fSettings->GetValue("window frame", fLastWindowFrame);
-	// Put download window in lower right of screen. 375 is about the minimum
-	// width with the default layout.
-	BRect defaultDownloadWindowFrame(0, 0, 375, 275);
-	BRect screenFrame = BScreen().Frame();
-	// The extra 5 pixels is for the decorator frame
-	defaultDownloadWindowFrame.OffsetTo(screenFrame.Width() - defaultDownloadWindowFrame.Width() - 5,
-		screenFrame.Height() - defaultDownloadWindowFrame.Height() - 5);
+	BRect defaultDownloadWindowFrame(-10, -10, 365, 265);
 	BRect downloadWindowFrame = fSettings->GetValue("downloads window frame",
 		defaultDownloadWindowFrame);
 	BRect settingsWindowFrame = fSettings->GetValue("settings window frame",
@@ -167,6 +161,17 @@ BrowserApp::ReadyToRun()
 
 	fDownloadWindow = new DownloadWindow(downloadWindowFrame, showDownloads,
 		fSettings);
+	if (downloadWindowFrame == defaultDownloadWindowFrame) {
+		// Initially put download window in lower right of screen.
+		BRect screenFrame = BScreen().Frame();
+		BMessage decoratorSettings;
+		fDownloadWindow->GetDecoratorSettings(&decoratorSettings);
+		float borderWidth = 0;
+		if (decoratorSettings.FindFloat("border width", &borderWidth) != B_OK)
+			borderWidth = 5;
+		fDownloadWindow->MoveTo(screenFrame.Width() - fDownloadWindow->Frame().Width() - borderWidth,
+			screenFrame.Height() - fDownloadWindow->Frame().Height() - borderWidth);
+	}
 	fSettingsWindow = new SettingsWindow(settingsWindowFrame, fSettings);
 
 	BWebPage::SetDownloadListener(BMessenger(fDownloadWindow));
