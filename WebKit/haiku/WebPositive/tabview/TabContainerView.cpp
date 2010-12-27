@@ -464,11 +464,8 @@ TabContainerView::_MouseMoved(BPoint where, uint32 _transit,
 		fLastMouseEventTab = tab;
 		if (fLastMouseEventTab)
 			fLastMouseEventTab->MouseMoved(where, B_ENTERED_VIEW, dragMessage);
-		else {
-			SetToolTip(static_cast<BToolTip*>(NULL));
-			HideToolTip();
-			SetToolTip("Double-click or middle-click to open new tab.");
-		}
+		else
+			fController->SetToolTip("Double-click or middle-click to open new tab.");
 	}
 }
 
