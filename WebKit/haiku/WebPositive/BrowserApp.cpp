@@ -152,8 +152,15 @@ BrowserApp::ReadyToRun()
 #endif
 
 	fLastWindowFrame = fSettings->GetValue("window frame", fLastWindowFrame);
+	// Put download window in lower right of screen. 375 is about the minimum
+	// width with the default layout.
+	BRect defaultDownloadWindowFrame(0, 0, 375, 275);
+	BRect screenFrame = BScreen().Frame();
+	// The extra 5 pixels is for the decorator frame
+	defaultDownloadWindowFrame.OffsetTo(screenFrame.Width() - defaultDownloadWindowFrame.Width() - 5,
+		screenFrame.Height() - defaultDownloadWindowFrame.Height() - 5);
 	BRect downloadWindowFrame = fSettings->GetValue("downloads window frame",
-		BRect(100, 100, 300, 250));
+		defaultDownloadWindowFrame);
 	BRect settingsWindowFrame = fSettings->GetValue("settings window frame",
 		BRect());
 	bool showDownloads = fSettings->GetValue("show downloads", false);
