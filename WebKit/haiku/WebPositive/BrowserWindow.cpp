@@ -533,16 +533,16 @@ void
 BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 {
 	const char* bytes;
-	uint32 modifiers;
+	uint32 modifierKeys;
 	if ((message->what == B_KEY_DOWN || message->what == B_UNMAPPED_KEY_DOWN)
 		&& message->FindString("bytes", &bytes) == B_OK
-		&& message->FindInt32("modifiers", (int32*)&modifiers) == B_OK) {
+		&& message->FindInt32("modifiers", (int32*)&modifierKeys) == B_OK) {
 
-		modifiers = modifiers & 0x000000ff;
-		if (bytes[0] == B_LEFT_ARROW && modifiers == B_COMMAND_KEY) {
+		modifierKeys = modifierKeys & 0x000000ff;
+		if (bytes[0] == B_LEFT_ARROW && modifierKeys == B_COMMAND_KEY) {
 			PostMessage(GO_BACK);
 			return;
-		} else if (bytes[0] == B_RIGHT_ARROW && modifiers == B_COMMAND_KEY) {
+		} else if (bytes[0] == B_RIGHT_ARROW && modifierKeys == B_COMMAND_KEY) {
 			PostMessage(GO_FORWARD);
 			return;
 		} else if (bytes[0] == B_ESCAPE) {
@@ -576,7 +576,7 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 		} else if (target == fFindTextControl->TextView()) {
 			// Handle B_RETURN when the find text control has focus.
 			if (bytes[0] == B_RETURN) {
-				if ((modifiers & B_SHIFT_KEY) != 0)
+				if ((modifierKeys & B_SHIFT_KEY) != 0)
 					_InvokeButtonVisibly(fFindPreviousButton);
 				else
 					_InvokeButtonVisibly(fFindNextButton);
@@ -593,6 +593,30 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 		if (message->FindInt64("when", &fLastMouseMovedTime) != B_OK)
 			fLastMouseMovedTime = system_time();
 		_CheckAutoHideInterface();
+	}
+	if (message->what == B_MOUSE_WHEEL_CHANGED) {
+		BPoint where;
+		uint32 buttons;
+		CurrentWebView()->GetMouse(&where, &buttons, false);
+		// Only do this when the mouse is over the web view
+		if (CurrentWebView()->Bounds().Contains(where)) {
+			// Zoom and unzoom text on Command + mouse wheel.
+			// This could of course (and maybe should be) implemented in the WebView, but there
+			// would need to be a way for the WebView to know the setting of the
+			// fZoomTextOnly member here. Plus other clients of the API may not want
+			// this feature.
+			if ((modifiers() & B_COMMAND_KEY) != 0) {
+				float dy;
+				if (message->FindFloat("be:wheel_delta_y", &dy) == B_OK) {
+					if (dy < 0)
+						CurrentWebView()->IncreaseZoomFactor(fZoomTextOnly);
+					else
+						CurrentWebView()->DecreaseZoomFactor(fZoomTextOnly);
+					return;
+				}
+			}
+		} else // Also don't scroll up and down if the mouse is not over the web view
+			return;
 	}
 	BWebWindow::DispatchMessage(message, target);
 }
