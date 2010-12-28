@@ -191,6 +191,7 @@ private:
 			void				_InvokeButtonVisibly(BButton* button);
 
 			BString				_NewTabURL(bool isNewWindow) const;
+			BString				_SmartURLHandler(const BString& url) const;
 
 			void				_HandlePageSourceResult(
 									const BMessage* message);

@@ -618,7 +618,10 @@ BrowserWindow::MessageReceived(BMessage* message)
 			if (message->FindString("url", &url) != B_OK)
 				url = fURLInputGroup->Text();
 			_SetPageIcon(CurrentWebView(), NULL);
-			CurrentWebView()->LoadURL(url.String());
+			BString newUrl = _SmartURLHandler(url);
+			if (newUrl != url)
+				fURLInputGroup->TextView()->SetText(newUrl);
+			CurrentWebView()->LoadURL(newUrl.String());
 			break;
 		}
 		case GO_BACK:
@@ -2087,6 +2090,16 @@ BrowserWindow::_NewTabURL(bool isNewWindow) const
 			break;
 	}
 	return url;
+}
+
+
+BString
+BrowserWindow::_SmartURLHandler(const BString& url) const
+{
+	BString result = url;
+	if (url.FindFirst(".") == B_ERROR || url.FindFirst(" ") != B_ERROR)
+		result.Prepend("http://www.google.com/#q=");
+	return result;
 }
 
 
