@@ -2098,7 +2098,7 @@ BrowserWindow::_SmartURLHandler(const BString& url) const
 {
 	BString result = url;
 	if (url.FindFirst(".") == B_ERROR || url.FindFirst(" ") != B_ERROR)
-		result.Prepend("http://www.google.com/#q=");
+		result.Prepend("http://www.google.com/search?q=");
 	return result;
 }
 
