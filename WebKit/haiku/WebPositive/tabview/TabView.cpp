@@ -67,7 +67,7 @@ BSize
 TabView::MinSize()
 {
 	BSize size(MaxSize());
-	size.width = 100.0f;
+	size.width = 60.0f;
 	return size;
 }
 
@@ -83,8 +83,7 @@ BSize
 TabView::MaxSize()
 {
 	float extra = be_control_look->DefaultLabelSpacing();
-	float labelWidth = fContainerView->StringWidth(fLabel.String()) + 2 * extra;
-	labelWidth = min_c(300.0f, labelWidth);
+	float labelWidth = 300.0f;
 	return BSize(labelWidth, _LabelHeight() + extra);
 }
 
