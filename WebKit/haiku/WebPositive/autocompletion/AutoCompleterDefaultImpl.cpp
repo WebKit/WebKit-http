@@ -10,6 +10,7 @@
 
 #include <ListView.h>
 #include <Screen.h>
+#include <ScrollView.h>
 #include <Window.h>
 
 
@@ -324,7 +325,7 @@ BDefaultChoiceView::BDefaultChoiceView()
 	:
 	fWindow(NULL),
 	fListView(NULL),
-	fMaxVisibleChoices(5)
+	fMaxVisibleChoices(8)
 {
 	
 }
@@ -373,10 +374,12 @@ BDefaultChoiceView::ShowChoices(BAutoCompleter::CompletionStyle* completer)
 		);
 	}
 
+	BScrollView *scrollView = new BScrollView("", fListView, B_FOLLOW_NONE, 0, false, true, B_NO_BORDER);
+
 	fWindow = new BWindow(BRect(0, 0, 100, 100), "", B_BORDERED_WINDOW_LOOK, 
 		B_NORMAL_WINDOW_FEEL, B_NOT_MOVABLE | B_WILL_ACCEPT_FIRST_CLICK 
 			| B_AVOID_FOCUS | B_ASYNCHRONOUS_CONTROLS);
-	fWindow->AddChild(fListView);
+	fWindow->AddChild(scrollView);
 
 	int32 visibleCount = min_c(count, fMaxVisibleChoices);
 	float listHeight = fListView->ItemFrame(visibleCount - 1).bottom + 1;
@@ -390,8 +393,13 @@ BDefaultChoiceView::ShowChoices(BAutoCompleter::CompletionStyle* completer)
 	else
 		listRect.OffsetTo(pvRect.left, pvRect.top - listHeight);
 
-	fListView->MoveTo(0, 0);
-	fListView->ResizeTo(listRect.Width(), listRect.Height());
+	// Moving here to cut off the scrollbar top
+	scrollView->MoveTo(0, -1);
+	// Adding the 1 and 2 to cut-off the scroll-bar top, right and bottom
+	scrollView->ResizeTo(listRect.Width() + 1, listRect.Height() + 2);
+	// Move here to compensate for the above
+	fListView->MoveTo(0, 1);
+	fListView->ResizeTo(listRect.Width() - B_V_SCROLL_BAR_WIDTH, listRect.Height());
 	fWindow->MoveTo(listRect.left, listRect.top);
 	fWindow->ResizeTo(listRect.Width(), listRect.Height());
 	fWindow->Show();
