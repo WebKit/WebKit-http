@@ -31,6 +31,10 @@
 #include "HitTestResult.h"
 #include "KURL.h"
 #include "NotImplemented.h"
+#include "Frame.h"
+#include "FrameLoader.h"
+#include "FrameLoadRequest.h"
+#include "Page.h"
 #include "ResourceRequest.h"
 #include "WebPage.h"
 
@@ -68,6 +72,22 @@ void ContextMenuClientHaiku::downloadURL(const KURL& url)
     BWebPage::requestDownload(request);
 }
 
+void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
+{
+    String searchString = frame->selectedText();
+    searchString.stripWhiteSpace();
+    String encoded = encodeWithURLEscapeSequences(searchString);
+    encoded.replace("%20", "+");
+    
+    String url("http://www.google.com/search?q=");
+    url.append(encoded);
+    url.append("&ie=UTF-8&oe=UTF-8");
+
+    ResourceRequest request = ResourceRequest(url);
+    if (Page* page = frame->page())
+        page->mainFrame()->loader()->urlSelected(request, String(), 0, false, false, true, SendReferrer);
+}
+
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)
 {
     notImplemented();
@@ -85,11 +105,6 @@ bool ContextMenuClientHaiku::isSpeaking()
 }
 
 void ContextMenuClientHaiku::stopSpeaking()
-{
-    notImplemented();
-}
-
-void ContextMenuClientHaiku::searchWithGoogle(const Frame*)
 {
     notImplemented();
 }
