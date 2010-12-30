@@ -33,6 +33,7 @@ const char* kSettingsKeyShowTabsIfSinglePageOpen
 const char* kSettingsKeyAutoHideInterfaceInFullscreenMode
 	= "auto hide interface in full screen mode";
 const char* kSettingsKeyAutoHidePointer = "auto hide pointer";
+const char* kSettingsKeyShowHomeButton = "show home button";
 
 const char* kSettingsKeyNewWindowPolicy = "new window policy";
 const char* kSettingsKeyNewTabPolicy = "new tab policy";

@@ -387,6 +387,8 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	fHomeButton = new IconButton("Home", 0, NULL, new BMessage(HOME));
 	fHomeButton->SetIcon(206);
 	fHomeButton->TrimIcon();
+	if (!fAppSettings->GetValue(kSettingsKeyShowHomeButton, true))
+		fHomeButton->Hide();
 
 	// URL input group
 	fURLInputGroup = new URLInputGroup(new BMessage(GOTO_URL));
@@ -929,6 +931,12 @@ BrowserWindow::MessageReceived(BMessage* message)
 			} else if (name == kSettingsKeyAutoHideInterfaceInFullscreenMode
 				&& message->FindBool("value", &flag) == B_OK) {
 				_SetAutoHideInterfaceInFullscreen(flag);
+			} else if (name == kSettingsKeyShowHomeButton
+				&& message->FindBool("value", &flag) == B_OK) {
+				if (flag)
+					fHomeButton->Show();
+				else
+					fHomeButton->Hide();
 			}
 			break;
 		}

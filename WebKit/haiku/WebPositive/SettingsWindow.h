@@ -98,6 +98,7 @@ private:
 			BCheckBox*			fShowTabsIfOnlyOnePage;
 			BCheckBox*			fAutoHideInterfaceInFullscreenMode;
 			BCheckBox*			fAutoHidePointer;
+			BCheckBox*			fShowHomeButton;
 
 			FontSelectionView*	fStandardFontView;
 			FontSelectionView*	fSerifFontView;

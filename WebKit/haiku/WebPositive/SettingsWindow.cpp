@@ -73,6 +73,7 @@ enum {
 	MSG_TAB_DISPLAY_BEHAVIOR_CHANGED			= 'tdbc',
 	MSG_AUTO_HIDE_INTERFACE_BEHAVIOR_CHANGED	= 'ahic',
 	MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED		= 'ahpc',
+	MSG_SHOW_HOME_BUTTON_CHANGED				= 'shbc',
 
 	MSG_STANDARD_FONT_CHANGED					= 'stfc',
 	MSG_SERIF_FONT_CHANGED						= 'sefc',
@@ -203,6 +204,7 @@ SettingsWindow::MessageReceived(BMessage* message)
 		case MSG_TAB_DISPLAY_BEHAVIOR_CHANGED:
 		case MSG_AUTO_HIDE_INTERFACE_BEHAVIOR_CHANGED:
 		case MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED:
+		case MSG_SHOW_HOME_BUTTON_CHANGED:
 		case MSG_STANDARD_FONT_CHANGED:
 		case MSG_SERIF_FONT_CHANGED:
 		case MSG_SANS_SERIF_FONT_CHANGED:
@@ -338,6 +340,11 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		new BMessage(MSG_AUTO_HIDE_POINTER_BEHAVIOR_CHANGED));
 	fAutoHidePointer->SetValue(B_CONTROL_OFF);
 
+	fShowHomeButton = new BCheckBox("show home button",
+		B_TRANSLATE("Show Home Button"),
+		new BMessage(MSG_SHOW_HOME_BUTTON_CHANGED));
+	fShowHomeButton->SetValue(B_CONTROL_ON);
+
 	BView* view = BGroupLayoutBuilder(B_VERTICAL, spacing / 2)
 		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
 			.Add(fStartPageControl->CreateLabelLayoutItem(), 0, 0)
@@ -361,6 +368,7 @@ SettingsWindow::_CreateGeneralPage(float spacing)
 		.Add(fShowTabsIfOnlyOnePage)
 		.Add(fAutoHideInterfaceInFullscreenMode)
 		.Add(fAutoHidePointer)
+		.Add(fShowHomeButton)
 		.Add(fDaysInHistoryMenuControl)
 		.Add(BSpaceLayoutItem::CreateHorizontalStrut(spacing))
 
@@ -547,6 +555,9 @@ SettingsWindow::_CanApplySettings() const
 		(fAutoHidePointer->Value() == B_CONTROL_ON)
 		!= fSettings->GetValue(kSettingsKeyAutoHidePointer, false));
 
+	canApply = canApply || ((fShowHomeButton->Value() == B_CONTROL_ON)
+		!= fSettings->GetValue(kSettingsKeyShowHomeButton, true));
+
 	canApply = canApply || (_MaxHistoryAge()
 		!= BrowsingHistory::DefaultInstance()->MaxHistoryItemAge());
 
@@ -612,6 +623,8 @@ SettingsWindow::_ApplySettings()
 		fAutoHideInterfaceInFullscreenMode->Value() == B_CONTROL_ON);
 	fSettings->SetValue(kSettingsKeyAutoHidePointer,
 		fAutoHidePointer->Value() == B_CONTROL_ON);
+	fSettings->SetValue(kSettingsKeyShowHomeButton,
+		fShowHomeButton->Value() == B_CONTROL_ON);
 
 	// New page policies
 	fSettings->SetValue(kSettingsKeyNewWindowPolicy, _NewWindowPolicy());
@@ -679,6 +692,8 @@ SettingsWindow::_RevertSettings()
 			false));
 	fAutoHidePointer->SetValue(
 		fSettings->GetValue(kSettingsKeyAutoHidePointer, false));
+	fShowHomeButton->SetValue(
+		fSettings->GetValue(kSettingsKeyShowHomeButton, true));
 
 	BString text;
 	text << BrowsingHistory::DefaultInstance()->MaxHistoryItemAge();
