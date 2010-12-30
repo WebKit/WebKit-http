@@ -73,8 +73,7 @@ TextViewCompleter::TextViewCompleter(BTextView* textView, ChoiceModel* model,
 		new BDefaultChoiceView(), patternSelector),
 	BMessageFilter(B_KEY_DOWN),
 	fTextView(textView),
-	fModificationsReported(false),
-	fOriginalTextSaved(false)
+	fModificationsReported(false)
 {
 	fTextView->AddFilter(this);
 }
@@ -103,11 +102,6 @@ TextViewCompleter::TextModified(bool updateChoices)
 filter_result
 TextViewCompleter::Filter(BMessage* message, BHandler** target)
 {
-	if (!fOriginalTextSaved) {
-		fOriginalText = fTextView->Text();
-		fOriginalTextSaved = true;
-	}
-
 	const char* bytes;
 	int32 modifiers;
 	if (!target || message->FindString("bytes", &bytes) != B_OK
@@ -146,14 +140,8 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 		}
 
 		case B_ESCAPE:
-			if (fOriginalText != fTextView->Text()) {
-				fModificationsReported = false;
-				fTextView->SetText(fOriginalText.String());
-				fTextView->SelectAll();
-				fModificationsReported = true;
-				CancelChoice();
-			}
-			return B_SKIP_MESSAGE;
+			CancelChoice();
+			return B_DISPATCH_MESSAGE;
 		case B_RETURN:
 			if (IsChoiceSelected()) {
 				ApplyChoice();

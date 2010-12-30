@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Andrea Anzani <andrea.anzani@gmail.com>
- * Copyright (C) 2007 Ryan Leavengood <leavengood@gmail.com>
+ * Copyright (C) 2007, 2010 Ryan Leavengood <leavengood@gmail.com>
  * Copyright (C) 2009 Maxime Simon <simon.maxime@gmail.com>
  * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
  * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
@@ -546,8 +546,12 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 			PostMessage(GO_FORWARD);
 			return;
 		} else if (bytes[0] == B_ESCAPE) {
-			PostMessage(STOP);
-			return;
+			// Let the URL input handle escape when it is the target
+			if (target != fURLInputGroup->TextView()) {
+				// Otherwise do a stop
+				PostMessage(STOP);
+				return;
+			}
 		} else if (bytes[0] == B_FUNCTION_KEY) {
 			// Some function key Firefox compatibility
 			int32 key;

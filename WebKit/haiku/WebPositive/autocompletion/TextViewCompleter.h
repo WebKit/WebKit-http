@@ -43,8 +43,6 @@ private:
 private:
 			BTextView*			fTextView;
 			bool				fModificationsReported;
-			BString				fOriginalText;
-			bool				fOriginalTextSaved;
 };
 
 #endif // TEXT_CONTROL_COMPLETER_H
