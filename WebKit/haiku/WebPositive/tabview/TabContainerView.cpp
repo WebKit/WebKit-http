@@ -330,6 +330,10 @@ TabContainerView::SelectTab(TabView* tab)
 		if (fSelectedTab != NULL)
 			index = GroupLayout()->IndexOfItem(tab->LayoutItem());
 
+		if (!tab->LayoutItem()->IsVisible()) {
+			SetFirstVisibleTabIndex(index);
+		}
+
 		fController->TabSelected(index);
 	}
 }

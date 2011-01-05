@@ -38,6 +38,9 @@
 #include <ControlLook.h>
 #include <GroupView.h>
 #include <MenuBar.h>
+#include <MenuItem.h>
+#include <PopUpMenu.h>
+#include <Rect.h>
 #include <SpaceLayoutItem.h>
 #include <Window.h>
 
@@ -184,12 +187,34 @@ public:
 		be_control_look->DrawArrowShape(this, frame, updateRect,
 			base, BControlLook::B_DOWN_ARROW, 0, B_DARKEN_4_TINT);
 	}
+
+	virtual void MouseDown(BPoint point)
+	{
+		if (!IsEnabled())
+			return;
+
+		// Invoke must be called before setting B_CONTROL_ON
+		// for the button to stay "down"
+		Invoke();
+		SetValue(B_CONTROL_ON);
+	}
+
+	virtual void MouseUp(BPoint point)
+	{
+		// Do nothing
+	}
+
+	void MenuClosed()
+	{
+		SetValue(B_CONTROL_OFF);
+	}
 };
 
 
 enum {
 	MSG_SCROLL_TABS_LEFT	= 'stlt',
-	MSG_SCROLL_TABS_RIGHT	= 'strt'
+	MSG_SCROLL_TABS_RIGHT	= 'strt',
+	MSG_OPEN_TAB_MENU		= 'otmn'
 };
 
 
@@ -200,7 +225,8 @@ public:
 		BGroupView(B_HORIZONTAL, 0.0),
 		fTabContainerView(tabContainerView),
 		fScrollLeftTabButton(NULL),
-		fScrollRightTabButton(NULL)
+		fScrollRightTabButton(NULL),
+		fTabMenuButton(NULL)
 	{
 	}
 
@@ -210,6 +236,8 @@ public:
 			fScrollLeftTabButton->SetTarget(this);
 		if (fScrollRightTabButton != NULL)
 			fScrollRightTabButton->SetTarget(this);
+		if (fTabMenuButton != NULL)
+			fTabMenuButton->SetTarget(this);
 	}
 
 	virtual void MessageReceived(BMessage* message)
@@ -223,6 +251,43 @@ public:
 				fTabContainerView->SetFirstVisibleTabIndex(
 					fTabContainerView->FirstVisibleTabIndex() + 1);
 				break;
+			case MSG_OPEN_TAB_MENU:
+			{
+				BPopUpMenu* tabMenu = new BPopUpMenu("tab menu", true, false);
+				int tabCount = fTabContainerView->GetLayout()->CountItems();
+				for (int i = 0; i < tabCount; i++) {
+					TabView* tab = fTabContainerView->TabAt(i);
+					if (tab) {
+						BMenuItem* item = new BMenuItem(tab->Label(), NULL);
+						tabMenu->AddItem(item);
+						if (tab->IsFront())
+							item->SetMarked(true);
+					}
+				}
+
+				// Force layout to get the final menu size
+				tabMenu->InvalidateLayout();
+				BRect buttonFrame = fTabMenuButton->Frame();
+				BRect menuFrame = tabMenu->Frame();
+				BPoint openPoint = ConvertToScreen(buttonFrame.LeftBottom());
+				// Open with the right side of the menu aligned with the right
+				// side of the button and a little below.
+				openPoint.x -= menuFrame.Width() - buttonFrame.Width();
+				openPoint.y += 2;
+
+				BMenuItem *selected = tabMenu->Go(openPoint, false, false,
+					ConvertToScreen(buttonFrame));
+				if (selected) {
+					selected->SetMarked(true);
+					int32 index = tabMenu->IndexOf(selected);
+					if (index != B_ERROR)
+						fTabContainerView->SelectTab(index);
+				}
+				fTabMenuButton->MenuClosed();
+				delete tabMenu;
+				
+				break;
+			}
 			default:
 				BGroupView::MessageReceived(message);
 				break;
@@ -241,6 +306,12 @@ public:
 		GroupLayout()->AddView(button, 0.0f);
 	}
 
+	void AddTabMenuButton(TabMenuTabButton* button)
+	{
+		fTabMenuButton = button;
+		GroupLayout()->AddView(button, 0.0f);
+	}
+
 	void EnableScrollButtons(bool canScrollLeft, bool canScrollRight)
 	{
 		fScrollLeftTabButton->SetEnabled(canScrollLeft);
@@ -256,6 +327,7 @@ private:
 	TabContainerView*	fTabContainerView;
 	TabButton*			fScrollLeftTabButton;
 	TabButton*			fScrollRightTabButton;
+	TabMenuTabButton*	fTabMenuButton;
 };
 
 
@@ -669,7 +741,8 @@ TabManager::TabManager(const BMessenger& target, BMessage* newTabMessage)
 	NewTabButton* newTabButton = new NewTabButton(newTabMessage);
 	newTabButton->SetTarget(be_app);
 	fTabContainerGroup->GroupLayout()->AddView(newTabButton, 0.0f);
-//	fTabContainerGroup->GroupLayout()->AddView(new TabMenuTabButton(NULL), 0.0f);
+	fTabContainerGroup->AddTabMenuButton(new TabMenuTabButton(
+		new BMessage(MSG_OPEN_TAB_MENU)));
 }
 
 
