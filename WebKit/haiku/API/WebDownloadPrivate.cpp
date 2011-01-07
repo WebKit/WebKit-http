@@ -40,6 +40,7 @@
 #include <Message.h>
 #include <Messenger.h>
 #include <NodeInfo.h>
+#include <stdio.h>
 
 namespace BPrivate {
 
@@ -176,7 +177,9 @@ void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 
 
 void WebDownloadPrivate::createFile()
 {
-    m_path.Append(m_filename.String());
+    // Don't overwrite existing files
+    findAvailableFilename();
+
 	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
 		BNodeInfo info(&m_file);
 		info.SetType(m_mimeType.String());
@@ -188,6 +191,36 @@ void WebDownloadPrivate::createFile()
         message.AddString("path", m_path.Path());
         m_progressListener.SendMessage(&message);
     }
+}
+
+void WebDownloadPrivate::findAvailableFilename()
+{
+    BPath filePath = m_path;
+    BString fileName = m_filename;
+    filePath.Append(fileName.String());
+
+    BEntry entry(filePath.Path());
+    for (int32 i = 0; entry.InitCheck() == B_OK && entry.Exists(); i++) {
+        // Use original file name in each iteration
+        BString baseName = m_filename;
+
+        // Separate extension and base file name
+        int32 extensionStart = baseName.FindLast('.');
+        BString extension;
+        if (extensionStart > 0)
+            baseName.MoveInto(extension, extensionStart, baseName.CountChars() - extensionStart);
+
+        // Add i to file name before the extension
+        char num[10];
+        snprintf(num, sizeof(num), "-%d", i);
+        baseName.Append(num).Append(extension);
+        fileName = baseName;
+        filePath = m_path;
+        filePath.Append(fileName);
+        entry.SetTo(filePath.Path());
+    }
+    m_filename = fileName;
+    m_path = filePath;
 }
 
 } // namespace BPrivate

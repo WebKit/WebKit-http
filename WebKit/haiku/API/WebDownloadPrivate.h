@@ -80,6 +80,7 @@ public:
 private:
 	void handleFinished(WebCore::ResourceHandle* handle, uint32 status);
 	void createFile();
+	void findAvailableFilename();
 
 private:
     BWebDownload* m_webDownload;
