@@ -48,6 +48,9 @@
 #include "TabView.h"
 
 
+const static BString kEmptyString;
+
+
 // #pragma mark - Helper classes
 
 
@@ -265,8 +268,9 @@ public:
 					}
 				}
 
-				// Force layout to get the final menu size
-				tabMenu->InvalidateLayout();
+				// Force layout to get the final menu size. InvalidateLayout()
+				// did not seem to work here.
+				tabMenu->AttachedToWindow();
 				BRect buttonFrame = fTabMenuButton->Frame();
 				BRect menuFrame = tabMenu->Frame();
 				BPoint openPoint = ConvertToScreen(buttonFrame.LeftBottom());
@@ -911,7 +915,7 @@ TabManager::TabLabel(int32 tabIndex)
 	if (tab)
 		return tab->Label();
 	else
-		return "";
+		return kEmptyString;
 }
 
 void
