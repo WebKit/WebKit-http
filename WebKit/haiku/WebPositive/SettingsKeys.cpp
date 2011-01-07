@@ -43,7 +43,7 @@ const char* kSettingsKeySearchPageURL = "search page url";
 
 const char* kDefaultDownloadPath = "/boot/home/Desktop/";
 const char* kDefaultStartPageURL
-	= "file:///boot/system/documentation/welcome/welcome_en.html";
+	= "file:///boot/home/config/settings/WebPositive/LoaderPages/Welcome";
 const char* kDefaultSearchPageURL = "http://www.google.com";
 
 const char* kSettingsKeyUseProxy = "use http proxy";
