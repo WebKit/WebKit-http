@@ -28,6 +28,7 @@
 #define CallIdentifier_h
 
 #include <runtime/UString.h>
+#include <wtf/text/CString.h>
 #include "FastAllocBase.h"
 
 namespace JSC {
