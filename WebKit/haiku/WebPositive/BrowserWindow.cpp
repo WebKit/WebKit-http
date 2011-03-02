@@ -466,11 +466,11 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 		new BMessage(TOGGLE_FULLSCREEN));
 	toggleFullscreenButton->SetBackgroundMode(BitmapButton::MENUBAR_BACKGROUND);
 
-	BGroupLayout* menuBarGroup = BLayoutBuilder::Group<>(B_HORIZONTAL)
+	BGroupLayout* menuBarGroup = BLayoutBuilder::Group<>(B_HORIZONTAL, 0.0)
 		.Add(mainMenu)
 		.Add(toggleFullscreenButton, 0.0f)
 	;
-	
+
 	// Layout
 	AddChild(BLayoutBuilder::Group<>(B_VERTICAL, 0.0)
 #if !INTEGRATE_MENU_INTO_TAB_BAR
@@ -488,7 +488,7 @@ BrowserWindow::BrowserWindow(BRect frame, SettingsMessage* appSettings,
 	mainMenu->SetViewColor(B_TRANSPARENT_COLOR);
 
 	fURLInputGroup->MakeFocus(true);
-	
+
 	fMenuGroup = menuBarGroup;
 	fTabGroup = fTabManager->TabGroup()->GetLayout();
 	fNavigationGroup = navigationGroup;
@@ -547,13 +547,6 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 		} else if (bytes[0] == B_RIGHT_ARROW && modifierKeys == B_COMMAND_KEY) {
 			PostMessage(GO_FORWARD);
 			return;
-		} else if (bytes[0] == B_ESCAPE) {
-			// Let the URL input handle escape when it is the target
-			if (target != fURLInputGroup->TextView()) {
-				// Otherwise do a stop
-				PostMessage(STOP);
-				return;
-			}
 		} else if (bytes[0] == B_FUNCTION_KEY) {
 			// Some function key Firefox compatibility
 			int32 key;
@@ -591,6 +584,10 @@ BrowserWindow::DispatchMessage(BMessage* message, BHandler* target)
 				_InvokeButtonVisibly(fFindCloseButton);
 				return;
 			}
+		} else if (bytes[0] == B_ESCAPE) {
+			// Default escape key behavior:
+			PostMessage(STOP);
+			return;
 		}
 	}
 	if (message->what == B_MOUSE_MOVED || message->what == B_MOUSE_DOWN
