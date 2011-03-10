@@ -59,6 +59,8 @@ public:
 			void				Start(const BPath& path);
 			void				Cancel();
 
+			void				HasMovedTo(const BPath& path);
+
 			void				SetProgressListener(const BMessenger& listener);
 
 			const BString&		URL() const;

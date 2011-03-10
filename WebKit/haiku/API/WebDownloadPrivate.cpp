@@ -22,7 +22,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -39,10 +39,13 @@
 #include <Entry.h>
 #include <Message.h>
 #include <Messenger.h>
+#include <MimeType.h>
 #include <NodeInfo.h>
 #include <stdio.h>
 
 namespace BPrivate {
+
+static const int kMaxMimeTypeGuessTries	= 5;
 
 WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     : m_webDownload(0)
@@ -52,7 +55,8 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     , m_url(request.url().string())
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
-    , m_mimeType("application/octet-stream")
+    , m_mimeType()
+    , m_mimeTypeGuessTries(kMaxMimeTypeGuessTries)
     , m_file()
     , m_lastProgressReportTime(0)
 {
@@ -67,7 +71,8 @@ WebDownloadPrivate::WebDownloadPrivate(ResourceHandle* handle,
     , m_url()
     , m_path("/boot/home/Desktop/")
     , m_filename("Download")
-    , m_mimeType("application/octet-stream")
+    , m_mimeType()
+    , m_mimeTypeGuessTries(kMaxMimeTypeGuessTries)
     , m_file()
     , m_lastProgressReportTime(0)
 {
@@ -87,8 +92,19 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
         	url.removeFragmentIdentifier();
             m_filename = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
         }
-        if (response.mimeType().length())
-            m_mimeType = response.mimeType();
+        if (response.mimeType().length()) {
+        	// Do some checks, as no mime type yet is always better
+        	// than set an invalid one
+        	BString mimeType = response.mimeType();
+        	BMimeType type(mimeType);
+        	BMimeType superType;
+        	if (type.IsValid() && type.GetSupertype(&superType) == B_OK
+        		&& superType.IsValid()
+        		&& strchr(mimeType, '*') == NULL) {
+	            m_mimeType = mimeType;
+        	}
+		}
+
         m_expectedSize = response.expectedContentLength();
     }
 
@@ -106,6 +122,22 @@ void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, int l
         return;
     }
     m_currentSize += length;
+
+    if (m_currentSize > 0 && m_mimeTypeGuessTries > 0) {
+    	// Try to guess the MIME type from its actual content
+    	BMimeType type;
+    	entry_ref ref;
+    	BEntry entry(m_path.Path());
+    	entry.GetRef(&ref);
+
+		if (BMimeType::GuessMimeType(&ref, &type) == B_OK
+			&& type.Type() != B_FILE_MIME_TYPE) {
+    		BNodeInfo info(&m_file);
+			info.SetType(type.Type());
+			m_mimeTypeGuessTries = -1;
+    	} else
+    		m_mimeTypeGuessTries--;
+    }
 
     // FIXME: Report total size update, if m_currentSize greater than previous total size
     BMessage message(B_DOWNLOAD_PROGRESS);
@@ -150,6 +182,11 @@ void WebDownloadPrivate::start(const BPath& path)
 		m_path = path;
 }
 
+void WebDownloadPrivate::hasMovedTo(const BPath& path)
+{
+	m_path = path;
+}
+
 void WebDownloadPrivate::cancel()
 {
     m_resourceHandle->cancel();
@@ -164,6 +201,13 @@ void WebDownloadPrivate::setProgressListener(const BMessenger& listener)
 
 void WebDownloadPrivate::handleFinished(WebCore::ResourceHandle* handle, uint32 status)
 {
+    if (m_mimeTypeGuessTries != -1 && m_mimeType.Length() > 0) {
+    	// In last resort, use the MIME type provided
+    	// by the response, which pass our validation
+   		BNodeInfo info(&m_file);
+		info.SetType(m_mimeType);
+    }
+
 	handle->setClient(0);
 	if (m_progressListener.IsValid()) {
         BMessage message(B_DOWNLOAD_REMOVED);
@@ -180,11 +224,8 @@ void WebDownloadPrivate::createFile()
     // Don't overwrite existing files
     findAvailableFilename();
 
-	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK) {
-		BNodeInfo info(&m_file);
-		info.SetType(m_mimeType.String());
+	if (m_file.SetTo(m_path.Path(), B_CREATE_FILE | B_ERASE_FILE | B_WRITE_ONLY) == B_OK)
 		m_file.WriteAttrString("META:url", &m_url);
-	}
 
     if (m_progressListener.IsValid()) {
         BMessage message(B_DOWNLOAD_STARTED);
@@ -212,7 +253,7 @@ void WebDownloadPrivate::findAvailableFilename()
 
         // Add i to file name before the extension
         char num[10];
-        snprintf(num, sizeof(num), "-%d", i);
+        snprintf(num, sizeof(num), "-%ld", i);
         baseName.Append(num).Append(extension);
         fileName = baseName;
         filePath = m_path;

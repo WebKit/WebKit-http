@@ -451,6 +451,7 @@ DownloadProgressView::MessageReceived(BMessage* message)
 					BEntry entry(&ref);
 					if (entry.GetPath(&fPath) != B_OK)
 						break;
+
 					// Find out if the directory is the Trash for this
 					// volume
 					char trashPath[B_PATH_NAME_LENGTH];
@@ -473,6 +474,10 @@ DownloadProgressView::MessageReceived(BMessage* message)
 							fIconView->SetIconDimmed(false);
 						}
 					}
+
+					// Inform download of the new path
+					if (fDownload)
+						fDownload->HasMovedTo(fPath);
 
 					float value = fStatusBar->CurrentValue();
 					fStatusBar->Reset(name);

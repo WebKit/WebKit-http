@@ -68,6 +68,7 @@ public:
 
     void setDownload(BWebDownload*);
     void start(const BPath& path);
+    void hasMovedTo(const BPath& path);
     void cancel();
     void setProgressListener(const BMessenger&);
 
@@ -86,13 +87,13 @@ private:
     BWebDownload* m_webDownload;
 
     RefPtr<ResourceHandle> m_resourceHandle;
-    BString m_suggestedFileName;
     off_t m_currentSize;
     off_t m_expectedSize;
     BString m_url;
     BPath m_path;
     BString m_filename;
     BString m_mimeType;
+    int m_mimeTypeGuessTries;
     BFile m_file;
     bigtime_t m_lastProgressReportTime;
 

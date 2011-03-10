@@ -22,7 +22,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -63,6 +63,11 @@ void BWebDownload::Start(const BPath& path)
 	// Does not matter which thread this is invoked in, as long as the
 	// rest of the code is blocking...
     fData->start(path);
+}
+
+void BWebDownload::HasMovedTo(const BPath& path)
+{
+	fData->hasMovedTo(path);
 }
 
 void BWebDownload::Cancel()
