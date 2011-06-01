@@ -65,7 +65,7 @@ String fileButtonNoFileSelectedLabel()
 
 String contextMenuItemTagOpenLinkInNewWindow()
 {
-    return "Open in new tab";
+    return "Open link in new tab";
 }
 
 String contextMenuItemTagDownloadLinkToDisk()
