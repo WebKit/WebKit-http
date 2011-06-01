@@ -2130,8 +2130,12 @@ BString
 BrowserWindow::_SmartURLHandler(const BString& url) const
 {
 	BString result = url;
-	if (url.FindFirst(".") == B_ERROR || url.FindFirst(" ") != B_ERROR)
-		result.Prepend("http://www.google.com/search?q=");
+
+	// Only process if the URL is not for a local file
+	if (url.FindFirst("file://") == B_ERROR) {
+		if (url.FindFirst(".") == B_ERROR || url.FindFirst(" ") != B_ERROR)
+			result.Prepend("http://www.google.com/search?q=");
+	}
 	return result;
 }
 
