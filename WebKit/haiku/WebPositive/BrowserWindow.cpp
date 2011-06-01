@@ -2131,8 +2131,9 @@ BrowserWindow::_SmartURLHandler(const BString& url) const
 {
 	BString result = url;
 
-	// Only process if the URL is not for a local file
-	if (url.FindFirst("file://") == B_ERROR) {
+	// Only process if this doesn't look like a full URL (http:// or 
+	// file://, etc.)
+	if (url.FindFirst("://") == B_ERROR) {
 		if (url.FindFirst(".") == B_ERROR || url.FindFirst(" ") != B_ERROR)
 			result.Prepend("http://www.google.com/search?q=");
 	}
