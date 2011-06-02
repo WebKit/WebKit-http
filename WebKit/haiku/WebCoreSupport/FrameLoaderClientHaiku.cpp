@@ -491,12 +491,12 @@ BString(mimetype).String());
     // we need to call directly here
     if (canShowMIMEType(mimetype)) {
         callPolicyFunction(function, PolicyUse);
-    } else if (!request.url().isLocalFile()) {
+    } else if (!request.url().isLocalFile() && mimetype != "application/x-shockwave-flash") {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download\n",
 BString(mimetype).String());
         callPolicyFunction(function, PolicyDownload);
     } else {
-printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL)\n",
+printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL or Flash)\n",
 BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
     }
