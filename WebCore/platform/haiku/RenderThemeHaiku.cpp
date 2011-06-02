@@ -80,12 +80,12 @@ bool RenderThemeHaiku::supportsFocusRing(const RenderStyle* style) const
 
 Color RenderThemeHaiku::platformActiveSelectionBackgroundColor() const
 {
-    return Color(255, 206, 121, 170);
+    return Color(255, 80, 40, 200);
 }
 
 Color RenderThemeHaiku::platformInactiveSelectionBackgroundColor() const
 {
-    return Color(255, 206, 121, 90);
+    return Color(255, 80, 40, 200);
 }
 
 Color RenderThemeHaiku::platformActiveSelectionForegroundColor() const
@@ -100,7 +100,7 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
 
 Color RenderThemeHaiku::platformTextSearchHighlightColor() const
 {
-    return Color(255, 195, 76, 200);
+    return Color(255, 80, 40, 200);
 }
 
 void RenderThemeHaiku::systemFont(int propId, FontDescription&) const
