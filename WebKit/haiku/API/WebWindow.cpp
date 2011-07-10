@@ -59,10 +59,10 @@ BWebWindow::BWebWindow(BRect frame, const char* title, window_look look,
     SetLayout(new BGroupLayout(B_HORIZONTAL));
 
     // NOTE: Do NOT change these because you think Redo should be on Cmd-Y!
-    AddShortcut('Z', B_COMMAND_KEY, new BMessage(B_UNDO));
-    AddShortcut('Y', B_COMMAND_KEY, new BMessage(B_UNDO));
-    AddShortcut('Z', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
-    AddShortcut('Y', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO));
+    AddShortcut('Z', B_COMMAND_KEY, new BMessage(B_UNDO), NULL);
+    AddShortcut('Y', B_COMMAND_KEY, new BMessage(B_UNDO), NULL);
+    AddShortcut('Z', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO), NULL);
+    AddShortcut('Y', B_COMMAND_KEY | B_SHIFT_KEY, new BMessage(B_REDO), NULL);
 }
 
 BWebWindow::~BWebWindow()
