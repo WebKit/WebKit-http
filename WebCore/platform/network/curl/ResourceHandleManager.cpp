@@ -88,8 +88,8 @@ static CString certificatePath()
     }
 #elif PLATFORM(HAIKU)
     BPath path;
-    if (find_directory(B_COMMON_DIRECTORY, &path) == B_OK
-        && path.Append("ssl/certs/cacert.pem") == B_OK) {
+    if (find_directory(B_COMMON_DATA_DIRECTORY, &path) == B_OK
+        && path.Append("ssl/cert.pem") == B_OK) {
         BEntry entry(path.Path());
         if (entry.Exists())
             return path.Path();
@@ -213,7 +213,7 @@ static void handleHTTPAuthentication(ResourceHandle* job)
         if (realmEnd >= 0)
             realm = challenge.substring(realmStart, realmEnd - realmStart);
     }
-    
+
     ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
     ResourceError resourceError(url.host(), 401, url.string(), String());
 
@@ -846,7 +846,7 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     if (!certificatePath().length()) {
         static bool warningPrinted = false;
         if (!warningPrinted) {
-            fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/ssl/certs.\n");
+            fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/data/ssl.\n");
             warningPrinted = true;
         }
 #else
