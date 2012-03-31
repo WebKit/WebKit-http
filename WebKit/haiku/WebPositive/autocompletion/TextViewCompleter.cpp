@@ -106,7 +106,8 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 	int32 modifiers;
 	if ((!target || message->FindString("bytes", &bytes) != B_OK
 			|| message->FindInt32("modifiers", &modifiers) != B_OK)
-		|| modifiers != 0) {
+		|| (modifiers & (B_CONTROL_KEY | B_COMMAND_KEY | B_OPTION_KEY
+			| B_SHIFT_KEY)) != 0) {
 		return B_DISPATCH_MESSAGE;
 	}
 
