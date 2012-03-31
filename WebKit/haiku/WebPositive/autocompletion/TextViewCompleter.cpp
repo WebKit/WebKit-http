@@ -104,8 +104,9 @@ TextViewCompleter::Filter(BMessage* message, BHandler** target)
 {
 	const char* bytes;
 	int32 modifiers;
-	if (!target || message->FindString("bytes", &bytes) != B_OK
-		|| message->FindInt32("modifiers", &modifiers) != B_OK) {
+	if ((!target || message->FindString("bytes", &bytes) != B_OK
+			|| message->FindInt32("modifiers", &modifiers) != B_OK)
+		|| modifiers != 0) {
 		return B_DISPATCH_MESSAGE;
 	}
 
