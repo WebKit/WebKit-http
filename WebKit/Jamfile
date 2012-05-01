@@ -20,7 +20,6 @@ SubDirHdrs $(TOP) JavaScriptCore interpreter ;
 SubDirHdrs $(TOP) JavaScriptCore jit ;
 SubDirHdrs $(TOP) JavaScriptCore parser ;
 SubDirHdrs $(TOP) JavaScriptCore runtime ;
-SubDirHdrs $(TOP) JavaScriptCore wtf ;
 
 SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
 SubDirHdrs $(TOP) WebCore ForwardingHeaders wtf ;
@@ -55,7 +54,6 @@ SubDirHdrs $(TOP) WebCore storage ;
 SubDirHdrs $(TOP) WebCore svg ;
 SubDirHdrs $(TOP) WebCore svg animation ;
 SubDirHdrs $(TOP) WebCore svg graphics ;
-
 
 #-----------------------------------------------------------------------------
 # WebKit API
@@ -162,7 +160,7 @@ Application WebPositive :
 	# Other required libraries
 	curl icuuc icudata png sqlite3 xml2 z
 	# Haiku libraries
-	be bsd locale localestub network stdc++ tracker translation
+	be bsd localestub network stdc++ tracker translation
 	:
 	WebPositive.rdef
 ;

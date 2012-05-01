@@ -1719,7 +1719,7 @@ SharedLibrary libwebcore.so :
         webcore1.a webcore2.a
         libjavascriptcore.so
         # Other required libraries
-        curl icuuc icudata icui18n jpeg locale png sqlite3 xml2 z stdc++
+        curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
         # Haiku libraries
         be bsd network textencoding translation
 ;
