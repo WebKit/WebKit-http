@@ -27,6 +27,10 @@
 #include <mach/thread_act.h>
 #include <pthread.h>
 
+#elif OS(HAIKU)
+
+#include <OS.h>
+
 #elif OS(WINDOWS)
 
 #include <windows.h>
@@ -80,6 +84,16 @@ void StackBounds::initialize()
     pthread_t thread = pthread_self();
     m_origin = pthread_get_stackaddr_np(thread);
     m_bound = static_cast<char*>(m_origin) - pthread_get_stacksize_np(thread);
+}
+
+#elif OS(HAIKU)
+
+void StackBounds::initialize()
+{
+    thread_info threadInfo;
+    get_thread_info(find_thread(NULL), &threadInfo);
+    m_origin = threadInfo.stack_base;
+    m_bound = threadInfo.stack_end;
 }
 
 #elif OS(QNX)
