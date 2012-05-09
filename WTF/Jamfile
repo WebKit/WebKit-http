@@ -67,7 +67,7 @@ StaticLibrary libwtf.a :
     wtf/unicode/CollatorDefault.cpp
     wtf/unicode/UTF8.cpp
 
-#   wtf/haiku/MainThreadHaiku.cpp
+    wtf/haiku/MainThreadHaiku.cpp
 
     :
     # Other required libraries
