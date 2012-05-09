@@ -1,0 +1,77 @@
+SubDir TOP WTF ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+# To turn off debugging symbols export NDEBUG=1 in the environment
+SubDirC++Flags $(defines) ;
+SubDirCcFlags $(defines) ;
+
+SubDirSysHdrs $(TOP) WTF ;
+
+SubDirHdrs $(TOP) WTF wtf ;
+
+StaticLibrary libwtf.a :
+    # File list directly based on WTF.gypi
+    wtf/ArrayBuffer.cpp
+    wtf/ArrayBufferView.cpp
+    wtf/Assertions.cpp
+    wtf/BitVector.cpp
+    wtf/CryptographicallyRandomNumber.cpp
+    wtf/CurrentTime.cpp
+    wtf/DataLog.cpp
+    wtf/DateMath.cpp
+    wtf/DecimalNumber.cpp
+    wtf/DynamicAnnotations.cpp
+    wtf/FastMalloc.cpp
+    wtf/HashTable.cpp
+    wtf/MD5.cpp
+    wtf/MainThread.cpp
+    wtf/NullPtr.cpp
+    wtf/NumberOfCores.cpp
+    wtf/OSAllocatorPosix.cpp
+    wtf/OSRandomSource.cpp
+    wtf/PageAllocationAligned.cpp
+    wtf/PageBlock.cpp
+    wtf/ParallelJobsGeneric.cpp
+    wtf/RandomNumber.cpp
+    wtf/RefCountedLeakCounter.cpp
+    wtf/SHA1.cpp
+    wtf/SizeLimits.cpp
+    wtf/StackBounds.cpp
+    wtf/StringExtras.cpp
+    wtf/TCSystemAlloc.cpp
+    wtf/ThreadIdentifierDataPthreads.cpp
+    wtf/Threading.cpp
+    wtf/ThreadingPthreads.cpp
+    wtf/TypeTraits.cpp
+    wtf/WTFThreadData.cpp
+
+    wtf/dtoa.cpp
+    wtf/dtoa/bignum-dtoa.cc
+    wtf/dtoa/bignum.cc
+    wtf/dtoa/cached-powers.cc
+    wtf/dtoa/diy-fp.cc
+    wtf/dtoa/double-conversion.cc
+    wtf/dtoa/fast-dtoa.cc
+    wtf/dtoa/fixed-dtoa.cc
+    wtf/dtoa/strtod.cc
+
+    wtf/text/AtomicString.cpp
+    wtf/text/CString.cpp
+    wtf/text/StringBuilder.cpp
+    wtf/text/StringImpl.cpp
+    wtf/text/StringStatics.cpp
+    wtf/text/WTFString.cpp
+    wtf/threads/BinarySemaphore.cpp
+
+    wtf/unicode/CollatorDefault.cpp
+    wtf/unicode/UTF8.cpp
+
+#   wtf/haiku/MainThreadHaiku.cpp
+
+    :
+    # Other required libraries
+    icuuc icudata icui18n stdc++
+    # Haiku libraries
+    be
+;
