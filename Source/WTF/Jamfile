@@ -26,6 +26,7 @@ StaticLibrary libwtf.a :
     wtf/HashTable.cpp
     wtf/MD5.cpp
     wtf/MainThread.cpp
+    wtf/MetaAllocator.cpp
     wtf/NullPtr.cpp
     wtf/NumberOfCores.cpp
     wtf/OSAllocatorPosix.cpp
@@ -66,6 +67,7 @@ StaticLibrary libwtf.a :
 
     wtf/unicode/CollatorDefault.cpp
     wtf/unicode/UTF8.cpp
+    wtf/unicode/icu/CollatorICU.cpp
 
     wtf/haiku/MainThreadHaiku.cpp
 
