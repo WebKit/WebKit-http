@@ -5,6 +5,7 @@ local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 SubDirC++Flags $(defines) ;
 SubDirCcFlags $(defines) ;
 
+SubInclude TOP WTF ;
 SubInclude TOP JavaScriptCore ;
 SubInclude TOP WebCore ;
 SubInclude TOP WebKit ;
