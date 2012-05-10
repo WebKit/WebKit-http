@@ -38,6 +38,10 @@
 #include <mach/thread_act.h>
 #include <mach/vm_map.h>
 
+#elif OS(HAIKU)
+
+#include <OS.h>
+
 #elif OS(WINDOWS)
 
 #include <windows.h>
@@ -90,6 +94,8 @@ UNUSED_PARAM(end);
 
 #if OS(DARWIN)
 typedef mach_port_t PlatformThread;
+#elif OS(HAIKU)
+typedef thread_id PlatformThread;
 #elif OS(WINDOWS)
 typedef HANDLE PlatformThread;
 #elif USE(PTHREADS)
@@ -113,7 +119,7 @@ public:
         : platformThread(platThread)
         , stackBase(base)
     {
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && defined(SA_RESTART)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(HAIKU) && defined(SA_RESTART)
         // if we have SA_RESTART, enable SIGUSR2 debugging mechanism
         struct sigaction action;
         action.sa_handler = pthreadSignalHandlerSuspendResume;
@@ -159,6 +165,8 @@ static inline PlatformThread getCurrentPlatformThread()
 {
 #if OS(DARWIN)
     return pthread_mach_thread_np(pthread_self());
+#elif OS(HAIKU)
+    return find_thread(NULL);
 #elif OS(WINDOWS)
     return GetCurrentThread();
 #elif USE(PTHREADS)
@@ -168,7 +176,7 @@ static inline PlatformThread getCurrentPlatformThread()
 
 static inline bool equalThread(const PlatformThread& first, const PlatformThread& second)
 {
-#if OS(DARWIN) || OS(WINDOWS)
+#if OS(DARWIN) || OS(WINDOWS) || OS(HAIKU)
     return first == second;
 #elif USE(PTHREADS)
     return !!pthread_equal(first, second);
@@ -268,6 +276,8 @@ static inline void suspendThread(const PlatformThread& platformThread)
 {
 #if OS(DARWIN)
     thread_suspend(platformThread);
+#elif OS(HAIKU)
+    suspend_thread(platformThread);
 #elif OS(WINDOWS)
     SuspendThread(platformThread);
 #elif USE(PTHREADS)
@@ -281,6 +291,8 @@ static inline void resumeThread(const PlatformThread& platformThread)
 {
 #if OS(DARWIN)
     thread_resume(platformThread);
+#elif OS(HAIKU)
+    resume_thread(platformThread);
 #elif OS(WINDOWS)
     ResumeThread(platformThread);
 #elif USE(PTHREADS)
@@ -310,6 +322,8 @@ typedef arm_thread_state_t PlatformThreadRegisters;
 
 #elif OS(WINDOWS)
 typedef CONTEXT PlatformThreadRegisters;
+#elif OS(HAIKU)
+typedef thread_info PlatformThreadRegisters;
 #elif OS(QNX)
 typedef struct _debug_thread_info PlatformThreadRegisters;
 #elif USE(PTHREADS)
@@ -354,6 +368,9 @@ static size_t getPlatformThreadRegisters(const PlatformThread& platformThread, P
     regs.ContextFlags = CONTEXT_INTEGER | CONTEXT_CONTROL;
     GetThreadContext(platformThread, &regs);
     return sizeof(CONTEXT);
+#elif OS(HAIKU)
+	get_thread_info(platformThread, &regs);
+	return sizeof(thread_info);
 #elif OS(QNX)
     memset(&regs, 0, sizeof(regs));
     regs.tid = pthread_self();
@@ -371,7 +388,7 @@ static size_t getPlatformThreadRegisters(const PlatformThread& platformThread, P
     pthread_attr_get_np(platformThread, &regs);
 #else
     // FIXME: this function is non-portable; other POSIX systems may have different np alternatives
-    //pthread_getattr_np(platformThread, &regs);
+    pthread_getattr_np(platformThread, &regs);
 #endif
     return 0;
 #else
@@ -412,6 +429,9 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 #endif // __DARWIN_UNIX03
 
 // end OS(DARWIN)
+#elif OS(HAIKU)
+    return reinterpret_cast<void*>(regs.stack_base);
+
 #elif OS(WINDOWS)
 
 #if CPU(ARM)
@@ -432,8 +452,8 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 #elif USE(PTHREADS)
     void* stackBase = 0;
     size_t stackSize = 0;
-    //int rc = pthread_attr_getstack(&regs, &stackBase, &stackSize);
-    //(void)rc; // FIXME: Deal with error code somehow? Seems fatal.
+    int rc = pthread_attr_getstack(&regs, &stackBase, &stackSize);
+    (void)rc; // FIXME: Deal with error code somehow? Seems fatal.
     ASSERT(stackBase);
     return static_cast<char*>(stackBase) + stackSize;
 #else
@@ -443,7 +463,7 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 
 static void freePlatformThreadRegisters(PlatformThreadRegisters& regs)
 {
-#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(QNX)
+#if USE(PTHREADS) && !OS(WINDOWS) && !OS(DARWIN) && !OS(QNX) && !OS(HAIKU)
     pthread_attr_destroy(&regs);
 #else
     UNUSED_PARAM(regs);
