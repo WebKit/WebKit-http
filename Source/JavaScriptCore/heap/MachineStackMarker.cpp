@@ -371,7 +371,7 @@ static size_t getPlatformThreadRegisters(const PlatformThread& platformThread, P
     pthread_attr_get_np(platformThread, &regs);
 #else
     // FIXME: this function is non-portable; other POSIX systems may have different np alternatives
-    pthread_getattr_np(platformThread, &regs);
+    //pthread_getattr_np(platformThread, &regs);
 #endif
     return 0;
 #else
@@ -432,8 +432,8 @@ static inline void* otherThreadStackPointer(const PlatformThreadRegisters& regs)
 #elif USE(PTHREADS)
     void* stackBase = 0;
     size_t stackSize = 0;
-    int rc = pthread_attr_getstack(&regs, &stackBase, &stackSize);
-    (void)rc; // FIXME: Deal with error code somehow? Seems fatal.
+    //int rc = pthread_attr_getstack(&regs, &stackBase, &stackSize);
+    //(void)rc; // FIXME: Deal with error code somehow? Seems fatal.
     ASSERT(stackBase);
     return static_cast<char*>(stackBase) + stackSize;
 #else

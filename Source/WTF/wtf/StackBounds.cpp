@@ -92,8 +92,8 @@ void StackBounds::initialize()
 {
     thread_info threadInfo;
     get_thread_info(find_thread(NULL), &threadInfo);
-    m_origin = threadInfo.stack_base;
-    m_bound = threadInfo.stack_end;
+    m_origin = threadInfo.stack_end;
+    m_bound = threadInfo.stack_base;
 }
 
 #elif OS(QNX)

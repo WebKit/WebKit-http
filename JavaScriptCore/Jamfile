@@ -1,0 +1,272 @@
+SubDir TOP JavaScriptCore ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+# To turn off debugging symbols export NDEBUG=1 in the environment
+SubDirC++Flags $(defines) ;
+SubDirCcFlags $(defines) ;
+
+# Define header locations
+SubDirSysHdrs $(TOP) ;
+SubDirSysHdrs $(TOP) JavaScriptCore ;
+SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) JavaScriptCore assembler ;
+SubDirSysHdrs $(TOP) WTF ;
+
+SubDirHdrs $(TOP) JavaScriptCore API ;
+SubDirHdrs $(TOP) JavaScriptCore assembler ;
+SubDirHdrs $(TOP) JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) JavaScriptCore bytecompiler ;
+SubDirHdrs $(TOP) JavaScriptCore debugger ;
+SubDirHdrs $(TOP) JavaScriptCore dfg ;
+SubDirHdrs $(TOP) JavaScriptCore heap ;
+SubDirHdrs $(TOP) JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) JavaScriptCore jit ;
+SubDirHdrs $(TOP) JavaScriptCore llint ;
+SubDirHdrs $(TOP) JavaScriptCore parser ;
+SubDirHdrs $(TOP) JavaScriptCore profiler ;
+SubDirHdrs $(TOP) JavaScriptCore runtime ;
+SubDirHdrs $(TOP) JavaScriptCore tools ;
+
+SubDirHdrs $(TOP) JavaScriptCore DerivedSources JavaScriptCore ;
+
+SharedLibrary libjavascriptcore.so :
+    API/JSBase.cpp
+    API/JSCallbackConstructor.cpp
+    API/JSCallbackFunction.cpp
+    API/JSCallbackObject.cpp
+    API/JSClassRef.cpp
+    API/JSContextRef.cpp
+    API/JSObjectRef.cpp
+    API/JSProfilerPrivate.cpp
+    API/JSStringRef.cpp
+    API/JSValueRef.cpp
+    API/JSWeakObjectMapRefPrivate.cpp
+    API/OpaqueJSString.cpp
+    
+    assembler/ARMAssembler.cpp
+    assembler/ARMv7Assembler.cpp
+    assembler/MacroAssemblerARM.cpp
+    assembler/MacroAssemblerSH4.cpp
+    
+    bytecode/CallLinkInfo.cpp
+    bytecode/CallLinkStatus.cpp
+    bytecode/CodeBlock.cpp
+    bytecode/DFGExitProfile.cpp
+    bytecode/ExecutionCounter.cpp
+    bytecode/GetByIdStatus.cpp
+    bytecode/JumpTable.cpp
+    bytecode/LazyOperandValueProfile.cpp
+    bytecode/MethodCallLinkInfo.cpp
+    bytecode/MethodCallLinkStatus.cpp
+    bytecode/MethodOfGettingAValueProfile.cpp
+    bytecode/Opcode.cpp
+    bytecode/PolymorphicPutByIdList.cpp
+    bytecode/PredictedType.cpp
+    bytecode/PutByIdStatus.cpp
+    bytecode/SamplingTool.cpp
+    bytecode/StructureStubInfo.cpp
+    
+    bytecompiler/BytecodeGenerator.cpp
+    bytecompiler/NodesCodegen.cpp
+    
+    debugger/Debugger.cpp
+    debugger/DebuggerActivation.cpp
+    debugger/DebuggerCallFrame.cpp
+    
+    dfg/DFGAbstractState.cpp
+    dfg/DFGAssemblyHelpers.cpp
+    dfg/DFGByteCodeParser.cpp
+    dfg/DFGCapabilities.cpp
+    dfg/DFGCFAPhase.cpp
+    dfg/DFGCorrectableJumpPoint.cpp
+    dfg/DFGCSEPhase.cpp
+    dfg/DFGDriver.cpp
+    dfg/DFGFixupPhase.cpp
+    dfg/DFGGraph.cpp
+    dfg/DFGJITCompiler.cpp
+    dfg/DFGNodeFlags.cpp
+    dfg/DFGOperations.cpp
+    dfg/DFGOSREntry.cpp
+    dfg/DFGOSRExit.cpp
+    dfg/DFGOSRExitCompiler.cpp
+    dfg/DFGOSRExitCompiler32_64.cpp
+    dfg/DFGOSRExitCompiler64.cpp
+    dfg/DFGPhase.cpp
+    dfg/DFGPredictionPropagationPhase.cpp
+    dfg/DFGRedundantPhiEliminationPhase.cpp
+    dfg/DFGRepatch.cpp
+    dfg/DFGSpeculativeJIT.cpp
+    dfg/DFGSpeculativeJIT32_64.cpp
+    dfg/DFGSpeculativeJIT64.cpp
+    dfg/DFGThunks.cpp
+    dfg/DFGVirtualRegisterAllocationPhase.cpp
+    
+    heap/ConservativeRoots.cpp
+    heap/CopiedSpace.cpp
+    heap/DFGCodeBlocks.cpp
+    heap/HandleSet.cpp
+    heap/HandleStack.cpp
+    heap/BlockAllocator.cpp
+    heap/Heap.cpp
+    heap/MachineStackMarker.cpp
+    heap/MarkedAllocator.cpp
+    heap/MarkedBlock.cpp
+    heap/MarkedSpace.cpp
+    heap/MarkStack.cpp
+    heap/VTableSpectrum.cpp
+    heap/WeakBlock.cpp
+    heap/WeakHandleOwner.cpp
+    heap/WeakSet.cpp
+    heap/WriteBarrierSupport.cpp
+    
+    interpreter/AbstractPC.cpp
+    interpreter/CallFrame.cpp
+    interpreter/Interpreter.cpp
+    interpreter/RegisterFile.cpp
+    
+    jit/ExecutableAllocator.cpp
+    jit/ExecutableAllocatorFixedVMPool.cpp
+    jit/HostCallReturnValue.cpp
+    jit/JIT.cpp
+    jit/JITArithmetic.cpp
+    jit/JITArithmetic32_64.cpp
+    jit/JITCall.cpp
+    jit/JITCall32_64.cpp
+    jit/JITExceptions.cpp
+    jit/JITOpcodes.cpp
+    jit/JITOpcodes32_64.cpp
+    jit/JITPropertyAccess.cpp
+    jit/JITPropertyAccess32_64.cpp
+    jit/JITStubs.cpp
+    jit/ThunkGenerators.cpp
+    
+    parser/Lexer.cpp
+    parser/Nodes.cpp
+    parser/Parser.cpp
+    parser/ParserArena.cpp
+    parser/SourceProviderCache.cpp
+    
+    profiler/Profile.cpp
+    profiler/ProfileGenerator.cpp
+    profiler/ProfileNode.cpp
+    profiler/Profiler.cpp
+    
+    runtime/ArgList.cpp
+    runtime/Arguments.cpp
+    runtime/ArrayConstructor.cpp
+    runtime/ArrayPrototype.cpp
+    runtime/BooleanConstructor.cpp
+    runtime/BooleanObject.cpp
+    runtime/BooleanPrototype.cpp
+    runtime/CallData.cpp
+    runtime/CommonIdentifiers.cpp
+    runtime/Completion.cpp
+    runtime/ConstructData.cpp
+    runtime/DateConstructor.cpp
+    runtime/DateConversion.cpp
+    runtime/DateInstance.cpp
+    runtime/DatePrototype.cpp
+    runtime/Error.cpp
+    runtime/ErrorConstructor.cpp
+    runtime/ErrorInstance.cpp
+    runtime/ErrorPrototype.cpp
+    runtime/ExceptionHelpers.cpp
+    runtime/Executable.cpp
+    runtime/FunctionConstructor.cpp
+    runtime/FunctionPrototype.cpp
+    runtime/GCActivityCallback.cpp
+    runtime/GetterSetter.cpp
+    runtime/Identifier.cpp
+    runtime/InitializeThreading.cpp
+    runtime/InternalFunction.cpp
+    runtime/JSActivation.cpp
+    runtime/JSAPIValueWrapper.cpp
+    runtime/JSArray.cpp
+    runtime/JSBoundFunction.cpp
+    runtime/JSCell.cpp
+    runtime/JSChunk.cpp
+    runtime/JSDateMath.cpp
+    runtime/JSFunction.cpp
+    runtime/JSGlobalData.cpp
+    runtime/JSGlobalObject.cpp
+    runtime/JSGlobalObjectFunctions.cpp
+    runtime/JSGlobalThis.cpp
+    runtime/JSLock.cpp
+    runtime/JSNotAnObject.cpp
+    runtime/JSObject.cpp
+    runtime/JSONObject.cpp
+    runtime/JSPropertyNameIterator.cpp
+    runtime/JSStaticScopeObject.cpp
+    runtime/JSString.cpp
+    runtime/JSStringJoiner.cpp
+    runtime/JSValue.cpp
+    runtime/JSVariableObject.cpp
+    runtime/JSWrapperObject.cpp
+    runtime/LiteralParser.cpp
+    runtime/Lookup.cpp
+    runtime/MathObject.cpp
+    runtime/MemoryStatistics.cpp
+    runtime/NativeErrorConstructor.cpp
+    runtime/NativeErrorPrototype.cpp
+    runtime/NumberConstructor.cpp
+    runtime/NumberObject.cpp
+    runtime/NumberPrototype.cpp
+    runtime/ObjectConstructor.cpp
+    runtime/ObjectPrototype.cpp
+    runtime/Operations.cpp
+    runtime/Options.cpp
+    runtime/PropertyDescriptor.cpp
+    runtime/PropertyNameArray.cpp
+    runtime/PropertySlot.cpp
+    runtime/RegExp.cpp
+    runtime/RegExpCache.cpp
+    runtime/RegExpCachedResult.cpp
+    runtime/RegExpConstructor.cpp
+    runtime/RegExpMatchesArray.cpp
+    runtime/RegExpObject.cpp
+    runtime/RegExpPrototype.cpp
+    runtime/SamplingCounter.cpp
+    runtime/ScopeChain.cpp
+    runtime/SmallStrings.cpp
+    runtime/StrictEvalActivation.cpp
+    runtime/StringConstructor.cpp
+    runtime/StringObject.cpp
+    runtime/StringPrototype.cpp
+    runtime/StringRecursionChecker.cpp
+    runtime/Structure.cpp
+    runtime/StructureChain.cpp
+    runtime/TimeoutChecker.cpp
+    runtime/UString.cpp
+    
+    tools/CodeProfile.cpp
+    tools/CodeProfiling.cpp
+    
+    yarr/YarrCanonicalizeUCS2.cpp
+    yarr/YarrInterpreter.cpp
+    yarr/YarrJIT.cpp
+    yarr/YarrPattern.cpp
+    yarr/YarrSyntaxChecker.cpp
+    :
+    libwtf.a
+    # Other required libraries
+    icuuc icudata icui18n stdc++
+    # Haiku libraries
+    be
+;
+
+
+#-----------------------------------------------------------------------------
+# JavaScriptCore application
+#-----------------------------------------------------------------------------
+
+Application jsc :
+    jsc.cpp
+    :
+    libwtf.a libjavascriptcore.so
+    # Other required libraries
+    icuuc stdc++
+    # Haiku libraries
+    be
+;
+
