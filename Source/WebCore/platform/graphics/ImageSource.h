@@ -51,6 +51,8 @@ QT_END_NAMESPACE
 namespace WebCore {
 class NativeImageSkia;
 }
+#elif PLATFORM(HAIKU)
+class BBitmap;
 #elif OS(WINCE)
 #include "SharedBitmap.h"
 #endif
@@ -92,6 +94,8 @@ typedef wxBitmap* NativeImagePtr;
 typedef WebCore::NativeImageCairo* NativeImagePtr;
 #elif USE(SKIA)
 typedef WebCore::NativeImageSkia* NativeImagePtr;
+#elif PLATFORM(HAIKU)
+typedef BBitmap* NativeImagePtr;
 #elif OS(WINCE)
 typedef RefPtr<SharedBitmap> NativeImagePtr;
 #elif PLATFORM(BLACKBERRY)
