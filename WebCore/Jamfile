@@ -1,0 +1,288 @@
+SubDir TOP WebCore ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+# To turn off debugging symbols export NDEBUG=1 in the environment
+SubDirC++Flags $(defines) -Wno-c++0x-compat ;
+SubDirCcFlags $(defines) -Wno-c++0x-compat ;
+
+# Define header locations
+SubDirSysHdrs $(TOP) ;
+SubDirSysHdrs $(TOP) WebCore ;
+#SubDirSysHdrs $(TOP) WebCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) JavaScriptCore ;
+SubDirSysHdrs $(TOP) WTF ;
+
+SubDirHdrs $(TOP) WebCore bindings js ;
+SubDirHdrs $(TOP) WebCore css ;
+SubDirHdrs $(TOP) WebCore dom ;
+SubDirHdrs $(TOP) WebCore editing ;
+SubDirHdrs $(TOP) WebCore html ;
+SubDirHdrs $(TOP) WebCore inspector ;
+#SubDirHdrs $(TOP) WebCore interpreter ;
+SubDirHdrs $(TOP) WebCore loader ;
+SubDirHdrs $(TOP) WebCore loader cache ;
+SubDirHdrs $(TOP) WebCore page ;
+SubDirHdrs $(TOP) WebCore platform ;
+SubDirHdrs $(TOP) WebCore platform animation ;
+SubDirHdrs $(TOP) WebCore platform graphics ;
+SubDirHdrs $(TOP) WebCore platform graphics transforms ;
+SubDirHdrs $(TOP) WebCore platform network ;
+SubDirHdrs $(TOP) WebCore platform network curl ;
+SubDirHdrs $(TOP) WebCore platform text ;
+SubDirHdrs $(TOP) WebCore rendering ;
+SubDirHdrs $(TOP) WebCore rendering style ;
+SubDirHdrs $(TOP) WebCore svg graphics ;
+
+# public JavaScriptCore headers
+SubDirHdrs $(TOP) JavaScriptCore API ;
+SubDirHdrs $(TOP) JavaScriptCore assembler ;
+SubDirHdrs $(TOP) JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) JavaScriptCore heap ;
+SubDirHdrs $(TOP) JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) JavaScriptCore jit ;
+SubDirHdrs $(TOP) JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) JavaScriptCore llint ;
+SubDirHdrs $(TOP) JavaScriptCore runtime ;
+
+#SubDirHdrs $(TOP) JavaScriptCore assembler ;
+#SubDirHdrs $(TOP) JavaScriptCore bytecode ;
+#SubDirHdrs $(TOP) JavaScriptCore bytecompiler ;
+#SubDirHdrs $(TOP) JavaScriptCore debugger ;
+#SubDirHdrs $(TOP) JavaScriptCore dfg ;
+#SubDirHdrs $(TOP) JavaScriptCore heap ;
+#SubDirHdrs $(TOP) JavaScriptCore interpreter ;
+#SubDirHdrs $(TOP) JavaScriptCore jit ;
+#SubDirHdrs $(TOP) JavaScriptCore llint ;
+#SubDirHdrs $(TOP) JavaScriptCore parser ;
+#SubDirHdrs $(TOP) JavaScriptCore profiler ;
+#SubDirHdrs $(TOP) JavaScriptCore runtime ;
+#SubDirHdrs $(TOP) JavaScriptCore tools ;
+
+SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
+
+SharedLibrary webcorehtml :
+    html/BaseButtonInputType.cpp
+    html/BaseCheckableInputType.cpp
+    html/BaseClickableWithKeyInputType.cpp
+    html/BaseDateAndTimeInputType.cpp
+    html/BaseTextInputType.cpp
+    html/ButtonInputType.cpp
+    html/CheckboxInputType.cpp
+    html/ClassList.cpp
+    html/ColorInputType.cpp
+    html/DOMFormData.cpp
+    html/DOMSettableTokenList.cpp
+    html/DOMTokenList.cpp
+    html/DOMURL.cpp
+    html/DateInputType.cpp
+    html/DateTimeInputType.cpp
+    html/DateTimeLocalInputType.cpp
+    html/EmailInputType.cpp
+    html/FTPDirectoryDocument.cpp
+    html/FileInputType.cpp
+    html/FormAssociatedElement.cpp
+    html/FormDataList.cpp
+    html/HTMLAllCollection.cpp
+    html/HTMLAnchorElement.cpp
+    html/HTMLAppletElement.cpp
+    html/HTMLAreaElement.cpp
+    html/HTMLAudioElement.cpp
+    html/HTMLBRElement.cpp
+    html/HTMLBaseElement.cpp
+    html/HTMLBaseFontElement.cpp
+    html/HTMLBodyElement.cpp
+    html/HTMLButtonElement.cpp
+    html/HTMLCanvasElement.cpp
+    html/HTMLCollection.cpp
+    html/HTMLDListElement.cpp
+    html/HTMLDataListElement.cpp
+    html/HTMLDetailsElement.cpp
+    html/HTMLDirectoryElement.cpp
+    html/HTMLDivElement.cpp
+    html/HTMLDocument.cpp
+    html/HTMLElement.cpp
+    html/HTMLElementsAllInOne.cpp
+    html/HTMLEmbedElement.cpp
+    html/HTMLFieldSetElement.cpp
+    html/HTMLFontElement.cpp
+    html/HTMLFormCollection.cpp
+    html/HTMLFormControlElement.cpp
+    html/HTMLFormControlElementWithState.cpp
+    html/HTMLFormElement.cpp
+    html/HTMLFrameElement.cpp
+    html/HTMLFrameElementBase.cpp
+    html/HTMLFrameOwnerElement.cpp
+    html/HTMLFrameSetElement.cpp
+    html/HTMLHRElement.cpp
+    html/HTMLHeadElement.cpp
+    html/HTMLHeadingElement.cpp
+    html/HTMLHtmlElement.cpp
+    html/HTMLIFrameElement.cpp
+    html/HTMLImageElement.cpp
+    html/HTMLImageLoader.cpp
+    html/HTMLInputElement.cpp
+    html/HTMLKeygenElement.cpp
+    html/HTMLLIElement.cpp
+    html/HTMLLabelElement.cpp
+    html/HTMLLegendElement.cpp
+    html/HTMLLinkElement.cpp
+    html/HTMLMapElement.cpp
+    html/HTMLMarqueeElement.cpp
+    html/HTMLMediaElement.cpp
+    html/HTMLMenuElement.cpp
+    html/HTMLMetaElement.cpp
+    html/HTMLMeterElement.cpp
+    html/HTMLModElement.cpp
+    html/HTMLNameCollection.cpp
+    html/HTMLOListElement.cpp
+    html/HTMLObjectElement.cpp
+    html/HTMLOptGroupElement.cpp
+    html/HTMLOptionElement.cpp
+    html/HTMLOptionsCollection.cpp
+    html/HTMLOutputElement.cpp
+    html/HTMLParagraphElement.cpp
+    html/HTMLParamElement.cpp
+    html/HTMLParserErrorCodes.cpp
+    html/HTMLPlugInElement.cpp
+    html/HTMLPlugInImageElement.cpp
+    html/HTMLPreElement.cpp
+    html/HTMLProgressElement.cpp
+    html/HTMLPropertiesCollection.cpp
+    html/HTMLQuoteElement.cpp
+    html/HTMLScriptElement.cpp
+    html/HTMLSelectElement.cpp
+    html/HTMLSourceElement.cpp
+    html/HTMLSpanElement.cpp
+    html/HTMLStyleElement.cpp
+    html/HTMLSummaryElement.cpp
+    html/HTMLTableCaptionElement.cpp
+    html/HTMLTableCellElement.cpp
+    html/HTMLTableColElement.cpp
+    html/HTMLTableElement.cpp
+    html/HTMLTablePartElement.cpp
+    html/HTMLTableRowElement.cpp
+    html/HTMLTableRowsCollection.cpp
+    html/HTMLTableSectionElement.cpp
+    html/HTMLTextAreaElement.cpp
+    html/HTMLTextFormControlElement.cpp
+    html/HTMLTitleElement.cpp
+    html/HTMLTrackElement.cpp
+    html/HTMLUListElement.cpp
+    html/HTMLVideoElement.cpp
+    html/HTMLViewSourceDocument.cpp
+    html/HiddenInputType.cpp
+    html/ImageData.cpp
+    html/ImageDocument.cpp
+    html/ImageInputType.cpp
+    html/InputType.cpp
+    html/LabelableElement.cpp
+    html/LabelsNodeList.cpp
+    html/LinkRelAttribute.cpp
+    html/MediaController.cpp
+    html/MediaDocument.cpp
+    html/MediaFragmentURIParser.cpp
+    html/MediaKeyEvent.cpp
+    html/MicroDataItemValue.cpp
+    html/MonthInputType.cpp
+    html/NumberInputType.cpp
+    html/PasswordInputType.cpp
+    html/PluginDocument.cpp
+    html/RadioInputType.cpp
+    html/RangeInputType.cpp
+    html/ResetInputType.cpp
+    html/SearchInputType.cpp
+    html/StepRange.cpp
+    html/SubmitInputType.cpp
+    html/TelephoneInputType.cpp
+    html/TextDocument.cpp
+    html/TextFieldInputType.cpp
+    html/TextInputType.cpp
+    html/TimeInputType.cpp
+    html/TimeRanges.cpp
+    html/URLInputType.cpp
+    html/ValidationMessage.cpp
+    html/ValidityState.cpp
+    html/WeekInputType.cpp
+    html/canvas/CanvasContextAttributes.cpp
+    html/canvas/CanvasGradient.cpp
+    html/canvas/CanvasPattern.cpp
+    html/canvas/CanvasRenderingContext.cpp
+    html/canvas/CanvasRenderingContext2D.cpp
+    html/canvas/CanvasStyle.cpp
+    html/canvas/DataView.cpp
+    html/canvas/EXTTextureFilterAnisotropic.cpp
+    html/canvas/OESStandardDerivatives.cpp
+    html/canvas/OESTextureFloat.cpp
+    html/canvas/OESVertexArrayObject.cpp
+    html/canvas/WebGLBuffer.cpp
+    html/canvas/WebGLCompressedTextureS3TC.cpp
+    html/canvas/WebGLContextAttributes.cpp
+    html/canvas/WebGLContextEvent.cpp
+    html/canvas/WebGLContextGroup.cpp
+    html/canvas/WebGLContextObject.cpp
+    html/canvas/WebGLDebugRendererInfo.cpp
+    html/canvas/WebGLDebugShaders.cpp
+    html/canvas/WebGLExtension.cpp
+    html/canvas/WebGLFramebuffer.cpp
+    html/canvas/WebGLGetInfo.cpp
+    html/canvas/WebGLLoseContext.cpp
+    html/canvas/WebGLObject.cpp
+    html/canvas/WebGLProgram.cpp
+    html/canvas/WebGLRenderbuffer.cpp
+    html/canvas/WebGLRenderingContext.cpp
+    html/canvas/WebGLShader.cpp
+    html/canvas/WebGLShaderPrecisionFormat.cpp
+    html/canvas/WebGLSharedObject.cpp
+    html/canvas/WebGLTexture.cpp
+    html/canvas/WebGLUniformLocation.cpp
+    html/canvas/WebGLVertexArrayObjectOES.cpp
+    html/parser/CSSPreloadScanner.cpp
+    html/parser/HTMLConstructionSite.cpp
+    html/parser/HTMLDocumentParser.cpp
+    html/parser/HTMLElementStack.cpp
+    html/parser/HTMLEntityParser.cpp
+    html/parser/HTMLEntitySearch.cpp
+    html/parser/HTMLFormattingElementList.cpp
+    html/parser/HTMLMetaCharsetParser.cpp
+    html/parser/HTMLParserIdioms.cpp
+    html/parser/HTMLParserScheduler.cpp
+    html/parser/HTMLPreloadScanner.cpp
+    html/parser/HTMLScriptRunner.cpp
+    html/parser/HTMLSourceTracker.cpp
+    html/parser/HTMLTokenizer.cpp
+    html/parser/HTMLTreeBuilder.cpp
+    html/parser/HTMLViewSourceParser.cpp
+    html/parser/TextDocumentParser.cpp
+    html/parser/TextViewSourceParser.cpp
+    html/parser/XSSAuditor.cpp
+    html/shadow/CalendarPickerElement.cpp
+    html/shadow/ContentSelectorQuery.cpp
+    html/shadow/DetailsMarkerControl.cpp
+    html/shadow/HTMLContentElement.cpp
+    html/shadow/HTMLContentSelector.cpp
+    html/shadow/HTMLShadowElement.cpp
+    html/shadow/InsertionPoint.cpp
+    html/shadow/MediaControls.cpp
+    html/shadow/MediaControlElements.cpp
+    html/shadow/MediaControlRootElementChromium.cpp
+    html/shadow/MeterShadowElement.cpp
+    html/shadow/ProgressShadowElement.cpp
+    html/shadow/SliderThumbElement.cpp
+    html/shadow/TextControlInnerElements.cpp
+    html/shadow/TextFieldDecorationElement.cpp
+    html/track/LoadableTextTrack.cpp
+    html/track/TextTrack.cpp
+    html/track/TextTrackCue.cpp
+    html/track/TextTrackCueList.cpp
+    html/track/TextTrackList.cpp
+    html/track/TrackBase.cpp
+    html/track/TrackEvent.cpp
+    html/track/WebVTTParser.cpp
+    html/track/WebVTTTokenizer.cpp
+    :
+    # Other required libraries
+    #icuuc icudata icui18n stdc++
+    # Haiku libraries
+    be
+;
