@@ -31,6 +31,8 @@
 #include "wince/FontPlatformData.h"
 #elif PLATFORM(WX)
 #include "wx/FontPlatformData.h"
+#elif PLATFORM(HAIKU)
+#include "haiku/FontPlatformData.h"
 #elif (PLATFORM(EFL) || PLATFORM(GTK)) && USE(FREETYPE)
 #include "freetype/FontPlatformData.h"
 #elif (PLATFORM(EFL) || PLATFORM(GTK)) && USE(PANGO)
