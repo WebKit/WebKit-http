@@ -64,6 +64,8 @@ SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
 
 SharedLibrary webcorehtml :
     platform/graphics/haiku/ImageBufferHaiku.cpp
+    platform/graphics/haiku/FontPlatformDataHaiku.cpp
+    #platform/graphics/haiku/StillImageHaiku.cpp
 
     platform/text/haiku/StringHaiku.cpp
 
