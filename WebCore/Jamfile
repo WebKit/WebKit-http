@@ -45,15 +45,19 @@ SubDirHdrs $(TOP) WebCore Modules webdatabase ;
 SubDirHdrs $(TOP) WebCore Modules websockets ;
 SubDirHdrs $(TOP) WebCore page ;
 SubDirHdrs $(TOP) WebCore page animation ;
+SubDirHdrs $(TOP) WebCore page scrolling ;
 SubDirHdrs $(TOP) WebCore platform ;
 SubDirHdrs $(TOP) WebCore platform animation ;
 SubDirHdrs $(TOP) WebCore platform graphics ;
+SubDirHdrs $(TOP) WebCore platform graphics filters ;
 SubDirHdrs $(TOP) WebCore platform graphics haiku ;
 SubDirHdrs $(TOP) WebCore platform graphics transforms ;
+SubDirHdrs $(TOP) WebCore platform image-decoders ;
 SubDirHdrs $(TOP) WebCore platform network ;
 SubDirHdrs $(TOP) WebCore platform network curl ;
 SubDirHdrs $(TOP) WebCore platform sql ;
 SubDirHdrs $(TOP) WebCore platform text ;
+SubDirHdrs $(TOP) WebCore platform text transcoder ;
 SubDirHdrs $(TOP) WebCore plugins ;
 SubDirHdrs $(TOP) WebCore rendering ;
 SubDirHdrs $(TOP) WebCore rendering style ;
@@ -930,8 +934,8 @@ SharedLibrary webcore.a :
     platform/ScrollView.cpp
     platform/ScrollableArea.cpp
     platform/Scrollbar.cpp
-    platform/ScrollbarTheme.cpp
-    platform/ScrollbarThemeComposite.cpp
+    #platform/ScrollbarTheme.cpp
+    #platform/ScrollbarThemeComposite.cpp
     platform/SecureTextInput.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
@@ -1000,7 +1004,10 @@ SharedLibrary webcore.a :
     platform/graphics/FontFamily.cpp
     platform/graphics/FontFeatureSettings.cpp
     platform/graphics/FontFastPath.cpp
-    platform/graphics/FontPlatformData.cpp
+
+    #platform/graphics/FontPlatformData.cpp
+    platform/graphics/haiku/FontPlatformDataHaiku.cpp
+
     platform/graphics/FractionalLayoutRect.cpp
     platform/graphics/FractionalLayoutSize.cpp
     platform/graphics/GeneratorGeneratedImage.cpp
@@ -1064,24 +1071,25 @@ SharedLibrary webcore.a :
     platform/graphics/filters/SourceGraphic.cpp
     platform/graphics/filters/SpotLightSource.cpp
 
-    platform/graphics/freetype/FontCacheFreeType.cpp
-    platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
-    platform/graphics/freetype/FontPlatformDataFreeType.cpp
-    platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
-    platform/graphics/freetype/SimpleFontDataFreeType.cpp
+    #platform/graphics/freetype/FontCacheFreeType.cpp
+    #platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
+    #platform/graphics/freetype/FontPlatformDataFreeType.cpp
+    #platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
+    #platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
-    platform/graphics/opentype/OpenTypeSanitizer.cpp
-    platform/graphics/opentype/OpenTypeUtilities.cpp
+    #platform/graphics/opentype/OpenTypeSanitizer.cpp
+    #platform/graphics/opentype/OpenTypeUtilities.cpp
 
-    platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
-    platform/graphics/texmap/LayerTransform.cpp
-    platform/graphics/texmap/TextureMapper.cpp
-    platform/graphics/texmap/TextureMapperAnimation.cpp
-    platform/graphics/texmap/TextureMapperBackingStore.cpp
-    platform/graphics/texmap/TextureMapperGL.cpp
-    platform/graphics/texmap/TextureMapperImageBuffer.cpp
-    platform/graphics/texmap/TextureMapperLayer.cpp
-    platform/graphics/texmap/TextureMapperShaderManager.cpp
+    #platform/graphics/texmap/GraphicsLayerTextureMapper.cpp
+    #platform/graphics/texmap/LayerTransform.cpp
+    #platform/graphics/texmap/TextureMapper.cpp
+    #platform/graphics/texmap/TextureMapperAnimation.cpp
+    #platform/graphics/texmap/TextureMapperBackingStore.cpp
+    #platform/graphics/texmap/TextureMapperGL.cpp
+    #platform/graphics/texmap/TextureMapperImageBuffer.cpp
+    #platform/graphics/texmap/TextureMapperLayer.cpp
+    #platform/graphics/texmap/TextureMapperShaderManager.cpp
+
     platform/graphics/transforms/AffineTransform.cpp
     platform/graphics/transforms/Matrix3DTransformOperation.cpp
     platform/graphics/transforms/MatrixTransformOperation.cpp
