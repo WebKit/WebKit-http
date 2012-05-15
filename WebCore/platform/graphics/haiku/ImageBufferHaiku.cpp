@@ -65,11 +65,12 @@ ImageBufferData::~ImageBufferData()
     m_bitmap.Unlock();
 }
 
-ImageBuffer::ImageBuffer(const IntSize& size, ImageColorSpace imageColorSpace, bool& success)
+ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, DeferralMode, bool& success)
     : m_data(size)
     , m_size(size)
+    , m_logicalSize(size)
 {
-    m_context.set(new GraphicsContext(&m_data.m_view));
+    m_context = adoptPtr(new GraphicsContext(&m_data.m_view));
     success = true;
 }
 
@@ -84,7 +85,7 @@ GraphicsContext* ImageBuffer::context() const
     return m_context.get();
 }
 
-Image* ImageBuffer::image() const
+/*Image* ImageBuffer::image() const
 {
     if (!m_image) {
         // It's assumed that if image() is called, the actual rendering to the
@@ -95,6 +96,14 @@ Image* ImageBuffer::image() const
     }
 
     return m_image.get();
+}*/
+PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior) const
+{
+    // FIXME
+    //if (copyBehavior == CopyBackingStore)
+        return StillImage::create(m_data.m_bitmap);
+
+    //return StillImage::createForRendering(&m_data.m_bitmap);
 }
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
@@ -206,20 +215,20 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
     }
 }
 
-static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
+static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
 {
-    PassRefPtr<ImageData> result = ImageData::create(rect.width(), rect.height());
-    unsigned char* data = result->data()->data()->data();
+    RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
+    unsigned char* data = result->data();
 
     // If the destination image is larger than the source image, the outside
     // regions need to be transparent. This way is simply, although with a
     // a slight overhead for the inside region.
-    if (rect.x() < 0 || rect.y() < 0 || (rect.x() + rect.width()) > size.width() || (rect.y() + rect.height()) > size.height())
-        memset(data, 0, result->data()->length());
+    if (rect.x() < 0 || rect.y() < 0 || rect.maxX() > size.width() || rect.maxY() > size.height())
+        result->zeroFill();
 
     // If the requested image is outside the source image, we can return at
     // this point.
-    if (rect.x() > size.width() || rect.y() > size.height() || rect.right() < 0 || rect.bottom() < 0)
+    if (rect.x() > size.width() || rect.y() > size.height() || rect.maxX() < 0 || rect.maxY() < 0)
         return result;
 
     // Now we know there must be an intersection rect which we need to extract.
@@ -243,46 +252,48 @@ static PassRefPtr<ImageData> getImageData(const IntRect& rect, const ImageBuffer
     convertFromInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
         rows, columns, premultiplied);
 
-    return result;
+    return result.release();
 }
 
-
-PassRefPtr<ImageData> ImageBuffer::getUnmultipliedImageData(const IntRect& rect) const
+PassRefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view.Sync();
     return getImageData(rect, m_data, m_size, false);
 }
 
-PassRefPtr<ImageData> ImageBuffer::getPremultipliedImageData(const IntRect& rect) const
+PassRefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view.Sync();
     return getImageData(rect, m_data, m_size, true);
 }
 
-static void putImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint, ImageBufferData& imageData, const IntSize& size, bool premultiplied)
+void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
 {
+    // Make sure all asynchronous drawing has finished
+    m_data.m_view.Sync();
+
     // If the source image is outside the destination image, we can return at
     // this point.
     // TODO: Check if this isn't already done in WebCore.
-    if (destPoint.x() > size.width() || destPoint.y() > size.height()
+    if (destPoint.x() > sourceSize.width() || destPoint.y() > sourceSize.height()
         || destPoint.x() + sourceRect.width() < 0
         || destPoint.y() + sourceRect.height() < 0) {
         return;
     }
 
-    const unsigned char* sourceRows = source->data()->data()->data();
-    unsigned sourceBytesPerRow = 4 * source->width();
+    const unsigned char* sourceRows = source->data();
+    unsigned sourceBytesPerRow = 4 * sourceSize.width();
     // Offset the source pointer to the first pixel of the source rect.
     sourceRows += sourceRect.x() * 4 + sourceRect.y() * sourceBytesPerRow;
 
     // We know there must be an intersection rect.
     BRect destRect(destPoint.x(), destPoint.y(), sourceRect.width() - 1, sourceRect.height() - 1);
-    destRect = destRect & BRect(0, 0, size.width() - 1, size.height() - 1);
+    destRect = destRect & BRect(0, 0, sourceSize.width() - 1, sourceSize.height() - 1);
 
-    unsigned char* destRows = reinterpret_cast<unsigned char*>(imageData.m_bitmap.Bits());
-    uint32 destBytesPerRow = imageData.m_bitmap.BytesPerRow();
+    unsigned char* destRows = reinterpret_cast<unsigned char*>(m_data.m_bitmap.Bits());
+    uint32 destBytesPerRow = m_data.m_bitmap.BytesPerRow();
     // Offset the source pointer to point at the first pixel of the
     // intersection rect.
     destRows += (int)destRect.left * 4 + (int)destRect.top * destBytesPerRow;
@@ -290,24 +301,11 @@ static void putImageData(ImageData* source, const IntRect& sourceRect, const Int
     unsigned rows = sourceRect.height();
     unsigned columns = sourceRect.width();
     convertToInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
-        rows, columns, premultiplied);
+        rows, columns, multiplied == Premultiplied);
 }
 
-void ImageBuffer::putUnmultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
-{
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view.Sync();
-    putImageData(source, sourceRect, destPoint, m_data, m_size, false);
-}
-
-void ImageBuffer::putPremultipliedImageData(ImageData* source, const IntRect& sourceRect, const IntPoint& destPoint)
-{
-    // Make sure all asynchronous drawing has finished
-    m_data.m_view.Sync();
-    putImageData(source, sourceRect, destPoint, m_data, m_size, true);
-}
-
-String ImageBuffer::toDataURL(const String& mimeType) const
+// TODO: quality
+String ImageBuffer::toDataURL(const String& mimeType, const double* /*quality*/, CoordinateSystem) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";
