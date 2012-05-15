@@ -77,6 +77,11 @@ class wxWindow;
 typedef wxWindow* PlatformWidget;
 #endif
 
+#if PLATFORM(HAIKU)
+class BView;
+typedef BView* PlatformWidget;
+#endif
+
 #if PLATFORM(EFL)
 typedef struct _Evas_Object Evas_Object;
 typedef struct _Evas Evas;
@@ -281,6 +286,10 @@ private:
 
 #if PLATFORM(MAC) || PLATFORM(EFL)
     WidgetPrivate* m_data;
+#endif
+
+#if PLATFORM(HAIKU)
+    PlatformWidget m_topLevelPlatformWidget;	// TODO: Still needed?
 #endif
 
 #if PLATFORM(QT)
