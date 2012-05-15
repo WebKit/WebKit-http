@@ -29,12 +29,15 @@ namespace WebCore {
     class FontPlatformData;
     class SharedBuffer;
 
-    struct FontCustomPlatformData : Noncopyable {
+    struct FontCustomPlatformData {
+        WTF_MAKE_NONCOPYABLE(FontCustomPlatformData); WTF_MAKE_FAST_ALLOCATED;
     public:
         FontCustomPlatformData() { }
         ~FontCustomPlatformData();
 
-        FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontRenderingMode = NormalRenderingMode);
+        FontPlatformData fontPlatformData(int size, bool bold, bool italic, FontOrientation = Horizontal, TextOrientation = TextOrientationVerticalRight,
+                                          FontWidthVariant = RegularWidth, FontRenderingMode = NormalRenderingMode);
+	    static bool supportsFormat(const String&);
     };
 
     FontCustomPlatformData* createFontCustomPlatformData(SharedBuffer*);
