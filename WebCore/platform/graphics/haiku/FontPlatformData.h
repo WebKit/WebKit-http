@@ -36,6 +36,7 @@
 namespace WebCore {
 
 class FontPlatformData {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     FontPlatformData();
     FontPlatformData(WTF::HashTableDeletedValueType);
@@ -55,6 +56,9 @@ public:
     float size() const;
     bool bold() const;
     bool oblique() const;
+
+    FontOrientation orientation() const { return Horizontal; } // FIXME: Implement.
+    void setOrientation(FontOrientation) { } // FIXME: Implement.
 
     unsigned hash() const;
     bool isHashTableDeletedValue() const;
