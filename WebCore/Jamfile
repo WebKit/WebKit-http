@@ -9,23 +9,31 @@ SubDirCcFlags $(defines) -Wno-c++0x-compat ;
 # Define header locations
 SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) WebCore ;
-#SubDirSysHdrs $(TOP) WebCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) WTF ;
 
+SubDirHdrs $(TOP) WebCore bindings ;
 SubDirHdrs $(TOP) WebCore bindings js ;
+SubDirHdrs $(TOP) WebCore bridge ;
+SubDirHdrs $(TOP) WebCore bridge jsc ;
 SubDirHdrs $(TOP) WebCore css ;
 SubDirHdrs $(TOP) WebCore dom ;
 SubDirHdrs $(TOP) WebCore editing ;
+SubDirHdrs $(TOP) WebCore fileapi ;
 SubDirHdrs $(TOP) WebCore html ;
+SubDirHdrs $(TOP) WebCore html canvas ;
+SubDirHdrs $(TOP) WebCore html parser ;
+SubDirHdrs $(TOP) WebCore html shadow ;
 SubDirHdrs $(TOP) WebCore inspector ;
-#SubDirHdrs $(TOP) WebCore interpreter ;
 SubDirHdrs $(TOP) WebCore loader ;
 SubDirHdrs $(TOP) WebCore loader cache ;
+SubDirHdrs $(TOP) WebCore loader icon ;
 SubDirHdrs $(TOP) WebCore page ;
+SubDirHdrs $(TOP) WebCore page animation ;
 SubDirHdrs $(TOP) WebCore platform ;
 SubDirHdrs $(TOP) WebCore platform animation ;
 SubDirHdrs $(TOP) WebCore platform graphics ;
+SubDirHdrs $(TOP) WebCore platform graphics haiku ;
 SubDirHdrs $(TOP) WebCore platform graphics transforms ;
 SubDirHdrs $(TOP) WebCore platform network ;
 SubDirHdrs $(TOP) WebCore platform network curl ;
@@ -33,6 +41,9 @@ SubDirHdrs $(TOP) WebCore platform text ;
 SubDirHdrs $(TOP) WebCore rendering ;
 SubDirHdrs $(TOP) WebCore rendering style ;
 SubDirHdrs $(TOP) WebCore svg graphics ;
+SubDirHdrs $(TOP) WebCore xml parser ;
+
+SubDirHdrs $(TOP) WTF wtf ;
 
 # public JavaScriptCore headers
 SubDirHdrs $(TOP) JavaScriptCore API ;
@@ -45,23 +56,13 @@ SubDirHdrs $(TOP) JavaScriptCore interpreter ;
 SubDirHdrs $(TOP) JavaScriptCore llint ;
 SubDirHdrs $(TOP) JavaScriptCore runtime ;
 
-#SubDirHdrs $(TOP) JavaScriptCore assembler ;
-#SubDirHdrs $(TOP) JavaScriptCore bytecode ;
-#SubDirHdrs $(TOP) JavaScriptCore bytecompiler ;
-#SubDirHdrs $(TOP) JavaScriptCore debugger ;
-#SubDirHdrs $(TOP) JavaScriptCore dfg ;
-#SubDirHdrs $(TOP) JavaScriptCore heap ;
-#SubDirHdrs $(TOP) JavaScriptCore interpreter ;
-#SubDirHdrs $(TOP) JavaScriptCore jit ;
-#SubDirHdrs $(TOP) JavaScriptCore llint ;
-#SubDirHdrs $(TOP) JavaScriptCore parser ;
-#SubDirHdrs $(TOP) JavaScriptCore profiler ;
-#SubDirHdrs $(TOP) JavaScriptCore runtime ;
-#SubDirHdrs $(TOP) JavaScriptCore tools ;
-
 SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
 
 SharedLibrary webcorehtml :
+    platform/graphics/haiku/ImageBufferHaiku.cpp
+
+    platform/text/haiku/StringHaiku.cpp
+
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
     html/BaseClickableWithKeyInputType.cpp
