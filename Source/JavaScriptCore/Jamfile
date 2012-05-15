@@ -3,8 +3,8 @@ SubDir TOP JavaScriptCore ;
 local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
-SubDirC++Flags $(defines) ;
-SubDirCcFlags $(defines) ;
+SubDirC++Flags $(defines) -Wno-c++0x-compat ;
+SubDirCcFlags $(defines) -Wno-c++0x-compat ;
 
 # Define header locations
 SubDirSysHdrs $(TOP) ;
