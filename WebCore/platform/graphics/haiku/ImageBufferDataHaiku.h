@@ -1,5 +1,7 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
+ *
+ * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -20,21 +22,30 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if USE(CG)
-#include "ImageBufferDataCG.h"
-#elif USE(CAIRO)
-#include "ImageBufferDataCairo.h"
-#elif USE(HAIKU)
-#include "ImageBufferDataHaiku.h"
-#elif PLATFORM(QT)
-#include "ImageBufferDataQt.h"
-#elif USE(SKIA)
-#include "ImageBufferDataSkia.h"
-#elif OS(WINCE)
-#include "ImageBufferDataWince.h"
-#elif PLATFORM(WX)
-#include "ImageBufferDataWx.h"
-#endif
+#ifndef ImageBufferData_h
+#define ImageBufferData_h
+
+#include "OwnPtr.h"
+#include <Bitmap.h>
+#include <View.h>
+
+namespace WebCore {
+
+class IntSize;
+
+class ImageBufferData {
+public:
+    ImageBufferData(const IntSize&);
+    ~ImageBufferData();
+
+    BBitmap m_bitmap;
+    BView m_view;
+};
+
+} // namespace WebCore
+
+#endif // ImageBufferData_h
+
