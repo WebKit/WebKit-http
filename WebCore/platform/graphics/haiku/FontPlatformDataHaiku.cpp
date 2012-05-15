@@ -24,7 +24,7 @@
 #include "config.h"
 #include "FontPlatformData.h"
 
-#include "AtomicString.h"
+#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -280,7 +280,7 @@ unsigned FontPlatformData::hash() const
     if (isHashTableDeletedValue())
         return 1;
 	String hashString = description();
-    return StringImpl::computeHash(hashString.characters(), hashString.length());
+    return StringHasher::hashMemory<sizeof(hashString.length())>(hashString.characters());
 }
 
 bool FontPlatformData::isHashTableDeletedValue() const
