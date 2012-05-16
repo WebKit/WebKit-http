@@ -81,6 +81,10 @@ class PlatformContextSkia;
 typedef PlatformContextSkia GraphicsContextPlatformPrivate;
 }
 typedef WebCore::PlatformContextSkia PlatformGraphicsContext;
+#elif PLATFORM(HAIKU)
+class BView;
+typedef BView PlatformGraphicsContext;
+struct pattern;
 #elif OS(WINCE)
 typedef struct HDC__ PlatformGraphicsContext;
 #else
@@ -516,6 +520,11 @@ namespace WebCore {
         void setGdkExposeEvent(GdkEventExpose*);
         GdkWindow* gdkWindow() const;
         GdkEventExpose* gdkExposeEvent() const;
+#endif
+
+#if PLATFORM(HAIKU)
+        bool inTransparencyLayer() const;
+        pattern getHaikuStrokeStyle();
 #endif
 
         static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
