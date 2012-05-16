@@ -13,7 +13,7 @@ SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) WebCore ;
-SubDirSysHdrs $(TOP) WebCore platform text ; # needed by WebCore/DerivedSources/WebCore/InspectorFrontend.h
+SubDirSysHdrs $(TOP) WebCore platform text ;
 SubDirSysHdrs $(TOP) WTF ;
 
 SubDirHdrs $(TOP) WebCore accessibility ;
@@ -24,6 +24,7 @@ SubDirHdrs $(TOP) WebCore bindings js ;
 SubDirHdrs $(TOP) WebCore bridge ;
 SubDirHdrs $(TOP) WebCore bridge jsc ;
 SubDirHdrs $(TOP) WebCore css ;
+SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
 SubDirHdrs $(TOP) WebCore dom ;
 SubDirHdrs $(TOP) WebCore editing ;
 SubDirHdrs $(TOP) WebCore fileapi ;
@@ -41,6 +42,7 @@ SubDirHdrs $(TOP) WebCore loader icon ;
 SubDirHdrs $(TOP) WebCore notifications ;
 SubDirHdrs $(TOP) WebCore Modules filesystem ;
 SubDirHdrs $(TOP) WebCore Modules geolocation ;
+SubDirHdrs $(TOP) WebCore Modules indexeddb ;
 SubDirHdrs $(TOP) WebCore Modules webdatabase ;
 SubDirHdrs $(TOP) WebCore Modules websockets ;
 SubDirHdrs $(TOP) WebCore page ;
@@ -53,6 +55,11 @@ SubDirHdrs $(TOP) WebCore platform graphics filters ;
 SubDirHdrs $(TOP) WebCore platform graphics haiku ;
 SubDirHdrs $(TOP) WebCore platform graphics transforms ;
 SubDirHdrs $(TOP) WebCore platform image-decoders ;
+SubDirHdrs $(TOP) WebCore platform image-decoders bmp ;
+SubDirHdrs $(TOP) WebCore platform image-decoders gif ;
+SubDirHdrs $(TOP) WebCore platform image-decoders ico ;
+SubDirHdrs $(TOP) WebCore platform image-decoders jpeg ;
+SubDirHdrs $(TOP) WebCore platform image-decoders png ;
 SubDirHdrs $(TOP) WebCore platform network ;
 SubDirHdrs $(TOP) WebCore platform network curl ;
 SubDirHdrs $(TOP) WebCore platform sql ;
@@ -61,6 +68,7 @@ SubDirHdrs $(TOP) WebCore platform text transcoder ;
 SubDirHdrs $(TOP) WebCore plugins ;
 SubDirHdrs $(TOP) WebCore rendering ;
 SubDirHdrs $(TOP) WebCore rendering style ;
+SubDirHdrs $(TOP) WebCore rendering svg ;
 SubDirHdrs $(TOP) WebCore storage ;
 SubDirHdrs $(TOP) WebCore svg ;
 SubDirHdrs $(TOP) WebCore svg graphics ;
@@ -83,15 +91,1049 @@ SubDirHdrs $(TOP) JavaScriptCore parser ;
 SubDirHdrs $(TOP) JavaScriptCore profiler ;
 SubDirHdrs $(TOP) JavaScriptCore runtime ;
 
-SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
+StaticLibrary webcore1 :
+    accessibility/AccessibilityARIAGrid.cpp
+    accessibility/AccessibilityARIAGridCell.cpp
+    accessibility/AccessibilityARIAGridRow.cpp
+    #accessibility/AccessibilityAllInOne.cpp
+    accessibility/AccessibilityImageMapLink.cpp
+    accessibility/AccessibilityList.cpp
+    accessibility/AccessibilityListBox.cpp
+    accessibility/AccessibilityListBoxOption.cpp
+    accessibility/AccessibilityMediaControls.cpp
+    accessibility/AccessibilityMenuList.cpp
+    accessibility/AccessibilityMenuListOption.cpp
+    accessibility/AccessibilityMenuListPopup.cpp
+    accessibility/AccessibilityMockObject.cpp
+    accessibility/AccessibilityObject.cpp
+    accessibility/AccessibilityProgressIndicator.cpp
+    accessibility/AccessibilityRenderObject.cpp
+    accessibility/AccessibilityScrollView.cpp
+    accessibility/AccessibilityScrollbar.cpp
+    accessibility/AccessibilitySlider.cpp
+    accessibility/AccessibilitySpinButton.cpp
+    accessibility/AccessibilityTable.cpp
+    accessibility/AccessibilityTableCell.cpp
+    accessibility/AccessibilityTableColumn.cpp
+    accessibility/AccessibilityTableHeaderContainer.cpp
+    accessibility/AccessibilityTableRow.cpp
+    accessibility/AXObjectCache.cpp
 
-SharedLibrary webcorehtml :
-    platform/graphics/haiku/ImageBufferHaiku.cpp
-    platform/graphics/haiku/FontPlatformDataHaiku.cpp
-    #platform/graphics/haiku/StillImageHaiku.cpp
+    bindings/ScriptControllerBase.cpp
 
-    platform/text/haiku/StringHaiku.cpp
+    bindings/js/CallbackFunction.cpp
+    bindings/js/DOMObjectHashTableMap.cpp
+    bindings/js/DOMWrapperWorld.cpp
+    bindings/js/GCController.cpp
+    bindings/js/IDBBindingUtilities.cpp
+    bindings/js/JSArrayBufferCustom.cpp
+    bindings/js/JSAttrCustom.cpp
+    bindings/js/JSAudioBufferSourceNodeCustom.cpp
+    bindings/js/JSAudioContextCustom.cpp
+    #bindings/js/JSBindingsAllInOne.cpp
+    bindings/js/JSBlobCustom.cpp
+    bindings/js/JSCDATASectionCustom.cpp
+    bindings/js/JSCSSFontFaceRuleCustom.cpp
+    bindings/js/JSCSSImportRuleCustom.cpp
+    bindings/js/JSCSSMediaRuleCustom.cpp
+    bindings/js/JSCSSPageRuleCustom.cpp
+    bindings/js/JSCSSRuleCustom.cpp
+    bindings/js/JSCSSRuleListCustom.cpp
+    bindings/js/JSCSSStyleDeclarationCustom.cpp
+    bindings/js/JSCSSStyleRuleCustom.cpp
+    bindings/js/JSCSSValueCustom.cpp
+    bindings/js/JSCallbackData.cpp
+    bindings/js/JSCanvasRenderingContext2DCustom.cpp
+    bindings/js/JSCanvasRenderingContextCustom.cpp
+    bindings/js/JSClipboardCustom.cpp
+    bindings/js/JSConsoleCustom.cpp
+    bindings/js/JSConvolverNodeCustom.cpp
+    bindings/js/JSCoordinatesCustom.cpp
+    bindings/js/JSCustomSQLStatementErrorCallback.cpp
+    bindings/js/JSCustomVoidCallback.cpp
+    bindings/js/JSCustomXPathNSResolver.cpp
+    bindings/js/JSDictionary.cpp
+    bindings/js/JSDOMBinding.cpp
+    bindings/js/JSDOMFormDataCustom.cpp
+    bindings/js/JSDOMGlobalObject.cpp
+    bindings/js/JSDOMImplementationCustom.cpp
+    bindings/js/JSDOMMimeTypeArrayCustom.cpp
+    bindings/js/JSDOMPluginArrayCustom.cpp
+    bindings/js/JSDOMPluginCustom.cpp
+    bindings/js/JSDOMStringMapCustom.cpp
+    bindings/js/JSDOMTokenListCustom.cpp
+    bindings/js/JSDOMWindowBase.cpp
+    bindings/js/JSDOMWindowCustom.cpp
+    bindings/js/JSDOMWindowShell.cpp
+    bindings/js/JSDOMWindowWebAudioCustom.cpp
+    bindings/js/JSDOMWindowWebSocketCustom.cpp
+    bindings/js/JSDOMWrapper.cpp
+    bindings/js/JSDataViewCustom.cpp
+    bindings/js/JSDedicatedWorkerContextCustom.cpp
+    bindings/js/JSDeprecatedPeerConnectionCustom.cpp
+    bindings/js/JSDesktopNotificationsCustom.cpp
+    bindings/js/JSDeviceMotionEventCustom.cpp
+    bindings/js/JSDeviceOrientationEventCustom.cpp
+    bindings/js/JSDirectoryEntryCustom.cpp
+    bindings/js/JSDirectoryEntrySyncCustom.cpp
+    bindings/js/JSDocumentCustom.cpp
+    bindings/js/JSElementCustom.cpp
+    bindings/js/JSEntryCustom.cpp
+    bindings/js/JSEntrySyncCustom.cpp
+    bindings/js/JSErrorHandler.cpp
+    bindings/js/JSEventCustom.cpp
+    bindings/js/JSEventListener.cpp
+    bindings/js/JSEventTarget.cpp
+    bindings/js/JSExceptionBase.cpp
+    bindings/js/JSFileReaderCustom.cpp
+    bindings/js/JSFloat32ArrayCustom.cpp
+    bindings/js/JSFloat64ArrayCustom.cpp
+    bindings/js/JSGeolocationCustom.cpp
+    bindings/js/JSHTMLAllCollectionCustom.cpp
+    bindings/js/JSHTMLAppletElementCustom.cpp
+    bindings/js/JSHTMLCanvasElementCustom.cpp
+    bindings/js/JSHTMLCollectionCustom.cpp
+    bindings/js/JSHTMLDocumentCustom.cpp
+    bindings/js/JSHTMLElementCustom.cpp
+    bindings/js/JSHTMLEmbedElementCustom.cpp
+    bindings/js/JSHTMLFormElementCustom.cpp
+    bindings/js/JSHTMLFrameElementCustom.cpp
+    bindings/js/JSHTMLFrameSetElementCustom.cpp
+    bindings/js/JSHTMLInputElementCustom.cpp
+    bindings/js/JSHTMLLinkElementCustom.cpp
+    bindings/js/JSHTMLMediaElementCustom.cpp
+    bindings/js/JSHTMLObjectElementCustom.cpp
+    bindings/js/JSHTMLOptionsCollectionCustom.cpp
+    bindings/js/JSHTMLOutputElementCustom.cpp
+    bindings/js/JSHTMLSelectElementCustom.cpp
+    bindings/js/JSHTMLStyleElementCustom.cpp
+    bindings/js/JSHistoryCustom.cpp
+    bindings/js/JSIDBAnyCustom.cpp
+    bindings/js/JSIDBKeyCustom.cpp
+    bindings/js/JSImageConstructor.cpp
+    bindings/js/JSImageDataCustom.cpp
+    bindings/js/JSInjectedScriptHostCustom.cpp
+    bindings/js/JSInjectedScriptManager.cpp
+    bindings/js/JSInspectorFrontendHostCustom.cpp
+    bindings/js/JSInt16ArrayCustom.cpp
+    bindings/js/JSInt32ArrayCustom.cpp
+    bindings/js/JSInt8ArrayCustom.cpp
+    bindings/js/JSJavaScriptAudioNodeCustom.cpp
+    bindings/js/JSJavaScriptCallFrameCustom.cpp
+    bindings/js/JSLazyEventListener.cpp
+    bindings/js/JSLocationCustom.cpp
+    bindings/js/JSMainThreadExecState.cpp
+    bindings/js/JSMediaListCustom.cpp
+    bindings/js/JSMemoryInfoCustom.cpp
+    bindings/js/JSMessageChannelCustom.cpp
+    bindings/js/JSMessageEventCustom.cpp
+    bindings/js/JSMessagePortCustom.cpp
+    bindings/js/JSMutationCallbackCustom.cpp
+    bindings/js/JSNamedNodeMapCustom.cpp
+    bindings/js/JSNodeCustom.cpp
+    bindings/js/JSNodeFilterCondition.cpp
+    bindings/js/JSNodeFilterCustom.cpp
+    bindings/js/JSNodeIteratorCustom.cpp
+    bindings/js/JSNodeListCustom.cpp
+    bindings/js/JSNotificationCustom.cpp
+    bindings/js/JSPluginElementFunctions.cpp
+    bindings/js/JSPopStateEventCustom.cpp
+    bindings/js/JSProcessingInstructionCustom.cpp
+    bindings/js/JSSQLResultSetRowListCustom.cpp
+    bindings/js/JSSQLTransactionCustom.cpp
+    bindings/js/JSSQLTransactionSyncCustom.cpp
+    bindings/js/JSSVGElementInstanceCustom.cpp
+    bindings/js/JSSVGLengthCustom.cpp
+    bindings/js/JSSVGPathSegCustom.cpp
+    bindings/js/JSScriptProfileNodeCustom.cpp
+    bindings/js/JSSharedWorkerCustom.cpp
+    bindings/js/JSStorageCustom.cpp
+    bindings/js/JSStyleSheetCustom.cpp
+    bindings/js/JSStyleSheetListCustom.cpp
+    bindings/js/JSTextCustom.cpp
+    bindings/js/JSTextTrackCueCustom.cpp
+    bindings/js/JSTextTrackCustom.cpp
+    bindings/js/JSTextTrackListCustom.cpp
+    bindings/js/JSTouchCustom.cpp
+    bindings/js/JSTouchListCustom.cpp
+    bindings/js/JSTrackCustom.cpp
+    bindings/js/JSTrackEventCustom.cpp
+    bindings/js/JSTreeWalkerCustom.cpp
+    bindings/js/JSUint16ArrayCustom.cpp
+    bindings/js/JSUint32ArrayCustom.cpp
+    bindings/js/JSUint8ArrayCustom.cpp
+    bindings/js/JSWebGLRenderingContextCustom.cpp
+    bindings/js/JSWebKitAnimationCustom.cpp
+    bindings/js/JSWebKitAnimationListCustom.cpp
+    bindings/js/JSWebKitCSSKeyframeRuleCustom.cpp
+    bindings/js/JSWebKitCSSKeyframesRuleCustom.cpp
+    bindings/js/JSWebKitMutationObserverCustom.cpp
+    bindings/js/JSWebKitPointCustom.cpp
+    bindings/js/JSWebSocketCustom.cpp
+    bindings/js/JSWorkerContextBase.cpp
+    bindings/js/JSWorkerContextCustom.cpp
+    bindings/js/JSWorkerCustom.cpp
+    bindings/js/JSXMLHttpRequestCustom.cpp
+    bindings/js/JSXMLHttpRequestUploadCustom.cpp
+    bindings/js/JSXPathResultCustom.cpp
+    bindings/js/JSXSLTProcessorCustom.cpp
+    bindings/js/JavaScriptCallFrame.cpp
+    bindings/js/Dictionary.cpp
+    bindings/js/ScheduledAction.cpp
+    bindings/js/ScriptCachedFrameData.cpp
+    bindings/js/ScriptCallStackFactory.cpp
+    bindings/js/ScriptController.cpp
 
+    bindings/js/ScriptDebugServer.cpp
+    bindings/js/ScriptEventListener.cpp
+    bindings/js/ScriptFunctionCall.cpp
+    bindings/js/ScriptGCEvent.cpp
+    bindings/js/ScriptObject.cpp
+    bindings/js/ScriptProfile.cpp
+    bindings/js/ScriptProfiler.cpp
+    bindings/js/ScriptState.cpp
+    bindings/js/ScriptValue.cpp
+    bindings/js/SerializedScriptValue.cpp
+    bindings/js/WorkerScriptController.cpp
+
+    bridge/IdentifierRep.cpp
+    bridge/jsc/BridgeJSC.cpp
+    bridge/runtime_array.cpp
+    bridge/runtime_method.cpp
+    bridge/runtime_object.cpp
+    bridge/runtime_root.cpp
+    #bridge/testbindings.cpp
+
+    css/CSSAspectRatioValue.cpp
+    css/CSSBorderImage.cpp
+    css/CSSBorderImageSliceValue.cpp
+    css/CSSCanvasValue.cpp
+    css/CSSCalculationValue.cpp
+    css/CSSCharsetRule.cpp
+    css/CSSComputedStyleDeclaration.cpp
+    css/CSSCrossfadeValue.cpp
+    css/CSSCursorImageValue.cpp
+    css/CSSFontFace.cpp
+    css/CSSFontFaceRule.cpp
+    css/CSSFontFaceSource.cpp
+    css/CSSFontFaceSrcValue.cpp
+    css/CSSFontSelector.cpp
+    css/CSSFunctionValue.cpp
+    css/CSSGradientValue.cpp
+    css/CSSImageGeneratorValue.cpp
+    css/CSSImageSetValue.cpp
+    css/CSSImageValue.cpp
+    css/CSSImportRule.cpp
+    css/CSSInheritedValue.cpp
+    css/CSSInitialValue.cpp
+    css/CSSLineBoxContainValue.cpp
+    css/CSSMediaRule.cpp
+    css/CSSOMUtils.cpp
+    css/CSSPageRule.cpp
+    css/CSSParser.cpp
+    css/CSSParserValues.cpp
+    css/CSSPrimitiveValue.cpp
+    css/CSSProperty.cpp
+    css/CSSPropertySourceData.cpp
+    css/CSSReflectValue.cpp
+    css/CSSRule.cpp
+    css/CSSRuleList.cpp
+    css/CSSSegmentedFontFace.cpp
+    css/CSSSelector.cpp
+    css/CSSSelectorList.cpp
+    css/CSSStyleDeclaration.cpp
+    css/CSSStyleRule.cpp
+    css/CSSStyleSheet.cpp
+    css/CSSTimingFunctionValue.cpp
+    css/CSSUnicodeRangeValue.cpp
+    css/CSSValue.cpp
+    css/CSSValueList.cpp
+    css/CSSValuePool.cpp
+    css/CSSWrapShapes.cpp
+    css/FontFeatureValue.cpp
+    css/FontValue.cpp
+    css/LengthFunctions.cpp
+    css/MediaFeatureNames.cpp
+    css/MediaList.cpp
+    css/MediaQuery.cpp
+    css/MediaQueryEvaluator.cpp
+    css/MediaQueryExp.cpp
+    css/MediaQueryList.cpp
+    css/MediaQueryListListener.cpp
+    css/MediaQueryMatcher.cpp
+    css/PropertySetCSSStyleDeclaration.cpp
+    css/RGBColor.cpp
+    css/SVGCSSComputedStyleDeclaration.cpp
+    css/SVGCSSParser.cpp
+    css/SVGCSSStyleSelector.cpp
+    css/SelectorChecker.cpp
+    css/ShadowValue.cpp
+    css/StyleBuilder.cpp
+    css/StyleMedia.cpp
+    css/StylePropertySet.cpp
+    css/StylePropertyShorthand.cpp
+    css/StyleResolver.cpp
+    css/StyleRule.cpp
+    css/StyleSheet.cpp
+    css/StyleSheetList.cpp
+    css/WebKitCSSFilterValue.cpp
+    css/WebKitCSSKeyframeRule.cpp
+    css/WebKitCSSKeyframesRule.cpp
+    css/WebKitCSSMatrix.cpp
+    css/WebKitCSSRegionRule.cpp
+    css/WebKitCSSShaderValue.cpp
+    css/WebKitCSSTransformValue.cpp
+;
+
+StaticLibrary webcore2 :    
+    DerivedSources/WebCore/CSSGrammar.cpp
+    DerivedSources/WebCore/CSSPropertyNames.cpp
+    DerivedSources/WebCore/CSSValueKeywords.cpp
+    #DerivedSources/WebCore/CharsetData.cpp
+    DerivedSources/WebCore/ColorData.cpp
+    # This list does not contain all the Objective-C bindings files
+    # that we generate.  We run all the IDL files through the
+    # Objective-C code generator, but not all of them even build.
+    #DerivedSources/WebCore/DocTypeStrings.cpp
+    DerivedSources/WebCore/EventFactory.cpp
+    DerivedSources/WebCore/ExceptionCodeDescription.cpp
+    DerivedSources/WebCore/HTMLElementFactory.cpp
+    DerivedSources/WebCore/HTMLEntityTable.cpp
+    DerivedSources/WebCore/HTMLNames.cpp
+    DerivedSources/WebCore/InspectorBackendDispatcher.cpp
+    DerivedSources/WebCore/InspectorFrontend.cpp
+    DerivedSources/WebCore/InspectorTypeBuilder.cpp
+    #DerivedSources/WebCore/JSAbstractView.cpp
+    DerivedSources/WebCore/JSAbstractWorker.cpp
+    DerivedSources/WebCore/JSArrayBuffer.cpp
+    DerivedSources/WebCore/JSArrayBufferView.cpp
+    DerivedSources/WebCore/JSAttr.cpp
+    DerivedSources/WebCore/JSAudioBuffer.cpp
+    DerivedSources/WebCore/JSAudioBufferSourceNode.cpp
+    DerivedSources/WebCore/JSAudioChannelMerger.cpp
+    DerivedSources/WebCore/JSAudioChannelSplitter.cpp
+    DerivedSources/WebCore/JSAudioContext.cpp
+    DerivedSources/WebCore/JSAudioDestinationNode.cpp
+    DerivedSources/WebCore/JSAudioGain.cpp
+    DerivedSources/WebCore/JSAudioGainNode.cpp
+    DerivedSources/WebCore/JSAudioListener.cpp
+    DerivedSources/WebCore/JSAudioNode.cpp
+    DerivedSources/WebCore/JSAudioPannerNode.cpp
+    DerivedSources/WebCore/JSAudioParam.cpp
+    DerivedSources/WebCore/JSAudioProcessingEvent.cpp
+    DerivedSources/WebCore/JSAudioSourceNode.cpp
+    DerivedSources/WebCore/JSBarInfo.cpp
+    DerivedSources/WebCore/JSBeforeLoadEvent.cpp
+    DerivedSources/WebCore/JSBiquadFilterNode.cpp
+    DerivedSources/WebCore/JSBlob.cpp
+    DerivedSources/WebCore/JSCDATASection.cpp
+    DerivedSources/WebCore/JSCSSCharsetRule.cpp
+    DerivedSources/WebCore/JSCSSFontFaceRule.cpp
+    DerivedSources/WebCore/JSCSSImportRule.cpp
+    DerivedSources/WebCore/JSCSSMediaRule.cpp
+    DerivedSources/WebCore/JSCSSPageRule.cpp
+    DerivedSources/WebCore/JSCSSPrimitiveValue.cpp
+    DerivedSources/WebCore/JSCSSRule.cpp
+    DerivedSources/WebCore/JSCSSRuleList.cpp
+    DerivedSources/WebCore/JSCSSStyleDeclaration.cpp
+    DerivedSources/WebCore/JSCSSStyleRule.cpp
+    DerivedSources/WebCore/JSCSSStyleSheet.cpp
+    DerivedSources/WebCore/JSCSSUnknownRule.cpp
+    DerivedSources/WebCore/JSCSSValue.cpp
+    DerivedSources/WebCore/JSCSSValueList.cpp
+    DerivedSources/WebCore/JSCanvasGradient.cpp
+    DerivedSources/WebCore/JSCanvasPattern.cpp
+    DerivedSources/WebCore/JSCanvasRenderingContext.cpp
+    DerivedSources/WebCore/JSCanvasRenderingContext2D.cpp
+    DerivedSources/WebCore/JSCharacterData.cpp
+    DerivedSources/WebCore/JSClientRect.cpp
+    DerivedSources/WebCore/JSClientRectList.cpp
+    DerivedSources/WebCore/JSClipboard.cpp
+    DerivedSources/WebCore/JSComment.cpp
+    DerivedSources/WebCore/JSCompositionEvent.cpp
+    DerivedSources/WebCore/JSConsole.cpp
+    DerivedSources/WebCore/JSConvolverNode.cpp
+    DerivedSources/WebCore/JSCoordinates.cpp
+    DerivedSources/WebCore/JSCounter.cpp
+    DerivedSources/WebCore/JSCrypto.cpp
+    DerivedSources/WebCore/JSCustomEvent.cpp
+    DerivedSources/WebCore/JSDOMApplicationCache.cpp
+    DerivedSources/WebCore/JSDOMCoreException.cpp
+    DerivedSources/WebCore/JSDOMFileSystem.cpp
+    DerivedSources/WebCore/JSDOMFileSystemSync.cpp
+    DerivedSources/WebCore/JSDOMFormData.cpp
+    DerivedSources/WebCore/JSDOMImplementation.cpp
+    DerivedSources/WebCore/JSDOMMimeType.cpp
+    DerivedSources/WebCore/JSDOMMimeTypeArray.cpp
+    DerivedSources/WebCore/JSDOMParser.cpp
+    DerivedSources/WebCore/JSDOMPlugin.cpp
+    DerivedSources/WebCore/JSDOMPluginArray.cpp
+    DerivedSources/WebCore/JSDOMSelection.cpp
+    DerivedSources/WebCore/JSDOMSettableTokenList.cpp
+    DerivedSources/WebCore/JSDOMStringList.cpp
+    DerivedSources/WebCore/JSDOMStringMap.cpp
+    DerivedSources/WebCore/JSDOMTokenList.cpp
+    DerivedSources/WebCore/JSDOMURL.cpp
+    DerivedSources/WebCore/JSDOMWindow.cpp
+    DerivedSources/WebCore/JSDataView.cpp
+    DerivedSources/WebCore/JSDatabase.cpp
+    DerivedSources/WebCore/JSDatabaseCallback.cpp
+    DerivedSources/WebCore/JSDatabaseSync.cpp
+    DerivedSources/WebCore/JSDedicatedWorkerContext.cpp
+    DerivedSources/WebCore/JSDelayNode.cpp
+    DerivedSources/WebCore/JSDeviceMotionEvent.cpp
+    DerivedSources/WebCore/JSDeviceOrientationEvent.cpp
+    DerivedSources/WebCore/JSDirectoryEntry.cpp
+    DerivedSources/WebCore/JSDirectoryEntrySync.cpp
+    DerivedSources/WebCore/JSDirectoryReader.cpp
+    DerivedSources/WebCore/JSDirectoryReaderSync.cpp
+    DerivedSources/WebCore/JSDocument.cpp
+    DerivedSources/WebCore/JSDocumentFragment.cpp
+    DerivedSources/WebCore/JSDocumentType.cpp
+    DerivedSources/WebCore/JSElement.cpp
+    DerivedSources/WebCore/JSElementTimeControl.cpp
+    DerivedSources/WebCore/JSEntity.cpp
+    DerivedSources/WebCore/JSEntityReference.cpp
+    DerivedSources/WebCore/JSEntriesCallback.cpp
+    DerivedSources/WebCore/JSEntry.cpp
+    DerivedSources/WebCore/JSEntryArray.cpp
+    DerivedSources/WebCore/JSEntryArraySync.cpp
+    DerivedSources/WebCore/JSEntryCallback.cpp
+    DerivedSources/WebCore/JSEntrySync.cpp
+    DerivedSources/WebCore/JSErrorCallback.cpp
+    DerivedSources/WebCore/JSErrorEvent.cpp
+    DerivedSources/WebCore/JSEXTTextureFilterAnisotropic.cpp
+    DerivedSources/WebCore/JSEvent.cpp
+    DerivedSources/WebCore/JSEventException.cpp
+    DerivedSources/WebCore/JSEventSource.cpp
+    DerivedSources/WebCore/JSFile.cpp
+    DerivedSources/WebCore/JSFileCallback.cpp
+    DerivedSources/WebCore/JSFileEntry.cpp
+    DerivedSources/WebCore/JSFileEntrySync.cpp
+    DerivedSources/WebCore/JSFileError.cpp
+    DerivedSources/WebCore/JSFileException.cpp
+    DerivedSources/WebCore/JSFileList.cpp
+    DerivedSources/WebCore/JSFileReader.cpp
+    DerivedSources/WebCore/JSFileReaderSync.cpp
+    DerivedSources/WebCore/JSFileSystemCallback.cpp
+    DerivedSources/WebCore/JSFileWriter.cpp
+    DerivedSources/WebCore/JSFileWriterCallback.cpp
+    DerivedSources/WebCore/JSFileWriterSync.cpp
+    DerivedSources/WebCore/JSFloat32Array.cpp
+    DerivedSources/WebCore/JSGeolocation.cpp
+    DerivedSources/WebCore/JSGeoposition.cpp
+    DerivedSources/WebCore/JSHTMLAllCollection.cpp
+    DerivedSources/WebCore/JSHTMLAnchorElement.cpp
+    DerivedSources/WebCore/JSHTMLAppletElement.cpp
+    DerivedSources/WebCore/JSHTMLAreaElement.cpp
+    DerivedSources/WebCore/JSHTMLAudioElement.cpp
+    DerivedSources/WebCore/JSHTMLBRElement.cpp
+    DerivedSources/WebCore/JSHTMLBaseElement.cpp
+    DerivedSources/WebCore/JSHTMLBaseFontElement.cpp
+    DerivedSources/WebCore/JSHTMLBodyElement.cpp
+    DerivedSources/WebCore/JSHTMLButtonElement.cpp
+    DerivedSources/WebCore/JSHTMLCanvasElement.cpp
+    DerivedSources/WebCore/JSHTMLCollection.cpp
+    DerivedSources/WebCore/JSHTMLDListElement.cpp
+    DerivedSources/WebCore/JSHTMLDataListElement.cpp
+    DerivedSources/WebCore/JSHTMLDetailsElement.cpp
+    DerivedSources/WebCore/JSHTMLDirectoryElement.cpp
+    DerivedSources/WebCore/JSHTMLDivElement.cpp
+    DerivedSources/WebCore/JSHTMLDocument.cpp
+    DerivedSources/WebCore/JSHTMLElement.cpp
+    DerivedSources/WebCore/JSHTMLElementWrapperFactory.cpp
+    DerivedSources/WebCore/JSHTMLEmbedElement.cpp
+    DerivedSources/WebCore/JSHTMLFieldSetElement.cpp
+    DerivedSources/WebCore/JSHTMLFontElement.cpp
+    DerivedSources/WebCore/JSHTMLFormElement.cpp
+    DerivedSources/WebCore/JSHTMLFrameElement.cpp
+    DerivedSources/WebCore/JSHTMLFrameSetElement.cpp
+    DerivedSources/WebCore/JSHTMLHRElement.cpp
+    DerivedSources/WebCore/JSHTMLHeadElement.cpp
+    DerivedSources/WebCore/JSHTMLHeadingElement.cpp
+    DerivedSources/WebCore/JSHTMLHtmlElement.cpp
+    DerivedSources/WebCore/JSHTMLIFrameElement.cpp
+    DerivedSources/WebCore/JSHTMLImageElement.cpp
+    DerivedSources/WebCore/JSHTMLInputElement.cpp
+    DerivedSources/WebCore/JSHTMLKeygenElement.cpp
+    DerivedSources/WebCore/JSHTMLLIElement.cpp
+    DerivedSources/WebCore/JSHTMLLabelElement.cpp
+    DerivedSources/WebCore/JSHTMLLegendElement.cpp
+    DerivedSources/WebCore/JSHTMLLinkElement.cpp
+    DerivedSources/WebCore/JSHTMLMapElement.cpp
+    DerivedSources/WebCore/JSHTMLMarqueeElement.cpp
+    DerivedSources/WebCore/JSHTMLMediaElement.cpp
+    DerivedSources/WebCore/JSHTMLMenuElement.cpp
+    DerivedSources/WebCore/JSHTMLMetaElement.cpp
+    DerivedSources/WebCore/JSHTMLMeterElement.cpp
+    DerivedSources/WebCore/JSHTMLModElement.cpp
+    DerivedSources/WebCore/JSHTMLOListElement.cpp
+    DerivedSources/WebCore/JSHTMLObjectElement.cpp
+    DerivedSources/WebCore/JSHTMLOptGroupElement.cpp
+    DerivedSources/WebCore/JSHTMLOptionElement.cpp
+    DerivedSources/WebCore/JSHTMLOptionsCollection.cpp
+    DerivedSources/WebCore/JSHTMLOutputElement.cpp
+    DerivedSources/WebCore/JSHTMLParagraphElement.cpp
+    DerivedSources/WebCore/JSHTMLParamElement.cpp
+    DerivedSources/WebCore/JSHTMLPreElement.cpp
+    DerivedSources/WebCore/JSHTMLProgressElement.cpp
+    DerivedSources/WebCore/JSHTMLPropertiesCollection.cpp
+    DerivedSources/WebCore/JSHTMLQuoteElement.cpp
+    DerivedSources/WebCore/JSHTMLScriptElement.cpp
+    DerivedSources/WebCore/JSHTMLSelectElement.cpp
+    DerivedSources/WebCore/JSHTMLSourceElement.cpp
+    DerivedSources/WebCore/JSHTMLSpanElement.cpp
+    DerivedSources/WebCore/JSHTMLStyleElement.cpp
+    DerivedSources/WebCore/JSHTMLTableCaptionElement.cpp
+    DerivedSources/WebCore/JSHTMLTableCellElement.cpp
+    DerivedSources/WebCore/JSHTMLTableColElement.cpp
+    DerivedSources/WebCore/JSHTMLTableElement.cpp
+    DerivedSources/WebCore/JSHTMLTableRowElement.cpp
+    DerivedSources/WebCore/JSHTMLTableSectionElement.cpp
+    DerivedSources/WebCore/JSHTMLTextAreaElement.cpp
+    DerivedSources/WebCore/JSHTMLTitleElement.cpp
+    DerivedSources/WebCore/JSHTMLUListElement.cpp
+    DerivedSources/WebCore/JSHTMLUnknownElement.cpp
+    DerivedSources/WebCore/JSHTMLVideoElement.cpp
+    DerivedSources/WebCore/JSHashChangeEvent.cpp
+    DerivedSources/WebCore/JSHistory.cpp
+    DerivedSources/WebCore/JSIDBAny.cpp
+    DerivedSources/WebCore/JSIDBCursor.cpp
+    DerivedSources/WebCore/JSIDBDatabase.cpp
+    DerivedSources/WebCore/JSIDBDatabaseException.cpp
+    DerivedSources/WebCore/JSIDBFactory.cpp
+    DerivedSources/WebCore/JSIDBIndex.cpp
+    DerivedSources/WebCore/JSIDBKey.cpp
+    DerivedSources/WebCore/JSIDBKeyRange.cpp
+    DerivedSources/WebCore/JSIDBObjectStore.cpp
+    DerivedSources/WebCore/JSIDBRequest.cpp
+    DerivedSources/WebCore/JSIDBTransaction.cpp
+    DerivedSources/WebCore/JSImageData.cpp
+    DerivedSources/WebCore/JSInjectedScriptHost.cpp
+    DerivedSources/WebCore/JSInspectorFrontendHost.cpp
+    DerivedSources/WebCore/JSInt16Array.cpp
+    DerivedSources/WebCore/JSInt32Array.cpp
+    DerivedSources/WebCore/JSInt8Array.cpp
+    DerivedSources/WebCore/JSJavaScriptAudioNode.cpp
+    DerivedSources/WebCore/JSJavaScriptCallFrame.cpp
+    DerivedSources/WebCore/JSKeyboardEvent.cpp
+    DerivedSources/WebCore/JSLocation.cpp
+    DerivedSources/WebCore/JSMathMLElementWrapperFactory.cpp
+    DerivedSources/WebCore/JSMediaError.cpp
+    #DerivedSources/WebCore/JSMediaKeyError.cpp
+    #DerivedSources/WebCore/JSMediaKeyEvent.cpp
+    DerivedSources/WebCore/JSMediaList.cpp
+    DerivedSources/WebCore/JSMediaQueryList.cpp
+    DerivedSources/WebCore/JSMemoryInfo.cpp
+    DerivedSources/WebCore/JSMessageChannel.cpp
+    DerivedSources/WebCore/JSMessageEvent.cpp
+    DerivedSources/WebCore/JSMessagePort.cpp
+    DerivedSources/WebCore/JSMetadata.cpp
+    DerivedSources/WebCore/JSMetadataCallback.cpp
+    DerivedSources/WebCore/JSMouseEvent.cpp
+    DerivedSources/WebCore/JSMutationCallback.cpp
+    DerivedSources/WebCore/JSMutationEvent.cpp
+    DerivedSources/WebCore/JSMutationRecord.cpp
+    DerivedSources/WebCore/JSNamedNodeMap.cpp
+    DerivedSources/WebCore/JSNavigator.cpp
+    DerivedSources/WebCore/JSNode.cpp
+    DerivedSources/WebCore/JSNodeFilter.cpp
+    DerivedSources/WebCore/JSNodeIterator.cpp
+    DerivedSources/WebCore/JSNodeList.cpp
+    DerivedSources/WebCore/JSNotation.cpp
+    DerivedSources/WebCore/JSNotification.cpp
+    DerivedSources/WebCore/JSNotificationCenter.cpp
+    DerivedSources/WebCore/JSNotificationPermissionCallback.cpp
+    DerivedSources/WebCore/JSOESStandardDerivatives.cpp
+    DerivedSources/WebCore/JSOESTextureFloat.cpp
+    DerivedSources/WebCore/JSOESVertexArrayObject.cpp
+    DerivedSources/WebCore/JSOperationNotAllowedException.cpp
+    DerivedSources/WebCore/JSOverflowEvent.cpp
+    DerivedSources/WebCore/JSPageTransitionEvent.cpp
+    DerivedSources/WebCore/JSPerformance.cpp
+;
+ 
+StaticLibrary webcore3 :   
+    #DerivedSources/WebCore/JSPerformanceEntry.cpp
+    #DerivedSources/WebCore/JSPerformanceEntryList.cpp
+    DerivedSources/WebCore/JSPerformanceNavigation.cpp
+    DerivedSources/WebCore/JSPerformanceTiming.cpp
+    DerivedSources/WebCore/JSPopStateEvent.cpp
+    DerivedSources/WebCore/JSPositionCallback.cpp
+    DerivedSources/WebCore/JSPositionError.cpp
+    DerivedSources/WebCore/JSPositionErrorCallback.cpp
+    DerivedSources/WebCore/JSProcessingInstruction.cpp
+    DerivedSources/WebCore/JSProgressEvent.cpp
+    DerivedSources/WebCore/JSRGBColor.cpp
+    DerivedSources/WebCore/JSRange.cpp
+    DerivedSources/WebCore/JSRangeException.cpp
+    DerivedSources/WebCore/JSRealtimeAnalyserNode.cpp
+    DerivedSources/WebCore/JSRect.cpp
+    DerivedSources/WebCore/JSSQLError.cpp
+    DerivedSources/WebCore/JSSQLException.cpp
+    DerivedSources/WebCore/JSSQLResultSet.cpp
+    DerivedSources/WebCore/JSSQLResultSetRowList.cpp
+    DerivedSources/WebCore/JSSQLStatementCallback.cpp
+    DerivedSources/WebCore/JSSQLStatementErrorCallback.cpp
+    DerivedSources/WebCore/JSSQLTransaction.cpp
+    DerivedSources/WebCore/JSSQLTransactionCallback.cpp
+    DerivedSources/WebCore/JSSQLTransactionErrorCallback.cpp
+    DerivedSources/WebCore/JSSQLTransactionSync.cpp
+    DerivedSources/WebCore/JSSQLTransactionSyncCallback.cpp
+    DerivedSources/WebCore/JSSVGAElement.cpp
+    DerivedSources/WebCore/JSSVGAltGlyphElement.cpp
+    DerivedSources/WebCore/JSSVGAngle.cpp
+    DerivedSources/WebCore/JSSVGAnimateColorElement.cpp
+    DerivedSources/WebCore/JSSVGAnimateElement.cpp
+    DerivedSources/WebCore/JSSVGAnimateMotionElement.cpp
+    DerivedSources/WebCore/JSSVGAnimateTransformElement.cpp
+    DerivedSources/WebCore/JSSVGAnimatedAngle.cpp
+    DerivedSources/WebCore/JSSVGAnimatedBoolean.cpp
+    DerivedSources/WebCore/JSSVGAnimatedEnumeration.cpp
+    DerivedSources/WebCore/JSSVGAnimatedInteger.cpp
+    DerivedSources/WebCore/JSSVGAnimatedLength.cpp
+    DerivedSources/WebCore/JSSVGAnimatedLengthList.cpp
+    DerivedSources/WebCore/JSSVGAnimatedNumber.cpp
+    DerivedSources/WebCore/JSSVGAnimatedNumberList.cpp
+    DerivedSources/WebCore/JSSVGAnimatedPreserveAspectRatio.cpp
+    DerivedSources/WebCore/JSSVGAnimatedRect.cpp
+    DerivedSources/WebCore/JSSVGAnimatedString.cpp
+    DerivedSources/WebCore/JSSVGAnimatedTransformList.cpp
+    DerivedSources/WebCore/JSSVGAnimationElement.cpp
+    DerivedSources/WebCore/JSSVGCircleElement.cpp
+    DerivedSources/WebCore/JSSVGClipPathElement.cpp
+    DerivedSources/WebCore/JSSVGColor.cpp
+    DerivedSources/WebCore/JSSVGComponentTransferFunctionElement.cpp
+    DerivedSources/WebCore/JSSVGCursorElement.cpp
+    DerivedSources/WebCore/JSSVGDefsElement.cpp
+    DerivedSources/WebCore/JSSVGDescElement.cpp
+    DerivedSources/WebCore/JSSVGDocument.cpp
+    DerivedSources/WebCore/JSSVGElement.cpp
+    DerivedSources/WebCore/JSSVGElementInstance.cpp
+    DerivedSources/WebCore/JSSVGElementInstanceList.cpp
+    DerivedSources/WebCore/JSSVGElementWrapperFactory.cpp
+    DerivedSources/WebCore/JSSVGEllipseElement.cpp
+    DerivedSources/WebCore/JSSVGException.cpp
+    DerivedSources/WebCore/JSSVGExternalResourcesRequired.cpp
+    DerivedSources/WebCore/JSSVGFEBlendElement.cpp
+    DerivedSources/WebCore/JSSVGFEColorMatrixElement.cpp
+    DerivedSources/WebCore/JSSVGFEComponentTransferElement.cpp
+    DerivedSources/WebCore/JSSVGFECompositeElement.cpp
+    DerivedSources/WebCore/JSSVGFEConvolveMatrixElement.cpp
+    DerivedSources/WebCore/JSSVGFEDiffuseLightingElement.cpp
+    DerivedSources/WebCore/JSSVGFEDisplacementMapElement.cpp
+    DerivedSources/WebCore/JSSVGFEDistantLightElement.cpp
+    DerivedSources/WebCore/JSSVGFEDropShadowElement.cpp
+    DerivedSources/WebCore/JSSVGFEFloodElement.cpp
+    DerivedSources/WebCore/JSSVGFEFuncAElement.cpp
+    DerivedSources/WebCore/JSSVGFEFuncBElement.cpp
+    DerivedSources/WebCore/JSSVGFEFuncGElement.cpp
+    DerivedSources/WebCore/JSSVGFEFuncRElement.cpp
+    DerivedSources/WebCore/JSSVGFEGaussianBlurElement.cpp
+    DerivedSources/WebCore/JSSVGFEImageElement.cpp
+    DerivedSources/WebCore/JSSVGFEMergeElement.cpp
+    DerivedSources/WebCore/JSSVGFEMergeNodeElement.cpp
+    DerivedSources/WebCore/JSSVGFEMorphologyElement.cpp
+    DerivedSources/WebCore/JSSVGFEOffsetElement.cpp
+    DerivedSources/WebCore/JSSVGFEPointLightElement.cpp
+    DerivedSources/WebCore/JSSVGFESpecularLightingElement.cpp
+    DerivedSources/WebCore/JSSVGFESpotLightElement.cpp
+    DerivedSources/WebCore/JSSVGFETileElement.cpp
+    DerivedSources/WebCore/JSSVGFETurbulenceElement.cpp
+    DerivedSources/WebCore/JSSVGFilterElement.cpp
+    DerivedSources/WebCore/JSSVGFilterPrimitiveStandardAttributes.cpp
+    DerivedSources/WebCore/JSSVGFitToViewBox.cpp
+    DerivedSources/WebCore/JSSVGFontElement.cpp
+    DerivedSources/WebCore/JSSVGFontFaceElement.cpp
+    DerivedSources/WebCore/JSSVGFontFaceFormatElement.cpp
+    DerivedSources/WebCore/JSSVGFontFaceNameElement.cpp
+    DerivedSources/WebCore/JSSVGFontFaceSrcElement.cpp
+    DerivedSources/WebCore/JSSVGFontFaceUriElement.cpp
+    DerivedSources/WebCore/JSSVGForeignObjectElement.cpp
+    DerivedSources/WebCore/JSSVGGElement.cpp
+    DerivedSources/WebCore/JSSVGGlyphElement.cpp
+    DerivedSources/WebCore/JSSVGGradientElement.cpp
+    DerivedSources/WebCore/JSSVGHKernElement.cpp
+    DerivedSources/WebCore/JSSVGImageElement.cpp
+    DerivedSources/WebCore/JSSVGLangSpace.cpp
+    DerivedSources/WebCore/JSSVGLength.cpp
+    DerivedSources/WebCore/JSSVGLengthList.cpp
+    DerivedSources/WebCore/JSSVGLineElement.cpp
+    DerivedSources/WebCore/JSSVGLinearGradientElement.cpp
+    DerivedSources/WebCore/JSSVGLocatable.cpp
+    DerivedSources/WebCore/JSSVGMPathElement.cpp
+    DerivedSources/WebCore/JSSVGMarkerElement.cpp
+    DerivedSources/WebCore/JSSVGMaskElement.cpp
+    DerivedSources/WebCore/JSSVGMatrix.cpp
+    DerivedSources/WebCore/JSSVGMetadataElement.cpp
+    DerivedSources/WebCore/JSSVGMissingGlyphElement.cpp
+    DerivedSources/WebCore/JSSVGNumber.cpp
+    DerivedSources/WebCore/JSSVGNumberList.cpp
+    DerivedSources/WebCore/JSSVGPaint.cpp
+    DerivedSources/WebCore/JSSVGPathElement.cpp
+    DerivedSources/WebCore/JSSVGPathSeg.cpp
+    DerivedSources/WebCore/JSSVGPathSegArcAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegArcRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegClosePath.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoCubicAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoCubicRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoCubicSmoothAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoCubicSmoothRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoQuadraticAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoQuadraticRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoQuadraticSmoothAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegCurvetoQuadraticSmoothRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoHorizontalAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoHorizontalRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoVerticalAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegLinetoVerticalRel.cpp
+    DerivedSources/WebCore/JSSVGPathSegList.cpp
+    DerivedSources/WebCore/JSSVGPathSegMovetoAbs.cpp
+    DerivedSources/WebCore/JSSVGPathSegMovetoRel.cpp
+    DerivedSources/WebCore/JSSVGPatternElement.cpp
+    DerivedSources/WebCore/JSSVGPoint.cpp
+    DerivedSources/WebCore/JSSVGPointList.cpp
+    DerivedSources/WebCore/JSSVGPolygonElement.cpp
+    DerivedSources/WebCore/JSSVGPolylineElement.cpp
+    DerivedSources/WebCore/JSSVGPreserveAspectRatio.cpp
+    DerivedSources/WebCore/JSSVGRadialGradientElement.cpp
+    DerivedSources/WebCore/JSSVGRect.cpp
+    DerivedSources/WebCore/JSSVGRectElement.cpp
+    DerivedSources/WebCore/JSSVGRenderingIntent.cpp
+    DerivedSources/WebCore/JSSVGSVGElement.cpp
+    DerivedSources/WebCore/JSSVGScriptElement.cpp
+    DerivedSources/WebCore/JSSVGSetElement.cpp
+    DerivedSources/WebCore/JSSVGStopElement.cpp
+    DerivedSources/WebCore/JSSVGStringList.cpp
+    DerivedSources/WebCore/JSSVGStylable.cpp
+    DerivedSources/WebCore/JSSVGStyleElement.cpp
+    DerivedSources/WebCore/JSSVGSwitchElement.cpp
+    DerivedSources/WebCore/JSSVGSymbolElement.cpp
+    DerivedSources/WebCore/JSSVGTRefElement.cpp
+    DerivedSources/WebCore/JSSVGTSpanElement.cpp
+    DerivedSources/WebCore/JSSVGTests.cpp
+    DerivedSources/WebCore/JSSVGTextContentElement.cpp
+    DerivedSources/WebCore/JSSVGTextElement.cpp
+    DerivedSources/WebCore/JSSVGTextPathElement.cpp
+    DerivedSources/WebCore/JSSVGTextPositioningElement.cpp
+    DerivedSources/WebCore/JSSVGTitleElement.cpp
+    DerivedSources/WebCore/JSSVGTransform.cpp
+    DerivedSources/WebCore/JSSVGTransformList.cpp
+    DerivedSources/WebCore/JSSVGTransformable.cpp
+    DerivedSources/WebCore/JSSVGURIReference.cpp
+    DerivedSources/WebCore/JSSVGUnitTypes.cpp
+    DerivedSources/WebCore/JSSVGUseElement.cpp
+    DerivedSources/WebCore/JSSVGVKernElement.cpp
+    DerivedSources/WebCore/JSSVGViewElement.cpp
+    DerivedSources/WebCore/JSSVGZoomAndPan.cpp
+    DerivedSources/WebCore/JSSVGZoomEvent.cpp
+    DerivedSources/WebCore/JSScreen.cpp
+    DerivedSources/WebCore/JSScriptProfile.cpp
+    DerivedSources/WebCore/JSScriptProfileNode.cpp
+    DerivedSources/WebCore/JSSharedWorker.cpp
+    DerivedSources/WebCore/JSSharedWorkerContext.cpp
+    DerivedSources/WebCore/JSSpeechInputEvent.cpp
+    DerivedSources/WebCore/JSSpeechInputResult.cpp
+    DerivedSources/WebCore/JSSpeechInputResultList.cpp
+    DerivedSources/WebCore/JSStorage.cpp
+    DerivedSources/WebCore/JSStorageEvent.cpp
+    DerivedSources/WebCore/JSStorageInfo.cpp
+    DerivedSources/WebCore/JSStorageInfoErrorCallback.cpp
+    DerivedSources/WebCore/JSStorageInfoQuotaCallback.cpp
+    DerivedSources/WebCore/JSStorageInfoUsageCallback.cpp
+    DerivedSources/WebCore/JSStyleMedia.cpp
+    DerivedSources/WebCore/JSStyleSheet.cpp
+    DerivedSources/WebCore/JSStyleSheetList.cpp
+    DerivedSources/WebCore/JSText.cpp
+    DerivedSources/WebCore/JSTextEvent.cpp
+    DerivedSources/WebCore/JSTextMetrics.cpp
+    DerivedSources/WebCore/JSTimeRanges.cpp
+    DerivedSources/WebCore/JSTouch.cpp
+    DerivedSources/WebCore/JSTouchEvent.cpp
+    DerivedSources/WebCore/JSTouchList.cpp
+    DerivedSources/WebCore/JSTreeWalker.cpp
+    DerivedSources/WebCore/JSUIEvent.cpp
+    DerivedSources/WebCore/JSUint16Array.cpp
+    DerivedSources/WebCore/JSUint32Array.cpp
+    DerivedSources/WebCore/JSUint8Array.cpp
+    DerivedSources/WebCore/JSValidityState.cpp
+    DerivedSources/WebCore/JSWebGLActiveInfo.cpp
+    DerivedSources/WebCore/JSWebGLBuffer.cpp
+    DerivedSources/WebCore/JSWebGLCompressedTextureS3TC.cpp
+    DerivedSources/WebCore/JSWebGLContextAttributes.cpp
+    DerivedSources/WebCore/JSWebGLFramebuffer.cpp
+    DerivedSources/WebCore/JSWebGLLoseContext.cpp
+    DerivedSources/WebCore/JSWebGLProgram.cpp
+    DerivedSources/WebCore/JSWebGLRenderbuffer.cpp
+    DerivedSources/WebCore/JSWebGLRenderingContext.cpp
+    DerivedSources/WebCore/JSWebGLShader.cpp
+    DerivedSources/WebCore/JSWebGLShaderPrecisionFormat.cpp
+    DerivedSources/WebCore/JSWebGLTexture.cpp
+    DerivedSources/WebCore/JSWebGLUniformLocation.cpp
+    DerivedSources/WebCore/JSWebGLVertexArrayObjectOES.cpp
+    DerivedSources/WebCore/JSWebKitAnimation.cpp
+    DerivedSources/WebCore/JSWebKitAnimationEvent.cpp
+    DerivedSources/WebCore/JSWebKitAnimationList.cpp
+    DerivedSources/WebCore/JSWebKitBlobBuilder.cpp
+    DerivedSources/WebCore/JSWebKitCSSFilterValue.cpp
+    DerivedSources/WebCore/JSWebKitCSSKeyframeRule.cpp
+    DerivedSources/WebCore/JSWebKitCSSKeyframesRule.cpp
+    DerivedSources/WebCore/JSWebKitCSSMatrix.cpp
+    DerivedSources/WebCore/JSWebKitCSSRegionRule.cpp
+    DerivedSources/WebCore/JSWebKitCSSTransformValue.cpp
+    DerivedSources/WebCore/JSWebKitMutationObserver.cpp
+    DerivedSources/WebCore/JSWebKitPoint.cpp
+    DerivedSources/WebCore/JSWebKitNamedFlow.cpp
+    DerivedSources/WebCore/JSWebKitTransitionEvent.cpp
+    DerivedSources/WebCore/JSWebSocket.cpp
+    DerivedSources/WebCore/JSWheelEvent.cpp
+    DerivedSources/WebCore/JSWorker.cpp
+    DerivedSources/WebCore/JSWorkerContext.cpp
+    DerivedSources/WebCore/JSWorkerLocation.cpp
+    DerivedSources/WebCore/JSWorkerNavigator.cpp
+    DerivedSources/WebCore/JSXMLHttpRequest.cpp
+    DerivedSources/WebCore/JSXMLHttpRequestException.cpp
+    DerivedSources/WebCore/JSXMLHttpRequestProgressEvent.cpp
+    DerivedSources/WebCore/JSXMLHttpRequestUpload.cpp
+    DerivedSources/WebCore/JSXMLSerializer.cpp
+    DerivedSources/WebCore/JSXPathEvaluator.cpp
+    DerivedSources/WebCore/JSXPathException.cpp
+    DerivedSources/WebCore/JSXPathExpression.cpp
+    DerivedSources/WebCore/JSXPathNSResolver.cpp
+    DerivedSources/WebCore/JSXPathResult.cpp
+    DerivedSources/WebCore/JSXSLTProcessor.cpp
+    DerivedSources/WebCore/MathMLElementFactory.cpp
+    DerivedSources/WebCore/MathMLNames.cpp
+    DerivedSources/WebCore/SVGElementFactory.cpp
+    DerivedSources/WebCore/SVGNames.cpp
+    DerivedSources/WebCore/UserAgentStyleSheetsData.cpp
+    DerivedSources/WebCore/WebKitFontFamilyNames.cpp
+    DerivedSources/WebCore/XLinkNames.cpp
+    DerivedSources/WebCore/XMLNSNames.cpp
+    DerivedSources/WebCore/XMLNames.cpp
+    DerivedSources/WebCore/XPathGrammar.cpp
+;
+
+StaticLibrary webcore4 :
+    dom/ActiveDOMObject.cpp
+    dom/Attr.cpp
+    dom/BeforeTextInsertedEvent.cpp
+    dom/BeforeUnloadEvent.cpp
+    dom/CDATASection.cpp
+    dom/CharacterData.cpp
+    dom/CheckedRadioButtons.cpp
+    dom/ChildListMutationScope.cpp
+    dom/ChildNodeList.cpp
+    dom/ClassNodeList.cpp
+    dom/ClientRect.cpp
+    dom/ClientRectList.cpp
+    dom/Clipboard.cpp
+    dom/ClipboardEvent.cpp
+    dom/Comment.cpp
+    dom/ComposedShadowTreeWalker.cpp
+    dom/CompositionEvent.cpp
+    dom/ContainerNode.cpp
+    dom/ContainerNodeAlgorithms.cpp
+    dom/ContextDestructionObserver.cpp
+    dom/CustomEvent.cpp
+    #dom/DOMAllInOne.cpp
+    dom/DOMCoreException.cpp
+    dom/DOMImplementation.cpp
+    dom/DOMStringList.cpp
+    dom/DOMStringMap.cpp
+    dom/DataTransferItem.cpp
+    dom/DatasetDOMStringMap.cpp
+    dom/DecodedDataDocumentParser.cpp
+    dom/DeviceMotionController.cpp
+    dom/DeviceMotionData.cpp
+    dom/DeviceMotionEvent.cpp
+    dom/DeviceOrientation.cpp
+    dom/DeviceOrientationController.cpp
+    dom/DeviceOrientationEvent.cpp
+    dom/Document.cpp
+    dom/DocumentEventQueue.cpp
+    dom/DocumentFragment.cpp
+    dom/DocumentMarkerController.cpp
+    dom/DocumentMarker.cpp
+    dom/DocumentOrderedMap.cpp
+    dom/DocumentParser.cpp
+    dom/DocumentType.cpp
+    dom/DynamicNodeList.cpp
+    dom/EditingText.cpp
+    dom/Element.cpp
+    dom/ElementAttributeData.cpp
+    dom/EntityReference.cpp
+    dom/ErrorEvent.cpp
+    dom/Event.cpp
+    dom/EventContext.cpp
+    dom/EventDispatchMediator.cpp
+    dom/EventDispatcher.cpp
+    dom/EventException.cpp
+    dom/EventListenerMap.cpp
+    dom/EventNames.cpp
+    dom/EventTarget.cpp
+    dom/ExceptionBase.cpp
+    dom/ExceptionCodePlaceholder.cpp
+    dom/GenericEventQueue.cpp
+    dom/IconURL.cpp
+    dom/KeyboardEvent.cpp
+    dom/MessageChannel.cpp
+    dom/MessageEvent.cpp
+    dom/MessagePort.cpp
+    dom/MessagePortChannel.cpp
+    dom/MicroDataItemList.cpp
+    dom/MouseEvent.cpp
+    dom/MouseRelatedEvent.cpp
+    dom/MutationEvent.cpp
+    dom/MutationObserverInterestGroup.cpp
+    dom/MutationObserverRegistration.cpp
+    dom/MutationRecord.cpp
+    dom/NameNodeList.cpp
+    dom/NamedNodeMap.cpp
+    dom/Node.cpp
+    dom/NodeFilter.cpp
+    dom/NodeFilterCondition.cpp
+    dom/NodeIterator.cpp
+    dom/NodeRenderingContext.cpp
+    dom/Notation.cpp
+    dom/OverflowEvent.cpp
+    dom/PageTransitionEvent.cpp
+    dom/PendingScript.cpp
+    dom/PopStateEvent.cpp
+    dom/Position.cpp
+    dom/PositionIterator.cpp
+    dom/ProcessingInstruction.cpp
+    dom/ProgressEvent.cpp
+    dom/QualifiedName.cpp
+    dom/Range.cpp
+    dom/RangeException.cpp
+    dom/RegisteredEventListener.cpp
+    dom/ScopedEventQueue.cpp
+    dom/ScriptElement.cpp
+    dom/ScriptExecutionContext.cpp
+    dom/ScriptRunner.cpp
+    dom/ScriptableDocumentParser.cpp
+    dom/ScriptedAnimationController.cpp
+    dom/SecurityContext.cpp
+    dom/SelectorQuery.cpp
+    dom/ShadowRoot.cpp
+    dom/ShadowTree.cpp
+    dom/SpaceSplitString.cpp
+    dom/StaticHashSetNodeList.cpp
+    dom/StaticNodeList.cpp
+    dom/StringCallback.cpp
+    dom/StyleElement.cpp
+    dom/StyledElement.cpp
+    dom/TagNodeList.cpp
+    dom/Text.cpp
+    dom/TextEvent.cpp
+    dom/Touch.cpp
+    dom/TouchEvent.cpp
+    dom/TouchList.cpp
+    dom/TransformSourceLibxslt.cpp
+    dom/Traversal.cpp
+    dom/TreeScope.cpp
+    dom/TreeScopeAdjuster.cpp
+    dom/TreeScopeAdopter.cpp
+    dom/TreeWalker.cpp
+    dom/UIEvent.cpp
+    dom/UIEventWithKeyState.cpp
+    dom/UserGestureIndicator.cpp
+    dom/UserTypingGestureIndicator.cpp
+    dom/ViewportArguments.cpp
+    dom/WebKitAnimationEvent.cpp
+    dom/WebKitMutationObserver.cpp
+    #dom/WebKitNamedFlow.cpp
+    dom/WebKitTransitionEvent.cpp
+    dom/WheelEvent.cpp
+    dom/WindowEventContext.cpp
+    dom/default/PlatformMessagePortChannel.cpp
+
+    editing/AlternativeTextController.cpp
+    editing/AppendNodeCommand.cpp
+    editing/ApplyBlockElementCommand.cpp
+    editing/ApplyStyleCommand.cpp
+    editing/BreakBlockquoteCommand.cpp
+    editing/CompositeEditCommand.cpp
+    editing/CreateLinkCommand.cpp
+    editing/DeleteButton.cpp
+    editing/DeleteButtonController.cpp
+    editing/DeleteFromTextNodeCommand.cpp
+    editing/DeleteSelectionCommand.cpp
+    editing/DictationAlternative.cpp
+    editing/DictationCommand.cpp
+    editing/EditCommand.cpp
+    #editing/EditingAllInOne.cpp
+    editing/EditingStyle.cpp
+    editing/Editor.cpp
+    editing/EditorCommand.cpp
+    editing/FormatBlockCommand.cpp
+    editing/FrameSelection.cpp
+    editing/HTMLInterchange.cpp
+    editing/IndentOutdentCommand.cpp
+    editing/InsertIntoTextNodeCommand.cpp
+    editing/InsertLineBreakCommand.cpp
+    editing/InsertListCommand.cpp
+    editing/InsertNodeBeforeCommand.cpp
+    editing/InsertParagraphSeparatorCommand.cpp
+    editing/InsertTextCommand.cpp
+    editing/MarkupAccumulator.cpp
+    editing/MergeIdenticalElementsCommand.cpp
+    editing/ModifySelectionListLevel.cpp
+    editing/MoveSelectionCommand.cpp
+    editing/RemoveCSSPropertyCommand.cpp
+    editing/RemoveFormatCommand.cpp
+    editing/RemoveNodeCommand.cpp
+    editing/RemoveNodePreservingChildrenCommand.cpp
+    editing/RenderedPosition.cpp
+    editing/ReplaceNodeWithSpanCommand.cpp
+    editing/ReplaceSelectionCommand.cpp
+    editing/SetNodeAttributeCommand.cpp
+    editing/SetSelectionCommand.cpp
+    editing/SimplifyMarkupCommand.cpp
+    editing/SmartReplace.cpp
+    editing/SmartReplaceICU.cpp
+    editing/SpellChecker.cpp
+    editing/SpellingCorrectionCommand.cpp
+    editing/SplitElementCommand.cpp
+    editing/SplitTextNodeCommand.cpp
+    editing/SplitTextNodeContainingElementCommand.cpp
+    editing/TextCheckingHelper.cpp
+    editing/TextInsertionBaseCommand.cpp
+    editing/TextIterator.cpp
+    editing/TypingCommand.cpp
+    editing/UnlinkCommand.cpp
+    editing/VisiblePosition.cpp
+    editing/VisibleSelection.cpp
+    editing/WrapContentsInDummySpanCommand.cpp
+
+    editing/htmlediting.cpp
+    editing/markup.cpp
+    editing/visible_units.cpp
+
+    fileapi/AsyncFileStream.cpp
+    fileapi/Blob.cpp
+    fileapi/BlobURL.cpp
+    fileapi/File.cpp
+    fileapi/FileException.cpp
+    fileapi/FileList.cpp
+    fileapi/FileReader.cpp
+    fileapi/FileReaderLoader.cpp
+    fileapi/FileReaderSync.cpp
+    fileapi/FileThread.cpp
+    fileapi/OperationNotAllowedException.cpp
+    fileapi/ThreadableBlobRegistry.cpp
+    fileapi/WebKitBlobBuilder.cpp
+
+    history/BackForwardController.cpp
+    history/BackForwardListImpl.cpp
+    history/CachedFrame.cpp
+    history/CachedPage.cpp
+    history/HistoryItem.cpp
+    history/PageCache.cpp
+    
     html/BaseButtonInputType.cpp
     html/BaseCheckableInputType.cpp
     html/BaseClickableWithKeyInputType.cpp
@@ -310,394 +1352,9 @@ SharedLibrary webcorehtml :
     html/track/TrackEvent.cpp
     html/track/WebVTTParser.cpp
     html/track/WebVTTTokenizer.cpp
-    :
-    webcore.a libwtf.a
-    # Other required libraries
-    #icuuc icudata icui18n
-    stdc++
-    # Haiku libraries
-    be
 ;
 
-SharedLibrary webcore.a :
-    accessibility/AXObjectCache.cpp
-    accessibility/AccessibilityARIAGrid.cpp
-    accessibility/AccessibilityARIAGridCell.cpp
-    accessibility/AccessibilityARIAGridRow.cpp
-    accessibility/AccessibilityAllInOne.cpp
-    accessibility/AccessibilityImageMapLink.cpp
-    accessibility/AccessibilityList.cpp
-    accessibility/AccessibilityListBox.cpp
-    accessibility/AccessibilityListBoxOption.cpp
-    accessibility/AccessibilityMediaControls.cpp
-    accessibility/AccessibilityMenuList.cpp
-    accessibility/AccessibilityMenuListOption.cpp
-    accessibility/AccessibilityMenuListPopup.cpp
-    accessibility/AccessibilityMockObject.cpp
-    accessibility/AccessibilityObject.cpp
-    accessibility/AccessibilityProgressIndicator.cpp
-    accessibility/AccessibilityRenderObject.cpp
-    accessibility/AccessibilityScrollView.cpp
-    accessibility/AccessibilityScrollbar.cpp
-    accessibility/AccessibilitySlider.cpp
-    accessibility/AccessibilitySpinButton.cpp
-    accessibility/AccessibilityTable.cpp
-    accessibility/AccessibilityTableCell.cpp
-    accessibility/AccessibilityTableColumn.cpp
-    accessibility/AccessibilityTableHeaderContainer.cpp
-    accessibility/AccessibilityTableRow.cpp
-
-    bindings/ScriptControllerBase.cpp
-
-    bindings/js/CallbackFunction.cpp
-    bindings/js/DOMObjectHashTableMap.cpp
-    bindings/js/DOMWrapperWorld.cpp
-    bindings/js/GCController.cpp
-    bindings/js/IDBBindingUtilities.cpp
-    bindings/js/JSArrayBufferCustom.cpp
-    bindings/js/JSAttrCustom.cpp
-    bindings/js/JSAudioBufferSourceNodeCustom.cpp
-    bindings/js/JSAudioContextCustom.cpp
-    #bindings/js/JSBindingsAllInOne.cpp
-    bindings/js/JSBlobCustom.cpp
-    bindings/js/JSCDATASectionCustom.cpp
-    bindings/js/JSCSSFontFaceRuleCustom.cpp
-    bindings/js/JSCSSImportRuleCustom.cpp
-    bindings/js/JSCSSMediaRuleCustom.cpp
-    bindings/js/JSCSSPageRuleCustom.cpp
-    bindings/js/JSCSSRuleCustom.cpp
-    bindings/js/JSCSSRuleListCustom.cpp
-    bindings/js/JSCSSStyleDeclarationCustom.cpp
-    bindings/js/JSCSSStyleRuleCustom.cpp
-    bindings/js/JSCSSValueCustom.cpp
-    bindings/js/JSCallbackData.cpp
-    bindings/js/JSCanvasRenderingContext2DCustom.cpp
-    bindings/js/JSCanvasRenderingContextCustom.cpp
-    bindings/js/JSClipboardCustom.cpp
-    bindings/js/JSConsoleCustom.cpp
-    bindings/js/JSConvolverNodeCustom.cpp
-    bindings/js/JSCoordinatesCustom.cpp
-    bindings/js/JSCustomSQLStatementErrorCallback.cpp
-    bindings/js/JSCustomVoidCallback.cpp
-    bindings/js/JSCustomXPathNSResolver.cpp
-    bindings/js/JSDictionary.cpp
-    bindings/js/JSDOMBinding.cpp
-    bindings/js/JSDOMFormDataCustom.cpp
-    bindings/js/JSDOMGlobalObject.cpp
-    bindings/js/JSDOMImplementationCustom.cpp
-    bindings/js/JSDOMMimeTypeArrayCustom.cpp
-    bindings/js/JSDOMPluginArrayCustom.cpp
-    bindings/js/JSDOMPluginCustom.cpp
-    bindings/js/JSDOMStringMapCustom.cpp
-    bindings/js/JSDOMTokenListCustom.cpp
-    bindings/js/JSDOMWindowBase.cpp
-    bindings/js/JSDOMWindowCustom.cpp
-    bindings/js/JSDOMWindowShell.cpp
-    bindings/js/JSDOMWindowWebAudioCustom.cpp
-    bindings/js/JSDOMWindowWebSocketCustom.cpp
-    bindings/js/JSDOMWrapper.cpp
-    bindings/js/JSDataViewCustom.cpp
-    bindings/js/JSDedicatedWorkerContextCustom.cpp
-    bindings/js/JSDeprecatedPeerConnectionCustom.cpp
-    bindings/js/JSDesktopNotificationsCustom.cpp
-    bindings/js/JSDeviceMotionEventCustom.cpp
-    bindings/js/JSDeviceOrientationEventCustom.cpp
-    bindings/js/JSDirectoryEntryCustom.cpp
-    bindings/js/JSDirectoryEntrySyncCustom.cpp
-    bindings/js/JSDocumentCustom.cpp
-    bindings/js/JSElementCustom.cpp
-    bindings/js/JSEntryCustom.cpp
-    bindings/js/JSEntrySyncCustom.cpp
-    bindings/js/JSErrorHandler.cpp
-    bindings/js/JSEventCustom.cpp
-    bindings/js/JSEventListener.cpp
-    bindings/js/JSEventTarget.cpp
-    bindings/js/JSExceptionBase.cpp
-    bindings/js/JSFileReaderCustom.cpp
-    bindings/js/JSFloat32ArrayCustom.cpp
-    bindings/js/JSFloat64ArrayCustom.cpp
-    bindings/js/JSGeolocationCustom.cpp
-    bindings/js/JSHTMLAllCollectionCustom.cpp
-    bindings/js/JSHTMLAppletElementCustom.cpp
-    bindings/js/JSHTMLCanvasElementCustom.cpp
-    bindings/js/JSHTMLCollectionCustom.cpp
-    bindings/js/JSHTMLDocumentCustom.cpp
-    bindings/js/JSHTMLElementCustom.cpp
-    bindings/js/JSHTMLEmbedElementCustom.cpp
-    bindings/js/JSHTMLFormElementCustom.cpp
-    bindings/js/JSHTMLFrameElementCustom.cpp
-    bindings/js/JSHTMLFrameSetElementCustom.cpp
-    bindings/js/JSHTMLInputElementCustom.cpp
-    bindings/js/JSHTMLLinkElementCustom.cpp
-    bindings/js/JSHTMLMediaElementCustom.cpp
-    bindings/js/JSHTMLObjectElementCustom.cpp
-    bindings/js/JSHTMLOptionsCollectionCustom.cpp
-    bindings/js/JSHTMLOutputElementCustom.cpp
-    bindings/js/JSHTMLSelectElementCustom.cpp
-    bindings/js/JSHTMLStyleElementCustom.cpp
-    bindings/js/JSHistoryCustom.cpp
-    bindings/js/JSIDBAnyCustom.cpp
-    bindings/js/JSIDBKeyCustom.cpp
-    bindings/js/JSImageConstructor.cpp
-    bindings/js/JSImageDataCustom.cpp
-    bindings/js/JSInjectedScriptHostCustom.cpp
-    bindings/js/JSInjectedScriptManager.cpp
-    bindings/js/JSInspectorFrontendHostCustom.cpp
-    bindings/js/JSInt16ArrayCustom.cpp
-    bindings/js/JSInt32ArrayCustom.cpp
-    bindings/js/JSInt8ArrayCustom.cpp
-    bindings/js/JSJavaScriptAudioNodeCustom.cpp
-    bindings/js/JSJavaScriptCallFrameCustom.cpp
-    bindings/js/JSLazyEventListener.cpp
-    bindings/js/JSLocationCustom.cpp
-    bindings/js/JSMainThreadExecState.cpp
-    bindings/js/JSMediaListCustom.cpp
-    bindings/js/JSMemoryInfoCustom.cpp
-    bindings/js/JSMessageChannelCustom.cpp
-    bindings/js/JSMessageEventCustom.cpp
-    bindings/js/JSMessagePortCustom.cpp
-    bindings/js/JSMutationCallbackCustom.cpp
-    bindings/js/JSNamedNodeMapCustom.cpp
-    bindings/js/JSNodeCustom.cpp
-    bindings/js/JSNodeFilterCondition.cpp
-    bindings/js/JSNodeFilterCustom.cpp
-    bindings/js/JSNodeIteratorCustom.cpp
-    bindings/js/JSNodeListCustom.cpp
-    bindings/js/JSNotificationCustom.cpp
-    bindings/js/JSPluginElementFunctions.cpp
-    bindings/js/JSPopStateEventCustom.cpp
-    bindings/js/JSProcessingInstructionCustom.cpp
-    bindings/js/JSSQLResultSetRowListCustom.cpp
-    bindings/js/JSSQLTransactionCustom.cpp
-    bindings/js/JSSQLTransactionSyncCustom.cpp
-    bindings/js/JSSVGElementInstanceCustom.cpp
-    bindings/js/JSSVGLengthCustom.cpp
-    bindings/js/JSSVGPathSegCustom.cpp
-    bindings/js/JSScriptProfileNodeCustom.cpp
-    bindings/js/JSSharedWorkerCustom.cpp
-    bindings/js/JSStorageCustom.cpp
-    bindings/js/JSStyleSheetCustom.cpp
-    bindings/js/JSStyleSheetListCustom.cpp
-    bindings/js/JSTextCustom.cpp
-    bindings/js/JSTextTrackCueCustom.cpp
-    bindings/js/JSTextTrackCustom.cpp
-    bindings/js/JSTextTrackListCustom.cpp
-    bindings/js/JSTouchCustom.cpp
-    bindings/js/JSTouchListCustom.cpp
-    bindings/js/JSTrackCustom.cpp
-    bindings/js/JSTrackEventCustom.cpp
-    bindings/js/JSTreeWalkerCustom.cpp
-    bindings/js/JSUint16ArrayCustom.cpp
-    bindings/js/JSUint32ArrayCustom.cpp
-    bindings/js/JSUint8ArrayCustom.cpp
-    bindings/js/JSWebGLRenderingContextCustom.cpp
-    bindings/js/JSWebKitAnimationCustom.cpp
-    bindings/js/JSWebKitAnimationListCustom.cpp
-    bindings/js/JSWebKitCSSKeyframeRuleCustom.cpp
-    bindings/js/JSWebKitCSSKeyframesRuleCustom.cpp
-    bindings/js/JSWebKitMutationObserverCustom.cpp
-    bindings/js/JSWebKitPointCustom.cpp
-    bindings/js/JSWebSocketCustom.cpp
-    bindings/js/JSWorkerContextBase.cpp
-    bindings/js/JSWorkerContextCustom.cpp
-    bindings/js/JSWorkerCustom.cpp
-    bindings/js/JSXMLHttpRequestCustom.cpp
-    bindings/js/JSXMLHttpRequestUploadCustom.cpp
-    bindings/js/JSXPathResultCustom.cpp
-    bindings/js/JSXSLTProcessorCustom.cpp
-    bindings/js/JavaScriptCallFrame.cpp
-    bindings/js/Dictionary.cpp
-    bindings/js/ScheduledAction.cpp
-    bindings/js/ScriptCachedFrameData.cpp
-    bindings/js/ScriptCallStackFactory.cpp
-    bindings/js/ScriptController.cpp
-
-    bindings/js/ScriptDebugServer.cpp
-    bindings/js/ScriptEventListener.cpp
-    bindings/js/ScriptFunctionCall.cpp
-    bindings/js/ScriptGCEvent.cpp
-    bindings/js/ScriptObject.cpp
-    bindings/js/ScriptProfile.cpp
-    bindings/js/ScriptProfiler.cpp
-    bindings/js/ScriptState.cpp
-    bindings/js/ScriptValue.cpp
-    bindings/js/SerializedScriptValue.cpp
-    bindings/js/WorkerScriptController.cpp
-
-    bridge/IdentifierRep.cpp
-
-    bridge/jsc/BridgeJSC.cpp
-
-    bridge/runtime_array.cpp
-    bridge/runtime_method.cpp
-    bridge/runtime_object.cpp
-    bridge/runtime_root.cpp
-    #bridge/testbindings.cpp
-
-    css/CSSAspectRatioValue.cpp
-    css/CSSBorderImage.cpp
-    css/CSSBorderImageSliceValue.cpp
-    css/CSSCanvasValue.cpp
-    css/CSSCalculationValue.cpp
-    css/CSSCharsetRule.cpp
-    css/CSSComputedStyleDeclaration.cpp
-    css/CSSCrossfadeValue.cpp
-    css/CSSCursorImageValue.cpp
-    css/CSSFontFace.cpp
-    css/CSSFontFaceRule.cpp
-    css/CSSFontFaceSource.cpp
-    css/CSSFontFaceSrcValue.cpp
-    css/CSSFontSelector.cpp
-    css/CSSFunctionValue.cpp
-    css/CSSGradientValue.cpp
-    css/CSSImageGeneratorValue.cpp
-    css/CSSImageSetValue.cpp
-    css/CSSImageValue.cpp
-    css/CSSImportRule.cpp
-    css/CSSInheritedValue.cpp
-    css/CSSInitialValue.cpp
-    css/CSSLineBoxContainValue.cpp
-    css/CSSMediaRule.cpp
-    css/CSSOMUtils.cpp
-    css/CSSPageRule.cpp
-    css/CSSParser.cpp
-    css/CSSParserValues.cpp
-    css/CSSPrimitiveValue.cpp
-    css/CSSProperty.cpp
-    css/CSSPropertySourceData.cpp
-    css/CSSReflectValue.cpp
-    css/CSSRule.cpp
-    css/CSSRuleList.cpp
-    css/CSSSegmentedFontFace.cpp
-    css/CSSSelector.cpp
-    css/CSSSelectorList.cpp
-    css/CSSStyleDeclaration.cpp
-    css/CSSStyleRule.cpp
-    css/CSSStyleSheet.cpp
-    css/CSSTimingFunctionValue.cpp
-    css/CSSUnicodeRangeValue.cpp
-    css/CSSValue.cpp
-    css/CSSValueList.cpp
-    css/CSSValuePool.cpp
-    css/CSSWrapShapes.cpp
-    css/FontFeatureValue.cpp
-    css/FontValue.cpp
-    css/LengthFunctions.cpp
-    css/MediaFeatureNames.cpp
-    css/MediaList.cpp
-    css/MediaQuery.cpp
-    css/MediaQueryEvaluator.cpp
-    css/MediaQueryExp.cpp
-    css/MediaQueryList.cpp
-    css/MediaQueryListListener.cpp
-    css/MediaQueryMatcher.cpp
-    css/PropertySetCSSStyleDeclaration.cpp
-    css/RGBColor.cpp
-    css/SVGCSSComputedStyleDeclaration.cpp
-    css/SVGCSSParser.cpp
-    css/SVGCSSStyleSelector.cpp
-    css/SelectorChecker.cpp
-    css/ShadowValue.cpp
-    css/StyleBuilder.cpp
-    css/StyleMedia.cpp
-    css/StylePropertySet.cpp
-    css/StylePropertyShorthand.cpp
-    css/StyleResolver.cpp
-    css/StyleRule.cpp
-    css/StyleSheet.cpp
-    css/StyleSheetList.cpp
-    css/WebKitCSSFilterValue.cpp
-    css/WebKitCSSKeyframeRule.cpp
-    css/WebKitCSSKeyframesRule.cpp
-    css/WebKitCSSMatrix.cpp
-    css/WebKitCSSRegionRule.cpp
-    css/WebKitCSSShaderValue.cpp
-    css/WebKitCSSTransformValue.cpp
-
-    editing/AlternativeTextController.cpp
-    editing/AppendNodeCommand.cpp
-    editing/ApplyBlockElementCommand.cpp
-    editing/ApplyStyleCommand.cpp
-    editing/BreakBlockquoteCommand.cpp
-    editing/CompositeEditCommand.cpp
-    editing/CreateLinkCommand.cpp
-    editing/DeleteButton.cpp
-    editing/DeleteButtonController.cpp
-    editing/DeleteFromTextNodeCommand.cpp
-    editing/DeleteSelectionCommand.cpp
-    editing/DictationAlternative.cpp
-    editing/DictationCommand.cpp
-    editing/EditCommand.cpp
-    #editing/EditingAllInOne.cpp
-    editing/EditingStyle.cpp
-    editing/Editor.cpp
-    editing/EditorCommand.cpp
-    editing/FormatBlockCommand.cpp
-    editing/FrameSelection.cpp
-    editing/HTMLInterchange.cpp
-    editing/IndentOutdentCommand.cpp
-    editing/InsertIntoTextNodeCommand.cpp
-    editing/InsertLineBreakCommand.cpp
-    editing/InsertListCommand.cpp
-    editing/InsertNodeBeforeCommand.cpp
-    editing/InsertParagraphSeparatorCommand.cpp
-    editing/InsertTextCommand.cpp
-    editing/MarkupAccumulator.cpp
-    editing/MergeIdenticalElementsCommand.cpp
-    editing/ModifySelectionListLevel.cpp
-    editing/MoveSelectionCommand.cpp
-    editing/RemoveCSSPropertyCommand.cpp
-    editing/RemoveFormatCommand.cpp
-    editing/RemoveNodeCommand.cpp
-    editing/RemoveNodePreservingChildrenCommand.cpp
-    editing/RenderedPosition.cpp
-    editing/ReplaceNodeWithSpanCommand.cpp
-    editing/ReplaceSelectionCommand.cpp
-    editing/SetNodeAttributeCommand.cpp
-    editing/SetSelectionCommand.cpp
-    editing/SimplifyMarkupCommand.cpp
-    editing/SmartReplace.cpp
-    editing/SmartReplaceICU.cpp
-    editing/SpellChecker.cpp
-    editing/SpellingCorrectionCommand.cpp
-    editing/SplitElementCommand.cpp
-    editing/SplitTextNodeCommand.cpp
-    editing/SplitTextNodeContainingElementCommand.cpp
-    editing/TextCheckingHelper.cpp
-    editing/TextInsertionBaseCommand.cpp
-    editing/TextIterator.cpp
-    editing/TypingCommand.cpp
-    editing/UnlinkCommand.cpp
-    editing/VisiblePosition.cpp
-    editing/VisibleSelection.cpp
-    editing/WrapContentsInDummySpanCommand.cpp
-
-    editing/htmlediting.cpp
-
-    editing/markup.cpp
-
-    editing/visible_units.cpp
-
-    fileapi/AsyncFileStream.cpp
-    fileapi/Blob.cpp
-    fileapi/BlobURL.cpp
-    fileapi/File.cpp
-    fileapi/FileException.cpp
-    fileapi/FileList.cpp
-    fileapi/FileReader.cpp
-    fileapi/FileReaderLoader.cpp
-    fileapi/FileReaderSync.cpp
-    fileapi/FileThread.cpp
-    fileapi/OperationNotAllowedException.cpp
-    fileapi/ThreadableBlobRegistry.cpp
-    fileapi/WebKitBlobBuilder.cpp
-    history/BackForwardController.cpp
-    history/BackForwardListImpl.cpp
-    history/CachedFrame.cpp
-    history/CachedPage.cpp
-    history/HistoryItem.cpp
-    history/PageCache.cpp
-
+StaticLibrary webcore5 :
     inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtils.cpp
     inspector/DOMEditor.cpp
@@ -752,6 +1409,7 @@ SharedLibrary webcore.a :
     inspector/WorkerDebuggerAgent.cpp
     inspector/WorkerInspectorController.cpp
     inspector/WorkerRuntimeAgent.cpp
+
     loader/CrossOriginAccessControl.cpp
     loader/CrossOriginPreflightResultCache.cpp
     loader/DocumentLoadTiming.cpp
@@ -797,7 +1455,6 @@ SharedLibrary webcore.a :
     loader/archive/ArchiveFactory.cpp
     loader/archive/ArchiveResource.cpp
     loader/archive/ArchiveResourceCollection.cpp
-
     loader/archive/mhtml/MHTMLArchive.cpp
     loader/archive/mhtml/MHTMLParser.cpp
     loader/cache/CachedCSSStyleSheet.cpp
@@ -813,23 +1470,24 @@ SharedLibrary webcore.a :
     loader/cache/CachedTextTrack.cpp
     loader/cache/CachedXSLStyleSheet.cpp
     loader/cache/MemoryCache.cpp
-
     loader/icon/IconController.cpp
     loader/icon/IconDatabase.cpp
     loader/icon/IconDatabaseBase.cpp
     loader/icon/IconLoader.cpp
     loader/icon/IconRecord.cpp
     loader/icon/PageURLRecord.cpp
-
+    
     mathml/MathMLElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
     mathml/MathMLTextElement.cpp
+
     notifications/DOMWindowNotifications.cpp
     notifications/Notification.cpp
     notifications/NotificationCenter.cpp
     notifications/NotificationController.cpp
     notifications/WorkerContextNotifications.cpp
+
     page/BarInfo.cpp
     page/Chrome.cpp
     page/Console.cpp
@@ -894,11 +1552,11 @@ SharedLibrary webcore.a :
     page/animation/CSSPropertyAnimation.cpp
     page/animation/ImplicitAnimation.cpp
     page/animation/KeyframeAnimation.cpp
-
     page/scrolling/ScrollingCoordinator.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
 
+    platform/text/haiku/StringHaiku.cpp
     platform/ActivePlatformGestureAnimation.cpp
     platform/Arena.cpp
     platform/AsyncFileSystem.cpp
@@ -1105,23 +1763,14 @@ SharedLibrary webcore.a :
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageReader.cpp
-    platform/image-decoders/cairo/ImageDecoderCairo.cpp
-    platform/image-decoders/cg/ImageDecoderCG.cpp
     platform/image-decoders/gif/GIFImageDecoder.cpp
     platform/image-decoders/gif/GIFImageReader.cpp
     platform/image-decoders/ico/ICOImageDecoder.cpp
     platform/image-decoders/jpeg/JPEGImageDecoder.cpp
-    platform/image-decoders/openvg/ImageDecoderOpenVG.cpp
     platform/image-decoders/png/PNGImageDecoder.cpp
-    platform/image-decoders/qt/ImageFrameQt.cpp
-    platform/image-decoders/skia/ImageDecoderSkia.cpp
     platform/image-decoders/webp/WEBPImageDecoder.cpp
-    platform/image-decoders/wx/ImageDecoderWx.cpp
     platform/image-encoders/JPEGImageEncoder.cpp
-    platform/image-encoders/PNGImageEncoder.cpp
-    platform/image-encoders/skia/JPEGImageEncoder.cpp
-    platform/image-encoders/skia/PNGImageEncoder.cpp
-    platform/image-encoders/skia/WEBPImageEncoder.cpp
+    #platform/image-encoders/PNGImageEncoder.cpp
 
     platform/network/AuthenticationChallengeBase.cpp
     platform/network/BlobData.cpp
@@ -1174,10 +1823,8 @@ SharedLibrary webcore.a :
     platform/text/LineEnding.cpp
     platform/text/LocaleToScriptMappingDefault.cpp
     platform/text/LocaleToScriptMappingICU.cpp
-    platform/text/LocaleWin.cpp
     platform/text/LocalizedDateICU.cpp
     platform/text/LocalizedDateNone.cpp
-    platform/text/LocalizedDateWin.cpp
     platform/text/LocalizedNumberICU.cpp
     platform/text/LocalizedNumberNone.cpp
     platform/text/QuotedPrintable.cpp
@@ -1198,25 +1845,30 @@ SharedLibrary webcore.a :
     platform/text/TextEncodingRegistry.cpp
     platform/text/TextStream.cpp
     platform/text/UnicodeRange.cpp
-
     platform/text/transcoder/FontTranscoder.cpp
-    plugins/DOMMimeType.cpp
-    plugins/DOMMimeTypeArray.cpp
-    plugins/DOMPlugin.cpp
-    plugins/DOMPluginArray.cpp
-    plugins/IFrameShimSupport.cpp
-    plugins/PluginData.cpp
-    plugins/PluginDataNone.cpp
-    plugins/PluginDatabase.cpp
-    plugins/PluginDebug.cpp
-    plugins/PluginMainThreadScheduler.cpp
-    plugins/PluginPackage.cpp
-    plugins/PluginPackageNone.cpp
-    plugins/PluginStream.cpp
-    plugins/PluginView.cpp
-    plugins/PluginViewNone.cpp
- 
-    plugins/npapi.cpp
+    
+    platform/graphics/haiku/ImageBufferHaiku.cpp
+    platform/graphics/haiku/FontPlatformDataHaiku.cpp
+    #platform/graphics/haiku/StillImageHaiku.cpp
+;
+
+SharedLibrary libwebcore.so :
+    #plugins/DOMMimeType.cpp
+    #plugins/DOMMimeTypeArray.cpp
+    #plugins/DOMPlugin.cpp
+    #plugins/DOMPluginArray.cpp
+    #plugins/IFrameShimSupport.cpp
+    #plugins/PluginData.cpp
+    #plugins/PluginDataNone.cpp
+    #plugins/PluginDatabase.cpp
+    #plugins/PluginDebug.cpp
+    #plugins/PluginMainThreadScheduler.cpp
+    #plugins/PluginPackage.cpp
+    #plugins/PluginPackageNone.cpp
+    #plugins/PluginStream.cpp
+    #plugins/PluginView.cpp
+    #plugins/PluginViewNone.cpp
+    #plugins/npapi.cpp
 
     rendering/AutoTableLayout.cpp
     rendering/BidiRun.cpp
@@ -1272,7 +1924,7 @@ SharedLibrary webcore.a :
     rendering/RenderMarquee.cpp
     rendering/RenderMedia.cpp
     rendering/RenderMediaControls.cpp
-    rendering/RenderMediaControlsChromium.cpp
+    #rendering/RenderMediaControlsChromium.cpp
     rendering/RenderMenuList.cpp
     rendering/RenderMeter.cpp
     rendering/RenderMultiColumnBlock.cpp
@@ -1308,18 +1960,16 @@ SharedLibrary webcore.a :
     rendering/RenderTextControlSingleLine.cpp
     rendering/RenderTextFragment.cpp
     rendering/RenderTheme.cpp
-
-    rendering/RenderThemeChromiumCommon.cpp
-
     rendering/RenderTreeAsText.cpp
     rendering/RenderVideo.cpp
     rendering/RenderView.cpp
     rendering/RenderWidget.cpp
     rendering/RenderWordBreak.cpp
-    rendering/RenderingAllInOne.cpp
+    #rendering/RenderingAllInOne.cpp
     rendering/RootInlineBox.cpp
     rendering/ScrollBehavior.cpp
     rendering/break_lines.cpp
+
     rendering/mathml/RenderMathMLBlock.cpp
     rendering/mathml/RenderMathMLFenced.cpp
     rendering/mathml/RenderMathMLFraction.cpp
@@ -1330,6 +1980,7 @@ SharedLibrary webcore.a :
     rendering/mathml/RenderMathMLSquareRoot.cpp
     rendering/mathml/RenderMathMLSubSup.cpp
     rendering/mathml/RenderMathMLUnderOver.cpp
+
     rendering/style/ContentData.cpp
     rendering/style/CounterDirectives.cpp
     rendering/style/FillLayer.cpp
@@ -1338,7 +1989,7 @@ SharedLibrary webcore.a :
     rendering/style/QuotesData.cpp
     rendering/style/RenderStyle.cpp
     rendering/style/ShadowData.cpp
-    rendering/style/StyleAllInOne.cpp
+    #rendering/style/StyleAllInOne.cpp
     rendering/style/StyleBackgroundData.cpp
     rendering/style/StyleBoxData.cpp
     rendering/style/StyleCachedImage.cpp
@@ -1358,6 +2009,7 @@ SharedLibrary webcore.a :
     rendering/style/StyleSurroundData.cpp
     rendering/style/StyleTransformData.cpp
     rendering/style/StyleVisualData.cpp
+
     rendering/svg/SVGInlineFlowBox.cpp
     rendering/svg/SVGInlineTextBox.cpp
     rendering/svg/SVGMarkerLayoutInfo.cpp
@@ -1380,6 +2032,7 @@ SharedLibrary webcore.a :
     rendering/svg/SVGTextMetricsBuilder.cpp
     rendering/svg/SVGTextQuery.cpp
     rendering/svg/SVGTextRunRenderingContext.cpp
+
     storage/Storage.cpp
     storage/StorageAreaImpl.cpp
     storage/StorageAreaSync.cpp
@@ -1393,30 +2046,234 @@ SharedLibrary webcore.a :
     storage/StorageTask.cpp
     storage/StorageThread.cpp
     storage/StorageTracker.cpp
-    storage/chromium/IDBFactoryBackendInterface.cpp
-    storage/chromium/IDBKeyPathBackendImpl.cpp
-    storage/wince/DatabaseThreadWinCE.cpp
-    storage/wince/StorageThreadWinCE.cpp
-    workers/AbstractWorker.cpp
-    workers/DedicatedWorkerContext.cpp
-    workers/DedicatedWorkerThread.cpp
-    workers/DefaultSharedWorkerRepository.cpp
-    workers/SharedWorker.cpp
-    workers/SharedWorkerContext.cpp
-    workers/SharedWorkerThread.cpp
-    workers/Worker.cpp
-    workers/WorkerContext.cpp
-    workers/WorkerEventQueue.cpp
-    workers/WorkerLocation.cpp
-    workers/WorkerMessagingProxy.cpp
-    workers/WorkerRunLoop.cpp
-    workers/WorkerScriptLoader.cpp
-    workers/WorkerThread.cpp
+
+    rendering/style/SVGRenderStyle.cpp
+    rendering/style/SVGRenderStyleDefs.cpp
+    #rendering/svg/RenderSVGAllInOne.cpp
+    rendering/svg/RenderSVGBlock.cpp
+    rendering/svg/RenderSVGContainer.cpp
+    rendering/svg/RenderSVGEllipse.cpp
+    rendering/svg/RenderSVGForeignObject.cpp
+    rendering/svg/RenderSVGGradientStop.cpp
+    rendering/svg/RenderSVGHiddenContainer.cpp
+    rendering/svg/RenderSVGImage.cpp
+    rendering/svg/RenderSVGInline.cpp
+    rendering/svg/RenderSVGInlineText.cpp
+    rendering/svg/RenderSVGModelObject.cpp
+    rendering/svg/RenderSVGPath.cpp
+    rendering/svg/RenderSVGRect.cpp
+    rendering/svg/RenderSVGResource.cpp
+    rendering/svg/RenderSVGResourceClipper.cpp
+    rendering/svg/RenderSVGResourceContainer.cpp
+    rendering/svg/RenderSVGResourceFilter.cpp
+    rendering/svg/RenderSVGResourceFilterPrimitive.cpp
+    rendering/svg/RenderSVGResourceGradient.cpp
+    rendering/svg/RenderSVGResourceLinearGradient.cpp
+    rendering/svg/RenderSVGResourceMarker.cpp
+    rendering/svg/RenderSVGResourceMasker.cpp
+    rendering/svg/RenderSVGResourcePattern.cpp
+    rendering/svg/RenderSVGResourceRadialGradient.cpp
+    rendering/svg/RenderSVGResourceSolidColor.cpp
+    rendering/svg/RenderSVGRoot.cpp
+    rendering/svg/RenderSVGShape.cpp
+    rendering/svg/RenderSVGTSpan.cpp
+    rendering/svg/RenderSVGText.cpp
+    rendering/svg/RenderSVGTextPath.cpp
+    rendering/svg/RenderSVGTransformableContainer.cpp
+    rendering/svg/RenderSVGViewportContainer.cpp
+    rendering/svg/SVGInlineFlowBox.cpp
+    rendering/svg/SVGInlineTextBox.cpp
+    rendering/svg/SVGMarkerLayoutInfo.cpp
+    rendering/svg/SVGPathData.cpp
+    rendering/svg/SVGRenderSupport.cpp
+    rendering/svg/SVGRenderTreeAsText.cpp
+    rendering/svg/SVGRenderingContext.cpp
+    rendering/svg/SVGResources.cpp
+    rendering/svg/SVGResourcesCache.cpp
+    rendering/svg/SVGResourcesCycleSolver.cpp
+    rendering/svg/SVGRootInlineBox.cpp
+    rendering/svg/SVGTextChunk.cpp
+    rendering/svg/SVGTextChunkBuilder.cpp
+    rendering/svg/SVGTextLayoutAttributes.cpp
+    rendering/svg/SVGTextLayoutAttributesBuilder.cpp
+    rendering/svg/SVGTextLayoutEngine.cpp
+    rendering/svg/SVGTextLayoutEngineBaseline.cpp
+    rendering/svg/SVGTextLayoutEngineSpacing.cpp
+    rendering/svg/SVGTextMetrics.cpp
+    rendering/svg/SVGTextMetricsBuilder.cpp
+    rendering/svg/SVGTextQuery.cpp
+    rendering/svg/SVGTextRunRenderingContext.cpp
+    svg/ColorDistance.cpp
+    svg/SVGAElement.cpp
+    #svg/SVGAllInOne.cpp
+    svg/SVGAltGlyphDefElement.cpp
+    svg/SVGAltGlyphElement.cpp
+    svg/SVGAltGlyphItemElement.cpp
+    svg/SVGAngle.cpp
+    svg/SVGAnimateColorElement.cpp
+    svg/SVGAnimatedAngle.cpp
+    svg/SVGAnimatedBoolean.cpp
+    svg/SVGAnimatedColor.cpp
+    svg/SVGAnimatedEnumeration.cpp
+    svg/SVGAnimatedInteger.cpp
+    svg/SVGAnimatedIntegerOptionalInteger.cpp
+    svg/SVGAnimatedLength.cpp
+    svg/SVGAnimatedLengthList.cpp
+    svg/SVGAnimatedNumber.cpp
+    svg/SVGAnimatedNumberList.cpp
+    svg/SVGAnimatedNumberOptionalNumber.cpp
+    svg/SVGAnimatedPath.cpp
+    svg/SVGAnimatedPointList.cpp
+    svg/SVGAnimatedPreserveAspectRatio.cpp
+    svg/SVGAnimatedRect.cpp
+    svg/SVGAnimatedString.cpp
+    svg/SVGAnimatedTransformList.cpp
+    svg/SVGAnimatedType.cpp
+    svg/SVGAnimateElement.cpp
+    svg/SVGAnimateMotionElement.cpp
+    svg/SVGAnimateTransformElement.cpp
+    svg/SVGAnimationElement.cpp
+    svg/SVGCircleElement.cpp
+    svg/SVGClipPathElement.cpp
+    svg/SVGColor.cpp
+    svg/SVGComponentTransferFunctionElement.cpp
+    svg/SVGCursorElement.cpp
+    svg/SVGDefsElement.cpp
+    svg/SVGDescElement.cpp
+    svg/SVGDocument.cpp
+    svg/SVGDocumentExtensions.cpp
+    svg/SVGElement.cpp
+    svg/SVGElementInstance.cpp
+    svg/SVGElementInstanceList.cpp
+    svg/SVGEllipseElement.cpp
+    svg/SVGException.cpp
+    svg/SVGExternalResourcesRequired.cpp
+    svg/SVGFEBlendElement.cpp
+    svg/SVGFEColorMatrixElement.cpp
+    svg/SVGFEComponentTransferElement.cpp
+    svg/SVGFECompositeElement.cpp
+    svg/SVGFEConvolveMatrixElement.cpp
+    svg/SVGFEDiffuseLightingElement.cpp
+    svg/SVGFEDisplacementMapElement.cpp
+    svg/SVGFEDistantLightElement.cpp
+    svg/SVGFEDropShadowElement.cpp
+    svg/SVGFEFloodElement.cpp
+    svg/SVGFEFuncAElement.cpp
+    svg/SVGFEFuncBElement.cpp
+    svg/SVGFEFuncGElement.cpp
+    svg/SVGFEFuncRElement.cpp
+    svg/SVGFEGaussianBlurElement.cpp
+    svg/SVGFEImageElement.cpp
+    svg/SVGFELightElement.cpp
+    svg/SVGFEMergeElement.cpp
+    svg/SVGFEMergeNodeElement.cpp
+    svg/SVGFEMorphologyElement.cpp
+    svg/SVGFEOffsetElement.cpp
+    svg/SVGFEPointLightElement.cpp
+    svg/SVGFESpecularLightingElement.cpp
+    svg/SVGFESpotLightElement.cpp
+    svg/SVGFETileElement.cpp
+    svg/SVGFETurbulenceElement.cpp
+    svg/SVGFilterElement.cpp
+    svg/SVGFilterPrimitiveStandardAttributes.cpp
+    svg/SVGFitToViewBox.cpp
+    svg/SVGFontData.cpp
+    svg/SVGFontElement.cpp
+    svg/SVGFontFaceElement.cpp
+    svg/SVGFontFaceFormatElement.cpp
+    svg/SVGFontFaceNameElement.cpp
+    svg/SVGFontFaceSrcElement.cpp
+    svg/SVGFontFaceUriElement.cpp
+    svg/SVGForeignObjectElement.cpp
+    svg/SVGGElement.cpp
+    svg/SVGGlyphElement.cpp
+    svg/SVGGlyphRefElement.cpp
+    svg/SVGGradientElement.cpp
+    svg/SVGHKernElement.cpp
+    svg/SVGImageElement.cpp
+    svg/SVGImageLoader.cpp
+    svg/SVGLangSpace.cpp
+    svg/SVGLength.cpp
+    svg/SVGLengthContext.cpp
+    svg/SVGLengthList.cpp
+    svg/SVGLineElement.cpp
+    svg/SVGLinearGradientElement.cpp
+    svg/SVGLocatable.cpp
+    svg/SVGMPathElement.cpp
+    svg/SVGMarkerElement.cpp
+    svg/SVGMaskElement.cpp
+    svg/SVGMetadataElement.cpp
+    svg/SVGMissingGlyphElement.cpp
+    svg/SVGNumberList.cpp
+    svg/SVGPaint.cpp
+    svg/SVGParserUtilities.cpp
+    svg/SVGPathBlender.cpp
+    svg/SVGPathBuilder.cpp
+    svg/SVGPathByteStreamBuilder.cpp
+    svg/SVGPathByteStreamSource.cpp
+    svg/SVGPathElement.cpp
+    svg/SVGPathParser.cpp
+    svg/SVGPathSegList.cpp
+    svg/SVGPathSegListBuilder.cpp
+    svg/SVGPathSegListSource.cpp
+    svg/SVGPathStringBuilder.cpp
+    svg/SVGPathStringSource.cpp
+    svg/SVGPathTraversalStateBuilder.cpp
+    svg/SVGPathUtilities.cpp
+    svg/SVGPatternElement.cpp
+    svg/SVGPointList.cpp
+    svg/SVGPolyElement.cpp
+    svg/SVGPolygonElement.cpp
+    svg/SVGPolylineElement.cpp
+    svg/SVGPreserveAspectRatio.cpp
+    svg/SVGRadialGradientElement.cpp
+    svg/SVGRectElement.cpp
+    svg/SVGSVGElement.cpp
+    svg/SVGScriptElement.cpp
+    svg/SVGSetElement.cpp
+    svg/SVGStopElement.cpp
+    svg/SVGStringList.cpp
+    svg/SVGStylable.cpp
+    svg/SVGStyleElement.cpp
+    svg/SVGStyledElement.cpp
+    svg/SVGStyledLocatableElement.cpp
+    svg/SVGStyledTransformableElement.cpp
+    svg/SVGSwitchElement.cpp
+    svg/SVGSymbolElement.cpp
+    svg/SVGTRefElement.cpp
+    svg/SVGTSpanElement.cpp
+    svg/SVGTests.cpp
+    svg/SVGTextContentElement.cpp
+    svg/SVGTextElement.cpp
+    svg/SVGTextPathElement.cpp
+    svg/SVGTextPositioningElement.cpp
+    svg/SVGTitleElement.cpp
+    svg/SVGTransform.cpp
+    svg/SVGTransformDistance.cpp
+    svg/SVGTransformList.cpp
+    svg/SVGTransformable.cpp
+    svg/SVGURIReference.cpp
+    svg/SVGUseElement.cpp
+    svg/SVGVKernElement.cpp
+    svg/SVGViewElement.cpp
+    svg/SVGViewSpec.cpp
+    svg/SVGZoomAndPan.cpp
+    svg/SVGZoomEvent.cpp
+    svg/animation/SMILTime.cpp
+    svg/animation/SMILTimeContainer.cpp
+    svg/animation/SVGSMILElement.cpp
+    svg/graphics/SVGImageCache.cpp
+    svg/graphics/SVGImage.cpp
+    svg/graphics/filters/SVGFEImage.cpp
+    svg/graphics/filters/SVGFilter.cpp
+    svg/graphics/filters/SVGFilterBuilder.cpp
+    svg/properties/SVGAttributeToPropertyMap.cpp
+    svg/properties/SVGPathSegListPropertyTearOff.cpp
+
     xml/parser/NewXMLDocumentParser.cpp
     xml/parser/XMLCharacterReferenceParser.cpp
     xml/parser/XMLDocumentParser.cpp
     xml/parser/XMLDocumentParserLibxml2.cpp
-    xml/parser/XMLDocumentParserQt.cpp
     xml/parser/XMLDocumentParserScope.cpp
     xml/parser/XMLTokenizer.cpp
     xml/parser/XMLTreeBuilder.cpp
@@ -1452,11 +2309,28 @@ SharedLibrary webcore.a :
     xml/XSLTProcessorLibxslt.cpp
     xml/XSLTProcessorQt.cpp
     xml/XSLTUnicodeSort.cpp
+
+    workers/AbstractWorker.cpp
+    workers/DedicatedWorkerContext.cpp
+    workers/DedicatedWorkerThread.cpp
+    workers/DefaultSharedWorkerRepository.cpp
+    workers/SharedWorker.cpp
+    workers/SharedWorkerContext.cpp
+    workers/SharedWorkerThread.cpp
+    workers/Worker.cpp
+    workers/WorkerContext.cpp
+    workers/WorkerEventQueue.cpp
+    workers/WorkerLocation.cpp
+    workers/WorkerMessagingProxy.cpp
+    workers/WorkerRunLoop.cpp
+    workers/WorkerScriptLoader.cpp
+    workers/WorkerThread.cpp
     :
-    libwtf.a
+	libwtf.a
+    webcore1.a webcore2.a webcore3.a  webcore4.a webcore5.a
+    libjavascriptcore.so
     # Other required libraries
-    #icuuc icudata icui18n
-    stdc++
+    curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
     # Haiku libraries
-    be
+    be bsd network textencoding translation
 ;
