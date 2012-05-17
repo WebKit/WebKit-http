@@ -1675,7 +1675,6 @@ StaticLibrary webcore5 :
     platform/graphics/haiku/IntSizeHaiku.cpp
     platform/graphics/haiku/PathHaiku.cpp
 
-
     platform/graphics/FractionalLayoutRect.cpp
     platform/graphics/FractionalLayoutSize.cpp
     platform/graphics/GeneratorGeneratedImage.cpp
@@ -1769,6 +1768,9 @@ StaticLibrary webcore5 :
     platform/graphics/transforms/TransformationMatrix.cpp
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
+
+    platform/haiku/CursorHaiku.cpp
+    platform/haiku/LocalizedStringsHaiku.cpp
 
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
