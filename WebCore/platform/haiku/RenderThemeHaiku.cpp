@@ -108,7 +108,7 @@ void RenderThemeHaiku::systemFont(int propId, FontDescription&) const
     notImplemented();
 }
 
-bool RenderThemeHaiku::paintCheckbox(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintCheckbox(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -143,7 +143,7 @@ void RenderThemeHaiku::setCheckboxSize(RenderStyle* style) const
         style->setHeight(Length(size, Fixed));
 }
 
-bool RenderThemeHaiku::paintRadio(RenderObject* object, const RenderObject::PaintInfo& info,
+bool RenderThemeHaiku::paintRadio(RenderObject* object, const PaintInfo& info,
 	const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
@@ -169,13 +169,13 @@ void RenderThemeHaiku::setRadioSize(RenderStyle* style) const
     setCheckboxSize(style);
 }
 
-void RenderThemeHaiku::adjustButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustButtonStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
 	// TODO: If this is the default button, extend the size.
 	RenderTheme::adjustButtonStyle(selector, style, element);
 }
 
-bool RenderThemeHaiku::paintButton(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintButton(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -206,7 +206,7 @@ void RenderThemeHaiku::setButtonSize(RenderStyle* style) const
 	RenderTheme::setButtonSize(style);
 }
 
-void RenderThemeHaiku::adjustTextFieldStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustTextFieldStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
 #if 0
 	RenderTheme::adjustTextFieldStyle(selector, style, element);
@@ -215,7 +215,7 @@ void RenderThemeHaiku::adjustTextFieldStyle(CSSStyleSelector* selector, RenderSt
 #endif
 }
 
-bool RenderThemeHaiku::paintTextField(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintTextField(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
@@ -240,7 +240,7 @@ bool RenderThemeHaiku::paintTextField(RenderObject* object, const RenderObject::
     return false;
 }
 
-void RenderThemeHaiku::adjustTextAreaStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustTextAreaStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
 #if 0
 	RenderTheme::adjustTextAreaStyle(selector, style, element);
@@ -249,22 +249,22 @@ void RenderThemeHaiku::adjustTextAreaStyle(CSSStyleSelector* selector, RenderSty
 #endif
 }
 
-bool RenderThemeHaiku::paintTextArea(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintTextArea(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     return paintTextField(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustMenuListStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
     adjustMenuListButtonStyle(selector, style, element);
 }
 
-bool RenderThemeHaiku::paintMenuList(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintMenuList(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     return paintMenuListButton(object, info, intRect);
 }
 
-void RenderThemeHaiku::adjustMenuListButtonStyle(CSSStyleSelector* selector, RenderStyle* style, Element* element) const
+void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, RenderStyle* style, Element* element) const
 {
     style->resetBorder();
     style->resetBorderRadius();
@@ -287,7 +287,7 @@ void RenderThemeHaiku::adjustMenuListButtonStyle(CSSStyleSelector* selector, Ren
     style->setMinHeight(Length(minHeight, Fixed));
 }
 
-bool RenderThemeHaiku::paintMenuListButton(RenderObject* object, const RenderObject::PaintInfo& info, const IntRect& intRect)
+bool RenderThemeHaiku::paintMenuListButton(RenderObject* object, const PaintInfo& info, const IntRect& intRect)
 {
     if (info.context->paintingDisabled())
         return true;
