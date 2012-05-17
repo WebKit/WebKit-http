@@ -64,6 +64,9 @@ typedef class SkShader* PlatformPattern;
 #elif PLATFORM(WX)
 class wxGraphicsBrush;
 typedef wxGraphicsBrush* PlatformGradient;
+#elif PLATFORM(HAIKU)
+class BGradient;
+typedef BGradient* PlatformGradient;
 #else
 typedef void* PlatformGradient;
 #endif
