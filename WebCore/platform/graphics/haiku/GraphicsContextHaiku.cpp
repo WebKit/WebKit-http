@@ -461,6 +461,15 @@ void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* p
         m_data->view()->StrokePolygon(bPoints, pointsLength, true, getHaikuStrokeStyle());
 }
 
+void GraphicsContext::clipConvexPolygon(size_t numPoints, const FloatPoint* points, bool antialiased)
+{
+    // FIXME: implement
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
+}
+
 void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorSpace colorSpace)
 {
     if (paintingDisabled())
