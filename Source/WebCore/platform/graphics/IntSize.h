@@ -47,7 +47,6 @@ class QSize;
 QT_END_NAMESPACE
 #elif PLATFORM(HAIKU)
 class BSize;
-#endif
 #elif PLATFORM(BLACKBERRY)
 namespace BlackBerry {
 namespace Platform {
