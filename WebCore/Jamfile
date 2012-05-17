@@ -1665,6 +1665,8 @@ StaticLibrary webcore5 :
 
     #platform/graphics/FontPlatformData.cpp
     platform/graphics/haiku/FontPlatformDataHaiku.cpp
+    platform/graphics/haiku/GradientHaiku.cpp
+    platform/graphics/haiku/GraphicsContextHaiku.cpp
 
     platform/graphics/FractionalLayoutRect.cpp
     platform/graphics/FractionalLayoutSize.cpp
