@@ -33,10 +33,8 @@
 #include "Color.h"
 #include "Font.h"
 #include "FontData.h"
-#include "GraphicsContextPrivate.h"
 #include "NotImplemented.h"
 #include "Path.h"
-#include "Pen.h"
 #include <wtf/text/CString.h>
 #include <Bitmap.h>
 #include <GraphicsDefs.h>
@@ -301,15 +299,13 @@ GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
 }
 
 GraphicsContext::GraphicsContext(PlatformGraphicsContext* context)
-    : m_common(createGraphicsContextPrivate())
-    , m_data(new GraphicsContextPlatformPrivate(context))
+    : m_data(new GraphicsContextPlatformPrivate(context))
 {
     setPaintingDisabled(!context);
 }
 
 GraphicsContext::~GraphicsContext()
 {
-    destroyGraphicsContextPrivate(m_common);
     delete m_data;
 }
 
@@ -334,13 +330,13 @@ void GraphicsContext::drawRect(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+    if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
 //        TODO: What's this shadow business?
-        if (m_common->state.fillPattern)
+        if (m_state.fillPattern)
             notImplemented();
-        else if (m_common->state.fillGradient) {
-            BGradient* gradient = m_common->state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+        else if (m_state.fillGradient) {
+            BGradient* gradient = m_state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
             m_data->view()->FillRect(rect, *gradient);
         } else
             m_data->view()->FillRect(rect);
@@ -366,13 +362,13 @@ void GraphicsContext::drawEllipse(const IntRect& rect)
     if (paintingDisabled())
         return;
 
-    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+    if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
 //        TODO: What's this shadow business?
-        if (m_common->state.fillPattern)
+        if (m_state.fillPattern)
             notImplemented();
-        else if (m_common->state.fillGradient) {
-            BGradient* gradient = m_common->state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+        else if (m_state.fillGradient) {
+            BGradient* gradient = m_state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
             m_data->view()->FillEllipse(rect, *gradient);
         } else
             m_data->view()->FillEllipse(rect);
@@ -447,13 +443,13 @@ void GraphicsContext::strokePath()
 
     m_data->view()->MovePenTo(B_ORIGIN);
 
-    if (m_common->state.strokePattern || m_common->state.strokeGradient || strokeColor().alpha()) {
-        if (m_common->state.strokePattern)
+    if (m_state.strokePattern || m_state.strokeGradient || strokeColor().alpha()) {
+        if (m_state.strokePattern)
             notImplemented();
-        else if (m_common->state.strokeGradient) {
+        else if (m_state.strokeGradient) {
             notImplemented();
-//            BGradient* gradient = m_common->state.strokeGradient->platformGradient();
-//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+//            BGradient* gradient = m_state.strokeGradient->platformGradient();
+//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
 //            m_data->view()->StrokeShape(m_data->shape(), *gradient);
         } else {
             drawing_mode mode = m_data->view()->DrawingMode();
@@ -591,13 +587,13 @@ void GraphicsContext::fillPath()
 //    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
     m_data->view()->MovePenTo(B_ORIGIN);
 
-    if (m_common->state.fillPattern || m_common->state.fillGradient || fillColor().alpha()) {
+    if (m_state.fillPattern || m_state.fillGradient || fillColor().alpha()) {
 //        drawFilledShadowPath(this, p, path); TODO: What's this shadow business?
-        if (m_common->state.fillPattern)
+        if (m_state.fillPattern)
             notImplemented();
-        else if (m_common->state.fillGradient) {
-            BGradient* gradient = m_common->state.fillGradient->platformGradient();
-//            gradient->SetTransform(m_common->state.fillGradient->gradientSpaceTransform());
+        else if (m_state.fillGradient) {
+            BGradient* gradient = m_state.fillGradient->platformGradient();
+//            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
             m_data->view()->FillShape(m_data->shape(), *gradient);
         } else {
             drawing_mode mode = m_data->view()->DrawingMode();
