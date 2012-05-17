@@ -690,7 +690,7 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
     drawLine(IntPoint(origin), IntPoint(endPoint));
 }
 
-void GraphicsContext::drawLineForMisspellingOrBadGrammar(const IntPoint&, int width, bool grammar)
+void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float /* width */, DocumentMarkerLineStyle /* style */)
 {
     if (paintingDisabled())
         return;
