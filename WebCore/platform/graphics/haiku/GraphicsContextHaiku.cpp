@@ -621,11 +621,6 @@ void GraphicsContext::canvasClip(const Path& path)
     clip(path);
 }
 
-void GraphicsContext::clipToImageBuffer(ImageBuffer*, const FloatRect&)
-{
-    notImplemented();
-}
-
 void GraphicsContext::clipOut(const Path& path)
 {
     if (paintingDisabled())
@@ -708,7 +703,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     return rounded;
 }
 
-void GraphicsContext::beginTransparencyLayer(float opacity)
+void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
 {
     if (paintingDisabled())
         return;
@@ -716,7 +711,7 @@ void GraphicsContext::beginTransparencyLayer(float opacity)
     m_data->pushLayer(opacity);
 }
 
-void GraphicsContext::endTransparencyLayer()
+void GraphicsContext::endPlatformTransparencyLayer()
 {
     if (paintingDisabled())
         return;
@@ -799,7 +794,7 @@ void GraphicsContext::setAlpha(float opacity)
     m_data->m_currentLayer->globalAlpha = (uint8)(opacity * 255.0f);
 }
 
-void GraphicsContext::setCompositeOperation(CompositeOperator op)
+void GraphicsContext::setPlatformCompositeOperation(CompositeOperator op)
 {
     if (paintingDisabled())
         return;
