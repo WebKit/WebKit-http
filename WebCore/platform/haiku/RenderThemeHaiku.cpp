@@ -282,7 +282,7 @@ void RenderThemeHaiku::adjustMenuListButtonStyle(StyleResolver* selector, Render
 
     // Calculate our min-height
     const int menuListButtonMinHeight = 20;
-    int minHeight = style->font().height();
+    int minHeight = style->font().fontMetrics().height();
     minHeight = max(minHeight, menuListButtonMinHeight);
 
     style->setMinHeight(Length(minHeight, Fixed));
