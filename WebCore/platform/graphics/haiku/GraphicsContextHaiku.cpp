@@ -940,7 +940,7 @@ pattern GraphicsContext::getHaikuStrokeStyle()
     }
 }
 
-void GraphicsContext::setPlatformStrokeStyle(const StrokeStyle& strokeStyle)
+void GraphicsContext::setPlatformStrokeStyle(StrokeStyle /* strokeStyle */)
 {
     // FIXME: see getHaikuStrokeStyle.
     notImplemented();
@@ -967,7 +967,7 @@ void GraphicsContext::clearPlatformShadow()
     notImplemented();
 }
 
-void GraphicsContext::setPlatformShadow(IntSize const&, int, Color const&, ColorSpace)
+void GraphicsContext::setPlatformShadow(FloatSize const&, float, Color const&, ColorSpace)
 {
     notImplemented();
 }
