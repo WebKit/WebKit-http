@@ -197,19 +197,6 @@ public:
     	m_currentLayer->clipping = BRegion();
     }
 
-    void setShape(BShape* shape)
-    {
-        delete m_currentLayer->currentShape;
-        m_currentLayer->currentShape = shape;
-    }
-
-    BShape* shape() const
-    {
-        if (!m_currentLayer->currentShape)
-            m_currentLayer->currentShape = new BShape();
-        return m_currentLayer->currentShape;
-    }
-
     void setClipShape(BShape* shape)
     {
     	// NOTE: For proper clipping, the paths would have to
@@ -433,12 +420,9 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
     m_data->view()->PopState();
 }
 
-void GraphicsContext::strokePath()
+void GraphicsContext::strokePath(const Path& path)
 {
     if (paintingDisabled())
-        return;
-
-    if (!m_data->shape())
         return;
 
     m_data->view()->MovePenTo(B_ORIGIN);
@@ -456,12 +440,10 @@ void GraphicsContext::strokePath()
             if (m_data->view()->HighColor().alpha < 255)
                 m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
-            m_data->view()->StrokeShape(m_data->shape());
+            m_data->view()->StrokeShape(path.platformPath());
             m_data->view()->SetDrawingMode(mode);
         }
     }
-
-    m_data->setShape(0);
 }
 
 void GraphicsContext::drawConvexPolygon(size_t pointsLength, const FloatPoint* points, bool shouldAntialias)
@@ -576,12 +558,9 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     m_data->view()->SetHighColor(oldColor);
 }
 
-void GraphicsContext::fillPath()
+void GraphicsContext::fillPath(const Path& path)
 {
     if (paintingDisabled())
-        return;
-
-    if (!m_data->shape())
         return;
 
 //    m_data->view()->SetFillRule(toHaikuFillRule(fillRule()));
@@ -594,34 +573,19 @@ void GraphicsContext::fillPath()
         else if (m_state.fillGradient) {
             BGradient* gradient = m_state.fillGradient->platformGradient();
 //            gradient->SetTransform(m_state.fillGradient->gradientSpaceTransform());
-            m_data->view()->FillShape(m_data->shape(), *gradient);
+            m_data->view()->FillShape(path.platformPath(), *gradient);
         } else {
             drawing_mode mode = m_data->view()->DrawingMode();
             if (m_data->view()->HighColor().alpha < 255)
                 m_data->view()->SetDrawingMode(B_OP_ALPHA);
 
-            m_data->view()->FillShape(m_data->shape());
-
+            m_data->view()->FillShape(path.platformPath());
             m_data->view()->SetDrawingMode(mode);
         }
     }
-    m_data->setShape(0);
 }
 
-void GraphicsContext::beginPath()
-{
-    m_data->setShape(new BShape());
-}
-
-void GraphicsContext::addPath(const Path& path)
-{
-    if (!m_data->shape())
-        m_data->setShape(new BShape(*path.platformPath()));
-    else
-        m_data->shape()->AddShape(path.platformPath());
-}
-
-void GraphicsContext::clipPath(WindRule clipRule)
+void GraphicsContext::clipPath(const Path&, WindRule clipRule)
 {
     if (paintingDisabled())
         return;
