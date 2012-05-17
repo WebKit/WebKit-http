@@ -31,6 +31,7 @@
 
 #include "GraphicsContext.h"
 #include "NotImplemented.h"
+#include "PaintInfo.h"
 #include <ControlLook.h>
 #include <View.h>
 
