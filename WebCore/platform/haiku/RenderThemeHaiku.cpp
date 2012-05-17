@@ -44,7 +44,7 @@ PassRefPtr<RenderTheme> RenderThemeHaiku::create()
 
 PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
 {
-    static RenderTheme* renderTheme = RenderThemeHaiku::create().releaseRef();
+    static RenderTheme* renderTheme = RenderThemeHaiku::create().leakRef();
     return renderTheme;
 }
 
