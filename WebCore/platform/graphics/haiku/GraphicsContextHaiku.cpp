@@ -621,7 +621,7 @@ void GraphicsContext::canvasClip(const Path& path)
     clip(path);
 }
 
-void GraphicsContext::clipToImageBuffer(const FloatRect&, const ImageBuffer*)
+void GraphicsContext::clipToImageBuffer(ImageBuffer*, const FloatRect&)
 {
     notImplemented();
 }
@@ -644,14 +644,6 @@ void GraphicsContext::clipOut(const IntRect& rect)
     m_data->setClipping(region);
 }
 
-void GraphicsContext::clipOutEllipseInRect(const IntRect& rect)
-{
-    if (paintingDisabled())
-        return;
-
-    notImplemented();
-}
-
 void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness)
 {
     if (paintingDisabled())
@@ -662,7 +654,7 @@ void GraphicsContext::addInnerRoundedRectClip(const IntRect& rect, int thickness
     notImplemented();
 }
 
-void GraphicsContext::drawFocusRing(const Vector<Path>& paths, int width, int offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& path, int width, int offset, const Color& color)
 {
     if (paintingDisabled())
         return;
@@ -689,13 +681,13 @@ void GraphicsContext::drawFocusRing(const Vector<IntRect>& rects, int /* width *
     }
 }
 
-void GraphicsContext::drawLineForText(const IntPoint& origin, int width, bool printing)
+void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing)
 {
     if (paintingDisabled())
         return;
 
-    IntPoint endPoint = origin + IntSize(width, 0);
-    drawLine(origin, endPoint);
+    FloatPoint endPoint = origin + FloatSize(width, 0);
+    drawLine(IntPoint(origin), IntPoint(endPoint));
 }
 
 void GraphicsContext::drawLineForMisspellingOrBadGrammar(const IntPoint&, int width, bool grammar)

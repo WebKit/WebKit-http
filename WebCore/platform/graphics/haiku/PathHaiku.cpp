@@ -608,7 +608,7 @@ void Path::transform(const AffineTransform& transform)
     transformIterator.Iterate(m_path);
 }
 
-FloatRect Path::strokeBoundingRect(StrokeStyleApplier* applier)
+FloatRect Path::strokeBoundingRect(StrokeStyleApplier* applier) const
 {
     notImplemented();
     return m_path->Bounds();
