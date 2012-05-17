@@ -698,7 +698,7 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float /* widt
     notImplemented();
 }
 
-FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect)
+FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode /* mode */)
 {
     FloatRect rounded(rect);
     rounded.setX(roundf(rect.x()));
@@ -847,12 +847,6 @@ void GraphicsContext::translate(float x, float y)
     m_data->view()->SetOrigin(origin.x + x, origin.y + y);
 
     // TODO: currentPath needs to be translated along, according to Qt implementation
-}
-
-IntPoint GraphicsContext::origin()
-{
-    BPoint origin = m_data->view()->Origin();
-    return IntPoint(origin.x, origin.y);
 }
 
 void GraphicsContext::rotate(float radians)
