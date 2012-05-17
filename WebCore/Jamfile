@@ -1771,6 +1771,7 @@ StaticLibrary webcore5 :
 
     platform/haiku/CursorHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
+    platform/haiku/RenderThemeHaiku.cpp
 
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
