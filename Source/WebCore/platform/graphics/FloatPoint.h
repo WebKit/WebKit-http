@@ -58,6 +58,10 @@ class QPointF;
 QT_END_NAMESPACE
 #endif
 
+#if PLATFORM(HAIKU)
+class BPoint;
+#endif
+
 #if USE(SKIA)
 struct SkPoint;
 #endif
@@ -167,6 +171,11 @@ public:
 #if PLATFORM(BLACKBERRY)
     FloatPoint(const BlackBerry::Platform::FloatPoint&);
     operator BlackBerry::Platform::FloatPoint() const;
+#endif
+
+#if PLATFORM(HAIKU)
+    FloatPoint(const BPoint&);
+    operator BPoint() const;
 #endif
 
 #if USE(SKIA)

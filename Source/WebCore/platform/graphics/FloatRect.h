@@ -60,6 +60,10 @@ class FloatRect;
 }
 #endif
 
+#if PLATFORM(HAIKU)
+class BRect;
+#endif
+
 #if USE(SKIA)
 struct SkRect;
 #endif
@@ -214,6 +218,11 @@ public:
 #if PLATFORM(WX) && USE(WXGC)
     FloatRect(const wxRect2DDouble&);
     operator wxRect2DDouble() const;
+#endif
+
+#if PLATFORM(HAIKU)
+    FloatRect(const BRect&);
+    operator BRect() const;
 #endif
 
 #if USE(SKIA)

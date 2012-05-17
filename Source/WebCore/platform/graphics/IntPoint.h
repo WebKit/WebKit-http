@@ -55,6 +55,8 @@ class QPoint;
 QT_END_NAMESPACE
 #elif PLATFORM(GTK)
 typedef struct _GdkPoint GdkPoint;
+#elif PLATFORM(HAIKU)
+class BPoint;
 #elif PLATFORM(BLACKBERRY)
 namespace BlackBerry {
 namespace Platform {
@@ -144,6 +146,9 @@ public:
 #elif PLATFORM(GTK)
     IntPoint(const GdkPoint&);
     operator GdkPoint() const;
+#elif PLATFORM(HAIKU)
+    explicit IntPoint(const BPoint&);
+    operator BPoint() const;
 #elif PLATFORM(BLACKBERRY)
     IntPoint(const BlackBerry::Platform::IntPoint&);
     operator BlackBerry::Platform::IntPoint() const;
