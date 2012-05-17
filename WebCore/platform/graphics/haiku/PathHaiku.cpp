@@ -474,12 +474,6 @@ bool Path::isEmpty() const
     return !m_path->Bounds().IsValid();
 }
 
-String Path::debugString() const
-{
-    notImplemented();
-    return String();
-}
-
 void Path::apply(void* info, PathApplierFunction function) const
 {
     class ApplyIterator : public BShapeIterator {
