@@ -55,6 +55,10 @@ QT_END_NAMESPACE
 class wxKeyEvent;
 #endif
 
+#if PLATFORM(HAIKU)
+class BMessage;
+#endif
+
 #if PLATFORM(BLACKBERRY)
 namespace BlackBerry {
 namespace Platform {
@@ -169,6 +173,10 @@ namespace WebCore {
 
 #if PLATFORM(WX)
         PlatformKeyboardEvent(wxKeyEvent&);
+#endif
+
+#if PLATFORM(HAIKU)
+        PlatformKeyboardEvent(BMessage*);
 #endif
 
 #if PLATFORM(BLACKBERRY)
