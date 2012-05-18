@@ -327,10 +327,6 @@ static int windowsKeyCodeForKeyEvent(char singleByte, int keyCode)
 PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
     : m_autoRepeat(false)
     , m_isKeypad(false)
-    , m_shiftKey(false)
-    , m_ctrlKey(false)
-    , m_altKey(false)
-    , m_metaKey(false)
 {
     BString bytes = message->FindString("bytes");
 
@@ -348,10 +344,14 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(BMessage* message)
         m_type = KeyDown;
 
     int32 modifiers = message->FindInt32("modifiers");
-    m_shiftKey = modifiers & B_SHIFT_KEY;
-    m_ctrlKey = modifiers & B_COMMAND_KEY;
-    m_altKey = modifiers & B_CONTROL_KEY;
-    m_metaKey = modifiers & B_OPTION_KEY;
+    if (modifiers & B_SHIFT_KEY)
+        m_modifiers |= ShiftKey;
+    if (modifiers & B_COMMAND_KEY)
+        m_modifiers |= CtrlKey;
+    if (modifiers & B_CONTROL_KEY)
+        m_modifiers |= AltKey;
+    if (modifiers & B_OPTION_KEY)
+        m_modifiers |= MetaKey;
 }
 
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCompatibilityMode)
@@ -379,11 +379,12 @@ bool PlatformKeyboardEvent::currentCapsLockState()
 
 void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKey, bool& altKey, bool& metaKey)
 {
-    uint32 modifiers = ::modifiers();
-    shiftKey = modifiers & B_SHIFT_KEY;
-    ctrlKey = modifiers & B_COMMAND_KEY;
-    altKey = modifiers & B_CONTROL_KEY;
-    metaKey = modifiers & B_OPTION_KEY;
+    // FIXME: copied on Qt, check this
+    notImplemented();
+    shiftKey = false;
+    ctrlKey = false;
+    altKey = false;
+    metaKey = false;
 }
 
 } // namespace WebCore
