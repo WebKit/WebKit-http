@@ -1,6 +1,6 @@
 SubDir TOP WebCore ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ENABLE_WORKERS=1 ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
@@ -13,7 +13,6 @@ SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) WebCore ;
-SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
 SubDirSysHdrs $(TOP) WebCore platform text ;
 SubDirSysHdrs $(TOP) WTF ;
 
@@ -23,6 +22,7 @@ SubDirHdrs $(TOP) WebCore bindings ;
 SubDirHdrs $(TOP) WebCore bindings generic ;
 SubDirHdrs $(TOP) WebCore bindings js ;
 SubDirHdrs $(TOP) WebCore bridge ;
+SubDirHdrs $(TOP) WebCore bridge c ;
 SubDirHdrs $(TOP) WebCore bridge jsc ;
 SubDirHdrs $(TOP) WebCore css ;
 SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
@@ -55,6 +55,7 @@ SubDirHdrs $(TOP) WebCore platform graphics ;
 SubDirHdrs $(TOP) WebCore platform graphics filters ;
 SubDirHdrs $(TOP) WebCore platform graphics haiku ;
 SubDirHdrs $(TOP) WebCore platform graphics transforms ;
+SubDirHdrs $(TOP) WebCore platform haiku ;
 SubDirHdrs $(TOP) WebCore platform image-decoders ;
 SubDirHdrs $(TOP) WebCore platform image-decoders bmp ;
 SubDirHdrs $(TOP) WebCore platform image-decoders gif ;
@@ -79,6 +80,7 @@ SubDirHdrs $(TOP) WebCore xml ;
 SubDirHdrs $(TOP) WebCore xml parser ;
 
 SubDirHdrs $(TOP) WTF wtf ;
+SubDirHdrs $(TOP) WTF wtf text ; # for WebCore/platform/haiku/ClipboardHaiku.cpp
 
 # public JavaScriptCore headers
 SubDirHdrs $(TOP) JavaScriptCore API ;
@@ -303,12 +305,33 @@ StaticLibrary webcore1 :
     bindings/js/WorkerScriptController.cpp
 
     bridge/IdentifierRep.cpp
-    bridge/jsc/BridgeJSC.cpp
+    bridge/NP_jsobject.cpp
+    bridge/c/CRuntimeObject.cpp
+    bridge/c/c_class.cpp
+    bridge/c/c_instance.cpp
+    bridge/c/c_runtime.cpp
+    bridge/c/c_utility.cpp
+    #bridge/jni/JNIUtility.cpp
+    #bridge/jni/JobjectWrapper.cpp
+    #bridge/jni/jsc/JNIUtilityPrivate.cpp
+    #bridge/jni/jsc/JavaArrayJSC.cpp
+    #bridge/jni/jsc/JavaClassJSC.cpp
+    #bridge/jni/jsc/JavaFieldJSC.cpp
+    #bridge/jni/jsc/JavaInstanceJSC.cpp
+    #bridge/jni/jsc/JavaMethodJSC.cpp
+    #bridge/jni/jsc/JavaRuntimeObject.cpp
+    #bridge/jsc/BridgeJSC.cpp
+    bridge/npruntime.cpp
+    #bridge/qt/qt_class.cpp
+    #bridge/qt/qt_instance.cpp
+    #bridge/qt/qt_pixmapruntime.cpp
+    #bridge/qt/qt_runtime.cpp
     bridge/runtime_array.cpp
     bridge/runtime_method.cpp
     bridge/runtime_object.cpp
     bridge/runtime_root.cpp
-    #bridge/testbindings.cpp
+    ##bridge/testbindings.cpp
+    ##bridge/testqtbindings.cpp
 
     css/CSSAspectRatioValue.cpp
     css/CSSBorderImage.cpp
@@ -1483,6 +1506,32 @@ StaticLibrary webcore5 :
     loader/icon/IconRecord.cpp
     loader/icon/PageURLRecord.cpp
     
+    Modules/webdatabase/AbstractDatabase.cpp
+    Modules/webdatabase/ChangeVersionWrapper.cpp
+    Modules/webdatabase/Database.cpp
+    Modules/webdatabase/DatabaseAuthorizer.cpp
+    Modules/webdatabase/DatabaseContext.cpp
+    Modules/webdatabase/DatabaseSync.cpp
+    Modules/webdatabase/DatabaseTask.cpp
+    Modules/webdatabase/DatabaseThread.cpp
+    Modules/webdatabase/DatabaseTracker.cpp
+    Modules/webdatabase/DOMWindowWebDatabase.cpp
+    Modules/webdatabase/OriginQuotaManager.cpp
+    Modules/webdatabase/OriginUsageRecord.cpp
+    Modules/webdatabase/SQLException.cpp
+    Modules/webdatabase/SQLResultSet.cpp
+    Modules/webdatabase/SQLResultSetRowList.cpp
+    Modules/webdatabase/SQLStatement.cpp
+    Modules/webdatabase/SQLStatementSync.cpp
+    Modules/webdatabase/SQLTransaction.cpp
+    Modules/webdatabase/SQLTransactionClient.cpp
+    Modules/webdatabase/SQLTransactionCoordinator.cpp
+    Modules/webdatabase/SQLTransactionSync.cpp
+    Modules/webdatabase/WorkerContextWebDatabase.cpp
+    #Modules/webdatabase/chromium/DatabaseTrackerChromium.cpp
+    #Modules/webdatabase/chromium/QuotaTracker.cpp
+    #Modules/webdatabase/chromium/SQLTransactionClientChromium.cpp
+
     mathml/MathMLElement.cpp
     mathml/MathMLInlineContainerElement.cpp
     mathml/MathMLMathElement.cpp
@@ -1558,6 +1607,11 @@ StaticLibrary webcore5 :
     page/animation/CSSPropertyAnimation.cpp
     page/animation/ImplicitAnimation.cpp
     page/animation/KeyframeAnimation.cpp
+
+    page/haiku/DragControllerHaiku.cpp
+    page/haiku/EventHandlerHaiku.cpp
+    page/haiku/FrameHaiku.cpp
+
     page/scrolling/ScrollingCoordinator.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
@@ -1779,9 +1833,13 @@ StaticLibrary webcore5 :
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
     platform/haiku/CursorHaiku.cpp
+    platform/haiku/ClipboardHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
     platform/haiku/PlatformKeyboardEventHaiku.cpp
+    platform/haiku/PlatformMouseEventHaiku.cpp
+    platform/haiku/PlatformWheelEventHaiku.cpp
     platform/haiku/RenderThemeHaiku.cpp
+    platform/haiku/ScreenHaiku.cpp
     platform/haiku/WidgetHaiku.cpp
 
     platform/image-decoders/ImageDecoder.cpp
