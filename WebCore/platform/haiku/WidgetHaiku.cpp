@@ -81,7 +81,8 @@ void Widget::setFrameRect(const IntRect& rect)
     m_frame = rect;
 }
 
-void Widget::setFocus()
+// FIXME: do something with focused
+void Widget::setFocus(bool focused)
 {
     AutoPlatformWidgetLocker locker(topLevelPlatformWidget());
     if (locker.isLocked())
