@@ -42,8 +42,8 @@
 
 namespace WebCore {
 
-ClipboardHaiku::ClipboardHaiku(ClipboardAccessPolicy policy, bool forDragging)
-    : Clipboard(policy, forDragging)
+ClipboardHaiku::ClipboardHaiku(ClipboardAccessPolicy policy, ClipboardType type)
+    : Clipboard(policy, type)
 {
 }
 
@@ -70,17 +70,15 @@ void ClipboardHaiku::clearAllData()
     }
 }
 
-String ClipboardHaiku::getData(const String& type, bool& success) const
+String ClipboardHaiku::getData(const String& type) const
 {
     BString result;
-    success = false;
 
     if (be_clipboard->Lock()) {
         BMessage* data = be_clipboard->Data();
 
         if (data)
-            if (data->FindString(BString(type).String(), &result) == B_OK)
-                success = true;
+            status_t err = data->FindString(BString(type).String(), &result);
 
         be_clipboard->Unlock();
     }

@@ -31,20 +31,21 @@
 #include "ClipboardAccessPolicy.h"
 
 namespace WebCore {
+
 class CachedImage;
 
 // State available during IE's events for drag and drop and copy/paste.
 class ClipboardHaiku : public Clipboard {
 public:
-    static PassRefPtr<ClipboardHaiku> create(ClipboardAccessPolicy policy, bool forDragging)
+    static PassRefPtr<ClipboardHaiku> create(ClipboardAccessPolicy policy, ClipboardType type = CopyAndPaste)
     {
-        return adoptRef(new ClipboardHaiku(policy, forDragging));
+        return adoptRef(new ClipboardHaiku(policy, type));
     }
     ~ClipboardHaiku() { }
 
     virtual void clearData(const String& type);
     virtual void clearAllData();
-    virtual String getData(const String& type, bool& success) const;
+    virtual String getData(const String& type) const;
     virtual bool setData(const String& type, const String& data);
 
     // Extensions beyond IE's API.
@@ -57,7 +58,7 @@ public:
     Node* dragImageElement();
     virtual void setDragImageElement(Node*, const IntPoint&);
 
-    virtual DragImageRef createDragImage(IntPoint& dragLoc) const;
+    virtual DragImageRef createDragImage(IntPoint& dragLocation) const;
     virtual void declareAndWriteDragImage(Element*, const KURL&, const String& title, Frame*);
     virtual void writeURL(const KURL&, const String&, Frame*);
     virtual void writeRange(Range*, Frame*);
@@ -66,7 +67,7 @@ public:
     virtual bool hasData();
 
 private:
-    ClipboardHaiku(ClipboardAccessPolicy, bool forDragging);
+    ClipboardHaiku(ClipboardAccessPolicy, ClipboardType);
 };
 
 } // namespace WebCore
