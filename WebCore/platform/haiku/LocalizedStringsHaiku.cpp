@@ -63,6 +63,11 @@ String fileButtonNoFileSelectedLabel()
     return "No file selected";
 }
 
+String fileButtonNoFilesSelectedLabel()
+{
+    return "No files selected";
+}
+
 String contextMenuItemTagOpenLinkInNewWindow()
 {
     return "Open link in new tab";
@@ -307,6 +312,14 @@ String crashedPluginText()
 {
     return "Plug-in Failure";
 }
+
+String multipleFileUploadText(unsigned)
+{
+    // FIXME:
+    notImplemented();
+    return String();
+}
+
 
 String imageTitle(const String& filename, const IntSize& size)
 {
