@@ -138,6 +138,14 @@ public:
     PlatformWidget platformWidget() const;
     void setPlatformWidget(PlatformWidget);
 
+#if PLATFORM(HAIKU)
+    PlatformWidget topLevelPlatformWidget() const { return m_topLevelPlatformWidget; }
+    void setTopLevelPlatformWidget(PlatformWidget widget)
+    {
+        m_topLevelPlatformWidget = widget;
+    }
+#endif
+
     int x() const { return frameRect().x(); }
     int y() const { return frameRect().y(); }
     int width() const { return frameRect().width(); }
