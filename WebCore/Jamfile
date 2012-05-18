@@ -60,6 +60,7 @@ SubDirHdrs $(TOP) WebCore platform image-decoders gif ;
 SubDirHdrs $(TOP) WebCore platform image-decoders ico ;
 SubDirHdrs $(TOP) WebCore platform image-decoders jpeg ;
 SubDirHdrs $(TOP) WebCore platform image-decoders png ;
+SubDirHdrs $(TOP) WebCore platform mock ;
 SubDirHdrs $(TOP) WebCore platform network ;
 SubDirHdrs $(TOP) WebCore platform network curl ;
 SubDirHdrs $(TOP) WebCore platform sql ;
@@ -1592,8 +1593,8 @@ StaticLibrary webcore5 :
     platform/ScrollView.cpp
     platform/ScrollableArea.cpp
     platform/Scrollbar.cpp
-    #platform/ScrollbarTheme.cpp
-    #platform/ScrollbarThemeComposite.cpp
+    platform/ScrollbarTheme.cpp
+    platform/ScrollbarThemeComposite.cpp
     platform/SecureTextInput.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
@@ -1670,6 +1671,7 @@ StaticLibrary webcore5 :
     platform/graphics/haiku/FloatRectHaiku.cpp    
     platform/graphics/haiku/GradientHaiku.cpp
     platform/graphics/haiku/GraphicsContextHaiku.cpp
+    platform/graphics/haiku/IconHaiku.cpp
     platform/graphics/haiku/IntPointHaiku.cpp
     platform/graphics/haiku/IntRectHaiku.cpp
     platform/graphics/haiku/IntSizeHaiku.cpp
@@ -1784,6 +1786,10 @@ StaticLibrary webcore5 :
     platform/image-decoders/webp/WEBPImageDecoder.cpp
     platform/image-encoders/JPEGImageEncoder.cpp
     #platform/image-encoders/PNGImageEncoder.cpp
+
+    platform/mock/DeviceOrientationClientMock.cpp
+    platform/mock/GeolocationClientMock.cpp
+    platform/mock/ScrollbarThemeMock.cpp
 
     platform/network/AuthenticationChallengeBase.cpp
     platform/network/BlobData.cpp

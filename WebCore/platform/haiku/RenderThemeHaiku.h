@@ -28,6 +28,8 @@
 #include "RenderTheme.h"
 
 namespace WebCore {
+	
+class PaintInfo;
 
 class RenderThemeHaiku : public RenderTheme {
 private:
