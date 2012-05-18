@@ -10,7 +10,7 @@ SubDirSysHdrs $(TOP) WTF ;
 
 SubDirHdrs $(TOP) WTF wtf ;
 
-StaticLibrary libwtf.a :
+SharedLibrary libwtf.so :
     # File list directly based on WTF.gypi
     wtf/ArrayBuffer.cpp
     wtf/ArrayBufferView.cpp

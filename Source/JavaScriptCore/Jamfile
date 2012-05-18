@@ -248,7 +248,7 @@ SharedLibrary libjavascriptcore.so :
     yarr/YarrPattern.cpp
     yarr/YarrSyntaxChecker.cpp
     :
-    libwtf.a
+    libwtf.so
     # Other required libraries
     icuuc icudata icui18n stdc++
     # Haiku libraries
@@ -263,7 +263,7 @@ SharedLibrary libjavascriptcore.so :
 Application jsc :
     jsc.cpp
     :
-    libwtf.a libjavascriptcore.so
+    libwtf.so libjavascriptcore.so
     # Other required libraries
     icuuc stdc++
     # Haiku libraries

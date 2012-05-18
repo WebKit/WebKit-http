@@ -13,6 +13,7 @@ SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) WebCore ;
+SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
 SubDirSysHdrs $(TOP) WebCore platform text ;
 SubDirSysHdrs $(TOP) WTF ;
 
@@ -121,6 +122,10 @@ StaticLibrary webcore1 :
     accessibility/AXObjectCache.cpp
 
     bindings/ScriptControllerBase.cpp
+
+    bindings/generic/ActiveDOMCallback.cpp
+    bindings/generic/BindingSecurityBase.cpp
+    bindings/generic/RuntimeEnabledFeatures.cpp
 
     bindings/js/CallbackFunction.cpp
     bindings/js/DOMObjectHashTableMap.cpp
@@ -1046,7 +1051,7 @@ StaticLibrary webcore4 :
     dom/ViewportArguments.cpp
     dom/WebKitAnimationEvent.cpp
     dom/WebKitMutationObserver.cpp
-    #dom/WebKitNamedFlow.cpp
+    dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
     dom/WindowEventContext.cpp
@@ -1664,11 +1669,12 @@ StaticLibrary webcore5 :
     platform/graphics/FontFeatureSettings.cpp
     platform/graphics/FontFastPath.cpp
 
-    platform/graphics/haiku/ColorHaiku.cpp  
-    #platform/graphics/FontPlatformData.cpp
+    platform/graphics/haiku/ColorHaiku.cpp
+    platform/graphics/haiku/FontCacheHaiku.cpp
+    platform/graphics/haiku/FontCustomPlatformData.cpp
     platform/graphics/haiku/FontPlatformDataHaiku.cpp
     platform/graphics/haiku/FloatPointHaiku.cpp
-    platform/graphics/haiku/FloatRectHaiku.cpp    
+    platform/graphics/haiku/FloatRectHaiku.cpp
     platform/graphics/haiku/GradientHaiku.cpp
     platform/graphics/haiku/GraphicsContextHaiku.cpp
     platform/graphics/haiku/IconHaiku.cpp
@@ -1774,7 +1780,9 @@ StaticLibrary webcore5 :
 
     platform/haiku/CursorHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
+    platform/haiku/PlatformKeyboardEventHaiku.cpp
     platform/haiku/RenderThemeHaiku.cpp
+    platform/haiku/WidgetHaiku.cpp
 
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -2346,9 +2354,8 @@ SharedLibrary libwebcore.so :
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
     :
-	libwtf.a
-    webcore1.a webcore2.a webcore3.a  webcore4.a webcore5.a
-    libjavascriptcore.so
+    webcore1.a webcore2.a webcore3.a webcore4.a webcore5.a
+    libwtf.so libjavascriptcore.so
     # Other required libraries
     curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
     # Haiku libraries
