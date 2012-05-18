@@ -1672,6 +1672,7 @@ StaticLibrary webcore5 :
     platform/graphics/haiku/GradientHaiku.cpp
     platform/graphics/haiku/GraphicsContextHaiku.cpp
     platform/graphics/haiku/IconHaiku.cpp
+    platform/graphics/haiku/ImageHaiku.cpp
     platform/graphics/haiku/IntPointHaiku.cpp
     platform/graphics/haiku/IntRectHaiku.cpp
     platform/graphics/haiku/IntSizeHaiku.cpp
