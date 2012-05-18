@@ -55,7 +55,7 @@ bool DragController::isCopyKeyDown(DragData* /* dragData */)
 DragOperation DragController::dragOperation(DragData* dragData)
 {
     // FIXME: This logic is incomplete
-    if (dragData->containsURL())
+    if (dragData->containsURL(0))
         return DragOperationCopy;
 
     return DragOperationNone;
