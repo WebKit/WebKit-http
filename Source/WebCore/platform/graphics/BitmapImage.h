@@ -46,6 +46,10 @@ typedef struct HBITMAP__ *HBITMAP;
 class wxBitmap;
 #endif
 
+#if PLATFORM(HAIKU)
+class BBitmap;
+#endif
+
 namespace WebCore {
     struct FrameData;
 }
@@ -166,6 +170,10 @@ public:
 
 #if PLATFORM(GTK)
     virtual GdkPixbuf* getGdkPixbuf();
+#endif
+
+#if PLATFORM(HAIKU)
+    virtual BBitmap* getBBitmap() const;
 #endif
 
     virtual NativeImagePtr nativeImageForCurrentFrame();
