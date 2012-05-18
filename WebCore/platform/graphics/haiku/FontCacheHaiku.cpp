@@ -59,7 +59,8 @@ SimpleFontData* FontCache::getSimilarFontPlatformData(const Font& font)
     return 0;
 }
 
-SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& fontDescription)
+// FIXME: implement shouldretain
+SimpleFontData* FontCache::getLastResortFallbackFont(const FontDescription& fontDescription, ShouldRetain /*shouldRetain*/)
 {
     font_family family;
     font_style style;
