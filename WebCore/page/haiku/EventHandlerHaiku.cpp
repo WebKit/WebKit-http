@@ -59,12 +59,7 @@ static bool isKeyboardOptionTab(KeyboardEvent* event)
         && event->keyIdentifier() == "U+0009";
 }
 
-bool EventHandler::invertSenseOfTabsToLinks(KeyboardEvent* event) const
-{
-    return isKeyboardOptionTab(event);
-}
-
-bool EventHandler::tabsToAllControls(KeyboardEvent* event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
     bool handlingOptionTab = isKeyboardOptionTab(event);
 
@@ -87,7 +82,7 @@ void EventHandler::focusDocumentView()
 bool EventHandler::passWidgetMouseDownEventToWidget(const MouseEventWithHitTestResults& event)
 {
     // Figure out which view to send the event to.
-    RenderObject* target = event.targetNode() ? event.targetNode()->renderer() : 0;
+    RenderObject* target = targetNode(event) ? targetNode(event)->renderer() : 0;
     if (!target || !target->isWidget())
         return false;
     return passMouseDownEventToWidget(toRenderWidget(target)->widget());
@@ -112,7 +107,7 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(PlatformWheelEvent& event, Widget* widget)
+bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget* widget)
 {
     if (!widget->isFrameView())
         return false;
@@ -122,7 +117,7 @@ bool EventHandler::passWheelEventToWidget(PlatformWheelEvent& event, Widget* wid
 
 PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
 {
-    return ClipboardHaiku::create(ClipboardWritable, true);
+    return ClipboardHaiku::create(ClipboardWritable, Clipboard::DragAndDrop);
 }
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)

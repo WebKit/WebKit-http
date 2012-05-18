@@ -39,8 +39,9 @@ PlatformMouseEvent::PlatformMouseEvent(const BMessage* message)
     : m_position(message->FindPoint("be:view_where"))
     , m_globalPosition(message->FindPoint("screen_where"))
     , m_clickCount(message->FindInt32("clicks"))
-    , m_timestamp(message->FindInt64("when") / 1000000.0)
 {
+    m_timestamp = message->FindInt64("when") / 1000000.0;
+
     int32 buttons = 0;
     if (message->what == B_MOUSE_UP)
         message->FindInt32("previous buttons", &buttons);
@@ -58,22 +59,26 @@ PlatformMouseEvent::PlatformMouseEvent(const BMessage* message)
 
     switch (message->what) {
     case B_MOUSE_DOWN:
-        m_eventType = MouseEventPressed;
+        m_type = PlatformEvent::MousePressed;
         break;
     case B_MOUSE_UP:
-        m_eventType = MouseEventReleased;
+        m_type = PlatformEvent::MouseReleased;
         break;
     case B_MOUSE_MOVED:
     default:
-        m_eventType = MouseEventMoved;
+        m_type = PlatformEvent::MouseMoved;
         break;
     };
 
     int32 modifiers = message->FindInt32("modifiers");
-    m_shiftKey = modifiers & B_SHIFT_KEY;
-    m_ctrlKey = modifiers & B_CONTROL_KEY;
-    m_altKey = modifiers & B_COMMAND_KEY;
-    m_metaKey = modifiers & B_OPTION_KEY;
+    if (modifiers & B_SHIFT_KEY)
+        m_modifiers |= ShiftKey;
+    if (modifiers & B_COMMAND_KEY)
+        m_modifiers |= CtrlKey;
+    if (modifiers & B_CONTROL_KEY)
+        m_modifiers |= AltKey;
+    if (modifiers & B_OPTION_KEY)
+        m_modifiers |= MetaKey;
 }
 
 } // namespace WebCore

@@ -47,16 +47,19 @@ PlatformWheelEvent::PlatformWheelEvent(BMessage* message)
     , m_wheelTicksX(m_deltaX)
     , m_wheelTicksY(m_deltaY)
     , m_granularity(ScrollByPixelWheelEvent)
-    , m_isAccepted(false)
 {
     m_deltaX *= Scrollbar::pixelsPerLineStep();
     m_deltaY *= Scrollbar::pixelsPerLineStep();
 
     int32 modifiers = message->FindInt32("modifiers");
-    m_shiftKey = modifiers & B_SHIFT_KEY;
-    m_ctrlKey = modifiers & B_CONTROL_KEY;
-    m_altKey = modifiers & B_COMMAND_KEY;
-    m_metaKey = modifiers & B_OPTION_KEY;
+    if (modifiers & B_SHIFT_KEY)
+        m_modifiers |= ShiftKey;
+    if (modifiers & B_COMMAND_KEY)
+        m_modifiers |= CtrlKey;
+    if (modifiers & B_CONTROL_KEY)
+        m_modifiers |= AltKey;
+    if (modifiers & B_OPTION_KEY)
+        m_modifiers |= MetaKey;
 }
 
 } // namespace WebCore
