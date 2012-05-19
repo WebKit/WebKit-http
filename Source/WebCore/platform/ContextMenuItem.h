@@ -43,6 +43,8 @@ typedef struct _GtkMenuItem GtkMenuItem;
 typedef struct _GtkAction GtkAction;
 #elif PLATFORM(WX)
 class wxMenuItem;
+#elif PLATFORM(HAIKU)
+class BMenuItem;
 #endif
 #endif // ENABLE(CONTEXT_MENUS)
 
@@ -213,6 +215,8 @@ namespace WebCore {
         bool checked;
         bool enabled;
     };
+#elif PLATFORM(HAIKU)
+    typedef BMenuItem* PlatformMenuItemDescription;
 #elif PLATFORM(CHROMIUM) || PLATFORM(EFL)
     struct PlatformMenuItemDescription {
         PlatformMenuItemDescription()

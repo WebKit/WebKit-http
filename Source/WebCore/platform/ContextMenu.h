@@ -103,11 +103,15 @@ namespace WebCore {
         QList<ContextMenuItem> m_items;
 #elif PLATFORM(CHROMIUM) || PLATFORM(EFL)
         Vector<ContextMenuItem> m_items;
+#elif PLATFORM(HAIKU)
+        class ContextMenuHandler;
+        ContextMenuHandler* m_menuHandler;
 #else
         PlatformMenuDescription m_platformDescription;
 #if OS(WINCE)
         unsigned m_itemCount;
 #endif
+
 #endif
 
 #endif // USE(CROSS_PLATFORM_CONTEXT_MENUS)
