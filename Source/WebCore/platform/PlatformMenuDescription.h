@@ -36,6 +36,8 @@ typedef struct _GtkMenu GtkMenu;
 class wxMenu;
 #elif PLATFORM(EFL)
 #include <wtf/Vector.h>
+#elif PLATFORM(HAIKU)
+class BMenu;
 #endif
 
 namespace WebCore {
@@ -53,6 +55,8 @@ namespace WebCore {
 #elif PLATFORM(EFL)
     class ContextMenuItem;
     typedef const Vector<ContextMenuItem>* PlatformMenuDescription;
+#elif PLATFORM(HAIKU)
+    typedef BMenu* PlatformMenuDescription;
 #else
     typedef void* PlatformMenuDescription;
 #endif
