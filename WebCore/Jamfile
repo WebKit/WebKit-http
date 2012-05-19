@@ -1,6 +1,6 @@
 SubDir TOP WebCore ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ENABLE_WORKERS=1 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ENABLE_WORKERS=1 ENABLE_NETSCAPE_PLUGIN_API=0 ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
@@ -13,6 +13,7 @@ SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) WebCore ;
+SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
 SubDirSysHdrs $(TOP) WebCore platform text ;
 SubDirSysHdrs $(TOP) WTF ;
 
@@ -270,6 +271,7 @@ StaticLibrary webcore1 :
     bindings/js/JSUint16ArrayCustom.cpp
     bindings/js/JSUint32ArrayCustom.cpp
     bindings/js/JSUint8ArrayCustom.cpp
+    bindings/js/JSUint8ClampedArrayCustom.cpp
     bindings/js/JSWebGLRenderingContextCustom.cpp
     bindings/js/JSWebKitAnimationCustom.cpp
     bindings/js/JSWebKitAnimationListCustom.cpp
@@ -291,7 +293,6 @@ StaticLibrary webcore1 :
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptCallStackFactory.cpp
     bindings/js/ScriptController.cpp
-
     bindings/js/ScriptDebugServer.cpp
     bindings/js/ScriptEventListener.cpp
     bindings/js/ScriptFunctionCall.cpp
@@ -305,7 +306,8 @@ StaticLibrary webcore1 :
     bindings/js/WorkerScriptController.cpp
 
     bridge/IdentifierRep.cpp
-    bridge/NP_jsobject.cpp
+    #bridge/NP_jsobject.cpp
+    #bridge/npruntime.cpp
     bridge/c/CRuntimeObject.cpp
     bridge/c/c_class.cpp
     bridge/c/c_instance.cpp
@@ -320,8 +322,7 @@ StaticLibrary webcore1 :
     #bridge/jni/jsc/JavaInstanceJSC.cpp
     #bridge/jni/jsc/JavaMethodJSC.cpp
     #bridge/jni/jsc/JavaRuntimeObject.cpp
-    #bridge/jsc/BridgeJSC.cpp
-    bridge/npruntime.cpp
+    bridge/jsc/BridgeJSC.cpp
     #bridge/qt/qt_class.cpp
     #bridge/qt/qt_instance.cpp
     #bridge/qt/qt_pixmapruntime.cpp
@@ -478,6 +479,7 @@ StaticLibrary webcore2 :
     DerivedSources/WebCore/JSClientRect.cpp
     DerivedSources/WebCore/JSClientRectList.cpp
     DerivedSources/WebCore/JSClipboard.cpp
+    DerivedSources/WebCore/JSCloseEvent.cpp
     DerivedSources/WebCore/JSComment.cpp
     DerivedSources/WebCore/JSCompositionEvent.cpp
     DerivedSources/WebCore/JSConsole.cpp
@@ -549,6 +551,7 @@ StaticLibrary webcore2 :
     DerivedSources/WebCore/JSFileWriterCallback.cpp
     DerivedSources/WebCore/JSFileWriterSync.cpp
     DerivedSources/WebCore/JSFloat32Array.cpp
+    DerivedSources/WebCore/JSFloat64Array.cpp
     DerivedSources/WebCore/JSGeolocation.cpp
     DerivedSources/WebCore/JSGeoposition.cpp
     DerivedSources/WebCore/JSHTMLAllCollection.cpp
@@ -887,6 +890,7 @@ StaticLibrary webcore3 :
     DerivedSources/WebCore/JSUint16Array.cpp
     DerivedSources/WebCore/JSUint32Array.cpp
     DerivedSources/WebCore/JSUint8Array.cpp
+    DerivedSources/WebCore/JSUint8ClampedArray.cpp
     DerivedSources/WebCore/JSValidityState.cpp
     DerivedSources/WebCore/JSWebGLActiveInfo.cpp
     DerivedSources/WebCore/JSWebGLBuffer.cpp
