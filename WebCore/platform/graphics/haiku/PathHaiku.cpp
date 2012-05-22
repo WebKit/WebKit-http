@@ -205,6 +205,11 @@ bool Path::hasCurrentPoint() const
     return !isEmpty();
 }
 
+FloatPoint Path::currentPoint() const
+{
+    return m_path->CurrentPosition();
+}
+
 bool Path::contains(const FloatPoint& point, WindRule rule) const
 {
     gHitTestBitmap.init();
