@@ -209,6 +209,11 @@ void Pasteboard::writeImage(Node*, const KURL&, const String&)
     notImplemented();
 }
 
+void Pasteboard::writeClipboard(Clipboard* clipboard)
+{
+    notImplemented();
+}
+
 void Pasteboard::clear()
 {
     AutoClipboardLocker locker(be_clipboard);
