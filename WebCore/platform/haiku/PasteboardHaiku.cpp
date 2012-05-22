@@ -48,10 +48,6 @@ Pasteboard::Pasteboard()
 {
 }
 
-Pasteboard::~Pasteboard()
-{
-}
-
 Pasteboard* Pasteboard::generalPasteboard()
 {
     static Pasteboard pasteboard;
@@ -94,7 +90,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
     if (!data)
         return;
 
-    BString string(frame->selectedText());
+    BString string(frame->editor()->selectedText());
 
     // Replace unwanted representation of blank lines
     const char* utf8BlankLine = "\302\240\n";
