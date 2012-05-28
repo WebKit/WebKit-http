@@ -39,16 +39,16 @@ public:
 
     virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar);
 
-    virtual bool hasButtons(Scrollbar*);
-    virtual bool hasThumb(Scrollbar*);
+    virtual bool hasButtons(ScrollbarThemeClient*);
+    virtual bool hasThumb(ScrollbarThemeClient*);
 
-    virtual IntRect backButtonRect(Scrollbar*, ScrollbarPart, bool painting);
-    virtual IntRect forwardButtonRect(Scrollbar*, ScrollbarPart, bool painting);
-    virtual IntRect trackRect(Scrollbar*, bool painting);
+    virtual IntRect backButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting);
+    virtual IntRect forwardButtonRect(ScrollbarThemeClient*, ScrollbarPart, bool painting);
+    virtual IntRect trackRect(ScrollbarThemeClient*, bool painting);
 
-    virtual void paintScrollbarBackground(GraphicsContext*, Scrollbar*);
-    virtual void paintButton(GraphicsContext*, Scrollbar*, const IntRect&, ScrollbarPart);
-    virtual void paintThumb(GraphicsContext*, Scrollbar*, const IntRect&);
+    virtual void paintScrollbarBackground(GraphicsContext*, ScrollbarThemeClient*);
+    virtual void paintButton(GraphicsContext*, ScrollbarThemeClient*, const IntRect&, ScrollbarPart);
+    virtual void paintThumb(GraphicsContext*, ScrollbarThemeClient*, const IntRect&);
     virtual void paintScrollCorner(ScrollView*, GraphicsContext*, const IntRect&t);
 
 private:

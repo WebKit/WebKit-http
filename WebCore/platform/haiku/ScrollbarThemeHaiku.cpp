@@ -70,17 +70,17 @@ int ScrollbarThemeHaiku::scrollbarThickness(ScrollbarControlSize controlSize)
     return 14;
 }
 
-bool ScrollbarThemeHaiku::hasButtons(Scrollbar* scrollbar)
+bool ScrollbarThemeHaiku::hasButtons(ScrollbarThemeClient* scrollbar)
 {
     return scrollbar->enabled();
 }
 
-bool ScrollbarThemeHaiku::hasThumb(Scrollbar* scrollbar)
+bool ScrollbarThemeHaiku::hasThumb(ScrollbarThemeClient* scrollbar)
 {
     return scrollbar->enabled() && thumbLength(scrollbar) > 0;
 }
 
-IntRect ScrollbarThemeHaiku::backButtonRect(Scrollbar* scrollbar, ScrollbarPart part, bool)
+IntRect ScrollbarThemeHaiku::backButtonRect(ScrollbarThemeClient* scrollbar, ScrollbarPart part, bool)
 {
     if (part == BackButtonEndPart)
         return IntRect();
@@ -95,7 +95,7 @@ IntRect ScrollbarThemeHaiku::backButtonRect(Scrollbar* scrollbar, ScrollbarPart 
     return buttonRect;
 }
 
-IntRect ScrollbarThemeHaiku::forwardButtonRect(Scrollbar* scrollbar, ScrollbarPart part, bool)
+IntRect ScrollbarThemeHaiku::forwardButtonRect(ScrollbarThemeClient* scrollbar, ScrollbarPart part, bool)
 {
     if (part == ForwardButtonStartPart)
         return IntRect();
@@ -110,7 +110,7 @@ IntRect ScrollbarThemeHaiku::forwardButtonRect(Scrollbar* scrollbar, ScrollbarPa
     return IntRect(scrollbar->x(), scrollbar->y() + scrollbar->height() - height, thickness, height);
 }
 
-IntRect ScrollbarThemeHaiku::trackRect(Scrollbar* scrollbar, bool)
+IntRect ScrollbarThemeHaiku::trackRect(ScrollbarThemeClient* scrollbar, bool)
 {
     int thickness = scrollbarThickness();
     if (scrollbar->orientation() == HorizontalScrollbar) {
@@ -123,7 +123,7 @@ IntRect ScrollbarThemeHaiku::trackRect(Scrollbar* scrollbar, bool)
     return IntRect(scrollbar->x(), scrollbar->y() + thickness, thickness, scrollbar->height() - 2 * thickness);
 }
 
-void ScrollbarThemeHaiku::paintScrollbarBackground(GraphicsContext* context, Scrollbar* scrollbar)
+void ScrollbarThemeHaiku::paintScrollbarBackground(GraphicsContext* context, ScrollbarThemeClient* scrollbar)
 {
     if (!be_control_look)
         return;
@@ -155,7 +155,7 @@ void ScrollbarThemeHaiku::paintScrollbarBackground(GraphicsContext* context, Scr
     be_control_look->DrawScrollBarBackground(view, rect, rect, base, 0, orientation);
 }
 
-void ScrollbarThemeHaiku::paintButton(GraphicsContext* context, Scrollbar* scrollbar, const IntRect& intRect, ScrollbarPart part)
+void ScrollbarThemeHaiku::paintButton(GraphicsContext* context, ScrollbarThemeClient* scrollbar, const IntRect& intRect, ScrollbarPart part)
 {
     if (!be_control_look)
         return;
@@ -288,7 +288,7 @@ void ScrollbarThemeHaiku::paintButton(GraphicsContext* context, Scrollbar* scrol
 	view->SetPenSize(1.0);
 }
 
-void ScrollbarThemeHaiku::paintThumb(GraphicsContext* context, Scrollbar* scrollbar, const IntRect& rect)
+void ScrollbarThemeHaiku::paintThumb(GraphicsContext* context, ScrollbarThemeClient* scrollbar, const IntRect& rect)
 {
     if (!be_control_look)
         return;
