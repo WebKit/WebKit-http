@@ -37,20 +37,27 @@
 
 namespace WebCore {
 
-String defaultLanguage()
+static String platformLanguage()
 {
-    static BString local;
+    static BString locale;
     static bool initialized = false;
     if (!initialized) {
     	initialized = true;
     	BLanguage language;
         if (BLocale::Default()->GetLanguage(&language) == B_OK)
-            local = language.ID();
+            locale = language.ID();
         else
-            local = "en_US";
-	    local.ReplaceAll('_', '-');
+            locale = "en_US";
+	    locale.ReplaceAll('_', '-');
     }
-    return local;
+    return locale;
+}
+
+Vector<String> platformUserPreferredLanguages()
+{
+    Vector<String> userPreferredLanguages;
+    userPreferredLanguages.append(platformLanguage());
+    return userPreferredLanguages;
 }
 
 }
