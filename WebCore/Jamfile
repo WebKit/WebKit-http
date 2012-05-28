@@ -1747,6 +1747,7 @@ StaticLibrary webcore3 :
     platform/graphics/haiku/FontPlatformDataHaiku.cpp
     platform/graphics/haiku/FloatPointHaiku.cpp
     platform/graphics/haiku/FloatRectHaiku.cpp
+    platform/graphics/haiku/FontHaiku.cpp
     platform/graphics/haiku/GradientHaiku.cpp
     platform/graphics/haiku/GraphicsContextHaiku.cpp
     platform/graphics/haiku/IconHaiku.cpp
