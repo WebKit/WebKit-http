@@ -216,7 +216,7 @@ void setSharedTimerFiredFunction(void (*f)())
     SharedTimerHaiku::instance()->m_timerFunction = f;
 }
 
-void setSharedTimerFireTime(double fireTime)
+void setSharedTimerFireInterval(double fireTime)
 {
     SharedTimerHaiku::instance()->start(fireTime);
 }
