@@ -248,6 +248,56 @@ String contextMenuItemTagInspectElement()
     return "Inspect";
 }
 
+String contextMenuItemTagOpenVideoInNewWindow()
+{
+    return "Open Video in New Window";
+}
+
+String contextMenuItemTagOpenAudioInNewWindow()
+{
+    return "Open Audio in New Window";
+}
+
+String contextMenuItemTagCopyVideoLinkToClipboard()
+{
+    return "Copy Video Link Location";
+}
+
+String contextMenuItemTagCopyAudioLinkToClipboard()
+{
+    return "Copy Audio Link Location";
+}
+
+String contextMenuItemTagToggleMediaControls()
+{
+    return "Toggle Media Controls";
+}
+
+String contextMenuItemTagToggleMediaLoop()
+{
+    return "Toggle Media Loop Playback";
+}
+
+String contextMenuItemTagEnterVideoFullscreen()
+{
+    return "Switch Video to Fullscreen";
+}
+
+String contextMenuItemTagMediaPlay()
+{
+    return "Play";
+}
+
+String contextMenuItemTagMediaPause()
+{
+    return "Pause";
+}
+
+String contextMenuItemTagMediaMute()
+{
+    return "Mute";
+}
+
 String searchMenuNoRecentSearchesText()
 {
     return "No recent text searches";
