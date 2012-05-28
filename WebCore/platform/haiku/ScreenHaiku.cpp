@@ -41,6 +41,18 @@
 
 namespace WebCore {
 
+int screenHorizontalDPI(Widget*)
+{
+    notImplemented();
+    return 0;
+}
+
+int screenVerticalDPI(Widget*)
+{
+    notImplemented();
+    return 0;
+}
+
 FloatRect screenRect(Widget*)
 {
     BScreen screen;
