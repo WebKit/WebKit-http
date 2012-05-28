@@ -1861,8 +1861,8 @@ StaticLibrary webcore3 :
     platform/haiku/PlatformKeyboardEventHaiku.cpp
     platform/haiku/PlatformMouseEventHaiku.cpp
     platform/haiku/PlatformWheelEventHaiku.cpp
+    platform/haiku/PlatformScreenHaiku.cpp
     platform/haiku/RenderThemeHaiku.cpp
-    platform/haiku/ScreenHaiku.cpp
     platform/haiku/SoundHaiku.cpp
     platform/haiku/WidgetHaiku.cpp
     
