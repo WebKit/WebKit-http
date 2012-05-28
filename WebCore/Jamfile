@@ -1,6 +1,8 @@
 SubDir TOP WebCore ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ENABLE_WORKERS=1 ENABLE_NETSCAPE_PLUGIN_API=0 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+LINKFLAGS += -Xlinker --no-keep-memory -Xlinker --no-as-needed ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
@@ -13,7 +15,7 @@ SubDirSysHdrs $(TOP) ;
 SubDirSysHdrs $(TOP) JavaScriptCore ;
 SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) WebCore ;
-SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
+#SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
 SubDirSysHdrs $(TOP) WebCore platform text ;
 SubDirSysHdrs $(TOP) WTF ;
 
@@ -289,10 +291,15 @@ StaticLibrary webcore1 :
     bindings/js/JSXSLTProcessorCustom.cpp
     bindings/js/JavaScriptCallFrame.cpp
     bindings/js/Dictionary.cpp
+    
+    bindings/js/PageScriptDebugServer.cpp
+    bindings/js/WorkerScriptDebugServer.cpp
+    
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptCallStackFactory.cpp
     bindings/js/ScriptController.cpp
+    bindings/js/ScriptControllerHaiku.cpp
     bindings/js/ScriptDebugServer.cpp
     bindings/js/ScriptEventListener.cpp
     bindings/js/ScriptFunctionCall.cpp
@@ -947,9 +954,9 @@ StaticLibrary webcore3 :
     DerivedSources/WebCore/XMLNSNames.cpp
     DerivedSources/WebCore/XMLNames.cpp
     DerivedSources/WebCore/XPathGrammar.cpp
-;
+#;
 
-StaticLibrary webcore4 :
+#StaticLibrary webcore4 :
     dom/ActiveDOMObject.cpp
     dom/Attr.cpp
     dom/BeforeTextInsertedEvent.cpp
@@ -1385,9 +1392,9 @@ StaticLibrary webcore4 :
     html/track/TrackEvent.cpp
     html/track/WebVTTParser.cpp
     html/track/WebVTTTokenizer.cpp
-;
+#;
 
-StaticLibrary webcore5 :
+#StaticLibrary webcore5 :
     inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtils.cpp
     inspector/DOMEditor.cpp
@@ -1617,10 +1624,13 @@ StaticLibrary webcore5 :
     page/haiku/FrameHaiku.cpp
 
     page/scrolling/ScrollingCoordinator.cpp
+    page/scrolling/ScrollingCoordinatorNone.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
 
     platform/text/haiku/StringHaiku.cpp
+    platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
+
     platform/ActivePlatformGestureAnimation.cpp
     platform/Arena.cpp
     platform/AsyncFileSystem.cpp
@@ -1638,6 +1648,7 @@ StaticLibrary webcore5 :
     platform/FileIconLoader.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
+    platform/HistogramSupport.cpp
     platform/ClockGeneric.cpp
     platform/KURL.cpp
     platform/KURLGoogle.cpp
@@ -1836,15 +1847,25 @@ StaticLibrary webcore5 :
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
-    platform/haiku/CursorHaiku.cpp
+    
     platform/haiku/ClipboardHaiku.cpp
+    platform/haiku/ContextMenuHaiku.cpp
+    platform/haiku/ContextMenuItemHaiku.cpp
+    platform/haiku/CursorHaiku.cpp
+    platform/haiku/DragImageHaiku.cpp
+    platform/haiku/FileSystemHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
+    platform/haiku/MIMETypeRegistryHaiku.cpp
+    platform/haiku/PasteboardHaiku.cpp
     platform/haiku/PlatformKeyboardEventHaiku.cpp
     platform/haiku/PlatformMouseEventHaiku.cpp
     platform/haiku/PlatformWheelEventHaiku.cpp
     platform/haiku/RenderThemeHaiku.cpp
     platform/haiku/ScreenHaiku.cpp
+    platform/haiku/SoundHaiku.cpp
     platform/haiku/WidgetHaiku.cpp
+    
+    editing/haiku/EditorHaiku.cpp
 
     platform/image-decoders/ImageDecoder.cpp
     platform/image-decoders/bmp/BMPImageDecoder.cpp
@@ -1943,21 +1964,22 @@ StaticLibrary webcore5 :
 ;
 
 SharedLibrary libwebcore.so :
-    #plugins/DOMMimeType.cpp
-    #plugins/DOMMimeTypeArray.cpp
-    #plugins/DOMPlugin.cpp
-    #plugins/DOMPluginArray.cpp
-    #plugins/IFrameShimSupport.cpp
-    #plugins/PluginData.cpp
-    #plugins/PluginDataNone.cpp
-    #plugins/PluginDatabase.cpp
-    #plugins/PluginDebug.cpp
-    #plugins/PluginMainThreadScheduler.cpp
-    #plugins/PluginPackage.cpp
-    #plugins/PluginPackageNone.cpp
-    #plugins/PluginStream.cpp
-    #plugins/PluginView.cpp
-    #plugins/PluginViewNone.cpp
+
+    plugins/DOMMimeType.cpp
+    plugins/DOMMimeTypeArray.cpp
+    plugins/DOMPlugin.cpp
+    plugins/DOMPluginArray.cpp
+    plugins/IFrameShimSupport.cpp
+    plugins/PluginData.cpp
+    plugins/PluginDataNone.cpp
+    plugins/PluginDatabase.cpp
+    plugins/PluginDebug.cpp
+    plugins/PluginMainThreadScheduler.cpp
+    plugins/PluginPackage.cpp
+    plugins/PluginPackageNone.cpp
+    plugins/PluginStream.cpp
+    plugins/PluginView.cpp
+    plugins/PluginViewNone.cpp
     #plugins/npapi.cpp
 
     rendering/AutoTableLayout.cpp
@@ -2416,7 +2438,7 @@ SharedLibrary libwebcore.so :
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
     :
-    webcore1.a webcore2.a webcore3.a webcore4.a webcore5.a
+    webcore3.a webcore2.a webcore1.a webcore2.a webcore3.a # webcore4.a webcore5.a
     libwtf.so libjavascriptcore.so
     # Other required libraries
     curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
