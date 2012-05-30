@@ -44,6 +44,9 @@
 
 namespace WebCore {
 
+static const float smallCapsFraction = 0.7;
+static const float emphasisMarkFraction = 0.5;
+
 void SimpleFontData::platformInit()
 {
     const BFont* font = m_platformData.font();
@@ -52,11 +55,11 @@ void SimpleFontData::platformInit()
 
     font_height height;
     font->GetHeight(&height);
-    m_ascent = static_cast<int>(ceilf(height.ascent));
-    m_descent = static_cast<int>(ceilf(height.descent));
-    m_lineSpacing = m_ascent + m_descent;
-    m_xHeight = height.ascent * 0.56f; // Hack taken from the win port.
-    m_lineGap = height.leading;
+    m_fontMetrics.setAscent(height.ascent);
+    m_fontMetrics.setDescent(height.descent);
+    m_fontMetrics.setLineSpacing(height.ascent + height.descent);
+    m_fontMetrics.setXHeight(height.ascent * 0.56f); // Hack taken from the win port.
+    m_fontMetrics.setLineGap(height.leading);
 }
 
 void SimpleFontData::platformCharWidthInit()
@@ -68,19 +71,32 @@ void SimpleFontData::platformCharWidthInit()
 
 void SimpleFontData::platformDestroy()
 {
-    delete m_smallCapsFontData;
-    m_smallCapsFontData = 0;
+}
+
+PassOwnPtr<SimpleFontData> SimpleFontData::createScaledFontData(const FontDescription& fontDescription, float scaleFactor) const
+{
+    const float scaledSize = lroundf(fontDescription.computedSize() * scaleFactor);
+    return adoptPtr(new SimpleFontData(FontPlatformData(m_platformData, scaledSize), isCustomFont(), false));
 }
 
 SimpleFontData* SimpleFontData::smallCapsFontData(const FontDescription& fontDescription) const
 {
-    if (!m_smallCapsFontData) {
-        FontDescription desc = FontDescription(fontDescription);
-        desc.setSpecifiedSize(0.70f * fontDescription.computedSize());
-        FontPlatformData fontPlatformData(desc, desc.family().family());
-        m_smallCapsFontData = new SimpleFontData(fontPlatformData);
-    }
-    return m_smallCapsFontData;
+    if (!m_derivedFontData)
+        m_derivedFontData = DerivedFontData::create(isCustomFont());
+    if (!m_derivedFontData->smallCaps)
+        m_derivedFontData->smallCaps = createScaledFontData(fontDescription, smallCapsFraction);
+
+    return m_derivedFontData->smallCaps.get();
+}
+
+SimpleFontData* SimpleFontData::emphasisMarkFontData(const FontDescription& fontDescription) const
+{
+    if (!m_derivedFontData)
+        m_derivedFontData = DerivedFontData::create(isCustomFont());
+    if (!m_derivedFontData->emphasisMark)
+        m_derivedFontData->emphasisMark = createScaledFontData(fontDescription, emphasisMarkFraction);
+
+    return m_derivedFontData->emphasisMark.get();
 }
 
 bool SimpleFontData::containsCharacters(const UChar* characters, int length) const
@@ -94,17 +110,21 @@ void SimpleFontData::determinePitch()
     m_treatAsFixedPitch = m_platformData.font() && m_platformData.font()->IsFixed();
 }
 
-GlyphMetrics SimpleFontData::platformMetricsForGlyph(Glyph glyph, GlyphMetricsMode) const
+FloatRect SimpleFontData::platformBoundsForGlyph(Glyph) const
 {
-    GlyphMetrics metrics;
-    if (!m_platformData.font())
-        return metrics;
+    notImplemented();
+    return FloatRect();
+}
+
+float SimpleFontData::platformWidthForGlyph(Glyph glyph) const
+{
+    if (!glyph || !platformData().size())
+        return 0;
 
     float escapements[1];
     CString encoded = UTF8Encoding().encode((UChar *)&glyph, 1, URLEncodedEntitiesForUnencodables);
     m_platformData.font()->GetEscapements(encoded.data(), 1, escapements);
-    metrics.horizontalAdvance = escapements[0] * m_platformData.font()->Size();
-    return metrics;
+    return escapements[0] * m_platformData.font()->Size();
 }
 
 } // namespace WebCore

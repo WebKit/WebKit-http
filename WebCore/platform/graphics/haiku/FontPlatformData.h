@@ -44,6 +44,7 @@ public:
     FontPlatformData(const FontDescription&, const AtomicString& family);
     FontPlatformData(float size, bool bold, bool oblique);
     FontPlatformData(const FontPlatformData&);
+    FontPlatformData(const FontPlatformData&, float size);
 
     ~FontPlatformData();
 

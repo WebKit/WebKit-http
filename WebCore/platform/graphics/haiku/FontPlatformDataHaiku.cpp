@@ -200,6 +200,16 @@ FontPlatformData::FontPlatformData(const FontPlatformData& other)
         m_data->addRef();
 }
 
+FontPlatformData::FontPlatformData(const FontPlatformData& other, float size)
+    : m_data(new FontPlatformDataPrivate())
+{
+    m_data->font = other.m_data->font;
+    m_data->bold = other.m_data->bold;
+    m_data->oblique = other.m_data->oblique;
+    m_data->font.SetSize(size);
+    m_data->size = m_data->font.Size();
+}
+
 FontPlatformData::~FontPlatformData()
 {
     if (!m_data || isHashTableDeletedValue())
