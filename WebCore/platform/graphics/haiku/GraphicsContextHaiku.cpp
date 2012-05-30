@@ -728,6 +728,11 @@ void GraphicsContext::endPlatformTransparencyLayer()
     m_data->popLayer();
 }
 
+bool GraphicsContext::supportsTransparencyLayers()
+{
+    return true;
+}
+
 void GraphicsContext::clearRect(const FloatRect& rect)
 {
     if (paintingDisabled())
@@ -871,6 +876,14 @@ void GraphicsContext::scale(const FloatSize& size)
 }
 
 void GraphicsContext::concatCTM(const AffineTransform& transform)
+{
+    if (paintingDisabled())
+        return;
+
+    notImplemented();
+}
+
+void GraphicsContext::setCTM(const AffineTransform& transform)
 {
     if (paintingDisabled())
         return;
