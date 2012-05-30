@@ -32,6 +32,8 @@
 #include <Bitmap.h>
 #include <View.h>
 
+#include <wtf/RefPtr.h>
+
 namespace WebCore {
 
 class IntSize;
@@ -43,6 +45,8 @@ public:
 
     BBitmap m_bitmap;
     BView m_view;
+    
+    RefPtr<Image> m_image;
 };
 
 } // namespace WebCore

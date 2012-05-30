@@ -40,6 +40,11 @@ public:
         return adoptRef(new StillImage(bitmap));
     }
 
+    static PassRefPtr<StillImage> createForRendering(const BBitmap* bitmap)
+    {
+        return adoptRef(new StillImage(bitmap));
+    }
+
     virtual void destroyDecodedData(bool = true);
     virtual unsigned decodedSize() const;
 

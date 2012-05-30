@@ -30,6 +30,7 @@
 #include "GraphicsContext.h"
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
+#include "NotImplemented.h"
 #include "StillImageHaiku.h"
 #include <wtf/text/CString.h>
 #include <BitmapStream.h>
@@ -56,6 +57,8 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     m_view.SetLineMode(B_BUTT_CAP, B_MITER_JOIN, 10);
     m_view.SetDrawingMode(B_OP_ALPHA);
     m_view.SetBlendingMode(B_PIXEL_ALPHA, B_ALPHA_COMPOSITE);
+
+    m_image = StillImage::createForRendering(&m_bitmap);
 }
 
 ImageBufferData::~ImageBufferData()
@@ -104,6 +107,34 @@ PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior) const
         return StillImage::create(m_data.m_bitmap);
 
     //return StillImage::createForRendering(&m_data.m_bitmap);
+}
+
+void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
+                       CompositeOperator op, bool useLowQualityScale)
+{
+    if (destContext == context()) {
+        // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
+        RefPtr<Image> copy = copyImage(CopyBackingStore);
+        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, op, DoNotRespectImageOrientation, useLowQualityScale);
+    } else
+        destContext->drawImage(m_data.m_image.get(), styleColorSpace, destRect, srcRect, op, DoNotRespectImageOrientation, useLowQualityScale);
+}
+
+void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
+{
+    if (destContext == context()) {
+        // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
+        RefPtr<Image> copy = copyImage(CopyBackingStore);
+        copy->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+    } else
+        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
+}
+
+void ImageBuffer::clip(GraphicsContext* context, const FloatRect& floatRect) const
+{
+    // FIXME
+    notImplemented();
 }
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
