@@ -1756,6 +1756,7 @@ StaticLibrary webcore3 :
     platform/graphics/haiku/IntRectHaiku.cpp
     platform/graphics/haiku/IntSizeHaiku.cpp
     platform/graphics/haiku/PathHaiku.cpp
+    platform/graphics/haiku/SimpleFontDataHaiku.cpp
 
     platform/graphics/FractionalLayoutRect.cpp
     platform/graphics/FractionalLayoutSize.cpp
@@ -1870,6 +1871,7 @@ StaticLibrary webcore3 :
     platform/haiku/ScrollbarThemeHaiku.cpp
     platform/haiku/SharedTimerHaiku.cpp
     platform/haiku/SoundHaiku.cpp
+    platform/haiku/TemporaryLinkStubs.cpp
     platform/haiku/WidgetHaiku.cpp
     
     editing/haiku/EditorHaiku.cpp
