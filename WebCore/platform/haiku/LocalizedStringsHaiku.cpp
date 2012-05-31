@@ -58,6 +58,11 @@ String fileButtonChooseFileLabel()
     return "Choose File";
 }
 
+String fileButtonChooseMultipleFilesLabel()
+{
+    return "Choose Files";
+}
+
 String fileButtonNoFileSelectedLabel()
 {
     return "No file selected";
