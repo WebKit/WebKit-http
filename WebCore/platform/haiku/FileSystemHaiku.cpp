@@ -30,28 +30,13 @@
 #include "FileSystem.h"
 
 #include "NotImplemented.h"
-#include "PlatformString.h"
-#include "StringBuilder.h"
 #include <wtf/text/CString.h>
 
-#include <Directory.h>
-#include <Entry.h>
-#include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fnmatch.h>
-#include <stdio.h>
-#include <sys/stat.h>
 
 
 namespace WebCore {
-
-CString fileSystemRepresentation(const String& path)
-{
-    return path.utf8();
-}
 
 String homeDirectoryPath()
 {
@@ -62,56 +47,10 @@ String homeDirectoryPath()
     return String(path.Path());
 }
 
-CString openTemporaryFile(const char* prefix, PlatformFileHandle& handle)
-{
-    int number = rand() % 10000 + 1;
-    CString filename;
-    do {
-        StringBuilder builder;
-        builder.append("/tmp/");
-        builder.append(prefix);
-        builder.append(String::number(number));
-        filename = builder.toString().utf8();
-        handle = open(filename.data(), O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-        number++;
-        
-        if (handle != -1)
-            return filename;
-    } while (errno == EEXIST);
-    
-    return CString();
-}
-
 bool unloadModule(PlatformModule)
 {
     notImplemented();
     return false;
-}
-
-Vector<String> listDirectory(const String& path, const String& filter)
-{
-    Vector<String> entries;
-    CString cpath = path.utf8();
-    CString cfilter = filter.utf8();
-    DIR* dir = opendir(cpath.data());
-    if (dir) {
-        struct dirent* dp;
-        while ((dp = readdir(dir))) {
-            const char* name = dp->d_name;
-            if (!strcmp(name, ".") || !strcmp(name, ".."))
-                continue;
-            if (fnmatch(cfilter.data(), name, 0))
-                continue;
-            char filePath[B_PATH_NAME_LENGTH];
-            if ((int) (sizeof(filePath) - 1) < snprintf(filePath,
-                    sizeof(filePath), "%s/%s", cpath.data(), name)) {
-                continue; // buffer overflow
-            }
-            entries.append(filePath);
-        }
-        closedir(dir);
-    }
-    return entries;
 }
 
 } // namespace WebCore
