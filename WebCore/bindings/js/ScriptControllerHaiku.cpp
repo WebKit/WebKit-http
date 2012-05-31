@@ -39,7 +39,9 @@ PassRefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWid
     if (!widget->isPluginView())
         return 0;
 
-    return static_cast<PluginView*>(widget)->bindingInstance();
+	// TODO: cleanup, this method isn't defined anymore without NETSCAPE_PLUGIN_API enabled
+	//return static_cast<PluginView*>(widget)->bindingInstance();
+    return 0;
 }
 
 } // namespace WebCore
