@@ -37,11 +37,15 @@ class CachedImage;
 // State available during IE's events for drag and drop and copy/paste.
 class ClipboardHaiku : public Clipboard {
 public:
-    static PassRefPtr<ClipboardHaiku> create(ClipboardAccessPolicy policy, ClipboardType type = CopyAndPaste)
+    static PassRefPtr<ClipboardHaiku> create(ClipboardAccessPolicy policy, const DragData* dragData, Frame* frame)
     {
-        return adoptRef(new ClipboardHaiku(policy, type));
+        return adoptRef(new ClipboardHaiku(policy, dragData, frame));
     }
-    ~ClipboardHaiku() { }
+    static PassRefPtr<ClipboardHaiku> create(ClipboardAccessPolicy policy, Frame* frame, ClipboardType clipboardType = CopyAndPaste)
+    {
+        return adoptRef(new ClipboardHaiku(policy, clipboardType, frame));
+    }
+    virtual ~ClipboardHaiku() {};
 
     virtual void clearData(const String& type);
     virtual void clearAllData();
@@ -67,7 +71,10 @@ public:
     virtual bool hasData();
 
 private:
-    ClipboardHaiku(ClipboardAccessPolicy, ClipboardType);
+    ClipboardHaiku(ClipboardAccessPolicy, const DragData* dragData, Frame*);
+    ClipboardHaiku(ClipboardAccessPolicy, ClipboardType, Frame*);
+
+    Frame* m_frame;
 };
 
 } // namespace WebCore

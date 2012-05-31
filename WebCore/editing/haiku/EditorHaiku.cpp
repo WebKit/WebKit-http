@@ -35,9 +35,9 @@
 
 namespace WebCore {
 
-PassRefPtr<Clipboard> Editor::newGeneralClipboard(ClipboardAccessPolicy policy)
+PassRefPtr<Clipboard> Editor::newGeneralClipboard(ClipboardAccessPolicy policy, Frame* frame)
 {
-    return ClipboardHaiku::create(policy, false);
+    return ClipboardHaiku::create(policy, frame, Clipboard::CopyAndPaste);
 }
 
 } // namespace WebCore

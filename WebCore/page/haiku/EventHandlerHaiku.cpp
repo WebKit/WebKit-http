@@ -117,7 +117,7 @@ bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widge
 
 PassRefPtr<Clipboard> EventHandler::createDraggingClipboard() const
 {
-    return ClipboardHaiku::create(ClipboardWritable, Clipboard::DragAndDrop);
+    return ClipboardHaiku::create(ClipboardWritable, m_frame, Clipboard::DragAndDrop);
 }
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)

@@ -42,8 +42,20 @@
 
 namespace WebCore {
 
-ClipboardHaiku::ClipboardHaiku(ClipboardAccessPolicy policy, ClipboardType type)
+PassRefPtr<Clipboard> Clipboard::create(ClipboardAccessPolicy policy, DragData* dragData, Frame* frame)
+{
+    return ClipboardHaiku::create(policy, dragData, frame);
+}
+
+ClipboardHaiku::ClipboardHaiku(ClipboardAccessPolicy policy, ClipboardType type, Frame* frame)
     : Clipboard(policy, type)
+    , m_frame(frame)
+{
+}
+
+ClipboardHaiku::ClipboardHaiku(ClipboardAccessPolicy policy, const DragData* dragData, Frame* frame)
+    : Clipboard(policy, DragAndDrop)
+    , m_frame(frame)
 {
 }
 
@@ -78,7 +90,7 @@ String ClipboardHaiku::getData(const String& type) const
         BMessage* data = be_clipboard->Data();
 
         if (data)
-            status_t err = data->FindString(BString(type).String(), &result);
+            data->FindString(BString(type).String(), &result);
 
         be_clipboard->Unlock();
     }
