@@ -32,6 +32,7 @@
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
+#include "NotImplemented.h"
 #include <Application.h>
 #include <Handler.h>
 #include <Menu.h>
@@ -57,8 +58,11 @@ public:
         	// message. The BMenuItem instance from which this message
         	// originates may long be attached to another menu, and doing
         	// it this way makes us completely independent of that.
-            ContextMenuItem item(new BMenuItem("", new BMessage(*message)));
-            m_menu->controller()->contextMenuItemSelected(&item);
+
+            // FIXME:
+            notImplemented();
+            //ContextMenuItem item(new BMenuItem("", new BMessage(*message)));
+            //m_menu->controller()->contextMenuItemSelected(&item);
         }
     }
 
@@ -66,9 +70,8 @@ private:
     ContextMenu* m_menu;
 };
 
-ContextMenu::ContextMenu(const HitTestResult& result)
-    : m_hitTestResult(result)
-    , m_platformDescription(new BMenu("context_menu"))
+ContextMenu::ContextMenu()
+    : m_platformDescription(new BMenu("context_menu"))
     , m_menuHandler(new ContextMenuHandler(this))
 {
 	if (be_app->Lock()) {
@@ -109,7 +112,7 @@ static void setTargetForItemsRecursive(BMenu* menu, const BMessenger& target)
 
 void ContextMenu::insertItem(unsigned position, ContextMenuItem& item)
 {
-    checkOrEnableIfNeeded(item);
+    // FIXME: //checkOrEnableIfNeeded(item);
 
     BMenuItem* menuItem = item.releasePlatformDescription();
     if (menuItem) {
