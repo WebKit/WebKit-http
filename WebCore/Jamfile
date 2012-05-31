@@ -1758,6 +1758,7 @@ StaticLibrary webcore3 :
     platform/graphics/haiku/IntSizeHaiku.cpp
     platform/graphics/haiku/PathHaiku.cpp
     platform/graphics/haiku/SimpleFontDataHaiku.cpp
+    platform/graphics/haiku/StillImageHaiku.cpp
 
     platform/graphics/FractionalLayoutRect.cpp
     platform/graphics/FractionalLayoutSize.cpp
