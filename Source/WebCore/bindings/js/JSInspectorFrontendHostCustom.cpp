@@ -61,6 +61,8 @@ JSValue JSInspectorFrontendHost::platform(ExecState* execState)
     DEFINE_STATIC_LOCAL(const String, platform, ("linux"));
 #elif OS(FREEBSD)
     DEFINE_STATIC_LOCAL(const String, platform, ("freebsd"));
+#elif OS(HAIKU)
+    DEFINE_STATIC_LOCAL(const String, platform, ("haiku"));
 #elif OS(OPENBSD)
     DEFINE_STATIC_LOCAL(const String, platform, ("openbsd"));
 #elif OS(SOLARIS)
@@ -77,6 +79,8 @@ JSValue JSInspectorFrontendHost::port(ExecState* execState)
     DEFINE_STATIC_LOCAL(const String, port, ("qt"));
 #elif PLATFORM(GTK)
     DEFINE_STATIC_LOCAL(const String, port, ("gtk"));
+#elif PLATFORM(HAIKU)
+    DEFINE_STATIC_LOCAL(const String, port, ("haiku"));
 #elif PLATFORM(WX)
     DEFINE_STATIC_LOCAL(const String, port, ("wx"));
 #else
