@@ -1889,6 +1889,8 @@ StaticLibrary webcore3 :
     platform/image-encoders/JPEGImageEncoder.cpp
     #platform/image-encoders/PNGImageEncoder.cpp
 
+    platform/image-decoders/haiku/ImageDecoderHaiku.cpp
+
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     #platform/mock/ScrollbarThemeMock.cpp
