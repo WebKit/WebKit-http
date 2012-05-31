@@ -64,7 +64,7 @@ bool DragData::containsPlainText() const
     return false;
 }
 
-String DragData::asPlainText() const
+String DragData::asPlainText(Frame* frame) const
 {
     notImplemented();
     return String();
@@ -76,29 +76,24 @@ Color DragData::asColor() const
     return Color();
 }
 
-WTF::PassRefPtr<Clipboard> DragData::createClipboard(ClipboardAccessPolicy policy) const
-{
-    return ClipboardHaiku::create(policy, true);
-}
-
 bool DragData::containsCompatibleContent() const
 {
-    return containsColor() || containsURL() || containsPlainText();
+    return containsColor() || containsURL(0) || containsPlainText();
 }
 
-bool DragData::containsURL() const
+bool DragData::containsURL(Frame*, FilenameConversionPolicy filenamePolicy) const
 {
     notImplemented();
     return false;
 }
 
-String DragData::asURL(String* title) const
+String DragData::asURL(Frame*, FilenameConversionPolicy filenamePolicy, String*) const
 {
     notImplemented();
     return String();
 }
 
-PassRefPtr<DocumentFragment> DragData::asFragment(Document*) const
+PassRefPtr<DocumentFragment> DragData::asFragment(Frame* frame, PassRefPtr<Range>, bool, bool&) const
 {
     notImplemented();
     return 0;
