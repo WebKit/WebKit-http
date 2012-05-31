@@ -1859,9 +1859,9 @@ StaticLibrary webcore3 :
     platform/haiku/ContextMenuItemHaiku.cpp
     platform/haiku/CursorHaiku.cpp
     platform/haiku/DragImageHaiku.cpp
+    platform/haiku/DragDataHaiku.cpp
     platform/haiku/FileSystemHaiku.cpp
     platform/haiku/KURLHaiku.cpp
-
     platform/haiku/LocalizedStringsHaiku.cpp
     platform/haiku/MIMETypeRegistryHaiku.cpp
     platform/haiku/PasteboardHaiku.cpp
