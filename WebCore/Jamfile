@@ -1860,6 +1860,7 @@ StaticLibrary webcore3 :
     platform/haiku/CursorHaiku.cpp
     platform/haiku/DragImageHaiku.cpp
     platform/haiku/DragDataHaiku.cpp
+    platform/haiku/EventLoopHaiku.cpp
     platform/haiku/FileSystemHaiku.cpp
     platform/haiku/KURLHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
