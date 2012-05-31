@@ -38,6 +38,11 @@
 
 namespace WebCore {
 
+CString fileSystemRepresentation(const String& path)
+{
+    return path.utf8();
+}
+
 String homeDirectoryPath()
 {
     BPath path;
