@@ -157,7 +157,7 @@ StaticLibrary webcore1 :
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCanvasRenderingContextCustom.cpp
     bindings/js/JSClipboardCustom.cpp
-    bindings/js/JSConsoleCustom.cpp
+    #bindings/js/JSConsoleCustom.cpp
     bindings/js/JSConvolverNodeCustom.cpp
     bindings/js/JSCoordinatesCustom.cpp
     bindings/js/JSCustomSQLStatementErrorCallback.cpp
@@ -2452,7 +2452,7 @@ SharedLibrary libwebcore.so :
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
     :
-    webcore3.a webcore2.a webcore1.a webcore2.a webcore3.a # webcore4.a webcore5.a
+    webcore1.a webcore2.a webcore3.a webcore1.a webcore3.a webcore2.a webcore1.a webcore2.a webcore3.a # webcore4.a webcore5.a
     libwtf.so libjavascriptcore.so
     # Other required libraries
     curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
