@@ -30,7 +30,7 @@
 #ifndef WebKitNamedFlow_h
 #define WebKitNamedFlow_h
 
-#include <Node.h>
+#include <WebCore/dom/Node.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
