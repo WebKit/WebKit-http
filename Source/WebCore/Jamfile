@@ -1858,6 +1858,7 @@ StaticLibrary webcore3 :
     platform/haiku/ContextMenuHaiku.cpp
     platform/haiku/ContextMenuItemHaiku.cpp
     platform/haiku/CursorHaiku.cpp
+    platform/haiku/CookieJarHaiku.cpp
     platform/haiku/DragImageHaiku.cpp
     platform/haiku/DragDataHaiku.cpp
     platform/haiku/EventLoopHaiku.cpp

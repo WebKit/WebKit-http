@@ -50,6 +50,21 @@ namespace WebCore {
     void deleteCookiesForHostname(const String& hostname);
     void deleteAllCookies();
 
+#if PLATFORM(HAIKU)
+class CookieJarClient {
+public:
+    virtual ~CookieJarClient() {}
+
+    virtual String cookies(const Document*, const KURL&) = 0;
+    virtual String cookieRequestHeaderFieldValue(const Document*, const KURL&) = 0;
+    virtual void setCookies(Document*, const KURL&, const String&) = 0;
+    virtual bool cookiesEnabled(const Document*) = 0;
+    virtual bool getRawCookies(const Document*, const KURL&, Vector<Cookie>&) = 0;
+    virtual void deleteCookie(const Document*, const KURL&, const String&) = 0;
+};
+
+void setCookieJarClient(CookieJarClient*);
+#endif // PLATFORM(HAIKU)
 }
 
 #endif
