@@ -36,11 +36,13 @@
 #include "KURL.h"
 #include "ResourceResponse.h"
 #include <Messenger.h>
+#include <wtf/Forward.h>
 
 class BWebFrame;
 class BWebPage;
 
 namespace WebCore {
+
 class AuthenticationChallenge;
 class DocumentLoader;
 class Element;
@@ -50,7 +52,6 @@ class HistoryItem;
 class NavigationAction;
 class PluginView;
 class ResourceLoader;
-class String;
 
 struct LoadErrorResetToken;
 
@@ -161,7 +162,7 @@ public:
     virtual bool canCachePage() const;
 
     virtual void didDisplayInsecureContent();
-    virtual void didRunInsecureContent(WebCore::SecurityOrigin*);
+    virtual void didRunInsecureContent(SecurityOrigin*);
 
     virtual ResourceError cancelledError(const ResourceRequest&);
     virtual ResourceError blockedError(const ResourceRequest&);
@@ -176,8 +177,8 @@ public:
 
     virtual String userAgent(const KURL&);
 
-    virtual void savePlatformDataToCachedFrame(WebCore::CachedFrame*);
-    virtual void transitionToCommittedFromCachedFrame(WebCore::CachedFrame*);
+    virtual void savePlatformDataToCachedFrame(CachedFrame*);
+    virtual void transitionToCommittedFromCachedFrame(CachedFrame*);
     virtual void transitionToCommittedForNewPage();
 
     virtual bool canHandleRequest(const ResourceRequest&) const;
@@ -186,27 +187,27 @@ public:
     virtual String generatedMIMETypeForURLScheme(const String& URLScheme) const;
 
     virtual void frameLoadCompleted();
-    virtual void saveViewStateToItem(WebCore::HistoryItem*);
+    virtual void saveViewStateToItem(HistoryItem*);
     virtual void restoreViewState();
     virtual void provisionalLoadStarted();
     virtual void didFinishLoad();
     virtual void prepareForDataSourceReplacement();
-    virtual PassRefPtr<WebCore::DocumentLoader> createDocumentLoader(const WebCore::ResourceRequest&, const WebCore::SubstituteData&);
+    virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&);
 
     virtual void setTitle(const String& title, const KURL&);
 
-    virtual PassRefPtr<WebCore::Frame> createFrame(const WebCore::KURL& url, const WebCore::String& name, WebCore::HTMLFrameOwnerElement*,
-                                                   const WebCore::String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
+    virtual PassRefPtr<Frame> createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement*,
+                                                   const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
     virtual void didTransferChildFrameToNewDocument();
-    virtual PassRefPtr<WebCore::Widget> createPlugin(const WebCore::IntSize&, WebCore::HTMLPlugInElement*, const WebCore::KURL&, const Vector<WebCore::String>&,
-                                                     const Vector<WebCore::String>&, const WebCore::String&, bool);
-    virtual void redirectDataToPlugin(WebCore::Widget* pluginWidget);
+    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&,
+                                                     const Vector<String>&, const String&, bool);
+    virtual void redirectDataToPlugin(Widget* pluginWidget);
 
-    virtual PassRefPtr<WebCore::Widget> createJavaAppletWidget(const WebCore::IntSize&, WebCore::HTMLAppletElement*, const WebCore::KURL& baseURL,
-                                                               const Vector<WebCore::String>& paramNames, const Vector<WebCore::String>& paramValues);
+    virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
+                                                               const Vector<String>& paramNames, const Vector<String>& paramValues);
 
-    virtual WebCore::ObjectContentType objectContentType(const WebCore::KURL& url, const WebCore::String& mimeType);
-    virtual WebCore::String overrideMediaType() const;
+    virtual ObjectContentType objectContentType(const KURL& url, const String& mimeType);
+    virtual String overrideMediaType() const;
 
     virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld*);
     virtual void documentElementAvailable();
@@ -232,7 +233,7 @@ private:
     bool m_loadingErrorPage;
 
     // Plugin view to redirect data to
-    WebCore::PluginView* m_pluginView;
+    PluginView* m_pluginView;
     bool m_hasSentResponseToPlugin;
 };
 

@@ -31,6 +31,7 @@
 #include "ChromeClientHaiku.h"
 
 #include "FileChooser.h"
+#include "FileIconLoader.h"
 #include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -39,6 +40,7 @@
 #include "HitTestResult.h"
 #include "Icon.h"
 #include "NotImplemented.h"
+#include "Page.h"
 #include "PlatformString.h"
 #include "WebFrame.h"
 #include "WebView.h"
@@ -395,7 +397,7 @@ void ChromeClientHaiku::mouseDidMoveOverElement(const HitTestResult& result, uns
         lastHoverURL = result.absoluteLinkURL();
         lastHoverTitle = result.title(dir);
         lastHoverContent = result.textContent();
-        m_webPage->linkHovered(lastHoverURL.prettyURL(), lastHoverTitle, lastHoverContent);
+        m_webPage->linkHovered(lastHoverURL.string(), lastHoverTitle, lastHoverContent);
     }
 }
 
@@ -445,13 +447,13 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     BMessage message(B_REFS_RECEIVED);
     message.AddPointer("chooser", ref);
     BMessenger target(m_webPage);
-    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->allowsMultipleFiles(), &message, NULL, true, true);
+    BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target, 0, 0, (*ref)->settings().allowsMultipleFiles, &message, NULL, true, true);
     panel->Show();
 }
 
-void ChromeClientHaiku::chooseIconForFiles(const Vector<String>& filenames, PassRefPtr<FileChooser> chooser)
+void ChromeClientHaiku::loadIconForFiles(const Vector<String>& filenames, FileIconLoader* loader)
 {
-    chooser->iconLoaded(Icon::createIconForFiles(filenames));
+    loader->notifyFinished(Icon::createIconForFiles(filenames));
 }
 
 bool ChromeClientHaiku::setCursor(PlatformCursorHandle cursorHandle)

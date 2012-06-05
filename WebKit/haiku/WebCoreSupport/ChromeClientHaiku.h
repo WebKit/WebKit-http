@@ -134,7 +134,7 @@ namespace WebCore {
 
         virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
         // Asynchronous request to load an icon for specified filenames.
-        virtual void chooseIconForFiles(const Vector<String>&, PassRefPtr<FileChooser>);
+        virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*);
 
         virtual bool setCursor(PlatformCursorHandle);
 
@@ -142,15 +142,13 @@ namespace WebCore {
         // will be called frequently, so handling should be very fast.
         virtual void formStateDidChange(const Node*);
 
-        virtual PassOwnPtr<HTMLParserQuirks> createHTMLParserQuirks() { return 0; }
-
     private:
         BWebPage* m_webPage;
         BWebView* m_webView;
 
-        WebCore::KURL lastHoverURL;
-        WebCore::String lastHoverTitle;
-        WebCore::String lastHoverContent;
+        KURL lastHoverURL;
+        String lastHoverTitle;
+        String lastHoverContent;
     };
 
 } // namespace WebCore
