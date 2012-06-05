@@ -177,8 +177,10 @@ void ContextMenuController::showContextMenu(Event* event)
 static void openNewWindow(const KURL& urlToLoad, Frame* frame)
 {
     if (Page* oldPage = frame->page()) {
+        WindowFeatures features;
+        features.activate = false;
         FrameLoadRequest request(frame->document()->securityOrigin(), ResourceRequest(urlToLoad, frame->loader()->outgoingReferrer()));
-        if (Page* newPage = oldPage->chrome()->createWindow(frame, request, WindowFeatures(), NavigationAction(request.resourceRequest()))) {
+        if (Page* newPage = oldPage->chrome()->createWindow(frame, request, features, NavigationAction(request.resourceRequest()))) {
             newPage->mainFrame()->loader()->loadFrameRequest(request, false, false, 0, 0, MaybeSendReferrer);
             newPage->chrome()->show();
         }
