@@ -74,7 +74,7 @@ void ContextMenuClientHaiku::downloadURL(const KURL& url)
 
 void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
 {
-    String searchString = frame->selectedText();
+    String searchString = frame->editor()->selectedText();
     searchString.stripWhiteSpace();
     String encoded = encodeWithURLEscapeSequences(searchString);
     encoded.replace("%20", "+");
@@ -84,7 +84,7 @@ void ContextMenuClientHaiku::searchWithGoogle(const Frame* frame)
 
     ResourceRequest request = ResourceRequest(url);
     if (Page* page = frame->page())
-        page->mainFrame()->loader()->urlSelected(request, String("_blank"), 0, false, false, true, SendReferrer);
+        page->mainFrame()->loader()->urlSelected(request, String("_blank"), 0, false, false, true, MaybeSendReferrer);
 }
 
 void ContextMenuClientHaiku::lookUpInDictionary(Frame*)
