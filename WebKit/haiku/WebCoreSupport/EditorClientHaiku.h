@@ -68,7 +68,7 @@ public:
     virtual bool shouldChangeSelectedRange(Range* fromRange, Range* toRange,
                                            EAffinity, bool stillSelecting);
 
-    virtual bool shouldApplyStyle(CSSStyleDeclaration*, Range*);
+    virtual bool shouldApplyStyle(StylePropertySet*, Range*);
     virtual bool shouldMoveRangeAfterDelete(Range*, Range*);
 
     virtual void didBeginEditing();
@@ -78,8 +78,8 @@ public:
     virtual void didWriteSelectionToPasteboard();
     virtual void didSetSelectionTypesForPasteboard();
 
-    virtual void registerCommandForUndo(PassRefPtr<EditCommand>);
-    virtual void registerCommandForRedo(PassRefPtr<EditCommand>);
+    virtual void registerUndoStep(PassRefPtr<UndoStep>);
+    virtual void registerRedoStep(PassRefPtr<UndoStep>);
     virtual void clearUndoRedoOperations();
 
     virtual bool canUndo() const;
@@ -125,8 +125,9 @@ private:
 
     BWebPage* m_page;
 
-    WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > undoStack;
-    WTF::Deque<WTF::RefPtr<WebCore::EditCommand> > redoStack;
+    typedef Deque<RefPtr<WebCore::UndoStep> > UndoManagerStack;
+    UndoManagerStack m_undoStack;
+    UndoManagerStack m_redoStack;
 
     bool m_editing;
     bool m_isInRedo;

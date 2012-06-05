@@ -152,7 +152,7 @@ bool EditorClientHaiku::shouldChangeSelectedRange(Range* fromRange, Range* toRan
     return true;
 }
 
-bool EditorClientHaiku::shouldApplyStyle(WebCore::CSSStyleDeclaration*,
+bool EditorClientHaiku::shouldApplyStyle(WebCore::StylePropertySet*,
                                       WebCore::Range*)
 {
     notImplemented();
@@ -202,42 +202,42 @@ void EditorClientHaiku::didSetSelectionTypesForPasteboard()
     notImplemented();
 }
 
-void EditorClientHaiku::registerCommandForUndo(WTF::PassRefPtr<WebCore::EditCommand> command)
+void EditorClientHaiku::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 {
     if (!m_isInRedo)
-        redoStack.clear();
-    undoStack.append(command);
+        m_redoStack.clear();
+    m_undoStack.append(step);
 }
 
-void EditorClientHaiku::registerCommandForRedo(WTF::PassRefPtr<WebCore::EditCommand> command)
+void EditorClientHaiku::registerRedoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
 {
-    redoStack.append(command);
+    m_redoStack.append(step);
 }
 
 void EditorClientHaiku::clearUndoRedoOperations()
 {
-    undoStack.clear();
-    redoStack.clear();
+    m_undoStack.clear();
+    m_redoStack.clear();
 }
 
 bool EditorClientHaiku::canUndo() const
 {
-    return !undoStack.isEmpty();
+    return !m_undoStack.isEmpty();
 }
 
 bool EditorClientHaiku::canRedo() const
 {
-    return !redoStack.isEmpty();
+    return !m_redoStack.isEmpty();
 }
 
 void EditorClientHaiku::undo()
 {
 printf("EditorClientHaiku::undo()\n");
     if (canUndo()) {
-        RefPtr<WebCore::EditCommand> command(*(--undoStack.end()));
-        undoStack.remove(--undoStack.end());
-        // unapply will call us back to push this command onto the redo stack.
-        command->unapply();
+        RefPtr<WebCore::UndoStep> step(*(--m_undoStack.end()));
+        m_undoStack.remove(--m_undoStack.end());
+        // unapply will call us back to push this step onto the redo stack.
+        step->unapply();
     }
 }
 
@@ -245,13 +245,13 @@ void EditorClientHaiku::redo()
 {
 printf("EditorClientHaiku::redo()\n");
     if (canRedo()) {
-        RefPtr<WebCore::EditCommand> command(*(--redoStack.end()));
-        redoStack.remove(--redoStack.end());
+        RefPtr<WebCore::UndoStep> step(*(--m_redoStack.end()));
+        m_redoStack.remove(--m_redoStack.end());
 
         ASSERT(!m_isInRedo);
         m_isInRedo = true;
-        // reapply will call us back to push this command onto the undo stack.
-        command->reapply();
+        // reapply will call us back to push this step onto the undo stack.
+        step->reapply();
         m_isInRedo = false;
     }
 }
