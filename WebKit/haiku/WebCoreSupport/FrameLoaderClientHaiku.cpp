@@ -714,7 +714,7 @@ void FrameLoaderClientHaiku::updateGlobalHistory()
         return;
 
     BMessage message(UPDATE_HISTORY);
-    message.AddString("url", frame->loader()->documentLoader()->urlForHistory().prettyURL());
+    message.AddString("url", frame->loader()->documentLoader()->urlForHistory().string());
     dispatchMessage(message);
 }
 
