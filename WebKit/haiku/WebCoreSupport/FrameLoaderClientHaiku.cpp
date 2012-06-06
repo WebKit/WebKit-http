@@ -305,7 +305,7 @@ void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const KURL&, doub
 void FrameLoaderClientHaiku::dispatchDidChangeLocationWithinPage()
 {
     BMessage message(LOAD_DOC_COMPLETED);
-    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
@@ -335,7 +335,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveIcon()
         return;
 
     BMessage message(ICON_RECEIVED);
-    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
@@ -419,7 +419,7 @@ void FrameLoaderClientHaiku::dispatchDidFailLoad(const ResourceError& error)
 void FrameLoaderClientHaiku::dispatchDidFinishDocumentLoad()
 {
     BMessage message(LOAD_DOC_COMPLETED);
-    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
@@ -433,7 +433,7 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     }
 
     BMessage message(LOAD_FINISHED);
-    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
