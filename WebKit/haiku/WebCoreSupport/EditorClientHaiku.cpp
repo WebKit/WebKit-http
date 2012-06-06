@@ -607,7 +607,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
     if (!frame || !frame->document()->focusedNode())
         return false;
 
-    Node* start = frame->selection()->start().node();
+    Node* start = frame->selection()->start().anchorNode();
     if (!start || !start->isContentEditable())
         return false;
 
