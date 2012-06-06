@@ -58,6 +58,7 @@
 #include "ProgressTracker.h"
 #include "RenderFrame.h"
 #include "ResourceRequest.h"
+#include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "WebFrame.h"
@@ -524,7 +525,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyF
 
     // NOTE: This is what the Qt port does in QWebPage::acceptNavigationRequest() if the
     // current delegation policy is "DelegateExternalLinks". Must be good for something.
-    if (WebCore::SecurityOrigin::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
+    if (WebCore::SchemeRegistry::shouldTreatURLSchemeAsLocal(request.url().protocol())) {
         dispatchNavigationRequested(request);
         callPolicyFunction(function, PolicyUse);
         return;
