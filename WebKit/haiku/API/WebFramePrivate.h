@@ -52,8 +52,8 @@ public:
         , loaderClient(0)
     {}
 
-    WebCore::String name;
-    WebCore::String requestedURL;
+    WTF::String name;
+    WTF::String requestedURL;
     WebCore::HTMLFrameOwnerElement* ownerElement;
     WebCore::Page* page;
     // NOTE: We don't keep a reference pointer for the WebCore::Frame, since
