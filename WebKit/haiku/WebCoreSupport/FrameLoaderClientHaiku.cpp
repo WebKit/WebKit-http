@@ -645,7 +645,7 @@ void FrameLoaderClientHaiku::willChangeTitle(DocumentLoader*)
 
 void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 {
-    setTitle(docLoader->title(), docLoader->url());
+    setTitle(docLoader->title().string(), docLoader->url());
 }
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
