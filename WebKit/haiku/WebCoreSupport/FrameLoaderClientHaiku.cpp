@@ -661,8 +661,7 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
         if (!userChosen)
             encoding = loader->response().textEncodingName();
 
-        FrameLoader* frameLoader = loader->frameLoader();
-        frameLoader->setEncoding(encoding, userChosen);
+        loader->writer()->setEncoding(encoding, userChosen);
         if (data)
             frameLoader->addData(data, length);
 
@@ -698,8 +697,7 @@ void FrameLoaderClientHaiku::finishedLoading(DocumentLoader* documentLoader)
 
     if (!m_pluginView) {
         TRACE("!m_pluginView\n");
-        FrameLoader* loader = documentLoader->frameLoader();
-        loader->setEncoding(m_response.textEncodingName(), false);
+        documentLoader->writer()->setEncoding(m_response.textEncodingName(), false);
     } else {
         TRACE("m_pluginView\n");
         m_pluginView->didFinishLoading();
