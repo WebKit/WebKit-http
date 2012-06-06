@@ -626,25 +626,25 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
         frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionLeft,
                                    platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                   true);
+                                   UserTriggered);
         break;
     case VK_RIGHT:
         frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionRight,
                                    platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
-                                   true);
+                                   UserTriggered);
         break;
     case VK_UP:
         frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionBackward,
                                    platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
-                                   true);
+                                   UserTriggered);
         break;
     case VK_DOWN:
         frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
                                    DirectionForward,
                                    platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
-                                   true);
+                                   UserTriggered);
         break;
     case VK_HOME:
         if (platformEvent->shiftKey() && platformEvent->ctrlKey())
