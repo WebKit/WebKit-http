@@ -617,7 +617,7 @@ void FrameLoaderClientHaiku::postProgressEstimateChangedNotification()
 void FrameLoaderClientHaiku::postProgressFinishedNotification()
 {
     BMessage message(LOAD_DL_COMPLETED);
-    message.AddString("url", m_webFrame->Frame()->loader()->url().string());
+    message.AddString("url", m_webFrame->Frame()->document()->url().string());
     dispatchMessage(message);
 }
 
