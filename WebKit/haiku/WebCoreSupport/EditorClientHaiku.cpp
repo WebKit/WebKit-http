@@ -39,6 +39,7 @@
 #include "Editor.h"
 #include "FocusController.h"
 #include "Frame.h"
+#include "FrameSelection.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -612,36 +613,36 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
 
     switch (platformEvent->windowsVirtualKeyCode()) {
     case VK_BACK:
-        frame->editor()->deleteWithDirection(SelectionController::BACKWARD,
+        frame->editor()->deleteWithDirection(DirectionBackward,
                                              platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
     case VK_DELETE:
-        frame->editor()->deleteWithDirection(SelectionController::FORWARD,
+        frame->editor()->deleteWithDirection(DirectionForward,
                                              platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                              false, true);
         break;
     case VK_LEFT:
-        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                   SelectionController::LEFT,
+        frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+                                   DirectionLeft,
                                    platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                    true);
         break;
     case VK_RIGHT:
-        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                   SelectionController::RIGHT,
+        frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+                                   DirectionRight,
                                    platformEvent->ctrlKey() ? WordGranularity : CharacterGranularity,
                                    true);
         break;
     case VK_UP:
-        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                   SelectionController::BACKWARD,
+        frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+                                   DirectionBackward,
                                    platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
                                    true);
         break;
     case VK_DOWN:
-        frame->selection()->modify(platformEvent->shiftKey() ? SelectionController::EXTEND : SelectionController::MOVE,
-                                   SelectionController::FORWARD,
+        frame->selection()->modify(platformEvent->shiftKey() ? FrameSelection::AlterationExtend : FrameSelection::AlterationMove,
+                                   DirectionForward,
                                    platformEvent->ctrlKey() ? ParagraphGranularity : LineGranularity,
                                    true);
         break;
