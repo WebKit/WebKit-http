@@ -53,7 +53,8 @@ class BWebPage;
 
 namespace BPrivate {
 
-class WebDownloadPrivate : public Noncopyable, public WebCore::ResourceHandleClient {
+class WebDownloadPrivate : public WebCore::ResourceHandleClient {
+	WTF_MAKE_NONCOPYABLE(WebDownloadPrivate);
 public:
     WebDownloadPrivate(const ResourceRequest&);
     WebDownloadPrivate(ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
