@@ -49,7 +49,7 @@ static const int kMaxMimeTypeGuessTries	= 5;
 
 WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request)
     : m_webDownload(0)
-    , m_resourceHandle(ResourceHandle::create(request, this, 0, false, false))
+    , m_resourceHandle(ResourceHandle::create(NULL, request, this, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
     , m_url(request.url().string())
@@ -88,9 +88,9 @@ void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, const ResourceRespo
             m_filename = response.suggestedFilename();
         else {
         	WebCore::KURL url(response.url());
-        	url.setQuery(WebCore::String());
-        	url.removeFragmentIdentifier();
-            m_filename = decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
+            url.setQuery(String());
+            url.removeFragmentIdentifier();
+            m_filename = WebCore::decodeURLEscapeSequences(url.lastPathComponent()).utf8().data();
         }
         if (response.mimeType().length()) {
         	// Do some checks, as no mime type yet is always better
