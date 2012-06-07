@@ -653,40 +653,25 @@ void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, cons
     CALLED();
 
     if (!m_pluginView) {
-        TRACE("!m_pluginView\n");
         ASSERT(loader->frame());
-        // Set the encoding. This only needs to be done once, but it's harmless to do it again later.
-        String encoding = loader->overrideEncoding();
-        bool userChosen = !encoding.isNull();
-        if (!userChosen)
-            encoding = loader->response().textEncodingName();
+        loader->commitData(data, length);
 
-        loader->writer()->setEncoding(encoding, userChosen);
-        if (data)
-            frameLoader->addData(data, length);
-
-        // The Gtk port also does this, when it doesn't have a plugin view:
-        Frame* frame = loader->frame();
-        if (frame && frame->document() && frame->document()->isMediaDocument())
-            loader->cancelMainResourceLoad(frameLoader->client()->pluginWillHandleLoadError(loader->response()));
+        Frame* coreFrame = loader->frame();
+        if (coreFrame && coreFrame->document()->isMediaDocument())
+            loader->cancelMainResourceLoad(coreFrame->loader()->client()->pluginWillHandleLoadError(loader->response()));
     }
 
-    // m_pluginView needs to be checked again, since it can have been
-    // created by the block above.
+    // We re-check here as the plugin can have been created.
     if (m_pluginView && m_pluginView->isPluginView()) {
-        TRACE("m_pluginView\n");
         if (!m_hasSentResponseToPlugin) {
             m_pluginView->didReceiveResponse(loader->response());
-            // didReceiveResponse sets up a new stream to the plug-in. On a full-page
-            // plug-in, a failure in setting up this stream can cause the main
-            // document load to be cancelled, setting m_pluginView to NULL.
-            if (!m_pluginView) {
-                TRACE("m_pluginView lost\n");
+            // The function didReceiveResponse sets up a new stream to the plug-in.
+            // On a full-page plug-in, a failure in setting up this stream can cause the
+            // main document load to be cancelled, setting m_pluginView to null.
+            if (!m_pluginView)
                 return;
-            }
             m_hasSentResponseToPlugin = true;
         }
-
         m_pluginView->didReceiveData(data, length);
     }
 }
