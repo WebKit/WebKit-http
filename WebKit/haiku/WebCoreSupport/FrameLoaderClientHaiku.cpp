@@ -353,7 +353,7 @@ void FrameLoaderClientHaiku::dispatchDidStartProvisionalLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
+void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& title)
 {
     CALLED();
     if (m_loadingErrorPage) {
@@ -361,10 +361,10 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const String& title)
         return;
     }
 
-    m_webFrame->SetTitle(title);
+    m_webFrame->SetTitle(title.string());
 
     BMessage message(TITLE_CHANGED);
-    message.AddString("title", title);
+    message.AddString("title", title.string());
     dispatchMessage(message);
 }
 
@@ -464,7 +464,7 @@ void FrameLoaderClientHaiku::dispatchDidLoadMainResource(DocumentLoader*)
     notImplemented();
 }
 
-Frame* FrameLoaderClientHaiku::dispatchCreatePage()
+Frame* FrameLoaderClientHaiku::dispatchCreatePage(const NavigationAction& /*action*/)
 {
     CALLED();
     WebCore::Page* page = m_webPage->createNewPage();
@@ -628,12 +628,12 @@ void FrameLoaderClientHaiku::setMainFrameDocumentReady(bool)
     // this is only interesting once we provide an external API for the DOM
 }
 
-void FrameLoaderClientHaiku::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceRequest&, const ResourceResponse& response)
+void FrameLoaderClientHaiku::download(ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
 {
     m_webPage->requestDownload(handle, request, response);
 }
 
-void FrameLoaderClientHaiku::startDownload(const ResourceRequest& request)
+void FrameLoaderClientHaiku::startDownload(const ResourceRequest& request, const String& /*suggestedName*/)
 {
     m_webPage->requestDownload(request);
 }
@@ -645,7 +645,7 @@ void FrameLoaderClientHaiku::willChangeTitle(DocumentLoader*)
 
 void FrameLoaderClientHaiku::didChangeTitle(DocumentLoader* docLoader)
 {
-    setTitle(docLoader->title().string(), docLoader->url());
+    setTitle(docLoader->title(), docLoader->url());
 }
 
 void FrameLoaderClientHaiku::committedLoad(WebCore::DocumentLoader* loader, const char* data, int length)
@@ -741,7 +741,7 @@ void FrameLoaderClientHaiku::didDisplayInsecureContent()
 {
 }
 
-void FrameLoaderClientHaiku::didRunInsecureContent(SecurityOrigin*)
+void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::KURL&)
 {
     notImplemented();
 }
@@ -772,7 +772,7 @@ WebCore::ResourceError FrameLoaderClientHaiku::cannotShowURLError(const WebCore:
                          request.url().string(), "URL cannot be shown");
 }
 
-WebCore::ResourceError FrameLoaderClientHaiku::interruptForPolicyChangeError(const WebCore::ResourceRequest& request)
+WebCore::ResourceError FrameLoaderClientHaiku::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     CALLED();
     notImplemented();
@@ -899,7 +899,7 @@ WTF::PassRefPtr<DocumentLoader> FrameLoaderClientHaiku::createDocumentLoader(con
     return loader.release();
 }
 
-void FrameLoaderClientHaiku::setTitle(const String& title, const KURL&)
+void FrameLoaderClientHaiku::setTitle(const StringWithDirection&, const KURL&)
 {
     notImplemented();
 }
@@ -988,7 +988,7 @@ void FrameLoaderClientHaiku::didTransferChildFrameToNewDocument()
     CALLED();
 }
 
-ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType)
+ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, const String& originalMimeType, bool /*shouldPreferPlugInsForImages*/)
 {
     CALLED();
     if (url.isEmpty() && !originalMimeType.length())

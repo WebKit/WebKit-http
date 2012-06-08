@@ -75,7 +75,7 @@ public:
     virtual void detachedFromParent2();
     virtual void detachedFromParent3();
 
-    virtual void download(ResourceHandle*, const ResourceRequest&, const ResourceRequest&, const ResourceResponse&);
+    virtual void download(ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
 
     virtual void assignIdentifierToInitialRequest(unsigned long identifier, DocumentLoader*, const ResourceRequest&);
 
@@ -106,7 +106,8 @@ public:
     virtual void dispatchWillClose();
     virtual void dispatchDidReceiveIcon();
     virtual void dispatchDidStartProvisionalLoad();
-    virtual void dispatchDidReceiveTitle(const String& title);
+    virtual void dispatchDidReceiveTitle(const StringWithDirection&);
+    virtual void dispatchDidChangeIcons(IconType);
     virtual void dispatchDidCommitLoad();
     virtual void dispatchDidFailProvisionalLoad(const ResourceError&);
     virtual void dispatchDidFailLoad(const ResourceError&);
@@ -115,10 +116,11 @@ public:
     virtual void dispatchDidFirstLayout();
     virtual void dispatchDidFirstVisuallyNonEmptyLayout();
 
-    virtual Frame* dispatchCreatePage();
+    virtual Frame* dispatchCreatePage(const NavigationAction&);
     virtual void dispatchShow();
 
     virtual void dispatchDecidePolicyForMIMEType(FramePolicyFunction, const String&, const ResourceRequest&);
+    virtual void dispatchDecidePolicyForResponse(FramePolicyFunction, const ResourceResponse&, const ResourceRequest&);
     virtual void dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&,
                                                         const ResourceRequest&, PassRefPtr<FormState>, const String&);
     virtual void dispatchDecidePolicyForNavigationAction(FramePolicyFunction, const NavigationAction&,
@@ -127,6 +129,7 @@ public:
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&);
 
+    virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>);
     virtual void dispatchWillSubmitForm(FramePolicyFunction, PassRefPtr<FormState>);
 
     virtual void dispatchDidLoadMainResource(DocumentLoader*);
@@ -142,7 +145,7 @@ public:
 
     virtual void setMainFrameDocumentReady(bool);
 
-    virtual void startDownload(const ResourceRequest&);
+    virtual void startDownload(const ResourceRequest&, const String& suggestedName = String());
 
     virtual void willChangeTitle(DocumentLoader*);
     virtual void didChangeTitle(DocumentLoader*);
@@ -153,6 +156,7 @@ public:
     virtual void updateGlobalHistoryRedirectLinks();
 
     virtual bool shouldGoToHistoryItem(HistoryItem*) const;
+    virtual bool shouldStopLoadingForHistoryItem(HistoryItem*) const;
 
     virtual void dispatchDidAddBackForwardItem(HistoryItem*) const;
     virtual void dispatchDidRemoveBackForwardItem(HistoryItem*) const;
@@ -162,12 +166,15 @@ public:
     virtual bool canCachePage() const;
 
     virtual void didDisplayInsecureContent();
-    virtual void didRunInsecureContent(SecurityOrigin*);
+
+    virtual void didRunInsecureContent(SecurityOrigin*, const KURL&);
+    virtual void didDetectXSS(const KURL&, bool didBlockEntirePage);
 
     virtual ResourceError cancelledError(const ResourceRequest&);
     virtual ResourceError blockedError(const ResourceRequest&);
     virtual ResourceError cannotShowURLError(const ResourceRequest&);
-    virtual ResourceError interruptForPolicyChangeError(const ResourceRequest&);
+    virtual ResourceError interruptedForPolicyChangeError(const ResourceRequest&);
+
 
     virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&);
     virtual ResourceError fileDoesNotExistError(const ResourceResponse&);
@@ -183,6 +190,7 @@ public:
 
     virtual bool canHandleRequest(const ResourceRequest&) const;
     virtual bool canShowMIMEType(const String& MIMEType) const;
+    virtual bool canShowMIMETypeAsHTML(const String& MIMEType) const;
     virtual bool representationExistsForURLScheme(const String& URLScheme) const;
     virtual String generatedMIMETypeForURLScheme(const String& URLScheme) const;
 
@@ -194,7 +202,7 @@ public:
     virtual void prepareForDataSourceReplacement();
     virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&);
 
-    virtual void setTitle(const String& title, const KURL&);
+    virtual void setTitle(const StringWithDirection&, const KURL&);
 
     virtual PassRefPtr<Frame> createFrame(const KURL& url, const String& name, HTMLFrameOwnerElement*,
                                                    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight);
@@ -206,14 +214,22 @@ public:
     virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL& baseURL,
                                                                const Vector<String>& paramNames, const Vector<String>& paramValues);
 
-    virtual ObjectContentType objectContentType(const KURL& url, const String& mimeType);
+    virtual ObjectContentType objectContentType(const KURL&, const String& mimeType, bool shouldPreferPlugInsForImages);
+
     virtual String overrideMediaType() const;
+
+    virtual void didSaveToPageCache();
+    virtual void didRestoreFromPageCache();
+
+    virtual void dispatchDidBecomeFrameset(bool);
 
     virtual void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld*);
     virtual void documentElementAvailable();
     virtual void didPerformFirstNavigation() const;
 
     virtual void registerForIconNotification(bool listen);
+
+    virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext();
 
 private:
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
