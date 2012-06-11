@@ -51,6 +51,7 @@
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "Logging.h"
+#include "MemoryCache.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageGroup.h"
@@ -175,8 +176,8 @@ BMessenger BWebPage::sDownloadListener;
         return;
     }
 
-    cache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
-    cache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    memoryCache()->setCapacities(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    memoryCache()->setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
     pageCache()->setCapacity(pageCacheCapacity);
 }
 
