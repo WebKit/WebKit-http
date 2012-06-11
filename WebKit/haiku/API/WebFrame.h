@@ -31,6 +31,8 @@
 
 #include <String.h>
 
+#include "FindOptions.h"
+
 class BMessenger;
 class BWebPage;
 
@@ -83,11 +85,8 @@ public:
 			BString				AsMarkup() const;
 			BString				ExternalRepresentation() const;
 
-			bool				FindString(const char* string,
-									bool forward = true,
-									bool caseSensitive = false,
-									bool wrapSelection = true,
-									bool startInSelection = true);
+			bool				FindString(const BString& string,
+									WebCore::FindOptions options);
 
 			bool				CanIncreaseZoomFactor() const;
 			bool				CanDecreaseZoomFactor() const;

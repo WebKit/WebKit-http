@@ -31,7 +31,6 @@
 #include "WebPage.h"
 
 #include "AtomicString.h"
-#include "Cache.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
@@ -1158,7 +1157,7 @@ void BWebPage::handleFindString(BMessage* message)
 {
     BMessage reply(B_FIND_STRING_RESULT);
 
-    const char* string;
+    BString string;
     bool forward;
     bool caseSensitive;
     bool wrapSelection;
@@ -1171,8 +1170,17 @@ void BWebPage::handleFindString(BMessage* message)
         message->SendReply(&reply);
     }
 
-    bool result = fMainFrame->FindString(string, forward, caseSensitive,
-        wrapSelection, startInSelection);
+    WebCore::FindOptions options;
+    if (!forward)
+        options |= WebCore::Backwards;
+    if (!caseSensitive)
+        options |= WebCore::CaseInsensitive;
+    if (wrapSelection)
+        options |= WebCore::WrapAround;
+    if (startInSelection)
+        options |= WebCore::StartInSelection;
+
+    bool result = fMainFrame->FindString(string, options);
 
     reply.AddBool("result", result);
     message->SendReply(&reply);

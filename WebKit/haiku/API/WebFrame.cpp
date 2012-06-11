@@ -30,6 +30,7 @@
 #include "WebFrame.h"
 
 #include "Document.h"
+#include "DocumentLoader.h"
 #include "EditorClientHaiku.h"
 #include "Element.h"
 #include "Frame.h"
@@ -106,7 +107,7 @@ void BWebFrame::LoadURL(BString urlString)
     } else
 		url = KURL(KURL(), urlString.Trim().String());
 
-	if (!url.protocolInHTTPFamily() && !url.isLocalFile()) {
+	if (!url.protocolIsInHTTPFamily() && !url.isLocalFile()) {
 		url = KURL();
 		url.setProtocol("http");
 		url.setHostAndPort(urlString);
@@ -141,7 +142,7 @@ void BWebFrame::Reload()
 
 BString BWebFrame::URL() const
 {
-    return fData->frame->loader()->url().string();
+    return fData->frame->document()->url().string();
 }
 
 BString BWebFrame::RequestedURL() const
@@ -233,6 +234,9 @@ void BWebFrame::SetAllowsScrolling(bool flag)
         fData->frame->view()->setCanHaveScrollbars(flag);
 }
 
+/*!
+    Returns the frame's content as HTML, enclosed in HTML and BODY tags.
+*/
 BString BWebFrame::FrameSource() const
 {
     if (fData->frame) {
@@ -250,12 +254,7 @@ BString BWebFrame::FrameSource() const
 
 void BWebFrame::SetFrameSource(const BString& source)
 {
-    if (fData->frame && fData->frame->loader()) {
-        WebCore::FrameLoader* loader = fData->frame->loader();
-        loader->begin();
-        loader->write(String(source));
-        loader->end();
-    }
+    // FIXME: see QWebFrame::setHtml/setContent
 }
 
 void BWebFrame::SetTransparent(bool transparent)
@@ -301,19 +300,19 @@ BString BWebFrame::ExternalRepresentation() const
     return externalRepresentation(fData->frame);
 }
 
-bool BWebFrame::FindString(const char* string, bool forward, bool caseSensitive, bool wrapSelection, bool startInSelection)
+bool BWebFrame::FindString(const BString& string, WebCore::FindOptions options)
 {
-    if (fData->frame)
-        return fData->frame->findString(string, forward, caseSensitive, wrapSelection, startInSelection);
-
+    if (fData->page)
+        return fData->page->findString(string, options);
     return false;
 }
 
 bool BWebFrame::CanIncreaseZoomFactor() const
 {
-    if (fData->frame)
+    if (fData->frame) {
         if (fZoomFactor * kZoomFactorMultiplierRatio <= kMaximumZoomFactorMultiplier)
             return true;
+    }
 
     return false;
 }
@@ -330,7 +329,10 @@ void BWebFrame::IncreaseZoomFactor(bool textOnly)
 {
     if (CanIncreaseZoomFactor()) {
         fZoomFactor = fZoomFactor * kZoomFactorMultiplierRatio;
-        fData->frame->setZoomFactor(fZoomFactor, textOnly ? ZoomTextOnly : ZoomPage);
+        if (textOnly)
+            fData->frame->setTextZoomFactor(fZoomFactor);
+        else
+            fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
     }
 }
 
@@ -338,7 +340,10 @@ void BWebFrame::DecreaseZoomFactor(bool textOnly)
 {
     if (CanDecreaseZoomFactor()) {
         fZoomFactor = fZoomFactor / kZoomFactorMultiplierRatio;
-        fData->frame->setZoomFactor(fZoomFactor, textOnly ? ZoomTextOnly : ZoomPage);
+        if (textOnly)
+            fData->frame->setTextZoomFactor(fZoomFactor);
+        else
+            fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
     }
 }
 
@@ -350,7 +355,7 @@ void BWebFrame::ResetZoomFactor()
     fZoomFactor = 1;
 
     if (fData->frame)
-        fData->frame->setZoomFactor(fZoomFactor, ZoomPage);
+        fData->frame->setPageAndTextZoomFactors(fZoomFactor, fZoomFactor);
 }
 
 void BWebFrame::SetEditable(bool editable)
