@@ -128,7 +128,7 @@ BMessenger BWebPage::sDownloadListener;
 {
 	// NOTE: This needs to be called when the BApplication is ready.
 	// It won't work as static initialization.
-    WebCore::InitializeLoggingChannelsIfNecessary();
+    WebCore::initializeLoggingChannelsIfNecessary();
     JSC::initializeThreading();
     WTF::initializeThreading();
     WebCore::AtomicString::init();
