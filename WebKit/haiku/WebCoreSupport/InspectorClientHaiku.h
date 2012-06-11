@@ -35,7 +35,6 @@
 namespace WebCore {
     class Node;
     class Page;
-    class String;
 
     class InspectorClientHaiku : public InspectorClient {
     public:
@@ -46,8 +45,8 @@ namespace WebCore {
         virtual void highlight(Node*);
         virtual void hideHighlight();
 
-        virtual void populateSetting(const WebCore::String& key, WebCore::String* value);
-        virtual void storeSetting(const WebCore::String& key, const WebCore::String& value);
+        virtual void populateSetting(const WTF::String& key, WTF::String* value);
+        virtual void storeSetting(const WTF::String& key, const WTF::String& value);
     };
 } // namespace WebCore
 
