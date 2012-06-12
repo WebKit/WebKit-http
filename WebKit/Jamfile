@@ -158,9 +158,9 @@ SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive support ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive tabview ] ;
 
 # SVN revision
-local svnRevisionFile = [ FGristFiles svn_revision ] ;
-MakeLocate $(svnRevisionFile) : $(LOCATE_TARGET) ;
-CreateSVNRevisionFile $(svnRevisionFile) ;
+#local svnRevisionFile = [ FGristFiles svn_revision ] ;
+#MakeLocate $(svnRevisionFile) : $(LOCATE_TARGET) ;
+#CreateSVNRevisionFile $(svnRevisionFile) ;
 
 
 Application WebPositive :
