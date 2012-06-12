@@ -592,6 +592,11 @@ bool EditorClientHaiku::spellingUIIsShowing()
     return false;
 }
 
+void EditorClientHaiku::willSetInputMethodState()
+{
+    notImplemented();
+}
+
 void EditorClientHaiku::getGuessesForWord(const String&, Vector<String>&)
 {
     notImplemented();

@@ -433,19 +433,22 @@ void ChromeClientHaiku::print(Frame*)
     notImplemented();
 }
 
-#if ENABLE(DATABASE)
+#if ENABLE(SQL_DATABASE)
 void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& databaseName)
 {
     notImplemented();
 }
 #endif
 
-#if ENABLE(OFFLINE_WEB_APPLICATIONS)
-void ChromeClientHaiku::reachedMaxAppCacheSize(int64_t spaceNeeded)
+void ChromeClientHaiku::reachedMaxAppCacheSize(int64_t /*spaceNeeded*/)
 {
     notImplemented();
 }
-#endif
+
+void ChromeClientHaiku::reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t /*totalSpaceNeeded*/)
+{
+    notImplemented();
+}
 
 void ChromeClientHaiku::requestGeolocationPermissionForFrame(Frame*, Geolocation*)
 {
@@ -480,6 +483,34 @@ void ChromeClientHaiku::setCursor(const Cursor& cursor)
 void ChromeClientHaiku::formStateDidChange(const Node*)
 {
     notImplemented();
+}
+
+bool ChromeClientHaiku::selectItemWritingDirectionIsNatural()
+{
+    return false;
+}
+
+bool ChromeClientHaiku::selectItemAlignmentFollowsMenuWritingDirection()
+{
+    return false;
+}
+
+bool ChromeClientHaiku::hasOpenedPopup() const
+{
+    notImplemented();
+    return false;
+}
+
+PassRefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient*) const
+{
+    notImplemented();
+    return 0;
+}
+
+PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient*) const
+{
+    notImplemented();
+    return 0;
 }
 
 } // namespace WebCore
