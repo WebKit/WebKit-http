@@ -46,7 +46,17 @@ void InspectorClientHaiku::openInspectorFrontend(WebCore::InspectorController*)
     notImplemented();
 }
 
-void InspectorClientHaiku::highlight(Node* node)
+void InspectorClientHaiku::closeInspectorFrontend()
+{
+    notImplemented();
+}
+
+void InspectorClientHaiku::bringFrontendToFront()
+{
+    notImplemented();
+}
+
+void InspectorClientHaiku::highlight()
 {
     notImplemented();
 }

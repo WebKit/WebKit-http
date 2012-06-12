@@ -125,7 +125,12 @@ void ChromeClientHaiku::focusedNodeChanged(Node* node)
         unfocus();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& request, const WebCore::WindowFeatures& features)
+void ChromeClientHaiku::focusedFrameChanged(Frame*)
+{
+    notImplemented();
+}
+
+Page* ChromeClientHaiku::createWindow(Frame* frame, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
 {
 	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the
@@ -293,6 +298,12 @@ bool ChromeClientHaiku::shouldInterruptJavaScript()
     return false;
 }
 
+KeyboardUIMode ChromeClientHaiku::keyboardUIMode()
+{
+    notImplemented();
+    return KeyboardAccessDefault;
+}
+
 bool ChromeClientHaiku::tabsToLinks() const
 {
     return false;
@@ -303,13 +314,13 @@ IntRect ChromeClientHaiku::windowResizerRect() const
     return IntRect();
 }
 
-void ChromeClientHaiku::invalidateWindow(const IntRect&, bool)
+void ChromeClientHaiku::invalidateRootView(const IntRect&, bool)
 {
 	// FIXME: This can be used to blit the BWebView bitmap contents
 	// to the screen. If rect is invalid, blit everything.
 }
 
-void ChromeClientHaiku::invalidateContentsAndWindow(const IntRect& rect,
+void ChromeClientHaiku::invalidateContentsAndRootView(const IntRect& rect,
                                                     bool immediate)
 {
 	if (immediate)
@@ -323,7 +334,7 @@ void ChromeClientHaiku::invalidateContentsForSlowScroll(const IntRect& rect,
 {
 	// FIXME: We should be able to ignore this,
 	// since we implement fast scrolling.
-    invalidateContentsAndWindow(rect, immediate);
+    invalidateContentsAndRootView(rect, immediate);
 }
 
 void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
@@ -339,7 +350,7 @@ void ChromeClientHaiku::scroll(const IntSize& scrollDelta,
     m_webView->SendFakeMouseMovedEvent();
 }
 
-IntPoint ChromeClientHaiku::screenToWindow(const IntPoint& point) const
+IntPoint ChromeClientHaiku::screenToRootView(const IntPoint& point) const
 {
     IntPoint windowPoint(point);
     if (m_webView->LockLooperWithTimeout(5000) == B_OK) {
@@ -349,7 +360,7 @@ IntPoint ChromeClientHaiku::screenToWindow(const IntPoint& point) const
     return windowPoint;
 }
 
-IntRect ChromeClientHaiku::windowToScreen(const IntRect& rect) const
+IntRect ChromeClientHaiku::rootViewToScreen(const IntRect& rect) const
 {
     IntRect screenRect(rect);
     if (m_webView->LockLooperWithTimeout(5000) == B_OK) {
@@ -456,15 +467,14 @@ void ChromeClientHaiku::loadIconForFiles(const Vector<String>& filenames, FileIc
     loader->notifyFinished(Icon::createIconForFiles(filenames));
 }
 
-bool ChromeClientHaiku::setCursor(PlatformCursorHandle cursorHandle)
+void ChromeClientHaiku::setCursor(const Cursor& cursor)
 {
     if (!m_webView->LockLooper())
-        return false;
+        return;
 
-    m_webView->SetViewCursor(cursorHandle);
+    m_webView->SetViewCursor(cursor.impl());
 
     m_webView->UnlockLooper();
-    return true;
 }
 
 void ChromeClientHaiku::formStateDidChange(const Node*)

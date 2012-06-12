@@ -131,8 +131,8 @@ BMessenger BWebPage::sDownloadListener;
     WebCore::initializeLoggingChannelsIfNecessary();
     JSC::initializeThreading();
     WTF::initializeThreading();
-    WebCore::AtomicString::init();
-    WebCore::DOMTimer::setMinTimerInterval(0.004);
+    WTF::AtomicString::init();
+    Settings::setDefaultMinDOMTimerInterval(0.004);
     WebCore::UTF8Encoding();
 
 	// TODO: This is a quick hack to enable cookie storage via CURL.
@@ -145,7 +145,7 @@ BMessenger BWebPage::sDownloadListener;
 
 /*static*/ void BWebPage::ShutdownOnce()
 {
-    WebCore::iconDatabase()->close();
+    WebCore::iconDatabase().close();
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)
@@ -197,13 +197,13 @@ BWebPage::BWebPage(BWebView* webView)
     , fStatusbarVisible(true)
     , fMenubarVisible(true)
 {
-    fPage = new WebCore::Page(new WebCore::ChromeClientHaiku(this, webView),
-                               new WebCore::ContextMenuClientHaiku(this),
-                               new WebCore::EditorClientHaiku(this),
-                               new WebCore::DragClientHaiku(webView),
-                               new WebCore::InspectorClientHaiku(),
-                               0,
-                               0);
+    Page::PageClients pageClients;
+    pageClients.chromeClient = new ChromeClientHaiku(this, webView);
+    pageClients.contextMenuClient = new ContextMenuClientHaiku(this);
+    pageClients.editorClient = new EditorClientHaiku(this);
+    pageClients.dragClient = new DragClientHaiku(webView);
+    pageClients.inspectorClient = new InspectorClientHaiku();
+    fPage = new Page(pageClients);
 
     fSettings = new BWebSettings(fPage->settings());
 }
@@ -650,7 +650,7 @@ void BWebPage::paint(BRect rect, bool immediate)
 	// call this method before locking the window and before holding the
 	// offscreen view lock.
 	fLayoutingView = true;
-	view->layoutIfNeededRecursive();
+	view->layout(true);
 	fLayoutingView = false;
 
     if (!fWebView->LockLooper())
@@ -725,7 +725,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
         // Make sure the view is layouted, since it will refuse to paint
         // otherwise.
         fLayoutingView = true;
-        view->layoutIfNeededRecursive();
+        view->layout(true);
         fLayoutingView = false;
 
 		internalPaint(offscreenView, view, &repaintRegion);
@@ -1052,8 +1052,8 @@ void BWebPage::handleMouseEvent(const BMessage* message)
 					    BMenuItem* item = platformMenu->RemoveItem(i);
 					    popupMenu->AddItem(item, 0);
 					}
-            		BPoint screenLocation(event.globalX() + 2,
-            			event.globalY() + 2);
+					BPoint screenLocation(event.globalPosition().x() + 2,
+					    event.globalPosition().y() + 2);
             	    popupMenu->Go(screenLocation, true, true, true);
             	    delete platformMenu;
             	}

@@ -177,9 +177,8 @@ void EditorClientHaiku::respondToChangedContents()
     notImplemented();
 }
 
-void EditorClientHaiku::respondToChangedSelection()
+void EditorClientHaiku::respondToChangedSelection(Frame* frame)
 {
-    Frame* frame = m_page->page()->focusController()->focusedOrMainFrame();
     if (!frame->editor()->ignoreCompositionSelectionChange()) {
         // FIXME:
         // notify "micro focus shanged" event
@@ -219,6 +218,16 @@ void EditorClientHaiku::clearUndoRedoOperations()
 {
     m_undoStack.clear();
     m_redoStack.clear();
+}
+
+bool EditorClientHaiku::canCopyCut(WebCore::Frame*, bool defaultValue) const
+{
+    return defaultValue;
+}
+
+bool EditorClientHaiku::canPaste(WebCore::Frame*, bool defaultValue) const
+{
+    return defaultValue;
 }
 
 bool EditorClientHaiku::canUndo() const

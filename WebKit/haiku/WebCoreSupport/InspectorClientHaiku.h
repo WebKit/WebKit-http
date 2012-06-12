@@ -41,9 +41,13 @@ namespace WebCore {
         virtual void inspectorDestroyed();
 
         virtual void openInspectorFrontend(WebCore::InspectorController*);
+        virtual void closeInspectorFrontend();
+        virtual void bringFrontendToFront();
 
-        virtual void highlight(Node*);
+        virtual void highlight();
         virtual void hideHighlight();
+
+        virtual bool sendMessageToFrontend(const String&);
 
         virtual void populateSetting(const WTF::String& key, WTF::String* value);
         virtual void storeSetting(const WTF::String& key, const WTF::String& value);

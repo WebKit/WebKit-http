@@ -73,7 +73,7 @@ public:
 
     virtual void didBeginEditing();
     virtual void respondToChangedContents();
-    virtual void respondToChangedSelection();
+    virtual void respondToChangedSelection(Frame*);
     virtual void didEndEditing();
     virtual void didWriteSelectionToPasteboard();
     virtual void didSetSelectionTypesForPasteboard();
@@ -82,6 +82,8 @@ public:
     virtual void registerRedoStep(PassRefPtr<UndoStep>);
     virtual void clearUndoRedoOperations();
 
+    virtual bool canCopyCut(Frame*, bool defaultValue) const;
+    virtual bool canPaste(Frame*, bool defaultValue) const;
     virtual bool canUndo() const;
     virtual bool canRedo() const;
 
@@ -98,6 +100,8 @@ public:
     virtual void textWillBeDeletedInTextField(Element*);
     virtual void textDidChangeInTextArea(Element*);
 
+    virtual TextCheckerClient* textChecker() { return 0; }
+
     virtual void ignoreWordInSpellDocument(const String&);
     virtual void learnWord(const String&);
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
@@ -109,6 +113,7 @@ public:
     virtual void updateSpellingUIWithMisspelledWord(const String&);
     virtual void showSpellingUI(bool show);
     virtual bool spellingUIIsShowing();
+    virtual void willSetInputMethodState();
     virtual void getGuessesForWord(const String&, Vector<String>& guesses);
     virtual void setInputMethodState(bool enabled);
 
