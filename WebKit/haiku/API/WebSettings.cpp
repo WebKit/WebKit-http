@@ -355,23 +355,23 @@ void BWebSettings::_HandleSetPersistentStoragePath(const BString& path)
 
 void BWebSettings::_HandleSetIconDatabasePath(const BString& path)
 {
-    WebCore::iconDatabase()->delayDatabaseCleanup();
+    WebCore::IconDatabase::delayDatabaseCleanup();
 
     if (path.Length()) {
-        WebCore::iconDatabase()->setEnabled(true);
+        WebCore::iconDatabase().setEnabled(true);
         BEntry entry(path.String());
         if (entry.IsDirectory())
-            WebCore::iconDatabase()->open(path);
+            WebCore::iconDatabase().open(path, WebCore::IconDatabase::defaultDatabaseFilename());
     } else {
-        WebCore::iconDatabase()->setEnabled(false);
-        WebCore::iconDatabase()->close();
+        WebCore::iconDatabase().setEnabled(false);
+        WebCore::iconDatabase().close();
     }
 }
 
 void BWebSettings::_HandleClearIconDatabase()
 {
-    if (WebCore::iconDatabase()->isEnabled() && WebCore::iconDatabase()->isOpen())
-        WebCore::iconDatabase()->removeAllIcons();
+    if (WebCore::iconDatabase().isEnabled() && WebCore::iconDatabase().isOpen())
+        WebCore::iconDatabase().removeAllIcons();
 }
 
 void BWebSettings::_HandleSendIconForURL(BMessage* message)
@@ -385,28 +385,28 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
 		return;
 	}
 	WebCore::IntSize iconSize(16, 16);
-    WebCore::Image* image = WebCore::iconDatabase()->iconForPageURL(url.String(),
-        iconSize);
+    WebCore::Image* image = WebCore::iconDatabase().synchronousIconForPageURL(url, iconSize);
 
 	reply.RemoveName("url");
 	reply.RemoveName("icon");
-    reply.AddString("url", url.String());
+    reply.AddString("url", url);
     if (image) {
         const BBitmap* bitmap = 0;
-    	if (image->isBitmapImage()) {
-    		WebCore::BitmapImage* bitmapImage = static_cast<WebCore::BitmapImage*>(image);
-    		size_t count = bitmapImage->frameCount();
-    		for (size_t i = 0; i < count; i++) {
-    			bitmap = bitmapImage->frameAtIndex(i);
-    			if (!bitmap)
-    			    continue;
-    			if (bitmap->Bounds().IntegerWidth() + 1 == iconSize.width()
-    				&& bitmap->Bounds().IntegerHeight() + 1 == iconSize.height()) {
-    				break;
-    			} else
-    				bitmap = 0;
-    		}
-    	}
+        // FIXME:
+        //if (image->isBitmapImage()) {
+        //	WebCore::BitmapImage* bitmapImage = static_cast<WebCore::BitmapImage*>(image);
+        //	size_t count = bitmapImage->frameCount();
+        //	for (size_t i = 0; i < count; i++) {
+        //		bitmap = bitmapImage->frameAtIndex(i);
+        //		if (!bitmap)
+        //		    continue;
+        //		if (bitmap->Bounds().IntegerWidth() + 1 == iconSize.width()
+        //			&& bitmap->Bounds().IntegerHeight() + 1 == iconSize.height()) {
+        //			break;
+        //		} else
+        //			bitmap = 0;
+        //	}
+        //}
         if (!bitmap)
         	bitmap = image->nativeImageForCurrentFrame();
         BMessage iconArchive;
