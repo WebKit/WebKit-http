@@ -66,6 +66,12 @@ void InspectorClientHaiku::hideHighlight()
     notImplemented();
 }
 
+bool InspectorClientHaiku::sendMessageToFrontend(const String&)
+{
+    notImplemented();
+    return false;
+}
+
 void InspectorClientHaiku::populateSetting(const String& key, String* value)
 {
     notImplemented();

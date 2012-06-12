@@ -42,10 +42,13 @@
 #include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "FrameNetworkingContext.h"
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
+#include "HTTPParsers.h"
+#include "HTTPStatusCodes.h"
 #include "IconDatabase.h"
 #include "MouseEvent.h"
 #include "MIMETypeRegistry.h"
@@ -368,6 +371,15 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
+void FrameLoaderClientHaiku::dispatchDidChangeIcons(WebCore::IconType)
+{
+    if (!m_webFrame)
+        return;
+
+    // FIXME: In order to get notified of icon URLS' changes, add a notification.
+    // emit iconsChanged();
+}
+
 void FrameLoaderClientHaiku::dispatchDidCommitLoad()
 {
     CALLED();
@@ -501,6 +513,26 @@ printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (l
 BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
     }
+}
+
+void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(FramePolicyFunction function, const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&)
+{
+    // We need to call directly here.
+    switch (response.httpStatusCode()) {
+    case HTTPResetContent:
+        // FIXME: a 205 response requires that the requester reset the document view.
+        // Fallthrough
+    case HTTPNoContent:
+        callPolicyFunction(function, PolicyIgnore);
+        return;
+    }
+
+    if (WebCore::contentDispositionType(response.httpHeaderField("Content-Disposition")) == WebCore::ContentDispositionAttachment)
+        callPolicyFunction(function, PolicyDownload);
+    else if (canShowMIMEType(response.mimeType()))
+        callPolicyFunction(function, PolicyUse);
+    else
+        callPolicyFunction(function, PolicyDownload);
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
@@ -714,6 +746,11 @@ bool FrameLoaderClientHaiku::shouldGoToHistoryItem(WebCore::HistoryItem*) const
     return true;
 }
 
+bool FrameLoaderClientHaiku::shouldStopLoadingForHistoryItem(WebCore::HistoryItem*) const
+{
+    return true;
+}
+
 void FrameLoaderClientHaiku::dispatchDidAddBackForwardItem(WebCore::HistoryItem*) const
 {
     triggerNavigationHistoryUpdate();
@@ -742,6 +779,11 @@ void FrameLoaderClientHaiku::didDisplayInsecureContent()
 }
 
 void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::KURL&)
+{
+    notImplemented();
+}
+
+void FrameLoaderClientHaiku::didDetectXSS(const KURL&, bool)
 {
     notImplemented();
 }
@@ -841,6 +883,12 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         return true;
 
+    return false;
+}
+
+bool FrameLoaderClientHaiku::canShowMIMETypeAsHTML(const String& MIMEType) const
+{
+    notImplemented();
     return false;
 }
 
@@ -1051,6 +1099,18 @@ String FrameLoaderClientHaiku::overrideMediaType() const
     return String();
 }
 
+void FrameLoaderClientHaiku::didSaveToPageCache()
+{
+}
+
+void FrameLoaderClientHaiku::didRestoreFromPageCache()
+{
+}
+
+void FrameLoaderClientHaiku::dispatchDidBecomeFrameset(bool)
+{
+}
+
 void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld* world)
 {
     if (world != mainThreadNormalWorld())
@@ -1069,6 +1129,12 @@ void FrameLoaderClientHaiku::documentElementAvailable()
 void FrameLoaderClientHaiku::registerForIconNotification(bool listen)
 {
     notImplemented();
+}
+
+PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
+{
+    notImplemented();
+    return 0;
 }
 
 void FrameLoaderClientHaiku::didPerformFirstNavigation() const
