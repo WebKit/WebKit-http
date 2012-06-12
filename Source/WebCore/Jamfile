@@ -1865,6 +1865,7 @@ StaticLibrary webcore3 :
     platform/haiku/FileSystemHaiku.cpp
     platform/haiku/KURLHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
+    platform/haiku/LoggingHaiku.cpp
     platform/haiku/MIMETypeRegistryHaiku.cpp
     platform/haiku/PasteboardHaiku.cpp
     platform/haiku/PlatformKeyboardEventHaiku.cpp
