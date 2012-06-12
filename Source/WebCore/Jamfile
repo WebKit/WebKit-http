@@ -1858,19 +1858,15 @@ StaticLibrary webcore3 :
     platform/haiku/ContextMenuHaiku.cpp
     platform/haiku/ContextMenuItemHaiku.cpp
     platform/haiku/CursorHaiku.cpp
-    platform/haiku/CookieJarHaiku.cpp
     platform/haiku/DragImageHaiku.cpp
     platform/haiku/DragDataHaiku.cpp
     platform/haiku/EventLoopHaiku.cpp
     platform/haiku/FileSystemHaiku.cpp
     platform/haiku/KURLHaiku.cpp
     platform/haiku/LocalizedStringsHaiku.cpp
-    platform/haiku/LoggingHaiku.cpp
     platform/haiku/MIMETypeRegistryHaiku.cpp
     platform/haiku/PasteboardHaiku.cpp
     platform/haiku/PlatformKeyboardEventHaiku.cpp
-    platform/haiku/PlatformMouseEventHaiku.cpp
-    platform/haiku/PlatformWheelEventHaiku.cpp
     platform/haiku/PlatformScreenHaiku.cpp
     platform/haiku/RenderThemeHaiku.cpp
     platform/haiku/ScrollbarThemeHaiku.cpp
@@ -1897,7 +1893,7 @@ StaticLibrary webcore3 :
 
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
-    #platform/mock/ScrollbarThemeMock.cpp
+    platform/mock/ScrollbarThemeMock.cpp
 
     platform/network/AuthenticationChallengeBase.cpp
     platform/network/BlobData.cpp
@@ -1925,7 +1921,7 @@ StaticLibrary webcore3 :
     platform/network/SocketStreamErrorBase.cpp
     platform/network/SocketStreamHandleBase.cpp
 
-    platform/network/curl/CookieJarCurl.cpp
+    #platform/network/curl/CookieJarCurl.cpp
     platform/network/curl/DNSCurl.cpp
     platform/network/curl/FormDataStreamCurl.cpp
     platform/network/curl/ProxyServerCurl.cpp
@@ -2453,6 +2449,12 @@ SharedLibrary libwebcore.so :
     workers/WorkerRunLoop.cpp
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
+
+    platform/haiku/CookieJarHaiku.cpp
+    platform/haiku/LoggingHaiku.cpp
+    platform/haiku/PlatformMouseEventHaiku.cpp
+    platform/haiku/PlatformWheelEventHaiku.cpp
+
     :
     webcore1.a webcore2.a webcore3.a webcore1.a webcore3.a webcore2.a webcore1.a webcore2.a webcore3.a # webcore4.a webcore5.a
     libwtf.so libjavascriptcore.so
