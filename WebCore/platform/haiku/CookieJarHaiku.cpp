@@ -32,6 +32,7 @@
 #include "Cookie.h"
 #include "CString.h"
 #include "KURL.h"
+#include "NotImplemented.h"
 #include "PlatformString.h"
 #include "StringHash.h"
 #include <wtf/HashMap.h>
@@ -117,6 +118,11 @@ void deleteCookie(const Document* document, const KURL& url, const String& name)
 	else {
         // FIXME: Not yet implemented
 	}
+}
+
+void setCookieStoragePrivateBrowsingEnabled(bool)
+{
+    notImplemented();
 }
 
 } // namespace WebCore
