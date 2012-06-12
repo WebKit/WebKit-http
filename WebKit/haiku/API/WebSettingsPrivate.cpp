@@ -81,10 +81,9 @@ void WebSettingsPrivate::apply()
 	    settings->setMinimumFontSize(5);
 	    settings->setMinimumLogicalFontSize(5);
 	    settings->setShouldPrintBackgrounds(true);
-	    settings->setJavaScriptEnabled(true);
+	    settings->setScriptEnabled(true);
 //	    settings->setShowsURLsInToolTips(true);
-	    settings->setShouldPaintCustomScrollbars(true);
-	    settings->setEditingBehavior(WebCore::EditingMacBehavior);
+	    settings->setEditingBehaviorType(WebCore::EditingMacBehavior);
 	    settings->setLocalStorageEnabled(global->localStorageEnabled);
 	    settings->setLocalStorageDatabasePath(global->localStoragePath);
 	    settings->setDefaultTextEncodingName("UTF-8");
