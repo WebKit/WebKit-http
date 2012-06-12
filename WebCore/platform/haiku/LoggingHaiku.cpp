@@ -26,10 +26,9 @@
 #include "config.h"
 #include "Logging.h"
 
-
 namespace WebCore {
 
-void InitializeLoggingChannelsIfNecessary()
+void initializeLoggingChannelsIfNecessary()
 {
     // FIXME: Should read the logging channels from a file.
     static bool haveInitializedLoggingChannels = false;
