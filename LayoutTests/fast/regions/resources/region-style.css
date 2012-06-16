@@ -1,0 +1,48 @@
+.redBox {
+    width: 50px;
+    height: 50px;
+    background-color: red;
+}
+
+.greenBox {
+    width: 50px;
+    height: 50px;
+    background-color: green;
+}
+
+.blueBox {
+    width: 50px;
+    height: 50px;
+    background-color: blue;
+}
+
+.orangeBox {
+    width: 50px;
+    height: 50px;
+    background-color: orange;
+}
+
+.flowArticle {
+    -webkit-flow-into: article;
+}
+
+.regionArticle {
+    -webkit-flow-from: article;
+}
+
+.borderBox {
+    width: 50px;
+    height: 50px;
+    float: left;
+    border: 1px solid black;
+}
+
+.pass {
+    font-weight: bold;
+    color: green;
+}
+
+.fail {
+    font-weight: bold;
+    color: red;
+}

@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 <script src="xpath-test-pre.js"></script>
 </head>
@@ -35,8 +34,6 @@ shouldBe('doc.evaluate("//@ns:*", doc, nsResolver, XPathResult.ORDERED_NODE_SNAP
 shouldBe('doc.evaluate("//@xml:*", doc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength', '1');
 shouldBe('doc.evaluate("//@xmlns", doc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength', '0');
 shouldBe('doc.evaluate("//@xmlns:*", doc, nsResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null).snapshotLength', '0');
-
-var successfullyParsed = true;
 
 </script>
 <script src="../js/resources/js-test-post.js"></script>

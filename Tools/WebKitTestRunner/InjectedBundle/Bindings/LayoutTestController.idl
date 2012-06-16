@@ -1,0 +1,152 @@
+/*
+ * Copyright (C) 2010 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+module WTR {
+
+    interface LayoutTestController {
+        // The basics.
+        void dumpAsText(in boolean dumpPixels);
+        void dumpChildFramesAsText();
+        void waitForPolicyDelegate();
+        void waitUntilDone();
+        void notifyDone();
+
+        // Other dumping.
+        void dumpBackForwardList();
+        void dumpChildFrameScrollPositions();
+        void dumpEditingCallbacks();
+        void dumpSelectionRect();
+        void dumpStatusCallbacks();
+        void dumpTitleChanges();
+        void dumpFullScreenCallbacks();
+        void dumpConfigurationForViewport(in int deviceDPI, in int deviceWidth, in int deviceHeight, in int availableWidth, in int availableHeight);
+
+        // Special options.
+        void keepWebHistory();
+        void setAcceptsEditing(in boolean value);
+        void setCanOpenWindows(in boolean value);
+        void setCloseRemainingWindowsWhenComplete(in boolean value);
+        void setXSSAuditorEnabled(in boolean value);
+        void setAllowUniversalAccessFromFileURLs(in boolean value);
+        void setAllowFileAccessFromFileURLs(in boolean value);
+        void setFrameFlatteningEnabled(in boolean value);
+        void setGeolocationPermission(in boolean value);
+        void setJavaScriptCanAccessClipboard(in boolean value);
+        void setPrivateBrowsingEnabled(in boolean value);
+        void setPopupBlockingEnabled(in boolean value);
+        void setAuthorAndUserStylesEnabled(in boolean value);
+        void addOriginAccessWhitelistEntry(in DOMString sourceOrigin, in DOMString destinationProtocol, in DOMString destinationHost, in boolean allowDestinationSubdomains);
+        void removeOriginAccessWhitelistEntry(in DOMString sourceOrigin, in DOMString destinationProtocol, in DOMString destinationHost, in boolean allowDestinationSubdomains);
+
+        // Special DOM functions.
+        void clearBackForwardList();
+        object computedStyleIncludingVisitedInfo(in object element);
+        DOMString counterValueForElementById(in DOMString elementId);
+        void execCommand(in DOMString name, in DOMString argument);
+        boolean isCommandEnabled(in DOMString name);
+        DOMString markerTextForListItem(in object element);
+        unsigned long windowCount();
+
+        // Special DOM variables.
+        attribute boolean globalFlag;
+
+        // Repaint testing.
+        void testRepaint();
+        void repaintSweepHorizontally();
+        void display();
+
+        // Printing
+        int numberOfPages(in double pageWidthInPixels, in double pageHeightInPixels);
+        int pageNumberForElementById(in DOMString id, in double pageWidthInPixels, in double pageHeightInPixels);
+        DOMString pageSizeAndMarginsInPixels(in int pageIndex, in int width, in int height, in int marginTop, in int marginRight, in int marginBottom, in int marginLeft);
+        boolean isPageBoxVisible(in int pageIndex);
+
+        [PassContext] void setValueForUser(in object element, in DOMString value);
+
+        // Animation testing.
+        int numberOfActiveAnimations();
+        boolean pauseAnimationAtTimeOnElementWithId(in DOMString animationName, in double time, in DOMString elementId);
+        boolean pauseTransitionAtTimeOnElementWithId(in DOMString propertyName, in double time, in DOMString elementId);
+        void suspendAnimations();
+        void resumeAnimations();
+
+        // UserContent testing.
+        void addUserScript(in DOMString source, in boolean runAtStart, in boolean allFrames);
+        void addUserStyleSheet(in DOMString source, in boolean allFrames);
+
+        // Local storage API
+        void clearAllDatabases();
+        void setDatabaseQuota(in unsigned long long quota);
+        DOMString pathToLocalResource(in DOMString url);
+
+        // Application Cache API
+        void clearAllApplicationCaches();
+        void setAppCacheMaximumSize(in unsigned long long size);
+
+        // Compositing testing.
+        DOMString layerTreeAsText();
+
+        // Text search testing.
+        boolean findString(in DOMString target, in object optionsArray);
+
+        // Evaluating script in a special context.
+        [PassContext] void evaluateScriptInIsolatedWorld(in unsigned long worldID, in DOMString script);
+
+        // For Web Inspector tests
+        void showWebInspector();
+        void closeWebInspector();
+        void evaluateInWebInspector(in long callID, in DOMString script);
+
+        void setPOSIXLocale(in DOMString locale);
+
+        void setTextDirection(in DOMString direction);
+
+        void setWillSendRequestReturnsNull(in boolean flag);
+        
+        void setShouldStayOnPageAfterHandlingBeforeUnload(in boolean flag);
+        
+        // Focus testing.
+        void addChromeInputField(in object callback);
+        void removeChromeInputField(in object callback);
+        void focusWebView(in object callback);
+
+        void setBackingScaleFactor(in double backingScaleFactor, in object callback);
+
+        void setWindowIsKey(in boolean isKey);
+
+        // FIXME: handle non-boolean preferences.
+        void overridePreference(in DOMString preference, in boolean value);
+
+        // Page Visibility API
+        void setPageVisibility(in DOMString state);
+        void resetPageVisibility();
+
+        readonly attribute DOMString platformName;
+
+        // Control full screen behavior.
+        void setHasCustomFullScreenBehavior(in boolean value);
+    };
+
+}

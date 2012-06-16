@@ -1,21 +1,21 @@
 AC_PREREQ(2.59)
 
 m4_define([webkit_major_version], [1])
-m4_define([webkit_minor_version], [1])
-m4_define([webkit_micro_version], [22])
+m4_define([webkit_minor_version], [9])
+m4_define([webkit_micro_version], [1])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
-# Sourced from WebCore/Configurations/Version.xcconfig
-m4_define([webkit_user_agent_major_version], [531])
-m4_define([webkit_user_agent_minor_version], [2])
+# Sourced from Source/WebCore/Configurations/Version.xcconfig
+m4_define([webkit_user_agent_major_version], [536])
+m4_define([webkit_user_agent_minor_version], [10])
 
 AC_INIT([WebKit],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
 
-AC_CONFIG_MACRO_DIR([autotools])
-AC_CONFIG_AUX_DIR([autotools])
-AC_SUBST(ACLOCAL_AMFLAGS, "-I autotools")
+AC_CONFIG_MACRO_DIR([Source/autotools])
+AC_CONFIG_AUX_DIR([Source/autotools])
+AC_SUBST(ACLOCAL_AMFLAGS, "-I Source/autotools")
 
 AC_CONFIG_HEADERS([autotoolsconfig.h])
 AC_CANONICAL_HOST
@@ -31,14 +31,14 @@ AC_SUBST(WEBKIT_MICRO_VERSION)
 AC_SUBST(WEBKIT_USER_AGENT_MAJOR_VERSION)
 AC_SUBST(WEBKIT_USER_AGENT_MINOR_VERSION)
 
-AC_CONFIG_SRCDIR([WebCore/config.h])
+AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
-dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html#Libtool-versioning
-LIBWEBKITGTK_VERSION=17:1:15
+dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
+LIBWEBKITGTK_VERSION=13:0:13
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-AM_INIT_AUTOMAKE([foreign subdir-objects tar-ustar])
+AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
 
 # Use AM_SILENT_RULES if present
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -77,8 +77,61 @@ case "$host_os" in
        ;;
 esac
 
-# initialize webkit options
-WEBKIT_INIT
+# If CFLAGS and CXXFLAGS are unset, default to empty.
+# This is to tell automake not to include '-g' if C{XX,}FLAGS is not set
+# For more info - http://www.gnu.org/software/automake/manual/autoconf.html#C_002b_002b-Compiler
+if test -z "$CXXFLAGS"; then
+   CXXFLAGS=""
+fi
+if test -z "$CFLAGS"; then
+   CFLAGS=""
+fi
+
+PKG_PROG_PKG_CONFIG
+
+AC_PATH_PROG(PERL, perl)
+if test -z "$PERL"; then
+   AC_MSG_ERROR([You need 'perl' to compile WebKit])
+fi
+
+AC_PATH_PROG(PYTHON, python)
+if test -z "$PYTHON"; then
+   AC_MSG_ERROR([You need 'python' to compile WebKit])
+fi
+
+AC_PATH_PROG(BISON, bison)
+if test -z "$BISON"; then
+   AC_MSG_ERROR([You need the 'bison' parser generator to compile WebKit])
+fi
+
+AC_PATH_PROG(MV, mv)
+if test -z "$MV"; then
+   AC_MSG_ERROR([You need 'mv' to compile WebKit])
+fi
+
+AC_PROG_CC
+AC_PROG_CXX
+AM_PROG_CC_STDC
+AM_PROG_CC_C_O
+AC_PROG_INSTALL
+AC_SYS_LARGEFILE
+
+# Check whether a C++ was found (AC_PROG_CXX sets $CXX to "g++" even when it
+# doesn't exist)
+AC_LANG_PUSH([C++])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[])],[],[AC_MSG_ERROR([No C++ compiler found])])
+AC_LANG_POP([C++])
+
+# C/C++ Language Features
+AC_C_CONST
+AC_C_INLINE
+AC_C_VOLATILE
+
+# C/C++ Headers
+AC_HEADER_STDC
+AC_HEADER_STDBOOL
+
+# Linker
 AC_DISABLE_STATIC
 AC_LIBTOOL_WIN32_DLL
 AC_PROG_LIBTOOL
@@ -99,11 +152,48 @@ if test -z "$GPERF"; then
    AC_MSG_ERROR([You need the 'gperf' hash function generator to compile WebKit])
 fi
 
+# check for -fvisibility=hidden compiler support (GCC >= 4)
+saved_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+AC_MSG_CHECKING([if ${CXX} supports -fvisibility=hidden -fvisibility-inlines-hidden])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([char foo;])],
+      [ AC_MSG_RESULT([yes])
+        SYMBOL_VISIBILITY="-fvisibility=hidden" SYMBOL_VISIBILITY_INLINES="-fvisibility-inlines-hidden" ],
+        AC_MSG_RESULT([no]))
+CFLAGS="$saved_CFLAGS"
+AC_SUBST(SYMBOL_VISIBILITY)
+AC_SUBST(SYMBOL_VISIBILITY_INLINES)
+
+# Disable C++0x compat warnings for GCC >= 4.6.0 until we build
+# cleanly with that.
+AC_LANG_PUSH(C++)
+TMPCXXFLAGS=$CXXFLAGS
+CXXFLAGS="-Wall -Werror"
+AC_MSG_CHECKING([if we have to disable C++0x compat warnings for GCC >= 4.6.0])
+AC_TRY_COMPILE([
+namespace std {
+    class nullptr_t { };
+}
+extern std::nullptr_t nullptr;
+], [return 0;],
+disable_cxx0x_compat=no,
+disable_cxx0x_compat=yes)
+AC_MSG_RESULT($disable_cxx0x_compat)
+if test "$disable_cxx0x_compat" = yes; then
+  CXXFLAGS="$TMPCXXFLAGS -Wno-c++0x-compat"
+else
+  CXXFLAGS="$TMPCXXFLAGS"
+fi
+AC_LANG_POP(C++)
+
 # pthread (not needed on Windows)
 if test "$os_win32" = "no"; then
 AC_CHECK_HEADERS([pthread.h],
                  AC_DEFINE([HAVE_PTHREAD_H],[1],[Define if pthread exists]),
                  AC_MSG_ERROR([pthread support is required to build WebKit]))
+AC_CHECK_LIB(pthread, pthread_rwlock_init,
+                 AC_DEFINE([HAVE_PTHREAD_RWLOCK],[1],[Define if pthread rwlock is present]),
+                 AC_MSG_WARN([pthread rwlock support is not available]))
 fi
 
 # check for libjpeg the way Gtk does it.
@@ -167,6 +257,61 @@ if test "$png_ok" != yes; then
 fi
 AC_SUBST([PNG_LIBS])
 
+
+if test "$os_win32" = "yes"; then
+  WINMM_LIBS=-lwinmm
+  SHLWAPI_LIBS=-lshlwapi
+  OLE32_LIBS=-lole32
+fi
+AC_SUBST([WINMM_LIBS])
+AC_SUBST([SHLWAPI_LIBS])
+AC_SUBST([OLE32_LIBS])
+
+
+# determine the GTK+ version to use
+AC_MSG_CHECKING([the GTK+ version to use])
+AC_ARG_WITH([gtk],
+        [AS_HELP_STRING([--with-gtk=2.0|3.0], [the GTK+ version to use (default: 3.0)])],
+        [case "$with_gtk" in
+        2.0|3.0) ;;
+        *) AC_MSG_ERROR([invalid GTK+ version specified]) ;;
+        esac],
+        [with_gtk=3.0])
+AC_MSG_RESULT([$with_gtk])
+
+GTK2_REQUIRED_VERSION=2.10
+GAIL2_REQUIRED_VERSION=1.8
+GTK3_REQUIRED_VERSION=3.4.0
+GAIL3_REQUIRED_VERSION=3.0
+
+case "$with_gtk" in
+     2.0) GTK_REQUIRED_VERSION=$GTK2_REQUIRED_VERSION
+          GTK_API_VERSION=2.0
+          WEBKITGTK_API_MAJOR_VERSION=1
+          WEBKITGTK_API_MINOR_VERSION=0
+          WEBKITGTK_API_VERSION=1.0
+          WEBKITGTK_PC_NAME=webkit
+          GAIL_PC_NAME=gail
+          GAIL_REQUIRED_VERSION=$GAIL2_REQUIRED_VERSION
+          ;;
+     3.0) GTK_REQUIRED_VERSION=$GTK3_REQUIRED_VERSION
+          GTK_API_VERSION=3.0
+          WEBKITGTK_API_MAJOR_VERSION=3
+          WEBKITGTK_API_MINOR_VERSION=0
+          WEBKITGTK_API_VERSION=3.0
+          WEBKITGTK_PC_NAME=webkitgtk
+          GAIL_PC_NAME=gail-3.0
+          GAIL_REQUIRED_VERSION=$GAIL3_REQUIRED_VERSION
+          ;;
+esac
+
+AC_SUBST([WEBKITGTK_API_MAJOR_VERSION])
+AC_SUBST([WEBKITGTK_API_MINOR_VERSION])
+AC_SUBST([WEBKITGTK_API_VERSION])
+AC_SUBST([WEBKITGTK_PC_NAME])
+AC_SUBST([GTK_API_VERSION])
+AM_CONDITIONAL([GTK_API_VERSION_2],[test "$GTK_API_VERSION" = "2.0"])
+
 # determine the GDK/GTK+ target
 AC_MSG_CHECKING([the target windowing system])
 AC_ARG_WITH(target,
@@ -181,49 +326,114 @@ esac
 
 AC_MSG_RESULT([$with_target])
 
-AC_MSG_CHECKING([for Hildon UI extensions])
-AC_ARG_WITH(hildon,
-            AC_HELP_STRING([--with-hildon],
-                           [Use Hildon UI extensions [default=no]]),
-            [],[with_hildon="no"])
-AC_MSG_RESULT([$with_hildon])
+AC_MSG_CHECKING([the GStreamer version to use])
+AC_ARG_WITH([gstreamer],
+        [AS_HELP_STRING([--with-gstreamer=0.10|1.0], [the GStreamer version to use (default: 0.10)])],
+        [case "$with_gstreamer" in
+        0.10|1.0) ;;
+        *) AC_MSG_ERROR([invalid GStreamer version specified]) ;;
+        esac],
+        [with_gstreamer=0.10])
+AC_MSG_RESULT([$with_gstreamer])
 
-if test "$with_hildon" = "yes"; then
-    HILDON_CPPFLAGS="-DMAEMO_CHANGES"
-    PKG_CHECK_MODULES([HILDON], [hildon-1])
-    AC_SUBST([HILDON_CPPFLAGS])
-    AC_SUBST([HILDON_CFLAGS])
-    AC_SUBST([HILDON_LIBS])
+GSTREAMER_0_10_REQUIRED_VERSION=0.10
+GSTREAMER_0_10_PLUGINS_BASE_REQUIRED_VERSION=0.10.30
+GSTREAMER_1_0_REQUIRED_VERSION=1.0
+GSTREAMER_1_0_PLUGINS_BASE_REQUIRED_VERSION=0.11.90
+
+case "$with_gstreamer" in
+     0.10) GSTREAMER_REQUIRED_VERSION=$GSTREAMER_0_10_REQUIRED_VERSION
+           GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION=$GSTREAMER_0_10_PLUGINS_BASE_REQUIRED_VERSION
+           GST_API_VERSION=0.10
+           ;;
+     1.0) GSTREAMER_REQUIRED_VERSION=$GSTREAMER_1_0_REQUIRED_VERSION
+           GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION=$GSTREAMER_1_0_PLUGINS_BASE_REQUIRED_VERSION
+           GST_API_VERSION=1.0
+           ;;
+esac
+
+AC_SUBST([GST_API_VERSION])
+if test "$GST_API_VERSION" = "1.0"; then
+AC_DEFINE([GST_USE_UNSTABLE_API], [1], [Using unstable GStreamer API])
+AC_DEFINE([GST_API_VERSION_1],[1], [Using GStreamer 1.0])
 fi
 
 # minimum base dependencies
-LIBSOUP_REQUIRED_VERSION=2.28.2
-CAIRO_REQUIRED_VERSION=1.6
+CAIRO_REQUIRED_VERSION=1.10
 FONTCONFIG_REQUIRED_VERSION=2.4
 FREETYPE2_REQUIRED_VERSION=9.0
+GLIB_REQUIRED_VERSION=2.32.0
+LIBSOUP_REQUIRED_VERSION=2.37.92
 LIBXML_REQUIRED_VERSION=2.6
-
-# minimum GTK+ base dependencies
-PANGO_REQUIRED_VERSION=1.12
-GTK_REQUIRED_VERSION=2.10
+PANGO_REQUIRED_VERSION=1.21.0
 
 # optional modules
 LIBXSLT_REQUIRED_VERSION=1.1.7
 SQLITE_REQUIRED_VERSION=3.0
-GSTREAMER_REQUIRED_VERSION=0.10
-GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION=0.10.25
 ENCHANT_REQUIRED_VERSION=0.22
-GAIL_REQUIRED_VERSION=1.8
+CLUTTER_REQUIRED_VERSION=1.8.2
+CLUTTER_GTK_REQUIRED_VERSION=1.0.2
+ATSPI2_REQUIRED_VERSION=2.2.1
 
-# Available modules
-#
-# glib - glib and includes gthread
-# unicode - check and identify which unicode backend to use
-#
-# todo: webcore gtk
-WEBKIT_CHECK_DEPENDENCIES([glib unicode])
+# Check for glib and required utilities
+AM_PATH_GLIB_2_0($GLIB_REQUIRED_VERSION, :, :, gmodule gobject gthread gio)
+if test -z "$GLIB_GENMARSHAL" || test -z "$GLIB_MKENUMS"; then
+   AC_MSG_ERROR([You need the GLib dev tools in your path])
+fi
+GLIB_GSETTINGS
 
-GETTEXT_PACKAGE=$PACKAGE
+# Check and identify which unicode backend to use
+AC_MSG_CHECKING([which Unicode backend to use])
+AC_ARG_WITH(unicode_backend,
+            AC_HELP_STRING([--with-unicode-backend=@<:@icu/glib@:>@],
+                           [Select Unicode backend (WARNING: the glib-based backend is slow, and incomplete) [default=icu]]),
+            [],[with_unicode_backend="icu"])
+
+case "$with_unicode_backend" in
+     icu|glib) ;;
+     *) AC_MSG_ERROR([Invalid Unicode backend: must be icu or glib.]) ;;
+esac
+
+AC_MSG_RESULT([$with_unicode_backend])
+
+if test "$with_unicode_backend" = "icu"; then
+    # TODO: use pkg-config (after CFLAGS in their .pc files are cleaned up)
+    case "$host" in
+        *-*-darwin*)
+            UNICODE_CFLAGS="-I$srcdir/Source/JavaScriptCore/icu -I$srcdir/Source/WebCore/icu"
+            UNICODE_LIBS="-licucore"
+            ;;
+        *-*-mingw*)
+            UNICODE_CFLAGS=""
+            UNICODE_LIBS="-licui18n -licuuc"
+            ;;
+        *)
+            AC_PATH_PROG(icu_config, icu-config, no)
+            if test "$icu_config" = "no"; then
+                AC_MSG_ERROR([Cannot find icu-config. The ICU library is needed.])
+            fi
+
+            # We don't use --cflags as this gives us a lot of things that we don't
+            # necessarily want, like debugging and optimization flags
+            # See man (1) icu-config for more info.
+            UNICODE_CFLAGS=`$icu_config --cppflags`
+            UNICODE_LIBS=`$icu_config --ldflags-libsonly`
+            ;;
+    esac
+fi
+
+if test "$with_unicode_backend" = "glib"; then
+    PKG_CHECK_MODULES([UNICODE], [glib-2.0 pango >= $PANGO_REQUIRED_VERSION])
+fi
+
+AC_SUBST([UNICODE_CFLAGS])
+AC_SUBST([UNICODE_LIBS])
+
+PKG_CHECK_MODULES([ZLIB], [zlib])
+AC_SUBST([ZLIB_CFLAGS])
+AC_SUBST([ZLIB_LIBS])
+
+GETTEXT_PACKAGE=$PACKAGE-$GTK_API_VERSION
 AC_SUBST(GETTEXT_PACKAGE)
 AC_DEFINE_UNQUOTED(GETTEXT_PACKAGE,"$GETTEXT_PACKAGE",
                    [The gettext catalog name])
@@ -238,11 +448,19 @@ PKG_CHECK_MODULES(PANGO,
 AC_SUBST(PANGO_CFLAGS)
 AC_SUBST(PANGO_LIBS)
 
-PKG_CHECK_MODULES(ENCHANT, enchant >= $ENCHANT_REQUIRED_VERSION)
+AC_MSG_CHECKING([whether to enable spellcheck support])
+AC_ARG_ENABLE([spellcheck],
+  [AS_HELP_STRING([--enable-spellcheck],[enable support for spellcheck])],
+  [],[enable_spellcheck="yes"])
+AC_MSG_RESULT([$enable_spellcheck])
+
+if test "$enable_spellcheck" = "yes"; then
+PKG_CHECK_MODULES(ENCHANT, enchant >= $ENCHANT_REQUIRED_VERSION, [], [enable_spellcheck="no"])
 AC_SUBST(ENCHANT_CFLAGS)
 AC_SUBST(ENCHANT_LIBS)
+fi
 
-PKG_CHECK_MODULES(GAIL, gail >= $GAIL_REQUIRED_VERSION)
+PKG_CHECK_MODULES(GAIL, $GAIL_PC_NAME >= $GAIL_REQUIRED_VERSION)
 AC_SUBST(GAIL_CFLAGS)
 AC_SUBST(GAIL_LIBS)
 
@@ -253,7 +471,7 @@ if test "$with_target" = "directfb"; then
    AC_DEFINE([WTF_PLATFORM_DIRECTFB],[1],[Define if target is DirectFB])
 else
    PKG_CHECK_MODULES(CAIRO, cairo >= $CAIRO_REQUIRED_VERSION)
-   PKG_CHECK_MODULES(GTK, gtk+-2.0 >= $GTK_REQUIRED_VERSION)
+   PKG_CHECK_MODULES(GTK, gtk+-$GTK_API_VERSION >= $GTK_REQUIRED_VERSION)
 
    if test "$with_target" = "x11" && test "$os_win32" = "no"; then
       # check for XT
@@ -299,13 +517,40 @@ AC_ARG_ENABLE(optimizations,
               [if test "$enable_debug" = "yes"; then enable_optimizations="no"; else enable_optimizations="yes"; fi])
 AC_MSG_RESULT([$enable_optimizations])
 
-# check whether to enable 3D transforms support
-AC_MSG_CHECKING([whether to enable support for 3D Transforms])
-AC_ARG_ENABLE(3D_transforms,
-              AC_HELP_STRING([--enable-3D-transforms],
-                             [enable support for 3D transforms [default=no]]),
-              [],[enable_3D_transforms="no"])
-AC_MSG_RESULT([$enable_3D_transforms])
+# check whether to enable WebGL support
+AC_MSG_CHECKING([whether to enable WebGL support])
+AC_ARG_ENABLE(webgl,
+              AC_HELP_STRING([--enable-webgl], [enable support for WebGL [default=yes]]),
+              [], [if test "$with_target" = "x11"; then enable_webgl="yes"; else enable_webgl="no"; fi])
+AC_MSG_RESULT([$enable_webgl])
+
+# check whether to enable accelerated compositing support
+AC_MSG_CHECKING([whether to enable accelerated compositing support])
+AC_ARG_WITH(accelerated_compositing,
+            AC_HELP_STRING([--with-accelerated-compositing=@<:@no/opengl/cairo/clutter@:>@],
+                           [use accelerated compositing (experimental) [default=no]]),
+            [], [with_accelerated_compositing="no"])
+AC_MSG_RESULT([$with_accelerated_compositing])
+
+if test "$enable_webgl" = "yes" ||  test "$with_accelerated_compositing" = "opengl" ; then
+    if test "$with_target" != "x11"; then
+        AC_MSG_ERROR([OpenGL support is only available on X11 currently.])
+    fi
+    AC_CHECK_HEADERS([GL/gl.h], [], AC_MSG_ERROR([OpenGL header not found]))
+    AC_CHECK_HEADERS([GL/glx.h], [], AC_MSG_ERROR([GLX header not found]))
+    OPENGL_LIBS="-lGL -ldl"
+fi
+AC_SUBST([OPENGL_LIBS])
+
+if test "$with_accelerated_compositing" = "clutter"; then
+   PKG_CHECK_MODULES(CLUTTER, clutter-1.0 >= $CLUTTER_REQUIRED_VERSION)
+   PKG_CHECK_MODULES([CLUTTER_GTK], [clutter-gtk-1.0 >= $CLUTTER_GTK_REQUIRED_VERSION])
+
+   AC_SUBST(CLUTTER_CFLAGS)
+   AC_SUBST(CLUTTER_LIBS)
+   AC_SUBST(CLUTTER_GTK_CFLAGS)
+   AC_SUBST(CLUTTER_GTK_LIBS)
+fi
 
 # check whether to enable channel messaging support
 AC_MSG_CHECKING([whether to enable HTML5 Channel Messaging support])
@@ -315,6 +560,54 @@ AC_ARG_ENABLE(channel_messaging,
               [],[enable_channel_messaging="yes"])
 AC_MSG_RESULT([$enable_channel_messaging])
 
+# check whether to enable legacy notifications
+AC_MSG_CHECKING([whether to enable legacy notifications])
+AC_ARG_ENABLE(legacy_notifications,
+              AC_HELP_STRING([--enable-legacy-notifications],
+                             [enable legacy notifications [default=no]]),
+              [],[enable_legacy_notifications="no"])
+AC_MSG_RESULT([$enable_legacy_notifications])
+
+# check whether to enable notifications
+AC_MSG_CHECKING([whether to enable notifications])
+AC_ARG_ENABLE(notifications,
+              AC_HELP_STRING([--enable-notifications],
+                             [enable notifications [default=no]]),
+              [],[enable_notifications="no"])
+AC_MSG_RESULT([$enable_notifications])
+
+# check whether to enable the meter tag
+AC_MSG_CHECKING([whether to enable HTML5 meter tag])
+AC_ARG_ENABLE(meter_tag,
+              AC_HELP_STRING([--enable-meter-tag],
+                             [enable HTML5 meter [default=yes]]),
+              [],[enable_meter_tag="yes"])
+AC_MSG_RESULT([$enable_meter_tag])
+
+# check whether to enable HTML5 Microdata support
+AC_MSG_CHECKING([whether to enable HTML5 Microdata support])
+AC_ARG_ENABLE(microdata,
+              AC_HELP_STRING([--enable-microdata],
+                             [enable HTML5 microdata support [default=no]]),
+              [],[enable_microdata="no"])
+AC_MSG_RESULT([$enable_microdata])
+
+# check whether to enable page visibility API.
+AC_MSG_CHECKING([whether to enable Page Visibility API support])
+AC_ARG_ENABLE(page_visibility_api,
+              AC_HELP_STRING([--enable-page-visibility-api],
+                             [enable page visibility api[default=no]]),
+              [],[enable_page_visibility_api="no"])
+AC_MSG_RESULT([$enable_page_visibility_api])
+
+# check whether to enable the progress tag
+AC_MSG_CHECKING([whether to enable HTML5 progress tag])
+AC_ARG_ENABLE(progress_tag,
+              AC_HELP_STRING([--enable-progress-tag],
+                             [enable HTML5 progress [default=yes]]),
+              [],[enable_progress_tag="yes"])
+AC_MSG_RESULT([$enable_progress_tag])
+
 # check whether to enable JavaScript debugger/profiler support
 AC_MSG_CHECKING([whether to enable JavaScript debugger/profiler support])
 AC_ARG_ENABLE(javascript_debugger,
@@ -323,13 +616,37 @@ AC_ARG_ENABLE(javascript_debugger,
               [],[enable_javascript_debugger="yes"])
 AC_MSG_RESULT([$enable_javascript_debugger])
 
-# check whether to enable HTML5 Offline Web Applications support
-AC_MSG_CHECKING([whether to enable HTML5 offline web applications support])
-AC_ARG_ENABLE(offline_web_applications,
-              AC_HELP_STRING([--enable-offline-web-applications],
-                             [enable HTML5 offline web applications support [default=yes]]),
-              [],[enable_offline_web_applications="yes"])
-AC_MSG_RESULT([$enable_offline_web_applications])
+# check whether to enable Gamepad support
+AC_MSG_CHECKING([whether to enable Gamepad support])
+AC_ARG_ENABLE(gamepad,
+              AC_HELP_STRING([--enable-gamepad],
+                             [enable Gamepad support [default=no]]),
+              [],[enable_gamepad="no"])
+AC_MSG_RESULT([$enable_gamepad])
+
+# check whether to build with datagrid support
+AC_MSG_CHECKING([whether to enable HTML5 datagrid support])
+AC_ARG_ENABLE(datagrid,
+              AC_HELP_STRING([--enable-datagrid],
+                             [enable HTML5 datagrid support [default=no]]),
+              [],[enable_datagrid="no"])
+AC_MSG_RESULT([$enable_datagrid])
+
+# check whether to build with data transfer items support
+AC_MSG_CHECKING([whether to enable HTML5 data transfer items support])
+AC_ARG_ENABLE(data_transfer_items,
+              AC_HELP_STRING([--enable-data-transfer-items],
+                             [enable HTML5 data transfer items support [default=no]]),
+              [],[enable_data_transfer_items="no"])
+AC_MSG_RESULT([$enable_data_transfer_items])
+
+# check whether to enable DOM mutation observer support
+AC_MSG_CHECKING([whether to enable DOM mutation observer support])
+AC_ARG_ENABLE(mutation_observers,
+              AC_HELP_STRING([--enable-mutation-observers],
+                             [enable DOM mutation observer support [default=no]]),
+              [],[enable_mutation_observers="no"])
+AC_MSG_RESULT([$enable_mutation_observers])
 
 # check whether to enable HTML5 client-side session and persitent storage support
 AC_MSG_CHECKING([whether to enable HTML5 client-side session and persistent storage support])
@@ -342,26 +659,42 @@ AC_MSG_RESULT([$enable_dom_storage])
 # check whether to enable the indexed database API
 AC_MSG_CHECKING([whether to enable the indexed database API])
 AC_ARG_ENABLE(indexed_database,
-              AC_HELP_STRING([--enable-indexeddb],
+              AC_HELP_STRING([--enable-indexed-database],
                              [enable the indexed database API [default=no]]),
               [],[enable_indexed_database="no"])
 AC_MSG_RESULT([$enable_indexed_database])
 
-# check whether to build with database support
-AC_MSG_CHECKING([whether to enable HTML5 client-side database storage support])
-AC_ARG_ENABLE(database,
-              AC_HELP_STRING([--enable-database],
-                             [enable HTML5 client-side database storage support [default=yes]]),
-              [],[enable_database="yes"])
-AC_MSG_RESULT([$enable_database])
+# check whether to enable the color input
+AC_MSG_CHECKING([whether to enable the color input])
+AC_ARG_ENABLE(input_type_color,
+              AC_HELP_STRING([--enable-input-type-color],
+                             [enable the color input [default=no]]),
+              [],[enable_input_type_color="no"])
+AC_MSG_RESULT([$enable_input_type_color])
 
-# check whether to build with server-sent events support
-AC_MSG_CHECKING([whether to enable HTML5 server-sent events support])
-AC_ARG_ENABLE(eventsource,
-              AC_HELP_STRING([--enable-eventsource],
-                             [enable HTML5 server-sent events support [default=yes]]),
-              [],[enable_eventsource="yes"])
-AC_MSG_RESULT([$enable_eventsource])
+# check whether to enable the speech input API
+AC_MSG_CHECKING([whether to enable the speech input API])
+AC_ARG_ENABLE(input_speech,
+              AC_HELP_STRING([--enable-input-speech],
+                             [enable the speech input API [default=no]]),
+              [],[enable_input_speech="no"])
+AC_MSG_RESULT([$enable_input_speech])
+
+# check whether to enable the scripted speech API
+AC_MSG_CHECKING([whether to enable the scripted speech API])
+AC_ARG_ENABLE(scripted_speech,
+              AC_HELP_STRING([--enable-scripted-speech],
+                             [enable the scripted speech API [default=no]]),
+              [],[enable_scripted_speech="no"])
+AC_MSG_RESULT([$enable_scripted_speech])
+
+# check whether to build with SQL database support
+AC_MSG_CHECKING([whether to enable SQL client-side database storage support])
+AC_ARG_ENABLE(sql_database,
+              AC_HELP_STRING([--enable-sql-database],
+                             [enable SQL client-side database storage support [default=yes]]),
+              [],[enable_sql_database="yes"])
+AC_MSG_RESULT([$enable_sql_database])
 
 # check whether to build with icon database support
 AC_MSG_CHECKING([whether to enable icon database support])
@@ -371,6 +704,14 @@ AC_ARG_ENABLE(icon_database,
               [],[enable_icon_database="yes"])
 AC_MSG_RESULT([$enable_icon_database])
 
+# check whether to build with image resizer API support
+AC_MSG_CHECKING([whether to enable image resizer API support])
+AC_ARG_ENABLE(image_resizer,
+              AC_HELP_STRING([--enable-image-resizer],
+                             [enable image resizer [default=no]]),
+              [],[enable_image_resizer="no"])
+AC_MSG_RESULT([$enable_image_resizer])
+
 # check whether to enable HTML5 datalist support
 AC_MSG_CHECKING([whether to enable HTML5 datalist support])
 AC_ARG_ENABLE(datalist,
@@ -379,21 +720,13 @@ AC_ARG_ENABLE(datalist,
               [],[enable_datalist="yes"])
 AC_MSG_RESULT([$enable_datalist])
 
-# check whether to enable HTML5 ruby support
-AC_MSG_CHECKING([whether to enable HTML5 ruby support])
-AC_ARG_ENABLE(ruby,
-              AC_HELP_STRING([--enable-ruby],
-                             [enable HTML5 ruby support [default=yes]]),
-              [],[enable_ruby="yes"])
-AC_MSG_RESULT([$enable_ruby])
-
-# check whether to enable HTML5 ruby support
-AC_MSG_CHECKING([whether to enable HTML5 ruby support])
-AC_ARG_ENABLE(ruby,
-              AC_HELP_STRING([--enable-ruby],
-                             [enable HTML5 ruby support [default=yes]]),
-              [],[enable_ruby="yes"])
-AC_MSG_RESULT([$enable_ruby])
+# check whether to enable HTML5 sandbox iframe support
+AC_MSG_CHECKING([whether to enable HTML5 sandboxed iframe support])
+AC_ARG_ENABLE(sandbox,
+              AC_HELP_STRING([--enable-sandbox],
+                             [enable HTML5 sandboxed iframe support [default=yes]]),
+              [],[enable_sandbox="yes"])
+AC_MSG_RESULT([$enable_sandbox])
 
 # check whether to enable HTML5 audio/video support
 AC_MSG_CHECKING([whether to enable HTML5 video support])
@@ -403,21 +736,50 @@ AC_ARG_ENABLE(video,
               [],[enable_video="yes"])
 AC_MSG_RESULT([$enable_video])
 
-# check whether to enable XHTML-MP support
-AC_MSG_CHECKING([whether to enable XHTML-MP support])
-AC_ARG_ENABLE(xhtmlmp,
-              AC_HELP_STRING([--enable-xhtmlmp],
-                             [enable support for XHTML-MP [default=no]]),
-              [],[enable_xhtmlmp="no"])
-AC_MSG_RESULT([$enable_xhtmlmp])
+# turn off video features if --disable-video is requested
+if test "$enable_video" = "no"; then
+   enable_video_track=no
+fi
 
-# check whether to enable XPath support
-AC_MSG_CHECKING([whether to enable XPath support])
-AC_ARG_ENABLE(xpath,
-              AC_HELP_STRING([--enable-xpath],
-                             [enable support for XPath [default=yes]]),
-              [],[enable_xpath="yes"])
-AC_MSG_RESULT([$enable_xpath])
+# check whether to enable HTML5 video track support
+AC_MSG_CHECKING([whether to enable HTML5 video track support])
+AC_ARG_ENABLE(video_track,
+              AC_HELP_STRING([--enable-video-track],
+                             [enable HTML5 video track support [default=no]]),
+              [],[enable_video_track="no"])
+AC_MSG_RESULT([$enable_video_track])
+
+# check whether to enable media source support
+AC_MSG_CHECKING([whether to enable media source support])
+AC_ARG_ENABLE(media_source,
+              AC_HELP_STRING([--enable-media-source],
+                             [enable support for media source [default=no]]),
+              [], [enable_media_source="no"])
+AC_MSG_RESULT([$enable_media_source])
+
+# check whether to enable media statistics support
+AC_MSG_CHECKING([whether to enable media statistics support])
+AC_ARG_ENABLE(media_statistics,
+              AC_HELP_STRING([--enable-media-statistics],
+                             [enable support for media statistics [default=no]]),
+              [], [enable_media_statistics="no"])
+AC_MSG_RESULT([$enable_media_statistics])
+
+# check whether to enable Javascript Fullscreen API support
+AC_MSG_CHECKING([whether to enable Fullscreen API support])
+AC_ARG_ENABLE(fullscreen_api,
+              AC_HELP_STRING([--enable-fullscreen-api],
+                             [enable the Fullscreen API support [default=yes]]),
+              [],[enable_fullscreen_api="yes"])
+AC_MSG_RESULT([$enable_fullscreen_api])
+
+# check whether to enable media stream support
+AC_MSG_CHECKING([whether to enable media stream support])
+AC_ARG_ENABLE(media_stream,
+              AC_HELP_STRING([--enable-media-stream],
+                             [enable media stream support (incomplete) [default=no]]),
+              [],[enable_media_stream="no"])
+AC_MSG_RESULT([$enable_media_stream])
 
 # check whether to enable XSLT support
 AC_MSG_CHECKING([whether to enable XSLT support])
@@ -431,17 +793,25 @@ AC_MSG_RESULT([$enable_xslt])
 AC_MSG_CHECKING([whether to enable geolocation support])
 AC_ARG_ENABLE(geolocation,
               AC_HELP_STRING([--enable-geolocation],
-                             [enable support for geolocation [default=no]]),
-              [],[enable_geolocation="no"])
+                             [enable support for geolocation [default=yes]]),
+              [],[enable_geolocation="yes"])
 AC_MSG_RESULT([$enable_geolocation])
 
 # check whether to enable MathML support
 AC_MSG_CHECKING([whether to enable MathML support])
 AC_ARG_ENABLE(mathml,
               AC_HELP_STRING([--enable-mathml],
-                             [enable support for MathML [default=no]]),
-              [],[enable_mathml="no"])
+                             [enable support for MathML [default=yes]]),
+              [],[enable_mathml="yes"])
 AC_MSG_RESULT([$enable_mathml])
+
+# check whether to enable MHTML support
+AC_MSG_CHECKING([whether to enable MHTML support])
+AC_ARG_ENABLE(mhtml,
+              AC_HELP_STRING([--enable-mhtml],
+                             [enable support for MHTML [default=no]]),
+              [],[enable_mhtml="no"])
+AC_MSG_RESULT([$enable_mhtml])
 
 # check whether to enable SVG support
 AC_MSG_CHECKING([whether to enable SVG support])
@@ -451,20 +821,20 @@ AC_ARG_ENABLE(svg,
               [],[enable_svg="yes"])
 AC_MSG_RESULT([$enable_svg])
 
-# check whether to enable WML support
-AC_MSG_CHECKING([whether to enable WML support])
-AC_ARG_ENABLE(wml,
-              AC_HELP_STRING([--enable-wml],
-                             [enable support for WML [default=no]]),
-              [],[enable_wml="no"])
-AC_MSG_RESULT([$enable_wml])
+# check whether to enable Shadow DOM support
+AC_MSG_CHECKING([whether to enable Shadow DOM support])
+AC_ARG_ENABLE(shadow_dom,
+              AC_HELP_STRING([--enable-shadow-dom],
+                             [enable support for Shadow DOM [default=yes]]),
+              [],[enable_shadow_dom="yes"])
+AC_MSG_RESULT([$enable_shadow_dom])
 
 # check whether to enable SharedWorkers support
 AC_MSG_CHECKING([whether to enable SharedWorkers support])
 AC_ARG_ENABLE(shared_workers,
               AC_HELP_STRING([--enable-shared-workers],
-                             [enable support for SharedWorkers [default=no]]),
-              [],[enable_shared_workers="no"])
+                             [enable support for SharedWorkers [default=yes]]),
+              [],[enable_shared_workers="yes"])
 AC_MSG_RESULT([$enable_shared_workers])
 
 # check whether to enable Web Workers support
@@ -475,22 +845,42 @@ AC_ARG_ENABLE(workers,
               [],[enable_workers="yes"])
 AC_MSG_RESULT([$enable_workers])
 
+# check whether to enable directory upload support
+AC_MSG_CHECKING([whether to enable directory upload support])
+AC_ARG_ENABLE(directory_upload,
+              AC_HELP_STRING([--enable-directory-upload],
+                             [enable support for directory upload [default=no]]),
+              [], [enable_directory_upload="no"])
+AC_MSG_RESULT([$enable_directory_upload])
+
+# check whether to enable HTML5 FileSystem API support
+AC_MSG_CHECKING([whether to enable HTML5 FileSystem API support])
+AC_ARG_ENABLE(file_system,
+              AC_HELP_STRING([--enable-file-system],
+                             [enable support for HTML5 FileSystem API [default=no]]),
+              [], [enable_file_system="no"])
+AC_MSG_RESULT([$enable_file_system])
+
+# check whether to enable HTML5 <style scoped> support
+AC_MSG_CHECKING([whether to enable HTML5 <style scoped> support])
+AC_ARG_ENABLE(style_scoped,
+              AC_HELP_STRING([--enable-style-scoped],
+                             [enable support for HTML5 <style scoped> [default=no]]),
+              [], [enable_style_scoped="no"])
+AC_MSG_RESULT([$enable_style_scoped])
+
+# check whether to enable Quota API support
+AC_MSG_CHECKING([whether to enable Quota API support])
+AC_ARG_ENABLE(quota,
+              AC_HELP_STRING([--enable-quota],
+                             [enable support for Quota API [default=no]]),
+              [], [enable_quota="no"])
+AC_MSG_RESULT([$enable_quota])
+
 # turn off svg features if --disable-svg is requested
 if test "$enable_svg" = "no"; then
-   enable_svg_animation=no
    enable_svg_fonts=no
-   enable_svg_foreign_object=no
-   enable_svg_as_image=no
-   enable_svg_use=no
 fi
-
-# check whether to enable support for SVG animation
-AC_MSG_CHECKING([whether to enable support for SVG animation])
-AC_ARG_ENABLE(svg_animation,
-              AC_HELP_STRING([--enable-svg-animation],
-                             [enable support for SVG animation (experimental) [default=yes]]),
-              [],[enable_svg_animation="yes"])
-AC_MSG_RESULT([$enable_svg_animation])
 
 # check whether to enable support for filters
 AC_MSG_CHECKING([whether to enable support for filters])
@@ -508,36 +898,8 @@ AC_ARG_ENABLE(svg_fonts,
               [],[enable_svg_fonts="yes"])
 AC_MSG_RESULT([$enable_svg_fonts])
 
-# check whether to enable foreign objects support for SVG
-AC_MSG_CHECKING([whether to enable support for SVG foreign objects])
-AC_ARG_ENABLE(svg_foreign_object,
-              AC_HELP_STRING([--enable-svg-foreign-object],
-                             [enable support for SVG foreign objects (experimental) [default=yes]]),
-              [],[enable_svg_foreign_object="yes"])
-AC_MSG_RESULT([$enable_svg_foreign_object])
-
-# check whether to enable SVG As Image support
-AC_MSG_CHECKING([whether to enable SVG as Image support])
-AC_ARG_ENABLE(svg_as_image,
-              AC_HELP_STRING([--enable-svg-as-image],
-                             [enable SVG as Image support (experimental) [default=yes]]),
-              [],[enable_svg_as_image="yes"])
-AC_MSG_RESULT([$enable_svg_as_image])
-
-# check whether to enable SVG USE element support
-AC_MSG_CHECKING([whether to enable support for SVG use element])
-AC_ARG_ENABLE(svg_use,
-              AC_HELP_STRING([--enable-svg-use],
-                             [enable SVG use element support (experimental) [default=yes]]),
-              [],[enable_svg_use="yes"])
-AC_MSG_RESULT([$enable_svg_use])
-
 # check for SVG features, enabling SVG if necessary
-if test "$enable_svg_animation" = "yes" || \
-   test "$enable_svg_fonts" = "yes" || \
-   test "$enable_svg_foreign_object" = "yes" || \
-   test "$enable_svg_as_image" = "yes" || \
-   test "$enable_svg_use" = "yes"; then
+if test "$enable_svg_fonts" = "yes"; then
    svg_flags=yes
    if test "$enable_svg" = "no"; then
        AC_MSG_WARN([SVG feature(s) requested but SVG is disabled.. Enabling SVG support])
@@ -549,9 +911,49 @@ fi
 AC_MSG_CHECKING([whether to enable Web Sockets support])
 AC_ARG_ENABLE(web_sockets,
               AC_HELP_STRING([--enable-web-sockets],
-                             [enable support for Web Sockets [default=no]]),
-              [],[enable_web_sockets="no"])
+                             [enable support for Web Sockets [default=yes]]),
+              [],[enable_web_sockets="yes"])
 AC_MSG_RESULT([$enable_web_sockets])
+
+# check whether to enable Web Audio support
+AC_MSG_CHECKING([whether to enable Web Audio support])
+AC_ARG_ENABLE(web_audio,
+              AC_HELP_STRING([--enable-web-audio],
+                             [enable support for Web Audio [default=no]]),
+              [],[enable_web_audio="no"])
+AC_MSG_RESULT([$enable_web_audio])
+
+# check whether to enable Web Timing support
+AC_MSG_CHECKING([whether to enable Web Timing support])
+AC_ARG_ENABLE(web_timing,
+              AC_HELP_STRING([--enable-web-timing],
+                             [enable support for Web Timing [default=no]]),
+              [],[enable_web_timing="no"])
+AC_MSG_RESULT([$enable_web_timing])
+
+# check whether to enable Blob support
+AC_MSG_CHECKING([whether to enable Blob support])
+AC_ARG_ENABLE(blob,
+              AC_HELP_STRING([--enable-blob],
+                             [enable support for Blob [default=yes]]),
+              [],[enable_blob="yes"])
+AC_MSG_RESULT([$enable_blob])
+
+# check whether to enable Legacy WebKitBlobBuilder support
+AC_MSG_CHECKING([whether to enable Legacy WebKitBlobBuilder support])
+AC_ARG_ENABLE(legacy_webkit_blob_builder,
+              AC_HELP_STRING([--enable-legacy-webkit-blob-builder],
+                             [enable support for Legacy WebKitBlobBuilder [default=yes]]),
+              [],[enable_legacy_webkit_blob_builder="yes"])
+AC_MSG_RESULT([$legacy_webkit_blob_builder])
+
+# check whether to enable Fast Mobile Scrolling support
+AC_MSG_CHECKING([whether to enable Fast Mobile Scrolling])
+AC_ARG_ENABLE(fast_mobile_scrolling,
+              AC_HELP_STRING([--enable-fast-mobile-scrolling],
+                             [enable support for Fast Mobile Scrolling [default=no]]),
+              [],[enable_fast_mobile_scrolling="no"])
+AC_MSG_RESULT([$enable_fast_mobile_scrolling])
 
 # check whether to enable code coverage
 AC_MSG_CHECKING([whether to enable code coverage support])
@@ -569,36 +971,58 @@ AC_ARG_ENABLE(fast_malloc,
               [],[if test "$enable_debug" = "yes"; then enable_fast_malloc="no"; else enable_fast_malloc="yes"; fi])
 AC_MSG_RESULT([$enable_fast_malloc])
 
+# check whether to enable debug symbols
+AC_MSG_CHECKING([whether to enable debug symbols])
+AC_ARG_ENABLE(debug_symbols,
+              AC_HELP_STRING([--enable-debug-symbols],
+                             [enable debug symbols default=no, default=yes for debug builds]),
+              [],[if test "$enable_debug" = "yes"; then enable_debug_symbols="yes"; else enable_debug_symbols="no"; fi])
+AC_MSG_RESULT([$enable_debug_symbols])
+
+# check whether to enable debug features
+AC_MSG_CHECKING([whether to enable debug features])
+AC_ARG_ENABLE(debug_features,
+              AC_HELP_STRING([--enable-debug-features],
+                             [enable debug features default=no, default=yes for debug builds]),
+              [],[if test "$enable_debug" = "yes"; then enable_debug_features="yes"; else enable_debug_features="no"; fi])
+AC_MSG_RESULT([$enable_debug_features])
+
 AC_MSG_CHECKING([whether to enable JIT compilation])
-AC_ARG_ENABLE([jit],
-              AC_HELP_STRING([--enable-jit],
-                             [Enable JIT compilation default=yes]),
-              [],[enable_jit="yes"])
-if test "$enable_jit" = "yes"; then
-    case "$host_cpu" in
-        i*86|x86_64)
-            AC_DEFINE([ENABLE_JIT], [1], [Define to enable JIT])
-            AC_DEFINE([ENABLE_YARR], [1], [Define to enable YARR])
-            AC_DEFINE([ENABLE_YARR_JIT], [1], [Define to enable YARR JIT])
-            AC_DEFINE([ENABLE_JIT_OPTIMIZE_CALL], [1], [Define to enable optimizing calls])
-            AC_DEFINE([ENABLE_JIT_OPTIMIZE_PROPERTY_ACCESS], [1], [Define to enable optimized property access])
-            AC_DEFINE([ENABLE_JIT_OPTIMIZE_ARITHMETIC], [1], [Define to enable optimized arithmetic])
-            case "$host_cpu" in
-                i*86)
-                    AC_DEFINE([WTF_USE_JIT_STUB_ARGUMENT_VA_LIST], [1], [Use stub va_list])
-                ;;
-                x86_64)
-                    AC_DEFINE([WTF_USE_JIT_STUB_ARGUMENT_REGISTER], [1], [Use stub register])
-                    AC_DEFINE([WTF_USE_ALTERNATE_JSIMMEDIATE], [1], [Use alternate JSImmediate])
-                ;;
-            esac
-        ;;
-        *)
-            enable_jit="no (CPU '$host_cpu' not supported)"
-        ;;
-    esac
-fi
+AC_ARG_ENABLE(jit,
+              AS_HELP_STRING([--enable-jit],
+                             [Enable JIT compilation (default: autodetect)]))
+case "$enable_jit" in
+  yes) JSC_CPPFLAGS="-DENABLE_JIT=1" ;;
+  no) JSC_CPPFLAGS="-DENABLE_JIT=0" ;;
+  *) enable_jit="autodetect" ;;
+esac
+AC_SUBST(JSC_CPPFLAGS)
 AC_MSG_RESULT([$enable_jit])
+
+# Opcode stats
+AC_MSG_CHECKING([whether to enable opcode stats])
+AC_ARG_ENABLE([opcode-stats],
+  [AS_HELP_STRING([--enable-opcode-stats], [Enable Opcode statistics (default: disabled)])],
+  [], [enable_opcode_stats=no])
+AC_MSG_RESULT([$enable_opcode_stats])
+
+if test "$enable_opcode_stats" = "yes"; then
+  if test "$enable_jit" = "yes"; then
+    AC_MSG_ERROR([JIT must be disabled for Opcode stats to work.])
+  fi
+  AC_DEFINE([ENABLE_OPCODE_STATS], [1], [Define to enable Opcode statistics])
+fi
+
+# Link prefetch
+AC_MSG_CHECKING([whether to enable link prefetch support])
+AC_ARG_ENABLE([link-prefetch],
+  [AS_HELP_STRING([--enable-link-prefetch], [Enable Link prefetch support (default: disabled)])],
+  [],[enable_link_prefetch=no])
+AC_MSG_RESULT([$enable_link_prefetch])
+
+if test "$enable_link_prefetch" = "yes"; then 
+  AC_DEFINE([ENABLE_LINK_PREFETCH], [1], [Define to enable link prefetch support])
+fi
 
 # GObject Introspection
 AC_MSG_CHECKING([whether to enable GObject introspection support])
@@ -607,6 +1031,46 @@ AC_ARG_ENABLE([introspection],
   [],[enable_introspection=no])
 AC_MSG_RESULT([$enable_introspection])
 
+# check whether to enable animation API
+AC_MSG_CHECKING([whether to enable Animation API support])
+AC_ARG_ENABLE(animation_api,
+              AC_HELP_STRING([--enable-animation-api],
+                             [enable support for Animation API (experimental) [default=no]]),
+              [], [enable_animation_api="no"])
+AC_MSG_RESULT([$enable_animation_api])
+
+# check whether to enable requestAnimationFrame support
+AC_MSG_CHECKING([whether to enable requestAnimationFrame support])
+AC_ARG_ENABLE(request_animation_frame,
+              AC_HELP_STRING([--enable-request-animation-frame],
+                             [enable support for requestAnimationFrame (experimental) [default=yes]]),
+              [],[enable_request_animation_frame="yes"])
+AC_MSG_RESULT([$enable_request_animation_frame])
+
+# check whether to enable touch icon loading 
+AC_MSG_CHECKING([whether to enable touch icon loading])
+AC_ARG_ENABLE(touch_icon_loading,
+              AC_HELP_STRING([--enable-touch-icon-loading],
+                             [enable support for loading touch icons [default=no]]),
+              [], [enable_touch_icon_loading="no"])
+AC_MSG_RESULT([$enable_touch_icon_loading])
+
+# check whether to enable Register Protocol Handler support
+AC_MSG_CHECKING([whether to enable Register Protocol Handler])
+AC_ARG_ENABLE(register_protocol_handler,
+              AC_HELP_STRING([--enable-register-protocol-handler],
+                             [enable support for Register Protocol Handler (experimental) [default=no]]),
+              [],[enable_register_protocol_handler="no"])
+AC_MSG_RESULT([$enable_register_protocol_handler])
+
+# check whether to enable DeviceOrientation support
+AC_MSG_CHECKING([whether to enable DeviceOrientation])
+AC_ARG_ENABLE(device_orientation,
+              AC_HELP_STRING([--enable-device-orientation],
+                             [enable support for DeviceOrientation (experimental and incomplete) [default=no]]),
+              [],[enable_device_orientation="no"])
+AC_MSG_RESULT([$enable_device_orientation])
+
 G_IR_SCANNER=
 G_IR_COMPILER=
 G_IR_GENERATE=
@@ -614,23 +1078,18 @@ GIRDIR=
 GIRTYPELIBDIR=
 
 if test "$enable_introspection" = "yes"; then
-  GOBJECT_INTROSPECTION_REQUIRED=0.6.2
+  GOBJECT_INTROSPECTION_REQUIRED=0.9.5
   PKG_CHECK_MODULES([INTROSPECTION],[gobject-introspection-1.0 >= $GOBJECT_INTROSPECTION_REQUIRED])
   
   G_IR_SCANNER="$($PKG_CONFIG --variable=g_ir_scanner gobject-introspection-1.0)"
   G_IR_COMPILER="$($PKG_CONFIG --variable=g_ir_compiler gobject-introspection-1.0)"
   G_IR_GENERATE="$($PKG_CONFIG --variable=g_ir_generate gobject-introspection-1.0)"
-  GIRDIR="$($PKG_CONFIG --define-variable=prefix=$prefix --variable=girdir gobject-introspection-1.0)"
-  GIRTYPELIBDIR="$($PKG_CONFIG --define-variable=prefix=$prefix --variable=typelibdir gobject-introspection-1.0)"
-
   AC_DEFINE([ENABLE_INTROSPECTION],[1],[Define to enable GObject introspection support])
 fi
 
 AC_SUBST([G_IR_SCANNER])
 AC_SUBST([G_IR_COMPILER])
 AC_SUBST([G_IR_GENERATE])
-AC_SUBST([GIRDIR])
-AC_SUBST([GIRTYPELIBDIR])
 
 # determine the font backend
 AC_MSG_CHECKING([the font backend to use])
@@ -645,11 +1104,18 @@ case "$with_font_backend" in
 esac
 AC_MSG_RESULT([$with_font_backend])
 
-# Add '-g' flag to gcc if it's debug build
-if test "$enable_debug" = "yes"; then
+if test "$host_cpu" = "sh4"; then
+   CXXFLAGS="$CXXFLAGS -mieee -w"
+   CFLAGS="$CFLAGS -mieee -w"
+fi
+
+# Add '-g' flag to gcc to build with debug symbols
+if test "$enable_debug_symbols" = "yes"; then
    CXXFLAGS="$CXXFLAGS -g"
    CFLAGS="$CFLAGS -g"
-else
+fi
+
+if test "$enable_debug_features" = "no"; then
    AC_DEFINE([NDEBUG], [1], [Define to disable debugging features])
 fi
 
@@ -667,15 +1133,6 @@ PKG_CHECK_MODULES([LIBSOUP],
 AC_SUBST([LIBSOUP_CFLAGS])
 AC_SUBST([LIBSOUP_LIBS])
 
-# check if we can use libSoup 2.29.90 features
-PKG_CHECK_MODULES([LIBSOUP_2_29_90],
-                  [libsoup-2.4 >= 2.29.90],
-                  [have_libsoup_2_29_90=yes],
-                  [have_libsoup_2_29_90=no])
-if test "$have_libsoup_2_29_90" = "yes"; then
-   AC_DEFINE([HAVE_LIBSOUP_2_29_90], 1, [Whether libSoup 2.29.90 features are available])
-fi
-
 # check if FreeType/FontConfig are available
 if test "$with_font_backend" = "freetype"; then
    if test "$with_target" = "directfb"; then
@@ -692,22 +1149,23 @@ if test "$with_font_backend" = "freetype"; then
    AC_SUBST([FREETYPE_LIBS])
 fi
 
-# check if sqlite 3 is available
-if test "$enable_icon_database" = "yes" || \
-   test "$enable_database" = "yes" || \
-   test "$enable_offline_web_applications" = "yes" || \
-   test "$enable_dom_storage" = "yes"; then
-   PKG_CHECK_MODULES([SQLITE3],
-                     [sqlite3 >= $SQLITE_REQUIRED_VERSION],
-                     [sqlite3_has_pkg_config=yes],
-                     [sqlite3_has_pkg_config=no])
-   if test "$sqlite3_has_pkg_config" = "no"; then
-      AC_SEARCH_LIBS([sqlite3_open16], [sqlite3],
-                     [SQLITE3_LIBS="$LIBS";SQLITE3_CFLAGS="-I $srcdir/WebKitLibraries/WebCoreSQLite3"],
-                     [AC_MSG_ERROR([SQLite3 is required to enable Database support])])
-   fi
-   AC_SUBST([SQLITE3_CFLAGS])
-   AC_SUBST([SQLITE3_LIBS])
+# check if SQLite3 is available. Error out only if one of the
+# features hard-depending on it is enabled while SQLite3 is
+# unavailable.
+PKG_CHECK_MODULES([SQLITE3],
+                  [sqlite3 >= $SQLITE_REQUIRED_VERSION],
+                  [sqlite3_has_pkg_config=yes],
+                  [sqlite3_has_pkg_config=no])
+if test "$sqlite3_has_pkg_config" = "no"; then
+   AC_SEARCH_LIBS([sqlite3_open16], [sqlite3],
+                  [sqlite3_found=yes;SQLITE3_LIBS="$LIBS";SQLITE3_CFLAGS="-I $srcdir/WebKitLibraries/WebCoreSQLite3"],
+                  [sqlite3_found=no])
+fi
+AC_SUBST([SQLITE3_CFLAGS])
+AC_SUBST([SQLITE3_LIBS])
+
+if (test "$sqlite3_found" = "no"); then
+   AC_MSG_ERROR([SQLite3 is required for the Database related features])
 fi
 
 # check if libxslt is available
@@ -724,17 +1182,52 @@ if test "$enable_geolocation" = "yes"; then
     AC_SUBST([GEOCLUE_LIBS])
 fi
 
+# check for XRender under Linux/Unix. Some linkers require explicit
+# linkage (like GNU Gold), so we cannot rely on GTK+ pulling XRender
+if test "$os_win32" = "no"; then
+   PKG_CHECK_MODULES([XRENDER], [xrender])
+   AC_SUBST([XRENDER_CFLAGS])
+   AC_SUBST([XRENDER_LIBS])
+fi
+
 # check if gstreamer is available
-if test "$enable_video" = "yes"; then
-   PKG_CHECK_MODULES([GSTREAMER],
-                     [gstreamer-0.10 >= $GSTREAMER_REQUIRED_VERSION
-                     gstreamer-app-0.10
-                     gstreamer-base-0.10
-                     gstreamer-pbutils-0.10
-                     gstreamer-plugins-base-0.10 >= $GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION
-                     gstreamer-video-0.10])
+if test "$enable_video" = "yes" || test "$enable_web_audio" = "yes"; then
+    gstreamer_modules="gstreamer-$GST_API_VERSION >= $GSTREAMER_REQUIRED_VERSION
+                       gstreamer-app-$GST_API_VERSION
+                       gstreamer-audio-$GST_API_VERSION
+                       gstreamer-fft-$GST_API_VERSION
+                       gstreamer-base-$GST_API_VERSION
+                       gstreamer-pbutils-$GST_API_VERSION
+                       gstreamer-plugins-base-$GST_API_VERSION >= $GSTREAMER_PLUGINS_BASE_REQUIRED_VERSION
+                       gstreamer-video-$GST_API_VERSION";
+   if test "$GST_API_VERSION" != "1.0"; then
+       gstreamer_modules="$gstreamer_modules gstreamer-interfaces-$GST_API_VERSION";
+   fi
+   PKG_CHECK_MODULES([GSTREAMER], [$gstreamer_modules], [have_gstreamer=yes])
    AC_SUBST([GSTREAMER_CFLAGS])
    AC_SUBST([GSTREAMER_LIBS])
+fi
+
+
+if test "$with_accelerated_compositing" = "clutter"; then
+   PKG_CHECK_MODULES(CLUTTER, clutter-1.0 >= $CLUTTER_REQUIRED_VERSION)
+   PKG_CHECK_MODULES([CLUTTER_GTK],
+                     [clutter-gtk-1.0 >= $CLUTTER_GTK_REQUIRED_VERSION])
+
+   AC_SUBST(CLUTTER_CFLAGS)
+   AC_SUBST(CLUTTER_LIBS)
+   AC_SUBST(CLUTTER_GTK_CFLAGS)
+   AC_SUBST(CLUTTER_GTK_LIBS)
+fi
+
+# check if atspi2 is available (only needed for Webkit2 unit tests)
+if test "$enable_webkit2" = "yes"; then
+   PKG_CHECK_MODULES([ATSPI2],
+                     [atspi-2 >= $ATSPI2_REQUIRED_VERSION],
+                     [have_atspi2=yes], [have_atspi2=no])
+
+   AC_SUBST([ATSPI2_CFLAGS])
+   AC_SUBST([ATSPI2_LIBS])
 fi
 
 # check for code coverage support
@@ -749,6 +1242,47 @@ fi
 if test "$enable_video" = "yes"; then
     html_flags=yes
 fi
+
+# WebKit2
+AC_MSG_CHECKING([whether to build Webkit2])
+AC_ARG_ENABLE(webkit2,
+    AC_HELP_STRING([--enable-webkit2], [build webkit2 [default=no]]),
+    [], [enable_webkit2="no"])
+AC_MSG_RESULT([$enable_webkit2])
+if test "$enable_webkit2" = "yes"; then
+   if test "$GTK_API_VERSION" = "2.0"; then
+      AC_MSG_ERROR([WebKit2 requires GTK+ 3.x, use --with-gtk=3.0])
+   fi
+
+   # Check Unix printing
+   PKG_CHECK_MODULES(GTK_UNIX_PRINTING, gtk+-unix-print-3.0,
+                     [have_gtk_unix_printing=yes],
+                     [have_gtk_unix_printing=no])
+   AC_SUBST(GTK_UNIX_PRINTING_CFLAGS)
+   AC_SUBST(GTK_UNIX_PRINTING_LIBS)
+   if test "$have_gtk_unix_printing" = "yes"; then
+       AC_DEFINE([HAVE_GTK_UNIX_PRINTING], [1], [Define if GTK+ UNIX Printing is available])
+   fi
+fi
+
+# Plugin Process
+AC_MSG_CHECKING([whether to build plugin process for WebKit2])
+AC_ARG_ENABLE(plugin_process,
+            AC_HELP_STRING([--enable-plugin-process], [build plugin process for WebKit2 [default=yes]]),
+                           [], [enable_plugin_process="yes"])
+AC_MSG_RESULT([$enable_plugin_process])
+
+# Build the plugin process only when building Webkit2.
+if test "$enable_webkit2" = "no"; then
+    enable_plugin_process=no
+fi
+
+# Make sure we have GTK+ 2.x to build the plugin process.
+if test "$enable_plugin_process" = "yes"; then
+   PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= $GTK2_REQUIRED_VERSION gail >= $GAIL2_REQUIRED_VERSION)
+fi
+AC_SUBST(GTK2_CFLAGS)
+AC_SUBST(GTK2_LIBS)
 
 GTK_DOC_CHECK([1.10])
 
@@ -773,55 +1307,116 @@ AM_CONDITIONAL([USE_GLIB_UNICODE], [test "$with_unicode_backend" = "glib"])
 AM_CONDITIONAL([USE_FREETYPE], [test "$with_font_backend" = "freetype"])
 AM_CONDITIONAL([USE_PANGO], [test "$with_font_backend" = "pango"])
 
+# GStreamer feature conditional
+AM_CONDITIONAL([USE_GSTREAMER], [test "$have_gstreamer" = "yes"])
+AM_CONDITIONAL([USE_WEBAUDIO_GSTREAMER], [test "$enable_web_audio" = "yes"])
+
+# ATSPI2 conditional
+AM_CONDITIONAL([HAVE_ATSPI2], [test "$have_atspi2" = "yes"])
+
+# Accelerated compositing conditional
+AM_CONDITIONAL([USE_ACCELERATED_COMPOSITING], [test "$with_accelerated_compositing" = "cairo" || test "$with_accelerated_compositing" = "opengl" || test "$with_accelerated_compositing" = "clutter"])
+AM_CONDITIONAL([USE_TEXTURE_MAPPER_CAIRO], [test "$with_accelerated_compositing" = "cairo"])
+AM_CONDITIONAL([USE_TEXTURE_MAPPER_GL], [test "$with_accelerated_compositing" = "opengl"])
+AM_CONDITIONAL([USE_CLUTTER], [test "$with_accelerated_compositing" = "clutter"])
+
+# These are the same now, but they will soon be separate.
+AM_CONDITIONAL([USE_GLX], [test "$with_accelerated_compositing" = "opengl" || test "$enable_webgl" = "yes"])
+AM_CONDITIONAL([USE_OPENGL], [test "$with_accelerated_compositing" = "opengl" || test "$enable_webgl" = "yes"])
+
 # WebKit feature conditionals
-AM_CONDITIONAL([ENABLE_DEBUG],[test "$enable_debug" = "yes"])
-AM_CONDITIONAL([ENABLE_3D_TRANSFORMS],[test "$enable_3D_transforms" = "yes"])
+AM_CONDITIONAL([ENABLE_DEBUG],[test "$enable_debug_features" = "yes"])
+AM_CONDITIONAL([ENABLE_WEBGL],[test "$enable_webgl" = "yes"])
+AM_CONDITIONAL([ENABLE_BLOB],[test "$enable_blob" = "yes"])
+AM_CONDITIONAL([ENABLE_LEGACY_WEBKIT_BLOB_BUILDER],[test "$enable_legacy_webkit_blob_builder" = "yes"])
+AM_CONDITIONAL([ENABLE_METER_TAG],[test "$enable_meter_tag" = "yes"])
+AM_CONDITIONAL([ENABLE_MICRODATA],[test "$enable_microdata" = "yes"])
+AM_CONDITIONAL([ENABLE_PAGE_VISIBILITY_API],[test "$enable_page_visibility_api" = "yes"])
+AM_CONDITIONAL([ENABLE_PROGRESS_TAG],[test "$enable_progress_tag" = "yes"])
 AM_CONDITIONAL([ENABLE_CHANNEL_MESSAGING],[test "$enable_channel_messaging" = "yes"])
 AM_CONDITIONAL([ENABLE_JAVASCRIPT_DEBUGGER],[test "$enable_javascript_debugger" = "yes"])
-AM_CONDITIONAL([ENABLE_OFFLINE_WEB_APPLICATIONS],[test "$enable_offline_web_applications" = "yes"])
-AM_CONDITIONAL([ENABLE_DOM_STORAGE],[test "$enable_dom_storage" = "yes"])
-AM_CONDITIONAL([ENABLE_DATABASE],[test "$enable_database" = "yes"])
+AM_CONDITIONAL([ENABLE_GAMEPAD],[test "$enable_gamepad" = "yes"])
+AM_CONDITIONAL([ENABLE_DIRECTORY_UPLOAD],[test "$enable_directory_upload" = "yes"])
+AM_CONDITIONAL([ENABLE_DATAGRID],[test "$enable_datagrid" = "yes"])
+AM_CONDITIONAL([ENABLE_DATA_TRANSFER_ITEMS],[test "$enable_data_transfer_items" = "yes"])
+AM_CONDITIONAL([ENABLE_SQL_DATABASE],[test "$enable_sql_database" = "yes"])
 AM_CONDITIONAL([ENABLE_DATALIST],[test "$enable_datalist" = "yes"])
-AM_CONDITIONAL([ENABLE_EVENTSOURCE],[test "$enable_eventsource" = "yes"])
+AM_CONDITIONAL([ENABLE_DETAILS],[test "$enable_details" = "yes"])
+AM_CONDITIONAL([ENABLE_FAST_MOBILE_SCROLLING],[test "$enable_fast_mobile_scrolling" = "yes"])
+AM_CONDITIONAL([ENABLE_FILE_SYSTEM],[test "$enable_file_system" = "yes"])
+AM_CONDITIONAL([ENABLE_STYLE_SCOPED],[test "$enable_style_scoped" = "yes"])
+AM_CONDITIONAL([ENABLE_QUOTA],[test "$enable_quota" = "yes"])
 AM_CONDITIONAL([ENABLE_ICONDATABASE],[test "$enable_icon_database" = "yes"])
+AM_CONDITIONAL([ENABLE_IMAGE_RESIZER],[test "$enable_image_resizer" = "yes"])
 AM_CONDITIONAL([ENABLE_INDEXED_DATABASE],[test "$enable_indexed_database" = "yes"])
-AM_CONDITIONAL([ENABLE_XHTMLMP],[test "$enable_xhtmlmp" = "yes"])
-AM_CONDITIONAL([ENABLE_XPATH],[test "$enable_xpath" = "yes"])
+AM_CONDITIONAL([ENABLE_INPUT_TYPE_COLOR],[test "$enable_input_type_color" = "yes"])
+AM_CONDITIONAL([ENABLE_INPUT_SPEECH],[test "$enable_input_speech" = "yes"])
+AM_CONDITIONAL([ENABLE_SCRIPTED_SPEECH],[test "$enable_scripted_speech" = "yes"])
 AM_CONDITIONAL([ENABLE_XSLT],[test "$enable_xslt" = "yes"])
 AM_CONDITIONAL([ENABLE_FILTERS],[test "$enable_filters" = "yes"])
 AM_CONDITIONAL([ENABLE_GEOLOCATION], [test "$enable_geolocation" = "yes"])
 AM_CONDITIONAL([ENABLE_MATHML], [test "$enable_mathml" = "yes"])
-AM_CONDITIONAL([ENABLE_RUBY],[test "$enable_ruby" = "yes"])
+AM_CONDITIONAL([ENABLE_MHTML], [test "$enable_mhtml" = "yes"])
 AM_CONDITIONAL([ENABLE_VIDEO],[test "$enable_video" = "yes"])
+AM_CONDITIONAL([ENABLE_MEDIA_SOURCE],[test "$enable_media_source" = "yes"])
+AM_CONDITIONAL([ENABLE_MEDIA_STATISTICS],[test "$enable_media_statistics" = "yes"])
+AM_CONDITIONAL([ENABLE_VIDEO_TRACK],[test "$enable_video_track" = "yes"])
+AM_CONDITIONAL([ENABLE_FULLSCREEN_API],[test "$enable_fullscreen_api" = "yes"])
+AM_CONDITIONAL([ENABLE_MEDIA_STREAM],[test "$enable_media_stream" = "yes"])
+AM_CONDITIONAL([ENABLE_LEGACY_NOTIFICATIONS],[test "$enable_legacy_notifications" = "yes"])
 AM_CONDITIONAL([ENABLE_NOTIFICATIONS],[test "$enable_notifications" = "yes"])
 AM_CONDITIONAL([ENABLE_ORIENTATION_EVENTS],[test "$enable_orientation_events" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG],[test "$enable_svg" = "yes"])
-AM_CONDITIONAL([ENABLE_SVG_ANIMATION],[test "$enable_svg_animation" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG_FONTS],[test "$enable_svg_fonts" = "yes"])
-AM_CONDITIONAL([ENABLE_SVG_FOREIGN_OBJECT],[test "$enable_svg_foreign_object" = "yes"])
-AM_CONDITIONAL([ENABLE_SVG_AS_IMAGE],[test "$enable_svg_as_image" = "yes"])
-AM_CONDITIONAL([ENABLE_SVG_USE],[test "$enable_svg_use" = "yes"])
 AM_CONDITIONAL([ENABLE_COVERAGE],[test "$enable_coverage" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MALLOC],[test "$enable_fast_malloc" = "yes"])
-AM_CONDITIONAL([ENABLE_WML],[test "$enable_wml" = "yes"])
 AM_CONDITIONAL([ENABLE_WORKERS],[test "$enable_workers" = "yes"])
+AM_CONDITIONAL([ENABLE_SHADOW_DOM],[test "$enable_shadow_dom" = "yes"])
 AM_CONDITIONAL([ENABLE_SHARED_WORKERS],[test "$enable_shared_workers" = "yes"])
 AM_CONDITIONAL([SVG_FLAGS],[test "$svg_flags" = "yes"])
 AM_CONDITIONAL([HTML_FLAGS],[test "$html_flags" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_SOCKETS],[test "$enable_web_sockets" = "yes"])
+AM_CONDITIONAL([ENABLE_WEB_AUDIO],[test "$enable_web_audio" = "yes"])
+AM_CONDITIONAL([ENABLE_WEB_TIMING],[test "$enable_web_timing" = "yes"])
+AM_CONDITIONAL([ENABLE_OPCODE_STATS],[test "$enable_opcode_stats" = "yes"])
+AM_CONDITIONAL([ENABLE_WEBKIT2],[test "$enable_webkit2" = "yes"])
+AM_CONDITIONAL([ENABLE_PLUGIN_PROCESS],[test "$enable_plugin_process" = "yes"])
+AM_CONDITIONAL([ENABLE_SPELLCHECK],[test "$enable_spellcheck" = "yes"])
+AM_CONDITIONAL([ENABLE_ANIMATION_API],[test "$enable_animation_api" = "yes"])
+AM_CONDITIONAL([ENABLE_REQUEST_ANIMATION_FRAME],[test "$enable_request_animation_frame" = "yes"])
+AM_CONDITIONAL([ENABLE_TOUCH_ICON_LOADING],[test "$enable_touch_icon_loading" = "yes"])
+AM_CONDITIONAL([ENABLE_REGISTER_PROTOCOL_HANDLER],[test "$enable_register_protocol_handler" = "yes"])
+AM_CONDITIONAL([ENABLE_DEVICE_ORIENTATION],[test "$enable_device_orientation" = "yes"])
+AM_CONDITIONAL([ENABLE_MUTATION_OBSERVERS],[test "$enable_mutation_observers" = "yes"])
 
 # Gtk conditionals
 AM_CONDITIONAL([ENABLE_INTROSPECTION],[test "$enable_introspection" = "yes"])
 
-
 AC_CONFIG_FILES([
 GNUmakefile
-WebKit/gtk/webkit-1.0.pc:WebKit/gtk/webkit.pc.in
-WebKit/gtk/webkit/webkitversion.h
-WebKit/gtk/docs/GNUmakefile
-WebKit/gtk/docs/version.xml
+])
+ 
+
+AC_CONFIG_FILES([
+Source/WebKit/gtk/webkit/webkitversion.h
+])
+
+AC_CONFIG_FILES([
+Source/WebKit/gtk/${WEBKITGTK_PC_NAME}-${WEBKITGTK_API_VERSION}.pc:Source/WebKit/gtk/webkit.pc.in
+Source/WebKit/gtk/JSCore-${WEBKITGTK_API_VERSION}.gir:Source/WebKit/gtk/JSCore.gir.in
+Source/JavaScriptCore/javascriptcoregtk-${WEBKITGTK_API_VERSION}.pc:Source/JavaScriptCore/javascriptcoregtk.pc.in
 ]
+,[WEBKITGTK_API_VERSION=$WEBKITGTK_API_VERSION,WEBKITGTK_PC_NAME=$WEBKITGTK_PC_NAME]
 )
+
+
+if test "$enable_webkit2" = "yes"; then
+    AC_CONFIG_FILES([
+    Source/WebKit2/webkit2gtk-${WEBKITGTK_API_VERSION}.pc:Source/WebKit2/webkit2gtk.pc.in
+    ]
+    ,[WEBKITGTK_API_VERSION=$WEBKITGTK_API_VERSION,WEBKITGTK_PC_NAME=$WEBKITGTK_PC_NAME]
+    )
+fi
 
 AC_OUTPUT
 
@@ -830,43 +1425,78 @@ WebKit was configured with the following options:
 
 Build configuration:
  Enable debugging (slow)                                  : $enable_debug
+ Compile with debug symbols (slow)                        : $enable_debug_symbols
+ Enable debug features (slow)                             : $enable_debug_features
  Enable GCC build optimization                            : $enable_optimizations
  Code coverage support                                    : $enable_coverage
  Unicode backend                                          : $with_unicode_backend
  Font backend                                             : $with_font_backend
  Optimized memory allocator                               : $enable_fast_malloc
+ Accelerated Compositing                                  : $with_accelerated_compositing
+
 Features:
- 3D Transforms                                            : $enable_3D_transforms
+ WebGL                                                    : $enable_webgl
+ Blob support                                             : $enable_blob
+ Legacy WebKitBlobBuilder support                         : $enable_legacy_webkit_blob_builder
+ DOM mutation observer support                            : $enable_mutation_observers
+ DeviceOrientation support                                : $enable_device_orientation
+ Directory upload                                         : $enable_directory_upload
+ Fast Mobile Scrolling                                    : $enable_fast_mobile_scrolling
  JIT compilation                                          : $enable_jit
  Filters support                                          : $enable_filters
  Geolocation support                                      : $enable_geolocation
  JavaScript debugger/profiler support                     : $enable_javascript_debugger
+ Gamepad support                                          : $enable_gamepad
  MathML support                                           : $enable_mathml
- HTML5 offline web applications support                   : $enable_offline_web_applications
+ Media source                                             : $enable_media_source
+ Media statistics                                         : $enable_media_statistics
+ MHTML support                                            : $enable_mhtml
  HTML5 channel messaging support                          : $enable_channel_messaging
+ HTML5 meter element support                              : $enable_meter_tag
+ HTML5 microdata support                                  : $enable_microdata
+ Page Visibility API support                              : $enable_page_visibility_api
+ HTML5 progress element support                           : $enable_progress_tag
  HTML5 client-side session and persistent storage support : $enable_dom_storage
- HTML5 client-side database storage support               : $enable_database
- HTML5 ruby support                                       : $enable_ruby
- HTML5 server-sent events support                         : $enable_eventsource
+ SQL client-side database storage support                 : $enable_sql_database
+ HTML5 datagrid support                                   : $enable_datagrid
+ HTML5 data transfer items support                        : $enable_data_transfer_items
+ HTML5 FileSystem API support                             : $enable_file_system
+ Quota API support                                        : $enable_quota
+ HTML5 sandboxed iframe support                           : $enable_sandbox
  HTML5 video element support                              : $enable_video
+ HTML5 track element support                              : $enable_video_track
+ Fullscreen API support                                   : $enable_fullscreen_api
+ Media stream support                                     : $enable_media_stream
  Icon database support                                    : $enable_icon_database
+ Image resizer support                                    : $enable_image_resizer
+ Link prefetch support                                    : $enable_link_prefetch
+ Opcode stats                                             : $enable_opcode_stats
+ Shadow DOM support                                       : $enable_shadow_dom
  SharedWorkers support                                    : $enable_shared_workers
+ Color input support                                      : $enable_input_type_color
+ Speech input support                                     : $enable_input_speech
+ Scripted speech support                                  : $enable_scripted_speech
  SVG support                                              : $enable_svg
- SVG animation support                                    : $enable_svg_animation
  SVG fonts support                                        : $enable_svg_fonts
- SVG foreign object support                               : $enable_svg_foreign_object
- SVG as image support                                     : $enable_svg_as_image
- SVG use element support                                  : $enable_svg_use
- WML support                                              : $enable_wml
+ Web Audio support                                        : $enable_web_audio
  Web Sockets support                                      : $enable_web_sockets
+ Web Timing support                                       : $enable_web_timing
  Web Workers support                                      : $enable_workers
- XHTML-MP support                                         : $enable_xhtmlmp
- XPATH support                                            : $enable_xpath
  XSLT support                                             : $enable_xslt
+ Spellcheck support                                       : $enable_spellcheck
+ Animation API                                            : $enable_animation_api
+ RequestAnimationFrame support                            : $enable_request_animation_frame
+ Touch Icon Loading support                               : $enable_touch_icon_loading
+ Register Protocol Handler support                        : $enable_register_protocol_handler
+ WebKit2 support                                          : $enable_webkit2
+ WebKit2 plugin process                                   : $enable_plugin_process
+
 GTK+ configuration:
+ GTK+ version                                             : $with_gtk
  GDK target                                               : $with_target
- Hildon UI extensions                                     : $with_hildon
+ GStreamer version                                        : $with_gstreamer
  Introspection support                                    : $enable_introspection
+ Generate documentation                                   : $enable_gtk_doc
 "
 if test "$with_unicode_backend" = "glib"; then
    echo "     >> WARNING: the glib-based unicode backend is slow and incomplete <<"

@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../../../fast/js/resources/js-test-style.css">
 <script src="../../../../fast/js/resources/js-test-pre.js"></script>
 <style id="style" media="screen">
 .non-existent-class {
@@ -12,13 +11,17 @@
 </style>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
-<iframe id="xmlframe" onload="frameLoaded()" style="height:0px" src="data:application/xhtml+xml,<?xml version='1.0' encoding='UTF-8'?><body/>"></iframe>
 <script>
 
 if (window.layoutTestController)
     layoutTestController.waitUntilDone();
+
+function objCWrapperIsInstanceOf(node, className)
+{
+    if (!window.objCController)
+        return "only works under DumpRenderTree";
+    return !!objCController.isObjectInstanceOf(node, className);
+}
 
 function objCWrapperClass(node)
 {
@@ -145,7 +148,7 @@ function runTest()
     debug('Other');
     debug('');
 
-    test("window", "DOMWindow", "DOMAbstractView");
+    test("window", "Window", "DOMAbstractView");
 
     debug('');
     debug('HTML DOM');
@@ -210,9 +213,8 @@ function runTest()
     testTag("img", "HTMLImageElement");
     testTag("input", "HTMLInputElement");
     testTag("ins", "HTMLModElement");
-    testTag("isindex", "HTMLIsIndexElement");
     testTag("kbd", "HTMLElement");
-    testTag("keygen", "HTMLSelectElement");
+    testTag("keygen", "HTMLElement");
     testTag("label", "HTMLLabelElement");
     testTag("layer", "HTMLElement");
     testTag("legend", "HTMLLegendElement");
@@ -268,15 +270,15 @@ function runTest()
     debug('JavaScript types');
     debug('');
 
-    shouldBe("objCWrapperClass(null)", "'nil'");
-    shouldBe("objCWrapperClass(undefined)", "'WebUndefined'");
-    shouldBe("objCWrapperClass(0)", "'NSCFNumber'");
-    shouldBe("objCWrapperClass(1)", "'NSCFNumber'");
-    shouldBe("objCWrapperClass(false)", "'NSCFBoolean'");
-    shouldBe("objCWrapperClass(true)", "'NSCFBoolean'");
-    shouldBe("objCWrapperClass('')", "'NSCFString'");
-    shouldBe("objCWrapperClass({ })", "'WebScriptObject'");
-    shouldBe("objCWrapperClass([ ])", "'WebScriptObject'");
+    shouldBeTrue("objCWrapperIsInstanceOf(null, 'nil')");
+    shouldBeTrue("objCWrapperIsInstanceOf(undefined, 'WebUndefined')");
+    shouldBeTrue("objCWrapperIsInstanceOf(0, 'NSNumber')");
+    shouldBeTrue("objCWrapperIsInstanceOf(1, 'NSNumber')");
+    shouldBeTrue("objCWrapperIsInstanceOf(false, 'NSNumber')");
+    shouldBeTrue("objCWrapperIsInstanceOf(true, 'NSNumber')");
+    shouldBeTrue("objCWrapperIsInstanceOf('', 'NSString')");
+    shouldBeTrue("objCWrapperIsInstanceOf({ }, 'WebScriptObject')");
+    shouldBeTrue("objCWrapperIsInstanceOf([ ], 'WebScriptObject')");
 
     shouldBe("objCObjectOfClass('NSNull')", "null"); // can't test with typeof because typeof null is 'object'
     shouldBe("typeof objCObjectOfClass('')", "'undefined'");
@@ -316,5 +318,8 @@ function frameLoaded()
 }
 
 </script>
+<p id="description"></p>
+<div id="console"></div>
+<iframe id="xmlframe" onload="frameLoaded()" style="height:0px" src="data:application/xhtml+xml,<?xml version='1.0' encoding='UTF-8'?><body/>"></iframe>
 </body>
 </html>

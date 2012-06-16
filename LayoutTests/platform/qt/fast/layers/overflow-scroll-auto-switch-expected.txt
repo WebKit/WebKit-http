@@ -3,38 +3,38 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock (anonymous) at (0,0) size 784x19
-        RenderText {#text} at (0,0) size 143x19
-          text run at (0,0) width 143: "Scrollbars should work"
-layer at (8,27) size 100x100 clip at (8,27) size 84x84 scrollWidth 272 scrollHeight 190
-  RenderBlock (relative positioned) {DIV} at (0,19) size 100x100
-    RenderText {#text} at (0,0) size 272x19
-      text run at (0,0) width 272: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      RenderBlock (anonymous) at (0,0) size 784x21
+        RenderText {#text} at (0,0) size 162x21
+          text run at (0,0) width 162: "Scrollbars should work"
+layer at (8,29) size 100x100 clip at (8,29) size 84x84 scrollWidth 306 scrollHeight 210
+  RenderBlock (relative positioned) {DIV} at (0,21) size 100x100
+    RenderText {#text} at (0,0) size 306x21
+      text run at (0,0) width 306: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     RenderBR {BR} at (0,0) size 0x0
-    RenderText {#text} at (0,19) size 8x19
-      text run at (0,19) width 8: "a"
-    RenderBR {BR} at (8,33) size 0x0
-    RenderText {#text} at (0,38) size 8x19
-      text run at (0,38) width 8: "a"
-    RenderBR {BR} at (8,52) size 0x0
-    RenderText {#text} at (0,57) size 8x19
-      text run at (0,57) width 8: "a"
-    RenderBR {BR} at (8,71) size 0x0
-    RenderText {#text} at (0,76) size 8x19
-      text run at (0,76) width 8: "a"
-    RenderBR {BR} at (8,90) size 0x0
-    RenderText {#text} at (0,95) size 8x19
-      text run at (0,95) width 8: "a"
-    RenderBR {BR} at (8,109) size 0x0
-    RenderText {#text} at (0,114) size 8x19
-      text run at (0,114) width 8: "a"
-    RenderBR {BR} at (8,128) size 0x0
-    RenderText {#text} at (0,133) size 8x19
-      text run at (0,133) width 8: "a"
-    RenderBR {BR} at (8,147) size 0x0
-    RenderText {#text} at (0,152) size 8x19
-      text run at (0,152) width 8: "a"
-    RenderBR {BR} at (8,166) size 0x0
-    RenderText {#text} at (0,171) size 8x19
-      text run at (0,171) width 8: "a"
-    RenderBR {BR} at (8,185) size 0x0
+    RenderText {#text} at (0,21) size 9x21
+      text run at (0,21) width 9: "a"
+    RenderBR {BR} at (9,37) size 0x0
+    RenderText {#text} at (0,42) size 9x21
+      text run at (0,42) width 9: "a"
+    RenderBR {BR} at (9,58) size 0x0
+    RenderText {#text} at (0,63) size 9x21
+      text run at (0,63) width 9: "a"
+    RenderBR {BR} at (9,79) size 0x0
+    RenderText {#text} at (0,84) size 9x21
+      text run at (0,84) width 9: "a"
+    RenderBR {BR} at (9,100) size 0x0
+    RenderText {#text} at (0,105) size 9x21
+      text run at (0,105) width 9: "a"
+    RenderBR {BR} at (9,121) size 0x0
+    RenderText {#text} at (0,126) size 9x21
+      text run at (0,126) width 9: "a"
+    RenderBR {BR} at (9,142) size 0x0
+    RenderText {#text} at (0,147) size 9x21
+      text run at (0,147) width 9: "a"
+    RenderBR {BR} at (9,163) size 0x0
+    RenderText {#text} at (0,168) size 9x21
+      text run at (0,168) width 9: "a"
+    RenderBR {BR} at (9,184) size 0x0
+    RenderText {#text} at (0,189) size 9x21
+      text run at (0,189) width 9: "a"
+    RenderBR {BR} at (9,205) size 0x0

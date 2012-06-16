@@ -13,7 +13,7 @@ rectElement.setAttribute("fill", "url(#pattern)");
 
 var transform = rootSVGElement.createSVGTransform();
 
-shouldBe("transform.type", "SVGTransform.SVG_TRANSFORM_UNKNOWN");
+shouldBe("transform.type", "SVGTransform.SVG_TRANSFORM_MATRIX");
 shouldBe("transform.matrix.a", "1.0");
 shouldBe("transform.matrix.b", "0.0");
 shouldBe("transform.matrix.c", "0.0");
@@ -61,7 +61,7 @@ shouldBe("patternElement.patternTransform.baseVal.getItem(0).matrix.d", "1.0");
 shouldBe("patternElement.patternTransform.baseVal.getItem(0).matrix.e", "0.0");
 shouldBe("patternElement.patternTransform.baseVal.getItem(0).matrix.f", "0.0");
 
-function executeTest() {
+function repaintTest() {
     patternElement.patternTransform.baseVal.getItem(0).matrix.a = 4;
 
     shouldBe("patternElement.patternTransform.baseVal.getItem(0).matrix.a", "4.0");
@@ -73,7 +73,5 @@ function executeTest() {
 
     completeTest();
 }
-
-startTest(rectElement, 150, 150);
 
 var successfullyParsed = true;

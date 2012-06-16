@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <svg xmlns="http://www.w3.org/2000/svg" id="svg" width="600" height="400">
-  <foreignObject>
+  <foreignObject width="100%" height="100%">
     <html xmlns="http://www.w3.org/1999/xhtml">
       <div id="log">
         This tests to make sure that baseVal and animVal are tied when animation is not enabled:
@@ -28,10 +28,14 @@
       else
         log("FAILED");
       log("setting svg.x.animVal.value = 5");
-      svg.x.animVal.value = 5;
+      try {
+        svg.x.animVal.value = 5;
+      } catch(e) {
+        log("caught exception: " + e.message);
+      }
       log("svg.x.baseVal.value = " + svg.x.baseVal.value);
       log("svg.x.animVal.value = " + svg.x.animVal.value);
-      if ((svg.x.baseVal.value == svg.x.animVal.value) && (svg.x.animVal.value == 5))
+      if ((svg.x.baseVal.value == svg.x.animVal.value) && (svg.x.animVal.value == 10))
         log("SUCCESS (2 of 2)");
       else
         log("FAILED");

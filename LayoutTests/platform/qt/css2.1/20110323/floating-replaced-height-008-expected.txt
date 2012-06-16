@@ -1,0 +1,34 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x191
+  RenderBlock {HTML} at (0,0) size 800x191
+    RenderBody {BODY} at (8,16) size 784x42
+      RenderBlock {P} at (0,0) size 784x42
+        RenderText {#text} at (0,0) size 120x21
+          text run at (0,0) width 120: "There should be "
+        RenderInline {STRONG} at (0,0) size 163x21
+          RenderText {#text} at (120,0) size 163x21
+            text run at (120,0) width 163: "5 filled green squares"
+        RenderText {#text} at (283,0) size 205x21
+          text run at (283,0) width 205: " with the same width and the "
+        RenderInline {STRONG} at (0,0) size 93x21
+          RenderText {#text} at (488,0) size 93x21
+            text run at (488,0) width 93: "same height"
+        RenderText {#text} at (581,0) size 774x42
+          text run at (581,0) width 193: ". The 5 filled green squares"
+          text run at (0,21) width 74: "should be "
+        RenderInline {STRONG} at (0,0) size 64x21
+          RenderText {#text} at (74,21) size 64x21
+            text run at (74,21) width 64: "identical"
+        RenderText {#text} at (138,21) size 496x21
+          text run at (138,21) width 496: " to each other. This should still remain true even after a window resize."
+      RenderBlock {DIV} at (0,58) size 784x0
+        RenderImage {IMG} at (0,0) size 117x117
+        RenderImage {IMG} at (117,0) size 5x5
+        RenderImage {IMG} at (122,0) size 117x117
+        RenderImage {IMG} at (239,0) size 5x5
+        RenderImage {IMG} at (244,0) size 117x117
+        RenderImage {IMG} at (361,0) size 5x5
+        RenderImage {IMG} at (366,0) size 117x117
+        RenderImage {IMG} at (483,0) size 5x5
+        RenderImage {IMG} at (488,0) size 117x117

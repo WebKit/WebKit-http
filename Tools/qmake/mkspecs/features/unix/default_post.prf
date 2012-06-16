@@ -1,0 +1,49 @@
+# -------------------------------------------------------------------
+# Unix specific defaults
+#
+# See 'Tools/qmake/README' for an overview of the build system
+# -------------------------------------------------------------------
+
+# Use SSE2 floating point math on 32 bit instead of the default
+# 387 to make layout test results same on 32 and on 64 bit builds.
+# See https://bugs.webkit.org/show_bug.cgi?id=52810#c39 for details.
+linux-g++*:isEqual(QT_ARCH,i386) {
+    QMAKE_CFLAGS += -march=pentium4 -msse2 -mfpmath=sse
+    QMAKE_CXXFLAGS += -march=pentium4 -msse2 -mfpmath=sse
+}
+
+# Treat warnings as errors on x86/Linux/GCC
+linux-g++* {
+    isEqual(QT_ARCH,x86_64)|isEqual(QT_ARCH,i386): QMAKE_CXXFLAGS += -Werror
+    greaterThan(QT_GCC_MAJOR_VERSION, 3):greaterThan(QT_GCC_MINOR_VERSION, 5) {
+        if (!contains(QMAKE_CXXFLAGS, -std=c++0x) && !contains(QMAKE_CXXFLAGS, -std=gnu++0x)) {
+            # We need to deactivate those warnings because some names conflicts with upcoming c++0x types (e.g.nullptr).
+            QMAKE_CFLAGS_WARN_ON += -Wno-c++0x-compat
+            QMAKE_CXXFLAGS_WARN_ON += -Wno-c++0x-compat
+            QMAKE_CFLAGS += -Wno-c++0x-compat
+            QMAKE_CXXFLAGS += -Wno-c++0x-compat
+        }
+    }
+}
+
+# Don't warn about OVERRIDE and FINAL, since they are feature-checked anyways
+*clang:!contains(QMAKE_CXXFLAGS, -std=c++11) {
+    QMAKE_CXXFLAGS += -Wno-c++11-extensions
+    QMAKE_OBJECTIVE_CFLAGS += -Wno-c++11-extensions
+}
+
+contains(TEMPLATE, app): CONFIG += rpath
+
+isEqual(QT_ARCH,i386):CONFIG(debug, debug|release) {
+  # Make ld don't cache the symbol tables of input files in memory to avoid memory exhaustion during the linking phase.
+  # We have to use ld, because --no-keep-memory isn't supported by ld.gold.
+  QMAKE_LFLAGS += -Wl,--no-keep-memory
+} else {
+  # Use gold if available
+  !scratchbox:!mac:exists(/usr/bin/ld.gold) {
+      # Upstream gcc 4.7 does not support the -fuse-ld=gold option ( see: http://sourceware.org/ml/binutils/2011-01/msg00178.html )
+      isEqual(QT_GCC_MAJOR_VERSION, 4):lessThan(QT_GCC_MINOR_VERSION, 7):QMAKE_LFLAGS += -fuse-ld=gold
+  }
+}
+
+load(default_post)

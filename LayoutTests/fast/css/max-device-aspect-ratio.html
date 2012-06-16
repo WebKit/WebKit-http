@@ -1,9 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head id="myhead">
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
-<script src="../js/resources/js-test-post-function.js"></script>
 <script>
 if (window.layoutTestController) {
     window.layoutTestController.waitUntilDone();
@@ -43,7 +41,6 @@ function waitForStylesheetLoad()
 
     if (document.defaultView.getComputedStyle(document.getElementById('description'), null).color == "rgb(0, 128, 0)") {
         shouldBe("document.defaultView.getComputedStyle(document.getElementById('description'), null).color", "'rgb(0, 128, 0)'");
-        window.successfullyParsed = true;
         isSuccessfullyParsed();
         if (window.layoutTestController) {
             window.layoutTestController.notifyDone();
@@ -61,7 +58,5 @@ function waitForStylesheetLoad()
 </script>
 </head>
 <body onload="doTest()">
-<p id="description"></p>
-<div id="console"></div>
 </body>
 </html>

@@ -1,0 +1,1447 @@
+2012-05-02  Tom Zakrajsek  <tomz@codeaurora.org>
+
+        Need tests for PerfTestRunner.computeStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=85410
+
+        Reviewed by Ryosuke Niwa.
+
+        * resources/runner.js:
+
+2012-05-02  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r115905.
+        http://trac.webkit.org/changeset/115905
+        https://bugs.webkit.org/show_bug.cgi?id=85435
+
+        New computeStatistics test is failing on chromium ports
+        (Requested by tomz on #webkit).
+
+        * resources/runner.js:
+
+2012-05-02  Tom Zakrajsek  <tomz@codeaurora.org>
+
+        Need tests for PerfTestRunner.computeStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=85410
+
+        Reviewed by Ryosuke Niwa.
+
+        * resources/runner.js:
+
+2012-04-29  Tom Zakrajsek  <tomz@codeaurora.org>
+
+        PerfTestRunner.computeStatistics incorrectly calculates min, max and median
+        https://bugs.webkit.org/show_bug.cgi?id=85111
+
+        Reviewed by Ryosuke Niwa.
+
+        The sort of the data input was being done alphabetically.
+        So I provided a numeric compare function.
+
+        * resources/runner.js:
+
+2012-04-17  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: the fix for test after massive rename in r114271.
+        https://bugs.webkit.org/show_bug.cgi?id=84147
+
+        Drive by fix. The test was renamed to heap-snapshot.html
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot.html: Renamed from PerformanceTests/inspector/detailed-heapshots-smoke-test.html.
+
+2012-04-16  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: rename heap profiler files and classes DetailedHeapshot* ->HeapSnapshot*
+        https://bugs.webkit.org/show_bug.cgi?id=84038
+
+        A bunch of renames "detailed heapshot" -> "heap snapshot".
+
+        Reviewed by Pavel Feldman.
+
+        * inspector/detailed-heapshots-smoke-test.html:
+
+2012-04-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix skipped list.
+
+        * Skipped:
+
+2012-04-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable SVG page loading performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=83861
+
+        Reviewed by Adam Barth.
+
+        Unskip PageLoad directory and skip tests that load too fast (less than 100ms) and are unstable,
+        and the ones that take too long to load (more than 20s).
+
+        * Skipped:
+
+2012-04-04  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Unreviewed. temporary disable broken inspector tests.
+
+        * inspector/first-open-scripts.html.broken: Renamed from PerformanceTests/inspector/first-open-scripts.html.
+        * inspector/network-append-30-requests.html.broken: Renamed from PerformanceTests/inspector/network-append-30-requests.html.
+        * inspector/show-panel.html.broken: Renamed from PerformanceTests/inspector/show-panel.html.
+
+2012-04-04  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: linearise aggregate's retaining size calculation.
+        https://bugs.webkit.org/show_bug.cgi?id=83125
+
+        This version is twice as fast as the original and it is non-recursive.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/detailed-heapshots-smoke-test.html:
+
+2012-03-30  David Barr  <davidbarr@chromium.org>
+
+        Split up top-level .gitignore and .gitattributes
+        https://bugs.webkit.org/show_bug.cgi?id=82687
+
+        Reviewed by Tor Arne Vestbø.
+
+        * .gitattributes: Added.
+
+2012-03-28  Yury Semikhatsky  <yurys@chromium.org>
+
+        Web Inspector: switch heap profiler front-end to separate storage of nodes and edges
+        https://bugs.webkit.org/show_bug.cgi?id=82453
+
+        Updated heap profiler performance test after heap profiler front-end
+        changes.
+
+        Reviewed by Pavel Feldman.
+
+        * inspector/detailed-heapshots-smoke-test.html:
+
+2012-03-27  Alexis Menard  <alexis.menard@openbossa.org>
+
+        Add a perf test which updates the value of an already declared CSS property.
+        https://bugs.webkit.org/show_bug.cgi?id=82321
+
+        Reviewed by Andreas Kling.
+
+        This benchmark update CSS existing properties of the style from JS.
+
+        * CSS/CSSPropertyUpdateValue.html: Added.
+
+2012-03-15  Kentaro Hara  <haraken@chromium.org>
+
+        [PerformanceTests] run-perf-tests should output correct units
+        https://bugs.webkit.org/show_bug.cgi?id=78303
+
+        Reviewed by Ryosuke Niwa.
+
+        Previously run-perf-tests just supported "ms" for units.
+        Consequently, Dromaeo perf tests had been reporting runs/s as "ms".
+        This patch fixes run-perf-tests so that they can support custom units.
+        The default unit is "ms".
+
+        The test result looks like this:
+
+        $ ./Tools/Scripts/run-perf-tests Dromaeo/dom-attr.html
+        RESULT Dromaeo: dom-attr= 6465.9525483 runs/s
+        median= 0.0 runs/s, stdev= 24.2983433436 runs/s, min= 6435.87649402 runs/s, max= 6515.63693392 runs/s
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (.):
+        * resources/runner.js:
+        (PerfTestRunner.computeStatistics):
+        (PerfTestRunner.printStatistics):
+
+2012-03-15  Alexis Menard  <alexis.menard@openbossa.org>
+
+        Fix the test failing with run-perf-tests.
+
+        Rubber stamped by Ryosuke Niwa.
+
+        * CSS/CSSPropertySetterGetter.html:
+
+2012-03-14  Alexis Menard  <alexis.menard@openbossa.org>
+
+        Add a new perf test to benchmark setting and reading CSS properties from JS.
+        https://bugs.webkit.org/show_bug.cgi?id=81155
+
+        Reviewed by Ryosuke Niwa.
+
+        This benchmark read and set CSS properties from JS. It contains a list
+        of common CSS properties.
+
+        * CSS/CSSPropertySetterGetter.html: Added.
+
+2012-03-14  Alexandru Chiculita  <achicu@adobe.com>
+
+        Layout/floats.html should be runnable by run-perf-tests
+        https://bugs.webkit.org/show_bug.cgi?id=77051
+
+        Reviewed by Ryosuke Niwa.
+
+        I've split Layout/floats.html into multiple tests for each button in the original manual test.
+        Some tests take longer to run and I've changed the number of iterations, so that each tests finishes under 30s per run.
+
+        * DOM/resources/dom-perf.js:
+        * Layout/floats.html: Removed.
+        * Layout/floats_100_100.html: Added.
+        * Layout/floats_100_100_nested.html: Added.
+        * Layout/floats_20_100.html: Added.
+        * Layout/floats_20_100_nested.html: Added.
+        * Layout/floats_2_100.html: Added.
+        * Layout/floats_2_100_nested.html: Added.
+        * Layout/floats_50_100.html: Added.
+        * Layout/floats_50_100_nested.html: Added.
+        * Layout/resources/floats.css: Added.
+        (.container):
+        (.float):
+        (.big):
+        (.float-end):
+        * Layout/resources/floats.js: Added.
+        (.):
+        * Skipped:
+        * resources/runner.js:
+        (PerfTestRunner.resetRandomSeed):
+        (PerfTestRunner.random):
+        (Math.random):
+            Moved the Math.random to runner.js to be used by all tests.
+            Added resetRandomSeed to bring the randomizer back to initial seed.
+            It is useful to get the same results at every run and minimize the
+            differences between runs.
+
+2012-03-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r110559.
+        http://trac.webkit.org/changeset/110559
+        https://bugs.webkit.org/show_bug.cgi?id=81142
+
+        Broke Dromaeo tests (Requested by rniwa on #webkit).
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (.):
+
+2012-03-13  Kentaro Hara  <haraken@chromium.org>
+
+        Dromaeo perf-tests results are wrong
+        https://bugs.webkit.org/show_bug.cgi?id=80974
+
+        Reviewed by Hajime Morita.
+
+        Dromaeo perf-tests had reported the sum of runs/seconds as "ms".
+        This patch fixes them to report the execution time per run.
+
+        At present, they report "0.0ms" for "stdev". This is because
+        dromaeorunner.js can just know stdev of "runs/seconds"
+        and cannot calculate stdev of "ms" from that. We can fix it later.
+
+        * Dromaeo/resources/dromaeorunner.js:
+        (.):
+
+2012-03-12  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: chromium: increase heap snapshot performance coverage.
+        https://bugs.webkit.org/show_bug.cgi?id=80829
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/detailed-heapshots-smoke-test.html:
+        * inspector/performance-test.js:
+        (initialize_TimeTracker.InspectorTest.measureFunction):
+
+2012-03-06  Kentaro Hara  <haraken@chromium.org>
+
+        [Perf tests] Reduce the number of loops in dom-attributes.html
+        https://bugs.webkit.org/show_bug.cgi?id=80077
+
+        Reviewed by Ryosuke Niwa.
+
+        dom-attributes.html takes 100~ seconds in the perf bots. This patch reduces
+        the time by reducing the number of loops.
+
+        This is just a temporary fix. After more detailed investigation, I will reduce
+        the number of tests in dom-attributes.html, and revert back the number of loops
+        to guarantee the reliability of the perf test results.
+
+        * Bindings/dom-attributes.html:
+
+2012-03-06  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: Heap Snapshot test: split overal time metric into separate metrics.
+        https://bugs.webkit.org/show_bug.cgi?id=80409
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/detailed-heapshots-smoke-test.html:
+
+2012-03-05  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: [chromium] introduce HeapSnapshot performance test.
+        https://bugs.webkit.org/show_bug.cgi?id=80280
+
+        Reviewed by Pavel Feldman.
+
+        * inspector/detailed-heapshots-smoke-test.html: Added.
+
+2012-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DOM tests take too long to run
+        https://bugs.webkit.org/show_bug.cgi?id=80082
+
+        Reviewed by Eric Seidel.
+
+        Reduce benchmark.timeToRun from 500ms to 100ms. Doesn't seem to affect test results much
+        (except DOM/DOMTable.html) but significantly reduces the runtime of tests.
+
+        * DOM/resources/dom-perf.js:
+        (BenchmarkSuite.prototype.RunSingle):
+
+2012-02-26  Kentaro Hara  <haraken@chromium.org>
+
+        [Performance Tests] [Chromium] Bindings/dom-attributes.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=79593
+
+        Reviewed by Adam Barth.
+
+        This patch halves the execution time of Bindings/dom-attributes.html
+        in order to avoid timeout in Chromium. The reason for the timeout is that
+        V8 DOM bindings are too much slower than JSC bindings.
+        I am a bit afraid that this patch will reduce the accuracy of the
+        perf test results, but it would make sense to reduce the execution time
+        until we fix the performance issue in V8 DOM bindings.
+
+        * Bindings/dom-attributes.html:
+
+2012-02-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename dom*_*attributes.html to dom*-*attributes.html to follow the WebKit convention.
+
+        * Bindings/dom-attributes.html: Copied from PerformanceTests/Bindings/dom_attributes.html.
+        * Bindings/dom_attributes.html: Removed.
+
+2012-02-24  Kentaro Hara  <haraken@chromium.org>
+
+        Unreviewed, rolling out r108477.
+        http://trac.webkit.org/changeset/108477
+        https://bugs.webkit.org/show_bug.cgi?id=79209
+
+        The perf tests committed in r108748 covers the perf tests
+        committed in r108477. So I'll roll out r108477.
+
+        * Bindings/dom_attributes_id_getter.html: Removed.
+        * Bindings/dom_attributes_id_setter.html: Removed.
+        * Bindings/resources/dom_attributes_common.js: Removed.
+
+2012-02-24  Kentaro Hara  <haraken@chromium.org>
+
+        Add performance tests for DOM attribute getters and setters
+        https://bugs.webkit.org/show_bug.cgi?id=79208
+
+        Reviewed by Ryosuke Niwa.
+
+        This patch adds performance micro-benchmarks for DOM attribute
+        getters and setters. We selected DOM attributes from HTMLElement,
+        Element and Node which will most impact on the DOM performance
+        in the real Web and which have different call-paths from another
+        DOM attribute.
+
+        The perf test result in my local Chromium/Linux environment is as follows:
+        median= 14967.0 ms, stdev= 85.2385476178 ms, min= 14861.0 ms, max= 15155.0 ms
+
+        If we run the test with DumpRenderTree, we can get the following test results:
+        Info: [HTMLElement.id] avg=65.76ms, median=65.00ms, stdev=2.14ms, min=63, max=70
+        Info: [HTMLElement.title] avg=64.05ms, median=63.00ms, stdev=1.50ms, min=63, max=67
+        Info: [HTMLElement.lang] avg=64.19ms, median=63.00ms, stdev=1.82ms, min=62, max=67
+        Info: [HTMLElement.dir] avg=64.10ms, median=63.00ms, stdev=1.72ms, min=62, max=68
+        Info: [HTMLElement.className] avg=63.33ms, median=63.00ms, stdev=0.89ms, min=63, max=67
+        Info: [HTMLElement.classList] avg=1946.00ms, median=1945.00ms, stdev=38.22ms, min=1921, max=2110
+        Info: [HTMLElement.tabIndex] avg=83.52ms, median=80.00ms, stdev=6.00ms, min=79, max=94
+        Info: [HTMLElement.draggable] avg=78.14ms, median=81.00ms, stdev=3.51ms, min=74, max=82
+        Info: [HTMLElement.webkitdropzone] avg=64.33ms, median=63.00ms, stdev=1.98ms, min=63, max=68
+        Info: [HTMLElement.hidden] avg=65.57ms, median=64.00ms, stdev=3.27ms, min=63, max=71
+        Info: [HTMLElement.accessKey] avg=64.43ms, median=63.00ms, stdev=2.11ms, min=62, max=68
+        Info: [HTMLElement.children] avg=130.76ms, median=128.00ms, stdev=9.75ms, min=109, max=143
+        Info: [HTMLElement.isContentEditable] avg=74.29ms, median=75.00ms, stdev=2.00ms, min=71, max=77
+        Info: [HTMLElement.spellcheck] avg=79.52ms, median=80.00ms, stdev=2.52ms, min=76, max=82
+        Info: [HTMLElement.innerHTML] avg=279.05ms, median=279.00ms, stdev=1.96ms, min=276, max=283
+        Info: [HTMLElement.innerText] avg=204.14ms, median=203.00ms, stdev=2.95ms, min=200, max=210
+        Info: [HTMLElement.outerHTML] avg=1544.10ms, median=1546.00ms, stdev=15.56ms, min=1514, max=1568
+        Info: [HTMLElement.outerText] avg=216.05ms, median=207.00ms, stdev=18.19ms, min=201, max=247
+        Info: [HTMLElement.contentEditable] avg=334.24ms, median=323.00ms, stdev=36.06ms, min=318, max=446
+        Info: [HTMLElement.id="foo"] avg=53.19ms, median=53.00ms, stdev=1.76ms, min=52, max=58
+        Info: [HTMLElement.title="foo"] avg=63.14ms, median=63.00ms, stdev=0.35ms, min=63, max=64
+        Info: [HTMLElement.lang="foo"] avg=60.86ms, median=61.00ms, stdev=0.56ms, min=60, max=62
+        Info: [HTMLElement.dir="foo"] avg=53.57ms, median=54.00ms, stdev=0.58ms, min=53, max=55
+        Info: [HTMLElement.className="foo"] avg=64.52ms, median=64.00ms, stdev=0.91ms, min=63, max=66
+        Info: [HTMLElement.tabIndex="foo"] avg=367.86ms, median=369.00ms, stdev=8.06ms, min=352, max=380
+        Info: [HTMLElement.draggable="foo"] avg=79.43ms, median=79.00ms, stdev=0.58ms, min=79, max=81
+        Info: [HTMLElement.webkitdropzone="foo"] avg=62.14ms, median=62.00ms, stdev=0.35ms, min=62, max=63
+        Info: [HTMLElement.hidden="foo"] avg=61.67ms, median=62.00ms, stdev=0.71ms, min=61, max=64
+        Info: [HTMLElement.accessKey="foo"] avg=61.86ms, median=62.00ms, stdev=0.56ms, min=61, max=63
+        Info: [HTMLElement.spellcheck="foo"] avg=79.57ms, median=80.00ms, stdev=0.58ms, min=78, max=80
+        Info: [HTMLElement.innerHTML="foo"] avg=1176.67ms, median=1169.00ms, stdev=26.60ms, min=1146, max=1246
+        Info: [HTMLElement.innerText="foo"] avg=51.62ms, median=52.00ms, stdev=0.72ms, min=50, max=53
+        Info: [Element.tagName] avg=79.52ms, median=80.00ms, stdev=1.05ms, min=78, max=81
+        Info: [Element.style] avg=126.19ms, median=126.00ms, stdev=10.40ms, min=104, max=161
+        Info: [Element.offsetLeft] avg=98.95ms, median=104.00ms, stdev=4.01ms, min=100, max=99
+        Info: [Element.clientLeft] avg=98.33ms, median=102.00ms, stdev=2.59ms, min=100, max=99
+        Info: [Element.scrollLeft] avg=103.29ms, median=96.00ms, stdev=15.63ms, min=100, max=97
+        Info: [Element.dataset] avg=2448.62ms, median=2441.00ms, stdev=20.43ms, min=2426, max=2503
+        Info: [Element.firstElementChild] avg=58.71ms, median=58.00ms, stdev=2.37ms, min=57, max=65
+        Info: [Element.lastElementChild] avg=56.33ms, median=55.00ms, stdev=1.83ms, min=54, max=59
+        Info: [Element.previousElementSibling] avg=52.95ms, median=52.00ms, stdev=1.70ms, min=52, max=57
+        Info: [Element.nextElementSibling] avg=58.48ms, median=58.00ms, stdev=1.79ms, min=57, max=63
+        Info: [Element.childElementCount] avg=64.57ms, median=64.00ms, stdev=1.81ms, min=63, max=71
+        Info: [Element.onload] avg=98.38ms, median=98.00ms, stdev=0.49ms, min=98, max=99
+        Info: [Element.scrollLeft="foo"] avg=95.24ms, median=95.00ms, stdev=0.92ms, min=94, max=98
+        Info: [Element.onload="foo"] avg=67.14ms, median=67.00ms, stdev=0.56ms, min=66, max=68
+        Info: [Node.nodeName] avg=76.29ms, median=76.00ms, stdev=0.63ms, min=75, max=77
+        Info: [Node.nodeType] avg=53.05ms, median=52.00ms, stdev=2.61ms, min=52, max=61
+        Info: [Node.parentNode] avg=53.52ms, median=53.00ms, stdev=1.22ms, min=52, max=56
+        Info: [Node.childNodes] avg=118.33ms, median=123.00ms, stdev=8.85ms, min=107, max=129
+        Info: [Node.firstChild] avg=53.62ms, median=53.00ms, stdev=1.13ms, min=51, max=55
+        Info: [Node.lastChild] avg=53.14ms, median=53.00ms, stdev=1.21ms, min=52, max=55
+        Info: [Node.previousSibling] avg=51.86ms, median=51.00ms, stdev=1.55ms, min=50, max=54
+        Info: [Node.nextSibling] avg=52.86ms, median=54.00ms, stdev=1.81ms, min=50, max=55
+        Info: [Node.attributes] avg=2027.71ms, median=2026.00ms, stdev=10.48ms, min=2010, max=2051
+        Info: [Node.ownerDocument] avg=152.14ms, median=152.00ms, stdev=1.73ms, min=149, max=155
+        Info: [Node.namespaceURI] avg=60.86ms, median=59.00ms, stdev=3.85ms, min=56, max=66
+        Info: [Node.localName] avg=60.00ms, median=59.00ms, stdev=2.71ms, min=57, max=66
+        Info: [Node.baseURI] avg=671.10ms, median=668.00ms, stdev=10.66ms, min=659, max=706
+        Info: [Node.parentElement] avg=55.05ms, median=56.00ms, stdev=2.15ms, min=52, max=58
+        Info: [Node.nodeValue] avg=61.24ms, median=60.00ms, stdev=2.56ms, min=59, max=68
+        Info: [Node.prefix] avg=60.90ms, median=58.00ms, stdev=4.26ms, min=57, max=68
+        Info: [Node.textContent] avg=149.71ms, median=149.00ms, stdev=1.12ms, min=148, max=152
+        Info: [Node.nodeValue="foo"] avg=23.62ms, median=23.00ms, stdev=0.72ms, min=23, max=25
+        Info: [Node.prefix="foo"] avg=49.57ms, median=49.00ms, stdev=0.73ms, min=49, max=51
+        Info: [Node.textContent="foo"] avg=145.81ms, median=140.00ms, stdev=17.43ms, min=138, max=199
+
+        * Bindings/dom_attributes.html: Added.
+        * resources/runner.js:
+        (PerfTestRunner.info):
+
+2012-02-22  Kentaro Hara  <haraken@chromium.org>
+
+        Add performance tests for the Element.id getter and setter
+        https://bugs.webkit.org/show_bug.cgi?id=79209
+
+        Reviewed by Adam Barth.
+
+        This patch adds performance tests for the Element.id getter and setter.
+
+        The results of 10 runs in my local Chromium/Linux are as follows:
+
+        dom_attributes_id_getter.html:
+        median= 92.0 ms, stdev= 1.65151445649 ms, min= 89.0 ms, max= 96.0 ms
+        median= 87.5 ms, stdev= 1.84390889146 ms, min= 85.0 ms, max= 92.0 ms
+        median= 94.0 ms, stdev= 1.46543508898 ms, min= 90.0 ms, max= 95.0 ms
+        median= 86.0 ms, stdev= 1.66958078571 ms, min= 84.0 ms, max= 91.0 ms
+        median= 94.0 ms, stdev= 2.25610283454 ms, min= 103.0 ms, max= 98.0 ms
+        median= 86.0 ms, stdev= 1.49666295471 ms, min= 84.0 ms, max= 91.0 ms
+        median= 86.0 ms, stdev= 1.5321553446 ms, min= 84.0 ms, max= 90.0 ms
+        median= 86.0 ms, stdev= 2.20227155455 ms, min= 84.0 ms, max= 94.0 ms
+        median= 96.0 ms, stdev= 1.74570902501 ms, min= 101.0 ms, max= 99.0 ms
+        median= 86.0 ms, stdev= 1.63935963108 ms, min= 84.0 ms, max= 90.0 ms
+        median= 94.0 ms, stdev= 1.49248115566 ms, min= 90.0 ms, max= 95.0 ms
+        median= 88.0 ms, stdev= 5.20192272146 ms, min= 84.0 ms, max= 98.0 ms
+        median= 86.0 ms, stdev= 1.41067359797 ms, min= 84.0 ms, max= 89.0 ms
+        median= 86.0 ms, stdev= 1.48660687473 ms, min= 84.0 ms, max= 89.0 ms
+        median= 94.0 ms, stdev= 1.58113883008 ms, min= 93.0 ms, max= 97.0 ms
+        median= 86.0 ms, stdev= 1.95959179423 ms, min= 84.0 ms, max= 93.0 ms
+        median= 86.0 ms, stdev= 1.8547236991 ms, min= 84.0 ms, max= 92.0 ms
+        median= 86.0 ms, stdev= 1.39283882772 ms, min= 84.0 ms, max= 89.0 ms
+        median= 88.0 ms, stdev= 1.48660687473 ms, min= 85.0 ms, max= 90.0 ms
+        median= 86.5 ms, stdev= 2.3 ms, min= 84.0 ms, max= 93.0 ms
+
+        dom_attributes_id_setter.html:
+        median= 123.0 ms, stdev= 2.06397674406 ms, min= 119.0 ms, max= 128.0 ms
+        median= 119.0 ms, stdev= 1.92028643697 ms, min= 117.0 ms, max= 123.0 ms
+        median= 121.0 ms, stdev= 1.8781639971 ms, min= 118.0 ms, max= 123.0 ms
+        median= 123.0 ms, stdev= 2.21585198062 ms, min= 119.0 ms, max= 130.0 ms
+        median= 124.5 ms, stdev= 2.36378933071 ms, min= 119.0 ms, max= 129.0 ms
+        median= 122.0 ms, stdev= 2.4474476501 ms, min= 118.0 ms, max= 128.0 ms
+        median= 123.0 ms, stdev= 1.76351920885 ms, min= 118.0 ms, max= 125.0 ms
+        median= 119.0 ms, stdev= 1.79652442232 ms, min= 117.0 ms, max= 125.0 ms
+        median= 121.0 ms, stdev= 1.49916643506 ms, min= 119.0 ms, max= 123.0 ms
+        median= 119.5 ms, stdev= 1.85135085816 ms, min= 117.0 ms, max= 125.0 ms
+        median= 124.0 ms, stdev= 1.43090880213 ms, min= 120.0 ms, max= 124.0 ms
+        median= 122.0 ms, stdev= 1.45859521458 ms, min= 118.0 ms, max= 123.0 ms
+        median= 123.0 ms, stdev= 1.50332963784 ms, min= 120.0 ms, max= 124.0 ms
+        median= 123.0 ms, stdev= 1.3638181697 ms, min= 120.0 ms, max= 125.0 ms
+        median= 119.0 ms, stdev= 1.43527000944 ms, min= 117.0 ms, max= 121.0 ms
+        median= 122.5 ms, stdev= 1.71682847134 ms, min= 118.0 ms, max= 124.0 ms
+        median= 121.0 ms, stdev= 1.44481832768 ms, min= 118.0 ms, max= 123.0 ms
+        median= 120.0 ms, stdev= 1.40978721799 ms, min= 117.0 ms, max= 122.0 ms
+        median= 122.0 ms, stdev= 1.68522995464 ms, min= 119.0 ms, max= 125.0 ms
+        median= 122.0 ms, stdev= 1.55804364509 ms, min= 118.0 ms, max= 123.0 ms
+
+
+        * Bindings/dom_attributes_id_getter.html: Added.
+        * Bindings/dom_attributes_id_setter.html: Added.
+        * Bindings/resources/dom_attributes_common.js: Added.
+
+2012-02-16  Alexis Menard  <alexis.menard@openbossa.org>
+
+        Add a perf test for the CSS parser.
+        https://bugs.webkit.org/show_bug.cgi?id=78114
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a perf test for the CSS parser. It load a big CSS chunk
+        which contains some snippets of the YUI library from Yahoo!.
+
+        * Parser/css-parser-yui.html: Added.
+
+2012-02-08  Hajime Morrita  <morrita@chromium.org>
+
+        [PerformanceTests] sunspider-crypto-md5.html and sunspider-crypto-sha1.html are timing out on cr-mac perf bot
+        https://bugs.webkit.org/show_bug.cgi?id=78174
+
+        Reviewed by Ryosuke Niwa.
+
+        Pulled back removed files.
+
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-crypto-md5.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-crypto-sha1.html: Added.
+
+2012-02-02  Hajime Morrita  <morrita@chromium.org>
+
+        [PerformanceTests] Each Dromaeo test needs its landing html.
+        https://bugs.webkit.org/show_bug.cgi?id=77504
+
+        Reviewed by Ryosuke Niwa.
+
+        - Added landing pages for each test which are listed in MANIFEST.json
+        - Removed some tests which depends on the library whose license is incompatible to WebKit.
+        - Added local copy of corresponding library. And replace the references to the remote sources
+          to the local copies.
+        - Removed old library files under Dromaeo/resources/dromaeo/web/lib/.
+        - Skipped Sunsupier and v8 test. Such JS centric test should have its own test instead of
+          running as a part of Dromaeo.
+
+        * Dromaeo/cssquery-dojo.html: Added.
+        * Dromaeo/cssquery-jquery.html: Added.
+        * Dromaeo/cssquery-prototype.html: Added.
+        * Dromaeo/dom-attr.html: Added.
+        * Dromaeo/dom-modify.html: Added.
+        * Dromaeo/dom-traverse.html: Added.
+        * Dromaeo/dromaeo-3d-cube.html: Added.
+        * Dromaeo/dromaeo-core-eval.html: Added.
+        * Dromaeo/dromaeo-object-array.html: Added.
+        * Dromaeo/dromaeo-object-regexp.html: Added.
+        * Dromaeo/dromaeo-object-string.html: Added.
+        * Dromaeo/dromaeo-string-base64.html: Added.
+        * Dromaeo/jslib-attr-jquery.html: Added.
+        * Dromaeo/jslib-attr-prototype.html: Added.
+        * Dromaeo/jslib-event-jquery.html: Added.
+        * Dromaeo/jslib-event-prototype.html: Added.
+        * Dromaeo/jslib-modify-jquery.html: Added.
+        * Dromaeo/jslib-modify-prototype.html: Added.
+        * Dromaeo/jslib-style-jquery.html: Added.
+        * Dromaeo/jslib-style-prototype.html: Added.
+        * Dromaeo/jslib-traverse-jquery.html: Added.
+        * Dromaeo/jslib-traverse-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/lib/dojo.js: Removed.
+        * Dromaeo/resources/dromaeo/web/lib/dojo-1.6.1.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/jquery.js: Removed.
+        * Dromaeo/resources/dromaeo/web/lib/jquery-1.6.4.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/mootools.js: Removed.
+        * Dromaeo/resources/dromaeo/web/lib/prototype.js: Removed.
+        * Dromaeo/resources/dromaeo/web/lib/prototype-1.7.js: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-dojo.html:
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-mootools.html: Removed.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-prototype.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-attr-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-attr-prototype.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-event-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-event-prototype.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-modify-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-modify-prototype.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-style-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-style-prototype.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-traverse-jquery.html:
+        * Dromaeo/resources/dromaeo/web/tests/jslib-traverse-prototype.html:
+        * Dromaeo/sunspider-3d-morph.html: Added.
+        * Dromaeo/sunspider-3d-raytrace.html: Added.
+        * Dromaeo/sunspider-access-binary-trees.html: Added.
+        * Dromaeo/sunspider-access-fannkuch.html: Added.
+        * Dromaeo/sunspider-access-nbody.html: Added.
+        * Dromaeo/sunspider-access-nsieve.html: Added.
+        * Dromaeo/sunspider-bitops-3bit-bits-in-byte.html: Added.
+        * Dromaeo/sunspider-bitops-bits-in-byte.html: Added.
+        * Dromaeo/sunspider-bitops-bitwise-and.html: Added.
+        * Dromaeo/sunspider-bitops-nsieve-bits.html: Added.
+        * Dromaeo/sunspider-controlflow-recursive.html: Added.
+        * Dromaeo/sunspider-crypto-aes.html: Added.
+        * Dromaeo/sunspider-crypto-md5.html: Added.
+        * Dromaeo/sunspider-crypto-sha1.html: Added.
+        * Dromaeo/sunspider-date-format-tofte.html: Added.
+        * Dromaeo/sunspider-date-format-xparb.html: Added.
+        * Dromaeo/sunspider-math-cordic.html: Added.
+        * Dromaeo/sunspider-math-partial-sums.html: Added.
+        * Dromaeo/sunspider-math-spectral-norm.html: Added.
+        * Dromaeo/sunspider-regexp-dna.html: Added.
+        * Dromaeo/sunspider-string-fasta.html: Added.
+        * Dromaeo/sunspider-string-tagcloud.html: Added.
+        * Dromaeo/sunspider-string-unpack-code.html: Added.
+        * Dromaeo/sunspider-string-validate-input.html: Added.
+        * Dromaeo/v8-crypto.html: Added.
+        * Dromaeo/v8-deltablue.html: Added.
+        * Dromaeo/v8-earley-boyer.html: Added.
+        * Dromaeo/v8-raytrace.html: Added.
+        * Dromaeo/v8-richards.html: Added.
+        * Skipped:
+
+2012-02-02  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r106543.
+        http://trac.webkit.org/changeset/106543
+        https://bugs.webkit.org/show_bug.cgi?id=77671
+
+        Made tests less stable (Requested by rniwa on #webkit).
+
+        * resources/init.html: Removed.
+
+2012-02-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [PerformanceTests] tests have dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=77506
+
+        Reviewed by Hajime Morita.
+
+        * resources/init.html: Added.
+
+2012-02-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix after r106386. The empty anchor element was generating an erroneous whitespace.
+
+        * Bindings/event-target-wrapper.html:
+
+2012-02-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another fix after r106379.
+
+        * Parser/html5-full-render.html:
+
+2012-01-31  Hajime Morrita  <morrita@chromium.org>
+
+        Import Dromaeo to WebKit repository.
+        https://bugs.webkit.org/show_bug.cgi?id=77328
+
+        Reviewed by Ryosuke Niwa.
+
+        Imported a modified version of Dromaeo which is able to
+        run on the DRT.
+
+        The imported version originally came from:
+        https://github.com/omo/dromaeo/commit/c942a1452109cdd5f759b3c4aee8d68d490d44a2
+
+        * Dromaeo/resources/dromaeo/web/application.css: Added.
+        * Dromaeo/resources/dromaeo/web/favicon.ico: Added.
+        * Dromaeo/resources/dromaeo/web/favicon.png: Added.
+        * Dromaeo/resources/dromaeo/web/htmlrunner.js: Added.
+        * Dromaeo/resources/dromaeo/web/ie.css: Added.
+        * Dromaeo/resources/dromaeo/web/images/bg.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/clouds.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/clouds2.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/comets.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino1.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino2.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino3.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino4.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino5.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino6.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino7.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/dino8.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/left.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/logo.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/logo2.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/logo3.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/right.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/top.png: Added.
+        * Dromaeo/resources/dromaeo/web/images/water.png: Added.
+        * Dromaeo/resources/dromaeo/web/index.html: Added.
+        * Dromaeo/resources/dromaeo/web/jquery.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/dojo.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/jquery.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/mootools.js: Added.
+        * Dromaeo/resources/dromaeo/web/lib/prototype.js: Added.
+        * Dromaeo/resources/dromaeo/web/pngfix.js: Added.
+        * Dromaeo/resources/dromaeo/web/reset.css: Added.
+        * Dromaeo/resources/dromaeo/web/test-head.html: Added.
+        * Dromaeo/resources/dromaeo/web/test-head.js: Added.
+        * Dromaeo/resources/dromaeo/web/test-tail.html: Added.
+        * Dromaeo/resources/dromaeo/web/test-tail.js: Added.
+        * Dromaeo/resources/dromaeo/web/tests/MANIFEST.json: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-dojo.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-mootools.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/cssquery-yui.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dom-attr.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dom-modify.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dom-query.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dom-traverse.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-3d-cube.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-core-eval.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-object-array.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-object-regexp.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-object-string.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/dromaeo-string-base64.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-attr-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-attr-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-event-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-event-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-modify-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-modify-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-style-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-style-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-traverse-jquery.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/jslib-traverse-prototype.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-3d-morph.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-3d-raytrace.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-access-binary-trees.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-access-fannkuch.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-access-nbody.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-access-nsieve.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-bitops-3bit-bits-in-byte.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-bitops-bits-in-byte.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-bitops-bitwise-and.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-bitops-nsieve-bits.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-controlflow-recursive.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-crypto-aes.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-crypto-md5.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-crypto-sha1.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-date-format-tofte.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-date-format-xparb.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-math-cordic.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-math-partial-sums.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-math-spectral-norm.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-regexp-dna.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-string-fasta.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-string-tagcloud.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-string-unpack-code.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/sunspider-string-validate-input.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/v8-crypto.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/v8-deltablue.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/v8-earley-boyer.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/v8-raytrace.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/v8-richards.html: Added.
+        * Dromaeo/resources/dromaeo/web/tests/72px.png: Added.
+        * Dromaeo/resources/dromaeo/web/web-style.css: Added.
+        * Dromaeo/resources/dromaeo/web/webrunner.js: Added.
+        * Skipped: Unskip the dromaeo driver.
+
+2012-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix Parser/html5-full-render.html after r106379.
+
+        * Parser/html5-full-render.html:
+
+2012-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        PerfTestRunner should automatically create pre#log
+        https://bugs.webkit.org/show_bug.cgi?id=77469
+
+        Reviewed by Tony Chang.
+
+        Automatically generate <pre id="log"></pre> if there isn't one.
+
+        * Bindings/event-target-wrapper.html:
+        * DOM/Accessors.html:
+        * DOM/CloneNodes.html:
+        * DOM/CreateNodes.html:
+        * DOM/DOMDivWalk.html:
+        * DOM/DOMTable.html:
+        * DOM/DOMWalk.html:
+        * DOM/Events.html:
+        * DOM/GetElement.html:
+        * DOM/GridSort.html:
+        * DOM/Template.html:
+        * Dromaeo/dom-query.html:
+        * Dromaeo/resources/dromaeorunner.js:
+        * Parser/html-parser.html:
+        * Parser/html5-full-render.html:
+        * Parser/simple-url.html:
+        * Parser/tiny-innerHTML.html:
+        * Parser/url-parser.html:
+        * Parser/xml-parser.html:
+        * resources/runner.js:
+        (PerfTestRunner.log):
+        (PerfTestRunner.printStatistics):
+
+2012-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        runner.js in performance tests should define a class
+        https://bugs.webkit.org/show_bug.cgi?id=77074
+
+        Reviewed by Eric Seidel.
+
+        Wrap all functions in runner.js by PerfTestRunner and update tests that runner.js accordingly.
+        Also replace compute* functions in runner.js by more robust code from dom-perf.js.
+
+        * Bindings/event-target-wrapper.html:
+        * DOM/DOMTable.html:
+        * DOM/resources/dom-perf.js:
+        (BenchmarkSuite.prototype.RunSingle):
+        (runBenchmarkSuite):
+        * Mutation/append-child-deep.html:
+        * Mutation/append-child.html:
+        * Mutation/inner-html.html:
+        * Mutation/remove-child-deep.html:
+        * Mutation/remove-child.html:
+        * Parser/html-parser.html:
+        * Parser/html5-full-render.html:
+        * Parser/simple-url.html:
+        * Parser/tiny-innerHTML.html:
+        * Parser/url-parser.html:
+        * Parser/xml-parser.html:
+        * resources/runner.js:
+        (PerfTestRunner.log):
+        (PerfTestRunner.logInfo):
+        (PerfTestRunner.loadFile):
+        (PerfTestRunner.computeStatistics):
+        (PerfTestRunner.logStatistics):
+        (PerfTestRunner._runLoop.else):
+        (PerfTestRunner._runLoop):
+        (PerfTestRunner._runner):
+
+2012-01-31  Hajime Morrita  <morrita@chromium.org>
+
+        [PerformanceTests] Add landing html for Dromaeo dom-query test
+        https://bugs.webkit.org/show_bug.cgi?id=77329
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a "landing html" which includes actual dromaemo page and
+        send messages to interact with it. The landing html also dumps the
+        score in run-perf-tests friendly format.
+
+        This test isn't enabled until Dromaemo itself is available for run-perf-tests.
+        It will happen in a separate change.
+
+        * Dromaeo/dom-query.html: Added.
+        * Dromaeo/resources/dromaeorunner.js: Added.
+        * Skipped: Skipping this for now.
+
+2012-01-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Skip inspector tests since they have been timing out.
+
+        * Skipped:
+
+2012-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        DOM/DOMDivWalk.html result is unreliable
+        https://bugs.webkit.org/show_bug.cgi?id=77313
+
+        Reviewed by Adam Barth.
+
+        Trigger garbage collection manually between test runs to avoid GC
+        to occur in the middle of runs.
+
+        * DOM/resources/dom-perf.js:
+        (BenchmarkSuite.prototype.RunSingle):
+        * resources/runner.js:
+        (gc.else.gcRec):
+        (gc):
+        (runLoop):
+
+2012-01-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Import Chromium's dom_perf test
+        https://bugs.webkit.org/show_bug.cgi?id=77175
+
+        Reviewed by Adam Barth.
+
+        Import dom_perf.
+
+        Note resources/dom/suites.js isn't used by any html file yet but it will be used by Chromium port
+        once its perf bots start pulling test files from WebKit repository instead of Google's internal repository.
+
+        * DOM: Added.
+        * DOM/Accessors.html: Added.
+        * DOM/CloneNodes.html: Added.
+        * DOM/CreateNodes.html: Added.
+        * DOM/DOMDivWalk.html: Added.
+        * DOM/DOMTable.html: Added.
+        * DOM/DOMWalk.html: Added.
+        * DOM/Events.html: Added.
+        * DOM/GetElement.html: Added.
+        * DOM/GridSort.html: Added.
+        * DOM/Template.html: Added.
+        * DOM/resources: Added.
+        * DOM/resources/dom-perf.js: Added.
+        * DOM/resources/dom-perf: Added.
+        * DOM/resources/dom-perf/accessors.js: Added.
+        * DOM/resources/dom-perf/clonenodes.js: Added.
+        * DOM/resources/dom-perf/createnodes.js: Added.
+        * DOM/resources/dom-perf/domdivwalk.js: Added.
+        * DOM/resources/dom-perf/domtable.js: Added.
+        * DOM/resources/dom-perf/domwalk.js: Added.
+        * DOM/resources/dom-perf/events.js: Added.
+        * DOM/resources/dom-perf/getelement.js: Added.
+        * DOM/resources/dom-perf/gridsort.js: Added.
+        * DOM/resources/dom-perf/suites.js: Added.
+        * DOM/resources/dom-perf/template.js: Added.
+        * resources/runner.js:
+
+2012-01-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        html5-full-render.html fails due to a log
+        https://bugs.webkit.org/show_bug.cgi?id=77046
+
+        Reviewed by Adam Barth.
+
+        Replace the call to log() in html5-full-render.html by a call to newly added logInfo(),
+        which doesn't print anything inside DRT.
+
+        * Parser/html5-full-render.html:
+        * resources/runner.js:
+        (logInfo):
+
+2012-01-19  Adam Barth  <abarth@webkit.org>
+
+        PerformanceTests's runner.js shouldn't be Parser-specific
+        https://bugs.webkit.org/show_bug.cgi?id=76670
+
+        Reviewed by Ryosuke Niwa.
+
+        This runner script is used by a bunch of difference performance tests.
+        It shouldn't be in the Parser directory anymore.
+
+        * Bindings/event-target-wrapper.html:
+        * Mutation/append-child-deep.html:
+        * Mutation/append-child.html:
+        * Mutation/inner-html.html:
+        * Mutation/remove-child-deep.html:
+        * Mutation/remove-child.html:
+        * Parser/html-parser.html:
+        * Parser/html5-full-render.html:
+        * Parser/resources/runner.js: Removed.
+        * Parser/simple-url.html:
+        * Parser/tiny-innerHTML.html:
+        * Parser/url-parser.html:
+        * Parser/xml-parser.html:
+        * resources: Added.
+        * resources/runner.js: Copied from PerformanceTests/Parser/resources/runner.js.
+
+2012-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Some perf tests time out when ran by run-perf-tests
+        https://bugs.webkit.org/show_bug.cgi?id=76612
+
+        Reviewed by Dirk Pranke and Eric Seidel.
+
+        Replace all images in html5.html by geenbox.png to avoid accessing whatwg.org when
+        running the parser tests. Also call dumpAsText, waitUntilDone, and notifyDone automatically
+        inside runner.js to avoid having to call them in individual tests.
+
+        * Bindings/event-target-wrapper.html: Removed calls to layoutTestController methods since
+        they are now called by runner.js automatically.
+        * Parser/resources/greenbox.png: Copied from LayoutTests/fast/css/resources/greenbox.png.
+        * Parser/resources/html5.html:
+        * Parser/resources/runner.js:
+        (runLoop):
+
+2012-01-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        run-perf-tests should support Skipped list
+        https://bugs.webkit.org/show_bug.cgi?id=76594
+
+        Reviewed by Adam Barth.
+
+        Add Skipped list to be used by run-perf-tests as it can only runs tests in
+        Bindings, Parser, and inspector at the moment.
+
+        * Skipped: Added.
+
+2012-01-12  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: performance: restore 'log 300 messages into console' test.
+        https://bugs.webkit.org/show_bug.cgi?id=76170
+
+        It was removed in order of transition from layout tests to perf tests.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/console-300-lines.html: Added.
+
+2012-01-12  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: performance tests: fix memory leak in first-open-resources test.
+        https://bugs.webkit.org/show_bug.cgi?id=76049
+
+        first-open-resources doesn't reset resource panel properly after test run.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/first-open-resources.html:
+
+2012-01-10  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed. WebInspector: Remove unnecessary logging from the test.
+
+        * inspector/first-open-resources.html:
+
+2012-01-10  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed. Restore test that was removed during migration from LayoutTests folder.
+
+        * inspector/first-open-resources.html: Added.
+
+2012-01-09  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed test fix after r103683.
+
+        * inspector/first-open-scripts.html:
+        * inspector/show-panel.html:
+
+2012-01-03  Adam Barth  <abarth@webkit.org>
+
+        html-parser.html takes too long to run
+        https://bugs.webkit.org/show_bug.cgi?id=75515
+
+        Reviewed by Eric Seidel.
+
+        In working on runner.js, we introduced a factor of 10 increase to the
+        running time of this benchmark.  This patch dials down the number of
+        iterations to something more user-friendly.
+
+        * Parser/html-parser.html:
+
+2011-12-18  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: move heap data stats to separate tab.
+        https://bugs.webkit.org/show_bug.cgi?id=74704
+
+        Reviewed by Pavel Feldman.
+
+        * inspector/performance-test.js:
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype._dump):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest):
+
+2011-12-01  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: chromium: move and adapt Inspector's performance tests for running with run-inspector-perf-tests.py.
+        https://bugs.webkit.org/show_bug.cgi?id=72260
+
+        Reviewed by Pavel Feldman.
+
+        * inspector/first-open-elements.html: Renamed from LayoutTests/inspector/performance/resources/first-open-elements.html.
+        * inspector/first-open-scripts.html: Renamed from LayoutTests/inspector/performance/resources/first-open-scripts.html.
+        * inspector/inspector-startup-time.html: Renamed from LayoutTests/inspector/performance/resources/inspector-startup-time.html.
+        * inspector/network-append-30-requests.html: Renamed from LayoutTests/inspector/performance/resources/network-append-30-requests.html.
+        * inspector/performance-test.js: Renamed from LayoutTests/inspector/performance/resources/performance-test.js.
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype.start):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype.finish):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype._getJSHeapSize):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype.done):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype._runTest):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest.Timer.prototype._dump):
+        (initialize_TimeTracker.InspectorTest.runPerformanceTest):
+        (initialize_TimeTracker.InspectorTest.mark):
+        * inspector/show-panel.html: Renamed from LayoutTests/inspector/performance/resources/show-panel.html.
+
+2011-11-09  Adam Klein  <adamk@chromium.org>
+
+        [MutationObservers] Microbenchmarks for appendChild, removeChild, and innerHTML
+        https://bugs.webkit.org/show_bug.cgi?id=71939
+
+        Reviewed by Ojan Vafai.
+
+        These benchmarks time both the DOM mutations themselves and the time taken
+        to call the MutationCallback. This measurement is achieved by
+        executing the code entirely within the MutationCallback itself.
+
+        * Mutation/append-child-deep.html: Added. Covers appendChild in a 200-node-deep tree with subtree observation.
+        * Mutation/append-child.html: Added. Covers appendChild in a flat tree.
+        * Mutation/inner-html.html: Added. Covers innerHTML adding and removing many nodes at a time.
+        * Mutation/remove-child-deep.html: Added. Covers removeChild in a 200-node-deep tree with subtree observation.
+        * Mutation/remove-child.html: Added. Covers removeChild in a flat tree.
+
+2011-10-25  Adam Barth  <abarth@webkit.org>
+
+        EventTargetFactory.in is not sorted
+        https://bugs.webkit.org/show_bug.cgi?id=70855
+
+        Reviewed by Eric Seidel.
+
+        Add a microbenchmark for wrapping event target.
+
+        * Bindings: Added.
+        * Bindings/event-target-wrapper.html: Added.
+        * Parser/resources/runner.js:
+        (runLoop):
+            - Let the user of the harness get a callback when the test is done.
+
+2011-10-04  Eric Seidel  <eric@webkit.org>
+
+        Update html5-full-render.html to load the HTML5 spec incrementally, closer to how the browser would
+        https://bugs.webkit.org/show_bug.cgi?id=69374
+
+        Unreviewed.
+
+        Per https://bugs.webkit.org/show_bug.cgi?id=69374#c7
+        updating the chunksize to be a bit smaller now that the total
+        size of the html5 spec is smaller than when I wrote the test.
+
+        This should increase the prevalence of style resolution in the
+        sample time, which more closely matches instrument samples
+        taken when loading the full page in Safari.
+
+        * Parser/html5-full-render.html:
+
+2011-10-04  Eric Seidel  <eric@webkit.org>
+
+        Update html5-full-render.html to load the HTML5 spec incrementally, closer to how the browser would
+        https://bugs.webkit.org/show_bug.cgi?id=69374
+
+        Reviewed by James Robinson.
+
+        This should finally be able to provide us with a repeatable metric
+        for how fast we're currently able to load the HTML5 spec.
+        There are a variety of interesting functions which show up in this
+        sample, including of course style resolution.
+
+        * Parser/html5-full-render.html:
+
+2011-10-04  Eric Seidel  <eric@webkit.org>
+
+        Update our copy of the HTML5 spec used for performance testing to match the latest version
+        https://bugs.webkit.org/show_bug.cgi?id=69364
+
+        Unreviewed.  The patch is too large to post, so landing this unreviewed. :(
+
+        The copy of the html5 spec we were using for testing was over a year old
+        and didn't have any of the subresources with it (we were only using it
+        as an HTML parsing benchmark).  I'm about to use it for testing
+        the full load/render time of the benchmark, so I've updated to the latest
+        version of the spec (now 8mb instead of 5mb) and inlined two of the
+        CSS files.  (Inlining the CSS was necessary to make my testing consistent
+        as there seems to be a race with some timer fired after CSS load.)
+
+        Increasing from 5mb to 8mb showed a similar 30% slowdown in our parser
+        benchmarks as expected.
+
+        * Parser/resources/html5.html:
+
+2011-10-04  Eric Seidel  <eric@webkit.org>
+
+        Add loopsPerRun option to Parser performance test runner
+        https://bugs.webkit.org/show_bug.cgi?id=69363
+
+        Reviewed by Antti Koivisto.
+
+        Add loopsPerRun option and abstract out runLoop function (to make the UI more responsive).
+        No change in behavior in any of the tests.
+
+        * Parser/resources/runner.js:
+        (runLoop):
+        (run):
+        (start):
+
+2011-10-03  Eric Seidel  <eric@webkit.org>
+
+        Add a microbenchmark for a full-page render of the HTML5 spec
+        https://bugs.webkit.org/show_bug.cgi?id=69285
+
+        Reviewed by Adam Barth.
+
+        This was designed to be a test for https://bugs.webkit.org/show_bug.cgi?id=68944
+        But it seems that by far our dominating cost for the HTML5 benchmark is
+        time spent laying out lines (which isn't actually that surprising).
+
+        I'm adding the performance test for posterity.
+
+        * Parser/html-parser.html:
+         - Removed use of "about:blank" which abarth says is a no-op.  Made comment more accurate.
+        * Parser/html5-full-render.html: Copied from PerformanceTests/Parser/html-parser.html.
+
+2011-10-03  Eric Seidel  <eric@webkit.org>
+
+        PerformanceTests/Parser/html-parser is only testing parsing of the head element
+        https://bugs.webkit.org/show_bug.cgi?id=69283
+
+        Reviewed by Adam Barth.
+
+        While investigating https://bugs.webkit.org/show_bug.cgi?id=68944
+        I found that the html-parser benchmark was only parsing up to the
+        first script tag per loop!  We've fixed this by adding the sandbox
+        tag which will deny all external loads and allow the parser to
+        synchronously continue parsing the entire document to completion
+        (as we had expected it was doing).
+
+        This changes the profile somewhat.  Line number counting is much
+        hotter, since we're actually accounting for the parse of the entire
+        document in our sample.
+
+        Total sample time only about doubles, from 1800ms to 3800ms on my machine
+        which is less than I would have expected.
+
+        * Parser/html-parser.html:
+
+2011-08-09  Alexandru Chiculita  <achicu@adobe.com>
+
+        Fixing 65868 REGRESSION(r92610) caused by 65668 - Optimize floating elements lookup
+        https://bugs.webkit.org/show_bug.cgi?id=65871
+
+        Reviewed by Dave Hyatt.
+
+        * Layout/floats.html: Added the nested divs, so that we can test the propagation impact of the floats tree.
+
+2011-08-08  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r92610.
+        http://trac.webkit.org/changeset/92610
+        https://bugs.webkit.org/show_bug.cgi?id=65868
+
+        Caused assertion failures when running fast/multicol tests
+        (Requested by andersca on #webkit).
+
+        * Layout/floats.html:
+
+2011-08-08  Alexandru Chiculita  <achicu@adobe.com>
+
+        Optimize floating elements lookup
+        https://bugs.webkit.org/show_bug.cgi?id=65668
+
+        Reviewed by David Hyatt.
+
+        * Layout/floats.html: Added the nested divs, so that we can test the propagation impact of the floats tree.
+
+2011-08-04  Alexandru Chiculita  <achicu@adobe.com>
+
+        Add a performance test for floating elements layout algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=65741
+
+        The test creating lots of small floats and randomly changes
+        the width of one element at a time. It measures how often it can do that.
+
+        Reviewed by Adam Barth.
+
+        * Layout/floats.html: Added.
+
+2011-05-30  Daniel Bates  <dbates@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        Rename XSSFilter to XSSAuditor
+        https://bugs.webkit.org/show_bug.cgi?id=61718
+
+        Currently we use the names XSSFilter and XSSAuditor throughout the project.
+        Instead, we should choose one name for consistency.
+
+        No functionality was changed. So, no new tests.
+
+        * XSSAuditor: Copied from PerformanceTests/XSSFilter.
+        * XSSFilter: Removed.
+        * XSSFilter/large-post-many-events.html: Removed.
+        * XSSFilter/large-post-many-inline-scripts-and-events.html: Removed.
+        * XSSFilter/resources: Removed.
+        * XSSFilter/resources/target-for-large-post-many-inline-scripts-and-events.html: Removed.
+
+2011-03-25  Leo Yang  <leo.yang@torchmobile.com.cn>
+
+        Reviewed by Dirk Schulze.
+
+        SVG <use> element performance improvement
+        https://bugs.webkit.org/show_bug.cgi?id=57077
+
+        Add a manual test case which is from
+        http://upload.wikimedia.org/wikipedia/commons/4/4e/Sierpinski_carpet_6.svg
+        for svg <use> element performance test.
+
+        * PageLoad/svg/files/Sierpinski_carpet_6.svg: Added.
+        * PageLoad/svg/svg.pltsuite:
+
+2011-02-05  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Adam Barth.
+
+        Add performance tests for URL parsing
+        https://bugs.webkit.org/show_bug.cgi?id=53845
+
+        The final-url-en URL corpus is from:
+        http://corpus.leeds.ac.uk/internet.html
+
+        There are also other language corpuses which we may want to use in the future.
+
+        The usage instructions were as follows:
+        "URL lists and other resources: you can freely use them in your research
+        provided that you supply a link to this website: http://corpus.leeds.ac.uk/."
+        Done.
+
+        * Parser/simple-url.html: Added.
+         On my machine:
+         Firefox: 255ms
+         TOT WebKit: 378ms
+         Chrome: 286ms
+         Opera: 2830ms (no, that is not a typo)
+        * Parser/url-parser.html: Added.
+         Firefox: 381ms
+         TOT WebKit: 216ms
+         Chrome: 131ms
+         Opera: 1383ms (again, not a typo)
+        * Parser/resources/final-url-en: Added.
+
+2011-02-03  Adam Barth  <abarth@webkit.org>
+
+        Reviewed by Daniel Bates.
+
+        Add another XSSFilter PerformanceTest
+        https://bugs.webkit.org/show_bug.cgi?id=53750
+
+        This PerformanceTest tests the case that was slow in
+        https://bugs.webkit.org/show_bug.cgi?id=49845
+
+        * XSSFilter/large-post-many-inline-scripts-and-events.html: Added.
+        * XSSFilter/resources: Added.
+        * XSSFilter/resources/target-for-large-post-many-inline-scripts-and-events.html: Added.
+
+2011-02-03  Adam Barth  <abarth@webkit.org>
+
+        Reviewed by Eric Seidel.
+
+        Add PerformanceTest for XSSFilter
+        https://bugs.webkit.org/show_bug.cgi?id=53741
+
+        This performance tests covers the case of a large POST data and many
+        small event handlers.
+
+        * XSSFilter: Added.
+        * XSSFilter/large-post-many-events.html: Added.
+
+2011-02-02  Adam Barth  <abarth@webkit.org>
+
+        Rubber-stamped by Eric Seidel.
+
+        Merge PerformanceTests/Parser/ChangeLog and
+        PerformanceTests/PageLoad/ChangeLog into PerformanceTests/ChangeLog.
+
+        It's silly to have ChangeLogs for each of these directories separately.
+        I've left SunSpider with its own ChangeLog because it's more of an
+        independent entity.
+
+        * ChangeLog: Added.
+
+2011-02-02  Eric Seidel  <eric@webkit.org>
+
+        Unreviewed.  Just fixing an exception seen in Firefox.
+
+        HTML5 TreeBuilder regressed a Peacekeeper DOM test by 40%
+        https://bugs.webkit.org/show_bug.cgi?id=48719
+
+        Make the benchmarks work in Firefox/Opera.
+
+        * resources/runner.js:
+        (log):
+
+2011-01-27  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        HTML5 TreeBuilder regressed a Peacekeeper DOM test by 40%
+        https://bugs.webkit.org/show_bug.cgi?id=48719
+
+        It's unclear exactly what the Peacekeeper benchmark is testing,
+        because I haven't found a way to run it myself.
+
+        However, I constructed a benchmark which shows at least one possible slow point.
+        The HTML5 spec talks about creating a new document for every time we use
+        the fragment parsing algorithm.  Document() it turns out, it a huge bloated
+        mess, and the constructor and destructor do a huge amount of work.
+
+        * benchmarks/parser/tiny-innerHTML.html: Added.
+
+2011-01-29  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r77050.
+        http://trac.webkit.org/changeset/77050
+        https://bugs.webkit.org/show_bug.cgi?id=53371
+
+        Caused a crash in Chromium's test_shell_tests (Requested by
+        rniwa on #webkit).
+
+        * resources/performance-test.js: Removed.
+        * tiny-innerHTML.html: Removed.
+
+2011-01-28  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by Darin Adler.
+
+        HTML5 TreeBuilder regressed a Peacekeeper DOM test by 40%
+        https://bugs.webkit.org/show_bug.cgi?id=48719
+
+        It's unclear exactly what the Peacekeeper benchmark is testing,
+        because I haven't found a way to run it myself.
+
+        However, I constructed a benchmark which shows at least one possible slow point.
+        The HTML5 spec talks about creating a new document for every time we use
+        the fragment parsing algorithm.  Document() it turns out, it a huge bloated
+        mess, and the constructor and destructor do a huge amount of work.
+        To avoid constructing (or destructing) documents for each innerHTML call,
+        this patch adds a shared dummy document used by all innerHTML calls.
+
+        * benchmarks/parser/tiny-innerHTML.html: Added.
+
+2010-12-31  Adam Barth  <abarth@webkit.org>
+
+        Rubber-stamped by Eric Seidel.
+
+        Move HTML and XML parser benchmarks into PerformanceTests/Parser
+        https://bugs.webkit.org/show_bug.cgi?id=51772
+
+        Add a ChangeLog for tracking changes to the Parser PerformanceTest.
+
+        * ChangeLog: Added.
+
+2010-12-31  Adam Barth  <abarth@webkit.org>
+
+        Rubber-stamped by Eric Seidel.
+
+        Move PageLoadTests to PerformanceTests/PageLoad
+        https://bugs.webkit.org/show_bug.cgi?id=51771
+
+        Update URLs to point to the new directory name.
+
+        * svg/svg.pltsuite:
+
+2006-12-26  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by olliej.
+
+        * svg/svg.pltsuite: re-enable word-iso.svg after fixing http://bugs.webkit.org/show_bug.cgi?id=11987
+
+2006-12-26  Eric Seidel  <eric@webkit.org>
+
+        Reviewed by bradee-oh.
+        
+        Add new PageLoadTests directory (this one)
+        Add LICENSES file to explain where each SVG came from.
+
+        * ChangeLog: Added.
+        * svg/LICENSES: Added.
+        * svg/files/33041-Samurai.svg: Added.
+        * svg/files/42470-flower_from_my_garden_v2.svg: Added.
+        * svg/files/Harvey_Rayner.svg: Added.
+        * svg/files/az-lizard_benji_park_01.svg: Added.
+        * svg/files/bamboo_01.svg: Added.
+        * svg/files/cacuts_01.svg: Added.
+        * svg/files/cowboy.svg: Added.
+        * svg/files/crawfish2_ganson.svg: Added.
+        * svg/files/deb9frac1.svg: Added.
+        * svg/files/food_leif_lodahl_01.svg: Added.
+        * svg/files/france.svg: Added.
+        * svg/files/francobollo_gnome_ezechi_02.svg: Added.
+        * svg/files/gearflowers.svg: Added.
+        * svg/files/hereGear4.svg: Added.
+        * svg/files/mtsthelens.svg: Added.
+        * svg/files/mtsthelens0.jpg: Added.
+        * svg/files/world-iso.svg: Added.
+        * svg/files/worldcup.svg: Added.
+        * svg/svg.pltsuite: Added.
+

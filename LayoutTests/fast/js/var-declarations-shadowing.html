@@ -253,19 +253,19 @@ try {
 shouldBe(defaultstatus == marker, "defaultstatus == marker", true);
 shouldBe(eval('defaultstatus == marker'), "eval('defaultstatus == marker')", true);
 
-log("-----");
-
 try {
     eval("var screen = marker");
 } catch(e) { }
-shouldBe(screen == marker, "screen == marker", false);
-shouldBe(eval('screen == marker'), "eval('screen == marker')", false);
+shouldBe(screen == marker, "screen == marker", true);
+shouldBe(eval('screen == marker'), "eval('screen == marker')", true);
 
 try {
     eval("var history = marker");
 } catch(e) { }
-shouldBe(history == marker, "history == marker", false);
-shouldBe(eval('history == marker'), "eval('history == marker')", false);
+shouldBe(history == marker, "history == marker", true);
+shouldBe(eval('history == marker'), "eval('history == marker')", true);
+
+log("-----");
 
 try {
     eval("var frameElement = marker");

@@ -2,7 +2,7 @@
 require_once 'portabilityLayer.php';
 
 // This script acts as a stateful proxy for retrieving files. When the state is set to
-// offline, it simulates a network error by redirecting to itself.
+// offline, it simulates a network error with a nonsense response.
 
 if (!sys_get_temp_dir()) {
     echo "FAIL: No temp dir was returned.\n";
@@ -59,9 +59,12 @@ function generateResponse($path)
     global $stateFile;
     $state = getState($stateFile);
     if ($state == "Offline") {
+        # Simulate a network error by replying with a nonsense response.
         header('HTTP/1.1 307 Temporary Redirect');
-        # Simulate a network error by redirecting to self.
-        header('Location: ' . $_SERVER['REQUEST_URI']);
+        header('Location: ' . $_SERVER['REQUEST_URI']); # Redirect to self.
+        header('Content-Length: 1');
+        header('Content-Length: 5', false); # Multiple content-length headers, some network stacks can detect this condition faster.
+        echo "Intentionally incorrect response.";
     } else {
         // A little securuty checking can't hurt.
         if (strstr($path, ".."))
@@ -70,7 +73,7 @@ function generateResponse($path)
         if ($path[0] == '/')
             $path = '..' . $path;
 
-        generateNoCacheHTTPHeader();    
+        generateNoCacheHTTPHeader();
 
         if (file_exists($path)) {
             header("Last-Modified: " . gmdate("D, d M Y H:i:s T", filemtime($path)));
@@ -120,6 +123,38 @@ function handleGetResourceCountCommand($path)
     }
 }
 
+function handleStartResourceRequestsLog()
+{
+    $resourceLogFile = sys_get_temp_dir() . "/resource-log";
+    file_put_contents($resourceLogFile,  "");
+}
+
+function handleClearResourceRequestsLog()
+{
+    $resourceLogFile = sys_get_temp_dir() . "/resource-log";
+    file_put_contents($resourceLogFile, "");
+}
+
+function handleGetResourceRequestsLog()
+{
+    $resourceLogFile = sys_get_temp_dir() . "/resource-log";
+
+    generateNoCacheHTTPHeader();
+    header("Content-Type: text/plain");
+
+    print file_get_contents($resourceLogFile);
+}
+
+function handleLogResourceRequest($path)
+{
+    $resourceLogFile = sys_get_temp_dir() . "/resource-log";
+    
+    $newData = "\n".$path;
+    // Documentation says that appends are atomic.
+    file_put_contents($resourceLogFile, $newData, FILE_APPEND);
+    generateResponse($path);
+}
+
 $stateFile = sys_get_temp_dir() . "/network-simulator-state";
 $command = $_GET['command'];
 if ($command) {
@@ -133,6 +168,14 @@ if ($command) {
         handleResetResourceCountCommand();
     else if ($command == "get-resource-count")
         handleGetResourceCountCommand($_GET['path']);
+    else if ($command == "start-resource-request-log")
+        handleStartResourceRequestsLog();
+    else if ($command == "clear-resource-request-log")
+        handleClearResourceRequestsLog();
+    else if ($command == "get-resource-request-log")
+        handleGetResourceRequestsLog();
+    else if ($command == "log-resource-request")
+        handleLogResourceRequest($_GET['path']);
     else
         echo "Unknown command: " . $command . "\n";
     exit();

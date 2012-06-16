@@ -1,0 +1,325 @@
+# -------------------------------------------------------------------
+# This file defines a few useful functions that are exposed to the
+# real project files.
+#
+# See 'Tools/qmake/README' for an overview of the build system
+# -------------------------------------------------------------------
+
+defineReplace(toSanitizedPath) {
+    path = $$1
+    win32-msvc* {
+        components = $$split(path, :)
+        count(components, 2): path = $$lower($$first(components)):$$last(components)
+        return($$replace(path, \\\\, /))
+    } else {
+        return($$path)
+    }
+}
+
+defineReplace(toSystemPath) {
+    return($$replace(1, [/\\\\], $${QMAKE_DIR_SEP}))
+}
+
+defineReplace(toEvaluatablePath) {
+    return($$replace(1, \\\\, \\\\\\\\))
+}
+
+defineReplace(activeBuildConfig) {
+    CONFIG(debug, debug|release): return(debug)
+    else: return(release)
+}
+
+defineReplace(computeSubdirVariables) {
+    unset(subdir)
+    subdir = $$1
+
+    scope = $$subdir
+    path = $$eval($${subdir}.file)
+    isEmpty(path): path = $$eval($${subdir}.subdir)
+    isEmpty(path) {
+        path = $${subdir}
+        # We can't use scope as a variable scope, so unset it for
+        # now and we'll compute a new scope based on the target.
+        unset(scope)
+    }
+
+    # Technically this could be a directory, but we assume sane naming.
+    is_file = $$find(path, \\.pr[io]$)
+    isEmpty(is_file) {
+        subdirectory = $$path
+    } else {
+        subdirectory = $$dirname(path)
+        filename = $$basename(path)
+    }
+
+    # Make directory relative
+    !isEmpty(subdirectory):subdirectory = $$replace(subdirectory, ^$${_PRO_FILE_PWD_}/,)
+
+    !isEmpty(subdirectory) {
+        subdir_command = cd $$toSystemPath($${subdirectory}$${QMAKE_DIR_SEP}) &&
+    }
+
+    target = $$eval($${subdir}.target)
+    isEmpty(target) {
+        sanitizedPath = $$toSanitizedPath($$path)
+        target = sub-$$replace(sanitizedPath, [^a-zA-Z0-9_], -)
+    }
+
+    isEmpty(scope): scope = $$target
+
+    makefile = $$eval($${subdir}.makefile)
+    isEmpty(makefile) {
+        !isEmpty(filename) {
+            filebase = $$replace(filename, \\..*$,)
+            dirbase = $$basename(subdirectory)
+            !equals(filebase, $$dirbase) {
+                makefile = $(MAKEFILE).$$filebase
+            } else {
+                makefile = $(MAKEFILE)
+            }
+        } else {
+            makefile = $(MAKEFILE)
+        }
+    }
+
+    subdir_command = $$toEvaluatablePath($$subdir_command)
+    eval($${scope}.subdir_command = $$subdir_command)
+    export($${scope}.subdir_command)
+
+    eval($${scope}.target = $$target)
+    export($${scope}.target)
+
+    eval($${scope}.makefile = $$makefile)
+    export($${scope}.makefile)
+
+    return($$scope)
+}
+
+# Qmake has QMAKE_FILE_IN_PATH, but nothing for the out file
+# This allows you do do ${QMAKE_FUNC_FILE_OUT_PATH}
+defineReplace(PATH) {
+    return($$dirname(1))
+}
+
+# We need both versions, in case the first one returns an empty string
+defineReplace(FILE_OUT_PATH) {
+    return($$dirname(2))
+}
+
+# addStrictSubdirOrderBetween(firstSubdir, secondSubdir)
+defineTest(addStrictSubdirOrderBetween) {
+    unset(firstSubdir)
+    unset(secondSubdir)
+
+    firstSubdir = $$1
+    secondSubdir = $$2
+
+    firstVariables = $$computeSubdirVariables($${firstSubdir})
+    secondVariables = $$computeSubdirVariables($${secondSubdir})
+
+    !contains(TEMPLATE, subdirs) {
+        error("Strict subdir dependencies can only be used with subdirs template")
+    }
+
+    firstSubdirFile = $$eval($${firstSubdir}.file)
+    secondSubdirFile = $$eval($${secondSubdir}.file)
+
+    isEmpty(firstSubdirFile)|isEmpty(secondSubdirFile) {
+        error("Missing subdir file ($$firstSubdirFile, $$secondSubdirFile)")
+    }
+
+    # Make sure the order is right
+    SUBDIRS -= $$firstSubdir $$secondSubdir
+    SUBDIRS += $$firstSubdir $$secondSubdir
+    NO_RECURSIVE_QMAKE_SUBDIRS += $$firstSubdir $$secondSubdir
+    CONFIG *= ordered
+
+    first_base_target = sub-$$replace(firstSubdirFile, [^a-zA-Z0-9_], -)
+    second_base_target = sub-$$replace(secondSubdirFile, [^a-zA-Z0-9_], -)
+
+    # Use a custom target for making the derived sources instead of the default ones,
+    # as the default ones depend on $(MAKEFILE), while we want to depend on *qmake_all.
+    # Without this rule we end up running qmake twice for the derived sources, as well as
+    # introducing a race condition where we run "qmake -o Makefile.DerivedSources" at the
+    # same time as we run "make -f Makefile.DerivedSources", resulting in make reading a
+    # half-written makefile.
+    derived_make_for_qmake.target = $${first_base_target}-make_for_qmake
+    derived_make_for_qmake.depends = $${first_base_target}-qmake_all
+    derived_make_for_qmake.commands = $(MAKE) -f $$eval($${firstSubdir}.makefile)
+    QMAKE_EXTRA_TARGETS += derived_make_for_qmake
+
+    # This target ensures that running "make qmake" will force both qmake and make
+    # to be run on the derived sources before running qmake on the target, so that
+    # qmake can pick up the right dependencies for the target based on the derived
+    # sources that were generated.
+    target_make_qmake.target = $${second_base_target}-qmake_all
+    target_make_qmake.depends = $${derived_make_for_qmake.target}
+    QMAKE_EXTRA_TARGETS += target_make_qmake
+
+    GNUmake {
+        # This target ensures that running make before any makefiles have been created
+        # will still force qmake and make to be run on the derived sources first.
+        target_make.target = $$eval($${secondSubdir}.makefile)
+
+        # We use order-only-prerequisites so that we can run make on the derived sources
+        # without triggering a qmake run on the target due to updated dependencies.
+        target_make.depends = "| $${first_base_target}-make_default-ordered"
+
+        QMAKE_EXTRA_TARGETS += target_make
+    }
+
+    export(SUBDIRS)
+    export(NO_RECURSIVE_QMAKE_SUBDIRS)
+    export(CONFIG)
+    export(target_make_qmake.target)
+    export(target_make_qmake.depends)
+    export(derived_make_for_qmake.target)
+    export(derived_make_for_qmake.depends)
+    export(derived_make_for_qmake.commands)
+    export(target_make.target)
+    export(target_make.depends)
+    export(QMAKE_EXTRA_TARGETS)
+    return(true)
+}
+
+# Check if we have the given Qt version. The major version needs
+# to be exact, the minor and patch version is same or higher
+defineTest(haveQt) {
+    count(ARGS, 1, lessThan)|count(ARGS, 3, greaterThan) {
+        error("Unexpected number of arguments: haveQt($$ARGS)")
+    }
+
+    !equals(QT_MAJOR_VERSION, $$1): return(false)
+
+    count(ARGS, 1, greaterThan) {
+        lessThan(QT_MINOR_VERSION, $$2): return(false)
+        greaterThan(QT_MINOR_VERSION, $$2): return(true)
+
+        count(ARGS, 2, greaterThan) {
+            lessThan(QT_PATCH_VERSION, $$3): return(false)
+            greaterThan(QT_PATCH_VERSION, $$3): return(true)
+        }
+    }
+
+    return(true)
+}
+
+defineTest(haveQtModule) {
+    unset(module)
+    module = $$1
+    haveQt(4):contains(QT_CONFIG, $$module): return(true)
+    haveQt(5):!isEmpty(QT.$$module.name): return(true)
+    return(false)
+}
+
+defineTest(prependEach) {
+    unset(variable)
+    unset(prefix)
+
+    variable = $$1
+    prefix = $$2
+
+    original_values = $$unique($$variable)
+
+    for(value, original_values) {
+        values += $${prefix}$${value}
+    }
+
+    eval($$variable = $$values)
+    export($$variable)
+
+    return(true)
+}
+
+defineReplace(resolveFinalLibraryName) {
+    !debug_and_release: return($$1)
+
+    original_template = $$TEMPLATE
+    original_framework_name = $$QMAKE_FRAMEWORK_BUNDLE_NAME
+
+    TEMPLATE = lib # So that qtLibraryTarget works
+    target = $$qtLibraryTarget($$1)
+
+    TEMPLATE = $$original_template
+    QMAKE_FRAMEWORK_BUNDLE_NAME = $$original_framework_name
+    export(QMAKE_FRAMEWORK_BUNDLE_NAME)
+
+    return($$target)
+}
+
+defineTest(linkAgainstLibrary) {
+    unset(target)
+    target = $$1
+
+    unset(source_dir)
+    source_dir = $$2
+
+    library = $$lower($$target)
+
+    target = $$resolveFinalLibraryName($$target)
+
+    path = $$replace(source_dir, $${ROOT_WEBKIT_DIR}, $${ROOT_BUILD_DIR})/$$activeBuildConfig()
+
+    force_static_libs_as_shared {
+            LIBS += -L$${ROOT_BUILD_DIR}/lib -l$$target
+    } else {
+
+        mac {
+            LIBS += -Wl,-force_load,$${path}$${QMAKE_DIR_SEP}lib$${target}.a
+        } else:win32-msvc*|wince*|win32-icc {
+            LIBS += /OPT:REF -l$$target
+        } else {
+            LIBS += -Wl,-whole-archive -l$$target -Wl,-no-whole-archive
+        }
+
+        win32-msvc*|wince*|win32-icc {
+            LIBS += -L$$path
+            POST_TARGETDEPS += $${path}$${QMAKE_DIR_SEP}$${target}.lib
+        } else {
+            QMAKE_LIBDIR += $$path
+            POST_TARGETDEPS += $${path}$${QMAKE_DIR_SEP}lib$${target}.a
+        }
+
+        # The following line is to prevent qmake from adding jscore to libQtWebKit's prl dependencies.
+        # The compromise we have to accept by disabling explicitlib is to drop support to link QtWebKit
+        # statically in applications (which isn't used often because, among other things, of licensing obstacles).
+        CONFIG -= explicitlib
+        CONFIG -= staticlib
+    }
+
+    export(LIBS)
+    export(QMAKE_LIBDIR)
+    export(POST_TARGETDEPS)
+    export(CONFIG)
+    return(true)
+}
+
+defineTest(runSyncQt) {
+
+    build_pass:return(true)
+
+    haveQt(5) {
+        # Qt 5 will run synqt as part of defaults_pre, so no need to do anything
+    } else {
+        # Use our own copy of syncqt from Qt 4.8 to generate forwarding headers
+        syncqt = $$toSystemPath($${ROOT_WEBKIT_DIR}/Tools/qmake/syncqt-4.8)
+        command = $$syncqt
+        win32-msvc*: command = $$command -windows
+
+        outdir = $$toSystemPath($${ROOT_BUILD_DIR})
+
+        # The module root has to be the same as directory of the pro-file that generates
+        # the install rules (api.pri), otherwise the relative paths in the generated
+        # headers.pri will be incorrect.
+        module_rootdir = $$toSystemPath($${_PRO_FILE_PWD_})
+
+        module = $${TARGET}$${DIRLIST_SEPARATOR}$${module_rootdir}$${DIRLIST_SEPARATOR}$$toSystemPath(WebKit/qt/Api)
+        command = perl $${command} -outdir $${outdir} -separate-module $${module}
+        message(Running $$command)
+        !system($$command) {
+            error(Failed to run $${command})
+        }
+    }
+
+    return(true)
+}

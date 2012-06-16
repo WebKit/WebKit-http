@@ -1,7 +1,6 @@
 <html>
     <head>
         <title>Drawing to canvas using video with source element does not taint canvas</title>
-        <link rel="stylesheet" href="../fast/js/resources/js-test-style.css">
         <script src=media-file.js></script>
         <script src=video-test.js></script>
         <script src="../fast/js/resources/js-test-pre.js"></script>
@@ -29,7 +28,9 @@
                 canvas = document.getElementsByTagName('canvas')[0];
                 waitForEvent('canplaythrough', canplaythrough);
                 var mediaFile = findMediaFile("video", "content/counting");
-                run("var source = document.createElement('source'); source.src = '" + mediaFile + "'; video.appendChild(source)");
+                disableFullTestDetailsPrinting();
+                runSilently("var source = document.createElement('source'); source.src = '" + mediaFile + "'; video.appendChild(source)");
+                enableFullTestDetailsPrinting();
             }
         </script>
     </head>

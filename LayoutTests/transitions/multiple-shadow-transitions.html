@@ -1,9 +1,8 @@
 <!DOCTYPE>
 
-<html lang="en">
+<html>
 <head>
-  <title>multiple shadow transitions</title>
-  <style type="text/css" media="screen">
+  <style>
     .box {
       height: 100px;
       width: 100px;
@@ -49,14 +48,14 @@
     }
 
   </style>
-  <script src="transition-test-helpers.js" type="text/javascript" charset="utf-8"></script>
-  <script type="text/javascript" charset="utf-8">
+  <script src="resources/transition-test-helpers.js"></script>
+  <script type="text/javascript">
 
     const expectedValues = [
       // [time, element-id, property, expected-value, tolerance]
       [0.5, 'box', '-webkit-box-shadow', [0, 0, 0, 0], 4],
-      [0.5, 'box2', '-webkit-box-shadow', [0, -10, 0, 0], 4],
-      [0.5, 'box3', '-webkit-box-shadow', [0, -10, 0, 20], 4],
+      [0.5, 'box2', '-webkit-box-shadow', [0, -20, 0, 10], 4],
+      [0.5, 'box3', '-webkit-box-shadow', [0, 0, 0, 10], 4],
     ];
   
     function setupTest()
@@ -66,8 +65,7 @@
       document.getElementById('box3').className = 'box final';
     }
   
-    runTransitionTest(expectedValues, setupTest, true);
-    
+    runTransitionTest(expectedValues, setupTest, usePauseAPI);
   </script>
 </head>
 <body>

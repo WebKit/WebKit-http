@@ -24,24 +24,31 @@
         waitForEvent("canplay");
         waitForEventAndFail("play");
         waitForEventAndFail("playing");
-        waitForEvent("canplaythrough", function () { testNetworkState(HTMLMediaElement.NETWORK_LOADING, true, '>=' ); } );
+        waitForEvent("canplaythrough", function () { testNetworkState(HTMLMediaElement.NETWORK_IDLE, true, '>=' ); } );
     
-        function someTimeLater()
+        function waitUntilNotLoading()
         {
-            testNetworkState(HTMLMediaElement.NETWORK_NO_SOURCE );
+            if (video.networkState == HTMLMediaElement.NETWORK_LOADING) {
+                setTimeout(waitUntilNotLoading, 100);
+                return;
+            }
+            
+            testNetworkState(HTMLMediaElement.NETWORK_NO_SOURCE);
             consoleWrite("");
 
             // now set a valid url
             var mediaFile = findMediaFile("video", "content/test");
-            run("video.src = '" + mediaFile + "'");
+            disableFullTestDetailsPrinting();
+            runSilently("video.src = '" + mediaFile + "'");
+            enableFullTestDetailsPrinting();
         }
         
         // first set the src to a bogus url, it should attempt a load
         consoleWrite("");
         testNetworkState(HTMLMediaElement.NETWORK_EMPTY);
         run("video.src = 'bogus/movie.mpg'");
-        setTimeout(someTimeLater, 400) 
-    
+
+        setTimeout(waitUntilNotLoading, 100);
     </script>
 
 </body>

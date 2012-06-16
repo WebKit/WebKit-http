@@ -4,8 +4,7 @@ EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotificatio
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: shouldChangeSelectedDOMRange:(null) toDOMRange:range from 0 of DIV > DIV > BODY > HTML > #document to 0 of DIV > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 1 of #text > DIV > DIV > BODY > HTML > #document to 1 of DIV > BODY > HTML > #document toDOMRange:range from 0 of DIV > DIV > BODY > HTML > #document to 0 of DIV > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 layer at (0,0) size 800x600
@@ -13,13 +12,11 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock {DIV} at (4,0) size 776x56 [border: (1px solid #0000FF)]
-        RenderBlock {DIV} at (5,5) size 766x21 [border: (1px solid #0000FF)]
-          RenderText {#text} at (1,1) size 4x19
-            text run at (1,1) width 4: "f"
-          RenderText {#text} at (5,1) size 20x19
-            text run at (5,1) width 20: "foo"
-        RenderBlock (anonymous) at (1,30) size 774x0
-        RenderBlock {DIV} at (5,30) size 766x21 [border: (1px solid #0000FF)]
-          RenderBR {BR} at (1,1) size 0x19
-caret: position 0 of child 0 {BR} of child 1 {DIV} of child 0 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+      RenderBlock {DIV} at (4,0) size 776x60 [border: (1px solid #0000FF)]
+        RenderBlock {DIV} at (5,5) size 766x23 [border: (1px solid #0000FF)]
+          RenderText {#text} at (1,1) size 26x21
+            text run at (1,1) width 26: "ffoo"
+        RenderBlock (anonymous) at (1,32) size 774x0
+        RenderBlock {DIV} at (5,32) size 766x23 [border: (1px solid #0000FF)]
+          RenderBR {BR} at (1,1) size 0x21
+caret: position 0 of child 0 {BR} of child 1 {DIV} of child 0 {DIV} of body

@@ -1,57 +1,57 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-layer at (0,0) size 800x93
-  RenderBlock {HTML} at (0,0) size 800x93
-    RenderBody {BODY} at (8,14) size 784x71
-      RenderBlock {P} at (0,0) size 784x19
-        RenderText {#text} at (0,0) size 276x19
-          text run at (0,0) width 276: "The following two lines should be the same:"
-      RenderBlock {DIV} at (0,33) size 784x19
-        RenderInline {SPAN} at (0,0) size 144x19
-          RenderInline (generated) at (0,0) size 22x19
-            RenderText at (0,0) size 9x19
-              text run at (0,0) width 9: "B"
-            RenderCounter at (9,0) size 8x19
-              text run at (9,0) width 8: "1"
-            RenderText at (17,0) size 5x19
-              text run at (17,0) width 5: "-"
-          RenderInline {SPAN} at (0,0) size 100x19
-            RenderInline (generated) at (0,0) size 22x19
-              RenderText at (22,0) size 9x19
-                text run at (22,0) width 9: "B"
-              RenderCounter at (31,0) size 8x19
-                text run at (31,0) width 8: "2"
-              RenderText at (39,0) size 5x19
-                text run at (39,0) width 5: "-"
-            RenderInline {SPAN} at (0,0) size 44x19
-              RenderInline (generated) at (0,0) size 22x19
-                RenderText at (44,0) size 9x19
-                  text run at (44,0) width 9: "B"
-                RenderCounter at (53,0) size 8x19
-                  text run at (53,0) width 8: "3"
-                RenderText at (61,0) size 5x19
-                  text run at (61,0) width 5: "-"
-              RenderInline (generated) at (0,0) size 22x19
-                RenderText at (66,0) size 9x19
-                  text run at (66,0) width 9: "A"
-                RenderCounter at (75,0) size 8x19
-                  text run at (75,0) width 8: "4"
-                RenderText at (83,0) size 5x19
-                  text run at (83,0) width 5: "-"
-            RenderInline (generated) at (0,0) size 34x19
-              RenderText at (88,0) size 9x19
-                text run at (88,0) width 9: "A"
-              RenderCounter at (97,0) size 20x19
-                text run at (97,0) width 20: "4.1"
-              RenderText at (117,0) size 5x19
-                text run at (117,0) width 5: "-"
-          RenderInline (generated) at (0,0) size 22x19
-            RenderText at (122,0) size 9x19
-              text run at (122,0) width 9: "A"
-            RenderCounter at (131,0) size 8x19
-              text run at (131,0) width 8: "5"
-            RenderText at (139,0) size 5x19
-              text run at (139,0) width 5: "-"
-      RenderBlock {DIV} at (0,52) size 784x19
-        RenderText {#text} at (0,0) size 144x19
-          text run at (0,0) width 144: "B1-B2-B3-A4-A4.1-A5-"
+layer at (0,0) size 800x103
+  RenderBlock {HTML} at (0,0) size 800x103
+    RenderBody {BODY} at (8,16) size 784x79
+      RenderBlock {P} at (0,0) size 784x21
+        RenderText {#text} at (0,0) size 310x21
+          text run at (0,0) width 310: "The following two lines should be the same:"
+      RenderBlock {DIV} at (0,37) size 784x21
+        RenderInline {SPAN} at (0,0) size 163x21
+          RenderInline (generated) at (0,0) size 25x21
+            RenderText at (0,0) size 11x21
+              text run at (0,0) width 11: "B"
+            RenderCounter at (11,0) size 9x21
+              text run at (11,0) width 9: "1"
+            RenderText at (20,0) size 5x21
+              text run at (20,0) width 5: "-"
+          RenderInline {SPAN} at (0,0) size 113x21
+            RenderInline (generated) at (0,0) size 25x21
+              RenderText at (25,0) size 11x21
+                text run at (25,0) width 11: "B"
+              RenderCounter at (36,0) size 9x21
+                text run at (36,0) width 9: "2"
+              RenderText at (45,0) size 5x21
+                text run at (45,0) width 5: "-"
+            RenderInline {SPAN} at (0,0) size 50x21
+              RenderInline (generated) at (0,0) size 25x21
+                RenderText at (50,0) size 11x21
+                  text run at (50,0) width 11: "B"
+                RenderCounter at (61,0) size 9x21
+                  text run at (61,0) width 9: "3"
+                RenderText at (70,0) size 5x21
+                  text run at (70,0) width 5: "-"
+              RenderInline (generated) at (0,0) size 25x21
+                RenderText at (75,0) size 11x21
+                  text run at (75,0) width 11: "A"
+                RenderCounter at (86,0) size 9x21
+                  text run at (86,0) width 9: "4"
+                RenderText at (95,0) size 5x21
+                  text run at (95,0) width 5: "-"
+            RenderInline (generated) at (0,0) size 38x21
+              RenderText at (100,0) size 11x21
+                text run at (100,0) width 11: "A"
+              RenderCounter at (111,0) size 22x21
+                text run at (111,0) width 22: "4.1"
+              RenderText at (133,0) size 5x21
+                text run at (133,0) width 5: "-"
+          RenderInline (generated) at (0,0) size 25x21
+            RenderText at (138,0) size 11x21
+              text run at (138,0) width 11: "A"
+            RenderCounter at (149,0) size 9x21
+              text run at (149,0) width 9: "5"
+            RenderText at (158,0) size 5x21
+              text run at (158,0) width 5: "-"
+      RenderBlock {DIV} at (0,58) size 784x21
+        RenderText {#text} at (0,0) size 163x21
+          text run at (0,0) width 163: "B1-B2-B3-A4-A4.1-A5-"

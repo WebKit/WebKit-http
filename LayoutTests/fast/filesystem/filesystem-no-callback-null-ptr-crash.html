@@ -1,0 +1,19 @@
+<!--
+  http://code.google.com/p/chromium/issues/detail?id=63204
+  https://bugs.webkit.org/show_bug.cgi?id=49539
+-->
+<div id="log">FAIL</div>
+<script>
+  if (window.layoutTestController)
+      layoutTestController.dumpAsText();
+  if (window.webkitRequestFileSystem) {
+      // These two calls should throw an exception but should NOT cause a NULL pointer crash:
+      webkitResolveLocalFileSystemURL('');
+      try {
+          webkitRequestFileSystem(TEMPORARY, 100);
+      }
+      catch(e) {
+          document.getElementById('log').innerHTML = "PASS";
+      }
+  }
+</script>

@@ -1,5 +1,5 @@
 // [Name] SVGRadialGradientElement-svgdom-gradientUnits-prop.js
-// [Expected rendering result] green ellipse, no red visible - and a series of PASS messages
+// [Expected rendering result] radial gradient filled from left edge to right edge of green ellipse - and a series of PASS messages
 
 description("Tests dynamic updates of the 'gradientUnits' property of the SVGRadialGradientElement object")
 createSVGTestCase();
@@ -32,13 +32,11 @@ rootSVGElement.appendChild(ellipseElement);
 
 shouldBe("radialGradientElement.gradientUnits.baseVal", "SVGUnitTypes.SVG_UNIT_TYPE_OBJECTBOUNDINGBOX");
 
-function executeTest() {
+function repaintTest() {
     radialGradientElement.gradientUnits.baseVal = SVGUnitTypes.SVG_UNIT_TYPE_USERSPACEONUSE;
     shouldBe("radialGradientElement.gradientUnits.baseVal", "SVGUnitTypes.SVG_UNIT_TYPE_USERSPACEONUSE");
 
     completeTest();
 }
-
-startTest(ellipseElement, 150, 150);
 
 var successfullyParsed = true;

@@ -1,42 +1,43 @@
 layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
-    RenderSVGContainer {svg} at (20,8) size 546x524
-      RenderSVGContainer {g} at (20,8) size 546x524
-        RenderSVGText {text} at (10,20) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 259x22
-            text run at (0,-16) width 259: "Testing xml:space=\"default\" support:"
-        RenderSVGText {text} at (10,40) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 184x22
-            text run at (0,-16) width 184: "NoSpacesBetweenWords"
-        RenderSVGText {text} at (10,60) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 152x22
-            text run at (0,-16) width 152: "Tabs become spaces"
-        RenderSVGText {text} at (10,80) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 125x22
-            text run at (0,-16) width 125: "No leading space"
-        RenderSVGText {text} at (10,100) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 120x22
-            text run at (0,-16) width 120: "No trailing space"
-        RenderSVGText {text} at (10,120) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 172x22
-            text run at (0,-16) width 88: "Whitespace "
-            text run at (88,-16) width 16: "is "
-            text run at (104,-16) width 68: "simplified"
-        RenderSVGText {text} at (10,160) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 273x22
-            text run at (0,-16) width 273: "Testing xml:space=\"preserve\" support:"
-        RenderSVGText {text} at (10,180) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 196x22
-            text run at (0,-16) width 196: " Newlines Become Spaces "
-        RenderSVGText {text} at (10,200) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 152x22
-            text run at (0,-16) width 152: "Tabs become spaces"
-        RenderSVGText {text} at (10,220) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 179x22
-            text run at (0,-16) width 179: "    Respect leading space"
-        RenderSVGText {text} at (10,240) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 170x22
-            text run at (0,-16) width 170: "Respect trailing space   "
-        RenderSVGText {text} at (10,260) size 800x22
-          RenderSVGInlineText {#text} at (0,-16) size 246x22
-            text run at (0,-16) width 246: "Whitespace      is not        simplified"
+layer at (0,0) size 800x600
+  RenderSVGRoot {svg} at (20,8) size 554x522
+    RenderSVGContainer {g} at (20,8) size 554x522
+      RenderSVGText {text} at (10,4) size 262x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 262x21
+          chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 36 width 262.00: "Testing xml:space=\"default\" support:"
+      RenderSVGText {text} at (10,24) size 183x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 183x21
+          chunk 1 text run 1 at (10.00,40.00) startOffset 0 endOffset 20 width 183.00: "NoSpacesBetweenWords"
+      RenderSVGText {text} at (10,44) size 154x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 154x21
+          chunk 1 text run 1 at (10.00,60.00) startOffset 0 endOffset 18 width 153.50: "Tabs become spaces"
+      RenderSVGText {text} at (10,64) size 125x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 125x21
+          chunk 1 text run 1 at (10.00,80.00) startOffset 0 endOffset 16 width 124.50: "No leading space"
+      RenderSVGText {text} at (10,84) size 120x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 120x21
+          chunk 1 text run 1 at (10.00,100.00) startOffset 0 endOffset 17 width 120.00: "No trailing space"
+      RenderSVGText {text} at (10,104) size 172x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 172x21
+          chunk 1 text run 1 at (10.00,120.00) startOffset 0 endOffset 11 width 88.50: "Whitespace "
+          chunk 1 text run 1 at (98.50,120.00) startOffset 0 endOffset 3 width 16.00: "is "
+          chunk 1 text run 1 at (114.50,120.00) startOffset 0 endOffset 10 width 67.00: "simplified"
+      RenderSVGText {text} at (10,144) size 277x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 277x21
+          chunk 1 text run 1 at (10.00,160.00) startOffset 0 endOffset 37 width 276.50: "Testing xml:space=\"preserve\" support:"
+      RenderSVGText {text} at (10,164) size 196x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 196x21
+          chunk 1 text run 1 at (10.00,180.00) startOffset 0 endOffset 24 width 195.50: " Newlines Become Spaces "
+      RenderSVGText {text} at (10,184) size 154x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 154x21
+          chunk 1 text run 1 at (10.00,200.00) startOffset 0 endOffset 18 width 153.50: "Tabs become spaces"
+      RenderSVGText {text} at (10,204) size 181x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 181x21
+          chunk 1 text run 1 at (10.00,220.00) startOffset 0 endOffset 25 width 181.00: "    Respect leading space"
+      RenderSVGText {text} at (10,224) size 172x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 172x21
+          chunk 1 text run 1 at (10.00,240.00) startOffset 0 endOffset 25 width 172.00: "Respect trailing space   "
+      RenderSVGText {text} at (10,244) size 253x21 contains 1 chunk(s)
+        RenderSVGInlineText {#text} at (0,0) size 253x21
+          chunk 1 text run 1 at (10.00,260.00) startOffset 0 endOffset 40 width 252.50: "Whitespace      is not        simplified"

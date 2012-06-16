@@ -1,0 +1,62 @@
+<?php
+    $title = "Debugging WebKit";
+    include("../header.inc");
+?>
+
+<div class="mac-instructions">
+<h2>Debugging on Mac OS X</h2>
+<p>Each WebKit component -- JavaScriptCore, WebCore, and WebKit2 -- contains its own Xcode project that depends on the build location specified in the project itself. In Xcode 4.3.2, choose Xcode > Preferences > Locations, click Locations, click the Advanced button, and ensure that the build location is Legacy.</p>
+<h3>Debugging UIProcess</h3>
+<p>Follow the instructions on the <a href="debug-mac-uiprocess.html">debugging UIProcess</a> page.</p>
+<h3>Debugging WebProcess</h3>
+<ol>
+<li><p>Launch Safari</p>
+<p>Follow the instructions on <a href="run.html">Running WebKit</a> to launch Safari from the command line with the WebKit version you built. Alternatively you can <a href="debug-mac-uiprocess.html">use the WebKit2 Xcode project to launch Safari</a>.</p>
+</li>
+<li><p>Open a project</p>
+<p>Open the Xcode project belonging to the component -- WebCore or JavaScriptCore -- you want to debug.</p>
+</li>
+<li><p>Attach to WebProcess</p>
+<p>Choose Product > Attach to Process > WebProcess.</p>
+</li>
+<li><p>See the <a href="https://developer.apple.com/library/mac/#documentation/ToolsLanguages/Conceptual/Xcode4UserGuide/Debugging/Debugging.html#//apple_ref/doc/uid/TP40010215-CH3-SW1">Xcode Debugging Guide</a> for more information on using Xcode to debug software on Mac OS X.</p>
+</li>
+</ol>
+</div>
+<div class="windows-instructions">
+<h2>Debugging on Windows</h2>
+<ol>
+<li><p>Open <code>WebKit/WebKit/win/WebKit.vcproj/WebKit.sln</code></p>
+<p>You can open it in either Visual Studio 2005, or Visual C++ Express 2005.
+If you get errors about not being able to find <code>.vsprops</code> files, run
+update-webkit, then close and relaunch Cygwin and Visual Studio or Visual C++
+Express.</p>
+</li>
+<li><p>Set WebKit.vcproj as the solution's StartUp project</p>
+<p>Select the WebKit project in the Solution Explorer, then choose Project >
+Set as StartUp Project. This will cause the project to turn bold in the
+Solution Explorer.</p>
+<img src="set-as-startup-project-vs2005.png">
+</li>
+<li><p>Set WebKit.vcproj's Debugging properties</p>
+<p>With the WebKit project selected, choose Project > Properties, then navigate
+to Configuration Properties > Debugging. Set the following options:</p>
+<dl>
+    <dt>Command</dt>
+    <dd><code>$(PROGRAMFILES)\Safari\Safari.exe</code></dd>
+    <dt>Environment</dt>
+    <dd><code>WEBKITNIGHTLY=$(OutDir)</code></dd>
+</dl>
+<p>Then click <code>OK</code> to close the properties dialog.</p>
+<img src="set-debugging-properties-vs2005.png">
+</li>
+<li><p>Launch the debugger</p>
+<p>Choose Debug > Start Debugging.</p>
+<img src="launch-debugger-vs2005.png">
+</ol>
+<p>It is also recommended that you follow <a href="http://developer.apple.com/internet/safari/windows_symbols_agree.html">the instructions to configure Visual Studio to use Apple's Safari for Windows symbol server</a>. This will give Visual Studio the information it needs to provide reliable backtraces when pausing in the debugger or when a crash occurs.</p>
+</div>
+
+<?php
+    include("../footer.inc");
+?>

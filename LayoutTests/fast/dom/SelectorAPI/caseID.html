@@ -1,11 +1,8 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-    <p id="description"></p>
-    <div id="console"></div>
     <div style="display: none">
     <span id="lower1">lower 1</span><br>
     <span id="lower2">lower 2</span><br>
@@ -22,8 +19,6 @@
         shouldBeTrue("document.getElementById('lower2').webkitMatchesSelector('#LOWER2')");
         shouldBeTrue("document.getElementById('UPPER1').webkitMatchesSelector('#UPPER1')");
         shouldBeTrue("document.getElementById('UPPER2').webkitMatchesSelector('#upper2')");
-
-        var successfullyParsed = true;
     </script>
     <script src="../../js/resources/js-test-post.js"></script>
 </body>

@@ -1,0 +1,7 @@
+CONSOLE MESSAGE: line 82: SyntaxError: Label 'LABEL_IN' is not defined
+S12.8_A5_T3
+
+PASS Expected parsing failure
+
+TEST COMPLETE
+

@@ -1,3 +1,11 @@
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
+CONSOLE MESSAGE: event.layerX and event.layerY are broken and deprecated in WebKit. They will be removed from the engine in the near future.
 This tests the init functions for all the event DOM classes that have them.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
@@ -108,24 +116,6 @@ PASS testInitEvent('Mutation', '"a", false, false, null, "b", null, "d", 1001').
 PASS testInitEvent('Mutation', '"a", false, false, null, "b", "c", "d", 1001').attrName is 'd'
 PASS testInitEvent('Mutation', '"a", false, false, null, "b", "c", null, 1001').attrName is 'null'
 PASS testInitEvent('Mutation', '"a", false, false, null, "b", "c", "d", 1001').attrChange is 1001
-PASS testInitEvent('Overflow', '1001, false, false').type is 'overflowchanged'
-PASS testInitEvent('Overflow', '1001, false, false').bubbles is false
-PASS testInitEvent('Overflow', '1001, false, false').cancelable is false
-PASS testInitEvent('Overflow', '1001, false, false').orient is 1001
-PASS testInitEvent('Overflow', '1001, false, false').horizontalOverflow is false
-PASS testInitEvent('Overflow', '1001, true, false').horizontalOverflow is true
-PASS testInitEvent('Overflow', '1001, false, false').verticalOverflow is false
-PASS testInitEvent('Overflow', '1001, false, true').verticalOverflow is true
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').type is 'a'
-PASS testInitEvent('Progress', 'null, false, false, false, 1001, 1002').type is 'null'
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').bubbles is false
-PASS testInitEvent('Progress', '"a", true, false, false, 1001, 1002').bubbles is true
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').cancelable is false
-PASS testInitEvent('Progress', '"a", false, true, false, 1001, 1002').cancelable is true
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').lengthComputable is false
-PASS testInitEvent('Progress', '"a", false, false, true, 1001, 1002').lengthComputable is true
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').loaded is 1001
-PASS testInitEvent('Progress', '"a", false, false, false, 1001, 1002').total is 1002
 PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').type is 'a'
 PASS testInitEvent('Storage', 'null, false, false, "b", "c", "d", "e"').type is 'null'
 PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').bubbles is false
@@ -138,8 +128,8 @@ PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').oldValue 
 PASS testInitEvent('Storage', '"a", false, false, "b", null, "d", "e"').oldValue is null
 PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').newValue is 'd'
 PASS testInitEvent('Storage', '"a", false, false, "b", "c", null, "e"').newValue is null
-PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').uri is 'e'
-PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", null').uri is 'null'
+PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", "e"').url is 'e'
+PASS testInitEvent('Storage', '"a", false, false, "b", "c", "d", null').url is 'null'
 PASS testInitEvent('Text', '"a", false, false, window, "b"').type is 'a'
 PASS testInitEvent('Text', 'null, false, false, window, "b"').type is 'null'
 PASS testInitEvent('Text', '"a", false, false, window, "b"').bubbles is false
@@ -174,24 +164,6 @@ PASS testInitEvent('UI', '"a", false, false, window, 1001').layerY is 0
 PASS testInitEvent('UI', '"a", false, false, window, 1001').pageX is 0
 PASS testInitEvent('UI', '"a", false, false, window, 1001').pageY is 0
 PASS testInitEvent('UI', '"a", false, false, window, 1001').which is 0
-PASS testInitEvent('WebKitAnimation', '"a", false, false, "b", 1001').type is 'a'
-PASS testInitEvent('WebKitAnimation', 'null, false, false, "b", 1001').type is 'null'
-PASS testInitEvent('WebKitAnimation', '"a", false, false, "b", 1001').bubbles is false
-PASS testInitEvent('WebKitAnimation', '"a", true, false, "b", 1001').bubbles is true
-PASS testInitEvent('WebKitAnimation', '"a", false, false, "b", 1001').cancelable is false
-PASS testInitEvent('WebKitAnimation', '"a", false, true, "b", 1001').cancelable is true
-PASS testInitEvent('WebKitAnimation', '"a", false, false, "b", 1001').animationName is 'b'
-PASS testInitEvent('WebKitAnimation', '"a", false, false, null, 1001').animationName is 'null'
-PASS testInitEvent('WebKitAnimation', '"a", false, false, "b", 1001').elapsedTime is 1001
-PASS testInitEvent('WebKitTransition', '"a", false, false, "b", 1001').type is 'a'
-PASS testInitEvent('WebKitTransition', 'null, false, false, "b", 1001').type is 'null'
-PASS testInitEvent('WebKitTransition', '"a", false, false, "b", 1001').bubbles is false
-PASS testInitEvent('WebKitTransition', '"a", true, false, "b", 1001').bubbles is true
-PASS testInitEvent('WebKitTransition', '"a", false, false, "b", 1001').cancelable is false
-PASS testInitEvent('WebKitTransition', '"a", false, true, "b", 1001').cancelable is true
-PASS testInitEvent('WebKitTransition', '"a", false, false, "b", 1001').propertyName is 'b'
-PASS testInitEvent('WebKitTransition', '"a", false, false, null, 1001').propertyName is 'null'
-PASS testInitEvent('WebKitTransition', '"a", false, false, "b", 1001').elapsedTime is 1001
 PASS successfullyParsed is true
 
 TEST COMPLETE

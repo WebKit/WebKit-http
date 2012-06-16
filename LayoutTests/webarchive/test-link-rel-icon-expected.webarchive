@@ -17,7 +17,8 @@ function runTest()
 }
 &lt;/script&gt;
 &lt;link rel="icon" href="resources/favicon.ico" type="image/x-icon"&gt;
-&lt;/head&gt;&lt;body onload="runTest()"&gt;
+&lt;/head&gt;
+&lt;body onload="runTest()"&gt;
 
 
 &lt;/body&gt;&lt;/html&gt;</string>
@@ -75,7 +76,7 @@ function runTest()
 				<key>URL</key>
 				<string>file:///LayoutTests/webarchive/resources/favicon.ico</string>
 				<key>expectedContentLength</key>
-				<integer>0</integer>
+				<integer>1150</integer>
 				<key>textEncodingName</key>
 				<string></string>
 			</dict>

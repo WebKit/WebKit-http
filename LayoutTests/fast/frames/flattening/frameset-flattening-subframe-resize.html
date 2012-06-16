@@ -1,16 +1,12 @@
 <html>
 <head>
     <script type="text/javascript">
-
-        function test()
-        {
-            if (window.layoutTestController) {
-                layoutTestController.waitUntilDone();
-                layoutTestController.setFrameSetFlatteningEnabled(true);
-            }
+        if (window.layoutTestController) {
+            layoutTestController.waitUntilDone();
+            layoutTestController.setFrameFlatteningEnabled(true);
         }
 
-        function test2()
+        function test()
         {
             setTimeout(contentResize, 50);
         }
@@ -24,14 +20,13 @@
 
             if (window.layoutTestController) {
                 frames[0].document.body.offsetTop;
-                layoutTestController.display();
                 layoutTestController.notifyDone();
             }
         }
     </script>
 </head>
-<frameset border=0 cols="*,700" onload="test();">
-    <frame src="resources/frameset-flattening-subframe-resize.html" onload="test2();">
+<frameset border=0 cols="*,700">
+    <frame src="resources/frameset-flattening-subframe-resize.html" onload="test();">
     <frame>
 </frameset>
 </html>

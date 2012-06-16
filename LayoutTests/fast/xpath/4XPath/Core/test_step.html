@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 <script src="test.js"></script>
 <script src="../../xpath-test-pre.js"></script>
@@ -24,8 +23,6 @@
 
     result = DOM.evaluate("child::GCHILD[1]", CHILD1, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
     checkSnapshot("child::GCHILD[1]", result, [GCHILD11]);
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

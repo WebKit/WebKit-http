@@ -6,7 +6,7 @@ layer at (10,13) size 320x64
     RenderText zI: -1 {#text} at (0,0) size 36x18
       text run at (0,0) width 36: "FAIL"
 layer at (0,0) size 800x77 layerType: foreground only
-  RenderBlock {HTML} at (0,0) size 800x49
+  RenderBlock {HTML} at (0,0) size 800x77
     RenderBody {BODY} at (10,2) size 780x1
       RenderBlock {DIV} at (2,0) size 776x1
         RenderBlock {DIV} at (20,11) size 736x0

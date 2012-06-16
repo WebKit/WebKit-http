@@ -1,3 +1,6 @@
+#ifdef GL_ES
+precision highp float;
+#endif
 varying vec3 v_normal;
 
 void main()

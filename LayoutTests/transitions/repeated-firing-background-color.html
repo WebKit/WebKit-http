@@ -1,7 +1,6 @@
 <html>
 <head>
-  <title>Testing repeated firing of background-color transition</title>
-  <style type="text/css" media="screen">
+  <style>
     div {
         -webkit-transition: background-color .15s linear;
     }
@@ -9,9 +8,14 @@
         background-color: hsla(0, 50%, 50%, 1);
     }
   </style>
-  <script type="text/javascript" charset="utf-8">
+  <script>
     function checkRunning()
     {
+      if (!window.layoutTestController) {
+        document.getElementById('result').innerHTML = "This test must be run in DRT."
+        return;
+      }
+        
       var current = layoutTestController.numberOfActiveAnimations();
       if (current == 0)
         document.getElementById('result').innerHTML = "Number of active transitions is (0) as expected";

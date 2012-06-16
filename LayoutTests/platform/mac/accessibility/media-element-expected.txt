@@ -1,8 +1,8 @@
-Dump <video> element controller accessibility object tree at 'loadstart' and 'load' events.
+Dump <video> element controller accessibility object tree at 'canplaythrough' event.
 
 +++++++++++++++++++++++++++++++++++
 
-State at 'load' event:
+State at 'canplaythrough' event:
 
     description: AXDescription: video element controller
     role: AXRole: AXToolbar
@@ -32,7 +32,7 @@ State at 'load' event:
         role: AXRole: AXStaticText
 
 
-        description: AXDescription: fullscreen
+        description: AXDescription: enter fullscreen
         role: AXRole: AXButton
 
 

@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 <script src="test.js"></script>
 </head>
@@ -54,8 +53,6 @@
     result = DOM.evaluate("//processing-instruction('xml-stylesheet')", ROOT, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
     shouldBe("nodeInResult(PI, result)", "true");
     shouldBe("nodeInResult(PI2, result)", "false");
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

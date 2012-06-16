@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../fast/js/resources/js-test-style.css">
-<script>
-var successfullyParsed = false;
-</script>
 <script src="../../../fast/js/resources/js-test-pre.js"></script>
 </head>
 <body id="body">
@@ -21,6 +17,7 @@ var successfullyParsed = false;
 
     description("This tests that ARIA live regions are sending out the correct notifications. We perform four operations (add, remove, change text, change alt tag), each one should trigger a live region notification");
 
+    var liveRegion = 0;
     var liveRegionChangeCount = 0;
     function ariaCallback(notification) {
         if (notification == "AXLiveRegionChanged") {
@@ -28,6 +25,7 @@ var successfullyParsed = false;
 
             // We should get a total of 4 live region changes.
             if (liveRegionChangeCount == 4) {
+               liveRegion.removeNotificationListener();
                window.layoutTestController.notifyDone();
             }
         }
@@ -37,7 +35,7 @@ var successfullyParsed = false;
         window.layoutTestController.waitUntilDone();
 
         document.getElementById("liveregion").focus();
-        var liveRegion = window.accessibilityController.focusedElement;
+        liveRegion = window.accessibilityController.focusedElement;
 
         var addedNotification = liveRegion.addNotificationListener(ariaCallback);
         shouldBe("addedNotification", "true");
@@ -59,7 +57,6 @@ var successfullyParsed = false;
         document.getElementById("liveregion").removeChild(document.getElementById("innerlive")); 
     }
 
-    successfullyParsed = true;
 </script>
 
 <script src="../../../fast/js/resources/js-test-post.js"></script>

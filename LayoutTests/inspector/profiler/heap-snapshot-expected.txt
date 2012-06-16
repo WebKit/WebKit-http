@@ -1,0 +1,29 @@
+This test checks HeapSnapshots module.
+
+
+Running: heapSnapshotNodeSimpleTest
+
+Running: heapSnapshotNodeIteratorTest
+
+Running: heapSnapshotEdgeSimpleTest
+
+Running: heapSnapshotEdgeIteratorTest
+
+Running: heapSnapshotNodeAndEdgeTest
+
+Running: heapSnapshotSimpleTest
+
+Running: testNodesAndEdgesSeparationInHeapSnapshot
+
+Running: heapSnapshotRetainersTest
+
+Running: heapSnapshotAggregatesTest
+
+Running: heapSnapshotFlagsTest
+
+Running: heapSnapshotArraySliceTest
+
+Running: heapSnapshotNodesProviderTest
+
+Running: heapSnapshotEdgesProviderTest
+

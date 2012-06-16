@@ -1,9 +1,7 @@
 <html>
 <head>
 <title>Test for Buzilla Bug 15359: JPEG image not shown when height is specified as percentage inside a table</title>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
-<script src="../js/resources/js-test-post-function.js"></script>
 <script>
 if (window.layoutTestController) {
     layoutTestController.waitUntilDone();
@@ -61,7 +59,7 @@ function test()
 {
     description("This test checks that replaced elements with percentage heights within table cells have the correct height.<br>Note, some of the button height tests fail on the Windows ports. See bug #34071.");
 
-    shouldBe("getWidth('canvas-75')", "'300px'");
+    shouldBe("getWidth('canvas-75')", "'224px'");
     shouldBe("getHeight('canvas-75')", "'112px'");
     shouldBe("getWidth('canvas-100')", "'300px'");
     shouldBe("getHeight('canvas-100')", "'150px'");
@@ -75,6 +73,11 @@ function test()
     shouldBe("getHeight('img-75')", "'75px'");
     shouldBe("getWidth('img-100')", "'100px'");
     shouldBe("getHeight('img-100')", "'100px'");
+
+    shouldBe("getWidth('img-75-nested')", "'75px'");
+    shouldBe("getHeight('img-75-nested')", "'75px'");
+    shouldBe("getWidth('img-100-nested')", "'100px'");
+    shouldBe("getHeight('img-100-nested')", "'100px'");
 
     shouldBe("getWidth('object-75')", "'300px'");
     shouldBe("getHeight('object-75')", "'112px'");
@@ -128,8 +131,6 @@ function test()
         layoutTestController.notifyDone();
     }
 }
-
-var successfullyParsed = true;
 </script>
 </head>
 <body onload="test()">
@@ -142,6 +143,9 @@ var successfullyParsed = true;
 
 <table><tr><td><img id="img-75" src="resources/square-blue-100x100.png" style="height: 75%;"></td></tr></table>
 <table><tr><td><img id="img-100" src="resources/square-blue-100x100.png" style="height: 100%;"></td></tr></table>
+
+<table><tr><td><div><img id="img-75-nested" src="resources/square-blue-100x100.png" style="height: 75%;"></div></td></tr></table>
+<table><tr><td><div><img id="img-100-nested" src="resources/square-blue-100x100.png" style="height: 100%;"></div></td></tr></table>
 
 <table><tr><td><object id="object-75" style="background-color: #00ff00; height: 75%;"></object></td></tr></table>
 <table><tr><td><object id="object-100" style="background-color: #00ff00; height: 100%;"></object></td></tr></table>

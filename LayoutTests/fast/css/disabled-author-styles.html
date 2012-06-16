@@ -7,7 +7,7 @@
                alert("This test must be run in the DumpRenderTree to work.");
                return;
             }
-
+            layoutTestController.waitUntilDone();
             layoutTestController.setAuthorAndUserStylesEnabled(false);
 
             // Check the matched rules after a timeout to give time for WebPreferences to update WebCore::Settings.
@@ -16,9 +16,13 @@
 
         function checkMatchedRules()
         {
-            var matchedRules = getMatchedCSSRules(document.getElementById("test"), "", true);
+            var matchedRules = getMatchedCSSRules(document.getElementById("test"), "");
             if (matchedRules && matchedRules.length)
                 alert(matchedRules.length + " rule(s) were returned from getMatchedCSSRules, expected zero.");
+
+            if (window.layoutTestController) {
+                layoutTestController.notifyDone();
+            }
         }
     </script>
     <style>

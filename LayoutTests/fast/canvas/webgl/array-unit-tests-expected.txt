@@ -1,91 +1,494 @@
-Verifies the functionality of the new array-like objects in the WebGL spec
+Verifies the functionality of the new array-like objects in the TypedArray spec
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
-PASS test WebGLByteArray SetAndGetPos10ToNeg10
-PASS test WebGLByteArray SetAndGetMethodsPos10ToNeg10
-PASS test WebGLByteArray ConstructWithArrayOfSignedValues
-PASS test WebGLByteArray ConstructWithWebGLArrayOfSignedValues
-PASS test WebGLByteArray OffsetsAndSizes
-PASS test WebGLByteArray SetFromWebGLArray
-PASS negativeTest WebGLByteArray SetFromWebGLArray
-PASS test WebGLByteArray SetFromArray
-PASS negativeTest WebGLByteArray SetFromArray
-PASS test WebGLByteArray Slice
-PASS negativeTest WebGLByteArray Slice
-PASS test WebGLByteArray BoundaryConditions(-128, -128, 127, 127)
-PASS test WebGLFloatArray SetAndGetPos10ToNeg10
-PASS test WebGLFloatArray SetAndGetMethodsPos10ToNeg10
-PASS test WebGLFloatArray ConstructWithArrayOfSignedValues
-PASS test WebGLFloatArray ConstructWithWebGLArrayOfSignedValues
-PASS test WebGLFloatArray OffsetsAndSizes
-PASS test WebGLFloatArray SetFromWebGLArray
-PASS negativeTest WebGLFloatArray SetFromWebGLArray
-PASS test WebGLFloatArray SetFromArray
-PASS negativeTest WebGLFloatArray SetFromArray
-PASS test WebGLFloatArray Slice
-PASS negativeTest WebGLFloatArray Slice
-PASS test WebGLFloatArray BoundaryConditions(-500.5, -500.5, 500.5, 500.5)
-PASS test WebGLIntArray SetAndGetPos10ToNeg10
-PASS test WebGLIntArray SetAndGetMethodsPos10ToNeg10
-PASS test WebGLIntArray ConstructWithArrayOfSignedValues
-PASS test WebGLIntArray ConstructWithWebGLArrayOfSignedValues
-PASS test WebGLIntArray OffsetsAndSizes
-PASS test WebGLIntArray SetFromWebGLArray
-PASS negativeTest WebGLIntArray SetFromWebGLArray
-PASS test WebGLIntArray SetFromArray
-PASS negativeTest WebGLIntArray SetFromArray
-PASS test WebGLIntArray Slice
-PASS negativeTest WebGLIntArray Slice
-PASS test WebGLIntArray BoundaryConditions(-2147483648, -2147483648, 2147483647, 2147483647)
-PASS test WebGLShortArray SetAndGetPos10ToNeg10
-PASS test WebGLShortArray SetAndGetMethodsPos10ToNeg10
-PASS test WebGLShortArray ConstructWithArrayOfSignedValues
-PASS test WebGLShortArray ConstructWithWebGLArrayOfSignedValues
-PASS test WebGLShortArray OffsetsAndSizes
-PASS test WebGLShortArray SetFromWebGLArray
-PASS negativeTest WebGLShortArray SetFromWebGLArray
-PASS test WebGLShortArray SetFromArray
-PASS negativeTest WebGLShortArray SetFromArray
-PASS test WebGLShortArray Slice
-PASS negativeTest WebGLShortArray Slice
-PASS test WebGLShortArray BoundaryConditions(-32768, -32768, 32767, 32767)
-PASS test WebGLUnsignedByteArray SetAndGet10To1
-PASS test WebGLUnsignedByteArray SetAndGetMethods10To1
-PASS test WebGLUnsignedByteArray ConstructWithArrayOfUnsignedValues
-PASS test WebGLUnsignedByteArray ConstructWithWebGLArrayOfUnsignedValues
-PASS test WebGLUnsignedByteArray OffsetsAndSizes
-PASS test WebGLUnsignedByteArray SetFromWebGLArray
-PASS negativeTest WebGLUnsignedByteArray SetFromWebGLArray
-PASS test WebGLUnsignedByteArray SetFromArray
-PASS negativeTest WebGLUnsignedByteArray SetFromArray
-PASS test WebGLUnsignedByteArray Slice
-PASS negativeTest WebGLUnsignedByteArray Slice
-PASS test WebGLUnsignedByteArray BoundaryConditions(0, 0, 255, 255)
-PASS test WebGLUnsignedIntArray SetAndGet10To1
-PASS test WebGLUnsignedIntArray SetAndGetMethods10To1
-PASS test WebGLUnsignedIntArray ConstructWithArrayOfUnsignedValues
-PASS test WebGLUnsignedIntArray ConstructWithWebGLArrayOfUnsignedValues
-PASS test WebGLUnsignedIntArray OffsetsAndSizes
-PASS test WebGLUnsignedIntArray SetFromWebGLArray
-PASS negativeTest WebGLUnsignedIntArray SetFromWebGLArray
-PASS test WebGLUnsignedIntArray SetFromArray
-PASS negativeTest WebGLUnsignedIntArray SetFromArray
-PASS test WebGLUnsignedIntArray Slice
-PASS negativeTest WebGLUnsignedIntArray Slice
-PASS test WebGLUnsignedIntArray BoundaryConditions(0, 0, 4294967295, 4294967295)
-PASS test WebGLUnsignedShortArray SetAndGet10To1
-PASS test WebGLUnsignedShortArray SetAndGetMethods10To1
-PASS test WebGLUnsignedShortArray ConstructWithArrayOfUnsignedValues
-PASS test WebGLUnsignedShortArray ConstructWithWebGLArrayOfUnsignedValues
-PASS test WebGLUnsignedShortArray OffsetsAndSizes
-PASS test WebGLUnsignedShortArray SetFromWebGLArray
-PASS negativeTest WebGLUnsignedShortArray SetFromWebGLArray
-PASS test WebGLUnsignedShortArray SetFromArray
-PASS negativeTest WebGLUnsignedShortArray SetFromArray
-PASS test WebGLUnsignedShortArray Slice
-PASS negativeTest WebGLUnsignedShortArray Slice
-PASS test WebGLUnsignedShortArray BoundaryConditions(0, 0, 65535, 65535)
+PASS test Float32Array SetAndGetPos10ToNeg10
+PASS test Float32Array ConstructWithArrayOfSignedValues
+PASS test Float32Array ConstructWithTypedArrayOfSignedValues
+Testing Float32Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Float32Array OffsetsAndSizes
+PASS test Float32Array SetFromTypedArray
+PASS negativeTest Float32Array SetFromTypedArray
+PASS test Float32Array SetFromArray
+PASS negativeTest Float32Array SetFromArray
+PASS test Float32Array Subarray
+PASS test Float32Array Subarray offset and length clamping
+PASS negativeTest Float32Array Subarray
+PASS test Float32Array SetBoundaryConditions
+PASS test Float32Array ConstructionBoundaryConditions
+PASS Construction of Float32Array with null buffer threw exception
+PASS Construction of Float32Array with (null buffer, 0) threw exception
+PASS Construction of Float32Array with (null buffer, 0, 0) threw exception
+PASS Construction of Float32Array with out-of-range number of elements threw an exception
+PASS Construction of Float32Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Float32Array with negative size threw exception
+PASS Construction of Float32Array with negative out-of-range values threw an exception
+PASS Construction of Float32Array with unaligned offset threw an exception
+PASS Construction of Float32Array with unaligned length threw an exception
+PASS Construction of huge Float32Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Float32Array(new ArrayBuffer(18), 0, 2) succeeded
+Testing subarray of Float32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Float32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Float32Array from array with out-of-range offset was caught
+PASS Setting Float32Array from Float32Array with out-of-range offset was caught
+PASS Setting Float32Array from array with negative offset was caught
+PASS Setting Float32Array from Float32Array with negative offset was caught
+PASS Setting Float32Array from array with -0 offset
+PASS Setting Float32Array from Float32Array with -0 offset
+PASS Setting Float32Array from array with boundary offset
+PASS Setting Float32Array from Float32Array with boundary offset
+PASS Setting Float32Array from array with non-integer offset
+PASS Setting Float32Array from Float32Array with non-integer offset
+PASS Setting Float32Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Float32Array
+PASS test Float64Array SetAndGetPos10ToNeg10
+PASS test Float64Array ConstructWithArrayOfSignedValues
+PASS test Float64Array ConstructWithTypedArrayOfSignedValues
+Testing Float64Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Float64Array OffsetsAndSizes
+PASS test Float64Array SetFromTypedArray
+PASS negativeTest Float64Array SetFromTypedArray
+PASS test Float64Array SetFromArray
+PASS negativeTest Float64Array SetFromArray
+PASS test Float64Array Subarray
+PASS test Float64Array Subarray offset and length clamping
+PASS negativeTest Float64Array Subarray
+PASS test Float64Array SetBoundaryConditions
+PASS test Float64Array ConstructionBoundaryConditions
+PASS Construction of Float64Array with null buffer threw exception
+PASS Construction of Float64Array with (null buffer, 0) threw exception
+PASS Construction of Float64Array with (null buffer, 0, 0) threw exception
+PASS Construction of Float64Array with out-of-range number of elements threw an exception
+PASS Construction of Float64Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Float64Array with negative size threw exception
+PASS Construction of Float64Array with negative out-of-range values threw an exception
+PASS Construction of Float64Array with unaligned offset threw an exception
+PASS Construction of Float64Array with unaligned length threw an exception
+PASS Construction of huge Float64Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Float64Array(new ArrayBuffer(36), 0, 2) succeeded
+Testing subarray of Float64Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Float64Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Float64Array from array with out-of-range offset was caught
+PASS Setting Float64Array from Float64Array with out-of-range offset was caught
+PASS Setting Float64Array from array with negative offset was caught
+PASS Setting Float64Array from Float64Array with negative offset was caught
+PASS Setting Float64Array from array with -0 offset
+PASS Setting Float64Array from Float64Array with -0 offset
+PASS Setting Float64Array from array with boundary offset
+PASS Setting Float64Array from Float64Array with boundary offset
+PASS Setting Float64Array from array with non-integer offset
+PASS Setting Float64Array from Float64Array with non-integer offset
+PASS Setting Float64Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Float64Array
+PASS test Int8Array SetAndGetPos10ToNeg10
+PASS test Int8Array ConstructWithArrayOfSignedValues
+PASS test Int8Array ConstructWithTypedArrayOfSignedValues
+PASS test integral array truncation behavior for Int8Array
+Testing Int8Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Int8Array OffsetsAndSizes
+PASS test Int8Array SetFromTypedArray
+PASS negativeTest Int8Array SetFromTypedArray
+PASS test Int8Array SetFromArray
+PASS negativeTest Int8Array SetFromArray
+PASS test Int8Array Subarray
+PASS test Int8Array Subarray offset and length clamping
+PASS negativeTest Int8Array Subarray
+PASS test Int8Array SetBoundaryConditions
+PASS test Int8Array ConstructionBoundaryConditions
+PASS Construction of Int8Array with null buffer threw exception
+PASS Construction of Int8Array with (null buffer, 0) threw exception
+PASS Construction of Int8Array with (null buffer, 0, 0) threw exception
+PASS Construction of Int8Array with out-of-range number of elements threw an exception
+PASS Construction of Int8Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Int8Array with negative size threw exception
+PASS Construction of Int8Array with negative out-of-range values threw an exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+Testing subarray of Int8Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+Testing subarray with default inputs of Int8Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Int8Array from array with out-of-range offset was caught
+PASS Setting Int8Array from Int8Array with out-of-range offset was caught
+PASS Setting Int8Array from array with negative offset was caught
+PASS Setting Int8Array from Int8Array with negative offset was caught
+PASS Setting Int8Array from array with -0 offset
+PASS Setting Int8Array from Int8Array with -0 offset
+PASS Setting Int8Array from array with boundary offset
+PASS Setting Int8Array from Int8Array with boundary offset
+PASS Setting Int8Array from array with non-integer offset
+PASS Setting Int8Array from Int8Array with non-integer offset
+PASS Setting Int8Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Int8Array
+PASS test Int16Array SetAndGetPos10ToNeg10
+PASS test Int16Array ConstructWithArrayOfSignedValues
+PASS test Int16Array ConstructWithTypedArrayOfSignedValues
+PASS test integral array truncation behavior for Int16Array
+Testing Int16Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Int16Array OffsetsAndSizes
+PASS test Int16Array SetFromTypedArray
+PASS negativeTest Int16Array SetFromTypedArray
+PASS test Int16Array SetFromArray
+PASS negativeTest Int16Array SetFromArray
+PASS test Int16Array Subarray
+PASS test Int16Array Subarray offset and length clamping
+PASS negativeTest Int16Array Subarray
+PASS test Int16Array SetBoundaryConditions
+PASS test Int16Array ConstructionBoundaryConditions
+PASS Construction of Int16Array with null buffer threw exception
+PASS Construction of Int16Array with (null buffer, 0) threw exception
+PASS Construction of Int16Array with (null buffer, 0, 0) threw exception
+PASS Construction of Int16Array with out-of-range number of elements threw an exception
+PASS Construction of Int16Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Int16Array with negative size threw exception
+PASS Construction of Int16Array with negative out-of-range values threw an exception
+PASS Construction of Int16Array with unaligned offset threw an exception
+PASS Construction of Int16Array with unaligned length threw an exception
+PASS Construction of huge Int16Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Int16Array(new ArrayBuffer(9), 0, 2) succeeded
+Testing subarray of Int16Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Int16Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Int16Array from array with out-of-range offset was caught
+PASS Setting Int16Array from Int16Array with out-of-range offset was caught
+PASS Setting Int16Array from array with negative offset was caught
+PASS Setting Int16Array from Int16Array with negative offset was caught
+PASS Setting Int16Array from array with -0 offset
+PASS Setting Int16Array from Int16Array with -0 offset
+PASS Setting Int16Array from array with boundary offset
+PASS Setting Int16Array from Int16Array with boundary offset
+PASS Setting Int16Array from array with non-integer offset
+PASS Setting Int16Array from Int16Array with non-integer offset
+PASS Setting Int16Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Int16Array
+PASS test Int32Array SetAndGetPos10ToNeg10
+PASS test Int32Array ConstructWithArrayOfSignedValues
+PASS test Int32Array ConstructWithTypedArrayOfSignedValues
+PASS test integral array truncation behavior for Int32Array
+Testing Int32Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Int32Array OffsetsAndSizes
+PASS test Int32Array SetFromTypedArray
+PASS negativeTest Int32Array SetFromTypedArray
+PASS test Int32Array SetFromArray
+PASS negativeTest Int32Array SetFromArray
+PASS test Int32Array Subarray
+PASS test Int32Array Subarray offset and length clamping
+PASS negativeTest Int32Array Subarray
+PASS test Int32Array SetBoundaryConditions
+PASS test Int32Array ConstructionBoundaryConditions
+PASS Construction of Int32Array with null buffer threw exception
+PASS Construction of Int32Array with (null buffer, 0) threw exception
+PASS Construction of Int32Array with (null buffer, 0, 0) threw exception
+PASS Construction of Int32Array with out-of-range number of elements threw an exception
+PASS Construction of Int32Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Int32Array with negative size threw exception
+PASS Construction of Int32Array with negative out-of-range values threw an exception
+PASS Construction of Int32Array with unaligned offset threw an exception
+PASS Construction of Int32Array with unaligned length threw an exception
+PASS Construction of huge Int32Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Int32Array(new ArrayBuffer(18), 0, 2) succeeded
+Testing subarray of Int32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Int32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Int32Array from array with out-of-range offset was caught
+PASS Setting Int32Array from Int32Array with out-of-range offset was caught
+PASS Setting Int32Array from array with negative offset was caught
+PASS Setting Int32Array from Int32Array with negative offset was caught
+PASS Setting Int32Array from array with -0 offset
+PASS Setting Int32Array from Int32Array with -0 offset
+PASS Setting Int32Array from array with boundary offset
+PASS Setting Int32Array from Int32Array with boundary offset
+PASS Setting Int32Array from array with non-integer offset
+PASS Setting Int32Array from Int32Array with non-integer offset
+PASS Setting Int32Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Int32Array
+PASS test Uint8Array SetAndGet10To1
+PASS test Uint8Array ConstructWithArrayOfUnsignedValues
+PASS test Uint8Array ConstructWithTypedArrayOfUnsignedValues
+PASS test integral array truncation behavior for Uint8Array
+Testing Uint8Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Uint8Array OffsetsAndSizes
+PASS test Uint8Array SetFromTypedArray
+PASS negativeTest Uint8Array SetFromTypedArray
+PASS test Uint8Array SetFromArray
+PASS negativeTest Uint8Array SetFromArray
+PASS test Uint8Array Subarray
+PASS test Uint8Array Subarray offset and length clamping
+PASS negativeTest Uint8Array Subarray
+PASS test Uint8Array SetBoundaryConditions
+PASS test Uint8Array ConstructionBoundaryConditions
+PASS Construction of Uint8Array with null buffer threw exception
+PASS Construction of Uint8Array with (null buffer, 0) threw exception
+PASS Construction of Uint8Array with (null buffer, 0, 0) threw exception
+PASS Construction of Uint8Array with out-of-range number of elements threw an exception
+PASS Construction of Uint8Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Uint8Array with negative size threw exception
+PASS Construction of Uint8Array with negative out-of-range values threw an exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+Testing subarray of Uint8Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+Testing subarray with default inputs of Uint8Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Uint8Array from array with out-of-range offset was caught
+PASS Setting Uint8Array from Uint8Array with out-of-range offset was caught
+PASS Setting Uint8Array from array with negative offset was caught
+PASS Setting Uint8Array from Uint8Array with negative offset was caught
+PASS Setting Uint8Array from array with -0 offset
+PASS Setting Uint8Array from Uint8Array with -0 offset
+PASS Setting Uint8Array from array with boundary offset
+PASS Setting Uint8Array from Uint8Array with boundary offset
+PASS Setting Uint8Array from array with non-integer offset
+PASS Setting Uint8Array from Uint8Array with non-integer offset
+PASS Setting Uint8Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Uint8Array
+PASS test Uint8ClampedArray SetAndGet10To1
+PASS test Uint8ClampedArray ConstructWithArrayOfUnsignedValues
+PASS test Uint8ClampedArray ConstructWithTypedArrayOfUnsignedValues
+PASS test integral array truncation behavior for Uint8ClampedArray
+Testing Uint8ClampedArray GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Uint8ClampedArray OffsetsAndSizes
+PASS test Uint8ClampedArray SetFromTypedArray
+PASS negativeTest Uint8ClampedArray SetFromTypedArray
+PASS test Uint8ClampedArray SetFromArray
+PASS negativeTest Uint8ClampedArray SetFromArray
+PASS test Uint8ClampedArray Subarray
+PASS test Uint8ClampedArray Subarray offset and length clamping
+PASS negativeTest Uint8ClampedArray Subarray
+PASS test Uint8ClampedArray SetBoundaryConditions
+PASS test Uint8ClampedArray ConstructionBoundaryConditions
+PASS Construction of Uint8ClampedArray with null buffer threw exception
+PASS Construction of Uint8ClampedArray with (null buffer, 0) threw exception
+PASS Construction of Uint8ClampedArray with (null buffer, 0, 0) threw exception
+PASS Construction of Uint8ClampedArray with out-of-range number of elements threw an exception
+PASS Construction of Uint8ClampedArray with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Uint8ClampedArray with negative size threw exception
+PASS Construction of Uint8ClampedArray with negative out-of-range values threw an exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+Testing subarray of Uint8ClampedArray
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+Testing subarray with default inputs of Uint8ClampedArray
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Uint8ClampedArray from array with out-of-range offset was caught
+PASS Setting Uint8ClampedArray from Uint8ClampedArray with out-of-range offset was caught
+PASS Setting Uint8ClampedArray from array with negative offset was caught
+PASS Setting Uint8ClampedArray from Uint8ClampedArray with negative offset was caught
+PASS Setting Uint8ClampedArray from array with -0 offset
+PASS Setting Uint8ClampedArray from Uint8ClampedArray with -0 offset
+PASS Setting Uint8ClampedArray from array with boundary offset
+PASS Setting Uint8ClampedArray from Uint8ClampedArray with boundary offset
+PASS Setting Uint8ClampedArray from array with non-integer offset
+PASS Setting Uint8ClampedArray from Uint8ClampedArray with non-integer offset
+PASS Setting Uint8ClampedArray from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Uint8ClampedArray
+PASS test Uint16Array SetAndGet10To1
+PASS test Uint16Array ConstructWithArrayOfUnsignedValues
+PASS test Uint16Array ConstructWithTypedArrayOfUnsignedValues
+PASS test integral array truncation behavior for Uint16Array
+Testing Uint16Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Uint16Array OffsetsAndSizes
+PASS test Uint16Array SetFromTypedArray
+PASS negativeTest Uint16Array SetFromTypedArray
+PASS test Uint16Array SetFromArray
+PASS negativeTest Uint16Array SetFromArray
+PASS test Uint16Array Subarray
+PASS test Uint16Array Subarray offset and length clamping
+PASS negativeTest Uint16Array Subarray
+PASS test Uint16Array SetBoundaryConditions
+PASS test Uint16Array ConstructionBoundaryConditions
+PASS Construction of Uint16Array with null buffer threw exception
+PASS Construction of Uint16Array with (null buffer, 0) threw exception
+PASS Construction of Uint16Array with (null buffer, 0, 0) threw exception
+PASS Construction of Uint16Array with out-of-range number of elements threw an exception
+PASS Construction of Uint16Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Uint16Array with negative size threw exception
+PASS Construction of Uint16Array with negative out-of-range values threw an exception
+PASS Construction of Uint16Array with unaligned offset threw an exception
+PASS Construction of Uint16Array with unaligned length threw an exception
+PASS Construction of huge Uint16Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Uint16Array(new ArrayBuffer(9), 0, 2) succeeded
+Testing subarray of Uint16Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Uint16Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Uint16Array from array with out-of-range offset was caught
+PASS Setting Uint16Array from Uint16Array with out-of-range offset was caught
+PASS Setting Uint16Array from array with negative offset was caught
+PASS Setting Uint16Array from Uint16Array with negative offset was caught
+PASS Setting Uint16Array from array with -0 offset
+PASS Setting Uint16Array from Uint16Array with -0 offset
+PASS Setting Uint16Array from array with boundary offset
+PASS Setting Uint16Array from Uint16Array with boundary offset
+PASS Setting Uint16Array from array with non-integer offset
+PASS Setting Uint16Array from Uint16Array with non-integer offset
+PASS Setting Uint16Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Uint16Array
+PASS test Uint32Array SetAndGet10To1
+PASS test Uint32Array ConstructWithArrayOfUnsignedValues
+PASS test Uint32Array ConstructWithTypedArrayOfUnsignedValues
+PASS test integral array truncation behavior for Uint32Array
+Testing Uint32Array GetWithOutOfRangeIndices
+PASS array[2] is undefined.
+PASS array[-1] is undefined.
+PASS array[0x20000000] is undefined.
+PASS test Uint32Array OffsetsAndSizes
+PASS test Uint32Array SetFromTypedArray
+PASS negativeTest Uint32Array SetFromTypedArray
+PASS test Uint32Array SetFromArray
+PASS negativeTest Uint32Array SetFromArray
+PASS test Uint32Array Subarray
+PASS test Uint32Array Subarray offset and length clamping
+PASS negativeTest Uint32Array Subarray
+PASS test Uint32Array SetBoundaryConditions
+PASS test Uint32Array ConstructionBoundaryConditions
+PASS Construction of Uint32Array with null buffer threw exception
+PASS Construction of Uint32Array with (null buffer, 0) threw exception
+PASS Construction of Uint32Array with (null buffer, 0, 0) threw exception
+PASS Construction of Uint32Array with out-of-range number of elements threw an exception
+PASS Construction of Uint32Array with out-of-range offset threw an exception
+PASS Construction of ArrayBuffer with negative size threw exception
+PASS Construction of Uint32Array with negative size threw exception
+PASS Construction of Uint32Array with negative out-of-range values threw an exception
+PASS Construction of Uint32Array with unaligned offset threw an exception
+PASS Construction of Uint32Array with unaligned length threw an exception
+PASS Construction of huge Uint32Array threw exception
+PASS Array lengths matched with explicit and implicit creation of ArrayBuffer
+PASS new Uint32Array(new ArrayBuffer(18), 0, 2) succeeded
+Testing subarray of Uint32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(4, 0x3FFFFFFF).length is (32 / typeSize) - 4
+PASS array.subarray(4, -2147483648).length is 0
+PASS array.length is 0
+Testing subarray with default inputs of Uint32Array
+PASS array.length is 32 / typeSize
+PASS array.subarray(0).length is (32 / typeSize)
+PASS array.subarray(2).length is (32 / typeSize) - 2
+PASS array.subarray(-2).length is 2
+PASS array.subarray(-2147483648).length is (32 / typeSize)
+PASS Setting Uint32Array from array with out-of-range offset was caught
+PASS Setting Uint32Array from Uint32Array with out-of-range offset was caught
+PASS Setting Uint32Array from array with negative offset was caught
+PASS Setting Uint32Array from Uint32Array with negative offset was caught
+PASS Setting Uint32Array from array with -0 offset
+PASS Setting Uint32Array from Uint32Array with -0 offset
+PASS Setting Uint32Array from array with boundary offset
+PASS Setting Uint32Array from Uint32Array with boundary offset
+PASS Setting Uint32Array from array with non-integer offset
+PASS Setting Uint32Array from Uint32Array with non-integer offset
+PASS Setting Uint32Array from fake array with invalid length was caught
+PASS array.get is undefined.
+PASS array.set(0, 1) threw exception.
+PASS test storing NaN in Uint32Array
 Test passed.
 PASS successfullyParsed is true
 

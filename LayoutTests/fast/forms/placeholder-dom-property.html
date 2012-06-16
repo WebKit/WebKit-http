@@ -1,13 +1,25 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../fast/js/resources/js-test-style.css">
 <script src="../../fast/js/resources/js-test-pre.js"></script>
 </head>
 <body>
 <p id="description"></p>
 <div id="console"></div>
-<script src="script-tests/placeholder-dom-property.js"></script>
+<script>
+description("Test for <a href='https://bugs.webkit.org/show_bug.cgi?id=21903'>https://bugs.webkit.org/show_bug.cgi?id=21903</a>");
+
+var input = document.createElement("input");
+
+shouldBeEqualToString("input.placeholder", '');
+
+input.setAttribute("placeholder", "p1")
+shouldBeEqualToString("input.placeholder", 'p1');
+
+input.placeholder = 'p2';
+shouldBeEqualToString("input.getAttribute('placeholder')", 'p2');
+shouldBeEqualToString("input.placeholder", 'p2');
+</script>
 <script src="../../fast/js/resources/js-test-post.js"></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 0 of #text > DIV to 0 of #text > DIV toDOMRange:range from 0 of #text > DIV to 11 of #text > DIV affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 0 of DIV > #shadow-root to 0 of DIV > #shadow-root toDOMRange:range from 0 of #text > DIV > #shadow-root to 11 of #text > DIV > #shadow-root affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: shouldBeginEditingInDOMRange:range from 0 of DIV > BODY > HTML > #document to 0 of DIV > BODY > HTML > #document
 EDITING DELEGATE: webViewDidBeginEditing:WebViewDidBeginEditingNotification
@@ -33,4 +33,4 @@ layer at (11,63) size 182x38
   RenderBlock {DIV} at (1,1) size 182x38
     RenderText {#text} at (3,0) size 80x19
       text run at (3,0) width 80: "Tab->\x{9}<-Tab"
-caret: position 5 of child 2 {#text} of child 4 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+caret: position 5 of child 2 {#text} of child 4 {DIV} of body

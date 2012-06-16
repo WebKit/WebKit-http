@@ -33,8 +33,8 @@ window.onload = function()
     shouldBe("window.confirm.call(targetWindow, 'message')", "undefined");
     shouldBe("window.prompt.call(targetWindow, 'message', 'defaultValue')", "undefined");
     shouldBe("window.getComputedStyle.call(targetWindow, document.body, '')", "undefined");
-    shouldBe("window.getMatchedCSSRules.call(targetWindow, document.body, '', false)", "undefined");
-    shouldBe("window.openDatabase.call(targetWindow, 'name')", "undefined");
+    shouldBe("window.getMatchedCSSRules.call(targetWindow, document.body, '')", "undefined");
+    shouldBe("window.openDatabase.call(targetWindow, 'name', '1.0', 'description', 0)", "undefined");
     shouldBe("window.atob.call(targetWindow, 'string')", "undefined");
     shouldBe("window.btoa.call(targetWindow, 'string')", "undefined");
     shouldBe("window.open.call(targetWindow, '')", "undefined");
@@ -54,9 +54,10 @@ window.onload = function()
     shouldBe("window.moveTo.call(targetWindow, 0, 0);", "undefined");
     shouldBe("window.resizeBy.call(targetWindow, 0, 0);", "undefined");
     shouldBe("window.resizeTo.call(targetWindow, 0, 0);", "undefined");
+    shouldBe("window.showModalDialog.call(targetWindow);", "undefined");
 
-    // Throws a TypeError and logs to the error console
-    shouldBe("window.showModalDialog.call(targetWindow);", '"TypeError: Result of expression \'window.showModalDialog\' [undefined] is not an object."');
+    // Throws an EvalError and logs to the error console
+    shouldBe("window.eval.call(targetWindow, '1+2');", '"EvalError: The \\"this\\" value passed to eval must be the global object from which eval originated"');
 
     // - Tests for the Location object -
     // undefined value indicates failure

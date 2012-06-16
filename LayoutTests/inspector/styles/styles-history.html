@@ -1,0 +1,123 @@
+<html>
+<head>
+
+<link rel="stylesheet" href="resources/styles-history.css">
+
+<script src="../../http/tests/inspector/inspector-test.js"></script>
+<script src="../../http/tests/inspector/elements-test.js"></script>
+<script src="../../http/tests/inspector/resources-test.js"></script>
+<script>
+
+function test()
+{
+    var pendingCallbacks = [];
+    InspectorTest.runAfterCachedResourcesProcessed(runTestSuite);
+
+    var styleResource;
+    var styleSheetId;
+
+    function runTestSuite()
+    {
+        InspectorTest.runTestSuite([
+            function testSetUp(next)
+            {
+                function visitResource(resource)
+                {
+                    if (resource.url.indexOf("styles-history.css") === -1)
+                        return;
+                    styleResource = resource;
+                    next();
+                }
+                WebInspector.resourceTreeModel.forAllResources(visitResource);
+            },
+
+            function testSetResourceContentMinor(next)
+            {
+                styleResource.setContent("body {\n  margin: 15px;\n  padding: 10px;\n}", false, dumpHistory(next));
+            },
+
+            function testSetResourceContentMajor(next)
+            {
+                styleResource.setContent("body {\n  margin: 20px;\n  padding: 10px;\n}", true, dumpHistory(next));
+            },
+
+            function testSetContentViaModelMinor(next)
+            {
+                styleSheetForResource(step1);
+
+                function step1(styleSheet)
+                {
+                    var style = styleSheet.rules[0].style;
+                    var property = style.getLiveProperty("margin");
+                    property.setText("margin:25px;", false, true, dumpHistory(next));
+                }
+            },
+
+            function testSetContentViaModelMajor(next)
+            {
+                styleSheetForResource(step1);
+
+                function step1(styleSheet)
+                {
+                    var style = styleSheet.rules[0].style;
+                    var property = style.getLiveProperty("margin");
+                    property.setText("margin:30px;", true, true);
+                    InspectorTest.runAfterPendingDispatches(dumpHistory(next));
+                }
+            }
+        ]);
+    }
+
+    function styleSheetForResource(callback)
+    {
+        CSSAgent.getAllStyleSheets(didGetAllStyleSheets.bind(this));
+        
+        function didGetAllStyleSheets(error, infos)
+        {
+            if (error) {
+                InspectorTest.addResult("Error:" + error);
+                callback(null);
+                return;
+            }
+
+            for (var i = 0; i < infos.length; ++i) {
+                var info = infos[i];
+                if (info.sourceURL.indexOf("styles-history.css") === -1)
+                    continue;
+                WebInspector.CSSStyleSheet.createForId(info.styleSheetId, callback);
+                return;
+            }
+            callback(null);
+        }
+    }
+
+    function dumpHistory(next)
+    {
+        function result()
+        {
+            InspectorTest.addResult("History length: " + styleResource.history.length);
+            for (var i = 0; i < styleResource.history.length; ++i)
+                styleResource.history[i].requestContent(dumpRevision.bind(this, i, null));
+            styleResource.requestContent(dumpRevision.bind(this, "<tip>", next));
+        }
+        return result;
+    }
+
+    function dumpRevision(index, next, content)
+    {
+        InspectorTest.addResult("Item " + index + ":");
+        InspectorTest.addResult(content);
+        if (next)
+            next();
+    }
+}
+
+</script>
+</head>
+
+<body onload="runTest()">
+<p>
+Tests resources panel history.
+</p>
+</body>
+</html>

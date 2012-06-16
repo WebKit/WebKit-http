@@ -1,0 +1,129 @@
+/*
+ * Copyright (C) 2010 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ */
+
+#include "config.h"
+#include "RenderIFrame.h"
+
+#include "Frame.h"
+#include "FrameView.h"
+#include "HTMLIFrameElement.h"
+#include "HTMLNames.h"
+#include "Page.h"
+#include "RenderView.h"
+#include "Settings.h"
+
+namespace WebCore {
+
+using namespace HTMLNames;
+    
+RenderIFrame::RenderIFrame(Element* element)
+    : RenderFrameBase(element)
+{
+}
+
+void RenderIFrame::computeLogicalHeight()
+{
+    RenderPart::computeLogicalHeight();
+    if (!flattenFrame())
+         return;
+
+    HTMLIFrameElement* frame = static_cast<HTMLIFrameElement*>(node());
+    bool isScrollable = frame->scrollingMode() != ScrollbarAlwaysOff;
+
+    if (isScrollable || !style()->height().isFixed()) {
+        FrameView* view = static_cast<FrameView*>(widget());
+        if (!view)
+            return;
+        int border = borderTop() + borderBottom();
+        setHeight(max<LayoutUnit>(height(), view->contentsHeight() + border));
+    }
+}
+
+void RenderIFrame::computeLogicalWidth()
+{
+    RenderPart::computeLogicalWidth();
+    if (!flattenFrame())
+        return;
+
+    HTMLIFrameElement* frame = static_cast<HTMLIFrameElement*>(node());
+    bool isScrollable = frame->scrollingMode() != ScrollbarAlwaysOff;
+
+    if (isScrollable || !style()->width().isFixed()) {
+        FrameView* view = static_cast<FrameView*>(widget());
+        if (!view)
+            return;
+        LayoutUnit border = borderLeft() + borderRight();
+        setWidth(max<LayoutUnit>(width(), view->contentsWidth() + border));
+    }
+}
+
+bool RenderIFrame::flattenFrame()
+{
+    if (!node() || !node()->hasTagName(iframeTag))
+        return false;
+
+    HTMLIFrameElement* element = static_cast<HTMLIFrameElement*>(node());
+    Frame* frame = element->document()->frame();
+
+    bool enabled = frame && frame->settings() && frame->settings()->frameFlatteningEnabled();
+
+    if (!enabled || !frame->page())
+        return false;
+
+    if (style()->width().isFixed() && style()->height().isFixed()) {
+        // Do not flatten iframes with scrolling="no".
+        if (element->scrollingMode() == ScrollbarAlwaysOff)
+            return false;
+        if (style()->width().value() <= 0 || style()->height().value() <= 0)
+            return false;
+    }
+
+    // Do not flatten offscreen inner frames during frame flattening, as flattening might make them visible.
+    IntRect boundingRect = absoluteBoundingBoxRectIgnoringTransforms();
+    return boundingRect.maxX() > 0 && boundingRect.maxY() > 0;
+}
+
+void RenderIFrame::layout()
+{
+    ASSERT(needsLayout());
+
+    RenderPart::computeLogicalWidth();
+    RenderPart::computeLogicalHeight();
+
+    if (flattenFrame()) {
+        layoutWithFlattening(style()->width().isFixed(), style()->height().isFixed());
+        return;
+    }
+
+    RenderPart::layout();
+
+    m_overflow.clear();
+    addVisualEffectOverflow();
+    updateLayerTransform();
+
+    setNeedsLayout(false);
+}
+
+}

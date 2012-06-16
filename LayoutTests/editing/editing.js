@@ -39,6 +39,66 @@ function transposeCharactersCommand() {
 
 //-------------------------------------------------------------------------------------------------------
 
+function execMoveSelectionLeftByCharacterCommand() {
+    selection.modify("move", "left", "character");
+}
+function moveSelectionLeftByCharacterCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execMoveSelectionLeftByCharacterCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execMoveSelectionLeftByCharacterCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execMoveSelectionRightByCharacterCommand() {
+    selection.modify("move", "Right", "character");
+}
+function moveSelectionRightByCharacterCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execMoveSelectionRightByCharacterCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execMoveSelectionRightByCharacterCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execExtendSelectionLeftByCharacterCommand() {
+    selection.modify("extend", "left", "character");
+}
+function extendSelectionLeftByCharacterCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execExtendSelectionLeftByCharacterCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execExtendSelectionLeftByCharacterCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execExtendSelectionRightByCharacterCommand() {
+    selection.modify("extend", "Right", "character");
+}
+function extendSelectionRightByCharacterCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execExtendSelectionRightByCharacterCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execExtendSelectionRightByCharacterCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
 function execMoveSelectionForwardByCharacterCommand() {
     selection.modify("move", "forward", "character");
 }
@@ -154,6 +214,36 @@ function extendSelectionForwardByLineCommand() {
     }
     else {
         execExtendSelectionForwardByLineCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execMoveSelectionForwardByLineBoundaryCommand() {
+    selection.modify("move", "forward", "lineBoundary");
+}
+function moveSelectionForwardByLineBoundaryCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execMoveSelectionForwardByLineBoundaryCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execMoveSelectionForwardByLineBoundaryCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execExtendSelectionForwardByLineBoundaryCommand() {
+    selection.modify("extend", "forward", "lineBoundary");
+}
+function extendSelectionForwardByLineBoundaryCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execExtendSelectionForwardByLineBoundaryCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execExtendSelectionForwardByLineBoundaryCommand();
     }
 }
 
@@ -275,6 +365,53 @@ function extendSelectionBackwardByLineCommand() {
     else {
         execExtendSelectionBackwardByLineCommand();
     }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execExtendSelectionBackwardByLineBoundaryCommand() {
+    selection.modify("extend", "backward", "lineBoundary");
+}
+function extendSelectionBackwardByLineBoundaryCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execExtendSelectionBackwardByLineBoundaryCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execExtendSelectionBackwardByLineBoundaryCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function execMoveSelectionBackwardByLineBoundaryCommand() {
+    selection.modify("move", "backward", "lineBoundary");
+}
+function moveSelectionBackwardByLineBoundaryCommand() {
+    if (commandDelay > 0) {
+        window.setTimeout(execMoveSelectionBackwardByLineBoundaryCommand, commandCount * commandDelay);
+        commandCount++;
+    }
+    else {
+        execMoveSelectionBackwardByLineBoundaryCommand();
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------
+
+function doubleClick(x, y) {
+    eventSender.mouseMoveTo(x, y);
+    eventSender.mouseDown();
+    eventSender.mouseUp();
+    eventSender.mouseDown();
+    eventSender.mouseUp();
+}
+
+function doubleClickAtSelectionStart() {
+    var rects = window.getSelection().getRangeAt(0).getClientRects();
+    var x = rects[0].left;
+    var y = rects[0].top;
+    doubleClick(x, y);
 }
 
 //-------------------------------------------------------------------------------------------------------

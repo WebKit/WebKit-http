@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 <script src="../xpath-test-pre.js"></script>
 </head>
@@ -45,9 +44,6 @@ test(doc, doc.documentElement, '//group[@id="g1"]/descendant-or-self::item[1]', 
 test(doc, doc.documentElement, '//group[@id="g2"]/ancestor-or-self::*[1]', [G2]);
 test(doc, doc.documentElement, '//group/descendant::item[number(//choice/@index)*2]', [I5]);
 test(doc, doc.documentElement, '(//item[@id="5"]/preceding-sibling::item)[1]', [I2]);
-
-
-var successfullyParsed = true;
 
 </script>
 <script src="../../js/resources/js-test-post.js"></script>

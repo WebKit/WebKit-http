@@ -3,70 +3,71 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock {DIV} at (0,0) size 784x71
-        RenderBlock {P} at (0,0) size 784x38
-          RenderText {#text} at (0,0) size 53x19
-            text run at (0,0) width 53: "Test for "
-          RenderInline {A} at (0,0) size 122x19 [color=#0000EE]
-            RenderText {#text} at (53,0) size 122x19
-              text run at (53,0) width 122: "Bugzilla Bug 12423"
-          RenderText {#text} at (175,0) size 736x38
-            text run at (175,0) width 561: ": Mixing white-space:pre text with non white-space:pre text within a text-align:justify block"
-            text run at (0,19) width 143: "causes text to overlap."
-        RenderBlock {P} at (0,52) size 784x19
-          RenderText {#text} at (0,0) size 344x19
-            text run at (0,0) width 344: "Test passes if text wraps within all of the yellow boxes."
-      RenderBlock {DIV} at (0,85) size 350x38 [bgcolor=#FFFF00]
-        RenderText {#text} at (0,0) size 317x19
-          text run at (0,0) width 317: "Typical for type are type=\"text/css\" for <style> and"
-        RenderInline {SPAN} at (0,0) size 132x19
-          RenderText {#text} at (0,19) size 132x19
-            text run at (0,19) width 132: "type=\"text/javascript\""
-        RenderText {#text} at (132,19) size 79x19
-          text run at (132,19) width 79: " for <script>."
-      RenderBlock {DIV} at (0,123) size 350x38 [bgcolor=#FFFF00]
-        RenderText {#text} at (0,0) size 289x38
-          text run at (0,0) width 289: "Typical for type are type=\"text/css\" for <style>"
-          text run at (0,19) width 24: "and"
-        RenderInline {SPAN} at (0,0) size 132x19
-          RenderText {#text} at (24,19) size 132x19
-            text run at (24,19) width 132: "type=\"text/javascript\""
-        RenderText {#text} at (156,19) size 79x19
-          text run at (156,19) width 79: " for <script>."
-      RenderBlock {DIV} at (0,161) size 350x38 [bgcolor=#FFFF00]
-        RenderText {#text} at (0,0) size 289x19
-          text run at (0,0) width 289: "Typical for type are type=\"text/css\" for <style>"
-        RenderInline {SPAN} at (0,0) size 24x19
-          RenderText {#text} at (0,19) size 24x19
-            text run at (0,19) width 24: "and"
-        RenderInline {SPAN} at (0,0) size 132x19
-          RenderText {#text} at (24,19) size 132x19
-            text run at (24,19) width 132: "type=\"text/javascript\""
-        RenderText {#text} at (156,19) size 79x19
-          text run at (156,19) width 79: " for <script>."
-      RenderBlock {DIV} at (0,199) size 350x38 [bgcolor=#FFFF00]
-        RenderText {#text} at (0,0) size 240x38
-          text run at (0,0) width 240: "Typical for type are type=\"text/css\" for"
-          text run at (0,19) width 45: "<style>"
-        RenderInline {SPAN} at (0,0) size 24x19
-          RenderText {#text} at (45,19) size 24x19
-            text run at (45,19) width 24: "and"
-        RenderInline {SPAN} at (0,0) size 132x19
-          RenderText {#text} at (69,19) size 132x19
-            text run at (69,19) width 132: "type=\"text/javascript\""
-        RenderText {#text} at (201,19) size 79x19
-          text run at (201,19) width 79: " for <script>."
-      RenderBlock {DIV} at (0,237) size 350x38 [bgcolor=#FFFF00]
-        RenderText {#text} at (0,0) size 240x19
-          text run at (0,0) width 240: "Typical for type are type=\"text/css\" for"
-        RenderInline {SPAN} at (0,0) size 45x19
-          RenderText {#text} at (0,19) size 45x19
-            text run at (0,19) width 45: "<style>"
-        RenderInline {SPAN} at (0,0) size 24x19
-          RenderText {#text} at (45,19) size 24x19
-            text run at (45,19) width 24: "and"
-        RenderInline {SPAN} at (0,0) size 132x19
-          RenderText {#text} at (69,19) size 132x19
-            text run at (69,19) width 132: "type=\"text/javascript\""
-        RenderText {#text} at (201,19) size 79x19
-          text run at (201,19) width 79: " for <script>."
+      RenderBlock {DIV} at (0,0) size 784x79
+        RenderBlock {P} at (0,0) size 784x42
+          RenderText {#text} at (0,0) size 57x21
+            text run at (0,0) width 57: "Test for "
+          RenderInline {A} at (0,0) size 140x21 [color=#0000EE]
+            RenderText {#text} at (57,0) size 140x21
+              text run at (57,0) width 140: "Bugzilla Bug 12423"
+          RenderText {#text} at (197,0) size 781x42
+            text run at (197,0) width 584: ": Mixing white-space:pre text with non white-space:pre text within a text-align:justify"
+            text run at (0,21) width 200: "block causes text to overlap."
+        RenderBlock {P} at (0,58) size 784x21
+          RenderText {#text} at (0,0) size 385x21
+            text run at (0,0) width 385: "Test passes if text wraps within all of the yellow boxes."
+      RenderBlock {DIV} at (0,95) size 350x42 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 320x42
+          text run at (0,0) width 320: "Typical for type are type=\"text/css\" for <style>"
+          text run at (0,21) width 31: "and "
+        RenderInline {SPAN} at (0,0) size 148x21
+          RenderText {#text} at (31,21) size 148x21
+            text run at (31,21) width 148: "type=\"text/javascript\""
+        RenderText {#text} at (179,21) size 86x21
+          text run at (179,21) width 86: " for <script>."
+      RenderBlock {DIV} at (0,137) size 350x42 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 320x42
+          text run at (0,0) width 320: "Typical for type are type=\"text/css\" for <style>"
+          text run at (0,21) width 27: "and"
+        RenderInline {SPAN} at (0,0) size 148x21
+          RenderText {#text} at (27,21) size 148x21
+            text run at (27,21) width 148: "type=\"text/javascript\""
+        RenderText {#text} at (175,21) size 86x21
+          text run at (175,21) width 86: " for <script>."
+      RenderBlock {DIV} at (0,179) size 350x42 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 320x21
+          text run at (0,0) width 320: "Typical for type are type=\"text/css\" for <style>"
+        RenderInline {SPAN} at (0,0) size 27x21
+          RenderText {#text} at (0,21) size 27x21
+            text run at (0,21) width 27: "and"
+        RenderInline {SPAN} at (0,0) size 148x21
+          RenderText {#text} at (27,21) size 148x21
+            text run at (27,21) width 148: "type=\"text/javascript\""
+        RenderText {#text} at (175,21) size 86x21
+          text run at (175,21) width 86: " for <script>."
+      RenderBlock {DIV} at (0,221) size 350x42 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 265x42
+          text run at (0,0) width 265: "Typical for type are type=\"text/css\" for"
+          text run at (0,21) width 51: "<style>"
+        RenderInline {SPAN} at (0,0) size 27x21
+          RenderText {#text} at (51,21) size 27x21
+            text run at (51,21) width 27: "and"
+        RenderInline {SPAN} at (0,0) size 148x21
+          RenderText {#text} at (78,21) size 148x21
+            text run at (78,21) width 148: "type=\"text/javascript\""
+        RenderText {#text} at (226,21) size 86x21
+          text run at (226,21) width 86: " for <script>."
+      RenderBlock {DIV} at (0,263) size 350x42 [bgcolor=#FFFF00]
+        RenderText {#text} at (0,0) size 265x21
+          text run at (0,0) width 265: "Typical for type are type=\"text/css\" for"
+        RenderInline {SPAN} at (0,0) size 51x21
+          RenderText {#text} at (0,21) size 51x21
+            text run at (0,21) width 51: "<style>"
+        RenderInline {SPAN} at (0,0) size 27x21
+          RenderText {#text} at (51,21) size 27x21
+            text run at (51,21) width 27: "and"
+        RenderInline {SPAN} at (0,0) size 148x21
+          RenderText {#text} at (78,21) size 148x21
+            text run at (78,21) width 148: "type=\"text/javascript\""
+        RenderText {#text} at (226,21) size 86x21
+          text run at (226,21) width 86: " for <script>."

@@ -1,0 +1,5 @@
+CONSOLE MESSAGE: Refused to execute inline script because of Content-Security-Policy.
+
+CONSOLE MESSAGE: Refused to execute inline script because of Content-Security-Policy.
+
+This test passes if it doesn't alert fail.

@@ -83,6 +83,13 @@ function testEvents()
     }
 }
 
+function testDOMImplementation()
+{
+  var impl = document.implementation.createHTMLDocument('').implementation;
+  gc();
+  impl.createHTMLDocument('');  // May crash or throw an exception if we collect parent document of impl.
+}
+
 function test() 
 {
     if (window.layoutTestController)
@@ -97,6 +104,7 @@ function test()
     testPropertiesAgain();
 
     testEvents();
+    testDOMImplementation();
 }
 
 // By default, we expect that custom properties are not allowed.
@@ -110,35 +118,35 @@ var objectsToTest = [
     [ "document", "allow custom" ],
     [ "document.body", "allow custom" ],
     [ "document.body.attributes", "allow custom" ], // NamedNodeMap
-    [ "document.getElementsByTagName('body')" ], // NodeList
+    [ "document.getElementsByTagName('body')", "allow custom" ], // NodeList
     [ "document.getElementsByTagName('canvas')[0].getContext('2d')", "allow custom" ], // CanvasRenderingContext2D
     [ "document.getElementsByTagName('canvas')[0].getContext('2d').createLinearGradient(0, 0, 0, 0)" ], // CanvasGradient
     [ "document.getElementsByTagName('canvas')[0].getContext('2d').createPattern(new Image(), 'no-repeat')" ], // CanvasPattern
-    [ "document.getElementsByTagName('select')[0].options" ],
-    [ "document.all" ],
-    [ "document.body.childNodes" ],
+    [ "document.getElementsByTagName('select')[0].options", "allow custom" ],
+    [ "document.body.childNodes", "allow custom" ],
 
-    [ "document.images" ],
-    [ "document.embeds" ],
-    [ "document.applets" ],
-    [ "document.links" ],
-    [ "document.forms" ],
-    [ "document.anchors" ],
-    [ "document.scripts" ],
+    [ "document.all", "allow custom" ],
+    [ "document.images", "allow custom" ],
+    [ "document.embeds", "allow custom" ],
+    [ "document.applets", "allow custom" ],
+    [ "document.links", "allow custom" ],
+    [ "document.forms", "allow custom" ],
+    [ "document.anchors", "allow custom" ],
+    [ "document.scripts", "allow custom" ],
 
-    [ "document.getElementsByTagName('form')[0].elements" ],
-    [ "document.getElementsByTagName('table')[0].rows" ],
-    [ "document.getElementsByTagName('table')[0].rows[0].cells" ],
-    [ "document.getElementsByTagName('table')[0].tBodies" ],
-    [ "document.getElementsByTagName('table')[0].tBodies[0].rows" ],
-    [ "document.body.children" ],
-    [ "document.getElementsByTagName('map')[0].areas" ],
+    [ "document.getElementsByTagName('form')[0].elements", "allow custom" ],
+    [ "document.getElementsByTagName('table')[0].rows", "allow custom" ],
+    [ "document.getElementsByTagName('table')[0].rows[0].cells", "allow custom" ],
+    [ "document.getElementsByTagName('table')[0].tBodies", "allow custom" ],
+    [ "document.getElementsByTagName('table')[0].tBodies[0].rows", "allow custom" ],
+    [ "document.body.children", "allow custom" ],
+    [ "document.getElementsByTagName('map')[0].areas", "allow custom" ],
     
     [ "document.body.style", "allow custom" ],
     [ "document.body.style.getPropertyCSSValue('color')", "allow custom" ],
     [ "document.styleSheets", "allow custom" ],
     [ "document.styleSheets[0]", "allow custom" ],
-    [ "document.styleSheets[0].cssRules" ],
+    [ "document.styleSheets[0].cssRules", "allow custom"],
     [ "document.styleSheets[0].cssRules[0]", "allow custom" ],
 
     [ "new XPathEvaluator()" ], // XPathEvaluator

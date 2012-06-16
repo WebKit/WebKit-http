@@ -1,11 +1,8 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 
 <form name="my_form">
 <select name="set_sel">
@@ -26,10 +23,8 @@ document.my_form.set_sel.options[2] = new Option("B");
 shouldBe("my_form.set_sel.options.length", "3");
 
 var options = document.my_form.get_sel.options;
-shouldBe("options(0)", "document.getElementById('one')");
-shouldBe("options(1)", "document.getElementById('two')");
-
-var successfullyParsed = true;
+shouldBe("options[0]", "document.getElementById('one')");
+shouldBe("options[1]", "document.getElementById('two')");
 </script>
 <script src="../../js/resources/js-test-post.js"></script>
 </body>

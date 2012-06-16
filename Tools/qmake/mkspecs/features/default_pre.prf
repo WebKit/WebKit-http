@@ -1,0 +1,120 @@
+# -------------------------------------------------------------------
+# QtWebKit defaults for qmake. These rules are parsed before the
+# actual project file.
+#
+# See 'Tools/qmake/README' for an overview of the build system
+# -------------------------------------------------------------------
+
+load(functions)
+
+# Derived sources often need QMAKE_MOC
+load(qt_functions)
+load(moc)
+
+# FIXME: In this case we probably want to exit early so that we
+# don't load all of the custom build tweaks needlessly.
+pro_file = $$_PRO_FILE_ # Checking the variable directly does not work
+isEmpty(pro_file): CONFIG += recursive_include
+
+# We default to release builds
+!build_pass {
+    CONFIG += release
+    CONFIG -= debug
+}
+
+# Resolve root directories for source and build
+ROOT_WEBKIT_DIR = $$replace(IN_PWD, /Tools/qmake/mkspecs/features,)
+WEBKIT_SUBDIR = $$replace(_PRO_FILE_PWD_, $${ROOT_WEBKIT_DIR},)
+ROOT_BUILD_DIR = $$replace(OUT_PWD, $$WEBKIT_SUBDIR,)
+
+# We want the QtWebKit API forwarding includes to live in the root build dir,
+# except when we are running the config.tests in Tools/qmake.
+pro_file_name = $$basename(_PRO_FILE_)
+!equals(pro_file_name, configure.pro): QMAKE_SYNCQT_OUTDIR = $$ROOT_BUILD_DIR
+
+# Load Qt's defaults after we've resolved the build directory. This will also
+# run syncqt if there is a sync.profile in the $$_PRO_FILE_PWD_. We never want
+# to enable Qt's concept of a developer-build, since we take care of installing
+# our own module file. See api.pri for details about how we utilize this.
+old_qtdir=$$QTDIR
+QTDIR=no-developer-build-please
+load(default_pre)
+QTDIR=$$old_qtdir
+
+# Load results of config tests (only supported in Qt 5)
+haveQt(5): include($${ROOT_BUILD_DIR}/Tools/qmake/.qmake.cache, , true)
+
+unix:contains(config_test_gccdepends, yes) {
+    # We have a compiler that supports the -MD option (and neither
+    # teambuilder nor icecream is messing up the .d file output).
+    CONFIG += GNUmake gcc_MD_depends
+}
+
+equals(OUT_PWD, $${ROOT_BUILD_DIR}) {
+    !recursive_include:CONFIG += root_project_file
+    BUILD_ROOT_RELATIVE_TO_OUT_PWD = .
+} else {
+    subdir_parts = $$replace(OUT_PWD, ^$${ROOT_BUILD_DIR}$${QMAKE_DIR_SEP},)
+    subdir_parts = $$split(subdir_parts, $${QMAKE_DIR_SEP})
+    for(subdir, subdir_parts) {
+        BUILD_ROOT_RELATIVE_TO_OUT_PWD += ..
+    }
+    BUILD_ROOT_RELATIVE_TO_OUT_PWD = $$join(BUILD_ROOT_RELATIVE_TO_OUT_PWD, $${QMAKE_DIR_SEP})
+}
+
+# Try to detect if we're running under Windows cmd.exe or not
+win32* {
+    pwd = $$(PWD) # Normally empty for cmd.exe
+    pwd_starts_with_slash = $$find(pwd, ^/)
+    isEmpty(pwd_starts_with_slash): CONFIG += win_cmd_shell
+}
+
+# Make sure QMAKEPATH is set for recursive targets
+win_cmd_shell: QMAKE_QMAKE = \(set QMAKEPATH=$$(QMAKEPATH)\) && $$QMAKE_QMAKE
+else: QMAKE_QMAKE = QMAKEPATH=$$(QMAKEPATH) $$QMAKE_QMAKE
+
+# Default location of generated sources
+GENERATED_SOURCES_DESTDIR = generated
+
+QUOTE = ""
+DOUBLE_ESCAPED_QUOTE = ""
+ESCAPE = ""
+win_cmd_shell {
+    ESCAPE = "^"
+} else {
+    QUOTE = "\'"
+    DOUBLE_ESCAPED_QUOTE = "\\\'"
+}
+
+MAKEFILE_NOOP_COMMAND = @echo -n
+win32-msvc*: MAKEFILE_NOOP_COMMAND = @echo >NUL
+
+# Set up a default python version
+scratchbox: PYTHON = python2.6
+else: PYTHON = python
+
+!haveQt(4, 8):!haveQt(5):!recursive_include: error("Building WebKit with Qt versions older than 4.8 is not supported.")
+
+!haveQt(5):!no_webkit2 {
+    root_project_file {
+        message("Building WebKit2 with Qt versions older than 5.0 is not supported. Disabling WebKit2.")
+        message("Read http://www.mail-archive.com/webkit-qt@lists.webkit.org/msg01674.html for more information.")
+    }
+    CONFIG += no_webkit2
+}
+
+haveQt(5): {
+    isEmpty(QT.widgets.name)|isEmpty(QT.printsupport.name) {
+        root_project_file: error("Building WebKit against Qt 5.0 requires the QtWidgets and QtPrintSupport modules.")
+    }
+}
+
+haveQt(4) {
+    # Qt5 will automatically load the module files for us, but for Qt4
+    # we have to do it manually so that the various QT.webkit.foo names
+    # are available.
+    include($${ROOT_WEBKIT_DIR}/Tools/qmake/qt_webkit.pri)
+}
+
+# Set some defaults for specific platforms
+CONFIG += include_webinspector

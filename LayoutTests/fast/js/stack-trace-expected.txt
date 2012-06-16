@@ -1,0 +1,430 @@
+This test checks stack trace corectness in special cases.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+--> Stack Trace:
+    0   normalInner at stack-trace.js:31
+    1   normalOuter at stack-trace.js:30
+    2   global code at stack-trace.js:36
+
+--> Stack Trace:
+    0   inner at stack-trace.js:28
+    1    at eval code
+    2   eval at [native code]
+    3   evaler at stack-trace.js:29
+    4   global code at stack-trace.js:39
+
+--> Stack Trace:
+    0   inner at stack-trace.js:28
+    1   outer at stack-trace.js:27
+    2    at eval code
+    3   eval at [native code]
+    4   evaler at stack-trace.js:29
+    5   global code at stack-trace.js:40
+
+--> Stack Trace:
+    0   inner at stack-trace.js:28
+    1   global code at stack-trace.js:43
+
+--> Stack Trace:
+    0   inner at stack-trace.js:28
+    1   outer at stack-trace.js:27
+    2   global code at stack-trace.js:44
+
+--> Stack Trace:
+    0   appendChild at [native code]
+    1   hostThrower at stack-trace.js:25
+    2   global code at stack-trace.js:47
+
+--> Stack Trace:
+    0   htmlInner at stack-trace.html:10
+    1   scripterInner at stack-trace.js:32
+    2   global code at stack-trace.js:49
+
+--> Stack Trace:
+    0   htmlInner at stack-trace.html:10
+    1   htmlOuter at stack-trace.html:11
+    2   scripterOuter at stack-trace.js:33
+    3   global code at stack-trace.js:50
+
+--> Stack Trace:
+    0   selfRecursive1 at stack-trace.js:52
+    1   selfRecursive1 at stack-trace.js:52
+    2   selfRecursive1 at stack-trace.js:52
+    3   selfRecursive1 at stack-trace.js:52
+    4   selfRecursive1 at stack-trace.js:52
+    5   selfRecursive1 at stack-trace.js:52
+    6   selfRecursive1 at stack-trace.js:52
+    7   selfRecursive1 at stack-trace.js:52
+    8   selfRecursive1 at stack-trace.js:52
+    9   selfRecursive1 at stack-trace.js:52
+    10   selfRecursive1 at stack-trace.js:52
+    11   selfRecursive1 at stack-trace.js:52
+    12   selfRecursive1 at stack-trace.js:52
+    13   selfRecursive1 at stack-trace.js:52
+    14   selfRecursive1 at stack-trace.js:52
+    15   selfRecursive1 at stack-trace.js:52
+    16   selfRecursive1 at stack-trace.js:52
+    17   selfRecursive1 at stack-trace.js:52
+    18   selfRecursive1 at stack-trace.js:52
+    19   selfRecursive1 at stack-trace.js:52
+    20   selfRecursive1 at stack-trace.js:52
+    21   selfRecursive1 at stack-trace.js:52
+    22   selfRecursive1 at stack-trace.js:52
+    23   selfRecursive1 at stack-trace.js:52
+    24   selfRecursive1 at stack-trace.js:52
+    25   selfRecursive1 at stack-trace.js:52
+    26   selfRecursive1 at stack-trace.js:52
+    27   selfRecursive1 at stack-trace.js:52
+    28   selfRecursive1 at stack-trace.js:52
+    29   selfRecursive1 at stack-trace.js:52
+    30   selfRecursive1 at stack-trace.js:52
+    31   selfRecursive1 at stack-trace.js:52
+    32   selfRecursive1 at stack-trace.js:52
+    33   selfRecursive1 at stack-trace.js:52
+    34   selfRecursive1 at stack-trace.js:52
+    35   selfRecursive1 at stack-trace.js:52
+    36   selfRecursive1 at stack-trace.js:52
+    37   selfRecursive1 at stack-trace.js:52
+    38   selfRecursive1 at stack-trace.js:52
+    39   selfRecursive1 at stack-trace.js:52
+    40   selfRecursive1 at stack-trace.js:52
+    41   selfRecursive1 at stack-trace.js:52
+    42   selfRecursive1 at stack-trace.js:52
+    43   selfRecursive1 at stack-trace.js:52
+    44   selfRecursive1 at stack-trace.js:52
+    45   selfRecursive1 at stack-trace.js:52
+    46   selfRecursive1 at stack-trace.js:52
+    47   selfRecursive1 at stack-trace.js:52
+    48   selfRecursive1 at stack-trace.js:52
+    49   selfRecursive1 at stack-trace.js:52
+    50   selfRecursive1 at stack-trace.js:52
+    51   selfRecursive1 at stack-trace.js:52
+    52   selfRecursive1 at stack-trace.js:52
+    53   selfRecursive1 at stack-trace.js:52
+    54   selfRecursive1 at stack-trace.js:52
+    55   selfRecursive1 at stack-trace.js:52
+    56   selfRecursive1 at stack-trace.js:52
+    57   selfRecursive1 at stack-trace.js:52
+    58   selfRecursive1 at stack-trace.js:52
+    59   selfRecursive1 at stack-trace.js:52
+    60   selfRecursive1 at stack-trace.js:52
+    61   selfRecursive1 at stack-trace.js:52
+    62   selfRecursive1 at stack-trace.js:52
+    63   selfRecursive1 at stack-trace.js:52
+    64   selfRecursive1 at stack-trace.js:52
+    65   selfRecursive1 at stack-trace.js:52
+    66   selfRecursive1 at stack-trace.js:52
+    67   selfRecursive1 at stack-trace.js:52
+    68   selfRecursive1 at stack-trace.js:52
+    69   selfRecursive1 at stack-trace.js:52
+    70   selfRecursive1 at stack-trace.js:52
+    71   selfRecursive1 at stack-trace.js:52
+    72   selfRecursive1 at stack-trace.js:52
+    73   selfRecursive1 at stack-trace.js:52
+    74   selfRecursive1 at stack-trace.js:52
+    75   selfRecursive1 at stack-trace.js:52
+    76   selfRecursive1 at stack-trace.js:52
+    77   selfRecursive1 at stack-trace.js:52
+    78   selfRecursive1 at stack-trace.js:52
+    79   selfRecursive1 at stack-trace.js:52
+    80   selfRecursive1 at stack-trace.js:52
+    81   selfRecursive1 at stack-trace.js:52
+    82   selfRecursive1 at stack-trace.js:52
+    83   selfRecursive1 at stack-trace.js:52
+    84   selfRecursive1 at stack-trace.js:52
+    85   selfRecursive1 at stack-trace.js:52
+    86   selfRecursive1 at stack-trace.js:52
+    87   selfRecursive1 at stack-trace.js:52
+    88   selfRecursive1 at stack-trace.js:52
+    89   selfRecursive1 at stack-trace.js:52
+    90   selfRecursive1 at stack-trace.js:52
+    91   selfRecursive1 at stack-trace.js:52
+    92   selfRecursive1 at stack-trace.js:52
+    93   selfRecursive1 at stack-trace.js:52
+    94   selfRecursive1 at stack-trace.js:52
+    95   selfRecursive1 at stack-trace.js:52
+    96   selfRecursive1 at stack-trace.js:52
+    97   selfRecursive1 at stack-trace.js:52
+    98   selfRecursive1 at stack-trace.js:52
+    99   selfRecursive1 at stack-trace.js:52
+
+--> Stack Trace:
+    0   selfRecursive2 at stack-trace.js:58
+    1   selfRecursive2 at stack-trace.js:62
+    2   selfRecursive2 at stack-trace.js:62
+    3   selfRecursive2 at stack-trace.js:62
+    4   selfRecursive2 at stack-trace.js:62
+    5   selfRecursive2 at stack-trace.js:62
+    6   selfRecursive2 at stack-trace.js:62
+    7   selfRecursive2 at stack-trace.js:62
+    8   selfRecursive2 at stack-trace.js:62
+    9   selfRecursive2 at stack-trace.js:62
+    10   selfRecursive2 at stack-trace.js:62
+    11   selfRecursive2 at stack-trace.js:62
+    12   selfRecursive2 at stack-trace.js:62
+    13   selfRecursive2 at stack-trace.js:62
+    14   selfRecursive2 at stack-trace.js:62
+    15   selfRecursive2 at stack-trace.js:62
+    16   selfRecursive2 at stack-trace.js:62
+    17   selfRecursive2 at stack-trace.js:62
+    18   selfRecursive2 at stack-trace.js:62
+    19   selfRecursive2 at stack-trace.js:62
+    20   selfRecursive2 at stack-trace.js:62
+    21   selfRecursive2 at stack-trace.js:62
+    22   selfRecursive2 at stack-trace.js:62
+    23   selfRecursive2 at stack-trace.js:62
+    24   selfRecursive2 at stack-trace.js:62
+    25   selfRecursive2 at stack-trace.js:62
+    26   selfRecursive2 at stack-trace.js:62
+    27   selfRecursive2 at stack-trace.js:62
+    28   selfRecursive2 at stack-trace.js:62
+    29   selfRecursive2 at stack-trace.js:62
+    30   selfRecursive2 at stack-trace.js:62
+    31   selfRecursive2 at stack-trace.js:62
+    32   selfRecursive2 at stack-trace.js:62
+    33   selfRecursive2 at stack-trace.js:62
+    34   selfRecursive2 at stack-trace.js:62
+    35   selfRecursive2 at stack-trace.js:62
+    36   selfRecursive2 at stack-trace.js:62
+    37   selfRecursive2 at stack-trace.js:62
+    38   selfRecursive2 at stack-trace.js:62
+    39   selfRecursive2 at stack-trace.js:62
+    40   selfRecursive2 at stack-trace.js:62
+    41   selfRecursive2 at stack-trace.js:62
+    42   selfRecursive2 at stack-trace.js:62
+    43   selfRecursive2 at stack-trace.js:62
+    44   selfRecursive2 at stack-trace.js:62
+    45   selfRecursive2 at stack-trace.js:62
+    46   selfRecursive2 at stack-trace.js:62
+    47   selfRecursive2 at stack-trace.js:62
+    48   selfRecursive2 at stack-trace.js:62
+    49   selfRecursive2 at stack-trace.js:62
+    50   selfRecursive2 at stack-trace.js:62
+    51   selfRecursive2 at stack-trace.js:62
+    52   selfRecursive2 at stack-trace.js:62
+    53   selfRecursive2 at stack-trace.js:62
+    54   selfRecursive2 at stack-trace.js:62
+    55   selfRecursive2 at stack-trace.js:62
+    56   selfRecursive2 at stack-trace.js:62
+    57   selfRecursive2 at stack-trace.js:62
+    58   selfRecursive2 at stack-trace.js:62
+    59   selfRecursive2 at stack-trace.js:62
+    60   selfRecursive2 at stack-trace.js:62
+    61   selfRecursive2 at stack-trace.js:62
+    62   selfRecursive2 at stack-trace.js:62
+    63   selfRecursive2 at stack-trace.js:62
+    64   selfRecursive2 at stack-trace.js:62
+    65   selfRecursive2 at stack-trace.js:62
+    66   selfRecursive2 at stack-trace.js:62
+    67   selfRecursive2 at stack-trace.js:62
+    68   selfRecursive2 at stack-trace.js:62
+    69   selfRecursive2 at stack-trace.js:62
+    70   selfRecursive2 at stack-trace.js:62
+    71   selfRecursive2 at stack-trace.js:62
+    72   selfRecursive2 at stack-trace.js:62
+    73   selfRecursive2 at stack-trace.js:62
+    74   selfRecursive2 at stack-trace.js:62
+    75   selfRecursive2 at stack-trace.js:62
+    76   selfRecursive2 at stack-trace.js:62
+    77   selfRecursive2 at stack-trace.js:62
+    78   selfRecursive2 at stack-trace.js:62
+    79   selfRecursive2 at stack-trace.js:62
+    80   selfRecursive2 at stack-trace.js:62
+    81   selfRecursive2 at stack-trace.js:62
+    82   selfRecursive2 at stack-trace.js:62
+    83   selfRecursive2 at stack-trace.js:62
+    84   selfRecursive2 at stack-trace.js:62
+    85   selfRecursive2 at stack-trace.js:62
+    86   selfRecursive2 at stack-trace.js:62
+    87   selfRecursive2 at stack-trace.js:62
+    88   selfRecursive2 at stack-trace.js:62
+    89   selfRecursive2 at stack-trace.js:62
+    90   selfRecursive2 at stack-trace.js:62
+    91   selfRecursive2 at stack-trace.js:62
+    92   selfRecursive2 at stack-trace.js:62
+    93   selfRecursive2 at stack-trace.js:62
+    94   selfRecursive2 at stack-trace.js:62
+    95   selfRecursive2 at stack-trace.js:62
+    96   selfRecursive2 at stack-trace.js:62
+    97   selfRecursive2 at stack-trace.js:62
+    98   selfRecursive2 at stack-trace.js:62
+    99   selfRecursive2 at stack-trace.js:62
+
+--> Stack Trace:
+    0   eval at [native code]
+    1   selfRecursive3 at stack-trace.js:69
+    2    at eval code
+    3   eval at [native code]
+    4   selfRecursive3 at stack-trace.js:69
+    5    at eval code
+    6   eval at [native code]
+    7   selfRecursive3 at stack-trace.js:69
+    8    at eval code
+    9   eval at [native code]
+    10   selfRecursive3 at stack-trace.js:69
+    11    at eval code
+    12   eval at [native code]
+    13   selfRecursive3 at stack-trace.js:69
+    14    at eval code
+    15   eval at [native code]
+    16   selfRecursive3 at stack-trace.js:69
+    17    at eval code
+    18   eval at [native code]
+    19   selfRecursive3 at stack-trace.js:69
+    20    at eval code
+    21   eval at [native code]
+    22   selfRecursive3 at stack-trace.js:69
+    23    at eval code
+    24   eval at [native code]
+    25   selfRecursive3 at stack-trace.js:69
+    26    at eval code
+    27   eval at [native code]
+    28   selfRecursive3 at stack-trace.js:69
+    29    at eval code
+    30   eval at [native code]
+    31   selfRecursive3 at stack-trace.js:69
+    32    at eval code
+    33   eval at [native code]
+    34   selfRecursive3 at stack-trace.js:69
+    35    at eval code
+    36   eval at [native code]
+    37   selfRecursive3 at stack-trace.js:69
+    38    at eval code
+    39   eval at [native code]
+    40   selfRecursive3 at stack-trace.js:69
+    41    at eval code
+    42   eval at [native code]
+    43   selfRecursive3 at stack-trace.js:69
+    44    at eval code
+    45   eval at [native code]
+    46   selfRecursive3 at stack-trace.js:69
+    47    at eval code
+    48   eval at [native code]
+    49   selfRecursive3 at stack-trace.js:69
+    50    at eval code
+    51   eval at [native code]
+    52   selfRecursive3 at stack-trace.js:69
+    53    at eval code
+    54   eval at [native code]
+    55   selfRecursive3 at stack-trace.js:69
+    56    at eval code
+    57   eval at [native code]
+    58   selfRecursive3 at stack-trace.js:69
+    59    at eval code
+    60   eval at [native code]
+    61   selfRecursive3 at stack-trace.js:69
+    62    at eval code
+    63   eval at [native code]
+    64   selfRecursive3 at stack-trace.js:69
+    65    at eval code
+    66   eval at [native code]
+    67   selfRecursive3 at stack-trace.js:69
+    68    at eval code
+    69   eval at [native code]
+    70   selfRecursive3 at stack-trace.js:69
+    71    at eval code
+    72   eval at [native code]
+    73   selfRecursive3 at stack-trace.js:69
+    74    at eval code
+    75   eval at [native code]
+    76   selfRecursive3 at stack-trace.js:69
+    77    at eval code
+    78   eval at [native code]
+    79   selfRecursive3 at stack-trace.js:69
+    80    at eval code
+    81   eval at [native code]
+    82   selfRecursive3 at stack-trace.js:69
+    83    at eval code
+    84   eval at [native code]
+    85   selfRecursive3 at stack-trace.js:69
+    86    at eval code
+    87   eval at [native code]
+    88   selfRecursive3 at stack-trace.js:69
+    89    at eval code
+    90   eval at [native code]
+    91   selfRecursive3 at stack-trace.js:69
+    92    at eval code
+    93   eval at [native code]
+    94   selfRecursive3 at stack-trace.js:69
+    95    at eval code
+    96   eval at [native code]
+    97   selfRecursive3 at stack-trace.js:69
+    98    at eval code
+    99   eval at [native code]
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   valueOf at stack-trace.js:84
+    2   getter1 at stack-trace.js:87
+    3   nonInlineable at stack-trace.js:113
+    4   inlineable at stack-trace.js:121
+    5   yetAnotherInlinedCall at stack-trace.js:126
+    6   makeInlinableCall at stack-trace.js:131
+    7   g at stack-trace.js:140
+    8   map at [native code]
+    9   global code at stack-trace.js:143
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   getter2 at stack-trace.js:93
+    2   nonInlineable at stack-trace.js:115
+    3   inlineable at stack-trace.js:121
+    4   yetAnotherInlinedCall at stack-trace.js:126
+    5   makeInlinableCall at stack-trace.js:131
+    6   g at stack-trace.js:140
+    7   map at [native code]
+    8   global code at stack-trace.js:143
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   getter3 at stack-trace.js:105
+    2   nonInlineable at stack-trace.js:117
+    3   inlineable at stack-trace.js:121
+    4   yetAnotherInlinedCall at stack-trace.js:126
+    5   makeInlinableCall at stack-trace.js:131
+    6   g at stack-trace.js:140
+    7   map at [native code]
+    8   global code at stack-trace.js:143
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   valueOf at stack-trace.js:101
+    2   getter3 at stack-trace.js:107
+    3   nonInlineable at stack-trace.js:117
+    4   inlineable at stack-trace.js:121
+    5   yetAnotherInlinedCall at stack-trace.js:126
+    6   makeInlinableCall at stack-trace.js:131
+    7   g at stack-trace.js:140
+    8   map at [native code]
+    9   global code at stack-trace.js:143
+
+--> Stack Trace:
+    0   h at stack-trace.js:151
+    1   map at [native code]
+    2   mapTest at stack-trace.js:158
+    3   mapTestDriver at stack-trace.js:164
+    4   global code at stack-trace.js:169
+
+--> Stack Trace:
+    0   map at [native code]
+    1   h at stack-trace.js:153
+    2   map at [native code]
+    3   mapTest at stack-trace.js:158
+    4   mapTestDriver at stack-trace.js:164
+    5   global code at stack-trace.js:175
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   dfgFunction at stack-trace.js:184
+    2   map at [native code]
+    3   global code at stack-trace.js:193
+
+--> Stack Trace:
+    0   throwError at stack-trace.js:77
+    1   dfgFunction at stack-trace.js:184
+    2   f at stack-trace.js:202
+    3   global code at stack-trace.js:208
+
+

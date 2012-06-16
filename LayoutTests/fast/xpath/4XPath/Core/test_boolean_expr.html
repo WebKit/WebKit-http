@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -59,8 +58,6 @@ shouldBe('doc.evaluate("true() or false()", doc, null, XPathResult.BOOLEAN_TYPE,
 shouldBe('doc.evaluate("false() or true()", doc, null, XPathResult.BOOLEAN_TYPE, null).booleanValue', 'true');
 shouldBe('doc.evaluate("true() or true()", doc, null, XPathResult.BOOLEAN_TYPE, null).booleanValue', 'true');
 shouldBe('doc.evaluate("false() or false()", doc, null, XPathResult.BOOLEAN_TYPE, null).booleanValue', 'false');
-
-var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

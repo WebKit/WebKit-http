@@ -1,0 +1,22 @@
+# -------------------------------------------------------------------
+# Unix specific defaults
+#
+# See 'Tools/qmake/README' for an overview of the build system
+# -------------------------------------------------------------------
+
+load(functions)
+
+haveQt(5): CONFIG += object_parallel_to_source
+
+# Expose if we are building inside Scratchbox
+SBOX_CHECK = $$(_SBOX_DIR)
+!isEmpty(SBOX_CHECK): CONFIG += scratchbox
+
+# If Qt is configured with embedded or QPA we set a convenience config
+# flag that can be used to test for either of these situations.
+contains(QT_CONFIG, qpa)|contains(QT_CONFIG, embedded): CONFIG += embedded
+
+# Make sure we process the PKGCONFIG variable if applicable
+!mac: CONFIG += link_pkgconfig
+
+load(default_pre)

@@ -85,8 +85,8 @@ shouldBe("Math.sqrt.length","1");
 shouldBe("Math.tan.length","1");
 shouldBe("Object.prototype.toString.length","0");
 shouldBe("Object.prototype.valueOf.length","0");
-shouldBe("RegExp.prototype.exec.length","0");
-shouldBe("RegExp.prototype.test.length","0");
+shouldBe("RegExp.prototype.exec.length","1");
+shouldBe("RegExp.prototype.test.length","1");
 shouldBe("RegExp.prototype.toString.length","0");
 shouldBe("String.fromCharCode.length","1");
 shouldBe("String.prototype.concat.length","1");
@@ -121,4 +121,3 @@ shouldBe("String.prototype.link.length","1");
 shouldBe("Number.prototype.toString.length", "1");
 shouldBe("Number.prototype.valueOf.length", "0");
 shouldBe("Number.prototype.toFixed.length", "1");
-successfullyParsed = true

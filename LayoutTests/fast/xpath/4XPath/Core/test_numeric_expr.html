@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 <script src="test.js"></script>
 </head>
@@ -213,8 +212,6 @@
     shouldBe('DOM.evaluate("\'5\' <= @attr31", CHILD1, null, XPathResult.ANY_TYPE, null).booleanValue', 'true');
     shouldBe('DOM.evaluate("\'5\' > @attr31", CHILD1, null, XPathResult.ANY_TYPE, null).booleanValue', 'false');
     shouldBe('DOM.evaluate("\'5\' >= @attr31", CHILD1, null, XPathResult.ANY_TYPE, null).booleanValue', 'false');
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

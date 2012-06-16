@@ -1,11 +1,8 @@
 <html>
 <head id="head">
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <script>
 
 description("This tests parsing and re-serialization of some CSS selectors.");
@@ -82,6 +79,7 @@ debug('');
 
 testSelectorRoundTrip(":lang(a)");
 testSelectorRoundTrip(":not(a)");
+testSelectorRoundTrip(":-webkit-any(a,b,p)");
 
 debug('');
 
@@ -99,16 +97,42 @@ testSelectorRoundTrip(":-webkit-drag");
 
 debug('');
 
-testSelectorRoundTrip("::-webkit-file-upload-button");
-testSelectorRoundTrip("::-webkit-search-cancel-button");
-testSelectorRoundTrip("::-webkit-search-decoration");
-testSelectorRoundTrip("::-webkit-search-results-button");
-testSelectorRoundTrip("::-webkit-search-results-decoration");
-testSelectorRoundTrip("::-webkit-slider-thumb");
+shouldBe("parseThenSerializeRule('::-webkit-file-upload-button { }')", "'*::-webkit-file-upload-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-cancel-button { }')", "'*::-webkit-search-cancel-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-decoration { }')", "'*::-webkit-search-decoration { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-results-button { }')", "'*::-webkit-search-results-button { }'");
+shouldBe("parseThenSerializeRule('::-webkit-search-results-decoration { }')", "'*::-webkit-search-results-decoration { }'");
+shouldBe("parseThenSerializeRule('::-webkit-slider-thumb { }')", "'*::-webkit-slider-thumb { }'");
+
+debug('');
+
+testSelectorRoundTrip("a::-webkit-slider-thumb");
+shouldBe("parseThenSerializeRule('a ::-webkit-slider-thumb { }')", "'a *::-webkit-slider-thumb { }'");
+testSelectorRoundTrip("[a]::-webkit-slider-thumb");
+shouldBe("parseThenSerializeRule('[a] ::-webkit-slider-thumb { }')", "'[a] *::-webkit-slider-thumb { }'");
+testSelectorRoundTrip(".a::-webkit-slider-thumb");
+shouldBe("parseThenSerializeRule('.a ::-webkit-slider-thumb { }')", "'.a *::-webkit-slider-thumb { }'");
+testSelectorRoundTrip("#a::-webkit-slider-thumb");
+shouldBe("parseThenSerializeRule('#a ::-webkit-slider-thumb { }')", "'#a *::-webkit-slider-thumb { }'");
+shouldBe("parseThenSerializeRule('* ::-webkit-slider-thumb { }')", "'* *::-webkit-slider-thumb { }'");
+
+debug('');
+
+testSelectorRoundTrip("a[b]::-webkit-slider-thumb");
+testSelectorRoundTrip("a.b::-webkit-slider-thumb");
+testSelectorRoundTrip("a#b::-webkit-slider-thumb");
+testSelectorRoundTrip("a[b].c#d::-webkit-slider-thumb");
 
 debug('');
 
 testSelectorRoundTrip('input:not([type="file"]):focus');
+testSelectorRoundTrip(':-webkit-any([type="file"])');
+testSelectorRoundTrip(':-webkit-any(:hover)');
+testSelectorRoundTrip('input:-webkit-any([type="file"],:hover,:focus):enabled');
+testSelectorRoundTrip(':-webkit-any(input[type="file"],a:hover,button:focus)');
+testSelectorRoundTrip(':-webkit-any(.class1.class2.class3)');
+testSelectorRoundTrip(':-webkit-any(.class1:hover)');
+testSelectorRoundTrip(':-webkit-any(a.class1.class2.class3:hover)');
 
 debug('');
 
@@ -131,10 +155,9 @@ shouldBe("parseThenSerializeRule(':after { }')", "'::after { }'");
 shouldBe("parseThenSerializeRule(':before { }')", "'::before { }'");
 shouldBe("parseThenSerializeRule(':first-letter { }')", "'::first-letter { }'");
 shouldBe("parseThenSerializeRule(':first-line { }')", "'::first-line { }'");
+shouldBe("parseThenSerializeRule(':-webkit-any(    a.class1  ,  	#id,[attr]  ) { }')","':-webkit-any(a.class1,#id,[attr]) { }'");
 
 debug('');
-
-successfullyParsed = true;
 
 </script>
 <script src="../js/resources/js-test-post.js"></script>

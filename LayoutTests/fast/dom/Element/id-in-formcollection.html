@@ -1,11 +1,8 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 
 <form id="idf1">
 <select id="ids1" name="name1"><option selected>FAILURE</option></select>
@@ -16,9 +13,7 @@
 description("Test using id in HTMLFormCollection");
 
 var elems = document.getElementById("idf1").elements;
-shouldBe('elems("ids1",1).getAttribute("name")', '"name2"');
-
-var successfullyParsed = true;
+shouldBe('elems["ids1"][1].getAttribute("name")', '"name2"');
 </script>
 <script src="../../js/resources/js-test-post.js"></script>
 </body>

@@ -1,0 +1,34 @@
+Test IndexedDB's read/write transactions
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+indexedDB.open(name, description)
+db = event.target.result
+request = db.setVersion('1')
+Deleted all object stores.
+objectStore = db.createObjectStore(osName, { autoIncrement: true });
+request = db.transaction([osName], IDBTransaction.READ_WRITE).objectStore(osName).add({});
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+key1 = event.target.result;
+request = db.transaction(osName, IDBTransaction.READ_WRITE).objectStore(osName).add({});
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+key2 = event.target.result;
+request = db.transaction([osName], IDBTransaction.READ_WRITE).objectStore(osName).put({}, key1);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+request = db.transaction(osName, IDBTransaction.READ_WRITE).objectStore(osName).put({}, key2);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+request = db.transaction([osName], IDBTransaction.READ_WRITE).objectStore(osName).put({}, key1);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+request = db.transaction(osName, IDBTransaction.READ_WRITE).objectStore(osName).put({}, key1);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+request = db.transaction([osName], IDBTransaction.READ_WRITE).objectStore(osName).delete(key1);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+request = db.transaction(osName, IDBTransaction.READ_WRITE).objectStore(osName).delete(key2);
+PASS event.target.transaction.mode is IDBTransaction.READ_WRITE
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

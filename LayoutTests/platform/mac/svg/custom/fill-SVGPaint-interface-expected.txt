@@ -3,7 +3,7 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderSVGRoot {svg} at (0,0) size 800x600
     RenderSVGContainer {a} at (0,0) size 0x0
-    RenderForeignObject {foreignObject} at (0,0) size 800x18
+    RenderSVGForeignObject {foreignObject} at (0,0) size 800x600
       RenderBlock {html} at (0,0) size 800x18
         RenderBlock {div} at (0,0) size 800x18
           RenderText {#text} at (0,0) size 554x18
@@ -13,4 +13,4 @@ layer at (0,0) size 800x600
               text run at (554,0) width 71: "Bug 14064"
           RenderText {#text} at (625,0) size 4x18
             text run at (625,0) width 4: "."
-    RenderPath {rect} at (10,50) size 100x100 [fill={[type=SOLID] [color=#008000]}] [data="M10.00,50.00 L110.00,50.00 L110.00,150.00 L10.00,150.00 Z"]
+    RenderSVGRect {rect} at (10,50) size 100x100 [fill={[type=SOLID] [color=#008000]}] [x=10.00] [y=50.00] [width=100.00] [height=100.00]

@@ -14,7 +14,7 @@ function log(s)
 function testHistoryItemCount()
 {
     var expected = parseInt(location.hash.slice(1));
-    var actual = layoutTestController.webHistoryItemCount + 1; // Add one to include the referring page, which loaded before we started recording history.
+    var actual = history.length;
     if (actual === expected)
         log("PASS: History item count should be " + expected + " and is.");
     else

@@ -1,10 +1,7 @@
 <html>
   <head>
     <title>webkitConvertPointFromNodeToPage Test</title>
-
-    <link rel="stylesheet" href="../../js/resources/js-test-style.css"/>
     <script src="../../js/resources/js-test-pre.js"></script>
-
     <style type="text/css" media="screen">
 
       #test {
@@ -30,14 +27,11 @@
         y = Math.round(p.y);
         shouldBe('x', 60 + "");
         shouldBe('y', 70 + "");
-
-        shouldBeTrue("successfullyParsed");
-        debug('<br /><span class="pass">TEST COMPLETE</span>');
+        
+        isSuccessfullyParsed();
       }
       
-      window.addEventListener('load', doTest, false);
-
-      successfullyParsed = true;
+      window.onload = doTest;
     </script>
 
   </head>

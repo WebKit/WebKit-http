@@ -1,0 +1,5 @@
+CONSOLE MESSAGE: Refused to evaluate script because of Content-Security-Policy.
+
+ALERT: PASS
+
+

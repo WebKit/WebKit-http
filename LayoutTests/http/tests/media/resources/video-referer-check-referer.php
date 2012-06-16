@@ -1,24 +1,15 @@
 <?php
-    if($_SERVER['HTTP_REFERER'])
-    {
-        $extension = substr($_COOKIE["TEST"], -3);
 
-        if ($extension == 'mp4') {
-               header("Content-Type: video/mp4");
-               $fileName = "test.mp4";
-        } else if ($extension == 'ogv') {
-               header("Content-Type: video/ogg");
-               $fileName = "test.ogv";
-        } else
-               die;
-
-        header("Cache-Control: no-store");
-        header("Connection: close");
-
-        $fn = fopen($fileName, "r");
-        fpassthru($fn);
-        fclose($fn);
-        exit;
-    } else
+    $refer = $_SERVER["HTTP_REFERER"];
+    if (!isset($refer) || stripos($refer, "video-referer.html") === false)
         die;
+
+    $fileName = $_GET["name"];
+    $type = $_GET["type"];
+
+    $_GET = array();
+    $_GET['name'] = $fileName;
+    $_GET['type'] = $type;
+    @include("./serve-video.php"); 
+
 ?>

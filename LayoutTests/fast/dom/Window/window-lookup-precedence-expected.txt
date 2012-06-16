@@ -1,4 +1,4 @@
-Tests lookup precedence for properties on DOMWindow objects in the presence of a child frame, and that IDL properties defined in the prototype (window.location, window.focus, etc) have higher lookup precedence than named document elements (such as input elements).
+Tests lookup precedence for properties on Window objects in the presence of a child frame, and that IDL properties defined in the prototype (window.location, window.focus, etc) have higher lookup precedence than named document elements (such as input elements).
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
@@ -60,8 +60,6 @@ PASS 'function setInterval() {    [native code]}' is 'function setInterval() {  
 PASS 'function setInterval() {    [native code]}' is 'function setInterval() {    [native code]}'
 PASS 'function setTimeout() {    [native code]}' is 'function setTimeout() {    [native code]}'
 PASS 'function setTimeout() {    [native code]}' is 'function setTimeout() {    [native code]}'
-FAIL win['showModalDialog'] should be null (of type object). Was undefined (of type undefined).
-FAIL win['showModalDialog'] should be null (of type object). Was undefined (of type undefined).
 PASS 'function stop() {    [native code]}' is 'function stop() {    [native code]}'
 PASS 'function stop() {    [native code]}' is 'function stop() {    [native code]}'
 PASS 'function toString() {    [native code]}' is 'function toString() {    [native code]}'
@@ -136,8 +134,6 @@ PASS win['HTMLBaseElement'] == '[object HTMLBaseElementConstructor]' is true
 PASS win['HTMLBaseElement'] == '[object HTMLBaseElementConstructor]' is true
 PASS win['HTMLBaseFontElement'] == '[object HTMLBaseFontElementConstructor]' is true
 PASS win['HTMLBaseFontElement'] == '[object HTMLBaseFontElementConstructor]' is true
-PASS win['HTMLBlockquoteElement'] == '[object HTMLBlockquoteElementConstructor]' is true
-PASS win['HTMLBlockquoteElement'] == '[object HTMLBlockquoteElementConstructor]' is true
 PASS win['HTMLBodyElement'] == '[object HTMLBodyElementConstructor]' is true
 PASS win['HTMLBodyElement'] == '[object HTMLBodyElementConstructor]' is true
 PASS win['HTMLButtonElement'] == '[object HTMLButtonElementConstructor]' is true
@@ -146,6 +142,8 @@ PASS win['HTMLCanvasElement'] == '[object HTMLCanvasElementConstructor]' is true
 PASS win['HTMLCanvasElement'] == '[object HTMLCanvasElementConstructor]' is true
 PASS win['HTMLDListElement'] == '[object HTMLDListElementConstructor]' is true
 PASS win['HTMLDListElement'] == '[object HTMLDListElementConstructor]' is true
+PASS win['HTMLDataListElement'] == '[object HTMLDataListElementConstructor]' is true
+PASS win['HTMLDataListElement'] == '[object HTMLDataListElementConstructor]' is true
 PASS win['HTMLDirectoryElement'] == '[object HTMLDirectoryElementConstructor]' is true
 PASS win['HTMLDirectoryElement'] == '[object HTMLDirectoryElementConstructor]' is true
 PASS win['HTMLDivElement'] == '[object HTMLDivElementConstructor]' is true
@@ -180,8 +178,6 @@ PASS win['HTMLImageElement'] == '[object HTMLImageElementConstructor]' is true
 PASS win['HTMLImageElement'] == '[object HTMLImageElementConstructor]' is true
 PASS win['HTMLInputElement'] == '[object HTMLInputElementConstructor]' is true
 PASS win['HTMLInputElement'] == '[object HTMLInputElementConstructor]' is true
-PASS win['HTMLIsIndexElement'] == '[object HTMLIsIndexElementConstructor]' is true
-PASS win['HTMLIsIndexElement'] == '[object HTMLIsIndexElementConstructor]' is true
 PASS win['HTMLLIElement'] == '[object HTMLLIElementConstructor]' is true
 PASS win['HTMLLIElement'] == '[object HTMLLIElementConstructor]' is true
 PASS win['HTMLLabelElement'] == '[object HTMLLabelElementConstructor]' is true
@@ -324,20 +320,20 @@ PASS win['XPathException'] == '[object XPathExceptionConstructor]' is true
 PASS win['XPathException'] == '[object XPathExceptionConstructor]' is true
 PASS win['XPathResult'] == '[object XPathResultConstructor]' is true
 PASS win['XPathResult'] == '[object XPathResultConstructor]' is true
-PASS win['XSLTProcessor'] == '[object XSLTProcessorConsructor]' is true
-PASS win['XSLTProcessor'] == '[object XSLTProcessorConsructor]' is true
+PASS win['XSLTProcessor'] == '[object XSLTProcessorConstructor]' is true
+PASS win['XSLTProcessor'] == '[object XSLTProcessorConstructor]' is true
 PASS win['onload'] is null
 PASS win['onload'] is null
-PASS win['frames'] == '[object DOMWindow]' is true
-PASS win['frames'] == '[object DOMWindow]' is true
-PASS win['parent'] == '[object DOMWindow]' is true
-PASS win['parent'] == '[object DOMWindow]' is true
-PASS win['self'] == '[object DOMWindow]' is true
-PASS win['self'] == '[object DOMWindow]' is true
-PASS win['top'] == '[object DOMWindow]' is true
-PASS win['top'] == '[object DOMWindow]' is true
-PASS win['window'] == '[object DOMWindow]' is true
-PASS win['window'] == '[object DOMWindow]' is true
+PASS win['frames'] == '[object Window]' is true
+PASS win['frames'] == '[object Window]' is true
+PASS win['parent'] == '[object Window]' is true
+PASS win['parent'] == '[object Window]' is true
+PASS win['self'] == '[object Window]' is true
+PASS win['self'] == '[object Window]' is true
+PASS win['top'] == '[object Window]' is true
+PASS win['top'] == '[object Window]' is true
+PASS win['window'] == '[object Window]' is true
+PASS win['window'] == '[object Window]' is true
 PASS win['locationbar'] == '[object BarInfo]' is true
 PASS win['locationbar'] == '[object BarInfo]' is true
 PASS win['menubar'] == '[object BarInfo]' is true

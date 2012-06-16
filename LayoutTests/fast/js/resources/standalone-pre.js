@@ -1,3 +1,6 @@
+var wasPostTestScriptParsed = false;
+var errorMessage;
+
 function description(msg)
 {
     print(msg);
@@ -22,11 +25,14 @@ function testPassed(msg)
 
 function testFailed(msg)
 {
+    errorMessage = msg;
     print("FAIL", escapeString(msg));
 }
 
 function areArraysEqual(_a, _b)
 {
+    if (Object.prototype.toString.call(_a) != Object.prototype.toString.call([]))
+        return false;
     if (_a.length !== _b.length)
         return false;
     for (var i = 0; i < _a.length; i++)
@@ -92,7 +98,7 @@ function shouldBeNull(_a) { shouldBe(_a, "null"); }
 
 function shouldBeEqualToString(a, b)
 {
-  var unevaledString = '"' + b.replace(/"/g, "\"") + '"';
+  var unevaledString = '"' + b.replace(/\\/g, "\\\\").replace(/"/g, "\"").replace(/\n/g, "\\n").replace(/\r/g, "\\r") + '"';
   shouldBe(a, unevaledString);
 }
 
@@ -138,4 +144,23 @@ function shouldThrow(_a, _e)
     testFailed(_a + " should throw " + (typeof _e == "undefined" ? "an exception" : _ev) + ". Was undefined.");
   else
     testFailed(_a + " should throw " + (typeof _e == "undefined" ? "an exception" : _ev) + ". Was " + _av + ".");
+}
+
+function isSuccessfullyParsed()
+{
+    // FIXME: Remove this and only report unexpected syntax errors.
+    if (!errorMessage)
+        successfullyParsed = true;
+    shouldBeTrue("successfullyParsed");
+    debug("\nTEST COMPLETE\n");
+}
+
+// It's possible for an async test to call finishJSTest() before js-test-post.js
+// has been parsed.
+function finishJSTest()
+{
+    wasFinishJSTestCalled = true;
+    if (!wasPostTestScriptParsed)
+        return;
+    isSuccessfullyParsed();
 }

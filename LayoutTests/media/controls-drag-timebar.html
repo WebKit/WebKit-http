@@ -1,67 +1,85 @@
+<!DOCTYPE html>
 <html>
     <head>
         <title>drag timebar test</title>
+        <script src=media-controls.js></script>
         <script src=media-file.js></script>
         <script src=video-test.js></script>
         <script>
-            var x, y, time, count;
-            var seek = 0;
+            var x;
+            var y;
+            var seekCount;
+            var moveCount;
 
             if (window.layoutTestController)
                 layoutTestController.dumpAsText();
 
             function test()
             {
+                seekCount = 0;
+                moveCount = 0;
+
                 if (window.eventSender) {
-                    x = video.offsetLeft + (video.offsetWidth / 3);
-                    y = video.offsetTop + video.offsetHeight - 10;
-                    time = video.currentTime.toFixed(1);
-                    count = 0;
+
+                    var seekCoords;
+                    try {
+                        seekCoords = mediaControlsButtonCoordinates(video, "timeline");
+                    } catch (exception) {
+                        failTest(exception.description);
+                        return;
+                    }
+                    x = seekCoords[0];
+                    y = seekCoords[1];
 
                     eventSender.dragMode = false;
                     eventSender.mouseMoveTo(x, y);
                     eventSender.mouseDown();
+
+                    // Drag mouse off of the slider thumb to make sure it continues to track
+                    y += 100;
+                    eventSender.mouseMoveTo(x, y);
                 }
                 window.setTimeout("move()", 100);
             }
 
             function move()
             {
+                ++moveCount;
+
+                var delta = (10 + moveCount * 2) * (moveCount % 2 ? 1 : -1);
+
                 if (window.eventSender) {
-                    x += 20;
+                    x += delta;
                     eventSender.mouseMoveTo(x, y);
                 }
-                if (++count >= 3)
-                    eventSender.mouseUp();
-                window.setTimeout("move()", 100);
-            }
-
-            function playing()
-            {
-                window.setTimeout("test()", 100);
             }
 
             function seeked()
             {
-                consoleWrite("Time: " + video.currentTime.toFixed(1));
-                if (++seek == 3)
-                    endTest();
+                ++seekCount;
+                if (seekCount < 6) {
+                    window.setTimeout("move()", 100);
+                    return;
+                }
+
+                if (window.eventSender)
+                    eventSender.mouseUp();
+                endTest();
             }
 
             function start()
             {
                 findMediaElement();
-                waitForEvent('playing', playing);
+                waitForEvent('canplaythrough', test);
                 waitForEvent('seeked', seeked);
-                run("video.autoplay = true");
-                run("video.src = '" + findMediaFile("video", "content/test") + "'");
+                video.src = findMediaFile("video", "content/test");
             }    
         </script>
     </head>
 
     <body onload="start()">
-    <p>Test that drag the timebar thumb causes seeks.</p>
-    <video controls></video>
+        <p>Test that dragging the timebar thumb causes seeks.</p>
+        <video controls></video>
     </body>
 </html>
 

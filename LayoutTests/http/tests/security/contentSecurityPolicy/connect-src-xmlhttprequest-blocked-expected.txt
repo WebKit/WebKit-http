@@ -1,0 +1,4 @@
+CONSOLE MESSAGE: Refused to load connect from 'http://localhost:8000/xmlhttprequest/resources/get.txt' because of Content-Security-Policy.
+
+Pass
+

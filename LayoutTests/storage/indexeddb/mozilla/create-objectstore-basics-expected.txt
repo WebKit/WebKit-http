@@ -1,0 +1,66 @@
+Test IndexedDB's creating object store and updating properties
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+indexedDB.open(name, description)
+db = event.target.result
+request = db.setVersion('1')
+Deleted all object stores.
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.keyPath is info.options.keyPath
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.keyPath is info.options.keyPath
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+objectStore = db.createObjectStore(info.name, info.options);
+PASS objectStore.name is info.name
+PASS objectStore.keyPath is info.options.keyPath
+PASS objectStore.indexNames.length is 0
+PASS event.target.transaction.db is db
+PASS event.target.transaction.readyState is IDBTransaction.LOADING
+PASS event.target.transaction.mode is IDBTransaction.VERSION_CHANGE
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

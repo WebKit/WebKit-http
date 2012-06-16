@@ -22,20 +22,24 @@ textElement.setAttribute("y", "15");
 rootSVGElement.appendChild(textElement);
 
 var trefElement = createSVGElement("tref");
-trefElement.setAttributeNS(xlinkNS, "xlink:href", "testFail");
+trefElement.setAttributeNS(xlinkNS, "xlink:href", "#testFail");
 textElement.appendChild(trefElement);    
 
-shouldBeEqualToString("trefElement.getAttributeNS('" + xlinkNS + "', 'href')", "testFail");
-shouldBeEqualToString("textElement.textContent", "Test failed");
+shouldBeEqualToString("trefElement.getAttributeNS('" + xlinkNS + "', 'href')", "#testFail");
+if (window.internals) {
+    var shadowRoot = internals.shadowRoot(trefElement);
+    shouldBeEqualToString("shadowRoot.textContent", "Test failed");
+}
 
-function executeTest() {
-    trefElement.setAttributeNS(xlinkNS, "xlink:href", "testPass");
-    shouldBeEqualToString("trefElement.getAttributeNS('" + xlinkNS + "', 'href')", "testPass");
-    shouldBeEqualToString("textElement.textContent", "Test passed");
+function repaintTest() {
+    trefElement.setAttributeNS(xlinkNS, "xlink:href", "#testPass");
+    shouldBeEqualToString("trefElement.getAttributeNS('" + xlinkNS + "', 'href')", "#testPass");
+    if (window.internals) {
+        var shadowRoot = internals.shadowRoot(trefElement);
+        shouldBeEqualToString("shadowRoot.textContent", "Test passed");
+    }
 
     completeTest();
 }
-
-startTest(textElement, 10, 10);
 
 var successfullyParsed = true;

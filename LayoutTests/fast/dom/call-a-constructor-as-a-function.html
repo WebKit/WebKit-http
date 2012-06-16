@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<body>
+<script src="../js/resources/js-test-pre.js"></script>
+<script>
+
+description("This tests if TypeError is thrown or not when we call a constructor as a normal function.");
+
+var test_constructors = ["ArrayBuffer", "AudioContext", "FormData", "DataView", "EventSource", "FileReader", "Float32Array", "Float64Array", "Audio", "Image", "Option", "Int16Array", "Int32Array", "Int8Array", "MessageChannel", "webkitDeprecatedPeerConnection", "SharedWorker", "Uint16Array", "Uint32Array", "Uint8Array", "WebKitCSSMatrix", "WebKitPoint", "WebSocket", "Worker", "XMLHttpRequest", "XSLTProcessor"];
+
+test_constructors.forEach(function (constructor) {
+    if (eval("window." + constructor))
+        shouldThrow(constructor + "()");
+    else
+        debug("SKIP " + constructor + " is not implemented.");
+});
+</script>
+<script src="../js/resources/js-test-post.js"></script>
+</body>
+</html>

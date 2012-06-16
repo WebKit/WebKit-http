@@ -1,0 +1,15 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<script src="../js/resources/js-test-pre.js"></script>
+</head>
+<body>
+<script>
+description('Test how file system methods react to too few arguments.');
+shouldThrow("webkitRequestFileSystem()");
+shouldThrow("webkitRequestFileSystem(TEMPORARY)");
+shouldThrow("webkitResolveLocalFileSystemURL()");
+</script>
+<script src="../js/resources/js-test-post.js"></script>
+</body>
+</html>

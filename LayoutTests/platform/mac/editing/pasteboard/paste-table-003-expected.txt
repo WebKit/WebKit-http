@@ -5,7 +5,7 @@ EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotificatio
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: shouldInsertNode:#document-fragment replacingDOMRange:range from 0 of #text > DIV > BODY > HTML > #document to 9 of #text > DIV > BODY > HTML > #document givenAction:WebViewInsertActionPasted
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: shouldChangeSelectedDOMRange:(null) toDOMRange:range from 2 of TD > TR > TBODY > TABLE > DIV > BODY > HTML > #document to 2 of TD > TR > TBODY > TABLE > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 0 of DIV > BODY > HTML > #document to 0 of DIV > BODY > HTML > #document toDOMRange:range from 2 of TD > TR > TBODY > TABLE > DIV > BODY > HTML > #document to 2 of TD > TR > TBODY > TABLE > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 layer at (0,0) size 800x600
@@ -47,4 +47,4 @@ layer at (0,0) size 800x600
                 RenderBR {BR} at (25,15) size 0x0
                 RenderBR {BR} at (1,19) size 0x18
         RenderBlock (anonymous) at (0,42) size 784x0
-caret: position 0 of child 2 {BR} of child 1 {TD} of child 0 {TR} of child 0 {TBODY} of child 0 {TABLE} of child 5 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+caret: position 0 of child 2 {BR} of child 1 {TD} of child 0 {TR} of child 0 {TBODY} of child 0 {TABLE} of child 5 {DIV} of body

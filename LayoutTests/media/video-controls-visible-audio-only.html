@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <style>
@@ -5,6 +6,7 @@
             #mouse-parking:hover { padding:8; background-color: blue; }
         </style>
         <script src=media-file.js></script>
+        <script src=media-controls.js></script>
         <script>
             if (window.layoutTestController) {
                 layoutTestController.dumpAsText();
@@ -30,15 +32,23 @@
             function start()
             {
                 video = document.getElementById("no-video-media");
-                var left = video.offsetLeft;
-                var bottom = video.offsetTop + video.offsetHeight;
 
                 testcondition("video.paused");
                 if (!window.layoutTestController)
                     return;
 
                 // start playback
-                eventSender.mouseMoveTo(left + 8, bottom - 8);
+                var playCoords
+                try {
+                    playCoords = mediaControlsButtonCoordinates(video, "play-button");
+                } catch (exception) {
+                    consoleWrite(exception.description);
+                    layoutTestController.notifyDone();
+                    return;
+                }
+                var clickX = playCoords[0];
+                var clickY = playCoords[1];
+                eventSender.mouseMoveTo(clickX, clickY);
                 eventSender.mouseDown();
                 eventSender.mouseUp();
                 testcondition("!video.paused");
@@ -68,7 +78,7 @@
 
         <p><span id="mouse-parking">mouse parks here, am I blue?</span></p>
 
-        <video id="no-video-media" controls loop onload="start()"></video>
+        <video id="no-video-media" controls loop oncanplaythrough="start()"></video>
         <br><br><div id="console"></div>
         <script>
             setSrcById("no-video-media", findMediaFile("audio", "content/test"));

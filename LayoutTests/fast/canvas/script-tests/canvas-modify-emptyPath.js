@@ -23,6 +23,16 @@ ctx.stroke();
 shouldBe("getColor(40,40)", "[0,128,0,255]");
 ctx.clearRect(0, 0, 300, 300);
 
+// Test when create rectangle path using a rectangle with width = height = 0.
+debug("Test canvas.rect() with width = height = 0.");
+ctx.strokeStyle = 'red';
+ctx.lineWidth = 10;
+ctx.beginPath();
+ctx.rect(0, 0, 0, 0);
+ctx.stroke();
+shouldBe("getColor(1,1)", "[0,0,0,0]");
+ctx.clearRect(0, 0, 300, 300);
+
 // Test path modifications that result in drawing
 ctx.fillStyle = 'red';
 ctx.strokeStyle = 'green';
@@ -42,7 +52,8 @@ ctx.beginPath();
 ctx.fillRect(0, 0, 100, 100);
 ctx.quadraticCurveTo(0, 50, 100, 50);
 ctx.stroke();
-shouldBe("getColor(50,50)", "[255,0,0,255]");
+shouldBe("getColor(10,10)", "[255,0,0,255]");
+shouldBe("getColor(50,50)", "[0,128,0,255]");
 ctx.clearRect(0, 0, 300, 300);
 
 debug("Test quadraticCurveTo endpoint")
@@ -51,8 +62,9 @@ ctx.fillRect(0, 0, 100, 100);
 ctx.quadraticCurveTo(0, 50, 100, 50);
 ctx.lineTo(50, 100);
 ctx.stroke();
+shouldBe("getColor(10,10)", "[255,0,0,255]");
 shouldBe("getColor(99,51)", "[0,128,0,255]");
-shouldBe("getColor(50,50)", "[255,0,0,255]");
+shouldBe("getColor(50,50)", "[0,128,0,255]");
 ctx.clearRect(0, 0, 300, 300);
 
 debug("Test bezierCurveTo")
@@ -60,7 +72,8 @@ ctx.beginPath();
 ctx.fillRect(0, 0, 100, 100);
 ctx.bezierCurveTo(0, 50, 50, 50, 100, 50);
 ctx.stroke();
-shouldBe("getColor(50,50)", "[255,0,0,255]");
+shouldBe("getColor(10,10)", "[255,0,0,255]");
+shouldBe("getColor(50,50)", "[0,128,0,255]");
 ctx.clearRect(0, 0, 300, 300);
 
 debug("Test bezierCurveTo endpoint")
@@ -70,8 +83,7 @@ ctx.bezierCurveTo(0, 50, 50, 50, 100, 50);
 ctx.stroke();
 ctx.lineTo(50, 100);
 ctx.stroke();
+shouldBe("getColor(10,10)", "[255,0,0,255]");
 shouldBe("getColor(99,51)", "[0,128,0,255]");
-shouldBe("getColor(50,50)", "[255,0,0,255]");
+shouldBe("getColor(50,50)", "[0,128,0,255]");
 ctx.clearRect(0, 0, 300, 300);
-
-var successfullyParsed = true;

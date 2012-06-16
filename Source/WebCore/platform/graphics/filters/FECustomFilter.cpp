@@ -1,0 +1,265 @@
+/*
+ * Copyright (C) 2011 Adobe Systems Incorporated. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials
+ *    provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+ * OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#include "config.h"
+
+#if ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#include "FECustomFilter.h"
+
+#include "CustomFilterMesh.h"
+#include "CustomFilterNumberParameter.h"
+#include "CustomFilterParameter.h"
+#include "CustomFilterProgram.h"
+#include "CustomFilterShader.h"
+#include "DrawingBuffer.h"
+#include "GraphicsContext3D.h"
+#include "ImageData.h"
+#include "RenderTreeAsText.h"
+#include "TextStream.h"
+#include "Texture.h"
+#include "TilingData.h"
+#include "TransformationMatrix.h"
+
+#include <wtf/Uint8ClampedArray.h>
+
+namespace WebCore {
+
+static void orthogonalProjectionMatrix(TransformationMatrix& matrix, float left, float right, float bottom, float top)
+{
+    ASSERT(matrix.isIdentity());
+    
+    float deltaX = right - left;
+    float deltaY = top - bottom;
+    if (!deltaX || !deltaY)
+        return;
+    matrix.setM11(2.0f / deltaX);
+    matrix.setM41(-(right + left) / deltaX);
+    matrix.setM22(2.0f / deltaY);
+    matrix.setM42(-(top + bottom) / deltaY);
+
+    // Use big enough near/far values, so that simple rotations of rather large objects will not
+    // get clipped. 10000 should cover most of the screen resolutions.
+    const float farValue = 10000;
+    const float nearValue = -10000;
+    matrix.setM33(-2.0f / (farValue - nearValue));
+    matrix.setM43(- (farValue + nearValue) / (farValue - nearValue));
+    matrix.setM44(1.0f);
+}
+
+FECustomFilter::FECustomFilter(Filter* filter, HostWindow* hostWindow, PassRefPtr<CustomFilterProgram> program, const CustomFilterParameterList& parameters,
+                               unsigned meshRows, unsigned meshColumns, CustomFilterOperation::MeshBoxType meshBoxType,
+                               CustomFilterOperation::MeshType meshType)
+    : FilterEffect(filter)
+    , m_hostWindow(hostWindow)
+    , m_program(program)
+    , m_parameters(parameters)
+    , m_meshRows(meshRows)
+    , m_meshColumns(meshColumns)
+    , m_meshBoxType(meshBoxType)
+    , m_meshType(meshType)
+{
+}
+
+PassRefPtr<FECustomFilter> FECustomFilter::create(Filter* filter, HostWindow* hostWindow, PassRefPtr<CustomFilterProgram> program, const CustomFilterParameterList& parameters,
+                                           unsigned meshRows, unsigned meshColumns, CustomFilterOperation::MeshBoxType meshBoxType,
+                                           CustomFilterOperation::MeshType meshType)
+{
+    return adoptRef(new FECustomFilter(filter, hostWindow, program, parameters, meshRows, meshColumns, meshBoxType, meshType));
+}
+
+void FECustomFilter::platformApplySoftware()
+{
+    Uint8ClampedArray* dstPixelArray = createPremultipliedImageResult();
+    if (!dstPixelArray)
+        return;
+
+    FilterEffect* in = inputEffect(0);
+    IntRect effectDrawingRect = requestedRegionOfInputImageData(in->absolutePaintRect());
+    RefPtr<Uint8ClampedArray> srcPixelArray = in->asPremultipliedImage(effectDrawingRect);
+    
+    IntSize newContextSize(effectDrawingRect.size());
+    bool hadContext = m_context;
+    if (!m_context)
+        initializeContext(newContextSize);
+    
+    if (!hadContext || m_contextSize != newContextSize)
+        resizeContext(newContextSize);
+    
+    // Do not draw the filter if the input image cannot fit inside a single GPU texture.
+    if (m_inputTexture->tiles().numTilesX() != 1 || m_inputTexture->tiles().numTilesY() != 1)
+        return;
+    
+    // The shader had compiler errors. We cannot draw anything.
+    if (!m_shader->isInitialized())
+        return;
+    
+    m_context->clearColor(0, 0, 0, 0);
+    m_context->clear(GraphicsContext3D::COLOR_BUFFER_BIT | GraphicsContext3D::DEPTH_BUFFER_BIT);
+    
+    bindProgramAndBuffers(srcPixelArray.get());
+    
+    m_context->drawElements(GraphicsContext3D::TRIANGLES, m_mesh->indicesCount(), GraphicsContext3D::UNSIGNED_SHORT, 0);
+    
+    m_drawingBuffer->commit();
+
+    RefPtr<ImageData> imageData = m_context->paintRenderingResultsToImageData(m_drawingBuffer.get());
+    Uint8ClampedArray* gpuResult = imageData->data();
+    ASSERT(gpuResult->length() == dstPixelArray->length());
+    memcpy(dstPixelArray->data(), gpuResult->data(), gpuResult->length());
+}
+
+void FECustomFilter::initializeContext(const IntSize& contextSize)
+{
+    GraphicsContext3D::Attributes attributes;
+    attributes.preserveDrawingBuffer = true;
+    attributes.premultipliedAlpha = false;
+    
+    ASSERT(!m_context.get());
+    m_context = GraphicsContext3D::create(attributes, m_hostWindow, GraphicsContext3D::RenderOffscreen);
+    m_drawingBuffer = DrawingBuffer::create(m_context.get(), contextSize, DrawingBuffer::Discard, DrawingBuffer::Alpha);
+    
+    m_shader = m_program->createShaderWithContext(m_context.get());
+    m_mesh = CustomFilterMesh::create(m_context.get(), m_meshColumns, m_meshRows, 
+                                      FloatRect(0, 0, 1, 1),
+                                      m_meshType);
+}
+
+void FECustomFilter::resizeContext(const IntSize& newContextSize)
+{
+    m_inputTexture = 0;
+    m_drawingBuffer->reset(newContextSize);
+    m_context->reshape(newContextSize.width(), newContextSize.height());
+    m_context->viewport(0, 0, newContextSize.width(), newContextSize.height());
+    m_inputTexture = Texture::create(m_context.get(), Texture::RGBA8, newContextSize.width(), newContextSize.height());
+    m_contextSize = newContextSize;
+}
+
+void FECustomFilter::bindVertexAttribute(int attributeLocation, unsigned size, unsigned& offset)
+{
+    if (attributeLocation != -1) {
+        m_context->vertexAttribPointer(attributeLocation, size, GraphicsContext3D::FLOAT, false, m_mesh->bytesPerVertex(), offset);
+        m_context->enableVertexAttribArray(attributeLocation);
+    }
+    offset += size * sizeof(float);
+}
+
+void FECustomFilter::bindProgramNumberParameters(int uniformLocation, CustomFilterNumberParameter* numberParameter)
+{
+    switch (numberParameter->size()) {
+    case 1:
+        m_context->uniform1f(uniformLocation, numberParameter->valueAt(0));
+        break;
+    case 2:
+        m_context->uniform2f(uniformLocation, numberParameter->valueAt(0), numberParameter->valueAt(1));
+        break;
+    case 3:
+        m_context->uniform3f(uniformLocation, numberParameter->valueAt(0), numberParameter->valueAt(1), numberParameter->valueAt(2));
+        break;
+    case 4:
+        m_context->uniform4f(uniformLocation, numberParameter->valueAt(0), numberParameter->valueAt(1), numberParameter->valueAt(2), numberParameter->valueAt(3));
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
+
+void FECustomFilter::bindProgramParameters()
+{
+    // FIXME: Find a way to reset uniforms that are not specified in CSS. This is needed to avoid using values
+    // set by other previous rendered filters.
+    // https://bugs.webkit.org/show_bug.cgi?id=76440
+    
+    size_t parametersSize = m_parameters.size();
+    for (size_t i = 0; i < parametersSize; ++i) {
+        CustomFilterParameter* parameter = m_parameters.at(i).get();
+        int uniformLocation = m_shader->uniformLocationByName(parameter->name());
+        if (uniformLocation == -1)
+            continue;
+        switch (parameter->parameterType()) {
+        case CustomFilterParameter::NUMBER:
+            bindProgramNumberParameters(uniformLocation, static_cast<CustomFilterNumberParameter*>(parameter));
+            break;
+        }
+    }
+}
+
+void FECustomFilter::bindProgramAndBuffers(Uint8ClampedArray* srcPixelArray)
+{
+    m_context->useProgram(m_shader->program());
+    
+    if (m_shader->samplerLocation() != -1) {
+        m_context->activeTexture(GraphicsContext3D::TEXTURE0);
+        m_context->uniform1i(m_shader->samplerLocation(), 0);
+        m_inputTexture->load(srcPixelArray->data());
+        m_inputTexture->bindTile(0);
+    }
+    
+    if (m_shader->projectionMatrixLocation() != -1) {
+        TransformationMatrix projectionMatrix; 
+#if PLATFORM(CHROMIUM)
+        // We flip-y the projection matrix here because Chromium will flip-y the resulting image for us.
+        orthogonalProjectionMatrix(projectionMatrix, -0.5, 0.5, 0.5, -0.5);
+#else
+        orthogonalProjectionMatrix(projectionMatrix, -0.5, 0.5, -0.5, 0.5);
+#endif
+        float glProjectionMatrix[16];
+        projectionMatrix.toColumnMajorFloatArray(glProjectionMatrix);
+        m_context->uniformMatrix4fv(m_shader->projectionMatrixLocation(), 1, false, &glProjectionMatrix[0]);
+    }
+    
+    m_context->bindBuffer(GraphicsContext3D::ARRAY_BUFFER, m_mesh->verticesBufferObject());
+    m_context->bindBuffer(GraphicsContext3D::ELEMENT_ARRAY_BUFFER, m_mesh->elementsBufferObject());
+
+    unsigned offset = 0;
+    bindVertexAttribute(m_shader->positionAttribLocation(), 4, offset);
+    bindVertexAttribute(m_shader->texAttribLocation(), 2, offset);
+    bindVertexAttribute(m_shader->meshAttribLocation(), 2, offset);
+    if (m_meshType == CustomFilterOperation::DETACHED)
+        bindVertexAttribute(m_shader->triangleAttribLocation(), 3, offset);
+    
+    bindProgramParameters();
+}
+
+void FECustomFilter::dump()
+{
+}
+
+TextStream& FECustomFilter::externalRepresentation(TextStream& ts, int indent) const
+{
+    writeIndent(ts, indent);
+    ts << "[feCustomFilter";
+    FilterEffect::externalRepresentation(ts);
+    ts << "]\n";
+    inputEffect(0)->externalRepresentation(ts, indent + 1);
+    return ts;
+}
+
+} // namespace WebCore
+
+#endif // ENABLE(CSS_SHADERS) && ENABLE(WEBGL)

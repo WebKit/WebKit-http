@@ -28,7 +28,8 @@ function editingTest() {
 <title>Drag and drop within a text input field modifies page</title> 
 </head> 
 <body>
-<p>This test does a drag and drop such that the selection around the dragged word is no longer in the document on the drop.</p>
+<p>This tests non-smartmove drag/drop. The space should be deleted on move,
+but not reinserted on drop, resulting in "worldhello".</p>
 <div contenteditable="true" id="test"><span id="dragme">hello</span> world</div>
 <script>runEditingTest();</script>
 </body>

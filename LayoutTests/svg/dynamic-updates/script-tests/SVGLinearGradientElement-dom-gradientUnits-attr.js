@@ -16,6 +16,7 @@ rootSVGElement.appendChild(defsElement);
 
 var linearGradientElement = createSVGElement("linearGradient");
 linearGradientElement.setAttribute("id", "gradient");
+linearGradientElement.setAttribute("x2", "10");
 
 var firstStopElement = createSVGElement("stop");
 firstStopElement.setAttribute("offset", "0");
@@ -32,13 +33,11 @@ rootSVGElement.appendChild(ellipseElement);
 
 shouldBeNull("linearGradientElement.getAttribute('gradientUnits')");
 
-function executeTest() {
+function repaintTest() {
     linearGradientElement.setAttribute("gradientUnits", "userSpaceOnUse");
     shouldBeEqualToString("linearGradientElement.getAttribute('gradientUnits')", "userSpaceOnUse");
  
     completeTest();
 }
-
-startTest(ellipseElement, 150, 150);
 
 var successfullyParsed = true;

@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 <script>
     function stub() {}
@@ -12,13 +11,9 @@
     }, false);
 
     document.addEventListener("DOMContentLoaded", stub);
-
-    var successfullyParsed = true;
 </script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <script>
     description("Ensures that rehashing of events map doesn't leave us with a dangling event list reference.");
     testPassed("Did not crash.");

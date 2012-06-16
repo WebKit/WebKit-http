@@ -1,0 +1,26 @@
+<!-- Test for Bug 50026. PASS unless crash. -->
+<style>
+ meter {
+   -webkit-appearance: none;
+ }  
+</style>
+<script>
+    if (window.layoutTestController) {
+        layoutTestController.dumpAsText();
+        layoutTestController.waitUntilDone();
+    }
+    setTimeout(function() {
+        document.body.offsetTop;
+        document.getElementById('test').innerHTML="PASS";
+        if (window.layoutTestController)
+            layoutTestController.notifyDone();
+    }, 0);
+</script>
+<span id="test">
+    <script>
+    document.body.offsetTop;
+    </script>
+    <input type="text">
+    <meter>
+    </meter>
+</span>

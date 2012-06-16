@@ -2,7 +2,7 @@
 <html>
   <head>
     <title>texImage2D ImageData Test</title>
-    <script src="resources/utils3d.js"> </script>
+    <script src="resources/webgl-test.js"> </script>
     <script id="vshader" type="x-shader/x-vertex">
         attribute vec3 vPosition;
         attribute vec2 vTexCoord0;
@@ -15,6 +15,9 @@
     </script>
 
     <script id="fshader" type="x-shader/x-fragment">
+        #ifdef GL_ES
+        precision highp float;
+        #endif
         uniform sampler2D tex;
         varying vec2 texCoord;
         void main()
@@ -59,19 +62,18 @@
             context2d.fillRect(0,0,64,64);
                         
             gl = initWebGL("example", "vshader", "fshader", [ "vPosition", "vTexCoord0"], [ 1, 0, 1, 1 ], 100);
-            gl.viewport(0, 0, 64, 64);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             
             var vertexObject = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexObject);
-            var vertices = new WebGLFloatArray([
+            var vertices = new Float32Array([
                 -1,  1, 0,
                 -1, -1, 0,
                  1,  1, 0,
                  1, -1, 0,
                  1,  1, 0,
                 -1, -1, 0]);
-            var texCoords = new WebGLFloatArray([
+            var texCoords = new Float32Array([
                  0, 1,
                  0, 0,
                  1, 1,
@@ -91,7 +93,7 @@
             // Create a texture from the canvas's image data
             var tex = gl.createTexture();
             gl.bindTexture(gl.TEXTURE_2D, tex);
-            gl.texImage2D(gl.TEXTURE_2D, 0, context2d.getImageData(0, 0, 64, 64));
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, context2d.getImageData(0, 0, 64, 64));
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -107,7 +109,8 @@
 
             // Test several locations
             // Each line should be all red 
-            var buf = gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE);
+            var buf = new Uint8Array(64 * 64 * 4);
+            gl.readPixels(0, 0, 64, 64, gl.RGBA, gl.UNSIGNED_BYTE, buf);
             
             var offset15 = 3840; // (15*64) * 4
             var offset40 = 10240; // (40*64) * 4

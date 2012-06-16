@@ -9,7 +9,7 @@
 	>
   <Tool
 		Name="VCCLCompilerTool"
-		PreprocessorDefinitions="$(ENABLE_3D_CANVAS);$(ENABLE_3D_RENDERING);$(ENABLE_BLOB_SLICE);$(ENABLE_CHANNEL_MESSAGING);$(ENABLE_CLIENT_BASED_GEOLOCATION);$(ENABLE_DATABASE);$(ENABLE_DATAGRID);$(ENABLE_DATALIST);$(ENABLE_DOM_STORAGE);$(ENABLE_EVENTSOURCE);$(ENABLE_FILTERS);$(ENABLE_FILE_READER);$(ENABLE_FILE_WRITER);$(ENABLE_GEOLOCATION);$(ENABLE_ICONDATABASE);$(ENABLE_INDEXED_DATABASE);$(ENABLE_JAVASCRIPT_DEBUGGER);$(ENABLE_MATHML);$(ENABLE_NOTIFICATIONS);$(ENABLE_OFFLINE_WEB_APPLICATIONS);$(ENABLE_RUBY);$(ENABLE_SANDBOX);$(ENABLE_SHARED_WORKERS);$(ENABLE_SVG);$(ENABLE_SVG_ANIMATION);$(ENABLE_SVG_AS_IMAGE);$(ENABLE_SVG_DOM_OBJC_BINDINGS);$(ENABLE_SVG_FONTS);$(ENABLE_SVG_FOREIGN_OBJECT);$(ENABLE_SVG_USE);$(ENABLE_VIDEO);$(ENABLE_WEB_SOCKETS);$(ENABLE_WML);$(ENABLE_WORKERS);$(ENABLE_XHTMLMP);$(ENABLE_XPATH);$(ENABLE_XSLT)"
+		PreprocessorDefinitions="$(ENABLE_REQUEST_ANIMATION_FRAME);$(ENABLE_3D_CANVAS);$(ENABLE_3D_RENDERING);$(ENABLE_ACCELERATED_2D_CANVAS);$(ENABLE_BLOB);$(ENABLE_CHANNEL_MESSAGING);$(ENABLE_CSS_FILTERS);$(ENABLE_CSS_GRID_LAYOUT);$(ENABLE_CSS_SHADERS);$(ENABLE_CSS_REGIONS);$(ENABLE_CSS_EXCLUSIONS);$(ENABLE_SQL_DATABASE);$(ENABLE_DATAGRID);$(ENABLE_DATALIST);$(ENABLE_DATA_TRANSFER_ITEMS);$(ENABLE_DETAILS);$(ENABLE_DEVICE_ORIENTATION);$(ENABLE_DIRECTORY_UPLOAD);$(ENABLE_FILTERS);$(ENABLE_FILE_SYSTEM);$(ENABLE_FULLSCREEN_API);$(ENABLE_GAMEPAD);$(ENABLE_GEOLOCATION);$(ENABLE_HIGH_DPI_CANVAS);$(ENABLE_ICONDATABASE);$(ENABLE_INDEXED_DATABASE);$(ENABLE_INPUT_TYPE_COLOR);$(ENABLE_INPUT_SPEECH);$(ENABLE_INPUT_TYPE_DATE);$(ENABLE_INPUT_TYPE_DATETIME);$(ENABLE_INPUT_TYPE_DATETIMELOCAL);$(ENABLE_INPUT_TYPE_MONTH);$(ENABLE_INPUT_TYPE_TIME);$(ENABLE_INPUT_TYPE_WEEK);$(ENABLE_JAVASCRIPT_DEBUGGER);$(ENABLE_LEGACY_CSS_VENDOR_PREFIXES);$(ENABLE_LEGACY_NOTIFICATIONS);$(ENABLE_LINK_PREFETCH);$(ENABLE_LINK_PRERENDER);$(ENABLE_MATHML);$(ENABLE_METER_TAG);$(ENABLE_MICRODATA);$(ENABLE_MUTATION_OBSERVERS);$(ENABLE_NOTIFICATIONS);$(ENABLE_PAGE_VISIBILITY_API);$(ENABLE_PROGRESS_TAG);$(ENABLE_QUOTA);$(ENABLE_REGISTER_PROTOCOL_HANDLER);$(ENABLE_SCRIPTED_SPEECH);$(ENABLE_SHADOW_DOM);$(ENABLE_SHARED_WORKERS);$(ENABLE_STYLE_SCOPED);$(ENABLE_SVG);$(ENABLE_SVG_DOM_OBJC_BINDINGS);$(ENABLE_SVG_FONTS);$(ENABLE_VIDEO);$(ENABLE_MEDIA_SOURCE);$(ENABLE_MEDIA_STATISTICS);$(ENABLE_WEB_SOCKETS);$(ENABLE_WEB_TIMING);$(ENABLE_WORKERS);$(ENABLE_XSLT)"
 	/>
   <UserMacro
 		Name="ENABLE_3D_CANVAS"
@@ -18,6 +18,16 @@
 	/>
   <UserMacro
 		Name="ENABLE_3D_RENDERING"
+		Value="ENABLE_3D_RENDERING"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_ACCELERATED_2D_CANVAS"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_BLOB"
 		Value=""
 		PerformEnvironmentSet="true"
 	/>
@@ -32,13 +42,28 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_CLIENT_BASED_GEOLOCATION"
-		Value="ENABLE_CLIENT_BASED_GEOLOCATION"
+		Name="ENABLE_CSS_EXCLUSIONS"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_DATABASE"
-		Value="ENABLE_DATABASE"
+		Name="ENABLE_CSS_FILTERS"
+		Value="ENABLE_CSS_FILTERS"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_CSS_GRID_LAYOUT"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_CSS_REGIONS"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_CSS_SHADERS"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -48,17 +73,32 @@
 	/>
   <UserMacro
 		Name="ENABLE_DATALIST"
-		Value="ENABLE_DATALIST"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_DOM_STORAGE"
-		Value="ENABLE_DOM_STORAGE"
+		Name="ENABLE_DATA_TRANSFER_ITEMS"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_EVENTSOURCE"
-		Value="ENABLE_EVENTSOURCE"
+		Name="ENABLE_DETAILS"
+		Value="ENABLE_DETAILS"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_DEVICE_ORIENTATION"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_DIRECTORY_UPLOAD"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_FILE_SYSTEM"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -67,18 +107,23 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_FILE_READER"
-		Value=""
+		Name="ENABLE_FULLSCREEN_API"
+		Value="ENABLE_FULLSCREEN_API"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_FILE_WRITER"
+		Name="ENABLE_GAMEPAD"
 		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
 		Name="ENABLE_GEOLOCATION"
 		Value="ENABLE_GEOLOCATION"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_HIGH_DPI_CANVAS"
+		Value="ENABLE_HIGH_DPI_CANVAS"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -92,13 +137,98 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
+		Name="ENABLE_INPUT_SPEECH"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_COLOR"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_DATE"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_DATETIME"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_DATETIMELOCAL"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_MONTH"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_TIME"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_INPUT_TYPE_WEEK"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
 		Name="ENABLE_JAVASCRIPT_DEBUGGER"
 		Value="ENABLE_JAVASCRIPT_DEBUGGER"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_MATHML"
+		Name="ENABLE_LEGACY_CSS_VENDOR_PREFIXES"
+		Value="ENABLE_LEGACY_CSS_VENDOR_PREFIXES"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_LEGACY_NOTIFICATIONS"
 		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_LINK_PREFETCH"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_LINK_PRERENDER"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_MATHML"
+		Value="ENABLE_MATHML"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_MEDIA_SOURCE"
+		Value="ENABLE_MEDIA_SOURCE"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_MEDIA_STATISTICS"
+		Value="ENABLE_MEDIA_STATISTICS"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_METER_TAG"
+		Value="ENABLE_METER_TAG"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_MICRODATA"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_MUTATION_OBSERVERS"
+		Value="ENABLE_MUTATION_OBSERVERS"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -107,18 +237,38 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_OFFLINE_WEB_APPLICATIONS"
-		Value="ENABLE_OFFLINE_WEB_APPLICATIONS"
+		Name="ENABLE_PAGE_VISIBILITY_API"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_RUBY"
-		Value="ENABLE_RUBY"
+		Name="ENABLE_PROGRESS_TAG"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_SANDBOX"
-		Value="ENABLE_SANDBOX"
+		Name="ENABLE_QUOTA"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_REGISTER_PROTOCOL_HANDLER"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_REQUEST_ANIMATION_FRAME"
+		Value="ENABLE_REQUEST_ANIMATION_FRAME"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_SCRIPTED_SPEECH"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_SHADOW_DOM"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -127,18 +277,18 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
+		Name="ENABLE_SQL_DATABASE"
+		Value="ENABLE_SQL_DATABASE"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_STYLE_SCOPED"
+		Value=""
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
 		Name="ENABLE_SVG"
 		Value="ENABLE_SVG"
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
-		Name="ENABLE_SVG_ANIMATION"
-		Value="ENABLE_SVG_ANIMATION"
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
-		Name="ENABLE_SVG_AS_IMAGE"
-		Value="ENABLE_SVG_AS_IMAGE"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -152,18 +302,13 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_SVG_FOREIGN_OBJECT"
-		Value="ENABLE_SVG_FOREIGN_OBJECT"
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
-		Name="ENABLE_SVG_USE"
-		Value="ENABLE_SVG_USE"
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
 		Name="ENABLE_VIDEO"
 		Value="ENABLE_VIDEO"
+		PerformEnvironmentSet="true"
+	/>
+  <UserMacro
+		Name="ENABLE_WEB_AUDIO"
+		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
@@ -172,23 +317,13 @@
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
-		Name="ENABLE_WML"
+		Name="ENABLE_WEB_TIMING"
 		Value=""
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro
 		Name="ENABLE_WORKERS"
 		Value="ENABLE_WORKERS"
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
-		Name="ENABLE_XHTMLMP"
-		Value=""
-		PerformEnvironmentSet="true"
-	/>
-  <UserMacro
-		Name="ENABLE_XPATH"
-		Value="ENABLE_XPATH"
 		PerformEnvironmentSet="true"
 	/>
   <UserMacro

@@ -9,24 +9,24 @@ EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotificatio
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: shouldDeleteDOMRange:range from 4 of #text > LI > UL > DIV > BODY > HTML > #document to 5 of #text > LI > UL > DIV > BODY > HTML > #document
-EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 4 of #text > LI > UL > DIV > BODY > HTML > #document to 4 of #text > LI > UL > DIV > BODY > HTML > #document toDOMRange:range from 4 of #text > LI > UL > DIV > BODY > HTML > #document to 4 of #text > LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 EDITING DELEGATE: shouldDeleteDOMRange:range from 3 of #text > LI > UL > DIV > BODY > HTML > #document to 4 of #text > LI > UL > DIV > BODY > HTML > #document
-EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 3 of #text > LI > UL > DIV > BODY > HTML > #document to 3 of #text > LI > UL > DIV > BODY > HTML > #document toDOMRange:range from 3 of #text > LI > UL > DIV > BODY > HTML > #document to 3 of #text > LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 EDITING DELEGATE: shouldDeleteDOMRange:range from 2 of #text > LI > UL > DIV > BODY > HTML > #document to 3 of #text > LI > UL > DIV > BODY > HTML > #document
-EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 2 of #text > LI > UL > DIV > BODY > HTML > #document to 2 of #text > LI > UL > DIV > BODY > HTML > #document toDOMRange:range from 2 of #text > LI > UL > DIV > BODY > HTML > #document to 2 of #text > LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 EDITING DELEGATE: shouldDeleteDOMRange:range from 1 of #text > LI > UL > DIV > BODY > HTML > #document to 2 of #text > LI > UL > DIV > BODY > HTML > #document
-EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 1 of #text > LI > UL > DIV > BODY > HTML > #document to 1 of #text > LI > UL > DIV > BODY > HTML > #document toDOMRange:range from 1 of #text > LI > UL > DIV > BODY > HTML > #document to 1 of #text > LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 EDITING DELEGATE: shouldDeleteDOMRange:range from 0 of #text > LI > UL > DIV > BODY > HTML > #document to 1 of #text > LI > UL > DIV > BODY > HTML > #document
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: shouldChangeSelectedDOMRange:(null) toDOMRange:range from 0 of LI > UL > DIV > BODY > HTML > #document to 0 of LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 0 of LI > UL > DIV > BODY > HTML > #document to 0 of LI > UL > DIV > BODY > HTML > #document toDOMRange:range from 0 of LI > UL > DIV > BODY > HTML > #document to 0 of LI > UL > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 layer at (0,0) size 800x600
@@ -55,4 +55,4 @@ layer at (0,0) size 800x600
             RenderListMarker at (-22,0) size 9x28: bullet
             RenderText {#text} at (0,0) size 38x28
               text run at (0,0) width 38: "five"
-caret: position 0 of child 0 {BR} of child 5 {LI} of child 1 {UL} of child 1 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+caret: position 0 of child 0 {BR} of child 5 {LI} of child 1 {UL} of child 1 {DIV} of body

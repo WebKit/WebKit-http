@@ -1,7 +1,6 @@
 <!DOCTYPE HTML>
 <html>
 <head>
-<link rel="stylesheet" href="../../fast/js/resources/js-test-style.css">
 <script src="../../fast/js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -20,11 +19,11 @@ description('Test for .value and .label of OPTION element');
 
 var o1 = document.getElementById('o1');
 shouldBe('o1.value', '"text"');
-shouldBe('o1.label', '""');
+shouldBe('o1.label', '"text"');
 
 var o2 = document.getElementById('o2');
 shouldBe('o2.value', '"value"');
-shouldBe('o2.label', '""');
+shouldBe('o2.label', '"text"');
 
 var o3 = document.getElementById('o3');
 shouldBe('o3.value', '"text"');
@@ -33,8 +32,6 @@ shouldBe('o3.label', '"label"');
 var o4 = document.getElementById('o4');
 shouldBe('o4.value', '"value"');
 shouldBe('o4.label', '"label"');
-
-var successfullyParsed = true;
 </script>
 <script src="../../fast/js/resources/js-test-post.js"></script>
 </body>

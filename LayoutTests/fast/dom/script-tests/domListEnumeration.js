@@ -130,7 +130,6 @@ shouldBe("resultArray[2].item", "namedNodeMap.item(2)");
 // HTMLFormElement
 var htmlFormElement = document.getElementsByTagName('form')[0];
 resultArray = iterateList(htmlFormElement);
-shouldBe("resultArray.length", "134");
 shouldBe("resultArray[0].i", "'0'");
 shouldBe("resultArray[0].item", "document.getElementsByTagName('select')[0]");
 shouldBe("resultArray[1].i", "'1'");
@@ -141,7 +140,6 @@ shouldBe("resultArray[2].item", "document.getElementsByTagName('select')[2]");
 // HTMLSelectElement
 var htmlSelectElement = document.getElementsByTagName('select')[0];
 resultArray = iterateList(htmlSelectElement);
-shouldBe("resultArray.length", "141");
 shouldBe("resultArray[0].i", "'0'");
 shouldBe("resultArray[0].item", "document.getElementsByTagName('option')[0]");
 shouldBe("resultArray[1].i", "'1'");
@@ -152,7 +150,7 @@ shouldBe("resultArray[2].item", "document.getElementsByTagName('option')[2]");
 // StyleSheetList
 var styleSheetList = document.styleSheets;
 resultArray = iterateList(styleSheetList);
-shouldBe("resultArray.length", "5");
+shouldBe("resultArray.length", "6");
 shouldBe("resultArray[0].i", "'0'");
 shouldBe("resultArray[0].item", "styleSheetList.item(0)");
 shouldBe("resultArray[1].i", "'1'");
@@ -173,9 +171,8 @@ shouldBe("resultArray[2].item", "cssRuleList.item(2)");
 
 // CSSStyleDeclaration
 //debug(escapeHTML(document.getElementsByTagName('style')));
-var cssStyleDeclaration = document.styleSheets[1].cssRules[0].style;
+var cssStyleDeclaration = document.styleSheets[2].cssRules[0].style;
 resultArray = iterateList(cssStyleDeclaration);
-shouldBe("resultArray.length", "14");
 shouldBe("resultArray[0].i", "'0'");
 shouldBe("resultArray[0].item", "cssStyleDeclaration.item(0)");
 shouldBe("resultArray[1].i", "'1'");
@@ -193,7 +190,7 @@ shouldBe("resultArray[1].i", "'1'");
 shouldBe("resultArray[1].item", "cssValueList.item(1)");
 
 // MediaList
-var mediaList = document.styleSheets[2].cssRules[0].media;
+var mediaList = document.styleSheets[3].cssRules[0].media;
 resultArray = iterateList(mediaList);
 shouldBe("resultArray.length", "8");
 shouldBe("resultArray[0].i", "'0'");
@@ -206,5 +203,3 @@ shouldBe("resultArray[2].item", "mediaList.item(2)");
 debug("");
 
 document.body.removeChild(testingGround);
-
-var successfullyParsed = true;

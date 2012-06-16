@@ -1,0 +1,17 @@
+Test IndexedDB's creating object store with null name
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+indexedDB.open(name, description)
+db = event.target.result
+request = db.setVersion('1')
+Deleted all object stores.
+objectStore = db.createObjectStore(null);
+PASS objectStore.name is 'null'
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

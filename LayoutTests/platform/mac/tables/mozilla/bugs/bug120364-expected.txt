@@ -1,7 +1,7 @@
 layer at (0,0) size 785x1813
   RenderView at (0,0) size 785x600
 layer at (0,0) size 785x1813
-  RenderBlock {HTML} at (0,0) size 785x600
+  RenderBlock {HTML} at (0,0) size 785x1813
     RenderBody {BODY} at (8,8) size 769x584
       RenderText {#text} at (0,0) size 21x18
         text run at (0,0) width 21: "foo"
@@ -20,6 +20,4 @@ layer at (0,0) size 785x1813
               RenderText {#text} at (1,19) size 94x36
                 text run at (1,19) width 89: "Get organized"
                 text run at (1,37) width 94: "online with the"
-      RenderText {#text} at (0,0) size 0x0
-      RenderText {#text} at (0,0) size 0x0
       RenderText {#text} at (0,0) size 0x0

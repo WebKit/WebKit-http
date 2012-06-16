@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -25,8 +24,6 @@ test = '<foo>\
 
     nodeset = doc.evaluate('//bar[2]/text()', doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
     shouldBe('nodeset.singleNodeValue.nodeValue', '"<cdatatext>"')
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

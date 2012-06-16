@@ -1,8 +1,12 @@
+// Force activating pixel tests - this variable is used in fast/js/resources/js-test-pre.js, when calling setDumpAsText().
+window.enablePixelTesting = true;
+
 var svgNS = "http://www.w3.org/2000/svg";
 var xlinkNS = "http://www.w3.org/1999/xlink";
 var xhtmlNS = "http://www.w3.org/1999/xhtml";
 
 var rootSVGElement;
+var iframeElement;
 
 function createSVGElement(name) {
     return document.createElementNS(svgNS, "svg:" + name);
@@ -20,7 +24,24 @@ function createSVGTestCase() {
     bodyElement.insertBefore(rootSVGElement, document.getElementById("description"));
 }
 
-function triggerUpdate(x, y) {
+function embedSVGTestCase(uri) {
+    if (window.layoutTestController)
+        layoutTestController.waitUntilDone();
+
+    iframeElement = document.createElement("iframe");
+    iframeElement.setAttribute("style", "width: 300px; height: 300px;");
+    iframeElement.setAttribute("src", uri);
+    iframeElement.setAttribute("onload", "iframeLoaded()");
+
+    var bodyElement = document.documentElement.lastChild;
+    bodyElement.insertBefore(iframeElement, document.getElementById("description"));
+}
+
+function iframeLoaded() {
+    rootSVGElement = iframeElement.getSVGDocument().rootElement;
+}
+
+function clickAt(x, y) {
     // Translation due to <h1> above us
     x = x + rootSVGElement.offsetLeft;
     y = y + rootSVGElement.offsetTop;
@@ -32,13 +53,6 @@ function triggerUpdate(x, y) {
     }
 }
 
-function startTest(obj, x, y) {
-    obj.setAttribute("onclick", "executeTest()");
-
-    // Assure first layout finished
-    window.setTimeout("triggerUpdate(" + x + ", " + y + ")", 0);
-}
-
 function completeTest() {
     var script = document.createElement("script");
 
@@ -48,6 +62,5 @@ function completeTest() {
     };
 
     script.src = "../../fast/js/resources/js-test-post.js";
-    successfullyParsed = true;
     document.body.appendChild(script);
 }

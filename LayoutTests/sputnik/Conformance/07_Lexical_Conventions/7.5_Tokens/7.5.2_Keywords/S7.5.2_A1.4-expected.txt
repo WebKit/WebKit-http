@@ -1,0 +1,7 @@
+CONSOLE MESSAGE: line 76: SyntaxError: Expected an identifier but found '=' instead
+S7.5.2_A1.4
+
+PASS Expected parsing failure
+
+TEST COMPLETE
+

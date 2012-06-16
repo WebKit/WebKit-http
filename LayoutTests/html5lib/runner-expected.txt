@@ -1,0 +1,75 @@
+ALERT: Invalid test: #errors
+#document-fragment
+html
+#document
+| <head>
+| <body>
+
+CONSOLE MESSAGE: line 2: PASS
+CONSOLE MESSAGE: line 2: FOO<span>BAR</span>BAZ
+resources/pending-spec-changes-plain-text-unsafe.dat: PASS
+
+resources/pending-spec-changes.dat: PASS
+
+resources/plain-text-unsafe.dat: PASS
+
+resources/tests_innerHTML_1.dat: PASS
+
+resources/webkit01.dat: PASS
+
+resources/webkit02.dat: PASS
+
+resources/doctype01.dat: PASS
+
+resources/scriptdata01.dat: PASS
+
+resources/html5test-com.dat: PASS
+
+resources/entities01.dat: PASS
+
+resources/entities02.dat: PASS
+
+resources/comments01.dat: PASS
+
+resources/adoption01.dat: PASS
+
+resources/adoption02.dat: PASS
+
+resources/inbody01.dat: PASS
+
+resources/isindex.dat: PASS
+
+resources/tables01.dat: PASS
+
+resources/tricky01.dat: PASS
+
+resources/scripted/adoption01.dat:
+1
+
+Test 1 of 1 in resources/scripted/adoption01.dat failed. Input:
+<p><b id="A"><script>document.getElementById("A").id = "B"</script></p>TEXT</b>
+Got:
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       <b>
+|         id="B"
+|         <script>
+|           "document.getElementById("A").id = "B""
+|     <b>
+|       id="B"
+|       "TEXT"
+Expected:
+| <html>
+|   <head>
+|   <body>
+|     <p>
+|       <b>
+|         id="B"
+|         <script>
+|           "document.getElementById("A").id = "B""
+|     <b>
+|       id="A"
+|       "TEXT"
+resources/scripted/webkit01.dat: PASS

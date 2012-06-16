@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 <script src="../xpath-test-pre.js"></script>
 </head>
@@ -251,9 +250,6 @@ var doc = (new DOMParser).parseFromString(
     '</doc>',
     'application/xml');
 test(doc, doc.documentElement, "child::*[self::chapter or self::appendix][position()=last()]", [doc.getElementsByTagName("chapter")[1]]);
-
-
-var successfullyParsed = true;
 
 </script>
 <script src="../../js/resources/js-test-post.js"></script>

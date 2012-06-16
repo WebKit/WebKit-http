@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 <script src="xpath-test-pre.js"></script>
 </head>
@@ -37,8 +36,6 @@
     var evaluator = new XPathEvaluator();
     var result = evaluator.evaluate("/xmpl:*", doc, mapResolver, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
     checkSnapshot("/xmpl:*", result, [doc.documentElement]);
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../js/resources/js-test-post.js"></script>

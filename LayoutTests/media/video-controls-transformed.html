@@ -14,12 +14,22 @@
     <p>This test only runs in DRT!</p>
     <script src=media-file.js></script>
     <script src=video-test.js></script>
+    <script src=media-controls.js></script>
     <script>
         testExpected("video.controls", null, '!=');
         waitForEvent('canplaythrough', function () {
-            if (window.eventSender) 
-            {
-                eventSender.mouseMoveTo(54,240); // over play button
+            if (window.eventSender) {
+                // Find the play button and click the middle of its bounding box.
+                var playCoords;
+                try {
+                    playCoords = mediaControlsButtonCoordinates(video, "play-button");
+                } catch (exception) {
+                    failTest(exception.description);
+                    return;
+                }
+                var clickX = playCoords[0];
+                var clickY = playCoords[1];
+                eventSender.mouseMoveTo(clickX, clickY);
                 eventSender.mouseDown();
                 eventSender.mouseUp();
             }

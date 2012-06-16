@@ -1,28 +1,25 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+  <script src="../../fast/repaint/resources/repaint.js"></script>
 <title>&lt;br&gt; prevents click handler from firing</title>
 <script>
-function clickHandler(evt)
-{
+function clickHandler(evt) {
     evt.target.style.fill = "green";
+    if (window.layoutTestController)
+        layoutTestController.notifyDone();
 }
 
-if (window.layoutTestController)
-  layoutTestController.waitUntilDone();
-
-function doClick() {
-  if (window.eventSender) {
-      eventSender.mouseMoveTo(10, 70);
-      eventSender.mouseDown();
-      eventSender.mouseUp();
-      layoutTestController.notifyDone();
-  }
+function repaintTest() {
+    if (window.eventSender) {
+        layoutTestController.waitUntilDone();
+        eventSender.mouseMoveTo(50, 80);
+        eventSender.mouseDown();
+        eventSender.mouseUp();
+    }
 }
-
-setTimeout("doClick()", 0);
 </script>
   </head>
-  <body>
+  <body onload="runRepaintTest()">
     <p>
     A test for hit testing when an svg container is relatively positioned in
     a containing block. See bug 13981.

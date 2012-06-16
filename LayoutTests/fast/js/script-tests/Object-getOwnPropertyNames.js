@@ -12,8 +12,8 @@ var expectedPropertyNamesSet = {
     "Object.create({}, { 'a': { 'value': 1, 'enumerable': false } })": "['a']",
     "Object.create([1,2,3], { 'a': { 'value': 1, 'enumerable': false } })": "['a']",
 // Function objects
-    "new Function()": "['arguments', 'callee', 'caller', 'length', 'name']",
-    "(function(){var x=new Function();x.__proto__=[1,2,3];return x;})()": "['arguments', 'callee', 'caller', 'length', 'name']",
+    "new Function()": "['arguments', 'caller', 'length', 'name', 'prototype']",
+    "(function(){var x=new Function();x.__proto__=[1,2,3];return x;})()": "['arguments', 'caller', 'length', 'name', 'prototype']",
 // String objects
     "new String('')": "['length']",
     "new String('a')": "['0', 'length']",
@@ -48,10 +48,10 @@ var expectedPropertyNamesSet = {
     "encodeURI": "['length', 'name']",
     "encodeURIComponent": "['length', 'name']",
 // Built-in ECMA objects
-    "Object": "['create', 'defineProperties', 'defineProperty', 'getOwnPropertyDescriptor', 'getOwnPropertyNames', 'getPrototypeOf', 'keys', 'length', 'name', 'prototype']",
-    "Object.prototype": "['__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__', 'constructor', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'toLocaleString', 'toString', 'valueOf']",
+    "Object": "['create', 'defineProperties', 'defineProperty', 'freeze', 'getOwnPropertyDescriptor', 'getOwnPropertyNames', 'getPrototypeOf', 'isExtensible', 'isFrozen', 'isSealed', 'keys', 'length', 'name', 'preventExtensions', 'prototype', 'seal']",
+    "Object.prototype": "['__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__', '__proto__', 'constructor', 'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'toLocaleString', 'toString', 'valueOf']",
     "Function": "['length', 'name', 'prototype']",
-    "Function.prototype": "['apply', 'call', 'constructor', 'length', 'name', 'toString']",
+    "Function.prototype": "['apply', 'bind', 'call', 'constructor', 'length', 'name', 'toString']",
     "Array": "['isArray', 'length', 'name', 'prototype']",
     "Array.prototype": "['concat', 'constructor', 'every', 'filter', 'forEach', 'indexOf', 'join', 'lastIndexOf', 'length', 'map', 'pop', 'push', 'reduce', 'reduceRight', 'reverse', 'shift', 'slice', 'some', 'sort', 'splice', 'toLocaleString', 'toString', 'unshift']",
     "String": "['fromCharCode', 'length', 'name', 'prototype']",
@@ -63,7 +63,7 @@ var expectedPropertyNamesSet = {
     "Date": "['UTC', 'length', 'name', 'now', 'parse', 'prototype']",
     "Date.prototype": "['constructor', 'getDate', 'getDay', 'getFullYear', 'getHours', 'getMilliseconds', 'getMinutes', 'getMonth', 'getSeconds', 'getTime', 'getTimezoneOffset', 'getUTCDate', 'getUTCDay', 'getUTCFullYear', 'getUTCHours', 'getUTCMilliseconds', 'getUTCMinutes', 'getUTCMonth', 'getUTCSeconds', 'getYear', 'setDate', 'setFullYear', 'setHours', 'setMilliseconds', 'setMinutes', 'setMonth', 'setSeconds', 'setTime', 'setUTCDate', 'setUTCFullYear', 'setUTCHours', 'setUTCMilliseconds', 'setUTCMinutes', 'setUTCMonth', 'setUTCSeconds', 'setYear', 'toDateString', 'toGMTString', 'toISOString', 'toJSON', 'toLocaleDateString', 'toLocaleString', 'toLocaleTimeString', 'toString', 'toTimeString', 'toUTCString', 'valueOf']",
     "RegExp": "['$&', \"$'\", '$*', '$+', '$1', '$2', '$3', '$4', '$5', '$6', '$7', '$8', '$9', '$_', '$`', 'input', 'lastMatch', 'lastParen', 'leftContext', 'length', 'multiline', 'name', 'prototype', 'rightContext']",
-    "RegExp.prototype": "['compile', 'constructor', 'exec', 'test', 'toString']",
+    "RegExp.prototype": "['compile', 'constructor', 'exec', 'global', 'ignoreCase', 'lastIndex', 'multiline', 'source', 'test', 'toString']",
     "Error": "['length', 'name', 'prototype']",
     "Error.prototype": "['constructor', 'message', 'name', 'toString']",
     "Math": "['E', 'LN10', 'LN2', 'LOG10E', 'LOG2E', 'PI', 'SQRT1_2', 'SQRT2', 'abs', 'acos', 'asin', 'atan', 'atan2', 'ceil', 'cos', 'exp', 'floor', 'log', 'max', 'min', 'pow', 'random', 'round', 'sin', 'sqrt', 'tan']",
@@ -110,5 +110,3 @@ var expectedGlobalPropertyNames = [
 
 for (var i = 0; i < expectedGlobalPropertyNames.length; ++i)
     shouldBeTrue("globalPropertyNames.indexOf('" + expectedGlobalPropertyNames[i] + "') != -1");
-
-var successfullyParsed = true;

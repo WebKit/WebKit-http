@@ -1,0 +1,107 @@
+Test the basics of IndexedDB's webkitIDBIndex.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+indexedDB.open('index-basics')
+db = event.target.result
+db.setVersion('new version')
+setVersionSuccess():
+trans = event.target.result
+PASS trans !== null is true
+Deleted all object stores.
+db.createObjectStore('storeName', null)
+store.createIndex('indexName', 'x')
+store.createIndex('indexName2', 'y', {unique: false})
+store.createIndex('zIndex', 'z', {unique: true})
+PASS indexObject2.unique is false
+PASS indexObject3.unique is true
+Expecting TypeError exception from store.createIndex('failureIndex', 'zzz', true)
+PASS Exception was thrown.
+PASS store.createIndex('failureIndex', 'zzz', true) threw TypeError: Not an object.
+Expecting TypeError exception from store.createIndex('failureIndex', 'zzz', 'string')
+PASS Exception was thrown.
+PASS store.createIndex('failureIndex', 'zzz', 'string') threw TypeError: Not an object.
+PASS 'name' in indexObject is true
+PASS indexObject.name is "indexName"
+PASS 'objectStore' in indexObject is true
+PASS indexObject.objectStore.name is "storeName"
+PASS 'keyPath' in indexObject is true
+PASS indexObject.keyPath is "x"
+PASS 'unique' in indexObject is true
+PASS 'multiEntry' in indexObject is true
+PASS indexObject.unique is false
+PASS indexObject.multiEntry is false
+PASS 'openKeyCursor' in indexObject is true
+PASS typeof indexObject.openKeyCursor is "function"
+PASS 'openCursor' in indexObject is true
+PASS typeof indexObject.openCursor is "function"
+PASS 'getKey' in indexObject is true
+PASS typeof indexObject.getKey is "function"
+PASS 'get' in indexObject is true
+PASS typeof indexObject.get is "function"
+PASS 'count' in indexObject is true
+PASS typeof indexObject.count is "function"
+store.add({x: 'value', y: 'zzz', z: 2.72}, 'key')
+event.target.source.add({x: 'value2', y: 'zzz2', z: 2.71, foobar: 12}, 'key2')
+store.createIndex('indexWhileAddIsInFlight', 'x')
+store.createIndex('indexWithWeirdKeyPath', 'foobar')
+event.target.source.add({x: 'value3', y: '456'}, 'key3')
+indexObject.getKey('value')
+PASS event.target.result is "key"
+indexObject2.getKey('zzz')
+PASS event.target.result is "key"
+indexObject3.get(2.71)
+PASS event.target.result.x is "value2"
+indexObject.get('value')
+PASS event.target.result.x is "value"
+PASS event.target.result.y is "zzz"
+indexObject.getKey('does not exist')
+PASS event.target.result is undefined
+indexObject.get('does not exist')
+PASS event.target.result is undefined
+indexObject4.getKey('value2')
+PASS event.target.result is "key2"
+indexObject.openKeyCursor()
+PASS event.target.source is indexObject
+PASS event.target.result === null is false
+PASS event.target.result.key is "value"
+PASS event.target.result.primaryKey is "key"
+event.target.result.continue()
+PASS event.target.result === null is false
+PASS event.target.result.key is "value2"
+PASS event.target.result.primaryKey is "key2"
+event.target.result.continue()
+PASS event.target.result === null is false
+PASS event.target.result.key is "value3"
+PASS event.target.result.primaryKey is "key3"
+event.target.result.continue()
+PASS event.target.result === null is true
+indexObject.openCursor()
+PASS event.target.source is indexObject
+PASS event.target.result === null is false
+PASS event.target.result.key is "value"
+PASS event.target.result.value.x is "value"
+PASS event.target.result.value.y is "zzz"
+event.target.result.continue()
+PASS event.target.result === null is false
+PASS event.target.result.key is "value2"
+PASS event.target.result.value.x is "value2"
+PASS event.target.result.value.y is "zzz2"
+event.target.result.continue()
+PASS event.target.result === null is false
+PASS event.target.result.key is "value3"
+PASS event.target.result.value.x is "value3"
+PASS event.target.result.value.y is "456"
+event.target.result.continue()
+PASS event.target.result === null is true
+Passing an invalid key into indexObject.get({}).
+PASS Caught exception: Error: DATA_ERR: DOM IDBDatabase Exception 5
+Passing an invalid key into indexObject.getKey({}).
+PASS Caught exception: Error: DATA_ERR: DOM IDBDatabase Exception 5
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

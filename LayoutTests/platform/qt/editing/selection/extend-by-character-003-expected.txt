@@ -165,25 +165,26 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock {DIV} at (0,0) size 784x125 [border: (2px solid #FF0000)]
-        RenderInline {SPAN} at (0,0) size 732x95
-          RenderInline {I} at (0,0) size 131x32
-            RenderText {#text} at (14,14) size 131x32
+      RenderBlock {DIV} at (0,0) size 784x120 [border: (2px solid #FF0000)]
+        RenderInline {SPAN} at (0,0) size 732x91
+          RenderInline {I} at (0,0) size 131x31
+            RenderText {#text} at (14,14) size 131x31
               text run at (14,14) width 22: "F "
               text run at (36,14) width 109: "and seven"
-          RenderText {#text} at (145,15) size 72x31
+          RenderText {#text} at (145,15) size 72x30
             text run at (145,15) width 72: " years "
-          RenderInline {B} at (0,0) size 33x33
-            RenderText {#text} at (217,14) size 33x33
+          RenderInline {B} at (0,0) size 33x32
+            RenderText {#text} at (217,14) size 33x32
               text run at (217,14) width 33: "as "
-          RenderText {#text} at (250,15) size 732x63
+          RenderText {#text} at (250,15) size 732x61
             text run at (250,15) width 121: "our fathers "
-            text run at (371,15) width 375: "f upon this continent, a new nation, "
-            text run at (14,47) width 244: "conceived    in Liberty, "
-            text run at (258,47) width 421: "and dedicated to the proposition that all "
+            text run at (371,15) width 368: "f upon this continent, a new nation,"
+            text run at (739,15) width 7: " "
+            text run at (14,46) width 244: "conceived    in Liberty, "
+            text run at (258,46) width 421: "and dedicated to the proposition that all "
           RenderBR {BR} at (0,0) size 0x0
-          RenderText {#text} at (14,79) size 244x31
-            text run at (14,79) width 244: "men are created equal."
+          RenderText {#text} at (14,76) size 244x30
+            text run at (14,76) width 244: "men are created equal."
         RenderText {#text} at (0,0) size 0x0
-selection start: position 5 of child 0 {#text} of child 0 {I} of child 1 {SPAN} of child 1 {DIV} of child 1 {BODY} of child 0 {HTML} of document
-selection end:   position 21 of child 5 {#text} of child 1 {SPAN} of child 1 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+selection start: position 5 of child 0 {#text} of child 0 {I} of child 1 {SPAN} of child 1 {DIV} of body
+selection end:   position 21 of child 5 {#text} of child 1 {SPAN} of child 1 {DIV} of body

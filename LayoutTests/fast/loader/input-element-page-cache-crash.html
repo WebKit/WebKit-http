@@ -13,25 +13,37 @@ function runTest()
     var input = document.getElementById("testinput");
     input.setAttribute("autocomplete", "on");
     input.parentNode.removeChild(input);
-    
-    window.location = "data:text/html,<script>history.back();</scrip" + "t>";
+
+    // Location changes need to happen outside the onload handler to generate history entries.
+    setTimeout(function() {window.location = "data:text/html,<script>history.back();</scrip" + "t>";}, 0);
 }
 
 function pageHidden()
 {
-    window.finishTest = true;
+    if (!sessionStorage.finishTest) {
+        console.log('navigating away');
+        sessionStorage.finishTest = true;
+    } else {
+        // Clean up after ourselves
+        delete sessionStorage.finishTest;
+    }
 }
 
 function pageShown()
 {
-    if (window.layoutTestController && window.finishTest)
-        layoutTestController.notifyDone();
+    if (sessionStorage.finishTest) {
+        console.log('navigated back');
+        if (window.layoutTestController)
+            layoutTestController.notifyDone();
+    } else {
+        runTest();
+    }
 }
 
 </script>    
 </head>
 
-<body onload="runTest();" onpagehide="pageHidden();" onpageshow="pageShown();">
+<body onpagehide="pageHidden();" onpageshow="pageShown();">
 <pre>This test has an input element that starts out with autocomplete=off.
 It then changes autocomplete to on.
 It then removes the element so it is destroyed.

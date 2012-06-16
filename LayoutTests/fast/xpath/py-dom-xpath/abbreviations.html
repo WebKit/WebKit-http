@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 <script src="../xpath-test-pre.js"></script>
 </head>
@@ -172,9 +171,6 @@ doc = (new DOMParser).parseFromString(
     '</doc>',
     'application/xml');
 test(doc, doc.documentElement, "employee[@secretary and @assistant]", [doc.getElementsByTagName("employee")[2]]);
-
-
-var successfullyParsed = true;
 
 </script>
 <script src="../../js/resources/js-test-post.js"></script>

@@ -19,7 +19,7 @@ shouldBe("o2.b", "11");
 
 debug("Setting a value without having a setter");
 var o3 = { get x() { return 42; } }
-shouldThrow("o3.x = 10;");
+shouldBe("o3.x = 10; o3.x", "42");
 
 debug("Getting a value without having a getter");
 var o4 = { set x(y) { }}
@@ -68,4 +68,14 @@ shouldBe("o8.numSets", "0");
 testObj=({get getter(){return 'getter was called.'}, b: 'bar'})
 shouldBe("typeof testObj.getter", "'string'");
 
-var successfullyParsed = true;
+debug("the get set with string property name");
+var o9 = { 'a':7, get 'b'() { return this.a + 1 }, set 'b'(x) { this.a = x } }
+shouldBe("o9.b", "8");
+o9.b = 10;
+shouldBe("o9.b", "11");
+
+debug("the get set with numeric property name");
+var o10 = { 'a':7, get 42() { return this.a + 1 }, set 42(x) { this.a = x } }
+shouldBe("o10[42]", "8");
+o10[42] = 10;
+shouldBe("o10[42]", "11");

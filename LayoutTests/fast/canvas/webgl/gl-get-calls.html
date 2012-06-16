@@ -1,6 +1,8 @@
+
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>WebGL gl calls Conformance Tests</title>
 <script src="../../js/resources/js-test-pre.js"></script>
 <script src="resources/webgl-test.js"></script>
 </head>
@@ -16,7 +18,7 @@ description("This test ensures basic functionality of the underlying graphics li
 debug("");
 debug("Canvas.getContext");
 
-var context = document.getElementById("canvas").getContext("experimental-webgl");
+var context = create3DContext(document.getElementById("canvas"));
 if (!context)
     testFailed("context does not exist");
 else {
@@ -28,7 +30,7 @@ else {
       testPassed("context is correct type");
     else
       testFailed("context is not correct type");
-  
+
     debug("");
     debug("Context contains getError");
     if ("getError" in context)
@@ -51,10 +53,11 @@ else {
     shouldBe('context.getParameter(context.BLEND_SRC_ALPHA)', '1');
     shouldBe('context.getParameter(context.BLEND_SRC_RGB)', '1');
     shouldBe('context.getParameter(context.COLOR_CLEAR_VALUE)', '[0, 0, 0, 0]');
-    shouldBe('context.getParameter(context.COLOR_WRITEMASK)', '[1, 1, 1, 1]');
+    shouldBe('context.getParameter(context.COLOR_WRITEMASK)', '[true, true, true, true]');
     shouldBe('context.getParameter(context.CULL_FACE)', 'false');
     shouldBe('context.getParameter(context.CULL_FACE_MODE)', 'context.BACK');
     shouldBe('context.getParameter(context.CURRENT_PROGRAM)', 'null');
+    shouldBe('context.getParameter(context.DEPTH_CLEAR_VALUE)', '1');
     shouldBe('context.getParameter(context.DEPTH_FUNC)', 'context.LESS');
     shouldBe('context.getParameter(context.DEPTH_RANGE)', '[0, 1]');
     shouldBe('context.getParameter(context.DEPTH_TEST)', 'false');
@@ -78,11 +81,12 @@ else {
     shouldBe('context.getParameter(context.STENCIL_BACK_PASS_DEPTH_FAIL)', 'context.KEEP');
     shouldBe('context.getParameter(context.STENCIL_BACK_PASS_DEPTH_PASS)', 'context.KEEP');
     shouldBe('context.getParameter(context.STENCIL_BACK_REF)', '0');
-    
-    // FIXME: Current WebKit implementation returns the wrong value (https://bugs.webkit.org/show_bug.cgi?id=31842)
-    //shouldBe('context.getParameter(context.STENCIL_BACK_VALUE_MASK)', '0xFFFFFFFF');
-    //shouldBe('context.getParameter(context.STENCIL_BACK_WRITEMASK)', '0xFFFFFFFF');
-    shouldBe('context.getParameter(context.STENCIL_BITS)', '0');
+
+    shouldBe('context.getParameter(context.STENCIL_BACK_VALUE_MASK)', '0xFFFFFFFF');
+    shouldBe('context.getParameter(context.STENCIL_BACK_WRITEMASK)', '0xFFFFFFFF');
+
+    // If EXT_packed_depth_stencil is supported, STENCIL_BITS > 0; otherwise, STENCIL_BITS == 0.
+    shouldBe('context.getParameter(context.STENCIL_BITS) >= 0', 'true');
     shouldBe('context.getParameter(context.STENCIL_CLEAR_VALUE)', '0');
     shouldBe('context.getParameter(context.STENCIL_FAIL)', 'context.KEEP');
     shouldBe('context.getParameter(context.STENCIL_FUNC)', 'context.ALWAYS');
@@ -90,15 +94,23 @@ else {
     shouldBe('context.getParameter(context.STENCIL_PASS_DEPTH_PASS)', 'context.KEEP');
     shouldBe('context.getParameter(context.STENCIL_REF)', '0');
     shouldBe('context.getParameter(context.STENCIL_TEST)', 'false');
-    //shouldBe('context.getParameter(context.STENCIL_VALUE_MASK)', '0xFFFFFFFF');
-    //shouldBe('context.getParameter(context.STENCIL_WRITEMASK)', '0xFFFFFFFF');
+
+    shouldBe('context.getParameter(context.STENCIL_VALUE_MASK)', '0xFFFFFFFF');
+    shouldBe('context.getParameter(context.STENCIL_WRITEMASK)', '0xFFFFFFFF');
+
     shouldBe('context.getParameter(context.TEXTURE_BINDING_2D)', 'null');
     shouldBe('context.getParameter(context.TEXTURE_BINDING_CUBE_MAP)', 'null');
-    shouldBe('context.getParameter(context.VIEWPORT)', '[0, 0, 0, 0]');
+    shouldBe('context.getParameter(context.UNPACK_ALIGNMENT)', '4');
+    shouldBe('context.getParameter(context.UNPACK_FLIP_Y_WEBGL)', 'false');
+    shouldBe('context.getParameter(context.UNPACK_PREMULTIPLY_ALPHA_WEBGL)', 'false');
+    shouldBe('context.getParameter(context.VIEWPORT)', '[0, 0, 2, 2]');
+    shouldBeTrue('context.getParameter(context.MAX_FRAGMENT_UNIFORM_VECTORS) >= 16');
+    shouldBeTrue('context.getParameter(context.MAX_VERTEX_UNIFORM_VECTORS) >= 128');
+    shouldBeTrue('context.getParameter(context.MAX_VARYING_VECTORS) >= 8');
+    shouldBe('context.getParameter(context.COMPRESSED_TEXTURE_FORMATS)', '[]');
 }
 
 debug("");
-successfullyParsed = true;
 
 </script>
 <script src="../../js/resources/js-test-post.js"></script>

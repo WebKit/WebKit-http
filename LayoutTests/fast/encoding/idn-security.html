@@ -1,11 +1,8 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <script>
 
 function testIDNEncode(charCode)
@@ -268,8 +265,6 @@ if (isOlderICU) {
     testIDNCharacter(0xFF61, "does not encode", ".");
     testIDNCharacter(0xFEFF, "does not encode", "");
 }
-
-successfullyParsed = true;
 
 </script>
 </body>

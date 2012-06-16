@@ -7,6 +7,12 @@ function test()
             layoutTestController.waitUntilDone();
         }
 
+        if (!document.getElementById("isindex")) {
+            log("Could not find isindex element");
+            if (window.layoutTestController)
+                layoutTestController.notifyDone();
+            return;
+        }
         document.getElementById("isindex").value = "This is a test";
         document.forms[0].submit();
     } else {

@@ -1,11 +1,8 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <div id="element" name="element_name"></div>
 <script>
 description('This test checks that all but a handful of dom constructors throw exceptions, and the rest return reasonable objects. It also tests that those constructors have higher precedence than a document element with the same ID or name.');
@@ -21,14 +18,14 @@ var objects_exception = [
     'EntityReference', 'HTMLDocument', 'Node', 'Notation',
     'ProcessingInstruction', 'Text', 'HTMLAllCollection', 'HTMLAnchorElement',
     'HTMLAppletElement', 'HTMLAreaElement', 'HTMLBaseElement',
-    'HTMLBaseFontElement', 'HTMLBlockquoteElement', 'HTMLBodyElement',
+    'HTMLBaseFontElement', 'HTMLBodyElement',
     'HTMLBRElement', 'HTMLButtonElement', 'HTMLCanvasElement',
     'HTMLDirectoryElement', 'HTMLDivElement', 'HTMLDListElement',
     'HTMLEmbedElement', 'HTMLFieldSetElement', 'HTMLFontElement',
     'HTMLFormElement', 'HTMLFrameElement', 'HTMLFrameSetElement',
     'HTMLHeadingElement', 'HTMLHeadElement', 'HTMLHRElement',
     'HTMLHtmlElement', 'HTMLIFrameElement', 'HTMLImageElement',
-    'HTMLInputElement', 'HTMLIsIndexElement', 'HTMLLabelElement',
+    'HTMLInputElement', 'HTMLLabelElement',
     'HTMLLegendElement', 'HTMLLIElement', 'HTMLLinkElement',
     'HTMLMapElement', 'HTMLMarqueeElement', 'HTMLMenuElement',
     'HTMLMetaElement', 'HTMLModElement', 'HTMLObjectElement',
@@ -44,14 +41,14 @@ var objects_exception = [
     'CSSImportRule', 'CSSMediaRule', 'CSSPageRule',
     'CSSPrimitiveValue', 'CSSRule', 'CSSRuleList',
     'CSSStyleDeclaration', 'CSSStyleRule', 'CSSStyleSheet',
-    'CSSValue', 'CSSValueList', 'DOMImplementation', 'Event',
+    'CSSValue', 'CSSValueList', 'DOMImplementation',
     'HTMLCollection', 'KeyboardEvent', 'MediaList', 'MimeType',
     'MimeTypeArray', 'MouseEvent', 'MutationEvent', 'NamedNodeMap',
-    'NodeFilter', 'NodeList', 'OverflowEvent', 'Plugin',
+    'NodeFilter', 'NodeList', 'Plugin',
     'PluginArray', 'Range', 'Rect', 'StyleSheet', 'StyleSheetList',
     'TextEvent', 'UIEvent', 'WheelEvent', 'XPathResult', 'BarInfo',
-    'CanvasGradient', 'CanvasPattern', 'Console', 'DOMSelection',
-    'DOMWindow', 'History', 'HTMLOptionsCollection', 'Location',
+    'CanvasGradient', 'CanvasPattern', 'Console', 'Selection',
+    'Window', 'History', 'HTMLOptionsCollection', 'Location',
     'Navigator', 'NodeIterator', 'RGBColor', 'Screen', 'TreeWalker',
     'XPathExpression', 'Worker'
 ];
@@ -127,8 +124,6 @@ for (var obj in objects_different_constructor) {
              "'[object " + objects_different_constructor[obj] + "]'");
     element.name = "element_name";
 }
-
-var successfullyParsed = true;
 </script>
 <script src="../js/resources/js-test-post.js"></script>
 </body>

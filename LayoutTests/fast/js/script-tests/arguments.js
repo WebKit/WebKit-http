@@ -27,6 +27,31 @@ function access_5(a, b, c)
     return arguments[4];
 }
 
+function argumentLengthIs5() {
+    arguments.length = 5;
+    return arguments.length;
+}
+
+function duplicateArgumentAndReturnLast_call(a) {
+    Array.prototype.push.call(arguments, a);
+    return arguments[1];
+}
+
+function duplicateArgumentAndReturnFirst_call(a) {
+    Array.prototype.push.call(arguments, a);
+    return arguments[0];
+}
+
+function duplicateArgumentAndReturnLast_apply(a) {
+    Array.prototype.push.apply(arguments, arguments);
+    return arguments[1];
+}
+
+function duplicateArgumentAndReturnFirst_apply(a) {
+    Array.prototype.push.apply(arguments, arguments);
+    return arguments[0];
+}
+
 shouldBe("access_1(1, 2, 3)", "1");
 shouldBe("access_2(1, 2, 3)", "2");
 shouldBe("access_3(1, 2, 3)", "3");
@@ -44,6 +69,14 @@ shouldBe("access_2(1, 2, 3, 4, 5)", "2");
 shouldBe("access_3(1, 2, 3, 4, 5)", "3");
 shouldBe("access_4(1, 2, 3, 4, 5)", "4");
 shouldBe("access_5(1, 2, 3, 4, 5)", "5");
+
+shouldBe("argumentLengthIs5()", "5");
+shouldBe("argumentLengthIs5(1,2,3,4,5)", "5");
+shouldBe("argumentLengthIs5(1,2,3,4,5,6,7,8,9,10)", "5");
+shouldBe("duplicateArgumentAndReturnLast_call(1)", "1");
+shouldBe("duplicateArgumentAndReturnFirst_call(1)", "1");
+shouldBe("duplicateArgumentAndReturnLast_apply(1)", "1");
+shouldBe("duplicateArgumentAndReturnFirst_apply(1)", "1");
 
 function f(a, b, c)
 {
@@ -514,16 +547,16 @@ shouldBeTrue("argumentsFunctionConstructorParam(true)");
 function argumentsVarUndefined()
 {
     var arguments;
-    return arguments;
+    return String(arguments);
 }
-shouldBeUndefined("argumentsVarUndefined()");
+shouldBe("argumentsVarUndefined()", "'[object Arguments]'");
 
 function argumentsConstUndefined()
 {
     const arguments;
-    return arguments;
+    return String(arguments);
 }
-shouldBeUndefined("argumentsConstUndefined()");
+shouldBe("argumentsConstUndefined()", "'[object Arguments]'");
 
 function argumentCalleeInException() {
     try {
@@ -534,4 +567,100 @@ function argumentCalleeInException() {
 }
 shouldBe("argumentCalleeInException()", "argumentCalleeInException")
 
-var successfullyParsed = true;
+function shadowedArgumentsApply(arguments) {
+    return function(a){ return a; }.apply(null, arguments);
+}
+
+function shadowedArgumentsLength(arguments) {
+    return arguments.length;
+}
+
+function shadowedArgumentsCallee(arguments) {
+    return arguments.callee;
+}
+
+function shadowedArgumentsIndex(arguments) {
+    return arguments[0]
+}
+
+shouldBeTrue("shadowedArgumentsApply([true])");
+shouldBe("shadowedArgumentsLength([])", '0');
+shouldThrow("shadowedArgumentsLength()");
+shouldBeUndefined("shadowedArgumentsCallee([])");
+shouldBeTrue("shadowedArgumentsIndex([true])");
+
+descriptor = (function(){ return Object.getOwnPropertyDescriptor(arguments, 1); })("zero","one","two");
+shouldBe("descriptor.value", '"one"');
+shouldBe("descriptor.writable", 'true');
+shouldBe("descriptor.enumerable", 'true');
+shouldBe("descriptor.configurable", 'true');
+
+// Test cases for [[DefineOwnProperty]] applied to the arguments object.
+(function(a0,a1,a2,a3){
+    Object.defineProperties(arguments, {
+        1: { get: function(){ return 201; } },
+        2: { value: 202, writable: false },
+        3: { writable: false },
+    });
+
+    // Test a0 is a live mapped argument.
+    shouldBeTrue(String( a0 === 100 ));
+    shouldBeTrue(String( arguments[0] === 100 ));
+    a0 = 300;
+    shouldBeTrue(String( a0 === 300 ));
+    shouldBeTrue(String( arguments[0] === 300 ));
+    arguments[0] = 400;
+    shouldBeTrue(String( a0 === 400 ));
+    shouldBeTrue(String( arguments[0] === 400 ));
+
+    // When a1 is redefined as an accessor, it is no longer live.
+    shouldBeTrue(String( a1 === 101 ));
+    shouldBeTrue(String( arguments[1] === 201 ));
+    a1 = 301;
+    shouldBeTrue(String( a1 === 301 ));
+    shouldBeTrue(String( arguments[1] === 201 ));
+    arguments[1] = 401;
+    shouldBeTrue(String( a1 === 301 ));
+    shouldBeTrue(String( arguments[1] === 201 ));
+
+    // When a2 is made read-only the value is set, but it is no longer live.
+    // (per 10.6 [[DefineOwnProperty]] 5.b.ii.1)
+    shouldBeTrue(String( a2 === 202 ));
+    shouldBeTrue(String( arguments[2] === 202 ));
+    a2 = 302;
+    shouldBeTrue(String( a2 === 302 ));
+    shouldBeTrue(String( arguments[2] === 202 ));
+    arguments[2] = 402;
+    shouldBeTrue(String( a2 === 302 ));
+    shouldBeTrue(String( arguments[2] === 202 ));
+
+    // When a3 is made read-only, it is no longer live.
+    // (per 10.6 [[DefineOwnProperty]] 5.b.ii.1)
+    shouldBeTrue(String( a3 === 103 ));
+    shouldBeTrue(String( arguments[3] === 103 ));
+    a3 = 303;
+    shouldBeTrue(String( a3 === 303 ));
+    shouldBeTrue(String( arguments[3] === 103 ));
+    arguments[3] = 403;
+    shouldBeTrue(String( a3 === 303 ));
+    shouldBeTrue(String( arguments[3] === 103 ));
+
+})(100,101,102,103);
+
+// Test cases for [[DefineOwnProperty]] applied to the arguments object.
+(function(arg){
+    shouldBeTrue(String( Object.getOwnPropertyDescriptor(arguments, 0).writable ));
+    shouldBeTrue(String( Object.getOwnPropertyDescriptor(arguments, 0).enumerable ));
+    Object.defineProperty(arguments, 0, { writable: false });
+    shouldBeFalse(String( Object.getOwnPropertyDescriptor(arguments, 0).writable ));
+    shouldBeTrue(String( Object.getOwnPropertyDescriptor(arguments, 0).enumerable ));
+    Object.defineProperty(arguments, 0, { enumerable: false });
+    shouldBeFalse(String( Object.getOwnPropertyDescriptor(arguments, 0).writable ));
+    shouldBeFalse(String( Object.getOwnPropertyDescriptor(arguments, 0).enumerable ));
+
+    delete arguments[1];
+    shouldBeUndefined(String( Object.getOwnPropertyDescriptor(arguments, 1) ));
+    Object.defineProperty(arguments, 1, { writable: true });
+    shouldBeTrue(String( Object.getOwnPropertyDescriptor(arguments, 1).writable ));
+    shouldBeFalse(String( Object.getOwnPropertyDescriptor(arguments, 1).enumerable ));
+})(0,1);

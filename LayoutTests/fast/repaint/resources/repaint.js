@@ -1,7 +1,11 @@
 function runRepaintTest()
 {
     if (window.layoutTestController) {
-        document.body.offsetTop;
+        if (document.body)
+            document.body.offsetTop;
+        else if (document.documentElement)
+            document.documentElement.offsetTop;
+
         layoutTestController.display();
         repaintTest();
     } else {

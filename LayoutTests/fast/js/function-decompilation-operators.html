@@ -1,12 +1,9 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="resources/js-test-style.css">
 <script src="resources/js-test-pre.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <script>
 
     description("This test checks toString() round-trip decompilation for binary and unary operators.");
@@ -69,8 +66,6 @@
         var decompiledFunction = eval("(function () {  " + tests[test] + ";})").toString().replace(/\n/g, "");
         shouldBe("decompiledFunction", "'function () {  " + tests[test] + ";}'");
     }
-
-    var successfullyParsed = true;
 </script>
 <script src="resources/js-test-post.js"></script>
 </body>

@@ -3,11 +3,12 @@
 </head>
 <body onload="loadCookie()">
 <video id="video"></video>
-<script src=../../../media/video-test.js></script>
-<script src=../../../media/media-file.js></script>
+<script src=../../media-resources/video-test.js></script>
+<script src=../../media-resources/media-file.js></script>
 <script>
     if (window.layoutTestController) {
         layoutTestController.dumpAsText();
+        layoutTestController.setAlwaysAcceptCookies(true);
         layoutTestController.waitUntilDone();
     }
 
@@ -27,7 +28,7 @@
         frame.src = "http://127.0.0.1:8000/media/resources/setCookie.cgi?name=" + movie;
     }
 
-    waitForEvent("canplaythrough", function () {
+    waitForEvent("canplay", function () {
         if (window.layoutTestController)
             window.layoutTestController.notifyDone();
     } );

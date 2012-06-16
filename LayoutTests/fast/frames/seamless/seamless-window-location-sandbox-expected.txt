@@ -1,0 +1,13 @@
+CONSOLE MESSAGE: Unsafe JavaScript attempt to initiate a navigation change for frame with URL about:srcdoc from frame with URL about:srcdoc.
+
+This test should not cause any navigation. 
+
+--------
+Frame: '<!--framePath //<!--frame0-->-->'
+--------
+PASS 
+
+--------
+Frame: '<!--framePath //<!--frame0-->/<!--frame0-->-->'
+--------
+PASS

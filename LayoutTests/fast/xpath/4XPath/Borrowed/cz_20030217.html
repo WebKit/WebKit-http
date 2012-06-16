@@ -2,7 +2,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -45,8 +44,6 @@
     expr = '/alpha/beta[@no = 1]'
     nodeset = doc.evaluate(expr, doc, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
     shouldBe('nodeset.snapshotLength', '0')
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

@@ -15,6 +15,7 @@ PASS: length successfully shadowed
 PASS: name successfully shadowed
 PASS: navigator successfully shadowed
 PASS: clientInformation successfully shadowed
+PASS: screen successfully shadowed
 PASS: offscreenBuffering successfully shadowed
 PASS: opener successfully shadowed
 PASS: outerHeight successfully shadowed
@@ -28,6 +29,7 @@ PASS: scrollX successfully shadowed
 PASS: scrollY successfully shadowed
 PASS: self successfully shadowed
 PASS: top successfully shadowed
+PASS: history successfully shadowed
 PASS: getSelection successfully shadowed
 PASS: getComputedStyle successfully shadowed
 PASS: getMatchedCSSRules successfully shadowed

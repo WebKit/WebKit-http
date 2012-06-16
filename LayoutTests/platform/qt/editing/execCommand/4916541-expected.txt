@@ -3,18 +3,20 @@ layer at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderBlock {HTML} at (0,0) size 800x600
     RenderBody {BODY} at (8,8) size 784x584
-      RenderBlock {P} at (0,0) size 784x38
-        RenderText {#text} at (0,0) size 756x38
-          text run at (0,0) width 383: "This tests selection preservation during an indent operation. "
-          text run at (383,0) width 373: "The selection should start and end in the same parts of the"
-          text run at (0,19) width 368: "words 'foo' and 'bar' before and after the indent operation."
-      RenderBlock {DIV} at (0,52) size 784x38
-        RenderBlock {BLOCKQUOTE} at (40,0) size 744x38
-          RenderText {#text} at (0,0) size 20x19
-            text run at (0,0) width 20: "foo"
-          RenderBR {BR} at (20,14) size 0x0
-          RenderText {#text} at (0,19) size 21x19
-            text run at (0,19) width 21: "bar"
-        RenderBlock (anonymous) at (0,38) size 784x0
-selection start: position 1 of child 0 {#text} of child 0 {BLOCKQUOTE} of child 2 {DIV} of child 1 {BODY} of child 0 {HTML} of document
-selection end:   position 2 of child 2 {#text} of child 0 {BLOCKQUOTE} of child 2 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+      RenderBlock {P} at (0,0) size 784x42
+        RenderText {#text} at (0,0) size 756x42
+          text run at (0,0) width 426: "This tests selection preservation during an indent operation. "
+          text run at (426,0) width 330: "The selection should start and end in the same"
+          text run at (0,21) width 485: "parts of the words 'foo' and 'bar' before and after the indent operation."
+      RenderBlock {DIV} at (0,58) size 784x42
+        RenderBlock {BLOCKQUOTE} at (40,0) size 744x42
+          RenderInline {SPAN} at (0,0) size 22x21
+            RenderText {#text} at (0,0) size 22x21
+              text run at (0,0) width 22: "foo"
+            RenderBR {BR} at (22,16) size 0x0
+          RenderInline {SPAN} at (0,0) size 23x21
+            RenderText {#text} at (0,21) size 23x21
+              text run at (0,21) width 23: "bar"
+        RenderBlock (anonymous) at (0,42) size 784x0
+selection start: position 1 of child 0 {#text} of child 0 {SPAN} of child 0 {BLOCKQUOTE} of child 2 {DIV} of body
+selection end:   position 2 of child 0 {#text} of child 1 {SPAN} of child 0 {BLOCKQUOTE} of child 2 {DIV} of body

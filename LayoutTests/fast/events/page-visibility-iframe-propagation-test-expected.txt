@@ -1,0 +1,27 @@
+This test checks that Page Visibility state events are propagated to child frames.
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+Main Page:
+PASS document.webkitVisibilityState is "visible"
+PASS document.webkitHidden is false
+Child Frame:
+PASS childFrame.contentDocument.webkitVisibilityState is "visible"
+PASS childFrame.contentDocument.webkitHidden is false
+Main Page:
+PASS document.webkitVisibilityState is "hidden"
+PASS document.webkitHidden is true
+Child Frame:
+PASS childFrame.contentDocument.webkitVisibilityState is "hidden"
+PASS childFrame.contentDocument.webkitHidden is true
+Main Page:
+PASS document.webkitVisibilityState is "visible"
+PASS document.webkitHidden is false
+Child Frame:
+PASS childFrame.contentDocument.webkitVisibilityState is "visible"
+PASS childFrame.contentDocument.webkitHidden is false
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

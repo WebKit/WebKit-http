@@ -1,4 +1,4 @@
-CONSOLE MESSAGE: line 0: this is an exception
+CONSOLE MESSAGE: this is an exception
 An automated test for basic AppleScript "do JavaScript" support.
 4 ('long')
 4 ('long')
@@ -17,3 +17,5 @@ false ('bool')
 'msng' ('type')
 (null)
 "[object Object]" ('utxt')
+
+

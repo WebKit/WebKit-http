@@ -1,6 +1,6 @@
 layer at (0,0) size 2026x2393
   RenderView at (0,0) size 785x585
-layer at (0,0) size 2026x2393
+layer at (0,0) size 785x2393
   RenderBlock {HTML} at (0,0) size 785x2393
     RenderBody {BODY} at (8,8) size 769x2377
       RenderBlock {H2} at (0,0) size 769x28
@@ -1329,6 +1329,4 @@ layer at (0,0) size 2026x2393
           RenderText {#text} at (176,306) size 745x36
             text run at (176,306) width 569: ". (with monospace font from elements to"
             text run at (0,324) width 45: "too)"
-        RenderText {#text} at (0,0) size 0x0
-        RenderText {#text} at (0,0) size 0x0
         RenderText {#text} at (0,0) size 0x0

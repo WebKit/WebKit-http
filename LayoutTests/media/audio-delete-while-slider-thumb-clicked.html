@@ -1,6 +1,9 @@
+<!DOCTYPE html>
 <html>
     <head>
         <script src=media-file.js></script>
+        <script src=video-test.js></script>
+        <script src=media-controls.js></script>
         <script>
             if (window.layoutTestController) {
                 layoutTestController.dumpAsText();
@@ -31,9 +34,11 @@
             
             function deleteAudio()
             {
-                // delete the search
-                log("<br>deleting audio element");
                 var audio = document.getElementById('audio');
+                if (!audio)
+                    return;
+
+                log("<br>deleting audio element");
                 audio.parentNode.removeChild(audio);
 
                 setTimeout(buttonClick, 10);
@@ -48,34 +53,31 @@
                 layoutTestController.waitUntilDone();
 
                 var audio = document.getElementById('audio');
+                var seekCoords;
+                try {
+                    seekCoords = mediaControlsButtonCoordinates(audio, "timeline");
+                } catch (exception) {
+                    failTest(exception.description);
+                    return;
+                }
+                var x = seekCoords[0];
+                var y = seekCoords[1];
 
-                var middle = audio.offsetLeft + (audio.offsetWidth / 2);
-                var bottom = audio.offsetTop + audio.offsetHeight;
-                
-                var x = middle + 16 + 16 + 8;
-                var y = bottom - 8;
-
-                // drag slider, leave the mouse down
+                // Click in the slider to get the thumb under the mouse.
                 log("clicking in controller");
                 eventSender.mouseMoveTo(x, y);
                 eventSender.mouseDown();
                 eventSender.mouseUp();
 
+                // Click slider to scrub, leave the mouse down.
                 log("clicking on thumb");
                 eventSender.mouseDown();
                 eventSender.mouseMoveTo(x, y + 20);
 
-                setTimeout(deleteAudio, 10);
+                // Remove the element after seeking started
+                audio.addEventListener("seeking", deleteAudio);
             }
 
-            var timeupdateCount = 0;
-            function logtimeupdate()
-            {
-                // only log the first 'timeupdate' event as more than one will be fired on slower
-                // machines
-                if (++timeupdateCount==1) 
-                    log('timeupdate');
-            }
 
             function start()
             {
@@ -89,7 +91,7 @@
         <br>
         <input type="button" id="button" value="Click Me!" onmouseup="log('button click!')"> 
         <br>
-        <audio id="audio" ontimeupdate="logtimeupdate()" onload="drag()" controls></audio><br><br>
+        <audio id="audio" autoplay onplaying="drag()" controls></audio><br><br>
         <div id="console"></div>
     </body>
 </html>

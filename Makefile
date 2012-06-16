@@ -1,4 +1,4 @@
-MODULES = JavaScriptCore JavaScriptGlue WebCore WebKit WebKitTools
+MODULES = Source Tools
 
 all:
 	@for dir in $(MODULES); do ${MAKE} $@ -C $$dir; exit_status=$$?; \

@@ -17,9 +17,16 @@
         div.test div { border: 1px dashed pink; padding: 3px; height: 2em; }
     </style>
     <script>
+        var messages = [];
+
         function log(message)
         {
-            document.getElementById("console").appendChild(document.createTextNode(message));
+            messages.push(message);
+        }
+
+        function flushLog()
+        {
+            document.getElementById("console").appendChild(document.createTextNode(messages.join("")));
         }
 
         function caretCoordinates()
@@ -47,7 +54,11 @@
             var result = "";
             for (var i = 0; i < string.length; ++i) {
                 var char = string.charCodeAt(i);
-                if (char >= 0x05d0)
+                if (char >= 0x0660) // Arabic numeral 0
+                    char = char - 0x660 + '0'.charCodeAt(0);
+                else if (char >= 0x0627) // Alif
+                    char = char - 0x0627 + 'A'.charCodeAt(0);
+                else if (char >= 0x05d0)
                     char -= 0x058f;
                 else if (char == 10) {
                     result += "\\n";
@@ -121,13 +132,8 @@
             }
         }
 
-        onload = function()
+        function runTest()
         {
-            if (!window.layoutTestController)
-                return;
-
-            layoutTestController.dumpAsText();
-
             var tests = document.getElementsByClassName("test");
             var sel = getSelection();
             for (var i = 0; i < tests.length; ++i) {
@@ -166,13 +172,25 @@
 
                 checkReverseOrder(positionsMovingLeft, positionsMovingRight);
 
-                tests[i].style.display = "none";
             }
+            document.getElementById("testGroup").style.display = "none";
         }
 
+        onload = function() {
+            try {
+                runTest();
+            } finally {
+                flushLog();
+            }
+        };
+
+        if (window.layoutTestController)
+            layoutTestController.dumpAsText();
     </script>
 </head>
 <body>
+    <div id="testGroup">
+
     <div class="test">
         abc
     </div>
@@ -202,6 +220,10 @@
     <div class="test">
         אבגabcdef
     </div>
+
+    <div class="test">١٢٣ابة</div>
+
+    <div class="test">ابة١٢٣</div>
 
     <div class="test">
         <span>abc</span>אבגdef
@@ -328,6 +350,12 @@
 
     <div class="test" style="white-space: pre;">אבג<!-- -->
 <!-- -->דהו</div>
+
+    <div class="test">
+        <span dir="rtl">abcקקק123נננdef</span>
+    </div>
+
+    </div>
 
     <pre id="console"></pre>
 </body>

@@ -10,7 +10,7 @@ shouldBe("arr.splice(0)", "['a','b']");
 shouldBe("arr", "[]")
 
 arr = ['a','b','c','d'];
-shouldBe("arr.splice()", "undefined")
+shouldBe("arr.splice()", "[]")
 shouldBe("arr", "['a','b','c','d']");
 shouldBe("arr.splice(undefined)", "['a','b','c','d']")
 shouldBe("arr", "[]");
@@ -32,4 +32,7 @@ shouldBe("arr", "['a','b','c']");
 shouldBe("arr.splice(2, 100)", "['c']")
 shouldBe("arr", "['a','b']");
 
-var successfullyParsed = true;
+// Check this doesn't crash.
+try {
+    String(Array(0xFFFFFFFD).splice(0));
+} catch (e) { }

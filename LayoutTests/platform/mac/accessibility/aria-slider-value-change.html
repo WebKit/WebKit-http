@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../fast/js/resources/js-test-style.css">
-<script>
-var successfullyParsed = false;
-</script>
 <script src="../../../fast/js/resources/js-test-pre.js"></script>
 </head>
 <body id="body">
@@ -27,15 +23,16 @@ var successfullyParsed = false;
           shouldBe("slider.intValue", "50");
 
           slider.increment();
-          shouldBe("slider.intValue > 50", "true");
+          // As of now, there's no specification designed to update the DOM after an AX call.
+          shouldBe("slider.intValue", "50");
 
           slider.decrement();
           slider.decrement();
-          shouldBe("slider.intValue < 50", "true");
+          // As of now, there's no specification designed to update the DOM after an AX call.
+          shouldBe("slider.intValue", "50");
 
     }
 
-    successfullyParsed = true;
 </script>
 
 <script src="../../../fast/js/resources/js-test-post.js"></script>

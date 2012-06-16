@@ -1,33 +1,43 @@
+# -------------------------------------------------------------------
+# Root project file, used to load WebKit in Qt Creator and for
+# building QtWebKit.
+#
+# See 'Tools/qmake/README' for an overview of the build system
+# -------------------------------------------------------------------
+
 TEMPLATE = subdirs
 CONFIG += ordered
 
-include(WebKit.pri)
+load(features)
 
-SUBDIRS += \
-        JavaScriptCore \
-        WebCore
-
-# If the source exists, built it
-exists($$PWD/WebKitTools/QtLauncher): SUBDIRS += WebKitTools/QtLauncher
-exists($$PWD/JavaScriptCore/jsc.pro): SUBDIRS += JavaScriptCore/jsc.pro
-exists($$PWD/WebKit/qt/tests): SUBDIRS += WebKit/qt/tests
-exists($$PWD/WebKitTools/DumpRenderTree/qt/DumpRenderTree.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/DumpRenderTree.pro
-
-!win32:!symbian {
-    exists($$PWD/WebKitTools/DumpRenderTree/qt/ImageDiff.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/ImageDiff.pro
-    exists($$PWD/WebKitTools/DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro): SUBDIRS += WebKitTools/DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
+QMAKEPATH = $$(QMAKEPATH)
+isEmpty(QMAKEPATH)|!exists($${QMAKEPATH}/mkspecs) {
+    error("The environment variable QMAKEPATH needs to point to $WEBKITSRC/Tools/qmake")
+    # Otherwise we won't pick up the feature prf files needed for the build
 }
 
-build-qtscript {
-    SUBDIRS += \
-        JavaScriptCore/qt/api/QtScript.pro \
-        JavaScriptCore/qt/tests
+WTF.file = Source/WTF/WTF.pro
+WTF.makefile = Makefile.WTF
+SUBDIRS += WTF
+
+!v8 {
+    JavaScriptCore.file = Source/JavaScriptCore/JavaScriptCore.pro
+    JavaScriptCore.makefile = Makefile.JavaScriptCore
+    SUBDIRS += JavaScriptCore
 }
 
-symbian {
-    # Forward the install target to WebCore. A workaround since INSTALLS is not implemented for symbian
-    install.commands = $(MAKE) -C WebCore install
-    QMAKE_EXTRA_TARGETS += install
+WebCore.file = Source/WebCore/WebCore.pro
+WebCore.makefile = Makefile.WebCore
+SUBDIRS += WebCore
+
+!CONFIG(no_webkit2) {
+    webkit2.file = Source/WebKit2/WebKit2.pro
+    webkit2.makefile = Makefile.WebKit2
+    SUBDIRS += webkit2
 }
 
-include(WebKit/qt/docs/docs.pri)
+QtWebKit.file = Source/QtWebKit.pro
+QtWebKit.makefile = Makefile.QtWebKit
+SUBDIRS += QtWebKit
+
+SUBDIRS += Tools

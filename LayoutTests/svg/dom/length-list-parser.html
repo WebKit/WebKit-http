@@ -1,6 +1,5 @@
 <html>
 <head>
-<link rel="stylesheet" href="../../fast/js/resources/js-test-style.css">
 <script src="../../fast/js/resources/js-test-pre.js"></script>
 <script src="resources/scripted-random.js"></script>
 </head>
@@ -12,6 +11,8 @@
     
     var characters = [
         "0",
+        // Long numeric string to force crossing page boundaries.
+        "-0.00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
         "1",
         "2",
         "3",
@@ -56,7 +57,7 @@
         // Random assortments of valid characters
         for (var i = 0; i < 250; i++) { //>
             var lengthList = "";
-            var count = Math.scriptedRandomInt(40);
+            var count = Math.scriptedRandomInt(100);
             for (var j = 0; j < count; j++) { //>
                 lengthList += characters[Math.scriptedRandomInt(characters.length)];
             }
@@ -70,7 +71,6 @@
     
     fuzz();
 
-    successfullyParsed = true;
 </script>
 <script src="../../fast/js/resources/js-test-post.js"></script>
 </html>

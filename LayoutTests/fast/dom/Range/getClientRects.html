@@ -1,4 +1,3 @@
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 <style>
 .bbox {
@@ -25,6 +24,11 @@
 
 #test8 {
     -webkit-transform: translate(50px, 100px) rotate(50deg);
+}
+
+#test10 {
+    height: 400px;
+    -webkit-writing-mode: vertical-lr;
 }
 
 #console {
@@ -72,6 +76,10 @@
 <br><br>
 
 <div class="box" id="test9">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</div>
+
+<br><br>
+
+<div class="box" id="test10">weee! Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</div>
 
 </div>
 
@@ -366,11 +374,38 @@
     shouldBe("rects[0].width", "0");
     shouldBe("rects[0].height", "18");
 
+    // Test 10
+    debug("Test 10");
+    var range10 = document.createRange();
+    range10.selectNodeContents(document.getElementById('test10'));
+    show(range10);
+    rects = range10.getClientRects();
+    shouldBe("rects.length", "4");
+    shouldBe("rects[0].left", "19");
+    shouldBe("rects[0].top", "2088");
+    shouldBe("rects[0].width", "18");
+    shouldBe("rects[0].height", "393");
+    shouldBe("rects[1].left", "59");
+    shouldBe("rects[1].top", "2088");
+    shouldBe("rects[1].width", "18");
+    shouldBe("rects[1].height", "377");
+    shouldBe("rects[2].left", "99");
+    shouldBe("rects[2].top", "2088");
+    shouldBe("rects[2].width", "18");
+    shouldBe("rects[2].height", "372");
+    shouldBe("rects[3].left", "139");
+    shouldBe("rects[3].top", "2088");
+    shouldBe("rects[3].width", "18");
+    shouldBe("rects[3].height", "360");
+
+    debug("Test 11");
+    var range11 = document.createRange();
+    rects = range11.getClientRects();
+    shouldBe("rects.length", "0");
+
     if (window.layoutTestController) {
         var area = document.getElementById('testArea');
         area.parentNode.removeChild(area);
     }
-
-    successfullyParsed = true;
 </script>
 <script src="../../js/resources/js-test-post.js"></script>

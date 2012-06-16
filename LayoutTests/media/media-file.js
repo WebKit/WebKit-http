@@ -31,6 +31,27 @@ function findMediaFile(tagName, name) {
     return "";
 }
 
+function mimeTypeForExtension(extension) {
+    for (var i = 0; i < videoCodecs.length; ++i) {
+        if (extension == videoCodecs[i][1])
+            return videoCodecs[i][0];
+    }
+    for (var i = 0; i < audioCodecs.length; ++i) {
+        if (extension == audioCodecs[i][1])
+            return audioCodecs[i][0];
+    }
+
+    return "";
+}
+
+function mimeTypeForFile(filename) {
+ var lastPeriodIndex = filename.lastIndexOf(".");
+  if (lastPeriodIndex > 0)
+    return mimeTypeForExtension(filename.substring(lastPeriodIndex + 1));
+
+  return "";
+}
+
 function setSrcByTagName(tagName, src) {
     var elements = document.getElementsByTagName(tagName);
     if (elements) {
@@ -43,4 +64,11 @@ function setSrcById(id, src) {
     var element = document.getElementById(id);
     if (element)
         element.src = src;
+}
+
+function stripExtension(filename) {
+  var lastPeriodIndex = filename.lastIndexOf(".");
+  if (lastPeriodIndex > 0)
+    return filename.substring(0, lastPeriodIndex);
+  return filename;
 }

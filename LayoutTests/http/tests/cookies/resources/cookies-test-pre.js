@@ -102,7 +102,7 @@ function shouldBeNull(_a) { shouldBe(_a, "null"); }
 
 function shouldBeEqualToString(a, b)
 {
-    var unevaledString = '"' + b.replace(/"/g, "\"") + '"';
+    var unevaledString = '"' + b.replace(/\\/g, "\\\\").replace(/"/g, "\"").replace(/\n/g, "\\n").replace(/\r/g, "\\r") + '"';
     shouldBe(a, unevaledString);
 }
 
@@ -172,6 +172,13 @@ function setCookies(cookie)
     }
 }
 
+// Normalize a cookie string
+function normalizeCookie(cookie)
+{
+    // Split the cookie string, sort it and then put it back together.
+    return cookie.split('; ').sort().join('; ');
+}
+
 // We get the cookies throught an XMLHttpRequest.
 function testCookies(result)
 {
@@ -179,6 +186,11 @@ function testCookies(result)
     xhr.open("GET", "resources/getCookies.cgi", false);
     xhr.send(null);
     var cookie = xhr.getResponseHeader("HTTP_COOKIE") == null ? '"null"' : xhr.getResponseHeader("HTTP_COOKIE");
+
+    // Normalize the cookie strings.
+    result = normalizeCookie(result);
+    cookie = normalizeCookie(cookie);
+    
     if (cookie === result)
         testPassed("cookie is '" + cookie + "'.");
     else

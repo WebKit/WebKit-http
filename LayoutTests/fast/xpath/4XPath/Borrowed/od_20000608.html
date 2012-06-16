@@ -56,7 +56,6 @@ Is this the "normal" performance ? Can I do better?
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -76,8 +75,6 @@ Is this the "normal" performance ? Can I do better?
     EXPR = '//date'
     nodeset = xml_dom_object.evaluate(EXPR, xml_dom_object, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
     shouldBe('nodeset.snapshotLength', '12')
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

@@ -21,6 +21,6 @@
     <text x="100" y="100"><a xlink:href="http://www.webkit.org"><tref xlink:href="#ReferencedText">tref in link</tref></a></text>
     <text><a xlink:href="http://www.webkit.org"><textPath xlink:href="#path1">textPath in link</textPath></a></text>
     <text x="100" y="200"><a xlink:href="http://www.webkit.org"><altGlyph xlink:href="#Asmile">A</altGlyph>ltGlyph content</a></text>
-    <text x="100" y="250"><a xlink:href="http://www.webkit.org"><a>This should not be rendered</a></a></text>
+    <text x="100" y="250"><tspan><a xlink:href="http://www.webkit.org"><tspan>tspan in link in tspan</tspan></a></tspan></text>
+    <text x="100" y="300"><a xlink:href="http://www.webkit.org"><a>This should not be rendered</a></a></text>
 </svg>
-

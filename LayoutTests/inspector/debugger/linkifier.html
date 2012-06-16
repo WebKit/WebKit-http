@@ -1,0 +1,84 @@
+<html>
+<head>
+<script src="../../http/tests/inspector/inspector-test.js"></script>
+<script src="../../http/tests/inspector/debugger-test.js"></script>
+<script>
+
+function test()
+{
+    InspectorTest.startDebuggerTest(waitForScripts);
+
+    var linkifier;
+    var link;
+    var script;
+
+    function waitForScripts()
+    {
+        var continued = false;
+        function scriptAdded(event)
+        {
+            if (continued)
+                return;
+
+            script = event.data;
+            if (script.sourceURL === WebInspector.inspectedPageURL) {
+                continued = true;
+                setTimeout(debuggerTest, 0);
+            }
+        }
+
+        InspectorTest.queryScripts(function(script) { scriptAdded({ data: script }) });
+        WebInspector.debuggerModel.addEventListener(WebInspector.DebuggerModel.Events.ParsedScriptSource, scriptAdded);
+    }
+
+    function debuggerTest()
+    {
+        linkifier = new WebInspector.Linkifier();
+
+        var count1 = liveLocationsCount();
+        link = linkifier.linkifyLocation(WebInspector.inspectedPageURL, 20, 0, "dummy-class");
+        var count2 = liveLocationsCount();
+
+        InspectorTest.addResult("listeners added on raw source code: " + (count2 - count1));
+        InspectorTest.addResult("original location: " + link.textContent);
+
+        InspectorTest.addSniffer(linkifier._formatter, "formatLiveAnchor", linkUpdated);
+        WebInspector.debuggerPresentationModel.setFormatSource(true);
+    }
+
+    function linkUpdated()
+    {
+        InspectorTest.addResult("pretty printed location: " + link.textContent);
+        InspectorTest.addSniffer(linkifier._formatter, "formatLiveAnchor", linkReverted);
+        WebInspector.debuggerPresentationModel.setFormatSource(false);
+    }
+
+    function linkReverted()
+    {
+        InspectorTest.addResult("reverted location: " + link.textContent);
+
+        var count1 = liveLocationsCount();
+        linkifier.reset();
+        var count2 = liveLocationsCount();
+
+        InspectorTest.addResult("listeners removed from raw source code: " + (count1 - count2));
+
+        InspectorTest.completeDebuggerTest();
+    }
+
+    function liveLocationsCount()
+    {
+        return script._locations.length;
+    }
+}
+
+</script>
+</head>
+
+<body onload="runTest()">
+<p>
+Tests that Linkifier works correctly.
+<p>
+
+</body>
+</html>

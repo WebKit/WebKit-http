@@ -1,0 +1,15 @@
+Test IndexedDB with null version string
+
+On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
+
+
+indexedDB = self.indexedDB || self.webkitIndexedDB || self.mozIndexedDB || self.msIndexedDB || self.OIndexedDB;
+
+indexedDB.open(name)
+db = event.target.result
+db.setVersion(null);
+PASS db.version is 'null'
+PASS successfullyParsed is true
+
+TEST COMPLETE
+

@@ -1,8 +1,14 @@
 description("This tests the init functions for all the event DOM classes that have them.");
 
-function testInitEvent(prefix, argumentString)
+function createEventHelper(prefix)
 {
     var event = document.createEvent(prefix + "Event");
+    return event;
+}
+
+function testInitEvent(prefix, argumentString)
+{
+    var event = createEventHelper(prefix);
     var initExpression = "event.init" + prefix + "Event(" + argumentString + ")";
     eval(initExpression);
     return event;
@@ -124,27 +130,6 @@ shouldBe("testInitEvent('Mutation', '\"a\", false, false, null, \"b\", \"c\", \"
 shouldBe("testInitEvent('Mutation', '\"a\", false, false, null, \"b\", \"c\", null, 1001').attrName", "'null'");
 shouldBe("testInitEvent('Mutation', '\"a\", false, false, null, \"b\", \"c\", \"d\", 1001').attrChange", "1001");
 
-// initOverflowEvent has an interface that has an design that's inconsistent with the init functions from other events.
-shouldBe("testInitEvent('Overflow', '1001, false, false').type", "'overflowchanged'");
-shouldBe("testInitEvent('Overflow', '1001, false, false').bubbles", "false");
-shouldBe("testInitEvent('Overflow', '1001, false, false').cancelable", "false");
-shouldBe("testInitEvent('Overflow', '1001, false, false').orient", "1001");
-shouldBe("testInitEvent('Overflow', '1001, false, false').horizontalOverflow", "false");
-shouldBe("testInitEvent('Overflow', '1001, true, false').horizontalOverflow", "true");
-shouldBe("testInitEvent('Overflow', '1001, false, false').verticalOverflow", "false");
-shouldBe("testInitEvent('Overflow', '1001, false, true').verticalOverflow", "true");
-
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').type", "'a'");
-shouldBe("testInitEvent('Progress', 'null, false, false, false, 1001, 1002').type", "'null'");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').bubbles", "false");
-shouldBe("testInitEvent('Progress', '\"a\", true, false, false, 1001, 1002').bubbles", "true");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').cancelable", "false");
-shouldBe("testInitEvent('Progress', '\"a\", false, true, false, 1001, 1002').cancelable", "true");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').lengthComputable", "false");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, true, 1001, 1002').lengthComputable", "true");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').loaded", "1001");
-shouldBe("testInitEvent('Progress', '\"a\", false, false, false, 1001, 1002').total", "1002");
-
 shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"e\"').type", "'a'");
 shouldBe("testInitEvent('Storage', 'null, false, false, \"b\", \"c\", \"d\", \"e\"').type", "'null'");
 shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"e\"').bubbles", "false");
@@ -157,8 +142,8 @@ shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"
 shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", null, \"d\", \"e\"').oldValue", "null");
 shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"e\"').newValue", "'d'");
 shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", null, \"e\"').newValue", "null");
-shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"e\"').uri", "'e'");
-shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", null').uri", "'null'");
+shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", \"e\"').url", "'e'");
+shouldBe("testInitEvent('Storage', '\"a\", false, false, \"b\", \"c\", \"d\", null').url", "'null'");
 
 shouldBe("testInitEvent('Text', '\"a\", false, false, window, \"b\"').type", "'a'");
 shouldBe("testInitEvent('Text', 'null, false, false, window, \"b\"').type", "'null'");
@@ -196,26 +181,4 @@ shouldBe("testInitEvent('UI', '\"a\", false, false, window, 1001').pageX", "0");
 shouldBe("testInitEvent('UI', '\"a\", false, false, window, 1001').pageY", "0");
 shouldBe("testInitEvent('UI', '\"a\", false, false, window, 1001').which", "0");
 
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, \"b\", 1001').type", "'a'");
-shouldBe("testInitEvent('WebKitAnimation', 'null, false, false, \"b\", 1001').type", "'null'");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, \"b\", 1001').bubbles", "false");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", true, false, \"b\", 1001').bubbles", "true");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, \"b\", 1001').cancelable", "false");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, true, \"b\", 1001').cancelable", "true");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, \"b\", 1001').animationName", "'b'");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, null, 1001').animationName", "'null'");
-shouldBe("testInitEvent('WebKitAnimation', '\"a\", false, false, \"b\", 1001').elapsedTime", "1001");
-
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, \"b\", 1001').type", "'a'");
-shouldBe("testInitEvent('WebKitTransition', 'null, false, false, \"b\", 1001').type", "'null'");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, \"b\", 1001').bubbles", "false");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", true, false, \"b\", 1001').bubbles", "true");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, \"b\", 1001').cancelable", "false");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, true, \"b\", 1001').cancelable", "true");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, \"b\", 1001').propertyName", "'b'");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, null, 1001').propertyName", "'null'");
-shouldBe("testInitEvent('WebKitTransition', '\"a\", false, false, \"b\", 1001').elapsedTime", "1001");
-
 // WheelEvent has no init function yet; roughly speaking, we are waiting for that part of DOM 3 to stabilize.
-
-var successfullyParsed = true;

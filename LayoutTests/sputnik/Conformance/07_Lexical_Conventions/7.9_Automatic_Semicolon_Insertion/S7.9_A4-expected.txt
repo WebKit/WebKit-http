@@ -1,0 +1,7 @@
+CONSOLE MESSAGE: line 79: SyntaxError: Unexpected number '1'
+S7.9_A4
+
+PASS Expected parsing failure
+
+TEST COMPLETE
+

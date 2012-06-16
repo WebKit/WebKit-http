@@ -1,14 +1,30 @@
-function init()
-{
-    var totalCount = document.getElementsByTagName('video').length;
-    var count = totalCount;
-    document.addEventListener("canplaythrough", function () {
-        if (!--count) {
-            document.body.offsetLeft;
-            if (window.layoutTestController)
-                setTimeout(function() { layoutTestController.notifyDone(); }, totalCount * 100);
+function waitForMultipleEvents(name, times, func) {
+    var count = 0;
+    document.addEventListener(name, function() {
+        if (++count == times) {
+            func();
         }
     }, true);
+}
+
+function init()
+{
+    var videos = document.getElementsByTagName('video');
+
+    waitForMultipleEvents("canplaythrough", videos.length, function() {
+        for (var i = 0; i < videos.length; ++i) {
+            videos[i].play();
+            videos[i].addEventListener("playing", function(event) {
+                event.target.pause();
+                event.target.currentTime = 0;
+            });
+        }
+
+        waitForMultipleEvents("seeked", videos.length, function() {
+            if (window.layoutTestController)
+                layoutTestController.notifyDone();
+        });
+    });
 }
 
 if (window.layoutTestController) {
@@ -18,4 +34,34 @@ if (window.layoutTestController) {
         if (window.layoutTestController)
             layoutTestController.notifyDone();
     } , 8000);
+}
+
+function initAndPause()
+{
+    var videos = document.getElementsByTagName('video');
+
+    waitForMultipleEvents("canplaythrough", videos.length, function() {
+        for (var i = 0; i < videos.length; ++i) {
+            videos[i].play();
+            videos[i].addEventListener("playing", function(event) {
+                event.target.pause();
+            });
+        }
+
+        waitForMultipleEvents("pause", videos.length, function() {
+            if (window.layoutTestController)
+                layoutTestController.notifyDone();
+        });
+    });
+
+}
+
+function initAndSeeked()
+{
+    var videos = document.getElementsByTagName('video');
+
+    waitForMultipleEvents("seeked", videos.length, function() {
+        if (window.layoutTestController)
+            layoutTestController.notifyDone();
+    });
 }

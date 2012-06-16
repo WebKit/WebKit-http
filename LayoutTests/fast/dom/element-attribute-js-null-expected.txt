@@ -11,7 +11,7 @@ TEST SUCCEEDED: The value was the empty string. [tested HTMLElement.dir]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLElement.className]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLElement.innerHTML]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLElement.innerText]
-TEST SUCCEEDED: The value was the string 'false'. [tested HTMLElement.contentEditable]
+TEST SUCCEEDED: Exception (Error: SYNTAX_ERR: DOM Exception 12) was thrown as expected. [tested HTMLElement.contentEditable]
 
 TEST SUCCEEDED: The value was the empty string. [tested HTMLAnchorElement.accessKey]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLAnchorElement.charset]
@@ -81,7 +81,7 @@ TEST SUCCEEDED: The value was the empty string. [tested HTMLFormElement.acceptCh
 TEST SUCCEEDED: The value was the empty string. [tested HTMLFormElement.action]
 TEST SUCCEEDED: The value was the string 'application/x-www-form-urlencoded'. [tested HTMLFormElement.encoding]
 TEST SUCCEEDED: The value was the string 'application/x-www-form-urlencoded'. [tested HTMLFormElement.enctype]
-TEST SUCCEEDED: The value was the empty string. [tested HTMLFormElement.method]
+TEST SUCCEEDED: The value was the string 'get'. [tested HTMLFormElement.method]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLFormElement.target]
 
 TEST SUCCEEDED: The value was the empty string. [tested HTMLFrameElement.frameBorder]
@@ -137,8 +137,6 @@ TEST SUCCEEDED: The value was the string 'text'. [tested HTMLInputElement.type]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLInputElement.useMap]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLInputElement.value]
 
-TEST SUCCEEDED: The value was the empty string. [tested HTMLIsIndexElement.prompt]
-
 TEST SUCCEEDED: The value was the empty string. [tested HTMLLabelElement.accessKey]
 TEST SUCCEEDED: The value was the empty string. [tested HTMLLabelElement.htmlFor]
 
@@ -184,9 +182,9 @@ TEST SUCCEEDED: The value was the empty string. [tested HTMLOListElement.type]
 
 TEST SUCCEEDED: The value was the empty string. [tested HTMLOptGroupElement.label]
 
-TEST SUCCEEDED: The value was the empty string. [tested HTMLOptionElement.text]
-TEST SUCCEEDED: The value was the empty string. [tested HTMLOptionElement.label]
-TEST SUCCEEDED: The value was the empty string. [tested HTMLOptionElement.value]
+TEST SUCCEEDED: The value was the string 'null'. [tested HTMLOptionElement.text]
+TEST SUCCEEDED: The value was the string 'null'. [tested HTMLOptionElement.label]
+TEST SUCCEEDED: The value was the string 'null'. [tested HTMLOptionElement.value]
 
 TEST SUCCEEDED: The value was the empty string. [tested HTMLParagraphElement.align]
 

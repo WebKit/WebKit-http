@@ -10,7 +10,7 @@ responseText
   <d id="id3">Three</d>
 </doc>
 responseXML serialized
-<!DOCTYPE doc><doc>
+<?xml version="1.0"?><!DOCTYPE doc><doc>
   <foo xmlns="foobar">One</foo> <x:bar xmlns:x="barfoo">Two</x:bar>
   <d id="id3">Three</d>
 </doc>
@@ -47,11 +47,9 @@ cancelBubble : 'false'
 cancelable : 'true'
 clipboardData : 'undefined'
 currentTarget : '[object XMLHttpRequest]'
+defaultPrevented : 'false'
 eventPhase : '2'
 initEvent : 'function initEvent() {
-    [native code]
-}'
-initProgressEvent : 'function initProgressEvent() {
     [native code]
 }'
 lengthComputable : 'false'
@@ -62,6 +60,9 @@ preventDefault : 'function preventDefault() {
 }'
 returnValue : 'true'
 srcElement : '[object XMLHttpRequest]'
+stopImmediatePropagation : 'function stopImmediatePropagation() {
+    [native code]
+}'
 stopPropagation : 'function stopPropagation() {
     [native code]
 }'

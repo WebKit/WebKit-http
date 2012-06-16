@@ -107,6 +107,24 @@ function postDecTest()
     return x.value == -1;
 }
 
+function primitiveThisTest()
+{
+    // Test that conversion of this is persistant over multiple calls to eval,
+    // even where 'this' is not directly used within the function.
+    eval('this.value = "Seekrit message";');
+    return eval('this.value') === "Seekrit message";
+}
+
+function strictThisTest()
+{
+    // In a strict mode function primitive this values are not converted, so
+    // the property access in the first eval is writing a value to a temporary
+    // object. This throws, per section 8.7.2.
+    "use strict";
+    eval('this.value = "Seekrit message";');
+    return eval('this.value') === undefined;
+}
+
 shouldBeTrue('multTest();');
 shouldBeTrue('divTest();');
 shouldBeTrue('addTest();');
@@ -124,4 +142,5 @@ shouldBeTrue('preDecTest();');
 shouldBeTrue('postIncTest();');
 shouldBeTrue('postDecTest();');
 
-successfullyParsed = true;
+shouldBeTrue('primitiveThisTest.call(1);');
+shouldThrow('strictThisTest.call(1);');

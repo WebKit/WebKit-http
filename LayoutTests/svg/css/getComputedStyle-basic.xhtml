@@ -6,6 +6,7 @@
       </g>
     </svg>
     <div id="log"></div>
+    <script src="../../fast/css/getComputedStyle/resources/property-names.js"/>
     <script><![CDATA[
       if (window.layoutTestController)
           layoutTestController.dumpAsText();
@@ -22,9 +23,10 @@
       
         for (var x = 0; x < style.length; x++) {
           var name = style.item(x);
+          if (propertiesToSkip[name])
+            continue;
           var value = style.getPropertyValue(name);
           var cssValue = style.getPropertyCSSValue(name);
-  
           debugLog(elementId + ": style.getPropertyValue(" + name + ") : " + value);
           debugLog(elementId + ": style.getPropertyCSSValue(" + name + ") : " + cssValue);
         }

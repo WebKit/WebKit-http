@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
-<script>
-var successfullyParsed = false;
-</script>
 <script src="../js/resources/js-test-pre.js"></script>
 <body id="body">
 
@@ -48,10 +44,8 @@ var successfullyParsed = false;
     // area1. On GTK, we will go to the body element.
     eventSender.keyDown('\t');
     shouldBe("document.activeElement.id == 'area1' || document.activeElement.id == 'body'", "true");
-
-    successfullyParsed = true;
 </script>
 
-<script src="../fast/js/resources/js-test-post.js"></script>
+<script src="../js/resources/js-test-post.js"></script>
 </body>
 </html>

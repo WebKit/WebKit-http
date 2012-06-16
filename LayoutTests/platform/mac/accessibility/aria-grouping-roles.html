@@ -1,10 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../fast/js/resources/js-test-style.css">
-<script>
-var successfullyParsed = false;
-</script>
 <script src="../../../fast/js/resources/js-test-pre.js"></script>
 </head>
 <body id="body">
@@ -45,13 +41,18 @@ var successfullyParsed = false;
                           "AXDocumentNote", "AXLandmarkNavigation", "AXDocumentRegion", "AXLandmarkSearch", "AXApplicationStatus", 
                           "AXUserInterfaceTooltip", "AXDocumentMath", "AXDefinition");
 
+          var roleDescriptions = new Array("application", "article", "banner", "complementary",
+                          "content information", "document", "log", "main", "marquee",
+                          "note", "navigation", "region", "search", "application status", 
+                          "tooltip", "math", "definition");
+
           for (var k = 0; k < subroles.length; k++) {
               shouldBe("obj.childAtIndex(k).role", "'AXRole: AXGroup'");
               shouldBe("obj.childAtIndex(k).subrole", '"AXSubrole: ' + subroles[k] + '"');
+              shouldBe("obj.childAtIndex(k).roleDescription", '"AXRoleDescription: ' + roleDescriptions[k] + '"');
           }
     }
 
-    successfullyParsed = true;
 </script>
 
 <script src="../../../fast/js/resources/js-test-post.js"></script>

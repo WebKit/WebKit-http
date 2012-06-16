@@ -9,11 +9,16 @@ if (window.layoutTestController) {
     layoutTestController.waitUntilDone();
 }
 
-function lastPathComponent()
+function lastPathComponent(url)
 {
-    return window.location.href.split('/').pop();
+    return url.split('/').pop();
 }
 
+function hashOf(url)
+{
+    return url.substring(url.lastIndexOf('#'));
+}
+ 
 function runFirstStageOfTest()
 {   
     history.replaceState("FirstEntry", null, "#FirstEntry");
@@ -23,7 +28,7 @@ function runFirstStageOfTest()
 
 function runSecondStageOfTest()
 {
-    alert("Last path component of location is " + lastPathComponent());
+    alert("Last path component of location is " + lastPathComponent(location.href));
     setTimeout("history.back();", 0);
 }
 
@@ -32,7 +37,7 @@ function runThirdStageOfTest()
     alert("Final stage of test loaded");
 }
 
-function loaded()
+function runTest()
 {
     alert("LOADED");
     if (!sessionStorage.stage)
@@ -43,23 +48,46 @@ function loaded()
         runThirdStageOfTest();
 }
 
-function statePopped()
+var beganTest = false;
+
+onpopstate = function()
 {
+    // The first time popstate fires, it's because the page has finished loading.
+    // Only then can we begin the test.
+    if (!beganTest) {
+        beganTest = true;
+        runTest();
+        // Continue with the handler if we've already began the test.
+        if (!sessionStorage.stage)
+            return;
+    }
+    
     alert("State popped - " + event.state + " (type " + typeof event.state + ")");
-    if (event.state == "FirstEntry") {
-        history.replaceState("FirstEntryWillLaterBeReactivated", null, "#FirstEntryWillLaterBeReactivated");
-        setTimeout("history.forward();", 0);
-    } else if (event.state == "SecondEntry") {
-        history.replaceState("SecondEntryWillLaterBeReactivated", null, "#SecondEntryWillLaterBeReactivated");
-        window.location = "resources/navigate-back.html";
-    } else if (event.state == "SecondEntryWillLaterBeReactivated")
-        history.back();
+
+    // FIXME: Once the popstate and hashchange events fire asynchronously, we
+    // can eliminate this setTimeout hack.  The hashchange event currently runs
+    // synchronously following the popstate event, but the calls to
+    // replaceState cause the location to change immediately.  That confuses
+    // our hashchange handler, which expects to see the "old" value of the
+    // location.
+
+    var state = event.state;
+    setTimeout(function() {
+        if (state == "FirstEntry") {
+            history.replaceState("FirstEntryWillLaterBeReactivated", null, "#FirstEntryWillLaterBeReactivated");
+            history.forward();
+        } else if (state == "SecondEntry") {
+            history.replaceState("SecondEntryWillLaterBeReactivated", null, "#SecondEntryWillLaterBeReactivated");
+            window.location = "resources/navigate-back.html";
+        } else if (state == "SecondEntryWillLaterBeReactivated")
+            history.back();
+    }, 0);
 }
 
-function hashChanged()
+onhashchange = function(event)
 {
-    alert("hashChanged - Last path component of location is " + lastPathComponent());
-   if (window.location.hash == "#FirstEntryWillLaterBeReactivated") {
+   alert("hashChanged - Last path component of location is " + lastPathComponent(event.newURL));
+   if (hashOf(event.newURL) == "#FirstEntryWillLaterBeReactivated") {
         alert("Test complete");
         sessionStorage.clear();
         if (window.layoutTestController)
@@ -68,7 +96,7 @@ function hashChanged()
 }
 
 </script>
-<body onload="loaded();" onpopstate="statePopped();" onhashchange="hashChanged();" onunload="/* disable page cache */">
+<body onunload="/* disable page cache */">
 <pre>
 This test:
 -Builds up a list of state object entries with fragment URLs.

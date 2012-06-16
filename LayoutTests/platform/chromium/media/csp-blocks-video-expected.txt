@@ -1,0 +1,4 @@
+CONSOLE MESSAGE: Refused to load media from 'test.ogv' because of Content-Security-Policy.
+
+END OF TEST
+This test passes if it doesn't alert failure.

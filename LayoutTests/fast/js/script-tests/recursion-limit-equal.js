@@ -2,8 +2,6 @@ description('Tests hitting the recursion limit with equality comparisons. At one
 
 ch = 0;
 
-var successfullyParsed = true;
-
 function test()
 {
     if (ch == 0)
@@ -14,4 +12,5 @@ function test()
 debug('If the test did not crash, it has passed.');
 debug('');
 
-test();
+shouldThrow("test()");
+

@@ -1,7 +1,6 @@
 <html>
 <head>
-  <title>Testing inherit transitions</title>
-  <style type="text/css" media="screen">
+  <style>
     .box {
       position: relative;
       left: 0;
@@ -21,7 +20,7 @@
       -webkit-transition-timing-function: inherit;
     }
   </style>
-  <script type="text/javascript" charset="utf-8">
+  <script>
     if (window.layoutTestController) {
         layoutTestController.dumpAsText();
         layoutTestController.waitUntilDone();
@@ -47,10 +46,10 @@
 
     var kExpectedTimingFunction = [
       'cubic-bezier(0.25, 0.1, 0.25, 1)', /* box1 */
-      'cubic-bezier(0, 0, 1, 1)', /* box2 */
-      'cubic-bezier(0, 0, 1, 1)', /* box3 */
-      'cubic-bezier(0, 0, 1, 1)', /* box4 */ /* inherits from box3 */
-      'cubic-bezier(0, 0, 1, 1)', /* box5 */
+      'linear', /* box2 */
+      'linear', /* box3 */
+      'linear', /* box4 */ /* inherits from box3 */
+      'linear', /* box5 */
       'cubic-bezier(0.25, 0.1, 0.25, 1)', /* box6 */ /* does NOT inherit */
     ];
 
@@ -66,7 +65,6 @@
     
     function testProperties()
     {
-
       var boxes = document.body.getElementsByClassName('box');
       for (var i = 0; i < boxes.length; ++i) {
         var curBox = boxes[i];
@@ -79,7 +77,6 @@
       document.getElementById('result').innerHTML = result;
       if (window.layoutTestController)
           layoutTestController.notifyDone();
-
     }
 
     window.addEventListener('load', testProperties, false);

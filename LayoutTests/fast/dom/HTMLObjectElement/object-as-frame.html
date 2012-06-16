@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../js/resources/js-test-style.css">
 <script src="../../js/resources/js-test-pre.js"></script>
 <script>
 
@@ -35,7 +34,7 @@ function handleLoad()
     numLoads++;
     if (numLoads < 2)
         return;
- 
+
     shouldBe("window.frames[0].location.toString()", '"' + updatedFrameURL + '"');
     shouldBe("window.frames[1].location.toString()", '"' + updatedObjectURL + '"');
     if (window.layoutTestController) {
@@ -46,8 +45,6 @@ function handleLoad()
 
 </head>
 <body onload="runTests()">
-<p id="description"></p>
-<div id="console"></div>
 
 <iframe name="frame" src="data:text/html,Old contents of iframe"></iframe>
 <object name="obj" type="text/html" data="data:text/html,New contents of frame"></object>

@@ -1,12 +1,9 @@
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 <script src="resources/char-decoding-utils.js"></script>
 </head>
 <body>
-<p id="description"></p>
-<div id="console"></div>
 <script>
 
 description("This tests decoding characters in various character sets.");
@@ -21,10 +18,15 @@ testDecode('gbk', '%A3%A0', 'U+3000');
 testDecode('gb18030', '%A3%A0', 'U+3000');
 testDecode('EUC-CN', '%A3%A0', 'U+3000');
 
+// Test Shift_JIS aliases.
+testDecode('Shift_JIS', '%82%d0', 'U+3072');
+testDecode('shift-jis', '%82%d0', 'U+3072');
+
 // Test that all Korean encodings of EUC-KR family are treated as windows-949.
 var korean = {
     encodings: ['korean', 'EUC-KR', 'windows-949', 'x-windows-949', 'x-uhc',
-                'iso-ir-149', 'KS_C_5601-1987', 'KS_C_5601-1989' ],
+                'iso-ir-149', 'KS_C_5601-1987', 'KS_C_5601-1989',
+                'KSC5601', 'KSC_5601'],
     encoded: ['%A2%E6', '%A1%A4', '%A1%A9', '%A1%AA', '%A1%AD', '%A2%A6',
               '%A2%C1', '%1A',    '%1C',    '%8F%A1', '%B4%D3', '%A2%41'],
     unicode: ['U+20AC', 'U+00B7', 'U+00AD', 'U+2015', 'U+223C', 'U+FF5E', 
@@ -85,11 +87,23 @@ batchTestDecode(thai);
 
 // UTF-7 is expressly forbidden, so decoding it should not work correctly.
 // This attempts to decode '<' as UTF-7 (+AD4) but it ends up being decoded
-// as a '+'.
-testDecode('UTF-7', '+AD4', 'U+002B');
-testDecode('utf-7', '+AD4', 'U+002B');
+// as a '+AD4'.
+testDecode('UTF-7', '+AD4', 'U+002B/U+0041/U+0044/U+0034');
+testDecode('utf-7', '+AD4', 'U+002B/U+0041/U+0044/U+0034');
 
-successfullyParsed = true;
+// UTF-16LE and variants.
+testDecode('UTF-16LE', '%69%D8%D6%DE', 'U+D869/U+DED6');
+testDecode('unicodeFEFF', '%69%D8%D6%DE', 'U+D869/U+DED6');
+// According to HTML5 and for IE compatibility, UTF-16 is treated as little endian. The following tests fail as of Firefox 3.6.13.
+testDecode('UTF-16', '%69%D8%D6%DE', 'U+D869/U+DED6');
+testDecode('ISO-10646-UCS-2', '%69%D8%D6%DE', 'U+D869/U+DED6');
+testDecode('UCS-2', '%69%D8%D6%DE', 'U+D869/U+DED6');
+testDecode('Unicode', '%69%D8%D6%DE', 'U+D869/U+DED6');
+testDecode('csUnicode', '%69%D8%D6%DE', 'U+D869/U+DED6');
+
+// UTF-16BE and variants.
+testDecode('UTF-16BE', '%D8%69%DE%D6', 'U+D869/U+DED6');
+testDecode('unicodeFFFE', '%D8%69%DE%D6', 'U+D869/U+DED6');
 
 </script>
 <script src="../js/resources/js-test-post.js"></script>

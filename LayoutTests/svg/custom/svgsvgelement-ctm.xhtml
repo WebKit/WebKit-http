@@ -1,6 +1,6 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <body>
-  <div style="position: absolute; top: 10px; left: 10px; width: 400px; height: 400;">
+  <div style="position: absolute; top: 10px; left: 10px; width: 400px; height: 400px;">
     <svg xmlns="http://www.w3.org/2000/svg" id="svg1" viewBox="0 0 400 400">
         <svg id="svg2" viewBox="5 5 20 20">
            <g id="group" transform="translate(10, 10)">
@@ -10,27 +10,6 @@
     </svg>
   </div>
   <div id="log"></div>
-  <script type="text/ecmascript"><![CDATA[
-    if (window.layoutTestController)
-      layoutTestController.dumpAsText();
-
-    var logDiv = document.getElementById('log');
-    function log(s) {
-      logDiv.appendChild(document.createTextNode(s));
-      logDiv.appendChild(document.createElement('br'));
-    }
-    function stringForMatrix(m) {
-      return m + " [(" + m.a + ', ' + m.c + ')(' + m.b + ', ' + m.d + ')(' + m.e + ', ' + m.f + ")]";
-    }
-    function printCTMs(name) {
-        var element = document.getElementById(name);
-        log(name + " CTM: " + stringForMatrix(element.getCTM()));
-        log(name + " ScreenCTM: " + stringForMatrix(element.getScreenCTM()));
-    }
-    printCTMs("svg1");
-    printCTMs("svg2");
-    printCTMs("group");
-    printCTMs("svg3");
-  ]]></script>
+  <script src="resources/svgsvgelement-ctm.js"></script>
 </body>
 </html>

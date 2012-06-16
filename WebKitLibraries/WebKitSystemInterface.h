@@ -1,6 +1,6 @@
 /*      
     WebKitSystemInterface.h
-    Copyright (C) 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+    Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
 
     Public header file.
 */
@@ -8,12 +8,20 @@
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 
+@class AVAsset;
 @class QTMovie;
 @class QTMovieView;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct _CFURLResponse* CFURLResponseRef;
+typedef const struct _CFURLRequest* CFURLRequestRef;
+typedef struct _CFURLRequest* CFMutableURLRequestRef;
+
+typedef struct _CFURLCredential* WKCFURLCredentialRef;
+typedef struct _CFURLProtectionSpace* CFURLProtectionSpaceRef;
 
 typedef enum {
     WKCertificateParseResultSucceeded  = 0,
@@ -22,6 +30,8 @@ typedef enum {
 } WKCertificateParseResult;
 
 CFStringRef WKCopyCFLocalizationPreferredName(CFStringRef localization);
+void WKSetDefaultLocalization(CFStringRef localization);
+
 CFStringRef WKSignedPublicKeyAndChallengeString(unsigned keySize, CFStringRef challenge, CFStringRef keyDescription);
 WKCertificateParseResult WKAddCertificatesToKeychainFromData(const void *bytes, unsigned length);
 
@@ -29,9 +39,13 @@ NSString *WKGetPreferredExtensionForMIMEType(NSString *type);
 NSArray *WKGetExtensionsForMIMEType(NSString *type);
 NSString *WKGetMIMETypeForExtension(NSString *extension);
 
-NSDate *WKGetNSURLResponseLastModifiedDate(NSURLResponse *);
-NSTimeInterval WKGetNSURLResponseFreshnessLifetime(NSURLResponse *);
-NSString *WKCopyNSURLResponseStatusLine(NSURLResponse *);
+NSDate *WKGetNSURLResponseLastModifiedDate(NSURLResponse *response);
+NSTimeInterval WKGetNSURLResponseFreshnessLifetime(NSURLResponse *response);
+NSString *WKCopyNSURLResponseStatusLine(NSURLResponse *response);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+CFArrayRef WKCopyNSURLResponseCertificateChain(NSURLResponse *response);
+#endif
 
 CFStringEncoding WKGetWebDefaultCFStringEncoding(void);
 
@@ -56,12 +70,15 @@ void WKDisableCGDeferredUpdates(void);
 Class WKNSURLProtocolClassForRequest(NSURLRequest *request);
 void WKSetNSURLRequestShouldContentSniff(NSMutableURLRequest *request, BOOL shouldContentSniff);
 
+void WKSetCookieStoragePrivateBrowsingEnabled(BOOL enabled);
+
 unsigned WKGetNSAutoreleasePoolCount(void);
 
 void WKAdvanceDefaultButtonPulseAnimation(NSButtonCell *button);
 
 NSString *WKMouseMovedNotification(void);
 NSString *WKWindowWillOrderOnScreenNotification(void);
+NSString *WKWindowWillOrderOffScreenNotification(void);
 void WKSetNSWindowShouldPostEventNotifications(NSWindow *window, BOOL post);
 
 CFTypeID WKGetAXTextMarkerTypeID(void);
@@ -74,6 +91,18 @@ CFTypeRef WKCopyAXTextMarkerRangeEnd(CFTypeRef range);
 void WKAccessibilityHandleFocusChanged(void);
 AXUIElementRef WKCreateAXUIElementRef(id element);
 void WKUnregisterUniqueIdForElement(id element);
+
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
+// Remote Accessibility API.
+void WKAXRegisterRemoteApp(void);
+void WKAXInitializeElementWithPresenterPid(id, pid_t);
+NSData *WKAXRemoteTokenForElement(id);
+id WKAXRemoteElementForToken(NSData *);
+void WKAXSetWindowForRemoteElement(id remoteWindow, id remoteElement);
+void WKAXRegisterRemoteProcess(bool registerProcess, pid_t);
+pid_t WKAXRemoteProcessIdentifier(id remoteElement);
+#endif
 
 void WKSetUpFontCache(void);
 
@@ -104,7 +133,7 @@ void WKDrawBezeledTextFieldCell(NSRect, BOOL enabled);
 void WKDrawTextFieldCellFocusRing(NSTextFieldCell*, NSRect);
 void WKDrawBezeledTextArea(NSRect, BOOL enabled);
 void WKPopupMenu(NSMenu*, NSPoint location, float width, NSView*, int selectedItem, NSFont*);
-
+void WKPopupContextMenu(NSMenu *menu, NSPoint screenLocation);
 void WKSendUserChangeNotifications(void);
 #ifndef __LP64__
 BOOL WKConvertNSEventToCarbonEvent(EventRecord *carbonEvent, NSEvent *cocoaEvent);
@@ -118,35 +147,30 @@ NSFont *WKGetFontInLanguageForCharacter(NSFont *font, UniChar ch);
 void WKSetCGFontRenderingMode(CGContextRef cgContext, NSFont *font);
 BOOL WKCGContextGetShouldSmoothFonts(CGContextRef cgContext);
 
-#ifdef BUILDING_ON_TIGER
-// CGFontGetAscent, CGFontGetDescent, CGFontGetLeading and CGFontGetUnitsPerEm were not available until Leopard
-void WKGetFontMetrics(CGFontRef font, int *ascent, int *descent, int *lineGap, unsigned *unitsPerEm);
-// CTFontCopyGraphicsFont was not available until Leopard
-CGFontRef WKGetCGFontFromNSFont(NSFont *font);
-// CTFontGetPlatformFont was not available until Leopard
-ATSUFontID WKGetNSFontATSUFontId(NSFont *font);
-// CGFontCopyFullName was not available until Leopard
-CFStringRef WKCopyFullFontName(CGFontRef font);
-#endif
 
-void WKSetPatternBaseCTM(CGContextRef, CGAffineTransform);
+void WKSetBaseCTM(CGContextRef, CGAffineTransform);
 void WKSetPatternPhaseInUserSpace(CGContextRef, CGPoint);
 CGAffineTransform WKGetUserToBaseCTM(CGContextRef);
 
-#ifndef BUILDING_ON_TIGER
 void WKGetGlyphsForCharacters(CGFontRef, const UniChar[], CGGlyph[], size_t);
-#else
-typedef void *WKGlyphVectorRef;
-OSStatus WKConvertCharToGlyphs(void *styleGroup, const UniChar *characters, unsigned numCharacters, WKGlyphVectorRef glyphs);
-OSStatus WKGetATSStyleGroup(ATSUStyle fontStyle, void **styleGroup);
-void WKReleaseStyleGroup(void *group);
-OSStatus WKInitializeGlyphVector(int count, WKGlyphVectorRef glyphs);
-void WKClearGlyphVector(WKGlyphVectorRef glyphs);
+bool WKGetVerticalGlyphsForCharacters(CTFontRef, const UniChar[], CGGlyph[], size_t);
 
-int WKGetGlyphVectorNumGlyphs(WKGlyphVectorRef glyphVector);
-ATSLayoutRecord *WKGetGlyphVectorFirstRecord(WKGlyphVectorRef glyphVector);
-size_t WKGetGlyphVectorRecordSize(WKGlyphVectorRef glyphVector);
+CTLineRef WKCreateCTLineWithUniCharProvider(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*);
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+CTTypesetterRef WKCreateCTTypesetterWithUniCharProviderAndOptions(const UniChar* (*provide)(CFIndex stringIndex, CFIndex* charCount, CFDictionaryRef* attributes, void*), void (*dispose)(const UniChar* chars, void*), void*, CFDictionaryRef options);
+
+CGContextRef WKIOSurfaceContextCreate(IOSurfaceRef, unsigned width, unsigned height, CGColorSpaceRef);
+CGImageRef WKIOSurfaceContextCreateImage(CGContextRef context);
 #endif
+
+typedef enum {
+    WKPatternTilingNoDistortion,
+    WKPatternTilingConstantSpacingMinimalDistortion,
+    WKPatternTilingConstantSpacing
+} WKPatternTiling;
+
+CGPatternRef WKCGPatternCreateWithImageAndTransform(CGImageRef image, CGAffineTransform transform, int tiling);
+void WKCGContextResetClip(CGContextRef);
 
 #ifndef __LP64__
 NSEvent *WKCreateNSEventWithCarbonEvent(EventRef eventRef);
@@ -170,10 +194,6 @@ typedef enum {
 
 OSStatus WKThemeDrawTrack(const HIThemeTrackDrawInfo* inDrawInfo, CGContextRef inContext, int inArrowStyle);
 
-#ifdef BUILDING_ON_TIGER
-// WKSupportsMultipartXMixedReplace is not required on Leopard as multipart/x-mixed-replace is always handled by NSURLRequest
-BOOL WKSupportsMultipartXMixedReplace(NSMutableURLRequest *request);
-#endif
 
 BOOL WKCGContextIsBitmapContext(CGContextRef context);
 
@@ -201,8 +221,36 @@ float WKQTMovieMaxTimeLoaded(QTMovie* movie);
 float WKQTMovieMaxTimeSeekable(QTMovie* movie);
 NSString *WKQTMovieMaxTimeLoadedChangeNotification(void);
 void WKQTMovieViewSetDrawSynchronously(QTMovieView* view, BOOL sync);
+void WKQTMovieDisableComponent(uint32_t[5]);
+NSURL *WKQTMovieResolvedURL(QTMovie* movie);
 
 CFStringRef WKCopyFoundationCacheDirectory(void);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED <= 1060
+typedef struct __CFURLStorageSession* CFURLStorageSessionRef;
+#else
+typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
+#endif
+CFURLStorageSessionRef WKCreatePrivateStorageSession(CFStringRef);
+NSURLRequest *WKCopyRequestWithStorageSession(CFURLStorageSessionRef, NSURLRequest*);
+NSCachedURLResponse *WKCachedResponseForRequest(CFURLStorageSessionRef, NSURLRequest*);
+void WKSetRequestStorageSession(CFURLStorageSessionRef, CFMutableURLRequestRef);
+
+typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
+CFHTTPCookieStorageRef WKCopyHTTPCookieStorage(CFURLStorageSessionRef);
+unsigned WKGetHTTPCookieAcceptPolicy(CFHTTPCookieStorageRef);
+void WKSetHTTPCookieAcceptPolicy(CFHTTPCookieStorageRef, unsigned policy);
+NSArray *WKHTTPCookiesForURL(CFHTTPCookieStorageRef, NSURL *);
+void WKSetHTTPCookiesForURL(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
+void WKDeleteHTTPCookie(CFHTTPCookieStorageRef, NSHTTPCookie *);
+
+CFHTTPCookieStorageRef WKGetDefaultHTTPCookieStorage(void);
+WKCFURLCredentialRef WKCopyCredentialFromCFPersistentStorage(CFURLProtectionSpaceRef);
+void WKSetCFURLRequestShouldContentSniff(CFMutableURLRequestRef, bool flag);
+CFArrayRef WKCFURLRequestCopyHTTPRequestBodyParts(CFURLRequestRef);
+void WKCFURLRequestSetHTTPRequestBodyParts(CFMutableURLRequestRef, CFArrayRef bodyParts);
+
+void WKSetVisibleApplicationName(CFStringRef);
 
 typedef enum {
     WKMediaUIPartFullscreenButton   = 0,
@@ -210,8 +258,8 @@ typedef enum {
     WKMediaUIPartPlayButton,
     WKMediaUIPartSeekBackButton,
     WKMediaUIPartSeekForwardButton,
-    WKMediaUIPartSlider,
-    WKMediaUIPartSliderThumb,
+    WKMediaUIPartTimelineSlider,
+    WKMediaUIPartTimelineSliderThumb,
     WKMediaUIPartRewindButton,
     WKMediaUIPartSeekToRealtimeButton,
     WKMediaUIPartShowClosedCaptionsButton,
@@ -220,7 +268,18 @@ typedef enum {
     WKMediaUIPartPauseButton,
     WKMediaUIPartBackground,
     WKMediaUIPartCurrentTimeDisplay,
-    WKMediaUIPartTimeRemainingDisplay
+    WKMediaUIPartTimeRemainingDisplay,
+    WKMediaUIPartStatusDisplay,
+    WKMediaUIPartControlsPanel,
+    WKMediaUIPartVolumeSliderContainer,
+    WKMediaUIPartVolumeSlider,
+    WKMediaUIPartVolumeSliderThumb,
+    WKMediaUIPartFullScreenVolumeSlider,
+    WKMediaUIPartFullScreenVolumeSliderThumb,
+    WKMediaUIPartVolumeSliderMuteButton,
+    WKMediaUIPartTextTrackDisplayContainer,
+    WKMediaUIPartTextTrackDisplay,
+    WKMediaUIPartExitFullscreenButton,
 } WKMediaUIPart;
 
 typedef enum {
@@ -251,12 +310,15 @@ typedef enum {
     WKMediaUIControlFastForwardButton,
     WKMediaUIControlVolumeUpButton,
     WKMediaUIControlVolumeDownButton
-
 } WKMediaUIControlType;
     
 NSControl *WKCreateMediaUIControl(int controlType);
 
-#if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD) && defined(__x86_64__)
+NSArray *WKQTGetSitesInMediaDownloadCache();
+void WKQTClearMediaDownloadCacheForSite(NSString *site);
+void WKQTClearMediaDownloadCache();
+    
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 mach_port_t WKInitializeRenderServer(void);
     
 @class CALayer;
@@ -269,35 +331,161 @@ WKSoftwareCARendererRef WKSoftwareCARendererCreate(uint32_t contextID);
 void WKSoftwareCARendererDestroy(WKSoftwareCARendererRef);
 void WKSoftwareCARendererRender(WKSoftwareCARendererRef, CGContextRef, CGRect);
 
-#import <mach/mig.h>
+typedef struct __WKCARemoteLayerClientRef *WKCARemoteLayerClientRef;
 
+WKCARemoteLayerClientRef WKCARemoteLayerClientMakeWithServerPort(mach_port_t port);
+void WKCARemoteLayerClientInvalidate(WKCARemoteLayerClientRef);
+uint32_t WKCARemoteLayerClientGetClientId(WKCARemoteLayerClientRef);
+void WKCARemoteLayerClientSetLayer(WKCARemoteLayerClientRef, CALayer *);
+CALayer *WKCARemoteLayerClientGetLayer(WKCARemoteLayerClientRef);
+
+typedef struct __WKCAContextRef *WKCAContextRef;
+
+WKCAContextRef WKCAContextMakeRemoteWithServerPort(mach_port_t port);
+WKCAContextRef WKCAContextMakeRemoteForWindowServer(void);
+void WKCAContextInvalidate(WKCAContextRef);
+uint32_t WKCAContextGetContextId(WKCAContextRef);
+void WKCAContextSetLayer(WKCAContextRef, CALayer *);
+CALayer *WKCAContextGetLayer(WKCAContextRef);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+void WKCALayerEnumerateRectsBeingDrawnWithBlock(CALayer *layer, CGContextRef context, void (^block)(CGRect rect));
+#endif
+
+@class CARenderer;
+
+void WKCARendererAddChangeNotificationObserver(CARenderer *, void (*callback)(void*), void* context);
+void WKCARendererRemoveChangeNotificationObserver(CARenderer *, void (*callback)(void*), void* context);
+
+typedef struct __WKWindowBounceAnimationContext *WKWindowBounceAnimationContextRef;
+
+WKWindowBounceAnimationContextRef WKWindowBounceAnimationContextCreate(NSWindow *window);
+void WKWindowBounceAnimationContextDestroy(WKWindowBounceAnimationContextRef context);
+void WKWindowBounceAnimationSetAnimationProgress(WKWindowBounceAnimationContextRef context, double animationProgress);
+
+void WKWindowSetClipRect(NSWindow*, NSRect);
+
+#if defined(__x86_64__)
+#import <mach/mig.h>
 CFRunLoopSourceRef WKCreateMIGServerSource(mig_subsystem_t subsystem, mach_port_t serverPort);
+#endif // defined(__x86_64__)
 
 NSUInteger WKGetInputPanelWindowStyle(void);
- 
 UInt8 WKGetNSEventKeyChar(NSEvent *);
-    
-#endif
+#endif // MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 
 @class CAPropertyAnimation;
 void WKSetCAAnimationValueFunction(CAPropertyAnimation*, NSString* function);
 
 unsigned WKInitializeMaximumHTTPConnectionCountPerHost(unsigned preferredConnectionCount);
+int WKGetHTTPPipeliningPriority(CFURLRequestRef);
+void WKSetHTTPPipeliningMaximumPriority(int maximumPriority);
+void WKSetHTTPPipeliningPriority(CFURLRequestRef, int priority);
+void WKSetHTTPPipeliningMinimumFastLanePriority(int priority);
 
 void WKSetCONNECTProxyForStream(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
 void WKSetCONNECTProxyAuthorizationForStream(CFReadStreamRef, CFStringRef proxyAuthorizationString);
 CFHTTPMessageRef WKCopyCONNECTProxyResponse(CFReadStreamRef, CFURLRef responseURL);
 
-BOOL WKIsLatchingWheelEvent(NSEvent *);
+#if MAC_OS_X_VERSION_MIN_REQUIRED <= 1060
+typedef enum {
+    WKEventPhaseNone = 0,
+    WKEventPhaseBegan = 1,
+    WKEventPhaseChanged = 2,
+    WKEventPhaseEnded = 3,
+} WKEventPhase;
 
-#ifndef BUILDING_ON_TIGER
-void WKWindowSetAlpha(NSWindow *window, float alphaValue);
-void WKWindowSetScaledFrame(NSWindow *window, NSRect scaleFrame, NSRect nonScaledFrame);
+int WKGetNSEventMomentumPhase(NSEvent *);
 #endif
 
-#if !defined(BUILDING_ON_TIGER) && !defined(BUILDING_ON_LEOPARD)
-NSMutableArray *WKNoteOpenPanelFiles(NSArray *paths);
+void WKWindowSetAlpha(NSWindow *window, float alphaValue);
+void WKWindowSetScaledFrame(NSWindow *window, NSRect scaleFrame, NSRect nonScaledFrame);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 void WKSyncSurfaceToView(NSView *view);
+
+void WKEnableSettingCursorWhenInBackground(void);
+
+CFDictionaryRef WKNSURLRequestCreateSerializableRepresentation(NSURLRequest *request, CFTypeRef tokenNull);
+NSURLRequest *WKNSURLRequestFromSerializableRepresentation(CFDictionaryRef representation, CFTypeRef tokenNull);
+
+CFDictionaryRef WKNSURLResponseCreateSerializableRepresentation(NSURLResponse *response, CFTypeRef tokenNull);
+NSURLResponse *WKNSURLResponseFromSerializableRepresentation(CFDictionaryRef representation, CFTypeRef tokenNull);
+
+#ifndef __LP64__
+ScriptCode WKGetScriptCodeFromCurrentKeyboardInputSource(void);
+#endif
+
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED <= 1060
+CFIndex WKGetHyphenationLocationBeforeIndex(CFStringRef string, CFIndex index);
+#endif
+
+CFArrayRef WKCFURLCacheCopyAllHostNamesInPersistentStore(void);
+void WKCFURLCacheDeleteHostNamesInPersistentStore(CFArrayRef hostArray);    
+
+CFStringRef WKGetCFURLResponseMIMEType(CFURLResponseRef);
+CFURLRef WKGetCFURLResponseURL(CFURLResponseRef);
+CFHTTPMessageRef WKGetCFURLResponseHTTPResponse(CFURLResponseRef);
+CFStringRef WKCopyCFURLResponseSuggestedFilename(CFURLResponseRef);
+void WKSetCFURLResponseMIMEType(CFURLResponseRef, CFStringRef mimeType);
+
+CIFormat WKCIGetRGBA8Format(void);
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+
+typedef enum {
+    WKSandboxExtensionTypeReadOnly,
+    WKSandboxExtensionTypeWriteOnly,    
+    WKSandboxExtensionTypeReadWrite,
+} WKSandboxExtensionType;
+typedef struct __WKSandboxExtension *WKSandboxExtensionRef;
+
+WKSandboxExtensionRef WKSandboxExtensionCreate(const char* path, WKSandboxExtensionType type);
+void WKSandboxExtensionDestroy(WKSandboxExtensionRef sandboxExtension);
+
+bool WKSandboxExtensionConsume(WKSandboxExtensionRef sandboxExtension);
+bool WKSandboxExtensionInvalidate(WKSandboxExtensionRef sandboxExtension);
+
+const char* WKSandboxExtensionGetSerializedFormat(WKSandboxExtensionRef sandboxExtension, size_t* length);
+WKSandboxExtensionRef WKSandboxExtensionCreateFromSerializedFormat(const char* serializationFormat, size_t length);
+
+OSStatus WKEnableSandboxStyleFileQuarantine(void);
+
+bool WKEnterPluginSandbox(const char* profile, const char* parameters[], const char* readOnlyPaths[], const char* readWritePaths[]);
+
+int WKRecommendedScrollerStyle(void);
+
+bool WKExecutableWasLinkedOnOrBeforeSnowLeopard(void);
+
+NSRange WKExtractWordDefinitionTokenRangeFromContextualString(NSString *contextString, NSRange range, NSDictionary **options);
+void WKShowWordDefinitionWindow(NSAttributedString *term, NSPoint screenPoint, NSDictionary *options);
+void WKHideWordDefinitionWindow(void);
+
+CFStringRef WKCopyDefaultSearchProviderDisplayName(void);
+
+NSURL* WKAVAssetResolvedURL(AVAsset*);
+
+NSCursor *WKCursor(const char *name);
+
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+
+#import <dispatch/dispatch.h>
+
+dispatch_source_t WKCreateVMPressureDispatchOnMainQueue(void);
+
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+NSString *WKGetMacOSXVersionString(void);
+bool WKExecutableWasLinkedOnOrBeforeLion(void);
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+void WKCGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform* matrix, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight);
 #endif
 
 #ifdef __cplusplus

@@ -1,0 +1,20 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x600
+  RenderBlock {HTML} at (0,0) size 800x600
+    RenderBody {BODY} at (8,8) size 784x584
+      RenderBlock {P} at (0,0) size 784x42
+        RenderText {#text} at (0,0) size 768x42
+          text run at (0,0) width 535: "This tests that when @font-face rules with unicode-range are specified for a "
+          text run at (535,0) width 233: "font that exists on the system, the"
+          text run at (0,21) width 260: "system font is used for all characters "
+          text run at (260,21) width 168: "not explictly overridden."
+      RenderBlock {P} at (0,58) size 784x21
+        RenderText {#text} at (0,0) size 569x21
+          text run at (0,0) width 495: "In the next line, the digits should be in Times, but the letters should be "
+          text run at (495,0) width 74: "in Courier."
+      RenderBlock (anonymous) at (0,95) size 784x30
+        RenderInline {SPAN} at (0,0) size 289x30
+          RenderText {#text} at (0,0) size 289x30
+            text run at (0,0) width 289: "ABCDEFGHIJ 1234567890"
+        RenderText {#text} at (0,0) size 0x0

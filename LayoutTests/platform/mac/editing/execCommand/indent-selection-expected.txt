@@ -2,8 +2,7 @@ EDITING DELEGATE: shouldBeginEditingInDOMRange:range from 0 of DIV > BODY > HTML
 EDITING DELEGATE: webViewDidBeginEditing:WebViewDidBeginEditingNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
-EDITING DELEGATE: shouldChangeSelectedDOMRange:(null) toDOMRange:range from 0 of #text > SPAN > BLOCKQUOTE > DIV > BODY > HTML > #document to 5 of #text > SPAN > BLOCKQUOTE > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
+EDITING DELEGATE: shouldChangeSelectedDOMRange:range from 2 of DIV > BODY > HTML > #document to 5 of DIV > BODY > HTML > #document toDOMRange:range from 0 of #text > SPAN > BLOCKQUOTE > DIV > BODY > HTML > #document to 5 of #text > SPAN > BLOCKQUOTE > DIV > BODY > HTML > #document affinity:NSSelectionAffinityDownstream stillSelecting:FALSE
 EDITING DELEGATE: webViewDidChangeSelection:WebViewDidChangeSelectionNotification
 EDITING DELEGATE: webViewDidChange:WebViewDidChangeNotification
 layer at (0,0) size 800x600
@@ -56,5 +55,5 @@ layer at (0,0) size 800x600
               RenderText {#text} at (0,18) size 38x18
                 text run at (0,18) width 38: "Thing"
         RenderBlock (anonymous) at (0,194) size 784x0
-selection start: position 0 of child 0 {#text} of child 0 {SPAN} of child 1 {BLOCKQUOTE} of child 4 {DIV} of child 1 {BODY} of child 0 {HTML} of document
-selection end:   position 5 of child 0 {#text} of child 3 {SPAN} of child 3 {BLOCKQUOTE} of child 4 {DIV} of child 1 {BODY} of child 0 {HTML} of document
+selection start: position 0 of child 0 {#text} of child 0 {SPAN} of child 1 {BLOCKQUOTE} of child 4 {DIV} of body
+selection end:   position 5 of child 0 {#text} of child 3 {SPAN} of child 3 {BLOCKQUOTE} of child 4 {DIV} of body

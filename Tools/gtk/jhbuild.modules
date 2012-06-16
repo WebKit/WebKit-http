@@ -1,0 +1,212 @@
+<?xml version="1.0"?>
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+
+  <metamodule id="webkitgtk-testing-dependencies">
+    <dependencies>
+      <dep package="make"/>
+      <dep package="cairo"/>
+      <dep package="fonts"/>
+      <dep package="fontconfig"/>
+      <dep package="freetype6"/>
+      <dep package="gdk-pixbuf"/>
+      <dep package="gtk+"/>
+      <dep package="glib"/>
+      <dep package="glib-networking"/>
+      <dep package="gnome-icon-theme"/>
+      <dep package="libsoup"/>
+      <dep package="at-spi2-core"/>
+      <dep package="at-spi2-atk"/>
+    </dependencies>
+  </metamodule>
+
+  <repository type="tarball" name="ftp.gnu.org"
+      href="ftp://ftp.gnu.org/gnu/"/>
+  <repository type="tarball" name="github.com"
+      href="https://github.com"/>
+  <repository type="tarball" name="sourceware.org"
+      href="ftp://sourceware.org"/>
+  <repository type="tarball" name="ftp.gnome.org"
+      href="http://ftp.gnome.org"/>
+  <repository type="git" name="git.gnome.org"
+      href="git://git.gnome.org/"/>
+  <repository type="tarball" name="gnu.org"
+      href="http://ftp.gnu.org/"/>
+  <repository type="tarball" name="cairographics.org"
+      href="http://cairographics.org"/>
+  <repository type="tarball" name="freedesktop.org"
+      href="http://www.freedesktop.org"/>
+
+  <autotools id="make" autogen-sh="configure">
+    <branch repo="ftp.gnu.org"
+            module="make/make-3.82.tar.bz2" version="3.82"
+            size="1242186" md5sum="1a11100f3c63fcf5753818e59d63088f">
+      <patch file="make-3.82-arg-list-length.patch" strip="1"/>
+      <patch file="make-3.82-parallel-build.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="cairo" autogen-sh="configure">
+    <dependencies>
+      <dep package="pixman"/>
+    </dependencies>
+    <branch module="releases/cairo-1.10.2.tar.gz" version="1.10.2"
+            repo="cairographics.org"
+            hash="sha256:32018c7998358eebc2ad578ff8d8559d34fc80252095f110a572ed23d989fc41"
+            md5sum="f101a9e88b783337b20b2e26dfd26d5f">
+    </branch>
+  </autotools>
+
+  <autotools id="pixman" autogen-sh="configure">
+    <branch module="releases/pixman-0.24.0.tar.gz" version="0.24.0"
+            repo="cairographics.org"
+            hash="sha256:a5647c7158f103eedff5fba799018f4169f6b26b573ab7685812ebc9a1c5d2e4"
+            md5sum="a2d0b120509bdccb10aa7f4bec3730e4">
+    </branch>
+  </autotools>
+
+  <autotools id="fonts"
+             skip-autogen="true">
+    <branch module="downloads/mrobinson/webkitgtk-test-fonts/webkitgtk-test-fonts-0.0.2.tar.gz" version="0.0.2"
+            repo="github.com"
+            hash="sha256:e252dc1c0fe50e2b190b6caf5017930c05cae0cf8374bf92f0761fb4a4980e8b"
+            md5sum="249166fec4b3773c7255775642e4de52">
+    </branch>
+  </autotools>
+
+  <tarball id="freetype6">
+    <source href="download.savannah.gnu.org/releases/freetype/freetype-2.4.2.tar.bz2" version="2.4.2"
+            hash="sha256:9a987aef8c50d9bcfdfdc9f012f8bd0de6095cc1a5524e62c1a037deb8dacbfe"
+            md5sum="647ee8ed266f9a4117c8d0a4855b3d3e"/>
+  </tarball>
+
+  <autotools id="libffi" autogen-sh="configure">
+    <branch module="/pub/libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+             repo="sourceware.org"
+             hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"
+             md5sum="79390673f5d07a8fb342bc09b5055b6f"/>
+  </autotools>
+
+  <autotools id="gdk-pixbuf" autogen-sh="configure"
+             autogenargs="--disable-introspection">
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/gdk-pixbuf/2.26/gdk-pixbuf-2.26.0.tar.xz" version="2.26.0"
+            repo="ftp.gnome.org"
+            hash="sha256:a5028d3a33710cbb6c6264bc561b6e252b37f067dff7b5b52473621e064f254d"
+            md5sum="1c186f9903a20e96587b9afb27944b40"/>
+  </autotools>
+
+  <autotools id="pango"
+             autogenargs="--disable-introspection">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="freetype6"/>
+      <dep package="cairo"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/pango/1.30/pango-1.30.0.tar.xz" version="1.30.0"
+            repo="ftp.gnome.org"
+            hash="sha256:7c6d2ab024affaed0e942f9279b818235f9c6a36d9fc50688f48d387f4102dff"
+            md5sum="2a70627ffd9f43c52c04cc0b05fe359f"/>
+  </autotools>
+
+  <autotools id="gtk+" autogen-sh="configure"
+             autogenargs="--disable-introspection">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="cairo"/>
+      <dep package="pango"/>
+      <dep package="gdk-pixbuf"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/gtk+/3.4/gtk+-3.4.0.tar.xz" version="3.4.0"
+            repo="ftp.gnome.org"
+            hash="sha256:00af8be8bc60355e08a8f57e3e7503c916cec5cd5c6acb3eaedb01330b81f3e0"
+            md5sum="f9a0bc875cf95c0462910d2d32528464"/>
+  </autotools>
+
+  <autotools id="glib"
+             autogenargs="--disable-dtrace">
+    <dependencies>
+      <dep package="libffi"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib/2.32/glib-2.32.0.tar.xz" version="2.32.0"
+            repo="ftp.gnome.org"
+            hash="sha256:cde9d9f25ed648069c547e323897ad9379974e1f936b4477fa51bcf1bb261ae4"
+            md5sum="c5fa76fbf9184d20dfb04af66b598190"/>
+  </autotools>
+
+  <autotools id="glib-networking">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="gnutls"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib-networking/2.31/glib-networking-2.31.2.tar.xz" version="2.31.2"
+            repo="ftp.gnome.org"
+            hash="sha256:03e3a2881d2626d1206e72972531661037fe0d32e745bf9b2f63c0d6f5e32a9c"
+            md5sum="b649b457bd9fd5e0e9b9c4dcb1a74a37"/>
+  </autotools>
+
+  <autotools id="gnutls"
+             autogenargs="--enable-ld-version-script --enable-cxx --without-lzo --with-libgcrypt --without-p11-kit">
+    <branch module="/gnu/gnutls/gnutls-2.12.14.tar.bz2" version="2.12.14"
+            repo="gnu.org"
+            hash="sha256:5ee72ba6de7a23cf315792561954451e022dac8730149ca95f93c61e95be2ce3"
+            md5sum="555687a7ffefba0bd9de1e71cb61402c"/>
+  </autotools>
+
+  <autotools id="libsoup"
+             autogenargs="--without-gnome --disable-introspection">
+    <dependencies>
+      <dep package="glib-networking"/>
+    </dependencies>
+    <branch module="libsoup" version="2.38.1"
+            repo="git.gnome.org"
+            tag="LIBSOUP_2_38_1"/>
+  </autotools>
+
+  <autotools id="fontconfig" autogen-sh="configure">
+    <branch module="software/fontconfig/release/fontconfig-2.8.0.tar.gz" version="2.8.0"
+            repo="freedesktop.org"
+            hash="sha256:fa2a1c6eea654d9fce7a4b1220f10c99cdec848dccaf1625c01f076b31382335"
+            md5sum="77e15a92006ddc2adbb06f840d591c0e">
+    </branch>
+  </autotools>
+
+  <autotools id="gnome-icon-theme" autogen-sh="configure">
+    <dependencies>
+      <dep package="gtk+"/>
+    </dependencies>
+    <branch module="pub/GNOME/sources/gnome-icon-theme/3.2/gnome-icon-theme-3.2.1.tar.xz" version="3.2.1"
+            repo="ftp.gnome.org"
+            hash="sha256:a7f0a8b17e91ac338fdbc01ac59a8738e9c1e201de492c070d43aacf291a8959"
+            md5sum="40be1e5a6eae11181311a6fc432cf892">
+    </branch>
+  </autotools>
+
+  <autotools id="at-spi2-core" 
+             autogenargs="--disable-introspection">
+    <branch module="pub/GNOME/sources/at-spi2-core/2.2/at-spi2-core-2.2.1.tar.xz" version="2.2.1"
+            repo="ftp.gnome.org"
+            hash="sha256:2a4129420decca3657e163a4dbb1a3cb28acafe32ea1292417fdd81084d48fac"
+            md5sum="183916373d6906ff6b220bd44d15ff97">
+    </branch>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="at-spi2-atk">
+    <branch module="pub/GNOME/sources/at-spi2-atk/2.2/at-spi2-atk-2.2.1.tar.xz" version="2.2.1"
+            repo="ftp.gnome.org"
+            hash="sha256:6677def34b16c9a28d6ad96473ea56a3c0e13aa968e584df004cd44c8691ea1a"
+            md5sum="19646097aca25a9c1b8ba7ab8d172916">
+    </branch>
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="at-spi2-core"/>
+    </dependencies>
+  </autotools>
+
+</moduleset>

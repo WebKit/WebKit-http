@@ -1,12 +1,13 @@
+<!DOCTYPE html>
 <html>
     <head>
-
         <script src=media-file.js></script>
         <script src=video-test.js></script>
         <script>
             var ratechangeCount = 0;
             var playingCount = 0;
             var progressEventCount = 0;
+            var pauseEventCount = 0;
 
             function eventHandler()
             {
@@ -17,6 +18,7 @@
                 switch (event.type)
                 {
                     case "canplaythrough":
+                        testExpected('progressEventCount', 1, '>=');
                         consoleWrite("<br>*** starting playback");
                         run("video.play()"); 
                         break;
@@ -37,8 +39,10 @@
                         run("video.pause()");
                         break;
                     case "pause":
-                        consoleWrite("<br>*** seeking");
-                        run("video.currentTime = 5.6");
+                        if(++pauseEventCount == 1) {
+                            consoleWrite("<br>*** seeking");
+                            run("video.currentTime = 5.6");
+                        }
                         break;
                     case "seeked":
                         consoleWrite("<br>*** beginning playback");
@@ -47,14 +51,14 @@
                     case "ended":
                         var mediaFile = findMediaFile("video", "content/garbage");
                         consoleWrite("<br>*** played to end, setting 'src' to an invalid movie");
-                        run("video.src = '" + mediaFile + "'");
-                        run("video.load()");
+                        run("progressEventCount = 0");
+                        video.src = mediaFile;
                         break;
                     case "progress":
                         ++progressEventCount;
                         break;
                     case "error":
-                        testExpected('progressEventCount', 1, '>=');
+                        testExpected('progressEventCount', 0);
                         endTest();
                         break;
                     default:

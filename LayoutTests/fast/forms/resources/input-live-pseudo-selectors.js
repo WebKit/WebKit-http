@@ -36,7 +36,7 @@ shouldBe(elBackground, 'invalidColor');
 
 debug('Change name:');
 el.name = '';
-shouldBe(elBackground, 'normalColor');
+shouldBe(elBackground, 'invalidColor');
 el.name = 'bar';
 shouldBe(elBackground, 'invalidColor');
 
@@ -57,7 +57,7 @@ shouldBe(elBackground, 'invalidColor');
 debug('Inside/outside of a form:');
 el = makeInvalid();
 nonForm.appendChild(el);
-shouldBe(elBackground, 'normalColor');
+shouldBe(elBackground, 'invalidColor');
 form.appendChild(el);
 shouldBe(elBackground, 'invalidColor');
 
@@ -71,12 +71,18 @@ shouldBe(elBackground, 'validColor');
 el.value = '';
 shouldBe(elBackground, 'invalidColor');
 
+debug('Change the value by DOM attribute for a focused text field:');
+el = makeInvalid();
+el.focus();
+el.value = 'abc';
+shouldBe(elBackground, 'validColor');
+
 debug('Change the value by key input:');
 el = makeInvalid();
 el.focus();
 eventSender.keyDown('a');
 shouldBe(elBackground, 'validColor');
-eventSender.keyDown('delete', []);
+eventSender.keyDown('\x08', []);
 shouldBe(elBackground, 'invalidColor');
 
 // --------------------------------
@@ -107,5 +113,3 @@ el.step = '2';
 shouldBe(elBackground, 'invalidColor');
 el.step = '0.5';
 shouldBe(elBackground, 'validColor');
-
-var successfullyParsed = true;

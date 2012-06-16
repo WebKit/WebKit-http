@@ -11,4 +11,7 @@ shouldBeFalse("/\\2(...)$/.test('abc')");
 shouldBeTrue("/\\1?(...)$/.test('abc')");
 shouldBeTrue("/\\1?(...)$/.test('abc')");
 
-var successfullyParsed = true;
+re = new RegExp("[^b]*((..)|(\\2))+Sz", "i");
+
+shouldBeFalse("re.test('axabcd')");
+shouldBeTrue("re.test('axabcsz')");

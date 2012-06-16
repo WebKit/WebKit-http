@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../../../js/resources/js-test-style.css">
 <script src="../../../js/resources/js-test-pre.js"></script>
 <script src="test.js"></script>
 <script src="../../xpath-test-pre.js"></script>
@@ -106,8 +105,6 @@
     checkSnapshot("f\xf6\xf8", result, [NONASCIIQNAME]);
 
     shouldThrow('DOM.evaluate("\\\\", ROOT, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null)');
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../../../js/resources/js-test-post.js"></script>

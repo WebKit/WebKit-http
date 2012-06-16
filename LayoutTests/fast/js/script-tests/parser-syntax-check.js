@@ -2,7 +2,7 @@ description(
 "This test checks that the following expressions or statements are valid ECMASCRIPT code or should throw parse error"
 );
 
-function runTest(_a, throws)
+function runTest(_a, errorType)
 {
     var success;
     if (typeof _a != "string")
@@ -11,18 +11,18 @@ function runTest(_a, throws)
         eval(_a);
         success = true;
     } catch (e) {
-        success = e.toString() != "SyntaxError: Parse error";
+        success = !(e instanceof SyntaxError);
     }
-    if (throws == !success) {
-        if (throws)
+    if ((!!errorType) == !success) {
+        if (errorType)
             testPassed('Invalid: "' + _a + '"');
         else
             testPassed('Valid:   "' + _a + '"');
     } else {
-        if (throws)
-            testFailed('Invalid: "' + _a + '" should throw SyntaxError: Parse error');
+        if (errorType)
+            testFailed('Invalid: "' + _a + '" should throw ' + errorType.name);
         else
-            testFailed('Valid:   "' + _a + '" should NOT throw SyntaxError: Parse error');
+            testFailed('Valid:   "' + _a + '" should NOT throw ');
     }
 }
 
@@ -33,8 +33,9 @@ function valid(_a)
     runTest("function f() { " + _a + " }", false);
 }
 
-function invalid(_a)
+function invalid(_a, _type)
 {
+    _type = _type || SyntaxError;
     // Test both the grammar and the syntax checker
     runTest(_a, true);
     runTest("function f() { " + _a + " }", true);
@@ -153,7 +154,7 @@ valid  ("[] in [5,6] * [,5,] / [,,5,,] || [a,] && new [,b] % [,,]");
 invalid("[5,");
 invalid("[,");
 invalid("(a,)");
-valid  ("1 + {get get(){}, set set(a){}, get:4, set:get-set, }");
+valid  ("1 + {get get(){}, set set(a){}, get1:4, set1:get-set, }");
 invalid("1 + {a");
 invalid("1 + {a:");
 invalid("1 + {get l(");
@@ -195,7 +196,7 @@ invalid("do g; while ((4)");
 valid  ("{ { do do do ; while(0) while(0) while(0) } }");
 valid  ("do while (0) if (a) {} else y; while(0)");
 valid  ("if (a) while (b) if (c) with(d) {} else e; else f");
-valid  ("break ; break your_limits ; continue ; continue living ; debugger");
+invalid("break ; break your_limits ; continue ; continue living ; debugger");
 invalid("debugger X");
 invalid("break 0.2");
 invalid("continue a++");
@@ -296,7 +297,7 @@ valid  ("for (var a = 7, b = c < d >= d ; f()[6]++ ; --i()[1]++ ) {}");
 
 debug  ("try statement");
 
-valid  ("try { break } catch(e) {}");
+invalid("try { break } catch(e) {}");
 valid  ("try {} finally { c++ }");
 valid  ("try { with (x) { } } catch(e) {} finally { if (a) ; }");
 invalid("try {}");
@@ -339,4 +340,38 @@ valid  ("switch (l) { case 1: a: with(g) switch (g) { case 2: default: } default
 invalid("switch (4 - ) { }");
 invalid("switch (l) { default case: 5; }");
 
-var successfullyParsed = true;
+invalid("L: L: ;");
+invalid("L: L1: L: ;");
+invalid("L: L1: L2: L3: L4: L: ;");
+
+invalid("for(var a,b 'this shouldn\'t be allowed' false ; ) ;");
+invalid("for(var a,b '");
+
+valid("function __proto__(){}")
+valid("(function __proto__(){})")
+valid("'use strict'; function __proto__(){}")
+valid("'use strict'; (function __proto__(){})")
+
+valid("if (0) $foo; ")
+valid("if (0) _foo; ")
+valid("if (0) foo$; ")
+valid("if (0) foo_; ")
+valid("if (0) obj.$foo; ")
+valid("if (0) obj._foo; ")
+valid("if (0) obj.foo$; ")
+valid("if (0) obj.foo_; ")
+valid("if (0) obj.foo\\u03bb; ")
+valid("if (0) new a(b+c).d = 5");
+valid("if (0) new a(b+c) = 5");
+valid("([1 || 1].a = 1)");
+valid("({a: 1 || 1}.a = 1)");
+
+try { eval("a.b.c = {};"); } catch(e1) { e=e1; shouldBe("e.line", "1") }
+foo = 'FAIL';
+bar = 'PASS';
+try {
+     eval("foo = 'PASS'; a.b.c = {}; bar  = 'FAIL';");
+} catch(e) {
+     shouldBe("foo", "'PASS'");
+     shouldBe("bar", "'PASS'");
+}

@@ -1,7 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html>
 <head>
-<link rel="stylesheet" href="../js/resources/js-test-style.css">
 <script src="../js/resources/js-test-pre.js"></script>
 </head>
 <body>
@@ -42,8 +41,6 @@
     shouldBe("doc.evaluate('.', TEXT, null, XPathResult.STRING_TYPE, null).stringValue", "'0  '");
     shouldBe("doc.evaluate('.', EMPTY, null, XPathResult.STRING_TYPE, null).stringValue", "''");
     shouldBe("doc.evaluate('.', ATTR, null, XPathResult.STRING_TYPE, null).stringValue", "'<&nbsp;>'");
-
-    var successfullyParsed = true;
 
 </script>
 <script src="../js/resources/js-test-post.js"></script>
