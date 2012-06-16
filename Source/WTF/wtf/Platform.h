@@ -351,6 +351,11 @@
 #define WTF_OS_FREEBSD 1
 #endif
 
+/* OS(HAIKU) - Haiku */
+#ifdef __HAIKU__
+#define WTF_OS_HAIKU 1
+#endif
+
 /* OS(HURD) - GNU/Hurd */
 #ifdef __GNU__
 #define WTF_OS_HURD 1
@@ -399,6 +404,7 @@
     || OS(ANDROID)          \
     || OS(DARWIN)           \
     || OS(FREEBSD)          \
+    || OS(HAIKU)            \
     || OS(HURD)             \
     || OS(LINUX)            \
     || OS(NETBSD)           \
@@ -418,6 +424,7 @@
 /* PLATFORM(QT) */
 /* PLATFORM(WX) */
 /* PLATFORM(GTK) */
+/* PLATFORM(HAIKU) */
 /* PLATFORM(BLACKBERRY) */
 /* PLATFORM(MAC) */
 /* PLATFORM(WIN) */
@@ -429,6 +436,8 @@
 #define WTF_PLATFORM_WX 1
 #elif defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
+#elif defined(BUILDING_HAIKU__)
+#define WTF_PLATFORM_HAIKU 1
 #elif defined(BUILDING_BLACKBERRY__)
 #define WTF_PLATFORM_BLACKBERRY 1
 #elif OS(DARWIN)
@@ -487,7 +496,6 @@
 #if PLATFORM(GTK)
 #define WTF_USE_CAIRO 1
 #endif
-
 
 #if OS(WINCE)
 #define WTF_USE_MERSENNE_TWISTER_19937 1
@@ -650,6 +658,31 @@
 #define HAVE_PTHREAD_RWLOCK 1
 #endif
 
+#if PLATFORM(HAIKU)
+#define WTF_USE_CURL 1
+#define WTF_USE_PTHREADS 1
+#define HAVE_POSIX_MEMALIGN 1
+#define HAVE_PTHREAD_RWLOCK 1
+#define HAVE_SYS_TIME_H 1
+#define USE_SYSTEM_MALLOC 1
+#define ENABLE_NETSCAPE_PLUGIN_API 0
+
+#define ENABLE_INSPECTOR 1
+#define ENABLE_WORKERS 1
+#define ENABLE_JAVASCRIPT_DEBUGGER 1
+/*#define ENABLE_ON_FIRST_TEXTAREA_FOCUS_SELECT_ALL 1
+//#define ENABLE_FAST_MALLOC_MATCH_VALIDATION 1
+#define ENABLE_DATABASE 1
+#define ENABLE_DOM_STORAGE 1
+#define ENABLE_YARR 1
+#define ENABLE_YARR_JIT 1
+#define ENABLE_SVG 1
+#define ENABLE_SVG_ANIMATION 1
+#define ENABLE_SVG_FONTS 1
+#define ENABLE_SVG_FOREIGN_OBJECT 1
+#define ENABLE_SVG_USE 1*/
+#endif
+
 #if !defined(HAVE_ACCESSIBILITY)
 #if PLATFORM(IOS) || PLATFORM(MAC) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(CHROMIUM)
 #define HAVE_ACCESSIBILITY 1
@@ -679,7 +712,8 @@
 
 #if !OS(WINDOWS) && !OS(SOLARIS) \
     && !OS(RVCT) \
-    && !OS(ANDROID)
+    && !OS(ANDROID) \
+    && !OS(HAIKU)
 #define HAVE_TM_GMTOFF 1
 #define HAVE_TM_ZONE 1
 #define HAVE_TIMEGM 1
@@ -752,7 +786,10 @@
 /* FIXME: is this actually used or do other platforms generate their own config.h? */
 
 #define HAVE_ERRNO_H 1
+/* As long as Haiku doesn't have a complete support of locale this will be disabled. */
+#if !OS(HAIKU)
 #define HAVE_LANGINFO_H 1
+#endif
 #define HAVE_MMAP 1
 #define HAVE_SBRK 1
 #define HAVE_STRINGS_H 1
