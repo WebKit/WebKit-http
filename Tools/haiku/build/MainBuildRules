@@ -1,0 +1,306 @@
+# MainBuildRules
+#
+# Rules that specify what to build and how to do it.
+
+rule Application
+{
+	# Application <name> : <source> : <libraries> : <res> ;
+	#
+	# Creates an application from sources
+	#
+	# <name>: Name of the application.
+	# <sources>: List of source files.
+	# <libraries>: List of libraries to link against.
+	#
+	local app = $(1) ;
+	local sources = $(2) ;
+	local libs = $(3) ;
+	local resources = $(4) ;
+
+	AddResources $(app) : $(resources) ;
+	Main $(app) : $(sources) ;
+	MakeLocate $(app) : $(LOCATE_MAIN_TARGET) ;
+	local linkFlags ;
+	linkFlags = -Xlinker -no-undefined -Xlinker -soname=\"_APP_\" ;
+	LINKFLAGS on $(app) = [ on $(app) return $(LINKFLAGS) ] $(linkFlags) ;
+	LinkAgainst $(app) : $(libs) ;
+}
+
+rule AddOn
+{
+	# AddOn <name> : <sources> : <libraries> ;
+	#
+	# Creates an add-on from sources.
+	#
+	# <name>: Name of the add-on.
+	# <sources>: List of source files.
+	# <libraries>: List of libraries to link against.
+	#
+	SharedLibrary $(1) : $(2) : $(3) ;
+}
+
+rule SharedLibrary
+{
+	# SharedLibrary <name> : <sources> : <libraries> ;
+	#
+	# Creates a shared library from sources.
+	#
+	# <name>: Name of the shared library.
+	# <sources>: List of source files.
+	# <libraries>: List of libraries to link against.
+	#
+	local lib = $(1) ;
+	local sources = $(2) ;
+	local libs = $(3) ;
+
+	Main $(lib) : $(sources) ;
+	MakeLocate $(lib) : $(LOCATE_MAIN_TARGET) ;
+	local linkFlags ;
+	linkFlags = -nostart -Xlinker -no-undefined -Xlinker -soname=\"$(lib)\" ;
+	LINKFLAGS on $(lib) = [ on $(lib) return $(LINKFLAGS) ] $(linkFlags) ;
+	LinkAgainst $(lib) : $(libs) ;
+}
+
+rule StaticLibrary
+{
+	# StaticLibrary <name> : <sources> ;
+	#
+	# Creates a static library from sources.
+	#
+	# <name>: Name of the static library.
+	# <sources>: List of source files.
+	#
+	local lib = $(1) ;
+	Library $(lib) : $(2) ;
+	MakeLocate $(lib) : $(LOCATE_MAIN_TARGET) ;
+
+	# If KEEPOBJS is set, Library doesn't make the library depend on `lib'.
+	if $(KEEPOBJS) {
+		Depends lib : $(lib) ;
+	}
+}
+
+rule LinkAgainst
+{
+	# LinkAgainst <name> : <libs> ;
+	#
+	# Adds libraries to the list of libraries a (Main) target shall be linked
+	# against.
+	#
+	# <name>: The name of the target for which to add libraries.
+	# <libs>: The libraries (actually arbitrary shared objects and static
+	#         libraries) to be added. Valid elements are e.g. "be" or
+	#         "libopenbeos.so" or "/boot/.../libfoo.so". If the basename starts
+	#         with "lib" or the thingy has a dirname or grist, it is added to
+	#         the NEEDLIBS variable (i.e. the file will be bound!), otherwise
+	#         it is prefixed "-l" and added to LINKLIBS. If you want to specify
+	#         a target that isn't a library and also has neither grist nor a
+	#         dirname, you can prepend "<nogrist>" as grist; it will be
+	#         stripped by this rule.
+	#
+	for i in $(>)
+	{
+		local isfile = ;
+		if $(i:D) || $(i:G) {
+			isfile = true ;
+			if $(i:G) = <nogrist> {
+				i = $(i:G=) ;
+			}
+		} else {
+			switch $(i:B)
+			{
+				# XXX: _APP_ and _KERNEL_ should not be needed for ELF.
+				case _APP_ : isfile = true ;
+				case _KERNEL_ : isfile = true ;
+				case lib*	: isfile = true ;
+				case *	: isfile = ;
+			}
+			if ! $(isfile) && ( $(i:S) = .so || $(i:S) = .a ) {
+				isfile = true ;
+			}
+		}
+		if $(isfile) {
+			NEEDLIBS on $(1) = [ on $(1) return $(NEEDLIBS) ] $(i) ;
+			Depends $(1) : $(i) ;
+		} else {
+			LINKLIBS on $(1) = [ on $(1) return $(LINKLIBS) ] -l$(i) ;
+		}
+	}
+}
+
+rule AddResources
+{
+	# AddResources <name> : <resourcefiles> ;
+
+	# add grist to the resource files which don't have any yet
+	local resfiles ;
+	local file ;
+	for file in $(2) {
+		if ! $(file:G) {
+			file = [ FGristFiles $(file) ] ;
+		}
+		resfiles += $(file) ;
+	}
+
+	SEARCH on $(resfiles) += $(SEARCH_SOURCE) ;
+
+	for file in $(resfiles) {
+		if $(file:S) = .rdef {
+			local rdef = $(file) ;
+			file = $(rdef:S=.rsrc) ;
+			ResComp $(file) : $(rdef) ;
+		}
+		RESFILES on $(1) += $(file) ;
+	}
+}
+
+rule XRes
+{
+	# XRes <target> : <resource files> ;
+	#
+	# Adds resources to a file.
+	#
+	# <target>: The files to which resources shall be added.
+	# <resource files>: The resource files.
+	#
+	if $(2) {
+		Depends $(1) : $(2) ;
+		XRes1 $(1) : $(2) ;
+	}
+}
+
+actions XRes1
+{
+	xres -o "$(1)" "$(2)" ;
+}
+
+rule ResComp
+{
+	# ResComp <resource file> : <rdef file> ;
+	#
+	# <resource file> and <rdef file> must be gristed.
+
+	# get defines
+	local defines ;
+	local localIncludesOption ;
+
+	on $(1) { # use on $(1) variable values
+		defines = $(DEFINES) ;
+		localIncludesOption = $(TARGET_LOCAL_INCLUDES_OPTION) ;
+	}
+
+	DEFINES on $(1) = $(defines) ;
+	CCDEFS on $(1) = [ FDefines $(defines) ] ;
+	HDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS)
+		: $(localIncludesOption) ] ;
+#	RCHDRS on $(1) = [ FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS)
+#		: "-I " ] ;
+
+	# set up other vars
+	SEARCH on $(2) += $(SEARCH_SOURCE) ;
+	MakeLocate $(1) ;
+	LocalClean clean : $(1) ;
+	ResComp1 $(1) : rc $(2) ;
+}
+
+# Note: We pipe the input files into the preprocessor, since *.rdef files are
+# considered linker scripts, and thus we can use preprocessor features.
+actions ResComp1
+{
+#	cat "$(2[2-])" | $(CC) -E $(CCDEFS) $(HDRS) - | egrep -v '^#' | $(2[1]) $(RCHDRS) --auto-names -o "$(1)" -
+	cat "$(2[2-])" | egrep -v '^#' | $(2[1]) $(RCHDRS) --auto-names -o "$(1)" -
+}
+
+actions MimeSet
+{
+	mimeset -f $(1) ;
+}
+
+rule SubDirSysHdrs
+{
+	# SubDirSysHdrs <dirs> ;
+	#
+	# Adds directories to the system include search paths for the current
+	# subdirectory. Counterpart of SubDirHdrs which adds non-system include
+	# search paths.
+	#
+	# <dirs>: The directories to be added to the current subdir's system
+	#         include search paths.
+	#
+	SUBDIRSYSHDRS += [ FDirName $(1) ] ;
+}
+
+rule ObjectSysHdrs
+{
+	# ObjectSysHdrs <sources or objects> : <dirs> ;
+	#
+	# Adds directories to the system include search paths for the given
+	# sources or objects. Counterpart of ObjectHdrs which adds non-system
+	# include search paths.
+	#
+	# NOTE: This rule must be invoked *after* the rule that generates the
+	# objects.
+	#
+	# <sources or objects>: The targets for which to add system include
+	#                       search paths.
+	# <dirs>: The directories to be added to the given objects' system
+	#         include search paths.
+	#
+	local s ;
+	for s in [ FGristFiles $(<:S=$(SUFOBJ)) ] {
+		SYSHDRS on $(s) += $(>) ;
+		CCHDRS on $(s) = [ on $(s) FIncludes $(HDRS) ]
+			$(HDRS_INCLUDE_SEPARATOR) [ on $(s) FSysIncludes $(SYSHDRS) ] ;
+	}
+}
+
+# FSysIncludes <dirs> ;
+#
+# Counterpart of FIncludes for system include search paths.
+#
+rule FSysIncludes
+{
+	return -I$(<) ;
+}
+
+rule Install
+{
+	# Install <pseudotarget> : <objects>
+	#
+	# Install objects in the right directory.
+	#
+	# <pseudotarget>: Name of the target to call.
+	# <objects>: List of objects to install.
+	#
+	Depends $(1) : $(2) ;
+	NotFile $(1) ;
+
+	for i in $(2) {
+		if $(i:S) = .so || $(i:S) = .a {
+			Install1 $(i) /boot/home/config/lib/ ;
+		} else {
+			Install1 $(i) /boot/home/config/bin/ ;
+		}
+	}
+}
+
+actions Install1
+{
+	install $(1) $(2) ;
+}
+
+rule CreateSVNRevisionFile file
+{
+	# CreateSVNRevisionFile <file>
+
+	local svnEntries = <svn>entries ;
+	SEARCH on $(svnEntries) = [ FDirName $(TOP) .svn ] ;
+	Depends $(file) : $(svnEntries) ;
+}
+
+actions CreateSVNRevisionFile
+{
+	(LANG=C svn info $(TOP) 2> /dev/null || echo Revision: 0) |
+		grep Revision | awk '{printf $2}' > $(1)
+}
+

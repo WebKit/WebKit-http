@@ -1,0 +1,146 @@
+# ConfigRules
+#
+# Contains rules providing the config variable feature. It allows to set the
+# values for certain variables for subdirectories in a central place. That is
+# one can, for instance, specify in a file like UserBuildConfig for which
+# directories to enable debugging, warnings, set special defines, compiler
+# flags and the like without needing to edit the Jamfiles for the respective
+# dirs.
+
+rule ConfigObject
+{
+	# ConfigObject <dir> ;
+	#
+	# Private rule. Returns the dummy object on which the config variables are
+	# set for a given subdir.
+	#
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	#
+	local config = __config__ ;
+	local grist = [ FGrist root $(1) ] ;
+	return $(config:G=$(grist)) ;
+}
+
+rule SetConfigVar
+{
+	# SetConfigVar <var> : <dir> : <value> [ : <scope> ] ;
+	#
+	# Sets a config variable for a specified directory to the given value.
+	#
+	# <var>: The name of the variable to be set.
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	# <value>: The value to which the variable shall be set.
+	# <scope>: Either "global" or "local". The former implies that the variable
+	#          value shall also be used for subdirectories (recursively), if
+	#          for them the variable has not been set. The latter has the same
+	#          effect regarding subdirs as if the variable for the directory
+	#          is not set. Defaults to "global".
+	#
+	local var = $(1[1]) ;
+	local config = [ ConfigObject $(2) ] ;
+	local scope = $(4) ;
+	if ! $(scope) {
+		scope = global ;
+	}
+	$(var) on $(config) = $(3) ;
+	__set_$(var) on $(config) = $(scope) ;
+}
+
+rule AppendToConfigVar
+{
+	# AppendToConfigVar <var> : <dir> : <value> [ : <scope> ] ;
+	#
+	# Appends a value to a config variable for a specified directory. Shortcut
+	# for
+	#   SetConfigVar <var> : <dir> : [ ConfigVar <var> : <dir> ] <value
+	#                : <scope> ;
+	#
+	# <var>: The name of the variable to be set.
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	# <value>: The value which to append to the variables current value.
+	# <scope>: Either "global" or "local". The former implies that the variable
+	#          value shall also be used for subdirectories (recursively), if
+	#          for them the variable has not been set. The latter has the same
+	#          effect regarding subdirs as if the variable for the directory
+	#          is not set. Defaults to "global".
+	#
+	SetConfigVar $(1) : $(2) : [ ConfigVar $(1) : $(2) ] $(3) : $(4) ;
+}
+
+rule ConfigVar
+{
+	# ConfigVar <var> : <dir> [ : <scope> ] ;
+	#
+	# Returns the value of a configuration variable for a given subdir.
+	# If the variable is not set for the subdir, the rule is invoked
+	# recursively for the parent directory with the scope "global". When
+	# the root is reached without yielding a value, the value of the global
+	# variable <var> is returned.
+	#
+	# <var>: The name of the variable whose value shall be returned.
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	# <scope>: If not given any scope passed to SetConfigVar for the given
+	#          directory will be accepted, otherwise it must match the scope
+	#          passed to SetConfigVar.
+	#
+	local var = $(1[1]) ;
+	local dir = $(2) ;
+	local config = [ ConfigObject $(dir) ] ;
+	local scope = $(3) ;
+	local varScope = [ on $(config) return $(__set_$(var)) ] ;
+	if ( ! $(scope) && $(varScope) )
+		|| ( $(scope) && $(scope) = $(varScope) )
+		|| ! $(dir) {
+		on $(config) return $($(var)) ;
+	} else {
+		dir = [ FReverse $(dir) ] ;
+		return [ ConfigVar $(var) : [ FReverse $(dir[2-]) ] : global ] ;
+	}
+}
+
+rule SetUpConfigVars {
+	# SetUpConfigVars <dir> ;
+	#
+	# Sets the global variables defined in AUTO_SET_UP_CONFIG_VARIABLES to the
+	# values specified for the subdirectory <dir>.
+	#
+	# <dir>: Parameters as passed to the SubDir rule, i.e. the name of the
+	#        TOP variable and the subdir tokens.
+	#
+	local dir = $(1) ;
+
+	# Backup the global variable value on first invocation, otherwise restore
+	# them, so that ConfigVar returns the right values for not explicity set
+	# local variables.
+	local var ;
+	if ! $(__config_var_backup__) {
+		__config_var_backup__ = true ;
+		for var in $(AUTO_SET_UP_CONFIG_VARIABLES) {
+			__config_var_backup_$(var)__ = $($(var)) ;
+		}
+	} else {
+		for var in $(AUTO_SET_UP_CONFIG_VARIABLES) {
+			$(var) = $(__config_var_backup_$(var)__) ;
+		}
+	}
+
+	# Set the variables to their configured values.
+	for var in $(AUTO_SET_UP_CONFIG_VARIABLES) {
+		$(var) = [ ConfigVar $(var) : $(dir) ] ;
+	}
+}
+
+# Add the SetUpConfigVars rule to the rules that are invoked at the end of the
+# SubDir rule. Prepend it, so that the variables are set up before any other
+# rule is invoked.
+SUBDIRRULES = SetUpConfigVars $(SUBDIRRULES) ;
+
+# Some config variables that should be set up automatically for subdirs.
+AUTO_SET_UP_CONFIG_VARIABLES +=
+	CCFLAGS C++FLAGS DEBUG DEFINES HDRS LINKFLAGS OPTIM OPTIMIZE
+	SYSHDRS WARNINGS
+;
