@@ -100,7 +100,7 @@ namespace WebCore {
 
         virtual void* webView() const { return 0; }
 
-        virtual void setStatusbarText(const WebCore::String&);
+        virtual void setStatusbarText(const String&);
 
         virtual bool tabsToLinks() const;
         virtual IntRect windowResizerRect() const;
