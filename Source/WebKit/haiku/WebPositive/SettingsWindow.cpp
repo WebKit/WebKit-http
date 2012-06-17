@@ -396,13 +396,13 @@ SettingsWindow::_CreateFontsPage(float spacing)
 
 	fStandardSizesMenu =  new BMenuField("standard font size",
 		B_TRANSLATE("Default standard font size:"), new BPopUpMenu("sizes"),
-		NULL);
+		B_WILL_DRAW);
 	_BuildSizesMenu(fStandardSizesMenu->Menu(),
 		MSG_STANDARD_FONT_SIZE_SELECTED);
 
 	fFixedSizesMenu =  new BMenuField("fixed font size",
 		B_TRANSLATE("Default fixed font size:"), new BPopUpMenu("sizes"),
-		NULL);
+		B_WILL_DRAW);
 	_BuildSizesMenu(fFixedSizesMenu->Menu(), MSG_FIXED_FONT_SIZE_SELECTED);
 
 	BView* view = BGridLayoutBuilder(spacing / 2, spacing / 2)
@@ -435,6 +435,7 @@ SettingsWindow::_CreateFontsPage(float spacing)
 
 		.View()
 	;
+
 	view->SetName(B_TRANSLATE("Fonts"));
 	return view;
 }
@@ -469,7 +470,7 @@ SettingsWindow::_CreateProxyPage(float spacing)
 		.Add(BGridLayoutBuilder(spacing / 2, spacing / 2)
 			.Add(fProxyAddressControl->CreateLabelLayoutItem(), 0, 0)
 			.Add(fProxyAddressControl->CreateTextViewLayoutItem(), 1, 0)
-		
+
 			.Add(fProxyPortControl->CreateLabelLayoutItem(), 0, 1)
 			.Add(fProxyPortControl->CreateTextViewLayoutItem(), 1, 1)
 		)

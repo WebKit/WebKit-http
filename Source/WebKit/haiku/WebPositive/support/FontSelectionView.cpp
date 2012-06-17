@@ -6,7 +6,7 @@
  *		Mark Hogben
  *		DarkWyrm <bpmagic@columbus.rr.com>
  *		Axel Dörfler, axeld@pinc-software.de
- *		Philippe Saint-Pierre, stpere@gmail.com 
+ *		Philippe Saint-Pierre, stpere@gmail.com
  *		Stephan Aßmus <superstippi@gmx.de>
  */
 
@@ -59,14 +59,14 @@ FontSelectionView::FontSelectionView(const char* name, const char* label,
 	fFontsMenu = new BPopUpMenu("font menu");
 
 	// font menu
-	fFontsMenuField = new BMenuField("fonts", label, fFontsMenu, NULL);
+	fFontsMenuField = new BMenuField("fonts", label, fFontsMenu, B_WILL_DRAW);
 	fFontsMenuField->SetFont(be_bold_font);
 
 	// styles menu, if desired
 	if (separateStyles) {
 		fStylesMenu = new BPopUpMenu("styles menu");
-		fStylesMenuField = new BMenuField("styles", B_TRANSLATE("Style:"), 
-			fStylesMenu, NULL);
+		fStylesMenuField = new BMenuField("styles", B_TRANSLATE("Style:"),
+			fStylesMenu, B_WILL_DRAW);
 	} else {
 		fStylesMenu = NULL;
 		fStylesMenuField = NULL;
@@ -74,17 +74,17 @@ FontSelectionView::FontSelectionView(const char* name, const char* label,
 
 	// size menu
 	fSizesMenuField = new BMenuField("size", B_TRANSLATE("Size:"), fSizesMenu,
-		NULL);
+		B_WILL_DRAW);
 	fSizesMenuField->SetAlignment(B_ALIGN_RIGHT);
 
 	// preview
 	fPreviewText = new BStringView("preview text",
 		B_TRANSLATE_COMMENT("The quick brown fox jumps over the lazy dog.",
 		"Don't translate this literally ! Use a phrase showing all "
-		"chars from A to Z.")); 
+		"chars from A to Z."));
 
 	fPreviewText->SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED,
-		B_SIZE_UNLIMITED)); 
+		B_SIZE_UNLIMITED));
 	fPreviewText->SetHighColor(tint_color(ui_color(B_PANEL_BACKGROUND_COLOR),
 		1.65));
 	fPreviewText->SetAlignment(B_ALIGN_RIGHT);
@@ -351,35 +351,35 @@ FontSelectionView::UpdateFontsMenu()
 // #pragma mark - private
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateSizesLabelLayoutItem()
 {
 	return fSizesMenuField->CreateLabelLayoutItem();
 }
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateSizesMenuBarLayoutItem()
 {
 	return fSizesMenuField->CreateMenuBarLayoutItem();
 }
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateFontsLabelLayoutItem()
 {
 	return fFontsMenuField->CreateLabelLayoutItem();
 }
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateFontsMenuBarLayoutItem()
 {
 	return fFontsMenuField->CreateMenuBarLayoutItem();
 }
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateStylesLabelLayoutItem()
 {
 	if (fStylesMenuField)
@@ -388,7 +388,7 @@ FontSelectionView::CreateStylesLabelLayoutItem()
 }
 
 
-BLayoutItem* 
+BLayoutItem*
 FontSelectionView::CreateStylesMenuBarLayoutItem()
 {
 	if (fStylesMenuField)
@@ -484,7 +484,7 @@ FontSelectionView::_BuildSizesMenu()
 
 		BMessage* message = new BMessage(kMsgSetSize);
 		message->AddInt32("size", size);
-		message->AddString("name", Name()); 
+		message->AddString("name", Name());
 
 		BMenuItem* item = new BMenuItem(label, message);
 		if (size == fCurrentFont.Size())
