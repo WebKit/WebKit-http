@@ -5,15 +5,19 @@ local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 SubDirC++Flags $(defines) ;
 SubDirCcFlags $(defines) ;
 
-SubInclude TOP WTF ;
-SubInclude TOP JavaScriptCore ;
-SubInclude TOP WebCore ;
-SubInclude TOP WebKit ;
-SubInclude TOP WebKitTools DumpRenderTree ;
+SubInclude TOP Source WTF ;
+SubInclude TOP Source JavaScriptCore ;
+SubInclude TOP Source WebCore ;
+SubInclude TOP Source WebKit ;
+#SubInclude TOP Tools DumpRenderTree ;
 
 #-----------------------------------------------------------------------------
 # Installation rules
 #-----------------------------------------------------------------------------
+
+Install WTF :
+    libwtf.so
+;
 
 Install JavaScriptCore :
     libjavascriptcore.so

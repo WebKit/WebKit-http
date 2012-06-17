@@ -4,8 +4,8 @@
 *.pyc
 .DS_Store
 .directory
-build/
-/WebKitBuild/
+generated
+DerivedSources
 autoinstall.cache.d
 project.xcworkspace
 xcuserdata

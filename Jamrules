@@ -9,12 +9,12 @@
 IS_GCC_4_PLATFORM = 1 ;
 
 # The directories used by the build
-BUILD_DIR = [ FDirName $(TOP) WebKitTools haiku build ] ;
-GENERATED_DIR = [ FDirName $(TOP) WebKitBuild Debug ] ;
-DISTRO_DIR = [ FDirName $(TOP) WebKitBuild Debug ] ;
+BUILD_DIR = [ FDirName $(TOP) Tools haiku build ] ;
+GENERATED_DIR = [ FDirName $(TOP) generated debug ] ;
+DISTRO_DIR = [ FDirName $(TOP) generated debug ] ;
 if ($(NDEBUG)) {
-	GENERATED_DIR = [ FDirName $(TOP) WebKitBuild Release ] ;
-	DISTRO_DIR = [ FDirName $(TOP) WebKitBuild Release ] ;
+	GENERATED_DIR = [ FDirName $(TOP) generated release ] ;
+	DISTRO_DIR = [ FDirName $(TOP) generated release ] ;
 }
 
 # The rules
@@ -22,3 +22,4 @@ include [ FDirName $(BUILD_DIR) ConfigRules ] ;
 include [ FDirName $(BUILD_DIR) OverriddenJamRules ] ;
 include [ FDirName $(BUILD_DIR) MainBuildRules ] ;
 include [ FDirName $(BUILD_DIR) BuildSettings ] ;
+include [ FDirName $(BUILD_DIR) Subdir ] ;

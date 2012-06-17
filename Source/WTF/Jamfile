@@ -1,4 +1,4 @@
-SubDir TOP WTF ;
+SubDir TOP Source WTF ;
 
 local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
@@ -6,9 +6,9 @@ local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
 SubDirCcFlags $(defines) -Wno-c++0x-compat ;
 
-SubDirSysHdrs $(TOP) WTF ;
+SubDirSysHdrs $(TOP) Source WTF ;
 
-SubDirHdrs $(TOP) WTF wtf ;
+SubDirHdrs $(TOP) Source WTF wtf ;
 
 SharedLibrary libwtf.so :
     # File list directly based on WTF.gypi

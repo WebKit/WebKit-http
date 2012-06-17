@@ -1,4 +1,4 @@
-SubDir TOP JavaScriptCore ;
+SubDir TOP Source JavaScriptCore ;
 
 local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
@@ -7,28 +7,28 @@ SubDirC++Flags $(defines) -Wno-c++0x-compat ;
 SubDirCcFlags $(defines) -Wno-c++0x-compat ;
 
 # Define header locations
-SubDirSysHdrs $(TOP) ;
-SubDirSysHdrs $(TOP) JavaScriptCore ;
-SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
-SubDirSysHdrs $(TOP) JavaScriptCore assembler ;
-SubDirSysHdrs $(TOP) WTF ;
+SubDirSysHdrs $(TOP) Source ;
+SubDirSysHdrs $(TOP) Source JavaScriptCore ;
+SubDirSysHdrs $(TOP) Source JavaScriptCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) Source JavaScriptCore assembler ;
+SubDirSysHdrs $(TOP) Source WTF ;
 
-SubDirHdrs $(TOP) JavaScriptCore API ;
-SubDirHdrs $(TOP) JavaScriptCore assembler ;
-SubDirHdrs $(TOP) JavaScriptCore bytecode ;
-SubDirHdrs $(TOP) JavaScriptCore bytecompiler ;
-SubDirHdrs $(TOP) JavaScriptCore debugger ;
-SubDirHdrs $(TOP) JavaScriptCore dfg ;
-SubDirHdrs $(TOP) JavaScriptCore heap ;
-SubDirHdrs $(TOP) JavaScriptCore interpreter ;
-SubDirHdrs $(TOP) JavaScriptCore jit ;
-SubDirHdrs $(TOP) JavaScriptCore llint ;
-SubDirHdrs $(TOP) JavaScriptCore parser ;
-SubDirHdrs $(TOP) JavaScriptCore profiler ;
-SubDirHdrs $(TOP) JavaScriptCore runtime ;
-SubDirHdrs $(TOP) JavaScriptCore tools ;
+SubDirHdrs $(TOP) Source JavaScriptCore API ;
+SubDirHdrs $(TOP) Source JavaScriptCore assembler ;
+SubDirHdrs $(TOP) Source JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) Source JavaScriptCore bytecompiler ;
+SubDirHdrs $(TOP) Source JavaScriptCore debugger ;
+SubDirHdrs $(TOP) Source JavaScriptCore dfg ;
+SubDirHdrs $(TOP) Source JavaScriptCore heap ;
+SubDirHdrs $(TOP) Source JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) Source JavaScriptCore jit ;
+SubDirHdrs $(TOP) Source JavaScriptCore llint ;
+SubDirHdrs $(TOP) Source JavaScriptCore parser ;
+SubDirHdrs $(TOP) Source JavaScriptCore profiler ;
+SubDirHdrs $(TOP) Source JavaScriptCore runtime ;
+SubDirHdrs $(TOP) Source JavaScriptCore tools ;
 
-SubDirHdrs $(TOP) JavaScriptCore DerivedSources JavaScriptCore ;
+SubDirHdrs $(TOP) Source JavaScriptCore DerivedSources JavaScriptCore ;
 
 SharedLibrary libjavascriptcore.so :
     API/JSBase.cpp

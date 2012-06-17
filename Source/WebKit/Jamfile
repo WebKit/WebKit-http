@@ -1,4 +1,4 @@
-SubDir TOP WebKit ;
+SubDir TOP Source WebKit ;
 
 local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 
@@ -6,98 +6,98 @@ local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
 SubDirCcFlags $(defines) -Wno-c++0x-compat ;
 
-SubDirSysHdrs $(TOP) ;
-SubDirSysHdrs $(TOP) JavaScriptCore ;
-SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
-SubDirSysHdrs $(TOP) WebCore ;
-#SubDirSysHdrs $(TOP) WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
-SubDirSysHdrs $(TOP) WebCore platform text ;
-SubDirSysHdrs $(TOP) WTF ;
+SubDirSysHdrs $(TOP) Source ;
+SubDirSysHdrs $(TOP) Source JavaScriptCore ;
+SubDirSysHdrs $(TOP) Source JavaScriptCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) Source WebCore ;
+#SubDirSysHdrs $(TOP) Source WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
+SubDirSysHdrs $(TOP) Source WebCore platform text ;
+SubDirSysHdrs $(TOP) Source WTF ;
 
-SubDirHdrs $(TOP) WebCore accessibility ;
-SubDirHdrs $(TOP) WebCore bindings ;
-#SubDirHdrs $(TOP) WebCore bindings cpp ;
-SubDirHdrs $(TOP) WebCore bindings generic ;
-SubDirHdrs $(TOP) WebCore bindings js ;
-SubDirHdrs $(TOP) WebCore bridge ;
-SubDirHdrs $(TOP) WebCore bridge c ;
-SubDirHdrs $(TOP) WebCore bridge jsc ;
-SubDirHdrs $(TOP) WebCore css ;
-SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
-SubDirHdrs $(TOP) WebCore dom ;
-SubDirHdrs $(TOP) WebCore editing ;
-SubDirHdrs $(TOP) WebCore fileapi ;
-SubDirHdrs $(TOP) WebCore history ;
-SubDirHdrs $(TOP) WebCore html ;
-SubDirHdrs $(TOP) WebCore html canvas ;
-SubDirHdrs $(TOP) WebCore html parser ;
-SubDirHdrs $(TOP) WebCore html shadow ;
-SubDirHdrs $(TOP) WebCore inspector ;
-SubDirHdrs $(TOP) WebCore loader ;
-SubDirHdrs $(TOP) WebCore loader appcache ;
-SubDirHdrs $(TOP) WebCore loader archive ;
-SubDirHdrs $(TOP) WebCore loader cache ;
-SubDirHdrs $(TOP) WebCore loader icon ;
-SubDirHdrs $(TOP) WebCore notifications ;
-SubDirHdrs $(TOP) WebCore Modules filesystem ;
-SubDirHdrs $(TOP) WebCore Modules geolocation ;
-SubDirHdrs $(TOP) WebCore Modules indexeddb ;
-SubDirHdrs $(TOP) WebCore Modules webdatabase ;
-SubDirHdrs $(TOP) WebCore Modules websockets ;
-SubDirHdrs $(TOP) WebCore page ;
-SubDirHdrs $(TOP) WebCore page animation ;
-SubDirHdrs $(TOP) WebCore page scrolling ;
-SubDirHdrs $(TOP) WebCore platform ;
-SubDirHdrs $(TOP) WebCore platform animation ;
-SubDirHdrs $(TOP) WebCore platform graphics ;
-SubDirHdrs $(TOP) WebCore platform graphics filters ;
-SubDirHdrs $(TOP) WebCore platform graphics haiku ;
-SubDirHdrs $(TOP) WebCore platform graphics transforms ;
-SubDirHdrs $(TOP) WebCore platform haiku ;
-SubDirHdrs $(TOP) WebCore platform image-decoders ;
-SubDirHdrs $(TOP) WebCore platform image-decoders bmp ;
-SubDirHdrs $(TOP) WebCore platform image-decoders gif ;
-SubDirHdrs $(TOP) WebCore platform image-decoders ico ;
-SubDirHdrs $(TOP) WebCore platform image-decoders jpeg ;
-SubDirHdrs $(TOP) WebCore platform image-decoders png ;
-SubDirHdrs $(TOP) WebCore platform mock ;
-SubDirHdrs $(TOP) WebCore platform network ;
-SubDirHdrs $(TOP) WebCore platform network curl ;
-SubDirHdrs $(TOP) WebCore platform sql ;
-SubDirHdrs $(TOP) WebCore platform text ;
-SubDirHdrs $(TOP) WebCore platform text transcoder ;
-SubDirHdrs $(TOP) WebCore plugins ;
-SubDirHdrs $(TOP) WebCore rendering ;
-SubDirHdrs $(TOP) WebCore rendering style ;
-SubDirHdrs $(TOP) WebCore rendering svg ;
-SubDirHdrs $(TOP) WebCore storage ;
-SubDirHdrs $(TOP) WebCore svg ;
-SubDirHdrs $(TOP) WebCore svg graphics ;
-SubDirHdrs $(TOP) WebCore workers ;
-SubDirHdrs $(TOP) WebCore xml ;
-SubDirHdrs $(TOP) WebCore xml parser ;
+SubDirHdrs $(TOP) Source WebCore accessibility ;
+SubDirHdrs $(TOP) Source WebCore bindings ;
+#SubDirHdrs $(TOP) Source WebCore bindings cpp ;
+SubDirHdrs $(TOP) Source WebCore bindings generic ;
+SubDirHdrs $(TOP) Source WebCore bindings js ;
+SubDirHdrs $(TOP) Source WebCore bridge ;
+SubDirHdrs $(TOP) Source WebCore bridge c ;
+SubDirHdrs $(TOP) Source WebCore bridge jsc ;
+SubDirHdrs $(TOP) Source WebCore css ;
+SubDirHdrs $(TOP) Source WebCore DerivedSources WebCore ;
+SubDirHdrs $(TOP) Source WebCore dom ;
+SubDirHdrs $(TOP) Source WebCore editing ;
+SubDirHdrs $(TOP) Source WebCore fileapi ;
+SubDirHdrs $(TOP) Source WebCore history ;
+SubDirHdrs $(TOP) Source WebCore html ;
+SubDirHdrs $(TOP) Source WebCore html canvas ;
+SubDirHdrs $(TOP) Source WebCore html parser ;
+SubDirHdrs $(TOP) Source WebCore html shadow ;
+SubDirHdrs $(TOP) Source WebCore inspector ;
+SubDirHdrs $(TOP) Source WebCore loader ;
+SubDirHdrs $(TOP) Source WebCore loader appcache ;
+SubDirHdrs $(TOP) Source WebCore loader archive ;
+SubDirHdrs $(TOP) Source WebCore loader cache ;
+SubDirHdrs $(TOP) Source WebCore loader icon ;
+SubDirHdrs $(TOP) Source WebCore notifications ;
+SubDirHdrs $(TOP) Source WebCore Modules filesystem ;
+SubDirHdrs $(TOP) Source WebCore Modules geolocation ;
+SubDirHdrs $(TOP) Source WebCore Modules indexeddb ;
+SubDirHdrs $(TOP) Source WebCore Modules webdatabase ;
+SubDirHdrs $(TOP) Source WebCore Modules websockets ;
+SubDirHdrs $(TOP) Source WebCore page ;
+SubDirHdrs $(TOP) Source WebCore page animation ;
+SubDirHdrs $(TOP) Source WebCore page scrolling ;
+SubDirHdrs $(TOP) Source WebCore platform ;
+SubDirHdrs $(TOP) Source WebCore platform animation ;
+SubDirHdrs $(TOP) Source WebCore platform graphics ;
+SubDirHdrs $(TOP) Source WebCore platform graphics filters ;
+SubDirHdrs $(TOP) Source WebCore platform graphics haiku ;
+SubDirHdrs $(TOP) Source WebCore platform graphics transforms ;
+SubDirHdrs $(TOP) Source WebCore platform haiku ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders bmp ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders gif ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders ico ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders jpeg ;
+SubDirHdrs $(TOP) Source WebCore platform image-decoders png ;
+SubDirHdrs $(TOP) Source WebCore platform mock ;
+SubDirHdrs $(TOP) Source WebCore platform network ;
+SubDirHdrs $(TOP) Source WebCore platform network curl ;
+SubDirHdrs $(TOP) Source WebCore platform sql ;
+SubDirHdrs $(TOP) Source WebCore platform text ;
+SubDirHdrs $(TOP) Source WebCore platform text transcoder ;
+SubDirHdrs $(TOP) Source WebCore plugins ;
+SubDirHdrs $(TOP) Source WebCore rendering ;
+SubDirHdrs $(TOP) Source WebCore rendering style ;
+SubDirHdrs $(TOP) Source WebCore rendering svg ;
+SubDirHdrs $(TOP) Source WebCore storage ;
+SubDirHdrs $(TOP) Source WebCore svg ;
+SubDirHdrs $(TOP) Source WebCore svg graphics ;
+SubDirHdrs $(TOP) Source WebCore workers ;
+SubDirHdrs $(TOP) Source WebCore xml ;
+SubDirHdrs $(TOP) Source WebCore xml parser ;
 
-SubDirHdrs $(TOP) WTF wtf ;
-SubDirHdrs $(TOP) WTF wtf text ; # for WebCore/platform/haiku/ClipboardHaiku.cpp
+SubDirHdrs $(TOP) Source WTF wtf ;
+SubDirHdrs $(TOP) Source WTF wtf text ; # for WebCore/platform/haiku/ClipboardHaiku.cpp
 
 # public JavaScriptCore headers
-SubDirHdrs $(TOP) JavaScriptCore API ;
-SubDirHdrs $(TOP) JavaScriptCore assembler ;
-SubDirHdrs $(TOP) JavaScriptCore bytecode ;
-SubDirHdrs $(TOP) JavaScriptCore heap ;
-SubDirHdrs $(TOP) JavaScriptCore interpreter ;
-SubDirHdrs $(TOP) JavaScriptCore jit ;
-SubDirHdrs $(TOP) JavaScriptCore interpreter ;
-SubDirHdrs $(TOP) JavaScriptCore llint ;
-SubDirHdrs $(TOP) JavaScriptCore parser ;
-SubDirHdrs $(TOP) JavaScriptCore profiler ;
-SubDirHdrs $(TOP) JavaScriptCore runtime ;
+SubDirHdrs $(TOP) Source JavaScriptCore API ;
+SubDirHdrs $(TOP) Source JavaScriptCore assembler ;
+SubDirHdrs $(TOP) Source JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) Source JavaScriptCore heap ;
+SubDirHdrs $(TOP) Source JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) Source JavaScriptCore jit ;
+SubDirHdrs $(TOP) Source JavaScriptCore interpreter ;
+SubDirHdrs $(TOP) Source JavaScriptCore llint ;
+SubDirHdrs $(TOP) Source JavaScriptCore parser ;
+SubDirHdrs $(TOP) Source JavaScriptCore profiler ;
+SubDirHdrs $(TOP) Source JavaScriptCore runtime ;
 
 #-----------------------------------------------------------------------------
 # WebKit API
 #-----------------------------------------------------------------------------
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku API ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebCoreSupport ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku API ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebCoreSupport ] ;
 
 SharedLibrary libwebkit.so :
 	# WebCoreSupport
@@ -132,7 +132,7 @@ SharedLibrary libwebkit.so :
 #-----------------------------------------------------------------------------
 # HaikuLauncher
 #-----------------------------------------------------------------------------
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku HaikuLauncher ] ;
 
 Application HaikuLauncher :
 	LauncherApp.cpp
@@ -152,10 +152,10 @@ Application HaikuLauncher :
 #-----------------------------------------------------------------------------
 # WebPositive
 #-----------------------------------------------------------------------------
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive autocompletion ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive support ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku WebPositive tabview ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive autocompletion ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive support ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive tabview ] ;
 
 # SVN revision
 #local svnRevisionFile = [ FGristFiles svn_revision ] ;
