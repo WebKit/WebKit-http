@@ -496,20 +496,20 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(FramePolicyFunction
 {
     if (request.isNull()) {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (isNull)\n",
-BString(mimetype).String());
+BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyIgnore);
         return;
     }
     // we need to call directly here
-    if (canShowMIMEType(mimetype)) {
+    if (canShowMIMEType(response.mimeType())) {
         callPolicyFunction(function, PolicyUse);
-    } else if (!request.url().isLocalFile() && mimetype != "application/x-shockwave-flash") {
+    } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> download\n",
-BString(mimetype).String());
+BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyDownload);
     } else {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (local URL or Flash)\n",
-BString(mimetype).String());
+BString(response.mimeType()).String());
         callPolicyFunction(function, PolicyIgnore);
     }
 }
