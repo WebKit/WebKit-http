@@ -1,80 +1,71 @@
-How To build WebKit on Haiku
-============================
-
-Author:	Maxime Simon <simon.maxime@gmail.com>
+How To build WebKit and WebPositive on Haiku			 June 18, 2012
+============================================
 
 
-Requirements
+Dependencies
 ------------
-* A recent version of Haiku with the GCC 4 development tools.
-* The following dependencies: GPerf, ICU, ICU-devel, Perl, Python, Ruby (Python and Ruby are optional)
+You need a recent version of Haiku with the GCC 4 development tools,
+the following dependencies:
+	GPerf, ICU, ICU-devel, Perl, Python, Ruby (Python and Ruby are optional)
+And a fast computer!
 
 * Dependencies can be installed via:
-$ installoptionalpackage -a GPerf ICU ICU-devel Curl Perl Python Ruby
+$ installoptionalpackage GPerf ICU ICU-devel Curl Perl Python Ruby
 
 * Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 AddOptionalHaikuImagePackages GPerf ICU ICU-devel Curl Perl Python Ruby ;
 
 Those packages can also be manually downloaded and installed from http://haiku-files.org/files/optional-packages/
 
-Building
---------
 
-Be sure to have all the requirements above before continuing,
-and to be placed in the directory where you checked out WebKit.
-
-Don't forget to switch the current toolchain too gcc4 (unless you're on a pure gcc4 Haiku):
-
+Building WebPositive
+--------------------
 $ setgcc gcc4
-
-* First step, generate derived sources:
 
 $ cd Source/JavaScriptCore
 $ ./make-generated-sources.sh
+
 $ cd Source/WebCore
 $ ./make-generated-sources.sh
 
-Next, if you want to build the release version:
+$ NDEBUG=1 jam -qj4 WebPositive
 
-$ export NDEBUG=1
+This will build a release version of WebKit libraries and WebPositive on a quad core cpu. Remove NDEBUG=1 to build a debug version.
 
-Don't export NDEBUG at all for a debug build.
+On a successful build, executables and libraries are installed in /boot/home/config/bin and /boot/home/config/lib respectively.
 
-* Then, building WebKit:
-$ jam -q <target>
 
-With <target> in:
+Advanced Build, other jam targets
+---------------------------------
+
+	- libwtf.so				(the Web Template Library)
+
 	- libjavascriptcore.so	(the JavaScriptCore library)
 
 	- jsc					(the JavaScriptCore executable shell)
 
-	- libwebcore.so			(the WebCore library, including
-							libjavascriptcore.so)
+	- libwebcore.so			(the WebCore library)
 
-	- libwebkit.so			(the WebKit library including libwebcore.so,
-							the API and some specific files)
+	- libwebkit.so			(the WebKit library)
 
-	- HaikuLauncher			(*default target* the test shell, including
-							libwebkit.so and a simple browsing window)
+	- HaikuLauncher			(a simple browsing test app)
 
-	- DumpRenderTree		(the tree parsing tool, required to test
-							WebKit, including libwebkit.so)
+	- DumpRenderTree		(the tree parsing test tool)
 
 	- WebPositive			(the Haiku browser)
 
-If you just run
+Example, this will build the JavaScriptCore library in debug mode:
+$jam -q libjavascriptcore.so
 
-$ jam jsc
+To rebuild from scratch a target and all it's dependencies, use the -a option:
+$NDEBUG=1 jam -aqj4 WebPositive
 
-followed by
+In some rare cases the build system can be confused, to be sure that everything gets rebuilt from scratch,
+you can remove the generated/ directory.
 
-$ jam WebPositive
 
-you will automatically build everything required for the browser.
-
-All targets end up in WebKitBuild, and additionally they are installed in the
-system automatically!
-
+Notes
+-----
 If you switch between Release and Debug build versions, make sure to always
 have matching libs in /boot/home/config/lib. For example, if you switch to
 release build, do something which updates libwebcore.so, it will be placed
@@ -84,9 +75,7 @@ change. But you need the matching version. As long as our build system doesn't
 take care of that, you need to make sure of this manually.
 
 
-Caution
+Authors
 -------
-
-The WebKit port evolves really fast, so you may run into troubles
-when building it with a recent version of WebKit.
-We are making our best for this not to happen, but you're warned. :)
+Maxime Simon <simon.maxime@gmail.com>,
+Alexandre Deckner
