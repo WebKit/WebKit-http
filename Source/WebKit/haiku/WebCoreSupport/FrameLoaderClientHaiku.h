@@ -119,7 +119,6 @@ public:
     virtual Frame* dispatchCreatePage(const NavigationAction&);
     virtual void dispatchShow();
 
-    virtual void dispatchDecidePolicyForMIMEType(FramePolicyFunction, const String&, const ResourceRequest&);
     virtual void dispatchDecidePolicyForResponse(FramePolicyFunction, const ResourceResponse&, const ResourceRequest&);
     virtual void dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&,
                                                         const ResourceRequest&, PassRefPtr<FormState>, const String&);

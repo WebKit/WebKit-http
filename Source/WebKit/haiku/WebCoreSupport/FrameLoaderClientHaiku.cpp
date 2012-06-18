@@ -78,7 +78,7 @@
 #include <String.h>
 #include <debugger.h>
 
-//#define TRACE_FRAME_LOADER_CLIENT
+#define TRACE_FRAME_LOADER_CLIENT
 #ifdef TRACE_FRAME_LOADER_CLIENT
 #   define CLASS_NAME "FLC"
 #   include "FunctionTracer.h"
@@ -492,8 +492,7 @@ void FrameLoaderClientHaiku::dispatchShow()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(FramePolicyFunction function, const String& mimetype,
-                                                             const ResourceRequest& request)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(FramePolicyFunction function, const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request)
 {
     if (request.isNull()) {
 printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (isNull)\n",
@@ -513,26 +512,6 @@ printf("FrameLoaderClientHaiku::dispatchDecidePolicyForMIMEType(%s) -> ignore (l
 BString(mimetype).String());
         callPolicyFunction(function, PolicyIgnore);
     }
-}
-
-void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(FramePolicyFunction function, const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&)
-{
-    // We need to call directly here.
-    switch (response.httpStatusCode()) {
-    case HTTPResetContent:
-        // FIXME: a 205 response requires that the requester reset the document view.
-        // Fallthrough
-    case HTTPNoContent:
-        callPolicyFunction(function, PolicyIgnore);
-        return;
-    }
-
-    if (WebCore::contentDispositionType(response.httpHeaderField("Content-Disposition")) == WebCore::ContentDispositionAttachment)
-        callPolicyFunction(function, PolicyDownload);
-    else if (canShowMIMEType(response.mimeType()))
-        callPolicyFunction(function, PolicyUse);
-    else
-        callPolicyFunction(function, PolicyDownload);
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function,
