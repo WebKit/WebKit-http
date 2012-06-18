@@ -6,26 +6,16 @@ Author:	Maxime Simon <simon.maxime@gmail.com>
 
 Requirements
 ------------
-* GCC4, available on hybrid Haiku builds or gcc4-only builds.
+* A recent version of Haiku with the GCC 4 development tools.
+* The following dependencies: GPerf, ICU, ICU-devel, Perl, Python, Ruby (Python and Ruby are optional)
 
-* GPerf, you can find the executable here:
-http://ryanleavengood.com/haiku/gperf
+* Dependencies can be installed via:
+$ installoptionalpackage -a GPerf ICU ICU-devel Curl Perl Python Ruby
 
-* ICU, the libs are part of default Haiku builds since r33176. However you still need to install the development optional package, ICU-devel:
-$ installoptionalpackage -a ICU-devel
-(or http://haiku-files.org/files/optional-packages/)
+* Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
+AddOptionalHaikuImagePackages GPerf ICU ICU-devel Curl Perl Python Ruby ;
 
-* Curl, might be already present in your Haiku install, otherwise:
-$ installoptionalpackage -a Curl
-(or http://haiku-files.org/files/optional-packages/)
-
-* Perl, might be already present in your Haiku install, otherwise:
-$ installoptionalpackage -a Perl
-(or http://haiku-files.org/files/optional-packages/)
-
-* Python and Ruby, are optional but may be needed if you want to
-go further with WebKit (testing, etc).
-
+Those packages can also be manually downloaded and installed from http://haiku-files.org/files/optional-packages/
 
 Building
 --------
@@ -34,10 +24,15 @@ Be sure to have all the requirements above before continuing,
 and to be placed in the directory where you checked out WebKit.
 
 Don't forget to switch the current toolchain too gcc4 (unless you're on a pure gcc4 Haiku):
+
 $ setgcc gcc4
 
 * First step, generate derived sources:
-$ sh WebKitTools/haiku/make-generated-sources.sh
+
+$ cd Source/JavaScriptCore
+$ ./make-generated-sources.sh
+$ cd Source/WebCore
+$ ./make-generated-sources.sh
 
 Next, if you want to build the release version:
 
@@ -47,18 +42,25 @@ Don't export NDEBUG at all for a debug build.
 
 * Then, building WebKit:
 $ jam -q <target>
-with target in:
-	- libjavascriptcore.so  (the JavaScriptCore library)
-	- jsc                   (the JavaScriptCore executable shell)
-	- libwebcore.so         (the WebCore library, including
-                             libjavascriptcore.so)
-	- libwebkit.so          (the WebKit library including libwebcore.so,
-                             the API and some specific files)
-	- HaikuLauncher         (*default target* the test shell, including
-                             libwebkit.so and a simple browsing window)
-    - DumpRenderTree        (the tree parsing tool, required to test
-                             WebKit, including libwebkit.so)
-    - WebPositive           (the Haiku browser)
+
+With <target> in:
+	- libjavascriptcore.so	(the JavaScriptCore library)
+
+	- jsc					(the JavaScriptCore executable shell)
+
+	- libwebcore.so			(the WebCore library, including
+							libjavascriptcore.so)
+
+	- libwebkit.so			(the WebKit library including libwebcore.so,
+							the API and some specific files)
+
+	- HaikuLauncher			(*default target* the test shell, including
+							libwebkit.so and a simple browsing window)
+
+	- DumpRenderTree		(the tree parsing tool, required to test
+							WebKit, including libwebkit.so)
+
+	- WebPositive			(the Haiku browser)
 
 If you just run
 
