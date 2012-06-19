@@ -1,0 +1,70 @@
+SubDir TOP WebKitTools DumpRenderTree ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+# To turn on debugging symbols just add -ggdb to each of these
+SubDirC++Flags $(defines) ;
+SubDirCcFlags $(defines) ;
+
+SubDirSysHdrs $(TOP) ;
+
+SubDirSysHdrs $(TOP) JavaScriptCore ;
+SubDirSysHdrs $(TOP) JavaScriptCore ForwardingHeaders ;
+SubDirSysHdrs $(TOP) JavaScriptCore assembler ;
+SubDirSysHdrs $(TOP) JavaScriptCore bytecode ;
+SubDirSysHdrs $(TOP) JavaScriptCore interpreter ;
+SubDirSysHdrs $(TOP) JavaScriptCore jit ;
+SubDirSysHdrs $(TOP) JavaScriptCore parser ;
+SubDirSysHdrs $(TOP) JavaScriptCore runtime ;
+SubDirSysHdrs $(TOP) JavaScriptCore wtf ;
+
+SubDirHdrs $(TOP) WebCore DerivedSources WebCore ;
+SubDirHdrs $(TOP) WebCore bindings js ;
+SubDirHdrs $(TOP) WebCore bridge ;
+SubDirHdrs $(TOP) WebCore css ;
+SubDirHdrs $(TOP) WebCore dom ;
+SubDirHdrs $(TOP) WebCore editing ;
+SubDirHdrs $(TOP) WebCore history ;
+SubDirHdrs $(TOP) WebCore html ;
+SubDirHdrs $(TOP) WebCore loader ;
+SubDirHdrs $(TOP) WebCore page ;
+SubDirHdrs $(TOP) WebCore page animation ;
+SubDirHdrs $(TOP) WebCore platform ;
+SubDirHdrs $(TOP) WebCore platform graphics ;
+SubDirHdrs $(TOP) WebCore platform network ;
+SubDirHdrs $(TOP) WebCore platform network curl ;
+SubDirHdrs $(TOP) WebCore platform text ;
+SubDirHdrs $(TOP) WebCore rendering ;
+
+SubDirHdrs $(TOP) WebKit haiku API ;
+SubDirHdrs $(TOP) WebKit haiku HaikuLauncher ;
+SubDirHdrs $(TOP) WebKit haiku WebCoreSupport ;
+
+SubDirHdrs $(TOP) WebKitTools DumpRenderTree ;
+SubDirHdrs $(TOP) WebKitTools DumpRenderTree ForwardingHeaders ;
+SubDirHdrs $(TOP) WebKitTools DumpRenderTree haiku ;
+
+
+#-----------------------------------------------------------------------------
+# DumpRenderTree
+#-----------------------------------------------------------------------------
+SEARCH_SOURCE += [ FDirName $(TOP) WebKit haiku HaikuLauncher ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) WebKitTools DumpRenderTree ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) WebKitTools DumpRenderTree haiku ] ;
+
+Application DumpRenderTree :
+    LauncherWindow.cpp
+
+    DumpRenderTree.cpp
+    GCController.cpp
+    GCControllerHaiku.cpp
+    LayoutTestController.cpp
+    LayoutTestControllerHaiku.cpp
+    WorkQueue.cpp
+    WorkQueueItemHaiku.cpp
+    :
+    libjavascriptcore.so libwebcore.so libwebkit.so
+	# Haiku libraries
+	be bsd network root stdc++
+;
+
