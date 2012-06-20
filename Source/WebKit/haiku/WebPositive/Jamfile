@@ -1,17 +1,10 @@
 SubDir TOP Source WebKit haiku WebPositive ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
-
-# To turn off debugging symbols export NDEBUG=1 in the environment
-SubDirC++Flags $(defines) -Wno-c++0x-compat ;
-SubDirCcFlags $(defines) -Wno-c++0x-compat ;
-
 SubDirHdrs $(TOP) Source WebKit haiku API ;
 
-SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive autocompletion ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive support ] ;
-SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive tabview ] ;
+SEARCH_SOURCE += [ FDirName $(SUBDIR) autocompletion ] ;
+SEARCH_SOURCE += [ FDirName $(SUBDIR) support ] ;
+SEARCH_SOURCE += [ FDirName $(SUBDIR) tabview ] ;
 
 # SVN revision
 #local svnRevisionFile = [ FGristFiles svn_revision ] ;

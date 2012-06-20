@@ -119,31 +119,10 @@ SharedLibrary libwebkit.so :
 	WebSettingsPrivate.cpp
 	WebView.cpp
 	WebWindow.cpp
-
 	:
 	libjavascriptcore.so libwebcore.so libwtf.so
 	# Other required libraries
 	icuuc stdc++
 	# Haiku libraries
 	be translation tracker
-;
-
-
-#-----------------------------------------------------------------------------
-# HaikuLauncher
-#-----------------------------------------------------------------------------
-SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku HaikuLauncher ] ;
-
-Application HaikuLauncher :
-	LauncherApp.cpp
-	LauncherWindow.cpp
-
-	:
-	libjavascriptcore.so libwebcore.so libwebkit.so libwtf.so
-	# Other required libraries
-	curl icuuc icudata png sqlite3 xml2 z
-	# Haiku libraries
-	be bsd network stdc++ translation
-	:
-	Launcher.rdef
 ;
