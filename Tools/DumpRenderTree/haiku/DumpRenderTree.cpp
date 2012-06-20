@@ -33,6 +33,7 @@
 #include "LayoutTestController.h"
 #include "PlatformString.h"
 #include "WebFrame.h"
+#include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
 #include "WorkQueue.h"
@@ -55,8 +56,8 @@ static thread_id stdinThread;
 
 using namespace std;
 
-LayoutTestController* gLayoutTestController = 0;
-static WebView* webView;
+RefPtr<LayoutTestController> gLayoutTestController = 0;
+static BWebView* webView;
 
 const unsigned maxViewHeight = 600;
 const unsigned maxViewWidth = 800;
@@ -68,14 +69,14 @@ void notifyDoneFired()
         dump();
 }
 
-static String dumpFramesAsText(WebFrame* frame)
+static String dumpFramesAsText(BWebFrame* frame)
 {
     if (gLayoutTestController->dumpChildFramesAsText()) {
         // FIXME:
         // not implemented.
     }
 
-    return frame->getInnerText();
+    return frame->InnerText();
 }
 
 void dump()
@@ -88,9 +89,9 @@ void dump()
 
         BString str;
         if (gLayoutTestController->dumpAsText())
-            str = dumpFramesAsText(webView->mainFrame());
+            str = dumpFramesAsText(webView->WebPage()->MainFrame());
         else
-            str = webView->mainFrame()->getExternalRepresentation();
+            str = webView->WebPage()->MainFrame()->ExternalRepresentation();
 
         result = str.String();
         if (!result) {
@@ -147,14 +148,14 @@ static void runTest(const string& testPathOrURL)
     if (http == string::npos)
         pathOrURL.insert(0, "file://");
 
-    gLayoutTestController = new LayoutTestController(pathOrURL, expectedPixelHash);
+    gLayoutTestController = LayoutTestController::create(pathOrURL, expectedPixelHash);
     if (!gLayoutTestController)
         be_app->PostMessage(B_QUIT_REQUESTED);
 
     WorkQueue::shared()->clear();
     WorkQueue::shared()->setFrozen(false);
 
-    webView->mainFrame()->loadRequest(BString(pathOrURL.c_str()));
+    webView->WebPage()->MainFrame()->LoadURL(BString(pathOrURL.c_str()));
 }
 
 #pragma mark -
@@ -212,7 +213,7 @@ void DumpRenderTreeApp::ReadyToRun()
 {
     // Create the main application window.
     m_webFrame = new LauncherWindow(DoNotHaveToolbar);
-    webView = m_webFrame->webView();
+    webView = m_webFrame->CurrentWebView();
     m_webFrame->SetSizeLimits(0, maxViewWidth, 0, maxViewHeight);
     webView->SetExplicitMaxSize(BSize(maxViewWidth, maxViewHeight));
     m_webFrame->ResizeTo(maxViewWidth, maxViewHeight);
@@ -293,5 +294,5 @@ int main()
     DumpRenderTreeApp app;
     app.Run();
 
-    delete gLayoutTestController;
+    gLayoutTestController.release();
 }
