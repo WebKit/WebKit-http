@@ -1,0 +1,58 @@
+SubDir TOP Source WebKit haiku WebPositive ;
+
+local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+
+# To turn off debugging symbols export NDEBUG=1 in the environment
+SubDirC++Flags $(defines) -Wno-c++0x-compat ;
+SubDirCcFlags $(defines) -Wno-c++0x-compat ;
+
+SubDirHdrs $(TOP) Source WebKit haiku API ;
+
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive autocompletion ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive support ] ;
+SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebPositive tabview ] ;
+
+# SVN revision
+#local svnRevisionFile = [ FGristFiles svn_revision ] ;
+#MakeLocate $(svnRevisionFile) : $(LOCATE_TARGET) ;
+#CreateSVNRevisionFile $(svnRevisionFile) ;
+
+Application WebPositive :
+	# autocompletion
+	AutoCompleter.cpp
+	AutoCompleterDefaultImpl.cpp
+	TextViewCompleter.cpp
+	# support
+	BaseURL.cpp
+	BitmapButton.cpp
+	DateTime.cpp
+	FontSelectionView.cpp
+	IconButton.cpp
+	SettingsMessage.cpp
+	StringForSize.cpp
+	# tabview
+	TabContainerView.cpp
+	TabManager.cpp
+	TabView.cpp
+	# WebPositive
+	AuthenticationPanel.cpp
+	BrowserApp.cpp
+	BrowserWindow.cpp
+	BrowsingHistory.cpp
+	CredentialsStorage.cpp
+	DownloadProgressView.cpp
+	DownloadWindow.cpp
+	SettingsKeys.cpp
+	SettingsWindow.cpp
+	svn_revision.cpp
+	URLInputGroup.cpp
+	:
+	libjavascriptcore.so libwebcore.so libwebkit.so libwtf.so
+	# Other required libraries
+	curl icuuc icudata png sqlite3 xml2 z
+	# Haiku libraries
+	be bsd localestub network stdc++ tracker translation
+	:
+	WebPositive.rdef
+;
