@@ -34,7 +34,7 @@
 
 #include "EditorClient.h"
 #include "Page.h"
-#include "RefCounted.h"
+#include <wtf/RefCounted.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <String.h>

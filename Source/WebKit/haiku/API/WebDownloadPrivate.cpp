@@ -28,7 +28,6 @@
 #include "config.h"
 #include "WebDownloadPrivate.h"
 
-#include "CString.h"
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
@@ -42,6 +41,7 @@
 #include <MimeType.h>
 #include <NodeInfo.h>
 #include <stdio.h>
+#include <wtf/text/CString.h>
 
 namespace BPrivate {
 

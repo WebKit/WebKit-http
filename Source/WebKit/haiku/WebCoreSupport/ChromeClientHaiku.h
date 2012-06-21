@@ -32,7 +32,7 @@
 #include "ChromeClient.h"
 #include "FloatRect.h"
 #include "KURL.h"
-#include "RefCounted.h"
+#include <wtf/RefCounted.h>
 #include "WebPage.h"
 
 namespace WebCore {

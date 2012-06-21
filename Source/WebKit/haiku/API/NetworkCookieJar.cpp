@@ -30,9 +30,9 @@
 
 #include "NetworkCookie.h"
 #include "PlatformString.h"
-#include "StringHash.h"
 #include <Message.h>
 #include <wtf/HashMap.h>
+#include <wtf/text/StringHash.h>
 #include <stdio.h>
 
 using namespace WebCore;

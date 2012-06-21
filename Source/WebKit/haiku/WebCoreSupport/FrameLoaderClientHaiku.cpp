@@ -37,7 +37,6 @@
 #include "AuthenticationChallenge.h"
 #include "Credential.h"
 #include "CachedFrame.h"
-#include "CString.h"
 #include "DocumentLoader.h"
 #include "FormState.h"
 #include "Frame.h"

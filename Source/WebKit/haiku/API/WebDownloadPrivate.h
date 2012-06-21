@@ -28,14 +28,14 @@
 #ifndef WebDownload_h
 #define WebDownload_h
 
-#include "Noncopyable.h"
-#include "RefPtr.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleClient.h"
 #include <File.h>
 #include <Messenger.h>
 #include <Path.h>
 #include <String.h>
+#include <wtf/Noncopyable.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 class ResourceError;

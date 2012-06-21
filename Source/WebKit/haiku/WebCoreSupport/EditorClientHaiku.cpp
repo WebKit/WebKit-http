@@ -33,7 +33,6 @@
 #include "config.h"
 #include "EditorClientHaiku.h"
 
-#include "CString.h"
 #include "Document.h"
 #include "EditCommand.h"
 #include "Editor.h"

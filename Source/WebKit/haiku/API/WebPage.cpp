@@ -30,7 +30,7 @@
 #include "config.h"
 #include "WebPage.h"
 
-#include "AtomicString.h"
+
 #include "ChromeClientHaiku.h"
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
@@ -83,6 +83,7 @@
 #include <Region.h>
 #include <Window.h>
 
+#include <wtf/text/AtomicString.h>
 #include <wtf/Assertions.h>
 #include <wtf/Threading.h>
 
