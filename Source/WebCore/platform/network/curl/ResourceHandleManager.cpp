@@ -322,6 +322,27 @@ size_t readCallback(void* ptr, size_t size, size_t nmemb, void* data)
     return sent;
 }
 
+/* Used by cURL to rewind the data stream in uploads with certain authentication methods.
+   It may also be used for continued uploads to skip the already uploaded parts, but this
+   should currently not be used.
+*/
+int seekCallback(void* data, curl_off_t offset, int origin)
+{
+    ResourceHandle* job = static_cast<ResourceHandle*>(data);
+    ResourceHandleInternal* d = job->getInternal();
+
+    if (d->m_cancelled)
+        return 1;
+
+    int result = d->m_formDataStream.seek(offset, origin);
+
+    // Something went wrong so cancel the job.
+    if (result == 1)
+        job->cancel();
+
+    return result;
+}
+
 void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* timer)
 {
     startScheduledJobs();
@@ -533,6 +554,9 @@ void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** h
 
     curl_easy_setopt(d->m_handle, CURLOPT_READFUNCTION, readCallback);
     curl_easy_setopt(d->m_handle, CURLOPT_READDATA, job);
+    curl_easy_setopt(d->m_handle, CURLOPT_SEEKFUNCTION, seekCallback);
+    curl_easy_setopt(d->m_handle, CURLOPT_SEEKDATA, job);
+
 }
 
 void ResourceHandleManager::add(ResourceHandle* job)
