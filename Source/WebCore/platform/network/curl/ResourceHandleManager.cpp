@@ -55,6 +55,11 @@
 #include <sys/param.h>
 #define MAX_PATH MAXPATHLEN
 #endif
+#if PLATFORM(HAIKU)
+#include <Entry.h>
+#include <FindDirectory.h>
+#include <Path.h>
+#endif
 
 namespace WebCore {
 
@@ -75,6 +80,14 @@ static CString certificatePath()
             CFURLGetFileSystemRepresentation(certURLRef.get(), false, reinterpret_cast<UInt8*>(path), MAX_PATH);
             return path;
         }
+    }
+#elif PLATFORM(HAIKU)
+    BPath path;
+    if (find_directory(B_COMMON_DIRECTORY, &path) == B_OK
+        && path.Append("ssl/certs/cacert.pem") == B_OK) {
+        BEntry entry(path.Path());
+        if (entry.Exists())
+            return path.Path();
     }
 #endif
     char* envPath = getenv("CURL_CA_BUNDLE_PATH");
@@ -700,8 +713,20 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     curl_easy_setopt(d->m_handle, CURLOPT_DNS_CACHE_TIMEOUT, 60 * 5); // 5 minutes
     // FIXME: Enable SSL verification when we have a way of shipping certs
     // and/or reporting SSL errors to the user.
+#if PLATFORM(HAIKU)
+    if (!certificatePath().length()) {
+       static bool warningPrinted = false;
+       if (!warningPrinted) {
+           fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/ssl/certs.\n");
+           warningPrinted = true;
+       }
+#else
     if (ignoreSSLErrors)
+#endif
         curl_easy_setopt(d->m_handle, CURLOPT_SSL_VERIFYPEER, false);
+#if PLATFORM(HAIKU)
+    }
+#endif
 
     if (!m_certificatePath.isNull())
        curl_easy_setopt(d->m_handle, CURLOPT_CAINFO, m_certificatePath.data());
