@@ -42,6 +42,8 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PlatformString.h"
+#include "PopupMenuHaiku.h"
+#include "SearchPopupMenuHaiku.h"
 #include "WebFrame.h"
 #include "WebView.h"
 #include "WebWindow.h"
@@ -501,16 +503,14 @@ bool ChromeClientHaiku::hasOpenedPopup() const
     return false;
 }
 
-PassRefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient*) const
+PassRefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient* client) const
 {
-    notImplemented();
-    return 0;
+    return adoptRef(new PopupMenuHaiku(client));
 }
 
-PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient*) const
+PassRefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient* client) const
 {
-    notImplemented();
-    return 0;
+    return adoptRef(new SearchPopupMenuHaiku(client));
 }
 
 } // namespace WebCore

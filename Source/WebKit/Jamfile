@@ -47,6 +47,7 @@ SubDirHdrs $(TOP) Source WebCore platform ;
 SubDirHdrs $(TOP) Source WebCore platform animation ;
 SubDirHdrs $(TOP) Source WebCore platform graphics ;
 SubDirHdrs $(TOP) Source WebCore platform graphics transforms ;
+SubDirHdrs $(TOP) Source WebCore platform haiku ;
 SubDirHdrs $(TOP) Source WebCore platform network ;
 SubDirHdrs $(TOP) Source WebCore platform network curl ;
 SubDirHdrs $(TOP) Source WebCore platform sql ;
