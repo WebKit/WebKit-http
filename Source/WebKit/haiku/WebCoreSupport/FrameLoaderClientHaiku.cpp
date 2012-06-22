@@ -77,7 +77,7 @@
 #include <String.h>
 #include <debugger.h>
 
-#define TRACE_FRAME_LOADER_CLIENT
+//#define TRACE_FRAME_LOADER_CLIENT
 #ifdef TRACE_FRAME_LOADER_CLIENT
 #   define CLASS_NAME "FLC"
 #   include "FunctionTracer.h"
