@@ -556,7 +556,6 @@ void ResourceHandleManager::setupPOST(ResourceHandle* job, struct curl_slist** h
     curl_easy_setopt(d->m_handle, CURLOPT_READDATA, job);
     curl_easy_setopt(d->m_handle, CURLOPT_SEEKFUNCTION, seekCallback);
     curl_easy_setopt(d->m_handle, CURLOPT_SEEKDATA, job);
-
 }
 
 void ResourceHandleManager::add(ResourceHandle* job)
