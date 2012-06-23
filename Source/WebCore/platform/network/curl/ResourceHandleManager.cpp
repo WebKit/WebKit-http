@@ -87,8 +87,8 @@ static CString certificatePath()
     }
 #elif PLATFORM(HAIKU)
     BPath path;
-    if (find_directory(B_COMMON_DIRECTORY, &path) == B_OK
-        && path.Append("ssl/certs/cacert.pem") == B_OK) {
+    if (find_directory(B_COMMON_DATA_DIRECTORY, &path) == B_OK
+        && path.Append("ssl/cert.pem") == B_OK) {
         BEntry entry(path.Path());
         if (entry.Exists())
             return path.Path();
@@ -793,7 +793,7 @@ void ResourceHandleManager::initializeHandle(ResourceHandle* job)
     if (!certificatePath().length()) {
         static bool warningPrinted = false;
         if (!warningPrinted) {
-            fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/ssl/certs.\n");
+            fprintf(stderr, "Disabling support for SSL certificates, no CA bundle in /boot/common/data/ssl.\n");
             warningPrinted = true;
         }
 #else
