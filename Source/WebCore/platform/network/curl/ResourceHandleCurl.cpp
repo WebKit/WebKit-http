@@ -203,7 +203,7 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
         client()->didReceiveAuthenticationChallenge(this, challenge);
 }
 
-void ResourceHandle::receivedCredential(const AuthenticationChallenge&, const Credential& credential)
+void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
 {
     ASSERT(!challenge.isNull());
     ResourceHandleInternal* internal = getInternal();
@@ -216,7 +216,7 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge&, const Cr
     clearAuthentication();
 }
 
-void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) 
+void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
 {
     ASSERT(!challenge.isNull());
     ResourceHandleInternal* internal = getInternal();
@@ -232,6 +232,10 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
 {
     getInternal()->m_authenticationCancelled = true;
+
+    // TODO:
+    //if (client())
+    //   client()->receivedCancellation(this, challenge);
 }
 
 } // namespace WebCore
