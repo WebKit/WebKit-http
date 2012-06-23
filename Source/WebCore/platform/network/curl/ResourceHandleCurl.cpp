@@ -192,14 +192,17 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext*, const Resourc
 }
 
 //stubs needed for windows version
-void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge&) 
+void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
 {
-    notImplemented();
+    if (client())
+        client()->didReceiveAuthenticationChallenge(this, challenge);
 }
 
-void ResourceHandle::receivedCredential(const AuthenticationChallenge&, const Credential&) 
+void ResourceHandle::receivedCredential(const AuthenticationChallenge&, const Credential& credential)
 {
-    notImplemented();
+    ResourceHandleInternal* internal = getInternal();
+    internal->m_user = credential.user();
+    internal->m_pass = credential.password();
 }
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) 
