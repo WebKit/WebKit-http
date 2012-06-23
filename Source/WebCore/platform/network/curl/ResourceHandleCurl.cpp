@@ -207,12 +207,14 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge&, const Cr
 
 void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&) 
 {
-    notImplemented();
+    ResourceHandleInternal* internal = getInternal();
+    internal->m_user = "";
+    internal->m_pass = "";
 }
 
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
 {
-    notImplemented();
+    getInternal()->m_authenticationCancelled = true;
 }
 
 } // namespace WebCore

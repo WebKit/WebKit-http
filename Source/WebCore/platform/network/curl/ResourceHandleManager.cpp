@@ -7,6 +7,7 @@
  * Copyright (C) 2008 Nuanti Ltd.
  * Copyright (C) 2009 Appcelerator Inc.
  * Copyright (C) 2009 Brent Fulgham <bfulgham@webkit.org>
+ * Copyright (C) 2010 Michael Lotz <mmlr@mlotz.ch>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -171,7 +172,7 @@ ResourceHandleManager* ResourceHandleManager::sharedInstance()
     return sharedInstance;
 }
 
-static void handleLocalReceiveResponse (CURL* handle, ResourceHandle* job, ResourceHandleInternal* d)
+static void handleLocalReceiveResponse(CURL* handle, ResourceHandle* job, ResourceHandleInternal* d)
 {
     // since the code in headerCallback will not have run for local files
     // the code to set the URL and fire didReceiveResponse is never run,
@@ -187,6 +188,58 @@ static void handleLocalReceiveResponse (CURL* handle, ResourceHandle* job, Resou
      d->m_response.setResponseFired(true);
 }
 
+static void handleHTTPAuthentication(ResourceHandle* job)
+{
+    ResourceHandleInternal* d = job->getInternal();
+    unsigned failureCount = 0;
+
+    const KURL& url = job->request().url();
+    ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
+    if (url.protocolIs("https"))
+        serverType = ProtectionSpaceServerHTTPS;
+
+    String challenge = d->m_response.httpHeaderField("WWW-Authenticate");
+    ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
+    if (challenge.startsWith("Digest", false))
+        scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
+    else if (challenge.startsWith("Basic", false))
+        scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
+
+    String realm;
+    int realmStart = challenge.find("realm=\"", 0, false);
+    if (realmStart > 0) {
+        int realmEnd = challenge.find("\"", realmStart + 7);
+        if (realmEnd >= 0)
+            realm = challenge.substring(realmStart, realmEnd - realmStart);
+    }
+
+    ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
+    ResourceError resourceError(url.host(), 401, url.string(), String());
+
+    while (d->m_response.httpStatusCode() == 401 && !d->m_authenticationCancelled) {
+        Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
+
+        AuthenticationChallenge authenticationChallenge(protectionSpace,
+            proposedCredential, failureCount++, d->m_response, resourceError);
+        authenticationChallenge.m_authenticationClient = job;
+        job->didReceiveAuthenticationChallenge(authenticationChallenge);
+            // will set m_user and m_pass in ResourceHandleInternal
+
+        if (!d->m_authenticationCancelled) {
+            String userpass = d->m_user + ":" + d->m_pass;
+            curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, userpass.utf8().data());
+        } else {
+            // if cancelled we still send out the request again which will
+            // load and show the unauthorized message as sent by the server
+            curl_easy_setopt(d->m_handle, CURLOPT_USERPWD, 0);
+        }
+
+        curl_easy_perform(d->m_handle);
+    }
+
+    if (d->client())
+        d->client()->didFinishLoading(job);
+}
 
 // called with data after all headers have been processed via headerCallback
 static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
@@ -209,7 +262,8 @@ static size_t writeCallback(void* ptr, size_t size, size_t nmemb, void* data)
     CURL* h = d->m_handle;
     long httpCode = 0;
     CURLcode err = curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &httpCode);
-    if (CURLE_OK == err && ((httpCode >= 300 && httpCode < 400) || httpCode == 401))
+    if (CURLE_OK == err && ((httpCode >= 300 && httpCode < 400)
+            || (httpCode == 401 && !d->m_authenticationCancelled)))
         return totalSize;
 
     if (!d->m_response.responseFired()) {
@@ -293,7 +347,7 @@ static size_t headerCallback(char* ptr, size_t size, size_t nmemb, void* data)
             }
         }
 
-        if (httpCode == 401) {
+        if (httpCode == 401 && !d->m_authenticationCancelled) {
             // HTTP auth is handled by creating an AuthenticationChallenge
             // and then retrying the request with the supplied credentials
             // in the downloadTimerCallback
@@ -432,48 +486,15 @@ void ResourceHandleManager::downloadTimerCallback(Timer<ResourceHandleManager>* 
             continue;
 
         if (CURLE_OK == msg->data.result) {
-            long httpCode = 0;
-            err = curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpCode);
-            if (httpCode == 401) {
-                // HTTP auth
-                KURL newURL = KURL(job->request().url());
-                ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
-                if (newURL.protocolIs("https"))
-                    serverType = ProtectionSpaceServerHTTPS;
-
-                String challenge =  d->m_response.httpHeaderField("WWW-Authenticate");
-                ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
-                if (challenge.startsWith("Digest", false))
-                    scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
-                else if (challenge.startsWith("Basic", false))
-                    scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-
-                String realm;
-                int realmStart = challenge.find("realm=\"", 0, false);
-                if (realmStart > 0) {
-                    int realmEnd = challenge.find("\"", realmStart + 7);
-                    if (realmEnd >= 0)
-                        realm = challenge.substring(realmStart, realmEnd - realmStart);
-                }
-    
-                ProtectionSpace protectionSpace(newURL.host(), newURL.port(),
-                    serverType, realm, scheme);
-
-                Credential proposedCredential;
-
-                ResourceError resourceError(newURL.host(), httpCode, newURL.string(), String());
-
-                AuthenticationChallenge authenticationChallenge(protectionSpace, proposedCredential, 0, d->m_response, resourceError);
-                authenticationChallenge.m_authenticationClient = job;
-                job->didReceiveAuthenticationChallenge(authenticationChallenge);
-                    // will sent m_user and m_pass in ResourceHandleInternal
-
+            if (d->m_response.httpStatusCode() == 401) {
                 m_runningJobs--;
                 curl_multi_remove_handle(m_curlMultiHandle, handle);
 
-                String userpass = d->m_user + ":" + d->m_pass;
-                curl_easy_setopt(handle, CURLOPT_USERPWD, userpass.utf8().data());
-                curl_easy_perform(handle);
+                handleHTTPAuthentication(job);
+                curl_easy_cleanup(handle);
+                d->m_handle = 0;
+                job->deref();
+                continue;
             }
 
             if (!d->m_response.responseFired()) {
