@@ -193,7 +193,7 @@ static void handleHTTPAuthentication(ResourceHandle* job)
     ResourceHandleInternal* d = job->getInternal();
     unsigned failureCount = 0;
 
-    const KURL& url = job->request().url();
+    const KURL& url = job->firstRequest().url();
     ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
     if (url.protocolIs("https"))
         serverType = ProtectionSpaceServerHTTPS;
@@ -239,7 +239,7 @@ static void handleHTTPAuthentication(ResourceHandle* job)
     }
 
     if (d->client())
-        d->client()->didFinishLoading(job);
+        d->client()->didFinishLoading(job, 0);
 }
 
 // called with data after all headers have been processed via headerCallback
