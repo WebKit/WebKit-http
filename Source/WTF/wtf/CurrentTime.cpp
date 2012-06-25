@@ -72,6 +72,10 @@ extern "C" time_t mktime(struct tm *t);
 #include <QElapsedTimer>
 #endif
 
+#if PLATFORM(HAIKU)
+#include <OS.h>
+#endif
+
 namespace WTF {
 
 const double msPerSecond = 1000.0;
@@ -281,6 +285,13 @@ double currentTime()
 double currentTime()
 {
     return ecore_time_unix_get();
+}
+
+#elif PLATFORM(HAIKU)
+
+double currentTime()
+{
+    return (double)real_time_clock_usecs() / 1000000.0;
 }
 
 #else

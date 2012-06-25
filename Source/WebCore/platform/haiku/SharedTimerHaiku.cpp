@@ -187,14 +187,10 @@ SharedTimerHaiku* SharedTimerHaiku::instance()
     return timer;
 }
 
-void SharedTimerHaiku::start(double fireTime)
+void SharedTimerHaiku::start(double interval)
 {
     m_shouldRun = true;
-
-    double intervalInSeconds = fireTime - currentTime();
-    bigtime_t intervalInMicroSeconds = intervalInSeconds < 0 ? 0 : intervalInSeconds * 1000000;
-
-	m_timerThread->setNextEventTime(system_time() + intervalInMicroSeconds);
+    m_timerThread->setNextEventTime(system_time() + (bigtime_t)(interval * 1000000));
 }
 
 void SharedTimerHaiku::stop()
@@ -216,9 +212,9 @@ void setSharedTimerFiredFunction(void (*f)())
     SharedTimerHaiku::instance()->m_timerFunction = f;
 }
 
-void setSharedTimerFireInterval(double fireTime)
+void setSharedTimerFireInterval(double interval)
 {
-    SharedTimerHaiku::instance()->start(fireTime);
+    SharedTimerHaiku::instance()->start(interval);
 }
 
 void stopSharedTimer()
