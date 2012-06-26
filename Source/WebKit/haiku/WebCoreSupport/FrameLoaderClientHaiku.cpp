@@ -729,21 +729,6 @@ bool FrameLoaderClientHaiku::shouldStopLoadingForHistoryItem(WebCore::HistoryIte
     return true;
 }
 
-void FrameLoaderClientHaiku::dispatchDidAddBackForwardItem(WebCore::HistoryItem*) const
-{
-    triggerNavigationHistoryUpdate();
-}
-
-void FrameLoaderClientHaiku::dispatchDidRemoveBackForwardItem(WebCore::HistoryItem*) const
-{
-    triggerNavigationHistoryUpdate();
-}
-
-void FrameLoaderClientHaiku::dispatchDidChangeBackForwardIndex() const
-{
-    triggerNavigationHistoryUpdate();
-}
-
 void FrameLoaderClientHaiku::saveScrollPositionAndViewStateToItem(WebCore::HistoryItem*)
 {
     // NOTE: I think we don't have anything to do here, since it a) obviously works already
