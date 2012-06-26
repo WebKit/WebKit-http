@@ -52,8 +52,6 @@ namespace WebCore {
 
         virtual FloatRect pageRect();
 
-        virtual float scaleFactor();
-
         virtual void focus();
         virtual void unfocus();
 
@@ -116,7 +114,7 @@ namespace WebCore {
 
         virtual PlatformPageClient platformPageClient() const;
         virtual void contentsSizeChanged(Frame*, const IntSize&) const;
-        virtual void scrollRectIntoView(const IntRect&, const ScrollView*) const;
+        virtual void scrollRectIntoView(const IntRect&) const;
 
         virtual void addToDirtyRegion(const IntRect&);
         virtual void scrollBackingStore(int, int, const IntRect&, const IntRect&);

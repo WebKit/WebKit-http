@@ -88,12 +88,6 @@ FloatRect ChromeClientHaiku::pageRect()
 	return FloatRect(0, 0, size.width(), size.height());
 }
 
-float ChromeClientHaiku::scaleFactor()
-{
-    notImplemented();
-    return 1;
-}
-
 void ChromeClientHaiku::focus()
 {
     if (m_webView->LockLooper()) {
@@ -381,7 +375,7 @@ void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize&) const
 {
 }
 
-void ChromeClientHaiku::scrollRectIntoView(const IntRect&, const ScrollView*) const
+void ChromeClientHaiku::scrollRectIntoView(const IntRect&) const
 {
     // NOTE: Used for example to make the view scroll with the mouse when selecting.
 }
