@@ -26,14 +26,14 @@ rule SetUpSubDirBuildSettings {
 
 	CCFLAGS += -Wall -Wextra -Wno-unused-parameter -fno-strict-aliasing ;
 	C++FLAGS += -Wall -Wextra -Wno-unused-parameter -fno-strict-aliasing ;
-	if ($(NDEBUG)) {
+	if $(NDEBUG) {
 		OPTIM ?= -O2 -DNDEBUG=1 ;
 	} else {
 		OPTIM ?= ;
-		CCFLAGS += -g ;
-		C++FLAGS += -g ;
-#		CCFLAGS += ;
-#		C++FLAGS += ;
+		if ! $(NOSYMBOLS) {
+			CCFLAGS += -g ;
+			C++FLAGS += -g ;
+		}
 	}
 
 	# setup objects location
