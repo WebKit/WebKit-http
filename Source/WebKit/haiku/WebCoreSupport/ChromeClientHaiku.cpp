@@ -296,7 +296,6 @@ bool ChromeClientHaiku::shouldInterruptJavaScript()
 
 KeyboardUIMode ChromeClientHaiku::keyboardUIMode()
 {
-    notImplemented();
     return KeyboardAccessDefault;
 }
 

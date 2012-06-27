@@ -34,6 +34,7 @@
 
 #include "EditorClient.h"
 #include "Page.h"
+#include "TextCheckerClient.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
@@ -44,7 +45,7 @@ class BWebPage;
 namespace WebCore {
 class PlatformKeyboardEvent;
 
-class EditorClientHaiku : public EditorClient {
+class EditorClientHaiku : public EditorClient, public TextCheckerClient {
 public:
     EditorClientHaiku(BWebPage* page);
     virtual void pageDestroyed();
@@ -58,8 +59,6 @@ public:
     virtual bool isGrammarCheckingEnabled();
     virtual void toggleGrammarChecking();
     virtual int spellCheckerDocumentTag();
-
-    virtual bool isEditable();
 
     virtual bool shouldBeginEditing(Range*);
     virtual bool shouldEndEditing(Range*);
@@ -100,7 +99,18 @@ public:
     virtual void textWillBeDeletedInTextField(Element*);
     virtual void textDidChangeInTextArea(Element*);
 
-    virtual TextCheckerClient* textChecker() { return 0; }
+    virtual TextCheckerClient* textChecker() { return this; }
+
+    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
+    virtual void updateSpellingUIWithMisspelledWord(const String&);
+    virtual void showSpellingUI(bool show);
+    virtual bool spellingUIIsShowing();
+    virtual void willSetInputMethodState();
+    virtual void setInputMethodState(bool enabled);
+
+    bool isEditing() const;
+
+    // TextCheckerClient
 
     virtual void ignoreWordInSpellDocument(const String&);
     virtual void learnWord(const String&);
@@ -109,15 +119,9 @@ public:
     virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord);
     virtual void checkGrammarOfString(const UChar*, int length, Vector<GrammarDetail>&,
                                       int* badGrammarLocation, int* badGrammarLength);
-    virtual void updateSpellingUIWithGrammarString(const String&, const GrammarDetail&);
-    virtual void updateSpellingUIWithMisspelledWord(const String&);
-    virtual void showSpellingUI(bool show);
-    virtual bool spellingUIIsShowing();
-    virtual void willSetInputMethodState();
-    virtual void getGuessesForWord(const String&, Vector<String>& guesses);
-    virtual void setInputMethodState(bool enabled);
 
-    bool isEditing() const;
+    virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
+    virtual void requestCheckingOfString(SpellChecker*, const TextCheckingRequest&);
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,

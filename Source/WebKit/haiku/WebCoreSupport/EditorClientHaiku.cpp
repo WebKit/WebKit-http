@@ -114,13 +114,6 @@ int EditorClientHaiku::spellCheckerDocumentTag()
     return 0;
 }
 
-bool EditorClientHaiku::isEditable()
-{
-	if (m_page->MainFrame())
-        return m_page->MainFrame()->IsEditable();
-    return false;
-}
-
 bool EditorClientHaiku::shouldBeginEditing(WebCore::Range*)
 {
     notImplemented();
@@ -596,7 +589,12 @@ void EditorClientHaiku::willSetInputMethodState()
     notImplemented();
 }
 
-void EditorClientHaiku::getGuessesForWord(const String&, Vector<String>&)
+void EditorClientHaiku::getGuessesForWord(const String&, const String&, Vector<String>&)
+{
+    notImplemented();
+}
+
+void EditorClientHaiku::requestCheckingOfString(SpellChecker*, const TextCheckingRequest&)
 {
     notImplemented();
 }
@@ -621,7 +619,7 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
         return false;
 
     Node* start = frame->selection()->start().anchorNode();
-    if (!start || !start->isContentEditable())
+    if (!start || !start->rendererIsEditable())
         return false;
 
     switch (platformEvent->windowsVirtualKeyCode()) {
