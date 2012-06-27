@@ -98,7 +98,7 @@ void Pasteboard::writeSelection(Range* selectedRange, bool canSmartCopyOrDelete,
 
     data->AddData("text/plain", B_MIME_TYPE, string.String(), string.Length());
 
-    BString markupString(createMarkup(selectedRange, 0, AnnotateForInterchange));
+    BString markupString(createMarkup(selectedRange, 0, AnnotateForInterchange, false, ResolveNonLocalURLs));
     data->AddData("text/html", B_MIME_TYPE, markupString.String(), markupString.Length());
 
     be_clipboard->Commit();
