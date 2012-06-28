@@ -152,5 +152,19 @@ PlatformMenuDescription ContextMenu::releasePlatformDescription()
     return description;
 }
 
+Vector<ContextMenuItem> contextMenuItemVector(BMenu* items)
+{
+    // FIXME: Implement
+    notImplemented();
+    return Vector<ContextMenuItem>();
+}
+
+PlatformMenuDescription platformMenuDescription(Vector<ContextMenuItem>& menuItemVector)
+{
+    // FIXME: Implement
+    notImplemented();
+    return 0;
+}
+
 } // namespace WebCore
 

@@ -683,10 +683,7 @@
 #define ENABLE_YARR 1
 #define ENABLE_YARR_JIT 1
 #define ENABLE_SVG 1
-#define ENABLE_SVG_ANIMATION 1
-#define ENABLE_SVG_FONTS 1
-#define ENABLE_SVG_FOREIGN_OBJECT 1
-#define ENABLE_SVG_USE 1*/
+#define ENABLE_SVG_FONTS 1*/
 #endif
 
 #if !defined(HAVE_ACCESSIBILITY)

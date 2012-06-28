@@ -62,6 +62,11 @@ void EditorClientHaiku::pageDestroyed()
     delete this;
 }
 
+void EditorClientHaiku::frameWillDetachPage(Frame*)
+{
+    notImplemented();
+}
+
 bool EditorClientHaiku::shouldDeleteRange(Range*)
 {
     notImplemented();
@@ -537,7 +542,8 @@ void EditorClientHaiku::textDidChangeInTextArea(Element*)
     notImplemented();
 }
 
-bool EditorClientHaiku::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const {
+bool EditorClientHaiku::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const
+{
     return true;
 }
 
@@ -567,6 +573,16 @@ void EditorClientHaiku::checkGrammarOfString(const UChar*, int, Vector<GrammarDe
     notImplemented();
 }
 
+void EditorClientHaiku::getGuessesForWord(const String&, const String&, Vector<String>&)
+{
+    notImplemented();
+}
+
+void EditorClientHaiku::requestCheckingOfString(PassRefPtr<TextCheckingRequest>)
+{
+    notImplemented();
+}
+
 void EditorClientHaiku::updateSpellingUIWithGrammarString(const String&, const GrammarDetail&)
 {
     notImplemented();
@@ -588,17 +604,11 @@ bool EditorClientHaiku::spellingUIIsShowing()
     return false;
 }
 
-void EditorClientHaiku::willSetInputMethodState()
-{
-    notImplemented();
-}
-
-void EditorClientHaiku::getGuessesForWord(const String&, const String&, Vector<String>&)
-{
-    notImplemented();
-}
-
+<<<<<<< HEAD
 void EditorClientHaiku::requestCheckingOfString(SpellChecker*)
+=======
+void EditorClientHaiku::willSetInputMethodState()
+>>>>>>> 26c3ee7... Fix build, evrything seems to work again
 {
     notImplemented();
 }

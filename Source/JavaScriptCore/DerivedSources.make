@@ -59,6 +59,7 @@ all : \
     StringConstructor.lut.h \
     StringPrototype.lut.h \
     docs/bytecode.html \
+    udis86_itab.h \
 #
 
 # lookup tables for classes

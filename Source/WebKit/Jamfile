@@ -14,6 +14,7 @@ SubDirSysHdrs $(TOP) Source JavaScriptCore ;
 SubDirHdrs $(TOP) Source JavaScriptCore API ;
 SubDirHdrs $(TOP) Source JavaScriptCore assembler ;
 SubDirHdrs $(TOP) Source JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) Source JavaScriptCore disassembler ;
 SubDirHdrs $(TOP) Source JavaScriptCore heap ;
 SubDirHdrs $(TOP) Source JavaScriptCore interpreter ;
 SubDirHdrs $(TOP) Source JavaScriptCore jit ;

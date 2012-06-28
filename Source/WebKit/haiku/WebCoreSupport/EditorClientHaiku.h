@@ -49,6 +49,7 @@ class EditorClientHaiku : public EditorClient, public TextCheckerClient {
 public:
     EditorClientHaiku(BWebPage* page);
     virtual void pageDestroyed();
+    virtual void frameWillDetachPage(Frame*);
 
     virtual bool shouldDeleteRange(Range*);
     virtual bool shouldShowDeleteInterface(HTMLElement*);
@@ -122,7 +123,7 @@ public:
                                       int* badGrammarLocation, int* badGrammarLength);
 
     virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
-    virtual void requestCheckingOfString(SpellChecker*);
+    virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>);
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,

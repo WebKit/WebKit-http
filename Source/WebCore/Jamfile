@@ -15,13 +15,11 @@ SubDirSysHdrs $(TOP) Source ;
 SubDirSysHdrs $(TOP) Source JavaScriptCore ;
 SubDirSysHdrs $(TOP) Source JavaScriptCore ForwardingHeaders ;
 SubDirSysHdrs $(TOP) Source WebCore ;
-#SubDirSysHdrs $(TOP) Source WebCore dom ; # for WebCore/dom/WebKitNamedFlow.h
 SubDirSysHdrs $(TOP) Source WebCore platform text ;
 SubDirSysHdrs $(TOP) Source WTF ;
 
 SubDirHdrs $(TOP) Source WebCore accessibility ;
 SubDirHdrs $(TOP) Source WebCore bindings ;
-#SubDirHdrs $(TOP) Source WebCore bindings cpp ;
 SubDirHdrs $(TOP) Source WebCore bindings generic ;
 SubDirHdrs $(TOP) Source WebCore bindings js ;
 SubDirHdrs $(TOP) Source WebCore bridge ;
@@ -46,7 +44,9 @@ SubDirHdrs $(TOP) Source WebCore loader icon ;
 SubDirHdrs $(TOP) Source WebCore notifications ;
 SubDirHdrs $(TOP) Source WebCore Modules filesystem ;
 SubDirHdrs $(TOP) Source WebCore Modules geolocation ;
+#SubDirHdrs $(TOP) Source WebCore Modules intents ;
 SubDirHdrs $(TOP) Source WebCore Modules indexeddb ;
+SubDirHdrs $(TOP) Source WebCore Modules quota ;
 SubDirHdrs $(TOP) Source WebCore Modules webdatabase ;
 SubDirHdrs $(TOP) Source WebCore Modules websockets ;
 SubDirHdrs $(TOP) Source WebCore page ;
@@ -76,7 +76,9 @@ SubDirHdrs $(TOP) Source WebCore rendering style ;
 SubDirHdrs $(TOP) Source WebCore rendering svg ;
 SubDirHdrs $(TOP) Source WebCore storage ;
 SubDirHdrs $(TOP) Source WebCore svg ;
+SubDirHdrs $(TOP) Source WebCore svg animation ;
 SubDirHdrs $(TOP) Source WebCore svg graphics ;
+SubDirHdrs $(TOP) Source WebCore svg properties ;
 SubDirHdrs $(TOP) Source WebCore workers ;
 SubDirHdrs $(TOP) Source WebCore xml ;
 SubDirHdrs $(TOP) Source WebCore xml parser ;
@@ -88,6 +90,7 @@ SubDirHdrs $(TOP) Source WTF wtf text ; # for WebCore/platform/haiku/ClipboardHa
 SubDirHdrs $(TOP) Source JavaScriptCore API ;
 SubDirHdrs $(TOP) Source JavaScriptCore assembler ;
 SubDirHdrs $(TOP) Source JavaScriptCore bytecode ;
+SubDirHdrs $(TOP) Source JavaScriptCore disassembler ;
 SubDirHdrs $(TOP) Source JavaScriptCore heap ;
 SubDirHdrs $(TOP) Source JavaScriptCore interpreter ;
 SubDirHdrs $(TOP) Source JavaScriptCore jit ;
@@ -197,6 +200,7 @@ StaticLibrary webcore1 :
     bindings/js/JSDOMPluginArrayCustom.cpp
     bindings/js/JSDOMPluginCustom.cpp
     bindings/js/JSDOMStringMapCustom.cpp
+    bindings/js/JSDOMStringListCustom.cpp
     bindings/js/JSDOMTokenListCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
@@ -219,7 +223,7 @@ StaticLibrary webcore1 :
     bindings/js/JSErrorHandler.cpp
     bindings/js/JSEventCustom.cpp
     bindings/js/JSEventListener.cpp
-    bindings/js/JSEventTarget.cpp
+    bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSFloat32ArrayCustom.cpp
@@ -254,6 +258,7 @@ StaticLibrary webcore1 :
     bindings/js/JSInt16ArrayCustom.cpp
     bindings/js/JSInt32ArrayCustom.cpp
     bindings/js/JSInt8ArrayCustom.cpp
+    #bindings/js/JSIntentConstructor.cpp
     bindings/js/JSJavaScriptAudioNodeCustom.cpp
     bindings/js/JSJavaScriptCallFrameCustom.cpp
     bindings/js/JSLazyEventListener.cpp
@@ -345,26 +350,12 @@ StaticLibrary webcore1 :
     bridge/c/c_instance.cpp
     bridge/c/c_runtime.cpp
     bridge/c/c_utility.cpp
-    #bridge/jni/JNIUtility.cpp
-    #bridge/jni/JobjectWrapper.cpp
-    #bridge/jni/jsc/JNIUtilityPrivate.cpp
-    #bridge/jni/jsc/JavaArrayJSC.cpp
-    #bridge/jni/jsc/JavaClassJSC.cpp
-    #bridge/jni/jsc/JavaFieldJSC.cpp
-    #bridge/jni/jsc/JavaInstanceJSC.cpp
-    #bridge/jni/jsc/JavaMethodJSC.cpp
-    #bridge/jni/jsc/JavaRuntimeObject.cpp
     bridge/jsc/BridgeJSC.cpp
-    #bridge/qt/qt_class.cpp
-    #bridge/qt/qt_instance.cpp
-    #bridge/qt/qt_pixmapruntime.cpp
-    #bridge/qt/qt_runtime.cpp
     bridge/runtime_array.cpp
     bridge/runtime_method.cpp
     bridge/runtime_object.cpp
     bridge/runtime_root.cpp
     ##bridge/testbindings.cpp
-    ##bridge/testqtbindings.cpp
 
     css/CSSAspectRatioValue.cpp
     css/CSSBorderImage.cpp
@@ -403,7 +394,6 @@ StaticLibrary webcore1 :
     css/CSSSegmentedFontFace.cpp
     css/CSSSelector.cpp
     css/CSSSelectorList.cpp
-    css/CSSStyleDeclaration.cpp
     css/CSSStyleRule.cpp
     css/CSSStyleSheet.cpp
     css/CSSTimingFunctionValue.cpp
@@ -436,7 +426,9 @@ StaticLibrary webcore1 :
     css/StylePropertyShorthand.cpp
     css/StyleResolver.cpp
     css/StyleRule.cpp
+    css/StyleRuleImport.cpp
     css/StyleSheet.cpp
+    css/StyleSheetContents.cpp
     css/StyleSheetList.cpp
     css/WebKitCSSFilterValue.cpp
     css/WebKitCSSKeyframeRule.cpp
@@ -711,7 +703,6 @@ StaticLibrary webcore2 :
     DerivedSources/WebCore/JSOESStandardDerivatives.cpp
     DerivedSources/WebCore/JSOESTextureFloat.cpp
     DerivedSources/WebCore/JSOESVertexArrayObject.cpp
-    DerivedSources/WebCore/JSOperationNotAllowedException.cpp
     DerivedSources/WebCore/JSOverflowEvent.cpp
     DerivedSources/WebCore/JSPageTransitionEvent.cpp
     DerivedSources/WebCore/JSPerformance.cpp
@@ -729,6 +720,7 @@ StaticLibrary webcore3 :
     DerivedSources/WebCore/JSProcessingInstruction.cpp
     DerivedSources/WebCore/JSProgressEvent.cpp
     DerivedSources/WebCore/JSRGBColor.cpp
+    DerivedSources/WebCore/JSRadioNodeList.cpp
     DerivedSources/WebCore/JSRange.cpp
     DerivedSources/WebCore/JSRangeException.cpp
     DerivedSources/WebCore/JSRealtimeAnalyserNode.cpp
@@ -982,6 +974,7 @@ StaticLibrary webcore3 :
 #;
 
 #StaticLibrary webcore4 :
+
     dom/ActiveDOMObject.cpp
     dom/Attr.cpp
     dom/BeforeTextInsertedEvent.cpp
@@ -1002,9 +995,11 @@ StaticLibrary webcore3 :
     dom/ContainerNode.cpp
     dom/ContainerNodeAlgorithms.cpp
     dom/ContextDestructionObserver.cpp
+    dom/ContextFeatures.cpp
     dom/CustomEvent.cpp
     #dom/DOMAllInOne.cpp
     dom/DOMCoreException.cpp
+    dom/DOMError.cpp
     dom/DOMImplementation.cpp
     dom/DOMStringList.cpp
     dom/DOMStringMap.cpp
@@ -1014,8 +1009,8 @@ StaticLibrary webcore3 :
     dom/DeviceMotionController.cpp
     dom/DeviceMotionData.cpp
     dom/DeviceMotionEvent.cpp
-    dom/DeviceOrientation.cpp
     dom/DeviceOrientationController.cpp
+    dom/DeviceOrientationData.cpp
     dom/DeviceOrientationEvent.cpp
     dom/Document.cpp
     dom/DocumentEventQueue.cpp
@@ -1029,6 +1024,7 @@ StaticLibrary webcore3 :
     dom/EditingText.cpp
     dom/Element.cpp
     dom/ElementAttributeData.cpp
+    dom/ElementShadow.cpp
     dom/EntityReference.cpp
     dom/ErrorEvent.cpp
     dom/Event.cpp
@@ -1084,7 +1080,6 @@ StaticLibrary webcore3 :
     dom/SecurityContext.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
-    dom/ShadowTree.cpp
     dom/SpaceSplitString.cpp
     dom/StaticHashSetNodeList.cpp
     dom/StaticNodeList.cpp
@@ -1100,7 +1095,6 @@ StaticLibrary webcore3 :
     dom/TransformSourceLibxslt.cpp
     dom/Traversal.cpp
     dom/TreeScope.cpp
-    dom/TreeScopeAdjuster.cpp
     dom/TreeScopeAdopter.cpp
     dom/TreeWalker.cpp
     dom/UIEvent.cpp
@@ -1169,6 +1163,7 @@ StaticLibrary webcore3 :
     editing/TextInsertionBaseCommand.cpp
     editing/TextIterator.cpp
     editing/TypingCommand.cpp
+    editing/UndoManager.cpp
     editing/UnlinkCommand.cpp
     editing/VisiblePosition.cpp
     editing/VisibleSelection.cpp
@@ -1188,7 +1183,6 @@ StaticLibrary webcore3 :
     fileapi/FileReaderLoader.cpp
     fileapi/FileReaderSync.cpp
     fileapi/FileThread.cpp
-    fileapi/OperationNotAllowedException.cpp
     fileapi/ThreadableBlobRegistry.cpp
     fileapi/WebKitBlobBuilder.cpp
 
@@ -1219,6 +1213,7 @@ StaticLibrary webcore3 :
     html/FTPDirectoryDocument.cpp
     html/FileInputType.cpp
     html/FormAssociatedElement.cpp
+    html/FormController.cpp
     html/FormDataList.cpp
     html/HTMLAllCollection.cpp
     html/HTMLAnchorElement.cpp
@@ -1259,6 +1254,7 @@ StaticLibrary webcore3 :
     html/HTMLImageElement.cpp
     html/HTMLImageLoader.cpp
     html/HTMLInputElement.cpp
+    #html/HTMLIntentElement.cpp
     html/HTMLKeygenElement.cpp
     html/HTMLLIElement.cpp
     html/HTMLLabelElement.cpp
@@ -1326,6 +1322,7 @@ StaticLibrary webcore3 :
     html/PasswordInputType.cpp
     html/PluginDocument.cpp
     html/RadioInputType.cpp
+    html/RadioNodeList.cpp
     html/RangeInputType.cpp
     html/ResetInputType.cpp
     html/SearchInputType.cpp
@@ -1360,6 +1357,7 @@ StaticLibrary webcore3 :
     html/canvas/WebGLContextObject.cpp
     html/canvas/WebGLDebugRendererInfo.cpp
     html/canvas/WebGLDebugShaders.cpp
+    html/canvas/WebGLDepthTexture.cpp
     html/canvas/WebGLExtension.cpp
     html/canvas/WebGLFramebuffer.cpp
     html/canvas/WebGLGetInfo.cpp
@@ -1394,10 +1392,10 @@ StaticLibrary webcore3 :
     html/parser/TextViewSourceParser.cpp
     html/parser/XSSAuditor.cpp
     html/shadow/CalendarPickerElement.cpp
+    html/shadow/ContentDistributor.cpp
     html/shadow/ContentSelectorQuery.cpp
     html/shadow/DetailsMarkerControl.cpp
     html/shadow/HTMLContentElement.cpp
-    html/shadow/HTMLContentSelector.cpp
     html/shadow/HTMLShadowElement.cpp
     html/shadow/InsertionPoint.cpp
     html/shadow/MediaControls.cpp
@@ -1417,9 +1415,7 @@ StaticLibrary webcore3 :
     html/track/TrackEvent.cpp
     html/track/WebVTTParser.cpp
     html/track/WebVTTTokenizer.cpp
-#;
 
-#StaticLibrary webcore5 :
     inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtils.cpp
     inspector/DOMEditor.cpp
@@ -1427,8 +1423,11 @@ StaticLibrary webcore3 :
     inspector/DOMPatchSupport.cpp
     inspector/IdentifiersFactory.cpp
     inspector/InjectedScript.cpp
+    inspector/InjectedScriptBase.cpp
     inspector/InjectedScriptHost.cpp
     inspector/InjectedScriptManager.cpp
+    inspector/InjectedScriptModule.cpp
+    inspector/InjectedScriptWebGLModule.cpp
     inspector/InspectorAgent.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorBaseAgent.cpp
@@ -1460,6 +1459,7 @@ StaticLibrary webcore3 :
     inspector/InspectorStyleTextEditor.cpp
     inspector/InspectorTimelineAgent.cpp
     inspector/InspectorValues.cpp
+    inspector/InspectorWebGLAgent.cpp
     inspector/InspectorWorkerAgent.cpp
     inspector/InstrumentingAgents.cpp
     inspector/NetworkResourcesData.cpp
@@ -1498,6 +1498,8 @@ StaticLibrary webcore3 :
     loader/PlaceholderDocument.cpp
     loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
+    loader/Prerenderer.cpp
+    loader/PrerendererClient.cpp
     loader/ProgressTracker.cpp
     loader/ResourceLoadNotifier.cpp
     loader/ResourceLoadScheduler.cpp
@@ -1541,6 +1543,8 @@ StaticLibrary webcore3 :
     loader/icon/IconLoader.cpp
     loader/icon/IconRecord.cpp
     loader/icon/PageURLRecord.cpp
+
+    #Modules/filesystem/ ?
     
     Modules/webdatabase/AbstractDatabase.cpp
     Modules/webdatabase/ChangeVersionWrapper.cpp
@@ -1564,9 +1568,6 @@ StaticLibrary webcore3 :
     Modules/webdatabase/SQLTransactionCoordinator.cpp
     Modules/webdatabase/SQLTransactionSync.cpp
     Modules/webdatabase/WorkerContextWebDatabase.cpp
-    #Modules/webdatabase/chromium/DatabaseTrackerChromium.cpp
-    #Modules/webdatabase/chromium/QuotaTracker.cpp
-    #Modules/webdatabase/chromium/SQLTransactionClientChromium.cpp
 
     mathml/MathMLElement.cpp
     mathml/MathMLInlineContainerElement.cpp
@@ -1612,12 +1613,14 @@ StaticLibrary webcore3 :
     page/Page.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
+    page/PagePopupController.cpp
     page/PageSerializer.cpp
     page/PageVisibilityState.cpp
     page/Performance.cpp
     page/PerformanceEntry.cpp
     page/PerformanceEntryList.cpp
     page/PerformanceNavigation.cpp
+    page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
     page/PointerLock.cpp
     page/PointerLockController.cpp
@@ -1636,6 +1639,7 @@ StaticLibrary webcore3 :
     page/WebKitAnimation.cpp
     page/WebKitAnimationList.cpp
     page/WindowFeatures.cpp
+    page/WindowFocusAllowedIndicator.cpp
     page/WorkerNavigator.cpp
     page/animation/AnimationBase.cpp
     page/animation/AnimationController.cpp
@@ -1667,8 +1671,10 @@ StaticLibrary webcore3 :
     platform/CrossThreadCopier.cpp
     platform/Cursor.cpp
     platform/DateComponents.cpp
+    platform/Decimal.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
+    platform/EventTracer.cpp
     platform/FileChooser.cpp
     platform/FileIconLoader.cpp
     platform/FileStream.cpp
@@ -1681,11 +1687,12 @@ StaticLibrary webcore3 :
     platform/Language.cpp
 
     platform/haiku/Language.cpp
-
     platform/Length.cpp
+    platform/LengthBox.cpp
     platform/LinkHash.cpp
     platform/Logging.cpp
     platform/MemoryPressureHandler.cpp
+    platform/MemoryUsageSupport.cpp
     platform/MIMETypeRegistry.cpp
     platform/PlatformStrategies.cpp
     platform/RuntimeApplicationChecks.cpp
@@ -1706,8 +1713,10 @@ StaticLibrary webcore3 :
     platform/Timer.cpp
     platform/TouchpadFlingPlatformGestureCurve.cpp
     platform/UUID.cpp
+    platform/VisitedLinks.cpp
     platform/WheelFlingPlatformGestureCurve.cpp
     platform/Widget.cpp
+
     platform/animation/Animation.cpp
     platform/animation/AnimationList.cpp
     platform/audio/AudioBus.cpp
@@ -1746,12 +1755,13 @@ StaticLibrary webcore3 :
     platform/audio/ffmpeg/FFTFrameFFMPEG.cpp
     platform/audio/mkl/FFTFrameMKL.cpp
     platform/audio/ipp/FFTFrameIPP.cpp
+
+    platform/geoclue/GeolocationProviderGeoclue.cpp
  
     platform/graphics/ANGLEWebKitBridge.cpp
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
     platform/graphics/CrossfadeGeneratedImage.cpp
-    platform/graphics/FractionalLayoutSize.cpp
     platform/graphics/FloatPoint.cpp
     platform/graphics/FloatPoint3D.cpp
     platform/graphics/FloatQuad.cpp
@@ -1785,8 +1795,8 @@ StaticLibrary webcore3 :
     platform/graphics/haiku/SimpleFontDataHaiku.cpp
     platform/graphics/haiku/StillImageHaiku.cpp
 
+    platform/graphics/FractionalLayoutBoxExtent.cpp
     platform/graphics/FractionalLayoutRect.cpp
-    platform/graphics/FractionalLayoutSize.cpp
     platform/graphics/GeneratorGeneratedImage.cpp
     platform/graphics/GlyphPageTreeNode.cpp
     platform/graphics/Gradient.cpp
@@ -1816,9 +1826,10 @@ StaticLibrary webcore3 :
     platform/graphics/WOFFFileFormat.cpp
     platform/graphics/WidthIterator.cpp
 
+    platform/graphics/filters/CustomFilterCompiledProgram.cpp
+    platform/graphics/filters/CustomFilterGlobalContext.cpp
     platform/graphics/filters/CustomFilterOperation.cpp
     platform/graphics/filters/CustomFilterProgram.cpp
-    platform/graphics/filters/CustomFilterShader.cpp
     platform/graphics/filters/CustomFilterMesh.cpp
     platform/graphics/filters/DistantLightSource.cpp
     platform/graphics/filters/FEBlend.cpp
@@ -1961,8 +1972,8 @@ StaticLibrary webcore3 :
     platform/text/Base64.cpp
     platform/text/BidiContext.cpp
     platform/text/Hyphenation.cpp
-    platform/text/ICULocale.cpp
     platform/text/LineEnding.cpp
+    platform/text/LocaleICU.cpp
     platform/text/LocaleToScriptMappingDefault.cpp
     platform/text/LocaleToScriptMappingICU.cpp
     platform/text/LocalizedDateICU.cpp
@@ -2049,6 +2060,8 @@ SharedLibrary libwebcore.so :
     rendering/RenderFrameBase.cpp
     rendering/RenderFrameSet.cpp
     rendering/RenderFullScreen.cpp
+    rendering/RenderGeometryMap.cpp
+    rendering/RenderGrid.cpp
     rendering/RenderHTMLCanvas.cpp
     rendering/RenderIFrame.cpp
     rendering/RenderImage.cpp
@@ -2090,6 +2103,7 @@ SharedLibrary libwebcore.so :
     rendering/RenderScrollbar.cpp
     rendering/RenderScrollbarPart.cpp
     rendering/RenderScrollbarTheme.cpp
+    rendering/RenderSearchField.cpp
     rendering/RenderSlider.cpp
     rendering/RenderTable.cpp
     rendering/RenderTableCaption.cpp
@@ -2155,7 +2169,6 @@ SharedLibrary libwebcore.so :
 
     rendering/svg/SVGInlineFlowBox.cpp
     rendering/svg/SVGInlineTextBox.cpp
-    rendering/svg/SVGMarkerLayoutInfo.cpp
     rendering/svg/SVGPathData.cpp
     rendering/svg/SVGRenderSupport.cpp
     rendering/svg/SVGRenderTreeAsText.cpp
@@ -2181,7 +2194,6 @@ SharedLibrary libwebcore.so :
     storage/StorageAreaSync.cpp
     storage/StorageEvent.cpp
     storage/StorageEventDispatcher.cpp
-    storage/StorageInfo.cpp
     storage/StorageMap.cpp
     storage/StorageNamespace.cpp
     storage/StorageNamespaceImpl.cpp
@@ -2226,7 +2238,6 @@ SharedLibrary libwebcore.so :
     rendering/svg/RenderSVGViewportContainer.cpp
     rendering/svg/SVGInlineFlowBox.cpp
     rendering/svg/SVGInlineTextBox.cpp
-    rendering/svg/SVGMarkerLayoutInfo.cpp
     rendering/svg/SVGPathData.cpp
     rendering/svg/SVGRenderSupport.cpp
     rendering/svg/SVGRenderTreeAsText.cpp

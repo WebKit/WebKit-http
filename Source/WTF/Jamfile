@@ -34,6 +34,7 @@ SharedLibrary libwtf.so :
     wtf/PageAllocationAligned.cpp
     wtf/PageBlock.cpp
     wtf/ParallelJobsGeneric.cpp
+    wtf/RAMSize.cpp
     wtf/RandomNumber.cpp
     wtf/RefCountedLeakCounter.cpp
     wtf/SHA1.cpp
@@ -69,8 +70,11 @@ SharedLibrary libwtf.so :
     wtf/unicode/UTF8.cpp
     wtf/unicode/icu/CollatorICU.cpp
 
-    wtf/haiku/MainThreadHaiku.cpp
+    #wtf/url/api/ParsedURL.cpp
+    #wtf/url/src/URLSegments.cpp
+    #wtf/url/api/URLString.cpp
 
+    wtf/haiku/MainThreadHaiku.cpp
     :
     # Other required libraries
     icuuc icudata icui18n stdc++
