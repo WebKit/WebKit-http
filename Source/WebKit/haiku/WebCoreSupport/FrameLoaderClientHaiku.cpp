@@ -63,6 +63,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "Settings.h"
+#include "Version.h"
 #include "WebFrame.h"
 #include "WebFramePrivate.h"
 #include "WebPage.h"
@@ -72,6 +73,7 @@
 #include <Alert.h>
 #include <Bitmap.h>
 #include <Entry.h>
+#include <Locale.h>
 #include <Message.h>
 #include <MimeType.h>
 #include <String.h>
@@ -952,8 +954,17 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
 
 String FrameLoaderClientHaiku::userAgent(const KURL&)
 {
+    BLanguage language;
+    BLocale::Default()->GetLanguage(&language);
+    BString languageTag(language.Code());
+    if (language.CountryCode() != NULL)
+        languageTag << "-" << language.CountryCode();
+
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
-    return String("Mozilla/5.0 (compatible; U; WebPositive/533.4; Haiku) AppleWebKit/533.4 (KHTML, like Gecko) Chrome/5.0.375.55 Safari/533.4");
+    BString userAgent("Mozilla/5.0 (compatible; U; Haiku x86; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) Haiku/R1 WebPositive/1.1 Safari/%webkit%");
+    userAgent.ReplaceAll("%webkit%", webKitVersion().String());
+    userAgent.ReplaceAll("%language%", languageTag.String());
+    return userAgent;
 }
 
 bool FrameLoaderClientHaiku::canCachePage() const
