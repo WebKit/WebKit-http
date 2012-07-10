@@ -66,6 +66,8 @@ if ($ENV{CC}) {
     $gccLocation = $ENV{CC};
 } elsif (($Config::Config{'osname'}) =~ /solaris/i) {
     $gccLocation = "/usr/sfw/bin/gcc";
+} elsif (($Config::Config{'osname'}) =~ /haiku/i) {
+    $gccLocation = "/bin/env gcc";
 } else {
     $gccLocation = "/usr/bin/gcc";
 }
