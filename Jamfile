@@ -10,7 +10,6 @@ SubInclude TOP Source JavaScriptCore ;
 SubInclude TOP Source WebCore ;
 SubInclude TOP Source WebKit ;
 SubInclude TOP Source WebKit haiku HaikuLauncher ;
-SubInclude TOP Source WebKit haiku WebPositive ;
 SubInclude TOP Tools DumpRenderTree ;
 
 #-----------------------------------------------------------------------------
@@ -33,5 +32,4 @@ Install WebCore :
 Install WebKit :
     libwebkit.so
     HaikuLauncher
-    WebPositive
 ;
