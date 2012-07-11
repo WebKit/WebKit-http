@@ -289,18 +289,14 @@ actions Install1
 	install $(1) $(2) ;
 }
 
-rule CreateSVNRevisionFile file
+rule CreateBuildInfoFile target
 {
-	# CreateSVNRevisionFile <file>
-
-	local svnEntries = <svn>entries ;
-	SEARCH on $(svnEntries) = [ FDirName $(TOP) .svn ] ;
-	Depends $(file) : $(svnEntries) ;
+	local gitIndex = <git>index ;
+	SEARCH on $(gitIndex) = [ FDirName $(TOP) .git ] ;
+	Depends $(target) : $(gitIndex) ;
 }
 
-actions CreateSVNRevisionFile
+actions CreateBuildInfoFile
 {
-	(LANG=C svn info $(TOP) 2> /dev/null || echo Revision: 0) |
-		grep Revision | awk '{printf $2}' > $(1)
+	$(TOP)/Tools/haiku/generate-build-info.sh > $(1) ;
 }
-

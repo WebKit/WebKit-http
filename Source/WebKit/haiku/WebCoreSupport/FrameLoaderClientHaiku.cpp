@@ -63,9 +63,9 @@
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "Settings.h"
-#include "Version.h"
 #include "WebFrame.h"
 #include "WebFramePrivate.h"
+#include "WebKitInfo.h"
 #include "WebPage.h"
 #include "WebView.h"
 #include "WebViewConstants.h"
@@ -962,7 +962,7 @@ String FrameLoaderClientHaiku::userAgent(const KURL&)
 
     // FIXME: Get the app name from the app. Hardcoded WebPositive for now. Mentioning "Safari" is needed for some sites like gmail.com.
     BString userAgent("Mozilla/5.0 (compatible; U; Haiku x86; %language%) AppleWebKit/%webkit% (KHTML, like Gecko) Haiku/R1 WebPositive/1.1 Safari/%webkit%");
-    userAgent.ReplaceAll("%webkit%", webKitVersion().String());
+    userAgent.ReplaceAll("%webkit%", WebKitInfo::WebKitVersion().String());
     userAgent.ReplaceAll("%language%", languageTag.String());
     return userAgent;
 }

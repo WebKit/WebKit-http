@@ -60,6 +60,12 @@ SubDirHdrs $(TOP) Source WebCore svg graphics ;
 SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku API ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebCoreSupport ] ;
 
+# Version
+local versionFile = [ FGristFiles BuildInfo.h ] ;
+MakeLocate $(versionFile) : [ FDirName $(TOP) Source WebKit haiku API ] ;
+Echo $(versionFile) $(LOCATE_TARGET) ;
+CreateBuildInfoFile $(versionFile) ;
+
 SharedLibrary libwebkit.so :
 	# WebCoreSupport
 	ChromeClientHaiku.cpp
@@ -72,10 +78,10 @@ SharedLibrary libwebkit.so :
 	# API
 	NetworkCookie.cpp
 	NetworkCookieJar.cpp
-	Version.cpp
 	WebDownload.cpp
 	WebDownloadPrivate.cpp
 	WebFrame.cpp
+	WebKitInfo.cpp
 	WebPage.cpp
 	WebSettings.cpp
 	WebSettingsPrivate.cpp
