@@ -62,7 +62,7 @@ public:
     // ResourceHandleClient implementation
     virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
     virtual void didReceiveData(ResourceHandle*, const char*, int, int);
-    virtual void didFinishLoading(ResourceHandle*);
+    virtual void didFinishLoading(ResourceHandle*, double);
     virtual void didFail(ResourceHandle*, const ResourceError&);
     virtual void wasBlocked(ResourceHandle*);
     virtual void cannotShowURL(ResourceHandle*);
