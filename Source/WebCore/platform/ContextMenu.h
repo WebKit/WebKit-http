@@ -90,6 +90,10 @@ namespace WebCore {
         static ContextMenuItem* itemWithId(int);
 #endif
 
+#if PLATFORM(HAIKU)
+        void setController(ContextMenuController*);
+#endif
+
 #endif // USE(CROSS_PLATFORM_CONTEXT_MENUS)
 
     private:

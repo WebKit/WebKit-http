@@ -53,11 +53,15 @@ void ContextMenuClientHaiku::contextMenuDestroyed()
 
 PlatformMenuDescription ContextMenuClientHaiku::getCustomMenuFromDefaultItems(ContextMenu* menu)
 {
-	// This method appears to allow some form of filtering. I.e. we get the
-	// current platform menu, have the chance to mess with it, including
-	// the addition of some items, and return the changed menu. In
-	// ContextMenuController, what we return here is immediately passed back
-	// into menu->setPlatformDescription().
+    // This method appears to allow some form of filtering. I.e. we get the
+    // current platform menu, have the chance to mess with it, including
+    // the addition of some items, and return the changed menu. In
+    // ContextMenuController, what we return here is immediately passed back
+    // into menu->setPlatformDescription().
+    WebCore::Page* page = m_webPage->page();
+    if (page)
+        menu->setController(page->contextMenuController());
+
     return menu->platformDescription();
 }
 

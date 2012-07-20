@@ -45,54 +45,63 @@ namespace WebCore {
 
 class ContextMenu::ContextMenuHandler : public BHandler {
 public:
-    ContextMenuHandler(ContextMenu* menu)
+    ContextMenuHandler()
         : BHandler("context menu handler")
-        , m_menu(menu)
+        , m_controller(0)
     {
+    }
+
+    void setController(ContextMenuController* controller)
+    {
+        if (!controller || m_controller != 0)
+            return;
+        m_controller = controller;
     }
 
     virtual void MessageReceived(BMessage* message)
     {
-        if (message->what != ContextMenuItemTagNoAction) {
-        	// Create a temporary ContextMenuItem with a clone of the
-        	// message. The BMenuItem instance from which this message
-        	// originates may long be attached to another menu, and doing
-        	// it this way makes us completely independent of that.
-
-            // FIXME:
-            notImplemented();
-            //ContextMenuItem item(new BMenuItem("", new BMessage(*message)));
-            //m_menu->controller()->contextMenuItemSelected(&item);
+        if (m_controller && message->what != ContextMenuItemTagNoAction) {
+            // Create a temporary ContextMenuItem with a clone of the
+            // message. The BMenuItem instance from which this message
+            // originates may long be attached to another menu, and doing
+            // it this way makes us completely independent of that.
+            ContextMenuItem item(new BMenuItem("", new BMessage(*message)));
+            m_controller->contextMenuItemSelected(&item);
         }
     }
 
 private:
-    ContextMenu* m_menu;
+    ContextMenuController* m_controller;
 };
 
 ContextMenu::ContextMenu()
     : m_platformDescription(new BMenu("context_menu"))
-    , m_menuHandler(new ContextMenuHandler(this))
+    , m_menuHandler(new ContextMenuHandler())
 {
-	if (be_app->Lock()) {
-		be_app->AddHandler(m_menuHandler);
-		be_app->Unlock();
-	}
+    if (be_app->Lock()) {
+        be_app->AddHandler(m_menuHandler);
+        be_app->Unlock();
+    }
 }
 
 ContextMenu::~ContextMenu()
 {
-	if (be_app->Lock()) {
-		be_app->RemoveHandler(m_menuHandler);
-		be_app->Unlock();
-	}
-	delete m_menuHandler;
+    if (be_app->Lock()) {
+        be_app->RemoveHandler(m_menuHandler);
+        be_app->Unlock();
+    }
+    delete m_menuHandler;
     delete m_platformDescription;
+}
+
+void ContextMenu::setController(ContextMenuController* controller)
+{
+    m_menuHandler->setController(controller);
 }
 
 void ContextMenu::appendItem(ContextMenuItem& item)
 {
-	insertItem(itemCount(), item);
+    insertItem(itemCount(), item);
 }
 
 unsigned ContextMenu::itemCount() const
@@ -112,8 +121,6 @@ static void setTargetForItemsRecursive(BMenu* menu, const BMessenger& target)
 
 void ContextMenu::insertItem(unsigned position, ContextMenuItem& item)
 {
-    // FIXME: //checkOrEnableIfNeeded(item);
-
     BMenuItem* menuItem = item.releasePlatformDescription();
     if (menuItem) {
         m_platformDescription->AddItem(menuItem, position);
