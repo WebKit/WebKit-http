@@ -189,9 +189,24 @@ void BitmapImage::checkForSolidColor()
     m_solidColor = Color(bits[2], bits[1], bits[0], bits[3]);
 }
 
-BBitmap* BitmapImage::getBBitmap() const
+BBitmap* BitmapImage::getBBitmap()
 {
-    return const_cast<BitmapImage*>(this)->frameAtIndex(0);
+    return frameAtIndex(0);
+}
+
+BBitmap* BitmapImage::getFirstBBitmapOfSize(const IntSize& size)
+{
+    size_t count = frameCount();
+    for (size_t i = 0; i < count; ++i) {
+        BBitmap* bitmap = frameAtIndex(i);
+        if (bitmap && bitmap->Bounds().IntegerWidth() + 1 == size.width()
+            && bitmap->Bounds().IntegerHeight() + 1 == size.height()) {
+            return bitmap;
+        }
+    }
+
+    // Fallback to the default getBBitmap if we can't find the right size
+    return getBBitmap();
 }
 
 } // namespace WebCore

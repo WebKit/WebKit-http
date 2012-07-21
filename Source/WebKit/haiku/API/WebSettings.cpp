@@ -384,35 +384,16 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
 		|| message->FindMessenger("target", &target) != B_OK) {
 		return;
 	}
-	WebCore::IntSize iconSize(16, 16);
-    WebCore::Image* image = WebCore::iconDatabase().synchronousIconForPageURL(url, iconSize);
 
 	reply.RemoveName("url");
 	reply.RemoveName("icon");
     reply.AddString("url", url);
-    if (image) {
-        const BBitmap* bitmap = 0;
-        // FIXME:
-        //if (image->isBitmapImage()) {
-        //	WebCore::BitmapImage* bitmapImage = static_cast<WebCore::BitmapImage*>(image);
-        //	size_t count = bitmapImage->frameCount();
-        //	for (size_t i = 0; i < count; i++) {
-        //		bitmap = bitmapImage->frameAtIndex(i);
-        //		if (!bitmap)
-        //		    continue;
-        //		if (bitmap->Bounds().IntegerWidth() + 1 == iconSize.width()
-        //			&& bitmap->Bounds().IntegerHeight() + 1 == iconSize.height()) {
-        //			break;
-        //		} else
-        //			bitmap = 0;
-        //	}
-        //}
-        if (!bitmap)
-        	bitmap = image->nativeImageForCurrentFrame();
-        BMessage iconArchive;
-        if (bitmap && bitmap->Archive(&iconArchive) == B_OK)
-            reply.AddMessage("icon", &iconArchive);
-    }
+
+    BBitmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(url, WebCore::IntSize(16, 16));
+    BMessage iconArchive;
+    if (icon && icon->Archive(&iconArchive) == B_OK)
+        reply.AddMessage("icon", &iconArchive);
+
     target.SendMessage(&reply);
 }
 
