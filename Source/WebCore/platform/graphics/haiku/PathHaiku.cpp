@@ -440,12 +440,12 @@ void Path::addEllipse(const FloatRect& r)
     m_path->MoveTo(BPoint(middleH, r.y()));
     points[0].x = middleH + kRadiusBezierScale * radiusH;
     points[0].y = r.y();
-    points[1].x = r.maxY();
+    points[1].x = r.maxX();
     points[1].y = middleV - kRadiusBezierScale * radiusV;
-    points[2].x = r.maxY();
+    points[2].x = r.maxX();
     points[2].y = middleV;
     m_path->BezierTo(points);
-    points[0].x = r.maxY();
+    points[0].x = r.maxX();
     points[0].y = middleV + kRadiusBezierScale * radiusV;
     points[1].x = middleH + kRadiusBezierScale * radiusH;
     points[1].y = r.maxY();
