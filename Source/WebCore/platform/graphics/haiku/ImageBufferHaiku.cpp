@@ -38,6 +38,7 @@
 #include <TranslatorRoster.h>
 #include <stdio.h>
 
+
 namespace WebCore {
 
 ImageBufferData::ImageBufferData(const IntSize& size)
@@ -88,30 +89,21 @@ GraphicsContext* ImageBuffer::context() const
     return m_context.get();
 }
 
-/*Image* ImageBuffer::image() const
-{
-    if (!m_image) {
-        // It's assumed that if image() is called, the actual rendering to the
-        // GraphicsContext must be done.
-        ASSERT(context());
-        m_data.m_view.Sync();
-        m_image = StillImage::create(m_data.m_bitmap);
-    }
-
-    return m_image.get();
-}*/
 PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior) const
 {
-    // FIXME
-    //if (copyBehavior == CopyBackingStore)
+    ASSERT(context());
+    m_data.m_view.Sync();
+    if (copyBehavior == CopyBackingStore)
         return StillImage::create(m_data.m_bitmap);
 
-    //return StillImage::createForRendering(&m_data.m_bitmap);
+    return StillImage::createForRendering(&m_data.m_bitmap);
 }
 
 void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
                        CompositeOperator op, bool useLowQualityScale)
 {
+    ASSERT(context());
+    m_data.m_view.Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
@@ -123,6 +115,8 @@ void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace,
 void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                               const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
 {
+    ASSERT(context());
+    m_data.m_view.Sync();
     if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);

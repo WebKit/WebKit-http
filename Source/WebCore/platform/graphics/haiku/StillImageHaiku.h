@@ -54,8 +54,11 @@ public:
 
 private:
     StillImage(const BBitmap& bitmap);
-    
-    BBitmap m_bitmap;
+    StillImage(const BBitmap* bitmap);
+    ~StillImage();
+
+    const BBitmap* m_bitmap;
+    bool m_ownsBitmap;
 };
 
 } // namespace WebCore

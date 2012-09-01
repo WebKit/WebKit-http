@@ -35,9 +35,21 @@
 namespace WebCore {
 
 StillImage::StillImage(const BBitmap& bitmap)
-    : m_bitmap(&bitmap)
+    : m_bitmap(new BBitmap(bitmap))
+    , m_ownsBitmap(true)
+{}
+
+StillImage::StillImage(const BBitmap* bitmap)
+    : m_bitmap(bitmap)
+    , m_ownsBitmap(false)
+{}
+
+StillImage::~StillImage()
 {
+    if (m_ownsBitmap)
+        delete m_bitmap;
 }
+
 
 void StillImage::destroyDecodedData(bool destroyAll)
 {
@@ -50,28 +62,28 @@ unsigned StillImage::decodedSize() const
     // FIXME: It could be wise to return 0 here, since we don't want WebCore
     // to think we eat up memory, since we are not freeing any in
     // destroyDecodedData() either.
-    return m_bitmap.BitsLength();
+    return m_bitmap->BitsLength();
 }
 
 IntSize StillImage::size() const
 {
-    return IntSize(m_bitmap.Bounds().IntegerWidth() + 1, m_bitmap.Bounds().IntegerHeight() + 1);
+    return IntSize(m_bitmap->Bounds().IntegerWidth() + 1, m_bitmap->Bounds().IntegerHeight() + 1);
 }
 
 NativeImagePtr StillImage::nativeImageForCurrentFrame()
 {
-    return &m_bitmap;
+    return const_cast<NativeImagePtr>(m_bitmap);
 }
 
 void StillImage::draw(GraphicsContext* context, const FloatRect& destRect,
                       const FloatRect& sourceRect, ColorSpace, CompositeOperator op)
 {
-    if (!m_bitmap.IsValid())
+    if (!m_bitmap->IsValid())
         return;
-
+    
     context->save();
     context->setCompositeOperation(op);
-    context->platformContext()->DrawBitmap(&m_bitmap, sourceRect, destRect);
+    context->platformContext()->DrawBitmap(m_bitmap, sourceRect, destRect);
     context->restore();
 }
 
