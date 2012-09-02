@@ -414,6 +414,7 @@ void GraphicsContext::strokeArc(const IntRect& rect, int startAngle, int angleSp
     }
     uint32 flags = m_data->view()->Flags();
     m_data->view()->SetFlags(flags | B_SUBPIXEL_PRECISE);
+    m_data->view()->SetDrawingMode(B_OP_ALPHA);
     m_data->view()->StrokeArc(bRect, startAngle, angleSpan, getHaikuStrokeStyle());
     m_data->view()->SetFlags(flags);
 
@@ -479,7 +480,9 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     drawing_mode previousMode = m_data->view()->DrawingMode();
 
     m_data->view()->SetHighColor(color);
-    if (color.hasAlpha())
+    // NOTE: having a clipShape means we're filling a rounded rect
+    // thus needing alpha blending for antialiasing
+    if (color.hasAlpha() || m_data->clipShape())
         m_data->view()->SetDrawingMode(B_OP_ALPHA);
     fillRect(rect);
 
@@ -522,7 +525,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
         return;
 
     BPoint points[3];
-    const float kRadiusBezierScale = 0.56f;
+    const float kRadiusBezierScale = 1.0f - 0.5522847498f; //  1 - (sqrt(2) - 1) * 4 / 3
 
     BShape shape;
     shape.MoveTo(BPoint(rect.x() + topLeft.width(), rect.y()));
@@ -552,7 +555,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     shape.BezierTo(points);
     shape.LineTo(BPoint(rect.x(), rect.y() + topLeft.height()));
     points[0].x = rect.x();
-    points[0].y = rect.y() - kRadiusBezierScale * topLeft.height();
+    points[0].y = rect.y() + kRadiusBezierScale * topLeft.height();
     points[1].x = rect.x() + kRadiusBezierScale * topLeft.width();
     points[1].y = rect.y();
     points[2].x = rect.x() + topLeft.width();
