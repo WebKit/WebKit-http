@@ -492,6 +492,7 @@ void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 		|| message->FindString("password", &password) != B_OK)
 		return;
 
+#if !defined(NOCURL) || !NOCURL
 	WebCore::ResourceHandleManager::ProxyType curlProxyType;
 	switch (type) {
     default:
@@ -514,6 +515,9 @@ void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 
 	WebCore::ResourceHandleManager::sharedInstance()->setProxyInfo(host, port,
 		curlProxyType, username, password);
+#else
+	// TODO : Services Kit proxy
+#endif
 }
 
 void BWebSettings::_HandleApply()

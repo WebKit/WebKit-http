@@ -1,6 +1,6 @@
 SubDir TOP Source WebKit ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 NOCURL=$(NOCURL) ] ;
 
 # To turn off debugging symbols export NDEBUG=1 in the environment
 SubDirC++Flags $(defines) -Wno-c++0x-compat ;
@@ -49,7 +49,6 @@ SubDirHdrs $(TOP) Source WebCore platform graphics ;
 SubDirHdrs $(TOP) Source WebCore platform graphics transforms ;
 SubDirHdrs $(TOP) Source WebCore platform haiku ;
 SubDirHdrs $(TOP) Source WebCore platform network ;
-SubDirHdrs $(TOP) Source WebCore platform network curl ;
 SubDirHdrs $(TOP) Source WebCore platform sql ;
 SubDirHdrs $(TOP) Source WebCore platform text ;
 SubDirHdrs $(TOP) Source WebCore plugins ;
@@ -59,6 +58,15 @@ SubDirHdrs $(TOP) Source WebCore svg graphics ;
 
 SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku API ] ;
 SEARCH_SOURCE += [ FDirName $(TOP) Source WebKit haiku WebCoreSupport ] ;
+
+if ($(NOCURL)) {
+	SubDirSysHdrs /ExtData/haiku-serviceskit/headers/os/net/ ;
+	SubDirHdrs $(TOP) Source WebCore platform network haiku ;
+	HAIKU_NETWORK_LIBRARY = bnetapi ;
+} else {
+	SubDirHdrs $(TOP) Source WebCore platform network curl ;
+    HAIKU_NETWORK_LIBRARY = ;
+}
 
 # Version
 local versionFile = [ FGristFiles BuildInfo.h ] ;
@@ -76,8 +84,9 @@ SharedLibrary libwebkit.so :
 	FrameLoaderClientHaiku.cpp
 	InspectorClientHaiku.cpp
 	# API
-	NetworkCookie.cpp
-	NetworkCookieJar.cpp
+	# Cookies are handled by ServicesKit
+	#NetworkCookie.cpp
+	#NetworkCookieJar.cpp
 	WebDownload.cpp
 	WebDownloadPrivate.cpp
 	WebFrame.cpp
@@ -92,5 +101,5 @@ SharedLibrary libwebkit.so :
 	# Other required libraries
 	icuuc stdc++
 	# Haiku libraries
-	be translation tracker
+	be $(HAIKU_NETWORK_LIBRARY) translation tracker 
 ;

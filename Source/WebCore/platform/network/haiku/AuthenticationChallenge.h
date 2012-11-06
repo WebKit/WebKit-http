@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
- *
- * All rights reserved.
+ * Copyright (C) 2007 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,47 +20,27 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
+#ifndef AuthenticationChallenge_h
+#define AuthenticationChallenge_h
 
-#include "config.h"
-#include "KURL.h"
-
-#include "PlatformString.h"
-
-#include <String.h>
-
-#if defined(NOCURL) && NOCURL
-#include <services/Url.h>
-#endif
+#include "AuthenticationChallengeBase.h"
 
 namespace WebCore {
 
-#if defined(NOCURL) && NOCURL
+class AuthenticationChallenge : public AuthenticationChallengeBase {
+public:
+    AuthenticationChallenge()
+    {
+    }
 
-KURL::KURL(const BUrl& url)
-{
-    *this = KURL(KURL(), url.UrlString().String());
-}
+    AuthenticationChallenge(const ProtectionSpace& protectionSpace, const Credential& proposedCredential, unsigned previousFailureCount, const ResourceResponse& response, const ResourceError& error)
+        : AuthenticationChallengeBase(protectionSpace, proposedCredential, previousFailureCount, response, error)
+    {
+    }
+};
 
-KURL::operator BUrl() const
-{
-	BString str;
-	str.Append(m_string.utf8().data(), m_string.utf8().length());
-
-    BUrl url = BUrl(str);
-    return url;
 }
 
 #endif
-
-String KURL::fileSystemPath() const
-{
-    if (!isValid() || !protocolIs("file"))
-        return String();
-
-    return String(path());
-}
-
-} // namespace WebCore
-

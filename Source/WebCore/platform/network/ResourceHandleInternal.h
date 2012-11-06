@@ -45,6 +45,11 @@
 #include "FormDataStreamCurl.h"
 #endif
 
+#if USE(HAIKU)
+#include <String.h>
+class BUrlProtocolHandler;
+#endif
+
 #if USE(SOUP)
 #include <wtf/gobject/GRefPtr.h>
 #define LIBSOUP_USE_UNSTABLE_REQUEST_API
@@ -102,6 +107,9 @@ namespace WebCore {
             , m_cancelled(false)
             , m_formDataStream(loader)
             , m_authenticationCancelled(false)
+#endif
+#if USE(HAIKU)
+			, m_urlrequest(0)
 #endif
 #if USE(SOUP)
             , m_cancelled(false)
@@ -179,6 +187,10 @@ namespace WebCore {
         Vector<char> m_postBytes;
 
         bool m_authenticationCancelled;
+#endif
+#if USE(HAIKU)
+		BUrlProtocolHandler* m_urlrequest;
+		BString	m_url;
 #endif
 #if USE(SOUP)
         GRefPtr<SoupMessage> m_soupMessage;

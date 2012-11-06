@@ -1,7 +1,6 @@
 /*
- * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
- *
- * All rights reserved.
+ * Copyright (C) 2003, 2006 Apple Computer, Inc.  All rights reserved.
+ * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,47 +21,50 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "KURL.h"
+#ifndef ResourceRequest_h
+#define ResourceRequest_h
 
-#include "PlatformString.h"
+#include "ResourceRequestBase.h"
 
-#include <String.h>
-
-#if defined(NOCURL) && NOCURL
-#include <services/Url.h>
-#endif
+class BUrlRequest;
 
 namespace WebCore {
 
-#if defined(NOCURL) && NOCURL
+    class ResourceRequest : public ResourceRequestBase {
+    public:
+        ResourceRequest(const String& url) 
+            : ResourceRequestBase(KURL(ParsedURLString, url), UseProtocolCachePolicy)
+        {
+        }
 
-KURL::KURL(const BUrl& url)
-{
-    *this = KURL(KURL(), url.UrlString().String());
-}
+        ResourceRequest(const KURL& url) 
+            : ResourceRequestBase(url, UseProtocolCachePolicy)
+        {
+        }
 
-KURL::operator BUrl() const
-{
-	BString str;
-	str.Append(m_string.utf8().data(), m_string.utf8().length());
+        ResourceRequest(const KURL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy) 
+            : ResourceRequestBase(url, policy)
+        {
+            setHTTPReferrer(referrer);
+        }
 
-    BUrl url = BUrl(str);
-    return url;
-}
+        ResourceRequest()
+            : ResourceRequestBase(KURL(), UseProtocolCachePolicy)
+        {
+        }
 
-#endif
+        BUrlRequest toNetworkRequest() const;
 
-String KURL::fileSystemPath() const
-{
-    if (!isValid() || !protocolIs("file"))
-        return String();
+    private:
+        friend class ResourceRequestBase;
 
-    return String(path());
-}
+        void doUpdatePlatformRequest() {}
+        void doUpdateResourceRequest() {}
+    };
 
 } // namespace WebCore
 
+#endif // ResourceRequest_h

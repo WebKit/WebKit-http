@@ -138,8 +138,8 @@ BMessenger BWebPage::sDownloadListener;
 
 	// TODO: This is a quick hack to enable cookie storage via CURL.
 	// At least it works better than our own broken implementation.
-	ResourceHandleManager::sharedInstance()->setCookieJarFileName(
-		"/boot/home/config/settings/WebPositive/Cookies.curl");
+	//ResourceHandleManager::sharedInstance()->setCookieJarFileName(
+	//	"/boot/home/config/settings/WebPositive/Cookies.curl");
 
     PageGroup::setShouldTrackVisitedLinks(true);
 }

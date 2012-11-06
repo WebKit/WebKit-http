@@ -44,6 +44,10 @@ class QUrl;
 QT_END_NAMESPACE
 #endif
 
+#if PLATFORM(HAIKU)
+class BUrl;
+#endif
+
 #if USE(GOOGLEURL)
 #include "KURLGooglePrivate.h"
 #endif
@@ -209,6 +213,11 @@ public:
 #if PLATFORM(QT)
     KURL(const QUrl&);
     operator QUrl() const;
+#endif
+
+#if USE(HAIKU)
+	KURL(const BUrl&);
+	operator BUrl() const;
 #endif
 
 #if USE(GOOGLEURL)

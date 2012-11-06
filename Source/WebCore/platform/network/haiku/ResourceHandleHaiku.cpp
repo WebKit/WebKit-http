@@ -1,0 +1,201 @@
+/*
+ * Copyright (C) 2006 Nikolas Zimmermann <zimmermann@kde.org>
+ * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
+ * Copyright (C) 2008 Holger Hans Peter Freyther
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "config.h"
+#include "ResourceHandle.h"
+
+#include "DocLoader.h"
+#include "Frame.h"
+#include "NotImplemented.h"
+#include "Page.h"
+#include "BUrlProtocolHandler.h"
+#include "ResourceHandleClient.h"
+#include "ResourceHandleInternal.h"
+#include "SharedBuffer.h"
+
+namespace WebCore {
+
+class WebCoreSynchronousLoader : public ResourceHandleClient {
+public:
+    WebCoreSynchronousLoader();
+
+    void waitForCompletion();
+
+    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
+    virtual void didReceiveData(ResourceHandle*, const char*, int, int lengthReceived);
+    virtual void didFinishLoading(ResourceHandle*);
+    virtual void didFail(ResourceHandle*, const ResourceError&);
+
+    ResourceResponse resourceResponse() const { return m_response; }
+    ResourceError resourceError() const { return m_error; }
+    Vector<char> data() const { return m_data; }
+
+private:
+    ResourceResponse m_response;
+    ResourceError m_error;
+    Vector<char> m_data;
+    bool fFinished;
+};
+
+WebCoreSynchronousLoader::WebCoreSynchronousLoader()
+	:
+	fFinished(false)
+{
+}
+
+void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
+{
+    m_response = response;
+}
+
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, int length, int)
+{
+    m_data.append(data, length);
+}
+
+void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*)
+{
+	fFinished = true;
+}
+
+void WebCoreSynchronousLoader::didFail(ResourceHandle*, const ResourceError& error)
+{
+    m_error = error;
+    fFinished = true;
+}
+
+void WebCoreSynchronousLoader::waitForCompletion()
+{
+	while (!fFinished)
+		snooze(10000);
+	return;
+}
+
+ResourceHandleInternal::~ResourceHandleInternal()
+{
+}
+
+ResourceHandle::~ResourceHandle()
+{
+    if (d->m_urlrequest)
+        cancel();
+}
+
+#include <stdio.h>
+
+bool ResourceHandle::start(Frame* frame)
+{
+    if (!frame)
+        return false;
+
+	printf("ResourceHandle::start()\n");
+    Page *page = frame->page();
+    // If we are no longer attached to a Page, this must be an attempted load from an
+    // onUnload handler, so let's just block it.
+    if (!page)
+        return false;
+
+    if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
+        // If credentials were specified for this request, add them to the url,
+        // so that they will be passed to QNetworkRequest.
+        KURL urlWithCredentials(d->m_request.url());
+        urlWithCredentials.setUser(d->m_user);
+        urlWithCredentials.setPass(d->m_pass);
+        d->m_request.setURL(urlWithCredentials);
+    }
+    
+    ResourceHandleInternal *d = getInternal();
+	printf("ProtocolHandler::__construct()\n");
+    d->m_urlrequest = new BUrlProtocolHandler(this);
+    return true;
+}
+
+void ResourceHandle::cancel()
+{
+    if (d->m_urlrequest) {
+        d->m_urlrequest->abort();
+        d->m_urlrequest = 0;
+    }
+}
+
+bool ResourceHandle::loadsBlocked()
+{
+    return false;
+}
+
+bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame* frame)
+{
+    notImplemented();
+    return false;
+}
+
+bool ResourceHandle::supportsBufferedData()
+{
+    return false;
+}
+
+PassRefPtr<SharedBuffer> ResourceHandle::bufferedData()
+{
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+void ResourceHandle::loadResourceSynchronously(const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data, Frame* frame)
+{
+    WebCoreSynchronousLoader syncLoader;
+    ResourceHandle handle(request, &syncLoader, true, false);
+
+    ResourceHandleInternal *d = handle.getInternal();
+    if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
+        // If credentials were specified for this request, add them to the url,
+        // so that they will be passed to QNetworkRequest.
+        KURL urlWithCredentials(d->m_request.url());
+        urlWithCredentials.setUser(d->m_user);
+        urlWithCredentials.setPass(d->m_pass);
+        d->m_request.setURL(urlWithCredentials);
+    }
+    
+    d->m_urlrequest = new BUrlProtocolHandler(&handle);
+
+    syncLoader.waitForCompletion();
+    error = syncLoader.resourceError();
+    data = syncLoader.data();
+    response = syncLoader.resourceResponse();
+}
+
+ 
+void ResourceHandle::setDefersLoading(bool defers)
+{
+    d->m_defersLoading = defers;
+
+    /*if (d->m_job)
+        d->m_job->setLoadMode(QNetworkReplyHandler::LoadMode(defers));*/
+}
+
+} // namespace WebCore

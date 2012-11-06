@@ -1,7 +1,5 @@
 /*
- * Copyright (C) 2010 Stephan Aßmus <superstippi@gmx.de>
- *
- * All rights reserved.
+ * Copyright (C) 2006 Apple Computer, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,47 +20,29 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "KURL.h"
+#ifndef ResourceError_h
+#define ResourceError_h
 
-#include "PlatformString.h"
-
-#include <String.h>
-
-#if defined(NOCURL) && NOCURL
-#include <services/Url.h>
-#endif
+#include "ResourceErrorBase.h"
 
 namespace WebCore {
 
-#if defined(NOCURL) && NOCURL
-
-KURL::KURL(const BUrl& url)
+class ResourceError : public ResourceErrorBase
 {
-    *this = KURL(KURL(), url.UrlString().String());
+public:
+    ResourceError()
+    {
+    }
+
+    ResourceError(const String& domain, int errorCode, const String& failingURL, const String& localizedDescription)
+        : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
+    {
+    }
+};
+
 }
 
-KURL::operator BUrl() const
-{
-	BString str;
-	str.Append(m_string.utf8().data(), m_string.utf8().length());
-
-    BUrl url = BUrl(str);
-    return url;
-}
-
-#endif
-
-String KURL::fileSystemPath() const
-{
-    if (!isValid() || !protocolIs("file"))
-        return String();
-
-    return String(path());
-}
-
-} // namespace WebCore
-
+#endif // ResourceError_h_

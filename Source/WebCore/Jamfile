@@ -1,6 +1,6 @@
 SubDir TOP Source WebCore ;
 
-local defines = [ FDefines BUILDING_HAIKU__=1 ] ;
+local defines = [ FDefines BUILDING_HAIKU__=1 NOCURL=$(NOCURL) ] ;
 
 LINKFLAGS += -Xlinker --no-keep-memory -Xlinker --no-as-needed ;
 
@@ -67,7 +67,6 @@ SubDirHdrs $(TOP) Source WebCore platform image-decoders jpeg ;
 SubDirHdrs $(TOP) Source WebCore platform image-decoders png ;
 SubDirHdrs $(TOP) Source WebCore platform mock ;
 SubDirHdrs $(TOP) Source WebCore platform network ;
-SubDirHdrs $(TOP) Source WebCore platform network curl ;
 SubDirHdrs $(TOP) Source WebCore platform sql ;
 SubDirHdrs $(TOP) Source WebCore platform text ;
 SubDirHdrs $(TOP) Source WebCore platform text transcoder ;
@@ -97,6 +96,32 @@ SubDirHdrs $(TOP) Source JavaScriptCore llint ;
 SubDirHdrs $(TOP) Source JavaScriptCore parser ;
 SubDirHdrs $(TOP) Source JavaScriptCore profiler ;
 SubDirHdrs $(TOP) Source JavaScriptCore runtime ;
+
+if ($(NOCURL)) {
+	SubDirSysHdrs /ExtData/haiku-serviceskit/headers/os/net/ ;
+	SubDirHdrs $(TOP) Source WebCore platform network haiku ;
+
+	HAIKU_NETWORK_SOURCES =
+        platform/network/haiku/BUrlProtocolHandler.cpp
+        platform/network/haiku/DNSHaiku.cpp
+        platform/network/haiku/ResourceHandleHaiku.cpp
+        platform/network/haiku/ResourceRequestHaiku.cpp
+	    ;
+	HAIKU_NETWORK_LIBRARY = bnetapi ;
+} else {
+	SubDirHdrs $(TOP) Source WebCore platform network curl ;
+
+	HAIKU_NETWORK_SOURCES =
+        #platform/network/curl/CookieJarCurl.cpp
+        platform/network/curl/DNSCurl.cpp
+        platform/network/curl/FormDataStreamCurl.cpp
+        platform/network/curl/ProxyServerCurl.cpp
+        platform/network/curl/ResourceHandleCurl.cpp
+        platform/network/curl/ResourceHandleManager.cpp
+        platform/network/curl/SocketStreamHandleCurl.cpp
+        ;
+    HAIKU_NETWORK_LIBRARY = curl ;
+}
 
 StaticLibrary webcore1 :
     accessibility/AccessibilityARIAGrid.cpp
@@ -1921,13 +1946,7 @@ StaticLibrary webcore3 :
     platform/network/SocketStreamErrorBase.cpp
     platform/network/SocketStreamHandleBase.cpp
 
-    #platform/network/curl/CookieJarCurl.cpp
-    platform/network/curl/DNSCurl.cpp
-    platform/network/curl/FormDataStreamCurl.cpp
-    platform/network/curl/ProxyServerCurl.cpp
-    platform/network/curl/ResourceHandleCurl.cpp
-    platform/network/curl/ResourceHandleManager.cpp
-    platform/network/curl/SocketStreamHandleCurl.cpp
+    $(HAIKU_NETWORK_SOURCES)
 
     platform/posix/FileSystemPOSIX.cpp
     platform/posix/SharedBufferPOSIX.cpp
@@ -2461,7 +2480,7 @@ SharedLibrary libwebcore.so :
     webcore1.a webcore2.a webcore3.a webcore1.a webcore3.a webcore2.a webcore1.a webcore2.a webcore3.a
     libwtf.so libjavascriptcore.so
     # Other required libraries
-    curl icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
+    $(HAIKU_NETWORK_LIBRARY) icuuc icudata icui18n jpeg png sqlite3 xml2 z stdc++
     # Haiku libraries
     be bsd network textencoding translation
 ;

@@ -24,42 +24,65 @@
  */
 
 #include "config.h"
+#include <NetworkCookieJar.h>
+#include <Url.h>
+
 #include "CookieJarClientHaiku.h"
 
 #include "Cookie.h"
 #include "KURL.h"
-#include "NetworkCookieJar.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 
+#include <stdio.h>
 
 namespace WebCore {
 
 CookieJarClientHaiku::CookieJarClientHaiku(BNetworkCookieJar* cookieJar)
     : m_cookieJar(cookieJar)
 {
+	printf("CookieJar construction!\n");
 }
 
-String CookieJarClientHaiku::cookies(const Document*, const KURL& url)
+String CookieJarClientHaiku::cookies(const Document* doc, const KURL& url)
 {
-	return m_cookieJar->CookiesFor(url.string());
+	printf("CookieJar: Request for %s\n", url.string().utf8().data());
+
+	return cookieRequestHeaderFieldValue(doc, url);
 }
 
 String CookieJarClientHaiku::cookieRequestHeaderFieldValue(const Document*,
     const KURL& url)
 {
-    return m_cookieJar->CookieRequestHeaderFieldValue(url.string());
+	BString result;
+	BUrl hUrl(url.string().utf8().data());
+
+	printf("CookieJar: RequestHeaderField for %s\n", hUrl.UrlString().String());
+
+	BNetworkCookie* c;
+	for (BNetworkCookieJar::UrlIterator it(m_cookieJar->GetUrlIterator(hUrl));
+		(c = it.Next()); ) {
+		result << "; " << c->RawCookie(false);
+	}
+	result.Remove(0, 2);
+
+    return result;
 }
 
 void CookieJarClientHaiku::setCookies(Document*, const KURL& url,
     const String& value)
 {
-    m_cookieJar->SetCookiesFor(url.string(), value);
+	BNetworkCookie* heapCookie
+		= new BNetworkCookie(value, BUrl(url.string().utf8().data()));
+
+	printf("CookieJar: Add %s for %s\n", heapCookie->RawCookie(true).String(), url.string().utf8().data());
+	printf("  from %s\n", value.utf8().data());
+    m_cookieJar->AddCookie(heapCookie);
 }
 
 bool CookieJarClientHaiku::cookiesEnabled(const Document*)
 {
-    return m_cookieJar->CookiesEnabled();
+    return true;
 }
 
 bool CookieJarClientHaiku::getRawCookies(const Document*, const KURL& url,

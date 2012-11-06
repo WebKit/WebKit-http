@@ -659,7 +659,11 @@
 #endif
 
 #if PLATFORM(HAIKU)
-#define WTF_USE_CURL 1
+#if defined(NOCURL) && NOCURL
+ #define WTF_USE_HAIKU 1
+#else
+ #define WTF_USE_CURL 1
+#endif
 #define WTF_USE_PTHREADS 1
 #define HAVE_POSIX_MEMALIGN 1
 #define HAVE_PTHREAD_RWLOCK 1
