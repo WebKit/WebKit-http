@@ -33,6 +33,7 @@
 #include "KURL.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
+#include <wtf/text/CString.h>
 
 #include <stdio.h>
 

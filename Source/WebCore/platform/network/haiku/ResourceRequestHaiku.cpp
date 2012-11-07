@@ -20,7 +20,8 @@
 #include "config.h"
 #include "ResourceRequest.h"
 
-#include <services/UrlRequest.h>
+#include <UrlRequest.h>
+#include <wtf/text/CString.h>
 
 namespace WebCore {
 

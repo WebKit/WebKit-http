@@ -34,7 +34,9 @@
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
+#if !defined(NOCURL) || !NOCURL
 #include "ResourceHandleManager.h"
+#endif
 #include "Settings.h"
 #include "WebSettingsPrivate.h"
 #include <Application.h>

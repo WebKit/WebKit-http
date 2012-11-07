@@ -31,9 +31,10 @@
 #include "PlatformString.h"
 
 #include <String.h>
+#include <wtf/text/CString.h>
 
 #if defined(NOCURL) && NOCURL
-#include <services/Url.h>
+#include <Url.h>
 #endif
 
 namespace WebCore {

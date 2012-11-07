@@ -60,7 +60,6 @@
 #include "PlatformString.h"
 #include "PlatformWheelEvent.h"
 #include "ResourceHandle.h"
-#include "ResourceHandleManager.h"
 #include "Settings.h"
 #include "TextEncoding.h"
 #include "WebDownload.h"
@@ -135,11 +134,6 @@ BMessenger BWebPage::sDownloadListener;
     WTF::AtomicString::init();
     Settings::setDefaultMinDOMTimerInterval(0.004);
     WebCore::UTF8Encoding();
-
-	// TODO: This is a quick hack to enable cookie storage via CURL.
-	// At least it works better than our own broken implementation.
-	//ResourceHandleManager::sharedInstance()->setCookieJarFileName(
-	//	"/boot/home/config/settings/WebPositive/Cookies.curl");
 
     PageGroup::setShouldTrackVisitedLinks(true);
 }

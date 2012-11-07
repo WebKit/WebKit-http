@@ -48,35 +48,60 @@
 #include <QNetworkReply>
 
 namespace WebCore {
-
 class WebCoreSynchronousLoader : public ResourceHandleClient {
 public:
-    WebCoreSynchronousLoader(ResourceError& error, ResourceResponse& response, Vector<char>& data)
-        : m_error(error)
-        , m_response(response)
-        , m_data(data)
-    {}
+    WebCoreSynchronousLoader();
 
-    virtual void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&);
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) { m_response = response; }
-    virtual void didReceiveData(ResourceHandle*, const char* data, int length, int) { m_data.append(data, length); }
-    virtual void didFinishLoading(ResourceHandle*, double /*finishTime*/) {}
-    virtual void didFail(ResourceHandle*, const ResourceError& error) { m_error = error; }
+    void waitForCompletion();
+
+    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
+    virtual void didReceiveData(ResourceHandle*, const char*, int, int lengthReceived);
+    virtual void didFinishLoading(ResourceHandle*);
+    virtual void didFail(ResourceHandle*, const ResourceError&);
+
+    ResourceResponse resourceResponse() const { return m_response; }
+    ResourceError resourceError() const { return m_error; }
+    Vector<char> data() const { return m_data; }
+
 private:
-    ResourceError& m_error;
-    ResourceResponse& m_response;
-    Vector<char>& m_data;
+    ResourceResponse m_response;
+    ResourceError m_error;
+    Vector<char> m_data;
+    bool fFinished;
 };
 
-void WebCoreSynchronousLoader::willSendRequest(ResourceHandle* handle, ResourceRequest& request, const ResourceResponse& /*redirectResponse*/)
+WebCoreSynchronousLoader::WebCoreSynchronousLoader()
+	:
+	fFinished(false)
 {
-    // FIXME: This needs to be fixed to follow the redirect correctly even for cross-domain requests.
-    if (!protocolHostAndPortAreEqual(handle->firstRequest().url(), request.url())) {
-        ASSERT(m_error.isNull());
-        m_error.setIsCancellation(true);
-        request = ResourceRequest();
-        return;
-    }
+}
+
+void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse& response)
+{
+    m_response = response;
+}
+
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, int length, int)
+{
+    m_data.append(data, length);
+}
+
+void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*)
+{
+	fFinished = true;
+}
+
+void WebCoreSynchronousLoader::didFail(ResourceHandle*, const ResourceError& error)
+{
+    m_error = error;
+    fFinished = true;
+}
+
+void WebCoreSynchronousLoader::waitForCompletion()
+{
+	while (!fFinished)
+		snooze(10000);
+	return;
 }
 
 ResourceHandleInternal::~ResourceHandleInternal()

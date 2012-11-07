@@ -24,9 +24,9 @@
 
 #include <DataIO.h>
 #include <Messenger.h>
-#include <services/UrlRequest.h>
-#include <services/UrlProtocol.h>
-#include <services/UrlProtocolAsynchronousListener.h>
+#include <UrlRequest.h>
+#include <UrlProtocol.h>
+#include <UrlProtocolAsynchronousListener.h>
 
 class BFile;
 

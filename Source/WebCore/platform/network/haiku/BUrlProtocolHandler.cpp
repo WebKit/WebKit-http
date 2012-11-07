@@ -32,10 +32,10 @@
 
 #include <Debug.h>
 #include <File.h>
-#include <services/Url.h>
-#include <services/UrlRequest.h>
-#include <services/UrlResult.h>
-#include <services/UrlHttpProtocol.h>
+#include <Url.h>
+#include <UrlRequest.h>
+#include <UrlResult.h>
+#include <UrlProtocolHttp.h>
 
 static const int gMaxRecursionLimit = 10;
 
@@ -136,7 +136,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     , m_redirected(false)
     , m_responseSent(false)
     , m_responseDataSent(false)
-    , m_request(handle->request().toNetworkRequest())
+    , m_request(handle->firstRequest().toNetworkRequest())
     , m_listener(this)
     , m_shouldStart(true)
     , m_shouldFinish(false)
@@ -144,7 +144,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     , m_shouldForwardData(false)
     , m_redirectionTries(gMaxRecursionLimit)
 {
-    const ResourceRequest &r = m_resourceHandle->request();
+    const ResourceRequest &r = m_resourceHandle->firstRequest();
 
     if (r.httpMethod() == "GET")
         m_method = B_HTTP_GET;
@@ -208,7 +208,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
         resetState();
         start();
     } else if (success || ignoreHttpError(&m_request, m_responseDataSent)) {
-        client->didFinishLoading(m_resourceHandle);
+        client->didFinishLoading(m_resourceHandle, 1.0); // TODO
     } else {
     	const BUrlResult& result = m_request.Result();
     	int httpStatusCode = result.StatusCode();
@@ -237,9 +237,9 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     if (!client)
         return;
 
-    WebCore::String contentType = m_request.Result().Headers()["Content-Type"];
-    WebCore::String encoding = extractCharsetFromMediaType(contentType);
-    WebCore::String mimeType = extractMIMETypeFromMediaType(contentType);
+    WTF::String contentType = m_request.Result().Headers()["Content-Type"];
+    WTF::String encoding = extractCharsetFromMediaType(contentType);
+    WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
     if (mimeType.isEmpty()) {
         // let's try to guess from the extension
@@ -271,7 +271,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
 
     int statusCode = m_request.Result().StatusCode();
-    if (url.protocolInHTTPFamily()) {
+    if (url.protocolIsInHTTPFamily()) {
         String suggestedFilename = filenameFromHTTPContentDisposition(m_request.Result().Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
@@ -313,7 +313,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     	
     	m_redirected = true;
     	
-    	m_nextRequest = m_resourceHandle->request();
+    	m_nextRequest = m_resourceHandle->firstRequest();
     	m_nextRequest.setURL(location);
     	
         if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
@@ -377,7 +377,7 @@ void BUrlProtocolHandler::start()
             break;
         case B_HTTP_POST:
     		delete m_postData;
-    		m_postData = new BFormDataIO(m_resourceHandle->getInternal()->m_request.httpBody());
+    		m_postData = new BFormDataIO(m_resourceHandle->firstRequest().httpBody());
     		m_request.SetProtocolOption(B_HTTPOPT_INPUTDATA, m_postData);
             break;
     }

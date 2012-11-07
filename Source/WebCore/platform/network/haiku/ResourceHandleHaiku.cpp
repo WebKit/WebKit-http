@@ -30,7 +30,7 @@
 #include "config.h"
 #include "ResourceHandle.h"
 
-#include "DocLoader.h"
+#include "DocumentLoader.h"
 #include "Frame.h"
 #include "NotImplemented.h"
 #include "Page.h"
@@ -109,25 +109,21 @@ ResourceHandle::~ResourceHandle()
 
 #include <stdio.h>
 
-bool ResourceHandle::start(Frame* frame)
+bool ResourceHandle::start(NetworkingContext* context)
 {
-    if (!frame)
+    // If NetworkingContext is invalid then we are no longer attached to a Page,
+    // this must be an attempted load from an unload event handler, so let's just block it.
+    if (context && !context->isValid())
         return false;
 
 	printf("ResourceHandle::start()\n");
-    Page *page = frame->page();
-    // If we are no longer attached to a Page, this must be an attempted load from an
-    // onUnload handler, so let's just block it.
-    if (!page)
-        return false;
-
-    if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
+    if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
         // If credentials were specified for this request, add them to the url,
         // so that they will be passed to QNetworkRequest.
-        KURL urlWithCredentials(d->m_request.url());
+        KURL urlWithCredentials(firstRequest().url());
         urlWithCredentials.setUser(d->m_user);
         urlWithCredentials.setPass(d->m_pass);
-        d->m_request.setURL(urlWithCredentials);
+        d->m_firstRequest.setURL(urlWithCredentials);
     }
     
     ResourceHandleInternal *d = getInternal();
@@ -155,42 +151,44 @@ bool ResourceHandle::willLoadFromCache(ResourceRequest& request, Frame* frame)
     return false;
 }
 
-bool ResourceHandle::supportsBufferedData()
-{
-    return false;
-}
-
-PassRefPtr<SharedBuffer> ResourceHandle::bufferedData()
-{
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
-void ResourceHandle::loadResourceSynchronously(const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data, Frame* frame)
+void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader;
-    ResourceHandle handle(request, &syncLoader, true, false);
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(request, &syncLoader, true, false));
 
-    ResourceHandleInternal *d = handle.getInternal();
-    if (!(d->m_user.isEmpty() || d->m_pass.isEmpty())) {
+    ResourceHandleInternal* d = handle->getInternal();
+    if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
         // If credentials were specified for this request, add them to the url,
         // so that they will be passed to QNetworkRequest.
-        KURL urlWithCredentials(d->m_request.url());
+        KURL urlWithCredentials(d->m_firstRequest.url());
         urlWithCredentials.setUser(d->m_user);
         urlWithCredentials.setPass(d->m_pass);
-        d->m_request.setURL(urlWithCredentials);
+        d->m_firstRequest.setURL(urlWithCredentials);
     }
+    //d->m_context = context;
     
-    d->m_urlrequest = new BUrlProtocolHandler(&handle);
-
+    // haiku
+    d->m_urlrequest = new BUrlProtocolHandler(handle.get());
     syncLoader.waitForCompletion();
     error = syncLoader.resourceError();
     data = syncLoader.data();
     response = syncLoader.resourceResponse();
+    
+    // curl
+    /*ResourceHandleManager* manager = ResourceHandleManager::sharedInstance();
+    manager->dispatchSynchronousJob(handle.get());
+    error = syncLoader.resourceError();
+    data = syncLoader.data();
+    response = syncLoader.resourceResponse();*/
+    
+    // Qt
+    // starting in deferred mode gives d->m_job the chance of being set before sending the request.
+    /*d->m_job = new QNetworkReplyHandler(handle.get(), QNetworkReplyHandler::SynchronousLoad, true);
+    d->m_job->setLoadingDeferred(false);*/
 }
 
  
-void ResourceHandle::setDefersLoading(bool defers)
+void ResourceHandle::platformSetDefersLoading(bool defers)
 {
     d->m_defersLoading = defers;
 
