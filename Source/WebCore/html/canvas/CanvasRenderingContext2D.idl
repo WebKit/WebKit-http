@@ -63,6 +63,7 @@ interface CanvasRenderingContext2D : CanvasRenderingContext {
         raises (DOMException);
 
     attribute float lineWidth;
+    attribute DOMString mozFillRule;
     [TreatNullAs=NullString] attribute DOMString lineCap;
     [TreatNullAs=NullString] attribute DOMString lineJoin;
     attribute float miterLimit;

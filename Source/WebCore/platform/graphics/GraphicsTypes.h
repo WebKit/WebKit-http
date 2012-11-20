@@ -26,6 +26,7 @@
 #ifndef GraphicsTypes_h
 #define GraphicsTypes_h
 
+#include "WindRule.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -87,6 +88,9 @@ namespace WebCore {
 
     String lineCapName(LineCap);
     bool parseLineCap(const String&, LineCap&);
+
+    String fillRuleName(WindRule);
+    bool parseFillRule(const String&, WindRule&);
 
     String lineJoinName(LineJoin);
     bool parseLineJoin(const String&, LineJoin&);
