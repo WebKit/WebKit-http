@@ -46,6 +46,7 @@
 #include "DateTimeChooserImpl.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "ExternalDateTimeChooser.h"
 #include "ExternalPopupMenu.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
@@ -292,7 +293,12 @@ static inline void updatePolicyForEvent(const WebInputEvent* inputEvent, WebNavi
     bool alt = mouseEvent->modifiers & WebMouseEvent::AltKey;
     bool meta = mouseEvent->modifiers & WebMouseEvent::MetaKey;
 
-    WebViewImpl::navigationPolicyFromMouseEvent(buttonNumber, ctrl, shift, alt, meta, policy);
+    WebNavigationPolicy userPolicy = *policy;
+    WebViewImpl::navigationPolicyFromMouseEvent(buttonNumber, ctrl, shift, alt, meta, &userPolicy);
+    // User and app agree that we want a new window; let the app override the decorations.
+    if (userPolicy == WebNavigationPolicyNewWindow && *policy == WebNavigationPolicyNewPopup)
+        return;
+    *policy = userPolicy;
 }
 
 WebNavigationPolicy ChromeClientImpl::getNavigationPolicy()
@@ -615,10 +621,6 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     if (!m_webView->settings()->viewportEnabled() || !m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
         return;
 
-    FrameView* frameView = m_webView->mainFrameImpl()->frameView();
-    int dpi = screenHorizontalDPI(frameView);
-    ASSERT(dpi > 0);
-
     WebViewClient* client = m_webView->client();
     WebRect deviceRect = client->windowRect();
     // If the window size has not been set yet don't attempt to set the viewport
@@ -626,7 +628,7 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
         return;
 
     Settings* settings = m_webView->page()->settings();
-    float devicePixelRatio = dpi / ViewportArguments::deprecatedTargetDPI;
+    float devicePixelRatio = client->screenInfo().deviceScaleFactor;
     // Call the common viewport computing logic in ViewportArguments.cpp.
     ViewportAttributes computed = computeViewportAttributes(
         arguments, settings->layoutFallbackWidth(), deviceRect.width, deviceRect.height,
@@ -692,8 +694,7 @@ PassRefPtr<DateTimeChooser> ChromeClientImpl::openDateTimeChooser(DateTimeChoose
 #if ENABLE(INPUT_MULTIPLE_FIELDS_UI)
     return DateTimeChooserImpl::create(this, pickerClient, parameters);
 #else
-    notImplemented();
-    return PassRefPtr<DateTimeChooser>();
+    return ExternalDateTimeChooser::create(this, m_webView->client(), pickerClient, parameters);
 #endif
 }
 #endif

@@ -450,6 +450,8 @@ compositing/rtl/rtl-fixed-overflow-scrolled.html
 # For now, Web Audio tests are disabled
 # https://bugs.webkit.org/show_bug.cgi?id=86914
 webaudio/
+inspector-protocol/nmi-webaudio.html
+inspector-protocol/nmi-webaudio-leak-test.html
 
 # Microdata DOM API is not yet enabled.
 fast/dom/MicroData
@@ -509,6 +511,9 @@ fast/forms/search-placeholder-value-changed.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=72435
 fast/dom/Window/window-postmessage-arrays.html
+
+# Timeout.
+fast/dom/Window/open-window-min-size.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=73148
 fast/canvas/webgl/webgl-texture-binding-preserved.html
@@ -703,7 +708,7 @@ media/audio-repaint.html
 fast/forms/file/file-input-capture.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=85522
-http/tests/security/sandboxed-iframe-modify-self.html
+http/tests/security/sandboxed-iframe-form-top.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=85523
 fullscreen/full-screen-iframe-legacy.html
@@ -803,8 +808,11 @@ css3/flexbox/flex-rounding.html
 
 # ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
 fast/forms/date-multiple-fields
+fast/forms/datetime-multiple-fields
+fast/forms/datetimelocal-multiple-fields
 fast/forms/month-multiple-fields
 fast/forms/time-multiple-fields
+fast/forms/week-multiple-fields
 
 # <rdar://problem/11224160> Focus not transferring properly in DumpRenderTree in Mountain Lion
 fast/events/show-modal-dialog-onblur-onfocus.html
@@ -852,6 +860,8 @@ compositing/overflow/overflow-auto-with-touch.html
 compositing/overflow/overflow-overlay-with-touch.html
 compositing/overflow/scrolling-content-clip-to-viewport.html
 compositing/overflow/textarea-scroll-touch.html
+compositing/overflow/updating-scrolling-content.html
+compositing/overflow/scrolling-without-painting.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=95027
 fast/block/float/016.html
@@ -985,6 +995,7 @@ webkit.org/b/89052 fast/css/image-orientation
 
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
+webkit.org/b/76173 fast/css3-text/css3-text-align-last
 
 # Our slow tests, in alphabetical order.
 webkit.org/b/57672 http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure Pass ]
@@ -1069,12 +1080,6 @@ webkit.org/b/85310 ietestcenter/css3/valuesandunits/units-010.htm [ ImageOnlyFai
 # IETC namespace failures
 webkit.org/b/86142 ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
 
-# Rebaseline required after https://bugs.webkit.org/show_bug.cgi?id=84167
-webkit.org/b/84167 editing/pasteboard/innerText-inline-table.html [ Failure ]
-webkit.org/b/84167 editing/selection/iframe.html [ Failure ]
-webkit.org/b/84167 editing/selection/inline-table.html [ Failure ]
-webkit.org/b/84167 editing/selection/table-caret-3.html [ Failure ]
-
 # Safari needs to be fixed after bug 84195 updated the layout tests
 webkit.org/b/85918 compositing/backface-visibility/backface-visibility-3d.html [ ImageOnlyFailure ]
 webkit.org/b/85918 compositing/backface-visibility/backface-visibility-hierarchical-transform.html [ ImageOnlyFailure ]
@@ -1082,6 +1087,8 @@ webkit.org/b/85918 compositing/backface-visibility/backface-visibility-non3d.htm
 
 # Accelerated compositing is disabled for elements in a RenderFlowThread
 webkit.org/b/84900 compositing/regions/webkit-flow-renderer-layer-compositing.html [ ImageOnlyFailure ]
+
+webkit.org/b/101897 fast/regions/region-style-inline-background-color.html [ ImageOnlyFailure ]
 
 # Disable webaudio codec tests, including proprietary codecs.
 webkit.org/b/88794 webaudio/codec-tests
@@ -1174,3 +1181,15 @@ webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while
 webkit.org/b/100142 css3/filters/effect-reference-hw.html [ Fail ]
 webkit.org/b/100142 css3/filters/effect-reference-ordering-hw.html [ Fail ]
 webkit.org/b/100142 css3/filters/effect-reference.html [ Fail ]
+
+# Overflowing LayoutUnits cause RenderGeometryMap assertions
+webkit.org/b/67434 [ Debug ] fast/overflow/overflow-height-float-not-removed-crash.html [ Skip ]
+webkit.org/b/67434 [ Debug ] fast/overflow/overflow-height-float-not-removed-crash2.html [ Skip ]
+webkit.org/b/67434 [ Debug ] fast/overflow/overflow-height-float-not-removed-crash3.html [ Skip ]
+webkit.org/b/67434 [ Debug ] fast/block/float/overhanging-tall-block.html [ Skip ]
+
+# Mountain Lion and prior do not support custom media data loading
+Bug(jernoble) [ MountainLion Lion SnowLeopard ] media/video-src-blob.html
+
+# Hangs safari apparently due to an issue with weird multi-frame CUR image files
+webkit.org/b/101811 fast/events/mouse-cursor-multiframecur.html [ Skip ]

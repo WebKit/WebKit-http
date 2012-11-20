@@ -63,7 +63,7 @@ namespace WebCore {
 
         static WrapperTypeInfo* unwrap(v8::Handle<v8::Value> typeInfoWrapper)
         {
-            return reinterpret_cast<WrapperTypeInfo*>(v8::External::Unwrap(typeInfoWrapper));
+            return reinterpret_cast<WrapperTypeInfo*>(v8::External::Cast(*typeInfoWrapper)->Value());
         }
         
         
@@ -122,13 +122,13 @@ namespace WebCore {
     inline void* toNative(v8::Handle<v8::Object> object)
     {
         ASSERT(object->InternalFieldCount() >= v8DOMWrapperObjectIndex);
-        return object->GetPointerFromInternalField(v8DOMWrapperObjectIndex);
+        return object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex);
     }
 
     inline WrapperTypeInfo* toWrapperTypeInfo(v8::Handle<v8::Object> object)
     {
         ASSERT(object->InternalFieldCount() >= v8DOMWrapperTypeIndex);
-        return static_cast<WrapperTypeInfo*>(object->GetPointerFromInternalField(v8DOMWrapperTypeIndex));
+        return static_cast<WrapperTypeInfo*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperTypeIndex));
     }
 
 }

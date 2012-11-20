@@ -357,6 +357,7 @@ z-index
 #if defined(ENABLE_CSS3_TEXT) && ENABLE_CSS3_TEXT
 -webkit-text-decoration-line
 -webkit-text-decoration-style
+-webkit-text-align-last
 #endif
 -webkit-text-decorations-in-effect
 -webkit-text-emphasis
@@ -396,8 +397,8 @@ z-index
 #if defined(ENABLE_CSS_EXCLUSIONS) && ENABLE_CSS_EXCLUSIONS
 -webkit-shape-inside
 -webkit-shape-outside
--webkit-wrap-margin
--webkit-wrap-padding
+-webkit-shape-margin
+-webkit-shape-padding
 -webkit-wrap-flow
 -webkit-wrap-through
 -webkit-wrap

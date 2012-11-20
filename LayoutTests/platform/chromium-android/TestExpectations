@@ -57,6 +57,9 @@ crbug.com/145338 http/tests/notifications
 crbug.com/145338 platform/chromium/fast/forms/color
 crbug.com/145338 platform/chromium/media/video-capture-preview.html # Uses mediastream
 crbug.com/145338 webaudio
+crbug.com/145338 inspector-protocol/nmi-webaudio.html
+crbug.com/145338 inspector-protocol/nmi-webaudio-leak-test.html
+
 
 # This test is only for GTK which is not applicable to Android.
 platform/chromium-linux/fast/text/chromium-linux-fontconfig-renderstyle.html [ WontFix ]
@@ -82,8 +85,11 @@ webkit.org/b/95378 http/tests/local/fileapi/file-last-modified.html [ WontFix ]
 
 # *-multiplefields UI is for desktop platforms
 fast/forms/date-multiple-fields [ WontFix ]
+fast/forms/datetime-multiple-fields [ WontFix ]
+fast/forms/datetimelocal-multiple-fields [ WontFix ]
 fast/forms/month-multiple-fields [ WontFix ]
 fast/forms/time-multiple-fields [ WontFix ]
+fast/forms/week-multiple-fields [ WontFix ]
 
 # Page popup UI is for desktop platforms
 platform/chromium/fast/forms/page-popup [ WontFix ]

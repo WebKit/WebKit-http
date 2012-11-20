@@ -218,7 +218,7 @@ private:
 
         if (operand == JSStack::Callee)
             return getCallee();
-
+        
         // Is this an argument?
         if (operandIsArgument(operand))
             return getArgument(operand);
@@ -2124,12 +2124,28 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_create_this: {
-            set(currentInstruction[1].u.operand, addToGraph(CreateThis, get(JSStack::Callee)));
+            int calleeOperand = currentInstruction[2].u.operand;
+            NodeIndex callee = get(calleeOperand);
+            bool alreadyEmitted = false;
+            if (m_graph[callee].op() == WeakJSConstant) {
+                JSCell* cell = m_graph[callee].weakConstant();
+                ASSERT(cell->inherits(&JSFunction::s_info));
+                
+                JSFunction* function = jsCast<JSFunction*>(cell);
+                Structure* inheritorID = function->tryGetKnownInheritorID();
+                if (inheritorID) {
+                    addToGraph(InheritorIDWatchpoint, OpInfo(function));
+                    set(currentInstruction[1].u.operand, addToGraph(NewObject, OpInfo(inheritorID)));
+                    alreadyEmitted = true;
+                }
+            }
+            if (!alreadyEmitted)
+                set(currentInstruction[1].u.operand, addToGraph(CreateThis, callee));
             NEXT_OPCODE(op_create_this);
         }
             
         case op_new_object: {
-            set(currentInstruction[1].u.operand, addToGraph(NewObject));
+            set(currentInstruction[1].u.operand, addToGraph(NewObject, OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->emptyObjectStructure())));
             NEXT_OPCODE(op_new_object);
         }
             
@@ -2177,6 +2193,22 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_new_regexp);
         }
             
+        case op_get_callee: {
+            ValueProfile* profile = currentInstruction[2].u.profile;
+            profile->computeUpdatedPrediction();
+            if (profile->m_singletonValueIsTop
+                || !profile->m_singletonValue
+                || !profile->m_singletonValue.isCell())
+                set(currentInstruction[1].u.operand, get(JSStack::Callee));
+            else {
+                ASSERT(profile->m_singletonValue.asCell()->inherits(&JSFunction::s_info));
+                NodeIndex actualCallee = get(JSStack::Callee);
+                addToGraph(CheckFunction, OpInfo(profile->m_singletonValue.asCell()), actualCallee);
+                set(currentInstruction[1].u.operand, addToGraph(WeakJSConstant, OpInfo(profile->m_singletonValue.asCell())));
+            }
+            NEXT_OPCODE(op_get_callee);
+        }
+
         // === Bitwise operations ===
 
         case op_bitand: {

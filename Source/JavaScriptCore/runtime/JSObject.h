@@ -39,6 +39,7 @@
 #include "Structure.h"
 #include "JSGlobalData.h"
 #include "JSString.h"
+#include "SlotVisitorInlines.h"
 #include "SparseArrayValueMap.h"
 #include <wtf/StdLibExtras.h>
 
@@ -241,6 +242,7 @@ public:
     {
         switch (structure()->indexingType()) {
         case ALL_BLANK_INDEXING_TYPES:
+        case ALL_UNDECIDED_INDEXING_TYPES:
             break;
         case ALL_INT32_INDEXING_TYPES:
         case ALL_CONTIGUOUS_INDEXING_TYPES:
@@ -1311,6 +1313,8 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
         // See comment on setNewProperty call below.
         if (!specificFunction)
             slot.setNewProperty(this, offset);
+        if (attributes & ReadOnly)
+            structure()->setContainsReadOnlyProperties();
         return true;
     }
 
@@ -1378,6 +1382,8 @@ inline bool JSObject::putDirectInternal(JSGlobalData& globalData, PropertyName p
     // so leave the slot in an uncachable state.
     if (!specificFunction)
         slot.setNewProperty(this, offset);
+    if (attributes & ReadOnly)
+        structure->setContainsReadOnlyProperties();
     return true;
 }
 

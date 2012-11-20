@@ -32,6 +32,8 @@
 #include "HTMLNames.h"
 #include "NodeRenderingContext.h"
 #include "RenderIFrame.h"
+#include "ScriptableDocumentParser.h"
+#include <wtf/text/TextPosition.h>
 
 namespace WebCore {
 
@@ -56,7 +58,7 @@ bool HTMLIFrameElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFrameElementBase::isPresentationAttribute(name);
 }
 
-void HTMLIFrameElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLIFrameElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
@@ -69,30 +71,34 @@ void HTMLIFrameElement::collectStyleForAttribute(const Attribute& attribute, Sty
         // a presentational hint that the border should be off if set to zero.
         if (!attribute.isNull() && !attribute.value().toInt()) {
             // Add a rule that nulls out our border width.
-            addPropertyToAttributeStyle(style, CSSPropertyBorderWidth, 0, CSSPrimitiveValue::CSS_PX);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderWidth, 0, CSSPrimitiveValue::CSS_PX);
         }
     } else
-        HTMLFrameElementBase::collectStyleForAttribute(attribute, style);
+        HTMLFrameElementBase::collectStyleForPresentationAttribute(attribute, style);
 }
 
-void HTMLIFrameElement::parseAttribute(const Attribute& attribute)
+void HTMLIFrameElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == nameAttr) {
-        const AtomicString& newName = attribute.value();
+    if (name == nameAttr) {
         if (inDocument() && document()->isHTMLDocument()) {
             HTMLDocument* document = static_cast<HTMLDocument*>(this->document());
             document->removeExtraNamedItem(m_name);
-            document->addExtraNamedItem(newName);
+            document->addExtraNamedItem(value);
         }
-        m_name = newName;
-    } else if (attribute.name() == sandboxAttr)
-        setSandboxFlags(attribute.isNull() ? SandboxNone : SecurityContext::parseSandboxPolicy(attribute.value()));
-    else if (attribute.name() == seamlessAttr) {
+        m_name = value;
+    } else if (name == sandboxAttr) {
+        String invalidTokens;
+        setSandboxFlags(value.isNull() ? SandboxNone : SecurityContext::parseSandboxPolicy(value, invalidTokens));
+        if (!invalidTokens.isNull()) {
+            int line = document()->scriptableDocumentParser() ? document()->scriptableDocumentParser()->lineNumber().oneBasedInt() : 0;
+            document()->addConsoleMessage(HTMLMessageSource, LogMessageType, ErrorMessageLevel, "Error while parsing the 'sandbox' attribute: " + invalidTokens, document()->url().string(), line);
+        }
+    } else if (name == seamlessAttr) {
         // If we're adding or removing the seamless attribute, we need to force the content document to recalculate its StyleResolver.
         if (contentDocument())
             contentDocument()->styleResolverChanged(DeferRecalcStyle);
     } else
-        HTMLFrameElementBase::parseAttribute(attribute);
+        HTMLFrameElementBase::parseAttribute(name, value);
 }
 
 bool HTMLIFrameElement::rendererIsNeeded(const NodeRenderingContext& context)

@@ -22,6 +22,7 @@
 #include "JSDOMBinding.h"
 
 #include "BindingSecurity.h"
+#include "CachedScript.h"
 #include "DOMObjectHashTableMap.h"
 #include "DOMStringList.h"
 #include "ExceptionCode.h"
@@ -145,7 +146,7 @@ JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, Pass
     return JSC::constructArray(exec, 0, globalObject, list);
 }
 
-void reportException(ExecState* exec, JSValue exception)
+void reportException(ExecState* exec, JSValue exception, CachedScript* cachedScript)
 {
     if (isTerminatedExecutionException(exception))
         return;
@@ -166,7 +167,7 @@ void reportException(ExecState* exec, JSValue exception)
             return;
     }
     ScriptExecutionContext* scriptExecutionContext = globalObject->scriptExecutionContext();
-    scriptExecutionContext->reportException(errorMessage, lineNumber, exceptionSourceURL, 0);
+    scriptExecutionContext->reportException(errorMessage, lineNumber, exceptionSourceURL, 0, cachedScript);
 }
 
 void reportCurrentException(ExecState* exec)
@@ -186,7 +187,8 @@ void setDOMException(ExecState* exec, ExceptionCode ec)
     if (!ec || exec->hadException())
         return;
 
-    if (ec == NATIVE_TYPE_ERR) {
+    // FIXME: Handle other WebIDL exception types.
+    if (ec == TypeError) {
         throwTypeError(exec);
         return;
     }

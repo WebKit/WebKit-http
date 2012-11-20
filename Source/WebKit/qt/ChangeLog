@@ -1,3 +1,248 @@
+2012-11-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [Qt] Remove remaining traces of symbian
+        https://bugs.webkit.org/show_bug.cgi?id=102634
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove symbian related part from the API documentation.
+
+        * Api/qgraphicswebview.cpp:
+        * Api/qwebview.cpp:
+
+2012-11-16  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Add DeviceController base-class to remove duplication of DeviceXXXControler
+        https://bugs.webkit.org/show_bug.cgi?id=96894
+
+        Reviewed by Hajime Morita.
+
+        Change client() to deviceOrientationClient() to get DeviceOrientationClient*.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setMockDeviceOrientation):
+
+2012-11-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Fix tst_QWebFrame::setUrlWithPendingLoads() API test
+        https://bugs.webkit.org/show_bug.cgi?id=63237
+
+        Reviewed by Jocelyn Turcotte.
+
+        Uncomment this API test, because it works fine now.
+
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (tst_QWebFrame):
+        (tst_QWebFrame::setUrlWithPendingLoads):
+
+2012-11-14  Andras Becsi  <andras.becsi@digia.com>
+
+        [Qt] QStyleFacadeImp should use a QPointer to store the application style
+        https://bugs.webkit.org/show_bug.cgi?id=102084
+
+        Reviewed by Simon Hausmann.
+
+        QStyleFacadeImp implicitly creates a default style during the first
+        call to QApplication::style() in QStyleFacadeImp::style() but this
+        style is deleted when a custom style is set, thus the stored m_style
+        raw pointer in QStyleFacadeImp becomes dangling.
+        Use a QPointer to cache the style instead of a raw pointer.
+
+        This fixes the start-up crash in the anomaly example.
+        (https://bugreports.qt-project.org/browse/QTBUG-27924)
+
+        * WebCoreSupport/QStyleFacadeImp.h:
+        (QStyleFacadeImp):
+
+2012-11-13  Andreas Kling  <kling@webkit.org>
+
+        Move inline style logic from ElementAttributeData to StyledElement.
+        <http://webkit.org/b/102120>
+
+        Reviewed by Antti Koivisto.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::styleProperty):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QWebPage::findText
+
+        Reviewed by Simon Hausmann.
+
+        Details of the failure:
+        FAIL!  : tst_QWebPage::findText() Compared values are not the same
+           Actual   (m_page->selectedHtml().trimmed().replace(regExp, "")): <span>foo</span>
+           Expected (subString): foo
+           Loc: [/home/joce/dev/webkit/Source/WebKit/qt/tests/qwebpage/tst_qwebpage.cpp(2964)]
+
+        The format returned by selectedHtml changed.
+        Make the test a bit more robust by just checking that the HTML
+        contains our search value.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::findText):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QWebPage::testLocalStorageVisibility
+
+        Reviewed by Simon Hausmann.
+
+        window.localStorage is expected to work for file URLs.
+        I'm not sure why it did work when this test was written,
+        but I believe that it had the wrong expected value.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+
+2012-11-08  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QObjectBridge::callQtInvokable
+
+        Reviewed by Simon Hausmann.
+
+        Q_DECLARE_METATYPE now calls qRegisterMetaType so just prevent
+        the value from being wrapped by QVariant since this code shouldn't
+        be reached anyway.
+
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (MyQObject::myInvokableWithBrushStyleArg):
+
+2012-11-08  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QWebPage::inputMethods
+
+        Reviewed by Simon Hausmann.
+
+        Details of the failure:
+        FAIL!  : tst_QWebPage::inputMethods(QWebView) Compared values are not the same
+           Actual (page->settings()->fontFamily(QWebSettings::SerifFont)): FooSerifFont
+           Expected (font.family()): Helvetica
+           Loc: [Source/WebKit/qt/tests/qwebpage/tst_qwebpage.cpp(1691)]
+
+        The issue was that WebCore wouldn't find FooSerifFont and would have
+        RenderStyle::font() return the fallback font it used instead.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (tst_QWebPage::inputMethods):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QWebPage::showModalDialog() API test
+        https://bugs.webkit.org/show_bug.cgi?id=63244
+
+        Reviewed by Simon Hausmann.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] tst_QWebElement::style() fails because QWebElement::InlineStyle now works as expected
+        https://bugs.webkit.org/show_bug.cgi?id=60372
+
+        Reviewed by Simon Hausmann.
+
+        Update the expected value to follow this comment in StylePropertySet::addParsedProperty:
+        "Only add properties that have no !important counterpart present"
+
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement::style):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] tst_QWebElement::style() fails because QWebElement::CascadedStyle doesn't work as expected
+        https://bugs.webkit.org/show_bug.cgi?id=65244
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        StyleResolver::styleRulesForElement now takes flags as parameter instead of a bool to specify
+        that we want to exclude UI and user style sheets.
+
+        * Api/qwebelement.cpp:
+        (QWebElement::styleProperty):
+        * tests/qwebelement/tst_qwebelement.cpp:
+        (tst_QWebElement::style):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Appending "!important" to the property value of QWebElement::setStyleProperty isn't working
+        https://bugs.webkit.org/show_bug.cgi?id=101763
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        In the pastWebCore have been considering the important token of a CSS
+        property value if it was followed by !important as well as the
+        important parameter of setInlineStyleProperty, but not anymore.
+
+        Since we need to keep the behavior compatible, do the parsing of the
+        value and extract the token if present. Ideally this would be passed
+        as a parameter to the function but I think it's not worth deprecating
+        the old mechanism.
+        The parsing is pretty dumb, so this will break applications that
+        passed a value with spaces between the "!" and "important".
+
+        This fixes part of tst_QWebElement::style
+
+        * Api/qwebelement.cpp:
+        (QWebElement::setStyleProperty):
+
+2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix URL issues in tst_qwebframe
+        https://bugs.webkit.org/show_bug.cgi?id=101741
+
+        Reviewed by Simon Hausmann.
+
+        * tests/qwebframe/tst_qwebframe.cpp:
+        (FakeReply::FakeReply):
+        Properly forward the request URL to our custom reply.
+        This would cause redirections not to occur. The requestedUrl and setUrlSameUrl tests
+        would fail because of this.
+
+        (tst_QWebFrame::setUrlToInvalid):
+        - http:/example.com is a valid URL, but not a valid HTTP URL, so remove this check.
+        - QCOMPARE uses testlib's toString on the QUrls to compare them and it now
+        also output the error description. Since we want to compare the resulting
+        URL instead, compare their toEncoded() value.
+
+2012-11-08  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix a crash in tst_QWebInspector::attachAndDestroy
+        https://bugs.webkit.org/show_bug.cgi?id=101575
+
+        Reviewed by Simon Hausmann.
+
+        It can now happen that destroyInspectorView is called when the Page
+        is destroyed. This would call getOrCreateInspector and re-create a
+        QWebInspector.
+
+        Since the new instance is created after our setInspector(0) cleanup
+        in ~QWebPagePrivate, this runs into the same crash that this line was
+        protecting us against.
+
+        * WebCoreSupport/InspectorClientQt.cpp:
+        (WebCore::InspectorFrontendClientQt::destroyInspectorView):
+
+2012-11-08  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
+
+        [Qt] Fix tst_QWebPage::inputMethods on Qt5
+        https://bugs.webkit.org/show_bug.cgi?id=101571
+
+        Reviewed by Simon Hausmann.
+
+        QEvent::RequestSoftwareInputPanel isn't passed through event filters anymore.
+        Use QInputMethodPrivate::testContext instead to capture input method events,
+        the same way as qtbase tests like tst_QTextEdit are doing.
+
+        * tests/qwebpage/tst_qwebpage.cpp:
+        (TestInputContext::TestInputContext):
+        (TestInputContext::~TestInputContext):
+        (TestInputContext):
+        (TestInputContext::showInputPanel):
+        (TestInputContext::hideInputPanel):
+        (TestInputContext::isInputPanelVisible):
+        (tst_QWebPage::inputMethods):
+
 2012-11-09  Jocelyn Turcotte  <jocelyn.turcotte@digia.com>
 
         [Qt] Unmark now passing tests

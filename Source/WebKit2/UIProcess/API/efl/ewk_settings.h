@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
 /** Creates a type name for Ewk_Settings */
-typedef struct Ewk_Settings Ewk_Settings;
+typedef struct EwkSettings Ewk_Settings;
 
 /**
  * Creates a type name for the callback function used to notify the client when
@@ -344,6 +344,52 @@ EAPI Eina_Bool ewk_settings_preferred_minimum_contents_width_set(Ewk_Settings *s
  *         @c 0 on failure
  */
 EAPI unsigned ewk_settings_preferred_minimum_contents_width_get(const Ewk_Settings *settings);
+
+/**
+ * Enables/disables the offline application cache.
+ *
+ * By default, the offline application cache is enabled.
+ *
+ * @param settings settings object to set the offline application cache state
+ * @param enable @c EINA_TRUE to enable the offline application cache,
+ *        @c EINA_FALSE to disable
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
+ */
+EAPI Eina_Bool ewk_settings_offline_web_application_cache_enabled_set(Ewk_Settings *settings, Eina_Bool enable);
+
+/**
+ * Returns whether the offline application cache is enabled or not.
+ *
+ * @param settings settings object to query whether offline application cache is enabled
+ *
+ * @return @c EINA_TRUE if the offline application cache is enabled
+ *         @c EINA_FALSE if disabled or on failure
+ */
+EAPI Eina_Bool ewk_settings_offline_web_application_cache_enabled_get(const Ewk_Settings *settings);
+
+/**
+ * Enables/disables if the scripts can open new windows.
+ *
+ * By default, the scripts can open new windows.
+ *
+ * @param settings settings object to set if the scripts can open new windows
+ * @param enable @c EINA_TRUE if the scripts can open new windows
+ *        @c EINA_FALSE if not
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE on failure (scripts are disabled)
+ */
+EAPI Eina_Bool ewk_settings_scripts_can_open_windows_set(Ewk_Settings *settings, Eina_Bool enable);
+
+/**
+ * Returns whether the scripts can open new windows.
+ *
+ * @param settings settings object to query whether the scripts can open new windows
+ *
+ * @return @c EINA_TRUE if the scripts can open new windows
+ *         @c EINA_FALSE if not or on failure (scripts are disabled)
+ */
+EAPI Eina_Bool ewk_settings_scripts_can_open_windows_get(const Ewk_Settings *settings);
 
 #ifdef __cplusplus
 }

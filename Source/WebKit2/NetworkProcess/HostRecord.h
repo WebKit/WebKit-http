@@ -35,7 +35,7 @@
 
 namespace WebKit {
 
-class NetworkRequest;
+class NetworkResourceLoader;
 typedef uint64_t ResourceLoadIdentifier;
 
 class HostRecord {
@@ -45,19 +45,19 @@ public:
     ~HostRecord();
     
     const String& name() const { return m_name; }
-    void schedule(PassRefPtr<NetworkRequest>,  WebCore::ResourceLoadPriority = WebCore::ResourceLoadPriorityVeryLow);
+    void schedule(PassRefPtr<NetworkResourceLoader>);
     void addLoadInProgress(ResourceLoadIdentifier);
     void remove(ResourceLoadIdentifier);
     bool hasRequests() const;
     bool limitRequests(WebCore::ResourceLoadPriority, bool serialLoadingEnabled) const;
 
-    typedef Deque<RefPtr<NetworkRequest> > RequestQueue;
-    RequestQueue& requestsPending(WebCore::ResourceLoadPriority priority) { return m_requestsPending[priority]; }
+    typedef Deque<RefPtr<NetworkResourceLoader> > LoaderQueue;
+    LoaderQueue& loadersPending(WebCore::ResourceLoadPriority priority) { return m_loadersPending[priority]; }
 
 private:                    
-    RequestQueue m_requestsPending[WebCore::ResourceLoadPriorityHighest + 1];
-    typedef HashSet<ResourceLoadIdentifier> RequestIdentifierMap;
-    RequestIdentifierMap m_requestsLoading;
+    LoaderQueue m_loadersPending[WebCore::ResourceLoadPriorityHighest + 1];
+    typedef HashSet<ResourceLoadIdentifier> ResourceLoadIdentifierSet;
+    ResourceLoadIdentifierSet m_resourceIdentifiersLoading;
 
     const String m_name;
     int m_maxRequestsInFlight;

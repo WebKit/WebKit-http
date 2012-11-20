@@ -26,6 +26,7 @@
 #ifndef WebResourceLoadScheduler_h
 #define WebResourceLoadScheduler_h
 
+#include "WebResourceLoader.h"
 #include <WebCore/ResourceLoadPriority.h>
 #include <WebCore/ResourceLoadScheduler.h>
 #include <WebCore/ResourceLoader.h>
@@ -57,17 +58,13 @@ public:
 
     virtual void setSerialLoadingEnabled(bool) OVERRIDE;
 
-    void willSendRequest(ResourceLoadIdentifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse);
-    void didReceiveResponse(ResourceLoadIdentifier, const WebCore::ResourceResponse&);
-    void didReceiveResource(ResourceLoadIdentifier, const WebCore::ResourceBuffer&, double finishTime);
-    void didFailResourceLoad(ResourceLoadIdentifier, const WebCore::ResourceError&);
+    WebResourceLoader* webResourceLoaderForIdentifier(ResourceLoadIdentifier identifier) const { return m_webResourceLoaders.get(identifier).get(); }
 
 private:
     void scheduleLoad(WebCore::ResourceLoader*, WebCore::ResourceLoadPriority);
     
-    typedef HashMap<unsigned long, RefPtr<WebCore::ResourceLoader> > ResourceLoaderMap;
-    ResourceLoaderMap m_pendingResourceLoaders;
-    ResourceLoaderMap m_activeResourceLoaders;
+    HashMap<unsigned long, RefPtr<WebCore::ResourceLoader> > m_coreResourceLoaders;
+    HashMap<unsigned long, RefPtr<WebResourceLoader> > m_webResourceLoaders;
     
     unsigned m_suspendPendingRequestsCount;
 

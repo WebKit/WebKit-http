@@ -807,7 +807,7 @@ QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy str
     if (!propID)
         return QString();
 
-    const StylePropertySet* style = static_cast<StyledElement*>(m_element)->ensureInlineStyle();
+    const StylePropertySet* style = static_cast<StyledElement*>(m_element)->ensureMutableInlineStyle();
 
     if (strategy == InlineStyle)
         return style->getPropertyValue(propID);
@@ -825,7 +825,7 @@ QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy str
         // declarations, as well as embedded and inline style declarations.
 
         Document* doc = m_element->document();
-        if (RefPtr<CSSRuleList> rules = doc->styleResolver()->styleRulesForElement(m_element, /*authorOnly*/ true)) {
+        if (RefPtr<CSSRuleList> rules = doc->styleResolver()->styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules)) {
             for (int i = rules->length(); i > 0; --i) {
                 CSSStyleRule* rule = static_cast<CSSStyleRule*>(rules->item(i - 1));
 
@@ -869,8 +869,18 @@ void QWebElement::setStyleProperty(const QString &name, const QString &value)
     if (!m_element || !m_element->isStyledElement())
         return;
 
+    // Do the parsing of the token manually since WebCore isn't doing this for us anymore.
+    const QLatin1String importantToken("!important");
+    QString adjustedValue(value);
+    bool important = false;
+    if (adjustedValue.contains(importantToken)) {
+        important = true;
+        adjustedValue.remove(importantToken);
+        adjustedValue = adjustedValue.trimmed();
+    }
+
     CSSPropertyID propID = cssPropertyID(name);
-    static_cast<StyledElement*>(m_element)->setInlineStyleProperty(propID, value);
+    static_cast<StyledElement*>(m_element)->setInlineStyleProperty(propID, adjustedValue, important);
 }
 
 /*!

@@ -71,8 +71,6 @@ public:
     virtual bool paintSearchFieldCancelButton(RenderObject*, const PaintInfo&, const IntRect&);
 
     virtual void adjustMenuListButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual void adjustCheckboxStyle(StyleResolver*, RenderStyle*, Element*) const;
-    virtual void adjustRadioStyle(StyleResolver*, RenderStyle*, Element*) const;
     virtual bool paintMenuList(RenderObject*, const PaintInfo&, const IntRect&);
 
     virtual void adjustMediaControlStyle(StyleResolver*, RenderStyle*, Element*) const;
@@ -107,8 +105,9 @@ private:
 
     bool paintTextFieldOrTextAreaOrSearchField(RenderObject*, const PaintInfo&, const IntRect&);
     bool paintSliderTrackRect(RenderObject*, const PaintInfo&, const IntRect&);
-    bool paintSliderTrackRect(RenderObject*, const PaintInfo&, const IntRect&, RGBA32 strokeColorStart,
-                RGBA32 strokeColorEnd, RGBA32 fillColorStart, RGBA32 fillColorEnd);
+
+    bool paintSliderTrackRect(RenderObject*, const PaintInfo&, const IntRect&, Image*);
+    IntRect convertToPaintingRect(RenderObject* inputRenderer, const RenderObject* partRenderer, LayoutRect partRect, const IntRect& localOffset) const;
 
 };
 

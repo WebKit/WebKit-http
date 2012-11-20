@@ -1,3 +1,1088 @@
+2012-11-19  Vincent Scheib  <scheib@chromium.org>
+
+        [Chromium] Remove WebKit::WebRuntimeFeatures::enablePointerLock.
+        https://bugs.webkit.org/show_bug.cgi?id=96946
+
+        Reviewed by Adam Barth.
+
+        The runtime flag functionality has already been removed.
+        Now that Chromium no longer has a compile dependency on this
+        API, it can be removed as well.
+
+        * public/WebRuntimeFeatures.h:
+        (WebRuntimeFeatures):
+        * src/WebRuntimeFeatures.cpp:
+
+2012-11-19  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Add PROXIMITY_EVENTS feature
+        https://bugs.webkit.org/show_bug.cgi?id=102658
+
+        Reviewed by Kentaro Hara.
+
+        Add PROXIMITY_EVENTS feature to chromium port.
+
+        * features.gypi:
+
+2012-11-19  Sami Kyostila  <skyostil@chromium.org>
+
+        [chromium] Use devicePixelRatio instead of screen DPI for computing viewport attributes
+        https://bugs.webkit.org/show_bug.cgi?id=101767
+
+        Reviewed by Adam Barth.
+
+        Use the newly introduced device scale factor to calculate viewport properties
+        instead of using the screen DPI. No functional changes, because Chromium
+        platforms that have VIEWPORT enabled now also initialize the device scale
+        factor accordingly.
+
+        * src/ChromeClientImpl.cpp:
+        (WebKit::ChromeClientImpl::dispatchViewportPropertiesDidChange):
+        * tests/WebFrameTest.cpp:
+
+2012-11-18  Kentaro Hara  <haraken@chromium.org>
+
+        Unreviewed, rolling out r135047.
+        http://trac.webkit.org/changeset/135047
+        https://bugs.webkit.org/show_bug.cgi?id=102339
+
+        it broke Chromium Windows/Mac build
+
+        * WebKit.gyp:
+        * WebKit.gypi:
+        * public/WebNode.h:
+        (WebKit):
+        * public/WebPluginContainer.h:
+        (WebKit):
+        (WebPluginContainer):
+        * src/WebFrameImpl.cpp:
+        (WebKit::pluginContainerFromNode):
+        (WebKit):
+        (WebKit::WebFrameImpl::executeCommand):
+        (WebKit::WebFrameImpl::printBegin):
+        (WebKit::WebFrameImpl::isPrintScalingDisabledForPlugin):
+        * src/WebNode.cpp:
+        * src/WebPluginContainerImpl.cpp:
+        * src/WebPluginContainerImpl.h:
+        (WebPluginContainerImpl):
+        * tests/FakeWebPlugin.cpp: Removed.
+        * tests/FakeWebPlugin.h: Removed.
+        * tests/WebPluginContainerTest.cpp: Removed.
+        * tests/data/plugin_container.html: Removed.
+
+2012-11-18  Rick Byers  <rbyers@chromium.org>
+
+        [chromium] add WebCursorInfo::imageScaleFactor
+        https://bugs.webkit.org/show_bug.cgi?id=102612
+
+        Reviewed by Adam Barth.
+
+        Add cursor image scale factor (currently always 1) to chromium API, in preparation for
+        high-dpi cursor support in bug 99493.
+
+        * public/WebCursorInfo.h:
+        (WebKit::WebCursorInfo::WebCursorInfo):
+        * src/WebCursorInfo.cpp:
+        (WebKit::WebCursorInfo::WebCursorInfo):
+
+2012-11-17  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-11-17  Istiaque Ahmed  <lazyboy@chromium.org>
+
+        Provide page/window coordinates to plugin's local coordinates translation in WebPluginContainer.
+        https://bugs.webkit.org/show_bug.cgi?id=102339
+
+        Reviewed by Adam Barth.
+
+        This change will allow converting a page's window coordinates to plugins's local coordinates,
+        taking CSS transformations into account. Embedder page of the plugin can use this information
+        for targetting elements inside the plugin (e.g. devtools can inspect a specific element at the
+        local coordinate position inside plugin).
+        Attempting to re-land after Windows build fix.
+
+        * WebKit.gyp:
+        * WebKit.gypi:
+        * public/WebNode.h:
+        (WebKit):
+        * public/WebPluginContainer.h:
+        (WebKit):
+        (WebPluginContainer):
+        * src/WebFrameImpl.cpp:
+        (WebKit::WebFrameImpl::executeCommand):
+        (WebKit::WebFrameImpl::printBegin):
+        (WebKit::WebFrameImpl::isPrintScalingDisabledForPlugin):
+        * src/WebNode.cpp:
+        (WebKit::WebNode::pluginContainer):
+        (WebKit):
+        * src/WebPluginContainerImpl.cpp:
+        (WebKit::WebPluginContainerImpl::windowToLocalPoint):
+        (WebKit):
+        * src/WebPluginContainerImpl.h:
+        (WebPluginContainerImpl):
+        * tests/FakeWebPlugin.cpp: Added.
+        (WebKit):
+        (WebKit::FakeWebPlugin::FakeWebPlugin):
+        (WebKit::FakeWebPlugin::~FakeWebPlugin):
+        (WebKit::FakeWebPlugin::initialize):
+        (WebKit::FakeWebPlugin::destroy):
+        * tests/FakeWebPlugin.h: Added.
+        (WebKit):
+        (FakeWebPlugin):
+        * tests/WebPluginContainerTest.cpp: Added.
+        (WebKit):
+        (WebPluginContainerTest):
+        (WebKit::WebPluginContainerTest::WebPluginContainerTest):
+        (WebKit::WebPluginContainerTest::TearDown):
+        (WebKit::getWebPluginContainer):
+        (WebKit::TEST_F):
+        * tests/data/plugin_container.html: Added.
+
+2012-11-16  Raman Kumar  <ramankk@chromium.org>
+
+        Add setChecked API in WebInputElement
+        https://bugs.webkit.org/show_bug.cgi?id=102422
+
+        Reviewed by Adam Barth.
+
+        * public/WebInputElement.h:
+        (WebInputElement): Add setChecked(bool, bool) API
+        * src/WebInputElement.cpp:
+        (WebKit::WebInputElement::setChecked): Implement setChecked by calling
+        underlying HTMLInputElement's setChecked.
+        (WebKit):
+
+2012-11-16  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS_HIERARCHIES since it's no longer in use
+        https://bugs.webkit.org/show_bug.cgi?id=102554
+
+        Reviewed by Andreas Kling.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=79939#c41 ,
+        we're going to revist this feature once additional vendor support is
+        achieved.
+
+        * features.gypi:
+
+2012-11-16  Mark Pilgrim  <pilgrim@chromium.org>
+
+        [Chromium] Remove cookie-related functions from PlatformSupport
+        https://bugs.webkit.org/show_bug.cgi?id=99340
+
+        Reviewed by Adam Barth.
+
+        Move cookie-related functions out of PlatformSupport and implement
+        new PlatformCookieJar interface via NetworkContext.
+
+        * WebKit.gyp:
+        * src/FrameNetworkingContextImpl.cpp: Added.
+        (WebKit):
+        (WebKit::FrameNetworkingContextImpl::cookieJar):
+        * src/FrameNetworkingContextImpl.h:
+        (FrameNetworkingContextImpl):
+        * src/PlatformSupport.cpp:
+
+2012-11-16  Tien-Ren Chen  <trchen@chromium.org>
+
+        Rename applyDefaultDeviceScaleFactorInCompositor to setApplyDeviceScaleFactorInCompositor
+        https://bugs.webkit.org/show_bug.cgi?id=102462
+
+        Reviewed by James Robinson.
+
+        As we no longer have this "default" device scale factor.
+
+        * public/WebSettings.h:
+        (WebKit::WebSettings::setApplyDefaultDeviceScaleFactorInCompositor):
+        * src/WebSettingsImpl.cpp:
+        (WebKit::WebSettingsImpl::WebSettingsImpl):
+        (WebKit::WebSettingsImpl::setApplyDeviceScaleFactorInCompositor):
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+        (WebKit::WebSettingsImpl::applyDeviceScaleFactorInCompositor):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::setDeviceScaleFactor):
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+
+2012-11-16  Jon Lee  <jonlee@apple.com>
+
+        Fix build error on Chromium due to r134995.
+
+        * src/WebNode.cpp:
+        (WebKit::WebNode::simulateClick): Pass in NULL pointer instead.
+
+2012-11-16  Michael Pruett  <michael@68k.org>
+
+        IndexedDB: Propagate DOMRequestState to IndexedDB binding utility functions
+        https://bugs.webkit.org/show_bug.cgi?id=102430
+
+        Reviewed by Adam Barth.
+
+        DOMRequestState is currently propagated to some but not all of
+        the IndexedDB binding utility functions. In order to implement
+        these functions for JSC, this state must be propagated to all
+        of the utility functions.
+
+        * tests/IDBBindingUtilitiesTest.cpp:
+        (WebKit::checkKeyFromValueAndKeyPathInternal):
+        (WebKit::injectKey):
+
+2012-11-16  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update RTCPeerConnection states to match the latest editors draft
+        https://bugs.webkit.org/show_bug.cgi?id=102382
+
+        Reviewed by Adam Barth.
+
+        Updating readyState & iceState, and adding iceGatheringState.
+
+        * src/AssertMatchingEnums.cpp:
+
+2012-11-16  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134973.
+        http://trac.webkit.org/changeset/134973
+        https://bugs.webkit.org/show_bug.cgi?id=99340
+
+        Broke compile on at least Mac and Linux.
+
+        * WebKit.gyp:
+        * src/FrameNetworkingContextImpl.h:
+        * src/PlatformSupport.cpp:
+        (WebCore::getCookieJar):
+        (WebCore):
+        (WebCore::PlatformSupport::setCookies):
+        (WebCore::PlatformSupport::cookies):
+        (WebCore::PlatformSupport::cookieRequestHeaderFieldValue):
+        (WebCore::PlatformSupport::rawCookies):
+        (WebCore::PlatformSupport::deleteCookie):
+        (WebCore::PlatformSupport::cookiesEnabled):
+
+2012-11-16  Mark Pilgrim  <pilgrim@chromium.org>
+
+        [Chromium] Remove cookie-related functions from PlatformSupport
+        https://bugs.webkit.org/show_bug.cgi?id=99340
+
+        Reviewed by Adam Barth.
+
+        Move cookie-related functions out of PlatformSupport and implement
+        new PlatformCookieJar interface via NetworkContext.
+
+        * WebKit.gyp:
+        * src/FrameNetworkingContextImpl.cpp: Added.
+        (WebKit):
+        (WebKit::FrameNetworkingContextImpl::cookieJar):
+        * src/FrameNetworkingContextImpl.h:
+        (FrameNetworkingContextImpl):
+        * src/PlatformSupport.cpp:
+
+2012-11-16  Scott Violet  <sky@chromium.org>
+
+        [chromium] Copy linux theme related files to default
+        https://bugs.webkit.org/show_bug.cgi?id=102403
+
+        Reviewed by Tony Chang
+
+        Transitional patch that copies linux WebThemeEngine to default directory.
+
+        No new tests, refactoring only.
+
+        * features.gypi:
+        * public/platform/default: Added.
+        * public/platform/default/WebThemeEngine.h: Copied from Source/WebKit/chromium/public/platform/linux/WebThemeEngine.h.
+        * src/PlatformSupport.cpp: Includes correct theme files when DEFAULT_RENDER_THEME is set.
+        (WebCore):
+        * src/WebViewImpl.cpp: Includes correct theme files when DEFAULT_RENDER_THEME is set.
+        (WebKit::WebViewImpl::setScrollbarColors): Calls to default theme as necessary.
+        (WebKit::WebViewImpl::setSelectionColors): Calls to default theme as necessary.
+
+2012-11-16  Robert Flack  <flackr@chromium.org>
+
+        Handle gesture events on scrollbars.
+        https://bugs.webkit.org/show_bug.cgi?id=101516
+
+        Reviewed by Antonio Gomes.
+
+        Adds a gesture event handler to scrollbars and sends gestures beginning
+        over a scrollbar to this handler to allow touch scrolling scrollbars.
+
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::handleGestureEvent):
+
+2012-11-16  Peter Beverloo  <peter@chromium.org>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-11-15  Kentaro Hara  <haraken@chromium.org>
+
+        Unreviewed, rolling out r134880.
+        http://trac.webkit.org/changeset/134880
+        https://bugs.webkit.org/show_bug.cgi?id=102339
+
+        it broke Chromium Windows build
+
+        * WebKit.gyp:
+        * WebKit.gypi:
+        * public/WebNode.h:
+        (WebKit):
+        * public/WebPluginContainer.h:
+        (WebKit):
+        (WebPluginContainer):
+        * src/WebFrameImpl.cpp:
+        (WebKit::pluginContainerFromNode):
+        (WebKit):
+        (WebKit::WebFrameImpl::executeCommand):
+        (WebKit::WebFrameImpl::printBegin):
+        (WebKit::WebFrameImpl::isPrintScalingDisabledForPlugin):
+        * src/WebNode.cpp:
+        * src/WebPluginContainerImpl.cpp:
+        * src/WebPluginContainerImpl.h:
+        (WebPluginContainerImpl):
+        * tests/FakeWebPlugin.cpp: Removed.
+        * tests/FakeWebPlugin.h: Removed.
+        * tests/WebPluginContainerTest.cpp: Removed.
+        * tests/data/plugin_container.html: Removed.
+
+2012-11-15  Istiaque Ahmed  <lazyboy@chromium.org>
+
+        Provide page/window coordinates to plugin's local coordinates translation in WebPluginContainer.
+        https://bugs.webkit.org/show_bug.cgi?id=102339
+
+        Reviewed by Adam Barth.
+
+        This change will allow converting a page's window coordinates to plugins's local coordinates,
+        taking CSS transformations into account. Embedder page of the plugin can use this information
+        for targetting elements inside the plugin (e.g. devtools can inspect a specific element at the
+        local coordinate position inside plugin).
+
+        * WebKit.gyp:
+        * WebKit.gypi:
+        * public/WebNode.h:
+        (WebKit):
+        * public/WebPluginContainer.h:
+        (WebKit):
+        (WebPluginContainer):
+        * src/WebFrameImpl.cpp:
+        (WebKit::WebFrameImpl::executeCommand):
+        (WebKit::WebFrameImpl::printBegin):
+        (WebKit::WebFrameImpl::isPrintScalingDisabledForPlugin):
+        * src/WebNode.cpp:
+        (WebKit::WebNode::pluginContainer):
+        (WebKit):
+        * src/WebPluginContainerImpl.cpp:
+        (WebKit::WebPluginContainerImpl::windowToLocalPoint):
+        (WebKit):
+        * src/WebPluginContainerImpl.h:
+        (WebPluginContainerImpl):
+        * tests/FakeWebPlugin.cpp: Added.
+        (WebKit):
+        (WebKit::FakeWebPlugin::FakeWebPlugin):
+        (WebKit::FakeWebPlugin::~FakeWebPlugin):
+        (WebKit::FakeWebPlugin::initialize):
+        (WebKit::FakeWebPlugin::destroy):
+        * tests/FakeWebPlugin.h: Added.
+        (WebKit):
+        (FakeWebPlugin):
+        * tests/WebPluginContainerTest.cpp: Added.
+        (WebKit):
+        (WebPluginContainerTest):
+        (WebKit::WebPluginContainerTest::WebPluginContainerTest):
+        (WebKit::WebPluginContainerTest::TearDown):
+        (WebKit::getWebPluginContainer):
+        (WebKit::TEST_F):
+        * tests/data/plugin_container.html: Added.
+
+2012-11-15  Tien-Ren Chen  <trchen@chromium.org>
+
+        Add Settings to disable custom scrollbars on main frame
+        https://bugs.webkit.org/show_bug.cgi?id=102323
+
+        Reviewed by Adam Barth.
+
+        Custom scrollbars on main frame don't really work well on touch devices.
+        Add a setting to inhibit their creation.
+
+        * public/WebSettings.h:
+        * src/WebSettingsImpl.cpp:
+        (WebKit::WebSettingsImpl::setAllowCustomScrollbarInMainFrame):
+        (WebKit):
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+
+2012-11-15  Yue Zhang  <zysxqn@google.com>
+
+        Ignore autocomplete=off for chrome generated passwords.
+        https://bugs.webkit.org/show_bug.cgi?id=102426
+
+        Reviewed by Adam Barth.
+
+        Record the autocomplete attribute in the web password form data,
+        so that we can handle autocomplete in chromium code. The
+        motivation/background is: we should ignore autocomplete=off field
+        for password forms with chrome generated passwords (has passed
+        security review). By handling autocomplete in chromium code we can
+        distinguish password forms with chrome generated passwords and
+        those normal password forms. Note that we haven't turned off
+        checking autocomplete=off in the Webkit code for now so there is
+        no behavior change after this CL, and we will turn off after we
+        make the chromium side change to be safe.
+
+        * public/WebPasswordFormData.h:
+        (WebPasswordFormData):
+        * src/WebPasswordFormData.cpp:
+
+2012-11-15  Scott Violet  <sky@chromium.org>
+
+        [chromium] Create default directory so that cq can apply patch
+        https://bugs.webkit.org/show_bug.cgi?id=102421
+
+        Reviewed by Tony Chang.
+
+        Done in hopes of patch that copies files to this directory working.
+
+        * public/platform/default: Added.
+
+2012-11-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134800 and r134805.
+        http://trac.webkit.org/changeset/134800
+        http://trac.webkit.org/changeset/134805
+        https://bugs.webkit.org/show_bug.cgi?id=102417
+
+        This patch broke chromium port (Requested by jianli on
+        #webkit).
+
+        * src/AssertMatchingEnums.cpp:
+
+2012-11-15  Sadrul Habib Chowdhury  <sadrul@chromium.org>
+
+        [chromium] Do not mark an event (mouse wheel, scroll update) as handled if nothing was scrolled.
+        https://bugs.webkit.org/show_bug.cgi?id=102246
+
+        Reviewed by James Robinson.
+
+        * src/WebCompositorInputHandlerImpl.cpp:
+        (WebKit::WebCompositorInputHandlerImpl::handleInputEventInternal):
+        * tests/WebCompositorInputHandlerImplTest.cpp:
+        (MockWebInputHandlerClient):
+        (WebKit::TEST_F):
+
+2012-11-15  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update RTCPeerConnection states to match the latest editors draft
+        https://bugs.webkit.org/show_bug.cgi?id=102382
+
+        Reviewed by Adam Barth.
+
+        Updating readyState & iceState, and adding iceGatheringState.
+
+        * src/AssertMatchingEnums.cpp:
+
+2012-11-15  Tien-Ren Chen  <trchen@chromium.org>
+
+        Use correct unscaled document size when calculating scale limits
+        https://bugs.webkit.org/show_bug.cgi?id=102028
+
+        Reviewed by Adam Barth.
+
+        Fixes bug http://crbug.com/160581
+        Using contentsSize / pageScaleFactor as unscaled contents size results
+        in rounding errors. This can cause scale factor to oscillate indefinitely.
+
+        * src/WebViewImpl.cpp:
+        (WebKit::unscaledContentsSize):
+        (WebKit):
+        (WebKit::WebViewImpl::computePageScaleFactorLimits):
+        * tests/WebFrameTest.cpp:
+        * tests/data/scale_oscillate.html: Added.
+
+2012-11-15  Kenneth Russell  <kbr@google.com>
+
+        [chromium] Move allowWebGL query to WebFrameClient
+        https://bugs.webkit.org/show_bug.cgi?id=102319
+
+        Reviewed by Adam Barth.
+
+        Moved allowWebGL query to WebFrameClient to avoid polluting
+        content/ API.
+
+        * public/WebFrameClient.h:
+        (WebFrameClient):
+        (WebKit::WebFrameClient::allowWebGL):
+        * public/WebPermissionClient.h:
+        * src/FrameLoaderClientImpl.cpp:
+        (WebKit::FrameLoaderClientImpl::allowWebGL):
+
+2012-11-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-11-15  Stephen Chenney  <schenney@chromium.org>
+
+        [Chromium] Move SK_DISABLE_FAST_AA_STROKE_RECT to skia_webkit.gyp
+
+        Unreviewed non-funtional, behavior-neutral change
+
+        * skia_webkit.gyp: Add SK_DISABLE_FAST_AA_STROKE_RECT=1 so that it can be removed from Chromium's skia.gyp
+
+2012-11-15  Stephen Chenney  <schenney@chromium.org>
+
+        [Chromium] Disable SK_IGNORE_FAST_BLURRECT
+
+        Unreviewed test update.
+
+        This flag is enabled purely to simplify rebaselining. I am now
+        removing it and doing the rebaslining.
+
+        * skia_webkit.gyp: Remove the line for SK_IGNORE_FAST_BLURRECT
+
+2012-11-15  Kent Tamura  <tkent@chromium.org>
+
+        Support stand-alone month names in calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=102196
+
+        Reviewed by Kentaro Hara.
+
+        * src/DateTimeChooserImpl.cpp:
+        (WebKit::DateTimeChooserImpl::writeDocument):
+        We don't need to pass monthLabels any more.
+
+2012-11-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-11-14  Joshua Bell  <jsbell@chromium.org>
+
+        IndexedDB: Remove magic numbers in record comparator, handle missing case
+        https://bugs.webkit.org/show_bug.cgi?id=102255
+
+        Reviewed by Tony Chang.
+
+        Add test keys for various metadata types.
+
+        * tests/IDBLevelDBCodingTest.cpp:
+        (IDBLevelDBCoding::TEST):
+
+2012-11-14  Eric Uhrhane  <ericu@chromium.org>
+
+        [chromium] Don't let shift-click turn popup into tab.
+        https://bugs.webkit.org/show_bug.cgi?id=102254
+
+        Reviewed by Adam Barth.
+
+        Change http://trac.webkit.org/changeset/132399 broke shift-click on
+        compose in GMail.  We didn't want to change behavior that people were
+        depending on, and this quick fix seems a good compromise between user
+        intent and developer intent.
+
+        * src/ChromeClientImpl.cpp:
+        (WebKit::updatePolicyForEvent):
+
+2012-11-14  Mike Reed  <reed@google.com>
+
+        Dynamically create canvas in Setup() to avoid calling DEPRECATED function setDevice().
+        https://bugs.webkit.org/show_bug.cgi?id=102242
+
+        Reviewed by Stephen White.
+
+        This change should not change any test results, it is an equivalent implementation that avoids
+        using a (now) DEPRECATED function.
+
+        * tests/DeferredImageDecoderTest.cpp:
+        (WebCore::createRasterCanvas):
+        (WebCore):
+        (WebCore::DeferredImageDecoderTest::SetUp):
+        (DeferredImageDecoderTest):
+        (WebCore::TEST_F):
+
+2012-11-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134523.
+        http://trac.webkit.org/changeset/134523
+        https://bugs.webkit.org/show_bug.cgi?id=102218
+
+        brake chrome windows build, as it references a non existing
+        header js/DOMRequestState.h (Requested by jochen__ on
+        #webkit).
+
+        * src/WebIDBKey.cpp:
+
+2012-11-14  Kent Tamura  <tkent@chromium.org>
+
+        Support for localization tests of calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=102181
+
+        Reviewed by Kentaro Hara.
+
+        * src/DateTimeChooserImpl.cpp:
+        Use DateTimeChooserParameters::locale.
+        (WebKit::DateTimeChooserImpl::DateTimeChooserImpl):
+        (WebKit::DateTimeChooserImpl::writeDocument):
+
+2012-11-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134566.
+        http://trac.webkit.org/changeset/134566
+        https://bugs.webkit.org/show_bug.cgi?id=102197
+
+        "it broke Chromium Android Release build" (Requested by
+        haraken on #webkit).
+
+        * src/DateTimeChooserImpl.cpp:
+        (WebKit::DateTimeChooserImpl::DateTimeChooserImpl):
+        (WebKit::DateTimeChooserImpl::writeDocument):
+
+2012-11-14  Kent Tamura  <tkent@chromium.org>
+
+        Support for localization tests of calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=102181
+
+        Reviewed by Kentaro Hara.
+
+        * src/DateTimeChooserImpl.cpp:
+        Use DateTimeChooserParameters::locale.
+        (WebKit::DateTimeChooserImpl::DateTimeChooserImpl):
+        (WebKit::DateTimeChooserImpl::writeDocument):
+
+2012-11-14  Yury Semikhatsky  <yurys@chromium.org>
+
+        Remove MemoryInstrumentationTest.ImageObserver
+        https://bugs.webkit.org/show_bug.cgi?id=102185
+
+        Reviewed by Pavel Feldman.
+
+        Removed obsolete memory instrumenation unit test.
+
+        * WebKit.gypi:
+        * tests/MemoryInstrumentationTest.cpp: Removed.
+
+2012-11-14  Kent Tamura  <tkent@chromium.org>
+
+        [Chromium] Add API to expose WebCore::DateTimeChooser
+        https://bugs.webkit.org/show_bug.cgi?id=101196
+
+        Reviewed by Hajime Morita.
+
+        Add ability to open date/time choosers to WebViewClient.
+
+        - ExternalDateTimeChooser forwards DateTimeChooser requests from WebCore
+          to WebViewClient, and waits for WebDateTimeChooerCompletion notifications.
+        - WebDateTimeChooserParams contains various information to create
+          chooser UI.
+        - WebDateTimeChooserCompletion informs value selection by users to
+          ExternalDateTimeChooser.
+
+        The design is very similar to existing WebFileChooserParams and
+        WebFileChooserCompletion.
+
+        These interfaces are used only if ENABLE_INPUT_MULTIPLE_FIELDS_UI is not
+        enabled, that is to say, in Chromium-Android port. Non-Android Chromium
+        ports use DateTimeChooserImpl and WebKit-internal choosers.
+
+        * WebKit.gyp: Add WebDateTimeChooserCompletion.h,
+        WebDateTimeChooserParams.h, ExternalDateTimeChooser.cpp, and
+        ExternalDateTimeChooser.h.
+        * public/WebDateTimeChooserCompletion.h: Added.
+        (WebDateTimeChooserCompletion):
+        (WebKit::WebDateTimeChooserCompletion::~WebDateTimeChooserCompletion):
+        * public/WebDateTimeChooserParams.h: Added.
+        (WebDateTimeChooserParams):
+        (WebKit::WebDateTimeChooserParams::WebDateTimeChooserParams):
+        * public/WebViewClient.h:
+        (WebKit): Add some forward declarations.
+        (WebKit::WebViewClient::openDateTimeChooser): Added.
+        * src/ChromeClientImpl.cpp:
+        (WebKit::ChromeClientImpl::openDateTimeChooser):
+        Creates ExternalDateTimeChooser if !ENABLE(INPUT_MULTIPLE_FIELDS_UI).
+        * src/ExternalDateTimeChooser.cpp: Added.
+        (WebDateTimeChooserCompletionImpl): An implementation of
+        WebDateTimeChooserCompletion. When didChooseValue or didCancelChooser is
+        called, it notifies to an ExternalDateTimeChooser and kill itself.
+        (WebKit::ExternalDateTimeChooser::~ExternalDateTimeChooser): Added.
+        (WebKit::ExternalDateTimeChooser::ExternalDateTimeChooser): Added.
+        (WebKit::ExternalDateTimeChooser::create):
+        Cretes an object, then asks the WebViewClient to open date/time chooser.
+        If an open request fails, an empty PassRefPtr<> is returned.
+        We don't ask to open in the constructor because open requests might fail
+        and it's hard for the constructor to tell the failure.
+        (WebKit::ExternalDateTimeChooser::openDateTimeChooser): Prepares a
+        WebDateTimeChooserParams and a WebDateTimeChooserCompletion, calls
+        WebViewClient::openDateTimeChooser, and kill the
+        WebDateTimeChooserCompletion if openDateTimeChooser fails.
+        (WebKit::ExternalDateTimeChooser::didChooseValue):
+        Called by WebDateTimeChooserCompletion.
+        We need to check m_client because the requester is already dead.
+        (WebKit::ExternalDateTimeChooser::didCancelChooser): Ditto.
+        (WebKit::ExternalDateTimeChooser::endChooser):
+        Called by the requester when it wants to close the chooser.
+        We don't close the chooser here, and just disconnect the association of
+        the client and this object.
+        * src/ExternalDateTimeChooser.h: Added.
+
+2012-11-13  Vincent Scheib  <scheib@chromium.org>
+
+        Remove RuntimeEnabledFeatures::isPointerLockEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=102107
+
+        Reviewed by Adam Barth.
+
+        The runtime flag is always true now that the feature is enabled by default in Chromium.
+
+        * public/WebRuntimeFeatures.h:
+        (WebRuntimeFeatures):
+        * src/WebRuntimeFeatures.cpp:
+        (WebKit):
+        (WebKit::WebRuntimeFeatures::enablePointerLock):
+
+2012-11-13  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Pass showDebugBorders directly to WebLayerTreeSettings, don't use the GraphicsLayer border width setting.
+        https://bugs.webkit.org/show_bug.cgi?id=102130
+
+        Reviewed by James Robinson.
+
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit):
+
+2012-11-13  Keishi Hattori  <keishi@webkit.org>
+
+        Enable datalist UI for input types week and month
+        https://bugs.webkit.org/show_bug.cgi?id=102041
+
+        Reviewed by Kent Tamura.
+
+        * src/DateTimeChooserImpl.cpp:
+        (WebKit::DateTimeChooserImpl::writeDocument): If the type supports calendar picker show the "Other..." option.
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * public/WebView.h:
+        (WebView):
+        * src/InspectorClientImpl.cpp:
+        (WebKit::InspectorClientImpl::canShowFPSCounter):
+        (WebKit):
+        (WebKit::InspectorClientImpl::setShowFPSCounter):
+        * src/InspectorClientImpl.h:
+        (InspectorClientImpl):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::setShowFPSCounter):
+        (WebKit):
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit::WebViewImpl::loadFontAtlasIfNecessary):
+        * src/WebViewImpl.h:
+        (WebViewImpl):
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Plumb WebCompositorSupport settings through WebLayerTreeSettings as well, in preparation for removing the settings from WebCompositorSupport
+        https://bugs.webkit.org/show_bug.cgi?id=102146
+
+        Reviewed by James Robinson.
+
+        Add accelerated animation and per-tile painting to the WebSettings structure.
+
+        * public/WebSettings.h:
+        * src/WebSettingsImpl.cpp:
+        (WebKit::WebSettingsImpl::setAcceleratedAnimationEnabled):
+        (WebKit):
+        (WebKit::WebSettingsImpl::setPerTilePaintingEnabled):
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+        (WebKit::WebSettingsImpl::gestureTapHighlightEnabled):
+        (WebKit::WebSettingsImpl::doubleTapToZoomEnabled):
+        (WebKit::WebSettingsImpl::perTilePaintingEnabled):
+        (WebKit::WebSettingsImpl::acceleratedAnimationEnabled):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit):
+
+2012-11-13  Kenneth Russell  <kbr@google.com>
+
+        Notify embedder of lost contexts and allow overriding of WebGL support
+        https://bugs.webkit.org/show_bug.cgi?id=101826
+
+        Reviewed by Adam Barth.
+
+        Expose new FrameLoaderClient hooks through Chromium's
+        WebPermissionClient and WebFrameClient. Downstream browser tests
+        will exercise this new functionality.
+
+        * public/WebFrameClient.h:
+        (WebFrameClient):
+        (WebKit::WebFrameClient::didLoseWebGLContext):
+        * public/WebPermissionClient.h:
+        (WebPermissionClient):
+        (WebKit::WebPermissionClient::allowWebGL):
+        * src/FrameLoaderClientImpl.cpp:
+        (WebKit):
+        (WebKit::FrameLoaderClientImpl::allowWebGL):
+        (WebKit::FrameLoaderClientImpl::didLoseWebGLContext):
+        * src/FrameLoaderClientImpl.h:
+        (FrameLoaderClientImpl):
+
+2012-11-13  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: MathML types need to be semantically identified in AX tree
+        https://bugs.webkit.org/show_bug.cgi?id=101263
+
+        Reviewed by Beth Dakin.
+
+        * public/WebAccessibilityRole.h:
+        * src/AssertMatchingEnums.cpp:
+            Add new accessibility role.
+
+2012-11-13  Silvia Pfeiffer  <silviapf@chromium.org>
+
+        Clean up the inheritance tree under the MediaControls Class.
+        https://bugs.webkit.org/show_bug.cgi?id=88871
+
+        Reviewed by Eric Carlson.
+
+        This patch removes code duplication between the Chromium and Safari
+        media controls shadow DOMs.
+        The derived classes are renamed based on their platform:
+        - MediaControlRootElement                to MediaControlsApple.
+        - MediaControlRootElementChromium        to MediaControlsChromium.
+        - MediaControlRootElementChromiumAndroid to MediaControlsChromiumAndroid.
+
+        * public/WebContextMenuData.h:
+          Move MediaControlRootElement to MediaControls.
+        * src/ContextMenuClientImpl.cpp:
+        (WebKit::ContextMenuClientImpl::getCustomMenuFromDefaultItems):
+          Move MediaControlRootElement to MediaControls.
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134446.
+        http://trac.webkit.org/changeset/134446
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Need to try a different strategy for landing a two-sided patch
+        (3/3).
+
+        * public/WebSettings.h:
+        * src/WebSettingsImpl.cpp:
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+        (WebKit::WebSettingsImpl::gestureTapHighlightEnabled):
+        (WebKit::WebSettingsImpl::doubleTapToZoomEnabled):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit):
+
+2012-11-13  Dan Carney  <dcarney@google.com>
+
+        [V8] More efficient wrapper dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=102082
+
+        Reviewed by Adam Barth.
+
+        * src/WebArrayBuffer.cpp:
+        (WebKit::WebArrayBuffer::toV8Value):
+        * src/WebBlob.cpp:
+        (WebKit::WebBlob::toV8Value):
+
+2012-11-12  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove the WebCompositorSupport methods for changing settings, plumb everything through WebLayerTreeSettings
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Reviewed by James Robinson.
+
+        This adds perTilePainting and acceleratedAniamtions to the WebSettings
+        classes, so that DRT can turn these on via WebLayerTreeSettings.
+
+        * public/WebSettings.h:
+        * src/WebSettingsImpl.cpp:
+        (WebKit::WebSettingsImpl::setAcceleratedAnimationEnabled):
+        (WebKit):
+        (WebKit::WebSettingsImpl::setPerTilePaintingEnabled):
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+        (WebKit::WebSettingsImpl::gestureTapHighlightEnabled):
+        (WebKit::WebSettingsImpl::doubleTapToZoomEnabled):
+        (WebKit::WebSettingsImpl::perTilePaintingEnabled):
+        (WebKit::WebSettingsImpl::acceleratedAnimationEnabled):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit):
+
+2012-11-13  Alec Flett  <alecflett@chromium.org>
+
+        IndexedDB: remove legacy string-based backend methods
+        https://bugs.webkit.org/show_bug.cgi?id=102004
+
+        Reviewed by Adam Barth.
+
+        This is the final stage in a refactor, preceded by
+        https://bugs.webkit.org/show_bug.cgi?id=100426
+
+        * public/WebIDBDatabase.h:
+        (WebKit::WebIDBDatabase::createObjectStore):
+        * public/WebIDBObjectStore.h:
+        (WebKit::WebIDBObjectStore::createIndex):
+        (WebKit::WebIDBObjectStore::index):
+        * public/WebIDBTransaction.h:
+        * src/IDBDatabaseBackendProxy.cpp:
+        * src/IDBDatabaseBackendProxy.h:
+        (IDBDatabaseBackendProxy):
+        * src/IDBTransactionBackendProxy.cpp:
+        * src/IDBTransactionBackendProxy.h:
+        (IDBTransactionBackendProxy):
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134391.
+        http://trac.webkit.org/changeset/134391
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Speculative rollout, trying to fix browser_tests failure.
+
+        * public/WebView.h:
+        (WebView):
+        * src/InspectorClientImpl.cpp:
+        * src/InspectorClientImpl.h:
+        (InspectorClientImpl):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit):
+        * src/WebViewImpl.h:
+        (WebViewImpl):
+
+2012-11-13  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Unreviewed: temporary disable failing test.
+
+        * tests/MemoryInstrumentationTest.cpp:
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * public/WebView.h:
+        (WebView):
+        * src/InspectorClientImpl.cpp:
+        (WebKit::InspectorClientImpl::canShowFPSCounter):
+        (WebKit):
+        (WebKit::InspectorClientImpl::setShowFPSCounter):
+        * src/InspectorClientImpl.h:
+        (InspectorClientImpl):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::WebViewImpl):
+        (WebKit::WebViewImpl::setShowFPSCounter):
+        (WebKit):
+        (WebKit::WebViewImpl::setIsAcceleratedCompositingActive):
+        (WebKit::WebViewImpl::loadFontAtlasIfNecessary):
+        * src/WebViewImpl.h:
+        (WebViewImpl):
+
+2012-11-12  Kent Tamura  <tkent@chromium.org>
+
+        Unable to set valid time value to input[type=time] with user interaction in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=102048
+
+        Reviewed by Kentaro Hara.
+
+        * tests/DecimalTest.cpp:
+        (TEST_F): Update and add tests.
+        2.1 % 3 should be 2.1
+        10 % -3 should be 1
+        -10 % -3 should be -1
+        3.6 % 1.3 should be 1
+        500 % 1000 should be 500
+        -500 % 1000 should be -500
+
+2012-11-12  Min Qin  <qinmin@chromium.org>
+
+        Fix windowRect calculation for webplugin due to page scale factors
+        https://bugs.webkit.org/show_bug.cgi?id=100182
+
+        Reviewed by Adam Barth.
+
+        The current calculaton of windowRect in WebPluginContainerImpl is wrong. Even after some of our latest changes.
+        The problem is caused by page scale factor.
+        For example, windowToContents(IntPoint) will return an unscaled offset for an iframe, but will return a scaled offset for the main frame. So in order to obtain the correct window coordinate, we need to use contentsToWindow().
+        Since webview_plugin.cc is expecting window coordinates, we need to use contentsToWindow(IntRect) to calculate the windowRect so that the rect size can get correctly scaled.
+        It is difficult to write a test for this because it's pixel-based, and plugin placeholder is managed on the Chromium side (webview_plugin.cc).
+
+        * src/WebPluginContainerImpl.cpp:
+        (WebKit::WebPluginContainerImpl::paint):
+
+2012-11-12  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed. Roll Chromium DEPS.
+
+2012-11-12  Stephen Chenney  <schenney@chromium.org>
+
+        [chromium] Supressing a Skia change to prevent layout test breakage.
+
+        Unreviewed expectations management.
+
+        * skia_webkit.gyp: Added supression 'SK_IGNORE_FAST_BLURRECT=1'
+
+2012-11-12  Alexandre Elias  <aelias@chromium.org>
+
+        [chromium] Delete WebCompositor.h
+        https://bugs.webkit.org/show_bug.cgi?id=101137
+
+        Reviewed by James Robinson.
+
+        The implementation of this class is getting deleted and all
+        WebKit-side users are already going via WebCompositorSupport instead.
+
+        * tests/WebCompositorInputHandlerImplTest.cpp:
+
+2012-11-12  Dirk Pranke  <dpranke@chromium.org>
+
+        Fix Chromium DEPS version after accidentally checking in HEAD a couple days ago.
+
+        Unreviewed, build fix.
+
+        * DEPS:
+
+2012-11-12  Keishi Hattori  <keishi@webkit.org>
+
+        Add support for week/month to Locale::formatDateTime()
+        https://bugs.webkit.org/show_bug.cgi?id=101878
+
+        Reviewed by Kent Tamura.
+
+        * tests/LocaleMacTest.cpp:
+        (LocaleMacTest::formatWeek): Takes ISO string and returns localized string.
+        (LocaleMacTest):
+        (LocaleMacTest::formatMonth): Ditto.
+        (TEST_F):
+
 2012-11-11  Sadrul Habib Chowdhury  <sadrul@chromium.org>
 
         [chromium] Expose CustomEvent through WebDOMCustomEvent.

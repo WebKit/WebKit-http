@@ -30,21 +30,48 @@
 
 namespace WebKit {
 
-class RemoteLayerTreeController;
+class RemoteLayerTreeContext;
 
 class RemoteGraphicsLayer : public WebCore::GraphicsLayer {
 public:
-    static PassOwnPtr<WebCore::GraphicsLayer> create(WebCore::GraphicsLayerClient*, RemoteLayerTreeController*);
+    static PassOwnPtr<WebCore::GraphicsLayer> create(WebCore::GraphicsLayerClient*, RemoteLayerTreeContext*);
     virtual ~RemoteGraphicsLayer();
 
+    uint64_t layerID() const { return m_layerID; }
+
 private:
-    RemoteGraphicsLayer(WebCore::GraphicsLayerClient*, RemoteLayerTreeController*);
+    RemoteGraphicsLayer(WebCore::GraphicsLayerClient*, RemoteLayerTreeContext*);
 
     // WebCore::GraphicsLayer
+    virtual void setName(const String&) OVERRIDE;
+
+    virtual bool setChildren(const Vector<WebCore::GraphicsLayer*>&);
+    virtual void addChild(WebCore::GraphicsLayer*);
+    virtual void addChildAtIndex(WebCore::GraphicsLayer*, int index);
+    virtual void addChildAbove(WebCore::GraphicsLayer* childLayer, WebCore::GraphicsLayer* sibling);
+    virtual void addChildBelow(WebCore::GraphicsLayer* childLayer, WebCore::GraphicsLayer* sibling);
+    virtual bool replaceChild(WebCore::GraphicsLayer* oldChild, WebCore::GraphicsLayer* newChild);
+
+    virtual void removeFromParent() OVERRIDE;
+
+    virtual void setPosition(const WebCore::FloatPoint&) OVERRIDE;
+    virtual void setSize(const WebCore::FloatSize&) OVERRIDE;
+
     virtual void setNeedsDisplay() OVERRIDE;
     virtual void setNeedsDisplayInRect(const WebCore::FloatRect&) OVERRIDE;
+    virtual void flushCompositingState(const WebCore::FloatRect&) OVERRIDE;
+    virtual void flushCompositingStateForThisLayerOnly() OVERRIDE;
 
-    RemoteLayerTreeController* m_controller;
+    virtual void willBeDestroyed() OVERRIDE;
+
+    void noteLayerPropertiesChanged(unsigned layerChanges);
+    void noteSublayersChanged();
+
+    void recursiveCommitChanges();
+
+    uint64_t m_layerID;
+    RemoteLayerTreeContext* m_context;
+    unsigned m_uncommittedLayerChanges;
 };
 
 } // namespace WebKit

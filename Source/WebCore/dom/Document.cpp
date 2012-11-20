@@ -792,14 +792,13 @@ void Document::setCompatibilityMode(CompatibilityMode mode)
 {
     if (m_compatibilityModeLocked || mode == m_compatibilityMode)
         return;
-    ASSERT(m_styleSheetCollection->activeAuthorStyleSheets().isEmpty());
     bool wasInQuirksMode = inQuirksMode();
     m_compatibilityMode = mode;
     selectorQueryCache()->invalidate();
     if (inQuirksMode() != wasInQuirksMode) {
         // All user stylesheets have to reparse using the different mode.
         m_styleSheetCollection->clearPageUserSheet();
-        m_styleSheetCollection->clearPageGroupUserSheets();
+        m_styleSheetCollection->invalidateInjectedStyleSheetCache();
     }
 }
 
@@ -2176,9 +2175,6 @@ void Document::suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension why)
 
     if (DeviceMotionController* controller = DeviceMotionController::from(page()))
         controller->suspendEventsForAllListeners(domWindow());
-    if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
-        controller->suspendEventsForAllListeners(domWindow());
-
 #endif
 }
 
@@ -2191,8 +2187,6 @@ void Document::resumeActiveDOMObjects()
         return;
 
     if (DeviceMotionController* controller = DeviceMotionController::from(page()))
-        controller->resumeEventsForAllListeners(domWindow());
-    if (DeviceOrientationController* controller = DeviceOrientationController::from(page()))
         controller->resumeEventsForAllListeners(domWindow());
 #endif
 }
@@ -2215,11 +2209,11 @@ AXObjectCache* Document::axObjectCache() const
     // document.  This is because we need to be able to get from any WebCoreAXObject
     // to any other WebCoreAXObject on the same page.  Using a single cache allows
     // lookups across nested webareas (i.e. multiple documents).
-    Document* document = topDocument();
-    ASSERT(document == this || !m_axObjectCache);
-    if (!document->m_axObjectCache)
-        document->m_axObjectCache = adoptPtr(new AXObjectCache(this));
-    return document->m_axObjectCache.get();
+    Document* topDocument = this->topDocument();
+    ASSERT(topDocument == this || !m_axObjectCache);
+    if (!topDocument->m_axObjectCache)
+        topDocument->m_axObjectCache = adoptPtr(new AXObjectCache(this));
+    return topDocument->m_axObjectCache.get();
 }
 
 void Document::setVisuallyOrdered()
@@ -3473,11 +3467,15 @@ void Document::getFocusableNodes(Vector<RefPtr<Node> >& nodes)
   
 void Document::setCSSTarget(Element* n)
 {
-    if (m_cssTarget)
+    if (m_cssTarget) {
         m_cssTarget->setNeedsStyleRecalc();
+        invalidateParentDistributionIfNecessary(m_cssTarget, SelectRuleFeatureSet::RuleFeatureTarget);
+    }
     m_cssTarget = n;
-    if (n)
+    if (n) {
         n->setNeedsStyleRecalc();
+        invalidateParentDistributionIfNecessary(n, SelectRuleFeatureSet::RuleFeatureTarget);
+    }
 }
 
 void Document::registerNodeListCache(DynamicNodeListCacheBase* list)
@@ -4397,11 +4395,6 @@ PassRefPtr<HTMLCollection> Document::plugins()
 {
     // This is an alias for embeds() required for the JS DOM bindings.
     return cachedCollection(DocEmbeds);
-}
-
-PassRefPtr<HTMLCollection> Document::objects()
-{
-    return cachedCollection(DocObjects);
 }
 
 PassRefPtr<HTMLCollection> Document::scripts()
@@ -5876,6 +5869,8 @@ void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
 {
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
     ContainerNode::reportMemoryUsage(memoryObjectInfo);
+    TreeScope::reportMemoryUsage(memoryObjectInfo);
+    ScriptExecutionContext::reportMemoryUsage(memoryObjectInfo);
     info.addMember(m_styleResolver);
     info.addMember(m_url);
     info.addMember(m_baseURL);

@@ -200,6 +200,7 @@ BackingStorePrivate::BackingStorePrivate()
     , m_resumeOperation(BackingStore::None)
     , m_suspendRenderJobs(false)
     , m_suspendRegularRenderJobs(false)
+    , m_tileMatrixNeedsUpdate(false)
     , m_isScrollingOrZooming(false)
     , m_webPage(0)
     , m_client(0)
@@ -279,14 +280,22 @@ bool BackingStorePrivate::isOpenGLCompositing() const
     return true;
 }
 
-void BackingStorePrivate::suspendScreenAndBackingStoreUpdates()
+void BackingStorePrivate::suspendBackingStoreUpdates()
+{
+    if (atomic_add_value(&m_suspendBackingStoreUpdates, 0)) {
+        BBLOG(BlackBerry::Platform::LogLevelInfo,
+            "Backingstore already suspended, increasing suspend counter.");
+    }
+
+    atomic_add(&m_suspendBackingStoreUpdates, 1);
+}
+
+void BackingStorePrivate::suspendScreenUpdates()
 {
     if (m_suspendScreenUpdates) {
         BBLOG(BlackBerry::Platform::LogLevelInfo,
-            "Screen and backingstore already suspended, increasing suspend counter.");
+            "Screen already suspended, increasing suspend counter.");
     }
-
-    ++m_suspendBackingStoreUpdates;
 
     // Make sure the user interface thread gets the message before we proceed
     // because blitVisibleContents() can be called from the user interface
@@ -296,17 +305,32 @@ void BackingStorePrivate::suspendScreenAndBackingStoreUpdates()
     BlackBerry::Platform::userInterfaceThreadMessageClient()->syncToCurrentMessage();
 }
 
-void BackingStorePrivate::resumeScreenAndBackingStoreUpdates(BackingStore::ResumeUpdateOperation op)
+void BackingStorePrivate::resumeBackingStoreUpdates()
+{
+    unsigned currentValue = atomic_add_value(&m_suspendBackingStoreUpdates, 0);
+    ASSERT(currentValue >= 1);
+    if (currentValue < 1) {
+        BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelCritical,
+            "Call mismatch: Backingstore hasn't been suspended, therefore won't resume!");
+        return;
+    }
+
+    // Set a flag indicating that we're about to resume backingstore updates and
+    // the tile matrix should be updated as a consequence by the first render
+    // job that happens after this resumption of backingstore updates.
+    if (currentValue == 1)
+        setTileMatrixNeedsUpdate();
+
+    atomic_sub(&m_suspendBackingStoreUpdates, 1);
+}
+
+void BackingStorePrivate::resumeScreenUpdates(BackingStore::ResumeUpdateOperation op)
 {
     ASSERT(m_suspendScreenUpdates);
-    ASSERT(m_suspendBackingStoreUpdates);
 
-    // Both variables are similar except for the timing of setting them.
-    ASSERT(m_suspendScreenUpdates == m_suspendBackingStoreUpdates);
-
-    if (!m_suspendScreenUpdates || !m_suspendBackingStoreUpdates) {
+    if (!m_suspendScreenUpdates) {
         BlackBerry::Platform::logAlways(BlackBerry::Platform::LogLevelCritical,
-            "Call mismatch: Screen and backingstore haven't been suspended, therefore won't resume!");
+            "Call mismatch: Screen hasn't been suspended, therefore won't resume!");
         return;
     }
 
@@ -315,15 +339,12 @@ void BackingStorePrivate::resumeScreenAndBackingStoreUpdates(BackingStore::Resum
         || (m_resumeOperation == BackingStore::None && op == BackingStore::Blit))
         m_resumeOperation = op;
 
-    if (m_suspendScreenUpdates >= 2 && m_suspendBackingStoreUpdates >= 2) { // we're still suspended
+    if (m_suspendScreenUpdates >= 2) { // we're still suspended
         BBLOG(BlackBerry::Platform::LogLevelInfo,
             "Screen and backingstore still suspended, decreasing suspend counter.");
-        --m_suspendBackingStoreUpdates;
         --m_suspendScreenUpdates;
         return;
     }
-
-    --m_suspendBackingStoreUpdates;
 
     op = m_resumeOperation;
     m_resumeOperation = BackingStore::None;
@@ -702,6 +723,9 @@ void BackingStorePrivate::setBackingStoreRect(const Platform::IntRect& backingSt
         return;
     }
 
+    if (m_suspendBackingStoreUpdates)
+        return;
+
     Platform::IntRect currentBackingStoreRect = frontState()->backingStoreRect();
     double currentScale = frontState()->scale();
 
@@ -1040,6 +1064,11 @@ bool BackingStorePrivate::render(const Platform::IntRect& rect)
     if (!isActive())
         return false;
 
+    // This is the first render job that has been performed since resumption of
+    // backingstore updates and the tile matrix needs updating since we suspend
+    // tile matrix updating with backingstore updates
+    updateTileMatrixIfNeeded();
+
     TileRectList tileRectList = mapFromTransformedContentsToTiles(rect);
     if (tileRectList.isEmpty())
         return false;
@@ -1145,6 +1174,7 @@ void BackingStorePrivate::requestLayoutIfNeeded() const
 
 bool BackingStorePrivate::renderVisibleContents()
 {
+    updateTileMatrixIfNeeded();
     Platform::IntRect renderRect = shouldDirectRenderingToWindow() ? visibleContentsRect() : visibleTilesRect();
     if (render(renderRect)) {
         m_renderQueue->clear(renderRect, true /*clearRegularRenderJobs*/);
@@ -1155,6 +1185,7 @@ bool BackingStorePrivate::renderVisibleContents()
 
 bool BackingStorePrivate::renderBackingStore()
 {
+    updateTileMatrixIfNeeded();
     return render(frontState()->backingStoreRect());
 }
 
@@ -1290,6 +1321,10 @@ void BackingStorePrivate::blitVisibleContents(bool force)
         viewportAccessor->scale());
 #endif
 
+#if DEBUG_CHECKERBOARD
+    bool blitCheckered = false;
+#endif
+
     Vector<TileBuffer*> blittedTiles;
 
     if (isActive() && !m_webPage->d->compositorDrawsRootLayer()) {
@@ -1315,10 +1350,6 @@ void BackingStorePrivate::blitVisibleContents(bool force)
         TransformationMatrix transformation;
         if (!transformedSrcRect.isEmpty())
             transformation = TransformationMatrix::rectToRect(FloatRect(FloatPoint(0.0, 0.0), WebCore::IntSize(transformedSrcRect.size())), WebCore::IntRect(dstRect));
-
-#if DEBUG_CHECKERBOARD
-        bool blitCheckered = false;
-#endif
 
         // Don't clip to contents if it is empty so we can still paint default background.
         if (!transformedContentsRect.isEmpty()) {
@@ -1950,12 +1981,18 @@ void BackingStorePrivate::updateTileMatrixIfNeeded()
 {
     ASSERT(BlackBerry::Platform::webKitThreadMessageClient()->isCurrentThread());
 
+    if (!m_tileMatrixNeedsUpdate)
+        return;
+
+    m_tileMatrixNeedsUpdate = false;
+
     // This will update the tile matrix.
     scrollBackingStore(0, 0);
 }
 
 void BackingStorePrivate::contentsSizeChanged(const Platform::IntSize&)
 {
+    setTileMatrixNeedsUpdate();
     updateTileMatrixIfNeeded();
 }
 
@@ -2024,6 +2061,7 @@ void BackingStorePrivate::transformChanged()
 void BackingStorePrivate::orientationChanged()
 {
     ASSERT(BlackBerry::Platform::webKitThreadMessageClient()->isCurrentThread());
+    setTileMatrixNeedsUpdate();
     updateTileMatrixIfNeeded();
     createVisibleTileBuffer();
 }
@@ -2053,6 +2091,10 @@ void BackingStorePrivate::createSurfaces()
         ASSERT_NOT_REACHED();
         return;
     }
+
+    // Don't try to blit to screen unless we have a buffer.
+    if (!buffer())
+        suspendScreenUpdates();
 
     SurfacePool* surfacePool = SurfacePool::globalSurfacePool();
     surfacePool->initialize(tileSize());
@@ -2086,10 +2128,6 @@ void BackingStorePrivate::createSurfaces()
     swapState();
 
     createVisibleTileBufferForWebPage(m_webPage->d);
-
-    // Don't try to blit to screen unless we have a buffer.
-    if (!buffer())
-        suspendScreenAndBackingStoreUpdates();
 }
 
 void BackingStorePrivate::createVisibleTileBuffer()
@@ -2632,14 +2670,24 @@ void BackingStore::createSurface()
     d->m_webPage->setFocused(true);
 }
 
-void BackingStore::suspendScreenAndBackingStoreUpdates()
+void BackingStore::suspendBackingStoreUpdates()
 {
-    d->suspendScreenAndBackingStoreUpdates();
+    d->suspendBackingStoreUpdates();
 }
 
-void BackingStore::resumeScreenAndBackingStoreUpdates(ResumeUpdateOperation op)
+void BackingStore::resumeBackingStoreUpdates()
 {
-    d->resumeScreenAndBackingStoreUpdates(op);
+    d->resumeBackingStoreUpdates();
+}
+
+void BackingStore::suspendScreenUpdates()
+{
+    d->suspendScreenUpdates();
+}
+
+void BackingStore::resumeScreenUpdates(ResumeUpdateOperation op)
+{
+    d->resumeScreenUpdates(op);
 }
 
 bool BackingStore::isScrollingOrZooming() const
@@ -2673,10 +2721,14 @@ void BackingStore::createBackingStoreMemory()
 {
     if (BackingStorePrivate::s_currentBackingStoreOwner == d->m_webPage)
         SurfacePool::globalSurfacePool()->createBuffers();
+    resumeBackingStoreUpdates();
+    resumeScreenUpdates(BackingStore::RenderAndBlit);
 }
 
 void BackingStore::releaseBackingStoreMemory()
 {
+    suspendBackingStoreUpdates();
+    suspendScreenUpdates();
     if (BackingStorePrivate::s_currentBackingStoreOwner == d->m_webPage)
         SurfacePool::globalSurfacePool()->releaseBuffers();
 }

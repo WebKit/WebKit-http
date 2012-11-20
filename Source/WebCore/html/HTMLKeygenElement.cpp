@@ -50,16 +50,12 @@ public:
         return adoptRef(new KeygenSelectElement(document));
     }
 
-    virtual const AtomicString& shadowPseudoId() const
-    {
-        DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-keygen-select", AtomicString::ConstructFromLiteral));
-        return pseudoId;
-    }
-
 protected:
     KeygenSelectElement(Document* document)
         : HTMLSelectElement(selectTag, document, 0)
     {
+        DEFINE_STATIC_LOCAL(AtomicString, pseudoId, ("-webkit-keygen-select", AtomicString::ConstructFromLiteral));
+        setPseudo(pseudoId);
     }
 
 private:
@@ -96,13 +92,13 @@ PassRefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tag
     return adoptRef(new HTMLKeygenElement(tagName, document, form));
 }
 
-void HTMLKeygenElement::parseAttribute(const Attribute& attribute)
+void HTMLKeygenElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     // Reflect disabled attribute on the shadow select element
-    if (attribute.name() == disabledAttr)
-        shadowSelect()->setAttribute(attribute.name(), attribute.value());
+    if (name == disabledAttr)
+        shadowSelect()->setAttribute(name, value);
 
-    HTMLFormControlElement::parseAttribute(attribute);
+    HTMLFormControlElement::parseAttribute(name, value);
 }
 
 bool HTMLKeygenElement::appendFormData(FormDataList& encoded_values, bool)

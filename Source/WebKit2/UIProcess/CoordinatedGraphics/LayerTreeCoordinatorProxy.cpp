@@ -30,6 +30,10 @@
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 
+#if ENABLE(CSS_SHADERS)
+#include "CustomFilterProgramInfo.h"
+#endif
+
 namespace WebKit {
 
 using namespace WebCore;
@@ -56,9 +60,9 @@ void LayerTreeCoordinatorProxy::dispatchUpdate(const Function<void()>& function)
     m_renderer->appendUpdate(function);
 }
 
-void LayerTreeCoordinatorProxy::createTileForLayer(int layerID, int tileID, const WebCore::IntRect& tileRect, const WebCore::IntSize& backingSize, const WebKit::SurfaceUpdateInfo& updateInfo)
+void LayerTreeCoordinatorProxy::createTileForLayer(int layerID, int tileID, const WebCore::IntRect& tileRect, const WebKit::SurfaceUpdateInfo& updateInfo)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::createTile, m_renderer.get(), layerID, tileID, updateInfo.scaleFactor, backingSize));
+    dispatchUpdate(bind(&LayerTreeRenderer::createTile, m_renderer.get(), layerID, tileID, updateInfo.scaleFactor));
     updateTileForLayer(layerID, tileID, tileRect, updateInfo);
 }
 
@@ -115,6 +119,17 @@ void LayerTreeCoordinatorProxy::setCompositingLayerFilters(WebLayerID id, const 
 }
 #endif
 
+#if ENABLE(CSS_SHADERS)
+void LayerTreeCoordinatorProxy::removeCustomFilterProgram(int id)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::removeCustomFilterProgram, m_renderer.get(), id));
+}
+void LayerTreeCoordinatorProxy::createCustomFilterProgram(int id, const WebCore::CustomFilterProgramInfo& programInfo)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::createCustomFilterProgram, m_renderer.get(), id, programInfo));
+}
+#endif
+
 void LayerTreeCoordinatorProxy::didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect)
 {
     dispatchUpdate(bind(&LayerTreeRenderer::flushLayerChanges, m_renderer.get()));
@@ -127,15 +142,19 @@ void LayerTreeCoordinatorProxy::didRenderFrame(const WebCore::IntSize& contentsS
 #endif
 }
 
-void LayerTreeCoordinatorProxy::createDirectlyCompositedImage(int64_t key, const WebKit::ShareableBitmap::Handle& handle)
+void LayerTreeCoordinatorProxy::createImageBacking(CoordinatedImageBackingID imageID)
 {
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(handle);
-    dispatchUpdate(bind(&LayerTreeRenderer::createImage, m_renderer.get(), key, bitmap));
+    dispatchUpdate(bind(&LayerTreeRenderer::createImageBacking, m_renderer.get(), imageID));
 }
 
-void LayerTreeCoordinatorProxy::destroyDirectlyCompositedImage(int64_t key)
+void LayerTreeCoordinatorProxy::updateImageBacking(CoordinatedImageBackingID imageID, const ShareableSurface::Handle& handle)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::destroyImage, m_renderer.get(), key));
+    dispatchUpdate(bind(&LayerTreeRenderer::updateImageBacking, m_renderer.get(), imageID, ShareableSurface::create(handle)));
+}
+
+void LayerTreeCoordinatorProxy::removeImageBacking(CoordinatedImageBackingID imageID)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::removeImageBacking, m_renderer.get(), imageID));
 }
 
 void LayerTreeCoordinatorProxy::setContentsSize(const FloatSize& contentsSize)
@@ -203,6 +222,11 @@ void LayerTreeCoordinatorProxy::purgeBackingStores()
 {
     m_surfaces.clear();
     m_drawingAreaProxy->page()->process()->send(Messages::LayerTreeCoordinator::PurgeBackingStores(), m_drawingAreaProxy->page()->pageID());
+}
+
+void LayerTreeCoordinatorProxy::setBackgroundColor(const WebCore::Color& color)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::setBackgroundColor, m_renderer.get(), color));
 }
 
 }

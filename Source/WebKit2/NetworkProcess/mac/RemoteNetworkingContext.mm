@@ -58,6 +58,12 @@ bool RemoteNetworkingContext::localFileContentSniffingEnabled() const
     return m_localFileContentSniffingEnabled;
 }
 
+CFURLStorageSessionRef RemoteNetworkingContext::storageSession() const
+{
+    // FIXME (NetworkProcess): Implement.
+    return 0;
+}
+
 NSOperationQueue *RemoteNetworkingContext::scheduledOperationQueue() const
 {
     static NSOperationQueue *queue;

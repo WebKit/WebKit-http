@@ -40,9 +40,8 @@ public:
     static v8::Persistent<v8::FunctionTemplate> GetTemplate();
     static Float64Array* toNative(v8::Handle<v8::Object> object)
     {
-        return reinterpret_cast<Float64Array*>(object->GetPointerFromInternalField(v8DOMWrapperObjectIndex));
+        return reinterpret_cast<Float64Array*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
     }
-    inline static v8::Handle<v8::Object> wrap(Float64Array*, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* = 0);
     static void derefObject(void*);
     static WrapperTypeInfo info;
     static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
@@ -50,18 +49,33 @@ public:
     static void installPerContextProperties(v8::Handle<v8::Object>, Float64Array*) { }
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
 private:
-    static v8::Handle<v8::Object> wrapSlow(PassRefPtr<Float64Array>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    friend v8::Handle<v8::Object> wrap(Float64Array*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    static v8::Handle<v8::Object> createWrapper(PassRefPtr<Float64Array>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 };
 
-v8::Handle<v8::Object> V8Float64Array::wrap(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+
+v8::Handle<v8::Object> wrap(Float64Array* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* = 0);
+
+inline v8::Handle<v8::Object> toV8Object(Float64Array* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
-        v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
-        if (!wrapper.IsEmpty())
-            return wrapper;
-    return V8Float64Array::wrapSlow(impl, creationContext, isolate);
+    if (UNLIKELY(!impl))
+        return v8::Handle<v8::Object>();
+    v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
 }
 
-v8::Handle<v8::Value> toV8(Float64Array*, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* = 0);
+inline v8::Handle<v8::Value> toV8(Float64Array* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
+{
+    if (UNLIKELY(!impl))
+        return v8NullWithCheck(isolate);
+    v8::Handle<v8::Value> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
+}
+
 inline v8::Handle<v8::Value> toV8(PassRefPtr< Float64Array > impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
     return toV8(impl.get(), creationContext, isolate);

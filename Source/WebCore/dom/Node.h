@@ -98,7 +98,7 @@ class PropertyNodeList;
 
 typedef int ExceptionCode;
 
-const int nodeStyleChangeShift = 20;
+const int nodeStyleChangeShift = 19;
 
 // SyntheticStyleChange means that we need to go through the entire style change logic even though
 // no style property has actually changed. It is used to restructure the tree when, for instance,
@@ -235,6 +235,7 @@ public:
     virtual bool isPluginElement() const { return false; }
     bool isDocumentNode() const;
     bool isShadowRoot() const { return getFlag(IsShadowRootFlag); }
+    bool isInsertionPoint() const { return getFlag(IsInsertionPointFlag); }
     bool inNamedFlow() const { return getFlag(InNamedFlowFlag); }
     bool hasCustomCallbacks() const { return getFlag(HasCustomCallbacksFlag); }
 
@@ -311,15 +312,11 @@ public:
     virtual void finishParsingChildren() { }
     virtual void beginParsingChildren() { }
 
-    // Called on the focused node right before dispatching an unload event.
-    virtual void aboutToUnload() { }
-
     // For <link> and <style> elements.
     virtual bool sheetLoaded() { return true; }
     virtual void notifyLoadedSheetAndAllCriticalSubresources(bool /* error loading subresource */) { }
     virtual void startLoadingDynamicSheet() { ASSERT_NOT_REACHED(); }
 
-    bool attributeStyleDirty() const { return getFlag(AttributeStyleDirtyFlag); }
     bool hasName() const { return getFlag(HasNameFlag); }
     bool hasID() const;
     bool hasClass() const;
@@ -334,9 +331,6 @@ public:
     StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool isLink() const { return getFlag(IsLinkFlag); }
-
-    void setAttributeStyleDirty() { setFlag(AttributeStyleDirtyFlag); }
-    void clearAttributeStyleDirty() { clearFlag(AttributeStyleDirtyFlag); }
 
     void setHasName(bool f) { setFlag(f, HasNameFlag); }
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
@@ -361,6 +355,9 @@ public:
 
     bool hasEventTargetData() const { return getFlag(HasEventTargetDataFlag); }
     void setHasEventTargetData(bool flag) { setFlag(flag, HasEventTargetDataFlag); }
+
+    bool inEden() const { return getFlag(InEdenFlag); }
+    void setEden(bool flag) { setFlag(flag, InEdenFlag); }
 
     enum ShouldSetAttached {
         SetAttached,
@@ -644,7 +641,7 @@ public:
 #if ENABLE(GESTURE_EVENTS)
     bool dispatchGestureEvent(const PlatformGestureEvent&);
 #endif
-    void dispatchSimulatedClick(PassRefPtr<Event> underlyingEvent, bool sendMouseEvents = false, bool showPressedLook = true);
+    void dispatchSimulatedClick(Event* underlyingEvent, bool sendMouseEvents = false, bool showPressedLook = true);
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
     virtual void dispatchFocusEvent(PassRefPtr<Node> oldFocusedNode);
@@ -710,31 +707,31 @@ private:
         // These bits are used by derived classes, pulled up here so they can
         // be stored in the same memory word as the Node bits above.
         IsParsingChildrenFinishedFlag = 1 << 15, // Element
-        IsStyleAttributeValidFlag = 1 << 16, // StyledElement
 #if ENABLE(SVG)
-        AreSVGAttributesValidFlag = 1 << 17, // Element
-        IsSynchronizingSVGAttributesFlag = 1 << 18, // SVGElement
-        HasSVGRareDataFlag = 1 << 19, // SVGElement
+        AreSVGAttributesValidFlag = 1 << 16, // Element
+        IsSynchronizingSVGAttributesFlag = 1 << 17, // SVGElement
+        HasSVGRareDataFlag = 1 << 18, // SVGElement
 #endif
 
         StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1),
 
-        SelfOrAncestorHasDirAutoFlag = 1 << 22,
+        SelfOrAncestorHasDirAutoFlag = 1 << 21,
 
-        HasNameFlag = 1 << 23,
+        HasNameFlag = 1 << 22,
 
-        AttributeStyleDirtyFlag = 1 << 24,
+        InNamedFlowFlag = 1 << 23,
+        HasSyntheticAttrChildNodesFlag = 1 << 24,
+        HasCustomCallbacksFlag = 1 << 25,
+        HasScopedHTMLStyleChildFlag = 1 << 26,
+        HasEventTargetDataFlag = 1 << 27,
+        InEdenFlag = 1 << 28,
+        IsInsertionPointFlag = 1 << 29,
 
 #if ENABLE(SVG)
-        DefaultNodeFlags = IsParsingChildrenFinishedFlag | IsStyleAttributeValidFlag | AreSVGAttributesValidFlag,
+        DefaultNodeFlags = IsParsingChildrenFinishedFlag | AreSVGAttributesValidFlag,
 #else
-        DefaultNodeFlags = IsParsingChildrenFinishedFlag | IsStyleAttributeValidFlag,
+        DefaultNodeFlags = IsParsingChildrenFinishedFlag,
 #endif
-        InNamedFlowFlag = 1 << 26,
-        HasSyntheticAttrChildNodesFlag = 1 << 27,
-        HasCustomCallbacksFlag = 1 << 28,
-        HasScopedHTMLStyleChildFlag = 1 << 29,
-        HasEventTargetDataFlag = 1 << 30,
     };
 
     // 2 bits remaining
@@ -755,7 +752,8 @@ protected:
         CreateHTMLElement = CreateStyledElement | IsHTMLFlag, 
         CreateFrameOwnerElement = CreateHTMLElement | HasCustomCallbacksFlag,
         CreateSVGElement = CreateStyledElement | IsSVGFlag,
-        CreateDocument = CreateContainer | InDocumentFlag
+        CreateDocument = CreateContainer | InDocumentFlag,
+        CreateInsertionPoint = CreateHTMLElement | IsInsertionPointFlag
     };
     Node(Document*, ConstructionType);
 
@@ -837,12 +835,6 @@ private:
         RenderObject* m_renderer;
         NodeRareDataBase* m_rareData;
     } m_data;
-
-public:
-    bool isStyleAttributeValid() const { return getFlag(IsStyleAttributeValidFlag); }
-    void setIsStyleAttributeValid(bool f) { setFlag(f, IsStyleAttributeValidFlag); }
-    void setIsStyleAttributeValid() const { setFlag(IsStyleAttributeValidFlag); }
-    void clearIsStyleAttributeValid() { clearFlag(IsStyleAttributeValidFlag); }
 
 protected:
     bool isParsingChildrenFinished() const { return getFlag(IsParsingChildrenFinishedFlag); }

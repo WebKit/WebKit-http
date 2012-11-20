@@ -95,7 +95,6 @@
 #include "PlatformContextSkia.h"
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
-#include "PlatformThemeChromiumLinux.h"
 #include "PlatformWheelEvent.h"
 #include "PointerLockController.h"
 #include "PopupContainer.h"
@@ -165,6 +164,11 @@
 #include <wtf/TemporaryChange.h>
 #include <wtf/Uint8ClampedArray.h>
 
+#if ENABLE(DEFAULT_RENDER_THEME)
+#include "PlatformThemeChromiumDefault.h"
+#include "RenderThemeChromiumDefault.h"
+#endif
+
 #if ENABLE(GESTURE_EVENTS)
 #include "PlatformGestureCurveFactory.h"
 #include "PlatformGestureEvent.h"
@@ -172,9 +176,12 @@
 #endif
 
 #if OS(WINDOWS)
+#if !ENABLE(DEFAULT_RENDER_THEME)
 #include "RenderThemeChromiumWin.h"
+#endif
 #else
-#if OS(UNIX) && !OS(DARWIN)
+#if OS(UNIX) && !OS(DARWIN) && !ENABLE(DEFAULT_RENDER_THEME)
+#include "PlatformThemeChromiumLinux.h"
 #include "RenderThemeChromiumLinux.h"
 #endif
 #include "RenderTheme.h"
@@ -425,6 +432,7 @@ WebViewImpl::WebViewImpl(WebViewClient* client)
     , m_compositorSurfaceReady(false)
     , m_deviceScaleInCompositor(1)
     , m_inputHandlerIdentifier(-1)
+    , m_isFontAtlasLoaded(false)
 #endif
 #if ENABLE(INPUT_SPEECH)
     , m_speechInputClient(SpeechInputClientImpl::create(client))
@@ -691,6 +699,8 @@ bool WebViewImpl::handleGestureEvent(const WebGestureEvent& event)
 
     switch (event.type) {
     case WebInputEvent::GestureFlingStart: {
+        if (mainFrameImpl()->frame()->eventHandler()->isScrollbarHandlingGestures())
+            break;
         m_client->cancelScheduledContentIntents();
         m_lastWheelPosition = WebPoint(event.x, event.y);
         m_lastWheelGlobalPosition = WebPoint(event.globalX, event.globalY);
@@ -829,6 +839,17 @@ void WebViewImpl::startPageScaleAnimation(const IntPoint& targetPosition, bool u
 WebViewBenchmarkSupport* WebViewImpl::benchmarkSupport()
 {
     return &m_benchmarkSupport;
+}
+
+void WebViewImpl::setShowFPSCounter(bool show)
+{
+    if (isAcceleratedCompositingActive()) {
+        TRACE_EVENT0("webkit", "WebViewImpl::setShowFPSCounter");
+#if USE(ACCELERATED_COMPOSITING)
+        loadFontAtlasIfNecessary();
+#endif
+        m_layerTreeView->setShowFPSCounter(show);
+    }
 }
 
 bool WebViewImpl::handleKeyEvent(const WebKeyboardEvent& event)
@@ -2913,7 +2934,7 @@ void WebViewImpl::setDeviceScaleFactor(float scaleFactor)
 
     page()->setDeviceScaleFactor(scaleFactor);
 
-    if (m_layerTreeView && m_webSettings->applyDefaultDeviceScaleFactorInCompositor()) {
+    if (m_layerTreeView && m_webSettings->applyDeviceScaleFactorInCompositor()) {
         m_deviceScaleInCompositor = page()->deviceScaleFactor();
         m_layerTreeView->setDeviceScaleFactor(m_deviceScaleInCompositor);
     }
@@ -2987,6 +3008,14 @@ void WebViewImpl::setIgnoreViewportTagMaximumScale(bool flag)
     m_page->chrome()->client()->dispatchViewportPropertiesDidChange(page()->mainFrame()->document()->viewportArguments());
 }
 
+static IntSize unscaledContentsSize(Frame* frame)
+{
+    RenderView* root = frame->contentRenderer();
+    if (!root)
+        return IntSize();
+    return root->unscaledDocumentRect().size();
+}
+
 bool WebViewImpl::computePageScaleFactorLimits()
 {
     if (m_pageDefinedMinimumPageScaleFactor == -1 || m_pageDefinedMaximumPageScaleFactor == -1)
@@ -2999,11 +3028,10 @@ bool WebViewImpl::computePageScaleFactorLimits()
     m_maximumPageScaleFactor = max(min(m_pageDefinedMaximumPageScaleFactor, maxPageScaleFactor), minPageScaleFactor) * (deviceScaleFactor() / m_deviceScaleInCompositor);
 
     int viewWidthNotIncludingScrollbars = page()->mainFrame()->view()->visibleContentRect(false).width();
-    int contentsWidth = mainFrame()->contentsSize().width;
-    if (viewWidthNotIncludingScrollbars && contentsWidth) {
+    int unscaledContentsWidth = unscaledContentsSize(page()->mainFrame()).width();
+    if (viewWidthNotIncludingScrollbars && unscaledContentsWidth) {
         // Limit page scaling down to the document width.
-        int unscaledContentWidth = contentsWidth / pageScaleFactor();
-        m_minimumPageScaleFactor = max(m_minimumPageScaleFactor, static_cast<float>(viewWidthNotIncludingScrollbars) / unscaledContentWidth);
+        m_minimumPageScaleFactor = max(m_minimumPageScaleFactor, static_cast<float>(viewWidthNotIncludingScrollbars) / unscaledContentsWidth);
         m_maximumPageScaleFactor = max(m_minimumPageScaleFactor, m_maximumPageScaleFactor);
     }
     ASSERT(m_minimumPageScaleFactor <= m_maximumPageScaleFactor);
@@ -3533,7 +3561,9 @@ void WebViewImpl::setDomainRelaxationForbidden(bool forbidden, const WebString& 
 void WebViewImpl::setScrollbarColors(unsigned inactiveColor,
                                      unsigned activeColor,
                                      unsigned trackColor) {
-#if OS(UNIX) && !OS(DARWIN) && !OS(ANDROID)
+#if ENABLE(DEFAULT_RENDER_THEME)
+    PlatformThemeChromiumDefault::setScrollbarColors(inactiveColor, activeColor, trackColor);
+#elif OS(UNIX) && !OS(DARWIN) && !OS(ANDROID)
     PlatformThemeChromiumLinux::setScrollbarColors(inactiveColor, activeColor, trackColor);
 #endif
 }
@@ -3542,11 +3572,11 @@ void WebViewImpl::setSelectionColors(unsigned activeBackgroundColor,
                                      unsigned activeForegroundColor,
                                      unsigned inactiveBackgroundColor,
                                      unsigned inactiveForegroundColor) {
-#if OS(UNIX) && !OS(DARWIN) && !OS(ANDROID)
-    RenderThemeChromiumLinux::setSelectionColors(activeBackgroundColor,
-                                                 activeForegroundColor,
-                                                 inactiveBackgroundColor,
-                                                 inactiveForegroundColor);
+#if ENABLE(DEFAULT_RENDER_THEME)
+    RenderThemeChromiumDefault::setSelectionColors(activeBackgroundColor, activeForegroundColor, inactiveBackgroundColor, inactiveForegroundColor);
+    theme()->platformColorsDidChange();
+#elif OS(UNIX) && !OS(DARWIN) && !OS(ANDROID)
+    RenderThemeChromiumLinux::setSelectionColors(activeBackgroundColor, activeForegroundColor, inactiveBackgroundColor, inactiveForegroundColor);
     theme()->platformColorsDidChange();
 #endif
 }
@@ -3964,10 +3994,14 @@ void WebViewImpl::setIsAcceleratedCompositingActive(bool active)
 
         WebLayerTreeView::Settings layerTreeViewSettings;
         layerTreeViewSettings.acceleratePainting = page()->settings()->acceleratedDrawingEnabled();
+        layerTreeViewSettings.showDebugBorders = page()->settings()->showDebugBorders();
         layerTreeViewSettings.showFPSCounter = settingsImpl()->showFPSCounter();
         layerTreeViewSettings.showPlatformLayerTree = settingsImpl()->showPlatformLayerTree();
         layerTreeViewSettings.showPaintRects = settingsImpl()->showPaintRects();
         layerTreeViewSettings.renderVSyncEnabled = settingsImpl()->renderVSyncEnabled();
+        layerTreeViewSettings.perTilePaintingEnabled = settingsImpl()->perTilePaintingEnabled();
+        layerTreeViewSettings.acceleratedAnimationEnabled = settingsImpl()->acceleratedAnimationEnabled();
+        layerTreeViewSettings.pageScalePinchZoomEnabled = settingsImpl()->applyPageScaleFactorInCompositor();
 
         layerTreeViewSettings.defaultTileSize = settingsImpl()->defaultTileSize();
         layerTreeViewSettings.maxUntiledLayerSize = settingsImpl()->maxUntiledLayerSize();
@@ -3978,7 +4012,7 @@ void WebViewImpl::setIsAcceleratedCompositingActive(bool active)
 
         m_layerTreeView = adoptPtr(Platform::current()->compositorSupport()->createLayerTreeView(this, *m_rootLayer, layerTreeViewSettings));
         if (m_layerTreeView) {
-            if (m_webSettings->applyDefaultDeviceScaleFactorInCompositor() && page()->deviceScaleFactor() != 1) {
+            if (m_webSettings->applyDeviceScaleFactorInCompositor() && page()->deviceScaleFactor() != 1) {
                 ASSERT(page()->deviceScaleFactor());
 
                 m_deviceScaleInCompositor = page()->deviceScaleFactor();
@@ -3995,17 +4029,15 @@ void WebViewImpl::setIsAcceleratedCompositingActive(bool active)
             m_client->didActivateCompositor(m_inputHandlerIdentifier);
             m_isAcceleratedCompositingActive = true;
             m_compositorCreationFailed = false;
+            m_isFontAtlasLoaded = false;
             if (m_pageOverlays)
                 m_pageOverlays->update();
 
-            // Only allocate the font atlas if we have reason to use the heads-up display.
-            if (layerTreeViewSettings.showFPSCounter || layerTreeViewSettings.showPlatformLayerTree) {
-                TRACE_EVENT0("cc", "WebViewImpl::setIsAcceleratedCompositingActive(true) initialize font atlas");
-                WebRect asciiToRectTable[128];
-                int fontHeight;
-                SkBitmap bitmap = WebCore::CompositorHUDFontAtlas::generateFontAtlas(asciiToRectTable, fontHeight);
-                m_layerTreeView->setFontAtlas(asciiToRectTable, bitmap, fontHeight);
-            }
+            if (layerTreeViewSettings.showPlatformLayerTree)
+                loadFontAtlasIfNecessary();
+
+            if (settingsImpl()->showFPSCounter())
+                setShowFPSCounter(true);
         } else {
             m_nonCompositedContentHost.clear();
             m_isAcceleratedCompositingActive = false;
@@ -4015,6 +4047,21 @@ void WebViewImpl::setIsAcceleratedCompositingActive(bool active)
     }
     if (page())
         page()->mainFrame()->view()->setClipsRepaints(!m_isAcceleratedCompositingActive);
+}
+
+void WebViewImpl::loadFontAtlasIfNecessary()
+{
+    ASSERT(m_layerTreeView);
+
+    if (m_isFontAtlasLoaded)
+        return;
+
+    TRACE_EVENT0("webkit", "WebViewImpl::loadFontAtlas");
+    WebRect asciiToRectTable[128];
+    int fontHeight;
+    SkBitmap bitmap = WebCore::CompositorHUDFontAtlas::generateFontAtlas(asciiToRectTable, fontHeight);
+    m_layerTreeView->setFontAtlas(asciiToRectTable, bitmap, fontHeight);
+    m_isFontAtlasLoaded = true;
 }
 
 #endif

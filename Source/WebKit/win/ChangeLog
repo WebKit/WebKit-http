@@ -1,3 +1,98 @@
+2012-11-17  Brady Eidson  <beidson@apple.com>
+
+        Add an integer identifier field to AuthenticationChallengeBase.
+        https://bugs.webkit.org/show_bug.cgi?id=102593
+
+        Reviewed by Darin Adler.
+
+        * WebURLAuthenticationChallenge.cpp:
+        (WebURLAuthenticationChallenge::initWithProtectionSpace): Adopt the new constructor with a dummy identifier.
+
+2012-11-16  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build fix after r134960.
+
+        Avoid including Mac-specific headers.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp: Stub out
+        CFNetwork-based implementations.
+        * WebCoreSupport/WebFrameNetworkingContext.h: Exclude
+        CFNetwork data types.
+        * WebCoreSupport/WebPlatformStrategies.cpp: Stub out
+        CFNetwork-based implementations.
+        * WebCoreSupport/WebPlatformStrategies.h: Exclude
+        CFNetwork data types.
+
+2012-11-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Private Browsing is a per-page setting that sets a global value
+        https://bugs.webkit.org/show_bug.cgi?id=67870
+
+        Reviewed by Sam Weinig.
+
+        * WebCookieManagerCFNet.cpp: (WebCookieManager::cookieStorage): We can't get
+        current session without any context, but the code was not correct anyway, the client
+        is clearly interested in a getter to match override setter.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp: Moved code for tracking global
+        sessions from WebCore to WebKit. The behavior is unchanged, but lower levels are
+        now cleaner.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h: Ditto.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::defaultCookieStorage): Added. Use WebFrameNetworkingContext
+        for tracking the default session.
+
+        * WebView.cpp: (updateSharedSettingsFromPreferencesIfNeeded):
+        Use WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts. Updating only
+        the current session is not sufficient, and did not match Mac.
+
+2012-11-14  George Tsoumalis  <tsumalis96@gmail.com>
+
+        Implementation for mehods in WebMutableURLRequest.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=83671
+
+        Reviewed by Brent Fulgham..
+
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::addValue):
+        (WebMutableURLRequest::setMainDocumentURL):
+        (WebMutableURLRequest::setHTTPShouldHandleCookies):
+
+
+2012-11-12  Roger Fong  <roger_fong@apple.com>
+
+        REGRESSION(r130643): Assertion failure when running DRT in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=101791
+
+        Reviewed by Darin Adler.
+
+        When running DRT in debug mode, we hit an assertion failure in initializing the WebKit instance.
+        This failure started occuring in r130643 and this work around follows the work around in r132302.
+
+        * WebKitCOMAPI.cpp:
+        (CLSIDHashTraits):
+
+2012-11-12  Roger Fong  <roger_fong@apple.com>
+
+        Web Inspector: Fix docking behaviour on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=101978
+
+        Reviewed by Brian Weinstein.
+
+        There are a number of problems with docking behaviour on Windows.
+        For starters, it does not ever constrain the inspector's size properly while docked.
+        It also does not properly set the whether or not the inspector can be docked/undocked.
+        This patch fixes both issues.
+
+        * WebCoreSupport/WebInspectorClient.cpp:
+        (WebInspectorFrontendClient::frontendLoaded): 
+        (WebInspectorFrontendClient::attachWindow):
+        Call restoreAttachedWindowHeight so that when first loading or reattaching the inspector,
+        we resize the inspector window properly.
+
 2012-11-05  Simon Fraser  <simon.fraser@apple.com>
 
         Fix layer borders to cleaning appear and disappear on switching

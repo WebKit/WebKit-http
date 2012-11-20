@@ -76,6 +76,11 @@ webkit.org/b/96977 [ Release ] perf/nested-combined-selectors.html [ Failure Pas
 # FAILING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
+webkit.org/b/102110 fast/canvas/canvas-as-image-incremental-repaint.html [ ImageOnlyFailure ]
+
+webkit.org/b/102006 fast/repaint/block-selection-gap-stale-cache.html [ ImageOnlyFailure ]
+webkit.org/b/102006 fast/repaint/block-selection-gap-stale-cache-2.html [ ImageOnlyFailure ]
+
 webkit.org/b/99180 svg/as-image/img-preserveAspectRatio-support-1.html [ ImageOnlyFailure ]
 
 webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-dom-kernelUnitLength-attr.html [ ImageOnlyFailure ]
@@ -132,6 +137,7 @@ webkit.org/b/86498 http/tests/appcache/origins-with-appcache.html [ Failure ]
 
 # Missing showModalDialog implementation
 webkit.org/b/84589 fast/animation/request-animation-frame-during-modal.html [ Failure ]
+webkit.org/b/84589 fast/dom/Window/open-window-min-size.html [ Failure ]
 webkit.org/b/84589 http/tests/security/cross-frame-access-call.html [ Failure ]
 
 # Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction

@@ -45,9 +45,10 @@ using namespace WebCore;
 
 namespace WebKit {
 
-NetworkRequest::NetworkRequest(const WebCore::ResourceRequest& request, ResourceLoadIdentifier identifier, NetworkConnectionToWebProcess* connection)
+NetworkRequest::NetworkRequest(const WebCore::ResourceRequest& request, ResourceLoadIdentifier identifier, ContentSniffingPolicy contentSniffingPolicy, NetworkConnectionToWebProcess* connection)
     : m_request(request)
     , m_identifier(identifier)
+    , m_contentSniffingPolicy(contentSniffingPolicy)
     , m_connection(connection)
 {
     ASSERT(isMainThread());
@@ -72,8 +73,8 @@ void NetworkRequest::start()
     // FIXME (NetworkProcess): Create RemoteNetworkingContext with actual settings.
     m_networkingContext = RemoteNetworkingContext::create(false, false);
 
-    // FIXME (NetworkProcess): Pass an actual value for shouldContentSniff (XMLHttpRequest needs that).
-    m_handle = ResourceHandle::create(m_networkingContext.get(), m_request, this, false, false);
+    // FIXME (NetworkProcess): Pass an actual value for defersLoading
+    m_handle = ResourceHandle::create(m_networkingContext.get(), m_request, this, false /* defersLoading */, m_contentSniffingPolicy == SniffContent);
 }
 
 static bool stopRequestsCalled = false;
@@ -205,6 +206,9 @@ void didReceiveWillSendRequestHandled(uint64_t requestID, const ResourceRequest&
 
 void NetworkRequest::willSendRequest(ResourceHandle*, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
+    // We only expect to get the willSendRequest callback from ResourceHandle as the result of a redirect
+    ASSERT(!redirectResponse.isNull());
+
     uint64_t requestID = generateWillSendRequestID();
 
     if (!connectionToWebProcess()->connection()->send(Messages::NetworkProcessConnection::WillSendRequest(requestID, m_identifier, request, redirectResponse), 0)) {
@@ -214,6 +218,8 @@ void NetworkRequest::willSendRequest(ResourceHandle*, ResourceRequest& request, 
     
     OwnPtr<ResourceRequest> newRequest = responseMap().waitForResponse(requestID);
     request = *newRequest;
+
+    NetworkProcess::shared().networkResourceLoadScheduler().receivedRedirect(m_identifier, request.url());
 }
 
 void NetworkRequest::didSendData(WebCore::ResourceHandle*, unsigned long long /*bytesSent*/, unsigned long long /*totalBytesToBeSent*/)

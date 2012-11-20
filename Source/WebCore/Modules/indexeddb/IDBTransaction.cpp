@@ -162,7 +162,12 @@ PassRefPtr<IDBObjectStore> IDBTransaction::objectStore(const String& name, Excep
     }
 
     int64_t objectStoreId = m_database->findObjectStoreId(name);
-    ASSERT(objectStoreId != IDBObjectStoreMetadata::InvalidId);
+    if (objectStoreId == IDBObjectStoreMetadata::InvalidId) {
+        ASSERT(isVersionChange());
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
+        return 0;
+    }
+
     RefPtr<IDBObjectStoreBackendInterface> objectStoreBackend = m_backend->objectStore(objectStoreId, ec);
     ASSERT(!ec && objectStoreBackend);
 
@@ -354,7 +359,7 @@ IDBTransaction::Mode IDBTransaction::stringToMode(const String& modeString, Scri
         return static_cast<IDBTransaction::Mode>(IDBTransaction::READ_ONLY + (modeString[0] - '0'));
     }
 
-    ec = NATIVE_TYPE_ERR;
+    ec = TypeError;
     return IDBTransaction::READ_ONLY;
 }
 
@@ -374,7 +379,7 @@ const AtomicString& IDBTransaction::modeToString(IDBTransaction::Mode mode, Exce
         break;
 
     default:
-        ec = NATIVE_TYPE_ERR;
+        ec = TypeError;
         return IDBTransaction::modeReadOnly();
     }
 }

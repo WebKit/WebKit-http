@@ -377,24 +377,6 @@ bool WebRuntimeFeatures::isFullScreenAPIEnabled()
 #endif
 }
 
-void WebRuntimeFeatures::enablePointerLock(bool enable)
-{
-#if ENABLE(POINTER_LOCK)
-    RuntimeEnabledFeatures::setPointerLockEnabled(enable);
-#else
-    UNUSED_PARAM(enable);
-#endif
-}
-
-bool WebRuntimeFeatures::isPointerLockEnabled()
-{
-#if ENABLE(POINTER_LOCK)
-    return RuntimeEnabledFeatures::pointerLockEnabled();
-#else
-    return false;
-#endif
-}
-
 void WebRuntimeFeatures::enableMediaSource(bool enable)
 {
 #if ENABLE(MEDIA_SOURCE)

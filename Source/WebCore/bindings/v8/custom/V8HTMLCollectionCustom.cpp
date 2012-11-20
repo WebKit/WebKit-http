@@ -32,32 +32,14 @@
 #include "V8HTMLCollection.h"
 
 #include "HTMLCollection.h"
-#include "RadioNodeList.h"
 #include "V8Binding.h"
 #include "V8HTMLAllCollection.h"
+#include "V8HTMLFormControlsCollection.h"
+#include "V8HTMLOptionsCollection.h"
 #include "V8NamedNodesCollection.h"
 #include "V8Node.h"
-#include "V8NodeList.h"
-#include "V8RadioNodeList.h"
 
 namespace WebCore {
-
-static v8::Handle<v8::Value> getNamedItems(HTMLCollection* collection, AtomicString name, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
-{
-    Vector<RefPtr<Node> > namedItems;
-    collection->namedItems(name, namedItems);
-
-    if (!namedItems.size())
-        return v8Undefined();
-
-    if (namedItems.size() == 1)
-        return toV8(namedItems.at(0).release(), creationContext, isolate);
-
-    if (collection->type() == FormControls)
-        return toV8(collection->base()->radioNodeList(name).get(), creationContext, isolate);
-
-    return toV8(V8NamedNodesCollection::create(namedItems), creationContext, isolate);
-}
 
 v8::Handle<v8::Value> V8HTMLCollection::namedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
@@ -69,29 +51,27 @@ v8::Handle<v8::Value> V8HTMLCollection::namedPropertyGetter(v8::Local<v8::String
         return v8Undefined();
 
     HTMLCollection* imp = V8HTMLCollection::toNative(info.Holder());
-    return getNamedItems(imp, toWebCoreAtomicString(name), info.Holder(), info.GetIsolate());
+    Node* item = imp->namedItem(toWebCoreAtomicString(name));
+    if (!item)
+        return v8Undefined();
+    return toV8(item, info.Holder(), info.GetIsolate());
 }
 
-v8::Handle<v8::Value> V8HTMLCollection::namedItemCallback(const v8::Arguments& args)
+v8::Handle<v8::Object> wrap(HTMLCollection* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    INC_STATS("DOM.HTMLCollection.namedItem()");
-    HTMLCollection* imp = V8HTMLCollection::toNative(args.Holder());
-    v8::Handle<v8::Value> result = getNamedItems(imp, toWebCoreString(args[0]), args.Holder(), args.GetIsolate());
+    ASSERT(impl);
+    switch (impl->type()) {
+    case FormControls:
+        return wrap(static_cast<HTMLFormControlsCollection*>(impl), creationContext, isolate);
+    case SelectOptions:
+        return wrap(static_cast<HTMLOptionsCollection*>(impl), creationContext, isolate);
+    case DocAll:
+        return wrap(static_cast<HTMLAllCollection*>(impl), creationContext, isolate);
+    default:
+        break;
+    }
 
-    if (result.IsEmpty())
-        return v8::Undefined();
-
-    return result;
-}
-
-v8::Handle<v8::Value> toV8(HTMLCollection* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
-{
-    if (!impl)
-        return v8NullWithCheck(isolate);
-
-    if (impl->type() == DocAll)
-        return toV8(static_cast<HTMLAllCollection*>(impl), creationContext, isolate);
-    return V8HTMLCollection::wrap(impl, creationContext, isolate);
+    return V8HTMLCollection::createWrapper(impl, creationContext, isolate);
 }
 
 } // namespace WebCore

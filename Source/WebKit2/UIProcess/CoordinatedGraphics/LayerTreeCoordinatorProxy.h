@@ -57,18 +57,23 @@ public:
 #if ENABLE(CSS_FILTERS)
     void setCompositingLayerFilters(WebLayerID, const WebCore::FilterOperations&);
 #endif
+#if ENABLE(CSS_SHADERS)
+    void createCustomFilterProgram(int id, const WebCore::CustomFilterProgramInfo&);
+    void removeCustomFilterProgram(int id);
+#endif
     void deleteCompositingLayer(WebLayerID);
     void setRootCompositingLayer(WebLayerID);
     void setContentsSize(const WebCore::FloatSize&);
     void setVisibleContentsRect(const WebCore::FloatRect&, float scale, const WebCore::FloatPoint& trajectoryVector);
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
-    void createTileForLayer(int layerID, int tileID, const WebCore::IntRect& tileRect, const WebCore::IntSize& backingSize, const SurfaceUpdateInfo&);
+    void createTileForLayer(int layerID, int tileID, const WebCore::IntRect&, const SurfaceUpdateInfo&);
     void updateTileForLayer(int layerID, int tileID, const WebCore::IntRect&, const SurfaceUpdateInfo&);
     void removeTileForLayer(int layerID, int tileID);
     void createUpdateAtlas(int atlasID, const ShareableSurface::Handle&);
     void removeUpdateAtlas(int atlasID);
-    void createDirectlyCompositedImage(int64_t, const WebKit::ShareableBitmap::Handle&);
-    void destroyDirectlyCompositedImage(int64_t);
+    void createImageBacking(CoordinatedImageBackingID);
+    void updateImageBacking(CoordinatedImageBackingID, const ShareableSurface::Handle&);
+    void removeImageBacking(CoordinatedImageBackingID);
     void didReceiveLayerTreeCoordinatorProxyMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::MessageDecoder&);
     void updateViewport();
     void renderNextFrame();
@@ -84,6 +89,7 @@ public:
     void requestAnimationFrame();
     void animationFrameReady();
 #endif
+    void setBackgroundColor(const WebCore::Color&);
 
 protected:
     void dispatchUpdate(const Function<void()>&);

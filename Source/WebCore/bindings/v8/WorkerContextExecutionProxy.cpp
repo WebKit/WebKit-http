@@ -153,7 +153,7 @@ bool WorkerContextExecutionProxy::initializeIfNeeded()
     }
 
     // Set DebugId for the new context.
-    context->SetData(v8::String::New("worker"));
+    context->SetEmbedderData(0, v8::String::New("worker"));
 
     // Create a new JS object and use it as the prototype for the shadow global object.
     WrapperTypeInfo* contextType = &V8DedicatedWorkerContext::info;
@@ -170,9 +170,7 @@ bool WorkerContextExecutionProxy::initializeIfNeeded()
     }
 
     // Wrap the object.
-    V8DOMWrapper::setDOMWrapper(jsWorkerContext, contextType, m_workerContext);
-
-    V8DOMWrapper::setJSWrapperForDOMObject(PassRefPtr<WorkerContext>(m_workerContext), jsWorkerContext);
+    V8DOMWrapper::createDOMWrapper(PassRefPtr<WorkerContext>(m_workerContext), contextType, jsWorkerContext);
 
     // Insert the object instance as the prototype of the shadow object.
     v8::Handle<v8::Object> globalObject = v8::Handle<v8::Object>::Cast(m_context->Global()->GetPrototype());
@@ -216,7 +214,7 @@ ScriptValue WorkerContextExecutionProxy::evaluate(const String& script, const St
         state->lineNumber = message->GetLineNumber();
         state->sourceURL = toWebCoreString(message->GetScriptResourceName());
         if (m_workerContext->sanitizeScriptError(state->errorMessage, state->lineNumber, state->sourceURL))
-            state->exception = throwError(GeneralError, state->errorMessage.utf8().data());
+            state->exception = throwError(v8GeneralError, state->errorMessage.utf8().data());
         else
             state->exception = ScriptValue(exceptionCatcher.Exception());
 

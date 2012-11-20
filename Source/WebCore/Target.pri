@@ -132,6 +132,7 @@ SOURCES += \
      bindings/js/JSHTMLDocumentCustom.cpp \
      bindings/js/JSHTMLElementCustom.cpp \
      bindings/js/JSHTMLEmbedElementCustom.cpp \
+     bindings/js/JSHTMLFormControlsCollectionCustom.cpp \
      bindings/js/JSHTMLFormElementCustom.cpp \
      bindings/js/JSHTMLFrameElementCustom.cpp \
      bindings/js/JSHTMLFrameSetElementCustom.cpp \
@@ -172,7 +173,6 @@ SOURCES += \
      bindings/js/JSPopStateEventCustom.cpp \
      bindings/js/JSProcessingInstructionCustom.cpp \
      bindings/js/JSRequestAnimationFrameCallbackCustom.cpp \
-     bindings/js/JSScriptProfileNodeCustom.cpp \
      bindings/js/JSStorageCustom.cpp \
      bindings/js/JSStyleSheetCustom.cpp \
      bindings/js/JSStyleSheetListCustom.cpp \
@@ -327,6 +327,7 @@ SOURCES += \
     css/StyleSheet.cpp \
     css/StyleSheetContents.cpp \
     css/StyleSheetList.cpp \
+    css/ViewportStyleResolver.cpp \
     css/WebKitCSSArrayFunctionValue.cpp \
     css/WebKitCSSFilterValue.cpp \
     css/WebKitCSSKeyframeRule.cpp \
@@ -602,7 +603,7 @@ SOURCES += \
     html/HTMLEmbedElement.cpp \
     html/HTMLFieldSetElement.cpp \
     html/HTMLFontElement.cpp \
-    html/HTMLFormCollection.cpp \
+    html/HTMLFormControlsCollection.cpp \
     html/HTMLFormControlElement.cpp \
     html/HTMLFormControlElementWithState.cpp \
     html/HTMLFormElement.cpp \
@@ -732,9 +733,10 @@ SOURCES += \
     html/shadow/InsertionPoint.cpp \
     html/shadow/ImageInnerElement.cpp \
     html/shadow/MediaControls.cpp \
-    html/shadow/MediaControlRootElement.cpp \
+    html/shadow/MediaControlsApple.cpp \
     html/shadow/MeterShadowElement.cpp \
     html/shadow/ProgressShadowElement.cpp \
+    html/shadow/SelectRuleFeatureSet.cpp \
     html/shadow/SliderThumbElement.cpp \
     html/shadow/SpinButtonElement.cpp \
     html/shadow/TextControlInnerElements.cpp \
@@ -822,6 +824,7 @@ SOURCES += \
     loader/CrossOriginPreflightResultCache.cpp \
     loader/cache/CachedResourceLoader.cpp \
     loader/cache/CachedResourceRequest.cpp \
+    loader/cache/CachedResourceRequestInitiators.cpp \
     loader/DocumentLoadTiming.cpp \
     loader/DocumentLoader.cpp \
     loader/DocumentThreadableLoader.cpp \
@@ -875,6 +878,7 @@ SOURCES += \
     page/ContentSecurityPolicy.cpp \
     page/ContextMenuController.cpp \
     page/Crypto.cpp \
+    page/DeviceController.cpp \
     page/DiagnosticLoggingKeys.cpp \
     page/DOMSelection.cpp \
     page/DOMTimer.cpp \
@@ -1505,6 +1509,7 @@ HEADERS += \
     css/StyleSheet.h \
     css/StyleSheetContents.h \
     css/StyleSheetList.h \
+    css/ViewportStyleResolver.h \
     css/WebKitCSSArrayFunctionValue.h \
     css/WebKitCSSFilterValue.h \
     css/WebKitCSSKeyframeRule.h \
@@ -1759,7 +1764,7 @@ HEADERS += \
     html/HTMLEmbedElement.h \
     html/HTMLFieldSetElement.h \
     html/HTMLFontElement.h \
-    html/HTMLFormCollection.h \
+    html/HTMLFormControlsCollection.h \
     html/HTMLFormControlElement.h \
     html/HTMLFormControlElementWithState.h \
     html/HTMLFormElement.h \
@@ -1954,6 +1959,8 @@ HEADERS += \
     loader/CrossOriginAccessControl.h \
     loader/CrossOriginPreflightResultCache.h \
     loader/cache/CachedResourceLoader.h \
+    loader/cache/CachedResourceRequest.h \
+    loader/cache/CachedResourceRequestInitiators.h \
     loader/DocumentLoader.h \
     loader/DocumentThreadableLoader.h \
     loader/FormState.h \
@@ -2003,6 +2010,8 @@ HEADERS += \
     page/ContextMenuController.h \
     page/ContextMenuProvider.h \
     page/Coordinates.h \
+    page/DeviceClient.h \
+    page/DeviceController.h \
     page/DiagnosticLoggingKeys.h \
     page/DOMSelection.h \
     page/DOMTimer.h \
@@ -2029,6 +2038,7 @@ HEADERS += \
     page/PageGroupLoadDeferrer.h \
     page/Page.h \
     page/PageVisibilityState.h \
+    page/PopupOpeningObserver.h \
     page/PrintContext.h \
     page/Screen.h \
     page/SecurityOrigin.h \
@@ -2074,7 +2084,13 @@ HEADERS += \
     platform/mock/ScrollbarThemeMock.h \
     platform/graphics/BitmapImage.h \
     platform/graphics/Color.h \
+    platform/graphics/cpu/arm/filters/NEONHelpers.h \
+    platform/graphics/cpu/arm/filters/FEBlendNEON.h \
+    platform/graphics/cpu/arm/filters/FECompositeArithmeticNEON.h \
+    platform/graphics/cpu/arm/filters/FEGaussianBlurNEON.h \
+    platform/graphics/cpu/arm/filters/FELightingNEON.h \
     platform/graphics/CrossfadeGeneratedImage.h \
+    platform/graphics/filters/texmap/TextureMapperPlatformCompiledProgram.h \
     platform/graphics/filters/CustomFilterArrayParameter.h \
     platform/graphics/filters/CustomFilterConstants.h \
     platform/graphics/filters/CustomFilterGlobalContext.h \
@@ -2115,11 +2131,6 @@ HEADERS += \
     platform/graphics/filters/LightSource.h \
     platform/graphics/filters/SourceAlpha.h \
     platform/graphics/filters/SourceGraphic.h \
-    platform/graphics/filters/arm/NEONHelpers.h \
-    platform/graphics/filters/arm/FEBlendNEON.h \
-    platform/graphics/filters/arm/FECompositeArithmeticNEON.h \
-    platform/graphics/filters/arm/FEGaussianBlurNEON.h \
-    platform/graphics/filters/arm/FELightingNEON.h \
     platform/graphics/FloatPoint3D.h \
     platform/graphics/FloatPoint.h \
     platform/graphics/FloatQuad.h \
@@ -3501,6 +3512,8 @@ enable?(XSLT) {
 
 enable?(FILTERS) {
     SOURCES += \
+        platform/graphics/cpu/arm/filters/FELightingNEON.cpp \
+        platform/graphics/filters/texmap/CustomFilterValidatedProgramTextureMapper.cpp \
         platform/graphics/filters/CustomFilterGlobalContext.cpp \
         platform/graphics/filters/CustomFilterOperation.cpp \
         platform/graphics/filters/CustomFilterParameterList.cpp \
@@ -3539,7 +3552,6 @@ enable?(FILTERS) {
         platform/graphics/filters/SpotLightSource.cpp \
         platform/graphics/filters/SourceAlpha.cpp \
         platform/graphics/filters/SourceGraphic.cpp \
-        platform/graphics/filters/arm/FELightingNEON.cpp \
 }
 
 enable?(MATHML) {
@@ -3956,6 +3968,7 @@ enable?(WEBGL) {
 
 use?(3D_GRAPHICS) {
     HEADERS += \
+        platform/graphics/cpu/arm/GraphicsContext3DNEON.h \
         platform/graphics/ANGLEWebKitBridge.h \
         platform/graphics/Extensions3D.h \
         platform/graphics/GraphicsContext3D.h \
@@ -4079,7 +4092,7 @@ use?(GRAPHICS_SURFACE) {
     }
 }
 
-if(build?(drt)|build?(wtr)) {
+build?(qttestsupport) {
     HEADERS += platform/qt/QtTestSupport.h
     SOURCES += platform/qt/QtTestSupport.cpp
 }

@@ -29,5 +29,6 @@
 
 /* This should only be called from associate view. */
 - (id)_initWithPageRef:(WKPageRef)pageRef;
++ (NSMutableSet *)customSchemes;
 
 @end

@@ -1,3 +1,261 @@
+2012-11-19  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Add PROXIMITY_EVENTS feature
+        https://bugs.webkit.org/show_bug.cgi?id=102658
+
+        Reviewed by Kentaro Hara.
+
+        Add PROXIMITY_EVENTS feature to cmake.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-11-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove non-existent directories from the make system
+        https://bugs.webkit.org/show_bug.cgi?id=102632
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove (non-existent) symbian references from the exclude list for packaging.
+
+        * Source/cmake/WebKitPackaging.cmake:
+
+2012-11-18  Laszlo Gombos  <l.gombos@samsung.com>
+
+        Remove non-existent directories from the make system
+        https://bugs.webkit.org/show_bug.cgi?id=102632
+
+        Reviewed by Adam Barth.
+
+        Remove (non-existent) symbian references from the exclude list for packaging.
+
+        * Source/cmake/WebKitPackaging.cmake:
+
+2012-11-18  Genevieve Mak  <gmak@rim.com>
+
+         [BlackBerry] Enable Touch Sliders
+         https://bugs.webkit.org/show_bug.cgi?id=102516
+
+         Reviewed by Rob Buis.
+
+         Enabled for BlackBerry only
+         PR #242781
+         PR #176014
+
+         * Source/cmake/OptionsBlackBerry.cmake:
+         * Source/cmake/WebKitFeatures.cmake:
+         * Source/cmakeconfig.h.cmake:
+
+2012-11-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build after r135022.
+
+        * Source/autotools/symbols.filter: Add exports for
+        SerializedScriptValue changes.
+
+2012-11-16  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS_HIERARCHIES since it's no longer in use
+        https://bugs.webkit.org/show_bug.cgi?id=102554
+
+        Reviewed by Andreas Kling.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=79939#c41 ,
+        we're going to revist this feature once additional vendor support is
+        achieved.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-11-16  Ulan Degenbaev  <ulan@chromium.org>
+
+        [V8] Increment the amount of externally allocated memory for the receiving V8 isolate when transferring ArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=94463
+
+        Reviewed by Kentaro Hara.
+
+        Call AdjustAmountOfExternalAllocatedMemory when V8ArrayBuffer is deserialized and transferred.
+
+        * ManualTests/typed-array-memory.html:
+
+2012-11-16  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134908.
+        http://trac.webkit.org/changeset/134908
+        https://bugs.webkit.org/show_bug.cgi?id=102473
+
+        Broke the Apple Windows Debug build. (Requested by dydx on
+        #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-16  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134865.
+        http://trac.webkit.org/changeset/134865
+        https://bugs.webkit.org/show_bug.cgi?id=102466
+
+        Broke the Apple Windows Debug build. (Requested by dydx on
+        #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-16  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
+
+        Avoid copying of ViewportArguments in computeViewportAttributes function
+        https://bugs.webkit.org/show_bug.cgi?id=102354
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Updated exported symbols for GTK.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-15  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Split WebCore/platform into a separate library
+        https://bugs.webkit.org/show_bug.cgi?id=94435
+
+        Reviewed by Martin Robinson.
+
+        More people have been reporting problems when linking WebCore because
+        the command line limit is being exceeded. Splitting WebCore a bit more
+        is in order.
+
+        * GNUmakefile.am: add variable that will hold the list of source files
+        for libWebCorePlatform .
+
+2012-11-15  Tony Chang  <tony@chromium.org>
+
+        Generate Settings from a .in file
+        https://bugs.webkit.org/show_bug.cgi?id=100393
+
+        Reviewed by Adam Barth.
+
+        Generate SettingsMacros.h for cmake.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-11-15  Rick Byers  <rbyers@chromium.org>
+
+        No tests for changing mouse cursors
+        https://bugs.webkit.org/show_bug.cgi?id=100550
+
+        Reviewed by Brent Fulgham.
+
+        Add necessary exports for Internals::getCurrentCursorInfo
+
+        * Source/autotools/symbols.filter:
+
+2012-11-15  Kent Tamura  <tkent@chromium.org>
+
+        Support stand-alone month names in calendar picker
+        https://bugs.webkit.org/show_bug.cgi?id=102196
+
+        Reviewed by Kentaro Hara.
+
+        * ManualTests/forms/calendar-picker.html:
+        - Remove monthLabels arguments.
+        - Add a mock implementation of pagePopupController.formatMonth.
+
+2012-11-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134741.
+        http://trac.webkit.org/changeset/134741
+        https://bugs.webkit.org/show_bug.cgi?id=102337
+
+        "Change is incorrect." (Requested by dydx on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-11-14  Daniel Bates  <dbates@webkit.org>
+
+        Attempt to fix the Apple Windows Debug and GTK builds after <http://trac.webkit.org/changeset/134691>
+        (https://bugs.webkit.org/show_bug.cgi?id=96818)
+
+        Export symbols similar to the ones we added to WebCore.exp.in in
+        <http://trac.webkit.org/changeset/134691>.
+
+        * Source/autotools/symbols.filter:
+
+2012-11-14  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on error on warnings for "sign-compare"
+        https://bugs.webkit.org/show_bug.cgi?id=101761
+
+        Reviewed by Gyuyoung Kim.
+
+        Remove "-Wno-error=sign-compare" to turn on error on warnings for "sign-compare"
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2012-11-13  Hugo Parente Lima  <hugo.lima@openbossa.org>
+
+        FindGLIB.cmake fails do find glib gmodule module.
+        https://bugs.webkit.org/show_bug.cgi?id=101784
+
+        Reviewed by Caio Marcelo de Oliveira Filho.
+
+        * Source/cmake/FindGLIB.cmake:
+
+2012-11-13  Huang Dongsung  <luxtella@company100.net>
+
+        Coordinated Graphics: Directly composited animated GIFs only render the first image.
+        https://bugs.webkit.org/show_bug.cgi?id=102043
+
+        Reviewed by Noam Rosenthal.
+
+        Add a test to check that a gif animation can run on a compositing layer.
+
+        * ManualTests/animated-gif-on-compositing-layer.html: Added.
+
+2012-11-12  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on errors on warnings for WebKit1 and WebKit2 libraries
+        https://bugs.webkit.org/show_bug.cgi?id=101762
+
+        Reviewed by Gyuyoung Kim.
+
+        In case of EFL, add ENABLE_WERROR to EXTRA_COMPILER_FLAGS for WEBKIT and WEBKIT2
+
+        * Source/CMakeLists.txt:
+
+2012-11-12  Joe Mason  <jmason@rim.com>
+
+        [BlackBerry] NetworkJob should not check if data is received with HEAD
+        https://bugs.webkit.org/show_bug.cgi?id=102034
+
+        Reviewed by George Staikos.
+
+        Internal PR: 241391
+
+        Add test that HEAD XMLHttpRequests return status 404 instead of calling onerror.
+
+        * ManualTests/blackberry/head-xhr-nonexistant-file.html: Added.
+
+2012-11-12  KyungTae Kim  <ktf.kim@samsung.com>
+
+        [EFL] Turn on error on warnings for "switch"
+        https://bugs.webkit.org/show_bug.cgi?id=101760
+
+        Reviewed by Gyuyoung Kim.
+
+        Turn on error on warning for "switch" by removing "-Wno-error=switch" 
+
+        * Source/cmake/WebKitHelpers.cmake:
+
+2012-11-11  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] ElementShadow should have RuleFeatureSet for select attribute selectors.
+        https://bugs.webkit.org/show_bug.cgi?id=101180
+
+        Reviewed by Dimitri Glazkov.
+
+        Exposes necessary symbols.
+
+        * Source/autotools/symbols.filter:
+
 2012-11-11  Sheriff Bot  <webkit.review.bot@gmail.com>
 
         Unreviewed, rolling out r134144.

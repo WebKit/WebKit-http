@@ -28,13 +28,9 @@ messages -> NetworkConnectionToWebProcess {
     // that we synchronously get an identifier for new ResourceLoaders as they are created.
     // There's possible ResourceLoader identifier refactoring that can remove that requirement.
     // We might also have the NetworkProcess divvy up identifiers in blocks to each WebProcess beforehand.
-    ScheduleNetworkRequest(WebCore::ResourceRequest request, uint32_t resourceLoadPriority) -> (uint64_t resourceLoadIdentifier)
+    ScheduleResourceLoad(WebKit::NetworkResourceLoadParameters resourceLoadParameters) -> (uint64_t resourceLoadIdentifier)
     AddLoadInProgress(WebCore::KURL url) -> (uint64_t resourceLoadIdentifier)
     RemoveLoadIdentifier(uint64_t resourceLoadIdentifier)
-
-    // It's possible that we will be able to do away with this message and have the NetworkProcess
-    // manage it internally.
-    crossOriginRedirectReceived(uint64_t resourceLoadIdentifier, WebCore::KURL redirectURL) -> ()
     
     ServePendingRequests(uint32_t resourceLoadPriority)
 
@@ -42,8 +38,6 @@ messages -> NetworkConnectionToWebProcess {
     ResumePendingRequests() -> ()
     
     SetSerialLoadingEnabled(bool enabled) -> ()
-    
-    WillSendRequestHandled(uint64_t requestID, WebCore::ResourceRequest newRequest)
 }
 
 #endif // ENABLE(NETWORK_PROCESS)

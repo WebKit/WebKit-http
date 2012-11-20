@@ -118,7 +118,9 @@ private:
     size_t buildObjectForIndex(size_t index, const Vector<String>& objectTypes, InspectorMemoryBlocks* array)
     {
         String typeName = objectTypes[index];
-        RefPtr<InspectorMemoryBlock> block = InspectorMemoryBlock::create().setName(typeName);
+        size_t dotPosition = typeName.reverseFind('.');
+        String blockName = (dotPosition == notFound) ? typeName : typeName.substring(dotPosition + 1);
+        RefPtr<InspectorMemoryBlock> block = InspectorMemoryBlock::create().setName(blockName);
         block->setSize(m_sizesMap.get(typeName));
         String prefix = typeName;
         prefix.append('.');
@@ -533,6 +535,8 @@ void InspectorMemoryAgent::getProcessMemoryDistribution(ErrorString*, RefPtr<Ins
     reportJSHeapInfo(memoryInstrumentationClient);
     reportRenderTreeInfo(memoryInstrumentationClient, m_page);
     collectDomTreeInfo(memoryInstrumentation, m_page); // FIXME: collect for all pages?
+
+    PlatformMemoryInstrumentation::reportMemoryUsage(&memoryInstrumentation);
 
     RefPtr<InspectorMemoryBlocks> children = InspectorMemoryBlocks::create();
     addPlatformComponentsInfo(children);

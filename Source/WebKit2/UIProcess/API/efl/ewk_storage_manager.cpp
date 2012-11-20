@@ -33,20 +33,19 @@
 #include "ewk_security_origin.h"
 #include "ewk_security_origin_private.h"
 #include "ewk_storage_manager_private.h"
-#include <wtf/RefCounted.h>
 
 using namespace WebKit;
 
-Ewk_Storage_Manager::Ewk_Storage_Manager(WebKeyValueStorageManagerProxy* storageManagerProxy)
+EwkStorageManager::EwkStorageManager(WebKeyValueStorageManagerProxy* storageManagerProxy)
     : m_storageManager(storageManagerProxy)
 { }
 
-void Ewk_Storage_Manager::getStorageOrigins(void* context, WKKeyValueStorageManagerGetKeyValueStorageOriginsFunction callback) const
+void EwkStorageManager::getStorageOrigins(void* context, WKKeyValueStorageManagerGetKeyValueStorageOriginsFunction callback) const
 {
     WKKeyValueStorageManagerGetKeyValueStorageOrigins(toAPI(m_storageManager.get()), context, callback);
 }
 
-Eina_List* Ewk_Storage_Manager::createOriginList(WKArrayRef origins) const
+Eina_List* EwkStorageManager::createOriginList(WKArrayRef origins) const
 {
     Eina_List* originList = 0;
     const size_t length = WKArrayGetSize(origins);

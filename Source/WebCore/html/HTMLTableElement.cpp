@@ -304,7 +304,7 @@ static bool getBordersFromFrameAttributeValue(const AtomicString& value, bool& b
     return true;
 }
 
-void HTMLTableElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLTableElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
@@ -312,7 +312,7 @@ void HTMLTableElement::collectStyleForAttribute(const Attribute& attribute, Styl
         addHTMLLengthToStyle(style, CSSPropertyHeight, attribute.value());
     else if (attribute.name() == borderAttr) {
         int borderWidth = attribute.isEmpty() ? 1 : attribute.value().toInt();
-        addPropertyToAttributeStyle(style, CSSPropertyBorderWidth, borderWidth, CSSPrimitiveValue::CSS_PX);
+        addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderWidth, borderWidth, CSSPrimitiveValue::CSS_PX);
     } else if (attribute.name() == bordercolorAttr) {
         if (!attribute.isEmpty())
             addHTMLColorToStyle(style, CSSPropertyBorderColor, attribute.value());
@@ -324,7 +324,7 @@ void HTMLTableElement::collectStyleForAttribute(const Attribute& attribute, Styl
             style->setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(document()->completeURL(url).string())));
     } else if (attribute.name() == valignAttr) {
         if (!attribute.isEmpty())
-            addPropertyToAttributeStyle(style, CSSPropertyVerticalAlign, attribute.value());
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyVerticalAlign, attribute.value());
     } else if (attribute.name() == cellspacingAttr) {
         if (!attribute.isEmpty())
             addHTMLLengthToStyle(style, CSSPropertyBorderSpacing, attribute.value());
@@ -337,29 +337,29 @@ void HTMLTableElement::collectStyleForAttribute(const Attribute& attribute, Styl
     } else if (attribute.name() == alignAttr) {
         if (!attribute.value().isEmpty()) {
             if (equalIgnoringCase(attribute.value(), "center")) {
-                addPropertyToAttributeStyle(style, CSSPropertyWebkitMarginStart, CSSValueAuto);
-                addPropertyToAttributeStyle(style, CSSPropertyWebkitMarginEnd, CSSValueAuto);
+                addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitMarginStart, CSSValueAuto);
+                addPropertyToPresentationAttributeStyle(style, CSSPropertyWebkitMarginEnd, CSSValueAuto);
             } else
-                addPropertyToAttributeStyle(style, CSSPropertyFloat, attribute.value());
+                addPropertyToPresentationAttributeStyle(style, CSSPropertyFloat, attribute.value());
         }
     } else if (attribute.name() == rulesAttr) {
         // The presence of a valid rules attribute causes border collapsing to be enabled.
         if (m_rulesAttr != UnsetRules)
-            addPropertyToAttributeStyle(style, CSSPropertyBorderCollapse, CSSValueCollapse);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderCollapse, CSSValueCollapse);
     } else if (attribute.name() == frameAttr) {
         bool borderTop;
         bool borderRight;
         bool borderBottom;
         bool borderLeft;
         if (getBordersFromFrameAttributeValue(attribute.value(), borderTop, borderRight, borderBottom, borderLeft)) {
-            addPropertyToAttributeStyle(style, CSSPropertyBorderWidth, CSSValueThin);
-            addPropertyToAttributeStyle(style, CSSPropertyBorderTopStyle, borderTop ? CSSValueSolid : CSSValueHidden);
-            addPropertyToAttributeStyle(style, CSSPropertyBorderBottomStyle, borderBottom ? CSSValueSolid : CSSValueHidden);
-            addPropertyToAttributeStyle(style, CSSPropertyBorderLeftStyle, borderLeft ? CSSValueSolid : CSSValueHidden);
-            addPropertyToAttributeStyle(style, CSSPropertyBorderRightStyle, borderRight ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderWidth, CSSValueThin);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderTopStyle, borderTop ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderBottomStyle, borderBottom ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderLeftStyle, borderLeft ? CSSValueSolid : CSSValueHidden);
+            addPropertyToPresentationAttributeStyle(style, CSSPropertyBorderRightStyle, borderRight ? CSSValueSolid : CSSValueHidden);
         }
     } else
-        HTMLElement::collectStyleForAttribute(attribute, style);
+        HTMLElement::collectStyleForPresentationAttribute(attribute, style);
 }
 
 bool HTMLTableElement::isPresentationAttribute(const QualifiedName& name) const
@@ -369,48 +369,48 @@ bool HTMLTableElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLTableElement::parseAttribute(const Attribute& attribute)
+void HTMLTableElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     CellBorders bordersBefore = cellBorders();
     unsigned short oldPadding = m_padding;
 
-    if (attribute.name() == borderAttr)  {
+    if (name == borderAttr)  {
         // FIXME: This attribute is a mess.
         m_borderAttr = true;
-        if (!attribute.isNull()) {
-            int border = attribute.isEmpty() ? 1 : attribute.value().toInt();
+        if (!value.isNull()) {
+            int border = value.isEmpty() ? 1 : value.toInt();
             m_borderAttr = border;
         }
-    } else if (attribute.name() == bordercolorAttr) {
-        m_borderColorAttr = !attribute.isEmpty();
-    } else if (attribute.name() == frameAttr) {
+    } else if (name == bordercolorAttr) {
+        m_borderColorAttr = !value.isEmpty();
+    } else if (name == frameAttr) {
         // FIXME: This attribute is a mess.
         bool borderTop;
         bool borderRight;
         bool borderBottom;
         bool borderLeft;
-        m_frameAttr = getBordersFromFrameAttributeValue(attribute.value(), borderTop, borderRight, borderBottom, borderLeft);
-    } else if (attribute.name() == rulesAttr) {
+        m_frameAttr = getBordersFromFrameAttributeValue(value, borderTop, borderRight, borderBottom, borderLeft);
+    } else if (name == rulesAttr) {
         m_rulesAttr = UnsetRules;
-        if (equalIgnoringCase(attribute.value(), "none"))
+        if (equalIgnoringCase(value, "none"))
             m_rulesAttr = NoneRules;
-        else if (equalIgnoringCase(attribute.value(), "groups"))
+        else if (equalIgnoringCase(value, "groups"))
             m_rulesAttr = GroupsRules;
-        else if (equalIgnoringCase(attribute.value(), "rows"))
+        else if (equalIgnoringCase(value, "rows"))
             m_rulesAttr = RowsRules;
-        if (equalIgnoringCase(attribute.value(), "cols"))
+        else if (equalIgnoringCase(value, "cols"))
             m_rulesAttr = ColsRules;
-        if (equalIgnoringCase(attribute.value(), "all"))
+        else if (equalIgnoringCase(value, "all"))
             m_rulesAttr = AllRules;
-    } else if (attribute.name() == cellpaddingAttr) {
-        if (!attribute.value().isEmpty())
-            m_padding = max(0, attribute.value().toInt());
+    } else if (name == cellpaddingAttr) {
+        if (!value.isEmpty())
+            m_padding = max(0, value.toInt());
         else
             m_padding = 1;
-    } else if (attribute.name() == colsAttr) {
+    } else if (name == colsAttr) {
         // ###
     } else
-        HTMLElement::parseAttribute(attribute);
+        HTMLElement::parseAttribute(name, value);
 
     if (bordersBefore != cellBorders() || oldPadding != m_padding) {
         m_sharedCellStyle = 0;
@@ -432,7 +432,7 @@ static StylePropertySet* leakBorderStyle(int value)
     return style.release().leakRef();
 }
 
-const StylePropertySet* HTMLTableElement::additionalAttributeStyle()
+const StylePropertySet* HTMLTableElement::additionalPresentationAttributeStyle()
 {
     if (m_frameAttr)
         return 0;

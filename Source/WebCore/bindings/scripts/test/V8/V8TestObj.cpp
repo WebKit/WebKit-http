@@ -35,7 +35,6 @@
 #include "SVGPropertyTearOff.h"
 #include "SVGStaticPropertyTearOff.h"
 #include "ScriptArguments.h"
-#include "ScriptCallStack.h"
 #include "ScriptCallStackFactory.h"
 #include "ScriptProfile.h"
 #include "ScriptValue.h"
@@ -696,10 +695,7 @@ static v8::Handle<v8::Value> withScriptArgumentsAndCallStackAttributeAttrGetter(
 {
     INC_STATS("DOM.TestObj.withScriptArgumentsAndCallStackAttribute._get");
     TestObj* imp = V8TestObj::toNative(info.Holder());
-    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole());
-    if (!callStack)
-        return v8Undefined();
-    return toV8(imp->withScriptArgumentsAndCallStackAttribute(callStack), info.Holder(), info.GetIsolate());
+    return toV8(imp->withScriptArgumentsAndCallStackAttribute(), info.Holder(), info.GetIsolate());
 }
 
 static void withScriptArgumentsAndCallStackAttributeAttrSetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
@@ -707,10 +703,7 @@ static void withScriptArgumentsAndCallStackAttributeAttrSetter(v8::Local<v8::Str
     INC_STATS("DOM.TestObj.withScriptArgumentsAndCallStackAttribute._set");
     TestObj* imp = V8TestObj::toNative(info.Holder());
     TestObj* v = V8TestObj::HasInstance(value) ? V8TestObj::toNative(v8::Handle<v8::Object>::Cast(value)) : 0;
-    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole());
-    if (!callStack)
-        return v8Undefined();
-    imp->setWithScriptArgumentsAndCallStackAttribute(callStack, WTF::getPtr(v));
+    imp->setWithScriptArgumentsAndCallStackAttribute(WTF::getPtr(v));
     return;
 }
 
@@ -1027,7 +1020,7 @@ static v8::Handle<v8::Value> TestObjConstructorGetter(v8::Local<v8::String> name
 {
     INC_STATS("DOM.TestObj.constructors._get");
     v8::Handle<v8::Value> data = info.Data();
-    ASSERT(data->IsExternal() || data->IsNumber());
+    ASSERT(data->IsExternal());
     V8PerContextData* perContextData = V8PerContextData::from(info.Holder()->CreationContext());
     if (!perContextData)
         return v8Undefined();
@@ -1332,10 +1325,7 @@ static v8::Handle<v8::Value> withScriptArgumentsAndCallStackCallback(const v8::A
     INC_STATS("DOM.TestObj.withScriptArgumentsAndCallStack");
     TestObj* imp = V8TestObj::toNative(args.Holder());
     RefPtr<ScriptArguments> scriptArguments(createScriptArguments(args, 0));
-    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole());
-    if (!callStack)
-        return v8Undefined();
-    imp->withScriptArgumentsAndCallStack(scriptArguments, callStack);
+    imp->withScriptArgumentsAndCallStack(scriptArguments.release());
     return v8Undefined();
 }
 
@@ -2178,8 +2168,7 @@ v8::Handle<v8::Value> V8TestObj::constructorCallback(const v8::Arguments& args)
     RefPtr<TestObj> impl = TestObj::create(testCallback);
     v8::Handle<v8::Object> wrapper = args.Holder();
 
-    V8DOMWrapper::setDOMWrapper(wrapper, &info, impl.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(impl.release(), wrapper, args.GetIsolate());
+    V8DOMWrapper::createDOMWrapper(impl.release(), &info, wrapper, args.GetIsolate());
     return wrapper;
 }
 
@@ -2352,32 +2341,17 @@ void V8TestObj::installPerContextPrototypeProperties(v8::Handle<v8::Object> prot
     }
 }
 
-v8::Handle<v8::Object> V8TestObj::wrapSlow(PassRefPtr<TestObj> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+v8::Handle<v8::Object> V8TestObj::createWrapper(PassRefPtr<TestObj> impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    v8::Handle<v8::Object> wrapper;
-    // Please don't add any more uses of this variable.
-    Document* deprecatedDocument = 0;
-    UNUSED_PARAM(deprecatedDocument);
+    ASSERT(impl.get());
+    ASSERT(DOMDataStore::current(isolate)->get(impl.get()).IsEmpty());
 
-    v8::Handle<v8::Context> context;
-    if (!creationContext.IsEmpty() && creationContext->CreationContext() != v8::Context::GetCurrent()) {
-        // For performance, we enter the context only if the currently running context
-        // is different from the context that we are about to enter.
-        context = v8::Local<v8::Context>::New(creationContext->CreationContext());
-        ASSERT(!context.IsEmpty());
-        context->Enter();
-    }
-
-    wrapper = V8DOMWrapper::instantiateV8Object(deprecatedDocument, &info, impl.get());
-
-    if (!context.IsEmpty())
-        context->Exit();
-
+    v8::Handle<v8::Object> wrapper = V8DOMWrapper::instantiateV8Object(creationContext, &info, impl.get());
     if (UNLIKELY(wrapper.IsEmpty()))
         return wrapper;
 
     installPerContextProperties(wrapper, impl.get());
-    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::setJSWrapperForDOMObject(impl, wrapper, isolate);
+    v8::Persistent<v8::Object> wrapperHandle = V8DOMWrapper::createDOMWrapper(impl, &info, wrapper, isolate);
     if (!hasDependentLifetime)
         wrapperHandle.MarkIndependent();
     return wrapper;

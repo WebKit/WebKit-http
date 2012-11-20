@@ -122,8 +122,8 @@ public:
     PassRefPtr<GainNode> createGain();
     PassRefPtr<BiquadFilterNode> createBiquadFilter();
     PassRefPtr<WaveShaperNode> createWaveShaper();
-    PassRefPtr<DelayNode> createDelay();
-    PassRefPtr<DelayNode> createDelay(double maxDelayTime);
+    PassRefPtr<DelayNode> createDelay(ExceptionCode&);
+    PassRefPtr<DelayNode> createDelay(double maxDelayTime, ExceptionCode&);
     PassRefPtr<PannerNode> createPanner();
     PassRefPtr<ConvolverNode> createConvolver();
     PassRefPtr<DynamicsCompressorNode> createDynamicsCompressor();    
@@ -245,7 +245,9 @@ public:
     void fireCompletionEvent();
     
     static unsigned s_hardwareContextCount;
-    
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
+
 private:
     explicit AudioContext(Document*);
     AudioContext(Document*, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
@@ -253,15 +255,18 @@ private:
 
     void lazyInitialize();
     void uninitialize();
-    static void uninitializeDispatch(void* userData);
+
+    // ScriptExecutionContext calls stop twice.
+    // We'd like to schedule only one stop action for them.
+    bool m_isStopScheduled;
+    static void stopDispatch(void* userData);
+    void clear();
 
     void scheduleNodeDeletion();
     static void deleteMarkedNodesDispatch(void* userData);
     
     bool m_isInitialized;
     bool m_isAudioThreadFinished;
-
-    Document* m_document;
 
     // The context itself keeps a reference to all source nodes.  The source nodes, then reference all nodes they're connected to.
     // In turn, these nodes reference all nodes they're connected to.  All nodes are ultimately connected to the AudioDestinationNode.

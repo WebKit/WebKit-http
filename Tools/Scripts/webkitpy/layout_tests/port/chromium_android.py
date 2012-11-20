@@ -354,10 +354,11 @@ class ChromiumAndroidDriver(driver.Driver):
         if self._has_setup:
             return
 
+        self._run_adb_command(['root'])
         self._setup_md5sum_and_push_data_if_needed()
         self._has_setup = True
-        self._run_adb_command(['root'])
         self._setup_performance()
+
         # Required by webkit_support::GetWebKitRootDirFilePath().
         # Other directories will be created automatically by adb push.
         self._run_adb_command(['shell', 'mkdir', '-p', DEVICE_SOURCE_ROOT_DIR + 'chrome'])
@@ -487,10 +488,6 @@ class ChromiumAndroidDriver(driver.Driver):
         for file, original_content in self._original_governors.items():
             self._run_adb_command(['shell', 'echo', original_content, '>', file])
         self._original_governors = {}
-
-    def _command_wrapper(cls, wrapper_option):
-        # Ignore command wrapper which is not applicable on Android.
-        return []
 
     def _get_crash_log(self, stdout, stderr, newer_than):
         if not stdout:

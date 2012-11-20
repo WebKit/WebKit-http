@@ -53,7 +53,7 @@ WebSettingsImpl::WebSettingsImpl(Settings* settings)
     , m_showPaintRects(false)
     , m_renderVSyncEnabled(true)
     , m_viewportEnabled(false)
-    , m_applyDefaultDeviceScaleFactorInCompositor(false)
+    , m_applyDeviceScaleFactorInCompositor(false)
     , m_gestureTapHighlightEnabled(true)
     , m_autoZoomFocusedNodeToLegibleScale(false)
     , m_deferredImageDecodingEnabled(false)
@@ -139,9 +139,9 @@ bool WebSettingsImpl::deviceSupportsTouch()
     return m_settings->deviceSupportsTouch();
 }
 
-void WebSettingsImpl::setApplyDefaultDeviceScaleFactorInCompositor(bool applyDefaultDeviceScaleFactorInCompositor)
+void WebSettingsImpl::setApplyDeviceScaleFactorInCompositor(bool applyDeviceScaleFactorInCompositor)
 {
-    m_applyDefaultDeviceScaleFactorInCompositor = applyDefaultDeviceScaleFactorInCompositor;
+    m_applyDeviceScaleFactorInCompositor = applyDeviceScaleFactorInCompositor;
 }
 
 void WebSettingsImpl::setApplyPageScaleFactorInCompositor(bool applyPageScaleFactorInCompositor)
@@ -431,6 +431,11 @@ void WebSettingsImpl::setEditingBehavior(EditingBehavior behavior)
     m_settings->setEditingBehaviorType(static_cast<WebCore::EditingBehaviorType>(behavior));
 }
 
+void WebSettingsImpl::setAcceleratedAnimationEnabled(bool enabled)
+{
+    m_acceleratedAnimationEnabled = enabled;
+}
+
 void WebSettingsImpl::setAcceleratedCompositingEnabled(bool enabled)
 {
     m_settings->setAcceleratedCompositingEnabled(enabled);
@@ -586,6 +591,11 @@ void WebSettingsImpl::setPasswordEchoDurationInSeconds(double durationInSeconds)
     m_settings->setPasswordEchoDurationInSeconds(durationInSeconds);
 }
 
+void WebSettingsImpl::setPerTilePaintingEnabled(bool enabled)
+{
+    m_perTilePaintingEnabled = enabled;
+}
+
 void WebSettingsImpl::setShouldPrintBackgrounds(bool enabled)
 {
     m_settings->setShouldPrintBackgrounds(enabled);
@@ -694,6 +704,11 @@ void WebSettingsImpl::setGestureTapHighlightEnabled(bool enableHighlight)
 bool WebSettingsImpl::applyPageScaleFactorInCompositor() const
 {
     return m_settings->applyPageScaleFactorInCompositor();
+}
+
+void WebSettingsImpl::setAllowCustomScrollbarInMainFrame(bool enabled)
+{
+    m_settings->setAllowCustomScrollbarInMainFrame(enabled);
 }
 
 } // namespace WebKit

@@ -1,3 +1,274 @@
+2012-11-16  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Add conversion between WebTransformation and gfx::Transform
+        https://bugs.webkit.org/show_bug.cgi?id=102575
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebTransformationMatrix.h:
+        (WebTransformationMatrix):
+        (WebKit::WebTransformationMatrix::WebTransformationMatrix):
+        (WebKit::WebTransformationMatrix::operator=):
+        (WebKit::WebTransformationMatrix::operator gfx::Transform):
+
+2012-11-16  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update RTCPeerConnection states to match the latest editors draft
+        https://bugs.webkit.org/show_bug.cgi?id=102382
+
+        Reviewed by Adam Barth.
+
+        Adding a callback for the new RTCPeerConnection::iceGatheringState.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEGatheringState):
+
+2012-11-16  Tommy Widenflycht  <tommyw@google.com>
+
+        [chromium] MediaStream API: Add missing WebRTCPeerConnectionHandlerClient::didAddRemoteDataChannel
+        https://bugs.webkit.org/show_bug.cgi?id=102386
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebRTCPeerConnectionHandlerClient):
+
+2012-11-16  Scott Violet  <sky@chromium.org>
+
+        [chromium] Copy linux theme related files to default
+        https://bugs.webkit.org/show_bug.cgi?id=102403
+
+        Reviewed by Tony Chang
+
+        Transitional patch that copies linux WebThemeEngine to default directory.
+
+        No new tests, refactoring only.
+
+        * Platform.gypi:
+        * chromium/public/default: Added.
+        * chromium/public/default/WebThemeEngine.h: Copied from Source/Platform/chromium/public/linux/WebThemeEngine.h.
+
+2012-11-15  Scott Violet  <sky@chromium.org>
+
+        [chromium] Create default directory so that cq can apply patch
+        https://bugs.webkit.org/show_bug.cgi?id=102421
+
+        Reviewed by Tony Chang.
+
+        Done in hopes of patch that copies files to this directory working.
+
+        * chromium/public/default: Added.
+
+2012-11-15  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove unused debug border setters from the WebLayer API
+        https://bugs.webkit.org/show_bug.cgi?id=102274
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayer.h:
+        (WebLayer):
+
+2012-11-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134800 and r134805.
+        http://trac.webkit.org/changeset/134800
+        http://trac.webkit.org/changeset/134805
+        https://bugs.webkit.org/show_bug.cgi?id=102417
+
+        This patch broke chromium port (Requested by jianli on
+        #webkit).
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebRTCPeerConnectionHandlerClient):
+
+2012-11-15  Tommy Widenflycht  <tommyw@google.com>
+
+        [chromium] MediaStream API: Add missing WebRTCPeerConnectionHandlerClient::didAddRemoteDataChannel
+        https://bugs.webkit.org/show_bug.cgi?id=102386
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebRTCPeerConnectionHandlerClient):
+
+2012-11-15  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update RTCPeerConnection states to match the latest editors draft
+        https://bugs.webkit.org/show_bug.cgi?id=102382
+
+        Reviewed by Adam Barth.
+
+        Adding a callback for the new RTCPeerConnection::iceGatheringState.
+
+        * chromium/public/WebRTCPeerConnectionHandlerClient.h:
+        (WebKit::WebRTCPeerConnectionHandlerClient::didChangeICEGatheringState):
+
+2012-11-14  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Clamp negative sizes to zero when converting to gfx:: types
+        https://bugs.webkit.org/show_bug.cgi?id=102159
+
+        Reviewed by James Robinson.
+
+        Here we clamp Rect, RectF and Size types to not have negative widths or
+        heights. WebSizes that you want to keep their negative values, because
+        they are vectors, should be converted to Vector2d instead.
+
+        * chromium/public/WebFloatRect.h:
+        (WebKit::WebFloatRect::operator gfx::RectF):
+        * chromium/public/WebRect.h:
+        (WebKit::WebRect::operator gfx::Rect):
+        * chromium/public/WebSize.h:
+        (WebKit::WebSize::operator gfx::Size):
+
+2012-11-14  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Match the LayerTreeSetting default for acceleratedAnimationEnabled in the WebLayerTreeSetting
+        https://bugs.webkit.org/show_bug.cgi?id=102285
+
+        Reviewed by James Robinson.
+
+        Accelerated animations default to on.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Pass showDebugBorders directly to WebLayerTreeSettings, don't use the GraphicsLayer border width setting.
+        https://bugs.webkit.org/show_bug.cgi?id=102130
+
+        Reviewed by James Robinson.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setShowFPSCounter):
+
+2012-11-13  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Plumb WebCompositorSupport settings through WebLayerTreeSettings as well, in preparation for removing the settings from WebCompositorSupport
+        https://bugs.webkit.org/show_bug.cgi?id=102146
+
+        Reviewed by James Robinson.
+
+        Add accelerated animation and per-tile painting to the
+        WebLayerTreeView structure.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134446.
+        http://trac.webkit.org/changeset/134446
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Need to try a different strategy for landing a two-sided patch
+        (3/3).
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-12  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Remove the WebCompositorSupport methods for changing settings, plumb everything through WebLayerTreeSettings
+        https://bugs.webkit.org/show_bug.cgi?id=101968
+
+        Reviewed by James Robinson.
+
+        Move the outlier settings from WebCompositorSupport to WebLayerTreeView.
+
+        PerTilePainting and AcceleratedAnimations are simply moved over. The
+        PartialSwap and PageScalePinchZoomInCompositor settings, however, are
+        not used by DRT, so we remove them.
+
+        This change will temporarily break the --per-tile-painting and
+        --accelerated-animations command line flags for chromium DRT until
+        a chromium side patch hooks up the WebLayerTreeSettings again, but
+        we have no bots running with these flags.
+
+        PinchZoom will be unaffected by this, as DRT never turned it on, and by
+        passing the WebLayerTreeSetting, chromium will not use it from here yet,
+        either.
+
+        PartialSwap will be also unaffected, as there was no place in WebKit
+        that would enable it currently.
+
+        * chromium/public/WebCompositorSupport.h:
+        (WebCompositorSupport):
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit::WebLayerTreeView::Settings::Settings):
+        (Settings):
+
+2012-11-13  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        Unreviewed, rolling out r134391.
+        http://trac.webkit.org/changeset/134391
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Speculative rollout, trying to fix browser_tests failure.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+
+2012-11-13  Eberhard Graether  <egraether@google.com>
+
+        checkbox to toggle FPS counter in the inspector's settings
+        https://bugs.webkit.org/show_bug.cgi?id=99660
+
+        Reviewed by Pavel Feldman.
+
+        Added a checkbox to the inspector's settings to toggle a FPS counter. The checkbox appears when InspectorClient::canShowFPSCounter() returns true.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+        (WebKit::WebLayerTreeView::setShowFPSCounter):
+
+2012-11-12  Alexandre Elias  <aelias@chromium.org>
+
+        [chromium] Delete WebCompositor.h
+        https://bugs.webkit.org/show_bug.cgi?id=101137
+
+        Reviewed by James Robinson.
+
+        The implementation of this class is getting deleted and all
+        WebKit-side users are already going via WebCompositorSupport instead.
+
+        * Platform.gypi:
+        * chromium/public/WebCompositor.h: Removed.
+
+2012-11-12  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Schedule the RTCDataChannel events to be triggered at idle state
+        https://bugs.webkit.org/show_bug.cgi?id=101751
+
+        Reviewed by Adam Barth.
+
+        Making some WebRTCDataChannel methods const.
+
+        * chromium/public/WebRTCDataChannel.h:
+        (WebRTCDataChannel):
+
 2012-11-09  Tommy Widenflycht  <tommyw@google.com>
 
         MediaStream API: Deleting all files relating to the deprecated PeerConnection00

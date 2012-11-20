@@ -106,7 +106,6 @@ public:
     virtual bool isHTMLUnknownElement() const { return false; }
 #endif
 
-    virtual bool isInsertionPoint() const { return false; }
     virtual bool isLabelable() const { return false; }
 
 protected:
@@ -118,9 +117,9 @@ protected:
     void applyAlignmentAttributeToStyle(const Attribute&, StylePropertySet*);
     void applyBorderAttributeToStyle(const Attribute&, StylePropertySet*);
 
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
 
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
     void calculateAndAdjustDirectionality();
@@ -137,7 +136,7 @@ private:
     Node* insertAdjacent(const String& where, Node* newChild, ExceptionCode&);
     PassRefPtr<DocumentFragment> textToFragment(const String&, ExceptionCode&);
 
-    void dirAttributeChanged(const Attribute&);
+    void dirAttributeChanged(const AtomicString&);
     void adjustDirectionalityIfNeededAfterChildAttributeChanged(Element* child);
     void adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeChange, int childCountDelta);
     TextDirection directionality(Node** strongDirectionalityTextNode= 0) const;

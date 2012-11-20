@@ -1,3 +1,99 @@
+2012-11-19  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        Add PROXIMITY_EVENTS feature
+        https://bugs.webkit.org/show_bug.cgi?id=102658
+
+        Reviewed by Kentaro Hara.
+
+        Add PROXIMITY_EVENTS feature to xcode project for WebKit.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-16  Tony Chang  <tony@chromium.org>
+
+        Remove ENABLE_CSS_HIERARCHIES since it's no longer in use
+        https://bugs.webkit.org/show_bug.cgi?id=102554
+
+        Reviewed by Andreas Kling.
+
+        As mentioned in https://bugs.webkit.org/show_bug.cgi?id=79939#c41 ,
+        we're going to revist this feature once additional vendor support is
+        achieved.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-11-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Private Browsing is a per-page setting that sets a global value
+        https://bugs.webkit.org/show_bug.cgi?id=67870
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        Moved functions for managing global sessions from WebCore.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::defaultCookieStorage): Added. Uses WebFrameNetworkingContext
+        to reach the storage.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _switchNetworkLoaderToNewTestingSession]): Ditto.
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]): Ditto.
+
+        * WebView/WebPreferencesPrivate.h: Added a comment explaining that two functions
+        are not generic enough for use outside DRT (one of them had "testing" in name,
+        but another did not).
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Create a global private browsing session when
+        the first view with private browsing is created, delete it when any window with
+        it disabled is created (since this comes from preferences, it applies to all
+        views equally, even though we are dealing with a single one here).
+        (-[WebView _cachedResponseForURL:]): Use main frame's networking context instead of
+        a global one.
+
+2012-11-13  Timothy Hatcher  <timothy@apple.com>
+
+        Adjust the Web Inspector window title frame if needed to prevent it from intersecting the dock button.
+
+        https://bugs.webkit.org/show_bug.cgi?id=102073
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindow _customTitleFrame]): Added. Adjust the title frame.
+
+2012-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Build fix after r134346 and 134347.
+        
+        Use frameView.isFlipped, not frameView.flipped in the assertion.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindowController window]):
+
+2012-11-12  Timothy Hatcher  <timothy@apple.com>
+
+        Add a dock button to the top right corner of the Web Inspector window (similar to the full screen button).
+
+        https://bugs.webkit.org/show_bug.cgi?id=102025
+
+        Reviewed by Joseph Pecoraro.
+
+        * Resources/Dock.pdf: Added.
+        * WebCoreSupport/WebInspectorClient.h:
+        * WebCoreSupport/WebInspectorClient.mm:
+        (-[WebInspectorWindow _cursorForResizeDirection:]): Added.
+        (WebInspectorClient::didResizeMainFrame): Call attachAvailabilityChanged instead.
+        (WebInspectorFrontendClient::attachAvailabilityChanged): Added.
+        (-[WebInspectorWindowController window]): Create the dock button and add it.
+        (-[WebInspectorWindowController attachWindow:]): Added.
+        (-[WebInspectorWindowController attach]): Call setAttachedWindow.
+        (-[WebInspectorWindowController detach]): Ditto.
+        (-[WebInspectorWindowController setDockingUnavailable:]): Added. Update hidden state of the dock button.
+
 2012-11-08  Timothy Hatcher  <timothy@apple.com>
 
         Always use a textured window for the Web Inspector.

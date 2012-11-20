@@ -38,6 +38,11 @@
 #include <wtf/HashSet.h>
 #include <wtf/ThreadingPrimitives.h>
 
+namespace WebCore {
+class CustomFilterProgram;
+class CustomFilterProgramInfo;
+}
+
 namespace WebKit {
 
 class CoordinatedBackingStore;
@@ -84,21 +89,35 @@ public:
 #if ENABLE(CSS_FILTERS)
     void setLayerFilters(WebLayerID, const WebCore::FilterOperations&);
 #endif
+#if ENABLE(CSS_SHADERS)
+    void injectCachedCustomFilterPrograms(const WebCore::FilterOperations& filters) const;
+    void createCustomFilterProgram(int id, const WebCore::CustomFilterProgramInfo&);
+    void removeCustomFilterProgram(int id);
+#endif
 
-    void createTile(WebLayerID, int, float scale, const WebCore::IntSize&);
+    void createTile(WebLayerID, int, float scale);
     void removeTile(WebLayerID, int);
     void updateTile(WebLayerID, int, const TileUpdate&);
     void flushLayerChanges();
-    void createImage(int64_t, PassRefPtr<ShareableBitmap>);
-    void destroyImage(int64_t);
+    void createImageBacking(CoordinatedImageBackingID);
+    void updateImageBacking(CoordinatedImageBackingID, PassRefPtr<ShareableSurface>);
+    void removeImageBacking(CoordinatedImageBackingID);
     void setLayerAnimations(WebLayerID, const WebCore::GraphicsLayerAnimations&);
     void setAnimationsLocked(bool);
+    void setBackgroundColor(const WebCore::Color&);
+    void setDrawsBackground(bool enable) { m_setDrawsBackground = enable; }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     void requestAnimationFrame();
     void animationFrameReady();
 #endif
 
+    void setAccelerationMode(WebCore::TextureMapper::AccelerationMode mode)
+    {
+        // The acceleration mode is set only before TextureMapper was created.
+        ASSERT(!m_textureMapper);
+        m_accelerationMode = mode;
+    }
 private:
     PassOwnPtr<WebCore::GraphicsLayer> createLayer(WebLayerID);
 
@@ -113,15 +132,17 @@ private:
     void dispatchOnMainThread(const Function<void()>&);
     void adjustPositionForFixedLayers();
 
-    void assignImageToLayer(WebCore::GraphicsLayer*, int64_t imageID);
+    void assignImageBackingToLayer(WebCore::GraphicsLayer*, CoordinatedImageBackingID);
+    void removeReleasedImageBackingsIfNeeded();
     void ensureRootLayer();
     void ensureLayer(WebLayerID);
     void commitTileOperations();
     void renderNextFrame();
     void purgeBackingStores();
 
-    PassRefPtr<CoordinatedBackingStore> getBackingStore(WebLayerID);
-    void removeBackingStoreIfNeeded(WebLayerID, int tileID);
+    PassRefPtr<CoordinatedBackingStore> getBackingStore(WebCore::GraphicsLayer*);
+    void removeBackingStoreIfNeeded(WebCore::GraphicsLayer*);
+    void resetBackingStoreSizeToLayerSize(WebCore::GraphicsLayer*);
 
     typedef HashMap<WebLayerID, WebCore::GraphicsLayer*> LayerMap;
     WebCore::FloatSize m_contentsSize;
@@ -132,7 +153,11 @@ private:
     Mutex m_renderQueueMutex;
 
     OwnPtr<WebCore::TextureMapper> m_textureMapper;
-    HashMap<int64_t, RefPtr<WebCore::TextureMapperBackingStore> > m_directlyCompositedImages;
+
+    typedef HashMap<CoordinatedImageBackingID, RefPtr<CoordinatedBackingStore> > ImageBackingMap;
+    ImageBackingMap m_imageBackings;
+    Vector<RefPtr<CoordinatedBackingStore> > m_releasedImageBackings;
+
     HashSet<RefPtr<CoordinatedBackingStore> > m_backingStoresWithPendingBuffers;
 
 #if USE(GRAPHICS_SURFACE)
@@ -152,6 +177,14 @@ private:
     bool m_animationsLocked;
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     bool m_animationFrameRequested;
+#endif
+    WebCore::TextureMapper::AccelerationMode m_accelerationMode;
+    WebCore::Color m_backgroundColor;
+    bool m_setDrawsBackground;
+
+#if ENABLE(CSS_SHADERS)
+    typedef HashMap<int, RefPtr<WebCore::CustomFilterProgram> > CustomFilterProgramMap;
+    CustomFilterProgramMap m_customFilterPrograms;
 #endif
 };
 

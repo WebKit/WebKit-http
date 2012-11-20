@@ -135,11 +135,6 @@ enum NoResultTag { NoResult };
 
 enum OptimizationFixpointState { BeforeFixpoint, FixpointNotConverged, FixpointConverged };
 
-inline bool shouldShowDisassembly()
-{
-    return Options::showDisassembly() || Options::showDFGDisassembly();
-}
-
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
@@ -149,6 +144,16 @@ namespace JSC { namespace DFG {
 // Put things here that must be defined even if ENABLE(DFG_JIT) is false.
 
 enum CapabilityLevel { CannotCompile, ShouldProfile, CanCompile, CapabilityLevelNotSet };
+
+// Unconditionally disable DFG disassembly support if the DFG is not compiled in.
+inline bool shouldShowDisassembly()
+{
+#if ENABLE(DFG_JIT)
+    return Options::showDisassembly() || Options::showDFGDisassembly();
+#else
+    return false;
+#endif
+}
 
 } } // namespace JSC::DFG
 

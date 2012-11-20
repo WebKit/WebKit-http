@@ -55,8 +55,7 @@ v8::Handle<v8::Value> V8DOMFormData::constructorCallback(const v8::Arguments& ar
     RefPtr<DOMFormData> domFormData = DOMFormData::create(form);
 
     v8::Handle<v8::Object> wrapper = args.Holder();
-    V8DOMWrapper::setDOMWrapper(wrapper, &info, domFormData.get());
-    V8DOMWrapper::setJSWrapperForDOMObject(domFormData.release(), wrapper);
+    V8DOMWrapper::createDOMWrapper(domFormData.release(), &info, wrapper);
     return wrapper;
 }
 
@@ -65,7 +64,7 @@ v8::Handle<v8::Value> V8DOMFormData::appendCallback(const v8::Arguments& args)
     INC_STATS("DOM.FormData.append()");
     
     if (args.Length() < 2)
-        return throwError(SyntaxError, "Not enough arguments", args.GetIsolate());
+        return throwError(v8SyntaxError, "Not enough arguments", args.GetIsolate());
 
     DOMFormData* domFormData = V8DOMFormData::toNative(args.Holder());
 

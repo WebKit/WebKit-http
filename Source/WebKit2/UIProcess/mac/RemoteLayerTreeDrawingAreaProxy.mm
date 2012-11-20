@@ -35,6 +35,7 @@ PassOwnPtr<RemoteLayerTreeDrawingAreaProxy> RemoteLayerTreeDrawingAreaProxy::cre
 
 RemoteLayerTreeDrawingAreaProxy::RemoteLayerTreeDrawingAreaProxy(WebPageProxy* webPageProxy)
     : DrawingAreaProxy(DrawingAreaTypeRemoteLayerTree, webPageProxy)
+    , m_remoteLayerTreeHost(webPageProxy)
 {
 }
 

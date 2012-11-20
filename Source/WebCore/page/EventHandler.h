@@ -26,6 +26,7 @@
 #ifndef EventHandler_h
 #define EventHandler_h
 
+#include "Cursor.h"
 #include "DragActions.h"
 #include "DragState.h"
 #include "FocusDirection.h"
@@ -141,6 +142,7 @@ public:
     void resizeLayerDestroyed();
 
     IntPoint currentMousePosition() const;
+    Cursor currentMouseCursor() const { return m_currentMouseCursor; }
 
     static Frame* subframeForTargetNode(Node*);
     static Frame* subframeForHitTestResult(const MouseEventWithHitTestResults&);
@@ -170,6 +172,7 @@ public:
     bool handleGestureLongPress(const PlatformGestureEvent&);
     bool handleGestureTwoFingerTap(const PlatformGestureEvent&);
     bool handleGestureScrollUpdate(const PlatformGestureEvent&);
+    bool isScrollbarHandlingGestures() const;
 #endif
 
 #if ENABLE(TOUCH_ADJUSTMENT)
@@ -420,6 +423,7 @@ private:
     RefPtr<Node> m_lastNodeUnderMouse;
     RefPtr<Frame> m_lastMouseMoveEventSubframe;
     RefPtr<Scrollbar> m_lastScrollbarUnderMouse;
+    Cursor m_currentMouseCursor;
 
     int m_clickCount;
     RefPtr<Node> m_clickNode;
@@ -457,6 +461,7 @@ private:
 
 #if ENABLE(GESTURE_EVENTS)
     RefPtr<Node> m_scrollGestureHandlingNode;
+    RefPtr<Scrollbar> m_scrollbarHandlingScrollGesture;
 #endif
 
     double m_mouseMovedDurationRunningAverage;

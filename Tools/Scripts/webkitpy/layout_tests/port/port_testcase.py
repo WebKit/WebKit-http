@@ -41,7 +41,6 @@ from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.layout_tests.port.base import Port
-from webkitpy.layout_tests.port.config_mock import MockConfig
 from webkitpy.layout_tests.port.server_process_mock import MockServerProcess
 from webkitpy.layout_tests.servers import http_server_base
 from webkitpy.tool.mocktool import MockOptions
@@ -56,8 +55,7 @@ class TestWebKitPort(Port):
                  **kwargs):
         self.symbols_string = symbols_string  # Passing "" disables all staticly-detectable features.
         host = host or MockSystemHost()
-        config = config or MockConfig()
-        super(TestWebKitPort, self).__init__(host=host, config=config, **kwargs)
+        super(TestWebKitPort, self).__init__(host=host, **kwargs)
 
     def all_test_configurations(self):
         return [self.test_configuration()]
@@ -81,28 +79,30 @@ class PortTestCase(unittest.TestCase):
     os_name = None
     os_version = None
     port_maker = TestWebKitPort
+    port_name = None
 
-    def make_port(self, host=None, port_name=None, options=None, os_name=None, os_version=None, config=None, **kwargs):
+    def make_port(self, host=None, port_name=None, options=None, os_name=None, os_version=None, **kwargs):
         host = host or MockSystemHost(os_name=(os_name or self.os_name), os_version=(os_version or self.os_version))
         options = options or MockOptions(configuration='Release')
-        config = config or MockConfig(filesystem=host.filesystem, default_configuration='Release')
         port_name = port_name or self.port_name
         port_name = self.port_maker.determine_full_port_name(host, options, port_name)
-        return self.port_maker(host, port_name, options=options, config=config, **kwargs)
+        port = self.port_maker(host, port_name, options=options, **kwargs)
+        port._config.build_directory = lambda configuration: '/mock-build'
+        return port
 
     def test_default_max_locked_shards(self):
         port = self.make_port()
         port.default_child_processes = lambda: 16
-        self.assertEquals(port.default_max_locked_shards(), 1)
+        self.assertEqual(port.default_max_locked_shards(), 1)
         port.default_child_processes = lambda: 2
-        self.assertEquals(port.default_max_locked_shards(), 1)
+        self.assertEqual(port.default_max_locked_shards(), 1)
 
     def test_default_timeout_ms(self):
-        self.assertEquals(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 35000)
-        self.assertEquals(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 35000)
+        self.assertEqual(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 35000)
+        self.assertEqual(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 35000)
 
     def test_default_pixel_tests(self):
-        self.assertEquals(self.make_port().default_pixel_tests(), False)
+        self.assertEqual(self.make_port().default_pixel_tests(), False)
 
     def test_driver_cmd_line(self):
         port = self.make_port()
@@ -113,9 +113,6 @@ class PortTestCase(unittest.TestCase):
         cmd_line = port.driver_cmd_line()
         self.assertTrue('--foo=bar' in cmd_line)
         self.assertTrue('--foo=baz' in cmd_line)
-
-    def test_expectations_files(self):
-        self.assertNotEquals(self.make_port().expectations_files(), [])
 
     def test_uses_apache(self):
         self.assertTrue(self.make_port()._uses_apache())
@@ -270,18 +267,18 @@ class PortTestCase(unittest.TestCase):
 
         port._server_process_constructor = make_proc
         port.setup_test_run()
-        self.assertEquals(port.diff_image('foo', 'bar'), ('', 100.0, None))
-        self.assertEquals(self.proc.cmd[1:3], ["--tolerance", "0.1"])
+        self.assertEqual(port.diff_image('foo', 'bar'), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0.1"])
 
-        self.assertEquals(port.diff_image('foo', 'bar', None), ('', 100.0, None))
-        self.assertEquals(self.proc.cmd[1:3], ["--tolerance", "0.1"])
+        self.assertEqual(port.diff_image('foo', 'bar', None), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0.1"])
 
-        self.assertEquals(port.diff_image('foo', 'bar', 0), ('', 100.0, None))
-        self.assertEquals(self.proc.cmd[1:3], ["--tolerance", "0"])
+        self.assertEqual(port.diff_image('foo', 'bar', 0), ('', 100.0, None))
+        self.assertEqual(self.proc.cmd[1:3], ["--tolerance", "0"])
 
         port.clean_up_test_run()
         self.assertTrue(self.proc.stopped)
-        self.assertEquals(port._image_differ, None)
+        self.assertEqual(port._image_differ, None)
 
     def test_diff_image_crashed(self):
         port = self.make_port()
@@ -293,7 +290,7 @@ class PortTestCase(unittest.TestCase):
 
         port._server_process_constructor = make_proc
         port.setup_test_run()
-        self.assertEquals(port.diff_image('foo', 'bar'), ('', 0, 'ImageDiff crashed\n'))
+        self.assertEqual(port.diff_image('foo', 'bar'), ('', 0, 'ImageDiff crashed\n'))
         port.clean_up_test_run()
 
     def test_check_wdiff(self):
@@ -389,13 +386,13 @@ class PortTestCase(unittest.TestCase):
 
     def test_get_crash_log(self):
         port = self.make_port()
-        self.assertEquals(port._get_crash_log(None, None, None, None, newer_than=None),
+        self.assertEqual(port._get_crash_log(None, None, None, None, newer_than=None),
            (None,
             'crash log for <unknown process name> (pid <unknown>):\n'
             'STDOUT: <empty>\n'
             'STDERR: <empty>\n'))
 
-        self.assertEquals(port._get_crash_log('foo', 1234, 'out bar\nout baz', 'err bar\nerr baz\n', newer_than=None),
+        self.assertEqual(port._get_crash_log('foo', 1234, 'out bar\nout baz', 'err bar\nerr baz\n', newer_than=None),
             ('err bar\nerr baz\n',
              'crash log for foo (pid 1234):\n'
              'STDOUT: out bar\n'
@@ -403,13 +400,13 @@ class PortTestCase(unittest.TestCase):
              'STDERR: err bar\n'
              'STDERR: err baz\n'))
 
-        self.assertEquals(port._get_crash_log('foo', 1234, 'foo\xa6bar', 'foo\xa6bar', newer_than=None),
+        self.assertEqual(port._get_crash_log('foo', 1234, 'foo\xa6bar', 'foo\xa6bar', newer_than=None),
             ('foo\xa6bar',
              u'crash log for foo (pid 1234):\n'
              u'STDOUT: foo\ufffdbar\n'
              u'STDERR: foo\ufffdbar\n'))
 
-        self.assertEquals(port._get_crash_log('foo', 1234, 'foo\xa6bar', 'foo\xa6bar', newer_than=1.0),
+        self.assertEqual(port._get_crash_log('foo', 1234, 'foo\xa6bar', 'foo\xa6bar', newer_than=1.0),
             ('foo\xa6bar',
              u'crash log for foo (pid 1234):\n'
              u'STDOUT: foo\ufffdbar\n'
@@ -419,14 +416,14 @@ class PortTestCase(unittest.TestCase):
         port = self.make_port(options=options)
         for directory in dirs:
             port.host.filesystem.maybe_make_directory(directory)
-        self.assertEquals(port._build_path(), expected_path)
+        self.assertEqual(port._build_path(), expected_path)
 
     def test_expectations_ordering(self):
         port = self.make_port()
         for path in port.expectations_files():
             port._filesystem.write_text_file(path, '')
         ordered_dict = port.expectations_dict()
-        self.assertEquals(port.path_to_test_expectations_file(), ordered_dict.keys()[0])
+        self.assertEqual(port.path_to_test_expectations_file(), ordered_dict.keys()[0])
 
         options = MockOptions(additional_expectations=['/tmp/foo', '/tmp/bar'])
         port = self.make_port(options=options)
@@ -435,8 +432,8 @@ class PortTestCase(unittest.TestCase):
         port._filesystem.write_text_file('/tmp/foo', 'foo')
         port._filesystem.write_text_file('/tmp/bar', 'bar')
         ordered_dict = port.expectations_dict()
-        self.assertEquals(ordered_dict.keys()[-2:], options.additional_expectations)
-        self.assertEquals(ordered_dict.values()[-2:], ['foo', 'bar'])
+        self.assertEqual(ordered_dict.keys()[-2:], options.additional_expectations)  # pylint: disable-msg=E1101
+        self.assertEqual(ordered_dict.values()[-2:], ['foo', 'bar'])
 
     def test_path_to_test_expectations_file(self):
         port = TestWebKitPort()
@@ -562,7 +559,7 @@ class PortTestCase(unittest.TestCase):
         self.assertFalse(output.assert_outputs(self, port._build_driver, expected_stderr=expected_stderr, expected_logs=expected_logs))
 
     def _assert_config_file_for_platform(self, port, platform, config_file):
-        self.assertEquals(port._apache_config_file_name_for_platform(platform), config_file)
+        self.assertEqual(port._apache_config_file_name_for_platform(platform), config_file)
 
     def test_linux_distro_detection(self):
         port = TestWebKitPort()
@@ -604,19 +601,19 @@ class PortTestCase(unittest.TestCase):
             self.assertRaises(IOError, port._path_to_apache_config_file)
             port._filesystem.write_text_file('/existing/httpd.conf', 'Hello, world!')
             os.environ['WEBKIT_HTTP_SERVER_CONF_PATH'] = '/existing/httpd.conf'
-            self.assertEquals(port._path_to_apache_config_file(), '/existing/httpd.conf')
+            self.assertEqual(port._path_to_apache_config_file(), '/existing/httpd.conf')
         finally:
             os.environ = saved_environ.copy()
 
         # Mock out _apache_config_file_name_for_platform to ignore the passed sys.platform value.
         port._apache_config_file_name_for_platform = lambda platform: 'httpd.conf'
-        self.assertEquals(port._path_to_apache_config_file(), '/mock-checkout/LayoutTests/http/conf/httpd.conf')
+        self.assertEqual(port._path_to_apache_config_file(), '/mock-checkout/LayoutTests/http/conf/httpd.conf')
 
         # Check that even if we mock out _apache_config_file_name, the environment variable takes precedence.
         saved_environ = os.environ.copy()
         try:
             os.environ['WEBKIT_HTTP_SERVER_CONF_PATH'] = '/existing/httpd.conf'
-            self.assertEquals(port._path_to_apache_config_file(), '/existing/httpd.conf')
+            self.assertEqual(port._path_to_apache_config_file(), '/existing/httpd.conf')
         finally:
             os.environ = saved_environ.copy()
 
@@ -646,4 +643,4 @@ class PortTestCase(unittest.TestCase):
 
     def test_additional_platform_directory(self):
         port = self.make_port(options=MockOptions(additional_platform_directory=['/tmp/foo']))
-        self.assertEquals(port.baseline_search_path()[0], '/tmp/foo')
+        self.assertEqual(port.baseline_search_path()[0], '/tmp/foo')

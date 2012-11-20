@@ -2130,6 +2130,16 @@ void SpeculativeJIT::compile(Node& node)
         m_jit.addWeakReference(node.weakConstant());
         initConstantInfo(m_compileIndex);
         break;
+        
+    case Identity: {
+        // This could be done a lot better. We take the cheap way out because Identity
+        // is only going to stick around after CSE if we had prediction weirdness.
+        JSValueOperand operand(this, node.child1());
+        GPRTemporary result(this, operand);
+        m_jit.move(operand.gpr(), result.gpr());
+        jsValueResult(result.gpr(), m_compileIndex);
+        break;
+    }
 
     case GetLocal: {
         SpeculatedType prediction = node.variableAccessData()->prediction();
@@ -3913,6 +3923,12 @@ void SpeculativeJIT::compile(Node& node)
         cellResult(resultGPR, m_compileIndex);
         break;
     }
+        
+    case InheritorIDWatchpoint: {
+        jsCast<JSFunction*>(node.function())->addInheritorIDWatchpoint(speculationWatchpoint());
+        noResult(m_compileIndex);
+        break;
+    }
 
     case NewObject: {
         GPRTemporary result(this);
@@ -3923,9 +3939,9 @@ void SpeculativeJIT::compile(Node& node)
         
         MacroAssembler::JumpList slowPath;
         
-        emitAllocateJSFinalObject(MacroAssembler::TrustedImmPtr(m_jit.globalObjectFor(node.codeOrigin)->emptyObjectStructure()), resultGPR, scratchGPR, slowPath);
+        emitAllocateJSFinalObject(MacroAssembler::TrustedImmPtr(node.structure()), resultGPR, scratchGPR, slowPath);
         
-        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewObject, resultGPR));
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewObject, resultGPR, node.structure()));
         
         cellResult(resultGPR, m_compileIndex);
         break;
@@ -4081,7 +4097,7 @@ void SpeculativeJIT::compile(Node& node)
         
     case CheckFunction: {
         SpeculateCellOperand function(this, node.child1());
-        speculationCheck(BadCache, JSValueRegs(), NoNode, m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
+        speculationCheck(BadCache, JSValueRegs(function.gpr()), node.child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
         noResult(m_compileIndex);
         break;
     }

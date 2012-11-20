@@ -85,6 +85,7 @@ enum MessageClass {
     MessageClassWebSoupRequestManagerProxy,
 #endif
     MessageClassWebVibrationProxy,
+    MessageClassRemoteLayerTreeHost,
 
     // Messages sent to a WebConnection
     MessageClassWebConnectionLegacy,
@@ -114,9 +115,11 @@ enum MessageClass {
 
     // Messages sent by the web process to the network process.
     MessageClassNetworkConnectionToWebProcess,
+    MessageClassNetworkResourceLoader,
 
     // Messages sent by the network process to a web process.
     MessageClassNetworkProcessConnection,
+    MessageClassWebResourceLoader,
     
 #if ENABLE(SHARED_WORKER_PROCESS)
     // Messages sent by the UI process to the shared worker process.
@@ -125,6 +128,14 @@ enum MessageClass {
 
     // Messages sent by the shared worker process to the UI process.
     MessageClassSharedWorkerProcessProxy,
+    
+#if ENABLE(CUSTOM_PROTOCOLS)
+    // Messages sent by the UI process to a web process (soon the network process).
+    MessageClassCustomProtocolManager,
+
+    // Messages sent by a web process (soon the network process) to the UI process.
+    MessageClassCustomProtocolManagerProxy,
+#endif
 };
 
 template<typename> struct MessageKindTraits { };

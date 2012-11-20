@@ -98,14 +98,16 @@ void HTMLContentElement::ensureSelectParsed()
         m_selectorList = CSSSelectorList();
 }
 
-void HTMLContentElement::parseAttribute(const Attribute& attribute)
+void HTMLContentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == selectAttr) {
-        if (ShadowRoot* root = shadowRoot())
+    if (name == selectAttr) {
+        if (ShadowRoot* root = shadowRoot()) {
+            root->owner()->setShouldCollectSelectFeatureSet();
             root->owner()->invalidateDistribution();
+        }
         m_shouldParseSelectorList = true;
     } else
-        InsertionPoint::parseAttribute(attribute);
+        InsertionPoint::parseAttribute(name, value);
 }
 
 Node::InsertionNotificationRequest HTMLContentElement::insertedInto(ContainerNode* insertionPoint)
@@ -113,7 +115,9 @@ Node::InsertionNotificationRequest HTMLContentElement::insertedInto(ContainerNod
     InsertionPoint::insertedInto(insertionPoint);
 
     if (insertionPoint->inDocument() && isActive()) {
-        shadowRoot()->registerContentElement();
+        ShadowRoot* root = shadowRoot();
+        root->registerContentElement();
+        root->owner()->setShouldCollectSelectFeatureSet();
         m_registeredWithShadowRoot = true;
     }
 
@@ -129,6 +133,9 @@ void HTMLContentElement::removedFrom(ContainerNode* insertionPoint)
         if (root)
             root->unregisterContentElement();
         m_registeredWithShadowRoot = false;
+
+        if (ElementShadow* elementShadow = root ? root->owner() : 0)
+            elementShadow->setShouldCollectSelectFeatureSet();
     }
     InsertionPoint::removedFrom(insertionPoint);
 }

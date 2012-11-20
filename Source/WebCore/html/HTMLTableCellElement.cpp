@@ -85,10 +85,10 @@ bool HTMLTableCellElement::isPresentationAttribute(const QualifiedName& name) co
     return HTMLTablePartElement::isPresentationAttribute(name);
 }
 
-void HTMLTableCellElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLTableCellElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == nowrapAttr) {
-        addPropertyToAttributeStyle(style, CSSPropertyWhiteSpace, CSSValueWebkitNowrap);
+        addPropertyToPresentationAttributeStyle(style, CSSPropertyWhiteSpace, CSSValueWebkitNowrap);
     } else if (attribute.name() == widthAttr) {
         if (!attribute.value().isEmpty()) {
             int widthInt = attribute.value().toInt();
@@ -102,22 +102,22 @@ void HTMLTableCellElement::collectStyleForAttribute(const Attribute& attribute, 
                 addHTMLLengthToStyle(style, CSSPropertyHeight, attribute.value());
         }
     } else
-        HTMLTablePartElement::collectStyleForAttribute(attribute, style);
+        HTMLTablePartElement::collectStyleForPresentationAttribute(attribute, style);
 }
 
-void HTMLTableCellElement::parseAttribute(const Attribute& attribute)
+void HTMLTableCellElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == rowspanAttr) {
+    if (name == rowspanAttr) {
         if (renderer() && renderer()->isTableCell())
             toRenderTableCell(renderer())->colSpanOrRowSpanChanged();
-    } else if (attribute.name() == colspanAttr) {
+    } else if (name == colspanAttr) {
         if (renderer() && renderer()->isTableCell())
             toRenderTableCell(renderer())->colSpanOrRowSpanChanged();
     } else
-        HTMLTablePartElement::parseAttribute(attribute);
+        HTMLTablePartElement::parseAttribute(name, value);
 }
 
-const StylePropertySet* HTMLTableCellElement::additionalAttributeStyle()
+const StylePropertySet* HTMLTableCellElement::additionalPresentationAttributeStyle()
 {
     if (HTMLTableElement* table = findParentTable())
         return table->additionalCellStyle();

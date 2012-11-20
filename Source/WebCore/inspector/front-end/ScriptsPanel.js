@@ -126,8 +126,11 @@ WebInspector.ScriptsPanel = function(workspaceForTest)
     this._debugSidebarContentsElement.id = "scripts-debug-sidebar-contents";
     this.sidebarElement.appendChild(this._debugSidebarContentsElement);
 
-    for (var pane in this.sidebarPanes)
+    for (var pane in this.sidebarPanes) {
+        if (this.sidebarPanes[pane] === this.sidebarPanes.domBreakpoints)
+            continue;
         this._debugSidebarContentsElement.appendChild(this.sidebarPanes[pane].element);
+    }
 
     this.sidebarPanes.callstack.expanded = true;
 
@@ -313,7 +316,7 @@ WebInspector.ScriptsPanel.prototype = {
         }
 
         this._showDebuggerSidebar();
-        this._toggleDebuggerSidebarButton.disabled = true;
+        this._toggleDebuggerSidebarButton.setEnabled(false);
         window.focus();
         InspectorFrontendHost.bringToFront();
     },
@@ -325,7 +328,7 @@ WebInspector.ScriptsPanel.prototype = {
         this._stepping = false;
 
         this._clearInterface();
-        this._toggleDebuggerSidebarButton.disabled = false;
+        this._toggleDebuggerSidebarButton.setEnabled(true);
     },
 
     _debuggerWasEnabled: function()

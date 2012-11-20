@@ -75,7 +75,7 @@ private:
 class CoordinatedTileClient {
 public:
     virtual ~CoordinatedTileClient() { }
-    virtual void createTile(int tileID, const SurfaceUpdateInfo&, const WebCore::IntRect& tileRect, const WebCore::IntSize& backingSize) = 0;
+    virtual void createTile(int tileID, const SurfaceUpdateInfo&, const WebCore::IntRect&) = 0;
     virtual void updateTile(int tileID, const SurfaceUpdateInfo&, const WebCore::IntRect&) = 0;
     virtual void removeTile(int tileID) = 0;
     virtual PassOwnPtr<WebCore::GraphicsContext> beginContentUpdate(const WebCore::IntSize&, int& atlasID, WebCore::IntPoint&) = 0;
@@ -88,7 +88,7 @@ public:
     void paintCheckerPattern(WebCore::GraphicsContext*, const WebCore::FloatRect&);
 
 private:
-    CoordinatedTileBackend(CoordinatedTileClient*);
+    explicit CoordinatedTileBackend(CoordinatedTileClient*);
     CoordinatedTileClient* m_client;
 };
 

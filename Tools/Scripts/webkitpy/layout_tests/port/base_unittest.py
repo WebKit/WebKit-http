@@ -45,9 +45,6 @@ from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.layout_tests.port import Port, Driver, DriverOutput
 from webkitpy.layout_tests.port.test import add_unit_tests_to_mock_filesystem, TestPort
 
-import config
-import config_mock
-
 class PortTest(unittest.TestCase):
     def make_port(self, executive=None, with_tests=False, **kwargs):
         host = MockSystemHost()
@@ -189,11 +186,6 @@ class PortTest(unittest.TestCase):
         self.assertTrue('act.txt' in diff)
         self.assertFalse('nosuchthing' in diff)
 
-    def test_default_configuration_notfound(self):
-        # Test that we delegate to the config object properly.
-        port = self.make_port(config=config_mock.MockConfig(default_configuration='default'))
-        self.assertEqual(port.default_configuration(), 'default')
-
     def test_setup_test_run(self):
         port = self.make_port()
         # This routine is a no-op. We just test it for coverage.
@@ -268,7 +260,7 @@ class PortTest(unittest.TestCase):
         port = self.make_port(port_name='foo')
         port.expectations_files = lambda: ['/mock-checkout/LayoutTests/platform/exists/TestExpectations', '/mock-checkout/LayoutTests/platform/nonexistant/TestExpectations']
         port._filesystem.write_text_file('/mock-checkout/LayoutTests/platform/exists/TestExpectations', '')
-        self.assertEquals('\n'.join(port.expectations_dict().keys()), '/mock-checkout/LayoutTests/platform/exists/TestExpectations')
+        self.assertEqual('\n'.join(port.expectations_dict().keys()), '/mock-checkout/LayoutTests/platform/exists/TestExpectations')
 
     def test_additional_expectations(self):
         port = self.make_port(port_name='foo')
@@ -279,19 +271,19 @@ class PortTest(unittest.TestCase):
         port._filesystem.write_text_file(
             '/tmp/additional-expectations-2.txt', 'content2\n')
 
-        self.assertEquals('\n'.join(port.expectations_dict().values()), '')
+        self.assertEqual('\n'.join(port.expectations_dict().values()), '')
 
         port._options.additional_expectations = [
             '/tmp/additional-expectations-1.txt']
-        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
+        self.assertEqual('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
 
         port._options.additional_expectations = [
             '/tmp/nonexistent-file', '/tmp/additional-expectations-1.txt']
-        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
+        self.assertEqual('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
 
         port._options.additional_expectations = [
             '/tmp/additional-expectations-1.txt', '/tmp/additional-expectations-2.txt']
-        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n\ncontent2\n')
+        self.assertEqual('\n'.join(port.expectations_dict().values()), '\ncontent1\n\ncontent2\n')
 
     def test_additional_env_var(self):
         port = self.make_port(options=optparse.Values({'additional_env_var': ['FOO=BAR', 'BAR=FOO']}))

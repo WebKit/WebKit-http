@@ -457,8 +457,16 @@ BytecodeGenerator::BytecodeGenerator(JSGlobalData& globalData, FunctionBodyNode*
 
     if (isConstructor()) {
         prependComment("'this' because we are a Constructor function");
-        emitOpcode(op_create_this);
-        instructions().append(m_thisRegister.index());
+
+        RefPtr<RegisterID> func = newTemporary(); 
+
+        UnlinkedValueProfile profile = emitProfiledOpcode(op_get_callee);
+        instructions().append(func->index());
+        instructions().append(profile);
+
+        emitOpcode(op_create_this); 
+        instructions().append(m_thisRegister.index()); 
+        instructions().append(func->index()); 
     } else if (!codeBlock->isStrictMode() && (functionBody->usesThis() || codeBlock->usesEval() || m_shouldEmitDebugHooks)) {
         UnlinkedValueProfile profile = emitProfiledOpcode(op_convert_this);
         instructions().append(m_thisRegister.index());

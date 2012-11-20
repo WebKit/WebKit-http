@@ -241,17 +241,28 @@ _llint_op_create_arguments:
 
 _llint_op_create_this:
     traceExecution()
-    loadp Callee[cfr], t0
+    loadisFromInstruction(2, t0)
+    loadp [cfr, t0, 8], t0
     loadp JSFunction::m_cachedInheritorID[t0], t2
     btpz t2, .opCreateThisSlow
     allocateBasicJSObject(JSFinalObjectSizeClassIndex, t2, t0, t1, t3, .opCreateThisSlow)
     loadisFromInstruction(1, t1)
     storeq t0, [cfr, t1, 8]
-    dispatch(2)
+    dispatch(3)
 
 .opCreateThisSlow:
     callSlowPath(_llint_slow_path_create_this)
-    dispatch(2)
+    dispatch(3)
+
+
+_llint_op_get_callee:
+    traceExecution()
+    loadisFromInstruction(1, t0)
+    loadpFromInstruction(2, t2)
+    loadp Callee[cfr], t1
+    valueProfile(t1, t2)
+    storep t1, [cfr, t0, 8]
+    dispatch(3)
 
 
 _llint_op_convert_this:

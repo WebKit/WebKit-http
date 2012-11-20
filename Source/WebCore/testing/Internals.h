@@ -29,6 +29,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionCodePlaceholder.h"
 #include "NodeList.h"
+#include <wtf/ArrayBuffer.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -53,6 +54,7 @@ class ScriptExecutionContext;
 class ShadowRoot;
 class WebKitPoint;
 class MallocStatistics;
+class SerializedScriptValue;
 
 typedef int ExceptionCode;
 
@@ -96,6 +98,10 @@ public:
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
     Node* parentTreeScope(Node*, ExceptionCode&);
+    bool hasSelectorForIdInShadow(Element* host, const String& idValue, ExceptionCode&);
+    bool hasSelectorForClassInShadow(Element* host, const String& className, ExceptionCode&);
+    bool hasSelectorForAttributeInShadow(Element* host, const String& attributeName, ExceptionCode&);
+    bool hasSelectorForPseudoClassInShadow(Element* host, const String& pseudoClass, ExceptionCode&);
 
     bool attached(Node*, ExceptionCode&);
 
@@ -241,6 +247,11 @@ public:
 
     void startTrackingRepaints(Document*, ExceptionCode&);
     void stopTrackingRepaints(Document*, ExceptionCode&);
+
+    PassRefPtr<ArrayBuffer> serializeObject(PassRefPtr<SerializedScriptValue>) const;
+    PassRefPtr<SerializedScriptValue> deserializeBuffer(PassRefPtr<ArrayBuffer>) const;
+
+    String getCurrentCursorInfo(Document*, ExceptionCode&);
 
 private:
     explicit Internals(Document*);

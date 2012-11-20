@@ -269,6 +269,26 @@ struct Node {
         convertToStructureTransitionWatchpoint(structureSet().singletonStructure());
     }
     
+    void convertToGetByOffset(unsigned storageAccessDataIndex, NodeIndex storage)
+    {
+        ASSERT(m_op == GetById || m_op == GetByIdFlush);
+        m_opInfo = storageAccessDataIndex;
+        children.setChild1(Edge(storage));
+        m_op = GetByOffset;
+        m_flags &= ~NodeClobbersWorld;
+    }
+    
+    void convertToPutByOffset(unsigned storageAccessDataIndex, NodeIndex storage)
+    {
+        ASSERT(m_op == PutById || m_op == PutByIdDirect);
+        m_opInfo = storageAccessDataIndex;
+        children.setChild3(children.child2());
+        children.setChild2(children.child1());
+        children.setChild1(Edge(storage));
+        m_op = PutByOffset;
+        m_flags &= ~NodeClobbersWorld;
+    }
+    
     JSCell* weakConstant()
     {
         ASSERT(op() == WeakJSConstant);
@@ -545,6 +565,11 @@ struct Node {
         return (m_flags & NodeResultMask) == NodeResultBoolean;
     }
 
+    bool hasStorageResult()
+    {
+        return (m_flags & NodeResultMask) == NodeResultStorage;
+    }
+
     bool isJump()
     {
         return op() == Jump;
@@ -676,15 +701,23 @@ struct Node {
         return mergeSpeculation(m_opInfo2, prediction);
     }
     
-    bool hasFunctionCheckData()
+    bool hasFunction()
     {
-        return op() == CheckFunction;
+        switch (op()) {
+        case CheckFunction:
+        case InheritorIDWatchpoint:
+            return true;
+        default:
+            return false;
+        }
     }
 
-    JSFunction* function()
+    JSCell* function()
     {
-        ASSERT(hasFunctionCheckData());
-        return reinterpret_cast<JSFunction*>(m_opInfo);
+        ASSERT(hasFunction());
+        JSCell* result = reinterpret_cast<JSFunction*>(m_opInfo);
+        ASSERT(JSValue(result).isFunction());
+        return result;
     }
 
     bool hasStructureTransitionData()
@@ -729,6 +762,7 @@ struct Node {
         case StructureTransitionWatchpoint:
         case ForwardStructureTransitionWatchpoint:
         case ArrayifyToStructure:
+        case NewObject:
             return true;
         default:
             return false;

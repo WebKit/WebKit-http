@@ -188,6 +188,7 @@ compositing/visible-rect [ Skip ]
 # ENABLE(SHADOW_DOM) is disabled.
 editing/shadow
 fast/dom/shadow
+fast/frames/detached-shadow-frame.html
 inspector/elements/update-shadowdom.html
 
 # Fail until SUBPIXEL_LAYOUT is enabled
@@ -279,39 +280,15 @@ inspector/styles/svg-style.xhtml
 # https://bugs.webkit.org/show_bug.cgi?id=68610
 fast/dom/MicroData
 
-# ENABLE(MUTATION_OBSERVERS) is disabled
-fast/dom/HTMLElement/class-list-quirks.html
-fast/dom/HTMLElement/class-list.html
-fast/mutation/added-out-of-order.html
-fast/mutation/callback-arguments.html
-fast/mutation/clear-transient-without-delivery.html
-fast/mutation/create-during-delivery.html
-fast/mutation/cross-document.html
-fast/mutation/database-callback-delivery.html
-fast/mutation/delivery-order.html
-fast/mutation/disconnect-cancel-pending.html
-fast/mutation/document-fragment-insertion.html
-fast/mutation/inline-event-listener.html
-fast/mutation/mutate-during-delivery.html
-fast/mutation/mutation-observer-constructor.html
-fast/mutation/mutation-callback-non-element-crash.html
-fast/mutation/mutation-record-nullity.html
-fast/mutation/observe-attributes.html
-fast/mutation/observe-characterdata.html
-fast/mutation/observe-childList.html
-fast/mutation/observe-exceptions.html
-fast/mutation/observe-subtree.html
-fast/mutation/removed-out-of-order.html
-fast/mutation/shadow-dom.html
-fast/mutation/takeRecords.html
-fast/mutation/transient-gc-crash.html
-
 # Disable private names by default in WebCore
 # https://bugs.webkit.org/show_bug.cgi?id=87088
 fast/js/names.html
 
 # Don't have GestureTapCancel event type
 touchadjustment/touch-links-active.html
+
+# Don't have gestureTapDown event type
+fast/events/touch/gesture/gesture-scrollbar.html
 
 # Don't have width/height on GestureLongPress necessary to enable adjustment
 touchadjustment/touch-links-longpress.html
@@ -321,8 +298,11 @@ fast/dom/timer-throttling-hidden-page.html
 
 # ENABLE(INPUT_MULTIPLE_FIELDS_UI) is disabled
 fast/forms/date-multiple-fields
+fast/forms/datetime-multiple-fields
+fast/forms/datetimelocal-multiple-fields
 fast/forms/month-multiple-fields
 fast/forms/time-multiple-fields
+fast/forms/week-multiple-fields
 
 # ENABLE(DRAGGABLE_REGION) is disabled
 fast/css/draggable-region-parser.html
@@ -351,6 +331,7 @@ webkit.org/b/89052 fast/css/image-orientation
 
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
+webkit.org/b/76173 fast/css3-text/css3-text-align-last
 
 # Web Inspector: Implement support for InspectorClient::overrideDeviceMetrics() in platforms other than Chromium
 # https://bugs.webkit.org/show_bug.cgi?id=82886
@@ -421,6 +402,8 @@ fast/dom/HTMLAnchorElement/anchor-download-unset.html
 
 # For now, Web Audio API is disabled
 webaudio/
+webkit.org/b/101729 inspector-protocol/nmi-webaudio.html
+webkit.org/b/101729 inspector-protocol/nmi-webaudio-leak-test.html
 
 # [Qt] Enable WebGL by default for QtWebKit
 # https://bugs.webkit.org/show_bug.cgi?id=65998
@@ -474,6 +457,9 @@ webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing
 
 # Resource Timing is not enable yet, skip it.
 webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing
+
+# Missing eventSender.scheduleAsynchronousKeyDown() implementation
+fast/mutation/inline-event-listener.html
 
 # =========================================================================== #
 #       Drag and Drop Support in DRT.                                         #
@@ -673,19 +659,6 @@ http/tests/xmlhttprequest/cache-override.html
 # [Qt] New http/tests/xmlhttprequest/xmlhttprequest-check-get-readystate-for-404-without-body.htm fails
 # https://bugs.webkit.org/show_bug.cgi?id=86606
 http/tests/xmlhttprequest/xmlhttprequest-check-get-readystate-for-404-without-body.html
-
-# ResourceRequest needs to support setTimeoutInterval
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-aborted.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-abortedonmain.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-overridesexpires.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-simple.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-synconmain.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-twice.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-aborted.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-overridesexpires.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-simple.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-synconworker.html
-webkit.org/b/98397 http/tests/xmlhttprequest/timeout/xmlhttprequest-timeout-worker-twice.html
 
 # =========================================================================== #
 #       Failing editing/inserting tests.                                      #
@@ -1083,6 +1056,8 @@ editing/spelling/grammar-markers-hidpi.html
 editing/spelling/inline-spelling-markers-hidpi.html
 fast/canvas/2d.backingStorePixelRatio.html
 fast/canvas/2d.imageDataHD.html
+fast/canvas/canvas-as-image-hidpi.html
+fast/canvas/canvas-resize-reset-pixelRatio.html
 svg/as-image/svg-as-image-canvas.html
 
 # This requires didClearWindowObjectForFrameInIsolatedWorld foo in FrameLoaderClient
@@ -2380,6 +2355,9 @@ webkit.org/b/99306 css3/filters/effect-blur-hw.html [ ImageOnlyFailure ] # Blur 
 webkit.org/b/100117 fast/xmlhttprequest/xmlhttprequest-recursive-sync-event.html
 webkit.org/b/100117 editing/style/iframe-onload-crash-mac.html
 
+# [Qt] New fast/dom/Window/open-window-min-size.html test fails on Qt.
+webkit.org/b/102226 fast/dom/Window/open-window-min-size.html
+
 # [Qt] New http/tests/inspector/network/image-as-text-loading-data-url.html fails
 webkit.org/b/100196 http/tests/inspector/network/image-as-text-loading-data-url.html
 
@@ -2394,11 +2372,7 @@ webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while
 webkit.org/b/101035 fast/images/exif-orientation-image-document.html
 
 # These tests need to be rebaselined after https://bugs.webkit.org/show_bug.cgi?id=65643
-webkit.org/b/101397 svg/css/shadow-changes.svg
 webkit.org/b/101397 svg/repaint/repaint-webkit-svg-shadow.svg
-webkit.org/b/101397 svg/css/composite-shadow-example.html
-webkit.org/b/101397 svg/css/composite-shadow-with-opacity.html
-webkit.org/b/101397 fast/repaint/moving-shadow-on-container.html
 webkit.org/b/101397 svg/css/composite-shadow-text.svg
 webkit.org/b/101397 svg/custom/simple-text-double-shadow.svg
 webkit.org/b/101397 svg/css/clippath-with-shadow.svg
@@ -2406,3 +2380,9 @@ webkit.org/b/101397 svg/css/arrow-with-shadow.svg
 
 # Fails after test refactoring, maybe rebaseline needed
 webkit.org/b/98523 fast/images/repaint-subrect-grid.html
+
+# [Qt] New css3/filters/effect-reference-ordering-hw.html crashes
+webkit.org/b/101925 css3/filters/effect-reference-ordering-hw.html
+
+# [Qt] fast/block/float/overhanging-tall-block.html asserts after r135025
+webkit.org/b/102675 [ Debug ] fast/block/float/overhanging-tall-block.html

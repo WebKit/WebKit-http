@@ -137,7 +137,7 @@ bool HTMLImageElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLImageElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLImageElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
@@ -154,32 +154,32 @@ void HTMLImageElement::collectStyleForAttribute(const Attribute& attribute, Styl
     } else if (attribute.name() == alignAttr)
         applyAlignmentAttributeToStyle(attribute, style);
     else if (attribute.name() == valignAttr)
-        addPropertyToAttributeStyle(style, CSSPropertyVerticalAlign, attribute.value());
+        addPropertyToPresentationAttributeStyle(style, CSSPropertyVerticalAlign, attribute.value());
     else
-        HTMLElement::collectStyleForAttribute(attribute, style);
+        HTMLElement::collectStyleForPresentationAttribute(attribute, style);
 }
 
-void HTMLImageElement::parseAttribute(const Attribute& attribute)
+void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == altAttr) {
+    if (name == altAttr) {
         RenderObject* renderObject = shadow() ? innerElement()->renderer() : renderer();
         if (renderObject && renderObject->isImage())
             toRenderImage(renderObject)->updateAltText();
-    } else if (attribute.name() == srcAttr) {
+    } else if (name == srcAttr) {
         m_imageLoader.updateFromElementIgnoringPreviousError();
         if (ElementShadow* elementShadow = shadow())
             elementShadow->invalidateDistribution();
-    } else if (attribute.name() == usemapAttr)
-        setIsLink(!attribute.isNull());
-    else if (attribute.name() == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attribute));
-    else if (attribute.name() == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, attribute));
-    else if (attribute.name() == compositeAttr) {
-        if (!parseCompositeOperator(attribute.value(), m_compositeOperator))
+    } else if (name == usemapAttr)
+        setIsLink(!value.isNull());
+    else if (name == onloadAttr)
+        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, name, value));
+    else if (name == onbeforeloadAttr)
+        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, name, value));
+    else if (name == compositeAttr) {
+        if (!parseCompositeOperator(value, m_compositeOperator))
             m_compositeOperator = CompositeSourceOver;
     } else
-        HTMLElement::parseAttribute(attribute);
+        HTMLElement::parseAttribute(name, value);
 }
 
 String HTMLImageElement::altText() const

@@ -76,7 +76,7 @@ v8::Handle<v8::Value> setDOMException(int exceptionCode, v8::Isolate* isolate)
     return V8ThrowException::setDOMException(exceptionCode, isolate);
 }
 
-v8::Handle<v8::Value> throwError(ErrorType errorType, const char* message, v8::Isolate* isolate)
+v8::Handle<v8::Value> throwError(V8ErrorType errorType, const char* message, v8::Isolate* isolate)
 {
     return V8ThrowException::throwError(errorType, message, isolate);
 }
@@ -318,15 +318,6 @@ v8::Local<v8::Context> toV8Context(ScriptExecutionContext* context, const WorldC
     return v8::Local<v8::Context>();
 }
 
-V8PerContextData* perContextDataForCurrentWorld(Frame* frame)
-{
-    V8DOMWindowShell* isolatedShell;
-    if (UNLIKELY(!!(isolatedShell = V8DOMWindowShell::getEntered())))
-        return isolatedShell->perContextData();
-    V8DOMWindowShell* mainShell = frame->script()->existingWindowShell(mainThreadNormalWorld());
-    return mainShell ? mainShell->perContextData() : 0;
-}
-
 bool handleOutOfMemory()
 {
     v8::Local<v8::Context> context = v8::Context::GetCurrent();
@@ -353,7 +344,7 @@ bool handleOutOfMemory()
 
 v8::Local<v8::Value> handleMaxRecursionDepthExceeded()
 {
-    throwError(RangeError, "Maximum call stack size exceeded.");
+    throwError(v8RangeError, "Maximum call stack size exceeded.");
     return v8::Local<v8::Value>();
 }
 

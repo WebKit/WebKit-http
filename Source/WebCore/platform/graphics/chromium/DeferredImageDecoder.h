@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+class ImageFrameGenerator;
 class SharedBuffer;
 
 class DeferredImageDecoder {
@@ -41,6 +42,10 @@ public:
     static DeferredImageDecoder* create(const SharedBuffer& data, ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
 
     static PassOwnPtr<DeferredImageDecoder> createForTesting(PassOwnPtr<ImageDecoder>);
+
+    static bool isLazyDecoded(const SkBitmap&);
+
+    static SkBitmap createResizedLazyDecodingBitmap(const SkBitmap&, const SkISize& scaledSize, const SkIRect& scaledSubset);
 
     String filenameExtension() const;
 
@@ -57,9 +62,12 @@ public:
     bool frameHasAlphaAtIndex(size_t index) const;
     unsigned frameBytesAtIndex(size_t index) const;
     ImageOrientation orientation() const;
+    bool hotSpot(IntPoint&) const;
 
 private:
     explicit DeferredImageDecoder(ImageDecoder* actualDecoder);
+    SkBitmap createLazyDecodingBitmap();
+    void setData(PassRefPtr<SharedBuffer>, bool allDataReceived);
 
     RefPtr<SharedBuffer> m_data;
     bool m_allDataReceived;
@@ -70,6 +78,7 @@ private:
     ImageOrientation m_orientation;
 
     ImageFrame m_lazyDecodedFrame;
+    RefPtr<ImageFrameGenerator> m_frameGenerator;
 };
 
 } // namespace WebCore

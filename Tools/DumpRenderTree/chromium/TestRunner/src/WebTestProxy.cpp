@@ -35,12 +35,14 @@
 #include "WebAccessibilityNotification.h"
 #include "WebAccessibilityObject.h"
 #include "WebElement.h"
+#include "WebEventSender.h"
 #include "WebNode.h"
 #include "WebTestDelegate.h"
 #include "WebTestInterfaces.h"
 #include "platform/WebCString.h"
 
 using namespace WebKit;
+using namespace std;
 
 namespace WebTestRunner {
 
@@ -64,7 +66,63 @@ void WebTestProxyBase::setDelegate(WebTestDelegate* delegate)
     m_delegate = delegate;
 }
 
-void WebTestProxyBase::doPostAccessibilityNotification(const WebKit::WebAccessibilityObject& obj, WebKit::WebAccessibilityNotification notification)
+void WebTestProxyBase::setPaintRect(const WebRect& rect)
+{
+    m_paintRect = rect;
+}
+
+WebRect WebTestProxyBase::paintRect() const
+{
+    return m_paintRect;
+}
+
+void WebTestProxyBase::didInvalidateRect(const WebRect& rect)
+{
+    // m_paintRect = m_paintRect U rect
+    if (rect.isEmpty())
+        return;
+    if (m_paintRect.isEmpty()) {
+        m_paintRect = rect;
+        return;
+    }
+    int left = min(m_paintRect.x, rect.x);
+    int top = min(m_paintRect.y, rect.y);
+    int right = max(m_paintRect.x + m_paintRect.width, rect.x + rect.width);
+    int bottom = max(m_paintRect.y + m_paintRect.height, rect.y + rect.height);
+    m_paintRect = WebRect(left, top, right - left, bottom - top);
+}
+
+void WebTestProxyBase::didScrollRect(int, int, const WebRect& clipRect)
+{
+    didInvalidateRect(clipRect);
+}
+
+void WebTestProxyBase::scheduleComposite()
+{
+    m_paintRect = WebRect(0, 0, INT_MAX, INT_MAX);
+}
+
+void WebTestProxyBase::scheduleAnimation()
+{
+    scheduleComposite();
+}
+
+void WebTestProxyBase::show(WebNavigationPolicy)
+{
+    scheduleComposite();
+}
+
+void WebTestProxyBase::setWindowRect(const WebRect& rect)
+{
+    scheduleComposite();
+}
+
+void WebTestProxyBase::didAutoResize(const WebSize&)
+{
+    scheduleComposite();
+}
+
+void WebTestProxyBase::postAccessibilityNotification(const WebKit::WebAccessibilityObject& obj, WebKit::WebAccessibilityNotification notification)
 {
     if (notification == WebKit::WebAccessibilityNotificationFocusedUIElementChanged)
         m_testInterfaces->accessibilityController()->setFocusedElement(obj);
@@ -153,6 +211,13 @@ void WebTestProxyBase::doPostAccessibilityNotification(const WebKit::WebAccessib
 
         m_delegate->printMessage(message + "\n");
     }
+}
+
+void WebTestProxyBase::startDragging(WebFrame*, const WebDragData& data, WebDragOperationsMask mask, const WebImage&, const WebPoint&)
+{
+    // When running a test, we need to fake a drag drop operation otherwise
+    // Windows waits for real mouse events to know when the drag is over.
+    m_testInterfaces->eventSender()->doDragDrop(data, mask);
 }
 
 }

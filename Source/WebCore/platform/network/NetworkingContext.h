@@ -23,12 +23,28 @@
 #include <wtf/RefCounted.h>
 
 #if PLATFORM(MAC)
-OBJC_CLASS NSOperationQueue;
 #include "SchedulePair.h"
+#endif
+
+#if PLATFORM(CHROMIUM)
+namespace WebKit {
+class WebCookieJar;
+}
 #endif
 
 #if PLATFORM(QT)
 #include <qglobal.h>
+#endif
+
+#if PLATFORM(MAC)
+OBJC_CLASS NSOperationQueue;
+#endif
+
+#if PLATFORM(MAC) || USE(CFNETWORK)
+typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
+#endif
+
+#if PLATFORM(QT)
 QT_BEGIN_NAMESPACE
 class QObject;
 class QNetworkAccessManager;
@@ -51,12 +67,20 @@ public:
 
     virtual bool isValid() const { return true; }
 
+#if PLATFORM(CHROMIUM)
+    virtual WebKit::WebCookieJar* cookieJar() const = 0;
+#endif
+
 #if PLATFORM(MAC)
     virtual bool needsSiteSpecificQuirks() const = 0;
-    virtual bool localFileContentSniffingEnabled() const = 0;
+    virtual bool localFileContentSniffingEnabled() const = 0; // FIXME: Reconcile with ResourceHandle::forceContentSniffing().
     virtual SchedulePairHashSet* scheduledRunLoopPairs() const { return 0; }
     virtual NSOperationQueue *scheduledOperationQueue() const { return 0; }
     virtual ResourceError blockedError(const ResourceRequest&) const = 0;
+#endif
+
+#if PLATFORM(MAC) || USE(CFNETWORK)
+    virtual CFURLStorageSessionRef storageSession() const = 0;
 #endif
 
 #if PLATFORM(QT)

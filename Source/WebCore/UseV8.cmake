@@ -106,6 +106,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8HTMLCollectionCustom.cpp
     bindings/v8/custom/V8HTMLDocumentCustom.cpp
     bindings/v8/custom/V8HTMLElementCustom.cpp
+    bindings/v8/custom/V8HTMLFormControlsCollectionCustom.cpp
     bindings/v8/custom/V8HTMLFormElementCustom.cpp
     bindings/v8/custom/V8HTMLFrameElementCustom.cpp
     bindings/v8/custom/V8HTMLFrameSetElementCustom.cpp
@@ -137,7 +138,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8NodeListCustom.cpp
     bindings/v8/custom/V8NotificationCustom.cpp
     bindings/v8/custom/V8NotificationCenterCustom.cpp
-    bindings/v8/custom/V8PerformanceCustom.cpp
     bindings/v8/custom/V8PerformanceEntryCustom.cpp
     bindings/v8/custom/V8PopStateEventCustom.cpp
     bindings/v8/custom/V8SQLResultSetRowListCustom.cpp
@@ -150,7 +150,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8WebGLRenderingContextCustom.cpp
     bindings/v8/custom/V8WebKitAnimationCustom.cpp
     bindings/v8/custom/V8WebKitPointConstructor.cpp
-    bindings/v8/custom/V8WebSocketCustom.cpp
     bindings/v8/custom/V8WorkerContextCustom.cpp
     bindings/v8/custom/V8WorkerCustom.cpp
     bindings/v8/custom/V8XMLHttpRequestConstructor.cpp

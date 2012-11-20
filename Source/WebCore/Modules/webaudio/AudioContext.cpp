@@ -57,6 +57,9 @@
 #include "ScriptProcessorNode.h"
 #include "WaveShaperNode.h"
 #include "WaveTable.h"
+#include "WebCoreMemoryInstrumentation.h"
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -132,7 +135,7 @@ PassRefPtr<AudioContext> AudioContext::createOfflineContext(Document* document, 
         return 0;
     }
 
-    RefPtr<AudioContext> audioContext(new AudioContext(document, numberOfChannels, numberOfFrames, sampleRate));
+    RefPtr<AudioContext> audioContext(adoptRef(new AudioContext(document, numberOfChannels, numberOfFrames, sampleRate)));
     audioContext->suspendIfNeeded();
     return audioContext.release();
 }
@@ -140,9 +143,9 @@ PassRefPtr<AudioContext> AudioContext::createOfflineContext(Document* document, 
 // Constructor for rendering to the audio hardware.
 AudioContext::AudioContext(Document* document)
     : ActiveDOMObject(document, this)
+    , m_isStopScheduled(false)
     , m_isInitialized(false)
     , m_isAudioThreadFinished(false)
-    , m_document(document)
     , m_destinationNode(0)
     , m_isDeletionScheduled(false)
     , m_automaticPullNodesNeedUpdating(false)
@@ -166,9 +169,9 @@ AudioContext::AudioContext(Document* document)
 // Constructor for offline (non-realtime) rendering.
 AudioContext::AudioContext(Document* document, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
     : ActiveDOMObject(document, this)
+    , m_isStopScheduled(false)
     , m_isInitialized(false)
     , m_isAudioThreadFinished(false)
-    , m_document(document)
     , m_destinationNode(0)
     , m_automaticPullNodesNeedUpdating(false)
     , m_connectionCount(0)
@@ -189,6 +192,10 @@ AudioContext::AudioContext(Document* document, unsigned numberOfChannels, size_t
 
 void AudioContext::constructCommon()
 {
+    // According to spec AudioContext must die only after page navigate.
+    // Lets mark it as ActiveDOMObject with pending activity and unmark it in clear method.
+    setPendingActivity(this);
+
 #if USE(GSTREAMER)
     initializeGStreamer();
 #endif
@@ -204,6 +211,8 @@ AudioContext::~AudioContext()
     fprintf(stderr, "%p: AudioContext::~AudioContext()\n", this);
 #endif
     // AudioNodes keep a reference to their context, so there should be no way to be in the destructor if there are still AudioNodes around.
+    ASSERT(!m_isInitialized);
+    ASSERT(m_isStopScheduled);
     ASSERT(!m_nodesToDelete.size());
     ASSERT(!m_referencedNodes.size());
     ASSERT(!m_finishedNodes.size());
@@ -235,35 +244,45 @@ void AudioContext::lazyInitialize()
     }
 }
 
+void AudioContext::clear()
+{
+    // We have to release our reference to the destination node before the context will ever be deleted since the destination node holds a reference to the context.
+    if (m_destinationNode)
+        m_destinationNode.clear();
+
+    // Audio thread is dead. Nobody will schedule node deletion action. Let's do it ourselves.
+    do {
+        deleteMarkedNodes();
+        m_nodesToDelete.append(m_nodesMarkedForDeletion);
+        m_nodesMarkedForDeletion.clear();
+    } while (m_nodesToDelete.size());
+
+    // It was set in constructCommon.
+    unsetPendingActivity(this);
+}
+
 void AudioContext::uninitialize()
 {
     ASSERT(isMainThread());
 
-    if (m_isInitialized) {
-        // Protect this object from being deleted before we finish uninitializing.
-        RefPtr<AudioContext> protect(this);
+    if (!m_isInitialized)
+        return;
 
-        // This stops the audio thread and all audio rendering.
-        m_destinationNode->uninitialize();
+    // This stops the audio thread and all audio rendering.
+    m_destinationNode->uninitialize();
 
-        // Don't allow the context to initialize a second time after it's already been explicitly uninitialized.
-        m_isAudioThreadFinished = true;
+    // Don't allow the context to initialize a second time after it's already been explicitly uninitialized.
+    m_isAudioThreadFinished = true;
 
-        // We have to release our reference to the destination node before the context will ever be deleted since the destination node holds a reference to the context.
-        m_destinationNode.clear();
-
-        if (!isOfflineContext()) {
-            ASSERT(s_hardwareContextCount);
-            --s_hardwareContextCount;
-        }
-        
-        // Get rid of the sources which may still be playing.
-        derefUnfinishedSourceNodes();
-
-        deleteMarkedNodes();
-
-        m_isInitialized = false;
+    if (!isOfflineContext()) {
+        ASSERT(s_hardwareContextCount);
+        --s_hardwareContextCount;
     }
+
+    // Get rid of the sources which may still be playing.
+    derefUnfinishedSourceNodes();
+
+    m_isInitialized = false;
 }
 
 bool AudioContext::isInitialized() const
@@ -280,7 +299,7 @@ bool AudioContext::isRunnable() const
     return m_hrtfDatabaseLoader->isLoaded();
 }
 
-void AudioContext::uninitializeDispatch(void* userData)
+void AudioContext::stopDispatch(void* userData)
 {
     AudioContext* context = reinterpret_cast<AudioContext*>(userData);
     ASSERT(context);
@@ -288,28 +307,21 @@ void AudioContext::uninitializeDispatch(void* userData)
         return;
 
     context->uninitialize();
+    context->clear();
 }
 
 void AudioContext::stop()
 {
-    m_document = 0; // document is going away
+    // Usually ScriptExecutionContext calls stop twice.
+    if (m_isStopScheduled)
+        return;
+    m_isStopScheduled = true;
 
     // Don't call uninitialize() immediately here because the ScriptExecutionContext is in the middle
     // of dealing with all of its ActiveDOMObjects at this point. uninitialize() can de-reference other
     // ActiveDOMObjects so let's schedule uninitialize() to be called later.
     // FIXME: see if there's a more direct way to handle this issue.
-    callOnMainThread(uninitializeDispatch, this);
-}
-
-Document* AudioContext::document() const
-{
-    ASSERT(m_document);
-    return m_document;
-}
-
-bool AudioContext::hasDocument()
-{
-    return m_document;
+    callOnMainThread(stopDispatch, this);
 }
 
 PassRefPtr<AudioBuffer> AudioContext::createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate, ExceptionCode& ec)
@@ -496,17 +508,20 @@ PassRefPtr<GainNode> AudioContext::createGain()
     return GainNode::create(this, m_destinationNode->sampleRate());
 }
 
-PassRefPtr<DelayNode> AudioContext::createDelay()
+PassRefPtr<DelayNode> AudioContext::createDelay(ExceptionCode& ec)
 {
     const double defaultMaxDelayTime = 1;
-    return createDelay(defaultMaxDelayTime);
+    return createDelay(defaultMaxDelayTime, ec);
 }
 
-PassRefPtr<DelayNode> AudioContext::createDelay(double maxDelayTime)
+PassRefPtr<DelayNode> AudioContext::createDelay(double maxDelayTime, ExceptionCode& ec)
 {
     ASSERT(isMainThread());
     lazyInitialize();
-    return DelayNode::create(this, m_destinationNode->sampleRate(), maxDelayTime);
+    RefPtr<DelayNode> node = DelayNode::create(this, m_destinationNode->sampleRate(), maxDelayTime, ec);
+    if (ec)
+        return 0;
+    return node;
 }
 
 PassRefPtr<ChannelSplitterNode> AudioContext::createChannelSplitter(ExceptionCode& ec)
@@ -764,7 +779,11 @@ void AudioContext::handleDeferredFinishDerefs()
 void AudioContext::markForDeletion(AudioNode* node)
 {
     ASSERT(isGraphOwner());
-    m_nodesMarkedForDeletion.append(node);
+
+    if (isAudioThreadFinished())
+        m_nodesToDelete.append(node);
+    else
+        m_nodesMarkedForDeletion.append(node);
 
     // This is probably the best time for us to remove the node from automatic pull list,
     // since all connections are gone and we hold the graph lock. Then when handlePostRenderTasks()
@@ -782,8 +801,7 @@ void AudioContext::scheduleNodeDeletion()
 
     // Make sure to call deleteMarkedNodes() on main thread.    
     if (m_nodesMarkedForDeletion.size() && !m_isDeletionScheduled) {
-        for (unsigned i = 0; i < m_nodesMarkedForDeletion.size(); ++i)
-            m_nodesToDelete.append(m_nodesMarkedForDeletion[i]);
+        m_nodesToDelete.append(m_nodesMarkedForDeletion);
         m_nodesMarkedForDeletion.clear();
 
         m_isDeletionScheduled = true;
@@ -810,27 +828,30 @@ void AudioContext::deleteMarkedNodes()
 {
     ASSERT(isMainThread());
 
-    AutoLocker locker(this);
-    
-    while (size_t n = m_nodesToDelete.size()) {
-        AudioNode* node = m_nodesToDelete[n - 1];
-        m_nodesToDelete.removeLast();
+    // Protect this object from being deleted before we release the mutex locked by AutoLocker.
+    RefPtr<AudioContext> protect(this);
+    {
+        AutoLocker locker(this);
 
-        // Before deleting the node, clear out any AudioNodeInputs from m_dirtySummingJunctions.
-        unsigned numberOfInputs = node->numberOfInputs();
-        for (unsigned i = 0; i < numberOfInputs; ++i)
-            m_dirtySummingJunctions.remove(node->input(i));
+        while (size_t n = m_nodesToDelete.size()) {
+            AudioNode* node = m_nodesToDelete[n - 1];
+            m_nodesToDelete.removeLast();
 
-        // Before deleting the node, clear out any AudioNodeOutputs from m_dirtyAudioNodeOutputs.
-        unsigned numberOfOutputs = node->numberOfOutputs();
-        for (unsigned i = 0; i < numberOfOutputs; ++i)
-            m_dirtyAudioNodeOutputs.remove(node->output(i));
+            // Before deleting the node, clear out any AudioNodeInputs from m_dirtySummingJunctions.
+            unsigned numberOfInputs = node->numberOfInputs();
+            for (unsigned i = 0; i < numberOfInputs; ++i)
+                m_dirtySummingJunctions.remove(node->input(i));
 
-        // Finally, delete it.
-        delete node;
+            // Before deleting the node, clear out any AudioNodeOutputs from m_dirtyAudioNodeOutputs.
+            unsigned numberOfOutputs = node->numberOfOutputs();
+            for (unsigned i = 0; i < numberOfOutputs; ++i)
+                m_dirtyAudioNodeOutputs.remove(node->output(i));
+
+            // Finally, delete it.
+            delete node;
+        }
+        m_isDeletionScheduled = false;
     }
-    
-    m_isDeletionScheduled = false;
 }
 
 void AudioContext::markSummingJunctionDirty(AudioSummingJunction* summingJunction)
@@ -925,7 +946,7 @@ const AtomicString& AudioContext::interfaceName() const
 
 ScriptExecutionContext* AudioContext::scriptExecutionContext() const
 {
-    return document();
+    return m_isStopScheduled ? 0 : ActiveDOMObject::scriptExecutionContext();
 }
 
 void AudioContext::startRendering()
@@ -946,7 +967,7 @@ void AudioContext::fireCompletionEvent()
         return;
 
     // Avoid firing the event if the document has already gone away.
-    if (hasDocument()) {
+    if (scriptExecutionContext()) {
         // Call the offline rendering completion event listener.
         dispatchEvent(OfflineAudioCompletionEvent::create(renderedBuffer));
     }
@@ -960,6 +981,30 @@ void AudioContext::incrementActiveSourceCount()
 void AudioContext::decrementActiveSourceCount()
 {
     atomicDecrement(&m_activeSourceCount);
+}
+
+void AudioContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    AutoLocker locker(const_cast<AudioContext*>(this));
+
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::Audio);
+    ActiveDOMObject::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_destinationNode);
+    info.addMember(m_listener);
+    info.addMember(m_finishedNodes);
+    info.addMember(m_referencedNodes);
+    info.addMember(m_nodesMarkedForDeletion);
+    info.addMember(m_nodesToDelete);
+    info.addMember(m_dirtySummingJunctions);
+    info.addMember(m_dirtyAudioNodeOutputs);
+    info.addMember(m_automaticPullNodes);
+    info.addMember(m_renderingAutomaticPullNodes);
+    info.addMember(m_contextGraphMutex);
+    info.addMember(m_deferredFinishDerefList);
+    info.addMember(m_hrtfDatabaseLoader);
+    info.addMember(m_eventTargetData);
+    info.addMember(m_renderTarget);
+    info.addMember(m_audioDecoder);
 }
 
 } // namespace WebCore

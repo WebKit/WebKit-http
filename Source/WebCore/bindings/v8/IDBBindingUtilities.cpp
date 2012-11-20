@@ -35,7 +35,6 @@
 #include "SerializedScriptValue.h"
 #include "V8Binding.h"
 #include "V8IDBKey.h"
-#include "WorldContextHandle.h"
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
 
@@ -189,7 +188,7 @@ static PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValu
     return createIDBKeyFromValue(v8Key);
 }
 
-PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue& value, const IDBKeyPath& keyPath)
+PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(DOMRequestState*, const ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("createIDBKeyFromScriptValueAndKeyPath");
     ASSERT(!keyPath.isNull());
@@ -213,7 +212,7 @@ PassRefPtr<IDBKey> createIDBKeyFromScriptValueAndKeyPath(const ScriptValue& valu
     return createIDBKeyFromScriptValueAndKeyPath(value, keyPath.string());
 }
 
-ScriptValue deserializeIDBValue(ScriptExecutionContext* scriptContext, PassRefPtr<SerializedScriptValue> prpValue)
+ScriptValue deserializeIDBValue(DOMRequestState* state, PassRefPtr<SerializedScriptValue> prpValue)
 {
     ASSERT(v8::Context::InContext());
     v8::HandleScope handleScope;
@@ -223,7 +222,7 @@ ScriptValue deserializeIDBValue(ScriptExecutionContext* scriptContext, PassRefPt
     return ScriptValue(v8::Null());
 }
 
-bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
+bool injectIDBKeyIntoScriptValue(DOMRequestState*, PassRefPtr<IDBKey> key, ScriptValue& value, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("injectIDBKeyIntoScriptValue");
     ASSERT(v8::Context::InContext());
@@ -249,7 +248,7 @@ bool injectIDBKeyIntoScriptValue(PassRefPtr<IDBKey> key, ScriptValue& value, con
     return true;
 }
 
-bool canInjectIDBKeyIntoScriptValue(const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
+bool canInjectIDBKeyIntoScriptValue(DOMRequestState*, const ScriptValue& scriptValue, const IDBKeyPath& keyPath)
 {
     IDB_TRACE("canInjectIDBKeyIntoScriptValue");
     ASSERT(keyPath.type() == IDBKeyPath::StringType);
@@ -265,7 +264,7 @@ bool canInjectIDBKeyIntoScriptValue(const ScriptValue& scriptValue, const IDBKey
     return canInjectNthValueOnKeyPath(v8Value, keyPathElements, keyPathElements.size() - 1);
 }
 
-ScriptValue idbKeyToScriptValue(ScriptExecutionContext* scriptContext, PassRefPtr<IDBKey> key)
+ScriptValue idbKeyToScriptValue(DOMRequestState* state, PassRefPtr<IDBKey> key)
 {
     ASSERT(v8::Context::InContext());
     v8::HandleScope handleScope;

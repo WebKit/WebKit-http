@@ -37,9 +37,14 @@
 
 namespace WebCore {
 
+static const int autoStartPlugInSizeThresholdWidth = 1;
+static const int autoStartPlugInSizeThresholdHeight = 1;
+static const int startButtonPadding = 10;
+
 RenderSnapshottedPlugIn::RenderSnapshottedPlugIn(HTMLPlugInImageElement* element)
     : RenderEmbeddedObject(element)
     , m_snapshotResource(RenderImageResource::create())
+    , m_isMouseInButtonRect(false)
 {
     m_snapshotResource->initialize(this);
 }
@@ -79,7 +84,7 @@ void RenderSnapshottedPlugIn::paintReplaced(PaintInfo& paintInfo, const LayoutPo
 {
     if (plugInImageElement()->displayState() < HTMLPlugInElement::Playing) {
         paintReplacedSnapshot(paintInfo, paintOffset);
-        theme()->paintPlugInSnapshotOverlay(this, paintInfo, paintOffset);
+        paintButton(paintInfo, paintOffset);
         return;
     }
 
@@ -117,6 +122,41 @@ void RenderSnapshottedPlugIn::paintReplacedSnapshot(PaintInfo& paintInfo, const 
     context->drawImage(image.get(), style()->colorSpace(), alignedRect, CompositeSourceOver, shouldRespectImageOrientation(), useLowQualityScaling);
 }
 
+static Image* startButtonImage()
+{
+    static Image* buttonImage = Image::loadPlatformResource("startButton").leakRef();
+    return buttonImage;
+}
+
+static Image* startButtonPressedImage()
+{
+    static Image* buttonImage = Image::loadPlatformResource("startButtonPressed").leakRef();
+    return buttonImage;
+}
+
+void RenderSnapshottedPlugIn::paintButton(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
+{
+    LayoutRect contentRect = contentBoxRect();
+    if (contentRect.isEmpty())
+        return;
+
+    Image* buttonImage = startButtonImage();
+    if (plugInImageElement()->active()) {
+        if (m_isMouseInButtonRect)
+            buttonImage = startButtonPressedImage();
+    } else if (!plugInImageElement()->hovered())
+        return;
+
+    LayoutPoint contentLocation = paintOffset + contentRect.maxXMaxYCorner() - buttonImage->size() - LayoutSize(startButtonPadding, startButtonPadding);
+    paintInfo.context->drawImage(buttonImage, ColorSpaceDeviceRGB, roundedIntPoint(contentLocation), buttonImage->rect());
+}
+
+void RenderSnapshottedPlugIn::repaintButton()
+{
+    // FIXME: This is unfortunate. We should just repaint the button.
+    repaint();
+}
+
 CursorDirective RenderSnapshottedPlugIn::getCursor(const LayoutPoint& point, Cursor& overrideCursor) const
 {
     if (plugInImageElement()->displayState() < HTMLPlugInElement::Playing) {
@@ -132,6 +172,7 @@ void RenderSnapshottedPlugIn::handleEvent(Event* event)
         return;
 
     MouseEvent* mouseEvent = static_cast<MouseEvent*>(event);
+
     if (event->type() == eventNames().clickEvent && mouseEvent->button() == LeftButton) {
         plugInImageElement()->setDisplayState(HTMLPlugInElement::Playing);
         if (widget()) {
@@ -140,7 +181,30 @@ void RenderSnapshottedPlugIn::handleEvent(Event* event)
             repaint();
         }
         event->setDefaultHandled();
+    } else if (event->type() == eventNames().mouseoverEvent || event->type() == eventNames().mouseoutEvent)
+        repaintButton();
+    else if (event->type() == eventNames().mousedownEvent) {
+        bool isMouseInButtonRect = m_buttonRect.contains(IntPoint(mouseEvent->offsetX(), mouseEvent->offsetY()));
+        if (isMouseInButtonRect != m_isMouseInButtonRect) {
+            m_isMouseInButtonRect = isMouseInButtonRect;
+            repaintButton();
+        }
     }
+}
+
+void RenderSnapshottedPlugIn::layout()
+{
+    RenderEmbeddedObject::layout();
+    if (plugInImageElement()->displayState() < HTMLPlugInElement::Playing) {
+        LayoutRect rect = contentBoxRect();
+        int width = rect.width();
+        int height = rect.height();
+        if (!width || !height || (width <= autoStartPlugInSizeThresholdWidth && height <= autoStartPlugInSizeThresholdHeight))
+            plugInImageElement()->setDisplayState(HTMLPlugInElement::Playing);
+    }
+
+    LayoutSize buttonSize = startButtonImage()->size();
+    m_buttonRect = LayoutRect(contentBoxRect().maxXMaxYCorner() - LayoutSize(startButtonPadding, startButtonPadding) - buttonSize, buttonSize);
 }
 
 } // namespace WebCore

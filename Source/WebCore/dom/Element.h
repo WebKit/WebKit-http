@@ -246,7 +246,7 @@ public:
 
     // This method is called whenever an attribute is added, changed or removed.
     virtual void attributeChanged(const QualifiedName&, const AtomicString&);
-    virtual void parseAttribute(const Attribute&);
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) { }
 
     // Only called by the parser immediately after element construction.
     void parserSetAttributes(const Vector<Attribute>&, FragmentScriptingPermission);
@@ -523,6 +523,8 @@ private:
 
     void createMutableAttributeData();
 
+    bool shouldInvalidateDistributionWhenAttributeChanged(ElementShadow*, const QualifiedName&, const AtomicString&);
+
 private:
     ElementRareData* elementRareData() const;
     ElementRareData* ensureElementRareData();
@@ -732,7 +734,7 @@ inline Attribute* Element::getAttributeItem(const QualifiedName& name)
 
 inline void Element::updateInvalidAttributes() const
 {
-    if (!isStyleAttributeValid())
+    if (attributeData() && attributeData()->m_styleAttributeIsDirty)
         updateStyleAttribute();
 
 #if ENABLE(SVG)

@@ -30,17 +30,20 @@ namespace WebCore {
     // an exception of any type can be expressed with a single integer.
     typedef int ExceptionCode;
 
+
+    // Some of these are considered historical since they have been
+    // changed or removed from the specifications.
     enum {
         INDEX_SIZE_ERR = 1,
-        DOMSTRING_SIZE_ERR = 2,
+        DOMSTRING_SIZE_ERR = 2, // historical
         HIERARCHY_REQUEST_ERR = 3,
         WRONG_DOCUMENT_ERR = 4,
         INVALID_CHARACTER_ERR = 5,
-        NO_DATA_ALLOWED_ERR = 6,
+        NO_DATA_ALLOWED_ERR = 6, // Historical
         NO_MODIFICATION_ALLOWED_ERR = 7,
         NOT_FOUND_ERR = 8,
         NOT_SUPPORTED_ERR = 9,
-        INUSE_ATTRIBUTE_ERR = 10,
+        INUSE_ATTRIBUTE_ERR = 10, // Historical
 
         // Introduced in DOM Level 2:
         INVALID_STATE_ERR = 11,
@@ -50,8 +53,8 @@ namespace WebCore {
         INVALID_ACCESS_ERR = 15,
 
         // Introduced in DOM Level 3:
-        VALIDATION_ERR = 16,
-        TYPE_MISMATCH_ERR = 17,
+        VALIDATION_ERR = 16, // Historical
+        TYPE_MISMATCH_ERR = 17, // Historical; use TypeError instead
 
         // XMLHttpRequest extension:
         SECURITY_ERR = 18,
@@ -65,8 +68,9 @@ namespace WebCore {
         INVALID_NODE_TYPE_ERR = 24,
         DATA_CLONE_ERR = 25,
 
-        // Converted to a native TypeError by the script binding layer:
-        NATIVE_TYPE_ERR = 99
+        // WebIDL exception types, handled by the binding layer.
+        // FIXME: Add GeneralError, EvalError, etc. when implemented in the bindings.
+        TypeError = 105,
     };
 
 } // namespace WebCore

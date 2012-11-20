@@ -48,10 +48,15 @@ public:
     struct Settings {
         Settings()
             : acceleratePainting(false)
+            , showDebugBorders(false)
             , showFPSCounter(false)
             , showPlatformLayerTree(false)
             , showPaintRects(false)
             , renderVSyncEnabled(true)
+            , perTilePaintingEnabled(false)
+            , partialSwapEnabled(false)
+            , acceleratedAnimationEnabled(true)
+            , pageScalePinchZoomEnabled(false)
             , refreshRate(0)
             , defaultTileSize(WebSize(256, 256))
             , maxUntiledLayerSize(WebSize(512, 512))
@@ -59,10 +64,15 @@ public:
         }
 
         bool acceleratePainting;
+        bool showDebugBorders;
         bool showFPSCounter;
         bool showPlatformLayerTree;
         bool showPaintRects;
         bool renderVSyncEnabled;
+        bool perTilePaintingEnabled;
+        bool partialSwapEnabled;
+        bool acceleratedAnimationEnabled;
+        bool pageScalePinchZoomEnabled;
         double refreshRate;
         WebSize defaultTileSize;
         WebSize maxUntiledLayerSize;
@@ -168,6 +178,9 @@ public:
     // Fills in a WebRenderingStats struct containing information about the state of the compositor.
     // This call is relatively expensive in threaded mode as it blocks on the compositor thread.
     virtual void renderingStats(WebRenderingStats&) const = 0;
+
+    // Toggles the FPS counter in the HUD layer
+    virtual void setShowFPSCounter(bool) { }
 
     // Provides a font atlas to use for debug visualizations. The atlas must be a bitmap containing glyph data, a table of
     // ASCII character values to a subrectangle of the atlas representing the corresponding glyph, and the glyph height.

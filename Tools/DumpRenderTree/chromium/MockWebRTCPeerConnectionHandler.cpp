@@ -337,6 +337,11 @@ bool MockWebRTCPeerConnectionHandler::openDataChannel(const WebRTCDataChannel& d
     if (m_stopped)
         return false;
 
+    WebRTCDataChannel remoteDataChannel;
+    remoteDataChannel.initialize("MockRemoteDataChannel", dataChannel.reliable());
+    remoteDataChannel.readyStateChanged(WebRTCDataChannel::ReadyStateOpen);
+    m_client->didAddRemoteDataChannel(remoteDataChannel);
+
     postTask(new DataChannelReadyStateTask(this, dataChannel, WebRTCDataChannel::ReadyStateOpen));
     return true;
 }
@@ -351,7 +356,7 @@ bool MockWebRTCPeerConnectionHandler::sendStringData(const WebRTCDataChannel& da
     if (m_stopped)
         return false;
 
-    postTask(new StringDataTask(this, dataChannel, data));
+    dataChannel.dataArrived(data);
     return true;
 }
 
@@ -360,7 +365,7 @@ bool MockWebRTCPeerConnectionHandler::sendRawData(const WebRTCDataChannel& dataC
     if (m_stopped)
         return false;
 
-    postTask(new CharPtrDataTask(this, dataChannel, data, length));
+    dataChannel.dataArrived(data, length);
     return true;
 }
 

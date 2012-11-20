@@ -60,7 +60,7 @@ namespace WebCore {
     v8::Handle<v8::Value> setDOMException(int, v8::Isolate*);
 
     // Schedule a JavaScript error to be thrown.
-    v8::Handle<v8::Value> throwError(ErrorType, const char*, v8::Isolate* = 0);
+    v8::Handle<v8::Value> throwError(V8ErrorType, const char*, v8::Isolate* = 0);
 
     // Schedule a JavaScript error to be thrown.
     v8::Handle<v8::Value> throwError(v8::Local<v8::Value>, v8::Isolate* = 0);
@@ -378,9 +378,6 @@ namespace WebCore {
     // Returns the frame object of the window object associated with
     // a context, if the window is currently being displayed in the Frame.
     Frame* toFrameIfNotDetached(v8::Handle<v8::Context>);
-
-    // Returns the PerContextData associated with a frame for the current isolated world.
-    V8PerContextData* perContextDataForCurrentWorld(Frame*);
 
     // If the current context causes out of memory, JavaScript setting
     // is disabled and it returns true.

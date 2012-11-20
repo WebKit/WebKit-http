@@ -100,7 +100,6 @@ namespace JSC {
         Register m_globalCallFrame[JSStack::CallFrameHeaderSize];
 
         WriteBarrier<JSObject> m_globalThis;
-        WriteBarrier<JSObject> m_methodCallDummy;
 
         WriteBarrier<RegExpConstructor> m_regExpConstructor;
         WriteBarrier<ErrorConstructor> m_errorConstructor;
@@ -271,8 +270,6 @@ namespace JSC {
         DatePrototype* datePrototype() const { return m_datePrototype.get(); }
         RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
         ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
-
-        JSObject* methodCallDummy() const { return m_methodCallDummy.get(); }
 
         Structure* withScopeStructure() const { return m_withScopeStructure.get(); }
         Structure* strictEvalActivationStructure() const { return m_strictEvalActivationStructure.get(); }
@@ -468,22 +465,27 @@ namespace JSC {
         return prototypeForLookup(exec->lexicalGlobalObject());
     }
 
-    inline StructureChain* Structure::prototypeChain(ExecState* exec) const
+    inline StructureChain* Structure::prototypeChain(JSGlobalData& globalData, JSGlobalObject* globalObject) const
     {
         // We cache our prototype chain so our clients can share it.
-        if (!isValid(exec, m_cachedPrototypeChain.get())) {
-            JSValue prototype = prototypeForLookup(exec);
-            m_cachedPrototypeChain.set(exec->globalData(), this, StructureChain::create(exec->globalData(), prototype.isNull() ? 0 : asObject(prototype)->structure()));
+        if (!isValid(globalObject, m_cachedPrototypeChain.get())) {
+            JSValue prototype = prototypeForLookup(globalObject);
+            m_cachedPrototypeChain.set(globalData, this, StructureChain::create(globalData, prototype.isNull() ? 0 : asObject(prototype)->structure()));
         }
         return m_cachedPrototypeChain.get();
     }
 
-    inline bool Structure::isValid(ExecState* exec, StructureChain* cachedPrototypeChain) const
+    inline StructureChain* Structure::prototypeChain(ExecState* exec) const
+    {
+        return prototypeChain(exec->globalData(), exec->lexicalGlobalObject());
+    }
+
+    inline bool Structure::isValid(JSGlobalObject* globalObject, StructureChain* cachedPrototypeChain) const
     {
         if (!cachedPrototypeChain)
             return false;
 
-        JSValue prototype = prototypeForLookup(exec);
+        JSValue prototype = prototypeForLookup(globalObject);
         WriteBarrier<Structure>* cachedStructure = cachedPrototypeChain->head();
         while(*cachedStructure && !prototype.isNull()) {
             if (asObject(prototype)->structure() != cachedStructure->get())
@@ -492,6 +494,11 @@ namespace JSC {
             prototype = asObject(prototype)->prototype();
         }
         return prototype.isNull() && !*cachedStructure;
+    }
+
+    inline bool Structure::isValid(ExecState* exec, StructureChain* cachedPrototypeChain) const
+    {
+        return isValid(exec->lexicalGlobalObject(), cachedPrototypeChain);
     }
 
     inline JSGlobalObject* ExecState::dynamicGlobalObject()

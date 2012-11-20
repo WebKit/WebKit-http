@@ -58,8 +58,7 @@ _exact_matches = {
     "WebKit Mac10.6 (dbg)": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard", "debug"])},
     "WebKit Mac10.7": {"port_name": "chromium-mac-lion", "specifiers": set(["lion", "release"])},
     "WebKit Mac10.7 (dbg)": {"port_name": "chromium-mac-lion", "specifiers": set(["lion", "debug"])},
-    "WebKit Mac10.8": {"port_name": "chromium-mac-mountainlion", "specifiers": set(["mountainlion", "release"]),
-                       "move_overwritten_baselines_to": ["chromium-mac-lion"]},
+    "WebKit Mac10.8": {"port_name": "chromium-mac-mountainlion", "specifiers": set(["mountainlion", "release"])},
 
     # These builders are on build.webkit.org.
     "Apple MountainLion Release WK1 (Tests)": {"port_name": "mac-mountainlion", "specifiers": set(["mountainlion"]), "rebaseline_override_dir": "mac"},
@@ -83,8 +82,9 @@ _exact_matches = {
     # FIXME: Remove rebaseline_override_dir once there are Qt bots for all the platform/qt-* directories.
     "Qt Linux Release": {"port_name": "qt-linux", "specifiers": set(["win", "linux", "mac"]), "rebaseline_override_dir": "qt"},
 
-    "EFL Linux 64-bit Debug": {"port_name": "efl", "specifiers": set(["efl", "debug"])},
     "EFL Linux 64-bit Release": {"port_name": "efl", "specifiers": set(["efl", "release"])},
+    "EFL Linux 64-bit Release WK2": {"port_name": "efl", "specifiers": set(["efl", "wk2", "release"])},
+    "EFL Linux 64-bit Debug WK2": {"port_name": "efl", "specifiers": set(["efl", "wk2", "debug"])},
 }
 
 

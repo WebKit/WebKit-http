@@ -39,9 +39,8 @@ public:
     static v8::Persistent<v8::FunctionTemplate> GetTemplate();
     static TestActiveDOMObject* toNative(v8::Handle<v8::Object> object)
     {
-        return reinterpret_cast<TestActiveDOMObject*>(object->GetPointerFromInternalField(v8DOMWrapperObjectIndex));
+        return reinterpret_cast<TestActiveDOMObject*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
     }
-    inline static v8::Handle<v8::Object> wrap(TestActiveDOMObject*, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* = 0);
     static void derefObject(void*);
     static WrapperTypeInfo info;
     static const int internalFieldCount = v8DefaultWrapperInternalFieldCount + 0;
@@ -50,23 +49,38 @@ public:
     static void installPerContextProperties(v8::Handle<v8::Object>, TestActiveDOMObject*) { }
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
 private:
-    static v8::Handle<v8::Object> wrapSlow(PassRefPtr<TestActiveDOMObject>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    friend v8::Handle<v8::Object> wrap(TestActiveDOMObject*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    static v8::Handle<v8::Object> createWrapper(PassRefPtr<TestActiveDOMObject>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 };
 
-v8::Handle<v8::Object> V8TestActiveDOMObject::wrap(TestActiveDOMObject* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+
+inline v8::Handle<v8::Object> wrap(TestActiveDOMObject* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
 {
-        v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
-        if (!wrapper.IsEmpty())
-            return wrapper;
-    return V8TestActiveDOMObject::wrapSlow(impl, creationContext, isolate);
+    ASSERT(impl);
+    ASSERT(DOMDataStore::current(isolate)->get(impl).IsEmpty());
+    return V8TestActiveDOMObject::createWrapper(impl, creationContext, isolate);
+}
+
+inline v8::Handle<v8::Object> toV8Object(TestActiveDOMObject* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
+{
+    if (UNLIKELY(!impl))
+        return v8::Handle<v8::Object>();
+    v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
 }
 
 inline v8::Handle<v8::Value> toV8(TestActiveDOMObject* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
-    if (!impl)
+    if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
-    return V8TestActiveDOMObject::wrap(impl, creationContext, isolate);
+    v8::Handle<v8::Value> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
 }
+
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestActiveDOMObject > impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
     return toV8(impl.get(), creationContext, isolate);

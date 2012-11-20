@@ -118,6 +118,8 @@ TestShell::TestShell()
     , m_accelerated2dCanvasEnabled(false)
     , m_deferred2dCanvasEnabled(false)
     , m_acceleratedPaintingEnabled(false)
+    , m_perTilePaintingEnabled(false)
+    , m_acceleratedAnimationEnabled(false)
     , m_deferredImageDecodingEnabled(false)
     , m_stressOpt(false)
     , m_stressDeopt(false)
@@ -127,7 +129,6 @@ TestShell::TestShell()
     WebRuntimeFeatures::enableDataTransferItems(true);
     WebRuntimeFeatures::enableDeviceMotion(false);
     WebRuntimeFeatures::enableGeolocation(true);
-    WebRuntimeFeatures::enablePointerLock(true);
     WebRuntimeFeatures::enableIndexedDatabase(true);
     WebRuntimeFeatures::enableInputTypeDateTime(true);
     WebRuntimeFeatures::enableInputTypeDateTimeLocal(true);
@@ -183,6 +184,7 @@ void TestShell::createMainWindow()
     m_webView = m_webViewHost->webView();
     m_testInterfaces->setDelegate(m_webViewHost.get());
     m_testInterfaces->setWebView(m_webView);
+    m_testRunner->setDelegate(m_webViewHost.get());
     m_drtDevToolsAgent->setWebView(m_webView);
 }
 
@@ -190,6 +192,7 @@ TestShell::~TestShell()
 {
     m_testInterfaces->setDelegate(0);
     m_testInterfaces->setWebView(0);
+    m_testRunner->setDelegate(0);
     m_drtDevToolsAgent->setWebView(0);
 }
 
@@ -236,6 +239,8 @@ void TestShell::resetWebSettings(WebView& webView)
     m_prefs.accelerated2dCanvasEnabled = m_accelerated2dCanvasEnabled;
     m_prefs.deferred2dCanvasEnabled = m_deferred2dCanvasEnabled;
     m_prefs.acceleratedPaintingEnabled = m_acceleratedPaintingEnabled;
+    m_prefs.perTilePaintingEnabled = m_perTilePaintingEnabled;
+    m_prefs.acceleratedAnimationEnabled = m_acceleratedAnimationEnabled;
     m_prefs.deferredImageDecodingEnabled = m_deferredImageDecodingEnabled;
     m_prefs.applyTo(&webView);
 }
@@ -386,16 +391,6 @@ void TestShell::testTimedOut()
 {
     m_printer.handleTimedOut();
     testFinished();
-}
-
-void TestShell::setPerTilePaintingEnabled(bool enabled)
-{
-    Platform::current()->compositorSupport()->setPerTilePaintingEnabled(enabled);
-}
-
-void TestShell::setAcceleratedAnimationEnabled(bool enabled)
-{
-    Platform::current()->compositorSupport()->setAcceleratedAnimationEnabled(enabled);
 }
 
 static string dumpDocumentText(WebFrame* frame)
@@ -757,6 +752,7 @@ WebViewHost* TestShell::createNewWindow(const WebKit::WebURL& url, DRTDevToolsAg
         host->setDelegate(m_webViewHost.get());
     else
         host->setDelegate(host);
+    host->setProxy(host);
     WebView* view = WebView::create(host);
     view->setPermissionClient(webPermissions());
     view->setDevToolsAgentClient(devToolsAgent);

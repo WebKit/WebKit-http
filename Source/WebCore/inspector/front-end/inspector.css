@@ -1648,10 +1648,6 @@ li.editing .swatch, li.editing .enabled-button,  li.editing-sub-part .delete-but
     display: none;
 }
 
-.watch-expressions-error-level {
-    color: red;
-}
-
 .section .properties li.editing-sub-part {
     padding: 3px 6px 8px 18px;
     margin: -3px -6px -8px -6px;
@@ -2555,7 +2551,7 @@ a.worker-item:hover {
     font-size: 14px;
     border-top: 1px solid transparent;
     border-bottom: 1px solid transparent;
-    padding: 1px 7px 3px 6px;
+    padding: 2px 7px 2px 6px;
     margin: 0 13px 0 0;
     white-space: nowrap;
 }
@@ -2639,7 +2635,7 @@ body.platform-mac .search-drawer-header input[type="checkbox"].search-config-che
 .drawer-header {
     font-size: 11px;
     border-right: 1px solid rgb(197, 197, 197);
-    line-height: 23px;
+    line-height: 21px;
     padding-left: 6px;
     display: inline-block;
 }

@@ -30,8 +30,8 @@
 #include "Frame.h"
 #include "PlatformCookieJar.h"
 
-#if PLATFORM(CHROMIUM) || PLATFORM(BLACKBERRY)
-#error Chromium and Blackberry currently use a fork of this file because of layering violations
+#if PLATFORM(BLACKBERRY)
+#error Blackberry currently uses a fork of this file because of layering violations
 #endif
 
 namespace WebCore {
@@ -61,17 +61,17 @@ void setCookies(Document* document, const KURL& url, const String& cookieString)
 
 bool cookiesEnabled(const Document* document)
 {
-    return cookiesEnabled(networkingContext(document));
+    return cookiesEnabled(networkingContext(document), document->firstPartyForCookies(), document->cookieURL());
 }
 
 String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 {
-    return cookieRequestHeaderFieldValue(networkingContext(document), url);
+    return cookieRequestHeaderFieldValue(networkingContext(document), document->firstPartyForCookies(), url);
 }
 
 bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& cookies)
 {
-    return getRawCookies(networkingContext(document), url, cookies);
+    return getRawCookies(networkingContext(document), document->firstPartyForCookies(), url, cookies);
 }
 
 void deleteCookie(const Document* document, const KURL& url, const String& cookieName)

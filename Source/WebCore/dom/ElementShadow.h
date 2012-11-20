@@ -29,6 +29,7 @@
 
 #include "ContentDistributor.h"
 #include "ExceptionCode.h"
+#include "SelectRuleFeatureSet.h"
 #include "ShadowRoot.h"
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/Noncopyable.h>
@@ -69,14 +70,26 @@ public:
     ContentDistributor& distributor();
     const ContentDistributor& distributor() const;
 
+    bool shouldCollectSelectFeatureSet() const { return m_shouldCollectSelectFeatureSet; }
+    void setShouldCollectSelectFeatureSet();
+    void ensureSelectFeatureSetCollected();
+
+    const SelectRuleFeatureSet& selectRuleFeatureSet() const;
+
     void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     void invalidateDistribution(Element* host);
 
+    void collectSelectFeatureSetFrom(ShadowRoot*);
+
     DoublyLinkedList<ShadowRoot> m_shadowRoots;
     ContentDistributor m_distributor;
+    SelectRuleFeatureSet m_selectFeatures;
+    bool m_shouldCollectSelectFeatureSet : 1;
 };
+
+void invalidateParentDistributionIfNecessary(Element*, SelectRuleFeatureSet::SelectRuleFeatureMask updatedFeatures);
 
 inline ShadowRoot* ElementShadow::youngestShadowRoot() const
 {
@@ -102,6 +115,12 @@ inline Element* ElementShadow::host() const
 {
     ASSERT(!m_shadowRoots.isEmpty());
     return youngestShadowRoot()->host();
+}
+
+inline const SelectRuleFeatureSet& ElementShadow::selectRuleFeatureSet() const
+{
+    ASSERT(!m_shouldCollectSelectFeatureSet);
+    return m_selectFeatures;
 }
 
 inline ShadowRoot* Node::youngestShadowRoot() const

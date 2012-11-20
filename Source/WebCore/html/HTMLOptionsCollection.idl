@@ -20,11 +20,16 @@
 
 [
     JSGenerateToNativeObject,
-    CustomIndexedSetter
+    CustomIndexedSetter,
+    NamedGetter,
+    GenerateIsReachable=ImplBaseRoot,
+    V8DependentLifetime,
 ] interface HTMLOptionsCollection : HTMLCollection {
-             attribute long selectedIndex;
-             [Custom] attribute unsigned long length
-                    setter raises (DOMException);
+    attribute long selectedIndex;
+    [CustomSetter] attribute unsigned long length
+        setter raises (DOMException);
+
+    [Custom] Node namedItem(in [Optional=DefaultIsUndefined] DOMString name);
 
     [Custom] void add(in [Optional=DefaultIsUndefined] HTMLOptionElement option, 
                       in [Optional] unsigned long index)
@@ -32,8 +37,7 @@
     [Custom] void remove(in [Optional=DefaultIsUndefined] unsigned long index);
 
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    Node item(in unsigned long index); 
-    Node namedItem(in DOMString name); 
+    Node item(in unsigned long index);
 #endif
 };
 

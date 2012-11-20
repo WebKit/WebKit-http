@@ -35,6 +35,7 @@
 #include "CSSValueKeywords.h"
 #include "DateTimeChooser.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FileInputType.h"
@@ -50,12 +51,15 @@
 #include "HTMLParserIdioms.h"
 #include "IdTargetObserver.h"
 #include "InputType.h"
+#include "InsertionPoint.h"
 #include "KeyboardEvent.h"
+#include "Language.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NumberInputType.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScopedEventQueue.h"
 #include "SearchInputType.h"
 #include "ShadowRoot.h"
@@ -412,16 +416,13 @@ void HTMLInputElement::updateFocusAppearance(bool restorePreviousSelection)
         HTMLTextFormControlElement::updateFocusAppearance(restorePreviousSelection);
 }
 
-void HTMLInputElement::aboutToUnload()
+void HTMLInputElement::endEditing()
 {
-    if (!isTextField() || !focused())
+    if (!isTextField())
         return;
 
-    Frame* frame = document()->frame();
-    if (!frame)
-        return;
-
-    frame->editor()->textFieldDidEndEditing(this);
+    if (Frame* frame = document()->frame())
+        frame->editor()->textFieldDidEndEditing(this);
 }
 
 bool HTMLInputElement::shouldUseInputMethod()
@@ -531,6 +532,9 @@ void HTMLInputElement::updateType()
             updateFocusAppearance(true);
     }
 
+    if (ElementShadow* elementShadow = shadowOfParentForDistribution(this))
+        elementShadow->invalidateDistribution();
+
     setChangedSinceLastFormControlChangeEvent(false);
 
     addToRadioButtonGroup();
@@ -621,7 +625,7 @@ bool HTMLInputElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLInputElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
+void HTMLInputElement::collectStyleForPresentationAttribute(const Attribute& attribute, StylePropertySet* style)
 {
     if (attribute.name() == vspaceAttr) {
         addHTMLLengthToStyle(style, CSSPropertyMarginTop, attribute.value());
@@ -641,24 +645,24 @@ void HTMLInputElement::collectStyleForAttribute(const Attribute& attribute, Styl
     } else if (attribute.name() == borderAttr && isImageButton())
         applyBorderAttributeToStyle(attribute, style);
     else
-        HTMLTextFormControlElement::collectStyleForAttribute(attribute, style);
+        HTMLTextFormControlElement::collectStyleForPresentationAttribute(attribute, style);
 }
 
-void HTMLInputElement::parseAttribute(const Attribute& attribute)
+void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (attribute.name() == nameAttr) {
+    if (name == nameAttr) {
         removeFromRadioButtonGroup();
-        m_name = attribute.value();
+        m_name = value;
         addToRadioButtonGroup();
-        HTMLTextFormControlElement::parseAttribute(attribute);
-    } else if (attribute.name() == autocompleteAttr) {
-        if (equalIgnoringCase(attribute.value(), "off")) {
+        HTMLTextFormControlElement::parseAttribute(name, value);
+    } else if (name == autocompleteAttr) {
+        if (equalIgnoringCase(value, "off")) {
             m_autocomplete = Off;
             registerForSuspensionCallbackIfNeeded();
         } else {
             bool needsToUnregister = m_autocomplete == Off;
 
-            if (attribute.isEmpty())
+            if (value.isEmpty())
                 m_autocomplete = Uninitialized;
             else
                 m_autocomplete = On;
@@ -666,9 +670,9 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
             if (needsToUnregister)
                 unregisterForSuspensionCallbackIfNeeded();
         }
-    } else if (attribute.name() == typeAttr) {
+    } else if (name == typeAttr)
         updateType();
-    } else if (attribute.name() == valueAttr) {
+    else if (name == valueAttr) {
         // Changes to the value attribute may change whether or not this element has a default value.
         // If this field is autocomplete=off that might affect the return value of needsSuspensionCallback.
         if (m_autocomplete == Off) {
@@ -683,63 +687,63 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
         setFormControlValueMatchesRenderer(false);
         setNeedsValidityCheck();
         m_valueAttributeWasUpdatedAfterParsing = !m_parsingInProgress;
-    } else if (attribute.name() == checkedAttr) {
+    } else if (name == checkedAttr) {
         // Another radio button in the same group might be checked by state
         // restore. We shouldn't call setChecked() even if this has the checked
         // attribute. So, delay the setChecked() call until
         // finishParsingChildren() is called if parsing is in progress.
         if (!m_parsingInProgress && m_reflectsCheckedAttribute) {
-            setChecked(!attribute.isNull());
+            setChecked(!value.isNull());
             m_reflectsCheckedAttribute = true;
         }
-    } else if (attribute.name() == maxlengthAttr)
-        parseMaxLengthAttribute(attribute);
-    else if (attribute.name() == sizeAttr) {
+    } else if (name == maxlengthAttr)
+        parseMaxLengthAttribute(value);
+    else if (name == sizeAttr) {
         int oldSize = m_size;
-        int value = attribute.value().toInt();
-        m_size = value > 0 ? value : defaultSize;
+        int valueAsInteger = value.toInt();
+        m_size = valueAsInteger > 0 ? valueAsInteger : defaultSize;
         if (m_size != oldSize && renderer())
             renderer()->setNeedsLayoutAndPrefWidthsRecalc();
-    } else if (attribute.name() == altAttr)
+    } else if (name == altAttr)
         m_inputType->altAttributeChanged();
-    else if (attribute.name() == srcAttr)
+    else if (name == srcAttr)
         m_inputType->srcAttributeChanged();
-    else if (attribute.name() == usemapAttr || attribute.name() == accesskeyAttr) {
+    else if (name == usemapAttr || name == accesskeyAttr) {
         // FIXME: ignore for the moment
-    } else if (attribute.name() == onsearchAttr) {
+    } else if (name == onsearchAttr) {
         // Search field and slider attributes all just cause updateFromElement to be called through style recalcing.
-        setAttributeEventListener(eventNames().searchEvent, createAttributeEventListener(this, attribute));
-    } else if (attribute.name() == resultsAttr) {
+        setAttributeEventListener(eventNames().searchEvent, createAttributeEventListener(this, name, value));
+    } else if (name == resultsAttr) {
         int oldResults = m_maxResults;
-        m_maxResults = !attribute.isNull() ? std::min(attribute.value().toInt(), maxSavedResults) : -1;
+        m_maxResults = !value.isNull() ? std::min(value.toInt(), maxSavedResults) : -1;
         // FIXME: Detaching just for maxResults change is not ideal.  We should figure out the right
         // time to relayout for this change.
         if (m_maxResults != oldResults && (m_maxResults <= 0 || oldResults <= 0))
             reattachIfAttached();
         setNeedsStyleRecalc();
-    } else if (attribute.name() == autosaveAttr || attribute.name() == incrementalAttr)
+    } else if (name == autosaveAttr || name == incrementalAttr)
         setNeedsStyleRecalc();
-    else if (attribute.name() == minAttr || attribute.name() == maxAttr) {
+    else if (name == minAttr || name == maxAttr) {
         m_inputType->minOrMaxAttributeChanged();
         setNeedsValidityCheck();
-    } else if (attribute.name() == multipleAttr) {
+    } else if (name == multipleAttr) {
         m_inputType->multipleAttributeChanged();
         setNeedsValidityCheck();
-    } else if (attribute.name() == stepAttr) {
+    } else if (name == stepAttr) {
         m_inputType->stepAttributeChanged();
         setNeedsValidityCheck();
-    } else if (attribute.name() == patternAttr || attribute.name() == precisionAttr)
+    } else if (name == patternAttr || name == precisionAttr)
         setNeedsValidityCheck();
-    else if (attribute.name() == disabledAttr) {
-        HTMLTextFormControlElement::parseAttribute(attribute);
+    else if (name == disabledAttr) {
+        HTMLTextFormControlElement::parseAttribute(name, value);
         m_inputType->disabledAttributeChanged();
-    } else if (attribute.name() == readonlyAttr) {
-        HTMLTextFormControlElement::parseAttribute(attribute);
+    } else if (name == readonlyAttr) {
+        HTMLTextFormControlElement::parseAttribute(name, value);
         m_inputType->readonlyAttributeChanged();
     }
 #if ENABLE(DATALIST_ELEMENT)
-    else if (attribute.name() == listAttr) {
-        m_hasNonEmptyList = !attribute.isEmpty();
+    else if (name == listAttr) {
+        m_hasNonEmptyList = !value.isEmpty();
         if (m_hasNonEmptyList) {
             resetListAttributeTargetObserver();
             listAttributeTargetChanged();
@@ -747,7 +751,7 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
     }
 #endif
 #if ENABLE(INPUT_SPEECH)
-    else if (attribute.name() == webkitspeechAttr) {
+    else if (name == webkitspeechAttr) {
         if (renderer()) {
             // This renderer and its children have quite different layouts and styles depending on
             // whether the speech button is visible or not. So we reset the whole thing and recreate
@@ -762,11 +766,11 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
         }
         setFormControlValueMatchesRenderer(false);
         setNeedsStyleRecalc();
-    } else if (attribute.name() == onwebkitspeechchangeAttr)
-        setAttributeEventListener(eventNames().webkitspeechchangeEvent, createAttributeEventListener(this, attribute));
+    } else if (name == onwebkitspeechchangeAttr)
+        setAttributeEventListener(eventNames().webkitspeechchangeEvent, createAttributeEventListener(this, name, value));
 #endif
     else
-        HTMLTextFormControlElement::parseAttribute(attribute);
+        HTMLTextFormControlElement::parseAttribute(name, value);
     m_inputType->updateInnerTextValue();
 }
 
@@ -904,6 +908,8 @@ void HTMLInputElement::setChecked(bool nowChecked, TextFieldEventBehavior eventB
         setTextAsOfLastFormControlChangeEvent(String());
         dispatchFormControlChangeEvent();
     }
+
+    invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureChecked);
 }
 
 void HTMLInputElement::setIndeterminate(bool newValue)
@@ -914,6 +920,7 @@ void HTMLInputElement::setIndeterminate(bool newValue)
     m_isIndeterminate = newValue;
 
     setNeedsStyleRecalc();
+    invalidateParentDistributionIfNecessary(this, SelectRuleFeatureSet::RuleFeatureIndeterminate);
 
     if (renderer() && renderer()->style()->hasAppearance())
         renderer()->theme()->stateChanged(renderer(), CheckedState);
@@ -1751,10 +1758,10 @@ void HTMLInputElement::updatePlaceholderText()
     return m_inputType->updatePlaceholderText();
 }
 
-void HTMLInputElement::parseMaxLengthAttribute(const Attribute& attribute)
+void HTMLInputElement::parseMaxLengthAttribute(const AtomicString& value)
 {
     int maxLength;
-    if (!parseHTMLInteger(attribute.value(), maxLength))
+    if (!parseHTMLInteger(value, maxLength))
         maxLength = maximumLength;
     if (maxLength < 0 || maxLength > maximumLength)
         maxLength = maximumLength;
@@ -1913,6 +1920,12 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
     parameters.minimum = minimum();
     parameters.maximum = maximum();
     parameters.required = required();
+    if (!RuntimeEnabledFeatures::langAttributeAwareFormControlUIEnabled())
+        parameters.locale = defaultLanguage();
+    else {
+        AtomicString computedLocale = computeInheritedLanguage();
+        parameters.locale = computedLocale.isEmpty() ? AtomicString(defaultLanguage()) : computedLocale;
+    }
 
     StepRange stepRange = createStepRange(RejectAny);
     if (stepRange.hasStep()) {

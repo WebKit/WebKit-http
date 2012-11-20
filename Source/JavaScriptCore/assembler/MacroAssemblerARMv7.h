@@ -1758,6 +1758,19 @@ public:
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(ARMv7Assembler::readCallTarget(call.dataLocation())));
     }
+    
+    static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
+    
+    static CodeLocationLabel startOfPatchableBranchPtrWithPatch(CodeLocationDataLabelPtr)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+        return CodeLocationLabel();
+    }
+    
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
+    {
+        UNREACHABLE_FOR_PLATFORM();
+    }
 
 protected:
     ALWAYS_INLINE Jump jump()

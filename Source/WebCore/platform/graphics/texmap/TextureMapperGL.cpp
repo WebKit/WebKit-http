@@ -42,6 +42,7 @@
 #include "CairoUtilities.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
+#include <wtf/text/CString.h>
 #endif
 
 #if ENABLE(CSS_SHADERS)
@@ -88,7 +89,7 @@ public:
 
         TextureMapperShaderManager textureMapperShaderManager;
 
-        SharedGLData(GraphicsContext3D* context)
+        explicit SharedGLData(GraphicsContext3D* context)
             : textureMapperShaderManager(context)
         {
             glContextDataMap().add(context->platformGraphicsContext3D(), this);
@@ -115,7 +116,7 @@ public:
 
     void initializeStencil();
 
-    TextureMapperGLData(GraphicsContext3D* context)
+    explicit TextureMapperGLData(GraphicsContext3D* context)
         : context(context)
         , PaintFlags(0)
         , previousProgram(0)
@@ -348,8 +349,41 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
 
     RefPtr<BitmapTexture> texture = acquireTextureFromPool(size);
     const uchar* bits = image.bits();
-    texture->updateContents(bits, sourceRect, IntPoint::zero(), image.bytesPerLine(), BitmapTexture::UpdateCanModifyOriginalImageData);
+    static_cast<BitmapTextureGL*>(texture.get())->updateContentsNoSwizzle(bits, sourceRect, IntPoint::zero(), image.bytesPerLine());
     drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, 0, AllEdges);
+
+#elif USE(CAIRO)
+    CString counterString = String::number(value).ascii();
+    // cairo_text_extents() requires a cairo_t, so dimensions need to be guesstimated.
+    int width = counterString.length() * pointSize * 1.2;
+    int height = pointSize * 1.5;
+
+    cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
+    cairo_t* cr = cairo_create(surface);
+    cairo_surface_destroy(surface);
+
+    cairo_set_source_rgb(cr, 0, 0, 1); // Since we won't swap R+B for speed, this will paint red.
+    cairo_rectangle(cr, 0, 0, width, height);
+    cairo_fill(cr);
+
+    cairo_select_font_face(cr, "Monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, pointSize);
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_move_to(cr, 2, pointSize);
+    cairo_show_text(cr, counterString.data());
+
+    IntSize size(width, height);
+    IntRect sourceRect(IntPoint::zero(), size);
+    IntRect targetRect(roundedIntPoint(targetPoint), size);
+
+    RefPtr<BitmapTexture> texture = acquireTextureFromPool(size);
+    const unsigned char* bits = cairo_image_surface_get_data(surface);
+    int stride = cairo_image_surface_get_stride(surface);
+    static_cast<BitmapTextureGL*>(texture.get())->updateContentsNoSwizzle(bits, sourceRect, IntPoint::zero(), stride);
+    drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, 0, AllEdges);
+
+    cairo_destroy(cr);
+
 #else
     UNUSED_PARAM(value);
     UNUSED_PARAM(pointSize);
@@ -417,6 +451,18 @@ void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& 
     m_context3D->useProgram(program->programID());
 
     drawTexturedQuadWithProgram(program.get(), texture, flags, targetRect, modelViewMatrix, opacity, maskTexture);
+}
+
+void TextureMapperGL::drawSolidColor(const FloatRect& rect, const TransformationMatrix& matrix, const Color& color)
+{
+    RefPtr<TextureMapperShaderProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::SolidColor);
+    m_context3D->useProgram(program->programID());
+
+    float r, g, b, a;
+    color.getRGBA(r, g, b, a);
+    m_context3D->uniform4f(program->colorLocation(), r, g, b, a);
+
+    drawQuad(rect, matrix, program.get(), GraphicsContext3D::TRIANGLE_FAN, false);
 }
 
 static TransformationMatrix viewportMatrix(GraphicsContext3D* context3D)
@@ -643,6 +689,26 @@ void BitmapTextureGL::didReset()
     m_context3D->texImage2DDirect(GraphicsContext3D::TEXTURE_2D, 0, GraphicsContext3D::RGBA, m_textureSize.width(), m_textureSize.height(), 0, format, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, 0);
 }
 
+void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, Platform3DObject glFormat)
+{
+    if (!driverSupportsSubImage() // For ES drivers that don't support sub-images.
+        || (bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && sourceOffset == IntPoint::zero())) {
+        m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
+        return;
+    }
+
+#if !defined(TEXMAP_OPENGL_ES_2)
+    // Use the OpenGL sub-image extension, now that we know it's available.
+    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
+    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y());
+    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
+    m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
+    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+#endif
+}
+
 void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag updateContentsFlag)
 {
     Platform3DObject glFormat = GraphicsContext3D::RGBA;
@@ -653,9 +719,12 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
     Vector<char> temporaryData;
     IntPoint adjustedSourceOffset = sourceOffset;
 
+    // Texture upload requires subimage buffer if driver doesn't support subimage and we don't have full image upload.
+    bool requireSubImageBuffer = !driverSupportsSubImage()
+        && !(bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && adjustedSourceOffset == IntPoint::zero());
+
     // prepare temporaryData if necessary
-    if ((!driverSupportsBGRASwizzling() && updateContentsFlag == UpdateCannotModifyOriginalImageData)
-        || !driverSupportsSubImage()) {
+    if ((!driverSupportsBGRASwizzling() && updateContentsFlag == UpdateCannotModifyOriginalImageData) || requireSubImageBuffer) {
         temporaryData.resize(targetRect.width() * targetRect.height() * bytesPerPixel);
         data = temporaryData.data();
         const char* bits = static_cast<const char*>(srcData);
@@ -677,27 +746,7 @@ void BitmapTextureGL::updateContents(const void* srcData, const IntRect& targetR
     else
         swizzleBGRAToRGBA(reinterpret_cast<uint32_t*>(data), IntRect(adjustedSourceOffset, targetRect.size()), bytesPerLine / bytesPerPixel);
 
-    if (bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && adjustedSourceOffset == IntPoint::zero()) {
-        m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, data);
-        return;
-    }
-
-    // For ES drivers that don't support sub-images.
-    if (!driverSupportsSubImage()) {
-        m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, data);
-        return;
-    }
-
-#if !defined(TEXMAP_OPENGL_ES_2)
-    // Use the OpenGL sub-image extension, now that we know it's available.
-    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, adjustedSourceOffset.y());
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, adjustedSourceOffset.x());
-    m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, data);
-    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-#endif
+    updateContentsNoSwizzle(data, targetRect, adjustedSourceOffset, bytesPerLine, bytesPerPixel, glFormat);
 }
 
 void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag)
@@ -872,6 +921,11 @@ static void prepareFilterProgram(TextureMapperShaderProgram* program, const Filt
 }
 
 #if ENABLE(CSS_SHADERS)
+void TextureMapperGL::removeCachedCustomFilterProgram(CustomFilterProgram* program)
+{
+    m_customFilterPrograms.remove(program);
+}
+
 bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapTexture& source, const FilterOperation& filter)
 {
     RefPtr<CustomFilterRenderer> renderer;
@@ -883,9 +937,13 @@ bool TextureMapperGL::drawUsingCustomFilter(BitmapTexture& target, const BitmapT
         RefPtr<CustomFilterProgram> program = customFilter->program();
         renderer = CustomFilterRenderer::create(m_context3D, program->programType(), customFilter->parameters(), 
             customFilter->meshRows(), customFilter->meshColumns(), customFilter->meshBoxType(), customFilter->meshType());
-        // FIXME: Optimize this by keeping a reference to the program across frames.
-        // https://bugs.webkit.org/show_bug.cgi?id=101801
-        RefPtr<CustomFilterCompiledProgram> compiledProgram = CustomFilterCompiledProgram::create(m_context3D, program->vertexShaderString(), program->fragmentShaderString(), program->programType());
+        RefPtr<CustomFilterCompiledProgram> compiledProgram;
+        CustomFilterProgramMap::iterator iter = m_customFilterPrograms.find(program.get());
+        if (iter == m_customFilterPrograms.end()) {
+            compiledProgram = CustomFilterCompiledProgram::create(m_context3D, program->vertexShaderString(), program->fragmentShaderString(), program->programType());
+            m_customFilterPrograms.set(program.get(), compiledProgram);
+        } else
+            compiledProgram = iter->value;
         renderer->setCompiledProgram(compiledProgram.release());
         break;
     }

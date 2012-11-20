@@ -2129,6 +2129,18 @@ void SpeculativeJIT::compile(Node& node)
         initConstantInfo(m_compileIndex);
         break;
 
+    case Identity: {
+        // This could be done a lot better. We take the cheap way out because Identity
+        // is only going to stick around after CSE if we had prediction weirdness.
+        JSValueOperand operand(this, node.child1());
+        GPRTemporary resultTag(this);
+        GPRTemporary resultPayload(this);
+        m_jit.move(operand.tagGPR(), resultTag.gpr());
+        m_jit.move(operand.payloadGPR(), resultPayload.gpr());
+        jsValueResult(resultTag.gpr(), resultPayload.gpr(), m_compileIndex);
+        break;
+    }
+
     case GetLocal: {
         SpeculatedType prediction = node.variableAccessData()->prediction();
         AbstractValue& value = block()->valuesAtHead.operand(node.local());
@@ -3961,6 +3973,12 @@ void SpeculativeJIT::compile(Node& node)
         break;
     }
 
+    case InheritorIDWatchpoint: {
+        jsCast<JSFunction*>(node.function())->addInheritorIDWatchpoint(speculationWatchpoint());
+        noResult(m_compileIndex);
+        break;
+    }
+
     case NewObject: {
         GPRTemporary result(this);
         GPRTemporary scratch(this);
@@ -3970,9 +3988,9 @@ void SpeculativeJIT::compile(Node& node)
         
         MacroAssembler::JumpList slowPath;
         
-        emitAllocateJSFinalObject(MacroAssembler::TrustedImmPtr(m_jit.globalObjectFor(node.codeOrigin)->emptyObjectStructure()), resultGPR, scratchGPR, slowPath);
+        emitAllocateJSFinalObject(MacroAssembler::TrustedImmPtr(node.structure()), resultGPR, scratchGPR, slowPath);
         
-        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewObject, resultGPR));
+        addSlowPathGenerator(slowPathCall(slowPath, this, operationNewObject, resultGPR, node.structure()));
         
         cellResult(resultGPR, m_compileIndex);
         break;
@@ -4141,7 +4159,7 @@ void SpeculativeJIT::compile(Node& node)
         
     case CheckFunction: {
         SpeculateCellOperand function(this, node.child1());
-        speculationCheck(BadCache, JSValueRegs(), NoNode, m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
+        speculationCheck(BadCache, JSValueSource::unboxedCell(function.gpr()), node.child1(), m_jit.branchWeakPtr(JITCompiler::NotEqual, function.gpr(), node.function()));
         noResult(m_compileIndex);
         break;
     }

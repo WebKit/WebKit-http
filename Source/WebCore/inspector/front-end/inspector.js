@@ -66,7 +66,7 @@ var WebInspector = {
 
     _panelSelected: function()
     {
-        this._toggleConsoleButton.disabled = WebInspector.inspectorView.currentPanel().name === "console";
+        this._toggleConsoleButton.setEnabled(WebInspector.inspectorView.currentPanel().name !== "console");
     },
 
     _createGlobalStatusBarItems: function()
@@ -92,7 +92,7 @@ var WebInspector = {
 
     _toggleConsoleButtonClicked: function()
     {
-        if (this._toggleConsoleButton.disabled)
+        if (!this._toggleConsoleButton.enabled())
             return;
 
         this._toggleConsoleButton.toggled = !this._toggleConsoleButton.toggled;
@@ -371,6 +371,7 @@ WebInspector.doLoadedDone = function()
     ProfilerAgent.hasHeapProfiler(WebInspector._initializeCapability.bind(WebInspector, "heapProfilerPresent", null));
     TimelineAgent.supportsFrameInstrumentation(WebInspector._initializeCapability.bind(WebInspector, "timelineSupportsFrameInstrumentation", null));
     TimelineAgent.canMonitorMainThread(WebInspector._initializeCapability.bind(WebInspector, "timelineCanMonitorMainThread", null));
+    PageAgent.canShowFPSCounter(WebInspector._initializeCapability.bind(WebInspector, "canShowFPSCounter", null));
     PageAgent.canOverrideDeviceMetrics(WebInspector._initializeCapability.bind(WebInspector, "canOverrideDeviceMetrics", null));
     PageAgent.canOverrideGeolocation(WebInspector._initializeCapability.bind(WebInspector, "canOverrideGeolocation", null));
     PageAgent.canOverrideDeviceOrientation(WebInspector._initializeCapability.bind(WebInspector, "canOverrideDeviceOrientation", WebInspector._doLoadedDoneWithCapabilities.bind(WebInspector)));
@@ -378,10 +379,11 @@ WebInspector.doLoadedDone = function()
 
 WebInspector._doLoadedDoneWithCapabilities = function()
 {
-    WebInspector.shortcutsScreen = new WebInspector.ShortcutsScreen();
-    this._registerShortcuts();
+    var panelDescriptors = this._panelDescriptors();
+    WebInspector.shortcutsScreen = new WebInspector.ShortcutsScreen(this._registerShortcuts.bind(this, panelDescriptors));
 
     // set order of some sections explicitly
+    WebInspector.shortcutsScreen.section(WebInspector.UIString("All Panels"));
     WebInspector.shortcutsScreen.section(WebInspector.UIString("Console"));
     WebInspector.shortcutsScreen.section(WebInspector.UIString("Elements Panel"));
 
@@ -446,7 +448,6 @@ WebInspector._doLoadedDoneWithCapabilities = function()
 
     this.toolbar = new WebInspector.Toolbar();
     WebInspector.startBatchUpdate();
-    var panelDescriptors = this._panelDescriptors();
     for (var i = 0; i < panelDescriptors.length; ++i)
         WebInspector.inspectorView.addPanel(panelDescriptors[i]);
     WebInspector.endBatchUpdate();
@@ -482,6 +483,9 @@ WebInspector._doLoadedDoneWithCapabilities = function()
 
     if (WebInspector.settings.javaScriptDisabled.get())
         PageAgent.setScriptExecutionDisabled(true);
+
+    if (WebInspector.settings.showFPSCounter.get())
+        PageAgent.setShowFPSCounter(true);
 
     this.domAgent._emulateTouchEventsChanged();
 
@@ -609,7 +613,7 @@ WebInspector.openResource = function(resourceURL, inResourcesPanel)
         InspectorFrontendHost.openInNewTab(resourceURL);
 }
 
-WebInspector._registerShortcuts = function()
+WebInspector._registerShortcuts = function(panelDescriptors)
 {
     var shortcut = WebInspector.KeyboardShortcut;
     var section = WebInspector.shortcutsScreen.section(WebInspector.UIString("All Panels"));
@@ -644,6 +648,9 @@ WebInspector._registerShortcuts = function()
 
     var goToShortcut = WebInspector.GoToLineDialog.createShortcut();
     section.addKey(goToShortcut.name, WebInspector.UIString("Go to line"));
+
+    for (var i = 0; i < panelDescriptors.length; ++i)
+        panelDescriptors[i].panel();
 }
 
 WebInspector.documentKeyDown = function(event)

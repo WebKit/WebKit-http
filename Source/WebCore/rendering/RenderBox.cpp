@@ -448,16 +448,16 @@ FloatQuad RenderBox::absoluteContentQuad() const
     return localToAbsoluteQuad(FloatRect(rect));
 }
 
-LayoutRect RenderBox::outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, LayoutPoint* cachedOffsetToRepaintContainer) const
+LayoutRect RenderBox::outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap* geometryMap) const
 {
     LayoutRect box = borderBoundingBox();
     adjustRectForOutlineAndShadow(box);
 
-    FloatQuad containerRelativeQuad = FloatRect(box);
-    if (cachedOffsetToRepaintContainer)
-        containerRelativeQuad.move(cachedOffsetToRepaintContainer->x(), cachedOffsetToRepaintContainer->y());
+    FloatQuad containerRelativeQuad;
+    if (geometryMap)
+        containerRelativeQuad = geometryMap->mapToContainer(box, repaintContainer);
     else
-        containerRelativeQuad = localToContainerQuad(containerRelativeQuad, repaintContainer);
+        containerRelativeQuad = localToContainerQuad(FloatRect(box), repaintContainer);
 
     box = containerRelativeQuad.enclosingBoundingBox();
 
@@ -617,6 +617,11 @@ bool RenderBox::canBeProgramaticallyScrolled() const
     return (hasOverflowClip() && (scrollsOverflow() || (node() && node()->rendererIsEditable()))) || (node() && node()->isDocumentNode());
 }
 
+bool RenderBox::usesCompositedScrolling() const
+{
+    return hasOverflowClip() && hasLayer() && layer()->usesCompositedScrolling();
+}
+
 void RenderBox::autoscroll()
 {
     if (layer())
@@ -651,6 +656,10 @@ LayoutSize RenderBox::cachedSizeForOverflowClip() const
 void RenderBox::applyCachedClipAndScrollOffsetForRepaint(LayoutRect& paintRect) const
 {
     paintRect.move(-scrolledContentOffset()); // For overflow:auto/scroll/hidden.
+
+    // Do not clip scroll layer contents to reduce the number of repaints while scrolling.
+    if (usesCompositedScrolling())
+        return;
 
     // height() is inaccurate if we're in the middle of a layout of this RenderBox, so use the
     // layer's size instead. Even if the layer's size is wrong, the layer itself will repaint
@@ -821,11 +830,8 @@ BackgroundBleedAvoidance RenderBox::determineBackgroundBleedAvoidance(GraphicsCo
     FloatSize contextScaling(static_cast<float>(ctm.xScale()), static_cast<float>(ctm.yScale()));
     if (borderObscuresBackgroundEdge(contextScaling))
         return BackgroundBleedShrinkBackground;
-    
-    // FIXME: there is one more strategy possible, for opaque backgrounds and
-    // translucent borders. In that case we could avoid using a transparency layer,
-    // and paint the border first, and then paint the background clipped to the
-    // inside of the border.
+    if (!style->hasAppearance() && borderObscuresBackground() && backgroundIsSingleOpaqueLayer())
+        return BackgroundBleedBackgroundOverBorder;
 
     return BackgroundBleedUseTransparencyLayer;
 }
@@ -859,12 +865,15 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
         paintInfo.context->addRoundedRectClip(border);
         paintInfo.context->beginTransparencyLayer(1);
     }
-    
+
     // If we have a native theme appearance, paint that before painting our background.
     // The theme will tell us whether or not we should also paint the CSS background.
     IntRect snappedPaintRect(pixelSnappedIntRect(paintRect));
     bool themePainted = style()->hasAppearance() && !theme()->paint(this, paintInfo, snappedPaintRect);
     if (!themePainted) {
+        if (bleedAvoidance == BackgroundBleedBackgroundOverBorder)
+            paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
+
         paintBackground(paintInfo, paintRect, bleedAvoidance);
 
         if (style()->hasAppearance())
@@ -873,7 +882,7 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
     paintBoxShadow(paintInfo, paintRect, style(), Inset);
 
     // The theme will tell us whether or not we should also paint the CSS border.
-    if ((!style()->hasAppearance() || (!themePainted && theme()->paintBorderOnly(this, paintInfo, snappedPaintRect))) && style()->hasBorder())
+    if (bleedAvoidance != BackgroundBleedBackgroundOverBorder && (!style()->hasAppearance() || (!themePainted && theme()->paintBorderOnly(this, paintInfo, snappedPaintRect))) && style()->hasBorder())
         paintBorder(paintInfo, paintRect, style(), bleedAvoidance);
 
     if (bleedAvoidance == BackgroundBleedUseTransparencyLayer)
@@ -892,6 +901,25 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
         if (!backgroundIsObscured())
             paintFillLayers(paintInfo, style()->visitedDependentColor(CSSPropertyBackgroundColor), style()->backgroundLayers(), paintRect, bleedAvoidance);
     }
+}
+
+bool RenderBox::backgroundIsSingleOpaqueLayer() const
+{
+    const FillLayer* fillLayer = style()->backgroundLayers();
+    if (!fillLayer || fillLayer->next() || fillLayer->clip() != BorderFillBox || fillLayer->composite() != CompositeSourceOver)
+        return false;
+
+    // Clipped with local scrolling
+    if (hasOverflowClip() && fillLayer->attachment() == LocalBackgroundAttachment)
+        return false;
+
+    Color bgColor = style()->visitedDependentColor(CSSPropertyBackgroundColor);
+    if (bgColor.isValid() && bgColor.alpha() == 255)
+        return true;
+    
+    // FIXME: return true if a background image is present and is opaque
+
+    return false;
 }
 
 void RenderBox::paintMask(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
@@ -1355,6 +1383,8 @@ const RenderObject* RenderBox::pushMappingToContainer(const RenderLayerModelObje
 
     bool offsetDependsOnPoint = false;
     LayoutSize containerOffset = offsetFromContainer(container, LayoutPoint(), &offsetDependsOnPoint);
+    if (geometryMap.mapCoordinatesFlags() & SnapOffsetForTransforms)
+        containerOffset = roundedIntSize(containerOffset);
 
     if (container->isRenderFlowThread())
         offsetDependsOnPoint = true;
@@ -1566,7 +1596,7 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
 
     // We are now in our parent container's coordinate space.  Apply our transform to obtain a bounding box
     // in the parent's coordinate space that encloses us.
-    if (layer() && layer()->transform()) {
+    if (hasLayer() && layer()->transform()) {
         fixed = position == FixedPosition;
         rect = layer()->transform()->mapRect(pixelSnappedIntRect(rect));
         topLeft = rect.location();
@@ -1584,14 +1614,11 @@ void RenderBox::computeRectForRepaint(const RenderLayerModelObject* repaintConta
         topLeft += layer()->offsetForInFlowPosition();
     }
     
-    if (o->isBlockFlow() && position != AbsolutePosition && position != FixedPosition) {
-        RenderBlock* cb = toRenderBlock(o);
-        if (cb->hasColumns()) {
-            LayoutRect repaintRect(topLeft, rect.size());
-            cb->adjustRectForColumns(repaintRect);
-            topLeft = repaintRect.location();
-            rect = repaintRect;
-        }
+    if (position != AbsolutePosition && position != FixedPosition && o->hasColumns() && o->isBlockFlow()) {
+        LayoutRect repaintRect(topLeft, rect.size());
+        toRenderBlock(o)->adjustRectForColumns(repaintRect);
+        topLeft = repaintRect.location();
+        rect = repaintRect;
     }
 
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
@@ -3926,6 +3953,17 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(RenderStyle* parentStyle)
         rect.setY(height() - rect.maxY());
 
     return rect;
+}
+
+LayoutRect RenderBox::overflowRectForPaintRejection() const
+{
+    LayoutRect overflowRect = visualOverflowRect();
+    if (!m_overflow || !usesCompositedScrolling())
+        return overflowRect;
+
+    overflowRect.unite(layoutOverflowRect());
+    overflowRect.move(-scrolledContentOffset());
+    return overflowRect;
 }
 
 LayoutUnit RenderBox::offsetLeft() const

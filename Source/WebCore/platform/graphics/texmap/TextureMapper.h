@@ -48,6 +48,7 @@
 namespace WebCore {
 
 class BitmapTexturePool;
+class CustomFilterProgram;
 class TextureMapper;
 
 // A 2D texture that can be the target of software or GL rendering.
@@ -130,6 +131,7 @@ public:
     virtual void drawBorder(const Color&, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) = 0;
     virtual void drawRepaintCounter(int value, int pointSize, const FloatPoint&, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) = 0;
     virtual void drawTexture(const BitmapTexture&, const FloatRect& target, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0f, const BitmapTexture* maskTexture = 0, unsigned exposedEdges = AllEdges) = 0;
+    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) = 0;
 
     // makes a surface the target for the following drawTexture calls.
     virtual void bindSurface(BitmapTexture* surface) = 0;
@@ -153,8 +155,12 @@ public:
 
     virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&);
 
+#if ENABLE(CSS_SHADERS)
+    virtual void removeCachedCustomFilterProgram(CustomFilterProgram*) { }
+#endif
+
 protected:
-    TextureMapper(AccelerationMode);
+    explicit TextureMapper(AccelerationMode);
 
 private:
 #if USE(TEXTURE_MAPPER_GL)

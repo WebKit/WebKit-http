@@ -813,8 +813,8 @@ String StylePropertySet::asText() const
             break;
 #if ENABLE(CSS_EXCLUSIONS)
         case CSSPropertyWebkitWrapFlow:
-        case CSSPropertyWebkitWrapMargin:
-        case CSSPropertyWebkitWrapPadding:
+        case CSSPropertyWebkitShapeMargin:
+        case CSSPropertyWebkitShapePadding:
             shorthandPropertyID = CSSPropertyWebkitWrap;
             break;
 #endif
@@ -974,6 +974,9 @@ static const CSSPropertyID blockProperties[] = {
     CSSPropertyWebkitRegionBreakInside,
 #endif
     CSSPropertyTextAlign,
+#if ENABLE(CSS3_TEXT)
+    CSSPropertyWebkitTextAlignLast,
+#endif // CSS3_TEXT
     CSSPropertyTextIndent,
     CSSPropertyWidows
 };
@@ -1099,6 +1102,14 @@ PassRefPtr<StylePropertySet> StylePropertySet::copyPropertiesInSet(const CSSProp
     return StylePropertySet::create(list.data(), list.size());
 }
 
+PropertySetCSSStyleDeclaration* StylePropertySet::cssStyleDeclaration()
+{
+    if (!m_ownsCSSOMWrapper)
+        return 0;
+    ASSERT(isMutable());
+    return propertySetCSSOMWrapperMap().get(this);
+}
+
 CSSStyleDeclaration* StylePropertySet::ensureCSSStyleDeclaration()
 {
     ASSERT(isMutable());
@@ -1126,14 +1137,6 @@ CSSStyleDeclaration* StylePropertySet::ensureInlineCSSStyleDeclaration(const Sty
     PropertySetCSSStyleDeclaration* cssomWrapper = new InlineCSSStyleDeclaration(const_cast<StylePropertySet*>(this), const_cast<StyledElement*>(parentElement));
     propertySetCSSOMWrapperMap().add(this, adoptPtr(cssomWrapper));
     return cssomWrapper;
-}
-
-void StylePropertySet::clearParentElement(StyledElement* element)
-{
-    if (!m_ownsCSSOMWrapper)
-        return;
-    ASSERT_UNUSED(element, propertySetCSSOMWrapperMap().get(this)->parentElement() == element);
-    propertySetCSSOMWrapperMap().get(this)->clearParentElement();
 }
 
 unsigned StylePropertySet::averageSizeInBytes()

@@ -29,7 +29,6 @@
 #include "APIObject.h"
 #include "ewk_object_private.h"
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -39,7 +38,7 @@ class WebOpenPanelParameters;
 class WebOpenPanelResultListenerProxy;
 }
 
-class EwkFileChooserRequest : public Ewk_Object {
+class EwkFileChooserRequest : public EwkObject {
 public:
     EWK_OBJECT_DECLARE(EwkFileChooserRequest)
 

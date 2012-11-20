@@ -24,15 +24,20 @@ messages -> LayerTreeCoordinatorProxy {
 #if ENABLE(CSS_FILTERS)
     SetCompositingLayerFilters(uint32_t id, WebCore::FilterOperations filters)
 #endif
+#if ENABLE(CSS_SHADERS)
+    CreateCustomFilterProgram(int id, WebCore::CustomFilterProgramInfo programInfo)
+    RemoveCustomFilterProgram(int id)
+#endif
     SetRootCompositingLayer(uint32_t id)
     DeleteCompositingLayer(uint32_t id)
-    CreateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect tileRect, WebCore::IntSize backingSize, WebKit::SurfaceUpdateInfo updateInfo)
+    CreateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect tileRect, WebKit::SurfaceUpdateInfo updateInfo)
     UpdateTileForLayer(uint32_t layerID, int tileID, WebCore::IntRect tileRect, WebKit::SurfaceUpdateInfo updateInfo)
     RemoveTileForLayer(uint32_t layerID, int tileID)
     CreateUpdateAtlas(int atlasID, WebKit::ShareableSurface::Handle handle)
     RemoveUpdateAtlas(int atlasID)
-    CreateDirectlyCompositedImage(int64_t key, WebKit::ShareableBitmap::Handle handle)
-    DestroyDirectlyCompositedImage(int64_t key)
+    CreateImageBacking(uint64_t imageID)
+    UpdateImageBacking(uint64_t imageID, WebKit::ShareableSurface::Handle handle)
+    RemoveImageBacking(uint64_t imageID)
     DidRenderFrame(WebCore::IntSize contentsSize, WebCore::IntRect coveredRect)
     DidChangeScrollPosition(WebCore::IntPoint position)
     SetLayerAnimations(uint32_t id, WebCore::GraphicsLayerAnimations animations)
@@ -45,5 +50,7 @@ messages -> LayerTreeCoordinatorProxy {
 #if USE(GRAPHICS_SURFACE)
     SyncCanvas(uint32_t id, WebCore::IntSize canvasSize, WebCore::GraphicsSurfaceToken token, uint32_t frontBuffer)
 #endif
+
+    SetBackgroundColor(WebCore::Color color)
 }
 #endif

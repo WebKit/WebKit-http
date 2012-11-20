@@ -56,6 +56,7 @@ public:
     virtual bool scrollAnimatorEnabled() const = 0;
     virtual bool viewportEnabled() const = 0;
     virtual void setAccelerated2dCanvasEnabled(bool) = 0;
+    virtual void setAcceleratedAnimationEnabled(bool) = 0;
     virtual void setAcceleratedCompositingEnabled(bool) = 0;
     virtual void setAcceleratedCompositingFor3DTransformsEnabled(bool) = 0;
     virtual void setAcceleratedCompositingForAnimationEnabled(bool) = 0;
@@ -68,10 +69,11 @@ public:
     virtual void setAcceleratedPaintingEnabled(bool) = 0;
     virtual void setAllowDisplayOfInsecureContent(bool) = 0;
     virtual void setAllowFileAccessFromFileURLs(bool) = 0;
+    virtual void setAllowCustomScrollbarInMainFrame(bool) = 0;
     virtual void setAllowRunningOfInsecureContent(bool) = 0;
     virtual void setAllowScriptsToCloseWindows(bool) = 0;
     virtual void setAllowUniversalAccessFromFileURLs(bool) = 0;
-    virtual void setApplyDefaultDeviceScaleFactorInCompositor(bool) = 0;
+    virtual void setApplyDeviceScaleFactorInCompositor(bool) = 0;
     virtual void setApplyPageScaleFactorInCompositor(bool) = 0;
     virtual void setAsynchronousSpellCheckingEnabled(bool) = 0;
     virtual void setAutoZoomFocusedNodeToLegibleScale(bool) = 0;
@@ -134,6 +136,7 @@ public:
     virtual void setPageCacheSupportsPlugins(bool) = 0;
     virtual void setPasswordEchoDurationInSeconds(double) = 0;
     virtual void setPasswordEchoEnabled(bool) = 0;
+    virtual void setPerTilePaintingEnabled(bool) = 0;
     virtual void setPictographFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON) = 0;
     virtual void setPluginsEnabled(bool) = 0;
     virtual void setPrivilegedWebGLExtensionsEnabled(bool) = 0;
@@ -166,8 +169,8 @@ public:
     virtual void setWebSecurityEnabled(bool) = 0;
     virtual void setXSSAuditorEnabled(bool) = 0;
 
-    // DEPRECATED
-    virtual void setDefaultDeviceScaleFactor(int) { }
+    // DEPRECATED (renamed. remove this after all call sites changed to the new name)
+    void setApplyDefaultDeviceScaleFactorInCompositor(bool enabled) { setApplyDeviceScaleFactorInCompositor(enabled); }
 
 protected:
     ~WebSettings() { }

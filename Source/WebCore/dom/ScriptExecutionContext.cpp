@@ -28,7 +28,7 @@
 #include "config.h"
 #include "ScriptExecutionContext.h"
 
-#include "ActiveDOMObject.h"
+#include "CachedScript.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTimer.h"
 #include "ErrorEvent.h"
@@ -37,12 +37,14 @@
 #include "FileThread.h"
 #include "MessagePort.h"
 #include "PublicURLManager.h"
-#include "ScriptCallStack.h"
-#include "SecurityOrigin.h"
 #include "Settings.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include "WorkerContext.h"
 #include "WorkerThread.h"
 #include <wtf/MainThread.h>
+#include <wtf/MemoryInstrumentationHashMap.h>
+#include <wtf/MemoryInstrumentationHashSet.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
@@ -51,6 +53,13 @@
 #include "JSDOMWindow.h"
 #endif
 
+namespace WTF {
+
+template<> struct SequenceMemoryInstrumentationTraits<WebCore::ContextDestructionObserver*> {
+    template <typename I> static void reportMemoryUsage(I, I, MemoryClassInfo&) { }
+};
+
+}
 namespace WebCore {
 
 class ProcessMessagesSoonTask : public ScriptExecutionContext::Task {
@@ -277,10 +286,10 @@ void ScriptExecutionContext::closeMessagePorts() {
     }
 }
 
-bool ScriptExecutionContext::sanitizeScriptError(String& errorMessage, int& lineNumber, String& sourceURL)
+bool ScriptExecutionContext::sanitizeScriptError(String& errorMessage, int& lineNumber, String& sourceURL, CachedScript* cachedScript)
 {
     KURL targetURL = completeURL(sourceURL);
-    if (securityOrigin()->canRequest(targetURL))
+    if (securityOrigin()->canRequest(targetURL) || (cachedScript && cachedScript->passesAccessControlCheck(securityOrigin())))
         return false;
     errorMessage = "Script error.";
     sourceURL = String();
@@ -288,7 +297,7 @@ bool ScriptExecutionContext::sanitizeScriptError(String& errorMessage, int& line
     return true;
 }
 
-void ScriptExecutionContext::reportException(const String& errorMessage, int lineNumber, const String& sourceURL, PassRefPtr<ScriptCallStack> callStack)
+void ScriptExecutionContext::reportException(const String& errorMessage, int lineNumber, const String& sourceURL, PassRefPtr<ScriptCallStack> callStack, CachedScript* cachedScript)
 {
     if (m_inDispatchErrorEvent) {
         if (!m_pendingExceptions)
@@ -298,7 +307,7 @@ void ScriptExecutionContext::reportException(const String& errorMessage, int lin
     }
 
     // First report the original exception and only then all the nested ones.
-    if (!dispatchErrorEvent(errorMessage, lineNumber, sourceURL))
+    if (!dispatchErrorEvent(errorMessage, lineNumber, sourceURL, cachedScript))
         logExceptionToConsole(errorMessage, sourceURL, lineNumber, callStack);
 
     if (!m_pendingExceptions)
@@ -322,7 +331,7 @@ void ScriptExecutionContext::addConsoleMessage(MessageSource source, MessageType
 }
 
 
-bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int lineNumber, const String& sourceURL)
+bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int lineNumber, const String& sourceURL, CachedScript* cachedScript)
 {
     EventTarget* target = errorEventTarget();
     if (!target)
@@ -331,7 +340,7 @@ bool ScriptExecutionContext::dispatchErrorEvent(const String& errorMessage, int 
     String message = errorMessage;
     int line = lineNumber;
     String sourceName = sourceURL;
-    sanitizeScriptError(message, line, sourceName);
+    sanitizeScriptError(message, line, sourceName, cachedScript);
 
     ASSERT(!m_inDispatchErrorEvent);
     m_inDispatchErrorEvent = true;
@@ -407,6 +416,21 @@ void ScriptExecutionContext::didChangeTimerAlignmentInterval()
 double ScriptExecutionContext::timerAlignmentInterval() const
 {
     return Settings::defaultDOMTimerAlignmentInterval();
+}
+
+void ScriptExecutionContext::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    SecurityContext::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_messagePorts);
+    info.addMember(m_destructionObservers);
+    info.addMember(m_activeDOMObjects);
+    info.addMember(m_timeouts);
+    info.addMember(m_pendingExceptions);
+#if ENABLE(BLOB)
+    info.addMember(m_publicURLManager);
+    info.addMember(m_fileThread);
+#endif
 }
 
 ScriptExecutionContext::Task::~Task()

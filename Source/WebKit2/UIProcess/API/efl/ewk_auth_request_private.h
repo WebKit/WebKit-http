@@ -29,14 +29,13 @@
 #include "WKEinaSharedString.h"
 #include "ewk_object_private.h"
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
 class AuthenticationChallengeProxy;
 }
 
-class EwkAuthRequest : public Ewk_Object {
+class EwkAuthRequest : public EwkObject {
 public:
     EWK_OBJECT_DECLARE(EwkAuthRequest)
 

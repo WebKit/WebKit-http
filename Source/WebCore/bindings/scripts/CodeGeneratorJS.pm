@@ -32,7 +32,6 @@ use constant FileNamePrefix => "JS";
 
 my $codeGenerator;
 
-my $module = "";
 my $outputDir = "";
 my $writeDependencies = 0;
 
@@ -171,22 +170,13 @@ END
     return @GenerateEventListenerImpl;
 }
 
-# Params: 'idlDocument' struct
-sub GenerateModule
-{
-    my $object = shift;
-    my $dataNode = shift;
-
-    $module = $dataNode->module;
-}
-
 sub GetParentClassName
 {
     my $dataNode = shift;
 
     return $dataNode->extendedAttributes->{"JSLegacyParent"} if $dataNode->extendedAttributes->{"JSLegacyParent"};
     return "JSDOMWrapper" if (@{$dataNode->parents} eq 0);
-    return "JS" . $codeGenerator->StripModule($dataNode->parents(0));
+    return "JS" . $dataNode->parents(0);
 }
 
 sub GetCallbackClassName
@@ -206,7 +196,7 @@ sub IndexGetterReturnsStrings
 
 sub AddIncludesForTypeInImpl
 {
-    my $type = $codeGenerator->StripModule(shift);
+    my $type = shift;
     my $isCallback = @_ ? shift : 0;
     
     AddIncludesForType($type, $isCallback, \%implIncludes);
@@ -233,7 +223,7 @@ sub AddIncludesForTypeInImpl
 
 sub AddIncludesForTypeInHeader
 {
-    my $type = $codeGenerator->StripModule(shift);
+    my $type = shift;
     my $isCallback = @_ ? shift : 0;
     
     AddIncludesForType($type, $isCallback, \%headerIncludes);
@@ -408,7 +398,7 @@ sub GenerateGetOwnPropertySlotBody
 
     my @getOwnPropertySlotImpl = ();
 
-    if ($interfaceName eq "NamedNodeMap" or $interfaceName eq "HTMLCollection" or $interfaceName eq "HTMLAllCollection" or $interfaceName eq "HTMLPropertiesCollection") {
+    if ($interfaceName eq "NamedNodeMap" or $interfaceName =~ /^HTML\w*Collection$/) {
         push(@getOwnPropertySlotImpl, "    ${namespaceMaybe}JSValue proto = thisObject->prototype();\n");
         push(@getOwnPropertySlotImpl, "    if (proto.isObject() && jsCast<${namespaceMaybe}JSObject*>(asObject(proto))->hasProperty(exec, propertyName))\n");
         push(@getOwnPropertySlotImpl, "        return false;\n\n");
@@ -500,7 +490,7 @@ sub GenerateGetOwnPropertyDescriptorBody
         push(@implContent, "        return false;\n");
     }
     
-    if ($interfaceName eq "NamedNodeMap" or $interfaceName eq "HTMLCollection" or $interfaceName eq "HTMLAllCollection" or $interfaceName eq "HTMLPropertiesCollection") {
+    if ($interfaceName eq "NamedNodeMap" or $interfaceName =~ /^HTML\w*Collection$/) {
         push(@getOwnPropertyDescriptorImpl, "    ${namespaceMaybe}JSValue proto = thisObject->prototype();\n");
         push(@getOwnPropertyDescriptorImpl, "    if (proto.isObject() && jsCast<${namespaceMaybe}JSObject*>(asObject(proto))->hasProperty(exec, propertyName))\n");
         push(@getOwnPropertyDescriptorImpl, "        return false;\n\n");
@@ -1051,7 +1041,13 @@ sub GenerateHeader
         GetCustomIsReachable($dataNode) ||
         $dataNode->extendedAttributes->{"JSCustomFinalize"} ||
         $dataNode->extendedAttributes->{"ActiveDOMObject"}) {
-        push(@headerContent, "class JS${implClassName}Owner : public JSC::WeakHandleOwner {\n");
+        if ($implClassName ne "Node" && $codeGenerator->IsSubType($dataNode, "Node")) {
+            $headerIncludes{"JSNode.h"} = 1;
+            push(@headerContent, "class JS${implClassName}Owner : public JSNodeOwner {\n");
+        } else {
+            push(@headerContent, "class JS${implClassName}Owner : public JSC::WeakHandleOwner {\n");
+        }
+        push(@headerContent, "public:\n");
         push(@headerContent, "    virtual bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&);\n");
         push(@headerContent, "    virtual void finalize(JSC::Handle<JSC::Unknown>, void* context);\n");
         push(@headerContent, "};\n");
@@ -1288,7 +1284,7 @@ sub GenerateParametersCheckExpression
     foreach my $parameter (@{$function->parameters}) {
         last if $parameterIndex >= $numParameters;
         my $value = "arg$parameterIndex";
-        my $type = $codeGenerator->StripModule($parameter->type);
+        my $type = $parameter->type;
 
         # Only DOMString or wrapper types are checked.
         # For DOMString with StrictTypeChecking only Null, Undefined and Object
@@ -1419,7 +1415,7 @@ sub GenerateImplementation
     my $hasParent = $hasLegacyParent || $hasRealParent;
     my $parentClassName = GetParentClassName($dataNode);
     my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($dataNode);
-    my $eventTarget = $dataNode->extendedAttributes->{"EventTarget"} || $codeGenerator->IsStrictSubtype($dataNode, "EventTarget");
+    my $eventTarget = $dataNode->extendedAttributes->{"EventTarget"} || ($codeGenerator->IsSubType($dataNode, "EventTarget") && $dataNode->name ne "EventTarget");
     my $needsMarkChildren = $dataNode->extendedAttributes->{"JSCustomMarkFunction"} || $dataNode->extendedAttributes->{"EventTarget"} || $dataNode->name eq "EventTarget";
 
     # - Add default header template
@@ -1833,7 +1829,7 @@ sub GenerateImplementation
         if ($numAttributes > 0) {
             foreach my $attribute (@{$dataNode->attributes}) {
                 my $name = $attribute->signature->name;
-                my $type = $codeGenerator->StripModule($attribute->signature->type);                
+                my $type = $attribute->signature->type;
                 $codeGenerator->AssertNotSequenceType($type);
                 my $getFunctionName = GetAttributeGetterName($interfaceName, $className, $attribute);
                 my $implGetterFunctionName = $codeGenerator->WK_lcfirst($name);
@@ -1884,7 +1880,7 @@ sub GenerateImplementation
                     push(@implContent, "    }\n");
                     push(@implContent, "    return jsNull();\n");
                 } elsif ($attribute->signature->type =~ /Constructor$/) {
-                    my $constructorType = $codeGenerator->StripModule($attribute->signature->type);
+                    my $constructorType = $attribute->signature->type;
                     $constructorType =~ s/Constructor$//;
                     # When Constructor attribute is used by DOMWindow.idl, it's correct to pass castedThis as the global object
                     # When JSDOMWrappers have a back-pointer to the globalObject we can pass castedThis->globalObject()
@@ -2052,7 +2048,7 @@ sub GenerateImplementation
                 foreach my $attribute (@{$dataNode->attributes}) {
                     if (!IsReadonly($attribute)) {
                         my $name = $attribute->signature->name;
-                        my $type = $codeGenerator->StripModule($attribute->signature->type);
+                        my $type = $attribute->signature->type;
                         my $putFunctionName = GetAttributeSetterName($interfaceName, $className, $attribute);
                         my $implSetterFunctionName = $codeGenerator->WK_ucfirst($name);
 
@@ -2434,7 +2430,7 @@ sub GenerateImplementation
             push(@implContent, "    return toJS(exec, thisObj->globalObject(), static_cast<$implClassName*>(thisObj->impl())->item(index));\n");
         }
         push(@implContent, "}\n\n");
-        if ($interfaceName eq "HTMLCollection" or $interfaceName eq "HTMLAllCollection" or $interfaceName eq "RadioNodeList") {
+        if ($interfaceName =~ /^HTML\w*Collection$/ or $interfaceName eq "RadioNodeList") {
             $implIncludes{"JSNode.h"} = 1;
             $implIncludes{"Node.h"} = 1;
         }
@@ -2450,7 +2446,7 @@ sub GenerateImplementation
         push(@implContent, "        return jsNaN();\n");
         push(@implContent, "    return JSValue(result);\n");
         push(@implContent, "}\n\n");
-        if ($interfaceName eq "HTMLCollection" or $interfaceName eq "HTMLAllCollection") {
+        if ($interfaceName =~ /^HTML\w*Collection$/) {
             $implIncludes{"JSNode.h"} = 1;
             $implIncludes{"Node.h"} = 1;
         }
@@ -2494,6 +2490,10 @@ sub GenerateImplementation
         # check below the isObservable check.
         if ($dataNode->extendedAttributes->{"ActiveDOMObject"}) {
             push(@implContent, "    if (js${implClassName}->impl()->hasPendingActivity())\n");
+            push(@implContent, "        return true;\n");
+        }
+        if ($codeGenerator->IsSubType($dataNode, "Node")) {
+            push(@implContent, "    if (JSNodeOwner::isReachableFromOpaqueRoots(handle, 0, visitor))\n");
             push(@implContent, "        return true;\n");
         }
         push(@implContent, "    if (!isObservable(js${implClassName}))\n");
@@ -2593,13 +2593,8 @@ sub GenerateCallWith
     if ($function and $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments")) {
         push(@$outputArray, "    RefPtr<ScriptArguments> scriptArguments(createScriptArguments(exec, " . @{$function->parameters} . "));\n");
         $implIncludes{"ScriptArguments.h"} = 1;
-        push(@callWithArgs, "scriptArguments");
-    }
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallStack")) {
-        push(@$outputArray, "    RefPtr<ScriptCallStack> callStack(createScriptCallStackForConsole(exec));\n");
-        $implIncludes{"ScriptCallStack.h"} = 1;
         $implIncludes{"ScriptCallStackFactory.h"} = 1;
-        push(@callWithArgs, "callStack");
+        push(@callWithArgs, "scriptArguments.release()");
     }
     return @callWithArgs;
 }
@@ -2663,7 +2658,7 @@ sub GenerateParametersCheck
     $implIncludes{"JSDOMBinding.h"} = 1;
 
     foreach my $parameter (@{$function->parameters}) {
-        my $argType = $codeGenerator->StripModule($parameter->type);
+        my $argType = $parameter->type;
 
         # Optional arguments with [Optional] should generate an early call with fewer arguments.
         # Optional arguments with [Optional=...] should not generate the early call.
@@ -3032,7 +3027,7 @@ sub GenerateImplementationFunctionCall()
 sub GetNativeTypeFromSignature
 {
     my $signature = shift;
-    my $type = $codeGenerator->StripModule($signature->type);
+    my $type = $signature->type;
 
     if ($type eq "unsigned long" and $signature->extendedAttributes->{"IsIndex"}) {
         # Special-case index arguments because we need to check that they aren't < 0.
@@ -3143,7 +3138,7 @@ sub JSValueToNative
     my $value = shift;
 
     my $conditional = $signature->extendedAttributes->{"Conditional"};
-    my $type = $codeGenerator->StripModule($signature->type);
+    my $type = $signature->type;
 
     return "$value.toBoolean(exec)" if $type eq "boolean";
     return "$value.toNumber(exec)" if $type eq "double";
@@ -3230,7 +3225,7 @@ sub NativeToJSValue
     my $thisValue = shift;
 
     my $conditional = $signature->extendedAttributes->{"Conditional"};
-    my $type = $codeGenerator->StripModule($signature->type);
+    my $type = $signature->type;
 
     return "jsBoolean($value)" if $type eq "boolean";
 
@@ -3717,13 +3712,17 @@ sub GenerateConstructorDefinition
     my $dataNode = shift;
     my $generatingNamedConstructor = shift;
 
+    # FIXME: Add support for overloaded constructors to JS as well.
+    # For now mimic the old behaviour by only generating code for the last "Constructor" attribute.
+    my $function = @{$dataNode->constructors}[-1];
+
     my $constructorClassName = $generatingNamedConstructor ? "${className}NamedConstructor" : "${className}Constructor";
     my $numberOfConstructorParameters = $dataNode->extendedAttributes->{"ConstructorParameters"};
     if (!defined $numberOfConstructorParameters) {
         if ($codeGenerator->IsConstructorTemplate($dataNode, "Event")) {
             $numberOfConstructorParameters = 2;
         } elsif ($dataNode->extendedAttributes->{"Constructor"}) {
-            $numberOfConstructorParameters = @{$dataNode->constructor->parameters};
+            $numberOfConstructorParameters = @{$function->parameters};
         }
     }
 
@@ -3885,7 +3884,6 @@ END
 
             push(@$outputArray, "    ${constructorClassName}* castedThis = jsCast<${constructorClassName}*>(exec->callee());\n");
 
-            my $function = $dataNode->constructor;
             my @constructorArgList;
 
             $implIncludes{"<runtime/Error.h>"} = 1;

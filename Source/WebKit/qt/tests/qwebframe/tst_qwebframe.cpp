@@ -84,7 +84,7 @@ private Q_SLOTS:
     void setContent_data();
     void setContent();
     void setCacheLoadControlAttribute();
-    //void setUrlWithPendingLoads();
+    void setUrlWithPendingLoads();
     void setUrlWithFragment_data();
     void setUrlWithFragment();
     void setUrlToEmpty();
@@ -209,6 +209,7 @@ public:
     {
         setOperation(QNetworkAccessManager::GetOperation);
         setRequest(request);
+        setUrl(request.url());
         if (request.url() == QUrl("qrc:/test1.html")) {
             setHeader(QNetworkRequest::LocationHeader, QString("qrc:/test2.html"));
             setAttribute(QNetworkRequest::RedirectionTargetAttribute, QUrl("qrc:/test2.html"));
@@ -1116,16 +1117,12 @@ void tst_QWebFrame::setCacheLoadControlAttribute()
     QCOMPARE(manager->lastCacheLoad(), QNetworkRequest::PreferNetwork);
 }
 
-// [Qt] Fix tst_QWebFrame::setUrlWithPendingLoads() API test
-// https://bugs.webkit.org/show_bug.cgi?id=63237
-/*
 void tst_QWebFrame::setUrlWithPendingLoads()
 {
     QWebPage page;
     page.mainFrame()->setHtml("<img src='dummy:'/>");
     page.mainFrame()->setUrl(QUrl("about:blank"));
 }
-*/
 
 void tst_QWebFrame::setUrlWithFragment_data()
 {
@@ -1225,7 +1222,6 @@ void tst_QWebFrame::setUrlToInvalid()
 
     const QUrl invalidUrl("http:/example.com");
     QVERIFY(!invalidUrl.isEmpty());
-    QVERIFY(!invalidUrl.isValid());
     QVERIFY(invalidUrl != QUrl());
 
     // QWebFrame will do its best to accept the URL, possible converting it to a valid equivalent URL.
@@ -1240,11 +1236,11 @@ void tst_QWebFrame::setUrlToInvalid()
     const QUrl anotherInvalidUrl("1http://bugs.webkit.org");
     QVERIFY(!anotherInvalidUrl.isEmpty()); // and they are not necessarily empty.
     QVERIFY(!anotherInvalidUrl.isValid());
-    QCOMPARE(anotherInvalidUrl, QUrl());
+    QCOMPARE(anotherInvalidUrl.toEncoded(), QUrl().toEncoded());
 
     frame->setUrl(anotherInvalidUrl);
     QCOMPARE(frame->url(), aboutBlank);
-    QCOMPARE(frame->requestedUrl(), anotherInvalidUrl);
+    QCOMPARE(frame->requestedUrl().toEncoded(), anotherInvalidUrl.toEncoded());
     QCOMPARE(frame->baseUrl(), aboutBlank);
 }
 

@@ -39,7 +39,7 @@
                     if (e.code == 1)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: INDEX_SIZE_ERR: DOM Exception 1'.");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: IndexSizeError: DOM Exception 1'.");
                 }
 
                 // Test that insertRule raises an exception for indexes less than 0.
@@ -50,7 +50,7 @@
                     if (e.code == 1)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: INDEX_SIZE_ERR: DOM Exception 1'.");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: IndexSizeError: DOM Exception 1'.");
                 }
 
                 // Test that insertRule raises an exception for malformed rules.
@@ -61,7 +61,7 @@
                     if (e.code == 12)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SYNTAX_ERR: DOM Exception 12!");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SyntaxError: DOM Exception 12!");
                 }
 
                 // Test that insertRule raises an exception for illegally placed rules.
@@ -73,7 +73,7 @@
                     if (e.code == 3)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e.code + " was thrown, should of been Error: HIERARCHY_REQUEST_ERR: DOM Exception 3!");
+                        log("FAIL: wrong exception type thrown. " + e.code + " was thrown, should of been Error: HierarchyRequestError: DOM Exception 3!");
                 }
                 try {
                     // CharsetRule illegal inside a MediaRule.
@@ -84,7 +84,7 @@
                     if (e.code == 12)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SYNTAX_ERR: DOM Exception 12!");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SyntaxError: DOM Exception 12!");
                 }
                 try {
                     // Nested MediaRule illegal inside a MediaRule.
@@ -95,7 +95,7 @@
                     if (e.code == 12)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SYNTAX_ERR: DOM Exception 12!");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been Error: SyntaxError: DOM Exception 12!");
                 }
 
 
@@ -118,7 +118,7 @@
                     if (e.code == 1)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: INDEX_SIZE_ERR: DOM Exception 1'.");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: IndexSizeError: DOM Exception 1'.");
                 }
                 try {
                     mediaRule.deleteRule(-1);
@@ -127,7 +127,7 @@
                     if (e.code == 1)
                         log("PASS: Exception raised successfully. Type: " + e);
                     else
-                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: INDEX_SIZE_ERR: DOM Exception 1'.");
+                        log("FAIL: wrong exception type thrown. " + e + " was thrown, should of been 'Error: IndexSizeError: DOM Exception 1'.");
                 }
             }
         </script>

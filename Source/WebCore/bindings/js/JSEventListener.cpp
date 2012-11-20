@@ -41,9 +41,10 @@ JSEventListener::JSEventListener(JSObject* function, JSObject* wrapper, bool isA
     , m_isAttribute(isAttribute)
     , m_isolatedWorld(isolatedWorld)
 {
-    if (wrapper)
-        m_jsFunction.setMayBeNull(*m_isolatedWorld->globalData(), wrapper, function);
-    else
+    if (wrapper) {
+        JSC::Heap::writeBarrier(wrapper, function);
+        m_jsFunction = JSC::PassWeak<JSC::JSObject>(function);
+    } else
         ASSERT(!function);
 #if ENABLE(INSPECTOR)
     ThreadLocalInspectorCounters::current().incrementCounter(ThreadLocalInspectorCounters::JSEventListenerCounter);
@@ -59,14 +60,16 @@ JSEventListener::~JSEventListener()
 
 JSObject* JSEventListener::initializeJSFunction(ScriptExecutionContext*) const
 {
-    ASSERT_NOT_REACHED();
     return 0;
 }
 
 void JSEventListener::visitJSFunction(SlotVisitor& visitor)
 {
-    if (m_jsFunction)
-        visitor.append(&m_jsFunction);
+    // If m_wrapper is 0, then m_jsFunction is zombied, and should never be accessed.
+    if (!m_wrapper)
+        return;
+
+    visitor.appendUnbarrieredWeak(&m_jsFunction);
 }
 
 void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext, Event* event)

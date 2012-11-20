@@ -372,7 +372,7 @@ private:
         return NoNode;
     }
 
-    bool checkFunctionElimination(JSFunction* function, NodeIndex child1)
+    bool checkFunctionElimination(JSCell* function, NodeIndex child1)
     {
         for (unsigned i = endIndexForPureCSE(); i--;) {
             NodeIndex index = m_currentBlock->at(i);
@@ -1043,6 +1043,10 @@ private:
         
         switch (node.op()) {
         
+        case Identity:
+            setReplacement(node.child1().index());
+            break;
+            
         // Handle the pure nodes. These nodes never have any side-effects.
         case BitAnd:
         case BitOr:

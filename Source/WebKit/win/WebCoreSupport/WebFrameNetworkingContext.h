@@ -1,5 +1,6 @@
 /*
     Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
+    Copyright (C) 2012 Apple Inc. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -27,6 +28,18 @@ class WebFrameNetworkingContext : public WebCore::FrameNetworkingContext {
 public:
     static PassRefPtr<WebFrameNetworkingContext> create(WebCore::Frame*, const WTF::String& userAgent);
 
+    static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
+    static void switchToNewTestingSession();
+    static void ensurePrivateBrowsingSession();
+    static void destroyPrivateBrowsingSession();
+
+#if USE(CFNETWORK)
+    static CFURLStorageSessionRef defaultStorageSession();
+
+    static void setCookieAcceptPolicyForTestingContext(CFHTTPCookieStorageAcceptPolicy);
+    static void setCookieAcceptPolicyForAllContexts(CFHTTPCookieStorageAcceptPolicy);
+#endif
+
 private:
     WebFrameNetworkingContext(WebCore::Frame* frame, const WTF::String& userAgent)
         : WebCore::FrameNetworkingContext(frame)
@@ -36,6 +49,9 @@ private:
 
     virtual WTF::String userAgent() const;
     virtual WTF::String referrer() const;
+#if USE(CFNETWORK)
+    virtual CFURLStorageSessionRef storageSession() const;
+#endif
     virtual WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const;
 
     WTF::String m_userAgent;

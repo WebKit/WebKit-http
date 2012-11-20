@@ -5,34 +5,13 @@ if (this.importScripts) {
 
 description("Test the use of identical keypaths between objectstores and indexes");
 
-function test()
+indexedDBTest(prepareDatabase, storeCollidedStoreIndexData);
+function prepareDatabase()
 {
-    removeVendorPrefixes();
-    request = evalAndLog("indexedDB.open('store-index-collision')");
-    request.onsuccess = testCollideStoreIndexSetup;
-    request.onerror = unexpectedErrorCallback;
-}
-
-function testCollideStoreIndexSetup(evt)
-{
-    event = evt;
-    evalAndLog("db = event.target.result");
-    request = evalAndLog("db.setVersion('1')");
-    request.onsuccess = testCollideStoreIndex;
-    request.onerror = unexpectedErrorCallback;
-    request.onblocked = unexpectedBlockedCallback;
-}
-
-function testCollideStoreIndex(event)
-{
-    deleteAllObjectStores(db);
-    var trans = event.target.result;
+    db = event.target.result;
+    event.target.transaction.onabort = unexpectedAbortCallback;
     evalAndLog("store = db.createObjectStore('collideWithIndex', {keyPath: 'foo'})");
     evalAndLog("index = store.createIndex('foo', 'foo')");
-
-    trans.oncomplete = storeCollidedStoreIndexData;
-    trans.onerror = unexpectedErrorCallback;
-    trans.onabort = unexpectedAbortCallback;
 }
 
 function resultShouldBe(v) {
@@ -58,16 +37,18 @@ function storeCollidedStoreIndexData() {
 
 function testCollideAutoIncrementSetup()
 {
-    request = evalAndLog("db.setVersion('2')");
-    request.onsuccess = testCollideAutoIncrement;
+    evalAndLog("db.close()");
+    evalAndLog("request = indexedDB.open(dbname, 2)");
+    request.onupgradeneeded = testCollideAutoIncrement;
     request.onerror = unexpectedErrorCallback;
     request.onblocked = unexpectedBlockedCallback;
 }
 
 function testCollideAutoIncrement()
 {
+    db = event.target.result;
+    var trans = request.transaction;
     deleteAllObjectStores(db);
-    var trans = request.result;
     evalAndLog("store = db.createObjectStore('collideWithAutoIncrement', {keyPath: 'foo', autoIncrement: true})");
     evalAndLog("index = store.createIndex('foo', 'foo')");
 
@@ -101,6 +82,3 @@ function storeCollidedAutoIncrementData()
 function testCollideIndexIndexSetup() {
     finishJSTest();
 }
-
-var jsTestIsAsync = true;
-test();

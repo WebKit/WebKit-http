@@ -25,7 +25,9 @@
 
 [
     Conditional=INDEXED_DATABASE,
-    CustomToJSObject
+    CustomToJSObject,
+    V8NoWrapperCache,
+    JSNoStaticTables
 ] interface IDBAny {
     // This space is intentionally left blank.
 };

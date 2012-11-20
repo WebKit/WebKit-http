@@ -37,8 +37,10 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
+#include "WKGeometry.h"
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSButton;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
 OBJC_CLASS WKWebInspectorWKView;
@@ -98,6 +100,9 @@ public:
     void createInspectorWindow();
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange();
+
+    void setInspectorWindowFrame(WKRect&);
+    WKRect inspectorWindowFrame();
 #endif
 
 #if PLATFORM(GTK)
@@ -153,6 +158,7 @@ private:
     void platformDidClose();
     void platformBringToFront();
     bool platformIsFront();
+    void platformAttachAvailabilityChanged(bool);
     void platformInspectedURLChanged(const String&);
     unsigned platformInspectedWindowHeight();
     void platformAttach();
@@ -164,6 +170,7 @@ private:
     void didLoadInspectorPage();
     void didClose();
     void bringToFront();
+    void attachAvailabilityChanged(bool);
     void inspectedURLChanged(const String&);
 
 #if ENABLE(INSPECTOR_SERVER)
@@ -213,6 +220,7 @@ private:
 #if PLATFORM(MAC)
     RetainPtr<WKWebInspectorWKView> m_inspectorView;
     RetainPtr<NSWindow> m_inspectorWindow;
+    RetainPtr<NSButton> m_dockButton;
     RetainPtr<WKWebInspectorProxyObjCAdapter> m_inspectorProxyObjCAdapter;
     String m_urlString;
 #elif PLATFORM(WIN)

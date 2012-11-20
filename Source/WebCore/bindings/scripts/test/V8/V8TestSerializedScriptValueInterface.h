@@ -41,9 +41,8 @@ public:
     static v8::Persistent<v8::FunctionTemplate> GetTemplate();
     static TestSerializedScriptValueInterface* toNative(v8::Handle<v8::Object> object)
     {
-        return reinterpret_cast<TestSerializedScriptValueInterface*>(object->GetPointerFromInternalField(v8DOMWrapperObjectIndex));
+        return reinterpret_cast<TestSerializedScriptValueInterface*>(object->GetAlignedPointerFromInternalField(v8DOMWrapperObjectIndex));
     }
-    inline static v8::Handle<v8::Object> wrap(TestSerializedScriptValueInterface*, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* = 0);
     static void derefObject(void*);
     static WrapperTypeInfo info;
     static v8::Handle<v8::Value> constructorCallback(const v8::Arguments&);
@@ -51,23 +50,38 @@ public:
     static void installPerContextProperties(v8::Handle<v8::Object>, TestSerializedScriptValueInterface*) { }
     static void installPerContextPrototypeProperties(v8::Handle<v8::Object>) { }
 private:
-    static v8::Handle<v8::Object> wrapSlow(PassRefPtr<TestSerializedScriptValueInterface>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    friend v8::Handle<v8::Object> wrap(TestSerializedScriptValueInterface*, v8::Handle<v8::Object> creationContext, v8::Isolate*);
+    static v8::Handle<v8::Object> createWrapper(PassRefPtr<TestSerializedScriptValueInterface>, v8::Handle<v8::Object> creationContext, v8::Isolate*);
 };
 
-v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::wrap(TestSerializedScriptValueInterface* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+
+inline v8::Handle<v8::Object> wrap(TestSerializedScriptValueInterface* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate = 0)
 {
-        v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
-        if (!wrapper.IsEmpty())
-            return wrapper;
-    return V8TestSerializedScriptValueInterface::wrapSlow(impl, creationContext, isolate);
+    ASSERT(impl);
+    ASSERT(DOMDataStore::current(isolate)->get(impl).IsEmpty());
+    return V8TestSerializedScriptValueInterface::createWrapper(impl, creationContext, isolate);
+}
+
+inline v8::Handle<v8::Object> toV8Object(TestSerializedScriptValueInterface* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
+{
+    if (UNLIKELY(!impl))
+        return v8::Handle<v8::Object>();
+    v8::Handle<v8::Object> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
 }
 
 inline v8::Handle<v8::Value> toV8(TestSerializedScriptValueInterface* impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
-    if (!impl)
+    if (UNLIKELY(!impl))
         return v8NullWithCheck(isolate);
-    return V8TestSerializedScriptValueInterface::wrap(impl, creationContext, isolate);
+    v8::Handle<v8::Value> wrapper = DOMDataStore::current(isolate)->get(impl);
+    if (!wrapper.IsEmpty())
+        return wrapper;
+    return wrap(impl, creationContext, isolate);
 }
+
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestSerializedScriptValueInterface > impl, v8::Handle<v8::Object> creationContext = v8::Handle<v8::Object>(), v8::Isolate* isolate = 0)
 {
     return toV8(impl.get(), creationContext, isolate);

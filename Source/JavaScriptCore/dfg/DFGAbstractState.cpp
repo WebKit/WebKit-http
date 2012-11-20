@@ -30,6 +30,8 @@
 
 #include "CodeBlock.h"
 #include "DFGBasicBlock.h"
+#include "GetByIdStatus.h"
+#include "PutByIdStatus.h"
 
 namespace JSC { namespace DFG {
 
@@ -254,6 +256,12 @@ bool AbstractState::execute(unsigned indexInBlock)
     case WeakJSConstant:
     case PhantomArguments: {
         forNode(nodeIndex).set(m_graph.valueOfJSConstant(nodeIndex));
+        node.setCanExit(false);
+        break;
+    }
+        
+    case Identity: {
+        forNode(nodeIndex) = forNode(node.child1());
         node.setCanExit(false);
         break;
     }
@@ -1246,6 +1254,7 @@ bool AbstractState::execute(unsigned indexInBlock)
             // be hit, but then again, you never know.
             destination = source;
             node.setCanExit(false);
+            m_foundConstants = true; // Tell the constant folder to turn this into Identity.
             break;
         }
         
@@ -1278,10 +1287,14 @@ bool AbstractState::execute(unsigned indexInBlock)
         destination.set(SpecFinalObject);
         break;
     }
+        
+    case InheritorIDWatchpoint:
+        node.setCanExit(true);
+        break;
 
     case NewObject:
         node.setCanExit(false);
-        forNode(nodeIndex).set(m_codeBlock->globalObjectFor(node.codeOrigin)->emptyObjectStructure());
+        forNode(nodeIndex).set(node.structure());
         m_haveStructures = true;
         break;
         
@@ -1398,8 +1411,30 @@ bool AbstractState::execute(unsigned indexInBlock)
             m_isValid = false;
             break;
         }
-        if (isCellSpeculation(m_graph[node.child1()].prediction()))
+        if (isCellSpeculation(m_graph[node.child1()].prediction())) {
             forNode(node.child1()).filter(SpecCell);
+
+            if (Structure* structure = forNode(node.child1()).bestProvenStructure()) {
+                GetByIdStatus status = GetByIdStatus::computeFor(
+                    m_graph.m_globalData, structure,
+                    m_graph.m_codeBlock->identifier(node.identifierNumber()));
+                if (status.isSimple()) {
+                    // Assert things that we can't handle and that the computeFor() method
+                    // above won't be able to return.
+                    ASSERT(status.structureSet().size() == 1);
+                    ASSERT(status.chain().isEmpty());
+                    
+                    if (status.specificValue())
+                        forNode(nodeIndex).set(status.specificValue());
+                    else
+                        forNode(nodeIndex).makeTop();
+                    forNode(node.child1()).filter(status.structureSet());
+                    
+                    m_foundConstants = true;
+                    break;
+                }
+            }
+        }
         clobberWorld(node.codeOrigin, indexInBlock);
         forNode(nodeIndex).makeTop();
         break;
@@ -1562,25 +1597,65 @@ bool AbstractState::execute(unsigned indexInBlock)
         break; 
     }
     case GetByOffset:
-        node.setCanExit(!isCellSpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecCell);
+        if (!m_graph[node.child1()].hasStorageResult()) {
+            node.setCanExit(!isCellSpeculation(forNode(node.child1()).m_type));
+            forNode(node.child1()).filter(SpecCell);
+        }
         forNode(nodeIndex).makeTop();
         break;
             
-    case PutByOffset:
-        node.setCanExit(!isCellSpeculation(forNode(node.child1()).m_type));
-        forNode(node.child1()).filter(SpecCell);
+    case PutByOffset: {
+        bool canExit = false;
+        if (!m_graph[node.child1()].hasStorageResult()) {
+            canExit |= !isCellSpeculation(forNode(node.child1()).m_type);
+            forNode(node.child1()).filter(SpecCell);
+        }
+        canExit |= !isCellSpeculation(forNode(node.child2()).m_type);
+        forNode(node.child2()).filter(SpecCell);
+        node.setCanExit(canExit);
         break;
+    }
             
-    case CheckFunction:
+    case CheckFunction: {
+        JSValue value = forNode(node.child1()).value();
+        if (value == node.function()) {
+            m_foundConstants = true;
+            ASSERT(value);
+            node.setCanExit(false);
+            break;
+        }
+        
         node.setCanExit(true); // Lies! We can do better.
-        forNode(node.child1()).filter(SpecFunction);
-        // FIXME: Should be able to propagate the fact that we know what the function is.
+        if (!forNode(node.child1()).filterByValue(node.function())) {
+            m_isValid = false;
+            break;
+        }
         break;
+    }
         
     case PutById:
     case PutByIdDirect:
         node.setCanExit(true);
+        if (Structure* structure = forNode(node.child1()).bestProvenStructure()) {
+            PutByIdStatus status = PutByIdStatus::computeFor(
+                m_graph.m_globalData,
+                m_graph.globalObjectFor(node.codeOrigin),
+                structure,
+                m_graph.m_codeBlock->identifier(node.identifierNumber()),
+                node.op() == PutByIdDirect);
+            if (status.isSimpleReplace()) {
+                forNode(node.child1()).filter(structure);
+                m_foundConstants = true;
+                break;
+            }
+            if (status.isSimpleTransition()) {
+                clobberStructures(indexInBlock);
+                forNode(node.child1()).set(status.newStructure());
+                m_haveStructures = true;
+                m_foundConstants = true;
+                break;
+            }
+        }
         forNode(node.child1()).filter(SpecCell);
         clobberWorld(node.codeOrigin, indexInBlock);
         break;

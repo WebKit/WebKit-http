@@ -380,7 +380,10 @@ void WebPageProxy::reattachToWebProcess()
 
     m_isValid = true;
 
-    m_process = m_process->context()->createNewWebProcess();
+    if (m_process->context()->processModel() == ProcessModelSharedSecondaryProcess)
+        m_process = m_process->context()->ensureSharedWebProcess();
+    else
+        m_process = m_process->context()->createNewWebProcess();
     m_process->addExistingWebPage(this, m_pageID);
 
     initializeWebPage();
@@ -4094,6 +4097,16 @@ Color WebPageProxy::backingStoreUpdatesFlashColor()
 void WebPageProxy::saveDataToFileInDownloadsFolder(const String& suggestedFilename, const String& mimeType, const String& originatingURLString, WebData* data)
 {
     m_uiClient.saveDataToFileInDownloadsFolder(this, suggestedFilename, mimeType, originatingURLString, data);
+}
+
+void WebPageProxy::savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const CoreIPC::DataReference& data)
+{
+    if (!suggestedFilename.endsWith(".pdf", false))
+        return;
+
+    RefPtr<WebData> webData = WebData::create(data.data(), data.size());
+
+    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString, webData.get());
 }
 
 void WebPageProxy::linkClicked(const String& url, const WebMouseEvent& event)

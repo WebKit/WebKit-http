@@ -33,6 +33,7 @@
 
 #include "ActiveDOMObject.h"
 #include "DOMError.h"
+#include "DOMRequestState.h"
 #include "DOMStringList.h"
 #include "Event.h"
 #include "EventListener.h"
@@ -116,6 +117,8 @@ public:
 
     IDBTransactionBackendInterface::TaskType taskType() { return m_taskType; }
 
+    DOMRequestState* requestState() { return &m_requestState; }
+
 protected:
     IDBRequest(ScriptExecutionContext*, PassRefPtr<IDBAny> source, IDBTransactionBackendInterface::TaskType, IDBTransaction*);
     void enqueueEvent(PassRefPtr<Event>);
@@ -159,9 +162,7 @@ private:
     bool m_preventPropagation;
 
     EventTargetData m_eventTargetData;
-#if USE(V8)
-    WorldContextHandle m_worldContextHandle;
-#endif
+    DOMRequestState m_requestState;
 };
 
 } // namespace WebCore

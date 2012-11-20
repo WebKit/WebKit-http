@@ -135,6 +135,7 @@ public:
     void unschedule(SchedulePair*);
 #endif
 #if USE(CFNETWORK)
+    CFURLStorageSessionRef storageSession() const;
     CFURLConnectionRef connection() const;
     CFURLConnectionRef releaseConnectionForDownload();
     static void setHostAllowsAnyHTTPSCertificate(const String&);
@@ -166,7 +167,9 @@ public:
 #endif
 
 #if USE(SOUP)
+    void continueDidReceiveAuthenticationChallenge(const Credential& credentialFromPersistentStorage);
     void sendPendingRequest();
+    bool shouldUseCredentialStorage();
     static SoupSession* defaultSession();
     static uint64_t getSoupRequestInitiaingPageID(SoupRequest*);
     static void setHostAllowsAnyHTTPSCertificate(const String&);
@@ -195,16 +198,6 @@ public:
     const String& lastHTTPMethod() const;
 
     void fireFailure(Timer<ResourceHandle>*);
-
-#if PLATFORM(MAC) || USE(CFNETWORK)
-    static CFURLStorageSessionRef currentStorageSession();
-    static void setDefaultStorageSession(CFURLStorageSessionRef);
-    static CFURLStorageSessionRef defaultStorageSession();
-    static void setPrivateBrowsingEnabled(bool);
-
-    static void setPrivateBrowsingStorageSessionIdentifierBase(const String&);
-    static RetainPtr<CFURLStorageSessionRef> createPrivateBrowsingStorageSession(CFStringRef identifier);
-#endif
 
     using RefCounted<ResourceHandle>::ref;
     using RefCounted<ResourceHandle>::deref;
@@ -240,14 +233,9 @@ private:
     virtual void derefAuthenticationClient() { deref(); }
 
 #if PLATFORM(MAC) && !USE(CFNETWORK)
-    void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff);
-#elif USE(CF)
-    void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff);
-#endif
-
-#if PLATFORM(MAC) || USE(CFNETWORK)
-    static String privateBrowsingStorageSessionIdentifierDefaultBase();
-    static CFURLStorageSessionRef privateBrowsingStorageSession();
+    void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldRelaxThirdPartyCookiePolicy, bool shouldContentSniff);
+#elif USE(CFNETWORK)
+    void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldRelaxThirdPartyCookiePolicy, bool shouldContentSniff);
 #endif
 
     friend class ResourceHandleInternal;

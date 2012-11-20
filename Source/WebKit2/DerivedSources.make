@@ -37,6 +37,7 @@ VPATH = \
     $(WebKit2)/WebProcess/KeyValueStorage \
     $(WebKit2)/WebProcess/MediaCache \
     $(WebKit2)/WebProcess/Network \
+    $(WebKit2)/WebProcess/Network/CustomProtocols \
     $(WebKit2)/WebProcess/Notifications \
     $(WebKit2)/WebProcess/Plugins \
     $(WebKit2)/WebProcess/ResourceCache \
@@ -46,13 +47,17 @@ VPATH = \
     $(WebKit2)/UIProcess \
     $(WebKit2)/UIProcess/Downloads \
     $(WebKit2)/UIProcess/Network \
+    $(WebKit2)/UIProcess/Network/CustomProtocols \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
     $(WebKit2)/UIProcess/SharedWorkers \
+    $(WebKit2)/UIProcess/mac \
 #
 
 MESSAGE_RECEIVERS = \
     AuthenticationManager \
+    CustomProtocolManager \
+    CustomProtocolManagerProxy \
     DrawingArea \
     DrawingAreaProxy \
     DownloadProxy \
@@ -74,6 +79,8 @@ MESSAGE_RECEIVERS = \
     WebCookieManagerProxy \
     WebConnection \
     NetworkConnectionToWebProcess \
+    NetworkResourceLoader \
+    RemoteLayerTreeHost \
     WebContext \
     WebDatabaseManager \
     WebDatabaseManagerProxy \
@@ -99,6 +106,7 @@ MESSAGE_RECEIVERS = \
     WebProcessProxy \
     WebResourceCacheManager \
     WebResourceCacheManagerProxy \
+    WebResourceLoader \
 #
 
 SCRIPTS = \

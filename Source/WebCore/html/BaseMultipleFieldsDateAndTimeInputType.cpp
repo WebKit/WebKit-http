@@ -123,6 +123,31 @@ void BaseMultipleFieldsDateAndTimeInputType::spinButtonStepUp()
         m_dateTimeEditElement->stepUp();
 }
 
+bool BaseMultipleFieldsDateAndTimeInputType::isPickerIndicatorOwnerDisabledOrReadOnly() const
+{
+    return element()->disabled() || element()->readOnly();
+}
+
+void BaseMultipleFieldsDateAndTimeInputType::pickerIndicatorChooseValue(const String& value)
+{
+    if (element()->isValidValue(value)) {
+        element()->setValue(value, DispatchChangeEvent);
+        return;
+    }
+
+    if (!m_dateTimeEditElement)
+        return;
+    DateComponents date;
+    unsigned end;
+    if (date.parseDate(value.characters(), value.length(), 0, end) && end == value.length())
+        m_dateTimeEditElement->setOnlyYearMonthDay(date);
+}
+
+bool BaseMultipleFieldsDateAndTimeInputType::setupDateTimeChooserParameters(DateTimeChooserParameters& parameters)
+{
+    return element()->setupDateTimeChooserParameters(parameters);
+}
+
 BaseMultipleFieldsDateAndTimeInputType::BaseMultipleFieldsDateAndTimeInputType(HTMLInputElement* element)
     : BaseDateAndTimeInputType(element)
     , m_dateTimeEditElement(0)
@@ -139,6 +164,8 @@ BaseMultipleFieldsDateAndTimeInputType::~BaseMultipleFieldsDateAndTimeInputType(
         m_spinButtonElement->removeSpinButtonOwner();
     if (m_dateTimeEditElement)
         m_dateTimeEditElement->removeEditControlOwner();
+    if (m_pickerIndicatorElement)
+        m_pickerIndicatorElement->removePickerIndicatorOwner();
 }
 
 void BaseMultipleFieldsDateAndTimeInputType::blur()
@@ -183,7 +210,7 @@ void BaseMultipleFieldsDateAndTimeInputType::createShadowSubtree()
         m_pickerIndicatorIsAlwaysVisible = true;
     }
     if (shouldAddPickerIndicator) {
-        RefPtr<PickerIndicatorElement> pickerElement = PickerIndicatorElement::create(document);
+        RefPtr<PickerIndicatorElement> pickerElement = PickerIndicatorElement::create(document, *this);
         m_pickerIndicatorElement = pickerElement.get();
         container->appendChild(m_pickerIndicatorElement);
         m_pickerIndicatorIsVisible = true;
@@ -200,6 +227,10 @@ void BaseMultipleFieldsDateAndTimeInputType::destroyShadowSubtree()
     if (m_dateTimeEditElement) {
         m_dateTimeEditElement->removeEditControlOwner();
         m_dateTimeEditElement = 0;
+    }
+    if (m_pickerIndicatorElement) {
+        m_pickerIndicatorElement->removePickerIndicatorOwner();
+        m_pickerIndicatorElement = 0;
     }
     BaseDateAndTimeInputType::destroyShadowSubtree();
 }
@@ -278,10 +309,8 @@ void BaseMultipleFieldsDateAndTimeInputType::restoreFormControlState(const FormC
 {
     if (!m_dateTimeEditElement)
         return;
-    DateComponents date;
-    setMillisecondToDateComponents(createStepRange(AnyIsDefaultStep).minimum().toDouble(), &date);
     DateTimeFieldsState dateTimeFieldsState = DateTimeFieldsState::restoreFormControlState(state);
-    m_dateTimeEditElement->setValueAsDateTimeFieldsState(dateTimeFieldsState, date);
+    m_dateTimeEditElement->setValueAsDateTimeFieldsState(dateTimeFieldsState);
     element()->setValueInternal(sanitizeValue(m_dateTimeEditElement->value()), DispatchNoEvent);
 }
 
@@ -296,7 +325,7 @@ FormControlState BaseMultipleFieldsDateAndTimeInputType::saveFormControlState() 
 void BaseMultipleFieldsDateAndTimeInputType::setValue(const String& sanitizedValue, bool valueChanged, TextFieldEventBehavior eventBehavior)
 {
     InputType::setValue(sanitizedValue, valueChanged, eventBehavior);
-    if (valueChanged)
+    if (valueChanged || (sanitizedValue.isEmpty() && m_dateTimeEditElement && m_dateTimeEditElement->valueAsDateTimeFieldsState().hasAnyValue()))
         updateInnerTextValue();
 }
 
@@ -390,7 +419,7 @@ int BaseMultipleFieldsDateAndTimeInputType::fullYear(const String& source) const
 bool BaseMultipleFieldsDateAndTimeInputType::shouldHaveSecondField(const DateComponents& date) const
 {
     StepRange stepRange = createStepRange(AnyIsDefaultStep);
-    return date.second()
+    return date.second() || date.millisecond()
         || !stepRange.minimum().remainder(static_cast<int>(msPerMinute)).isZero()
         || !stepRange.step().remainder(static_cast<int>(msPerMinute)).isZero();
 }

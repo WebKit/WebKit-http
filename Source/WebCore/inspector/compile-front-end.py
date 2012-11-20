@@ -304,6 +304,7 @@ modules = [
         "dependencies": ["components", "extensions"],
         "sources": [
             "SettingsScreen.js",
+            "OverridesView.js",
         ]
     },
     {

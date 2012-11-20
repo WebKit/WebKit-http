@@ -35,26 +35,20 @@ class GtkAuthenticationDialog {
 
 public:
     GtkAuthenticationDialog(GtkWindow*, const AuthenticationChallenge&);
-    ~GtkAuthenticationDialog();
-
+    virtual ~GtkAuthenticationDialog();
     void show();
 
-private:
-    void destroy();
-    void authenticate();
-    void savePassword();
-    static void savePasswordCallback(SoupMessage*, GtkAuthenticationDialog*);
-    static void authenticationDialogResponseCallback(GtkWidget*, gint responseID, GtkAuthenticationDialog*);
-
-    AuthenticationChallenge m_challenge;
+protected:
+    virtual void authenticate(const Credential&);
     GtkWidget* m_dialog;
     GtkWidget* m_loginEntry;
     GtkWidget* m_passwordEntry;
     GtkWidget* m_rememberCheckButton;
-    bool m_isSavingPassword;
-    unsigned long m_savePasswordHandler;
-    CString m_username;
-    CString m_password;
+
+private:
+    void destroy();
+    static void authenticationDialogResponseCallback(GtkWidget*, gint responseID, GtkAuthenticationDialog*);
+    AuthenticationChallenge m_challenge;
 };
 
 } // namespace WebCore

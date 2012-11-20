@@ -28,7 +28,8 @@
 
 #include "ConnectionStack.h"
 #include "NetworkProcess.h"
-#include "NetworkRequest.h"
+#include "NetworkResourceLoader.h"
+#include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RunLoop.h>
 
@@ -75,6 +76,13 @@ void NetworkConnectionToWebProcess::didReceiveMessage(CoreIPC::Connection* conne
         didReceiveNetworkConnectionToWebProcessMessage(connection, messageID, decoder);
         return;
     }
+    
+    if (messageID.is<CoreIPC::MessageClassNetworkResourceLoader>()) {
+        NetworkResourceLoader* loader = NetworkProcess::shared().networkResourceLoadScheduler().networkResourceLoaderForIdentifier(decoder.destinationID());
+        if (loader)
+            loader->didReceiveNetworkResourceLoaderMessage(connection, messageID, decoder);
+        return;
+    }
     ASSERT_NOT_REACHED();
 }
 
@@ -109,9 +117,9 @@ void NetworkConnectionToWebProcess::didReceiveInvalidMessage(CoreIPC::Connection
 {
 }
 
-void NetworkConnectionToWebProcess::scheduleNetworkRequest(const ResourceRequest& request, uint32_t resourceLoadPriority, ResourceLoadIdentifier& resourceLoadIdentifier)
+void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLoadParameters& loadParameters, ResourceLoadIdentifier& resourceLoadIdentifier)
 {
-    resourceLoadIdentifier = NetworkProcess::shared().networkResourceLoadScheduler().scheduleNetworkRequest(request, static_cast<ResourceLoadPriority>(resourceLoadPriority), this);
+    resourceLoadIdentifier = NetworkProcess::shared().networkResourceLoadScheduler().scheduleResourceLoad(loadParameters, this);
 }
 
 void NetworkConnectionToWebProcess::addLoadInProgress(const WebCore::KURL& url, ResourceLoadIdentifier& identifier)
@@ -122,11 +130,6 @@ void NetworkConnectionToWebProcess::addLoadInProgress(const WebCore::KURL& url, 
 void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier identifier)
 {
     NetworkProcess::shared().networkResourceLoadScheduler().removeLoadIdentifier(identifier);
-}
-
-void NetworkConnectionToWebProcess::crossOriginRedirectReceived(ResourceLoadIdentifier identifier, const KURL& redirectURL)
-{
-    NetworkProcess::shared().networkResourceLoadScheduler().crossOriginRedirectReceived(identifier, redirectURL);
 }
 
 void NetworkConnectionToWebProcess::servePendingRequests(uint32_t resourceLoadPriority)
@@ -147,11 +150,6 @@ void NetworkConnectionToWebProcess::resumePendingRequests()
 void NetworkConnectionToWebProcess::setSerialLoadingEnabled(bool enabled)
 {
     m_serialLoadingEnabled = enabled;
-}
-
-void NetworkConnectionToWebProcess::willSendRequestHandled(uint64_t requestID, const WebCore::ResourceRequest& newRequest)
-{
-    didReceiveWillSendRequestHandled(requestID, newRequest);
 }
 
 } // namespace WebKit

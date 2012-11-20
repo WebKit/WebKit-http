@@ -50,6 +50,11 @@ PassRefPtr<SVGMPathElement> SVGMPathElement::create(const QualifiedName& tagName
     return adoptRef(new SVGMPathElement(tagName, document));
 }
 
+SVGMPathElement::~SVGMPathElement()
+{
+    clearResourceReferences();
+}
+
 void SVGMPathElement::buildPendingResource()
 {
     clearResourceReferences();
@@ -107,16 +112,16 @@ bool SVGMPathElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
 }
 
-void SVGMPathElement::parseAttribute(const Attribute& attribute)
+void SVGMPathElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
-    if (!isSupportedAttribute(attribute.name())) {
-        SVGElement::parseAttribute(attribute);
+    if (!isSupportedAttribute(name)) {
+        SVGElement::parseAttribute(name, value);
         return;
     }
 
-    if (SVGURIReference::parseAttribute(attribute))
+    if (SVGURIReference::parseAttribute(name, value))
         return;
-    if (SVGExternalResourcesRequired::parseAttribute(attribute))
+    if (SVGExternalResourcesRequired::parseAttribute(name, value))
         return;
 
     ASSERT_NOT_REACHED();

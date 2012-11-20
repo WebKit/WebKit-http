@@ -46,27 +46,26 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> toV8(CSSValue* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
+v8::Handle<v8::Object> wrap(CSSValue* impl, v8::Handle<v8::Object> creationContext, v8::Isolate* isolate)
 {
-    if (!impl)
-        return v8NullWithCheck(isolate);
+    ASSERT(impl);
     if (impl->isWebKitCSSTransformValue())
-        return toV8(static_cast<WebKitCSSTransformValue*>(impl), creationContext, isolate);
+        return wrap(static_cast<WebKitCSSTransformValue*>(impl), creationContext, isolate);
 #if ENABLE(CSS_FILTERS)
     if (impl->isWebKitCSSFilterValue())
-        return toV8(static_cast<WebKitCSSFilterValue*>(impl), creationContext, isolate);
+        return wrap(static_cast<WebKitCSSFilterValue*>(impl), creationContext, isolate);
 #endif
     if (impl->isValueList())
-        return toV8(static_cast<CSSValueList*>(impl), creationContext, isolate);
+        return wrap(static_cast<CSSValueList*>(impl), creationContext, isolate);
     if (impl->isPrimitiveValue())
-        return toV8(static_cast<CSSPrimitiveValue*>(impl), creationContext, isolate);
+        return wrap(static_cast<CSSPrimitiveValue*>(impl), creationContext, isolate);
 #if ENABLE(SVG)
     if (impl->isSVGPaint())
-        return toV8(static_cast<SVGPaint*>(impl), creationContext, isolate);
+        return wrap(static_cast<SVGPaint*>(impl), creationContext, isolate);
     if (impl->isSVGColor())
-        return toV8(static_cast<SVGColor*>(impl), creationContext, isolate);
+        return wrap(static_cast<SVGColor*>(impl), creationContext, isolate);
 #endif
-    return V8CSSValue::wrap(impl, creationContext, isolate);
+    return V8CSSValue::createWrapper(impl, creationContext, isolate);
 }
 
 } // namespace WebCore

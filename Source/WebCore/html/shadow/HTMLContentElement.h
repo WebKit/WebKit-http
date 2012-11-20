@@ -57,7 +57,7 @@ protected:
     virtual void removedFrom(ContainerNode*) OVERRIDE;
 
 private:
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
     void ensureSelectParsed();
     bool validateSelect() const;
 
@@ -84,6 +84,12 @@ inline bool isHTMLContentElement(const Node* node)
 {
     ASSERT(node);
     return node->hasTagName(HTMLContentElement::contentTagName(node->document()));
+}
+
+inline HTMLContentElement* toHTMLContentElement(Node* node)
+{
+    ASSERT(!node || isHTMLContentElement(node));
+    return static_cast<HTMLContentElement*>(node);
 }
 
 }

@@ -136,8 +136,8 @@ public:
     void setAccelerated2dCanvasEnabled(bool enabled) { m_accelerated2dCanvasEnabled = enabled; }
     void setDeferred2dCanvasEnabled(bool enabled) { m_deferred2dCanvasEnabled = enabled; }
     void setAcceleratedPaintingEnabled(bool enabled) { m_acceleratedPaintingEnabled = enabled; }
-    void setPerTilePaintingEnabled(bool);
-    void setAcceleratedAnimationEnabled(bool);
+    void setPerTilePaintingEnabled(bool enabled) { m_perTilePaintingEnabled = enabled; }
+    void setAcceleratedAnimationEnabled(bool enabled) { m_acceleratedAnimationEnabled = enabled; }
     void setDeferredImageDecodingEnabled(bool enabled) { m_deferredImageDecodingEnabled = enabled; }
 #if defined(OS_WIN)
     // Access to the finished event. Used by the static WatchDog thread.
@@ -218,8 +218,9 @@ private:
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     OwnPtr<NotificationPresenter> m_notificationPresenter;
 #endif
-    OwnPtr<WebViewHost> m_webViewHost;
+    // It's important that this thread is destroyed after the WebViewHost.
     OwnPtr<WebKit::WebThread> m_webCompositorThread;
+    OwnPtr<WebViewHost> m_webViewHost;
 #if ENABLE(LINK_PRERENDER)
     OwnPtr<MockWebPrerenderingSupport> m_prerenderingSupport;
 #endif
@@ -237,6 +238,7 @@ private:
     bool m_deferred2dCanvasEnabled;
     bool m_acceleratedPaintingEnabled;
     bool m_perTilePaintingEnabled;
+    bool m_acceleratedAnimationEnabled;
     bool m_deferredImageDecodingEnabled;
     WebPreferences m_prefs;
     bool m_stressOpt;

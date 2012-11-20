@@ -74,6 +74,11 @@ struct WebProcessCreationParameters;
     
 typedef GenericCallback<WKDictionaryRef> DictionaryCallback;
 
+#if PLATFORM(MAC)
+extern NSString *SchemeForCustomProtocolRegisteredNotificationName;
+extern NSString *SchemeForCustomProtocolUnregisteredNotificationName;
+#endif
+
 class WebContext : public APIObject, private CoreIPC::MessageReceiver {
 public:
     static const Type APIType = TypeContext;
@@ -110,8 +115,6 @@ public:
     void disconnectProcess(WebProcessProxy*);
 
     PassRefPtr<WebPageProxy> createWebPage(PageClient*, WebPageGroup*, WebPageProxy* relatedPage = 0);
-
-    WebProcessProxy* relaunchProcessIfNecessary();
 
     const String& injectedBundlePath() const { return m_injectedBundlePath; }
 
@@ -215,7 +218,7 @@ public:
     void setDiskCacheDirectory(const String& dir) { m_overrideDiskCacheDirectory = dir; }
     void setCookieStorageDirectory(const String& dir) { m_overrideCookieStorageDirectory = dir; }
 
-    void ensureSharedWebProcess();
+    WebProcessProxy* ensureSharedWebProcess();
     PassRefPtr<WebProcessProxy> createNewWebProcess();
     void warmInitialProcess();
 
@@ -381,6 +384,8 @@ private:
 
 #if PLATFORM(MAC)
     RetainPtr<CFTypeRef> m_enhancedAccessibilityObserver;
+    RetainPtr<CFTypeRef> m_customSchemeRegisteredObserver;
+    RetainPtr<CFTypeRef> m_customSchemeUnregisteredObserver;
 #endif
 
     String m_overrideDatabaseDirectory;
@@ -418,7 +423,7 @@ template<typename U> void WebContext::sendToAllProcessesRelaunchingThemIfNecessa
 {
 // FIXME (Multi-WebProcess): WebContext doesn't track processes that have exited, so it cannot relaunch these. Perhaps this functionality won't be needed in this mode.
     if (m_processModel == ProcessModelSharedSecondaryProcess)
-        relaunchProcessIfNecessary();
+        ensureSharedWebProcess();
     sendToAllProcesses(message);
 }
 

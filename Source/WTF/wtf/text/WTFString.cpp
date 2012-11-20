@@ -57,7 +57,7 @@ String::String(const UChar* str)
         
     size_t len = 0;
     while (str[len] != UChar(0))
-        len++;
+        ++len;
 
     if (len > numeric_limits<unsigned>::max())
         CRASH();
@@ -103,6 +103,16 @@ void String::append(const String& str)
     // call to fastMalloc every single time.
     if (str.m_impl) {
         if (m_impl) {
+            if (m_impl->is8Bit() && str.m_impl->is8Bit()) {
+                LChar* data;
+                if (str.length() > numeric_limits<unsigned>::max() - m_impl->length())
+                    CRASH();
+                RefPtr<StringImpl> newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
+                memcpy(data, m_impl->characters8(), m_impl->length() * sizeof(LChar));
+                memcpy(data + m_impl->length(), str.characters8(), str.length() * sizeof(LChar));
+                m_impl = newImpl.release();
+                return;
+            }
             UChar* data;
             if (str.length() > numeric_limits<unsigned>::max() - m_impl->length())
                 CRASH();
@@ -867,16 +877,23 @@ String String::fromUTF8(const LChar* stringStart, size_t length)
     if (!stringStart)
         return String();
 
+    if (!length)
+        return emptyString();
+
     // We'll use a StringImpl as a buffer; if the source string only contains ascii this should be
     // the right length, if there are any multi-byte sequences this buffer will be too large.
     UChar* buffer;
     String stringBuffer(StringImpl::createUninitialized(length, buffer));
     UChar* bufferEnd = buffer + length;
-
+ 
     // Try converting into the buffer.
     const char* stringCurrent = reinterpret_cast<const char*>(stringStart);
-    if (convertUTF8ToUTF16(&stringCurrent, reinterpret_cast<const char *>(stringStart + length), &buffer, bufferEnd) != conversionOK)
+    bool isAllASCII;
+    if (convertUTF8ToUTF16(&stringCurrent, reinterpret_cast<const char *>(stringStart + length), &buffer, bufferEnd, &isAllASCII) != conversionOK)
         return String();
+
+    if (isAllASCII)
+        return String(stringStart, length);
 
     // stringBuffer is full (the input must have been all ascii) so just return it!
     if (buffer == bufferEnd)
@@ -936,24 +953,24 @@ static inline IntegralType toIntegralType(const CharType* data, size_t length, b
 
     // skip leading whitespace
     while (length && isSpaceOrNewline(*data)) {
-        length--;
-        data++;
+        --length;
+        ++data;
     }
 
     if (isSigned && length && *data == '-') {
-        length--;
-        data++;
+        --length;
+        ++data;
         isNegative = true;
     } else if (length && *data == '+') {
-        length--;
-        data++;
+        --length;
+        ++data;
     }
 
     if (!length || !isCharacterAllowedInBase(*data, base))
         goto bye;
 
     while (length && isCharacterAllowedInBase(*data, base)) {
-        length--;
+        --length;
         IntegralType digitValue;
         CharType c = *data;
         if (isASCIIDigit(c))
@@ -967,7 +984,7 @@ static inline IntegralType toIntegralType(const CharType* data, size_t length, b
             goto bye;
 
         value = base * value + digitValue;
-        data++;
+        ++data;
     }
 
 #if COMPILER(MSVC)
@@ -984,8 +1001,8 @@ static inline IntegralType toIntegralType(const CharType* data, size_t length, b
 
     // skip trailing space
     while (length && isSpaceOrNewline(*data)) {
-        length--;
-        data++;
+        --length;
+        ++data;
     }
 
     if (!length)

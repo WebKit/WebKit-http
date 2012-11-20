@@ -49,6 +49,7 @@ void CoordinatedBackingStoreTile::swapBuffers(WebCore::TextureMapper* textureMap
         shouldReset = true;
     }
 
+    ASSERT(textureMapper->maxTextureSize().width() >= m_tileRect.size().width() && textureMapper->maxTextureSize().height() >= m_tileRect.size().height());
     if (shouldReset)
         texture->reset(m_tileRect.size(), m_surface->flags() & ShareableBitmap::SupportsAlpha ? BitmapTexture::SupportsAlpha : 0);
 
@@ -101,7 +102,7 @@ PassRefPtr<BitmapTexture> CoordinatedBackingStore::texture() const
     return PassRefPtr<BitmapTexture>();
 }
 
-void CoordinatedBackingStore::setSize(const WebCore::IntSize& size)
+void CoordinatedBackingStore::setSize(const WebCore::FloatSize& size)
 {
     m_size = size;
 }
@@ -110,17 +111,10 @@ static bool shouldShowTileDebugVisuals()
 {
 #if PLATFORM(QT)
     return (qgetenv("QT_WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS") == "1");
+#elif USE(CAIRO)
+    return (String(getenv("WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS")) == "1");
 #endif
     return false;
-}
-
-// This function is copied from TiledBackingStore::mapToContents().
-static IntRect mapToContents(const IntRect& rect, float scale)
-{
-    return enclosingIntRect(FloatRect(rect.x() / scale,
-        rect.y() / scale,
-        rect.width() / scale,
-        rect.height() / scale));
 }
 
 void CoordinatedBackingStore::paintTilesToTextureMapper(Vector<TextureMapperTile*>& tiles, TextureMapper* textureMapper, const TransformationMatrix& transform, float opacity, BitmapTexture* mask, const FloatRect& rect)
@@ -165,7 +159,7 @@ void CoordinatedBackingStore::paintToTextureMapper(TextureMapper* textureMapper,
     }
 
     ASSERT(!m_size.isZero());
-    FloatRect rectOnContents = mapToContents(IntRect(IntPoint::zero(), m_size), m_scale);
+    FloatRect rectOnContents(FloatPoint::zero(), m_size);
     TransformationMatrix adjustedTransform = transform;
     // targetRect is on the contents coordinate system, so we must compare two rects on the contents coordinate system.
     // See TiledBackingStore.

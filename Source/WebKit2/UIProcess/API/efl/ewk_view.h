@@ -147,6 +147,10 @@ struct Ewk_View_Smart_Class {
     // storage:
     //   - Web database.
     unsigned long long (*exceeded_database_quota)(Ewk_View_Smart_Data *sd, const char *databaseName, const char *displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage);
+
+    // new window:
+    //   - Create a new window with specified size
+    Evas_Object* (*window_create_new)(Ewk_View_Smart_Data *sd, Evas_Coord width, Evas_Coord height);
 };
 
 /**
@@ -165,7 +169,7 @@ struct Ewk_View_Smart_Class {
  * @see EWK_VIEW_SMART_CLASS_INIT_VERSION
  * @see EWK_VIEW_SMART_CLASS_INIT_NAME_VERSION
  */
-#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+#define EWK_VIEW_SMART_CLASS_INIT(smart_class_init) {smart_class_init, EWK_VIEW_SMART_CLASS_VERSION, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /**
  * Initializer to zero a whole Ewk_View_Smart_Class structure.
@@ -809,6 +813,22 @@ EAPI Ewk_Pagination_Mode ewk_view_pagination_mode_get(const Evas_Object *o);
  * @return @c EINA_TRUE if successful, @c EINA_FALSE otherwise
  */
 EAPI Eina_Bool ewk_view_fullscreen_exit(Evas_Object *o);
+
+/**
+ * Sets whether the ewk_view background matches page background color.
+ *
+ * If enabled sets view background color close to page color on page load.
+ * This helps to reduce flicker on page scrolling and repainting in places
+ * where page content is not ready for painting.
+ * View background color can interfere with semi-transparent pages and is
+ * disabled by default.
+ *
+ * @param o view object to enable/disable background matching
+ * @param enabled a state to set
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE on failure
+ */
+EAPI void ewk_view_draws_page_background_set(Evas_Object *o, Eina_Bool enabled);
 
 #ifdef __cplusplus
 }

@@ -31,10 +31,18 @@
 #ifndef WebTestProxy_h
 #define WebTestProxy_h
 
+#include "Platform/chromium/public/WebRect.h"
 #include "WebKit/chromium/public/WebAccessibilityNotification.h"
+#include "WebKit/chromium/public/WebDragOperation.h"
+#include "WebKit/chromium/public/WebNavigationPolicy.h"
 
 namespace WebKit {
 class WebAccessibilityObject;
+class WebDragData;
+class WebFrame;
+class WebImage;
+struct WebPoint;
+struct WebSize;
 }
 
 namespace WebTestRunner {
@@ -47,15 +55,28 @@ public:
     void setInterfaces(WebTestInterfaces*);
     void setDelegate(WebTestDelegate*);
 
+    void setPaintRect(const WebKit::WebRect&);
+    WebKit::WebRect paintRect() const;
+
 protected:
     WebTestProxyBase();
     ~WebTestProxyBase();
 
-    void doPostAccessibilityNotification(const WebKit::WebAccessibilityObject&, WebKit::WebAccessibilityNotification);
+    void didInvalidateRect(const WebKit::WebRect&);
+    void didScrollRect(int, int, const WebKit::WebRect&);
+    void scheduleComposite();
+    void scheduleAnimation();
+    void setWindowRect(const WebKit::WebRect&);
+    void show(WebKit::WebNavigationPolicy);
+    void didAutoResize(const WebKit::WebSize&);
+    void postAccessibilityNotification(const WebKit::WebAccessibilityObject&, WebKit::WebAccessibilityNotification);
+    void startDragging(WebKit::WebFrame*, const WebKit::WebDragData&, WebKit::WebDragOperationsMask, const WebKit::WebImage&, const WebKit::WebPoint&);
 
 private:
     WebTestInterfaces* m_testInterfaces;
     WebTestDelegate* m_delegate;
+
+    WebKit::WebRect m_paintRect;
 };
 
 // Use this template to inject methods into your WebViewClient implementation
@@ -70,10 +91,50 @@ public:
 
     virtual ~WebTestProxy() { }
 
+    virtual void didInvalidateRect(const WebKit::WebRect& rect)
+    {
+        WebTestProxyBase::didInvalidateRect(rect);
+        WebViewClientImpl::didInvalidateRect(rect);
+    }
+    virtual void didScrollRect(int dx, int dy, const WebKit::WebRect& clipRect)
+    {
+        WebTestProxyBase::didScrollRect(dx, dy, clipRect);
+        WebViewClientImpl::didScrollRect(dx, dy, clipRect);
+    }
+    virtual void scheduleComposite()
+    {
+        WebTestProxyBase::scheduleComposite();
+        WebViewClientImpl::scheduleComposite();
+    }
+    virtual void scheduleAnimation()
+    {
+        WebTestProxyBase::scheduleAnimation();
+        WebViewClientImpl::scheduleAnimation();
+    }
+    virtual void setWindowRect(const WebKit::WebRect& rect)
+    {
+        WebTestProxyBase::setWindowRect(rect);
+        WebViewClientImpl::setWindowRect(rect);
+    }
+    virtual void show(WebKit::WebNavigationPolicy policy)
+    {
+        WebTestProxyBase::show(policy);
+        WebViewClientImpl::show(policy);
+    }
+    virtual void didAutoResize(const WebKit::WebSize& newSize)
+    {
+        WebTestProxyBase::didAutoResize(newSize);
+        WebViewClientImpl::didAutoResize(newSize);
+    }
     virtual void postAccessibilityNotification(const WebKit::WebAccessibilityObject& object, WebKit::WebAccessibilityNotification notification)
     {
-        WebTestProxyBase::doPostAccessibilityNotification(object, notification);
+        WebTestProxyBase::postAccessibilityNotification(object, notification);
         WebViewClientImpl::postAccessibilityNotification(object, notification);
+    }
+    virtual void startDragging(WebKit::WebFrame* frame, const WebKit::WebDragData& data, WebKit::WebDragOperationsMask mask, const WebKit::WebImage& image, const WebKit::WebPoint& point)
+    {
+        WebTestProxyBase::startDragging(frame, data, mask, image, point);
+        WebViewClientImpl::startDragging(frame, data, mask, image, point);
     }
 };
 

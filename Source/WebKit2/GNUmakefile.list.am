@@ -630,6 +630,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/cpp/WKRetainPtr.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.h \
 	Source/WebKit2/UIProcess/API/gtk/PageClientImpl.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKit2GtkAuthenticationDialog.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardList.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
@@ -935,6 +937,15 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebTextCheckerClient.h \
 	Source/WebKit2/UIProcess/WebUIClient.cpp \
 	Source/WebKit2/UIProcess/WebUIClient.h \
+	Source/WebKit2/UIProcess/InspectorServer/WebInspectorServer.cpp \
+	Source/WebKit2/UIProcess/InspectorServer/WebInspectorServer.h \
+	Source/WebKit2/UIProcess/InspectorServer/WebSocketServer.cpp \
+	Source/WebKit2/UIProcess/InspectorServer/WebSocketServer.h \
+	Source/WebKit2/UIProcess/InspectorServer/WebSocketServerClient.h \
+	Source/WebKit2/UIProcess/InspectorServer/WebSocketServerConnection.cpp \
+	Source/WebKit2/UIProcess/InspectorServer/WebSocketServerConnection.h \
+	Source/WebKit2/UIProcess/InspectorServer/gtk/WebInspectorServerGtk.cpp \
+	Source/WebKit2/UIProcess/InspectorServer/gtk/WebSocketServerGtk.cpp \
 	Source/WebKit2/UIProcess/WebVibrationProvider.cpp \
 	Source/WebKit2/UIProcess/WebVibrationProvider.h \
 	Source/WebKit2/UIProcess/WebVibrationProxy.cpp \
@@ -1104,7 +1115,6 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebErrorsGtk.cpp \
-	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebFrameLoaderClientGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/gtk/WebPopupMenuGtk.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp \
 	Source/WebKit2/WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.h \
@@ -1158,9 +1168,9 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebPage/FindController.h \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.cpp \
 	Source/WebKit2/WebProcess/WebPage/TapHighlightController.h \
+    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObject.h \
+    Source/WebKit2/WebProcess/WebPage/atk/WebPageAccessibilityObjectAtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebInspectorGtk.cpp \
-	Source/WebKit2/WebProcess/WebPage/gtk/WebPageAccessibilityObject.h \
-	Source/WebKit2/WebProcess/WebPage/gtk/WebPageAccessibilityObject.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPageGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp \
 	Source/WebKit2/WebProcess/WebPage/gtk/WebPrintOperationGtk.h \

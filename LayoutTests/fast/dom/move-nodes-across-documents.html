@@ -156,7 +156,7 @@ function run()
         var attribute = document.createAttribute('asdf');
         document.body.attributes.setNamedItem(attribute);
         iframeDoc.body.attributes.setNamedItem(attribute);
-    }, 'INUSE_ATTRIBUTE_ERR');
+    }, 'InUseAttributeError');
 
     runTest(function() {
         var doctype = document.implementation.createDocumentType(
@@ -168,18 +168,18 @@ function run()
     });
     runTest(function() {
         iframeDoc.implementation.createDocument('', 'html', document.doctype); 
-    }, 'WRONG_DOCUMENT_ERR');
+    }, 'WrongDocumentError');
     runTest(function() {
         rangeInIframe().compareBoundaryPoints(Range.END_TO_END, rangeInCurrentDocument());
-    }, 'WRONG_DOCUMENT_ERR');
+    }, 'WrongDocumentError');
     runTest(function() {
         rangeInIframe().comparePoint(elementInCurrentDocument('comparePoint'), 0);
-    }, 'WRONG_DOCUMENT_ERR');
+    }, 'WrongDocumentError');
 
     runTest(function() {
         iframeDoc.appendChild(document.doctype);
         console.log(document.doctype);
-    }, 'HIERARCHY_REQUEST_ERR');
+    }, 'HierarchyRequestError');
 
     // When setting a boundary of the range in a different
     // document, the call should succeed and the range should be collapsed.

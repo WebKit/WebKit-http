@@ -26,26 +26,114 @@
 #include "config.h"
 #include "RemoteGraphicsLayer.h"
 
+#include "RemoteLayerTreeContext.h"
+#include "RemoteLayerTreeTransaction.h"
+
+#include <wtf/text/CString.h>
+
 using namespace WebCore;
 
 namespace WebKit {
 
-PassOwnPtr<GraphicsLayer> RemoteGraphicsLayer::create(GraphicsLayerClient* client, RemoteLayerTreeController* controller)
+static uint64_t generateLayerID()
 {
-    return adoptPtr(new RemoteGraphicsLayer(client, controller));
+    static uint64_t layerID;
+    return ++layerID;
 }
 
-RemoteGraphicsLayer::RemoteGraphicsLayer(GraphicsLayerClient* client, RemoteLayerTreeController* controller)
-    : GraphicsLayer(client)
-    , m_controller(controller)
+PassOwnPtr<GraphicsLayer> RemoteGraphicsLayer::create(GraphicsLayerClient* client, RemoteLayerTreeContext* context)
 {
-    // FIXME: This is in place to silence a compiler warning. Remove this
-    // once we actually start using m_controller.
-    (void)m_controller;
+    return adoptPtr(new RemoteGraphicsLayer(client, context));
+}
+
+RemoteGraphicsLayer::RemoteGraphicsLayer(GraphicsLayerClient* client, RemoteLayerTreeContext* context)
+    : GraphicsLayer(client)
+    , m_layerID(generateLayerID())
+    , m_context(context)
+    , m_uncommittedLayerChanges(RemoteLayerTreeTransaction::NoChange)
+{
 }
 
 RemoteGraphicsLayer::~RemoteGraphicsLayer()
 {
+    willBeDestroyed();
+}
+
+void RemoteGraphicsLayer::setName(const String& name)
+{
+    String longName = String::format("RemoteGraphicsLayer(%p) ", this) + name;
+    GraphicsLayer::setName(longName);
+
+    noteLayerPropertiesChanged(RemoteLayerTreeTransaction::NameChanged);
+}
+
+bool RemoteGraphicsLayer::setChildren(const Vector<GraphicsLayer*>& children)
+{
+    if (GraphicsLayer::setChildren(children)) {
+        noteSublayersChanged();
+        return true;
+    }
+
+    return false;
+}
+
+void RemoteGraphicsLayer::addChild(GraphicsLayer* childLayer)
+{
+    GraphicsLayer::addChild(childLayer);
+    noteSublayersChanged();
+}
+
+void RemoteGraphicsLayer::addChildAtIndex(GraphicsLayer* childLayer, int index)
+{
+    GraphicsLayer::addChildAtIndex(childLayer, index);
+    noteSublayersChanged();
+}
+
+void RemoteGraphicsLayer::addChildAbove(GraphicsLayer* childLayer, GraphicsLayer* sibling)
+{
+    GraphicsLayer::addChildAbove(childLayer, sibling);
+    noteSublayersChanged();
+}
+
+void RemoteGraphicsLayer::addChildBelow(GraphicsLayer* childLayer, GraphicsLayer* sibling)
+{
+    GraphicsLayer::addChildBelow(childLayer, sibling);
+    noteSublayersChanged();
+}
+
+bool RemoteGraphicsLayer::replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChild)
+{
+    if (GraphicsLayer::replaceChild(oldChild, newChild)) {
+        noteSublayersChanged();
+        return true;
+    }
+
+    return false;
+}
+
+void RemoteGraphicsLayer::removeFromParent()
+{
+    if (m_parent)
+        static_cast<RemoteGraphicsLayer*>(m_parent)->noteSublayersChanged();
+    GraphicsLayer::removeFromParent();
+}
+
+void RemoteGraphicsLayer::setPosition(const FloatPoint& position)
+{
+    if (position == m_position)
+        return;
+
+    GraphicsLayer::setPosition(position);
+    noteLayerPropertiesChanged(RemoteLayerTreeTransaction::PositionChanged);
+}
+
+void RemoteGraphicsLayer::setSize(const FloatSize& size)
+{
+    if (size == m_size)
+        return;
+
+    GraphicsLayer::setSize(size);
+    noteLayerPropertiesChanged(RemoteLayerTreeTransaction::SizeChanged);
 }
 
 void RemoteGraphicsLayer::setNeedsDisplay()
@@ -58,6 +146,51 @@ void RemoteGraphicsLayer::setNeedsDisplay()
 void RemoteGraphicsLayer::setNeedsDisplayInRect(const FloatRect&)
 {
     // FIXME: Implement this.
+}
+
+void RemoteGraphicsLayer::flushCompositingState(const FloatRect&)
+{
+    recursiveCommitChanges();
+}
+
+void RemoteGraphicsLayer::flushCompositingStateForThisLayerOnly()
+{
+    if (!m_uncommittedLayerChanges)
+        return;
+
+    m_context->currentTransaction().layerPropertiesChanged(this, m_uncommittedLayerChanges);
+
+    m_uncommittedLayerChanges = RemoteLayerTreeTransaction::NoChange;
+}
+
+void RemoteGraphicsLayer::willBeDestroyed()
+{
+    m_context->layerWillBeDestroyed(this);
+    GraphicsLayer::willBeDestroyed();
+}
+
+void RemoteGraphicsLayer::noteLayerPropertiesChanged(unsigned layerChanges)
+{
+    if (!m_uncommittedLayerChanges && m_client)
+        m_client->notifyFlushRequired(this);
+    m_uncommittedLayerChanges |= layerChanges;
+}
+
+void RemoteGraphicsLayer::noteSublayersChanged()
+{
+    noteLayerPropertiesChanged(RemoteLayerTreeTransaction::ChildrenChanged);
+
+    // FIXME: Handle replica layers.
+}
+
+void RemoteGraphicsLayer::recursiveCommitChanges()
+{
+    flushCompositingStateForThisLayerOnly();
+
+    for (size_t i = 0; i < children().size(); ++i) {
+        RemoteGraphicsLayer* graphicsLayer = static_cast<RemoteGraphicsLayer*>(children()[i]);
+        graphicsLayer->recursiveCommitChanges();
+    }
 }
 
 } // namespace WebKit

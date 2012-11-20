@@ -43,13 +43,13 @@ public:
 protected:
     MathMLElement(const QualifiedName& tagName, Document*);
 
-    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const QualifiedName&, const AtomicString&) OVERRIDE;
 
 private:    
     virtual bool isMathMLElement() const { return true; }
 
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
+    virtual void collectStyleForPresentationAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
 };
 
 inline MathMLElement* toMathMLElement(Node* node)

@@ -84,6 +84,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
     bindings/js/JSHTMLEmbedElementCustom.cpp
+    bindings/js/JSHTMLFormControlsCollectionCustom.cpp
     bindings/js/JSHTMLFormElementCustom.cpp
     bindings/js/JSHTMLFrameElementCustom.cpp
     bindings/js/JSHTMLFrameSetElementCustom.cpp
@@ -123,7 +124,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/js/JSPluginElementFunctions.cpp
     bindings/js/JSPopStateEventCustom.cpp
     bindings/js/JSProcessingInstructionCustom.cpp
-    bindings/js/JSScriptProfileNodeCustom.cpp
     bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSStyleSheetListCustom.cpp
