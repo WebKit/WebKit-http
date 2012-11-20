@@ -1,3 +1,1177 @@
+2012-11-20  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135257.
+        http://trac.webkit.org/changeset/135257
+        https://bugs.webkit.org/show_bug.cgi?id=102777
+
+        Broke Chromium Debug compilation (Requested by yurys on
+        #webkit).
+
+        * bindings/v8/DOMDataStore.h:
+        (WebCore::DOMDataStore::getNode):
+
+2012-11-20  Vsevolod Vlasov  <vsevik@chromium.org>
+
+        Web Inspector: Revert r133149: breaks revision reverting
+        https://bugs.webkit.org/show_bug.cgi?id=102672
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/front-end/JavaScriptSourceFrame.js:
+        (WebInspector.JavaScriptSourceFrame):
+        (WebInspector.JavaScriptSourceFrame.prototype._onFormattedChanged):
+        (WebInspector.JavaScriptSourceFrame.prototype._onWorkingCopyCommitted):
+        (WebInspector.JavaScriptSourceFrame.prototype._innerSetContent):
+
+2012-11-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][Win] Unreviewed speculative buildfix after r135217.
+
+        * platform/win/WindowsExtras.h:
+
+2012-11-19  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Fix Chromium Win compilation after r135255.
+        https://bugs.webkit.org/show_bug.cgi?id=97803
+
+        * WebCore.gypi: removed reference to platform/wince/DragDataWince.cpp which
+        was deleted in the aforementioned change.
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        [V8] Merge getCachedWrapper(Node*) into DOMDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=102158
+
+         Reviewed by Adam Barth.
+
+        A follow-up patch for r135230. This patch adds a correct ASSERTION.
+
+        No tests. No change in behavior.
+
+        * bindings/v8/DOMDataStore.h:
+        (WebCore::DOMDataStore::getNode):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        [JSC] Replace $implClassName with $interfaceName in CodeGeneratorJS.pm
+        https://bugs.webkit.org/show_bug.cgi?id=102757
+
+        Reviewed by Adam Barth.
+
+        In CodeGeneratorJS.pm $implClassName and $interfaceName are
+        equivalent. We're using them interchangeably. We should replace
+        $implClassName with $interfaceName.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (AddClassForwardIfNeeded):
+        (GenerateGetOwnPropertySlotBody):
+        (GenerateGetOwnPropertyDescriptorBody):
+        (GenerateHeader):
+        (GenerateOverloadedFunction):
+        (GenerateImplementation):
+        (GenerateParametersCheck):
+        (GenerateImplementationFunctionCall):
+        (NativeToJSValue):
+
+2012-11-19  Patrick Gansterer  <paroga@webkit.org>
+
+        Port DragDataWin.cpp to WinCE
+        https://bugs.webkit.org/show_bug.cgi?id=97803
+
+        Reviewed by Brent Fulgham.
+
+        Add two simple #if OS(WINCE) to DragDataWin.cpp, so it can be used by the WinCE port too.
+
+        * PlatformWinCE.cmake:
+        * platform/win/DragDataWin.cpp:
+        (WebCore::DragData::containsFiles):
+        (WebCore::DragData::numberOfFiles):
+        (WebCore::DragData::asFilenames):
+        * platform/wince/DragDataWinCE.cpp: Removed.
+
+2012-11-19  Pan Deng  <pan.deng@intel.com>
+
+        [Web Inspector] This patch makes script line number search-able in Timeline panel.
+        https://bugs.webkit.org/show_bug.cgi?id=101910.
+
+        Reviewed by Pavel Feldman.
+
+        Script line number is visible in Timeline panel, however, not search-able. This patch makes it search-able.
+
+        No new tests. 
+
+        * inspector/front-end/TimelinePanel.js:
+        (WebInspector.TimelineRecordListRow.prototype.update):
+        (WebInspector.TimelineRecordListRow.testContentMatching):
+        * inspector/front-end/TimelinePresentationModel.js:
+        (WebInspector.TimelinePresentationModel.Record.prototype._generatePopupContentWithImagePreview):
+        (WebInspector.TimelinePresentationModel.Record.prototype._refreshDetails):
+        (WebInspector.TimelinePresentationModel.Record.prototype.detailsNode):
+        (WebInspector.TimelinePresentationModel.Record.prototype._createSpanWithText):
+        (WebInspector.TimelinePresentationModel.Record.prototype._getRecordDetails):
+
+2012-11-19  Elliott Sprehn  <esprehn@chromium.org>
+
+        Remove unneeded null check in NodeRendererFactory::createRendererIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=102765
+
+        Reviewed by Ojan Vafai.
+
+        If parentRenderer() was null then we return early from
+        createRendererIfNeeded() because shouldCreateRenderer() will return false
+        so there's no reason to check for it again.
+
+        Additionally if either parentRenderer() or style() is null then
+        implementations of rendererIsNeeded() will crash, so add asserts to
+        make this assumption more clear.
+
+        No new tests, just simplification.
+
+        * dom/NodeRenderingContext.cpp:
+        (WebCore::NodeRendererFactory::createRendererIfNeeded):
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Refactoring] Remove WebCore::isInsertionPoint(Node*)
+        https://bugs.webkit.org/show_bug.cgi?id=102756
+
+        Reviewed by Hajime Morita.
+
+        Now that WebCore::isInsertionPoint(Node* node) does nothing special. We can remove this.
+
+        No new tests, simple refactoring.
+
+        * dom/ComposedShadowTreeWalker.cpp:
+        (WebCore::ComposedShadowTreeWalker::traverseNodeEscapingFallbackContents):
+        * dom/ContainerNode.cpp:
+        (WebCore::childAttachedAllowedWhenAttachingChildren):
+        * html/shadow/ContentDistributor.cpp:
+        (WebCore::ContentDistributor::invalidate):
+        * html/shadow/InsertionPoint.cpp:
+        (WebCore::InsertionPoint::isActive):
+        * html/shadow/InsertionPoint.h:
+        (WebCore::toInsertionPoint):
+        (WebCore::isActiveInsertionPoint):
+        (WebCore::isLowerEncapsulationBoundary):
+        (WebCore::parentNodeForDistribution):
+        * testing/Internals.cpp:
+        (WebCore::Internals::isValidContentSelect):
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Refactoring] Remove shadowPseudoId() and use setPseudo() in <progress> ElementShadow.
+        https://bugs.webkit.org/show_bug.cgi?id=101703
+
+        Reviewed by Hajime Morita.
+
+        We're migrating shadowPseudoId() to pseudo(). We remove shadowPseudoId() from HTMLKeygenElement and use
+        setPseudo()/pseudo() instead.
+
+        No new tests, simple refactoring.
+
+        * html/shadow/ProgressShadowElement.cpp:
+        (WebCore::ProgressInnerElement::ProgressInnerElement):
+        * html/shadow/ProgressShadowElement.h:
+        (ProgressInnerElement):
+        (WebCore::ProgressBarElement::ProgressBarElement):
+        (ProgressBarElement):
+        (WebCore::ProgressValueElement::ProgressValueElement):
+
+2012-11-19  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Fix Chromium Debug compilation after r135230.
+        https://bugs.webkit.org/show_bug.cgi?id=102158
+
+        Removed ASSERT that used instance field in a static method.
+
+        * bindings/v8/DOMDataStore.h:
+        (WebCore::DOMDataStore::getWrapperFromObject):
+
+2012-11-19  Chris Guan  <chris.guan@torchmobile.com.cn>
+
+        [Blackberry] When a frame is being detached, cancel all its network jobs.
+        https://bugs.webkit.org/show_bug.cgi?id=102758
+
+        Reviewed by George Staikos.
+
+        I use FrameDestructionObserver to refactor Networkjob code.
+        NetworkJob is inheriting from FrameDestructionObserver to be
+        aware of frame's destroyed. When a frame is being detached,
+        the willDetachPage() can be called in which we can cancel 
+        the job. This patch reverted the fix for RIM PR134207 as well.
+
+        Manually test is on 
+        "http://www.reuters.com/article/2012/01/27/us-greece-idUSTRE80P0DE20120127"
+        which triggers a ping loader.
+
+        No behavior changed, no new layout tests.
+
+        * platform/network/blackberry/NetworkJob.cpp:
+        (WebCore::NetworkJob::NetworkJob):
+        (WebCore::NetworkJob::initialize):
+        (WebCore::NetworkJob::handleNotifyHeaderReceived):
+        (WebCore::NetworkJob::startNewJobWithRequest):
+        (WebCore::NetworkJob::frameDestroyed):
+        (WebCore):
+        (WebCore::NetworkJob::willDetachPage):
+        * platform/network/blackberry/NetworkJob.h:
+        (NetworkJob):
+        * platform/network/blackberry/NetworkManager.cpp:
+        (WebCore::NetworkManager::startJob):
+        * platform/network/blackberry/NetworkManager.h:
+        (NetworkManager):
+        * platform/network/blackberry/ResourceHandleBlackBerry.cpp:
+        (WebCore::ResourceHandle::start):
+        (WebCore::ResourceHandle::loadResourceSynchronously):
+
+2012-11-19  Matt Falkenhagen  <falken@chromium.org>
+
+        Implement the new stacking layer needed by the Fullscreen API and the new <dialog> element
+        https://bugs.webkit.org/show_bug.cgi?id=84796
+
+        Reviewed by Julien Chaffraix.
+
+        This adds the top layer element stack to Document. The Fullscreen
+        specification mandates that we track the ordering of the DOM nodes in
+        the top layer, not the renderers. That makes it hard to implement on
+        the rendering side only.
+
+        Elements in the top layer get a layer. Layers in the top layer are
+        added to the root layer's child list after normal layers and in the
+        order of the top layer stack. This way, the top layer appears above
+        all other stacking contexts and in the desired order.
+
+        In addition, top layer renderers are added as children of RenderView
+        in top layer order. This is to satisfy requirements such as the
+        containing block of an element in the top layer is the initial
+        containing block. It also allows RenderLayer to know the proper
+        stacking order of the layers without going directly from the top layer
+        elements to their layers.
+
+        So far, only modal dialog elements can be added to the top layer.
+        The plan is to make the Fullscreen API also use the top layer.
+
+        Tests: fast/dom/HTMLDialogElement/top-layer-containing-block.html
+               fast/dom/HTMLDialogElement/top-layer-display-none.html
+               fast/dom/HTMLDialogElement/top-layer-nesting.html
+               fast/dom/HTMLDialogElement/top-layer-stacking-dynamic.html
+               fast/dom/HTMLDialogElement/top-layer-stacking.html
+
+        * WebCore.exp.in:
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle): Elements in the top layer have a stacking context.
+        * dom/Document.cpp:
+        (WebCore):
+        (WebCore::Document::addToTopLayer):
+        (WebCore::Document::removeFromTopLayer):
+        * dom/Document.h:
+        (Document):
+        (WebCore::Document::topLayerElements): Add the top layer element stack to Document.
+        * dom/Element.cpp:
+        (WebCore::Element::removedFrom):
+        (WebCore):
+        (WebCore::Element::isInTopLayer):
+        (WebCore::Element::setIsInTopLayer):
+        * dom/Element.h:
+        * dom/ElementRareData.h:
+        (ElementRareData):
+        * dom/Node.cpp:
+        (WebCore::Node::detach): Add an exception to the assert since top layer elements and their descendants are moved from their
+        regular position in the render tree.
+        * dom/NodeRareData.h:
+        (WebCore::NodeRareData::NodeRareData):
+        (NodeRareData):
+        (WebCore::NodeRareData::isInTopLayer):
+        (WebCore::NodeRareData::setIsInTopLayer):
+        * dom/NodeRenderingContext.cpp:
+        (WebCore):
+        (WebCore::adjustInsertionPointForTopLayerElement):
+        (WebCore::NodeRendererFactory::createRendererIfNeeded): Add renderers for top layer elements as children of RenderView, and
+        in top layer stacking order.
+        * html/HTMLDialogElement.cpp:
+        (WebCore::HTMLDialogElement::close):
+        (WebCore::HTMLDialogElement::showModal):
+        * rendering/RenderLayer.cpp:
+        (WebCore):
+        (WebCore::RenderLayer::isInTopLayer):
+        (WebCore::RenderLayer::isInTopLayerSubtree):
+        (WebCore::RenderLayer::rebuildZOrderLists): Add the top layer stack after normal layer collection.
+        (WebCore::RenderLayer::collectLayers): Avoid adding layers for top layer elements during normal layer collection.
+        * rendering/RenderLayer.h:
+        (RenderLayer):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGeneratorObj.pm we should rename $dataNode to $interface.
+        https://bugs.webkit.org/show_bug.cgi?id=102749
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be renamed to $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorObjC.pm:
+        (GenerateInterface):
+        (GetParentImplClassName):
+        (GetParentAndProtocols):
+        (GenerateHeader):
+        (GenerateImplementation):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGeneratorV8.pm, we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102747
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorV8.pm:
+        (GenerateInterface):
+        (NeedsCustomOpaqueRootForGC):
+        (GetGenerateIsReachable):
+        (GetCustomIsReachable):
+        (GenerateOpaqueRootForGC):
+        (GenerateHeader):
+        (GetInternalFields):
+        (GenerateHeaderCustomInternalFieldIndices):
+        (GenerateHeaderNamedAndIndexedPropertyAccessors):
+        (GenerateHeaderCustomCall):
+        (IsConstructable):
+        (GenerateConstructorGetter):
+        (GenerateNormalAttrGetter):
+        (GenerateReplaceableAttrSetter):
+        (GenerateNormalAttrSetter):
+        (GenerateOverloadedFunctionCallback):
+        (GenerateFunctionCallback):
+        (GenerateArgumentsCountCheck):
+        (GenerateOverloadedConstructorCallback):
+        (GenerateSingleConstructorCallback):
+        (GenerateConstructorCallback):
+        (GenerateEventConstructorCallback):
+        (GenerateTypedArrayConstructorCallback):
+        (GenerateNamedConstructorCallback):
+        (GenerateBatchedAttributeData):
+        (IsStandardFunction):
+        (GenerateNonStandardFunction):
+        (GenerateImplementationIndexer):
+        (GenerateImplementationNamedPropertyGetter):
+        (GenerateImplementationCustomCall):
+        (GenerateImplementationMasqueradesAsUndefined):
+        (GenerateImplementation):
+        (GenerateHeaderContentHeader):
+        (GenerateImplementationContentHeader):
+        (GenerateCallbackHeader):
+        (GenerateCallbackImplementation):
+        (BaseInterfaceName):
+        (GenerateToV8Converters):
+        (GetNativeTypeForConversions):
+        (GetTypeNameOfExternalTypedArray):
+        (WriteData):
+
+2012-11-19  Keishi Hattori  <keishi@webkit.org>
+
+        Move in animation should be disabled until the calendar picker is loaded.
+        https://bugs.webkit.org/show_bug.cgi?id=102661
+
+        Reviewed by Kent Tamura.
+
+        On weeks where the first day is in the previous month (e.x. 2013-W01)
+        the move in animation happens when you open the calendar picker. This
+        patch disables the move in animation until the calendar picker is fully
+        loaded.
+
+        No new tests.
+
+        * Resources/pagepopups/calendarPicker.js:
+        (CalendarPicker):
+        (CalendarPicker.prototype._handleWindowResize):
+        (DaysTable.prototype._startMoveInAnimation):
+
+2012-11-19  Elliott Sprehn  <esprehn@chromium.org>
+
+        Clean up loop in NodeRenderingContext::nextRenderer and previousRenderer
+        https://bugs.webkit.org/show_bug.cgi?id=102743
+
+        Reviewed by Hajime Morita.
+
+        Clean up while (true) loops in NodeRenderingContext reducing the
+        amount of code and the need for ASSERT_NOT_REACHED.
+
+        No new tests, just simplifcation.
+
+        * dom/NodeRenderingContext.cpp:
+        (WebCore::NodeRenderingContext::nextRenderer):
+        (WebCore::NodeRenderingContext::previousRenderer):
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] attribute pseudo should return empty string instead of null when nothing is specified.
+        https://bugs.webkit.org/show_bug.cgi?id=102753
+
+        Reviewed by Hajime Morita.
+
+        The ShadowDOM spec is changed so that attribute 'pseudo' returns empty string instead of null when
+        no value is set.
+
+        Test: fast/dom/shadow/pseudo-attribute.html
+
+        * dom/Element.idl:
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGeneratorGObject.pm we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102751
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorGObject.pm:
+        (GetParentClassName):
+        (GetParentGObjType):
+        (GenerateProperties):
+        (GenerateFunctions):
+        (GenerateCFile):
+        (GenerateEventTargetIface):
+        (Generate):
+        (WriteData):
+        (GenerateInterface):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGenerator.pm we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102754
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (ForAllParents):
+        (AddMethodsConstantsAndAttributesFromParentInterfaces):
+        (FindSuperMethod):
+        (IsConstructorTemplate):
+        (LinkOverloadedFunctions):
+        (GenerateCompileTimeCheckForEnumsIfNeeded):
+        (GetVisibleInterfaceName):
+        (IsSubType):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGeneratorCPP.pm we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102752
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorCPP.pm:
+        (GenerateInterface):
+        (GetParentImplClassName):
+        (GetParent):
+        (GenerateHeader):
+        (GenerateImplementation):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In CodeGeneratorJS.pm we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102748
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateInterface):
+        (GetParentClassName):
+        (GetGenerateIsReachable):
+        (GetCustomIsReachable):
+        (GenerateGetOwnPropertySlotBody):
+        (GenerateGetOwnPropertyDescriptorBody):
+        (GenerateHeaderContentHeader):
+        (GenerateImplementationContentHeader):
+        (ShouldGenerateToJSDeclaration):
+        (ShouldGenerateToJSImplementation):
+        (GenerateHeader):
+        (GenerateAttributesHashTable):
+        (GenerateOverloadedFunction):
+        (GenerateImplementation):
+        (GenerateArgumentsCountCheck):
+        (GenerateParametersCheck):
+        (GenerateCallbackHeader):
+        (GenerateCallbackImplementation):
+        (WriteData):
+        (GenerateConstructorDeclaration):
+        (GenerateConstructorDefinition):
+        (IsConstructable):
+
+2012-11-19  Adam Barth  <abarth@webkit.org>
+
+        [V8] Merge getCachedWrapper(Node*) into DOMDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=102158
+
+        Reviewed by Eric Seidel.
+
+        This patch is an incremental step towards fully merging the Node code
+        path with the general code path. After this patch, at least Nodes flow
+        through the same class.
+
+        * Modules/indexeddb/IDBTransactionCoordinator.h:
+        * bindings/scripts/CodeGeneratorV8.pm:
+        (GenerateHeader):
+        (GenerateToV8Converters):
+        * bindings/v8/DOMDataStore.h:
+        (WebCore::DOMDataStore::getNode):
+        (DOMDataStore):
+        (WebCore::DOMDataStore::getWrapperFromObject):
+        * bindings/v8/DOMWrapperWorld.cpp:
+        (WebCore::DOMWrapperWorld::DOMWrapperWorld):
+        (WebCore):
+        * bindings/v8/DOMWrapperWorld.h:
+        (WebCore):
+        (DOMWrapperWorld):
+        * bindings/v8/V8DOMWrapper.h:
+        (V8DOMWrapper):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        In the IDL parser, we should rename $dataNode to $interface
+        https://bugs.webkit.org/show_bug.cgi?id=102746
+
+        Reviewed by Adam Barth.
+
+        $dataNode is misnamed. It should be $interface.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/IDLParser.pm:
+        (parseInterface):
+        (parseException):
+        (parseAttributeOrOperationRest):
+        (parseOperationOrIterator):
+        (parseSpecialOperation):
+        (parseInterfaceOld):
+        (parseExceptionOld):
+        (parseAttributeOrOperationOrIteratorOld):
+        (parseAttributeOrOperationRestOld):
+        (applyMemberList):
+        (applyExtendedAttributeList):
+        * bindings/scripts/generate-bindings.pl:
+        * bindings/scripts/preprocess-idls.pl:
+        (checkIDLAttributes):
+
+2012-11-19  Adam Klein  <adamk@chromium.org>
+
+        MutationObserver wrapper should not be collected while still observing
+        https://bugs.webkit.org/show_bug.cgi?id=102328
+
+        Reviewed by Adam Barth.
+
+        Use the new opaqueRootForGC helper in V8GCController to put each
+        MutationObserver wrapper in the same object group as the nodes it's
+        observing.
+
+        Only includes V8 impl for now, JSC impl coming soon.
+
+        Tests: fast/mutation/observer-wrapper-dropoff-transient.html
+               fast/mutation/observer-wrapper-dropoff.html
+
+        * bindings/v8/V8GCController.cpp: Add custom code for MutationObserver
+        with a FIXME to move this out once we update the opaque roots API.
+        * dom/MutationObserver.cpp:
+        (WebCore::MutationObserver::getObservedNodes): Plumbing to expose the observed nodes
+        to the GC controller.
+        (WebCore):
+        * dom/MutationObserver.h:
+        * dom/MutationObserverRegistration.cpp:
+        (WebCore::MutationObserverRegistration::addRegistrationNodesToSet): More plumbing.
+        (WebCore):
+        * dom/MutationObserverRegistration.h:
+        (MutationObserverRegistration):
+
+2012-11-19  Tony Chang  <tony@chromium.org>
+
+        Move more non-settings out of InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=102711
+
+        Reviewed by Adam Barth.
+
+        Remove userPreferredLanguages, setUserPreferredLanguages and allowRoundingHacks
+        from internal.settings since they are already exposed by window.internals (in
+        fact, no one calls the internal.settings version).
+
+        Move setUsesOverlayScrollbars from internals.settings to internals because it is
+        a global (static) setting and not tied to the lifetime of the Settings object.
+
+        No new tests, there should be no behavior change since this is a refactor.
+
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::reset): Remove custom reset code.
+        (WebCore::InternalSettings::setUsesOverlayScrollbars): Add exception code handling to make it more consistent with other settings setters.
+        * testing/InternalSettings.h:
+        * testing/InternalSettings.idl: Remove unnecessary methods.
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState): Reset userPreferredLanguages, allowRoundingHacks and overlay scrollbars.
+        (WebCore::Internals::userPreferredLanguages): Don't go through InternalSettings.
+        (WebCore::Internals::setUserPreferredLanguages): Don't go through InternalSettings.
+        (WebCore::Internals::setUsesOverlayScrollbars): Moved from InternalsSettings.
+        (WebCore::Internals::allowRoundingHacks): Don't go through InternalSettings.
+
+2012-11-19  David Grogan  <dgrogan@chromium.org>
+
+        IndexedDB: Complex series of opens/deleteDatabase fails an ASSERT
+        https://bugs.webkit.org/show_bug.cgi?id=101810
+
+        Reviewed by Tony Chang.
+
+        Tests - storage/indexeddb/deletedatabase-delayed-by-versionchange.html
+
+        * Modules/indexeddb/IDBDatabaseBackendImpl.cpp:
+        (WebCore::IDBDatabaseBackendImpl::processPendingCalls):
+        The condition tested by this assert is a valid state.
+
+2012-11-19  Peter Wang  <peter.wang@torchmobile.com.cn>
+
+        Web Inspector: [JSC] worker debugger shouldn't stop for "willExecuteProgram" instruction
+        https://bugs.webkit.org/show_bug.cgi?id=102637
+
+        Reviewed by Timothy Hatcher.
+
+        Override the interface "willExecuteProgram" to let WorkerScriptDebugServer to avoid to stop for it.
+
+        No new DRT test case. Sorry, so far it seems impossible to write a case to controle the popupped
+        worker inspector window.
+
+        * bindings/js/ScriptDebugServer.cpp:
+        (WebCore::ScriptDebugServer::createCallFrame):
+        (WebCore::ScriptDebugServer::callEvent):
+        (WebCore::ScriptDebugServer::willExecuteProgram):
+        * bindings/js/ScriptDebugServer.h:
+        (ScriptDebugServer):
+        * bindings/js/WorkerScriptDebugServer.cpp:
+        (WebCore::WorkerScriptDebugServer::willExecuteProgram):
+        (WebCore):
+        * bindings/js/WorkerScriptDebugServer.h:
+        (WorkerScriptDebugServer):
+
+2012-11-19  Pratik Solanki  <psolanki@apple.com>
+
+        For single element arrays use the pointer into the CFDataRef instead of copying data
+        https://bugs.webkit.org/show_bug.cgi?id=102306
+
+        Reviewed by Brent Fulgham.
+
+        Address review comments for slightly nicer code.
+
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::data):
+        * platform/cf/SharedBufferCF.cpp:
+        (WebCore::SharedBuffer::singleDataArrayBuffer):
+
+2012-11-19  Chris Rogers  <crogers@google.com>
+
+        Remove empirical bass-boost for HRTF spatialization
+        https://bugs.webkit.org/show_bug.cgi?id=102745
+
+        Reviewed by Kenneth Russell.
+
+        Some empirically-based post-processing is being removed so that we'll
+        now process with the exact HRTF impulse response measurements.
+        Listening tests have determined that this post-processing is not necessary.
+
+        * platform/audio/HRTFElevation.cpp:
+        (WebCore::HRTFElevation::calculateKernelsForAzimuthElevation):
+        * platform/audio/HRTFKernel.cpp:
+        (WebCore::HRTFKernel::HRTFKernel):
+        * platform/audio/HRTFKernel.h:
+        (WebCore::HRTFKernel::create):
+        (HRTFKernel):
+
+2012-11-19  Adam Barth  <abarth@webkit.org>
+
+        DISALLOW_COPY_AND_ASSIGN is not a WebKit macro
+        https://bugs.webkit.org/show_bug.cgi?id=102755
+
+        Reviewed by Sam Weinig.
+
+        WTF_MAKE_NONCOPYABLE is the idiom we use in WebKit.  I don't understand
+        how this compiles.
+
+        * Modules/indexeddb/IDBBackingStore.h:
+        (RecordIdentifier):
+
+2012-11-19  Chris Rogers  <crogers@google.com>
+
+        Implement .detune attribute for BiquadFilterNode
+        https://bugs.webkit.org/show_bug.cgi?id=102737
+
+        Reviewed by Kenneth Russell.
+
+        Similar to OscillatorNode, BiquadFilterNode must have a .detune attribute
+
+        Tests changed: webaudio/biquad-lowpass.html
+
+        * Modules/webaudio/BiquadDSPKernel.cpp:
+        (WebCore::BiquadDSPKernel::updateCoefficientsIfNecessary):
+        * Modules/webaudio/BiquadFilterNode.h:
+        (WebCore::BiquadFilterNode::detune):
+        * Modules/webaudio/BiquadFilterNode.idl:
+        * Modules/webaudio/BiquadProcessor.cpp:
+        (WebCore::BiquadProcessor::BiquadProcessor):
+        (WebCore::BiquadProcessor::checkForDirtyCoefficients):
+        * Modules/webaudio/BiquadProcessor.h:
+        (WebCore::BiquadProcessor::parameter4):
+        (BiquadProcessor):
+
+2012-11-19  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Add WebCore::getRegistryValue()
+        https://bugs.webkit.org/show_bug.cgi?id=97828
+
+        Reviewed by Brent Fulgham.
+
+        The new function adds an abstraction to SHGetValue(), which isn't available on WinCE.
+        Changing the existing files allows us to share more code between WinCE and WinNT in a next step.
+
+        * platform/win/MIMETypeRegistryWin.cpp:
+        (WebCore::mimeTypeForExtension):
+        (WebCore):
+        (WebCore::MIMETypeRegistry::getPreferredExtensionForMIMEType):
+        * platform/win/WindowsExtras.h:
+        (WebCore::getRegistryValue):
+        (WebCore):
+        * plugins/win/PluginDatabaseWin.cpp:
+        (WebCore::addPluginPathsFromRegistry):
+        (WebCore::addWindowsMediaPlayerPluginDirectory):
+        (WebCore::addQuickTimePluginDirectory):
+        (WebCore::addAdobeAcrobatPluginDirectory):
+        (WebCore::addJavaPluginDirectory):
+
+2012-11-19  Alpha Lam  <hclam@chromium.org>
+
+        Not reviewed. Build fix for Chromium.
+
+        Added SkTypes.h includes for Windows.
+
+        * platform/graphics/chromium/ImageDecodingStore.h:
+        * platform/graphics/chromium/ImageFrameGenerator.h:
+        * platform/graphics/chromium/LazyDecodingPixelRef.h:
+
+2012-11-19  Adam Barth  <abarth@webkit.org>
+
+        [V8] Simplify V8DOMWindowShell::getEntered
+        https://bugs.webkit.org/show_bug.cgi?id=102156
+
+        Reviewed by Eric Seidel.
+
+        This patch is an incremental step towards merging
+        V8DOMWrapper::getCachedWrapper(Node*) with the general case for looking
+        up DOM wrappers. In order to merge with the general case, we need to
+        get down to calling v8::Context::GetCurrent once, which means we need
+        to factor the call to v8::Context::GetEntered out of V8DOMWindowShell.
+
+        As a side-benefit to this change, we can remove some redundant checks
+        for isolatedWorldsExist and v8::Context::InContext from callers of
+        V8DOMWindowShell::getEntered, including in getCachedWrapper.
+
+        * bindings/v8/DOMDataStore.cpp:
+        (WebCore::DOMDataStore::current):
+        * bindings/v8/ScriptController.cpp:
+        (WebCore::ScriptController::shouldBypassMainWorldContentSecurityPolicy):
+        (WebCore::ScriptController::currentWorldContext):
+        * bindings/v8/V8DOMWindowShell.h:
+        (WebCore::V8DOMWindowShell::isolated):
+        (WebCore::V8DOMWindowShell::perContextData):
+        (WebCore::V8DOMWindowShell::world):
+        (V8DOMWindowShell):
+        * bindings/v8/V8DOMWrapper.h:
+        (WebCore::V8DOMWrapper::getCachedWrapper):
+        * bindings/v8/WorldContextHandle.cpp:
+        (WebCore::WorldContextHandle::WorldContextHandle):
+        * bindings/v8/custom/V8DocumentCustom.cpp:
+        (WebCore::V8Document::dispatchWrapCustom):
+        * bindings/v8/custom/V8HTMLDocumentCustom.cpp:
+        (WebCore::V8HTMLDocument::dispatchWrapCustom):
+        * bindings/v8/custom/V8SVGDocumentCustom.cpp:
+        (WebCore::V8SVGDocument::dispatchWrapCustom):
+        * bindings/v8/custom/V8XMLHttpRequestConstructor.cpp:
+        (WebCore::V8XMLHttpRequest::constructorCallback):
+
+2012-11-19  Kentaro Hara  <haraken@chromium.org>
+
+        Rename idlDocument::classes to idlDocument::interfaces in the IDL parser
+        https://bugs.webkit.org/show_bug.cgi?id=102671
+
+        Reviewed by Adam Barth.
+
+        Most part of code generators use 'interface'. The spec uses 'interface'.
+        Thus, the IDL parser should use 'interface' instead of 'class'.
+
+        No tests. No change in behavior.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (ProcessDocument):
+        (AddMethodsConstantsAndAttributesFromParentInterfaces):
+        (ParseInterface):
+        * bindings/scripts/CodeGeneratorCPP.pm:
+        (GenerateImplementation):
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateHeader):
+        * bindings/scripts/CodeGeneratorObjC.pm:
+        (GenerateImplementation):
+        * bindings/scripts/CodeGeneratorV8.pm:
+        (GenerateHeader):
+        (GenerateFunctionCallback):
+        * bindings/scripts/IDLParser.pm:
+        (Parse):
+        (parseModule):
+        * bindings/scripts/generate-bindings.pl:
+
+2012-11-19  Eric Carlson  <eric.carlson@apple.com>
+
+        HTMLMediaElement::configureTextTracks should configure all text tracks
+        https://bugs.webkit.org/show_bug.cgi?id=102561
+
+        Reviewed by Philippe Normand.
+
+        No new tests, track-mode-not-changed-by-new-track.html was updated to test the changes.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::textTrackModeChanged): HTMLTrackElement -> TextTrack.
+        (WebCore::HTMLMediaElement::willRemoveTrack): Ditto.
+        (WebCore::HTMLMediaElement::configureTextTrackGroup): Ditto.
+        (WebCore::HTMLMediaElement::configureTextTracks): Ditto.
+        (WebCore::HTMLMediaElement::markCaptionAndSubtitleTracksAsUnconfigured): Ditto.
+        * html/HTMLMediaElement.h:
+
+        * html/HTMLTrackElement.cpp:
+        (WebCore::HTMLTrackElement::HTMLTrackElement): Move hasBeenConfigured down to TextTrack.
+        (WebCore::HTMLTrackElement::parseAttribute): isDefault is stored on TextTrack.
+        (WebCore::HTMLTrackElement::ensureTrack): LoadableTextTrack constructor doesn't take 
+            "default" argument.
+        * html/HTMLTrackElement.h:
+
+        * html/track/LoadableTextTrack.cpp:
+        (WebCore::LoadableTextTrack::LoadableTextTrack): Initialize m_isDefault to false.
+        * html/track/LoadableTextTrack.h: 
+        (WebCore::TextTrack::isDefault): Override base class implementation, because a track element
+            can be flagged as default.
+        (WebCore::TextTrack::setIsDefault): Ditto.
+
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::TextTrack): Initialize m_hasBeenConfigured.
+        * html/track/TextTrack.h:
+        (WebCore::TextTrack::hasBeenConfigured): New, moved from HTMLTrackElement so other code doesn't
+            need know what type of track it is calling.
+        (WebCore::TextTrack::setHasBeenConfigured): Ditto.
+        (WebCore::TextTrack::isDefault): Base, do nothing, implementation because only LoadableTextTrack
+            can be "default".
+        (WebCore::TextTrack::setIsDefault): Ditto.
+
+2012-11-19  Huang Dongsung  <luxtella@company100.net>
+
+        Coordinated Graphics: refactor syncCanvas to handle the lifecycle clearly.
+        https://bugs.webkit.org/show_bug.cgi?id=102664
+
+        Reviewed by Noam Rosenthal.
+
+        As refactoring Coordinated Graphics in WebKit2, code related to
+        TextureMapper is changed.
+
+        No new tests. Refactoring only.
+
+        * platform/graphics/qt/GraphicsContext3DQt.cpp:
+        (GraphicsContext3DPrivate):
+        (WebCore::GraphicsContext3DPrivate::platformLayerSize):
+            We need to know the size of a texture mapper platform layer.
+        (WebCore):
+        * platform/graphics/texmap/TextureMapperBackingStore.cpp:
+          Because CoordinatedGraphicsLayer handles the canvas GraphicsSurface
+          lifecycle, TextureMapperSurfaceBackingStore does not need to know
+          GraphicsSurfaceToken.
+        (WebCore::TextureMapperSurfaceBackingStore::setGraphicsSurface):
+        (WebCore::TextureMapperSurfaceBackingStore::swapBuffersIfNeeded):
+        (WebCore::TextureMapperSurfaceBackingStore::paintToTextureMapper):
+        * platform/graphics/texmap/TextureMapperBackingStore.h:
+        (TextureMapperSurfaceBackingStore):
+        * platform/graphics/texmap/TextureMapperPlatformLayer.h:
+        (WebCore::TextureMapperPlatformLayer::platformLayerSize):
+
+2012-11-19  Alpha Lam  <hclam@chromium.org>
+
+        [chromium] Lazy image decoding without cache
+        https://bugs.webkit.org/show_bug.cgi?id=102021
+
+        Reviewed by Stephen White.
+
+        Goal of this change is to make image decoding in ImageFrameGenerator
+        completely lazy without caching. Image decoding logic is then removed
+        from ImageDecodingStore.
+
+        These methods are removed.
+        - ImageDecodingStore::lockPixels
+        - ImageDecodingStore::unlockPixels
+
+        Instead image decoding and scaling is done in
+        ImageFrameGenerator::decodeAndScale().
+
+        Unit tests are updated:
+        DeferredImageDecoderTest::drawIntoSkPicture
+        DeferredImageDecoderTest::drawScaledIntoSkPicture
+
+        Also covered by layout tests:
+        platform/chromium/virtual/deferred
+
+        * platform/graphics/chromium/DeferredImageDecoder.cpp:
+        (WebCore::DeferredImageDecoder::createLazyDecodingBitmap):
+        * platform/graphics/chromium/ImageDecodingStore.h:
+        (ImageDecodingStore):
+        * platform/graphics/chromium/ImageFrameGenerator.cpp:
+        (WebCore::ImageFrameGenerator::ImageFrameGenerator):
+        (WebCore::ImageFrameGenerator::~ImageFrameGenerator):
+        (WebCore::ImageFrameGenerator::setData):
+        (WebCore::ImageFrameGenerator::decodeAndScale):
+        * platform/graphics/chromium/ImageFrameGenerator.h:
+        (WebCore::ImageFrameGenerator::create):
+        (ImageFrameGenerator):
+        * platform/graphics/chromium/LazyDecodingPixelRef.cpp:
+        (WebCore::LazyDecodingPixelRef::onLockPixels):
+        (WebCore::LazyDecodingPixelRef::onUnlockPixels):
+        * platform/graphics/chromium/LazyDecodingPixelRef.h:
+        (LazyDecodingPixelRef):
+
+2012-11-19  Abhishek Arya  <inferno@chromium.org>
+
+        Crash in ApplyStyleCommand::cleanupUnstyledAppleStyleSpans.
+        https://bugs.webkit.org/show_bug.cgi?id=100150
+
+        Reviewed by Ryosuke Niwa.
+
+        RefPtr startDummySpanAncestor and endDummySpanAncestor since
+        they can go away inside fixRangeAndApplyInlineStyle call.
+
+        Test: editing/style/apply-style-crash.html
+
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::ApplyStyleCommand::applyInlineStyle):
+
+2012-11-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135172.
+        http://trac.webkit.org/changeset/135172
+        https://bugs.webkit.org/show_bug.cgi?id=102710
+
+        Broke some WebKit2 api tests :( (Requested by japhet on
+        #webkit).
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::DocumentLoader):
+        (WebCore::DocumentLoader::~DocumentLoader):
+        (WebCore::DocumentLoader::finishedLoading):
+        (WebCore::DocumentLoader::clearMainResourceLoader):
+        (WebCore::DocumentLoader::isLoadingInAPISense):
+        (WebCore::DocumentLoader::documentURL):
+        (WebCore::DocumentLoader::isLoadingMainResource):
+        (WebCore::DocumentLoader::startLoadingMainResource):
+        * loader/DocumentLoader.h:
+        (DocumentLoader):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::FrameLoader):
+        (WebCore::FrameLoader::init):
+        * loader/FrameLoaderStateMachine.cpp:
+        (WebCore::FrameLoaderStateMachine::FrameLoaderStateMachine):
+        * loader/FrameLoaderStateMachine.h:
+        * loader/MainResourceLoader.cpp:
+        (WebCore::shouldLoadAsEmptyDocument):
+        (WebCore):
+        (WebCore::MainResourceLoader::continueAfterContentPolicy):
+        (WebCore::MainResourceLoader::didReceiveResponse):
+        (WebCore::MainResourceLoader::didFinishLoading):
+        (WebCore::MainResourceLoader::handleEmptyLoad):
+        (WebCore::MainResourceLoader::loadNow):
+        (WebCore::MainResourceLoader::load):
+        * loader/MainResourceLoader.h:
+        (MainResourceLoader):
+
+2012-11-19  Tony Chang  <tony@chromium.org>
+
+        Remove 'is' prefix from WebSettings::isWebSecurityEnabled and WebSettings::isSpatialNavigationEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=102548
+
+        Reviewed by Adam Barth.
+
+        This allows us to use Settings.in to generate the code for this.
+
+        I didn't rename any of the WebKit API methods with similar names because that would
+        probably break consumers.  It turns out that the getter is only called from
+        Source/WebKit/efl (most of the time, WebPreferences just sets values on Settings).
+
+        No new tests, just a refactor.
+
+        * WebCore.exp.in: Remove symbols that are now inlined.
+        * WebCore.order: Remove symbols that are now inlined.
+        * dom/Document.cpp:
+        (WebCore::Document::initSecurityContext): Rename.
+        * page/Settings.cpp:
+        (WebCore::Settings::Settings): Remove code since it will be generated.
+        * page/Settings.h:
+        (Settings): Remove code since it will be generated.
+        * page/Settings.in: Add entries to be generated.
+        * page/SpatialNavigation.cpp:
+        (WebCore::isSpatialNavigationEnabled): Fix caller.
+
+2012-11-19  Yael Aharon  <yael.aharon@intel.com>
+
+        [EFL][TexMap] Complie error when considering warnings as errors
+        https://bugs.webkit.org/show_bug.cgi?id=102705
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Change GaussianKernelHalfWidth to unsigned.
+
+        No new tests.
+
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore):
+
+2012-11-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134830.
+        http://trac.webkit.org/changeset/134830
+        https://bugs.webkit.org/show_bug.cgi?id=102701
+
+        ActiveDOMObject is not applicable to MutationObservers due to
+        being tied to a Document (Requested by aklein on #webkit).
+
+        * bindings/js/JSMutationObserverCustom.cpp:
+        (WebCore::JSMutationObserverConstructor::constructJSMutationObserver):
+        * bindings/v8/custom/V8MutationObserverCustom.cpp:
+        (WebCore::V8MutationObserver::constructorCallback):
+        * dom/MutationObserver.cpp:
+        (WebCore::MutationObserver::create):
+        (WebCore::MutationObserver::MutationObserver):
+        (WebCore::MutationObserver::observationStarted):
+        (WebCore::MutationObserver::observationEnded):
+        * dom/MutationObserver.h:
+        (WebCore):
+        * dom/MutationObserver.idl:
+
+2012-11-19  Brady Eidson  <beidson@apple.com>
+
+        NetworkProcess Authentication.
+        https://bugs.webkit.org/show_bug.cgi?id=102592
+
+        Reviewed by Alexey Proskuryakov.
+
+        Change an ASSERT that assumes there should be a resource handle which is not true with the NetworkProcess.
+
+        Also export some more stuff.
+
+        No new tests (Platform support, no effect in tested configs).
+
+        * WebCore.exp.in:
+
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::didReceiveAuthenticationChallenge): Only ASSERT that the handle has a challenge if
+          there is a handle.
+
+2012-11-19  Alec Flett  <alecflett@chromium.org>
+
+        IndexedDB: simplify RecordIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=102018
+
+        Reviewed by Tony Chang.
+
+        Make IDBBackingStore's RecordIdentifier be a simple
+        class, existing only as an inline or stack-based instance.
+        This makes much of the copy semantics more explicit, and
+        removes refcounting from an object that only ever had a refcount
+        of 1 or 2.
+
+        No new tests, just a refactor.
+
+        * Modules/indexeddb/IDBBackingStore.cpp:
+        (WebCore::IDBBackingStore::putRecord):
+        (WebCore::IDBBackingStore::deleteRecord):
+        (WebCore::IDBBackingStore::maybeUpdateKeyGeneratorCurrentNumber):
+        (WebCore::IDBBackingStore::keyExistsInObjectStore):
+        (WebCore::IDBBackingStore::putIndexDataForRecord):
+        (WebCore::IDBBackingStore::deleteIndexDataForRecord):
+        (WebCore::ObjectStoreKeyCursorImpl::loadCurrentRow):
+        (ObjectStoreCursorImpl):
+        (WebCore::ObjectStoreCursorImpl::loadCurrentRow):
+        (WebCore::IndexKeyCursorImpl::recordIdentifier):
+        (WebCore::IndexCursorImpl::recordIdentifier):
+        * Modules/indexeddb/IDBBackingStore.h:
+        (WebCore::IDBBackingStore::RecordIdentifier::RecordIdentifier):
+        (WebCore::IDBBackingStore::RecordIdentifier::isValid):
+        (WebCore::IDBBackingStore::RecordIdentifier::reset):
+        (RecordIdentifier):
+        (IDBBackingStore):
+        (WebCore::IDBBackingStore::Cursor::recordIdentifier):
+        (WebCore::IDBBackingStore::Cursor::Cursor):
+        (Cursor):
+        * Modules/indexeddb/IDBObjectStoreBackendImpl.cpp:
+        (WebCore):
+        (WebCore::IDBObjectStoreBackendImpl::setIndexKeys):
+        (WebCore::IDBObjectStoreBackendImpl::putInternal):
+        (WebCore::IDBObjectStoreBackendImpl::deleteInternal):
+
+2012-11-19  Alexander Shalamov  <alexander.shalamov@intel.com>
+
+        Improve ContentTypeParser, so that it could be used to validate mime type according to RFC
+        https://bugs.webkit.org/show_bug.cgi?id=100927
+
+        Reviewed by Alexey Proskuryakov.
+
+        This patch adds ParsedContentType class that represents contents of parsed
+        content type string. isValidContentType function could be used to check if
+        format of the content type string is acorrding to RFC 2616 section 4.2.
+
+        * CMakeLists.txt:
+        * GNUmakefile.list.am:
+        * Target.pri:
+        * WebCore.gypi:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/network/MIMEHeader.cpp:
+        (WebCore::MIMEHeader::parseHeader):
+        * platform/network/ParsedContentType.cpp: Renamed from Source/WebCore/platform/network/ContentTypeParser.cpp.
+        (WebCore):
+        (EmptyParsedContentType):
+        (WebCore::EmptyParsedContentType::setContentType):
+        (WebCore::EmptyParsedContentType::setContentTypeParameter):
+        (WebCore::skipSpaces):
+        (WebCore::isTokenCharacter):
+        (WebCore::parseToken):
+        (WebCore::parseQuotedString):
+        (WebCore::substringForRange):
+        (WebCore::parseContentType):
+        (WebCore::isValidContentType):
+        (WebCore::ParsedContentType::ParsedContentType):
+        (WebCore::ParsedContentType::charset):
+        (WebCore::ParsedContentType::parameterValueForName):
+        (WebCore::ParsedContentType::parameterCount):
+        (WebCore::ParsedContentType::setContentType):
+        (WebCore::ParsedContentType::setContentTypeParameter):
+        * platform/network/ParsedContentType.h: Renamed from Source/WebCore/platform/network/ContentTypeParser.h.
+        (WebCore):
+        (ParsedContentType):
+        (WebCore::ParsedContentType::mimeType):
+
 2012-11-19  Erik Arvidsson  <arv@chromium.org>
 
         Update DOMException name: InvalidNodeTypeError

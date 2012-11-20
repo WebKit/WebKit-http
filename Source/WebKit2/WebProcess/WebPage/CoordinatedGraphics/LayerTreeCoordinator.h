@@ -30,7 +30,6 @@
 #include "UpdateAtlas.h"
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/GraphicsLayerFactory.h>
-#include <WebCore/GraphicsSurface.h>
 #include <wtf/OwnPtr.h>
 
 #if ENABLE(CSS_SHADERS)
@@ -97,7 +96,9 @@ public:
     virtual void syncLayerFilters(WebLayerID, const WebCore::FilterOperations&);
 #endif
 #if USE(GRAPHICS_SURFACE)
-    virtual void syncCanvas(WebLayerID, const WebCore::IntSize& canvasSize, const WebCore::GraphicsSurfaceToken&, uint32_t frontBuffer) OVERRIDE;
+    virtual void createCanvas(WebLayerID, WebCore::PlatformLayer*) OVERRIDE;
+    virtual void syncCanvas(WebLayerID, WebCore::PlatformLayer*) OVERRIDE;
+    virtual void destroyCanvas(WebLayerID) OVERRIDE;
 #endif
     virtual void detachLayer(WebCore::CoordinatedGraphicsLayer*);
     virtual void syncFixedLayers();
@@ -125,6 +126,7 @@ private:
     // CoordinatedImageBacking::Coordinator
     virtual void createImageBacking(CoordinatedImageBackingID) OVERRIDE;
     virtual void updateImageBacking(CoordinatedImageBackingID, const ShareableSurface::Handle&) OVERRIDE;
+    virtual void clearImageBackingContents(CoordinatedImageBackingID) OVERRIDE;
     virtual void removeImageBacking(CoordinatedImageBackingID) OVERRIDE;
 
     void flushPendingImageBackingChanges();

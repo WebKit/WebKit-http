@@ -1,3 +1,157 @@
+2012-11-19  Viatcheslav Ostapenko  <v.ostapenko@samsung.com>
+
+        [EFL] Add fallback for WebkitTestRunner if opengl is not available.
+        https://bugs.webkit.org/show_bug.cgi?id=102704
+
+        Reviewed by Laszlo Gombos.
+
+        Add fallback to non-opengl evas engine in WebkitTestRunner if opengl is not available.
+
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::initEcoreEvas):
+
+2012-11-19  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        [garden-o-matic] Switch frontend to use the gardeningserver.
+        https://bugs.webkit.org/show_bug.cgi?id=102712
+
+        Reviewed by Dirk Pranke.
+
+        Instead of serving garden-o-matic frontend as file, we now serve it from the gardening server. This enables
+        using garden-o-matic in a Chrome OS device, with a separate machine as a headless server.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/garden-o-matic.html: Changed CSP policy to use 'self'.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/checkout.js: Removed now-unnecessary references to kLocalServerURL.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/checkout_unittests.js: Tweaked the test expectation.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js: Removed kLocalServerURL.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/controllers.js: Spuriously updated the name of the webkit-patch command.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/results.js: Removed kLocalServerURL.
+        * Scripts/webkitpy/tool/servers/gardeningserver.py: Changed to use the new launch URL.
+
+2012-11-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135172.
+        http://trac.webkit.org/changeset/135172
+        https://bugs.webkit.org/show_bug.cgi?id=102710
+
+        Broke some WebKit2 api tests :( (Requested by japhet on
+        #webkit).
+
+        * DumpRenderTree/chromium/WebViewHost.cpp:
+        (WebViewHost::updateForCommittedLoad):
+
+2012-11-19  Dimitri Glazkov  <dglazkov@chromium.org>
+
+        [garden-o-matic] Enable serving garden-o-matic with gardeningserver.
+        https://bugs.webkit.org/show_bug.cgi?id=102703
+
+        Reviewed by Ojan Vafai.
+
+        To enable gardening from a Chrome OS device, we need the ability to serve garden-o-matic
+        from the same origin as the gardening server. This change gently massages the current
+        logic to adapt an extension-sniffing-based approach of identifying static files,
+        rather than requiring an explicit list.
+
+        * Scripts/webkitpy/tool/servers/reflectionhandler.py:
+        (ReflectionHandler): Replaced STATIC_FILE_NAMES with STATIC_FILE_EXTENSIONS.
+        (ReflectionHandler._handle_request): Changed the logic to smell for extensions, rather than specific files.
+        * Scripts/webkitpy/tool/servers/reflectionhandler_unittest.py: Added.
+
+2012-11-19  Ojan Vafai  <ojan@chromium.org>
+
+        Add DOM and HTML watchlists and add myself to a bunch of lists
+        https://bugs.webkit.org/show_bug.cgi?id=102707
+
+        Reviewed by Eric Seidel.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2012-11-19  Jochen Eisinger  <jochen@chromium.org>
+
+        [chromium] move methods that only use the WebKit API from DRTTestRunner to TestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=102676
+
+        Reviewed by Tony Chang.
+
+        In addition, I've replaced parsePageNumber with the more commonly used
+        cppVariantToInt32, moved abortModal to the list of stubbed out methods,
+        and removed setAutomaticLinkDetectionEnabled which wasn't used
+        anywhere.
+
+        * DumpRenderTree/chromium/DRTTestRunner.cpp:
+        (DRTTestRunner::DRTTestRunner):
+        (DRTTestRunner::reset):
+        (DRTTestRunner::overridePreference):
+        * DumpRenderTree/chromium/DRTTestRunner.h:
+        (DRTTestRunner):
+        * DumpRenderTree/chromium/TestRunner/src/TestRunner.cpp:
+        (WebTestRunner::TestRunner::TestRunner):
+        (WebTestRunner::TestRunner::reset):
+        (WebTestRunner):
+        (WebTestRunner::TestRunner::setTabKeyCyclesThroughElements):
+        (WebTestRunner::TestRunner::setAsynchronousSpellCheckingEnabled):
+        (WebTestRunner::TestRunner::execCommand):
+        (WebTestRunner::TestRunner::isCommandEnabled):
+        (WebTestRunner::TestRunner::pauseAnimationAtTimeOnElementWithId):
+        (WebTestRunner::TestRunner::pauseTransitionAtTimeOnElementWithId):
+        (WebTestRunner::TestRunner::elementDoesAutoCompleteForElementWithId):
+        (WebTestRunner::TestRunner::numberOfActiveAnimations):
+        (WebTestRunner::TestRunner::callShouldCloseOnWebView):
+        (WebTestRunner::TestRunner::setDomainRelaxationForbiddenForURLScheme):
+        (WebTestRunner::TestRunner::evaluateScriptInIsolatedWorldAndReturnValue):
+        (WebTestRunner::TestRunner::evaluateScriptInIsolatedWorld):
+        (WebTestRunner::TestRunner::setIsolatedWorldSecurityOrigin):
+        (WebTestRunner::TestRunner::setIsolatedWorldContentSecurityPolicy):
+        (WebTestRunner::TestRunner::addOriginAccessWhitelistEntry):
+        (WebTestRunner::TestRunner::removeOriginAccessWhitelistEntry):
+        (WebTestRunner::TestRunner::hasCustomPageSizeStyle):
+        (WebTestRunner::TestRunner::forceRedSelectionColors):
+        (WebTestRunner::TestRunner::addUserScript):
+        (WebTestRunner::TestRunner::addUserStyleSheet):
+        (WebTestRunner::TestRunner::startSpeechInput):
+        (WebTestRunner::TestRunner::loseCompositorContext):
+        (WebTestRunner::TestRunner::markerTextForListItem):
+        (WebTestRunner::TestRunner::findString):
+        (WebTestRunner::TestRunner::setMinimumTimerInterval):
+        (WebTestRunner::TestRunner::setAutofilled):
+        (WebTestRunner::TestRunner::setValueForUser):
+        (WebTestRunner::TestRunner::enableFixedLayoutMode):
+        (WebTestRunner::TestRunner::setFixedLayoutSize):
+        (WebTestRunner::TestRunner::selectionAsMarkup):
+        (WebTestRunner::TestRunner::setTextSubpixelPositioning):
+        (WebTestRunner::TestRunner::resetPageVisibility):
+        (WebTestRunner::TestRunner::setPageVisibility):
+        (WebTestRunner::TestRunner::setTextDirection):
+        (WebTestRunner::TestRunner::textSurroundingNode):
+        (WebTestRunner::TestRunner::workerThreadCount):
+        (WebTestRunner::TestRunner::cppVariantToBool):
+        (WebTestRunner::TestRunner::cppVariantToInt32):
+        (WebTestRunner::TestRunner::cppVariantToWebString):
+        (WebTestRunner::TestRunner::cppVariantToWebStringArray):
+        (WebTestRunner::TestRunner::printErrorMessage): formerly logErrorToConsole
+        (WebTestRunner::TestRunner::fallbackMethod):
+        * DumpRenderTree/chromium/TestRunner/src/TestRunner.h:
+        (WebKit):
+        (WebTestRunner::TestRunner::setWebView):
+        (TestRunner):
+        * DumpRenderTree/chromium/TestShell.cpp:
+        (TestShell::createMainWindow):
+        (TestShell::~TestShell):
+
+2012-11-19  Yusuke Sato  <yusukes@chromium.org>
+
+        [Chromium] Flash cannot receive scroll events when threaded compositing is in use
+        https://bugs.webkit.org/show_bug.cgi?id=101423
+
+        Reviewed by James Robinson.
+
+        Call setWantsWheelEvents(true) in initialize() so that gesture-events and transformed-events tests in
+        LayoutTests/platform/chromium/plugins/ will not fail even if a buildbot introduces threaded compositing
+        in the future.
+
+        * DumpRenderTree/chromium/TestWebPlugin.cpp:
+        (TestWebPlugin::initialize):
+
 2012-11-19  Nate Chapin  <japhet@chromium.org>
 
         Move empty loading to DocumentLoader, simplify FrameLoader::init()

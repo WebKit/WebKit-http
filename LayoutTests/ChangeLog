@@ -1,5 +1,237 @@
 2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
 
+        [Refactoring] Remove shadowPseudoId() and use setPseudo() in <progress> ElementShadow.
+        https://bugs.webkit.org/show_bug.cgi?id=101703
+
+        Reviewed by Hajime Morita.
+
+        * editing/style/apply-style-atomic-expected.txt:
+        * fast/dom/HTMLProgressElement/progress-element-markup-expected.txt:
+
+2012-11-19  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Reenable webaudio/biquad-getFrequencyResponse.html test as it should pass after r129418
+        https://bugs.webkit.org/show_bug.cgi?id=97439
+
+        * platform/chromium/TestExpectations:
+
+2012-11-19  Matt Falkenhagen  <falken@chromium.org>
+
+        Implement the new stacking layer needed by the Fullscreen API and the new <dialog> element
+        https://bugs.webkit.org/show_bug.cgi?id=84796
+
+        Reviewed by Julien Chaffraix.
+
+        Add tests for top layer stacking and rendering.
+
+        * fast/dom/HTMLDialogElement/top-layer-containing-block-expected.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-containing-block.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-display-none-expected.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-display-none.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-nesting-expected.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-nesting.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-stacking-dynamic-expected.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-stacking-dynamic.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-stacking-expected.html: Added.
+        * fast/dom/HTMLDialogElement/top-layer-stacking.html: Added.
+
+2012-11-19  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Fix lint errors on chromium TextExpectations after r135205.
+
+        * platform/chromium/TestExpectations:
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
+        [Shadow] attribute pseudo should return empty string instead of null when nothing is specified.
+        https://bugs.webkit.org/show_bug.cgi?id=102753
+
+        Reviewed by Hajime Morita.
+
+        * fast/dom/shadow/pseudo-attribute-expected.txt:
+        * fast/dom/shadow/pseudo-attribute.html:
+
+2012-11-19  Adam Klein  <adamk@chromium.org>
+
+        MutationObserver wrapper should not be collected while still observing
+        https://bugs.webkit.org/show_bug.cgi?id=102328
+
+        Reviewed by Adam Barth.
+
+        Tests showing that observers are kept alive, both in the simple case
+        and in the transient registered observer case (where the original
+        registration node is GCed but the transient observation node is still
+        alive).
+
+        * fast/mutation/observer-wrapper-dropoff-expected.txt: Added.
+        * fast/mutation/observer-wrapper-dropoff-transient-expected.txt: Added.
+        * fast/mutation/observer-wrapper-dropoff-transient.html: Added.
+        * fast/mutation/observer-wrapper-dropoff.html: Added.
+
+2012-11-19  Tony Chang  <tony@chromium.org>
+
+        Move more non-settings out of InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=102711
+
+        Reviewed by Adam Barth.
+
+        Move static values out of InternalSettings.
+
+        * fast/scrolling/scrollbar-tickmarks-hittest.html: Move setUsesOverlayScrollbars to internals.
+
+2012-11-19  David Grogan  <dgrogan@chromium.org>
+
+        IndexedDB: Complex series of opens/deleteDatabase fails an ASSERT
+        https://bugs.webkit.org/show_bug.cgi?id=101810
+
+        Reviewed by Tony Chang.
+
+        Removed use of setVersion. Surprisingly straightforward conversion
+        given how gnarly this test is.
+
+        * storage/indexeddb/deletedatabase-delayed-by-versionchange-expected.txt:
+        * storage/indexeddb/resources/deletedatabase-delayed-by-versionchange.js:
+        (h1OpenSuccess.h1.onversionchange):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.h2.onversionchange):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.request.onsuccess):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.request.onblocked.h3Blocked.request.onsuccess):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.request.onblocked):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.request.onupgradeneeded.h3OnUpgradeneeded.transaction.oncomplete):
+        (h1OpenSuccess.request.onsuccess.h2OpenSuccess.request.onupgradeneeded):
+        (h1OpenSuccess.request.onsuccess):
+        (h1OpenSuccess):
+
+2012-11-19  David Grogan  <dgrogan@chromium.org>
+
+        IndexedDB: last setVersion excision batch
+        https://bugs.webkit.org/show_bug.cgi?id=102713
+
+        Reviewed by Tony Chang.
+
+        * storage/indexeddb/resources/setversion-blocked-by-versionchange-close-in-blocked.js: Removed.
+          The crucial part of this test was a connection closing itself in its
+          blocked callback. This is no longer possible as there's now only a
+          handle to the connection after the blocked event is dealt with.
+
+        * storage/indexeddb/resources/setversion-blocked-by-versionchange-close.js:
+          This test exposes a cascade of errors. h2's should receive 0 blocked
+          errors. Instead it receives 2.
+
+        * storage/indexeddb/resources/setversion-blocked.js: Removed.
+          Tests the same thing as set_version_blocked.
+
+        * storage/indexeddb/resources/setversion-not-blocked.js:
+          Now h2 is the version change connection and h1 is the blocker.
+
+        * storage/indexeddb/setversion-blocked-by-versionchange-close-in-blocked.html: Removed.
+        * storage/indexeddb/setversion-blocked.html: Removed.
+
+2012-11-19  David Grogan  <dgrogan@chromium.org>
+
+        IndexedDB: convert delete-closed-database-object to upgradeneeded
+        https://bugs.webkit.org/show_bug.cgi?id=102458
+
+        Reviewed by Tony Chang.
+
+        This test relies on gc behavior and seems flaky in content_shell.
+
+        * storage/indexeddb/delete-closed-database-object-expected.txt:
+        * storage/indexeddb/resources/delete-closed-database-object.js:
+        (prepareDatabase):
+        (openSuccess.openRequest.onsuccess):
+        (openSuccess):
+        (setVersion):
+
+2012-11-19  Chris Rogers  <crogers@google.com>
+
+        Implement .detune attribute for BiquadFilterNode
+        https://bugs.webkit.org/show_bug.cgi?id=102737
+
+        Reviewed by Kenneth Russell.
+
+        * webaudio/biquad-lowpass.html:
+        * webaudio/resources/biquad-testing.js:
+        (createTestAndRun):
+        (generateReference):
+
+2012-11-19  Huang Dongsung  <luxtella@company100.net>
+
+        Coordinated Graphics: Remove tiles of a layer when they are off the viewport.
+        https://bugs.webkit.org/show_bug.cgi?id=102313
+
+        Reviewed by Noam Rosenthal.
+
+        This test checks that a compositing layer is rendered if the layer is
+        originally transformed off the viewport.
+
+        * animations/animation-offscreen-to-onscreen-expected.png: Added.
+        * animations/animation-offscreen-to-onscreen-expected.txt: Added.
+        * animations/animation-offscreen-to-onscreen.html: Added.
+
+2012-11-19  Jian Li  <jianli@chromium.org>
+
+        Unreviewed. Mark 2 tests as failed on chromium.
+
+        * platform/chromium/TestExpectations:
+
+2012-11-19  Eric Carlson  <eric.carlson@apple.com>
+
+        HTMLMediaElement::configureTextTracks should configure all text tracks
+        https://bugs.webkit.org/show_bug.cgi?id=102561
+
+        Reviewed by Philippe Normand.
+
+        Update test and results to check that dynamically added tracks are configured correctly.
+
+        * media/track/track-mode-not-changed-by-new-track-expected.txt:
+        * media/track/track-mode-not-changed-by-new-track.html:
+
+2012-11-19  Abhishek Arya  <inferno@chromium.org>
+
+        Crash in ApplyStyleCommand::cleanupUnstyledAppleStyleSpans.
+        https://bugs.webkit.org/show_bug.cgi?id=100150
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/style/apply-style-crash-expected.txt: Added.
+        * editing/style/apply-style-crash.html: Added.
+
+2012-11-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135172.
+        http://trac.webkit.org/changeset/135172
+        https://bugs.webkit.org/show_bug.cgi?id=102710
+
+        Broke some WebKit2 api tests :( (Requested by japhet on
+        #webkit).
+
+        * http/tests/inspector/network/network-iframe-load-and-delete.html:
+        * http/tests/loading/redirect-methods-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-in-body-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-deny-meta-tag-parent-same-origin-deny-expected.txt:
+
+2012-11-19  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r134830.
+        http://trac.webkit.org/changeset/134830
+        https://bugs.webkit.org/show_bug.cgi?id=102701
+
+        ActiveDOMObject is not applicable to MutationObservers due to
+        being tied to a Document (Requested by aklein on #webkit).
+
+        * fast/mutation/observer-wrapper-dropoff-expected.txt: Removed.
+        * fast/mutation/observer-wrapper-dropoff.html: Removed.
+
+2012-11-19  Yael Aharon  <yael.aharon@intel.com>
+
+        Unreviewed gardening after r133898.
+        Cleanup the list of compositing tests failures.
+
+        * platform/efl/TestExpectations:
+
+2012-11-19  Shinya Kawanaka  <shinyak@chromium.org>
+
         Changing id, className, or attribute should invalidate distribution
         https://bugs.webkit.org/show_bug.cgi?id=100738
 

@@ -29,6 +29,7 @@
 #include "WebLayerTreeInfo.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
+#include <WebCore/GraphicsSurface.h>
 
 #if ENABLE(CSS_SHADERS)
 #include "CustomFilterProgramInfo.h"
@@ -152,6 +153,11 @@ void LayerTreeCoordinatorProxy::updateImageBacking(CoordinatedImageBackingID ima
     dispatchUpdate(bind(&LayerTreeRenderer::updateImageBacking, m_renderer.get(), imageID, ShareableSurface::create(handle)));
 }
 
+void LayerTreeCoordinatorProxy::clearImageBackingContents(CoordinatedImageBackingID imageID)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::clearImageBackingContents, m_renderer.get(), imageID));
+}
+
 void LayerTreeCoordinatorProxy::removeImageBacking(CoordinatedImageBackingID imageID)
 {
     dispatchUpdate(bind(&LayerTreeRenderer::removeImageBacking, m_renderer.get(), imageID));
@@ -212,9 +218,20 @@ void LayerTreeCoordinatorProxy::didChangeScrollPosition(const IntPoint& position
 }
 
 #if USE(GRAPHICS_SURFACE)
-void LayerTreeCoordinatorProxy::syncCanvas(uint32_t id, const IntSize& canvasSize, const GraphicsSurfaceToken& token, uint32_t frontBuffer)
+void LayerTreeCoordinatorProxy::createCanvas(WebLayerID id, const IntSize& canvasSize, const GraphicsSurfaceToken& token)
 {
-    dispatchUpdate(bind(&LayerTreeRenderer::syncCanvas, m_renderer.get(), id, canvasSize, token, frontBuffer));
+    GraphicsSurface::Flags surfaceFlags = GraphicsSurface::SupportsTextureTarget | GraphicsSurface::SupportsSharing;
+    dispatchUpdate(bind(&LayerTreeRenderer::createCanvas, m_renderer.get(), id, canvasSize, GraphicsSurface::create(canvasSize, surfaceFlags, token)));
+}
+
+void LayerTreeCoordinatorProxy::syncCanvas(WebLayerID id, uint32_t frontBuffer)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::syncCanvas, m_renderer.get(), id, frontBuffer));
+}
+
+void LayerTreeCoordinatorProxy::destroyCanvas(WebLayerID id)
+{
+    dispatchUpdate(bind(&LayerTreeRenderer::destroyCanvas, m_renderer.get(), id));
 }
 #endif
 

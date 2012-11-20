@@ -26,6 +26,7 @@
 #ifndef LazyDecodingPixelRef_h
 #define LazyDecodingPixelRef_h
 
+#include "SkTypes.h"
 #include "SkFlattenableBuffers.h"
 #include "SkPixelRef.h"
 #include "SkRect.h"
@@ -58,6 +59,8 @@ private:
     RefPtr<ImageFrameGenerator> m_frameGenerator;
     SkISize m_scaledSize;
     SkIRect m_scaledSubset;
+
+    SkBitmap m_lockedBitmap;
 };
 
 } // namespace WebCore

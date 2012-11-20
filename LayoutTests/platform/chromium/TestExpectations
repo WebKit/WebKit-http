@@ -1977,7 +1977,8 @@ crbug.com/9798 [ Win ] http/tests/misc/refresh-headers.php [ Pass Slow ]
 crbug.com/9798 [ Win ] http/tests/xmlhttprequest/access-control-basic-allow-preflight-cache-timeout.html [ Pass Timeout ]
 crbug.com/9798 [ Win Debug ] http/tests/xmlhttprequest/encode-request-url-2.html [ Pass Timeout ]
 crbug.com/9797 crbug.com/9798 [ Win Release ] http/tests/xmlhttprequest/state-after-network-error.html [ Pass Slow ]
-crbug.com/9797 [ Android Linux ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure Pass ]
+crbug.com/9797 [ Android ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure Pass ]
+crbug.com/9797 [ Linux Release ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure Pass ]
 crbug.com/9798 [ Android Linux Release ] transitions/transition-timing-function.html [ Pass Slow ]
 # This test definitely times out (i.e. is not just slow).
 crbug.com/9798 [ Win Release ] http/tests/xmlhttprequest/small-chunks-response-text.html [ Pass Timeout ]
@@ -3501,9 +3502,6 @@ webkit.org/b/102164 [ MountainLion ] fast/regions/render-region-custom-style-mar
 
 webkit.org/b/87273 [ Release ] webaudio/audioparam-connect-audioratesignal.html [ Pass Timeout ]
 
-webkit.org/b/97439 [ Release ] webaudio/biquad-getFrequencyResponse.html [ Failure Pass ]
-webkit.org/b/97439 [ Debug ] webaudio/biquad-getFrequencyResponse.html [ Crash Pass ]
-
 webkit.org/b/87321 [ XP ] fast/history/history-subframe-with-name.html [ Failure Pass ]
 webkit.org/b/87321 [ XP ] fast/history/history-traversal-is-asynchronous.html [ Failure Pass ]
 
@@ -4184,3 +4182,6 @@ webkit.org/b/102294 platform/chromium/virtual/deferred/fast/images/gray-scale-jp
 webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 webkit.org/b/102542 [ Win7 ] platform/chromium/virtual/softwarecompositing/checkerboard.html [ Image ]
 webkit.org/b/102542 [ Linux Mac Win ] compositing/checkerboard.html [ Image ]
+
+webkit.org/b/102724 [ Linux Mac Debug ] svg/carto.net/colourpicker.svg [ Crash ]
+webkit.org/b/102724 [ Linux Mac Debug ] svg/custom/gradient-stop-corner-cases.svg [ Crash ]

@@ -242,24 +242,40 @@ void LayerTreeRenderer::didChangeScrollPosition(const IntPoint& position)
 }
 
 #if USE(GRAPHICS_SURFACE)
-void LayerTreeRenderer::syncCanvas(WebLayerID id, const WebCore::IntSize& canvasSize, const GraphicsSurfaceToken& token, uint32_t frontBuffer)
+void LayerTreeRenderer::createCanvas(WebLayerID id, const WebCore::IntSize& canvasSize, PassRefPtr<GraphicsSurface> surface)
 {
-    if (canvasSize.isEmpty() || !m_textureMapper)
-        return;
-
-    ensureLayer(id);
+    ASSERT(m_textureMapper);
     GraphicsLayer* layer = layerByID(id);
+    ASSERT(layer);
+    ASSERT(!m_surfaceBackingStores.contains(id));
 
-    RefPtr<TextureMapperSurfaceBackingStore> canvasBackingStore;
-    SurfaceBackingStoreMap::iterator it = m_surfaceBackingStores.find(id);
-    if (it == m_surfaceBackingStores.end()) {
-        canvasBackingStore = TextureMapperSurfaceBackingStore::create();
-        m_surfaceBackingStores.set(id, canvasBackingStore);
-    } else
-        canvasBackingStore = it->value;
+    RefPtr<TextureMapperSurfaceBackingStore> canvasBackingStore(TextureMapperSurfaceBackingStore::create());
+    m_surfaceBackingStores.set(id, canvasBackingStore);
 
-    canvasBackingStore->setGraphicsSurface(token, canvasSize, frontBuffer);
+    canvasBackingStore->setGraphicsSurface(surface);
     layer->setContentsToMedia(canvasBackingStore.get());
+}
+
+void LayerTreeRenderer::syncCanvas(WebLayerID id, uint32_t frontBuffer)
+{
+    ASSERT(m_textureMapper);
+    ASSERT(m_surfaceBackingStores.contains(id));
+
+    SurfaceBackingStoreMap::iterator it = m_surfaceBackingStores.find(id);
+    RefPtr<TextureMapperSurfaceBackingStore> canvasBackingStore = it->value;
+
+    canvasBackingStore->swapBuffersIfNeeded(frontBuffer);
+}
+
+void LayerTreeRenderer::destroyCanvas(WebLayerID id)
+{
+    ASSERT(m_textureMapper);
+    GraphicsLayer* layer = layerByID(id);
+    ASSERT(layer);
+    ASSERT(m_surfaceBackingStores.contains(id));
+
+    m_surfaceBackingStores.remove(id);
+    layer->setContentsToMedia(0);
 }
 #endif
 
@@ -492,6 +508,15 @@ void LayerTreeRenderer::updateImageBacking(CoordinatedImageBackingID imageID, Pa
     backingStore->setSize(rect.size());
     backingStore->updateTile(1 /* id */, rect, rect, surface, rect.location());
 
+    m_backingStoresWithPendingBuffers.add(backingStore);
+}
+
+void LayerTreeRenderer::clearImageBackingContents(CoordinatedImageBackingID imageID)
+{
+    ASSERT(m_imageBackings.contains(imageID));
+    ImageBackingMap::iterator it = m_imageBackings.find(imageID);
+    RefPtr<CoordinatedBackingStore> backingStore = it->value;
+    backingStore->removeAllTiles();
     m_backingStoresWithPendingBuffers.add(backingStore);
 }
 

@@ -94,19 +94,15 @@ RenderObject* NodeRenderingContext::nextRenderer() const
         return 0;
 
     ComposedShadowTreeWalker walker(m_node);
-    do {
-        walker.nextSibling();
-        if (!walker.get())
-            return 0;
+    for (walker.nextSibling(); walker.get(); walker.nextSibling()) {
         if (RenderObject* renderer = walker.get()->renderer()) {
             // Do not return elements that are attached to a different flow-thread.
             if (renderer->style() && !renderer->style()->flowThread().isEmpty())
                 continue;
             return renderer;
         }
-    } while (true);
+    }
 
-    ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -122,19 +118,15 @@ RenderObject* NodeRenderingContext::previousRenderer() const
     // however, when I tried adding it, several tests failed.
 
     ComposedShadowTreeWalker walker(m_node);
-    do {
-        walker.previousSibling();
-        if (!walker.get())
-            return 0;
+    for (walker.previousSibling(); walker.get(); walker.previousSibling()) {
         if (RenderObject* renderer = walker.get()->renderer()) {
             // Do not return elements that are attached to a different flow-thread.
             if (renderer->style() && !renderer->style()->flowThread().isEmpty())
                 continue;
             return renderer;
         }
-    } while (true);
+    }
 
-    ASSERT_NOT_REACHED();
     return 0;
 }
 
@@ -220,6 +212,26 @@ RenderObject* NodeRendererFactory::createRenderer()
     return newRenderer;
 }
 
+#if ENABLE(DIALOG_ELEMENT)
+static void adjustInsertionPointForTopLayerElement(Element* element, RenderObject*& parentRenderer, RenderObject*& nextRenderer)
+{
+    parentRenderer = parentRenderer->view();
+    nextRenderer = 0;
+    const Vector<RefPtr<Element> >& topLayerElements = element->document()->topLayerElements();
+    size_t topLayerPosition = topLayerElements.find(element);
+    ASSERT(topLayerPosition != notFound);
+    // Find the next top layer renderer that's stacked above this element. Note that the immediate next element in the top layer
+    // stack might not have a renderer (due to display: none, or possibly it is not attached yet).
+    for (size_t i = topLayerPosition + 1; i < topLayerElements.size(); ++i) {
+        nextRenderer = topLayerElements[i]->renderer();
+        if (nextRenderer) {
+            ASSERT(nextRenderer->parent() == parentRenderer);
+            break;
+        }
+    }
+}
+#endif
+
 void NodeRendererFactory::createRendererIfNeeded()
 {
     Node* node = m_context.node();
@@ -233,11 +245,15 @@ void NodeRendererFactory::createRendererIfNeeded()
     if (!m_context.shouldCreateRenderer())
         return;
 
+    ASSERT(m_context.parentRenderer());
+
     Element* element = node->isElementNode() ? toElement(node) : 0;
     if (element)
         m_context.setStyle(element->styleForRenderer());
-    else if (RenderObject* parentRenderer = m_context.parentRenderer())
-        m_context.setStyle(parentRenderer->style());
+    else
+        m_context.setStyle(m_context.parentRenderer()->style());
+
+    ASSERT(m_context.style());
 
     if (!node->rendererIsNeeded(m_context)) {
         if (element && m_context.style()->affectedByEmpty())
@@ -249,6 +265,12 @@ void NodeRendererFactory::createRendererIfNeeded()
     // Do not call m_context.nextRenderer() here in the first clause, because it expects to have
     // the renderer added to its parent already.
     RenderObject* nextRenderer = m_context.hasFlowThreadParent() ? m_context.parentFlowRenderer()->nextRendererForNode(node) : m_context.nextRenderer();
+
+#if ENABLE(DIALOG_ELEMENT)
+    if (element && element->isInTopLayer())
+        adjustInsertionPointForTopLayerElement(element, parentRenderer, nextRenderer);
+#endif
+
     RenderObject* newRenderer = createRenderer();
 
 #if ENABLE(FULLSCREEN_API)

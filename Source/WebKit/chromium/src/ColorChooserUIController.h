@@ -29,15 +29,12 @@
 #if ENABLE(INPUT_TYPE_COLOR)
 
 #include "ColorChooser.h"
-#include "PagePopupClient.h"
 #include "PlatformLocale.h"
 #include "WebColorChooserClient.h"
 #include <wtf/OwnPtr.h>
-#include <wtf/PassOwnPtr.h>
 
 namespace WebCore {
 class ColorChooserClient;
-class PagePopup;
 }
 
 namespace WebKit {
@@ -45,10 +42,12 @@ namespace WebKit {
 class ChromeClientImpl;
 class WebColorChooser;
 
-class ColorChooserUIController : public WebColorChooserClient, public WebCore::ColorChooser, public WebCore::PagePopupClient {
+class ColorChooserUIController : public WebColorChooserClient, public WebCore::ColorChooser {
 public:
     ColorChooserUIController(ChromeClientImpl*, WebCore::ColorChooserClient*);
     virtual ~ColorChooserUIController();
+
+    virtual void openUI();
 
     // ColorChooser functions:
     virtual void setSelectedColor(const WebCore::Color&) OVERRIDE;
@@ -58,23 +57,14 @@ public:
     virtual void didChooseColor(const WebColor&) OVERRIDE;
     virtual void didEndChooser() OVERRIDE;
 
-    // PagePopupClient functions:
-    virtual WebCore::IntSize contentSize() OVERRIDE;
-    virtual void writeDocument(WebCore::DocumentWriter&) OVERRIDE;
-    virtual WebCore::Locale& locale() OVERRIDE;
-    virtual void setValueAndClosePopup(int, const String&) OVERRIDE;
-    virtual void didClosePopup() OVERRIDE;
+protected:
+    void openColorChooser();
+    OwnPtr<WebColorChooser> m_chooser;
 
 private:
-    void openPopup();
-    void closePopup();
-    void openColorChooser();
 
     ChromeClientImpl* m_chromeClient;
     WebCore::ColorChooserClient* m_client;
-    OwnPtr<WebColorChooser> m_chooser;
-    WebCore::PagePopup* m_popup;
-    OwnPtr<WebCore::Locale> m_locale;
 };
 
 }
