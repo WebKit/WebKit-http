@@ -78,8 +78,8 @@ public:
     String lineCap() const;
     void setLineCap(const String&);
 
-    String mozFillRule() const;
-    void setMozFillRule(const String&);
+    String webkitFillRule() const;
+    void setWebkitFillRule(const String&);
 
     String lineJoin() const;
     void setLineJoin(const String&);

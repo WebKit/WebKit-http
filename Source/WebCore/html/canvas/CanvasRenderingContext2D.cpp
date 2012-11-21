@@ -392,7 +392,7 @@ String CanvasRenderingContext2D::lineCap() const
     return lineCapName(state().m_lineCap);
 }
 
-String CanvasRenderingContext2D::mozFillRule() const
+String CanvasRenderingContext2D::webkitFillRule() const
 {
     return fillRuleName(state().m_fillRule);
 }
@@ -412,7 +412,7 @@ void CanvasRenderingContext2D::setLineCap(const String& s)
     c->setLineCap(cap);
 }
 
-void CanvasRenderingContext2D::setMozFillRule(const String& s)
+void CanvasRenderingContext2D::setWebkitFillRule(const String& s)
 {
     WindRule rule;
     if (!parseFillRule(s, rule))
