@@ -32,10 +32,10 @@
 #define V8Binding_h
 
 #include "BindingSecurity.h"
+#include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "V8BindingMacros.h"
 #include "V8DOMConfiguration.h"
-#include "V8DOMWindowShell.h"
 #include "V8DOMWrapper.h"
 #include "V8HiddenPropertyName.h"
 #include "V8ObjectConstructor.h"
@@ -248,14 +248,14 @@ namespace WebCore {
         v8::Local<v8::Value> v8Value(v8::Local<v8::Value>::New(value));
         v8::Local<v8::Object> object = v8::Local<v8::Object>::Cast(v8Value);
 
-        EXCEPTION_BLOCK(v8::Local<v8::Value>, lengthValue, object->Get(v8::String::New("length")));
+        V8TRYCATCH(v8::Local<v8::Value>, lengthValue, object->Get(v8::String::New("length")));
 
         if (lengthValue->IsUndefined() || lengthValue->IsNull()) {
             throwTypeError();
             return v8Undefined();
         }
 
-        EXCEPTION_BLOCK(uint32_t, sequenceLength, lengthValue->Int32Value());
+        V8TRYCATCH(uint32_t, sequenceLength, lengthValue->Int32Value());
         length = sequenceLength;
 
         return v8Value;
@@ -333,7 +333,7 @@ namespace WebCore {
         return value->IsNull() ? String() : toWebCoreString(value);
     }
 
-    inline String toWebCoreStringWithNullOrUndefinedCheck(v8::Handle<v8::Value> value)
+    inline String toWebCoreStringWithUndefinedOrNullCheck(v8::Handle<v8::Value> value)
     {
         return (value->IsNull() || value->IsUndefined()) ? String() : toWebCoreString(value);
     }
@@ -383,10 +383,7 @@ namespace WebCore {
     {
         if (!v8::Context::InContext())
             return 0;
-        V8DOMWindowShell* shell = V8DOMWindowShell::isolated(v8::Context::GetEntered());
-        if (!shell)
-            return 0;
-        return shell->world();
+        return DOMWrapperWorld::isolated(v8::Context::GetEntered());
     }
 
     // If the current context causes out of memory, JavaScript setting

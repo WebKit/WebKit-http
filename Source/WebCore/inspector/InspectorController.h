@@ -31,6 +31,9 @@
 #ifndef InspectorController_h
 #define InspectorController_h
 
+#if ENABLE(INSPECTOR)
+
+#include "InspectorBaseAgent.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
@@ -141,10 +144,11 @@ private:
     OwnPtr<InspectorFrontend> m_inspectorFrontend;
     Page* m_page;
     InspectorClient* m_inspectorClient;
-    typedef Vector<OwnPtr<InspectorBaseAgentInterface> > Agents;
-    Agents m_agents;
+    InspectorAgentRegistry m_agents;
 };
 
 }
+
+#endif // ENABLE(INSPECTOR)
 
 #endif // !defined(InspectorController_h)

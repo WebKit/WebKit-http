@@ -43,7 +43,6 @@ editing/spelling/spelling-linebreak.html [ Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
-
 webkit.org/b/92726 fast/dom/register-protocol-handler.html [ Crash ]
 webkit.org/b/92726 fast/dom/unregister-protocol-handler.html [ Crash ]
 
@@ -54,7 +53,6 @@ webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-download.html [ Crash Fail
 webkit.org/b/102200 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Crash Failure ]
 
 webkit.org/b/102203 fast/events/attribute-listener-deletion-crash.html [ Crash ]
-webkit.org/b/102204 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Crash ]
 
 # Hitting !decoder.destinationID() assertion.
 webkit.org/b/102651 [ Debug ] networkinformation/multiple-frames.html [ Crash ]
@@ -177,6 +175,38 @@ webkit.org/b/101417 fast/dom/shadow/shadowdom-for-object-only-shadow.html [ Imag
 # Also flaky at least on GTK+
 webkit.org/b/72698 media/audio-garbage-collect.html
 
+# window.internals does not reset font family mappings (done in other tests), leading to these failures
+webkit.org/b/102370 fast/writing-mode/japanese-ruby-horizontal-bt.html [ Failure Pass ]
+webkit.org/b/102370 fast/writing-mode/japanese-ruby-vertical-lr.html [ Failure Pass ]
+webkit.org/b/102370 fast/writing-mode/japanese-ruby-vertical-rl.html [ Failure Pass ]
+webkit.org/b/102370 fast/text/international/002.html [ Failure Pass ]
+
+# All debug bots timeout (crash) on this one
+webkit.org/b/56496 [ Debug ] fast/js/array-sort-modifying-tostring.html [ Crash Pass ]
+
+webkit.org/b/102204 http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html [ Crash Pass ]
+
+# Flaky on Debug bot. See also webkit.org/b/102190
+webkit.org/b/103043 fast/events/overflow-scroll-fake-mouse-move.html [ Failure Pass ]
+webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Failure Pass ]
+
+# Failures after r130363.
+webkit.org/b/98573 fast/forms/multiple-form-submission-protection-mouse.html [ Failure Pass ]
+
+webkit.org/b/103113 editing/deleting/delete-ligature-003.html [ Failure Pass ]
+
+webkit.org/b/103115 http/tests/loading/remove-child-triggers-parser.html [ Failure Pass ]
+
+webkit.org/b/102201 fast/dom/Window/window-resize.html [ Failure Pass ]
+
+webkit.org/b/98722 [ Debug ] fast/dom/gc-acid3.html [ Crash Pass ]
+
+webkit.org/b/103396 [ Debug ] fast/forms/state-restore-per-form.html [ Failure Pass ]
+webkit.org/b/103399 [ Debug ] fast/forms/basic-buttons.html [ Failure Pass ]
+
+webkit.org/b/103400 [ Debug ] compositing/overflow/content-gains-scrollbars.html [ Crash Pass ]
+webkit.org/b/103400 [ Debug ] compositing/overflow/content-loses-scrollbars.html [ Crash Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -216,9 +246,6 @@ webkit.org/b/93982 storage/domstorage/storage-close-database-on-idle.html [ Fail
 # The following test makes the fast/parser/document-write-ignores-later-network-bytes.html test crash
 webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
 
-# Fails after r130363.
-webkit.org/b/98573 fast/forms/multiple-form-submission-protection-mouse.html [ Failure ]
-
 # Requires TestRunner displayInvalidatedRegion() support.
 webkit.org/b/98523 fast/images/repaint-subrect-grid.html [ Failure ]
 
@@ -236,6 +263,17 @@ webkit.org/b/99436 editing/selection/doubleclick-beside-cr-span.html [ Failure ]
 webkit.org/b/99436 editing/selection/doubleclick-whitespace-crash.html [ Failure ]
 webkit.org/b/99436 editing/selection/doubleclick-whitespace-img-crash.html [ Failure ]
 webkit.org/b/99436 editing/selection/doubleclick-whitespace.html [ Failure ]
+
+# Window size is being reported as screen size.
+webkit.org/b/103127 css3/device-adapt/opera/constrain-021.xhtml [ Failure ]
+webkit.org/b/103127 css3/device-adapt/opera/constrain-022.xhtml [ Failure ]
+
+# Page client doesn't react to orientation changes from CSS Viewport rules.
+webkit.org/b/103130 css3/device-adapt/opera/orientation-001.xhtml [ Failure ]
+
+# Issue with viewport width and relative units.
+webkit.org/b/102922 css3/device-adapt/opera/constrain-006.xhtml [ Failure ]
+webkit.org/b/102922 css3/device-adapt/opera/constrain-007.xhtml [ Failure ]
 
 # Text input controller needs selectedRange implementation
 webkit.org/b/99438 editing/selection/mixed-editability-10.html [ Failure ]
@@ -271,30 +309,18 @@ webkit.org/b/98740 plugins/npruntime/delete-plugin-within-setProperty.html [ Fai
 webkit.org/b/99561 http/tests/plugins/plugin-document-has-focus.html [ Failure ]
 webkit.org/b/99562 http/tests/plugins/post-url-file.html [ Failure ]
 
+# Asserting after r135816.
+webkit.org/b/103432 [ Debug ] http/tests/inspector/network/network-xhr-replay.html [ Crash ]
+
 # Comparison of two javascript objects in C++ is failing.
 webkit.org/b/98739 plugins/npruntime/embed-property-equality.html [ Failure ]
 
-# WebKitTestRunner needs an implementation for eventSender.contextClick
-webkit.org/b/86881 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
-webkit.org/b/86881 editing/selection/5354455-1.html [ Failure ]
-webkit.org/b/86881 editing/selection/5354455-2.html [ Failure ]
-webkit.org/b/86881 editing/selection/button-right-click.html [ Failure ]
-webkit.org/b/86881 editing/selection/context-menu-on-text.html [ Failure ]
-webkit.org/b/86881 editing/selection/context-menu-text-selection.html [ Failure ]
-webkit.org/b/86881 editing/selection/empty-cell-right-click.html [ Failure ]
-webkit.org/b/86881 editing/shadow/rightclick-on-meter-in-shadow-crash.html [ Failure ]
-webkit.org/b/86881 editing/spelling/context-menu-suggestions.html [ Failure ]
-webkit.org/b/86881 fast/events/context-no-deselect.html [ Failure ]
-webkit.org/b/86881 fast/events/context-onmousedown-event.html [ Failure ]
-webkit.org/b/86881 fast/events/contextmenu-scrolled-page-with-frame.html [ Failure ]
-webkit.org/b/86881 fast/events/right-click-focus.html [ Failure ]
-webkit.org/b/86881 fast/events/selectstart-prevent-selection-on-right-click.html [ Failure ]
-webkit.org/b/86881 media/context-menu-actions.html [ Failure ]
-webkit.org/b/86881 media/controls-right-click-on-timebar.html [ Failure ]
+# EFL's EventSender contextClick should return objects that implements click() method
+webkit.org/b/98410 editing/pasteboard/copy-standalone-image-crash.html [ Failure ]
+webkit.org/b/98410 media/context-menu-actions.html [ Failure ]
+webkit.org/b/86881 fast/events/context-nodrag.html [ Failure ]
 
-webkit.org/b/102201 fast/dom/Window/window-resize.html [ Failure ]
 webkit.org/b/102201 fast/dom/Window/open-window-min-size.html [ Failure ]
-webkit.org/b/102202 inspector/timeline/timeline-timer-fired-from-eval-call-site.html [ Failure ]
 
 webkit.org/b/102216 inspector-protocol/nmi-webaudio.html [ Failure ]
 webkit.org/b/102216 inspector-protocol/nmi-webaudio-leak-test.html [ Failure ]

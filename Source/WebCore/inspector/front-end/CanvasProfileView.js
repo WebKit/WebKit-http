@@ -72,7 +72,7 @@ WebInspector.CanvasProfileView = function(profile)
     this._splitView.show(this.element);
 
     this._enableWaitIcon(true);
-    CanvasAgent.getTraceLog(this._traceLogId, this._didReceiveTraceLog.bind(this));
+    CanvasAgent.getTraceLog(this._traceLogId, 0, this._didReceiveTraceLog.bind(this));
 }
 
 WebInspector.CanvasProfileView.prototype = {
@@ -106,7 +106,23 @@ WebInspector.CanvasProfileView.prototype = {
      */
     _enableWaitIcon: function(enable)
     {
-        this._replayImageElement.className = enable ? "wait" : "";
+        function showWaitIcon()
+        {
+            this._replayImageElement.className = "wait";
+            this._debugInfoElement.textContent = "";
+            delete this._showWaitIconTimer;
+        }
+
+        if (enable && this._replayImageElement.src && !this._showWaitIconTimer)
+            this._showWaitIconTimer = setTimeout(showWaitIcon.bind(this), 250);
+        else {
+            if (this._showWaitIconTimer) {
+                clearTimeout(this._showWaitIconTimer);
+                delete this._showWaitIconTimer;
+            }
+            this._replayImageElement.className = enable ? "wait" : "";
+            this._debugInfoElement.textContent = "";
+        }
     },
 
     _replayTraceLog: function()
@@ -260,7 +276,7 @@ WebInspector.CanvasProfileType.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.ProfileHeader}
- * @param {WebInspector.CanvasProfileType} type
+ * @param {!WebInspector.CanvasProfileType} type
  * @param {string} title
  * @param {number=} uid
  */

@@ -179,10 +179,6 @@ RenderLayer::RenderLayer(RenderLayerModelObject* renderer)
     , m_next(0)
     , m_first(0)
     , m_last(0)
-    , m_posZOrderList(0)
-    , m_negZOrderList(0)
-    , m_normalFlowList(0)
-    , m_marquee(0)
     , m_staticInlinePosition(0)
     , m_staticBlockPosition(0)
     , m_reflection(0)
@@ -244,11 +240,6 @@ RenderLayer::~RenderLayer()
 
     // Child layers will be deleted by their corresponding render objects, so
     // we don't need to delete them ourselves.
-
-    delete m_posZOrderList;
-    delete m_negZOrderList;
-    delete m_normalFlowList;
-    delete m_marquee;
 
 #if USE(ACCELERATED_COMPOSITING)
     clearBacking(true);
@@ -352,6 +343,9 @@ void RenderLayer::updateLayerPositions(RenderGeometryMap* geometryMap, UpdateLay
                            // to our parent layer.
     if (geometryMap)
         geometryMap->pushMappingsToAncestor(this, parent());
+
+    // Clear our cached clip rect information.
+    clearClipRects();
     
     if (hasOverflowControls()) {
         LayoutPoint offsetFromRoot;
@@ -503,13 +497,24 @@ void RenderLayer::clearRepaintRects()
     m_outlineBox = IntRect();
 }
 
-void RenderLayer::updateLayerPositionsAfterScroll()
+void RenderLayer::updateLayerPositionsAfterDocumentScroll()
+{
+    ASSERT(this == renderer()->view()->layer());
+
+    RenderGeometryMap geometryMap(UseTransforms);
+    updateLayerPositionsAfterScroll(&geometryMap);
+}
+
+void RenderLayer::updateLayerPositionsAfterOverflowScroll()
 {
     RenderGeometryMap geometryMap(UseTransforms);
     RenderView* view = renderer()->view();
     if (this != view->layer())
         geometryMap.pushMappingsToAncestor(parent(), 0);
-    updateLayerPositionsAfterScroll(&geometryMap);
+
+    // FIXME: why is it OK to not check the ancestors of this layer in order to
+    // initialize the HasSeenViewportConstrainedAncestor and HasSeenAncestorWithOverflowClip flags?
+    updateLayerPositionsAfterScroll(&geometryMap, IsOverflowScroll);
 }
 
 void RenderLayer::updateLayerPositionsAfterScroll(RenderGeometryMap* geometryMap, UpdateLayerPositionsAfterScrollFlags flags)
@@ -524,25 +529,32 @@ void RenderLayer::updateLayerPositionsAfterScroll(RenderGeometryMap* geometryMap
     if (!m_hasVisibleDescendant && !m_hasVisibleContent)
         return;
 
-    updateLayerPosition();
+    bool positionChanged = updateLayerPosition();
+    if (positionChanged)
+        flags |= HasChangedAncestor;
 
     if (geometryMap)
         geometryMap->pushMappingsToAncestor(this, parent());
 
-    if ((flags & HasSeenViewportConstrainedAncestor) || renderer()->style()->hasViewportConstrainedPosition()) {
-        // FIXME: Is it worth passing the offsetFromRoot around like in updateLayerPositions?
-        // FIXME: We could track the repaint container as we walk down the tree.
-        computeRepaintRects(renderer()->containerForRepaint(), geometryMap);
+    if (flags & HasChangedAncestor || flags & HasSeenViewportConstrainedAncestor || flags & IsOverflowScroll)
+        clearClipRects();
+
+    if (renderer()->style()->hasViewportConstrainedPosition())
         flags |= HasSeenViewportConstrainedAncestor;
-    } else if ((flags & HasSeenAncestorWithOverflowClip) && !m_canSkipRepaintRectsUpdateOnScroll) {
-        // If we have seen an overflow clip, we should update our repaint rects as clippedOverflowRectForRepaint
-        // intersects it with our ancestor overflow clip that may have moved.
-        computeRepaintRects(renderer()->containerForRepaint(), geometryMap);
-    }
 
     if (renderer()->hasOverflowClip())
         flags |= HasSeenAncestorWithOverflowClip;
 
+    if (flags & HasSeenViewportConstrainedAncestor
+        || (flags & IsOverflowScroll && flags & HasSeenAncestorWithOverflowClip && !m_canSkipRepaintRectsUpdateOnScroll)) {
+        // FIXME: We could track the repaint container as we walk down the tree.
+        computeRepaintRects(renderer()->containerForRepaint(), geometryMap);
+    } else {
+        // Check that our cached rects are correct.
+        ASSERT(m_repaintRect == renderer()->clippedOverflowRectForRepaint(renderer()->containerForRepaint()));
+        ASSERT(m_outlineBox == renderer()->outlineBoundsForRepaint(renderer()->containerForRepaint(), geometryMap));
+    }
+    
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling())
         child->updateLayerPositionsAfterScroll(geometryMap, flags);
 
@@ -843,7 +855,7 @@ bool RenderLayer::update3DTransformedDescendantStatus()
     return has3DTransform();
 }
 
-void RenderLayer::updateLayerPosition()
+bool RenderLayer::updateLayerPosition()
 {
     LayoutPoint localPoint;
     LayoutSize inlineBoundingBoxOffset; // We don't put this into the RenderLayer x/y for inlines, so we need to subtract it out when done.
@@ -859,9 +871,6 @@ void RenderLayer::updateLayerPosition()
         localPoint += box->topLeftLocationOffset();
     }
 
-    // Clear our cached clip rect information.
-    clearClipRects();
- 
     if (!renderer()->isOutOfFlowPositioned() && renderer()->parent()) {
         // We must adjust our position by walking up the render tree looking for the
         // nearest enclosing object with a layer.
@@ -909,8 +918,11 @@ void RenderLayer::updateLayerPosition()
         localPoint -= scrollOffset;
     }
     
+    bool positionOrOffsetChanged = false;
     if (renderer()->isInFlowPositioned()) {
-        m_offsetForInFlowPosition = toRenderBoxModelObject(renderer())->offsetForInFlowPosition();
+        LayoutSize newOffset = toRenderBoxModelObject(renderer())->offsetForInFlowPosition();
+        positionOrOffsetChanged = newOffset != m_offsetForInFlowPosition;
+        m_offsetForInFlowPosition = newOffset;
         localPoint.move(m_offsetForInFlowPosition);
     } else {
         m_offsetForInFlowPosition = LayoutSize();
@@ -918,7 +930,10 @@ void RenderLayer::updateLayerPosition()
 
     // FIXME: We'd really like to just get rid of the concept of a layer rectangle and rely on the renderers.
     localPoint -= inlineBoundingBoxOffset;
-    setLocation(localPoint.x(), localPoint.y());
+    
+    positionOrOffsetChanged |= location() != localPoint;
+    setLocation(localPoint);
+    return positionOrOffsetChanged;
 }
 
 TransformationMatrix RenderLayer::perspectiveTransform() const
@@ -1745,7 +1760,7 @@ void RenderLayer::scrollTo(int x, int y)
     bool inLayout = view ? view->frameView()->isInLayout() : false;
     if (!inLayout) {
         // If we're in the middle of layout, we'll just update layers once layout has finished.
-        updateLayerPositionsAfterScroll();
+        updateLayerPositionsAfterOverflowScroll();
         if (view) {
             // Update regions, scrolling may change the clip of a particular region.
 #if ENABLE(DASHBOARD_SUPPORT) || ENABLE(DRAGGABLE_REGION)
@@ -3421,7 +3436,7 @@ void RenderLayer::paintLayerContents(GraphicsContext* context, const LayerPainti
         }
     
         // Paint any child layers that have overflow.
-        paintList(m_normalFlowList, context, localPaintingInfo, localPaintFlags);
+        paintList(m_normalFlowList.get(), context, localPaintingInfo, localPaintFlags);
     
         // Now walk the sorted list of children with positive z-indices.
         paintList(posZOrderList(), context, localPaintingInfo, localPaintFlags);
@@ -3642,7 +3657,7 @@ bool RenderLayer::hitTest(const HitTestRequest& request, const HitTestLocation& 
         // return ourselves. We do this so mouse events continue getting delivered after a drag has 
         // exited the WebView, and so hit testing over a scrollbar hits the content document.
         if ((request.active() || request.release()) && isRootLayer()) {
-            renderer()->updateHitTestResult(result, toRenderView(renderer())->flipForWritingMode(result.point()));
+            renderer()->updateHitTestResult(result, toRenderView(renderer())->flipForWritingMode(hitTestLocation.point()));
             insideLayer = this;
         }
     }
@@ -3884,7 +3899,7 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     }
 
     // Now check our overflow objects.
-    hitLayer = hitTestList(m_normalFlowList, rootLayer, request, result, hitTestRect, hitTestLocation,
+    hitLayer = hitTestList(m_normalFlowList.get(), rootLayer, request, result, hitTestRect, hitTestLocation,
                            localTransformState.get(), zOffsetForDescendantsPtr, zOffset, unflattenedTransformState.get(), depthSortDescendants);
     if (hitLayer) {
         if (!depthSortDescendants)
@@ -4137,6 +4152,15 @@ void RenderLayer::updateClipRects(const ClipRectsContext& clipRectsContext)
         ASSERT(clipRectsContext.rootLayer == m_clipRectsCache->m_clipRectsRoot[clipRectsType]);
         ASSERT(m_clipRectsCache->m_respectingOverflowClip[clipRectsType] == (clipRectsContext.respectOverflowClip == RespectOverflowClip));
         ASSERT(m_clipRectsCache->m_scrollbarRelevancy[clipRectsType] == clipRectsContext.overlayScrollbarSizeRelevancy);
+        
+#ifdef CHECK_CACHED_CLIP_RECTS
+        // This code is useful to check cached clip rects, but is too expensive to leave enabled in debug builds by default.
+        ClipRectsContext tempContext(clipRectsContext);
+        tempContext.clipRectsType = TemporaryClipRects;
+        ClipRects clipRects;
+        calculateClipRects(tempContext, clipRects);
+        ASSERT(clipRects == *m_clipRectsCache->m_clipRects[clipRectsType].get());
+#endif
         return; // We have the correct cached value.
     }
     
@@ -4832,7 +4856,7 @@ void RenderLayer::updateNormalFlowList()
         // Ignore non-overflow layers and reflections.
         if (child->isNormalFlowOnly() && (!m_reflection || reflectionLayer() != child)) {
             if (!m_normalFlowList)
-                m_normalFlowList = new Vector<RenderLayer*>;
+                m_normalFlowList = adoptPtr(new Vector<RenderLayer*>);
             m_normalFlowList->append(child);
         }
     }
@@ -4840,7 +4864,7 @@ void RenderLayer::updateNormalFlowList()
     m_normalFlowListDirty = false;
 }
 
-void RenderLayer::collectLayers(bool includeHiddenLayers, Vector<RenderLayer*>*& posBuffer, Vector<RenderLayer*>*& negBuffer)
+void RenderLayer::collectLayers(bool includeHiddenLayers, OwnPtr<Vector<RenderLayer*> >& posBuffer, OwnPtr<Vector<RenderLayer*> >& negBuffer)
 {
 #if ENABLE(DIALOG_ELEMENT)
     if (isInTopLayer())
@@ -4853,11 +4877,11 @@ void RenderLayer::collectLayers(bool includeHiddenLayers, Vector<RenderLayer*>*&
     bool includeHiddenLayer = includeHiddenLayers || (m_hasVisibleContent || (m_hasVisibleDescendant && isStackingContext()));
     if (includeHiddenLayer && !isNormalFlowOnly() && !renderer()->isRenderFlowThread()) {
         // Determine which buffer the child should be in.
-        Vector<RenderLayer*>*& buffer = (zIndex() >= 0) ? posBuffer : negBuffer;
+        OwnPtr<Vector<RenderLayer*> >& buffer = (zIndex() >= 0) ? posBuffer : negBuffer;
 
         // Create the buffer if it doesn't exist yet.
         if (!buffer)
-            buffer = new Vector<RenderLayer*>;
+            buffer = adoptPtr(new Vector<RenderLayer*>);
         
         // Append ourselves at the end of the appropriate buffer.
         buffer->append(this);
@@ -5086,12 +5110,11 @@ void RenderLayer::styleChanged(StyleDifference, const RenderStyle* oldStyle)
 
     if (renderer()->style()->overflowX() == OMARQUEE && renderer()->style()->marqueeBehavior() != MNONE && renderer()->isBox()) {
         if (!m_marquee)
-            m_marquee = new RenderMarquee(this);
+            m_marquee = adoptPtr(new RenderMarquee(this));
         m_marquee->updateMarqueeStyle();
     }
     else if (m_marquee) {
-        delete m_marquee;
-        m_marquee = 0;
+        m_marquee.clear();
     }
 
     updateStackingContextsAfterStyleChange(oldStyle);

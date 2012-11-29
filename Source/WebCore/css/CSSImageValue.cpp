@@ -89,7 +89,7 @@ StyleCachedImage* CSSImageValue::cachedImage(CachedResourceLoader* loader, const
         if (initiatorElement)
             request.setInitiator(initiatorElement);
         else
-            request.setInitiator(cachedResourceRequestInitiators().css, loader->document());
+            request.setInitiator(cachedResourceRequestInitiators().css);
         if (CachedResourceHandle<CachedImage> cachedImage = loader->requestImage(request))
             m_image = StyleCachedImage::create(cachedImage.get());
     }
@@ -138,6 +138,11 @@ void CSSImageValue::reportDescendantMemoryUsage(MemoryObjectInfo* memoryObjectIn
     MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::CSS);
     info.addMember(m_url);
     // No need to report m_image as it is counted as part of RenderArena.
+}
+
+bool CSSImageValue::hasAlpha(const RenderObject* renderer) const
+{
+    return m_image ? m_image->hasAlpha(renderer) : true;
 }
 
 } // namespace WebCore

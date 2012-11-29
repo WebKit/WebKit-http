@@ -5,6 +5,9 @@
 # <rdar://problem/5647952> fast/events/mouseout-on-window.html needs mac DRT to issue mouse out events
 fast/events/mouseout-on-window.html
 
+# Different behavior expectatations on mac: https://bugs.webkit.org/show_bug.cgi?id=102987
+fast/events/context-nodrag.html
+
 # <rdar://problem/5643675> window.scrollTo scrolls a window with no scrollbars
 fast/events/attempt-scroll-with-no-scrollbars.html
 
@@ -359,6 +362,9 @@ fast/events/drag-customData.html
 # Need to implement WebGeolocationRequest::cancelPermissionRequest on mac.
 # https://bugs.webkit.org/show_bug.cgi?id=55944
 fast/dom/Geolocation/page-reload-cancel-permission-requests.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=103435
+fast/backgrounds/background-opaque-images-over-color.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=56685
 webarchive/test-link-rel-icon.html
@@ -997,6 +1003,9 @@ webkit.org/b/89052 fast/css/image-orientation
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
 
+# CSS3 Background is not yet enabled (needs ENABLE_CSS3_BACKGROUND).
+webkit.org/b/37514 fast/backgrounds/background-position-parsing-2.html [ Text ]
+
 # Our slow tests, in alphabetical order.
 webkit.org/b/57672 http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure Pass ]
 
@@ -1152,6 +1161,29 @@ webkit.org/b/98560 fast/writing-mode/vertical-subst-font-vert-no-dflt.html [ Ima
 # This test is failing and causing subsequent tests to time out.
 webkit.org/b/98837 http/tests/security/svg-image-leak.html [ Skip ]
 
+# Needs rebaseline. A div should be removed, but the rendering should be the same.
+webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
+webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
+webkit.org/b/102993 fast/forms/box-shadow-override.html [ Failure ]
+webkit.org/b/102993 fast/forms/input-appearance-height.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/input-appearance-range.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/slider-padding.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/slider-thumb-shared-style.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/slider-thumb-stylability.html [ Failure ]
+webkit.org/b/102993 fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/102993 fast/repaint/slider-thumb-drag-release.html [ Failure ]
+webkit.org/b/102993 fast/repaint/slider-thumb-float.html [ Failure ]
+webkit.org/b/102993 media/audio-controls-rendering.html [ Failure ]
+webkit.org/b/102993 media/controls-after-reload.html [ Failure ]
+webkit.org/b/102993 media/controls-strict.html [ Failure ]
+webkit.org/b/102993 media/controls-styling-strict.html [ Failure ]
+webkit.org/b/102993 media/controls-without-preload.html [ Failure ]
+webkit.org/b/102993 media/video-controls-rendering.html [ Failure ]
+webkit.org/b/102993 media/video-display-toggle.html [ Failure ]
+webkit.org/b/102993 media/video-no-audio.html [ Failure ]
+webkit.org/b/102993 media/video-playing-and-pause.html [ Failure ]
+
 # Should never have been a ref test.
 webkit.org/b/98456 compositing/images/truncated-direct-png-image.html [ ImageOnlyFailure ]
 
@@ -1190,9 +1222,3 @@ webkit.org/b/67434 [ Debug ] fast/block/float/overhanging-tall-block.html [ Skip
 
 # Mountain Lion and prior do not support custom media data loading
 Bug(jernoble) [ MountainLion Lion SnowLeopard ] media/video-src-blob.html
-
-# Hangs safari apparently due to an issue with weird multi-frame CUR image files
-webkit.org/b/101811 fast/events/mouse-cursor-multiframecur.html [ Skip ]
-
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff.html [ Skip ]
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff-transient.html [ Skip ]

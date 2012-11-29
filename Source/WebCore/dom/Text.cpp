@@ -42,7 +42,12 @@ namespace WebCore {
 
 PassRefPtr<Text> Text::create(Document* document, const String& data)
 {
-    return adoptRef(new Text(document, data));
+    return adoptRef(new Text(document, data, CreateText));
+}
+
+PassRefPtr<Text> Text::createEditingText(Document* document, const String& data)
+{
+    return adoptRef(new Text(document, data, CreateEditingText));
 }
 
 PassRefPtr<Text> Text::splitText(unsigned offset, ExceptionCode& ec)
@@ -190,9 +195,15 @@ PassRefPtr<Node> Text::cloneNode(bool /*deep*/)
     return create(document(), data());
 }
 
-bool Text::rendererIsNeeded(const NodeRenderingContext& context)
+bool Text::textRendererIsNeeded(const NodeRenderingContext& context)
 {
-    if (!CharacterData::rendererIsNeeded(context))
+    if (isEditingText())
+        return true;
+
+    if (!length())
+        return false;
+
+    if (context.style()->display() == NONE)
         return false;
 
     bool onlyWS = containsOnlyWhitespace();
@@ -231,14 +242,31 @@ bool Text::rendererIsNeeded(const NodeRenderingContext& context)
     return true;
 }
 
-RenderObject* Text::createRenderer(RenderArena* arena, RenderStyle* style)
-{
 #if ENABLE(SVG)
-    Node* parentOrHost = parentOrHostNode();
-    if (parentOrHost->isSVGElement() && !parentOrHost->hasTagName(SVGNames::foreignObjectTag))
-        return new (arena) RenderSVGInlineText(this, dataImpl());
+static bool isSVGShadowText(Text* text)
+{
+    Node* parentNode = text->parentNode();
+    return parentNode->isShadowRoot() && toShadowRoot(parentNode)->host()->hasTagName(SVGNames::trefTag);
+}
+
+static bool isSVGText(Text* text)
+{
+    Node* parentOrHostNode = text->parentOrHostNode();
+    return parentOrHostNode->isSVGElement() && !parentOrHostNode->hasTagName(SVGNames::foreignObjectTag);
+}
 #endif
 
+void Text::createTextRendererIfNeeded()
+{
+    NodeRenderingContext(this).createRendererForTextIfNeeded();
+}
+
+RenderText* Text::createTextRenderer(RenderArena* arena, RenderStyle* style)
+{
+#if ENABLE(SVG)
+    if (isSVGText(this) || isSVGShadowText(this))
+        return new (arena) RenderSVGInlineText(this, dataImpl());
+#endif
     if (style->hasTextCombine())
         return new (arena) RenderCombineText(this, dataImpl());
 
@@ -247,30 +275,43 @@ RenderObject* Text::createRenderer(RenderArena* arena, RenderStyle* style)
 
 void Text::attach()
 {
-    createRendererIfNeeded();
+    createTextRendererIfNeeded();
     CharacterData::attach();
 }
 
 void Text::recalcTextStyle(StyleChange change)
 {
-    if (hasCustomCallbacks())
-        willRecalcTextStyle(change);
-
-    RenderObject* renderer = this->renderer();
-
+    RenderText* renderer = toRenderText(this->renderer());
     // The only time we have a renderer and our parent doesn't is if our parent
     // is a shadow root.
-    if (change != NoChange && renderer && !parentNode()->isShadowRoot())
-        renderer->setStyle(parentNode()->renderer()->style());
+    if (change != NoChange && renderer) {
+        if (!parentNode()->isShadowRoot())
+            renderer->setStyle(parentNode()->renderer()->style());
+#if ENABLE(SVG)
+        else if (isSVGShadowText(this))
+            renderer->setStyle(toShadowRoot(parentNode())->host()->renderer()->style());
+#endif
+    }
 
     if (needsStyleRecalc()) {
-        if (renderer) {
-            if (renderer->isText())
-                toRenderText(renderer)->setText(dataImpl());
-        } else
+        if (renderer)
+            renderer->setText(dataImpl());
+        else
             reattach();
     }
     clearNeedsStyleRecalc();
+}
+
+void Text::updateTextRenderer(unsigned offsetOfReplacedData, unsigned lengthOfReplacedData)
+{
+    if (!attached())
+        return;
+    RenderText* textRenderer = toRenderText(renderer());
+    if (!textRenderer || !textRendererIsNeeded(NodeRenderingContext(this, textRenderer->style()))) {
+        reattach();
+        return;
+    }
+    textRenderer->setTextWithOffset(dataImpl(), offsetOfReplacedData, lengthOfReplacedData);
 }
 
 bool Text::childTypeAllowed(NodeType) const
@@ -294,11 +335,6 @@ PassRefPtr<Text> Text::createWithLengthLimit(Document* document, const String& d
     result->parserAppendData(data, start, maxChars);
 
     return result;
-}
-
-void Text::willRecalcTextStyle(StyleChange)
-{
-    ASSERT_NOT_REACHED();
 }
 
 #ifndef NDEBUG

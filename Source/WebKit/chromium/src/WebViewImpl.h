@@ -44,13 +44,13 @@
 #include "PageOverlayList.h"
 #include "PagePopupDriver.h"
 #include "PageWidgetDelegate.h"
-#include "PlatformGestureCurveTarget.h"
 #include "UserMediaClientImpl.h"
 #include "WebInputEvent.h"
 #include "WebNavigationPolicy.h"
 #include "WebView.h"
 #include "WebViewBenchmarkSupportImpl.h"
 #include <public/WebFloatQuad.h>
+#include <public/WebGestureCurveTarget.h>
 #include <public/WebLayer.h>
 #include <public/WebLayerTreeViewClient.h>
 #include <public/WebPoint.h>
@@ -61,7 +61,6 @@
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
-class ActivePlatformGestureAnimation;
 class ChromiumDataObject;
 class Color;
 class DocumentLoader;
@@ -74,7 +73,6 @@ class Page;
 class PageGroup;
 class PagePopup;
 class PagePopupClient;
-class PlatformGestureCurveTarget;
 class PlatformKeyboardEvent;
 class PopupContainer;
 class PopupMenuClient;
@@ -101,6 +99,7 @@ class SpeechRecognitionClientProxy;
 class UserMediaClientImpl;
 class ValidationMessageClientImpl;
 class WebAccessibilityObject;
+class WebActiveGestureAnimation;
 class WebCompositorImpl;
 class WebDevToolsAgentClient;
 class WebDevToolsAgentPrivate;
@@ -119,13 +118,13 @@ class WebTouchEvent;
 class WebViewBenchmarkSupport;
 
 class WebViewImpl : public WebView
-                  , public WebLayerTreeViewClient
-                  , public RefCounted<WebViewImpl>
-                  , public WebCore::PlatformGestureCurveTarget
+    , public WebLayerTreeViewClient
+    , public RefCounted<WebViewImpl>
+    , public WebGestureCurveTarget
 #if ENABLE(PAGE_POPUP)
-                  , public WebCore::PagePopupDriver
+    , public WebCore::PagePopupDriver
 #endif
-                  , public PageWidgetEventHandler {
+    , public PageWidgetEventHandler {
 public:
     enum AutoZoomType {
         DoubleTap,
@@ -153,6 +152,7 @@ public:
     virtual void setNeedsRedraw();
     virtual bool isInputThrottled() const;
     virtual bool handleInputEvent(const WebInputEvent&);
+    virtual bool hasTouchEventHandlersAt(const WebPoint&);
     virtual void mouseCaptureLost();
     virtual void setFocus(bool enable);
     virtual bool setComposition(
@@ -309,6 +309,7 @@ public:
 #endif
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&);
     virtual WebViewBenchmarkSupport* benchmarkSupport();
+    virtual void setShowPaintRects(bool);
     virtual void setShowFPSCounter(bool);
 
     // WebLayerTreeViewClient
@@ -316,8 +317,6 @@ public:
     virtual void didBeginFrame();
     virtual void updateAnimations(double monotonicFrameBeginTime);
     virtual void applyScrollAndScale(const WebSize&, float);
-    virtual WebGraphicsContext3D* createContext3D() OVERRIDE;
-    virtual void didRebindGraphicsContext(bool success) OVERRIDE;
     virtual WebCompositorOutputSurface* createOutputSurface() OVERRIDE;
     virtual void didRecreateOutputSurface(bool success) OVERRIDE;
     virtual WebInputHandler* createInputHandler() OVERRIDE;
@@ -405,8 +404,8 @@ public:
     void numberOfWheelEventHandlersChanged(unsigned);
     void hasTouchEventHandlers(bool);
 
-    // PlatformGestureCurveTarget implementation for wheel fling.
-    virtual void scrollBy(const WebCore::IntPoint&);
+    // WebGestureCurveTarget implementation for fling.
+    virtual void scrollBy(const WebPoint&);
 
     // Handles context menu events orignated via the the keyboard. These
     // include the VK_APPS virtual key and the Shift+F10 combine. Code is
@@ -600,6 +599,7 @@ public:
     LinkHighlight* linkHighlight() { return m_linkHighlight.get(); }
 #endif
 
+    WebSettingsImpl* settingsImpl();
 
 private:
     bool computePageScaleFactorLimits();
@@ -678,8 +678,6 @@ private:
     virtual bool handleGestureEvent(const WebGestureEvent&) OVERRIDE;
     virtual bool handleKeyEvent(const WebKeyboardEvent&) OVERRIDE;
     virtual bool handleCharEvent(const WebKeyboardEvent&) OVERRIDE;
-
-    WebSettingsImpl* settingsImpl();
 
     WebViewClient* m_client;
     WebAutofillClient* m_autofillClient;
@@ -873,7 +871,7 @@ private:
 #if ENABLE(NAVIGATOR_CONTENT_UTILS)
     OwnPtr<NavigatorContentUtilsClientImpl> m_navigatorContentUtilsClient;
 #endif
-    OwnPtr<WebCore::ActivePlatformGestureAnimation> m_gestureAnimation;
+    OwnPtr<WebActiveGestureAnimation> m_gestureAnimation;
     WebPoint m_lastWheelPosition;
     WebPoint m_lastWheelGlobalPosition;
     int m_flingModifier;

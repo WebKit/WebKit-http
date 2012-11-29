@@ -53,7 +53,8 @@ class QUrl;
 class QFile;
 QT_END_NAMESPACE
 
-class QWebFrame;
+class QWebFrameAdapter;
+class QWebPageAdapter;
 
 class TestRunner;
 class DumpRenderTreeSupportQt;
@@ -97,6 +98,9 @@ public:
     void switchFocus(bool focused);
 
     WebPage *webPage() const { return m_page; }
+    QWebPageAdapter *pageAdapter() const;
+    QWebFrameAdapter *mainFrameAdapter() const;
+
     QList<WebPage*> getAllPages() const;
 
     void processArgsLine(const QStringList&);
@@ -200,8 +204,9 @@ public:
 
     void permissionSet(QWebPage::Feature feature);
 
+    virtual bool shouldInterruptJavaScript() { return false; }
+
 public Q_SLOTS:
-    bool shouldInterruptJavaScript() { return false; }
     void requestPermission(QWebFrame* frame, QWebPage::Feature feature);
     void cancelPermission(QWebFrame* frame, QWebPage::Feature feature);
 

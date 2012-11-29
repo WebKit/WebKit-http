@@ -2,14 +2,14 @@ AC_PREREQ(2.60)
 
 m4_define([webkit_major_version], [1])
 m4_define([webkit_minor_version], [11])
-m4_define([webkit_micro_version], [1])
+m4_define([webkit_micro_version], [2])
 
 # This is the version we'll be using as part of our User-Agent string
 # e.g., AppleWebKit/$(webkit_user_agent_version) ...
 #
 # Sourced from Source/WebCore/Configurations/Version.xcconfig
 m4_define([webkit_user_agent_major_version], [537])
-m4_define([webkit_user_agent_minor_version], [16])
+m4_define([webkit_user_agent_minor_version], [20])
 
 AC_INIT([WebKitGTK],[webkit_major_version.webkit_minor_version.webkit_micro_version],[http://bugs.webkit.org/])
 
@@ -35,13 +35,13 @@ AC_CONFIG_SRCDIR([Source/WebCore/config.h])
 
 dnl # Libtool library version, not to confuse with API version
 dnl # see http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-LIBWEBKITGTK_VERSION=17:0:17
+LIBWEBKITGTK_VERSION=17:1:17
 AC_SUBST([LIBWEBKITGTK_VERSION])
 
-LIBJAVASCRIPTCOREGTK_VERSION=13:6:13
+LIBJAVASCRIPTCOREGTK_VERSION=13:7:13
 AC_SUBST([LIBJAVASCRIPTCOREGTK_VERSION])
 
-LIBWEBKIT2GTK_VERSION=18:0:18
+LIBWEBKIT2GTK_VERSION=19:0:19
 AC_SUBST([LIBWEBKIT2GTK_VERSION])
 
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-xz no-dist-gzip tar-ustar])
@@ -808,6 +808,14 @@ AC_ARG_ENABLE(coverage,
               [],[enable_coverage="no"])
 AC_MSG_RESULT([$enable_coverage])
 
+# check whether to enable CSS3 background support
+AC_MSG_CHECKING([whether to enable CSS3 background support])
+AC_ARG_ENABLE(css3_background,
+              AC_HELP_STRING([--enable-css3-background],
+                             [enable CSS3 background support [default=no]]),
+              [],[enable_css3_background="no"])
+AC_MSG_RESULT([$enable_css3_background])
+
 # check whether to enable CSS conditional rules support
 AC_MSG_CHECKING([whether to enable CSS3 conditional rules support])
 AC_ARG_ENABLE(css3_conditional_rules,
@@ -1110,6 +1118,13 @@ if test "$enable_webkit2" = "yes"; then
    if test "$have_gtk_unix_printing" = "yes"; then
        AC_DEFINE([HAVE_GTK_UNIX_PRINTING], [1], [Define if GTK+ UNIX Printing is available])
    fi
+
+   # On some Linux/Unix platforms, shm_* may only be available if linking
+   # against librt
+   if test "$os_win32" = "no"; then
+       AC_SEARCH_LIBS([shm_open], [rt], [SHM_LIBS="-lrt"])
+       AC_SUBST(SHM_LIBS)
+   fi
 fi
 
 # Plugin Process
@@ -1204,6 +1219,7 @@ AM_CONDITIONAL([ENABLE_MEDIA_STREAM],[test "$enable_media_stream" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG],[test "$enable_svg" = "yes"])
 AM_CONDITIONAL([ENABLE_SVG_FONTS],[test "$enable_svg_fonts" = "yes"])
 AM_CONDITIONAL([ENABLE_COVERAGE],[test "$enable_coverage" = "yes"])
+AM_CONDITIONAL([ENABLE_CSS3_BACKGROUND],[test "$enable_css3_background" = "yes"])
 AM_CONDITIONAL([ENABLE_CSS3_CONDITIONAL_RULES],[test "$enable_css3_conditional_rules" = "yes"])
 AM_CONDITIONAL([ENABLE_FAST_MALLOC],[test "$enable_fast_malloc" = "yes"])
 AM_CONDITIONAL([ENABLE_WEB_AUDIO],[test "$enable_web_audio" = "yes"])
@@ -1270,6 +1286,7 @@ Features:
 =======
  Accelerated Compositing                                  : $enable_accelerated_compositing
  CSS3 Conditional Rules support                           : $enable_css3_conditional_rules
+ CSS3 background support                                  : $enable_css3_background
  Filters support                                          : $enable_filters
  Gamepad support                                          : $enable_gamepad
  Geolocation support                                      : $enable_geolocation

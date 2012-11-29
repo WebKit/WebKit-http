@@ -31,6 +31,9 @@
 #include <EGL/egl.h>
 #endif
 #include "KURL.h"
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#include "NotificationManager.h"
+#endif
 #include "PageClientBlackBerry.h"
 #include "PlatformMouseEvent.h"
 #include "ScriptSourceCode.h"
@@ -461,6 +464,10 @@ public:
     void willComposite();
     void didComposite();
 
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    NotificationManager& notificationManager() { return m_notificationManager; };
+#endif
+
     WebPage* m_webPage;
     WebPageClient* m_client;
     WebCore::InspectorClientBlackBerry* m_inspectorClient;
@@ -483,7 +490,6 @@ public:
     bool m_overflowExceedsContentsSize;
     bool m_resetVirtualViewportOnCommitted;
     bool m_shouldUseFixedDesktopMode;
-    bool m_needTouchEvents;
     int m_preventIdleDimmingCount;
 
 #if ENABLE(TOUCH_EVENTS)
@@ -635,6 +641,11 @@ public:
 
     WebCore::IntPoint m_cachedHitTestContentPos;
     WebCore::HitTestResult m_cachedHitTestResult;
+
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    NotificationManager m_notificationManager;
+#endif
+
 protected:
     virtual ~WebPagePrivate();
 };

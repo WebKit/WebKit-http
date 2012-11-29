@@ -54,10 +54,8 @@ protected:
         : Node(document, type)
         , m_data(!text.isNull() ? text : emptyString())
     {
-        ASSERT(type == CreateOther || type == CreateText);
+        ASSERT(type == CreateOther || type == CreateText || type == CreateEditingText);
     }
-
-    virtual bool rendererIsNeeded(const NodeRenderingContext&);
 
     void setDataWithoutUpdate(const String& data)
     {
@@ -73,7 +71,6 @@ private:
     virtual int maxCharacterOffset() const;
     virtual bool offsetInCharacters() const;
     void setDataAndUpdate(const String&, unsigned offsetOfReplacedData, unsigned oldLength, unsigned newLength);
-    void updateRenderer(unsigned offsetOfReplacedData, unsigned lengthOfReplacedData);
     void checkCharDataOperation(unsigned offset, ExceptionCode&);
 
     String m_data;

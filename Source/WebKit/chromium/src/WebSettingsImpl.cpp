@@ -31,8 +31,8 @@
 #include "config.h"
 #include "WebSettingsImpl.h"
 
+#include "DeferredImageDecoder.h"
 #include "FontRenderingMode.h"
-#include "ImageDecodingStore.h"
 #include "Settings.h"
 #include <public/WebString.h>
 #include <public/WebURL.h>
@@ -346,6 +346,11 @@ void WebSettingsImpl::setTextDirectionSubmenuInclusionBehaviorNeverIncluded()
     m_settings->setTextDirectionSubmenuInclusionBehavior(WebCore::TextDirectionSubmenuNeverIncluded);
 }
 
+void WebSettingsImpl::setTouchDragDropEnabled(bool enabled)
+{
+    m_settings->setTouchDragDropEnabled(enabled);
+}
+
 void WebSettingsImpl::setOfflineWebApplicationCacheEnabled(bool enabled)
 {
     m_settings->setOfflineWebApplicationCacheEnabled(enabled);
@@ -500,10 +505,7 @@ void WebSettingsImpl::setDeferred2dCanvasEnabled(bool enabled)
 
 void WebSettingsImpl::setDeferredImageDecodingEnabled(bool enabled)
 {
-    if (!m_deferredImageDecodingEnabled && enabled)
-        ImageDecodingStore::initializeOnMainThread();
-    if (m_deferredImageDecodingEnabled && !enabled)
-        ImageDecodingStore::shutdown();
+    DeferredImageDecoder::setEnabled(enabled);
     m_deferredImageDecodingEnabled = enabled;
 }
 
@@ -608,6 +610,11 @@ void WebSettingsImpl::setEnableScrollAnimator(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
+}
+
+void WebSettingsImpl::setEnableTouchAdjustment(bool enabled)
+{
+    m_settings->setTouchAdjustmentEnabled(enabled);
 }
 
 bool WebSettingsImpl::scrollAnimatorEnabled() const

@@ -24,17 +24,13 @@
 
 #include "ClassList.h"
 #include "DatasetDOMStringMap.h"
-#include "Element.h"
 #include "ElementShadow.h"
-#include "HTMLCollection.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "StyleInheritedData.h"
 #include <wtf/OwnPtr.h>
 
 namespace WebCore {
-
-class HTMLCollection;
 
 class ElementRareData : public NodeRareData {
 public:
@@ -58,63 +54,7 @@ public:
     using NodeRareData::setIsInTopLayer;
 #endif
 
-    bool hasCachedHTMLCollections() const
-    {
-        return m_cachedCollections;
-    }
-
-    PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(Element*, CollectionType);
-    HTMLCollection* cachedHTMLCollection(CollectionType type)
-    {
-        if (!m_cachedCollections)
-            return 0;
-
-        return (*m_cachedCollections)[type - FirstNodeCollectionType];
-    }
-
-    void removeCachedHTMLCollection(HTMLCollection* collection, CollectionType type)
-    {
-        ASSERT(m_cachedCollections);
-        ASSERT_UNUSED(collection, (*m_cachedCollections)[type - FirstNodeCollectionType] == collection);
-        (*m_cachedCollections)[type - FirstNodeCollectionType] = 0;
-    }
-
-    void clearHTMLCollectionCaches(const QualifiedName* attrName)
-    {
-        if (!m_cachedCollections)
-            return;
-
-        bool shouldIgnoreType = !attrName || *attrName == HTMLNames::idAttr || *attrName == HTMLNames::nameAttr;
-
-        for (unsigned i = 0; i < (*m_cachedCollections).size(); i++) {
-            if (HTMLCollection* collection = (*m_cachedCollections)[i]) {
-                if (shouldIgnoreType || DynamicNodeListCacheBase::shouldInvalidateTypeOnAttributeChange(collection->invalidationType(), *attrName))
-                    collection->invalidateCache();
-            }
-        }
-    }
-
-    void adoptTreeScope(Document* oldDocument, Document* newDocument)
-    {
-        if (!m_cachedCollections)
-            return;
-
-        for (unsigned i = 0; i < (*m_cachedCollections).size(); i++) {
-            HTMLCollection* collection = (*m_cachedCollections)[i];
-            if (!collection)
-                continue;
-            collection->invalidateCache();
-            if (oldDocument != newDocument) {
-                oldDocument->unregisterNodeListCache(collection);
-                newDocument->registerNodeListCache(collection);
-            }
-        }
-    }
-
     virtual void reportMemoryUsage(MemoryObjectInfo*) const OVERRIDE;
-
-    typedef FixedArray<HTMLCollection*, NumNodeCollectionTypes> CachedHTMLCollectionArray;
-    OwnPtr<CachedHTMLCollectionArray> m_cachedCollections;
 
     LayoutSize m_minimumSizeForResizing;
     RefPtr<RenderStyle> m_computedStyle;

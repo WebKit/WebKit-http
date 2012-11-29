@@ -47,7 +47,7 @@
 #include "V8XPathNSResolver.h"
 #include "WebCoreMemoryInstrumentation.h"
 #include "WorkerContext.h"
-#include "WorkerContextExecutionProxy.h"
+#include "WorkerScriptController.h"
 #include "WorldContextHandle.h"
 #include "XPathNSResolver.h"
 #include <wtf/MathExtras.h>
@@ -100,7 +100,7 @@ static String v8NonStringValueToWebCoreString(v8::Handle<v8::Value> object)
 {
     ASSERT(!object->IsString());
     if (object->IsInt32())
-        return int32ToWebCoreString(object->Int32Value());
+        return int32ToWebCoreString<String>(object->Int32Value());
 
     v8::TryCatch block;
     v8::Handle<v8::String> v8String = object->ToString();
@@ -311,8 +311,8 @@ v8::Local<v8::Context> toV8Context(ScriptExecutionContext* context, const WorldC
             return worldContext.adjustedContext(frame->script());
 #if ENABLE(WORKERS)
     } else if (context->isWorkerContext()) {
-        if (WorkerContextExecutionProxy* proxy = static_cast<WorkerContext*>(context)->script()->proxy())
-            return proxy->context();
+        if (WorkerScriptController* script = static_cast<WorkerContext*>(context)->script())
+            return script->context();
 #endif
     }
     return v8::Local<v8::Context>();

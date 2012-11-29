@@ -70,22 +70,12 @@ public:
     bool isContextInitialized() { return !m_context.isEmpty(); }
     bool isGlobalInitialized() { return !m_global.isEmpty(); }
 
-    v8::Persistent<v8::Context> createNewContext(v8::Handle<v8::Object> global, int extensionGroup, int worldId);
-
     bool initializeIfNeeded();
     void updateDocumentWrapper(v8::Handle<v8::Object> wrapper);
 
     void clearForNavigation();
-    void clearForClose();
+    void clearForClose(bool destroyGlobal);
 
-    void destroyGlobal();
-
-    static V8DOMWindowShell* isolated(v8::Handle<v8::Context> context)
-    {
-        return static_cast<V8DOMWindowShell*>(context->GetAlignedPointerFromEmbedderData(v8ContextIsolatedWindowShell));
-    }
-
-    V8PerContextData* perContextData() { return m_perContextData.get(); }
     DOMWrapperWorld* world() { return m_world.get(); }
 
     void destroyIsolatedShell();
@@ -93,7 +83,7 @@ public:
 private:
     V8DOMWindowShell(Frame*, PassRefPtr<DOMWrapperWorld>);
 
-    void disposeContext(bool weak = false);
+    void disposeContext();
 
     void setSecurityToken();
 

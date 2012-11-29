@@ -360,7 +360,6 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
 
     cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
     cairo_t* cr = cairo_create(surface);
-    cairo_surface_destroy(surface);
 
     cairo_set_source_rgb(cr, 0, 0, 1); // Since we won't swap R+B for speed, this will paint red.
     cairo_rectangle(cr, 0, 0, width, height);
@@ -382,6 +381,7 @@ void TextureMapperGL::drawRepaintCounter(int value, int pointSize, const FloatPo
     static_cast<BitmapTextureGL*>(texture.get())->updateContentsNoSwizzle(bits, sourceRect, IntPoint::zero(), stride);
     drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, 0, AllEdges);
 
+    cairo_surface_destroy(surface);
     cairo_destroy(cr);
 
 #else
@@ -691,21 +691,22 @@ void BitmapTextureGL::didReset()
 
 void BitmapTextureGL::updateContentsNoSwizzle(const void* srcData, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, unsigned bytesPerPixel, Platform3DObject glFormat)
 {
-    if (!driverSupportsSubImage() // For ES drivers that don't support sub-images.
-        || (bytesPerLine == static_cast<int>(targetRect.width() * bytesPerPixel) && sourceOffset == IntPoint::zero())) {
-        m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
-        return;
-    }
-
+    m_context3D->bindTexture(GraphicsContext3D::TEXTURE_2D, m_id);
 #if !defined(TEXMAP_OPENGL_ES_2)
-    // Use the OpenGL sub-image extension, now that we know it's available.
-    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y());
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
+    if (driverSupportsSubImage()) { // For ES drivers that don't support sub-images.
+        // Use the OpenGL sub-image extension, now that we know it's available.
+        m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel);
+        m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y());
+        m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x());
+    }
+#endif
     m_context3D->texSubImage2D(GraphicsContext3D::TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, srcData);
-    m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-    m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+#if !defined(TEXMAP_OPENGL_ES_2)
+    if (driverSupportsSubImage()) { // For ES drivers that don't support sub-images.
+        m_context3D->pixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        m_context3D->pixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+        m_context3D->pixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+    }
 #endif
 }
 

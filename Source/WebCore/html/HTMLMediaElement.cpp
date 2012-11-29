@@ -80,9 +80,11 @@
 #include "ShadowRoot.h"
 #include "TimeRanges.h"
 #include "UUID.h"
+#include "WebCoreMemoryInstrumentation.h"
 #include <limits>
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
+#include <wtf/MemoryInstrumentationVector.h>
 #include <wtf/NonCopyingSort.h>
 #include <wtf/Uint8Array.h>
 #include <wtf/text/CString.h>
@@ -98,6 +100,8 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "HTMLTrackElement.h"
+#include "InbandTextTrack.h"
+#include "InbandTextTrackPrivate.h"
 #include "RuntimeEnabledFeatures.h"
 #include "TextTrackCueList.h"
 #include "TextTrackList.h"
@@ -311,6 +315,10 @@ HTMLMediaElement::~HTMLMediaElement()
 
     if (m_mediaController)
         m_mediaController->removeMediaElement(this);
+
+#if ENABLE(MEDIA_SOURCE)
+    setSourceState(MediaSource::closedKeyword());
+#endif
 
     removeElementFromDocumentMap(this, document());
 }
@@ -672,16 +680,14 @@ String HTMLMediaElement::canPlayType(const String& mimeType, const String& keySy
     return canPlay;
 }
 
-void HTMLMediaElement::load(ExceptionCode& ec)
+void HTMLMediaElement::load()
 {
     RefPtr<HTMLMediaElement> protect(this); // loadInternal may result in a 'beforeload' event, which can make arbitrary DOM mutations.
     
     LOG(Media, "HTMLMediaElement::load()");
     
-    if (userGestureRequiredForLoad() && !ScriptController::processingUserGesture()) {
-        ec = INVALID_STATE_ERR;
+    if (userGestureRequiredForLoad() && !ScriptController::processingUserGesture())
         return;
-    }
     
     m_loadInitiatedByUserGesture = ScriptController::processingUserGesture();
     if (m_loadInitiatedByUserGesture)
@@ -1738,6 +1744,10 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
         prepareMediaFragmentURI();
         scheduleEvent(eventNames().durationchangeEvent);
         scheduleEvent(eventNames().loadedmetadataEvent);
+#if ENABLE(VIDEO_TRACK)
+        if (m_player && m_player->hasClosedCaptions())
+            processInbandTextTracks();
+#endif
         if (hasMediaControls())
             mediaControls()->loadedMetadata();
         if (renderer())
@@ -2716,6 +2726,50 @@ float HTMLMediaElement::percentLoaded() const
 }
 
 #if ENABLE(VIDEO_TRACK)
+void HTMLMediaElement::processInbandTextTracks()
+{
+    if (!RuntimeEnabledFeatures::webkitVideoTrackEnabled())
+        return;
+
+    Vector<RefPtr<InbandTextTrackPrivate> > privateTextTracks;
+    m_player->getTextTracks(privateTextTracks);
+
+    if (!privateTextTracks.size())
+        return;
+
+    for (size_t i = 0; i < privateTextTracks.size(); ++i) {
+        // 4.8.10.12.2 Sourcing in-band text tracks
+        // 1. Associate the relevant data with a new text track and its corresponding new TextTrack object.
+        
+        // 2. Set the new text track's kind, label, and language based on the semantics of the relevant data,
+        // as defined by the relevant specification. If there is no label in that data, then the label must
+        // be set to the empty string.
+        //   - This is done by the media engine when it creates the InbandTextTrackPrivate.
+        RefPtr<TextTrack> textTrack = InbandTextTrack::create(ActiveDOMObject::scriptExecutionContext(), this, privateTextTracks[i]);
+        
+        // 5. Populate the new text track's list of cues with the cues parsed so far, folllowing the guidelines for exposing
+        // cues, and begin updating it dynamically as necessary.
+        //   - This will happen automatically as the media engine loads the cues
+        
+        // 6. Set the new text track's readiness state to loaded.
+        textTrack->setReadinessState(TextTrack::Loaded);
+        
+        // 7. Set the new text track's mode to the mode consistent with the user's preferences and the requirements of
+        // the relevant specification for the data.
+        //  - This will happen in configureTextTracks()
+        
+        // 8. Add the new text track to the media element's list of text tracks.
+        textTracks()->append(textTrack);
+        
+        // 9. Fire an event with the name addtrack, that does not bubble and is not cancelable, and that uses the TrackEvent
+        // interface, with the track attribute initialized to the text track's TextTrack object, at the media element's
+        // textTracks attribute's TextTrackList object.
+        //  - This was done in TextTrackList::append
+    }
+
+    configureTextTracks();
+}
+
 PassRefPtr<TextTrack> HTMLMediaElement::addTextTrack(const String& kind, const String& label, const String& language, ExceptionCode& ec)
 {
     if (!RuntimeEnabledFeatures::webkitVideoTrackEnabled())
@@ -2810,7 +2864,6 @@ void HTMLMediaElement::willRemoveTrack(HTMLTrackElement* trackElement)
     if (!m_textTracks)
         return;
     
-
     // 4.8.10.12.3 Sourcing out-of-band text tracks
     // When a track element's parent element changes and the old parent was a media element, 
     // then the user agent must remove the track element's corresponding text track from the 
@@ -3701,6 +3754,11 @@ void HTMLMediaElement::userCancelledLoad()
 void HTMLMediaElement::clearMediaPlayer(int flags)
 {
 #if !ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+
+#if ENABLE(MEDIA_SOURCE)
+    setSourceState(MediaSource::closedKeyword());
+#endif
+
     m_player.clear();
 #endif
     stopPeriodicTimers();
@@ -3764,8 +3822,7 @@ void HTMLMediaElement::resume()
         // m_error is only left at MEDIA_ERR_ABORTED when the document becomes inactive (it is set to
         //  MEDIA_ERR_ABORTED while the abortEvent is being sent, but cleared immediately afterwards).
         // This behavior is not specified but it seems like a sensible thing to do.
-        ExceptionCode ec;
-        load(ec);
+        load();
     }
 
     if (renderer())
@@ -4588,6 +4645,42 @@ CachedResourceLoader* HTMLMediaElement::mediaPlayerCachedResourceLoader()
 void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture()
 {
     m_restrictions = NoRestrictions;
+}
+
+void HTMLMediaElement::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    MemoryClassInfo info(memoryObjectInfo, this, WebCoreMemoryTypes::DOM);
+    HTMLElement::reportMemoryUsage(memoryObjectInfo);
+    ActiveDOMObject::reportMemoryUsage(memoryObjectInfo);
+    info.addMember(m_loadTimer);
+    info.addMember(m_progressEventTimer);
+    info.addMember(m_playbackProgressTimer);
+    info.addMember(m_playedTimeRanges);
+    info.addMember(m_asyncEventQueue);
+    info.addMember(m_currentSrc);
+    info.addMember(m_error);
+    info.addMember(m_currentSourceNode);
+    info.addMember(m_nextChildNodeToConsider);
+    info.addMember(m_player);
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+    info.addMember(m_proxyWidget);
+#endif
+#if ENABLE(MEDIA_SOURCE)
+    info.addMember(m_mediaSourceURL);
+    info.addMember(m_mediaSource);
+#endif
+#if ENABLE(VIDEO_TRACK)
+    info.addMember(m_textTracks);
+    info.addMember(m_textTracksWhenResourceSelectionBegan);
+    info.addMember(m_cueTree);
+    info.addMember(m_currentlyActiveCues);
+#endif
+    info.addMember(m_mediaGroup);
+    info.addMember(m_mediaController);
+
+#if PLATFORM(MAC)
+    info.addMember(m_sleepDisabler);
+#endif
 }
 
 }

@@ -387,10 +387,6 @@ static void _ewk_view_smart_calculate(Evas_Object* ewkView)
             impl->page()->drawingArea()->setSize(IntSize(width, height), IntSize());
 
 #if USE(ACCELERATED_COMPOSITING)
-        // Recreate surface if needed.
-        if (impl->evasGLSurface())
-            impl->clearEvasGLSurface();
-
         if (width && height)
             impl->createGLSurface(IntSize(width, height));
 #endif
@@ -521,9 +517,9 @@ static inline Evas_Object* createEwkView(Evas* canvas, Evas_Smart* smart, PassRe
  * @internal
  * Constructs a ewk_view Evas_Object with WKType parameters.
  */
-Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef)
+Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef contextRef, WKPageGroupRef pageGroupRef, EwkViewImpl::ViewBehavior behavior)
 {
-    return createEwkView(canvas, createEwkViewSmartClass(), EwkContext::create(toImpl(contextRef)), pageGroupRef, EwkViewImpl::LegacyBehavior);
+    return createEwkView(canvas, createEwkViewSmartClass(), EwkContext::create(toImpl(contextRef)), pageGroupRef, behavior);
 }
 
 Evas_Object* ewk_view_smart_add(Evas* canvas, Evas_Smart* smart, Ewk_Context* context)
@@ -746,14 +742,14 @@ Eina_Bool ewk_view_html_string_load(Evas_Object* ewkView, const char* html, cons
     return true;
 }
 
-const char* ewk_view_setting_encoding_custom_get(const Evas_Object* ewkView)
+const char* ewk_view_custom_encoding_get(const Evas_Object* ewkView)
 {
     EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, 0);
 
     return impl->customTextEncodingName();
 }
 
-Eina_Bool ewk_view_setting_encoding_custom_set(Evas_Object* ewkView, const char* encoding)
+Eina_Bool ewk_view_custom_encoding_set(Evas_Object* ewkView, const char* encoding)
 {
     EWK_VIEW_IMPL_GET_OR_RETURN(ewkView, impl, false);
 

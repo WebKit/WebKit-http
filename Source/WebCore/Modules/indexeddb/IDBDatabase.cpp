@@ -36,7 +36,6 @@
 #include "IDBDatabaseError.h"
 #include "IDBDatabaseException.h"
 #include "IDBEventDispatcher.h"
-#include "IDBFactoryBackendInterface.h"
 #include "IDBIndex.h"
 #include "IDBKeyPath.h"
 #include "IDBObjectStore.h"
@@ -64,7 +63,6 @@ IDBDatabase::IDBDatabase(ScriptExecutionContext* context, PassRefPtr<IDBDatabase
     , m_closePending(false)
     , m_contextStopped(false)
     , m_databaseCallbacks(callbacks)
-    , m_didSpamConsole(false)
 {
     // We pass a reference of this object before it can be adopted.
     relaxAdoptionRequirement();
@@ -200,30 +198,6 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
         m_versionChangeTransaction->objectStoreDeleted(name);
         m_metadata.objectStores.remove(objectStoreId);
     }
-}
-
-PassRefPtr<IDBVersionChangeRequest> IDBDatabase::setVersion(ScriptExecutionContext* context, const String& version, ExceptionCode& ec)
-{
-    if (!m_didSpamConsole) {
-        String consoleMessage = ASCIILiteral("The setVersion() method is non-standard and will be removed. Use the \"upgradeneeded\" event instead.");
-        context->addConsoleMessage(JSMessageSource, LogMessageType, WarningMessageLevel, consoleMessage);
-        m_didSpamConsole = true;
-    }
-
-    if (version.isNull()) {
-        ec = TypeError;
-        return 0;
-    }
-
-    if (m_versionChangeTransaction) {
-        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
-        return 0;
-    }
-
-    RefPtr<IDBVersionChangeRequest> request = IDBVersionChangeRequest::create(context, IDBAny::create(this), version);
-    ASSERT(m_backend);
-    m_backend->setVersion(version, request, m_databaseCallbacks, ec);
-    return request;
 }
 
 PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* context, const Vector<String>& scope, const String& modeString, ExceptionCode& ec)

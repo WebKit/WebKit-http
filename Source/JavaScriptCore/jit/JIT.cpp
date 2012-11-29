@@ -212,6 +212,8 @@ void JIT::privateCompileMainPass()
     m_callLinkInfoIndex = 0;
 
     for (m_bytecodeOffset = 0; m_bytecodeOffset < instructionCount; ) {
+        if (m_disassembler)
+            m_disassembler->setForBytecodeMainPath(m_bytecodeOffset, label());
         Instruction* currentInstruction = instructionsBegin + m_bytecodeOffset;
         ASSERT_WITH_MESSAGE(m_interpreter->isOpcode(currentInstruction->u.opcode), "privateCompileMainPass gone bad @ %d", m_bytecodeOffset);
 
@@ -228,7 +230,7 @@ void JIT::privateCompileMainPass()
         m_labels[m_bytecodeOffset] = label();
 
 #if ENABLE(JIT_VERBOSE)
-        dataLog("Old JIT emitting code for bc#%u at offset 0x%lx.\n", m_bytecodeOffset, (long)debugOffset());
+        dataLogF("Old JIT emitting code for bc#%u at offset 0x%lx.\n", m_bytecodeOffset, (long)debugOffset());
 #endif
 
         switch (m_interpreter->getOpcodeID(currentInstruction->u.opcode)) {
@@ -449,8 +451,11 @@ void JIT::privateCompileSlowCases()
 #endif
 
 #if ENABLE(JIT_VERBOSE)
-        dataLog("Old JIT emitting slow code for bc#%u at offset 0x%lx.\n", m_bytecodeOffset, (long)debugOffset());
+        dataLogF("Old JIT emitting slow code for bc#%u at offset 0x%lx.\n", m_bytecodeOffset, (long)debugOffset());
 #endif
+        
+        if (m_disassembler)
+            m_disassembler->setForBytecodeSlowPath(m_bytecodeOffset, label());
 
         switch (m_interpreter->getOpcodeID(currentInstruction->u.opcode)) {
         DEFINE_SLOWCASE_OP(op_add)
@@ -625,6 +630,12 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
         break;
     }
 #endif
+    
+    if (Options::showDisassembly())
+        m_disassembler = adoptPtr(new JITDisassembler(m_codeBlock));
+    
+    if (m_disassembler)
+        m_disassembler->setStartOfCode(label());
 
     // Just add a little bit of randomness to the codegen
     if (m_randomGenerator.getUint32() & 1)
@@ -684,6 +695,9 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     privateCompileMainPass();
     privateCompileLinkPass();
     privateCompileSlowCases();
+    
+    if (m_disassembler)
+        m_disassembler->setEndOfSlowPath(label());
 
     Label arityCheck;
     if (m_codeBlock->codeType() == FunctionCode) {
@@ -713,6 +727,9 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     }
 
     ASSERT(m_jmpTable.isEmpty());
+    
+    if (m_disassembler)
+        m_disassembler->setEndOfCode(label());
 
     LinkBuffer patchBuffer(*m_globalData, this, m_codeBlock, effort);
     if (patchBuffer.didFailToAllocate())
@@ -781,10 +798,11 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     for (unsigned i = 0; i < m_codeBlock->numberOfCallLinkInfos(); ++i) {
         CallLinkInfo& info = m_codeBlock->callLinkInfo(i);
         info.callType = m_callStructureStubCompilationInfo[i].callType;
-        info.bytecodeIndex = m_callStructureStubCompilationInfo[i].bytecodeIndex;
+        info.codeOrigin = CodeOrigin(m_callStructureStubCompilationInfo[i].bytecodeIndex);
         info.callReturnLocation = patchBuffer.locationOfNearCall(m_callStructureStubCompilationInfo[i].callReturnLocation);
         info.hotPathBegin = patchBuffer.locationOf(m_callStructureStubCompilationInfo[i].hotPathBegin);
         info.hotPathOther = patchBuffer.locationOfNearCall(m_callStructureStubCompilationInfo[i].hotPathOther);
+        info.calleeGPR = regT0;
     }
 
 #if ENABLE(DFG_JIT) || ENABLE(LLINT)
@@ -804,11 +822,11 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
 
     if (m_codeBlock->codeType() == FunctionCode && functionEntryArityCheck)
         *functionEntryArityCheck = patchBuffer.locationOf(arityCheck);
+
+    if (m_disassembler)
+        m_disassembler->dump(patchBuffer);
     
-    CodeRef result = FINALIZE_CODE(
-        patchBuffer,
-        ("Baseline JIT code for CodeBlock %p, instruction count = %u",
-         m_codeBlock, m_codeBlock->instructionCount()));
+    CodeRef result = patchBuffer.finalizeCodeWithoutDisassembly();
     
     m_globalData->machineCodeBytesPerBytecodeWordForBaselineJIT.add(
         static_cast<double>(result.size()) /
@@ -817,7 +835,7 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
     m_codeBlock->shrinkToFit(CodeBlock::LateShrink);
     
 #if ENABLE(JIT_VERBOSE)
-    dataLog("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start(), result.executableMemory()->end());
+    dataLogF("JIT generated code for %p at [%p, %p).\n", m_codeBlock, result.executableMemory()->start(), result.executableMemory()->end());
 #endif
     
     return JITCode(result, JITCode::BaselineJIT);

@@ -341,8 +341,16 @@
     attribute CSSValueListConstructor CSSValueList;
     attribute WebKitCSSTransformValueConstructor WebKitCSSTransformValue;
 
+#if defined(ENABLE_CSS_SHADERS) && ENABLE_CSS_SHADERS
+    attribute WebKitCSSMixFunctionValueConstructor WebKitCSSMixFunctionValue;
+#endif
+
 #if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
     attribute WebKitCSSFilterValueConstructor WebKitCSSFilterValue;
+#endif
+
+#if defined(ENABLE_CSS_DEVICE_ADAPTATION) && ENABLE_CSS_DEVICE_ADAPTATION
+    attribute WebKitCSSViewportRuleConstructor WebKitCSSViewportRule;
 #endif
 
     attribute CSSRuleConstructor CSSRule;
@@ -554,7 +562,9 @@
     attribute XMLHttpRequestProgressEventConstructor XMLHttpRequestProgressEvent;
     [Conditional=DEVICE_ORIENTATION, V8EnabledAtRuntime] attribute DeviceMotionEventConstructor DeviceMotionEvent;
     [Conditional=DEVICE_ORIENTATION, V8EnabledAtRuntime] attribute DeviceOrientationEventConstructor DeviceOrientationEvent;
+    [Conditional=TOUCH_EVENTS] attribute TouchConstructor Touch;
     [Conditional=TOUCH_EVENTS] attribute TouchEventConstructor TouchEvent;
+    [Conditional=TOUCH_EVENTS] attribute TouchListConstructor TouchList;
     attribute StorageEventConstructor StorageEvent;
     [Conditional=INPUT_SPEECH] attribute SpeechInputEventConstructor SpeechInputEvent;
     [Conditional=WEBGL] attribute WebGLContextEventConstructor WebGLContextEvent;

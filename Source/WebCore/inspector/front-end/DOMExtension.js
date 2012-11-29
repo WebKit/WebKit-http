@@ -183,22 +183,18 @@ Element.prototype.positionAt = function(x, y)
         this.style.removeProperty("top");
 }
 
-Element.prototype.pruneEmptyTextNodes = function()
-{
-    var sibling = this.firstChild;
-    while (sibling) {
-        var nextSibling = sibling.nextSibling;
-        if (sibling.nodeType === Node.TEXT_NODE && sibling.nodeValue === "")
-            this.removeChild(sibling);
-        sibling = nextSibling;
-    }
-}
-
 Element.prototype.isScrolledToBottom = function()
 {
     // This code works only for 0-width border
     return this.scrollTop + this.clientHeight === this.scrollHeight;
 }
+
+Element.prototype.remove = function()
+{
+    if (this.parentElement)
+        this.parentElement.removeChild(this);
+}
+
 
 /**
  * @constructor
@@ -244,13 +240,6 @@ Node.prototype.enclosingNodeOrSelfWithClass = function(className)
         if (node.nodeType === Node.ELEMENT_NODE && node.hasStyleClass(className))
             return node;
     return null;
-}
-
-Node.prototype.enclosingNodeWithClass = function(className)
-{
-    if (!this.parentNode)
-        return null;
-    return this.parentNode.enclosingNodeOrSelfWithClass(className);
 }
 
 Element.prototype.query = function(query)
@@ -535,12 +524,6 @@ Node.prototype.traversePreviousNode = function(stayWithin)
     if (node)
         return node;
     return this.parentNode;
-}
-
-HTMLTextAreaElement.prototype.moveCursorToEnd = function()
-{
-    var length = this.value.length;
-    this.setSelectionRange(length, length);
 }
 
 function isEnterKey(event) {

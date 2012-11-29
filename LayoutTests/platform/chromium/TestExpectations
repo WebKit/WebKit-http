@@ -118,6 +118,9 @@ webkit.org/b/101362 [ Debug ] fast/dom/Window/customized-property-survives-gc.ht
 # TEMPORARILY SKIPPED TESTS
 # -----------------------------------------------------------------
 
+# Context menu behavior differs on Mac. This test needs to be adjusted for Mac.
+webkit.org/b/102987 [ Mac ] fast/events/context-nodrag.html [ Skip ]
+
 # Fails due to different window.close() rules.  We need to decide whether we
 # ever expect to pass this.
 crbug.com/24189 fast/dom/open-and-close-by-DOM.html [ Skip ]
@@ -212,6 +215,9 @@ webkit.org/b/89052 fast/css/image-orientation
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
+
+# CSS3 Background is not yet enabled (needs ENABLE_CSS3_BACKGROUND).
+webkit.org/b/37514 fast/backgrounds/background-position-parsing-2.html [ Text ]
 
 # Chromium does not support smart pasting in text controls yet.
 webkit.org/b/60830 editing/pasteboard/smart-paste-in-text-control.html
@@ -1338,8 +1344,6 @@ webkit.org/b/82594 [ SnowLeopard ] svg/text/exs-display-none.svg [ ImageOnlyFail
 webkit.org/b/82594 [ SnowLeopard ] svg/text/ems-display-none.svg [ Failure ImageOnlyFailure Pass ]
 
 # Failing on Skia platforms
-webkit.org/b/83051 [ Android ] svg/css/group-with-shadow.svg [ ImageOnlyFailure ]
-
 webkit.org/b/83183 [ Mac ] svg/as-image/animated-svg-as-image-no-fixed-intrinsic-size.html [ ImageOnlyFailure Pass ]
 
 webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
@@ -1362,7 +1366,6 @@ webkit.org/b/83303 [ Win ] svg/custom/mouse-move-on-svg-container-standalone.svg
 webkit.org/b/83303 [ Win ] svg/custom/mouse-move-on-svg-container.xhtml [ ImageOnlyFailure Pass ]
 webkit.org/b/83303 [ Win ] svg/custom/mouse-move-on-svg-root-standalone.svg [ ImageOnlyFailure Pass ]
 webkit.org/b/83303 [ Win ] svg/custom/mouse-move-on-svg-root.xhtml [ ImageOnlyFailure Pass ]
-webkit.org/b/83303 [ Android Linux ] svg/transforms/text-with-pattern-with-svg-transform.svg [ ImageOnlyFailure Pass ]
 
 # This fails image 5-10% of the time. Probably a race condition on timers.
 webkit.org/b/83471 svg/as-image/animated-svg-as-image-same-image.html [ ImageOnlyFailure Pass ]
@@ -1698,7 +1701,6 @@ webkit.org/b/98762 [ Android ] compositing/iframes/composited-iframe-alignment.h
 webkit.org/b/98762 [ Android ] compositing/overflow/ancestor-overflow.html [ ImageOnlyFailure ]
 webkit.org/b/98762 [ Android ] compositing/overflow/overflow-positioning.html [ ImageOnlyFailure ]
 webkit.org/b/98762 [ Android ] compositing/overflow/scrollbar-painting.html [ ImageOnlyFailure ]
-webkit.org/b/98762 [ Android ] compositing/shadows/shadow-drawing.html [ ImageOnlyFailure ]
 webkit.org/b/98762 [ Android ] compositing/transitions/singular-scale-transition.html [ ImageOnlyFailure ]
 webkit.org/b/98762 [ Android ] compositing/z-order/negative-z-index.html [ ImageOnlyFailure ]
 
@@ -1977,8 +1979,6 @@ crbug.com/9798 [ Win ] http/tests/misc/refresh-headers.php [ Pass Slow ]
 crbug.com/9798 [ Win ] http/tests/xmlhttprequest/access-control-basic-allow-preflight-cache-timeout.html [ Pass Timeout ]
 crbug.com/9798 [ Win Debug ] http/tests/xmlhttprequest/encode-request-url-2.html [ Pass Timeout ]
 crbug.com/9797 crbug.com/9798 [ Win Release ] http/tests/xmlhttprequest/state-after-network-error.html [ Pass Slow ]
-crbug.com/9797 [ Android ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure Pass ]
-crbug.com/9797 [ Linux Release ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure Pass ]
 crbug.com/9798 [ Android Linux Release ] transitions/transition-timing-function.html [ Pass Slow ]
 # This test definitely times out (i.e. is not just slow).
 crbug.com/9798 [ Win Release ] http/tests/xmlhttprequest/small-chunks-response-text.html [ Pass Timeout ]
@@ -2036,18 +2036,18 @@ webkit.org/b/73329 [ Android Linux Win ] fast/text/international/hindi-whitespac
 # http://trac.webkit.org/changeset/50852
 # The ColorSpace was only implemented for CG, more port implementation
 # required in order for Chromium to support color correction.
-crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-on-backgrounds.html [ Failure ]
-crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-on-text.html [ Failure ]
+crbug.com/28005 [ Android XP ] fast/css/color-correction-on-backgrounds.html [ Failure ]
+crbug.com/28005 [ Android Win ] fast/css/color-correction-on-text.html [ Failure ]
 crbug.com/28005 [ Android Linux Win ] fast/css/color-correction.html [ Failure ]
-crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-on-box-shadow.html [ Failure ]
+crbug.com/28005 [ Android Linux XP ] fast/css/color-correction-on-box-shadow.html [ Failure ]
 crbug.com/28005 [ Mac ] fast/css/color-correction-on-box-shadow.html [ ImageOnlyFailure ]
 crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-on-text-shadow.html [ Failure ]
 crbug.com/28005 [ Mac ] fast/css/color-correction-on-text-shadow.html [ ImageOnlyFailure ]
-crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-on-background-image.html [ Failure ]
-crbug.com/28005 [ Android Linux Win ] fast/css/color-correction-untagged-images.html [ Failure ]
+crbug.com/28005 [ Android Win ] fast/css/color-correction-on-background-image.html [ Failure ]
+crbug.com/28005 [ Android XP ] fast/css/color-correction-untagged-images.html [ Failure ]
 
 # Timeout on Debug.
-webkit.org/b/82954 [ SnowLeopard Lion Win Linux ] svg/hixie/perf/007.xml [ Pass Slow ]
+webkit.org/b/82954 [ Mac Win Linux ] svg/hixie/perf/007.xml [ ImageOnlyFailure Pass Slow ]
 
 crbug.com/22700 [ Android ] fast/canvas/canvas-shadow.html [ Failure ]
 
@@ -2197,6 +2197,43 @@ crbug.com/42875 sputnik [ WontFix ]
 
 # WebKit roll 58791:58807
 crbug.com/43319 [ Android Linux Debug ] fast/forms/select-empty-option-height.html [ Pass Timeout ]
+
+# To be rebaselined for https://code.google.com/p/skia/source/detail?r=6483
+crbug.com/161899 webkit.org/b/98762 compositing/shadows/shadow-drawing.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/basic-shadows.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/box-shadow-clipped-slices.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/box-shadow-radius.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/box-shadow-transformed.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/inset-box-shadow-radius.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/inset-box-shadows.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/inset.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/scaled-box-shadow.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/box-shadow/single-pixel-shadow.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/repaint/box-shadow-h.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/repaint/box-shadow-v.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/repaint/shadow-multiple-vertical.html [ Failure ImageOnlyFailure ]
+# Not included in tests modified by 81992, but started failing on Android at same time:
+crbug.com/161899 crbug.com/77494 fast/repaint/transform-replaced-shadows.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  fast/transforms/shadows.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  platform/chromium/fast/forms/color/color-suggestion-picker-appearance.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  platform/chromium/fast/forms/color/color-suggestion-picker-one-row-appearance.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  platform/chromium/fast/forms/color/color-suggestion-picker-two-row-appearance.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  platform/chromium/fast/forms/color/color-suggestion-picker-with-scrollbar-appearance.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  platform/chromium/virtual/softwarecompositing/shadows/shadow-drawing.html [ Failure ImageOnlyFailure ]
+crbug.com/161899  svg/filters/shadow-on-rect-with-filter.svg [ Failure ImageOnlyFailure ]
+
+# To be rebaselined after skia rev. 6530 has landed in webkit
+crbug.com/162247  fast/canvas/canvas-incremental-repaint.html [ ImageOnlyFailure ]
+crbug.com/162247  svg/W3C-SVG-1.1/animate-elem-81-t.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/W3C-SVG-1.1/animate-elem-82-t.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/W3C-SVG-1.1/painting-stroke-02-t.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/css/group-with-shadow.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/custom/linking-a-03-b-transform.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/custom/linking-a-03-b-viewBox-transform.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/custom/pattern-rotate.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/custom/stroke-width-large.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/custom/use-transform.svg [ ImageOnlyFailure ]
+crbug.com/162247  svg/transforms/text-with-pattern-with-svg-transform.svg [ ImageOnlyFailure ]
 
 crbug.com/43890 [ Win ] http/tests/loading/basic.html [ Failure Pass ]
 
@@ -2467,11 +2504,11 @@ code.google.com/p/v8/issues/detail?id=2218 fast/js/string-fontcolor.html [ Failu
 code.google.com/p/v8/issues/detail?id=2218 fast/js/string-fontsize.html [ Failure ]
 code.google.com/p/v8/issues/detail?id=2218 fast/js/string-link.html [ Failure ]
 
-webkit.org/b/50282 [ Android Linux Win ] fast/images/imagemap-focus-ring-outline-color-explicitly-inherited-from-map.html [ Failure ]
-webkit.org/b/50282 [ Android Linux Win ] fast/images/imagemap-focus-ring-outline-color-not-inherited-from-map.html [ Failure ]
-webkit.org/b/50282 [ Android Linux Win ] fast/images/imagemap-focus-ring-outline-color.html [ Failure ]
+webkit.org/b/50282 [ Android Win ] fast/images/imagemap-focus-ring-outline-color-explicitly-inherited-from-map.html [ Failure ]
+webkit.org/b/50282 [ Android Win ] fast/images/imagemap-focus-ring-outline-color-not-inherited-from-map.html [ Failure ]
+webkit.org/b/50282 [ Android Win ] fast/images/imagemap-focus-ring-outline-color.html [ Failure ]
 webkit.org/b/50282 [ Android Linux Win ] fast/images/imagemap-circle-focus-ring.html [ Failure ]
-webkit.org/b/50282 [ Android Linux Win ] fast/images/imagemap-polygon-focus-ring.html [ Failure ]
+webkit.org/b/50282 [ Android Linux XP ] fast/images/imagemap-polygon-focus-ring.html [ Failure ]
 
 # Regressed at r73423. All areas are painted green.
 webkit.org/b/50734 [ Android Linux Win ] fast/repaint/positioned-document-element.html [ ImageOnlyFailure ]
@@ -2647,7 +2684,7 @@ crbug.com/74497 platform/win/plugins/windowless-paint-rect-coordinates.html [ Fa
 webkit.org/b/55300 fast/images/support-broken-image-delegate.html [ Failure ]
 
 # introduced by Dave Hyatt in WK r80582
-crbug.com/75561 [ Android Linux Win ] fast/writing-mode/text-orientation-basic.html [ Failure ]
+crbug.com/75561 [ Android ] fast/writing-mode/text-orientation-basic.html [ Failure ]
 
 webkit.org/b/56060 [ Linux ] fast/images/favicon-as-image.html [ Failure ]
 
@@ -2680,8 +2717,6 @@ crbug.com/77468 fast/forms/file/input-file-directory-upload.html [ Timeout ]
 crbug.com/77494 [ Android Linux Win ] fast/repaint/layout-state-scrolloffset.html [ Failure ]
 crbug.com/77494 [ Android Linux Win ] fast/repaint/layout-state-scrolloffset2.html [ Failure ]
 crbug.com/77494 [ Android Linux Win ] fast/repaint/layout-state-scrolloffset3.html [ Failure ]
-# Not included in tests modified by 81992, but started failing at same time:
-crbug.com/77494 [ Android ] fast/repaint/transform-replaced-shadows.html [ ImageOnlyFailure ]
 
 # Regression since r82001.
 crbug.com/77619 [ SnowLeopard ] plugins/plugin-javascript-access.html [ Failure ]
@@ -2724,7 +2759,7 @@ crbug.com/78998 [ Debug ] fast/frames/frame-element-name.html [ Failure Pass ]
 webkit.org/b/58193 [ Win7 ] http/tests/local/fileapi/send-sliced-dragged-file.html [ Failure Pass Timeout ]
 
 # Regression caused by r83514.
-crbug.com/79110 [ Android Linux Win ] fast/overflow/infiniteRecursionGuard.html [ Failure ]
+crbug.com/79110 [ Android Linux ] fast/overflow/infiniteRecursionGuard.html [ Failure ]
 
 # Regression caused by r83628.
 crbug.com/79241 http/tests/misc/favicon-loads-with-icon-loading-override.html [ Failure ]
@@ -2827,9 +2862,21 @@ webkit.org/b/96720 fast/forms/date-multiple-fields/date-multiple-fields-preserve
 webkit.org/b/98906 platform/chromium/fast/forms/suggestion-picker/date-suggestion-picker-mouse-operations.html [ Pass Failure ]
 
 # Needs rebaseline
-webkit.org/b/99421 platform/chromium/fast/forms/suggestion-picker/week-suggestion-picker-appearance-rtl.html [ Pass ImageOnlyFailure Missing ]
-webkit.org/b/99421 platform/chromium/fast/forms/suggestion-picker/week-suggestion-picker-appearance-with-scroll-bar.html [ Pass ImageOnlyFailure Missing ]
-webkit.org/b/99421 platform/chromium/fast/forms/suggestion-picker/week-suggestion-picker-appearance.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetimelocal-suggestion-picker-appearance.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetimelocal-suggestion-picker-appearance-rtl.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetimelocal-suggestion-picker-appearance-with-scroll-bar.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetime-suggestion-picker-appearance.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetime-suggestion-picker-appearance-rtl.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/102888 platform/chromium/fast/forms/suggestion-picker/datetime-suggestion-picker-appearance-with-scroll-bar.html [ Pass ImageOnlyFailure Missing ]
+webkit.org/b/103350 fast/forms/date/date-appearance-pseudo-classes.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103350 fast/forms/month/month-appearance-pseudo-classes.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103350 fast/forms/time/time-appearance-pseudo-classes.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103350 fast/forms/week/week-appearance-pseudo-classes.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103373 fast/forms/date/date-appearance-basic.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103373 fast/forms/time/time-appearance-basic.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103373 fast/forms/month/month-appearance-basic.html [ Pass ImageOnlyFailure ]
+webkit.org/b/103373 fast/forms/week/week-appearance-basic.html [ Pass ImageOnlyFailure ]
+
 
 # New test added in r87324
 crbug.com/83994 [ Win ] platform/win/plugins/call-javascript-that-destroys-plugin.html [ Failure ]
@@ -2870,7 +2917,6 @@ webkit.org/b/62580 fast/loader/inherit-charset-to-empty-frame.html [ Failure Pas
 # Has been timing out since r88913.
 webkit.org/b/62754 [ Android Linux Mac Release ] http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure Timeout ]
 webkit.org/b/62754 [ Android Linux Mac Debug ] http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure Slow ]
-webkit.org/b/62754 [ Win ] http/tests/misc/object-embedding-svg-delayed-size-negotiation-2.htm [ Failure ]
 
 crbug.com/87732 fast/regex/toString.html [ Failure ]
 
@@ -2896,7 +2942,7 @@ webkit.org/b/65009 [ Mac ] scrollbars/scrollbar-drag-thumb-with-large-content.ht
 webkit.org/b/65124 [ Android Linux Win MountainLion ] fast/repaint/japanese-rl-selection-clear.html [ Failure ]
 webkit.org/b/65124 [ Win MountainLion ] fast/repaint/japanese-rl-selection-repaint.html [ Failure ]
 webkit.org/b/65124 [ Android Linux Win MountainLion ] fast/repaint/japanese-rl-selection-repaint-in-regions.html [ Failure ]
-webkit.org/b/65124 [ Android Linux Win ] fast/repaint/line-flow-with-floats-in-regions.html [ Failure ]
+webkit.org/b/65124 [ Android Linux ] fast/repaint/line-flow-with-floats-in-regions.html [ Failure ]
 
 webkit.org/b/65199 [ Android Linux SnowLeopard Win ] fast/writing-mode/broken-ideograph-small-caps.html [ Failure ]
 
@@ -2957,7 +3003,7 @@ crbug.com/33287 fast/canvas/set-colors.html [ Failure ]
 
 webkit.org/b/69060 [ Android Linux Win ] fast/repaint/selection-clear.html [ Failure ]
 
-webkit.org/b/69103 [ Android Linux Win ] fast/text/line-initial-and-final-swashes.html [ Failure ]
+webkit.org/b/69103 [ Android Linux XP ] fast/text/line-initial-and-final-swashes.html [ Failure ]
 webkit.org/b/69103 [ Mac ] fast/text/line-initial-and-final-swashes.html [ ImageOnlyFailure ]
 
 webkit.org/b/69136 [ Mac ] fast/frames/frame-set-rotation-hit.html [ ImageOnlyFailure ]
@@ -3332,6 +3378,7 @@ webkit.org/b/82717 [ SnowLeopard ] storage/websql/database-lock-after-reload.htm
 webkit.org/b/82776 storage/indexeddb/dont-commit-on-blocked.html
 webkit.org/b/82776 storage/indexeddb/pending-version-change-stuck.html
 webkit.org/b/82776 storage/indexeddb/pending-version-change-stuck-works-with-terminate.html
+webkit.org/b/82776 storage/indexeddb/pending-version-change-on-exit.html
 
 webkit.org/b/ [ Win Release ] http/tests/xmlhttprequest/redirect-cross-origin-post.html [ Failure Pass ]
 
@@ -3457,6 +3504,7 @@ webkit.org/b/86674 [ Debug ] fast/dom/HTMLObjectElement/beforeload-set-text-cras
 
 webkit.org/b/86683 [ Linux Win Debug ] inspector/profiler/heap-snapshot-summary-show-ranges.html [ Failure Slow ]
 webkit.org/b/86683 [ Linux Win Release ] inspector/profiler/heap-snapshot-summary-show-ranges.html [ Failure Pass Slow ]
+webkit.org/b/102781 [ Linux Win DEBUG ] inspector/profiler/cpu-profiler-profiling-without-inspector.html [ Crash Pass ]
 
 webkit.org/b/86908 [ Win ] http/tests/security/cross-frame-access-put.html [ Failure Pass ]
 
@@ -3829,7 +3877,7 @@ crbug.com/145590 [ Android ] http/tests/media/media-source/video-media-source-pl
 crbug.com/145590 [ Android ] http/tests/media/media-source/video-media-source-seek.html [ Failure ]
 crbug.com/145590 [ Android ] http/tests/media/media-source/video-media-source-sourcebufferlist-crash.html [ Timeout ]
 crbug.com/145590 [ Android ] http/tests/media/media-source/video-media-source-state-changes.html [ Failure ]
-crbug.com/145590 [ Android ] http/tests/media/pdf-served-as-pdf.html [ Failure ]
+crbug.com/145590 [ Android Mac Win Linux ] http/tests/media/pdf-served-as-pdf.html [ Failure Pass Crash Timeout ]
 crbug.com/145590 [ Android ] http/tests/media/text-served-as-text.html [ Failure ]
 crbug.com/145590 [ Android ] http/tests/media/video-error-abort.html [ Failure ]
 crbug.com/145590 [ Android ] http/tests/media/video-load-suspend.html [ Timeout ]
@@ -3899,7 +3947,7 @@ webkit.org/b/98086 platform/chromium/virtual/threaded/compositing/visibility/vis
 webkit.org/b/98086 [ Win Mac Linux ] platform/chromium/virtual/threaded/compositing/visibility/visibility-composited.html [ ImageOnlyFailure Pass ]
 webkit.org/b/98086 [ Win Mac Linux ] platform/chromium/virtual/threaded/compositing/visibility/layer-visible-content.html [ ImageOnlyFailure Pass ]
 webkit.org/b/98086 platform/chromium/virtual/threaded/compositing/visibility/visibility-simple-webgl-layer.html [ ImageOnlyFailure Pass ]
-webkit.org/b/98086 platform/chromium/virtual/threaded/compositing/visibility/visibility-simple-canvas2d-layer.html [ ImageOnlyFailure Pass ]
+webkit.org/b/98086 platform/chromium/virtual/threaded/compositing/visibility/visibility-simple-canvas2d-layer.html [ ImageOnlyFailure Pass Crash ]
 
 webkit.org/b/98087 [ Linux ] fast/css/lang-mapped-to-webkit-locale-dynamic.xhtml [ Failure Pass ]
 
@@ -3998,7 +4046,7 @@ webkit.org/b/89167 media/track/track-cue-rendering-vertical.html [ Failure ]
 #webkit.org/b/98766 [ Android ] media/track/track-cue-rendering-horizontal.html [ Failure ]
 
 # Require rebaselining after webkig.org/b/88871
-webkit.org/b/88871 [ Mac Win Linux ] media/video-empty-source.html [ Failure ]
+webkit.org/b/88871 [ Linux Mac ] media/video-empty-source.html [ Failure ]
 
 webkit.org/b/98686 editing/pasteboard/data-transfer-items.html [ Failure ]
 
@@ -4040,14 +4088,14 @@ webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/embed-image.ht
 webkit.org/b/94240 [ Linux Win SnowLeopard ] platform/chromium/virtual/deferred/fast/images/favicon-as-image.html [ Failure ]
 webkit.org/b/94240 [ Linux Win SnowLeopard ] platform/chromium/virtual/deferred/fast/images/gif-large-checkerboard.html [ ImageOnlyFailure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/gif-loop-count.html [ ImageOnlyFailure ]
-webkit.org/b/94240 [ Linux Win ] platform/chromium/virtual/deferred/fast/images/imagemap-circle-focus-ring.html [ Failure ]
-webkit.org/b/94240 [ Linux Win ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color-explicitly-inherited-from-map.html [ Failure ]
-webkit.org/b/94240 [ Linux Win ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color-not-inherited-from-map.html [ Failure ]
-webkit.org/b/94240 [ Linux Win ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color.html [ Failure ]
-webkit.org/b/94240 [ Linux Win ] platform/chromium/virtual/deferred/fast/images/imagemap-polygon-focus-ring.html [ Failure ]
+webkit.org/b/94240 [ XP ] platform/chromium/virtual/deferred/fast/images/imagemap-circle-focus-ring.html [ Failure ]
+webkit.org/b/94240 [ Linux Win7 ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color-explicitly-inherited-from-map.html [ Failure ]
+webkit.org/b/94240 [ Win ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color-not-inherited-from-map.html [ Failure ]
+webkit.org/b/94240 [ Linux Win7 ] platform/chromium/virtual/deferred/fast/images/imagemap-focus-ring-outline-color.html [ Failure ]
+webkit.org/b/94240 [ Linux Win7 ] platform/chromium/virtual/deferred/fast/images/imagemap-polygon-focus-ring.html [ Failure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/object-image.html [ Failure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/paletted-png-with-color-profile.html [ Missing ]
-webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/pdf-as-image-landscape.html [ Failure ]
+webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/pdf-as-image-landscape.html [ Failure ImageOnlyFailure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/pdf-as-image.html [ Failure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/pixel-crack-image-background-webkit-transform-scale.html [ ImageOnlyFailure ]
 webkit.org/b/94240 platform/chromium/virtual/deferred/fast/images/support-broken-image-delegate.html [ Failure ]
@@ -4117,7 +4165,6 @@ webkit.org/b/101897 fast/regions/region-style-inline-background-color.html [ Ima
 webkit.org/b/79446 svg/repaint/image-with-clip-path.svg [ Pass ImageOnlyFailure ]
 
 webkit.org/b/100142 css3/filters/effect-reference-hw.html [ Failure ImageOnlyFailure ]
-webkit.org/b/100142 css3/filters/effect-reference-ordering-hw.html [ Failure ImageOnlyFailure Missing ]
 
 # Only ready for JSC so far, not fixed in v8 yet.
 webkit.org/b/97499 http/tests/security/script-crossorigin-onerror-information.html [ Failure ]
@@ -4152,13 +4199,13 @@ webkit.org/b/100806 [ Win ] svg/custom/font-face-simple.svg [ Failure ]
 # This test is consistently leaking state into the next test (object-src-url-allowed.html) after r133069.
 webkit.org/b/100955 http/tests/security/contentSecurityPolicy/object-src-none-blocked.html [ Skip ]
 
-webkit.org/b/101377 [ Linux Debug ] platform/chromium-linux/fast/text/international/complex-joining-using-gpos.html [ Failure ImageOnlyFailure Pass ]
+webkit.org/b/101377 [ Linux MountainLion ] platform/chromium-linux/fast/text/international/complex-joining-using-gpos.html [ Failure ImageOnlyFailure Pass Crash ]
 
 webkit.org/b/101408 platform/chromium/fast/forms/calendar-picker/calendar-picker-key-operations.html [ Failure Pass ]
 
 webkit.org/b/101539 [ Linux Win ] editing/execCommand/switch-list-type-with-orphaned-li.html [ Failure ]
 
-webkit.org/b/101618 [ Win7 Debug ] http/tests/inspector/indexeddb/database-data.html [ Crash ]
+webkit.org/b/101618 [ Win ] http/tests/inspector/indexeddb/database-data.html [ Crash ]
 
 webkit.org/b/90022 fast/canvas/canvas-resize-reset-pixelRatio.html [ WontFix ]
 webkit.org/b/90022 platform/chromium/virtual/gpu/fast/canvas/canvas-resize-reset-pixelRatio.html [ WontFix ]
@@ -4183,5 +4230,71 @@ webkit.org/b/85522 http/tests/security/sandboxed-iframe-form-top.html [ Skip ]
 webkit.org/b/102542 [ Win7 ] platform/chromium/virtual/softwarecompositing/checkerboard.html [ Image ]
 webkit.org/b/102542 [ Linux Mac Win ] compositing/checkerboard.html [ Image ]
 
-webkit.org/b/102724 [ Linux Mac Debug ] svg/carto.net/colourpicker.svg [ Crash ]
-webkit.org/b/102724 [ Linux Mac Debug ] svg/custom/gradient-stop-corner-cases.svg [ Crash ]
+webkit.org/b/102724 crbug.com/9797 crbug.com/161762 [ Debug ] svg/carto.net/colourpicker.svg [ Crash ]
+webkit.org/b/102724 crbug.com/9797 crbug.com/161762 [ Release ] svg/carto.net/colourpicker.svg [ ImageOnlyFailure ]
+webkit.org/b/102724 crbug.com/161762 [ Debug ] svg/custom/gradient-stop-corner-cases.svg [ Crash ]
+webkit.org/b/102724 crbug.com/161762 [ Release ] svg/custom/gradient-stop-corner-cases.svg [ ImageOnlyFailure ]
+
+webkit.org/b/102993 [ Win Mac ] fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/box-shadow-override.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/input-appearance-height.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/range/input-appearance-range.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/range/range-thumb-height-percentage.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/range/slider-padding.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/range/slider-thumb-shared-style.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/forms/range/slider-thumb-stylability.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/repaint/slider-thumb-drag-release.html [ Failure ]
+webkit.org/b/102993 [ Win Mac ] fast/repaint/slider-thumb-float.html [ Failure ]
+webkit.org/b/102993 [ Mac ] fast/hidpi/video-controls-in-hidpi.html [ Failure ]
+webkit.org/b/102993 [ Mac ] fast/layers/video-layer.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/audio-controls-rendering.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/audio-repaint.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/controls-after-reload.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/controls-strict.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/controls-styling.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/controls-styling-strict.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/controls-without-preload.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/media-controls-clone.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/media-document-audio-repaint.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/video-controls-rendering.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/video-display-toggle.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/video-no-audio.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/video-playing-and-pause.html [ Failure ]
+webkit.org/b/102993 [ Mac ] media/video-zoom-controls.html [ Failure ]
+webkit.org/b/102993 [ Mac ] platform/chromium/virtual/gpu/fast/hidpi/video-controls-in-hidpi.html [ Failure ]
+
+# Fails until we enable the Resource Timing API.
+webkit.org/b/61138 http/tests/w3c/webperf/submission/resource-timing [ Skip ]
+
+webkit.org/b/103062 [ Debug ] fast/canvas/canvas-strokePath-gradient-shadow.html [ Crash ]
+webkit.org/b/103062 [ Debug ] fast/canvas/canvas-strokeRect-gradient-shadow.html [ Crash ]
+
+webkit.org/b/103093 [ Mac Win ] media/video-preload.html [ Crash Pass ]
+webkit.org/b/103148 [ Win Mac ] fast/frames/iframe-scaling-with-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/103148 [ Lion ] fast/frames/iframe-scrolling-attribute.html [ ImageOnlyFailure ]
+webkit.org/b/103148 [ Lion ] fast/table/border-collapsing/004-vertical.html [ ImageOnlyFailure ]
+webkit.org/b/103149 [ Lion SnowLeopard Win7 Debug ] fast/events/stopPropagation-submit.html [ Pass Failure ]
+webkit.org/b/103152 [ Mac Win ] fast/forms/week-multiple-fields/week-multiple-fields-preserve-value-after-history-back.html [ Pass Timeout ]
+webkit.org/b/103154 [ Win7 SnowLeopard Lion Linux Debug ] fast/frames/frame-unload-crash2.html [ Pass Timeout ]
+webkit.org/b/103148 [ Lion ] fast/text/large-text-composed-char.html [ ImageOnlyFailure ]
+webkit.org/b/103148 [ Lion ] fast/text/text-letter-spacing.html [ ImageOnlyFailure ]
+webkit.org/b/103161 [ Linux Win ] inspector/console/command-line-api-inspect.html [ Pass Failure ]
+webkit.org/b/103161 [ Linux Win ] inspector/runtime/runtime-localStorage-getProperties.html [ Pass Failure ]
+webkit.org/b/103148 [ Linux Win Mac ] svg/batik/text/textPosition2.svg [ ImageOnlyFailure ]
+webkit.org/b/103181 [ Win7 ] http/tests/local/drag-over-remote-content.html [ Pass Crash Timeout ]
+webkit.org/b/103183 [ Win7 SnowLeopard ] media/video-seek-past-end-playing.html [ Pass Crash ]
+webkit.org/b/103093 [ Lion SnowLeopard ] media/remove-from-document.html [ Crash Pass ]
+webkit.org/b/103299 [ Linux Mac Win ] fast/dom/shadow/shadow-dom-event-dispatching.html [ Failure Pass ]
+webkit.org/b/103148 [ Linux Win ] fast/text/atsui-small-caps-punctuation-size.html [ ImageOnlyFailure Failure Pass ]
+webkit.org/b/103308 [ SnowLeopard Lion ] css3/filters/custom/custom-filter-transforms-animation.html [ Pass Timeout ]
+
+webkit.org/b/103348 fast/js/string-replacement-outofmemory.html [ Crash ]
+webkit.org/b/103363 [ Mac ] touchadjustment/touch-links-longpress.html [ Failure ]
+webkit.org/b/103376 [ Mac Debug ] svg/animations/mpath-remove-from-dependents-on-delete-crash.html [ Pass Timeout ]
+webkit.org/b/103183 [ Win7 SnowLeopard Lion ] media/video-duration-known-after-eos.html [ Pass Crash ]
+webkit.org/b/103446 [ SnowLeopard Lion ] http/tests/canvas/canvas-slow-font-loading.html [ ImageOnlyFailure ]
+webkit.org/b/103447 [ MountainLion ] fast/canvas/font-update.html [ ImageOnlyFailure ]
+webkit.org/b/103449 [ MountainLion Win  ] platform/chromium/virtual/gpu/fast/canvas/font-update.html [ ImageOnlyFailure Pass ]
+webkit.org/b/103451 [ Release Mac Win  ] fast/frames/frame-name-reset.html [ Crash Pass ]

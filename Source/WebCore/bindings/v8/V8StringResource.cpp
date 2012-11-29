@@ -26,9 +26,28 @@
 #include "config.h"
 #include "V8StringResource.h"
 
+#include "BindingVisitors.h"
 #include "V8Binding.h"
 
 namespace WebCore {
+
+WebCoreStringResourceBase* WebCoreStringResourceBase::toWebCoreStringResourceBase(v8::Handle<v8::String> string)
+{
+    v8::String::Encoding encoding;
+    v8::String::ExternalStringResourceBase* resource = string->GetExternalStringResourceBase(&encoding);
+    if (!resource)
+        return 0;
+    if (encoding == v8::String::ASCII_ENCODING)
+        return static_cast<WebCoreStringResource8*>(resource);
+    return static_cast<WebCoreStringResource16*>(resource);
+}
+
+void WebCoreStringResourceBase::visitStrings(ExternalStringVisitor* visitor)
+{
+    visitor->visitJSExternalString(m_plainString.impl());
+    if (m_plainString.impl() != m_atomicString.impl() && !m_atomicString.isNull())
+        visitor->visitJSExternalString(m_atomicString.impl());
+}
 
 template<class StringClass> struct StringTraits {
     static const StringClass& fromStringResource(WebCoreStringResourceBase*);
@@ -171,6 +190,8 @@ String int32ToWebCoreStringFast(int value)
 
     // Most numbers used are <= 100. Even if they aren't used there's very little cost in using the space.
     const int kLowNumbers = 100;
+
+    // FIXME: Store lowNumbers in V8PerIsolateData so that workers can also use them.
     DEFINE_STATIC_LOCAL(Vector<AtomicString>, lowNumbers, (kLowNumbers + 1));
     String webCoreString;
     if (0 <= value && value <= kLowNumbers) {
@@ -185,12 +206,17 @@ String int32ToWebCoreStringFast(int value)
     return webCoreString;
 }
 
-String int32ToWebCoreString(int value)
+template<> String int32ToWebCoreString<String>(int value)
 {
     // If we are on the main thread (this should always true for non-workers), call the faster one.
     if (isMainThread())
         return int32ToWebCoreStringFast(value);
     return String::number(value);
+}
+
+template<> AtomicString int32ToWebCoreString<AtomicString>(int value)
+{
+    return AtomicString(int32ToWebCoreString<String>(value));
 }
 
 } // namespace WebCore

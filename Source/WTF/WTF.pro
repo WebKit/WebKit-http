@@ -61,6 +61,7 @@ HEADERS += \
     ExportMacros.h \
     FastAllocBase.h \
     FastMalloc.h \
+    FilePrintStream.h \
     FixedArray.h \
     Float32Array.h \
     Float64Array.h \
@@ -97,6 +98,7 @@ HEADERS += \
     MemoryInstrumentationSequence.h \
     MemoryInstrumentationString.h \
     MemoryInstrumentationVector.h \
+    MemoryObjectInfo.h \
     MessageQueue.h \
     MetaAllocator.h \
     MetaAllocatorHandle.h \
@@ -126,6 +128,7 @@ HEADERS += \
     PassTraits.h \
     Platform.h \
     PossiblyNull.h \
+    PrintStream.h \
     RandomNumber.h \
     RandomNumberSeed.h \
     RedBlackTree.h \
@@ -207,6 +210,7 @@ SOURCES += \
     dtoa/fixed-dtoa.cc \
     dtoa/strtod.cc \
     FastMalloc.cpp \
+    FilePrintStream.cpp \
     GregorianDateTime.cpp \
     gobject/GOwnPtr.cpp \
     gobject/GRefPtr.cpp \
@@ -214,6 +218,7 @@ SOURCES += \
     MD5.cpp \
     MainThread.cpp \
     MediaTime.cpp \
+    MemoryInstrumentation.cpp \
     MetaAllocator.cpp \
     NullPtr.cpp \
     NumberOfCores.cpp \
@@ -224,6 +229,7 @@ SOURCES += \
     PageAllocationAligned.cpp \
     PageBlock.cpp \
     ParallelJobsGeneric.cpp \
+    PrintStream.cpp \
     RandomNumber.cpp \
     RefCountedLeakCounter.cpp \
     SHA1.cpp \

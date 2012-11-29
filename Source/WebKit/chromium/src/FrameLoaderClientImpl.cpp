@@ -65,6 +65,7 @@
 #if ENABLE(REQUEST_AUTOCOMPLETE)
 #include "WebAutofillClient.h"
 #endif
+#include "WebCachedURLRequest.h"
 #include "WebDOMEvent.h"
 #include "WebDataSourceImpl.h"
 #include "WebDevToolsAgentPrivate.h"
@@ -1046,6 +1047,14 @@ void FrameLoaderClientImpl::cancelPolicyCheck()
 void FrameLoaderClientImpl::dispatchUnableToImplementPolicy(const ResourceError& error)
 {
     m_webFrame->client()->unableToImplementPolicyWithError(m_webFrame, error);
+}
+
+void FrameLoaderClientImpl::dispatchWillRequestResource(CachedResourceRequest* request)
+{
+    if (m_webFrame->client()) {
+        WebCachedURLRequest urlRequest(request);
+        m_webFrame->client()->willRequestResource(m_webFrame, urlRequest);
+    }
 }
 
 void FrameLoaderClientImpl::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prpFormState)

@@ -32,16 +32,8 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8DataView::constructorCallback(const v8::Arguments& args)
+v8::Handle<v8::Value> V8DataView::constructorCallbackCustom(const v8::Arguments& args)
 {
-    INC_STATS("DOM.DataView.Constructor");
-
-    if (!args.IsConstructCall())
-        return throwTypeError("DOM object constructor cannot be called as a function", args.GetIsolate());
-
-    if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
-        return args.Holder();
-
     if (!args.Length()) {
         // see constructWebGLArray -- we don't seem to be able to distingish between
         // 'new DataView()' and the call used to construct the cached DataView object.
@@ -70,7 +62,7 @@ v8::Handle<v8::Value> V8DataView::getInt8Callback(const v8::Arguments& args)
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
-    EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
+    V8TRYCATCH(unsigned, byteOffset, toUInt32(args[0]));
     int8_t result = imp->getInt8(byteOffset, ec);
     if (UNLIKELY(ec))
         return setDOMException(ec, args.GetIsolate());
@@ -85,7 +77,7 @@ v8::Handle<v8::Value> V8DataView::getUint8Callback(const v8::Arguments& args)
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
-    EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
+    V8TRYCATCH(unsigned, byteOffset, toUInt32(args[0]));
     uint8_t result = imp->getUint8(byteOffset, ec);
     if (UNLIKELY(ec))
         return setDOMException(ec, args.GetIsolate());
@@ -100,8 +92,8 @@ v8::Handle<v8::Value> V8DataView::setInt8Callback(const v8::Arguments& args)
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
-    EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
-    EXCEPTION_BLOCK(int, value, toInt32(args[1]));
+    V8TRYCATCH(unsigned, byteOffset, toUInt32(args[0]));
+    V8TRYCATCH(int, value, toInt32(args[1]));
     imp->setInt8(byteOffset, static_cast<int8_t>(value), ec);
     if (UNLIKELY(ec))
         return setDOMException(ec, args.GetIsolate());
@@ -116,8 +108,8 @@ v8::Handle<v8::Value> V8DataView::setUint8Callback(const v8::Arguments& args)
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
-    EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
-    EXCEPTION_BLOCK(int, value, toInt32(args[1]));
+    V8TRYCATCH(unsigned, byteOffset, toUInt32(args[0]));
+    V8TRYCATCH(int, value, toInt32(args[1]));
     imp->setUint8(byteOffset, static_cast<uint8_t>(value), ec);
     if (UNLIKELY(ec))
         return setDOMException(ec, args.GetIsolate());

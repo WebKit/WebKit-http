@@ -93,7 +93,7 @@
 #include "NavigatorContentUtilsClientBlackBerry.h"
 #endif
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-#include "NotificationPresenterImpl.h"
+#include "NotificationClientBlackBerry.h"
 #endif
 #include "Page.h"
 #include "PageCache.h"
@@ -372,7 +372,6 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_overflowExceedsContentsSize(false)
     , m_resetVirtualViewportOnCommitted(true)
     , m_shouldUseFixedDesktopMode(false)
-    , m_needTouchEvents(false)
     , m_preventIdleDimmingCount(0)
 #if ENABLE(TOUCH_EVENTS)
     , m_preventDefaultOnTouchStart(false)
@@ -429,6 +428,9 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_autofillManager(AutofillManager::create(this))
     , m_documentStyleRecalcPostponed(false)
     , m_documentChildNeedsStyleRecalc(false)
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    , m_notificationManager(this)
+#endif
 {
     static bool isInitialized = false;
     if (!isInitialized) {
@@ -561,7 +563,7 @@ void WebPagePrivate::init(const BlackBerry::Platform::String& pageGroupName)
 #endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    WebCore::provideNotification(m_page, NotificationPresenterImpl::instance());
+    WebCore::provideNotification(m_page, new NotificationClientBlackBerry(this));
 #endif
 
 #if ENABLE(NAVIGATOR_CONTENT_UTILS)
@@ -1633,7 +1635,6 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
         BBLOG(Platform::LogLevelInfo, "WebPagePrivate::zoomToInitialScaleOnLoad content is empty!");
 #endif
         requestLayoutIfNeeded();
-        m_client->resetBitmapZoomScale(currentScale());
         notifyTransformedContentsSizeChanged();
         return;
     }
@@ -1664,7 +1665,6 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
     if (!performedZoom) {
         // We only notify if we didn't perform zoom, because zoom will notify on
         // its own...
-        m_client->resetBitmapZoomScale(currentScale());
         notifyTransformedContentsSizeChanged();
     }
 }
@@ -2258,11 +2258,6 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
         return context;
     }
 
-    // Unpress the mouse button if we're actually getting context.
-    EventHandler* eventHandler = focusedOrMainFrame()->eventHandler();
-    if (eventHandler->mousePressed())
-        eventHandler->setMousePressed(false);
-
     requestLayoutIfNeeded();
 
     bool nodeAllowSelectionOverride = false;
@@ -2352,6 +2347,10 @@ Platform::WebContext WebPagePrivate::webContext(TargetDetectionStrategy strategy
             String elementText(DOMSupport::inputElementText(element));
             if (!elementText.stripWhiteSpace().isEmpty())
                 context.setText(elementText);
+            else if (!node->focused() && m_touchEventHandler->lastFatFingersResult().isValid() && strategy == RectBased) {
+                // If an input field is empty and not focused send a mouse click so that it gets a cursor and we can paste into it.
+                m_touchEventHandler->sendClickAtFatFingersPoint();
+            }
         }
     }
 
@@ -2957,7 +2956,6 @@ void WebPagePrivate::zoomBlock()
     TransformationMatrix zoom;
     zoom.scale(m_blockZoomFinalScale);
     *m_transformationMatrix = zoom;
-    m_client->resetBitmapZoomScale(m_blockZoomFinalScale);
     // FIXME: Do we really need to suspend/resume both backingstore and screen here?
     m_backingStore->d->suspendBackingStoreUpdates();
     m_backingStore->d->suspendScreenUpdates();
@@ -3465,7 +3463,14 @@ void WebPagePrivate::dispatchViewportPropertiesDidChange(const ViewportArguments
     Platform::IntSize virtualViewport = recomputeVirtualViewportFromViewportArguments();
     m_webPage->setVirtualViewportSize(virtualViewport);
 
-    if (loadState() == WebKit::WebPagePrivate::Committed)
+    // Reset m_userPerformedManualZoom and enable m_shouldZoomToInitialScaleAfterLoadFinished so that we can relayout
+    // the page and zoom it to fit the screen when we dynamically change the meta viewport after the load is finished.
+    bool isLoadFinished = loadState() == Finished;
+    if (isLoadFinished) {
+        m_userPerformedManualZoom = false;
+        setShouldZoomToInitialScaleAfterLoadFinished(true);
+    }
+    if (loadState() == Committed || isLoadFinished)
         zoomToInitialScaleOnLoad();
 }
 
@@ -4004,13 +4009,8 @@ bool WebPage::touchEvent(const Platform::TouchEvent& event)
 
     bool handled = false;
 
-    if (d->m_needTouchEvents && !event.m_type != Platform::TouchEvent::TouchInjected)
+    if (!event.m_type != Platform::TouchEvent::TouchInjected)
         handled = d->m_mainFrame->eventHandler()->handleTouchEvent(PlatformTouchEvent(&tEvent));
-
-    // Unpress mouse if touch end is consumed by a JavaScript touch handler, otherwise the mouse state will remain pressed
-    // which could either mess up the internal mouse state or start text selection on the next mouse move/down.
-    if (tEvent.m_type == Platform::TouchEvent::TouchEnd && handled && d->m_mainFrame->eventHandler()->mousePressed())
-        d->m_touchEventHandler->touchEventCancel();
 
     if (d->m_preventDefaultOnTouchStart) {
         if (tEvent.m_type == Platform::TouchEvent::TouchEnd || tEvent.m_type == Platform::TouchEvent::TouchCancel)
@@ -4025,7 +4025,8 @@ bool WebPage::touchEvent(const Platform::TouchEvent& event)
     }
 
     if (event.isTouchHold())
-        d->m_touchEventHandler->touchHoldEvent();
+        d->m_touchEventHandler->doFatFingers(tEvent.m_points[0]);
+
 #endif
 
     return false;
@@ -4050,72 +4051,13 @@ void WebPage::setDocumentScrollOriginPoint(const Platform::IntPoint& documentScr
     d->setScrollOriginPoint(documentScrollOrigin);
 }
 
-bool WebPagePrivate::dispatchTouchEventToFullScreenPlugin(PluginView* plugin, const Platform::TouchEvent& event)
-{
-    NPTouchEvent npTouchEvent;
-
-    if (event.isDoubleTap())
-        npTouchEvent.type = TOUCH_EVENT_DOUBLETAP;
-    else if (event.isTouchHold())
-        npTouchEvent.type = TOUCH_EVENT_TOUCHHOLD;
-    else {
-        switch (event.m_type) {
-        case Platform::TouchEvent::TouchStart:
-            npTouchEvent.type = TOUCH_EVENT_START;
-            break;
-        case Platform::TouchEvent::TouchEnd:
-            npTouchEvent.type = TOUCH_EVENT_END;
-            break;
-        case Platform::TouchEvent::TouchMove:
-            npTouchEvent.type = TOUCH_EVENT_MOVE;
-            break;
-        case Platform::TouchEvent::TouchCancel:
-            npTouchEvent.type = TOUCH_EVENT_CANCEL;
-            break;
-        default:
-            return false;
-        }
-    }
-
-    npTouchEvent.points = 0;
-    npTouchEvent.size = event.m_points.size();
-    if (npTouchEvent.size) {
-        npTouchEvent.points = new NPTouchPoint[npTouchEvent.size];
-        for (int i = 0; i < npTouchEvent.size; i++) {
-            npTouchEvent.points[i].touchId = event.m_points[i].m_id;
-            npTouchEvent.points[i].clientX = event.m_points[i].m_screenPos.x();
-            npTouchEvent.points[i].clientY = event.m_points[i].m_screenPos.y();
-            npTouchEvent.points[i].screenX = event.m_points[i].m_screenPos.x();
-            npTouchEvent.points[i].screenY = event.m_points[i].m_screenPos.y();
-            npTouchEvent.points[i].pageX = event.m_points[i].m_pos.x();
-            npTouchEvent.points[i].pageY = event.m_points[i].m_pos.y();
-        }
-    }
-
-    NPEvent npEvent;
-    npEvent.type = NP_TouchEvent;
-    npEvent.data = &npTouchEvent;
-
-    bool handled = plugin->dispatchFullScreenNPEvent(npEvent);
-
-    if (npTouchEvent.type == TOUCH_EVENT_DOUBLETAP && !handled) {
-        // Send Touch Up if double tap not consumed.
-        npTouchEvent.type = TOUCH_EVENT_END;
-        npEvent.data = &npTouchEvent;
-        handled = plugin->dispatchFullScreenNPEvent(npEvent);
-    }
-    delete[] npTouchEvent.points;
-    return handled;
-}
-
-bool WebPage::touchPointAsMouseEvent(const Platform::TouchPoint& point, bool useFatFingers)
+void WebPage::touchPointAsMouseEvent(const Platform::TouchPoint& point)
 {
     if (d->m_page->defersLoading())
-        return false;
+        return;
 
-    PluginView* pluginView = d->m_fullScreenPluginView.get();
-    if (pluginView)
-        return d->dispatchTouchPointAsMouseEventToFullScreenPlugin(pluginView, point);
+    if (d->m_fullScreenPluginView.get())
+        return;
 
     d->m_lastUserEventTimestamp = currentTime();
 
@@ -4123,12 +4065,57 @@ bool WebPage::touchPointAsMouseEvent(const Platform::TouchPoint& point, bool use
     tPoint.m_pos = d->mapFromTransformed(tPoint.m_pos);
     tPoint.m_screenPos = tPoint.m_screenPos;
 
-    return d->m_touchEventHandler->handleTouchPoint(tPoint, useFatFingers);
+    d->m_touchEventHandler->handleTouchPoint(tPoint);
 }
 
 void WebPage::playSoundIfAnchorIsTarget() const
 {
     d->m_touchEventHandler->playSoundIfAnchorIsTarget();
+}
+
+bool WebPagePrivate::dispatchTouchEventToFullScreenPlugin(PluginView* plugin, const Platform::TouchEvent& event)
+{
+    // Always convert touch events to mouse events.
+    // Don't send actual touch events because no one has ever implemented them in flash.
+    if (!event.neverHadMultiTouch())
+        return false;
+
+    if (event.isDoubleTap() || event.isTouchHold() || event.m_type == Platform::TouchEvent::TouchCancel) {
+        NPTouchEvent npTouchEvent;
+
+        if (event.isDoubleTap())
+            npTouchEvent.type = TOUCH_EVENT_DOUBLETAP;
+        else if (event.isTouchHold())
+            npTouchEvent.type = TOUCH_EVENT_TOUCHHOLD;
+        else if (event.m_type == Platform::TouchEvent::TouchCancel)
+            npTouchEvent.type = TOUCH_EVENT_CANCEL;
+
+        npTouchEvent.points = 0;
+        npTouchEvent.size = event.m_points.size();
+        if (npTouchEvent.size) {
+            npTouchEvent.points = new NPTouchPoint[npTouchEvent.size];
+            for (int i = 0; i < npTouchEvent.size; i++) {
+                npTouchEvent.points[i].touchId = event.m_points[i].m_id;
+                npTouchEvent.points[i].clientX = event.m_points[i].m_screenPos.x();
+                npTouchEvent.points[i].clientY = event.m_points[i].m_screenPos.y();
+                npTouchEvent.points[i].screenX = event.m_points[i].m_screenPos.x();
+                npTouchEvent.points[i].screenY = event.m_points[i].m_screenPos.y();
+                npTouchEvent.points[i].pageX = event.m_points[i].m_pos.x();
+                npTouchEvent.points[i].pageY = event.m_points[i].m_pos.y();
+            }
+        }
+
+        NPEvent npEvent;
+        npEvent.type = NP_TouchEvent;
+        npEvent.data = &npTouchEvent;
+
+        plugin->dispatchFullScreenNPEvent(npEvent);
+        delete[] npTouchEvent.points;
+        return true;
+    }
+
+    dispatchTouchPointAsMouseEventToFullScreenPlugin(plugin, event.m_points[0]);
+    return true;
 }
 
 bool WebPagePrivate::dispatchTouchPointAsMouseEventToFullScreenPlugin(PluginView* pluginView, const Platform::TouchPoint& point)
@@ -4147,7 +4134,7 @@ bool WebPagePrivate::dispatchTouchPointAsMouseEventToFullScreenPlugin(PluginView
         mouse.type = MOUSE_MOTION;
         break;
     case Platform::TouchPoint::TouchStationary:
-        return false;
+        return true;
     }
 
     mouse.x = point.m_screenPos.x();
@@ -4157,7 +4144,8 @@ bool WebPagePrivate::dispatchTouchPointAsMouseEventToFullScreenPlugin(PluginView
     npEvent.type = NP_MouseEvent;
     npEvent.data = &mouse;
 
-    return pluginView->dispatchFullScreenNPEvent(npEvent);
+    pluginView->dispatchFullScreenNPEvent(npEvent);
+    return true;
 }
 
 void WebPage::touchEventCancel()
@@ -4165,7 +4153,6 @@ void WebPage::touchEventCancel()
     d->m_pluginMayOpenNewTab = false;
     if (d->m_page->defersLoading())
         return;
-    d->m_touchEventHandler->touchEventCancel();
 }
 
 Frame* WebPagePrivate::focusedOrMainFrame() const
@@ -5155,12 +5142,16 @@ void WebPage::enableWebInspector()
 
     d->m_page->inspectorController()->connectFrontend(d->m_inspectorClient);
     d->m_page->settings()->setDeveloperExtrasEnabled(true);
+    d->setPreventsScreenDimming(true);
 }
 
 void WebPage::disableWebInspector()
 {
-    d->m_page->inspectorController()->disconnectFrontend();
-    d->m_page->settings()->setDeveloperExtrasEnabled(false);
+    if (isWebInspectorEnabled()) {
+        d->m_page->inspectorController()->disconnectFrontend();
+        d->m_page->settings()->setDeveloperExtrasEnabled(false);
+        d->setPreventsScreenDimming(false);
+    }
 }
 
 bool WebPage::isWebInspectorEnabled()
@@ -5889,16 +5880,6 @@ BlackBerry::Platform::String WebPage::textHasAttribute(const BlackBerry::Platfor
     return "";
 }
 
-void WebPage::setAllowNotification(const BlackBerry::Platform::String& domain, bool allow)
-{
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
-    static_cast<NotificationPresenterImpl*>(NotificationPresenterImpl::instance())->onPermission(domain.c_str(), allow);
-#else
-    UNUSED_PARAM(domain);
-    UNUSED_PARAM(allow);
-#endif
-}
-
 void WebPage::setJavaScriptCanAccessClipboard(bool enabled)
 {
     d->m_page->settings()->setJavaScriptCanAccessClipboard(enabled);
@@ -5934,11 +5915,6 @@ void WebPage::setWebGLEnabled(bool enabled)
 bool WebPage::isWebGLEnabled() const
 {
     return d->m_page->settings()->webGLEnabled();
-}
-
-void WebPagePrivate::setNeedTouchEvents(bool value)
-{
-    m_needTouchEvents = value;
 }
 
 void WebPagePrivate::frameUnloaded(const Frame* frame)
@@ -6160,6 +6136,52 @@ void WebPagePrivate::didComposite()
     if (!m_page->settings()->developerExtrasEnabled())
         return;
     InspectorInstrumentation::didComposite(m_page);
+}
+
+void WebPage::updateNotificationPermission(const BlackBerry::Platform::String& requestId, bool allowed)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    d->notificationManager().updatePermission(requestId, allowed);
+#else
+    UNUSED_PARAM(requestId);
+    UNUSED_PARAM(allowed);
+#endif
+}
+
+void WebPage::notificationClicked(const BlackBerry::Platform::String& notificationId)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    d->notificationManager().notificationClicked(notificationId);
+#else
+    UNUSED_PARAM(notificationId);
+#endif
+}
+
+void WebPage::notificationClosed(const BlackBerry::Platform::String& notificationId)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    d->notificationManager().notificationClosed(notificationId);
+#else
+    UNUSED_PARAM(notificationId);
+#endif
+}
+
+void WebPage::notificationError(const BlackBerry::Platform::String& notificationId)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    d->notificationManager().notificationError(notificationId);
+#else
+    UNUSED_PARAM(notificationId);
+#endif
+}
+
+void WebPage::notificationShown(const BlackBerry::Platform::String& notificationId)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    d->notificationManager().notificationShown(notificationId);
+#else
+    UNUSED_PARAM(notificationId);
+#endif
 }
 
 }

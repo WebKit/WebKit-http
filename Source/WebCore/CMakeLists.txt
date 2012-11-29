@@ -332,8 +332,10 @@ SET(WebCore_IDL_FILES
     css/WebKitCSSKeyframeRule.idl
     css/WebKitCSSKeyframesRule.idl
     css/WebKitCSSMatrix.idl
+    css/WebKitCSSMixFunctionValue.idl
     css/WebKitCSSRegionRule.idl
     css/WebKitCSSTransformValue.idl
+    css/WebKitCSSViewportRule.idl
 
     dom/Attr.idl
     dom/BeforeLoadEvent.idl
@@ -1145,8 +1147,6 @@ SET(WebCore_SOURCES
     dom/DocumentOrderedMap.cpp
     dom/DocumentStyleSheetCollection.cpp
     dom/DocumentType.cpp
-    dom/DynamicNodeList.cpp
-    dom/EditingText.cpp
     dom/Element.cpp
     dom/ElementAttributeData.cpp
     dom/ElementRareData.cpp
@@ -1168,6 +1168,7 @@ SET(WebCore_SOURCES
     dom/IconURL.cpp
     dom/IdTargetObserver.cpp
     dom/IdTargetObserverRegistry.cpp
+    dom/LiveNodeList.cpp
     dom/KeyboardEvent.cpp
     dom/MessageChannel.cpp
     dom/MessageEvent.cpp
@@ -1549,6 +1550,7 @@ SET(WebCore_SOURCES
     html/shadow/SpinButtonElement.cpp
     html/shadow/TextControlInnerElements.cpp
 
+    html/track/InbandTextTrack.cpp
     html/track/LoadableTextTrack.cpp
     html/track/TextTrack.cpp
     html/track/TextTrackCue.cpp

@@ -1001,7 +1001,14 @@ void RenderBox::paintFillLayers(const PaintInfo& paintInfo, const Color& c, cons
     if (!fillLayer)
         return;
 
-    paintFillLayers(paintInfo, c, fillLayer->next(), rect, bleedAvoidance, op, backgroundObject);
+    // FIXME : It would be possible for the following occlusion culling test to be more aggressive 
+    // on layers with no repeat by testing whether the image covers the layout rect.
+    // Testing that here would imply duplicating a lot of calculations that are currently done in
+    // RenderBoxModelOBject::paintFillLayerExtended. A more efficient solution might be to move
+    // the layer recursion into paintFillLayerExtended, or to compute the layer geometry here
+    // and pass it down.
+    if (fillLayer->next() && (!fillLayer->hasOpaqueImage(this) || !fillLayer->image()->canRender(this, style()->effectiveZoom()) || !fillLayer->hasRepeatXY()))
+        paintFillLayers(paintInfo, c, fillLayer->next(), rect, bleedAvoidance, op, backgroundObject);
     paintFillLayer(paintInfo, c, fillLayer, rect, bleedAvoidance, op, backgroundObject);
 }
 
@@ -2187,11 +2194,13 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
     
     bool skippedAutoHeightContainingBlock = false;
     RenderBlock* cb = containingBlock();
+    const RenderBox* containingBlockChild = this;
     LayoutUnit rootMarginBorderPaddingHeight = 0;
     while (!cb->isRenderView() && skipContainingBlockForPercentHeightCalculation(cb)) {
         if (cb->isBody() || cb->isRoot())
             rootMarginBorderPaddingHeight += cb->marginBefore() + cb->marginAfter() + cb->borderAndPaddingLogicalHeight();
         skippedAutoHeightContainingBlock = true;
+        containingBlockChild = cb;
         cb = cb->containingBlock();
         cb->addPercentHeightDescendant(const_cast<RenderBox*>(this));
     }
@@ -2207,26 +2216,28 @@ LayoutUnit RenderBox::computePercentageLogicalHeight(const Length& height) const
     bool includeBorderPadding = isTable();
 
     if (isHorizontalWritingMode() != cb->isHorizontalWritingMode())
-        availableHeight = cb->contentLogicalWidth();
-    else if (cb->isTableCell() && !skippedAutoHeightContainingBlock) {
-        // Table cells violate what the CSS spec says to do with heights. Basically we
-        // don't care if the cell specified a height or not. We just always make ourselves
-        // be a percentage of the cell's current content height.
-        if (!cb->hasOverrideHeight()) {
-            // Normally we would let the cell size intrinsically, but scrolling overflow has to be
-            // treated differently, since WinIE lets scrolled overflow regions shrink as needed.
-            // While we can't get all cases right, we can at least detect when the cell has a specified
-            // height or when the table has a specified height. In these cases we want to initially have
-            // no size and allow the flexing of the table or the cell to its specified height to cause us
-            // to grow to fill the space. This could end up being wrong in some cases, but it is
-            // preferable to the alternative (sizing intrinsically and making the row end up too big).
-            RenderTableCell* cell = toRenderTableCell(cb);
-            if (scrollsOverflowY() && (!cell->style()->logicalHeight().isAuto() || !cell->table()->style()->logicalHeight().isAuto()))
-                return 0;
-            return -1;
+        availableHeight = containingBlockChild->containingBlockLogicalWidthForContent();
+    else if (cb->isTableCell()) {
+        if (!skippedAutoHeightContainingBlock) {
+            // Table cells violate what the CSS spec says to do with heights. Basically we
+            // don't care if the cell specified a height or not. We just always make ourselves
+            // be a percentage of the cell's current content height.
+            if (!cb->hasOverrideHeight()) {
+                // Normally we would let the cell size intrinsically, but scrolling overflow has to be
+                // treated differently, since WinIE lets scrolled overflow regions shrink as needed.
+                // While we can't get all cases right, we can at least detect when the cell has a specified
+                // height or when the table has a specified height. In these cases we want to initially have
+                // no size and allow the flexing of the table or the cell to its specified height to cause us
+                // to grow to fill the space. This could end up being wrong in some cases, but it is
+                // preferable to the alternative (sizing intrinsically and making the row end up too big).
+                RenderTableCell* cell = toRenderTableCell(cb);
+                if (scrollsOverflowY() && (!cell->style()->logicalHeight().isAuto() || !cell->table()->style()->logicalHeight().isAuto()))
+                    return 0;
+                return -1;
+            }
+            availableHeight = cb->overrideLogicalContentHeight();
+            includeBorderPadding = true;
         }
-        availableHeight = cb->overrideLogicalContentHeight();
-        includeBorderPadding = true;
     } else if (cbstyle->logicalHeight().isFixed()) {
         LayoutUnit contentBoxHeightWithScrollbar = cb->adjustContentBoxLogicalHeightForBoxSizing(cbstyle->logicalHeight().value());
         availableHeight = max<LayoutUnit>(0, contentBoxHeightWithScrollbar - cb->scrollbarLogicalHeight());
@@ -2950,8 +2961,14 @@ static void computeBlockStaticDistance(Length& logicalTop, Length& logicalBottom
 void RenderBox::computePositionedLogicalHeight(LogicalExtentComputedValues& computedValues) const
 {
     if (isReplaced()) {
-        computePositionedLogicalHeightReplaced(computedValues);
-        return;
+        // FIXME: For regions with height auto, we want to compute width using the normal block sizing code.
+        // For now, regions are replaced elements and this code can be removed once the RenderRegion
+        // will inherit from RenderBlock instead of RenderReplaced.
+        // (see https://bugs.webkit.org/show_bug.cgi?id=74132 )
+        if (!isRenderRegion() || (isRenderRegion() && shouldComputeSizeAsReplaced())) {
+            computePositionedLogicalHeightReplaced(computedValues);
+            return;
+        }
     }
 
     // The following is based off of the W3C Working Draft from April 11, 2006 of

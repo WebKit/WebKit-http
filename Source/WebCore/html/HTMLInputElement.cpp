@@ -56,7 +56,6 @@
 #include "Language.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
-#include "NumberInputType.h"
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
@@ -265,6 +264,11 @@ bool HTMLInputElement::typeMismatch() const
 bool HTMLInputElement::valueMissing() const
 {
     return willValidate() && m_inputType->valueMissing(value());
+}
+
+bool HTMLInputElement::hasBadInput() const
+{
+    return willValidate() && m_inputType->hasBadInput();
 }
 
 bool HTMLInputElement::patternMismatch() const
@@ -545,37 +549,9 @@ void HTMLInputElement::updateType()
 
 void HTMLInputElement::subtreeHasChanged()
 {
-    ASSERT(isTextField());
-    ASSERT(renderer());
-
-    bool wasChanged = wasChangedSinceLastFormControlChangeEvent();
-    setChangedSinceLastFormControlChangeEvent(true);
-
-    // We don't need to call sanitizeUserInputValue() function here because
-    // HTMLInputElement::handleBeforeTextInsertedEvent() has already called
-    // sanitizeUserInputValue().
-    // sanitizeValue() is needed because IME input doesn't dispatch BeforeTextInsertedEvent.
-    String value = innerTextValue();
-    if (isAcceptableValue(value))
-        setValueFromRenderer(sanitizeValue(convertFromVisibleValue(value)));
-    updatePlaceholderVisibility(false);
-    // Recalc for :invalid and hasUnacceptableValue() change.
-    setNeedsStyleRecalc();
-
     m_inputType->subtreeHasChanged();
-
-    if (!wasChanged && focused()) {
-        if (Frame* frame = document()->frame())
-            frame->editor()->textFieldDidBeginEditing(this);
-    }
-
-    if (focused()) {
-        if (Frame* frame = document()->frame())
-            frame->editor()->textDidChangeInTextField(this);
-    }
     // When typing in an input field, childrenChanged is not called, so we need to force the directionality check.
-    if (isTextField())
-        calculateAndAdjustDirectionality();
+    calculateAndAdjustDirectionality();
 }
 
 const AtomicString& HTMLInputElement::formControlType() const
@@ -1406,16 +1382,6 @@ String HTMLInputElement::visibleValue() const
     return m_inputType->visibleValue();
 }
 
-String HTMLInputElement::convertFromVisibleValue(const String& visibleValue) const
-{
-    return m_inputType->convertFromVisibleValue(visibleValue);
-}
-
-bool HTMLInputElement::isAcceptableValue(const String& proposedValue) const
-{
-    return m_inputType->isAcceptableValue(proposedValue);
-}
-
 String HTMLInputElement::sanitizeValue(const String& proposedValue) const
 {
     if (proposedValue.isNull())
@@ -1428,11 +1394,6 @@ String HTMLInputElement::localizeValue(const String& proposedValue) const
     if (proposedValue.isNull())
         return proposedValue;
     return m_inputType->localizeValue(proposedValue);
-}
-
-bool HTMLInputElement::hasUnacceptableValue() const
-{
-    return m_inputType->hasUnacceptableValue();
 }
 
 bool HTMLInputElement::isInRange() const
@@ -1475,6 +1436,16 @@ void HTMLInputElement::unregisterForSuspensionCallbackIfNeeded()
 bool HTMLInputElement::isRequiredFormControl() const
 {
     return m_inputType->supportsRequired() && required();
+}
+
+bool HTMLInputElement::shouldMatchReadOnlySelector() const
+{
+    return m_inputType->supportsReadOnly() && readOnly();
+}
+
+bool HTMLInputElement::shouldMatchReadWriteSelector() const
+{
+    return m_inputType->supportsReadOnly() && !readOnly();
 }
 
 void HTMLInputElement::addSearchResult()

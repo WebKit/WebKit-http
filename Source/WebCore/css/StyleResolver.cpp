@@ -297,17 +297,8 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
             loadFullDefaultStyle();
     }
 
-    // construct document root element default style. this is needed
-    // to evaluate media queries that contain relative constraints, like "screen and (max-width: 10em)"
-    // This is here instead of constructor, because when constructor is run,
-    // document doesn't have documentElement
-    // NOTE: this assumes that element that gets passed to styleForElement -call
-    // is always from the document that owns the style selector
     FrameView* view = document->view();
-    if (view)
-        m_medium = adoptPtr(new MediaQueryEvaluator(view->mediaType()));
-    else
-        m_medium = adoptPtr(new MediaQueryEvaluator("all"));
+    m_medium = adoptPtr(new MediaQueryEvaluator(view ? view->mediaType() : "all"));
 
     if (root)
         m_rootDefaultStyle = styleForElement(root, 0, DisallowStyleSharing, MatchOnlyUserAgentRules);
@@ -316,15 +307,6 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
         m_medium = adoptPtr(new MediaQueryEvaluator(view->mediaType(), view->frame(), m_rootDefaultStyle.get()));
 
     resetAuthorStyle();
-
-    DocumentStyleSheetCollection* styleSheetCollection = document->styleSheetCollection();
-    OwnPtr<RuleSet> tempUserStyle = RuleSet::create();
-    if (CSSStyleSheet* pageUserSheet = styleSheetCollection->pageUserSheet())
-        tempUserStyle->addRulesFromSheet(pageUserSheet->contents(), *m_medium, this);
-    collectRulesFromUserStyleSheets(styleSheetCollection->injectedUserStyleSheets(), *tempUserStyle);
-    collectRulesFromUserStyleSheets(styleSheetCollection->documentUserStyleSheets(), *tempUserStyle);
-    if (tempUserStyle->m_ruleCount > 0 || tempUserStyle->m_pageRules.size() > 0)
-        m_userStyle = tempUserStyle.release();
 
 #if ENABLE(SVG_FONTS)
     if (document->svgExtensions()) {
@@ -335,15 +317,20 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
     }
 #endif
 
+    DocumentStyleSheetCollection* styleSheetCollection = document->styleSheetCollection();
+    collectRulesFromUserStyleSheets(styleSheetCollection->activeUserStyleSheets());
     appendAuthorStyleSheets(0, styleSheetCollection->activeAuthorStyleSheets());
 }
 
-void StyleResolver::collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet> >& userSheets, RuleSet& userStyle)
+void StyleResolver::collectRulesFromUserStyleSheets(const Vector<RefPtr<CSSStyleSheet> >& userSheets)
 {
+    OwnPtr<RuleSet> userStyleRuleSet = RuleSet::create();
     for (unsigned i = 0; i < userSheets.size(); ++i) {
         ASSERT(userSheets[i]->contents()->isUserStyleSheet());
-        userStyle.addRulesFromSheet(userSheets[i]->contents(), *m_medium, this);
+        userStyleRuleSet->addRulesFromSheet(userSheets[i]->contents(), *m_medium, this);
     }
+    if (userStyleRuleSet->m_ruleCount > 0 || userStyleRuleSet->m_pageRules.size() > 0)
+        m_userStyle = userStyleRuleSet.release();
 }
 
 static PassOwnPtr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
@@ -1128,32 +1115,6 @@ bool StyleResolver::canShareStyleWithControl(StyledElement* element) const
     return true;
 }
 
-// This function makes some assumptions that only make sense for attribute styles (we only compare CSSProperty::id() and CSSProperty::value().)
-static inline bool attributeStylesEqual(const StylePropertySet* a, const StylePropertySet* b)
-{
-    if (a == b)
-        return true;
-    if (a->propertyCount() != b->propertyCount())
-        return false;
-    unsigned propertyCount = a->propertyCount();
-    for (unsigned i = 0; i < propertyCount; ++i) {
-        StylePropertySet::PropertyReference aProperty = a->propertyAt(i);
-        unsigned j;
-        for (j = 0; j < propertyCount; ++j) {
-            StylePropertySet::PropertyReference bProperty = b->propertyAt(j);
-            if (aProperty.id() != bProperty.id())
-                continue;
-            // We could get a few more hits by comparing cssText() here, but that gets expensive quickly.
-            if (aProperty.value() != bProperty.value())
-                return false;
-            break;
-        }
-        if (j == propertyCount)
-            return false;
-    }
-    return true;
-}
-
 static inline bool elementHasDirectionAuto(Element* element)
 {
     // FIXME: This line is surprisingly hot, we may wish to inline hasDirectionAuto into StyleResolver.
@@ -1176,11 +1137,11 @@ static inline bool haveIdenticalStyleAffectingAttributes(StyledElement* a, Style
                 return false;
         } else
 #endif
-        if (a->fastGetAttribute(classAttr) != b->fastGetAttribute(classAttr))
+        if (a->attributeData()->classNames() != b->attributeData()->classNames())
             return false;
     }
 
-    if (a->presentationAttributeStyle() && !attributeStylesEqual(a->presentationAttributeStyle(), b->presentationAttributeStyle()))
+    if (a->presentationAttributeStyle() != b->presentationAttributeStyle())
         return false;
 
 #if ENABLE(PROGRESS_ELEMENT)
@@ -1213,12 +1174,6 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
     if (element->isSVGElement() && static_cast<SVGElement*>(element)->animatedSMILStyleProperties())
         return false;
 #endif
-    if (!!element->presentationAttributeStyle() != !!m_styledElement->presentationAttributeStyle())
-        return false;
-    const StylePropertySet* additionalPresentationAttributeStyleA = element->additionalPresentationAttributeStyle();
-    const StylePropertySet* additionalPresentationAttributeStyleB = m_styledElement->additionalPresentationAttributeStyle();
-    if (!additionalPresentationAttributeStyleA != !additionalPresentationAttributeStyleB)
-        return false;
     if (element->isLink() != m_element->isLink())
         return false;
     if (style->affectedByUncommonAttributeSelectors())
@@ -1233,8 +1188,9 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
         return false;
     if (element == element->document()->cssTarget())
         return false;
-
     if (!haveIdenticalStyleAffectingAttributes(element, m_styledElement))
+        return false;
+    if (element->additionalPresentationAttributeStyle() != m_styledElement->additionalPresentationAttributeStyle())
         return false;
 
     if (element->hasID() && m_features.idsInRules.contains(element->idForStyleResolution().impl()))
@@ -1272,9 +1228,6 @@ bool StyleResolver::canShareStyleWithElement(StyledElement* element) const
 #endif
 
     if (elementHasDirectionAuto(element))
-        return false;
-
-    if (additionalPresentationAttributeStyleA && !attributeStylesEqual(additionalPresentationAttributeStyleA, additionalPresentationAttributeStyleB))
         return false;
 
     if (element->isLink() && m_elementLinkState != style->insideLink())
@@ -2572,17 +2525,23 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
     unsigned size = listType->length();
     for (unsigned i = 0; i < size; ++i) {
         CSSRule* cssRule = listType->item(i);
-        if (cssRule->isImportRule())
+        switch (cssRule->type()) {
+        case CSSRule::IMPORT_RULE:
             collectCSSOMWrappers(wrapperMap, static_cast<CSSImportRule*>(cssRule)->styleSheet());
-        else if (cssRule->isMediaRule())
+            break;
+        case CSSRule::MEDIA_RULE:
             collectCSSOMWrappers(wrapperMap, static_cast<CSSMediaRule*>(cssRule));
+            break;
 #if ENABLE(CSS_REGIONS)
-        else if (cssRule->isRegionRule())
+        case CSSRule::WEBKIT_REGION_RULE:
             collectCSSOMWrappers(wrapperMap, static_cast<WebKitCSSRegionRule*>(cssRule));
+            break;
 #endif
-        else if (cssRule->isStyleRule()) {
-            CSSStyleRule* cssStyleRule = static_cast<CSSStyleRule*>(cssRule);
-            wrapperMap.add(cssStyleRule->styleRule(), cssStyleRule);
+        case CSSRule::STYLE_RULE:
+            wrapperMap.add(static_cast<CSSStyleRule*>(cssRule)->styleRule(), static_cast<CSSStyleRule*>(cssRule));
+            break;
+        default:
+            break;
         }
     }
 }
@@ -2605,9 +2564,7 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
 static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wrapperMap, DocumentStyleSheetCollection* styleSheetCollection)
 {
     collectCSSOMWrappers(wrapperMap, styleSheetCollection->activeAuthorStyleSheets());
-    collectCSSOMWrappers(wrapperMap, styleSheetCollection->pageUserSheet());
-    collectCSSOMWrappers(wrapperMap, styleSheetCollection->injectedUserStyleSheets());
-    collectCSSOMWrappers(wrapperMap, styleSheetCollection->documentUserStyleSheets());
+    collectCSSOMWrappers(wrapperMap, styleSheetCollection->activeUserStyleSheets());
 }
 
 CSSStyleRule* StyleResolver::ensureFullCSSOMWrapperForInspector(StyleRule* rule)
@@ -3233,7 +3190,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             m_style->resetColumnRule();
         return;
     case CSSPropertyWebkitMarquee:
-        if (!m_parentNode || !value->isInheritedValue())
+        if (!isInherit)
             return;
         m_style->setMarqueeDirection(m_parentStyle->marqueeDirection());
         m_style->setMarqueeIncrement(m_parentStyle->marqueeIncrement());
@@ -4603,7 +4560,7 @@ void StyleResolver::loadPendingSVGDocuments()
                 continue;
 
             // Stash the CachedSVGDocument on the reference filter.
-            referenceFilter->setData(adoptPtr(new CachedSVGDocumentReference(cachedDocument)));
+            referenceFilter->setCachedSVGDocumentReference(adoptPtr(new CachedSVGDocumentReference(cachedDocument)));
         }
     }
     m_pendingSVGDocuments.clear();
@@ -4948,7 +4905,7 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
                 if (!svgDocumentValue->loadRequested())
                     m_pendingSVGDocuments.set(operation.get(), svgDocumentValue);
                 else if (svgDocumentValue->cachedSVGDocument())
-                    operation->setData(adoptPtr(new CachedSVGDocumentReference(svgDocumentValue->cachedSVGDocument())));
+                    operation->setCachedSVGDocumentReference(adoptPtr(new CachedSVGDocumentReference(svgDocumentValue->cachedSVGDocument())));
             }
             operations.operations().append(operation);
 #endif

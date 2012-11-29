@@ -43,8 +43,8 @@ void Disassembler::dump(LinkBuffer& linkBuffer)
 {
     m_graph.m_dominators.computeIfNecessary(m_graph);
     
-    dataLog("Generated JIT code for DFG CodeBlock %p, instruction count = %u:\n", m_graph.m_codeBlock, m_graph.m_codeBlock->instructionCount());
-    dataLog("    Code at [%p, %p):\n", linkBuffer.debugAddress(), static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.debugSize());
+    dataLogF("Generated JIT code for DFG CodeBlock %p, instruction count = %u:\n", m_graph.m_codeBlock, m_graph.m_codeBlock->instructionCount());
+    dataLogF("    Code at [%p, %p):\n", linkBuffer.debugAddress(), static_cast<char*>(linkBuffer.debugAddress()) + linkBuffer.debugSize());
     
     const char* prefix = "    ";
     const char* disassemblyPrefix = "        ";
@@ -82,7 +82,7 @@ void Disassembler::dump(LinkBuffer& linkBuffer)
         }
     }
     dumpDisassembly(disassemblyPrefix, linkBuffer, previousLabel, m_endOfMainPath, lastNodeIndex);
-    dataLog("%s(End Of Main Path)\n", prefix);
+    dataLogF("%s(End Of Main Path)\n", prefix);
     dumpDisassembly(disassemblyPrefix, linkBuffer, previousLabel, m_endOfCode, NoNode);
 }
 
@@ -104,10 +104,7 @@ void Disassembler::dumpDisassembly(const char* prefix, LinkBuffer& linkBuffer, M
     CodeLocationLabel end = linkBuffer.locationOf(currentLabel);
     previousLabel = currentLabel;
     ASSERT(bitwise_cast<uintptr_t>(end.executableAddress()) >= bitwise_cast<uintptr_t>(start.executableAddress()));
-    if (tryToDisassemble(start, bitwise_cast<uintptr_t>(end.executableAddress()) - bitwise_cast<uintptr_t>(start.executableAddress()), prefixBuffer.get(), WTF::dataFile()))
-        return;
-    
-    dataLog("%s    disassembly not available for range %p...%p\n", prefixBuffer.get(), start.executableAddress(), end.executableAddress());
+    disassemble(start, bitwise_cast<uintptr_t>(end.executableAddress()) - bitwise_cast<uintptr_t>(start.executableAddress()), prefixBuffer.get(), WTF::dataFile());
 }
 
 } } // namespace JSC::DFG

@@ -44,7 +44,7 @@ const String& MicroDataItemList::undefinedItemType()
 }
 
 MicroDataItemList::MicroDataItemList(PassRefPtr<Node> rootNode, const String& typeNames)
-    : DynamicSubtreeNodeList(rootNode, MicroDataItemListType, InvalidateOnItemAttrChange)
+    : LiveNodeList(rootNode, MicroDataItemListType, InvalidateOnItemAttrChange)
     , m_typeNames(typeNames, document()->inQuirksMode())
     , m_originalTypeNames(typeNames)
 {
@@ -52,7 +52,7 @@ MicroDataItemList::MicroDataItemList(PassRefPtr<Node> rootNode, const String& ty
 
 MicroDataItemList::~MicroDataItemList()
 {
-    ownerNode()->nodeLists()->removeCacheWithName(this, DynamicNodeList::MicroDataItemListType, m_originalTypeNames);
+    ownerNode()->nodeLists()->removeCacheWithName(this, MicroDataItemListType, m_originalTypeNames);
 }
 
 bool MicroDataItemList::nodeMatches(Element* testNode) const

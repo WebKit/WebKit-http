@@ -49,7 +49,6 @@
 #include "PlatformScreen.h"
 #include "ScheduledAction.h"
 #include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "ScriptSourceCode.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -315,25 +314,17 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
     //   postMessage(message, {sequence of transferrables}, targetOrigin);
     MessagePortArray portArray;
     ArrayBufferArray arrayBufferArray;
-    String targetOrigin;
-    {
-        v8::TryCatch tryCatch;
-        int targetOriginArgIndex = 1;
-        if (args.Length() > 2) {
-            int transferablesArgIndex = 2;
-            if (isLegacyTargetOriginDesignation(args[2])) {
-                targetOriginArgIndex = 2;
-                transferablesArgIndex = 1;
-            }
-            if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray, args.GetIsolate()))
-                return v8::Undefined();
-        } 
-        targetOrigin = toWebCoreStringWithNullOrUndefinedCheck(args[targetOriginArgIndex]);
-
-        if (tryCatch.HasCaught())
+    int targetOriginArgIndex = 1;
+    if (args.Length() > 2) {
+        int transferablesArgIndex = 2;
+        if (isLegacyTargetOriginDesignation(args[2])) {
+            targetOriginArgIndex = 2;
+            transferablesArgIndex = 1;
+        }
+        if (!extractTransferables(args[transferablesArgIndex], portArray, arrayBufferArray, args.GetIsolate()))
             return v8::Undefined();
     }
-
+    V8TRYCATCH_FOR_V8STRINGRESOURCE(V8StringResource<WithUndefinedOrNullCheck>, targetOrigin, args[targetOriginArgIndex]);
 
     bool didThrow = false;
     RefPtr<SerializedScriptValue> message =
@@ -440,9 +431,9 @@ v8::Handle<v8::Value> V8DOMWindow::showModalDialogCallback(const v8::Arguments& 
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
-    String urlString = toWebCoreStringWithNullOrUndefinedCheck(args[0]);
+    String urlString = toWebCoreStringWithUndefinedOrNullCheck(args[0]);
     DialogHandler handler(args[1]);
-    String dialogFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
+    String dialogFeaturesString = toWebCoreStringWithUndefinedOrNullCheck(args[2]);
 
     impl->showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(state), firstDOMWindow(state), setUpDialog, &handler);
 
@@ -458,9 +449,9 @@ v8::Handle<v8::Value> V8DOMWindow::openCallback(const v8::Arguments& args)
         return v8::Undefined();
 
     // FIXME: Handle exceptions properly.
-    String urlString = toWebCoreStringWithNullOrUndefinedCheck(args[0]);
+    String urlString = toWebCoreStringWithUndefinedOrNullCheck(args[0]);
     AtomicString frameName = (args[1]->IsUndefined() || args[1]->IsNull()) ? "_blank" : AtomicString(toWebCoreString(args[1]));
-    String windowFeaturesString = toWebCoreStringWithNullOrUndefinedCheck(args[2]);
+    String windowFeaturesString = toWebCoreStringWithUndefinedOrNullCheck(args[2]);
 
     RefPtr<DOMWindow> openedWindow = impl->open(urlString, frameName, windowFeaturesString, activeDOMWindow(state), firstDOMWindow(state));
     if (!openedWindow)

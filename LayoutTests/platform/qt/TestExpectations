@@ -293,6 +293,9 @@ fast/events/touch/gesture/gesture-scrollbar.html
 # Don't have width/height on GestureLongPress necessary to enable adjustment
 touchadjustment/touch-links-longpress.html
 
+# Don't have gestureLongTap event type
+fast/events/touch/gesture/context-menu-on-long-tap.html
+
 # ENABLE(HIDDEN_PAGE_DOM_TIMER_THROTTLING) is disabled
 fast/dom/timer-throttling-hidden-page.html
 
@@ -332,6 +335,9 @@ webkit.org/b/89052 fast/css/image-orientation
 # CSS3 Text support is not yet enabled (needs ENABLE_CSS3_TEXT).
 webkit.org/b/58491 fast/css3-text/css3-text-decoration
 webkit.org/b/76173 fast/css3-text/css3-text-align-last
+
+# CSS3 Background is not yet enabled (needs ENABLE_CSS3_BACKGROUND).
+webkit.org/b/37514 fast/backgrounds/background-position-parsing-2.html [ Text ]
 
 # Web Inspector: Implement support for InspectorClient::overrideDeviceMetrics() in platforms other than Chromium
 # https://bugs.webkit.org/show_bug.cgi?id=82886
@@ -437,6 +443,7 @@ fast/events/page-visibility-iframe-move-test.html
 fast/events/page-visibility-iframe-propagation-test.html
 fast/events/page-visibility-null-view.html
 fast/events/page-visibility-transition-test.html
+fast/frames/page-visibility-crash.html
 
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
@@ -480,6 +487,7 @@ editing/pasteboard/drag-drop-url-with-style.html
 editing/pasteboard/file-drag-to-editable.html
 editing/pasteboard/file-input-files-access.html
 fast/events/prevent-drag-to-navigate.html
+fast/events/touch/gesture/long-press-on-draggable-element-triggers-drag.html
 fast/forms/file/input-file-re-render.html
 http/tests/security/clipboard/clipboard-file-access.html
 
@@ -1744,6 +1752,10 @@ fast/writing-mode/vertical-subst-font-vert-no-dflt.html
 # https://bugs.webkit.org/show_bug.cgi?id=98751
 fast/xmlhttprequest/xmlhttprequest-nonexistent-file.html
 
+# LayoutTests/fast/table/css-table-max-height.html failing on Qt Linux
+# https://bugs.webkit.org/show_bug.cgi?id=103453
+fast/table/css-table-max-height.html [ Text ]
+
 # ============================================================================= #
 # failing security tests
 # ============================================================================= #
@@ -1886,10 +1898,6 @@ css2.1/20110323/inline-non-replaced-height-002.htm
 # Regressions occured after Qt version update
 # ============================================================================= #
 
-# [Qt] fast/forms/textarea-appearance-wrap.html fails with Qt >= 4.7.1
-# https://bugs.webkit.org/show_bug.cgi?id=50145
-fast/forms/textarea-appearance-wrap.html
-
 # [Qt] 4 css2.1/t1202-counter tests fail with Qt >= 4.7.1
 # https://bugs.webkit.org/show_bug.cgi?id=50146
 css2.1/t1202-counter-09-b.html [ Failure ]
@@ -1999,13 +2007,6 @@ fast/loader/form-submission-after-beforeunload-cancel.html
 
 # This test verifies that a mismatch reftest will fail as intended if both results are same.
 fast/harness/sample-fail-mismatch-reftest.html
-
-# [Qt] REGRESSION(r93937): 4 failing and 3 flaky tests
-# https://bugs.webkit.org/show_bug.cgi?id=67118
-# Flaky
-fast/forms/number/number-large-padding.html
-fast/forms/number/number-spinbutton-capturing.html
-fast/forms/number/number-spinbutton-change-and-input-events.html
 
 # [Qt] fast/text/line-initial-and-final-swashes.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=69719
@@ -2336,6 +2337,8 @@ webkit.org/b/94006 fast/css/word-spacing-characters-complex-text.html [ ImageOnl
 webkit.org/b/98525 plugins/mouse-click-plugin-clears-selection.html
 webkit.org/b/98525 plugins/netscape-dom-access.html
 webkit.org/b/98525 plugins/resize-from-plugin.html
+
+# [Qt] plugins/refcount-leaks.html fails
 webkit.org/b/98640 plugins/refcount-leaks.html
 
 webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
@@ -2368,6 +2371,17 @@ webkit.org/b/101539 editing/execCommand/switch-list-type-with-orphaned-li.html [
 webkit.org/b/100846 inspector-protocol/debugger-pause-dedicated-worker.html [ Skip ]
 webkit.org/b/100846 inspector-protocol/debugger-terminate-dedicated-worker-while-paused.html [ Skip ]
 
+# Needs rebaseline. A div should be removed, but the rendering should be the same.
+webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
+webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
+webkit.org/b/102993 fast/forms/box-shadow-override.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/input-appearance-range.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
+webkit.org/b/102993 fast/forms/range/slider-padding.html [ Failure ]
+webkit.org/b/102993 fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/102993 fast/repaint/slider-thumb-drag-release.html [ Failure ]
+webkit.org/b/102993 fast/repaint/slider-thumb-float.html [ Failure ]
+
 # New, but failing test
 webkit.org/b/101035 fast/images/exif-orientation-image-document.html
 
@@ -2387,5 +2401,11 @@ webkit.org/b/101925 css3/filters/effect-reference-ordering-hw.html
 # [Qt] fast/block/float/overhanging-tall-block.html asserts after r135025
 webkit.org/b/102675 [ Debug ] fast/block/float/overhanging-tall-block.html
 
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff.html [ Skip ]
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff-transient.html [ Skip ]
+# [Qt] New fast/frames/frame-unload-crash2.html fails with timeout
+webkit.org/b/102877 fast/frames/frame-unload-crash2.html
+
+# Fails until we enable the Resource Timing API.
+webkit.org/b/61138 http/tests/w3c/webperf/submission/resource-timing [ Skip ]
+
+# [Qt] A new compositing bug uncovered by r135859
+webkit.org/b/103424 fast/backgrounds/background-opaque-images-over-color.html

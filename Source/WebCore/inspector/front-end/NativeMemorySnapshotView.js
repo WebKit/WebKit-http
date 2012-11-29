@@ -59,10 +59,15 @@ WebInspector.NativeSnapshotDataGrid = function(profile)
         size: { title: WebInspector.UIString("Size"), sortable: false },
     };
     WebInspector.DataGrid.call(this, columns);
-    this.setRootNode(new WebInspector.DataGridNode(null, true));
     var totalNode = new WebInspector.NativeSnapshotNode(profile, profile);
-    this.rootNode().appendChild(totalNode);
-    totalNode.expand();
+    if (WebInspector.settings.showNativeSnapshotUninstrumentedSize.get()) {
+        this.setRootNode(new WebInspector.DataGridNode(null, true));
+        this.rootNode().appendChild(totalNode)
+        totalNode.expand();
+    } else {
+        this.setRootNode(totalNode);
+        totalNode._populate();
+    }
 }
 
 WebInspector.NativeSnapshotDataGrid.prototype = {
@@ -259,7 +264,7 @@ WebInspector.NativeMemoryProfileType.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.ProfileHeader}
- * @param {WebInspector.NativeMemoryProfileType} type
+ * @param {!WebInspector.NativeMemoryProfileType} type
  * @param {string} title
  * @param {number=} uid
  */

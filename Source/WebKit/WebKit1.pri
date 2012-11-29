@@ -18,20 +18,9 @@ enable?(DEVICE_ORIENTATION)|enable?(ORIENTATION_EVENTS) {
 
 enable?(GEOLOCATION): QT += location
 
-use?(QT_MULTIMEDIA): QT *= multimediawidgets
-
 contains(CONFIG, texmap): DEFINES += WTF_USE_TEXTURE_MAPPER=1
 
 use?(PLUGIN_BACKEND_XLIB): PKGCONFIG += x11
 
-QT += network widgets
-have?(QTQUICK): QT += quick
-have?(QTPRINTSUPPORT): QT += printsupport
-
-use?(TEXTURE_MAPPER_GL)|enable?(WEBGL) {
-    QT *= opengl
-    # Make sure OpenGL libs are after the webcore lib so MinGW can resolve symbols
-    win32*:!win32-msvc*: LIBS += $$QMAKE_LIBS_OPENGL
-}
-
+QT += network
 

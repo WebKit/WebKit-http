@@ -44,6 +44,7 @@ PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, Page
     , m_client(client)
     , m_allowsUserScaling(false)
     , m_minimumScaleToFit(1)
+    , m_initiallyFitToViewport(true)
     , m_hasSuspendedContent(false)
     , m_hadUserInteraction(false)
     , m_effectiveScale(1)
@@ -52,10 +53,14 @@ PageViewportController::PageViewportController(WebKit::WebPageProxy* proxy, Page
 {
     // Initializing Viewport Raw Attributes to avoid random negative or infinity scale factors
     // if there is a race condition between the first layout and setting the viewport attributes for the first time.
-    m_rawAttributes.initialScale = 1;
     m_rawAttributes.minimumScale = 1;
     m_rawAttributes.maximumScale = 1;
     m_rawAttributes.userScalable = m_allowsUserScaling;
+
+    // The initial scale might be implicit and set to -1, in this case we have to infer it
+    // using the viewport size and the final layout size.
+    // To be able to assert for valid scale we initialize it to -1.
+    m_rawAttributes.initialScale = -1;
 
     ASSERT(m_client);
     m_client->setController(this);
@@ -105,7 +110,18 @@ void PageViewportController::didCommitLoad()
 void PageViewportController::didChangeContentsSize(const IntSize& newSize)
 {
     m_contentsSize = newSize;
-    updateMinimumScaleToFit();
+
+    bool minimumScaleUpdated = updateMinimumScaleToFit();
+
+    if (m_initiallyFitToViewport) {
+        // Restrict scale factors to m_minimumScaleToFit.
+        ASSERT(m_minimumScaleToFit > 0);
+        m_rawAttributes.initialScale = m_minimumScaleToFit;
+        WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(m_rawAttributes);
+    }
+
+    if (minimumScaleUpdated)
+        m_client->didChangeViewportAttributes();
 }
 
 void PageViewportController::didRenderFrame(const IntSize& contentsSize, const IntRect& coveredRect)
@@ -144,7 +160,7 @@ void PageViewportController::pageTransitionViewportReady()
 {
     if (!m_rawAttributes.layoutSize.isEmpty()) {
         m_hadUserInteraction = false;
-        float initialScale = (m_rawAttributes.initialScale < 0) ? m_minimumScaleToFit : m_rawAttributes.initialScale;
+        float initialScale = m_initiallyFitToViewport ? m_minimumScaleToFit : m_rawAttributes.initialScale;
         applyScaleAfterRenderingContents(innerBoundedViewportScale(toViewportScale(initialScale)));
     }
 
@@ -179,8 +195,6 @@ void PageViewportController::didChangeViewportSize(const FloatSize& newSize)
     // Let the WebProcess know about the new viewport size, so that
     // it can resize the content accordingly.
     m_webPageProxy->setViewportSize(roundedIntSize(newSize));
-
-    syncVisibleContents();
 }
 
 void PageViewportController::didChangeContentsVisibility(const FloatPoint& viewportPos, float viewportScale, const FloatPoint& trajectoryVector)
@@ -212,12 +226,16 @@ void PageViewportController::didChangeViewportAttributes(const WebCore::Viewport
         return;
 
     m_rawAttributes = newAttributes;
-    WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(m_rawAttributes);
-
     m_allowsUserScaling = !!m_rawAttributes.userScalable;
-    updateMinimumScaleToFit();
+    m_initiallyFitToViewport = (m_rawAttributes.initialScale < 0);
 
-    m_client->didChangeViewportAttributes();
+    if (!m_initiallyFitToViewport)
+        WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(m_rawAttributes);
+
+    if (updateMinimumScaleToFit())
+        m_client->didChangeViewportAttributes();
+
+    syncVisibleContents();
 }
 
 WebCore::FloatSize PageViewportController::viewportSizeInContentsCoordinates() const
@@ -259,12 +277,15 @@ void PageViewportController::applyPositionAfterRenderingContents(const FloatPoin
     syncVisibleContents();
 }
 
-void PageViewportController::updateMinimumScaleToFit()
+bool PageViewportController::updateMinimumScaleToFit()
 {
-    if (m_viewportSize.isEmpty())
-        return;
+    if (m_viewportSize.isEmpty() || m_contentsSize.isEmpty())
+        return false;
 
     float minimumScale = WebCore::computeMinimumScaleFactorForContentContained(m_rawAttributes, WebCore::roundedIntSize(m_viewportSize), WebCore::roundedIntSize(m_contentsSize), devicePixelRatio());
+
+    if (minimumScale <= 0)
+        return false;
 
     if (!fuzzyCompare(minimumScale, m_minimumScaleToFit, 0.001)) {
         m_minimumScaleToFit = minimumScale;
@@ -272,8 +293,9 @@ void PageViewportController::updateMinimumScaleToFit()
         if (!m_hadUserInteraction && !hasSuspendedContent())
             applyScaleAfterRenderingContents(toViewportScale(minimumScale));
 
-        m_client->didChangeViewportAttributes();
+        return true;
     }
+    return false;
 }
 
 } // namespace WebKit

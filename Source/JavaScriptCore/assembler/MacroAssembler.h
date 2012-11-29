@@ -266,12 +266,14 @@ public:
     {
         return PatchableJump(branchTest32(cond, reg, mask));
     }
-    
+#endif // !CPU(ARM_THUMB2)
+
+#if !CPU(ARM)
     PatchableJump patchableBranch32(RelationalCondition cond, RegisterID reg, TrustedImm32 imm)
     {
         return PatchableJump(branch32(cond, reg, imm));
     }
-#endif
+#endif // !(CPU(ARM)
 
     void jump(Label target)
     {
@@ -306,7 +308,12 @@ public:
         ASSERT(condition == Equal || condition == NotEqual);
         return condition;
     }
-    
+
+    static const unsigned BlindingModulus = 64;
+    bool shouldConsiderBlinding()
+    {
+        return !(random() & (BlindingModulus - 1));
+    }
 
     // Ptr methods
     // On 32-bit platforms (i.e. x86), these methods directly map onto their 32-bit equivalents.
@@ -837,26 +844,25 @@ public:
     using MacroAssemblerBase::and64;
     using MacroAssemblerBase::convertInt32ToDouble;
     using MacroAssemblerBase::store64;
-    
     bool shouldBlindDouble(double value)
     {
         // Don't trust NaN or +/-Infinity
         if (!isfinite(value))
-            return true;
+            return shouldConsiderBlinding();
 
         // Try to force normalisation, and check that there's no change
         // in the bit pattern
         if (bitwise_cast<uint64_t>(value * 1.0) != bitwise_cast<uint64_t>(value))
-            return true;
+            return shouldConsiderBlinding();
 
         value = abs(value);
         // Only allow a limited set of fractional components
         double scaledValue = value * 8;
         if (scaledValue / 8 != value)
-            return true;
+            return shouldConsiderBlinding();
         double frac = scaledValue - floor(scaledValue);
         if (frac != 0.0)
-            return true;
+            return shouldConsiderBlinding();
 
         return value > 0xff;
     }
@@ -885,8 +891,14 @@ public:
         default: {
             if (value <= 0xff)
                 return false;
+            if (~value <= 0xff)
+                return false;
         }
         }
+
+        if (!shouldConsiderBlinding())
+            return false;
+
         return shouldBlindForSpecificArch(value);
     }
     
@@ -938,6 +950,9 @@ public:
         default: {
             if (value <= 0xff)
                 return false;
+            if (~value <= 0xff)
+                return false;
+
             JSValue jsValue = JSValue::decode(value);
             if (jsValue.isInt32())
                 return shouldBlind(Imm32(jsValue.asInt32()));
@@ -948,6 +963,10 @@ public:
                 return false;
         }
         }
+
+        if (!shouldConsiderBlinding())
+            return false;
+
         return shouldBlindForSpecificArch(value);
     }
     
@@ -1066,7 +1085,13 @@ public:
         default:
             if (value <= 0xff)
                 return false;
+            if (~value <= 0xff)
+                return false;
         }
+
+        if (!shouldConsiderBlinding())
+            return false;
+
         return shouldBlindForSpecificArch(value);
 #endif
     }

@@ -234,6 +234,7 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_shouldSendEventsSynchronously(false)
     , m_suppressVisibilityUpdates(false)
     , m_mediaVolume(1)
+    , m_mayStartMediaWhenInWindow(true)
 #if ENABLE(PAGE_VISIBILITY_API)
     , m_visibilityState(PageVisibilityStateVisible)
 #endif
@@ -296,11 +297,11 @@ bool WebPageProxy::isValid()
 
 PassRefPtr<ImmutableArray> WebPageProxy::relatedPages() const
 {
+    // pages() returns a list of pages in WebProcess, so this page may or may not be among them - a client can use a reference to WebPageProxy after the page has closed.
     Vector<WebPageProxy*> pages = m_process->pages();
-    ASSERT(pages.contains(this));
 
     Vector<RefPtr<APIObject> > result;
-    result.reserveCapacity(pages.size() - 1);
+    result.reserveCapacity(pages.size());
     for (size_t i = 0; i < pages.size(); ++i) {
         if (pages[i] != this)
             result.append(pages[i]);
@@ -2782,6 +2783,19 @@ void WebPageProxy::setMediaVolume(float volume)
     m_process->send(Messages::WebPage::SetMediaVolume(volume), m_pageID);    
 }
 
+void WebPageProxy::setMayStartMediaWhenInWindow(bool mayStartMedia)
+{
+    if (mayStartMedia == m_mayStartMediaWhenInWindow)
+        return;
+
+    m_mayStartMediaWhenInWindow = mayStartMedia;
+
+    if (!isValid())
+        return;
+
+    process()->send(Messages::WebPage::SetMayStartMediaWhenInWindow(mayStartMedia), m_pageID);
+}
+
 #if PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(GTK)
 void WebPageProxy::handleDownloadRequest(DownloadProxy* download)
 {
@@ -3763,6 +3777,7 @@ WebPageCreationParameters WebPageProxy::creationParameters() const
     parameters.canRunModal = m_canRunModal;
     parameters.deviceScaleFactor = m_intrinsicDeviceScaleFactor;
     parameters.mediaVolume = m_mediaVolume;
+    parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
 
 #if PLATFORM(MAC)
     parameters.isSmartInsertDeleteEnabled = m_isSmartInsertDeleteEnabled;

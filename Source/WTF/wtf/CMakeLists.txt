@@ -26,6 +26,7 @@ SET(WTF_HEADERS
     Encoder.h
     FastAllocBase.h
     FastMalloc.h
+    FilePrintStream.h
     FixedArray.h
     Forward.h
     GetPtr.h
@@ -46,6 +47,17 @@ SET(WTF_HEADERS
     MallocZoneSupport.h
     MathExtras.h
     MediaTime.h
+    MemoryInstrumentation.h
+    MemoryInstrumentationArrayBufferView.h
+    MemoryInstrumentationHashCountedSet.h
+    MemoryInstrumentationHashMap.h
+    MemoryInstrumentationHashSet.h
+    MemoryInstrumentationListHashSet.h
+    MemoryInstrumentationParsedURL.h
+    MemoryInstrumentationSequence.h
+    MemoryInstrumentationString.h
+    MemoryInstrumentationVector.h
+    MemoryObjectInfo.h
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
@@ -75,6 +87,7 @@ SET(WTF_HEADERS
     ParallelJobsOpenMP.h
     Platform.h
     PossiblyNull.h
+    PrintStream.h
     RandomNumber.h
     RandomNumberSeed.h
     RedBlackTree.h
@@ -150,6 +163,7 @@ SET(WTF_SOURCES
     DecimalNumber.cpp
     DynamicAnnotations.cpp
     FastMalloc.cpp
+    FilePrintStream.cpp
     GregorianDateTime.cpp
     HashTable.cpp
     MD5.cpp
@@ -157,11 +171,13 @@ SET(WTF_SOURCES
     MediaTime.cpp
     MetaAllocator.cpp
     OSRandomSource.cpp
+    MemoryInstrumentation.cpp
     NumberOfCores.cpp
     RAMSize.cpp
     PageAllocationAligned.cpp
     PageBlock.cpp
     ParallelJobsGeneric.cpp
+    PrintStream.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
     SHA1.cpp

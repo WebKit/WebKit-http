@@ -448,6 +448,16 @@ bool WKPreferencesGetWebGLEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->webGLEnabled();
 }
 
+void WKPreferencesSetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setAccelerated2dCanvasEnabled(flag);
+}
+
+bool WKPreferencesGetAccelerated2DCanvasEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->accelerated2dCanvasEnabled();
+}
+
 void WKPreferencesSetCSSRegionsEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setCSSRegionsEnabled(flag);
@@ -953,3 +963,14 @@ bool WKPreferencesGetEncodingDetectorEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->usesEncodingDetector();
 }
+
+void WKPreferencesSetTextAutosizingEnabled(WKPreferencesRef preferencesRef, bool textAutosizingEnabled)
+{
+    toImpl(preferencesRef)->setTextAutosizingEnabled(textAutosizingEnabled);
+}
+
+bool WKPreferencesGetTextAutosizingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->textAutosizingEnabled();
+}
+

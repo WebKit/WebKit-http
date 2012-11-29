@@ -80,16 +80,17 @@ static void freeV8NPObject(NPObject* npObject)
         int v8ObjectHash = v8NpObject->v8Object->GetIdentityHash();
         ASSERT(v8ObjectHash);
         V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
-        ASSERT(iter != v8NPObjectMap->end());
-        V8NPObjectVector& objects = iter->value;
-        for (size_t index = 0; index < objects.size(); ++index) {
-            if (objects.at(index) == v8NpObject) {
-                objects.remove(index);
-                break;
+        if (iter != v8NPObjectMap->end()) {
+            V8NPObjectVector& objects = iter->value;
+            for (size_t index = 0; index < objects.size(); ++index) {
+                if (objects.at(index) == v8NpObject) {
+                    objects.remove(index);
+                    break;
+                }
             }
+            if (objects.isEmpty())
+                v8NPObjectMap->remove(v8ObjectHash);
         }
-        if (objects.isEmpty())
-            v8NPObjectMap->remove(v8ObjectHash);
     }
     v8NpObject->v8Object.Dispose();
     v8NpObject->v8Object.Clear();
@@ -144,29 +145,33 @@ NPObject* npCreateV8ScriptObject(NPP npp, v8::Handle<v8::Object> object, DOMWind
         }
     }
 
-    int v8ObjectHash = object->GetIdentityHash();
-    ASSERT(v8ObjectHash);
-    V8NPObjectMap* v8NPObjectMap = V8PerContextData::from(object->CreationContext())->v8NPObjectMap();
-    V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
-    if (iter != v8NPObjectMap->end()) {
-        V8NPObjectVector& objects = iter->value;
-        for (size_t index = 0; index < objects.size(); ++index) {
-            V8NPObject* v8npObject = objects.at(index);
-            if (v8npObject->rootObject == root) {
-                ASSERT(v8npObject->v8Object == object);
-                _NPN_RetainObject(&v8npObject->object);
-                return reinterpret_cast<NPObject*>(v8npObject);
+    V8NPObjectVector* objectVector = 0;
+    if (V8PerContextData* perContextData = V8PerContextData::from(object->CreationContext())) {
+        int v8ObjectHash = object->GetIdentityHash();
+        ASSERT(v8ObjectHash);
+        V8NPObjectMap* v8NPObjectMap = perContextData->v8NPObjectMap();
+        V8NPObjectMap::iterator iter = v8NPObjectMap->find(v8ObjectHash);
+        if (iter != v8NPObjectMap->end()) {
+            V8NPObjectVector& objects = iter->value;
+            for (size_t index = 0; index < objects.size(); ++index) {
+                V8NPObject* v8npObject = objects.at(index);
+                if (v8npObject->rootObject == root) {
+                    ASSERT(v8npObject->v8Object == object);
+                    _NPN_RetainObject(&v8npObject->object);
+                    return reinterpret_cast<NPObject*>(v8npObject);
+                }
             }
+        } else {
+            iter = v8NPObjectMap->set(v8ObjectHash, V8NPObjectVector()).iterator;
+            objectVector = &iter->value;
         }
-    } else {
-        iter = v8NPObjectMap->set(v8ObjectHash, V8NPObjectVector()).iterator;
     }
-
     V8NPObject* v8npObject = reinterpret_cast<V8NPObject*>(_NPN_CreateObject(npp, &V8NPObjectClass));
     v8npObject->v8Object = v8::Persistent<v8::Object>::New(object);
     v8npObject->rootObject = root;
 
-    iter->value.append(v8npObject);
+    if (objectVector)
+        objectVector->append(v8npObject);
 
     return reinterpret_cast<NPObject*>(v8npObject);
 }

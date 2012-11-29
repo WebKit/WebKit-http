@@ -154,7 +154,7 @@ public:
 
     // For conversion to mouse events.
     void touchEventCancel();
-    bool touchPointAsMouseEvent(const Platform::TouchPoint&, bool useFatFingers = true);
+    void touchPointAsMouseEvent(const Platform::TouchPoint&);
 
     void playSoundIfAnchorIsTarget() const;
 
@@ -268,8 +268,6 @@ public:
 
     BlackBerry::Platform::String textHasAttribute(const BlackBerry::Platform::String& query) const;
 
-    void setAllowNotification(const BlackBerry::Platform::String& domain, bool allow);
-
     Platform::WebContext webContext(TargetDetectionStrategy) const;
 
     typedef intptr_t BackForwardId;
@@ -365,6 +363,12 @@ public:
     void enableQnxJavaScriptObject(bool);
 
     BlackBerry::Platform::String renderTreeAsText();
+
+    void updateNotificationPermission(const BlackBerry::Platform::String& requestId, bool allowed);
+    void notificationClicked(const BlackBerry::Platform::String& notificationId);
+    void notificationClosed(const BlackBerry::Platform::String& notificationId);
+    void notificationError(const BlackBerry::Platform::String& notificationId);
+    void notificationShown(const BlackBerry::Platform::String& notificationId);
 
 private:
     virtual ~WebPage();

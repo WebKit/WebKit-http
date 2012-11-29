@@ -35,7 +35,7 @@
 #include "NotImplemented.h"
 #include "TextureMapper.h"
 #include "WebContext.h"
-#include "WebContextMenuProxy.h"
+#include "WebContextMenuProxyEfl.h"
 #include "WebPageGroup.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxyEfl.h"
@@ -70,10 +70,6 @@ EwkViewImpl* PageClientBase::viewImpl() const
 PassOwnPtr<DrawingAreaProxy> PageClientBase::createDrawingAreaProxy()
 {
     OwnPtr<DrawingAreaProxy> drawingArea = DrawingAreaProxyImpl::create(m_viewImpl->page());
-#if USE(ACCELERATED_COMPOSITING)
-    if (!m_viewImpl->isHardwareAccelerated())
-        drawingArea->layerTreeCoordinatorProxy()->layerTreeRenderer()->setAccelerationMode(TextureMapper::SoftwareMode);
-#endif
     return drawingArea.release();
 }
 
@@ -221,10 +217,9 @@ PassRefPtr<WebPopupMenuProxy> PageClientBase::createPopupMenuProxy(WebPageProxy*
     return WebPopupMenuProxyEfl::create(m_viewImpl, page);
 }
 
-PassRefPtr<WebContextMenuProxy> PageClientBase::createContextMenuProxy(WebPageProxy*)
+PassRefPtr<WebContextMenuProxy> PageClientBase::createContextMenuProxy(WebPageProxy* page)
 {
-    notImplemented();
-    return 0;
+    return WebContextMenuProxyEfl::create(m_viewImpl, page);
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)

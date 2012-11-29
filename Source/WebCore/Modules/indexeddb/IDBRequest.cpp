@@ -311,31 +311,6 @@ void IDBRequest::onSuccess(PassRefPtr<IDBKey> idbKey)
     enqueueEvent(createSuccessEvent());
 }
 
-void IDBRequest::onSuccess(PassRefPtr<IDBTransactionBackendInterface> prpBackend)
-{
-    IDB_TRACE("IDBRequest::onSuccess(IDBTransaction)");
-    RefPtr<IDBTransactionBackendInterface> backend = prpBackend;
-
-    if (m_contextStopped || !scriptExecutionContext()) {
-        // Should only be null in tests.
-        if (backend.get())
-            backend->abort();
-        return;
-    }
-    if (!shouldEnqueueEvent())
-        return;
-
-    RefPtr<IDBTransaction> frontend = IDBTransaction::create(scriptExecutionContext(), backend, Vector<String>(), IDBTransaction::VERSION_CHANGE, m_source->idbDatabase().get());
-    backend->setCallbacks(frontend.get());
-    m_transaction = frontend;
-
-    ASSERT(m_source->type() == IDBAny::IDBDatabaseType);
-    ASSERT(m_transaction->isVersionChange());
-
-    m_result = IDBAny::create(frontend.release());
-    enqueueEvent(createSuccessEvent());
-}
-
 void IDBRequest::onSuccess(PassRefPtr<SerializedScriptValue> serializedScriptValue)
 {
     IDB_TRACE("IDBRequest::onSuccess(SerializedScriptValue)");
@@ -500,6 +475,11 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
         m_transaction->setActive(true);
 
     bool dontPreventDefault = IDBEventDispatcher::dispatch(event.get(), targets);
+
+    if (m_transaction && m_readyState == DONE)
+        m_transaction->unregisterRequest(this);
+
+    // If this was the last request in the transaction's list, it may commit here.
     if (setTransactionActive)
         m_transaction->setActive(false);
 
@@ -518,9 +498,6 @@ bool IDBRequest::dispatchEvent(PassRefPtr<Event> event)
 
         if (event->type() != eventNames().blockedEvent)
             m_transaction->backend()->didCompleteTaskEvents();
-
-        if (m_readyState == DONE)
-            m_transaction->unregisterRequest(this);
     }
 
     return dontPreventDefault;

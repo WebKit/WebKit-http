@@ -24,13 +24,13 @@
 #ifndef TagNodeList_h
 #define TagNodeList_h
 
-#include "DynamicNodeList.h"
+#include "LiveNodeList.h"
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
     // NodeList that limits to a particular tag.
-    class TagNodeList : public DynamicSubtreeNodeList {
+    class TagNodeList : public LiveNodeList {
     public:
         static PassRefPtr<TagNodeList> create(PassRefPtr<Node> rootNode, const AtomicString& namespaceURI, const AtomicString& localName)
         {
@@ -38,8 +38,9 @@ namespace WebCore {
             return adoptRef(new TagNodeList(rootNode, namespaceURI, localName));
         }
 
-        static PassRefPtr<TagNodeList> create(PassRefPtr<Node> rootNode, const AtomicString& localName)
+        static PassRefPtr<TagNodeList> create(PassRefPtr<Node> rootNode, CollectionType type, const AtomicString& localName)
         {
+            ASSERT_UNUSED(type, type == TagNodeListType);
             return adoptRef(new TagNodeList(rootNode, starAtom, localName));
         }
 
@@ -56,8 +57,9 @@ namespace WebCore {
 
     class HTMLTagNodeList : public TagNodeList {
     public:
-        static PassRefPtr<HTMLTagNodeList> create(PassRefPtr<Node> rootNode, const AtomicString& localName)
+        static PassRefPtr<HTMLTagNodeList> create(PassRefPtr<Node> rootNode, CollectionType type, const AtomicString& localName)
         {
+            ASSERT_UNUSED(type, type == TagNodeListType);
             return adoptRef(new HTMLTagNodeList(rootNode, localName));
         }
 

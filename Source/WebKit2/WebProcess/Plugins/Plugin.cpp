@@ -27,6 +27,7 @@
 #include "Plugin.h"
 
 #include "WebCoreArgumentCoders.h"
+#include <WebCore/IntPoint.h>
 
 using namespace WebCore;
 
@@ -103,6 +104,12 @@ void Plugin::destroyPlugin()
 
 void Plugin::updateControlTints(GraphicsContext*)
 {
+}
+
+IntPoint Plugin::convertToRootView(const IntPoint&) const
+{
+    ASSERT_NOT_REACHED();
+    return IntPoint();
 }
 
 } // namespace WebKit

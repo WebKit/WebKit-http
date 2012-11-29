@@ -1,3 +1,72 @@
+2012-11-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135786.
+        http://trac.webkit.org/changeset/135786
+        https://bugs.webkit.org/show_bug.cgi?id=103379
+
+        It made 3 plugin tests timeout on several platforms (Requested
+        by Ossy on #webkit).
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_uri_set):
+        (_ewk_frame_contents_set_internal):
+
+2012-11-26  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * ewk/ewk_frame.cpp:
+        (_ewk_frame_contents_set_internal):
+
+2012-11-24  Viatcheslav Ostapenko  <v.ostapenko@samsung.com>
+
+        [EFL] Layout test comes to crash on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=103170
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Switch off accelerated compositing for WK1 because GraphicsContext3D is
+        missing direct rendering implementation that is required for EFL WK1.
+
+        * ewk/ewk_view.cpp:
+        (_ewk_view_priv_new):
+
+2012-11-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Disambiguate innerNodeFramePoint and mainFramePoint 
+        https://bugs.webkit.org/show_bug.cgi?id=98139
+
+        Reviewed by Julien Chaffraix.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_hit_test_new):
+
+2012-11-20  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135295.
+        http://trac.webkit.org/changeset/135295
+        https://bugs.webkit.org/show_bug.cgi?id=102834
+
+        This patch causes assertion to some layout tests on chromium
+        (Requested by jianli on #webkit).
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_uri_set):
+        (_ewk_frame_contents_set_internal):
+
+2012-11-20  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * ewk/ewk_frame.cpp:
+        (_ewk_frame_contents_set_internal):
+
 2012-11-19  Tony Chang  <tony@chromium.org>
 
         Remove 'is' prefix from WebSettings::isWebSecurityEnabled and WebSettings::isSpatialNavigationEnabled

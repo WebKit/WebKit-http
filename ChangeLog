@@ -1,3 +1,222 @@
+2012-11-26  Halton Huo  <halton.huo@intel.com>
+
+        [EFL] CMake shows ENABLE_3D_RENDERING and ENABLE_WEBGL is still OFF when AC is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=100829
+
+        Reviewed by Gyuyoung Kim.
+
+        In WebKitFeatures.cmake, only use ${_name} for condition to print
+        a option as ON will prevent the overridden ones in OptionsXXX.cmake,
+        should use ${_WEBKIT_AVAILABLE_OPTIONS_INITALVALUE_${_name}} instead.
+
+        * Source/cmake/OptionsEfl.cmake: Turn on ENABLE_3D_RENDERING and
+        ENABLE_WEBGL
+        * Source/cmake/WebKitFeatures.cmake: Use
+        ${_WEBKIT_AVAILABLE_OPTIONS_INITALVALUE_${_name}} to as value of 
+        a feature is enabled. Adjust options in lexicographical order.
+
+2012-11-26  Kalev Lember  <kalevlember@gmail.com>
+
+        [GTK] Explicitly link against librt
+        https://bugs.webkit.org/show_bug.cgi?id=103194
+
+        Reviewed by Martin Robinson.
+
+        Fixes broken build with undefined references to shm_open / shm_unlink
+        symbols. SharedMemoryUnix.cpp uses these so we need to link with -lrt.
+
+        * configure.ac:
+
+2012-11-26  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [CMake] Allow user specified compiler flags to take precedence
+        https://bugs.webkit.org/show_bug.cgi?id=103101
+
+        Reviewed by Brent Fulgham.
+
+        Make sure that compiler and linker flags specified by the build system
+        are always prepended to the variables that can be specified by the
+        environment and the user as well. 
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsWindows.cmake:
+        * Source/cmake/WebKitHelpers.cmake:
+
+2012-11-23  Alexis Menard  <alexis@webkit.org>
+
+        [CSS3 Backgrounds and Borders] Implement new CSS3 background-position parsing.
+        https://bugs.webkit.org/show_bug.cgi?id=102104
+
+        Reviewed by Julien Chaffraix.
+
+        Protect the new feature behind a feature flag.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+        * configure.ac:
+
+2012-11-23  Patrick Gansterer  <paroga@webkit.org>
+
+        [CMake] Add support for winflexbison distribution
+        https://bugs.webkit.org/show_bug.cgi?id=102551
+
+        Reviewed by Laszlo Gombos.
+
+        Since GnuWin32 does not provide recent versions of bision and flex supporting
+        the alternative winflexbison distribution is the prefered option.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-11-23  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Define WTF_PLATFORM_EFL in Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=101482
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Remove the definition of WTF_PLATFORM_EFL from the build system to
+        make the EFL port consistent with other ports.
+ 
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Platform support for Accessibility feature.
+        https://bugs.webkit.org/show_bug.cgi?id=100848
+
+        Reviewed by Gyuyoung Kim.
+
+        Add support for ATK library.
+
+        * Source/cmake/FindATK.cmake: Added.
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-09-26  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Split SVG from WebCore to work-around make limitation
+        https://bugs.webkit.org/show_bug.cgi?id=97735
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a new libtool convenience library, libWebCoreSVG.la, to work-around
+        make limitation when linking libWebCore.
+
+        * GNUmakefile.am: variables for the new library.
+
+2012-11-22  Simon Hausmann  <simon.hausmann@digia.com>, Pierre Rossi <pierre.rossi@digia.com>
+
+        [Qt] Separate QWidget dependant code into separate WebKitWidgets static library
+        https://bugs.webkit.org/show_bug.cgi?id=102800
+
+        Reviewed by Tor Arne Vestbø.
+
+        This patch separates code that needs to use QWidget related APIs in
+        WebKit/qt/WebCoreSupport and Api from code that doesn't. This means for
+        example FrameLoaderClientQt.cpp remains in the WebKit1 static library,
+        while qwebpage.cpp and qwebframe.cpp become part of the WebKitWidgets
+        static library. WebKit1 is compiled without QT += widgets and therefore
+        any widget related dependency has been moved "up" and out of WebKit1 into
+        the WebKitWidgets library.
+
+        Between the code in WebKit.a and WebKitWidgets.a new adapters and
+        interfaces have been introduced, such as QWebPageAdapter and
+        QWebFrameAdapter. QWebPageAdapter, when used from WebKit1, is a way to
+        call out into the API layer, implemented by QWebPage (QWebPagePrivate).
+        The other way around if QWebPage wants to access WebCore or
+        WebCoreSupport related functionality, it will go through
+        QWebPageAdapater (as base class). The separation in the direction up
+        into the API layer is complete with this patch, no code in WebKit1
+        depends on QtWidgets. The separation the other way around, code in the
+        API layer not using any WebCore types, is not complete yet.
+
+        Some classes such as QWebSettings, QWebElement or
+        DumpRenderTreeSupportQt remain in WebKit1. While they are API layer,
+        they do not depend on widget related Qt APIs and they make much more
+        use of WebCore internal APIs and therefore are easier to keep in
+        WebKit1.
+
+        In the future we plan to place a real shared library boundary between
+        WebKit1 and WebKitWidgets, by keeping the WebKit1 static library as
+        part of the QtWebKit shared library and by turning the WebKitWidgets
+        static library into a shared one.
+
+
+        * Source/api.pri:
+        * WebKit.pro:
+
+2012-11-21  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL] Remove unnecessary definition, -DENABLE_SPELLCHECK=1
+        https://bugs.webkit.org/show_bug.cgi?id=102988
+
+        Reviewed by Laszlo Gombos.
+
+        Removed -DENABLE_SPELLCHECK=1 because feature macros are controlled by
+        WEBKIT_OPTION_XXX and cmakeconfig.h.cmake.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-21  Kondapally Kalyan  <kalyan.kondapally@intel.com>
+
+        [EFL] GLX detection is broken.
+        https://bugs.webkit.org/show_bug.cgi?id=102687.
+
+        Reviewed by Laszlo Gombos.
+
+        HAVE_GLX is enabled only if WebGL is enabled. This is wrong and we should
+        explicitly test for GLX support.
+        This patch makes changes so that we check for glx.h header and sets HAVE_GLX flag appropriately.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-21  Yael Aharon  <yael.aharon@intel.com>
+
+        [EFL] Turn on WTF_USE_TILED_BACKING_STORE by default
+        https://bugs.webkit.org/show_bug.cgi?id=101526
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Separate out ENABLE_WEBGL. It is not ready to be enabled by default.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-20  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r133859.
+        http://trac.webkit.org/changeset/133859
+        https://bugs.webkit.org/show_bug.cgi?id=102875
+
+        This patch makes API test broken (Requested by gyuyoung on
+        #webkit).
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-11-20  Elliott Sprehn  <esprehn@chromium.org>
+
+        Store MutationObserver callback in a hidden property for V8
+        https://bugs.webkit.org/show_bug.cgi?id=102555
+
+        Reviewed by Adam Barth.
+
+        Test for reference cycle leaks with mutation observers. There doesn't seem
+        to be a way to check this for v8, but if you manually run you can see if it
+        leaks observers.
+
+        * ManualTests/leak-cycle-observer-wrapper.html: Added.
+
+2012-11-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.2 release
+
+        * configure.ac: Bump tarball version number, not updated in
+        previous commit by mistake.
+
+2012-11-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.2 release
+
+        * configure.ac: Bump version numbers.
+
 2012-11-19  Kihong Kwon  <kihong.kwon@samsung.com>
 
         Add PROXIMITY_EVENTS feature

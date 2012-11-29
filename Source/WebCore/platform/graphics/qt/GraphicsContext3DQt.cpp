@@ -144,9 +144,8 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     m_surfaceFlags = GraphicsSurface::SupportsTextureTarget
                     | GraphicsSurface::SupportsSharing;
 
-    if (!surfaceSize.isEmpty()) {
+    if (!surfaceSize.isEmpty())
         m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags, m_platformContext);
-    }
 #endif
 }
 
@@ -330,7 +329,7 @@ void GraphicsContext3DPrivate::blitMultisampleFramebufferAndRestoreContext() con
         m_platformContext->makeCurrent(m_surface);
     }
     blitMultisampleFramebuffer();
-    if (currentContext)
+    if (currentContext && currentContext != m_platformContext)
         const_cast<QOpenGLContext*>(currentContext)->makeCurrent(currentSurface);
 }
 
@@ -414,7 +413,8 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
 #endif
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    if (renderStyle != RenderToCurrentGLContext)
+        glClearColor(0.0, 0.0, 0.0, 0.0);
 }
 
 GraphicsContext3D::~GraphicsContext3D()

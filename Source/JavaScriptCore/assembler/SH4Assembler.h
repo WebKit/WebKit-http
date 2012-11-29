@@ -166,6 +166,7 @@ enum {
     FMOVS_WRITE_RN_DEC_OPCODE = 0xf00b,
     FMOVS_WRITE_R0RN_OPCODE = 0xf007,
     FCNVDS_DRM_FPUL_OPCODE = 0xf0bd,
+    FCNVSD_FPUL_DRN_OPCODE = 0xf0ad,
     LDS_RM_FPUL_OPCODE = 0x405a,
     FLDS_FRM_FPUL_OPCODE = 0xf01d,
     STS_FPUL_RN_OPCODE = 0x005a,
@@ -326,8 +327,9 @@ public:
         padForAlign32 = 0x00090009,
     };
 
-    enum JumpType { JumpFar,
-                    JumpNear
+    enum JumpType {
+        JumpFar,
+        JumpNear
     };
 
     SH4Assembler()
@@ -491,14 +493,14 @@ public:
 
     void sublRegReg(RegisterID src, RegisterID dst)
     {
-         uint16_t opc = getOpcodeGroup1(SUB_OPCODE, dst, src);
-         oneShortOp(opc);
+        uint16_t opc = getOpcodeGroup1(SUB_OPCODE, dst, src);
+        oneShortOp(opc);
     }
 
     void subvlRegReg(RegisterID src, RegisterID dst)
     {
-         uint16_t opc = getOpcodeGroup1(SUBV_OPCODE, dst, src);
-         oneShortOp(opc);
+        uint16_t opc = getOpcodeGroup1(SUBV_OPCODE, dst, src);
+        oneShortOp(opc);
     }
 
     void xorlRegReg(RegisterID src, RegisterID dst)
@@ -803,7 +805,7 @@ public:
         oneShortOp(opc);
     }
 
-    void floatfpulfrn(RegisterID src)
+    void floatfpulfrn(FPRegisterID src)
     {
         uint16_t opc = getOpcodeGroup2(FLOAT_OPCODE, src);
         oneShortOp(opc, true, false);
@@ -857,13 +859,13 @@ public:
         oneShortOp(opc, true, false);
     }
 
-    void fldsfpul(RegisterID src)
+    void fldsfpul(FPRegisterID src)
     {
         uint16_t opc = getOpcodeGroup2(FLDS_FRM_FPUL_OPCODE, src);
         oneShortOp(opc);
     }
 
-    void fstsfpul(RegisterID src)
+    void fstsfpul(FPRegisterID src)
     {
         uint16_t opc = getOpcodeGroup2(FSTS_FPUL_FRN_OPCODE, src);
         oneShortOp(opc);
@@ -886,6 +888,12 @@ public:
     void dcnvds(FPRegisterID src)
     {
         uint16_t opc = getOpcodeGroup7(FCNVDS_DRM_FPUL_OPCODE, src >> 1);
+        oneShortOp(opc);
+    }
+
+    void dcnvsd(FPRegisterID dst)
+    {
+        uint16_t opc = getOpcodeGroup7(FCNVSD_FPUL_DRN_OPCODE, dst >> 1);
         oneShortOp(opc);
     }
 
@@ -1082,6 +1090,12 @@ public:
         oneShortOp(getOpcodeGroup4(MOVL_READ_OFFRM_OPCODE, dst, base, offset));
     }
 
+    void movbRegMem(RegisterID src, RegisterID base)
+    {
+        uint16_t opc = getOpcodeGroup1(MOVB_WRITE_RN_OPCODE, base, src);
+        oneShortOp(opc);
+    }
+
     void movbMemReg(int offset, RegisterID base, RegisterID dst)
     {
         ASSERT(dst == SH4Registers::r0);
@@ -1253,7 +1267,7 @@ public:
 
     int sizeOfConstantPool()
     {
-         return m_buffer.sizeOfConstantPool();
+        return m_buffer.sizeOfConstantPool();
     }
 
     AssemblerLabel align(int alignment)
@@ -1305,7 +1319,7 @@ public:
             *instructionPtr = instruction;
             printBlockInstr(instructionPtr - 2, from.m_offset, 3);
             return;
-         }
+        }
 
          /* MOV #imm, reg => LDR reg
             braf @reg        braf @reg
@@ -1447,6 +1461,20 @@ public:
     }
 
     // Linking & patching
+
+    static void revertJump(void* instructionStart, SH4Word imm)
+    {
+        SH4Word *insn = reinterpret_cast<SH4Word*>(instructionStart);
+        SH4Word disp;
+
+        ASSERT((insn[0] & 0xf000) == MOVL_READ_OFFPC_OPCODE);
+
+        disp = insn[0] & 0x00ff;
+        insn += 2 + (disp << 1); // PC += 4 + (disp*4)
+        insn = (SH4Word *) ((unsigned) insn & (~3));
+        insn[0] = imm;
+        cacheFlush(insn, sizeof(SH4Word));
+    }
 
     void linkJump(AssemblerLabel from, AssemblerLabel to, JumpType type = JumpFar)
     {
@@ -1592,7 +1620,7 @@ public:
     size_t codeSize() const { return m_buffer.codeSize(); }
 
 #ifdef SH4_ASSEMBLER_TRACING
-    static void printInstr(uint16_t opc, unsigned int size, bool isdoubleInst = true)
+    static void printInstr(uint16_t opc, unsigned size, bool isdoubleInst = true)
     {
         if (!getenv("JavaScriptCoreDumpJIT"))
             return;
@@ -1740,6 +1768,9 @@ public:
             break;
         case FCNVDS_DRM_FPUL_OPCODE:
             format = "    FCNVDS FR%d, FPUL\n";
+            break;
+        case FCNVSD_FPUL_DRN_OPCODE:
+            format = "    FCNVSD FPUL, FR%d\n";
             break;
         }
         if (format) {
@@ -2070,19 +2101,19 @@ public:
     static void vprintfStdoutInstr(const char* format, va_list args)
     {
         if (getenv("JavaScriptCoreDumpJIT"))
-            WTF::dataLogV(format, args);
+            WTF::dataLogFV(format, args);
     }
 
-    static void printBlockInstr(uint16_t* first, unsigned int offset, int nbInstr)
+    static void printBlockInstr(uint16_t* first, unsigned offset, int nbInstr)
     {
         printfStdoutInstr(">> repatch instructions after link\n");
         for (int i = 0; i <= nbInstr; i++)
-           printInstr(*(first + i), offset + i);
+            printInstr(*(first + i), offset + i);
         printfStdoutInstr(">> end repatch\n");
     }
 #else
-    static void printInstr(uint16_t opc, unsigned int size, bool isdoubleInst = true) {};
-    static void printBlockInstr(uint16_t* first, unsigned int offset, int nbInstr) {};
+    static void printInstr(uint16_t opc, unsigned size, bool isdoubleInst = true) { };
+    static void printBlockInstr(uint16_t* first, unsigned offset, int nbInstr) { };
 #endif
 
     static void replaceWithLoad(void* instructionStart)

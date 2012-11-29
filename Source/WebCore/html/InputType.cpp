@@ -258,6 +258,11 @@ bool InputType::valueMissing(const String&) const
     return false;
 }
 
+bool InputType::hasBadInput() const
+{
+    return false;
+}
+
 bool InputType::patternMismatch(const String&) const
 {
     return false;
@@ -346,6 +351,12 @@ bool InputType::stepMismatch(const String& value) const
     return createStepRange(RejectAny).stepMismatch(numericValue);
 }
 
+String InputType::badInputText() const
+{
+    ASSERT_NOT_REACHED();
+    return validationMessageTypeMismatchText();
+}
+
 String InputType::typeMismatchText() const
 {
     return validationMessageTypeMismatchText();
@@ -367,6 +378,9 @@ String InputType::validationMessage() const
 
     if (typeMismatch())
         return typeMismatchText();
+
+    if (hasBadInput())
+        return badInputText();
 
     if (patternMismatch(value))
         return validationMessagePatternMismatchText();
@@ -684,24 +698,9 @@ String InputType::visibleValue() const
     return element()->value();
 }
 
-String InputType::convertFromVisibleValue(const String& visibleValue) const
-{
-    return visibleValue;
-}
-
-bool InputType::isAcceptableValue(const String&)
-{
-    return true;
-}
-
 String InputType::sanitizeValue(const String& proposedValue) const
 {
     return proposedValue;
-}
-
-bool InputType::hasUnacceptableValue()
-{
-    return false;
 }
 
 bool InputType::receiveDroppedFiles(const DragData*)
@@ -871,6 +870,11 @@ bool InputType::supportsPlaceholder() const
     return false;
 }
 
+bool InputType::supportsReadOnly() const
+{
+    return false;
+}
+
 void InputType::updateInnerTextValue()
 {
 }
@@ -893,6 +897,7 @@ void InputType::readonlyAttributeChanged()
 
 void InputType::subtreeHasChanged()
 {
+    ASSERT_NOT_REACHED();
 }
 
 #if ENABLE(TOUCH_EVENTS)

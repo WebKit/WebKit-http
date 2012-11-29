@@ -32,7 +32,6 @@
 #include "WebViewImpl.h"
 
 #include "AXObjectCache.h"
-#include "ActivePlatformGestureAnimation.h"
 #include "AutofillPopupMenuClient.h"
 #include "BackForwardListChromium.h"
 #include "BatteryClientImpl.h"
@@ -145,6 +144,7 @@
 #include "WebViewClient.h"
 #include "WheelEvent.h"
 #include "painting/GraphicsContextBuilder.h"
+#include "src/WebActiveGestureAnimation.h"
 #include <public/Platform.h>
 #include <public/WebCompositorOutputSurface.h>
 #include <public/WebCompositorSupport.h>
@@ -170,7 +170,6 @@
 #endif
 
 #if ENABLE(GESTURE_EVENTS)
-#include "PlatformGestureCurveFactory.h"
 #include "PlatformGestureEvent.h"
 #include "TouchDisambiguation.h"
 #endif
@@ -649,15 +648,15 @@ void WebViewImpl::handleMouseUp(Frame& mainFrame, const WebMouseEvent& event)
 #endif
 }
 
-void WebViewImpl::scrollBy(const WebCore::IntPoint& delta)
+void WebViewImpl::scrollBy(const WebPoint& delta)
 {
     WebMouseWheelEvent syntheticWheel;
     const float tickDivisor = WebCore::WheelEvent::tickMultiplier;
 
-    syntheticWheel.deltaX = delta.x();
-    syntheticWheel.deltaY = delta.y();
-    syntheticWheel.wheelTicksX = delta.x() / tickDivisor;
-    syntheticWheel.wheelTicksY = delta.y() / tickDivisor;
+    syntheticWheel.deltaX = delta.x;
+    syntheticWheel.deltaY = delta.y;
+    syntheticWheel.wheelTicksX = delta.x / tickDivisor;
+    syntheticWheel.wheelTicksY = delta.y / tickDivisor;
     syntheticWheel.hasPreciseScrollingDeltas = true;
     syntheticWheel.x = m_lastWheelPosition.x;
     syntheticWheel.y = m_lastWheelPosition.y;
@@ -685,13 +684,10 @@ bool WebViewImpl::handleGestureEvent(const WebGestureEvent& event)
 #endif
         break;
     case WebInputEvent::GestureTapCancel:
-        if (m_linkHighlight)
-            m_linkHighlight->startHighlightAnimationIfNeeded();
-        break;
     case WebInputEvent::GestureTap:
     case WebInputEvent::GestureLongPress:
-        // If a link highlight is active, kill it.
-        m_linkHighlight.clear();
+        if (m_linkHighlight)
+            m_linkHighlight->startHighlightAnimationIfNeeded();
         break;
     default:
         break;
@@ -705,9 +701,8 @@ bool WebViewImpl::handleGestureEvent(const WebGestureEvent& event)
         m_lastWheelPosition = WebPoint(event.x, event.y);
         m_lastWheelGlobalPosition = WebPoint(event.globalX, event.globalY);
         m_flingModifier = event.modifiers;
-        // FIXME: Make the curve parametrizable from the browser.
-        OwnPtr<PlatformGestureCurve> flingCurve = PlatformGestureCurveFactory::get()->createCurve(event.data.flingStart.sourceDevice, FloatPoint(event.data.flingStart.velocityX, event.data.flingStart.velocityY));
-        m_gestureAnimation = ActivePlatformGestureAnimation::create(flingCurve.release(), this);
+        OwnPtr<WebGestureCurve> flingCurve = adoptPtr(Platform::current()->createFlingAnimationCurve(event.data.flingStart.sourceDevice, WebFloatPoint(event.data.flingStart.velocityX, event.data.flingStart.velocityY), WebSize()));
+        m_gestureAnimation = WebActiveGestureAnimation::createAtAnimationStart(flingCurve.release(), this);
         scheduleAnimation();
         eventSwallowed = true;
         break;
@@ -809,8 +804,8 @@ void WebViewImpl::transferActiveWheelFlingAnimation(const WebActiveWheelFlingPar
     m_lastWheelPosition = parameters.point;
     m_lastWheelGlobalPosition = parameters.globalPoint;
     m_flingModifier = parameters.modifiers;
-    OwnPtr<PlatformGestureCurve> curve = PlatformGestureCurveFactory::get()->createCurve(parameters.sourceDevice, parameters.delta, IntPoint(parameters.cumulativeScroll));
-    m_gestureAnimation = ActivePlatformGestureAnimation::create(curve.release(), this, parameters.startTime);
+    OwnPtr<WebGestureCurve> curve = adoptPtr(Platform::current()->createFlingAnimationCurve(parameters.sourceDevice, WebFloatPoint(parameters.delta), parameters.cumulativeScroll));
+    m_gestureAnimation = WebActiveGestureAnimation::createWithTimeOffset(curve.release(), this, parameters.startTime);
     scheduleAnimation();
 }
 
@@ -850,6 +845,16 @@ void WebViewImpl::setShowFPSCounter(bool show)
 #endif
         m_layerTreeView->setShowFPSCounter(show);
     }
+    settingsImpl()->setShowFPSCounter(show);
+}
+
+void WebViewImpl::setShowPaintRects(bool show)
+{
+    if (isAcceleratedCompositingActive()) {
+        TRACE_EVENT0("webkit", "WebViewImpl::setShowPaintRects");
+        m_layerTreeView->setShowPaintRects(show);
+    }
+    settingsImpl()->setShowPaintRects(show);
 }
 
 bool WebViewImpl::handleKeyEvent(const WebKeyboardEvent& event)
@@ -1276,6 +1281,11 @@ void WebViewImpl::hasTouchEventHandlers(bool hasTouchHandlers)
 {
     if (m_client)
         m_client->hasTouchEventHandlers(hasTouchHandlers);
+}
+
+bool WebViewImpl::hasTouchEventHandlersAt(const WebPoint& point)
+{
+    return true;
 }
 
 #if !OS(DARWIN)
@@ -1838,7 +1848,7 @@ void WebViewImpl::paint(WebCanvas* canvas, const WebRect& rect, PaintOptions opt
         }
 
         double paintStart = currentTime();
-        PageWidgetDelegate::paint(m_page.get(), pageOverlays(), canvas, rect, isTransparent() ? PageWidgetDelegate::Translucent : PageWidgetDelegate::Opaque);
+        PageWidgetDelegate::paint(m_page.get(), pageOverlays(), canvas, rect, isTransparent() ? PageWidgetDelegate::Translucent : PageWidgetDelegate::Opaque, m_webSettings->applyDeviceScaleFactorInCompositor());
         double paintEnd = currentTime();
         double pixelsPerSec = (rect.width * rect.height) / (paintEnd - paintStart);
         WebKit::Platform::current()->histogramCustomCounts("Renderer4.SoftwarePaintDurationMS", (paintEnd - paintStart) * 1000, 0, 120, 30);
@@ -4109,17 +4119,6 @@ private:
 
 } // namespace
 
-WebGraphicsContext3D* WebViewImpl::createContext3D()
-{
-    // Temporarily, if the output surface can't be created, create a WebGraphicsContext3D
-    // directly. This allows bootstrapping the output surface system while downstream
-    // users of the API still use the old approach.
-    WebKit::WebGraphicsContext3D::Attributes attributes;
-    attributes.antialias = false;
-    attributes.shareResources = true;
-    return m_client->createGraphicsContext3D(attributes);
-}
-
 WebCompositorOutputSurface* WebViewImpl::createOutputSurface()
 {
     return m_client->createOutputSurface();
@@ -4182,11 +4181,6 @@ void WebViewImpl::didCompleteSwapBuffers()
 {
     if (m_client)
         m_client->didCompleteSwapBuffers();
-}
-
-void WebViewImpl::didRebindGraphicsContext(bool success)
-{
-    didRecreateOutputSurface(success);
 }
 
 void WebViewImpl::didRecreateOutputSurface(bool success)

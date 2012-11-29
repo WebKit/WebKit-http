@@ -38,13 +38,12 @@
 #include "ExceptionCode.h"
 #include "ScheduledAction.h"
 #include "ScriptCallStack.h"
-#include "ScriptCallStackFactory.h"
 #include "V8Binding.h"
 #include "V8Utilities.h"
 #include "V8WorkerContextEventListener.h"
 #include "WebSocket.h"
 #include "WorkerContext.h"
-#include "WorkerContextExecutionProxy.h"
+#include "WorkerScriptController.h"
 
 namespace WebCore {
 
@@ -60,11 +59,11 @@ v8::Handle<v8::Value> SetTimeoutOrInterval(const v8::Arguments& args, bool singl
     int32_t timeout = argumentCount >= 2 ? args[1]->Int32Value() : 0;
     int timerId;
 
-    WorkerContextExecutionProxy* proxy = workerContext->script()->proxy();
-    if (!proxy)
+    WorkerScriptController* script = workerContext->script();
+    if (!script)
         return v8::Undefined();
 
-    v8::Handle<v8::Context> v8Context = proxy->context();
+    v8::Handle<v8::Context> v8Context = script->context();
     if (function->IsString()) {
         if (ContentSecurityPolicy* policy = workerContext->contentSecurityPolicy()) {
             if (!policy->allowEval())
@@ -99,9 +98,8 @@ v8::Handle<v8::Value> V8WorkerContext::importScriptsCallback(const v8::Arguments
 
     Vector<String> urls;
     for (int i = 0; i < args.Length(); i++) {
-        v8::TryCatch tryCatch;
-        v8::Handle<v8::String> scriptUrl = args[i]->ToString();
-        if (tryCatch.HasCaught() || scriptUrl.IsEmpty())
+        V8TRYCATCH(v8::Handle<v8::String>, scriptUrl, args[i]->ToString());
+        if (scriptUrl.IsEmpty())
             return v8::Undefined();
         urls.append(toWebCoreString(scriptUrl));
     }
@@ -136,11 +134,11 @@ v8::Handle<v8::Value> toV8(WorkerContext* impl, v8::Handle<v8::Object> creationC
     if (!impl)
         return v8NullWithCheck(isolate);
 
-    WorkerContextExecutionProxy* proxy = impl->script()->proxy();
-    if (!proxy)
+    WorkerScriptController* script = impl->script();
+    if (!script)
         return v8NullWithCheck(isolate);
 
-    v8::Handle<v8::Object> global = proxy->context()->Global();
+    v8::Handle<v8::Object> global = script->context()->Global();
     ASSERT(!global.IsEmpty());
     return global;
 }

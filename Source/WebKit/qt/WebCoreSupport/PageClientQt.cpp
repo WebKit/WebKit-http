@@ -35,8 +35,7 @@
 #if USE(3D_GRAPHICS)
 #include <QWindow>
 
-static void createPlatformGraphicsContext3DFromWidget(QWidget* widget, PlatformGraphicsContext3D* context,
-                                                      PlatformGraphicsSurface3D* surface, QObject** surfaceOwner)
+static void createPlatformGraphicsContext3DFromWidget(QWidget* widget, PlatformGraphicsContext3D* context, PlatformGraphicsSurface3D* surface, QObject** surfaceOwner)
 {
 #ifdef QT_OPENGL_LIB
     *context = 0;
@@ -73,7 +72,7 @@ static void createPlatformGraphicsContext3DFromWidget(QWidget* widget, PlatformG
 
 QWindow* QWebPageClient::ownerWindow() const
 {
-    QWidget* widget = ownerWidget();
+    QWidget* widget = qobject_cast<QWidget*>(ownerWidget());
     if (!widget)
         return 0;
     if (QWindow *window = widget->windowHandle())
@@ -204,7 +203,7 @@ int PageClientQWidget::screenNumber() const
     return 0;
 }
 
-QWidget* PageClientQWidget::ownerWidget() const
+QObject* PageClientQWidget::ownerWidget() const
 {
     return view;
 }
@@ -238,9 +237,7 @@ void PageClientQWidget::setWidgetVisible(Widget* widget, bool visible)
 }
 
 #if USE(3D_GRAPHICS)
-void PageClientQWidget::createPlatformGraphicsContext3D(PlatformGraphicsContext3D* context,
-                                                        PlatformGraphicsSurface3D* surface,
-                                                        QObject** surfaceOwner)
+void PageClientQWidget::createPlatformGraphicsContext3D(PlatformGraphicsContext3D* context, PlatformGraphicsSurface3D* surface, QObject** surfaceOwner)
 {
     createPlatformGraphicsContext3DFromWidget(view, context, surface, surfaceOwner);
 }
@@ -285,11 +282,16 @@ void PageClientQGraphicsWidget::setRootGraphicsLayer(GraphicsLayer* layer)
 {
     if (layer) {
         TextureMapperLayerClient = adoptPtr(new TextureMapperLayerClientQt(page->mainFrame(), layer));
-#if USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL) && defined(QT_OPENGL_LIB)
         QGraphicsView* graphicsView = view->scene()->views()[0];
-        if (graphicsView && graphicsView->viewport() && graphicsView->viewport()->inherits("QGLWidget")) {
-            TextureMapperLayerClient->setTextureMapper(TextureMapper::create(TextureMapper::OpenGLMode));
-            return;
+        if (graphicsView && graphicsView->viewport()) {
+            QGLWidget* glWidget = qobject_cast<QGLWidget*>(graphicsView->viewport());
+            if (glWidget) {
+                // The GL context belonging to the QGLWidget viewport must be current when TextureMapper is being created.
+                glWidget->makeCurrent();
+                TextureMapperLayerClient->setTextureMapper(TextureMapper::create(TextureMapper::OpenGLMode));
+                return;
+            }
         }
 #endif
         TextureMapperLayerClient->setTextureMapper(TextureMapper::create());
@@ -363,7 +365,7 @@ int PageClientQGraphicsWidget::screenNumber() const
     return 0;
 }
 
-QWidget* PageClientQGraphicsWidget::ownerWidget() const
+QObject* PageClientQGraphicsWidget::ownerWidget() const
 {
     if (QGraphicsScene* scene = view->scene()) {
         const QList<QGraphicsView*> views = scene->views();
@@ -428,11 +430,9 @@ QRectF PageClientQGraphicsWidget::windowRect() const
 #endif // QT_NO_GRAPHICSVIEW
 
 #if USE(3D_GRAPHICS)
-void PageClientQGraphicsWidget::createPlatformGraphicsContext3D(PlatformGraphicsContext3D* context,
-                                                                PlatformGraphicsSurface3D* surface,
-                                                                QObject** surfaceOwner)
+void PageClientQGraphicsWidget::createPlatformGraphicsContext3D(PlatformGraphicsContext3D* context, PlatformGraphicsSurface3D* surface, QObject** surfaceOwner)
 {
-    createPlatformGraphicsContext3DFromWidget(ownerWidget(), context, surface, surfaceOwner);
+    createPlatformGraphicsContext3DFromWidget(qobject_cast<QWidget*>(ownerWidget()), context, surface, surfaceOwner);
 }
 #endif
 

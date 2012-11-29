@@ -173,21 +173,21 @@ static bool isFormElementTooLargeToDisplay(const IntSize& elementSize)
     return elementSize.width() > maxEdjeDimension || elementSize.height() > maxEdjeDimension;
 }
 
-RenderThemeEfl::ThemePartCacheEntry* RenderThemeEfl::ThemePartCacheEntry::create(const String& themePath, FormType type, const IntSize& size)
+PassOwnPtr<RenderThemeEfl::ThemePartCacheEntry> RenderThemeEfl::ThemePartCacheEntry::create(const String& themePath, FormType type, const IntSize& size)
 {
     ASSERT(!themePath.isEmpty());
 
     if (isFormElementTooLargeToDisplay(size) || size.isEmpty()) {
         EINA_LOG_ERR("Cannot render an element of size %dx%d.", size.width(), size.height());
-        return 0;
+        return nullptr;
     }
 
-    OwnPtr<ThemePartCacheEntry*> entry = adoptPtr(new ThemePartCacheEntry);
+    OwnPtr<ThemePartCacheEntry> entry = adoptPtr(new ThemePartCacheEntry);
 
     entry->m_canvas = adoptPtr(ecore_evas_buffer_new(size.width(), size.height()));
     if (!entry->canvas()) {
         EINA_LOG_ERR("ecore_evas_buffer_new(%d, %d) failed.", size.width(), size.height());
-        return 0;
+        return nullptr;
     }
 
     // By default EFL creates buffers without alpha.
@@ -197,11 +197,11 @@ RenderThemeEfl::ThemePartCacheEntry* RenderThemeEfl::ThemePartCacheEntry::create
     ASSERT(entry->edje());
 
     if (!setSourceGroupForEdjeObject(entry->edje(), themePath, toEdjeGroup(type)))
-        return 0;
+        return nullptr;
 
     entry->m_surface = createSurfaceForBackingStore(entry->canvas());
     if (!entry->surface())
-        return 0;
+        return nullptr;
 
     evas_object_resize(entry->edje(), size.width(), size.height());
     evas_object_show(entry->edje());
@@ -209,16 +209,22 @@ RenderThemeEfl::ThemePartCacheEntry* RenderThemeEfl::ThemePartCacheEntry::create
     entry->type = type;
     entry->size = size;
 
-    return entry.leakPtr();
+    return entry.release();
 }
 
 void RenderThemeEfl::ThemePartCacheEntry::reuse(const String& themePath, FormType newType, const IntSize& newSize)
 {
     ASSERT(!themePath.isEmpty());
 
-    if (!newSize.isEmpty()) {
-        cairo_surface_finish(surface());
+    if (type != newType) {
+        type = newType;
+        if (!setSourceGroupForEdjeObject(edje(), themePath, toEdjeGroup(newType))) {
+            type = FormTypeLast; // Invalidate.
+            return;
+        }
+    }
 
+    if (size != newSize) {
         size = newSize;
         ecore_evas_resize(canvas(), newSize.width(), newSize.height());
         evas_object_resize(edje(), newSize.width(), newSize.height());
@@ -229,69 +235,58 @@ void RenderThemeEfl::ThemePartCacheEntry::reuse(const String& themePath, FormTyp
             return;
         }
     }
-
-    if (!setSourceGroupForEdjeObject(edje(), themePath, toEdjeGroup(newType))) {
-        type = FormTypeLast; // Invalidate.
-        return;
-    }
-
-    type = newType;
 }
 
 RenderThemeEfl::ThemePartCacheEntry* RenderThemeEfl::getThemePartFromCache(FormType type, const IntSize& size)
 {
-    Vector<ThemePartCacheEntry*>::iterator it, end;
-    size_t lastWithRequestedSize = notFound;
+    void* data;
+    Eina_List* node;
+    Eina_List* reusableNode = 0;
 
-    it = m_partCache.begin();
-    end = m_partCache.end();
-    for (size_t i = 0; it != end; i++, it++) {
-        ThemePartCacheEntry* entry = *it;
-        ASSERT(entry);
-        if (entry->size == size) {
-            if (entry->type == type)
-                return entry;
-            lastWithRequestedSize = i;
+    // Look for the item in the cache.
+    EINA_LIST_FOREACH(m_partCache, node, data) {
+        ThemePartCacheEntry* cachedEntry = static_cast<ThemePartCacheEntry*>(data);
+        if (cachedEntry->size == size) {
+            if (cachedEntry->type == type) {
+                // Found the right item, move it to the head of the list
+                // and return it.
+                m_partCache = eina_list_promote_list(m_partCache, node);
+                return cachedEntry;
+            }
+            // We reuse in priority the last item in the list that has
+            // the requested size.
+            reusableNode = node;
         }
     }
 
-    if (m_partCache.size() < RENDER_THEME_EFL_PART_CACHE_MAX) {
-        ThemePartCacheEntry* entry = ThemePartCacheEntry::create(themePath(), type, size);
-        if (entry) // Can be '0', if creation fails. Do not store it in this case.
-            m_partCache.prepend(entry);
+    if (eina_list_count(m_partCache) < RENDER_THEME_EFL_PART_CACHE_MAX) {
+        ThemePartCacheEntry* entry = ThemePartCacheEntry::create(themePath(), type, size).leakPtr();
+        if (entry)
+            m_partCache = eina_list_prepend(m_partCache, entry);
+
         return entry;
     }
 
-    // We have a full cache now!
-    EINA_LOG_INFO("RenderTheme cache is full, reusing.");
+    // The cache is full, reuse the last item we found that had the
+    // requested size to avoid resizing. If there was none, reuse
+    // the last item of the list.
+    if (!reusableNode)
+        reusableNode = eina_list_last(m_partCache);
 
-    if (lastWithRequestedSize != notFound && lastWithRequestedSize != 1) {
-        ThemePartCacheEntry* entry = m_partCache.at(lastWithRequestedSize);
-        ASSERT(entry);
-        entry->reuse(themePath(), type);
-        m_partCache.remove(lastWithRequestedSize);
-        m_partCache.prepend(entry);
-        return entry;
-    }
+    ThemePartCacheEntry* reusedEntry = static_cast<ThemePartCacheEntry*>(eina_list_data_get(reusableNode));
+    ASSERT(reusedEntry);
+    reusedEntry->reuse(themePath(), type, size);
+    m_partCache = eina_list_promote_list(m_partCache, reusableNode);
 
-    ThemePartCacheEntry* entry = m_partCache.last();
-    ASSERT(entry);
-    entry->reuse(themePath(), type, size);
-    m_partCache.removeLast();
-    m_partCache.prepend(entry);
-    return entry;
+    return reusedEntry;
 }
 
-void RenderThemeEfl::flushThemePartCache()
+void RenderThemeEfl::clearThemePartCache()
 {
-    Vector<ThemePartCacheEntry*>::iterator it, end;
+    void* data;
+    EINA_LIST_FREE(m_partCache, data)
+        delete static_cast<ThemePartCacheEntry*>(data);
 
-    it = m_partCache.begin();
-    end = m_partCache.end();
-    for (; it != end; it++)
-        delete (*it);
-
-    m_partCache.clear();
 }
 
 void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates states)
@@ -317,36 +312,17 @@ void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates s
     }
 }
 
-bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const PaintInfo& info, const IntRect& rect)
+void RenderThemeEfl::applyEdjeRTLState(Evas_Object* edje, RenderObject* object, FormType type, const IntRect& rect)
 {
-    loadThemeIfNeeded();
-    _ASSERT_ON_RELEASE_RETURN_VAL(edje(), false, "Could not paint native HTML part due to missing theme.");
-
-    ThemePartCacheEntry* entry;
-    Eina_List* updates;
-    cairo_t* cairo;
-
-    entry = getThemePartFromCache(type, rect.size());
-    if (!entry)
-        return false;
-
-    applyEdjeStateFromForm(entry->edje(), controlStatesForRenderer(object));
-
-    cairo = info.context->platformContext()->cr();
-    ASSERT(cairo);
-
-    // Currently, only sliders needs this message; if other widget ever needs special
-    // treatment, move them to special functions.
     if (type == SliderVertical || type == SliderHorizontal) {
         if (!object->isSlider())
-            return true; // probably have -webkit-appearance: slider..
+            return; // probably have -webkit-appearance: slider..
 
         RenderSlider* renderSlider = toRenderSlider(object);
         HTMLInputElement* input = renderSlider->node()->toInputElement();
         double valueRange = input->maximum() - input->minimum();
 
-        OwnArrayPtr<char> buffer = adoptArrayPtr(new char[sizeof(Edje_Message_Float_Set) + sizeof(double)]);
-        Edje_Message_Float_Set* msg = new(buffer.get()) Edje_Message_Float_Set;
+        OwnPtr<Edje_Message_Float_Set> msg = adoptPtr(static_cast<Edje_Message_Float_Set*>(operator new (sizeof(Edje_Message_Float_Set) + sizeof(double))));
         msg->count = 2;
 
         // The first parameter of the message decides if the progress bar
@@ -359,7 +335,7 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
             msg->val[0] = 0;
 
         msg->val[1] = (input->valueAsNumber() - input->minimum()) / valueRange;
-        edje_object_message_send(entry->edje(), EDJE_MESSAGE_FLOAT_SET, 0, msg);
+        edje_object_message_send(edje, EDJE_MESSAGE_FLOAT_SET, 0, msg.get());
 #if ENABLE(PROGRESS_ELEMENT)
     } else if (type == ProgressBar) {
         RenderProgress* renderProgress = toRenderProgress(object);
@@ -367,8 +343,7 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
         int max = rect.width();
         double value = renderProgress->position();
 
-        OwnArrayPtr<char> buffer = adoptArrayPtr(new char[sizeof(Edje_Message_Float_Set) + sizeof(double)]);
-        Edje_Message_Float_Set* msg = new(buffer.get()) Edje_Message_Float_Set;
+        OwnPtr<Edje_Message_Float_Set> msg = adoptPtr(static_cast<Edje_Message_Float_Set*>(operator new (sizeof(Edje_Message_Float_Set) + sizeof(double))));
         msg->count = 2;
 
         if (object->style()->direction() == RTL)
@@ -376,14 +351,31 @@ bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const P
         else
             msg->val[0] = 0;
         msg->val[1] = value;
-        edje_object_message_send(entry->edje(), EDJE_MESSAGE_FLOAT_SET, 0, msg);
+        edje_object_message_send(edje, EDJE_MESSAGE_FLOAT_SET, 0, msg.get());
+#else
+        UNUSED_PARAM(rect);
 #endif
     }
+}
+
+bool RenderThemeEfl::paintThemePart(RenderObject* object, FormType type, const PaintInfo& info, const IntRect& rect)
+{
+    loadThemeIfNeeded();
+    _ASSERT_ON_RELEASE_RETURN_VAL(edje(), false, "Could not paint native HTML part due to missing theme.");
+
+    ThemePartCacheEntry* entry = getThemePartFromCache(type, rect.size());
+    if (!entry)
+        return false;
+
+    applyEdjeStateFromForm(entry->edje(), controlStatesForRenderer(object));
+    applyEdjeRTLState(entry->edje(), object, type, rect);
 
     edje_object_calc_force(entry->edje());
     edje_object_message_signal_process(entry->edje());
-    updates = evas_render_updates(ecore_evas_get(entry->canvas()));
-    evas_render_updates_free(updates);
+    evas_render(ecore_evas_get(entry->canvas()));
+
+    cairo_t* cairo = info.context->platformContext()->cr();
+    ASSERT(cairo);
 
     cairo_save(cairo);
     cairo_set_source_surface(cairo, entry->surface(), rect.x(), rect.y());
@@ -494,9 +486,9 @@ bool RenderThemeEfl::loadTheme()
     if (!setSourceGroupForEdjeObject(o.get(), m_themePath, "webkit/base"))
         return false; // Keep current theme.
 
-    // Get rid of existing theme.
+    // Invalidate existing theme part cache.
     if (edje())
-        flushThemePartCache();
+        clearThemePartCache();
 
     // Set new loaded theme, and apply it.
     m_edje = o;
@@ -606,12 +598,13 @@ RenderThemeEfl::RenderThemeEfl(Page* page)
     , m_mediaPanelColor(220, 220, 195) // light tannish color.
     , m_mediaSliderColor(Color::white)
 #endif
+    , m_partCache(0)
 {
 }
 
 RenderThemeEfl::~RenderThemeEfl()
 {
-    flushThemePartCache();
+    clearThemePartCache();
 }
 
 static bool supportsFocus(ControlPart appearance)

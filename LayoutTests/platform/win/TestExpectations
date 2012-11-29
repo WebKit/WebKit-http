@@ -52,6 +52,9 @@ css3/masking/clip-path-circle-relative-overflow.html
 fast/css/image-set-parsing.html
 fast/css/image-set-parsing-invalid.html
 
+# CSS3 Background is not yet enabled (needs ENABLE_CSS3_BACKGROUND).
+webkit.org/b/37514 fast/backgrounds/background-position-parsing-2.html [ Text ]
+
 # https://bugs.webkit.org/show_bug.cgi?id=77645
 css3/filters/filtered-compositing-descendant.html
 
@@ -1121,11 +1124,12 @@ fast/autoresize
 fast/text/hyphenate-character.html
 fast/text/hyphens.html
 
-# DRT doesn't support showModalDialog http://webkit.org/b/53675
+# DRT doesn't support showModalDialog https://bugs.webkit.org/show_bug.cgi?id=53675
 fast/events/show-modal-dialog-onblur-onfocus.html
 fast/harness/show-modal-dialog.html
 fast/events/scroll-event-during-modal-dialog.html
 inspector/console/console-long-eval-crash.html
+fast/dom/Window/open-window-min-size.html
 
 # These tests fail when showModalDialog is unsupported, even though they don't
 # rely on it directly http://webkit.org/b/53676
@@ -2333,19 +2337,17 @@ http/tests/security/sandboxed-iframe-form-top.html
 #https://bugs.webkit.org/show_bug.cgi?id=95530
 http/tests/security/inactive-document-with-empty-security-origin.html
 
-webkit.org/b/98666 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
-webkit.org/b/98666 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
-webkit.org/b/98666 fast/forms/input-appearance-height.html [ Failure ]
-webkit.org/b/98666 fast/forms/range/input-appearance-range.html [ Failure ]
-webkit.org/b/98666 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
-webkit.org/b/98666 fast/forms/range/slider-padding.html [ Failure ]
-webkit.org/b/98666 fast/forms/range/slider-thumb-shared-style.html [ Failure ]
-webkit.org/b/98666 fast/forms/range/slider-thumb-stylability.html [ Failure ]
-webkit.org/b/98666 fast/multicol/client-rects.html [ Failure ]
-webkit.org/b/98666 fast/repaint/slider-thumb-drag-release.html [ Failure ]
-webkit.org/b/98666 fast/repaint/slider-thumb-float.html [ Failure ]
-webkit.org/b/98666 media/track/track-cue-rendering-vertical.html [ Failure ]
-webkit.org/b/98666 media/track/track-cue-rendering-horizontal.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/input-appearance-height.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/input-appearance-range.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/range-thumb-height-percentage.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-padding.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-thumb-shared-style.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/forms/range/slider-thumb-stylability.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/multicol/client-rects.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/repaint/slider-thumb-drag-release.html [ Failure ]
+webkit.org/b/98666 webkit.org/b/102993 fast/repaint/slider-thumb-float.html [ Failure ]
 
 #https://bugs.webkit.org/show_bug.cgi?id=98079
 http/tests/security/cross-origin-local-storage-wk1.html
@@ -2431,5 +2433,10 @@ fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align
 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html
 fast/css3-text/css3-text-decoration/getComputedStyle/getComputedStyle-text-decoration-line.html
 
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff.html [ Skip ]
-webkit.org/b/102744 fast/mutation/observer-wrapper-dropoff-transient.html [ Skip ]
+# ACCELERATED_OVERFLOW_SCROLLING is disabled on Windows
+compositing/overflow/scrolling-without-painting.html
+compositing/overflow/updating-scrolling-content.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=103442
+media/video-size.html
+media/W3C/video/networkState/networkState_during_progress.html

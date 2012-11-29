@@ -54,6 +54,10 @@ http/tests/xmlhttprequest/basic-auth-nouser.html
 http/tests/xmlhttprequest/failed-auth.html
 http/tests/xmlhttprequest/remember-bad-password.html
 
+# The EFL port has no support for accessibility features in efl-wk1
+Bug(EFL) accessibility [ Skip ]
+webkit.org/b/98895 perf/accessibility-title-ui-element.html [ Skip ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # CRASHES
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -61,40 +65,147 @@ http/tests/xmlhttprequest/remember-bad-password.html
 # Crash shared with the GTK+ port
 webkit.org/b/30724 [ Debug ] fast/loader/opaque-base-url.html [ Crash ]
 
+# Crash from build 7830 on EFL Linux 64-bit Release bot
+webkit.org/b/103170 animations/stop-animation-on-suspend.html [ Crash ]
+webkit.org/b/103170 compositing/absolute-inside-out-of-view-fixed.html [ Crash ]
+webkit.org/b/103170 compositing/animation/animation-compositing.html [ Crash ]
+webkit.org/b/103170 compositing/backface-visibility/backface-visibility-webgl.html [ Crash ]
+webkit.org/b/103170 compositing/backing/no-backing-for-clip-overlap.html [ Crash ]
+webkit.org/b/103170 compositing/backing/no-backing-for-clip.html [ Crash ]
+webkit.org/b/103170 compositing/backing/no-backing-for-perspective.html [ Crash ]
+webkit.org/b/103170 compositing/clip-child-by-non-stacking-ancestor.html [ Crash ]
+webkit.org/b/103170 compositing/columns/composited-in-paginated.html [ Crash ]
+webkit.org/b/103170 compositing/framesets/composited-frame-alignment.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/ancestor-overflow-change.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/bounds-clipped-composited-child.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/bounds-ignores-hidden-composited-descendant.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/bounds-ignores-hidden-dynamic-negzindex.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/bounds-ignores-hidden-dynamic.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/bounds-ignores-hidden.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/clip.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/composited-in-columns.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/fixed-position-composited-switch.html [ Crash ]
+webkit.org/b/103170 compositing/geometry/layer-due-to-layer-children-switch.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/become-overlapped-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/composited-parent-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/connect-compositing-iframe-delayed.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/connect-compositing-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/connect-compositing-iframe2.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/connect-compositing-iframe3.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/enter-compositing-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/iframe-resize.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/iframe-size-from-zero.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/iframe-size-to-zero.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/iframe-src-change.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/invisible-nested-iframe-hide.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/invisible-nested-iframe-show.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/leave-compositing-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/nested-iframe-scrolling.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/overlapped-iframe-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/overlapped-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/resizer.html [ Crash ]
+webkit.org/b/103170 compositing/iframes/scrolling-iframe.html [ Crash ]
+webkit.org/b/103170 compositing/images/clip-on-directly-composited-image.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/animation-overlap-with-children.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/fixed-position-out-of-view.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/fixed-position-scroll.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/fixed-position-under-transform.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/no-compositing-for-preserve-3d.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overflow-scroll-overlap.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-animation.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-child-layer.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-clipping.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-transformed-and-clipped.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-transformed-layer.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/overlap-transforms.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/rotate3d-overlap.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/stacking-context-overlap-nested.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/stacking-context-overlap.html [ Crash ]
+webkit.org/b/103170 compositing/layer-creation/translatez-overlap.html [ Crash ]
+webkit.org/b/103170 compositing/overflow-trumps-transform-style.html [ Crash ]
+webkit.org/b/103170 compositing/overflow/clip-descendents.html [ Crash ]
+webkit.org/b/103170 compositing/overflow/content-gains-scrollbars.html [ Crash ]
+webkit.org/b/103170 compositing/overflow/content-loses-scrollbars.html [ Crash ]
+webkit.org/b/103170 compositing/overflow/overflow-scrollbar-layers.html [ Crash ]
+webkit.org/b/103170 compositing/overflow/resize-painting.html [ Crash ]
+webkit.org/b/103170 compositing/plugins/invalidate_rect.html [ Crash ]
+webkit.org/b/103170 compositing/preserve-3d-toggle.html [ Crash ]
+webkit.org/b/103170 compositing/repaint/invalidations-on-composited-layers.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-absolute-overflow-scrolled.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-absolute-overflow.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-absolute.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-fixed-overflow-scrolled.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-fixed-overflow.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-fixed.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-absolute-overflow.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-absolute.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-fixed-overflow.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-fixed.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-iframe-relative.html [ Crash ]
+webkit.org/b/103170 compositing/rtl/rtl-relative.html [ Crash ]
+webkit.org/b/103170 compositing/tiled-layers-hidpi.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/crash-reparent-tiled-layer.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/huge-layer-add-remove-child.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/huge-layer-img.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/huge-layer-with-layer-children-resize.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/huge-layer-with-layer-children.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/rotated-tiled-clamped.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/rotated-tiled-preserve3d-clamped.html [ Crash ]
+webkit.org/b/103170 compositing/tiling/tile-cache-zoomed.html [ Crash ]
+webkit.org/b/103170 compositing/visibility/layer-visible-content.html [ Crash ]
+webkit.org/b/103170 compositing/visibility/visibility-image-layers-dynamic.html [ Crash ]
+webkit.org/b/103170 css3/images/cross-fade-background-size.html [ Crash ]
+webkit.org/b/103170 transforms/3d/general/perspective-units.html [ Crash ]
+webkit.org/b/103170 transforms/3d/hit-testing/backface-hit-test.html [ Crash ]
+webkit.org/b/103170 transforms/3d/hit-testing/backface-no-transform-hit-test.html [ Crash ]
+webkit.org/b/103170 transforms/3d/hit-testing/perspective-clipped.html [ Crash ]
+webkit.org/b/103170 transforms/3d/hit-testing/rotated-hit-test.html [ Crash ]
+webkit.org/b/103170 transforms/3d/hit-testing/rotated-hit-test2.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-2.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-3.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-coplanar.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-deep.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-origins.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-overlapping.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping-preserve-3d.html [ Crash ]
+webkit.org/b/103170 transforms/3d/point-mapping/3d-point-mapping.html [ Crash ]
+ 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FLAKY TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
-
+ 
 editing/selection/doubleclick-whitespace-img-crash.html [ Failure Pass ]
-
+ 
 # Test passes, but editing delegates does not match expected ones
 webkit.org/b/96642 loader/go-back-to-different-window-size.html [ Failure Pass ]
-
+ 
 webkit.org/b/96977 [ Release ] perf/nested-combined-selectors.html [ Failure Pass ]
-
+ 
 #////////////////////////////////////////////////////////////////////////////////////////
 # FAILING TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
-
+ 
 webkit.org/b/102110 fast/canvas/canvas-as-image-incremental-repaint.html [ ImageOnlyFailure ]
-
+ 
 webkit.org/b/102006 fast/repaint/block-selection-gap-stale-cache.html [ ImageOnlyFailure ]
 webkit.org/b/102006 fast/repaint/block-selection-gap-stale-cache-2.html [ ImageOnlyFailure ]
-
+ 
 webkit.org/b/99180 svg/as-image/img-preserveAspectRatio-support-1.html [ ImageOnlyFailure ]
-
+ 
 webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-dom-kernelUnitLength-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99181 svg/dynamic-updates/SVGFEConvolveMatrixElement-svgdom-kernelUnitLength-prop.html [ ImageOnlyFailure ]
-
+ 
 webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-color-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-dom-shadow-opacity-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-color-prop.html [ ImageOnlyFailure ]
 webkit.org/b/99182 svg/dynamic-updates/SVGFEDropShadowElement-svgdom-shadow-opacity-prop.html [ ImageOnlyFailure ]
-
+ 
 webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-baseFrequency-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-dom-stitchTiles-attr.html [ ImageOnlyFailure ]
 webkit.org/b/99183 svg/dynamic-updates/SVGFETurbulenceElement-svgdom-stitchTiles-prop.html [ ImageOnlyFailure ]
-
+ 
 # Frame flattening does not work properly for EFL port
 Bug(EFL) fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
 Bug(EFL) fast/frames/flattening/frameset-flattening-grid.html [ Failure ]
@@ -107,7 +218,7 @@ Bug(EFL) fast/frames/flattening/iframe-flattening-out-of-view.html [ Failure ]
 Bug(EFL) fast/frames/flattening/iframe-flattening-out-of-view-and-scroll.html [ ImageOnlyFailure ]
 Bug(EFL) fast/frames/flattening/iframe-flattening-out-of-view-scroll-and-relayout.html [ ImageOnlyFailure ]
 Bug(EFL) fast/frames/flattening/iframe-flattening-simple.html [ Failure ]
-
+ 
 # EFL's DRT explicitly disables X11 use
 webkit.org/b/98231 fast/dom/Window/Plug-ins.html [ Failure ]
 webkit.org/b/98231 fast/frames/sandboxed-iframe-about-blank.html [ Failure ]
@@ -119,22 +230,22 @@ webkit.org/b/98231 http/tests/security/cross-origin-plugin-allowed.html [ Failur
 webkit.org/b/98231 http/tests/security/cross-origin-plugin-private-browsing-toggled-allowed.html [ Failure ]
 webkit.org/b/98231 http/tests/security/storage-blocking-loosened-plugin.html [ Failure ]
 webkit.org/b/98231 http/tests/security/storage-blocking-loosened-private-browsing-plugin.html [ Failure ]
-
+ 
 # EFL's DumpRenderTree should support LayoutTestController's dumpEditingCallbacks()
 webkit.org/b/84835 editing/execCommand/indent-paragraphs.html [ Failure ]
-
+ 
 # Incomplete policy delegate dumping (missing "originated from")
 Bug(EFL) http/tests/misc/policy-delegate-called-twice.html [ Failure ]
-
+ 
 # Custom font loading delaying text drawing on Canvas
 webkit.org/b/87355 canvas/philip/tests/2d.text.draw.fontface.notinpage.html [ Failure ]
-
+ 
 # EFL's TestRunner does not implement applicationCacheDiskUsageForOrigin
 webkit.org/b/86460 http/tests/appcache/origin-usage.html [ Failure ]
-
+ 
 # EFL's TestRunner does not implement originsWithApplicationCache
 webkit.org/b/86498 http/tests/appcache/origins-with-appcache.html [ Failure ]
-
+ 
 # Missing showModalDialog implementation
 webkit.org/b/84589 fast/animation/request-animation-frame-during-modal.html [ Failure ]
 webkit.org/b/84589 fast/dom/Window/open-window-min-size.html [ Failure ]
@@ -242,6 +353,9 @@ webkit.org/b/96881 userscripts/user-script-plugin-document.html [ Failure ]
 # EFL WK1 does not support the spellchecker feature
 webkit.org/b/86633 editing/spelling [ Skip ]
 
+# DRT needs to support fixed layout.
+webkit.org/b/102517 css3/device-adapt/opera [ Skip ]
+
 # Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction
 webkit.org/b/87972 fast/loader/policy-delegate-action-hit-test-zoomed.html [ Failure ]
 webkit.org/b/87972 fast/encoding/mailto-always-utf-8.html [ Failure ]
@@ -254,3 +368,10 @@ webkit.org/b/98523 fast/images/repaint-subrect-grid.html [ Failure ]
 
 # DRT needs a setting for setShouldRespectImageOrientation
 webkit.org/b/101210 fast/images/exif-orientation.html [ Failure ]
+
+# ESC key does not cancel context menu in EFL port
+Bug(EFL) editing/selection/5354455-1.html [ Failure ]
+
+# Fails on efl wk1 bot, see also webkit.org/b/102190
+webkit.org/b/103043 fast/events/overflow-scroll-fake-mouse-move.html [ Failure ]
+webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Failure ]

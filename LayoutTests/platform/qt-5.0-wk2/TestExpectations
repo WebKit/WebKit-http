@@ -163,7 +163,6 @@ css2.1/t1202-counter-09-b.html
 css2.1/t1202-counter-15-b.html
 css2.1/t1202-counters-09-b.html
 css2.1/t1202-counters-15-b.html
-fast/forms/textarea-appearance-wrap.html
 fast/js/regexp-range-bound-ffff.html
 fast/js/switch-behaviour.html
 fast/text/format-control.html
@@ -218,10 +217,6 @@ plugins/netscape-plugin-setwindow-size-2.html
 
 # HiDPI tests require test infrastructure enhancements
 fast/hidpi
-
-# [Qt][WK2] One test failed after r97360
-# https://bugs.webkit.org/show_bug.cgi?id=70245
-http/tests/security/contentSecurityPolicy/script-src-star-cross-scheme.html
 
 # [Qt][WK2] fast/events/drag-selects-image.html fails
 # https://bugs.webkit.org/show_bug.cgi?id=70907
@@ -539,6 +534,10 @@ fast/dom/Geolocation/watch.html
 # https://bugs.webkit.org/show_bug.cgi?id=97598
 fast/events/popup-blocked-from-fake-user-gesture.html
 
+# [Qt][WK2] fast/events/tabindex-focus-blur-all.html fails. (only 64 bit)
+# https://bugs.webkit.org/show_bug.cgi?id=98412
+fast/events/tabindex-focus-blur-all.html
+
 # This test consistently fails if run with --singly flag
 inspector/timeline/timeline-paint.html
 
@@ -578,10 +577,6 @@ webkit.org/b/98688 fast/ruby/rubyDOM-remove-rt1.html
 webkit.org/b/98688 fast/ruby/rubyDOM-remove-rt2.html
 webkit.org/b/98688 fast/ruby/rubyDOM-remove-text1.html
 webkit.org/b/98688 fast/ruby/rubyDOM-remove-text2.html
-
-# [Qt][WK2]REGRESSION(r130826): It made fast/js/sparse-array.html crash on 64 bit
-webkit.org/b/98859 fast/js/sort-stability.html
-webkit.org/b/98859 fast/js/sort-with-side-effecting-comparisons.html
 
 # [Qt][WK2] Tests producing bad repaint rects in pixel results
 webkit.org/b/98897 compositing/clip-change.html [ ImageOnlyFailure ]
@@ -776,3 +771,6 @@ webkit.org/b/101491 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 # [Qt][WK2] New compositing/overflow/* tests fails, because ENABLE_ACCELERATED_OVERFLOW_SCROLLING is disabled
 webkit.org/b/102678 compositing/overflow/updating-scrolling-content.html
 webkit.org/b/102678 compositing/overflow/scrolling-without-painting.html
+
+# [Qt][WK2] New fast/events/mouse-cursor.html fails
+webkit.org/b/103122 fast/events/mouse-cursor.html

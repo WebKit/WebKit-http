@@ -33,14 +33,14 @@ namespace WebCore {
 using namespace HTMLNames;
 
 NameNodeList::NameNodeList(PassRefPtr<Node> rootNode, const AtomicString& name)
-    : DynamicSubtreeNodeList(rootNode, NameNodeListType, InvalidateOnNameAttrChange)
+    : LiveNodeList(rootNode, NameNodeListType, InvalidateOnNameAttrChange)
     , m_name(name)
 {
 }
 
 NameNodeList::~NameNodeList()
 {
-    ownerNode()->nodeLists()->removeCacheWithAtomicName(this, DynamicNodeList::NameNodeListType, m_name);
+    ownerNode()->nodeLists()->removeCacheWithAtomicName(this, NameNodeListType, m_name);
 } 
 
 bool NameNodeList::nodeMatches(Element* testNode) const

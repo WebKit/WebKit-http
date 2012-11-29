@@ -27,6 +27,7 @@
 #include <QLineEdit>
 #include <QMainWindow>
 #include <QMenu>
+#include <QMimeDatabase>
 #include <QPushButton>
 #include <QStateMachine>
 #include <QStyle>
@@ -281,10 +282,11 @@ public:
     JSTestPage(QObject* parent = 0)
     : QWebPage(parent) {}
 
-public Q_SLOTS:
-    bool shouldInterruptJavaScript() {
+    virtual bool shouldInterruptJavaScript()
+    {
         return true;
     }
+public Q_SLOTS:
     void requestPermission(QWebFrame* frame, QWebPage::Feature feature)
     {
         if (m_allowGeolocation)
@@ -548,7 +550,7 @@ void tst_QWebPage::loadHtml5Video()
     QByteArray url("http://does.not/exist?a=1%2Cb=2");
     m_view->setHtml("<p><video id ='video' src='" + url + "' autoplay/></p>");
     QTest::qWait(2000);
-    QUrl mUrl = DumpRenderTreeSupportQt::mediaContentUrlByElementId(m_page->mainFrame(), "video");
+    QUrl mUrl = DumpRenderTreeSupportQt::mediaContentUrlByElementId(m_page->mainFrame()->handle(), "video");
     QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=65452", Continue);
     QCOMPARE(mUrl.toEncoded(), url);
 #else
@@ -1026,12 +1028,12 @@ void tst_QWebPage::multiplePageGroupsAndLocalStorage()
 
     view1.page()->settings()->setAttribute(QWebSettings::LocalStorageEnabled, true);
     view1.page()->settings()->setLocalStoragePath(QDir::toNativeSeparators(tmpDirPath() + "/path1"));
-    DumpRenderTreeSupportQt::webPageSetGroupName(view1.page(), "group1");
+    DumpRenderTreeSupportQt::webPageSetGroupName(view1.page()->handle(), "group1");
     view2.page()->settings()->setAttribute(QWebSettings::LocalStorageEnabled, true);    
     view2.page()->settings()->setLocalStoragePath(QDir::toNativeSeparators(tmpDirPath() + "/path2"));
-    DumpRenderTreeSupportQt::webPageSetGroupName(view2.page(), "group2");
-    QCOMPARE(DumpRenderTreeSupportQt::webPageGroupName(view1.page()), QString("group1"));
-    QCOMPARE(DumpRenderTreeSupportQt::webPageGroupName(view2.page()), QString("group2"));
+    DumpRenderTreeSupportQt::webPageSetGroupName(view2.page()->handle(), "group2");
+    QCOMPARE(DumpRenderTreeSupportQt::webPageGroupName(view1.page()->handle()), QString("group1"));
+    QCOMPARE(DumpRenderTreeSupportQt::webPageGroupName(view2.page()->handle()), QString("group2"));
 
 
     view1.setHtml(QString("<html><body> </body></html>"), QUrl("http://www.myexample.com"));
@@ -2968,79 +2970,43 @@ void tst_QWebPage::findText()
     }
 }
 
-struct ImageExtensionMap {
-    const char* extension;
-    const char* mimeType;
-};
-
-static const ImageExtensionMap extensionMap[] = {
-    { "bmp", "image/bmp" },
-    { "css", "text/css" },
-    { "gif", "image/gif" },
-    { "html", "text/html" },
-    { "htm", "text/html" },
-    { "ico", "image/x-icon" },
-    { "jpeg", "image/jpeg" },
-    { "jpg", "image/jpeg" },
-    { "js", "application/x-javascript" },
-    { "mng", "video/x-mng" },
-    { "pbm", "image/x-portable-bitmap" },
-    { "pgm", "image/x-portable-graymap" },
-    { "pdf", "application/pdf" },
-    { "png", "image/png" },
-    { "ppm", "image/x-portable-pixmap" },
-    { "rss", "application/rss+xml" },
-    { "svg", "image/svg+xml" },
-    { "text", "text/plain" },
-    { "tif", "image/tiff" },
-    { "tiff", "image/tiff" },
-    { "txt", "text/plain" },
-    { "xbm", "image/x-xbitmap" },
-    { "xml", "text/xml" },
-    { "xpm", "image/x-xpm" },
-    { "xsl", "text/xsl" },
-    { "xhtml", "application/xhtml+xml" },
-    { "wml", "text/vnd.wap.wml" },
-    { "wmlc", "application/vnd.wap.wmlc" },
-    { 0, 0 }
-};
-
 static QString getMimeTypeForExtension(const QString &ext)
 {
-    const ImageExtensionMap *e = extensionMap;
-    while (e->extension) {
-        if (ext.compare(QLatin1String(e->extension), Qt::CaseInsensitive) == 0)
-            return QLatin1String(e->mimeType);
-        ++e;
-    }
+    QMimeType mimeType = QMimeDatabase().mimeTypeForFile(QStringLiteral("filename.") + ext.toLower(), QMimeDatabase::MatchExtension);
+    if (mimeType.isValid() && !mimeType.isDefault())
+        return mimeType.name();
 
     return QString();
 }
 
 void tst_QWebPage::supportedContentType()
 {
-   QStringList contentTypes;
+    QStringList contentTypes;
 
-   // Add supported non image types...
-   contentTypes << "text/html" << "text/xml" << "text/xsl" << "text/plain" << "text/"
-                << "application/xml" << "application/xhtml+xml" << "application/vnd.wap.xhtml+xml"
-                << "application/rss+xml" << "application/atom+xml" << "application/json";
+    // Add supported non image types...
+    contentTypes << "text/html" << "text/xml" << "text/xsl" << "text/plain" << "text/"
+                 << "application/xml" << "application/xhtml+xml" << "application/vnd.wap.xhtml+xml"
+                 << "application/rss+xml" << "application/atom+xml" << "application/json";
 
-   // Add supported image types...
-   Q_FOREACH(const QByteArray& imageType, QImageWriter::supportedImageFormats()) {
-      const QString mimeType = getMimeTypeForExtension(imageType);
-      if (!mimeType.isEmpty())
-          contentTypes << mimeType;
-   }
+#if ENABLE_MHTML
+    contentTypes << "application/x-mimearchive";
+#endif
 
-   // Get the mime types supported by webkit...
-   const QStringList supportedContentTypes = m_page->supportedContentTypes();
+    // Add supported image types...
+    Q_FOREACH(const QByteArray& imageType, QImageWriter::supportedImageFormats()) {
+        const QString mimeType = getMimeTypeForExtension(imageType);
+        if (!mimeType.isEmpty())
+            contentTypes << mimeType;
+    }
 
-   Q_FOREACH(const QString& mimeType, contentTypes)
-      QVERIFY2(supportedContentTypes.contains(mimeType), QString("'%1' is not a supported content type!").arg(mimeType).toLatin1());
+    // Get the mime types supported by webkit...
+    const QStringList supportedContentTypes = m_page->supportedContentTypes();
+
+    Q_FOREACH(const QString& mimeType, contentTypes)
+        QVERIFY2(supportedContentTypes.contains(mimeType), QString("'%1' is not a supported content type!").arg(mimeType).toLatin1());
       
-   Q_FOREACH(const QString& mimeType, contentTypes)
-      QVERIFY2(m_page->supportsContentType(mimeType), QString("Cannot handle content types '%1'!").arg(mimeType).toLatin1());
+    Q_FOREACH(const QString& mimeType, contentTypes)
+        QVERIFY2(m_page->supportsContentType(mimeType), QString("Cannot handle content types '%1'!").arg(mimeType).toLatin1());
 }
 
 
@@ -3062,35 +3028,35 @@ void tst_QWebPage::thirdPartyCookiePolicy()
     QVERIFY(m_page->networkAccessManager()->cookieJar());
 
     // These are all first-party cookies, so should pass.
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.com"), QUrl("http://example.com")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.com"), QUrl("http://doc.example.com")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://aaa.www.example.com"), QUrl("http://doc.example.com")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://example.com"), QUrl("http://www.example.com")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.co.uk"), QUrl("http://example.co.uk")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.co.uk"), QUrl("http://doc.example.co.uk")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://aaa.www.example.co.uk"), QUrl("http://doc.example.co.uk")));
-    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://example.co.uk"), QUrl("http://www.example.co.uk")));
 
     // These are all third-party cookies, so should fail.
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.com"), QUrl("http://slashdot.org")));
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://example.com"), QUrl("http://anotherexample.com")));
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://anotherexample.com"), QUrl("http://example.com")));
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://www.example.co.uk"), QUrl("http://slashdot.co.uk")));
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://example.co.uk"), QUrl("http://anotherexample.co.uk")));
-    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page,
+    QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://anotherexample.co.uk"), QUrl("http://example.co.uk")));
 }
 

@@ -305,18 +305,19 @@ bool Element::hasAttribute(const QualifiedName& name) const
 
 const AtomicString& Element::getAttribute(const QualifiedName& name) const
 {
-    if (UNLIKELY(name == styleAttr) && attributeData() && attributeData()->m_styleAttributeIsDirty)
+    if (!attributeData())
+        return nullAtom;
+
+    if (UNLIKELY(name == styleAttr && attributeData()->m_styleAttributeIsDirty))
         updateStyleAttribute();
 
 #if ENABLE(SVG)
-    if (UNLIKELY(!areSVGAttributesValid()))
+    if (UNLIKELY(attributeData()->m_animatedSVGAttributesAreDirty))
         updateAnimatedSVGAttribute(name);
 #endif
 
-    if (attributeData()) {
-        if (const Attribute* attribute = getAttributeItem(name))
-            return attribute->value();
-    }
+    if (const Attribute* attribute = getAttributeItem(name))
+        return attribute->value();
     return nullAtom;
 }
 
@@ -660,24 +661,24 @@ static inline bool shouldIgnoreAttributeCase(const Element* e)
 
 const AtomicString& Element::getAttribute(const AtomicString& name) const
 {
+    if (!attributeData())
+        return nullAtom;
+
     bool ignoreCase = shouldIgnoreAttributeCase(this);
 
     // Update the 'style' attribute if it's invalid and being requested:
-    if (attributeData() && attributeData()->m_styleAttributeIsDirty && equalPossiblyIgnoringCase(name, styleAttr.localName(), ignoreCase))
+    if (attributeData()->m_styleAttributeIsDirty && equalPossiblyIgnoringCase(name, styleAttr.localName(), ignoreCase))
         updateStyleAttribute();
 
 #if ENABLE(SVG)
-    if (!areSVGAttributesValid()) {
+    if (attributeData()->m_animatedSVGAttributesAreDirty) {
         // We're not passing a namespace argument on purpose. SVGNames::*Attr are defined w/o namespaces as well.
         updateAnimatedSVGAttribute(QualifiedName(nullAtom, name, nullAtom));
     }
 #endif
 
-    if (attributeData()) {
-        if (const Attribute* attribute = attributeData()->getAttributeItem(name, ignoreCase))
-            return attribute->value();
-    }
-
+    if (const Attribute* attribute = attributeData()->getAttributeItem(name, ignoreCase))
+        return attribute->value();
     return nullAtom;
 }
 
@@ -1022,11 +1023,11 @@ void Element::parserSetAttributes(const Vector<Attribute>& attributeVector, Frag
     }
 
     // When the document is in parsing state, we cache immutable ElementAttributeData objects with the
-    // input attribute vector (and the tag name) as key. (This cache is held by Document.)
+    // input attribute vector as key. (This cache is held by Document.)
     if (!document() || !document()->parsing())
         m_attributeData = ElementAttributeData::createImmutable(filteredAttributes);
     else
-        m_attributeData = document()->cachedImmutableAttributeData(this, filteredAttributes);
+        m_attributeData = document()->cachedImmutableAttributeData(filteredAttributes);
 
     // Iterate over the set of attributes we already have on the stack in case
     // attributeChanged mutates m_attributeData.
@@ -1095,6 +1096,11 @@ KURL Element::baseURI() const
 const QualifiedName& Element::imageSourceAttributeName() const
 {
     return srcAttr;
+}
+
+bool Element::rendererIsNeeded(const NodeRenderingContext& context)
+{
+    return (document()->documentElement() == this) || (context.style()->display() != NONE);
 }
 
 RenderObject* Element::createRenderer(RenderArena* arena, RenderStyle* style)
@@ -1184,36 +1190,42 @@ void Element::removedFrom(ContainerNode* insertionPoint)
     ContainerNode::removedFrom(insertionPoint);
 }
 
+void Element::createRendererIfNeeded()
+{
+    NodeRenderingContext(this).createRendererForElementIfNeeded();
+}
+
 void Element::attach()
 {
     suspendPostAttachCallbacks();
-    WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
+    {
+        WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
+        createRendererIfNeeded();
 
-    createRendererIfNeeded();
-    StyleResolverParentPusher parentPusher(this);
+        StyleResolverParentPusher parentPusher(this);
 
-    if (parentElement() && parentElement()->isInCanvasSubtree())
-        setIsInCanvasSubtree(true);
+        if (parentElement() && parentElement()->isInCanvasSubtree())
+            setIsInCanvasSubtree(true);
 
-    // When a shadow root exists, it does the work of attaching the children.
-    if (ElementShadow* shadow = this->shadow()) {
-        parentPusher.push();
-        shadow->attach();
-    } else {
-        if (firstChild())
+        // When a shadow root exists, it does the work of attaching the children.
+        if (ElementShadow* shadow = this->shadow()) {
             parentPusher.push();
-    }
-    ContainerNode::attach();
+            shadow->attach();
+        } else {
+            if (firstChild())
+                parentPusher.push();
+        }
+        ContainerNode::attach();
 
-    if (hasRareData()) {   
-        ElementRareData* data = elementRareData();
-        if (data->needsFocusAppearanceUpdateSoonAfterAttach()) {
-            if (isFocusable() && document()->focusedNode() == this)
-                document()->updateFocusAppearanceSoon(false /* don't restore selection */);
-            data->setNeedsFocusAppearanceUpdateSoonAfterAttach(false);
+        if (hasRareData()) {   
+            ElementRareData* data = elementRareData();
+            if (data->needsFocusAppearanceUpdateSoonAfterAttach()) {
+                if (isFocusable() && document()->focusedNode() == this)
+                    document()->updateFocusAppearanceSoon(false /* don't restore selection */);
+                data->setNeedsFocusAppearanceUpdateSoonAfterAttach(false);
+            }
         }
     }
-
     resumePostAttachCallbacks();
 }
 
@@ -1427,6 +1439,11 @@ ElementShadow* Element::ensureShadow()
     ElementRareData* data = elementRareData();
     data->m_shadow = adoptPtr(new ElementShadow());
     return data->m_shadow.get();
+}
+
+PassRefPtr<ShadowRoot> Element::createShadowRoot(ExceptionCode& ec)
+{
+    return ShadowRoot::create(this, ec);
 }
 
 ShadowRoot* Element::userAgentShadowRoot() const
@@ -2140,7 +2157,7 @@ bool Element::childShouldCreateRenderer(const NodeRenderingContext& childContext
     if (childContext.node()->isSVGElement())
         return childContext.node()->hasTagName(SVGNames::svgTag) || isSVGElement();
 
-    return Node::childShouldCreateRenderer(childContext);
+    return ContainerNode::childShouldCreateRenderer(childContext);
 }
 #endif
     
@@ -2188,17 +2205,10 @@ bool Element::isInTopLayer() const
 
 void Element::setIsInTopLayer(bool inTopLayer)
 {
-    // To avoid an extra call to elementRareData(), don't use Element::isInTopLayer().
-    ElementRareData* rareData = hasRareData() ? elementRareData() : 0;
-    if (rareData) {
-        if (rareData->isInTopLayer() == inTopLayer)
-            return;
-    } else {
-        if (!inTopLayer)
-            return;
-        rareData = ensureElementRareData();
-    }
-    rareData->setIsInTopLayer(inTopLayer);
+    if (isInTopLayer() == inTopLayer)
+        return;
+
+    ensureElementRareData()->setIsInTopLayer(inTopLayer);
 
     if (inTopLayer)
         document()->addToTopLayer(this);
@@ -2231,8 +2241,7 @@ SpellcheckAttributeState Element::spellcheckAttributeState() const
 
 bool Element::isSpellCheckingEnabled() const
 {
-    const Element* element = this;
-    while (element) {
+    for (const Element* element = this; element; element = element->parentOrHostElement()) {
         switch (element->spellcheckAttributeState()) {
         case SpellcheckAttributeTrue:
             return true;
@@ -2241,14 +2250,6 @@ bool Element::isSpellCheckingEnabled() const
         case SpellcheckAttributeDefault:
             break;
         }
-
-        ContainerNode* parent = const_cast<Element*>(element)->parentOrHostNode();
-        if (parent && parent->isElementNode())
-            element = toElement(parent);
-        else if (parent && parent->isShadowRoot())
-            element = toElement(parent->parentOrHostNode());
-        else
-            element = 0;
     }
 
     return true;
@@ -2430,49 +2431,30 @@ void Element::updateExtraNamedItemRegistration(const AtomicString& oldId, const 
 
 PassRefPtr<HTMLCollection> Element::ensureCachedHTMLCollection(CollectionType type)
 {
-    return ensureElementRareData()->ensureCachedHTMLCollection(this, type);
-}
-
-PassRefPtr<HTMLCollection> ElementRareData::ensureCachedHTMLCollection(Element* element, CollectionType type)
-{
-    if (!m_cachedCollections) {
-        m_cachedCollections = adoptPtr(new CachedHTMLCollectionArray);
-        for (unsigned i = 0; i < NumNodeCollectionTypes; i++)
-            (*m_cachedCollections)[i] = 0;
-    }
-
-    if (HTMLCollection* collection = (*m_cachedCollections)[type - FirstNodeCollectionType])
+    if (HTMLCollection* collection = cachedHTMLCollection(type))
         return collection;
 
     RefPtr<HTMLCollection> collection;
     if (type == TableRows) {
-        ASSERT(element->hasTagName(tableTag));
-        collection = HTMLTableRowsCollection::create(element);
+        ASSERT(hasTagName(tableTag));
+        return ensureRareData()->ensureNodeLists()->addCacheWithAtomicName<HTMLTableRowsCollection>(this, type);
     } else if (type == SelectOptions) {
-        ASSERT(element->hasTagName(selectTag));
-        collection = HTMLOptionsCollection::create(element);
+        ASSERT(hasTagName(selectTag));
+        return ensureRareData()->ensureNodeLists()->addCacheWithAtomicName<HTMLOptionsCollection>(this, type);
     } else if (type == FormControls) {
-        ASSERT(element->hasTagName(formTag) || element->hasTagName(fieldsetTag));
-        collection = HTMLFormControlsCollection::create(element);
+        ASSERT(hasTagName(formTag) || hasTagName(fieldsetTag));
+        return ensureRareData()->ensureNodeLists()->addCacheWithAtomicName<HTMLFormControlsCollection>(this, type);
 #if ENABLE(MICRODATA)
     } else if (type == ItemProperties) {
-        collection = HTMLPropertiesCollection::create(element);
+        return ensureRareData()->ensureNodeLists()->addCacheWithAtomicName<HTMLPropertiesCollection>(this, type);
 #endif
-    } else
-        collection = HTMLCollection::create(element, type);
-    (*m_cachedCollections)[type - FirstNodeCollectionType] = collection.get();
-    return collection.release();
+    }
+    return ensureRareData()->ensureNodeLists()->addCacheWithAtomicName<HTMLCollection>(this, type);
 }
 
 HTMLCollection* Element::cachedHTMLCollection(CollectionType type)
 {
-    return hasRareData() ? elementRareData()->cachedHTMLCollection(type) : 0;
-}
-
-void Element::removeCachedHTMLCollection(HTMLCollection* collection, CollectionType type)
-{
-    ASSERT(hasRareData());
-    elementRareData()->removeCachedHTMLCollection(collection, type);
+    return hasRareData() && rareData()->nodeLists() ? rareData()->nodeLists()->cacheWithAtomicName<HTMLCollection>(type) : 0;
 }
 
 IntSize Element::savedLayerScrollOffset() const
@@ -2554,7 +2536,6 @@ PassRefPtr<RenderStyle> Element::customStyleForRenderer()
     return 0;
 }
 
-
 void Element::cloneAttributesFromElement(const Element& other)
 {
     if (hasSyntheticAttrChildNodes())
@@ -2579,8 +2560,10 @@ void Element::cloneAttributesFromElement(const Element& other)
         updateName(oldName, newName);
 
     // If 'other' has a mutable ElementAttributeData, convert it to an immutable one so we can share it between both elements.
-    // We can only do this if there is no CSSOM wrapper for other's inline style (the isMutable() check.)
-    if (other.m_attributeData->isMutable() && (!other.m_attributeData->inlineStyle() || !other.m_attributeData->inlineStyle()->isMutable()))
+    // We can only do this if there is no CSSOM wrapper for other's inline style, and there are no presentation attributes.
+    if (other.m_attributeData->isMutable()
+        && !other.m_attributeData->presentationAttributeStyle()
+        && (!other.m_attributeData->inlineStyle() || !other.m_attributeData->inlineStyle()->hasCSSOMWrapper()))
         const_cast<Element&>(other).m_attributeData = other.m_attributeData->makeImmutableCopy();
 
     if (!other.m_attributeData->isMutable())

@@ -29,6 +29,7 @@
 #include "config.h"
 #include "MIMETypeRegistry.h"
 
+#include <QMimeDatabase>
 #include <wtf/Assertions.h>
 #include <wtf/MainThread.h>
 
@@ -36,69 +37,90 @@ namespace WebCore {
 
 struct ExtensionMap {
     const char* extension;
+    const char* dotExtension;
     const char* mimeType;
 };
 
+// This is a short list of extensions not recognized by the freedesktop shared mimetype database 1.0.
 static const ExtensionMap extensionMap[] = {
-    { "bmp", "image/bmp" },
-    { "css", "text/css" },
-    { "gif", "image/gif" },
-    { "html", "text/html" },
-    { "htm", "text/html" },
-    { "ico", "image/x-icon" },
-    { "jpeg", "image/jpeg" },
-    { "jpg", "image/jpeg" },
-    { "js", "application/x-javascript" },
-    { "mng", "video/x-mng" },
-    { "mp4", "video/mp4" },
-    { "m4v", "video/mp4" },
-    { "m4a", "audio/x-m4a" },
-    { "mht", "multipart/related" },
-    { "mhtml", "multipart/related" },
-    { "mp3", "audio/mp3" },
-    { "ogv", "video/ogg" },
-    { "oga", "audio/ogg" },
-    { "ogm", "audio/ogg" },
-    { "ogg", "audio/ogg" },
-    { "webm", "video/webm" },
-    { "webm", "audio/webm" },
-    { "wav", "audio/wav" },
-    { "mov", "video/quicktime" },
-    { "pbm", "image/x-portable-bitmap" },
-    { "pgm", "image/x-portable-graymap" },
-    { "pdf", "application/pdf" },
-    { "png", "image/png" },
-    { "ppm", "image/x-portable-pixmap" },
-    { "rss", "application/rss+xml" },
-    { "svg", "image/svg+xml" },
-    { "text", "text/plain" },
-    { "tif", "image/tiff" },
-    { "tiff", "image/tiff" },
-    { "txt", "text/plain" },
-    { "xbm", "image/x-xbitmap" },
-    { "xml", "text/xml" },
-    { "xpm", "image/x-xpm" },
-    { "xsl", "text/xsl" },
-    { "xhtml", "application/xhtml+xml" },
-    { "wml", "text/vnd.wap.wml" },
-    { "wmlc", "application/vnd.wap.wmlc" },
-    { 0, 0 }
+    { "mht", ".mht", "application/x-mimearchive" },
+    { "mhtml", ".mhtml", "application/x-mimearchive" },
+    { "text", ".text", "text/plain" },
+    { "wmlc", ".wmlc", "application/vnd.wap.wmlc" },
+    { 0, 0, 0 }
 };
 
 String MIMETypeRegistry::getMIMETypeForExtension(const String &ext)
 {
-    ASSERT(isMainThread());
+    // QMimeDatabase lacks the ability to query by extension alone, so we create a fake filename to lookup.
+    String suffix = ext.lower();
+    const QString filename = QStringLiteral("filename.") + QString(suffix);
 
-    String s = ext.lower();
+    QMimeType mimeType = QMimeDatabase().mimeTypeForFile(filename, QMimeDatabase::MatchExtension);
+    if (mimeType.isValid() && !mimeType.isDefault()) {
+        // getMIMETypeForExtension is used for preload mimetype check, so image looking files can not be loaded as anything but images.
+        // Script looking files (.php) are loaded normally and will have their mimetype determined later.
+        if (mimeType.inherits(QStringLiteral("application/x-executable")))
+            return String();
+        return mimeType.name();
+    }
 
     const ExtensionMap *e = extensionMap;
     while (e->extension) {
-        if (s == e->extension)
+        if (suffix == e->extension)
             return e->mimeType;
         ++e;
     }
 
     return String();
+}
+
+String MIMETypeRegistry::getMIMETypeForPath(const String& path)
+{
+    QMimeType type = QMimeDatabase().mimeTypeForFile(path, QMimeDatabase::MatchExtension);
+    if (type.isValid() && !type.isDefault())
+        return type.name();
+
+    const ExtensionMap *e = extensionMap;
+    while (e->extension) {
+        if (path.endsWith(e->dotExtension))
+            return e->mimeType;
+        ++e;
+    }
+
+    return defaultMIMEType();
+}
+
+Vector<String> MIMETypeRegistry::getExtensionsForMIMEType(const String& mimeTypeName)
+{
+    Vector<String> extensions;
+    QMimeType mimeType = QMimeDatabase().mimeTypeForName(mimeTypeName);
+    if (mimeType.isValid() && !mimeType.isDefault()) {
+        Q_FOREACH(const QString& suffix, mimeType.suffixes()) {
+            extensions.append(suffix);
+        }
+    }
+
+    return extensions;
+}
+
+String MIMETypeRegistry::getPreferredExtensionForMIMEType(const String& mimeTypeName)
+{
+    QMimeType mimeType = QMimeDatabase().mimeTypeForName(mimeTypeName);
+    if (mimeType.isValid() && !mimeType.isDefault())
+        return mimeType.preferredSuffix();
+
+    return String();
+}
+
+String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeTypeName)
+{
+    // This looks up the mime type object by preferred name or alias, and returns the preferred name.
+    QMimeType mimeType = QMimeDatabase().mimeTypeForName(mimeTypeName);
+    if (mimeType.isValid() && !mimeType.isDefault())
+        return mimeType.name();
+
+    return mimeTypeName;
 }
 
 bool MIMETypeRegistry::isApplicationPluginMIMEType(const String& mimeType)

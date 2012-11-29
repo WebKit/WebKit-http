@@ -55,6 +55,7 @@ public:
     virtual bool shouldAutocomplete() const;
 
     // For ValidityState
+    virtual bool hasBadInput() const OVERRIDE;
     virtual bool patternMismatch() const OVERRIDE;
     virtual bool rangeUnderflow() const OVERRIDE;
     virtual bool rangeOverflow() const;
@@ -163,9 +164,6 @@ public:
 
     // The value which is drawn by a renderer.
     String visibleValue() const;
-    String convertFromVisibleValue(const String&) const;
-    // Returns true if the specified string can be set as the value of HTMLInputElement.
-    bool isAcceptableValue(const String&) const;
 
     const String& suggestedValue() const;
     void setSuggestedValue(const String&);
@@ -291,6 +289,8 @@ public:
 
     static Vector<FileChooserFileInfo> filesFromFileInputFormControlState(const FormControlState&);
 
+    virtual bool shouldMatchReadOnlySelector() const OVERRIDE;
+    virtual bool shouldMatchReadWriteSelector() const OVERRIDE;
     virtual void setRangeText(const String& replacement, ExceptionCode&) OVERRIDE;
     virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&) OVERRIDE;
 
@@ -357,8 +357,6 @@ private:
     virtual void postDispatchEventHandler(Event*, void* dataFromPreDispatch);
 
     virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
-
-    virtual bool hasUnacceptableValue() const;
 
     virtual bool isInRange() const;
     virtual bool isOutOfRange() const;

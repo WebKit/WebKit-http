@@ -120,7 +120,7 @@ static String selectMisspelledWord(const ContextMenu* defaultMenu, Frame* select
 
     // Selection is empty, so change the selection to the word under the cursor.
     HitTestResult hitTestResult = selectedFrame->eventHandler()->
-        hitTestResultAtPoint(selectedFrame->page()->contextMenuController()->hitTestResult().point(), true);
+        hitTestResultAtPoint(selectedFrame->page()->contextMenuController()->hitTestResult().pointInInnerNodeFrame(), true);
     Node* innerNode = hitTestResult.innerNode();
     VisiblePosition pos(innerNode->renderer()->positionForPoint(
         hitTestResult.localPoint()));
@@ -155,10 +155,10 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
         return 0;
 
     HitTestResult r = m_webView->page()->contextMenuController()->hitTestResult();
-    Frame* selectedFrame = r.innerNonSharedNode()->document()->frame();
+    Frame* selectedFrame = r.innerNodeFrame();
 
     WebContextMenuData data;
-    data.mousePosition = selectedFrame->view()->contentsToWindow(r.roundedPoint());
+    data.mousePosition = selectedFrame->view()->contentsToWindow(r.roundedPointInInnerNodeFrame());
 
     // Compute edit flags.
     data.editFlags = WebContextMenuData::CanDoNone;
@@ -298,8 +298,9 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
                         selectedFrame->selection()->setSelection(selection, WordGranularity);
                 }
             }
-        } else if (m_webView->focusedWebCoreFrame()->editor()->isContinuousSpellCheckingEnabled()) {
-            data.isSpellCheckingEnabled = true;
+        } else {
+            data.isSpellCheckingEnabled = 
+                m_webView->focusedWebCoreFrame()->editor()->isContinuousSpellCheckingEnabled();
             // Spellchecking might be enabled for the field, but could be disabled on the node.
             if (m_webView->focusedWebCoreFrame()->editor()->isSpellCheckingEnabledInFocusedNode()) {
                 data.misspelledWord = selectMisspelledWord(defaultMenu, selectedFrame);

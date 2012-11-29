@@ -103,7 +103,6 @@ public:
     virtual void notifyRunLayoutTestsFinished() = 0;
 
     virtual void notifyInRegionScrollableAreasChanged(const std::vector<Platform::ScrollViewBase*>&) = 0;
-    virtual void notifyNoMouseMoveOrTouchMoveHandlers() = 0;
 
     virtual void notifyDocumentOnLoad(bool) = 0;
 
@@ -151,7 +150,7 @@ public:
     virtual void showVirtualKeyboard(bool) = 0;
 
     virtual void requestSpellingCheckingOptions(imf_sp_text_t&, const BlackBerry::Platform::IntRect& documentCaretRect, const BlackBerry::Platform::IntSize& screenOffset) = 0;
-    virtual int32_t checkSpellingOfStringAsync(wchar_t* text, int length) = 0;
+    virtual int32_t checkSpellingOfStringAsync(wchar_t* text, const unsigned length) = 0;
 
     virtual void notifySelectionDetailsChanged(const Platform::IntRect& documentStartRect, const Platform::IntRect& documentEndRect, const Platform::IntRectRegion& documentRegion, bool overrideTouchHandling = false) = 0;
     virtual void cancelSelectionVisuals() = 0;
@@ -201,7 +200,6 @@ public:
 
     virtual BlackBerry::Platform::ViewportAccessor* userInterfaceViewportAccessor() const = 0;
 
-    virtual void resetBitmapZoomScale(double scale) = 0;
     virtual void animateBlockZoom(double finalScale, const Platform::FloatPoint& finalDocumentScrollPosition) = 0;
 
     virtual void setPreventsScreenIdleDimming(bool noDimming) = 0;
@@ -267,6 +265,19 @@ public:
     virtual void requestUserMedia(const Platform::WebUserMediaRequest&) = 0;
     virtual void cancelUserMediaRequest(const Platform::WebUserMediaRequest&) = 0;
     virtual void updateFindStringResult(int numMatches, int currentIndex) = 0;
+
+    // Match with NotificationClient::Permission.
+    enum Permission {
+        PermissionAllowed, // User has allowed notifications
+        PermissionNotAllowed, // User has not yet allowed
+        PermissionDenied // User has explicitly denied permission
+    };
+    virtual void requestNotificationPermission(const BlackBerry::Platform::String& /*requestId*/, const BlackBerry::Platform::String& /*origin*/) = 0;
+    virtual Permission checkNotificationPermission(const BlackBerry::Platform::String& /*origin*/) = 0;
+    virtual void showNotification(const BlackBerry::Platform::String& /*notificationId*/, const BlackBerry::Platform::String& /*title*/, const BlackBerry::Platform::String& /*body*/, const BlackBerry::Platform::String& /*iconUrl*/, const BlackBerry::Platform::String& /*tag*/, const BlackBerry::Platform::String& /*origin*/) = 0;
+    virtual void cancelNotification(const BlackBerry::Platform::String& /*id*/) = 0;
+    virtual void clearNotifications(const std::vector<BlackBerry::Platform::String>& /*notificationIds*/) = 0;
+    virtual void notificationDestroyed(const BlackBerry::Platform::String& /*notificationId*/) = 0;
 };
 } // namespace WebKit
 } // namespace BlackBerry

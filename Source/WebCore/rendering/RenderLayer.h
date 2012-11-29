@@ -284,7 +284,7 @@ public:
 
     void styleChanged(StyleDifference, const RenderStyle* oldStyle);
 
-    RenderMarquee* marquee() const { return m_marquee; }
+    RenderMarquee* marquee() const { return m_marquee.get(); }
 
     bool isNormalFlowOnly() const { return m_isNormalFlowOnly; }
     bool isSelfPaintingLayer() const { return m_isSelfPaintingLayer; }
@@ -309,7 +309,7 @@ public:
     }
     
     const LayoutPoint& location() const { return m_topLeft; }
-    void setLocation(LayoutUnit x, LayoutUnit y) { m_topLeft = LayoutPoint(x, y); }
+    void setLocation(const LayoutPoint& p) { m_topLeft = p; }
 
     const IntSize& size() const { return m_layerSize; }
     void setSize(const IntSize& size) { m_layerSize = size; }
@@ -390,7 +390,8 @@ public:
 
     bool canRender3DTransforms() const;
 
-    void updateLayerPosition();
+    // Returns true if the position changed.
+    bool updateLayerPosition();
 
     enum UpdateLayerPositionsFlag {
         CheckForRepaint = 1,
@@ -402,7 +403,9 @@ public:
     static const UpdateLayerPositionsFlags defaultFlags = CheckForRepaint | IsCompositingUpdateRoot | UpdateCompositingLayers;
 
     void updateLayerPositionsAfterLayout(const RenderLayer* rootLayer, UpdateLayerPositionsFlags);
-    void updateLayerPositionsAfterScroll();
+
+    void updateLayerPositionsAfterOverflowScroll();
+    void updateLayerPositionsAfterDocumentScroll();
     
     bool isPaginated() const { return m_isPaginated; }
 
@@ -433,7 +436,7 @@ public:
     {
         ASSERT(!m_zOrderListsDirty);
         ASSERT(isStackingContext() || !m_posZOrderList);
-        return m_posZOrderList;
+        return m_posZOrderList.get();
     }
 
     bool hasNegativeZOrderList() const { return negZOrderList() && negZOrderList()->size(); }
@@ -442,11 +445,11 @@ public:
     {
         ASSERT(!m_zOrderListsDirty);
         ASSERT(isStackingContext() || !m_negZOrderList);
-        return m_negZOrderList;
+        return m_negZOrderList.get();
     }
 
     void dirtyNormalFlowList();
-    Vector<RenderLayer*>* normalFlowList() const { ASSERT(!m_normalFlowListDirty); return m_normalFlowList; }
+    Vector<RenderLayer*>* normalFlowList() const { ASSERT(!m_normalFlowListDirty); return m_normalFlowList.get(); }
 
     // Update our normal and z-index lists.
     void updateLayerListsIfNeeded();
@@ -740,8 +743,10 @@ private:
 
     enum UpdateLayerPositionsAfterScrollFlag {
         NoFlag = 0,
-        HasSeenViewportConstrainedAncestor = 1 << 0,
-        HasSeenAncestorWithOverflowClip = 1 << 1
+        IsOverflowScroll = 1 << 0,
+        HasSeenViewportConstrainedAncestor = 1 << 1,
+        HasSeenAncestorWithOverflowClip = 1 << 2,
+        HasChangedAncestor = 1 << 3
     };
     typedef unsigned UpdateLayerPositionsAfterScrollFlags;
     void updateLayerPositionsAfterScroll(RenderGeometryMap*, UpdateLayerPositionsAfterScrollFlags = NoFlag);
@@ -764,7 +769,7 @@ private:
     LayoutUnit renderBoxX() const { return renderBoxLocation().x(); }
     LayoutUnit renderBoxY() const { return renderBoxLocation().y(); }
 
-    void collectLayers(bool includeHiddenLayers, Vector<RenderLayer*>*&, Vector<RenderLayer*>*&);
+    void collectLayers(bool includeHiddenLayers, OwnPtr<Vector<RenderLayer*> >&, OwnPtr<Vector<RenderLayer*> >&);
 
     void updateCompositingAndLayerListsIfNeeded();
 
@@ -1038,18 +1043,18 @@ protected:
     // descendant layers within the stacking context that have z-indices of 0 or greater
     // (auto will count as 0).  m_negZOrderList holds descendants within our stacking context with negative
     // z-indices.
-    Vector<RenderLayer*>* m_posZOrderList;
-    Vector<RenderLayer*>* m_negZOrderList;
+    OwnPtr<Vector<RenderLayer*> > m_posZOrderList;
+    OwnPtr<Vector<RenderLayer*> > m_negZOrderList;
 
     // This list contains child layers that cannot create stacking contexts.  For now it is just
     // overflow layers, but that may change in the future.
-    Vector<RenderLayer*>* m_normalFlowList;
+    OwnPtr<Vector<RenderLayer*> > m_normalFlowList;
 
     OwnPtr<ClipRectsCache> m_clipRectsCache;
     
     IntPoint m_cachedOverlayScrollbarOffset;
 
-    RenderMarquee* m_marquee; // Used by layers with overflow:marquee
+    OwnPtr<RenderMarquee> m_marquee; // Used by layers with overflow:marquee
     
     // Cached normal flow values for absolute positioned elements with static left/top values.
     LayoutUnit m_staticInlinePosition;
@@ -1076,15 +1081,8 @@ inline void RenderLayer::clearZOrderLists()
 {
     ASSERT(!isStackingContext());
 
-    if (m_posZOrderList) {
-        delete m_posZOrderList;
-        m_posZOrderList = 0;
-    }
-
-    if (m_negZOrderList) {
-        delete m_negZOrderList;
-        m_negZOrderList = 0;
-    }
+    m_posZOrderList.clear();
+    m_negZOrderList.clear();
 }
 
 inline void RenderLayer::updateZOrderLists()

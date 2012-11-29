@@ -1,3 +1,101 @@
+2012-11-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135786.
+        http://trac.webkit.org/changeset/135786
+        https://bugs.webkit.org/show_bug.cgi?id=103379
+
+        It made 3 plugin tests timeout on several platforms (Requested
+        by Ossy on #webkit).
+
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_load_uri):
+        (webkit_web_frame_load_data):
+        (webkit_web_frame_load_request):
+
+2012-11-26  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_load_uri):
+        (webkit_web_frame_load_data):
+        (webkit_web_frame_load_request):
+
+2012-11-25  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        Remove deprecated load-done signal
+        https://bugs.webkit.org/show_bug.cgi?id=72712
+
+        Reviewed by Brent Fulgham.
+
+        Remove deprecated load-done signal and migrate to load-status.
+
+        * WebCoreSupport/FrameLoaderClientGtk.cpp:
+        (WebKit):
+        (WebKit::FrameLoaderClient::dispatchDidFinishLoad):
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_class_init):
+
+2012-09-26  Gustavo Noronha Silva  <gns@gnome.org>
+
+        [GTK] Split SVG from WebCore to work-around make limitation
+        https://bugs.webkit.org/show_bug.cgi?id=97735
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a new libtool convenience library, libWebCoreSVG.la, to work-around
+        make limitation when linking libWebCore.
+
+        * GNUmakefile.am: link libWebCoreSVG.la into libwebkitgtk.
+
+2012-11-21  Allan Sandfeld Jensen  <allan.jensen@digia.com>
+
+        Disambiguate innerNodeFramePoint and mainFramePoint
+        https://bugs.webkit.org/show_bug.cgi?id=98139
+
+        Reviewed by Julien Chaffraix.
+
+        Switched to using point in innerNodeFrame. While the use here seems wrong it has been
+        left functionally unchanged to be fixed by a later patch.
+
+        * webkit/webkithittestresult.cpp:
+        (WebKit::kit):
+
+2012-11-20  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135295.
+        http://trac.webkit.org/changeset/135295
+        https://bugs.webkit.org/show_bug.cgi?id=102834
+
+        This patch causes assertion to some layout tests on chromium
+        (Requested by jianli on #webkit).
+
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_load_uri):
+        (webkit_web_frame_load_data):
+        (webkit_web_frame_load_request):
+
+2012-11-20  James Simonsen  <simonjam@chromium.org>
+
+        Consolidate FrameLoader::load() into one function taking a FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=102151
+
+        Reviewed by Adam Barth.
+
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_load_uri):
+        (webkit_web_frame_load_data):
+        (webkit_web_frame_load_request):
+
+2012-11-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.11.2 release
+
+        * NEWS: Added release notes for 1.11.2.
+
 2012-11-16  Martin Robinson  <mrobinson@igalia.com>
 
         [GTK] Move CredentialBackingStore usage from GtkAuthenticationDialog to ResourceHandleSoup

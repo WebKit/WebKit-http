@@ -50,6 +50,7 @@ namespace CoreIPC {
 namespace WebCore {
     class AffineTransform;
     class GraphicsContext;
+    class IntPoint;
     class IntRect;
     class IntSize;
     class Scrollbar;
@@ -249,6 +250,8 @@ public:
 #if PLATFORM(MAC)
     virtual RetainPtr<PDFDocument> pdfDocumentForPrinting() const { return 0; }
 #endif
+
+    virtual WebCore::IntPoint convertToRootView(const WebCore::IntPoint& pointInLocalCoordinates) const;
 
 protected:
     Plugin();

@@ -1,3 +1,348 @@
+2012-11-27  Pratik Solanki  <psolanki@apple.com>
+
+        objc/objc-runtime.h does not exist on all PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=101780
+
+        Reviewed by Brent Fulgham.
+
+        Clean up header includes so we don't include objc/objc-runtime.h.
+
+        * wtf/Functional.h:
+        * wtf/ObjcRuntimeExtras.h: Include objc/message.h here so we don't rely on proper ordering
+        of includes in files that include this header.
+
+2012-11-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r135828.
+        http://trac.webkit.org/changeset/135828
+        https://bugs.webkit.org/show_bug.cgi?id=103405
+
+        [Chromium] Multiple ASAN errors after a WebKit roll due to
+        mismatched malloc/delete (not free) resulting from
+        StringImpl::deref() (Requested by apavlov on #webkit).
+
+        * wtf/FastAllocBase.h:
+        * wtf/Platform.h:
+
+2012-11-26  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] fastMalloc has an extra branch on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=103027
+
+        Reviewed by Eric Seidel.
+
+        There's no need to override the new/delete operators on non-Mac
+        platform because:
+
+        1) We use the system malloc anyway.
+        2) We've modified the system malloc to crash in out-of-memory conditions.
+
+        This patch removes a branch (and a call) from malloc, which will
+        hopefully improve performance. I haven't measured the performance
+        characteristics of this patch, but I will look at the graphs closely
+        when landing.
+
+        * wtf/FastAllocBase.h:
+        * wtf/Platform.h:
+
+2012-11-26  Filip Pizlo  <fpizlo@apple.com>
+
+        DataLog to a file should work if there are multiple processes using WTF
+        https://bugs.webkit.org/show_bug.cgi?id=103323
+
+        Reviewed by Mark Hahnenberg.
+
+        Whereas before DataLog would open a file with the name you specified, now it'll open a file with the
+        name plus the PID appended to it. So if you are dealing with multiple processes running with DataLog
+        to a file enabled, you'll get multiple separate log files.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
+2012-11-26  Zeno Albisser  <zeno@webkit.org>
+
+        [Qt] Fix the LLInt build on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=97587
+
+        Reviewed by Simon Hausmann.
+
+        * wtf/InlineASM.h:
+            Use OS(DARWIN) instead of PLATFORM(MAC),
+            in order to allow Qt to use the same code.
+        * wtf/Platform.h:
+
+2012-11-26  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for WinCE after r135640.
+
+        * wtf/DataLog.cpp:
+
+2012-11-24  Adam Barth  <abarth@webkit.org>
+
+        Chromium should use TCMalloc on Mac to go fast
+        https://bugs.webkit.org/show_bug.cgi?id=102866
+
+        Reviewed by Eric Seidel.
+
+        This patch enables TCMalloc for some WebKit objects. It improves
+        dom-modify on Mac by 5-10%.
+
+        On non-Mac platforms, Chromium already uses TCMalloc throughout the
+        project. Unfortunately, we haven't yet figured out how to turn TCMalloc
+        on globally on Mac because the approach we use for other platforms makes
+        some OS X APIs sad.
+
+        The next best thing would be to enable TCMalloc for WebKit by
+        overriding the global new and delete operator, as is done on apple-mac
+        and other platforms. Unfortunately, we cannot use that approach either
+        because the Chromium WebKit API is not memory tight.
+
+        Fortunately, WebKit has a mechanism for selectively enabling TCMalloc
+        for a selection of objects by overriding the new and delete operators
+        on those objects. This patch opts chromium-mac into that scheme by
+        setting the appropriate preprocessor macros.
+
+        * WTF.gyp/WTF.gyp:
+        * wtf/Platform.h:
+
+2012-11-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Any function that can log things should be able to easily log them to a memory buffer as well
+        https://bugs.webkit.org/show_bug.cgi?id=103000
+
+        Reviewed by Sam Weinig.
+
+        We have a number of places where we pass around a FILE* as a target to which to print
+        some logging information. But the purpose of passing FILE* instead of always assuming
+        that we should dump to stderr is that it may be sometimes useful to send the logging
+        information elsewhere. Unfortunately, FILE* isn't quite powerful enough: it's combersome
+        to use it to send logging to a string, for example.
+        
+        We could get around this by using <iostream> and <sstream>, but so far this aspect of
+        C++ has not been part of the WebKit coding conventions. Personally I find <iostream>
+        awkward due to its abuse of operator overloading.
+        
+        So this patch introduces the PrintStream abstract class, which offers printf-like
+        functionality while completely abstracting the destination and mechanism of the printing
+        output. It would be trivial to implement a StringPrintStream, for example. This will feed
+        into work on https://bugs.webkit.org/show_bug.cgi?id=102999.
+        
+        This also sets us up for creating templatized print() and println() methods that will
+        allow us to say things like out.print("count = ", count, "\n"), but that is the topic
+        of https://bugs.webkit.org/show_bug.cgi?id=103009.
+        
+        This patch also changes dataLog() to use FilePrintStream internally, and WTF::dataFile()
+        now returns a FilePrintStream&. Any previous users of WTF::dataFile() have been changed
+        to expect a PrintStream&.
+
+        * GNUmakefile.list.am:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.cpp:
+        (WTF):
+        (WTF::initializeLogFileOnce):
+        (WTF::initializeLogFile):
+        (WTF::dataFile):
+        (WTF::dataLogV):
+        (WTF::dataLogString):
+        * wtf/DataLog.h:
+        (WTF):
+        * wtf/FilePrintStream.cpp: Added.
+        (WTF):
+        (WTF::FilePrintStream::FilePrintStream):
+        (WTF::FilePrintStream::~FilePrintStream):
+        (WTF::FilePrintStream::vprintf):
+        (WTF::FilePrintStream::flush):
+        * wtf/FilePrintStream.h: Added.
+        (WTF):
+        (FilePrintStream):
+        (WTF::FilePrintStream::file):
+        * wtf/PrintStream.cpp: Added.
+        (WTF):
+        (WTF::PrintStream::PrintStream):
+        (WTF::PrintStream::~PrintStream):
+        (WTF::PrintStream::printf):
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println):
+        (WTF::PrintStream::flush):
+        (WTF::print):
+        * wtf/PrintStream.h: Added.
+        (WTF):
+        (PrintStream):
+        (WTF::print):
+        (WTF::println):
+
+2012-11-23  Robert Kroeger  <rjkroege@chromium.org>
+
+        Remove unused ScrollByPixelVelocity
+        https://bugs.webkit.org/show_bug.cgi?id=102840
+
+        Reviewed by Sam Weinig.
+
+        The GESTURE_ANIMATION feature turns on code in WebCore is unused.
+        Remove it.
+
+        No new tests: code removal/cleanup.
+
+        * wtf/Platform.h:
+
+2012-11-23  Laszlo Gombos  <l.gombos@samsung.com>
+
+        [EFL] Define WTF_PLATFORM_EFL in Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=101482
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Define WTF_PLATFORM_EFL in Platform.h to be consistent with 
+        other ports.
+
+        * wtf/Platform.h:
+
+2012-11-16  Yury Semikhatsky  <yurys@chromium.org>
+
+        Memory instrumentation: extract MemoryObjectInfo declaration into a separate file
+        https://bugs.webkit.org/show_bug.cgi?id=102510
+
+        Reviewed by Pavel Feldman.
+
+        Moved MemoryObjectInfo into separate header. Moved definition of MemoryInstrumentation
+        methods that depend on MemoryObjectInfo declaration into MemoryInstrumentation.cpp to
+        make MemoryInstrumentation require only forward declaration of MemoryObjectInfo.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryInstrumentation.cpp: Added.
+        (WTF):
+        (WTF::MemoryInstrumentation::MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::~MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::getObjectType): this method allows to get object type without
+        pulling in MemoryObjectInfo.h and all its dependencies.
+        (WTF::MemoryInstrumentation::callReportObjectInfo):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::InstrumentedPointerBase):
+        (WTF::MemoryInstrumentation::InstrumentedPointerBase::process):
+        (WTF::MemoryClassInfo::init):
+        (WTF::MemoryClassInfo::addRawBuffer):
+        (WTF::MemoryClassInfo::addPrivateBuffer):
+        * wtf/MemoryInstrumentation.h:
+        (MemoryInstrumentation):
+        (WTF::MemoryInstrumentation::addRootObject):
+        (InstrumentedPointerBase):
+        (WTF::MemoryInstrumentation::reportObjectMemoryUsage):
+        (InstrumentedPointer):
+        (WTF::MemoryInstrumentation::addObject): we now pass owner's MemoryObjectInfo in all places
+        where we report objects pointed by the owner.
+        (WTF::MemoryInstrumentation::OwningTraits::addObject):
+        (WTF::MemoryClassInfo::MemoryClassInfo):
+        (WTF::MemoryClassInfo::addMember):
+        (MemoryClassInfo):
+        (WTF::MemoryInstrumentation::addObjectImpl):
+        (WTF::::InstrumentedPointer):
+        (WTF::::callReportMemoryUsage):
+        * wtf/MemoryObjectInfo.h: Added.
+        (WTF):
+        (MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::MemoryObjectInfo):
+        (WTF::MemoryObjectInfo::objectType):
+        (WTF::MemoryObjectInfo::objectSize):
+        (WTF::MemoryObjectInfo::reportedPointer):
+        (WTF::MemoryObjectInfo::memoryInstrumentation):
+        (WTF::MemoryObjectInfo::reportObjectInfo):
+
+2012-11-23  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Platform support for Accessibility feature.
+        https://bugs.webkit.org/show_bug.cgi?id=100848
+
+        Reviewed by Gyuyoung Kim.
+
+        Enable HAVE(ACCESSIBILITY) ifdefs so that EFL port can use it.
+
+        * wtf/Platform.h:
+
+2012-11-22  Michael Saboff  <msaboff@apple.com>
+
+        HTML integer parsing functions don't natively handle 8 bit strings
+        https://bugs.webkit.org/show_bug.cgi?id=102997
+
+        Reviewed by Filip Pizlo.
+
+        Added exports to the LChar* versions of charactersToIntStrict() and charactersToUIntStrict()
+        to support the changes made to parseHTMLInteger() and parseHTMLNonNegativeInteger().
+
+        * wtf/text/WTFString.h:
+        (WTF::charactersToIntStrict): Added export
+        (WTF::charactersToUIntStrict): Added export
+
+2012-11-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename dataLog() and dataLogV() to dataLogF() and dataLogFV()
+        https://bugs.webkit.org/show_bug.cgi?id=103001
+
+        Rubber stamped by Dan Bernstein.
+
+        * wtf/DataLog.cpp:
+        (WTF::dataLogFV):
+        (WTF::dataLogF):
+        (WTF::dataLogFString):
+        * wtf/DataLog.h:
+        (WTF):
+        * wtf/HashTable.cpp:
+        (WTF::HashTableStats::dumpStats):
+        * wtf/HashTable.h:
+        (WTF::HashTable::Stats::dumpStats):
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::dumpProfile):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::initialize):
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        (WTF::StackStats::CheckPoint::CheckPoint):
+        (WTF::StackStats::CheckPoint::~CheckPoint):
+        (WTF::StackStats::probe):
+        (WTF::StackStats::LayoutCheckPoint::LayoutCheckPoint):
+        * wtf/text/WTFString.cpp:
+        (String::show):
+
+2012-11-21  Anthony G. Basile  <blueness@gentoo.org>
+
+        Source/WTF/wtf/Assertions.cpp: fix build on a uClibc system
+        https://bugs.webkit.org/show_bug.cgi?id=102946
+
+        Reviewed by Tony Chang.
+
+        Webkit-Gtk fails to build on a uClibc system because
+        Assertions.cpp assumes that all Linux systems have execinfo.h
+        and provide backtrace(). This is not necessarily the case for
+        uClibc which can be configured without these.  This patch
+        refines the check for OS(LINUX) to prevent this breakage.
+        Originally reported at https://bugs.gentoo.org/441674
+
+        * wtf/Assertions.cpp:
+
+2012-11-19  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to cache closure calls
+        https://bugs.webkit.org/show_bug.cgi?id=102662
+
+        Reviewed by Gavin Barraclough.
+
+        Added support to the meta allocator for easily querying whether an address falls within
+        a certain allocated chunk. Also added a useful debug routine to SentinelLinkedList,
+        which can be used to check if a node is on a particular list.
+
+        * wtf/MetaAllocatorHandle.h:
+        (MetaAllocatorHandle):
+        (WTF::MetaAllocatorHandle::containsIntegerAddress):
+        (WTF::MetaAllocatorHandle::contains):
+        * wtf/SentinelLinkedList.h:
+        (SentinelLinkedList):
+        (WTF::::isOnList):
+        (WTF):
+
 2012-11-19  Laszlo Gombos  <l.gombos@samsung.com>
 
         Remove ReadWriteLock

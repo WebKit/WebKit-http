@@ -37,6 +37,7 @@
 #include <gtest/gtest.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Threading.h>
 
 using namespace WebCore;
 
@@ -63,11 +64,17 @@ static SkCanvas* createRasterCanvas(int width, int height)
     return new SkCanvas(device);
 }
 
+struct Rasterizer {
+    SkCanvas* canvas;
+    SkPicture* picture;
+};
+
 class DeferredImageDecoderTest : public ::testing::Test, public MockImageDecoderClient {
 public:
     virtual void SetUp()
     {
-        ImageDecodingStore::initializeOnMainThread();
+        ImageDecodingStore::initializeOnce();
+        DeferredImageDecoder::setEnabled(true);
         m_data = SharedBuffer::create(whitePNG, sizeof(whitePNG));
         m_actualDecoder = new MockImageDecoder(this);
         m_actualDecoder->setSize(1, 1);
@@ -84,8 +91,17 @@ public:
 
     virtual void decoderBeingDestroyed()
     {
-        m_frameBufferRequestCount = m_actualDecoder->frameBufferRequestCount();
         m_actualDecoder = 0;
+    }
+
+    virtual void frameBufferRequested()
+    {
+        ++m_frameBufferRequestCount;
+    }
+
+    virtual ImageFrame::FrameStatus frameStatus()
+    {
+        return ImageFrame::FrameComplete;
     }
 
 protected:
@@ -145,6 +161,42 @@ TEST_F(DeferredImageDecoderTest, drawScaledIntoSkPicture)
     SkAutoLockPixels autoLock(canvasBitmap);
     EXPECT_EQ(SkColorSetARGB(255, 255, 255, 255), canvasBitmap.getColor(0, 0));
     EXPECT_EQ(SkColorSetARGB(255, 255, 255, 255), canvasBitmap.getColor(49, 50));
+}
+
+static void rasterizeMain(void* arg)
+{
+    Rasterizer* rasterizer = static_cast<Rasterizer*>(arg);
+    rasterizer->canvas->drawPicture(*rasterizer->picture);
+}
+
+TEST_F(DeferredImageDecoderTest, decodeOnOtherThread)
+{
+    WTF::initializeThreading();
+
+    OwnPtr<NativeImageSkia> image(adoptPtr(m_lazyDecoder->frameBufferAtIndex(0)->asNewNativeImage()));
+    EXPECT_EQ(1, image->bitmap().width());
+    EXPECT_EQ(1, image->bitmap().height());
+    EXPECT_FALSE(image->bitmap().isNull());
+    EXPECT_TRUE(image->bitmap().isImmutable());
+
+    SkCanvas* tempCanvas = m_picture.beginRecording(100, 100);
+    tempCanvas->drawBitmap(image->bitmap(), 0, 0);
+    m_picture.endRecording();
+    EXPECT_EQ(0, m_frameBufferRequestCount);
+
+    // Create a thread to rasterize SkPicture.
+    Rasterizer rasterizer;
+    rasterizer.canvas = m_canvas;
+    rasterizer.picture = &m_picture;
+    ThreadIdentifier threadID = createThread(&rasterizeMain, &rasterizer, "RasterThread");
+    waitForThreadCompletion(threadID);
+    EXPECT_EQ(0, m_frameBufferRequestCount);
+
+    SkBitmap canvasBitmap;
+    canvasBitmap.setConfig(SkBitmap::kARGB_8888_Config, 100, 100);
+    ASSERT_TRUE(m_canvas->readPixels(&canvasBitmap, 0, 0));
+    SkAutoLockPixels autoLock(canvasBitmap);
+    EXPECT_EQ(SkColorSetARGB(255, 255, 255, 255), canvasBitmap.getColor(0, 0));
 }
 
 } // namespace

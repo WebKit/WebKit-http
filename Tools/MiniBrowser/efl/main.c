@@ -41,6 +41,7 @@ static Eina_List *windows = NULL;
 static char *evas_engine_name = NULL;
 static Eina_Bool encoding_detector_enabled = EINA_FALSE;
 static Eina_Bool frame_flattening_enabled = EINA_FALSE;
+static Eina_Bool local_storage_enabled = EINA_TRUE;
 static int window_width = 800;
 static int window_height = 600;
 /* Default value of device_pixel_ratio is '0' so that we don't set custom device
@@ -78,9 +79,9 @@ static const Ecore_Getopt options = {
     "MiniBrowser",
     "%prog [options] [url]",
     "0.0.1",
-    "(C)2012 Samsung Electronics\n",
+    "(C)2012 Samsung Electronics\n (C)2012 Intel Corporation\n",
     "",
-    "Test Web Browser using the Enlightenment Foundation Libraries of WebKit2",
+    "Test Web Browser using the Enlightenment Foundation Libraries (EFL) port of WebKit2",
     EINA_TRUE, {
         ECORE_GETOPT_STORE_STR
             ('e', "engine", "ecore-evas engine to use."),
@@ -95,6 +96,8 @@ static const Ecore_Getopt options = {
             ('c', "encoding-detector", "enable/disable encoding detector", EINA_FALSE),
         ECORE_GETOPT_STORE_DEF_BOOL
             ('f', "flattening", "frame flattening.", EINA_FALSE),
+        ECORE_GETOPT_STORE_DEF_BOOL
+            ('l', "local-storage", "HTML5 local storage support (enabled by default).", EINA_TRUE),
         ECORE_GETOPT_VERSION
             ('V', "version"),
         ECORE_GETOPT_COPYRIGHT
@@ -181,7 +184,7 @@ on_key_down(void *user_data, Evas *e, Evas_Object *ewk_view, void *event_info)
     } else if (!strcmp(ev->key, "F3")) {
         currentEncoding = (currentEncoding + 1) % (sizeof(encodings) / sizeof(encodings[0]));
         info("Set encoding (F3) pressed. New encoding to %s", encodings[currentEncoding]);
-        ewk_view_setting_encoding_custom_set(ewk_view, encodings[currentEncoding]);
+        ewk_view_custom_encoding_set(ewk_view, encodings[currentEncoding]);
     } else if (!strcmp(ev->key, "F5")) {
         info("Reload (F5) was pressed, reloading.\n");
         ewk_view_reload(ewk_view);
@@ -282,20 +285,6 @@ on_back_forward_list_changed(void *user_data, Evas_Object *ewk_view, void *event
     /* Update navigation buttons state */
     elm_object_disabled_set(window->back_button, !ewk_view_back_possible(ewk_view));
     elm_object_disabled_set(window->forward_button, !ewk_view_forward_possible(ewk_view));
-}
-
-static Evas_Object*
-on_new_window(Ewk_View_Smart_Data *sd, Evas_Coord width, Evas_Coord height)
-{
-    Browser_Window *window = window_create(NULL, width, height);
-    windows = eina_list_append(windows, window);
-    return window->ewk_view;
-}
-
-static void
-on_close_window(void *user_data, Evas_Object *ewk_view, void *event_info)
-{
-    window_close((Browser_Window *)user_data);
 }
 
 static void
@@ -763,6 +752,39 @@ static Eina_Bool on_fullscreen_exit(Ewk_View_Smart_Data *sd)
     return EINA_TRUE;
 }
 
+static Evas_Object *
+on_window_create(Ewk_View_Smart_Data *smartData, const Ewk_Window_Features *window_features)
+{
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+
+    ewk_window_features_geometry_get(window_features, &x, &y, &width, &height);
+
+    if (!width)
+        width = window_width;
+
+    if (!height)
+        height = window_height;
+
+    Browser_Window *window = window_create(NULL, width, height);
+    Evas_Object *new_view = window->ewk_view;
+
+    windows = eina_list_append(windows, window);
+
+    info("minibrowser: location(%d,%d) size=(%d,%d)\n", x, y, width, height);
+
+    return new_view;
+}
+
+static void
+on_window_close(Ewk_View_Smart_Data *smartData)
+{
+    Browser_Window *window = window_find_with_ewk_view(smartData->self);
+    window_close(window);
+}
+
 static void
 auth_popup_close(Auth_Data *auth_data)
 {
@@ -1030,7 +1052,8 @@ static Browser_Window *window_create(const char *url, int width, int height)
     ewkViewClass->window_geometry_set = on_window_geometry_set;
     ewkViewClass->fullscreen_enter = on_fullscreen_enter;
     ewkViewClass->fullscreen_exit = on_fullscreen_exit;
-    ewkViewClass->window_create_new = on_new_window;
+    ewkViewClass->window_create = on_window_create;
+    ewkViewClass->window_close = on_window_close;
 
     Evas *evas = evas_object_evas_get(window->elm_window);
     Evas_Smart *smart = evas_smart_class_new(&ewkViewClass->sc);
@@ -1043,11 +1066,12 @@ static Browser_Window *window_create(const char *url, int width, int height)
     ewk_settings_file_access_from_file_urls_allowed_set(settings, EINA_TRUE);
     ewk_settings_encoding_detector_enabled_set(settings, encoding_detector_enabled);
     ewk_settings_frame_flattening_enabled_set(settings, frame_flattening_enabled);
+    ewk_settings_local_storage_enabled_set(settings, local_storage_enabled);
+    info("HTML5 local storage is %s for this view.\n", local_storage_enabled ? "enabled" : "disabled");
     ewk_settings_developer_extras_enabled_set(settings, EINA_TRUE);
     ewk_settings_preferred_minimum_contents_width_set(settings, 0);
 
     evas_object_smart_callback_add(window->ewk_view, "authentication,request", on_authentication_request, window);
-    evas_object_smart_callback_add(window->ewk_view, "close,window", on_close_window, window);
     evas_object_smart_callback_add(window->ewk_view, "download,failed", on_download_failed, window);
     evas_object_smart_callback_add(window->ewk_view, "download,finished", on_download_finished, window);
     evas_object_smart_callback_add(window->ewk_view, "download,request", on_download_request, window);
@@ -1120,6 +1144,7 @@ elm_main(int argc, char *argv[])
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(encoding_detector_enabled),
         ECORE_GETOPT_VALUE_BOOL(frame_flattening_enabled),
+        ECORE_GETOPT_VALUE_BOOL(local_storage_enabled),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),
         ECORE_GETOPT_VALUE_BOOL(quitOption),

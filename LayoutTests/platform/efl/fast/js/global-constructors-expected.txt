@@ -318,7 +318,9 @@ PASS TextTrackCue.toString() is '[object TextTrackCueConstructor]'
 PASS TextTrackCueList.toString() is '[object TextTrackCueListConstructor]'
 PASS TextTrackList.toString() is '[object TextTrackListConstructor]'
 PASS TimeRanges.toString() is '[object TimeRangesConstructor]'
+PASS Touch.toString() is '[object TouchConstructor]'
 PASS TouchEvent.toString() is '[object TouchEventConstructor]'
+PASS TouchList.toString() is '[object TouchListConstructor]'
 PASS TrackEvent.toString() is '[object TrackEventConstructor]'
 PASS UIEvent.toString() is '[object UIEventConstructor]'
 PASS URL.toString() is '[object URLConstructor]'
@@ -330,6 +332,7 @@ PASS WebKitCSSKeyframesRule.toString() is '[object WebKitCSSKeyframesRuleConstru
 PASS WebKitCSSMatrix.toString() is '[object WebKitCSSMatrixConstructor]'
 PASS WebKitCSSRegionRule.toString() is '[object WebKitCSSRegionRuleConstructor]'
 PASS WebKitCSSTransformValue.toString() is '[object WebKitCSSTransformValueConstructor]'
+PASS WebKitCSSViewportRule.toString() is '[object WebKitCSSViewportRuleConstructor]'
 FAIL WebKitIntent.toString() should be [object WebKitIntentConstructor]. Was [object IntentConstructor].
 FAIL WebKitMutationObserver.toString() should be [object WebKitMutationObserverConstructor]. Was [object MutationObserverConstructor].
 PASS WebKitPoint.toString() is '[object WebKitPointConstructor]'

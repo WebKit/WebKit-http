@@ -94,9 +94,9 @@ ADD_TEST(test_wtf ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/test_wtf)
 SET_TESTS_PROPERTIES(test_wtf PROPERTIES TIMEOUT 60)
 
 SET(test_webcore_LIBRARIES
+    gtest
     ${WTF_LIBRARY_NAME}
     ${WebCore_LIBRARY_NAME}
-    gtest
 )
 
 ADD_EXECUTABLE(test_webcore

@@ -2093,8 +2093,11 @@ void CanvasRenderingContext2D::setFont(const String& newFont)
     if (parsedStyle->isEmpty())
         return;
 
-    RefPtr<CSSValue> fontValue = parsedStyle->getPropertyCSSValue(CSSPropertyFont);
-    if (fontValue && fontValue->isInheritedValue())
+    String fontValue = parsedStyle->getPropertyValue(CSSPropertyFont);
+
+    // According to http://lists.w3.org/Archives/Public/public-html/2009Jul/0947.html,
+    // the "inherit" and "initial" values must be ignored.
+    if (fontValue == "inherit" || fontValue == "initial")
         return;
 
     // The parse succeeded.
@@ -2326,10 +2329,10 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
             maskImageContext->translate(location.x() - maskRect.x(), location.y() - maskRect.y());
             // We draw when fontWidth is 0 so compositing operations (eg, a "copy" op) still work.
             maskImageContext->scale(FloatSize((fontWidth > 0 ? (width / fontWidth) : 0), 1));
-            maskImageContext->drawBidiText(font, textRun, FloatPoint(0, 0));
+            maskImageContext->drawBidiText(font, textRun, FloatPoint(0, 0), Font::UseFallbackIfFontNotReady);
         } else {
             maskImageContext->translate(-maskRect.x(), -maskRect.y());
-            maskImageContext->drawBidiText(font, textRun, location);
+            maskImageContext->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
         }
 
         GraphicsContextStateSaver stateSaver(*c);
@@ -2353,9 +2356,9 @@ void CanvasRenderingContext2D::drawTextInternal(const String& text, float x, flo
         c->translate(location.x(), location.y());
         // We draw when fontWidth is 0 so compositing operations (eg, a "copy" op) still work.
         c->scale(FloatSize((fontWidth > 0 ? (width / fontWidth) : 0), 1));
-        c->drawBidiText(font, textRun, FloatPoint(0, 0));
+        c->drawBidiText(font, textRun, FloatPoint(0, 0), Font::UseFallbackIfFontNotReady);
     } else
-        c->drawBidiText(font, textRun, location);
+        c->drawBidiText(font, textRun, location, Font::UseFallbackIfFontNotReady);
 
     didDraw(textRect);
 

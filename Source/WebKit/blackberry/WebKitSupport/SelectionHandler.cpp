@@ -234,7 +234,7 @@ bool SelectionHandler::shouldUpdateSelectionOrCaretForPoint(const WebCore::IntPo
 
 void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
 {
-    if (!m_webPage->m_inputHandler->isInputMode())
+    if (!m_webPage->m_inputHandler->isInputMode() || !m_webPage->focusedOrMainFrame()->document()->focusedNode())
         return;
 
     m_caretActive = true;
@@ -253,14 +253,17 @@ void SelectionHandler::setCaretPosition(const WebCore::IntPoint &position)
 
     VisiblePosition visibleCaretPosition(focusedFrame->visiblePositionForPoint(relativePoint));
 
-    if (!DOMSupport::isPositionInNode(m_webPage->focusedOrMainFrame()->document()->focusedNode(), visibleCaretPosition.deepEquivalent())) {
-        if (unsigned short character = directionOfPointRelativeToRect(relativePoint, currentCaretRect))
-            m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character));
+    if (RenderObject* focusedRenderer = focusedFrame->document()->focusedNode()->renderer()) {
+        WebCore::IntRect nodeOutlineBounds(focusedRenderer->absoluteOutlineBounds());
+        if (!nodeOutlineBounds.contains(relativePoint)) {
+            if (unsigned short character = directionOfPointRelativeToRect(relativePoint, currentCaretRect))
+                m_webPage->m_inputHandler->handleKeyboardInput(Platform::KeyboardEvent(character));
 
-        // Send the selection changed in case this does not trigger a selection change to
-        // ensure the caret position is accurate. This may be a duplicate event.
-        selectionPositionChanged(true /* forceUpdateWithoutChange */);
-        return;
+            // Send the selection changed in case this does not trigger a selection change to
+            // ensure the caret position is accurate. This may be a duplicate event.
+            selectionPositionChanged(true /* forceUpdateWithoutChange */);
+            return;
+        }
     }
 
     VisibleSelection newSelection(visibleCaretPosition);
@@ -660,6 +663,10 @@ void SelectionHandler::selectObject(Node* node)
 {
     if (!node)
         return;
+
+    // Clear input focus if we're not selecting text there.
+    if (node != m_webPage->m_inputHandler->currentFocusElement().get())
+        m_webPage->clearFocusNode();
 
     m_selectionActive = true;
 

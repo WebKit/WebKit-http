@@ -26,7 +26,6 @@
 #include "config.h"
 #include "RenderBoxModelObject.h"
 
-#include "FilterOperations.h"
 #include "GraphicsContext.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
@@ -908,8 +907,10 @@ void RenderBoxModelObject::paintFillLayerExtended(const PaintInfo& paintInfo, co
         view()->frameView()->setContentIsOpaque(isOpaqueRoot);
     }
 
-    // Paint the color first underneath all images.
-    if (!bgLayer->next()) {
+    // Paint the color first underneath all images, culled if background image occludes it.
+    // FIXME: In the bgLayer->hasFiniteBounds() case, we could improve the culling test
+    // by verifying whether the background image covers the entire layout rect.
+    if (!bgLayer->next() && !(shouldPaintBackgroundImage && bgLayer->hasOpaqueImage(this) && bgLayer->hasRepeatXY())) {
         IntRect backgroundRect(pixelSnappedIntRect(scrolledPaintRect));
         bool boxShadowShouldBeAppliedToBackground = this->boxShadowShouldBeAppliedToBackground(bleedAvoidance, box);
         if (!boxShadowShouldBeAppliedToBackground)
@@ -1448,7 +1449,7 @@ public:
     bool presentButInvisible() const { return usedWidth() && !hasVisibleColorAndStyle(); }
     bool obscuresBackgroundEdge(float scale) const
     {
-        if (!isPresent || isTransparent || width < (2 * scale) || color.hasAlpha() || style == BHIDDEN)
+        if (!isPresent || isTransparent || (width * scale) < 2 || color.hasAlpha() || style == BHIDDEN)
             return false;
 
         if (style == DOTTED || style == DASHED)

@@ -21,6 +21,7 @@
 #include "config.h"
 #include "EwkViewImpl.h"
 
+#include "ContextMenuClientEfl.h"
 #include "EflScreenUtilities.h"
 #include "FindClientEfl.h"
 #include "FormClientEfl.h"
@@ -45,6 +46,7 @@
 #include "WebPreferences.h"
 #include "ewk_back_forward_list_private.h"
 #include "ewk_color_picker_private.h"
+#include "ewk_context_menu_private.h"
 #include "ewk_context_private.h"
 #include "ewk_favicon_database_private.h"
 #include "ewk_popup_menu_item_private.h"
@@ -54,6 +56,7 @@
 #include "ewk_settings_private.h"
 #include "ewk_view.h"
 #include "ewk_view_private.h"
+#include "ewk_window_features_private.h"
 #include <Ecore_Evas.h>
 #include <Ecore_X.h>
 #include <Edje.h>
@@ -114,6 +117,7 @@ EwkViewImpl::EwkViewImpl(Evas_Object* view, PassRefPtr<EwkContext> context, Pass
     , m_pagePolicyClient(PagePolicyClientEfl::create(this))
     , m_pageUIClient(PageUIClientEfl::create(this))
     , m_resourceLoadClient(ResourceLoadClientEfl::create(this))
+    , m_contextMenuClient(ContextMenuClientEfl::create(this))
     , m_findClient(FindClientEfl::create(this))
     , m_formClient(FormClientEfl::create(this))
 #if ENABLE(VIBRATION)
@@ -310,7 +314,14 @@ AffineTransform EwkViewImpl::transformToScreen() const
 
 #ifdef HAVE_ECORE_X
     Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(sd->base.evas);
-    Ecore_X_Window window = ecore_evas_software_x11_window_get(ecoreEvas); // Returns 0 if none.
+
+    Ecore_X_Window window;
+#if USE(ACCELERATED_COMPOSITING)
+    window = ecore_evas_gl_x11_window_get(ecoreEvas);
+    // Fallback to software mode if necessary.
+    if (!window)
+#endif
+    window = ecore_evas_software_x11_window_get(ecoreEvas); // Returns 0 if none.
 
     int x, y; // x, y are relative to parent (in a reparenting window manager).
     while (window) {
@@ -358,7 +369,6 @@ void EwkViewImpl::displayTimerFired(Timer<EwkViewImpl>*)
 
     renderer->setActive(true);
     renderer->setDrawsBackground(m_setDrawsBackground);
-    renderer->syncRemoteContent();
     if (m_isHardwareAccelerated) {
         renderer->paintToCurrentGLContext(transformToScene().toTransformationMatrix(), /* opacity */ 1, viewport);
         // sd->image is tied to a native surface. The native surface is in the parent's coordinates,
@@ -614,7 +624,6 @@ bool EwkViewImpl::createGLSurface(const IntSize& viewSize)
         if (!m_evasGL) {
             WARN("Failed to create Evas_GL, falling back to software mode.");
             m_isHardwareAccelerated = false;
-            layerTreeRenderer()->setAccelerationMode(TextureMapper::SoftwareMode);
 #if ENABLE(WEBGL)
             m_pageProxy->pageGroup()->preferences()->setWebGLEnabled(false);
 #endif
@@ -640,7 +649,7 @@ bool EwkViewImpl::createGLSurface(const IntSize& viewSize)
         EVAS_GL_MULTISAMPLE_NONE
     };
 
-    ASSERT(!m_evasGLSurface);
+    // Replaces if non-null, and frees existing surface after (OwnPtr).
     m_evasGLSurface = EvasGLSurface::create(evasGL(), &evasGLConfig, viewSize);
     if (!m_evasGLSurface)
         return false;
@@ -731,6 +740,38 @@ void EwkViewImpl::informContentsSizeChange(const IntSize& size)
 
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_RIGHT_TO_LEFT, RTL);
 COMPILE_ASSERT_MATCHING_ENUM(EWK_TEXT_DIRECTION_LEFT_TO_RIGHT, LTR);
+
+void EwkViewImpl::showContextMenu(WebContextMenuProxyEfl* contextMenuProxy, const WebCore::IntPoint& position, const Vector<WebContextMenuItemData>& items)
+{
+    Ewk_View_Smart_Data* sd = smartData();
+    ASSERT(sd->api);
+
+    ASSERT(contextMenuProxy);
+
+    if (!sd->api->context_menu_show)
+        return;
+
+    if (m_contextMenu)
+        hideContextMenu();
+
+    m_contextMenu = Ewk_Context_Menu::create(this, contextMenuProxy, items);
+
+    sd->api->context_menu_show(sd, position.x(), position.y(), m_contextMenu.get());
+}
+
+void EwkViewImpl::hideContextMenu()
+{
+    if (!m_contextMenu)
+        return;
+
+    Ewk_View_Smart_Data* sd = smartData();
+    ASSERT(sd->api);
+
+    if (sd->api->context_menu_hide)
+        sd->api->context_menu_hide(sd);
+
+    m_contextMenu.clear();
+}
 
 void EwkViewImpl::requestPopupMenu(WebPopupMenuProxyEfl* popupMenuProxy, const IntRect& rect, TextDirection textDirection, double pageScaleFactor, const Vector<WebPopupItem>& items, int32_t selectedIndex)
 {
@@ -850,37 +891,45 @@ void EwkViewImpl::informURLChange()
     informIconChange();
 }
 
-WKPageRef EwkViewImpl::createNewPage(WKDictionaryRef windowFeatures)
+EwkWindowFeatures* EwkViewImpl::windowFeatures()
+{
+    if (!m_windowFeatures)
+        m_windowFeatures = EwkWindowFeatures::create(0, this);
+
+    return m_windowFeatures.get();
+}
+
+WKPageRef EwkViewImpl::createNewPage(ImmutableDictionary* windowFeatures)
 {
     Ewk_View_Smart_Data* sd = smartData();
     ASSERT(sd->api);
 
-    Evas_Object* newEwkView = 0;
-
-    // Extract the width and height from the window attributes and pass them along to the embedder.
-    WKRetainPtr<WKStringRef> widthStr(AdoptWK, WKStringCreateWithUTF8CString("width"));
-    WKRetainPtr<WKStringRef> heightStr(AdoptWK, WKStringCreateWithUTF8CString("height"));
-
-    WKTypeRef ref = WKDictionaryGetItemForKey(windowFeatures, widthStr.get());
-    unsigned width = ref ? WKDoubleGetValue(static_cast<WKDoubleRef>(ref)) : 0;
-    ref = WKDictionaryGetItemForKey(windowFeatures, heightStr.get());
-    unsigned height = ref ? WKDoubleGetValue(static_cast<WKDoubleRef>(ref)) : 0;
-
-    if (!sd->api->window_create_new)
+    if (!sd->api->window_create)
         return 0;
 
-    if (!(newEwkView = sd->api->window_create_new(sd, width, height)))
+    RefPtr<EwkWindowFeatures> ewkWindowFeatures = EwkWindowFeatures::create(windowFeatures, this);
+
+    Evas_Object* newEwkView = sd->api->window_create(sd, ewkWindowFeatures.get());
+    if (!newEwkView)
         return 0;
 
     EwkViewImpl* newViewImpl = EwkViewImpl::fromEvasObject(newEwkView);
     ASSERT(newViewImpl);
+
+    newViewImpl->m_windowFeatures = ewkWindowFeatures;
 
     return static_cast<WKPageRef>(WKRetain(newViewImpl->page()));
 }
 
 void EwkViewImpl::closePage()
 {
-    smartCallback<CloseWindow>().call();
+    Ewk_View_Smart_Data* sd = smartData();
+    ASSERT(sd->api);
+
+    if (!sd->api->window_close)
+        return;
+
+    sd->api->window_close(sd);
 }
 
 void EwkViewImpl::onMouseDown(void* data, Evas*, Evas_Object*, void* eventInfo)
