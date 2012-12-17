@@ -1,8 +1,8 @@
 //! [0]
-QT += webkit
+QT += webkitwidgets
 //! [0]
 
 
 //! [1]
-#include <QtWebKit>
+#include <QtWebKitWidgets>
 //! [1]
