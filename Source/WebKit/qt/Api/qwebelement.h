@@ -135,7 +135,7 @@ public:
     enum StyleResolveStrategy {
          InlineStyle,
          CascadedStyle,
-         ComputedStyle,
+         ComputedStyle
     };
     QString styleProperty(const QString& name, StyleResolveStrategy strategy) const;
     void setStyleProperty(const QString& name, const QString& value);
@@ -192,7 +192,7 @@ public:
 
     class const_iterator {
        public:
-           inline const_iterator(const QWebElementCollection* collection, int index) : i(index), collection(collection) {}
+           inline const_iterator(const QWebElementCollection* collection_, int index) : i(index), collection(collection_) {}
            inline const_iterator(const const_iterator& o) : i(o.i), collection(o.collection) {}
 
            inline const QWebElement operator*() const { return collection->at(i); }
@@ -226,7 +226,7 @@ public:
 
     class iterator {
     public:
-        inline iterator(const QWebElementCollection* collection, int index) : i(index), collection(collection) {}
+        inline iterator(const QWebElementCollection* collection_, int index) : i(index), collection(collection_) {}
         inline iterator(const iterator& o) : i(o.i), collection(o.collection) {}
 
         inline QWebElement operator*() const { return collection->at(i); }

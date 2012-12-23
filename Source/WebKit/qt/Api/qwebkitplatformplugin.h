@@ -167,7 +167,7 @@ public:
 };
 
 QT_BEGIN_NAMESPACE
-Q_DECLARE_INTERFACE(QWebKitPlatformPlugin, "org.qt-project.Qt.WebKit.PlatformPlugin/1.9");
+Q_DECLARE_INTERFACE(QWebKitPlatformPlugin, "org.qt-project.Qt.WebKit.PlatformPlugin/1.9")
 QT_END_NAMESPACE
 
 #endif // QWEBKITPLATFORMPLUGIN_H
