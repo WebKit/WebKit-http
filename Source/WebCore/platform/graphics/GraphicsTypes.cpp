@@ -120,12 +120,33 @@ bool parseLineCap(const String& s, LineCap& cap)
     return false;
 }
 
+bool parseFillRule(const String& s, WindRule& rule)
+{
+    if (s == "nonzero") {
+        rule = RULE_NONZERO;
+        return true;
+    }
+    if (s == "evenodd") {
+        rule = RULE_EVENODD;
+        return true;
+    }
+    return false;
+}
+
 String lineCapName(LineCap cap)
 {
     ASSERT(cap >= 0);
     ASSERT(cap < 3);
     const char* const names[3] = { "butt", "round", "square" };
     return names[cap];
+}
+
+String fillRuleName(WindRule rule)
+{
+    ASSERT(rule >= 0);
+    ASSERT(rule < 2);
+    const char* const names[2] = { "nonzero", "evenodd" };
+    return names[rule];
 }
 
 bool parseLineJoin(const String& s, LineJoin& join)

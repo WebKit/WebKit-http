@@ -78,6 +78,9 @@ public:
     String lineCap() const;
     void setLineCap(const String&);
 
+    String webkitFillRule() const;
+    void setWebkitFillRule(const String&);
+
     String lineJoin() const;
     void setLineJoin(const String&);
 
@@ -244,6 +247,7 @@ private:
         RefPtr<CanvasStyle> m_fillStyle;
         float m_lineWidth;
         LineCap m_lineCap;
+        WindRule m_fillRule;
         LineJoin m_lineJoin;
         float m_miterLimit;
         FloatSize m_shadowOffset;

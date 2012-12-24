@@ -176,6 +176,7 @@ CanvasRenderingContext2D::State::State()
     , m_fillStyle(CanvasStyle::createFromRGBA(Color::black))
     , m_lineWidth(1)
     , m_lineCap(ButtCap)
+    , m_fillRule(RULE_NONZERO)
     , m_lineJoin(MiterJoin)
     , m_miterLimit(10)
     , m_shadowBlur(0)
@@ -201,6 +202,7 @@ CanvasRenderingContext2D::State::State(const State& other)
     , m_fillStyle(other.m_fillStyle)
     , m_lineWidth(other.m_lineWidth)
     , m_lineCap(other.m_lineCap)
+    , m_fillRule(other.m_fillRule)
     , m_lineJoin(other.m_lineJoin)
     , m_miterLimit(other.m_miterLimit)
     , m_shadowOffset(other.m_shadowOffset)
@@ -237,6 +239,7 @@ CanvasRenderingContext2D::State& CanvasRenderingContext2D::State::operator=(cons
     m_fillStyle = other.m_fillStyle;
     m_lineWidth = other.m_lineWidth;
     m_lineCap = other.m_lineCap;
+    m_fillRule = other.m_fillRule;
     m_lineJoin = other.m_lineJoin;
     m_miterLimit = other.m_miterLimit;
     m_shadowOffset = other.m_shadowOffset;
@@ -392,6 +395,11 @@ String CanvasRenderingContext2D::lineCap() const
     return lineCapName(state().m_lineCap);
 }
 
+String CanvasRenderingContext2D::webkitFillRule() const
+{
+    return fillRuleName(state().m_fillRule);
+}
+
 void CanvasRenderingContext2D::setLineCap(const String& s)
 {
     LineCap cap;
@@ -405,6 +413,21 @@ void CanvasRenderingContext2D::setLineCap(const String& s)
     if (!c)
         return;
     c->setLineCap(cap);
+}
+
+void CanvasRenderingContext2D::setWebkitFillRule(const String& s)
+{
+    WindRule rule;
+    if (!parseFillRule(s, rule))
+        return;
+    if (state().m_fillRule == rule)
+        return;
+    realizeSaves();
+    modifiableState().m_fillRule = rule;
+    GraphicsContext* c = drawingContext();
+    if (!c)
+        return;
+    c->setFillRule(rule);
 }
 
 String CanvasRenderingContext2D::lineJoin() const
