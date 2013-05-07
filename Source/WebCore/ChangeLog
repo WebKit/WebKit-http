@@ -1,4 +1,16 @@
-2012-06-11  Xianzhu Wang  <wangxianzhu@chromium.org>
+2013-05-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [X11][BlackBerry] Check if MOZ_X11 is defined instead of XP_UNIX npruntime_internal.h
+        https://bugs.webkit.org/show_bug.cgi?id=113687
+
+        Reviewed by Anders Carlsson.
+
+        It's assumed that all UNIX platforms use X11 for plugins, which is
+        not the case of BlackBerry.
+
+        * bridge/npruntime_internal.h: Use MOZ_X11 instead of XP_UNIX.
+
+2013-05-07  Mikhail Pozdnyakov  <mikhail.pozdnyakov@intel.com>
 
         SVGImageCache leaks image data
         https://bugs.webkit.org/show_bug.cgi?id=87792
