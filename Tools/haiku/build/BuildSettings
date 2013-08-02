@@ -31,8 +31,8 @@ rule SetUpSubDirBuildSettings {
 	} else {
 		OPTIM ?= ;
 		if ! $(NOSYMBOLS) {
-			CCFLAGS += -g ;
-			C++FLAGS += -g ;
+			CCFLAGS += -gdwarf-4 ;
+			C++FLAGS += -gdwarf-4 ;
 		}
 	}
 

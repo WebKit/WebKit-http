@@ -56,7 +56,7 @@ rule SharedLibrary
 	Main $(lib) : $(sources) ;
 	MakeLocate $(lib) : $(LOCATE_MAIN_TARGET) ;
 	local linkFlags ;
-	linkFlags = -nostart -Xlinker -no-undefined -Xlinker -soname=\"$(lib)\" ;
+	linkFlags = -shared -Xlinker -no-undefined -Xlinker -soname=\"$(lib)\" ;
 	LINKFLAGS on $(lib) = [ on $(lib) return $(LINKFLAGS) ] $(linkFlags) ;
 	LinkAgainst $(lib) : $(libs) ;
 }
