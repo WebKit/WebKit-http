@@ -298,5 +298,6 @@ rule CreateBuildInfoFile target
 
 actions CreateBuildInfoFile
 {
-	$(TOP)/Tools/haiku/generate-build-info.sh > $(1) ;
+	$(TOP)/Tools/haiku/generate-build-info.sh $(TOP) \
+		$(WEBKIT_REVISION) $(HAIKU_WEBKIT_REVISION) > $(1) ;
 }
