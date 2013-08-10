@@ -11,25 +11,3 @@ SubInclude TOP Source WebCore ;
 SubInclude TOP Source WebKit ;
 SubInclude TOP Source WebKit haiku HaikuLauncher ;
 SubInclude TOP Tools DumpRenderTree ;
-
-#-----------------------------------------------------------------------------
-# Installation rules
-#-----------------------------------------------------------------------------
-
-Install WTF :
-    libwtf.so
-;
-
-Install JavaScriptCore :
-    libjavascriptcore.so
-    jsc
-;
-
-Install WebCore :
-    libwebcore.so
-;
-
-Install WebKit :
-    libwebkit.so
-    HaikuLauncher
-;
