@@ -22,7 +22,7 @@
 #include "FormData.h"
 #include "ResourceRequest.h"
 
-#include <DataIO.h>
+#include <HttpForm.h>
 #include <Messenger.h>
 #include <UrlRequest.h>
 #include <UrlProtocol.h>
@@ -34,26 +34,6 @@ namespace WebCore {
 
 class ResourceHandle;
 
-class BFormDataIO : public BDataIO
-{
-public:
-	BFormDataIO(FormData* form);
-	~BFormDataIO();
-	
-	ssize_t Read(void* buffer, size_t size);
-	ssize_t Write(const void* buffer, size_t size);
-	
-private:
-	void _NextElement();
-	
-private:
-	Vector<FormDataElement> m_formElements;
-	off_t m_currentFileSize;
-	BFile* m_currentFile;
-	off_t m_currentOffset;
-};
-
-
 class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
 public:
@@ -61,9 +41,9 @@ public:
     virtual ~BUrlProtocolHandler();
     void abort();
 
-private:
+public:
     void sendResponseIfNeeded();
-    
+
 	void HeadersReceived(BUrlProtocol* caller);
 	void DataReceived(BUrlProtocol* caller, const char* data, ssize_t size);
 	void UploadProgress(BUrlProtocol* caller, ssize_t bytesSent, ssize_t bytesTotal);
@@ -72,14 +52,14 @@ private:
 private:
     void start();
     void resetState();
-    
+
     ResourceHandle* m_resourceHandle;
     ResourceRequest m_nextRequest;
     bool m_redirected;
     bool m_responseSent;
     bool m_responseDataSent;
     status_t m_method;
-    BFormDataIO* m_postData;
+    BHttpForm* m_postData;
     BUrlRequest m_request;
     BUrlProtocolDispatchingListener m_listener;
 

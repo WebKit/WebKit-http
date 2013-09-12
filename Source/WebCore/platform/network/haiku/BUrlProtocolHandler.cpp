@@ -40,95 +40,6 @@
 static const int gMaxRecursionLimit = 10;
 
 namespace WebCore {
-	
-BFormDataIO::BFormDataIO(FormData* form)
-	: m_formElements(form->elements())
-	, m_currentFile(NULL)
-	, m_currentOffset(0)
-{
-	printf("BFormDataIO::__construct() : Form size : %d\n", m_formElements.size());
-}
-
-BFormDataIO::~BFormDataIO()
-{
-	delete m_currentFile;
-}
-	
-ssize_t
-BFormDataIO::Read(void* buffer, size_t size)
-{
-    if (m_formElements.isEmpty())
-    	// -1 indicates the end of data
-        return -1;
-
-    ssize_t read = 0;
-    while (read < (ssize_t)size && !m_formElements.isEmpty()) {
-        const FormDataElement& element = m_formElements[0];
-        const ssize_t remaining = size - read;
-        
-        printf("BFormDataIO::Read() : Element type %d\n", element.m_type);
-
-		switch (element.m_type) {
-			case FormDataElement::encodedFile:
-				{
-					read += m_currentFile->Read(reinterpret_cast<char*>(buffer) + read, remaining);
-
-					if (m_currentFile->Position() >= m_currentFileSize 
-						|| !m_currentFile->IsReadable())
-						_NextElement();
-				}
-				break;
-				
-			case FormDataElement::data:
-				{
-					size_t toCopy = 0;
-					
-					if (remaining < element.m_data.size() - m_currentOffset)
-						toCopy = remaining;
-					else
-						toCopy = element.m_data.size() - m_currentOffset;
-						
-					memcpy(reinterpret_cast<char*>(buffer) + read, element.m_data.data() + m_currentOffset, toCopy); 
-					m_currentOffset += toCopy;
-            		read += toCopy;
-
-           	 		if (m_currentOffset >= element.m_data.size())
-						_NextElement();
-				}
-				break;
-				
-			default:
-				TRESPASS();
-				break;
-		}
-    }
-
-    return read;
-}
-
-ssize_t 
-BFormDataIO::Write(const void* buffer, size_t size)
-{
-	// Write isn't implemented since we don't use it
-	return -1;
-}
-
-void
-BFormDataIO::_NextElement()
-{        
-    m_currentOffset = 0;
-    m_currentFileSize = 0;
-    m_formElements.remove(0);
-
-    if (m_formElements.isEmpty() || m_formElements[0].m_type == FormDataElement::data)
-        return;
-
-    if (m_currentFile == NULL)
-        m_currentFile = new BFile;
-
-    m_currentFile->SetTo(BString(m_formElements[0].m_filename).String(), B_READ_ONLY);
-    m_currentFile->GetSize(&m_currentFileSize);
-}
 
 BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     : BUrlProtocolAsynchronousListener(true)
@@ -136,6 +47,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     , m_redirected(false)
     , m_responseSent(false)
     , m_responseDataSent(false)
+    , m_postData(NULL)
     , m_request(handle->firstRequest().toNetworkRequest())
     , m_listener(this)
     , m_shouldStart(true)
@@ -193,7 +105,7 @@ static bool ignoreHttpError(BUrlRequest* reply, bool receivedData)
 
 void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
 {
-    printf("UPH[%p]::RequestCompleted()\n", this);
+    printf("UPH[%p]::RequestCompleted(%s)\n", this, success ? "true":"false");
     sendResponseIfNeeded();
 
     if (!m_resourceHandle)
@@ -376,9 +288,13 @@ void BUrlProtocolHandler::start()
         case B_HTTP_GET:
             break;
         case B_HTTP_POST:
-    		delete m_postData;
-    		m_postData = new BFormDataIO(m_resourceHandle->firstRequest().httpBody());
-    		m_request.SetProtocolOption(B_HTTPOPT_INPUTDATA, m_postData);
+            delete m_postData;
+            // FIXME flattenToString omits file data from the POST request.
+            // We must manually add it to the BHttpForm if we want POST to
+            // upload files.
+            m_postData = new BHttpForm(m_resourceHandle->firstRequest()
+                 .httpBody()->flattenToString());
+            m_request.SetProtocolOption(B_HTTPOPT_POSTFIELDS, m_postData);
             break;
     }
     
@@ -388,7 +304,7 @@ void BUrlProtocolHandler::start()
     m_request.SetProtocolListener(this->SynchronousListener());
     
     printf("UPH[%p]::start(%s)\n", this, m_request.Url().UrlString().String());
-    if (!m_request.InitCheck() || m_request.Perform() != B_OK) {
+    if (m_request.InitCheck() != B_OK || m_request.Start() != B_OK) {
     	ResourceHandleClient* client = m_resourceHandle->client();
     	if (!client)
         	return;
