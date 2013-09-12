@@ -8,7 +8,7 @@ Application HaikuLauncher :
 	:
 	libjavascriptcore.so libwebcore.so libwebkit.so libwtf.so
 	# Other required libraries
-	curl icuuc icudata png sqlite3 xml2 z
+	icuuc icudata png z
 	# Haiku libraries
 	be bsd network stdc++ translation
 	:
