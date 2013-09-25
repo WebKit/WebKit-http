@@ -73,7 +73,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     else
         m_method = B_ERROR;
 
-	start();
+    start();
 }
 
 BUrlProtocolHandler::~BUrlProtocolHandler()
@@ -82,10 +82,9 @@ BUrlProtocolHandler::~BUrlProtocolHandler()
 
 void BUrlProtocolHandler::abort()
 {
-	if (m_resourceHandle == NULL)
-		return;
-		
-	printf("UPH[%p]::abort()\n", this);
+    if (m_resourceHandle == NULL)
+        return;
+
     m_request.Abort();
     m_resourceHandle = NULL;
 }
@@ -110,7 +109,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
 
     if (!m_resourceHandle)
         return;
-        
+
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
@@ -122,8 +121,8 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
     } else if (success || ignoreHttpError(&m_request, m_responseDataSent)) {
         client->didFinishLoading(m_resourceHandle, 1.0); // TODO
     } else {
-    	const BUrlResult& result = m_request.Result();
-    	int httpStatusCode = result.StatusCode();
+        const BUrlResult& result = m_request.Result();
+        int httpStatusCode = result.StatusCode();
 
         if (httpStatusCode) {
             ResourceError error("HTTP", httpStatusCode, caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
@@ -138,7 +137,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
     if (m_request.Status() != B_PROT_SUCCESS && m_request.Status() != B_PROT_RUNNING
-    	&& !ignoreHttpError(&m_request, m_responseDataSent))
+        && !ignoreHttpError(&m_request, m_responseDataSent))
         return;
 
     if (m_responseSent || !m_resourceHandle)
@@ -157,24 +156,22 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         // let's try to guess from the extension
         BString extension = m_request.Url().Path();
         int index = extension.FindLast('.');
-        
+
         if (index > 0) {
-        	extension.Remove(0, index);
+            extension.Remove(0, index);
             mimeType = MIMETypeRegistry::getMIMETypeForExtension(extension);
         }
     }
 
     KURL url(m_request.Url());
-    
+
     int contentLength = 0;
     const char* contentLengthString
-    	= m_request.Result().Headers()["Content-Length"];
+        = m_request.Result().Headers()["Content-Length"];
     if (contentLengthString != NULL)
-    	contentLength = atoi(contentLengthString);
-    	
-    ResourceResponse response(url, mimeType,
-    							contentLength,
-                            	encoding, String());
+        contentLength = atoi(contentLengthString);
+
+    ResourceResponse response(url, mimeType, contentLength, encoding, String());
 
     if (url.isLocalFile()) {
         client->didReceiveResponse(m_resourceHandle, response);
@@ -197,51 +194,57 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         // Add remaining headers.
         const BHttpHeaders& resultHeaders = m_request.Result().Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
-        	BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
-        	response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
+            BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
+            response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
         }
     }
-    
-    
+
+
     BString locationString(m_request.Result().Headers()["Location"]);
     if (locationString.Length()) {
-    	BUrl location;
-    	
-    	if (locationString[0] == '/') {
-    		location = BUrl(m_request.Url());
-    		location.SetPath(locationString);
-    	}
-    	else
-    		location = BUrl(locationString);
-    		
-    	m_redirectionTries--;
-    	
-    	if (m_redirectionTries == 0) {
-    		ResourceError error(location.Host().String(), 400, location.UrlString().String(),
-    			"Redirection limit reached");
-    		client->didFail(m_resourceHandle, error);
-    		return;
-    	}
-    	
-    	m_redirected = true;
-    	
-    	m_nextRequest = m_resourceHandle->firstRequest();
-    	m_nextRequest.setURL(location);
-    	
+        BUrl location;
+
+        if (locationString[0] == '/') {
+            location = BUrl(m_request.Url());
+            location.SetPath(locationString);
+        }
+        else if (locationString[0] == '.') {
+            location = BUrl(m_request.Url());
+            locationString = location.Path();
+            locationString += m_request.Result().Headers()["Location"];
+            location.SetPath(locationString);
+        }
+        else
+            location = BUrl(locationString);
+
+        m_redirectionTries--;
+
+        if (m_redirectionTries == 0) {
+            ResourceError error(location.Host().String(), 400, location.UrlString().String(),
+                "Redirection limit reached");
+            client->didFail(m_resourceHandle, error);
+            return;
+        }
+
+        m_redirected = true;
+
+        m_nextRequest = m_resourceHandle->firstRequest();
+        m_nextRequest.setURL(location);
+
         if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
             m_method = B_HTTP_GET;
             m_nextRequest.setHTTPMethod("GET");
         }
-        
+
         client->willSendRequest(m_resourceHandle, m_nextRequest, response);
     }
-    
+
     client->didReceiveResponse(m_resourceHandle, response);
 }
 
 void BUrlProtocolHandler::HeadersReceived(BUrlProtocol* caller)
 {
-	sendResponseIfNeeded();
+    sendResponseIfNeeded();
 }
 
 void BUrlProtocolHandler::DataReceived(BUrlProtocol* caller, const char* data, ssize_t size)
@@ -279,9 +282,9 @@ void BUrlProtocolHandler::UploadProgress(BUrlProtocol* caller, ssize_t bytesSent
 
 void BUrlProtocolHandler::start()
 {
-	if (!m_resourceHandle)
-		return;
-		
+    if (!m_resourceHandle)
+        return;
+
     m_shouldStart = false;
 
     switch (m_method) {
@@ -297,20 +300,20 @@ void BUrlProtocolHandler::start()
             m_request.SetProtocolOption(B_HTTPOPT_POSTFIELDS, m_postData);
             break;
     }
-    
+
     bool followLocation = false;
     m_request.SetProtocolOption(B_HTTPOPT_FOLLOWLOCATION, &followLocation);
-   	m_request.SetProtocolOption(B_HTTPOPT_METHOD, &m_method);
+    m_request.SetProtocolOption(B_HTTPOPT_METHOD, &m_method);
     m_request.SetProtocolListener(this->SynchronousListener());
-    
+
     printf("UPH[%p]::start(%s)\n", this, m_request.Url().UrlString().String());
     if (m_request.InitCheck() != B_OK || m_request.Start() != B_OK) {
-    	ResourceHandleClient* client = m_resourceHandle->client();
-    	if (!client)
-        	return;
-        	
-    	ResourceError error("BUrlProtocol", 42, m_request.Url().UrlString().String(), 
-    		"The request protocol is not handled by Services Kit.");
+        ResourceHandleClient* client = m_resourceHandle->client();
+        if (!client)
+            return;
+
+        ResourceError error("BUrlProtocol", 42, m_request.Url().UrlString().String(),
+            "The request protocol is not handled by Services Kit.");
         client->didFail(m_resourceHandle, error);
     }
 }
