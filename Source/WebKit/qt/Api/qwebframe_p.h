@@ -32,7 +32,7 @@
 #include "qorientationsensor.h"
 #if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 using QTM_NAMESPACE::QOrientationSensor;
-#endif // QT_VERSION < QT_VERSION_CHECK(5, 0, 0).
+#endif
 #endif // ENABLE(ORIENTATION_EVENTS).
 #include "qwebelement.h"
 #include "wtf/RefPtr.h"

@@ -10,15 +10,16 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/efl/ewk"
     "${WEBKIT_DIR}/efl/WebCoreSupport"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
-    "${JAVASCRIPTCORE_DIR}/wtf/gobject"
     "${WEBCORE_DIR}/platform/efl"
     "${WEBCORE_DIR}/platform/graphics/cairo"
     "${WEBCORE_DIR}/platform/graphics/efl"
-    ${Cairo_INCLUDE_DIRS}
+    ${CAIRO_INCLUDE_DIRS}
     ${ECORE_X_INCLUDE_DIRS}
     ${EDJE_INCLUDE_DIRS}
     ${EFLDEPS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
+    ${EUKIT_INCLUDE_DIRS}
+    ${EDBUS_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
@@ -37,10 +38,10 @@ ENDIF ()
 IF (ENABLE_VIDEO)
 LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/gstreamer"
-    ${GStreamer-App_INCLUDE_DIRS}
-    ${GStreamer-Interfaces_INCLUDE_DIRS}
-    ${GStreamer-Pbutils_INCLUDE_DIRS}
-    ${GStreamer-Video_INCLUDE_DIRS}
+    ${GSTREAMER_APP_INCLUDE_DIRS}
+    ${GSTREAMER_INTERFACES_INCLUDE_DIRS}
+    ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
+    ${GSTREAMER_VIDEO_INCLUDE_DIRS}
 )
 ENDIF()
 
@@ -97,6 +98,7 @@ LIST(APPEND WebKit_SOURCES
     efl/WebCoreSupport/InspectorClientEfl.cpp
     efl/WebCoreSupport/NotificationPresenterClientEfl.cpp
     efl/WebCoreSupport/PageClientEfl.cpp
+    efl/WebCoreSupport/PlatformStrategiesEfl.cpp 
 
     efl/ewk/ewk_auth.cpp
     efl/ewk/ewk_auth_soup.cpp
@@ -104,9 +106,12 @@ LIST(APPEND WebKit_SOURCES
     efl/ewk/ewk_cookies.cpp
     efl/ewk/ewk_frame.cpp
     efl/ewk/ewk_history.cpp
+    efl/ewk/ewk_intent.cpp
+    efl/ewk/ewk_intent_request.cpp
     efl/ewk/ewk_js.cpp
     efl/ewk/ewk_main.cpp
     efl/ewk/ewk_network.cpp
+    efl/ewk/ewk_paint_context.cpp
     efl/ewk/ewk_security_origin.cpp
     efl/ewk/ewk_security_policy.cpp
     efl/ewk/ewk_settings.cpp
@@ -118,12 +123,15 @@ LIST(APPEND WebKit_SOURCES
     efl/ewk/ewk_view_single.cpp
     efl/ewk/ewk_view_tiled.cpp
     efl/ewk/ewk_window_features.cpp
+    efl/ewk/ewk_web_database.cpp
 )
 
 LIST(APPEND WebKit_LIBRARIES
-    ${Cairo_LIBRARIES}
+    ${CAIRO_LIBRARIES}
     ${ECORE_X_LIBRARIES}
     ${EFLDEPS_LIBRARIES}
+    ${EUKIT_LIBRARIES}
+    ${EDBUS_LIBRARIES}
     ${FREETYPE_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${SQLITE_LIBRARIES}
@@ -147,6 +155,12 @@ ENDIF ()
 IF (ENABLE_BATTERY_STATUS)
     LIST(APPEND WebKit_INCLUDE_DIRECTORIES ${WEBCORE_DIR}/Modules/battery)
     LIST(APPEND WebKit_SOURCES efl/WebCoreSupport/BatteryClientEfl.cpp)
+ENDIF ()
+
+IF (ENABLE_REGISTER_PROTOCOL_HANDLER)
+    LIST(APPEND WebKit_SOURCES
+        efl/ewk/ewk_custom_handler.cpp
+    )
 ENDIF ()
 
 SET(WebKit_THEME_DEFINITION "")
@@ -250,13 +264,13 @@ UNSET(LIBS_PRIVATE)
 SET(EWebKit_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/EWebKit.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_auth.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_auth_soup.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_contextmenu.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_cookies.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_frame.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_history.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_intent.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_intent_request.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_js.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_logging.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_main.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_network.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_security_origin.h
@@ -264,6 +278,7 @@ SET(EWebKit_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_settings.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_view.h
     ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_window_features.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/efl/ewk/ewk_web_database.h
 )
 
 INSTALL(FILES ${EWebKit_HEADERS}

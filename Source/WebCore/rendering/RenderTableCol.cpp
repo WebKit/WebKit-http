@@ -71,14 +71,15 @@ void RenderTableCol::updateFromElement()
 
 bool RenderTableCol::isChildAllowed(RenderObject* child, RenderStyle* style) const
 {
-    return !child->isText() && style && (style->display() == TABLE_COLUMN);
+    // We cannot use isTableColumn here as style() may return 0.
+    return child->isRenderTableCol() && style->display() == TABLE_COLUMN;
 }
 
 bool RenderTableCol::canHaveChildren() const
 {
     // Cols cannot have children. This is actually necessary to fix a bug
     // with libraries.uc.edu, which makes a <p> be a table-column.
-    return style()->display() == TABLE_COLUMN_GROUP;
+    return isTableColumnGroup();
 }
 
 LayoutRect RenderTableCol::clippedOverflowRectForRepaint(RenderBoxModelObject* repaintContainer) const
@@ -114,6 +115,41 @@ RenderTable* RenderTableCol::table() const
     if (table && !table->isTable())
         table = table->parent();
     return table && table->isTable() ? toRenderTable(table) : 0;
+}
+
+RenderTableCol* RenderTableCol::enclosingColumnGroup() const
+{
+    if (!parent()->isRenderTableCol())
+        return 0;
+
+    RenderTableCol* parentColumnGroup = toRenderTableCol(parent());
+    ASSERT(parentColumnGroup->isTableColumnGroup());
+    ASSERT(isTableColumn());
+    return parentColumnGroup;
+}
+
+RenderTableCol* RenderTableCol::nextColumn() const
+{
+    // If |this| is a column-group, the next column is the colgroup's first child column.
+    if (RenderObject* firstChild = this->firstChild())
+        return toRenderTableCol(firstChild);
+
+    // Otherwise it's the next column along.
+    RenderObject* next = nextSibling();
+
+    // Failing that, the child is the last column in a column-group, so the next column is the next column/column-group after its column-group.
+    if (!next && parent()->isRenderTableCol())
+        next = parent()->nextSibling();
+
+    for (; next && !next->isRenderTableCol(); next = next->nextSibling()) {
+        // We allow captions mixed with columns and column-groups.
+        if (next->isTableCaption())
+            continue;
+
+        return 0;
+    }
+
+    return toRenderTableCol(next);
 }
 
 }

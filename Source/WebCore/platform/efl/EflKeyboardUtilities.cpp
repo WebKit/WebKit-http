@@ -50,6 +50,12 @@ static WindowsKeyMap& windowsKeyMap()
     return windowsKeyMap;
 }
 
+static inline void addCharactersToKeyMap(const char from, const char to)
+{
+    for (char c = from; c <= to; c++)
+        keyMap().set(String(&c, 1), String::format("U+%04X", c));
+}
+
 static void createKeyMap()
 {
     for (unsigned int i = 1; i < 25; i++) {
@@ -78,19 +84,44 @@ static void createKeyMap()
     keyMap().set("ISO_Left_Tab", "U+0009");
     keyMap().set("BackSpace", "U+0008");
     keyMap().set("space", "U+0020");
+    keyMap().set("Escape", "U+001B");
+    keyMap().set("Print", "PrintScreen");
+    // Keypad location
+    keyMap().set("KP_Left", "Left");
+    keyMap().set("KP_Right", "Right");
+    keyMap().set("KP_Up", "Up");
+    keyMap().set("KP_Down", "Down");
+    keyMap().set("KP_Prior", "PageUp");
+    keyMap().set("KP_Next", "PageDown");
+    keyMap().set("KP_Home", "Home");
+    keyMap().set("KP_End", "End");
+    keyMap().set("KP_Insert", "Insert");
+    keyMap().set("KP_Delete", "U+007F");
+ 
+    addCharactersToKeyMap('a', 'z');
+    addCharactersToKeyMap('A', 'Z');
+    addCharactersToKeyMap('0', '9');
+}
+
+static inline void addCharactersToWinKeyMap(const char from, const char to, const int baseCode)
+{
+    int i = 0;
+    for (char c = from; c <= to; c++, i++)
+        windowsKeyMap().set(String(&c, 1), baseCode + i);
 }
 
 static void createWindowsKeyMap()
 {
     windowsKeyMap().set("Return", VK_RETURN);
     windowsKeyMap().set("KP_Return", VK_RETURN);
-    windowsKeyMap().set("Alt_L", VK_MENU);
+    windowsKeyMap().set("Alt_L", VK_LMENU);
+    windowsKeyMap().set("Alt_R", VK_RMENU);
     windowsKeyMap().set("ISO_Level3_Shift", VK_MENU);
     windowsKeyMap().set("Menu", VK_MENU);
-    windowsKeyMap().set("Shift_L", VK_SHIFT);
-    windowsKeyMap().set("Shift_R", VK_SHIFT);
-    windowsKeyMap().set("Control_L", VK_CONTROL);
-    windowsKeyMap().set("Control_R", VK_CONTROL);
+    windowsKeyMap().set("Shift_L", VK_LSHIFT);
+    windowsKeyMap().set("Shift_R", VK_RSHIFT);
+    windowsKeyMap().set("Control_L", VK_LCONTROL);
+    windowsKeyMap().set("Control_R", VK_RCONTROL);
     windowsKeyMap().set("Pause", VK_PAUSE);
     windowsKeyMap().set("Break", VK_PAUSE);
     windowsKeyMap().set("Caps_Lock", VK_CAPITAL);
@@ -109,7 +140,7 @@ static void createWindowsKeyMap()
     windowsKeyMap().set("Left", VK_LEFT);
     windowsKeyMap().set("Up", VK_UP);
     windowsKeyMap().set("Down", VK_DOWN);
-    windowsKeyMap().set("Print", VK_PRINT);
+    windowsKeyMap().set("Print", VK_SNAPSHOT);
     windowsKeyMap().set("Insert", VK_INSERT);
     windowsKeyMap().set("Delete", VK_DELETE);
 
@@ -131,19 +162,24 @@ static void createWindowsKeyMap()
     windowsKeyMap().set("braceright", VK_OEM_6);
     windowsKeyMap().set("apostrophe", VK_OEM_7);
     windowsKeyMap().set("quotedbl", VK_OEM_7);
+    // Keypad location
+    windowsKeyMap().set("KP_Left", VK_LEFT);
+    windowsKeyMap().set("KP_Right", VK_RIGHT);
+    windowsKeyMap().set("KP_Up", VK_UP);
+    windowsKeyMap().set("KP_Down", VK_DOWN);
+    windowsKeyMap().set("KP_Prior", VK_PRIOR);
+    windowsKeyMap().set("KP_Next", VK_NEXT);
+    windowsKeyMap().set("KP_Home", VK_HOME);
+    windowsKeyMap().set("KP_End", VK_END);
+    windowsKeyMap().set("KP_Insert", VK_INSERT);
+    windowsKeyMap().set("KP_Delete", VK_DELETE);
 
     // Set alphabet to the windowsKeyMap.
-    const char* alphabet = "abcdefghijklmnopqrstuvwxyz";
-    for (unsigned int i = 0; i < 26; i++) {
-        String key(alphabet + i, 1);
-        windowsKeyMap().set(key, VK_A + i);
-    }
+    addCharactersToWinKeyMap('a', 'z', VK_A);
+    addCharactersToWinKeyMap('A', 'Z', VK_A);
 
     // Set digits to the windowsKeyMap.
-    for (unsigned int i = 0; i < 10; i++) {
-        String key = String::number(i);
-        windowsKeyMap().set(key, VK_0 + i);
-    }
+    addCharactersToWinKeyMap('0', '9', VK_0);
 
     // Set shifted digits to the windowsKeyMap.
     windowsKeyMap().set("exclam", VK_1);
@@ -176,17 +212,6 @@ String keyIdentifierForEvasKeyName(const String& keyName)
     if (keyMap().contains(keyName))
         return keyMap().get(keyName);
 
-    return keyName;
-}
-
-String singleCharacterString(const String& keyName)
-{
-    if (keyName == "Return")
-        return String("\r");
-    if (keyName == "BackSpace")
-        return String("\x8");
-    if (keyName == "Tab")
-        return String("\t");
     return keyName;
 }
 

@@ -50,6 +50,7 @@ WebInspector.TimelineModel.RecordType = {
     Layout: "Layout",
     RecalculateStyles: "RecalculateStyles",
     Paint: "Paint",
+    CompositeLayers: "CompositeLayers",
 
     ParseHTML: "ParseHTML",
 
@@ -203,7 +204,8 @@ WebInspector.TimelineModel.prototype = {
 
         var now = new Date();
         var fileName = "TimelineRawData-" + now.toISO8601Compact() + ".json";
-        WebInspector.save(fileName, records.join(",\n"), true);
+        WebInspector.fileManager.save(fileName, records.join(",\n"), true);
+
     },
 
     reset: function()

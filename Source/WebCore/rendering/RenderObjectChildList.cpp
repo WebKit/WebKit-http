@@ -75,6 +75,9 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
 {
     ASSERT(oldChild->parent() == owner);
 
+    if (oldChild->isFloatingOrPositioned())
+        toRenderBox(oldChild)->removeFloatingOrPositionedChildFromBlockLists();
+
     // So that we'll get the appropriate dirty bit set (either that a normal flow child got yanked or
     // that a positioned child got yanked).  We also repaint, so that the area exposed when the child
     // disappears gets repainted properly.
@@ -114,10 +117,10 @@ RenderObject* RenderObjectChildList::removeChildNode(RenderObject* owner, Render
         if (oldChild->isRenderRegion())
             toRenderRegion(oldChild)->detachRegion();
 
-        if (oldChild->inRenderFlowThread() && oldChild->isBox()) {
-            oldChild->enclosingRenderFlowThread()->removeRenderBoxRegionInfo(toRenderBox(oldChild));
-            if (oldChild->canHaveRegionStyle())
-                oldChild->enclosingRenderFlowThread()->clearRenderBoxCustomStyle(toRenderBox(oldChild));
+        if (oldChild->inRenderFlowThread()) {
+            if (oldChild->isBox())
+                oldChild->enclosingRenderFlowThread()->removeRenderBoxRegionInfo(toRenderBox(oldChild));
+            oldChild->enclosingRenderFlowThread()->clearRenderObjectCustomStyle(oldChild);
         }
 
         if (RenderNamedFlowThread* containerFlowThread = renderNamedFlowThreadContainer(owner))
@@ -394,7 +397,7 @@ void RenderObjectChildList::updateBeforeAfterStyle(RenderObject* child, PseudoId
     }
 }
 
-static RenderObject* createRenderForBeforeAfterContent(RenderObject* owner, const ContentData* content, RenderStyle* pseudoElementStyle)
+static RenderObject* createRendererForBeforeAfterContent(RenderObject* owner, const ContentData* content, RenderStyle* pseudoElementStyle)
 {
     RenderObject* renderer = 0;
     switch (content->type()) {
@@ -511,13 +514,18 @@ void RenderObjectChildList::updateBeforeAfterContent(RenderObject* owner, Pseudo
         insertBefore = insertBefore->firstChild();
     }
 
+    // Nothing goes before the intruded run-in, not even generated content.
+    if (insertBefore && insertBefore->isRunIn() && owner->isRenderBlock()
+        && toRenderBlock(owner)->runInIsPlacedIntoSiblingBlock(insertBefore))
+        insertBefore = insertBefore->nextSibling();
+
     // Generated content consists of a single container that houses multiple children (specified
     // by the content property).  This generated content container gets the pseudo-element style set on it.
     RenderObject* generatedContentContainer = 0;
 
     // Walk our list of generated content and create render objects for each.
     for (const ContentData* content = pseudoElementStyle->contentData(); content; content = content->next()) {
-        RenderObject* renderer =  createRenderForBeforeAfterContent(owner, content, pseudoElementStyle);
+        RenderObject* renderer =  createRendererForBeforeAfterContent(owner, content, pseudoElementStyle);
 
         if (renderer) {
             if (!generatedContentContainer) {
@@ -549,6 +557,14 @@ void RenderObjectChildList::updateBeforeAfterContent(RenderObject* owner, Pseudo
                 renderer->destroy();
         }
     }
+
+    if (!generatedContentContainer)
+        return;
+
+    // Handle placement of run-ins. We do the run-in placement at the end since generatedContentContainer can get destroyed.
+    RenderObject* generatedContentContainerImmediateParent = generatedContentContainer->parent();
+    if (generatedContentContainerImmediateParent->isRenderBlock())
+        toRenderBlock(generatedContentContainerImmediateParent)->placeRunInIfNeeded(generatedContentContainer, PlaceGeneratedRunIn);
 }
 
 } // namespace WebCore

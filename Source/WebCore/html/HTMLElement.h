@@ -106,34 +106,34 @@ public:
     virtual bool isLabelable() const { return false; }
 
 protected:
-    HTMLElement(const QualifiedName& tagName, Document*);
+    HTMLElement(const QualifiedName& tagName, Document*, ConstructionType);
 
     void addHTMLLengthToStyle(StylePropertySet*, CSSPropertyID, const String& value);
     void addHTMLColorToStyle(StylePropertySet*, CSSPropertyID, const String& color);
 
-    void applyAlignmentAttributeToStyle(Attribute*, StylePropertySet*);
-    void applyBorderAttributeToStyle(Attribute*, StylePropertySet*);
+    void applyAlignmentAttributeToStyle(const Attribute&, StylePropertySet*);
+    void applyBorderAttributeToStyle(const Attribute&, StylePropertySet*);
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
-    virtual void collectStyleForAttribute(Attribute*, StylePropertySet*) OVERRIDE;
+    virtual void collectStyleForAttribute(const Attribute&, StylePropertySet*) OVERRIDE;
 
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
     void calculateAndAdjustDirectionality();
 
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
 private:
     virtual String nodeName() const;
 
-    void mapLanguageAttributeToLocale(Attribute*, StylePropertySet*);
+    void mapLanguageAttributeToLocale(const Attribute&, StylePropertySet*);
 
     virtual HTMLFormElement* virtualForm() const;
 
     Node* insertAdjacent(const String& where, Node* newChild, ExceptionCode&);
     PassRefPtr<DocumentFragment> textToFragment(const String&, ExceptionCode&);
 
-    void dirAttributeChanged(Attribute*);
+    void dirAttributeChanged(const Attribute&);
     void adjustDirectionalityIfNeededAfterChildAttributeChanged(Element* child);
     void adjustDirectionalityIfNeededAfterChildrenChanged(Node* beforeChange, int childCountDelta);
     TextDirection directionality(Node** strongDirectionalityTextNode= 0) const;
@@ -161,8 +161,8 @@ inline const HTMLElement* toHTMLElement(const Node* node)
 // This will catch anyone doing an unnecessary cast.
 void toHTMLElement(const HTMLElement*);
 
-inline HTMLElement::HTMLElement(const QualifiedName& tagName, Document* document)
-    : StyledElement(tagName, document, CreateHTMLElement)
+inline HTMLElement::HTMLElement(const QualifiedName& tagName, Document* document, ConstructionType type = CreateHTMLElement)
+    : StyledElement(tagName, document, type)
 {
     ASSERT(tagName.localName().impl());
 }

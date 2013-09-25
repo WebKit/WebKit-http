@@ -27,6 +27,9 @@
 #include "TreeScope.h"
 
 #include "ContainerNode.h"
+#include "ContextEnabledFeatures.h"
+#include "DOMSelection.h"
+#include "DOMWindow.h"
 #include "Document.h"
 #include "Element.h"
 #include "FocusController.h"
@@ -36,7 +39,9 @@
 #include "HTMLMapElement.h"
 #include "HTMLNames.h"
 #include "Page.h"
+#include "ShadowRoot.h"
 #include "TreeScopeAdopter.h"
+#include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
@@ -54,6 +59,10 @@ TreeScope::TreeScope(ContainerNode* rootNode)
 
 TreeScope::~TreeScope()
 {
+    if (m_selection) {
+        m_selection->clearTreeScope();
+        m_selection = 0;
+    }
 }
 
 void TreeScope::destroyTreeScopeData()
@@ -89,6 +98,19 @@ void TreeScope::removeElementById(const AtomicString& elementId, Element* elemen
     m_elementsById.remove(elementId.impl(), element);
 }
 
+Node* TreeScope::ancestorInThisScope(Node* node) const
+{
+    while (node) {
+        if (node->treeScope() == this)
+            return node;
+        if (!node->isInShadowTree())
+            return 0;
+        node = node->shadowAncestorNode();
+    }
+
+    return 0;
+}
+
 void TreeScope::addImageMap(HTMLMapElement* imageMap)
 {
     AtomicStringImpl* name = imageMap->getName().impl();
@@ -116,6 +138,31 @@ HTMLMapElement* TreeScope::getImageMap(const String& url) const
     return static_cast<HTMLMapElement*>(m_imageMapsByName.getElementByMapName(AtomicString(name).impl(), this));
 }
 
+DOMSelection* TreeScope::getSelection() const
+{
+    if (!rootNode()->document()->frame())
+        return 0;
+
+    if (m_selection)
+        return m_selection.get();
+
+    // FIXME: The correct selection in Shadow DOM requires that Position can have a ShadowRoot
+    // as a container. It is now enabled only if runtime Shadow DOM feature is enabled.
+    // See https://bugs.webkit.org/show_bug.cgi?id=82697
+#if ENABLE(SHADOW_DOM)
+    if (ContextEnabledFeatures::shadowDOMEnabled(rootNode()->document()->domWindow())) {
+        m_selection = DOMSelection::create(this);
+        return m_selection.get();
+    }
+#endif
+
+    if (this != rootNode()->document())
+        return rootNode()->document()->getSelection();
+
+    m_selection = DOMSelection::create(rootNode()->document());
+    return m_selection.get();
+}
+
 Element* TreeScope::findAnchor(const String& name)
 {
     if (name.isEmpty())
@@ -139,9 +186,14 @@ Element* TreeScope::findAnchor(const String& name)
     return 0;
 }
 
-bool TreeScope::applyAuthorSheets() const
+bool TreeScope::applyAuthorStyles() const
 {
     return true;
+}
+
+bool TreeScope::resetStyleInheritance() const
+{
+    return false;
 }
 
 void TreeScope::adoptIfNeeded(Node* node)
@@ -176,13 +228,46 @@ Node* TreeScope::focusedNode()
     TreeScope* treeScope = node->treeScope();
 
     while (treeScope != this && treeScope != document) {
-        node = treeScope->rootNode()->shadowHost();
+        node = toShadowRoot(treeScope->rootNode())->host();
         treeScope = node->treeScope();
     }
     if (this != treeScope)
         return 0;
 
     return node;
+}
+
+static void listTreeScopes(Node* node, Vector<TreeScope*, 5>& treeScopes)
+{
+    while (true) {
+        treeScopes.append(node->treeScope());
+        Node* ancestor = node->shadowAncestorNode();
+        if (node == ancestor)
+            break;
+        node = ancestor;
+    }
+}
+
+TreeScope* commonTreeScope(Node* nodeA, Node* nodeB)
+{
+    if (!nodeA || !nodeB)
+        return 0;
+
+    if (nodeA->treeScope() == nodeB->treeScope())
+        return nodeA->treeScope();
+
+    Vector<TreeScope*, 5> treeScopesA;
+    listTreeScopes(nodeA, treeScopesA);
+
+    Vector<TreeScope*, 5> treeScopesB;
+    listTreeScopes(nodeB, treeScopesB);
+
+    size_t indexA = treeScopesA.size();
+    size_t indexB = treeScopesB.size();
+
+    for (; indexA > 0 && indexB > 0 && treeScopesA[indexA - 1] == treeScopesB[indexB - 1]; --indexA, --indexB) { }
+
+    return treeScopesA[indexA] == treeScopesB[indexB] ? treeScopesA[indexA] : 0;
 }
 
 } // namespace WebCore

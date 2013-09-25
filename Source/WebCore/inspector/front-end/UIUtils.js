@@ -492,11 +492,6 @@ WebInspector.openLinkExternallyLabel = function()
     return WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Open link in new tab" : "Open Link in New Tab");
 }
 
-WebInspector.openInNetworkPanelLabel = function()
-{
-    return WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Open in network panel" : "Open in Network Panel");
-}
-
 WebInspector.copyLinkAddressLabel = function()
 {
     return WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Copy link address" : "Copy Link Address");
@@ -515,6 +510,14 @@ WebInspector.isMac = function()
         WebInspector._isMac = WebInspector.platform() === "mac";
 
     return WebInspector._isMac;
+}
+
+WebInspector.isWin = function()
+{
+    if (typeof WebInspector._isWin === "undefined")
+        WebInspector._isWin = WebInspector.platform() === "windows";
+
+    return WebInspector._isWin;
 }
 
 WebInspector.PlatformFlavor = {

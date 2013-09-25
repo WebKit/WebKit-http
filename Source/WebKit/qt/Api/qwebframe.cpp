@@ -45,6 +45,7 @@
 #include "V8GCController.h"
 #endif
 #include "GraphicsContext.h"
+#include "HTMLFormElement.h"
 #include "HTMLMetaElement.h"
 #include "HitTestResult.h"
 #include "HTTPParsers.h"
@@ -116,7 +117,7 @@
 #include <qregion.h>
 #include <qnetworkrequest.h>
 
-#if ENABLE(ORIENTATION_EVENTS) && QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#if ENABLE(ORIENTATION_EVENTS) && !HAVE(QT5)
 QTM_USE_NAMESPACE
 #endif
 

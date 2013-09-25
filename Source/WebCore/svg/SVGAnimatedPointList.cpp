@@ -70,7 +70,7 @@ void SVGAnimatedPointListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAn
     ASSERT(from->type() == AnimatedPoints);
     ASSERT(from->type() == to->type());
 
-    SVGPointList& fromPointList = from->pointList();
+    const SVGPointList& fromPointList = from->pointList();
     SVGPointList& toPointList = to->pointList();
 
     unsigned fromPointListSize = fromPointList.size();
@@ -84,27 +84,28 @@ void SVGAnimatedPointListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAn
 void SVGAnimatedPointListAnimator::calculateAnimatedValue(float percentage, unsigned repeatCount, SVGAnimatedType* from, SVGAnimatedType* to, SVGAnimatedType* toAtEndOfDuration, SVGAnimatedType* animated)
 {
     ASSERT(m_animationElement);
-    ASSERT(m_contextElement);
 
-    SVGPointList& fromPointList = from->pointList();
-    SVGPointList& toPointList = to->pointList();
-    SVGPointList& toAtEndOfDurationPointList = toAtEndOfDuration->pointList();
+    const SVGPointList& fromPointList = m_animationElement->animationMode() == ToAnimation ? animated->pointList() : from->pointList();
+    const SVGPointList& toPointList = to->pointList();
+    const SVGPointList& toAtEndOfDurationPointList = toAtEndOfDuration->pointList();
     SVGPointList& animatedPointList = animated->pointList();
-    if (!m_animationElement->adjustFromToListValues<SVGPointList>(0, fromPointList, toPointList, animatedPointList, percentage, m_contextElement))
+    if (!m_animationElement->adjustFromToListValues<SVGPointList>(fromPointList, toPointList, animatedPointList, percentage))
         return;
 
     unsigned fromPointListSize = fromPointList.size();
     unsigned toPointListSize = toPointList.size();
+    unsigned toAtEndOfDurationSize = toAtEndOfDurationPointList.size();
 
     for (unsigned i = 0; i < toPointListSize; ++i) {
         FloatPoint effectiveFrom;
         if (fromPointListSize)
             effectiveFrom = fromPointList[i];
+        FloatPoint effectiveToAtEnd = i < toAtEndOfDurationSize ? toAtEndOfDurationPointList[i] : FloatPoint();
 
         float animatedX = animatedPointList[i].x();
         float animatedY = animatedPointList[i].y();
-        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom.x(), toPointList[i].x(), toAtEndOfDurationPointList[i].x(), animatedX);
-        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom.y(), toPointList[i].y(), toAtEndOfDurationPointList[i].y(), animatedY);
+        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom.x(), toPointList[i].x(), effectiveToAtEnd.x(), animatedX);
+        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom.y(), toPointList[i].y(), effectiveToAtEnd.y(), animatedY);
         animatedPointList[i] = FloatPoint(animatedX, animatedY);
     }
 }

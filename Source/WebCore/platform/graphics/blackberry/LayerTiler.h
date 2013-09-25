@@ -24,6 +24,7 @@
 #include "Color.h"
 #include "FloatRect.h"
 #include "IntRect.h"
+#include "LayerCompositingThreadClient.h"
 #include "LayerTile.h"
 #include "LayerTileIndex.h"
 
@@ -38,7 +39,7 @@ namespace WebCore {
 class LayerCompositingThread;
 class LayerWebKitThread;
 
-class LayerTiler : public ThreadSafeRefCounted<LayerTiler> {
+class LayerTiler : public ThreadSafeRefCounted<LayerTiler>, public LayerCompositingThreadClient {
 public:
     TileIndex indexOfTile(const IntPoint& origin);
     IntPoint originOfTile(const TileIndex&);
@@ -58,18 +59,18 @@ public:
     void setNeedsDisplay();
     void updateTextureContentsIfNeeded(double scale);
     void disableTiling(bool);
+    virtual void scheduleCommit();
 
     // Compositing thread
-    void layerCompositingThreadDestroyed();
-    void uploadTexturesIfNeeded();
-    void drawTextures(LayerCompositingThread*, int positionLocation, int texCoordLocation);
-    bool hasMissingTextures() const { return m_hasMissingTextures; }
-    void drawMissingTextures(LayerCompositingThread*, int positionLocation, int texCoordLocation);
-    void deleteTextures();
+    virtual void layerCompositingThreadDestroyed(LayerCompositingThread*);
+    virtual void layerVisibilityChanged(LayerCompositingThread*, bool visible);
+    virtual void uploadTexturesIfNeeded(LayerCompositingThread*);
+    virtual void bindContentsTexture(LayerCompositingThread*);
+    virtual void drawTextures(LayerCompositingThread*, double scale, int positionLocation, int texCoordLocation);
+    virtual bool hasMissingTextures(const LayerCompositingThread*) const { return m_hasMissingTextures; }
+    virtual void drawMissingTextures(LayerCompositingThread*, double scale, int positionLocation, int texCoordLocation);
+    virtual void deleteTextures(LayerCompositingThread*);
     void commitPendingTextureUploads();
-    void layerVisibilityChanged(bool visible);
-    bool hasDirtyTiles() const;
-    void bindContentsTexture();
 
     // Thread safe
     void addRenderJob(const TileIndex&);
@@ -156,7 +157,7 @@ private:
     void addTileJob(const TileIndex&, const TextureJob&, TileJobsMap&);
     void performTileJob(LayerTile*, const TextureJob&, const IntRect&);
     void processTextureJob(const TextureJob&, TileJobsMap&);
-    void drawTexturesInternal(LayerCompositingThread*, int positionLocation, int texCoordLocation, bool missing);
+    void drawTexturesInternal(LayerCompositingThread*, double scale, int positionLocation, int texCoordLocation, bool missing);
     void pruneTextures();
     void visibilityChanged(bool needsDisplay);
 

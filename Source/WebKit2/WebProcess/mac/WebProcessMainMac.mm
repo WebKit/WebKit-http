@@ -32,7 +32,6 @@
 #import "WebProcess.h"
 #import "WebSystemInterface.h"
 #import <WebCore/RunLoop.h>
-#import <WebKit2/WKView.h>
 #import <WebKitSystemInterface.h>
 #import <mach/mach_error.h>
 #import <objc/objc-auto.h>
@@ -52,9 +51,11 @@
 extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, uint64_t);
 #endif
 
+#if USE(APPKIT)
 @interface NSApplication (WebNSApplicationDetails)
 -(void)_installAutoreleasePoolsOnCurrentThreadIfNecessary;
 @end
+#endif
 
 #define SHOW_CRASH_REPORTER 1
 
@@ -118,6 +119,10 @@ int WebProcessMain(const CommandLine& commandLine)
         posix_spawnattr_setflags(&attributes, POSIX_SPAWN_CLOEXEC_DEFAULT | POSIX_SPAWN_SETPGROUP);
 
         int spawnResult = posix_spawn(0, command.data(), &fileActions, &attributes, const_cast<char**>(args), environmentVariables.environmentPointer());
+
+        posix_spawnattr_destroy(&attributes);
+        posix_spawn_file_actions_destroy(&fileActions);
+
         if (spawnResult)
             return 2;
 
@@ -164,12 +169,14 @@ int WebProcessMain(const CommandLine& commandLine)
 
     [pool drain];
 
+#if USE(APPKIT)
      // Initialize AppKit.
     [NSApplication sharedApplication];
 
     // Installs autorelease pools on the current CFRunLoop which prevents memory from accumulating between user events.
     // FIXME: Remove when <rdar://problem/8929426> is fixed.
     [[NSApplication sharedApplication] _installAutoreleasePoolsOnCurrentThreadIfNecessary];
+#endif
 
     WKAXRegisterRemoteApp();
     

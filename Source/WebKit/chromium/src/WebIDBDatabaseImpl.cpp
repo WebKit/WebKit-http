@@ -66,7 +66,7 @@ WebDOMStringList WebIDBDatabaseImpl::objectStoreNames() const
     return m_databaseBackend->objectStoreNames();
 }
 
-WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(const WebString& name, const WebString& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)
+WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)
 {
     RefPtr<IDBObjectStoreBackendInterface> objectStore = m_databaseBackend->createObjectStore(name, keyPath, autoIncrement, transaction.getIDBTransactionBackendInterface(), ec);
     if (!objectStore) {
@@ -111,7 +111,7 @@ void WebIDBDatabaseImpl::open(WebIDBDatabaseCallbacks* callbacks)
 {
     ASSERT(!m_databaseCallbacks);
     m_databaseCallbacks = IDBDatabaseCallbacksProxy::create(adoptPtr(callbacks));
-    m_databaseBackend->open(m_databaseCallbacks);
+    m_databaseBackend->registerFrontendCallbacks(m_databaseCallbacks);
 }
 
 } // namespace WebKit

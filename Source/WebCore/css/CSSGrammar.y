@@ -30,12 +30,12 @@
 #include "CSSPropertyNames.h"
 #include "CSSSelector.h"
 #include "CSSSelectorList.h"
-#include "CSSStyleSheet.h"
 #include "Document.h"
 #include "HTMLNames.h"
 #include "MediaList.h"
 #include "MediaQueryExp.h"
 #include "StyleRule.h"
+#include "StyleSheetContents.h"
 #include "WebKitCSSKeyframeRule.h"
 #include "WebKitCSSKeyframesRule.h"
 #include <wtf/FastMalloc.h>
@@ -101,7 +101,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 
 %}
 
-%expect 58
+%expect 59
 
 %nonassoc LOWEST_PREC
 
@@ -193,6 +193,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 %token <number> VW
 %token <number> VH
 %token <number> VMIN
+%token <number> DPPX
 
 %token <string> URI
 %token <string> FUNCTION
@@ -954,14 +955,9 @@ simple_selector:
             static_cast<CSSParser*>(parser)->updateSpecifiersWithElementName(nullAtom, starAtom, $$);
     }
     | namespace_selector element_name {
-        AtomicString namespacePrefix = $1;
         CSSParser* p = static_cast<CSSParser*>(parser);
         $$ = p->createFloatingSelector();
-        if (p->m_styleSheet)
-            $$->setTag(QualifiedName(namespacePrefix, $2,
-                                      p->m_styleSheet->determineNamespace(namespacePrefix)));
-        else // FIXME: Shouldn't this case be an error?
-            $$->setTag(QualifiedName(nullAtom, $2, p->m_defaultNamespace));
+        $$->setTag(p->determineNameInNamespace($1, $2));
     }
     | namespace_selector element_name specifier_list {
         $$ = $3;
@@ -1087,19 +1083,15 @@ attrib:
         $$->setValue($6);
     }
     | '[' maybe_space namespace_selector attr_name ']' {
-        AtomicString namespacePrefix = $3;
         CSSParser* p = static_cast<CSSParser*>(parser);
         $$ = p->createFloatingSelector();
-        $$->setAttribute(QualifiedName(namespacePrefix, $4,
-                                   p->m_styleSheet->determineNamespace(namespacePrefix)));
+        $$->setAttribute(p->determineNameInNamespace($3, $4));
         $$->setMatch(CSSSelector::Set);
     }
     | '[' maybe_space namespace_selector attr_name match maybe_space ident_or_string maybe_space ']' {
-        AtomicString namespacePrefix = $3;
         CSSParser* p = static_cast<CSSParser*>(parser);
         $$ = p->createFloatingSelector();
-        $$->setAttribute(QualifiedName(namespacePrefix, $4,
-                                   p->m_styleSheet->determineNamespace(namespacePrefix)));
+        $$->setAttribute(p->determineNameInNamespace($3, $4));
         $$->setMatch((CSSSelector::Match)$5);
         $$->setValue($7);
     }
@@ -1484,6 +1476,7 @@ unary_term:
   | VW maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_VW; }
   | VH maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_VH; }
   | VMIN maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_VMIN; }
+  | DPPX maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_DPPX; }
   ;
 
 function:

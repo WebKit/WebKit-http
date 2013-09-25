@@ -45,6 +45,7 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "StyleResolver.h"
+#include "StyleSheetContents.h"
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
@@ -127,36 +128,36 @@ void HTMLLinkElement::setDisabledState(bool disabled)
     }
 }
 
-void HTMLLinkElement::parseAttribute(Attribute* attr)
+void HTMLLinkElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == relAttr) {
-        m_relAttribute = LinkRelAttribute(attr->value());
+    if (attribute.name() == relAttr) {
+        m_relAttribute = LinkRelAttribute(attribute.value());
         process();
-    } else if (attr->name() == hrefAttr) {
-        String url = stripLeadingAndTrailingHTMLSpaces(attr->value());
+    } else if (attribute.name() == hrefAttr) {
+        String url = stripLeadingAndTrailingHTMLSpaces(attribute.value());
         m_url = url.isEmpty() ? KURL() : document()->completeURL(url);
         process();
-    } else if (attr->name() == typeAttr) {
-        m_type = attr->value();
+    } else if (attribute.name() == typeAttr) {
+        m_type = attribute.value();
         process();
-    } else if (attr->name() == sizesAttr) {
-        setSizes(attr->value());
+    } else if (attribute.name() == sizesAttr) {
+        setSizes(attribute.value());
         process();
-    } else if (attr->name() == mediaAttr) {
-        m_media = attr->value().string().lower();
+    } else if (attribute.name() == mediaAttr) {
+        m_media = attribute.value().string().lower();
         process();
-    } else if (attr->name() == disabledAttr)
-        setDisabledState(!attr->isNull());
-    else if (attr->name() == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, attr));
-    else if (attr->name() == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attr));
-    else if (attr->name() == onerrorAttr)
-        setAttributeEventListener(eventNames().errorEvent, createAttributeEventListener(this, attr));
+    } else if (attribute.name() == disabledAttr)
+        setDisabledState(!attribute.isNull());
+    else if (attribute.name() == onbeforeloadAttr)
+        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, attribute));
+    else if (attribute.name() == onloadAttr)
+        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attribute));
+    else if (attribute.name() == onerrorAttr)
+        setAttributeEventListener(eventNames().errorEvent, createAttributeEventListener(this, attribute));
     else {
-        if (attr->name() == titleAttr && m_sheet)
-            m_sheet->setTitle(attr->value());
-        HTMLElement::parseAttribute(attr);
+        if (attribute.name() == titleAttr && m_sheet)
+            m_sheet->setTitle(attribute.value());
+        HTMLElement::parseAttribute(attribute);
     }
 }
 
@@ -243,7 +244,7 @@ void HTMLLinkElement::clearSheet()
     m_sheet = 0;
 }
 
-Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     if (!insertionPoint->inDocument())
@@ -259,11 +260,13 @@ Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(Node* insertion
     return InsertionDone;
 }
 
-void HTMLLinkElement::removedFrom(Node* insertionPoint)
+void HTMLLinkElement::removedFrom(ContainerNode* insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
     if (!insertionPoint->inDocument())
         return;
+
+    m_linkLoader.released();
 
     if (m_isInShadowTree) {
         ASSERT(!m_sheet);
@@ -298,7 +301,8 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const KURL& baseURL, 
 
     CSSParserContext parserContext(document(), baseURL, charset);
 
-    if (RefPtr<StyleSheetInternal> restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext)) {
+#if ENABLE(PARSED_STYLE_SHEET_CACHING)
+    if (RefPtr<StyleSheetContents> restoredSheet = const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->restoreParsedStyleSheet(parserContext)) {
         ASSERT(restoredSheet->isCacheable());
         ASSERT(!restoredSheet->isLoading());
 
@@ -311,8 +315,9 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const KURL& baseURL, 
         notifyLoadedSheetAndAllCriticalSubresources(false);
         return;
     }
+#endif
 
-    RefPtr<StyleSheetInternal> styleSheet = StyleSheetInternal::create(href, baseURL, parserContext);
+    RefPtr<StyleSheetContents> styleSheet = StyleSheetContents::create(href, baseURL, parserContext);
 
     m_sheet = CSSStyleSheet::create(styleSheet, this);
     m_sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(m_media));
@@ -324,8 +329,10 @@ void HTMLLinkElement::setCSSStyleSheet(const String& href, const KURL& baseURL, 
     styleSheet->notifyLoadedSheet(cachedStyleSheet);
     styleSheet->checkLoaded();
 
+#if ENABLE(PARSED_STYLE_SHEET_CACHING)
     if (styleSheet->isCacheable())
         const_cast<CachedCSSStyleSheet*>(cachedStyleSheet)->saveParsedStyleSheet(styleSheet);
+#endif
 }
 
 bool HTMLLinkElement::styleSheetIsLoading() const
@@ -334,7 +341,7 @@ bool HTMLLinkElement::styleSheetIsLoading() const
         return true;
     if (!m_sheet)
         return false;
-    return m_sheet->internal()->isLoading();
+    return m_sheet->contents()->isLoading();
 }
 
 void HTMLLinkElement::linkLoaded()
@@ -386,9 +393,9 @@ void HTMLLinkElement::startLoadingDynamicSheet()
     addPendingSheet(Blocking);
 }
 
-bool HTMLLinkElement::isURLAttribute(Attribute *attr) const
+bool HTMLLinkElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attr->name() == hrefAttr || HTMLElement::isURLAttribute(attr);
+    return attribute.name() == hrefAttr || HTMLElement::isURLAttribute(attribute);
 }
 
 KURL HTMLLinkElement::href() const
@@ -427,7 +434,7 @@ void HTMLLinkElement::addSubresourceAttributeURLs(ListHashSet<KURL>& urls) const
     
     // Walk the URLs linked by the linked-to stylesheet.
     if (CSSStyleSheet* styleSheet = const_cast<HTMLLinkElement*>(this)->sheet())
-        styleSheet->internal()->addSubresourceStyleURLs(urls);
+        styleSheet->contents()->addSubresourceStyleURLs(urls);
 }
 
 void HTMLLinkElement::addPendingSheet(PendingSheetType type)

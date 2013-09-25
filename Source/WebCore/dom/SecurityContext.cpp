@@ -50,7 +50,7 @@ void SecurityContext::setSecurityOrigin(PassRefPtr<SecurityOrigin> securityOrigi
     m_haveInitializedSecurityOrigin = true;
 }
 
-void SecurityContext::setContentSecurityPolicy(PassRefPtr<ContentSecurityPolicy> contentSecurityPolicy)
+void SecurityContext::setContentSecurityPolicy(PassOwnPtr<ContentSecurityPolicy> contentSecurityPolicy)
 {
     m_contentSecurityPolicy = contentSecurityPolicy;
 }
@@ -65,6 +65,22 @@ bool SecurityContext::isSecureTransitionTo(const KURL& url) const
 
     RefPtr<SecurityOrigin> other = SecurityOrigin::create(url);
     return securityOrigin()->canAccess(other.get());
+}
+
+void SecurityContext::enforceSandboxFlags(SandboxFlags mask)
+{
+    m_sandboxFlags |= mask;
+
+    // The SandboxOrigin is stored redundantly in the security origin.
+    if (isSandboxed(SandboxOrigin) && securityOrigin() && !securityOrigin()->isUnique()) {
+        setSecurityOrigin(SecurityOrigin::createUnique());
+        didUpdateSecurityOrigin();
+    }
+}
+
+void SecurityContext::didUpdateSecurityOrigin()
+{
+    // Subclasses can override this function if the need to do extra work when the security origin changes.
 }
 
 SandboxFlags SecurityContext::parseSandboxPolicy(const String& policy)

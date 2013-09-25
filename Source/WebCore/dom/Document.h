@@ -28,7 +28,6 @@
 #ifndef Document_h
 #define Document_h
 
-#include "CheckedRadioButtons.h"
 #include "CollectionType.h"
 #include "Color.h"
 #include "ContainerNode.h"
@@ -76,6 +75,7 @@ class DatabaseThread;
 class DocumentFragment;
 class DocumentLoader;
 class DocumentMarkerController;
+class DocumentParser;
 class DocumentType;
 class DocumentWeakReference;
 class EditingText;
@@ -83,8 +83,10 @@ class Element;
 class EntityReference;
 class Event;
 class EventListener;
+class FloatRect;
+class FloatQuad;
 class FontData;
-class FormAssociatedElement;
+class FormController;
 class Frame;
 class FrameView;
 class HTMLCanvasElement;
@@ -92,11 +94,8 @@ class HTMLCollection;
 class HTMLAllCollection;
 class HTMLDocument;
 class HTMLElement;
-class HTMLFormControlElementWithState;
-class HTMLFormElement;
 class HTMLFrameOwnerElement;
 class HTMLHeadElement;
-class HTMLInputElement;
 class HTMLIFrameElement;
 class HTMLMapElement;
 class HTMLNameCollection;
@@ -123,17 +122,18 @@ class ScriptableDocumentParser;
 class ScriptElementData;
 class ScriptRunner;
 class SecurityOrigin;
+class SelectorQueryCache;
 class SerializedScriptValue;
 class SegmentedString;
 class Settings;
 class StyleResolver;
 class StyleSheet;
-class StyleSheetInternal;
+class StyleSheetContents;
 class StyleSheetList;
 class Text;
 class TextResourceDecoder;
-class DocumentParser;
 class TreeWalker;
+class UndoManager;
 class WebKitNamedFlow;
 class XMLHttpRequest;
 class XPathEvaluator;
@@ -167,47 +167,11 @@ class ScriptedAnimationController;
 class MicroDataItemList;
 #endif
 
+#if ENABLE(LINK_PRERENDER)
+class Prerenderer;
+#endif
+
 typedef int ExceptionCode;
-
-class FormElementKey {
-public:
-    FormElementKey(AtomicStringImpl* = 0, AtomicStringImpl* = 0);
-    ~FormElementKey();
-    FormElementKey(const FormElementKey&);
-    FormElementKey& operator=(const FormElementKey&);
-
-    AtomicStringImpl* name() const { return m_name; }
-    AtomicStringImpl* type() const { return m_type; }
-
-    // Hash table deleted values, which are only constructed and never copied or destroyed.
-    FormElementKey(WTF::HashTableDeletedValueType) : m_name(hashTableDeletedValue()) { }
-    bool isHashTableDeletedValue() const { return m_name == hashTableDeletedValue(); }
-
-private:
-    void ref() const;
-    void deref() const;
-
-    static AtomicStringImpl* hashTableDeletedValue() { return reinterpret_cast<AtomicStringImpl*>(-1); }
-
-    AtomicStringImpl* m_name;
-    AtomicStringImpl* m_type;
-};
-
-inline bool operator==(const FormElementKey& a, const FormElementKey& b)
-{
-    return a.name() == b.name() && a.type() == b.type();
-}
-
-struct FormElementKeyHash {
-    static unsigned hash(const FormElementKey&);
-    static bool equal(const FormElementKey& a, const FormElementKey& b) { return a == b; }
-    static const bool safeToCompareToEmptyOrDeleted = true;
-};
-
-struct FormElementKeyHashTraits : WTF::GenericHashTraits<FormElementKey> {
-    static void constructDeletedValue(FormElementKey& slot) { new (NotNull, &slot) FormElementKey(WTF::HashTableDeletedValue); }
-    static bool isDeletedValue(const FormElementKey& value) { return value.isHashTableDeletedValue(); }
-};
 
 enum PageshowEventPersistence {
     PageshowEventNotPersisted = 0,
@@ -256,14 +220,14 @@ public:
         }
     }
 
-    virtual void removedLastRef();
-
     Element* getElementById(const AtomicString& id) const;
 
     virtual bool canContainRangeEndPoint() const { return true; }
 
     Element* getElementByAccessKey(const String& key);
     void invalidateAccessKeyMap();
+
+    SelectorQueryCache* selectorQueryCache();
 
     // DOM methods & attributes for Document
 
@@ -321,6 +285,10 @@ public:
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenchange);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitfullscreenerror);
 #endif
+#if ENABLE(POINTER_LOCK)
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitpointerlockchange);
+    DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitpointerlockerror);
+#endif
 #if ENABLE(PAGE_VISIBILITY_API)
     DEFINE_ATTRIBUTE_EVENT_LISTENER(webkitvisibilitychange);
 #endif
@@ -330,6 +298,7 @@ public:
     bool didDispatchViewportPropertiesChanged() const { return m_didDispatchViewportPropertiesChanged; }
 #endif
 
+    void setReferrerPolicy(ReferrerPolicy referrerPolicy) { m_referrerPolicy = referrerPolicy; }
     ReferrerPolicy referrerPolicy() const { return m_referrerPolicy; }
 
     DocumentType* doctype() const { return m_docType.get(); }
@@ -356,14 +325,18 @@ public:
     PassRefPtr<Element> createElement(const QualifiedName&, bool createdByParser);
 
     bool cssRegionsEnabled() const;
+#if ENABLE(CSS_REGIONS)
     enum FlowNameCheck {
         CheckFlowNameForInvalidValues,
         DoNotCheckFlowNameForInvalidValues
     };
     PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&);
     PassRefPtr<WebKitNamedFlow> webkitGetFlowByName(const String&, FlowNameCheck);
+#endif
 
     bool regionBasedColumnsEnabled() const;
+
+    bool cssGridLayoutEnabled() const;
 
     /**
      * Retrieve all nodes that intersect a rect in the window's document, until it is fully enclosed by
@@ -522,19 +495,10 @@ public:
     bool usesLinkRules() const { return linkColor() != visitedLinkColor() || m_usesLinkRules; }
     void setUsesLinkRules(bool b) { m_usesLinkRules = b; }
 
-    // Machinery for saving and restoring state when you leave and then go back to a page.
-    void registerFormElementWithState(HTMLFormControlElementWithState* control) { m_formElementsWithState.add(control); }
-    void unregisterFormElementWithState(HTMLFormControlElementWithState* control) { m_formElementsWithState.remove(control); }
+    // Never returns 0.
+    FormController* formController();
     Vector<String> formElementsState() const;
     void setStateForNewFormElements(const Vector<String>&);
-    bool hasStateForNewFormElements() const;
-    bool takeStateForFormElement(AtomicStringImpl* name, AtomicStringImpl* type, String& state);
-    typedef ListHashSet<HTMLFormControlElementWithState*, 64> FormElementListHashSet;
-    const FormElementListHashSet* formElements() const { return &m_formElementsWithState; }
-
-    void registerFormElementWithFormAttribute(FormAssociatedElement*);
-    void unregisterFormElementWithFormAttribute(FormAssociatedElement*);
-    void resetFormElementsOwner();
 
     FrameView* view() const; // can be NULL
     Frame* frame() const { return m_frame; } // can be NULL
@@ -577,6 +541,7 @@ public:
 
     virtual void attach();
     virtual void detach();
+    void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
     virtual void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) OVERRIDE;
@@ -647,7 +612,7 @@ public:
     void updatePageGroupUserSheets();
 
     const Vector<RefPtr<CSSStyleSheet> >* documentUserSheets() const { return m_userSheets.get(); }
-    void addUserSheet(PassRefPtr<StyleSheetInternal> userSheet);
+    void addUserSheet(PassRefPtr<StyleSheetContents> userSheet);
 
     CSSStyleSheet* elementSheet();
     
@@ -824,7 +789,7 @@ public:
      * @param content The header value (value of the meta tag's "content" attribute)
      */
     void processHttpEquiv(const String& equiv, const String& content);
-    void processViewport(const String& features);
+    void processViewport(const String& features, ViewportArguments::Type origin);
     void updateViewportArguments();
     void processReferrerPolicy(const String& policy);
 
@@ -967,9 +932,6 @@ public:
     void updateFocusAppearanceSoon(bool restorePreviousSelection);
     void cancelFocusAppearanceUpdate();
         
-    // FF method for accessing the selection added for compatibility.
-    DOMSelection* getSelection() const;
-    
     // Extension for manipulating canvas drawing contexts for use in CSS
     CanvasRenderingContext* getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
@@ -1031,22 +993,16 @@ public:
 
     virtual void removeAllEventListeners();
 
-    CheckedRadioButtons& checkedRadioButtons() { return m_checkedRadioButtons; }
-    
 #if ENABLE(SVG)
     const SVGDocumentExtensions* svgExtensions();
     SVGDocumentExtensions* accessSVGExtensions();
 #endif
 
     void initSecurityContext();
-
-    // Explicitly override the security origin for this document.
-    // Note: It is dangerous to change the security origin of a document
-    //       that already contains content.
-    void setSecurityOrigin(PassRefPtr<SecurityOrigin>);
+    void initContentSecurityPolicy();
 
     void updateURLForPushOrReplaceState(const KURL&);
-    void statePopped(SerializedScriptValue*);
+    void statePopped(PassRefPtr<SerializedScriptValue>);
 
     bool processingLoadEvent() const { return m_processingLoadEvent; }
     bool loadEventFinished() const { return m_loadEventFinished; }
@@ -1115,7 +1071,6 @@ public:
 
 #if ENABLE(TOUCH_EVENTS)
     PassRefPtr<Touch> createTouch(DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force, ExceptionCode&) const;
-    PassRefPtr<TouchList> createTouchList(ExceptionCode&) const;
 #endif
 
     const DocumentTiming* timing() const { return &m_documentTiming; }
@@ -1123,7 +1078,7 @@ public:
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     int webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback>);
     void webkitCancelAnimationFrame(int id);
-    void serviceScriptedAnimations(double monotonicAnimationStartTime);
+    void serviceScriptedAnimations(DOMTimeStamp);
 #endif
 
     virtual EventTarget* errorEventTarget();
@@ -1146,6 +1101,10 @@ public:
     void removeCachedMicroDataItemList(MicroDataItemList*, const String&);
 #endif
     
+#if ENABLE(UNDO_MANAGER)
+    PassRefPtr<UndoManager> undoManager();
+#endif
+    
     bool isInDocumentWrite() { return m_writeRecursionDepth > 0; }
 
     void suspendScheduledTasks(ActiveDOMObject::ReasonForSuspension);
@@ -1153,14 +1112,26 @@ public:
 
     IntSize viewportSize() const;
 
+#if ENABLE(LINK_PRERENDER)
+    Prerenderer* prerenderer() { return m_prerenderer.get(); }
+#endif
+
+    void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, RenderObject*);
+    void adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect&, RenderObject*);
+
 protected:
     Document(Frame*, const KURL&, bool isXHTML, bool isHTML);
+
+    virtual void didUpdateSecurityOrigin() OVERRIDE;
 
     void clearXMLVersion() { m_xmlVersion = String(); }
 
 private:
+    friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
+    void removedLastRef();
+    
     void detachParser();
 
     typedef void (*ArgumentsCallback)(const String& keyString, const String& valueString, Document*, void* data);
@@ -1199,8 +1170,11 @@ private:
     
     bool updateActiveStylesheets(StyleResolverUpdateFlag);
     void collectActiveStylesheets(Vector<RefPtr<StyleSheet> >&);
-    bool testAddedStylesheetRequiresStyleRecalc(StyleSheetInternal*);
+    bool testAddedStylesheetRequiresStyleRecalc(StyleSheetContents*);
     void analyzeStylesheetChange(StyleResolverUpdateFlag, const Vector<RefPtr<StyleSheet> >& newStylesheets, bool& requiresStyleResolverReset, bool& requiresFullStyleRecalc);
+
+    void seamlessParentUpdatedStylesheets();
+    void notifySeamlessChildDocumentsOfStylesheetUpdate() const;
 
     void deleteCustomFonts();
 
@@ -1317,13 +1291,8 @@ private:
     typedef ListHashSet<Node*, 32> StyleSheetCandidateListHashSet;
     StyleSheetCandidateListHashSet m_styleSheetCandidateNodes; // All of the nodes that could potentially provide stylesheets to the document (<link>, <style>, <?xml-stylesheet>)
 
-    FormElementListHashSet m_formElementsWithState;
-    typedef ListHashSet<RefPtr<FormAssociatedElement>, 32> FormAssociatedElementListHashSet;
-    FormAssociatedElementListHashSet m_formElementsWithFormAttribute;
+    OwnPtr<FormController> m_formController;
 
-    typedef HashMap<FormElementKey, Vector<String>, FormElementKeyHash, FormElementKeyHashTraits> FormElementStateMap;
-    FormElementStateMap m_stateForNewFormElements;
-    
     Color m_linkColor;
     Color m_visitedLinkColor;
     Color m_activeLinkColor;
@@ -1406,8 +1375,6 @@ private:
 
     InheritedBool m_designMode;
     
-    CheckedRadioButtons m_checkedRadioButtons;
-
     OwnPtr<HTMLCollection> m_collections[NumUnnamedDocumentCachedTypes];
     OwnPtr<HTMLAllCollection> m_allCollection;
 
@@ -1439,6 +1406,8 @@ private:
 
     HashMap<StringImpl*, Element*, CaseFoldingHash> m_elementsByAccessKey;    
     bool m_accessKeyMapValid;
+
+    OwnPtr<SelectorQueryCache> m_selectorQueryCache;
 
     bool m_useSecureKeyboardEntryWhenActive;
 
@@ -1487,6 +1456,10 @@ private:
     
     unsigned m_wheelEventHandlerCount;
     unsigned m_touchEventHandlerCount;
+    
+#if ENABLE(UNDO_MANAGER)
+    RefPtr<UndoManager> m_undoManager;
+#endif
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
@@ -1494,6 +1467,11 @@ private:
 
     Timer<Document> m_pendingTasksTimer;
     Vector<OwnPtr<Task> > m_pendingTasks;
+
+#if ENABLE(LINK_PRERENDER)
+    OwnPtr<Prerenderer> m_prerenderer;
+#endif
+
     bool m_scheduledTasksAreSuspended;
     
     bool m_visualUpdatesAllowed;

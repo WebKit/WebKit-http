@@ -119,6 +119,9 @@ void RenderMenuList::addChild(RenderObject* newChild, RenderObject* beforeChild)
     createInnerBlock();
     m_innerBlock->addChild(newChild, beforeChild);
     ASSERT(m_innerBlock == firstChild());
+
+    if (AXObjectCache::accessibilityEnabled())
+        document()->axObjectCache()->childrenChanged(this);
 }
 
 void RenderMenuList::removeChild(RenderObject* oldChild)
@@ -309,9 +312,6 @@ void RenderMenuList::showPopup()
     // the actual width of the element to size the popup.
     FloatPoint absTopLeft = localToAbsolute(FloatPoint(), false, true);
     IntRect absBounds = absoluteBoundingBoxRectIgnoringTransforms();
-    int scale = document()->page()->settings()->defaultDeviceScaleFactor();
-    if (scale && scale != 1)
-        absBounds.scale(scale);
     absBounds.setLocation(roundedIntPoint(absTopLeft));
     HTMLSelectElement* select = toHTMLSelectElement(node());
     m_popup->show(absBounds, document()->view(), select->optionToListIndex(select->selectedIndex()));
@@ -495,7 +495,7 @@ PassRefPtr<Scrollbar> RenderMenuList::createScrollbar(ScrollableArea* scrollable
     RefPtr<Scrollbar> widget;
     bool hasCustomScrollbarStyle = style()->hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
-        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, this);
+        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, this->node());
     else
         widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
     return widget.release();

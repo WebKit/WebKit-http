@@ -29,6 +29,7 @@
 
 """Package that implements the ServerProcess wrapper class"""
 
+import errno
 import logging
 import signal
 import subprocess
@@ -39,7 +40,6 @@ import time
 # the win32 select API, it only works on sockets, and not on the named pipes
 # used by subprocess, so we have to use the native APIs directly.
 if sys.platform == 'win32':
-    import errno
     import msvcrt
     import win32pipe
     import win32file
@@ -48,7 +48,7 @@ else:
     import os
     import select
 
-from webkitpy.common.system.executive import Executive, ScriptError
+from webkitpy.common.system.executive import ScriptError
 
 
 _log = logging.getLogger(__name__)
@@ -61,13 +61,13 @@ class ServerProcess(object):
     indefinitely. The class also handles transparently restarting processes
     as necessary to keep issuing commands."""
 
-    def __init__(self, port_obj, name, cmd, env=None, executive=Executive()):
+    def __init__(self, port_obj, name, cmd, env=None):
         self._port = port_obj
         self._name = name  # Should be the command name (e.g. DumpRenderTree, ImageDiff)
         self._cmd = cmd
         self._env = env
+        self._host = self._port.host
         self._reset()
-        self._executive = executive
 
         # See comment in imports for why we need the win32 APIs and can't just use select.
         # FIXME: there should be a way to get win32 vs. cygwin from platforminfo.
@@ -94,7 +94,7 @@ class ServerProcess(object):
             raise ValueError("%s already running" % self._name)
         self._reset()
         # close_fds is a workaround for http://bugs.python.org/issue2320
-        close_fds = sys.platform not in ('win32', 'cygwin')
+        close_fds = not self._host.platform.is_win()
         self._proc = subprocess.Popen(self._cmd, stdin=subprocess.PIPE,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
@@ -193,7 +193,6 @@ class ServerProcess(object):
         _log.info('')
         _log.info(message)
 
-
     def _handle_timeout(self):
         self.timed_out = True
         self._port.sample_process(self._name, self._proc.pid)
@@ -213,14 +212,23 @@ class ServerProcess(object):
         out_fd = self._proc.stdout.fileno()
         err_fd = self._proc.stderr.fileno()
         select_fds = (out_fd, err_fd)
-        read_fds, _, _ = select.select(select_fds, [], select_fds, deadline - time.time())
+        try:
+            read_fds, _, _ = select.select(select_fds, [], select_fds, deadline - time.time())
+        except select.error, e:
+            # We can ignore EINVAL since it's likely the process just crashed and we'll
+            # figure that out the next time through the loop in _read().
+            if e.args[0] == errno.EINVAL:
+                return
+            raise
+
         try:
             if out_fd in read_fds:
                 self._output += self._proc.stdout.read()
             if err_fd in read_fds:
                 self._error += self._proc.stderr.read()
         except IOError, e:
-            # FIXME: Why do we ignore all IOErrors here?
+            # We can ignore the IOErrors because we will detect if the subporcess crashed
+            # the next time through the loop in _read()
             pass
 
     def _wait_for_data_and_update_buffers_using_win32_apis(self, deadline):
@@ -298,7 +306,7 @@ class ServerProcess(object):
         self._proc.stdout.close()
         if self._proc.stderr:
             self._proc.stderr.close()
-        if sys.platform not in ('win32', 'cygwin'):
+        if not self._host.platform.is_win():
             # Closing stdin/stdout/stderr hangs sometimes on OS X,
             # (see restart(), above), and anyway we don't want to hang
             # the harness if DumpRenderTree is buggy, so we wait a couple
@@ -316,7 +324,7 @@ class ServerProcess(object):
 
     def kill(self):
         if self._proc:
-            self._executive.kill_process(self._proc.pid)
+            self._host.executive.kill_process(self._proc.pid)
             if self._proc.poll() is not None:
                 self._proc.wait()
             self._reset()

@@ -56,7 +56,6 @@ public:
 
     static void addSupportedObjectPluginMIMEType(const char*);
     static bool isSupportedObjectMIMEType(const WebString&);
-    static WebString getNormalizedMIMEType(const WebString&);
 
     bool xssAuditorEnabled() const;
     void setXSSAuditorEnabled(bool);
@@ -174,6 +173,9 @@ public:
     WebString localStoragePath() const;
     void setLocalStoragePath(const WebString&);
 
+    WebString indexedDataBasePath() const;
+    void setIndexedDataBasePath(const WebString&);
+
     WebString databasePath() const;
     void setDatabasePath(const WebString&);
 
@@ -193,6 +195,9 @@ public:
 
     unsigned overZoomColor() const;
     void setOverZoomColor(unsigned);
+
+    WebString overScrollImagePath() const;
+    void setOverScrollImagePath(const char*);
 
     unsigned backgroundColor() const;
     void setBackgroundColor(unsigned);
@@ -217,6 +222,15 @@ public:
 
     bool isSpatialNavigationEnabled() const;
     void setSpatialNavigationEnabled(bool);
+
+    bool fullScreenVideoCapable() const;
+    void setFullScreenVideoCapable(bool);
+
+    bool isCredentialAutofillEnabled() const;
+    void setCredentialAutofillEnabled(bool);
+
+    bool isFormAutofillEnabled() const;
+    void setFormAutofillEnabled(bool);
 
 private:
     WebSettingsPrivate* m_private;

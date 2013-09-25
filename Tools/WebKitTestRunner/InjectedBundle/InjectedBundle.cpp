@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -148,7 +148,7 @@ void InjectedBundle::didReceiveMessage(WKStringRef messageName, WKTypeRef messag
         WKRetainPtr<WKStringRef> ackMessageBody(AdoptWK, WKStringCreateWithUTF8CString("BeginTest"));
         WKBundlePostMessage(m_bundle, ackMessageName.get(), ackMessageBody.get());
 
-        beginTesting();
+        beginTesting(messageBodyDictionary);
         return;
     } else if (WKStringIsEqualToUTF8CString(messageName, "Reset")) {
         ASSERT(messageBody);
@@ -190,7 +190,20 @@ void InjectedBundle::didReceiveMessage(WKStringRef messageName, WKTypeRef messag
     WKBundlePostMessage(m_bundle, errorMessageName.get(), errorMessageBody.get());
 }
 
-void InjectedBundle::beginTesting()
+bool InjectedBundle::booleanForKey(WKDictionaryRef dictionary, const char* key)
+{
+    WKRetainPtr<WKStringRef> wkKey(AdoptWK, WKStringCreateWithUTF8CString(key));
+    WKTypeRef value = WKDictionaryGetItemForKey(dictionary, wkKey.get());
+    if (WKGetTypeID(value) != WKBooleanGetTypeID()) {
+        stringBuilder()->append("Boolean value for key \"");
+        stringBuilder()->append(key);
+        stringBuilder()->append("\" not found in dictionary\n");
+        return false;
+    }
+    return WKBooleanGetValue(static_cast<WKBooleanRef>(value));
+}
+
+void InjectedBundle::beginTesting(WKDictionaryRef settings)
 {
     m_state = Testing;
 
@@ -215,7 +228,9 @@ void InjectedBundle::beginTesting()
 
     WKBundleRemoveAllUserContent(m_bundle, m_pageGroup);
 
-    page()->reset();
+    m_layoutTestController->setShouldDumpFrameLoadCallbacks(booleanForKey(settings, "DumpFrameLoadDelegates"));
+
+    page()->prepare();
 
     WKBundleClearAllDatabases(m_bundle);
     WKBundleClearApplicationCache(m_bundle);
@@ -245,7 +260,9 @@ void InjectedBundle::done()
     WKBundlePostMessage(m_bundle, doneMessageName.get(), doneMessageBody.get());
 
     closeOtherPages();
-    
+
+    page()->resetAfterTest();
+
     m_state = Idle;
 }
 

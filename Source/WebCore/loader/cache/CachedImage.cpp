@@ -33,6 +33,7 @@
 #include "FrameLoaderClient.h"
 #include "FrameLoaderTypes.h"
 #include "FrameView.h"
+#include "Page.h"
 #include "RenderObject.h"
 #include "Settings.h"
 #include "SharedBuffer.h"
@@ -74,6 +75,7 @@ CachedImage::CachedImage(Image* image)
 
 CachedImage::~CachedImage()
 {
+    clearImage();
 }
 
 void CachedImage::decodedDataDeletionTimerFired(Timer<CachedImage>*)
@@ -88,15 +90,6 @@ void CachedImage::load(CachedResourceLoader* cachedResourceLoader, const Resourc
         CachedResource::load(cachedResourceLoader, options);
     else
         setLoading(false);
-}
-
-void CachedImage::removeClientForRenderer(RenderObject* renderer)
-{
-#if ENABLE(SVG)
-    if (m_svgImageCache)
-        m_svgImageCache->removeRendererFromCache(renderer);
-#endif
-    removeClient(renderer);
 }
 
 void CachedImage::didAddClient(CachedResourceClient* c)
@@ -116,6 +109,17 @@ void CachedImage::didAddClient(CachedResourceClient* c)
     CachedResource::didAddClient(c);
 }
 
+void CachedImage::didRemoveClient(CachedResourceClient* c)
+{
+    ASSERT(c->resourceClientType() == CachedImageClient::expectedType());
+#if ENABLE(SVG)
+    if (m_svgImageCache)
+        m_svgImageCache->removeClientFromCache(static_cast<CachedImageClient*>(c));
+#endif
+
+    CachedResource::didRemoveClient(c);
+}
+
 void CachedImage::allClientsRemoved()
 {
     if (m_image && !errorOccurred())
@@ -128,11 +132,11 @@ pair<Image*, float> CachedImage::brokenImage(float deviceScaleFactor) const
 {
     if (deviceScaleFactor >= 2) {
         DEFINE_STATIC_LOCAL(Image*, brokenImageHiRes, (Image::loadPlatformResource("missingImage@2x").leakRef()));
-        return make_pair(brokenImageHiRes, 2);
+        return std::make_pair(brokenImageHiRes, 2);
     }
 
     DEFINE_STATIC_LOCAL(Image*, brokenImageLoRes, (Image::loadPlatformResource("missingImage").leakRef()));
-    return make_pair(brokenImageLoRes, 1);
+    return std::make_pair(brokenImageLoRes, 1);
 }
 
 bool CachedImage::willPaintBrokenImage() const
@@ -147,7 +151,7 @@ inline Image* CachedImage::lookupOrCreateImageForRenderer(const RenderObject* re
         return 0;
     if (!m_image->isSVGImage())
         return m_image.get();
-    Image* useImage = m_svgImageCache->lookupOrCreateBitmapImageForRenderer(renderer);
+    Image* useImage = m_svgImageCache->lookupOrCreateBitmapImageForClient(renderer);
     if (useImage == Image::nullImage())
         return m_image.get();
     return useImage;
@@ -202,7 +206,11 @@ void CachedImage::setContainerSizeForRenderer(const RenderObject* renderer, cons
         m_image->setContainerSize(containerSize);
         return;
     }
-    m_svgImageCache->setRequestedSizeAndZoom(renderer, SVGImageCache::SizeAndZoom(containerSize, containerZoom));
+
+    // FIXME (85335): This needs to take CSS transform scale into account as well.
+    float containerScale = renderer->document()->page()->deviceScaleFactor() * renderer->document()->page()->pageScaleFactor();
+
+    m_svgImageCache->setRequestedSizeAndScales(renderer, SVGImageCache::SizeAndScales(containerSize, containerZoom, containerScale));
 #else
     UNUSED_PARAM(renderer);
     UNUSED_PARAM(containerZoom);
@@ -250,10 +258,10 @@ IntSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float mu
 
 #if ENABLE(SVG)
     if (m_image->isSVGImage()) {
-        SVGImageCache::SizeAndZoom sizeAndZoom = m_svgImageCache->requestedSizeAndZoom(renderer);
-        if (!sizeAndZoom.size.isEmpty()) {
-            imageSize.setWidth(sizeAndZoom.size.width() / sizeAndZoom.zoom);
-            imageSize.setHeight(sizeAndZoom.size.height() / sizeAndZoom.zoom);
+        SVGImageCache::SizeAndScales sizeAndScales = m_svgImageCache->requestedSizeAndScales(renderer);
+        if (!sizeAndScales.size.isEmpty()) {
+            imageSize.setWidth(sizeAndScales.size.width() / sizeAndScales.zoom);
+            imageSize.setHeight(sizeAndScales.size.height() / sizeAndScales.zoom);
         }
     }
 #endif
@@ -297,7 +305,7 @@ void CachedImage::clear()
 #if ENABLE(SVG)
     m_svgImageCache.clear();
 #endif
-    m_image = 0;
+    clearImage();
     setEncodedSize(0);
 }
 
@@ -321,6 +329,15 @@ inline void CachedImage::createImage()
     }
 #endif
     m_image = BitmapImage::create(this);
+}
+
+inline void CachedImage::clearImage()
+{
+    // If our Image has an observer, it's always us so we need to clear the back pointer
+    // before dropping our reference.
+    if (m_image)
+        m_image->setImageObserver(0);
+    m_image.clear();
 }
 
 size_t CachedImage::maximumDecodedImageSize()

@@ -126,12 +126,12 @@ void ArrayPrototype::finishCreation(JSGlobalObject* globalObject)
     ASSERT(inherits(&s_info));
 }
 
-bool ArrayPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool ArrayPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     return getStaticFunctionSlot<JSArray>(exec, ExecState::arrayPrototypeTable(exec), jsCast<ArrayPrototype*>(cell), propertyName, slot);
 }
 
-bool ArrayPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool ArrayPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     return getStaticFunctionDescriptor<JSArray>(exec, ExecState::arrayPrototypeTable(exec), jsCast<ArrayPrototype*>(object), propertyName, descriptor);
 }
@@ -147,7 +147,7 @@ static JSValue getProperty(ExecState* exec, JSObject* obj, unsigned index)
     return slot.getValue(exec, index);
 }
 
-static void putProperty(ExecState* exec, JSObject* obj, const Identifier& propertyName, JSValue value)
+static void putProperty(ExecState* exec, JSObject* obj, PropertyName propertyName, JSValue value)
 {
     PutPropertySlot slot;
     obj->methodTable()->put(obj, exec, propertyName, value, slot);
@@ -797,7 +797,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncFilter(ExecState* exec)
             cachedCall.setArgument(2, thisObj);
             
             JSValue result = cachedCall.call();
-            if (result.toBoolean(exec))
+            if (result.toBoolean())
                 resultArray->putDirectIndex(exec, filterIndex++, v);
         }
         if (k == length)
@@ -818,7 +818,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncFilter(ExecState* exec)
         eachArguments.append(thisObj);
 
         JSValue result = call(exec, function, callType, callData, applyThis, eachArguments);
-        if (result.toBoolean(exec))
+        if (result.toBoolean())
             resultArray->putDirectIndex(exec, filterIndex++, v);
     }
     return JSValue::encode(resultArray);
@@ -917,7 +917,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncEvery(ExecState* exec)
             cachedCall.setArgument(1, jsNumber(k));
             cachedCall.setArgument(2, thisObj);
             JSValue result = cachedCall.call();
-            if (!result.toBoolean(cachedCall.newCallFrame(exec)))
+            if (!result.toBoolean())
                 return JSValue::encode(jsBoolean(false));
         }
     }
@@ -934,7 +934,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncEvery(ExecState* exec)
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
 
-        bool predicateResult = call(exec, function, callType, callData, applyThis, eachArguments).toBoolean(exec);
+        bool predicateResult = call(exec, function, callType, callData, applyThis, eachArguments).toBoolean();
         if (!predicateResult) {
             result = jsBoolean(false);
             break;
@@ -1025,7 +1025,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSome(ExecState* exec)
             cachedCall.setArgument(1, jsNumber(k));
             cachedCall.setArgument(2, thisObj);
             JSValue result = cachedCall.call();
-            if (result.toBoolean(cachedCall.newCallFrame(exec)))
+            if (result.toBoolean())
                 return JSValue::encode(jsBoolean(true));
         }
     }
@@ -1042,7 +1042,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSome(ExecState* exec)
         if (exec->hadException())
             return JSValue::encode(jsUndefined());
 
-        bool predicateResult = call(exec, function, callType, callData, applyThis, eachArguments).toBoolean(exec);
+        bool predicateResult = call(exec, function, callType, callData, applyThis, eachArguments).toBoolean();
         if (predicateResult) {
             result = jsBoolean(true);
             break;

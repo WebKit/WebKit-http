@@ -116,6 +116,7 @@ public:
         GestureTap,
         GestureTapDown,
         GestureDoubleTap,
+        GestureTwoFingerTap,
         GestureLongPress,
         GesturePinchBegin,
         GesturePinchEnd,
@@ -197,16 +198,21 @@ public:
             || type == TouchEnd;
     }
 
-    // Returns true if the WebInputEvent |type| should be handled as scroll gesture.
-    static bool isScrollGestureEventType(int type)
+    // Returns true if the WebInputEvent is a gesture event.
+    static bool isGestureEventType(int type)
     {
         return type == GestureScrollBegin
             || type == GestureScrollEnd
             || type == GestureScrollUpdate
             || type == GestureFlingStart
             || type == GestureFlingCancel
+            || type == GestureTap
             || type == GestureTapDown
-            || type == GestureTap; // FIXME: Why is GestureTap on this list?
+            || type == GestureDoubleTap
+            || type == GestureLongPress
+            || type == GesturePinchBegin
+            || type == GesturePinchEnd
+            || type == GesturePinchUpdate;
     }
 };
 
@@ -359,11 +365,9 @@ public:
     int globalX;
     int globalY;
 
-    // NOTE: |deltaX| and |deltaY| represents the amount to scroll for Scroll gesture events. For Pinch gesture events, |deltaX| represents the scaling/magnification factor. For Tap and Press events, |deltaX|,|deltaY| and |gammaX|,|gammaY| correspond to the top left and bottom right corners of the ellipse's enlosing rectangle for tap target fuzzing.
+    // NOTE: |deltaX| and |deltaY| represents the amount to scroll for Scroll gesture events. For Pinch gesture events, |deltaX| represents the scaling/magnification factor. For a GestureTap event, |deltaX| and |deltaY| represent the horizontal and vertical radii of the touch region.
     float deltaX;
     float deltaY;
-    float gammaX;
-    float gammaY;
 
     WebGestureEvent(unsigned sizeParam = sizeof(WebGestureEvent))
         : WebInputEvent(sizeParam)
@@ -373,8 +377,6 @@ public:
         , globalY(0)
         , deltaX(0.0f)
         , deltaY(0.0f)
-        , gammaX(0.0f)
-        , gammaY(0.0f)
     {
     }
 };
@@ -383,7 +385,9 @@ public:
 
 class WebTouchEvent : public WebInputEvent {
 public:
-    enum { touchesLengthCap = 8 };
+    // Maximum number of simultaneous touches supported on
+    // Ash/Aura.
+    enum { touchesLengthCap = 12 };
 
     unsigned touchesLength;
     // List of all touches which are currently down.

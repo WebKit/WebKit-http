@@ -29,6 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBIndexBackendInterface.h"
+#include "IDBKeyPath.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
 
@@ -42,8 +43,7 @@ public:
     virtual ~IDBIndexBackendProxy();
 
     virtual String name();
-    virtual String storeName();
-    virtual String keyPath();
+    virtual WebCore::IDBKeyPath keyPath();
     virtual bool unique();
     virtual bool multiEntry();
 

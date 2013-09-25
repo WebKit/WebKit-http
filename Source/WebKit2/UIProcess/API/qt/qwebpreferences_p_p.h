@@ -29,6 +29,7 @@ public:
 
     enum WebAttribute {
         AutoLoadImages,
+        FullScreenEnabled,
         JavascriptEnabled,
         PluginsEnabled,
         OfflineWebApplicationCacheEnabled,
@@ -37,7 +38,8 @@ public:
         FrameFlatteningEnabled,
         PrivateBrowsingEnabled,
         DnsPrefetchEnabled,
-        DeveloperExtrasEnabled
+        DeveloperExtrasEnabled,
+        WebGLEnabled
     };
 
     enum FontFamily {

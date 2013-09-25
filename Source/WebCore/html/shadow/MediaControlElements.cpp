@@ -256,7 +256,6 @@ void MediaControlPanelElement::makeTransparent()
     setInlineStyleProperty(CSSPropertyOpacity, 0.0, CSSPrimitiveValue::CSS_NUMBER);
 
     m_opaque = false;
-
     startTimer();
 }
 
@@ -322,6 +321,36 @@ const AtomicString& MediaControlTimelineContainerElement::shadowPseudoId() const
 
 // ----------------------------
 
+class RenderMediaVolumeSliderContainer : public RenderBlock {
+public:
+    RenderMediaVolumeSliderContainer(Node*);
+
+private:
+    virtual void layout();
+};
+
+RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Node* node)
+    : RenderBlock(node)
+{
+}
+
+void RenderMediaVolumeSliderContainer::layout()
+{
+    RenderBlock::layout();
+
+    if (style()->display() == NONE || !nextSibling() || !nextSibling()->isBox())
+        return;
+
+    RenderBox* buttonBox = toRenderBox(nextSibling());
+    int absoluteOffsetTop = buttonBox->localToAbsolute(FloatPoint(0, -size().height())).y();
+
+    LayoutStateDisabler layoutStateDisabler(view());
+
+    // If the slider would be rendered outside the page, it should be moved below the controls.
+    if (UNLIKELY(absoluteOffsetTop < 0))
+        setY(buttonBox->offsetTop() + theme()->volumeSliderOffsetFromMuteButton(buttonBox, pixelSnappedSize()).y());
+}
+
 inline MediaControlVolumeSliderContainerElement::MediaControlVolumeSliderContainerElement(Document* document)
     : MediaControlElement(document)
 {
@@ -332,6 +361,11 @@ PassRefPtr<MediaControlVolumeSliderContainerElement> MediaControlVolumeSliderCon
     RefPtr<MediaControlVolumeSliderContainerElement> element = adoptRef(new MediaControlVolumeSliderContainerElement(document));
     element->hide();
     return element.release();
+}
+
+RenderObject* MediaControlVolumeSliderContainerElement::createRenderer(RenderArena* arena, RenderStyle*)
+{
+    return new (arena) RenderMediaVolumeSliderContainer(this);
 }
 
 void MediaControlVolumeSliderContainerElement::defaultEventHandler(Event* event)
@@ -836,8 +870,7 @@ void MediaControlTimelineElement::defaultEventHandler(Event* event)
         return;
 
     float time = narrowPrecisionToFloat(value().toDouble());
-    if (time != mediaController()->currentTime()) {
-        // FIXME: This is fired 3 times on every click. We should not be doing that <http:/webkit.org/b/58160>.
+    if (event->type() == eventNames().inputEvent && time != mediaController()->currentTime()) {
         ExceptionCode ec;
         mediaController()->setCurrentTime(time, ec);
     }
@@ -1251,6 +1284,9 @@ void MediaControlTextTrackContainerElement::updateDisplay()
         TextTrackCue* cue = activeCues[i].data();
 
         ASSERT(cue->isActive());
+        if (cue->track()->kind() != TextTrack::captionsKeyword() && cue->track()->kind() != TextTrack::subtitlesKeyword())
+            continue;
+
         if (!cue->track() || cue->track()->mode() != TextTrack::SHOWING)
             continue;
 

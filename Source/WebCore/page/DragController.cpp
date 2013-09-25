@@ -63,6 +63,7 @@
 #include "ResourceRequest.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "ShadowRoot.h"
 #include "StylePropertySet.h"
 #include "Text.h"
 #include "TextEvent.h"
@@ -77,7 +78,12 @@ static PlatformMouseEvent createMouseEvent(DragData* dragData)
 {
     bool shiftKey, ctrlKey, altKey, metaKey;
     shiftKey = ctrlKey = altKey = metaKey = false;
-    PlatformKeyboardEvent::getCurrentModifierState(shiftKey, ctrlKey, altKey, metaKey);
+    int keyState = dragData->modifierKeyState();
+    shiftKey = static_cast<bool>(keyState & PlatformEvent::ShiftKey);
+    ctrlKey = static_cast<bool>(keyState & PlatformEvent::CtrlKey);
+    altKey = static_cast<bool>(keyState & PlatformEvent::AltKey);
+    metaKey = static_cast<bool>(keyState & PlatformEvent::MetaKey);
+
     return PlatformMouseEvent(dragData->clientPosition(), dragData->globalPosition(),
                               LeftButton, PlatformEvent::MouseMoved, 0, shiftKey, ctrlKey, altKey,
                               metaKey, currentTime());
@@ -271,7 +277,7 @@ static HTMLInputElement* asFileInput(Node* node)
 
     // If this is a button inside of the a file input, move up to the file input.
     if (inputElement && inputElement->isTextButton() && inputElement->treeScope()->rootNode()->isShadowRoot())
-        inputElement = inputElement->treeScope()->rootNode()->shadowHost()->toInputElement();
+        inputElement = toShadowRoot(inputElement->treeScope()->rootNode())->host()->toInputElement();
 
     return inputElement && inputElement->isFileUpload() ? inputElement : 0;
 }

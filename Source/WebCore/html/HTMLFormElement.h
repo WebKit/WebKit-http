@@ -110,22 +110,22 @@ public:
     CheckedRadioButtons& checkedRadioButtons() { return m_checkedRadioButtons; }
 
     const Vector<FormAssociatedElement*>& associatedElements() const { return m_associatedElements; }
-    
+    const Vector<HTMLImageElement*>& imageElements() const { return m_imageElements; }
+
     void getTextFieldValues(StringPairVector& fieldNamesAndValues) const;
 
 private:
     HTMLFormElement(const QualifiedName&, Document*);
 
     virtual bool rendererIsNeeded(const NodeRenderingContext&);
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual void didNotifyDescendantInseretions(Node*) OVERRIDE;
-    virtual void removedFrom(Node*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual void didNotifyDescendantInsertions(ContainerNode*) OVERRIDE;
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
 
     virtual void handleLocalEvents(Event*);
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
-
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
     virtual void documentDidResumeFromPageCache();
 
@@ -145,8 +145,6 @@ private:
     // event was not canceled to the specified vector. Returns true if there
     // are any invalid controls in this form.
     bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<FormAssociatedElement> >&);
-
-    friend class HTMLFormCollection;
 
     typedef HashMap<RefPtr<AtomicStringImpl>, RefPtr<HTMLFormControlElement> > AliasMap;
 

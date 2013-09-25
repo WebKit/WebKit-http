@@ -343,31 +343,17 @@ _llint_op_create_arguments:
 
 _llint_op_create_this:
     traceExecution()
-    loadi 8[PC], t0
-    assertNotConstant(t0)
-    bineq TagOffset[cfr, t0, 8], CellTag, .opCreateThisSlow
-    loadi PayloadOffset[cfr, t0, 8], t0
-    loadp JSCell::m_structure[t0], t1
-    bbb Structure::m_typeInfo + TypeInfo::m_type[t1], ObjectType, .opCreateThisSlow
-    loadp JSObject::m_inheritorID[t0], t2
+    loadp Callee[cfr], t0
+    loadp JSFunction::m_cachedInheritorID[t0], t2
     btpz t2, .opCreateThisSlow
     allocateBasicJSObject(JSFinalObjectSizeClassIndex, JSGlobalData::jsFinalObjectClassInfo, t2, t0, t1, t3, .opCreateThisSlow)
     loadi 4[PC], t1
     storei CellTag, TagOffset[cfr, t1, 8]
     storei t0, PayloadOffset[cfr, t1, 8]
-    dispatch(3)
+    dispatch(2)
 
 .opCreateThisSlow:
     callSlowPath(_llint_slow_path_create_this)
-    dispatch(3)
-
-
-_llint_op_get_callee:
-    traceExecution()
-    loadi 4[PC], t0
-    loadp PayloadOffset + Callee[cfr], t1
-    storei CellTag, TagOffset[cfr, t0, 8]
-    storei t1, PayloadOffset[cfr, t0, 8]
     dispatch(2)
 
 
@@ -378,11 +364,13 @@ _llint_op_convert_this:
     loadi PayloadOffset[cfr, t0, 8], t0
     loadp JSCell::m_structure[t0], t0
     bbb Structure::m_typeInfo + TypeInfo::m_type[t0], ObjectType, .opConvertThisSlow
-    dispatch(2)
+    loadi 8[PC], t1
+    valueProfile(CellTag, t0, t1)
+    dispatch(3)
 
 .opConvertThisSlow:
     callSlowPath(_llint_slow_path_convert_this)
-    dispatch(2)
+    dispatch(3)
 
 
 _llint_op_new_object:
@@ -1053,13 +1041,10 @@ _llint_op_put_scoped_var:
 
 _llint_op_get_global_var:
     traceExecution()
-    loadi 8[PC], t1
+    loadp 8[PC], t0
     loadi 4[PC], t3
-    loadp CodeBlock[cfr], t0
-    loadp CodeBlock::m_globalObject[t0], t0
-    loadp JSGlobalObject::m_registers[t0], t0
-    loadi TagOffset[t0, t1, 8], t2
-    loadi PayloadOffset[t0, t1, 8], t1
+    loadi TagOffset[t0], t2
+    loadi PayloadOffset[t0], t1
     storei t2, TagOffset[cfr, t3, 8]
     storei t1, PayloadOffset[cfr, t3, 8]
     loadi 12[PC], t3
@@ -1070,14 +1055,11 @@ _llint_op_get_global_var:
 _llint_op_put_global_var:
     traceExecution()
     loadi 8[PC], t1
-    loadp CodeBlock[cfr], t0
-    loadp CodeBlock::m_globalObject[t0], t0
-    loadp JSGlobalObject::m_registers[t0], t0
+    loadi 4[PC], t0
     loadConstantOrVariable(t1, t2, t3)
-    loadi 4[PC], t1
     writeBarrier(t2, t3)
-    storei t2, TagOffset[t0, t1, 8]
-    storei t3, PayloadOffset[t0, t1, 8]
+    storei t2, TagOffset[t0]
+    storei t3, PayloadOffset[t0]
     dispatch(3)
 
 
@@ -1228,8 +1210,10 @@ _llint_op_get_argument_by_val:
     loadi 4[PC], t3
     loadi ThisArgumentOffset + TagOffset[cfr, t2, 8], t0
     loadi ThisArgumentOffset + PayloadOffset[cfr, t2, 8], t1
+    loadi 16[PC], t2
     storei t0, TagOffset[cfr, t3, 8]
     storei t1, PayloadOffset[cfr, t3, 8]
+    valueProfile(t0, t1, t2)
     dispatch(5)
 
 .opGetArgumentByValSlow:
@@ -1446,8 +1430,9 @@ _llint_op_switch_char:
     bineq t1, CellTag, .opSwitchCharFallThrough
     loadp JSCell::m_structure[t0], t1
     bbneq Structure::m_typeInfo + TypeInfo::m_type[t1], StringType, .opSwitchCharFallThrough
+    bineq JSString::m_length[t0], 1, .opSwitchCharFallThrough
     loadp JSString::m_value[t0], t0
-    bineq StringImpl::m_length[t0], 1, .opSwitchCharFallThrough
+    btpz  t0, .opSwitchOnRope
     loadp StringImpl::m_data8[t0], t1
     btinz StringImpl::m_hashAndFlags[t0], HashFlags8BitBuffer, .opSwitchChar8Bit
     loadh [t1], t0
@@ -1464,6 +1449,10 @@ _llint_op_switch_char:
 
 .opSwitchCharFallThrough:
     dispatchBranch(8[PC])
+
+.opSwitchOnRope:
+    callSlowPath(_llint_slow_path_switch_char)
+    dispatch(0)
 
 
 _llint_op_new_func:
@@ -1673,8 +1662,8 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     storei CellTag, ScopeChain + TagOffset[cfr]
     storei t1, ScopeChain + PayloadOffset[cfr]
     if X86
-        loadp JITStackFrame::globalData + 4[sp], t0 # Additional offset for return address
-        storep cfr, JSGlobalData::topCallFrame[t0]
+        loadp JITStackFrame::globalData + 4[sp], t3 # Additional offset for return address
+        storep cfr, JSGlobalData::topCallFrame[t3]
         peek 0, t1
         storep t1, ReturnPC[cfr]
         move cfr, t2  # t2 = ecx
@@ -1686,8 +1675,8 @@ macro nativeCallTrampoline(executableOffsetToFunction)
         addp 16 - 4, sp
         loadp JITStackFrame::globalData + 4[sp], t3
     elsif ARMv7
-        loadp JITStackFrame::globalData[sp], t0
-        storep cfr, JSGlobalData::topCallFrame[t0]
+        loadp JITStackFrame::globalData[sp], t3
+        storep cfr, JSGlobalData::topCallFrame[t3]
         move t0, t2
         preserveReturnAddressAfterCall(t3)
         storep t3, ReturnPC[cfr]

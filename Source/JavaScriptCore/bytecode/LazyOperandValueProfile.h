@@ -155,7 +155,7 @@ public:
     CompressedLazyOperandValueProfileHolder();
     ~CompressedLazyOperandValueProfileHolder();
     
-    void computeUpdatedPredictions();
+    void computeUpdatedPredictions(OperationInProgress);
     
     LazyOperandValueProfile* add(const LazyOperandValueProfileKey& key);
     
@@ -174,7 +174,7 @@ public:
     LazyOperandValueProfile* getIfPresent(
         const LazyOperandValueProfileKey& key) const;
     
-    PredictedType prediction(const LazyOperandValueProfileKey& key) const;
+    SpeculatedType prediction(const LazyOperandValueProfileKey& key) const;
 private:
     CompressedLazyOperandValueProfileHolder& m_holder;
     HashMap<LazyOperandValueProfileKey, LazyOperandValueProfile*> m_map;

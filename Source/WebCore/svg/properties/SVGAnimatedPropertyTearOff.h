@@ -32,6 +32,18 @@ public:
     typedef SVGPropertyTearOff<PropertyType> PropertyTearOff;
     typedef PropertyType ContentType;
 
+    virtual ~SVGAnimatedPropertyTearOff()
+    {
+        if (m_baseVal) {
+            ASSERT(m_baseVal->animatedProperty() == this);
+            m_baseVal->setAnimatedProperty(0);
+        }
+        if (m_animVal) {
+            ASSERT(m_animVal->animatedProperty() == this);
+            m_animVal->setAnimatedProperty(0);
+        }
+    }
+
     PropertyTearOff* baseVal()
     {
         if (!m_baseVal)
@@ -78,12 +90,6 @@ public:
         ASSERT(m_animVal);
         m_animVal->setValue(m_property);
         m_isAnimating = false;
-
-        SVGElement* element = contextElement();
-        if (!element || !element->inDocument() || !element->parentNode())
-            return;
-        ASSERT(!element->m_deletionHasBegun);
-        element->svgAttributeChanged(attributeName());
     }
 
     void animValWillChange()
@@ -95,11 +101,9 @@ public:
 
     void animValDidChange()
     {
+        // no-op for non list types.
         ASSERT(m_isAnimating);
         ASSERT(m_animVal);
-
-        ASSERT(contextElement());
-        contextElement()->svgAttributeChanged(attributeName());
     }
 
 private:

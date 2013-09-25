@@ -21,6 +21,7 @@
 #include "config.h"
 #include "V8TestEventTarget.h"
 
+#include "ContextEnabledFeatures.h"
 #include "ExceptionCode.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
@@ -36,7 +37,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestEventTarget::info = { V8TestEventTarget::GetTemplate, V8TestEventTarget::derefObject, 0, 0 };
+WrapperTypeInfo V8TestEventTarget::info = { V8TestEventTarget::GetTemplate, V8TestEventTarget::derefObject, 0, 0, WrapperTypeObjectPrototype };
 
 namespace TestEventTargetV8Internal {
 
@@ -46,7 +47,7 @@ static v8::Handle<v8::Value> itemCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestEventTarget.item");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
     TestEventTarget* imp = V8TestEventTarget::toNative(args.Holder());
     ExceptionCode ec = 0;
     {
@@ -55,11 +56,10 @@ static v8::Handle<v8::Value> itemCallback(const v8::Arguments& args)
         ec = INDEX_SIZE_ERR;
         goto fail;
     }
-    return toV8(imp->item(index));
+    return toV8(imp->item(index), args.GetIsolate());
     }
     fail:
-    V8Proxy::setDOMException(ec, args.GetIsolate());
-    return v8::Handle<v8::Value>();
+    return V8Proxy::setDOMException(ec, args.GetIsolate());
 }
 
 static v8::Handle<v8::Value> addEventListenerCallback(const v8::Arguments& args)
@@ -88,7 +88,7 @@ static v8::Handle<v8::Value> dispatchEventCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestEventTarget.dispatchEvent");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
     TestEventTarget* imp = V8TestEventTarget::toNative(args.Holder());
     ExceptionCode ec = 0;
     {
@@ -96,11 +96,10 @@ static v8::Handle<v8::Value> dispatchEventCallback(const v8::Arguments& args)
     bool result = imp->dispatchEvent(evt, ec);
     if (UNLIKELY(ec))
         goto fail;
-    return v8Boolean(result);
+    return v8Boolean(result, args.GetIsolate());
     }
     fail:
-    V8Proxy::setDOMException(ec, args.GetIsolate());
-    return v8::Handle<v8::Value>();
+    return V8Proxy::setDOMException(ec, args.GetIsolate());
 }
 
 } // namespace TestEventTargetV8Internal

@@ -32,6 +32,8 @@
 
 namespace WebCore {
 class IntRect;
+class FloatRect;
+class LayerRenderer;
 class TransformationMatrix;
 }
 
@@ -196,8 +198,15 @@ public:
     Platform::IntRect blitTileRect(TileBuffer*, const TileRect&, const Platform::IntPoint&, const WebCore::TransformationMatrix&, BackingStoreGeometry*);
 
 #if USE(ACCELERATED_COMPOSITING)
+    // Use instead of blitContents if you need more control over OpenGL state.
+    // Note that contents is expressed in untransformed content coordinates.
+    // Preconditions: You have to call prepareFrame and setViewport on the LayerRenderer before
+    //                calling this.
+    void compositeContents(WebCore::LayerRenderer*, const WebCore::TransformationMatrix&, const WebCore::FloatRect& contents, bool contentsOpaque);
+
     void blendCompositingSurface(const Platform::IntRect& dstRect);
     void clearCompositingSurface();
+
     bool drawLayersOnCommitIfNeeded();
     void drawAndBlendLayersForDirectRendering(const Platform::IntRect& dirtyRect);
     // WebPage will call this when drawing layers to tell us we don't need to
@@ -295,7 +304,7 @@ public:
 
     // This takes transformed contents coordinates.
     void renderContents(BlackBerry::Platform::Graphics::Buffer*, const Platform::IntPoint& surfaceOffset, const Platform::IntRect& contentsRect) const;
-    void renderContents(BlackBerry::Platform::Graphics::Drawable* /*drawable*/, double /*scale*/, const Platform::IntRect& /*contentsRect*/) const;
+    void renderContents(Platform::Graphics::Drawable* /*drawable*/, const Platform::IntRect& /*contentsRect*/, const Platform::IntSize& /*destinationSize*/) const;
 
     void blitToWindow(const Platform::IntRect& dstRect, const BlackBerry::Platform::Graphics::Buffer* srcBuffer, const Platform::IntRect& srcRect, bool blend, unsigned char globalAlpha);
     void checkerWindow(const Platform::IntRect& dstRect, const Platform::IntPoint& contentsOrigin, double contentsScale);
@@ -325,6 +334,8 @@ public:
     // Surface abstraction, maybe BlackBerry::Platform::Graphics::Buffer could be made public instead.
     BlackBerry::Platform::IntSize surfaceSize() const;
     BlackBerry::Platform::Graphics::Buffer* buffer() const;
+
+    bool ensureOverScrollImage();
 
     static WebPage* s_currentBackingStoreOwner;
 
@@ -366,6 +377,10 @@ public:
     mutable bool m_needsDrawLayersOnCommit; // Not thread safe, WebKit thread only
     bool m_isDirectRenderingAnimationMessageScheduled;
 #endif
+
+    static Platform::Graphics::Buffer* s_overScrollImage;
+    static std::string s_overScrollImagePath;
+    static Platform::IntSize s_overScrollImageSize;
 
 protected:
     virtual ~BackingStorePrivate();

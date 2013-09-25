@@ -8,7 +8,7 @@
     display: inline-block;
 }
 .flexbox {
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: grey;
     width: 100px;
     height: 100px;
@@ -80,8 +80,8 @@
 }
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">

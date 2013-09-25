@@ -36,7 +36,7 @@ const ClassInfo JSStaticScopeObject::s_info = { "Object", &Base::s_info, 0, 0, C
 
 void JSStaticScopeObject::destroy(JSCell* cell)
 {
-    jsCast<JSStaticScopeObject*>(cell)->JSStaticScopeObject::~JSStaticScopeObject();
+    static_cast<JSStaticScopeObject*>(cell)->JSStaticScopeObject::~JSStaticScopeObject();
 }
 
 void JSStaticScopeObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -54,7 +54,7 @@ JSObject* JSStaticScopeObject::toThisObject(JSCell*, ExecState* exec)
     return exec->globalThisValue();
 }
 
-void JSStaticScopeObject::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSStaticScopeObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSStaticScopeObject* thisObject = jsCast<JSStaticScopeObject*>(cell);
     if (slot.isStrictMode()) {
@@ -66,30 +66,30 @@ void JSStaticScopeObject::put(JSCell* cell, ExecState* exec, const Identifier& p
         // a pointer compare.
         PropertySlot slot;
         bool isWritable = true;
-        thisObject->symbolTableGet(propertyName, slot, isWritable);
+        symbolTableGet(thisObject, propertyName, slot, isWritable);
         if (!isWritable) {
             throwError(exec, createTypeError(exec, StrictModeReadonlyPropertyWriteError));
             return;
         }
     }
-    if (thisObject->symbolTablePut(exec, propertyName, value, slot.isStrictMode()))
+    if (symbolTablePut(thisObject, exec, propertyName, value, slot.isStrictMode()))
         return;
     
     ASSERT_NOT_REACHED();
 }
 
-void JSStaticScopeObject::putDirectVirtual(JSObject* object, ExecState* exec, const Identifier& propertyName, JSValue value, unsigned attributes)
+void JSStaticScopeObject::putDirectVirtual(JSObject* object, ExecState* exec, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     JSStaticScopeObject* thisObject = jsCast<JSStaticScopeObject*>(object);
-    if (thisObject->symbolTablePutWithAttributes(exec->globalData(), propertyName, value, attributes))
+    if (symbolTablePutWithAttributes(thisObject, exec->globalData(), propertyName, value, attributes))
         return;
     
     ASSERT_NOT_REACHED();
 }
 
-bool JSStaticScopeObject::getOwnPropertySlot(JSCell* cell, ExecState*, const Identifier& propertyName, PropertySlot& slot)
+bool JSStaticScopeObject::getOwnPropertySlot(JSCell* cell, ExecState*, PropertyName propertyName, PropertySlot& slot)
 {
-    return jsCast<JSStaticScopeObject*>(cell)->symbolTableGet(propertyName, slot);
+    return symbolTableGet(jsCast<JSStaticScopeObject*>(cell), propertyName, slot);
 }
 
 }

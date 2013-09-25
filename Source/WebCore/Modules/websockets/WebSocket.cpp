@@ -221,7 +221,7 @@ void WebSocket::connect(const String& url, const Vector<String>& protocols, Exce
         return;
     }
 
-    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectFromSource(m_url)) {
+    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(m_url)) {
         m_state = CLOSED;
 
         // FIXME: Should this be throwing an exception?
@@ -531,7 +531,7 @@ void WebSocket::didReceiveBinaryData(PassOwnPtr<Vector<char> > binaryData)
 void WebSocket::didReceiveMessageError()
 {
     LOG(Network, "WebSocket %p didReceiveErrorMessage", this);
-    if (m_state != OPEN && m_state != CLOSING)
+    if (m_useHixie76Protocol && m_state != OPEN && m_state != CLOSING)
         return;
     ASSERT(scriptExecutionContext());
     dispatchEvent(Event::create(eventNames().errorEvent, false, false));
@@ -557,6 +557,8 @@ void WebSocket::didClose(unsigned long unhandledBufferedAmount, ClosingHandshake
     if (!m_channel)
         return;
     bool wasClean = m_state == CLOSING && !unhandledBufferedAmount && closingHandshakeCompletion == ClosingHandshakeComplete;
+    if (!m_useHixie76Protocol)
+        wasClean = wasClean && code != WebSocketChannel::CloseEventCodeAbnormalClosure;
     m_state = CLOSED;
     m_bufferedAmount = unhandledBufferedAmount;
     ASSERT(scriptExecutionContext());

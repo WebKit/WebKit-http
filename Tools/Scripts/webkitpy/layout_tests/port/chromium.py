@@ -85,6 +85,26 @@ class ChromiumPort(Port):
         'android': ['icecreamsandwich'],
     }
 
+    DEFAULT_BUILD_DIRECTORIES = ('out',)
+
+    @classmethod
+    def _static_build_path(cls, filesystem, build_directory, chromium_base, webkit_base, *comps):
+        if build_directory:
+            return filesystem.join(build_directory, *comps)
+
+        for directory in cls.DEFAULT_BUILD_DIRECTORIES:
+            base_dir = filesystem.join(chromium_base, directory)
+            if filesystem.exists(base_dir):
+                return filesystem.join(base_dir, *comps)
+
+        for directory in cls.DEFAULT_BUILD_DIRECTORIES:
+            base_dir = filesystem.join(webkit_base, directory)
+            if filesystem.exists(base_dir):
+                return filesystem.join(base_dir, *comps)
+
+        # We have to default to something, so pick the last one.
+        return filesystem.join(base_dir, *comps)
+
     @classmethod
     def _chromium_base_dir(cls, filesystem):
         module_path = filesystem.path_to_module(cls.__module__)
@@ -232,8 +252,12 @@ class ChromiumPort(Port):
             self._chromium_base_dir_path = self._chromium_base_dir(self._filesystem)
         return self._filesystem.join(self._chromium_base_dir_path, *comps)
 
-    def path_to_test_expectations_file(self):
-        return self.path_from_webkit_base('LayoutTests', 'platform', 'chromium', 'test_expectations.txt')
+    def setup_environ_for_server(self, server_name=None):
+        clean_env = super(ChromiumPort, self).setup_environ_for_server(server_name)
+        # Webkit Linux (valgrind layout) bot needs these envvars.
+        self._copy_value_from_environ_if_set(clean_env, 'VALGRIND_LIB')
+        self._copy_value_from_environ_if_set(clean_env, 'VALGRIND_LIB_INNER')
+        return clean_env
 
     def default_results_directory(self):
         try:
@@ -313,21 +337,37 @@ class ChromiumPort(Port):
         'win_layout_rel',
     ])
 
+    def _expectations_file_contents(self, filetype, filepath):
+        if self._filesystem.exists(filepath):
+            _log.debug(
+                "reading %s test_expectations overrides from file '%s'" %
+                (filetype, filepath))
+            return (self._filesystem.read_text_file(filepath) or '')
+        else:
+            # FIXME: This allows this to work with mock checkouts;
+            # This probably shouldn't be used with a mock checkout, though.
+            if not 'mock-checkout' in filepath:
+                _log.warning(
+                    "%s test_expectations overrides file '%s' does not exist" %
+                    (filetype, filepath))
+            return ''
+
     def test_expectations_overrides(self):
+        combined_overrides = ''
+        combined_overrides += self._expectations_file_contents(
+            'skia', self.path_from_chromium_base(
+                'skia', 'skia_test_expectations.txt'))
         # FIXME: It seems bad that run_webkit_tests.py uses a hardcoded dummy
         # builder string instead of just using None.
         builder_name = self.get_option('builder_name', 'DUMMY_BUILDER_NAME')
-        base_overrides = super(ChromiumPort, self).test_expectations_overrides()
-        if builder_name != 'DUMMY_BUILDER_NAME' and not '(deps)' in builder_name and not builder_name in self.try_builder_names:
-            return base_overrides
+        if builder_name == 'DUMMY_BUILDER_NAME' or '(deps)' in builder_name or builder_name in self.try_builder_names:
+            combined_overrides += self._expectations_file_contents(
+                'chromium', self.path_from_chromium_base(
+                    'webkit', 'tools', 'layout_tests', 'test_expectations.txt'))
 
-        try:
-            overrides_path = self.path_from_chromium_base('webkit', 'tools', 'layout_tests', 'test_expectations.txt')
-        except AssertionError, e:
-            return base_overrides
-        if not self._filesystem.exists(overrides_path):
-            return base_overrides
-        return self._filesystem.read_text_file(overrides_path) + (base_overrides or '')
+        base_overrides = super(ChromiumPort, self).test_expectations_overrides()
+        combined_overrides += (base_overrides or '')
+        return combined_overrides
 
     def repository_paths(self):
         repos = super(ChromiumPort, self).repository_paths()
@@ -337,7 +377,7 @@ class ChromiumPort(Port):
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
         new_stderr = stderr
         if stderr and 'AddressSanitizer' in stderr:
-            asan_filter_path = self.path_from_chromium_base('third_party', 'asan', 'scripts', 'asan_symbolize.py')
+            asan_filter_path = self.path_from_chromium_base('tools', 'valgrind', 'asan', 'asan_symbolize.py')
             if self._filesystem.exists(asan_filter_path):
                 output = self._executive.run_command([asan_filter_path], input=stderr)
                 new_stderr = self._executive.run_command(['c++filt'], input=output)
@@ -363,6 +403,9 @@ class ChromiumPort(Port):
     # These routines should only be called by other methods in this file
     # or any subclasses.
     #
+
+    def _build_path(self, *comps):
+        return self._static_build_path(self._filesystem, self.get_option('build_directory'), self.path_from_chromium_base(), self.path_from_webkit_base(), *comps)
 
     def _check_driver_build_up_to_date(self, configuration):
         if configuration in ('Debug', 'Release'):
@@ -413,6 +456,12 @@ class ChromiumDriver(WebKitDriver):
         self._image_path = None
 
         # FIXME: Delete all of this driver code once we're satisfied that it's not needed any more.
+        #if port.host.platform.os_version == 'snowleopard':
+        #    if not hasattr(port._options, 'additional_drt_flag'):
+        #        port._options.additional_drt_flag = []
+        #    if not '--test-shell' in port._options.additional_drt_flag:
+        #        port._options.additional_drt_flag.append('--test-shell')
+
         self._test_shell = '--test-shell' in port.get_option('additional_drt_flag', [])
 
     def _wrapper_options(self, pixel_tests):
@@ -638,6 +687,9 @@ class ChromiumDriver(WebKitDriver):
             test_time=run_time, timeout=timeout, error=error)
 
     def start(self, pixel_tests, per_test_args):
+        if not self._test_shell:
+            return super(ChromiumDriver, self).start(pixel_tests, per_test_args)
+
         if not self._proc:
             self._start(pixel_tests, per_test_args)
 

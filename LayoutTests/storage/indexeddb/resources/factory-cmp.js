@@ -9,7 +9,7 @@ function test()
 {
     removeVendorPrefixes();
 
-    shouldBeTrue("typeof indexedDB.cmp === 'function'");
+    shouldBeEqualToString("typeof indexedDB.cmp", "function");
 
     testValidKeys();
     testInvalidKeys();
@@ -36,7 +36,7 @@ function testValidKeys()
         "new Date(0)",
         "new Date(1000)",
         "new Date(1317399931023)",
-        
+
         "''",
         "'\x00'",
         "'a'",
@@ -64,7 +64,7 @@ function testValidKeys()
         "[new Date(0)]",
         "[new Date(1000)]",
         "[new Date(1317399931023)]",
-        
+
         "['']",
         "['\x00']",
         "['a']",
@@ -78,7 +78,7 @@ function testValidKeys()
         "['\uFFFD']", // U+FFFD REPLACEMENT CHARACTER
 
         "[[]]",
-        
+
         "[[], []]",
         "[[], [], []]",
 
@@ -90,10 +90,10 @@ function testValidKeys()
     for (i = 0; i < keys.length - 1; i += 1) {
         key1 = keys[i];
         key2 = keys[i + 1];
-        shouldBeTrue("indexedDB.cmp(" + key1 + "," + key2 + ") === -1");
-        shouldBeTrue("indexedDB.cmp(" + key2 + "," + key1 + ") === 1");
-        shouldBeTrue("indexedDB.cmp(" + key1 + "," + key1 + ") === 0");
-        shouldBeTrue("indexedDB.cmp(" + key2 + "," + key2 + ") === 0");
+        shouldBe("indexedDB.cmp(" + key1 + "," + key2 + ")", "-1");
+        shouldBe("indexedDB.cmp(" + key2 + "," + key1 + ")", "1");
+        shouldBe("indexedDB.cmp(" + key1 + "," + key1 + ")", "0");
+        shouldBe("indexedDB.cmp(" + key2 + "," + key2 + ")", "0");
     }
 }
 
@@ -121,12 +121,12 @@ function testInvalidKeys()
     for (i = 0; i < invalidKeys.length - 1; i += 1) {
         key1 = invalidKeys[i];
         key2 = invalidKeys[i + 1];
-        evalAndExpectException("indexedDB.cmp(" + key1 + ", " + key2 + ")", "IDBDatabaseException.DATA_ERR");
-        evalAndExpectException("indexedDB.cmp(" + key2 + ", " + key1 + ")", "IDBDatabaseException.DATA_ERR");
-        evalAndExpectException("indexedDB.cmp(" + key1 + ", 'valid')", "IDBDatabaseException.DATA_ERR");
-        evalAndExpectException("indexedDB.cmp('valid', " + key1 + ")", "IDBDatabaseException.DATA_ERR");
-        evalAndExpectException("indexedDB.cmp(" + key2 + ", 'valid')", "IDBDatabaseException.DATA_ERR");
-        evalAndExpectException("indexedDB.cmp('valid', " + key2 + ")", "IDBDatabaseException.DATA_ERR");
+        evalAndExpectException("indexedDB.cmp(" + key1 + ", " + key2 + ")", "IDBDatabaseException.DATA_ERR", "'DataError'");
+        evalAndExpectException("indexedDB.cmp(" + key2 + ", " + key1 + ")", "IDBDatabaseException.DATA_ERR", "'DataError'");
+        evalAndExpectException("indexedDB.cmp(" + key1 + ", 'valid')", "IDBDatabaseException.DATA_ERR", "'DataError'");
+        evalAndExpectException("indexedDB.cmp('valid', " + key1 + ")", "IDBDatabaseException.DATA_ERR", "'DataError'");
+        evalAndExpectException("indexedDB.cmp(" + key2 + ", 'valid')", "IDBDatabaseException.DATA_ERR", "'DataError'");
+        evalAndExpectException("indexedDB.cmp('valid', " + key2 + ")", "IDBDatabaseException.DATA_ERR", "'DataError'");
     }
 }
 
@@ -135,7 +135,7 @@ function testIdenticalKeys()
     debug("");
     debug("compare identical keys");
 
-    shouldBeTrue("indexedDB.cmp(0, -0) === 0");
+    shouldBe("indexedDB.cmp(0, -0)", "0");
 }
 
 test();

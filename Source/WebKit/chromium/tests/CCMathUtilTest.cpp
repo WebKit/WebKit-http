@@ -26,18 +26,20 @@
 
 #include "cc/CCMathUtil.h"
 
-#include "TransformationMatrix.h"
-
+#include "CCLayerTreeTestCommon.h"
+#include "FloatRect.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <public/WebTransformationMatrix.h>
 
 using namespace WebCore;
+using WebKit::WebTransformationMatrix;
 
 namespace {
 
 TEST(CCMathUtilTest, verifyBackfaceVisibilityBasicCases)
 {
-    TransformationMatrix transform;
+    WebTransformationMatrix transform;
 
     transform.makeIdentity();
     EXPECT_FALSE(transform.isBackFaceVisible());
@@ -58,7 +60,7 @@ TEST(CCMathUtilTest, verifyBackfaceVisibilityBasicCases)
 
 TEST(CCMathUtilTest, verifyBackfaceVisibilityForPerspective)
 {
-    TransformationMatrix layerSpaceToProjectionPlane;
+    WebTransformationMatrix layerSpaceToProjectionPlane;
 
     // This tests if isBackFaceVisible works properly under perspective transforms.
     // Specifically, layers that may have their back face visible in orthographic
@@ -97,6 +99,57 @@ TEST(CCMathUtilTest, verifyBackfaceVisibilityForPerspective)
     //         opposite result of case 2.
     layerSpaceToProjectionPlane.rotate3d(0, 180, 0);
     EXPECT_TRUE(layerSpaceToProjectionPlane.isBackFaceVisible());
+}
+
+TEST(CCMathUtilTest, verifyProjectionOfPerpendicularPlane)
+{
+    // In this case, the m33() element of the transform becomes zero, which could cause a
+    // divide-by-zero when projecting points/quads.
+
+    WebTransformationMatrix transform;
+    transform.makeIdentity();
+    transform.setM33(0);
+
+    FloatRect rect = FloatRect(0, 0, 1, 1);
+    FloatRect projectedRect = CCMathUtil::projectClippedRect(transform, rect);
+
+    EXPECT_EQ(0, projectedRect.x());
+    EXPECT_EQ(0, projectedRect.y());
+    EXPECT_TRUE(projectedRect.isEmpty());
+}
+
+TEST(CCMathUtilTest, verifyEnclosingClippedRectUsesCorrectInitialBounds)
+{
+    HomogeneousCoordinate h1(-100, -100, 0, 1);
+    HomogeneousCoordinate h2(-10, -10, 0, 1);
+    HomogeneousCoordinate h3(10, 10, 0, -1);
+    HomogeneousCoordinate h4(100, 100, 0, -1);
+
+    // The bounds of the enclosing clipped rect should be -100 to -10 for both x and y.
+    // However, if there is a bug where the initial xmin/xmax/ymin/ymax are initialized to
+    // numeric_limits<float>::min() (which is zero, not -flt_max) then the enclosing
+    // clipped rect will be computed incorrectly.
+    FloatRect result = CCMathUtil::computeEnclosingClippedRect(h1, h2, h3, h4);
+
+    EXPECT_FLOAT_RECT_EQ(FloatRect(FloatPoint(-100, -100), FloatSize(90, 90)), result);
+}
+
+TEST(CCMathUtilTest, verifyEnclosingRectOfVerticesUsesCorrectInitialBounds)
+{
+    FloatPoint vertices[3];
+    int numVertices = 3;
+
+    vertices[0] = FloatPoint(-10, -100);
+    vertices[1] = FloatPoint(-100, -10);
+    vertices[2] = FloatPoint(-30, -30);
+
+    // The bounds of the enclosing rect should be -100 to -10 for both x and y. However,
+    // if there is a bug where the initial xmin/xmax/ymin/ymax are initialized to
+    // numeric_limits<float>::min() (which is zero, not -flt_max) then the enclosing
+    // clipped rect will be computed incorrectly.
+    FloatRect result = CCMathUtil::computeEnclosingRectOfVertices(vertices, numVertices);
+
+    EXPECT_FLOAT_RECT_EQ(FloatRect(FloatPoint(-100, -100), FloatSize(90, 90)), result);
 }
 
 } // namespace

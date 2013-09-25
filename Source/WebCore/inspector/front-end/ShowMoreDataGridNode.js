@@ -31,41 +31,74 @@
 /**
  * @constructor
  * @extends {WebInspector.DataGridNode}
+ * @param {function(number, number)} callback
+ * @param {number} startPosition
+ * @param {number} endPosition
+ * @param {number} chunkSize
  */
-WebInspector.ShowMoreDataGridNode = function(callback, nextCount, allCount)
+WebInspector.ShowMoreDataGridNode = function(callback, startPosition, endPosition, chunkSize)
 {
-    function populate(count)
-    {
-        var index = this.parent.children.indexOf(this);
-        this.parent.removeChild(this);
-        callback(count, index);
-    }
+    WebInspector.DataGridNode.call(this, {summaryRow:true}, false);
+    this._callback = callback;
+    this._startPosition = startPosition;
+    this._endPosition = endPosition;
+    this._chunkSize = chunkSize;
 
     this.showNext = document.createElement("button");
     this.showNext.setAttribute("type", "button");
-    this.showNext.textContent = WebInspector.UIString("Show next %d", nextCount);
-    this.showNext.addEventListener("click", populate.bind(this, nextCount), false);
+    this.showNext.addEventListener("click", this._showNextChunk.bind(this), false);
+    this.showNext.textContent = WebInspector.UIString("Show %d before", this._chunkSize);
 
-    if (allCount) {
-        this.showAll = document.createElement("button");
-        this.showAll.setAttribute("type", "button");
-        this.showAll.textContent = WebInspector.UIString("Show all %d", allCount);
-        this.showAll.addEventListener("click", populate.bind(this, allCount), false);
-    }
+    this.showAll = document.createElement("button");
+    this.showAll.setAttribute("type", "button");
+    this.showAll.addEventListener("click", this._showAll.bind(this), false);
 
-    WebInspector.DataGridNode.call(this, {summaryRow:true}, false);
+    this.showLast = document.createElement("button");
+    this.showLast.setAttribute("type", "button");
+    this.showLast.addEventListener("click", this._showLastChunk.bind(this), false);
+    this.showLast.textContent = WebInspector.UIString("Show %d after", this._chunkSize);
+
+    this._updateLabels();
     this.selectable = false;
 }
 
 WebInspector.ShowMoreDataGridNode.prototype = {
+    _showNextChunk: function()
+    {
+        this._callback(this._startPosition, this._startPosition + this._chunkSize);
+    },
+
+    _showAll: function()
+    {
+        this._callback(this._startPosition, this._endPosition);
+    },
+
+    _showLastChunk: function()
+    {
+        this._callback(this._endPosition - this._chunkSize, this._endPosition);
+    },
+
+    _updateLabels: function()
+    {
+        var totalSize = this._endPosition - this._startPosition;
+        if (totalSize > this._chunkSize) {
+            this.showNext.removeStyleClass("hidden");
+            this.showLast.removeStyleClass("hidden");
+        } else {
+            this.showNext.addStyleClass("hidden");
+            this.showLast.addStyleClass("hidden");
+        }
+        this.showAll.textContent = WebInspector.UIString("Show all %d", totalSize);
+    },
+
     createCells: function()
     {
         var cell = document.createElement("td");
         if (this.depth)
             cell.style.setProperty("padding-left", (this.depth * this.dataGrid.indentWidth) + "px");
         cell.appendChild(this.showNext);
-        if (this.showAll)
-            cell.appendChild(this.showAll);
+        cell.appendChild(this.showAll);
+        cell.appendChild(this.showLast);
         this._element.appendChild(cell);
 
         var columns = this.dataGrid.columns;
@@ -79,12 +112,30 @@ WebInspector.ShowMoreDataGridNode.prototype = {
     },
 
     /**
+     * @param {number} from
+     */
+    setStartPosition: function(from)
+    {
+        this._startPosition = from;
+        this._updateLabels();
+    },
+
+    /**
+     * @param {number} to
+     */
+    setEndPosition: function(to)
+    {
+        this._endPosition = to;
+        this._updateLabels();
+    },
+
+    /**
      * @override
      * @return {number}
      */
     nodeHeight: function()
     {
-        return 33;
+        return 32;
     }
 };
 

@@ -33,12 +33,14 @@
 #import "LayerHostingContext.h"
 #import "LayerTreeContext.h"
 #import "WebPage.h"
+#import "WebPageCreationParameters.h"
 #import "WebPageProxyMessages.h"
 #import "WebProcess.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GraphicsContext.h>
+#import <WebCore/GraphicsLayerCA.h>
 #import <WebCore/Page.h>
 #import <WebCore/RenderLayerCompositor.h>
 #import <WebCore/RenderView.h>
@@ -65,6 +67,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     : DrawingArea(DrawingAreaTypeTiledCoreAnimation, webPage)
     , m_layerTreeStateIsFrozen(false)
     , m_layerFlushScheduler(this)
+    , m_isPaintingSuspended(!parameters.isVisible)
 {
     Page* page = webPage->corePage();
 
@@ -81,8 +84,7 @@ TiledCoreAnimationDrawingArea::TiledCoreAnimationDrawingArea(WebPage* webPage, c
     m_rootLayer.get().opaque = YES;
     m_rootLayer.get().geometryFlipped = YES;
 
-    m_layerHostingContext = LayerHostingContext::createForPort(WebProcess::shared().compositingRenderServerPort());
-    m_layerHostingContext->setRootLayer(m_rootLayer.get());
+    updateLayerHostingContext();
     
     LayerTreeContext layerTreeContext;
     layerTreeContext.contextID = m_layerHostingContext->contextID();
@@ -140,9 +142,15 @@ bool TiledCoreAnimationDrawingArea::forceRepaintAsync(uint64_t callbackID)
     if (m_layerTreeStateIsFrozen)
         return false;
 
+    // FIXME: It is possible for the drawing area to be destroyed before the bound block
+    // is invoked, so grab a reference to the web page here so we can access the drawing area through it.
+    // (The web page is already kept alive by dispatchAfterEnsuringUpdatedScrollPosition).
+    // A better fix would be to make sure that we keep the drawing area alive if there are outstanding calls.
+    WebPage* webPage = m_webPage;
     dispatchAfterEnsuringUpdatedScrollPosition(bind(^{
-        m_webPage->drawingArea()->forceRepaint();
-        m_webPage->send(Messages::WebPageProxy::VoidCallback(callbackID));
+        if (DrawingArea* drawingArea = webPage->drawingArea())
+            drawingArea->forceRepaint();
+        webPage->send(Messages::WebPageProxy::VoidCallback(callbackID));
     }));
     return true;
 }
@@ -285,6 +293,33 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
     return returnValue;
 }
 
+void TiledCoreAnimationDrawingArea::suspendPainting()
+{
+    ASSERT(!m_isPaintingSuspended);
+    m_isPaintingSuspended = true;
+
+    [m_rootLayer.get() setValue:(id)kCFBooleanTrue forKey:@"NSCAViewRenderPaused"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidPauseNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
+
+    m_webPage->corePage()->suspendScriptedAnimations();
+}
+
+void TiledCoreAnimationDrawingArea::resumePainting()
+{
+    if (!m_isPaintingSuspended) {
+        // FIXME: We can get a call to resumePainting when painting is not suspended.
+        // This happens when sending a synchronous message to create a new page. See <rdar://problem/8976531>.
+        return;
+    }
+    m_isPaintingSuspended = false;
+
+    [m_rootLayer.get() setValue:(id)kCFBooleanFalse forKey:@"NSCAViewRenderPaused"];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_rootLayer.get() forKey:@"layer"]];
+
+    if (m_webPage->windowIsVisible())
+        m_webPage->corePage()->resumeScriptedAnimations();
+}
+
 void TiledCoreAnimationDrawingArea::updateGeometry(const IntSize& viewSize)
 {
     m_webPage->setSize(viewSize);
@@ -317,34 +352,40 @@ void TiledCoreAnimationDrawingArea::setDeviceScaleFactor(float deviceScaleFactor
 void TiledCoreAnimationDrawingArea::setLayerHostingMode(uint32_t opaqueLayerHostingMode)
 {
     LayerHostingMode layerHostingMode = static_cast<LayerHostingMode>(opaqueLayerHostingMode);
-    if (layerHostingMode != m_layerHostingContext->layerHostingMode()) {
-        // The mode has changed.
-        
-        // First, invalidate the old hosting context.
+    if (layerHostingMode == m_webPage->layerHostingMode())
+        return;
+
+    m_webPage->setLayerHostingMode(layerHostingMode);
+
+    updateLayerHostingContext();
+
+    // Finally, inform the UIProcess that the context has changed.
+    LayerTreeContext layerTreeContext;
+    layerTreeContext.contextID = m_layerHostingContext->contextID();
+    m_webPage->send(Messages::DrawingAreaProxy::UpdateAcceleratedCompositingMode(0, layerTreeContext));
+}
+
+void TiledCoreAnimationDrawingArea::updateLayerHostingContext()
+{
+    // Invalidate the old context.
+    if (m_layerHostingContext) {
         m_layerHostingContext->invalidate();
         m_layerHostingContext = nullptr;
-
-        // Create a new context and set it up.
-        switch (layerHostingMode) {
-        case LayerHostingModeDefault:
-            m_layerHostingContext = LayerHostingContext::createForPort(WebProcess::shared().compositingRenderServerPort());
-            break;
-#if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
-        case LayerHostingModeInWindowServer:
-            m_layerHostingContext = LayerHostingContext::createForWindowServer();        
-            break;
-#endif
-        }
-
-        m_layerHostingContext->setRootLayer(m_rootLayer.get());
-
-        m_webPage->setLayerHostingMode(layerHostingMode);
-
-        // Finally, inform the UIProcess that the context has changed.
-        LayerTreeContext layerTreeContext;
-        layerTreeContext.contextID = m_layerHostingContext->contextID();
-        m_webPage->send(Messages::DrawingAreaProxy::UpdateAcceleratedCompositingMode(0, layerTreeContext));
     }
+
+    // Create a new context and set it up.
+    switch (m_webPage->layerHostingMode()) {
+    case LayerHostingModeDefault:
+        m_layerHostingContext = LayerHostingContext::createForPort(WebProcess::shared().compositingRenderServerPort());
+        break;
+#if HAVE(LAYER_HOSTING_IN_WINDOW_SERVER)
+    case LayerHostingModeInWindowServer:
+        m_layerHostingContext = LayerHostingContext::createForWindowServer();
+        break;
+#endif
+    }
+
+    m_layerHostingContext->setRootLayer(m_rootLayer.get());
 }
 
 void TiledCoreAnimationDrawingArea::setRootCompositingLayer(CALayer *layer)
@@ -375,6 +416,9 @@ void TiledCoreAnimationDrawingArea::createPageOverlayLayer()
     m_pageOverlayLayer->setName("page overlay content");
 #endif
 
+    // We don't ever want the overlay layer to become tiled because that will look bad, and
+    // we also never expect the underlying CALayer to change.
+    static_cast<GraphicsLayerCA*>(m_pageOverlayLayer.get())->setAllowTiledLayer(false);
     m_pageOverlayLayer->setAcceleratesDrawing(true);
     m_pageOverlayLayer->setDrawsContent(true);
     m_pageOverlayLayer->setSize(m_webPage->size());

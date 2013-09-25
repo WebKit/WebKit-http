@@ -213,17 +213,14 @@ int PlatformKeyboardEvent::windowsKeyCodeForGdkKeyCode(unsigned keycode)
         case GDK_KP_Enter:
         case GDK_Return:
             return VK_RETURN; //(0D) Return key
-        case GDK_Shift_L:
-        case GDK_Shift_R:
-            return VK_SHIFT; // (10) SHIFT key
-        case GDK_Control_L:
-        case GDK_Control_R:
-            return VK_CONTROL; // (11) CTRL key
+
+            // VK_SHIFT (10) SHIFT key
+            // VK_CONTROL (11) CTRL key
+
         case GDK_Menu:
             return VK_APPS;  // (5D) Applications key (Natural keyboard)
-        case GDK_Alt_L:
-        case GDK_Alt_R:
-            return VK_MENU; // (12) ALT key
+
+            // VK_MENU (12) ALT key
 
         case GDK_Pause:
             return VK_PAUSE; // (13) PAUSE key
@@ -403,12 +400,19 @@ int PlatformKeyboardEvent::windowsKeyCodeForGdkKeyCode(unsigned keycode)
         case GDK_Scroll_Lock:
             return VK_SCROLL; // (91) SCROLL LOCK key
 
-            // VK_LSHIFT (A0) Left SHIFT key
-            // VK_RSHIFT (A1) Right SHIFT key
-            // VK_LCONTROL (A2) Left CONTROL key
-            // VK_RCONTROL (A3) Right CONTROL key
-            // VK_LMENU (A4) Left MENU key
-            // VK_RMENU (A5) Right MENU key
+        case GDK_Shift_L:
+            return VK_LSHIFT; // (A0) Left SHIFT key
+        case GDK_Shift_R:
+            return VK_RSHIFT; // (A1) Right SHIFT key
+        case GDK_Control_L:
+            return VK_LCONTROL; // (A2) Left CONTROL key
+        case GDK_Control_R:
+            return VK_RCONTROL; // (A3) Right CONTROL key
+        case GDK_Alt_L:
+            return VK_LMENU; // (A4) Left MENU key
+        case GDK_Alt_R:
+            return VK_RMENU; // (A5) Right MENU key
+
             // VK_BROWSER_BACK (A6) Windows 2000/XP: Browser Back key
             // VK_BROWSER_FORWARD (A7) Windows 2000/XP: Browser Forward key
             // VK_BROWSER_REFRESH (A8) Windows 2000/XP: Browser Refresh key
@@ -510,7 +514,8 @@ int PlatformKeyboardEvent::windowsKeyCodeForGdkKeyCode(unsigned keycode)
         case GDK_F23:
         case GDK_F24:
             return VK_F1 + (keycode - GDK_F1);
-
+        case GDK_KEY_VoidSymbol:
+            return VK_PROCESSKEY;
         default:
             return 0;
     }
@@ -545,12 +550,30 @@ String PlatformKeyboardEvent::singleCharacterString(unsigned val)
     }
 }
 
+static PlatformEvent::Type eventTypeForGdkKeyEvent(GdkEventKey* event)
+{
+    return event->type == GDK_KEY_RELEASE ? PlatformEvent::KeyUp : PlatformEvent::KeyDown;
+}
+
+static PlatformEvent::Modifiers modifiersForGdkKeyEvent(GdkEventKey* event)
+{
+    unsigned int modifiers = 0;
+    if (event->state & GDK_SHIFT_MASK || event->keyval == GDK_3270_BackTab)
+        modifiers |= PlatformEvent::ShiftKey;
+    if (event->state & GDK_CONTROL_MASK)
+        modifiers |= PlatformEvent::CtrlKey;
+    if (event->state & GDK_MOD1_MASK)
+        modifiers |= PlatformEvent::AltKey;
+    if (event->state & GDK_META_MASK)
+        modifiers |= PlatformEvent::MetaKey;
+    return static_cast<PlatformEvent::Modifiers>(modifiers);
+}
+
 // Keep this in sync with the other platform event constructors
-// TODO: m_gdkEventKey should be refcounted
-PlatformKeyboardEvent::PlatformKeyboardEvent(GdkEventKey* event)
-    : PlatformEvent((event->type == GDK_KEY_RELEASE) ? PlatformEvent::KeyUp : PlatformEvent::KeyDown, (event->state & GDK_SHIFT_MASK) || (event->keyval == GDK_3270_BackTab), event->state & GDK_CONTROL_MASK, event->state & GDK_MOD1_MASK, event->state & GDK_META_MASK, currentTime())
-    , m_text(singleCharacterString(event->keyval))
-    , m_unmodifiedText(singleCharacterString(event->keyval))
+PlatformKeyboardEvent::PlatformKeyboardEvent(GdkEventKey* event, const CompositionResults& compositionResults)
+    : PlatformEvent(eventTypeForGdkKeyEvent(event), modifiersForGdkKeyEvent(event), currentTime())
+    , m_text(compositionResults.simpleString.length() ? compositionResults.simpleString : singleCharacterString(event->keyval))
+    , m_unmodifiedText(m_text)
     , m_keyIdentifier(keyIdentifierForGdkKeyCode(event->keyval))
     , m_windowsVirtualKeyCode(windowsKeyCodeForGdkKeyCode(event->keyval))
     , m_nativeVirtualKeyCode(event->keyval)
@@ -559,7 +582,11 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(GdkEventKey* event)
     , m_isKeypad(event->keyval >= GDK_KP_Space && event->keyval <= GDK_KP_9)
     , m_isSystemKey(false)
     , m_gdkEventKey(event)
+    , m_compositionResults(compositionResults)
 {
+    // To match the behavior of IE, we return VK_PROCESSKEY for keys that triggered composition results.
+    if (compositionResults.compositionUpdated())
+        m_windowsVirtualKeyCode = VK_PROCESSKEY;
 }
 
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCompatibilityMode)
@@ -572,6 +599,12 @@ void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool backwardCom
         return;
 
     if (type == PlatformEvent::RawKeyDown) {
+        m_text = String();
+        m_unmodifiedText = String();
+    } else if (type == PlatformEvent::Char && m_compositionResults.compositionUpdated()) {
+        // Having empty text, prevents this Char (which is a DOM keypress) event
+        // from going to the DOM. Keys that trigger composition events should not
+        // fire keypress.
         m_text = String();
         m_unmodifiedText = String();
     } else {
@@ -594,11 +627,6 @@ void PlatformKeyboardEvent::getCurrentModifierState(bool& shiftKey, bool& ctrlKe
     ctrlKey = state & GDK_CONTROL_MASK;
     altKey = state & GDK_MOD1_MASK;
     metaKey = state & GDK_META_MASK;
-}
-
-GdkEventKey* PlatformKeyboardEvent::gdkEventKey() const
-{
-    return m_gdkEventKey;
 }
 
 }

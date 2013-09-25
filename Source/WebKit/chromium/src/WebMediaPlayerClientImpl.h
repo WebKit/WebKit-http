@@ -47,6 +47,7 @@ namespace WebCore { class AudioSourceProviderClient; }
 
 namespace WebKit {
 
+class WebHelperPluginImpl;
 class WebAudioSourceProvider;
 class WebMediaPlayer;
 
@@ -89,6 +90,8 @@ public:
     virtual void keyError(const WebString& keySystem, const WebString& sessionId, MediaKeyErrorCode, unsigned short systemCode);
     virtual void keyMessage(const WebString& keySystem, const WebString& sessionId, const unsigned char* message, unsigned messageLength);
     virtual void keyNeeded(const WebString& keySystem, const WebString& sessionId, const unsigned char* initData, unsigned initDataLength);
+    virtual WebPlugin* createHelperPlugin(const WebString& pluginType, WebFrame*);
+    virtual void closeHelperPlugin();
     virtual void disableAcceleratedCompositing();
 
     // MediaPlayerPrivateInterface methods:
@@ -122,12 +125,13 @@ public:
     virtual int dataRate() const;
     virtual bool totalBytesKnown() const;
     virtual unsigned totalBytes() const;
-    virtual unsigned bytesLoaded() const;
+    virtual bool didLoadingProgress() const;
     virtual void setSize(const WebCore::IntSize&);
     virtual void paint(WebCore::GraphicsContext*, const WebCore::IntRect&);
     virtual void paintCurrentFrameInContext(WebCore::GraphicsContext*, const WebCore::IntRect&);
     virtual void setPreload(WebCore::MediaPlayer::Preload);
     virtual bool hasSingleSecurityOrigin() const;
+    virtual bool didPassCORSAccessCheck() const;
     virtual WebCore::MediaPlayer::MovieLoadType movieLoadType() const;
     virtual float mediaTimeForTimeValue(float timeValue) const;
     virtual unsigned decodedFrameCount() const;
@@ -135,8 +139,9 @@ public:
     virtual unsigned audioDecodedByteCount() const;
     virtual unsigned videoDecodedByteCount() const;
 #if USE(NATIVE_FULLSCREEN_VIDEO)
-    virtual bool enterFullscreen() const;
+    virtual void enterFullscreen();
     virtual void exitFullscreen();
+    virtual bool canEnterFullscreen() const;
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -153,9 +158,11 @@ public:
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-    virtual WebCore::MediaPlayer::AddIdStatus sourceAddId(const String& id, const String& type);
+    virtual WebCore::MediaPlayer::AddIdStatus sourceAddId(const String& id, const String& type, const Vector<String>& codecs);
     virtual bool sourceRemoveId(const String&);
-    virtual bool sourceAppend(const unsigned char* data, unsigned length);
+    virtual WTF::PassRefPtr<WebCore::TimeRanges> sourceBuffered(const String&);
+    virtual bool sourceAppend(const String&, const unsigned char* data, unsigned length);
+    virtual bool sourceAbort(const String&);
     virtual void sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus);
 #endif
 
@@ -169,8 +176,9 @@ public:
     virtual void didReceiveFrame();
     virtual void didUpdateMatrix(const float*);
 
-private:
+protected:
     WebMediaPlayerClientImpl();
+private:
     void startDelayedLoad();
     void loadInternal();
 
@@ -194,6 +202,7 @@ private:
     String m_url;
     bool m_delayingLoad;
     WebCore::MediaPlayer::Preload m_preload;
+    RefPtr<WebHelperPluginImpl> m_helperPlugin;
 #if USE(ACCELERATED_COMPOSITING)
     WebVideoLayer m_videoLayer;
     bool m_supportsAcceleratedCompositing;

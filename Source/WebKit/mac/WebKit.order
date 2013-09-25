@@ -126,7 +126,6 @@ _WKNSURLProtocolClassForRequest
 -[WebPreferences(WebPrivate) setLoadsSiteIconsIgnoringImageLoadingPreference:]
 -[WebPreferences(WebPrivate) setFrameFlatteningEnabled:]
 -[WebPreferences(WebPrivate) setSpatialNavigationEnabled:]
--[WebPreferences(WebPrivate) setEditingBehavior:]
 -[WebPreferences setUserStyleSheetEnabled:]
 -[WebPreferences setUsesPageCache:]
 -[WebPreferences(WebPrivate) setAcceleratedCompositingEnabled:]
@@ -386,8 +385,6 @@ __ZN3WTF12AtomicStringC2EP8NSString
 -[WebPreferences(WebPrivate) shrinksStandaloneImagesToFit]
 -[WebPreferences(WebPrivate) editableLinkBehavior]
 __Z4core26WebKitEditableLinkBehavior
--[WebPreferences(WebPrivate) editingBehavior]
-__Z4core21WebKitEditingBehavior
 -[WebPreferences(WebPrivate) textDirectionSubmenuInclusionBehavior]
 __Z4core40WebTextDirectionSubmenuInclusionBehavior
 -[WebPreferences(WebPrivate) isDOMPasteAllowed]
@@ -1221,8 +1218,6 @@ _WKExecutableWasLinkedOnOrBeforeSnowLeopard
 __ZNK7WebCore12ChromeClient29dispatchViewportDataDidChangeERKNS_17ViewportArgumentsE
 -[WebView(WebPrivate) setFrameSize:]
 -[WebFrame(WebKitDebug) renderTreeAsExternalRepresentationForPrinting:]
--[WebFrame(WebPrivate) _suspendAnimations]
--[WebFrame(WebPrivate) _resumeAnimations]
 +[WebView(WebPrivate) _pointingHandCursor]
 _WKGetCFURLResponseURL
 _WKGetCFURLResponseHTTPResponse
@@ -1354,6 +1349,7 @@ __ZN3WTF6VectorIN7WebCore18TextCheckingResultELm0EE15reserveCapacityEm
 __ZN3WTF11VectorMoverILb0EN7WebCore18TextCheckingResultEE4moveEPKS2_S5_PS2_
 __ZN3WTF6VectorIN7WebCore13GrammarDetailELm0EEC2ERKS3_
 __ZN7WebCore18TextCheckingResultD1Ev
+__ZN7WebCore18callRemovedLastRefEPNS_10TreeSharedINS_13ContainerNodeEEE
 __ZN3WTF6VectorIN7WebCore13GrammarDetailELm0EED1Ev
 __ZN3WTF6VectorIN7WebCore18TextCheckingResultELm0EE14shrinkCapacityEm
 __ZN15WebEditorClient25shouldShowDeleteInterfaceEPN7WebCore11HTMLElementE

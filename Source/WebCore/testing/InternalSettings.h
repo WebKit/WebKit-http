@@ -26,6 +26,7 @@
 #ifndef InternalSettings_h
 #define InternalSettings_h
 
+#include "EditingBehaviorTypes.h"
 #include "FrameDestructionObserver.h"
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -62,6 +63,9 @@ public:
     void setPageScaleFactor(float scaleFactor, int x, int y, ExceptionCode&);
     void setPerTileDrawingEnabled(bool enabled, ExceptionCode&);
     void setTouchEventEmulationEnabled(bool enabled, ExceptionCode&);
+    void setDeviceSupportsTouch(bool enabled, ExceptionCode&);
+    void setDeviceSupportsMouse(bool enabled, ExceptionCode&);
+    void setDeviceScaleFactor(float scaleFactor, ExceptionCode&);
     void setShadowDOMEnabled(bool enabled, ExceptionCode&);
     void setStandardFontFamily(const String& family, const String& script, ExceptionCode&);
     void setSerifFontFamily(const String& family, const String& script, ExceptionCode&);
@@ -74,8 +78,14 @@ public:
     bool scrollAnimatorEnabled(ExceptionCode&);
     void setCSSExclusionsEnabled(bool enabled, ExceptionCode&);
     void setMediaPlaybackRequiresUserGesture(bool, ExceptionCode&);
+    void setEditingBehavior(const String&, ExceptionCode&);
+    void setFixedPositionCreatesStackingContext(bool, ExceptionCode&);
+    void setSyncXHRInDocumentsEnabled(bool, ExceptionCode&);
+    void setWindowFocusRestricted(bool, ExceptionCode&);
 
     void restoreTo(Settings*);
+
+    void setJavaScriptProfilingEnabled(bool enabled, ExceptionCode&);
 
 private:
     InternalSettings(Frame*);
@@ -90,6 +100,15 @@ private:
 #if ENABLE(SHADOW_DOM)
     bool m_originalShadowDOMEnabled;
 #endif
+    EditingBehaviorType m_originalEditingBehavior;
+    bool m_originalFixedPositionCreatesStackingContext;
+    bool m_originalSyncXHRInDocumentsEnabled;
+#if ENABLE(INSPECTOR) && ENABLE(JAVASCRIPT_DEBUGGER)
+    bool m_originalJavaScriptProfilingEnabled;
+#endif
+    bool m_originalWindowFocusRestricted;
+    bool m_originalDeviceSupportsTouch;
+    bool m_originalDeviceSupportsMouse;
 };
 
 } // namespace WebCore

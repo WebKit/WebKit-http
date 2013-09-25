@@ -43,7 +43,7 @@ namespace WebCore {
     public:
         friend PageCache* pageCache();
         
-        static bool canCache(Page*);
+        bool canCache(Page*) const;
 
         void setCapacity(int); // number of pages to cache
         int capacity() { return m_capacity; }
@@ -59,6 +59,9 @@ namespace WebCore {
         int autoreleasedPageCount() const;
 
         void markPagesForVistedLinkStyleRecalc();
+
+        // Will mark all cached pages associated with the given page as needing style recalc.
+        void markPagesForFullStyleRecalc(Page*);
 
 #if USE(ACCELERATED_COMPOSITING)
         bool shouldClearBackingStores() const { return m_shouldClearBackingStores; }
@@ -79,7 +82,7 @@ namespace WebCore {
         void prune();
 
         void autorelease(PassRefPtr<CachedPage>);
-        void releaseAutoreleasedPagesNowOrReschedule(Timer<PageCache>*);
+        void releaseAutoreleasedPagesNowDueToTimer(Timer<PageCache>*);
 
         int m_capacity;
         int m_size;

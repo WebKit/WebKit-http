@@ -220,12 +220,14 @@ void WebSocketChannel::fail(const String& reason)
         // Hybi-10 specification explicitly states we must not continue to handle incoming data
         // once the WebSocket connection is failed (section 7.1.7).
         // FIXME: Should we do this in hixie-76 too?
+        RefPtr<WebSocketChannel> protect(this); // The client can close the channel, potentially removing the last reference.
         m_shouldDiscardReceivedData = true;
         if (m_buffer)
             skipBuffer(m_bufferSize); // Save memory.
         m_deflateFramer.didFail();
         m_hasContinuousFrame = false;
         m_continuousFrameData.clear();
+        m_client->didReceiveMessageError();
     }
     if (m_handle && !m_closed)
         m_handle->disconnect(); // Will call didClose().
@@ -672,12 +674,22 @@ bool WebSocketChannel::processFrame()
         break;
 
     case WebSocketFrame::OpCodeClose:
-        if (frame.payloadLength >= 2) {
+        if (!frame.payloadLength)
+            m_closeEventCode = CloseEventCodeNoStatusRcvd;
+        else if (frame.payloadLength == 1) {
+            m_closeEventCode = CloseEventCodeAbnormalClosure;
+            fail("Received a broken close frame containing an invalid size body.");
+            return false;
+        } else {
             unsigned char highByte = static_cast<unsigned char>(frame.payload[0]);
             unsigned char lowByte = static_cast<unsigned char>(frame.payload[1]);
             m_closeEventCode = highByte << 8 | lowByte;
-        } else
-            m_closeEventCode = CloseEventCodeNoStatusRcvd;
+            if (m_closeEventCode == CloseEventCodeNoStatusRcvd || m_closeEventCode == CloseEventCodeAbnormalClosure || m_closeEventCode == CloseEventCodeTLSHandshake) {
+                m_closeEventCode = CloseEventCodeAbnormalClosure;
+                fail("Received a broken close frame containing a reserved status code.");
+                return false;
+            }
+        }
         if (frame.payloadLength >= 3)
             m_closeEventReason = String::fromUTF8(&frame.payload[2], frame.payloadLength - 2);
         else

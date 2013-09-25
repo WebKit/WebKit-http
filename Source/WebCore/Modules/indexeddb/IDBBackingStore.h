@@ -52,8 +52,8 @@ public:
     virtual bool updateIDBDatabaseMetaData(int64_t rowId, const String& version) = 0;
     virtual bool deleteDatabase(const String& name) = 0;
 
-    virtual void getObjectStores(int64_t databaseId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<String>& foundKeyPaths, Vector<bool>& foundAutoIncrementFlags) = 0;
-    virtual bool createObjectStore(int64_t databaseId, const String& name, const String& keyPath, bool autoIncrement, int64_t& assignedObjectStoreId) = 0;
+    virtual void getObjectStores(int64_t databaseId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<IDBKeyPath>& foundKeyPaths, Vector<bool>& foundAutoIncrementFlags) = 0;
+    virtual bool createObjectStore(int64_t databaseId, const String& name, const IDBKeyPath&, bool autoIncrement, int64_t& assignedObjectStoreId) = 0;
     virtual void deleteObjectStore(int64_t databaseId, int64_t objectStoreId) = 0;
 
     class ObjectStoreRecordIdentifier : public RefCounted<ObjectStoreRecordIdentifier> {
@@ -67,7 +67,7 @@ public:
     virtual bool putObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, const IDBKey&, const String& value, ObjectStoreRecordIdentifier*) = 0;
     virtual void clearObjectStore(int64_t databaseId, int64_t objectStoreId) = 0;
     virtual void deleteObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, const ObjectStoreRecordIdentifier*) = 0;
-    virtual double nextAutoIncrementNumber(int64_t databaseId, int64_t objectStoreId) = 0;
+    virtual int64_t nextAutoIncrementNumber(int64_t databaseId, int64_t objectStoreId) = 0;
     virtual bool keyExistsInObjectStore(int64_t databaseId, int64_t objectStoreId, const IDBKey&, ObjectStoreRecordIdentifier* foundRecordIdentifier) = 0;
 
     class ObjectStoreRecordCallback {
@@ -77,8 +77,8 @@ public:
     };
     virtual bool forEachObjectStoreRecord(int64_t databaseId, int64_t objectStoreId, ObjectStoreRecordCallback&) = 0;
 
-    virtual void getIndexes(int64_t databaseId, int64_t objectStoreId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<String>& foundKeyPaths, Vector<bool>& foundUniqueFlags, Vector<bool>& foundMultiEntryFlags) = 0;
-    virtual bool createIndex(int64_t databaseId, int64_t objectStoreId, const String& name, const String& keyPath, bool isUnique, bool isMultiEntry, int64_t& indexId) = 0;
+    virtual void getIndexes(int64_t databaseId, int64_t objectStoreId, Vector<int64_t>& foundIds, Vector<String>& foundNames, Vector<IDBKeyPath>& foundKeyPaths, Vector<bool>& foundUniqueFlags, Vector<bool>& foundMultiEntryFlags) = 0;
+    virtual bool createIndex(int64_t databaseId, int64_t objectStoreId, const String& name, const IDBKeyPath&, bool isUnique, bool isMultiEntry, int64_t& indexId) = 0;
     virtual void deleteIndex(int64_t databaseId, int64_t objectStoreId, int64_t indexId) = 0;
     virtual bool putIndexDataForRecord(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const IDBKey&, const ObjectStoreRecordIdentifier*) = 0;
     virtual bool deleteIndexDataForRecord(int64_t databaseId, int64_t objectStoreId, int64_t indexId, const ObjectStoreRecordIdentifier*) = 0;
@@ -113,7 +113,7 @@ public:
     public:
         virtual ~Transaction() { }
         virtual void begin() = 0;
-        virtual void commit() = 0;
+        virtual bool commit() = 0;
         virtual void rollback() = 0;
     };
     virtual PassRefPtr<Transaction> createTransaction() = 0;

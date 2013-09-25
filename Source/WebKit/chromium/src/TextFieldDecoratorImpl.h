@@ -43,8 +43,11 @@ public:
     static PassOwnPtr<TextFieldDecoratorImpl> create(WebTextFieldDecoratorClient*);
     virtual ~TextFieldDecoratorImpl();
 
+    WebTextFieldDecoratorClient* decoratorClient();
+
 private:
     virtual bool willAddDecorationTo(WebCore::HTMLInputElement*) OVERRIDE;
+    virtual bool visibleByDefault() OVERRIDE;
     virtual WebCore::CachedImage* imageForNormalState() OVERRIDE;
     virtual WebCore::CachedImage* imageForDisabledState() OVERRIDE;
     virtual WebCore::CachedImage* imageForReadonlyState() OVERRIDE;

@@ -109,16 +109,16 @@ static CSSPropertyID cssPropertyIdForSVGAttributeName(const QualifiedName& attrN
     return propertyNameToIdMap->get(attrName.localName().impl());
 }
 
-void SVGFontFaceElement::parseAttribute(Attribute* attr)
+void SVGFontFaceElement::parseAttribute(const Attribute& attribute)
 {    
-    CSSPropertyID propId = cssPropertyIdForSVGAttributeName(attr->name());
+    CSSPropertyID propId = cssPropertyIdForSVGAttributeName(attribute.name());
     if (propId > 0) {
-        m_fontFaceRule->properties()->setProperty(propId, attr->value(), false);
+        m_fontFaceRule->mutableProperties()->setProperty(propId, attribute.value(), false);
         rebuildFontFace();
         return;
     }
     
-    SVGElement::parseAttribute(attr);
+    SVGElement::parseAttribute(attribute);
 }
 
 unsigned SVGFontFaceElement::unitsPerEm() const
@@ -297,8 +297,7 @@ void SVGFontFaceElement::rebuildFontFace()
         return;
 
     // Parse in-memory CSS rules
-    CSSProperty srcProperty(CSSPropertySrc, list);
-    m_fontFaceRule->properties()->addParsedProperties(&srcProperty, 1);
+    m_fontFaceRule->mutableProperties()->addParsedProperty(CSSProperty(CSSPropertySrc, list));
 
     if (describesParentFont) {    
         // Traverse parsed CSS values and associate CSSFontFaceSrcValue elements with ourselves.
@@ -315,7 +314,7 @@ void SVGFontFaceElement::rebuildFontFace()
     document()->styleResolverChanged(DeferRecalcStyle);
 }
 
-Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(Node* rootParent)
+Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode* rootParent)
 {
     SVGElement::insertedInto(rootParent);
     if (!rootParent->inDocument())
@@ -326,13 +325,13 @@ Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(Node* rootPa
     return InsertionDone;
 }
 
-void SVGFontFaceElement::removedFrom(Node* rootParent)
+void SVGFontFaceElement::removedFrom(ContainerNode* rootParent)
 {
     SVGElement::removedFrom(rootParent);
 
     if (rootParent->inDocument()) {
         document()->accessSVGExtensions()->unregisterSVGFontFaceElement(this);
-        m_fontFaceRule->properties()->parseDeclaration(emptyString(), 0);
+        m_fontFaceRule->mutableProperties()->parseDeclaration(emptyString(), 0);
 
         document()->styleResolverChanged(DeferRecalcStyle);
     }

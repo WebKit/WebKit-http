@@ -26,7 +26,7 @@ function deleteExisting()
 {
     debug("deleteExisting():");
     var trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = setVersionCompleted;
 
@@ -41,7 +41,7 @@ function deleteExisting()
 function setVersionCompleted()
 {
     debug("setVersionCompleted():");
-    self.transaction = evalAndLog("transaction = db.transaction(['store'], IDBTransaction.READ_WRITE)");
+    self.transaction = evalAndLog("transaction = db.transaction(['store'], 'readwrite')");
 
     request = evalAndLog("transaction.objectStore('store').put({x: 1}, 'foo')");
     request.onerror = unexpectedErrorCallback;
@@ -66,6 +66,7 @@ function addMoreDataFailed()
     evalAndLog("event.preventDefault()");
 
     shouldBe("event.target.errorCode", "IDBDatabaseException.CONSTRAINT_ERR");
+    shouldBe("event.target.error.name", "'ConstraintError'");
 
     // Update the 'foo' entry in object store, changing the value of x.
     request = evalAndLog("transaction.objectStore('store').put({x: 0}, 'foo')");
@@ -86,7 +87,7 @@ function changeDataSuccess()
 function cursorSuccess()
 {
     debug("cursorSuccess():");
-    shouldBe("event.target.result", "null");
+    shouldBeNull("event.target.result");
 
     // A key cursor starting at 1 should not find anything.
     var request = evalAndLog("transaction.objectStore('store').index('index').openKeyCursor(IDBKeyRange.lowerBound(1))");
@@ -97,7 +98,7 @@ function cursorSuccess()
 function keyCursorSuccess()
 {
     debug("keyCursorSuccess():");
-    shouldBe("event.target.result", "null");
+    shouldBeNull("event.target.result");
 
     // Now we should be able to add a value with x: 1.
     request = evalAndLog("transaction.objectStore('store').put({x: 1}, 'bar')");

@@ -22,7 +22,10 @@
 
 #include "BackingStore.h"
 #include "Frame.h"
+#include "GraphicsContext.h"
+#include "InspectorController.h"
 #include "NotImplemented.h"
+#include "Page.h"
 #include "RenderObject.h"
 #include "WebPageClient.h"
 #include "WebPage_p.h"
@@ -40,83 +43,14 @@ void InspectorClientBlackBerry::inspectorDestroyed()
     delete this;
 }
 
-Page* InspectorClientBlackBerry::createPage()
-{
-    notImplemented();
-    return 0;
-}
-
-String InspectorClientBlackBerry::localizedStringsURL()
-{
-    notImplemented();
-    return String();
-}
-
-String InspectorClientBlackBerry::hiddenPanels()
-{
-    notImplemented();
-    return String();
-}
-
-void InspectorClientBlackBerry::showWindow()
-{
-    notImplemented();
-}
-
-void InspectorClientBlackBerry::closeWindow()
-{
-    notImplemented();
-}
-
-void InspectorClientBlackBerry::attachWindow()
-{
-    notImplemented();
-}
-
-void InspectorClientBlackBerry::detachWindow()
-{
-    notImplemented();
-}
-
-void InspectorClientBlackBerry::setAttachedWindowHeight(unsigned)
-{
-    notImplemented();
-}
-
 void InspectorClientBlackBerry::highlight()
 {
-    hideHighlight();
+    m_webPagePrivate->setInspectorOverlayClient(this);
 }
 
 void InspectorClientBlackBerry::hideHighlight()
 {
-    if (!m_webPagePrivate->mainFrame() || !m_webPagePrivate->mainFrame()->document() || !m_webPagePrivate->mainFrame()->document()->documentElement()
-        || !m_webPagePrivate->mainFrame()->document()->documentElement()->renderer())
-        return;
-
-    // FIXME: Potentially slow hack, but invalidating everything should work since the actual highlight is drawn by BackingStorePrivate::renderContents().
-    m_webPagePrivate->mainFrame()->document()->documentElement()->renderer()->repaint(true);
-}
-
-void InspectorClientBlackBerry::inspectedURLChanged(const String&)
-{
-    notImplemented();
-}
-
-void InspectorClientBlackBerry::populateSetting(const String& key, String* value)
-{
-    if (m_inspectorSettingsMap->contains(key))
-        *value = m_inspectorSettingsMap->get(key);
-}
-
-void InspectorClientBlackBerry::storeSetting(const String& key, const String& value)
-{
-    m_inspectorSettingsMap->set(key, value);
-}
-
-void InspectorClientBlackBerry::inspectorWindowObjectCleared()
-{
-    notImplemented();
+    m_webPagePrivate->setInspectorOverlayClient(0);
 }
 
 void InspectorClientBlackBerry::openInspectorFrontend(InspectorController*)
@@ -149,6 +83,18 @@ void InspectorClientBlackBerry::clearBrowserCache()
 void InspectorClientBlackBerry::clearBrowserCookies()
 {
     m_webPagePrivate->m_client->clearCookies();
+}
+
+void InspectorClientBlackBerry::updateInspectorStateCookie(const String& cookie)
+{
+    notImplemented();
+};
+
+void InspectorClientBlackBerry::paintInspectorOverlay(GraphicsContext& gc)
+{
+    InspectorController* inspectorController = m_webPagePrivate->m_page->inspectorController();
+    if (inspectorController)
+        inspectorController->drawHighlight(gc);
 }
 
 } // namespace WebCore

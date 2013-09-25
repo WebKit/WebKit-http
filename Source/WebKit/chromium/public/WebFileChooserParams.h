@@ -50,11 +50,13 @@ struct WebFileChooserParams {
     // |initialValue| is a filename which the dialog should select by default.
     // It can be an empty string.
     WebString initialValue;
-    // This contains MIME type strings such as "audio/*" "text/plain".
-    // The dialog may restrict selectable files to the specified MIME types.
+    // This contains MIME type strings such as "audio/*" "text/plain" or file
+    // extensions beginning with a period (.) such as ".mp3" ".txt".
+    // The dialog may restrict selectable files to files with the specified MIME
+    // types or file extensions.
     // This list comes from an 'accept' attribute value of an INPUT element, and
-    // it contains only lower-cased MIME type strings of which format is valid.
-    WebVector<WebString> acceptMIMETypes;
+    // it contains only lower-cased MIME type strings and file extensions.
+    WebVector<WebString> acceptTypes;
     // |selectedFiles| has filenames which a file upload control already selected.
     // A WebViewClient implementation may ask a user to select
     //  - removing a file from the selected files,
@@ -62,6 +64,14 @@ struct WebFileChooserParams {
     //  - replacing with other files
     // before opening a file chooser dialog.
     WebVector<WebString> selectedFiles;
+    // See http://www.w3.org/TR/html-media-capture/ for the semantics of the
+    // capture attribute. This string will either be empty (meaning the feature
+    // is disabled) or one of the following values:
+    //  - filesystem (default)
+    //  - camera
+    //  - camcorder
+    //  - microphone
+    WebString capture;
 
     WebFileChooserParams()
         : multiSelect(false)

@@ -65,7 +65,6 @@ ScriptDebugServer::ScriptDebugServer()
 
 ScriptDebugServer::~ScriptDebugServer()
 {
-    deleteAllValues(m_pageListenersMap);
 }
 
 String ScriptDebugServer::setBreakpoint(const String& sourceID, const ScriptBreakpoint& scriptBreakpoint, int* actualLineNumber, int* actualColumnNumber)
@@ -128,7 +127,7 @@ bool ScriptDebugServer::hasBreakpoint(intptr_t sourceID, const TextPosition& pos
         // An erroneous condition counts as "false".
         return false;
     }
-    return result.toBoolean(m_currentCallFrame->scopeChain()->globalObject->globalExec());
+    return result.toBoolean();
 }
 
 void ScriptDebugServer::clearBreakpoints()
@@ -153,7 +152,11 @@ void ScriptDebugServer::setPauseOnNextStatement(bool pause)
 
 void ScriptDebugServer::breakProgram()
 {
-    // FIXME(WK43332): implement this.
+    if (m_paused || !m_currentCallFrame)
+        return;
+
+    m_pauseOnNextStatement = true;
+    pauseIfNeeded(m_currentCallFrame->dynamicGlobalObject());
 }
 
 void ScriptDebugServer::continueProgram()

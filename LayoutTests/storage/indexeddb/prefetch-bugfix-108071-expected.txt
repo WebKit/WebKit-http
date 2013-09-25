@@ -11,7 +11,7 @@ db = event.target.result
 db.setVersion('new version')
 setVersionSuccess():
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 objectStore = db.createObjectStore('store', {keyPath: 'id'})
 
 resetObjectStore():
@@ -23,7 +23,7 @@ objectStore.add({id: 3, name: "Delta"})
 objectStore.add({id: 4, name: "Echo"})
 
 iterateAndDeleteFirstElement():
-trans = db.transaction(['store'], IDBTransaction.READ_WRITE)
+trans = db.transaction(['store'], 'readwrite')
 trans.objectStore('store').openCursor()
 0: Alpha
 trans.objectStore('store').delete(0)

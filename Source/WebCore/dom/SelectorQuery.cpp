@@ -26,21 +26,14 @@
 #include "config.h"
 #include "SelectorQuery.h"
 
+#include "CSSParser.h"
 #include "CSSSelectorList.h"
 #include "Document.h"
 #include "StaticNodeList.h"
 #include "StyledElement.h"
+#include <wtf/HashMap.h>
 
 namespace WebCore {
-
-SelectorDataList::SelectorDataList()
-{
-}
-
-SelectorDataList::SelectorDataList(const CSSSelectorList& selectorList)
-{
-    initialize(selectorList);
-}
 
 void SelectorDataList::initialize(const CSSSelectorList& selectorList)
 {
@@ -146,22 +139,62 @@ void SelectorDataList::execute(const SelectorChecker& selectorChecker, Node* roo
     }
 }
 
-SelectorQuery::SelectorQuery(Node* rootNode, const CSSSelectorList& selectorList)
-    : m_rootNode(rootNode)
-    , m_selectorChecker(rootNode->document(), !rootNode->document()->inQuirksMode())
-    , m_selectors(selectorList)
+SelectorQuery::SelectorQuery(const CSSSelectorList& selectorList)
+    : m_selectorList(selectorList)
 {
-    m_selectorChecker.setCollectingRulesOnly(true);
+    m_selectors.initialize(m_selectorList);
 }
 
-PassRefPtr<NodeList> SelectorQuery::queryAll() const
+bool SelectorQuery::matches(Element* element) const
 {
-    return m_selectors.queryAll(m_selectorChecker, m_rootNode);
+    SelectorChecker selectorChecker(element->document(), !element->document()->inQuirksMode());
+    return m_selectors.matches(selectorChecker, element);
 }
 
-PassRefPtr<Element> SelectorQuery::queryFirst() const
+PassRefPtr<NodeList> SelectorQuery::queryAll(Node* rootNode) const
 {
-    return m_selectors.queryFirst(m_selectorChecker, m_rootNode);
+    SelectorChecker selectorChecker(rootNode->document(), !rootNode->document()->inQuirksMode());
+    selectorChecker.setMode(SelectorChecker::QueryingRules);
+    return m_selectors.queryAll(selectorChecker, rootNode);
+}
+
+PassRefPtr<Element> SelectorQuery::queryFirst(Node* rootNode) const
+{
+    SelectorChecker selectorChecker(rootNode->document(), !rootNode->document()->inQuirksMode());
+    selectorChecker.setMode(SelectorChecker::QueryingRules);
+    return m_selectors.queryFirst(selectorChecker, rootNode);
+}
+
+SelectorQuery* SelectorQueryCache::add(const AtomicString& selectors, Document* document, ExceptionCode& ec)
+{
+    HashMap<AtomicString, OwnPtr<SelectorQuery> >::iterator it = m_entries.find(selectors);
+    if (it != m_entries.end())
+        return it->second.get();
+
+    CSSParser parser(document);
+    CSSSelectorList selectorList;
+    parser.parseSelector(selectors, selectorList);
+
+    if (!selectorList.first() || selectorList.hasUnknownPseudoElements()) {
+        ec = SYNTAX_ERR;
+        return 0;
+    }
+
+    // throw a NAMESPACE_ERR if the selector includes any namespace prefixes.
+    if (selectorList.selectorsNeedNamespaceResolution()) {
+        ec = NAMESPACE_ERR;
+        return 0;
+    }
+    
+    OwnPtr<SelectorQuery> selectorQuery = adoptPtr(new SelectorQuery(selectorList));
+    SelectorQuery* rawSelectorQuery = selectorQuery.get();
+    m_entries.add(selectors, selectorQuery.release());
+    return rawSelectorQuery;
+}
+
+void SelectorQueryCache::invalidate()
+{
+    m_entries.clear();
 }
 
 }

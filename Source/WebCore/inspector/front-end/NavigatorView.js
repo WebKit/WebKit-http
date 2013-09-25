@@ -60,7 +60,8 @@ WebInspector.NavigatorView = function()
 
 
 WebInspector.NavigatorView.Events = {
-    ItemSelected: "ItemSelected"
+    ItemSelected: "ItemSelected",
+    FileRenamed: "FileRenamed"
 }
 
 WebInspector.NavigatorView.prototype = {
@@ -72,18 +73,38 @@ WebInspector.NavigatorView.prototype = {
         if (this._scriptTreeElementsByUISourceCode.get(uiSourceCode))
             return;
 
-        var scriptTreeElement = new WebInspector.NavigatorScriptTreeElement(this, uiSourceCode, "");
+        var scriptTreeElement = new WebInspector.NavigatorSourceTreeElement(this, uiSourceCode, "");
         this._scriptTreeElementsByUISourceCode.put(uiSourceCode, scriptTreeElement);
         this._updateScriptTitle(uiSourceCode);
+        this._addUISourceCodeListeners(uiSourceCode);
 
         var folderTreeElement = this.getOrCreateFolderTreeElement(uiSourceCode);
         folderTreeElement.appendChild(scriptTreeElement);
     },
 
+    _uiSourceCodeTitleChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateScriptTitle(uiSourceCode)
+    },
+
+    _uiSourceCodeWorkingCopyChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateScriptTitle(uiSourceCode)
+    },
+
+    _uiSourceCodeContentChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateScriptTitle(uiSourceCode);
+    },
+
     /**
      * @param {WebInspector.UISourceCode} uiSourceCode
+     * @param {boolean=} ignoreIsDirty
      */
-    _updateScriptTitle: function(uiSourceCode)
+    _updateScriptTitle: function(uiSourceCode, ignoreIsDirty)
     {
         var scriptTreeElement = this._scriptTreeElementsByUISourceCode.get(uiSourceCode);
         if (!scriptTreeElement)
@@ -98,6 +119,8 @@ WebInspector.NavigatorView.prototype = {
             titleText = uiSourceCode.parsedURL.url;
         if (!titleText)
             titleText = WebInspector.UIString("(program)");
+        if (!ignoreIsDirty && uiSourceCode.isDirty())
+            titleText = "*" + titleText;
         scriptTreeElement.titleText = titleText;
     },
 
@@ -126,32 +149,26 @@ WebInspector.NavigatorView.prototype = {
     },
 
     /**
-     * @param {Array.<WebInspector.UISourceCode>} oldUISourceCodeList
-     * @param {Array.<WebInspector.UISourceCode>} uiSourceCodeList
+     * @param {WebInspector.UISourceCode} oldUISourceCode
+     * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    replaceUISourceCodes: function(oldUISourceCodeList, uiSourceCodeList)
+    replaceUISourceCode: function(oldUISourceCode, uiSourceCode)
     {
         var added = false;
         var selected = false;
-        for (var i = 0; i < oldUISourceCodeList.length; ++i) {
-            var uiSourceCode = oldUISourceCodeList[i];
-            if (!this._scriptTreeElementsByUISourceCode.get(uiSourceCode))
-                continue;
+        if (this._scriptTreeElementsByUISourceCode.get(oldUISourceCode)) {
             added = true;
 
-            if (this._lastSelectedUISourceCode === uiSourceCode)
+            if (this._lastSelectedUISourceCode === oldUISourceCode)
                 selected = true;
-            this._removeUISourceCode(uiSourceCode);
+            this._removeUISourceCode(oldUISourceCode);
         }
-        
+
         if (!added)
             return;
-            
-        for (var i = 0; i < uiSourceCodeList.length; ++i)
-            this.addUISourceCode(uiSourceCodeList[i]);
-
+        this.addUISourceCode(uiSourceCode);
         if (selected)
-            this.revealUISourceCode(uiSourceCodeList[0]);
+            this.revealUISourceCode(uiSourceCode);
     },
 
     /**
@@ -183,6 +200,27 @@ WebInspector.NavigatorView.prototype = {
             treeElement = parent;
         }
         this._scriptTreeElementsByUISourceCode.remove(uiSourceCode);
+        this._removeUISourceCodeListeners(uiSourceCode);
+    },
+
+    /**
+     * @param {WebInspector.UISourceCode} uiSourceCode
+     */
+    _addUISourceCodeListeners: function(uiSourceCode)
+    {
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.TitleChanged, this._uiSourceCodeTitleChanged, this);
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._uiSourceCodeWorkingCopyChanged, this);
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.ContentChanged, this._uiSourceCodeContentChanged, this);
+    },
+
+    /**
+     * @param {WebInspector.UISourceCode} uiSourceCode
+     */
+    _removeUISourceCodeListeners: function(uiSourceCode)
+    {
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.TitleChanged, this._uiSourceCodeTitleChanged, this);
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._uiSourceCodeWorkingCopyChanged, this);
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.ContentChanged, this._uiSourceCodeContentChanged, this);
     },
 
     _showScriptFoldersSettingChanged: function()
@@ -198,13 +236,14 @@ WebInspector.NavigatorView.prototype = {
     },
 
     _fileRenamed: function(uiSourceCode, newTitle)
-    {
-        // FIXME: To be implemented.
+    {    
+        var data = { uiSourceCode: uiSourceCode, name: newTitle };
+        this.dispatchEventToListeners(WebInspector.NavigatorView.Events.FileRenamed, data);
     },
 
     /**
      * @param {WebInspector.UISourceCode} uiSourceCode
-     * @param {function()=} callback
+     * @param {function(boolean)=} callback
      */
     rename: function(uiSourceCode, callback)
     {
@@ -221,28 +260,36 @@ WebInspector.NavigatorView.prototype = {
                 this._fileRenamed(uiSourceCode, newTitle);
             else
                 this._updateScriptTitle(uiSourceCode);
-            afterEditing();
+            afterEditing(true);
         }
 
         function cancelHandler()
         {
-            afterEditing();
+            afterEditing(false);
         }
 
-        function afterEditing()
+        /**
+         * @param {boolean} committed
+         */
+        function afterEditing(committed)
         {
             WebInspector.markBeingEdited(scriptTreeElement.treeOutline.element, false);
             if (callback)
-                callback();
+                callback(committed);
         }
 
         var editingConfig = new WebInspector.EditingConfig(commitHandler.bind(this), cancelHandler.bind(this));
+        this._updateScriptTitle(uiSourceCode, true);
         WebInspector.startEditing(scriptTreeElement.titleElement, editingConfig);
         window.getSelection().setBaseAndExtent(scriptTreeElement.titleElement, 0, scriptTreeElement.titleElement, 1);
     },
 
     reset: function()
     {
+        var uiSourceCodes = this._scriptsTree.scriptTreeElements;
+        for (var i = 0; i < uiSourceCodes.length; ++i)
+            this._removeUISourceCodeListeners(uiSourceCodes[i]);
+
         this._scriptsTree.stopSearch();
         this._scriptsTree.removeChildren();
         this._folderTreeElements = {};
@@ -297,7 +344,9 @@ WebInspector.NavigatorView.prototype = {
 
     handleContextMenu: function(event, uiSourceCode)
     {
-        // Overriden.
+        var contextMenu = new WebInspector.ContextMenu();
+        contextMenu.appendApplicableItems(uiSourceCode);
+        contextMenu.show(event);
     }
 }
 
@@ -328,11 +377,14 @@ WebInspector.NavigatorTreeOutline._treeElementsCompare = function compare(treeEl
     function typeWeight(treeElement)
     {
         if (treeElement instanceof WebInspector.NavigatorFolderTreeElement) {
-            if (treeElement.isDomain)
-                return 1;
-            return 2;
+            if (treeElement.isDomain) {
+                if (treeElement.titleText === WebInspector.inspectedPageDomain)
+                    return 1;
+                return 2;
+            }
+            return 3;
         }
-        return 3;
+        return 4;
     }
 
     var typeWeight1 = typeWeight(treeElement1);
@@ -360,7 +412,7 @@ WebInspector.NavigatorTreeOutline.prototype = {
        var result = [];
        if (this.children.length) {
            for (var treeElement = this.children[0]; treeElement; treeElement = treeElement.traverseNextTreeElement(false, this, true)) {
-               if (treeElement instanceof WebInspector.NavigatorScriptTreeElement)
+               if (treeElement instanceof WebInspector.NavigatorSourceTreeElement)
                    result.push(treeElement.uiSourceCode);
            }
        }
@@ -423,7 +475,6 @@ WebInspector.BaseNavigatorTreeElement.prototype = {
         this._titleTextNode.textContent = this._titleText;
         this.titleElement.appendChild(this._titleTextNode);
         this.listItemElement.appendChild(this.titleElement);
-        
         this.expand();
     },
 
@@ -498,7 +549,7 @@ WebInspector.NavigatorFolderTreeElement.prototype = {
     onattach: function()
     {
         WebInspector.BaseNavigatorTreeElement.prototype.onattach.call(this);
-        if (this._isDomain)
+        if (this.isDomain && this.titleText != WebInspector.inspectedPageDomain)
             this.collapse();
         else
             this.expand();
@@ -514,15 +565,15 @@ WebInspector.NavigatorFolderTreeElement.prototype.__proto__ = WebInspector.BaseN
  * @param {WebInspector.UISourceCode} uiSourceCode
  * @param {string} title
  */
-WebInspector.NavigatorScriptTreeElement = function(navigatorView, uiSourceCode, title)
+WebInspector.NavigatorSourceTreeElement = function(navigatorView, uiSourceCode, title)
 {
-    WebInspector.BaseNavigatorTreeElement.call(this, title, ["navigator-script-tree-item"], false);
+    WebInspector.BaseNavigatorTreeElement.call(this, title, ["navigator-" + uiSourceCode.contentType().name() + "-tree-item"], false);
     this._navigatorView = navigatorView;
     this._uiSourceCode = uiSourceCode;
     this.tooltip = uiSourceCode.url;
 }
 
-WebInspector.NavigatorScriptTreeElement.prototype = {
+WebInspector.NavigatorSourceTreeElement.prototype = {
     /**
      * @return {WebInspector.UISourceCode}
      */
@@ -534,7 +585,33 @@ WebInspector.NavigatorScriptTreeElement.prototype = {
     onattach: function()
     {
         WebInspector.BaseNavigatorTreeElement.prototype.onattach.call(this);
+        this.listItemElement.draggable = true;
         this.listItemElement.addEventListener("click", this._onclick.bind(this), false);
+        this.listItemElement.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this), false);
+        this.listItemElement.addEventListener("mousedown", this._onmousedown.bind(this), false);
+        this.listItemElement.addEventListener("dragstart", this._ondragstart.bind(this), false);
+    },
+
+    _onmousedown: function(event)
+    {
+        if (event.which === 1) // Warm-up data for drag'n'drop
+            this._uiSourceCode.requestContent(callback.bind(this));
+        /**
+         * @param {?string} content
+         * @param {boolean} contentEncoded
+         * @param {string} mimeType
+         */
+        function callback(content, contentEncoded, mimeType)
+        {
+            this._warmedUpContent = content;
+        }
+    },
+
+    _ondragstart: function(event)
+    {
+        event.dataTransfer.setData("text/plain", this._warmedUpContent);
+        event.dataTransfer.effectAllowed = "copy";
+        return true;
     },
 
     onspace: function()
@@ -571,4 +648,4 @@ WebInspector.NavigatorScriptTreeElement.prototype = {
     }
 }
 
-WebInspector.NavigatorScriptTreeElement.prototype.__proto__ = WebInspector.BaseNavigatorTreeElement.prototype;
+WebInspector.NavigatorSourceTreeElement.prototype.__proto__ = WebInspector.BaseNavigatorTreeElement.prototype;

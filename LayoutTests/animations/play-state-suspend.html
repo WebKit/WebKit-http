@@ -56,8 +56,8 @@
 
     function suspend()
     {
-        if (window.layoutTestController)
-            layoutTestController.suspendAnimations();
+        if (window.internals)
+            internals.suspendAnimations(document);
     }
 
     function unpause()
@@ -68,8 +68,8 @@
 
     function resume()
     {
-        if (window.layoutTestController)
-            layoutTestController.resumeAnimations();
+        if (window.internals)
+            internals.resumeAnimations(document);
     }
 
     function setTimers()

@@ -86,14 +86,26 @@ MarkupAccumulator::~MarkupAccumulator()
 
 String MarkupAccumulator::serializeNodes(Node* targetNode, Node* nodeToSkip, EChildrenOnly childrenOnly)
 {
-    serializeNodesWithNamespaces(targetNode, nodeToSkip, childrenOnly, 0);
+    return serializeNodes(targetNode, nodeToSkip, childrenOnly, 0);
+}
+
+String MarkupAccumulator::serializeNodes(Node* targetNode, Node* nodeToSkip, EChildrenOnly childrenOnly, Vector<QualifiedName>* tagNamesToSkip)
+{
+    serializeNodesWithNamespaces(targetNode, nodeToSkip, childrenOnly, 0, tagNamesToSkip);
     return m_markup.toString();
 }
 
-void MarkupAccumulator::serializeNodesWithNamespaces(Node* targetNode, Node* nodeToSkip, EChildrenOnly childrenOnly, const Namespaces* namespaces)
+void MarkupAccumulator::serializeNodesWithNamespaces(Node* targetNode, Node* nodeToSkip, EChildrenOnly childrenOnly, const Namespaces* namespaces, Vector<QualifiedName>* tagNamesToSkip)
 {
     if (targetNode == nodeToSkip)
         return;
+    
+    if (tagNamesToSkip) {
+        for (size_t i = 0; i < tagNamesToSkip->size(); ++i) {
+            if (targetNode->hasTagName(tagNamesToSkip->at(i)))
+                return;
+        }
+    }
 
     Namespaces namespaceHash;
     if (namespaces)
@@ -104,7 +116,7 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node* targetNode, Node* nod
 
     if (!(targetNode->document()->isHTMLDocument() && elementCannotHaveEndTag(targetNode))) {
         for (Node* current = targetNode->firstChild(); current; current = current->nextSibling())
-            serializeNodesWithNamespaces(current, nodeToSkip, IncludeNode, &namespaceHash);
+            serializeNodesWithNamespaces(current, nodeToSkip, IncludeNode, &namespaceHash, tagNamesToSkip);
     }
 
     if (!childrenOnly)
@@ -170,7 +182,7 @@ void MarkupAccumulator::appendCustomAttributes(StringBuilder&, Element*, Namespa
 
 void MarkupAccumulator::appendQuotedURLAttributeValue(StringBuilder& result, const Element* element, const Attribute& attribute)
 {
-    ASSERT(element->isURLAttribute(const_cast<Attribute*>(&attribute)));
+    ASSERT(element->isURLAttribute(attribute));
     const String resolvedURLString = resolveURLIfNeeded(element, attribute.value());
     UChar quoteChar = '"';
     String strippedURLString = resolvedURLString.stripWhiteSpace();
@@ -419,7 +431,7 @@ void MarkupAccumulator::appendAttribute(StringBuilder& result, Element* element,
 
     result.append('=');
 
-    if (element->isURLAttribute(const_cast<Attribute*>(&attribute)))
+    if (element->isURLAttribute(attribute))
         appendQuotedURLAttributeValue(result, element, attribute);
     else {
         result.append('"');

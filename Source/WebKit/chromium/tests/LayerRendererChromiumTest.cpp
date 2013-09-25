@@ -28,6 +28,7 @@
 #include "FakeWebGraphicsContext3D.h"
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
+#include "WebCompositor.h"
 #include "cc/CCSingleThreadProxy.h"
 
 #include <gmock/gmock.h>
@@ -54,44 +55,56 @@ public:
 
     // Methods added for test.
     int frameCount() { return m_frame; }
-    void setMemoryAllocation(WebGraphicsMemoryAllocation allocation) { m_memoryAllocationChangedCallback->onMemoryAllocationChanged(allocation); }
+    void setMemoryAllocation(WebGraphicsMemoryAllocation allocation)
+    {
+        ASSERT(CCProxy::isImplThread());
+        // In single threaded mode we expect this callback on main thread.
+        DebugScopedSetMainThread main;
+        m_memoryAllocationChangedCallback->onMemoryAllocationChanged(allocation);
+    }
 
 private:
     int m_frame;
     WebGraphicsMemoryAllocationChangedCallbackCHROMIUM* m_memoryAllocationChangedCallback;
 };
 
-class FakeLayerRendererChromiumClient : public LayerRendererChromiumClient {
+class FakeCCRendererClient : public CCRendererClient {
 public:
-    FakeLayerRendererChromiumClient()
+    FakeCCRendererClient()
         : m_setFullRootLayerDamageCount(0)
         , m_rootLayer(CCLayerImpl::create(1))
+        , m_memoryAllocationLimitBytes(0)
     {
         m_rootLayer->createRenderSurface();
+        m_rootRenderPass = CCRenderPass::create(m_rootLayer->renderSurface());
     }
 
-    // LayerRendererChromiumClient methods.
-    virtual const IntSize& viewportSize() const OVERRIDE { static IntSize fakeSize; return fakeSize; }
+    // CCRendererClient methods.
+    virtual const IntSize& deviceViewportSize() const OVERRIDE { static IntSize fakeSize; return fakeSize; }
     virtual const CCSettings& settings() const OVERRIDE { static CCSettings fakeSettings; return fakeSettings; }
     virtual void didLoseContext() OVERRIDE { }
     virtual void onSwapBuffersComplete() OVERRIDE { }
     virtual void setFullRootLayerDamage() OVERRIDE { m_setFullRootLayerDamageCount++; }
-    virtual void setContentsMemoryAllocationLimitBytes(size_t) OVERRIDE { }
+    virtual void setContentsMemoryAllocationLimitBytes(size_t bytes) OVERRIDE { m_memoryAllocationLimitBytes = bytes; }
 
     // Methods added for test.
     int setFullRootLayerDamageCount() const { return m_setFullRootLayerDamageCount; }
 
-    CCLayerImpl* rootLayer() { return m_rootLayer.get(); }
+    CCRenderPass* rootRenderPass() { return m_rootRenderPass.get(); }
+
+    size_t memoryAllocationLimitBytes() const { return m_memoryAllocationLimitBytes; }
 
 private:
     int m_setFullRootLayerDamageCount;
     DebugScopedSetImplThread m_implThread;
     OwnPtr<CCLayerImpl> m_rootLayer;
+    OwnPtr<CCRenderPass> m_rootRenderPass;
+    size_t m_memoryAllocationLimitBytes;
 };
 
 class FakeLayerRendererChromium : public LayerRendererChromium {
 public:
-    FakeLayerRendererChromium(LayerRendererChromiumClient* client, PassRefPtr<GraphicsContext3D> context) : LayerRendererChromium(client, context) { }
+    FakeLayerRendererChromium(CCRendererClient* client, PassRefPtr<GraphicsContext3D> context) : LayerRendererChromium(client, context, UnthrottledUploader) { }
 
     // LayerRendererChromium methods.
 
@@ -113,7 +126,13 @@ protected:
 
     virtual void SetUp()
     {
+        WebKit::WebCompositor::initialize(0);
         m_layerRendererChromium.initialize();
+    }
+
+    virtual void TearDown()
+    {
+        WebKit::WebCompositor::shutdown();
     }
 
     void swapBuffers()
@@ -126,7 +145,7 @@ protected:
 
     RefPtr<GraphicsContext3D> m_context;
     FrameCountingMemoryAllocationSettingContext& m_mockContext;
-    FakeLayerRendererChromiumClient m_mockClient;
+    FakeCCRendererClient m_mockClient;
     FakeLayerRendererChromium m_layerRendererChromium;
 };
 
@@ -194,7 +213,7 @@ TEST_F(LayerRendererChromiumTest, DiscardedBackbufferIsRecreatredForScopeDuratio
     EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
     EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
 
-    m_layerRendererChromium.beginDrawingFrame(m_mockClient.rootLayer()->renderSurface());
+    m_layerRendererChromium.beginDrawingFrame(m_mockClient.rootRenderPass());
     EXPECT_FALSE(m_layerRendererChromium.isFramebufferDiscarded());
 
     swapBuffers();
@@ -270,8 +289,126 @@ public:
 // This test isn't using the same fixture as LayerRendererChromiumTest, and you can't mix TEST() and TEST_F() with the same name, hence LRC2.
 TEST(LayerRendererChromiumTest2, initializationDoesNotMakeSynchronousCalls)
 {
-    FakeLayerRendererChromiumClient mockClient;
+    FakeCCRendererClient mockClient;
     FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ForbidSynchronousCallContext), GraphicsContext3D::RenderDirectlyToHostWindow));
 
     EXPECT_TRUE(layerRendererChromium.initialize());
+}
+
+class LoseContextOnFirstGetContext : public FakeWebGraphicsContext3D {
+public:
+    LoseContextOnFirstGetContext()
+        : m_contextLost(false)
+    {
+    }
+
+    virtual bool makeContextCurrent() OVERRIDE
+    {
+        return !m_contextLost;
+    }
+
+    virtual void getProgramiv(WebGLId program, WGC3Denum pname, WGC3Dint* value) OVERRIDE
+    {
+        m_contextLost = true;
+        *value = 0;
+    }
+
+    virtual void getShaderiv(WebGLId shader, WGC3Denum pname, WGC3Dint* value) OVERRIDE
+    {
+        m_contextLost = true;
+        *value = 0;
+    }
+
+    virtual WGC3Denum getGraphicsResetStatusARB() OVERRIDE
+    {
+        return m_contextLost ? 1 : 0;
+    }
+
+private:
+    bool m_contextLost;
+};
+
+TEST(LayerRendererChromiumTest2, initializationWithQuicklyLostContextDoesNotAssert)
+{
+    FakeCCRendererClient mockClient;
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new LoseContextOnFirstGetContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+
+    layerRendererChromium.initialize();
+}
+
+class ContextThatDoesNotSupportMemoryManagmentExtensions : public FakeWebGraphicsContext3D {
+public:
+    ContextThatDoesNotSupportMemoryManagmentExtensions() { }
+
+    // WebGraphicsContext3D methods.
+
+    // This method would normally do a glSwapBuffers under the hood.
+    virtual void prepareTexture() { }
+    virtual void setMemoryAllocationChangedCallbackCHROMIUM(WebGraphicsMemoryAllocationChangedCallbackCHROMIUM* callback) { }
+    virtual WebString getString(WebKit::WGC3Denum name) { return WebString(); }
+};
+
+TEST(LayerRendererChromiumTest2, initializationWithoutGpuMemoryManagerExtensionSupportShouldDefaultToNonZeroAllocation)
+{
+    FakeCCRendererClient mockClient;
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ContextThatDoesNotSupportMemoryManagmentExtensions), GraphicsContext3D::RenderDirectlyToHostWindow));
+
+    layerRendererChromium.initialize();
+
+    EXPECT_GT(mockClient.memoryAllocationLimitBytes(), 0ul);
+}
+
+class ClearCountingContext : public FakeWebGraphicsContext3D {
+public:
+    ClearCountingContext() : m_clear(0) { }
+
+    virtual void clear(WGC3Dbitfield)
+    {
+        m_clear++;
+    }
+
+    int clearCount() const { return m_clear; }
+
+private:
+    int m_clear;
+};
+
+TEST(LayerRendererChromiumTest2, opaqueBackground)
+{
+    FakeCCRendererClient mockClient;
+    RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ClearCountingContext), GraphicsContext3D::RenderDirectlyToHostWindow);
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context);
+
+    mockClient.rootRenderPass()->setHasTransparentBackground(false);
+
+    EXPECT_TRUE(layerRendererChromium.initialize());
+
+    layerRendererChromium.beginDrawingFrame(mockClient.rootRenderPass());
+    layerRendererChromium.drawRenderPass(mockClient.rootRenderPass(), FloatRect());
+    layerRendererChromium.finishDrawingFrame();
+
+    // On DEBUG builds, render passes with opaque background clear to blue to
+    // easily see regions that were not drawn on the screen.
+#if defined(NDEBUG)
+    EXPECT_EQ(0, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
+#else
+    EXPECT_EQ(1, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
+#endif
+}
+
+TEST(LayerRendererChromiumTest2, transparentBackground)
+{
+    FakeCCRendererClient mockClient;
+    RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ClearCountingContext), GraphicsContext3D::RenderDirectlyToHostWindow);
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context);
+
+    mockClient.rootRenderPass()->setHasTransparentBackground(true);
+
+    EXPECT_TRUE(layerRendererChromium.initialize());
+
+    layerRendererChromium.beginDrawingFrame(mockClient.rootRenderPass());
+    layerRendererChromium.drawRenderPass(mockClient.rootRenderPass(), FloatRect());
+    layerRendererChromium.finishDrawingFrame();
+
+    EXPECT_EQ(1, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
 }

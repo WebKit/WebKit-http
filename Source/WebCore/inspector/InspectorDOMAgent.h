@@ -201,6 +201,9 @@ public:
 
     Node* assertNode(ErrorString*, int nodeId);
 
+    // Methods called from other agents.
+    InspectorPageAgent* pageAgent() { return m_pageAgent; }
+
 private:
     InspectorDOMAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorClient*, InspectorState*, InjectedScriptManager*);
 
@@ -244,7 +247,7 @@ private:
     DOMListener* m_domListener;
     NodeToIdMap m_documentNodeToIdMap;
     // Owns node mappings for dangling nodes.
-    Vector<NodeToIdMap*> m_danglingNodeToIdMaps;
+    Vector<OwnPtr<NodeToIdMap> > m_danglingNodeToIdMaps;
     HashMap<int, Node*> m_idToNode;
     HashMap<int, NodeToIdMap*> m_idToNodesMap;
     HashSet<int> m_childrenRequested;

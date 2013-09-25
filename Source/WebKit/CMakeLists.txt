@@ -1,6 +1,7 @@
 SET(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}"
     "${WEBCORE_DIR}"
+    "${WEBCORE_DIR}/Modules/intents"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/bindings/js"
@@ -10,6 +11,7 @@ SET(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/jsc"
     "${WEBCORE_DIR}/css"
     "${WEBCORE_DIR}/dom"
+    "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"

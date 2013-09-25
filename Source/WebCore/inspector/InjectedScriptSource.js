@@ -26,22 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @param {InjectedScriptHost} InjectedScriptHost
+ */
 (function (InjectedScriptHost, inspectedWindow, injectedScriptId) {
 
-function bind(thisObject, memberFunction)
-{
-    var func = memberFunction;
-    var args = Array.prototype.slice.call(arguments, 2);
-    function bound()
-    {
-        return func.apply(thisObject, args.concat(Array.prototype.slice.call(arguments, 0)));
-    }
-    bound.toString = function() {
-        return "bound: " + func;
-    };
-    return bound;
-}
-
+/**
+ * @constructor
+ */
 var InjectedScript = function()
 {
     this._lastBoundObjectId = 1;
@@ -71,7 +63,7 @@ InjectedScript.prototype = {
 
         var result = {};
         result.type = typeof object;
-        if (this._isPrimitiveValue(object))
+        if (this.isPrimitiveValue(object))
             result.value = object;
         else
             result.description = this._toString(object);
@@ -205,7 +197,17 @@ InjectedScript.prototype = {
         var func = this._objectForId(parsedFunctionId);
         if (typeof func !== "function")
             return "Cannot resolve function by id.";
-        return InjectedScriptHost.functionDetails(func);
+        var details = InjectedScriptHost.functionDetails(func);
+        if ("rawScopes" in details) {
+            var objectGroupName = this._idToObjectGroupName[parsedFunctionId.id];
+            var rawScopes = details.rawScopes;
+            var scopes = [];
+            delete details.rawScopes;
+            for (var i = 0; i < rawScopes.length; i++)
+                scopes.push(InjectedScript.CallFrameProxy._createScopeJson(rawScopes[i].type, rawScopes[i].object, objectGroupName));
+            details.scopeChain = scopes;
+        }
+        return details;
     },
 
     releaseObject: function(objectId)
@@ -224,7 +226,7 @@ InjectedScript.prototype = {
     {
         var descriptors = [];
         var nameProcessed = {};
-        nameProcessed.__proto__ = null;
+        nameProcessed["__proto__"] = null;
         for (var o = object; this._isDefined(o); o = o.__proto__) {
             var names = Object.getOwnPropertyNames(o);
             for (var i = 0; i < names.length; ++i) {
@@ -271,21 +273,21 @@ InjectedScript.prototype = {
     {
         var parsedObjectId = this._parseObjectId(objectId);
         var object = this._objectForId(parsedObjectId);
-        if (!object)
+        if (!this._isDefined(object))
             return "Could not find object with given id";
 
         if (args) {
             var resolvedArgs = [];
             args = eval(args);
             for (var i = 0; i < args.length; ++i) {
-                var objectId = args[i].objectId;
+                objectId = args[i].objectId;
                 if (objectId) {
                     var parsedArgId = this._parseObjectId(objectId);
                     if (!parsedArgId || parsedArgId.injectedScriptId !== injectedScriptId)
                         return "Arguments should belong to the same JavaScript world as the target object.";
 
                     var resolvedArg = this._objectForId(parsedArgId);
-                    if (!resolvedArg)
+                    if (!this._isDefined(resolvedArg))
                         return "Could not find object with given id";
 
                     resolvedArgs.push(resolvedArg);
@@ -372,7 +374,7 @@ InjectedScript.prototype = {
     _callFrameForId: function(topCallFrame, callFrameId)
     {
         var parsedCallFrameId = eval("(" + callFrameId + ")");
-        var ordinal = parsedCallFrameId.ordinal;
+        var ordinal = parsedCallFrameId["ordinal"];
         var callFrame = topCallFrame;
         while (--ordinal >= 0 && callFrame)
             callFrame = callFrame.caller;
@@ -384,10 +386,15 @@ InjectedScript.prototype = {
         return this._idToWrappedObject[objectId.id];
     },
 
-    nodeForObjectId: function(objectId)
+    findObjectById: function(objectId)
     {
         var parsedObjectId = this._parseObjectId(objectId);
-        var object = this._objectForId(parsedObjectId);
+        return this._objectForId(parsedObjectId);
+    },
+
+    nodeForObjectId: function(objectId)
+    {
+        var object = this.findObjectById(objectId);
         if (!object || this._subtype(object) !== "node")
             return null;
         return object;
@@ -477,6 +484,12 @@ InjectedScript.prototype = {
 
 var injectedScript = new InjectedScript();
 
+/**
+ * @constructor
+ * @param {*} object
+ * @param {string=} objectGroupName
+ * @param {boolean=} forceValueType
+ */
 InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType)
 {
     this.type = typeof object;
@@ -503,6 +516,10 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType)
     this.description = injectedScript._describe(object);
 }
 
+/**
+ * @constructor
+ * @param {number} ordinal
+ */
 InjectedScript.CallFrameProxy = function(ordinal, callFrame)
 {
     this.callFrameId = "{\"ordinal\":" + ordinal + ",\"injectedScriptId\":" + injectedScriptId + "}";
@@ -515,34 +532,39 @@ InjectedScript.CallFrameProxy = function(ordinal, callFrame)
 InjectedScript.CallFrameProxy.prototype = {
     _wrapScopeChain: function(callFrame)
     {
-        const GLOBAL_SCOPE = 0;
-        const LOCAL_SCOPE = 1;
-        const WITH_SCOPE = 2;
-        const CLOSURE_SCOPE = 3;
-        const CATCH_SCOPE = 4;
-
-        var scopeTypeNames = {};
-        scopeTypeNames[GLOBAL_SCOPE] = "global";
-        scopeTypeNames[LOCAL_SCOPE] = "local";
-        scopeTypeNames[WITH_SCOPE] = "with";
-        scopeTypeNames[CLOSURE_SCOPE] = "closure";
-        scopeTypeNames[CATCH_SCOPE] = "catch";
-
         var scopeChain = callFrame.scopeChain;
         var scopeChainProxy = [];
-        var foundLocalScope = false;
         for (var i = 0; i < scopeChain.length; i++) {
-            var scope = {};
-            scope.object = injectedScript._wrapObject(scopeChain[i], "backtrace");
-
-            var scopeType = callFrame.scopeType(i);
-            scope.type = scopeTypeNames[scopeType];
+            var scope = InjectedScript.CallFrameProxy._createScopeJson(callFrame.scopeType(i), scopeChain[i], "backtrace");
             scopeChainProxy.push(scope);
         }
         return scopeChainProxy;
     }
 }
 
+InjectedScript.CallFrameProxy._createScopeJson = function(scopeTypeCode, scopeObject, groupId) {
+    const GLOBAL_SCOPE = 0;
+    const LOCAL_SCOPE = 1;
+    const WITH_SCOPE = 2;
+    const CLOSURE_SCOPE = 3;
+    const CATCH_SCOPE = 4;
+
+    var scopeTypeNames = {};
+    scopeTypeNames[GLOBAL_SCOPE] = "global";
+    scopeTypeNames[LOCAL_SCOPE] = "local";
+    scopeTypeNames[WITH_SCOPE] = "with";
+    scopeTypeNames[CLOSURE_SCOPE] = "closure";
+    scopeTypeNames[CATCH_SCOPE] = "catch";
+
+    return {
+        object: injectedScript._wrapObject(scopeObject, groupId),
+        type: scopeTypeNames[scopeTypeCode]
+    };
+}
+
+/**
+ * @constructor
+ */
 function CommandLineAPI(commandLineAPIImpl, callFrame)
 {
     function inScopeVariables(member)
@@ -563,7 +585,7 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
         if (member in inspectedWindow || inScopeVariables(member))
             continue;
 
-        this[member] = bind(commandLineAPIImpl, commandLineAPIImpl[member]);
+        this[member] = commandLineAPIImpl[member].bind(commandLineAPIImpl);
     }
 
     for (var i = 0; i < 5; ++i) {
@@ -571,7 +593,7 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
         if (member in inspectedWindow || inScopeVariables(member))
             continue;
 
-        this.__defineGetter__("$" + i, bind(commandLineAPIImpl, commandLineAPIImpl._inspectedObject, i));
+        this.__defineGetter__("$" + i, commandLineAPIImpl._inspectedObject.bind(commandLineAPIImpl, i));
     }
 }
 
@@ -580,6 +602,9 @@ CommandLineAPI.members_ = [
     "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear", "getEventListeners"
 ];
 
+/**
+ * @constructor
+ */
 function CommandLineAPIImpl()
 {
 }

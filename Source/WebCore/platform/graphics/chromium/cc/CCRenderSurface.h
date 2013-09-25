@@ -29,18 +29,19 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "FilterOperations.h"
 #include "FloatRect.h"
 #include "IntRect.h"
-#include "SkBitmap.h"
 #include "TextureManager.h"
-#include "TransformationMatrix.h"
 #include "cc/CCLayerQuad.h"
+#include <public/WebFilterOperations.h>
+#include <public/WebTransformationMatrix.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
 
 class CCDamageTracker;
+class CCQuadCuller;
+class CCRenderPass;
 class CCSharedQuadState;
 class CCLayerImpl;
 class LayerRendererChromium;
@@ -54,18 +55,11 @@ public:
 
     bool prepareContentsTexture(LayerRendererChromium*);
     void releaseContentsTexture();
+    bool hasValidContentsTexture() const;
 
     bool prepareBackgroundTexture(LayerRendererChromium*);
     void releaseBackgroundTexture();
-
-    void setScissorRect(LayerRendererChromium*, const FloatRect& surfaceDamageRect) const;
-
-    void drawContents(LayerRendererChromium*);
-    void drawReplica(LayerRendererChromium*);
-
-    // Takes a texture with pixels in device space, and a transform from content space to the device. Copies the device-space texture back into
-    // content space for the surface, storing the result in the backgroundTexture(). The surface's backgroundTexture() must be the active drawing target.
-    void copyDeviceToBackgroundTexture(LayerRendererChromium*, int deviceBackgroundTextureId, const IntRect& deviceTextureRect, const TransformationMatrix& deviceTransform) const;
+    bool hasValidBackgroundTexture() const;
 
     String name() const;
     void dumpSurface(TextStream&, int indent) const;
@@ -74,21 +68,15 @@ public:
 
     // Returns the rect that encloses the RenderSurface including any reflection.
     FloatRect drawableContentRect() const;
-    // Returns the rect that encloses the pixels that may affect the pixel values in this surface through background filters.
-    IntRect readbackDeviceContentRect(LayerRendererChromium*, const TransformationMatrix& drawTransform) const;
-
-    // Gives the transform from the surface content space, with origin in the top left, to the current target device space, with origin in the top left.
-    TransformationMatrix computeDeviceTransform(LayerRendererChromium*, const TransformationMatrix& drawTransform) const;
 
     float drawOpacity() const { return m_drawOpacity; }
     void setDrawOpacity(float opacity) { m_drawOpacity = opacity; }
 
-    void setFilters(const FilterOperations& filters) { m_filters = filters; }
-    const FilterOperations& filters() const { return m_filters; }
-    SkBitmap applyFilters(LayerRendererChromium*, const FilterOperations&, ManagedTexture* sourceTexture);
+    void setFilters(const WebKit::WebFilterOperations& filters) { m_filters = filters; }
+    const WebKit::WebFilterOperations& filters() const { return m_filters; }
 
-    void setBackgroundFilters(const FilterOperations& filters) { m_backgroundFilters = filters; }
-    const FilterOperations& backgroundFilters() const { return m_backgroundFilters; }
+    void setBackgroundFilters(const WebKit::WebFilterOperations& filters) { m_backgroundFilters = filters; }
+    const WebKit::WebFilterOperations& backgroundFilters() const { return m_backgroundFilters; }
 
     void setNearestAncestorThatMovesPixels(CCRenderSurface* surface) { m_nearestAncestorThatMovesPixels = surface; }
     const CCRenderSurface* nearestAncestorThatMovesPixels() const { return m_nearestAncestorThatMovesPixels; }
@@ -96,23 +84,23 @@ public:
     bool drawOpacityIsAnimating() const { return m_drawOpacityIsAnimating; }
     void setDrawOpacityIsAnimating(bool drawOpacityIsAnimating) { m_drawOpacityIsAnimating = drawOpacityIsAnimating; }
 
-    void setDrawTransform(const TransformationMatrix& drawTransform) { m_drawTransform = drawTransform; }
-    const TransformationMatrix& drawTransform() const { return m_drawTransform; }
+    void setDrawTransform(const WebKit::WebTransformationMatrix& drawTransform) { m_drawTransform = drawTransform; }
+    const WebKit::WebTransformationMatrix& drawTransform() const { return m_drawTransform; }
 
-    void setOriginTransform(const TransformationMatrix& originTransform) { m_originTransform = originTransform; }
-    const TransformationMatrix& originTransform() const { return m_originTransform; }
+    void setOriginTransform(const WebKit::WebTransformationMatrix& originTransform) { m_originTransform = originTransform; }
+    const WebKit::WebTransformationMatrix& originTransform() const { return m_originTransform; }
 
-    void setScreenSpaceTransform(const TransformationMatrix& screenSpaceTransform) { m_screenSpaceTransform = screenSpaceTransform; }
-    const TransformationMatrix& screenSpaceTransform() const { return m_screenSpaceTransform; }
+    void setScreenSpaceTransform(const WebKit::WebTransformationMatrix& screenSpaceTransform) { m_screenSpaceTransform = screenSpaceTransform; }
+    const WebKit::WebTransformationMatrix& screenSpaceTransform() const { return m_screenSpaceTransform; }
 
-    void setReplicaDrawTransform(const TransformationMatrix& replicaDrawTransform) { m_replicaDrawTransform = replicaDrawTransform; }
-    const TransformationMatrix& replicaDrawTransform() const { return m_replicaDrawTransform; }
+    void setReplicaDrawTransform(const WebKit::WebTransformationMatrix& replicaDrawTransform) { m_replicaDrawTransform = replicaDrawTransform; }
+    const WebKit::WebTransformationMatrix& replicaDrawTransform() const { return m_replicaDrawTransform; }
 
-    void setReplicaOriginTransform(const TransformationMatrix& replicaOriginTransform) { m_replicaOriginTransform = replicaOriginTransform; }
-    const TransformationMatrix& replicaOriginTransform() const { return m_replicaOriginTransform; }
+    void setReplicaOriginTransform(const WebKit::WebTransformationMatrix& replicaOriginTransform) { m_replicaOriginTransform = replicaOriginTransform; }
+    const WebKit::WebTransformationMatrix& replicaOriginTransform() const { return m_replicaOriginTransform; }
 
-    void setReplicaScreenSpaceTransform(const TransformationMatrix& replicaScreenSpaceTransform) { m_replicaScreenSpaceTransform = replicaScreenSpaceTransform; }
-    const TransformationMatrix& replicaScreenSpaceTransform() const { return m_replicaScreenSpaceTransform; }
+    void setReplicaScreenSpaceTransform(const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform) { m_replicaScreenSpaceTransform = replicaScreenSpaceTransform; }
+    const WebKit::WebTransformationMatrix& replicaScreenSpaceTransform() const { return m_replicaScreenSpaceTransform; }
 
     bool targetSurfaceTransformsAreAnimating() const { return m_targetSurfaceTransformsAreAnimating; }
     void setTargetSurfaceTransformsAreAnimating(bool animating) { m_targetSurfaceTransformsAreAnimating = animating; }
@@ -123,23 +111,25 @@ public:
     void setClipRect(const IntRect&);
     const IntRect& clipRect() const { return m_clipRect; }
 
+    void setScissorRect(const IntRect& scissorRect) { m_scissorRect = scissorRect; }
+    const IntRect& scissorRect() const { return m_scissorRect; }
+
     void setContentRect(const IntRect&);
     const IntRect& contentRect() const { return m_contentRect; }
 
-    void setSkipsDraw(bool skipsDraw) { m_skipsDraw = skipsDraw; }
-    bool skipsDraw() const { return m_skipsDraw; }
-
     void clearLayerList() { m_layerList.clear(); }
     Vector<CCLayerImpl*>& layerList() { return m_layerList; }
-
-    void setMaskLayer(CCLayerImpl* maskLayer) { m_maskLayer = maskLayer; }
 
     ManagedTexture* contentsTexture() const { return m_contentsTexture.get(); }
     ManagedTexture* backgroundTexture() const { return m_backgroundTexture.get(); }
 
     int owningLayerId() const;
+    CCRenderSurface* targetRenderSurface() const;
 
     bool hasReplica() const;
+
+    bool hasMask() const;
+    bool replicaHasMask() const;
 
     void resetPropertyChangedFlag() { m_surfacePropertyChanged = false; }
     bool surfacePropertyChanged() const;
@@ -150,21 +140,15 @@ public:
     PassOwnPtr<CCSharedQuadState> createSharedQuadState() const;
     PassOwnPtr<CCSharedQuadState> createReplicaSharedQuadState() const;
 
+    void appendQuads(CCQuadCuller&, CCSharedQuadState*, bool forReplica, const CCRenderPass*);
+
+    FloatRect computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const;
+
 private:
-    IntRect computeDeviceBoundingBox(LayerRendererChromium*, const TransformationMatrix& drawTransform) const;
-    IntRect computeReadbackDeviceBoundingBox(LayerRendererChromium*, const TransformationMatrix& drawTransform) const;
-
-    void drawLayer(LayerRendererChromium*, CCLayerImpl*, const TransformationMatrix&, int contentsTextureId);
-    template <class T>
-    void drawSurface(LayerRendererChromium*, CCLayerImpl*, const TransformationMatrix& drawTransform, const TransformationMatrix& deviceTransform, const CCLayerQuad& deviceRect, const CCLayerQuad&, int contentsTextureId, const T* program, int shaderMaskSamplerLocation, int shaderQuadLocation, int shaderEdgeLocation);
-
-    static void copyTextureToFramebuffer(LayerRendererChromium*, int textureId, const IntSize& bounds, const TransformationMatrix& drawMatrix);
-
     CCLayerImpl* m_owningLayer;
-    CCLayerImpl* m_maskLayer;
 
+    // Uses this surface's space.
     IntRect m_contentRect;
-    bool m_skipsDraw;
     bool m_surfacePropertyChanged;
 
     OwnPtr<ManagedTexture> m_contentsTexture;
@@ -172,17 +156,24 @@ private:
 
     float m_drawOpacity;
     bool m_drawOpacityIsAnimating;
-    TransformationMatrix m_drawTransform;
-    TransformationMatrix m_originTransform;
-    TransformationMatrix m_screenSpaceTransform;
-    TransformationMatrix m_replicaDrawTransform;
-    TransformationMatrix m_replicaOriginTransform;
-    TransformationMatrix m_replicaScreenSpaceTransform;
+    WebKit::WebTransformationMatrix m_drawTransform;
+    WebKit::WebTransformationMatrix m_originTransform;
+    WebKit::WebTransformationMatrix m_screenSpaceTransform;
+    WebKit::WebTransformationMatrix m_replicaDrawTransform;
+    WebKit::WebTransformationMatrix m_replicaOriginTransform;
+    WebKit::WebTransformationMatrix m_replicaScreenSpaceTransform;
     bool m_targetSurfaceTransformsAreAnimating;
     bool m_screenSpaceTransformsAreAnimating;
-    FilterOperations m_filters;
-    FilterOperations m_backgroundFilters;
+    WebKit::WebFilterOperations m_filters;
+    WebKit::WebFilterOperations m_backgroundFilters;
+
+    // Uses the space of the surface's target surface.
     IntRect m_clipRect;
+
+    // During drawing, identifies the region outside of which nothing should be drawn.
+    // Uses the space of the surface's target surface.
+    IntRect m_scissorRect;
+
     Vector<CCLayerImpl*> m_layerList;
 
     // The nearest ancestor target surface that will contain the contents of this surface, and that is going
@@ -190,9 +181,6 @@ private:
     CCRenderSurface* m_nearestAncestorThatMovesPixels;
 
     OwnPtr<CCDamageTracker> m_damageTracker;
-
-    // Stored in the "surface space" where this damage can be used for scissoring.
-    FloatRect m_damageRect;
 
     // For CCLayerIteratorActions
     int m_targetRenderSurfaceLayerIndexHistory;

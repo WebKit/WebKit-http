@@ -49,7 +49,7 @@ function unexpectedSuccessCallback()
 
 function unexpectedErrorCallback(event)
 {
-    testFailed("Error function called unexpectedly: (" + event.target.errorCode + ") " + event.target.webkitErrorMessage);
+    testFailed("Error function called unexpectedly: (" + event.target.error.name + ") " + event.target.webkitErrorMessage);
     finishJSTest();
 }
 
@@ -71,16 +71,20 @@ function unexpectedBlockedCallback()
     finishJSTest();
 }
 
-function evalAndExpectException(cmd, expected)
+function evalAndExpectException(cmd, exceptionCode, exceptionName)
 {
     debug("Expecting exception from " + cmd);
     try {
         eval(cmd);
-        testFailed("No exception thrown! Should have been " + expected);
+        testFailed("No exception thrown! Should have been " + exceptionCode);
     } catch (e) {
         code = e.code;
         testPassed("Exception was thrown.");
-        shouldBe("code", expected);
+        shouldBe("code", exceptionCode);
+        if (exceptionName) {
+            ename = e.name;
+            shouldBe("ename", exceptionName);
+        }
     }
 }
 
@@ -91,11 +95,11 @@ function evalAndExpectExceptionClass(cmd, expected)
         eval(cmd);
         testFailed("No exception thrown!" );
     } catch (e) {
-		testPassed("Exception was thrown.");
-		if (eval("e instanceof " + expected))
-			testPassed(cmd + " threw " + e);
-		else
-			testFailed("Expected " + expected + " but saw " + e);
+        testPassed("Exception was thrown.");
+        if (eval("e instanceof " + expected))
+            testPassed(cmd + " threw " + e);
+        else
+            testFailed("Expected " + expected + " but saw " + e);
     }
 }
 
@@ -111,4 +115,35 @@ function deleteAllObjectStores(db)
     while (db.objectStoreNames.length)
         db.deleteObjectStore(db.objectStoreNames.item(0));
     debug("Deleted all object stores.");
+}
+
+// For Workers
+if (!self.DOMException) {
+    self.DOMException = {
+        INDEX_SIZE_ERR: 1,
+        DOMSTRING_SIZE_ERR: 2,
+        HIERARCHY_REQUEST_ERR: 3,
+        WRONG_DOCUMENT_ERR: 4,
+        INVALID_CHARACTER_ERR: 5,
+        NO_DATA_ALLOWED_ERR: 6,
+        NO_MODIFICATION_ALLOWED_ERR: 7,
+        NOT_FOUND_ERR: 8,
+        NOT_SUPPORTED_ERR: 9,
+        INUSE_ATTRIBUTE_ERR: 10,
+        INVALID_STATE_ERR: 11,
+        SYNTAX_ERR: 12,
+        INVALID_MODIFICATION_ERR: 13,
+        NAMESPACE_ERR: 14,
+        INVALID_ACCESS_ERR: 15,
+        VALIDATION_ERR: 16,
+        TYPE_MISMATCH_ERR: 17,
+        SECURITY_ERR: 18,
+        NETWORK_ERR: 19,
+        ABORT_ERR: 20,
+        URL_MISMATCH_ERR: 21,
+        QUOTA_EXCEEDED_ERR: 22,
+        TIMEOUT_ERR: 23,
+        INVALID_NODE_TYPE_ERR: 24,
+        DATA_CLONE_ERR: 25
+    };
 }

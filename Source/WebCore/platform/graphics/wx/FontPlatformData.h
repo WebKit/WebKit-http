@@ -68,6 +68,11 @@ public:
         : m_font(font)
     {}
 
+    ~FontHolder()
+    {
+        delete m_font;
+    }
+
     wxFont* font() { return m_font; }
 
 private:
@@ -152,6 +157,8 @@ public:
 
     // We don't support this yet, so just return the default value for now.
     FontWidthVariant widthVariant() const { return RegularWidth; }
+    
+    bool isCompositeFontReference() const { return false; }
 
 #if OS(WINDOWS)
     bool useGDI() const;

@@ -36,10 +36,11 @@
 #include "Frame.h"
 #include "NativeImageSkia.h"
 #include "platform/WebCommon.h"
-#include "platform/WebDragData.h"
 #include "platform/WebImage.h"
 #include "WebViewClient.h"
 #include "WebViewImpl.h"
+
+#include <public/WebDragData.h>
 
 using namespace WebCore;
 
@@ -86,14 +87,7 @@ void DragClientImpl::startDrag(DragImageRef dragImage,
 
     IntSize offsetSize(eventPos - dragImageOrigin);
     WebPoint offsetPoint(offsetSize.width(), offsetSize.height());
-    m_webView->startDragging(
-        dragData, static_cast<WebDragOperationsMask>(dragOperationMask),
-#if WEBKIT_USING_SKIA
-        dragImage ? WebImage(*dragImage) : WebImage(),
-#else
-        dragImage ? WebImage(dragImage) : WebImage(),
-#endif
-        offsetPoint);
+    m_webView->startDragging(frame, dragData, static_cast<WebDragOperationsMask>(dragOperationMask), dragImage ? WebImage(*dragImage) : WebImage(), offsetPoint);
 }
 
 void DragClientImpl::dragControllerDestroyed()

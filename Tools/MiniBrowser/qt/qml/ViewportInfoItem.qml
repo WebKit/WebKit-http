@@ -1,84 +1,136 @@
 import QtQuick 2.0
 import QtWebKit 3.0
 
-Rectangle {
-    property var viewportInfo
+Item {
+    property var test
+    property var preferredMinimumContentsWidth
 
-    color: "black"
-    opacity: 0.8
+    function formatScale(value) {
+        return "<b>" + parseFloat(value.toFixed(4)) + "</b>x";
+    }
 
-    Item {
-        anchors.fill: parent
-        anchors.margins: 20
+    function formatSize(value) {
+        return "<b>" + value.width.toFixed() + "x" + value.height.toFixed() + "</b>px"
+    }
 
-        property string fontFamily: "Nokia Pure, Helvetica"
-        property color fontColor: "white"
+    function formatBool(value) {
+        return "<b>" + (value ? "yes" : "no") + "</b>"
+    }
+
+    Rectangle {
+        id: title;
+
+        anchors {
+            top: parent.top
+            left: parent.left
+            margins: 10
+        }
+
+        height: 50
+        width: 250
+
+        color: "blue"
 
         Text {
             id: viewportInfoLabel
+
+            anchors {
+                verticalCenter: parent.verticalCenter
+                left: parent.left
+                leftMargin: 10
+            }
+
             text: "Viewport Info"
             color: "white"
-            font.family: "Nokia Pure, Helvetica"
+            font.family: "Nokia Pure"
             font.pointSize: 24
         }
-        Text {
-            id: currentScaleLabel
-            anchors.top: viewportInfoLabel.bottom
-            anchors.topMargin: 30
-            text: "Current scale: " + parseFloat(viewportInfo.currentScale.toFixed(4))
-            font.family: parent.fontFamily
-            color: parent.fontColor
+    }
+
+    Rectangle {
+        color: "gray"
+        opacity: 0.9
+
+        anchors {
+            top: title.bottom
+            left: title.left
+            topMargin: 10
         }
-        Text {
-            id: initialScaleLabel
-            anchors.top: currentScaleLabel.bottom
-            text: "Initial scale: " + parseFloat(viewportInfo.initialScale.toFixed(4))
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: minimumScaleLabel
-            anchors.top: initialScaleLabel.bottom
-            text: "Minimum scale: " + parseFloat(viewportInfo.minimumScale.toFixed(4))
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: maximumScaleLabel
-            anchors.top: minimumScaleLabel.bottom
-            text: "Maximum scale: " + parseFloat(viewportInfo.maximumScale.toFixed(4))
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: devicePixelRatioLabel
-            anchors.top: maximumScaleLabel.bottom
-            anchors.topMargin: 30
-            text: "Device pixel ratio: " + parseFloat(viewportInfo.devicePixelRatio.toFixed(4))
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: contentsSizeLabel
-            anchors.top: devicePixelRatioLabel.bottom
-            text: "Contents size: " + viewportInfo.contentsSize.width + "x" + viewportInfo.contentsSize.height
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: layoutSizeLabel
-            anchors.top: contentsSizeLabel.bottom
-            text: "Viewport layout size: " + viewportInfo.layoutSize.width + "x" + viewportInfo.layoutSize.height
-            font.family: parent.fontFamily
-            color: parent.fontColor
-        }
-        Text {
-            id: scalableLabel
-            anchors.top: layoutSizeLabel.bottom
-            anchors.topMargin: 30
-            text: "View " + (viewportInfo.isScalable ? "is " : "is not " ) + "scalable."
-            font.family: parent.fontFamily
-            color: parent.fontColor
+
+        width: 340
+        height: 270
+
+        Item {
+            id: textBox
+
+            anchors {
+                fill: parent
+                margins: 10
+            }
+
+            property string fontFamily: "Nokia Pure"
+            property color fontColor: "black"
+
+            Column {
+                anchors.fill: parent
+                spacing: 20
+                Column {
+                    Text {
+                        text: "Current scale: " + formatScale(test.contentsScale)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                }
+
+                Column {
+                    Text {
+                        text: "Initial scale: " + formatScale(test.initialScale)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                    Text {
+                        text: "Minimum scale: " + formatScale(test.minimumScale)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                    Text {
+                        text: "Maximum scale: " + formatScale(test.maximumScale)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                }
+
+                Column {
+                    Text {
+                        text: "Device pixel ratio: " + formatScale(test.devicePixelRatio)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                    Text {
+                        text: "Contents size: " + formatSize(test.contentsSize)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                    Text {
+                        text: "Viewport layout size: " + formatSize(test.layoutSize)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                }
+
+                Column {
+                    Text {
+                        text: "Adapt for small screens: " + formatBool(preferredMinimumContentsWidth)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                    Text {
+                        text: "Allows scaling: " + formatBool(test.isScalable)
+                        font.family: textBox.fontFamily
+                        color: textBox.fontColor
+                    }
+                }
+            }
         }
     }
 }

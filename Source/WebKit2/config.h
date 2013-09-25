@@ -59,28 +59,7 @@ static const type& name() \
     return name##Value; \
 }
 
-#if PLATFORM(MAC)
-
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
-#define ENABLE_WEB_PROCESS_SANDBOX 1
-#endif
-
-#define ENABLE_PLUGIN_PROCESS 1
-
-#if PLATFORM(MAC)
-#define ENABLE_MEMORY_SAMPLER 1
-#endif
-
-#import <CoreGraphics/CoreGraphics.h>
-
-#ifdef __OBJC__
-#import <Cocoa/Cocoa.h>
-#endif
-
-
-#include <WebCore/EmptyProtocolDefinitions.h>
-
-#elif defined(WIN32) || defined(_WIN32)
+#if defined(WIN32) || defined(_WIN32)
 
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0500

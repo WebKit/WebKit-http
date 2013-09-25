@@ -43,7 +43,7 @@ v8::Handle<v8::Value> V8ArrayBuffer::constructorCallback(const v8::Arguments& ar
     INC_STATS("DOM.ArrayBuffer.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -70,7 +70,7 @@ v8::Handle<v8::Value> V8ArrayBuffer::constructorCallback(const v8::Arguments& ar
     if (length >= 0)
         buffer = ArrayBuffer::create(static_cast<unsigned>(length), 1);
     if (!buffer.get())
-        return throwError("ArrayBuffer size is not a small enough positive integer.", V8Proxy::RangeError);
+        return V8Proxy::throwError(V8Proxy::RangeError, "ArrayBuffer size is not a small enough positive integer.", args.GetIsolate());
     // Transform the holder into a wrapper object for the array.
     V8DOMWrapper::setDOMWrapper(args.Holder(), &info, buffer.get());
     V8DOMWrapper::setJSWrapperForDOMObject(buffer.release(), v8::Persistent<v8::Object>::New(args.Holder()));

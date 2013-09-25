@@ -26,13 +26,17 @@
 #include "config.h"
 #include "EventDispatcher.h"
 
+#include "ComposedShadowTreeWalker.h"
+#include "ElementShadow.h"
 #include "EventContext.h"
 #include "EventDispatchMediator.h"
 #include "FrameView.h"
 #include "HTMLMediaElement.h"
+#include "InsertionPoint.h"
 #include "InspectorInstrumentation.h"
 #include "MouseEvent.h"
 #include "ScopedEventQueue.h"
+#include "ShadowRoot.h"
 #include "WindowEventContext.h"
 #include <wtf/RefPtr.h>
 #include <wtf/UnusedParam.h>
@@ -46,6 +50,63 @@
 namespace WebCore {
 
 static HashSet<Node*>* gNodesDispatchingSimulatedClicks = 0;
+
+EventRelatedTargetAdjuster::EventRelatedTargetAdjuster(PassRefPtr<Node> node, PassRefPtr<Node> relatedTarget)
+    : m_node(node)
+    , m_relatedTarget(relatedTarget)
+{
+    ASSERT(m_node);
+    ASSERT(m_relatedTarget);
+}
+
+void EventRelatedTargetAdjuster::adjust(Vector<EventContext>& ancestors)
+{
+    TreeScope* lastTreeScope = 0;
+    for (ComposedShadowTreeParentWalker walker(m_relatedTarget.get()); walker.get(); walker.parentIncludingInsertionPointAndShadowRoot()) {
+        TreeScope* scope = walker.get()->treeScope();
+        // Skips adding a node to the map if treeScope does not change.
+        if (scope != lastTreeScope)
+            m_relatedTargetMap.add(scope, walker.get());
+        lastTreeScope = scope;
+    }
+
+    lastTreeScope = 0;
+    EventTarget* adjustedRelatedTarget = 0;
+    for (Vector<EventContext>::iterator iter = ancestors.begin(); iter < ancestors.end(); ++iter) {
+        TreeScope* scope = iter->node()->treeScope();
+        if (scope == lastTreeScope) {
+            // Re-use the previous adjustedRelatedTarget if treeScope does not change.
+            iter->setRelatedTarget(adjustedRelatedTarget);
+        } else {
+            adjustedRelatedTarget = findRelatedTarget(scope);
+            iter->setRelatedTarget(adjustedRelatedTarget);
+        }
+        lastTreeScope = scope;
+        if (iter->target() == adjustedRelatedTarget) {
+            // Event dispatching should be stopped here.
+            ancestors.shrink(iter - ancestors.begin());
+            break;
+        }
+    }
+}
+
+EventTarget* EventRelatedTargetAdjuster::findRelatedTarget(TreeScope* scope)
+{
+    Vector<TreeScope*> parentTreeScopes;
+    EventTarget* relatedTarget = 0;
+    while (scope) {
+        parentTreeScopes.append(scope);
+        RelatedTargetMap::const_iterator found = m_relatedTargetMap.find(scope);
+        if (found != m_relatedTargetMap.end()) {
+            relatedTarget = found->second;
+            break;
+        }
+        scope = scope->parentTreeScope();
+    }
+    for (Vector<TreeScope*>::iterator iter = parentTreeScopes.begin(); iter < parentTreeScopes.end(); ++iter)
+      m_relatedTargetMap.add(*iter, relatedTarget);
+    return relatedTarget;
+}
 
 bool EventDispatcher::dispatchEvent(Node* node, PassRefPtr<EventDispatchMediator> mediator)
 {
@@ -65,17 +126,13 @@ inline static EventTarget* eventTargetRespectingSVGTargetRules(Node* referenceNo
 
     // Spec: The event handling for the non-exposed tree works as if the referenced element had been textually included
     // as a deeply cloned child of the 'use' element, except that events are dispatched to the SVGElementInstance objects
-    Element* shadowHostElement = referenceNode->treeScope()->rootNode()->shadowHost();
-    // At this time, SVG nodes are not allowed in non-<use> shadow trees, so any shadow root we do
-    // have should be a use. The assert and following test is here to catch future shadow DOM changes
-    // that do enable SVG in a shadow tree.
-    ASSERT(!shadowHostElement || shadowHostElement->hasTagName(SVGNames::useTag));
-    if (shadowHostElement && shadowHostElement->hasTagName(SVGNames::useTag)) {
-        SVGUseElement* useElement = static_cast<SVGUseElement*>(shadowHostElement);
-
-        if (SVGElementInstance* instance = useElement->instanceForShadowTreeElement(referenceNode))
-            return instance;
-    }
+    Element* shadowHostElement = toShadowRoot(referenceNode->treeScope()->rootNode())->host();
+    // At this time, SVG nodes are not supported in non-<use> shadow trees.
+    if (!shadowHostElement || !shadowHostElement->hasTagName(SVGNames::useTag))
+        return referenceNode;
+    SVGUseElement* useElement = static_cast<SVGUseElement*>(shadowHostElement);
+    if (SVGElementInstance* instance = useElement->instanceForShadowTreeElement(referenceNode))
+        return instance;
 #endif
 
     return referenceNode;
@@ -116,109 +173,17 @@ void EventDispatcher::dispatchSimulatedClick(Node* node, PassRefPtr<Event> under
     gNodesDispatchingSimulatedClicks->remove(node);
 }
 
-static inline bool isShadowHost(Node* node)
-{
-    return node->isElementNode() && toElement(node)->hasShadowRoot();
-}
-
-PassRefPtr<EventTarget> EventDispatcher::adjustToShadowBoundaries(PassRefPtr<Node> relatedTarget, const Vector<Node*> relatedTargetAncestors)
-{
-    Vector<EventContext>::const_iterator lowestCommonBoundary = m_ancestors.end();
-    // Assume divergent boundary is the relatedTarget itself (in other words, related target ancestor chain does not cross any shadow DOM boundaries).
-    Vector<Node*>::const_iterator firstDivergentBoundary = relatedTargetAncestors.begin();
-
-    Vector<EventContext>::const_iterator targetAncestor = m_ancestors.end();
-    // Walk down from the top, looking for lowest common ancestor, also monitoring shadow DOM boundaries.
-    bool diverged = false;
-    for (Vector<Node*>::const_iterator i = relatedTargetAncestors.end() - 1; i >= relatedTargetAncestors.begin(); --i) {
-        if (diverged) {
-            if ((*i)->isShadowRoot()) {
-                firstDivergentBoundary = i + 1;
-                break;
-            }
-            continue;
-        }
-
-        if (targetAncestor == m_ancestors.begin()) {
-            diverged = true;
-            continue;
-        }
-
-        targetAncestor--;
-
-        if ((*i)->isShadowRoot())
-            lowestCommonBoundary = targetAncestor;
-
-        if ((*i) != (*targetAncestor).node())
-            diverged = true;
-    }
-
-    if (!diverged) {
-        // The relatedTarget is an ancestor or shadowHost of the target.
-        // FIXME: Remove the first check once conversion to new shadow DOM is complete <http://webkit.org/b/48698>
-        if (m_node->shadowHost() == relatedTarget.get() || isShadowHost(relatedTarget.get())) {
-            Vector<EventContext>::const_iterator relatedTargetChild = targetAncestor - 1;
-            if (relatedTargetChild >= m_ancestors.begin() && relatedTargetChild->node()->isShadowRoot())
-                lowestCommonBoundary = relatedTargetChild;
-        }
-    } else if ((*firstDivergentBoundary) == m_node.get()) {
-        // Since ancestors does not contain target itself, we must account
-        // for the possibility that target is a shadowHost of relatedTarget
-        // and thus serves as the lowestCommonBoundary.
-        // Luckily, in this case the firstDivergentBoundary is target.
-        lowestCommonBoundary = m_ancestors.begin();
-        m_shouldPreventDispatch = true;
-    }
-
-    if (lowestCommonBoundary != m_ancestors.end()) {
-        // Trim ancestors to lowestCommonBoundary to keep events inside of the common shadow DOM subtree.
-        m_ancestors.shrink(lowestCommonBoundary - m_ancestors.begin());
-    }
-    // Set event's related target to the first encountered shadow DOM boundary in the divergent subtree.
-    return firstDivergentBoundary != relatedTargetAncestors.begin() ? *firstDivergentBoundary : relatedTarget;
-}
-
-inline static bool ancestorsCrossShadowBoundaries(const Vector<EventContext>& ancestors)
-{
-    return ancestors.isEmpty() || ancestors.first().node() == ancestors.last().node();
-}
-
-// FIXME: Once https://bugs.webkit.org/show_bug.cgi?id=52963 lands, this should
-// be greatly improved. See https://bugs.webkit.org/show_bug.cgi?id=54025.
-PassRefPtr<EventTarget> EventDispatcher::adjustRelatedTarget(Event* event, PassRefPtr<EventTarget> prpRelatedTarget)
+void EventDispatcher::adjustRelatedTarget(Event* event, PassRefPtr<EventTarget> prpRelatedTarget)
 {
     if (!prpRelatedTarget)
-        return 0;
-
+        return;
     RefPtr<Node> relatedTarget = prpRelatedTarget->toNode();
     if (!relatedTarget)
-        return 0;
-
-    Node* target = m_node.get();
-    if (!target)
-        return prpRelatedTarget;
-
+        return;
+    if (!m_node.get())
+        return;
     ensureEventAncestors(event);
-
-    // Calculate early if the common boundary is even possible by looking at
-    // ancestors size and if the retargeting has occured (indicating the presence of shadow DOM boundaries).
-    // If there are no boundaries detected, the target and related target can't have a common boundary.
-    bool noCommonBoundary = ancestorsCrossShadowBoundaries(m_ancestors);
-
-    Vector<Node*> relatedTargetAncestors;
-    Node* outermostShadowBoundary = relatedTarget.get();
-    for (Node* n = outermostShadowBoundary; n; n = n->parentOrHostNode()) {
-        if (n->isShadowRoot())
-            outermostShadowBoundary = n->parentOrHostNode();
-        if (!noCommonBoundary)
-            relatedTargetAncestors.append(n);
-    }
-
-    // Short-circuit the fast case when we know there is no need to calculate a common boundary.
-    if (noCommonBoundary)
-        return outermostShadowBoundary;
-
-    return adjustToShadowBoundaries(relatedTarget.release(), relatedTargetAncestors);
+    EventRelatedTargetAdjuster(m_node, relatedTarget.release()).adjust(m_ancestors);
 }
 
 EventDispatcher::EventDispatcher(Node* node)
@@ -232,30 +197,25 @@ EventDispatcher::EventDispatcher(Node* node)
 
 void EventDispatcher::ensureEventAncestors(Event* event)
 {
-    if (!m_node->inDocument())
-        return;
-
     if (m_ancestorsInitialized)
         return;
-
     m_ancestorsInitialized = true;
-
-    Node* ancestor = m_node.get();
-    EventTarget* target = eventTargetRespectingSVGTargetRules(ancestor);
-    while (true) {
-        if (ancestor->isShadowRoot()) {
-            if (determineDispatchBehavior(event, ancestor) == StayInsideShadowDOM)
-                return;
-            ancestor = ancestor->shadowHost();
-            if (!m_node->isSVGElement())
-                target = ancestor;
-        } else
-            ancestor = ancestor->parentNodeGuaranteedHostFree();
-
-        if (!ancestor)
+    bool inDocument = m_node->inDocument();
+    bool isSVGElement = m_node->isSVGElement();
+    Vector<EventTarget*> targetStack;
+    for (ComposedShadowTreeParentWalker walker(m_node.get()); walker.get(); walker.parentIncludingInsertionPointAndShadowRoot()) {
+        Node* node = walker.get();
+        if (isActiveInsertionPoint(node) || targetStack.isEmpty())
+            targetStack.append(eventTargetRespectingSVGTargetRules(node));
+        m_ancestors.append(EventContext(node, eventTargetRespectingSVGTargetRules(node), targetStack.last()));
+        if (!inDocument)
             return;
-
-        m_ancestors.append(EventContext(ancestor, eventTargetRespectingSVGTargetRules(ancestor), target));
+        if (!node->isShadowRoot())
+            continue;
+        if (determineDispatchBehavior(event, toShadowRoot(node)) == StayInsideShadowDOM)
+            return;
+        if (!isSVGElement && !targetStack.isEmpty())
+            targetStack.removeLast();
     }
 }
 
@@ -276,7 +236,7 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
 
     // Give the target node a chance to do some work before DOM event handlers get a crack.
     void* data = m_node->preDispatchEventHandler(event.get());
-    if (m_shouldPreventDispatch || event->propagationStopped())
+    if (m_ancestors.isEmpty() || m_shouldPreventDispatch || event->propagationStopped())
         goto doneDispatching;
 
     // Trigger capturing event handlers, starting at the top and working our way down.
@@ -285,8 +245,8 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
     if (windowContext.handleLocalEvents(event.get()) && event->propagationStopped())
         goto doneDispatching;
 
-    for (size_t i = m_ancestors.size(); i; --i) {
-        const EventContext& eventContext = m_ancestors[i-1];
+    for (size_t i = m_ancestors.size() - 1; i > 0; --i) {
+        const EventContext& eventContext = m_ancestors[i];
         if (eventContext.currentTargetSameAsTarget()) {
             if (event->bubbles())
                 continue;
@@ -301,7 +261,7 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
     event->setEventPhase(Event::AT_TARGET);
     event->setTarget(originalTarget.get());
     event->setCurrentTarget(eventTargetRespectingSVGTargetRules(m_node.get()));
-    m_node->handleLocalEvents(event.get());
+    m_ancestors[0].handleLocalEvents(event.get());
     if (event->propagationStopped())
         goto doneDispatching;
 
@@ -310,7 +270,7 @@ bool EventDispatcher::dispatchEvent(PassRefPtr<Event> event)
         event->setEventPhase(Event::BUBBLING_PHASE);
 
         size_t size = m_ancestors.size();
-        for (size_t i = 0; i < size; ++i) {
+        for (size_t i = 1; i < size; ++i) {
             const EventContext& eventContext = m_ancestors[i];
             if (eventContext.currentTargetSameAsTarget())
                 event->setEventPhase(Event::AT_TARGET);
@@ -344,7 +304,7 @@ doneDispatching:
         // same order as the bubbling phase.
         if (event->bubbles()) {
             size_t size = m_ancestors.size();
-            for (size_t i = 0; i < size; ++i) {
+            for (size_t i = 1; i < size; ++i) {
                 m_ancestors[i].node()->defaultEventHandler(event.get());
                 ASSERT(!event->defaultPrevented());
                 if (event->defaultHandled())
@@ -369,7 +329,7 @@ const EventContext* EventDispatcher::topEventContext()
     return m_ancestors.isEmpty() ? 0 : &m_ancestors.last();
 }
 
-EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, Node* shadowRoot)
+EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, ShadowRoot* shadowRoot)
 {
 #if ENABLE(FULLSCREEN_API) && ENABLE(VIDEO)
     // Video-only full screen is a mode where we use the shadow DOM as an implementation
@@ -377,17 +337,12 @@ EventDispatchBehavior EventDispatcher::determineDispatchBehavior(Event* event, N
     if (Element* element = m_node->document()->webkitCurrentFullScreenElement()) {
         // FIXME: We assume that if the full screen element is a media element that it's
         // the video-only full screen. Both here and elsewhere. But that is probably wrong.
-        if (element->isMediaElement() && shadowRoot && shadowRoot->shadowHost() == element)
+        if (element->isMediaElement() && shadowRoot && shadowRoot->host() == element)
             return StayInsideShadowDOM;
     }
 #else
     UNUSED_PARAM(shadowRoot);
 #endif
-
-    // Per XBL 2.0 spec, mutation events should never cross shadow DOM boundary:
-    // http://dev.w3.org/2006/xbl2/#event-flow-and-targeting-across-shadow-s
-    if (event->hasInterface(eventNames().interfaceForMutationEvent))
-        return StayInsideShadowDOM;
 
     // WebKit never allowed selectstart event to cross the the shadow DOM boundary.
     // Changing this breaks existing sites.

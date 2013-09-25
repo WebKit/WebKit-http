@@ -39,6 +39,7 @@
 #include "RenderTableRow.h"
 #include "RenderTextControl.h"
 #include "RenderTextFragment.h"
+#include "ShadowRoot.h"
 #include "TextBoundaries.h"
 #include "TextBreakIterator.h"
 #include "VisiblePosition.h"
@@ -663,7 +664,7 @@ bool TextIterator::handleReplacedElement()
 
     if (m_entersTextControls && renderer->isTextControl()) {
         if (HTMLElement* innerTextElement = toRenderTextControl(renderer)->textFormControlElement()->innerTextElement()) {
-            m_node = innerTextElement->shadowTreeRootNode();
+            m_node = innerTextElement->shadowRoot();
             pushFullyClippedState(m_fullyClippedStack, m_node);
             m_offset = 0;
             return false;
@@ -1733,7 +1734,7 @@ static inline void unlockSearcher()
 
 // ICU's search ignores the distinction between small kana letters and ones
 // that are not small, and also characters that differ only in the voicing
-// marks when considering only primary collation strength diffrences.
+// marks when considering only primary collation strength differences.
 // This is not helpful for end users, since these differences make words
 // distinct, so for our purposes we need these to be considered.
 // The Unicode folks do not think the collation algorithm should be
@@ -2402,7 +2403,7 @@ PassRefPtr<Range> TextIterator::subrange(Range* entireRange, int characterOffset
     return characterSubrange(entireRangeIterator, characterOffset, characterCount);
 }
 
-PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(Element* scope, int rangeLocation, int rangeLength, bool forSelectionPreservation)
+PassRefPtr<Range> TextIterator::rangeFromLocationAndLength(ContainerNode* scope, int rangeLocation, int rangeLength, bool forSelectionPreservation)
 {
     RefPtr<Range> resultRange = scope->document()->createRange();
 

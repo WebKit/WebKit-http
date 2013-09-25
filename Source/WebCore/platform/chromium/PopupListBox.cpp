@@ -353,7 +353,6 @@ void PopupListBox::typeAheadFind(const PlatformKeyboardEvent& event)
 
 void PopupListBox::paint(GraphicsContext* gc, const IntRect& rect)
 {
-    int scale = m_settings.defaultDeviceScaleFactor;
     // adjust coords for scrolled frame
     IntRect r = intersection(rect, frameRect());
     int tx = x() - scrollX();
@@ -368,8 +367,6 @@ void PopupListBox::paint(GraphicsContext* gc, const IntRect& rect)
 
     // FIXME: Can we optimize scrolling to not require repainting the entire
     // window? Should we?
-    if (scale != 1)
-        gc->scale(FloatSize(scale, scale));
     for (int i = 0; i < numItems(); ++i)
         paintRow(gc, r, i);
 
@@ -392,19 +389,6 @@ void PopupListBox::paintRow(GraphicsContext* gc, const IntRect& rect, int rowInd
     IntRect rowRect = getRowBounds(rowIndex);
     if (!rowRect.intersects(rect))
         return;
-
-    int scale = m_settings.defaultDeviceScaleFactor;
-    // RowRect has already been scaled by the defaultDeviceScaleFactor.
-    // To avoid scaling it twice, we have to unscale it before drawing.
-    if (scale != 1) {
-        // Height and y should both be evenly divisible by scale.
-        ASSERT(!(rowRect.y() % scale));
-        rowRect.setY(rowRect.y() / scale);
-        ASSERT(!(rowRect.height() % scale));
-        rowRect.setHeight(rowRect.height() / scale);
-        rowRect.setWidth(ceilf(static_cast<float>(rowRect.width()) / scale));
-        // rowRect.x is always 0.
-    }
 
     PopupMenuStyle style = m_popupClient->itemStyle(rowIndex);
 
@@ -479,7 +463,7 @@ void PopupListBox::paintRow(GraphicsContext* gc, const IntRect& rect, int rowInd
     }
 
     // Prepare the directionality to draw text.
-    TextRun textRun(itemText.characters(), itemText.length(), false, 0, 0, TextRun::AllowTrailingExpansion, style.textDirection(), style.hasTextDirectionOverride());
+    TextRun textRun(itemText, 0, 0, TextRun::AllowTrailingExpansion, style.textDirection(), style.hasTextDirectionOverride());
     // If the text is right-to-left, make it right-aligned by adjusting its
     // beginning position.
     if (rightAligned)
@@ -517,7 +501,7 @@ void PopupListBox::paintRow(GraphicsContext* gc, const IntRect& rect, int rowInd
         itemFont.update(0);
     }
 
-    TextRun labelTextRun(itemLabel.characters(), itemLabel.length(), false, 0, 0, TextRun::AllowTrailingExpansion, style.textDirection(), style.hasTextDirectionOverride());
+    TextRun labelTextRun(itemLabel, 0, 0, TextRun::AllowTrailingExpansion, style.textDirection(), style.hasTextDirectionOverride());
     if (rightAligned)
         textX = max<int>(0, m_popupClient->clientPaddingLeft() - m_popupClient->clientInsetLeft());
     else
@@ -630,16 +614,15 @@ void PopupListBox::setOriginalIndex(int index)
 
 int PopupListBox::getRowHeight(int index)
 {
-    int scale = m_settings.defaultDeviceScaleFactor;
     int paddingForTouch = 0;
-    if (RuntimeEnabledFeatures::touchEnabled())
+    if (m_settings.deviceSupportsTouch)
         paddingForTouch = PopupMenuChromium::optionPaddingForTouch();
     if (index < 0 || m_popupClient->itemStyle(index).isDisplayNone())
-        return PopupMenuChromium::minimumRowHeight() * scale;
+        return PopupMenuChromium::minimumRowHeight();
 
     // Separator row height is the same size as itself.
     if (m_popupClient->itemIsSeparator(index))
-        return max(separatorHeight, (PopupMenuChromium::minimumRowHeight())) * scale;
+        return max(separatorHeight, (PopupMenuChromium::minimumRowHeight()));
 
     String icon = m_popupClient->itemIcon(index);
     RefPtr<Image> image(Image::loadPlatformResource(icon.utf8().data()));
@@ -649,7 +632,7 @@ int PopupListBox::getRowHeight(int index)
 
     int linePaddingHeight = m_popupClient->menuStyle().menuType() == PopupMenuStyle::AutofillPopup ? kLinePaddingHeight : 0;
     int calculatedRowHeight = max(fontHeight, iconHeight) + linePaddingHeight * 2;
-    return (max(calculatedRowHeight, PopupMenuChromium::minimumRowHeight()) + paddingForTouch) * scale;
+    return (max(calculatedRowHeight, PopupMenuChromium::minimumRowHeight()) + paddingForTouch);
 }
 
 IntRect PopupListBox::getRowBounds(int index)

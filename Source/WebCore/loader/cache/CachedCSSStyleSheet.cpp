@@ -33,6 +33,7 @@
 #include "HTTPParsers.h"
 #include "MemoryCache.h"
 #include "SharedBuffer.h"
+#include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Vector.h>
@@ -50,6 +51,8 @@ CachedCSSStyleSheet::CachedCSSStyleSheet(const ResourceRequest& resourceRequest,
 
 CachedCSSStyleSheet::~CachedCSSStyleSheet()
 {
+    if (m_parsedStyleSheetCache)
+        m_parsedStyleSheetCache->removedFromMemoryCache();
 }
 
 void CachedCSSStyleSheet::didAddClient(CachedResourceClient* c)
@@ -153,33 +156,39 @@ bool CachedCSSStyleSheet::canUseSheet(bool enforceMIMEType, bool* hasValidMIMETy
 
 void CachedCSSStyleSheet::destroyDecodedData()
 {
+    if (!m_parsedStyleSheetCache)
+        return;
+
+    m_parsedStyleSheetCache->removedFromMemoryCache();
     m_parsedStyleSheetCache.clear();
+
     setDecodedSize(0);
 }
 
-PassRefPtr<StyleSheetInternal> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context)
+PassRefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context)
 {
     if (!m_parsedStyleSheetCache)
         return 0;
-    // Cached parsed stylesheet has mutated, kick it out.
-    if (!m_parsedStyleSheetCache->isCacheable()) {
-        m_parsedStyleSheetCache.clear();
-        setDecodedSize(0);
-        return 0;
-    }
+    ASSERT(m_parsedStyleSheetCache->isCacheable());
+    ASSERT(m_parsedStyleSheetCache->isInMemoryCache());
+
     // Contexts must be identical so we know we would get the same exact result if we parsed again.
     if (m_parsedStyleSheetCache->parserContext() != context)
         return 0;
 
     didAccessDecodedData(currentTime());
-    // FIXME: Implement copy-on-write to avoid copying when not necessary.
-    return m_parsedStyleSheetCache->copy();
+
+    return m_parsedStyleSheetCache;
 }
 
-void CachedCSSStyleSheet::saveParsedStyleSheet(PassRefPtr<StyleSheetInternal> sheet)
+void CachedCSSStyleSheet::saveParsedStyleSheet(PassRefPtr<StyleSheetContents> sheet)
 {
     ASSERT(sheet && sheet->isCacheable());
+
+    if (m_parsedStyleSheetCache)
+        m_parsedStyleSheetCache->removedFromMemoryCache();
     m_parsedStyleSheetCache = sheet;
+    m_parsedStyleSheetCache->addedToMemoryCache();
 
     setDecodedSize(m_parsedStyleSheetCache->estimatedSizeInBytes());
 }

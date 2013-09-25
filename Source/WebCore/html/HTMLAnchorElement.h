@@ -103,7 +103,7 @@ public:
 protected:
     HTMLAnchorElement(const QualifiedName&, Document*);
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
 
 private:
     virtual bool supportsFocus() const;
@@ -112,7 +112,7 @@ private:
     virtual void defaultEventHandler(Event*);
     virtual void setActive(bool active = true, bool pause = false);
     virtual void accessKeyAction(bool sendMouseEvents);
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
     virtual bool canStartSelection() const;
     virtual String target() const;
     virtual short tabIndex() const;

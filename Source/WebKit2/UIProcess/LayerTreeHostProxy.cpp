@@ -131,7 +131,7 @@ void LayerTreeHostProxy::destroyDirectlyCompositedImage(int64_t key)
 
 void LayerTreeHostProxy::setContentsSize(const FloatSize& contentsSize)
 {
-    m_renderer->setContentsSize(contentsSize);
+    dispatchUpdate(bind(&WebLayerTreeRenderer::setContentsSize, m_renderer.get(), contentsSize));
 }
 
 void LayerTreeHostProxy::setVisibleContentsRect(const IntRect& rect, float scale, const FloatPoint& trajectoryVector, const WebCore::FloatPoint& accurateVisibleContentsPosition)
@@ -150,9 +150,13 @@ void LayerTreeHostProxy::didChangeScrollPosition(const IntPoint& position)
     dispatchUpdate(bind(&WebLayerTreeRenderer::didChangeScrollPosition, m_renderer.get(), position));
 }
 
+void LayerTreeHostProxy::syncCanvas(uint32_t id, const IntSize& canvasSize, uint32_t graphicsSurfaceToken)
+{
+    dispatchUpdate(bind(&WebLayerTreeRenderer::syncCanvas, m_renderer.get(), id, canvasSize, graphicsSurfaceToken));
+}
+
 void LayerTreeHostProxy::purgeBackingStores()
 {
-    m_renderer->setActive(false);
     m_drawingAreaProxy->page()->process()->send(Messages::LayerTreeHost::PurgeBackingStores(), m_drawingAreaProxy->page()->pageID());
 }
 

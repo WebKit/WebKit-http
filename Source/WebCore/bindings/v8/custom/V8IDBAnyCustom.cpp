@@ -32,6 +32,7 @@
 #include "V8IDBAny.h"
 
 #include "SerializedScriptValue.h"
+#include "V8Binding.h"
 #include "V8DOMStringList.h"
 #include "V8IDBCursor.h"
 #include "V8IDBCursorWithValue.h"
@@ -47,33 +48,35 @@ namespace WebCore {
 v8::Handle<v8::Value> toV8(IDBAny* impl, v8::Isolate* isolate)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
 
     switch (impl->type()) {
     case IDBAny::UndefinedType:
         return v8::Undefined();
     case IDBAny::NullType:
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     case IDBAny::DOMStringListType:
-        return toV8(impl->domStringList());
+        return toV8(impl->domStringList(), isolate);
     case IDBAny::IDBCursorType:
-        return toV8(impl->idbCursor());
+        return toV8(impl->idbCursor(), isolate);
     case IDBAny::IDBCursorWithValueType:
-        return toV8(impl->idbCursorWithValue());
+        return toV8(impl->idbCursorWithValue(), isolate);
     case IDBAny::IDBDatabaseType:
-        return toV8(impl->idbDatabase());
+        return toV8(impl->idbDatabase(), isolate);
     case IDBAny::IDBFactoryType:
-        return toV8(impl->idbFactory());
+        return toV8(impl->idbFactory(), isolate);
     case IDBAny::IDBIndexType:
-        return toV8(impl->idbIndex());
+        return toV8(impl->idbIndex(), isolate);
     case IDBAny::IDBKeyType:
-        return toV8(impl->idbKey());
+        return toV8(impl->idbKey(), isolate);
     case IDBAny::IDBObjectStoreType:
-        return toV8(impl->idbObjectStore());
+        return toV8(impl->idbObjectStore(), isolate);
     case IDBAny::IDBTransactionType:
-        return toV8(impl->idbTransaction());
+        return toV8(impl->idbTransaction(), isolate);
     case IDBAny::SerializedScriptValueType:
         return impl->serializedScriptValue()->deserialize(0, isolate);
+    case IDBAny::StringType:
+        return v8String(impl->string(), isolate);
     }
 
     ASSERT_NOT_REACHED();

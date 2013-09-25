@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSDictionary.h"
 
+#include "Dictionary.h"
 #include "JSDOMWindow.h"
 #include "JSEventTarget.h"
 #include "JSMessagePortCustom.h"
@@ -60,9 +61,9 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetProperty(const char* propert
     return PropertyFound;
 }
 
-void JSDictionary::convertValue(ExecState* exec, JSValue value, bool& result)
+void JSDictionary::convertValue(ExecState*, JSValue value, bool& result)
 {
-    result = value.toBoolean(exec);
+    result = value.toBoolean();
 }
 
 void JSDictionary::convertValue(ExecState* exec, JSValue value, int& result)
@@ -89,6 +90,11 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, unsigned long lo
 void JSDictionary::convertValue(ExecState* exec, JSValue value, double& result)
 {
     result = value.toNumber(exec);
+}
+
+void JSDictionary::convertValue(JSC::ExecState* exec, JSC::JSValue value, Dictionary& result)
+{
+    result = Dictionary(exec, value);
 }
 
 void JSDictionary::convertValue(ExecState* exec, JSValue value, String& result)
@@ -160,5 +166,15 @@ void JSDictionary::convertValue(ExecState* exec, JSValue value, HashSet<AtomicSt
     }
 }
 #endif
+
+bool JSDictionary::getWithUndefinedOrNullCheck(const String& propertyName, String& result) const
+{
+    JSValue value;
+    if (tryGetProperty(propertyName.utf8().data(), value) != PropertyFound || value.isUndefinedOrNull())
+        return false;
+
+    result = ustringToString(value.toString(m_exec)->value(m_exec));
+    return true;
+}
 
 } // namespace WebCore

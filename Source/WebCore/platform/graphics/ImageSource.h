@@ -65,22 +65,13 @@ class IntSize;
 class SharedBuffer;
 
 #if USE(CG)
-#if USE(WEBKIT_IMAGE_DECODERS)
-class ImageDecoder;
-typedef ImageDecoder* NativeImageSourcePtr;
-#else
 typedef CGImageSourceRef NativeImageSourcePtr;
-#endif
 typedef CGImageRef NativeImagePtr;
 #elif PLATFORM(OPENVG)
 class ImageDecoder;
 class TiledImageOpenVG;
 typedef ImageDecoder* NativeImageSourcePtr;
 typedef TiledImageOpenVG* NativeImagePtr;
-#elif PLATFORM(QT)
-class ImageDecoderQt;
-typedef ImageDecoderQt* NativeImageSourcePtr;
-typedef QPixmap* NativeImagePtr;
 #else
 class ImageDecoder;
 typedef ImageDecoder* NativeImageSourcePtr;
@@ -102,6 +93,8 @@ typedef RefPtr<SharedBitmap> NativeImagePtr;
 class ImageDecoder;
 typedef ImageDecoder* NativeImageSourcePtr;
 typedef void* NativeImagePtr;
+#elif PLATFORM(QT)
+typedef QPixmap* NativeImagePtr;
 #endif
 #endif
 

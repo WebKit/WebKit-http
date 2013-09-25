@@ -43,8 +43,6 @@
 #elif PLATFORM(WIN) && !OS(WINCE)
 #include "AccessibilityObjectWrapperWin.h"
 #include "COMPtr.h"
-#elif PLATFORM(CHROMIUM)
-#include "AccessibilityObjectWrapper.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -65,6 +63,8 @@ typedef WebAccessibilityObjectWrapper AccessibilityObjectWrapper;
 #elif PLATFORM(GTK)
 typedef struct _AtkObject AtkObject;
 typedef struct _AtkObject AccessibilityObjectWrapper;
+#elif PLATFORM(CHROMIUM)
+// Chromium does not use a wrapper.
 #else
 class AccessibilityObjectWrapper;
 #endif
@@ -313,7 +313,8 @@ protected:
 public:
     virtual ~AccessibilityObject();
     virtual void detach();
-        
+    virtual bool isDetached() const;
+
     typedef Vector<RefPtr<AccessibilityObject> > AccessibilityChildrenVector;
     
     virtual bool isAccessibilityRenderObject() const { return false; }
@@ -668,7 +669,7 @@ public:
 #if PLATFORM(GTK)
     AccessibilityObjectWrapper* wrapper() const;
     void setWrapper(AccessibilityObjectWrapper*);
-#else
+#elif !PLATFORM(CHROMIUM)
     AccessibilityObjectWrapper* wrapper() const { return m_wrapper.get(); }
     void setWrapper(AccessibilityObjectWrapper* wrapper) 
     {
@@ -707,7 +708,6 @@ protected:
     virtual ScrollableArea* getScrollableAreaIfScrollable() const { return 0; }
     virtual void scrollTo(const IntPoint&) const { }
 
-    virtual bool isDetached() const { return true; }
     static bool isAccessibilityObjectSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool isAccessibilityTextSearchMatch(AccessibilityObject*, AccessibilitySearchCriteria*);
     static bool objectMatchesSearchCriteriaWithResultLimit(AccessibilityObject*, AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
@@ -727,9 +727,16 @@ protected:
 #elif PLATFORM(GTK)
     AtkObject* m_wrapper;
 #elif PLATFORM(CHROMIUM)
-    RefPtr<AccessibilityObjectWrapper> m_wrapper;
+    bool m_detached;
 #endif
 };
+
+#if !HAVE(ACCESSIBILITY)
+inline const AccessibilityObject::AccessibilityChildrenVector& AccessibilityObject::children() { return m_children; }
+inline const String& AccessibilityObject::actionVerb() const { return emptyString(); }
+inline int AccessibilityObject::lineForPosition(const VisiblePosition&) const { return -1; }
+inline void AccessibilityObject::updateBackingStore() { }
+#endif
 
 } // namespace WebCore
 

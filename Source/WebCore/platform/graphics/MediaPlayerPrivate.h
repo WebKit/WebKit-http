@@ -96,7 +96,7 @@ public:
     virtual float maxTimeSeekable() const = 0;
     virtual PassRefPtr<TimeRanges> buffered() const = 0;
 
-    virtual unsigned bytesLoaded() const = 0;
+    virtual bool didLoadingProgress() const = 0;
 
     virtual void setSize(const IntSize&) = 0;
 
@@ -118,8 +118,12 @@ public:
 #endif
 
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO) || USE(NATIVE_FULLSCREEN_VIDEO)
-    virtual bool enterFullscreen() const { return false; }
+    virtual void enterFullscreen() const { }
     virtual void exitFullscreen() { }
+#endif
+
+#if USE(NATIVE_FULLSCREEN_VIDEO)
+    virtual bool canEnterFullscreen() const { return false; }
 #endif
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -130,6 +134,8 @@ public:
 #endif
 
     virtual bool hasSingleSecurityOrigin() const { return false; }
+
+    virtual bool didPassCORSAccessCheck() const { return false; }
 
     virtual MediaPlayer::MovieLoadType movieLoadType() const { return MediaPlayer::Unknown; }
 
@@ -161,9 +167,11 @@ public:
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-    virtual MediaPlayer::AddIdStatus sourceAddId(const String&, const String&) { return MediaPlayer::NotSupported; }
-    virtual bool sourceRemoveId(const String&) { return false; }
-    virtual bool sourceAppend(const unsigned char*, unsigned) { return false; }
+    virtual MediaPlayer::AddIdStatus sourceAddId(const String& id, const String& type, const Vector<String>& codecs) { return MediaPlayer::NotSupported; }
+    virtual PassRefPtr<TimeRanges> sourceBuffered(const String& id) { return TimeRanges::create(); }
+    virtual bool sourceRemoveId(const String& id) { return false; }
+    virtual bool sourceAppend(const String& id, const unsigned char* data, unsigned length) { return false; }
+    virtual bool sourceAbort(const String& id) { return false; }
     virtual void sourceEndOfStream(MediaPlayer::EndOfStreamStatus) { };
 #endif
 

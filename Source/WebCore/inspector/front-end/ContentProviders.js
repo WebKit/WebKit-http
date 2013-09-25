@@ -31,52 +31,6 @@
 /**
  * @constructor
  * @implements {WebInspector.ContentProvider}
- * @param {WebInspector.Script} script
- */
-WebInspector.ScriptContentProvider = function(script)
-{
-    this._mimeType = "text/javascript";
-    this._script = script;
-}
-
-WebInspector.ScriptContentProvider.prototype = {
-    /**
-     * @return {?string}
-     */
-    contentURL: function()
-    {
-        return this._script.sourceURL;
-    },
-
-    /**
-     * @param {function(?string,boolean,string)} callback
-     */
-    requestContent: function(callback)
-    {
-        function didRequestSource(source)
-        {
-            callback(source, false, this._mimeType);
-        }
-        this._script.requestSource(didRequestSource.bind(this));
-    },
-
-    /**
-     * @param {string} query
-     * @param {boolean} caseSensitive
-     * @param {boolean} isRegex
-     * @param {function(Array.<WebInspector.ContentProvider.SearchMatch>)} callback
-     */
-    searchInContent: function(query, caseSensitive, isRegex, callback)
-    {
-        this._script.searchInContent(query, caseSensitive, isRegex, callback);
-    }
-}
-
-WebInspector.ScriptContentProvider.prototype.__proto__ = WebInspector.ContentProvider.prototype;
-
-/**
- * @constructor
- * @implements {WebInspector.ContentProvider}
  * @param {Array.<WebInspector.Script>} scripts
  */
 WebInspector.ConcatenatedScriptsContentProvider = function(scripts)
@@ -127,20 +81,28 @@ WebInspector.ConcatenatedScriptsContentProvider.prototype = {
     },
 
     /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return WebInspector.resourceTypes.Document;
+    },
+    
+    /**
      * @param {function(?string,boolean,string)} callback
      */
     requestContent: function(callback)
     {
         var scripts = this._sortedScripts();
         var sources = [];
-        function didRequestSource(source)
+        function didRequestSource(content, contentEncoded, mimeType)
         {
-            sources.push(source);
+            sources.push(content);
             if (sources.length == scripts.length)
                 callback(this._concatenateScriptsContent(scripts, sources), false, this._mimeType);
         }
         for (var i = 0; i < scripts.length; ++i)
-            scripts[i].requestSource(didRequestSource.bind(this));
+            scripts[i].requestContent(didRequestSource.bind(this));
     },
 
     /**
@@ -226,7 +188,6 @@ WebInspector.ConcatenatedScriptsContentProvider.prototype.__proto__ = WebInspect
  */
 WebInspector.CompilerSourceMappingContentProvider = function(sourceURL)
 {
-    this._mimeType = "text/javascript";
     this._sourceURL = sourceURL;
 }
 
@@ -240,6 +201,14 @@ WebInspector.CompilerSourceMappingContentProvider.prototype = {
     },
 
     /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return WebInspector.resourceTypes.Script;
+    },
+    
+    /**
      * @param {function(?string,boolean,string)} callback
      */
     requestContent: function(callback)
@@ -251,7 +220,7 @@ WebInspector.CompilerSourceMappingContentProvider.prototype = {
         } catch(e) {
             console.error(e.message);
         }
-        callback(sourceCode, false, this._mimeType);
+        callback(sourceCode, false, "text/javascript");
     },
 
     /**
@@ -271,11 +240,13 @@ WebInspector.CompilerSourceMappingContentProvider.prototype.__proto__ = WebInspe
 /**
  * @constructor
  * @implements {WebInspector.ContentProvider}
+ * @param {WebInspector.ResourceType} contentType 
+ * @param {string} content 
  */
-WebInspector.StaticContentProvider = function(mimeType, content)
+WebInspector.StaticContentProvider = function(contentType, content)
 {
-    this._mimeType = mimeType;
     this._content = content;
+    this._contentType = contentType;
 }
 
 WebInspector.StaticContentProvider.prototype = {
@@ -288,11 +259,19 @@ WebInspector.StaticContentProvider.prototype = {
     },
 
     /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return WebInspector.resourceTypes.Script;
+    },
+
+    /**
      * @param {function(?string,boolean,string)} callback
      */
     requestContent: function(callback)
     {
-        callback(this._content, false, this._mimeType);
+        callback(this._content, false, this._contentType.canonicalMimeType());
     },
 
     /**

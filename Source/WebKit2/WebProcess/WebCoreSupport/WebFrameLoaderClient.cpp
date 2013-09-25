@@ -43,6 +43,7 @@
 #include "WebEvent.h"
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
+#include "WebFullScreenManager.h"
 #include "WebNavigationDataStore.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
@@ -71,6 +72,10 @@
 #include <WebCore/UIEventWithKeyState.h>
 #include <WebCore/Widget.h>
 #include <WebCore/WindowFeatures.h>
+
+#if ENABLE(WEB_INTENTS)
+#include <WebCore/IntentRequest.h>
+#endif
 
 using namespace WebCore;
 
@@ -389,6 +394,11 @@ void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return;
+
+#if ENABLE(FULLSCREEN_API)
+    if (m_frame->coreFrame()->document()->webkitIsFullScreen())
+        webPage->fullScreenManager()->close();
+#endif
 
     webPage->findController().hideFindUI();
     webPage->sandboxExtensionTracker().didStartProvisionalLoad(m_frame);
@@ -739,8 +749,17 @@ void WebFrameLoaderClient::dispatchUnableToImplementPolicy(const ResourceError& 
     webPage->send(Messages::WebPageProxy::UnableToImplementPolicy(m_frame->frameID(), error, InjectedBundleUserMessageEncoder(userData.get())));
 }
 
-void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<FormState>)
+void WebFrameLoaderClient::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prpFormState)
 {
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    RefPtr<FormState> formState = prpFormState;
+    HTMLFormElement* form = formState->form();
+    WebFrame* sourceFrame = static_cast<WebFrameLoaderClient*>(formState->sourceDocument()->frame()->loader()->client())->webFrame();
+
+    webPage->injectedBundleFormClient().willSendSubmitEvent(webPage, form, m_frame, sourceFrame, formState->textFieldValues());
 }
 
 void WebFrameLoaderClient::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState> prpFormState)
@@ -812,8 +831,12 @@ void WebFrameLoaderClient::postProgressEstimateChangedNotification()
 void WebFrameLoaderClient::postProgressFinishedNotification()
 {
     if (WebPage* webPage = m_frame->page()) {
-        if (m_frame->isMainFrame())
+        if (m_frame->isMainFrame()) {
+            // Notify the bundle client.
+            webPage->injectedBundleLoaderClient().didFinishProgress(webPage);
+
             webPage->send(Messages::WebPageProxy::DidFinishProgress());
+        }
     }
 }
 
@@ -870,8 +893,6 @@ void WebFrameLoaderClient::committedLoad(DocumentLoader* loader, const char* dat
 void WebFrameLoaderClient::finishedLoading(DocumentLoader* loader)
 {
     if (!m_pluginView) {
-        committedLoad(loader, 0, 0);
-
         if (m_frameHasCustomRepresentation) {
             WebPage* webPage = m_frame->page();
             if (!webPage)
@@ -1111,6 +1132,10 @@ void WebFrameLoaderClient::restoreViewState()
 {
     // Inform the UI process of the scale factor.
     double scaleFactor = m_frame->coreFrame()->loader()->history()->currentItem()->pageScaleFactor();
+
+    // A scale factor of 0.0 means the history item actually has the "default scale factor" of 1.0.
+    if (!scaleFactor)
+        scaleFactor = 1.0;
     m_frame->page()->send(Messages::WebPageProxy::PageScaleFactorDidChange(scaleFactor));
 
     // FIXME: This should not be necessary. WebCore should be correctly invalidating
@@ -1304,7 +1329,7 @@ PassRefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize&, HTMLPlugIn
     }
 #endif
 
-    RefPtr<Plugin> plugin = webPage->createPlugin(m_frame, parameters);
+    RefPtr<Plugin> plugin = webPage->createPlugin(m_frame, pluginElement, parameters);
     if (!plugin)
         return 0;
     
@@ -1329,6 +1354,24 @@ PassRefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& p
     }
     return plugin.release();
 }
+
+#if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
+PassRefPtr<Widget> WebFrameLoaderClient::createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&)
+{
+    notImplemented();
+    return 0;
+}
+
+void WebFrameLoaderClient::hideMediaPlayerProxyPlugin(Widget*)
+{
+    notImplemented();
+}
+
+void WebFrameLoaderClient::showMediaPlayerProxyPlugin(Widget*)
+{
+    notImplemented();
+}
+#endif
 
 static bool pluginSupportsExtension(PluginData* pluginData, const String& extension)
 {
@@ -1416,10 +1459,7 @@ void WebFrameLoaderClient::dispatchGlobalObjectAvailable(DOMWrapperWorld* world)
     if (!webPage)
         return;
     
-    JSObjectRef globalObject = toRef(m_frame->coreFrame()->script()->globalObject(world));
-    
-    webPage->injectedBundleLoaderClient().didCreateGlobalObjectForFrame(webPage, globalObject, m_frame, world);
-    
+    webPage->injectedBundleLoaderClient().globalObjectIsAvailableForFrame(webPage, m_frame, world);
 }
 
 void WebFrameLoaderClient::dispatchWillDisconnectDOMWindowExtensionFromGlobalObject(WebCore::DOMWindowExtension* extension)
@@ -1497,6 +1537,13 @@ bool WebFrameLoaderClient::shouldCacheResponse(DocumentLoader*, unsigned long id
 }
 #endif // PLATFORM(WIN) && USE(CFNETWORK)
 
+#if ENABLE(WEB_INTENTS)
+void WebFrameLoaderClient::dispatchIntent(PassRefPtr<IntentRequest>)
+{
+    notImplemented();
+}
+#endif
+
 bool WebFrameLoaderClient::shouldUsePluginDocument(const String& /*mimeType*/) const
 {
     notImplemented();
@@ -1518,6 +1565,15 @@ void WebFrameLoaderClient::didChangeScrollOffset()
         return;
 
     webPage->didChangeScrollOffsetForMainFrame();
+}
+
+bool WebFrameLoaderClient::shouldForceUniversalAccessFromLocalURL(const WebCore::KURL& url)
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return false;
+
+    return webPage->injectedBundleLoaderClient().shouldForceUniversalAccessFromLocalURL(webPage, url.string());
 }
 
 PassRefPtr<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext()

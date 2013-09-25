@@ -40,6 +40,7 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameLoaderStateMachine.h"
+#include "FrameView.h"
 #include "HistogramSupport.h"
 #include "HistoryItem.h"
 #include "Logging.h"
@@ -54,8 +55,6 @@
 using namespace std;
 
 namespace WebCore {
-
-static const double autoreleaseInterval = 3;
 
 #if PLATFORM(CHROMIUM) || !defined(NDEBUG)
 
@@ -320,7 +319,7 @@ PageCache::PageCache()
     , m_size(0)
     , m_head(0)
     , m_tail(0)
-    , m_autoreleaseTimer(this, &PageCache::releaseAutoreleasedPagesNowOrReschedule)
+    , m_autoreleaseTimer(this, &PageCache::releaseAutoreleasedPagesNowDueToTimer)
 #if USE(ACCELERATED_COMPOSITING)
     , m_shouldClearBackingStores(false)
 #endif
@@ -362,7 +361,7 @@ bool PageCache::canCachePageContainingThisFrame(Frame* frame)
         && frameLoader->client()->canCachePage();
 }
     
-bool PageCache::canCache(Page* page)
+bool PageCache::canCache(Page* page) const
 {
     if (!page)
         return false;
@@ -378,7 +377,8 @@ bool PageCache::canCache(Page* page)
     // over it again when we leave that page.
     FrameLoadType loadType = page->mainFrame()->loader()->loadType();
     
-    return canCachePageContainingThisFrame(page->mainFrame())
+    return m_capacity > 0
+        && canCachePageContainingThisFrame(page->mainFrame())
         && page->backForward()->isActive()
         && page->settings()->usesPageCache()
 #if ENABLE(DEVICE_ORIENTATION)
@@ -419,6 +419,17 @@ void PageCache::markPagesForVistedLinkStyleRecalc()
 {
     for (HistoryItem* current = m_head; current; current = current->m_next)
         current->m_cachedPage->markForVistedLinkStyleRecalc();
+}
+
+void PageCache::markPagesForFullStyleRecalc(Page* page)
+{
+    Frame* mainFrame = page->mainFrame();
+
+    for (HistoryItem* current = m_head; current; current = current->m_next) {
+        CachedPage* cachedPage = current->m_cachedPage.get();
+        if (cachedPage->cachedMainFrame()->view()->frame() == mainFrame)
+            cachedPage->markForFullStyleRecalc();
+    }
 }
 
 void PageCache::add(PassRefPtr<HistoryItem> prpItem, Page* page)
@@ -514,19 +525,9 @@ void PageCache::removeFromLRUList(HistoryItem* item)
     }
 }
 
-void PageCache::releaseAutoreleasedPagesNowOrReschedule(Timer<PageCache>* timer)
+void PageCache::releaseAutoreleasedPagesNowDueToTimer(Timer<PageCache>*)
 {
-    double loadDelta = currentTime() - FrameLoader::timeOfLastCompletedLoad();
-    float userDelta = userIdleTime();
-    
-    // FIXME: <rdar://problem/5211190> This limit of 42 risks growing the page cache far beyond its nominal capacity.
-    if ((userDelta < 0.5 || loadDelta < 1.25) && m_autoreleaseSet.size() < 42) {
-        LOG(PageCache, "WebCorePageCache: Postponing releaseAutoreleasedPagesNowOrReschedule() - %f since last load, %f since last input, %i objects pending release", loadDelta, userDelta, m_autoreleaseSet.size());
-        timer->startOneShot(autoreleaseInterval);
-        return;
-    }
-
-    LOG(PageCache, "WebCorePageCache: Releasing page caches - %f seconds since last load, %f since last input, %i objects pending release", loadDelta, userDelta, m_autoreleaseSet.size());
+    LOG(PageCache, "WebCorePageCache: Releasing page caches - %i objects pending release", m_autoreleaseSet.size());
     releaseAutoreleasedPagesNow();
 }
 
@@ -535,7 +536,6 @@ void PageCache::releaseAutoreleasedPagesNow()
     m_autoreleaseTimer.stop();
 
     // Postpone dead pruning until all our resources have gone dead.
-    bool pruneWasEnabled = memoryCache()->pruneEnabled();
     memoryCache()->setPruneEnabled(false);
 
     CachedPageSet tmp;
@@ -546,10 +546,8 @@ void PageCache::releaseAutoreleasedPagesNow()
         (*it)->destroy();
 
     // Now do the prune.
-    if (pruneWasEnabled) {
-        memoryCache()->setPruneEnabled(true);
-        memoryCache()->prune();
-    }
+    memoryCache()->setPruneEnabled(true);
+    memoryCache()->prune();
 }
 
 void PageCache::autorelease(PassRefPtr<CachedPage> page)
@@ -558,7 +556,7 @@ void PageCache::autorelease(PassRefPtr<CachedPage> page)
     ASSERT(!m_autoreleaseSet.contains(page.get()));
     m_autoreleaseSet.add(page);
     if (!m_autoreleaseTimer.isActive())
-        m_autoreleaseTimer.startOneShot(autoreleaseInterval);
+        m_autoreleaseTimer.startOneShot(0);
 }
 
 } // namespace WebCore

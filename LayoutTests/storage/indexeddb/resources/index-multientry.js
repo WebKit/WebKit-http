@@ -25,7 +25,7 @@ function prepareDatabase()
     debug("");
     debug("Creating empty stores and indexes");
     var trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = addData;
 
@@ -42,7 +42,7 @@ function addData()
 {
     debug("");
     debug("Populating stores (and indexes)");
-    transaction = evalAndLog("transaction = db.transaction(['store'], IDBTransaction.READ_WRITE)");
+    transaction = evalAndLog("transaction = db.transaction(['store'], 'readwrite')");
     transaction.onabort = unexpectedAbortCallback;
     transaction.oncomplete = function() { verifyIndexes('index', verifyUniqueConstraint); };
 
@@ -60,7 +60,7 @@ function verifyIndexes(indexName, callback)
 {
     debug("");
     debug("Verifying index: " + indexName);
-    transaction = evalAndLog("transaction = db.transaction(['store'], IDBTransaction.READ_ONLY)");
+    transaction = evalAndLog("transaction = db.transaction(['store'], 'readonly')");
     transaction.onabort = unexpectedAbortCallback;
     transaction.oncomplete = callback;
 
@@ -79,13 +79,13 @@ function verifyIndexes(indexName, callback)
         cursor = evalAndLog("cursor = event.target.result");
         if (cursor) {
             ex = expected.shift();
-            shouldBeTrue("ex != null");
+            shouldBeNonNull("ex");
             shouldBe("cursor.key", String(ex.key));
             shouldBeEqualToString("cursor.primaryKey", ex.primaryKey);
             shouldBeEqualToString("cursor.value.y", ex.y);
             cursor.continue();
         } else {
-            shouldBeTrue("expected.length === 0");
+            shouldBe("expected.length", "0");
         }
     };
 }
@@ -94,7 +94,7 @@ function verifyUniqueConstraint()
 {
     debug("");
     debug("Verifying unique constraint on multiEntry index");
-    transaction = evalAndLog("transaction = db.transaction(['store-unique'], IDBTransaction.READ_WRITE)");
+    transaction = evalAndLog("transaction = db.transaction(['store-unique'], 'readwrite')");
     transaction.onabort = function () {
         debug("Transaction aborted as expected");
         createIndexOnStoreWithData();
@@ -128,7 +128,7 @@ function createIndexOnStoreWithData()
     request.onsuccess = function() {
 
         var trans = evalAndLog("trans = event.target.result");
-        shouldBeTrue("trans !== null");
+        shouldBeNonNull("trans");
         trans.onabort = unexpectedAbortCallback;
         trans.oncomplete = function() { verifyIndexes('index-new', finishJSTest); };
 

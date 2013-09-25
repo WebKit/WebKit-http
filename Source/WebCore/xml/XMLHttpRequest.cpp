@@ -478,20 +478,28 @@ void XMLHttpRequest::open(const String& method, const KURL& url, bool async, Exc
         return;
     }
 
-    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectFromSource(url)) {
+    if (!scriptExecutionContext()->contentSecurityPolicy()->allowConnectToSource(url)) {
         // FIXME: Should this be throwing an exception?
         ec = SECURITY_ERR;
         return;
     }
 
-    // Newer functionality is not available to synchronous requests in window contexts, as a spec-mandated 
-    // attempt to discourage synchronous XHR use. responseType is one such piece of functionality.
-    // We'll only disable this functionality for HTTP(S) requests since sync requests for local protocols
-    // such as file: and data: still make sense to allow.
-    if (!async && scriptExecutionContext()->isDocument() && url.protocolIsInHTTPFamily() && m_responseTypeCode != ResponseTypeDefault) {
-        logConsoleError(scriptExecutionContext(), "Synchronous HTTP(S) requests made from the window context cannot have XMLHttpRequest.responseType set.");
-        ec = INVALID_ACCESS_ERR;
-        return;
+    if (!async && scriptExecutionContext()->isDocument()) {
+        if (!document()->settings()->syncXHRInDocumentsEnabled()) {
+            logConsoleError(scriptExecutionContext(), "Synchronous XMLHttpRequests are disabled for this page.");
+            ec = INVALID_ACCESS_ERR;
+            return;
+        }
+
+        // Newer functionality is not available to synchronous requests in window contexts, as a spec-mandated
+        // attempt to discourage synchronous XHR use. responseType is one such piece of functionality.
+        // We'll only disable this functionality for HTTP(S) requests since sync requests for local protocols
+        // such as file: and data: still make sense to allow.
+        if (url.protocolIsInHTTPFamily() && m_responseTypeCode != ResponseTypeDefault) {
+            logConsoleError(scriptExecutionContext(), "Synchronous HTTP(S) requests made from the window context cannot have XMLHttpRequest.responseType set.");
+            ec = INVALID_ACCESS_ERR;
+            return;
+        }
     }
 
     m_method = uppercaseKnownHTTPMethod(method);
@@ -616,7 +624,7 @@ void XMLHttpRequest::send(Blob* body, ExceptionCode& ec)
         // FIXME: add support for uploading bundles.
         m_requestEntityBody = FormData::create();
         if (body->isFile())
-            m_requestEntityBody->appendFile(static_cast<File*>(body)->path());
+            m_requestEntityBody->appendFile(toFile(body)->path());
 #if ENABLE(BLOB)
         else
             m_requestEntityBody->appendBlob(body->url());

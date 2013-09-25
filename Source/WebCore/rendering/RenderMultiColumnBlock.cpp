@@ -25,6 +25,8 @@
 
 #include "config.h"
 #include "RenderMultiColumnBlock.h"
+#include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnSet.h"
 
 using namespace std;
 
@@ -32,8 +34,10 @@ namespace WebCore {
 
 RenderMultiColumnBlock::RenderMultiColumnBlock(Node* node)
     : RenderBlock(node)
+    , m_flowThread(0)
     , m_columnCount(1)
-    , m_columnWidth(0)
+    , m_columnWidth(ZERO_LAYOUT_UNIT)
+    , m_columnHeight(ZERO_LAYOUT_UNIT)
 {
 }
 
@@ -71,6 +75,77 @@ bool RenderMultiColumnBlock::recomputeLogicalWidth()
     if (m_columnWidth != oldColumnWidth)
         relayoutChildren = true;
     return relayoutChildren;
+}
+
+void RenderMultiColumnBlock::checkForPaginationLogicalHeightChange(LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged, bool& hasSpecifiedPageLogicalHeight)
+{
+    // We need to go ahead and set our explicit page height if one exists, so that we can
+    // avoid doing multiple layout passes.
+    computeLogicalHeight();
+    LayoutUnit newContentLogicalHeight = contentLogicalHeight();
+    if (newContentLogicalHeight > ZERO_LAYOUT_UNIT) {
+        pageLogicalHeight = newContentLogicalHeight;
+        hasSpecifiedPageLogicalHeight = true;
+    }
+    setLogicalHeight(ZERO_LAYOUT_UNIT);
+
+    if (columnHeight() != pageLogicalHeight && everHadLayout()) {
+        setColumnHeight(pageLogicalHeight);
+        pageLogicalHeightChanged = true;
+    }
+    
+    // Set up our column sets.
+    ensureColumnSets();
+}
+
+bool RenderMultiColumnBlock::relayoutForPagination(bool, LayoutUnit, LayoutStateMaintainer&)
+{
+    // FIXME: Implement.
+    return false;
+}
+
+void RenderMultiColumnBlock::addChild(RenderObject* newChild, RenderObject* beforeChild)
+{
+    if (!m_flowThread) {
+        m_flowThread = new (renderArena()) RenderMultiColumnFlowThread(document());
+        m_flowThread->setStyle(RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK));
+        RenderBlock::addChild(m_flowThread); // Always put the flow thread at the end.
+    }
+
+    // Column sets are siblings of the flow thread. All children designed to be in the columns, however, are part
+    // of the flow thread itself.
+    if (newChild->isRenderMultiColumnSet())
+        RenderBlock::addChild(newChild, beforeChild);
+    else
+        m_flowThread->addChild(newChild, beforeChild);
+}
+
+void RenderMultiColumnBlock::ensureColumnSets()
+{
+    // This function ensures we have the correct column set information before we get into layout.
+    // For a simple multi-column layout in continuous media, only one column set child is required.
+    // Once a column is nested inside an enclosing pagination context, the number of column sets
+    // required becomes 2n-1, where n is the total number of nested pagination contexts. For example:
+    //
+    // Column layout with no enclosing pagination model = 2 * 1 - 1 = 1 column set.
+    // Columns inside pages = 2 * 2 - 1 = 3 column sets (bottom of first page, all the subsequent pages, then the last page).
+    // Columns inside columns inside pages = 2 * 3 - 1 = 5 column sets.
+    //
+    // In addition, column spans will force a column set to "split" into before/after sets around the spanning region.
+    //
+    // Finally, we will need to deal with columns inside regions. If regions have variable widths, then there will need
+    // to be unique column sets created inside any region whose width is different from its surrounding regions. This is
+    // actually pretty similar to the spanning case, in that we break up the column sets whenever the width varies.
+    //
+    // FIXME: For now just make one column set. This matches the old multi-column code.
+    // Right now our goal is just feature parity with the old multi-column code so that we can switch over to the
+    // new code as soon as possible.
+    if (flowThread() && !firstChild()->isRenderMultiColumnSet()) {
+        RenderMultiColumnSet* columnSet = new (renderArena()) RenderMultiColumnSet(document(), flowThread());
+        columnSet->setStyle(RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK));
+        RenderBlock::addChild(columnSet, firstChild());
+        flowThread()->addRegionToThread(columnSet);
+    }
 }
 
 const char* RenderMultiColumnBlock::renderName() const

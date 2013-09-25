@@ -47,14 +47,16 @@
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebKit.h"
-#include "WebMessagePortChannel.h"
 #include "WebSharedWorker.h"
 #include "WebSharedWorkerRepository.h"
 #include "platform/WebKitPlatformSupport.h"
-#include "platform/WebString.h"
-#include "platform/WebURL.h"
 #include "WorkerScriptLoader.h"
 #include "WorkerScriptLoaderClient.h"
+
+#include <public/Platform.h>
+#include <public/WebMessagePortChannel.h>
+#include <public/WebString.h>
+#include <public/WebURL.h>
 
 namespace WebCore {
 
@@ -171,8 +173,8 @@ void SharedWorkerScriptLoader::notifyFinished()
         InspectorInstrumentation::scriptImported(m_worker->scriptExecutionContext(), m_scriptLoader->identifier(), m_scriptLoader->script());
         // Pass the script off to the worker, then send a connect event.
         m_webWorker->startWorkerContext(m_url, m_name, m_worker->scriptExecutionContext()->userAgent(m_url), m_scriptLoader->script(),
-                                        m_worker->scriptExecutionContext()->contentSecurityPolicy()->policy(),
-                                        static_cast<WebKit::WebContentSecurityPolicyType>(m_worker->scriptExecutionContext()->contentSecurityPolicy()->headerType()),
+                                        m_worker->scriptExecutionContext()->contentSecurityPolicy()->deprecatedHeader(),
+                                        static_cast<WebKit::WebContentSecurityPolicyType>(m_worker->scriptExecutionContext()->contentSecurityPolicy()->deprecatedHeaderType()),
                                         m_responseAppCacheID);
         sendConnect();
     }

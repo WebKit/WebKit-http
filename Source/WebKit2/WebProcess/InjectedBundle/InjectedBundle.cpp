@@ -111,7 +111,7 @@ WebConnection* InjectedBundle::webConnectionToUIProcess() const
 
 void InjectedBundle::setShouldTrackVisitedLinks(bool shouldTrackVisitedLinks)
 {
-    PageGroup::setShouldTrackVisitedLinks(shouldTrackVisitedLinks);
+    WebProcess::shared().setShouldTrackVisitedLinks(shouldTrackVisitedLinks);
 }
 
 void InjectedBundle::removeAllVisitedLinks()
@@ -130,6 +130,7 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
     macro(WebKitCSSCustomFilterEnabled, CSSCustomFilterEnabled, cssCustomFilterEnabled) \
     macro(WebKitCSSRegionsEnabled, CSSRegionsEnabled, cssRegionsEnabled) \
+    macro(WebKitCSSGridLayoutEnabled, CSSGridLayoutEnabled, cssGridLayoutEnabled) \
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
     macro(WebKitJavaScriptEnabled, ScriptEnabled, javaScriptEnabled) \
     macro(WebKitLoadSiteIconsKey, LoadsSiteIconsIgnoringImageLoadingSetting, loadsSiteIconsIgnoringImageLoadingPreference) \
@@ -193,6 +194,13 @@ void InjectedBundle::setFrameFlatteningEnabled(WebPageGroupProxy* pageGroup, boo
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->settings()->setFrameFlatteningEnabled(enabled);
+}
+
+void InjectedBundle::setPluginsEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings()->setPluginsEnabled(enabled);
 }
 
 void InjectedBundle::setGeoLocationPermission(WebPageGroupProxy* pageGroup, bool enabled)
@@ -458,12 +466,10 @@ void InjectedBundle::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC:
     ASSERT_NOT_REACHED();
 }
 
-void InjectedBundle::setPageVisibilityState(WebPageGroupProxy* pageGroup, int state, bool isInitialState)
+void InjectedBundle::setPageVisibilityState(WebPage* page, int state, bool isInitialState)
 {
 #if ENABLE(PAGE_VISIBILITY_API)
-    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
-    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
-        (*iter)->setVisibilityState(static_cast<PageVisibilityState>(state), isInitialState);
+    page->corePage()->setVisibilityState(static_cast<PageVisibilityState>(state), isInitialState);
 #endif
 }
 

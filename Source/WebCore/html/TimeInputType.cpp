@@ -45,8 +45,9 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const double timeDefaultStep = 60.0;
-static const double timeStepScaleFactor = 1000.0;
+static const int timeDefaultStep = 60;
+static const int timeDefaultStepBase = 0;
+static const int timeStepScaleFactor = 1000;
 
 PassOwnPtr<InputType> TimeInputType::create(HTMLInputElement* element)
 {
@@ -63,7 +64,7 @@ DateComponents::Type TimeInputType::dateType() const
     return DateComponents::Time;
 }
 
-double TimeInputType::defaultValueForStepUp() const
+InputNumber TimeInputType::defaultValueForStepUp() const
 {
     double current = currentTimeMS();
     double utcOffset = calculateUTCOffset();
@@ -75,32 +76,18 @@ double TimeInputType::defaultValueForStepUp() const
     date.setMillisecondsSinceMidnight(current);
     double milliseconds = date.millisecondsSinceEpoch();
     ASSERT(isfinite(milliseconds));
-    return milliseconds;
+    return convertDoubleToInputNumber(milliseconds);
 }
 
-double TimeInputType::minimum() const
+StepRange TimeInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
-    return parseToDouble(element()->fastGetAttribute(minAttr), DateComponents::minimumTime());
-}
+    DEFINE_STATIC_LOCAL(const StepRange::StepDescription, stepDescription, (timeDefaultStep, timeDefaultStepBase, timeStepScaleFactor, StepRange::ScaledStepValueShouldBeInteger));
 
-double TimeInputType::maximum() const
-{
-    return parseToDouble(element()->fastGetAttribute(maxAttr), DateComponents::maximumTime());
-}
-
-double TimeInputType::defaultStep() const
-{
-    return timeDefaultStep;
-}
-
-double TimeInputType::stepScaleFactor() const
-{
-    return timeStepScaleFactor;
-}
-
-bool TimeInputType::scaledStepValueShouldBeInteger() const
-{
-    return true;
+    const InputNumber stepBase = parseToNumber(element()->fastGetAttribute(minAttr), 0);
+    const InputNumber minimum = parseToNumber(element()->fastGetAttribute(minAttr), convertDoubleToInputNumber(DateComponents::minimumTime()));
+    const InputNumber maximum = parseToNumber(element()->fastGetAttribute(maxAttr), convertDoubleToInputNumber(DateComponents::maximumTime()));
+    const InputNumber step = StepRange::parseStep(anyStepHandling, stepDescription, element()->fastGetAttribute(stepAttr));
+    return StepRange(stepBase, minimum, maximum, step, stepDescription);
 }
 
 bool TimeInputType::parseToDateComponentsInternal(const UChar* characters, unsigned length, DateComponents* out) const
@@ -114,6 +101,11 @@ bool TimeInputType::setMillisecondToDateComponents(double value, DateComponents*
 {
     ASSERT(date);
     return date->setMillisecondsSinceMidnight(value);
+}
+
+bool TimeInputType::isTimeField() const
+{
+    return true;
 }
 
 } // namespace WebCore

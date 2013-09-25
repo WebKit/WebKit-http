@@ -44,11 +44,7 @@ public:
     virtual ~WebIDBIndexImpl();
 
     virtual WebString name() const;
-    virtual WebString storeName() const;
     virtual WebIDBKeyPath keyPath() const;
-    // FIXME: Remove this method once callers are updated.
-    // http://webkit.org/b/84207
-    virtual WebString keyPathString() const;
     virtual bool unique() const;
     virtual bool multiEntry() const;
 

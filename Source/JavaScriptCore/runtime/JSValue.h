@@ -36,12 +36,12 @@
 namespace JSC {
 
     class ExecState;
-    class Identifier;
     class JSCell;
     class JSGlobalData;
     class JSGlobalObject;
     class JSObject;
     class JSString;
+    class PropertyName;
     class PropertySlot;
     class PutPropertySlot;
     class UString;
@@ -197,7 +197,7 @@ namespace JSC {
         JSValue toPrimitive(ExecState*, PreferredPrimitiveType = NoPreference) const;
         bool getPrimitiveNumber(ExecState*, double& number, JSValue&);
 
-        bool toBoolean(ExecState*) const;
+        bool toBoolean() const;
 
         // toNumber conversion is expected to be side effect free if an exception has
         // been set in the ExecState already.
@@ -219,12 +219,12 @@ namespace JSC {
         float toFloat(ExecState* exec) const { return static_cast<float>(toNumber(exec)); }
 
         // Object operations, with the toObject operation included.
-        JSValue get(ExecState*, const Identifier& propertyName) const;
-        JSValue get(ExecState*, const Identifier& propertyName, PropertySlot&) const;
+        JSValue get(ExecState*, PropertyName) const;
+        JSValue get(ExecState*, PropertyName, PropertySlot&) const;
         JSValue get(ExecState*, unsigned propertyName) const;
         JSValue get(ExecState*, unsigned propertyName, PropertySlot&) const;
-        void put(ExecState*, const Identifier& propertyName, JSValue, PutPropertySlot&);
-        void putToPrimitive(ExecState*, const Identifier& propertyName, JSValue, PutPropertySlot&);
+        void put(ExecState*, PropertyName, JSValue, PutPropertySlot&);
+        void putToPrimitive(ExecState*, PropertyName, JSValue, PutPropertySlot&);
         void putByIndex(ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
 
         JSObject* toThisObject(ExecState*) const;
@@ -239,8 +239,10 @@ namespace JSC {
         bool isCell() const;
         JSCell* asCell() const;
         JS_EXPORT_PRIVATE bool isValidCallee();
+        
+        JSValue structureOrUndefined() const;
 
-        char* description();
+        char* description() const;
 
         JS_EXPORT_PRIVATE JSObject* synthesizePrototype(ExecState*) const;
 

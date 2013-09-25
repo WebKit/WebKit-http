@@ -103,6 +103,10 @@ enum EFloat {
 
 enum EMarginCollapse { MCOLLAPSE, MSEPARATE, MDISCARD };
 
+// Box decoration attributes. Not inherited.
+
+enum EBoxDecorationBreak { DSLICE, DCLONE };
+
 // Box attributes. Not inherited.
 
 enum EBoxSizing { CONTENT_BOX, BORDER_BOX };
@@ -169,11 +173,11 @@ enum EBoxDirection { BNORMAL, BREVERSE };
 
 // CSS3 Flexbox Properties
 
-enum EFlexPack { PackStart, PackEnd, PackCenter, PackJustify, PackDistribute };
-enum EFlexAlign { AlignAuto, AlignStart, AlignEnd, AlignCenter, AlignStretch, AlignBaseline };
+enum EAlignContent { AlignContentFlexStart, AlignContentFlexEnd, AlignContentCenter, AlignContentSpaceBetween, AlignContentSpaceAround, AlignContentStretch };
+enum EAlignItems { AlignAuto, AlignFlexStart, AlignFlexEnd, AlignCenter, AlignStretch, AlignBaseline };
 enum EFlexDirection { FlowRow, FlowRowReverse, FlowColumn, FlowColumnReverse };
-enum EFlexLinePack { LinePackStart, LinePackEnd, LinePackCenter, LinePackJustify, LinePackDistribute, LinePackStretch };
 enum EFlexWrap { FlexWrapNone, FlexWrap, FlexWrapReverse };
+enum EJustifyContent { JustifyFlexStart, JustifyFlexEnd, JustifyCenter, JustifySpaceBetween, JustifySpaceAround };
 
 enum ETextSecurity {
     TSNONE, TSDISC, TSCIRCLE, TSSQUARE
@@ -409,11 +413,11 @@ enum EDisplay {
     TABLE, INLINE_TABLE, TABLE_ROW_GROUP,
     TABLE_HEADER_GROUP, TABLE_FOOTER_GROUP, TABLE_ROW,
     TABLE_COLUMN_GROUP, TABLE_COLUMN, TABLE_CELL,
-    TABLE_CAPTION, BOX, INLINE_BOX, 
-    FLEXBOX, INLINE_FLEXBOX,
-#if ENABLE(CSS_GRID_LAYOUT)
-    GRID, INLINE_GRID,
+    TABLE_CAPTION, BOX, INLINE_BOX,
+#if ENABLE(CSS3_FLEXBOX)
+    FLEX, INLINE_FLEX,
 #endif
+    GRID, INLINE_GRID,
     NONE
 };
 

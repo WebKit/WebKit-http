@@ -72,6 +72,16 @@ SVGElementInstance::~SVGElementInstance()
     m_element = 0;
 }
 
+// It's important not to inline removedLastRef, because we don't want to inline the code to
+// delete an SVGElementInstance at each deref call site.
+void SVGElementInstance::removedLastRef()
+{
+#ifndef NDEBUG
+    m_deletionHasBegun = true;
+#endif
+    delete this;
+}
+
 void SVGElementInstance::detach()
 {
     // Clear all pointers. When the node is detached from the shadow DOM it should be removed but,

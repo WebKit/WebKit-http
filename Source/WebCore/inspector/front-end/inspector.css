@@ -43,6 +43,10 @@ input[type="search"]:focus, input[type="text"]:focus {
     display: none;
 }
 
+.nowrap {
+    white-space: nowrap;
+}
+
 #toolbar {
     position: absolute;
     top: 0;
@@ -259,7 +263,7 @@ body.detached.platform-mac-snowleopard #toolbar-dropdown {
     border-radius: 5px;
 }
 
-.toolbar-search-item {
+#toolbar-search-item {
     display: -webkit-box;
     -webkit-box-orient: horizontal;
     -webkit-box-align: center;
@@ -271,11 +275,12 @@ body.detached.platform-mac-snowleopard #toolbar-dropdown {
     font-size: 16px;
 }
 
-#toolbar-search-navigation-control {
-    width: 40px;
+.with-navigation-buttons #search {
+    width: 165px;
 }
 
 .toolbar-search-navigation-label {
+    display: none;
     border: 1px solid transparent;
     border-radius: 2px;
     padding: 3px;
@@ -283,6 +288,10 @@ body.detached.platform-mac-snowleopard #toolbar-dropdown {
     width: 18px;
     height: 18px;
     float: right;
+}
+
+.with-navigation-buttons .toolbar-search-navigation-label {
+    display: block;
 }
 
 .toolbar-search-navigation-label:hover {
@@ -988,6 +997,7 @@ body.platform-linux .monospace, body.platform-linux .source-code {
 
 iframe.extension {
     width: 100%;
+    height: 100%;
 }
 
 iframe.panel.extension {
@@ -1172,20 +1182,15 @@ iframe.panel.extension {
 }
 
 .placard.selected {
-    border-top: 1px solid rgb(145, 160, 192);
-    background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(162, 177, 207)), to(rgb(120, 138, 177)));
+    border-top: 1px solid rgb(172, 172, 172);
+    background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(182, 182, 182)), to(rgb(162, 162, 162)));
     -webkit-background-origin: padding;
     -webkit-background-clip: padding;
 }
 
 :focus .placard.selected {
-    border-top: 1px solid rgb(68, 128, 200);
-    background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(92, 147, 213)), to(rgb(21, 83, 170)));
-}
-
-body.inactive .placard.selected {
-    border-top: 1px solid rgb(151, 151, 151);
-    background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(180, 180, 180)), to(rgb(138, 138, 138)));
+    border-top: 1px solid rgb(70, 103, 215);
+    background-image: -webkit-gradient(linear, left top, left bottom, from(rgb(92, 147, 213)), to(rgb(56, 121, 217)));
 }
 
 .placard .title {
@@ -1493,7 +1498,8 @@ li.editing .swatch, li.editing .enabled-button,  li.editing-sub-part .delete-but
 .swatch-inner {
     width: 100%;
     height: 100%;
-    display: block;
+    display: inline-block;
+    margin-bottom: 1px;
 }
 
 .swatch:hover {
@@ -2137,6 +2143,11 @@ ol.breakpoint-list {
     margin: 0;
 }
 
+.breakpoints-list-deactivated {
+    background-color: rgb(245, 245, 245);
+    opacity: 0.3;
+}
+
 .breakpoint-list li {
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -2146,7 +2157,7 @@ ol.breakpoint-list {
 }
 
 .breakpoint-list li:hover {
-    color: rgb(15%, 15%, 15%);
+    background-color: rgba(56, 121, 217, 0.2);
 }
 
 .breakpoint-list .checkbox-elem {
@@ -2338,8 +2349,15 @@ a.worker-item:hover {
 }
 
 .soft-context-menu-separator {
-    margin: 5px 1px 6px 1px;
+    height: 10px;
+    margin: 0 1px;
+}
+
+.soft-context-menu-separator > .separator-line {
+    margin: 0;
+    height: 5px;
     border-bottom: 1px solid rgb(227, 227, 227);
+    pointer-events: none;
 }
 
 .soft-context-menu-item-mouse-over {
@@ -2360,6 +2378,12 @@ body.platform-mac .soft-context-menu-item-mouse-over {
     pointer-events: none;
 }
 
+.soft-context-menu-item-submenu-arrow {
+    color: black;
+    float: right;
+    pointer-events: none;
+}
+
 .soft-context-menu-item-mouse-over .soft-context-menu-item-checkmark {
     color: white;
 }
@@ -2372,47 +2396,57 @@ body.platform-mac .soft-context-menu-item-mouse-over {
     right: 0;
 }
 
-.search-view .search-panel {
-    position: absolute;
-    top: 0;
-    height: 28px;
-    left: 0;
-    right: 0;
-    padding-top: 2px;
-    padding-left: 10px;
-    padding-right: 10px;
-    background-color: #EBEBEB;
-    border-bottom: 1px solid #BBB;
-    overflow: hidden;
-    font-size: 11px;
+.search-drawer-header input[type="search"].search-config-search {
+	font-size: 11px;
+    margin-left: 4px;
+    color: #303030;
+    position: relative;
 }
 
-.search-view .search-panel input[type="search"].search-config-search {
-    margin-right: 8px;
-    font-size: 11px;
+body.platform-mac .search-drawer-header input[type="search"].search-config-search {
+    top: 1px;
+}
+
+.search-drawer-header label.search-config-label {
+    margin-left: 8px;
     color: #303030;
 }
 
-.search-view .search-panel label.search-config-label {
-    margin-right: 8px;
-    color: #303030;
-}
-
-.search-view .search-panel input[type="checkbox"].search-config-checkbox {
+.search-drawer-header input[type="checkbox"].search-config-checkbox {
     vertical-align: bottom;
 }
 
-body:not(.platform-mac) .search-view .search-panel input[type="checkbox"].search-config-checkbox {
+body:not(.platform-mac) .search-drawer-header input[type="checkbox"].search-config-checkbox {
     margin-bottom: 5px;
 }
 
-body.platform-mac .search-view .search-panel input[type="checkbox"].search-config-checkbox {
+body.platform-mac .search-drawer-header input[type="checkbox"].search-config-checkbox {
     margin-bottom: 4px;
 }
 
-.search-view .search-panel button.search-close-button {
+.drawer-header {
     font-size: 11px;
-    float: right;
+    border-right: 1px solid rgb(197, 197, 197);
+    line-height: 23px;
+    padding-left: 6px;
+}
+
+.drawer-header-close-button {
+    font-family: Arial, monospace;
+    padding: 3px 6px;
+    font-size: 14px;
+    color:rgb(80, 80, 80);
+    opacity: 0.5;
+    position: relative;
+    top: 1px;
+}
+
+.drawer-header-close-button:hover {
+    opacity: 1;
+}
+
+.drawer-header-close-button:active {
+    opacity: 0.7;
 }
 
 #drawer-status-bar .search-status-bar-item {
@@ -2461,20 +2495,43 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
 
 .search-view .search-results {
     position: absolute;
-    top: 35px;
+    top: 0;
     bottom: 0;
     left: 0;
     right: 0;
     overflow-y: auto;
 }
 
-#search-results-pane-file-based .search-results-outline-disclosure {
-    padding-bottom: 5px;
+#search-results-pane-file-based li {
+    list-style: none;
+}
+
+#search-results-pane-file-based ol {
+    -webkit-padding-start: 0;
+    margin-top: 0;
+}
+
+#search-results-pane-file-based ol.children {
+    display: none;
+}
+
+#search-results-pane-file-based ol.children.expanded {
+    display: block;
+}
+
+#search-results-pane-file-based li.parent::before {
+    content: url(Images/treeRightTriangleBlack.png);
+    position: relative;
+    left: -4px;
+}
+
+#search-results-pane-file-based li.parent.expanded::before {
+    content: url(Images/treeDownTriangleBlack.png);
 }
 
 #search-results-pane-file-based .search-result {
-    font-size: 12px;
-    margin-top: 3px;
+    font-size: 11px;
+    padding: 2px 0 2px 10px;
     word-wrap: normal;
     white-space: pre;
     cursor: pointer;
@@ -2482,13 +2539,7 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
 
 #search-results-pane-file-based .search-result:hover {
     background-color: rgba(121, 121, 121, 0.1);
-    -webkit-border-radius: 5px;
 }
-
-#search-results-pane-file-based .search-result:first-child {
-    margin-top: 1px;
-}
-
 
 #search-results-pane-file-based .search-result .search-result-file-name {
     font-weight: bold;
@@ -2501,19 +2552,18 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
 }
 
 #search-results-pane-file-based .show-more-matches {
-    margin-left: 5px;
+    padding: 4px 0;
     color: #333;
     cursor: pointer;
+    font-size: 11px;
+    margin-left: 20px;
 }
 
 #search-results-pane-file-based .show-more-matches:hover {
     text-decoration: underline;
 }
 
-
 #search-results-pane-file-based .search-match {
-    font-family: 'dejavu sans mono', monospace;
-    font-size: 11px;
     word-wrap: normal;
     white-space: pre;
 }
@@ -2529,7 +2579,6 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
 
 #search-results-pane-file-based .search-match:hover {
     background-color: rgba(56, 121, 217, 0.1);
-    -webkit-border-radius: 5px;
 }
 
 #search-results-pane-file-based .search-match .highlighted-match {
@@ -2543,7 +2592,6 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
 
 #search-results-pane-file-based .search-match .search-match-content {
     color: #000;
-    white-space: pre;
 }
 
 .record-cpu-profile-status-bar-item .glyph, .record-profile-status-bar-item .glyph {

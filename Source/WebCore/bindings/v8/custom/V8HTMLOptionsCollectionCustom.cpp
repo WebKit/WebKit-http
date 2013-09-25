@@ -55,10 +55,8 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::removeCallback(const v8::Argument
 v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.HTMLOptionsCollection.add()");
-    if (!V8HTMLOptionElement::HasInstance(args[0])) {
-        V8Proxy::setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
-        return v8::Undefined();
-    }
+    if (!V8HTMLOptionElement::HasInstance(args[0]))
+        return V8Proxy::setDOMException(TYPE_MISMATCH_ERR, args.GetIsolate());
     HTMLOptionsCollection* imp = V8HTMLOptionsCollection::toNative(args.Holder());
     HTMLOptionElement* option = V8HTMLOptionElement::toNative(v8::Handle<v8::Object>(v8::Handle<v8::Object>::Cast(args[0])));
 
@@ -79,8 +77,8 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::addCallback(const v8::Arguments& 
             imp->add(option, index, ec);
     }
 
-    if (ec != 0)
-        V8Proxy::setDOMException(ec, args.GetIsolate());
+    if (ec)
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
 
     return v8::Undefined();
 }
@@ -121,7 +119,7 @@ v8::Handle<v8::Value> V8HTMLOptionsCollection::indexedPropertyGetter(uint32_t in
 
     RefPtr<Node> result = collection->item(index);
     if (!result)
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     return toV8(result.release(), info.GetIsolate());
 }

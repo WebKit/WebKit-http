@@ -41,6 +41,7 @@ public:
     WebEditorClient(WebView *);
     virtual ~WebEditorClient();
     virtual void pageDestroyed() OVERRIDE;
+    virtual void frameWillDetachPage(WebCore::Frame*) OVERRIDE { }
 
     virtual bool isGrammarCheckingEnabled() OVERRIDE;
     virtual void toggleGrammarChecking() OVERRIDE;
@@ -75,10 +76,13 @@ public:
     virtual NSURL* canonicalizeURL(NSURL*) OVERRIDE;
     virtual NSURL* canonicalizeURLString(NSString*) OVERRIDE;
     
-#ifndef BUILDING_ON_LEOPARD
+#if USE(APPKIT)
     virtual void uppercaseWord() OVERRIDE;
     virtual void lowercaseWord() OVERRIDE;
     virtual void capitalizeWord() OVERRIDE;
+#endif
+
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
     virtual void showSubstitutionsPanel(bool show) OVERRIDE;
     virtual bool substitutionsPanelIsShowing() OVERRIDE;
     virtual void toggleSmartInsertDelete() OVERRIDE;
@@ -121,6 +125,7 @@ public:
     virtual void textWillBeDeletedInTextField(WebCore::Element*) OVERRIDE;
     virtual void textDidChangeInTextArea(WebCore::Element*) OVERRIDE;
     
+    virtual bool shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType) const OVERRIDE;
     virtual void ignoreWordInSpellDocument(const WTF::String&) OVERRIDE;
     virtual void learnWord(const WTF::String&) OVERRIDE;
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation, int* misspellingLength) OVERRIDE;
@@ -134,7 +139,10 @@ public:
     virtual void getGuessesForWord(const WTF::String& word, const WTF::String& context, WTF::Vector<WTF::String>& guesses) OVERRIDE;
     virtual void willSetInputMethodState() OVERRIDE;
     virtual void setInputMethodState(bool enabled) OVERRIDE;
-    virtual void requestCheckingOfString(WebCore::SpellChecker*, const WebCore::TextCheckingRequest&) OVERRIDE;
+    virtual void requestCheckingOfString(PassRefPtr<WebCore::TextCheckingRequest>) OVERRIDE;
+
+    void didCheckSucceed(int sequence, NSArray* results);
+
 private:
     void registerUndoOrRedoStep(PassRefPtr<WebCore::UndoStep>, bool isRedo);
     WebEditorClient();
@@ -142,4 +150,5 @@ private:
     WebView *m_webView;
     RetainPtr<WebEditorUndoTarget> m_undoTarget;
     bool m_haveUndoRedoOperations;
+    RefPtr<WebCore::TextCheckingRequest> m_textCheckingRequest;
 };

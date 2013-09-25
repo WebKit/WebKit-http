@@ -47,9 +47,10 @@ WebInspector.TimelinePresentationModel.categories = function()
     if (WebInspector.TimelinePresentationModel._categories)
         return WebInspector.TimelinePresentationModel._categories;
     WebInspector.TimelinePresentationModel._categories = {
-        loading: new WebInspector.TimelineCategory("loading", WebInspector.UIString("Loading"), "rgb(47,102,236)"),
-        scripting: new WebInspector.TimelineCategory("scripting", WebInspector.UIString("Scripting"), "rgb(157,231,119)"),
-        rendering: new WebInspector.TimelineCategory("rendering", WebInspector.UIString("Rendering"), "rgb(164,60,255)")
+        loading: new WebInspector.TimelineCategory("loading", WebInspector.UIString("Loading"), 0, "rgb(80, 135, 207)", "rgb(191, 214, 243)", "rgb(112, 162, 227)"),
+        scripting: new WebInspector.TimelineCategory("scripting", WebInspector.UIString("Scripting"), 1, "rgb(220, 163, 49)", "rgb(253, 217, 144)", "rgb(253, 191, 68)"),
+        rendering: new WebInspector.TimelineCategory("rendering", WebInspector.UIString("Rendering"), 2, "rgb(148, 88, 199)", "rgb(219, 195, 239)", "rgb(175, 120, 221)"),
+        painting: new WebInspector.TimelineCategory("painting", WebInspector.UIString("Painting"), 2, "rgb(42, 104, 63)", "rgb(62, 169, 97)", "rgb(50, 129, 77)")
     };
     return WebInspector.TimelinePresentationModel._categories;
 };
@@ -57,7 +58,8 @@ WebInspector.TimelinePresentationModel.categories = function()
 /**
  * @param {Object} record
  */
-WebInspector.TimelinePresentationModel.recordStyle = function(record) {
+WebInspector.TimelinePresentationModel.recordStyle = function(record)
+{
     if (WebInspector.TimelinePresentationModel._recordStylesMap)
         return WebInspector.TimelinePresentationModel._recordStylesMap[record.type];
 
@@ -67,10 +69,11 @@ WebInspector.TimelinePresentationModel.recordStyle = function(record) {
     var recordStyles = {};
     recordStyles[recordTypes.Root] = { title: "#root", category: categories["loading"] };
     recordStyles[recordTypes.EventDispatch] = { title: WebInspector.UIString("Event"), category: categories["scripting"] };
+    recordStyles[recordTypes.BeginFrame] = { title: WebInspector.UIString("Frame Start"), category: categories["rendering"] };
     recordStyles[recordTypes.Layout] = { title: WebInspector.UIString("Layout"), category: categories["rendering"] };
     recordStyles[recordTypes.RecalculateStyles] = { title: WebInspector.UIString("Recalculate Style"), category: categories["rendering"] };
-    recordStyles[recordTypes.Paint] = { title: WebInspector.UIString("Paint"), category: categories["rendering"] };
-    recordStyles[recordTypes.BeginFrame] = { title: WebInspector.UIString("Frame Start"), category: categories["rendering"] };
+    recordStyles[recordTypes.Paint] = { title: WebInspector.UIString("Paint"), category: categories["painting"] };
+    recordStyles[recordTypes.CompositeLayers] = { title: WebInspector.UIString("Composite Layers"), category: categories["painting"] };
     recordStyles[recordTypes.ParseHTML] = { title: WebInspector.UIString("Parse"), category: categories["loading"] };
     recordStyles[recordTypes.TimerInstall] = { title: WebInspector.UIString("Install Timer"), category: categories["scripting"] };
     recordStyles[recordTypes.TimerRemove] = { title: WebInspector.UIString("Remove Timer"), category: categories["scripting"] };
@@ -104,7 +107,12 @@ WebInspector.TimelinePresentationModel.categoryForRecord = function(record)
 WebInspector.TimelinePresentationModel.isEventDivider = function(record)
 {
     var recordTypes = WebInspector.TimelineModel.RecordType;
-    return record.type === recordTypes.MarkDOMContent || record.type === recordTypes.MarkLoad || record.type === recordTypes.TimeStamp;
+    if (record.type === recordTypes.MarkDOMContent || record.type === recordTypes.MarkLoad || record.type === recordTypes.TimeStamp) {
+        var mainFrame = WebInspector.resourceTreeModel.mainFrame;
+        if (mainFrame && mainFrame.id === record.frameId)
+            return true;
+    }
+    return false;
 }
 
 WebInspector.TimelinePresentationModel.forAllRecords = function(recordsArray, callback)
@@ -354,6 +362,7 @@ WebInspector.TimelinePresentationModel.Record = function(presentationModel, reco
     this.startTime = WebInspector.TimelineModel.startTimeInSeconds(record);
     this.data = record.data;
     this.type = record.type;
+    this.frameId = record.frameId;
     this.endTime = WebInspector.TimelineModel.endTimeInSeconds(record);
     this._selfTime = this.endTime - this.startTime;
     this._lastChildEndTime = this.endTime;
@@ -753,6 +762,35 @@ WebInspector.TimelinePresentationModel.generatePopupContentForFrame = function(f
 }
 
 /**
+ * @param {CanvasRenderingContext2D} context
+ * @param {number} width
+ * @param {number} height
+ * @param {string} color0
+ * @param {string} color1
+ * @param {string} color2
+ */
+WebInspector.TimelinePresentationModel.createFillStyle = function(context, width, height, color0, color1, color2)
+{
+    var gradient = context.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, color0);
+    gradient.addColorStop(0.3, color1);
+    gradient.addColorStop(0.7, color1);
+    gradient.addColorStop(1, color2);
+    return gradient;
+}
+
+/**
+ * @param {CanvasRenderingContext2D} context
+ * @param {number} width
+ * @param {number} height
+ * @param {WebInspector.TimelineCategory} category
+ */
+WebInspector.TimelinePresentationModel.createFillStyleForCategory = function(context, width, height, category)
+{
+    return WebInspector.TimelinePresentationModel.createFillStyle(context, width, height, category.fillColorStop0, category.fillColorStop1, category.borderColor);
+}
+
+/**
  * @interface
  */
 WebInspector.TimelinePresentationModel.Filter = function()
@@ -769,12 +807,21 @@ WebInspector.TimelinePresentationModel.Filter.prototype = {
 /**
  * @constructor
  * @extends {WebInspector.Object}
+ * @param {string} name
+ * @param {string} title
+ * @param {number} overviewStripGroupIndex
+ * @param {string} borderColor
+ * @param {string} fillColorStop0
+ * @param {string} fillColorStop1
  */
-WebInspector.TimelineCategory = function(name, title, color)
+WebInspector.TimelineCategory = function(name, title, overviewStripGroupIndex, borderColor, fillColorStop0, fillColorStop1)
 {
     this.name = name;
     this.title = title;
-    this.color = color;
+    this.overviewStripGroupIndex = overviewStripGroupIndex;
+    this.borderColor = borderColor;
+    this.fillColorStop0 = fillColorStop0;
+    this.fillColorStop1 = fillColorStop1;
     this.hidden = false;
 }
 

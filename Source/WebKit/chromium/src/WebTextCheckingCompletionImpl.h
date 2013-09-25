@@ -31,29 +31,28 @@
 #ifndef WebTextCheckingCompletionImpl_h
 #define WebTextCheckingCompletionImpl_h
 
+#include "TextChecking.h"
 #include "WebTextCheckingCompletion.h"
-
-namespace WebCore {
-class SpellChecker;
-}
+#include <wtf/RefPtr.h>
 
 namespace WebKit {
 
+class EditorClientImpl;
+
 class WebTextCheckingCompletionImpl : public WebTextCheckingCompletion {
 public:
-    WebTextCheckingCompletionImpl(int identifier, WebCore::SpellChecker* spellchecker)
-        : m_identifier(identifier), m_spellChecker(spellchecker)
+    explicit WebTextCheckingCompletionImpl(WTF::PassRefPtr<WebCore::TextCheckingRequest> request)
+        : m_request(request)
     {
     }
 
-    virtual void didFinishCheckingText(const WebVector<WebTextCheckingResult>&);
-    virtual void didCancelCheckingText();
+    virtual void didFinishCheckingText(const WebVector<WebTextCheckingResult>&) OVERRIDE;
+    virtual void didCancelCheckingText() OVERRIDE;
 
 private:
     virtual ~WebTextCheckingCompletionImpl() { }
 
-    int m_identifier;
-    WebCore::SpellChecker* m_spellChecker;
+    WTF::RefPtr<WebCore::TextCheckingRequest> m_request;
 };
 
 } // namespace WebKit

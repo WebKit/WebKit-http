@@ -276,7 +276,7 @@ void RenderThemeEfl::cacheThemePartFlush()
     end = m_partCache.end();
     for (; itr != end; itr++) {
         struct ThemePartCacheEntry *entry = *itr;
-        cairo_surface_finish(entry->surface);
+        cairo_surface_destroy(entry->surface);
         evas_object_del(entry->o);
         ecore_evas_free(entry->ee);
         delete entry;
@@ -295,7 +295,8 @@ void RenderThemeEfl::applyEdjeStateFromForm(Evas_Object* object, ControlStates s
         "read-only",
         "default",
         "window-inactive",
-        "indeterminate"
+        "indeterminate",
+        "spinup"
     };
 
     edje_object_signal_emit(object, "reset", "");
@@ -421,49 +422,6 @@ static void renderThemeEflColorClassFocusRing(void* data, Evas_Object* object, c
     that->setFocusRingColor(fr, fg, fb, fa);
 }
 
-static void renderThemeEflColorClassButtonText(void* data, Evas_Object* object, const char* signal, const char* source)
-{
-    RenderThemeEfl* that = static_cast<RenderThemeEfl *>(data);
-    int fr, fg, fb, fa, br, bg, bb, ba;
-
-    if (!edje_object_color_class_get(object, source, &fr, &fg, &fb, &fa, &br, &bg, &bb, &ba, 0, 0, 0, 0))
-        return;
-
-    that->setButtonTextColor(fr, fg, fb, fa, br, bg, bb, ba);
-}
-
-static void renderThemeEflColorClassComboText(void* data, Evas_Object* object, const char* signal, const char* source)
-{
-    RenderThemeEfl* that = static_cast<RenderThemeEfl *>(data);
-    int fr, fg, fb, fa, br, bg, bb, ba;
-
-    if (!edje_object_color_class_get(object, source, &fr, &fg, &fb, &fa, &br, &bg, &bb, &ba, 0, 0, 0, 0))
-        return;
-
-    that->setComboTextColor(fr, fg, fb, fa, br, bg, bb, ba);
-}
-
-static void renderThemeEflColorClassEntryText(void* data, Evas_Object* object, const char* signal, const char* source)
-{
-    RenderThemeEfl* that = static_cast<RenderThemeEfl *>(data);
-    int fr, fg, fb, fa, br, bg, bb, ba;
-
-    if (!edje_object_color_class_get(object, source, &fr, &fg, &fb, &fa, &br, &bg, &bb, &ba, 0, 0, 0, 0))
-        return;
-
-    that->setEntryTextColor(fr, fg, fb, fa, br, bg, bb, ba);
-}
-
-static void renderThemeEflColorClassSearchText(void* data, Evas_Object* object, const char* signal, const char* source)
-{
-    RenderThemeEfl* that = static_cast<RenderThemeEfl *>(data);
-    int fr, fg, fb, fa, br, bg, bb, ba;
-    if (!edje_object_color_class_get(object, source, &fr, &fg, &fb, &fa, &br, &bg, &bb, &ba, 0, 0, 0, 0))
-        return;
-
-    that->setSearchTextColor(fr, fg, fb, fa, br, bg, bb, ba);
-}
-
 void RenderThemeEfl::createCanvas()
 {
     ASSERT(!m_canvas);
@@ -500,10 +458,6 @@ void RenderThemeEfl::createEdje()
             CONNECT("selection/inactive",
                     renderThemeEflColorClassSelectionInactive);
             CONNECT("focus_ring", renderThemeEflColorClassFocusRing);
-            CONNECT("button/text", renderThemeEflColorClassButtonText);
-            CONNECT("combo/text", renderThemeEflColorClassComboText);
-            CONNECT("entry/text", renderThemeEflColorClassEntryText);
-            CONNECT("search/text", renderThemeEflColorClassSearchText);
 #undef CONNECT
         }
     }
@@ -533,22 +487,6 @@ void RenderThemeEfl::applyEdjeColors()
         // this is ugly, but no other way to do it unless we change
         // it to use page themes as much as possible.
         RenderTheme::setCustomFocusRingColor(m_focusRingColor);
-    }
-    if (COLOR_GET("button/text")) {
-        m_buttonTextForegroundColor = Color(fr, fg, fb, fa);
-        m_buttonTextBackgroundColor = Color(br, bg, bb, ba);
-    }
-    if (COLOR_GET("combo/text")) {
-        m_comboTextForegroundColor = Color(fr, fg, fb, fa);
-        m_comboTextBackgroundColor = Color(br, bg, bb, ba);
-    }
-    if (COLOR_GET("entry/text")) {
-        m_entryTextForegroundColor = Color(fr, fg, fb, fa);
-        m_entryTextBackgroundColor = Color(br, bg, bb, ba);
-    }
-    if (COLOR_GET("search/text")) {
-        m_searchTextForegroundColor = Color(fr, fg, fb, fa);
-        m_searchTextBackgroundColor = Color(br, bg, bb, ba);
     }
 #undef COLOR_GET
     platformColorsDidChange();
@@ -642,6 +580,7 @@ const char* RenderThemeEfl::edjeGroupFromFormType(FormType type) const
         W("mediacontrol/seekbackward_button"),
         W("mediacontrol/fullscreen_button"),
 #endif
+        W("spinner"),
 #undef W
         0
     };
@@ -713,14 +652,6 @@ RenderThemeEfl::RenderThemeEfl(Page* page)
     , m_inactiveSelectionBackgroundColor(0, 0, 128)
     , m_inactiveSelectionForegroundColor(200, 200, 200)
     , m_focusRingColor(32, 32, 224, 224)
-    , m_buttonTextBackgroundColor(0, 0, 0, 0)
-    , m_buttonTextForegroundColor(Color::black)
-    , m_comboTextBackgroundColor(0, 0, 0, 0)
-    , m_comboTextForegroundColor(Color::black)
-    , m_entryTextBackgroundColor(0, 0, 0, 0)
-    , m_entryTextForegroundColor(Color::black)
-    , m_searchTextBackgroundColor(0, 0, 0, 0)
-    , m_searchTextForegroundColor(Color::black)
     , m_sliderThumbColor(Color::darkGray)
 #if ENABLE(VIDEO)
     , m_mediaPanelColor(220, 220, 195) // light tannish color.
@@ -765,34 +696,6 @@ void RenderThemeEfl::setFocusRingColor(int r, int g, int b, int a)
     // this is ugly, but no other way to do it unless we change
     // it to use page themes as much as possible.
     RenderTheme::setCustomFocusRingColor(m_focusRingColor);
-    platformColorsDidChange();
-}
-
-void RenderThemeEfl::setButtonTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA)
-{
-    m_buttonTextForegroundColor = Color(foreR, foreG, foreB, foreA);
-    m_buttonTextBackgroundColor = Color(backR, backG, backB, backA);
-    platformColorsDidChange();
-}
-
-void RenderThemeEfl::setComboTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA)
-{
-    m_comboTextForegroundColor = Color(foreR, foreG, foreB, foreA);
-    m_comboTextBackgroundColor = Color(backR, backG, backB, backA);
-    platformColorsDidChange();
-}
-
-void RenderThemeEfl::setEntryTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA)
-{
-    m_entryTextForegroundColor = Color(foreR, foreG, foreB, foreA);
-    m_entryTextBackgroundColor = Color(backR, backG, backB, backA);
-    platformColorsDidChange();
-}
-
-void RenderThemeEfl::setSearchTextColor(int foreR, int foreG, int foreB, int foreA, int backR, int backG, int backB, int backA)
-{
-    m_searchTextForegroundColor = Color(foreR, foreG, foreB, foreA);
-    m_searchTextBackgroundColor = Color(backR, backG, backB, backA);
     platformColorsDidChange();
 }
 
@@ -867,7 +770,7 @@ void RenderThemeEfl::adjustSliderThumbStyle(StyleResolver* styleResolver, Render
     adjustSliderTrackStyle(styleResolver, style, element);
 }
 
-void RenderThemeEfl::adjustSliderThumbSize(RenderStyle* style) const
+void RenderThemeEfl::adjustSliderThumbSize(RenderStyle* style, Element*) const
 {
     ControlPart part = style->appearance();
     if (part == SliderThumbVerticalPart || part == SliderThumbHorizontalPart) {
@@ -943,8 +846,6 @@ void RenderThemeEfl::adjustButtonStyle(StyleResolver* styleResolver, RenderStyle
         style->resetBorder();
         style->setWhiteSpace(PRE);
         style->setHeight(Length(Auto));
-        style->setColor(m_buttonTextForegroundColor);
-        style->setBackgroundColor(m_buttonTextBackgroundColor);
     }
 }
 
@@ -962,8 +863,6 @@ void RenderThemeEfl::adjustMenuListStyle(StyleResolver* styleResolver, RenderSty
     adjustSizeConstraints(style, ComboBox);
     style->resetBorder();
     style->setWhiteSpace(PRE);
-    style->setColor(m_comboTextForegroundColor);
-    style->setBackgroundColor(m_comboTextBackgroundColor);
 }
 
 bool RenderThemeEfl::paintMenuList(RenderObject* object, const PaintInfo& info, const IntRect& rect)
@@ -989,9 +888,6 @@ void RenderThemeEfl::adjustTextFieldStyle(StyleResolver* styleResolver, RenderSt
     }
     adjustSizeConstraints(style, TextField);
     style->resetBorder();
-    style->setWhiteSpace(PRE);
-    style->setColor(m_entryTextForegroundColor);
-    style->setBackgroundColor(m_entryTextBackgroundColor);
 }
 
 bool RenderThemeEfl::paintTextField(RenderObject* object, const PaintInfo& info, const IntRect& rect)
@@ -1082,13 +978,25 @@ void RenderThemeEfl::adjustSearchFieldStyle(StyleResolver* styleResolver, Render
     adjustSizeConstraints(style, SearchField);
     style->resetBorder();
     style->setWhiteSpace(PRE);
-    style->setColor(m_searchTextForegroundColor);
-    style->setBackgroundColor(m_searchTextBackgroundColor);
 }
 
 bool RenderThemeEfl::paintSearchField(RenderObject* object, const PaintInfo& info, const IntRect& rect)
 {
     return paintThemePart(object, SearchField, info, rect);
+}
+
+void RenderThemeEfl::adjustInnerSpinButtonStyle(StyleResolver* styleResolver, RenderStyle* style, Element* element) const
+{
+    if (!m_page && element && element->document()->page()) {
+        static_cast<RenderThemeEfl*>(element->document()->page()->theme())->adjustInnerSpinButtonStyle(styleResolver, style, element);
+        return;
+    }
+    adjustSizeConstraints(style, Spinner);
+}
+
+bool RenderThemeEfl::paintInnerSpinButton(RenderObject* object, const PaintInfo& info, const IntRect& rect)
+{
+    return paintThemePart(object, Spinner, info, rect);
 }
 
 void RenderThemeEfl::setDefaultFontSize(int size)
@@ -1167,6 +1075,13 @@ String RenderThemeEfl::extraMediaControlsStyleSheet()
 {
     return String(mediaControlsEflUserAgentStyleSheet, sizeof(mediaControlsEflUserAgentStyleSheet));
 }
+
+#if ENABLE(FULLSCREEN_API)
+String RenderThemeEfl::extraFullScreenStyleSheet()
+{
+    return String(mediaControlsEflFullscreenUserAgentStyleSheet, sizeof(mediaControlsEflFullscreenUserAgentStyleSheet));
+}
+#endif
 
 String RenderThemeEfl::formatMediaControlsCurrentTime(float currentTime, float duration) const
 {

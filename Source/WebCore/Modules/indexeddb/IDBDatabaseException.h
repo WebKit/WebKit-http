@@ -45,17 +45,28 @@ public:
     enum IDBDatabaseExceptionCode {
         NO_ERR = IDBDatabaseExceptionOffset,
         UNKNOWN_ERR,
-        NON_TRANSIENT_ERR,
-        NOT_FOUND_ERR,
+        LEGACY_NON_TRANSIENT_ERR, // FIXME: Placeholder, not in spec.
+        LEGACY_NOT_FOUND_ERR, // FIXME: Placeholder.
         CONSTRAINT_ERR,
         DATA_ERR,
-        NOT_ALLOWED_ERR,
+        LEGACY_NOT_ALLOWED_ERR, // FIXME: Placeholder, not in spec.
         TRANSACTION_INACTIVE_ERR,
-        ABORT_ERR,
+        LEGACY_ABORT_ERR, // FIXME: Placeholder.
         READ_ONLY_ERR,
-        TIMEOUT_ERR,
-        QUOTA_ERR,
-        VER_ERR
+        LEGACY_TIMEOUT_ERR, // FIXME: Placeholder.
+        LEGACY_QUOTA_ERR, // FIXME: Placeholder.
+        VER_ERR,
+
+        IDB_NOT_FOUND_ERR,
+        IDB_INVALID_STATE_ERR,
+        IDB_INVALID_ACCESS_ERR,
+        IDB_ABORT_ERR,
+        IDB_TIMEOUT_ERR,
+        IDB_QUOTA_EXCEEDED_ERR,
+        IDB_SYNTAX_ERR,
+        IDB_DATA_CLONE_ERR,
+        IDB_TYPE_ERR, // FIXME: Placeholder until bindings have been updated to throw a JS TypeError. See https://bugs.webkit.org/show_bug.cgi?id=85513
+        IDB_NOT_SUPPORTED_ERR,
     };
 
     static int ErrorCodeToExceptionCode(int errorCode)
@@ -66,6 +77,8 @@ public:
     }
 
     static bool initializeDescription(ExceptionCode, ExceptionCodeDescription*);
+    static String getErrorName(ExceptionCode);
+    static ExceptionCode getLegacyErrorCode(ExceptionCode);
 
 private:
     IDBDatabaseException(const ExceptionCodeDescription& description)

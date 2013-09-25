@@ -23,9 +23,9 @@ isEmpty(pro_file): CONFIG += recursive_include
 }
 
 # Resolve root directories for source and build
-ROOT_WEBKIT_DIR = $$replace(IN_PWD, /Tools/qmake/mkspecs/features,)
+ROOT_WEBKIT_DIR = $$replace(IN_PWD, /Tools/qmake/mkspecs/features$,)
 WEBKIT_SUBDIR = $$replace(_PRO_FILE_PWD_, $${ROOT_WEBKIT_DIR},)
-ROOT_BUILD_DIR = $$replace(OUT_PWD, $$WEBKIT_SUBDIR,)
+ROOT_BUILD_DIR = $$replace(OUT_PWD, $${WEBKIT_SUBDIR}$,)
 
 # We want the QtWebKit API forwarding includes to live in the root build dir,
 # except when we are running the config.tests in Tools/qmake.
@@ -108,6 +108,10 @@ haveQt(5): {
         root_project_file: error("Building WebKit against Qt 5.0 requires the QtWidgets and QtPrintSupport modules.")
     }
 }
+
+# We use private_tests to detect developer build, since the destdir will
+# always be our webkit build dir. This might change as configure changes.
+contains(QT_CONFIG, private_tests): CONFIG += qt_developer_build
 
 haveQt(4) {
     # Qt5 will automatically load the module files for us, but for Qt4

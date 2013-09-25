@@ -84,8 +84,9 @@ public:
     virtual void dispatchOnInspectorBackend(const WebString& message);
     virtual void inspectElementAt(const WebPoint& point);
     virtual void evaluateInWebInspector(long callId, const WebString& script);
-    virtual void setJavaScriptProfilingEnabled(bool);
     virtual void setProcessId(long);
+    virtual void instrumentWillProcessTask();
+    virtual void instrumentDidProcessTask();
 
     // InspectorClient implementation.
     virtual void inspectorDestroyed();
@@ -100,6 +101,9 @@ public:
 
     virtual void clearBrowserCache();
     virtual void clearBrowserCookies();
+
+    virtual void startMessageLoopMonitoring();
+    virtual void stopMessageLoopMonitoring();
 
     virtual void overrideDeviceMetrics(int width, int height, float fontScaleFactor, bool fitWindow);
     virtual void autoZoomPageToFitWidth();

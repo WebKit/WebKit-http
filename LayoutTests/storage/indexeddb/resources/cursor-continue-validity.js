@@ -36,7 +36,7 @@ function setVersion()
 function deleteExisting()
 {
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
 
     deleteAllObjectStores(db);
@@ -60,7 +60,7 @@ function continueTest()
     debug("");
     debug("Checking objectStore");
     debug("====================");
-    var request = evalAndLog("indexObject.openCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openCursor(null, 'next')");
     evalAndLog("self.continueValue = 0");
     request.onsuccess = evalAndLogCallback("doubleContinueCallback()");
     request.onerror = unexpectedErrorCallback;
@@ -96,7 +96,7 @@ function continueIndexTest()
     debug("");
     debug("Checking index");
     debug("==============");
-    var request = evalAndLog("indexObject.openCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openCursor(null, 'next')");
     evalAndLog("self.continueValue = 0");
     request.onsuccess = doubleContinueIndexCallback;
     request.onerror = unexpectedErrorCallback;
@@ -134,7 +134,7 @@ function testModifyContinueOrder()
     debug("");
     debug("Checking modification");
     debug("=====================");
-    var request = evalAndLog("indexObject.openCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openCursor(null, 'next')");
     evalAndLog("self.continueValue = 0");
     request.onsuccess = modifyContinueOrderCallback;
     request.onerror = unexpectedErrorCallback;

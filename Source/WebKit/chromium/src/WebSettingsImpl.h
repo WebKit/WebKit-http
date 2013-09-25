@@ -50,12 +50,17 @@ public:
     virtual void setSansSerifFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setCursiveFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setFantasyFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
+    virtual void setPictographFontFamily(const WebString&, UScriptCode = USCRIPT_COMMON);
     virtual void setDefaultFontSize(int);
     virtual void setDefaultFixedFontSize(int);
     virtual void setMinimumFontSize(int);
     virtual void setMinimumLogicalFontSize(int);
-    virtual void setDefaultDeviceScaleFactor(int);
+    virtual void setApplyDefaultDeviceScaleFactorInCompositor(bool);
+    virtual void setFontBoostingEnabled(bool);
     virtual void setDefaultTextEncodingName(const WebString&);
+    virtual void setDeviceSupportsTouch(bool);
+    virtual void setDeviceSupportsMouse(bool);
+    virtual bool deviceSupportsTouch();
     virtual void setJavaScriptEnabled(bool);
     virtual void setWebSecurityEnabled(bool);
     virtual void setJavaScriptCanOpenWindowsAutomatically(bool);
@@ -90,18 +95,21 @@ public:
     virtual void setWebAudioEnabled(bool);
     virtual void setExperimentalWebGLEnabled(bool);
     virtual void setExperimentalCSSRegionsEnabled(bool);
+    virtual void setExperimentalCSSGridLayoutEnabled(bool);
     virtual void setExperimentalCSSCustomFilterEnabled(bool);
     virtual void setOpenGLMultisamplingEnabled(bool);
     virtual void setPrivilegedWebGLExtensionsEnabled(bool);
     virtual void setWebGLErrorsToConsoleEnabled(bool);
     virtual void setShowDebugBorders(bool);
     virtual void setShowFPSCounter(bool);
-    virtual bool showFPSCounter() const { return m_showFPSCounter; }
     virtual void setShowPlatformLayerTree(bool);
-    virtual bool showPlatformLayerTree() const { return m_showPlatformLayerTree; }
+    virtual void setShowPaintRects(bool);
+    virtual void setDefaultTileSize(WebSize);
+    virtual void setMaxUntiledLayerSize(WebSize);
     virtual void setEditingBehavior(EditingBehavior);
     virtual void setAcceleratedCompositingEnabled(bool);
     virtual void setForceCompositingMode(bool);
+    virtual void setForceSoftwareCompositing(bool);
     virtual void setMockScrollbarsEnabled(bool);
     virtual void setAcceleratedCompositingFor3DTransformsEnabled(bool);
     virtual void setAcceleratedCompositingForVideoEnabled(bool);
@@ -139,14 +147,30 @@ public:
     virtual void setPerTilePaintingEnabled(bool);
     virtual void setPartialSwapEnabled(bool);
     virtual void setThreadedAnimationEnabled(bool);
+    virtual void setFixedPositionCreatesStackingContext(bool);
     virtual void setViewportEnabled(bool);
+    virtual void setMediaPlaybackRequiresUserGesture(bool);
     virtual bool viewportEnabled() const { return m_viewportEnabled; }
+    virtual void setSyncXHRInDocumentsEnabled(bool);
+
+    bool showFPSCounter() const { return m_showFPSCounter; }
+    bool showPlatformLayerTree() const { return m_showPlatformLayerTree; }
+    bool showPaintRects() const { return m_showPaintRects; }
+    bool applyDefaultDeviceScaleFactorInCompositor() const { return m_applyDefaultDeviceScaleFactorInCompositor; }
+    WebSize defaultTileSize() const { return m_defaultTileSize; }
+    WebSize maxUntiledLayerSize() const { return m_maxUntiledLayerSize; }
+    virtual bool forceSoftwareCompositing() const { return m_forceSoftwareCompositing; }
 
 private:
     WebCore::Settings* m_settings;
+    bool m_forceSoftwareCompositing;
     bool m_showFPSCounter;
     bool m_showPlatformLayerTree;
+    bool m_showPaintRects;
     bool m_viewportEnabled;
+    bool m_applyDefaultDeviceScaleFactorInCompositor;
+    WebSize m_defaultTileSize;
+    WebSize m_maxUntiledLayerSize;
 };
 
 } // namespace WebKit

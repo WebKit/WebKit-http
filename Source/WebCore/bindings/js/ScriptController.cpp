@@ -230,7 +230,15 @@ TextPosition ScriptController::eventHandlerPosition() const
     ScriptableDocumentParser* parser = m_frame->document()->scriptableDocumentParser();
     if (parser)
         return parser->textPosition();
-    return TextPosition::belowRangePosition();
+    return TextPosition::minimumPosition();
+}
+
+void ScriptController::enableEval()
+{
+    JSDOMWindowShell* windowShell = existingWindowShell(mainThreadNormalWorld());
+    if (!windowShell)
+        return; // Eval is enabled by default.
+    windowShell->window()->setEvalEnabled(true);
 }
 
 void ScriptController::disableEval()
@@ -325,6 +333,11 @@ PassRefPtr<Bindings::RootObject> ScriptController::createRootObject(void* native
 #if ENABLE(INSPECTOR)
 void ScriptController::setCaptureCallStackForUncaughtExceptions(bool)
 {
+}
+
+void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*, SecurityOrigin*> >&)
+{
+    // FIXME(85709): support isolated contexts inspection for JSC.
 }
 #endif
 

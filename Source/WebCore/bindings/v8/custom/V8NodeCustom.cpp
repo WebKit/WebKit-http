@@ -73,13 +73,11 @@ v8::Handle<v8::Value> V8Node::insertBeforeCallback(const v8::Arguments& args)
     Node* newChild = V8Node::HasInstance(args[0]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0;
     Node* refChild = V8Node::HasInstance(args[1]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[1])) : 0;
     bool success = imp->insertBefore(newChild, refChild, ec, true);
-    if (ec) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (ec)
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     if (success)
         return args[0];
-    return v8::Null();
+    return v8::Null(args.GetIsolate());
 }
 
 // This function is customized to take advantage of the optional 4th argument: shouldLazyAttach
@@ -92,13 +90,11 @@ v8::Handle<v8::Value> V8Node::replaceChildCallback(const v8::Arguments& args)
     Node* newChild = V8Node::HasInstance(args[0]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0;
     Node* oldChild = V8Node::HasInstance(args[1]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[1])) : 0;
     bool success = imp->replaceChild(newChild, oldChild, ec, true);
-    if (ec) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (ec)
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     if (success)
         return args[1];
-    return v8::Null();
+    return v8::Null(args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8Node::removeChildCallback(const v8::Arguments& args)
@@ -109,13 +105,11 @@ v8::Handle<v8::Value> V8Node::removeChildCallback(const v8::Arguments& args)
     ExceptionCode ec = 0;
     Node* oldChild = V8Node::HasInstance(args[0]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0;
     bool success = imp->removeChild(oldChild, ec);
-    if (ec) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (ec)
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     if (success)
         return args[0];
-    return v8::Null();
+    return v8::Null(args.GetIsolate());
 }
 
 // This function is customized to take advantage of the optional 4th argument: shouldLazyAttach
@@ -127,19 +121,17 @@ v8::Handle<v8::Value> V8Node::appendChildCallback(const v8::Arguments& args)
     ExceptionCode ec = 0;
     Node* newChild = V8Node::HasInstance(args[0]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0;
     bool success = imp->appendChild(newChild, ec, true );
-    if (ec) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (ec)
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     if (success)
         return args[0];
-    return v8::Null();
+    return v8::Null(args.GetIsolate());
 }
 
 v8::Handle<v8::Value> toV8Slow(Node* impl, v8::Isolate* isolate, bool forceNewObject)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
 
     if (!forceNewObject) {
         v8::Handle<v8::Value> wrapper = V8DOMWrapper::getCachedWrapper(impl);

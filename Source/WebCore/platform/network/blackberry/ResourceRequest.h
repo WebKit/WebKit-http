@@ -45,7 +45,6 @@ public:
         TargetIsWorker,
         TargetIsSharedWorker,
         TargetIsPrefetch,
-        TargetIsPrerender,
         TargetIsFavicon,
         TargetIsXHR,
         TargetIsTextTrack,
@@ -55,7 +54,6 @@ public:
         : ResourceRequestBase(KURL(ParsedURLString, url), UseProtocolCachePolicy)
         , m_isXMLHTTPRequest(false)
         , m_mustHandleInternally(false)
-        , m_isRequestedByPlugin(false)
         , m_forceDownload(false)
         , m_targetType(TargetIsUnspecified)
     {
@@ -65,7 +63,6 @@ public:
         : ResourceRequestBase(url, UseProtocolCachePolicy)
         , m_isXMLHTTPRequest(false)
         , m_mustHandleInternally(false)
-        , m_isRequestedByPlugin(false)
         , m_forceDownload(false)
         , m_targetType(TargetIsUnspecified)
     {
@@ -75,7 +72,6 @@ public:
         : ResourceRequestBase(url, policy)
         , m_isXMLHTTPRequest(false)
         , m_mustHandleInternally(false)
-        , m_isRequestedByPlugin(false)
         , m_forceDownload(false)
         , m_targetType(TargetIsUnspecified)
     {
@@ -86,7 +82,6 @@ public:
         : ResourceRequestBase(KURL(), UseProtocolCachePolicy)
         , m_isXMLHTTPRequest(false)
         , m_mustHandleInternally(false)
-        , m_isRequestedByPlugin(false)
         , m_forceDownload(false)
         , m_targetType(TargetIsUnspecified)
     {
@@ -107,9 +102,6 @@ public:
     void setIsXMLHTTPRequest(bool isXMLHTTPRequest) { m_isXMLHTTPRequest = isXMLHTTPRequest; }
     bool isXMLHTTPRequest() const { return m_isXMLHTTPRequest; }
 
-    void setIsRequestedByPlugin(bool isRequestedByPlugin) { m_isRequestedByPlugin = isRequestedByPlugin; }
-    bool isRequestedByPlugin() const { return m_isRequestedByPlugin; }
-
     // Marks requests which must be handled by webkit even if LinksHandledExternally is set.
     void setMustHandleInternally(bool mustHandleInternally) { m_mustHandleInternally = mustHandleInternally; }
     bool mustHandleInternally() const { return m_mustHandleInternally; }
@@ -117,6 +109,8 @@ public:
     void initializePlatformRequest(BlackBerry::Platform::NetworkRequest&, bool cookiesEnabled, bool isInitial = false, bool isRedirect = false) const;
     void setForceDownload(bool forceDownload) { m_forceDownload = true; }
     bool forceDownload() const { return m_forceDownload; }
+    void setSuggestedSaveName(const String& name) { m_suggestedSaveName = name; }
+    String suggestedSaveName() const { return m_suggestedSaveName; }
 
     // What this request is for.
     TargetType targetType() const { return m_targetType; }
@@ -133,9 +127,9 @@ private:
     String m_token;
     String m_anchorText;
     String m_overrideContentType;
+    String m_suggestedSaveName;
     bool m_isXMLHTTPRequest;
     bool m_mustHandleInternally;
-    bool m_isRequestedByPlugin;
     bool m_forceDownload;
     TargetType m_targetType;
 
@@ -149,10 +143,12 @@ private:
 struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {
     String m_token;
     String m_anchorText;
+    String m_overrideContentType;
+    String m_suggestedSaveName;
     bool m_isXMLHTTPRequest;
     bool m_mustHandleInternally;
-    bool m_isRequestedByPlugin;
     bool m_forceDownload;
+    ResourceRequest::TargetType m_targetType;
 };
 
 } // namespace WebCore

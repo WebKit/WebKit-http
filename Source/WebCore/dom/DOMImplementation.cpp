@@ -48,6 +48,7 @@
 #include "RegularExpression.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "StyleSheetContents.h"
 #include "TextDocument.h"
 #include "ThreadGlobalData.h"
 #include "XMLNames.h"
@@ -66,6 +67,24 @@ static void addString(FeatureSet& set, const char* string)
 {
     set.add(string);
 }
+
+#if ENABLE(VIDEO)
+class DOMImplementationSupportsTypeClient : public MediaPlayerSupportsTypeClient {
+public:
+    DOMImplementationSupportsTypeClient(bool needsHacks, const String& host)
+        : m_needsHacks(needsHacks)
+        , m_host(host)
+    {
+    }
+
+private:
+    virtual bool mediaPlayerNeedsSiteSpecificHacks() const OVERRIDE { return m_needsHacks; }
+    virtual String mediaPlayerDocumentHost() const OVERRIDE { return m_host; }
+
+    bool m_needsHacks;
+    String m_host;
+};
+#endif
 
 #if ENABLE(SVG)
 
@@ -128,7 +147,7 @@ static bool isSVG11Feature(const String &feature, const String &version)
         addString(svgFeatures, "Style");
         addString(svgFeatures, "ViewportAttribute");
         addString(svgFeatures, "Shape");
-//      addString(svgFeatures, "Text"); // requires altGlyph, bug 6426
+        addString(svgFeatures, "Text");
         addString(svgFeatures, "BasicText");
         addString(svgFeatures, "PaintAttribute");
         addString(svgFeatures, "BasicPaintAttribute");
@@ -143,7 +162,7 @@ static bool isSVG11Feature(const String &feature, const String &version)
         addString(svgFeatures, "BasicClip");
         addString(svgFeatures, "Mask");
 #if ENABLE(FILTERS)
-//      addString(svgFeatures, "Filter");
+        addString(svgFeatures, "Filter");
         addString(svgFeatures, "BasicFilter");
 #endif
         addString(svgFeatures, "DocumentEventsAttribute");
@@ -153,7 +172,7 @@ static bool isSVG11Feature(const String &feature, const String &version)
         addString(svgFeatures, "Hyperlinking");
         addString(svgFeatures, "XlinkAttribute");
         addString(svgFeatures, "ExternalResourcesRequired");
-//      addString(svgFeatures, "View"); // buggy <view> support, bug 16962
+        addString(svgFeatures, "View");
         addString(svgFeatures, "Script");
         addString(svgFeatures, "Animation"); 
 #if ENABLE(SVG_FONTS)
@@ -307,15 +326,15 @@ PassRefPtr<CSSStyleSheet> DOMImplementation::createCSSStyleSheet(const String&, 
 {
     // FIXME: Title should be set.
     // FIXME: Media could have wrong syntax, in which case we should generate an exception.
-    RefPtr<CSSStyleSheet> sheet = CSSStyleSheet::create(StyleSheetInternal::create());
+    RefPtr<CSSStyleSheet> sheet = CSSStyleSheet::create(StyleSheetContents::create());
     sheet->setMediaQueries(MediaQuerySet::createAllowingDescriptionSyntax(media));
     return sheet;
 }
 
 static const char* const validXMLMIMETypeChars = "[0-9a-zA-Z_\\-+~!$\\^{}|.%'`#&*]"; // per RFCs: 3023, 2045
 
-XMLMIMETypeRegExp::XMLMIMETypeRegExp() :
-    m_regex(adoptPtr(new RegularExpression(WTF::makeString("^", validXMLMIMETypeChars, "+/", validXMLMIMETypeChars, "+\\+xml$"), TextCaseSensitive)))
+XMLMIMETypeRegExp::XMLMIMETypeRegExp()
+    : m_regex(adoptPtr(new RegularExpression(WTF::makeString("^", validXMLMIMETypeChars, "+/", validXMLMIMETypeChars, "+\\+xml$"), TextCaseSensitive)))
 {
 }
 
@@ -387,7 +406,8 @@ PassRefPtr<Document> DOMImplementation::createDocument(const String& type, Frame
 #if ENABLE(VIDEO)
      // Check to see if the type can be played by our MediaPlayer, if so create a MediaDocument
     // Key system is not applicable here.
-    if (MediaPlayer::supportsType(ContentType(type), String()))
+    DOMImplementationSupportsTypeClient client(frame && frame->settings() && frame->settings()->needsSiteSpecificQuirks(), url.host());
+    if (MediaPlayer::supportsType(ContentType(type), String(), &client))
          return MediaDocument::create(frame, url);
 #endif
 

@@ -73,7 +73,13 @@ Vector<String> PluginInfoStore::individualPluginPaths()
 
 bool PluginInfoStore::getPluginInfo(const String& pluginPath, PluginModuleInfo& plugin)
 {
+#if ENABLE(NETSCAPE_PLUGIN_API)
     return NetscapePluginModule::getPluginInfo(pluginPath, plugin);
+#else
+    UNUSED_PARAM(pluginPath);
+    UNUSED_PARAM(plugin);
+    return false;
+#endif
 }
 
 bool PluginInfoStore::shouldUsePlugin(Vector<PluginModuleInfo>& alreadyLoadedPlugins, const PluginModuleInfo& plugin)
@@ -87,6 +93,11 @@ bool PluginInfoStore::shouldUsePlugin(Vector<PluginModuleInfo>& alreadyLoadedPlu
     }
 
     return true;
+}
+
+bool PluginInfoStore::shouldBlockPlugin(const PluginModuleInfo& plugin) const
+{
+    return WKShouldBlockPlugin(plugin.bundleIdentifier, plugin.versionString);
 }
 
 String PluginInfoStore::getMIMETypeForExtension(const String& extension)

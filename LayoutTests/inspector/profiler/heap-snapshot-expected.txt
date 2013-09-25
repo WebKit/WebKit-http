@@ -13,7 +13,17 @@ Running: heapSnapshotNodeAndEdgeTest
 
 Running: heapSnapshotSimpleTest
 
-Running: testNodesAndEdgesSeparationInHeapSnapshot
+Running: heapSnapshotContainmentEdgeIndexesTest
+
+Running: heapSnapshotPostOrderIndexTest
+
+Running: heapSnapshotDominatorsTreeTest
+
+Running: heapSnapshotRetainedSizeTest
+
+Running: heapSnapshotDominatedNodesTest
+
+Running: heapSnapshotPageOwnedTest
 
 Running: heapSnapshotRetainersTest
 

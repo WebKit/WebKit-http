@@ -3,7 +3,8 @@
 <style>
     body {
         direction: rtl;
-        overflow: hidden;
+        margin: 0px;
+        background-color: red;
     }
 
     .positioned {
@@ -23,6 +24,13 @@
         background-color: green;
     }
 
+    #root {
+        width: 100%;
+        height: 100%;
+        /* root element should exactly cover red background */
+        background-color: white;
+    }
+
     #layertree {
         position: absolute;
         top: 10000px;
@@ -31,15 +39,16 @@
 </style>
 <script>
     function doTest() {
-        if (window.layoutTestController) {
+        if (window.testRunner) {
             if (top == self)
-                document.getElementById('layertree').innerText = layoutTestController.layerTreeAsText();
-            layoutTestController.dumpAsText(true);
+                document.getElementById('layertree').innerText = testRunner.layerTreeAsText();
+            testRunner.dumpAsText(true);
         }
     }
     window.addEventListener('load', doTest, false);
 </script>
 <body>
+    <div id="root"></div>
     <div class="positioned indicator"></div>
     <div class="positioned layer"></div>
 

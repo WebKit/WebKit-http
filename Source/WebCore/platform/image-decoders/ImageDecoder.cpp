@@ -20,21 +20,23 @@
  */
 
 #include "config.h"
-
 #include "ImageDecoder.h"
-
-#include <algorithm>
-#include <cmath>
 
 #include "BMPImageDecoder.h"
 #include "GIFImageDecoder.h"
 #include "ICOImageDecoder.h"
+#if PLATFORM(QT)
+#include "ImageDecoderQt.h"
+#endif
 #include "JPEGImageDecoder.h"
 #include "PNGImageDecoder.h"
+#include "SharedBuffer.h"
 #if USE(WEBP)
 #include "WEBPImageDecoder.h"
 #endif
-#include "SharedBuffer.h"
+
+#include <algorithm>
+#include <cmath>
 
 using namespace std;
 
@@ -107,11 +109,18 @@ ImageDecoder* ImageDecoder::create(const SharedBuffer& data, ImageSource::AlphaO
     if (matchesGIFSignature(contents))
         return new GIFImageDecoder(alphaOption, gammaAndColorProfileOption);
 
+#if !PLATFORM(QT) || (PLATFORM(QT) && USE(LIBPNG))
     if (matchesPNGSignature(contents))
         return new PNGImageDecoder(alphaOption, gammaAndColorProfileOption);
 
+    if (matchesICOSignature(contents) || matchesCURSignature(contents))
+        return new ICOImageDecoder(alphaOption, gammaAndColorProfileOption);
+#endif
+
+#if !PLATFORM(QT) || (PLATFORM(QT) && USE(LIBJPEG))
     if (matchesJPEGSignature(contents))
         return new JPEGImageDecoder(alphaOption, gammaAndColorProfileOption);
+#endif
 
 #if USE(WEBP)
     if (matchesWebPSignature(contents))
@@ -121,9 +130,9 @@ ImageDecoder* ImageDecoder::create(const SharedBuffer& data, ImageSource::AlphaO
     if (matchesBMPSignature(contents))
         return new BMPImageDecoder(alphaOption, gammaAndColorProfileOption);
 
-    if (matchesICOSignature(contents) || matchesCURSignature(contents))
-        return new ICOImageDecoder(alphaOption, gammaAndColorProfileOption);
-
+#if PLATFORM(QT)
+    return new ImageDecoderQt(alphaOption, gammaAndColorProfileOption);
+#endif
     return 0;
 }
 
@@ -143,7 +152,7 @@ ImageFrame& ImageFrame::operator=(const ImageFrame& other)
     if (this == &other)
         return *this;
 
-    copyReferenceToBitmapData(other);
+    copyBitmapData(other);
     setOriginalFrameRect(other.originalFrameRect());
     setStatus(other.status());
     setDuration(other.duration());
@@ -167,14 +176,6 @@ void ImageFrame::zeroFillPixelData()
 {
     memset(m_bytes, 0, m_size.width() * m_size.height() * sizeof(PixelData));
     m_hasAlpha = true;
-}
-
-#if !USE(CG)
-
-void ImageFrame::copyReferenceToBitmapData(const ImageFrame& other)
-{
-    ASSERT(this != &other);
-    copyBitmapData(other);
 }
 
 bool ImageFrame::copyBitmapData(const ImageFrame& other)
@@ -202,8 +203,6 @@ bool ImageFrame::setSize(int newWidth, int newHeight)
     zeroFillPixelData();
     return true;
 }
-
-#endif
 
 bool ImageFrame::hasAlpha() const
 {

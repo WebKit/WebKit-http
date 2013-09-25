@@ -72,6 +72,9 @@ public:
     // FIXME: Remove this; nobody should have to know about the plug-in view's renderer except the plug-in view itself.
     WebCore::RenderBoxModelObject* renderer() const;
 
+    void pageScaleFactorDidChange();
+    void webPageDestroyed();
+
 private:
     PluginView(PassRefPtr<WebCore::HTMLPlugInElement>, PassRefPtr<Plugin>, const Plugin::Parameters& parameters);
     virtual ~PluginView();
@@ -111,6 +114,7 @@ private:
     virtual bool scroll(WebCore::ScrollDirection, WebCore::ScrollGranularity);
     virtual WebCore::Scrollbar* horizontalScrollbar();
     virtual WebCore::Scrollbar* verticalScrollbar();
+    virtual bool wantsWheelEvents();
 
     // WebCore::Widget
     virtual void setFrameRect(const WebCore::IntRect&);
@@ -136,9 +140,11 @@ private:
                          const WebCore::HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups);
     virtual void cancelStreamLoad(uint64_t streamID);
     virtual void cancelManualStreamLoad();
+#if ENABLE(NETSCAPE_PLUGIN_API)
     virtual NPObject* windowScriptNPObject();
     virtual NPObject* pluginElementNPObject();
     virtual bool evaluate(NPObject*, const String&scriptString, NPVariant* result, bool allowPopups);
+#endif
     virtual void setStatusbarText(const String&);
     virtual bool isAcceleratedCompositingEnabled();
     virtual void pluginProcessCrashed();
@@ -189,8 +195,10 @@ private:
     // Streams that the plug-in has requested to load. 
     HashMap<uint64_t, RefPtr<Stream> > m_streams;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     // A map of all related NPObjects for this plug-in view.
     NPRuntimeObjectMap m_npRuntimeObjectMap;
+#endif
 
     // The manual stream state. This is used so we can deliver a manual stream to a plug-in
     // when it is initialized.

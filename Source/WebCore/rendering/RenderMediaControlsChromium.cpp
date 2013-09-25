@@ -33,6 +33,7 @@
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
 #include "PaintInfo.h"
+#include "TimeRanges.h"
 
 namespace WebCore {
 
@@ -126,30 +127,37 @@ static bool paintMediaSlider(RenderObject* object, const PaintInfo& paintInfo, c
     context->drawRect(rect);
     context->restore();
 
-    // Draw the buffered ranges.
-    // FIXME: Draw multiple ranges if there are multiple buffered ranges.
+    // Draw the buffered range. Since the element may have multiple buffered ranges and it'd be
+    // distracting/'busy' to show all of them, show only the buffered range containing the current play head.
     IntRect bufferedRect = rect;
     bufferedRect.inflate(-style->borderLeftWidth());
 
-    double bufferedWidth = 0.0;
-    if (mediaElement->percentLoaded() > 0.0) {
-        // Account for the width of the slider thumb.
-        Image* mediaSliderThumb = getMediaSliderThumb();
-        double thumbWidth = mediaSliderThumb->width() / 2.0 + 1.0;
-        double rectWidth = bufferedRect.width() - thumbWidth;
-        if (rectWidth < 0.0)
-            rectWidth = 0.0;
-        bufferedWidth = rectWidth * mediaElement->percentLoaded() + thumbWidth;
-    }
-    bufferedRect.setWidth(bufferedWidth);
+    RefPtr<TimeRanges> bufferedTimeRanges = mediaElement->buffered();
+    float duration = mediaElement->duration();
+    float currentTime = mediaElement->currentTime();
+    if (isnan(duration) || isinf(duration) || !duration || isnan(currentTime))
+        return true;
 
-    // Don't bother drawing an empty area.
-    if (!bufferedRect.isEmpty()) {
+    for (unsigned i = 0; i < bufferedTimeRanges->length(); ++i) {
+        float start = bufferedTimeRanges->start(i, ASSERT_NO_EXCEPTION);
+        float end = bufferedTimeRanges->end(i, ASSERT_NO_EXCEPTION);
+        if (isnan(start) || isnan(end) || start > currentTime || end < currentTime)
+            continue;
+        float startFraction = start / duration;
+        float endFraction = end / duration;
+        float widthFraction = endFraction - startFraction;
+        bufferedRect.move(startFraction * bufferedRect.width(), 0);
+        bufferedRect.setWidth(widthFraction * bufferedRect.width());
+
+        // Don't bother drawing an empty area.
+        if (bufferedRect.isEmpty())
+            return true;
+
         IntPoint sliderTopLeft = bufferedRect.location();
-        IntPoint sliderTopRight = sliderTopLeft;
-        sliderTopRight.move(0, bufferedRect.height());
+        IntPoint sliderBottomLeft = sliderTopLeft;
+        sliderBottomLeft.move(0, bufferedRect.height());
 
-        RefPtr<Gradient> gradient = Gradient::create(sliderTopLeft, sliderTopRight);
+        RefPtr<Gradient> gradient = Gradient::create(sliderTopLeft, sliderBottomLeft);
         Color startColor = object->style()->visitedDependentColor(CSSPropertyColor);
         gradient->addColorStop(0.0, startColor);
         gradient->addColorStop(1.0, Color(startColor.red() / 2, startColor.green() / 2, startColor.blue() / 2, startColor.alpha()));
@@ -159,6 +167,7 @@ static bool paintMediaSlider(RenderObject* object, const PaintInfo& paintInfo, c
         context->setFillGradient(gradient);
         context->fillRect(bufferedRect);
         context->restore();
+        return true;
     }
 
     return true;

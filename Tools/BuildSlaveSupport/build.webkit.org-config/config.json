@@ -3,12 +3,7 @@
 
                   
                     { "name": "apple-xserve-4", "platform": "mac-snowleopard" },
-                    { "name": "apple-xserve-5", "platform": "mac-snowleopard" },
-                    { "name": "apple-xserve-6", "platform": "mac-snowleopard" },
-                    { "name": "apple-xserve-7", "platform": "mac-snowleopard" },
-                    { "name": "apple-xserve-8", "platform": "mac-snowleopard" },	
                     { "name": "apple-xserve-9", "platform": "mac-snowleopard" },	
-                    { "name": "apple-macpro-7", "platform": "mac-snowleopard" },
 
                     { "name": "apple-macpro-3", "platform": "mac-lion" },
                     { "name": "apple-macpro-4", "platform": "mac-lion" },
@@ -27,8 +22,6 @@
                     { "name": "apple-windows-4", "platform": "win"},
                     { "name": "apple-windows-5", "platform": "win"},
                     { "name": "apple-windows-6", "platform": "win"},
-                    { "name": "apple-windows-7", "platform": "win"},
-                    { "name": "apple-windows-8", "platform": "win"},
                     { "name": "apple-windows-13", "platform": "win"},
                     { "name": "apple-windows-14", "platform": "win"},
                     { "name": "apple-windows-15", "platform": "win"},
@@ -60,7 +53,6 @@
                     { "name": "google-linux-2", "platform": "chromium-linux" },
                     { "name": "google-linux-perf", "platform": "chromium-linux" },
                     { "name": "google-linux-android", "platform": "chromium-android" },
-                    { "name": "google-linux-flexbox", "platform": "chromium-linux" },
 
                     { "name": "wincairo-1", "platform": "wincairo" },
 
@@ -68,6 +60,7 @@
                     
                     { "name": "efl-linux-slave-1", "platform": "efl" },
                     { "name": "efl-linux-slave-2", "platform": "efl" },
+                    { "name": "efl-linux-slave-3", "platform": "efl" },
 
                     { "name": "hfreyther-mipsel-linux1", "platform": "qt"},
                     { "name": "hfreyther-sh4-linux1", "platform": "qt"}
@@ -75,33 +68,15 @@
 
     "builders":   [ { "name": "SnowLeopard Intel Release (Build)", "type": "Build", "builddir": "snowleopard-intel-release",
                       "platform": "mac-snowleopard", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["snowleopard-intel-release-tests", "snowleopard-intel-release-tests-wk2"],
                       "slavenames": ["apple-xserve-4", "test-slave"]
                     },
                     { "name": "SnowLeopard Intel Debug (Build)", "type": "Build", "builddir": "snowleopard-intel-debug",
                       "platform": "mac-snowleopard", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["snowleopard-intel-debug-tests", "snowleopard-intel-debug-tests-wk2"],
                       "slavenames": ["apple-xserve-9"]
-                    },
-                    { "name": "SnowLeopard Intel Release (Tests)", "type": "Test", "builddir": "snowleopard-intel-release-tests",
-                      "platform": "mac-snowleopard", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["apple-xserve-5", "apple-xserve-6", "test-slave"]
-                    },
-                    { "name": "SnowLeopard Intel Debug (Tests)", "type": "Test", "builddir": "snowleopard-intel-debug-tests",
-                      "platform": "mac-snowleopard", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-xserve-8"]
                     },
                     { "name": "Lion Leaks", "type": "BuildAndTestLeaks", "builddir": "lion-intel-leaks",
                       "platform": "mac-lion", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["apple-macpro-3"]
-                    },
-                    { "name": "SnowLeopard Intel Release (WebKit2 Tests)", "type": "TestWebKit2", "builddir": "snowleopard-intel-release-tests-wk2",
-                      "platform": "mac-snowleopard", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["apple-xserve-7", "test-slave"]
-                    },
-                    { "name": "SnowLeopard Intel Debug (WebKit2 Tests)", "type": "TestWebKit2", "builddir": "snowleopard-intel-debug-tests-wk2",
-                      "platform": "mac-snowleopard", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["apple-macpro-7"]
                     },
                     { "name": "Lion Debug (Build)", "type": "Build", "builddir": "lion-intel-debug",
                       "platform": "mac-lion", "configuration": "debug", "architectures": ["x86_64"],
@@ -137,7 +112,7 @@
                     {
                       "name": "Windows Release (Build)", "type": "Build", "builddir": "win-release",
                       "platform": "win", "configuration": "release", "architectures": ["i386"],
-                      "triggers": ["win-release-tests", "win-release-tests-wk2"],
+                      "triggers": ["win-release-tests"],
                       "slavenames": ["apple-windows-2", "test-slave"]
                     },
                     {
@@ -155,10 +130,6 @@
                       "name": "Windows XP Debug (Tests)", "type": "Test", "builddir": "win-debug-tests",
                       "platform": "win", "configuration": "debug", "architectures": ["i386"],
                       "slavenames": ["apple-windows-3", "apple-windows-4", "apple-windows-13", "apple-windows-14", "apple-windows-15", "test-slave"]
-                    },
-                    { "name": "Windows 7 Release (WebKit2 Tests)", "type": "TestWebKit2", "builddir": "win-release-tests-wk2",
-                      "platform": "win", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["apple-windows-7", "apple-windows-8", "test-slave"]
                     },
                     {
                       "name": "GTK Linux 32-bit Release", "type": "BuildAndTest", "builddir": "gtk-linux-32-release",
@@ -274,11 +245,6 @@
                       "slavenames": ["google-linux-perf"]
                     },
                     {
-                      "name": "Chromium Linux Release (Grid Layout)", "type": "NewBuildAndTest", "builddir": "chromium-linux-flexbox",
-                      "platform": "chromium-linux", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["google-linux-flexbox"]
-                    },
-                    {
                       "name": "Chromium Android Release", "type": "Build", "builddir": "chromium-linux-android",
                       "platform": "chromium-android", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["google-linux-android"]
@@ -294,14 +260,19 @@
                       "slavenames": ["wince-1"]
                     },
                     {
-                      "name": "EFL Linux Release", "type": "BuildAndTest", "builddir": "efl-linux-release",
+                      "name": "EFL Linux 64-bit Release", "type": "BuildAndTest", "builddir": "efl-linux-64-release",
                       "platform": "efl", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["efl-linux-slave-1"]
                     },
                     {
-                      "name": "EFL Linux Debug", "type": "BuildAndTest", "builddir": "efl-linux-debug",
+                      "name": "EFL Linux 64-bit Debug", "type": "BuildAndTest", "builddir": "efl-linux-64-debug",
                       "platform": "efl", "configuration": "debug", "architectures": ["x86_64"],
                       "slavenames": ["efl-linux-slave-2"]
+                    },
+                    {
+                      "name": "EFL Linux 32-bit Release (Build)", "type": "Build", "builddir": "efl-linux-32-release",
+                      "platform": "efl", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["efl-linux-slave-3"]
                     }
                   ],
 
@@ -312,8 +283,9 @@
                                        "Qt Windows 32-bit Release", "Qt Windows 32-bit Debug", "Qt SnowLeopard Release",
                                        "Qt Linux MIPS Release", "Qt Linux SH4 Release",
                                        "Chromium Win Release", "Chromium Mac Release", "Chromium Linux Release",
-                                       "Chromium Linux Release (Grid Layout)", "Chromium Android Release",
-                                       "WinCairo Release", "WinCE Release (Build)", "EFL Linux Release", "EFL Linux Debug"]
+                                       "Chromium Android Release",
+                                       "EFL Linux 64-bit Release", "EFL Linux 64-bit Debug", "EFL Linux 32-bit Release (Build)",
+                                       "WinCairo Release", "WinCE Release (Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-snowleopard", "branch": "trunk", "treeStableTimer": 45.0, 
                       "builderNames": ["SnowLeopard Intel Release (Build)", "SnowLeopard Intel Debug (Build)"] 
@@ -339,26 +311,11 @@
                     { "type": "Triggerable", "name": "lion-intel-debug-tests-wk2",
                       "builderNames": ["Lion Debug (WebKit2 Tests)"]
                     },
-                    { "type": "Triggerable", "name": "snowleopard-intel-release-tests",
-                      "builderNames": ["SnowLeopard Intel Release (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "snowleopard-intel-release-tests-wk2",
-                      "builderNames": ["SnowLeopard Intel Release (WebKit2 Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "snowleopard-intel-debug-tests",
-                      "builderNames": ["SnowLeopard Intel Debug (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "snowleopard-intel-debug-tests-wk2",
-                      "builderNames": ["SnowLeopard Intel Debug (WebKit2 Tests)"]
-                    },
                     { "type": "Triggerable", "name": "win-release-tests",
                       "builderNames": ["Windows 7 Release (Tests)"]
                     },
                     { "type": "Triggerable", "name": "win-debug-tests",
                       "builderNames": ["Windows XP Debug (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "win-release-tests-wk2",
-                      "builderNames": ["Windows 7 Release (WebKit2 Tests)"]
                     },
                     { "type": "Triggerable", "name": "chromium-win-release-tests",
                       "builderNames": ["Chromium Win Release (Tests)"]
@@ -377,9 +334,6 @@
                     },
                     { "type": "Triggerable", "name": "chromium-linux-perf-tests",
                       "builderNames": ["Chromium Linux Release (Perf)"]
-                    },
-                    { "type": "Triggerable", "name": "efl-linux-debug",
-                      "builderNames": ["EFL Linux Debug"]
                     }
                   ]
 }

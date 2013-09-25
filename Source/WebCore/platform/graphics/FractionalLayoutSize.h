@@ -35,6 +35,14 @@
 #include "FractionalLayoutUnit.h"
 #include "IntSize.h"
 
+#if PLATFORM(QT)
+#include <qglobal.h>
+QT_BEGIN_NAMESPACE
+class QSize;
+class QSizeF;
+QT_END_NAMESPACE
+#endif
+
 namespace WebCore {
 
 class FractionalLayoutPoint;
@@ -92,6 +100,12 @@ public:
         return FractionalLayoutSize(m_height, m_width);
     }
 
+#if PLATFORM(QT)
+    explicit FractionalLayoutSize(const QSize&);
+    explicit FractionalLayoutSize(const QSizeF&);
+    operator QSizeF() const;
+#endif
+
 private:
     FractionalLayoutUnit m_width, m_height;
 };
@@ -144,8 +158,6 @@ inline IntSize roundedIntSize(const FractionalLayoutSize& s)
 {
     return IntSize(s.width().round(), s.height().round());
 }
-
-IntSize pixelSnappedIntSize(const FractionalLayoutSize&, const FractionalLayoutPoint&);
 
 } // namespace WebCore
 

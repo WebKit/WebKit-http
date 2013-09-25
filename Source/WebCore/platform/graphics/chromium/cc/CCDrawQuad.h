@@ -33,7 +33,7 @@ namespace WebCore {
 class CCCheckerboardDrawQuad;
 class CCDebugBorderDrawQuad;
 class CCIOSurfaceDrawQuad;
-class CCRenderSurfaceDrawQuad;
+class CCRenderPassDrawQuad;
 class CCSolidColorDrawQuad;
 class CCTextureDrawQuad;
 class CCTileDrawQuad;
@@ -47,10 +47,10 @@ class CCDrawQuad {
     WTF_MAKE_NONCOPYABLE(CCDrawQuad);
 public:
     const IntRect& quadRect() const { return m_quadRect; }
-    const TransformationMatrix& quadTransform() const { return m_sharedQuadState->quadTransform(); }
-    const TransformationMatrix& layerTransform() const { return m_sharedQuadState->layerTransform(); }
+    const WebKit::WebTransformationMatrix& quadTransform() const { return m_sharedQuadState->quadTransform(); }
+    const WebKit::WebTransformationMatrix& layerTransform() const { return m_sharedQuadState->layerTransform(); }
     const IntRect& layerRect() const { return m_sharedQuadState->layerRect(); }
-    const IntRect& clipRect() const { return m_sharedQuadState->clipRect(); }
+    const IntRect& scissorRect() const { return m_sharedQuadState->scissorRect(); }
     float opacity() const { return m_sharedQuadState->opacity(); }
     // For the purposes of blending, what part of the contents of this quad are opaque?
     IntRect opaqueRect() const;
@@ -67,7 +67,7 @@ public:
         Checkerboard,
         DebugBorder,
         IOSurfaceContent,
-        RenderSurface,
+        RenderPass,
         TextureContent,
         SolidColor,
         TiledContent,
@@ -75,15 +75,18 @@ public:
     };
 
     Material material() const { return m_material; }
+    bool isDebugQuad() const { return m_material == DebugBorder; }
 
     const CCCheckerboardDrawQuad* toCheckerboardDrawQuad() const;
     const CCDebugBorderDrawQuad* toDebugBorderDrawQuad() const;
     const CCIOSurfaceDrawQuad* toIOSurfaceDrawQuad() const;
-    const CCRenderSurfaceDrawQuad* toRenderSurfaceDrawQuad() const;
+    const CCRenderPassDrawQuad* toRenderPassDrawQuad() const;
     const CCSolidColorDrawQuad* toSolidColorDrawQuad() const;
     const CCTextureDrawQuad* toTextureDrawQuad() const;
     const CCTileDrawQuad* toTileDrawQuad() const;
     const CCVideoDrawQuad* toVideoDrawQuad() const;
+
+    const CCSharedQuadState* sharedQuadState() const { return m_sharedQuadState; }
 
 protected:
     CCDrawQuad(const CCSharedQuadState*, Material, const IntRect&);

@@ -41,10 +41,6 @@
 #include <wtf/HashSet.h>
 #include <wtf/UnusedParam.h>
 
-#if USE(CG) || USE(CAIRO) || USE(SKIA) || PLATFORM(QT)
-#define HAVE_PATH_BASED_BORDER_RADIUS_DRAWING 1
-#endif
-
 namespace WebCore {
 
 class AffineTransform;
@@ -60,6 +56,7 @@ class RenderBoxModelObject;
 class RenderInline;
 class RenderBlock;
 class RenderFlowThread;
+class RenderGeometryMap;
 class RenderLayer;
 class RenderTable;
 class RenderTheme;
@@ -102,6 +99,11 @@ enum BoxSide {
 enum MarkingBehavior {
     MarkOnlyThis,
     MarkContainingBlockChain,
+};
+
+enum PlaceGeneratedRunInFlag {
+    PlaceGeneratedRunIn,
+    DoNotPlaceGeneratedRunIn
 };
 
 const int caretWidth = 1;
@@ -236,6 +238,7 @@ public:
     // RenderObject tree manipulation
     //////////////////////////////////////////
     virtual bool canHaveChildren() const { return virtualChildren(); }
+    virtual bool canHaveGeneratedChildren() const;
     virtual bool isChildAllowed(RenderObject*, RenderStyle*) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = 0);
     virtual void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = 0) { return addChild(newChild, beforeChild); }
@@ -338,7 +341,7 @@ public:
     virtual bool isSliderThumb() const { return false; }
     virtual bool isTable() const { return false; }
     virtual bool isTableCell() const { return false; }
-    virtual bool isTableCol() const { return false; }
+    virtual bool isRenderTableCol() const { return false; }
     virtual bool isTableCaption() const { return false; }
     virtual bool isTableRow() const { return false; }
     virtual bool isTableSection() const { return false; }
@@ -355,6 +358,11 @@ public:
 
     virtual bool isRenderFlowThread() const { return false; }
     virtual bool isRenderNamedFlowThread() const { return false; }
+    
+    virtual bool isRenderMultiColumnBlock() const { return false; }
+    virtual bool isRenderMultiColumnSet() const { return false; }
+
+    virtual bool isRenderScrollbarPart() const { return false; }
     bool canHaveRegionStyle() const { return isRenderBlock() && !isAnonymous() && !isRenderFlowThread(); }
 
     bool isRoot() const { return document()->documentElement() == m_node; }
@@ -364,7 +372,7 @@ public:
 
     bool isHTMLMarquee() const;
 
-    bool isTablePart() const { return isTableCell() || isTableCol() || isTableCaption() || isTableRow() || isTableSection(); }
+    bool isTablePart() const { return isTableCell() || isRenderTableCol() || isTableCaption() || isTableRow() || isTableSection(); }
 
     inline bool isBeforeContent() const;
     inline bool isAfterContent() const;
@@ -389,6 +397,7 @@ public:
             if (!s_ancestorLineboxDirtySet)
                 s_ancestorLineboxDirtySet = new RenderObjectAncestorLineboxDirtySet;
             s_ancestorLineboxDirtySet->add(this);
+            setNeedsLayout(true);
         } else if (s_ancestorLineboxDirtySet) {
             s_ancestorLineboxDirtySet->remove(this);
             if (s_ancestorLineboxDirtySet->isEmpty()) {
@@ -417,7 +426,6 @@ public:
     virtual bool isSVGGradientStop() const { return false; }
     virtual bool isSVGHiddenContainer() const { return false; }
     virtual bool isSVGPath() const { return false; }
-    virtual bool isSVGRect() const { return false; }
     virtual bool isSVGShape() const { return false; }
     virtual bool isSVGText() const { return false; }
     virtual bool isSVGTextPath() const { return false; }
@@ -540,13 +548,6 @@ public:
 
     inline bool preservesNewline() const;
 
-#if !HAVE(PATH_BASED_BORDER_RADIUS_DRAWING)
-    // FIXME: This function should be removed when all ports implement GraphicsContext::clipConvexPolygon()!!
-    // At that time, everyone can use RenderObject::drawBoxSideFromPath() instead. This should happen soon.
-    void drawArcForBoxSide(GraphicsContext*, int x, int y, float thickness, const IntSize& radius, int angleStart,
-                           int angleSpan, BoxSide, Color, EBorderStyle, bool firstCorner);
-#endif
-
     // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
     // any pseudo classes (and therefore has no concept of changing state).
     RenderStyle* getCachedPseudoStyle(PseudoId, RenderStyle* parentStyle = 0) const;
@@ -577,7 +578,7 @@ public:
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If repaintContainer and repaintContainerSkipped are not null, on return *repaintContainerSkipped
     // is true if the renderer returned is an ancestor of repaintContainer.
-    RenderObject* container(RenderBoxModelObject* repaintContainer = 0, bool* repaintContainerSkipped = 0) const;
+    RenderObject* container(const RenderBoxModelObject* repaintContainer = 0, bool* repaintContainerSkipped = 0) const;
 
     virtual RenderObject* hoverAncestor() const { return parent(); }
 
@@ -678,7 +679,7 @@ public:
 
     // Return the offset from the container() renderer (excluding transforms). In multi-column layout,
     // different offsets apply at different points, so return the offset that applies to the given point.
-    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&) const;
+    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const;
     // Return the offset from an object up the container() chain. Asserts that none of the intermediate objects have transforms.
     LayoutSize offsetFromAncestorContainer(RenderObject*) const;
     
@@ -713,7 +714,7 @@ public:
     
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const;
 
-    void getTextDecorationColors(int decorations, Color& underline, Color& overline, Color& linethrough, bool quirksMode = false);
+    void getTextDecorationColors(int decorations, Color& underline, Color& overline, Color& linethrough, bool quirksMode = false, bool firstlineStyle = false);
 
     // Return the RenderBox in the container chain which is responsible for painting this object, or 0
     // if painting is root-relative. This is the container that should be passed to the 'forRepaint'
@@ -765,6 +766,12 @@ public:
     // If multiple-column layout results in applying an offset to the given point, add the same
     // offset to the given size.
     virtual void adjustForColumns(LayoutSize&, const LayoutPoint&) const { }
+    LayoutSize offsetForColumns(const LayoutPoint& point) const
+    {
+        LayoutSize offset;
+        adjustForColumns(offset, point);
+        return offset;
+    }
 
     virtual unsigned int length() const { return 1; }
 
@@ -834,7 +841,7 @@ public:
     virtual bool isFlexingChildren() const { return false; }
     virtual bool isStretchingChildren() const { return false; }
 
-    // Virtual function helper for the new FlexibleBox Layout (display: -webkit-flexbox).
+    // Virtual function helper for the new FlexibleBox Layout (display: -webkit-flex).
     virtual bool isFlexibleBox() const { return false; }
 
     bool isFlexibleBoxIncludingDeprecated() const
@@ -865,9 +872,14 @@ public:
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
     // localToAbsolute/absoluteToLocal methods instead.
-    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&, bool* wasFixed = 0) const;
+    enum ApplyContainerFlipOrNot { DoNotApplyContainerFlip, ApplyContainerFlip };
+    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&, ApplyContainerFlipOrNot = ApplyContainerFlip, bool* wasFixed = 0) const;
     virtual void mapAbsoluteToLocalPoint(bool fixed, bool useTransforms, TransformState&) const;
 
+    // Pushes state onto RenderGeometryMap about how to map coordinates from this renderer to its container, or ancestorToStopAt (whichever is encountered first).
+    // Returns the renderer which was mapped to (container or ancestorToStopAt).
+    virtual const RenderObject* pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap&) const;
+    
     bool shouldUseTransformFromContainer(const RenderObject* container) const;
     void getTransformFromContainer(const RenderObject* container, const LayoutSize& offsetInContainer, TransformationMatrix&) const;
     
@@ -1189,18 +1201,6 @@ inline void adjustFloatRectForAbsoluteZoom(FloatRect& rect, RenderObject* render
     float zoom = renderer->style()->effectiveZoom();
     if (zoom != 1)
         rect.scale(1 / zoom, 1 / zoom);
-}
-
-inline void adjustFloatQuadForPageScale(FloatQuad& quad, float pageScale)
-{
-    if (pageScale != 1)
-        quad.scale(1 / pageScale, 1 / pageScale);
-}
-
-inline void adjustFloatRectForPageScale(FloatRect& rect, float pageScale)
-{
-    if (pageScale != 1)
-        rect.scale(1 / pageScale, 1 / pageScale);
 }
 
 } // namespace WebCore

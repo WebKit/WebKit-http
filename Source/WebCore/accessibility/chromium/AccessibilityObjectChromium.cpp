@@ -25,6 +25,9 @@
  */
 
 #include "config.h"
+
+#if HAVE(ACCESSIBILITY)
+
 #include "AccessibilityObject.h"
 
 namespace WebCore {
@@ -37,9 +40,11 @@ bool AccessibilityObject::accessibilityIgnoreAttachment() const
 AccessibilityObjectInclusion AccessibilityObject::accessibilityPlatformIncludesObject() const
 {
     if (isMenuListPopup() || isMenuListOption())
-        return IgnoreObject;
+        return IncludeObject;
 
     return DefaultBehavior;
 }
 
 } // namespace WebCore
+
+#endif // HAVE(ACCESSIBILITY)

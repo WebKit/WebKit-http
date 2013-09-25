@@ -155,7 +155,7 @@ InspectorTest._resumedScript = function()
 
 InspectorTest.showScriptSourceOnScriptsPanel = function(panel, scriptName, callback)
 {
-    var uiSourceCodes = panel._presentationModel.uiSourceCodes();
+    var uiSourceCodes = panel._uiSourceCodeProvider.uiSourceCodes();
     for (var i = 0; i < uiSourceCodes.length; ++i) {
         if (uiSourceCodes[i].parsedURL.lastPathComponent === scriptName) {
             panel.showUISourceCode(uiSourceCodes[i]);
@@ -217,7 +217,7 @@ InspectorTest.setBreakpoint = function(sourceFrame, lineNumber, condition, enabl
 
 InspectorTest.removeBreakpoint = function(sourceFrame, lineNumber)
 {
-    sourceFrame._uiSourceCode.removeBreakpoint(lineNumber);
+    sourceFrame._breakpointManager.findBreakpoint(sourceFrame._javaScriptSource, lineNumber).remove();
 };
 
 
@@ -289,8 +289,8 @@ InspectorTest.createScriptMock = function(url, startLine, startColumn, isContent
     var endLine = startLine + lineCount - 1;
     var endColumn = lineCount === 1 ? startColumn + source.length : source.length - source.lineEndings()[lineCount - 2];
     var script = new WebInspector.Script(scriptId, url, startLine, startColumn, endLine, endColumn, isContentScript);
-    script.requestSource = function(callback) { callback(source); };
-    WebInspector.debuggerModel._scripts[scriptId] = script;
+    script.requestContent = function(callback) { callback(source); };
+    WebInspector.debuggerModel._registerScript(script);
     return script;
 }
 

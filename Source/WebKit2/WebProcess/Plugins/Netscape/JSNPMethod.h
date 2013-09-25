@@ -26,6 +26,8 @@
 #ifndef JSNPMethod_h
 #define JSNPMethod_h
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
+
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/InternalFunction.h>
 #include <JavaScriptCore/JSGlobalObject.h>
@@ -39,7 +41,7 @@ class JSNPMethod : public JSC::InternalFunction {
 public:
     typedef JSC::InternalFunction Base;
 
-    static JSNPMethod* create(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, const JSC::Identifier& name, NPIdentifier npIdent)
+    static JSNPMethod* create(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, const JSC::UString& name, NPIdentifier npIdent)
     {
         JSC::Structure* structure = createStructure(exec->globalData(), globalObject, globalObject->functionPrototype());
         JSNPMethod* method = new (JSC::allocateCell<JSNPMethod>(*exec->heap())) JSNPMethod(globalObject, structure, npIdent);
@@ -52,7 +54,7 @@ public:
     NPIdentifier npIdentifier() const { return m_npIdentifier; }
 
 protected:
-    void finishCreation(JSC::JSGlobalData&, const JSC::Identifier& name);
+    void finishCreation(JSC::JSGlobalData&, const JSC::UString& name);
 
 private:    
     JSNPMethod(JSC::JSGlobalObject*, JSC::Structure*, NPIdentifier);
@@ -69,5 +71,7 @@ private:
 
 
 } // namespace WebKit
+
+#endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #endif // JSNPMethod_h

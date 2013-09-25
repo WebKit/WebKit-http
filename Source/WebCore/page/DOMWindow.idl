@@ -64,7 +64,7 @@ module window {
 
         readonly attribute [CheckSecurityForNode] Element frameElement;
 
-        [DoNotCheckSecurity] void focus();
+        [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void focus();
         [DoNotCheckSecurity] void blur();
         [DoNotCheckSecurity, CallWith=ScriptExecutionContext] void close();
 
@@ -387,7 +387,9 @@ module window {
         attribute EntityConstructor Entity;
         attribute EntityReferenceConstructor EntityReference;
         attribute ProcessingInstructionConstructor ProcessingInstruction;
-        attribute [Conditional=SHADOW_DOM, V8EnabledAtRuntime=shadowDOM] ShadowRootConstructor WebKitShadowRoot;
+        attribute [Conditional=SHADOW_DOM, V8EnabledPerContext=shadowDOM] ShadowRootConstructor WebKitShadowRoot;
+        attribute [Conditional=SHADOW_DOM, V8EnabledPerContext=shadowDOM] HTMLContentElementConstructor HTMLContentElement;
+        attribute [Conditional=SHADOW_DOM, V8EnabledPerContext=shadowDOM] HTMLShadowElementConstructor HTMLShadowElement;
 
         attribute DOMSelectionConstructor Selection;
         attribute DOMWindowConstructor Window;
@@ -486,6 +488,8 @@ module window {
         attribute [Conditional=VIDEO, V8EnabledAtRuntime] HTMLSourceElementConstructor HTMLSourceElement;
         attribute [Conditional=VIDEO, V8EnabledAtRuntime] MediaControllerConstructor MediaController;
 
+        attribute [Conditional=WEB_INTENTS_TAG] HTMLIntentElementConstructor HTMLIntentElement;
+
         attribute CanvasPatternConstructor CanvasPattern;
         attribute CanvasGradientConstructor CanvasGradient;
         attribute CanvasRenderingContext2DConstructor CanvasRenderingContext2D;
@@ -550,7 +554,7 @@ module window {
 
         attribute WebKitCSSKeyframeRuleConstructor WebKitCSSKeyframeRule;
         attribute WebKitCSSKeyframesRuleConstructor WebKitCSSKeyframesRule;
-        attribute WebKitCSSRegionRuleConstructor WebKitCSSRegionRule;
+        attribute [Conditional=CSS_REGIONS] WebKitCSSRegionRuleConstructor WebKitCSSRegionRule;
 
         attribute WebKitCSSMatrixConstructor WebKitCSSMatrix; // Usable with the new operator
 
@@ -706,7 +710,8 @@ module window {
         attribute SVGUnitTypesConstructor SVGUnitTypes;
         attribute SVGUseElementConstructor SVGUseElement;
         attribute SVGViewElementConstructor SVGViewElement;
-//      attribute SVGViewSpecConstructor SVGViewSpec;
+        attribute SVGViewSpecConstructor SVGViewSpec;
+        attribute SVGZoomAndPanConstructor SVGZoomAndPan;
 
         attribute SVGAnimateColorElementConstructor SVGAnimateColorElement;
         attribute SVGAnimateElementConstructor SVGAnimateElement;
@@ -772,10 +777,6 @@ module window {
         attribute [Conditional=BLOB&LEGACY_WEBKIT_BLOB_BUILDER] WebKitBlobBuilderConstructor WebKitBlobBuilder;
 
         attribute [Conditional=BLOB] DOMURLConstructor webkitURL;
-
-#if defined(ENABLE_QUOTA) && ENABLE_QUOTA
-        readonly attribute [V8EnabledAtRuntime=Quota] StorageInfo webkitStorageInfo;
-#endif
 
         attribute [Conditional=MUTATION_OBSERVERS] WebKitMutationObserverConstructor WebKitMutationObserver;
 

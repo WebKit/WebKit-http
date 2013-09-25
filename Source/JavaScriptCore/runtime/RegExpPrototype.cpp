@@ -67,12 +67,12 @@ RegExpPrototype::RegExpPrototype(JSGlobalObject* globalObject, Structure* struct
 {
 }
 
-bool RegExpPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot &slot)
+bool RegExpPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot &slot)
 {
     return getStaticFunctionSlot<RegExpObject>(exec, ExecState::regExpPrototypeTable(exec), jsCast<RegExpPrototype*>(cell), propertyName, slot);
 }
 
-bool RegExpPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool RegExpPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     return getStaticFunctionDescriptor<RegExpObject>(exec, ExecState::regExpPrototypeTable(exec), jsCast<RegExpPrototype*>(object), propertyName, descriptor);
 }
@@ -147,11 +147,11 @@ EncodedJSValue JSC_HOST_CALL regExpProtoFuncToString(ExecState* exec)
 
     char postfix[5] = { '/', 0, 0, 0, 0 };
     int index = 1;
-    if (thisObject->get(exec, exec->propertyNames().global).toBoolean(exec))
+    if (thisObject->get(exec, exec->propertyNames().global).toBoolean())
         postfix[index++] = 'g';
-    if (thisObject->get(exec, exec->propertyNames().ignoreCase).toBoolean(exec))
+    if (thisObject->get(exec, exec->propertyNames().ignoreCase).toBoolean())
         postfix[index++] = 'i';
-    if (thisObject->get(exec, exec->propertyNames().multiline).toBoolean(exec))
+    if (thisObject->get(exec, exec->propertyNames().multiline).toBoolean())
         postfix[index] = 'm';
     UString source = thisObject->get(exec, exec->propertyNames().source).toString(exec)->value(exec);
     // If source is empty, use "/(?:)/" to avoid colliding with comment syntax

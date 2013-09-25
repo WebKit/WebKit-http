@@ -29,6 +29,13 @@ webkit_web_context_get_cache_model
 webkit_web_context_set_cache_model
 webkit_web_context_download_uri
 webkit_web_context_get_cookie_manager
+webkit_web_context_set_additional_plugins_directory
+webkit_web_context_get_plugins
+webkit_web_context_get_plugins_finish
+
+<SUBSECTION URI Scheme>
+WebKitURISchemeRequestCallback
+webkit_web_context_register_uri_scheme
 
 <SUBSECTION Standard>
 WebKitWebContextClass
@@ -88,9 +95,11 @@ webkit_web_view_can_execute_editing_command
 webkit_web_view_can_execute_editing_command_finish
 webkit_web_view_execute_editing_command
 webkit_web_view_get_find_controller
+webkit_web_view_get_inspector
 webkit_web_view_get_javascript_global_context
 webkit_web_view_run_javascript
 webkit_web_view_run_javascript_finish
+webkit_web_view_can_show_mime_type
 
 <SUBSECTION WebKitJavascriptResult>
 WebKitJavascriptResult
@@ -251,6 +260,12 @@ webkit_settings_get_zoom_text_only
 webkit_settings_set_zoom_text_only
 webkit_settings_get_javascript_can_access_clipboard
 webkit_settings_set_javascript_can_access_clipboard
+webkit_settings_get_media_playback_requires_user_gesture
+webkit_settings_set_media_playback_requires_user_gesture
+webkit_settings_get_media_playback_allows_inline
+webkit_settings_set_media_playback_allows_inline
+webkit_settings_get_draw_compositing_indicators
+webkit_settings_set_draw_compositing_indicators
 
 <SUBSECTION Standard>
 WebKitSettingsClass
@@ -292,6 +307,7 @@ WebKitURIResponse
 webkit_uri_response_get_uri
 webkit_uri_response_get_status_code
 webkit_uri_response_get_content_length
+webkit_uri_response_get_mime_type
 
 <SUBSECTION Standard>
 WebKitURIResponseClass
@@ -336,12 +352,14 @@ webkit_window_properties_get_type
 <SECTION>
 <FILE>WebKitDownload</FILE>
 WebKitDownload
+webkit_download_get_request
 webkit_download_get_destination
 webkit_download_set_destination
 webkit_download_get_response
 webkit_download_cancel
 webkit_download_get_estimated_progress
 webkit_download_get_elapsed_time
+webkit_download_get_received_data_length
 
 <SUBSECTION Standard>
 WebKitDownloadClass
@@ -355,6 +373,41 @@ WEBKIT_DOWNLOAD_GET_CLASS
 <SUBSECTION Private>
 WebKitDownloadPrivate
 webkit_download_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitPermissionRequest</FILE>
+WebKitPermissionRequest
+webkit_permission_request_allow
+webkit_permission_request_deny
+
+<SUBSECTION Standard>
+WebKitPermissionRequestIface
+WEBKIT_TYPE_PERMISSION_REQUEST
+WEBKIT_PERMISSION_REQUEST
+WEBKIT_IS_PERMISSION_REQUEST
+WEBKIT_PERMISSION_REQUEST_GET_IFACE
+
+<SUBSECTION Private>
+webkit_permission_request_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitGeolocationPermissionRequest</FILE>
+WebKitGeolocationPermissionRequest
+
+<SUBSECTION Standard>
+WebKitGeolocationPermissionRequestClass
+WEBKIT_TYPE_GEOLOCATION_PERMISSION_REQUEST
+WEBKIT_GEOLOCATION_PERMISSION_REQUEST
+WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST
+WEBKIT_GEOLOCATION_PERMISSION_REQUEST_CLASS
+WEBKIT_IS_GEOLOCATION_PERMISSION_REQUEST_CLASS
+WEBKIT_GEOLOCATION_PERMISSION_REQUEST_GET_CLASS
+
+<SUBSECTION Private>
+WebKitGeolocationPermissionRequestPrivate
+webkit_geolocation_permission_request_get_type
 </SECTION>
 
 <SECTION>
@@ -596,4 +649,97 @@ WEBKIT_COOKIE_MANAGER_GET_CLASS
 <SUBSECTION Private>
 WebKitCookieManagerPrivate
 webkit_cookie_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitPlugin</FILE>
+WebKitPlugin
+webkit_plugin_get_name
+webkit_plugin_get_description
+webkit_plugin_get_path
+webkit_plugin_get_mime_info_list
+
+<SUBSECTION WebKitMimeInfo>
+WebKitMimeInfo
+webkit_mime_info_ref
+webkit_mime_info_unref
+webkit_mime_info_get_mime_type
+webkit_mime_info_get_description
+webkit_mime_info_get_extensions
+
+<SUBSECTION Standard>
+WebKitPluginClass
+WEBKIT_TYPE_PLUGIN
+WEBKIT_PLUGIN
+WEBKIT_IS_PLUGIN
+WEBKIT_PLUGIN_CLASS
+WEBKIT_IS_PLUGIN_CLASS
+WEBKIT_PLUGIN_GET_CLASS
+WEBKIT_TYPE_MIME_INFO
+
+<SUBSECTION Private>
+webkit_plugin_get_type
+webkit_mime_info_get_type
+WebKitPluginPrivate
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebInspector</FILE>
+WebKitWebInspector
+webkit_web_inspector_get_web_view
+webkit_web_inspector_get_inspected_uri
+webkit_web_inspector_is_attached
+webkit_web_inspector_attach
+webkit_web_inspector_detach
+webkit_web_inspector_show
+webkit_web_inspector_close
+webkit_web_inspector_get_attached_height
+
+<SUBSECTION Standard>
+WebKitWebInspectorClass
+WEBKIT_TYPE_WEB_INSPECTOR
+WEBKIT_WEB_INSPECTOR
+WEBKIT_IS_WEB_INSPECTOR
+WEBKIT_WEB_INSPECTOR_CLASS
+WEBKIT_IS_WEB_INSPECTOR_CLASS
+WEBKIT_WEB_INSPECTOR_GET_CLASS
+
+<SUBSECTION Private>
+webkit_web_inspector_get_type
+WebKitWebInspectorPrivate
+</SECTION>
+
+<SECTION>
+<FILE>WebKitURISchemeRequest</FILE>
+WebKitURISchemeRequest
+webkit_uri_scheme_request_get_scheme
+webkit_uri_scheme_request_get_uri
+webkit_uri_scheme_request_get_path
+webkit_uri_scheme_request_finish
+
+<SUBSECTION Standard>
+WebKitURISchemeRequestClass
+WEBKIT_TYPE_URI_SCHEME_REQUEST
+WEBKIT_URI_SCHEME_REQUEST
+WEBKIT_IS_URI_SCHEME_REQUEST
+WEBKIT_URI_SCHEME_REQUEST_CLASS
+WEBKIT_IS_URI_SCHEME_REQUEST_CLASS
+WEBKIT_URI_SCHEME_REQUEST_GET_CLASS
+
+<SUBSECTION Private>
+WebKitURISchemeRequestPrivate
+webkit_uri_scheme_request_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitVersion</FILE>
+webkit_get_major_version
+webkit_get_minor_version
+webkit_get_micro_version
+
+<SUBSECTION>
+WEBKIT_MAJOR_VERSION
+WEBKIT_MINOR_VERSION
+WEBKIT_MICRO_VERSION
+WEBKIT_CHECK_VERSION
 </SECTION>

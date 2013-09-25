@@ -12,6 +12,7 @@ wtf_sources += \
     Source/WTF/wtf/Assertions.cpp \
     Source/WTF/wtf/Assertions.h \
     Source/WTF/wtf/Atomics.h \
+    Source/WTF/wtf/BitArray.h \
     Source/WTF/wtf/BitVector.cpp \
     Source/WTF/wtf/BitVector.h \
     Source/WTF/wtf/Bitmap.h \
@@ -42,6 +43,7 @@ wtf_sources += \
     Source/WTF/wtf/Encoder.h \
     Source/WTF/wtf/ExportMacros.h \
     Source/WTF/wtf/FastAllocBase.h \
+    Source/WTF/wtf/FastBitVector.h \
     Source/WTF/wtf/FastMalloc.cpp \
     Source/WTF/wtf/FastMalloc.h \
     Source/WTF/wtf/FixedArray.h \
@@ -83,6 +85,8 @@ wtf_sources += \
     Source/WTF/wtf/NullPtr.h \
     Source/WTF/wtf/NumberOfCores.cpp \
     Source/WTF/wtf/NumberOfCores.h \
+    Source/WTF/wtf/RAMSize.cpp \
+    Source/WTF/wtf/RAMSize.h \
     Source/WTF/wtf/OSAllocator.h \
     Source/WTF/wtf/OSRandomSource.cpp \
     Source/WTF/wtf/OSRandomSource.h \
@@ -129,6 +133,7 @@ wtf_sources += \
     Source/WTF/wtf/StackBounds.h \
     Source/WTF/wtf/StaticConstructors.h \
     Source/WTF/wtf/StdLibExtras.h \
+    Source/WTF/wtf/StreamBuffer.h \
     Source/WTF/wtf/StringExtras.h \
     Source/WTF/wtf/StringHasher.h \
     Source/WTF/wtf/TCPackedCache.h \

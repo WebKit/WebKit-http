@@ -20,9 +20,11 @@
 #define WebPage_p_h
 
 #include "ChromeClient.h"
+#include "InspectorOverlay.h"
 #if USE(ACCELERATED_COMPOSITING)
 #include "GLES2Context.h"
 #include "LayerRenderer.h"
+#include <EGL/egl.h>
 #endif
 #include "KURL.h"
 #include "PageClientBlackBerry.h"
@@ -32,15 +34,20 @@
 #include "ViewportArguments.h"
 #include "WebPage.h"
 #include "WebSettings.h"
+#include "WebTapHighlight.h"
 
 #include <BlackBerryPlatformMessage.h>
 
 namespace WebCore {
+class AutofillManager;
 class DOMWrapperWorld;
 class Document;
+class Element;
 class Frame;
 class GeolocationControllerClientBlackBerry;
+class GraphicsLayerBlackBerry;
 class JavaScriptDebuggerBlackBerry;
+class LayerWebKitThread;
 class Node;
 class Page;
 class PluginView;
@@ -48,6 +55,7 @@ class RenderLayer;
 class RenderObject;
 class ScrollView;
 class TransformationMatrix;
+class PagePopupBlackBerry;
 template<typename T> class Timer;
 }
 
@@ -88,7 +96,7 @@ public:
     bool handleMouseEvent(WebCore::PlatformMouseEvent&);
     bool handleWheelEvent(WebCore::PlatformWheelEvent&);
 
-    void load(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally = false, bool forceDownload = false, const char* overrideContentType = "");
+    void load(const char* url, const char* networkToken, const char* method, Platform::NetworkRequest::CachePolicy, const char* data, size_t dataLength, const char* const* headers, size_t headersLength, bool isInitial, bool mustHandleInternally = false, bool forceDownload = false, const char* overrideContentType = "", const char* suggestedSaveName = "");
     void loadString(const char* string, const char* baseURL, const char* mimeType, const char* failingURL = 0);
     bool executeJavaScript(const char* script, JavaScriptDataType& returnType, WebString& returnValue);
     bool executeJavaScriptInIsolatedWorld(const WebCore::ScriptSourceCode&, JavaScriptDataType& returnType, WebString& returnValue);
@@ -130,7 +138,7 @@ public:
     bool scrollBy(int deltaX, int deltaY, bool scrollMainFrame = true);
 
     void enqueueRenderingOfClippedContentOfScrollableNodeAfterInRegionScrolling(WebCore::Node*);
-    std::vector<Platform::ScrollViewBase> inRegionScrollableAreasForPoint(const Platform::IntPoint&);
+    std::vector<Platform::ScrollViewBase*> inRegionScrollableAreasForPoint(const Platform::IntPoint&);
     void notifyInRegionScrollStatusChanged(bool status);
     void setScrollOriginPoint(const Platform::IntPoint&);
     void setHasInRegionScrollableAreas(bool);
@@ -179,16 +187,22 @@ public:
     virtual int showAlertDialog(WebPageClient::AlertType atype);
     virtual bool isActive() const;
     virtual bool isVisible() const { return m_visible; }
-    virtual WebCore::Credential authenticationChallenge(const WebCore::KURL&, const WebCore::ProtectionSpace&);
+    virtual bool authenticationChallenge(const WebCore::KURL&, const WebCore::ProtectionSpace&, WebCore::Credential&);
     virtual SaveCredentialType notifyShouldSaveCredential(bool);
 
     // Called from within WebKit via ChromeClientBlackBerry.
     void enterFullscreenForNode(WebCore::Node*);
     void exitFullscreenForNode(WebCore::Node*);
+#if ENABLE(FULLSCREEN_API)
+    void enterFullScreenForElement(WebCore::Element*);
+    void exitFullScreenForElement(WebCore::Element*);
+#endif
     void contentsSizeChanged(const WebCore::IntSize&);
     void overflowExceedsContentsSize() { m_overflowExceedsContentsSize = true; }
     void layoutFinished();
     void setNeedTouchEvents(bool);
+    void notifyPopupAutofillDialog(const Vector<String>&, const WebCore::IntRect&);
+    void notifyDismissAutofillDialog();
 
     // Called according to our heuristic or from setLoadState depending on whether we have a virtual viewport.
     void zoomToInitialScaleOnLoad();
@@ -365,6 +379,7 @@ public:
     void rootLayerCommitTimerFired(WebCore::Timer<WebPagePrivate>*);
     bool commitRootLayerIfNeeded();
     WebCore::LayerRenderingResults lastCompositingResults() const;
+    WebCore::GraphicsLayer* overlayLayer();
 
     // WebKit thread, plumbed through from ChromeClientBlackBerry.
     void setRootLayerWebKitThread(WebCore::Frame*, WebCore::LayerWebKitThread*);
@@ -380,7 +395,8 @@ public:
     void commitRootLayer(const WebCore::IntRect&, const WebCore::IntSize&, bool);
     bool isAcceleratedCompositingActive() const { return m_compositor; }
     WebPageCompositorPrivate* compositor() const { return m_compositor.get(); }
-    void setCompositor(PassRefPtr<WebPageCompositorPrivate>);
+    void setCompositor(PassRefPtr<WebPageCompositorPrivate>, EGLContext compositingContext);
+    void setCompositorBackgroundColor(const WebCore::Color&);
     bool createCompositor();
     void destroyCompositor();
     void syncDestroyCompositorOnCompositingThread();
@@ -397,6 +413,8 @@ public:
     BackingStoreClient* backingStoreClientForFrame(const WebCore::Frame*) const;
     void addBackingStoreClientForFrame(const WebCore::Frame*, BackingStoreClient*);
     void removeBackingStoreClientForFrame(const WebCore::Frame*);
+
+    void setParentPopup(WebCore::PagePopupBlackBerry* webPopup);
 
     // Clean up any document related data we might be holding.
     void clearDocumentData(const WebCore::Document*);
@@ -417,12 +435,16 @@ public:
 
     void deferredTasksTimerFired(WebCore::Timer<WebPagePrivate>*);
 
+    void setInspectorOverlayClient(WebCore::InspectorOverlay::InspectorOverlayClient*);
+
     WebPage* m_webPage;
     WebPageClient* m_client;
     WebCore::Page* m_page;
     WebCore::Frame* m_mainFrame;
     RefPtr<WebCore::Node> m_currentContextNode;
     WebSettings* m_webSettings;
+    OwnPtr<WebTapHighlight> m_tapHighlight;
+    OwnPtr<WebSelectionOverlay> m_selectionOverlay;
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     OwnPtr<WebCore::JavaScriptDebuggerBlackBerry> m_scriptDebugger;
@@ -469,6 +491,13 @@ public:
     WebCore::TouchEventMode m_touchEventMode;
 #endif
 
+#if ENABLE(FULLSCREEN_API)
+#if ENABLE(EVENT_MODE_METATAGS)
+    WebCore::TouchEventMode m_touchEventModePriorGoingFullScreen;
+#endif
+    int m_xScrollOffsetPriorGoingFullScreen;
+#endif
+
     Platform::BlackBerryCursor m_currentCursor;
 
     DumpRenderTreeClient* m_dumpRenderTree;
@@ -511,6 +540,7 @@ public:
 #if USE(ACCELERATED_COMPOSITING)
     bool m_isAcceleratedCompositingActive;
     OwnPtr<FrameLayers> m_frameLayers; // WebKit thread only.
+    OwnPtr<WebCore::GraphicsLayer> m_overlayLayer;
 
     // Compositing thread only, used only when the WebKit layer created the context.
     // If the API client created the context, this will be null.
@@ -537,6 +567,7 @@ public:
     RefPtr<WebCore::DOMWrapperWorld> m_isolatedWorld;
     bool m_hasInRegionScrollableAreas;
     bool m_updateDelegatedOverlaysDispatched;
+    OwnPtr<WebCore::InspectorOverlay> m_inspectorOverlay;
 
     // There is no need to initialize the following members in WebPagePrivate's constructor,
     // because they are only used by WebPageTasks and the tasks will initialize them when
@@ -579,6 +610,12 @@ public:
     Vector<OwnPtr<DeferredTaskBase> > m_deferredTasks;
     WebCore::Timer<WebPagePrivate> m_deferredTasksTimer;
 
+    // The popup that opened in this webpage
+    WebCore::PagePopupBlackBerry* m_selectPopup;
+    // The popup that owned this webpage
+    WebCore::PagePopupBlackBerry* m_parentPopup;
+
+    RefPtr<WebCore::AutofillManager> m_autofillManager;
 protected:
     virtual ~WebPagePrivate();
 };

@@ -76,16 +76,22 @@ const float CCVideoLayerImpl::flipTransform[16] = {
 CCVideoLayerImpl::CCVideoLayerImpl(int id, WebKit::WebVideoFrameProvider* provider)
     : CCLayerImpl(id)
     , m_provider(provider)
-    , m_layerTreeHostImpl(0)
     , m_frame(0)
 {
     memcpy(m_streamTextureMatrix, flipTransform, sizeof(m_streamTextureMatrix));
-    provider->setVideoFrameProviderClient(this);
+
+    // This only happens during a commit on the compositor thread while the main
+    // thread is blocked. That makes this a thread-safe call to set the video
+    // frame provider client that does not require a lock. The same is true of
+    // the call in the destructor.
+    ASSERT(CCProxy::isMainThreadBlocked());
+    m_provider->setVideoFrameProviderClient(this);
 }
 
 CCVideoLayerImpl::~CCVideoLayerImpl()
 {
-    MutexLocker locker(m_providerMutex);
+    // See comment in constructor for why this doesn't need a lock.
+    ASSERT(CCProxy::isMainThreadBlocked());
     if (m_provider) {
         m_provider->setVideoFrameProviderClient(0);
         m_provider = 0;
@@ -96,7 +102,10 @@ CCVideoLayerImpl::~CCVideoLayerImpl()
 
 void CCVideoLayerImpl::stopUsingProvider()
 {
+    // Block the provider from shutting down until this client is done
+    // using the frame.
     MutexLocker locker(m_providerMutex);
+    ASSERT(!m_frame);
     m_provider = 0;
 }
 
@@ -118,10 +127,10 @@ static GC3Denum convertVFCFormatToGC3DFormat(const WebKit::WebVideoFrame& frame)
     return GraphicsContext3D::INVALID_VALUE;
 }
 
-void CCVideoLayerImpl::willDraw(LayerRendererChromium* layerRenderer)
+void CCVideoLayerImpl::willDraw(CCRenderer* layerRenderer, CCGraphicsContext* context)
 {
     ASSERT(CCProxy::isImplThread());
-    CCLayerImpl::willDraw(layerRenderer);
+    CCLayerImpl::willDraw(layerRenderer, context);
 
     // Explicitly lock and unlock the provider mutex so it can be held from
     // willDraw to didDraw. Since the compositor thread is in the middle of
@@ -138,7 +147,7 @@ void CCVideoLayerImpl::willDraw(LayerRendererChromium* layerRenderer)
         m_providerMutex.unlock();
 }
 
-void CCVideoLayerImpl::willDrawInternal(LayerRendererChromium* layerRenderer)
+void CCVideoLayerImpl::willDrawInternal(CCRenderer* layerRenderer)
 {
     ASSERT(CCProxy::isImplThread());
 
@@ -234,7 +243,7 @@ IntSize CCVideoLayerImpl::computeVisibleSize(const WebKit::WebVideoFrame& frame,
     return IntSize(visibleWidth, visibleHeight);
 }
 
-bool CCVideoLayerImpl::reserveTextures(const WebKit::WebVideoFrame& frame, GC3Denum format, LayerRendererChromium* layerRenderer)
+bool CCVideoLayerImpl::reserveTextures(const WebKit::WebVideoFrame& frame, GC3Denum format, CCRenderer* layerRenderer)
 {
     if (frame.planes() > MaxPlanes)
         return false;
@@ -246,14 +255,14 @@ bool CCVideoLayerImpl::reserveTextures(const WebKit::WebVideoFrame& frame, GC3De
         if (requiredTextureSize.isZero() || requiredTextureSize.width() > maxTextureSize || requiredTextureSize.height() > maxTextureSize)
             return false;
         if (!m_textures[plane].m_texture) {
-            m_textures[plane].m_texture = ManagedTexture::create(layerRenderer->renderSurfaceTextureManager());
+            m_textures[plane].m_texture = ManagedTexture::create(layerRenderer->implTextureManager());
             if (!m_textures[plane].m_texture)
                 return false;
             m_textures[plane].m_visibleSize = IntSize();
         } else {
-            // The renderSurfaceTextureManager may have been destroyed and recreated since the last frame, so pass the new one.
+            // The implTextureManager may have been destroyed and recreated since the last frame, so pass the new one.
             // This is a no-op if the TextureManager is still around.
-            m_textures[plane].m_texture->setTextureManager(layerRenderer->renderSurfaceTextureManager());
+            m_textures[plane].m_texture->setTextureManager(layerRenderer->implTextureManager());
         }
         if (m_textures[plane].m_texture->size() != requiredTextureSize)
             m_textures[plane].m_visibleSize = computeVisibleSize(frame, plane);
@@ -282,8 +291,7 @@ void CCVideoLayerImpl::didLoseContext()
 
 void CCVideoLayerImpl::setNeedsRedraw()
 {
-    if (m_layerTreeHostImpl)
-        m_layerTreeHostImpl->setNeedsRedraw();
+    layerTreeHostImpl()->setNeedsRedraw();
 }
 
 void CCVideoLayerImpl::dumpLayerProperties(TextStream& ts, int indent) const

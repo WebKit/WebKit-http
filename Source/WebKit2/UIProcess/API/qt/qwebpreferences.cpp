@@ -41,6 +41,10 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
     switch (attr) {
     case AutoLoadImages:
         return WKPreferencesGetLoadsImagesAutomatically(preferencesRef());
+#if ENABLE(FULLSCREEN_API)
+    case FullScreenEnabled:
+        return WKPreferencesGetFullScreenEnabled(preferencesRef());
+#endif
     case JavascriptEnabled:
         return WKPreferencesGetJavaScriptEnabled(preferencesRef());
     case PluginsEnabled:
@@ -59,6 +63,10 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
         return WKPreferencesGetFrameFlatteningEnabled(preferencesRef());
     case DeveloperExtrasEnabled:
         return WKPreferencesGetDeveloperExtrasEnabled(preferencesRef());
+#if ENABLE(WEBGL)
+    case WebGLEnabled:
+        return WKPreferencesGetWebGLEnabled(preferencesRef());
+#endif
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -71,6 +79,11 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
     case AutoLoadImages:
         WKPreferencesSetLoadsImagesAutomatically(preferencesRef(), enable);
         break;
+#if ENABLE(FULLSCREEN_API)
+    case FullScreenEnabled:
+        WKPreferencesSetFullScreenEnabled(preferencesRef(), enable);
+        break;
+#endif
     case JavascriptEnabled:
         WKPreferencesSetJavaScriptEnabled(preferencesRef(), enable);
         break;
@@ -97,6 +110,11 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
     case DeveloperExtrasEnabled:
         WKPreferencesSetDeveloperExtrasEnabled(preferencesRef(), enable);
         break;
+#if ENABLE(WEBGL)
+    case WebGLEnabled:
+        WKPreferencesSetWebGLEnabled(preferencesRef(), enable);
+        break;
+#endif
     default:
         ASSERT_NOT_REACHED();
     }
@@ -235,6 +253,25 @@ void QWebPreferences::setAutoLoadImages(bool enable)
 {
     d->setAttribute(QWebPreferencesPrivate::AutoLoadImages, enable);
     emit autoLoadImagesChanged();
+}
+
+bool QWebPreferences::fullScreenEnabled() const
+{
+#if ENABLE(FULLSCREEN_API)
+    return d->testAttribute(QWebPreferencesPrivate::FullScreenEnabled);
+#else
+    return false;
+#endif
+}
+
+void QWebPreferences::setFullScreenEnabled(bool enable)
+{
+#if ENABLE(FULLSCREEN_API)
+    d->setAttribute(QWebPreferencesPrivate::FullScreenEnabled, enable);
+    emit fullScreenEnabledChanged();
+#else
+    UNUSED_PARAM(enable);
+#endif
 }
 
 bool QWebPreferences::javascriptEnabled() const
@@ -446,6 +483,25 @@ void QWebPreferences::setDefaultFixedFontSize(unsigned size)
 {
     d->setFontSize(QWebPreferencesPrivate::DefaultFixedFontSize, size);
     emit defaultFixedFontSizeChanged();
+}
+
+bool QWebPreferences::webGLEnabled() const
+{
+#if ENABLE(WEBGL)
+    return d->testAttribute(QWebPreferencesPrivate::WebGLEnabled);
+#else
+    return false;
+#endif
+}
+
+void QWebPreferences::setWebGLEnabled(bool enable)
+{
+#if ENABLE(WEBGL)
+    d->setAttribute(QWebPreferencesPrivate::WebGLEnabled, enable);
+    emit webGLEnabledChanged();
+#else
+    UNUSED_PARAM(enable);
+#endif
 }
 
 WKPreferencesRef QWebPreferencesPrivate::preferencesRef() const

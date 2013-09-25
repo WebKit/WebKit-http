@@ -56,19 +56,20 @@
             'type': 'executable',
             'dependencies': [
                 '<(chromium_src_dir)/webkit/support/webkit_support.gyp:webkit_support_gfx',
-                '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
             ],
             'include_dirs': [
-                '<(source_dir)/JavaScriptCore',
                 '<(DEPTH)',
             ],
             'sources': [
                 '<(tools_dir)/DumpRenderTree/chromium/ImageDiff.cpp',
             ],
             'conditions': [
-                ['OS=="android"', {
-                    # FIXME: Re-enable building ImageDiff after the dependencies
-                    # for host have been fixed, as this broke per the WTF move.
+                ['OS=="android" and android_build_type==0', {
+                    # The Chromium Android port will compare images on host rather
+                    # than target (a device or emulator) for performance reasons.
+                    'toolsets': ['host'],
+                }],
+                ['OS=="android" and android_build_type!=0', {
                     'type': 'none',
                 }],
             ],
@@ -78,11 +79,14 @@
             'type': 'executable',
             'mac_bundle': 1,
             'dependencies': [
+                'ImageDiff',
+                'copy_TestNetscapePlugIn',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:inspector_resources',
                 '<(source_dir)/WebKit/chromium/WebKit.gyp:webkit',
                 '<(source_dir)/WTF/WTF.gyp/WTF.gyp:wtf',
                 '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
                 '<(chromium_src_dir)/third_party/icu/icu.gyp:icuuc',
+                '<(chromium_src_dir)/third_party/mesa/mesa.gyp:osmesa',
                 '<(chromium_src_dir)/v8/tools/gyp/v8.gyp:v8',
                 '<(chromium_src_dir)/base/base.gyp:test_support_base',
                 '<(chromium_src_dir)/webkit/support/webkit_support.gyp:blob',
@@ -92,7 +96,6 @@
             'include_dirs': [
                 '<(chromium_src_dir)',
                 '<(source_dir)/WebKit/chromium/public',
-                '<(source_dir)/JavaScriptCore',
                 '<(DEPTH)',
             ],
             'defines': [
@@ -104,13 +107,19 @@
                 '<@(drt_files)',
             ],
             'conditions': [
+                ['OS=="mac" or OS=="win" or toolkit_uses_gtk==1', {
+                    # These platforms have their own implementations of
+                    # checkLayoutTestSystemDependencies() and openStartupDialog().
+                    'sources/': [
+                        ['exclude', 'TestShellStub\\.cpp$'],
+                    ],
+                }],
                 ['OS=="win"', {
                     'dependencies': [
                         'LayoutTestHelper',
                         '<(chromium_src_dir)/third_party/angle/src/build_angle.gyp:libEGL',
                         '<(chromium_src_dir)/third_party/angle/src/build_angle.gyp:libGLESv2',
                     ],
-
                     'resource_include_dirs': ['<(SHARED_INTERMEDIATE_DIR)/webkit'],
                     'sources': [
                         '<(SHARED_INTERMEDIATE_DIR)/net/net_resources.rc',
@@ -187,6 +196,11 @@
                         ['exclude', 'Mac\\.cpp$'],
                     ],
                 }],
+                ['os_posix!=1 or OS=="mac"', {
+                    'sources/': [
+                        ['exclude', 'Posix\\.cpp$'],
+                    ],
+                }],
                 ['use_x11 == 1', {
                     'dependencies': [
                         '<(chromium_src_dir)/build/linux/system.gyp:fontconfig',
@@ -212,7 +226,7 @@
                     ],
                 },{ # use_x11 != 1
                     'sources/': [
-                        ['exclude', 'Linux\\.cpp$']
+                        ['exclude', 'X11\\.cpp$'],
                     ]
                 }],
                 ['toolkit_uses_gtk == 1', {
@@ -225,28 +239,34 @@
                     'include_dirs': [
                         '<(source_dir)/WebKit/chromium/public/gtk',
                     ],
-                },{ # toolkit_uses_gtk != 1
-                    'sources/': [
-                        ['exclude', 'Gtk\\.cpp$']
-                    ]
                 }],
                 ['OS=="android"', {
+                    'type': 'shared_library',
                     'dependencies': [
-                        # FIXME: Re-enable building ImageDiff on Android.
-                        # https://bugs.webkit.org/show_bug.cgi?id=82039
-                        #'ImageDiff#host',
+                        '<(chromium_src_dir)/base/base.gyp:test_support_base',
+                        '<(chromium_src_dir)/tools/android/forwarder/forwarder.gyp:forwarder',
+                        '<(chromium_src_dir)/testing/android/native_test.gyp:native_test_native_code',
                     ],
-                    'sources/': [
-                        ['include', 'chromium/TestShellLinux\\.cpp$'],
-                    ],
-                },{ # OS!="android"
-                    'sources/': [
-                        ['exclude', '(Android)\\.cpp$']
-                    ],
-                    'dependencies': [
+                    'dependencies!': [
                         'ImageDiff',
                         'copy_TestNetscapePlugIn',
                         '<(chromium_src_dir)/third_party/mesa/mesa.gyp:osmesa',
+                    ],
+                    'copies': [{
+                        'destination': '<(PRODUCT_DIR)',
+                        'files': [
+                            '<(ahem_path)',
+                            '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
+                        ]
+                    }],
+                }, { # OS!="android"
+                    'sources/': [
+                        ['exclude', 'Android\\.cpp$'],
+                    ],
+                }],
+                ['OS=="android" and android_build_type==0', {
+                    'dependencies': [
+                        'ImageDiff#host',
                     ],
                 }],
                 ['inside_chromium_build==1 and component=="shared_library"', {
@@ -384,6 +404,57 @@
                 # as nullptr) conflict with upcoming c++0x types.
                 'cflags_cc': ['-Wno-c++0x-compat'],
             },
+        }],
+        ['OS=="android"', {
+            # Wrap libDumpRenderTree.so into an android apk for execution.
+            'targets': [{
+                'target_name': 'DumpRenderTree_apk',
+                'type': 'none',
+                'dependencies': [
+                    '<(chromium_src_dir)/base/base.gyp:base_java',
+                    '<(chromium_src_dir)/net/net.gyp:net_java',
+                    '<(chromium_src_dir)/media/media.gyp:media_java',
+                    'DumpRenderTree',
+                ],
+                'variables': {
+                    'input_shlib_path': '<(SHARED_LIB_DIR)/<(SHARED_LIB_PREFIX)DumpRenderTree<(SHARED_LIB_SUFFIX)',
+                    'input_jars_paths': [
+                        '<(PRODUCT_DIR)/lib.java/chromium_base.jar',
+                        '<(PRODUCT_DIR)/lib.java/chromium_net.jar',
+                        '<(PRODUCT_DIR)/lib.java/chromium_media.jar',
+                    ],
+                },
+                # Part of the following was copied from <(chromium_src_dir)/build/apk_test.gpyi.
+                # Not including it because gyp include doesn't support variable in path or under
+                # conditions. And we also have some different requirements.
+                'actions': [{
+                    'action_name': 'apk_DumpRenderTree',
+                    'message': 'Building DumpRenderTree test apk.',
+                    'inputs': [
+                        '<(chromium_src_dir)/testing/android/AndroidManifest.xml',
+                        '<(chromium_src_dir)/testing/android/generate_native_test.py',
+                        '<(input_shlib_path)',
+                        '<@(input_jars_paths)',
+                    ],
+                    'outputs': [
+                        '<(PRODUCT_DIR)/DumpRenderTree_apk/DumpRenderTree-debug.apk',
+                    ],
+                    'action': [
+                        '<(chromium_src_dir)/testing/android/generate_native_test.py',
+                        '--native_library',
+                        '<(input_shlib_path)',
+                        '--jars',
+                        '"<@(input_jars_paths)"',
+                        '--output',
+                        '<(PRODUCT_DIR)/DumpRenderTree_apk',
+                        '--ant-args',
+                        '-DPRODUCT_DIR=<(ant_build_out)',
+                        '--ant-compile',
+                        '--app_abi',
+                        '<(android_app_abi)',
+                    ],
+                }],
+            }],
         }],
     ], # conditions
 }

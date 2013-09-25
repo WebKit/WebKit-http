@@ -53,6 +53,7 @@
 #include "StyleCachedImage.h"
 #include "StyleImage.h"
 #include "StyleRule.h"
+#include "StyleSheetContents.h"
 #include "Text.h"
 #include "TextEncoding.h"
 #include <wtf/text/CString.h>
@@ -74,7 +75,7 @@ static bool isCharsetSpecifyingNode(Node* node)
         for (unsigned i = 0; i < element->attributeCount(); ++i) {
             Attribute* item = element->attributeItem(i);
             // FIXME: We should deal appropriately with the attribute if they have a namespace.
-            attributes.append(make_pair(item->name().toString(), item->value().string()));
+            attributes.append(std::make_pair(item->name().toString(), item->value().string()));
         }
     }
     TextEncoding textEncoding = HTMLMetaCharsetParser::encodingFromMetaAttributes(attributes);
@@ -154,7 +155,7 @@ void SerializerMarkupAccumulator::appendCustomAttributes(StringBuilder& out, Ele
         return;
 
     KURL url = frame->document()->url();
-    if (url.isValid() && !url.protocolIs("about"))
+    if (url.isValid() && !url.isBlankURL())
         return;
 
     // We need to give a fake location to blank frames so they can be referenced by the serialized frame.
@@ -194,7 +195,7 @@ void PageSerializer::serializeFrame(Frame* frame)
 {
     Document* document = frame->document();
     KURL url = document->url();
-    if (!url.isValid() || url.protocolIs("about")) {
+    if (!url.isValid() || url.isBlankURL()) {
         // For blank frames we generate a fake URL so they can be referenced by their containing frame.
         url = urlForBlankFrame(frame);
     }
@@ -280,7 +281,7 @@ void PageSerializer::serializeCSSStyleSheet(CSSStyleSheet* styleSheet, const KUR
 
     if (url.isValid() && !m_resourceURLs.contains(url)) {
         // FIXME: We should check whether a charset has been specified and if none was found add one.
-        TextEncoding textEncoding(styleSheet->internal()->charset());
+        TextEncoding textEncoding(styleSheet->contents()->charset());
         ASSERT(textEncoding.isValid());
         String textString = cssText.toString();
         CString text = textEncoding.encode(textString.characters(), textString.length(), EntitiesForUnencodables);

@@ -104,6 +104,9 @@ float
 font-stretch
 height
 image-rendering
+#if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
+image-resolution
+#endif
 left
 letter-spacing
 list-style
@@ -150,6 +153,7 @@ size
 src
 speak
 table-layout
+tab-size
 text-align
 text-decoration
 text-indent
@@ -252,19 +256,25 @@ z-index
 -webkit-column-span
 -webkit-column-width
 -webkit-columns
+-webkit-box-decoration-break
 #if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
 -webkit-filter
 #endif
+#if defined(ENABLE_CSS3_FLEXBOX) && ENABLE_CSS3_FLEXBOX
+-webkit-align-content
+-webkit-align-items
+-webkit-align-self
 -webkit-flex
--webkit-flex-align
 -webkit-flex-direction
 -webkit-flex-flow
--webkit-flex-item-align
--webkit-flex-line-pack
--webkit-flex-order
--webkit-flex-pack
 -webkit-flex-wrap
+-webkit-justify-content
+#endif
 -webkit-font-size-delta
+-webkit-grid-columns
+-webkit-grid-rows
+-webkit-grid-column
+-webkit-grid-row
 -webkit-highlight
 -webkit-hyphenate-character
 -webkit-hyphenate-limit-after
@@ -320,6 +330,7 @@ z-index
 -webkit-min-logical-width
 -webkit-min-logical-height
 -webkit-nbsp-mode
+-webkit-order
 -webkit-padding-after
 -webkit-padding-before
 -webkit-padding-end
@@ -359,31 +370,29 @@ z-index
 -webkit-user-drag
 -webkit-user-modify
 -webkit-user-select
+#if defined(ENABLE_CSS_REGIONS) && ENABLE_CSS_REGIONS
 -webkit-flow-into
 -webkit-flow-from
 -webkit-region-overflow
+-webkit-region-break-after
+-webkit-region-break-before
+-webkit-region-break-inside
+#endif
+#if defined(ENABLE_CSS_EXCLUSIONS) && ENABLE_CSS_EXCLUSIONS
 -webkit-shape-inside
 -webkit-shape-outside
 -webkit-wrap-margin
 -webkit-wrap-padding
--webkit-region-break-after
--webkit-region-break-before
--webkit-region-break-inside
 -webkit-wrap-flow
 -webkit-wrap-through
 -webkit-wrap
+#endif
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
 -webkit-tap-highlight-color
-#endif
-#if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
--webkit-grid-columns
--webkit-grid-rows
--webkit-grid-column
--webkit-grid-row
 #endif
 #if defined(ENABLE_DASHBOARD_SUPPORT) && ENABLE_DASHBOARD_SUPPORT
 -webkit-dashboard-region
 #endif
-#if defined(ENABLE_OVERFLOW_SCROLLING)
+#if defined(ENABLE_OVERFLOW_SCROLLING) && ENABLE_OVERFLOW_SCROLLING
 -webkit-overflow-scrolling
 #endif

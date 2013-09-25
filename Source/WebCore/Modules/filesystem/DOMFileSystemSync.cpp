@@ -53,11 +53,11 @@ class FileWriterBase;
 
 PassRefPtr<DOMFileSystemSync> DOMFileSystemSync::create(DOMFileSystemBase* fileSystem)
 {
-    return adoptRef(new DOMFileSystemSync(fileSystem->m_context, fileSystem->m_name, fileSystem->m_asyncFileSystem.release()));
+    return adoptRef(new DOMFileSystemSync(fileSystem->m_context, fileSystem->name(), fileSystem->type(), fileSystem->rootURL(), fileSystem->m_asyncFileSystem.release()));
 }
 
-DOMFileSystemSync::DOMFileSystemSync(ScriptExecutionContext* context, const String& name, PassOwnPtr<AsyncFileSystem> asyncFileSystem)
-    : DOMFileSystemBase(context, name, asyncFileSystem)
+DOMFileSystemSync::DOMFileSystemSync(ScriptExecutionContext* context, const String& name, FileSystemType type, const KURL& rootURL, PassOwnPtr<AsyncFileSystem> asyncFileSystem)
+    : DOMFileSystemBase(context, name, type, rootURL, asyncFileSystem)
 {
 }
 
@@ -98,9 +98,9 @@ public:
         friend class WTF::RefCounted<CreateFileResult>;
     };
 
-    static PassOwnPtr<CreateFileHelper> create(PassRefPtr<CreateFileResult> result, const String& name)
+    static PassOwnPtr<CreateFileHelper> create(PassRefPtr<CreateFileResult> result, const String& name, FileSystemType type)
     {
-        return adoptPtr(new CreateFileHelper(result, name));
+        return adoptPtr(new CreateFileHelper(result, name, type));
     }
 
     virtual void didFail(int code)
@@ -115,17 +115,24 @@ public:
 
     void didReadMetadata(const FileMetadata& metadata)
     {
-        m_result->m_file = File::createWithName(metadata.platformPath, m_name);
+        // For regular filesystem types (temporary or persistent), we should not cache file metadata as it could change File semantics.
+        // For other filesystem types (which could be platform-specific ones), there's a chance that the files are on remote filesystem. If the port has returned metadata just pass it to File constructor (so we may cache the metadata).
+        if (m_type == FileSystemTypeTemporary || m_type == FileSystemTypePersistent)
+            m_result->m_file = File::createWithName(metadata.platformPath, m_name);
+        else
+            m_result->m_file = File::createForFileSystemFile(m_name, metadata);
     }
 private:
-    CreateFileHelper(PassRefPtr<CreateFileResult> result, const String& name)
+    CreateFileHelper(PassRefPtr<CreateFileResult> result, const String& name, FileSystemType type)
         : m_result(result)
         , m_name(name)
+        , m_type(type)
     {
     }
 
     RefPtr<CreateFileResult> m_result;
     String m_name;
+    FileSystemType m_type;
 };
 
 } // namespace
@@ -134,7 +141,7 @@ PassRefPtr<File> DOMFileSystemSync::createFile(const FileEntrySync* fileEntry, E
 {
     ec = 0;
     RefPtr<CreateFileHelper::CreateFileResult> result(CreateFileHelper::CreateFileResult::create());
-    m_asyncFileSystem->createSnapshotFileAndReadMetadata(fileEntry->fullPath(), CreateFileHelper::create(result, fileEntry->name()));
+    m_asyncFileSystem->createSnapshotFileAndReadMetadata(createFileSystemURL(fileEntry), CreateFileHelper::create(result, fileEntry->name(), type()));
     if (!m_asyncFileSystem->waitForOperationToComplete()) {
         ec = FileException::ABORT_ERR;
         return 0;
@@ -223,7 +230,7 @@ PassRefPtr<FileWriterSync> DOMFileSystemSync::createWriter(const FileEntrySync* 
     RefPtr<LocalErrorCallback> errorCallback = LocalErrorCallback::create();
 
     OwnPtr<FileWriterBaseCallbacks> callbacks = FileWriterBaseCallbacks::create(fileWriter, successCallback, errorCallback);
-    m_asyncFileSystem->createWriter(fileWriter.get(), fileEntry->fullPath(), callbacks.release());
+    m_asyncFileSystem->createWriter(fileWriter.get(), createFileSystemURL(fileEntry), callbacks.release());
     if (!m_asyncFileSystem->waitForOperationToComplete()) {
         ec = FileException::ABORT_ERR;
         return 0;

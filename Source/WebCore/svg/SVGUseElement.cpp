@@ -30,6 +30,7 @@
 #include "Attribute.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "Event.h"
 #include "EventListener.h"
 #include "HTMLNames.h"
@@ -38,7 +39,6 @@
 #include "RenderSVGResource.h"
 #include "RenderSVGTransformableContainer.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "SVGElementInstance.h"
 #include "SVGElementRareData.h"
 #include "SVGElementInstanceList.h"
@@ -90,10 +90,9 @@ inline SVGUseElement::SVGUseElement(const QualifiedName& tagName, Document* docu
     , m_haveFiredLoadEvent(false)
     , m_needsShadowTreeRecreation(false)
 {
+    ASSERT(hasCustomCallbacks());
     ASSERT(hasTagName(SVGNames::useTag));
     registerAnimatedPropertiesForSVGUseElement();
-
-    setHasCustomWillOrDidRecalcStyle();
 }
 
 PassRefPtr<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Document* document, bool wasInsertedByParser)
@@ -144,28 +143,28 @@ bool SVGUseElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
 }
 
-void SVGUseElement::parseAttribute(Attribute* attr)
+void SVGUseElement::parseAttribute(const Attribute& attribute)
 {
     SVGParsingError parseError = NoError;
 
-    if (!isSupportedAttribute(attr->name()))
-        SVGStyledTransformableElement::parseAttribute(attr);
-    else if (attr->name() == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, attr->value(), parseError));
-    else if (attr->name() == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, attr->value(), parseError));
-    else if (attr->name() == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, attr->value(), parseError, ForbidNegativeLengths));
-    else if (attr->name() == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, attr->value(), parseError, ForbidNegativeLengths));
-    else if (SVGTests::parseAttribute(attr)
-             || SVGLangSpace::parseAttribute(attr)
-             || SVGExternalResourcesRequired::parseAttribute(attr)
-             || SVGURIReference::parseAttribute(attr)) {
+    if (!isSupportedAttribute(attribute.name()))
+        SVGStyledTransformableElement::parseAttribute(attribute);
+    else if (attribute.name() == SVGNames::xAttr)
+        setXBaseValue(SVGLength::construct(LengthModeWidth, attribute.value(), parseError));
+    else if (attribute.name() == SVGNames::yAttr)
+        setYBaseValue(SVGLength::construct(LengthModeHeight, attribute.value(), parseError));
+    else if (attribute.name() == SVGNames::widthAttr)
+        setWidthBaseValue(SVGLength::construct(LengthModeWidth, attribute.value(), parseError, ForbidNegativeLengths));
+    else if (attribute.name() == SVGNames::heightAttr)
+        setHeightBaseValue(SVGLength::construct(LengthModeHeight, attribute.value(), parseError, ForbidNegativeLengths));
+    else if (SVGTests::parseAttribute(attribute)
+             || SVGLangSpace::parseAttribute(attribute)
+             || SVGExternalResourcesRequired::parseAttribute(attribute)
+             || SVGURIReference::parseAttribute(attribute)) {
     } else
         ASSERT_NOT_REACHED();
 
-    reportAttributeParsingError(parseError, attr);
+    reportAttributeParsingError(parseError, attribute);
 }
 
 static inline bool isWellFormedDocument(Document* document)
@@ -175,7 +174,7 @@ static inline bool isWellFormedDocument(Document* document)
     return true;
 }
 
-Node::InsertionNotificationRequest SVGUseElement::insertedInto(Node* rootParent)
+Node::InsertionNotificationRequest SVGUseElement::insertedInto(ContainerNode* rootParent)
 {
     // This functions exists to assure assumptions made in the code regarding SVGElementInstance creation/destruction are satisfied.
     SVGStyledTransformableElement::insertedInto(rootParent);
@@ -189,7 +188,7 @@ Node::InsertionNotificationRequest SVGUseElement::insertedInto(Node* rootParent)
     return InsertionDone;
 }
 
-void SVGUseElement::removedFrom(Node* rootParent)
+void SVGUseElement::removedFrom(ContainerNode* rootParent)
 {
     SVGStyledTransformableElement::removedFrom(rootParent);
     if (rootParent->inDocument())
@@ -393,7 +392,7 @@ static bool subtreeContainsDisallowedElement(Node* start)
 void SVGUseElement::clearResourceReferences()
 {
     // FIXME: We should try to optimize this, to at least allow partial reclones.
-    if (ShadowRoot* shadowTreeRootElement =  shadowTree()->oldestShadowRoot())
+    if (ShadowRoot* shadowTreeRootElement =  shadow()->oldestShadowRoot())
         shadowTreeRootElement->removeAllChildren();
 
     if (m_targetElementInstance) {
@@ -480,7 +479,7 @@ void SVGUseElement::buildShadowAndInstanceTree(SVGElement* target)
     ASSERT(m_targetElementInstance->directUseElement() == this);
     ASSERT(m_targetElementInstance->correspondingElement() == target);
 
-    ShadowRoot* shadowTreeRootElement = shadowTree()->oldestShadowRoot();
+    ShadowRoot* shadowTreeRootElement = shadow()->oldestShadowRoot();
     ASSERT(shadowTreeRootElement);
 
     // Build shadow tree from instance tree
@@ -695,7 +694,7 @@ void SVGUseElement::buildShadowTree(SVGElement* target, SVGElementInstance* targ
     if (subtreeContainsDisallowedElement(newChild.get()))
         removeDisallowedElementsFromSubtree(newChild.get());
 
-    shadowTree()->oldestShadowRoot()->appendChild(newChild.release());
+    shadow()->oldestShadowRoot()->appendChild(newChild.release());
 }
 
 void SVGUseElement::expandUseElementsInShadowTree(Node* element)
@@ -767,8 +766,8 @@ void SVGUseElement::expandSymbolElementsInShadowTree(Node* element)
         // 'svg' element will use values of 100% for these attributes.
         RefPtr<SVGSVGElement> svgElement = SVGSVGElement::create(SVGNames::svgTag, referencedDocument());
 
-        // Transfer all attributes from <symbol> to the new <svg> element
-        svgElement->setAttributesFromElement(*toElement(element));
+        // Transfer all data (attributes, etc.) from <symbol> to the new <svg> element.
+        svgElement->cloneDataFromElement(*toElement(element));
 
         // Only clone symbol children, and add them to the new <svg> element
         for (Node* child = element->firstChild(); child; child = child->nextSibling()) {
@@ -899,7 +898,7 @@ void SVGUseElement::transferUseAttributesToReplacedElement(SVGElement* from, SVG
     ASSERT(from);
     ASSERT(to);
 
-    to->setAttributesFromElement(*from);
+    to->cloneDataFromElement(*from);
 
     to->removeAttribute(SVGNames::xAttr);
     to->removeAttribute(SVGNames::yAttr);

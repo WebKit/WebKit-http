@@ -78,6 +78,7 @@ const AtomicString& TextTrack::metadataKeyword()
 
 TextTrack::TextTrack(ScriptExecutionContext* context, TextTrackClient* client, const String& kind, const String& label, const String& language, TextTrackType type)
     : TrackBase(context, TrackBase::TextTrack)
+    , m_cues(0)
     , m_mediaElement(0)
     , m_label(label)
     , m_language(language)
@@ -142,7 +143,11 @@ void TextTrack::setMode(unsigned short mode, ExceptionCode& ec)
     // If mode changes to disabled, remove this track's cues from the client
     // because they will no longer be accessible from the cues() function.
     if (mode == TextTrack::DISABLED && m_client && m_cues)
-         m_client->textTrackRemoveCues(this, m_cues.get());
+        m_client->textTrackRemoveCues(this, m_cues.get());
+         
+    if (mode != TextTrack::SHOWING && m_cues)
+        for (size_t i = 0; i < m_cues->length(); ++i)
+            m_cues->item(i)->removeDisplayTree();
 
     //  ... Note: If the mode had been showing by default, this will change it to showing, 
     // even though the value of mode would appear not to change.

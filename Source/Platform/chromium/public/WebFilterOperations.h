@@ -27,34 +27,61 @@
 #define WebFilterOperations_h
 
 #include "WebCommon.h"
+#include "WebFilterOperation.h"
 #include "WebPrivateOwnPtr.h"
 
-namespace WebCore {
-class FilterOperations;
-}
-
 namespace WebKit {
-struct WebFilterOperation;
 
-// An ordered set of filter operations.
+class WebFilterOperationsPrivate;
+
+// An ordered list of filter operations.
 class WebFilterOperations {
 public:
     WebFilterOperations() { initialize(); }
+    WebFilterOperations(const WebFilterOperations& other)
+    {
+        initialize();
+        assign(other);
+    }
+    WebFilterOperations& operator=(const WebFilterOperations& other)
+    {
+        assign(other);
+        return *this;
+    }
+    ~WebFilterOperations() { destroy(); }
+
+    WEBKIT_EXPORT void assign(const WebFilterOperations&);
+    WEBKIT_EXPORT bool equals(const WebFilterOperations&) const;
 
     WEBKIT_EXPORT void append(const WebFilterOperation&);
 
     // Removes all filter operations.
     WEBKIT_EXPORT void clear();
+    WEBKIT_EXPORT bool isEmpty() const;
 
-#if WEBKIT_IMPLEMENTATION
-    const WebCore::FilterOperations& toFilterOperations() const;
-#endif
+    WEBKIT_EXPORT void getOutsets(int& top, int& right, int& bottom, int& left) const;
+    WEBKIT_EXPORT bool hasFilterThatMovesPixels() const;
+    WEBKIT_EXPORT bool hasFilterThatAffectsOpacity() const;
+
+    WEBKIT_EXPORT size_t size() const;
+    WEBKIT_EXPORT WebFilterOperation at(size_t) const;
 
 private:
     WEBKIT_EXPORT void initialize();
+    WEBKIT_EXPORT void destroy();
 
-    WebPrivateOwnPtr<WebCore::FilterOperations> m_private;
+    WebPrivateOwnPtr<WebFilterOperationsPrivate> m_private;
 };
+
+inline bool operator==(const WebFilterOperations& a, const WebFilterOperations& b)
+{
+    return a.equals(b);
+}
+
+inline bool operator!=(const WebFilterOperations& a, const WebFilterOperations& b)
+{
+    return !(a == b);
+}
 
 }
 

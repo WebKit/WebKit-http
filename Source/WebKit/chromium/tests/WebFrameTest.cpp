@@ -30,16 +30,21 @@
 
 #include "config.h"
 
+#include "WebFrame.h"
+
+#include "Frame.h"
 #include "FrameTestHelpers.h"
+#include "FrameView.h"
 #include "ResourceError.h"
 #include "WebDocument.h"
 #include "WebFindOptions.h"
 #include "WebFormElement.h"
-#include "WebFrame.h"
 #include "WebFrameClient.h"
+#include "WebFrameImpl.h"
 #include "WebRange.h"
 #include "WebScriptSource.h"
 #include "WebSearchableFormData.h"
+#include "WebSecurityOrigin.h"
 #include "WebSecurityPolicy.h"
 #include "WebSettings.h"
 #include "WebViewClient.h"
@@ -136,20 +141,69 @@ TEST_F(WebFrameTest, FormWithNullFrame)
     WebSearchableFormData searchableDataForm(forms[0]);
 }
 
+TEST_F(WebFrameTest, ChromePageJavascript)
+{
+    registerMockedChromeURLLoad("history.html");
+ 
+    // Pass true to enable JavaScript.
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_chromeURL + "history.html", true);
+
+    // Try to run JS against the chrome-style URL.
+    FrameTestHelpers::loadFrame(webView->mainFrame(), "javascript:document.body.appendChild(document.createTextNode('Clobbered'))");
+
+    // Required to see any updates in contentAsText.
+    webView->layout();
+
+    // Now retrieve the frame's text and ensure it was modified by running javascript.
+    std::string content = webView->mainFrame()->contentAsText(1024).utf8();
+    EXPECT_NE(std::string::npos, content.find("Clobbered"));
+}
+
 TEST_F(WebFrameTest, ChromePageNoJavascript)
 {
     registerMockedChromeURLLoad("history.html");
 
+    /// Pass true to enable JavaScript.
     WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_chromeURL + "history.html", true);
 
-    // Try to run JS against the chrome-style URL.
+    // Try to run JS against the chrome-style URL after prohibiting it.
     WebSecurityPolicy::registerURLSchemeAsNotAllowingJavascriptURLs("chrome");
     FrameTestHelpers::loadFrame(webView->mainFrame(), "javascript:document.body.appendChild(document.createTextNode('Clobbered'))");
 
-    // Now retrieve the frames text and see if it was clobbered.
+    // Required to see any updates in contentAsText.
+    webView->layout();
+
+    // Now retrieve the frame's text and ensure it wasn't modified by running javascript.
     std::string content = webView->mainFrame()->contentAsText(1024).utf8();
-    EXPECT_NE(std::string::npos, content.find("Simulated Chromium History Page"));
     EXPECT_EQ(std::string::npos, content.find("Clobbered"));
+}
+
+TEST_F(WebFrameTest, DispatchMessageEventWithOriginCheck)
+{
+    registerMockedHttpURLLoad("postmessage_test.html");
+
+    // Pass true to enable JavaScript.
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "postmessage_test.html", true);
+    
+    // Send a message with the correct origin.
+    WebSecurityOrigin correctOrigin(WebSecurityOrigin::create(GURL(m_baseURL)));
+    WebDOMEvent event = webView->mainFrame()->document().createEvent("MessageEvent");
+    WebDOMMessageEvent message = event.to<WebDOMMessageEvent>();
+    WebSerializedScriptValue data(WebSerializedScriptValue::fromString("foo"));
+    message.initMessageEvent("message", false, false, data, "http://origin.com", 0, "");
+    webView->mainFrame()->dispatchMessageEventWithOriginCheck(correctOrigin, message);
+
+    // Send another message with incorrect origin.
+    WebSecurityOrigin incorrectOrigin(WebSecurityOrigin::create(GURL(m_chromeURL)));
+    webView->mainFrame()->dispatchMessageEventWithOriginCheck(incorrectOrigin, message);
+
+    // Required to see any updates in contentAsText.
+    webView->layout();
+
+    // Verify that only the first addition is in the body of the page.
+    std::string content = webView->mainFrame()->contentAsText(1024).utf8();
+    EXPECT_NE(std::string::npos, content.find("Message 1."));
+    EXPECT_EQ(std::string::npos, content.find("Message 2."));
 }
 
 #if ENABLE(VIEWPORT)
@@ -171,23 +225,66 @@ TEST_F(WebFrameTest, DeviceScaleFactorUsesDefaultWithoutViewportTag)
     int viewportHeight = 480;
 
     FixedLayoutTestWebViewClient client;
-    client.m_screenInfo.horizontalDPI = 160;
+    client.m_screenInfo.horizontalDPI = 320;
     client.m_windowRect = WebRect(0, 0, viewportWidth, viewportHeight);
 
     WebView* webView = static_cast<WebView*>(FrameTestHelpers::createWebViewAndLoad(m_baseURL + "no_viewport_tag.html", true, 0, &client));
 
-    webView->resize(WebSize(viewportWidth, viewportHeight));
     webView->settings()->setViewportEnabled(true);
-    webView->settings()->setDefaultDeviceScaleFactor(2);
     webView->enableFixedLayoutMode(true);
+    webView->resize(WebSize(viewportWidth, viewportHeight));
     webView->layout();
 
     EXPECT_EQ(2, webView->deviceScaleFactor());
+
+    // Device scale factor should be a component of page scale factor in fixed-layout, so a scale of 1 becomes 2.
+    webView->setPageScaleFactorLimits(1, 2);
+    EXPECT_EQ(2, webView->pageScaleFactor());
+
+    // Force the layout to happen before leaving the test.
+    webView->mainFrame()->contentAsText(1024).utf8();
+}
+
+TEST_F(WebFrameTest, FixedLayoutInitializeAtMinimumPageScale)
+{
+    registerMockedHttpURLLoad("fixed_layout.html");
+
+    FixedLayoutTestWebViewClient client;
+    client.m_screenInfo.horizontalDPI = 160;
+    int viewportWidth = 640;
+    int viewportHeight = 480;
+    client.m_windowRect = WebRect(0, 0, viewportWidth, viewportHeight);
+
+    // Make sure we initialize to minimum scale, even if the window size
+    // only becomes available after the load begins.
+    WebViewImpl* webViewImpl = static_cast<WebViewImpl*>(FrameTestHelpers::createWebViewAndLoad(m_baseURL + "fixed_layout.html", true, 0, &client));
+    webViewImpl->enableFixedLayoutMode(true);
+    webViewImpl->settings()->setViewportEnabled(true);
+    webViewImpl->resize(WebSize(viewportWidth, viewportHeight));
+
+    int defaultFixedLayoutWidth = 980;
+    float minimumPageScaleFactor = viewportWidth / (float) defaultFixedLayoutWidth;
+    EXPECT_EQ(minimumPageScaleFactor, webViewImpl->pageScaleFactor());
+
+    // Assume the user has pinch zoomed to page scale factor 2.
+    float userPinchPageScaleFactor = 2;
+    webViewImpl->setPageScaleFactorPreservingScrollOffset(userPinchPageScaleFactor);
+    webViewImpl->mainFrameImpl()->frameView()->layout();
+
+    // Make sure we don't reset to initial scale if the page continues to load.
+    bool isNewNavigation;
+    webViewImpl->didCommitLoad(&isNewNavigation, false);
+    webViewImpl->didChangeContentsSize();
+    EXPECT_EQ(userPinchPageScaleFactor, webViewImpl->pageScaleFactor());
+
+    // Make sure we don't reset to initial scale if the viewport size changes.
+    webViewImpl->resize(WebSize(viewportWidth, viewportHeight + 100));
+    EXPECT_EQ(userPinchPageScaleFactor, webViewImpl->pageScaleFactor());
 }
 #endif
 
 #if ENABLE(GESTURE_EVENTS)
-TEST_F(WebFrameTest, FAILS_DivAutoZoomParamsTest)
+TEST_F(WebFrameTest, DivAutoZoomParamsTest)
 {
     registerMockedHttpURLLoad("get_scale_for_auto_zoom_into_div_test.html");
 
@@ -247,7 +344,6 @@ TEST_F(WebFrameTest, FAILS_DivAutoZoomParamsTest)
     webViewImpl->computeScaleAndScrollForHitRect(doubleTapPoint, WebViewImpl::DoubleTap, scale, scroll);
     EXPECT_FLOAT_EQ(3, scale);
 
-
     // Test for Non-doubletap scaling
     webViewImpl->setPageScaleFactor(1, WebPoint(0, 0));
     webViewImpl->setDeviceScaleFactor(4);
@@ -255,6 +351,9 @@ TEST_F(WebFrameTest, FAILS_DivAutoZoomParamsTest)
     // Test zooming into div.
     webViewImpl->computeScaleAndScrollForHitRect(WebRect(250, 250, 10, 10), WebViewImpl::FindInPage, scale, scroll);
     EXPECT_NEAR(pageWidth / divWidth, scale, 0.1);
+
+    // Drop any pending fake mouse events from zooming before leaving the test.
+    webViewImpl->page()->mainFrame()->eventHandler()->clear();
 }
 #endif
 
@@ -541,6 +640,87 @@ TEST_F(WebFrameTest, FindInPage)
     EXPECT_EQ(WebString::fromUTF8("DIV"), frame->document().focusedNode().nodeName());
 
     webView->close();
+}
+
+TEST_F(WebFrameTest, GetContentAsPlainText)
+{
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad("about:blank", true);
+    // We set the size because it impacts line wrapping, which changes the
+    // resulting text value.
+    webView->resize(WebSize(640, 480));
+    WebFrame* frame = webView->mainFrame();
+
+    // Generate a simple test case.
+    const char simpleSource[] = "<div>Foo bar</div><div></div>baz";
+    GURL testURL("about:blank");
+    frame->loadHTMLString(simpleSource, testURL);
+    webkit_support::RunAllPendingMessages();
+
+    // Make sure it comes out OK.
+    const std::string expected("Foo bar\nbaz");
+    WebString text = frame->contentAsText(std::numeric_limits<size_t>::max());
+    EXPECT_EQ(expected, std::string(text.utf8()));
+
+    // Try reading the same one with clipping of the text.
+    const int length = 5;
+    text = frame->contentAsText(length);
+    EXPECT_EQ(expected.substr(0, length), std::string(text.utf8()));
+
+    // Now do a new test with a subframe.
+    const char outerFrameSource[] = "Hello<iframe></iframe> world";
+    frame->loadHTMLString(outerFrameSource, testURL);
+    webkit_support::RunAllPendingMessages();
+
+    // Load something into the subframe.
+    WebFrame* subframe = frame->findChildByExpression(WebString::fromUTF8("/html/body/iframe"));
+    ASSERT_TRUE(subframe);
+    subframe->loadHTMLString("sub<p>text", testURL);
+    webkit_support::RunAllPendingMessages();
+
+    text = frame->contentAsText(std::numeric_limits<size_t>::max());
+    EXPECT_EQ("Hello world\n\nsub\ntext", std::string(text.utf8()));
+
+    // Get the frame text where the subframe separator falls on the boundary of
+    // what we'll take. There used to be a crash in this case.
+    text = frame->contentAsText(12);
+    EXPECT_EQ("Hello world", std::string(text.utf8()));
+
+    webView->close();
+}
+
+TEST_F(WebFrameTest, GetFullHtmlOfPage)
+{
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad("about:blank", true);
+    WebFrame* frame = webView->mainFrame();
+
+    // Generate a simple test case.
+    const char simpleSource[] = "<p>Hello</p><p>World</p>";
+    GURL testURL("about:blank");
+    frame->loadHTMLString(simpleSource, testURL);
+    webkit_support::RunAllPendingMessages();
+
+    WebString text = frame->contentAsText(std::numeric_limits<size_t>::max());
+    EXPECT_EQ("Hello\n\nWorld", std::string(text.utf8()));
+
+    const std::string html = frame->contentAsMarkup().utf8();
+
+    // Load again with the output html.
+    frame->loadHTMLString(html, testURL);
+    webkit_support::RunAllPendingMessages();
+
+    EXPECT_EQ(html, std::string(frame->contentAsMarkup().utf8()));
+
+    text = frame->contentAsText(std::numeric_limits<size_t>::max());
+    EXPECT_EQ("Hello\n\nWorld", std::string(text.utf8()));
+
+    // Test selection check
+    EXPECT_FALSE(frame->hasSelection());
+    frame->executeCommand(WebString::fromUTF8("SelectAll"));
+    EXPECT_TRUE(frame->hasSelection());
+    frame->executeCommand(WebString::fromUTF8("Unselect"));
+    EXPECT_FALSE(frame->hasSelection());
+    WebString selectionHtml = frame->selectionAsMarkup();
+    EXPECT_TRUE(selectionHtml.isEmpty());
 }
 
 } // namespace

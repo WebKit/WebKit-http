@@ -37,8 +37,9 @@
  * @param {NetworkAgent.LoaderId} loaderId
  * @param {WebInspector.ResourceType} type
  * @param {string} mimeType
+ * @param {boolean=} isHidden
  */
-WebInspector.Resource = function(request, url, documentURL, frameId, loaderId, type, mimeType)
+WebInspector.Resource = function(request, url, documentURL, frameId, loaderId, type, mimeType, isHidden)
 {
     this._request = request;
     if (this._request)
@@ -50,6 +51,7 @@ WebInspector.Resource = function(request, url, documentURL, frameId, loaderId, t
     this._type = type || WebInspector.resourceTypes.Other;
     this._mimeType = mimeType;
     this.history = [];
+    this._isHidden = isHidden;
 
     /** @type {?string} */ this._content;
     /** @type {boolean} */ this._contentEncoded;
@@ -114,18 +116,22 @@ WebInspector.Resource.restoreRevisions = function()
 }
 
 /**
- * @param {WebInspector.Resource} resource
+ * @param {WebInspector.ResourceRevision} revision
  */
-WebInspector.Resource.persistRevision = function(resource)
+WebInspector.Resource.persistRevision = function(revision)
 {
     if (!window.localStorage)
         return;
 
+    if (revision.resource.url.startsWith("inspector://"))
+        return;
+
+    var resource = revision.resource;
     var url = resource.url;
     var loaderId = resource.loaderId;
-    var timestamp = resource._contentTimestamp.getTime();
+    var timestamp = revision.timestamp.getTime();
     var key = "resource-history|" + url + "|" + loaderId + "|" + timestamp;
-    var content = resource._content;
+    var content = revision._content;
 
     var registry = WebInspector.Resource._resourceRevisionRegistry();
 
@@ -301,14 +307,6 @@ WebInspector.Resource.prototype = {
     },
 
     /**
-     * @return {number}
-     */
-    get contentTimestamp()
-    {
-        return this._contentTimestamp;
-    },
-
-    /**
      * @return {boolean}
      */
     isEditable: function()
@@ -336,27 +334,24 @@ WebInspector.Resource.prototype = {
     },
 
     /**
-     * @param {string} newContent
+     * @param {string} content
      * @param {Date=} timestamp
      * @param {boolean=} restoringHistory
      */
-    addRevision: function(newContent, timestamp, restoringHistory)
+    addRevision: function(content, timestamp, restoringHistory)
     {
-        var revision = new WebInspector.ResourceRevision(this, this._content, this._contentTimestamp);
+        if (this.history.length) {
+            var lastRevision = this.history[this.history.length - 1];
+            if (lastRevision._content === content)
+                return;
+        }
+        var revision = new WebInspector.ResourceRevision(this, content, timestamp || new Date());
         this.history.push(revision);
-
-        this._content = newContent;
-        this._contentTimestamp = timestamp || new Date();
 
         this.dispatchEventToListeners(WebInspector.Resource.Events.RevisionAdded, revision);
         if (!restoringHistory)
-            this._persistRevision();
-        WebInspector.resourceTreeModel.dispatchEventToListeners(WebInspector.ResourceTreeModel.EventTypes.ResourceContentCommitted, { resource: this, content: newContent });
-    },
-
-    _persistRevision: function()
-    {
-        WebInspector.Resource.persistRevision(this);
+            revision._persistRevision();
+        WebInspector.resourceTreeModel.dispatchEventToListeners(WebInspector.ResourceTreeModel.EventTypes.ResourceContentCommitted, { resource: this, content: content });
     },
 
     /**
@@ -368,17 +363,30 @@ WebInspector.Resource.prototype = {
     },
 
     /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return this.type;
+    },
+
+    /**
      * @param {function(?string, boolean, string)} callback
      */
     requestContent: function(callback)
     {
         if (typeof this._content !== "undefined") {
-            callback(this._content, !!this._contentEncoded, this.mimeType);
+            callback(this._content, !!this._contentEncoded, this.canonicalMimeType());
             return;
         }
 
         this._pendingContentCallbacks.push(callback);
         this._innerRequestContent();
+    },
+
+    canonicalMimeType: function()
+    {
+        return this.type.canonicalMimeType() || this.mimeType;
     },
 
     /**
@@ -445,14 +453,30 @@ WebInspector.Resource.prototype = {
         {
             this._content = error ? null : content;
             this._contentEncoded = contentEncoded;
-            this._originalContent = content;
             var callbacks = this._pendingContentCallbacks.slice();
             for (var i = 0; i < callbacks.length; ++i)
-                callbacks[i](this._content, this._contentEncoded, this.mimeType);
+                callbacks[i](this._content, this._contentEncoded, this.canonicalMimeType());
             this._pendingContentCallbacks.length = 0;
             delete this._contentRequested;
         }
         PageAgent.getResourceContent(this.frameId, this.url, callback.bind(this));
+    },
+
+    revertToOriginal: function()
+    {
+        function revert(content)
+        {
+            this.setContent(content, true, function() {});
+        }
+        this.requestContent(revert.bind(this));
+    },
+
+    /**
+     * @return {boolean}
+     */
+    isHidden: function()
+    {
+        return !!this._isHidden; 
     }
 }
 
@@ -463,7 +487,7 @@ WebInspector.Resource.prototype.__proto__ = WebInspector.Object.prototype;
  * @implements {WebInspector.ContentProvider}
  * @param {WebInspector.Resource} resource
  * @param {?string|undefined} content
- * @param {number} timestamp
+ * @param {Date} timestamp
  */
 WebInspector.ResourceRevision = function(resource, content, timestamp)
 {
@@ -482,7 +506,7 @@ WebInspector.ResourceRevision.prototype = {
     },
 
     /**
-     * @return {number}
+     * @return {Date}
      */
     get timestamp()
     {
@@ -501,7 +525,8 @@ WebInspector.ResourceRevision.prototype = {
     {
         function revert(content)
         {
-            this._resource.setContent(content, true);
+            if (this._resource._content !== content)
+                this._resource.setContent(content, true, function() {});
         }
         this.requestContent(revert.bind(this));
     },
@@ -515,33 +540,19 @@ WebInspector.ResourceRevision.prototype = {
     },
 
     /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return this._resource.contentType();
+    },
+
+    /**
      * @param {function(?string, boolean, string)} callback
      */
     requestContent: function(callback)
     {
-        if (typeof this._content === "string") {
-            callback(this._content, false, this.resource.mimeType);
-            return;
-        }
-
-        // If we are here, this is initial revision. First, look up content fetched over the wire.
-        if (typeof this.resource._originalContent === "string") {
-            this._content = this._resource._originalContent;
-            callback(this._content, false, this.resource.mimeType);
-            return;
-        }
-
-        /**
-         * @param {?Protocol.Error} error
-         * @param {string} content
-         * @param {boolean} contentEncoded
-         */
-        function callbackWrapper(error, content, contentEncoded)
-        {
-            callback(error ? null : content, contentEncoded, this.resource.mimeType);
-        }
-
-        PageAgent.getResourceContent(this._resource.frameId, this._resource.url, callbackWrapper.bind(this));
+        callback(this._content || "", false, this.resource.mimeType);
     },
 
     /**
@@ -553,6 +564,11 @@ WebInspector.ResourceRevision.prototype = {
     searchInContent: function(query, caseSensitive, isRegex, callback)
     {
         callback([]);
+    },
+
+    _persistRevision: function()
+    {
+        WebInspector.Resource.persistRevision(this);
     }
 }
 

@@ -91,6 +91,7 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLInputElement.h>
+#include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HistoryItem.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/MouseEvent.h>
@@ -191,7 +192,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(MAC)
     , m_windowIsVisible(false)
     , m_isSmartInsertDeleteEnabled(parameters.isSmartInsertDeleteEnabled)
-    , m_layerHostingMode(LayerHostingModeDefault)
+    , m_layerHostingMode(parameters.layerHostingMode)
     , m_keyboardEventBeingInterpreted(0)
 #elif PLATFORM(WIN)
     , m_nativeWindow(parameters.nativeWindow)
@@ -224,6 +225,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if PLATFORM(WIN)
     , m_gestureReachedScrollingLimit(false)
 #endif
+#if ENABLE(PAGE_VISIBILITY_API)
+    , m_visibilityState(WebCore::PageVisibilityStateVisible)
+#endif
 {
     ASSERT(m_pageID);
     // FIXME: This is a non-ideal location for this Setting and
@@ -236,7 +240,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageClients.contextMenuClient = new WebContextMenuClient(this);
 #endif
     pageClients.editorClient = new WebEditorClient(this);
+#if ENABLE(DRAG_SUPPORT)
     pageClients.dragClient = new WebDragClient(this);
+#endif
     pageClients.backForwardClient = WebBackForwardListProxy::create(this);
 #if ENABLE(INSPECTOR)
     pageClients.inspectorClient = new WebInspectorClient(this);
@@ -270,6 +276,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 
     m_pageGroup = WebProcess::shared().webPageGroup(parameters.pageGroupData);
     m_page->setGroupName(m_pageGroup->identifier());
+    m_page->setDeviceScaleFactor(parameters.deviceScaleFactor);
 
     platformInitialize();
 
@@ -319,9 +326,8 @@ WebPage::~WebPage()
 
     m_sandboxExtensionTracker.invalidate();
 
-#if PLATFORM(MAC)
-    ASSERT(m_pluginViews.isEmpty());
-#endif
+    for (HashSet<PluginView*>::const_iterator it = m_pluginViews.begin(), end = m_pluginViews.end(); it != end; ++it)
+        (*it)->webPageDestroyed();
 
 #ifndef NDEBUG
     webPageCounter.decrement();
@@ -381,13 +387,22 @@ void WebPage::initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenCli
 }
 #endif
 
-PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, const Plugin::Parameters& parameters)
+PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginElement, const Plugin::Parameters& parameters)
 {
     String pluginPath;
+    bool blocked;
 
     if (!WebProcess::shared().connection()->sendSync(
             Messages::WebContext::GetPluginPath(parameters.mimeType, parameters.url.string()), 
-            Messages::WebContext::GetPluginPath::Reply(pluginPath), 0)) {
+            Messages::WebContext::GetPluginPath::Reply(pluginPath, blocked), 0)) {
+        return 0;
+    }
+
+    if (blocked) {
+        if (pluginElement->renderer()->isEmbeddedObject())
+            toRenderEmbeddedObject(pluginElement->renderer())->setPluginUnavailabilityReason(RenderEmbeddedObject::InsecurePluginVersion);
+
+        send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string()));
         return 0;
     }
 
@@ -404,9 +419,11 @@ PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, const Plugin::Paramete
 
 #if ENABLE(PLUGIN_PROCESS)
     return PluginProxy::create(pluginPath);
-#else
+#elif ENABLE(NETSCAPE_PLUGIN_API)
     NetscapePlugin::setSetExceptionFunction(NPRuntimeObjectMap::setGlobalException);
     return NetscapePlugin::create(NetscapePluginModule::getOrCreate(pluginPath));
+#else
+    return 0;
 #endif
 }
 
@@ -501,7 +518,7 @@ uint64_t WebPage::renderTreeSize() const
 {
     if (!m_page)
         return 0;
-    return m_page->renderTreeSize();
+    return m_page->renderTreeSize().treeSize;
 }
 
 void WebPage::setPaintedObjectsCounterThreshold(uint64_t threshold)
@@ -840,6 +857,7 @@ void WebPage::setResizesToContentsUsingLayoutSize(const IntSize& targetLayoutSiz
 
     m_page->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
     m_page->settings()->setFixedElementsLayoutRelativeToFrame(true);
+    m_page->settings()->setFixedPositionCreatesStackingContext(true);
 
     // Schedule a layout to use the new target size.
     if (!view->layoutPending()) {
@@ -880,9 +898,13 @@ void WebPage::sendViewportAttributesChanged()
 
     int minimumLayoutFallbackWidth = std::max(settings->layoutFallbackWidth(), m_viewportSize.width());
 
-    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, settings->deviceWidth(), settings->deviceHeight(), settings->deviceDPI(), m_viewportSize);
+    // If unset  we use the viewport dimensions. This fits with the behavior of desktop browsers.
+    int deviceWidth = (settings->deviceWidth() > 0) ? settings->deviceWidth() : m_viewportSize.width();
+    int deviceHeight = (settings->deviceHeight() > 0) ? settings->deviceHeight() : m_viewportSize.height();
 
-    setResizesToContentsUsingLayoutSize(attr.layoutSize);
+    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, static_cast<int>(160 * settings->devicePixelRatio()), m_viewportSize);
+
+    setResizesToContentsUsingLayoutSize(IntSize(static_cast<int>(attr.layoutSize.width()), static_cast<int>(attr.layoutSize.height())));
     send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
 }
 
@@ -995,6 +1017,9 @@ void WebPage::windowScreenDidChange(uint64_t displayID)
 void WebPage::scalePage(double scale, const IntPoint& origin)
 {
     m_page->setPageScaleFactor(scale, origin);
+
+    for (HashSet<PluginView*>::const_iterator it = m_pluginViews.begin(), end = m_pluginViews.end(); it != end; ++it)
+        (*it)->pageScaleFactorDidChange();
 
     send(Messages::WebPageProxy::PageScaleFactorDidChange(scale));
 }
@@ -1921,6 +1946,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setFrameFlatteningEnabled(store.getBoolValueForKey(WebPreferencesKey::frameFlatteningEnabledKey()));
     settings->setPrivateBrowsingEnabled(store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()));
     settings->setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
+    settings->setJavaScriptExperimentsEnabled(store.getBoolValueForKey(WebPreferencesKey::javaScriptExperimentsEnabledKey()));
     settings->setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
     settings->setNeedsSiteSpecificQuirks(store.getBoolValueForKey(WebPreferencesKey::needsSiteSpecificQuirksKey()));
     settings->setJavaScriptCanOpenWindowsAutomatically(store.getBoolValueForKey(WebPreferencesKey::javaScriptCanOpenWindowsAutomaticallyKey()));
@@ -1946,7 +1972,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setDefaultFontSize(store.getUInt32ValueForKey(WebPreferencesKey::defaultFontSizeKey()));
     settings->setDefaultFixedFontSize(store.getUInt32ValueForKey(WebPreferencesKey::defaultFixedFontSizeKey()));
     settings->setLayoutFallbackWidth(store.getUInt32ValueForKey(WebPreferencesKey::layoutFallbackWidthKey()));
-    settings->setDeviceDPI(store.getUInt32ValueForKey(WebPreferencesKey::deviceDPIKey()));
+    settings->setDevicePixelRatio(store.getDoubleValueForKey(WebPreferencesKey::devicePixelRatioKey()));
     settings->setDeviceWidth(store.getUInt32ValueForKey(WebPreferencesKey::deviceWidthKey()));
     settings->setDeviceHeight(store.getUInt32ValueForKey(WebPreferencesKey::deviceHeightKey()));
     settings->setEditableLinkBehavior(static_cast<WebCore::EditableLinkBehavior>(store.getUInt32ValueForKey(WebPreferencesKey::editableLinkBehaviorKey())));
@@ -1959,12 +1985,14 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setShowRepaintCounter(store.getBoolValueForKey(WebPreferencesKey::compositingRepaintCountersVisibleKey()));
     settings->setCSSCustomFilterEnabled(store.getBoolValueForKey(WebPreferencesKey::cssCustomFilterEnabledKey()));
     settings->setCSSRegionsEnabled(store.getBoolValueForKey(WebPreferencesKey::cssRegionsEnabledKey()));
+    settings->setCSSGridLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::cssGridLayoutEnabledKey()));
     settings->setRegionBasedColumnsEnabled(store.getBoolValueForKey(WebPreferencesKey::regionBasedColumnsEnabledKey()));
     settings->setWebGLEnabled(store.getBoolValueForKey(WebPreferencesKey::webGLEnabledKey()));
     settings->setMediaPlaybackRequiresUserGesture(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackRequiresUserGestureKey()));
     settings->setMediaPlaybackAllowsInline(store.getBoolValueForKey(WebPreferencesKey::mediaPlaybackAllowsInlineKey()));
     settings->setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
     settings->setHyperlinkAuditingEnabled(store.getBoolValueForKey(WebPreferencesKey::hyperlinkAuditingEnabledKey()));
+    settings->setRequestAnimationFrameEnabled(store.getBoolValueForKey(WebPreferencesKey::requestAnimationFrameEnabledKey()));
 
     // <rdar://problem/10697417>: It is necessary to force compositing when accelerate drawing
     // is enabled on Mac so that scrollbars are always in their own layers.
@@ -2082,6 +2110,8 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 }
 #endif
 
+#if ENABLE(DRAG_SUPPORT)
+
 #if PLATFORM(WIN)
 void WebPage::performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const WebCore::DragDataMap& dataMap, uint32_t flags)
 {
@@ -2120,10 +2150,11 @@ void WebPage::performDragControllerAction(uint64_t action, WebCore::DragData dra
         send(Messages::WebPageProxy::DidPerformDragControllerAction(WebCore::DragSession()));
 #if PLATFORM(QT)
         QMimeData* data = const_cast<QMimeData*>(dragData.platformData());
+        delete data;
 #elif PLATFORM(GTK)
         DataObjectGtk* data = const_cast<DataObjectGtk*>(dragData.platformData());
+        data->deref();
 #endif
-        delete data;
         return;
     }
 
@@ -2151,10 +2182,11 @@ void WebPage::performDragControllerAction(uint64_t action, WebCore::DragData dra
     // DragData does not delete its platformData so we need to do that here.
 #if PLATFORM(QT)
     QMimeData* data = const_cast<QMimeData*>(dragData.platformData());
+    delete data;
 #elif PLATFORM(GTK)
     DataObjectGtk* data = const_cast<DataObjectGtk*>(dragData.platformData());
+    data->deref();
 #endif
-    delete data;
 }
 
 #else
@@ -2183,8 +2215,10 @@ void WebPage::performDragControllerAction(uint64_t action, WebCore::IntPoint cli
         ASSERT(!m_pendingDropSandboxExtension);
 
         m_pendingDropSandboxExtension = SandboxExtension::create(sandboxExtensionHandle);
-        for (size_t i = 0; i < sandboxExtensionsHandleArray.size(); i++)
-            m_pendingDropExtensionsForFileUpload.append(SandboxExtension::create(sandboxExtensionsHandleArray[i]));
+        for (size_t i = 0; i < sandboxExtensionsHandleArray.size(); i++) {
+            if (RefPtr<SandboxExtension> extension = SandboxExtension::create(sandboxExtensionsHandleArray[i]))
+                m_pendingDropExtensionsForFileUpload.append(extension);
+        }
 
         m_page->dragController()->performDrag(&dragData);
 
@@ -2232,6 +2266,8 @@ void WebPage::mayPerformUploadDragDestinationAction()
         m_pendingDropExtensionsForFileUpload[i]->consumePermanently();
     m_pendingDropExtensionsForFileUpload.clear();
 }
+    
+#endif // ENABLE(DRAG_SUPPORT)
 
 WebUndoStep* WebPage::webUndoStep(uint64_t stepID)
 {
@@ -2372,7 +2408,7 @@ void WebPage::unmarkAllBadGrammar()
     }
 }
 
-#if PLATFORM(MAC)
+#if USE(APPKIT)
 void WebPage::uppercaseWord()
 {
     m_page->focusController()->focusedOrMainFrame()->editor()->uppercaseWord();
@@ -2465,8 +2501,6 @@ void WebPage::mainFrameDidLayout()
     }
 }
 
-#if PLATFORM(MAC)
-
 void WebPage::addPluginView(PluginView* pluginView)
 {
     ASSERT(!m_pluginViews.contains(pluginView));
@@ -2481,6 +2515,7 @@ void WebPage::removePluginView(PluginView* pluginView)
     m_pluginViews.remove(pluginView);
 }
 
+#if PLATFORM(MAC)
 void WebPage::setWindowIsVisible(bool windowIsVisible)
 {
     m_windowIsVisible = windowIsVisible;
@@ -2883,6 +2918,7 @@ void WebPage::drawRectToPDF(uint64_t frameID, const PrintInfo& printInfo, const 
 
     RetainPtr<CFMutableDataRef> pdfPageData(AdoptCF, CFDataCreateMutable(0, 0));
 
+#if USE(CG)
     if (coreFrame) {
 #if PLATFORM(MAC)
         ASSERT(coreFrame->document()->printing() || pdfDocumentForPrintingFrame(coreFrame));
@@ -2914,6 +2950,7 @@ void WebPage::drawRectToPDF(uint64_t frameID, const PrintInfo& printInfo, const 
         CGPDFContextEndPage(context.get());
         CGPDFContextClose(context.get());
     }
+#endif
 
     send(Messages::WebPageProxy::DataCallback(CoreIPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
 }
@@ -2925,6 +2962,7 @@ void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint3
 
     RetainPtr<CFMutableDataRef> pdfPageData(AdoptCF, CFDataCreateMutable(0, 0));
 
+#if USE(CG)
     if (coreFrame) {
 
 #if PLATFORM(MAC)
@@ -2964,6 +3002,7 @@ void WebPage::drawPagesToPDF(uint64_t frameID, const PrintInfo& printInfo, uint3
         }
         CGPDFContextClose(context.get());
     }
+#endif
 
     send(Messages::WebPageProxy::DataCallback(CoreIPC::DataReference(CFDataGetBytePtr(pdfPageData.get()), CFDataGetLength(pdfPageData.get())), callbackID));
 }
@@ -3043,7 +3082,7 @@ String WebPage::viewportConfigurationAsText(int deviceDPI, int deviceWidth, int 
     ViewportAttributes attrs = WebCore::computeViewportAttributes(arguments, /* default layout width for non-mobile pages */ 980, deviceWidth, deviceHeight, deviceDPI, IntSize(availableWidth, availableHeight));
     WebCore::restrictMinimumScaleFactorToViewportSize(attrs, IntSize(availableWidth, availableHeight));
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(attrs);
-    return String::format("viewport size %dx%d scale %f with limits [%f, %f] and userScalable %f\n", attrs.layoutSize.width(), attrs.layoutSize.height(), attrs.initialScale, attrs.minimumScale, attrs.maximumScale, attrs.userScalable);
+    return String::format("viewport size %dx%d scale %f with limits [%f, %f] and userScalable %f\n", static_cast<int>(attrs.layoutSize.width()), static_cast<int>(attrs.layoutSize.height()), attrs.initialScale, attrs.minimumScale, attrs.maximumScale, attrs.userScalable);
 }
 
 void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length)
@@ -3155,7 +3194,28 @@ void WebPage::setVisibilityState(int visibilityState, bool isInitialState)
 {
     if (!m_page)
         return;
-    m_page->setVisibilityState(static_cast<WebCore::PageVisibilityState>(visibilityState), isInitialState);
+
+    WebCore::PageVisibilityState state = static_cast<WebCore::PageVisibilityState>(visibilityState);
+
+    if (m_visibilityState == state)
+        return;
+
+    FrameView* view = m_page->mainFrame() ? m_page->mainFrame()->view() : 0;
+
+    if (state == WebCore::PageVisibilityStateVisible) {
+        m_page->didMoveOnscreen();
+        if (view)
+            view->show();
+    }
+
+    m_page->setVisibilityState(state, isInitialState);
+    m_visibilityState = state;
+
+    if (state == WebCore::PageVisibilityStateHidden) {
+        m_page->willMoveOffscreen();
+        if (view)
+            view->hide();
+    }
 }
 #endif
 

@@ -106,8 +106,13 @@ public:
 
     AtomicString textEmphasisCustomMark;
     RefPtr<QuotesData> quotes;
-    
+
     AtomicString m_lineGrid;
+    unsigned m_tabSize;
+
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    float m_imageResolution;
+#endif
 
 #if ENABLE(TOUCH_EVENTS)
     Color tapHighlightColor;

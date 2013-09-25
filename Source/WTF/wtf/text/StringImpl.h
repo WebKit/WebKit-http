@@ -31,6 +31,10 @@
 #include <wtf/Vector.h>
 #include <wtf/unicode/Unicode.h>
 
+#if PLATFORM(QT) && HAVE(QT5)
+#include <QString>
+#endif
+
 #if USE(CF)
 typedef const struct __CFString * CFStringRef;
 #endif
@@ -82,6 +86,10 @@ private:
         BufferInternal,
         BufferOwned,
         BufferSubstring,
+#if PLATFORM(QT) && HAVE(QT5)
+        BufferAdoptedQString
+#endif
+        // NOTE: Adding more ownership types needs to extend m_hashAndFlags as we're at capacity
     };
 
     // Used to construct static strings, which have an special refCount that can never hit zero.
@@ -157,11 +165,11 @@ private:
 
     // Create a StringImpl adopting ownership of the provided buffer (BufferOwned)
     StringImpl(const UChar* characters, unsigned length)
-    : m_refCount(s_refCountIncrement)
-    , m_length(length)
-    , m_data16(characters)
-    , m_buffer(0)
-    , m_hashAndFlags(BufferOwned)
+        : m_refCount(s_refCountIncrement)
+        , m_length(length)
+        , m_data16(characters)
+        , m_buffer(0)
+        , m_hashAndFlags(BufferOwned)
     {
         ASSERT(m_data16);
         ASSERT(m_length);
@@ -194,6 +202,49 @@ private:
         ASSERT(m_length);
         ASSERT(m_substringBuffer->bufferOwnership() != BufferSubstring);
     }
+
+    enum CreateEmptyUnique_T { CreateEmptyUnique };
+    StringImpl(CreateEmptyUnique_T)
+        : m_refCount(s_refCountIncrement)
+        , m_length(0)
+        , m_data16(reinterpret_cast<const UChar*>(1))
+        , m_buffer(0)
+    {
+        ASSERT(m_data16);
+        // Set the hash early, so that all empty unique StringImpls have a hash,
+        // and don't use the normal hashing algorithm - the unique nature of these
+        // keys means that we don't need them to match any other string (in fact,
+        // that's exactly the oposite of what we want!), and teh normal hash would
+        // lead to lots of conflicts.
+        unsigned hash = reinterpret_cast<uintptr_t>(this);
+        hash <<= s_flagCount;
+        if (!hash)
+            hash = 1 << s_flagCount;
+        m_hashAndFlags = hash | BufferInternal;
+    }
+
+#if PLATFORM(QT) && HAVE(QT5)
+    // Used to create new strings that adopt an existing QString's data
+    enum ConstructAdoptedQStringTag { ConstructAdoptedQString };
+    StringImpl(QStringData* qStringData, ConstructAdoptedQStringTag)
+        : m_refCount(s_refCountIncrement)
+        , m_length(qStringData->size)
+        , m_data16(0)
+        , m_qStringData(qStringData)
+        , m_hashAndFlags(BufferAdoptedQString)
+    {
+        ASSERT(m_length);
+
+        // We ref the string-data to ensure it will be valid for the lifetime of
+        // this string. We then deref it in the destructor, so that the string
+        // data can eventually be freed.
+        m_qStringData->ref.ref();
+
+        // Now that we have a ref we can safely reference the string data
+        m_data16 = reinterpret_cast_ptr<const UChar*>(qStringData->data());
+        ASSERT(m_data16);
+    }
+#endif
 
 public:
     WTF_EXPORT_PRIVATE ~StringImpl();
@@ -257,6 +308,11 @@ public:
         return adoptRef(new (NotNull, resultImpl) StringImpl(length));
     }
 
+    static PassRefPtr<StringImpl> createEmptyUnique()
+    {
+        return adoptRef(new StringImpl(CreateEmptyUnique));
+    }
+
     // Reallocate the StringImpl. The originalString must be only owned by the PassRefPtr,
     // and the buffer ownership must be BufferInternal. Just like the input pointer of realloc(),
     // the originalString can't be used after this function.
@@ -282,6 +338,10 @@ public:
 
     static PassRefPtr<StringImpl> adopt(StringBuffer<LChar>& buffer);
     WTF_EXPORT_PRIVATE static PassRefPtr<StringImpl> adopt(StringBuffer<UChar>& buffer);
+
+#if PLATFORM(QT) && HAVE(QT5)
+    static PassRefPtr<StringImpl> adopt(QStringData*);
+#endif
 
     unsigned length() const { return m_length; }
     bool is8Bit() const { return m_hashAndFlags & s_hashFlag8BitBuffer; }
@@ -325,6 +385,11 @@ public:
             m_hashAndFlags &= ~s_hashFlagIsIdentifier;
     }
 
+    bool isEmptyUnique() const
+    {
+        return !length() && !isStatic();
+    }
+
     bool hasTerminatingNullCharacter() const { return m_hashAndFlags & s_hashFlagHasTerminatingNullCharacter; }
 
     bool isAtomic() const { return m_hashAndFlags & s_hashFlagIsAtomic; }
@@ -336,6 +401,10 @@ public:
         else
             m_hashAndFlags &= ~s_hashFlagIsAtomic;
     }
+
+#if PLATFORM(QT) && HAVE(QT5)
+    QStringData* qStringData() { return bufferOwnership() == BufferAdoptedQString ? m_qStringData : 0; }
+#endif
 
 private:
     // The high bits of 'hash' are always empty, but we prefer to store our flags
@@ -561,6 +630,9 @@ private:
         void* m_buffer;
         StringImpl* m_substringBuffer;
         mutable UChar* m_copyData16;
+#if PLATFORM(QT) && HAVE(QT5)
+        QStringData* m_qStringData;
+#endif
     };
     mutable unsigned m_hashAndFlags;
 };

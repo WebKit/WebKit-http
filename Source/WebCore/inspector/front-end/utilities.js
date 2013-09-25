@@ -25,10 +25,14 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Contains diff method based on Javascript Diff Algorithm By John Resig
- * http://ejohn.org/files/jsdiff.js (released under the MIT license).
  */
+
+Object.isEmpty = function(obj)
+{
+    for (var i in obj)
+        return false;
+    return true;
+}
 
 String.prototype.hasSubstring = function(string, caseInsensitive)
 {
@@ -218,6 +222,10 @@ Object.defineProperty(Array.prototype, "upperBound",
     }
 });
 
+Object.defineProperty(Uint32Array.prototype, "sort", {
+   value: Array.prototype.sort
+});
+
 (function() {
 var partition = {
     /**
@@ -367,51 +375,6 @@ function insertionIndexForObjectInListSortedByFunction(anObject, aList, aFunctio
             index--;
         return index;
     }
-}
-
-Array.diff = function(left, right)
-{
-    var o = left;
-    var n = right;
-
-    var ns = {};
-    var os = {};
-
-    for (var i = 0; i < n.length; i++) {
-        if (ns[n[i]] == null)
-            ns[n[i]] = { rows: [], o: null };
-        ns[n[i]].rows.push(i);
-    }
-
-    for (var i = 0; i < o.length; i++) {
-        if (os[o[i]] == null)
-            os[o[i]] = { rows: [], n: null };
-        os[o[i]].rows.push(i);
-    }
-
-    for (var i in ns) {
-        if (ns[i].rows.length == 1 && typeof(os[i]) != "undefined" && os[i].rows.length == 1) {
-            n[ns[i].rows[0]] = { text: n[ns[i].rows[0]], row: os[i].rows[0] };
-            o[os[i].rows[0]] = { text: o[os[i].rows[0]], row: ns[i].rows[0] };
-        }
-    }
-
-    for (var i = 0; i < n.length - 1; i++) {
-        if (n[i].text != null && n[i + 1].text == null && n[i].row + 1 < o.length && o[n[i].row + 1].text == null && n[i + 1] == o[n[i].row + 1]) {
-            n[i + 1] = { text: n[i + 1], row: n[i].row + 1 };
-            o[n[i].row + 1] = { text: o[n[i].row + 1], row: i + 1 };
-        }
-    }
-
-    for (var i = n.length - 1; i > 0; i--) {
-        if (n[i].text != null && n[i - 1].text == null && n[i].row > 0 && o[n[i].row - 1].text == null &&
-            n[i - 1] == o[n[i].row - 1]) {
-            n[i - 1] = { text: n[i - 1], row: n[i].row - 1 };
-            o[n[i].row - 1] = { text: o[n[i].row - 1], row: i - 1 };
-        }
-    }
-
-    return { left: o, right: n };
 }
 
 Array.convert = function(list)
@@ -667,46 +630,6 @@ function numberToStringWithSpacesPadding(value, symbolsCount)
 /**
  * @constructor
  */
-function TextDiff()
-{
-    this.added = [];
-    this.removed = [];
-    this.changed = [];
-} 
-
-/**
- * @param {string} baseContent
- * @param {string} newContent
- * @return {TextDiff}
- */
-TextDiff.compute = function(baseContent, newContent)
-{
-    var oldLines = baseContent.split(/\r?\n/);
-    var newLines = newContent.split(/\r?\n/);
-
-    var diff = Array.diff(oldLines, newLines);
-
-    var diffData = new TextDiff();
-
-    var offset = 0;
-    var right = diff.right;
-    for (var i = 0; i < right.length; ++i) {
-        if (typeof right[i] === "string") {
-            if (right.length > i + 1 && right[i + 1].row === i + 1 - offset)
-                diffData.changed.push(i);
-            else {
-                diffData.added.push(i);
-                offset++;
-            }
-        } else
-            offset = i - right[i].row;
-    }
-    return diffData;
-}
-
-/**
- * @constructor
- */
 var Map = function()
 {
     this._map = {};
@@ -730,10 +653,13 @@ Map.prototype = {
     
     /**
      * @param {Object} key
+     * @return {Object} value
      */
     remove: function(key)
     {
+        var result = this._map[key.__identifier];
         delete this._map[key.__identifier];
+        return result;
     },
     
     values: function()
@@ -756,4 +682,4 @@ Map.prototype = {
     {
         this._map = {};
     }
-}
+};

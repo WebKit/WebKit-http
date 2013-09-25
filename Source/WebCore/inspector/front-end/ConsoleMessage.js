@@ -264,7 +264,9 @@ WebInspector.ConsoleMessageImpl.prototype = {
 
     _formatParameterAsObject: function(obj, elem)
     {
-        elem.appendChild(new WebInspector.ObjectPropertiesSection(obj, obj.description).element);
+        var section = new WebInspector.ObjectPropertiesSection(obj, obj.description);
+        section.enableContextMenu();
+        elem.appendChild(section.element);
     },
 
     _formatParameterAsNode: function(object, elem)
@@ -602,7 +604,7 @@ WebInspector.ConsoleMessageImpl.prototype = {
     {
         // FIXME(62725): stack trace line/column numbers are one-based.
         var lineNumber = this.stackTrace ? this.stackTrace[0].lineNumber - 1 : this.line - 1;
-        var columnNumber = this.stackTrace ? this.stackTrace[0].columnNumber - 1 : 0;
+        var columnNumber = this.stackTrace && this.stackTrace[0].columnNumber ? this.stackTrace[0].columnNumber - 1 : 0;
         return WebInspector.debuggerModel.createRawLocationByURL(this.url, lineNumber, columnNumber);
     },
 

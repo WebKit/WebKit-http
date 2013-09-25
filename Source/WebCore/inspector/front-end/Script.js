@@ -25,6 +25,7 @@
 
 /**
  * @constructor
+ * @implements {WebInspector.ContentProvider}
  * @param {string} scriptId
  * @param {string} sourceURL
  * @param {number} startLine
@@ -49,12 +50,28 @@ WebInspector.Script = function(scriptId, sourceURL, startLine, startColumn, endL
 
 WebInspector.Script.prototype = {
     /**
-     * @param {function(string)} callback
+     * @return {?string}
      */
-    requestSource: function(callback)
+    contentURL: function()
+    {
+        return this.sourceURL;
+    },
+
+    /**
+     * @return {WebInspector.ResourceType}
+     */
+    contentType: function()
+    {
+        return WebInspector.resourceTypes.Script;
+    },
+
+    /**
+     * @param {function(?string,boolean,string)} callback
+     */
+    requestContent: function(callback)
     {
         if (this._source) {
-            callback(this._source);
+            callback(this._source, false, "text/javascript");
             return;
         }
 
@@ -66,13 +83,13 @@ WebInspector.Script.prototype = {
         function didGetScriptSource(error, source)
         {
             this._source = error ? "" : source;
-            callback(this._source);
+            callback(this._source, false, "text/javascript");
         }
         if (this.scriptId) {
             // Script failed to parse.
             DebuggerAgent.getScriptSource(this.scriptId, didGetScriptSource.bind(this));
         } else
-            callback("");
+            callback("", false, "text/javascript");
     },
 
     /**
@@ -137,10 +154,29 @@ WebInspector.Script.prototype = {
      */
     isInlineScript: function()
     {
-        return !!this.sourceURL && this.lineOffset !== 0 && this.columnOffset !== 0;
+        var startsAtZero = !this.lineOffset && !this.columnOffset;
+        return !!this.sourceURL && !startsAtZero;
     },
 
-    
+    /**
+     * @return {boolean}
+     */
+    isAnonymousScript: function()
+    {
+        return !this.sourceURL;
+    },
+
+    /**
+     * @param {number} lineNumber
+     * @param {number=} columnNumber
+     * @return {WebInspector.UILocation}
+     */
+    rawLocationToUILocation: function(lineNumber, columnNumber)
+    {
+        var uiLocation = this._sourceMapping.rawLocationToUILocation(new WebInspector.DebuggerModel.Location(this.scriptId, lineNumber, columnNumber || 0));
+        return uiLocation.uiSourceCode.overrideLocation(uiLocation);
+    },
+
     /**
      * @param {WebInspector.SourceMapping} sourceMapping
      */
@@ -152,7 +188,7 @@ WebInspector.Script.prototype = {
     },
 
     /**
-     * @param {DebuggerAgent.Location} rawLocation
+     * @param {WebInspector.DebuggerModel.Location} rawLocation
      * @param {function(WebInspector.UILocation):(boolean|undefined)} updateDelegate
      * @return {WebInspector.Script.Location}
      */
@@ -168,9 +204,8 @@ WebInspector.Script.prototype = {
 
 /**
  * @constructor
- * @implements {WebInspector.LiveLocation}
  * @param {WebInspector.Script} script
- * @param {DebuggerAgent.Location} rawLocation
+ * @param {WebInspector.DebuggerModel.Location} rawLocation
  * @param {function(WebInspector.UILocation):(boolean|undefined)} updateDelegate
  */
 WebInspector.Script.Location = function(script, rawLocation, updateDelegate)
@@ -178,23 +213,30 @@ WebInspector.Script.Location = function(script, rawLocation, updateDelegate)
     this._script = script;
     this._rawLocation = rawLocation;
     this._updateDelegate = updateDelegate;
+    this._uiSourceCodes = [];
 }
 
 WebInspector.Script.Location.prototype = {
-    dispose: function()
-    {
-        this._script._locations.remove(this);
-    },
-
     update: function()
     {
-        if (!this._script._sourceMapping)
-            return;
-        var uiLocation = this._script._sourceMapping.rawLocationToUILocation(this._rawLocation);
+        var uiLocation = this._script.rawLocationToUILocation(this._rawLocation.lineNumber, this._rawLocation.columnNumber);
         if (uiLocation) {
+            var uiSourceCode = uiLocation.uiSourceCode;
+            if (this._uiSourceCodes.indexOf(uiSourceCode) === -1) {
+                uiSourceCode.addLiveLocation(this);
+                this._uiSourceCodes.push(uiSourceCode);
+            }
             var oneTime = this._updateDelegate(uiLocation);
             if (oneTime)
                 this.dispose();
         }
+    },
+
+    dispose: function()
+    {
+        for (var i = 0; i < this._uiSourceCodes.length; ++i)
+            this._uiSourceCodes[i].removeLiveLocation(this);
+        this._uiSourceCodes = [];
+        this._script._locations.remove(this);
     }
 }

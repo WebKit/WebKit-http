@@ -346,7 +346,6 @@ static WebCacheModel cacheModelForMainBundle(void)
         @"0",                           WebKitPDFScaleFactorPreferenceKey,
         @"0",                           WebKitUseSiteSpecificSpoofingPreferenceKey,
         [NSNumber numberWithInt:WebKitEditableLinkDefaultBehavior], WebKitEditableLinkBehaviorPreferenceKey,
-        [NSNumber numberWithInt:WebKitEditingMacBehavior], WebKitEditingBehaviorPreferenceKey,
 #ifndef BUILDING_ON_LEOPARD
         [NSNumber numberWithInt:WebTextDirectionSubmenuAutomaticallyIncluded],
 #else
@@ -358,6 +357,7 @@ static WebCacheModel cacheModelForMainBundle(void)
         [NSNumber numberWithInt:cacheModelForMainBundle()], WebKitCacheModelPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitPageCacheSupportsPluginsPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitDeveloperExtrasEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitJavaScriptExperimentsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAuthorAndUserStylesEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitApplicationChromeModeEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebArchiveDebugModeEnabledPreferenceKey,
@@ -370,6 +370,7 @@ static WebCacheModel cacheModelForMainBundle(void)
         // CSS Shaders also need WebGL enabled (which is disabled by default), so we can keep it enabled for now.
         [NSNumber numberWithBool:YES], WebKitCSSCustomFilterEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCSSRegionsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO],  WebKitCSSGridLayoutEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitAcceleratedDrawingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowDebugBordersPreferenceKey,
@@ -397,11 +398,13 @@ static WebCacheModel cacheModelForMainBundle(void)
         [NSNumber numberWithBool:NO],   WebKitShouldDisplayTextDescriptionsPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitNotificationsEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitShouldRespectImageOrientationKey,
+        [NSNumber numberWithBool:YES],  WebKitRequestAnimationFrameEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWantsBalancedSetDefersLoadingBehaviorKey,
 
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
         nil];
+
 
     // This value shouldn't ever change, which is assumed in the initialization of WebKitPDFDisplayModePreferenceKey above
     ASSERT(kPDFDisplaySinglePageContinuous == 1);
@@ -848,6 +851,16 @@ static WebCacheModel cacheModelForMainBundle(void)
 #else
     return YES; // always enable in debug builds
 #endif
+}
+
+- (void)setJavaScriptExperimentsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitJavaScriptExperimentsEnabledPreferenceKey];
+}
+
+- (BOOL)javaScriptExperimentsEnabled
+{
+    return [self _boolValueForKey:WebKitJavaScriptExperimentsEnabledPreferenceKey];
 }
 
 - (void)setDeveloperExtrasEnabled:(BOOL)flag
@@ -1361,6 +1374,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitCSSRegionsEnabledPreferenceKey];
 }
 
+- (BOOL)cssGridLayoutEnabled
+{
+    return [self _boolValueForKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+}
+
+- (void)setCSSGridLayoutEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+}
+
 - (BOOL)showDebugBorders
 {
     return [self _boolValueForKey:WebKitShowDebugBordersPreferenceKey];
@@ -1459,16 +1482,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setHyperlinkAuditingEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitHyperlinkAuditingEnabledPreferenceKey];
-}
-
-- (WebKitEditingBehavior)editingBehavior
-{
-    return static_cast<WebKitEditingBehavior>([self _integerValueForKey:WebKitEditingBehaviorPreferenceKey]);
-}
-
-- (void)setEditingBehavior:(WebKitEditingBehavior)behavior
-{
-    [self _setIntegerValue:behavior forKey:WebKitEditingBehaviorPreferenceKey];
 }
 
 - (BOOL)usePreHTML5ParserQuirks
@@ -1685,6 +1698,16 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)shouldRespectImageOrientation
 {
     return [self _boolValueForKey:WebKitShouldRespectImageOrientationKey];
+}
+
+- (BOOL)requestAnimationFrameEnabled
+{
+    return [self _boolValueForKey:WebKitRequestAnimationFrameEnabledPreferenceKey];
+}
+
+- (void)setRequestAnimationFrameEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitRequestAnimationFrameEnabledPreferenceKey];
 }
 
 - (void)setIncrementalRenderingSuppressionTimeoutInSeconds:(NSTimeInterval)timeout

@@ -30,7 +30,9 @@
 
 /**
  * @constructor
- * @extends {WebInspector.ScriptMapping}
+ * @extends {WebInspector.Object}
+ * @implements {WebInspector.SourceMapping}
+ * @implements {WebInspector.UISourceCodeProvider}
  */
 WebInspector.CompilerScriptMapping = function()
 {
@@ -43,13 +45,14 @@ WebInspector.CompilerScriptMapping = function()
 
 WebInspector.CompilerScriptMapping.prototype = {
     /**
-     * @param {DebuggerAgent.Location} rawLocation
+     * @param {WebInspector.RawLocation} rawLocation
      * @return {WebInspector.UILocation}
      */
     rawLocationToUILocation: function(rawLocation)
     {
-        var sourceMap = this._sourceMapForScriptId[rawLocation.scriptId];
-        var entry = sourceMap.findEntry(rawLocation.lineNumber, rawLocation.columnNumber || 0);
+        var debuggerModelLocation = /** @type {WebInspector.DebuggerModel.Location} */ rawLocation;
+        var sourceMap = this._sourceMapForScriptId[debuggerModelLocation.scriptId];
+        var entry = sourceMap.findEntry(debuggerModelLocation.lineNumber, debuggerModelLocation.columnNumber || 0);
         return new WebInspector.UILocation(this._uiSourceCodeByURL[entry[2]], entry[3], entry[4]);
     },
 
@@ -57,7 +60,7 @@ WebInspector.CompilerScriptMapping.prototype = {
      * @param {WebInspector.UISourceCode} uiSourceCode
      * @param {number} lineNumber
      * @param {number} columnNumber
-     * @return {DebuggerAgent.Location}
+     * @return {WebInspector.DebuggerModel.Location}
      */
     uiLocationToRawLocation: function(uiSourceCode, lineNumber, columnNumber)
     {
@@ -69,9 +72,9 @@ WebInspector.CompilerScriptMapping.prototype = {
     /**
      * @return {Array.<WebInspector.UISourceCode>}
      */
-    uiSourceCodeList: function()
+    uiSourceCodes: function()
     {
-        var result = []
+        var result = [];
         for (var url in this._uiSourceCodeByURL)
             result.push(this._uiSourceCodeByURL[url]);
         return result;
@@ -113,12 +116,11 @@ WebInspector.CompilerScriptMapping.prototype = {
             var sourceContent = sourceMap.sourceContent(sourceURL);
             var contentProvider;
             if (sourceContent)
-                contentProvider = new WebInspector.StaticContentProvider("text/javascript", sourceContent);
+                contentProvider = new WebInspector.StaticContentProvider(WebInspector.resourceTypes.Script, sourceContent);
             else
                 contentProvider = new WebInspector.CompilerSourceMappingContentProvider(sourceURL);
-            var uiSourceCode = new WebInspector.JavaScriptSource(sourceURL, sourceURL, contentProvider);
+            var uiSourceCode = new WebInspector.JavaScriptSource(sourceURL, null, contentProvider, this, false);
             uiSourceCode.isContentScript = script.isContentScript;
-            uiSourceCode.isEditable = false;
             this._uiSourceCodeByURL[sourceURL] = uiSourceCode;
             this._sourceMapForUISourceCode.put(uiSourceCode, sourceMap);
             uiSourceCodeList.push(uiSourceCode);
@@ -126,9 +128,10 @@ WebInspector.CompilerScriptMapping.prototype = {
 
         this._sourceMapForScriptId[script.scriptId] = sourceMap;
         this._scriptForSourceMap.put(sourceMap, script);
-        var data = { removedItems: [], addedItems: uiSourceCodeList };
-        this.dispatchEventToListeners(WebInspector.ScriptMapping.Events.UISourceCodeListChanged, data);
         script.setSourceMapping(this);
+
+        for (var i = 0; i < uiSourceCodeList.length; ++i)
+            this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, uiSourceCodeList[i]);
     },
 
     /**
@@ -159,8 +162,9 @@ WebInspector.CompilerScriptMapping.prototype = {
 
     reset: function()
     {
-        var data = { removedItems: this.uiSourceCodeList(), addedItems: [] };
-        this.dispatchEventToListeners(WebInspector.ScriptMapping.Events.UISourceCodeListChanged, data);
+        var uiSourceCodes = this.uiSourceCodes();
+        for (var i = 0; i < uiSourceCodes.length; ++i)
+            this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeRemoved, uiSourceCodes[i]);
 
         this._sourceMapByURL = {};
         this._sourceMapForScriptId = {};
@@ -170,7 +174,7 @@ WebInspector.CompilerScriptMapping.prototype = {
     }
 }
 
-WebInspector.CompilerScriptMapping.prototype.__proto__ = WebInspector.ScriptMapping.prototype;
+WebInspector.CompilerScriptMapping.prototype.__proto__ = WebInspector.Object.prototype;
 
 /**
  * @constructor

@@ -167,25 +167,24 @@ void InspectorProfilerAgent::collectGarbage(WebCore::ErrorString*)
     ScriptProfiler::collectGarbage();
 }
 
-PassRefPtr<InspectorObject> InspectorProfilerAgent::createProfileHeader(const ScriptProfile& profile)
+PassRefPtr<TypeBuilder::Profiler::ProfileHeader> InspectorProfilerAgent::createProfileHeader(const ScriptProfile& profile)
 {
-    RefPtr<InspectorObject> header = InspectorObject::create();
-    header->setString("title", profile.title());
-    header->setNumber("uid", profile.uid());
-    header->setString("typeId", String(CPUProfileType));
-    return header;
+    return TypeBuilder::Profiler::ProfileHeader::create()
+        .setTypeId(TypeBuilder::Profiler::ProfileHeader::TypeId::CPU)
+        .setUid(profile.uid())
+        .setTitle(profile.title())
+        .release();
 }
 
-PassRefPtr<InspectorObject> InspectorProfilerAgent::createSnapshotHeader(const ScriptHeapSnapshot& snapshot)
+PassRefPtr<TypeBuilder::Profiler::ProfileHeader> InspectorProfilerAgent::createSnapshotHeader(const ScriptHeapSnapshot& snapshot)
 {
-    RefPtr<InspectorObject> header = InspectorObject::create();
-    header->setString("title", snapshot.title());
-    header->setNumber("uid", snapshot.uid());
-    header->setString("typeId", String(HeapProfileType));
-    header->setNumber("maxJSObjectId", snapshot.maxSnapshotJSObjectId());
-    return header;
+    RefPtr<TypeBuilder::Profiler::ProfileHeader> header = TypeBuilder::Profiler::ProfileHeader::create()
+        .setTypeId(TypeBuilder::Profiler::ProfileHeader::TypeId::HEAP)
+        .setUid(snapshot.uid())
+        .setTitle(snapshot.title());
+    header->setMaxJSObjectId(snapshot.maxSnapshotJSObjectId());
+    return header.release();
 }
-
 
 void InspectorProfilerAgent::causesRecompilation(ErrorString*, bool* result)
 {
@@ -241,9 +240,9 @@ String InspectorProfilerAgent::getCurrentUserInitiatedProfileName(bool increment
     return makeString(UserInitiatedProfileName, '.', String::number(m_currentUserInitiatedProfileNumber));
 }
 
-void InspectorProfilerAgent::getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<InspectorObject> >& headers)
+void InspectorProfilerAgent::getProfileHeaders(ErrorString*, RefPtr<TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader> >& headers)
 {
-    headers = TypeBuilder::Array<InspectorObject>::create();
+    headers = TypeBuilder::Array<TypeBuilder::Profiler::ProfileHeader>::create();
 
     ProfilesMap::iterator profilesEnd = m_profiles.end();
     for (ProfilesMap::iterator it = m_profiles.begin(); it != profilesEnd; ++it)
@@ -268,22 +267,22 @@ private:
 
 } // namespace
 
-void InspectorProfilerAgent::getProfile(ErrorString*, const String& type, int rawUid, RefPtr<InspectorObject>& profileObject)
+void InspectorProfilerAgent::getProfile(ErrorString*, const String& type, int rawUid, RefPtr<TypeBuilder::Profiler::Profile>& profileObject)
 {
     unsigned uid = static_cast<unsigned>(rawUid);
     if (type == CPUProfileType) {
         ProfilesMap::iterator it = m_profiles.find(uid);
         if (it != m_profiles.end()) {
-            profileObject = createProfileHeader(*it->second);
-            profileObject->setObject("head", it->second->buildInspectorObjectForHead());
+            profileObject = TypeBuilder::Profiler::Profile::create();
+            profileObject->setHead(it->second->buildInspectorObjectForHead());
             if (it->second->bottomUpHead())
-                profileObject->setObject("bottomUpHead", it->second->buildInspectorObjectForBottomUpHead());
+                profileObject->setBottomUpHead(it->second->buildInspectorObjectForBottomUpHead());
         }
     } else if (type == HeapProfileType) {
         HeapSnapshotsMap::iterator it = m_snapshots.find(uid);
         if (it != m_snapshots.end()) {
             RefPtr<ScriptHeapSnapshot> snapshot = it->second;
-            profileObject = createSnapshotHeader(*snapshot);
+            profileObject = TypeBuilder::Profiler::Profile::create();
             if (m_frontend) {
                 OutputStream stream(m_frontend, uid);
                 snapshot->writeJSON(&stream);
@@ -429,8 +428,14 @@ void InspectorProfilerAgent::toggleRecordButton(bool isProfiling)
         m_frontend->setRecordingProfile(isProfiling);
 }
 
-void InspectorProfilerAgent::getObjectByHeapObjectId(ErrorString* error, int id, const String* objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result)
+void InspectorProfilerAgent::getObjectByHeapObjectId(ErrorString* error, const String& heapSnapshotObjectId, const String* objectGroup, RefPtr<TypeBuilder::Runtime::RemoteObject>& result)
 {
+    bool ok;
+    unsigned id = heapSnapshotObjectId.toUInt(&ok);
+    if (!ok) {
+        *error = "Invalid heap snapshot object id";
+        return;
+    }
     ScriptObject heapObject = ScriptProfiler::objectByHeapObjectId(id);
     if (heapObject.hasNoValue()) {
         *error = "Object is not available";
@@ -444,6 +449,22 @@ void InspectorProfilerAgent::getObjectByHeapObjectId(ErrorString* error, int id,
     result = injectedScript.wrapObject(heapObject, objectGroup ? *objectGroup : "");
     if (!result)
         *error = "Failed to wrap object";
+}
+
+void InspectorProfilerAgent::getHeapObjectId(ErrorString* errorString, const String& objectId, String* heapSnapshotObjectId)
+{
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(objectId);
+    if (injectedScript.hasNoValue()) {
+        *errorString = "Inspected context has gone";
+        return;
+    }
+    ScriptValue value = injectedScript.findObjectById(objectId);
+    if (value.hasNoValue() || value.isUndefined()) {
+        *errorString = "Object with given id not found";
+        return;
+    }
+    unsigned id = ScriptProfiler::getHeapObjectId(value);
+    *heapSnapshotObjectId = String::number(id);
 }
 
 } // namespace WebCore

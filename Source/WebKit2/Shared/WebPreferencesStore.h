@@ -61,6 +61,7 @@ namespace WebKit {
     macro(XSSAuditorEnabled, xssAuditorEnabled, Bool, bool, true) \
     macro(FrameFlatteningEnabled, frameFlatteningEnabled, Bool, bool, false) \
     macro(DeveloperExtrasEnabled, developerExtrasEnabled, Bool, bool, false) \
+    macro(JavaScriptExperimentsEnabled, javaScriptExperimentsEnabled, Bool, bool, false) \
     macro(PrivateBrowsingEnabled, privateBrowsingEnabled, Bool, bool, false) \
     macro(TextAreasAreResizable, textAreasAreResizable, Bool, bool, true) \
     macro(JavaScriptCanOpenWindowsAutomatically, javaScriptCanOpenWindowsAutomatically, Bool, bool, true) \
@@ -75,6 +76,7 @@ namespace WebKit {
     macro(CSSCustomFilterEnabled, cssCustomFilterEnabled, Bool, bool, true) \
     macro(WebGLEnabled, webGLEnabled, Bool, bool, false) \
     macro(CSSRegionsEnabled, cssRegionsEnabled, Bool, bool, true) \
+    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, false) \
     macro(RegionBasedColumnsEnabled, regionBasedColumnsEnabled, Bool, bool, false) \
     macro(ForceFTPDirectoryListings, forceFTPDirectoryListings, Bool, bool, false) \
     macro(TabsToLinks, tabsToLinks, Bool, bool, DEFAULT_WEBKIT_TABSTOLINKS_ENABLED) \
@@ -111,9 +113,11 @@ namespace WebKit {
     macro(NotificationsEnabled, notificationsEnabled, Bool, bool, true) \
     macro(ShouldRespectImageOrientation, shouldRespectImageOrientation, Bool, bool, false) \
     macro(WantsBalancedSetDefersLoadingBehavior, wantsBalancedSetDefersLoadingBehavior, Bool, bool, false) \
+    macro(RequestAnimationFrameEnabled, requestAnimationFrameEnabled, Bool, bool, true) \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
+    macro(DevicePixelRatio, devicePixelRatio, Double, double, 1.0) \
     macro(PDFScaleFactor, pdfScaleFactor, Double, double, 0) \
     \
 
@@ -129,10 +133,9 @@ namespace WebKit {
     macro(MinimumLogicalFontSize, minimumLogicalFontSize, UInt32, uint32_t, 9) \
     macro(DefaultFontSize, defaultFontSize, UInt32, uint32_t, 16) \
     macro(DefaultFixedFontSize, defaultFixedFontSize, UInt32, uint32_t, 13) \
-    macro(LayoutFallbackWidth, layoutFallbackWidth, UInt32, uint32_t, 0) \
-    macro(DeviceDPI, deviceDPI, UInt32, uint32_t, 240) \
-    macro(DeviceWidth, deviceWidth, UInt32, uint32_t, 480) \
-    macro(DeviceHeight, deviceHeight, UInt32, uint32_t, 854) \
+    macro(LayoutFallbackWidth, layoutFallbackWidth, UInt32, uint32_t, 980) \
+    macro(DeviceWidth, deviceWidth, UInt32, uint32_t, 0) \
+    macro(DeviceHeight, deviceHeight, UInt32, uint32_t, 0) \
     macro(PDFDisplayMode, pdfDisplayMode, UInt32, uint32_t, 1) \
     macro(EditableLinkBehavior, editableLinkBehavior, UInt32, uint32_t, WebCore::EditableLinkNeverLive) \
     macro(InspectorAttachedHeight, inspectorAttachedHeight, UInt32, uint32_t, 300) \

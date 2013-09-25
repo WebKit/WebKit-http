@@ -100,15 +100,49 @@ namespace WebCore {
         const FloatPoint& p0() const { return m_p0; }
         const FloatPoint& p1() const { return m_p1; }
 
-        void setP0(const FloatPoint& p) { m_p0 = p; }
-        void setP1(const FloatPoint& p) { m_p1 = p; }
+        void setP0(const FloatPoint& p)
+        {
+            if (m_p0 == p)
+                return;
+            
+            m_p0 = p;
+            
+            invalidateHash();
+        }
+        
+        void setP1(const FloatPoint& p)
+        {
+            if (m_p1 == p)
+                return;
+            
+            m_p1 = p;
+            
+            invalidateHash();
+        }
 
         float startRadius() const { return m_r0; }
         float endRadius() const { return m_r1; }
 
-        void setStartRadius(float r) { m_r0 = r; }
-        void setEndRadius(float r) { m_r1 = r; }
-        
+        void setStartRadius(float r)
+        {
+            if (m_r0 == r)
+                return;
+
+            m_r0 = r;
+
+            invalidateHash();
+        }
+
+        void setEndRadius(float r)
+        {
+            if (m_r1 == r)
+                return;
+
+            m_r1 = r;
+
+            invalidateHash();
+        }
+
         float aspectRatio() const { return m_aspectRatio; }
 
 #if OS(WINCE) && !PLATFORM(QT)
@@ -141,6 +175,9 @@ namespace WebCore {
 
         void setPlatformGradientSpaceTransform(const AffineTransform& gradientSpaceTransformation);
 
+        virtual unsigned hash() const OVERRIDE;
+        void invalidateHash() { m_cachedHash = 0; }
+
 #if USE(CG)
         void paint(CGContextRef);
         void paint(GraphicsContext*);
@@ -158,6 +195,7 @@ namespace WebCore {
         int findStop(float value) const;
         void sortStopsIfNecessary();
 
+        // Keep any parameters relevant to rendering in sync with the structure in Gradient::hash().
         bool m_radial;
         FloatPoint m_p0;
         FloatPoint m_p1;
@@ -169,6 +207,8 @@ namespace WebCore {
         mutable int m_lastStop;
         GradientSpreadMethod m_spreadMethod;
         AffineTransform m_gradientSpaceTransformation;
+
+        mutable unsigned m_cachedHash;
 
         PlatformGradient m_gradient;
 

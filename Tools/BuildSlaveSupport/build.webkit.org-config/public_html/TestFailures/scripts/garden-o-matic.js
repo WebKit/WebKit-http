@@ -34,12 +34,24 @@ var g_buildersFailing = null;
 var g_unexpectedFailuresController = null;
 var g_failuresController = null;
 
-var g_losingTestCoverageBuilders = null;
+var g_nonLayoutTestFailureBuilders = null;
+
+function updatePartyTime()
+{
+    if (!g_unexpectedFailuresController.length() && !g_nonLayoutTestFailureBuilders.hasFailures())
+        $('#onebar').addClass('partytime');
+    else
+        $('#onebar').removeClass('partytime');
+}
 
 function update()
 {
     if (g_revisionHint)
         g_revisionHint.dismiss();
+
+    var gtestIframe = document.querySelector('#chromium-gtests iframe');
+    if (gtestIframe)
+        gtestIframe.src = gtestIframe.src;
 
     // FIXME: This should be a button with a progress element.
     var numberOfTestsAnalyzed = 0;
@@ -47,7 +59,10 @@ function update()
 
     g_info.add(updating);
 
-    builders.buildersFailingStepRequredForTestCoverage(g_losingTestCoverageBuilders.update.bind(g_losingTestCoverageBuilders));
+    builders.buildersFailingNonLayoutTests(function(failuresList) {
+        g_nonLayoutTestFailureBuilders.update(failuresList);
+        updatePartyTime();
+    });
 
     base.callInParallel([model.updateRecentCommits, model.updateResultsByBuilder], function() {
         if (g_failuresController)
@@ -59,10 +74,7 @@ function update()
             updating.update('Analyzing test failures ... ' + ++numberOfTestsAnalyzed + ' tests analyzed.');
             g_unexpectedFailuresController.update(failureAnalysis);
         }, function() {
-            if (!g_unexpectedFailuresController.length())
-                $('#onebar').addClass('partytime');
-            else
-                $('#onebar').removeClass('partytime');
+            updatePartyTime();
             g_unexpectedFailuresController.purge();
 
             updating.dismiss();
@@ -86,7 +98,6 @@ $(document).ready(function() {
         showResults: function(resultsView)
         {
             var resultsContainer = onebar.results();
-            console.log(resultsContainer);
             $(resultsContainer).empty().append(resultsView);
             onebar.select('results');
         }
@@ -96,7 +107,7 @@ $(document).ready(function() {
     g_unexpectedFailuresController = new controllers.UnexpectedFailures(model.state, unexpectedFailuresView, onebarController);
 
     g_info = new ui.notifications.Stream();
-    g_losingTestCoverageBuilders = new controllers.FailingBuilders(g_info, 'Losing test coverage');
+    g_nonLayoutTestFailureBuilders = new controllers.FailingBuilders(g_info, 'Non-layout test failures');
 
     // FIXME: This should be an Action object.
     var updateButton = document.body.insertBefore(document.createElement('button'), document.body.firstChild);
@@ -114,6 +125,8 @@ $(document).ready(function() {
         g_failuresController = new controllers.ExpectedFailures(model.state, failuresView, onebarController);
         expected.appendChild(failuresView);
     }
+
+    onebar.perf().appendChild(new ui.perf.View());
 
     update();
 });

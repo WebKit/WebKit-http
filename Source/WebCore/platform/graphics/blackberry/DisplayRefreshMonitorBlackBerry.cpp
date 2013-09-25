@@ -40,7 +40,7 @@ void DisplayAnimationClient::animationFrameChanged()
 DisplayRefreshMonitor::~DisplayRefreshMonitor()
 {
     stopAnimationClient();
-    cancelCallOnMainThread(DisplayRefreshMonitor::refreshDisplayOnMainThread, this);
+    cancelCallOnMainThread(DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread, this);
 }
 
 void DisplayRefreshMonitor::startAnimationClient()
@@ -74,16 +74,20 @@ bool DisplayRefreshMonitor::requestRefreshCallback()
 
 void DisplayRefreshMonitor::displayLinkFired()
 {
-    MutexLocker lock(m_mutex);
-
-    if (!m_scheduled || !m_previousFrameDone)
+    if (!m_mutex.tryLock())
         return;
+
+    if (!m_scheduled || !m_previousFrameDone) {
+        m_mutex.unlock();
+        return;
+    }
 
     m_previousFrameDone = false;
 
-    m_monotonicAnimationStartTime = monotonicallyIncreasingTime();
+    m_timestamp = currentTime();
 
-    callOnMainThread(refreshDisplayOnMainThread, this);
+    callOnMainThread(handleDisplayRefreshedNotificationOnMainThread, this);
+    m_mutex.unlock();
 }
 
 }

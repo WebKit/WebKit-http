@@ -74,9 +74,9 @@ template<class Collection, class ItemType> static v8::Handle<v8::Value> getNamed
 template<class Collection, class ItemType> static v8::Handle<v8::Value> collectionNamedPropertyGetter(v8::Local<v8::String> name, const v8::AccessorInfo& info)
 {
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
     if (info.Holder()->HasRealNamedCallbackProperty(name))
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     return getNamedPropertyOfCollection<Collection, ItemType>(name, info.Holder(), info.GetIsolate());
 }
@@ -135,7 +135,7 @@ template<class Collection> static v8::Handle<v8::Value> collectionStringOrNullIn
     ASSERT(V8DOMWrapper::maybeDOMWrapper(info.Holder()));
     Collection* collection = toNativeCollection<Collection>(info.Holder());
     String result = collection->item(index);
-    return v8StringOrNull(result);
+    return v8StringOrNull(result, info.GetIsolate());
 }
 
 
@@ -146,7 +146,7 @@ template<class Collection> static v8::Handle<v8::Value> collectionStringIndexedP
     ASSERT(V8DOMWrapper::maybeDOMWrapper(info.Holder()));
     Collection* collection = toNativeCollection<Collection>(info.Holder());
     String result = collection->item(index);
-    return v8String(result);
+    return v8String(result, info.GetIsolate());
 }
 
 

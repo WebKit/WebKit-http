@@ -717,7 +717,7 @@ bool AccessibilityRenderObject::isReadOnly() const
             return true;
         
         HTMLElement* body = document->body();
-        if (body && body->isContentEditable())
+        if (body && body->rendererIsEditable())
             return false;
 
         return !document->rendererIsEditable();
@@ -3428,7 +3428,7 @@ void AccessibilityRenderObject::contentChanged()
         if (parent->supportsARIALiveRegion())
             cache->postNotification(renderParent, AXObjectCache::AXLiveRegionChanged, true);
 
-        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->isContentEditable())
+        if (parent->isARIATextControl() && !parent->isNativeTextControl() && !parent->node()->rendererIsEditable())
             cache->postNotification(renderParent, AXObjectCache::AXValueChanged, true);
     }
 }

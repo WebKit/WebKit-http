@@ -35,6 +35,11 @@ using namespace JSC;
 
 namespace WebCore {
 
+Dictionary::Dictionary()
+    : m_dictionary(0, 0)
+{
+}
+
 Dictionary::Dictionary(JSC::ExecState* exec, JSC::JSValue value)
     : m_dictionary(exec, value.isObject() ? value.getObject() : 0)
 {
@@ -49,5 +54,34 @@ JSObject* Dictionary::asJSObject<Notification>(Notification* object) const
 }
 #endif
 
-};
+bool Dictionary::getOwnPropertiesAsStringHashMap(WTF::HashMap<String, String>& map) const
+{
+    if (!m_dictionary.isValid())
+        return false;
 
+    JSObject* object =  m_dictionary.initializerObject();
+    ExecState* exec = m_dictionary.execState();
+
+    PropertyNameArray propertyNames(exec);
+    JSObject::getOwnPropertyNames(object, exec, propertyNames, ExcludeDontEnumProperties);
+    for (PropertyNameArray::const_iterator it = propertyNames.begin(); it != propertyNames.end(); it++) {
+        String stringKey = ustringToString(it->ustring());
+        if (stringKey.isEmpty())
+            continue;
+        JSValue value = object->get(exec, *it);
+        if (exec->hadException())
+            continue;
+        String stringValue = ustringToString(value.toString(exec)->value(exec));
+        if (!exec->hadException())
+            map.set(stringKey, stringValue);
+    }
+
+    return true;
+}
+
+bool Dictionary::getWithUndefinedOrNullCheck(const String& propertyName, String& value) const
+{
+    return m_dictionary.getWithUndefinedOrNullCheck(propertyName, value);
+}
+
+};

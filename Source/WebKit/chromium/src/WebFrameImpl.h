@@ -55,12 +55,15 @@ struct WindowFeatures;
 namespace WebKit {
 class ChromePrintContext;
 class WebDataSourceImpl;
+class WebDeliveredIntentClient;
 class WebInputElement;
+class WebIntent;
 class WebFrameClient;
 class WebPerformance;
 class WebPluginContainerImpl;
 class WebView;
 class WebViewImpl;
+struct WebPrintParams;
 
 template <typename T> class WebVector;
 
@@ -72,7 +75,6 @@ public:
     virtual void setName(const WebString&);
     virtual long long identifier() const;
     virtual WebVector<WebIconURL> iconURLs(int iconTypes) const;
-    virtual WebReferrerPolicy referrerPolicy() const;
     virtual WebSize scrollOffset() const;
     virtual void setScrollOffset(const WebSize&);
     virtual WebSize minimumScrollOffset() const;
@@ -176,9 +178,8 @@ public:
     virtual bool selectWordAroundCaret();
     virtual void selectRange(const WebPoint& start, const WebPoint& end);
     virtual void selectRange(const WebRange&);
-    virtual int printBegin(const WebSize& pageSize,
+    virtual int printBegin(const WebPrintParams&,
                            const WebNode& constrainToNode,
-                           int printerDPI,
                            bool* useBrowserOverlays);
     virtual float printPage(int pageToPrint, WebCanvas*);
     virtual float getPrintPageShrink(int page);
@@ -205,14 +206,18 @@ public:
     virtual void increaseMatchCount(int count, int identifier);
     virtual void resetMatchCount();
 
-    virtual void handleIntentResult(int, const WebString&);
-    virtual void handleIntentFailure(int, const WebString&);
+    virtual void sendOrientationChangeEvent(int orientation);
 
     virtual void addEventListener(const WebString& eventType,
                                   WebDOMEventListener*, bool useCapture);
     virtual void removeEventListener(const WebString& eventType,
                                      WebDOMEventListener*, bool useCapture);
     virtual bool dispatchEvent(const WebDOMEvent&);
+    virtual void dispatchMessageEventWithOriginCheck(
+        const WebSecurityOrigin& intendedTargetOrigin,
+        const WebDOMEvent&);
+
+    virtual void deliverIntent(const WebIntent&, WebMessagePortChannelArray*, WebDeliveredIntentClient*);
 
     virtual WebString contentAsText(size_t maxChars) const;
     virtual WebString contentAsMarkup() const;
@@ -230,8 +235,8 @@ public:
     static PassRefPtr<WebFrameImpl> create(WebFrameClient* client);
     virtual ~WebFrameImpl();
 
-    // Called by the WebViewImpl to initialize its main frame:
-    void initializeAsMainFrame(WebViewImpl*);
+    // Called by the WebViewImpl to initialize the main frame for the page.
+    void initializeAsMainFrame(WebCore::Page*);
 
     PassRefPtr<WebCore::Frame> createChildFrame(
         const WebCore::FrameLoadRequest&, WebCore::HTMLFrameOwnerElement*);

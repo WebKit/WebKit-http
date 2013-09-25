@@ -43,6 +43,7 @@
 
 #include "CppBoundClass.h"
 #include "Task.h"
+#include "WebDeliveredIntentClient.h"
 #include "platform/WebArrayBufferView.h"
 #include "platform/WebString.h"
 #include "WebTextDirection.h"
@@ -243,20 +244,19 @@ public:
     void enableAutoResizeMode(const CppArgumentList&, CppVariant*);
     void disableAutoResizeMode(const CppArgumentList&, CppVariant*);
     void numberOfActiveAnimations(const CppArgumentList&, CppVariant*);
-    void suspendAnimations(const CppArgumentList&, CppVariant*);
-    void resumeAnimations(const CppArgumentList&, CppVariant*);
     void disableImageLoading(const CppArgumentList&, CppVariant*);
     void setIconDatabaseEnabled(const CppArgumentList&, CppVariant*);
     void dumpSelectionRect(const CppArgumentList&, CppVariant*);
 
+#if ENABLE(NOTIFICATIONS)
     // Grants permission for desktop notifications to an origin
     void grantDesktopNotificationPermission(const CppArgumentList&, CppVariant*);
     // Simulates a click on a desktop notification.
     void simulateDesktopNotificationClick(const CppArgumentList&, CppVariant*);
+#endif
 
     void setDomainRelaxationForbiddenForURLScheme(const CppArgumentList&, CppVariant*);
     void setDeferMainResourceDataLoad(const CppArgumentList&, CppVariant*);
-    void setEditingBehavior(const CppArgumentList&, CppVariant*);
 
     // Deals with Web Audio WAV file data.
     void setAudioData(const CppArgumentList&, CppVariant*);
@@ -340,9 +340,6 @@ public:
     // printing.
     void hasCustomPageSizeStyle(const CppArgumentList&, CppVariant*);
 
-    // Returns the visibililty status of a page box for printing
-    void isPageBoxVisible(const CppArgumentList&, CppVariant*);
-
     // Gets the page-related property for printed content
     void pageProperty(const CppArgumentList&, CppVariant*);
 
@@ -351,9 +348,6 @@ public:
 
     // Gets the number of geolocation permissions requests pending.
     void numberOfPendingGeolocationPermissionRequests(const CppArgumentList&, CppVariant*);
-
-    // Allows layout tests to start JavaScript profiling.
-    void setJavaScriptProfilingEnabled(const CppArgumentList&, CppVariant*);
 
     // Allows layout tests to exec scripts at WebInspector side.
     void evaluateInWebInspector(const CppArgumentList&, CppVariant*);
@@ -377,8 +371,13 @@ public:
     void abortModal(const CppArgumentList&, CppVariant*);
 
     // Speech input related functions.
+#if ENABLE(INPUT_SPEECH)
     void addMockSpeechInputResult(const CppArgumentList&, CppVariant*);
     void setMockSpeechInputDumpRect(const CppArgumentList&, CppVariant*);
+#endif
+#if ENABLE(SCRIPTED_SPEECH)
+    void addMockSpeechRecognitionResult(const CppArgumentList&, CppVariant*);
+#endif
     void startSpeechInput(const CppArgumentList&, CppVariant*);
 
     void layerTreeAsText(const CppArgumentList& args, CppVariant* result);
@@ -430,6 +429,9 @@ public:
 
     void selectionAsMarkup(const CppArgumentList&, CppVariant*);
 
+    // Switch the link detection.
+    void setAutomaticLinkDetectionEnabled(bool);
+
 #if ENABLE(POINTER_LOCK)
     void didLosePointerLock(const CppArgumentList&, CppVariant*);
     void setPointerLockWillFailSynchronously(const CppArgumentList&, CppVariant*);
@@ -439,8 +441,18 @@ public:
     void workerThreadCount(CppVariant*);
 
     // Expects one string argument for sending successful result, zero
-    // for sending a failure result.
+    // arguments for sending a failure result.
     void sendWebIntentResponse(const CppArgumentList&, CppVariant*);
+
+    // Cause the web intent to be delivered to this context.
+    void deliverWebIntent(const CppArgumentList&, CppVariant*);
+
+    // Enables or disables subpixel positioning (i.e. fractional X positions for
+    // glyphs) in text rendering on Linux. Since this method changes global
+    // settings, tests that call it must use their own custom font family for
+    // all text that they render. If not, an already-cached style will be used,
+    // resulting in the changed setting being ignored.
+    void setTextSubpixelPositioning(const CppArgumentList&, CppVariant*);
 
 public:
     // The following methods are not exposed to JavaScript.
@@ -573,8 +585,6 @@ private:
     bool pauseTransitionAtTimeOnElementWithId(const WebKit::WebString& propertyName, double time, const WebKit::WebString& elementId);
     bool elementDoesAutoCompleteForElementWithId(const WebKit::WebString&);
     int numberOfActiveAnimations();
-    void suspendAnimations();
-    void resumeAnimations();
 
     // Used for test timeouts.
     TaskList m_taskList;
@@ -707,6 +717,9 @@ private:
 
     // WAV audio data is stored here.
     WebKit::WebArrayBufferView m_audioData;
+
+    // Mock object for testing delivering web intents.
+    OwnPtr<WebKit::WebDeliveredIntentClient> m_intentClient;
 
     bool m_shouldStayOnPageAfterHandlingBeforeUnload;
 

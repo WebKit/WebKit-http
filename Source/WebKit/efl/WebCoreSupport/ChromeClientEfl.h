@@ -125,6 +125,8 @@ public:
     virtual void reachedMaxAppCacheSize(int64_t spaceNeeded);
     virtual void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded);
 
+    virtual void populateVisitedLinks();
+
 #if ENABLE(TOUCH_EVENTS)
     virtual void needTouchEvents(bool);
 #endif
@@ -178,6 +180,15 @@ public:
     virtual bool shouldRubberBandInDirection(WebCore::ScrollDirection) const { return true; }
     virtual void numWheelEventHandlersChanged(unsigned) { }
     virtual void numTouchEventHandlersChanged(unsigned) { }
+
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title);
+#endif
+
+#if ENABLE(CUSTOM_SCHEME_HANDLER)
+    virtual CustomHandlersState isProtocolHandlerRegistered(const String& scheme, const String& baseURL, const String& url);
+    virtual void unregisterProtocolHandler(const String& scheme, const String& baseURL, const String& url);
+#endif
 
     Evas_Object* m_view;
     KURL m_hoveredLinkURL;

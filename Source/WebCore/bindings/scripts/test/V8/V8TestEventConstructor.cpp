@@ -21,6 +21,7 @@
 #include "config.h"
 #include "V8TestEventConstructor.h"
 
+#include "ContextEnabledFeatures.h"
 #include "Dictionary.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
@@ -33,7 +34,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestEventConstructor::info = { V8TestEventConstructor::GetTemplate, V8TestEventConstructor::derefObject, 0, 0 };
+WrapperTypeInfo V8TestEventConstructor::info = { V8TestEventConstructor::GetTemplate, V8TestEventConstructor::derefObject, 0, 0, WrapperTypeObjectPrototype };
 
 namespace TestEventConstructorV8Internal {
 
@@ -67,13 +68,13 @@ v8::Handle<v8::Value> V8TestEventConstructor::constructorCallback(const v8::Argu
     INC_STATS("DOM.TestEventConstructor.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.");
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     STRING_TO_V8PARAMETER_EXCEPTION_BLOCK(V8Parameter<>, type, args[0]);
     TestEventConstructorInit eventInit;

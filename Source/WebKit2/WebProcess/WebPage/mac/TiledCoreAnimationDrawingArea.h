@@ -80,9 +80,13 @@ private:
     virtual bool flushLayers() OVERRIDE;
 
     // Message handlers.
+    virtual void suspendPainting() OVERRIDE;
+    virtual void resumePainting() OVERRIDE;
     virtual void updateGeometry(const WebCore::IntSize& viewSize) OVERRIDE;
     virtual void setDeviceScaleFactor(float) OVERRIDE;
     virtual void setLayerHostingMode(uint32_t) OVERRIDE;
+
+    void updateLayerHostingContext();
 
     void setRootCompositingLayer(CALayer *);
 
@@ -93,7 +97,6 @@ private:
     WebCore::LayerFlushScheduler m_layerFlushScheduler;
 
     OwnPtr<LayerHostingContext> m_layerHostingContext;
-    LayerHostingMode m_layerHostingMode;
     
     RetainPtr<CALayer> m_rootLayer;
     RetainPtr<CALayer> m_pendingRootCompositingLayer;
@@ -101,7 +104,8 @@ private:
     RetainPtr<CALayer> m_debugInfoLayer;
 
     OwnPtr<WebCore::GraphicsLayer> m_pageOverlayLayer;
-    WebCore::FloatPoint m_mainFrameScrollLayerPosition;
+
+    bool m_isPaintingSuspended;
 };
 
 } // namespace WebKit

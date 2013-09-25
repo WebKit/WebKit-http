@@ -59,7 +59,7 @@ namespace WebCore {
     public:
         StringCache() { }
 
-        v8::Local<v8::String> v8ExternalString(StringImpl* stringImpl) 
+        v8::Local<v8::String> v8ExternalString(StringImpl* stringImpl, v8::Isolate* isolate)
         {
             if (m_lastStringImpl.get() == stringImpl) {
                 ASSERT(!m_lastV8String.IsNearDeath());
@@ -67,7 +67,7 @@ namespace WebCore {
                 return v8::Local<v8::String>::New(m_lastV8String);
             }
 
-            return v8ExternalStringSlow(stringImpl);
+            return v8ExternalStringSlow(stringImpl, isolate);
         }
 
         void clearOnGC() 
@@ -79,7 +79,7 @@ namespace WebCore {
         void remove(StringImpl*);
 
     private:
-        v8::Local<v8::String> v8ExternalStringSlow(StringImpl*);
+        v8::Local<v8::String> v8ExternalStringSlow(StringImpl*, v8::Isolate*);
 
         HashMap<StringImpl*, v8::String*> m_stringCache;
         v8::Persistent<v8::String> m_lastV8String;
@@ -87,6 +87,27 @@ namespace WebCore {
         // hence lastStringImpl might be not a key of the cache (in sense of identity)
         // and hence it's not refed on addition.
         RefPtr<StringImpl> m_lastStringImpl;
+    };
+
+    class ScriptGCEventListener;
+
+    class GCEventData {
+    public:
+        typedef Vector<ScriptGCEventListener*> GCEventListeners;
+
+        GCEventData() : startTime(0.0), usedHeapSize(0) { }
+        void clear()
+        {
+            startTime = 0.0;
+            usedHeapSize = 0;
+        }
+        GCEventListeners& listeners() { return m_listeners; }
+
+        double startTime;
+        size_t usedHeapSize;
+
+    private:
+        GCEventListeners m_listeners;
     };
 
     class ConstructorMode;
@@ -160,6 +181,8 @@ namespace WebCore {
         int decrementInternalScriptRecursionLevel() { return --m_internalScriptRecursionLevel; }
 #endif
 
+        GCEventData& gcEventData() { return m_gcEventData; }
+
     private:
         explicit V8BindingPerIsolateData(v8::Isolate*);
         ~V8BindingPerIsolateData();
@@ -186,6 +209,7 @@ namespace WebCore {
         GlobalHandleMap m_globalHandleMap;
         int m_internalScriptRecursionLevel;
 #endif
+        GCEventData m_gcEventData;
     };
 
     class ConstructorMode {
@@ -223,6 +247,15 @@ namespace WebCore {
     template <typename StringType>
     StringType v8StringToWebCoreString(v8::Handle<v8::String> v8String, ExternalMode external);
 
+    // Since v8::Null(isolate) crashes if we pass a null isolate,
+    // we need to use v8NullWithCheck(isolate) if an isolate can be null.
+    //
+    // FIXME: Remove all null isolates from V8 bindings, and remove v8NullWithCheck(isolate).
+    inline v8::Handle<v8::Value> v8NullWithCheck(v8::Isolate* isolate)
+    {
+        return isolate ? v8::Null(isolate) : v8::Null();
+    }
+
     // Convert v8 types to a WTF::String. If the V8 string is not already
     // an external string then it is transformed into an external string at this
     // point to avoid repeated conversions.
@@ -248,10 +281,10 @@ namespace WebCore {
     {
         StringImpl* stringImpl = string.impl();
         if (!stringImpl)
-            return v8::String::Empty();
+            return isolate ? v8::String::Empty(isolate) : v8::String::Empty();
 
         V8BindingPerIsolateData* data = V8BindingPerIsolateData::current(isolate);
-        return data->stringCache()->v8ExternalString(stringImpl);
+        return data->stringCache()->v8ExternalString(stringImpl, isolate);
     }
 
     // Convert a string to a V8 string.
@@ -375,6 +408,20 @@ namespace WebCore {
         return value ? v8::True() : v8::False();
     }
 
+    inline v8::Handle<v8::Boolean> v8Boolean(bool value, v8::Isolate* isolate)
+    {
+        return value ? v8::True(isolate) : v8::False(isolate);
+    }
+
+    // Since v8Boolean(value, isolate) crashes if we pass a null isolate,
+    // we need to use v8BooleanWithCheck(value, isolate) if an isolate can be null.
+    //
+    // FIXME: Remove all null isolates from V8 bindings, and remove v8BooleanWithCheck(value, isolate).
+    inline v8::Handle<v8::Boolean> v8BooleanWithCheck(bool value, v8::Isolate* isolate)
+    {
+        return isolate ? v8Boolean(value, isolate) : v8Boolean(value);
+    }
+
     inline String toWebCoreStringWithNullCheck(v8::Handle<v8::Value> value)
     {
         return value->IsNull() ? String() : v8ValueToWebCoreString(value);
@@ -407,7 +454,7 @@ namespace WebCore {
 
     inline v8::Handle<v8::Value> v8StringOrFalse(const String& str, v8::Isolate* isolate = 0)
     {
-        return str.isNull() ? v8::Handle<v8::Value>(v8::False()) : v8::Handle<v8::Value>(v8String(str, isolate));
+        return str.isNull() ? v8::Handle<v8::Value>(v8Boolean(false)) : v8::Handle<v8::Value>(v8String(str, isolate));
     }
 
     template <class T> v8::Handle<v8::Value> v8NumberArray(const Vector<T>& values)
@@ -424,9 +471,9 @@ namespace WebCore {
         return (object->IsDate() || object->IsNumber()) ? object->NumberValue() : std::numeric_limits<double>::quiet_NaN();
     }
 
-    inline v8::Handle<v8::Value> v8DateOrNull(double value)
+    inline v8::Handle<v8::Value> v8DateOrNull(double value, v8::Isolate* isolate = 0)
     {
-        return isfinite(value) ? v8::Date::New(value) : v8::Handle<v8::Value>(v8::Null());
+        return isfinite(value) ? v8::Date::New(value) : v8NullWithCheck(isolate);
     }
 
     v8::Persistent<v8::FunctionTemplate> createRawTemplate();
@@ -442,13 +489,6 @@ namespace WebCore {
                                                size_t attributeCount,
                                                const BatchedCallback*,
                                                size_t callbackCount);
-
-    v8::Handle<v8::Value> getElementStringAttr(const v8::AccessorInfo&,
-                                               const QualifiedName&);
-    void setElementStringAttr(const v8::AccessorInfo&,
-                              const QualifiedName&,
-                              v8::Local<v8::Value>);
-
 
     v8::Persistent<v8::String> getToStringName();
     v8::Persistent<v8::FunctionTemplate> getToStringTemplate();

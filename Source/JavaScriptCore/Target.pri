@@ -27,7 +27,7 @@ CONFIG += staticlib
 }
 
 wince* {
-    SOURCES += $$QT_SOURCE_TREE/src/3rdparty/ce-compat/ce_time.c
+    SOURCES += $$QT.core.sources/../3rdparty/ce-compat/ce_time.c
 }
 
 include(yarr/yarr.pri)
@@ -62,7 +62,7 @@ SOURCES += \
     bytecode/MethodOfGettingAValueProfile.cpp \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
-    bytecode/PredictedType.cpp \
+    bytecode/SpeculatedType.cpp \
     bytecode/PutByIdStatus.cpp \
     bytecode/SamplingTool.cpp \
     bytecode/StructureStubInfo.cpp \
@@ -78,6 +78,7 @@ SOURCES += \
     heap/HandleStack.cpp \
     heap/BlockAllocator.cpp \
     heap/Heap.cpp \
+    heap/IncrementalSweeper.cpp \
     heap/MachineStackMarker.cpp \
     heap/MarkStack.cpp \
     heap/MarkedAllocator.cpp \
@@ -89,12 +90,16 @@ SOURCES += \
     debugger/DebuggerCallFrame.cpp \
     debugger/Debugger.cpp \
     dfg/DFGAbstractState.cpp \
+    dfg/DFGArgumentsSimplificationPhase.cpp \
     dfg/DFGAssemblyHelpers.cpp \
     dfg/DFGByteCodeParser.cpp \
     dfg/DFGCapabilities.cpp \
     dfg/DFGCFAPhase.cpp \
+    dfg/DFGCFGSimplificationPhase.cpp \
+    dfg/DFGConstantFoldingPhase.cpp \
     dfg/DFGCorrectableJumpPoint.cpp \
     dfg/DFGCSEPhase.cpp \
+    dfg/DFGDominators.cpp \
     dfg/DFGDriver.cpp \
     dfg/DFGFixupPhase.cpp \
     dfg/DFGGraph.cpp \
@@ -114,6 +119,7 @@ SOURCES += \
     dfg/DFGSpeculativeJIT32_64.cpp \
     dfg/DFGSpeculativeJIT64.cpp \
     dfg/DFGThunks.cpp \
+    dfg/DFGValidate.cpp \
     dfg/DFGVirtualRegisterAllocationPhase.cpp \
     interpreter/AbstractPC.cpp \
     interpreter/CallFrame.cpp \
@@ -188,15 +194,20 @@ SOURCES += \
     runtime/JSObject.cpp \
     runtime/JSONObject.cpp \
     runtime/JSPropertyNameIterator.cpp \
+    runtime/JSSegmentedVariableObject.cpp \
     runtime/JSStaticScopeObject.cpp \
     runtime/JSString.cpp \
     runtime/JSStringJoiner.cpp \
+    runtime/JSSymbolTableObject.cpp \
     runtime/JSValue.cpp \
     runtime/JSVariableObject.cpp \
     runtime/JSWrapperObject.cpp \
     runtime/LiteralParser.cpp \
     runtime/Lookup.cpp \
     runtime/MathObject.cpp \
+    runtime/NameConstructor.cpp \
+    runtime/NameInstance.cpp \
+    runtime/NamePrototype.cpp \
     runtime/NativeErrorConstructor.cpp \
     runtime/NativeErrorPrototype.cpp \
     runtime/NumberConstructor.cpp \

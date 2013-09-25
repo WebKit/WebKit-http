@@ -53,6 +53,12 @@ static bool supportsUIStateTransitionProgress()
     return globalSupportsUIStateTransitionProgress;
 }
 
+static bool supportsExpansionTransitionProgress()
+{
+    static bool globalSupportsExpansionTransitionProgress = [NSClassFromString(@"NSScrollerImp") instancesRespondToSelector:@selector(expansionTransitionProgress)];
+    return globalSupportsExpansionTransitionProgress;
+}
+
 static ScrollbarThemeMac* macScrollbarTheme()
 {
     ScrollbarTheme* scrollbarTheme = ScrollbarTheme::theme();
@@ -278,7 +284,8 @@ static NSSize abs(NSSize size)
 enum FeatureToAnimate {
     ThumbAlpha,
     TrackAlpha,
-    UIStateTransition
+    UIStateTransition,
+    ExpansionTransition
 };
 
 @interface WebScrollbarPartAnimation : NSAnimation
@@ -351,6 +358,9 @@ enum FeatureToAnimate {
     case UIStateTransition:
         [_scrollbarPainter.get() setUiStateTransitionProgress:currentValue];
         break;
+    case ExpansionTransition:
+        [_scrollbarPainter.get() setExpansionTransitionProgress:currentValue];
+        break;
     }
 
     _scrollbar->invalidate();
@@ -373,6 +383,7 @@ enum FeatureToAnimate {
     RetainPtr<WebScrollbarPartAnimation> _knobAlphaAnimation;
     RetainPtr<WebScrollbarPartAnimation> _trackAlphaAnimation;
     RetainPtr<WebScrollbarPartAnimation> _uiStateTransitionAnimation;
+    RetainPtr<WebScrollbarPartAnimation> _expansionTransitionAnimation;
 }
 - (id)initWithScrollbar:(WebCore::Scrollbar*)scrollbar;
 - (void)cancelAnimations;
@@ -396,6 +407,7 @@ enum FeatureToAnimate {
     [_knobAlphaAnimation.get() stopAnimation];
     [_trackAlphaAnimation.get() stopAnimation];
     [_uiStateTransitionAnimation.get() stopAnimation];
+    [_expansionTransitionAnimation.get() stopAnimation];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
@@ -530,6 +542,36 @@ enum FeatureToAnimate {
     [_uiStateTransitionAnimation.get() startAnimation];
 }
 
+- (void)scrollerImp:(id)scrollerImp animateExpansionTransitionWithDuration:(NSTimeInterval)duration
+{
+    if (!_scrollbar)
+        return;
+
+    if (!supportsExpansionTransitionProgress())
+        return;
+
+    ASSERT(scrollerImp == scrollbarPainterForScrollbar(_scrollbar));
+
+    ScrollbarPainter scrollbarPainter = (ScrollbarPainter)scrollerImp;
+
+    // ExpansionTransition always animates to 1. In case an animation is in progress this avoids a hard transition.
+    [scrollbarPainter setExpansionTransitionProgress:1 - [scrollerImp expansionTransitionProgress]];
+
+    if (!_expansionTransitionAnimation) {
+        _expansionTransitionAnimation.adoptNS([[WebScrollbarPartAnimation alloc] initWithScrollbar:_scrollbar
+                                                                                  featureToAnimate:ExpansionTransition
+                                                                                       animateFrom:[scrollbarPainter expansionTransitionProgress]
+                                                                                         animateTo:1.0
+                                                                                          duration:duration]);
+    } else {
+        // If we don't need to initialize the animation, just reset the values in case they have changed.
+        [_expansionTransitionAnimation.get() setStartValue:[scrollbarPainter uiStateTransitionProgress]];
+        [_expansionTransitionAnimation.get() setEndValue:1.0];
+        [_expansionTransitionAnimation.get() setDuration:duration];
+    }
+    [_expansionTransitionAnimation.get() startAnimation];
+}
+
 - (void)scrollerImp:(id)scrollerImp overlayScrollerStateChangedTo:(NSUInteger)newOverlayScrollerState
 {
     UNUSED_PARAM(scrollerImp);
@@ -543,6 +585,7 @@ enum FeatureToAnimate {
     [_knobAlphaAnimation.get() invalidate];
     [_trackAlphaAnimation.get() invalidate];
     [_uiStateTransitionAnimation.get() invalidate];
+    [_expansionTransitionAnimation.get() invalidate];
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
@@ -558,6 +601,7 @@ PassOwnPtr<ScrollAnimator> ScrollAnimator::create(ScrollableArea* scrollableArea
 ScrollAnimatorMac::ScrollAnimatorMac(ScrollableArea* scrollableArea)
     : ScrollAnimator(scrollableArea)
     , m_initialScrollbarPaintTimer(this, &ScrollAnimatorMac::initialScrollbarPaintTimerFired)
+    , m_sendContentAreaScrolledTimer(this, &ScrollAnimatorMac::sendContentAreaScrolledTimerFired)
 #if ENABLE(RUBBER_BANDING)
     , m_scrollElasticityController(this)
     , m_snapRubberBandTimer(this, &ScrollAnimatorMac::snapRubberBandTimerFired)
@@ -903,7 +947,7 @@ void ScrollAnimatorMac::notifyContentAreaScrolled()
     // isn't really scrolling in that case. We should only pass the message on to the
     // ScrollbarPainterController when we're really scrolling on an active page.
     if (scrollableArea()->isOnActivePage())
-        [m_scrollbarPainterController.get() contentAreaScrolled];
+        sendContentAreaScrolledSoon();
 }
 
 void ScrollAnimatorMac::cancelAnimations()
@@ -920,6 +964,10 @@ void ScrollAnimatorMac::cancelAnimations()
 
 void ScrollAnimatorMac::handleWheelEventPhase(PlatformWheelEventPhase phase)
 {
+    // This may not have been set to true yet if the wheel event was handled by the ScrollingTree,
+    // So set it to true here.
+    m_haveScrolledSincePageLoad = true;
+
     if (phase == PlatformWheelEventPhaseBegan)
         didBeginScrollGesture();
     else if (phase == PlatformWheelEventPhaseEnded || phase == PlatformWheelEventPhaseCancelled)
@@ -1183,6 +1231,17 @@ void ScrollAnimatorMac::initialScrollbarPaintTimerFired(Timer<ScrollAnimatorMac>
         [m_scrollbarPainterController.get() hideOverlayScrollers];
         [m_scrollbarPainterController.get() flashScrollers];
     }
+}
+
+void ScrollAnimatorMac::sendContentAreaScrolledSoon()
+{
+    if (!m_sendContentAreaScrolledTimer.isActive())
+        m_sendContentAreaScrolledTimer.startOneShot(0);
+}
+
+void ScrollAnimatorMac::sendContentAreaScrolledTimerFired(Timer<ScrollAnimatorMac>*)
+{
+    [m_scrollbarPainterController.get() contentAreaScrolled];
 }
 
 void ScrollAnimatorMac::setVisibleScrollerThumbRect(const IntRect& scrollerThumb)

@@ -30,7 +30,7 @@
 #if ENABLE(WEBGL)
 #include <QGLWidget>
 
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#if HAVE(QT5)
 #include <QWindow>
 #endif
 
@@ -50,7 +50,7 @@ static void createPlatformGraphicsContext3DFromWidget(QWidget* widget, PlatformG
     if (glWidget->isValid()) {
         // Geometry can be set to zero because m_glWidget is used only for its QGLContext.
         glWidget->setGeometry(0, 0, 0, 0);
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#if HAVE(QT5)
         *surface = glWidget->windowHandle();
         *context = glWidget->context()->contextHandle();
 #else
@@ -67,6 +67,20 @@ static void createPlatformGraphicsContext3DFromWidget(QWidget* widget, PlatformG
 #if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER)
 #include "TextureMapper.h"
 #include "texmap/TextureMapperLayer.h"
+#endif
+
+#if HAVE(QT5)
+QWindow* QWebPageClient::ownerWindow() const
+{
+    QWidget* widget = ownerWidget();
+    if (!widget)
+        return 0;
+    if (QWindow *window = widget->windowHandle())
+        return window;
+    if (const QWidget *nativeParent = widget->nativeParentWidget())
+        return nativeParent->windowHandle();
+    return 0;
+}
 #endif
 
 namespace WebCore {

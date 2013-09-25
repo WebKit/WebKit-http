@@ -32,17 +32,15 @@
 #include "WebPagePopupImpl.h"
 
 #include "Chrome.h"
+#include "DOMWindowPagePopup.h"
+#include "DocumentLoader.h"
 #include "EmptyClients.h"
-#include "FileChooser.h"
 #include "FocusController.h"
-#include "FormState.h"
 #include "FrameView.h"
-#include "HTMLFormElement.h"
 #include "Page.h"
 #include "PagePopupClient.h"
 #include "PageWidgetDelegate.h"
 #include "Settings.h"
-#include "WebInputEvent.h"
 #include "WebInputEventConversion.h"
 #include "WebPagePopup.h"
 #include "WebViewImpl.h"
@@ -127,6 +125,10 @@ private:
     WebPagePopupImpl* m_popup;
 };
 
+class PagePopupFrameLoaderClient : public EmptyFrameLoaderClient {
+    virtual bool allowPagePopup() OVERRIDE { return true; }
+};
+
 // WebPagePopupImpl ----------------------------------------------------------------
 
 WebPagePopupImpl::WebPagePopupImpl(WebWidgetClient* client)
@@ -181,8 +183,8 @@ bool WebPagePopupImpl::initPage()
     m_page->settings()->setScriptEnabled(true);
     m_page->settings()->setAllowScriptsToCloseWindows(true);
 
-    static FrameLoaderClient* emptyFrameLoaderClient =  new EmptyFrameLoaderClient;
-    RefPtr<Frame> frame = Frame::create(m_page.get(), 0, emptyFrameLoaderClient);
+    static FrameLoaderClient* pagePopupFrameLoaderClient =  new PagePopupFrameLoaderClient;
+    RefPtr<Frame> frame = Frame::create(m_page.get(), 0, pagePopupFrameLoaderClient);
     frame->setView(FrameView::create(frame.get()));
     frame->init();
     frame->view()->resize(m_popupClient->contentSize());
@@ -195,7 +197,8 @@ bool WebPagePopupImpl::initPage()
     m_popupClient->writeDocument(*writer);
     writer->end();
 
-    frame->script()->installFunctionsForPagePopup(frame.get(), m_popupClient);
+    ASSERT(frame->existingDOMWindow());
+    DOMWindowPagePopup::install(frame->existingDOMWindow(), m_popupClient);
     return true;
 }
 
@@ -281,6 +284,8 @@ void WebPagePopupImpl::setFocus(bool enable)
 
 void WebPagePopupImpl::close()
 {
+    if (m_page && m_page->mainFrame())
+        m_page->mainFrame()->loader()->frameDetached();
     m_page.clear();
     m_widgetClient = 0;
     deref();

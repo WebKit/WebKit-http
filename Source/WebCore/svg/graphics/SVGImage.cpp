@@ -30,27 +30,12 @@
 #if ENABLE(SVG)
 #include "SVGImage.h"
 
-#include "CachedPage.h"
 #include "DocumentLoader.h"
 #include "EmptyClients.h"
-#include "FileChooser.h"
-#include "FileIconLoader.h"
-#include "FloatRect.h"
-#include "Frame.h"
-#include "FrameLoader.h"
 #include "FrameView.h"
-#include "GraphicsContext.h"
-#include "HTMLFormElement.h"
 #include "ImageBuffer.h"
-#include "ImageObserver.h"
-#include "Length.h"
-#include "Page.h"
 #include "RenderSVGRoot.h"
-#include "RenderView.h"
-#include "ResourceError.h"
 #include "SVGDocument.h"
-#include "SVGLength.h"
-#include "SVGRenderSupport.h"
 #include "SVGSVGElement.h"
 #include "Settings.h"
 
@@ -140,7 +125,7 @@ IntSize SVGImage::size() const
     return IntSize(300, 150);
 }
 
-void SVGImage::drawSVGToImageBuffer(ImageBuffer* buffer, const IntSize& size, float zoom, ShouldClearBuffer shouldClear)
+void SVGImage::drawSVGToImageBuffer(ImageBuffer* buffer, const IntSize& size, float zoom, float scale, ShouldClearBuffer shouldClear)
 {
     // FIXME: This doesn't work correctly with animations. If an image contains animations, that say run for 2 seconds,
     // and we currently have one <img> that displays us. If we open another document referencing the same SVGImage it
@@ -182,8 +167,11 @@ void SVGImage::drawSVGToImageBuffer(ImageBuffer* buffer, const IntSize& size, fl
     if (shouldClear == ClearImageBuffer)
         buffer->context()->clearRect(rect);
 
+    FloatRect scaledRect(rect);
+    scaledRect.scale(scale);
+
     // Draw SVG on top of ImageBuffer.
-    draw(buffer->context(), rect, rect, ColorSpaceDeviceRGB, CompositeSourceOver);
+    draw(buffer->context(), enclosingIntRect(scaledRect), rect, ColorSpaceDeviceRGB, CompositeSourceOver);
 
     // Reset container size & zoom to initial state. Otherwhise the size() of this
     // image would return whatever last size was set by drawSVGToImageBuffer().

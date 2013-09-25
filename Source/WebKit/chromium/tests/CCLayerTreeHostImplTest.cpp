@@ -31,15 +31,18 @@
 #include "FakeWebGraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
 #include "LayerRendererChromium.h"
+#include "cc/CCIOSurfaceLayerImpl.h"
 #include "cc/CCLayerImpl.h"
 #include "cc/CCLayerTilingData.h"
 #include "cc/CCQuadCuller.h"
 #include "cc/CCScrollbarLayerImpl.h"
 #include "cc/CCSingleThreadProxy.h"
+#include "cc/CCSolidColorDrawQuad.h"
 #include "cc/CCTextureLayerImpl.h"
 #include "cc/CCTileDrawQuad.h"
 #include "cc/CCTiledLayerImpl.h"
 #include "cc/CCVideoLayerImpl.h"
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <public/WebVideoFrame.h>
 #include <public/WebVideoFrameProvider.h>
@@ -48,6 +51,12 @@ using namespace CCLayerTestCommon;
 using namespace WebCore;
 using namespace WebKit;
 using namespace WebKitTests;
+
+using ::testing::Mock;
+using ::testing::Return;
+using ::testing::AnyNumber;
+using ::testing::AtLeast;
+using ::testing::_;
 
 namespace {
 
@@ -59,6 +68,8 @@ public:
     {
         CCSettings settings;
         m_hostImpl = CCLayerTreeHostImpl::create(settings, this);
+        m_hostImpl->initializeLayerRenderer(createContext(), UnthrottledUploader);
+        m_hostImpl->setViewportSize(IntSize(10, 10));
     }
 
     virtual void didLoseContextOnImplThread() OVERRIDE { }
@@ -67,6 +78,28 @@ public:
     virtual void setNeedsCommitOnImplThread() OVERRIDE { m_didRequestCommit = true; }
     virtual void postAnimationEventsToMainThreadOnImplThread(PassOwnPtr<CCAnimationEventsVector>, double wallClockTime) OVERRIDE { }
     virtual void postSetContentsMemoryAllocationLimitBytesToMainThreadOnImplThread(size_t) OVERRIDE { }
+
+    PassOwnPtr<CCLayerTreeHostImpl> createLayerTreeHost(bool partialSwap, PassRefPtr<CCGraphicsContext> graphicsContext, PassOwnPtr<CCLayerImpl> rootPtr)
+    {
+        CCSettings settings;
+
+        settings.partialSwapEnabled = partialSwap;
+
+        OwnPtr<CCLayerTreeHostImpl> myHostImpl = CCLayerTreeHostImpl::create(settings, this);
+
+        myHostImpl->initializeLayerRenderer(graphicsContext, UnthrottledUploader);
+        myHostImpl->setViewportSize(IntSize(10, 10));
+
+        OwnPtr<CCLayerImpl> root = rootPtr;
+
+        root->setAnchorPoint(FloatPoint(0, 0));
+        root->setPosition(FloatPoint(0, 0));
+        root->setBounds(IntSize(10, 10));
+        root->setVisibleLayerRect(IntRect(0, 0, 10, 10));
+        root->setDrawsContent(true);
+        myHostImpl->setRootLayer(root.release());
+        return myHostImpl.release();
+    }
 
     static void expectClearedScrollDeltasRecursive(CCLayerImpl* layer)
     {
@@ -104,33 +137,15 @@ public:
         m_hostImpl->setRootLayer(root.release());
     }
 
-    static PassOwnPtr<CCLayerImpl> createScrollableLayer(int id, const FloatPoint& position, const IntSize& size)
-    {
-        OwnPtr<CCLayerImpl> layer = CCLayerImpl::create(id);
-        layer->setScrollable(true);
-        layer->setDrawsContent(true);
-        layer->setPosition(position);
-        layer->setBounds(size);
-        layer->setMaxScrollPosition(IntSize(size.width() * 2, size.height() * 2));
-        return layer.release();
-    }
-
-    void initializeLayerRendererAndDrawFrame()
-    {
-        m_hostImpl->initializeLayerRenderer(createContext());
-        CCLayerTreeHostImpl::FrameData frame;
-        EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
-        m_hostImpl->drawLayers(frame);
-        m_hostImpl->didDrawAllLayers(frame);
-    }
-
 protected:
-    PassRefPtr<GraphicsContext3D> createContext()
+    PassRefPtr<CCGraphicsContext> createContext()
     {
-        return GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FakeWebGraphicsContext3D()), GraphicsContext3D::RenderDirectlyToHostWindow);
+        return CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FakeWebGraphicsContext3D()), GraphicsContext3D::RenderDirectlyToHostWindow));
     }
 
     DebugScopedSetImplThread m_alwaysImplThread;
+    DebugScopedSetMainThreadBlocked m_alwaysMainThreadBlocked;
+
     OwnPtr<CCLayerTreeHostImpl> m_hostImpl;
     bool m_didRequestCommit;
     bool m_didRequestRedraw;
@@ -207,12 +222,10 @@ TEST_F(CCLayerTreeHostImplTest, scrollRootCallsCommitAndRedraw)
 {
     {
         OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-        root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
         root->setScrollable(true);
         root->setScrollPosition(IntPoint(0, 0));
         root->setMaxScrollPosition(IntSize(100, 100));
         m_hostImpl->setRootLayer(root.release());
-        initializeLayerRendererAndDrawFrame();
     }
 
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
@@ -222,54 +235,14 @@ TEST_F(CCLayerTreeHostImplTest, scrollRootCallsCommitAndRedraw)
     EXPECT_TRUE(m_didRequestCommit);
 }
 
-TEST_F(CCLayerTreeHostImplTest, scrollWithoutRootLayer)
-{
-    // We should not crash when trying to scroll an empty layer tree.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollIgnored);
-}
-
-TEST_F(CCLayerTreeHostImplTest, replaceTreeWhileScrolling)
-{
-    int layerId = 7;
-    {
-        OwnPtr<CCLayerImpl> root = CCLayerImpl::create(layerId);
-        root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
-        root->setScrollable(true);
-        root->setMaxScrollPosition(IntSize(100, 100));
-        m_hostImpl->setRootLayer(root.release());
-        initializeLayerRendererAndDrawFrame();
-    }
-
-    // We should not crash if the tree is replaced while we are scrolling.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->releaseRootLayer();
-
-    {
-        OwnPtr<CCLayerImpl> root = CCLayerImpl::create(layerId);
-        root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
-        root->setScrollable(true);
-        root->setMaxScrollPosition(IntSize(100, 100));
-        m_hostImpl->setRootLayer(root.release());
-    }
-
-    // We should still be scrolling, because the scrolled layer also exists in the new tree.
-    IntSize scrollDelta(0, 10);
-    m_hostImpl->scrollBy(scrollDelta);
-    m_hostImpl->scrollEnd();
-    OwnPtr<CCScrollAndScaleSet> scrollInfo = m_hostImpl->processScrollDeltas();
-    expectContains(*scrollInfo, layerId, scrollDelta);
-}
-
 TEST_F(CCLayerTreeHostImplTest, wheelEventHandlers)
 {
     {
         OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-        root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
         root->setScrollable(true);
         root->setScrollPosition(IntPoint(0, 0));
         root->setMaxScrollPosition(IntSize(100, 100));
         m_hostImpl->setRootLayer(root.release());
-        initializeLayerRendererAndDrawFrame();
     }
     CCLayerImpl* root = m_hostImpl->rootLayer();
 
@@ -284,14 +257,11 @@ TEST_F(CCLayerTreeHostImplTest, wheelEventHandlers)
 TEST_F(CCLayerTreeHostImplTest, shouldScrollOnMainThread)
 {
     OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
     root->setScrollable(true);
     root->setScrollPosition(IntPoint(0, 0));
     root->setMaxScrollPosition(IntSize(100, 100));
     root->setShouldScrollOnMainThread(true);
     m_hostImpl->setRootLayer(root.release());
-    initializeLayerRendererAndDrawFrame();
-
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollFailed);
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Gesture), CCInputHandlerClient::ScrollFailed);
 }
@@ -299,14 +269,11 @@ TEST_F(CCLayerTreeHostImplTest, shouldScrollOnMainThread)
 TEST_F(CCLayerTreeHostImplTest, nonFastScrollableRegionBasic)
 {
     OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
     root->setScrollable(true);
     root->setScrollPosition(IntPoint(0, 0));
     root->setMaxScrollPosition(IntSize(100, 100));
     root->setNonFastScrollableRegion(IntRect(0, 0, 50, 50));
     m_hostImpl->setRootLayer(root.release());
-    initializeLayerRendererAndDrawFrame();
-
     // All scroll types inside the non-fast scrollable region should fail.
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(25, 25), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollFailed);
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(25, 25), CCInputHandlerClient::Gesture), CCInputHandlerClient::ScrollFailed);
@@ -323,15 +290,15 @@ TEST_F(CCLayerTreeHostImplTest, nonFastScrollableRegionBasic)
 TEST_F(CCLayerTreeHostImplTest, nonFastScrollableRegionWithOffset)
 {
     OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->setBounds(IntSize(1, 1));
-    root->setVisibleLayerRect(IntRect(0, 0, 100, 100));
     root->setScrollable(true);
     root->setScrollPosition(IntPoint(0, 0));
     root->setMaxScrollPosition(IntSize(100, 100));
     root->setNonFastScrollableRegion(IntRect(0, 0, 50, 50));
     root->setPosition(FloatPoint(-25, 0));
     m_hostImpl->setRootLayer(root.release());
-    initializeLayerRendererAndDrawFrame();
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
+    m_hostImpl->drawLayers(frame); // Update draw transforms so we can correctly map points into layer space.
 
     // This point would fall into the non-fast scrollable region except that we've moved the layer down by 25 pixels.
     EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(40, 10), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
@@ -346,9 +313,8 @@ TEST_F(CCLayerTreeHostImplTest, pinchGesture)
 {
     setupScrollAndContentsLayers(IntSize(100, 100));
     m_hostImpl->setViewportSize(IntSize(50, 50));
-    initializeLayerRendererAndDrawFrame();
 
-    CCLayerImpl* scrollLayer = m_hostImpl->rootScrollLayer();
+    CCLayerImpl* scrollLayer = m_hostImpl->scrollLayer();
     ASSERT(scrollLayer);
 
     const float minPageScale = 0.5, maxPageScale = 4;
@@ -427,9 +393,8 @@ TEST_F(CCLayerTreeHostImplTest, pageScaleAnimation)
 {
     setupScrollAndContentsLayers(IntSize(100, 100));
     m_hostImpl->setViewportSize(IntSize(50, 50));
-    initializeLayerRendererAndDrawFrame();
 
-    CCLayerImpl* scrollLayer = m_hostImpl->rootScrollLayer();
+    CCLayerImpl* scrollLayer = m_hostImpl->scrollLayer();
     ASSERT(scrollLayer);
 
     const float minPageScale = 0.5, maxPageScale = 4;
@@ -482,13 +447,19 @@ public:
         m_didDrawCalled = true;
     }
 
-    virtual void willDraw(LayerRendererChromium*)
+    virtual void willDraw(CCRenderer*, CCGraphicsContext*)
     {
         m_willDrawCalled = true;
     }
 
     bool didDrawCalled() const { return m_didDrawCalled; }
     bool willDrawCalled() const { return m_willDrawCalled; }
+
+    void clearDidDrawCheck()
+    {
+        m_didDrawCalled = false;
+        m_willDrawCalled = false;
+    }
 
 protected:
     explicit DidDrawCheckLayer(int id)
@@ -498,7 +469,12 @@ protected:
     {
         setAnchorPoint(FloatPoint(0, 0));
         setBounds(IntSize(10, 10));
+        setContentBounds(IntSize(10, 10));
         setDrawsContent(true);
+        setSkipsDraw(false);
+
+        OwnPtr<CCLayerTilingData> tiler = CCLayerTilingData::create(IntSize(100, 100), CCLayerTilingData::HasBorderTexels);
+        setTilingData(*tiler.get());
     }
 
 private:
@@ -508,49 +484,87 @@ private:
 
 TEST_F(CCLayerTreeHostImplTest, didDrawNotCalledOnHiddenLayer)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
+    // The root layer is always drawn, so run this test on a child layer that
+    // will be masked out by the root layer's bounds.
+    m_hostImpl->setRootLayer(DidDrawCheckLayer::create(0));
+    DidDrawCheckLayer* root = static_cast<DidDrawCheckLayer*>(m_hostImpl->rootLayer());
+    root->setMasksToBounds(true);
 
-    // Ensure visibleLayerRect for root layer is empty
-    m_hostImpl->setViewportSize(IntSize(0, 0));
+    root->addChild(DidDrawCheckLayer::create(1));
+    DidDrawCheckLayer* layer = static_cast<DidDrawCheckLayer*>(root->children()[0].get());
+    // Ensure visibleLayerRect for layer is empty
+    layer->setPosition(FloatPoint(100, 100));
+    layer->setBounds(IntSize(10, 10));
+    layer->setContentBounds(IntSize(10, 10));
+
+    CCLayerTreeHostImpl::FrameData frame;
+
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+
+    EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
+    m_hostImpl->drawLayers(frame);
+    m_hostImpl->didDrawAllLayers(frame);
+
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+
+    EXPECT_TRUE(layer->visibleLayerRect().isEmpty());
+
+    // Ensure visibleLayerRect for layer layer is not empty
+    layer->setPosition(FloatPoint(0, 0));
+
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+
+    EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
+    m_hostImpl->drawLayers(frame);
+    m_hostImpl->didDrawAllLayers(frame);
+
+    EXPECT_TRUE(layer->willDrawCalled());
+    EXPECT_TRUE(layer->didDrawCalled());
+
+    EXPECT_FALSE(layer->visibleLayerRect().isEmpty());
+}
+
+TEST_F(CCLayerTreeHostImplTest, willDrawNotCalledOnOccludedLayer)
+{
+    // Make the viewport large so that we can have large layers that get considered for occlusion (small layers do not).
+    IntSize bigSize(1000, 1000);
+    m_hostImpl->setViewportSize(bigSize);
 
     m_hostImpl->setRootLayer(DidDrawCheckLayer::create(0));
     DidDrawCheckLayer* root = static_cast<DidDrawCheckLayer*>(m_hostImpl->rootLayer());
 
+    root->addChild(DidDrawCheckLayer::create(1));
+    DidDrawCheckLayer* occludedLayer = static_cast<DidDrawCheckLayer*>(root->children()[0].get());
+
+    root->addChild(DidDrawCheckLayer::create(2));
+    DidDrawCheckLayer* topLayer = static_cast<DidDrawCheckLayer*>(root->children()[1].get());
+    // This layer covers the occludedLayer above. Make this layer large so it can occlude.
+    topLayer->setBounds(bigSize);
+    topLayer->setContentBounds(bigSize);
+    topLayer->setOpaque(true);
+
     CCLayerTreeHostImpl::FrameData frame;
 
-    EXPECT_FALSE(root->willDrawCalled());
-    EXPECT_FALSE(root->didDrawCalled());
+    EXPECT_FALSE(occludedLayer->willDrawCalled());
+    EXPECT_FALSE(occludedLayer->didDrawCalled());
+    EXPECT_FALSE(topLayer->willDrawCalled());
+    EXPECT_FALSE(topLayer->didDrawCalled());
 
     EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
     m_hostImpl->drawLayers(frame);
     m_hostImpl->didDrawAllLayers(frame);
 
-    EXPECT_FALSE(root->willDrawCalled());
-    EXPECT_FALSE(root->didDrawCalled());
-
-    EXPECT_TRUE(root->visibleLayerRect().isEmpty());
-
-    // Ensure visibleLayerRect for root layer is not empty
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
-    EXPECT_FALSE(root->willDrawCalled());
-    EXPECT_FALSE(root->didDrawCalled());
-
-    EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
-    m_hostImpl->drawLayers(frame);
-    m_hostImpl->didDrawAllLayers(frame);
-
-    EXPECT_TRUE(root->willDrawCalled());
-    EXPECT_TRUE(root->didDrawCalled());
-
-    EXPECT_FALSE(root->visibleLayerRect().isEmpty());
+    EXPECT_FALSE(occludedLayer->willDrawCalled());
+    EXPECT_FALSE(occludedLayer->didDrawCalled());
+    EXPECT_TRUE(topLayer->willDrawCalled());
+    EXPECT_TRUE(topLayer->didDrawCalled());
 }
 
 TEST_F(CCLayerTreeHostImplTest, didDrawCalledOnAllLayers)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
     m_hostImpl->setRootLayer(DidDrawCheckLayer::create(0));
     DidDrawCheckLayer* root = static_cast<DidDrawCheckLayer*>(m_hostImpl->rootLayer());
 
@@ -601,9 +615,6 @@ private:
 
 TEST_F(CCLayerTreeHostImplTest, prepareToDrawFailsWhenAnimationUsesCheckerboard)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
     // When the texture is not missing, we draw as usual.
     m_hostImpl->setRootLayer(DidDrawCheckLayer::create(0));
     DidDrawCheckLayer* root = static_cast<DidDrawCheckLayer*>(m_hostImpl->rootLayer());
@@ -629,9 +640,7 @@ TEST_F(CCLayerTreeHostImplTest, prepareToDrawFailsWhenAnimationUsesCheckerboard)
     root = static_cast<DidDrawCheckLayer*>(m_hostImpl->rootLayer());
     root->addChild(MissingTextureAnimatingLayer::create(1, true, false, true));
 
-    m_didRequestCommit = false;
     EXPECT_FALSE(m_hostImpl->prepareToDraw(frame));
-    EXPECT_TRUE(m_didRequestCommit);
     m_hostImpl->drawLayers(frame);
     m_hostImpl->didDrawAllLayers(frame);
 
@@ -643,270 +652,6 @@ TEST_F(CCLayerTreeHostImplTest, prepareToDrawFailsWhenAnimationUsesCheckerboard)
     EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
     m_hostImpl->drawLayers(frame);
     m_hostImpl->didDrawAllLayers(frame);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollRootIgnored)
-{
-    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->setScrollable(false);
-    m_hostImpl->setRootLayer(root.release());
-    initializeLayerRendererAndDrawFrame();
-
-    // Scroll event is ignored because layer is not scrollable.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(0, 0), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollIgnored);
-    EXPECT_FALSE(m_didRequestRedraw);
-    EXPECT_FALSE(m_didRequestCommit);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollNonCompositedRoot)
-{
-    // Test the configuration where a non-composited root layer is embedded in a
-    // scrollable outer layer.
-    IntSize surfaceSize(10, 10);
-
-    OwnPtr<CCLayerImpl> contentLayer = CCLayerImpl::create(1);
-    contentLayer->setIsNonCompositedContent(true);
-    contentLayer->setDrawsContent(true);
-    contentLayer->setPosition(IntPoint(5, 5));
-    contentLayer->setBounds(surfaceSize);
-    contentLayer->setContentBounds(IntSize(surfaceSize.width() * 2, surfaceSize.height() * 2));
-
-    OwnPtr<CCLayerImpl> scrollLayer = CCLayerImpl::create(0);
-    scrollLayer->setScrollable(true);
-    scrollLayer->addChild(contentLayer.release());
-
-    m_hostImpl->setRootLayer(scrollLayer.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->scrollBy(IntSize(0, 10));
-    m_hostImpl->scrollEnd();
-    EXPECT_TRUE(m_didRequestRedraw);
-    EXPECT_TRUE(m_didRequestCommit);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollChildCallsCommitAndRedraw)
-{
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->addChild(createScrollableLayer(1, FloatPoint(5, 5), surfaceSize));
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->scrollBy(IntSize(0, 10));
-    m_hostImpl->scrollEnd();
-    EXPECT_TRUE(m_didRequestRedraw);
-    EXPECT_TRUE(m_didRequestCommit);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollMissesChild)
-{
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    root->addChild(createScrollableLayer(1, FloatPoint(5, 5), surfaceSize));
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    // Scroll event is ignored because the input coordinate is outside the layer boundaries.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(15, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollIgnored);
-    EXPECT_FALSE(m_didRequestRedraw);
-    EXPECT_FALSE(m_didRequestCommit);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollMissesBackfacingChild)
-{
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    OwnPtr<CCLayerImpl> child = createScrollableLayer(1, FloatPoint(5, 5), surfaceSize);
-    m_hostImpl->setViewportSize(surfaceSize);
-
-    TransformationMatrix matrix;
-    matrix.rotate3d(180, 0, 0);
-    child->setTransform(matrix);
-    child->setDoubleSided(false);
-
-    root->addChild(child.release());
-    m_hostImpl->setRootLayer(root.release());
-    initializeLayerRendererAndDrawFrame();
-
-    // Scroll event is ignored because the scrollable layer is not facing the viewer and there is
-    // nothing scrollable behind it.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollIgnored);
-    EXPECT_FALSE(m_didRequestRedraw);
-    EXPECT_FALSE(m_didRequestCommit);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollBlockedByContentLayer)
-{
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> contentLayer = createScrollableLayer(0, FloatPoint(5, 5), surfaceSize);
-    contentLayer->setShouldScrollOnMainThread(true);
-    contentLayer->setScrollable(false);
-
-    OwnPtr<CCLayerImpl> scrollLayer = createScrollableLayer(1, FloatPoint(5, 5), surfaceSize);
-    scrollLayer->addChild(contentLayer.release());
-
-    m_hostImpl->setRootLayer(scrollLayer.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    // Scrolling fails because the content layer is asking to be scrolled on the main thread.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollFailed);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollRootAndChangePageScaleOnMainThread)
-{
-    IntSize surfaceSize(10, 10);
-    float pageScale = 2;
-    OwnPtr<CCLayerImpl> root = createScrollableLayer(0, FloatPoint(5, 5), surfaceSize);
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    IntSize scrollDelta(0, 10);
-    IntSize expectedScrollDelta(scrollDelta);
-    IntSize expectedMaxScroll(m_hostImpl->rootLayer()->maxScrollPosition());
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->scrollBy(scrollDelta);
-    m_hostImpl->scrollEnd();
-
-    // Set new page scale from main thread.
-    m_hostImpl->setPageScaleFactorAndLimits(pageScale, pageScale, pageScale);
-
-    // The scale should apply to the scroll delta.
-    expectedScrollDelta.scale(pageScale);
-    OwnPtr<CCScrollAndScaleSet> scrollInfo = m_hostImpl->processScrollDeltas();
-    expectContains(*scrollInfo.get(), 0, expectedScrollDelta);
-
-    // The scroll range should also have been updated.
-    EXPECT_EQ(m_hostImpl->rootLayer()->maxScrollPosition(), expectedMaxScroll);
-
-    // The page scale delta remains constant because the impl thread did not scale.
-    EXPECT_EQ(m_hostImpl->rootLayer()->pageScaleDelta(), 1);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollRootAndChangePageScaleOnImplThread)
-{
-    IntSize surfaceSize(10, 10);
-    float pageScale = 2;
-    OwnPtr<CCLayerImpl> root = createScrollableLayer(0, FloatPoint(5, 5), surfaceSize);
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    m_hostImpl->setPageScaleFactorAndLimits(1, 1, pageScale);
-    initializeLayerRendererAndDrawFrame();
-
-    IntSize scrollDelta(0, 10);
-    IntSize expectedScrollDelta(scrollDelta);
-    IntSize expectedMaxScroll(m_hostImpl->rootLayer()->maxScrollPosition());
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->scrollBy(scrollDelta);
-    m_hostImpl->scrollEnd();
-
-    // Set new page scale on impl thread by pinching.
-    m_hostImpl->pinchGestureBegin();
-    m_hostImpl->pinchGestureUpdate(pageScale, IntPoint());
-    m_hostImpl->pinchGestureEnd();
-
-    // The scroll delta is not scaled because the main thread did not scale.
-    OwnPtr<CCScrollAndScaleSet> scrollInfo = m_hostImpl->processScrollDeltas();
-    expectContains(*scrollInfo.get(), 0, expectedScrollDelta);
-
-    // The scroll range should also have been updated.
-    EXPECT_EQ(m_hostImpl->rootLayer()->maxScrollPosition(), expectedMaxScroll);
-
-    // The page scale delta should match the new scale on the impl side.
-    EXPECT_EQ(m_hostImpl->rootLayer()->pageScaleDelta(), pageScale);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollChildAndChangePageScaleOnMainThread)
-{
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
-    // Also mark the root scrollable so it becomes the root scroll layer.
-    root->setScrollable(true);
-    root->addChild(createScrollableLayer(1, FloatPoint(5, 5), surfaceSize));
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-
-    CCLayerImpl* child = m_hostImpl->rootLayer()->children()[0].get();
-
-    IntSize scrollDelta(0, 10);
-    IntSize expectedScrollDelta(scrollDelta);
-    IntSize expectedMaxScroll(child->maxScrollPosition());
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-    m_hostImpl->scrollBy(scrollDelta);
-    m_hostImpl->scrollEnd();
-
-    float pageScale = 2;
-    m_hostImpl->setPageScaleFactorAndLimits(pageScale, 1, pageScale);
-
-    // The scale should apply to the scroll delta.
-    expectedScrollDelta.scale(pageScale);
-    OwnPtr<CCScrollAndScaleSet> scrollInfo = m_hostImpl->processScrollDeltas();
-    expectContains(*scrollInfo.get(), 1, expectedScrollDelta);
-
-    // The scroll range should not have changed.
-    EXPECT_EQ(child->maxScrollPosition(), expectedMaxScroll);
-
-    // The page scale delta remains constant because the impl thread did not scale.
-    EXPECT_EQ(child->pageScaleDelta(), 1);
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollChildBeyondLimit)
-{
-    // Scroll a child layer beyond its maximum scroll range and make sure the
-    // parent layer is scrolled on the axis on which the child was unable to
-    // scroll.
-    IntSize surfaceSize(10, 10);
-    OwnPtr<CCLayerImpl> root = createScrollableLayer(0, FloatPoint(5, 5), surfaceSize);
-
-    OwnPtr<CCLayerImpl> grandChild = createScrollableLayer(2, FloatPoint(5, 5), surfaceSize);
-    grandChild->setScrollPosition(IntPoint(0, 5));
-
-    OwnPtr<CCLayerImpl> child = createScrollableLayer(1, FloatPoint(5, 5), surfaceSize);
-    child->setScrollPosition(IntPoint(3, 0));
-    child->addChild(grandChild.release());
-
-    root->addChild(child.release());
-    m_hostImpl->setRootLayer(root.release());
-    m_hostImpl->setViewportSize(surfaceSize);
-    initializeLayerRendererAndDrawFrame();
-    {
-        IntSize scrollDelta(-3, -7);
-        EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-        m_hostImpl->scrollBy(scrollDelta);
-        m_hostImpl->scrollEnd();
-
-        OwnPtr<CCScrollAndScaleSet> scrollInfo = m_hostImpl->processScrollDeltas();
-
-        // The grand child should have scrolled up to its limit.
-        CCLayerImpl* child = m_hostImpl->rootLayer()->children()[0].get();
-        CCLayerImpl* grandChild = child->children()[0].get();
-        expectContains(*scrollInfo.get(), grandChild->id(), IntSize(0, -5));
-
-        // The child should have only scrolled on the other axis.
-        expectContains(*scrollInfo.get(), child->id(), IntSize(-3, 0));
-    }
-}
-
-TEST_F(CCLayerTreeHostImplTest, scrollBeforeRedraw)
-{
-    IntSize surfaceSize(10, 10);
-    m_hostImpl->setRootLayer(createScrollableLayer(0, FloatPoint(5, 5), surfaceSize));
-    m_hostImpl->setViewportSize(surfaceSize);
-
-    // Draw one frame and then immediately rebuild the layer tree to mimic a tree synchronization.
-    initializeLayerRendererAndDrawFrame();
-    m_hostImpl->releaseRootLayer();
-    m_hostImpl->setRootLayer(createScrollableLayer(0, FloatPoint(5, 5), surfaceSize));
-
-    // Scrolling should still work even though we did not draw yet.
-    EXPECT_EQ(m_hostImpl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
 }
 
 class BlendStateTrackerContext: public FakeWebGraphicsContext3D {
@@ -992,8 +737,6 @@ private:
 // https://bugs.webkit.org/show_bug.cgi?id=75783
 TEST_F(CCLayerTreeHostImplTest, blendingOffWhenDrawingOpaqueLayers)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
 
     {
         OwnPtr<CCLayerImpl> root = CCLayerImpl::create(0);
@@ -1210,7 +953,7 @@ TEST_F(CCLayerTreeHostImplTest, blendingOffWhenDrawingOpaqueLayers)
 
 TEST_F(CCLayerTreeHostImplTest, viewportCovered)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
+    m_hostImpl->initializeLayerRenderer(createContext(), UnthrottledUploader);
     m_hostImpl->setBackgroundColor(Color::gray);
 
     IntSize viewportSize(1000, 1000);
@@ -1321,8 +1064,8 @@ TEST_F(CCLayerTreeHostImplTest, reshapeNotCalledUntilDraw)
 {
     ReshapeTrackerContext* reshapeTracker = new ReshapeTrackerContext();
     RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(reshapeTracker), GraphicsContext3D::RenderDirectlyToHostWindow);
-    m_hostImpl->initializeLayerRenderer(context);
-    m_hostImpl->setViewportSize(IntSize(10, 10));
+    RefPtr<CCGraphicsContext> ccContext = CCGraphicsContext::create3D(context);
+    m_hostImpl->initializeLayerRenderer(ccContext, UnthrottledUploader);
 
     CCLayerImpl* root = new FakeDrawableCCLayerImpl(1);
     root->setAnchorPoint(FloatPoint(0, 0));
@@ -1365,13 +1108,14 @@ TEST_F(CCLayerTreeHostImplTest, partialSwapReceivesDamageRect)
 {
     PartialSwapTrackerContext* partialSwapTracker = new PartialSwapTrackerContext();
     RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(partialSwapTracker), GraphicsContext3D::RenderDirectlyToHostWindow);
+    RefPtr<CCGraphicsContext> ccContext = CCGraphicsContext::create3D(context);
 
     // This test creates its own CCLayerTreeHostImpl, so
     // that we can force partial swap enabled.
     CCSettings settings;
     settings.partialSwapEnabled = true;
     OwnPtr<CCLayerTreeHostImpl> layerTreeHostImpl = CCLayerTreeHostImpl::create(settings, this);
-    layerTreeHostImpl->initializeLayerRenderer(context);
+    layerTreeHostImpl->initializeLayerRenderer(ccContext, UnthrottledUploader);
     layerTreeHostImpl->setViewportSize(IntSize(500, 500));
 
     CCLayerImpl* root = new FakeDrawableCCLayerImpl(1);
@@ -1433,6 +1177,341 @@ TEST_F(CCLayerTreeHostImplTest, partialSwapReceivesDamageRect)
     EXPECT_EQ(expectedSwapRect.height(), actualSwapRect.height());
 }
 
+class FakeLayerWithQuads : public CCLayerImpl {
+public:
+    static PassOwnPtr<FakeLayerWithQuads> create(int id) { return adoptPtr(new FakeLayerWithQuads(id)); }
+
+    virtual void appendQuads(CCQuadCuller& quadList, const CCSharedQuadState* sharedQuadState, bool&) OVERRIDE
+    {
+        const Color gray(100, 100, 100);
+        IntRect quadRect(0, 0, 5, 5);
+        OwnPtr<CCDrawQuad> myQuad = CCSolidColorDrawQuad::create(sharedQuadState, quadRect, gray);
+        quadList.append(myQuad.release());
+    }
+
+private:
+    FakeLayerWithQuads(int id)
+        : CCLayerImpl(id)
+    {
+    }
+};
+
+class MockContext : public FakeWebGraphicsContext3D {
+public:
+    MOCK_METHOD1(useProgram, void(WebGLId program));
+    MOCK_METHOD5(uniform4f, void(WGC3Dint location, WGC3Dfloat x, WGC3Dfloat y, WGC3Dfloat z, WGC3Dfloat w));
+    MOCK_METHOD4(uniformMatrix4fv, void(WGC3Dint location, WGC3Dsizei count, WGC3Dboolean transpose, const WGC3Dfloat* value));
+    MOCK_METHOD4(drawElements, void(WGC3Denum mode, WGC3Dsizei count, WGC3Denum type, WGC3Dintptr offset));
+    MOCK_METHOD1(getString, WebString(WGC3Denum name));
+    MOCK_METHOD0(getRequestableExtensionsCHROMIUM, WebString());
+    MOCK_METHOD1(enable, void(WGC3Denum cap));
+    MOCK_METHOD4(scissor, void(WGC3Dint x, WGC3Dint y, WGC3Dsizei width, WGC3Dsizei height));
+};
+
+class MockContextHarness {
+private:
+    MockContext* m_context;
+public:
+    MockContextHarness(MockContext* context)
+        : m_context(context)
+    {
+        // Catch "uninteresting" calls
+        EXPECT_CALL(*m_context, useProgram(_))
+            .Times(0);
+
+        EXPECT_CALL(*m_context, drawElements(_, _, _, _))
+            .Times(0);
+
+        // These are not asserted
+        EXPECT_CALL(*m_context, uniformMatrix4fv(_, _, _, _))
+            .WillRepeatedly(Return());
+
+        EXPECT_CALL(*m_context, uniform4f(_, _, _, _, _))
+            .WillRepeatedly(Return());
+
+        // Any other strings are empty
+        EXPECT_CALL(*m_context, getString(_))
+            .WillRepeatedly(Return(WebString()));
+
+        // Support for partial swap, if needed
+        EXPECT_CALL(*m_context, getString(GraphicsContext3D::EXTENSIONS))
+            .WillRepeatedly(Return(WebString("GL_CHROMIUM_post_sub_buffer")));
+
+        EXPECT_CALL(*m_context, getRequestableExtensionsCHROMIUM())
+            .WillRepeatedly(Return(WebString("GL_CHROMIUM_post_sub_buffer")));
+
+        // Any un-sanctioned calls to enable() are OK
+        EXPECT_CALL(*m_context, enable(_))
+            .WillRepeatedly(Return());
+    }
+
+    void mustDrawSolidQuad()
+    {
+        EXPECT_CALL(*m_context, drawElements(GraphicsContext3D::TRIANGLES, 6, GraphicsContext3D::UNSIGNED_SHORT, 0))
+            .WillOnce(Return())
+            .RetiresOnSaturation();
+
+        // 1 is hardcoded return value of fake createProgram()
+        EXPECT_CALL(*m_context, useProgram(1))
+            .WillOnce(Return())
+            .RetiresOnSaturation();
+
+    }
+
+    void mustSetScissor(int x, int y, int width, int height)
+    {
+        EXPECT_CALL(*m_context, enable(GraphicsContext3D::SCISSOR_TEST))
+            .WillRepeatedly(Return());
+
+        EXPECT_CALL(*m_context, scissor(x, y, width, height))
+            .Times(AtLeast(1))
+            .WillRepeatedly(Return());
+    }
+
+};
+
+TEST_F(CCLayerTreeHostImplTest, noPartialSwap)
+{
+    MockContext* mockContext = new MockContext();
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(mockContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+    MockContextHarness harness(mockContext);
+
+    harness.mustDrawSolidQuad();
+    harness.mustSetScissor(0, 0, 10, 10);
+
+    // Run test case
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = createLayerTreeHost(false, context, FakeLayerWithQuads::create(1));
+
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+    Mock::VerifyAndClearExpectations(&mockContext);
+}
+
+TEST_F(CCLayerTreeHostImplTest, partialSwap)
+{
+    MockContext* mockContext = new MockContext();
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(mockContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+    MockContextHarness harness(mockContext);
+
+    harness.mustDrawSolidQuad();
+    harness.mustSetScissor(0, 0, 10, 10);
+
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = createLayerTreeHost(true, context, FakeLayerWithQuads::create(1));
+
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+    Mock::VerifyAndClearExpectations(&mockContext);
+}
+
+TEST_F(CCLayerTreeHostImplTest, partialSwapNoUpdate)
+{
+    MockContext* mockContext = new MockContext();
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(mockContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+    MockContextHarness harness(mockContext);
+
+    harness.mustDrawSolidQuad();
+    harness.mustSetScissor(0, 8, 2, 2);
+    harness.mustDrawSolidQuad();
+    harness.mustSetScissor(0, 0, 10, 10);
+
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = createLayerTreeHost(true, context, FakeLayerWithQuads::create(1));
+    
+    // Draw once to make sure layer is not new
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+
+    // Generate update in layer
+    CCLayerImpl* root = myHostImpl->rootLayer();
+    root->setUpdateRect(FloatRect(0, 0, 2, 2));
+
+    // This draw should generate no new udpates
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+
+    Mock::VerifyAndClearExpectations(&mockContext);
+}
+
+class PartialSwapContext: public FakeWebGraphicsContext3D {
+public:
+    WebString getString(WGC3Denum name)
+    {
+        if (name == GraphicsContext3D::EXTENSIONS)
+            return WebString("GL_CHROMIUM_post_sub_buffer");
+        return WebString();
+    }
+    
+    WebString getRequestableExtensionsCHROMIUM()
+    {
+        return WebString("GL_CHROMIUM_post_sub_buffer");
+    }
+};
+
+static PassOwnPtr<CCLayerTreeHostImpl> setupLayersForOpacity(bool partialSwap, CCLayerTreeHostImplClient* client)
+{
+    CCSettings settings;
+    settings.partialSwapEnabled = partialSwap;
+
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new PartialSwapContext()), GraphicsContext3D::RenderDirectlyToHostWindow));
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = CCLayerTreeHostImpl::create(settings, client);
+    myHostImpl->initializeLayerRenderer(context.release(), UnthrottledUploader);
+    myHostImpl->setViewportSize(IntSize(100, 100));
+
+    /*
+      Layers are created as follows:
+
+         +--------------------+
+         |                  1 |
+         |  +-----------+     |
+         |  |         2 |     |
+         |  | +-------------------+
+         |  | |   3               |
+         |  | +-------------------+
+         |  |           |     |
+         |  +-----------+     |
+         |                    |
+         |                    |
+         +--------------------+
+
+         Layers 1, 2 have render surfaces
+     */
+    OwnPtr<CCLayerImpl> root = CCLayerImpl::create(1);
+    OwnPtr<CCLayerImpl> child = CCLayerImpl::create(2);
+    OwnPtr<CCLayerImpl> grandChild = FakeLayerWithQuads::create(3);
+
+    IntRect rootRect(0, 0, 100, 100);
+    IntRect childRect(10, 10, 50, 50);
+    IntRect grandChildRect(5, 5, 150, 150);
+
+    root->createRenderSurface();
+    root->setAnchorPoint(FloatPoint(0, 0));
+    root->setPosition(FloatPoint(rootRect.x(), rootRect.y()));
+    root->setBounds(IntSize(rootRect.width(), rootRect.height()));
+    root->setVisibleLayerRect(rootRect);
+    root->setDrawsContent(false);
+    root->renderSurface()->setContentRect(IntRect(IntPoint(), IntSize(rootRect.width(), rootRect.height())));
+
+    child->setAnchorPoint(FloatPoint(0, 0));
+    child->setPosition(FloatPoint(childRect.x(), childRect.y()));
+    child->setOpacity(0.5f);
+    child->setBounds(IntSize(childRect.width(), childRect.height()));
+    child->setVisibleLayerRect(childRect);
+    child->setDrawsContent(false);
+
+    grandChild->setAnchorPoint(FloatPoint(0, 0));
+    grandChild->setPosition(IntPoint(grandChildRect.x(), grandChildRect.y()));
+    grandChild->setBounds(IntSize(grandChildRect.width(), grandChildRect.height()));
+    grandChild->setVisibleLayerRect(grandChildRect);
+    grandChild->setDrawsContent(true);
+
+    child->addChild(grandChild.release());
+    root->addChild(child.release());
+
+    myHostImpl->setRootLayer(root.release());
+    return myHostImpl.release();
+}
+
+TEST_F(CCLayerTreeHostImplTest, contributingLayerEmptyScissorPartialSwap)
+{
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = setupLayersForOpacity(true, this);
+
+    {
+        CCLayerTreeHostImpl::FrameData frame;
+        EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+
+        // Just for consistency, the most interesting stuff already happened
+        myHostImpl->drawLayers(frame);
+        myHostImpl->didDrawAllLayers(frame);
+
+        // Verify all quads have been computed
+        ASSERT_EQ(2U, frame.renderPasses.size());
+        ASSERT_EQ(1U, frame.renderPasses[0]->quadList().size());
+        ASSERT_EQ(1U, frame.renderPasses[1]->quadList().size());
+        EXPECT_EQ(CCDrawQuad::SolidColor, frame.renderPasses[0]->quadList()[0]->material());
+        EXPECT_EQ(CCDrawQuad::RenderPass, frame.renderPasses[1]->quadList()[0]->material());
+    }
+}
+
+TEST_F(CCLayerTreeHostImplTest, contributingLayerEmptyScissorNoPartialSwap)
+{
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = setupLayersForOpacity(false, this);
+
+    {
+        CCLayerTreeHostImpl::FrameData frame;
+        EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+
+        // Just for consistency, the most interesting stuff already happened
+        myHostImpl->drawLayers(frame);
+        myHostImpl->didDrawAllLayers(frame);
+
+        // Verify all quads have been computed
+        ASSERT_EQ(2U, frame.renderPasses.size());
+        ASSERT_EQ(1U, frame.renderPasses[0]->quadList().size());
+        ASSERT_EQ(1U, frame.renderPasses[1]->quadList().size());
+        EXPECT_EQ(CCDrawQuad::SolidColor, frame.renderPasses[0]->quadList()[0]->material());
+        EXPECT_EQ(CCDrawQuad::RenderPass, frame.renderPasses[1]->quadList()[0]->material());
+    }
+}
+
+TEST_F(CCLayerTreeHostImplTest, didDrawNotCalledOnScissoredLayer)
+{
+    CCSettings settings;
+    settings.partialSwapEnabled = true;
+
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new PartialSwapContext()), GraphicsContext3D::RenderDirectlyToHostWindow));
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = CCLayerTreeHostImpl::create(settings, this);
+    myHostImpl->initializeLayerRenderer(context.release(), UnthrottledUploader);
+    myHostImpl->setViewportSize(IntSize(10, 10));
+
+    myHostImpl->setRootLayer(DidDrawCheckLayer::create(1));
+    DidDrawCheckLayer* root = static_cast<DidDrawCheckLayer*>(myHostImpl->rootLayer());
+    root->setMasksToBounds(true);
+
+    root->addChild(DidDrawCheckLayer::create(2));
+    DidDrawCheckLayer* layer = static_cast<DidDrawCheckLayer*>(root->children()[0].get());
+
+    CCLayerTreeHostImpl::FrameData frame;
+
+    EXPECT_FALSE(root->willDrawCalled());
+    EXPECT_FALSE(root->didDrawCalled());
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+
+    // We should draw everything the first frame.
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+
+    EXPECT_TRUE(root->willDrawCalled());
+    EXPECT_TRUE(root->didDrawCalled());
+    EXPECT_TRUE(layer->willDrawCalled());
+    EXPECT_TRUE(layer->didDrawCalled());
+
+    root->clearDidDrawCheck();
+    layer->clearDidDrawCheck();
+
+    EXPECT_FALSE(root->willDrawCalled());
+    EXPECT_FALSE(root->didDrawCalled());
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+
+    // Drawing again, we should scissor out everything since there is no damage.
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+
+    EXPECT_FALSE(root->willDrawCalled());
+    EXPECT_FALSE(root->didDrawCalled());
+    EXPECT_FALSE(layer->willDrawCalled());
+    EXPECT_FALSE(layer->didDrawCalled());
+}
+
 // Make sure that context lost notifications are propagated through the tree.
 class ContextLostNotificationCheckLayer : public CCLayerImpl {
 public:
@@ -1457,9 +1536,6 @@ private:
 
 TEST_F(CCLayerTreeHostImplTest, contextLostAndRestoredNotificationSentToAllLayers)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
     m_hostImpl->setRootLayer(ContextLostNotificationCheckLayer::create(0));
     ContextLostNotificationCheckLayer* root = static_cast<ContextLostNotificationCheckLayer*>(m_hostImpl->rootLayer());
 
@@ -1473,7 +1549,7 @@ TEST_F(CCLayerTreeHostImplTest, contextLostAndRestoredNotificationSentToAllLayer
     EXPECT_FALSE(layer1->didLoseContextCalled());
     EXPECT_FALSE(layer2->didLoseContextCalled());
 
-    m_hostImpl->initializeLayerRenderer(createContext());
+    m_hostImpl->initializeLayerRenderer(createContext(), UnthrottledUploader);
 
     EXPECT_TRUE(root->didLoseContextCalled());
     EXPECT_TRUE(layer1->didLoseContextCalled());
@@ -1488,7 +1564,7 @@ public:
 TEST_F(CCLayerTreeHostImplTest, finishAllRenderingAfterContextLost)
 {
     // The context initialization will fail, but we should still be able to call finishAllRendering() without any ill effects.
-    m_hostImpl->initializeLayerRenderer(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FakeWebGraphicsContext3DMakeCurrentFails), GraphicsContext3D::RenderDirectlyToHostWindow));
+    m_hostImpl->initializeLayerRenderer(CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FakeWebGraphicsContext3DMakeCurrentFails), GraphicsContext3D::RenderDirectlyToHostWindow)), UnthrottledUploader);
     m_hostImpl->finishAllRendering();
 }
 
@@ -1504,9 +1580,6 @@ private:
 
 TEST_F(CCLayerTreeHostImplTest, scrollbarLayerLostContext)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
     m_hostImpl->setRootLayer(ScrollbarLayerFakePaint::create(0));
     ScrollbarLayerFakePaint* scrollbar = static_cast<ScrollbarLayerFakePaint*>(m_hostImpl->rootLayer());
     scrollbar->setBounds(IntSize(1, 1));
@@ -1521,7 +1594,7 @@ TEST_F(CCLayerTreeHostImplTest, scrollbarLayerLostContext)
         // Scrollbar layer should always generate quads, even after lost context
         EXPECT_GT(renderPass->quadList().size(), 0u);
         m_hostImpl->didDrawAllLayers(frame);
-        m_hostImpl->initializeLayerRenderer(createContext());
+        m_hostImpl->initializeLayerRenderer(createContext(), UnthrottledUploader);
     }
 }
 
@@ -1652,11 +1725,40 @@ private:
     Client* m_client;
 };
 
+class StrictWebGraphicsContext3DWithIOSurface : public StrictWebGraphicsContext3D {
+public:
+    virtual WebString getString(WGC3Denum name) OVERRIDE
+    {
+        if (name == WebCore::GraphicsContext3D::EXTENSIONS)
+            return WebString("GL_CHROMIUM_iosurface GL_ARB_texture_rectangle");
+
+        return WebString();
+    }
+
+    static PassRefPtr<GraphicsContext3D> createGraphicsContext()
+    {
+        return GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new StrictWebGraphicsContext3DWithIOSurface()), GraphicsContext3D::RenderDirectlyToHostWindow);
+    }
+};
+
+class FakeWebGraphicsContext3DWithIOSurface : public FakeWebGraphicsContext3D {
+public:
+    virtual WebString getString(WGC3Denum name) OVERRIDE
+    {
+        if (name == WebCore::GraphicsContext3D::EXTENSIONS)
+            return WebString("GL_CHROMIUM_iosurface GL_ARB_texture_rectangle");
+
+        return WebString();
+    }
+
+    static PassRefPtr<GraphicsContext3D> createGraphicsContext()
+    {
+        return GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FakeWebGraphicsContext3DWithIOSurface()), GraphicsContext3D::RenderDirectlyToHostWindow);
+    }
+};
+
 TEST_F(CCLayerTreeHostImplTest, dontUseOldResourcesAfterLostContext)
 {
-    m_hostImpl->initializeLayerRenderer(createContext());
-    m_hostImpl->setViewportSize(IntSize(10, 10));
-
     OwnPtr<CCLayerImpl> rootLayer(CCLayerImpl::create(0));
     rootLayer->setBounds(IntSize(10, 10));
     rootLayer->setAnchorPoint(FloatPoint(0, 0));
@@ -1689,6 +1791,18 @@ TEST_F(CCLayerTreeHostImplTest, dontUseOldResourcesAfterLostContext)
     videoLayer->setDrawsContent(true);
     rootLayer->addChild(videoLayer.release());
 
+    OwnPtr<CCIOSurfaceLayerImpl> ioSurfaceLayer = CCIOSurfaceLayerImpl::create(4);
+    ioSurfaceLayer->setBounds(IntSize(10, 10));
+    ioSurfaceLayer->setAnchorPoint(FloatPoint(0, 0));
+    ioSurfaceLayer->setContentBounds(IntSize(10, 10));
+    ioSurfaceLayer->setDrawsContent(true);
+    ioSurfaceLayer->setIOSurfaceProperties(1, IntSize(10, 10));
+    ioSurfaceLayer->setLayerTreeHostImpl(m_hostImpl.get());
+    rootLayer->addChild(ioSurfaceLayer.release());
+
+    // Use a context that supports IOSurfaces
+    m_hostImpl->initializeLayerRenderer(CCGraphicsContext::create3D(FakeWebGraphicsContext3DWithIOSurface::createGraphicsContext()), UnthrottledUploader);
+
     m_hostImpl->setRootLayer(rootLayer.release());
 
     CCLayerTreeHostImpl::FrameData frame;
@@ -1697,13 +1811,164 @@ TEST_F(CCLayerTreeHostImplTest, dontUseOldResourcesAfterLostContext)
     m_hostImpl->didDrawAllLayers(frame);
     m_hostImpl->swapBuffers();
 
-    // Lose the context, replacing it with a StrictWebGraphicsContext3D, that
-    // will warn if any resource from the previous context gets used.
-    m_hostImpl->initializeLayerRenderer(StrictWebGraphicsContext3D::createGraphicsContext());
+    // Lose the context, replacing it with a StrictWebGraphicsContext3DWithIOSurface,
+    // that will warn if any resource from the previous context gets used.
+    m_hostImpl->initializeLayerRenderer(CCGraphicsContext::create3D(StrictWebGraphicsContext3DWithIOSurface::createGraphicsContext()), UnthrottledUploader);
     EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
     m_hostImpl->drawLayers(frame);
     m_hostImpl->didDrawAllLayers(frame);
     m_hostImpl->swapBuffers();
+}
+
+// Fake WebGraphicsContext3D that tracks the number of textures in use.
+class TrackingWebGraphicsContext3D : public FakeWebGraphicsContext3D {
+public:
+    TrackingWebGraphicsContext3D()
+        : m_nextTextureId(1)
+        , m_numTextures(0)
+    { }
+
+    virtual WebGLId createTexture() OVERRIDE
+    {
+        WebGLId id = m_nextTextureId;
+        ++m_nextTextureId;
+
+        m_textures.set(id, true);
+        ++m_numTextures;
+        return id;
+    }
+
+    virtual void deleteTexture(WebGLId id) OVERRIDE
+    {
+        if (!m_textures.get(id))
+            return;
+
+        m_textures.set(id, false);
+        --m_numTextures;
+    }
+
+    virtual WebString getString(WGC3Denum name) OVERRIDE
+    {
+        if (name == WebCore::GraphicsContext3D::EXTENSIONS)
+            return WebString("GL_CHROMIUM_iosurface GL_ARB_texture_rectangle");
+
+        return WebString();
+    }
+
+    PassRefPtr<GraphicsContext3D> createGraphicsContext()
+    {
+        return GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(this), GraphicsContext3D::RenderDirectlyToHostWindow);
+    }
+
+    unsigned numTextures() const { return m_numTextures; }
+
+private:
+    WebGLId m_nextTextureId;
+    HashMap<WebGLId, bool> m_textures;
+    unsigned m_numTextures;
+};
+
+TEST_F(CCLayerTreeHostImplTest, layersFreeTextures)
+{
+    OwnPtr<CCLayerImpl> rootLayer(CCLayerImpl::create(1));
+    rootLayer->setBounds(IntSize(10, 10));
+    rootLayer->setAnchorPoint(FloatPoint(0, 0));
+
+    OwnPtr<CCTiledLayerImpl> tileLayer = CCTiledLayerImpl::create(2);
+    tileLayer->setBounds(IntSize(10, 10));
+    tileLayer->setAnchorPoint(FloatPoint(0, 0));
+    tileLayer->setContentBounds(IntSize(10, 10));
+    tileLayer->setDrawsContent(true);
+    tileLayer->setSkipsDraw(false);
+    OwnPtr<CCLayerTilingData> tilingData(CCLayerTilingData::create(IntSize(10, 10), CCLayerTilingData::NoBorderTexels));
+    tilingData->setBounds(IntSize(10, 10));
+    tileLayer->setTilingData(*tilingData);
+    tileLayer->pushTileProperties(0, 0, 1, IntRect(0, 0, 10, 10));
+    rootLayer->addChild(tileLayer.release());
+
+    OwnPtr<CCTextureLayerImpl> textureLayer = CCTextureLayerImpl::create(3);
+    textureLayer->setBounds(IntSize(10, 10));
+    textureLayer->setAnchorPoint(FloatPoint(0, 0));
+    textureLayer->setContentBounds(IntSize(10, 10));
+    textureLayer->setDrawsContent(true);
+    textureLayer->setTextureId(1);
+    rootLayer->addChild(textureLayer.release());
+
+    FakeVideoFrameProvider provider;
+    OwnPtr<CCVideoLayerImpl> videoLayer = CCVideoLayerImpl::create(4, &provider);
+    videoLayer->setBounds(IntSize(10, 10));
+    videoLayer->setAnchorPoint(FloatPoint(0, 0));
+    videoLayer->setContentBounds(IntSize(10, 10));
+    videoLayer->setDrawsContent(true);
+    videoLayer->setLayerTreeHostImpl(m_hostImpl.get());
+    rootLayer->addChild(videoLayer.release());
+
+    OwnPtr<CCIOSurfaceLayerImpl> ioSurfaceLayer = CCIOSurfaceLayerImpl::create(5);
+    ioSurfaceLayer->setBounds(IntSize(10, 10));
+    ioSurfaceLayer->setAnchorPoint(FloatPoint(0, 0));
+    ioSurfaceLayer->setContentBounds(IntSize(10, 10));
+    ioSurfaceLayer->setDrawsContent(true);
+    ioSurfaceLayer->setIOSurfaceProperties(1, IntSize(10, 10));
+    ioSurfaceLayer->setLayerTreeHostImpl(m_hostImpl.get());
+    rootLayer->addChild(ioSurfaceLayer.release());
+
+    // Lose the context, replacing it with a TrackingWebGraphicsContext3D, that
+    // tracks the number of textures allocated. This pointer is owned by its
+    // GraphicsContext3D.
+    TrackingWebGraphicsContext3D* trackingWebGraphicsContext = new TrackingWebGraphicsContext3D();
+    m_hostImpl->initializeLayerRenderer(CCGraphicsContext::create3D(trackingWebGraphicsContext->createGraphicsContext()), UnthrottledUploader);
+
+    m_hostImpl->setRootLayer(rootLayer.release());
+
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(m_hostImpl->prepareToDraw(frame));
+    m_hostImpl->drawLayers(frame);
+    m_hostImpl->didDrawAllLayers(frame);
+    m_hostImpl->swapBuffers();
+
+    EXPECT_GT(trackingWebGraphicsContext->numTextures(), 0u);
+
+    // Kill the layer tree.
+    m_hostImpl->setRootLayer(CCLayerImpl::create(100));
+    // FIXME: Remove this when we don't use ManagedTextures in impl layers.
+    m_hostImpl->layerRenderer()->implTextureManager()->deleteEvictedTextures(m_hostImpl->layerRenderer()->implTextureAllocator());
+    // There should be no textures left in use after.
+    EXPECT_EQ(0u, trackingWebGraphicsContext->numTextures());
+}
+
+class MockDrawQuadsToFillScreenContext : public FakeWebGraphicsContext3D {
+public:
+    MOCK_METHOD1(useProgram, void(WebGLId program));
+    MOCK_METHOD4(drawElements, void(WGC3Denum mode, WGC3Dsizei count, WGC3Denum type, WGC3Dintptr offset));
+};
+
+TEST_F(CCLayerTreeHostImplTest, hasTransparentBackground)
+{
+    MockDrawQuadsToFillScreenContext* mockContext = new MockDrawQuadsToFillScreenContext();
+    RefPtr<CCGraphicsContext> context = CCGraphicsContext::create3D(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(mockContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+
+    // Run test case
+    OwnPtr<CCLayerTreeHostImpl> myHostImpl = createLayerTreeHost(false, context, CCLayerImpl::create(1));
+    myHostImpl->setBackgroundColor(Color::white);
+
+    // Verify one quad is drawn when transparent background set is not set.
+    myHostImpl->setHasTransparentBackground(false);
+    EXPECT_CALL(*mockContext, useProgram(_))
+        .Times(1);
+    EXPECT_CALL(*mockContext, drawElements(_, _, _, _))
+        .Times(1);
+    CCLayerTreeHostImpl::FrameData frame;
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+    Mock::VerifyAndClearExpectations(&mockContext);
+
+    // Verify no quads are drawn when transparent background is set.
+    myHostImpl->setHasTransparentBackground(true);
+    EXPECT_TRUE(myHostImpl->prepareToDraw(frame));
+    myHostImpl->drawLayers(frame);
+    myHostImpl->didDrawAllLayers(frame);
+    Mock::VerifyAndClearExpectations(&mockContext);
 }
 
 } // namespace

@@ -110,7 +110,7 @@ static void completeURLs(Node* node, const String& baseURL)
             unsigned length = e->attributeCount();
             for (unsigned i = 0; i < length; i++) {
                 Attribute* attribute = e->attributeItem(i);
-                if (e->isURLAttribute(attribute))
+                if (e->isURLAttribute(*attribute))
                     changes.append(AttributeChange(e, attribute->name(), KURL(parsedBaseURL, attribute->value()).string()));
             }
         }
@@ -665,7 +665,9 @@ PassRefPtr<DocumentFragment> createFragmentFromMarkup(Document* document, const 
 {
     // We use a fake body element here to trick the HTML parser to using the InBody insertion mode.
     RefPtr<HTMLBodyElement> fakeBody = HTMLBodyElement::create(document);
-    RefPtr<DocumentFragment> fragment =  Range::createDocumentFragmentForElement(markup, fakeBody.get(), scriptingPermission);
+    // Ignore exceptions here since this function is used to parse markup for pasting or for other editing purposes.
+    ExceptionCode ignoredEC;
+    RefPtr<DocumentFragment> fragment = createContextualFragment(markup, fakeBody.get(), scriptingPermission, ignoredEC);
 
     if (fragment && !baseURL.isEmpty() && baseURL != blankURL() && baseURL != document->baseURL())
         completeURLs(fragment.get(), baseURL);
@@ -759,7 +761,7 @@ PassRefPtr<DocumentFragment> createFragmentFromMarkupWithContext(Document* docum
     return fragment;
 }
 
-String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>* nodes, EAbsoluteURLs shouldResolveURLs)
+String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>* nodes, EAbsoluteURLs shouldResolveURLs, Vector<QualifiedName>* tagNamesToSkip)
 {
     if (!node)
         return "";
@@ -772,7 +774,7 @@ String createMarkup(const Node* node, EChildrenOnly childrenOnly, Vector<Node*>*
     }
 
     MarkupAccumulator accumulator(nodes, shouldResolveURLs);
-    return accumulator.serializeNodes(const_cast<Node*>(node), deleteButtonContainerElement, childrenOnly);
+    return accumulator.serializeNodes(const_cast<Node*>(node), deleteButtonContainerElement, childrenOnly, tagNamesToSkip);
 }
 
 static void fillContainerFromString(ContainerNode* paragraph, const String& string)
@@ -992,20 +994,95 @@ String urlToMarkup(const KURL& url, const String& title)
     return markup.toString();
 }
 
-PassRefPtr<DocumentFragment> createFragmentFromSource(const String& markup, Element* contextElement, ExceptionCode& ec)
+PassRefPtr<DocumentFragment> createFragmentForInnerOuterHTML(const String& markup, Element* contextElement, FragmentScriptingPermission scriptingPermission, ExceptionCode& ec)
 {
     Document* document = contextElement->document();
     RefPtr<DocumentFragment> fragment = DocumentFragment::create(document);
 
     if (document->isHTMLDocument()) {
-        fragment->parseHTML(markup, contextElement);
+        fragment->parseHTML(markup, contextElement, scriptingPermission);
         return fragment;
     }
 
-    bool wasValid = fragment->parseXML(markup, contextElement);
+    bool wasValid = fragment->parseXML(markup, contextElement, scriptingPermission);
     if (!wasValid) {
-        ec = INVALID_STATE_ERR;
+        ec = SYNTAX_ERR;
         return 0;
+    }
+    return fragment.release();
+}
+
+PassRefPtr<DocumentFragment> createFragmentForTransformToFragment(const String& sourceString, const String& sourceMIMEType, Document* outputDoc)
+{
+    RefPtr<DocumentFragment> fragment = outputDoc->createDocumentFragment();
+    
+    if (sourceMIMEType == "text/html") {
+        // As far as I can tell, there isn't a spec for how transformToFragment is supposed to work.
+        // Based on the documentation I can find, it looks like we want to start parsing the fragment in the InBody insertion mode.
+        // Unfortunately, that's an implementation detail of the parser.
+        // We achieve that effect here by passing in a fake body element as context for the fragment.
+        RefPtr<HTMLBodyElement> fakeBody = HTMLBodyElement::create(outputDoc);
+        fragment->parseHTML(sourceString, fakeBody.get());
+    } else if (sourceMIMEType == "text/plain")
+        fragment->parserAddChild(Text::create(outputDoc, sourceString));
+    else {
+        bool successfulParse = fragment->parseXML(sourceString, 0);
+        if (!successfulParse)
+            return 0;
+    }
+    
+    // FIXME: Do we need to mess with URLs here?
+    
+    return fragment.release();
+}
+
+static inline void removeElementPreservingChildren(PassRefPtr<DocumentFragment> fragment, HTMLElement* element)
+{
+    ExceptionCode ignoredExceptionCode;
+
+    RefPtr<Node> nextChild;
+    for (RefPtr<Node> child = element->firstChild(); child; child = nextChild) {
+        nextChild = child->nextSibling();
+        element->removeChild(child.get(), ignoredExceptionCode);
+        ASSERT(!ignoredExceptionCode);
+        fragment->insertBefore(child, element, ignoredExceptionCode);
+        ASSERT(!ignoredExceptionCode);
+    }
+    fragment->removeChild(element, ignoredExceptionCode);
+    ASSERT(!ignoredExceptionCode);
+}
+
+PassRefPtr<DocumentFragment> createContextualFragment(const String& markup, HTMLElement* element, FragmentScriptingPermission scriptingPermission, ExceptionCode& ec)
+{
+    ASSERT(element);
+    if (element->ieForbidsInsertHTML()) {
+        ec = NOT_SUPPORTED_ERR;
+        return 0;
+    }
+
+    if (element->hasLocalName(colTag) || element->hasLocalName(colgroupTag) || element->hasLocalName(framesetTag)
+        || element->hasLocalName(headTag) || element->hasLocalName(styleTag) || element->hasLocalName(titleTag)) {
+        ec = NOT_SUPPORTED_ERR;
+        return 0;
+    }
+
+    RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, element, scriptingPermission, ec);
+    if (!fragment)
+        return 0;
+
+    // We need to pop <html> and <body> elements and remove <head> to
+    // accommodate folks passing complete HTML documents to make the
+    // child of an element.
+
+    RefPtr<Node> nextNode;
+    for (RefPtr<Node> node = fragment->firstChild(); node; node = nextNode) {
+        nextNode = node->nextSibling();
+        if (node->hasTagName(htmlTag) || node->hasTagName(headTag) || node->hasTagName(bodyTag)) {
+            HTMLElement* element = toHTMLElement(node.get());
+            if (Node* firstChild = element->firstChild())
+                nextNode = firstChild;
+            removeElementPreservingChildren(fragment, element);
+        }
     }
     return fragment.release();
 }

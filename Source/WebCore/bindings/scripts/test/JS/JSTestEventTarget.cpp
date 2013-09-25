@@ -70,12 +70,12 @@ void JSTestEventTargetConstructor::finishCreation(ExecState* exec, JSDOMGlobalOb
     putDirect(exec->globalData(), exec->propertyNames().prototype, JSTestEventTargetPrototype::self(exec, globalObject), DontDelete | ReadOnly);
 }
 
-bool JSTestEventTargetConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestEventTargetConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     return getStaticValueSlot<JSTestEventTargetConstructor, JSDOMWrapper>(exec, &JSTestEventTargetConstructorTable, jsCast<JSTestEventTargetConstructor*>(cell), propertyName, slot);
 }
 
-bool JSTestEventTargetConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestEventTargetConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     return getStaticValueDescriptor<JSTestEventTargetConstructor, JSDOMWrapper>(exec, &JSTestEventTargetConstructorTable, jsCast<JSTestEventTargetConstructor*>(object), propertyName, descriptor);
 }
@@ -99,13 +99,13 @@ JSObject* JSTestEventTargetPrototype::self(ExecState* exec, JSGlobalObject* glob
     return getDOMPrototype<JSTestEventTarget>(exec, globalObject);
 }
 
-bool JSTestEventTargetPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestEventTargetPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSTestEventTargetPrototype* thisObject = jsCast<JSTestEventTargetPrototype*>(cell);
     return getStaticFunctionSlot<JSObject>(exec, &JSTestEventTargetPrototypeTable, thisObject, propertyName, slot);
 }
 
-bool JSTestEventTargetPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestEventTargetPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSTestEventTargetPrototype* thisObject = jsCast<JSTestEventTargetPrototype*>(object);
     return getStaticFunctionDescriptor<JSObject>(exec, &JSTestEventTargetPrototypeTable, thisObject, propertyName, descriptor);
@@ -132,7 +132,7 @@ JSObject* JSTestEventTarget::createPrototype(ExecState* exec, JSGlobalObject* gl
 
 void JSTestEventTarget::destroy(JSC::JSCell* cell)
 {
-    JSTestEventTarget* thisObject = jsCast<JSTestEventTarget*>(cell);
+    JSTestEventTarget* thisObject = static_cast<JSTestEventTarget*>(cell);
     thisObject->JSTestEventTarget::~JSTestEventTarget();
 }
 
@@ -141,7 +141,7 @@ JSTestEventTarget::~JSTestEventTarget()
     releaseImplIfNotNull();
 }
 
-bool JSTestEventTarget::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestEventTarget::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSTestEventTarget* thisObject = jsCast<JSTestEventTarget*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
@@ -150,9 +150,8 @@ bool JSTestEventTarget::getOwnPropertySlot(JSCell* cell, ExecState* exec, const 
         slot.setCustom(thisObject, entry->propertyGetter());
         return true;
     }
-    bool ok;
-    unsigned index = propertyName.toUInt32(ok);
-    if (ok && index < static_cast<TestEventTarget*>(thisObject->impl())->length()) {
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex && index < static_cast<TestEventTarget*>(thisObject->impl())->length()) {
         slot.setCustomIndex(thisObject, index, indexGetter);
         return true;
     }
@@ -163,7 +162,7 @@ bool JSTestEventTarget::getOwnPropertySlot(JSCell* cell, ExecState* exec, const 
     return getStaticValueSlot<JSTestEventTarget, Base>(exec, &JSTestEventTargetTable, thisObject, propertyName, slot);
 }
 
-bool JSTestEventTarget::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestEventTarget::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSTestEventTarget* thisObject = jsCast<JSTestEventTarget*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
@@ -174,9 +173,8 @@ bool JSTestEventTarget::getOwnPropertyDescriptor(JSObject* object, ExecState* ex
         descriptor.setDescriptor(slot.getValue(exec, propertyName), entry->attributes());
         return true;
     }
-    bool ok;
-    unsigned index = propertyName.toUInt32(ok);
-    if (ok && index < static_cast<TestEventTarget*>(thisObject->impl())->length()) {
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex && index < static_cast<TestEventTarget*>(thisObject->impl())->length()) {
         PropertySlot slot;
         slot.setCustomIndex(thisObject, index, indexGetter);
         descriptor.setDescriptor(slot.getValue(exec, propertyName), DontDelete | ReadOnly);
@@ -202,7 +200,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec,
     return thisObject->methodTable()->getOwnPropertySlot(thisObject, exec, Identifier::from(exec, propertyName), slot);
 }
 
-JSValue jsTestEventTargetConstructor(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestEventTargetConstructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestEventTarget* domObject = jsCast<JSTestEventTarget*>(asObject(slotBase));
     return JSTestEventTarget::getConstructor(exec, domObject->globalObject());
@@ -252,12 +250,10 @@ EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionAddEventListener(
     JSTestEventTarget* castedThis = jsCast<JSTestEventTarget*>(asObject(thisValue));
     ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestEventTarget::s_info);
     TestEventTarget* impl = static_cast<TestEventTarget*>(castedThis->impl());
-    if (exec->argumentCount() < 2)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
     JSValue listener = exec->argument(1);
     if (!listener.isObject())
         return JSValue::encode(jsUndefined());
-    impl->addEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)), exec->argument(2).toBoolean(exec));
+    impl->addEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)), exec->argument(2).toBoolean());
     return JSValue::encode(jsUndefined());
 }
 
@@ -269,12 +265,10 @@ EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionRemoveEventListen
     JSTestEventTarget* castedThis = jsCast<JSTestEventTarget*>(asObject(thisValue));
     ASSERT_GC_OBJECT_INHERITS(castedThis, &JSTestEventTarget::s_info);
     TestEventTarget* impl = static_cast<TestEventTarget*>(castedThis->impl());
-    if (exec->argumentCount() < 2)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
     JSValue listener = exec->argument(1);
     if (!listener.isObject())
         return JSValue::encode(jsUndefined());
-    impl->removeEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)).get(), exec->argument(2).toBoolean(exec));
+    impl->removeEventListener(ustringToAtomicString(exec->argument(0).toString(exec)->value(exec)), JSEventListener::create(asObject(listener), castedThis, false, currentWorld(exec)).get(), exec->argument(2).toBoolean());
     return JSValue::encode(jsUndefined());
 }
 

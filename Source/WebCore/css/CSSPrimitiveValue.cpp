@@ -25,7 +25,6 @@
 #include "CSSHelper.h"
 #include "CSSParser.h"
 #include "CSSPropertyNames.h"
-#include "CSSStyleSheet.h"
 #include "CSSValueKeywords.h"
 #include "CSSWrapShapes.h"
 #include "CalculationValue.h"
@@ -37,6 +36,7 @@
 #include "RGBColor.h"
 #include "Rect.h"
 #include "RenderStyle.h"
+#include "StyleSheetContents.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/DecimalNumber.h>
 #include <wtf/StdLibExtras.h>
@@ -60,6 +60,9 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue:: CSS_CM:
     case CSSPrimitiveValue:: CSS_DEG:
     case CSSPrimitiveValue:: CSS_DIMENSION:
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    case CSSPrimitiveValue:: CSS_DPPX:
+#endif
     case CSSPrimitiveValue:: CSS_EMS:
     case CSSPrimitiveValue:: CSS_EXS:
     case CSSPrimitiveValue:: CSS_GRAD:
@@ -85,6 +88,9 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue:: CSS_COUNTER:
     case CSSPrimitiveValue:: CSS_COUNTER_NAME:
     case CSSPrimitiveValue:: CSS_DASHBOARD_REGION:
+#if !ENABLE(CSS_IMAGE_RESOLUTION)
+    case CSSPrimitiveValue:: CSS_DPPX:
+#endif
     case CSSPrimitiveValue:: CSS_IDENT:
     case CSSPrimitiveValue:: CSS_PAIR:
     case CSSPrimitiveValue:: CSS_PARSER_HEXCOLOR:
@@ -137,6 +143,10 @@ static CSSPrimitiveValue::UnitCategory unitCategory(CSSPrimitiveValue::UnitTypes
     case CSSPrimitiveValue::CSS_VH:
     case CSSPrimitiveValue::CSS_VMIN:
         return CSSPrimitiveValue::UViewportPercentageLength;
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    case CSSPrimitiveValue:: CSS_DPPX:
+        return CSSPrimitiveValue::UResolution;
+#endif
     default:
         return CSSPrimitiveValue::UOther;
     }
@@ -431,7 +441,11 @@ template<> unsigned CSSPrimitiveValue::computeLength(RenderStyle* style, RenderS
 
 template<> Length CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
 {
+#if ENABLE(SUBPIXEL_LAYOUT)
+    return Length(static_cast<float>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize)), Fixed);
+#else
     return Length(roundForImpreciseConversion<float>(computeLengthDouble(style, rootStyle, multiplier, computingFontSize)), Fixed);
+#endif
 }
 
 template<> short CSSPrimitiveValue::computeLength(RenderStyle* style, RenderStyle* rootStyle, float multiplier, bool computingFontSize)
@@ -623,6 +637,10 @@ CSSPrimitiveValue::UnitTypes CSSPrimitiveValue::canonicalUnitTypeForCategory(Uni
         return CSS_HZ;
     case UViewportPercentageLength:
         return CSS_UNKNOWN; // Cannot convert between numbers and relative lengths.
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    case UResolution:
+        return CSS_DPPX;
+#endif
     default:
         return CSS_UNKNOWN;
     }
@@ -824,6 +842,11 @@ String CSSPrimitiveValue::customCssText() const
         case CSS_CM:
             text = formatNumber(m_value.num) + "cm";
             break;
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+        case CSS_DPPX:
+            text = formatNumber(m_value.num) + "dppx";
+            break;
+#endif
         case CSS_MM:
             text = formatNumber(m_value.num) + "mm";
             break;
@@ -1060,7 +1083,7 @@ String CSSPrimitiveValue::customCssText() const
     return text;
 }
 
-void CSSPrimitiveValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const StyleSheetInternal* styleSheet)
+void CSSPrimitiveValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const StyleSheetContents* styleSheet) const
 {
     if (m_primitiveUnitType == CSS_URI)
         addSubresourceURL(urls, styleSheet->completeURL(m_value.string));
@@ -1147,6 +1170,9 @@ PassRefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
     case CSS_VW:
     case CSS_VH:
     case CSS_VMIN:
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    case CSS_DPPX:
+#endif
         result = CSSPrimitiveValue::create(m_value.num, static_cast<UnitTypes>(m_primitiveUnitType));
         break;
     case CSS_IDENT:

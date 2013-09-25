@@ -40,6 +40,18 @@ CopiedSpace::CopiedSpace(Heap* heap)
 {
 }
 
+CopiedSpace::~CopiedSpace()
+{
+    while (!m_toSpace->isEmpty())
+        m_heap->blockAllocator().deallocate(CopiedBlock::destroy(static_cast<CopiedBlock*>(m_toSpace->removeHead())));
+
+    while (!m_fromSpace->isEmpty())
+        m_heap->blockAllocator().deallocate(CopiedBlock::destroy(static_cast<CopiedBlock*>(m_fromSpace->removeHead())));
+
+    while (!m_oversizeBlocks.isEmpty())
+        CopiedBlock::destroy(static_cast<CopiedBlock*>(m_oversizeBlocks.removeHead())).deallocate();
+}
+
 void CopiedSpace::init()
 {
     m_toSpace = &m_blocks1;
@@ -77,9 +89,10 @@ CheckedBoolean CopiedSpace::tryAllocateOversize(size_t bytes, void** outPtr)
         return false;
     }
 
-    CopiedBlock* block = new (NotNull, allocation.base()) CopiedBlock(allocation);
+    CopiedBlock* block = CopiedBlock::create(allocation);
     m_oversizeBlocks.push(block);
-    m_oversizeFilter.add(reinterpret_cast<Bits>(block));
+    m_blockFilter.add(reinterpret_cast<Bits>(block));
+    m_blockSet.add(block);
     
     *outPtr = allocateFromBlock(block, bytes);
 
@@ -135,7 +148,8 @@ CheckedBoolean CopiedSpace::tryReallocateOversize(void** ptr, size_t oldSize, si
     if (isOversize(oldSize)) {
         CopiedBlock* oldBlock = oversizeBlockFor(oldPtr);
         m_oversizeBlocks.remove(oldBlock);
-        oldBlock->m_allocation.deallocate();
+        m_blockSet.remove(oldBlock);
+        CopiedBlock::destroy(oldBlock).deallocate();
     }
     
     *ptr = newPtr;
@@ -156,8 +170,8 @@ void CopiedSpace::doneFillingBlock(CopiedBlock* block)
     {
         MutexLocker locker(m_toSpaceLock);
         m_toSpace->push(block);
-        m_toSpaceSet.add(block);
-        m_toSpaceFilter.add(reinterpret_cast<Bits>(block));
+        m_blockSet.add(block);
+        m_blockFilter.add(reinterpret_cast<Bits>(block));
     }
 
     {
@@ -183,12 +197,15 @@ void CopiedSpace::doneCopying()
         CopiedBlock* block = static_cast<CopiedBlock*>(m_fromSpace->removeHead());
         if (block->m_isPinned) {
             block->m_isPinned = false;
+            // We don't add the block to the blockSet because it was never removed.
+            ASSERT(m_blockSet.contains(block));
+            m_blockFilter.add(reinterpret_cast<Bits>(block));
             m_toSpace->push(block);
             continue;
         }
 
-        m_toSpaceSet.remove(block);
-        m_heap->blockAllocator().deallocate(block);
+        m_blockSet.remove(block);
+        m_heap->blockAllocator().deallocate(CopiedBlock::destroy(block));
     }
 
     CopiedBlock* curr = static_cast<CopiedBlock*>(m_oversizeBlocks.head());
@@ -196,9 +213,12 @@ void CopiedSpace::doneCopying()
         CopiedBlock* next = static_cast<CopiedBlock*>(curr->next());
         if (!curr->m_isPinned) {
             m_oversizeBlocks.remove(curr);
-            curr->m_allocation.deallocate();
-        } else
+            m_blockSet.remove(curr);
+            CopiedBlock::destroy(curr).deallocate();
+        } else {
+            m_blockFilter.add(reinterpret_cast<Bits>(curr));
             curr->m_isPinned = false;
+        }
         curr = next;
     }
 
@@ -212,15 +232,9 @@ void CopiedSpace::doneCopying()
 CheckedBoolean CopiedSpace::getFreshBlock(AllocationEffort allocationEffort, CopiedBlock** outBlock)
 {
     CopiedBlock* block = 0;
-    if (HeapBlock* heapBlock = m_heap->blockAllocator().allocate())
-        block = new (NotNull, heapBlock) CopiedBlock(heapBlock->m_allocation);
-    else if (allocationEffort == AllocationMustSucceed) {
-        if (!allocateNewBlock(&block)) {
-            *outBlock = 0;
-            ASSERT_NOT_REACHED();
-            return false;
-        }
-    } else {
+    if (allocationEffort == AllocationMustSucceed)
+        block = CopiedBlock::create(m_heap->blockAllocator().allocate());
+    else {
         ASSERT(allocationEffort == AllocationCanFail);
         if (m_heap->shouldCollect())
             m_heap->collect(Heap::DoNotSweep);
@@ -235,18 +249,6 @@ CheckedBoolean CopiedSpace::getFreshBlock(AllocationEffort allocationEffort, Cop
     ASSERT(is8ByteAligned(block->m_offset));
     *outBlock = block;
     return true;
-}
-
-void CopiedSpace::freeAllBlocks()
-{
-    while (!m_toSpace->isEmpty())
-        m_heap->blockAllocator().deallocate(m_toSpace->removeHead());
-
-    while (!m_fromSpace->isEmpty())
-        m_heap->blockAllocator().deallocate(m_fromSpace->removeHead());
-
-    while (!m_oversizeBlocks.isEmpty())
-        m_oversizeBlocks.removeHead()->m_allocation.deallocate();
 }
 
 size_t CopiedSpace::size()

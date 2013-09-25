@@ -27,6 +27,7 @@
 #include "Position.h"
 
 #include "CSSComputedStyleDeclaration.h"
+#include "ContextEnabledFeatures.h"
 #include "HTMLNames.h"
 #include "InlineTextBox.h"
 #include "Logging.h"
@@ -80,7 +81,12 @@ Position::Position(PassRefPtr<Node> anchorNode, LegacyEditingOffset offset)
     , m_anchorType(anchorTypeForLegacyEditingPosition(m_anchorNode.get(), m_offset))
     , m_isLegacyEditingPosition(true)
 {
+#if ENABLE(SHADOW_DOM)
+    ASSERT((m_anchorNode && ContextEnabledFeatures::shadowDOMEnabled(m_anchorNode->document()->domWindow()))
+           || !m_anchorNode || !m_anchorNode->isShadowRoot());
+#else
     ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot());
+#endif
 }
 
 Position::Position(PassRefPtr<Node> anchorNode, AnchorType anchorType)
@@ -89,7 +95,13 @@ Position::Position(PassRefPtr<Node> anchorNode, AnchorType anchorType)
     , m_anchorType(anchorType)
     , m_isLegacyEditingPosition(false)
 {
+#if ENABLE(SHADOW_DOM)
+    ASSERT((m_anchorNode && ContextEnabledFeatures::shadowDOMEnabled(m_anchorNode->document()->domWindow()))
+           || !m_anchorNode || !m_anchorNode->isShadowRoot());
+#else
     ASSERT(!m_anchorNode || !m_anchorNode->isShadowRoot());
+#endif
+
     ASSERT(anchorType != PositionIsOffsetInAnchor);
     ASSERT(!((anchorType == PositionIsBeforeChildren || anchorType == PositionIsAfterChildren)
         && (m_anchorNode->isTextNode() || editingIgnoresContent(m_anchorNode.get()))));
@@ -101,7 +113,13 @@ Position::Position(PassRefPtr<Node> anchorNode, int offset, AnchorType anchorTyp
     , m_anchorType(anchorType)
     , m_isLegacyEditingPosition(false)
 {
+#if ENABLE(SHADOW_DOM)
+    ASSERT((m_anchorNode && ContextEnabledFeatures::shadowDOMEnabled(m_anchorNode->document()->domWindow()))
+           || !m_anchorNode || !editingIgnoresContent(m_anchorNode.get()) || !m_anchorNode->isShadowRoot());
+#else
     ASSERT(!m_anchorNode || !editingIgnoresContent(m_anchorNode.get()) || !m_anchorNode->isShadowRoot());
+#endif
+
     ASSERT(anchorType == PositionIsOffsetInAnchor);
 }
 
@@ -143,7 +161,7 @@ Node* Position::containerNode() const
         return m_anchorNode.get();
     case PositionIsBeforeAnchor:
     case PositionIsAfterAnchor:
-        return m_anchorNode->nonShadowBoundaryParentNode();
+        return findParent(m_anchorNode.get());
     }
     ASSERT_NOT_REACHED();
     return 0;
@@ -203,7 +221,7 @@ Position Position::parentAnchoredEquivalent() const
     
     // FIXME: This should only be necessary for legacy positions, but is also needed for positions before and after Tables
     if (m_offset <= 0 && (m_anchorType != PositionIsAfterAnchor && m_anchorType != PositionIsAfterChildren)) {
-        if (m_anchorNode->nonShadowBoundaryParentNode() && (editingIgnoresContent(m_anchorNode.get()) || isTableElement(m_anchorNode.get())))
+        if (findParent(m_anchorNode.get()) && (editingIgnoresContent(m_anchorNode.get()) || isTableElement(m_anchorNode.get())))
             return positionInParentBeforeNode(m_anchorNode.get());
         return Position(m_anchorNode.get(), 0, PositionIsOffsetInAnchor);
     }
@@ -316,7 +334,7 @@ Position Position::previous(PositionMoveType moveType) const
         }
     }
 
-    ContainerNode* parent = n->nonShadowBoundaryParentNode();
+    ContainerNode* parent = findParent(n);
     if (!parent)
         return *this;
 
@@ -348,7 +366,7 @@ Position Position::next(PositionMoveType moveType) const
         return createLegacyEditingPosition(n, (moveType == Character) ? uncheckedNextOffset(n, o) : o + 1);
     }
 
-    ContainerNode* parent = n->nonShadowBoundaryParentNode();
+    ContainerNode* parent = findParent(n);
     if (!parent)
         return *this;
 
@@ -441,14 +459,14 @@ bool Position::atStartOfTree() const
 {
     if (isNull())
         return true;
-    return !deprecatedNode()->nonShadowBoundaryParentNode() && m_offset <= 0;
+    return !findParent(deprecatedNode()) && m_offset <= 0;
 }
 
 bool Position::atEndOfTree() const
 {
     if (isNull())
         return true;
-    return !deprecatedNode()->nonShadowBoundaryParentNode() && m_offset >= lastOffsetForEditing(deprecatedNode());
+    return !findParent(deprecatedNode()) && m_offset >= lastOffsetForEditing(deprecatedNode());
 }
 
 int Position::renderedOffset() const
@@ -832,6 +850,18 @@ bool Position::hasRenderedNonAnonymousDescendantsWithHeight(RenderObject* render
 bool Position::nodeIsUserSelectNone(Node* node)
 {
     return node && node->renderer() && node->renderer()->style()->userSelect() == SELECT_NONE;
+}
+
+ContainerNode* Position::findParent(const Node* node)
+{
+    // FIXME: See http://web.ug/82697
+
+#if ENABLE(SHADOW_DOM)
+    if (ContextEnabledFeatures::shadowDOMEnabled(node->document()->domWindow()))
+        return node->parentNode();
+#endif
+
+    return node->nonShadowBoundaryParentNode();
 }
 
 bool Position::isCandidate() const

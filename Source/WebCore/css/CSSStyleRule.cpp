@@ -59,8 +59,9 @@ CSSStyleRule::~CSSStyleRule()
 
 CSSStyleDeclaration* CSSStyleRule::style() const
 {
-    if (!m_propertiesCSSOMWrapper)
-        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_styleRule->properties(), const_cast<CSSStyleRule*>(this));
+    if (!m_propertiesCSSOMWrapper) {
+        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_styleRule->mutableProperties(), const_cast<CSSStyleRule*>(this));
+    }
     return m_propertiesCSSOMWrapper.get();
 }
 
@@ -91,17 +92,13 @@ String CSSStyleRule::selectorText() const
 
 void CSSStyleRule::setSelectorText(const String& selectorText)
 {
-    Document* doc = 0;
-    if (CSSStyleSheet* styleSheet = parentStyleSheet())
-        doc = styleSheet->ownerDocument();
-    if (!doc)
-        return;
-
     CSSParser p(parserContext());
     CSSSelectorList selectorList;
     p.parseSelector(selectorText, selectorList);
     if (!selectorList.first())
         return;
+
+    CSSStyleSheet::RuleMutationScope mutationScope(this);
 
     String oldSelectorText = this->selectorText();
     m_styleRule->wrapperAdoptSelectorList(selectorList);
@@ -110,8 +107,6 @@ void CSSStyleRule::setSelectorText(const String& selectorText)
         ASSERT(selectorTextCache().contains(this));
         selectorTextCache().set(this, generateSelectorText());
     }
-
-    doc->styleResolverChanged(DeferRecalcStyle);
 }
 
 String CSSStyleRule::cssText() const
@@ -123,6 +118,13 @@ String CSSStyleRule::cssText() const
     result += "}";
 
     return result;
+}
+
+void CSSStyleRule::reattach(StyleRule* rule)
+{
+    m_styleRule = rule;
+    if (m_propertiesCSSOMWrapper)
+        m_propertiesCSSOMWrapper->reattach(m_styleRule->mutableProperties());
 }
 
 } // namespace WebCore

@@ -27,11 +27,12 @@
 #include "ExceptionCode.h"
 #include "JSArray.h"
 #include "JSDOMBinding.h"
-#include "JSMessagePortArray.h"
-#include "MessagePortArray.h"
+#include "JSMessagePort.h"
+#include "MessagePort.h"
 #include "SerializedScriptValue.h"
 #include "TestSerializedScriptValueInterface.h"
 #include <runtime/Error.h>
+#include <runtime/JSArray.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -76,12 +77,12 @@ void JSTestSerializedScriptValueInterfaceConstructor::finishCreation(ExecState* 
     putDirect(exec->globalData(), exec->propertyNames().length, jsNumber(3), ReadOnly | DontDelete | DontEnum);
 }
 
-bool JSTestSerializedScriptValueInterfaceConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestSerializedScriptValueInterfaceConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     return getStaticValueSlot<JSTestSerializedScriptValueInterfaceConstructor, JSDOMWrapper>(exec, &JSTestSerializedScriptValueInterfaceConstructorTable, jsCast<JSTestSerializedScriptValueInterfaceConstructor*>(cell), propertyName, slot);
 }
 
-bool JSTestSerializedScriptValueInterfaceConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestSerializedScriptValueInterfaceConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     return getStaticValueDescriptor<JSTestSerializedScriptValueInterfaceConstructor, JSDOMWrapper>(exec, &JSTestSerializedScriptValueInterfaceConstructorTable, jsCast<JSTestSerializedScriptValueInterfaceConstructor*>(object), propertyName, descriptor);
 }
@@ -94,7 +95,7 @@ EncodedJSValue JSC_HOST_CALL JSTestSerializedScriptValueInterfaceConstructor::co
     const String& hello(ustringToString(MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined).isEmpty() ? UString() : MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined).toString(exec)->value(exec)));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
-    RefPtr<SerializedScriptValue> data(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 1, DefaultIsUndefined)));
+    RefPtr<SerializedScriptValue> data(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 1, DefaultIsUndefined), 0, 0));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
     Array* transferList(toArray(MAYBE_MISSING_PARAMETER(exec, 2, DefaultIsUndefined)));
@@ -127,13 +128,13 @@ JSObject* JSTestSerializedScriptValueInterfacePrototype::self(ExecState* exec, J
     return getDOMPrototype<JSTestSerializedScriptValueInterface>(exec, globalObject);
 }
 
-bool JSTestSerializedScriptValueInterfacePrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestSerializedScriptValueInterfacePrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSTestSerializedScriptValueInterfacePrototype* thisObject = jsCast<JSTestSerializedScriptValueInterfacePrototype*>(cell);
     return getStaticFunctionSlot<JSObject>(exec, &JSTestSerializedScriptValueInterfacePrototypeTable, thisObject, propertyName, slot);
 }
 
-bool JSTestSerializedScriptValueInterfacePrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestSerializedScriptValueInterfacePrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSTestSerializedScriptValueInterfacePrototype* thisObject = jsCast<JSTestSerializedScriptValueInterfacePrototype*>(object);
     return getStaticFunctionDescriptor<JSObject>(exec, &JSTestSerializedScriptValueInterfacePrototypeTable, thisObject, propertyName, descriptor);
@@ -160,7 +161,7 @@ JSObject* JSTestSerializedScriptValueInterface::createPrototype(ExecState* exec,
 
 void JSTestSerializedScriptValueInterface::destroy(JSC::JSCell* cell)
 {
-    JSTestSerializedScriptValueInterface* thisObject = jsCast<JSTestSerializedScriptValueInterface*>(cell);
+    JSTestSerializedScriptValueInterface* thisObject = static_cast<JSTestSerializedScriptValueInterface*>(cell);
     thisObject->JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface();
 }
 
@@ -169,21 +170,21 @@ JSTestSerializedScriptValueInterface::~JSTestSerializedScriptValueInterface()
     releaseImplIfNotNull();
 }
 
-bool JSTestSerializedScriptValueInterface::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSTestSerializedScriptValueInterface::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSTestSerializedScriptValueInterface* thisObject = jsCast<JSTestSerializedScriptValueInterface*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
     return getStaticValueSlot<JSTestSerializedScriptValueInterface, Base>(exec, &JSTestSerializedScriptValueInterfaceTable, thisObject, propertyName, slot);
 }
 
-bool JSTestSerializedScriptValueInterface::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSTestSerializedScriptValueInterface::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSTestSerializedScriptValueInterface* thisObject = jsCast<JSTestSerializedScriptValueInterface*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
     return getStaticValueDescriptor<JSTestSerializedScriptValueInterface, Base>(exec, &JSTestSerializedScriptValueInterfaceTable, thisObject, propertyName, descriptor);
 }
 
-JSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
@@ -193,7 +194,7 @@ JSValue jsTestSerializedScriptValueInterfaceValue(ExecState* exec, JSValue slotB
 }
 
 
-JSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
@@ -203,7 +204,7 @@ JSValue jsTestSerializedScriptValueInterfaceReadonlyValue(ExecState* exec, JSVal
 }
 
 
-JSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
@@ -216,17 +217,17 @@ JSValue jsTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSValue
 }
 
 
-JSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfacePorts(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
     TestSerializedScriptValueInterface* impl = static_cast<TestSerializedScriptValueInterface*>(castedThis->impl());
-    JSValue result = toJS(exec, castedThis->globalObject(), WTF::getPtr(impl->ports()));
+    JSValue result = jsArray(exec, castedThis->globalObject(), *impl->ports());
     return result;
 }
 
 
-JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     UNUSED_PARAM(exec);
@@ -239,13 +240,13 @@ JSValue jsTestSerializedScriptValueInterfaceCachedReadonlyValue(ExecState* exec,
 }
 
 
-JSValue jsTestSerializedScriptValueInterfaceConstructor(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsTestSerializedScriptValueInterfaceConstructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSTestSerializedScriptValueInterface* domObject = jsCast<JSTestSerializedScriptValueInterface*>(asObject(slotBase));
     return JSTestSerializedScriptValueInterface::getConstructor(exec, domObject->globalObject());
 }
 
-void JSTestSerializedScriptValueInterface::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSTestSerializedScriptValueInterface::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSTestSerializedScriptValueInterface* thisObject = jsCast<JSTestSerializedScriptValueInterface*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
@@ -254,17 +255,19 @@ void JSTestSerializedScriptValueInterface::put(JSCell* cell, ExecState* exec, co
 
 void setJSTestSerializedScriptValueInterfaceValue(ExecState* exec, JSObject* thisObject, JSValue value)
 {
+    UNUSED_PARAM(exec);
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(thisObject);
     TestSerializedScriptValueInterface* impl = static_cast<TestSerializedScriptValueInterface*>(castedThis->impl());
-    impl->setValue(SerializedScriptValue::create(exec, value));
+    impl->setValue(SerializedScriptValue::create(exec, value, 0, 0));
 }
 
 
 void setJSTestSerializedScriptValueInterfaceCachedValue(ExecState* exec, JSObject* thisObject, JSValue value)
 {
+    UNUSED_PARAM(exec);
     JSTestSerializedScriptValueInterface* castedThis = jsCast<JSTestSerializedScriptValueInterface*>(thisObject);
     TestSerializedScriptValueInterface* impl = static_cast<TestSerializedScriptValueInterface*>(castedThis->impl());
-    impl->setCachedValue(SerializedScriptValue::create(exec, value));
+    impl->setCachedValue(SerializedScriptValue::create(exec, value, 0, 0));
 }
 
 
@@ -283,7 +286,7 @@ EncodedJSValue JSC_HOST_CALL jsTestSerializedScriptValueInterfacePrototypeFuncti
     TestSerializedScriptValueInterface* impl = static_cast<TestSerializedScriptValueInterface*>(castedThis->impl());
     if (exec->argumentCount() < 1)
         return throwVMError(exec, createNotEnoughArgumentsError(exec));
-    RefPtr<SerializedScriptValue> data(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined)));
+    RefPtr<SerializedScriptValue> data(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined), 0, 0));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
 
@@ -315,7 +318,7 @@ EncodedJSValue JSC_HOST_CALL jsTestSerializedScriptValueInterfacePrototypeFuncti
         return JSValue::encode(jsUndefined());
     }
 
-    RefPtr<SerializedScriptValue> first(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined)));
+    RefPtr<SerializedScriptValue> first(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 0, DefaultIsUndefined), 0, 0));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
     if (argsCount <= 1) {
@@ -331,7 +334,7 @@ EncodedJSValue JSC_HOST_CALL jsTestSerializedScriptValueInterfacePrototypeFuncti
         return JSValue::encode(jsUndefined());
     }
 
-    RefPtr<SerializedScriptValue> second(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 2, DefaultIsUndefined)));
+    RefPtr<SerializedScriptValue> second(SerializedScriptValue::create(exec, MAYBE_MISSING_PARAMETER(exec, 2, DefaultIsUndefined), 0, 0));
     if (exec->hadException())
         return JSValue::encode(jsUndefined());
     if (argsCount <= 3) {

@@ -47,9 +47,14 @@ namespace WebKit {
 
 WebSettingsImpl::WebSettingsImpl(Settings* settings)
     : m_settings(settings)
+    , m_forceSoftwareCompositing(false)
     , m_showFPSCounter(false)
     , m_showPlatformLayerTree(false)
+    , m_showPaintRects(false)
     , m_viewportEnabled(false)
+    , m_applyDefaultDeviceScaleFactorInCompositor(false)
+    , m_defaultTileSize(WebSize(256, 256))
+    , m_maxUntiledLayerSize(WebSize(512, 512))
 {
     ASSERT(settings);
 }
@@ -84,6 +89,11 @@ void WebSettingsImpl::setFantasyFontFamily(const WebString& font, UScriptCode sc
     m_settings->setFantasyFontFamily(font, script);
 }
 
+void WebSettingsImpl::setPictographFontFamily(const WebString& font, UScriptCode script)
+{
+    m_settings->setPictographFontFamily(font, script);
+}
+
 void WebSettingsImpl::setDefaultFontSize(int size)
 {
     m_settings->setDefaultFontSize(size);
@@ -109,9 +119,29 @@ void WebSettingsImpl::setMinimumLogicalFontSize(int size)
     m_settings->setMinimumLogicalFontSize(size);
 }
 
-void WebSettingsImpl::setDefaultDeviceScaleFactor(int defaultDeviceScaleFactor)
+void WebSettingsImpl::setDeviceSupportsTouch(bool deviceSupportsTouch)
 {
-    m_settings->setDefaultDeviceScaleFactor(defaultDeviceScaleFactor);
+    m_settings->setDeviceSupportsTouch(deviceSupportsTouch);
+}
+
+void WebSettingsImpl::setDeviceSupportsMouse(bool deviceSupportsMouse)
+{
+    m_settings->setDeviceSupportsMouse(deviceSupportsMouse);
+}
+
+bool WebSettingsImpl::deviceSupportsTouch()
+{
+    return m_settings->deviceSupportsTouch();
+}
+
+void WebSettingsImpl::setApplyDefaultDeviceScaleFactorInCompositor(bool applyDefaultDeviceScaleFactorInCompositor)
+{
+    m_applyDefaultDeviceScaleFactorInCompositor = applyDefaultDeviceScaleFactorInCompositor;
+}
+
+void WebSettingsImpl::setFontBoostingEnabled(bool enabled)
+{
+    m_settings->setFontBoostingEnabled(enabled);
 }
 
 void WebSettingsImpl::setDefaultTextEncodingName(const WebString& encoding)
@@ -298,6 +328,11 @@ void WebSettingsImpl::setExperimentalCSSRegionsEnabled(bool enabled)
     m_settings->setCSSRegionsEnabled(enabled);
 }
 
+void WebSettingsImpl::setExperimentalCSSGridLayoutEnabled(bool enabled)
+{
+    m_settings->setCSSGridLayoutEnabled(enabled);
+}
+
 void WebSettingsImpl::setExperimentalCSSCustomFilterEnabled(bool enabled)
 {
     m_settings->setCSSCustomFilterEnabled(enabled);
@@ -333,6 +368,11 @@ void WebSettingsImpl::setShowPlatformLayerTree(bool show)
     m_showPlatformLayerTree = show;
 }
 
+void WebSettingsImpl::setShowPaintRects(bool show)
+{
+    m_showPaintRects = show;
+}
+
 void WebSettingsImpl::setEditingBehavior(EditingBehavior behavior)
 {
     m_settings->setEditingBehaviorType(static_cast<WebCore::EditingBehaviorType>(behavior));
@@ -347,6 +387,11 @@ void WebSettingsImpl::setAcceleratedCompositingEnabled(bool enabled)
 void WebSettingsImpl::setForceCompositingMode(bool enabled)
 {
     m_settings->setForceCompositingMode(enabled);
+}
+
+void WebSettingsImpl::setForceSoftwareCompositing(bool enabled)
+{
+    m_forceSoftwareCompositing = enabled;
 }
 
 void WebSettingsImpl::setMockScrollbarsEnabled(bool enabled)
@@ -562,9 +607,35 @@ void WebSettingsImpl::setThreadedAnimationEnabled(bool enabled)
     m_settings->setThreadedAnimationEnabled(enabled);
 }
 
+void WebSettingsImpl::setMediaPlaybackRequiresUserGesture(bool required)
+{
+    m_settings->setMediaPlaybackRequiresUserGesture(required);
+}
+
+void WebSettingsImpl::setFixedPositionCreatesStackingContext(bool creates)
+{
+    m_settings->setFixedPositionCreatesStackingContext(creates);
+}
+
 void WebSettingsImpl::setViewportEnabled(bool enabled)
 {
     m_viewportEnabled = enabled;
 }
+
+void WebSettingsImpl::setDefaultTileSize(WebSize size)
+{
+    m_defaultTileSize = size;
+}
+
+void WebSettingsImpl::setMaxUntiledLayerSize(WebSize size)
+{
+    m_maxUntiledLayerSize = size;
+}
+
+void WebSettingsImpl::setSyncXHRInDocumentsEnabled(bool enabled)
+{
+    m_settings->setSyncXHRInDocumentsEnabled(enabled);
+}
+
 
 } // namespace WebKit

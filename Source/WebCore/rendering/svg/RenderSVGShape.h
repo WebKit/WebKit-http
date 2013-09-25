@@ -30,7 +30,7 @@
 #include "AffineTransform.h"
 #include "FloatRect.h"
 #include "RenderSVGModelObject.h"
-#include "SVGMarkerLayoutInfo.h"
+#include "SVGMarkerData.h"
 #include "StrokeStyleApplier.h"
 #include <wtf/OwnPtr.h>
 #include <wtf/Vector.h>
@@ -93,10 +93,8 @@ protected:
     virtual bool shapeDependentFillContains(const FloatPoint&, const WindRule) const;
     float strokeWidth() const;
     void setIsPaintingFallback(bool isFallback) { m_fillFallback = isFallback; }
-    FloatRect calculateMarkerBoundsIfNeeded();
-    void processZeroLengthSubpaths();
-
     bool hasPath() const { return m_path.get(); }
+    bool hasNonScalingStroke() const { return style()->svgStyle()->vectorEffect() == VE_NON_SCALING_STROKE; }
 
 private:
     // Hit-detection separated for the fill and the stroke
@@ -109,7 +107,6 @@ private:
 
     virtual bool isSVGShape() const { return true; }
     virtual const char* renderName() const { return "RenderSVGShape"; }
-    virtual bool isRoundedRect() { return false; }
 
     virtual void layout();
     virtual void paint(PaintInfo&, const LayoutPoint&);
@@ -119,26 +116,34 @@ private:
 
     void updateCachedBoundaries();
 
+    AffineTransform nonScalingStrokeTransform() const;
+    bool setupNonScalingStrokeContext(AffineTransform&, GraphicsContextStateSaver&);
+    Path* nonScalingStrokePath(const Path*, const AffineTransform&) const;
+
     Path* zeroLengthLinecapPath(const FloatPoint&);
-    bool setupNonScalingStrokeTransform(AffineTransform&, GraphicsContextStateSaver&);
-    Path* nonScalingStrokePath(const Path*, const AffineTransform&);
     bool shouldStrokeZeroLengthSubpath() const;
     FloatRect zeroLengthSubpathRect(const FloatPoint&, float) const;
+    void processZeroLengthSubpaths();
+
+    bool shouldGenerateMarkerPositions() const;
+    FloatRect markerRect(float strokeWidth) const;
+    void processMarkerPositions();
 
     void fillShape(RenderStyle*, GraphicsContext*, Path*, RenderSVGShape*);
     void strokePath(RenderStyle*, GraphicsContext*, Path*, RenderSVGResource*,
-                    const Color&, bool, const AffineTransform&, int);
+                    const Color&, int);
     void fillAndStrokePath(GraphicsContext*);
     void inflateWithStrokeAndMarkerBounds();
+    void drawMarkers(PaintInfo&);
 
 private:
     FloatRect m_fillBoundingBox;
     FloatRect m_strokeAndMarkerBoundingBox;
     FloatRect m_repaintBoundingBox;
-    SVGMarkerLayoutInfo m_markerLayoutInfo;
     AffineTransform m_localTransform;
     OwnPtr<Path> m_path;
     Vector<FloatPoint> m_zeroLengthLinecapLocations;
+    Vector<MarkerPosition> m_markerPositions;
 
     bool m_needsBoundariesUpdate : 1;
     bool m_needsShapeUpdate : 1;

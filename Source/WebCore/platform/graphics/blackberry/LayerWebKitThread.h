@@ -36,6 +36,7 @@
 #if USE(ACCELERATED_COMPOSITING)
 
 #include "GraphicsLayerBlackBerry.h"
+#include "LayerAnimation.h"
 #include "LayerData.h"
 #include "LayerTiler.h"
 
@@ -72,6 +73,8 @@ public:
     void setBorderWidth(float width) { m_borderWidth = width; setNeedsCommit(); }
 
     void setBounds(const IntSize&);
+
+    void setSizeIsScaleInvariant(bool invariant) { m_sizeIsScaleInvariant = invariant; setNeedsCommit(); }
 
     void setDoubleSided(bool doubleSided) { m_doubleSided = doubleSided; setNeedsCommit(); }
 
@@ -142,8 +145,11 @@ public:
     void setNeedsCommit();
     void notifyAnimationStarted(double time);
 
-    void setRunningAnimations(const Vector<RefPtr<LayerAnimation> >& animations) { m_runningAnimations = animations; setNeedsCommit(); }
-    void setSuspendedAnimations(const Vector<RefPtr<LayerAnimation> >& animations) { m_suspendedAnimations = animations; setNeedsCommit(); }
+    void setRunningAnimations(const Vector<RefPtr<LayerAnimation> >&);
+    void setSuspendedAnimations(const Vector<RefPtr<LayerAnimation> >&);
+
+    // Allows you to clear the LayerCompositingThread::overrides from the WK thread
+    void clearOverride() { m_clearOverrideOnCommit = true; setNeedsCommit(); }
 
 protected:
     LayerWebKitThread(LayerType, GraphicsLayerBlackBerry* owner);
@@ -178,6 +184,9 @@ private:
 
     GraphicsLayerBlackBerry* m_owner;
 
+    Vector<RefPtr<LayerAnimation> > m_runningAnimations;
+    Vector<RefPtr<LayerAnimation> > m_suspendedAnimations;
+
     Vector<RefPtr<LayerWebKitThread> > m_sublayers;
     LayerWebKitThread* m_superlayer;
     RefPtr<LayerWebKitThread> m_maskLayer;
@@ -189,8 +198,10 @@ private:
     RefPtr<LayerTiler> m_tiler;
     FloatSize m_absoluteOffset;
     double m_scale; // Scale applies only to content layers
-    bool m_isDrawable;
-    bool m_isMask;
+    unsigned m_isDrawable : 1;
+    unsigned m_isMask : 1;
+    unsigned m_animationsChanged : 1;
+    unsigned m_clearOverrideOnCommit : 1;
 };
 
 }

@@ -874,6 +874,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\runtime\JSSegmentedVariableObject.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSSegmentedVariableObject.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\runtime\JSStaticScopeObject.cpp"
 				>
 			</File>
@@ -897,6 +905,14 @@
                                 RelativePath="..\..\runtime\JSStringJoiner.h"
                                 >
                         </File>
+			<File
+				RelativePath="..\..\runtime\JSSymbolTableObject.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\JSSymbolTableObject.h"
+				>
+			</File>
 			<File
 				RelativePath="..\..\runtime\JSType.h"
 				>
@@ -955,6 +971,30 @@
 			</File>
 			<File
 				RelativePath="..\..\runtime\MathObject.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NameConstructor.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NameConstructor.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NameInstance.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NameInstance.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NamePrototype.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\runtime\NamePrototype.h"
 				>
 			</File>
 			<File
@@ -1606,11 +1646,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\bytecode\PredictedType.cpp"
+				RelativePath="..\..\bytecode\SpeculatedType.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\bytecode\PredictedType.h"
+				RelativePath="..\..\bytecode\SpeculatedType.h"
 				>
 			</File>
 			<File
@@ -2058,6 +2098,10 @@
 				>
 			</File>
 			<File
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\NamePrototype.lut.h"
+				>
+			</File>
+			<File
 				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\NumberConstructor.lut.h"
 				>
 			</File>
@@ -2127,6 +2171,14 @@
 			</File>
 			<File
 				RelativePath="..\..\heap\HandleSet.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\IncrementalSweeper.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\IncrementalSweeper.cpp"
 				>
 			</File>
 			<File

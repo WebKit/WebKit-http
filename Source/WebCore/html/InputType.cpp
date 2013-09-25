@@ -5,7 +5,8 @@
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2007 Samuel Weinig (sam@webkit.org)
- * Copyright (C) 2010 Google Inc. All rights reserved.
+ * Copyright (C) 2009, 2010, 2011, 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,6 +28,7 @@
 #include "config.h"
 #include "InputType.h"
 
+#include "AXObjectCache.h"
 #include "BeforeTextInsertedEvent.h"
 #include "ButtonInputType.h"
 #include "CheckboxInputType.h"
@@ -35,12 +37,16 @@
 #include "DateInputType.h"
 #include "DateTimeInputType.h"
 #include "DateTimeLocalInputType.h"
+#include "ElementShadow.h"
 #include "EmailInputType.h"
 #include "ExceptionCode.h"
 #include "FileInputType.h"
+#include "FileList.h"
 #include "FormDataList.h"
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
+#include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "HTMLShadowElement.h"
 #include "HiddenInputType.h"
 #include "ImageInputType.h"
@@ -59,7 +65,6 @@
 #include "RuntimeEnabledFeatures.h"
 #include "SearchInputType.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "SubmitInputType.h"
 #include "TelephoneInputType.h"
 #include "TextInputType.h"
@@ -200,12 +205,17 @@ void InputType::setValueAsDate(double, ExceptionCode& ec) const
     ec = INVALID_STATE_ERR;
 }
 
-double InputType::valueAsNumber() const
+double InputType::valueAsDouble() const
 {
     return numeric_limits<double>::quiet_NaN();
 }
 
-void InputType::setValueAsNumber(double, TextFieldEventBehavior, ExceptionCode& ec) const
+void InputType::setValueAsDouble(double doubleValue, TextFieldEventBehavior eventBehavior, ExceptionCode& ec) const
+{
+    setValueAsInputNumber(convertDoubleToInputNumber(doubleValue), eventBehavior, ec);
+}
+
+void InputType::setValueAsInputNumber(const InputNumber&, TextFieldEventBehavior, ExceptionCode& ec) const
 {
     ec = INVALID_STATE_ERR;
 }
@@ -241,36 +251,43 @@ bool InputType::patternMismatch(const String&) const
     return false;
 }
 
-bool InputType::rangeUnderflow(const String&) const
+bool InputType::rangeUnderflow(const String& value) const
 {
-    return false;
+    if (!isSteppable())
+        return false;
+
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return false;
+
+    return numericValue < createStepRange(RejectAny).minimum();
 }
 
-bool InputType::rangeOverflow(const String&) const
+bool InputType::rangeOverflow(const String& value) const
 {
-    return false;
+    if (!isSteppable())
+        return false;
+
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return false;
+
+    return numericValue > createStepRange(RejectAny).maximum();
 }
 
-bool InputType::supportsRangeLimitation() const
-{
-    return false;
-}
-
-double InputType::defaultValueForStepUp() const
+InputNumber InputType::defaultValueForStepUp() const
 {
     return 0;
 }
 
 double InputType::minimum() const
 {
-    ASSERT_NOT_REACHED();
-    return 0;
+    return convertInputNumberToDouble(createStepRange(RejectAny).minimum());
 }
 
 double InputType::maximum() const
 {
-    ASSERT_NOT_REACHED();
-    return 0;
+    return convertInputNumberToDouble(createStepRange(RejectAny).maximum());
 }
 
 bool InputType::sizeShouldIncludeDecoration(int, int& preferredSize) const
@@ -279,49 +296,42 @@ bool InputType::sizeShouldIncludeDecoration(int, int& preferredSize) const
     return false;
 }
 
-bool InputType::stepMismatch(const String&, double) const
+bool InputType::isInRange(const String& value) const
 {
-    // Non-supported types should be rejected by HTMLInputElement::getAllowedValueStep().
-    ASSERT_NOT_REACHED();
-    return false;
+    if (!isSteppable())
+        return false;
+
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return true;
+
+    StepRange stepRange(createStepRange(RejectAny));
+    return numericValue >= stepRange.minimum() && numericValue <= stepRange.maximum();
 }
 
-double InputType::stepBase() const
+bool InputType::isOutOfRange(const String& value) const
 {
-    ASSERT_NOT_REACHED();
-    return 0;
+    if (!isSteppable())
+        return false;
+
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return true;
+
+    StepRange stepRange(createStepRange(RejectAny));
+    return numericValue < stepRange.minimum() || numericValue > stepRange.maximum();
 }
 
-double InputType::stepBaseWithDecimalPlaces(unsigned* decimalPlaces) const
+bool InputType::stepMismatch(const String& value) const
 {
-    if (decimalPlaces)
-        *decimalPlaces = 0;
-    return stepBase();
-}
+    if (!isSteppable())
+        return false;
 
-double InputType::defaultStep() const
-{
-    return numeric_limits<double>::quiet_NaN();
-}
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return false;
 
-double InputType::stepScaleFactor() const
-{
-    return numeric_limits<double>::quiet_NaN();
-}
-
-bool InputType::parsedStepValueShouldBeInteger() const
-{
-    return false;
-}
-
-bool InputType::scaledStepValueShouldBeInteger() const
-{
-    return false;
-}
-
-double InputType::acceptableError(double) const
-{
-    return 0;
+    return createStepRange(RejectAny).stepMismatch(numericValue);
 }
 
 String InputType::typeMismatchText() const
@@ -332,6 +342,47 @@ String InputType::typeMismatchText() const
 String InputType::valueMissingText() const
 {
     return validationMessageValueMissingText();
+}
+
+String InputType::validationMessage() const
+{
+    const String value = element()->value();
+
+    // The order of the following checks is meaningful. e.g. We'd like to show the
+    // valueMissing message even if the control has other validation errors.
+    if (valueMissing(value))
+        return valueMissingText();
+
+    if (typeMismatch())
+        return typeMismatchText();
+
+    if (patternMismatch(value))
+        return validationMessagePatternMismatchText();
+
+    if (element()->tooLong())
+        return validationMessageTooLongText(numGraphemeClusters(value), element()->maxLength());
+
+    if (!isSteppable())
+        return emptyString();
+
+    const InputNumber numericValue = parseToNumberOrNaN(value);
+    if (!numericValue.isFinite())
+        return emptyString();
+
+    StepRange stepRange(createStepRange(RejectAny));
+
+    if (numericValue < stepRange.minimum())
+        return validationMessageRangeUnderflowText(serialize(stepRange.minimum()));
+
+    if (numericValue < stepRange.maximum())
+        return validationMessageRangeOverflowText(serialize(stepRange.maximum()));
+
+    if (stepRange.stepMismatch(numericValue)) {
+        const String stepString = stepRange.hasStep() ? serializeForNumberType(stepRange.step() / stepRange.stepScaleFactor()) : emptyString();
+        return validationMessageStepMismatchText(serialize(stepRange.stepBase()), stepString);
+    }
+
+    return emptyString();
 }
 
 void InputType::handleClickEvent(MouseEvent*)
@@ -391,11 +442,11 @@ void InputType::createShadowSubtree()
 
 void InputType::destroyShadowSubtree()
 {
-    if (!element()->hasShadowRoot())
+    ElementShadow* shadow = element()->shadow();
+    if (!shadow)
         return;
 
-    ShadowRoot* root = element()->shadowTree()->oldestShadowRoot();
-    ASSERT(root);
+    ShadowRoot* root = shadow->oldestShadowRoot();
     root->removeAllChildren();
 
     // It's ok to clear contents of all other ShadowRoots because they must have
@@ -407,16 +458,15 @@ void InputType::destroyShadowSubtree()
     }
 }
 
-double InputType::parseToDouble(const String&, double defaultValue) const
+InputNumber InputType::parseToNumber(const String&, const InputNumber& defaultValue) const
 {
+    ASSERT_NOT_REACHED();
     return defaultValue;
 }
 
-double InputType::parseToDoubleWithDecimalPlaces(const String& src, double defaultValue, unsigned *decimalPlaces) const
+InputNumber InputType::parseToNumberOrNaN(const String& string) const
 {
-    if (decimalPlaces)
-        *decimalPlaces = 0;
-    return parseToDouble(src, defaultValue);
+    return parseToNumber(string, Decimal::nan());
 }
 
 bool InputType::parseToDateComponents(const String&, DateComponents*) const
@@ -425,7 +475,7 @@ bool InputType::parseToDateComponents(const String&, DateComponents*) const
     return false;
 }
 
-String InputType::serialize(double) const
+String InputType::serialize(const InputNumber&) const
 {
     ASSERT_NOT_REACHED();
     return String();
@@ -531,6 +581,10 @@ FileList* InputType::files()
     return 0;
 }
 
+void InputType::setFiles(PassRefPtr<FileList>)
+{
+}
+
 bool InputType::getTypeSpecificValue(String&)
 {
     return false;
@@ -581,6 +635,11 @@ PassOwnPtr<ClickHandlingState> InputType::willDispatchClick()
 
 void InputType::didDispatchClick(Event*, const ClickHandlingState&)
 {
+}
+
+String InputType::localizeValue(const String& proposedValue) const
+{
+    return proposedValue;
 }
 
 String InputType::visibleValue() const
@@ -704,6 +763,36 @@ bool InputType::isURLField() const
     return false;
 }
 
+bool InputType::isDateField() const
+{
+    return false;
+}
+
+bool InputType::isDateTimeField() const
+{
+    return false;
+}
+
+bool InputType::isDateTimeLocalField() const
+{
+    return false;
+}
+
+bool InputType::isMonthField() const
+{
+    return false;
+}
+
+bool InputType::isTimeField() const
+{
+    return false;
+}
+
+bool InputType::isWeekField() const
+{
+    return false;
+}
+
 bool InputType::isEnumeratable()
 {
     return true;
@@ -770,6 +859,186 @@ String InputType::defaultToolTip() const
 bool InputType::supportsIndeterminateAppearance() const
 {
     return false;
+}
+
+unsigned InputType::height() const
+{
+    return 0;
+}
+
+unsigned InputType::width() const
+{
+    return 0;
+}
+
+void InputType::applyStep(int count, AnyStepHandling anyStepHandling, TextFieldEventBehavior eventBehavior, ExceptionCode& ec)
+{
+    StepRange stepRange(createStepRange(anyStepHandling));
+    if (!stepRange.hasStep()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
+    const InputNumber current = parseToNumberOrNaN(element()->value());
+    if (!current.isFinite()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+    InputNumber newValue = current + stepRange.step() * count;
+    if (!newValue.isFinite()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+
+    const InputNumber acceptableErrorValue = stepRange.acceptableError();
+    if (newValue - stepRange.minimum() < -acceptableErrorValue) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+    if (newValue < stepRange.minimum())
+        newValue = stepRange.minimum();
+
+    const AtomicString& stepString = element()->fastGetAttribute(stepAttr);
+    if (!equalIgnoringCase(stepString, "any"))
+        newValue = stepRange.alignValueForStep(current, newValue);
+
+    if (newValue - stepRange.maximum() > acceptableErrorValue) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+    if (newValue > stepRange.maximum())
+        newValue = stepRange.maximum();
+
+    setValueAsInputNumber(newValue, eventBehavior, ec);
+
+    if (AXObjectCache::accessibilityEnabled())
+         element()->document()->axObjectCache()->postNotification(element()->renderer(), AXObjectCache::AXValueChanged, true);
+}
+
+bool InputType::getAllowedValueStep(InputNumber* step) const
+{
+    StepRange stepRange(createStepRange(RejectAny));
+    *step = stepRange.step();
+    return stepRange.hasStep();
+}
+
+StepRange InputType::createStepRange(AnyStepHandling) const
+{
+    ASSERT_NOT_REACHED();
+    return StepRange();
+}
+
+void InputType::stepUp(int n, ExceptionCode& ec)
+{
+    if (!isSteppable()) {
+        ec = INVALID_STATE_ERR;
+        return;
+    }
+    applyStep(n, RejectAny, DispatchNoEvent, ec);
+}
+
+void InputType::stepUpFromRenderer(int n)
+{
+    // The differences from stepUp()/stepDown():
+    //
+    // Difference 1: the current value
+    // If the current value is not a number, including empty, the current value is assumed as 0.
+    //   * If 0 is in-range, and matches to step value
+    //     - The value should be the +step if n > 0
+    //     - The value should be the -step if n < 0
+    //     If -step or +step is out of range, new value should be 0.
+    //   * If 0 is smaller than the minimum value
+    //     - The value should be the minimum value for any n
+    //   * If 0 is larger than the maximum value
+    //     - The value should be the maximum value for any n
+    //   * If 0 is in-range, but not matched to step value
+    //     - The value should be the larger matched value nearest to 0 if n > 0
+    //       e.g. <input type=number min=-100 step=3> -> 2
+    //     - The value should be the smaler matched value nearest to 0 if n < 0
+    //       e.g. <input type=number min=-100 step=3> -> -1
+    //   As for date/datetime-local/month/time/week types, the current value is assumed as "the current local date/time".
+    //   As for datetime type, the current value is assumed as "the current date/time in UTC".
+    // If the current value is smaller than the minimum value:
+    //  - The value should be the minimum value if n > 0
+    //  - Nothing should happen if n < 0
+    // If the current value is larger than the maximum value:
+    //  - The value should be the maximum value if n < 0
+    //  - Nothing should happen if n > 0
+    //
+    // Difference 2: clamping steps
+    // If the current value is not matched to step value:
+    // - The value should be the larger matched value nearest to 0 if n > 0
+    //   e.g. <input type=number value=3 min=-100 step=3> -> 5
+    // - The value should be the smaler matched value nearest to 0 if n < 0
+    //   e.g. <input type=number value=3 min=-100 step=3> -> 2
+    //
+    // n is assumed as -n if step < 0.
+
+    ASSERT(isSteppable());
+    if (!isSteppable())
+        return;
+    ASSERT(n);
+    if (!n)
+        return;
+
+    StepRange stepRange(createStepRange(AnyIsDefaultStep));
+
+    // FIXME: Not any changes after stepping, even if it is an invalid value, may be better.
+    // (e.g. Stepping-up for <input type="number" value="foo" step="any" /> => "foo")
+    if (!stepRange.hasStep())
+      return;
+
+    const InputNumber step = stepRange.step();
+
+    int sign;
+    if (step > 0)
+        sign = n;
+    else if (step < 0)
+        sign = -n;
+    else
+        sign = 0;
+
+    String currentStringValue = element()->value();
+    InputNumber current = parseToNumberOrNaN(currentStringValue);
+    if (!current.isFinite()) {
+        ExceptionCode ec;
+        current = defaultValueForStepUp();
+        const InputNumber nextDiff = step * n;
+        if (current < stepRange.minimum() - nextDiff)
+            current = stepRange.minimum() - nextDiff;
+        if (current > stepRange.maximum() - nextDiff)
+            current = stepRange.maximum() - nextDiff;
+        setValueAsInputNumber(current, DispatchInputAndChangeEvent, ec);
+    }
+    if ((sign > 0 && current < stepRange.minimum()) || (sign < 0 && current > stepRange.maximum())) {
+        ExceptionCode ec;
+        setValueAsInputNumber(sign > 0 ? stepRange.minimum() : stepRange.maximum(), DispatchInputAndChangeEvent, ec);
+    } else {
+        ExceptionCode ec;
+        if (stepMismatch(element()->value())) {
+            ASSERT(!step.isZero());
+            const Decimal base = stepRange.stepBase();
+            Decimal newValue;
+            if (sign < 0)
+                newValue = base + ((current - base) / step).floor() * step;
+            else if (sign > 0)
+                newValue = base + ((current - base) / step).ceiling() * step;
+            else
+                newValue = current;
+
+            if (newValue < stepRange.minimum())
+                newValue = stepRange.minimum();
+            if (newValue > stepRange.maximum())
+                newValue = stepRange.maximum();
+
+            setValueAsInputNumber(newValue, n == 1 || n == -1 ? DispatchInputAndChangeEvent : DispatchNoEvent, ec);
+            if (n > 1)
+                applyStep(n - 1, AnyIsDefaultStep, DispatchInputAndChangeEvent, ec);
+            else if (n < -1)
+                applyStep(n + 1, AnyIsDefaultStep, DispatchInputAndChangeEvent, ec);
+        } else
+            applyStep(n, AnyIsDefaultStep, DispatchInputAndChangeEvent, ec);
+    }
 }
 
 namespace InputTypeNames {

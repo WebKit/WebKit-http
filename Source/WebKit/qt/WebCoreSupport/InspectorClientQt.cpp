@@ -120,7 +120,7 @@ public:
         QString settingKey(settingStoragePrefix + QString(name));
         QString storedValueType = qsettings.value(settingKey + settingStorageTypeSuffix).toString();
         QVariant storedValue = qsettings.value(settingKey);
-        storedValue.convert(QVariant::nameToType(storedValueType.toAscii().data()));
+        storedValue.convert(QVariant::nameToType(storedValueType.toLatin1().data()));
         return variantToSetting(storedValue);
 #endif // QT_NO_SETTINGS
     }
@@ -240,6 +240,9 @@ void InspectorClientQt::openInspectorFrontend(WebCore::InspectorController* insp
     m_frontendClient = frontendClient.get();
     controller->setInspectorFrontendClient(frontendClient.release());
     m_frontendWebPage = inspectorPage;
+
+    // Web Inspector should not belong to any other page groups since it is a specialized debugger window.
+    m_frontendWebPage->handle()->page->setGroupName("__WebInspectorPageGroup__");
 #endif
 }
 

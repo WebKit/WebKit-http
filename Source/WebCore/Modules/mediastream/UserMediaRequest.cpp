@@ -38,6 +38,7 @@
 #include "Dictionary.h"
 #include "LocalMediaStream.h"
 #include "MediaStreamCenter.h"
+#include "MediaStreamDescriptor.h"
 #include "SpaceSplitString.h"
 #include "UserMediaController.h"
 
@@ -88,6 +89,15 @@ void UserMediaRequest::succeed(const MediaStreamSourceVector& audioSources, cons
     m_successCallback->handleEvent(stream.get());
 }
 
+void UserMediaRequest::succeed(PassRefPtr<MediaStreamDescriptor> streamDescriptor)
+{
+    if (!m_scriptExecutionContext)
+        return;
+
+    RefPtr<LocalMediaStream> stream = LocalMediaStream::create(m_scriptExecutionContext, streamDescriptor);
+    m_successCallback->handleEvent(stream.get());
+}
+
 void UserMediaRequest::fail()
 {
     if (!m_scriptExecutionContext)
@@ -101,6 +111,8 @@ void UserMediaRequest::fail()
 
 void UserMediaRequest::contextDestroyed()
 {
+    RefPtr<UserMediaRequest> protect(this);
+
     if (m_controller) {
         m_controller->cancelUserMediaRequest(this);
         m_controller = 0;

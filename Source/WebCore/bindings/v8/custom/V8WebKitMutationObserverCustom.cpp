@@ -55,21 +55,21 @@ v8::Handle<v8::Value> V8WebKitMutationObserver::constructorCallback(const v8::Ar
     INC_STATS("DOM.WebKitMutationObserver.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     v8::Local<v8::Value> arg = args[0];
     if (!arg->IsObject())
-        return throwError(TYPE_MISMATCH_ERR);
+        return throwError(TYPE_MISMATCH_ERR, args.GetIsolate());
 
     ScriptExecutionContext* context = getScriptExecutionContext();
     if (!context)
-        return throwError("WebKitMutationObserver constructor's associated frame unavailable", V8Proxy::ReferenceError);
+        return V8Proxy::throwError(V8Proxy::ReferenceError, "WebKitMutationObserver constructor's associated frame unavailable", args.GetIsolate());
 
     RefPtr<MutationCallback> callback = V8MutationCallback::create(arg, context);
     RefPtr<WebKitMutationObserver> observer = WebKitMutationObserver::create(callback.release());
@@ -83,12 +83,12 @@ v8::Handle<v8::Value> V8WebKitMutationObserver::observeCallback(const v8::Argume
 {
     INC_STATS("DOM.WebKitMutationObserver.observe");
     if (args.Length() < 2)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
     WebKitMutationObserver* imp = V8WebKitMutationObserver::toNative(args.Holder());
     EXCEPTION_BLOCK(Node*, target, V8Node::HasInstance(args[0]) ? V8Node::toNative(v8::Handle<v8::Object>::Cast(args[0])) : 0);
 
     if (!args[1]->IsObject())
-        return throwError(TYPE_MISMATCH_ERR);
+        return throwError(TYPE_MISMATCH_ERR, args.GetIsolate());
 
     Dictionary optionsObject(args[1]);
     unsigned options = 0;
@@ -112,7 +112,7 @@ v8::Handle<v8::Value> V8WebKitMutationObserver::observeCallback(const v8::Argume
     ExceptionCode ec = 0;
     imp->observe(target, options, attributeFilter, ec);
     if (ec)
-        V8Proxy::setDOMException(ec, args.GetIsolate());
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     return v8::Handle<v8::Value>();
 }
 

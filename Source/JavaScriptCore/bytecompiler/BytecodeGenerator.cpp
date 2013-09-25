@@ -161,6 +161,11 @@ void ResolveResult::checkValidity()
 }
 #endif
 
+WriteBarrier<Unknown>* ResolveResult::registerPointer() const
+{
+    return &jsCast<JSGlobalObject*>(globalObject())->registerAt(index());
+}
+
 static bool s_dumpsGeneratedCode = false;
 
 void BytecodeGenerator::setDumpsGeneratedCode(bool dumpsGeneratedCode)
@@ -189,7 +194,7 @@ JSObject* BytecodeGenerator::generate()
     if ((m_codeType == FunctionCode && !m_codeBlock->needsFullScopeChain() && !m_codeBlock->usesArguments()) || m_codeType == EvalCode)
         symbolTable().clear();
 
-    m_codeBlock->shrinkToFit();
+    m_codeBlock->shrinkToFit(CodeBlock::EarlyShrink);
 
     if (m_expressionTooDeep)
         return createOutOfMemoryError(m_scopeChain->globalObject.get());
@@ -280,7 +285,7 @@ BytecodeGenerator::BytecodeGenerator(ProgramNode* programNode, ScopeChainNode* s
     size_t newGlobals = varStack.size() + functionStack.size();
     if (!newGlobals)
         return;
-    globalObject->resizeRegisters(symbolTable->size() + newGlobals);
+    globalObject->addRegisters(newGlobals);
 
     for (size_t i = 0; i < functionStack.size(); ++i) {
         FunctionBodyNode* function = functionStack[i];
@@ -442,20 +447,12 @@ BytecodeGenerator::BytecodeGenerator(FunctionBodyNode* functionBody, ScopeChainN
     preserveLastVar();
 
     if (isConstructor()) {
-        RefPtr<RegisterID> func = newTemporary();
-        RefPtr<RegisterID> funcProto = newTemporary();
-
-        emitOpcode(op_get_callee);
-        instructions().append(func->index());
-        // Load prototype.
-        emitGetById(funcProto.get(), func.get(), globalData()->propertyNames->prototype);
-
         emitOpcode(op_create_this);
         instructions().append(m_thisRegister.index());
-        instructions().append(funcProto->index());
     } else if (!codeBlock->isStrictMode() && (functionBody->usesThis() || codeBlock->usesEval() || m_shouldEmitDebugHooks)) {
-        emitOpcode(op_convert_this);
+        ValueProfile* profile = emitProfiledOpcode(op_convert_this);
         instructions().append(m_thisRegister.index());
+        instructions().append(profile);
     }
 }
 
@@ -684,6 +681,14 @@ void BytecodeGenerator::retrieveLastUnaryOp(int& dstIndex, int& srcIndex)
     ASSERT(instructions().size() >= 3);
     size_t size = instructions().size();
     dstIndex = instructions().at(size - 2).u.operand;
+    srcIndex = instructions().at(size - 1).u.operand;
+}
+
+void BytecodeGenerator::retrieveLastUnaryOp(WriteBarrier<Unknown>*& dstPointer, int& srcIndex)
+{
+    ASSERT(instructions().size() >= 3);
+    size_t size = instructions().size();
+    dstPointer = instructions().at(size - 2).u.registerPointer;
     srcIndex = instructions().at(size - 1).u.operand;
 }
 
@@ -1178,6 +1183,7 @@ ResolveResult BytecodeGenerator::resolve(const Identifier& property)
     ScopeChainIterator iter = m_scopeChain->begin();
     ScopeChainIterator end = m_scopeChain->end();
     size_t depth = 0;
+    size_t depthOfFirstScopeWithDynamicChecks = 0;
     unsigned flags = 0;
     for (; iter != end; ++iter, ++depth) {
         JSObject* currentScope = iter->get();
@@ -1185,7 +1191,7 @@ ResolveResult BytecodeGenerator::resolve(const Identifier& property)
             flags |= ResolveResult::DynamicFlag;
             break;
         }        
-        JSVariableObject* currentVariableObject = jsCast<JSVariableObject*>(currentScope);
+        JSSymbolTableObject* currentVariableObject = jsCast<JSSymbolTableObject*>(currentScope);
         SymbolTableEntry entry = currentVariableObject->symbolTable().get(property.impl());
 
         // Found the property
@@ -1207,19 +1213,27 @@ ResolveResult BytecodeGenerator::resolve(const Identifier& property)
         bool scopeRequiresDynamicChecks = false;
         if (currentVariableObject->isDynamicScope(scopeRequiresDynamicChecks))
             break;
-        if (scopeRequiresDynamicChecks)
-            flags |= ResolveResult::DynamicFlag;
+        if (!(flags & ResolveResult::DynamicFlag)) {
+            if (scopeRequiresDynamicChecks)
+                flags |= ResolveResult::DynamicFlag;
+            else
+                ++depthOfFirstScopeWithDynamicChecks;
+        }
     }
 
     // Can't locate the property but we're able to avoid a few lookups.
     JSObject* scope = iter->get();
+    // Step over the function's activation, if it needs one. At this point we
+    // know there is no dynamic scope in the function itself, so this is safe to
+    // do.
     depth += m_codeBlock->needsFullScopeChain();
+    depthOfFirstScopeWithDynamicChecks += m_codeBlock->needsFullScopeChain();
     if (++iter == end) {
         if ((flags & ResolveResult::DynamicFlag) && depth)
             return ResolveResult::dynamicGlobalResolve(depth, scope);
         return ResolveResult::globalResolve(scope);
     }
-    return ResolveResult::dynamicResolve(depth);
+    return ResolveResult::dynamicResolve(depthOfFirstScopeWithDynamicChecks);
 }
 
 ResolveResult BytecodeGenerator::resolveConstDecl(const Identifier& property)
@@ -1242,7 +1256,7 @@ ResolveResult BytecodeGenerator::resolveConstDecl(const Identifier& property)
         JSObject* currentScope = iter->get();
         if (!currentScope->isVariableObject())
             continue;
-        JSVariableObject* currentVariableObject = jsCast<JSVariableObject*>(currentScope);
+        JSSymbolTableObject* currentVariableObject = jsCast<JSSymbolTableObject*>(currentScope);
         SymbolTableEntry entry = currentVariableObject->symbolTable().get(property.impl());
         if (entry.isNull())
             continue;
@@ -1445,16 +1459,16 @@ RegisterID* BytecodeGenerator::emitGetStaticVar(RegisterID* dst, const ResolveRe
     case ResolveResult::IndexedGlobal:
     case ResolveResult::ReadOnlyIndexedGlobal:
         if (m_lastOpcodeID == op_put_global_var) {
-            int dstIndex;
+            WriteBarrier<Unknown>* dstPointer;
             int srcIndex;
-            retrieveLastUnaryOp(dstIndex, srcIndex);
-            if (dstIndex == resolveResult.index() && srcIndex == dst->index())
+            retrieveLastUnaryOp(dstPointer, srcIndex);
+            if (dstPointer == resolveResult.registerPointer() && srcIndex == dst->index())
                 return dst;
         }
 
         profile = emitProfiledOpcode(op_get_global_var);
         instructions().append(dst->index());
-        instructions().append(resolveResult.index());
+        instructions().append(resolveResult.registerPointer());
         instructions().append(profile);
         return dst;
 
@@ -1482,7 +1496,7 @@ RegisterID* BytecodeGenerator::emitPutStaticVar(const ResolveResult& resolveResu
     case ResolveResult::IndexedGlobal:
     case ResolveResult::ReadOnlyIndexedGlobal:
         emitOpcode(op_put_global_var);
-        instructions().append(resolveResult.index());
+        instructions().append(resolveResult.registerPointer());
         instructions().append(value->index());
         return value;
 

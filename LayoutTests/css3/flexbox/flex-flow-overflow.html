@@ -8,7 +8,7 @@
     display: inline-block;
 }
 .flexbox {
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: grey;
     width: 100px;
     height: 100px;
@@ -51,8 +51,8 @@
 }
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">
@@ -123,7 +123,7 @@ writingModes.forEach(function(writingMode) {
                 flowDirection = direction + "-column-reverse";
 
             container.innerHTML = '\n<div class="flexbox ' + flexboxClassName + '" ' + sizeAsString(containerSize) + '>\n' +
-                '<div style="-webkit-flex: 1 auto; width: 105px; height: 105px;" ' + sizeAsString([105, 105])  + ' ' + positionAsString(expectations[writingMode][flowDirection]) + '></div>\n' +
+                '<div style="-webkit-flex: 1 0 auto; width: 105px; height: 105px;" ' + sizeAsString([105, 105])  + ' ' + positionAsString(expectations[writingMode][flowDirection]) + '></div>\n' +
             '</div>\n';
 
             document.body.appendChild(container);   

@@ -54,6 +54,10 @@
 #import <WebKit/WebViewPrivate.h>
 #import <wtf/Assertions.h>
 
+#ifndef NSEC_PER_MSEC
+#define NSEC_PER_MSEC 1000000ull
+#endif
+
 @interface NSURL (DRTExtras)
 - (NSString *)_drt_descriptionSuitableForTestResult;
 @end
@@ -172,6 +176,15 @@
         NSString *string = [NSString stringWithFormat:@"%@ - stopping load in didStartProvisionalLoadForFrame callback", [frame _drt_descriptionSuitableForTestResult]];
         printf ("%s\n", [string UTF8String]);
         [frame stopLoading];
+    }
+
+    if (!done && gLayoutTestController->useDeferredFrameLoading()) {
+        [sender setDefersCallbacks:YES];
+        int64_t deferredWaitTime = 5 * NSEC_PER_MSEC;
+        dispatch_time_t when = dispatch_time(DISPATCH_TIME_NOW, deferredWaitTime);
+        dispatch_after(when, dispatch_get_main_queue(), ^{
+            [sender setDefersCallbacks:NO];
+        });
     }
 }
 

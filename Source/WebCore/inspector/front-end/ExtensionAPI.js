@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -305,7 +305,7 @@ Panels.prototype = {
         else {
             function callbackWrapper(message)
             {
-                callback.call(null, message.resource, message.lineNumber);
+                callback.call(null, new Resource(message.resource), message.lineNumber);
             }
             extensionServer.registerHandler(events.OpenResource, callbackWrapper);
         }
@@ -414,9 +414,19 @@ ExtensionSidebarPaneImpl.prototype = {
         extensionServer.sendRequest({ command: commands.SetSidebarHeight, id: this._id, height: height });
     },
 
-    setExpression: function(expression, rootTitle, callback)
+    setExpression: function(expression, rootTitle, evaluateOptions)
     {
-        extensionServer.sendRequest({ command: commands.SetSidebarContent, id: this._id, expression: expression, rootTitle: rootTitle, evaluateOnPage: true }, callback);
+        var callback = extractCallbackArgument(arguments);
+        var request = {
+            command: commands.SetSidebarContent,
+            id: this._id,
+            expression: expression,
+            rootTitle: rootTitle,
+            evaluateOnPage: true,
+        };
+        if (typeof evaluateOptions === "object")
+            request.evaluateOptions = evaluateOptions;
+        extensionServer.sendRequest(request, callback);
     },
 
     setObject: function(jsonObject, rootTitle, callback)
@@ -498,6 +508,8 @@ function AuditResultImpl(id)
     this.createURL = this._nodeFactory.bind(null, "url");
     this.createSnippet = this._nodeFactory.bind(null, "snippet");
     this.createText = this._nodeFactory.bind(null, "text");
+    this.createObject = this._nodeFactory.bind(null, "object");
+    this.createNode = this._nodeFactory.bind(null, "node");
 }
 
 AuditResultImpl.prototype = {
@@ -600,13 +612,20 @@ InspectedWindow.prototype = {
         return extensionServer.sendRequest({ command: commands.Reload, options: options });
     },
 
-    eval: function(expression, callback)
+    eval: function(expression, evaluateOptions)
     {
+        var callback = extractCallbackArgument(arguments);
         function callbackWrapper(result)
         {
             callback(result.value, result.isException);
         }
-        return extensionServer.sendRequest({ command: commands.EvaluateOnInspectedPage, expression: expression }, callback && callbackWrapper);
+        var request = {
+            command: commands.EvaluateOnInspectedPage,
+            expression: expression
+        };
+        if (typeof evaluateOptions === "object")
+            request.evaluateOptions = evaluateOptions;
+        return extensionServer.sendRequest(request, callback && callbackWrapper);
     },
 
     getResources: function(callback)
@@ -782,6 +801,12 @@ function defineDeprecatedProperty(object, className, oldName, newName)
         return object[newName];
     }
     object.__defineGetter__(oldName, getter);
+}
+
+function extractCallbackArgument(args)
+{
+    var lastArgument = args[args.length - 1];
+    return typeof lastArgument === "function" ? lastArgument : undefined;
 }
 
 var AuditCategory = declareInterfaceClass(AuditCategoryImpl);

@@ -555,8 +555,7 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
 
     DumpRenderTreeSupportQt::resetOriginAccessWhiteLists();
 
-    // Qt defaults to Windows editing behavior.
-    DumpRenderTreeSupportQt::setEditingBehavior(m_page, "win");
+    DumpRenderTreeSupportQt::setWindowsBehaviorAsEditingBehavior(m_page);
 
     QLocale::setDefault(QLocale::c());
 
@@ -621,9 +620,7 @@ void DumpRenderTree::open(const QUrl& url)
     m_page->event(&ev);
 
     QWebSettings::clearMemoryCaches();
-#if !(QT_VERSION <= QT_VERSION_CHECK(4, 6, 2))
     QFontDatabase::removeAllApplicationFonts();
-#endif
     WebKit::initializeTestFonts();
 
     DumpRenderTreeSupportQt::dumpFrameLoader(url.toString().contains("loading/"));
@@ -746,6 +743,7 @@ void DumpRenderTree::initJSObjects()
     QWebFrame *frame = qobject_cast<QWebFrame*>(sender());
     Q_ASSERT(frame);
     frame->addToJavaScriptWindowObject(QLatin1String("layoutTestController"), m_controller);
+    frame->addToJavaScriptWindowObject(QLatin1String("testRunner"), m_controller);
     frame->addToJavaScriptWindowObject(QLatin1String("eventSender"), m_eventSender);
     frame->addToJavaScriptWindowObject(QLatin1String("textInputController"), m_textInputController);
     frame->addToJavaScriptWindowObject(QLatin1String("GCController"), m_gcController);

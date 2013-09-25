@@ -47,6 +47,7 @@ WebInspector.TabbedEditorContainerDelegate.prototype = {
  */
 WebInspector.TabbedEditorContainer = function(delegate, settingName)
 {
+    WebInspector.Object.call(this);
     this._delegate = delegate;
 
     this._tabbedPane = new WebInspector.TabbedPane();
@@ -116,7 +117,7 @@ WebInspector.TabbedEditorContainer.prototype = {
         if (this._currentFile === uiSourceCode)
             return;
         this._currentFile = uiSourceCode;
-        
+
         var tabId = this._tabIds.get(uiSourceCode) || this._appendFileTab(uiSourceCode, userGesture);
         
         this._tabbedPane.selectTab(tabId, userGesture);
@@ -135,15 +136,21 @@ WebInspector.TabbedEditorContainer.prototype = {
         const maxDisplayNameLength = 30;
         const minDisplayQueryParamLength = 5;
 
+        var title;
         var parsedURL = uiSourceCode.parsedURL;
         if (!parsedURL.isValid)
-            return parsedURL.url ? parsedURL.url.trimMiddle(maxDisplayNameLength) : WebInspector.UIString("(program)");
-
-        var maxDisplayQueryParamLength = Math.max(minDisplayQueryParamLength, maxDisplayNameLength - parsedURL.lastPathComponent.length);
-        var displayQueryParams = parsedURL.queryParams ? "?" + parsedURL.queryParams.trimEnd(maxDisplayQueryParamLength - 1) : "";
-        var displayLastPathComponent = parsedURL.lastPathComponent.trimMiddle(maxDisplayNameLength - displayQueryParams.length);
-        var displayName = displayLastPathComponent + displayQueryParams;
-        return displayName || WebInspector.UIString("(program)");
+            title = parsedURL.url ? parsedURL.url.trimMiddle(maxDisplayNameLength) : WebInspector.UIString("(program)");
+        else {
+            var maxDisplayQueryParamLength = Math.max(minDisplayQueryParamLength, maxDisplayNameLength - parsedURL.lastPathComponent.length);
+            var displayQueryParams = parsedURL.queryParams ? "?" + parsedURL.queryParams.trimEnd(maxDisplayQueryParamLength - 1) : "";
+            var displayLastPathComponent = parsedURL.lastPathComponent.trimMiddle(maxDisplayNameLength - displayQueryParams.length);
+            var displayName = displayLastPathComponent + displayQueryParams;
+            title = displayName || WebInspector.UIString("(program)");
+        }
+        
+        if (uiSourceCode.isDirty())
+            title += "*";
+        return title;
     },
 
     /**
@@ -217,8 +224,12 @@ WebInspector.TabbedEditorContainer.prototype = {
         var tabId = this._generateTabId();
         this._tabIds.put(uiSourceCode, tabId);
         this._files[tabId] = uiSourceCode;
-        
+
         this._tabbedPane.appendTab(tabId, title, view, tooltip, userGesture);
+
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.TitleChanged, this._uiSourceCodeTitleChanged, this);
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._uiSourceCodeWorkingCopyChanged, this);
+        uiSourceCode.addEventListener(WebInspector.UISourceCode.Events.ContentChanged, this._uiSourceCodeContentChanged, this);
         return tabId;
     },
 
@@ -228,7 +239,7 @@ WebInspector.TabbedEditorContainer.prototype = {
     _removeFileTab: function(uiSourceCode)
     {
         var tabId = this._tabIds.get(uiSourceCode);
-        
+
         if (tabId)
             this._tabbedPane.closeTab(tabId);
     },
@@ -245,6 +256,10 @@ WebInspector.TabbedEditorContainer.prototype = {
         this._tabIds.remove(uiSourceCode);
         delete this._files[tabId];
         delete this._currentFile;
+
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.TitleChanged, this._uiSourceCodeTitleChanged, this);
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.WorkingCopyChanged, this._uiSourceCodeWorkingCopyChanged, this);
+        uiSourceCode.removeEventListener(WebInspector.UISourceCode.Events.ContentChanged, this._uiSourceCodeContentChanged, this);
 
         this.dispatchEventToListeners(WebInspector.TabbedEditorContainer.Events.EditorClosed, uiSourceCode);
 
@@ -266,9 +281,9 @@ WebInspector.TabbedEditorContainer.prototype = {
 
     /**
      * @param {WebInspector.UISourceCode} oldUISourceCode
-     * @param {WebInspector.UISourceCode} newUISourceCode
+     * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    _replaceFileTab: function(oldUISourceCode, newUISourceCode)
+    replaceFile: function(oldUISourceCode, uiSourceCode)
     {
         var tabId = this._tabIds.get(oldUISourceCode);
         
@@ -277,50 +292,42 @@ WebInspector.TabbedEditorContainer.prototype = {
         
         delete this._files[this._tabIds.get(oldUISourceCode)]
         this._tabIds.remove(oldUISourceCode);
-        this._tabIds.put(newUISourceCode, tabId);
-        this._files[tabId] = newUISourceCode;
+        this._tabIds.put(uiSourceCode, tabId);
+        this._files[tabId] = uiSourceCode;
 
-        this._tabbedPane.changeTabTitle(tabId, this._titleForFile(newUISourceCode));
-        this._tabbedPane.changeTabView(tabId, this._delegate.viewForFile(newUISourceCode));
-        this._tabbedPane.changeTabTooltip(tabId, this._tooltipForFile(newUISourceCode));
+        this._tabbedPane.changeTabTitle(tabId, this._titleForFile(uiSourceCode));
+        this._tabbedPane.changeTabView(tabId, this._delegate.viewForFile(uiSourceCode));
+        this._tabbedPane.changeTabTooltip(tabId, this._tooltipForFile(uiSourceCode));
     },
 
-    /**
-     * @param {Array.<WebInspector.UISourceCode>} oldUISourceCodeList
-     * @param {Array.<WebInspector.UISourceCode>} uiSourceCodeList
-     */
-    replaceFiles: function(oldUISourceCodeList, uiSourceCodeList)
-    {
-        var mainFile;
-        for (var i = 0; i < oldUISourceCodeList.length; ++i) {
-            var tabId = this._tabIds.get(oldUISourceCodeList[i]);
-            if (tabId && (!mainFile || this._tabbedPane.selectedTabId === tabId)) {
-                mainFile = oldUISourceCodeList[i];
-                break;
-            } 
-        }
-        
-        if (!mainFile)
-            return;
-        
-        this._replaceFileTab(mainFile, uiSourceCodeList[0]);
-        for (var i = 0; i < oldUISourceCodeList.length; ++i)
-            this._removeFileTab(oldUISourceCodeList[i]);
-    },
-    
     /**
      * @param {WebInspector.UISourceCode} uiSourceCode
-     * @param {boolean} isDirty
      */
-    setFileIsDirty: function(uiSourceCode, isDirty)
+    _updateFileTitle: function(uiSourceCode)
     {
         var tabId = this._tabIds.get(uiSourceCode);
         if (tabId) {
             var title = this._titleForFile(uiSourceCode);
-            if (isDirty)
-                title += "*";
             this._tabbedPane.changeTabTitle(tabId, title);
         }
+    },
+
+    _uiSourceCodeTitleChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateFileTitle(uiSourceCode);
+    },
+
+    _uiSourceCodeWorkingCopyChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateFileTitle(uiSourceCode);
+    },
+
+    _uiSourceCodeContentChanged: function(event)
+    {
+        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.target;
+        this._updateFileTitle(uiSourceCode);
     },
 
     reset: function()
@@ -339,6 +346,14 @@ WebInspector.TabbedEditorContainer.prototype = {
     _generateTabId: function()
     {
         return "tab_" + (WebInspector.TabbedEditorContainer._tabId++);
+    },
+
+    /**
+     * @return {WebInspector.UISourceCode} uiSourceCode
+     */
+    currentFile: function()
+    {
+        return this._currentFile;
     }
 }
 

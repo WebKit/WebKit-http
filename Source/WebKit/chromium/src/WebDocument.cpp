@@ -33,7 +33,6 @@
 
 #include "AXObjectCache.h"
 #include "CSSParserMode.h"
-#include "CSSStyleSheet.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DocumentType.h"
@@ -46,6 +45,7 @@
 #include "HTMLHeadElement.h"
 #include "NodeList.h"
 #include "SecurityOrigin.h"
+#include "StyleSheetContents.h"
 #include "WebAccessibilityObject.h"
 #include "WebDOMEvent.h"
 #include "WebDocumentType.h"
@@ -178,7 +178,7 @@ void WebDocument::insertUserStyleSheet(const WebString& sourceCode, UserStyleLev
 {
     RefPtr<Document> document = unwrap<Document>();
 
-    RefPtr<StyleSheetInternal> parsedSheet = StyleSheetInternal::create(document.get());
+    RefPtr<StyleSheetContents> parsedSheet = StyleSheetContents::create(document.get());
     parsedSheet->setIsUserStyleSheet(level == UserStyleUserLevel);
     parsedSheet->parseString(sourceCode);
     document->addUserSheet(parsedSheet.release());

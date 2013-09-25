@@ -78,6 +78,7 @@ BEGIN {
         &possiblyColored
         &prepareParsedPatch
         &removeEOL
+        &runCommand
         &runPatchCommand
         &scmMoveOrRenameFile
         &scmToggleExecutableBit
@@ -443,6 +444,7 @@ sub adjustPathForRecentRenamings($)
  
     $fullPath =~ s|WebCore/webaudio|WebCore/Modules/webaudio|g;
     $fullPath =~ s|JavaScriptCore/wtf|WTF/wtf|g;
+    $fullPath =~ s|test_expectations.txt|TestExpectations|g;
 
     return $fullPath; 
 } 
@@ -770,9 +772,9 @@ sub parseSvnDiffHeader($$)
         s/([\n\r]+)$//;
         my $eol = $1;
 
-        # Fix paths on ""---" and "+++" lines to match the leading
+        # Fix paths on "---" and "+++" lines to match the leading
         # index line.
-        if (s/^--- \S+/--- $indexPath/) {
+        if (s/^--- [^\t\n\r]+/--- $indexPath/) {
             # ---
             if (/^--- .+\(revision (\d+)\)/) {
                 $sourceRevision = $1;
@@ -785,7 +787,7 @@ sub parseSvnDiffHeader($$)
                         "source revision number \"$sourceRevision\".") if ($2 != $sourceRevision);
                 }
             }
-        } elsif (s/^\+\+\+ \S+/+++ $indexPath/) {
+        } elsif (s/^\+\+\+ [^\t\n\r]+/+++ $indexPath/) {
             $foundHeaderEnding = 1;
         } elsif (/^Cannot display: file marked as a binary type.$/) {
             $isBinary = 1;
@@ -1460,6 +1462,8 @@ sub fixChangeLogPatch($)
 {
     my $patch = shift; # $patch will only contain patch fragments for ChangeLog.
 
+    $patch =~ s|test_expectations.txt:|TestExpectations:|g;
+
     $patch =~ /(\r?\n)/;
     my $lineEnding = $1;
     my @lines = split(/$lineEnding/, $patch);
@@ -2015,6 +2019,30 @@ sub escapeSubversionPath($)
     my ($path) = @_;
     $path .= "@" if $path =~ /@/;
     return $path;
+}
+
+sub runCommand(@)
+{
+    my @args = @_;
+    my $pid = open(CHILD, "-|");
+    if (!defined($pid)) {
+        die "Failed to fork(): $!";
+    }
+    if ($pid) {
+        # Parent process
+        my $childStdout;
+        while (<CHILD>) {
+            $childStdout .= $_;
+        }
+        close(CHILD);
+        my %childOutput;
+        $childOutput{exitStatus} = exitStatus($?);
+        $childOutput{stdout} = $childStdout if $childStdout;
+        return \%childOutput;
+    }
+    # Child process
+    # FIXME: Consider further hardening of this function, including sanitizing the environment.
+    exec { $args[0] } @args or die "Failed to exec(): $!";
 }
 
 1;

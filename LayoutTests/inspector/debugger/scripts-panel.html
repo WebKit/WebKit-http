@@ -11,39 +11,47 @@ function test()
     WebInspector._isMac = false;
 
     var uiSourceCodes;
-    function createDebuggerPresentationModelMock()
+
+    var persistentBreakpoints = [];
+    var breakpointStorage = {
+        get: function() { return persistentBreakpoints; },
+        set: function(breakpoints) { persistentBreakpoints = breakpoints; }
+    };
+
+    var contentProvider = {
+        contentType: function()
+        {
+            return WebInspector.resourceTypes.Script;
+        }
+    }
+    
+    function createUISourceCodeProviderMock()
     {
-        var model = new WebInspector.Object();
-        model.breakpointsForUISourceCode = function() { return []; };
-        model.messagesForUISourceCode = function() { return []; };
-        model.canEditScriptSource = function() { return true; };
+        var provider = new WebInspector.Object();
         uiSourceCodes = [];
-        model.uiSourceCodes = function() { return uiSourceCodes.slice(); };
-        model._addUISourceCode = function(uiSourceCode)
+        provider.uiSourceCodes = function() { return uiSourceCodes.slice(); };
+        provider._addUISourceCode = function(uiSourceCode)
         {
             uiSourceCodes.push(uiSourceCode);
-            this.dispatchEventToListeners(WebInspector.DebuggerPresentationModel.Events.UISourceCodeAdded, uiSourceCode);
+            this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, uiSourceCode);
         }
-        model._reset = function(preservedItems)
+        provider._reset = function(preservedItems)
         {
             uiSourceCodes = preservedItems || [];
             WebInspector.debuggerModel.dispatchEventToListeners(WebInspector.DebuggerModel.Events.GlobalObjectCleared);
         }
-        model._replaceUISourceCodes = function(oldUISourceCodeList, newUISourceCodeList)
+        provider._replaceUISourceCode = function(oldUISourceCode, uiSourceCode)
         {
-            for (var i = 0; i < oldUISourceCodeList.length; ++i)
-              uiSourceCodes.remove(oldUISourceCodeList[i]);
-            for (var i = 0; i < newUISourceCodeList.length; ++i)
-              uiSourceCodes.push(newUISourceCodeList[i]);
-            var data = { oldUISourceCodeList: oldUISourceCodeList, uiSourceCodeList: newUISourceCodeList };
-            this.dispatchEventToListeners(WebInspector.DebuggerPresentationModel.Events.UISourceCodeReplaced, data);
+            uiSourceCodes.remove(oldUISourceCode);
+            uiSourceCodes.push(uiSourceCode);
+            var data = { oldUISourceCode: oldUISourceCode, uiSourceCode: uiSourceCode };
+            this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeReplaced, data);
         }
-
-        return model;
+        return provider;
     }
     function createUISouceCode(url)
     {
-        var uiSourceCode = new WebInspector.JavaScriptSource(0, url, null, null);
+        var uiSourceCode = new WebInspector.JavaScriptSource(url, null, contentProvider, null, false);
         uiSourceCode.requestContent = function(callback)
         {
             InspectorTest.addResult("Source requested for " + url);
@@ -56,20 +64,20 @@ function test()
     InspectorTest.runTestSuite([
         function testInitialLoad(next)
         {
-            var model = createDebuggerPresentationModelMock();
+            var provider = createUISourceCodeProviderMock();
             var uiSourceCode = createUISouceCode("foobar.js");
             var uiSourceCodeFoo = createUISouceCode("foo.js");
             var uiSourceCodeBar = createUISouceCode("bar.js");
             var uiSourceCodeBaz = createUISouceCode("baz.js");
 
-            model._addUISourceCode(uiSourceCode);
+            provider._addUISourceCode(uiSourceCode);
 
-            var panel = new WebInspector.ScriptsPanel(model);
+            var panel = new WebInspector.ScriptsPanel(provider);
             panel.show();
 
-            model._addUISourceCode(uiSourceCodeFoo);
-            model._addUISourceCode(uiSourceCodeBar);
-            model._addUISourceCode(uiSourceCodeBaz);
+            provider._addUISourceCode(uiSourceCodeFoo);
+            provider._addUISourceCode(uiSourceCodeBar);
+            provider._addUISourceCode(uiSourceCodeBaz);
 
             InspectorTest.dumpScriptsNavigator(panel._navigator);
 
@@ -82,61 +90,46 @@ function test()
 
         function testReset(next)
         {
-            var model = createDebuggerPresentationModelMock();
-            var panel = new WebInspector.ScriptsPanel(model);
+            var provider = createUISourceCodeProviderMock();
+            var panel = new WebInspector.ScriptsPanel(provider);
             panel.show();
 
             var uiSourceCodeFoo = createUISouceCode("foo.js");
             var uiSourceCodeBar = createUISouceCode("bar.js");
             var uiSourceCodeBaz = createUISouceCode("baz.js");
 
-            model._addUISourceCode(uiSourceCodeFoo);
-            model._addUISourceCode(uiSourceCodeBar);
-            model._addUISourceCode(uiSourceCodeBaz);
+            provider._addUISourceCode(uiSourceCodeFoo);
+            provider._addUISourceCode(uiSourceCodeBar);
+            provider._addUISourceCode(uiSourceCodeBaz);
 
             InspectorTest.dumpScriptsNavigator(panel._navigator);
 
-            model._reset([uiSourceCodeBar]);
+            provider._reset([uiSourceCodeBar]);
             InspectorTest.dumpScriptsNavigator(panel._navigator);
 
             panel.detach();
             next();
         },
 
-
         function testSourceReplaced(next)
         {
-            var model = createDebuggerPresentationModelMock();
-            var panel = new WebInspector.ScriptsPanel(model);
+            var provider = createUISourceCodeProviderMock();
+            var panel = new WebInspector.ScriptsPanel(provider);
             panel.show();
 
             var uiSourceCodeFoo = createUISouceCode("foo.js");
-            model._addUISourceCode(uiSourceCodeFoo);
+            provider._addUISourceCode(uiSourceCodeFoo);
             var compiledSourceCode = createUISouceCode("compiled.js");
-            model._addUISourceCode(compiledSourceCode);
+            provider._addUISourceCode(compiledSourceCode);
 
             InspectorTest.dumpScriptsNavigator(panel._navigator);
 
             // Plug compiler source mapping.
-            var source1SourceCode = createUISouceCode("source1.js");
-            var source2SourceCode = createUISouceCode("source2.js");
-            model._replaceUISourceCodes([compiledSourceCode], [source1SourceCode, source2SourceCode]);
+            var sourceSourceCode = createUISouceCode("source.js");
+            provider._replaceUISourceCode(compiledSourceCode, sourceSourceCode);
 
             InspectorTest.dumpScriptsNavigator(panel._navigator);
-            InspectorTest.showScriptSourceOnScriptsPanel(panel, "source2.js", step2);
-
-            function step2() {
-                InspectorTest.showScriptSourceOnScriptsPanel(panel, "source1.js", step3);
-            }
-
-            function step3() {
-                // Unplug compiler source mapping.
-                model._replaceUISourceCodes([source1SourceCode, source2SourceCode], [compiledSourceCode]);
-                InspectorTest.dumpScriptsNavigator(panel._navigator);
-
-                panel.detach();
-                next();
-            }
+            next();
         }
     ]);
 };

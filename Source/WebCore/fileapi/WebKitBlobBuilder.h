@@ -38,19 +38,25 @@
 namespace WebCore {
 
 class Blob;
+class ScriptExecutionContext;
 class TextEncoding;
 
 typedef int ExceptionCode;
 
 class WebKitBlobBuilder : public RefCounted<WebKitBlobBuilder> {
 public:
+    // Called when BlobBuilder is instantiated in JS API. We show deprecate warning message.
+    static PassRefPtr<WebKitBlobBuilder> create(ScriptExecutionContext*);
+
+    // Called by Blob constructor.
     static PassRefPtr<WebKitBlobBuilder> create() { return adoptRef(new WebKitBlobBuilder()); }
 
     void append(Blob*);
     void append(const String& text, ExceptionCode&);
     void append(const String& text, const String& ending, ExceptionCode&);
 #if ENABLE(BLOB)
-    void append(ArrayBuffer*);
+    void append(ScriptExecutionContext*, ArrayBuffer*);
+    void append(ArrayBufferView*);
 #endif
 
     PassRefPtr<Blob> getBlob(const String& contentType = String());

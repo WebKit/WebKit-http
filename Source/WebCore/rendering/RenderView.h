@@ -187,7 +187,8 @@ public:
     void removeFixedPositionedObject(RenderBox*);
 
 protected:
-    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&, bool* wasFixed = 0) const;
+    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool useTransforms, bool fixed, TransformState&, ApplyContainerFlipOrNot = ApplyContainerFlip, bool* wasFixed = 0) const;
+    virtual const RenderObject* pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap&) const;
     virtual void mapAbsoluteToLocalPoint(bool fixed, bool useTransforms, TransformState&) const;
     virtual bool requiresColumns(int desiredColumnCount) const OVERRIDE;
 
@@ -266,6 +267,8 @@ protected:
     OwnPtr<RenderBoxSet> m_fixedPositionedElements;
 
 private:
+    bool shouldUsePrintingLayout() const;
+
     unsigned m_pageLogicalHeight;
     bool m_pageLogicalHeightChanged;
     LayoutState* m_layoutState;

@@ -1,3 +1,53 @@
+2012-05-21  Peter Kasting  <pkasting@google.com>
+
+        Style guide change: Uses of "std::" should be explicitly qualified.
+        https://bugs.webkit.org/show_bug.cgi?id=87043
+
+        Reviewed by Ryosuke Niwa.
+
+        * coding/coding-style.html:
+
+2012-05-11  Darin Adler  <darin@apple.com>
+
+       Try to make spacing of fine print items in lower left nicer looking.
+
+        * css/main.css:
+        (#notice, #trademark, #terms): Changed top margin to 10px.
+        (#notice): Put 30px margin here.
+
+2012-05-11  Darin Adler  <darin@apple.com>
+
+        CSS tweak needed for the trademark terms of use.
+
+        * css/main.css:
+        (#notice, #trademark, #terms): Added #trademark.
+
+2012-05-11  Darin Adler  <darin@apple.com>
+
+        Add a link to WebKit trademark terms of use, other small website changes
+        https://bugs.webkit.org/show_bug.cgi?id=86112
+
+        Reviewed by Dan Bernstein.
+
+        * contact.html: Use RIGHT SINGLE QUOTATION MARK instead of APOSTROPHE as appropriate.
+        Fixed awkward use of the phrase "per itself" and the use of "intent" where "intend"
+        was intended.
+
+        * nav.inc: Added mention of the WebKit trademark and a link to the trademark terms
+        of use on the macosforge.org terms of use page.
+
+2012-05-07  Dan Bernstein  <mitz@apple.com>
+
+        webkit.org instructions for debugging WebProcess are unnecessarily complex
+        https://bugs.webkit.org/show_bug.cgi?id=85756
+
+        Reviewed by Darin Adler.
+
+        * building/debug.html: Added instructions for setting up and using the WebKit workspace for
+        debugging the Web process, as well as instructions for debugging the Web process from the
+        command line using debug-safari and debug-minibrowser.
+        * building/tools.html: Updated links and tweaked the language.
+
 2012-04-23  Daniel Bates  <dbates@webkit.org>
 
         Add notice about running xcode-select before using Xcode 4.3.2 command line tools

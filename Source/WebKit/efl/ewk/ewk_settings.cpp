@@ -34,9 +34,8 @@
 #include "MemoryCache.h"
 #include "PageCache.h"
 #include "Settings.h"
-#include "ewk_logging.h"
 #include "ewk_private.h"
-#include "ewk_util.h"
+#include "ewk_util_private.h"
 #include <Eina.h>
 #include <eina_safety_checks.h>
 #include <errno.h>
@@ -104,13 +103,6 @@ uint64_t ewk_settings_web_database_default_quota_get()
 void ewk_settings_web_database_default_quota_set(uint64_t maximumSize)
 {
     s_webDatabaseQuota = maximumSize;
-}
-
-void ewk_settings_web_database_clear()
-{
-#if ENABLE(SQL_DATABASE)
-    WebCore::DatabaseTracker::tracker().deleteAllDatabases();
-#endif
 }
 
 void ewk_settings_local_storage_path_set(const char* path)
@@ -194,11 +186,6 @@ Eina_Bool ewk_settings_icon_database_path_set(const char* directory)
 
 const char* ewk_settings_icon_database_path_get(void)
 {
-    if (!WebCore::iconDatabase().isEnabled())
-        return 0;
-    if (!WebCore::iconDatabase().isOpen())
-        return 0;
-
     return _ewk_icon_database_path;
 }
 
@@ -259,6 +246,16 @@ Eina_Bool ewk_settings_object_cache_enable_get()
 void ewk_settings_object_cache_enable_set(Eina_Bool enable)
 {
     WebCore::memoryCache()->setDisabled(!enable);
+}
+
+unsigned ewk_settings_page_cache_capacity_get()
+{
+    return WebCore::pageCache()->capacity();
+}
+
+void ewk_settings_page_cache_capacity_set(unsigned pages)
+{
+    WebCore::pageCache()->setCapacity(pages);
 }
 
 void ewk_settings_memory_cache_clear()

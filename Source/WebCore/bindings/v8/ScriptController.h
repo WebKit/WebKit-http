@@ -61,6 +61,7 @@ class Frame;
 class HTMLPlugInElement;
 class PagePopupClient;
 class ScriptSourceCode;
+class ScriptState;
 class Widget;
 
 class ScriptController {
@@ -121,19 +122,18 @@ public:
     void bindToWindowObject(Frame*, const String& key, NPObject*);
 
     PassScriptInstance createScriptInstanceForWidget(Widget*);
-#if ENABLE(PAGE_POPUP)
-    void installFunctionsForPagePopup(Frame*, PagePopupClient*);
-#endif
 
     // Check if the javascript engine has been initialized.
     bool haveInterpreter() const;
 
+    void enableEval();
     void disableEval();
 
     static bool canAccessFromCurrentOrigin(Frame*);
 
 #if ENABLE(INSPECTOR)
     static void setCaptureCallStackForUncaughtExceptions(bool);
+    void collectIsolatedContexts(Vector<std::pair<ScriptState*, SecurityOrigin*> >&);
 #endif
 
     bool canExecuteScripts(ReasonForCallingCanExecuteScripts);

@@ -35,13 +35,21 @@
 #include "WebCommon.h"
 #include "WebData.h"
 #include "WebGamepads.h"
+#include "WebGraphicsContext3D.h"
+#include "WebLocalizedString.h"
 #include "WebString.h"
 
 namespace WebKit {
 
 class WebAudioBus;
+class WebBlobRegistry;
+class WebClipboard;
+class WebCookieJar;
+class WebFileSystem;
+class WebFileUtilities;
 class WebMediaStreamCenter;
 class WebMediaStreamCenterClient;
+class WebMessagePortChannel;
 class WebMimeRegistry;
 class WebPeerConnection00Handler;
 class WebPeerConnection00HandlerClient;
@@ -49,8 +57,13 @@ class WebPeerConnectionHandler;
 class WebPeerConnectionHandlerClient;
 class WebURL;
 class WebURLLoader;
+class WebSandboxSupport;
 class WebSocketStreamHandle;
+class WebStorageNamespace;
+class WebThemeEngine;
 class WebThread;
+class WebWorkerRunLoop;
+struct WebLocalizedString;
 
 class Platform {
 public:
@@ -58,8 +71,23 @@ public:
     WEBKIT_EXPORT static void shutdown();
     WEBKIT_EXPORT static Platform* current();
 
+    // May return null.
+    virtual WebCookieJar* cookieJar() { return 0; }
+
+    // Must return non-null.
+    virtual WebClipboard* clipboard() { return 0; }
+
+    // Must return non-null.
+    virtual WebFileUtilities* fileUtilities() { return 0; }
+
     // Must return non-null.
     virtual WebMimeRegistry* mimeRegistry() { return 0; }
+
+    // May return null if sandbox support is not necessary
+    virtual WebSandboxSupport* sandboxSupport() { return 0; }
+
+    // May return null on some platforms.
+    virtual WebThemeEngine* themeEngine() { return 0; }
 
 
     // Audio --------------------------------------------------------------
@@ -67,6 +95,24 @@ public:
     virtual double audioHardwareSampleRate() { return 0; }
     virtual size_t audioHardwareBufferSize() { return 0; }
     virtual WebAudioDevice* createAudioDevice(size_t bufferSize, unsigned numberOfChannels, double sampleRate, WebAudioDevice::RenderCallback*) { return 0; }
+
+
+    // Blob ----------------------------------------------------------------
+
+    // Must return non-null.
+    virtual WebBlobRegistry* blobRegistry() { return 0; }
+
+
+    // DOM Storage --------------------------------------------------
+
+    // Return a LocalStorage namespace that corresponds to the following path.
+    virtual WebStorageNamespace* createLocalStorageNamespace(const WebString& path, unsigned quota) { return 0; }
+
+
+    // FileSystem ----------------------------------------------------------
+
+    // Must return non-null.
+    virtual WebFileSystem* fileSystem() { return 0; }
 
 
     // Gamepad -------------------------------------------------------------
@@ -115,6 +161,18 @@ public:
     // Delta of memory usage growth (vs. last actualMemoryUsageMB()) to force GC when memory usage is high.
     virtual size_t highUsageDeltaMB() { return 128; }
 
+    // Returns private and shared usage, in bytes. Private bytes is the amount of
+    // memory currently allocated to this process that cannot be shared. Returns
+    // false on platform specific error conditions.
+    virtual bool processMemorySizesInBytes(size_t* privateBytes, size_t* sharedBytes) { return false; }
+
+
+    // Message Ports -------------------------------------------------------
+
+    // Creates a Message Port Channel. This can be called on any thread.
+    // The returned object should only be used on the thread it was created on.
+    virtual WebMessagePortChannel* createMessagePortChannel() { return 0; }
+
 
     // Network -------------------------------------------------------------
 
@@ -132,6 +190,14 @@ public:
 
     // A suggestion to cache this metadata in association with this URL.
     virtual void cacheMetadata(const WebURL&, double responseTime, const char* data, size_t dataSize) { }
+
+
+    // Resources -----------------------------------------------------------
+
+    // Returns a localized string resource (with substitution parameters).
+    virtual WebString queryLocalizedString(WebLocalizedString::Name) { return WebString(); }
+    virtual WebString queryLocalizedString(WebLocalizedString::Name, const WebString& parameter) { return WebString(); }
+    virtual WebString queryLocalizedString(WebLocalizedString::Name, const WebString& parameter1, const WebString& parameter2) { return WebString(); }
 
 
     // Threads -------------------------------------------------------
@@ -284,6 +350,20 @@ public:
     virtual void histogramEnumeration(const char* name, int sample, int boundaryValue) { }
 
 
+    // GPU ----------------------------------------------------------------
+    //
+    // May return null if GPU is not supported.
+    // Returns newly allocated and initialized offscreen WebGraphicsContext3D instance.
+    virtual WebGraphicsContext3D* createOffscreenGraphicsContext3D(const WebGraphicsContext3D::Attributes&) { return 0; }
+
+    // Returns true if the platform is capable of producing an offscreen context suitable for accelerating 2d canvas.
+    // This will return false if the platform cannot promise that contexts will be preserved across operations like
+    // locking the screen or if the platform cannot provide a context with suitable performance characteristics.
+    //
+    // This value must be checked again after a context loss event as the platform's capabilities may have changed.
+    virtual bool canAccelerate2dCanvas() { return false; }
+
+
     // WebRTC ----------------------------------------------------------
 
     // DEPRECATED
@@ -298,6 +378,12 @@ public:
 
     // May return null if WebRTC functionality is not avaliable or out of resources.
     virtual WebMediaStreamCenter* createMediaStreamCenter(WebMediaStreamCenterClient*) { return 0; }
+
+
+    // WebWorker ----------------------------------------------------------
+
+    virtual void didStartWorkerRunLoop(const WebWorkerRunLoop&) { }
+    virtual void didStopWorkerRunLoop(const WebWorkerRunLoop&) { }
 
 protected:
     ~Platform() { }

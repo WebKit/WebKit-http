@@ -21,6 +21,7 @@
 #include "SVGImageCache.h"
 
 #if ENABLE(SVG)
+#include "CachedImage.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
@@ -38,21 +39,26 @@ SVGImageCache::SVGImageCache(SVGImage* svgImage)
 
 SVGImageCache::~SVGImageCache()
 {
-    m_sizeAndZoomMap.clear();
+    m_sizeAndScalesMap.clear();
 
     ImageDataMap::iterator end = m_imageDataMap.end();
-    for (ImageDataMap::iterator it = m_imageDataMap.begin(); it != end; ++it)
+    for (ImageDataMap::iterator it = m_imageDataMap.begin(); it != end; ++it) {
+        // Checks if the client (it->first) is still valid. The client should remove itself from this
+        // cache before its end of life, otherwise the following ASSERT will crash on pure virtual
+        // function call or a general crash.
+        ASSERT(it->first->resourceClientType() == CachedImageClient::expectedType());
         delete it->second.buffer;
+    }
 
     m_imageDataMap.clear();
 }
 
-void SVGImageCache::removeRendererFromCache(const RenderObject* renderer)
+void SVGImageCache::removeClientFromCache(const CachedImageClient* client)
 {
-    ASSERT(renderer);
-    m_sizeAndZoomMap.remove(renderer);
+    ASSERT(client);
+    m_sizeAndScalesMap.remove(client);
 
-    ImageDataMap::iterator it = m_imageDataMap.find(renderer);
+    ImageDataMap::iterator it = m_imageDataMap.find(client);
     if (it == m_imageDataMap.end())
         return;
 
@@ -60,19 +66,19 @@ void SVGImageCache::removeRendererFromCache(const RenderObject* renderer)
     m_imageDataMap.remove(it);
 }
 
-void SVGImageCache::setRequestedSizeAndZoom(const RenderObject* renderer, const SizeAndZoom& sizeAndZoom)
+void SVGImageCache::setRequestedSizeAndScales(const CachedImageClient* client, const SizeAndScales& sizeAndScales)
 {
-    ASSERT(renderer);
-    ASSERT(!sizeAndZoom.size.isEmpty());
-    m_sizeAndZoomMap.set(renderer, sizeAndZoom);
+    ASSERT(client);
+    ASSERT(!sizeAndScales.size.isEmpty());
+    m_sizeAndScalesMap.set(client, sizeAndScales);
 }
 
-SVGImageCache::SizeAndZoom SVGImageCache::requestedSizeAndZoom(const RenderObject* renderer) const
+SVGImageCache::SizeAndScales SVGImageCache::requestedSizeAndScales(const CachedImageClient* client) const
 {
-    ASSERT(renderer);
-    SizeAndZoomMap::const_iterator it = m_sizeAndZoomMap.find(renderer);
-    if (it == m_sizeAndZoomMap.end())
-        return SizeAndZoom();
+    ASSERT(client);
+    SizeAndScalesMap::const_iterator it = m_sizeAndScalesMap.find(client);
+    if (it == m_sizeAndScalesMap.end())
+        return SizeAndScales();
     return it->second;
 }
 
@@ -102,7 +108,7 @@ void SVGImageCache::redraw()
         // If the content changed we redraw using our existing ImageBuffer.
         ASSERT(data.buffer);
         ASSERT(data.image);
-        m_svgImage->drawSVGToImageBuffer(data.buffer, data.sizeAndZoom.size, data.sizeAndZoom.zoom, SVGImage::ClearImageBuffer);
+        m_svgImage->drawSVGToImageBuffer(data.buffer, data.sizeAndScales.size, data.sizeAndScales.zoom, data.sizeAndScales.scale, SVGImage::ClearImageBuffer);
         data.image = data.buffer->copyImage(CopyBackingStore);
         data.imageNeedsUpdate = false;
     }
@@ -122,45 +128,49 @@ void SVGImageCache::redrawTimerFired(Timer<SVGImageCache>*)
        redraw();
 }
 
-Image* SVGImageCache::lookupOrCreateBitmapImageForRenderer(const RenderObject* renderer)
+Image* SVGImageCache::lookupOrCreateBitmapImageForClient(const CachedImageClient* client)
 {
-    ASSERT(renderer);
+    ASSERT(client);
 
-    // The cache needs to know the size of the renderer before querying an image for it.
-    SizeAndZoomMap::iterator sizeIt = m_sizeAndZoomMap.find(renderer);
-    if (sizeIt == m_sizeAndZoomMap.end())
+    // The cache needs to know the size of the client before querying an image for it.
+    SizeAndScalesMap::iterator sizeIt = m_sizeAndScalesMap.find(client);
+    if (sizeIt == m_sizeAndScalesMap.end())
         return Image::nullImage();
 
     IntSize size = sizeIt->second.size;
     float zoom = sizeIt->second.zoom;
+    float scale = sizeIt->second.scale;
     ASSERT(!size.isEmpty());
 
-    // Lookup image for renderer in cache and eventually update it.
-    ImageDataMap::iterator it = m_imageDataMap.find(renderer);
+    // Lookup image for client in cache and eventually update it.
+    ImageDataMap::iterator it = m_imageDataMap.find(client);
     if (it != m_imageDataMap.end()) {
         ImageData& data = it->second;
 
         // Common case: image size & zoom remained the same.
-        if (data.sizeAndZoom.size == size && data.sizeAndZoom.zoom == zoom)
+        if (data.sizeAndScales.size == size && data.sizeAndScales.zoom == zoom && data.sizeAndScales.scale == scale)
             return data.image.get();
 
-        // If the image size for the renderer changed, we have to delete the buffer, remove the item from the cache and recreate it.
+        // If the image size for the client changed, we have to delete the buffer, remove the item from the cache and recreate it.
         delete data.buffer;
         m_imageDataMap.remove(it);
     }
 
+    FloatSize scaledSize(size);
+    scaledSize.scale(scale);
+
     // Create and cache new image and image buffer at requested size.
-    OwnPtr<ImageBuffer> newBuffer = ImageBuffer::create(size, 1);
+    OwnPtr<ImageBuffer> newBuffer = ImageBuffer::create(expandedIntSize(scaledSize), 1);
     if (!newBuffer)
         return Image::nullImage();
 
-    m_svgImage->drawSVGToImageBuffer(newBuffer.get(), size, zoom, SVGImage::DontClearImageBuffer);
+    m_svgImage->drawSVGToImageBuffer(newBuffer.get(), size, zoom, scale, SVGImage::DontClearImageBuffer);
 
     RefPtr<Image> newImage = newBuffer->copyImage(CopyBackingStore);
     Image* newImagePtr = newImage.get();
     ASSERT(newImagePtr);
 
-    m_imageDataMap.add(renderer, ImageData(newBuffer.leakPtr(), newImage.release(), sizeIt->second));
+    m_imageDataMap.add(client, ImageData(newBuffer.leakPtr(), newImage.release(), sizeIt->second));
     return newImagePtr;
 }
 

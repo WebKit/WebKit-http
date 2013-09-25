@@ -33,13 +33,13 @@ namespace JSC {
 CompressedLazyOperandValueProfileHolder::CompressedLazyOperandValueProfileHolder() { }
 CompressedLazyOperandValueProfileHolder::~CompressedLazyOperandValueProfileHolder() { }
 
-void CompressedLazyOperandValueProfileHolder::computeUpdatedPredictions()
+void CompressedLazyOperandValueProfileHolder::computeUpdatedPredictions(OperationInProgress operation)
 {
     if (!m_data)
         return;
     
     for (unsigned i = 0; i < m_data->size(); ++i)
-        m_data->at(i).computeUpdatedPrediction();
+        m_data->at(i).computeUpdatedPrediction(operation);
 }
 
 LazyOperandValueProfile* CompressedLazyOperandValueProfileHolder::add(
@@ -84,12 +84,12 @@ LazyOperandValueProfile* LazyOperandValueProfileParser::getIfPresent(
     return iter->second;
 }
 
-PredictedType LazyOperandValueProfileParser::prediction(
+SpeculatedType LazyOperandValueProfileParser::prediction(
     const LazyOperandValueProfileKey& key) const
 {
     LazyOperandValueProfile* profile = getIfPresent(key);
     if (!profile)
-        return PredictNone;
+        return SpecNone;
     
     return profile->computeUpdatedPrediction();
 }

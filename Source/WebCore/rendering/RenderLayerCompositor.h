@@ -125,6 +125,8 @@ public:
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer*);
     
+    void repaintInCompositedAncestor(RenderLayer*, const LayoutRect&);
+    
     // Notify us that a layer has been added or removed
     void layerWasAdded(RenderLayer* parent, RenderLayer* child);
     void layerWillBeRemoved(RenderLayer* parent, RenderLayer* child);
@@ -163,8 +165,6 @@ public:
         ASSERT(m_compositedLayerCount > 0);
         --m_compositedLayerCount;
     }
-    
-    void didStartAcceleratedAnimation(CSSPropertyID);
     
 #if ENABLE(VIDEO)
     // Use by RenderVideo to ask if it should try to use accelerated compositing.
@@ -241,12 +241,12 @@ private:
     void recursiveRepaintLayerRect(RenderLayer*, const IntRect&);
 
     void addToOverlapMap(OverlapMap&, RenderLayer*, IntRect& layerBounds, bool& boundsComputed);
-    void addToOverlapMapRecursive(OverlapMap&, RenderLayer*);
+    void addToOverlapMapRecursive(OverlapMap&, RenderLayer*, RenderLayer* ancestorLayer = 0);
 
     void updateCompositingLayersTimerFired(Timer<RenderLayerCompositor>*);
 
     // Returns true if any layer's compositing changed
-    void computeCompositingRequirements(RenderLayer*, OverlapMap*, struct CompositingState&, bool& layersChanged);
+    void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer*, OverlapMap*, struct CompositingState&, bool& layersChanged, bool& descendantHas3DTransform);
     
     // Recurses down the tree, parenting descendant compositing layers and collecting an array of child layers for the current compositing layer.
     void rebuildCompositingLayerTree(RenderLayer*, Vector<GraphicsLayer*>& childGraphicsLayersOfEnclosingLayer, int depth);
@@ -259,8 +259,8 @@ private:
     void removeCompositedChildren(RenderLayer*);
 
     bool layerHas3DContent(const RenderLayer*) const;
-    bool hasNonIdentity3DTransform(RenderObject*) const;
-    
+    bool isRunningAcceleratedTransformAnimation(RenderObject*) const;
+
     bool hasAnyAdditionalCompositedLayers(const RenderLayer* rootLayer) const;
 
     void ensureRootLayer();
@@ -286,10 +286,10 @@ private:
     bool requiresCompositingForCanvas(RenderObject*) const;
     bool requiresCompositingForPlugin(RenderObject*) const;
     bool requiresCompositingForFrame(RenderObject*) const;
-    bool requiresCompositingWhenDescendantsAreCompositing(RenderObject*) const;
     bool requiresCompositingForFilters(RenderObject*) const;
     bool requiresCompositingForScrollableFrame() const;
     bool requiresCompositingForPosition(RenderObject*, const RenderLayer*) const;
+    bool requiresCompositingForIndirectReason(RenderObject*, bool hasCompositedDescendants, bool has3DTransformedDescendants, RenderLayer::IndirectCompositingReason&) const;
 
     bool requiresScrollLayer(RootLayerAttachment) const;
     bool requiresHorizontalScrollbarLayer() const;

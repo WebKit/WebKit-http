@@ -80,7 +80,9 @@ struct PopupContainerSettings {
     // Autocomplete popups are restricted, combo-boxes (select tags) aren't.
     bool restrictWidthOfListBox;
 
-    int defaultDeviceScaleFactor;
+    // If the device is a touch screen we increase the height of menu items
+    // to make it easier to unambiguously touch them.
+    bool deviceSupportsTouch;
 };
 
 // A container for the data for each menu item (e.g. represented by <option>

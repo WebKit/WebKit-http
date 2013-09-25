@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,48 +28,79 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGArgumentsSimplificationPhase.h"
 #include "DFGByteCodeParser.h"
 #include "DFGCFAPhase.h"
+#include "DFGCFGSimplificationPhase.h"
 #include "DFGCSEPhase.h"
+#include "DFGConstantFoldingPhase.h"
 #include "DFGFixupPhase.h"
 #include "DFGJITCompiler.h"
 #include "DFGPredictionPropagationPhase.h"
 #include "DFGRedundantPhiEliminationPhase.h"
+#include "DFGValidate.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
 
 namespace JSC { namespace DFG {
 
 enum CompileMode { CompileFunction, CompileOther };
-inline bool compile(CompileMode compileMode, JSGlobalData& globalData, CodeBlock* codeBlock, JITCode& jitCode, MacroAssemblerCodePtr* jitCodeWithArityCheck)
+inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlock, JITCode& jitCode, MacroAssemblerCodePtr* jitCodeWithArityCheck)
 {
     SamplingRegion samplingRegion("DFG Compilation (Driver)");
     
     ASSERT(codeBlock);
     ASSERT(codeBlock->alternative());
     ASSERT(codeBlock->alternative()->getJITType() == JITCode::BaselineJIT);
-
+    
 #if DFG_ENABLE(DEBUG_VERBOSE)
-    dataLog("DFG compiling code block %p(%p), number of instructions = %u.\n", codeBlock, codeBlock->alternative(), codeBlock->instructionCount());
+    dataLog("DFG compiling code block %p(%p) for executable %p, number of instructions = %u.\n", codeBlock, codeBlock->alternative(), codeBlock->ownerExecutable(), codeBlock->instructionCount());
 #endif
     
-    Graph dfg(globalData, codeBlock);
-    if (!parse(dfg))
+    Graph dfg(exec->globalData(), codeBlock);
+    if (!parse(exec, dfg))
         return false;
     
     if (compileMode == CompileFunction)
         dfg.predictArgumentTypes();
+    
+    // By this point the DFG bytecode parser will have potentially mutated various tables
+    // in the CodeBlock. This is a good time to perform an early shrink, which is more
+    // powerful than a late one. It's safe to do so because we haven't generated any code
+    // that references any of the tables directly, yet.
+    codeBlock->shrinkToFit(CodeBlock::EarlyShrink);
 
-    performRedundantPhiElimination(dfg);
+    validate(dfg);
     performPredictionPropagation(dfg);
     performFixup(dfg);
-    performCSE(dfg);
+    unsigned cnt = 1;
+    for (;; ++cnt) {
+#if DFG_ENABLE(DEBUG_VERBOSE)
+        dataLog("DFG beginning optimization fixpoint iteration #%u.\n", cnt);
+#endif
+        bool changed = false;
+        performCFA(dfg);
+        changed |= performConstantFolding(dfg);
+        changed |= performArgumentsSimplification(dfg);
+        changed |= performCFGSimplification(dfg);
+        changed |= performCSE(dfg, FixpointNotConverged);
+        if (!changed)
+            break;
+        dfg.resetExitStates();
+    }
+    performCSE(dfg, FixpointConverged);
+#if DFG_ENABLE(DEBUG_VERBOSE)
+    dataLog("DFG optimization fixpoint converged in %u iterations.\n", cnt);
+#endif
+    dfg.m_dominators.compute(dfg);
     performVirtualRegisterAllocation(dfg);
-    performCFA(dfg);
 
+    GraphDumpMode modeForFinalValidate = DumpGraph;
 #if DFG_ENABLE(DEBUG_VERBOSE)
     dataLog("Graph after optimization:\n");
     dfg.dump();
+    modeForFinalValidate = DontDumpGraph;
 #endif
+    validate(dfg, modeForFinalValidate);
     
     JITCompiler dataFlowJIT(dfg);
     bool result;
@@ -87,14 +118,14 @@ inline bool compile(CompileMode compileMode, JSGlobalData& globalData, CodeBlock
     return result;
 }
 
-bool tryCompile(JSGlobalData& globalData, CodeBlock* codeBlock, JITCode& jitCode)
+bool tryCompile(ExecState* exec, CodeBlock* codeBlock, JITCode& jitCode)
 {
-    return compile(CompileOther, globalData, codeBlock, jitCode, 0);
+    return compile(CompileOther, exec, codeBlock, jitCode, 0);
 }
 
-bool tryCompileFunction(JSGlobalData& globalData, CodeBlock* codeBlock, JITCode& jitCode, MacroAssemblerCodePtr& jitCodeWithArityCheck)
+bool tryCompileFunction(ExecState* exec, CodeBlock* codeBlock, JITCode& jitCode, MacroAssemblerCodePtr& jitCodeWithArityCheck)
 {
-    return compile(CompileFunction, globalData, codeBlock, jitCode, &jitCodeWithArityCheck);
+    return compile(CompileFunction, exec, codeBlock, jitCode, &jitCodeWithArityCheck);
 }
 
 } } // namespace JSC::DFG

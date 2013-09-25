@@ -28,6 +28,8 @@ class WebPagePrivate;
 }
 
 namespace WebCore {
+class PagePopup;
+class PagePopupClient;
 
 class ChromeClientBlackBerry : public ChromeClient {
 public:
@@ -124,6 +126,12 @@ public:
     virtual bool supportsFullscreenForNode(const Node*);
     virtual void enterFullscreenForNode(Node*);
     virtual void exitFullscreenForNode(Node*);
+#if ENABLE(FULLSCREEN_API)
+    virtual bool supportsFullScreenForElement(const Element*, bool withKeyboard);
+    virtual void enterFullScreenForElement(Element*);
+    virtual void exitFullScreenForElement(Element*);
+    virtual void fullScreenRendererChanged(RenderBox*);
+#endif
 #if ENABLE(WEBGL)
     virtual void requestWebGLPermission(Frame*);
 #endif
@@ -136,6 +144,9 @@ public:
     virtual bool hasOpenedPopup() const;
     virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const;
     virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const;
+
+    virtual WebCore::PagePopup* openPagePopup(WebCore::PagePopupClient*, const WebCore::IntRect&);
+    virtual void closePagePopup(WebCore::PagePopup*);
 
 #if USE(ACCELERATED_COMPOSITING)
     virtual void attachRootGraphicsLayer(Frame*, GraphicsLayer*);

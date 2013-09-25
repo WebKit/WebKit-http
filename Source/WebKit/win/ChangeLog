@@ -1,3 +1,239 @@
+2012-06-10  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r119955.
+        http://trac.webkit.org/changeset/119955
+        https://bugs.webkit.org/show_bug.cgi?id=88758
+
+        Breaks Chromium compile - Chromium depends on removed API
+        (Requested by dominicc on #webkit).
+
+        * WebFrame.cpp:
+        (WebFrame::setIsDisconnected):
+        (WebFrame::setExcludeFromTextSearch):
+
+2012-06-10  Sam Weinig  <sam@webkit.org>
+
+        Remove support for disconnected/excluded from search frames, they are not used by Safari anymore
+        https://bugs.webkit.org/show_bug.cgi?id=88723
+
+        Reviewed by Dan Bernstein.
+
+        * WebFrame.cpp:
+        (WebFrame::setIsDisconnected):
+        (WebFrame::setExcludeFromTextSearch):
+        Stop doing anything in these functions.
+
+2012-05-31  Hajime Morrita  <morrita@chromium.org>
+
+        REGRESSION(r117572): editing/spelling/spellcheck-async-remove-frame.html crashes on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=86859
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient::requestCheckingOfString):
+
+2012-05-25  Jesus Sanchez-Palencia  <jesus.palencia@openbossa.org>
+
+        WebKitTestRunner needs to support layoutTestController.setJavaScriptProfilingEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=42328
+
+        Reviewed by Eric Seidel.
+
+        * WebInspector.cpp:
+        (WebInspector::setJavaScriptProfilingEnabled):
+
+2012-05-25  Lynn Neir  <lynn.neir@skype.net>
+
+        Added methods needed to implement backend for DRT's TextInputController on windows, https://bugs.webkit.org/show_bug.cgi?id=32021
+
+        Reviewed by Eric Seidel.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::setCompositionForTesting):
+        (WebView::hasCompositionForTesting):
+        (WebView::confirmCompositionForTesting):
+        (WebView::compositionRangeForTesting):
+        (WebView::firstRectForCharacterRangeForTesting):
+        (WebView::selectedRangeForTesting):
+        * WebView.h:
+        (WebView):
+
+2012-05-21  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        Move setEditingBehavior() from layoutTestController to window.internals
+        https://bugs.webkit.org/show_bug.cgi?id=42689
+
+        Reviewed by Hajime Morita and Kenneth Rohde Christiansen.
+
+        Remove Win private API to get/set the editing behavior. Follow the previous
+        removals that keep the virtual functions there but failing.
+
+        * Interfaces/IWebPreferences.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::unused5):
+        (WebPreferences::unused6):
+        * WebPreferences.h:
+        (WebPreferences):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2012-05-18  MORITA Hajime <morrita@google.com>
+
+        Another unreviewed attempt to fix build breakage on r117572.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient::frameWillDetachPage):
+
+2012-05-18  MORITA Hajime  <morrita@google.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=85515
+        Stale frame in WebCore::SpellChecker::didCheckSucceeded
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient::frameWillDetachPage):
+
+2012-05-17  Hironori Bono  <hbono@chromium.org>
+
+        [Refactoring] Move platform-specific code in Editor::respondToChangedSelection to the WebKit layer
+        https://bugs.webkit.org/show_bug.cgi?id=86591
+
+        Reviewed by Ryosuke Niwa.
+
+        This change adds a TextCheckerClient::shouldEraseMarkersAfterChangeSelection
+        function to remove platform-specific code from Editor::respondToChangedSelection
+        function.
+
+        No new tests, no change in behavior.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::shouldEraseMarkersAfterChangeSelection):
+        * WebCoreSupport/WebEditorClient.h:
+        (WebEditorClient):
+
+2012-05-17  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r117428): WebKit API/SPI was removed
+        https://bugs.webkit.org/show_bug.cgi?id=86748
+
+        Reverted r117428.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::setDomainRelaxationForbiddenForURLScheme):
+        * WebView.h:
+        (WebView):
+
+2012-05-17  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Convert setDomainRelaxationForbiddenForURLScheme to use InternalSettings interface
+        https://bugs.webkit.org/show_bug.cgi?id=86704
+
+        Reviewed by Eric Seidel.
+
+        Remove setDomainRelaxationForbiddenForURLScheme functions, because it is able to work in the
+        cross-port way through the InternalSettings interface.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        * WebView.h:
+        (WebView):
+
+2012-05-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move resumeAnimations to use Internals interface
+        https://bugs.webkit.org/show_bug.cgi?id=86063
+
+        Reviewed by Alexey Proskuryakov.
+
+        Remove resumeAnimations functions, because it is able to work in the 
+        cross-port way through the Internals interface.
+
+        * Interfaces/IWebFramePrivate.idl:
+        * WebFrame.cpp:
+        * WebFrame.h:
+
+2012-05-10  Anders Carlsson  <andersca@apple.com>
+
+        Rename the missing plug-in indicator to the unavailable plug-in indicator
+        https://bugs.webkit.org/show_bug.cgi?id=86136
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::shouldUnavailablePluginMessageBeButton):
+        (WebChromeClient::unavailablePluginButtonClicked):
+        * WebCoreSupport/WebChromeClient.h:
+        (WebChromeClient):
+
+2012-05-09  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Move suspendAnimations to use Internals interface.
+        https://bugs.webkit.org/show_bug.cgi?id=85986
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove suspendAnimations functions, because it is able to work in the 
+        cross-port way through the Internals interface.
+
+        * Interfaces/IWebFramePrivate.idl:
+        * WebFrame.cpp:
+        * WebFrame.h:
+
+2012-05-07  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        Refactor windowClipRectForLayer to remove the explicit RenderLayer dependency
+        https://bugs.webkit.org/show_bug.cgi?id=84090
+
+        Reviewed by David Hyatt.
+
+        * WebCoreSupport/EmbeddedWidget.cpp:
+        (EmbeddedWidget::windowClipRect):
+        Updated after windowClipRectForLayer name and signature change.
+
+        * WebCoreSupport/EmbeddedWidget.h:
+        (EmbeddedWidget):
+        (EmbeddedWidget::EmbeddedWidget):
+        Updated the internal DOM pointer to be an HTMLPlugInElement
+        as it was what was passed in anyway. Also fixed some style
+        issues detected by our tools.
+
+2012-05-05  Dean Jackson  <dino@apple.com>
+
+        Add new Setting/Preference to disable requestAnimationFrame
+        https://bugs.webkit.org/show_bug.cgi?id=85693
+
+        Reviewed by Simon Fraser.
+
+        Exposes a new WebPreference: WebKitRequestAnimationFrameEnabled.
+        The default value is true. The majority of applications will leave
+        it this way.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setRequestAnimationFrameEnabled):
+        (WebPreferences::requestAnimationFrameEnabled):
+        * WebPreferences.h:
+        (WebPreferences):
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2012-05-04  Nate Chapin  <japhet@chromium.org>
+
+        Don't require FrameLoaderClient to manufacture a commitData() call for empty documents.
+        https://bugs.webkit.org/show_bug.cgi?id=85533
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::finishedLoading):
+
 2012-04-27  Jon Lee  <jonlee@apple.com>
 
         Migrate permission functions to Notification from NotificationCenter

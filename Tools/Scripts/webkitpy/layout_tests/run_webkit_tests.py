@@ -46,7 +46,7 @@ from webkitpy.layout_tests.views import printing
 _log = logging.getLogger(__name__)
 
 
-def lint(port, options, expectations_class):
+def lint(port, options):
     host = port.host
     if options.platform:
         ports_to_lint = [port]
@@ -62,12 +62,7 @@ def lint(port, options, expectations_class):
             continue
 
         try:
-            expectations_class(port_to_lint,
-                tests=None,
-                expectations=port_to_lint.test_expectations(),
-                test_config=port_to_lint.test_configuration(),
-                is_lint_mode=True,
-                overrides=port_to_lint.test_expectations_overrides())
+            test_expectations.TestExpectations(port_to_lint, is_lint_mode=True)
         except test_expectations.ParseError, e:
             lint_failed = True
             _log.error('')
@@ -97,7 +92,7 @@ def run(port, options, args, regular_output=sys.stderr, buildbot_output=sys.stdo
         return 0
 
     if options.lint_test_files:
-        return lint(port, options, test_expectations.TestExpectations)
+        return lint(port, options)
 
     # We wrap any parts of the run that are slow or likely to raise exceptions
     # in a try/finally to ensure that we clean up the logging configuration.
@@ -252,7 +247,7 @@ def parse_args(args=None):
         optparse.make_option("-l", "--leaks", action="store_true", default=False,
             help="Enable leaks checking (Mac OS X only)"),
         optparse.make_option("-g", "--guard-malloc", action="store_true", default=False,
-            help="Enable malloc guard (Mac OS X only)"),
+            help="Enable Guard Malloc (Mac OS X only)"),
         optparse.make_option("--threaded", action="store_true", default=False,
             help="Run a concurrent JavaScript thread with each test"),
         optparse.make_option("--webkit-test-runner", "-2", action="store_true",
@@ -302,6 +297,8 @@ def parse_args(args=None):
         optparse.make_option("--additional-drt-flag", action="append",
             default=[], help="Additional command line flag to pass to DumpRenderTree "
                  "Specify multiple times to add multiple flags."),
+        optparse.make_option("--driver-name", type="string",
+            help="Alternative DumpRenderTree binary to use"),
         optparse.make_option("--additional-platform-directory", action="append",
             default=[], help="Additional directory where to look for test "
                  "baselines (will take precendence over platform baselines). "

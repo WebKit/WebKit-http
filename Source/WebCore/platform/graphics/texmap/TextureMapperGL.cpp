@@ -30,10 +30,14 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
+#if USE(GRAPHICS_SURFACE)
+#include "GraphicsSurface.h"
+#endif
+
 #if PLATFORM(QT)
 #if QT_VERSION >= 0x050000
 #include <QOpenGLContext>
-#include <QPlatformPixmap>
+#include <qpa/qplatformpixmap.h>
 #else
 #include <QGLContext>
 #endif // QT_VERSION
@@ -304,34 +308,12 @@ void TextureMapperGL::endPainting()
 #endif
 }
 
-
-void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, const BitmapTexture* mask)
+void TextureMapperGL::drawRect(const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, TextureMapperShaderProgram* shaderProgram, GLenum drawingMode, bool needsBlending)
 {
-    if (!texture.isValid())
-        return;
-
-    if (clipStack().current().scissorBox.isEmpty())
-        return;
-
-    const BitmapTextureGL& textureGL = static_cast<const BitmapTextureGL&>(texture);
-    drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : SupportsBlending, textureGL.size(), targetRect, matrix, opacity, mask);
-}
-
-void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture)
-{
-    RefPtr<TextureMapperShaderProgram> shaderInfo;
-    if (maskTexture)
-        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::OpacityAndMask);
-    else
-        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::Simple);
-
-    GL_CMD(glUseProgram(shaderInfo->id()));
-    GL_CMD(glEnableVertexAttribArray(shaderInfo->vertexAttrib()));
-    GL_CMD(glActiveTexture(GL_TEXTURE0));
-    GL_CMD(glBindTexture(GL_TEXTURE_2D, texture));
+    GL_CMD(glEnableVertexAttribArray(shaderProgram->vertexAttrib()));
     GL_CMD(glBindBuffer(GL_ARRAY_BUFFER, 0));
     const GLfloat unitRect[] = {0, 0, 1, 0, 1, 1, 0, 1};
-    GL_CMD(glVertexAttribPointer(shaderInfo->vertexAttrib(), 2, GL_FLOAT, GL_FALSE, 0, unitRect));
+    GL_CMD(glVertexAttribPointer(shaderProgram->vertexAttrib(), 2, GL_FLOAT, GL_FALSE, 0, unitRect));
 
     TransformationMatrix matrix = TransformationMatrix(data().projectionMatrix).multiply(modelViewMatrix).multiply(TransformationMatrix(
             targetRect.width(), 0, 0, 0,
@@ -345,20 +327,7 @@ void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& 
         matrix.m31(), matrix.m32(), matrix.m33(), matrix.m34(),
         matrix.m41(), matrix.m42(), matrix.m43(), matrix.m44()
     };
-
-    const GLfloat m4src[] = {
-        1, 0, 0, 0,
-        0, (flags & ShouldFlipTexture) ? -1 : 1, 0, 0,
-        0, 0, 1, 0,
-        0, (flags & ShouldFlipTexture) ? 1 : 0, 0, 1};
-
-    GL_CMD(glUniformMatrix4fv(shaderInfo->matrixVariable(), 1, GL_FALSE, m4));
-    GL_CMD(glUniformMatrix4fv(shaderInfo->sourceMatrixVariable(), 1, GL_FALSE, m4src));
-    GL_CMD(glUniform1i(shaderInfo->sourceTextureVariable(), 0));
-
-    shaderInfo->prepare(opacity, maskTexture);
-
-    bool needsBlending = (flags & SupportsBlending) || opacity < 0.99 || maskTexture;
+    GL_CMD(glUniformMatrix4fv(shaderProgram->matrixVariable(), 1, GL_FALSE, m4));
 
     if (needsBlending) {
         GL_CMD(glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA));
@@ -366,13 +335,96 @@ void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& 
     } else
         GL_CMD(glDisable(GL_BLEND));
 
-    GL_CMD(glDrawArrays(GL_TRIANGLE_FAN, 0, 4));
-    GL_CMD(glDisableVertexAttribArray(shaderInfo->vertexAttrib()));
+    GL_CMD(glDrawArrays(drawingMode, 0, 4));
+    GL_CMD(glDisableVertexAttribArray(shaderProgram->vertexAttrib()));
 }
 
-const char* TextureMapperGL::type() const
+void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix)
 {
-    return "OpenGL";
+    if (clipStack().current().scissorBox.isEmpty())
+        return;
+
+    RefPtr<TextureMapperShaderProgramSolidColor> shaderInfo = data().sharedGLData().textureMapperShaderManager.solidColorProgram();
+    GL_CMD(glUseProgram(shaderInfo->id()));
+
+    float alpha = color.alpha() / 255.0;
+    GL_CMD(glUniform4f(shaderInfo->colorVariable(),
+                       (color.red() / 255.0) * alpha,
+                       (color.green() / 255.0) * alpha,
+                       (color.blue() / 255.0) * alpha,
+                       alpha));
+    GL_CMD(glLineWidth(width));
+
+    drawRect(targetRect, modelViewMatrix, shaderInfo.get(), GL_LINE_LOOP, color.hasAlpha());
+}
+
+void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, const BitmapTexture* mask)
+{
+    if (!texture.isValid())
+        return;
+
+    if (clipStack().current().scissorBox.isEmpty())
+        return;
+
+    const BitmapTextureGL& textureGL = static_cast<const BitmapTextureGL&>(texture);
+    drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : SupportsBlending, textureGL.size(), targetRect, matrix, opacity, mask);
+}
+
+#if defined(GL_ARB_texture_rectangle)
+void TextureMapperGL::drawTextureRectangleARB(uint32_t texture, Flags flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture)
+{
+    RefPtr<TextureMapperShaderProgram> shaderInfo;
+    if (maskTexture)
+        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::RectOpacityAndMask);
+    else
+        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::RectSimple);
+    GL_CMD(glUseProgram(shaderInfo->id()));
+
+    GL_CMD(glEnableVertexAttribArray(shaderInfo->vertexAttrib()));
+    GL_CMD(glActiveTexture(GL_TEXTURE0));
+    GL_CMD(glBindTexture(GL_TEXTURE_RECTANGLE_ARB, texture));
+    GL_CMD(glUniform1i(shaderInfo->sourceTextureVariable(), 0));
+
+    const GLfloat m4src[] = {
+        targetRect.width(), 0, 0, 0,
+        0, (flags & ShouldFlipTexture) ? -targetRect.height() : targetRect.height(), 0, 0,
+        0, 0, 1, 0,
+        0, (flags & ShouldFlipTexture) ? 1 : 0, 0, 1};
+
+    GL_CMD(glUniformMatrix4fv(shaderInfo->sourceMatrixVariable(), 1, GL_FALSE, m4src));
+
+    shaderInfo->prepare(opacity, maskTexture);
+
+    bool needsBlending = (flags & SupportsBlending) || opacity < 0.99 || maskTexture;
+    drawRect(targetRect, modelViewMatrix, shaderInfo.get(), GL_TRIANGLE_FAN, needsBlending);
+}
+#endif // defined(GL_ARB_texture_rectangle) 
+
+void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture)
+{
+    RefPtr<TextureMapperShaderProgram> shaderInfo;
+    if (maskTexture)
+        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::OpacityAndMask);
+    else
+        shaderInfo = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::Simple);
+    GL_CMD(glUseProgram(shaderInfo->id()));
+
+    GL_CMD(glEnableVertexAttribArray(shaderInfo->vertexAttrib()));
+    GL_CMD(glActiveTexture(GL_TEXTURE0));
+    GL_CMD(glBindTexture(GL_TEXTURE_2D, texture));
+    GL_CMD(glUniform1i(shaderInfo->sourceTextureVariable(), 0));
+
+    const GLfloat m4src[] = {
+        1, 0, 0, 0,
+        0, (flags & ShouldFlipTexture) ? -1 : 1, 0, 0,
+        0, 0, 1, 0,
+        0, (flags & ShouldFlipTexture) ? 1 : 0, 0, 1};
+    GL_CMD(glUniformMatrix4fv(shaderInfo->sourceMatrixVariable(), 1, GL_FALSE, m4src));
+
+    shaderInfo->prepare(opacity, maskTexture);
+
+    bool needsBlending = (flags & SupportsBlending) || opacity < 0.99 || maskTexture;
+    drawRect(targetRect, modelViewMatrix, shaderInfo.get(), GL_TRIANGLE_FAN, needsBlending);
 }
 
 bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, Flags)
@@ -487,7 +539,7 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
 
 #if PLATFORM(QT)
     QImage qtImage;
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#if HAVE(QT5)
     // With QPA, we can avoid a deep copy.
     qtImage = *frameImage->handle()->buffer();
 #else
@@ -506,14 +558,14 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
 }
 
 #if ENABLE(CSS_FILTERS)
-void TextureMapperGL::drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture& contentTexture, const FilterOperation& filter)
+void TextureMapperGL::drawFiltered(const BitmapTexture& sourceTexture, const BitmapTexture& contentTexture, const FilterOperation& filter, int pass)
 {
     // For standard filters, we always draw the whole texture without transformations.
-    RefPtr<StandardFilterProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderForFilter(filter);
-    if (!program) {
-        drawTexture(sourceTexture, FloatRect(FloatPoint::zero(), sourceTexture.size()), TransformationMatrix(), 1, 0);
-        return;
-    }
+    RefPtr<StandardFilterProgram> program = data().sharedGLData().textureMapperShaderManager.getShaderForFilter(filter, pass);
+    ASSERT(program);
+
+    program->prepare(filter, pass, sourceTexture.contentSize(), static_cast<const BitmapTextureGL&>(contentTexture).id());
+
     GL_CMD(glEnableVertexAttribArray(program->vertexAttrib()));
     GL_CMD(glEnableVertexAttribArray(program->texCoordAttrib()));
     GL_CMD(glActiveTexture(GL_TEXTURE0));
@@ -539,9 +591,12 @@ PassRefPtr<BitmapTexture> BitmapTextureGL::applyFilters(const BitmapTexture& con
         const FilterOperation* filter = filters.at(i);
         ASSERT(filter);
 
-        m_textureMapper->bindSurface(target.get());
-        m_textureMapper->drawFiltered(i ? *source.get() : contentTexture, contentTexture, *filter);
-        std::swap(source, target);
+        int numPasses = m_textureMapper->data().sharedGLData().textureMapperShaderManager.getPassesRequiredForFilter(*filter);
+        for (int j = 0; j < numPasses; ++j) {
+            m_textureMapper->bindSurface(target.get());
+            m_textureMapper->drawFiltered((i || j) ? *source : contentTexture, contentTexture, *filter, j);
+            std::swap(source, target);
+        }
     }
 
     m_textureMapper->bindSurface(previousSurface.get());

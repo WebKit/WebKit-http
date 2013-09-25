@@ -69,6 +69,7 @@ class HistoryItem;
 class HitTestResult;
 class KeyboardEvent;
 class Page;
+class PageGroup;
 class PagePopup;
 class PagePopupClient;
 class PlatformGestureCurveTarget;
@@ -89,7 +90,9 @@ class ContextMenuClientImpl;
 class DeviceOrientationClientProxy;
 class DragScrollTimer;
 class GeolocationClientProxy;
+class WebHelperPluginImpl;
 class NonCompositedContentHost;
+class PrerendererClientImpl;
 class SpeechInputClientImpl;
 class SpeechRecognitionClientProxy;
 class UserMediaClientImpl;
@@ -100,6 +103,7 @@ class WebDevToolsAgentPrivate;
 class WebFrameImpl;
 class WebGestureEvent;
 class WebPagePopupImpl;
+class WebPrerendererClient;
 class WebImage;
 class WebKeyboardEvent;
 class WebMouseEvent;
@@ -143,8 +147,10 @@ public:
     virtual bool confirmComposition();
     virtual bool confirmComposition(const WebString& text);
     virtual bool compositionRange(size_t* location, size_t* length);
+    virtual WebTextInputInfo textInputInfo();
     virtual WebTextInputType textInputType();
     virtual bool selectionBounds(WebRect& start, WebRect& end) const;
+    virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const;
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
     virtual void setTextDirection(WebTextDirection direction);
     virtual bool isAcceleratedCompositingActive() const;
@@ -157,9 +163,11 @@ public:
 
     // WebView methods:
     virtual void initializeMainFrame(WebFrameClient*);
+    virtual void initializeHelperPluginFrame(WebFrameClient*);
     virtual void setAutofillClient(WebAutofillClient*);
     virtual void setDevToolsAgentClient(WebDevToolsAgentClient*);
     virtual void setPermissionClient(WebPermissionClient*);
+    virtual void setPrerendererClient(WebPrerendererClient*) OVERRIDE;
     virtual void setSpellCheckClient(WebSpellCheckClient*);
     virtual void addTextFieldDecoratorClient(WebTextFieldDecoratorClient*) OVERRIDE;
     virtual WebSettings* settings();
@@ -228,14 +236,29 @@ public:
         const WebPoint& clientPoint,
         const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed);
+    virtual WebDragOperation dragTargetDragEnter(
+        const WebDragData&,
+        const WebPoint& clientPoint,
+        const WebPoint& screenPoint,
+        WebDragOperationsMask operationsAllowed,
+        int keyModifiers);
     virtual WebDragOperation dragTargetDragOver(
         const WebPoint& clientPoint,
         const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed);
+    virtual WebDragOperation dragTargetDragOver(
+        const WebPoint& clientPoint,
+        const WebPoint& screenPoint,
+        WebDragOperationsMask operationsAllowed,
+        int keyModifiers);
     virtual void dragTargetDragLeave();
     virtual void dragTargetDrop(
         const WebPoint& clientPoint,
         const WebPoint& screenPoint);
+    virtual void dragTargetDrop(
+        const WebPoint& clientPoint,
+        const WebPoint& screenPoint,
+        int keyModifiers);
     virtual unsigned long createUniqueIdentifierForRequest();
     virtual void inspectElementAt(const WebPoint& point);
     virtual WebString inspectorSettings() const;
@@ -270,10 +293,12 @@ public:
 
     // WebLayerTreeViewClient
     virtual void willBeginFrame();
+    virtual void didBeginFrame();
     virtual void updateAnimations(double monotonicFrameBeginTime);
     virtual void applyScrollAndScale(const WebSize&, float);
     virtual WebGraphicsContext3D* createContext3D();
     virtual void didRebindGraphicsContext(bool);
+    virtual void willCommit();
     virtual void didCommit();
     virtual void didCommitAndDrawFrame();
     virtual void didCompleteSwapBuffers();
@@ -299,6 +324,12 @@ public:
     WebCore::Node* focusedWebCoreNode();
 
     static WebViewImpl* fromPage(WebCore::Page*);
+
+    // A pageGroup identifies a namespace of pages. Page groups are used on PLATFORM(MAC)
+    // for some programs that use HTML views to display things that don't seem like
+    // web pages to the user (so shouldn't have visited link coloring). We only use
+    // one page group.
+    static WebCore::PageGroup* defaultPageGroup();
 
     WebViewClient* client()
     {
@@ -429,6 +460,7 @@ public:
 
     // Start a system drag and drop operation.
     void startDragging(
+        WebCore::Frame*,
         const WebDragData& dragData,
         WebDragOperationsMask mask,
         const WebImage& dragImage,
@@ -458,6 +490,8 @@ public:
 
     void hideAutofillPopup();
 
+    WebHelperPluginImpl* createHelperPlugin(const String& pluginType);
+
     // Returns the input event we're currently processing. This is used in some
     // cases where the WebCore DOM event doesn't have the information we need.
     static const WebInputEvent* currentInputEvent()
@@ -467,7 +501,6 @@ public:
 
 #if USE(ACCELERATED_COMPOSITING)
     bool allowsAcceleratedCompositing();
-    bool pageHasRTLStyle() const;
     void setRootGraphicsLayer(WebCore::GraphicsLayer*);
     void scheduleCompositingLayerSync();
     void scrollRootLayerRect(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& clipRect);
@@ -575,7 +608,8 @@ private:
     // should be true.
     WebDragOperation dragTargetDragEnterOrOver(const WebPoint& clientPoint,
                                                const WebPoint& screenPoint,
-                                               DragAction);
+                                               DragAction,
+                                               int keyModifiers);
 
     void configureAutoResizeMode();
 
@@ -607,6 +641,8 @@ private:
     virtual bool handleGestureEvent(const WebGestureEvent&) OVERRIDE;
     virtual bool handleKeyEvent(const WebKeyboardEvent&) OVERRIDE;
     virtual bool handleCharEvent(const WebKeyboardEvent&) OVERRIDE;
+
+    WebSettingsImpl* settingsImpl();
 
     WebViewClient* m_client;
     WebAutofillClient* m_autofillClient;
@@ -756,6 +792,7 @@ private:
     // If true, the graphics context is being restored.
     bool m_recreatingGraphicsContext;
     bool m_compositorSurfaceReady;
+    float m_deviceScaleInCompositor;
 #endif
     static const WebInputEvent* m_currentInputEvent;
 

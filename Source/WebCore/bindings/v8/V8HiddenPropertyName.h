@@ -36,7 +36,6 @@
 namespace WebCore {
 
 #define V8_HIDDEN_PROPERTIES(V) \
-    V(objectPrototype) \
     V(listener) \
     V(attributeListener) \
     V(scriptState) \
@@ -47,7 +46,8 @@ namespace WebCore {
     V(state) \
     V(domStringMap) \
     V(domTokenList) \
-    V(ownerNode)
+    V(ownerNode) \
+    V(textTracks)
 
     class V8HiddenPropertyName {
     public:

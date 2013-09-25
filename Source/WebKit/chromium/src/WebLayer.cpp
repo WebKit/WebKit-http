@@ -35,22 +35,24 @@
 #include <public/WebFloatPoint.h>
 #include <public/WebFloatRect.h>
 #include <public/WebSize.h>
+#include <public/WebTransformationMatrix.h>
 
 using namespace WebCore;
+using WebKit::WebTransformationMatrix;
 
 namespace {
 
-TransformationMatrix transformationMatrixFromSkMatrix44(const SkMatrix44& matrix)
+WebTransformationMatrix transformationMatrixFromSkMatrix44(const SkMatrix44& matrix)
 {
     double data[16];
     matrix.asColMajord(data);
-    return TransformationMatrix(data[0], data[1], data[2], data[3],
-                                data[4], data[5], data[6], data[7],
-                                data[8], data[9], data[10], data[11],
-                                data[12], data[13], data[14], data[15]);
+    return WebTransformationMatrix(data[0], data[1], data[2], data[3],
+                                   data[4], data[5], data[6], data[7],
+                                   data[8], data[9], data[10], data[11],
+                                   data[12], data[13], data[14], data[15]);
 }
 
-SkMatrix44 skMatrix44FromTransformationMatrix(const TransformationMatrix& matrix)
+SkMatrix44 skMatrix44FromTransformationMatrix(const WebTransformationMatrix& matrix)
 {
     SkMatrix44 skMatrix;
     skMatrix.set(0, 0, SkDoubleToMScalar(matrix.m11()));
@@ -228,6 +230,11 @@ void WebLayer::setSublayerTransform(const SkMatrix44& matrix)
     m_private->setSublayerTransform(transformationMatrixFromSkMatrix44(matrix));
 }
 
+void WebLayer::setSublayerTransform(const WebTransformationMatrix& matrix)
+{
+    m_private->setSublayerTransform(matrix);
+}
+
 SkMatrix44 WebLayer::sublayerTransform() const
 {
     return skMatrix44FromTransformationMatrix(m_private->sublayerTransform());
@@ -238,9 +245,44 @@ void WebLayer::setTransform(const SkMatrix44& matrix)
     m_private->setTransform(transformationMatrixFromSkMatrix44(matrix));
 }
 
+void WebLayer::setTransform(const WebTransformationMatrix& matrix)
+{
+    m_private->setTransform(matrix);
+}
+
 SkMatrix44 WebLayer::transform() const
 {
     return skMatrix44FromTransformationMatrix(m_private->transform());
+}
+
+void WebLayer::setDrawsContent(bool drawsContent)
+{
+    m_private->setIsDrawable(drawsContent);
+}
+
+bool WebLayer::drawsContent() const
+{
+    return m_private->drawsContent();
+}
+
+void WebLayer::setPreserves3D(bool preserve3D)
+{
+    m_private->setPreserves3D(preserve3D);
+}
+
+void WebLayer::setBackgroundColor(WebColor color)
+{
+    m_private->setBackgroundColor(color);
+}
+
+void WebLayer::setFilters(const WebFilterOperations& filters)
+{
+    m_private->setFilters(filters);
+}
+
+void WebLayer::setBackgroundFilters(const WebFilterOperations& filters)
+{
+    m_private->setBackgroundFilters(filters);
 }
 
 void WebLayer::setDebugBorderColor(const WebColor& color)
@@ -253,14 +295,9 @@ void WebLayer::setDebugBorderWidth(float width)
     m_private->setDebugBorderWidth(width);
 }
 
-void WebLayer::setFilters(const WebFilterOperations& filters)
+void WebLayer::setForceRenderSurface(bool forceRenderSurface)
 {
-    m_private->setFilters(filters.toFilterOperations());
-}
-
-void WebLayer::setBackgroundFilters(const WebFilterOperations& filters)
-{
-    m_private->setBackgroundFilters(filters.toFilterOperations());
+    m_private->setForceRenderSurface(forceRenderSurface);
 }
 
 WebLayer::WebLayer(const PassRefPtr<LayerChromium>& node)

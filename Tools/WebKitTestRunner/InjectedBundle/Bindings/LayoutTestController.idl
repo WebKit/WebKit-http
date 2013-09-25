@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,6 +41,8 @@ module WTR {
         void dumpStatusCallbacks();
         void dumpTitleChanges();
         void dumpFullScreenCallbacks();
+        void dumpFrameLoadCallbacks();
+        void dumpProgressFinishedCallback();
         void dumpConfigurationForViewport(in int deviceDPI, in int deviceWidth, in int deviceHeight, in int availableWidth, in int availableHeight);
 
         // Special options.
@@ -52,6 +54,7 @@ module WTR {
         void setAllowUniversalAccessFromFileURLs(in boolean value);
         void setAllowFileAccessFromFileURLs(in boolean value);
         void setFrameFlatteningEnabled(in boolean value);
+        void setPluginsEnabled(in boolean value);
         void setGeolocationPermission(in boolean value);
         void setJavaScriptCanAccessClipboard(in boolean value);
         void setPrivateBrowsingEnabled(in boolean value);
@@ -90,7 +93,6 @@ module WTR {
         boolean pauseAnimationAtTimeOnElementWithId(in DOMString animationName, in double time, in DOMString elementId);
         boolean pauseTransitionAtTimeOnElementWithId(in DOMString propertyName, in double time, in DOMString elementId);
         void suspendAnimations();
-        void resumeAnimations();
 
         // UserContent testing.
         void addUserScript(in DOMString source, in boolean runAtStart, in boolean allFrames);
@@ -126,6 +128,8 @@ module WTR {
         void setWillSendRequestReturnsNull(in boolean flag);
         
         void setShouldStayOnPageAfterHandlingBeforeUnload(in boolean flag);
+
+        void setDefersLoading(in boolean flag);
         
         // Focus testing.
         void addChromeInputField(in object callback);

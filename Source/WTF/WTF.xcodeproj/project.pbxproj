@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		143F611F1565F0F900DB514A /* RAMSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 143F611D1565F0F900DB514A /* RAMSize.cpp */; };
+		143F61201565F0F900DB514A /* RAMSize.h in Headers */ = {isa = PBXBuildFile; fileRef = 143F611E1565F0F900DB514A /* RAMSize.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		0FD81AC5154FB22E00983E72 /* FastBitVector.h in Headers */ = {isa = PBXBuildFile; fileRef = 0FD81AC4154FB22E00983E72 /* FastBitVector.h */; settings = {ATTRIBUTES = (); }; };
+		4F0321BC156AA8D1006EBAF6 /* BitArray.h in Headers */ = {isa = PBXBuildFile; fileRef = 4F0321BB156AA8D1006EBAF6 /* BitArray.h */; };
 		A876DBD8151816E500DADB95 /* Platform.h in Headers */ = {isa = PBXBuildFile; fileRef = A876DBD7151816E500DADB95 /* Platform.h */; };
 		A8A4737F151A825B004123FF /* Alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47254151A825A004123FF /* Alignment.h */; };
 		A8A47380151A825B004123FF /* AlwaysInline.h in Headers */ = {isa = PBXBuildFile; fileRef = A8A47255151A825A004123FF /* AlwaysInline.h */; };
@@ -240,6 +244,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		143F611D1565F0F900DB514A /* RAMSize.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RAMSize.cpp; sourceTree = "<group>"; };
+		143F611E1565F0F900DB514A /* RAMSize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RAMSize.h; sourceTree = "<group>"; };
+		0FD81AC4154FB22E00983E72 /* FastBitVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FastBitVector.h; sourceTree = "<group>"; };
+		4F0321BB156AA8D1006EBAF6 /* BitArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BitArray.h; sourceTree = "<group>"; };
 		5D247B6214689B8600E78B76 /* libWTF.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libWTF.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		5D247B6E14689C4700E78B76 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		5D247B6F14689C4700E78B76 /* CompilerVersion.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = CompilerVersion.xcconfig; sourceTree = "<group>"; };
@@ -534,6 +542,8 @@
 		A876DBD6151816E500DADB95 /* wtf */ = {
 			isa = PBXGroup;
 			children = (
+				143F611D1565F0F900DB514A /* RAMSize.cpp */,
+				143F611E1565F0F900DB514A /* RAMSize.h */,
 				A8A47254151A825A004123FF /* Alignment.h */,
 				A8A47255151A825A004123FF /* AlwaysInline.h */,
 				A8A47256151A825A004123FF /* ArrayBuffer.cpp */,
@@ -546,6 +556,7 @@
 				A8A4725D151A825A004123FF /* Atomics.h */,
 				A8A4725E151A825A004123FF /* AVLTree.h */,
 				A8A4725F151A825A004123FF /* Bitmap.h */,
+				4F0321BB156AA8D1006EBAF6 /* BitArray.h */,
 				A8A47260151A825A004123FF /* BitVector.cpp */,
 				A8A47261151A825A004123FF /* BitVector.h */,
 				A8A47264151A825A004123FF /* BlockStack.h */,
@@ -579,6 +590,7 @@
 				A8A4729E151A825A004123FF /* Encoder.h */,
 				A8A4729F151A825A004123FF /* ExportMacros.h */,
 				A8A472A0151A825A004123FF /* FastAllocBase.h */,
+				0FD81AC4154FB22E00983E72 /* FastBitVector.h */,
 				A8A472A1151A825A004123FF /* FastMalloc.cpp */,
 				A8A472A2151A825A004123FF /* FastMalloc.h */,
 				A8A472A3151A825A004123FF /* FixedArray.h */,
@@ -860,6 +872,7 @@
 				A8A47388151A825B004123FF /* Atomics.h in Headers */,
 				A8A47389151A825B004123FF /* AVLTree.h in Headers */,
 				A8A4738A151A825B004123FF /* Bitmap.h in Headers */,
+				4F0321BC156AA8D1006EBAF6 /* BitArray.h in Headers */,
 				A8A4738C151A825B004123FF /* BitVector.h in Headers */,
 				A8A4738E151A825B004123FF /* BlockStack.h in Headers */,
 				A8A4738F151A825B004123FF /* BloomFilter.h in Headers */,
@@ -1023,6 +1036,8 @@
 				A8A47480151A825B004123FF /* VMTags.h in Headers */,
 				A8A47487151A825B004123FF /* WTFThreadData.h in Headers */,
 				A8A4748C151A8264004123FF /* config.h in Headers */,
+				143F61201565F0F900DB514A /* RAMSize.h in Headers */,
+				0FD81AC5154FB22E00983E72 /* FastBitVector.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1168,6 +1183,7 @@
 				A8A47477151A825B004123FF /* URLEscape.cpp in Sources */,
 				A8A4747B151A825B004123FF /* URLSegments.cpp in Sources */,
 				A8A47486151A825B004123FF /* WTFThreadData.cpp in Sources */,
+				143F611F1565F0F900DB514A /* RAMSize.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1178,6 +1194,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5D247B7014689C4700E78B76 /* DebugRelease.xcconfig */;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = "$(DEAD_CODE_STRIPPING_debug)";
+				DEBUG_DEFINES = "$(DEBUG_DEFINES_debug)";
+				GCC_OPTIMIZATION_LEVEL = "$(GCC_OPTIMIZATION_LEVEL_debug)";
+				STRIP_INSTALLED_PRODUCT = "$(STRIP_INSTALLED_PRODUCT_debug)";
 			};
 			name = Debug;
 		};
@@ -1192,7 +1212,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5D247B7314689C4700E78B76 /* WTF.xcconfig */;
 			buildSettings = {
-				DEBUG_DEFINES = "$(DEBUG_DEFINES_debug)";
 			};
 			name = Debug;
 		};

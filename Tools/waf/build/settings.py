@@ -353,7 +353,11 @@ def common_configure(conf):
             conf.env.append_value('LIBPATH', os.path.join(msvclibs_dir, 'lib'))
             # wx settings
             global config
-            is_debug = (config == 'Debug')
+            is_debug = (config == 'Debug')            
+            # generate debug symbols even in release mode, as it helps debugging.
+            if not is_debug:
+                conf.env.append_value('CXXFLAGS', '/Zi')
+                conf.env.append_value('LINKFLAGS', '/debug')
             wxdefines, wxincludes, wxlibs, wxlibpaths = get_wxmsw_settings(wx_root, shared=True, unicode=True, debug=is_debug, wxPython=Options.options.wxpython)
             conf.env['CXXDEFINES_WX'] = wxdefines
             conf.env['CPPPATH_WX'] = wxincludes
@@ -493,6 +497,8 @@ def common_configure(conf):
             conf.check_cfg(path='curl-config', args='--cflags --libs', package='', uselib_store='CURL', mandatory=True)
 
         if not sys.platform.startswith('darwin'):
+            # this is needed to keep ld from hitting the 4gb process limit under Linux/Unix.
+            conf.env.append_value('LINKFLAGS', ['-Wl,--no-keep-memory'])
             conf.check_cfg(package='cairo', args='--cflags --libs', uselib_store='WX', mandatory=True)
             conf.check_cfg(package='pango', args='--cflags --libs', uselib_store='WX', mandatory=True)
             conf.check_cfg(package='gtk+-2.0', args='--cflags --libs', uselib_store='WX', mandatory=True)

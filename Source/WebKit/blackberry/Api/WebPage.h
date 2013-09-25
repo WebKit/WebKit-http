@@ -38,6 +38,7 @@ namespace WebCore {
 class ChromeClientBlackBerry;
 class Frame;
 class FrameLoaderClientBlackBerry;
+class PagePopupBlackBerry;
 }
 
 class WebDOMDocument;
@@ -61,11 +62,14 @@ class BackingStore;
 class BackingStoreClient;
 class BackingStorePrivate;
 class RenderQueue;
+class WebOverlay;
 class WebPageClient;
 class WebPageCompositor;
 class WebPageGroupLoadDeferrer;
 class WebPagePrivate;
+class WebSelectionOverlay;
 class WebSettings;
+class WebTapHighlight;
 class WebViewportArguments;
 
 enum JavaScriptDataType { JSUndefined = 0, JSNull, JSBoolean, JSNumber, JSString, JSObject, JSException, JSDataTypeMax };
@@ -133,7 +137,6 @@ public:
 
     // For conversion to mouse events.
     void touchEventCancel();
-    void touchEventCancelAndClearFocusedNode();
     bool touchPointAsMouseEvent(const Platform::TouchPoint&);
 
     // Returns true if the key stroke was handled by WebKit.
@@ -195,6 +198,7 @@ public:
     void clearCache();
     void clearLocalStorage();
     void clearCredentials();
+    void clearAutofillData();
     void clearNeverRememberSites();
 
     void runLayoutTests();
@@ -309,6 +313,7 @@ public:
     void enablePasswordEcho();
     void disablePasswordEcho();
     void dispatchInspectorMessage(const std::string& message);
+    void inspectCurrentContextElement();
 
     // FIXME: Needs API review on this header. See PR #120402.
     void notifyPagePause();
@@ -332,6 +337,29 @@ public:
     void setUserViewportArguments(const WebViewportArguments&);
     void resetUserViewportArguments();
 
+    WebTapHighlight* tapHighlight() const;
+    void setTapHighlight(WebTapHighlight*);
+
+    WebSelectionOverlay* selectionOverlay() const;
+
+    // Adds an overlay that can be modified on the WebKit thread, and
+    // whose attributes can be overridden on the compositing thread.
+    void addOverlay(WebOverlay*);
+    void removeOverlay(WebOverlay*);
+
+    // Adds an overlay that can only be modified on the compositing thread.
+    void addCompositingThreadOverlay(WebOverlay*);
+    void removeCompositingThreadOverlay(WebOverlay*);
+
+    // Popup client
+    void initPopupWebView(BlackBerry::WebKit::WebPage*);
+    void popupOpened(WebCore::PagePopupBlackBerry* webPopup);
+    void popupClosed();
+    bool hasOpenedPopup() const;
+    WebCore::PagePopupBlackBerry* popup();
+
+    void autofillTextField(const std::string&);
+
 private:
     virtual ~WebPage();
 
@@ -344,6 +372,7 @@ private:
     friend class WebKit::WebPagePrivate;
     friend class WebCore::ChromeClientBlackBerry;
     friend class WebCore::FrameLoaderClientBlackBerry;
+    friend class WebCore::PagePopupBlackBerry;
     WebPagePrivate* d;
 };
 }

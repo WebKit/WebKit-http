@@ -56,6 +56,9 @@
 #include "Interpreter.h"
 #include "Lookup.h"
 #include "MathObject.h"
+#include "NameConstructor.h"
+#include "NameInstance.h"
+#include "NamePrototype.h"
 #include "NativeErrorConstructor.h"
 #include "NativeErrorPrototype.h"
 #include "NumberConstructor.h"
@@ -76,9 +79,9 @@
 
 namespace JSC {
 
-const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &JSVariableObject::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
+const ClassInfo JSGlobalObject::s_info = { "GlobalObject", &JSSegmentedVariableObject::s_info, 0, ExecState::globalObjectTable, CREATE_METHOD_TABLE(JSGlobalObject) };
 
-const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript };
+const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = { &allowsAccessFrom, &supportsProfiling, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptExperimentsEnabled };
 
 /* Source for JSGlobalObject.lut.h
 @begin globalObjectTable
@@ -116,15 +119,13 @@ JSGlobalObject::~JSGlobalObject()
     if (m_debugger)
         m_debugger->detach(this);
 
-    Profiler** profiler = Profiler::enabledProfilerReference();
-    if (UNLIKELY(*profiler != 0)) {
-        (*profiler)->stopProfiling(this);
-    }
+    if (Profiler* profiler = globalData().enabledProfiler())
+        profiler->stopProfiling(this);
 }
 
 void JSGlobalObject::destroy(JSCell* cell)
 {
-    jsCast<JSGlobalObject*>(cell)->JSGlobalObject::~JSGlobalObject();
+    static_cast<JSGlobalObject*>(cell)->JSGlobalObject::~JSGlobalObject();
 }
 
 void JSGlobalObject::init(JSObject* thisValue)
@@ -142,27 +143,27 @@ void JSGlobalObject::init(JSObject* thisValue)
     reset(prototype());
 }
 
-void JSGlobalObject::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSGlobalObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
-    if (thisObject->symbolTablePut(exec, propertyName, value, slot.isStrictMode()))
+    if (symbolTablePut(thisObject, exec, propertyName, value, slot.isStrictMode()))
         return;
-    JSVariableObject::put(thisObject, exec, propertyName, value, slot);
+    JSSegmentedVariableObject::put(thisObject, exec, propertyName, value, slot);
 }
 
-void JSGlobalObject::putDirectVirtual(JSObject* object, ExecState* exec, const Identifier& propertyName, JSValue value, unsigned attributes)
+void JSGlobalObject::putDirectVirtual(JSObject* object, ExecState* exec, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
-    if (thisObject->symbolTablePutWithAttributes(exec->globalData(), propertyName, value, attributes))
+    if (symbolTablePutWithAttributes(thisObject, exec->globalData(), propertyName, value, attributes))
         return;
 
     JSValue valueBefore = thisObject->getDirect(exec->globalData(), propertyName);
     PutPropertySlot slot;
-    JSVariableObject::put(thisObject, exec, propertyName, value, slot);
+    JSSegmentedVariableObject::put(thisObject, exec, propertyName, value, slot);
     if (!valueBefore) {
         JSValue valueAfter = thisObject->getDirect(exec->globalData(), propertyName);
         if (valueAfter)
@@ -170,12 +171,12 @@ void JSGlobalObject::putDirectVirtual(JSObject* object, ExecState* exec, const I
     }
 }
 
-bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
+bool JSGlobalObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
     PropertySlot slot;
     // silently ignore attempts to add accessors aliasing vars.
-    if (descriptor.isAccessorDescriptor() && thisObject->symbolTableGet(propertyName, slot))
+    if (descriptor.isAccessorDescriptor() && symbolTableGet(thisObject, propertyName, slot))
         return false;
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 }
@@ -205,8 +206,8 @@ void JSGlobalObject::reset(JSValue prototype)
     m_applyFunction.set(exec->globalData(), this, applyFunction);
     m_objectPrototype.set(exec->globalData(), this, ObjectPrototype::create(exec, this, ObjectPrototype::createStructure(exec->globalData(), this, jsNull())));
     GetterSetter* protoAccessor = GetterSetter::create(exec);
-    protoAccessor->setGetter(exec->globalData(), JSFunction::create(exec, this, 0, Identifier(), globalFuncProtoGetter));
-    protoAccessor->setSetter(exec->globalData(), JSFunction::create(exec, this, 0, Identifier(), globalFuncProtoSetter));
+    protoAccessor->setGetter(exec->globalData(), JSFunction::create(exec, this, 0, "", globalFuncProtoGetter));
+    protoAccessor->setSetter(exec->globalData(), JSFunction::create(exec, this, 0, "", globalFuncProtoSetter));
     m_objectPrototype->putDirectAccessor(exec->globalData(), exec->propertyNames().underscoreProto, protoAccessor, Accessor | DontEnum);
     m_functionPrototype->structure()->setPrototypeWithoutTransition(exec->globalData(), m_objectPrototype.get());
 
@@ -241,8 +242,8 @@ void JSGlobalObject::reset(JSValue prototype)
 
     m_methodCallDummy.set(exec->globalData(), this, constructEmptyObject(exec));
 
-    ErrorPrototype* errorPrototype = ErrorPrototype::create(exec, this, ErrorPrototype::createStructure(exec->globalData(), this, m_objectPrototype.get()));
-    m_errorStructure.set(exec->globalData(), this, ErrorInstance::createStructure(exec->globalData(), this, errorPrototype));
+    m_errorPrototype.set(exec->globalData(), this, ErrorPrototype::create(exec, this, ErrorPrototype::createStructure(exec->globalData(), this, m_objectPrototype.get())));
+    m_errorStructure.set(exec->globalData(), this, ErrorInstance::createStructure(exec->globalData(), this, m_errorPrototype.get()));
 
     // Constructors
 
@@ -256,9 +257,9 @@ void JSGlobalObject::reset(JSValue prototype)
 
     m_regExpConstructor.set(exec->globalData(), this, RegExpConstructor::create(exec, this, RegExpConstructor::createStructure(exec->globalData(), this, m_functionPrototype.get()), m_regExpPrototype.get()));
 
-    m_errorConstructor.set(exec->globalData(), this, ErrorConstructor::create(exec, this, ErrorConstructor::createStructure(exec->globalData(), this, m_functionPrototype.get()), errorPrototype));
+    m_errorConstructor.set(exec->globalData(), this, ErrorConstructor::create(exec, this, ErrorConstructor::createStructure(exec->globalData(), this, m_functionPrototype.get()), m_errorPrototype.get()));
 
-    Structure* nativeErrorPrototypeStructure = NativeErrorPrototype::createStructure(exec->globalData(), this, errorPrototype);
+    Structure* nativeErrorPrototypeStructure = NativeErrorPrototype::createStructure(exec->globalData(), this, m_errorPrototype.get());
     Structure* nativeErrorStructure = NativeErrorConstructor::createStructure(exec->globalData(), this, m_functionPrototype.get());
     m_evalErrorConstructor.set(exec->globalData(), this, NativeErrorConstructor::create(exec, this, nativeErrorStructure, nativeErrorPrototypeStructure, "EvalError"));
     m_rangeErrorConstructor.set(exec->globalData(), this, NativeErrorConstructor::create(exec, this, nativeErrorStructure, nativeErrorPrototypeStructure, "RangeError"));
@@ -275,7 +276,7 @@ void JSGlobalObject::reset(JSValue prototype)
     m_numberPrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, numberConstructor, DontEnum);
     m_datePrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, dateConstructor, DontEnum);
     m_regExpPrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, m_regExpConstructor.get(), DontEnum);
-    errorPrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, m_errorConstructor.get(), DontEnum);
+    m_errorPrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, m_errorConstructor.get(), DontEnum);
 
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "Object"), objectConstructor, DontEnum);
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "Function"), functionConstructor, DontEnum);
@@ -293,7 +294,7 @@ void JSGlobalObject::reset(JSValue prototype)
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "TypeError"), m_typeErrorConstructor.get(), DontEnum);
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "URIError"), m_URIErrorConstructor.get(), DontEnum);
 
-    m_evalFunction.set(exec->globalData(), this, JSFunction::create(exec, this, 1, exec->propertyNames().eval, globalFuncEval));
+    m_evalFunction.set(exec->globalData(), this, JSFunction::create(exec, this, 1, exec->propertyNames().eval.ustring(), globalFuncEval));
     putDirectWithoutTransition(exec->globalData(), exec->propertyNames().eval, m_evalFunction.get(), DontEnum);
 
     putDirectWithoutTransition(exec->globalData(), Identifier(exec, "JSON"), JSONObject::create(exec, this, JSONObject::createStructure(exec->globalData(), this, m_objectPrototype.get())), DontEnum);
@@ -306,12 +307,21 @@ void JSGlobalObject::reset(JSValue prototype)
     };
     addStaticGlobals(staticGlobals, WTF_ARRAY_LENGTH(staticGlobals));
 
+    if (m_experimentsEnabled) {
+        NamePrototype* privateNamePrototype = NamePrototype::create(exec, NamePrototype::createStructure(exec->globalData(), this, m_objectPrototype.get()));
+        m_privateNameStructure.set(exec->globalData(), this, NameInstance::createStructure(exec->globalData(), this, privateNamePrototype));
+
+        JSCell* privateNameConstructor = NameConstructor::create(exec, this, NameConstructor::createStructure(exec->globalData(), this, m_functionPrototype.get()), privateNamePrototype);
+        privateNamePrototype->putDirectWithoutTransition(exec->globalData(), exec->propertyNames().constructor, privateNameConstructor, DontEnum);
+        putDirectWithoutTransition(exec->globalData(), Identifier(exec, "Name"), privateNameConstructor, DontEnum);
+    }
+
     resetPrototype(exec->globalData(), prototype);
 }
 
 void JSGlobalObject::createThrowTypeError(ExecState* exec)
 {
-    JSFunction* thrower = JSFunction::create(exec, this, 0, Identifier(), globalFuncThrowTypeError);
+    JSFunction* thrower = JSFunction::create(exec, this, 0, "", globalFuncThrowTypeError);
     GetterSetter* getterSetter = GetterSetter::create(exec);
     getterSetter->setGetter(exec->globalData(), thrower);
     getterSetter->setSetter(exec->globalData(), thrower);
@@ -335,7 +345,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
     COMPILE_ASSERT(StructureFlags & OverridesVisitChildren, OverridesVisitChildrenWithoutSettingFlag);
     ASSERT(thisObject->structure()->typeInfo().overridesVisitChildren());
-    JSVariableObject::visitChildren(thisObject, visitor);
+    JSSegmentedVariableObject::visitChildren(thisObject, visitor);
 
     visitIfNeeded(visitor, &thisObject->m_globalScopeChain);
     visitIfNeeded(visitor, &thisObject->m_methodCallDummy);
@@ -362,6 +372,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitIfNeeded(visitor, &thisObject->m_numberPrototype);
     visitIfNeeded(visitor, &thisObject->m_datePrototype);
     visitIfNeeded(visitor, &thisObject->m_regExpPrototype);
+    visitIfNeeded(visitor, &thisObject->m_errorPrototype);
 
     visitIfNeeded(visitor, &thisObject->m_argumentsStructure);
     visitIfNeeded(visitor, &thisObject->m_arrayStructure);
@@ -377,21 +388,11 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitIfNeeded(visitor, &thisObject->m_boundFunctionStructure);
     visitIfNeeded(visitor, &thisObject->m_namedFunctionStructure);
     visitIfNeeded(visitor, &thisObject->m_numberObjectStructure);
+    visitIfNeeded(visitor, &thisObject->m_privateNameStructure);
     visitIfNeeded(visitor, &thisObject->m_regExpMatchesArrayStructure);
     visitIfNeeded(visitor, &thisObject->m_regExpStructure);
     visitIfNeeded(visitor, &thisObject->m_stringObjectStructure);
     visitIfNeeded(visitor, &thisObject->m_internalFunctionStructure);
-
-    if (thisObject->m_registerArray) {
-        // Outside the execution of global code, when our variables are torn off,
-        // we can mark the torn-off array.
-        visitor.appendValues(thisObject->m_registerArray.get(), thisObject->m_registerArraySize);
-    } else if (thisObject->m_registers) {
-        // During execution of global code, when our variables are in the register file,
-        // the symbol table tells us how many variables there are, and registers
-        // points to where they end, and the registers used for execution begin.
-        visitor.appendValues(thisObject->m_registers - thisObject->symbolTable().size(), thisObject->symbolTable().size());
-    }
 }
 
 ExecState* JSGlobalObject::globalExec()
@@ -399,26 +400,9 @@ ExecState* JSGlobalObject::globalExec()
     return CallFrame::create(m_globalCallFrame + RegisterFile::CallFrameHeaderSize);
 }
 
-void JSGlobalObject::resizeRegisters(size_t newSize)
-{
-    // Previous duplicate symbols may have created spare capacity in m_registerArray.
-    if (newSize <= m_registerArraySize)
-        return;
-
-    size_t oldSize = m_registerArraySize;
-    OwnArrayPtr<WriteBarrier<Unknown> > registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[newSize]);
-    for (size_t i = 0; i < oldSize; ++i)
-        registerArray[i].set(globalData(), this, m_registerArray[i].get());
-    for (size_t i = oldSize; i < newSize; ++i)
-        registerArray[i].setUndefined();
-
-    WriteBarrier<Unknown>* registers = registerArray.get();
-    setRegisters(registers, registerArray.release(), newSize);
-}
-
 void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
 {
-    resizeRegisters(symbolTable().size() + count);
+    addRegisters(count);
 
     for (int i = 0; i < count; ++i) {
         GlobalPropertyInfo& global = globals[i];
@@ -431,20 +415,20 @@ void JSGlobalObject::addStaticGlobals(GlobalPropertyInfo* globals, int count)
     }
 }
 
-bool JSGlobalObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSGlobalObject::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(cell);
-    if (getStaticFunctionSlot<JSVariableObject>(exec, ExecState::globalObjectTable(exec), thisObject, propertyName, slot))
+    if (getStaticFunctionSlot<JSSegmentedVariableObject>(exec, ExecState::globalObjectTable(exec), thisObject, propertyName, slot))
         return true;
-    return thisObject->symbolTableGet(propertyName, slot);
+    return symbolTableGet(thisObject, propertyName, slot);
 }
 
-bool JSGlobalObject::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSGlobalObject::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSGlobalObject* thisObject = jsCast<JSGlobalObject*>(object);
-    if (getStaticFunctionDescriptor<JSVariableObject>(exec, ExecState::globalObjectTable(exec), thisObject, propertyName, descriptor))
+    if (getStaticFunctionDescriptor<JSSegmentedVariableObject>(exec, ExecState::globalObjectTable(exec), thisObject, propertyName, descriptor))
         return true;
-    return thisObject->symbolTableGet(propertyName, descriptor);
+    return symbolTableGet(thisObject, propertyName, descriptor);
 }
 
 void JSGlobalObject::clearRareData(JSCell* cell)
@@ -459,7 +443,7 @@ DynamicGlobalObjectScope::DynamicGlobalObjectScope(JSGlobalData& globalData, JSG
     if (!m_dynamicGlobalObjectSlot) {
 #if ENABLE(ASSEMBLER)
         if (ExecutableAllocator::underMemoryPressure())
-            globalData.heap.discardAllCompiledCode();
+            globalData.heap.deleteAllCompiledCode();
 #endif
 
         m_dynamicGlobalObjectSlot = dynamicGlobalObject;

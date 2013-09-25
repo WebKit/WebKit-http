@@ -27,13 +27,13 @@
 
 #include "Attribute.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "FormDataList.h"
 #include "HTMLNames.h"
 #include "HTMLSelectElement.h"
 #include "HTMLOptionElement.h"
 #include "SSLKeyGenerator.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "Text.h"
 #include <wtf/StdLibExtras.h>
 
@@ -86,7 +86,7 @@ inline HTMLKeygenElement::HTMLKeygenElement(const QualifiedName& tagName, Docume
         option->appendChild(Text::create(document, keys[i]), ec);
     }
 
-    ASSERT(!hasShadowRoot());
+    ASSERT(!shadow());
     RefPtr<ShadowRoot> root = ShadowRoot::create(this, ShadowRoot::CreatingUserAgentShadowRoot);
     root->appendChild(select, ec);
 }
@@ -96,13 +96,13 @@ PassRefPtr<HTMLKeygenElement> HTMLKeygenElement::create(const QualifiedName& tag
     return adoptRef(new HTMLKeygenElement(tagName, document, form));
 }
 
-void HTMLKeygenElement::parseAttribute(Attribute* attr)
+void HTMLKeygenElement::parseAttribute(const Attribute& attribute)
 {
     // Reflect disabled attribute on the shadow select element
-    if (attr->name() == disabledAttr)
-        shadowSelect()->setAttribute(attr->name(), attr->value());
+    if (attribute.name() == disabledAttr)
+        shadowSelect()->setAttribute(attribute.name(), attribute.value());
 
-    HTMLFormControlElement::parseAttribute(attr);
+    HTMLFormControlElement::parseAttribute(attribute);
 }
 
 bool HTMLKeygenElement::appendFormData(FormDataList& encoded_values, bool)
@@ -131,9 +131,8 @@ void HTMLKeygenElement::reset()
 
 HTMLSelectElement* HTMLKeygenElement::shadowSelect() const
 {
-    ASSERT(hasShadowRoot());
-    ShadowRoot* shadow = shadowTree()->oldestShadowRoot();
-    return shadow ? toHTMLSelectElement(shadow->firstChild()) : 0;
+    ShadowRoot* root = this->shadow()->oldestShadowRoot();
+    return root ? toHTMLSelectElement(root->firstChild()) : 0;
 }
 
 } // namespace

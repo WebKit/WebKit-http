@@ -39,7 +39,7 @@ class Node;
 class RenderNamedFlowThread;
 class RenderObject;
 class RenderStyle;
-class ShadowTree;
+class ElementShadow;
 
 class NodeRenderingContext {
 public:
@@ -49,6 +49,7 @@ public:
 
     Node* node() const;
     ContainerNode* parentNodeForRenderingAndStyle() const;
+    bool resetStyleInheritance() const;
     RenderObject* parentRenderer() const;
     RenderObject* nextRenderer() const;
     RenderObject* previousRenderer() const;
@@ -59,8 +60,6 @@ public:
     PassRefPtr<RenderStyle> releaseStyle();
 
     bool shouldCreateRenderer() const;
-
-    void hostChildrenChanged();
 
     bool isOnUpperEncapsulationBoundary() const;
     bool isOnEncapsulationBoundary() const;
@@ -83,7 +82,8 @@ private:
     AttachingPhase m_phase;
     Node* m_node;
     ContainerNode* m_parentNodeForRenderingAndStyle;
-    ShadowTree* m_visualParentShadowTree;
+    bool m_resetStyleInheritance;
+    ElementShadow* m_visualParentShadow;
     InsertionPoint* m_insertionPoint;
     RefPtr<RenderStyle> m_style;
     RenderNamedFlowThread* m_parentFlowRenderer;
@@ -99,6 +99,12 @@ inline ContainerNode* NodeRenderingContext::parentNodeForRenderingAndStyle() con
 {
     ASSERT(m_phase != Calculating);
     return m_parentNodeForRenderingAndStyle;
+}
+
+inline bool NodeRenderingContext::resetStyleInheritance() const
+{
+    ASSERT(m_phase != Calculating);
+    return m_resetStyleInheritance;
 }
 
 inline RenderStyle* NodeRenderingContext::style() const

@@ -62,22 +62,23 @@ public:
 
     bool isSecureTransitionTo(const KURL&) const;
 
-    void enforceSandboxFlags(SandboxFlags mask) { m_sandboxFlags |= mask; }
+    void enforceSandboxFlags(SandboxFlags mask);
     bool isSandboxed(SandboxFlags mask) const { return m_sandboxFlags & mask; }
-
-    static SandboxFlags parseSandboxPolicy(const String& policy);
-
-    bool mayDisplaySeamlessWithParent() const { return m_mayDisplaySeamlessWithParent; }
-
-protected:
-    SecurityContext();
-    ~SecurityContext();
 
     // Explicitly override the security origin for this security context.
     // Note: It is dangerous to change the security origin of a script context
     //       that already contains content.
     void setSecurityOrigin(PassRefPtr<SecurityOrigin>);
-    void setContentSecurityPolicy(PassRefPtr<ContentSecurityPolicy>);
+
+    static SandboxFlags parseSandboxPolicy(const String& policy);
+
+protected:
+    SecurityContext();
+    virtual ~SecurityContext();
+
+    virtual void didUpdateSecurityOrigin();
+
+    void setContentSecurityPolicy(PassOwnPtr<ContentSecurityPolicy>);
 
     void didFailToInitializeSecurityOrigin() { m_haveInitializedSecurityOrigin = false; }
     bool haveInitializedSecurityOrigin() const { return m_haveInitializedSecurityOrigin; }
@@ -90,7 +91,7 @@ private:
     bool m_haveInitializedSecurityOrigin;
     SandboxFlags m_sandboxFlags;
     RefPtr<SecurityOrigin> m_securityOrigin;
-    RefPtr<ContentSecurityPolicy> m_contentSecurityPolicy;
+    OwnPtr<ContentSecurityPolicy> m_contentSecurityPolicy;
 };
 
 } // namespace WebCore

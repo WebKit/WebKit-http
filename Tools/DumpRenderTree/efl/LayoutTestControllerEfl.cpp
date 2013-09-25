@@ -7,6 +7,7 @@
  * Copyright (C) 2010 Joone Hur <joone@kldp.org>
  * Copyright (C) 2011 ProFUSION Embedded Systems
  * Copyright (C) 2011 Samsung Electronics
+ * Copyright (C) 2012 Intel Corporation
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -142,11 +143,6 @@ JSRetainPtr<JSStringRef> LayoutTestController::pageProperty(const char* property
     return propertyValue;
 }
 
-bool LayoutTestController::isPageBoxVisible(int pageIndex) const
-{
-    return DumpRenderTreeSupportEfl::isPageBoxVisible(browser->mainFrame(), pageIndex);
-}
-
 JSRetainPtr<JSStringRef> LayoutTestController::pageSizeAndMarginsInPixels(int pageNumber, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft) const
 {
     String pageSizeAndMargins = DumpRenderTreeSupportEfl::pageSizeAndMarginsInPixels(browser->mainFrame(), pageNumber, width, height, marginTop, marginRight, marginBottom, marginLeft);
@@ -182,14 +178,34 @@ void LayoutTestController::notifyDone()
 
 JSStringRef LayoutTestController::pathToLocalResource(JSContextRef context, JSStringRef url)
 {
-    // Function introduced in r28690. This may need special-casing on Windows.
-    return JSStringRetain(url); // Do nothing on Unix.
+    String requestedUrl(url->characters(), url->length());
+    String resourceRoot;
+    String requestedRoot;
+
+    if (requestedUrl.find("LayoutTests") != notFound) {
+        // If the URL contains LayoutTests we need to remap that to
+        // LOCAL_RESOURCE_ROOT which is the path of the LayoutTests directory
+        // within the WebKit source tree.
+        requestedRoot = "/tmp/LayoutTests";
+        resourceRoot = getenv("LOCAL_RESOURCE_ROOT");
+    } else if (requestedUrl.find("tmp") != notFound) {
+        // If the URL is a child of /tmp we need to convert it to be a child
+        // DUMPRENDERTREE_TEMP replace tmp with DUMPRENDERTREE_TEMP
+        requestedRoot = "/tmp";
+        resourceRoot = getenv("DUMPRENDERTREE_TEMP");
+    }
+
+    size_t indexOfRootStart = requestedUrl.reverseFind(requestedRoot);
+    size_t indexOfSeparatorAfterRoot = indexOfRootStart + requestedRoot.length();
+    String fullPathToUrl = "file://" + resourceRoot + requestedUrl.substring(indexOfSeparatorAfterRoot);
+
+    return JSStringCreateWithUTF8CString(fullPathToUrl.utf8().data());
 }
 
 void LayoutTestController::queueLoad(JSStringRef url, JSStringRef target)
 {
     WebCore::KURL baseURL(WebCore::KURL(), String::fromUTF8(ewk_frame_uri_get(browser->mainFrame())));
-    WebCore::KURL absoluteURL(baseURL, WTF::String(url->characters(), url->length()));
+    WebCore::KURL absoluteURL(baseURL, WTF::String(url->ustring().impl()));
 
     JSRetainPtr<JSStringRef> jsAbsoluteURL(
         Adopt, JSStringCreateWithUTF8CString(absoluteURL.string().utf8().data()));
@@ -207,13 +223,15 @@ void LayoutTestController::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
     ewk_cookies_policy_set(alwaysAcceptCookies ? EWK_COOKIE_JAR_ACCEPT_ALWAYS : EWK_COOKIE_JAR_ACCEPT_NEVER);
 }
 
-void LayoutTestController::setCustomPolicyDelegate(bool, bool)
+void LayoutTestController::setCustomPolicyDelegate(bool enabled, bool permissive)
 {
-    notImplemented();
+    policyDelegateEnabled = enabled;
+    policyDelegatePermissive = permissive;
 }
 
 void LayoutTestController::waitForPolicyDelegate()
 {
+    setCustomPolicyDelegate(true, false);
     waitForPolicy = true;
     setWaitToDump(true);
 }
@@ -275,7 +293,7 @@ void LayoutTestController::setUserStyleSheetLocation(JSStringRef path)
 
 void LayoutTestController::setValueForUser(JSContextRef context, JSValueRef nodeObject, JSStringRef value)
 {
-    DumpRenderTreeSupportEfl::setValueForUser(context, nodeObject, value);
+    DumpRenderTreeSupportEfl::setValueForUser(context, nodeObject, WTF::String(value->ustring().impl()));
 }
 
 void LayoutTestController::setViewModeMediaFeature(JSStringRef mode)
@@ -332,9 +350,9 @@ void LayoutTestController::setPrivateBrowsingEnabled(bool flag)
     ewk_view_setting_private_browsing_set(browser->mainView(), flag);
 }
 
-void LayoutTestController::setJavaScriptCanAccessClipboard(bool)
+void LayoutTestController::setJavaScriptCanAccessClipboard(bool flag)
 {
-    notImplemented();
+    ewk_view_setting_scripts_can_access_clipboard_set(browser->mainView(), flag);
 }
 
 void LayoutTestController::setXSSAuditorEnabled(bool flag)
@@ -454,14 +472,6 @@ void LayoutTestController::setIconDatabaseEnabled(bool enabled)
         ewk_settings_icon_database_path_set(databasePath.utf8().data());
 }
 
-void LayoutTestController::setJavaScriptProfilingEnabled(bool enabled)
-{
-    if (enabled)
-        setDeveloperExtrasEnabled(enabled);
-
-    DumpRenderTreeSupportEfl::setJavaScriptProfilingEnabled(browser->mainView(), enabled);
-}
-
 void LayoutTestController::setSelectTrailingWhitespaceEnabled(bool flag)
 {
     DumpRenderTreeSupportEfl::setSelectTrailingWhitespaceEnabled(browser->mainView(), flag);
@@ -484,9 +494,9 @@ bool LayoutTestController::elementDoesAutoCompleteForElementWithId(JSStringRef i
     return DumpRenderTreeSupportEfl::elementDoesAutoCompleteForElementWithId(mainFrame, elementId);
 }
 
-void LayoutTestController::execCommand(JSStringRef, JSStringRef)
+void LayoutTestController::execCommand(JSStringRef name, JSStringRef value)
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::executeCoreCommandByName(browser->mainView(), name->ustring().utf8().data(), value->ustring().utf8().data());
 }
 
 bool LayoutTestController::findString(JSContextRef context, JSStringRef target, JSObjectRef optionsArray)
@@ -520,17 +530,53 @@ bool LayoutTestController::findString(JSContextRef context, JSStringRef target, 
             options |= WebCore::StartInSelection;
     }
 
-    return DumpRenderTreeSupportEfl::findString(browser->mainView(), target->ustring().utf8().data(), options);
+    return DumpRenderTreeSupportEfl::findString(browser->mainView(), WTF::String(target->ustring().impl()), options);
 }
 
 bool LayoutTestController::isCommandEnabled(JSStringRef name)
 {
-    return false;
+    return DumpRenderTreeSupportEfl::isCommandEnabled(browser->mainView(), name->ustring().utf8().data());
 }
 
-void LayoutTestController::setCacheModel(int)
+void LayoutTestController::setCacheModel(int cacheModel)
 {
-    notImplemented();
+    unsigned int cacheTotalCapacity;
+    unsigned int cacheMinDeadCapacity;
+    unsigned int cacheMaxDeadCapacity;
+    double deadDecodedDataDeletionInterval;
+    unsigned int pageCacheCapacity;
+
+    // These constants are derived from the Mac cache model enum in Source/WebKit/mac/WebView/WebPreferences.h.
+    switch (cacheModel) {
+    case 0: // WebCacheModelDocumentViewer
+        pageCacheCapacity = 0;
+        cacheTotalCapacity = 0;
+        cacheMinDeadCapacity = 0;
+        cacheMaxDeadCapacity = 0;
+        deadDecodedDataDeletionInterval = 0;
+        break;
+    case 1: // WebCacheModelDocumentBrowser
+        pageCacheCapacity = 2;
+        cacheTotalCapacity = 16 * 1024 * 1024;
+        cacheMinDeadCapacity = cacheTotalCapacity / 8;
+        cacheMaxDeadCapacity = cacheTotalCapacity / 4;
+        deadDecodedDataDeletionInterval = 0;
+        break;
+    case 3: // WebCacheModelPrimaryWebBrowser
+        pageCacheCapacity = 3;
+        cacheTotalCapacity = 32 * 1024 * 1024;
+        cacheMinDeadCapacity = cacheTotalCapacity / 4;
+        cacheMaxDeadCapacity = cacheTotalCapacity / 2;
+        deadDecodedDataDeletionInterval = 60;
+        break;
+    default:
+        fprintf(stderr, "trying to set an invalid value %d for the Cache model.", cacheModel);
+        return;
+    }
+
+    ewk_settings_object_cache_capacity_set(cacheMinDeadCapacity, cacheMaxDeadCapacity, cacheTotalCapacity);
+    DumpRenderTreeSupportEfl::setDeadDecodedDataDeletionInterval(deadDecodedDataDeletionInterval);
+    ewk_settings_page_cache_capacity_set(pageCacheCapacity);
 }
 
 void LayoutTestController::setPersistentUserStyleSheetLocation(JSStringRef)
@@ -548,16 +594,18 @@ void LayoutTestController::clearAllApplicationCaches()
     ewk_settings_application_cache_clear();
 }
 
-void LayoutTestController::setApplicationCacheOriginQuota(unsigned long long)
+void LayoutTestController::setApplicationCacheOriginQuota(unsigned long long quota)
 {
-    // FIXME: Implement to support application cache quotas.
-    notImplemented();
+    Ewk_Security_Origin* origin = ewk_frame_security_origin_get(browser->mainFrame());
+    ewk_security_origin_application_cache_quota_set(origin, quota);
+    ewk_security_origin_free(origin);
 }
 
-void LayoutTestController::clearApplicationCacheForOrigin(OpaqueJSString*)
+void LayoutTestController::clearApplicationCacheForOrigin(OpaqueJSString* url)
 {
-    // FIXME: Implement to support deleting all application caches for an origin.
-    notImplemented();
+    Ewk_Security_Origin* origin = ewk_security_origin_new_from_string(url->ustring().utf8().data());
+    ewk_security_origin_application_cache_clear(origin);
+    ewk_security_origin_free(origin);
 }
 
 long long LayoutTestController::localStorageDiskUsageForOrigin(JSStringRef)
@@ -582,7 +630,7 @@ long long LayoutTestController::applicationCacheDiskUsageForOrigin(JSStringRef)
 
 void LayoutTestController::clearAllDatabases()
 {
-    ewk_settings_web_database_clear();
+    ewk_web_database_remove_all();
 }
 
 void LayoutTestController::setDatabaseQuota(unsigned long long quota)
@@ -653,16 +701,6 @@ unsigned LayoutTestController::numberOfActiveAnimations() const
     return DumpRenderTreeSupportEfl::activeAnimationsCount(browser->mainFrame());
 }
 
-void LayoutTestController::suspendAnimations() const
-{
-    DumpRenderTreeSupportEfl::suspendAnimations(browser->mainFrame());
-}
-
-void LayoutTestController::resumeAnimations() const
-{
-    DumpRenderTreeSupportEfl::resumeAnimations(browser->mainFrame());
-}
-
 static inline bool toBool(JSStringRef value)
 {
     return equals(value, "true") || equals(value, "1");
@@ -693,18 +731,26 @@ void LayoutTestController::overridePreference(JSStringRef key, JSStringRef value
         ewk_view_setting_enable_hyperlink_auditing_set(browser->mainView(), toBool(value));
     else if (equals(key, "WebKitTabToLinksPreferenceKey"))
         ewk_view_setting_include_links_in_focus_chain_set(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitOfflineWebApplicationCacheEnabled"))
+        ewk_view_setting_application_cache_set(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitLoadSiteIconsKey"))
+        DumpRenderTreeSupportEfl::setLoadsSiteIconsIgnoringImageLoadingSetting(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitCSSGridLayoutEnabled"))
+        DumpRenderTreeSupportEfl::setCSSGridLayoutEnabled(browser->mainView(), toBool(value));
+    else if (equals(key, "WebKitWebAudioEnabled"))
+        ewk_view_setting_web_audio_set(browser->mainView(), toBool(value));
     else
         fprintf(stderr, "LayoutTestController::overridePreference tried to override unknown preference '%s'.\n", value->ustring().utf8().data());
 }
 
-void LayoutTestController::addUserScript(JSStringRef, bool, bool)
+void LayoutTestController::addUserScript(JSStringRef source, bool runAtStart, bool allFrames)
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::addUserScript(browser->mainView(), String(source->ustring().impl()), runAtStart, allFrames);
 }
 
 void LayoutTestController::addUserStyleSheet(JSStringRef source, bool allFrames)
 {
-    DumpRenderTreeSupportEfl::addUserStyleSheet(browser->mainView(), source->ustring().utf8().data(), allFrames);
+    DumpRenderTreeSupportEfl::addUserStyleSheet(browser->mainView(), WTF::String(source->ustring().impl()), allFrames);
 }
 
 void LayoutTestController::setDeveloperExtrasEnabled(bool enabled)
@@ -737,9 +783,9 @@ void LayoutTestController::evaluateScriptInIsolatedWorldAndReturnValue(unsigned,
     notImplemented();
 }
 
-void LayoutTestController::evaluateScriptInIsolatedWorld(unsigned, JSObjectRef, JSStringRef)
+void LayoutTestController::evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef globalObject, JSStringRef script)
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::evaluateScriptInIsolatedWorld(browser->mainFrame(), worldID, globalObject, String(script->ustring().impl()));
 }
 
 void LayoutTestController::removeAllVisitedLinks()
@@ -782,11 +828,6 @@ void LayoutTestController::authenticateSession(JSStringRef, JSStringRef, JSStrin
     notImplemented();
 }
 
-void LayoutTestController::setEditingBehavior(const char* editingBehavior)
-{
-    DumpRenderTreeSupportEfl::setEditingBehavior(browser->mainView(), editingBehavior);
-}
-
 void LayoutTestController::abortModal()
 {
     notImplemented();
@@ -800,10 +841,9 @@ void LayoutTestController::dumpConfigurationForViewport(int deviceDPI, int devic
             WebCore::IntSize(availableWidth, availableHeight));
 }
 
-void LayoutTestController::setSerializeHTTPLoads(bool)
+void LayoutTestController::setSerializeHTTPLoads(bool serialize)
 {
-    // FIXME: Implement if needed for https://bugs.webkit.org/show_bug.cgi?id=50758.
-    notImplemented();
+    DumpRenderTreeSupportEfl::setSerializeHTTPLoads(serialize);
 }
 
 void LayoutTestController::setMinimumTimerInterval(double minimumTimerInterval)
@@ -812,11 +852,6 @@ void LayoutTestController::setMinimumTimerInterval(double minimumTimerInterval)
 }
 
 void LayoutTestController::setTextDirection(JSStringRef)
-{
-    notImplemented();
-}
-
-void LayoutTestController::allowRoundingHacks()
 {
     notImplemented();
 }
@@ -843,4 +878,41 @@ void LayoutTestController::setBackingScaleFactor(double)
 
 void LayoutTestController::simulateDesktopNotificationClick(JSStringRef title)
 {
+}
+
+void LayoutTestController::resetPageVisibility()
+{
+    ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, true);
+}
+
+void LayoutTestController::setPageVisibility(const char* visibility)
+{
+    String newVisibility(visibility);
+    if (newVisibility == "visible")
+        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, false);
+    else if (newVisibility == "hidden")
+        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_HIDDEN, false);
+    else if (newVisibility == "prerender")
+        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_PRERENDER, false);
+    else if (newVisibility == "preview")
+        ewk_view_visibility_state_set(browser->mainView(), EWK_PAGE_VISIBILITY_STATE_PREVIEW, false);
+}
+
+void LayoutTestController::setAutomaticLinkDetectionEnabled(bool)
+{
+    notImplemented();
+}
+
+void LayoutTestController::sendWebIntentResponse(JSStringRef response)
+{
+    Ewk_Intent_Request* request = browser->currentIntentRequest();
+    if (!request)
+        return;
+
+    DumpRenderTreeSupportEfl::sendWebIntentResponse(request, response);
+}
+
+void LayoutTestController::deliverWebIntent(JSStringRef action, JSStringRef type, JSStringRef data)
+{
+    DumpRenderTreeSupportEfl::deliverWebIntent(browser->mainFrame(), action, type, data);
 }

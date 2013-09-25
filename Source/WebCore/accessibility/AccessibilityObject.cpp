@@ -74,6 +74,8 @@ AccessibilityObject::AccessibilityObject()
     , m_role(UnknownRole)
 #if PLATFORM(GTK)
     , m_wrapper(0)
+#elif PLATFORM(CHROMIUM)
+    , m_detached(false)
 #endif
 {
 }
@@ -85,9 +87,22 @@ AccessibilityObject::~AccessibilityObject()
 
 void AccessibilityObject::detach()
 {
-#if HAVE(ACCESSIBILITY)
+#if HAVE(ACCESSIBILITY) && PLATFORM(CHROMIUM)
+    m_detached = true;
+#elif HAVE(ACCESSIBILITY)
     setWrapper(0);
-#endif    
+#endif
+}
+
+bool AccessibilityObject::isDetached() const
+{
+#if HAVE(ACCESSIBILITY) && PLATFORM(CHROMIUM)
+    return m_detached;
+#elif HAVE(ACCESSIBILITY)
+    return !wrapper();
+#else
+    return true;
+#endif
 }
 
 bool AccessibilityObject::isAccessibilityObjectSearchMatch(AccessibilityObject* axObject, AccessibilitySearchCriteria* criteria)
@@ -1024,6 +1039,7 @@ AccessibilityObject* AccessibilityObject::accessibilityObjectForPosition(const V
     return obj->document()->axObjectCache()->getOrCreate(obj);
 }
 
+#if HAVE(ACCESSIBILITY)
 int AccessibilityObject::lineForPosition(const VisiblePosition& visiblePos) const
 {
     if (visiblePos.isNull() || !node())
@@ -1050,6 +1066,7 @@ int AccessibilityObject::lineForPosition(const VisiblePosition& visiblePos) cons
 
     return lineCount;
 }
+#endif
 
 // NOTE: Consider providing this utility method as AX API
 PlainTextRange AccessibilityObject::plainTextRangeForVisiblePositionRange(const VisiblePositionRange& positionRange) const
@@ -1091,13 +1108,15 @@ unsigned AccessibilityObject::doAXLineForIndex(unsigned index)
 {
     return lineForPosition(visiblePositionForIndex(index, false));
 }
-    
+
+#if HAVE(ACCESSIBILITY)
 void AccessibilityObject::updateBackingStore()
 {
     // Updating the layout may delete this object.
     if (Document* document = this->document())
         document->updateLayoutIgnorePendingStylesheets();
 }
+#endif
 
 Document* AccessibilityObject::document() const
 {
@@ -1128,13 +1147,15 @@ FrameView* AccessibilityObject::documentFrameView() const
     return object->documentFrameView();
 }
 
+#if HAVE(ACCESSIBILITY)
 const AccessibilityObject::AccessibilityChildrenVector& AccessibilityObject::children()
 {
     updateChildrenIfNecessary();
-    
+
     return m_children;
 }
-    
+#endif
+
 void AccessibilityObject::updateChildrenIfNecessary()
 {
     if (!hasChildren())
@@ -1216,7 +1237,8 @@ void AccessibilityObject::ariaTreeItemDisclosedRows(AccessibilityChildrenVector&
             obj->ariaTreeRows(result);
     }    
 }
-    
+
+#if HAVE(ACCESSIBILITY)
 const String& AccessibilityObject::actionVerb() const
 {
     // FIXME: Need to add verbs for select elements.
@@ -1251,6 +1273,7 @@ const String& AccessibilityObject::actionVerb() const
         return noAction;
     }
 }
+#endif
 
 bool AccessibilityObject::ariaIsMultiline() const
 {

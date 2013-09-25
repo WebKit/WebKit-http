@@ -142,16 +142,14 @@ enum ParameterDefaultPolicy {
         if (setInlineCachedWrapper(world, domObject, wrapper))
             return;
         JSC::PassWeak<JSDOMWrapper> passWeak(wrapper, wrapperOwner(world, domObject), wrapperContext(world, domObject));
-        DOMObjectWrapperMap::AddResult result = world->m_wrappers.add(domObject, passWeak);
-        ASSERT_UNUSED(result, result.isNewEntry);
+        weakAdd(world->m_wrappers, (void*)domObject, passWeak);
     }
 
     template <typename DOMClass> inline void uncacheWrapper(DOMWrapperWorld* world, DOMClass* domObject, JSDOMWrapper* wrapper)
     {
         if (clearInlineCachedWrapper(world, domObject, wrapper))
             return;
-        ASSERT(world->m_wrappers.find(domObject)->second.was(wrapper));
-        world->m_wrappers.remove(domObject);
+        weakRemove(world->m_wrappers, (void*)domObject, wrapper);
     }
     
     #define CREATE_DOM_WRAPPER(exec, globalObject, className, object) createWrapper<JS##className>(exec, globalObject, static_cast<className*>(object))
@@ -252,13 +250,13 @@ enum ParameterDefaultPolicy {
     // object, to let the engine know that collecting the JSString wrapper is unlikely to save memory.
     JSC::JSValue jsOwnedStringOrNull(JSC::ExecState*, const String&); 
 
-    String identifierToString(const JSC::Identifier&);
+    String propertyNameToString(JSC::PropertyName);
     String ustringToString(const JSC::UString&);
     JSC::UString stringToUString(const String&);
 
-    AtomicString identifierToAtomicString(const JSC::Identifier&);
+    AtomicString propertyNameToAtomicString(JSC::PropertyName);
     AtomicString ustringToAtomicString(const JSC::UString&);
-    AtomicStringImpl* findAtomicString(const JSC::Identifier&);
+    AtomicStringImpl* findAtomicString(JSC::PropertyName);
 
     String valueToStringWithNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null
     String valueToStringWithUndefinedOrNullCheck(JSC::ExecState*, JSC::JSValue); // null if the value is null or undefined
@@ -281,13 +279,13 @@ enum ParameterDefaultPolicy {
         return toJS(exec, globalObject, ptr.get());
     }
 
-    template <typename T>
-    JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T>& iterator)
+    template <typename T, size_t inlineCapacity>
+    JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, const Vector<T, inlineCapacity>& iterator)
     {
         JSC::MarkedArgumentBuffer list;
-        typename Vector<T>::const_iterator end = iterator.end();
+        typename Vector<T, inlineCapacity>::const_iterator end = iterator.end();
 
-        for (typename Vector<T>::const_iterator iter = iterator.begin(); iter != end; ++iter)
+        for (typename Vector<T, inlineCapacity>::const_iterator iter = iterator.begin(); iter != end; ++iter)
             list.append(toJS(exec, globalObject, WTF::getPtr(*iter)));
 
         return JSC::constructArray(exec, globalObject, list);
@@ -337,7 +335,7 @@ enum ParameterDefaultPolicy {
     DOMWindow* firstDOMWindow(JSC::ExecState*);
 
     void printErrorMessageForFrame(Frame*, const String& message);
-    JSC::JSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::JSValue, const JSC::Identifier& propertyName);
+    JSC::JSValue objectToStringFunctionGetter(JSC::ExecState*, JSC::JSValue, JSC::PropertyName);
 
     inline JSC::JSValue jsString(JSC::ExecState* exec, const String& s)
     {
@@ -349,16 +347,10 @@ enum ParameterDefaultPolicy {
             return jsString(exec, stringToUString(s));
 
         JSStringCache& stringCache = currentWorld(exec)->m_stringCache;
-        JSStringCache::iterator it = stringCache.find(stringImpl);
-        if (it != stringCache.end())
-            return it->second.get();
+        if (JSC::JSString* string = stringCache.get(stringImpl))
+            return string;
 
         return jsStringSlowCase(exec, stringCache, stringImpl);
-    }
-
-    inline DOMObjectWrapperMap& domObjectWrapperMapFor(JSC::ExecState* exec)
-    {
-        return currentWorld(exec)->m_wrappers;
     }
 
     inline String ustringToString(const JSC::UString& u)
@@ -371,9 +363,9 @@ enum ParameterDefaultPolicy {
         return JSC::UString(s.impl());
     }
 
-    inline String identifierToString(const JSC::Identifier& i)
+    inline String propertyNameToString(JSC::PropertyName propertyName)
     {
-        return i.impl();
+        return propertyName.publicName();
     }
 
     inline AtomicString ustringToAtomicString(const JSC::UString& u)
@@ -381,9 +373,9 @@ enum ParameterDefaultPolicy {
         return AtomicString(u.impl());
     }
 
-    inline AtomicString identifierToAtomicString(const JSC::Identifier& identifier)
+    inline AtomicString propertyNameToAtomicString(JSC::PropertyName propertyName)
     {
-        return AtomicString(identifier.impl());
+        return AtomicString(propertyName.publicName());
     }
 
     inline Vector<unsigned long> jsUnsignedLongArrayToVector(JSC::ExecState* exec, JSC::JSValue value)

@@ -9,12 +9,6 @@ function test()
 {
     removeVendorPrefixes();
 
-    evalAndLog("IDBTransaction = self.IDBTransaction || self.IDBTransaction;");
-    shouldBeFalse("IDBTransaction == null");
-
-    evalAndLog("IDBDatabaseException = self.IDBDatabaseException || self.IDBDatabaseException;");
-    shouldBeFalse("IDBDatabaseException == null");
-
     name = self.location.pathname;
     openreq = evalAndLog("indexedDB.open(name)");
     openreq.onsuccess = openSuccess;
@@ -41,7 +35,7 @@ function setVersionSuccess()
 
 function testValidArrayKeys()
 {
-    evalAndLog("trans = db.transaction('store', IDBTransaction.READ_WRITE)");
+    evalAndLog("trans = db.transaction('store', 'readwrite')");
     evalAndLog("store = trans.objectStore('store')");
     debug("");
 
@@ -124,7 +118,7 @@ function testValidArrayKeys()
 
 function testInvalidArrayKeys()
 {
-    evalAndLog("trans = db.transaction('store', IDBTransaction.READ_WRITE)");
+    evalAndLog("trans = db.transaction('store', 'readwrite')");
     evalAndLog("store = trans.objectStore('store')");
     debug("");
 
@@ -167,7 +161,7 @@ function testInvalidArrayKeys()
 
     invalidKeys.forEach(function (key) {
         debug("testing invalid array key: " + key);
-        evalAndExpectException("store.put('value', " + key + ");", "IDBDatabaseException.DATA_ERR");
+        evalAndExpectException("store.put('value', " + key + ");", "IDBDatabaseException.DATA_ERR", "'DataError'");
         debug("");
     });
 
@@ -187,7 +181,7 @@ function testDepthLimits()
 {
     shouldBe("indexedDB.cmp(makeArrayOfDepth(25), 0)", "1");
     shouldBe("indexedDB.cmp(makeArrayOfDepth(250), 0)", "1");
-    evalAndExpectException("indexedDB.cmp(makeArrayOfDepth(2500), 0)", "IDBDatabaseException.DATA_ERR");
+    evalAndExpectException("indexedDB.cmp(makeArrayOfDepth(2500), 0)", "IDBDatabaseException.DATA_ERR", "'DataError'");
     debug("");
 
     finishJSTest();

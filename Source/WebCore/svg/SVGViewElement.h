@@ -40,14 +40,19 @@ class SVGViewElement : public SVGStyledElement,
 public:
     static PassRefPtr<SVGViewElement> create(const QualifiedName&, Document*);
 
+    using SVGStyledElement::ref;
+    using SVGStyledElement::deref;
+
     SVGStringList& viewTarget() { return m_viewTarget; }
+    SVGZoomAndPanType zoomAndPan() const { return m_zoomAndPan; }
+    void setZoomAndPan(unsigned short zoomAndPan) { m_zoomAndPan = SVGZoomAndPan::parseFromNumber(zoomAndPan); }
 
 private:
     SVGViewElement(const QualifiedName&, Document*);
 
     // FIXME: svgAttributeChanged missing.
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
 
     virtual bool rendererIsNeeded(const NodeRenderingContext&) { return false; }
 
@@ -57,6 +62,7 @@ private:
         DECLARE_ANIMATED_PRESERVEASPECTRATIO(PreserveAspectRatio, preserveAspectRatio)
     END_DECLARE_ANIMATED_PROPERTIES
 
+    SVGZoomAndPanType m_zoomAndPan;
     SVGStringList m_viewTarget;
 };
 

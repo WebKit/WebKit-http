@@ -1,3 +1,822 @@
+2012-06-05  Alexei Filippov  <alexeif@chromium.org>
+
+        Web Inspector: serialize edge counts instead of indexes in heap snapshot
+        https://bugs.webkit.org/show_bug.cgi?id=88324
+
+        The serialized node structure currently holds an index
+        of its first containment edge in the edges array.
+        The index can be quite big (up to 7 digits for large snapshots).
+        The patch changes the serialization format to pass
+        node containment edge count instead. For most nodes the count
+        is just a single digit number.
+        This reduces serialized snapshot size and therefore its transfer time.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot-performance-test.js:
+
+2012-06-04  Alexei Filippov  <alexeif@chromium.org>
+
+        Web Inspector: speed up _calculateRetainedSizes function
+        https://bugs.webkit.org/show_bug.cgi?id=87863
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot-advanced.html: Added.
+        * inspector/heap-snapshot-performance-test.js: Copied from PerformanceTests/inspector/heap-snapshot.html.
+        (test.performanceTest.step0):
+        (test.performanceTest.step1):
+        (test.performanceTest.step2):
+        (test.performanceTest.cleanup):
+        (test.performanceTest.done):
+        (test.performanceTest):
+        (test):
+        * inspector/heap-snapshot.html:
+
+2012-06-03  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a benchmark of querySelector() for an element that appears in the depths in the document
+        https://bugs.webkit.org/show_bug.cgi?id=88202
+
+        Reviewed by Ryosuke Niwa.
+
+        query-selector-first.html tests querySelector() for an element
+        that appears at the head of the document. query-selector-last.html
+        tests querySelector() for an element that appears at the tail of
+        the document. In addition, we want a benchmark of querySelector()
+        for an element that appears in the depths in the document.
+
+        Test results in my Linux desktop:
+
+        RESULT Parser: query-selector-deep= 460.776980611 runs/s
+        median= 460.947503201 runs/s, stdev= 1.72274941942 runs/s, min= 455.696202532 runs/s, max= 463.32046332 runs/s
+
+        RESULT Parser: query-selector-deep= 458.925050915 runs/s
+        median= 459.183673469 runs/s, stdev= 1.47930124139 runs/s, min= 454.545454545 runs/s, max= 460.947503201 runs/s
+
+        RESULT Parser: query-selector-deep= 461.866981491 runs/s
+        median= 461.538461538 runs/s, stdev= 1.14613123359 runs/s, min= 459.183673469 runs/s, max= 463.917525773 runs/s
+
+        RESULT Parser: query-selector-deep= 453.922010788 runs/s
+        median= 454.258855898 runs/s, stdev= 1.77279123317 runs/s, min= 447.204968944 runs/s, max= 455.696202532 runs/s
+
+        RESULT Parser: query-selector-deep= 454.666321221 runs/s
+        median= 454.545454545 runs/s, stdev= 1.65775667417 runs/s, min= 451.127819549 runs/s, max= 456.852791878 runs/s
+
+        * Parser/query-selector-deep.html: Added.
+
+2012-06-03  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Make query-selector-last.html more realistic
+        https://bugs.webkit.org/show_bug.cgi?id=88203
+
+        Reviewed by Ryosuke Niwa.
+
+        query-selector-last.html tests querySelector() for an element
+        that appears after 1000 div elements, all of which have the same
+        id and class. To test the performance of querySelector() under
+        a lot of ids and classes, we should make the ids and classes of
+        the 1000 elements different.
+
+        This patch degrades the performance of query-selector-last.html
+        by 3.6%.
+
+        [Before]
+        RESULT Parser: query-selector-last= 476.382274152 runs/s
+        median= 476.821192053 runs/s, stdev= 1.14578875814 runs/s, min= 474.308300395 runs/s, max= 478.087649402 runs/s
+
+        RESULT Parser: query-selector-last= 478.423061861 runs/s
+        median= 478.723404255 runs/s, stdev= 1.54876867255 runs/s, min= 473.684210526 runs/s, max= 481.347773767 runs/s
+
+        RESULT Parser: query-selector-last= 479.849287174 runs/s
+        median= 480.0 runs/s, stdev= 1.69849752498 runs/s, min= 475.561426684 runs/s, max= 481.927710843 runs/s
+
+        RESULT Parser: query-selector-last= 476.765438846 runs/s
+        median= 477.453580902 runs/s, stdev= 1.8724488664 runs/s, min= 471.821756225 runs/s, max= 478.723404255 runs/s
+
+        RESULT Parser: query-selector-last= 481.715340644 runs/s
+        median= 481.637742305 runs/s, stdev= 1.81446361145 runs/s, min= 475.561426684 runs/s, max= 483.675937122 runs/s
+
+        [After]
+        RESULT Parser: query-selector-last= 458.866623582 runs/s
+        median= 459.183673469 runs/s, stdev= 1.48881464737 runs/s, min= 453.972257251 runs/s, max= 460.947503201 runs/s
+
+        RESULT Parser: query-selector-last= 460.363532897 runs/s
+        median= 460.358056266 runs/s, stdev= 1.58512056995 runs/s, min= 456.273764259 runs/s, max= 462.130937099 runs/s
+
+        RESULT Parser: query-selector-last= 457.727448451 runs/s
+        median= 458.015267176 runs/s, stdev= 1.23681915516 runs/s, min= 453.972257251 runs/s, max= 459.183673469 runs/s
+
+        RESULT Parser: query-selector-last= 465.57336853 runs/s
+        median= 465.717981889 runs/s, stdev= 1.6616925374 runs/s, min= 460.947503201 runs/s, max= 467.532467532 runs/s
+
+        RESULT Parser: query-selector-last= 459.836252019 runs/s
+        median= 459.770114943 runs/s, stdev= 1.84485630505 runs/s, min= 455.696202532 runs/s, max= 462.724935733 runs/s
+
+        * Parser/query-selector-last.html:
+
+2012-06-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add public page loading performance tests using web-page-replay
+        https://bugs.webkit.org/show_bug.cgi?id=84008
+
+        Reviewed by Dirk Pranke.
+
+        Add replay tests for google.com and youtube.com as examples.
+
+        * Replay: Added.
+        * Replay/www.google.com.replay: Added.
+        * Replay/www.youtube.com.replay: Added.
+
+2012-05-30  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a benchmark for querySelector()
+        https://bugs.webkit.org/show_bug.cgi?id=87742
+
+        Reviewed by Ryosuke Niwa.
+
+        Now I am optimizing querySelector() (bug 87625).
+        This patch adds a performance test for querySelector().
+        query-selector-first.html queries an element that appears
+        at the head of the document. On the other hand,
+        query-selector-last.html queries an element that appears
+        at the tail of the document.
+
+        Test results in my desktop:
+
+        [query-selector-first.html]
+        RESULT Parser: query-selector-first= 252.339803014 runs/s
+        median= 253.646265594 runs/s, stdev= 2.32610873209 runs/s, min= 248.138957816 runs/s, max= 254.777070064 runs/s
+
+        RESULT Parser: query-selector-first= 252.688468897 runs/s
+        median= 252.684876579 runs/s, stdev= 3.60008778708 runs/s, min= 246.002460025 runs/s, max= 258.397932817 runs/s
+
+        RESULT Parser: query-selector-first= 253.466019656 runs/s
+        median= 254.129606099 runs/s, stdev= 1.78002675664 runs/s, min= 247.831474597 runs/s, max= 254.777070064 runs/s
+
+        RESULT Parser: query-selector-first= 256.245078189 runs/s
+        median= 257.06940874 runs/s, stdev= 2.84722072201 runs/s, min= 249.687890137 runs/s, max= 259.74025974 runs/s
+
+        RESULT Parser: query-selector-first= 252.203100497 runs/s
+        median= 252.047989175 runs/s, stdev= 1.75233446036 runs/s, min= 248.138957816 runs/s, max= 255.427841635 runs/s
+
+        [query-selector-last.html]
+        RESULT Parser: query-selector-last= 356.009616076 runs/s
+        median= 355.781448539 runs/s, stdev= 0.841519086864 runs/s, min= 354.430379747 runs/s, max= 358.056265985 runs/s
+
+        RESULT Parser: query-selector-last= 360.735271001 runs/s
+        median= 361.057532424 runs/s, stdev= 1.12253219867 runs/s, min= 358.514724712 runs/s, max= 362.225097025 runs/s
+
+        RESULT Parser: query-selector-last= 359.598592463 runs/s
+        median= 359.435173299 runs/s, stdev= 0.816538258728 runs/s, min= 358.056265985 runs/s, max= 360.824742268 runs/s
+
+        RESULT Parser: query-selector-last= 357.260651715 runs/s
+        median= 357.598978289 runs/s, stdev= 1.17393159885 runs/s, min= 353.982300885 runs/s, max= 358.974358974 runs/s
+
+        RESULT Parser: query-selector-last= 351.696240713 runs/s
+        median= 351.980025916 runs/s, stdev= 1.14200564038 runs/s, min= 348.692403487 runs/s, max= 353.535353535 runs/s
+
+        * Parser/query-selector-first.html: Added.
+        * Parser/query-selector-last.html: Added.
+
+2012-05-25  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: HeapSnapshot: introduce performance counter for HeapSnapshotConstructorsDataGrid._aggregatesReceived method.
+        https://bugs.webkit.org/show_bug.cgi?id=87393
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot.html:
+
+2012-05-25  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: HeapProfiler's perf test: each N-th run pushes the run results N-th times.
+        https://bugs.webkit.org/show_bug.cgi?id=87476
+
+        The time tracking wrappers were attaching on each run.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot.html:
+
+2012-05-22  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: HeapProfiler: upstream retainedSize calculation.
+        https://bugs.webkit.org/show_bug.cgi?id=87107
+
+        This patch upstreams V8::HeapSnapshotGenerator::CalculateRetainedSizes function to front-end.
+        After that we will be able to drop retainedSize field from the snapshot serialized data.
+        See meta-bug https://bugs.webkit.org/show_bug.cgi?id=87089
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/heap-snapshot.html: add counter for the _calculateRetainedSize method.
+
+2012-05-21  Kent Tamura  <tkent@chromium.org>
+
+        Add performance tests for <textarea>
+        https://bugs.webkit.org/show_bug.cgi?id=86994
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/textarea-dom.html: Added.
+        * DOM/textarea-edit.html: Added.
+        * Parser/textarea-parsing.html: Added.
+
+2012-05-18  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: upstream build dominators tree procedure from v8.
+        https://bugs.webkit.org/show_bug.cgi?id=86640
+
+        The idea is to reduce transfer size and move all the post-processing steps to the front-end.
+        The JS implementation is ~1.5 times slower.
+
+        Reviewed by Yury Semikhatsky.
+
+        Covered by existing tests and performance tests.
+
+        * inspector/heap-snapshot.html:
+
+2012-05-18  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Remove Bindings/dom-attributes.html
+        https://bugs.webkit.org/show_bug.cgi?id=86820
+
+        Reviewed by Ryosuke Niwa.
+
+        Bindings/dom-attributes.html is just a collection of random
+        DOM attributes and methods. Now we've added more reasonable
+        micro benchmarks by classifying DOM binding call paths, we
+        can remove Bindings/dom-attributes.html.
+
+        * Bindings/dom-attributes.html: Removed.
+
+2012-05-18  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a binding benchmark for getElementById() for an undefined id
+        https://bugs.webkit.org/show_bug.cgi?id=86812
+
+        Reviewed by Ryosuke Niwa.
+
+        We should remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        This patch adds a benchmark for document.getElementById() for an undefined id.
+        This benchmark covers 'getElementById (not in document)' in Dromaeo/dom-query.html,
+        and other Node-query methods that return a null.'
+
+        (Note: This benchmark is slower than document.getElementById() for a defined id.
+        We will fix the performance issue soon.)
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: undefined-get-element-by-id= 271.945751345 runs/s
+        median= 273.122389532 runs/s, stdev= 6.78219237299 runs/s, min= 257.4002574 runs/s, max= 281.690140845 runs/s
+
+        RESULT Bindings: undefined-get-element-by-id= 269.105872408 runs/s
+        median= 268.948655257 runs/s, stdev= 5.73707323755 runs/s, min= 257.4002574 runs/s, max= 278.128950695 runs/s
+
+        RESULT Bindings: undefined-get-element-by-id= 269.987513372 runs/s
+        median= 272.952853598 runs/s, stdev= 5.30252336078 runs/s, min= 255.754475703 runs/s, max= 273.97260274 runs/s
+
+        RESULT Bindings: undefined-get-element-by-id= 270.169625901 runs/s
+        median= 271.604938272 runs/s, stdev= 5.29502391906 runs/s, min= 258.064516129 runs/s, max= 278.481012658 runs/s
+
+        RESULT Bindings: undefined-get-element-by-id= 269.054631422 runs/s
+        median= 267.966292802 runs/s, stdev= 6.27197240579 runs/s, min= 258.064516129 runs/s, max= 278.481012658 runs/s
+
+        * Bindings/undefined-get-element-by-id.html: Added.
+
+2012-05-18  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a binding benchmark for getElementsByTagName()
+        https://bugs.webkit.org/show_bug.cgi?id=86810
+
+        Reviewed by Ryosuke Niwa.
+
+        We should remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        This patch adds a benchmark for document.getElementsByTagName().
+        This benchmark covers 'getElementsByTagName (not in document)',
+        'getElementsByTagName', 'getElementsByName (not in document)'
+        and 'getElementsByName' in Dromaeo/dom-query.html, and other DOM
+        methods that return a NodeList.
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: get-elements-by-tag-name= 364.542328875 runs/s
+        median= 366.972477064 runs/s, stdev= 5.25387955333 runs/s, min= 351.317440402 runs/s, max= 368.421052632 runs/s
+
+        RESULT Bindings: get-elements-by-tag-name= 364.341569369 runs/s
+        median= 366.492146597 runs/s, stdev= 4.867374197 runs/s, min= 352.644836272 runs/s, max= 367.936925099 runs/s
+
+        RESULT Bindings: get-elements-by-tag-name= 363.924242967 runs/s
+        median= 366.013071895 runs/s, stdev= 5.16768212289 runs/s, min= 351.317440402 runs/s, max= 367.936925099 runs/s
+
+        RESULT Bindings: get-elements-by-tag-name= 365.332594438 runs/s
+        median= 367.454068241 runs/s, stdev= 6.17046918572 runs/s, min= 350.0 runs/s, max= 370.37037037 runs/s
+
+        RESULT Bindings: get-elements-by-tag-name= 363.999514324 runs/s
+        median= 366.492146597 runs/s, stdev= 5.31235674905 runs/s, min= 350.877192982 runs/s, max= 368.421052632 runs/s
+
+        * Bindings/get-elements-by-tag-name.html: Added.
+
+2012-05-18  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add 7 micro benchmarks for DOM bindings
+        https://bugs.webkit.org/show_bug.cgi?id=86816
+
+        Reviewed by Ryosuke Niwa.
+
+        We should remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+        This patch adds seven micro benchmarks for DOM bindings.
+
+        id-getter.html covers 'element.property' in Dromaeo/dom-attr.html,
+        'innerHTML' in Dromaeo/dom-modify.html, and other DOM attributes that
+        return a String.
+
+        id-setter.html covers 'element.property = value' in Dromaeo/dom-attr.html,
+        and other DOM attributes that sets a String.
+
+        undefined-id-getter.html covers undefined DOM attributes that return an empty String.
+
+        append-child.html covers 'appendChild' and 'removeChild' in Dromaeo/dom-modify.html.
+
+        insert-before.html covers 'insertBefore' in Dromaeo/dom-modify.html and replaceChild().
+
+        create-element.html covers 'createElement', 'createTextNode' and 'cloneNode'
+        in Dromaeo/dom-modify.html, and other DOM methods that return a new Node object.
+
+        node-list-access.html covers 'childNodes' in Dromaeo/dom-traverse.html,
+        and other DOM attributes that access NodeList.
+
+        Test results in my Linux desktop:
+
+        [id-getter]
+        RESULT Bindings: id-getter= 550.517821097 runs/s
+        median= 550.688360451 runs/s, stdev= 0.970723739106 runs/s, min= 548.628428928 runs/s, max= 552.070263488 runs/s
+
+        RESULT Bindings: id-getter= 550.655839847 runs/s
+        median= 550.688360451 runs/s, stdev= 1.03312821884 runs/s, min= 549.313358302 runs/s, max= 552.070263488 runs/s
+
+        RESULT Bindings: id-getter= 550.277753355 runs/s
+        median= 550.344180225 runs/s, stdev= 1.19960683464 runs/s, min= 547.945205479 runs/s, max= 552.070263488 runs/s
+
+        RESULT Bindings: id-getter= 550.072271009 runs/s
+        median= 550.344180225 runs/s, stdev= 1.38925152131 runs/s, min= 547.263681592 runs/s, max= 552.070263488 runs/s
+
+        RESULT Bindings: id-getter= 548.802050235 runs/s
+        median= 548.628428928 runs/s, stdev= 1.18244513683 runs/s, min= 545.905707196 runs/s, max= 550.688360451 runs/s
+
+        [id-setter]
+        RESULT Bindings: id-setter= 211.370591663 runs/s
+        median= 210.803689065 runs/s, stdev= 1.4555795889 runs/s, min= 209.973753281 runs/s, max= 214.285714286 runs/s
+
+        RESULT Bindings: id-setter= 215.439081352 runs/s
+        median= 214.797136038 runs/s, stdev= 1.50920388121 runs/s, min= 213.049267643 runs/s, max= 218.446601942 runs/s
+
+        RESULT Bindings: id-setter= 216.721698466 runs/s
+        median= 215.956886352 runs/s, stdev= 1.54090749644 runs/s, min= 214.285714286 runs/s, max= 219.78021978 runs/s
+
+        RESULT Bindings: id-setter= 216.343019087 runs/s
+        median= 215.827338129 runs/s, stdev= 1.46619894553 runs/s, min= 215.053763441 runs/s, max= 218.97810219 runs/s
+
+        RESULT Bindings: id-setter= 216.799288017 runs/s
+        median= 215.956886352 runs/s, stdev= 1.49100776978 runs/s, min= 215.311004785 runs/s, max= 219.78021978 runs/s
+
+        [undefined-id-getter]
+        RESULT Bindings: undefined-id-getter= 494.104255241 runs/s
+        median= 494.132368875 runs/s, stdev= 1.13092821109 runs/s, min= 490.797546012 runs/s, max= 495.662949195 runs/s
+
+        RESULT Bindings: undefined-id-getter= 493.921802916 runs/s
+        median= 493.827160494 runs/s, stdev= 1.25097443119 runs/s, min= 490.196078431 runs/s, max= 495.662949195 runs/s
+
+        RESULT Bindings: undefined-id-getter= 491.976485667 runs/s
+        median= 492.004920049 runs/s, stdev= 0.947090576896 runs/s, min= 490.196078431 runs/s, max= 493.827160494 runs/s
+
+        RESULT Bindings: undefined-id-getter= 491.987710185 runs/s
+        median= 494.132368875 runs/s, stdev= 8.66602543327 runs/s, min= 454.545454545 runs/s, max= 495.662949195 runs/s
+
+        RESULT Bindings: undefined-id-getter= 494.195515847 runs/s
+        median= 494.437577256 runs/s, stdev= 1.06135681702 runs/s, min= 490.797546012 runs/s, max= 495.662949195 runs/s
+
+        [append-child]
+        RESULT Bindings: append-child= 260.628237026 runs/s
+        median= 260.926399352 runs/s, stdev= 2.55231060598 runs/s, min= 256.739409499 runs/s, max= 265.604249668 runs/s
+
+        RESULT Bindings: append-child= 280.796193436 runs/s
+        median= 280.791435348 runs/s, stdev= 2.53961321867 runs/s, min= 277.427490542 runs/s, max= 286.085825748 runs/s
+
+        RESULT Bindings: append-child= 279.856209714 runs/s
+        median= 280.25477707 runs/s, stdev= 2.85447647301 runs/s, min= 275.344180225 runs/s, max= 284.237726098 runs/s
+
+        RESULT Bindings: append-child= 280.834502714 runs/s
+        median= 280.25477707 runs/s, stdev= 2.67738046429 runs/s, min= 277.427490542 runs/s, max= 287.206266319 runs/s
+
+        RESULT Bindings: append-child= 274.723872106 runs/s
+        median= 273.291925466 runs/s, stdev= 3.03671746706 runs/s, min= 272.614622057 runs/s, max= 282.413350449 runs/s
+
+        [insert-before]
+        RESULT Bindings: insert-before= 180.986913006 runs/s
+        median= 180.878552972 runs/s, stdev= 0.758038687299 runs/s, min= 180.18018018 runs/s, max= 183.968462549 runs/s
+
+        RESULT Bindings: insert-before= 186.339916144 runs/s
+        median= 186.170212766 runs/s, stdev= 0.869022097127 runs/s, min= 185.676392573 runs/s, max= 189.798339265 runs/s
+
+        RESULT Bindings: insert-before= 189.45344838 runs/s
+        median= 189.349112426 runs/s, stdev= 0.811854866567 runs/s, min= 187.79342723 runs/s, max= 192.539109507 runs/s
+
+        RESULT Bindings: insert-before= 189.363295991 runs/s
+        median= 189.349112426 runs/s, stdev= 0.75387713097 runs/s, min= 188.014101058 runs/s, max= 192.076830732 runs/s
+
+        RESULT Bindings: insert-before= 189.252041642 runs/s
+        median= 189.349112426 runs/s, stdev= 0.840447225363 runs/s, min= 187.573270809 runs/s, max= 192.076830732 runs/s
+
+        [create-element]
+        RESULT Bindings: create-element= 280.675830077 runs/s
+        median= 280.701824914 runs/s, stdev= 0.788606343054 runs/s, min= 279.441117764 runs/s, max= 282.542885974 runs/s
+
+        RESULT Bindings: create-element= 276.427631436 runs/s
+        median= 277.227722772 runs/s, stdev= 3.39874667549 runs/s, min= 262.417994377 runs/s, max= 279.162512463 runs/s
+
+        RESULT Bindings: create-element= 277.156894411 runs/s
+        median= 277.227722772 runs/s, stdev= 1.13255119226 runs/s, min= 274.914089347 runs/s, max= 278.884462151 runs/s
+
+        RESULT Bindings: create-element= 278.066825356 runs/s
+        median= 278.191822254 runs/s, stdev= 0.686497782792 runs/s, min= 276.953511375 runs/s, max= 279.162512463 runs/s
+
+        RESULT Bindings: create-element= 276.431538109 runs/s
+        median= 276.406712734 runs/s, stdev= 0.759593662298 runs/s, min= 275.229357798 runs/s, max= 278.053624628 runs/s
+
+        [node-list-access]
+        RESULT Bindings: node-list-access= 222.747504073 runs/s
+        median= 222.772277228 runs/s, stdev= 0.789027527555 runs/s, min= 221.674876847 runs/s, max= 224.159402242 runs/s
+
+        RESULT Bindings: node-list-access= 220.722448287 runs/s
+        median= 221.266217576 runs/s, stdev= 1.65463497875 runs/s, min= 217.391304348 runs/s, max= 222.222222222 runs/s
+
+        RESULT Bindings: node-list-access= 222.195870443 runs/s
+        median= 222.222222222 runs/s, stdev= 0.489709262091 runs/s, min= 221.13022113 runs/s, max= 223.048327138 runs/s
+
+        RESULT Bindings: node-list-access= 221.431121677 runs/s
+        median= 221.538545435 runs/s, stdev= 0.608292116087 runs/s, min= 220.048899756 runs/s, max= 222.772277228 runs/s
+
+        RESULT Bindings: node-list-access= 219.001367135 runs/s
+        median= 221.538545435 runs/s, stdev= 4.65773933007 runs/s, min= 209.973753281 runs/s, max= 222.496909765 runs/s
+
+        * Bindings/append-child.html: Added.
+        * Bindings/create-element.html: Added.
+        * Bindings/id-getter.html: Added.
+        * Bindings/id-setter.html: Added.
+        * Bindings/insert-before.html: Added.
+        * Bindings/node-list-access.html: Added.
+        * Bindings/undefined-id-getter.html: Added.
+
+2012-05-18  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a binding benchmark for div.setAttribute()
+        https://bugs.webkit.org/show_bug.cgi?id=86815
+
+        Reviewed by Ryosuke Niwa.
+
+        We should remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        This patch adds a benchmark for div.setAttribute(). This benchmark
+        covers 'setAttribute' in Dromaeo/dom-attr.html and other DOM methods
+        that return an undefined.
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: set-attribute= 793.745073252 runs/s
+        median= 791.589665765 runs/s, stdev= 6.00467159709 runs/s, min= 785.27607362 runs/s, max= 808.080808081 runs/s
+
+        RESULT Bindings: set-attribute= 790.858444164 runs/s
+        median= 787.918921436 runs/s, stdev= 7.86264953655 runs/s, min= 780.234070221 runs/s, max= 806.04534005 runs/s
+
+        RESULT Bindings: set-attribute= 787.277571417 runs/s
+        median= 784.31372549 runs/s, stdev= 7.45363346657 runs/s, min= 778.588807786 runs/s, max= 804.020100503 runs/s
+
+        RESULT Bindings: set-attribute= 782.401393791 runs/s
+        median= 779.062978802 runs/s, stdev= 6.48250081621 runs/s, min= 777.642770352 runs/s, max= 796.019900498 runs/s
+
+        RESULT Bindings: set-attribute= 791.792516608 runs/s
+        median= 791.556728232 runs/s, stdev= 6.49182980397 runs/s, min= 779.220779221 runs/s, max= 808.080808081 runs/s
+
+        * Bindings/set-attribute.html: Added.
+
+2012-05-17  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a binding benchmark for div.getAttribute()
+        https://bugs.webkit.org/show_bug.cgi?id=86814
+
+        Reviewed by Ryosuke Niwa.
+
+        We should remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        This patch adds a benchmark for div.getAttribute(). This benchmark
+        covers 'getAttribute' in Dromaeo/dom-attr.html, and other DOM methods
+        that return a String.
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: get-attribute= 250.088158538 runs/s
+        median= 250.469728765 runs/s, stdev= 4.66551901315 runs/s, min= 240.673886883 runs/s, max= 256.739409499 runs/s
+
+        RESULT Bindings: get-attribute= 250.209764698 runs/s
+        median= 250.626959986 runs/s, stdev= 4.12030002477 runs/s, min= 241.254523522 runs/s, max= 255.102040816 runs/s
+
+        RESULT Bindings: get-attribute= 248.907532887 runs/s
+        median= 250.312891114 runs/s, stdev= 3.23173125874 runs/s, min= 240.673886883 runs/s, max= 251.572327044 runs/s
+
+        RESULT Bindings: get-attribute= 250.243680844 runs/s
+        median= 250.783797637 runs/s, stdev= 4.19327170024 runs/s, min= 240.963855422 runs/s, max= 255.102040816 runs/s
+
+        RESULT Bindings: get-attribute= 245.329046608 runs/s
+        median= 244.948040416 runs/s, stdev= 2.24314248534 runs/s, min= 240.384615385 runs/s, max= 248.756218905 runs/s
+
+        * Bindings/get-attribute.html: Added.
+
+2012-05-17  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a binding benchmark for getElementById()
+        https://bugs.webkit.org/show_bug.cgi?id=86808
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently Bindings/dom-attributes.html is just a collection
+        of random DOM attributes and methods. We should remove it and
+        instead add more reasonable micro benchmarks by classifying
+        DOM binding call paths.
+
+        This patch adds a benchmark for document.getElementById(),
+        which covers other DOM methods that return a Node Object.
+
+        The reason why we want to add a benchmark for document.getElementById()
+        in spite of the fact that Dromaeo/dom-query.html is already testing
+        document.getElementById(), is that Dromaeo/dom-query.html outputs one
+        result for several benchmarks (i.e. getElementById().nodeType,
+        getElementsByTagName()[0].nodeType etc), and thus we cannot observe
+        regression of getElementById() itself. (Catching regression of
+        getElementById() would be critical.)
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: get-element-by-id= 300.933707795 runs/s
+        median= 302.267002519 runs/s, stdev= 3.04954648504 runs/s, min= 295.930949445 runs/s, max= 305.34351145 runs/s
+
+        RESULT Bindings: get-element-by-id= 302.030324483 runs/s
+        median= 302.267481977 runs/s, stdev= 1.78518068367 runs/s, min= 298.507462687 runs/s, max= 304.568527919 runs/s
+
+        RESULT Bindings: get-element-by-id= 301.993483538 runs/s
+        median= 302.648171501 runs/s, stdev= 1.87604126626 runs/s, min= 296.662546354 runs/s, max= 304.568527919 runs/s
+
+        RESULT Bindings: get-element-by-id= 301.936607982 runs/s
+        median= 302.45758701 runs/s, stdev= 1.88991087072 runs/s, min= 298.879202989 runs/s, max= 304.955527319 runs/s
+
+        RESULT Bindings: get-element-by-id= 301.952234563 runs/s
+        median= 302.648171501 runs/s, stdev= 1.59929752614 runs/s, min= 299.625468165 runs/s, max= 304.568527919 runs/s
+
+        * Bindings/get-element-by-id.html: Added.
+
+2012-05-17  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a benchmark for body.scrollTop
+        https://bugs.webkit.org/show_bug.cgi?id=86806
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently Bindings/dom-attributes.html is just a collection of random
+        DOM attributes and methods. We should remove it and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        This patch adds a benchmark for body.scrollTop, which covers other
+        DOM attributes that return small integers.
+
+        (Note: Performance optimization for the benchmark will be coming soon.)
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: scroll-top= 209.410654239 runs/s
+        median= 211.64021164 runs/s, stdev= 4.09958741195 runs/s, min= 201.005025126 runs/s, max= 212.483399734 runs/s
+
+        RESULT Bindings: scroll-top= 195.651111157 runs/s
+        median= 196.319018405 runs/s, stdev= 1.77011627406 runs/s, min= 191.846522782 runs/s, max= 197.28729963 runs/s
+        RESULT Bindings: scroll-top= 200.004907612 runs/s
+        median= 201.511335013 runs/s, stdev= 3.27455403827 runs/s, min= 193.236714976 runs/s, max= 202.53164557 runs/s
+
+        RESULT Bindings: scroll-top= 209.582737512 runs/s
+        median= 210.803689065 runs/s, stdev= 3.16769655464 runs/s, min= 203.045685279 runs/s, max= 211.920529801 runs/s
+
+        RESULT Bindings: scroll-top= 199.924607687 runs/s
+        median= 201.13144338 runs/s, stdev= 3.11080503619 runs/s, min= 193.003618818 runs/s, max= 202.02020202 runs/s
+
+        * Bindings/scroll-top.html: Added.
+
+2012-05-17  Kentaro Hara  <haraken@chromium.org>
+
+        [perf-test] Add a micro benchmark for div.firstChild getter for an undefined firstChild
+        https://bugs.webkit.org/show_bug.cgi?id=86725
+
+        Reviewed by Ryosuke Niwa.
+
+        We are going to remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        In this bug, we add a micro benchmark for div.firstChild getter for an
+        undefined firstChild. This benchmark covers other undefined DOM attributes
+        that return a null.
+
+        (Note: In V8, div.firstChild for an undefined firstChild is currently slower
+        than div.firstChild for a defined firstChild.)
+
+        Test results in my Linux desktop:
+
+        RESULT Bindings: undefined-first-child= 541.408311042 runs/s
+        median= 541.205412054 runs/s, stdev= 1.29841219187 runs/s, min= 537.897310513 runs/s, max= 543.209876543 runs/s
+
+        RESULT Bindings: undefined-first-child= 541.00750695 runs/s
+        median= 540.540540541 runs/s, stdev= 0.967521230965 runs/s, min= 539.215686275 runs/s, max= 543.209876543 runs/s
+
+        RESULT Bindings: undefined-first-child= 523.630714897 runs/s
+        median= 523.560209424 runs/s, stdev= 1.01570919645 runs/s, min= 522.193211488 runs/s, max= 525.624178712 runs/s
+
+        RESULT Bindings: undefined-first-child= 553.077663588 runs/s
+        median= 553.459119497 runs/s, stdev= 0.805697397863 runs/s, min= 551.378446115 runs/s, max= 554.156171285 runs/s
+
+        RESULT Bindings: undefined-first-child= 541.5401432 runs/s
+        median= 541.538666618 runs/s, stdev= 0.954301364767 runs/s, min= 539.877300613 runs/s, max= 543.209876543 runs/s
+
+        * Bindings/undefined-first-child.html: Added.
+
+2012-05-17  Kentaro Hara  <haraken@chromium.org>
+
+        [Performance test] Add a micro benchmark for div.firstChild getter
+        https://bugs.webkit.org/show_bug.cgi?id=86582
+
+        Reviewed by Ryosuke Niwa.
+
+        We are going to remove Bindings/dom-attributes.html and instead add more
+        reasonable micro benchmarks by classifying DOM binding call paths.
+
+        In this bug, we add a micro benchmark for div.firstChild getter.
+        This benchmark covers 'firstChild', 'lastChild', 'nextSibling' and
+        'previousSibling' in Dromaeo/dom-traverse.html, and other DOM attributes
+        that return a Node object.
+
+        Multiple test results in my Linux desktop:
+
+        RESULT Bindings: first-child= 798.157160346 runs/s
+        median= 798.004987531 runs/s, stdev= 1.52006063407 runs/s, min= 796.019900498 runs/s, max= 801.001251564 runs/s
+        RESULT Bindings: first-child= 797.603608554 runs/s
+        median= 797.872340426 runs/s, stdev= 2.2522621261 runs/s, min= 791.556728232 runs/s, max= 801.001251564 runs/s
+        RESULT Bindings: first-child= 798.656295468 runs/s
+        median= 798.004987531 runs/s, stdev= 1.79367478063 runs/s, min= 797.01120797 runs/s, max= 803.011292346 runs/s
+        RESULT Bindings: first-child= 797.812784267 runs/s
+        median= 798.004987531 runs/s, stdev= 2.31766523191 runs/s, min= 791.100123609 runs/s, max= 802.005012531 runs/s
+        RESULT Bindings: first-child= 797.963311597 runs/s
+        median= 798.004987531 runs/s, stdev= 2.53014907337 runs/s, min= 789.14919852 runs/s, max= 801.001251564 runs/s
+
+        * Bindings/first-child.html: Added.
+
+2012-05-16  Kentaro Hara  <haraken@chromium.org>
+
+        [Performance test] Support "description" for PerfTestRunner.run and PerfTestRunner.runPerSecond
+        https://bugs.webkit.org/show_bug.cgi?id=86696
+
+        Reviewed by Ryosuke Niwa.
+
+        We want to add some description for each PerfTestRunner.run and
+        PerfTestRunner.runPerSecond, so that people can know what each
+        run is testing.
+
+        Output example:
+
+        $ ./Tools/Scripts/run-perf-tests Bindings/first-child.html
+        Running Bindings/first-child.html (1 of 1)
+        DESCRIPTION: Benchmark for DOM attributes that return a Node object.
+        RESULT Bindings: first-child= 788.359076534 runs/s
+        median= 797.508097751 runs/s, stdev= 19.0972905207 runs/s, min= 746.666666667 runs/s, max= 801.001251564 runs/s
+
+        * resources/runner.js:
+        (PerfTestRunner.logStatistics):
+        (PerfTestRunner.printStatistics):
+        (PerfTestRunner.runPerSecond):
+
+2012-05-16  Yury Semikhatsky  <yurys@chromium.org>
+
+        Unreviewed. Fix heap profiler performance test after r117234.
+
+        * inspector/heap-snapshot.html:
+
+2012-05-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Convert CSS and Parser tests to runs/s tests
+        https://bugs.webkit.org/show_bug.cgi?id=86399
+
+        Reviewed by Ojan Vafai.
+
+        Use runPerSecond instead of run to measure results in function calls per second (run/s) instead of time (ms).
+        This allows us to continue measuring performance reliably even when WebKit's performance improves and results
+        become too small for Date.now()'s precision (around 15 ms).
+
+        It should also reduce perf. bots cycle time for slower tests because we limit the number of function calls by time.
+
+        * CSS/CSSPropertySetterGetter.html:
+        * CSS/CSSPropertyUpdateValue.html:
+        * Parser/css-parser-yui.html:
+        * Parser/simple-url.html:
+        * Parser/tiny-innerHTML.html:
+        * Parser/url-parser.html:
+        * Parser/xml-parser.html:
+
+2012-05-14  Dan Bernstein  <mitz@apple.com>
+
+        Add a line layout performance test
+        https://bugs.webkit.org/show_bug.cgi?id=86216
+
+        Reviewed by Ryosuke Niwa.
+
+        * Layout/line-layout.html: Added.
+
+2012-05-14  Tony Chang  <tony@chromium.org>
+
+        Don't append log lines while perf tests are running.
+        https://bugs.webkit.org/show_bug.cgi?id=86028
+
+        Reviewed by Ryosuke Niwa.
+
+        In some tests, the extra DOM nodes can cause the test timing to change.
+        Avoid adding DOM nodes until the test is over. When running in a browser,
+        we append nodes as we run so the user can have some feedback.
+
+        * resources/runner.js:
+        (PerfTestRunner.log): Store the log lines in an array until the test is finished.
+
+2012-05-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Don't adjust calls per iteration in the second run.
+
+        * resources/runner.js:
+        (PerfTestRunner._perSecondRunner):
+
+2012-05-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        performance tests should be able to measure runs/sec rather than time
+        https://bugs.webkit.org/show_bug.cgi?id=86021
+
+        Reviewed by Ojan Vafai.
+
+        Add PerfTestRunner.runPerSecond. It uses _runLoop but replaces _runner by _perSecondRunner
+        to compute runs/s of runFunction.
+
+        When _perSecondRunner is called for the first time, i.e. _completedRuns is 0 (notice this is -1
+        in regular run/_runner), it slowly increases the number of function calls to runFunction between
+        time measurements in order to discount the time used by new Date() calls themselves until the
+        total time spent reaches 100 milliseconds.
+
+        By default, runPerSecond runs the test for at least 750 milliseconds in each run, and executes
+        21 runs, yielding the total run time of roughly 18 seconds. This is significantly faster than
+        most of existing performance tests. Also see http://ejohn.org/blog/accuracy-of-javascript-time/.
+
+        Finally, refactored the existing methods of PerfTestRunner to allow "runs/s" unit and share code.
+
+        * Layout/flexbox-column-nowrap.html:
+        * Layout/flexbox-column-wrap.html:
+        * Layout/flexbox-row-nowrap.html:
+        * Layout/flexbox-row-wrap.html:
+        * resources/runner.js:
+        (PerfTestRunner.computeStatistics): Takes unit.
+        (PerfTestRunner.logStatistics): Ditto.
+        (PerfTestRunner._runLoop):
+        (PerfTestRunner._runner):
+        (PerfTestRunner.runPerSecond): Added.
+        (PerfTestRunner._perSecondRunner): Added. Called by _runLoop.
+        (PerfTestRunner._perSecondRunnerIterator): Added.
+
+2012-05-09  Tony Chang  <tony@chromium.org>
+
+        add some basic perf-o-matic tests for flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=86017
+
+        Reviewed by Ryosuke Niwa.
+
+        Each of these tests take < 3s on my machine.
+
+        * Layout/flexbox-column-nowrap.html: Added.
+        * Layout/flexbox-column-wrap.html: Added.
+        * Layout/flexbox-row-nowrap.html: Added.
+        * Layout/flexbox-row-wrap.html: Added.
+
+2012-05-05  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: unreviewed followup fix for the performance test after r116218.
+
+        * inspector/heap-snapshot.html:
+
 2012-05-02  Tom Zakrajsek  <tomz@codeaurora.org>
 
         Need tests for PerfTestRunner.computeStatistics

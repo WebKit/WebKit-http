@@ -55,15 +55,19 @@ int QtWebError::errorCode() const
     return WKErrorGetErrorCode(error.get());
 }
 
-QUrl QtWebError::url() const
+QString QtWebError::url() const
 {
-    WKRetainPtr<WKURLRef> failingURL = adoptWK(WKErrorCopyFailingURL(error.get()));
-    return WKURLCopyQUrl(failingURL.get());
+    return toImpl(error.get())->failingURL();
 }
 
 QString QtWebError::description() const
 {
     return WKStringCopyQString(WKErrorCopyLocalizedDescription(error.get()));
+}
+
+bool QtWebError::isCancellation() const
+{
+    return toImpl(error.get())->platformError().isCancellation();
 }
 
 } // namespace WebKit

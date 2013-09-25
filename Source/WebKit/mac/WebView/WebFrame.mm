@@ -198,20 +198,6 @@ EditableLinkBehavior core(WebKitEditableLinkBehavior editableLinkBehavior)
     return EditableLinkDefaultBehavior;
 }
 
-WebCore::EditingBehaviorType core(WebKitEditingBehavior behavior)
-{
-    switch (behavior) {
-        case WebKitEditingMacBehavior:
-            return WebCore::EditingMacBehavior;
-        case WebKitEditingWinBehavior:
-            return WebCore::EditingWindowsBehavior;
-        case WebKitEditingUnixBehavior:
-            return WebCore::EditingUnixBehavior;
-    }
-    ASSERT_NOT_REACHED();
-    return WebCore::EditingMacBehavior;
-}
-
 TextDirectionSubmenuInclusionBehavior core(WebTextDirectionSubmenuInclusionBehavior behavior)
 {
     switch (behavior) {
@@ -594,6 +580,9 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (NSString *)_stringByEvaluatingJavaScriptFromString:(NSString *)string forceUserGesture:(BOOL)forceUserGesture
 {
+    if (!string)
+        return @"";
+
     ASSERT(_private->coreFrame->document());
     RetainPtr<WebFrame> protect(self); // Executing arbitrary JavaScript can destroy the frame.
     
@@ -736,7 +725,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     if (!_private->coreFrame || !_private->coreFrame->document())
         return nil;
 
-    return kit(createFragmentFromMarkup(_private->coreFrame->document(), markupString, baseURLString, FragmentScriptingNotAllowed).get());
+    return kit(createFragmentFromMarkup(_private->coreFrame->document(), markupString, baseURLString, DisallowScriptingContent).get());
 }
 
 - (DOMDocumentFragment *)_documentFragmentWithNodesAsParagraphs:(NSArray *)nodes
@@ -797,6 +786,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     _private->coreFrame->editor()->computeAndSetTypingStyle(core(style)->copy().get(), undoAction);
 }
 
+#if ENABLE(DRAG_SUPPORT)
 - (void)_dragSourceEndedAt:(NSPoint)windowLoc operation:(NSDragOperation)operation
 {
     if (!_private->coreFrame)
@@ -809,6 +799,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime());
     _private->coreFrame->eventHandler()->dragSourceEndedAt(event, (DragOperation)operation);
 }
+#endif
 
 - (BOOL)_canProvideDocumentSource
 {
@@ -998,24 +989,6 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return controller->numberOfActiveAnimations(frame->document());
 }
 
-- (void) _suspendAnimations
-{
-    Frame* frame = core(self);
-    if (!frame)
-        return;
-        
-    frame->animation()->suspendAnimations();
-}
-
-- (void) _resumeAnimations
-{
-    Frame* frame = core(self);
-    if (!frame)
-        return;
-
-    frame->animation()->resumeAnimations();
-}
-
 - (void)_replaceSelectionWithFragment:(DOMDocumentFragment *)fragment selectReplacement:(BOOL)selectReplacement smartReplace:(BOOL)smartReplace matchStyle:(BOOL)matchStyle
 {
     if (_private->coreFrame->selection()->isNone() || !fragment)
@@ -1133,6 +1106,9 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
 - (NSString *)_stringByEvaluatingJavaScriptFromString:(NSString *)string withGlobalObject:(JSObjectRef)globalObjectRef inScriptWorld:(WebScriptWorld *)world
 {
+    if (!string)
+        return @"";
+
     // Start off with some guess at a frame and a global object, we'll try to do better...!
     JSDOMWindow* anyWorldGlobalObject = _private->coreFrame->script()->globalObject(mainThreadNormalWorld());
 
@@ -1395,10 +1371,14 @@ static bool needsMicrosoftMessengerDOMDocumentWorkaround()
         return;
 
     ResourceRequest resourceRequest(request);
-    // Modifying the original request here breaks -[WebDataSource initialRequest], but we don't want
-    // to implement this "path as URL" quirk anywhere except for API boundary.
-    if (!resourceRequest.url().isValid())
-        resourceRequest.setURL([NSURL fileURLWithPath:[[request URL] absoluteString]]);
+    
+    // Some users of WebKit API incorrectly use "file path as URL" style requests which are invalid.
+    // By re-writing those URLs here we technically break the -[WebDataSource initialRequest] API
+    // but that is necessary to implement this quirk only at the API boundary.
+    // Note that other users of WebKit API use nil requests or requests with nil URLs or empty URLs, so we
+    // only implement this workaround when the request had a non-nil or non-empty URL.
+    if (!resourceRequest.url().isValid() && !resourceRequest.url().isEmpty())
+        resourceRequest.setURL([NSURL URLWithString:[@"file:" stringByAppendingString:[[request URL] absoluteString]]]);
 
     coreFrame->loader()->load(resourceRequest, false);
 }
@@ -1441,7 +1421,7 @@ static NSURL *createUniqueWebDataURL()
     
     if (!MIMEType)
         MIMEType = @"text/html";
-    [self _loadData:data MIMEType:MIMEType textEncodingName:encodingName baseURL:[baseURL _webkit_URLFromURLOrPath] unreachableURL:nil];
+    [self _loadData:data MIMEType:MIMEType textEncodingName:encodingName baseURL:[baseURL _webkit_URLFromURLOrSchemelessFileURL] unreachableURL:nil];
 }
 
 - (void)_loadHTMLString:(NSString *)string baseURL:(NSURL *)baseURL unreachableURL:(NSURL *)unreachableURL
@@ -1454,14 +1434,14 @@ static NSURL *createUniqueWebDataURL()
 {
     WebCoreThreadViolationCheckRoundTwo();
 
-    [self _loadHTMLString:string baseURL:[baseURL _webkit_URLFromURLOrPath] unreachableURL:nil];
+    [self _loadHTMLString:string baseURL:[baseURL _webkit_URLFromURLOrSchemelessFileURL] unreachableURL:nil];
 }
 
 - (void)loadAlternateHTMLString:(NSString *)string baseURL:(NSURL *)baseURL forUnreachableURL:(NSURL *)unreachableURL
 {
     WebCoreThreadViolationCheckRoundTwo();
 
-    [self _loadHTMLString:string baseURL:[baseURL _webkit_URLFromURLOrPath] unreachableURL:[unreachableURL _webkit_URLFromURLOrPath]];
+    [self _loadHTMLString:string baseURL:[baseURL _webkit_URLFromURLOrSchemelessFileURL] unreachableURL:[unreachableURL _webkit_URLFromURLOrSchemelessFileURL]];
 }
 
 - (void)loadArchive:(WebArchive *)archive

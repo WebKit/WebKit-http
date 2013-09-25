@@ -45,8 +45,9 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const double monthDefaultStep = 1.0;
-static const double monthStepScaleFactor = 1.0;
+static const int monthDefaultStep = 1;
+static const int monthDefaultStepBase = 0;
+static const int monthStepScaleFactor = 1;
 
 PassOwnPtr<InputType> MonthInputType::create(HTMLInputElement* element)
 {
@@ -81,7 +82,7 @@ String MonthInputType::serializeWithMilliseconds(double value) const
     return serializeWithComponents(date);
 }
 
-double MonthInputType::defaultValueForStepUp() const
+InputNumber MonthInputType::defaultValueForStepUp() const
 {
     double current = currentTimeMS();
     double utcOffset = calculateUTCOffset();
@@ -93,42 +94,28 @@ double MonthInputType::defaultValueForStepUp() const
     date.setMillisecondsSinceEpochForMonth(current);
     double months = date.monthsSinceEpoch();
     ASSERT(isfinite(months));
-    return months;
+    return convertDoubleToInputNumber(months);
 }
 
-double MonthInputType::minimum() const
+StepRange MonthInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
-    return parseToDouble(element()->fastGetAttribute(minAttr), DateComponents::minimumMonth());
+    DEFINE_STATIC_LOCAL(const StepRange::StepDescription, stepDescription, (monthDefaultStep, monthDefaultStepBase, monthStepScaleFactor, StepRange::ParsedStepValueShouldBeInteger));
+
+    const InputNumber stepBase = parseToNumber(element()->fastGetAttribute(minAttr), convertDoubleToInputNumber(DateComponents::minimumMonth()));
+    const InputNumber minimum = parseToNumber(element()->fastGetAttribute(minAttr), convertDoubleToInputNumber(DateComponents::minimumMonth()));
+    const InputNumber maximum = parseToNumber(element()->fastGetAttribute(maxAttr), convertDoubleToInputNumber(DateComponents::maximumMonth()));
+    const InputNumber step = StepRange::parseStep(anyStepHandling, stepDescription, element()->fastGetAttribute(stepAttr));
+    return StepRange(stepBase, minimum, maximum, step, stepDescription);
 }
 
-double MonthInputType::maximum() const
-{
-    return parseToDouble(element()->fastGetAttribute(maxAttr), DateComponents::maximumMonth());
-}
-
-double MonthInputType::defaultStep() const
-{
-    return monthDefaultStep;
-}
-
-double MonthInputType::stepScaleFactor() const
-{
-    return monthStepScaleFactor;
-}
-
-bool MonthInputType::parsedStepValueShouldBeInteger() const
-{
-    return true;
-}
-
-double MonthInputType::parseToDouble(const String& src, double defaultValue) const
+InputNumber MonthInputType::parseToNumber(const String& src, const InputNumber& defaultValue) const
 {
     DateComponents date;
     if (!parseToDateComponents(src, &date))
         return defaultValue;
     double months = date.monthsSinceEpoch();
     ASSERT(isfinite(months));
-    return months;
+    return convertDoubleToInputNumber(months);
 }
 
 bool MonthInputType::parseToDateComponentsInternal(const UChar* characters, unsigned length, DateComponents* out) const
@@ -142,6 +129,11 @@ bool MonthInputType::setMillisecondToDateComponents(double value, DateComponents
 {
     ASSERT(date);
     return date->setMonthsSinceEpoch(value);
+}
+
+bool MonthInputType::isMonthField() const
+{
+    return true;
 }
 
 } // namespace WebCore

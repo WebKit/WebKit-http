@@ -212,7 +212,6 @@ FrameLoaderClientQt::FrameLoaderClientQt()
     , m_webFrame(0)
     , m_pluginView(0)
     , m_hasSentResponseToPlugin(false)
-    , m_hasRepresentation(false)
     , m_isOriginatingLoad(false)
 {
 }
@@ -310,11 +309,6 @@ void FrameLoaderClientQt::didRestoreFromPageCache()
 
 void FrameLoaderClientQt::dispatchDidBecomeFrameset(bool)
 {
-}
-
-void FrameLoaderClientQt::makeRepresentation(DocumentLoader*)
-{
-    m_hasRepresentation = true;
 }
 
 
@@ -567,12 +561,6 @@ void FrameLoaderClientQt::dispatchWillSubmitForm(FramePolicyFunction function,
 }
 
 
-void FrameLoaderClientQt::revertToProvisionalState(DocumentLoader*)
-{
-    m_hasRepresentation = true;
-}
-
-
 void FrameLoaderClientQt::postProgressStartedNotification()
 {
     if (m_webFrame && m_frame->page())
@@ -626,16 +614,10 @@ void FrameLoaderClientQt::didChangeTitle(DocumentLoader*)
 }
 
 
-void FrameLoaderClientQt::finishedLoading(DocumentLoader* loader)
+void FrameLoaderClientQt::finishedLoading(DocumentLoader*)
 {
-    if (!m_pluginView) {
-        // This is necessary to create an empty document. See bug 634004.
-        // However, we only want to do this if makeRepresentation has been called,
-        // to match the behavior on the Mac.
-        if (m_hasRepresentation)
-            loader->writer()->setEncoding("", false);
+    if (!m_pluginView)
         return;
-    }
     if (m_pluginView->isPluginView())
         m_pluginView->didFinishLoading();
     m_pluginView = 0;
@@ -927,7 +909,7 @@ void FrameLoaderClientQt::committedLoad(WebCore::DocumentLoader* loader, const c
 WebCore::ResourceError FrameLoaderClientQt::cancelledError(const WebCore::ResourceRequest& request)
 {
     ResourceError error = ResourceError("QtNetwork", QNetworkReply::OperationCanceledError, request.url().string(),
-            QCoreApplication::translate("QWebFrame", "Request cancelled", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "Request cancelled", 0));
     error.setIsCancellation(true);
     return error;
 }
@@ -947,38 +929,38 @@ enum {
 WebCore::ResourceError FrameLoaderClientQt::blockedError(const WebCore::ResourceRequest& request)
 {
     return ResourceError("WebKitErrorDomain", WebKitErrorCannotUseRestrictedPort, request.url().string(),
-            QCoreApplication::translate("QWebFrame", "Request blocked", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "Request blocked", 0));
 }
 
 
 WebCore::ResourceError FrameLoaderClientQt::cannotShowURLError(const WebCore::ResourceRequest& request)
 {
     return ResourceError("WebKitErrorDomain", WebKitErrorCannotShowURL, request.url().string(),
-            QCoreApplication::translate("QWebFrame", "Cannot show URL", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "Cannot show URL", 0));
 }
 
 WebCore::ResourceError FrameLoaderClientQt::interruptedForPolicyChangeError(const WebCore::ResourceRequest& request)
 {
     return ResourceError("WebKitErrorDomain", WebKitErrorFrameLoadInterruptedByPolicyChange, request.url().string(),
-            QCoreApplication::translate("QWebFrame", "Frame load interrupted by policy change", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "Frame load interrupted by policy change", 0));
 }
 
 WebCore::ResourceError FrameLoaderClientQt::cannotShowMIMETypeError(const WebCore::ResourceResponse& response)
 {
     return ResourceError("WebKitErrorDomain", WebKitErrorCannotShowMIMEType, response.url().string(),
-            QCoreApplication::translate("QWebFrame", "Cannot show mimetype", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "Cannot show mimetype", 0));
 }
 
 WebCore::ResourceError FrameLoaderClientQt::fileDoesNotExistError(const WebCore::ResourceResponse& response)
 {
     return ResourceError("QtNetwork", QNetworkReply::ContentNotFoundError, response.url().string(),
-            QCoreApplication::translate("QWebFrame", "File does not exist", 0, QCoreApplication::UnicodeUTF8));
+            QCoreApplication::translate("QWebFrame", "File does not exist", 0));
 }
 
 WebCore::ResourceError FrameLoaderClientQt::pluginWillHandleLoadError(const WebCore::ResourceResponse& response)
 {
     return ResourceError("WebKit", WebKitErrorPluginWillHandleLoad, response.url().string(),
-                         QCoreApplication::translate("QWebFrame", "Loading is handled by the media engine", 0, QCoreApplication::UnicodeUTF8));
+                         QCoreApplication::translate("QWebFrame", "Loading is handled by the media engine", 0));
 }
 
 bool FrameLoaderClientQt::shouldFallBack(const WebCore::ResourceError& error)
@@ -1041,10 +1023,23 @@ void FrameLoaderClientQt::assignIdentifierToInitialRequest(unsigned long identif
         dumpAssignedUrls[identifier] = drtDescriptionSuitableForTestResult(request.url());
 }
 
+static void blockRequest(WebCore::ResourceRequest& request)
+{
+    request.setURL(QUrl());
+}
+
+static bool isLocalhost(const QString& host)
+{
+    return host == QLatin1String("127.0.0.1") || host == QLatin1String("localhost");
+}
+
+static bool hostIsUsedBySomeTestsToGenerateError(const QString& host)
+{
+    return host == QLatin1String("255.255.255.255");
+}
+
 void FrameLoaderClientQt::dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long identifier, WebCore::ResourceRequest& newRequest, const WebCore::ResourceResponse& redirectResponse)
 {
-    QUrl url = newRequest.url();
-
     if (dumpResourceLoadCallbacks)
         printf("%s - willSendRequest %s redirectResponse %s\n",
                qPrintable(dumpAssignedUrls[identifier]),
@@ -1052,26 +1047,35 @@ void FrameLoaderClientQt::dispatchWillSendRequest(WebCore::DocumentLoader*, unsi
                (redirectResponse.isNull()) ? "(null)" : qPrintable(drtDescriptionSuitableForTestResult(redirectResponse)));
 
     if (sendRequestReturnsNull) {
-        newRequest.setURL(QUrl());
+        blockRequest(newRequest);
         return;
     }
 
     if (sendRequestReturnsNullOnRedirect && !redirectResponse.isNull()) {
         printf("Returning null for this redirect\n");
-        newRequest.setURL(QUrl());
+        blockRequest(newRequest);
         return;
     }
 
-    if (QWebPagePrivate::drtRun
-        && url.isValid()
-        && (url.scheme().toLower() == QLatin1String("http") || url.scheme().toLower() == QLatin1String("https"))
-        && url.host() != QLatin1String("127.0.0.1")
-        && url.host() != QLatin1String("255.255.255.255")
-        && url.host().toLower() != QLatin1String("localhost")) {
+    QUrl url = newRequest.url();
+    QString host = url.host();
+    QString urlScheme = url.scheme().toLower();
 
-        printf("Blocked access to external URL %s\n", qPrintable(drtDescriptionSuitableForTestResult(newRequest.url())));
-        newRequest.setURL(QUrl());
-        return;
+    if (QWebPagePrivate::drtRun
+        && !host.isEmpty()
+        && (urlScheme == QLatin1String("http") || urlScheme == QLatin1String("https"))) {
+
+        QUrl testURL = m_webFrame->page()->mainFrame()->requestedUrl();
+        QString testHost = testURL.host();
+        QString testURLScheme = testURL.scheme().toLower();
+
+        if (!isLocalhost(host)
+            && !hostIsUsedBySomeTestsToGenerateError(host)
+            && ((testURLScheme != QLatin1String("http") && testURLScheme != QLatin1String("https")) || isLocalhost(testHost))) {
+            printf("Blocked access to external URL %s\n", qPrintable(drtDescriptionSuitableForTestResult(newRequest.url())));
+            blockRequest(newRequest);
+            return;
+        }
     }
 
     for (int i = 0; i < sendRequestClearHeaders.size(); ++i)
@@ -1621,9 +1625,14 @@ PassRefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, 
         Vector<String> params = paramNames;
         Vector<String> values = paramValues;
         if (mimeType == "application/x-shockwave-flash") {
+#if HAVE(QT5)
+            const bool shouldInjectWmode = true;
+#else
+            // Inject wmode=opaque when there is no client or the client is not a QWebView.
             QWebPageClient* client = m_webFrame->page()->d->client.get();
-            const bool isQWebView = client && qobject_cast<QWidget*>(client->pluginParent());
-            if (!isQWebView) {
+            const bool shouldInjectWmode = !(client && qobject_cast<QWidget*>(client->pluginParent()));
+#endif
+            if (shouldInjectWmode) {
                 // Inject wmode=opaque when there is no client or the client is not a QWebView.
                 size_t wmodeIndex = params.find("wmode");
                 if (wmodeIndex == WTF::notFound) {

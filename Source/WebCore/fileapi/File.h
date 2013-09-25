@@ -33,6 +33,7 @@
 
 namespace WebCore {
 
+struct FileMetadata;
 class KURL;
 
 class File : public Blob {
@@ -52,6 +53,16 @@ public:
     static PassRefPtr<File> createWithRelativePath(const String& path, const String& relativePath);
 #endif
 
+#if ENABLE(FILE_SYSTEM)
+    // If filesystem files live in the remote filesystem, the port might pass the valid metadata (whose length field is non-negative) and cache in the File object.
+    //
+    // Otherwise calling size(), lastModifiedTime() and webkitSlice() will synchronously query the file metadata.
+    static PassRefPtr<File> createForFileSystemFile(const String& name, const FileMetadata& metadata)
+    {
+        return adoptRef(new File(name, metadata));
+    }
+#endif
+
     // Create a file with a name exposed to the author (via File.name and associated DOM properties) that differs from the one provided in the path.
     static PassRefPtr<File> createWithName(const String& path, const String& name)
     {
@@ -65,7 +76,13 @@ public:
 
     const String& path() const { return m_path; }
     const String& name() const { return m_name; }
+
+    // This may return zero if getFileModificationTime() platform call has failed or zero snapshot lastModifiedTime is given at construction time.
     double lastModifiedDate() const;
+
+    // For binding. We want to return null Date if we get the value 0 Date (which is used to indicate the information is unavailable).
+    double lastModifiedDateForBinding() const;
+
 #if ENABLE(DIRECTORY_UPLOAD)
     // Returns the relative path of this file in the context of a directory selection.
     const String& webkitRelativePath() const { return m_relativePath; }
@@ -81,12 +98,39 @@ private:
     File(const String& path, const KURL& srcURL, const String& type);
     File(const String& path, const String& name);
 
+# if ENABLE(FILE_SYSTEM)
+    File(const String& name, const FileMetadata&);
+
+    // Returns true if this has a valid snapshot metadata (i.e. m_snapshotSize >= 0).
+    bool hasValidSnapshotMetadata() const { return m_snapshotSize >= 0; }
+#endif
+
     String m_path;
     String m_name;
+
+#if ENABLE(FILE_SYSTEM)
+    // If m_snapshotSize is negative (initialized to -1 by default), the snapshot metadata is invalid and we retrieve the latest metadata synchronously in size(), lastModifiedTime() and webkitSlice().
+    // Otherwise, the snapshot metadata are used directly in those methods.
+    const long long m_snapshotSize;
+    const double m_snapshotModificationTime;
+#endif
+
 #if ENABLE(DIRECTORY_UPLOAD)
     String m_relativePath;
 #endif
 };
+
+inline File* toFile(Blob* blob)
+{
+    ASSERT(!blob || blob->isFile());
+    return static_cast<File*>(blob);
+}
+
+inline const File* toFile(const Blob* blob)
+{
+    ASSERT(!blob || blob->isFile());
+    return static_cast<const File*>(blob);
+}
 
 } // namespace WebCore
 

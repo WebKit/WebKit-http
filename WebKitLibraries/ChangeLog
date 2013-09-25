@@ -1,3 +1,120 @@
+2012-06-09  Sukolsak Sakshuwong  <sukolsak@google.com>
+
+        Add UNDO_MANAGER flag
+        https://bugs.webkit.org/show_bug.cgi?id=87908
+
+        Reviewed by Tony Chang.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-06-05  Dongwoo Im  <dw.im@samsung.com>
+
+        Add 'isProtocolHandlerRegistered' and 'unregisterProtocolHandler'.
+        https://bugs.webkit.org/show_bug.cgi?id=73176
+
+        Reviewed by Adam Barth.
+
+        Two more APIs are added in Custom Scheme Handler specification.
+        http://dev.w3.org/html5/spec/Overview.html#custom-handlers
+        One is 'isProtocolHandlerRegistered' to query whether the specific URL
+        is registered or not.
+        The other is 'unregisterProtocolHandler' to remove the registered URL.
+
+        * win/tools/vsprops/FeatureDefines.vsprops: Add a macro 'ENABLE_CUSTOM_SCHEME_HANDLER'.
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: Add a macro 'ENABLE_CUSTOM_SCHEME_HANDLER'.
+
+2012-05-29  Jessie Berlin  <jberlin@apple.com>
+
+        [Win] ~1/2 of all the iframe seamless tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=87543
+
+        Rubber-stamped by Eric Seidel.
+
+        Finish enabling IFRAME_SEAMLESS on Windows.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
+2012-05-28  Vivek Galatage  <vivekgalatage@gmail.com>
+
+        Remove obsolete feature define ENABLE_3D_CANVAS from FeatureDefines.vsprops for windows
+        https://bugs.webkit.org/show_bug.cgi?id=87622
+
+        Reviewed by Eric Seidel.
+
+        Removed the ENABLE_3D_CANVAS from the property define as this is
+        obsolete since bug #53041
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
+2012-05-24  John Mellor  <johnme@chromium.org>
+
+        Font Boosting: Add compile flag and runtime setting
+        https://bugs.webkit.org/show_bug.cgi?id=87394
+
+        Reviewed by Adam Barth.
+
+        Add ENABLE_FONT_BOOSTING.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-05-23  Ojan Vafai  <ojan@chromium.org>
+
+        add back the ability to disable flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=87147
+
+        Reviewed by Tony Chang.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-05-10  Anders Carlsson  <andersca@apple.com>
+
+        WebKit1: Add a way to blacklist specific plug-ins/plug-in versions
+        https://bugs.webkit.org/show_bug.cgi?id=86150
+        <rdar://problem/9551196>
+
+        Reviewed by Sam Weinig.
+
+        Add WKShouldBlockPlugin.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceSnowLeopard.a:
+
+2012-05-08  Jon Lee  <jonlee@apple.com>
+
+        Safari warns that it needs to resend the form in an iFrame when going back
+        https://bugs.webkit.org/show_bug.cgi?id=82658
+        <rdar://problem/11292558>
+
+        Reviewed by Darin Adler.
+
+        * WebKitSystemInterface.h:
+        * libWebKitSystemInterfaceLeopard.a:
+        * libWebKitSystemInterfaceLion.a:
+        * libWebKitSystemInterfaceSnowLeopard.a:
+
+2012-05-07  Eric Seidel  <eric@webkit.org>
+
+        Add ENABLE_IFRAME_SEAMLESS so Apple can turn off SEAMLESS if needed
+        https://bugs.webkit.org/show_bug.cgi?id=85822
+
+        Reviewed by Adam Barth.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+
+2012-05-06  Eric Seidel  <eric@webkit.org>
+
+        Remove 3D_CANVAS define from vsprops files (it was renamed WEBGL many months ago)
+        https://bugs.webkit.org/show_bug.cgi?id=85743
+
+        Reviewed by Adam Barth.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
 2012-05-02  Eric Seidel  <eric@webkit.org>
 
         Resort FeatureDefinesCairo.vcprops to actually be alphabetical (in preparation for autogeneration)

@@ -34,6 +34,8 @@
 #include "ewk_cookies.h"
 #include "ewk_frame.h"
 #include "ewk_history.h"
+#include "ewk_intent.h"
+#include "ewk_intent_request.h"
 #include "ewk_js.h"
 #include "ewk_main.h"
 #include "ewk_network.h"
@@ -41,6 +43,7 @@
 #include "ewk_security_policy.h"
 #include "ewk_settings.h"
 #include "ewk_view.h"
+#include "ewk_web_database.h"
 #include "ewk_window_features.h"
 
 #include <Evas.h>

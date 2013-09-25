@@ -68,7 +68,7 @@ static bool isTableRowEmpty(Node* row)
     return true;
 }
 
-DeleteSelectionCommand::DeleteSelectionCommand(Document *document, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements)
+DeleteSelectionCommand::DeleteSelectionCommand(Document *document, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements, bool sanitizeMarkup)
     : CompositeEditCommand(document)
     , m_hasSelectionToDelete(false)
     , m_smartDelete(smartDelete)
@@ -78,6 +78,7 @@ DeleteSelectionCommand::DeleteSelectionCommand(Document *document, bool smartDel
     , m_expandForSpecialElements(expandForSpecialElements)
     , m_pruneStartBlockIfNecessary(false)
     , m_startsAtEmptyLine(false)
+    , m_sanitizeMarkup(sanitizeMarkup)
     , m_startBlock(0)
     , m_endBlock(0)
     , m_typingStyle(0)
@@ -85,7 +86,7 @@ DeleteSelectionCommand::DeleteSelectionCommand(Document *document, bool smartDel
 {
 }
 
-DeleteSelectionCommand::DeleteSelectionCommand(const VisibleSelection& selection, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements)
+DeleteSelectionCommand::DeleteSelectionCommand(const VisibleSelection& selection, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements, bool sanitizeMarkup)
     : CompositeEditCommand(selection.start().anchorNode()->document())
     , m_hasSelectionToDelete(true)
     , m_smartDelete(smartDelete)
@@ -95,6 +96,7 @@ DeleteSelectionCommand::DeleteSelectionCommand(const VisibleSelection& selection
     , m_expandForSpecialElements(expandForSpecialElements)
     , m_pruneStartBlockIfNecessary(false)
     , m_startsAtEmptyLine(false)
+    , m_sanitizeMarkup(sanitizeMarkup)
     , m_selectionToDelete(selection)
     , m_startBlock(0)
     , m_endBlock(0)
@@ -350,7 +352,7 @@ void DeleteSelectionCommand::removeNode(PassRefPtr<Node> node)
         }
     }
     
-    if (isTableStructureNode(node.get()) || node == node->rootEditableElement()) {
+    if (isTableStructureNode(node.get()) || node->isRootEditableElement()) {
         // Do not remove an element of table structure; remove its contents.
         // Likewise for the root editable element.
         Node* child = node->firstChild();
@@ -579,7 +581,7 @@ void DeleteSelectionCommand::mergeParagraphs()
     
     // m_downstreamEnd's block has been emptied out by deletion.  There is no content inside of it to
     // move, so just remove it.
-    Element* endBlock = static_cast<Element*>(enclosingBlock(m_downstreamEnd.deprecatedNode()));
+    Element* endBlock = enclosingBlock(m_downstreamEnd.deprecatedNode());
     if (!endBlock || !endBlock->contains(startOfParagraphToMove.deepEquivalent().deprecatedNode()) || !startOfParagraphToMove.deepEquivalent().deprecatedNode()) {
         removeNode(enclosingBlock(m_downstreamEnd.deprecatedNode()));
         return;
@@ -740,7 +742,7 @@ void DeleteSelectionCommand::removeRedundantBlocks()
     while (node != rootNode) {
         if (isRemovableBlock(node)) {
             if (node == m_endingPosition.anchorNode())
-                updatePositionForNodeRemoval(m_endingPosition, node);
+                updatePositionForNodeRemovalPreservingChildren(m_endingPosition, node);
             
             CompositeEditCommand::removeNodePreservingChildren(node);
             node = m_endingPosition.anchorNode();
@@ -814,7 +816,8 @@ void DeleteSelectionCommand::doApply()
     RefPtr<Node> placeholder = m_needPlaceholder ? createBreakElement(document()).get() : 0;
     
     if (placeholder) {
-        removeRedundantBlocks();
+        if (m_sanitizeMarkup)
+            removeRedundantBlocks();
         insertNodeAt(placeholder.get(), m_endingPosition);
     }
 

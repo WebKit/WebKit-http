@@ -77,20 +77,6 @@ FixedTableLayout::FixedTableLayout(RenderTable* table)
 {
 }
 
-static RenderObject* nextCol(RenderObject* child)
-{
-    // If child is a colgroup, the next col is the colgroup's first child col.
-    if (RenderObject* next = child->firstChild())
-        return next;
-    // Otherwise it's the next col along.
-    if (RenderObject* next = child->nextSibling())
-        return next;
-    // Failing that, the child is the last col in a colgroup, so the next col is the next col/colgroup after its colgroup.
-    if (child->parent()->isTableCol())
-        return child->parent()->nextSibling();
-    return 0;
-}
-
 int FixedTableLayout::calcWidthArray(int)
 {
     int usedWidth = 0;
@@ -101,13 +87,11 @@ int FixedTableLayout::calcWidthArray(int)
     m_width.fill(Length(Auto));
 
     unsigned currentEffectiveColumn = 0;
-    for (RenderObject* child = m_table->firstChild();child && child->isTableCol(); child = nextCol(child)) {
-
-        // Width specified by column-groups does not affect column width in fixed layout tables
-        RenderTableCol* col = toRenderTableCol(child);
+    for (RenderTableCol* col = m_table->firstColumn(); col; col = col->nextColumn()) {
         col->computePreferredLogicalWidths();
 
-        if (col->isTableColGroup())
+        // Width specified by column-groups that have column child does not affect column width in fixed layout tables
+        if (col->isTableColumnGroupWithColumnChildren())
             continue;
 
         Length colStyleLogicalWidth = col->style()->logicalWidth();
@@ -143,40 +127,39 @@ int FixedTableLayout::calcWidthArray(int)
 
     // Iterate over the first row in case some are unspecified.
     RenderTableSection* section = m_table->topNonEmptySection();
-    if (section) {
-        unsigned cCol = 0;
-        RenderObject* firstRow = section->firstChild();
-        RenderObject* child = firstRow->firstChild();
-        while (child) {
-            if (child->isTableCell()) {
-                RenderTableCell* cell = toRenderTableCell(child);
-                if (cell->preferredLogicalWidthsDirty())
-                    cell->computePreferredLogicalWidths();
+    if (!section)
+        return usedWidth;
 
-                Length w = cell->styleOrColLogicalWidth();
-                unsigned span = cell->colSpan();
-                int effectiveColWidth = 0;
-                if (w.isFixed() && w.isPositive()) {
-                    w.setValue(w.value() + cell->borderAndPaddingLogicalWidth());
-                    effectiveColWidth = w.value();
-                }
-                
-                unsigned usedSpan = 0;
-                unsigned i = 0;
-                while (usedSpan < span && cCol + i < nEffCols) {
-                    float eSpan = m_table->spanOfEffCol(cCol + i);
-                    // Only set if no col element has already set it.
-                    if (m_width[cCol + i].isAuto() && w.type() != Auto) {
-                        m_width[cCol + i] = w;
-                        m_width[cCol + i] *= eSpan / span;
-                        usedWidth += effectiveColWidth * eSpan / span;
-                    }
-                    usedSpan += eSpan;
-                    i++;
-                }
-                cCol += i;
+    unsigned currentColumn = 0;
+
+    RenderObject* firstRow = section->firstChild();
+    for (RenderObject* child = firstRow->firstChild(); child; child = child->nextSibling()) {
+        if (!child->isTableCell())
+            continue;
+
+        RenderTableCell* cell = toRenderTableCell(child);
+        if (cell->preferredLogicalWidthsDirty())
+            cell->computePreferredLogicalWidths();
+
+        Length logicalWidth = cell->styleOrColLogicalWidth();
+        unsigned span = cell->colSpan();
+        int fixedBorderBoxLogicalWidth = 0;
+        if (logicalWidth.isFixed() && logicalWidth.isPositive()) {
+            fixedBorderBoxLogicalWidth = cell->computeBorderBoxLogicalWidth(logicalWidth.value());
+            logicalWidth.setValue(fixedBorderBoxLogicalWidth);
+        }
+
+        unsigned usedSpan = 0;
+        while (usedSpan < span && currentColumn < nEffCols) {
+            float eSpan = m_table->spanOfEffCol(currentColumn);
+            // Only set if no col element has already set it.
+            if (m_width[currentColumn].isAuto() && logicalWidth.type() != Auto) {
+                m_width[currentColumn] = logicalWidth;
+                m_width[currentColumn] *= eSpan / span;
+                usedWidth += fixedBorderBoxLogicalWidth * eSpan / span;
             }
-            child = child->nextSibling();
+            usedSpan += eSpan;
+            ++currentColumn;
         }
     }
 

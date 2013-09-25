@@ -2,6 +2,7 @@
  * Copyright (C) 2006 Eric Seidel (eric@webkit.org)
  * Copyright (C) 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
+ * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,31 +33,18 @@
 #include "ContextMenuClient.h"
 #include "DeviceMotionClient.h"
 #include "DeviceOrientationClient.h"
-#include "DocumentLoader.h"
 #include "DragClient.h"
-#include "EditCommand.h"
 #include "EditorClient.h"
 #include "TextCheckerClient.h"
 #include "FloatRect.h"
 #include "FocusDirection.h"
 #include "FrameLoaderClient.h"
-#include "FrameNetworkingContext.h"
 #include "InspectorClient.h"
 #include "Page.h"
-#include "PopupMenu.h"
 #include "ResourceError.h"
-#include "SearchPopupMenu.h"
 
 #if USE(V8)
 #include <v8.h>
-#endif
-
-#if ENABLE(INPUT_TYPE_COLOR)
-#include "ColorChooser.h"
-#endif
-
-#if ENABLE(WEB_INTENTS)
-#include "IntentRequest.h"
 #endif
 
 /*
@@ -75,25 +63,6 @@
 namespace WebCore {
 
 class GraphicsContext3D;
-
-class EmptyPopupMenu : public PopupMenu {
-public:
-    virtual void show(const IntRect&, FrameView*, int) {}
-    virtual void hide() {}
-    virtual void updateFromElement() {}
-    virtual void disconnectClient() {}
-};
-
-class EmptySearchPopupMenu : public SearchPopupMenu {
-public:
-    virtual PopupMenu* popupMenu() { return m_popup.get(); }
-    virtual void saveRecentSearches(const AtomicString&, const Vector<String>&) {}
-    virtual void loadRecentSearches(const AtomicString&, Vector<String>&) {}
-    virtual bool enabled() { return false; }
-
-private:
-    RefPtr<EmptyPopupMenu> m_popup;
-};
 
 class EmptyChromeClient : public ChromeClient {
 public:
@@ -150,8 +119,8 @@ public:
     virtual bool selectItemWritingDirectionIsNatural() { return false; }
     virtual bool selectItemAlignmentFollowsMenuWritingDirection() { return false; }
     virtual bool hasOpenedPopup() const OVERRIDE { return false; }
-    virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const { return adoptRef(new EmptyPopupMenu()); }
-    virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const { return adoptRef(new EmptySearchPopupMenu()); }
+    virtual PassRefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const OVERRIDE;
+    virtual PassRefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const OVERRIDE;
 #if ENABLE(PAGE_POPUP)
     virtual PagePopup* openPagePopup(PagePopupClient*, const IntRect&) OVERRIDE { return 0; }
     virtual void closePagePopup(PagePopup*) OVERRIDE { }
@@ -159,6 +128,11 @@ public:
 
 #if ENABLE(REGISTER_PROTOCOL_HANDLER)
     virtual void registerProtocolHandler(const String&, const String&, const String&, const String&) { }
+#endif
+
+#if ENABLE(CUSTOM_SCHEME_HANDLER)
+    virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const String&, const String&) { return CustomHandlersDeclined; }
+    virtual void unregisterProtocolHandler(const String&, const String&, const String&) { }
 #endif
 
     virtual void setStatusbarText(const String&) { }
@@ -202,10 +176,10 @@ public:
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) { return nullptr; }
+    virtual PassOwnPtr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) OVERRIDE;
 #endif
 
-    virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) { }
+    virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) OVERRIDE;
     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) { }
 
     virtual void formStateDidChange(const Node*) { }
@@ -297,14 +271,14 @@ public:
     virtual void dispatchShow() { }
 
     virtual void dispatchDecidePolicyForResponse(FramePolicyFunction, const ResourceResponse&, const ResourceRequest&) { }
-    virtual void dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, const String&) { }
-    virtual void dispatchDecidePolicyForNavigationAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>) { }
+    virtual void dispatchDecidePolicyForNewWindowAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>, const String&) OVERRIDE;
+    virtual void dispatchDecidePolicyForNavigationAction(FramePolicyFunction, const NavigationAction&, const ResourceRequest&, PassRefPtr<FormState>) OVERRIDE;
     virtual void cancelPolicyCheck() { }
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&) { }
 
-    virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) { }
-    virtual void dispatchWillSubmitForm(FramePolicyFunction, PassRefPtr<FormState>) { }
+    virtual void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) OVERRIDE;
+    virtual void dispatchWillSubmitForm(FramePolicyFunction, PassRefPtr<FormState>) OVERRIDE;
 
     virtual void revertToProvisionalState(DocumentLoader*) { }
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&) { }
@@ -349,7 +323,7 @@ public:
     virtual void didFinishLoad() { }
     virtual void prepareForDataSourceReplacement() { }
 
-    virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData) { return DocumentLoader::create(request, substituteData); }
+    virtual PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&) OVERRIDE;
     virtual void setTitle(const StringWithDirection&, const KURL&) { }
 
     virtual String userAgent(const KURL&) { return ""; }
@@ -373,11 +347,11 @@ public:
     virtual void didDisplayInsecureContent() { }
     virtual void didRunInsecureContent(SecurityOrigin*, const KURL&) { }
     virtual void didDetectXSS(const KURL&, bool) { }
-    virtual PassRefPtr<Frame> createFrame(const KURL&, const String&, HTMLFrameOwnerElement*, const String&, bool, int, int) { return 0; }
-    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool) { return 0; }
-    virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL&, const Vector<String>&, const Vector<String>&) { return 0; }
+    virtual PassRefPtr<Frame> createFrame(const KURL&, const String&, HTMLFrameOwnerElement*, const String&, bool, int, int) OVERRIDE;
+    virtual PassRefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&, bool) OVERRIDE;
+    virtual PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const KURL&, const Vector<String>&, const Vector<String>&) OVERRIDE;
 #if ENABLE(PLUGIN_PROXY_FOR_VIDEO)
-    virtual PassRefPtr<Widget> createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&) { return 0; }
+    virtual PassRefPtr<Widget> createMediaPlayerProxyPlugin(const IntSize&, HTMLMediaElement*, const KURL&, const Vector<String>&, const Vector<String>&, const String&) OVERRIDE;
     virtual void hideMediaPlayerProxyPlugin(Widget*) { }
     virtual void showMediaPlayerProxyPlugin(Widget*) { }
 #endif
@@ -407,15 +381,16 @@ public:
     virtual bool shouldCacheResponse(DocumentLoader*, unsigned long, const ResourceResponse&, const unsigned char*, unsigned long long) { return true; }
 #endif
 
-    virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext() { return PassRefPtr<FrameNetworkingContext>(); }
+    virtual PassRefPtr<FrameNetworkingContext> createNetworkingContext() OVERRIDE;
 
 #if ENABLE(WEB_INTENTS)
-    virtual void dispatchIntent(PassRefPtr<IntentRequest>) { }
+    virtual void dispatchIntent(PassRefPtr<IntentRequest>) OVERRIDE;
 #endif
 };
 
 class EmptyTextCheckerClient : public TextCheckerClient {
 public:
+    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const { return true; }
     virtual void ignoreWordInSpellDocument(const String&) { }
     virtual void learnWord(const String&) { }
     virtual void checkSpellingOfString(const UChar*, int, int*, int*) { }
@@ -427,7 +402,7 @@ public:
 #endif
 
     virtual void getGuessesForWord(const String&, const String&, Vector<String>&) { }
-    virtual void requestCheckingOfString(SpellChecker*, const TextCheckingRequest&) { }
+    virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) OVERRIDE;
 };
 
 class EmptyEditorClient : public EditorClient {
@@ -436,6 +411,7 @@ public:
     EmptyEditorClient() { }
     virtual ~EmptyEditorClient() { }
     virtual void pageDestroyed() { }
+    virtual void frameWillDetachPage(Frame*) { }
 
     virtual bool shouldDeleteRange(Range*) { return false; }
     virtual bool shouldShowDeleteInterface(HTMLElement*) { return false; }
@@ -466,8 +442,8 @@ public:
     virtual void didWriteSelectionToPasteboard() { }
     virtual void didSetSelectionTypesForPasteboard() { }
 
-    virtual void registerUndoStep(PassRefPtr<UndoStep>) { }
-    virtual void registerRedoStep(PassRefPtr<UndoStep>) { }
+    virtual void registerUndoStep(PassRefPtr<UndoStep>) OVERRIDE;
+    virtual void registerRedoStep(PassRefPtr<UndoStep>) OVERRIDE;
     virtual void clearUndoRedoOperations() { }
 
     virtual bool canCopyCut(Frame*, bool defaultValue) const { return defaultValue; }
@@ -497,10 +473,13 @@ public:
     virtual NSURL* canonicalizeURL(NSURL*) { return 0; }
     virtual NSURL* canonicalizeURLString(NSString*) { return 0; }
 #endif
-#if PLATFORM(MAC) && !defined(BUILDING_ON_LEOPARD)
+
+#if USE(APPKIT)
     virtual void uppercaseWord() { }
     virtual void lowercaseWord() { }
     virtual void capitalizeWord() { }
+#endif
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
     virtual void showSubstitutionsPanel(bool) { }
     virtual bool substitutionsPanelIsShowing() { return false; }
     virtual void toggleSmartInsertDelete() { }
@@ -541,7 +520,7 @@ public:
     virtual void contextMenuDestroyed() { }
 
 #if USE(CROSS_PLATFORM_CONTEXT_MENUS)
-    virtual PassOwnPtr<ContextMenu> customizeMenu(PassOwnPtr<ContextMenu>) { return nullptr; }
+    virtual PassOwnPtr<ContextMenu> customizeMenu(PassOwnPtr<ContextMenu>) OVERRIDE;
 #else
     virtual PlatformMenuDescription getCustomMenuFromDefaultItems(ContextMenu*) { return 0; }
 #endif

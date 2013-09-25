@@ -28,7 +28,7 @@ function deleteExisting(evt)
     event = evt;
     debug("setVersionSuccess():");
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
 
     deleteAllObjectStores(db);
@@ -85,8 +85,17 @@ function addData2(evt)
 function addData3(evt)
 {
     event = evt;
-    // Add data which doesn't have a key in the zIndex.
+    debug("Add data which doesn't have a key in the z index.");
     request = evalAndLog("event.target.source.add({x: 'value3', y: '456'}, 'key3')");
+    request.onsuccess = addData4;
+    request.onerror = unexpectedErrorCallback;
+}
+
+function addData4(evt)
+{
+    event = evt;
+    debug("Add data which has invalid key for y index, no key for the z index.");
+    request = evalAndLog("event.target.source.add({x: 'value4', y: null}, 'key4')");
     request.onsuccess = getData;
     request.onerror = unexpectedErrorCallback;
 }
@@ -174,7 +183,7 @@ function cursor1Continue(evt)
 {
     event = evt;
     shouldBe("event.target.source", "indexObject");
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value");
     shouldBeEqualToString("event.target.result.primaryKey", "key");
 
@@ -186,7 +195,7 @@ function cursor1Continue(evt)
 function cursor1Continue2(evt)
 {
     event = evt;
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value2");
     shouldBeEqualToString("event.target.result.primaryKey", "key2");
 
@@ -198,9 +207,21 @@ function cursor1Continue2(evt)
 function cursor1Continue3(evt)
 {
     event = evt;
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value3");
     shouldBeEqualToString("event.target.result.primaryKey", "key3");
+
+    // We re-use the last request object.
+    evalAndLog("event.target.result.continue()");
+    self.request.onsuccess = cursor1Continue4;
+}
+
+function cursor1Continue4(evt)
+{
+    event = evt;
+    shouldBeNonNull("event.target.result");
+    shouldBeEqualToString("event.target.result.key", "value4");
+    shouldBeEqualToString("event.target.result.primaryKey", "key4");
 
     // We re-use the last request object.
     evalAndLog("event.target.result.continue()");
@@ -210,7 +231,7 @@ function cursor1Continue3(evt)
 function openObjectCursor(evt)
 {
     event = evt;
-    shouldBeTrue("event.target.result === null");
+    shouldBeNull("event.target.result");
 
     self.request = evalAndLog("indexObject.openCursor()");
     request.onsuccess = cursor2Continue;
@@ -221,7 +242,7 @@ function cursor2Continue(evt)
 {
     event = evt;
     shouldBe("event.target.source", "indexObject");
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value");
     shouldBeEqualToString("event.target.result.value.x", "value");
     shouldBeEqualToString("event.target.result.value.y", "zzz");
@@ -234,7 +255,7 @@ function cursor2Continue(evt)
 function cursor2Continue2(evt)
 {
     event = evt;
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value2");
     shouldBeEqualToString("event.target.result.value.x", "value2");
     shouldBeEqualToString("event.target.result.value.y", "zzz2");
@@ -247,10 +268,23 @@ function cursor2Continue2(evt)
 function cursor2Continue3(evt)
 {
     event = evt;
-    shouldBeFalse("event.target.result === null");
+    shouldBeNonNull("event.target.result");
     shouldBeEqualToString("event.target.result.key", "value3");
     shouldBeEqualToString("event.target.result.value.x", "value3");
     shouldBeEqualToString("event.target.result.value.y", "456");
+
+    // We re-use the last request object.
+    evalAndLog("event.target.result.continue()");
+    self.request.onsuccess = cursor2Continue4;
+}
+
+function cursor2Continue4(evt)
+{
+    event = evt;
+    shouldBeNonNull("event.target.result");
+    shouldBeEqualToString("event.target.result.key", "value4");
+    shouldBeEqualToString("event.target.result.value.x", "value4");
+    shouldBe("event.target.result.value.y", "null");
 
     // We re-use the last request object.
     evalAndLog("event.target.result.continue()");
@@ -260,23 +294,44 @@ function cursor2Continue3(evt)
 function last(evt)
 {
     event = evt;
-    shouldBeTrue("event.target.result === null");
+    shouldBeNull("event.target.result");
 
-    try {
-        debug("Passing an invalid key into indexObject.get({}).");
-        indexObject.get({});
-        testFailed("No exception thrown");
-    } catch (e) {
-        testPassed("Caught exception: " + e.toString());
-    }
+    evalAndLog("request = indexObject.count()");
+    request.onerror = unexpectedErrorCallback;
+    request.onsuccess = index1Count;
+}
 
-    try {
-        debug("Passing an invalid key into indexObject.getKey({}).");
-        indexObject.getKey({});
-        testFailed("No exception thrown");
-    } catch (e) {
-        testPassed("Caught exception: " + e.toString());
-    }
+function index1Count(evt)
+{
+    event = evt;
+    shouldBe("event.target.result", "4");
+
+    evalAndLog("request = indexObject2.count()");
+    request.onerror = unexpectedErrorCallback;
+    request.onsuccess = index2Count;
+}
+
+function index2Count(evt)
+{
+    event = evt;
+    shouldBe("event.target.result", "3");
+
+    evalAndLog("request = indexObject3.count()");
+    request.onerror = unexpectedErrorCallback;
+    request.onsuccess = index3Count;
+}
+
+function index3Count(evt)
+{
+    event = evt;
+    shouldBe("event.target.result", "2");
+
+    debug("Passing an invalid key into indexObject.get({}).");
+    evalAndExpectException("indexObject.get({})", "IDBDatabaseException.DATA_ERR", "'DataError'");
+
+    debug("Passing an invalid key into indexObject.getKey({}).");
+    evalAndExpectException("indexObject.getKey({})", "IDBDatabaseException.DATA_ERR", "'DataError'");
+
     finishJSTest();
 }
 

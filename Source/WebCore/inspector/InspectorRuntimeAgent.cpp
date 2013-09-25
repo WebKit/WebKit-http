@@ -83,22 +83,11 @@ static ScriptDebugServer::PauseOnExceptionsState setPauseOnExceptionsState(Scrip
 }
 #endif
 
-void InspectorRuntimeAgent::evaluate(ErrorString* errorString, const String& expression, const String* const objectGroup, const bool* const includeCommandLineAPI, const bool* const doNotPauseOnExceptionsAndMuteConsole, const String* const frameId, const bool* const returnByValue, RefPtr<TypeBuilder::Runtime::RemoteObject>& result, TypeBuilder::OptOutput<bool>* wasThrown)
+void InspectorRuntimeAgent::evaluate(ErrorString* errorString, const String& expression, const String* const objectGroup, const bool* const includeCommandLineAPI, const bool* const doNotPauseOnExceptionsAndMuteConsole, const int* executionContextId, const bool* const returnByValue, RefPtr<TypeBuilder::Runtime::RemoteObject>& result, TypeBuilder::OptOutput<bool>* wasThrown)
 {
-    ScriptState* scriptState = 0;
-    if (frameId) {
-        scriptState = scriptStateForFrameId(*frameId);
-        if (!scriptState) {
-            *errorString = "Frame with given id not found.";
-            return;
-        }
-    } else
-        scriptState = getDefaultInspectedState();
-    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptFor(scriptState);
-    if (injectedScript.hasNoValue()) {
-        *errorString = "Inspected frame has gone";
+    InjectedScript injectedScript = injectedScriptForEval(errorString, executionContextId);
+    if (injectedScript.hasNoValue())
         return;
-    }
 #if ENABLE(JAVASCRIPT_DEBUGGER)
     ScriptDebugServer::PauseOnExceptionsState previousPauseOnExceptionsState = ScriptDebugServer::DontPauseOnExceptions;
     if (asBool(doNotPauseOnExceptionsAndMuteConsole))

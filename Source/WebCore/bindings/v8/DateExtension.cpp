@@ -116,10 +116,9 @@ v8::Handle<v8::Value> DateExtension::Setup(const v8::Arguments& args)
     return v8::Undefined();
 }
 
-v8::Handle<v8::Value> DateExtension::OnSleepDetected(const v8::Arguments&)
+v8::Handle<v8::Value> DateExtension::OnSleepDetected(const v8::Arguments& args)
 {
-    V8Proxy::throwError(V8Proxy::GeneralError, "Too much time spent in unload handler.");
-    return v8::Undefined();
+    return V8Proxy::throwError(V8Proxy::GeneralError, "Too much time spent in unload handler.", args.GetIsolate());
 }
 
 }  // namespace WebCore

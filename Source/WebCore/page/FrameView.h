@@ -112,7 +112,7 @@ public:
     bool needsFullRepaint() const { return m_doFullRepaint; }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
-    void serviceScriptedAnimations(double monotonicAnimationStartTime);
+    void serviceScriptedAnimations(DOMTimeStamp);
 #endif
 
 #if USE(ACCELERATED_COMPOSITING)
@@ -168,7 +168,7 @@ public:
     void adjustViewSize();
     
     virtual IntRect windowClipRect(bool clipToContents = true) const;
-    IntRect windowClipRectForLayer(const RenderLayer*, bool clipToLayerContents) const;
+    IntRect windowClipRectForFrameOwner(const HTMLFrameOwnerElement*, bool clipToLayerContents) const;
 
     virtual IntRect windowResizerRect() const;
 
@@ -200,8 +200,6 @@ public:
 
     // Functions for querying the current scrolled position, negating the effects of overhang
     // and adjusting for page scale.
-    int scrollXForFixedPosition() const;
-    int scrollYForFixedPosition() const;
     IntSize scrollOffsetForFixedPosition() const;
 
     bool fixedElementsLayoutRelativeToFrame() const;
@@ -242,6 +240,7 @@ public:
     PaintBehavior paintBehavior() const;
     bool isPainting() const;
     bool hasEverPainted() const { return m_lastPaintTime; }
+    void setLastPaintTime(double lastPaintTime) { m_lastPaintTime = lastPaintTime; }
     void setNodeToDraw(Node*);
 
     virtual void paintOverhangAreas(GraphicsContext*, const IntRect& horizontalOverhangArea, const IntRect& verticalOverhangArea, const IntRect& dirtyRect);
@@ -318,8 +317,6 @@ public:
     void setAnimatorsAreActive();
 
     RenderBox* embeddedContentBox() const;
-
-    void clearOwningRendererForCustomScrollbars(RenderBox*);
     
     void setTracksRepaints(bool);
     bool isTrackingRepaints() const { return m_isTrackingRepaints; }

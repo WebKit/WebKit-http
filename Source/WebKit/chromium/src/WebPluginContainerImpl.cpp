@@ -34,14 +34,12 @@
 #include "Chrome.h"
 #include "ChromeClientImpl.h"
 #include "ScrollbarGroup.h"
-#include "platform/WebClipboard.h"
 #include "WebCursorInfo.h"
 #include "WebDataSourceImpl.h"
 #include "WebElement.h"
 #include "WebInputEvent.h"
 #include "WebInputEventConversion.h"
 #include "WebKit.h"
-#include "platform/WebKitPlatformSupport.h"
 #include "WebPlugin.h"
 #include "platform/WebRect.h"
 #include "platform/WebString.h"
@@ -74,15 +72,16 @@
 #include "ScrollView.h"
 #include "ScrollbarTheme.h"
 #include "UserGestureIndicator.h"
+#include "WebPrintParams.h"
 #include "WheelEvent.h"
+#include <public/Platform.h>
+#include <public/WebClipboard.h>
 
 #if ENABLE(GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
 #endif
 
-#if WEBKIT_USING_SKIA
 #include "PlatformContextSkia.h"
-#endif
 
 using namespace WebCore;
 
@@ -126,11 +125,7 @@ void WebPluginContainerImpl::paint(GraphicsContext* gc, const IntRect& damageRec
     IntPoint origin = view->windowToContents(IntPoint(0, 0));
     gc->translate(static_cast<float>(origin.x()), static_cast<float>(origin.y()));
 
-#if WEBKIT_USING_SKIA
     WebCanvas* canvas = gc->platformContext()->canvas();
-#elif WEBKIT_USING_CG
-    WebCanvas* canvas = gc->platformContext();
-#endif
 
     IntRect windowRect =
         IntRect(view->contentsToWindow(damageRect.location()), damageRect.size());
@@ -239,6 +234,14 @@ void WebPluginContainerImpl::setParent(ScrollView* view)
         reportGeometry();
 }
 
+void WebPluginContainerImpl::setPlugin(WebPlugin* plugin)
+{
+    if (plugin != m_webPlugin) {
+        m_element->resetInstance();
+        m_webPlugin = plugin;
+    }
+}
+
 bool WebPluginContainerImpl::supportsPaginatedPrint() const
 {
     return m_webPlugin->supportsPaginatedPrint();
@@ -249,21 +252,16 @@ bool WebPluginContainerImpl::isPrintScalingDisabled() const
     return m_webPlugin->isPrintScalingDisabled();
 }
 
-int WebPluginContainerImpl::printBegin(const IntRect& printableArea,
-                                       int printerDPI) const
+int WebPluginContainerImpl::printBegin(const WebPrintParams& printParams) const
 {
-    return m_webPlugin->printBegin(printableArea, printerDPI);
+    return m_webPlugin->printBegin(printParams);
 }
 
 bool WebPluginContainerImpl::printPage(int pageNumber,
                                        WebCore::GraphicsContext* gc)
 {
     gc->save();
-#if WEBKIT_USING_SKIA
     WebCanvas* canvas = gc->platformContext()->canvas();
-#elif WEBKIT_USING_CG
-    WebCanvas* canvas = gc->platformContext();
-#endif
     bool ret = m_webPlugin->printPage(pageNumber, canvas);
     gc->restore();
     return ret;
@@ -279,7 +277,7 @@ void WebPluginContainerImpl::copy()
     if (!m_webPlugin->hasSelection())
         return;
 
-    webKitPlatformSupport()->clipboard()->writeHTML(m_webPlugin->selectionAsMarkup(), WebURL(), m_webPlugin->selectionAsText(), false);
+    WebKit::Platform::current()->clipboard()->writeHTML(m_webPlugin->selectionAsMarkup(), WebURL(), m_webPlugin->selectionAsText(), false);
 }
 
 WebElement WebPluginContainerImpl::element()
@@ -714,9 +712,8 @@ WebCore::IntRect WebPluginContainerImpl::windowClipRect() const
     if (m_element->renderer()->document()->renderer()) {
         // Take our element and get the clip rect from the enclosing layer and
         // frame view.
-        RenderLayer* layer = m_element->renderer()->enclosingLayer();
         clipRect.intersect(
-            m_element->document()->view()->windowClipRectForLayer(layer, true));
+            m_element->document()->view()->windowClipRectForFrameOwner(m_element, true));
     }
 
     return clipRect;

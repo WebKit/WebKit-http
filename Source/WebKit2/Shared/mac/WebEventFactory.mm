@@ -26,6 +26,8 @@
 #import "config.h"
 #import "WebEventFactory.h"
 
+#if USE(APPKIT)
+
 #import "WebKitSystemInterface.h"
 #import <wtf/ASCIICType.h>
 #import <WebCore/PlatformEventFactoryMac.h>
@@ -33,6 +35,12 @@
 #import <WebCore/WindowsKeyboardCodes.h>
 
 using namespace WebCore;
+
+@interface NSEvent (WebNSEventDetails)
+- (NSInteger)_scrollCount;
+- (CGFloat)_unacceleratedScrollingDeltaX;
+- (CGFloat)_unacceleratedScrollingDeltaY;
+@end
 
 namespace WebKit {
 
@@ -385,8 +393,6 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(NSEvent *event, NSView *windo
     NSPoint position = pointForEvent(event, windowView);
     NSPoint globalPosition = globalPointForEvent(event);
 
-    WebWheelEvent::Granularity granularity  = WebWheelEvent::ScrollByPixelWheelEvent;
-
     BOOL continuous;
     float deltaX = 0;
     float deltaY = 0;
@@ -407,17 +413,34 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(NSEvent *event, NSView *windo
         deltaY *= static_cast<float>(Scrollbar::pixelsPerLineStep());
     }
 
-    WebWheelEvent::Phase phase              = phaseForEvent(event);
-    WebWheelEvent::Phase momentumPhase      = momentumPhaseForEvent(event);
-    bool hasPreciseScrollingDeltas          = continuous;
-    WebEvent::Modifiers modifiers           = modifiersForEvent(event);
-    double timestamp                        = [event timestamp];
+    WebWheelEvent::Granularity granularity  = WebWheelEvent::ScrollByPixelWheelEvent;
+
 #if HAVE(INVERTED_WHEEL_EVENTS)
     bool directionInvertedFromDevice        = [event isDirectionInvertedFromDevice];
 #else
     bool directionInvertedFromDevice        = false;
 #endif
-    return WebWheelEvent(WebEvent::Wheel, IntPoint(position), IntPoint(globalPosition), FloatSize(deltaX, deltaY), FloatSize(wheelTicksX, wheelTicksY), granularity, phase, momentumPhase, hasPreciseScrollingDeltas, modifiers, timestamp, directionInvertedFromDevice);
+
+    WebWheelEvent::Phase phase              = phaseForEvent(event);
+    WebWheelEvent::Phase momentumPhase      = momentumPhaseForEvent(event);
+    bool hasPreciseScrollingDeltas          = continuous;
+
+    uint32_t scrollCount;
+    FloatSize unacceleratedScrollingDelta;
+
+    static bool nsEventSupportsScrollCount = [NSEvent instancesRespondToSelector:@selector(_scrollCount)];
+    if (nsEventSupportsScrollCount) {
+        scrollCount = [event _scrollCount];
+        unacceleratedScrollingDelta = FloatSize([event _unacceleratedScrollingDeltaX], [event _unacceleratedScrollingDeltaY]);
+    } else {
+        scrollCount = 0;
+        unacceleratedScrollingDelta = FloatSize(deltaX, deltaY);
+    }
+
+    WebEvent::Modifiers modifiers           = modifiersForEvent(event);
+    double timestamp                        = [event timestamp];
+    
+    return WebWheelEvent(WebEvent::Wheel, IntPoint(position), IntPoint(globalPosition), FloatSize(deltaX, deltaY), FloatSize(wheelTicksX, wheelTicksY), granularity, directionInvertedFromDevice, phase, momentumPhase, hasPreciseScrollingDeltas, scrollCount, unacceleratedScrollingDelta, modifiers, timestamp);
 }
 
 WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, NSView *)
@@ -470,3 +493,5 @@ WebGestureEvent WebEventFactory::createWebGestureEvent(NSEvent *event, NSView *w
 #endif
 
 } // namespace WebKit
+
+#endif // USE(APPKIT)

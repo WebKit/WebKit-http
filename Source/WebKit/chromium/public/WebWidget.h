@@ -32,8 +32,8 @@
 #define WebWidget_h
 
 #include "WebCompositionUnderline.h"
-#include "WebTextInputType.h"
 #include "WebTextDirection.h"
+#include "WebTextInputInfo.h"
 #include "platform/WebCanvas.h"
 #include "platform/WebCommon.h"
 #include "platform/WebRect.h"
@@ -170,12 +170,20 @@ public:
     // returns false on failure.
     virtual bool compositionRange(size_t* location, size_t* length) { return false; }
 
+    // Returns information about the current text input of this WebWidget.
+    virtual WebTextInputInfo textInputInfo() { return WebTextInputInfo(); }
+
     // Returns the current text input type of this WebWidget.
-    virtual WebTextInputType textInputType() { return WebKit::WebTextInputTypeNone; }
+    // FIXME: Remove this method. It's redundant with textInputInfo().
+    virtual WebTextInputType textInputType() { return WebTextInputTypeNone; }
 
     // Returns the start and end bounds of the current selection.
     // If the selection range is empty, it returns the caret bounds.
     virtual bool selectionBounds(WebRect& start, WebRect& end) const { return false; }
+
+    // Returns the text direction at the start and end bounds of the current selection.
+    // If the selection range is empty, it returns false.
+    virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const { return false; }
 
     // Fetch the current selection range of this WebWidget. If there is no
     // selection, it will output a 0-length range with the location at the

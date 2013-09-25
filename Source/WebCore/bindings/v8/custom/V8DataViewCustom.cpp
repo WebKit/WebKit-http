@@ -39,7 +39,7 @@ v8::Handle<v8::Value> V8DataView::constructorCallback(const v8::Arguments& args)
     INC_STATS("DOM.DataView.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -53,14 +53,14 @@ v8::Handle<v8::Value> V8DataView::constructorCallback(const v8::Arguments& args)
         return args.Holder();
     }
     if (args[0]->IsNull() || !V8ArrayBuffer::HasInstance(args[0]))
-        return V8Proxy::throwTypeError();
+        return V8Proxy::throwTypeError(0, args.GetIsolate());
     return constructWebGLArrayWithArrayBufferArgument<DataView, char>(args, &info, v8::kExternalByteArray, false);
 }
 
 v8::Handle<v8::Value> toV8(DataView* impl, v8::Isolate* isolate)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     return V8DataView::wrap(impl, isolate);
 }
 
@@ -68,16 +68,14 @@ v8::Handle<v8::Value> V8DataView::getInt8Callback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DataView.getInt8");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
     EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
     int8_t result = imp->getInt8(byteOffset, ec);
-    if (UNLIKELY(ec)) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (UNLIKELY(ec))
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     return v8::Integer::New(result);
 }
 
@@ -85,16 +83,14 @@ v8::Handle<v8::Value> V8DataView::getUint8Callback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DataView.getUint8");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
     EXCEPTION_BLOCK(unsigned, byteOffset, toUInt32(args[0]));
     uint8_t result = imp->getUint8(byteOffset, ec);
-    if (UNLIKELY(ec)) {
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (UNLIKELY(ec))
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     return v8::Integer::New(result);
 }
 
@@ -102,7 +98,7 @@ v8::Handle<v8::Value> V8DataView::setInt8Callback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DataView.setInt8");
     if (args.Length() < 2)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
@@ -110,7 +106,7 @@ v8::Handle<v8::Value> V8DataView::setInt8Callback(const v8::Arguments& args)
     EXCEPTION_BLOCK(int, value, toInt32(args[1]));
     imp->setInt8(byteOffset, static_cast<int8_t>(value), ec);
     if (UNLIKELY(ec))
-        V8Proxy::setDOMException(ec, args.GetIsolate());
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     return v8::Handle<v8::Value>();
 }
 
@@ -118,7 +114,7 @@ v8::Handle<v8::Value> V8DataView::setUint8Callback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DataView.setUint8");
     if (args.Length() < 2)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     DataView* imp = V8DataView::toNative(args.Holder());
     ExceptionCode ec = 0;
@@ -126,7 +122,7 @@ v8::Handle<v8::Value> V8DataView::setUint8Callback(const v8::Arguments& args)
     EXCEPTION_BLOCK(int, value, toInt32(args[1]));
     imp->setUint8(byteOffset, static_cast<uint8_t>(value), ec);
     if (UNLIKELY(ec))
-        V8Proxy::setDOMException(ec, args.GetIsolate());
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
     return v8::Handle<v8::Value>();
 }
 

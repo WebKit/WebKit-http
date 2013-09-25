@@ -28,70 +28,31 @@
 
 /**
  * @constructor
- * @extends {WebInspector.Panel}
- * @implements {WebInspector.TabbedEditorContainerDelegate}
+ * @extends {WebInspector.Object}
+ * @implements {WebInspector.UISourceCodeProvider}
  */
-WebInspector.StylesPanel = function()
+WebInspector.StylesUISourceCodeProvider = function()
 {
-    WebInspector.Panel.call(this, "styles");
-    this.registerRequiredCSS("scriptsPanel.css");
-
-    const initialNavigatorWidth = 225;
-    const minimalViewsContainerWidthPercent = 50;
-
-    this._mainView = new WebInspector.SplitView(WebInspector.SplitView.SidebarPosition.Left, "stylesPanelNavigatorSidebarWidth", initialNavigatorWidth);
-    this._mainView.element.id = "styles-main-view";
-    this._mainView.element.tabIndex = 0;
-
-    this._mainView.minimalSidebarWidth = Preferences.minScriptsSidebarWidth;
-    this._mainView.minimalMainWidthPercent = minimalViewsContainerWidthPercent;
-
-    this._navigatorView = new WebInspector.NavigatorView();
-    this._navigatorView.addEventListener(WebInspector.NavigatorView.Events.ItemSelected, this._itemSelected, this);
-
-    this._tabbedPane = new WebInspector.TabbedPane();
-    this._tabbedPane.element.addStyleClass("navigator-tabbed-pane");
-    this._tabbedPane.shrinkableTabs = true;
-    this._tabbedPane.appendTab(WebInspector.ScriptsNavigator.ScriptsTab, WebInspector.UIString("Stylesheets"), this._navigatorView);
-    this._tabbedPane.show(this._mainView.sidebarElement);
-
-    this._editorContainer = new WebInspector.TabbedEditorContainer(this, "previouslyViewedCSSFiles");
-    this._editorContainer.show(this._mainView.mainElement);
-
-    this._mainView.show(this.element);
-
-    this._navigatorController = new WebInspector.NavigatorOverlayController(this, this._mainView, this._tabbedPane, this._editorContainer.view);
-
-    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._cachedResourcesLoaded, this);
+    WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.CachedResourcesLoaded, this._initialize, this);
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.WillLoadCachedResources, this._reset, this);
     WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.MainFrameNavigated, this._reset, this);
 
-    this._sourceFramesForResource = new Map();
-    this._urlToResource = {};
-
-    var openResourceShortcut = WebInspector.OpenResourceDialog.createShortcut();
-    this.registerShortcut(openResourceShortcut.key, this._showOpenStylesheetDialog.bind(this));
+    this._uiSourceCodes = [];
 }
 
-WebInspector.StylesPanel.prototype = {
-    wasShown: function()
+WebInspector.StylesUISourceCodeProvider.prototype = {
+    /**
+     * @return {Array.<WebInspector.UISourceCode>}
+     */
+    uiSourceCodes: function()
     {
-        WebInspector.Panel.prototype.wasShown.call(this);
-        this._navigatorController.wasShown();
-        this._initialize();
+        return this._uiSourceCodes;
     },
 
     _initialize: function()
     {
-        if (!this._initialized && this.isShowing() && this._cachedResourcesWereLoaded) {
-            this._populateResourceTree();
-            this._initialized = true;
-        }
-    },
-
-    _populateResourceTree: function()
-    {
-        WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
+        if (this._initialized)
+            return;
 
         function populateFrame(frame)
         {
@@ -103,6 +64,9 @@ WebInspector.StylesPanel.prototype = {
                 this._resourceAdded({data:resources[i]});
         }
         populateFrame.call(this, WebInspector.resourceTreeModel.mainFrame);
+
+        WebInspector.resourceTreeModel.addEventListener(WebInspector.ResourceTreeModel.EventTypes.ResourceAdded, this._resourceAdded, this);
+        this._initialized = true;
     },
 
     _resourceAdded: function(event)
@@ -110,120 +74,246 @@ WebInspector.StylesPanel.prototype = {
         var resource = event.data;
         if (resource.type !== WebInspector.resourceTypes.Stylesheet)
             return;
-        this._urlToResource[resource.url] = resource;
-        this._navigatorView.addUISourceCode(resource);
-        this._editorContainer.uiSourceCodeAdded(resource);
+        var uiSourceCode = new WebInspector.StyleSource(resource);
+        this._uiSourceCodes.push(uiSourceCode);
+        this.dispatchEventToListeners(WebInspector.UISourceCodeProvider.Events.UISourceCodeAdded, uiSourceCode);
     },
 
     _reset: function()
     {
-        this._navigatorView.reset();
-        this._editorContainer.reset();
-        this._urlToResource = {};
-        this._sourceFramesForResource = new Map();
-    },
-
-    _cachedResourcesLoaded: function()
-    {
-        this._cachedResourcesWereLoaded = true;
-        this._initialize();
-    },
-
-    get toolbarItemLabel()
-    {
-        return WebInspector.UIString("Styles");
-    },
-
-    /**
-     * @param {WebInspector.UISourceCode} uiSourceCode
-     * @return {WebInspector.SourceFrame}
-     */
-    viewForFile: function(uiSourceCode)
-    {
-        var sourceFrame = this._sourceFramesForResource.get(uiSourceCode);
-        if (!sourceFrame) {
-            sourceFrame = new WebInspector.EditableResourceSourceFrame(uiSourceCode);
-            sourceFrame.addEventListener(WebInspector.EditableResourceSourceFrame.Events.TextEdited, this._textEdited, this);
-            this._sourceFramesForResource.put(uiSourceCode, sourceFrame);
-        }
-        return sourceFrame;
-    },
-
-    _textEdited: function(event)
-    {
-        var sourceFrame = /** @type {WebInspector.EditableResourceSourceFrame} */ event.data;
-        this._editorContainer.setFileIsDirty(sourceFrame.resource, sourceFrame.isDirty());
-    },
-
-    _itemSelected: function(event)
-    {
-        var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.data.uiSourceCode;
-        this._showFile(uiSourceCode);
-        this._navigatorController.hideNavigatorOverlay();
-        if (event.data.focusSource)
-            this._editorContainer.view.focus();
-    },
-
-    _showFile: function(uiSourceCode)
-    {
-        this._navigatorView.revealUISourceCode(uiSourceCode);
-        this._editorContainer.showFile(uiSourceCode);
-    },
-
-    canShowAnchorLocation: function(anchor)
-    {
-        var resource = WebInspector.resourceForURL(anchor.href);
-        return !!resource && resource.type === WebInspector.resourceTypes.Stylesheet;
-    },
-
-    showAnchorLocation: function(anchor)
-    {
-        var resource = this._urlToResource[anchor.href];
-        if (!resource)
-            return;
-
-        this._showFile(resource);
-        var sourceFrame = this._sourceFramesForResource.get(resource);
-        if (typeof anchor.lineNumber === "number")
-            sourceFrame.highlightLine(anchor.lineNumber);
-        this._editorContainer.view.focus();
-    },
-
-    _showOpenStylesheetDialog: function()
-    {
-        if (WebInspector.Dialog.currentInstance())
-            return;
-
-        var dialog = new WebInspector.FilteredItemSelectionDialog(new WebInspector.OpenStylesheetDialog(this));
-        WebInspector.Dialog.show(this.element, dialog);
+        this._uiSourceCodes = [];
     }
 }
 
-WebInspector.StylesPanel.prototype.__proto__ = WebInspector.Panel.prototype;
+WebInspector.StylesUISourceCodeProvider.prototype.__proto__ = WebInspector.Object.prototype;
 
 /**
  * @constructor
- * @extends {WebInspector.OpenResourceDialog}
- * @param {WebInspector.StylesPanel} panel
+ * @extends {WebInspector.UISourceCode}
+ * @param {WebInspector.Resource} resource
  */
-WebInspector.OpenStylesheetDialog = function(panel)
+WebInspector.StyleSource = function(resource)
 {
-    var resources = [];
-    for (var url in panel._urlToResource)
-        resources.push(panel._urlToResource[url]);
-    WebInspector.OpenResourceDialog.call(this, resources);
-
-    this._panel = panel;
+    WebInspector.UISourceCode.call(this, resource.url, resource, resource);
 }
 
-WebInspector.OpenStylesheetDialog.prototype = {
+WebInspector.StyleSource.prototype = {
+    /**
+     * @param {function(?string)} callback
+     */
+    workingCopyCommitted: function(callback)
+    {  
+        this._resource.setContent(this.workingCopy(), true, callback);
+    },
+
+    workingCopyChanged: function()
+    {  
+        function commitIncrementalEdit()
+        {
+            this._resource.setContent(this.workingCopy(), false, function() {});
+        }
+        const updateTimeout = 200;
+        this._incrementalUpdateTimer = setTimeout(commitIncrementalEdit.bind(this), updateTimeout);
+    }
+}
+
+WebInspector.StyleSource.prototype.__proto__ = WebInspector.UISourceCode.prototype;
+
+/**
+ * @constructor
+ * @extends {WebInspector.UISourceCode}
+ * @param {CSSAgent.StyleSheetId} styleSheetId
+ * @param {string} url
+ * @param {string} content
+ */
+WebInspector.InspectorStyleSource = function(styleSheetId, url, content)
+{
+    WebInspector.UISourceCode.call(this, "<inspector style>", null, new WebInspector.StaticContentProvider(WebInspector.resourceTypes.Stylesheet, content));
+}
+
+WebInspector.InspectorStyleSource.prototype = {
+}
+
+WebInspector.InspectorStyleSource.prototype.__proto__ = WebInspector.UISourceCode.prototype;
+
+/**
+ * @constructor
+ * @extends {WebInspector.SourceFrame}
+ * @param {WebInspector.StyleSource} styleSource
+ */
+WebInspector.StyleSourceFrame = function(styleSource)
+{
+    this._styleSource = styleSource;
+    WebInspector.SourceFrame.call(this, this._styleSource);
+    this._styleSource.addEventListener(WebInspector.UISourceCode.Events.ContentChanged, this._onContentChanged, this);
+}
+
+WebInspector.StyleSourceFrame.prototype = {
+    /**
+     * @return {boolean}
+     */
+    canEditSource: function()
+    {
+        return true;
+    },
+
+    /**
+     * @param {string} text
+     */
+    commitEditing: function(text)
+    {
+        if (!this._styleSource.isDirty())
+            return;
+
+        this._isCommittingEditing = true;
+        this._styleSource.commitWorkingCopy(this._didEditContent.bind(this));
+    },
+
+    afterTextChanged: function(oldRange, newRange)
+    {
+        this._styleSource.setWorkingCopy(this.textModel.text);
+    },
+
+    _didEditContent: function(error)
+    {
+        if (error) {
+            WebInspector.log(error, WebInspector.ConsoleMessage.MessageLevel.Error, true);
+            return;
+        }
+        delete this._isCommittingEditing;
+    },
+
+    _clearIncrementalUpdateTimer: function()
+    {
+        if (this._incrementalUpdateTimer)
+            clearTimeout(this._incrementalUpdateTimer);
+        delete this._incrementalUpdateTimer;
+    },
+
+    /**
+     * @param {WebInspector.Event} event
+     */
+    _onContentChanged: function(event)
+    {
+        if (!this._isCommittingEditing)
+            this.setContent(this._styleSource.content() || "", false, "text/css");
+    },
+
+    populateTextAreaContextMenu: function(contextMenu, lineNumber)
+    {
+        WebInspector.SourceFrame.prototype.populateTextAreaContextMenu.call(this, contextMenu, lineNumber);
+        var scriptsPanel = WebInspector.panels.scripts;
+        contextMenu.appendApplicableItems(this._styleSource);
+        contextMenu.appendSeparator();
+    }
+}
+
+WebInspector.StyleSourceFrame.prototype.__proto__ = WebInspector.SourceFrame.prototype;
+
+/**
+ * @constructor
+ * @implements {WebInspector.SelectionDialogContentProvider}
+ * @param {WebInspector.View} view
+ * @param {WebInspector.StyleSource} styleSource
+ */
+WebInspector.StyleSheetOutlineDialog = function(view, styleSource)
+{
+    WebInspector.SelectionDialogContentProvider.call(this);
+
+    this._rules = [];
+    this._view = view;
+    this._styleSource = styleSource;
+}
+
+/**
+ * @param {WebInspector.View} view
+ * @param {WebInspector.StyleSource} styleSource
+ */
+WebInspector.StyleSheetOutlineDialog.show = function(view, styleSource)
+{
+    if (WebInspector.Dialog.currentInstance())
+        return null;
+    var delegate = new WebInspector.StyleSheetOutlineDialog(view, styleSource);
+    var filteredItemSelectionDialog = new WebInspector.FilteredItemSelectionDialog(delegate);
+    WebInspector.Dialog.show(view.element, filteredItemSelectionDialog);
+}
+
+WebInspector.StyleSheetOutlineDialog.prototype = {
+    /**
+     * @param {number} itemIndex
+     * @return {string}
+     */
+    itemTitleAt: function(itemIndex)
+    {
+        return this._rules[itemIndex].selectorText;
+    },
+
+    /**
+     * @param {number} itemIndex
+     * @return {string}
+     */
+    itemKeyAt: function(itemIndex)
+    {
+        return this._rules[itemIndex].selectorText;
+    },
+
+    /**
+     * @return {number}
+     */
+    itemsCount: function()
+    {
+        return this._rules.length;
+    },
+
+    /**
+     * @param {function(number, number, number, number)} callback
+     */
+    requestItems: function(callback)
+    {
+        function didGetAllStyleSheets(error, infos)
+        {
+            if (error) {
+                callback(0, 0, 0, 0);
+                return;
+            }
+  
+            for (var i = 0; i < infos.length; ++i) {
+                var info = infos[i];
+                if (info.sourceURL === this._styleSource.contentURL()) {
+                    WebInspector.CSSStyleSheet.createForId(info.styleSheetId, didGetStyleSheet.bind(this));
+                    return;
+                }
+            }
+            callback(0, 0, 0, 0);
+        }
+
+        CSSAgent.getAllStyleSheets(didGetAllStyleSheets.bind(this));
+
+        /**
+         * @param {?WebInspector.CSSStyleSheet} styleSheet
+         */
+        function didGetStyleSheet(styleSheet)
+        {
+            if (!styleSheet) {
+                callback(0, 0, 0, 0);
+                return;
+            }
+
+            this._rules = styleSheet.rules;
+            callback(0, this._rules.length, 0, 1);
+        }
+    },
+
     /**
      * @param {number} itemIndex
      */
     selectItem: function(itemIndex)
     {
-        this._panel._showFile(this.resources[itemIndex]);
+        var lineNumber = this._rules[itemIndex].sourceLine;
+        if (!isNaN(lineNumber) && lineNumber >= 0)
+            this._view.highlightLine(lineNumber);
+        this._view.focus();
     }
 }
 
-WebInspector.OpenStylesheetDialog.prototype.__proto__ = WebInspector.OpenResourceDialog.prototype;
+WebInspector.StyleSheetOutlineDialog.prototype.__proto__ = WebInspector.SelectionDialogContentProvider.prototype;

@@ -70,7 +70,7 @@ bool HTMLTextFormControlElement::childShouldCreateRenderer(const NodeRenderingCo
     return childContext.isOnEncapsulationBoundary() && HTMLFormControlElementWithState::childShouldCreateRenderer(childContext);
 }
 
-Node::InsertionNotificationRequest HTMLTextFormControlElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLTextFormControlElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLFormControlElement::insertedInto(insertionPoint);
     if (!insertionPoint->inDocument())
@@ -164,6 +164,23 @@ void HTMLTextFormControlElement::updatePlaceholderVisibility(bool placeholderVal
     ExceptionCode ec = 0;
     placeholder->setInlineStyleProperty(CSSPropertyVisibility, placeholderShouldBeVisible() ? "visible" : "hidden", ec);
     ASSERT(!ec);
+}
+
+void HTMLTextFormControlElement::fixPlaceholderRenderer(HTMLElement* placeholder, HTMLElement* siblingElement)
+{
+    // FIXME: We should change the order of DOM nodes. But it makes an assertion
+    // failure in editing code.
+    if (!placeholder || !placeholder->renderer())
+        return;
+    RenderObject* placeholderRenderer = placeholder->renderer();
+    RenderObject* siblingRenderer = siblingElement->renderer();
+    ASSERT(siblingRenderer);
+    if (placeholderRenderer->nextSibling() == siblingRenderer)
+        return;
+    RenderObject* parentRenderer = placeholderRenderer->parent();
+    ASSERT(parentRenderer == siblingRenderer->parent());
+    parentRenderer->removeChild(placeholderRenderer);
+    parentRenderer->addChild(placeholderRenderer, siblingRenderer);
 }
 
 RenderTextControl* HTMLTextFormControlElement::textRendererAfterUpdateLayout()
@@ -430,16 +447,16 @@ void HTMLTextFormControlElement::selectionChanged(bool userTriggered)
     }
 }
 
-void HTMLTextFormControlElement::parseAttribute(Attribute* attr)
+void HTMLTextFormControlElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == placeholderAttr)
+    if (attribute.name() == placeholderAttr)
         updatePlaceholderVisibility(true);
-    else if (attr->name() == onselectAttr)
-        setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, attr));
-    else if (attr->name() == onchangeAttr)
-        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attr));
+    else if (attribute.name() == onselectAttr)
+        setAttributeEventListener(eventNames().selectEvent, createAttributeEventListener(this, attribute));
+    else if (attribute.name() == onchangeAttr)
+        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attribute));
     else
-        HTMLFormControlElementWithState::parseAttribute(attr);
+        HTMLFormControlElementWithState::parseAttribute(attribute);
 }
 
 void HTMLTextFormControlElement::notifyFormStateChanged()

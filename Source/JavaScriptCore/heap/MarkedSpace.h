@@ -45,12 +45,34 @@ class LLIntOffsetsExtractor;
 class WeakGCHandle;
 class SlotVisitor;
 
+struct ClearMarks : MarkedBlock::VoidFunctor {
+    void operator()(MarkedBlock* block) { block->clearMarks(); }
+};
+
+struct Sweep : MarkedBlock::VoidFunctor {
+    void operator()(MarkedBlock* block) { block->sweep(); }
+};
+
+struct MarkCount : MarkedBlock::CountFunctor {
+    void operator()(MarkedBlock* block) { count(block->markCount()); }
+};
+
+struct Size : MarkedBlock::CountFunctor {
+    void operator()(MarkedBlock* block) { count(block->markCount() * block->cellSize()); }
+};
+
+struct Capacity : MarkedBlock::CountFunctor {
+    void operator()(MarkedBlock* block) { count(block->capacity()); }
+};
+
 class MarkedSpace {
     WTF_MAKE_NONCOPYABLE(MarkedSpace);
 public:
     static const size_t maxCellSize = 2048;
 
     MarkedSpace(Heap*);
+    ~MarkedSpace();
+    void lastChanceToFinalize();
 
     MarkedAllocator& firstAllocator();
     MarkedAllocator& allocatorFor(size_t);
@@ -60,6 +82,9 @@ public:
     void* allocateWithoutDestructor(size_t);
     
     void resetAllocators();
+
+    void visitWeakSets(HeapRootVisitor&);
+    void reapWeakSets();
 
     MarkedBlockSet& blocks() { return m_blocks; }
     
@@ -77,6 +102,12 @@ public:
 
     void didAddBlock(MarkedBlock*);
     void didConsumeFreeList(MarkedBlock*);
+
+    void clearMarks();
+    void sweep();
+    size_t objectCount();
+    size_t size();
+    size_t capacity();
 
     bool isPagedOut(double deadline);
 
@@ -183,6 +214,31 @@ template <typename Functor> inline typename Functor::ReturnType MarkedSpace::for
 inline void MarkedSpace::didAddBlock(MarkedBlock* block)
 {
     m_blocks.add(block);
+}
+
+inline void MarkedSpace::clearMarks()
+{
+    forEachBlock<ClearMarks>();
+}
+
+inline void MarkedSpace::sweep()
+{
+    forEachBlock<Sweep>();
+}
+
+inline size_t MarkedSpace::objectCount()
+{
+    return forEachBlock<MarkCount>();
+}
+
+inline size_t MarkedSpace::size()
+{
+    return forEachBlock<Size>();
+}
+
+inline size_t MarkedSpace::capacity()
+{
+    return forEachBlock<Capacity>();
 }
 
 } // namespace JSC

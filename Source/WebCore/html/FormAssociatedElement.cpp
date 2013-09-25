@@ -25,6 +25,7 @@
 #include "config.h"
 #include "FormAssociatedElement.h"
 
+#include "FormController.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
@@ -57,10 +58,10 @@ void FormAssociatedElement::didMoveToNewDocument(Document* oldDocument)
 {
     HTMLElement* element = toHTMLElement(this);
     if (oldDocument && element->fastHasAttribute(formAttr))
-        oldDocument->unregisterFormElementWithFormAttribute(this);
+        oldDocument->formController()->unregisterFormElementWithFormAttribute(this);
 }
 
-void FormAssociatedElement::insertedInto(Node* insertionPoint)
+void FormAssociatedElement::insertedInto(ContainerNode* insertionPoint)
 {
     resetFormOwner();
     if (!insertionPoint->inDocument())
@@ -68,14 +69,14 @@ void FormAssociatedElement::insertedInto(Node* insertionPoint)
 
     HTMLElement* element = toHTMLElement(this);
     if (element->fastHasAttribute(formAttr))
-        element->document()->registerFormElementWithFormAttribute(this);
+        element->document()->formController()->registerFormElementWithFormAttribute(this);
 }
 
-void FormAssociatedElement::removedFrom(Node* insertionPoint)
+void FormAssociatedElement::removedFrom(ContainerNode* insertionPoint)
 {
     HTMLElement* element = toHTMLElement(this);
     if (insertionPoint->inDocument() && element->fastHasAttribute(formAttr))
-        element->document()->unregisterFormElementWithFormAttribute(this);
+        element->document()->formController()->unregisterFormElementWithFormAttribute(this);
     // If the form and element are both in the same tree, preserve the connection to the form.
     // Otherwise, null out our form and remove ourselves from the form's list of elements.
     if (m_form && element->highestAncestor() != m_form->highestAncestor())
@@ -152,9 +153,72 @@ void FormAssociatedElement::formAttributeChanged()
     if (!element->fastHasAttribute(formAttr)) {
         // The form attribute removed. We need to reset form owner here.
         setForm(element->findFormAncestor());
-        element->document()->unregisterFormElementWithFormAttribute(this);
+        element->document()->formController()->unregisterFormElementWithFormAttribute(this);
     } else
         resetFormOwner();
+}
+
+bool FormAssociatedElement::customError() const
+{
+    const HTMLElement* element = toHTMLElement(this);
+    return element->willValidate() && !m_customValidationMessage.isEmpty();
+}
+
+bool FormAssociatedElement::patternMismatch() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::rangeOverflow() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::rangeUnderflow() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::stepMismatch() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::tooLong() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::typeMismatch() const
+{
+    return false;
+}
+
+bool FormAssociatedElement::valid() const
+{
+    bool someError = typeMismatch() || stepMismatch() || rangeUnderflow() || rangeOverflow()
+        || tooLong() || patternMismatch() || valueMissing() || customError();
+    return !someError;
+}
+
+bool FormAssociatedElement::valueMissing() const
+{
+    return false;
+}
+
+String FormAssociatedElement::customValidationMessage() const
+{
+    return m_customValidationMessage;
+}
+
+String FormAssociatedElement::validationMessage() const
+{
+    return customError() ? m_customValidationMessage : String();
+}
+
+void FormAssociatedElement::setCustomValidity(const String& error)
+{
+    m_customValidationMessage = error;
 }
 
 const HTMLElement* toHTMLElement(const FormAssociatedElement* associatedElement)

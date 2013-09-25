@@ -50,19 +50,19 @@ CCScrollbarLayerImpl::CCScrollbarLayerImpl(int id)
 {
 }
 
-void CCScrollbarLayerImpl::willDraw(LayerRendererChromium* layerRenderer)
+void CCScrollbarLayerImpl::willDraw(CCRenderer* layerRenderer, CCGraphicsContext* context)
 {
-    CCLayerImpl::willDraw(layerRenderer);
+    CCLayerImpl::willDraw(layerRenderer, context);
 
     if (bounds().isEmpty() || contentBounds().isEmpty())
         return;
 
     if (!m_texture)
-        m_texture = ManagedTexture::create(layerRenderer->renderSurfaceTextureManager());
+        m_texture = ManagedTexture::create(layerRenderer->implTextureManager());
 
     // The context could have been lost since the last frame and the old texture
     // manager may no longer be valid.
-    m_texture->setTextureManager(layerRenderer->renderSurfaceTextureManager());
+    m_texture->setTextureManager(layerRenderer->implTextureManager());
 
     IntSize textureSize = contentBounds();
     if (!m_texture->reserve(textureSize, GraphicsContext3D::RGBA))
@@ -77,11 +77,16 @@ void CCScrollbarLayerImpl::willDraw(LayerRendererChromium* layerRenderer)
 
     {
         PlatformCanvas::AutoLocker locker(&canvas);
-        GraphicsContext3D* context = layerRenderer->context();
-        m_texture->bindTexture(context, layerRenderer->renderSurfaceTextureAllocator());
+        m_texture->bindTexture(context, layerRenderer->implTextureAllocator());
 
         // FIXME: Skia uses BGRA actually, we correct that with the swizzle pixel shader.
-        GLC(context, context->texImage2D(GraphicsContext3D::TEXTURE_2D, 0, m_texture->format(), canvas.size().width(), canvas.size().height(), 0, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, locker.pixels()));
+        GraphicsContext3D* context3d = context->context3D();
+        if (!context3d) {
+            // FIXME: Implement this path for software compositing.
+            return;
+        }
+
+        GLC(context3d, context3d->texImage2D(GraphicsContext3D::TEXTURE_2D, 0, m_texture->format(), canvas.size().width(), canvas.size().height(), 0, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, locker.pixels()));
     }
 }
 

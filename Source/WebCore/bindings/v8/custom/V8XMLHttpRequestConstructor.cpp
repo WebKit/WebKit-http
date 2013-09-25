@@ -48,7 +48,7 @@ v8::Handle<v8::Value> V8XMLHttpRequest::constructorCallback(const v8::Arguments&
     INC_STATS("DOM.XMLHttpRequest.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
@@ -57,7 +57,7 @@ v8::Handle<v8::Value> V8XMLHttpRequest::constructorCallback(const v8::Arguments&
     // Allocate a XMLHttpRequest object as its internal field.
     ScriptExecutionContext* context = getScriptExecutionContext();
     if (!context)
-        return throwError("XMLHttpRequest constructor's associated context is not available", V8Proxy::ReferenceError);
+        return V8Proxy::throwError(V8Proxy::ReferenceError, "XMLHttpRequest constructor's associated context is not available", args.GetIsolate());
 
     RefPtr<SecurityOrigin> securityOrigin;
     if (V8IsolatedContext* isolatedContext = V8IsolatedContext::getEntered())

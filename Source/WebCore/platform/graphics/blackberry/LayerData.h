@@ -37,7 +37,6 @@
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "IntRect.h"
-#include "LayerAnimation.h"
 #include "PlatformString.h"
 #include "TransformationMatrix.h"
 #include <wtf/HashMap.h>
@@ -54,7 +53,7 @@ class MediaPlayer;
 
 class LayerData {
 public:
-    enum LayerType { Layer, TransformLayer, WebGLLayer, CanvasLayer };
+    enum LayerType { Layer, TransformLayer, WebGLLayer, CanvasLayer, CustomLayer };
     enum FilterType { Linear, Nearest, Trilinear, Lanczos };
     enum LayerProgramShader { LayerProgramShaderRGBA = 0,
                               LayerProgramShaderBGRA,
@@ -86,6 +85,7 @@ public:
         , m_hasFixedContainer(false)
         , m_hasFixedAncestorInDOMTree(false)
         , m_isVisible(true)
+        , m_sizeIsScaleInvariant(false)
     {
     }
 
@@ -104,6 +104,8 @@ public:
     float borderWidth() const { return m_borderWidth; }
 
     IntSize bounds() const { return m_bounds; }
+
+    bool sizeIsScaleInvariant() const { return m_sizeIsScaleInvariant; }
 
     bool doubleSided() const { return m_doubleSided; }
 
@@ -191,8 +193,6 @@ protected:
 
     pthread_mutex_t* m_frontBufferLock;
 
-    Vector<RefPtr<LayerAnimation> > m_runningAnimations;
-    Vector<RefPtr<LayerAnimation> > m_suspendedAnimations;
     double m_suspendTime;
 
     unsigned m_doubleSided : 1;
@@ -208,6 +208,7 @@ protected:
 
     // The following is only available for media (video) and plugin layers.
     unsigned m_isVisible : 1;
+    unsigned m_sizeIsScaleInvariant : 1;
 
     // CAUTION: all the data members are copied from one instance to another
     // i.e. from one thread to another in the replicate method.

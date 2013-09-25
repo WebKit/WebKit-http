@@ -25,19 +25,19 @@
 
 namespace WebCore {
 
-// FIXME: Add CSSPropertyBackgroundSize to the shorthand.
 const StylePropertyShorthand& backgroundShorthand()
 {
     static const CSSPropertyID backgroundProperties[] = {
-        CSSPropertyBackgroundColor,
         CSSPropertyBackgroundImage,
+        CSSPropertyBackgroundPositionX,
+        CSSPropertyBackgroundPositionY,
+        CSSPropertyBackgroundSize,
         CSSPropertyBackgroundRepeatX,
         CSSPropertyBackgroundRepeatY,
         CSSPropertyBackgroundAttachment,
-        CSSPropertyBackgroundPositionX,
-        CSSPropertyBackgroundPositionY,
+        CSSPropertyBackgroundOrigin,
         CSSPropertyBackgroundClip,
-        CSSPropertyBackgroundOrigin
+        CSSPropertyBackgroundColor
     };
     DEFINE_STATIC_LOCAL(StylePropertyShorthand, backgroundShorthand, (backgroundProperties, WTF_ARRAY_LENGTH(backgroundProperties)));
     return backgroundShorthand;
@@ -307,12 +307,14 @@ const StylePropertyShorthand& webkitColumnRuleShorthand()
     return webkitColumnRuleLonghands;
 }
 
+#if ENABLE(CSS3_FLEXBOX)
 const StylePropertyShorthand& webkitFlexFlowShorthand()
 {
     static const CSSPropertyID flexFlowProperties[] = { CSSPropertyWebkitFlexDirection, CSSPropertyWebkitFlexWrap };
     DEFINE_STATIC_LOCAL(StylePropertyShorthand, webkitFlexFlowLonghands, (flexFlowProperties, WTF_ARRAY_LENGTH(flexFlowProperties)));
     return webkitFlexFlowLonghands;
 }
+#endif
 
 const StylePropertyShorthand& webkitMarginCollapseShorthand()
 {
@@ -404,6 +406,7 @@ const StylePropertyShorthand& webkitTransformOriginShorthand()
     return webkitTransformOriginLonghands;
 }
 
+#if ENABLE(CSS_EXCLUSIONS)
 const StylePropertyShorthand& webkitWrapShorthand()
 {
     static const CSSPropertyID webkitWrapProperties[] = {
@@ -414,6 +417,7 @@ const StylePropertyShorthand& webkitWrapShorthand()
     DEFINE_STATIC_LOCAL(StylePropertyShorthand, webkitWrapLonghands, (webkitWrapProperties, WTF_ARRAY_LENGTH(webkitWrapProperties)));
     return webkitWrapLonghands;
 }
+#endif
 
 // Returns an empty list if the property is not a shorthand
 const StylePropertyShorthand& shorthandForProperty(CSSPropertyID propertyID)
@@ -475,8 +479,10 @@ const StylePropertyShorthand& shorthandForProperty(CSSPropertyID propertyID)
         return webkitColumnsShorthand();
     case CSSPropertyWebkitColumnRule:
         return webkitColumnRuleShorthand();
+#if ENABLE(CSS3_FLEXBOX)
     case CSSPropertyWebkitFlexFlow:
         return webkitFlexFlowShorthand();
+#endif
     case CSSPropertyWebkitMarginCollapse:
         return webkitMarginCollapseShorthand();
     case CSSPropertyWebkitMarquee:
@@ -495,8 +501,10 @@ const StylePropertyShorthand& shorthandForProperty(CSSPropertyID propertyID)
         return webkitTransitionShorthand();
     case CSSPropertyWebkitTransformOrigin:
         return webkitTransformOriginShorthand();
+#if ENABLE(CSS_EXCLUSIONS)
     case CSSPropertyWebkitWrap:
         return webkitWrapShorthand();
+#endif
     default: {
         DEFINE_STATIC_LOCAL(StylePropertyShorthand, emptyShorthand, ());
         return emptyShorthand;

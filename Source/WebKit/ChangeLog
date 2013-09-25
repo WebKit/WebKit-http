@@ -1,3 +1,310 @@
+2012-06-04  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Don't use WebKit HAVE() macro in public Qt headers
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * WebKit.pri:
+
+2012-06-04  Tomasz Morawski  <t.morawski@samsung.com>
+
+        [EFL] Refactor ewk_view_context_paint code.
+        https://bugs.webkit.org/show_bug.cgi?id=85588
+
+        Reviewed by Hajime Morita.
+
+        Added new ewk_paint_context.cpp file to source list.
+
+        * PlatformEfl.cmake:
+
+2012-06-01  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] EFL's LayoutTestController needs to implement deliverWebIntent
+        https://bugs.webkit.org/show_bug.cgi?id=86865
+
+        Reviewed by Adam Barth.
+
+        Add "${WEBCORE_DIR}/dom/default" to include directories in
+        CMakeLists.txt.
+
+        * CMakeLists.txt:
+
+2012-06-01  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
+
+        [EFL] Implement PlatformStrategies
+        https://bugs.webkit.org/show_bug.cgi?id=86946
+
+        Reviewed by Carlos Garcia Campos.
+
+        * PlatformEfl.cmake: Add PlatformStrategiesEfl file to the build
+        system.
+
+2012-05-31  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE][EFL] Remove unneeded include path
+        https://bugs.webkit.org/show_bug.cgi?id=87927 
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Though *wtf* directory was moved to Source/WTF, PlatformEfl.cmake is still including the previous
+        path. In addition, files on EFL port are using <wtf/gobject/XXX> directly in #include line.
+        So, EFL port doesn't need to include ${JAVASCRIPTCORE_DIR}/wtf/gobject path anymore.
+
+        * PlatformEfl.cmake: Remove '${JAVASCRIPTCORE_DIR}/wtf/gobject' path from include path list.
+
+2012-05-30  Konrad Piascik  <kpiascik@rim.com>
+
+        [BlackBerry] Add an Accelerated Compositing layer for Web Inspector DOM highlight.
+        https://bugs.webkit.org/show_bug.cgi?id=81001
+
+        Reviewed by Antonio Gomes
+        
+        Added new InspectorOverlay class
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-29  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] WebKit-side implementation of SelectionOverlay
+        https://bugs.webkit.org/show_bug.cgi?id=87605
+
+        Reviewed by Rob Buis.
+
+        Add SelectionOverlay to the build system.
+
+        PR #160263
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-29  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] WebOverlay API
+        https://bugs.webkit.org/show_bug.cgi?id=87603
+
+        Reviewed by Rob Buis.
+
+        Add WebOverlay related files to the build system.
+
+        PR #156812
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-28  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] Add a default tap highlight
+        https://bugs.webkit.org/show_bug.cgi?id=87569
+
+        Reviewed by Rob Buis.
+
+        Add DefaultTapHighlight to the build system
+
+        Reviewed internally by Mike Lattanzio and Mike Fenton.
+
+        PR #154329
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-24  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry] Implement select popup and remove old hook to air popup
+        https://bugs.webkit.org/show_bug.cgi?id=87419
+
+        Reviewed by Rob Buis.
+
+        Add new files to make file.
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-24  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [EFL] Unreviewed, unbreak `make install' after r117046.
+
+        * PlatformEfl.cmake: Remove ewk_auth_soup.h from the list of
+        installed headers, since it has been made private and renamed.
+
+2012-05-22  Dongwoo Im  <dw.im@samsung.com>
+
+        [EFL] Implements the registerProtocolHandler method and option.
+        https://bugs.webkit.org/show_bug.cgi?id=73638
+
+        Reviewed by Andreas Kling.
+
+        The registerProtocolHandler() method allows Web sites to register themselves
+        as possible handlers for particular schemes.
+
+        http://dev.w3.org/html5/spec/Overview.html#dom-navigator-registerprotocolhandler
+
+        * PlatformEfl.cmake: Adds the new file into the source list.
+
+2012-05-21  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Minor style fixes in web intents code are needed
+        https://bugs.webkit.org/show_bug.cgi?id=86986
+
+        Reviewed by Adam Barth.
+
+        Fix minor ordering issues in CMake files.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+
+2012-05-18  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Add simple implementation of Web Intents
+        https://bugs.webkit.org/show_bug.cgi?id=86354
+
+        Reviewed by Eric Seidel.
+
+        Add new ewk_intent.* and ewk_intent_request.* files to CMake.
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+
+2012-05-17  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Add API for Web Database handling
+        https://bugs.webkit.org/show_bug.cgi?id=85178
+
+        Reviewed by Antonio Gomes.
+
+        Added the new Web Database API to the buildsystem.
+
+        * PlatformEfl.cmake:
+
+2012-05-17  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL] Fix link error caused by not directly linking with edbus
+        https://bugs.webkit.org/show_bug.cgi?id=86747
+
+        Unreviewed build fix.
+
+        * PlatformEfl.cmake:
+
+2012-05-16  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL] Support for Battery Status API on the WebKit-Efl
+        https://bugs.webkit.org/show_bug.cgi?id=83254
+
+        Reviewed by Chang Shu.
+
+        Add e_ukit library and include directory to get battery status of device.
+
+        * PlatformEfl.cmake:
+
+2012-05-15  Tomasz Morawski  <t.morawski@samsung.com>
+
+        [EFL] Split ewk_private.h file to multiple private files.
+        https://bugs.webkit.org/show_bug.cgi?id=84572
+
+        Reviewed by Antonio Gomes.
+
+        * PlatformEfl.cmake: Removed ewk_logging.h file from EWebKit_HEADERS.
+
+2012-05-10  Sam D  <dsam2912@gmail.com>
+
+        Web Inspector: rename InspectorBackendStub.js to InspectorBackendCommands.js
+        https://bugs.webkit.org/show_bug.cgi?id=72306
+
+        Changed name for InspectorBackendStub.js to
+        InspectorBackendCommands.js
+
+        Reviewed by Yury Semikhatsky.
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-08  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry] Implement a popup client for HTML controls
+        https://bugs.webkit.org/show_bug.cgi?id=85670
+
+        Reviewed by Rob Buis.
+
+        Add popup client file to build system.
+        
+        * PlatformBlackBerry.cmake:
+
+2012-05-08  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [CMake] Rewrite FindGStreamer.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=85857
+
+        Reviewed by Daniel Bates.
+
+        We are currently kind of duplicating the same
+        FindGStreamer-Foo.cmake file whenever a new GStreamer plugin needs
+        to be found. Besides this approach not scaling very well, it
+        relies on pkg-config for version checking, uses the LibFindMacros
+        package that we should deprecate and all the find files could be
+        merged into one, with users using the COMPONENTS feature of the
+        FIND_PACKAGE() call to find the desired plugins.
+
+        FindGStreamer.cmake has then been rewritten to take all that into
+        account:
+        - The LibFindMacros.cmake package is not used anymore.
+        - Version check is performed in the CMake file itself by parsing
+        the gstversion.h header.
+        - All GStreamer plugins are searched and the COMPONENTS keyword
+        used in the FIND_PACKAGE() call is used to check which plugins are
+        required.
+        - The plugins-base and base GStreamer plugins are not searched, as
+        they were not used anywhere in the build system.
+
+        * PlatformEfl.cmake: Update GStreamer-related variable names.
+
+2012-05-08  Jonathan Dong  <jonathan.dong@torchmobile.com.cn>
+
+        [BlackBerry] AutofillManager implementation upstream
+        https://bugs.webkit.org/show_bug.cgi?id=85576
+
+        Reviewed by Rob Buis.
+
+        Added WebKit/blackberry/WebCoreSupport/AutofillManager.cpp
+        into building system of BlackBerry porting.
+
+        * PlatformBlackBerry.cmake:
+
+2012-05-03  Jer Noble  <jer.noble@apple.com>
+
+        Move WebKitFullScreenListener into its own file.
+        https://bugs.webkit.org/show_bug.cgi?id=85640
+
+        Reviewed by Maciej Stachowiak .
+
+        Pull WebKitFullScreenListener into its own file.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2012-05-03  Raphael Kubo da Costa  <rakuco@webkit.org>
+
+        [CMake] Rewrite FindCairo.cmake.
+        https://bugs.webkit.org/show_bug.cgi?id=84895
+
+        Reviewed by Daniel Bates.
+
+        The old approach relied on pkg-config for finding Cairo (which
+        introduced a dependency on pkg-config that could be avoided), used
+        the LibFindMacros code that we should probably remove in the
+        future and did not use the FindPackageHandleStandardArguments
+        module.
+
+        Change all that by rewriting the module.
+        - Use the pkg-config output optionally instead of requiring it
+        like LibFindMacros did.
+        - Remove the implicit dependency on FreeType which often found it
+        the wrong way via pkg-config and without considering
+        CMAKE_PREFIX_PATH.
+        - Retrieve the Cairo version by looking at cairo-version.h instead
+        of relying on pkg-config. It requires some additional code for
+        checking if the desired version has been found, but that will not
+        be needed once we start depending on CMake 2.8.3 or later.
+
+        The only downside is that FPHSA sets <UPPERCASED_NAME>_FOUND
+        instead of <Name>_FOUND, and to keep things consistent
+        Cairo_LIBRARIES and Cairo_INCLUDE_DIRS have become CAIRO_LIBRARIES
+        and CAIRO_INCLUDE_DIRS.
+
+        * PlatformEfl.cmake: Use CAIRO_FOO instead of Cairo_FOO.
+
 2012-04-26  Christophe Dumez  <christophe.dumez@intel.com>
 
         [EFL] Enable VIDEO_TRACK feature

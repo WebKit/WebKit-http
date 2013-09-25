@@ -39,6 +39,7 @@ namespace WebKit {
 NonCompositedContentHost::NonCompositedContentHost(PassOwnPtr<WebCore::LayerPainterChromium> contentPaint)
     : m_contentPaint(contentPaint)
     , m_showDebugBorders(false)
+    , m_deviceScaleFactor(1.0)
 {
     m_graphicsLayer = WebCore::GraphicsLayer::create(this);
 #ifndef NDEBUG
@@ -59,6 +60,11 @@ NonCompositedContentHost::~NonCompositedContentHost()
 void NonCompositedContentHost::setBackgroundColor(const WebCore::Color& color)
 {
     m_graphicsLayer->platformLayer()->setBackgroundColor(color);
+}
+
+void NonCompositedContentHost::setOpaque(bool opaque)
+{
+    m_graphicsLayer->platformLayer()->setOpaque(opaque);
 }
 
 void NonCompositedContentHost::setScrollLayer(WebCore::GraphicsLayer* layer)
@@ -92,7 +98,7 @@ static void reserveScrollbarLayers(WebCore::LayerChromium* layer, WebCore::Layer
         layer->setAlwaysReserveTextures(true);
 }
 
-void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize, const WebCore::IntSize& contentsSize, const WebCore::IntPoint& scrollPosition, float pageScale, int layerAdjustX)
+void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize, const WebCore::IntSize& contentsSize, const WebCore::IntPoint& scrollPosition, float deviceScale, int layerAdjustX)
 {
     if (!scrollLayer())
         return;
@@ -105,6 +111,8 @@ void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize,
     // Due to the possibility of pinch zoom, the noncomposited layer is always
     // assumed to be scrollable.
     scrollLayer()->setScrollable(true);
+    m_deviceScaleFactor = deviceScale;
+    m_graphicsLayer->deviceOrPageScaleFactorChanged();
     m_graphicsLayer->setSize(contentsSize);
 
     m_layerAdjustX = layerAdjustX;
@@ -119,9 +127,6 @@ void NonCompositedContentHost::setViewport(const WebCore::IntSize& viewportSize,
     } else if (visibleRectChanged)
         m_graphicsLayer->setNeedsDisplay();
 
-    if (m_graphicsLayer->pageScaleFactor() != pageScale)
-        m_graphicsLayer->deviceOrPageScaleFactorChanged();
-
     WebCore::LayerChromium* clipLayer = scrollLayer()->parent();
     WebCore::LayerChromium* rootLayer = clipLayer;
     while (rootLayer->parent())
@@ -134,11 +139,6 @@ WebCore::LayerChromium* NonCompositedContentHost::scrollLayer()
     if (!m_graphicsLayer->parent())
         return 0;
     return m_graphicsLayer->parent()->platformLayer();
-}
-
-void NonCompositedContentHost::protectVisibleTileTextures()
-{
-    m_graphicsLayer->platformLayer()->protectVisibleTileTextures();
 }
 
 void NonCompositedContentHost::invalidateRect(const WebCore::IntRect& rect)

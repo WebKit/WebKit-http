@@ -125,7 +125,6 @@ public:
     static void garbageCollectorCollect();
     static void garbageCollectorCollectOnAlternateThread(bool waitUntilDone);
     static void setAutofilled(const QWebElement&, bool enabled);
-    static void setJavaScriptProfilingEnabled(QWebFrame*, bool enabled);
     static void setValueForUser(const QWebElement&, const QString& value);
     static int javaScriptObjectsCount();
     static void clearScriptWorlds();
@@ -141,13 +140,11 @@ public:
     static void clearFrameName(QWebFrame* frame);
     static void overwritePluginDirectories();
     static int numberOfActiveAnimations(QWebFrame*);
-    static void suspendAnimations(QWebFrame*);
-    static void resumeAnimations(QWebFrame*);
     static int numberOfPages(QWebFrame* frame, float width, float height);
     static int pageNumberForElementById(QWebFrame* frame, const QString& id, float width, float height);
     static bool hasDocumentElement(QWebFrame* frame);
     static bool elementDoesAutoCompleteForElementWithId(QWebFrame* frame, const QString& elementId);
-    static void setEditingBehavior(QWebPage* page, const QString& editingBehavior);
+    static void setWindowsBehaviorAsEditingBehavior(QWebPage*);
 
     static void clearAllApplicationCaches();
 
@@ -195,8 +192,6 @@ public:
     static bool shouldClose(QWebFrame* frame);
 
     static void setCustomPolicyDelegate(bool enabled, bool permissive);
-
-    static bool isPageBoxVisible(QWebFrame* frame, int pageIndex);
 
     static QString pageSizeAndMarginsInPixels(QWebFrame* frame, int pageIndex, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft);
     static QString pageProperty(QWebFrame* frame, const QString& propertyName, int pageNumber);

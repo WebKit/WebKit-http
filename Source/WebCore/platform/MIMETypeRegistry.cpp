@@ -39,9 +39,9 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <wtf/RetainPtr.h>
 #endif
-#if PLATFORM(QT) && USE(QT_IMAGE_DECODER)
-#include <qimagereader.h>
-#include <qimagewriter.h>
+#if PLATFORM(QT)
+#include <QImageReader>
+#include <QImageWriter>
 #endif
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
@@ -236,22 +236,6 @@ static void initializeSupportedImageMIMETypes()
     supportedImageMIMETypes->remove("application/pdf");
     supportedImageMIMETypes->remove("application/postscript");
 
-#elif PLATFORM(QT) && USE(QT_IMAGE_DECODER)
-    QList<QByteArray> formats = QImageReader::supportedImageFormats();
-    for (size_t i = 0; i < static_cast<size_t>(formats.size()); ++i) {
-#if ENABLE(SVG)
-        /*
-         * Qt has support for SVG, but we want to use KSVG2
-         */
-        if (formats.at(i).toLower().startsWith("svg"))
-            continue;
-#endif
-        String mimeType = MIMETypeRegistry::getMIMETypeForExtension(formats.at(i).constData());
-        if (!mimeType.isEmpty()) {
-            supportedImageMIMETypes->add(mimeType);
-            supportedImageResourceMIMETypes->add(mimeType);
-        }
-    }
 #else
     // assume that all implementations at least support the following standard
     // image types:
@@ -268,10 +252,22 @@ static void initializeSupportedImageMIMETypes()
         supportedImageMIMETypes->add(types[i]);
         supportedImageResourceMIMETypes->add(types[i]);
     }
-#if PLATFORM(BLACKBERRY)
-    supportedImageMIMETypes->add("image/pjpeg");
-    supportedImageResourceMIMETypes->add("image/pjpeg");
-#endif
+
+#if PLATFORM(QT)
+    QList<QByteArray> formats = QImageReader::supportedImageFormats();
+    for (size_t i = 0; i < static_cast<size_t>(formats.size()); ++i) {
+#if ENABLE(SVG)
+        // Qt has support for SVG, but we want to use KSVG2
+        if (formats.at(i).toLower().startsWith("svg"))
+            continue;
+#endif // ENABLE(SVG)
+        String mimeType = MIMETypeRegistry::getMIMETypeForExtension(formats.at(i).constData());
+        if (!mimeType.isEmpty()) {
+            supportedImageMIMETypes->add(mimeType);
+            supportedImageResourceMIMETypes->add(mimeType);
+        }
+     }
+#endif // PLATFORM(QT)
 #endif
 }
 
@@ -296,14 +292,14 @@ static void initializeSupportedImageMIMETypesForEncoding()
     supportedImageMIMETypesForEncoding->add("image/jpeg");
     supportedImageMIMETypesForEncoding->add("image/gif");
 #endif
-#elif PLATFORM(QT) && USE(QT_IMAGE_DECODER)
+#elif PLATFORM(QT)
     QList<QByteArray> formats = QImageWriter::supportedImageFormats();
     for (int i = 0; i < formats.size(); ++i) {
         String mimeType = MIMETypeRegistry::getMIMETypeForExtension(formats.at(i).constData());
         if (!mimeType.isEmpty())
             supportedImageMIMETypesForEncoding->add(mimeType);
     }
-#elif PLATFORM(GTK) || (PLATFORM(QT) && !USE(QT_IMAGE_DECODER))
+#elif PLATFORM(GTK)
     supportedImageMIMETypesForEncoding->add("image/png");
     supportedImageMIMETypesForEncoding->add("image/jpeg");
     supportedImageMIMETypesForEncoding->add("image/tiff");
@@ -570,7 +566,7 @@ bool MIMETypeRegistry::isSupportedImageMIMEType(const String& mimeType)
         return false;
     if (!supportedImageMIMETypes)
         initializeMIMETypeRegistry();
-    return supportedImageMIMETypes->contains(mimeType);
+    return supportedImageMIMETypes->contains(getNormalizedMIMEType(mimeType));
 }
 
 bool MIMETypeRegistry::isSupportedImageResourceMIMEType(const String& mimeType)
@@ -579,7 +575,7 @@ bool MIMETypeRegistry::isSupportedImageResourceMIMEType(const String& mimeType)
         return false;
     if (!supportedImageResourceMIMETypes)
         initializeMIMETypeRegistry();
-    return supportedImageResourceMIMETypes->contains(mimeType);
+    return supportedImageResourceMIMETypes->contains(getNormalizedMIMEType(mimeType));
 }
 
 bool MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(const String& mimeType)
@@ -687,5 +683,76 @@ const String& defaultMIMEType()
     DEFINE_STATIC_LOCAL(const String, defaultMIMEType, ("application/octet-stream"));
     return defaultMIMEType;
 }
+
+#if PLATFORM(BLACKBERRY)
+typedef HashMap<String, String> MIMETypeAssociationMap;
+
+static const MIMETypeAssociationMap& mimeTypeAssociationMap()
+{
+    static MIMETypeAssociationMap* mimeTypeMap = 0;
+    if (mimeTypeMap)
+        return *mimeTypeMap;
+
+    mimeTypeMap = new MIMETypeAssociationMap;
+    mimeTypeMap->add("image/x-ms-bmp", "image/bmp");
+    mimeTypeMap->add("image/x-windows-bmp", "image/bmp");
+    mimeTypeMap->add("image/x-bmp", "image/bmp");
+    mimeTypeMap->add("image/x-bitmap", "image/bmp");
+    mimeTypeMap->add("image/x-ms-bitmap", "image/bmp");
+    mimeTypeMap->add("image/jpg", "image/jpeg");
+    mimeTypeMap->add("image/pjpeg", "image/jpeg");
+    mimeTypeMap->add("image/x-png", "image/png");
+    mimeTypeMap->add("image/vnd.rim.png", "image/png");
+    mimeTypeMap->add("image/ico", "image/vnd.microsoft.icon");
+    mimeTypeMap->add("image/icon", "image/vnd.microsoft.icon");
+    mimeTypeMap->add("text/ico", "image/vnd.microsoft.icon");
+    mimeTypeMap->add("application/ico", "image/vnd.microsoft.icon");
+    mimeTypeMap->add("image/x-icon", "image/vnd.microsoft.icon");
+    mimeTypeMap->add("audio/vnd.qcelp", "audio/qcelp");
+    mimeTypeMap->add("audio/qcp", "audio/qcelp");
+    mimeTypeMap->add("audio/vnd.qcp", "audio/qcelp");
+    mimeTypeMap->add("audio/wav", "audio/x-wav");
+    mimeTypeMap->add("audio/mid", "audio/midi");
+    mimeTypeMap->add("audio/sp-midi", "audio/midi");
+    mimeTypeMap->add("audio/x-mid", "audio/midi");
+    mimeTypeMap->add("audio/x-midi", "audio/midi");
+    mimeTypeMap->add("audio/x-mpeg", "audio/mpeg");
+    mimeTypeMap->add("audio/mp3", "audio/mpeg");
+    mimeTypeMap->add("audio/x-mp3", "audio/mpeg");
+    mimeTypeMap->add("audio/mpeg3", "audio/mpeg");
+    mimeTypeMap->add("audio/x-mpeg3", "audio/mpeg");
+    mimeTypeMap->add("audio/mpg3", "audio/mpeg");
+    mimeTypeMap->add("audio/mpg", "audio/mpeg");
+    mimeTypeMap->add("audio/x-mpg", "audio/mpeg");
+    mimeTypeMap->add("audio/m4a", "audio/mp4");
+    mimeTypeMap->add("audio/x-m4a", "audio/mp4");
+    mimeTypeMap->add("audio/x-mp4", "audio/mp4");
+    mimeTypeMap->add("audio/x-aac", "audio/aac");
+    mimeTypeMap->add("audio/x-amr", "audio/amr");
+    mimeTypeMap->add("audio/mpegurl", "audio/x-mpegurl");
+    mimeTypeMap->add("audio/flac", "audio/x-flac");
+    mimeTypeMap->add("video/3gp", "video/3gpp");
+    mimeTypeMap->add("video/avi", "video/x-msvideo");
+    mimeTypeMap->add("video/x-m4v", "video/mp4");
+    mimeTypeMap->add("video/x-quicktime", "video/quicktime");
+    mimeTypeMap->add("application/java", "application/java-archive");
+    mimeTypeMap->add("application/x-java-archive", "application/java-archive");
+    mimeTypeMap->add("application/x-zip-compressed", "application/zip");
+
+    return *mimeTypeMap;
+}
+#endif
+
+String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeType)
+{
+#if PLATFORM(BLACKBERRY)
+    MIMETypeAssociationMap::const_iterator it = mimeTypeAssociationMap().find(mimeType);
+
+    if (it != mimeTypeAssociationMap().end())
+        return it->second;
+#endif
+    return mimeType;
+}
+
 
 } // namespace WebCore

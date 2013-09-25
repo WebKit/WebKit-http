@@ -32,6 +32,7 @@
 #include "RenderEmbeddedObject.h"
 #include "RenderImage.h"
 #include "SecurityOrigin.h"
+#include "StyleResolver.h"
 
 namespace WebCore {
 
@@ -45,7 +46,7 @@ HTMLPlugInImageElement::HTMLPlugInImageElement(const QualifiedName& tagName, Doc
     , m_shouldPreferPlugInsForImages(preferPlugInsForImagesOption == ShouldPreferPlugInsForImages)
     , m_needsDocumentActivationCallbacks(false)
 {
-    setHasCustomWillOrDidRecalcStyle();
+    setHasCustomCallbacks();
 }
 
 HTMLPlugInImageElement::~HTMLPlugInImageElement()
@@ -189,7 +190,7 @@ void HTMLPlugInImageElement::updateWidgetIfNecessary()
     if (!needsWidgetUpdate() || useFallbackContent() || isImageType())
         return;
 
-    if (!renderEmbeddedObject() || renderEmbeddedObject()->pluginCrashedOrWasMissing())
+    if (!renderEmbeddedObject() || renderEmbeddedObject()->showsUnavailablePluginIndicator())
         return;
 
     updateWidget(CreateOnlyNonNetscapePlugins);
@@ -224,8 +225,6 @@ void HTMLPlugInImageElement::documentWillSuspendForPageCache()
     if (RenderStyle* renderStyle = this->renderStyle()) {
         m_customStyleForPageCache = RenderStyle::clone(renderStyle);
         m_customStyleForPageCache->setDisplay(NONE);
-        setHasCustomStyleForRenderer();
-
         recalcStyle(Force);
     }
 
@@ -236,8 +235,6 @@ void HTMLPlugInImageElement::documentDidResumeFromPageCache()
 {
     if (m_customStyleForPageCache) {
         m_customStyleForPageCache = 0;
-        clearHasCustomStyleForRenderer();
-
         recalcStyle(Force);
     }
     
@@ -246,7 +243,8 @@ void HTMLPlugInImageElement::documentDidResumeFromPageCache()
 
 PassRefPtr<RenderStyle> HTMLPlugInImageElement::customStyleForRenderer()
 {
-    ASSERT(m_customStyleForPageCache);
+    if (!m_customStyleForPageCache)
+        return document()->styleResolver()->styleForElement(this);
     return m_customStyleForPageCache;
 }
 

@@ -1,14 +1,14 @@
 .help-window-outer {
     position: absolute;
-    top: 60px;
+    top: 64px;
     left: 5%;
     width: 90%;
-    bottom: 40px;
+    bottom: 32px;
     z-index: 2000;
 }
 
 body.compact .help-window-outer {
-    top: 32px;
+    top: 34px;
     left: 0;
     width: 100%;
     bottom: 23px;
@@ -17,7 +17,7 @@ body.compact .help-window-outer {
 .help-window-main {
     max-height: 100%;
     color: white;
-    background-color: rgba(34, 34, 34, 0.85);
+    background-color: rgba(17, 17, 17, 0.85);
     display: -webkit-box;
     -webkit-box-orient: vertical;
     border-top-width: 0;
@@ -26,22 +26,14 @@ body.compact .help-window-outer {
 
 body.compact .help-window-main {
     height: 100%;
-    padding: 10px;
-}
-
-body.compact .help-window-main {
     border-radius: 0;
-    -webkit-box-shadow: 0 0 0;
 }
 
 .help-window-caption {
     border-bottom: solid 1px rgb(153, 153, 153);
-    margin: 0 16px;
+    margin: 0 8px;
+    padding: 0 2px;
     line-height: 36px;
-}
-
-body.compact .help-window-caption {
-    margin: 0;
 }
 
 .help-window-title {
@@ -54,31 +46,32 @@ body.compact .help-window-caption {
     overflow-x: hidden;
     scrollbar-width: 11px;
     -webkit-box-flex: 1;
-    margin: 0px 16px 16px 16px;
+    margin: 8px;
+    padding: 0 4px;
     font-size: 13px;
 }
 
-.help-content::-webkit-scrollbar {
+.help-window-main ::-webkit-scrollbar {
     width: 11px;
 }
 
-.help-content::-webkit-scrollbar-corner,
-.help-content::-webkit-resizer {
+.help-window-main ::-webkit-scrollbar-corner,
+.help-window-main ::-webkit-resizer {
     display: none;
 }
 
-.help-content::-webkit-scrollbar-thumb:vertical {
+.help-window-main ::-webkit-scrollbar-thumb:vertical {
     background: -webkit-gradient(linear, left top, right top, from(rgb(128, 128, 128)), to(rgb(128, 128, 128)), color-stop(40%, rgb(96, 96, 96)));
     border-radius: 5px;
     min-height: 20px;
 }
 
-.help-content::-webkit-scrollbar-thumb:vertical:hover,
-.help-content::-webkit-scrollbar-thumb:vertical:active {
+.help-window-main ::-webkit-scrollbar-thumb:vertical:hover,
+.help-window-main ::-webkit-scrollbar-thumb:vertical:active {
     background: -webkit-gradient(linear, left top, right top, from(rgb(176, 176, 176)), to(rgb(176, 176, 176)), color-stop(40%, rgb(144, 144, 144)));
 }
 
-.help-content::-webkit-scrollbar-track:vertical {
+.help-window-main ::-webkit-scrollbar-track:vertical {
     background: -webkit-gradient(linear, left top, right top, from(rgb(10, 10, 10)), to(rgb(32, 32, 32)), color-stop(25%, rgb(32, 32, 32)));
     border-radius: 5px;
 }
@@ -95,12 +88,8 @@ body.compact .help-window-caption {
     margin: 10px 0;
 }
 
-body.compact .help-close-button {
-    margin: 0;
-}
-
 body.compact .help-content {
-    margin: 8px 0 0 8px;
+    margin-bottom: 8px;
 }
 
 .help-close-button:hover {
@@ -117,29 +106,55 @@ body:not(.platform-mac) .help-close-button {
     float: right;
 }
 
-.help-table {
+.help-container {
     width: 100%;
     -webkit-user-select: auto;
+    -webkit-column-width: 470px;
 }
 
-.help-column-table {
-    border-collapse: collapse;
+body.platform-mac .help-container {
+    -webkit-column-width: 330px;
 }
 
-.help-table > tr > th {
-    padding-top: 6px;
-    text-align: left;
-    color: rgb(221, 221, 0);
+.help-block {
+    display: inline-block;
+    width: 470px;
+    padding-bottom: 9px;
 }
 
-.help-table > tr > td {
-    white-space: nowrap;
-    vertical-align: top;
-    width: 50%;
+body.platform-mac .help-block {
+    width: 330px;
+}
+
+#settings.help-container {
+    -webkit-column-width: 240px;
+}
+
+#settings .help-block {
+    width: 240px;
+}
+
+.help-line {
+    padding-bottom: 3px;
 }
 
 .help-key-cell {
+    display: inline-block;
+    width: 270px;
     text-align: right;
+}
+
+body.platform-mac .help-key-cell {
+    width: 120px;
+}
+
+.help-cell {
+    display: inline;
+}
+
+.help-section-title {
+    font-weight: bold;
+    color: rgb(221, 221, 0);
 }
 
 .help-key {
@@ -165,7 +180,7 @@ body.platform-mac .help-key {
 }
 
 .help-content p {
-    margin: 5px 0 5px 0;
+    margin: 3px 0;
 }
 
 .help-content fieldset {
@@ -179,19 +194,12 @@ body.platform-mac .help-key {
     padding-left: 3px;
 }
 
-
 .help-content fieldset label {
     padding-right: 4px;
 }
 
 .help-content p.help-section {
-    margin-bottom: 15px;
-}
-
-.help-section-title {
-    color: rgb(221, 221, 0);
-    text-align: left;
-    padding-top: 8px;
+    margin: 0 0 15px 0;
 }
 
 .settings-experiments-warning-subsection-warning {
@@ -209,15 +217,27 @@ body.platform-mac .help-key {
 .help-content input[type=checkbox] {
     height: 13px;
     width: 13px;
-    margin-left: 0;
-    margin-right: 4px;
+    margin: 0 4px 0 0;
+    vertical-align: -2px;
+}
+
+body.platform-mac .help-content input[type=checkbox] {
+    vertical-align: -1px;
+}
+
+.help-content input[type=radio] {
+    vertical-align: -2px;
+}
+
+body.platform-mac .help-content input[type=radio] {
+    vertical-align: -1px;
 }
 
 .help-content select {
     background-color: rgb(64, 64, 64);
     color: white;
     border-color: black;
-    padding: 0px 4px;
+    padding: 0 4px;
 }
 
 .help-content select:disabled {
@@ -228,4 +248,48 @@ body.platform-mac .help-key {
 .help-content option {
     background-color: black;
     color: white;
+}
+
+body:not(.compact) #settings-screen .tabbed-pane {
+    height: auto;
+}
+
+#settings-screen .tabbed-pane-header {
+    height: auto;
+}
+
+#settings-screen .tabbed-pane-header-tabs {
+    padding-top: 9px;
+}
+
+#settings-screen .tabbed-pane-header-tab {
+    background-color: transparent;
+    position: relative;
+    top: 1px;
+    text-shadow: none;
+    color: rgb(255, 255, 255);
+    height: 19px;
+    font-size: 13px;
+    padding: 0 4px;
+    margin: 0;
+}
+
+#settings-screen .help-close-button {
+    margin-top: 6px;
+    margin-bottom: 6px;
+}
+
+#settings-screen .tabbed-pane-header-tab.selected {
+    border-bottom: solid 1px rgb(51, 51, 51);
+    border-bottom-right-radius: 2px;
+}
+
+#settings-screen .tabbed-pane-content {
+    margin: 8px;
+    padding: 0 4px;
+}
+
+#settings-screen .help-content {
+    margin: 0;
+    padding: 0;
 }

@@ -30,6 +30,53 @@ namespace JSC {
 
 class Structure;
 
+class Take {
+public:
+    typedef MarkedBlock* ReturnType;
+
+    enum TakeMode { TakeIfEmpty, TakeAll };
+
+    Take(TakeMode, MarkedSpace*);
+    void operator()(MarkedBlock*);
+    ReturnType returnValue();
+    
+private:
+    TakeMode m_takeMode;
+    MarkedSpace* m_markedSpace;
+    DoublyLinkedList<MarkedBlock> m_blocks;
+};
+
+inline Take::Take(TakeMode takeMode, MarkedSpace* newSpace)
+    : m_takeMode(takeMode)
+    , m_markedSpace(newSpace)
+{
+}
+
+inline void Take::operator()(MarkedBlock* block)
+{
+    if (m_takeMode == TakeIfEmpty && !block->isEmpty())
+        return;
+    
+    m_markedSpace->allocatorFor(block).removeBlock(block);
+    m_blocks.append(block);
+}
+
+inline Take::ReturnType Take::returnValue()
+{
+    return m_blocks.head();
+}
+
+struct VisitWeakSet : MarkedBlock::VoidFunctor {
+    VisitWeakSet(HeapRootVisitor& heapRootVisitor) : m_heapRootVisitor(heapRootVisitor) { }
+    void operator()(MarkedBlock* block) { block->visitWeakSet(m_heapRootVisitor); }
+private:
+    HeapRootVisitor& m_heapRootVisitor;
+};
+
+struct ReapWeakSet : MarkedBlock::VoidFunctor {
+    void operator()(MarkedBlock* block) { block->reapWeakSet(); }
+};
+
 MarkedSpace::MarkedSpace(Heap* heap)
     : m_heap(heap)
 {
@@ -44,6 +91,23 @@ MarkedSpace::MarkedSpace(Heap* heap)
     }
 }
 
+MarkedSpace::~MarkedSpace()
+{
+    // We record a temporary list of empties to avoid modifying m_blocks while iterating it.
+    Take take(Take::TakeAll, this);
+    freeBlocks(forEachBlock(take));
+}
+
+struct LastChanceToFinalize : MarkedBlock::VoidFunctor {
+    void operator()(MarkedBlock* block) { block->lastChanceToFinalize(); }
+};
+
+void MarkedSpace::lastChanceToFinalize()
+{
+    canonicalizeCellLivenessData();
+    forEachBlock<LastChanceToFinalize>();
+}
+
 void MarkedSpace::resetAllocators()
 {
     for (size_t cellSize = preciseStep; cellSize <= preciseCutoff; cellSize += preciseStep) {
@@ -55,6 +119,17 @@ void MarkedSpace::resetAllocators()
         allocatorFor(cellSize).reset();
         destructorAllocatorFor(cellSize).reset();
     }
+}
+
+void MarkedSpace::visitWeakSets(HeapRootVisitor& heapRootVisitor)
+{
+    VisitWeakSet visitWeakSet(heapRootVisitor);
+    forEachBlock(visitWeakSet);
+}
+
+void MarkedSpace::reapWeakSets()
+{
+    forEachBlock<ReapWeakSet>();
 }
 
 void MarkedSpace::canonicalizeCellLivenessData()
@@ -94,47 +169,21 @@ void MarkedSpace::freeBlocks(MarkedBlock* head)
         m_blocks.remove(block);
         block->sweep();
 
-        m_heap->blockAllocator().deallocate(block);
+        m_heap->blockAllocator().deallocate(MarkedBlock::destroy(block));
     }
 }
 
-class TakeIfUnmarked {
-public:
-    typedef MarkedBlock* ReturnType;
-    
-    TakeIfUnmarked(MarkedSpace*);
-    void operator()(MarkedBlock*);
-    ReturnType returnValue();
-    
-private:
-    MarkedSpace* m_markedSpace;
-    DoublyLinkedList<MarkedBlock> m_empties;
+struct Shrink : MarkedBlock::VoidFunctor {
+    void operator()(MarkedBlock* block) { block->shrink(); }
 };
-
-inline TakeIfUnmarked::TakeIfUnmarked(MarkedSpace* newSpace)
-    : m_markedSpace(newSpace)
-{
-}
-
-inline void TakeIfUnmarked::operator()(MarkedBlock* block)
-{
-    if (!block->markCountIsZero())
-        return;
-    
-    m_markedSpace->allocatorFor(block).removeBlock(block);
-    m_empties.append(block);
-}
-
-inline TakeIfUnmarked::ReturnType TakeIfUnmarked::returnValue()
-{
-    return m_empties.head();
-}
 
 void MarkedSpace::shrink()
 {
     // We record a temporary list of empties to avoid modifying m_blocks while iterating it.
-    TakeIfUnmarked takeIfUnmarked(this);
-    freeBlocks(forEachBlock(takeIfUnmarked));
+    Take takeIfEmpty(Take::TakeIfEmpty, this);
+    freeBlocks(forEachBlock(takeIfEmpty));
+
+    forEachBlock<Shrink>();
 }
 
 #if ENABLE(GGC)

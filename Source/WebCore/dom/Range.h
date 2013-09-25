@@ -89,8 +89,7 @@ public:
     String toHTML() const;
     String text() const;
 
-    PassRefPtr<DocumentFragment> createContextualFragment(const String& html, ExceptionCode&, FragmentScriptingPermission = FragmentScriptingAllowed);
-    static PassRefPtr<DocumentFragment> createDocumentFragmentForElement(const String& markup, Element*,  FragmentScriptingPermission = FragmentScriptingAllowed);
+    PassRefPtr<DocumentFragment> createContextualFragment(const String& html, ExceptionCode&);
 
     void detach(ExceptionCode&);
     PassRefPtr<Range> cloneRange(ExceptionCode&) const;
@@ -111,7 +110,7 @@ public:
     Node* firstNode() const;
     Node* pastLastNode() const;
 
-    Node* shadowTreeRootNode() const;
+    ShadowRoot* shadowRoot() const;
 
     IntRect boundingBox();
     

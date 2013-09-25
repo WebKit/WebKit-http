@@ -29,11 +29,15 @@
 import getpass
 import logging
 import os
+import platform
 import re
 import shlex
 import subprocess
 import sys
 import webbrowser
+
+from webkitpy.common.system.executive import Executive
+from webkitpy.common.system.platforminfo import PlatformInfo
 
 
 _log = logging.getLogger(__name__)
@@ -45,16 +49,16 @@ except ImportError:
     if sys.platform != "win32":
         # There is no readline module for win32, not much to do except cry.
         _log.warn("Unable to import readline.")
-    # FIXME: We could give instructions for non-mac platforms.
-    # Lack of readline results in a very bad user experiance.
-    if sys.platform == "darwin":
-        _log.warn("If you're using MacPorts, try running:")
-        _log.warn("  sudo port install py25-readline")
 
 
 class User(object):
     DEFAULT_NO = 'n'
     DEFAULT_YES = 'y'
+
+    def __init__(self, platforminfo=None):
+        # We cannot get the PlatformInfo object from a SystemHost because
+        # User is part of SystemHost itself.
+        self._platforminfo = platforminfo or PlatformInfo(sys, platform, Executive())
 
     # FIXME: These are @classmethods because bugzilla.py doesn't have a Tool object (thus no User instance).
     @classmethod
@@ -107,7 +111,7 @@ class User(object):
 
     def edit_changelog(self, files):
         edit_application = os.environ.get("CHANGE_LOG_EDIT_APPLICATION")
-        if edit_application and sys.platform == "darwin":
+        if edit_application and self._platforminfo.is_mac():
             # On Mac we support editing ChangeLogs using an application.
             args = shlex.split(edit_application)
             print "Using editor in the CHANGE_LOG_EDIT_APPLICATION environment variable."

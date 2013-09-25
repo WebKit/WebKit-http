@@ -60,6 +60,7 @@ class WebFileChooserCompletion;
 class WebFrame;
 class WebGeolocationClient;
 class WebGeolocationService;
+class WebHelperPlugin;
 class WebIconLoadingCompletion;
 class WebImage;
 class WebInputElement;
@@ -143,6 +144,10 @@ public:
     // files in the directory. Returns false if the WebFileChooserCompletion
     // will never be called.
     virtual bool enumerateChosenDirectory(const WebString& path, WebFileChooserCompletion*) { return false; }
+
+    // Creates the main WebFrame for the specified WebHelperPlugin.
+    // Called by WebHelperPlugin to provide the WebFrameClient interface for the WebFrame.
+    virtual void initializeHelperPluginWebFrame(WebHelperPlugin*) { }
 
 
     // Navigational --------------------------------------------------------
@@ -250,8 +255,7 @@ public:
     virtual void showContextMenu(WebFrame*, const WebContextMenuData&) { }
 
     // Called when a drag-n-drop operation should begin.
-    virtual void startDragging(
-        const WebDragData&, WebDragOperationsMask, const WebImage&, const WebPoint&) { }
+    virtual void startDragging(WebFrame*, const WebDragData&, WebDragOperationsMask, const WebImage&, const WebPoint& dragImageOffset) { }
 
     // Called to determine if drag-n-drop operations may initiate a page
     // navigation.

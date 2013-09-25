@@ -10,12 +10,13 @@ body {
 }
 
 .flexbox {
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: #aaa;
     position: relative;
 }
 .flexbox div {
     border: 0;
+    -webkit-flex: none;
 }
 
 .horizontal-tb {
@@ -63,8 +64,8 @@ body {
 
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">
@@ -91,6 +92,9 @@ var expectations = {
                 { offsets: [0, 260, 560] },
                 { offsets: [0, 300, 560] },
                 { offsets: [0, 300, 600] },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 90], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [600, 360, 0], sizes: [0, 240, 360] },
@@ -99,6 +103,9 @@ var expectations = {
                 { offsets: [580, 300, 0] },
                 { offsets: [560, 280, 0] },
                 { offsets: [560, 260, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, -30], crossAxisOffset: 50 },
             ],
         },
         column: {
@@ -109,6 +116,9 @@ var expectations = {
                 { offsets: [0, 20, 80] },
                 { offsets: [0, 60, 80] },
                 { offsets: [0, 60, 120] },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 90], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 48], sizes: [0, 48, 72] },
@@ -117,6 +127,9 @@ var expectations = {
                 { offsets: [0, 20, 80] },
                 { offsets: [0, 60, 80] },
                 { offsets: [0, 60, 120] },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 90], crossAxisOffset: 10 },
             ],
         },
         'row-reverse': {
@@ -127,6 +140,9 @@ var expectations = {
                 { offsets: [600, 300, 0] },
                 { offsets: [560, 300, 0] },
                 { offsets: [560, 260, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 240], sizes: [0, 240, 360] },
@@ -135,6 +151,9 @@ var expectations = {
                 { offsets: [-20, 260, 560] },
                 { offsets: [0, 280, 560] },
                 { offsets: [0, 300, 580] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
             ],
         },
         'column-reverse': {
@@ -145,6 +164,9 @@ var expectations = {
                 { offsets: [120, 60, 0] },
                 { offsets: [80, 60, 0] },
                 { offsets: [80, 20, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [120, 72, 0], sizes: [0, 48, 72] },
@@ -153,6 +175,9 @@ var expectations = {
                 { offsets: [120, 60, 0] },
                 { offsets: [80, 60, 0] },
                 { offsets: [80, 20, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
             ],
         },
     },
@@ -166,6 +191,9 @@ var expectations = {
                 { offsets: [0, 260, 560] },
                 { offsets: [0, 300, 560] },
                 { offsets: [0, 300, 600] },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 90], crossAxisOffset: 10 },
             ],
             rtl: [
                 { offsets: [600, 360, 0], sizes: [0, 240, 360] },
@@ -174,6 +202,9 @@ var expectations = {
                 { offsets: [580, 300, 0] },
                 { offsets: [560, 280, 0] },
                 { offsets: [560, 260, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, -30], crossAxisOffset: 10 },
             ],
         },
         // horizontal-bt flips the main axis direction so the offsets are different from horizontal-tb.
@@ -185,6 +216,9 @@ var expectations = {
                 { offsets: [100, 60, 0] },
                 { offsets: [80, 40, 0] },
                 { offsets: [80, 20, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, -30], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [120, 72, 0], sizes: [0, 48, 72] },
@@ -193,6 +227,9 @@ var expectations = {
                 { offsets: [100, 60, 0] },
                 { offsets: [80, 40, 0] },
                 { offsets: [80, 20, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, -30], crossAxisOffset: 10 },
             ],
         },
         'row-reverse': {
@@ -203,6 +240,9 @@ var expectations = {
                 { offsets: [600, 300, 0] },
                 { offsets: [560, 300, 0] },
                 { offsets: [560, 260, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
             ],
             rtl: [
                 { offsets: [0, 0, 240], sizes: [0, 240, 360] },
@@ -211,6 +251,9 @@ var expectations = {
                 { offsets: [-20, 260, 560] },
                 { offsets: [0, 280, 560] },
                 { offsets: [0, 300, 580] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
             ],
         },
         'column-reverse': {
@@ -221,6 +264,9 @@ var expectations = {
                 { offsets: [-20, 20, 80] },
                 { offsets: [0, 40, 80] },
                 { offsets: [0, 60, 100] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 48], sizes: [0, 48, 72] },
@@ -229,6 +275,9 @@ var expectations = {
                 { offsets: [-20, 20, 80] },
                 { offsets: [0, 40, 80] },
                 { offsets: [0, 60, 100] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
             ],
         },
     },
@@ -242,6 +291,9 @@ var expectations = {
                 { offsets: [0, 20, 80] },
                 { offsets: [0, 60, 80] },
                 { offsets: [0, 60, 120] },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 90], crossAxisOffset: 10 },
             ],
             rtl: [
                 { offsets: [120, 72, 0], sizes: [0, 48, 72] },
@@ -250,6 +302,9 @@ var expectations = {
                 { offsets: [100, 60, 0] },
                 { offsets: [80, 40, 0] },
                 { offsets: [80, 20, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, -30], crossAxisOffset: 10 },
             ],
         },
         column: {
@@ -261,6 +316,9 @@ var expectations = {
                 { offsets: [580, 300, 0] },
                 { offsets: [560, 280, 0] },
                 { offsets: [560, 260, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, -30], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [600, 360, 0], sizes: [0, 240, 360] },
@@ -269,6 +327,9 @@ var expectations = {
                 { offsets: [580, 300, 0] },
                 { offsets: [560, 280, 0] },
                 { offsets: [560, 260, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, -30], crossAxisOffset: 10 },
             ],
         },
         'row-reverse': {
@@ -279,6 +340,9 @@ var expectations = {
                 { offsets: [120, 60, 0] },
                 { offsets: [80, 60, 0] },
                 { offsets: [80, 20, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
             ],
             rtl: [
                 { offsets: [0, 0, 48], sizes: [0, 48, 72] },
@@ -287,6 +351,9 @@ var expectations = {
                 { offsets: [-20, 20, 80] },
                 { offsets: [0, 40, 80] },
                 { offsets: [0, 60, 100] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
             ],
         },
         'column-reverse': {
@@ -297,6 +364,9 @@ var expectations = {
                 { offsets: [-20, 260, 560] },
                 { offsets: [0, 280, 560] },
                 { offsets: [0, 300, 580] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 240], sizes: [0, 240, 360] },
@@ -305,6 +375,9 @@ var expectations = {
                 { offsets: [-20, 260, 560] },
                 { offsets: [0, 280, 560] },
                 { offsets: [0, 300, 580] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
             ],
         }
     },
@@ -318,6 +391,9 @@ var expectations = {
                 { offsets: [0, 20, 80] },
                 { offsets: [0, 60, 80] },
                 { offsets: [0, 60, 120] },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 90], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [120, 72, 0], sizes: [0, 48, 72] },
@@ -326,6 +402,9 @@ var expectations = {
                 { offsets: [100, 60, 0] },
                 { offsets: [80, 40, 0] },
                 { offsets: [80, 20, -20] },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, -30], crossAxisOffset: 50 },
             ],
         },
         column: {
@@ -337,6 +416,9 @@ var expectations = {
                 { offsets: [0, 260, 560] },
                 { offsets: [0, 300, 560] },
                 { offsets: [0, 300, 600] },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 90], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 240], sizes: [0, 240, 360] },
@@ -345,6 +427,9 @@ var expectations = {
                 { offsets: [0, 260, 560] },
                 { offsets: [0, 300, 560] },
                 { offsets: [0, 300, 600] },
+                { offsets: [10, 10, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 50], crossAxisOffset: 10 },
+                { offsets: [10, 50, 90], crossAxisOffset: 10 },
             ],
         },
         'row-reverse': {
@@ -355,6 +440,9 @@ var expectations = {
                 { offsets: [120, 60, 0] },
                 { offsets: [80, 60, 0] },
                 { offsets: [80, 20, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [0, 0, 48], sizes: [0, 48, 72] },
@@ -363,6 +451,9 @@ var expectations = {
                 { offsets: [-20, 20, 80] },
                 { offsets: [0, 40, 80] },
                 { offsets: [0, 60, 100] },
+                { offsets: [-30, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 10, 50], crossAxisOffset: 50 },
+                { offsets: [10, 50, 50], crossAxisOffset: 50 },
             ],
         },
         'column-reverse': {
@@ -373,6 +464,9 @@ var expectations = {
                 { offsets: [600, 300, 0] },
                 { offsets: [560, 300, 0] },
                 { offsets: [560, 260, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 50, 10], crossAxisOffset: 50 },
+                { offsets: [50, 10, 10], crossAxisOffset: 50 },
             ],
             rtl: [
                 { offsets: [600, 360, 0], sizes: [0, 240, 360] },
@@ -381,6 +475,9 @@ var expectations = {
                 { offsets: [600, 300, 0] },
                 { offsets: [560, 300, 0] },
                 { offsets: [560, 260, 0] },
+                { offsets: [90, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 50, 10], crossAxisOffset: 10 },
+                { offsets: [50, 10, 10], crossAxisOffset: 10 },
             ],
         },
     }
@@ -396,11 +493,9 @@ function setFlexboxSize(flexbox, flexDirection)
     }
 }
 
-function addFlexPackJustifyTests(writingMode, flexFlow, direction, flexDirection)
+function addJustifyContentSpaceBetweenTests(writingMode, flexFlow, direction, flexDirection)
 {
     var flexboxClassName = writingMode + ' ' + direction + ' ' + flexFlow;
-
-
     for (var absoluteIndex = 1; absoluteIndex <= 3; ++absoluteIndex) {
         var expected = expectations[writingMode][flexFlow][direction][2 + absoluteIndex];
 
@@ -411,7 +506,7 @@ function addFlexPackJustifyTests(writingMode, flexFlow, direction, flexDirection
         var flexbox = document.createElement('div');
         flexbox.className = 'flexbox ' + flexboxClassName;
         setFlexboxSize(flexbox, flexDirection);
-        flexbox.style.webkitFlexPack = 'justify';
+        flexbox.style.webkitJustifyContent = 'space-between';
         for (var childIndex = 1; childIndex <= 3; ++childIndex) {
             var child = document.createElement('div');
             child.style[flexDirection] = '40px';
@@ -434,6 +529,39 @@ function addFlexPackJustifyTests(writingMode, flexFlow, direction, flexDirection
     }
 }
 
+function addAlignItemsCenterTests(writingMode, flexFlow, direction, flexDirection)
+{
+    var flexboxClassName = writingMode + ' ' + direction + ' ' + flexFlow;
+    for (var absoluteIndex = 1; absoluteIndex <= 3; ++absoluteIndex) {
+        var expected = expectations[writingMode][flexFlow][direction][5 + absoluteIndex];
+
+        var flexbox = document.createElement('div');
+        flexbox.className = 'flexbox ' + flexboxClassName;
+        flexbox.style.height = '100px';
+        flexbox.style.width = '100px';
+        flexbox.style.margin = "20px";
+        flexbox.style.webkitJustifyContent = 'center';
+        flexbox.style.webkitAlignItems = 'center';
+
+        for (var childIndex = 1; childIndex <= 3; ++childIndex) {
+            var child = document.createElement('div');
+            if (absoluteIndex == childIndex) {
+                child.style.position = 'absolute';
+                child.style.outline = "2px solid yellow";
+            }
+            child.style.width = '40px';
+            child.style.height = '40px';
+
+            child.setAttribute('data-offset-' + (flexDirection == 'width' ? 'x' : 'y'), expected.offsets[childIndex - 1]);
+            var expectedCrossAxisOffset = (absoluteIndex == childIndex) ? expected.crossAxisOffset : 30;
+            child.setAttribute('data-offset-' + (flexDirection == 'width' ? 'y' : 'x'), expectedCrossAxisOffset);
+            flexbox.appendChild(child);
+        }
+
+        document.body.appendChild(flexbox);
+    }
+}
+
 writingModes.forEach(function(writingMode) {
     flexFlows.forEach(function(flexFlow) {
         directions.forEach(function(direction) {
@@ -444,7 +572,6 @@ writingModes.forEach(function(writingMode) {
             document.body.appendChild(title);
 
             var flexDirection = getFlexDirection(flexFlow, writingMode);
-
             for (var absoluteIndex = 1; absoluteIndex <= 3; ++absoluteIndex) {
                 var expected = expectations[writingMode][flexFlow][direction][absoluteIndex - 1];
 
@@ -467,7 +594,8 @@ writingModes.forEach(function(writingMode) {
 
                 document.body.appendChild(flexbox);
             }
-            addFlexPackJustifyTests(writingMode, flexFlow, direction, flexDirection);
+            addJustifyContentSpaceBetweenTests(writingMode, flexFlow, direction, flexDirection);
+            addAlignItemsCenterTests(writingMode, flexFlow, direction, flexDirection);
         })
     })
 })

@@ -1598,6 +1598,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     return resultRect;
 }
 
+#if ENABLE(DRAG_SUPPORT)
 - (void)draggedImage:(NSImage *)anImage endedAt:(NSPoint)aPoint operation:(NSDragOperation)operation
 {
     NSPoint windowImageLoc = [[self window] convertScreenToBase:aPoint];
@@ -1699,7 +1700,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
     NSArray *types = [pasteboard types];
     if (![types containsObject:NSFilenamesPboardType])
         return;
-    
+
     NSArray *files = [pasteboard propertyListForType:NSFilenamesPboardType];
     handles.allocate([files count]);
     for (unsigned i = 0; i < [files count]; i++) {
@@ -1724,7 +1725,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
 
     SandboxExtension::HandleArray sandboxExtensionForUpload;
     createSandboxExtensionsForFileUpload([draggingInfo draggingPasteboard], sandboxExtensionForUpload);
-    
+
     _data->_page->performDrag(&dragData, [[draggingInfo draggingPasteboard] name], sandboxExtensionHandle, sandboxExtensionForUpload);
 
     return YES;
@@ -1739,6 +1740,7 @@ static void createSandboxExtensionsForFileUpload(NSPasteboard *pasteboard, Sandb
         return self;
     return nil;
 }
+#endif // ENABLE(DRAG_SUPPORT)
 
 - (BOOL)_windowResizeMouseLocationIsInVisibleScrollerThumb:(NSPoint)loc
 {
@@ -1874,9 +1876,9 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     // update the active state.
     if ([self window]) {
         _data->_windowHasValidBackingStore = NO;
+        [self _updateWindowVisibility];
         _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive);
         _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible | WebPageProxy::ViewIsInWindow);
-        [self _updateWindowVisibility];
         [self _updateWindowAndViewFrames];
 
         if (!_data->_flagsChangedEventMonitor) {
@@ -1965,20 +1967,22 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
 - (void)_windowDidOrderOffScreen:(NSNotification *)notification
 {
+    [self _updateWindowVisibility];
+
     // We want to make sure to update the active state while hidden, so since the view is about to be hidden,
     // we hide it first and then update the active state.
     _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible);
     _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive);
-    [self _updateWindowVisibility];
 }
 
 - (void)_windowDidOrderOnScreen:(NSNotification *)notification
 {
+    [self _updateWindowVisibility];
+
     // We want to make sure to update the active state while hidden, so since the view is about to become visible,
     // we update the active state first and then make it visible.
     _data->_page->viewStateDidChange(WebPageProxy::ViewWindowIsActive);
     _data->_page->viewStateDidChange(WebPageProxy::ViewIsVisible);
-    [self _updateWindowVisibility];
 }
 
 - (void)_windowDidChangeBackingProperties:(NSNotification *)notification
@@ -2511,8 +2515,20 @@ static void drawPageBackground(CGContextRef context, WebPageProxy* page, const I
 
 - (void)_updateAcceleratedCompositingMode:(const WebKit::LayerTreeContext&)layerTreeContext
 {
-    [self _exitAcceleratedCompositingMode];
-    [self _enterAcceleratedCompositingMode:layerTreeContext];
+    if (_data->_layerHostingView) {
+        // Wrap the call to setSublayers: in a CATransaction with actions disabled to
+        // keep CA from cross-fading between the two sublayer arrays.
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+
+        CALayer *renderLayer = WKMakeRenderLayer(layerTreeContext.contextID);
+        [[_data->_layerHostingView.get() layer] setSublayers:[NSArray arrayWithObject:renderLayer]];
+
+        [CATransaction commit];
+    } else {
+        [self _exitAcceleratedCompositingMode];
+        [self _enterAcceleratedCompositingMode:layerTreeContext];
+    }
 }
 
 - (void)_setAccessibilityWebProcessToken:(NSData *)data
@@ -2646,10 +2662,10 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     if (!matchesExtensionOrEquivalent(filename, extension))
         filename = [[filename stringByAppendingString:@"."] stringByAppendingString:extension];
 
-    [pasteboard setString:url forType:NSURLPboardType];
+    [pasteboard setString:visibleUrl forType:NSStringPboardType];
     [pasteboard setString:visibleUrl forType:PasteboardTypes::WebURLPboardType];
     [pasteboard setString:title forType:PasteboardTypes::WebURLNamePboardType];
-    [pasteboard setPropertyList:[NSArray arrayWithObjects:[NSArray arrayWithObject:url], [NSArray arrayWithObject:title], nil] forType:PasteboardTypes::WebURLsWithTitlesPboardType];
+    [pasteboard setPropertyList:[NSArray arrayWithObjects:[NSArray arrayWithObject:visibleUrl], [NSArray arrayWithObject:title], nil] forType:PasteboardTypes::WebURLsWithTitlesPboardType];
     [pasteboard setPropertyList:[NSArray arrayWithObject:extension] forType:NSFilesPromisePboardType];
 
     if (archiveBuffer)
@@ -2910,8 +2926,8 @@ static NSString *pathWithUniqueFilenameForPath(NSString *path)
 
     _data->_pageClient = PageClientImpl::create(self);
     _data->_page = toImpl(contextRef)->createWebPage(_data->_pageClient.get(), toImpl(pageGroupRef));
-    _data->_page->initializeWebPage();
     _data->_page->setIntrinsicDeviceScaleFactor([self _intrinsicDeviceScaleFactor]);
+    _data->_page->initializeWebPage();
 #if ENABLE(FULLSCREEN_API)
     _data->_page->fullScreenManager()->setWebView(self);
 #endif

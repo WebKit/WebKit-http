@@ -26,26 +26,22 @@
 #ifndef SelectorQuery_h
 #define SelectorQuery_h
 
+#include "CSSSelectorList.h"
 #include "SelectorChecker.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+typedef int ExceptionCode;
     
+class CSSSelector;
+class Element;
 class Node;
 class NodeList;
-class Element;
-class CSSSelector;
-class CSSSelectorList;
 
 class SelectorDataList {
 public:
-    SelectorDataList();
-    explicit SelectorDataList(const CSSSelectorList&);
-
     void initialize(const CSSSelectorList&);
-
-    int size() const { return m_selectors.size(); }
-
     bool matches(const SelectorChecker&, Element*) const;
     PassRefPtr<NodeList> queryAll(const SelectorChecker&, Node* rootNode) const;
     PassRefPtr<Element> queryFirst(const SelectorChecker&, Node* rootNode) const;
@@ -66,15 +62,25 @@ private:
 
 class SelectorQuery {
     WTF_MAKE_NONCOPYABLE(SelectorQuery);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    SelectorQuery(Node* rootNode, const CSSSelectorList&);
-
-    PassRefPtr<NodeList> queryAll() const;
-    PassRefPtr<Element> queryFirst() const;
+    SelectorQuery(const CSSSelectorList&);
+    bool matches(Element*) const;
+    PassRefPtr<NodeList> queryAll(Node* rootNode) const;
+    PassRefPtr<Element> queryFirst(Node* rootNode) const;
 private:
-    Node* m_rootNode;
-    SelectorChecker m_selectorChecker;
     SelectorDataList m_selectors;
+    CSSSelectorList m_selectorList;
+};
+
+class SelectorQueryCache {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    SelectorQuery* add(const AtomicString&, Document*, ExceptionCode&);
+    void invalidate();
+
+private:
+    HashMap<AtomicString, OwnPtr<SelectorQuery> > m_entries;
 };
 
 }

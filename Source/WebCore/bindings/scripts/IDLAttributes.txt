@@ -98,6 +98,7 @@ ReplaceableConstructor
 ReturnNewObject
 StrictTypeChecking
 Supplemental=*
+SuppressToJSObject
 TransferList=*
 TreatNullAs=NullString
 TreatReturnedNullStringAs=False|Null|Undefined
@@ -111,5 +112,6 @@ V8CustomToJSObject
 V8DependentLifetime
 V8DoNotCheckSignature
 V8EnabledAtRuntime=*
+V8EnabledPerContext=*
 V8ReadOnly
 V8Unforgeable

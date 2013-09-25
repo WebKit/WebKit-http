@@ -55,8 +55,6 @@ public:
         return adoptPtr(new ElementAttributeData);
     }
 
-    ~ElementAttributeData();
-
     void clearClass() { m_classNames.clear(); }
     void setClass(const String& className, bool shouldFoldCase);
     const SpaceSplitString& classNames() const { return m_classNames; }
@@ -106,17 +104,16 @@ private:
     friend class HTMLConstructionSite;
 
     ElementAttributeData()
-        : m_attrCount(0)
     {
     }
 
     const Vector<Attribute>& attributeVector() const { return m_attributes; }
     Vector<Attribute> clonedAttributeVector() const { return m_attributes; }
 
-    void detachAttributesFromElement(Element*);
+    void detachAttrObjectsFromElement(Element*);
     Attribute* getAttributeItem(const String& name, bool shouldIgnoreAttributeCase) const;
     size_t getAttributeItemIndexSlowCase(const String& name, bool shouldIgnoreAttributeCase) const;
-    void setAttributes(const ElementAttributeData& other, Element*);
+    void cloneDataFrom(const ElementAttributeData& sourceData, const Element& sourceElement, Element& targetElement);
     void clearAttributes(Element*);
     void replaceAttribute(size_t index, const Attribute&, Element*);
 
@@ -125,8 +122,6 @@ private:
     SpaceSplitString m_classNames;
     AtomicString m_idForStyleResolution;
     Vector<Attribute> m_attributes;
-
-    unsigned m_attrCount;
 };
 
 inline void ElementAttributeData::removeAttribute(const QualifiedName& name, Element* element)

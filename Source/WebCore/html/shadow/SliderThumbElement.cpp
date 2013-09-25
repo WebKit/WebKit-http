@@ -34,6 +34,7 @@
 #include "SliderThumbElement.h"
 
 #include "CSSValueKeywords.h"
+#include "ElementShadow.h"
 #include "Event.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
@@ -43,7 +44,6 @@
 #include "RenderSlider.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "StepRange.h"
 #include <wtf/MathExtras.h>
 
@@ -51,10 +51,11 @@ using namespace std;
 
 namespace WebCore {
 
-inline static double sliderPosition(HTMLInputElement* element)
+inline static InputNumber sliderPosition(HTMLInputElement* element)
 {
-    StepRange range(element);
-    return range.proportionFromValue(range.valueFromElement(element));
+    const StepRange stepRange(element->createStepRange(RejectAny));
+    const InputNumber oldValue = parseToDecimalForNumberType(element->value(), stepRange.defaultValue());
+    return stepRange.proportionFromValue(stepRange.clampValue(oldValue));
 }
 
 inline static bool hasVerticalAppearance(HTMLInputElement* input)
@@ -67,7 +68,7 @@ inline static bool hasVerticalAppearance(HTMLInputElement* input)
 SliderThumbElement* sliderThumbElementOf(Node* node)
 {
     ASSERT(node);
-    ShadowRoot* shadow = node->toInputElement()->shadowTree()->oldestShadowRoot();
+    ShadowRoot* shadow = node->toInputElement()->shadow()->oldestShadowRoot();
     ASSERT(shadow);
     Node* thumb = shadow->firstChild()->firstChild()->firstChild();
     ASSERT(thumb);
@@ -94,7 +95,7 @@ void RenderSliderThumb::updateAppearance(RenderStyle* parentStyle)
     else if (parentStyle->appearance() == MediaFullScreenVolumeSliderPart)
         style()->setAppearance(MediaFullScreenVolumeSliderThumbPart);
     if (style()->hasAppearance())
-        theme()->adjustSliderThumbSize(style());
+        theme()->adjustSliderThumbSize(style(), toElement(node()));
 }
 
 bool RenderSliderThumb::isSliderThumb() const
@@ -109,7 +110,7 @@ void RenderSliderThumb::layout()
     HTMLInputElement* input = node()->shadowAncestorNode()->toInputElement();
     bool isVertical = style()->appearance() == SliderThumbVerticalPart || style()->appearance() == MediaVolumeSliderThumbPart;
 
-    double fraction = sliderPosition(input) * 100;
+    double fraction = convertInputNumberToDouble(sliderPosition(input) * 100);
     if (isVertical)
         style()->setTop(Length(100 - fraction, Percent));
     else if (style()->isLeftToRightDirection())
@@ -144,7 +145,7 @@ void RenderSliderContainer::layout()
     Length inputHeight = input->renderer()->style()->height();
     RenderObject* trackRenderer = node()->firstChild()->renderer();
     if (!isVertical && input->renderer()->isSlider() && !inputHeight.isFixed() && !inputHeight.isPercent()) {
-        RenderObject* thumbRenderer = input->shadowTree()->oldestShadowRoot()->firstChild()->firstChild()->firstChild()->renderer();
+        RenderObject* thumbRenderer = input->shadow()->oldestShadowRoot()->firstChild()->firstChild()->firstChild()->renderer();
         if (thumbRenderer) {
             style()->setHeight(thumbRenderer->style()->height());
             if (trackRenderer)
@@ -235,11 +236,10 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
     if (position == currentPosition)
         return;
 
-    StepRange range(input);
-    double fraction = static_cast<double>(position) / trackSize;
-    if (isVertical || !renderBox()->style()->isLeftToRightDirection())
-        fraction = 1 - fraction;
-    double value = range.clampValue(range.valueFromProportion(fraction));
+    const InputNumber ratio = convertDoubleToInputNumber(static_cast<double>(position) / trackSize);
+    const InputNumber fraction = isVertical || !renderBox()->style()->isLeftToRightDirection() ? InputNumber(1) - ratio : ratio;
+    StepRange stepRange(input->createStepRange(RejectAny));
+    const InputNumber value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
 
     // FIXME: This is no longer being set from renderer. Consider updating the method name.
     input->setValueFromRenderer(serializeForNumberType(value));
@@ -358,8 +358,8 @@ const AtomicString& TrackLimiterElement::shadowPseudoId() const
 TrackLimiterElement* trackLimiterElementOf(Node* node)
 {
     ASSERT(node);
-    ASSERT(node->toInputElement()->hasShadowRoot());
-    ShadowRoot* shadow = node->toInputElement()->shadowTree()->oldestShadowRoot();
+    ASSERT(node->toInputElement()->shadow());
+    ShadowRoot* shadow = node->toInputElement()->shadow()->oldestShadowRoot();
     ASSERT(shadow);
     Node* limiter = shadow->firstChild()->lastChild();
     ASSERT(limiter);

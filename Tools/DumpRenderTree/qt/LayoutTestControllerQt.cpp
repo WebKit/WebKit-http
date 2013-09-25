@@ -477,12 +477,6 @@ void LayoutTestController::setAutofilled(const QWebElement& element, bool isAuto
     return DumpRenderTreeSupportQt::setAutofilled(element, isAutofilled);
 }
 
-void LayoutTestController::setJavaScriptProfilingEnabled(bool enable)
-{
-    setDeveloperExtrasEnabled(enable);
-    DumpRenderTreeSupportQt::setJavaScriptProfilingEnabled(m_topLoadingFrame, enable);
-}
-
 void LayoutTestController::setValueForUser(const QWebElement& element, const QString& value)
 {
     DumpRenderTreeSupportQt::setValueForUser(element, value);
@@ -567,20 +561,6 @@ unsigned LayoutTestController::numberOfActiveAnimations() const
     QWebFrame* frame = m_drt->webPage()->mainFrame();
     Q_ASSERT(frame);
     return DumpRenderTreeSupportQt::numberOfActiveAnimations(frame);
-}
-
-void LayoutTestController::suspendAnimations() const
-{
-    QWebFrame* frame = m_drt->webPage()->mainFrame();
-    Q_ASSERT(frame);
-    DumpRenderTreeSupportQt::suspendAnimations(frame);
-}
-
-void LayoutTestController::resumeAnimations() const
-{
-    QWebFrame* frame = m_drt->webPage()->mainFrame();
-    Q_ASSERT(frame);
-    DumpRenderTreeSupportQt::resumeAnimations(frame);
 }
 
 void LayoutTestController::disableImageLoading()
@@ -842,11 +822,6 @@ void LayoutTestController::setIconDatabaseEnabled(bool enable)
         QWebSettings::setIconDatabasePath(QString());
 }
 
-void LayoutTestController::setEditingBehavior(const QString& editingBehavior)
-{
-    DumpRenderTreeSupportQt::setEditingBehavior(m_drt->webPage(), editingBehavior);
-}
-
 void LayoutTestController::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bool canProvideBeta, double beta, bool canProvideGamma, double gamma)
 {
     QList<WebCore::WebPage*> pages = m_drt->getAllPages();
@@ -920,11 +895,6 @@ void LayoutTestController::evaluateScriptInIsolatedWorld(int worldID, const QStr
     DumpRenderTreeSupportQt::evaluateScriptInIsolatedWorld(m_drt->webPage()->mainFrame(), worldID, script);
 }
 
-bool LayoutTestController::isPageBoxVisible(int pageIndex)
-{
-    return DumpRenderTreeSupportQt::isPageBoxVisible(m_drt->webPage()->mainFrame(), pageIndex);
-}
-
 QString LayoutTestController::pageSizeAndMarginsInPixels(int pageIndex, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft)
 {
     return DumpRenderTreeSupportQt::pageSizeAndMarginsInPixels(m_drt->webPage()->mainFrame(), pageIndex,
@@ -981,6 +951,21 @@ void LayoutTestController::observeStorageTrackerNotifications(unsigned number)
 void LayoutTestController::syncLocalStorage()
 {
     // FIXME: Implement.
+}
+
+void LayoutTestController::resetPageVisibility()
+{
+    // FIXME: Implement this.
+}
+
+void LayoutTestController::setPageVisibility(const char*)
+{
+    // FIXME: Implement this.
+}
+
+void LayoutTestController::setAutomaticLinkDetectionEnabled(bool)
+{
+    // FIXME: Implement this.
 }
 
 QString LayoutTestController::layerTreeAsText()

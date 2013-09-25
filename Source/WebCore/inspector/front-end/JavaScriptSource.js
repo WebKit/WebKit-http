@@ -31,186 +31,173 @@
 /**
  * @constructor
  * @extends {WebInspector.UISourceCode}
- * @param {string} id
  * @param {string} url
+ * @param {WebInspector.Resource} resource
  * @param {WebInspector.ContentProvider} contentProvider
+ * @param {WebInspector.SourceMapping} sourceMapping
  */
-WebInspector.JavaScriptSource = function(id, url, contentProvider)
+WebInspector.JavaScriptSource = function(url, resource, contentProvider, sourceMapping, isEditable)
 {
-    WebInspector.UISourceCode.call(this, id, url, contentProvider);
+    WebInspector.UISourceCode.call(this, url, resource, contentProvider, sourceMapping);
+    this._isEditable = isEditable;
 
-    this._model = WebInspector.debuggerPresentationModel;
-
-    if (this._model) // For tests.
-        this._breakpointManager = this._model.breakpointManager;
-
-    /**
-     * @type {Object.<string,WebInspector.UIBreakpoint>}
-     */
-    this._breakpoints = {};
-    /**
-     * @type {Array.<WebInspector.PresentationConsoleMessage>}
-     */
-    this._consoleMessages = [];
+    this._formatterMapping = new WebInspector.IdentityFormatterSourceMapping();
+    // FIXME: postpone breakpoints restore to after the mapping has been established.
+    setTimeout(function() {
+        if (!this._formatted)
+            WebInspector.breakpointManager.restoreBreakpoints(this);
+    }.bind(this), 0);
+    if (resource)
+        WebInspector.JavaScriptSource.javaScriptSourceForResource.put(resource, this);
 }
+
+WebInspector.JavaScriptSource.javaScriptSourceForResource = new Map();
 
 WebInspector.JavaScriptSource.prototype = {
     /**
-     * @return {Object.<string,WebInspector.UIBreakpoint>}
+     * @param {?string} content
+     * @param {boolean} contentEncoded
+     * @param {string} mimeType
      */
-    breakpoints: function()
+    fireContentAvailable: function(content, contentEncoded, mimeType)
     {
-        return this._breakpoints;
+        WebInspector.UISourceCode.prototype.fireContentAvailable.call(this, content, contentEncoded, mimeType);
+        if (this._formatOnLoad) {
+            delete this._formatOnLoad;
+            this.setFormatted(true);
+        }
     },
 
     /**
-     * @param {number} lineNumber
-     * @param {WebInspector.UIBreakpoint} breakpoint
+     * @param {boolean} formatted
+     * @param {function()=} callback
      */
-    breakpointAdded: function(lineNumber, breakpoint)
+    setFormatted: function(formatted, callback)
     {
-        console.assert(!this._breakpoints[String(lineNumber)]);
-        this._breakpoints[String(lineNumber)] = breakpoint;
-        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.BreakpointAdded, breakpoint);
-    },
-
-    /**
-     * @param {number} lineNumber
-     */
-    breakpointRemoved: function(lineNumber)
-    {
-        var breakpoint = this._breakpoints[String(lineNumber)];
-        delete this._breakpoints[String(lineNumber)];
-        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.BreakpointRemoved, breakpoint);
-    },
-
-    /**
-     * @return {Array.<WebInspector.PresentationConsoleMessage>}
-     */
-    consoleMessages: function()
-    {
-        return this._consoleMessages;
-    },
-
-    /**
-     * @param {WebInspector.PresentationConsoleMessage} message
-     */
-    consoleMessageAdded: function(message)
-    {
-        this._consoleMessages.push(message);
-        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.ConsoleMessageAdded, message);
-    },
-
-    consoleMessagesCleared: function()
-    {
-        this._consoleMessages = [];
-        this.dispatchEventToListeners(WebInspector.UISourceCode.Events.ConsoleMessagesCleared);
-    },
-
-    /**
-     * @param {number} lineNumber
-     * @return {WebInspector.UIBreakpoint|undefined}
-     */
-    findBreakpoint: function(lineNumber)
-    {
-        return this._breakpoints[String(lineNumber)];
-    },
-
-    /**
-     * @param {number} lineNumber
-     * @param {string} condition
-     * @param {boolean} enabled
-     */
-    setBreakpoint: function(lineNumber, condition, enabled)
-    {
-        this._breakpointManager.setBreakpoint(this, lineNumber, condition, enabled);
-        WebInspector.debuggerModel.setBreakpointsActive(true);
-    },
-
-    /**
-     * @param {number} lineNumber
-     * @param {boolean} enabled
-     */
-    setBreakpointEnabled: function(lineNumber, enabled)
-    {
-        var breakpoint = this.findBreakpoint(lineNumber);
-        if (!breakpoint)
+        callback = callback || function() {};
+        if (!this.contentLoaded()) {
+            this._formatOnLoad = formatted;
+            callback();
             return;
-        this._breakpointManager.removeBreakpoint(this, lineNumber);
-        this._breakpointManager.setBreakpoint(this, lineNumber, breakpoint.condition, enabled);
-    },
+        }
 
-    /**
-     * @param {number} lineNumber
-     */
-    removeBreakpoint: function(lineNumber)
-    {
-        this._breakpointManager.removeBreakpoint(this, lineNumber);
-    },
+        if (this._formatted === formatted) {
+            callback();
+            return;
+        }
 
-    /**
-     * @param {number} lineNumber
-     * @param {string} condition
-     * @param {boolean} enabled
-     */
-    updateBreakpoint: function(lineNumber, condition, enabled)
-    {
-        this._breakpointManager.removeBreakpoint(this, lineNumber);
-        this._breakpointManager.setBreakpoint(this, lineNumber, condition, enabled);
-    },
+        this._formatted = formatted;
 
-    continueToLine: function(lineNumber)
-    {
-        this._model.continueToLine(this, lineNumber);
+        // Re-request content
+        this._contentLoaded = false;
+        WebInspector.UISourceCode.prototype.requestContent.call(this, didGetContent.bind(this));
+  
+        /**
+         * @this {WebInspector.UISourceCode}
+         * @param {?string} content
+         * @param {boolean} contentEncoded
+         * @param {string} mimeType
+         */
+        function didGetContent(content, contentEncoded, mimeType)
+        {
+            if (!formatted) {
+                this._togglingFormatter = true;
+                this.contentChanged(content || "", mimeType);
+                delete this._togglingFormatter;
+                this._formatterMapping = new WebInspector.IdentityFormatterSourceMapping();
+                this.updateLiveLocations();
+                callback();
+                return;
+            }
+    
+            var formatter = new WebInspector.ScriptFormatter();
+            formatter.formatContent(mimeType, content || "", didFormatContent.bind(this));
+  
+            /**
+             * @this {WebInspector.UISourceCode}
+             * @param {string} formattedContent
+             * @param {WebInspector.FormatterSourceMapping} formatterMapping
+             */
+            function didFormatContent(formattedContent, formatterMapping)
+            {
+                this._togglingFormatter = true;
+                this.contentChanged(formattedContent, mimeType);
+                delete this._togglingFormatter;
+                this._formatterMapping = formatterMapping;
+                this.updateLiveLocations();
+                WebInspector.breakpointManager.restoreBreakpoints(this);
+                callback();
+            }
+        }
     },
 
     /**
      * @return {boolean}
      */
-    canSetContent: function()
+    togglingFormatter: function()
     {
-        return this._model.canEditScriptSource(this);
+        return this._togglingFormatter;
     },
 
     /**
-     * @param {string} newSource
-     * @param {function(?Protocol.Error)} callback
+     * @param {number} lineNumber
+     * @param {number} columnNumber
+     * @return {WebInspector.DebuggerModel.Location}
      */
-    setContent: function(newSource, callback)
+    uiLocationToRawLocation: function(lineNumber, columnNumber)
     {
-        this._model.setScriptSource(this, newSource, callback);
+        var location = this._formatterMapping.formattedToOriginal(lineNumber, columnNumber);
+        var rawLocation = WebInspector.UISourceCode.prototype.uiLocationToRawLocation.call(this, location[0], location[1]);
+        var debuggerModelLocation = /** @type {WebInspector.DebuggerModel.Location} */ rawLocation;
+        return debuggerModelLocation;
     },
 
     /**
-     * @param {string} oldSource
-     * @param {string} newSource
+     * @param {WebInspector.UILocation} uiLocation
      */
-    updateBreakpointsAfterLiveEdit: function(oldSource, newSource)
+    overrideLocation: function(uiLocation)
     {
-        // Clear and re-create breakpoints according to text diff.
-        var diff = Array.diff(oldSource.split("\n"), newSource.split("\n"));
-        for (var lineNumber in this._breakpoints) {
-            var breakpoint = this._breakpoints[lineNumber];
+        var location = this._formatterMapping.originalToFormatted(uiLocation.lineNumber, uiLocation.columnNumber);
+        uiLocation.lineNumber = location[0];
+        uiLocation.columnNumber = location[1];
+        return uiLocation;
+    },
 
-            this.removeBreakpoint(parseInt(lineNumber, 10));
+    /**
+     * @return {string}
+     */
+    breakpointStorageId: function()
+    {
+        return this._formatted ? "deobfuscated:" + this.url : this.url;
+    },
 
-            var newLineNumber = diff.left[lineNumber].row;
-            if (newLineNumber === undefined) {
-                for (var i = lineNumber - 1; i >= 0; --i) {
-                    if (diff.left[i].row === undefined)
-                        continue;
-                    var shiftedLineNumber = diff.left[i].row + lineNumber - i;
-                    if (shiftedLineNumber < diff.right.length) {
-                        var originalLineNumber = diff.right[shiftedLineNumber].row;
-                        if (originalLineNumber === lineNumber || originalLineNumber === undefined)
-                            newLineNumber = shiftedLineNumber;
-                    }
-                    break;
-                }
-            }
-            if (newLineNumber !== undefined)
-                this.setBreakpoint(newLineNumber, breakpoint.condition, breakpoint.enabled);
-        }
+    /**
+     * @return {boolean}
+     */
+    isEditable: function()
+    {
+        return this._isEditable && WebInspector.debuggerModel.canSetScriptSource();
+    },
+
+    /**
+     * @param {function(?string)} callback
+     */
+    workingCopyCommitted: function(callback)
+    {  
+        WebInspector.DebuggerResourceBinding.setScriptSource(this, this.workingCopy(), callback);
+    },
+
+    /**
+     * @param {string} query
+     * @param {boolean} caseSensitive
+     * @param {boolean} isRegex
+     * @param {function(Array.<WebInspector.ContentProvider.SearchMatch>)} callback
+     */
+    searchInContent: function(query, caseSensitive, isRegex, callback)
+    {
+        var content = this.content();
+        var provider = content ? new WebInspector.StaticContentProvider(this._contentProvider.contentType(), content) : this._contentProvider;
+        provider.searchInContent(query, caseSensitive, isRegex, callback);
     }
 }
 

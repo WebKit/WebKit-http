@@ -36,9 +36,10 @@ var GTEST_MODIFIERS = ['FLAKY', 'FAILS', 'MAYBE', 'DISABLED'];
 var TEST_URL_BASE_PATH_TRAC = 'http://trac.webkit.org/browser/trunk/LayoutTests/';
 var TEST_URL_BASE_PATH = "http://svn.webkit.org/repository/webkit/trunk/LayoutTests/";
 var TEST_RESULTS_BASE_PATH = 'http://build.chromium.org/f/chromium/layout_test_results/';
+var GPU_RESULTS_BASE_PATH = 'http://chromium-browser-gpu-tests.commondatastorage.googleapis.com/runs/'
 
 // FIXME: These platform names should probably be changed to match the directories in LayoutTests/platform
-// instead of matching the values we use in the test_expectations.txt file.
+// instead of matching the values we use in the TestExpectations file.
 var PLATFORMS = ['LION', 'SNOWLEOPARD', 'LEOPARD', 'XP', 'VISTA', 'WIN7', 'LUCID', 'APPLE_LION', 'APPLE_LEOPARD', 'APPLE_SNOWLEOPARD', 'APPLE_XP', 'APPLE_WIN7', 'GTK_LINUX', 'QT_LINUX'];
 var PLATFORM_UNIONS = {
     'MAC': ['LEOPARD', 'SNOWLEOPARD', 'LION'],
@@ -210,7 +211,7 @@ var g_perBuilderFailures = {};
 // but have for that builder.
 var g_perBuilderWithExpectationsButNoFailures = {};
 // Map of builder to arrays of paths that are skipped. This shows the raw
-// path used in test_expectations.txt rather than the test path since we
+// path used in TestExpectations rather than the test path since we
 // don't actually have any data here for skipped tests.
 var g_perBuilderSkippedPaths = {};
 // Maps test path to an array of {builder, testResults} objects.
@@ -236,9 +237,9 @@ function createResultsObjectForTest(test, builder)
         // String of extra expectations (i.e. expectations that never occur).
         extra: '',
         modifiers: '',
+        bugs: '',
         expectations : '',
         rawResults: '',
-        percentFailed: 0,
         // List of all the results the test actually has.
         actualResults: []
     };
@@ -522,7 +523,9 @@ function populateExpectationsData(resultsObject)
         return;
 
     resultsObject.expectations = expectations.expectations;
-    resultsObject.modifiers = expectations.modifiers;
+    var filteredModifiers = filterBugs(expectations.modifiers);
+    resultsObject.modifiers = filteredModifiers.modifiers;
+    resultsObject.bugs = filteredModifiers.bugs;
     resultsObject.isWontFixSkip = stringContains(expectations.modifiers, 'WONTFIX') || stringContains(expectations.modifiers, 'SKIP'); 
 }
 
@@ -780,7 +783,6 @@ function processMissingAndExtraExpectations(resultsForTest)
     var numResultsSeen = 0;
     var haveSeenNonFlakeResult = false;
     var numRealResults = 0;
-    var failedCount = 0;
 
     var seenResults = {};
     for (var i = 0; i < rawResults.length; i++) {
@@ -788,8 +790,6 @@ function processMissingAndExtraExpectations(resultsForTest)
         numResultsSeen += numResults;
 
         var result = rawResults[i][RLE.VALUE];
-        if (isFailingResult(result))
-            failedCount += numResults;
 
         var hasMinRuns = numResults >= MIN_RUNS_FOR_FLAKE;
         if (haveSeenNonFlakeResult && hasMinRuns)
@@ -811,8 +811,6 @@ function processMissingAndExtraExpectations(resultsForTest)
 
     resultsForTest.flips = i - 1;
     resultsForTest.isFlaky = numRealResults > 1;
-    // Calculate the % of times the test failed - how flaky is it?
-    resultsForTest.percentFailed = Math.round(failedCount / numResultsSeen * 100);
 
     var missingExpectations = [];
     var extraExpectations = [];
@@ -822,7 +820,7 @@ function processMissingAndExtraExpectations(resultsForTest)
         extraExpectations = expectationsArray.filter(
             function(element) {
                 // FIXME: Once all the FAIL lines are removed from
-                // test_expectations.txt, delete all the legacyExpectationsSemantics
+                // TestExpectations, delete all the legacyExpectationsSemantics
                 // code.
                 if (g_currentState.legacyExpectationsSemantics) {
                     if (element == 'FAIL') {
@@ -843,7 +841,7 @@ function processMissingAndExtraExpectations(resultsForTest)
             for (var i = 0; i < expectationsArray.length; i++) {
                 var expectation = expectationsArray[i];
                 // FIXME: Once all the FAIL lines are removed from
-                // test_expectations.txt, delete all the legacyExpectationsSemantics
+                // TestExpectations, delete all the legacyExpectationsSemantics
                 // code.
                 if (g_currentState.legacyExpectationsSemantics) {
                     if (expectation == 'FAIL') {
@@ -1018,7 +1016,7 @@ function showPopupForBuild(e, builder, index, opt_testName)
         html += '<li>' + linkHTMLToOpenWindow(buildBasePath + pathToFailureLog(opt_testName), 'Failure log') + '</li>';
 
     html += '</ul>';
-    showPopup(e, html);
+    showPopup(e.target, html);
 }
 
 function htmlForTestResults(test)
@@ -1078,7 +1076,7 @@ function htmlForTestsWithExpectationsButNoFailures(builder)
     var tests = g_perBuilderWithExpectationsButNoFailures[builder];
     var skippedPaths = g_perBuilderSkippedPaths[builder];
     var showUnexpectedPassesLink =  linkHTMLToToggleState('showUnexpectedPasses', 'tests that have not failed in last ' + g_resultsByBuilder[builder].buildNumbers.length + ' runs');
-    var showSkippedLink = linkHTMLToToggleState('showSkipped', 'skipped tests in test_expectations.txt');
+    var showSkippedLink = linkHTMLToToggleState('showSkipped', 'skipped tests in TestExpectations');
     
 
     var html = '';
@@ -1160,7 +1158,7 @@ function tableHeaders(opt_getAll)
     if (isLayoutTestResults() || opt_getAll)
         headers.push('bugs', 'modifiers', 'expectations');
 
-    headers.push('slowest run', '% fail', 'flakiness (numbers are runtimes in seconds)');
+    headers.push('slowest run', 'flakiness (numbers are runtimes in seconds)');
     return headers;
 }
 
@@ -1178,8 +1176,6 @@ function htmlForSingleTestRow(test)
     var html = '';
     for (var i = 0; i < headers.length; i++) {
         var header = headers[i];
-        var filteredModifiers = filterBugs(test.modifiers);
-        
         if (startsWith(header, 'test') || startsWith(header, 'builder')) {
             // If isCrossBuilderView() is true, we're just viewing a single test
             // with results for many builders, so the first column is builder names
@@ -1189,17 +1185,15 @@ function htmlForSingleTestRow(test)
 
             html += '<tr><td class="' + testCellClassName + '">' + testCellHTML;
         } else if (startsWith(header, 'bugs'))
-            html += '<td class=options-container>' + (filteredModifiers.bugs ? htmlForBugs(filteredModifiers.bugs) : createBugHTML(test));
+            html += '<td class=options-container>' + (test.bugs ? htmlForBugs(test.bugs) : createBugHTML(test));
         else if (startsWith(header, 'modifiers'))
-            html += '<td class=options-container>' + filteredModifiers.modifiers;
+            html += '<td class=options-container>' + test.modifiers;
         else if (startsWith(header, 'expectations'))
             html += '<td class=options-container>' + test.expectations;
         else if (startsWith(header, 'slowest'))
             html += '<td>' + (test.slowestTime ? test.slowestTime + 's' : '');
-        else if (startsWith(header, '% fail'))
-            html += '<td>' + test.percentFailed;
         else if (startsWith(header, 'flakiness'))
-            html += htmlForTestResults(test, isCrossBuilderView());
+            html += htmlForTestResults(test);
     }
     return html;
 }
@@ -1309,9 +1303,6 @@ function sortTests(tests, column, order)
     } else if (column == 'slowest') {
         sortFunctionGetter = numericSort;
         resultsProperty = 'slowestTime';
-    } else if (column == '%') {
-        sortFunctionGetter = numericSort;
-        resultsProperty = 'percentFailed';
     } else {
         sortFunctionGetter = alphanumericCompare;
         resultsProperty = column;
@@ -1465,7 +1456,7 @@ function showUpdateInfoForTest(testsNeedingUpdate, keys)
     document.body.appendChild(checkboxes);
 
     var div = document.createElement('div');
-    div.innerHTML = htmlForIndividualTestOnAllBuildersWithChrome(test);
+    div.innerHTML = htmlForIndividualTestOnAllBuildersWithResultsLinks(test);
     document.body.appendChild(div);
     appendExpectations();
 }
@@ -1565,20 +1556,12 @@ function htmlForIndividualTestOnAllBuilders(test)
     return htmlForTestTable(html) + skippedBuildersHtml;
 }
 
-function htmlForIndividualTestOnAllBuildersWithChrome(test)
+function htmlForIndividualTestOnAllBuildersWithResultsLinks(test)
 {
     processTestRunsForAllBuilders();
 
     var testResults = g_testToResultsMap[test];
     var html = '';
-    if (isLayoutTestResults()) {
-        var suite = lookupVirtualTestSuite(test);
-        var base = suite ? baseTest(test, suite) : test;
-        var tracURL = TEST_URL_BASE_PATH_TRAC + base;
-        html += '<h2>' + linkHTMLToOpenWindow(tracURL, test) + '</h2>';
-    } else
-        html += '<h2>' + test + '</h2>';
-
     html += htmlForIndividualTestOnAllBuilders(test);
 
     html += '<div class=expectations test=' + test + '><div>' +
@@ -1881,6 +1864,11 @@ function loadExpectations(expectationsContainer)
     }
 }
 
+function gpuResultsPath(chromeRevision, builder)
+{
+  return chromeRevision + '_' + builder.replace(/[^A-Za-z0-9]+/g, '_');
+}
+
 function loadGPUResultsForBuilder(builder, test, expectationsContainer)
 {
     var container = document.createElement('div');
@@ -1888,21 +1876,19 @@ function loadGPUResultsForBuilder(builder, test, expectationsContainer)
     container.innerHTML = '<div><b>' + builder + '</b></div>';
     expectationsContainer.appendChild(container);
 
-    var baseUrl = 'http://chromium-browser-gpu-tests.commondatastorage.googleapis.com/runs/'
     var failureIndex = indexesForFailures(builder, test)[0];
 
     var buildNumber = g_resultsByBuilder[builder].buildNumbers[failureIndex];
     var pathToLog = builderMaster(builder).logPath(builder, buildNumber) + pathToFailureLog(test);
 
     var chromeRevision = g_resultsByBuilder[builder].chromeRevision[failureIndex];
-    var builderName = builder.replace(/[^A-Za-z0-9 ]/g, '').replace(/ /g, '_');
-    var resultsUrl = baseUrl + chromeRevision + '_' + builderName + '_/';
+    var resultsUrl = GPU_RESULTS_BASE_PATH + gpuResultsPath(chromeRevision, builder);
     var filename = test.split(/\./)[1] + '.png';
 
     appendNonWebKitResults(container, pathToLog, 'non-webkit-results');
-    appendNonWebKitResults(container, resultsUrl + 'gen/' + filename, 'gpu-test-results', 'Generated');
-    appendNonWebKitResults(container, resultsUrl + 'ref/' + filename, 'gpu-test-results', 'Reference');
-    appendNonWebKitResults(container, resultsUrl + 'diff/' + filename, 'gpu-test-results', 'Diff');
+    appendNonWebKitResults(container, resultsUrl + '/gen/' + filename, 'gpu-test-results', 'Generated');
+    appendNonWebKitResults(container, resultsUrl + '/ref/' + filename, 'gpu-test-results', 'Reference');
+    appendNonWebKitResults(container, resultsUrl + '/diff/' + filename, 'gpu-test-results', 'Diff');
 }
 
 function loadNonWebKitResultsForBuilder(builder, test, expectationsContainer)
@@ -2134,9 +2120,21 @@ function performChunkedAction(tests, handleChunk, onComplete, timeout, opt_index
 function htmlForIndividualTests(tests)
 {
     var testsHTML = [];
-    var htmlForTestFunction = g_currentState.showChrome ? htmlForIndividualTestOnAllBuildersWithChrome : htmlForIndividualTestOnAllBuilders;
-    for (var i = 0; i < tests.length; i++)
-        testsHTML.push(htmlForTestFunction(tests[i]));
+    for (var i = 0; i < tests.length; i++) {
+        var test = tests[i];
+        var testNameHtml = '';
+        if (g_currentState.showChrome || tests.length > 1) {
+            if (isLayoutTestResults()) {
+                var suite = lookupVirtualTestSuite(test);
+                var base = suite ? baseTest(test, suite) : test;
+                var tracURL = TEST_URL_BASE_PATH_TRAC + base;
+                testNameHtml += '<h2>' + linkHTMLToOpenWindow(tracURL, test) + '</h2>';
+            } else
+                testNameHtml += '<h2>' + test + '</h2>';
+        }
+
+        testsHTML.push(testNameHtml + htmlForIndividualTestOnAllBuildersWithResultsLinks(test));
+    }
     return testsHTML.join('<hr>');
 }
 
@@ -2343,6 +2341,9 @@ function postHeightChangedMessage()
     }
     parent.postMessage({command: 'heightChanged', height: height}, '*')
 }
+
+if (window != parent)
+    window.addEventListener('blur', hidePopup);
 
 document.addEventListener('keydown', function(e) {
     if (e.keyIdentifier == 'U+003F' || e.keyIdentifier == 'U+00BF') {

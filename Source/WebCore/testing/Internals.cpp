@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "DocumentMarker.h"
 #include "DocumentMarkerController.h"
 #include "Element.h"
+#include "ElementShadow.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -57,9 +58,9 @@
 #include "RenderTreeAsText.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "SpellChecker.h"
 #include "TextIterator.h"
+#include "TextRun.h"
 #include "TreeScope.h"
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -81,9 +82,10 @@
 #endif
 
 #if PLATFORM(CHROMIUM)
+#include "FilterOperation.h"
 #include "FilterOperations.h"
 #include "GraphicsLayer.h"
-#include "LayerChromium.h"
+#include "GraphicsLayerChromium.h"
 #include "RenderLayerBacking.h"
 #endif
 
@@ -302,8 +304,8 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::ensureShadowRoot(Eleme
         return 0;
     }
 
-    if (host->hasShadowRoot())
-        return host->shadowTree()->youngestShadowRoot();
+    if (ElementShadow* shadow = host->shadow())
+        return shadow->youngestShadowRoot();
 
     return ShadowRoot::create(host, ec).get();
 }
@@ -322,10 +324,9 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::youngestShadowRoot(Ele
         return 0;
     }
 
-    if (!host->hasShadowRoot())
-        return 0;
-
-    return host->shadowTree()->youngestShadowRoot();
+    if (ElementShadow* shadow = host->shadow())
+        return shadow->youngestShadowRoot();
+    return 0;
 }
 
 Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::oldestShadowRoot(Element* host, ExceptionCode& ec)
@@ -335,10 +336,9 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::oldestShadowRoot(Eleme
         return 0;
     }
 
-    if (!host->hasShadowRoot())
-        return 0;
-
-    return host->shadowTree()->oldestShadowRoot();
+    if (ElementShadow* shadow = host->shadow())
+        return shadow->oldestShadowRoot();
+    return 0;
 }
 
 Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::youngerShadowRoot(Node* shadow, ExceptionCode& ec)
@@ -359,17 +359,6 @@ Internals::ShadowRootIfShadowDOMEnabledOrNode* Internals::olderShadowRoot(Node* 
     }
 
     return toShadowRoot(shadow)->olderShadowRoot();
-}
-
-void Internals::removeShadowRoot(Element* host, ExceptionCode& ec)
-{
-    if (!host) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    if (host->hasShadowRoot())
-        host->shadowTree()->removeAllShadowRoots();
 }
 
 Element* Internals::includerFor(Node* node, ExceptionCode& ec)
@@ -411,6 +400,16 @@ void Internals::selectColorInColorChooser(Element* element, const String& colorV
     inputElement->selectColorInColorChooser(Color(colorValue));
 }
 #endif
+
+PassRefPtr<ClientRect> Internals::absoluteCaretBounds(Document* document, ExceptionCode& ec)
+{
+    if (!document || !document->frame() || !document->frame()->selection()) {
+        ec = INVALID_ACCESS_ERR;
+        return ClientRect::create();
+    }
+
+    return ClientRect::create(document->frame()->selection()->absoluteCaretBounds());
+}
 
 PassRefPtr<ClientRect> Internals::boundingBox(Element* element, ExceptionCode& ec)
 {
@@ -470,15 +469,9 @@ void Internals::setBackgroundBlurOnNode(Node* node, int blurLength, ExceptionCod
         return;
     }
 
-    PlatformLayer* platformLayer = graphicsLayer->platformLayer();
-    if (!platformLayer) {
-        ec = INVALID_NODE_TYPE_ERR;
-        return;
-    }
-
     FilterOperations filters;
     filters.operations().append(BlurFilterOperation::create(Length(blurLength, Fixed), FilterOperation::BLUR));
-    platformLayer->setBackgroundFilters(filters);
+    static_cast<GraphicsLayerChromium*>(graphicsLayer)->setBackgroundFilters(filters);
 }
 #else
 void Internals::setBackgroundBlurOnNode(Node*, int, ExceptionCode&)
@@ -595,6 +588,13 @@ void Internals::reset(Document* document)
         if (document->frame() == page->mainFrame())
             setUserPreferredLanguages(Vector<String>());
     }
+
+    resetDefaultsToConsistentValues();
+}
+
+void Internals::resetDefaultsToConsistentValues()
+{
+    TextRun::setAllowsRoundingHacks(false);
 }
 
 bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
@@ -645,6 +645,22 @@ void Internals::setSuggestedValue(Element* element, const String& value, Excepti
     }
 
     inputElement->setSuggestedValue(value);
+}
+
+void Internals::setEditingValue(Element* element, const String& value, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    HTMLInputElement* inputElement = element->toInputElement();
+    if (!inputElement) {
+        ec = INVALID_NODE_TYPE_ERR;
+        return;
+    }
+
+    inputElement->setEditingValue(value);
 }
 
 void Internals::scrollElementToRect(Element* element, long x, long y, long w, long h, ExceptionCode& ec)
@@ -738,11 +754,12 @@ PassRefPtr<WebKitPoint> Internals::touchPositionAdjustedToBestClickableNode(long
 
     Node* targetNode;
     IntPoint adjustedPoint;
-    document->frame()->eventHandler()->bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
-    if (targetNode)
-        adjustedPoint = targetNode->document()->view()->contentsToWindow(adjustedPoint);
 
-    return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
+    bool foundNode = document->frame()->eventHandler()->bestClickableNodeForTouchPoint(point, radius, adjustedPoint, targetNode);
+    if (foundNode)
+        return WebKitPoint::create(adjustedPoint.x(), adjustedPoint.y());
+
+    return 0;
 }
 
 Node* Internals::touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, Document* document, ExceptionCode& ec)
@@ -773,11 +790,11 @@ PassRefPtr<ClientRect> Internals::bestZoomableAreaForTouchPoint(long x, long y, 
 
     Node* targetNode;
     IntRect zoomableArea;
-    document->frame()->eventHandler()->bestZoomableAreaForTouchPoint(point, radius, zoomableArea, targetNode);
-    if (targetNode)
-        zoomableArea = targetNode->document()->view()->contentsToWindow(zoomableArea);
+    bool foundNode = document->frame()->eventHandler()->bestZoomableAreaForTouchPoint(point, radius, zoomableArea, targetNode);
+    if (foundNode)
+        return ClientRect::create(zoomableArea);
 
-    return ClientRect::create(zoomableArea);
+    return 0;
 }
 #endif
 
@@ -996,6 +1013,49 @@ unsigned Internals::numberOfScrollableAreas(Document* document, ExceptionCode&)
     }
 
     return count;
+}
+    
+bool Internals::isPageBoxVisible(Document* document, int pageNumber, ExceptionCode& ec)
+{
+    if (!document) {
+        ec = INVALID_ACCESS_ERR;
+        return false;
+    }
+
+    return document->isPageBoxVisible(pageNumber);
+}
+
+void Internals::suspendAnimations(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    AnimationController* controller = document->frame()->animation();
+    if (!controller)
+        return;
+
+    controller->suspendAnimations();
+}
+
+void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
+{
+    if (!document || !document->frame()) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    AnimationController* controller = document->frame()->animation();
+    if (!controller)
+        return;
+
+    controller->resumeAnimations();
+}
+
+void Internals::allowRoundingHacks() const
+{
+    TextRun::setAllowsRoundingHacks(true);
 }
 
 #if ENABLE(FULLSCREEN_API)

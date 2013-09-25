@@ -38,7 +38,6 @@
 #include "FileMetadata.h"
 #include "FileSystem.h"
 #include "NotImplemented.h"
-#include "platform/WebFileSystem.h"
 #include "WebFileSystemCallbacksImpl.h"
 #include "WebFileWriter.h"
 #include "WebKit.h"
@@ -49,6 +48,7 @@
 #include "WorkerFileSystemCallbacksBridge.h"
 #include "WorkerScriptController.h"
 #include "WorkerThread.h"
+#include <public/WebFileSystem.h>
 #include <wtf/text/CString.h>
 
 using namespace WebKit;
@@ -57,11 +57,10 @@ namespace WebCore {
 
 static const char fileSystemOperationsMode[] = "fileSystemOperationsMode";
 
-WorkerAsyncFileSystemChromium::WorkerAsyncFileSystemChromium(ScriptExecutionContext* context, AsyncFileSystem::Type type, const WebKit::WebURL& rootURL, bool synchronous)
-    : AsyncFileSystemChromium(type, rootURL)
-    , m_scriptExecutionContext(context)
+WorkerAsyncFileSystemChromium::WorkerAsyncFileSystemChromium(ScriptExecutionContext* context, FileSystemSynchronousType synchronousType)
+    : m_scriptExecutionContext(context)
     , m_workerContext(static_cast<WorkerContext*>(context))
-    , m_synchronous(synchronous)
+    , m_synchronousType(synchronousType)
 {
     ASSERT(m_scriptExecutionContext->isWorkerContext());
 
@@ -86,54 +85,54 @@ bool WorkerAsyncFileSystemChromium::waitForOperationToComplete()
     return true;
 }
 
-void WorkerAsyncFileSystemChromium::move(const String& sourcePath, const String& destinationPath, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::move(const KURL& sourcePath, const KURL& destinationPath, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postMoveToMainThread(m_webFileSystem, virtualPathToFileSystemURL(sourcePath), virtualPathToFileSystemURL(destinationPath), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postMoveToMainThread(m_webFileSystem, sourcePath, destinationPath, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::copy(const String& sourcePath, const String& destinationPath, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::copy(const KURL& sourcePath, const KURL& destinationPath, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postCopyToMainThread(m_webFileSystem, virtualPathToFileSystemURL(sourcePath), virtualPathToFileSystemURL(destinationPath), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postCopyToMainThread(m_webFileSystem, sourcePath, destinationPath, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::remove(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::remove(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postRemoveToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postRemoveToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::removeRecursively(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::removeRecursively(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postRemoveRecursivelyToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postRemoveRecursivelyToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::readMetadata(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::readMetadata(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postReadMetadataToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postReadMetadataToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::createFile(const String& path, bool exclusive, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::createFile(const KURL& path, bool exclusive, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postCreateFileToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), exclusive, m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postCreateFileToMainThread(m_webFileSystem, path, exclusive, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::createDirectory(const String& path, bool exclusive, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::createDirectory(const KURL& path, bool exclusive, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postCreateDirectoryToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), exclusive, m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postCreateDirectoryToMainThread(m_webFileSystem, path, exclusive, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::fileExists(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::fileExists(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postFileExistsToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postFileExistsToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::directoryExists(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::directoryExists(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postDirectoryExistsToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postDirectoryExistsToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::readDirectory(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::readDirectory(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    createWorkerFileSystemCallbacksBridge(callbacks)->postReadDirectoryToMainThread(m_webFileSystem, virtualPathToFileSystemURL(path), m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(callbacks)->postReadDirectoryToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
 class WorkerFileWriterHelperCallbacks : public AsyncFileSystemCallbacks {
@@ -141,11 +140,6 @@ public:
     static PassOwnPtr<WorkerFileWriterHelperCallbacks> create(AsyncFileWriterClient* client, const WebURL& path, WebKit::WebFileSystem* webFileSystem, PassOwnPtr<WebCore::AsyncFileSystemCallbacks> callbacks, WorkerContext* workerContext)
     {
         return adoptPtr(new WorkerFileWriterHelperCallbacks(client, path, webFileSystem, callbacks, workerContext));
-    }
-
-    virtual void didSucceed()
-    {
-        ASSERT_NOT_REACHED();
     }
 
     virtual void didReadMetadata(const FileMetadata& metadata)
@@ -157,27 +151,6 @@ public:
             OwnPtr<WorkerAsyncFileWriterChromium> asyncFileWriterChromium = WorkerAsyncFileWriterChromium::create(m_webFileSystem, m_path, m_workerContext, m_client, WorkerAsyncFileWriterChromium::Asynchronous);
             m_callbacks->didCreateFileWriter(asyncFileWriterChromium.release(), metadata.length);
         }
-    }
-
-    virtual void didReadDirectoryEntry(const String& name, bool isDirectory)
-    {
-        ASSERT_NOT_REACHED();
-    }
-
-    virtual void didReadDirectoryEntries(bool hasMore)
-    {
-        ASSERT_NOT_REACHED();
-    }
-
-    virtual void didOpenFileSystem(const String&, PassOwnPtr<AsyncFileSystem>)
-    {
-        ASSERT_NOT_REACHED();
-    }
-
-    // Called when an AsyncFileWrter has been created successfully.
-    virtual void didCreateFileWriter(PassOwnPtr<AsyncFileWriter>, long long)
-    {
-        ASSERT_NOT_REACHED();
     }
 
     virtual void didFail(int code)
@@ -203,23 +176,21 @@ private:
     WorkerContext* m_workerContext;
 };
 
-void WorkerAsyncFileSystemChromium::createWriter(AsyncFileWriterClient* client, const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::createWriter(AsyncFileWriterClient* client, const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    KURL pathAsURL = virtualPathToFileSystemURL(path);
-    createWorkerFileSystemCallbacksBridge(WorkerFileWriterHelperCallbacks::create(client, pathAsURL, m_webFileSystem, callbacks, m_workerContext))->postReadMetadataToMainThread(m_webFileSystem, pathAsURL, m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(WorkerFileWriterHelperCallbacks::create(client, path, m_webFileSystem, callbacks, m_workerContext))->postReadMetadataToMainThread(m_webFileSystem, path, m_modeForCurrentOperation);
 }
 
-void WorkerAsyncFileSystemChromium::createSnapshotFileAndReadMetadata(const String& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
+void WorkerAsyncFileSystemChromium::createSnapshotFileAndReadMetadata(const KURL& path, PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    KURL pathAsURL = virtualPathToFileSystemURL(path);
     KURL internalBlobURL = BlobURL::createInternalURL();
 
-    createWorkerFileSystemCallbacksBridge(createSnapshotFileCallback(internalBlobURL, callbacks))->postCreateSnapshotFileToMainThread(m_webFileSystem, internalBlobURL, pathAsURL, m_modeForCurrentOperation);
+    createWorkerFileSystemCallbacksBridge(createSnapshotFileCallback(internalBlobURL, callbacks))->postCreateSnapshotFileToMainThread(m_webFileSystem, internalBlobURL, path, m_modeForCurrentOperation);
 }
 
 PassRefPtr<WorkerFileSystemCallbacksBridge> WorkerAsyncFileSystemChromium::createWorkerFileSystemCallbacksBridge(PassOwnPtr<AsyncFileSystemCallbacks> callbacks)
 {
-    ASSERT(!m_synchronous || !m_bridgeForCurrentOperation);
+    ASSERT(m_synchronousType == AsynchronousFileSystem || !m_bridgeForCurrentOperation);
 
     m_modeForCurrentOperation = fileSystemOperationsMode;
     m_modeForCurrentOperation.append(String::number(m_workerContext->thread()->runLoop().createUniqueId()));

@@ -129,15 +129,11 @@ public:
     void evictResources();
     
     void setPruneEnabled(bool enabled) { m_pruneEnabled = enabled; }
-    bool pruneEnabled() const { return m_pruneEnabled; }
     void prune();
     void pruneToPercentage(float targetPercentLive);
 
     void setDeadDecodedDataDeletionInterval(double interval) { m_deadDecodedDataDeletionInterval = interval; }
     double deadDecodedDataDeletionInterval() const { return m_deadDecodedDataDeletionInterval; }
-
-    void addCachedResourceLoader(CachedResourceLoader*);
-    void removeCachedResourceLoader(CachedResourceLoader*);
 
     // Calls to put the cached resource into and out of LRU lists.
     void insertInLRUList(CachedResource*);

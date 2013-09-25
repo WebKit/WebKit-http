@@ -49,7 +49,7 @@
 namespace WTR {
 
 static const double defaultLongTimeout = 30;
-static const double defaultShortTimeout = 5;
+static const double defaultShortTimeout = 15;
 static const double defaultNoTimeout = -1;
 
 static WKURLRef blankURL()
@@ -212,6 +212,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKURLRequestRef, WK
         createOtherPage,
         0, // mouseDidMoveOverElement
         0, // decidePolicyForNotificationPermissionRequest
+        0, // unavailablePluginButtonClicked
     };
     WKPageSetPageUIClient(newPage, &otherPageUIClient);
 
@@ -371,6 +372,7 @@ void TestController::initialize(int argc, const char* argv[])
         createOtherPage,
         0, // mouseDidMoveOverElement
         0, // decidePolicyForNotificationPermissionRequest
+        0, // unavailablePluginButtonClicked
     };
     WKPageSetPageUIClient(m_mainWebView->page(), &pageUIClient);
 
@@ -406,6 +408,7 @@ void TestController::initialize(int argc, const char* argv[])
         0, // didNewFirstVisuallyNonEmptyLayout
         0, // willGoToBackForwardListItem
         0, // interactionOccurredWhileProcessUnresponsive
+        0, // pluginDidFail
     };
     WKPageSetPageLoaderClient(m_mainWebView->page(), &pageLoaderClient);
 }
@@ -439,6 +442,7 @@ bool TestController::resetStateToConsistentValues()
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
     WKPreferencesSetWebAudioEnabled(preferences, true);
     WKPreferencesSetDeveloperExtrasEnabled(preferences, true);
+    WKPreferencesSetJavaScriptExperimentsEnabled(preferences, true);
     WKPreferencesSetJavaScriptCanOpenWindowsAutomatically(preferences, true);
     WKPreferencesSetJavaScriptCanAccessClipboard(preferences, true);
     WKPreferencesSetDOMPasteAllowed(preferences, true);
@@ -494,9 +498,9 @@ bool TestController::runTest(const char* test)
     if (!resetStateToConsistentValues()) {
 #if PLATFORM(MAC)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
-        fprintf(stderr, "#CRASHED - WebProcess (pid %ld)\n", static_cast<long>(pid));
+        fprintf(stderr, "#PROCESS UNRESPONSIVE - WebProcess (pid %ld)\n", static_cast<long>(pid));
 #else
-        fputs("#CRASHED - WebProcess\n", stderr);
+        fputs("#PROCESS UNRESPONSIVE - WebProcess\n", stderr);
 #endif
         fflush(stderr);
         return false;
@@ -615,7 +619,6 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             return 0;
         }
 
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK)
         if (WKStringIsEqualToUTF8CString(subMessageName, "MouseDown") || WKStringIsEqualToUTF8CString(subMessageName, "MouseUp")) {
             WKRetainPtr<WKStringRef> buttonKey = adoptWK(WKStringCreateWithUTF8CString("Button"));
             unsigned button = static_cast<unsigned>(WKUInt64GetValue(static_cast<WKUInt64Ref>(WKDictionaryGetItemForKey(messageBodyDictionary, buttonKey.get()))));
@@ -668,7 +671,6 @@ WKRetainPtr<WKTypeRef> TestController::didReceiveSynchronousMessageFromInjectedB
             m_eventSenderProxy->leapForward(time);
             return 0;
         }
-#endif
 
 #if ENABLE(TOUCH_EVENTS)
         if (WKStringIsEqualToUTF8CString(subMessageName, "AddTouchPoint")) {

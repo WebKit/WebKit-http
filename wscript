@@ -25,6 +25,10 @@
 #
 # WebCore build script for the waf build system
 
+import glob
+import os
+import subprocess
+
 import Options
 
 from settings import *
@@ -34,6 +38,36 @@ import TaskGen
 from TaskGen import taskgen, feature, after
 import Task, ccroot
 
+def clean_derived_sources(ds_cmd):
+    # the below command does not produce the desired output under Cygwin, so for now,
+    # disable this under Windows.
+    if building_on_win32:
+        return
+        
+    cmd = ds_cmd + " -qp | grep -v '^# ' | grep -v '^[[:space:]]' | grep --only-matching '^.*:'"
+    output = subprocess.check_output(cmd, shell=True)
+    
+    targets = []
+    lines = output.split("\n")
+    for line in lines:
+        line = line.replace(":", "")
+        base = os.path.splitext(os.path.basename(line))[0]
+        if not base in targets:
+            targets.append(base)
+            if base == "UserAgentsStyleSheet":
+                targets.append("UserAgentsStyleSheetData")
+    
+    # we're in the DerivedSources directory when this command is run.
+    ds_files = glob.glob("*.*")
+    for ds_file in ds_files:
+        filename = os.path.basename(ds_file)
+        basename = os.path.splitext(filename)[0]
+        # For now, just remove JS*.h/.cpp and WebDOM*.h/.cpp when there are no longer targets
+        # for them. Other targets may generate supplemental files so we can't reliably clean them.
+        if not basename in targets and (basename.startswith("JS") or basename.startswith("WebDOM")):
+            print "INFO: %s is no longer generated but present in generated files directory. Removing." % filename
+            os.remove(ds_file)
+    
 def generate_webcore_derived_sources(conf):
     # build the derived sources
     derived_sources_dir = os.path.join(webcore_dir, 'DerivedSources')
@@ -50,10 +84,12 @@ def generate_webcore_derived_sources(conf):
     if building_on_win32:
         oldpath = os.environ["PATH"]
         os.environ["PATH"] = "/usr/bin" + os.pathsep + os.environ["PATH"]
-    os.system('make -f %s/DerivedSources.make WebCore=%s SOURCE_ROOT=%s all FEATURE_DEFINES="%s"' % (wc_dir, wc_dir, wc_dir, conf.env["FEATURE_DEFINES"]))
+    command = 'make -f %s/DerivedSources.make WebCore=%s SOURCE_ROOT=%s all FEATURE_DEFINES="%s"' % (wc_dir, wc_dir, wc_dir, conf.env["FEATURE_DEFINES"])
+    clean_derived_sources(command)
+    os.system(command)
     if building_on_win32:
         os.environ["PATH"] = oldpath
-    os.system('perl %s/Source/WebKit/scripts/generate-webkitversion.pl --outputDir=%s --config %s/Source/WebKit/mac/Configurations/Version.xcconfig' % (wk_root, derived_sources_dir, wk_root))
+    
     os.chdir(olddir)
 
 def generate_jscore_derived_sources(conf):
@@ -87,11 +123,13 @@ def configure(conf):
     generate_webcore_derived_sources(conf)
     if Options.options.port == "wx" and sys.platform.startswith('win'):
         graphics_dir = os.path.join(wk_root, 'Source', 'WebCore', 'platform', 'graphics')
-        # HACK ALERT: MSVC automatically adds the source file's directory as the first entry in the
-        # path. Unfortunately, that means when compiling these files we will end up including
-        # win/FontPlatformData.h, which breaks wx compilation. So we copy the files to the wx dir.
+        # we used to copy these files into the graphics/wx directory due to 
+        # both wx and win directories having FontPlatformData.h. That is no 
+        # longer the case, so we remove the old files if they exist.
         for afile in ['UniscribeController.h', 'UniscribeController.cpp', 'GlyphPageTreeNodeCairoWin.cpp']:
-            shutil.copy(os.path.join(graphics_dir, 'win', afile), os.path.join(graphics_dir, 'wx'))
+            wx_copy = os.path.join(graphics_dir, 'wx', afile)
+            if os.path.exists(wx_copy):
+                os.remove(wx_copy)
 
     webcore_out_dir = os.path.join(output_dir, 'WebCore')
     if not os.path.exists(webcore_out_dir):
@@ -111,6 +149,16 @@ def configure(conf):
 def build(bld):
 
     webcore_dirs = list(webcore_dirs_common)
+
+    # auto-generate WebKitVersion.h if needed before we start the build.
+    # Also, remove the file from the old location where we generated it before running
+    wk_version_h = 'Source/WebCore/DerivedSources/WebKitVersion.h'
+    if os.path.exists(wk_version_h):
+        os.remove(wk_version_h)
+    bld.new_task_gen(source = "Source/WebKit/mac/Configurations/Version.xcconfig",
+                     target = wk_version_h,
+                     rule = 'perl %s/Source/WebKit/scripts/generate-webkitversion.pl --outputDir=${TGT[0].dir(env)} --config ${SRC}' % wk_root)
+    bld.add_group()
 
     if Options.options.port == "wx":
         webcore_dirs.extend(['Source/WebKit/wx', 'Source/WebKit/wx/WebKitSupport'])
@@ -160,6 +208,7 @@ def build(bld):
             webcore_sources['wx-win'] = [
                    'Source/WebCore/platform/graphics/win/GlyphPageTreeNodeCairoWin.cpp',
                    'Source/WebCore/platform/graphics/win/TransformationMatrixWin.cpp',
+                   'Source/WebCore/platform/graphics/win/UniscribeController.cpp',
                    'Source/WebCore/platform/ScrollAnimatorNone.cpp',
                    # wxTimer on Windows has a bug that causes it to eat crashes in callbacks
                    # so we need to use the Win port's implementation until the wx bug fix is
@@ -257,6 +306,7 @@ def build(bld):
         # we have to make sure <unicode/utf8.h> picks up the ICU one first.
         global msvclibs_dir
         wk_includes.append(os.path.join(msvclibs_dir, 'include'))
+        wk_includes.append('Source/WebCore/platform/graphics/win')
     else:
         cxxflags.extend(['-include', 'WebCorePrefix.h'])
 
@@ -286,9 +336,10 @@ def build(bld):
         # Qt specific file in common sources
         excludes.append('ContextShadow.cpp')
 
-        # FIXME: these three require headers that I can't seem to find in trunk.
+        # FIXME: these require headers that I can't seem to find in trunk.
         # Investigate how to resolve these issues.
         excludes.append('JSAbstractView.cpp')
+        excludes.append('JSIntentConstructor.cpp')
         excludes.append('JSPositionCallback.cpp')
         excludes.append('JSInspectorController.cpp')
         
@@ -302,7 +353,6 @@ def build(bld):
         excludes.append('JSSVGStyleTable.cpp')
         excludes.append('JSSVGTests.cpp')
         excludes.append('JSSVGStylable.cpp')
-        excludes.append('JSSVGZoomAndPan.cpp')
         
         # These are files that expect methods not in the base C++ class, usually XYZAnimated methods.
         excludes.append('JSSVGFitToViewBox.cpp')
@@ -340,9 +390,13 @@ def build(bld):
         excludes.append('JSNavigatorCustom.cpp')
         excludes.append('WebGLContextEvent.cpp')
         excludes.append('FileSystemPOSIX.cpp')
+        excludes.append('LocaleICU.cpp')
+        excludes.append('LocalizedDateICU.cpp')
+        excludes.append('PlatformGestureRecognizer.cpp')
         excludes.append('SharedBufferPOSIX.cpp')
         excludes.append('TouchAdjustment.cpp')
         excludes.append('DNSResolveQueue.cpp')
+        excludes.append('WebDOMRadioNodeList.cpp')
         
         # These files appear not to build with older versions of ICU
         excludes.append('LocalizedNumberICU.cpp')
@@ -358,12 +412,10 @@ def build(bld):
         excludes.append('AuthenticationCF.cpp')
         excludes.append('LoaderRunLoopCF.cpp')
         excludes.append('ResourceErrorCF.cpp')
+        excludes.append('RunLoopCF.cpp')
         
         # once we move over to the new FPD implementation, remove this.
         excludes.append('FontPlatformData.cpp')
-        
-        # we don't use gestures currently
-        excludes.append('PlatformGestureRecognizer.cpp')
         
         # we need a better system to exclude CF stuff
         excludes.append('HyphenationCF.cpp')

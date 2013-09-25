@@ -119,7 +119,8 @@ static PassRefPtr<TypeBuilder::Network::ResourceTiming> buildObjectForTiming(con
         .setSslEnd(timing.sslEnd)
         .setSendStart(timing.sendStart)
         .setSendEnd(timing.sendEnd)
-        .setReceiveHeadersEnd(timing.receiveHeadersEnd);
+        .setReceiveHeadersEnd(timing.receiveHeadersEnd)
+        .release();
 }
 
 static PassRefPtr<TypeBuilder::Network::Request> buildObjectForResourceRequest(const ResourceRequest& request)
@@ -409,7 +410,8 @@ PassRefPtr<TypeBuilder::Network::Initiator> InspectorResourceAgent::buildInitiat
         return m_styleRecalculationInitiator;
 
     return TypeBuilder::Network::Initiator::create()
-        .setType(TypeBuilder::Network::Initiator::Type::Other);
+        .setType(TypeBuilder::Network::Initiator::Type::Other)
+        .release();
 }
 
 #if ENABLE(WEB_SOCKETS)
@@ -456,23 +458,22 @@ void InspectorResourceAgent::didCloseWebSocket(unsigned long identifier)
 {
     m_frontend->webSocketClosed(IdentifiersFactory::requestId(identifier), currentTime());
 }
+
 void InspectorResourceAgent::didReceiveWebSocketFrame(unsigned long identifier, const WebSocketFrame& frame)
 {
-    String payload = frame.payload;
     RefPtr<TypeBuilder::Network::WebSocketFrame> frameObject = TypeBuilder::Network::WebSocketFrame::create()
         .setOpcode(frame.opCode)
         .setMask(frame.masked)
-        .setPayloadData(payload.substring(0, frame.payloadLength));
+        .setPayloadData(String(frame.payload, frame.payloadLength));
     m_frontend->webSocketFrameReceived(IdentifiersFactory::requestId(identifier), currentTime(), frameObject);
 }
 
 void InspectorResourceAgent::didSendWebSocketFrame(unsigned long identifier, const WebSocketFrame& frame)
 {
-    String payload = frame.payload;
     RefPtr<TypeBuilder::Network::WebSocketFrame> frameObject = TypeBuilder::Network::WebSocketFrame::create()
         .setOpcode(frame.opCode)
         .setMask(frame.masked)
-        .setPayloadData(payload.substring(0, frame.payloadLength));
+        .setPayloadData(String(frame.payload, frame.payloadLength));
     m_frontend->webSocketFrameSent(IdentifiersFactory::requestId(identifier), currentTime(), frameObject);
 }
 

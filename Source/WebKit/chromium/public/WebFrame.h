@@ -32,6 +32,7 @@
 #define WebFrame_h
 
 #include "WebIconURL.h"
+#include "WebMessagePortChannel.h"
 #include "WebNode.h"
 #include "WebURLLoaderOptions.h"
 #include "platform/WebCanvas.h"
@@ -57,11 +58,13 @@ namespace WebKit {
 class WebAnimationController;
 class WebData;
 class WebDataSource;
+class WebDeliveredIntentClient;
 class WebDocument;
 class WebElement;
 class WebFormElement;
 class WebHistoryItem;
 class WebInputElement;
+class WebIntent;
 class WebPerformance;
 class WebRange;
 class WebSecurityOrigin;
@@ -73,6 +76,7 @@ class WebView;
 struct WebConsoleMessage;
 struct WebFindOptions;
 struct WebPoint;
+struct WebPrintParams;
 struct WebRect;
 struct WebScriptSource;
 struct WebSize;
@@ -143,9 +147,6 @@ public:
     // URLs
     virtual WebVector<WebIconURL> iconURLs(int iconTypes) const = 0;
 
-    // The referrer policy of the document associated with this frame.
-    virtual WebReferrerPolicy referrerPolicy() const = 0;
-
 
     // Geometry -----------------------------------------------------------
 
@@ -162,7 +163,7 @@ public:
     // The minimum and maxium scroll positions in pixels.
     virtual WebSize minimumScrollOffset() const = 0;
     virtual WebSize maximumScrollOffset() const = 0;
- 
+
     // The size of the contents area.
     virtual WebSize contentsSize() const = 0;
 
@@ -455,17 +456,16 @@ public:
 
     // Printing ------------------------------------------------------------
 
-    // Reformats the WebFrame for printing. pageSize is the page size in
-    // points (a point in 1/72 of an inch). If |constrainToNode| node is
-    // specified, then only the given node is printed (for now only plugins are
-    // supported), instead of the entire frame.  printerDPI is the user
-    // selected, DPI for the printer. Returns the number of pages that can be
-    // printed at the given page size. The out param useBrowserOverlays
-    // specifies whether the browser process should use its overlays (header,
-    // footer, margins etc) or whether the renderer controls this.
-    virtual int printBegin(const WebSize& pageSize,
+    // Reformats the WebFrame for printing. WebPrintParams specifies the printable
+    // content size, paper size, printable area size, printer DPI and print
+    // scaling option. If constrainToNode node is specified, then only the given node
+    // is printed (for now only plugins are supported), instead of the entire frame.
+    // Returns the number of pages that can be printed at the given
+    // page size. The out param useBrowserOverlays specifies whether the browser
+    // process should use its overlays (header, footer, margins etc) or whether
+    // the renderer controls this.
+    virtual int printBegin(const WebPrintParams&,
                            const WebNode& constrainToNode = WebNode(),
-                           int printerDPI = 72,
                            bool* useBrowserOverlays = 0) = 0;
 
     // Returns the page shrinking factor calculated by webkit (usually
@@ -565,6 +565,13 @@ public:
     // of matches found during the scoping effort.
     virtual void resetMatchCount() = 0;
 
+    // OrientationChange event ---------------------------------------------
+
+    // Orientation is the interface orientation in degrees.
+    // Some examples are:
+    //  0 is straight up; -90 is when the device is rotated 90 clockwise;
+    //  90 is when rotated counter clockwise.
+    virtual void sendOrientationChangeEvent(int orientation) = 0;
 
     // Events --------------------------------------------------------------
 
@@ -577,20 +584,17 @@ public:
     virtual void removeEventListener(const WebString& eventType,
                                      WebDOMEventListener*, bool useCapture) = 0;
     virtual bool dispatchEvent(const WebDOMEvent&) = 0;
+    virtual void dispatchMessageEventWithOriginCheck(
+        const WebSecurityOrigin& intendedTargetOrigin,
+        const WebDOMEvent&) = 0;
 
 
     // Web Intents ---------------------------------------------------------
 
-    // Forwards a web intents reply from the invoked activity back to the
-    // appropriate registered Javascript callback. The |intentIdentifier| is
-    // the WebIntent parameter received from the dispatchIntent method.
-    virtual void handleIntentResult(int intentIdentifier, const WebString&) = 0;
-
-    // Forwards a web intents failure notification from the invoked activity
-    // or intervening browser logic back to the appropriate registered
-    // Javascript callback. The |intentIdentifier| is the WebIntent parameter
-    // received from the dispatchIntent method.
-    virtual void handleIntentFailure(int intentIdentifier, const WebString&) = 0;
+    // Called on a target service page to deliver an intent to the window.
+    // The ports are any transferred ports that accompany the intent as a result
+    // of MessagePort transfer.
+    virtual void deliverIntent(const WebIntent&, WebMessagePortChannelArray* ports, WebDeliveredIntentClient*) = 0;
 
 
     // Utility -------------------------------------------------------------
@@ -636,7 +640,7 @@ public:
     // empty ((0,0), (0,0)).
     virtual WebRect selectionBoundsRect() const = 0;
 
-    // Only for testing purpose: 
+    // Only for testing purpose:
     // Returns true if selection.anchorNode has a marker on range from |from| with |length|.
     virtual bool selectionStartHasSpellingMarkerFor(int from, int length) const = 0;
 

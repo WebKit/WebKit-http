@@ -25,12 +25,12 @@
 
 #include "config.h"
 #include "CSSFontFaceSrcValue.h"
-#include "CSSStyleSheet.h"
 #include "CachedFont.h"
 #include "CachedResourceLoader.h"
 #include "Document.h"
 #include "FontCustomPlatformData.h"
 #include "Node.h"
+#include "StyleSheetContents.h"
 
 namespace WebCore {
 
@@ -73,7 +73,7 @@ String CSSFontFaceSrcValue::customCssText() const
     return result;
 }
 
-void CSSFontFaceSrcValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const StyleSheetInternal* styleSheet)
+void CSSFontFaceSrcValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const StyleSheetContents* styleSheet) const
 {
     if (!isLocal())
         addSubresourceURL(urls, styleSheet->completeURL(m_resource));

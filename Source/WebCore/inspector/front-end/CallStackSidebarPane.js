@@ -33,6 +33,8 @@ WebInspector.CallStackSidebarPane = function()
     this._model = WebInspector.debuggerModel;
 
     this.bodyElement.addEventListener("contextmenu", this._contextMenu.bind(this), true);
+    this.bodyElement.addEventListener("keydown", this._keyDown.bind(this), true);
+    this.bodyElement.tabIndex = 0;
 }
 
 WebInspector.CallStackSidebarPane.prototype = {
@@ -139,13 +141,31 @@ WebInspector.CallStackSidebarPane.prototype = {
 
     setStatus: function(status)
     {
-        var statusMessageElement = document.createElement("div");
-        statusMessageElement.className = "info";
+        if (!this._statusMessageElement) {
+            this._statusMessageElement = document.createElement("div");
+            this._statusMessageElement.className = "info";
+            this.bodyElement.appendChild(this._statusMessageElement);
+        }
         if (typeof status === "string")
-            statusMessageElement.textContent = status;
-        else
-            statusMessageElement.appendChild(status);
-        this.bodyElement.appendChild(statusMessageElement);
+            this._statusMessageElement.textContent = status;
+        else {
+            this._statusMessageElement.removeChildren();
+            this._statusMessageElement.appendChild(status);
+        }
+    },
+
+    _keyDown: function(event)
+    {
+        if (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey)
+            return;
+
+        if (event.keyIdentifier === "Up") {
+            this._selectPreviousCallFrameOnStack();
+            event.consume();
+        } else if (event.keyIdentifier === "Down") {
+            this._selectNextCallFrameOnStack();
+            event.consume();
+        }
     }
 }
 

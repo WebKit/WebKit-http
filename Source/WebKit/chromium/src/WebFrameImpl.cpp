@@ -78,6 +78,9 @@
 #include "Console.h"
 #include "DOMUtilitiesPrivate.h"
 #include "DOMWindow.h"
+#include "DOMWindowIntents.h"
+#include "DeliveredIntent.h"
+#include "DeliveredIntentClientImpl.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DocumentMarker.h"
@@ -85,6 +88,7 @@
 #include "Editor.h"
 #include "EventHandler.h"
 #include "EventListenerWrapper.h"
+#include "FileSystemType.h"
 #include "FocusController.h"
 #include "FontCache.h"
 #include "FormState.h"
@@ -105,10 +109,12 @@
 #include "IconURL.h"
 #include "InspectorController.h"
 #include "KURL.h"
+#include "MessagePort.h"
 #include "Node.h"
 #include "Page.h"
 #include "PageOverlay.h"
 #include "Performance.h"
+#include "PlatformMessagePortChannel.h"
 #include "PlatformSupport.h"
 #include "PluginDocument.h"
 #include "PrintContext.h"
@@ -121,6 +127,7 @@
 #include "ResourceHandle.h"
 #include "ResourceRequest.h"
 #include "SchemeRegistry.h"
+#include "ScriptCallStack.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
 #include "ScriptValue.h"
@@ -128,6 +135,7 @@
 #include "ScrollbarTheme.h"
 #include "SecurityPolicy.h"
 #include "Settings.h"
+#include "ShadowRoot.h"
 #include "SkiaUtils.h"
 #include "SpellChecker.h"
 #include "SubstituteData.h"
@@ -139,6 +147,7 @@
 #include "WebDOMEvent.h"
 #include "WebDOMEventListener.h"
 #include "WebDataSourceImpl.h"
+#include "WebDeliveredIntentClient.h"
 #include "WebDevToolsAgentPrivate.h"
 #include "WebDocument.h"
 #include "WebFindOptions.h"
@@ -147,10 +156,12 @@
 #include "WebHistoryItem.h"
 #include "WebIconURL.h"
 #include "WebInputElement.h"
+#include "WebIntent.h"
 #include "WebNode.h"
 #include "WebPerformance.h"
 #include "WebPlugin.h"
 #include "WebPluginContainerImpl.h"
+#include "WebPrintParams.h"
 #include "WebRange.h"
 #include "WebScriptSource.h"
 #include "WebSecurityOrigin.h"
@@ -160,6 +171,7 @@
 #include "painting/GraphicsContextBuilder.h"
 #include "platform/WebPoint.h"
 #include "platform/WebRect.h"
+#include "platform/WebSerializedScriptValue.h"
 #include "platform/WebSize.h"
 #include "platform/WebURLError.h"
 #include "platform/WebVector.h"
@@ -167,6 +179,7 @@
 #include <algorithm>
 #include <public/Platform.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/HashMap.h>
 
 #if USE(V8)
 #include "AsyncFileSystem.h"
@@ -177,7 +190,7 @@
 #include "V8DirectoryEntry.h"
 #include "V8DOMFileSystem.h"
 #include "V8FileEntry.h"
-#include "platform/WebFileSystem.h"
+#include <public/WebFileSystem.h>
 #endif
 
 using namespace WebCore;
@@ -441,8 +454,8 @@ private:
 // want to delegate all printing related calls to the plugin.
 class ChromePluginPrintContext : public ChromePrintContext {
 public:
-    ChromePluginPrintContext(Frame* frame, WebPluginContainerImpl* plugin, int printerDPI)
-        : ChromePrintContext(frame), m_plugin(plugin), m_pageCount(0), m_printerDPI(printerDPI)
+    ChromePluginPrintContext(Frame* frame, WebPluginContainerImpl* plugin, const WebPrintParams& printParams)
+        : ChromePrintContext(frame), m_plugin(plugin), m_pageCount(0), m_printParams(printParams)
     {
     }
 
@@ -465,7 +478,8 @@ public:
 
     virtual void computePageRects(const FloatRect& printRect, float headerHeight, float footerHeight, float userScaleFactor, float& outPageHeight)
     {
-        m_pageCount = m_plugin->printBegin(IntRect(printRect), m_printerDPI);
+        m_printParams.printContentArea = IntRect(printRect);
+        m_pageCount = m_plugin->printBegin(m_printParams);
     }
 
     virtual int pageCount() const
@@ -491,14 +505,15 @@ private:
     // Set when printing.
     WebPluginContainerImpl* m_plugin;
     int m_pageCount;
-    int m_printerDPI;
+    WebPrintParams m_printParams;
+    WebPrintScalingOption m_printScalingOption;
+
 };
 
 static WebDataSource* DataSourceForDocLoader(DocumentLoader* loader)
 {
     return loader ? WebDataSourceImpl::fromDocumentLoader(loader) : 0;
 }
-
 
 // WebFrame -------------------------------------------------------------------
 
@@ -592,11 +607,6 @@ WebVector<WebIconURL> WebFrameImpl::iconURLs(int iconTypes) const
     if (frameLoader->state() == FrameStateComplete)
         return frameLoader->icon()->urlsForTypes(iconTypes);
     return WebVector<WebIconURL>();
-}
-
-WebReferrerPolicy WebFrameImpl::referrerPolicy() const
-{
-    return static_cast<WebReferrerPolicy>(m_frame->document()->referrerPolicy());
 }
 
 WebSize WebFrameImpl::scrollOffset() const
@@ -938,7 +948,7 @@ v8::Handle<v8::Value> WebFrameImpl::createFileSystem(WebFileSystem::Type type,
                                                      const WebString& name,
                                                      const WebString& path)
 {
-    return toV8(DOMFileSystem::create(frame()->document(), name, AsyncFileSystemChromium::create(static_cast<AsyncFileSystem::Type>(type), KURL(ParsedURLString, path.utf8().data()))));
+    return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()));
 }
 
 v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type,
@@ -947,7 +957,7 @@ v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type,
                                                     const WebString& filePath,
                                                     bool isDirectory)
 {
-    RefPtr<DOMFileSystemBase> fileSystem = DOMFileSystem::create(frame()->document(), fileSystemName, AsyncFileSystemChromium::create(static_cast<AsyncFileSystem::Type>(type), KURL(ParsedURLString, fileSystemPath.utf8().data())));
+    RefPtr<DOMFileSystemBase> fileSystem = DOMFileSystem::create(frame()->document(), fileSystemName, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, fileSystemPath.utf8().data()), AsyncFileSystemChromium::create());
     if (isDirectory)
         return toV8(DirectoryEntry::create(fileSystem, filePath));
     return toV8(FileEntry::create(fileSystem, filePath));
@@ -1441,9 +1451,8 @@ VisiblePosition WebFrameImpl::visiblePositionForWindowPoint(const WebPoint& poin
     return node->renderer()->positionForPoint(result.localPoint());
 }
 
-int WebFrameImpl::printBegin(const WebSize& pageSize,
+int WebFrameImpl::printBegin(const WebPrintParams& printParams,
                              const WebNode& constrainToNode,
-                             int printerDPI,
                              bool* useBrowserOverlays)
 {
     ASSERT(!frame()->document()->isFrameSet());
@@ -1458,12 +1467,12 @@ int WebFrameImpl::printBegin(const WebSize& pageSize,
     }
 
     if (pluginContainer && pluginContainer->supportsPaginatedPrint())
-        m_printContext = adoptPtr(new ChromePluginPrintContext(frame(), pluginContainer, printerDPI));
+        m_printContext = adoptPtr(new ChromePluginPrintContext(frame(), pluginContainer, printParams));
     else
         m_printContext = adoptPtr(new ChromePrintContext(frame()));
 
-    FloatRect rect(0, 0, static_cast<float>(pageSize.width),
-                         static_cast<float>(pageSize.height));
+    FloatRect rect(0, 0, static_cast<float>(printParams.printContentArea.width),
+                         static_cast<float>(printParams.printContentArea.height));
     m_printContext->begin(rect.width(), rect.height());
     float pageHeight;
     // We ignore the overlays calculation for now since they are generated in the
@@ -1496,9 +1505,7 @@ float WebFrameImpl::printPage(int page, WebCanvas* canvas)
 
     GraphicsContextBuilder builder(canvas);
     GraphicsContext& gc = builder.context();
-#if WEBKIT_USING_SKIA
     gc.platformContext()->setPrinting(true);
-#endif
 
     return m_printContext->spoolPage(gc, page);
 }
@@ -1770,7 +1777,7 @@ void WebFrameImpl::scopeStringMatches(int identifier,
         // text nodes.
         searchRange->setStart(resultRange->endContainer(ec), resultRange->endOffset(ec), ec);
 
-        Node* shadowTreeRoot = searchRange->shadowTreeRootNode();
+        Node* shadowTreeRoot = searchRange->shadowRoot();
         if (searchRange->collapsed(ec) && shadowTreeRoot)
             searchRange->setEnd(shadowTreeRoot, shadowTreeRoot->childNodeCount(), ec);
 
@@ -1856,12 +1863,12 @@ void WebFrameImpl::resetMatchCount()
     m_framesScopingCount = 0;
 }
 
-void WebFrameImpl::handleIntentResult(int intentIdentifier, const WebString& reply)
+void WebFrameImpl::sendOrientationChangeEvent(int orientation)
 {
-}
-
-void WebFrameImpl::handleIntentFailure(int intentIdentifier, const WebString& reply)
-{
+#if ENABLE(ORIENTATION_EVENTS)
+    if (m_frame)
+        m_frame->sendOrientationChangeEvent(orientation);
+#endif
 }
 
 void WebFrameImpl::addEventListener(const WebString& eventType, WebDOMEventListener* listener, bool useCapture)
@@ -1887,6 +1894,39 @@ bool WebFrameImpl::dispatchEvent(const WebDOMEvent& event)
 {
     ASSERT(!event.isNull());
     return m_frame->domWindow()->dispatchEvent(event);
+}
+
+void WebFrameImpl::dispatchMessageEventWithOriginCheck(const WebSecurityOrigin& intendedTargetOrigin, const WebDOMEvent& event)
+{
+    ASSERT(!event.isNull());
+    // Pass an empty call stack, since we don't have the one from the other process.
+    m_frame->domWindow()->dispatchMessageEventWithOriginCheck(intendedTargetOrigin.get(), event, 0);
+}
+
+void WebFrameImpl::deliverIntent(const WebIntent& intent, WebMessagePortChannelArray* ports, WebDeliveredIntentClient* intentClient)
+{
+#if ENABLE(WEB_INTENTS)
+    OwnPtr<WebCore::DeliveredIntentClient> client(adoptPtr(new DeliveredIntentClientImpl(intentClient)));
+
+    WebSerializedScriptValue intentData = WebSerializedScriptValue::fromString(intent.data());
+    const WebCore::Intent* webcoreIntent = intent;
+
+    // See PlatformMessagePortChannel.cpp
+    OwnPtr<MessagePortChannelArray> channels;
+    if (ports && ports->size()) {
+        channels = adoptPtr(new MessagePortChannelArray(ports->size()));
+        for (size_t i = 0; i < ports->size(); ++i) {
+            RefPtr<PlatformMessagePortChannel> platformChannel = PlatformMessagePortChannel::create((*ports)[i]);
+            (*ports)[i]->setClient(platformChannel.get());
+            (*channels)[i] = MessagePortChannel::create(platformChannel);
+        }
+    }
+    OwnPtr<MessagePortArray> portArray = WebCore::MessagePort::entanglePorts(*(m_frame->domWindow()->scriptExecutionContext()), channels.release());
+
+    RefPtr<DeliveredIntent> deliveredIntent = DeliveredIntent::create(m_frame, client.release(), intent.action(), intent.type(), intentData, portArray.release(), webcoreIntent->extras());
+
+    DOMWindowIntents::from(m_frame->domWindow())->deliver(deliveredIntent.release());
+#endif
 }
 
 WebString WebFrameImpl::contentAsText(size_t maxChars) const
@@ -1959,9 +1999,7 @@ void WebFrameImpl::printPagesWithBoundaries(WebCanvas* canvas, const WebSize& pa
 
     GraphicsContextBuilder builder(canvas);
     GraphicsContext& graphicsContext = builder.context();
-#if WEBKIT_USING_SKIA
     graphicsContext.platformContext()->setPrinting(true);
-#endif
 
     m_printContext->spoolAllPagesWithBoundaries(graphicsContext,
         FloatSize(pageSizeInPixels.width, pageSizeInPixels.height));
@@ -1999,6 +2037,7 @@ PassRefPtr<WebFrameImpl> WebFrameImpl::create(WebFrameClient* client)
 WebFrameImpl::WebFrameImpl(WebFrameClient* client)
     : m_frameLoaderClient(this)
     , m_client(client)
+    , m_frame(0)
     , m_currentActiveMatchFrame(0)
     , m_activeMatchIndexInCurrentFrame(-1)
     , m_locatingActiveRect(false)
@@ -2024,9 +2063,9 @@ WebFrameImpl::~WebFrameImpl()
     cancelPendingScopingEffort();
 }
 
-void WebFrameImpl::initializeAsMainFrame(WebViewImpl* webViewImpl)
+void WebFrameImpl::initializeAsMainFrame(WebCore::Page* page)
 {
-    RefPtr<Frame> frame = Frame::create(webViewImpl->page(), 0, &m_frameLoaderClient);
+    RefPtr<Frame> frame = Frame::create(page, 0, &m_frameLoaderClient);
     m_frame = frame.get();
 
     // Add reference on behalf of FrameLoader.  See comments in

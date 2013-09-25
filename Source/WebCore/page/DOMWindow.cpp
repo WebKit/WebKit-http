@@ -78,6 +78,7 @@
 #include "PageTransitionEvent.h"
 #include "Performance.h"
 #include "PlatformScreen.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Screen.h"
 #include "ScriptCallStack.h"
@@ -87,13 +88,13 @@
 #include "Settings.h"
 #include "Storage.h"
 #include "StorageArea.h"
-#include "StorageInfo.h"
 #include "StorageNamespace.h"
 #include "StyleMedia.h"
 #include "StyleResolver.h"
 #include "SuddenTermination.h"
 #include "WebKitPoint.h"
 #include "WindowFeatures.h"
+#include "WindowFocusAllowedIndicator.h"
 #include <algorithm>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
@@ -399,7 +400,6 @@ DOMWindow::~DOMWindow()
 #ifndef NDEBUG
     if (!m_suspendedForPageCache) {
         ASSERT(!m_screen);
-        ASSERT(!m_selection);
         ASSERT(!m_history);
         ASSERT(!m_crypto);
         ASSERT(!m_locationbar);
@@ -421,11 +421,13 @@ DOMWindow::~DOMWindow()
 #if ENABLE(BLOB)
         ASSERT(!m_domURL);
 #endif
-#if ENABLE(QUOTA)
-        ASSERT(!m_storageInfo);
-#endif
     }
 #endif
+
+    if (m_suspendedForPageCache)
+        willDestroyCachedFrame();
+    else
+        willDestroyDocumentInFrame();
 
     // As the ASSERTs above indicate, this clear should only be necesary if this DOMWindow is suspended for the page cache.
     // But we don't want to risk any of these objects hanging around after we've been destroyed.
@@ -467,6 +469,7 @@ Page* DOMWindow::page()
 
 void DOMWindow::frameDestroyed()
 {
+    willDestroyDocumentInFrame();
     FrameDestructionObserver::frameDestroyed();
     clearDOMWindowProperties();
 }
@@ -474,11 +477,36 @@ void DOMWindow::frameDestroyed()
 void DOMWindow::willDetachPage()
 {
     InspectorInstrumentation::frameWindowDiscarded(m_frame, this);
+}
 
+void DOMWindow::willDestroyCachedFrame()
+{
+    // It is necessary to copy m_properties to a separate vector because the DOMWindowProperties may
+    // unregister themselves from the DOMWindow as a result of the call to willDestroyGlobalObjectInCachedFrame.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
     for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->willDetachPage();
+        properties[i]->willDestroyGlobalObjectInCachedFrame();
+}
+
+void DOMWindow::willDestroyDocumentInFrame()
+{
+    // It is necessary to copy m_properties to a separate vector because the DOMWindowProperties may
+    // unregister themselves from the DOMWindow as a result of the call to willDestroyGlobalObjectInFrame.
+    Vector<DOMWindowProperty*> properties;
+    copyToVector(m_properties, properties);
+    for (size_t i = 0; i < properties.size(); ++i)
+        properties[i]->willDestroyGlobalObjectInFrame();
+}
+
+void DOMWindow::willDetachDocumentFromFrame()
+{
+    // It is necessary to copy m_properties to a separate vector because the DOMWindowProperties may
+    // unregister themselves from the DOMWindow as a result of the call to willDetachGlobalObjectFromFrame.
+    Vector<DOMWindowProperty*> properties;
+    copyToVector(m_properties, properties);
+    for (size_t i = 0; i < properties.size(); ++i)
+        properties[i]->willDetachGlobalObjectFromFrame();
 }
 
 void DOMWindow::registerProperty(DOMWindowProperty* property)
@@ -499,6 +527,7 @@ void DOMWindow::clear()
     if (m_suspendedForPageCache)
         return;
     
+    willDestroyDocumentInFrame();
     clearDOMWindowProperties();
 }
 
@@ -516,28 +545,30 @@ void DOMWindow::resumeFromPageCache()
 
 void DOMWindow::disconnectDOMWindowProperties()
 {
+    // It is necessary to copy m_properties to a separate vector because the DOMWindowProperties may
+    // unregister themselves from the DOMWindow as a result of the call to disconnectFrameForPageCache.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
     for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->disconnectFrame();
+        properties[i]->disconnectFrameForPageCache();
 }
 
 void DOMWindow::reconnectDOMWindowProperties()
 {
     ASSERT(m_suspendedForPageCache);
+    // It is necessary to copy m_properties to a separate vector because the DOMWindowProperties may
+    // unregister themselves from the DOMWindow as a result of the call to reconnectFromPageCache.
     Vector<DOMWindowProperty*> properties;
     copyToVector(m_properties, properties);
     for (size_t i = 0; i < properties.size(); ++i)
-        properties[i]->reconnectFrame(m_frame);
+        properties[i]->reconnectFrameFromPageCache(m_frame);
 }
 
 void DOMWindow::clearDOMWindowProperties()
 {
-    disconnectDOMWindowProperties();
     m_properties.clear();
 
     m_screen = 0;
-    m_selection = 0;
     m_history = 0;
     m_crypto = 0;
     m_locationbar = 0;
@@ -558,9 +589,6 @@ void DOMWindow::clearDOMWindowProperties()
     m_applicationCache = 0;
 #if ENABLE(BLOB)
     m_domURL = 0;
-#endif
-#if ENABLE(QUOTA)
-    m_storageInfo = 0;
 #endif
 }
 
@@ -831,12 +859,17 @@ void DOMWindow::postMessageTimerFired(PassOwnPtr<PostMessageTimer> t)
     if (m_frame->loader()->client()->willCheckAndDispatchMessageEvent(timer->targetOrigin(), event.get()))
         return;
 
-    if (timer->targetOrigin()) {
+    dispatchMessageEventWithOriginCheck(timer->targetOrigin(), event, timer->stackTrace());
+}
+
+void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTargetOrigin, PassRefPtr<Event> event, PassRefPtr<ScriptCallStack> stackTrace)
+{
+    if (intendedTargetOrigin) {
         // Check target origin now since the target document may have changed since the timer was scheduled.
-        if (!timer->targetOrigin()->isSameSchemeHostPort(document()->securityOrigin())) {
-            String message = "Unable to post message to " + timer->targetOrigin()->toString() +
+        if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
+            String message = "Unable to post message to " + intendedTargetOrigin->toString() +
                              ". Recipient has origin " + document()->securityOrigin()->toString() + ".\n";
-            console()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, message, timer->stackTrace());
+            console()->addMessage(JSMessageSource, LogMessageType, ErrorMessageLevel, message, stackTrace);
             return;
         }
     }
@@ -846,11 +879,10 @@ void DOMWindow::postMessageTimerFired(PassOwnPtr<PostMessageTimer> t)
 
 DOMSelection* DOMWindow::getSelection()
 {
-    if (!isCurrentlyDisplayedInFrame())
+    if (!isCurrentlyDisplayedInFrame() || !m_frame)
         return 0;
-    if (!m_selection)
-        m_selection = DOMSelection::create(m_frame);
-    return m_selection.get();
+
+    return m_frame->document()->getSelection();
 }
 
 Element* DOMWindow::frameElement() const
@@ -861,7 +893,7 @@ Element* DOMWindow::frameElement() const
     return m_frame->ownerElement();
 }
 
-void DOMWindow::focus()
+void DOMWindow::focus(ScriptExecutionContext* context)
 {
     if (!m_frame)
         return;
@@ -870,8 +902,16 @@ void DOMWindow::focus()
     if (!page)
         return;
 
+    bool allowFocus = WindowFocusAllowedIndicator::windowFocusAllowed() || !m_frame->settings()->windowFocusRestricted();
+    if (context) {
+        ASSERT(isMainThread());
+        Document* activeDocument = static_cast<Document*>(context);
+        if (opener() && activeDocument->domWindow() == opener())
+            allowFocus = true;
+    }
+
     // If we're a top level window, bring the window to the front.
-    if (m_frame == page->mainFrame())
+    if (m_frame == page->mainFrame() && allowFocus)
         page->chrome()->focus();
 
     if (!m_frame)
@@ -882,11 +922,15 @@ void DOMWindow::focus()
 
 void DOMWindow::blur()
 {
+
     if (!m_frame)
         return;
 
     Page* page = m_frame->page();
     if (!page)
+        return;
+
+    if (m_frame->settings()->windowFocusRestricted())
         return;
 
     if (m_frame != page->mainFrame())
@@ -1508,6 +1552,17 @@ void DOMWindow::webkitCancelAnimationFrame(int id)
 }
 #endif
 
+static void didAddStorageEventListener(DOMWindow* window)
+{
+    // Creating these WebCore::Storage objects informs the system that we'd like to receive
+    // notifications about storage events that might be triggered in other processes. Rather
+    // than subscribe to these notifications explicitly, we subscribe to them implicitly to
+    // simplify the work done by the system. 
+    ExceptionCode unused;
+    window->localStorage(unused);
+    window->sessionStorage(unused);
+}
+
 bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
 {
     if (!EventTarget::addEventListener(eventType, listener, useCapture))
@@ -1519,6 +1574,8 @@ bool DOMWindow::addEventListener(const AtomicString& eventType, PassRefPtr<Event
             document->didAddWheelEventHandler();
         else if (eventNames().isTouchEventType(eventType))
             document->didAddTouchEventHandler();
+        else if (eventType == eventNames().storageEvent)
+            didAddStorageEventListener(this);
     }
 
     if (eventType == eventNames().unloadEvent)
@@ -1870,16 +1927,5 @@ void DOMWindow::showModalDialog(const String& urlString, const String& dialogFea
 
     dialogFrame->page()->chrome()->runModal();
 }
-
-#if ENABLE(QUOTA)
-StorageInfo* DOMWindow::webkitStorageInfo() const
-{
-    if (!isCurrentlyDisplayedInFrame())
-        return 0;
-    if (!m_storageInfo)
-        m_storageInfo = StorageInfo::create();
-    return m_storageInfo.get();
-}
-#endif
 
 } // namespace WebCore

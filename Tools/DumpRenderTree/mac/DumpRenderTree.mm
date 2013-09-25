@@ -525,6 +525,7 @@ WebView *createWebViewAndOffscreenWindow()
     [WebView registerURLSchemeAsLocal:@"feedsearch"];
     
     [webView setContinuousSpellCheckingEnabled:YES];
+    [webView setDefersCallbacks:NO];
     [webView setGrammarCheckingEnabled:YES];
     [webView setInteractiveFormValidationEnabled:YES];
     [webView setValidationMessageTimerMagnification:-1];
@@ -639,11 +640,11 @@ static void resetDefaultsToConsistentValues()
     [preferences setJavaScriptCanAccessClipboard:YES];
     [preferences setOfflineWebApplicationCacheEnabled:YES];
     [preferences setDeveloperExtrasEnabled:NO];
+    [preferences setJavaScriptExperimentsEnabled:YES];
     [preferences setLoadsImagesAutomatically:YES];
     [preferences setLoadsSiteIconsIgnoringImageLoadingPreference:NO];
     [preferences setFrameFlatteningEnabled:NO];
     [preferences setSpatialNavigationEnabled:NO];
-    [preferences setEditingBehavior:WebKitEditingMacBehavior];
     if (persistentUserStyleSheetLocation) {
         [preferences setUserStyleSheetLocation:[NSURL URLWithString:(NSString *)(persistentUserStyleSheetLocation.get())]];
         [preferences setUserStyleSheetEnabled:YES];
@@ -1264,7 +1265,6 @@ static void resetWebViewToConsistentStateBeforeTesting()
     }
 
     [[mainFrame webView] setSmartInsertDeleteEnabled:YES];
-    [[[mainFrame webView] inspector] setJavaScriptProfilingEnabled:NO];
 
     [WebView _setUsesTestModeFocusRingColor:YES];
     [WebView _resetOriginAccessWhitelists];

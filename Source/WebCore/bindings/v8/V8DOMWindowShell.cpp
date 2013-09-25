@@ -408,10 +408,11 @@ bool V8DOMWindowShell::installDOMWindow(v8::Handle<v8::Context> context, DOMWind
     if (jsWindow.IsEmpty())
         return false;
 
+    V8DOMWindow::installPerContextProperties(jsWindow, window);
+
     // Wrap the window.
     V8DOMWrapper::setDOMWrapper(jsWindow, &V8DOMWindow::info, window);
     V8DOMWrapper::setDOMWrapper(v8::Handle<v8::Object>::Cast(jsWindow->GetPrototype()), &V8DOMWindow::info, window);
-
     V8DOMWrapper::setJSWrapperForDOMObject(PassRefPtr<DOMWindow>(window), v8::Persistent<v8::Object>::New(jsWindow));
 
     // Insert the window instance as the prototype of the shadow object.
@@ -591,6 +592,8 @@ void V8DOMWindowShell::namedItemRemoved(HTMLDocument* doc, const AtomicString& n
 
 void V8DOMWindowShell::updateSecurityOrigin()
 {
+    if (m_context.IsEmpty())
+        return;
     v8::HandleScope scope;
     setSecurityToken();
 }

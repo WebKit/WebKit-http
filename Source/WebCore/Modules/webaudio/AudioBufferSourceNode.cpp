@@ -67,12 +67,9 @@ AudioBufferSourceNode::AudioBufferSourceNode(AudioContext* context, float sample
 {
     setNodeType(NodeTypeAudioBufferSource);
 
-    m_gain = AudioGain::create("gain", 1.0, 0.0, 1.0);
-    m_playbackRate = AudioParam::create("playbackRate", 1.0, 0.0, MaxRate);
+    m_gain = AudioGain::create(context, "gain", 1.0, 0.0, 1.0);
+    m_playbackRate = AudioParam::create(context, "playbackRate", 1.0, 0.0, MaxRate);
     
-    m_gain->setContext(context);
-    m_playbackRate->setContext(context);
-
     // Default to mono.  A call to setBuffer() will set the number of output channels to that of the buffer.
     addOutput(adoptPtr(new AudioNodeOutput(this, 1)));
 
@@ -81,6 +78,7 @@ AudioBufferSourceNode::AudioBufferSourceNode(AudioContext* context, float sample
 
 AudioBufferSourceNode::~AudioBufferSourceNode()
 {
+    clearPannerNode();
     uninitialize();
 }
 
@@ -101,18 +99,11 @@ void AudioBufferSourceNode::process(size_t framesToProcess)
             return;
         }
 
-        size_t quantumStartFrame;
-        size_t quantumEndFrame;
-        size_t startFrame;
-        size_t endFrame;
         size_t quantumFrameOffset;
         size_t bufferFramesToProcess;
 
         updateSchedulingInfo(framesToProcess,
-                             quantumStartFrame,
-                             quantumEndFrame,
-                             startFrame,
-                             endFrame,
+                             outputBus,
                              quantumFrameOffset,
                              bufferFramesToProcess);
                              
@@ -130,26 +121,6 @@ void AudioBufferSourceNode::process(size_t framesToProcess)
         // Apply the gain (in-place) to the output bus.
         float totalGain = gain()->value() * m_buffer->gain();
         outputBus->copyWithGainFrom(*outputBus, &m_lastGain, totalGain);
-
-        // If the end time is somewhere in the middle of this time quantum, then simply zero out the
-        // frames starting at the end time.
-        if (m_endTime != UnknownTime && endFrame >= quantumStartFrame && endFrame < quantumEndFrame) {
-            size_t zeroStartFrame = endFrame - quantumStartFrame;
-            size_t framesToZero = framesToProcess - zeroStartFrame;
-
-            bool isSafe = zeroStartFrame < framesToProcess && framesToZero <= framesToProcess && zeroStartFrame + framesToZero <= framesToProcess;
-            ASSERT(isSafe);
-            
-            if (isSafe) {
-                for (unsigned i = 0; i < outputBus->numberOfChannels(); ++i)
-                    memset(m_destinationChannels[i] + zeroStartFrame, 0, sizeof(float) * framesToZero);
-            }
-
-            m_virtualReadIndex = 0;
-
-            finish();
-        }
-
         outputBus->clearSilentFlag();
     } else {
         // Too bad - the tryLock() failed.  We must be in the middle of changing buffers and were already outputting silence anyway.
@@ -415,7 +386,7 @@ void AudioBufferSourceNode::noteGrainOn(double when, double grainOffset, double 
 double AudioBufferSourceNode::totalPitchRate()
 {
     double dopplerRate = 1.0;
-    if (m_pannerNode.get())
+    if (m_pannerNode)
         dopplerRate = m_pannerNode->dopplerRate();
     
     // Incorporate buffer's sample-rate versus AudioContext's sample-rate.
@@ -467,6 +438,33 @@ void AudioBufferSourceNode::setLooping(bool looping)
 bool AudioBufferSourceNode::propagatesSilence() const
 {
     return !isPlayingOrScheduled() || hasFinished() || !m_buffer;
+}
+
+void AudioBufferSourceNode::setPannerNode(AudioPannerNode* pannerNode)
+{
+    if (m_pannerNode != pannerNode && !hasFinished()) {
+        if (pannerNode)
+            pannerNode->ref(AudioNode::RefTypeConnection);
+        if (m_pannerNode)
+            m_pannerNode->deref(AudioNode::RefTypeConnection);
+
+        m_pannerNode = pannerNode;
+    }
+}
+
+void AudioBufferSourceNode::clearPannerNode()
+{
+    if (m_pannerNode) {
+        m_pannerNode->deref(AudioNode::RefTypeConnection);
+        m_pannerNode = 0;
+    }
+}
+
+void AudioBufferSourceNode::finish()
+{
+    clearPannerNode();
+    ASSERT(!m_pannerNode);
+    AudioScheduledSourceNode::finish();
 }
 
 } // namespace WebCore

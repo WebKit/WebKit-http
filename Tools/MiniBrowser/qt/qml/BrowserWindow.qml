@@ -31,6 +31,7 @@ import QtWebKit 3.0
 import QtWebKit.experimental 1.0
 
 Rectangle {
+    id: root
     // Do not define anchors or an initial size here! This would mess up with QSGView::SizeRootObjectToView.
 
     property alias webview: webView
@@ -41,10 +42,12 @@ Rectangle {
 
     function load(address) {
         webView.url = address
+        webView.forceActiveFocus()
     }
 
     function reload() {
         webView.reload()
+        webView.forceActiveFocus()
     }
 
     function focusAddressBar() {
@@ -56,6 +59,7 @@ Rectangle {
         id: navigationBar
         color: "#efefef"
         height: 38
+        z: webView.z + 1
         anchors {
             top: parent.top
             left: parent.left
@@ -101,6 +105,7 @@ Rectangle {
                         if (parent.enabled) {
                             console.log("MiniBrowser: Going backward in session history.")
                             webView.goBack()
+                            webView.forceActiveFocus()
                         }
                     }
                 }
@@ -135,6 +140,7 @@ Rectangle {
                         if (parent.enabled) {
                             console.log("MiniBrowser: Going forward in session history.")
                             webView.goForward()
+                            webView.forceActiveFocus()
                         }
                     }
                 }
@@ -181,6 +187,27 @@ Rectangle {
                     anchors.fill: parent
                     onClicked: {
                        viewportInfoItem.visible = !viewportInfoItem.visible
+                    }
+                }
+            }
+
+            Rectangle {
+                id: preferredMininumContentsWidthButton
+                height: parent.height
+                width: height
+                color: "#efefef"
+                opacity: { webView.experimental.preferredMinimumContentsWidth === 0 ? 0.1 : 0.6 }
+                radius: 6
+
+                Image {
+                    anchors.centerIn: parent
+                    source: "../icons/contents_width.png"
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        webView.experimental.preferredMinimumContentsWidth = webView.experimental.preferredMinimumContentsWidth === 0 ? 980 : 0
                     }
                 }
             }
@@ -251,10 +278,10 @@ Rectangle {
                     left: parent.left
                 }
                 radius: 3
-                width: parent.width / 100 * webView.loadProgress
+                width: parent.width / 100 * Math.max(5, webView.loadProgress)
                 color: "blue"
                 opacity: 0.3
-                visible: webView.loadProgress != 100
+                visible: webView.loading
             }
             Image {
                 id: favIcon
@@ -263,7 +290,7 @@ Rectangle {
                 height: 16
                 anchors {
                     left: parent.left
-                    leftMargin: 4
+                    leftMargin: 6
                     verticalCenter: parent.verticalCenter
                 }
             }
@@ -271,6 +298,7 @@ Rectangle {
                 id: addressLine
                 clip: true
                 selectByMouse: true
+                horizontalAlignment: TextInput.AlignLeft
                 font {
                     pointSize: 11
                     family: "Sans"
@@ -283,15 +311,29 @@ Rectangle {
                 }
 
                 Keys.onReturnPressed:{
-                    console.log("going to: ", addressLine.text)
-                    webView.url = utils.urlFromUserInput(addressLine.text)
+                    console.log("Navigating to: ", addressLine.text)
+                    load(utils.urlFromUserInput(addressLine.text))
                 }
+
+                property url url
+
+                onUrlChanged: {
+                    if (activeFocus)
+                        return;
+
+                    text = url
+                    cursorPosition = 0
+                }
+
+                onActiveFocusChanged: url = webView.url
             }
         }
     }
 
     WebView {
         id: webView
+        clip: false
+
         anchors {
             top: navigationBar.bottom
             left: parent.left
@@ -301,12 +343,20 @@ Rectangle {
 
         onTitleChanged: pageTitleChanged(title)
         onUrlChanged: {
-            addressLine.text = url
+            addressLine.url = webView.url
+
             if (options.printLoadedUrls)
-                console.log("Loaded:", webView.url.toString());
-            forceActiveFocus();
+                console.log("WebView url changed:", webView.url.toString());
         }
 
+        onLoadingChanged: {
+            if (!loading && loadRequest.status == WebView.LoadFailedStatus)
+                webView.loadHtml("Failed to load " + loadRequest.url, "", loadRequest.url)
+        }
+
+        experimental.devicePixelRatio: 1.5
+        experimental.preferences.fullScreenEnabled: true
+        experimental.preferences.webGLEnabled: true
         experimental.preferredMinimumContentsWidth: 980
         experimental.itemSelector: ItemSelector { }
         experimental.alertDialog: AlertDialog { }
@@ -327,6 +377,14 @@ Rectangle {
                 }
             }
         }
+        experimental.onEnterFullScreenRequested : {
+            navigationBar.visible = false;
+            Window.showFullScreen();
+        }
+        experimental.onExitFullScreenRequested : {
+            Window.showNormal();
+            navigationBar.visible = true;
+        }
     }
 
     ScrollIndicator {
@@ -342,6 +400,7 @@ Rectangle {
             bottom: parent.bottom
         }
         visible: false
-        viewportInfo : webView.experimental.viewportInfo
+        test : webView.experimental.test
+        preferredMinimumContentsWidth: webView.experimental.preferredMinimumContentsWidth
     }
 }

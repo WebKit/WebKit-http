@@ -30,6 +30,7 @@
 #include "ChildProcess.h"
 #include "DrawingArea.h"
 #include "EventDispatcher.h"
+#include "PluginInfoStore.h"
 #include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
 #include "SharedMemory.h"
@@ -81,7 +82,7 @@ struct WebPageGroupData;
 struct WebPreferencesStore;
 struct WebProcessCreationParameters;
 
-#if PLATFORM(MAC)
+#if USE(SECURITY_FRAMEWORK)
 class SecItemResponseData;
 class SecKeychainItemResponseData;
 #endif
@@ -114,6 +115,7 @@ public:
 #endif
 #endif
     
+    void setShouldTrackVisitedLinks(bool);
     void addVisitedLink(WebCore::LinkHash);
     bool isLinkVisited(WebCore::LinkHash) const;
 
@@ -166,7 +168,6 @@ private:
     void initializeWebProcess(const WebProcessCreationParameters&, CoreIPC::ArgumentDecoder*);
     void platformInitializeWebProcess(const WebProcessCreationParameters&, CoreIPC::ArgumentDecoder*);
     void platformTerminate();
-    void setShouldTrackVisitedLinks(bool);
     void registerURLSchemeAsEmptyDocument(const String&);
     void registerURLSchemeAsSecure(const String&) const;
     void setDomainRelaxationForbiddenForURLScheme(const String&) const;
@@ -215,8 +216,9 @@ private:
     
     void getWebCoreStatistics(uint64_t callbackID);
     void garbageCollectJavaScriptObjects();
+    void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
-#if PLATFORM(MAC)
+#if USE(SECURITY_FRAMEWORK)
     void secItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecItemResponseData&);
     void secKeychainItemResponse(CoreIPC::Connection*, uint64_t requestID, const SecKeychainItemResponseData&);
 #endif
@@ -243,6 +245,8 @@ private:
     void didReceiveWebProcessMessage(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*);
     void didReceiveWebProcessMessageOnConnectionWorkQueue(CoreIPC::Connection*, CoreIPC::MessageID, CoreIPC::ArgumentDecoder*, bool& didHandleMessage);
 
+    void didGetPlugins(CoreIPC::Connection*, uint64_t requestID, const Vector<WebCore::PluginInfo>&);
+
     RefPtr<WebConnectionToUIProcess> m_connection;
 
     HashMap<uint64_t, RefPtr<WebPage> > m_pageMap;
@@ -257,6 +261,7 @@ private:
 
     // FIXME: The visited link table should not be per process.
     VisitedLinkTable m_visitedLinkTable;
+    bool m_shouldTrackVisitedLinks;
 
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;

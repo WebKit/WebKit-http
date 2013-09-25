@@ -21,6 +21,7 @@
 #include "config.h"
 #include "V8TestNode.h"
 
+#include "ContextEnabledFeatures.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
 #include "V8BindingState.h"
@@ -32,7 +33,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestNode::info = { V8TestNode::GetTemplate, V8TestNode::derefObject, 0, &V8Node::info };
+WrapperTypeInfo V8TestNode::info = { V8TestNode::GetTemplate, V8TestNode::derefObject, 0, &V8Node::info, WrapperTypeObjectPrototype };
 
 namespace TestNodeV8Internal {
 
@@ -45,7 +46,7 @@ v8::Handle<v8::Value> V8TestNode::constructorCallback(const v8::Arguments& args)
     INC_STATS("DOM.TestNode.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.");
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();

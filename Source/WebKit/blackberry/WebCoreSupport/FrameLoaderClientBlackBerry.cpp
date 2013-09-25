@@ -19,6 +19,7 @@
 #include "config.h"
 #include "FrameLoaderClientBlackBerry.h"
 
+#include "AutofillManager.h"
 #include "BackForwardController.h"
 #include "BackForwardListImpl.h"
 #include "BackingStoreClient.h"
@@ -276,8 +277,10 @@ void FrameLoaderClientBlackBerry::doPendingFragmentScroll()
 
 void FrameLoaderClientBlackBerry::dispatchDecidePolicyForNewWindowAction(FramePolicyFunction function, const NavigationAction&, const ResourceRequest& request, PassRefPtr<FormState>, const String& frameName)
 {
-    if (request.isRequestedByPlugin() && ScriptController::processingUserGesture() && !m_webPagePrivate->m_pluginMayOpenNewTab)
+    if (ScriptController::processingUserGesture() && !m_webPagePrivate->m_pluginMayOpenNewTab) {
         (m_frame->loader()->policyChecker()->*function)(PolicyIgnore);
+        return;
+    }
 
     // A new window can never be a fragment scroll.
     PolicyAction decision = decidePolicyForExternalLoad(request, false);
@@ -320,7 +323,7 @@ PassRefPtr<Widget> FrameLoaderClientBlackBerry::createPlugin(const IntSize& plug
     String mimeType(mimeTypeIn);
     if (mimeType.isEmpty()) {
         mimeType = MIMETypeRegistry::getMIMETypeForPath(url.path());
-        mimeType = WebSettings::getNormalizedMIMEType(mimeType);
+        mimeType = MIMETypeRegistry::getNormalizedMIMEType(mimeType);
         if (mimeType != "application/x-shockwave-flash")
             mimeType = mimeTypeIn;
     }
@@ -363,17 +366,12 @@ void FrameLoaderClientBlackBerry::receivedData(const char* data, int length, con
     m_frame->loader()->documentLoader()->writer()->addData(data, length);
 }
 
-void FrameLoaderClientBlackBerry::finishedLoading(DocumentLoader* loader)
+void FrameLoaderClientBlackBerry::finishedLoading(DocumentLoader*)
 {
     if (m_pluginView) {
         m_pluginView->didFinishLoading();
         m_pluginView = 0;
         m_hasSentResponseToPlugin = false;
-    } else {
-        // Telling the frame we received some data and passing 0 as the data is our
-        // way to get work done that is normally done when the first bit of data is
-        // received, even for the case of a document with no data (like about:blank).
-        committedLoad(loader, 0, 0);
     }
 }
 
@@ -456,7 +454,7 @@ bool FrameLoaderClientBlackBerry::canHandleRequest(const ResourceRequest&) const
 bool FrameLoaderClientBlackBerry::canShowMIMEType(const String& mimeTypeIn) const
 {
     // Get normalized type.
-    String mimeType = WebSettings::getNormalizedMIMEType(mimeTypeIn);
+    String mimeType = MIMETypeRegistry::getNormalizedMIMEType(mimeTypeIn);
 
     // FIXME: Seems no other port checks empty MIME type in this function. Should we do that?
     return MIMETypeRegistry::isSupportedImageMIMEType(mimeType) || MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)
@@ -610,7 +608,8 @@ void FrameLoaderClientBlackBerry::dispatchDidFinishLoad()
     }
 
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled())
+    if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled()
+        && !m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled())
         credentialManager().autofillPasswordForms(m_frame->document()->forms());
 #endif
 }
@@ -707,10 +706,14 @@ void FrameLoaderClientBlackBerry::dispatchDidFailProvisionalLoad(const ResourceE
 
 void FrameLoaderClientBlackBerry::dispatchWillSubmitForm(FramePolicyFunction function, PassRefPtr<FormState> formState)
 {
+    if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled()) {
+        if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled())
+            m_webPagePrivate->m_autofillManager->saveTextFields(formState->form());
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled())
-        credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, CredentialTransformData(formState->form()));
+        if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled())
+            credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, CredentialTransformData(formState->form()));
 #endif
+    }
 
     // FIXME: Stub.
     (m_frame->loader()->policyChecker()->*function)(PolicyUse);
@@ -718,12 +721,14 @@ void FrameLoaderClientBlackBerry::dispatchWillSubmitForm(FramePolicyFunction fun
 
 void FrameLoaderClientBlackBerry::dispatchWillSendSubmitEvent(PassRefPtr<FormState> prpFormState)
 {
+    if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled()) {
+        if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled())
+            m_webPagePrivate->m_autofillManager->saveTextFields(prpFormState->form());
 #if ENABLE(BLACKBERRY_CREDENTIAL_PERSIST)
-    if (!m_webPagePrivate->m_webSettings->isPrivateBrowsingEnabled())
-        credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, CredentialTransformData(prpFormState->form()));
-#else
-    notImplemented();
+        if (m_webPagePrivate->m_webSettings->isCredentialAutofillEnabled())
+            credentialManager().saveCredentialIfConfirmed(m_webPagePrivate, CredentialTransformData(prpFormState->form()));
 #endif
+    }
 }
 
 PassRefPtr<Frame> FrameLoaderClientBlackBerry::createFrame(const KURL& url, const String& name
@@ -773,7 +778,7 @@ ObjectContentType FrameLoaderClientBlackBerry::objectContentType(const KURL& url
         mimeType = MIMETypeRegistry::getMIMETypeForPath(url.path());
 
     // Get mapped type.
-    mimeType = WebSettings::getNormalizedMIMEType(mimeType);
+    mimeType = MIMETypeRegistry::getNormalizedMIMEType(mimeType);
 
     ObjectContentType defaultType = FrameLoader::defaultObjectContentType(url, mimeType, shouldPreferPlugInsForImages);
     if (defaultType != ObjectContentNone)
@@ -1139,10 +1144,9 @@ PassRefPtr<FrameNetworkingContext> FrameLoaderClientBlackBerry::createNetworking
     return FrameNetworkingContextBlackBerry::create(m_frame);
 }
 
-void FrameLoaderClientBlackBerry::startDownload(const ResourceRequest& request, const String& /*suggestedName*/)
+void FrameLoaderClientBlackBerry::startDownload(const ResourceRequest& request, const String& suggestedName)
 {
-    // FIXME: use the suggestedName?
-    m_webPagePrivate->load(request.url().string().utf8().data(), 0, "GET", NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, false, false, true, "");
+    m_webPagePrivate->load(request.url().string().utf8().data(), 0, "GET", NetworkRequest::UseProtocolCachePolicy, 0, 0, 0, 0, false, false, true, "", suggestedName.utf8().data());
 }
 
 void FrameLoaderClientBlackBerry::download(ResourceHandle* handle, const ResourceRequest&, const ResourceRequest&, const ResourceResponse& r)
@@ -1171,15 +1175,7 @@ void FrameLoaderClientBlackBerry::dispatchDidReceiveIcon()
 
 bool FrameLoaderClientBlackBerry::canCachePage() const
 {
-    // We won't cache pages containing video, audio or multipart with "multipart/x-mixed-replace".
-    ASSERT(m_frame->document());
-    RefPtr<NodeList> nodeList = m_frame->document()->getElementsByTagName(HTMLNames::videoTag.localName());
-    if (nodeList.get()->length() > 0)
-        return false;
-    nodeList = m_frame->document()->getElementsByTagName(HTMLNames::audioTag.localName());
-    if (nodeList.get()->length() > 0)
-        return false;
-
+    // We won't cache pages containing multipart with "multipart/x-mixed-replace".
     ASSERT(m_frame->loader()->documentLoader());
     const ResponseVector& responses = m_frame->loader()->documentLoader()->responses();
     size_t count = responses.size();

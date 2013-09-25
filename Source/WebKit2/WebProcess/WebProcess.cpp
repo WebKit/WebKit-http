@@ -130,6 +130,7 @@ static const double shutdownTimeout = 60;
 WebProcess::WebProcess()
     : ChildProcess(shutdownTimeout)
     , m_inDidClose(false)
+    , m_shouldTrackVisitedLinks(true)
     , m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
 #if USE(ACCELERATED_COMPOSITING) && PLATFORM(MAC)
@@ -261,6 +262,7 @@ void WebProcess::initializeWebProcess(const WebProcessCreationParameters& parame
 
 void WebProcess::setShouldTrackVisitedLinks(bool shouldTrackVisitedLinks)
 {
+    m_shouldTrackVisitedLinks = shouldTrackVisitedLinks;
     PageGroup::setShouldTrackVisitedLinks(shouldTrackVisitedLinks);
 }
 
@@ -344,7 +346,7 @@ bool WebProcess::isLinkVisited(LinkHash linkHash) const
 
 void WebProcess::addVisitedLink(WebCore::LinkHash linkHash)
 {
-    if (isLinkVisited(linkHash))
+    if (isLinkVisited(linkHash) || !m_shouldTrackVisitedLinks)
         return;
     connection()->send(Messages::WebContext::AddVisitedLinkHash(linkHash), 0);
 }
@@ -764,11 +766,12 @@ WebPageGroupProxy* WebProcess::webPageGroup(const WebPageGroupData& pageGroupDat
 static bool canPluginHandleResponse(const ResourceResponse& response)
 {
     String pluginPath;
+    bool blocked;
 
-    if (!WebProcess::shared().connection()->sendSync(Messages::WebContext::GetPluginPath(response.mimeType(), response.url().string()), Messages::WebContext::GetPluginPath::Reply(pluginPath), 0))
+    if (!WebProcess::shared().connection()->sendSync(Messages::WebContext::GetPluginPath(response.mimeType(), response.url().string()), Messages::WebContext::GetPluginPath::Reply(pluginPath, blocked), 0))
         return false;
 
-    return !pluginPath.isEmpty();
+    return !blocked && !pluginPath.isEmpty();
 }
 
 bool WebProcess::shouldUseCustomRepresentationForResponse(const ResourceResponse& response) const
@@ -809,6 +812,7 @@ void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint6
 
     HashSet<String> sitesSet;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     for (size_t i = 0; i < pluginPaths.size(); ++i) {
         RefPtr<NetscapePluginModule> netscapePluginModule = NetscapePluginModule::getOrCreate(pluginPaths[i]);
         if (!netscapePluginModule)
@@ -818,6 +822,7 @@ void WebProcess::getSitesWithPluginData(const Vector<String>& pluginPaths, uint6
         for (size_t i = 0; i < sites.size(); ++i)
             sitesSet.add(sites[i]);
     }
+#endif
 
     Vector<String> sites;
     copyToVector(sitesSet, sites);
@@ -829,6 +834,7 @@ void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Ve
 {
     LocalTerminationDisabler terminationDisabler(*this);
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     for (size_t i = 0; i < pluginPaths.size(); ++i) {
         RefPtr<NetscapePluginModule> netscapePluginModule = NetscapePluginModule::getOrCreate(pluginPaths[i]);
         if (!netscapePluginModule)
@@ -843,6 +849,7 @@ void WebProcess::clearPluginSiteData(const Vector<String>& pluginPaths, const Ve
         for (size_t i = 0; i < sites.size(); ++i)
             netscapePluginModule->clearSiteData(sites[i], flags, maxAgeInSeconds);
     }
+#endif
 
     connection()->send(Messages::WebContext::DidClearPluginSiteData(callbackID), 0);
 }
@@ -961,6 +968,11 @@ void WebProcess::garbageCollectJavaScriptObjects()
     gcController().garbageCollectNow();
 }
 
+void WebProcess::setJavaScriptGarbageCollectorTimerEnabled(bool flag)
+{
+    gcController().setJavaScriptGarbageCollectorTimerEnabled(flag);
+}
+
 #if ENABLE(PLUGIN_PROCESS)
 void WebProcess::pluginProcessCrashed(CoreIPC::Connection*, const String& pluginPath)
 {
@@ -1028,6 +1040,14 @@ void WebProcess::setTextCheckerState(const TextCheckerState& textCheckerState)
         if (grammarCheckingTurnedOff)
             page->unmarkAllBadGrammar();
     }
+}
+
+void WebProcess::didGetPlugins(CoreIPC::Connection*, uint64_t requestID, const Vector<WebCore::PluginInfo>& plugins)
+{
+#if USE(PLATFORM_STRATEGIES)
+    // Pass this to WebPlatformStrategies.cpp.
+    handleDidGetPlugins(requestID, plugins);
+#endif
 }
 
 } // namespace WebKit

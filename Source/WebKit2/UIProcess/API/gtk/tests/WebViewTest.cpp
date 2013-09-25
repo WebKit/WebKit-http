@@ -162,16 +162,27 @@ static gboolean parentWindowMapped(GtkWidget* widget, GdkEvent*, WebViewTest* te
     return FALSE;
 }
 
-void WebViewTest::showInWindowAndWaitUntilMapped()
+void WebViewTest::showInWindowAndWaitUntilMapped(GtkWindowType windowType)
 {
     g_assert(!m_parentWindow);
-    m_parentWindow = gtk_window_new(GTK_WINDOW_POPUP);
+    m_parentWindow = gtk_window_new(windowType);
     gtk_container_add(GTK_CONTAINER(m_parentWindow), GTK_WIDGET(m_webView));
     gtk_widget_show(GTK_WIDGET(m_webView));
 
     g_signal_connect(m_parentWindow, "map-event", G_CALLBACK(parentWindowMapped), this);
     gtk_widget_show(m_parentWindow);
     g_main_loop_run(m_mainLoop);
+}
+
+void WebViewTest::resizeView(int width, int height)
+{
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(GTK_WIDGET(m_webView), &allocation);
+    if (width != -1)
+        allocation.width = width;
+    if (height != -1)
+        allocation.height = height;
+    gtk_widget_size_allocate(GTK_WIDGET(m_webView), &allocation);
 }
 
 void WebViewTest::mouseMoveTo(int x, int y, unsigned int mouseModifiers)
@@ -268,7 +279,7 @@ WebKitJavascriptResult* WebViewTest::runJavaScriptAndWaitUntilFinished(const cha
         webkit_javascript_result_unref(m_javascriptResult);
     m_javascriptResult = 0;
     m_javascriptError = error;
-    webkit_web_view_run_javascript(m_webView, javascript, reinterpret_cast<GAsyncReadyCallback>(runJavaScriptReadyCallback), this);
+    webkit_web_view_run_javascript(m_webView, javascript, 0, reinterpret_cast<GAsyncReadyCallback>(runJavaScriptReadyCallback), this);
     g_main_loop_run(m_mainLoop);
 
     return m_javascriptResult;

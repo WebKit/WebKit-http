@@ -29,6 +29,7 @@
 # Module to share code to get to WebKit directories.
 
 use strict;
+use version;
 use warnings;
 use Config;
 use Digest::MD5 qw(md5_hex);
@@ -102,6 +103,7 @@ my $forceChromiumUpdate;
 my $isInspectorFrontend;
 my $isWK2;
 my $shouldTargetWebProcess;
+my $shouldUseGuardMalloc;
 my $xcodeVersion;
 
 # Variables for Win32 support
@@ -300,10 +302,6 @@ sub determineArchitecture
         if ($host_triple =~ m/^host = ([^-]+)-/) {
             # We have a configured build tree; use it.
             $architecture = $1;
-        } else {
-            # Fall back to output of `arch', if it is present.
-            $architecture = `arch`;
-            chomp $architecture;
         }
     } elsif (isAppleMacWebKit()) {
         if (open ARCHITECTURE, "$baseProductDir/Architecture") {
@@ -313,15 +311,24 @@ sub determineArchitecture
         if ($architecture) {
             chomp $architecture;
         } else {
-            if (isLeopard()) {
-                $architecture = `arch`;
-            } else {
-                my $supports64Bit = `sysctl -n hw.optional.x86_64`;
-                chomp $supports64Bit;
-                $architecture = $supports64Bit ? 'x86_64' : `arch`;
-            }
-            chomp $architecture;
+            my $supports64Bit = `sysctl -n hw.optional.x86_64`;
+            chomp $supports64Bit;
+            $architecture = 'x86_64' if $supports64Bit;
         }
+    } elsif (isEfl()) {
+        my $host_processor = "";
+        $host_processor = `cmake --system-information | grep CMAKE_SYSTEM_PROCESSOR`;
+        if ($host_processor =~ m/^CMAKE_SYSTEM_PROCESSOR \"([^"]+)\"/) {
+            # We have a configured build tree; use it.
+            $architecture = $1;
+            $architecture = 'x86_64' if $architecture eq 'amd64';
+        }
+    }
+
+    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl())) {
+        # Fall back to output of `arch', if it is present.
+        $architecture = `arch`;
+        chomp $architecture;
     }
 }
 
@@ -340,7 +347,7 @@ sub determineNumberOfCPUs
     } elsif (isWindows() || isCygwin()) {
         # Assumes cygwin
         $numberOfCPUs = `ls /proc/registry/HKEY_LOCAL_MACHINE/HARDWARE/DESCRIPTION/System/CentralProcessor | wc -w`;
-    } elsif (isDarwin()) {
+    } elsif (isDarwin() || isFreeBSD()) {
         chomp($numberOfCPUs = `sysctl -n hw.ncpu`);
     }
 }
@@ -932,7 +939,6 @@ sub blackberryCMakeArguments()
     if ($cpu eq "a9") {
         $cpu = $arch . "v7le";
         push @cmakeExtraOptions, '-DTARGETING_PLAYBOOK=1';
-        push @cmakeExtraOptions, '-DENABLE_GLES2=1';
     }
 
     my $stageDir = $ENV{"STAGE_DIR"};
@@ -959,7 +965,7 @@ sub blackberryCMakeArguments()
 
     push @cmakeExtraOptions, "-DCMAKE_SKIP_RPATH='ON'" if isDarwin();
     push @cmakeExtraOptions, "-DENABLE_DRT=1" if $ENV{"ENABLE_DRT"};
-    push @cmakeExtraOptions, "-DENABLE_GLES2=1" if $ENV{"ENABLE_GLES2"};
+    push @cmakeExtraOptions, "-DENABLE_GLES2=1" unless $ENV{"DISABLE_GLES2"};
 
     my @includeSystemDirectories;
     push @includeSystemDirectories, File::Spec->catdir($stageInc, "grskia", "skia");
@@ -1261,6 +1267,11 @@ sub isLinux()
     return ($^O eq "linux") || 0;
 }
 
+sub isFreeBSD()
+{
+    return ($^O eq "freebsd") || 0;
+}
+
 sub isARM()
 {
     return $Config{archname} =~ /^arm-/;
@@ -1354,11 +1365,6 @@ sub osXVersion()
     return $osXVersion;
 }
 
-sub isLeopard()
-{
-    return isDarwin() && osXVersion()->{"minor"} == 5;
-}
-
 sub isSnowLeopard()
 {
     return isDarwin() && osXVersion()->{"minor"} == 6;
@@ -1384,6 +1390,32 @@ sub determineShouldTargetWebProcess
 {
     return if defined($shouldTargetWebProcess);
     $shouldTargetWebProcess = checkForArgumentAndRemoveFromARGV("--target-web-process");
+}
+
+sub appendToEnvironmentVariableList
+{
+    my ($environmentVariableName, $value) = @_;
+
+    if (defined($ENV{$environmentVariableName})) {
+        $ENV{$environmentVariableName} .= ":" . $value;
+    } else {
+        $ENV{$environmentVariableName} = $value;
+    }
+}
+
+sub setUpGuardMallocIfNeeded
+{
+    if (!isDarwin()) {
+        return;
+    }
+
+    if (!defined($shouldUseGuardMalloc)) {
+        $shouldUseGuardMalloc = checkForArgumentAndRemoveFromARGV("--guard-malloc");
+    }
+
+    if ($shouldUseGuardMalloc) {
+        appendToEnvironmentVariableList("DYLD_INSERT_LIBRARIES", "/usr/lib/libgmalloc.dylib");
+    }
 }
 
 sub relativeScriptsDir()
@@ -1491,9 +1523,15 @@ sub setupAppleWinEnv()
         my $restartNeeded = 0;
         my %variablesToSet = ();
 
-        # Setting the environment variable 'CYGWIN' to 'tty' makes cygwin enable extra support (i.e., termios)
-        # for UNIX-like ttys in the Windows console
-        $variablesToSet{CYGWIN} = "tty" unless $ENV{CYGWIN};
+        # FIXME: We should remove this explicit version check for cygwin once we stop supporting Cygwin 1.7.9 or older versions. 
+        # https://bugs.webkit.org/show_bug.cgi?id=85791
+        my $currentCygwinVersion = version->parse(`uname -r`);
+        my $firstCygwinVersionWithoutTTYSupport = version->parse("1.7.10");
+        if ($currentCygwinVersion < $firstCygwinVersionWithoutTTYSupport) {
+            # Setting the environment variable 'CYGWIN' to 'tty' makes cygwin enable extra support (i.e., termios)
+            # for UNIX-like ttys in the Windows console
+            $variablesToSet{CYGWIN} = "tty" unless $ENV{CYGWIN};
+        }
         
         # Those environment variables must be set to be able to build inside Visual Studio.
         $variablesToSet{WEBKITLIBRARIESDIR} = windowsLibrariesDir() unless $ENV{WEBKITLIBRARIESDIR};
@@ -1830,7 +1868,7 @@ sub runAutogenForAutotoolsProjectIfNecessary($@)
     # used on Chromium build.
     determineArchitecture();
     if ($architecture ne "x86_64" && !isARM()) {
-        $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse";
+        $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
     }
 
     # Prefix the command with jhbuild run.
@@ -1843,13 +1881,13 @@ sub runAutogenForAutotoolsProjectIfNecessary($@)
 
 sub getJhbuildPath()
 {
-    return join(baseProductDir(), "Dependencies");
+    return join('/', baseProductDir(), "Dependencies");
 }
 
 sub jhbuildConfigurationChanged()
 {
     foreach my $file (qw(jhbuildrc.md5sum jhbuild.modules.md5sum)) {
-        my $path = join(getJhbuildPath(), $file);
+        my $path = join('/', getJhbuildPath(), $file);
         if (! -e $path) {
             return 1;
         }
@@ -1988,7 +2026,7 @@ sub buildAutotoolsProject($@)
     # Save md5sum for jhbuild-related files.
     foreach my $file (qw(jhbuildrc jhbuild.modules)) {
         my $source = join('/', $sourceDir, "Tools", "gtk", $file);
-        my $destination = join(getJhbuildPath(), $file);
+        my $destination = join('/', getJhbuildPath(), $file);
         open(SUM, ">$destination" . ".md5sum");
         print SUM getMD5HashForFile($source);
         close(SUM);
@@ -2049,6 +2087,13 @@ sub generateBuildSystemFromCMakeProject
     push @args, $additionalCMakeArgs if $additionalCMakeArgs;
 
     push @args, '"' . sourceDir() . '"';
+
+    # Compiler options to keep floating point values consistent
+    # between 32-bit and 64-bit architectures.
+    determineArchitecture();
+    if ($architecture ne "x86_64" && !isARM()) {
+        $ENV{'CXXFLAGS'} = "-march=pentium4 -msse2 -mfpmath=sse " . ($ENV{'CXXFLAGS'} || "");
+    }
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
     # parsed for shell metacharacters.
@@ -2449,6 +2494,49 @@ sub buildChromium($@)
     return $result;
 }
 
+sub chromiumInstall64BitAndroidLinkerIfNeeded
+{
+    my ($androidNdkRoot) = @_;
+
+    # Resolve the toolchain version through glob().
+    my $linkerDirPrefix = glob("$androidNdkRoot/toolchains/arm-linux-androideabi-*/prebuilt/linux-x86");
+
+    my $linkerDirname1 = "$linkerDirPrefix/bin";
+    my $linkerBasename1 = "arm-linux-androideabi-ld";
+    my $linkerDirname2 = "$linkerDirPrefix/arm-linux-androideabi/bin";
+    my $linkerBasename2 = "ld";
+    my $newLinker = "arm-linux-androideabi-ld.e4df3e0a5bb640ccfa2f30ee67fe9b3146b152d6";
+
+    # Do not continue if the new linker is not (yet) available.
+    if (! -e "third_party/aosp/$newLinker") {
+        return;
+    }
+
+    chromiumReplaceAndroidLinkerIfNeeded($linkerDirname1, $linkerBasename1, $newLinker);
+    chromiumReplaceAndroidLinkerIfNeeded($linkerDirname2, $linkerBasename2, $newLinker);
+}
+
+sub chromiumReplaceAndroidLinkerIfNeeded
+{
+    my ($linkerDirname, $linkerBasename, $newLinker) = @_;
+
+    # If the destination directory does not exist, or the linker has already
+    # been installed, replacing it will not be necessary.
+    if (! -d "$linkerDirname" || -e "$linkerDirname/$newLinker") {
+        return;
+    }
+
+    print "Installing 64-bit Android linker in $linkerDirname..\n";
+    system("cp", "third_party/aosp/$newLinker", "$linkerDirname/$newLinker");
+    system("mv", "$linkerDirname/$linkerBasename", "$linkerDirname/$linkerBasename.orig");
+    system("ln", "-s", "$newLinker", "$linkerDirname/$linkerBasename");
+
+    if (! -e "$linkerDirname/$newLinker") {
+        print "Unable to copy the linker.\n";
+        exit 1;
+    }
+}
+
 sub appleApplicationSupportPath
 {
     open INSTALL_DIR, "</proc/registry/HKEY_LOCAL_MACHINE/SOFTWARE/Apple\ Inc./Apple\ Application\ Support/InstallDir";
@@ -2481,6 +2569,7 @@ sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded()
 Usage: @{[basename($0)]} [options] [args ...]
   --help                Show this help message
   --no-saved-state      Disable application resume for the session on Mac OS 10.7
+  --guard-malloc        Enable Guard Malloc (Mac OS X only)
 EOF
     exit(1);
 }
@@ -2488,7 +2577,7 @@ EOF
 sub argumentsForRunAndDebugMacWebKitApp()
 {
     my @args = @ARGV;
-    push @args, ("-ApplePersistenceIgnoreState", "YES") if !isLeopard() && !isSnowLeopard() && checkForArgumentAndRemoveFromArrayRef("--no-saved-state", \@args);
+    push @args, ("-ApplePersistenceIgnoreState", "YES") if !isSnowLeopard() && checkForArgumentAndRemoveFromArrayRef("--no-saved-state", \@args);
     return @args;
 }
 
@@ -2499,6 +2588,9 @@ sub runMacWebKitApp($;$)
     print "Starting @{[basename($appPath)]} with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
     $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
     $ENV{WEBKIT_UNSET_DYLD_FRAMEWORK_PATH} = "YES";
+
+    setUpGuardMallocIfNeeded();
+
     if (defined($useOpenCommand) && $useOpenCommand == USE_OPEN_COMMAND) {
         return system("open", "-W", "-a", $appPath, "--args", argumentsForRunAndDebugMacWebKitApp());
     }
@@ -2518,6 +2610,9 @@ sub execMacWebKitAppForDebugging($)
     my $productDir = productDir();
     $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
     $ENV{WEBKIT_UNSET_DYLD_FRAMEWORK_PATH} = "YES";
+
+    setUpGuardMallocIfNeeded();
+
     my @architectureFlags = ("-arch", architecture());
     if (!shouldTargetWebProcess()) {
         print "Starting @{[basename($appPath)]} under gdb with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
@@ -2526,7 +2621,8 @@ sub execMacWebKitAppForDebugging($)
         my $webProcessShimPath = File::Spec->catfile($productDir, "WebProcessShim.dylib");
         my $webProcessPath = File::Spec->catdir($productDir, "WebProcess.app");
         my $webKit2ExecutablePath = File::Spec->catfile($productDir, "WebKit2.framework", "WebKit2");
-        $ENV{DYLD_INSERT_LIBRARIES} = $webProcessShimPath;
+
+        appendToEnvironmentVariableList("DYLD_INSERT_LIBRARIES", $webProcessShimPath);
 
         print "Starting WebProcess under gdb with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
         exec { $gdbPath } $gdbPath, @architectureFlags, "--args", $webProcessPath, $webKit2ExecutablePath, "-type", "webprocess", "-client-executable", $appPath or die;

@@ -22,13 +22,14 @@
 #define QtDialogRunner_h
 
 #include "WKSecurityOrigin.h"
+#include "qquickwebview_p.h"
 #include <QtCore/QEventLoop>
 #include <QtCore/QStringList>
 #include <wtf/OwnPtr.h>
 
 QT_BEGIN_NAMESPACE
-class QDeclarativeComponent;
-class QDeclarativeContext;
+class QQmlComponent;
+class QQmlContext;
 class QQuickItem;
 QT_END_NAMESPACE
 
@@ -38,17 +39,19 @@ class QtDialogRunner : public QEventLoop {
     Q_OBJECT
 
 public:
-    QtDialogRunner();
+    QtDialogRunner(QQuickWebView*);
     virtual ~QtDialogRunner();
 
-    bool initForAlert(QDeclarativeComponent*, QQuickItem* dialogParent, const QString& message);
-    bool initForConfirm(QDeclarativeComponent*, QQuickItem* dialogParent, const QString& message);
-    bool initForPrompt(QDeclarativeComponent*, QQuickItem* dialogParent, const QString& message, const QString& defaultValue);
-    bool initForAuthentication(QDeclarativeComponent*, QQuickItem* dialogParent, const QString& hostname, const QString& realm, const QString& prefilledUsername);
-    bool initForCertificateVerification(QDeclarativeComponent*, QQuickItem*, const QString& hostname);
-    bool initForProxyAuthentication(QDeclarativeComponent*, QQuickItem*, const QString& hostname, uint16_t port, const QString& prefilledUsername);
-    bool initForFilePicker(QDeclarativeComponent*, QQuickItem*, const QStringList& selectedFiles, bool allowMultiple);
-    bool initForDatabaseQuotaDialog(QDeclarativeComponent*, QQuickItem*, const QString& databaseName, const QString& displayName, WKSecurityOriginRef, quint64 currentQuota, quint64 currentOriginUsage, quint64 currentDatabaseUsage, quint64 expectedUsage);
+    bool initForAlert(const QString& message);
+    bool initForConfirm(const QString& message);
+    bool initForPrompt(const QString& message, const QString& defaultValue);
+    bool initForAuthentication(const QString& hostname, const QString& realm, const QString& prefilledUsername);
+    bool initForCertificateVerification(const QString& hostname);
+    bool initForProxyAuthentication(const QString& hostname, uint16_t port, const QString& prefilledUsername);
+    bool initForFilePicker(const QStringList& selectedFiles, bool allowMultiple);
+    bool initForDatabaseQuotaDialog(const QString& databaseName, const QString& displayName, WKSecurityOriginRef, quint64 currentQuota, quint64 currentOriginUsage, quint64 currentDatabaseUsage, quint64 expectedUsage);
+
+    void run();
 
     QQuickItem* dialog() const { return m_dialog.get(); }
 
@@ -63,34 +66,16 @@ public:
     QStringList filePaths() const { return m_filepaths; }
 
 public slots:
-    void onAccepted(const QString& result = QString())
-    {
-        m_wasAccepted = true;
-        m_result = result;
-    }
-
-    void onAuthenticationAccepted(const QString& username, const QString& password)
-    {
-        m_username = username;
-        m_password = password;
-    }
-
-    void onFileSelected(const QStringList& filePaths)
-    {
-        m_wasAccepted = true;
-        m_filepaths = filePaths;
-    }
-
-    void onDatabaseQuotaAccepted(quint64 quota)
-    {
-        m_wasAccepted = true;
-        m_databaseQuota = quota;
-    }
+    void onAccepted(const QString& result = QString());
+    void onAuthenticationAccepted(const QString& username, const QString& password);
+    void onFileSelected(const QStringList& filePaths);
+    void onDatabaseQuotaAccepted(quint64 quota);
 
 private:
-    bool createDialog(QDeclarativeComponent*, QQuickItem* dialogParent, QObject* contextObject);
+    bool createDialog(QQmlComponent*, QObject* contextObject);
 
-    OwnPtr<QDeclarativeContext> m_dialogContext;
+    QQuickWebView* m_webView;
+    OwnPtr<QQmlContext> m_dialogContext;
     OwnPtr<QQuickItem> m_dialog;
     QString m_result;
     bool m_wasAccepted;

@@ -45,10 +45,8 @@ class StyleDeprecatedFlexibleBoxData;
 class StyleFilterData;
 #endif
 class StyleFlexibleBoxData;
-#if ENABLE(CSS_GRID_LAYOUT)
 class StyleGridData;
 class StyleGridItemData;
-#endif
 class StyleMarqueeData;
 class StyleMultiColData;
 class StyleReflection;
@@ -118,10 +116,8 @@ public:
     DataRef<StyleFilterData> m_filter; // Filter operations (url, sepia, blur, etc.)
 #endif
 
-#if ENABLE(CSS_GRID_LAYOUT)
     DataRef<StyleGridData> m_grid;
     DataRef<StyleGridItemData> m_gridItem;
-#endif
 
     OwnPtr<ContentData> m_content;
     OwnPtr<CounterDirectiveMap> m_counterDirectives;
@@ -150,6 +146,8 @@ public:
     Color m_visitedLinkBorderTopColor;
     Color m_visitedLinkBorderBottomColor;
 
+    float m_order;
+
     AtomicString m_flowThread;
     AtomicString m_regionThread;
     unsigned m_regionOverflow : 1; // RegionOverflow
@@ -161,6 +159,11 @@ public:
     unsigned m_pageSizeType : 2; // PageSizeType
     unsigned m_transformStyle3D : 1; // ETransformStyle3D
     unsigned m_backfaceVisibility : 1; // EBackfaceVisibility
+
+    unsigned m_alignContent : 3; // EAlignContent
+    unsigned m_alignItems : 3; // EAlignItems
+    unsigned m_alignSelf : 3; // EAlignItems
+    unsigned m_justifyContent : 3; // EJustifyContent
 
     unsigned userDrag : 2; // EUserDrag
     unsigned textOverflow : 1; // Whether or not lines that spill out should be truncated with "..."
@@ -174,10 +177,10 @@ public:
     unsigned m_wrapFlow: 3; // WrapFlow
     unsigned m_wrapThrough: 1; // WrapThrough
 
-    bool m_hasAspectRatio : 1; // Whether or not an aspect ratio has been specified.
 #if USE(ACCELERATED_COMPOSITING)
-    bool m_runningAcceleratedAnimation : 1;
+    unsigned m_runningAcceleratedAnimation : 1;
 #endif
+    unsigned m_hasAspectRatio : 1; // Whether or not an aspect ratio has been specified.
 
 private:
     StyleRareNonInheritedData();

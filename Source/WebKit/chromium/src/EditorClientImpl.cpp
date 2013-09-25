@@ -39,6 +39,7 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformString.h"
 #include "RenderObject.h"
+#include "Settings.h"
 #include "SpellChecker.h"
 #include "UndoStep.h"
 
@@ -85,6 +86,10 @@ EditorClientImpl::~EditorClientImpl()
 void EditorClientImpl::pageDestroyed()
 {
     // Our lifetime is bound to the WebViewImpl.
+}
+
+void EditorClientImpl::frameWillDetachPage(WebCore::Frame* frame)
+{
 }
 
 bool EditorClientImpl::shouldShowDeleteInterface(HTMLElement* elem)
@@ -164,7 +169,8 @@ void EditorClientImpl::toggleContinuousSpellChecking()
 
 bool EditorClientImpl::isGrammarCheckingEnabled()
 {
-    return false;
+    const Frame* frame = m_webView->focusedWebCoreFrame();
+    return frame && frame->settings() && frame->settings()->asynchronousSpellCheckingEnabled();
 }
 
 void EditorClientImpl::toggleGrammarChecking()
@@ -694,6 +700,12 @@ void EditorClientImpl::textDidChangeInTextArea(Element*)
 {
 }
 
+bool EditorClientImpl::shouldEraseMarkersAfterChangeSelection(TextCheckingType type) const
+{
+    const Frame* frame = m_webView->focusedWebCoreFrame();
+    return !frame || !frame->settings() || !frame->settings()->asynchronousSpellCheckingEnabled();
+}
+
 void EditorClientImpl::ignoreWordInSpellDocument(const String&)
 {
     notImplemented();
@@ -729,10 +741,12 @@ void EditorClientImpl::checkSpellingOfString(const UChar* text, int length,
         *misspellingLength = spellLength;
 }
 
-void EditorClientImpl::requestCheckingOfString(SpellChecker* sender, const WebCore::TextCheckingRequest& request)
+void EditorClientImpl::requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest> request)
 {
-    if (m_webView->spellCheckClient())
-        m_webView->spellCheckClient()->requestCheckingOfText(request.text(), new WebTextCheckingCompletionImpl(request.sequence(), sender));
+    if (m_webView->spellCheckClient()) {
+        String text = request->text();
+        m_webView->spellCheckClient()->requestCheckingOfText(text, new WebTextCheckingCompletionImpl(request));
+    }
 }
 
 String EditorClientImpl::getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord)
@@ -759,7 +773,7 @@ void EditorClientImpl::checkGrammarOfString(const UChar*, int length,
 {
     notImplemented();
     if (badGrammarLocation)
-        *badGrammarLocation = 0;
+        *badGrammarLocation = -1;
     if (badGrammarLength)
         *badGrammarLength = 0;
 }

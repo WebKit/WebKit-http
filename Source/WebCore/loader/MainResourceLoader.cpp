@@ -72,7 +72,7 @@ static bool shouldLoadAsEmptyDocument(const KURL& url)
 
 MainResourceLoader::MainResourceLoader(Frame* frame)
     : ResourceLoader(frame, ResourceLoaderOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, AskClientForCrossOriginCredentials, SkipSecurityCheck))
-    , m_dataLoadTimer(this, &MainResourceLoader::handleDataLoadNow)
+    , m_dataLoadTimer(this, &MainResourceLoader::handleSubstituteDataLoadNow)
     , m_loadingMultipartContent(false)
     , m_waitingForContentPolicy(false)
     , m_timeOfLastDataReceived(0.0)
@@ -167,7 +167,7 @@ void MainResourceLoader::continueAfterNavigationPolicy(const ResourceRequest& re
         // A redirect resulted in loading substitute data.
         ASSERT(documentLoader()->timing()->redirectCount());
         handle()->cancel();
-        handleDataLoadSoon(request);
+        handleSubstituteDataLoadSoon(request);
     }
 
     deref(); // balances ref in willSendRequest
@@ -267,10 +267,10 @@ void MainResourceLoader::continueAfterContentPolicy(PolicyAction contentPolicy, 
     case PolicyUse: {
         // Prevent remote web archives from loading because they can claim to be from any domain and thus avoid cross-domain security checks (4120255).
         bool isRemoteWebArchive = (equalIgnoringCase("application/x-webarchive", mimeType) || equalIgnoringCase("multipart/related", mimeType))
-            && !m_substituteData.isValid() && !url.isLocalFile();
+            && !m_substituteData.isValid() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol());
         if (!frameLoader()->client()->canShowMIMEType(mimeType) || isRemoteWebArchive) {
             frameLoader()->policyChecker()->cannotShowMIMEType(r);
-            // Check reachedTerminalState since the load may have already been cancelled inside of _handleUnimplementablePolicyWithErrorCode::.
+            // Check reachedTerminalState since the load may have already been canceled inside of _handleUnimplementablePolicyWithErrorCode::.
             if (!reachedTerminalState())
                 stopLoadingForPolicyChange();
             return;
@@ -580,7 +580,7 @@ void MainResourceLoader::handleEmptyLoad(const KURL& url, bool forURLScheme)
     didReceiveResponse(response);
 }
 
-void MainResourceLoader::handleDataLoadNow(MainResourceLoaderTimer*)
+void MainResourceLoader::handleSubstituteDataLoadNow(MainResourceLoaderTimer*)
 {
     RefPtr<MainResourceLoader> protect(this);
 
@@ -606,14 +606,14 @@ void MainResourceLoader::startDataLoadTimer()
 #endif
 }
 
-void MainResourceLoader::handleDataLoadSoon(const ResourceRequest& r)
+void MainResourceLoader::handleSubstituteDataLoadSoon(const ResourceRequest& r)
 {
     m_initialRequest = r;
     
     if (m_documentLoader->deferMainResourceDataLoad())
         startDataLoadTimer();
     else
-        handleDataLoadNow(0);
+        handleSubstituteDataLoadNow(0);
 }
 
 bool MainResourceLoader::loadNow(ResourceRequest& r)
@@ -642,7 +642,7 @@ bool MainResourceLoader::loadNow(ResourceRequest& r)
 
     resourceLoadScheduler()->addMainResourceLoad(this);
     if (m_substituteData.isValid()) 
-        handleDataLoadSoon(r);
+        handleSubstituteDataLoadSoon(r);
     else if (shouldLoadEmpty || frameLoader()->client()->representationExistsForURLScheme(url.protocol()))
         handleEmptyLoad(url, !shouldLoadEmpty);
     else
@@ -651,9 +651,13 @@ bool MainResourceLoader::loadNow(ResourceRequest& r)
     return false;
 }
 
-bool MainResourceLoader::load(const ResourceRequest& r, const SubstituteData& substituteData)
+void MainResourceLoader::load(const ResourceRequest& r, const SubstituteData& substituteData)
 {
     ASSERT(!m_handle);
+
+    // It appears that it is possible for this load to be cancelled and derefenced by the DocumentLoader
+    // in willSendRequest() if loadNow() is called.
+    RefPtr<MainResourceLoader> protect(this);
 
     m_substituteData = substituteData;
 
@@ -679,8 +683,6 @@ bool MainResourceLoader::load(const ResourceRequest& r, const SubstituteData& su
     }
     if (defer)
         m_initialRequest = request;
-
-    return true;
 }
 
 void MainResourceLoader::setDefersLoading(bool defers)
@@ -694,13 +696,9 @@ void MainResourceLoader::setDefersLoading(bool defers)
         if (m_initialRequest.isNull())
             return;
 
-        if (m_substituteData.isValid() && m_documentLoader->deferMainResourceDataLoad())
-            startDataLoadTimer();
-        else {
-            ResourceRequest r(m_initialRequest);
-            m_initialRequest = ResourceRequest();
-            loadNow(r);
-        }
+        ResourceRequest initialRequest(m_initialRequest);
+        m_initialRequest = ResourceRequest();
+        loadNow(initialRequest);
     }
 }
 

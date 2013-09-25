@@ -130,6 +130,7 @@
 #include <QDropEvent>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QLabel>
 #include <QMenu>
 #include <QMessageBox>
 #include <QNetworkProxy>
@@ -2082,7 +2083,12 @@ void QWebPage::javaScriptAlert(QWebFrame *frame, const QString& msg)
     Q_UNUSED(frame)
 #ifndef QT_NO_MESSAGEBOX
     QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
-    QMessageBox::information(parent, tr("JavaScript Alert - %1").arg(mainFrame()->url().host()), escapeHtml(msg), QMessageBox::Ok);
+    QMessageBox box(parent);
+    box.setWindowTitle(tr("JavaScript Alert - %1").arg(mainFrame()->url().host()));
+    box.setTextFormat(Qt::PlainText);
+    box.setText(msg);
+    box.setStandardButtons(QMessageBox::Ok);
+    box.exec();
 #endif
 }
 
@@ -2090,7 +2096,7 @@ void QWebPage::javaScriptAlert(QWebFrame *frame, const QString& msg)
     This function is called whenever a JavaScript program running inside \a frame calls the confirm() function
     with the message, \a msg. Returns true if the user confirms the message; otherwise returns false.
 
-    The default implementation executes the query using QMessageBox::information with QMessageBox::Yes and QMessageBox::No buttons.
+    The default implementation executes the query using QMessageBox::information with QMessageBox::Ok and QMessageBox::Cancel buttons.
 */
 bool QWebPage::javaScriptConfirm(QWebFrame *frame, const QString& msg)
 {
@@ -2099,7 +2105,12 @@ bool QWebPage::javaScriptConfirm(QWebFrame *frame, const QString& msg)
     return true;
 #else
     QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
-    return QMessageBox::Yes == QMessageBox::information(parent, tr("JavaScript Confirm - %1").arg(mainFrame()->url().host()), escapeHtml(msg), QMessageBox::Yes, QMessageBox::No);
+    QMessageBox box(parent);
+    box.setWindowTitle(tr("JavaScript Confirm - %1").arg(mainFrame()->url().host()));
+    box.setTextFormat(Qt::PlainText);
+    box.setText(msg);
+    box.setStandardButtons(QMessageBox::Ok | QMessageBox::Cancel);
+    return QMessageBox::Ok == box.exec();
 #endif
 }
 
@@ -2118,10 +2129,30 @@ bool QWebPage::javaScriptPrompt(QWebFrame *frame, const QString& msg, const QStr
     Q_UNUSED(frame)
     bool ok = false;
 #ifndef QT_NO_INPUTDIALOG
+
     QWidget* parent = (d->client) ? d->client->ownerWidget() : 0;
-    QString x = QInputDialog::getText(parent, tr("JavaScript Prompt - %1").arg(mainFrame()->url().host()), escapeHtml(msg), QLineEdit::Normal, defaultValue, &ok);
+    QInputDialog dlg(parent);
+    dlg.setWindowTitle(tr("JavaScript Prompt - %1").arg(mainFrame()->url().host()));
+
+    // Hack to force the dialog's QLabel into plain text mode
+    // prevents https://bugs.webkit.org/show_bug.cgi?id=34429
+    QLabel* label = dlg.findChild<QLabel*>();
+    if (label)
+        label->setTextFormat(Qt::PlainText);
+
+    // double the &'s because single & will underline the following character
+    // (Accelerator mnemonics)
+    QString escMsg(msg);
+    escMsg.replace(QChar::fromLatin1('&'), QLatin1String("&&"));
+    dlg.setLabelText(escMsg);
+
+    dlg.setTextEchoMode(QLineEdit::Normal);
+    dlg.setTextValue(defaultValue);
+
+    ok = !!dlg.exec();
+
     if (ok && result)
-        *result = x;
+        *result = dlg.textValue();
 #endif
     return ok;
 }
@@ -2533,7 +2564,7 @@ QWebPage::ViewportAttributes QWebPage::viewportAttributesForSize(const QSize& av
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(conf);
 
     result.m_isValid = true;
-    result.m_size = conf.layoutSize;
+    result.m_size = QSizeF(conf.layoutSize.width(), conf.layoutSize.height());
     result.m_initialScaleFactor = conf.initialScale;
     result.m_minimumScaleFactor = conf.minimumScale;
     result.m_maximumScaleFactor = conf.maximumScale;
@@ -3120,7 +3151,7 @@ bool QWebPage::event(QEvent *ev)
     case QEvent::TouchBegin:
     case QEvent::TouchUpdate:
     case QEvent::TouchEnd:
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#if HAVE(QT5)
     case QEvent::TouchCancel:
 #endif
         // Return whether the default action was cancelled in the JS event handler
@@ -3407,7 +3438,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
 
     \inmodule QtWebKit
 
-    \sa QWebPage::extension() QWebPage::ExtensionReturn
+    \sa QWebPage::extension(), QWebPage::ExtensionReturn
 */
 
 
@@ -3418,7 +3449,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
 
     \inmodule QtWebKit
 
-    \sa QWebPage::extension() QWebPage::ExtensionOption
+    \sa QWebPage::extension(), QWebPage::ExtensionOption
 */
 
 /*!
@@ -3434,7 +3465,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
 
     The error itself is reported by an error \a domain, the \a error code as well as \a errorString.
 
-    \sa QWebPage::extension() QWebPage::ErrorPageExtensionReturn
+    \sa QWebPage::extension(), QWebPage::ErrorPageExtensionReturn
 */
 
 /*!
@@ -3481,7 +3512,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     External objects such as stylesheets or images referenced in the HTML are located relative to
     \a baseUrl.
 
-    \sa QWebPage::extension() QWebPage::ErrorPageExtensionOption, QString::toUtf8()
+    \sa QWebPage::extension(), QWebPage::ErrorPageExtensionOption, QString::toUtf8()
 */
 
 /*!
@@ -3524,7 +3555,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     The ChooseMultipleFilesExtensionOption class holds the frame originating the request
     and the suggested filenames which might be provided.
 
-    \sa QWebPage::extension() QWebPage::chooseFile(), QWebPage::ChooseMultipleFilesExtensionReturn
+    \sa QWebPage::extension(), QWebPage::chooseFile(), QWebPage::ChooseMultipleFilesExtensionReturn
 */
 
 /*!
@@ -3553,7 +3584,7 @@ void QWebPage::updatePositionDependentActions(const QPoint &pos)
     The ChooseMultipleFilesExtensionReturn class holds the filenames selected by the user
     when the extension is invoked.
 
-    \sa QWebPage::extension() QWebPage::ChooseMultipleFilesExtensionOption
+    \sa QWebPage::extension(), QWebPage::ChooseMultipleFilesExtensionOption
 */
 
 /*!

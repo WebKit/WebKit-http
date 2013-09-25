@@ -31,15 +31,16 @@
 #include "GeolocationError.h"
 #include "GeolocationPermissionClientQt.h"
 #include "GeolocationPosition.h"
+#include "HTMLFormElement.h"
 #include "Page.h"
 #include "qwebframe.h"
 #include "qwebframe_p.h"
 #include "qwebpage.h"
 #include "qwebpage_p.h"
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#if !HAVE(QT5)
 #include <QGeoPositionInfoSource>
-#elif QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#elif HAVE(QT5)
 #include <QtLocation/QGeoPositionInfoSource>
 #endif
 

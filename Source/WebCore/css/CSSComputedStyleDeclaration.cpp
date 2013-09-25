@@ -41,11 +41,6 @@
 #include "ContentData.h"
 #include "CounterContent.h"
 #include "CursorList.h"
-#if ENABLE(CSS_SHADERS)
-#include "CustomFilterNumberParameter.h"
-#include "CustomFilterOperation.h"
-#include "CustomFilterParameter.h"
-#endif
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "FontFeatureSettings.h"
@@ -59,12 +54,19 @@
 #include "ShadowValue.h"
 #include "StylePropertySet.h"
 #include "StylePropertyShorthand.h"
+#include "WebKitCSSTransformValue.h"
+#include "WebKitFontFamilyNames.h"
+
+#if ENABLE(CSS_SHADERS)
+#include "CustomFilterNumberParameter.h"
+#include "CustomFilterOperation.h"
+#include "CustomFilterParameter.h"
+#endif
+
 #if ENABLE(CSS_FILTERS)
 #include "StyleCustomFilterProgram.h"
 #include "WebKitCSSFilterValue.h"
 #endif
-#include "WebKitCSSTransformValue.h"
-#include "WebKitFontFamilyNames.h"
 
 #if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
@@ -123,6 +125,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFontWeight,
     CSSPropertyHeight,
     CSSPropertyImageRendering,
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    CSSPropertyImageResolution,
+#endif
     CSSPropertyLeft,
     CSSPropertyLetterSpacing,
     CSSPropertyLineHeight,
@@ -157,6 +162,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyRight,
     CSSPropertySpeak,
     CSSPropertyTableLayout,
+    CSSPropertyTabSize,
     CSSPropertyTextAlign,
     CSSPropertyTextDecoration,
     CSSPropertyTextIndent,
@@ -196,6 +202,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitBorderImage,
     CSSPropertyWebkitBorderVerticalSpacing,
     CSSPropertyWebkitBoxAlign,
+    CSSPropertyWebkitBoxDecorationBreak,
     CSSPropertyWebkitBoxDirection,
     CSSPropertyWebkitBoxFlex,
     CSSPropertyWebkitBoxFlexGroup,
@@ -223,25 +230,23 @@ static const CSSPropertyID computedProperties[] = {
 #if ENABLE(CSS_FILTERS)
     CSSPropertyWebkitFilter,
 #endif
+#if ENABLE(CSS3_FLEXBOX)
+    CSSPropertyWebkitAlignContent,
+    CSSPropertyWebkitAlignItems,
+    CSSPropertyWebkitAlignSelf,
     CSSPropertyWebkitFlex,
-    CSSPropertyWebkitFlexOrder,
-    CSSPropertyWebkitFlexPack,
-    CSSPropertyWebkitFlexAlign,
-    CSSPropertyWebkitFlexItemAlign,
     CSSPropertyWebkitFlexDirection,
     CSSPropertyWebkitFlexFlow,
-    CSSPropertyWebkitFlexLinePack,
     CSSPropertyWebkitFlexWrap,
+    CSSPropertyWebkitJustifyContent,
+#endif
     CSSPropertyWebkitFontKerning,
     CSSPropertyWebkitFontSmoothing,
     CSSPropertyWebkitFontVariantLigatures,
-#if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyWebkitGridColumns,
     CSSPropertyWebkitGridRows,
-
     CSSPropertyWebkitGridColumn,
     CSSPropertyWebkitGridRow,
-#endif
     CSSPropertyWebkitHighlight,
     CSSPropertyWebkitHyphenateCharacter,
     CSSPropertyWebkitHyphenateLimitAfter,
@@ -276,6 +281,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitMaskRepeat,
     CSSPropertyWebkitMaskSize,
     CSSPropertyWebkitNbspMode,
+#if ENABLE(CSS3_FLEXBOX)
+    CSSPropertyWebkitOrder,
+#endif
 #if ENABLE(OVERFLOW_SCROLLING)
     CSSPropertyWebkitOverflowScrolling,
 #endif
@@ -283,8 +291,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitPerspectiveOrigin,
     CSSPropertyWebkitPrintColorAdjust,
     CSSPropertyWebkitRtlOrdering,
+#if ENABLE(CSS_EXCLUSIONS)
     CSSPropertyWebkitShapeInside,
     CSSPropertyWebkitShapeOutside,
+#endif
 #if ENABLE(TOUCH_EVENTS)
     CSSPropertyWebkitTapHighlightColor,
 #endif
@@ -309,18 +319,21 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitUserModify,
     CSSPropertyWebkitUserSelect,
     CSSPropertyWebkitWritingMode,
+#if ENABLE(CSS_REGIONS)
     CSSPropertyWebkitFlowInto,
     CSSPropertyWebkitFlowFrom,
     CSSPropertyWebkitRegionOverflow,
     CSSPropertyWebkitRegionBreakAfter,
     CSSPropertyWebkitRegionBreakBefore,
     CSSPropertyWebkitRegionBreakInside,
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
     CSSPropertyWebkitWrapFlow,
     CSSPropertyWebkitWrapMargin,
     CSSPropertyWebkitWrapPadding,
-    CSSPropertyWebkitWrapThrough
+    CSSPropertyWebkitWrapThrough,
+#endif
 #if ENABLE(SVG)
-    ,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
     CSSPropertyMask,
@@ -893,7 +906,6 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(RenderStyle* st
 }
 #endif
 
-#if ENABLE(CSS_GRID_LAYOUT)
 static PassRefPtr<CSSValue> valueForGridTrackBreadth(const Length& trackLength, const RenderStyle* style)
 {
     if (trackLength.isPercent())
@@ -926,7 +938,6 @@ static PassRefPtr<CSSValue> valueForGridPosition(const Length& position)
     ASSERT(position.isFixed());
     return cssValuePool().createValue(position.value(), CSSPrimitiveValue::CSS_NUMBER);
 }
-#endif
 
 static PassRefPtr<CSSValue> getDelayValue(const AnimationList* animList)
 {
@@ -1326,6 +1337,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 
     RefPtr<RenderStyle> style;
     if (renderer && renderer->isComposited() && AnimationController::supportsAcceleratedAnimationOfProperty(propertyID)) {
+        AnimationUpdateBlock animationUpdateBlock(renderer->animation());
         style = renderer->animation()->getAnimatedStyleForRenderer(renderer);
         if (m_pseudoElementSpecifier) {
             // FIXME: This cached pseudo style will only exist if the animation has been run at least once.
@@ -1534,6 +1546,10 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return getPositionOffsetValue(style.get(), CSSPropertyBottom, m_node->document()->renderView());
         case CSSPropertyWebkitBoxAlign:
             return cssValuePool().createValue(style->boxAlign());
+        case CSSPropertyWebkitBoxDecorationBreak:
+            if (style->boxDecorationBreak() == DSLICE)
+                return cssValuePool().createIdentifierValue(CSSValueSlice);
+        return cssValuePool().createIdentifierValue(CSSValueClone);
         case CSSPropertyWebkitBoxDirection:
             return cssValuePool().createValue(style->boxDirection());
         case CSSPropertyWebkitBoxFlex:
@@ -1591,12 +1607,16 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             if (style->hasAutoColumnWidth())
                 return cssValuePool().createIdentifierValue(CSSValueAuto);
             return zoomAdjustedPixelValue(style->columnWidth(), style.get());
+        case CSSPropertyTabSize:
+            return cssValuePool().createValue(style->tabSize(), CSSPrimitiveValue::CSS_NUMBER);
+#if ENABLE(CSS_REGIONS)
         case CSSPropertyWebkitRegionBreakAfter:
             return cssValuePool().createValue(style->regionBreakAfter());
         case CSSPropertyWebkitRegionBreakBefore:
             return cssValuePool().createValue(style->regionBreakBefore());
         case CSSPropertyWebkitRegionBreakInside:
             return cssValuePool().createValue(style->regionBreakInside());
+#endif
         case CSSPropertyCursor: {
             RefPtr<CSSValueList> list;
             CursorList* cursors = style->cursors();
@@ -1619,6 +1639,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->display());
         case CSSPropertyEmptyCells:
             return cssValuePool().createValue(style->emptyCells());
+#if ENABLE(CSS3_FLEXBOX)
         case CSSPropertyWebkitFlex: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             list->append(cssValuePool().createValue(style->positiveFlex()));
@@ -1634,28 +1655,32 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 
             return list.release();
         }
-        case CSSPropertyWebkitFlexOrder:
-            return cssValuePool().createValue(style->flexOrder(), CSSPrimitiveValue::CSS_NUMBER);
-        case CSSPropertyWebkitFlexPack:
-            return cssValuePool().createValue(style->flexPack());
-        case CSSPropertyWebkitFlexAlign:
-            return cssValuePool().createValue(style->flexAlign());
-        case CSSPropertyWebkitFlexItemAlign:
-            if (style->flexItemAlign() == AlignAuto && m_node && m_node->parentNode() && m_node->parentNode()->computedStyle())
-                return cssValuePool().createValue(m_node->parentNode()->computedStyle()->flexAlign());
-            return cssValuePool().createValue(style->flexItemAlign());
+        case CSSPropertyWebkitOrder:
+            return cssValuePool().createValue(style->order());
+        case CSSPropertyWebkitJustifyContent:
+            return cssValuePool().createValue(style->justifyContent());
+        case CSSPropertyWebkitAlignItems:
+            return cssValuePool().createValue(style->alignItems());
+        case CSSPropertyWebkitAlignSelf:
+            if (style->alignSelf() == AlignAuto) {
+                if (m_node && m_node->parentNode() && m_node->parentNode()->computedStyle())
+                    return cssValuePool().createValue(m_node->parentNode()->computedStyle()->alignItems());
+                return cssValuePool().createValue(AlignStretch);
+            }
+            return cssValuePool().createValue(style->alignSelf());
         case CSSPropertyWebkitFlexDirection:
             return cssValuePool().createValue(style->flexDirection());
         case CSSPropertyWebkitFlexWrap:
             return cssValuePool().createValue(style->flexWrap());
-        case CSSPropertyWebkitFlexLinePack:
-            return cssValuePool().createValue(style->flexLinePack());
+        case CSSPropertyWebkitAlignContent:
+            return cssValuePool().createValue(style->alignContent());
         case CSSPropertyWebkitFlexFlow: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
             list->append(cssValuePool().createValue(style->flexDirection()));
             list->append(cssValuePool().createValue(style->flexWrap()));
             return list.release();
         }
+#endif
         case CSSPropertyFloat:
             return cssValuePool().createValue(style->floating());
         case CSSPropertyFont: {
@@ -1696,7 +1721,6 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             }
             return list.release();
         }
-#if ENABLE(CSS_GRID_LAYOUT)
         case CSSPropertyWebkitGridColumns: {
             return valueForGridTrackList(style->gridColumns(), style.get());
         }
@@ -1708,7 +1732,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return valueForGridPosition(style->gridItemColumn());
         case CSSPropertyWebkitGridRow:
             return valueForGridPosition(style->gridItemRow());
-#endif
+
         case CSSPropertyHeight:
             if (renderer) {
                 // According to http://www.w3.org/TR/CSS2/visudet.html#the-height-property,
@@ -1746,6 +1770,10 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createIdentifierValue(CSSValueLines);
         case CSSPropertyImageRendering:
             return CSSPrimitiveValue::create(style->imageRendering());
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+        case CSSPropertyImageResolution:
+            return cssValuePool().createValue(style->imageResolution(), CSSPrimitiveValue::CSS_DPPX);
+#endif
         case CSSPropertyLeft:
             return getPositionOffsetValue(style.get(), CSSPropertyLeft, m_node->document()->renderView());
         case CSSPropertyLetterSpacing:
@@ -2310,6 +2338,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return counterToCSSValue(style.get(), propertyID);
         case CSSPropertyCounterReset:
             return counterToCSSValue(style.get(), propertyID);
+#if ENABLE(CSS_REGIONS)
         case CSSPropertyWebkitFlowInto:
             if (style->flowThread().isNull())
                 return cssValuePool().createIdentifierValue(CSSValueNone);
@@ -2320,6 +2349,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->regionThread(), CSSPrimitiveValue::CSS_STRING);
         case CSSPropertyWebkitRegionOverflow:
             return cssValuePool().createValue(style->regionOverflow());
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
         case CSSPropertyWebkitWrapFlow:
             return cssValuePool().createValue(style->wrapFlow());
         case CSSPropertyWebkitWrapMargin:
@@ -2336,16 +2367,13 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->wrapShapeOutside());
         case CSSPropertyWebkitWrapThrough:
             return cssValuePool().createValue(style->wrapThrough());
+#endif
 #if ENABLE(CSS_FILTERS)
         case CSSPropertyWebkitFilter:
             return valueForFilter(style.get());
 #endif
-        case CSSPropertyBackground: {
-            const CSSPropertyID properties[5] = { CSSPropertyBackgroundColor, CSSPropertyBackgroundImage,
-                                        CSSPropertyBackgroundRepeat, CSSPropertyBackgroundAttachment,
-                                        CSSPropertyBackgroundPosition };
-            return getCSSPropertyValuesForShorthandProperties(StylePropertyShorthand(properties, WTF_ARRAY_LENGTH(properties)));
-        }
+        case CSSPropertyBackground:
+            return getBackgroundShorthandValue();
         case CSSPropertyBorder: {
             RefPtr<CSSValue> value = getPropertyCSSValue(CSSPropertyBorderTop, DoNotUpdateLayout);
             const CSSPropertyID properties[3] = { CSSPropertyBorderRight, CSSPropertyBorderBottom,
@@ -2470,7 +2498,9 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyWebkitTransformOriginY:
         case CSSPropertyWebkitTransformOriginZ:
         case CSSPropertyWebkitTransition:
+#if ENABLE(CSS_EXCLUSIONS)
         case CSSPropertyWebkitWrap:
+#endif
             break;
 
 #if ENABLE(SVG)
@@ -2618,14 +2648,14 @@ PassRefPtr<CSSValueList> CSSComputedStyleDeclaration::getCSSPropertyValuesForSid
 
 PassRefPtr<StylePropertySet> CSSComputedStyleDeclaration::copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const
 {
-    Vector<CSSProperty> list;
+    Vector<CSSProperty, 256> list;
     list.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i) {
         RefPtr<CSSValue> value = getPropertyCSSValue(set[i]);
         if (value)
             list.append(CSSProperty(set[i], value.release(), false));
     }
-    return StylePropertySet::create(list);
+    return StylePropertySet::create(list.data(), list.size());
 }
 
 CSSRule* CSSComputedStyleDeclaration::parentRule() const
@@ -2690,6 +2720,20 @@ String CSSComputedStyleDeclaration::getPropertyValueInternal(CSSPropertyID prope
 void CSSComputedStyleDeclaration::setPropertyInternal(CSSPropertyID, const String&, bool, ExceptionCode& ec)
 {
     ec = NO_MODIFICATION_ALLOWED_ERR;
+}
+
+PassRefPtr<CSSValueList> CSSComputedStyleDeclaration::getBackgroundShorthandValue() const
+{
+    static const CSSPropertyID propertiesBeforeSlashSeperator[5] = { CSSPropertyBackgroundColor, CSSPropertyBackgroundImage,
+                                                                     CSSPropertyBackgroundRepeat, CSSPropertyBackgroundAttachment,  
+                                                                     CSSPropertyBackgroundPosition };
+    static const CSSPropertyID propertiesAfterSlashSeperator[3] = { CSSPropertyBackgroundSize, CSSPropertyBackgroundOrigin, 
+                                                                    CSSPropertyBackgroundClip };
+
+    RefPtr<CSSValueList> list = CSSValueList::createSlashSeparated();
+    list->append(getCSSPropertyValuesForShorthandProperties(StylePropertyShorthand(propertiesBeforeSlashSeperator, WTF_ARRAY_LENGTH(propertiesBeforeSlashSeperator))));
+    list->append(getCSSPropertyValuesForShorthandProperties(StylePropertyShorthand(propertiesAfterSlashSeperator, WTF_ARRAY_LENGTH(propertiesAfterSlashSeperator))));
+    return list.release();
 }
 
 } // namespace WebCore

@@ -110,6 +110,8 @@ protected:
                         int expectedWidth, int expectedHeight,
                         HorizontalScrollbarState expectedHorizontalState, VerticalScrollbarState expectedVerticalState);
 
+    void testTextInputType(WebTextInputType expectedType, const std::string& htmlFile);
+
     std::string m_baseURL;
 };
 
@@ -137,6 +139,25 @@ TEST_F(WebViewTest, FocusIsInactive)
     webView->setFocus(false);
     webView->setIsActive(true);
     EXPECT_TRUE(document->hasFocus());
+
+    webView->close();
+}
+
+TEST_F(WebViewTest, ActiveState)
+{
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, "visible_iframe.html");
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "visible_iframe.html");
+
+    ASSERT_TRUE(webView);
+
+    webView->setIsActive(true);
+    EXPECT_TRUE(webView->isActive());
+
+    webView->setIsActive(false);
+    EXPECT_FALSE(webView->isActive());
+
+    webView->setIsActive(true);
+    EXPECT_TRUE(webView->isActive());
 
     webView->close();
 }
@@ -243,6 +264,46 @@ TEST_F(WebViewTest, AutoResizeMaxSize)
     int expectedHeight = 300;
     testAutoResize(minAutoResize, maxAutoResize, pageWidth, pageHeight,
                    expectedWidth, expectedHeight, NoHorizontalScrollbar, NoVerticalScrollbar);
+}
+
+void WebViewTest::testTextInputType(WebTextInputType expectedType, const std::string& htmlFile)
+{
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, htmlFile);
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + htmlFile);
+    webView->setInitialFocus(false);
+    EXPECT_EQ(expectedType, webView->textInputType());
+    webView->close();
+}
+
+// Disabled for https://bugs.webkit.org/show_bug.cgi?id=78746#c29
+TEST_F(WebViewTest, DISABLED_TextInputType)
+{
+    testTextInputType(WebTextInputTypeText, "input_field_default.html");
+    testTextInputType(WebTextInputTypePassword, "input_field_password.html");
+    testTextInputType(WebTextInputTypeEmail, "input_field_email.html");
+    testTextInputType(WebTextInputTypeSearch, "input_field_search.html");
+    testTextInputType(WebTextInputTypeNumber, "input_field_number.html");
+    testTextInputType(WebTextInputTypeTelephone, "input_field_tel.html");
+    testTextInputType(WebTextInputTypeURL, "input_field_url.html");
+#if ENABLE(INPUT_TYPE_DATE)
+    testTextInputType(WebTextInputTypeDate, "input_field_date.html");
+#endif
+#if ENABLE(INPUT_TYPE_DATETIME)
+    testTextInputType(WebTextInputTypeDateTime, "input_field_datetime.html");
+#endif
+#if ENABLE(INPUT_TYPE_DATETIMELOCAL)
+    testTextInputType(WebTextInputTypeDateTimeLocal, "input_field_datetimelocal.html");
+#endif
+#if ENABLE(INPUT_TYPE_MONTH)
+    testTextInputType(WebTextInputTypeMonth, "input_field_month.html");
+#endif
+#if ENABLE(INPUT_TYPE_TIME)
+    testTextInputType(WebTextInputTypeTime, "input_field_time.html");
+#endif
+#if ENABLE(INPUT_TYPE_WEEK)
+    testTextInputType(WebTextInputTypeWeek, "input_field_week.html");
+#endif
+
 }
 
 }

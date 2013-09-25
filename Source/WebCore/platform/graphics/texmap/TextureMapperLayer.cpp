@@ -26,8 +26,12 @@
 
 #include "GraphicsLayerTextureMapper.h"
 #include "ImageBuffer.h"
-
+#include "NotImplemented.h"
 #include <wtf/MathExtras.h>
+
+#if USE(CAIRO)
+#include "CairoUtilities.h"
+#endif
 
 namespace WebCore {
 
@@ -90,7 +94,7 @@ void TextureMapperLayer::computeTransformsRecursive()
         sortByZOrder(m_children, 0, m_children.size());
 }
 
-void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, GraphicsLayer* layer)
+void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, GraphicsLayerTextureMapper* layer)
 {
     if (!layer || !textureMapper)
         return;
@@ -122,16 +126,20 @@ void TextureMapperLayer::updateBackingStore(TextureMapper* textureMapper, Graphi
     context->translate(-dirtyRect.x(), -dirtyRect.y());
     layer->paintGraphicsLayerContents(*context, dirtyRect);
 
-    RefPtr<Image> image;
+    if (layer->showRepaintCounter()) {
+        layer->incrementRepaintCount();
+        drawRepaintCounter(context, layer);
+    }
 
-#if PLATFORM(QT)
-    image = imageBuffer->copyImage(DontCopyBackingStore);
-#else
-    // FIXME: support DontCopyBackingStore in non-Qt ports that use TextureMapper.
-    image = imageBuffer->copyImage(CopyBackingStore);
-#endif
+    RefPtr<Image> image = imageBuffer->copyImage(DontCopyBackingStore);
+    TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
+    backingStore->updateContents(textureMapper, image.get(), m_size, dirtyRect);
 
-    static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get())->updateContents(textureMapper, image.get(), m_size, dirtyRect);
+    backingStore->setShowDebugBorders(layer->showDebugBorders());
+    backingStore->setDebugBorder(m_debugBorderColor, m_debugBorderWidth);
+
+    m_state.needsDisplay = false;
+    m_state.needsDisplayRect = IntRect();
 }
 
 void TextureMapperLayer::paint()
@@ -207,6 +215,20 @@ IntRect TextureMapperLayer::intermediateSurfaceRect(const TransformationMatrix& 
         for (size_t i = 0; i < m_children.size(); ++i)
             rect.unite(m_children[i]->intermediateSurfaceRect(matrix));
     }
+
+#if ENABLE(CSS_FILTERS)
+    if (m_state.filters.hasOutsets()) {
+        int leftOutset;
+        int topOutset;
+        int bottomOutset;
+        int rightOutset;
+        m_state.filters.getOutsets(topOutset, rightOutset, bottomOutset, leftOutset);
+        IntRect unfilteredTargetRect(rect);
+        rect.move(std::max(0, -leftOutset), std::max(0, -topOutset));
+        rect.expand(leftOutset + rightOutset, topOutset + bottomOutset);
+        rect.unite(unfilteredTargetRect);
+    }
+#endif
 
     if (m_state.replicaLayer)
         rect.unite(m_state.replicaLayer->intermediateSurfaceRect(matrix));
@@ -288,22 +310,28 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
 }
 
 #if ENABLE(CSS_FILTERS)
+static bool shouldKeepContentTexture(const FilterOperations& filters)
+{
+    for (int i = 0; i < filters.size(); ++i) {
+        switch (filters.operations().at(i)->getOperationType()) {
+        // The drop-shadow filter requires the content texture, because it needs to composite it
+        // on top of the blurred shadow color.
+        case FilterOperation::DROP_SHADOW:
+            return true;
+        default:
+            break;
+        }
+    }
+
+    return false;
+}
+
 static PassRefPtr<BitmapTexture> applyFilters(const FilterOperations& filters, TextureMapper* textureMapper, BitmapTexture* source, IntRect& targetRect)
 {
     if (!filters.size())
         return source;
 
-    RefPtr<BitmapTexture> filterSurface(source);
-    int leftOutset, topOutset, bottomOutset, rightOutset;
-    if (filters.hasOutsets()) {
-        filters.getOutsets(topOutset, rightOutset, bottomOutset, leftOutset);
-        IntRect unfilteredTargetRect(targetRect);
-        targetRect.move(std::max(0, -leftOutset), std::max(0, -topOutset));
-        targetRect.expand(leftOutset + rightOutset, topOutset + bottomOutset);
-        targetRect.unite(unfilteredTargetRect);
-        filterSurface = textureMapper->acquireTextureFromPool(targetRect.size());
-    }
-
+    RefPtr<BitmapTexture> filterSurface = shouldKeepContentTexture(filters) ? textureMapper->acquireTextureFromPool(source->size()) : source;
     return filterSurface->applyFilters(*source, filters);
 }
 #endif
@@ -377,6 +405,8 @@ void TextureMapperLayer::syncCompositingStateSelf(GraphicsLayerTextureMapper* gr
 
     if (changeMask == NoChanges && graphicsLayer->m_animations.isEmpty())
         return;
+
+    graphicsLayer->updateDebugIndicators();
 
     if (changeMask & ParentChange) {
         TextureMapperLayer* newParent = toTextureMapperLayer(graphicsLayer->parent());
@@ -551,6 +581,49 @@ void TextureMapperLayer::setScrollPositionDeltaIfNeeded(const IntPoint& delta)
         m_scrollPositionDelta = delta;
     m_transform.setPosition(m_state.pos + m_scrollPositionDelta);
 }
+
+void TextureMapperLayer::setDebugBorder(const Color& color, float width)
+{
+    // The default values for GraphicsLayer debug borders are a little
+    // hard to see (some less than one pixel wide), so we double their size here.
+    m_debugBorderColor = color;
+    m_debugBorderWidth = width * 2;
+}
+
+#if USE(CAIRO)
+void TextureMapperLayer::drawRepaintCounter(GraphicsContext* context, GraphicsLayer* layer)
+{
+
+    cairo_t* cr = context->platformContext()->cr();
+    cairo_save(cr);
+
+    CString repaintCount = String::format("%i", layer->repaintCount()).utf8();
+    cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 18);
+
+    cairo_text_extents_t repaintTextExtents;
+    cairo_text_extents(cr, repaintCount.data(), &repaintTextExtents);
+
+    static const int repaintCountBorderWidth = 10;
+    setSourceRGBAFromColor(cr, layer->showDebugBorders() ? m_debugBorderColor : Color(0, 255, 0, 127));
+    cairo_rectangle(cr, 0, 0,
+                    repaintTextExtents.width + (repaintCountBorderWidth * 2),
+                    repaintTextExtents.height + (repaintCountBorderWidth * 2));
+    cairo_fill(cr);
+
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_move_to(cr, repaintCountBorderWidth, repaintTextExtents.height + repaintCountBorderWidth);
+    cairo_show_text(cr, repaintCount.data());
+
+    cairo_restore(cr);
+}
+#else
+void TextureMapperLayer::drawRepaintCounter(GraphicsContext* context, GraphicsLayer* layer)
+{
+    notImplemented();
+}
+
+#endif
 
 }
 #endif

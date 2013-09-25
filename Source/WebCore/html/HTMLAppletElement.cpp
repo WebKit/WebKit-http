@@ -47,17 +47,17 @@ PassRefPtr<HTMLAppletElement> HTMLAppletElement::create(const QualifiedName& tag
     return adoptRef(new HTMLAppletElement(tagName, document));
 }
 
-void HTMLAppletElement::parseAttribute(Attribute* attr)
+void HTMLAppletElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == altAttr ||
-        attr->name() == archiveAttr ||
-        attr->name() == codeAttr ||
-        attr->name() == codebaseAttr ||
-        attr->name() == mayscriptAttr ||
-        attr->name() == objectAttr) {
+    if (attribute.name() == altAttr
+        || attribute.name() == archiveAttr
+        || attribute.name() == codeAttr
+        || attribute.name() == codebaseAttr
+        || attribute.name() == mayscriptAttr
+        || attribute.name() == objectAttr) {
         // Do nothing.
     } else
-        HTMLPlugInElement::parseAttribute(attr);
+        HTMLPlugInElement::parseAttribute(attribute);
 }
 
 bool HTMLAppletElement::rendererIsNeeded(const NodeRenderingContext& context)
@@ -115,10 +115,11 @@ RenderWidget* HTMLAppletElement::renderWidgetForJSBindings()
     if (!canEmbedJava())
         return 0;
 
-    RenderApplet* applet = toRenderApplet(renderer());
-    if (applet)
-        applet->createWidgetIfNecessary();
+    if (!renderer() || !renderer()->isApplet())
+        return 0;
 
+    RenderApplet* applet = toRenderApplet(renderer());
+    applet->createWidgetIfNecessary();
     return applet;
 }
 

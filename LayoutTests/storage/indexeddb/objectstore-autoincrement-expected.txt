@@ -11,7 +11,7 @@ db = event.target.result
 db.setVersion('new version')
 setVersionSuccess():
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 createObjectStore():
 store = db.createObjectStore('StoreWithKeyPath', {keyPath: 'id', autoIncrement: true})
@@ -20,13 +20,13 @@ db.createObjectStore('PlainOldStore', {autoIncrement: false})
 db.createObjectStore('StoreWithLongKeyPath', {keyPath: 'a.b.c.id', autoIncrement: true})
 storeNames = db.objectStoreNames
 PASS store.name is "StoreWithKeyPath"
-PASS store.keyPath is 'id'
+PASS store.keyPath is "id"
 PASS storeNames.contains('StoreWithKeyPath') is true
 PASS storeNames.contains('StoreWithAutoIncrement') is true
 PASS storeNames.contains('PlainOldStore') is true
 PASS storeNames.length is 4
 setVersionCompleted():
-trans = db.transaction(['StoreWithKeyPath', 'StoreWithAutoIncrement', 'PlainOldStore'], IDBTransaction.READ_WRITE)
+trans = db.transaction(['StoreWithKeyPath', 'StoreWithAutoIncrement', 'PlainOldStore'], 'readwrite')
 store = trans.objectStore('StoreWithKeyPath')
 Insert into object store with auto increment and key path, with key in the object.
 store.add({name: 'Jeffersson', number: '7010', id: 3})
@@ -62,11 +62,12 @@ Try adding with no key to object store without auto increment.
 Expecting exception from store.add({name: 'Adam'})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 store.add({name: 'Adam'}, 1)
 addAdamSuccess():
 PASS event.target.result is 1
 testLongKeyPath():
-trans = db.transaction('StoreWithLongKeyPath', IDBTransaction.READ_WRITE)
+trans = db.transaction('StoreWithLongKeyPath', 'readwrite')
 store = trans.objectStore('StoreWithLongKeyPath')
 store.add({foo: 'bar'})
 store.add({foo: 'bar', a: {}})
@@ -76,13 +77,13 @@ store.openCursor()
 expected = null
 count = 0
 expected = cursor.value.a.b.c.id + 1
-PASS cursor.value.foo is 'bar'
+PASS cursor.value.foo is "bar"
 PASS cursor.value.a.b.c.id is expected
 expected = cursor.value.a.b.c.id + 1
-PASS cursor.value.foo is 'bar'
+PASS cursor.value.foo is "bar"
 PASS cursor.value.a.b.c.id is expected
 expected = cursor.value.a.b.c.id + 1
-PASS cursor.value.foo is 'bar'
+PASS cursor.value.foo is "bar"
 PASS cursor.value.a.b.c.id is expected
 expected = cursor.value.a.b.c.id + 1
 PASS count is 4

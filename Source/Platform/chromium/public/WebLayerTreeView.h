@@ -30,6 +30,7 @@
 #include "WebCommon.h"
 #include "WebNonCopyable.h"
 #include "WebPrivateOwnPtr.h"
+#include "WebSize.h"
 
 namespace WebCore {
 class CCLayerTreeHost;
@@ -43,29 +44,38 @@ class WebLayerTreeViewClient;
 class WebLayerTreeViewImpl;
 struct WebPoint;
 struct WebRect;
-struct WebSize;
 
 class WebLayerTreeView : public WebNonCopyable {
 public:
     struct Settings {
         Settings()
             : acceleratePainting(false)
+            , forceSoftwareCompositing(false)
             , showFPSCounter(false)
             , showPlatformLayerTree(false)
+            , showPaintRects(false)
             , refreshRate(0)
             , perTilePainting(false)
             , partialSwapEnabled(false)
             , threadedAnimationEnabled(false)
+            , defaultTileSize(WebSize(256, 256))
+            , maxUntiledLayerSize(WebSize(512, 512))
+            , deviceScaleFactor(1)
         {
         }
 
         bool acceleratePainting;
+        bool forceSoftwareCompositing;
         bool showFPSCounter;
         bool showPlatformLayerTree;
+        bool showPaintRects;
         double refreshRate;
         bool perTilePainting;
         bool partialSwapEnabled;
         bool threadedAnimationEnabled;
+        WebSize defaultTileSize;
+        WebSize maxUntiledLayerSize;
+        float deviceScaleFactor;
 #if WEBKIT_IMPLEMENTATION
         operator WebCore::CCSettings() const;
 #endif
@@ -107,6 +117,9 @@ public:
 
     // Sets the background color for the viewport.
     WEBKIT_EXPORT void setBackgroundColor(WebColor);
+
+    // Sets the background transparency for the viewport. The default is 'false'.
+    WEBKIT_EXPORT void setHasTransparentBackground(bool);
 
     // Sets whether this view is visible. In threaded mode, a view that is not visible will not
     // composite or trigger updateAnimations() or layout() calls until it becomes visible.

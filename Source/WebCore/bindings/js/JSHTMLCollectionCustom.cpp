@@ -28,7 +28,9 @@
 #include "JSHTMLOptionsCollection.h"
 #include "JSNode.h"
 #include "JSNodeList.h"
+#include "JSRadioNodeList.h"
 #include "Node.h"
+#include "RadioNodeList.h"
 #include "StaticNodeList.h"
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
@@ -37,15 +39,19 @@ using namespace JSC;
 
 namespace WebCore {
 
-static JSValue getNamedItems(ExecState* exec, JSHTMLCollection* collection, const Identifier& propertyName)
+static JSValue getNamedItems(ExecState* exec, JSHTMLCollection* collection, PropertyName propertyName)
 {
     Vector<RefPtr<Node> > namedItems;
-    collection->impl()->namedItems(identifierToAtomicString(propertyName), namedItems);
+    const AtomicString& name = propertyNameToAtomicString(propertyName);
+    collection->impl()->namedItems(name, namedItems);
 
     if (namedItems.isEmpty())
         return jsUndefined();
     if (namedItems.size() == 1)
         return toJS(exec, collection->globalObject(), namedItems[0].get());
+
+    if (collection->impl()->type() == FormControls)
+       return toJS(exec, collection->globalObject(), collection->impl()->base()->radioNodeList(name).get());
 
     // FIXME: HTML5 specifies that this should be a DynamicNodeList.
     // FIXME: HTML5 specifies that non-HTMLOptionsCollection collections should return
@@ -53,12 +59,12 @@ static JSValue getNamedItems(ExecState* exec, JSHTMLCollection* collection, cons
     return toJS(exec, collection->globalObject(), StaticNodeList::adopt(namedItems).get());
 }
 
-bool JSHTMLCollection::canGetItemsForName(ExecState*, HTMLCollection* collection, const Identifier& propertyName)
+bool JSHTMLCollection::canGetItemsForName(ExecState*, HTMLCollection* collection, PropertyName propertyName)
 {
-    return collection->hasNamedItem(identifierToAtomicString(propertyName));
+    return collection->hasNamedItem(propertyNameToAtomicString(propertyName));
 }
 
-JSValue JSHTMLCollection::nameGetter(ExecState* exec, JSValue slotBase, const Identifier& propertyName)
+JSValue JSHTMLCollection::nameGetter(ExecState* exec, JSValue slotBase, PropertyName propertyName)
 {
     JSHTMLCollection* thisObj = jsCast<JSHTMLCollection*>(asObject(slotBase));
     return getNamedItems(exec, thisObj, propertyName);

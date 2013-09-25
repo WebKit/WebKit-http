@@ -71,7 +71,6 @@ WebView *kit(WebCore::Page*);
 
 WebCore::EditableLinkBehavior core(WebKitEditableLinkBehavior);
 WebCore::TextDirectionSubmenuInclusionBehavior core(WebTextDirectionSubmenuInclusionBehavior);
-WebCore::EditingBehaviorType core(WebKitEditingBehavior);
 
 WebView *getWebView(WebFrame *webFrame);
 
@@ -155,7 +154,9 @@ WebView *getWebView(WebFrame *webFrame);
 - (DOMCSSStyleDeclaration *)_typingStyle;
 - (void)_setTypingStyle:(DOMCSSStyleDeclaration *)style withUndoAction:(WebCore::EditAction)undoAction;
 
+#if ENABLE(DRAG_SUPPORT)
 - (void)_dragSourceEndedAt:(NSPoint)windowLoc operation:(NSDragOperation)operation;
+#endif
 
 - (BOOL)_canProvideDocumentSource;
 - (BOOL)_canSaveAsWebArchive;

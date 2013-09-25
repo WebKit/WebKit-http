@@ -167,7 +167,7 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalWidth(bool includeMaxWidth) cons
     if (!m_containerSize.isEmpty())
         return m_containerSize.width();
 
-    if (style()->logicalWidth().isSpecified())
+    if (style()->logicalWidth().isSpecified() || style()->logicalMaxWidth().isSpecified())
         return RenderReplaced::computeReplacedLogicalWidth(includeMaxWidth);
 
     if (svg->widthAttributeEstablishesViewport())
@@ -187,7 +187,7 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight() const
     if (!m_containerSize.isEmpty())
         return m_containerSize.height();
 
-    if (hasReplacedLogicalHeight())
+    if (style()->logicalHeight().isSpecified() || style()->logicalMaxHeight().isSpecified())
         return RenderReplaced::computeReplacedLogicalHeight();
 
     if (svg->heightAttributeEstablishesViewport()) {
@@ -253,7 +253,7 @@ void RenderSVGRoot::layout()
     setNeedsLayout(false);
 }
 
-void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& adjustedPaintOffset)
+void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     // An empty viewport disables rendering.
     if (pixelSnappedBorderBoxRect().isEmpty())
@@ -285,10 +285,11 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& adjus
     childPaintInfo.context->save();
 
     // Apply initial viewport clip - not affected by overflow handling
-    childPaintInfo.context->clip(overflowClipRect(adjustedPaintOffset, paintInfo.renderRegion));
+    childPaintInfo.context->clip(pixelSnappedIntRect(overflowClipRect(paintOffset, paintInfo.renderRegion)));
 
     // Convert from container offsets (html renderers) to a relative transform (svg renderers).
     // Transform from our paint container's coordinate system to our local coords.
+    IntPoint adjustedPaintOffset = roundedIntPoint(paintOffset);
     childPaintInfo.applyTransform(AffineTransform::translation(adjustedPaintOffset.x() - x(), adjustedPaintOffset.y() - y()) * localToParentTransform());
 
     SVGRenderingContext renderingContext;
@@ -325,10 +326,16 @@ void RenderSVGRoot::styleDidChange(StyleDifference diff, const RenderStyle* oldS
     SVGResourcesCache::clientStyleChanged(this, diff, style());
 }
 
-void RenderSVGRoot::updateFromElement()
+void RenderSVGRoot::addChild(RenderObject* child, RenderObject* beforeChild)
 {
-    RenderReplaced::updateFromElement();
-    SVGResourcesCache::clientUpdatedFromElement(this, style());
+    RenderReplaced::addChild(child, beforeChild);
+    SVGResourcesCache::clientWasAddedToTree(child, child->style());
+}
+
+void RenderSVGRoot::removeChild(RenderObject* child)
+{
+    SVGResourcesCache::clientWillBeRemovedFromTree(child);
+    RenderReplaced::removeChild(child);
 }
 
 // RenderBox methods will expect coordinates w/o any transforms in coordinates
@@ -382,12 +389,17 @@ void RenderSVGRoot::computeFloatRectForRepaint(RenderBoxModelObject* repaintCont
 // This method expects local CSS box coordinates.
 // Callers with local SVG viewport coordinates should first apply the localToBorderBoxTransform
 // to convert from SVG viewport coordinates to local CSS box coordinates.
-void RenderSVGRoot::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, bool* wasFixed) const
+void RenderSVGRoot::mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState& transformState, ApplyContainerFlipOrNot, bool* wasFixed) const
 {
     ASSERT(!fixed); // We should have no fixed content in the SVG rendering tree.
     ASSERT(useTransforms); // mapping a point through SVG w/o respecting trasnforms is useless.
 
-    RenderReplaced::mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, wasFixed);
+    RenderReplaced::mapLocalToContainer(repaintContainer, fixed, useTransforms, transformState, ApplyContainerFlip, wasFixed);
+}
+
+const RenderObject* RenderSVGRoot::pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
+{
+    return RenderReplaced::pushMappingToContainer(ancestorToStopAt, geometryMap);
 }
 
 void RenderSVGRoot::updateCachedBoundaries()

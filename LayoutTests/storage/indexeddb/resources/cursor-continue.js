@@ -54,7 +54,7 @@ function setVersion()
 function deleteExisting()
 {
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
 
     deleteAllObjectStores(db);
@@ -75,7 +75,7 @@ function addData()
 function ascendingTest()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'next')");
     request.onsuccess = ascendingCallback;
     request.onerror = unexpectedErrorCallback;
     self.stage = 0;
@@ -130,7 +130,7 @@ function ascendingCallback()
 function descendingTest()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.PREV)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'prev')");
     request.onsuccess = descendingCallback;
     request.onerror = unexpectedErrorCallback;
     self.stage = 0;
@@ -175,7 +175,7 @@ function descendingCallback()
 function ascendingErrorTestLessThan()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'next')");
     self.stage = 0;
     request.onerror = unexpectedErrorCallback;
     request.onsuccess = function() {
@@ -184,7 +184,7 @@ function ascendingErrorTestLessThan()
             evalAndLog("event.target.result.continue(3.14159)");
         } else if (self.stage == 1) {
             shouldBe("event.target.result.primaryKey", "3");
-            evalAndExpectException("event.target.result.continue(1)", "IDBDatabaseException.DATA_ERR");
+            evalAndExpectException("event.target.result.continue(1)", "IDBDatabaseException.DATA_ERR", "'DataError'");
             ascendingErrorTestEqual();
             return;
         } else {
@@ -197,7 +197,7 @@ function ascendingErrorTestLessThan()
 function ascendingErrorTestEqual()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.NEXT)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'next')");
     self.stage = 0;
     request.onerror = unexpectedErrorCallback;
     request.onsuccess = function() {
@@ -206,7 +206,7 @@ function ascendingErrorTestEqual()
             evalAndLog("event.target.result.continue(3.14159)");
         } else if (self.stage == 1) {
             shouldBe("event.target.result.primaryKey", "3");
-            evalAndExpectException("event.target.result.continue(3.14159)", "IDBDatabaseException.DATA_ERR");
+            evalAndExpectException("event.target.result.continue(3.14159)", "IDBDatabaseException.DATA_ERR", "'DataError'");
             descendingErrorTestGreaterThan();
             return;
         } else {
@@ -219,7 +219,7 @@ function ascendingErrorTestEqual()
 function descendingErrorTestGreaterThan()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.PREV)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'prev')");
     self.stage = 0;
     request.onerror = unexpectedErrorCallback;
     request.onsuccess = function() {
@@ -228,7 +228,7 @@ function descendingErrorTestGreaterThan()
             evalAndLog("event.target.result.continue('A bit2')");
         } else if (self.stage == 1) {
             shouldBe("event.target.result.primaryKey", "15");
-            evalAndExpectException("event.target.result.continue('A bit3')", "IDBDatabaseException.DATA_ERR");
+            evalAndExpectException("event.target.result.continue('A bit3')", "IDBDatabaseException.DATA_ERR", "'DataError'");
             descendingErrorTestEqual();
             return;
         } else {
@@ -241,7 +241,7 @@ function descendingErrorTestGreaterThan()
 function descendingErrorTestEqual()
 {
     debug("");
-    var request = evalAndLog("indexObject.openKeyCursor(null, IDBCursor.PREV)");
+    var request = evalAndLog("indexObject.openKeyCursor(null, 'prev')");
     self.stage = 0;
     request.onerror = unexpectedErrorCallback;
     request.onsuccess = function() {
@@ -251,7 +251,7 @@ function descendingErrorTestEqual()
         } else if (self.stage == 1) {
             shouldBe("event.target.result.primaryKey", "15");
             evalAndLog("cursor = event.target.result");
-            evalAndExpectException("event.target.result.continue('A bit2')", "IDBDatabaseException.DATA_ERR");
+            evalAndExpectException("event.target.result.continue('A bit2')", "IDBDatabaseException.DATA_ERR", "'DataError'");
             self.trans.oncomplete = onTransactionComplete;
             return;
         } else {
@@ -263,7 +263,7 @@ function descendingErrorTestEqual()
 
 function onTransactionComplete()
 {
-    evalAndExpectException("cursor.continue()", "IDBDatabaseException.TRANSACTION_INACTIVE_ERR");
+    evalAndExpectException("cursor.continue()", "IDBDatabaseException.TRANSACTION_INACTIVE_ERR", "'TransactionInactiveError'");
     finishJSTest();
 }
 

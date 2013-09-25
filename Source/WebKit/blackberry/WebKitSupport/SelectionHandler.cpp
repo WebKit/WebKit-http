@@ -21,30 +21,24 @@
 
 #include "DOMSupport.h"
 #include "Document.h"
-#include "Editor.h"
-#include "EditorClient.h"
 #include "FatFingers.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
-#include "HTMLAnchorElement.h"
-#include "HTMLAreaElement.h"
 #include "HitTestResult.h"
 #include "InputHandler.h"
 #include "IntRect.h"
-#include "Page.h"
-#include "RenderPart.h"
-#include "TextGranularity.h"
 #include "TouchEventHandler.h"
-#include "WebPage.h"
 #include "WebPageClient.h"
 #include "WebPage_p.h"
+#include "WebSelectionOverlay.h"
 
 #include "htmlediting.h"
 #include "visible_units.h"
 
 #include <BlackBerryPlatformKeyboardEvent.h>
+#include <BlackBerryPlatformLog.h>
 
 #include <sys/keycodes.h>
 
@@ -184,7 +178,7 @@ static unsigned short directionOfPointRelativeToRect(const WebCore::IntPoint& po
 
     // Do height movement check first but add padding. We may be off on both x & y axis and only
     // want to move in one direction at a time.
-    if (point.y() + (useTopPadding ? verticalPadding : 0) < rect.y())
+    if (point.y() - (useTopPadding ? verticalPadding : 0) < rect.y())
         return KEYCODE_UP;
     if (point.y() > rect.maxY() + (useBottomPadding ? verticalPadding : 0))
         return KEYCODE_DOWN;
@@ -561,7 +555,7 @@ void SelectionHandler::selectAtPoint(const WebCore::IntPoint& location)
     WebCore::IntPoint targetPosition;
     // FIXME: Factory this get right fat finger code into a helper.
     const FatFingersResult lastFatFingersResult = m_webPage->m_touchEventHandler->lastFatFingersResult();
-    if (lastFatFingersResult.positionWasAdjusted() && lastFatFingersResult.nodeAsElementIfApplicable()) {
+    if (lastFatFingersResult.resultMatches(location, FatFingers::Text) && lastFatFingersResult.positionWasAdjusted() && lastFatFingersResult.nodeAsElementIfApplicable()) {
         targetNode = lastFatFingersResult.node(FatFingersResult::ShadowContentNotAllowed);
         targetPosition = lastFatFingersResult.adjustedPosition();
     } else {
@@ -597,14 +591,13 @@ static bool expandSelectionToGranularity(Frame* frame, VisibleSelection selectio
         selection = DOMSupport::visibleSelectionForClosestActualWordStart(selection);
 
     selection.expandUsingGranularity(granularity);
-    RefPtr<Range> newRange = selection.toNormalizedRange();
-    RefPtr<Range> oldRange = frame->selection()->selection().toNormalizedRange();
-    EAffinity affinity = frame->selection()->affinity();
+    selection.setAffinity(frame->selection()->affinity());
 
-    if (isInputMode && !frame->editor()->client()->shouldChangeSelectedRange(oldRange.get(), newRange.get(), affinity, false))
+    if (isInputMode && !frame->selection()->shouldChangeSelection(selection))
         return false;
 
-    return frame->selection()->setSelectedRange(newRange.get(), affinity, true);
+    frame->selection()->setSelection(selection);
+    return true;
 }
 
 void SelectionHandler::selectObject(const WebCore::IntPoint& location, TextGranularity granularity)
@@ -827,7 +820,7 @@ bool SelectionHandler::inputNodeOverridesTouch() const
         return false;
 
     // TODO consider caching this in InputHandler so it is only calculated once per focus.
-    DEFINE_STATIC_LOCAL(QualifiedName, selectionTouchOverrideAttr, (nullAtom, "-bb-selection-touchoverride", nullAtom));
+    DEFINE_STATIC_LOCAL(QualifiedName, selectionTouchOverrideAttr, (nullAtom, "data-blackberry-end-selection-on-touch", nullAtom));
     Element* element = static_cast<Element*>(focusedNode);
     return DOMSupport::elementAttributeState(element, selectionTouchOverrideAttr) == DOMSupport::On;
 }
@@ -932,6 +925,8 @@ void SelectionHandler::selectionPositionChanged(bool visualChangeOnly)
     DEBUG_SELECTION(BlackBerry::Platform::LogLevelInfo, "SelectionHandler::selectionPositionChanged Start Rect=(%d, %d) (%d x %d) End Rect=(%d, %d) (%d x %d)",
                     startCaret.x(), startCaret.y(), startCaret.width(), startCaret.height(), endCaret.x(), endCaret.y(), endCaret.width(), endCaret.height());
 
+    if (m_webPage->m_selectionOverlay)
+        m_webPage->m_selectionOverlay->draw(visibleSelectionRegion);
 
     m_webPage->m_client->notifySelectionDetailsChanged(startCaret, endCaret, visibleSelectionRegion, inputNodeOverridesTouch());
 }
@@ -942,9 +937,12 @@ void SelectionHandler::caretPositionChanged()
     DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::caretPositionChanged");
 
     WebCore::IntRect caretLocation;
+    // If the input field is empty, we always turn off the caret.
     // If the input field is not active, we must be turning off the caret.
-    if (!m_webPage->m_inputHandler->isInputMode() && m_caretActive) {
-        m_caretActive = false;
+    bool emptyInputField = m_webPage->m_inputHandler->elementText().isEmpty();
+    if (emptyInputField || (!m_webPage->m_inputHandler->isInputMode() && m_caretActive)) {
+        if (!emptyInputField)
+            m_caretActive = false;
         // Send an empty caret change to turn off the caret.
         m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */);
         return;
@@ -955,14 +953,14 @@ void SelectionHandler::caretPositionChanged()
     // This function should only reach this point if input mode is active.
     ASSERT(m_webPage->m_inputHandler->isInputMode());
 
+    WebCore::IntPoint frameOffset(m_webPage->frameOffset(m_webPage->focusedOrMainFrame()));
+    WebCore::IntRect clippingRectForContent(clippingRectForVisibleContent());
     if (m_webPage->focusedOrMainFrame()->selection()->selectionType() == VisibleSelection::CaretSelection) {
-        WebCore::IntPoint frameOffset = m_webPage->frameOffset(m_webPage->focusedOrMainFrame());
-
         caretLocation = m_webPage->focusedOrMainFrame()->selection()->selection().visibleStart().absoluteCaretBounds();
         caretLocation.move(frameOffset.x(), frameOffset.y());
 
         // Clip against the containing frame and node boundaries.
-        caretLocation.intersect(clippingRectForVisibleContent());
+        caretLocation.intersect(clippingRectForContent);
     }
 
     m_caretActive = !caretLocation.isEmpty();
@@ -975,6 +973,19 @@ void SelectionHandler::caretPositionChanged()
 
     bool singleLineInput = !m_webPage->m_inputHandler->isMultilineInputMode();
     WebCore::IntRect nodeBoundingBox = singleLineInput ? m_webPage->m_inputHandler->boundingBoxForInputField() : WebCore::IntRect();
+
+    if (!nodeBoundingBox.isEmpty()) {
+        nodeBoundingBox.move(frameOffset.x(), frameOffset.y());
+
+        // Clip against the containing frame and node boundaries.
+        nodeBoundingBox.intersect(clippingRectForContent);
+
+        nodeBoundingBox = m_webPage->mapToTransformed(nodeBoundingBox);
+        m_webPage->clipToTransformedContentsRect(nodeBoundingBox);
+    }
+
+    DEBUG_SELECTION(LogLevelInfo, "SelectionHandler::single line %s single line bounding box %d, %d, %dx%d",
+                    singleLineInput ? "true" : "false", nodeBoundingBox.x(), nodeBoundingBox.y(), nodeBoundingBox.width(), nodeBoundingBox.height());
 
     m_webPage->m_client->notifyCaretChanged(caretLocation, m_webPage->m_touchEventHandler->lastFatFingersResult().isTextInput() /* userTouchTriggered */, singleLineInput, nodeBoundingBox);
 }

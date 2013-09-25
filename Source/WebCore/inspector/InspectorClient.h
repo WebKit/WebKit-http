@@ -55,8 +55,11 @@ public:
     virtual void clearBrowserCache() { }
     virtual bool canClearBrowserCookies() { return false; }
     virtual void clearBrowserCookies() { }
+    virtual void startMessageLoopMonitoring() { }
+    virtual void stopMessageLoopMonitoring() { }
 
     virtual bool canOverrideDeviceMetrics() { return false; }
+
     virtual void overrideDeviceMetrics(int /*width*/, int /*height*/, float /*fontScaleFactor*/, bool /*fitWindow*/)
     {
         // FIXME: Platforms may want to implement this (see https://bugs.webkit.org/show_bug.cgi?id=82886).
@@ -65,6 +68,8 @@ public:
     {
         // FIXME: Platforms may want to implement this (see https://bugs.webkit.org/show_bug.cgi?id=82886).
     }
+
+    virtual bool supportsFrameInstrumentation() { return false; }
 
     bool doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message);
 };

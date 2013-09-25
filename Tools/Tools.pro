@@ -18,12 +18,19 @@ SUBDIRS += DumpRenderTree/qt/ImageDiff.pro
                WebKitTestRunner/WebKitTestRunner.pro
 }
 
-!win32:contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
-    SUBDIRS += DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
+# FIXME: with Qt 5 the test plugin cause some trouble during layout tests.
+# See: https://bugs.webkit.org/show_bug.cgi?id=86620
+# Reenable it after we have a fix for this issue.
+!haveQt(5) {
+    !win32:contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
+        SUBDIRS += DumpRenderTree/qt/TestNetscapePlugin/TestNetscapePlugin.pro
+    }
 }
 
 OTHER_FILES = \
     Scripts/* \
+    $$files(Scripts/webkitpy/*.py, true) \
+    $$files(Scripts/webkitperl/*.p[l|m], true) \
     qmake/README \
     qmake/configure.pro \
     qmake/sync.profile \
@@ -33,6 +40,7 @@ OTHER_FILES = \
     qmake/config.tests/gccdepends/* \
     qmake/mkspecs/modules/* \
     qmake/mkspecs/features/*.prf \
+    qmake/mkspecs/features/*.pri \
     qmake/mkspecs/features/mac/*.prf \
     qmake/mkspecs/features/unix/*.prf \
     qmake/mkspecs/features/win32/*.prf

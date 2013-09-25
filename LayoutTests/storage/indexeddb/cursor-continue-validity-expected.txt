@@ -9,7 +9,7 @@ indexedDB.open('cursor-continue')
 db = event.target.result
 db.setVersion('new version')
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 db.createObjectStore('someObjectStore')
 objectStore.createIndex('someIndex', 'x')
@@ -42,7 +42,7 @@ continueTest()
 
 Checking objectStore
 ====================
-indexObject.openCursor(null, IDBCursor.NEXT)
+indexObject.openCursor(null, 'next')
 self.continueValue = 0
 doubleContinueCallback()
 cursor = event.target.result
@@ -400,7 +400,7 @@ continueIndexTest()
 
 Checking index
 ==============
-indexObject.openCursor(null, IDBCursor.NEXT)
+indexObject.openCursor(null, 'next')
 self.continueValue = 0
 cursor = event.target.result
 Checking value at 0
@@ -732,7 +732,7 @@ testModifyContinueOrder()
 
 Checking modification
 =====================
-indexObject.openCursor(null, IDBCursor.NEXT)
+indexObject.openCursor(null, 'next')
 self.continueValue = 0
 cursor = event.target.result
 cursor.continue()

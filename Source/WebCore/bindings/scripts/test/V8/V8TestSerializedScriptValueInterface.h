@@ -24,6 +24,7 @@
 #define V8TestSerializedScriptValueInterface_h
 
 #include "TestSerializedScriptValueInterface.h"
+#include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include "WrapperTypeInfo.h"
 #include <v8.h>
@@ -53,7 +54,7 @@ private:
 
 v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::wrap(TestSerializedScriptValueInterface* impl, v8::Isolate* isolate)
 {
-        v8::Handle<v8::Object> wrapper = getDOMObjectMap().get(impl);
+        v8::Handle<v8::Object> wrapper = getDOMObjectMap(isolate).get(impl);
         if (!wrapper.IsEmpty())
             return wrapper;
     return V8TestSerializedScriptValueInterface::wrapSlow(impl, isolate);
@@ -62,7 +63,7 @@ v8::Handle<v8::Object> V8TestSerializedScriptValueInterface::wrap(TestSerialized
 inline v8::Handle<v8::Value> toV8(TestSerializedScriptValueInterface* impl, v8::Isolate* isolate = 0)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     return V8TestSerializedScriptValueInterface::wrap(impl, isolate);
 }
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestSerializedScriptValueInterface > impl, v8::Isolate* isolate = 0)

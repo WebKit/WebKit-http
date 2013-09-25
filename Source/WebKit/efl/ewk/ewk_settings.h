@@ -53,11 +53,6 @@ EAPI uint64_t         ewk_settings_web_database_default_quota_get(void);
 EAPI void             ewk_settings_web_database_default_quota_set(uint64_t maximum_size);
 
 /**
- * Removes all HTML5 Web Database databases.
- */
-EAPI void             ewk_settings_web_database_clear(void);
-
-/**
  * Sets the current path to the directory WebKit will write Web
  * Database databases.
  *
@@ -147,7 +142,7 @@ EAPI Eina_Bool        ewk_settings_icon_database_path_set(const char *path);
  * save yourself some cpu cycles and use eina_stringshare_ref()
  * instead of eina_stringshare_add() or strdup().
  *
- * @return database path or @c 0 if none is set or database is closed
+ * @return database path or @c 0 if none is set
  */
 EAPI const char      *ewk_settings_icon_database_path_get(void);
 
@@ -201,7 +196,8 @@ EAPI Evas_Object     *ewk_settings_icon_database_icon_object_get(const char *url
  * The Offline Application Caching APIs are part of HTML5 and allow applications to store data locally that is accessed
  * when the network cannot be reached.
  *
- * By default, the path is @c ~/.webkit.
+ * By default, the path is @c NULL, indicating that the feature is disabled. Once the path is set, the feature is enabled
+ * and the path cannot be changed.
  *
  * @param path where to store cache, must be write-able.
  *
@@ -215,7 +211,7 @@ EAPI void             ewk_settings_application_cache_path_set(const char *path);
  * The Offline Application Caching APIs are part of HTML5 and allow applications to store data locally that is accessed
  * when the network cannot be reached.
  *
- * By default, the path is @c ~/.webkit.
+ * By default, the path is @c NULL, indicating that the feature is disabled.
  *
  * @return eina_stringshare'd path value.
  *
@@ -298,6 +294,29 @@ EAPI void             ewk_settings_object_cache_enable_set(Eina_Bool set);
  * @param capacity the maximum number of bytes that the cache should consume overall
  */
 EAPI void             ewk_settings_object_cache_capacity_set(unsigned min_dead_bytes, unsigned max_dead_bytes, unsigned total_bytes);
+
+/**
+ * Returns the maximum number of pages in the memory page cache.
+ *
+ * By default, maximum number of pages is 3.
+ *
+ * @return  The maximum number of pages in the memory page cache.
+ *
+ * @sa ewk_settings_page_cache_capacity_set
+ */
+EAPI unsigned         ewk_settings_page_cache_capacity_get(void);
+
+/**
+ * Defines the capacity for the memory page cache.
+ *
+ * The page cache is responsible for holding visited web pages in memory. So it improves user experience when navigating forth or back
+ * to pages in the forward/back history as the cached pages do not require to be loaded from server.
+ *
+ * By default, @p pages is 3.
+ *
+ * @param pages The maximum number of pages to keep in the memory page cache.
+ */
+EAPI void             ewk_settings_page_cache_capacity_set(unsigned pages);
 
 /**
  * Clears all memory caches.

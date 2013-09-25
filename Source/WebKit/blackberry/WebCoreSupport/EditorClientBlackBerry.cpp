@@ -20,6 +20,7 @@
 #include "config.h"
 #include "EditorClientBlackBerry.h"
 
+#include "AutofillManager.h"
 #include "DOMSupport.h"
 #include "DumpRenderTreeClient.h"
 #include "EditCommand.h"
@@ -506,14 +507,20 @@ void EditorClientBlackBerry::textFieldDidBeginEditing(Element*)
     notImplemented();
 }
 
-void EditorClientBlackBerry::textFieldDidEndEditing(Element*)
+void EditorClientBlackBerry::textFieldDidEndEditing(Element* element)
 {
-    notImplemented();
+    if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled()) {
+        if (HTMLInputElement* inputElement = element->toInputElement())
+            m_webPagePrivate->m_autofillManager->textFieldDidEndEditing(inputElement);
+    }
 }
 
-void EditorClientBlackBerry::textDidChangeInTextField(Element*)
+void EditorClientBlackBerry::textDidChangeInTextField(Element* element)
 {
-    notImplemented();
+    if (m_webPagePrivate->m_webSettings->isFormAutofillEnabled()) {
+        if (HTMLInputElement* inputElement = element->toInputElement())
+            m_webPagePrivate->m_autofillManager->didChangeInTextField(inputElement);
+    }
 }
 
 bool EditorClientBlackBerry::doTextFieldCommandFromEvent(Element*, KeyboardEvent*)
@@ -530,6 +537,11 @@ void EditorClientBlackBerry::textWillBeDeletedInTextField(Element*)
 void EditorClientBlackBerry::textDidChangeInTextArea(Element*)
 {
     notImplemented();
+}
+
+bool EditorClientBlackBerry::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const
+{
+    return true;
 }
 
 void EditorClientBlackBerry::ignoreWordInSpellDocument(const WTF::String&)
@@ -558,7 +570,7 @@ void EditorClientBlackBerry::checkGrammarOfString(const UChar*, int, WTF::Vector
     notImplemented();
 }
 
-void EditorClientBlackBerry::requestCheckingOfString(SpellChecker*, const TextCheckingRequest&)
+void EditorClientBlackBerry::requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>)
 {
     notImplemented();
 }

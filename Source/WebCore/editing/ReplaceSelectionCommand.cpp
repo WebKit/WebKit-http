@@ -81,7 +81,7 @@ public:
     bool hasInterchangeNewlineAtEnd() const { return m_hasInterchangeNewlineAtEnd; }
     
     void removeNode(PassRefPtr<Node>);
-    void removeNodePreservingChildren(Node*);
+    void removeNodePreservingChildren(PassRefPtr<Node>);
 
 private:
     PassRefPtr<StyledElement> insertFragmentForTestRendering(Node* rootEditableNode);
@@ -211,14 +211,14 @@ Node *ReplacementFragment::lastChild() const
     return m_fragment ? m_fragment->lastChild() : 0; 
 }
 
-void ReplacementFragment::removeNodePreservingChildren(Node *node)
+void ReplacementFragment::removeNodePreservingChildren(PassRefPtr<Node> node)
 {
     if (!node)
         return;
 
     while (RefPtr<Node> n = node->firstChild()) {
         removeNode(n);
-        insertNodeBefore(n.release(), node);
+        insertNodeBefore(n.release(), node.get());
     }
     removeNode(node);
 }
@@ -329,18 +329,12 @@ void ReplacementFragment::removeInterchangeNodes(Node* container)
     
     node = container->firstChild();
     while (node) {
-        Node *next = node->traverseNextNode();
+        RefPtr<Node> next = node->traverseNextNode();
         if (isInterchangeConvertedSpaceSpan(node)) {
-            RefPtr<Node> n = 0;
-            while ((n = node->firstChild())) {
-                removeNode(n);
-                insertNodeBefore(n, node);
-            }
-            removeNode(node);
-            if (n)
-                next = n->traverseNextNode();
+            next = node->traverseNextSibling();
+            removeNodePreservingChildren(node);
         }
-        node = next;
+        node = next.get();
     }
 }
 
@@ -830,7 +824,7 @@ void ReplaceSelectionCommand::doApply()
         visibleStart = endingSelection().visibleStart();
         if (fragment.hasInterchangeNewlineAtStart()) {
             if (isEndOfParagraph(visibleStart) && !isStartOfParagraph(visibleStart)) {
-                if (!isEndOfDocument(visibleStart))
+                if (!isEndOfEditableOrNonEditableContent(visibleStart))
                     setEndingSelection(visibleStart.next());
             } else
                 insertParagraphSeparator();
@@ -936,7 +930,10 @@ void ReplaceSelectionCommand::doApply()
 
         if (RefPtr<Node> nodeToSplitTo = nodeToSplitToAvoidPastingIntoInlineNodesWithStyle(insertionPos)) {
             if (insertionPos.containerNode() != nodeToSplitTo->parentNode()) {
-                nodeToSplitTo = splitTreeToNode(insertionPos.anchorNode(), nodeToSplitTo->parentNode()).get();
+                Node* splitStart = insertionPos.computeNodeAfterPosition();
+                if (!splitStart)
+                    splitStart = insertionPos.containerNode();
+                nodeToSplitTo = splitTreeToNode(splitStart, nodeToSplitTo->parentNode()).get();
                 insertionPos = positionInParentBeforeNode(nodeToSplitTo.get());
             }
         }
@@ -964,7 +961,7 @@ void ReplaceSelectionCommand::doApply()
     Node* blockStart = enclosingBlock(insertionPos.deprecatedNode());
     if ((isListElement(refNode.get()) || (isLegacyAppleStyleSpan(refNode.get()) && isListElement(refNode->firstChild())))
         && blockStart && blockStart->renderer()->isListItem())
-        refNode = insertAsListItems(refNode, blockStart, insertionPos, insertedNodes);
+        refNode = insertAsListItems(toHTMLElement(refNode.get()), blockStart, insertionPos, insertedNodes);
     else {
         insertNodeAt(refNode, insertionPos);
         insertedNodes.respondToNodeInsertion(refNode.get());
@@ -1229,12 +1226,12 @@ EditAction ReplaceSelectionCommand::editingAction() const
 
 // If the user is inserting a list into an existing list, instead of nesting the list,
 // we put the list items into the existing list.
-Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<Node> prpListElement, Node* insertionBlock, const Position& insertPos, InsertedNodes& insertedNodes)
+Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<HTMLElement> prpListElement, Node* insertionBlock, const Position& insertPos, InsertedNodes& insertedNodes)
 {
-    RefPtr<Node> listElement = prpListElement;
+    RefPtr<HTMLElement> listElement = prpListElement;
 
     while (listElement->hasChildNodes() && isListElement(listElement->firstChild()) && listElement->childNodeCount() == 1)
-        listElement = listElement->firstChild();
+        listElement = toHTMLElement(listElement->firstChild());
 
     bool isStart = isStartOfParagraph(insertPos);
     bool isEnd = isEndOfParagraph(insertPos);
@@ -1252,7 +1249,7 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<Node> prpListElement
 
     while (RefPtr<Node> listItem = listElement->firstChild()) {
         ExceptionCode ec = 0;
-        toContainerNode(listElement.get())->removeChild(listItem.get(), ec);
+        listElement->removeChild(listItem.get(), ec);
         ASSERT(!ec);
         if (isStart || isMiddle) {
             insertNodeBefore(listItem, lastNode);
@@ -1299,7 +1296,7 @@ bool ReplaceSelectionCommand::performTrivialReplace(const ReplacementFragment& f
     if (nodeToSplitToAvoidPastingIntoInlineNodesWithStyle(endingSelection().start()))
         return false;
 
-    Node* nodeAfterInsertionPos = endingSelection().end().downstream().anchorNode();
+    RefPtr<Node> nodeAfterInsertionPos = endingSelection().end().downstream().anchorNode();
     Text* textNode = toText(fragment.firstChild());
     // Our fragment creation code handles tabs, spaces, and newlines, so we don't have to worry about those here.
 
@@ -1308,8 +1305,9 @@ bool ReplaceSelectionCommand::performTrivialReplace(const ReplacementFragment& f
     if (end.isNull())
         return false;
 
-    if (nodeAfterInsertionPos && nodeAfterInsertionPos->hasTagName(brTag) && shouldRemoveEndBR(nodeAfterInsertionPos, positionBeforeNode(nodeAfterInsertionPos)))
-        removeNodeAndPruneAncestors(nodeAfterInsertionPos);
+    if (nodeAfterInsertionPos && nodeAfterInsertionPos->parentNode() && nodeAfterInsertionPos->hasTagName(brTag)
+        && shouldRemoveEndBR(nodeAfterInsertionPos.get(), positionBeforeNode(nodeAfterInsertionPos.get())))
+        removeNodeAndPruneAncestors(nodeAfterInsertionPos.get());
 
     VisibleSelection selectionAfterReplace(m_selectReplacement ? start : end, end);
 

@@ -90,9 +90,9 @@ void JSActivation::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.appendValues(registerArray + offset, thisObject->m_numCapturedVars);
 }
 
-inline bool JSActivation::symbolTableGet(const Identifier& propertyName, PropertySlot& slot)
+inline bool JSActivation::symbolTableGet(PropertyName propertyName, PropertySlot& slot)
 {
-    SymbolTableEntry entry = symbolTable().inlineGet(propertyName.impl());
+    SymbolTableEntry entry = symbolTable().inlineGet(propertyName.publicName());
     if (entry.isNull())
         return false;
     if (m_isTornOff && entry.getIndex() >= m_numCapturedVars)
@@ -102,12 +102,12 @@ inline bool JSActivation::symbolTableGet(const Identifier& propertyName, Propert
     return true;
 }
 
-inline bool JSActivation::symbolTablePut(ExecState* exec, const Identifier& propertyName, JSValue value, bool shouldThrow)
+inline bool JSActivation::symbolTablePut(ExecState* exec, PropertyName propertyName, JSValue value, bool shouldThrow)
 {
     JSGlobalData& globalData = exec->globalData();
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     
-    SymbolTableEntry entry = symbolTable().inlineGet(propertyName.impl());
+    SymbolTableEntry entry = symbolTable().inlineGet(propertyName.publicName());
     if (entry.isNull())
         return false;
     if (entry.isReadOnly()) {
@@ -137,11 +137,11 @@ void JSActivation::getOwnPropertyNames(JSObject* object, ExecState* exec, Proper
     JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
-inline bool JSActivation::symbolTablePutWithAttributes(JSGlobalData& globalData, const Identifier& propertyName, JSValue value, unsigned attributes)
+inline bool JSActivation::symbolTablePutWithAttributes(JSGlobalData& globalData, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     
-    SymbolTable::iterator iter = symbolTable().find(propertyName.impl());
+    SymbolTable::iterator iter = symbolTable().find(propertyName.publicName());
     if (iter == symbolTable().end())
         return false;
     SymbolTableEntry& entry = iter->second;
@@ -154,7 +154,7 @@ inline bool JSActivation::symbolTablePutWithAttributes(JSGlobalData& globalData,
     return true;
 }
 
-bool JSActivation::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSActivation::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSActivation* thisObject = jsCast<JSActivation*>(cell);
     if (propertyName == exec->propertyNames().arguments) {
@@ -177,7 +177,7 @@ bool JSActivation::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Ident
     return false;
 }
 
-void JSActivation::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSActivation::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSActivation* thisObject = jsCast<JSActivation*>(cell);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
@@ -193,7 +193,7 @@ void JSActivation::put(JSCell* cell, ExecState* exec, const Identifier& property
 }
 
 // FIXME: Make this function honor ReadOnly (const) and DontEnum
-void JSActivation::putDirectVirtual(JSObject* object, ExecState* exec, const Identifier& propertyName, JSValue value, unsigned attributes)
+void JSActivation::putDirectVirtual(JSObject* object, ExecState* exec, PropertyName propertyName, JSValue value, unsigned attributes)
 {
     JSActivation* thisObject = jsCast<JSActivation*>(object);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
@@ -208,7 +208,7 @@ void JSActivation::putDirectVirtual(JSObject* object, ExecState* exec, const Ide
     JSObject::putDirectVirtual(thisObject, exec, propertyName, value, attributes);
 }
 
-bool JSActivation::deleteProperty(JSCell* cell, ExecState* exec, const Identifier& propertyName)
+bool JSActivation::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
     if (propertyName == exec->propertyNames().arguments)
         return false;
@@ -221,7 +221,7 @@ JSObject* JSActivation::toThisObject(JSCell*, ExecState* exec)
     return exec->globalThisValue();
 }
 
-JSValue JSActivation::argumentsGetter(ExecState*, JSValue slotBase, const Identifier&)
+JSValue JSActivation::argumentsGetter(ExecState*, JSValue slotBase, PropertyName)
 {
     JSActivation* activation = asActivation(slotBase);
     CallFrame* callFrame = CallFrame::create(reinterpret_cast<Register*>(activation->m_registers));

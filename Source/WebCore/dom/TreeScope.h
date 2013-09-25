@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class ContainerNode;
+class DOMSelection;
 class Element;
 class HTMLMapElement;
 class Node;
@@ -54,6 +55,8 @@ public:
     void addElementById(const AtomicString& elementId, Element*);
     void removeElementById(const AtomicString& elementId, Element*);
 
+    Node* ancestorInThisScope(Node*) const;
+
     void addImageMap(HTMLMapElement*);
     void removeImageMap(HTMLMapElement*);
     HTMLMapElement* getImageMap(const String& url) const;
@@ -62,6 +65,8 @@ public:
     void removeNodeListCache() { ASSERT(m_numNodeListCaches > 0); --m_numNodeListCaches; }
     bool hasNodeListCaches() const { return m_numNodeListCaches; }
 
+    DOMSelection* getSelection() const;
+
     // Find first anchor with the given name.
     // First searches for an element with the given ID, but if that fails, then looks
     // for an anchor with the given name. ID matching is always case sensitive, but
@@ -69,7 +74,8 @@ public:
     // quirks mode for historical compatibility reasons.
     Element* findAnchor(const String& name);
 
-    virtual bool applyAuthorSheets() const;
+    virtual bool applyAuthorStyles() const;
+    virtual bool resetStyleInheritance() const;
 
     // Used by the basic DOM mutation methods (e.g., appendChild()).
     void adoptIfNeeded(Node*);
@@ -90,6 +96,8 @@ private:
     DocumentOrderedMap m_imageMapsByName;
 
     unsigned m_numNodeListCaches;
+
+    mutable RefPtr<DOMSelection> m_selection;
 };
 
 inline bool TreeScope::hasElementWithId(AtomicStringImpl* id) const
@@ -102,6 +110,8 @@ inline bool TreeScope::containsMultipleElementsWithId(const AtomicString& id) co
 {
     return m_elementsById.containsMultiple(id.impl());
 }
+
+TreeScope* commonTreeScope(Node*, Node*);
 
 } // namespace WebCore
 

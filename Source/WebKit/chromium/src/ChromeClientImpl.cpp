@@ -521,7 +521,6 @@ void ChromeClientImpl::invalidateContentsAndRootView(const IntRect& updateRect, 
 
 void ChromeClientImpl::invalidateContentsForSlowScroll(const IntRect& updateRect, bool immediate)
 {
-    m_webView->hidePopups();
     invalidateContentsAndRootView(updateRect, immediate);
 }
 
@@ -536,7 +535,6 @@ void ChromeClientImpl::scroll(
     const IntSize& scrollDelta, const IntRect& scrollRect,
     const IntRect& clipRect)
 {
-    m_webView->hidePopups();
 #if USE(ACCELERATED_COMPOSITING)
     if (!m_webView->isAcceleratedCompositingActive()) {
 #endif
@@ -586,15 +584,6 @@ void ChromeClientImpl::contentsSizeChanged(Frame* frame, const IntSize& size) co
 
 void ChromeClientImpl::layoutUpdated(Frame* frame) const
 {
-#if ENABLE(VIEWPORT)
-    if (!m_webView->isPageScaleFactorSet() && frame == frame->page()->mainFrame()) {
-        // If the page does not have a viewport tag, then compute a scale
-        // factor to make the page width fit the device width based on the
-        // default viewport parameters.
-        ViewportArguments viewport = frame->document()->viewportArguments();
-        dispatchViewportPropertiesDidChange(viewport);
-    }
-#endif
     m_webView->layoutUpdated(WebFrameImpl::fromFrame(frame));
 }
 
@@ -645,12 +634,10 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     if (!m_webView->settings()->viewportEnabled() || !m_webView->isFixedLayoutModeEnabled() || !m_webView->client() || !m_webView->page())
         return;
 
-    bool useDefaultDeviceScaleFactor = false;
     ViewportArguments args;
     if (arguments == args) {
         // Default viewport arguments passed in. This is a signal to reset the viewport.
         args.width = ViewportArguments::ValueDesktopWidth;
-        useDefaultDeviceScaleFactor = true;
     } else
         args = arguments;
 
@@ -674,14 +661,11 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     int layoutHeight = computed.layoutSize.height();
     m_webView->setFixedLayoutSize(IntSize(layoutWidth, layoutHeight));
 
-    // FIXME: Investigate the impact this has on layout/rendering if any.
-    // This exposes the correct device scale to javascript and media queries.
-    if (useDefaultDeviceScaleFactor && settings->defaultDeviceScaleFactor())
-        m_webView->setDeviceScaleFactor(settings->defaultDeviceScaleFactor());
-    else
-        m_webView->setDeviceScaleFactor(computed.devicePixelRatio);
+    bool needInitializePageScale = !m_webView->isPageScaleFactorSet();
+    m_webView->setDeviceScaleFactor(computed.devicePixelRatio);
     m_webView->setPageScaleFactorLimits(computed.minimumScale, computed.maximumScale);
-    m_webView->setPageScaleFactorPreservingScrollOffset(computed.initialScale * computed.devicePixelRatio);
+    if (needInitializePageScale)
+        m_webView->setPageScaleFactorPreservingScrollOffset(computed.initialScale * computed.devicePixelRatio);
 #endif
 }
 
@@ -734,10 +718,15 @@ void ChromeClientImpl::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> fileCh
 #else
     params.directory = false;
 #endif
-    params.acceptMIMETypes = fileChooser->settings().acceptMIMETypes;
+    params.acceptTypes = fileChooser->settings().acceptMIMETypes;
     params.selectedFiles = fileChooser->settings().selectedFiles;
     if (params.selectedFiles.size() > 0)
         params.initialValue = params.selectedFiles[0];
+#if ENABLE(MEDIA_CAPTURE)
+    params.capture = fileChooser->settings().capture;
+#else
+    params.capture = WebString();
+#endif
     WebFileChooserCompletionImpl* chooserCompletion =
         new WebFileChooserCompletionImpl(fileChooser);
 
@@ -1040,7 +1029,7 @@ void ChromeClientImpl::addTextFieldDecorationsTo(HTMLInputElement* input)
         if (!decorators[i]->willAddDecorationTo(input))
             continue;
         RefPtr<TextFieldDecorationElement> decoration = TextFieldDecorationElement::create(input->document(), decorators[i].get());
-        decoration->decorate(input);
+        decoration->decorate(input, decorators[i]->visibleByDefault());
     }
 }
 

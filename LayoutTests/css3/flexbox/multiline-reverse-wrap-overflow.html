@@ -2,12 +2,12 @@
 <html>
 <style>
 .flexbox {
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: #aaa;
     position: relative;
     -webkit-flex-wrap: wrap-reverse;
     margin-top: 20px;
-    -webkit-flex-line-pack: start;
+    -webkit-align-content: flex-start;
 }
 .flexbox > div {
     border: 0;
@@ -27,8 +27,8 @@
 }
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">

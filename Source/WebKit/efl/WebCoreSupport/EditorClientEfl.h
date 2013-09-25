@@ -34,12 +34,38 @@
 #define EditorClientEfl_h
 
 #include "EditorClient.h"
-#include "TextCheckerClient.h"
 
+#include "EditorInsertAction.h"
+#include "TextAffinity.h"
+#include "TextCheckerClient.h"
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 
 typedef struct _Evas_Object Evas_Object;
+
+struct Ewk_Should_Insert_Node_Event {
+    WebCore::Node* node;
+    WebCore::Range* range;
+    WebCore::EditorInsertAction action;
+};
+
+struct Ewk_Should_Insert_Text_Event {
+    const char* text;
+    WebCore::Range* range;
+    WebCore::EditorInsertAction action;
+};
+
+struct Ewk_Should_Change_Selected_Range_Event {
+    WebCore::Range* fromRange;
+    WebCore::Range* toRange;
+    WebCore::EAffinity affinity;
+    bool stillSelecting;
+};
+
+struct Ewk_Should_Apply_Style_Event {
+    WebCore::StylePropertySet* style;
+    WebCore::Range* range;
+};
 
 namespace WebCore {
 class Page;
@@ -56,6 +82,7 @@ public:
 
     // from EditorClient
     virtual void pageDestroyed();
+    virtual void frameWillDetachPage(Frame*) { }
 
     virtual bool shouldDeleteRange(Range*);
     virtual bool shouldShowDeleteInterface(HTMLElement*);
@@ -110,6 +137,7 @@ public:
     virtual void textWillBeDeletedInTextField(Element*);
     virtual void textDidChangeInTextArea(Element*);
 
+    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const;
     virtual void ignoreWordInSpellDocument(const String&);
     virtual void learnWord(const String&);
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation, int* misspellingLength);
@@ -122,7 +150,7 @@ public:
     virtual void getGuessesForWord(const String& word, const String& context, WTF::Vector<String>& guesses);
     virtual void willSetInputMethodState();
     virtual void setInputMethodState(bool enabled);
-    virtual void requestCheckingOfString(WebCore::SpellChecker*, const WebCore::TextCheckingRequest&) { }
+    virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) { }
     virtual TextCheckerClient* textChecker() { return this; }
 
 private:

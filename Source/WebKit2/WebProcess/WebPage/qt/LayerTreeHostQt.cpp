@@ -69,7 +69,7 @@ LayerTreeHostQt::LayerTreeHostQt(WebPage* webPage)
     : LayerTreeHost(webPage)
     , m_notifyAfterScheduledLayerFlush(false)
     , m_isValid(true)
-    , m_waitingForUIProcess(false)
+    , m_waitingForUIProcess(true)
     , m_isSuspended(false)
     , m_contentsScale(1)
     , m_shouldSendScrollPositionUpdate(true)
@@ -254,6 +254,12 @@ void LayerTreeHostQt::syncLayerChildren(WebLayerID id, const Vector<WebLayerID>&
 {
     m_shouldSyncFrame = true;
     m_webPage->send(Messages::LayerTreeHostProxy::SetCompositingLayerChildren(id, children));
+}
+
+void LayerTreeHostQt::syncCanvas(WebLayerID id, const IntSize& canvasSize, uint32_t graphicsSurfaceToken)
+{
+    m_shouldSyncFrame = true;
+    m_webPage->send(Messages::LayerTreeHostProxy::SyncCanvas(id, canvasSize, graphicsSurfaceToken));
 }
 
 #if ENABLE(CSS_FILTERS)

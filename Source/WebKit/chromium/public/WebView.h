@@ -103,13 +103,13 @@ public:
     // child frames.  It is valid to pass a null WebFrameClient pointer.
     virtual void initializeMainFrame(WebFrameClient*) = 0;
 
+    virtual void initializeHelperPluginFrame(WebFrameClient*) = 0;
+
     // Initializes the various client interfaces.
     virtual void setAutofillClient(WebAutofillClient*) = 0;
     virtual void setDevToolsAgentClient(WebDevToolsAgentClient*) = 0;
     virtual void setPermissionClient(WebPermissionClient*) = 0;
-    // FIXME: After the Prerendering API lands in chrome, remove this staging thunk
-    // for setPrerendererClient().
-    virtual void setPrerendererClient(WebPrerendererClient*) { }
+    virtual void setPrerendererClient(WebPrerendererClient*) = 0;
     virtual void setSpellCheckClient(WebSpellCheckClient*) = 0;
     virtual void addTextFieldDecoratorClient(WebTextFieldDecoratorClient*) = 0;
 
@@ -307,16 +307,31 @@ public:
 
     // Callback methods when a drag-and-drop operation is trying to drop
     // something on the WebView.
+    // FIXME: Remove this method after chromium changes catch up.
     virtual WebDragOperation dragTargetDragEnter(
         const WebDragData&,
         const WebPoint& clientPoint, const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed) = 0;
+    virtual WebDragOperation dragTargetDragEnter(
+        const WebDragData&,
+        const WebPoint& clientPoint, const WebPoint& screenPoint,
+        WebDragOperationsMask operationsAllowed,
+        int keyModifiers) = 0;
+    // FIXME: Remove this method after chromium changes catch up.
     virtual WebDragOperation dragTargetDragOver(
         const WebPoint& clientPoint, const WebPoint& screenPoint,
         WebDragOperationsMask operationsAllowed) = 0;
+    virtual WebDragOperation dragTargetDragOver(
+        const WebPoint& clientPoint, const WebPoint& screenPoint,
+        WebDragOperationsMask operationsAllowed,
+        int keyModifiers) = 0;
     virtual void dragTargetDragLeave() = 0;
+    // FIXME: Remove this method after chromium changes catch up.
     virtual void dragTargetDrop(
         const WebPoint& clientPoint, const WebPoint& screenPoint) = 0;
+    virtual void dragTargetDrop(
+        const WebPoint& clientPoint, const WebPoint& screenPoint,
+        int keyModifiers) = 0;
 
 
     // Support for resource loading initiated by plugins -------------------

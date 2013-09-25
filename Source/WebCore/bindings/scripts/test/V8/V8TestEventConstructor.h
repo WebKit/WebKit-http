@@ -22,6 +22,7 @@
 #define V8TestEventConstructor_h
 
 #include "TestEventConstructor.h"
+#include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include "WrapperTypeInfo.h"
 #include <v8.h>
@@ -52,7 +53,7 @@ private:
 
 v8::Handle<v8::Object> V8TestEventConstructor::wrap(TestEventConstructor* impl, v8::Isolate* isolate)
 {
-        v8::Handle<v8::Object> wrapper = getDOMObjectMap().get(impl);
+        v8::Handle<v8::Object> wrapper = getDOMObjectMap(isolate).get(impl);
         if (!wrapper.IsEmpty())
             return wrapper;
     return V8TestEventConstructor::wrapSlow(impl, isolate);
@@ -61,7 +62,7 @@ v8::Handle<v8::Object> V8TestEventConstructor::wrap(TestEventConstructor* impl, 
 inline v8::Handle<v8::Value> toV8(TestEventConstructor* impl, v8::Isolate* isolate = 0)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     return V8TestEventConstructor::wrap(impl, isolate);
 }
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestEventConstructor > impl, v8::Isolate* isolate = 0)

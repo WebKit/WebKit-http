@@ -29,6 +29,7 @@
 
 #include "IconDatabaseBase.h"
 #include "Timer.h"
+#include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
@@ -136,6 +137,11 @@ private:
 
     RefPtr<IconRecord> m_defaultIconRecord;
 
+    static void performScheduleOrDeferSyncTimerOnMainThread(void*);
+    void performScheduleOrDeferSyncTimer();
+
+    bool m_scheduleOrDeferSyncTimerRequested;
+
 // *** Any Thread ***
 public:
     virtual bool isOpen() const;
@@ -178,6 +184,12 @@ private:
     HashSet<String> m_pageURLsInterestedInIcons;
     HashSet<IconRecord*> m_iconsPendingReading;
 
+    Mutex m_urlsToRetainOrReleaseLock;
+    // Holding m_urlsToRetainOrReleaseLock is required when accessing any of the following data structures.
+    HashCountedSet<String> m_urlsToRetain;
+    HashCountedSet<String> m_urlsToRelease;
+    bool m_retainOrReleaseIconRequested;
+
 // *** Sync Thread Only ***
 public:
     // Should be used only on the sync thread and only by the Safari 2 Icons import procedure
@@ -203,6 +215,8 @@ private:
     void removeAllIconsOnThread();
     void deleteAllPreparedStatements();
     void* cleanupSyncThread();
+    void performRetainIconForPageURL(const String&, int retainCount);
+    void performReleaseIconForPageURL(const String&, int releaseCount);
 
     // Record (on disk) whether or not Safari 2-style icons were imported (once per dataabse)
     bool imported();
@@ -221,7 +235,9 @@ private:
     PassRefPtr<SharedBuffer> getImageDataForIconURLFromSQLDatabase(const String& iconURL);
     void removeIconFromSQLDatabase(const String& iconURL);
     void writeIconSnapshotToSQLDatabase(const IconSnapshot&);    
-    
+
+    void performPendingRetainAndReleaseOperations();
+
     // Methods to dispatch client callbacks on the main thread
     void dispatchDidImportIconURLForPageURLOnMainThread(const String&);
     void dispatchDidImportIconDataForPageURLOnMainThread(const String&);

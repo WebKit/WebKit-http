@@ -95,7 +95,7 @@ void InspectorApplicationCacheAgent::updateApplicationCacheStatus(Frame* frame)
     ApplicationCacheHost::CacheInfo info = host->applicationCacheInfo();
 
     String manifestURL = info.m_manifest.string();
-    m_frontend->applicationCacheStatusUpdated(m_pageAgent->frameId(frame), manifestURL, status);
+    m_frontend->applicationCacheStatusUpdated(m_pageAgent->frameId(frame), manifestURL, static_cast<int>(status));
 }
 
 void InspectorApplicationCacheAgent::networkStateChanged()
@@ -121,7 +121,7 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString*, RefPtr
             RefPtr<TypeBuilder::ApplicationCache::FrameWithManifest> value = TypeBuilder::ApplicationCache::FrameWithManifest::create()
                 .setFrameId(m_pageAgent->frameId(frame))
                 .setManifestURL(manifestURL)
-                .setStatus(host->status());
+                .setStatus(static_cast<int>(host->status()));
             result->addItem(value);
         }
     }
@@ -168,7 +168,8 @@ PassRefPtr<TypeBuilder::ApplicationCache::ApplicationCache> InspectorApplication
         .setSize(applicationCacheInfo.m_size)
         .setCreationTime(applicationCacheInfo.m_creationTime)
         .setUpdateTime(applicationCacheInfo.m_updateTime)
-        .setResources(buildArrayForApplicationCacheResources(applicationCacheResources));
+        .setResources(buildArrayForApplicationCacheResources(applicationCacheResources))
+        .release();
 }
 
 PassRefPtr<TypeBuilder::Array<TypeBuilder::ApplicationCache::ApplicationCacheResource> > InspectorApplicationCacheAgent::buildArrayForApplicationCacheResources(const ApplicationCacheHost::ResourceInfoList& applicationCacheResources)

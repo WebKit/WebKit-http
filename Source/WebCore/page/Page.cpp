@@ -52,6 +52,7 @@
 #include "MediaCanStartListener.h"
 #include "Navigator.h"
 #include "NetworkStateNotifier.h"
+#include "PageCache.h"
 #include "PageGroup.h"
 #include "PluginData.h"
 #include "PluginView.h"
@@ -210,14 +211,18 @@ Page::~Page()
 
 }
 
-size_t Page::renderTreeSize() const
+ArenaSize Page::renderTreeSize() const
 {
-    size_t size = 0;
+    ArenaSize total(0, 0);
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext()) {
-        if (frame->document() && frame->document()->renderArena())
-            size += frame->document()->renderArena()->totalRenderArenaSize();
+        if (!frame->document())
+            continue;
+        if (RenderArena* arena = frame->document()->renderArena()) {
+            total.treeSize += arena->totalRenderArenaSize();
+            total.allocated += arena->totalRenderArenaAllocatedBytes();
+        }
     }
-    return size;
+    return total;
 }
 
 ViewportArguments Page::viewportArguments() const
@@ -636,10 +641,16 @@ void Page::setMediaVolume(float volume)
 
 void Page::setPageScaleFactor(float scale, const IntPoint& origin)
 {
-    if (scale == m_pageScaleFactor)
-        return;
-
     Document* document = mainFrame()->document();
+    FrameView* view = document->view();
+
+    if (scale == m_pageScaleFactor) {
+        if (view && view->scrollPosition() != origin) {
+            document->updateLayoutIgnorePendingStylesheets();
+            view->setScrollPosition(origin);
+        }
+        return;
+    }
 
     m_pageScaleFactor = scale;
 
@@ -652,12 +663,10 @@ void Page::setPageScaleFactor(float scale, const IntPoint& origin)
     mainFrame()->deviceOrPageScaleFactorChanged();
 #endif
 
-    if (FrameView* view = document->view()) {
-        if (view->scrollPosition() != origin) {
-          if (document->renderer() && document->renderer()->needsLayout() && view->didFirstLayout())
-              view->layout();
-          view->setScrollPosition(origin);
-        }
+    if (view && view->scrollPosition() != origin) {
+        if (document->renderer() && document->renderer()->needsLayout() && view->didFirstLayout())
+            view->layout();
+        view->setScrollPosition(origin);
     }
 }
 
@@ -678,7 +687,7 @@ void Page::setDeviceScaleFactor(float scaleFactor)
     for (Frame* frame = mainFrame(); frame; frame = frame->tree()->traverseNext())
         frame->editor()->deviceScaleFactorChanged();
 
-    backForward()->markPagesForFullStyleRecalc();
+    pageCache()->markPagesForFullStyleRecalc(this);
 }
 
 void Page::setPagination(const Pagination& pagination)
@@ -689,7 +698,7 @@ void Page::setPagination(const Pagination& pagination)
     m_pagination = pagination;
 
     setNeedsRecalcStyleInAllFrames();
-    backForward()->markPagesForFullStyleRecalc();
+    pageCache()->markPagesForFullStyleRecalc(this);
 }
 
 unsigned Page::pageCount() const
@@ -1029,8 +1038,11 @@ void Page::setVisibilityState(PageVisibilityState visibilityState, bool isInitia
     m_visibilityState = visibilityState;
 
     if (!isInitialState && m_mainFrame) {
-        if (visibilityState == PageVisibilityStateHidden)
-            HistogramSupport::histogramCustomCounts("WebCore.Page.renderTreeSizeBytes", renderTreeSize(), 1000, 500000000, 50);
+        if (visibilityState == PageVisibilityStateHidden) {
+            ArenaSize size = renderTreeSize();
+            HistogramSupport::histogramCustomCounts("WebCore.Page.renderTreeSizeBytes", size.treeSize, 1000, 500000000, 50);
+            HistogramSupport::histogramCustomCounts("WebCore.Page.renderTreeAllocatedBytes", size.allocated, 1000, 500000000, 50);
+        }
         m_mainFrame->dispatchVisibilityStateChangeEvent();
     }
 }

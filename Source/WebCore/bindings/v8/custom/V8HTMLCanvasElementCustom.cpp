@@ -42,6 +42,7 @@
 #include "V8Node.h"
 #include "V8Proxy.h"
 #if ENABLE(WEBGL)
+#include "InspectorWebGLInstrumentation.h"
 #include "V8WebGLRenderingContext.h"
 #endif
 #include <wtf/MathExtras.h>
@@ -84,15 +85,24 @@ v8::Handle<v8::Value> V8HTMLCanvasElement::getContextCallback(const v8::Argument
 #endif
     CanvasRenderingContext* result = imp->getContext(contextId, attrs.get());
     if (!result)
-        return v8::Null();
+        return v8::Null(args.GetIsolate());
     if (result->is2d())
         return toV8(static_cast<CanvasRenderingContext2D*>(result), args.GetIsolate());
 #if ENABLE(WEBGL)
-    else if (result->is3d())
-        return toV8(static_cast<WebGLRenderingContext*>(result), args.GetIsolate());
+    else if (result->is3d()) {
+        v8::Handle<v8::Value> v8Result = toV8(static_cast<WebGLRenderingContext*>(result), args.GetIsolate());
+        if (InspectorInstrumentation::hasFrontends()) {
+            ScriptState* scriptState = ScriptState::forContext(v8::Context::GetCurrent());
+            ScriptObject glContext(scriptState, v8::Handle<v8::Object>::Cast(v8Result));
+            ScriptObject wrapped = InspectorInstrumentation::wrapWebGLRenderingContextForInstrumentation(imp->document(), glContext);
+            if (!wrapped.hasNoValue())
+                return wrapped.v8Value();
+        }
+        return v8Result;
+    }
 #endif
     ASSERT_NOT_REACHED();
-    return v8::Null();
+    return v8::Null(args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8HTMLCanvasElement::toDataURLCallback(const v8::Arguments& args)
@@ -111,7 +121,7 @@ v8::Handle<v8::Value> V8HTMLCanvasElement::toDataURLCallback(const v8::Arguments
 
     String result = canvas->toDataURL(type, qualityPtr, ec);
     V8Proxy::setDOMException(ec, args.GetIsolate());
-    return v8StringOrUndefined(result);
+    return v8StringOrUndefined(result, args.GetIsolate());
 }
 
 } // namespace WebCore

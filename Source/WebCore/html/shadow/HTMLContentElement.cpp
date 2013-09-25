@@ -27,33 +27,34 @@
 #include "config.h"
 #include "HTMLContentElement.h"
 
+#include "ContentDistributor.h"
 #include "ContentSelectorQuery.h"
-#include "HTMLContentSelector.h"
+#include "ContextEnabledFeatures.h"
+#include "ElementShadow.h"
 #include "HTMLNames.h"
 #include "QualifiedName.h"
-#include "RuntimeEnabledFeatures.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
 
 using HTMLNames::selectAttr;
 
-static const QualifiedName& contentTagName()
+static const QualifiedName& contentTagName(Document* document)
 {
 #if ENABLE(SHADOW_DOM)
-    if (!RuntimeEnabledFeatures::shadowDOMEnabled())
+    if (!ContextEnabledFeatures::shadowDOMEnabled(document->domWindow()))
         return HTMLNames::webkitShadowContentTag;
     return HTMLNames::contentTag;
 #else
+    UNUSED_PARAM(document);
     return HTMLNames::webkitShadowContentTag;
 #endif
 }
 
 PassRefPtr<HTMLContentElement> HTMLContentElement::create(Document* document)
 {
-    return adoptRef(new HTMLContentElement(contentTagName(), document));
+    return adoptRef(new HTMLContentElement(contentTagName(document), document));
 }
 
 PassRefPtr<HTMLContentElement> HTMLContentElement::create(const QualifiedName& tagName, Document* document)
@@ -86,13 +87,13 @@ void HTMLContentElement::setSelect(const AtomicString& selectValue)
     setAttribute(selectAttr, selectValue);
 }
 
-void HTMLContentElement::parseAttribute(Attribute* attr)
+void HTMLContentElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == selectAttr) {
-        if (ShadowRoot* root = toShadowRoot(shadowTreeRootNode()))
-            root->tree()->setNeedsReattachHostChildrenAndShadow();
+    if (attribute.name() == selectAttr) {
+        if (ShadowRoot* root = shadowRoot())
+            root->owner()->invalidateDistribution();
     } else
-        InsertionPoint::parseAttribute(attr);
+        InsertionPoint::parseAttribute(attribute);
 }
 
 }

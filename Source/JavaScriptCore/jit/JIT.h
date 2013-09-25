@@ -582,7 +582,6 @@ namespace JSC {
         void emit_op_call_put_result(Instruction*);
         void emit_op_catch(Instruction*);
         void emit_op_construct(Instruction*);
-        void emit_op_get_callee(Instruction*);
         void emit_op_create_this(Instruction*);
         void emit_op_convert_this(Instruction*);
         void emit_op_create_arguments(Instruction*);
@@ -837,7 +836,7 @@ namespace JSC {
 
 #if ENABLE(DFG_JIT)
         bool canBeOptimized() { return m_canBeOptimized; }
-        bool shouldEmitProfiling() { return m_canBeOptimized; }
+        bool shouldEmitProfiling() { return m_shouldEmitProfiling; }
 #else
         bool canBeOptimized() { return false; }
         // Enables use of value profiler with tiered compilation turned off,
@@ -886,6 +885,7 @@ namespace JSC {
 
 #if ENABLE(VALUE_PROFILER)
         bool m_canBeOptimized;
+        bool m_shouldEmitProfiling;
 #endif
     } JIT_CLASS_ALIGNMENT;
 

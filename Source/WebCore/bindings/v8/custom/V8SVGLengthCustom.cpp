@@ -49,10 +49,8 @@ v8::Handle<v8::Value> V8SVGLength::valueAccessorGetter(v8::Local<v8::String> nam
     ExceptionCode ec = 0;
     SVGLengthContext lengthContext(wrapper->contextElement());
     float value = imp.value(lengthContext, ec);
-    if (UNLIKELY(ec)) {
-        V8Proxy::setDOMException(ec, info.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (UNLIKELY(ec))
+        return V8Proxy::setDOMException(ec, info.GetIsolate());
     return v8::Number::New(value);
 }
 
@@ -60,13 +58,13 @@ void V8SVGLength::valueAccessorSetter(v8::Local<v8::String> name, v8::Local<v8::
 {
     INC_STATS("DOM.SVGLength.value._set");
     SVGPropertyTearOff<SVGLength>* wrapper = V8SVGLength::toNative(info.Holder());
-    if (wrapper->role() == AnimValRole) {
+    if (wrapper->isReadOnly()) {
         V8Proxy::setDOMException(NO_MODIFICATION_ALLOWED_ERR, info.GetIsolate());
         return;
     }
 
     if (!isUndefinedOrNull(value) && !value->IsNumber() && !value->IsBoolean()) {
-        V8Proxy::throwTypeError();
+        V8Proxy::throwTypeError(0, info.GetIsolate());
         return;
     }
 
@@ -84,13 +82,11 @@ v8::Handle<v8::Value> V8SVGLength::convertToSpecifiedUnitsCallback(const v8::Arg
 {
     INC_STATS("DOM.SVGLength.convertToSpecifiedUnits");
     SVGPropertyTearOff<SVGLength>* wrapper = V8SVGLength::toNative(args.Holder());
-    if (wrapper->role() == AnimValRole) {
-        V8Proxy::setDOMException(NO_MODIFICATION_ALLOWED_ERR, args.GetIsolate());
-        return v8::Handle<v8::Value>();
-    }
+    if (wrapper->isReadOnly())
+        return V8Proxy::setDOMException(NO_MODIFICATION_ALLOWED_ERR, args.GetIsolate());
 
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     SVGLength& imp = wrapper->propertyReference();
     ExceptionCode ec = 0;
@@ -98,9 +94,9 @@ v8::Handle<v8::Value> V8SVGLength::convertToSpecifiedUnitsCallback(const v8::Arg
     SVGLengthContext lengthContext(wrapper->contextElement());
     imp.convertToSpecifiedUnits(unitType, lengthContext, ec);
     if (UNLIKELY(ec))
-        V8Proxy::setDOMException(ec, args.GetIsolate());
-    else
-        wrapper->commitChange();
+        return V8Proxy::setDOMException(ec, args.GetIsolate());
+
+    wrapper->commitChange();
     return v8::Handle<v8::Value>();
 }
 

@@ -19,10 +19,10 @@
 #include "PlatformContextSkia.h"
 #include "RenderView.h"
 #include "TimeRanges.h"
-#include "VideoLayerChromium.h"
 #include "WebAudioSourceProvider.h"
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
+#include "WebHelperPluginImpl.h"
 #include "WebKit.h"
 #include "WebMediaPlayer.h"
 #include "WebViewImpl.h"
@@ -96,6 +96,8 @@ WebMediaPlayerClientImpl::~WebMediaPlayerClientImpl()
     if (m_webMediaPlayer)
         m_webMediaPlayer->setStreamTextureClient(0);
 #endif
+    if (m_helperPlugin)
+        closeHelperPlugin();
 }
 
 void WebMediaPlayerClientImpl::networkStateChanged()
@@ -265,6 +267,32 @@ void WebMediaPlayerClientImpl::keyNeeded(const WebString& keySystem, const WebSt
 #endif
 }
 
+WebPlugin* WebMediaPlayerClientImpl::createHelperPlugin(const WebString& pluginType, WebFrame* frame)
+{
+    ASSERT(!m_helperPlugin);
+    WebViewImpl* webView = static_cast<WebViewImpl*>(frame->view());
+    m_helperPlugin = webView->createHelperPlugin(pluginType);
+    if (!m_helperPlugin)
+        return 0;
+
+    WebPlugin* plugin = m_helperPlugin->getPlugin();
+    if (!plugin) {
+        // There is no need to keep the helper plugin around and the caller
+        // should not be expected to call close after a failure (null pointer).
+        closeHelperPlugin();
+        return 0;
+    }
+
+    return plugin;
+}
+
+void WebMediaPlayerClientImpl::closeHelperPlugin()
+{
+    ASSERT(m_helperPlugin);
+    m_helperPlugin->closeHelperPlugin();
+    m_helperPlugin = 0;
+}
+
 void WebMediaPlayerClientImpl::disableAcceleratedCompositing()
 {
     m_supportsAcceleratedCompositing = false;
@@ -301,7 +329,9 @@ void WebMediaPlayerClientImpl::loadInternal()
         // Make sure if we create/re-create the WebMediaPlayer that we update our wrapper.
         m_audioSourceProvider.wrap(m_webMediaPlayer->audioSourceProvider());
 #endif
-        m_webMediaPlayer->load(KURL(ParsedURLString, m_url));
+        m_webMediaPlayer->load(
+            KURL(ParsedURLString, m_url),
+            static_cast<WebMediaPlayer::CORSMode>(m_mediaPlayer->mediaPlayerClient()->mediaPlayerCORSMode()));
     }
 }
 
@@ -312,10 +342,10 @@ void WebMediaPlayerClientImpl::cancelLoad()
 }
 
 #if USE(ACCELERATED_COMPOSITING)
-PlatformLayer* WebMediaPlayerClientImpl::platformLayer() const
+LayerChromium* WebMediaPlayerClientImpl::platformLayer() const
 {
     ASSERT(m_supportsAcceleratedCompositing);
-    return m_videoLayer.unwrap<VideoLayerChromium>();
+    return m_videoLayer.unwrap<LayerChromium>();
 }
 #endif
 
@@ -340,11 +370,10 @@ void WebMediaPlayerClientImpl::pause()
 }
 
 #if USE(NATIVE_FULLSCREEN_VIDEO)
-bool WebMediaPlayerClientImpl::enterFullscreen() const
+void WebMediaPlayerClientImpl::enterFullscreen()
 {
     if (m_webMediaPlayer)
-        return m_webMediaPlayer->enterFullscreen();
-    return false;
+        m_webMediaPlayer->enterFullscreen();
 }
 
 void WebMediaPlayerClientImpl::exitFullscreen()
@@ -352,15 +381,20 @@ void WebMediaPlayerClientImpl::exitFullscreen()
     if (m_webMediaPlayer)
         m_webMediaPlayer->exitFullscreen();
 }
+
+bool WebMediaPlayerClientImpl::canEnterFullscreen() const
+{
+    return m_webMediaPlayer && m_webMediaPlayer->canEnterFullscreen();
+}
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-WebCore::MediaPlayer::AddIdStatus WebMediaPlayerClientImpl::sourceAddId(const String& id, const String& type)
+WebCore::MediaPlayer::AddIdStatus WebMediaPlayerClientImpl::sourceAddId(const String& id, const String& type, const Vector<String>& codecs)
 {
     if (!m_webMediaPlayer)
         return WebCore::MediaPlayer::NotSupported;
 
-    return static_cast<WebCore::MediaPlayer::AddIdStatus>(m_webMediaPlayer->sourceAddId(id, type));
+    return static_cast<WebCore::MediaPlayer::AddIdStatus>(m_webMediaPlayer->sourceAddId(id, type, codecs));
 }
 
 bool WebMediaPlayerClientImpl::sourceRemoveId(const String& id)
@@ -371,11 +405,31 @@ bool WebMediaPlayerClientImpl::sourceRemoveId(const String& id)
     return m_webMediaPlayer->sourceRemoveId(id);
 }
 
-bool WebMediaPlayerClientImpl::sourceAppend(const unsigned char* data, unsigned length)
+PassRefPtr<TimeRanges> WebMediaPlayerClientImpl::sourceBuffered(const String& id)
+{
+    if (!m_webMediaPlayer)
+        return TimeRanges::create();
+
+    WebTimeRanges webRanges = m_webMediaPlayer->sourceBuffered(id);
+    RefPtr<TimeRanges> ranges = TimeRanges::create();
+    for (size_t i = 0; i < webRanges.size(); ++i)
+        ranges->add(webRanges[i].start, webRanges[i].end);
+    return ranges.release();
+}
+
+bool WebMediaPlayerClientImpl::sourceAppend(const String& id, const unsigned char* data, unsigned length)
 {
     if (m_webMediaPlayer)
-        return m_webMediaPlayer->sourceAppend(data, length);
+        return m_webMediaPlayer->sourceAppend(id, data, length);
     return false;
+}
+
+bool WebMediaPlayerClientImpl::sourceAbort(const String& id)
+{
+    if (!m_webMediaPlayer)
+        return false;
+
+    return m_webMediaPlayer->sourceAbort(id);
 }
 
 void WebMediaPlayerClientImpl::sourceEndOfStream(WebCore::MediaPlayer::EndOfStreamStatus status)
@@ -569,11 +623,9 @@ unsigned WebMediaPlayerClientImpl::totalBytes() const
     return 0;
 }
 
-unsigned WebMediaPlayerClientImpl::bytesLoaded() const
+bool WebMediaPlayerClientImpl::didLoadingProgress() const
 {
-    if (m_webMediaPlayer)
-        return static_cast<unsigned>(m_webMediaPlayer->bytesLoaded());
-    return 0;
+    return m_webMediaPlayer && m_webMediaPlayer->didLoadingProgress();
 }
 
 void WebMediaPlayerClientImpl::setSize(const IntSize& size)
@@ -586,7 +638,7 @@ void WebMediaPlayerClientImpl::paint(GraphicsContext* context, const IntRect& re
 {
 #if USE(ACCELERATED_COMPOSITING)
     // If we are using GPU to render video, ignore requests to paint frames into
-    // canvas because it will be taken care of by VideoLayerChromium.
+    // canvas because it will be taken care of by WebVideoLayer.
     if (acceleratedRenderingInUse())
         return;
 #endif
@@ -620,6 +672,13 @@ bool WebMediaPlayerClientImpl::hasSingleSecurityOrigin() const
 {
     if (m_webMediaPlayer)
         return m_webMediaPlayer->hasSingleSecurityOrigin();
+    return false;
+}
+
+bool WebMediaPlayerClientImpl::didPassCORSAccessCheck() const
+{
+    if (m_webMediaPlayer)
+        return m_webMediaPlayer->didPassCORSAccessCheck();
     return false;
 }
 
@@ -687,6 +746,8 @@ bool WebMediaPlayerClientImpl::acceleratedRenderingInUse()
 void WebMediaPlayerClientImpl::setVideoFrameProviderClient(WebVideoFrameProvider::Client* client)
 {
     MutexLocker locker(m_compositingMutex);
+    if (m_videoFrameProviderClient)
+        m_videoFrameProviderClient->stopUsingProvider();
     m_videoFrameProviderClient = client;
     if (m_webMediaPlayer)
         m_webMediaPlayer->setStreamTextureClient(client ? this : 0);

@@ -58,7 +58,7 @@ public:
     static PassRefPtr<SerializedScriptValue> create(const String& data, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> create();
 
-    static SerializedScriptValue* nullValue(v8::Isolate* = 0);
+    static PassRefPtr<SerializedScriptValue> nullValue(v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> undefinedValue(v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> booleanValue(bool value, v8::Isolate* = 0);
     static PassRefPtr<SerializedScriptValue> numberValue(double value, v8::Isolate* = 0);
@@ -88,7 +88,7 @@ private:
     SerializedScriptValue(v8::Handle<v8::Value>, MessagePortArray*, ArrayBufferArray*, bool& didThrow, v8::Isolate*);
     explicit SerializedScriptValue(const String& wireData);
 
-    static PassOwnPtr<ArrayBufferContentsArray> transferArrayBuffers(ArrayBufferArray&, bool& didThrow);
+    static PassOwnPtr<ArrayBufferContentsArray> transferArrayBuffers(ArrayBufferArray&, bool& didThrow, v8::Isolate*);
 
     String m_data;
     OwnPtr<ArrayBufferContentsArray> m_arrayBufferContentsArray;

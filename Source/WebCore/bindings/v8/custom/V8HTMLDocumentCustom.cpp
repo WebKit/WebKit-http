@@ -148,10 +148,8 @@ v8::Handle<v8::Value> V8HTMLDocument::openCallback(const v8::Arguments& args)
             // Get the open property of the global object.
             v8::Local<v8::Value> function = global->Get(v8::String::New("open"));
             // If the open property is not a function throw a type error.
-            if (!function->IsFunction()) {
-                throwError("open is not a function");
-                return v8::Undefined();
-            }
+            if (!function->IsFunction())
+                return V8Proxy::throwTypeError("open is not a function", args.GetIsolate());
             // Wrap up the arguments and call the function.
             OwnArrayPtr<v8::Local<v8::Value> > params = adoptArrayPtr(new v8::Local<v8::Value>[args.Length()]);
             for (int i = 0; i < args.Length(); i++)
@@ -189,7 +187,7 @@ void V8HTMLDocument::allAccessorSetter(v8::Local<v8::String> name, v8::Local<v8:
 v8::Handle<v8::Value> toV8(HTMLDocument* impl, v8::Isolate* isolate, bool forceNewObject)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     v8::Handle<v8::Object> wrapper = V8HTMLDocument::wrap(impl, isolate, forceNewObject);
     if (wrapper.IsEmpty())
         return wrapper;

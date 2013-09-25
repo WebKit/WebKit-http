@@ -4,9 +4,11 @@ TEST_PROGS += \
 	Programs/WebKit2APITests/TestBackForwardList \
 	Programs/WebKit2APITests/TestCookieManager \
 	Programs/WebKit2APITests/TestDownloads \
+	Programs/WebKit2APITests/TestInspector \
 	Programs/WebKit2APITests/TestLoaderClient \
 	Programs/WebKit2APITests/TestPrinting \
 	Programs/WebKit2APITests/TestResources \
+	Programs/WebKit2APITests/TestWebKitVersion \
 	Programs/WebKit2APITests/TestWebKitFindController \
 	Programs/WebKit2APITests/TestWebKitPolicyClient \
 	Programs/WebKit2APITests/TestWebKitSettings \
@@ -65,7 +67,9 @@ Libraries_libWebKit2APITestCore_la_CPPFLAGS = $(webkit2_tests_cppflags)
 
 Programs_WebKit2APITests_TestWebKitWebContext_SOURCES = \
 	Source/WebKit2/UIProcess/API/gtk/tests/TestWebKitWebContext.cpp
-Programs_WebKit2APITests_TestWebKitWebContext_CPPFLAGS = $(webkit2_tests_cppflags)
+Programs_WebKit2APITests_TestWebKitWebContext_CPPFLAGS = \
+	-DWEBKIT_TEST_PLUGIN_DIR=\"${shell pwd}/${top_builddir}/TestNetscapePlugin/.libs\" \
+	$(webkit2_tests_cppflags)
 Programs_WebKit2APITests_TestWebKitWebContext_LDADD = $(webkit2_tests_ldadd)
 Programs_WebKit2APITests_TestWebKitWebContext_LDFLAGS = $(webkit2_tests_ldflags)
 
@@ -148,5 +152,19 @@ Programs_WebKit2APITests_TestCookieManager_SOURCES = \
 Programs_WebKit2APITests_TestCookieManager_CPPFLAGS = $(webkit2_tests_cppflags)
 Programs_WebKit2APITests_TestCookieManager_LDADD = $(webkit2_tests_ldadd)
 Programs_WebKit2APITests_TestCookieManager_LDFLAGS = $(webkit2_tests_ldflags)
+
+Programs_WebKit2APITests_TestInspector_SOURCES = \
+        Source/WebKit2/UIProcess/API/gtk/tests/TestInspector.cpp
+Programs_WebKit2APITests_TestInspector_CPPFLAGS = \
+	-DWEBKIT_INSPECTOR_PATH=\"${shell pwd}/${top_builddir}/resources/inspector\" \
+	$(webkit2_tests_cppflags)
+Programs_WebKit2APITests_TestInspector_LDADD = $(webkit2_tests_ldadd)
+Programs_WebKit2APITests_TestInspector_LDFLAGS = $(webkit2_tests_ldflags)
+
+Programs_WebKit2APITests_TestWebKitVersion_SOURCES = \
+        Source/WebKit2/UIProcess/API/gtk/tests/TestWebKitVersion.cpp
+Programs_WebKit2APITests_TestWebKitVersion_CPPFLAGS = $(webkit2_tests_cppflags)
+Programs_WebKit2APITests_TestWebKitVersion_LDADD = $(webkit2_tests_ldadd)
+Programs_WebKit2APITests_TestWebKitVersion_LDFLAGS = $(webkit2_tests_ldflags)
 
 endif # ENABLE_WEBKIT2

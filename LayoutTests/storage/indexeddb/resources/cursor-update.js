@@ -28,7 +28,7 @@ function setVersionSuccess()
 {
     debug("setVersionSuccess():");
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = openBasicCursor;
 
@@ -40,13 +40,13 @@ function setVersionSuccess()
     evalAndLog("objectStore.add('myValue3', 'myKey3').onerror = unexpectedErrorCallback");
     evalAndLog("objectStore.add('myValue4', 'myKey4').onerror = unexpectedErrorCallback");
 
-    var objectStore = evalAndLog("objectStore = db.createObjectStore('autoIncrementStore', {autoIncrement: true})");
+    objectStore = evalAndLog("objectStore = db.createObjectStore('autoIncrementStore', {autoIncrement: true})");
     evalAndLog("objectStore.add('foo1').onerror = unexpectedErrorCallback");
     evalAndLog("objectStore.add('foo2').onerror = unexpectedErrorCallback");
     evalAndLog("objectStore.add('foo3').onerror = unexpectedErrorCallback");
     evalAndLog("objectStore.add('foo4').onerror = unexpectedErrorCallback");
 
-    var objectStore = evalAndLog("objectStore = db.createObjectStore('keyPathStore', {keyPath: 'id'})");
+    objectStore = evalAndLog("objectStore = db.createObjectStore('keyPathStore', {keyPath: 'id'})");
     evalAndLog("objectStore.createIndex('numberIndex', 'number')");
     evalAndLog("objectStore.add({number: 1, id: 1}).onerror = unexpectedErrorCallback");
     evalAndLog("objectStore.add({number: 2, id: 2}).onerror = unexpectedErrorCallback");
@@ -57,7 +57,7 @@ function setVersionSuccess()
 function openBasicCursor()
 {
     debug("openBasicCursor()");
-    evalAndLog("trans = db.transaction(['basicStore', 'autoIncrementStore', 'keyPathStore'], IDBTransaction.READ_WRITE)");
+    evalAndLog("trans = db.transaction(['basicStore', 'autoIncrementStore', 'keyPathStore'], 'readwrite')");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = transactionComplete;
 
@@ -84,7 +84,7 @@ function basicUpdateCursor()
     }
 
     request = evalAndLog("event.target.result.update('myUpdatedValue' + counter++)");
-    request.onsuccess = function() { evalAndLog("event.target.source.continue()"); }
+    request.onsuccess = function() { evalAndLog("event.target.source.continue()"); };
     request.onerror = unexpectedErrorCallback;
 }
 
@@ -121,7 +121,7 @@ function autoIncrementUpdateCursor()
     }
 
     request = evalAndLog("event.target.result.update('myUpdatedFoo' + counter++)");
-    request.onsuccess = function() { evalAndLog("event.target.source.continue()"); }
+    request.onsuccess = function() { evalAndLog("event.target.source.continue()"); };
     request.onerror = unexpectedErrorCallback;
 }
 
@@ -157,10 +157,10 @@ function keyPathUpdateCursor()
         return;
     }
 
-    evalAndExpectException("event.target.result.update({id: 100 + counter, number: 100 + counter})", "IDBDatabaseException.DATA_ERR");
+    evalAndExpectException("event.target.result.update({id: 100 + counter, number: 100 + counter})", "IDBDatabaseException.DATA_ERR", "'DataError'");
 
     request = evalAndLog("event.target.result.update({id: counter, number: 100 + counter++})");
-    request.onsuccess = function() { evalAndLog("event.target.source.continue()") };
+    request.onsuccess = function() { evalAndLog("event.target.source.continue()"); };
     request.onerror = unexpectedErrorCallback;
 }
 
@@ -196,14 +196,8 @@ function keyCursor()
     shouldBe("event.target.result.key", "counter + 100");
     shouldBe("event.target.result.primaryKey", "counter");
 
-    try {
-        debug("event.target.result.update({id: counter, number: counter + 200})");
-        event.target.result.update({id: counter, number: counter + 200});
-        testFailed("Expected exception.");
-    } catch (e) {
-        code = e.code;
-        shouldBe("code", "IDBDatabaseException.NOT_ALLOWED_ERR");
-    }
+    evalAndExpectException("event.target.result.update({id: counter, number: counter + 200})",
+                           "DOMException.INVALID_STATE_ERR", "'InvalidStateError'");
 
     counter++;
     event.target.result.continue();

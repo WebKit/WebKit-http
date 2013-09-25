@@ -57,6 +57,7 @@ AnimationControllerPrivate::AnimationControllerPrivate(Frame* frame)
     , m_animationsWaitingForStyle()
     , m_animationsWaitingForStartTimeResponse()
     , m_waitingForAsyncStartNotification(false)
+    , m_previousTimeToNextService(0)
 {
 }
 
@@ -118,7 +119,6 @@ double AnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* 
 
 void AnimationControllerPrivate::updateAnimationTimerForRenderer(RenderObject* renderer)
 {
-    static double previousTimeToNextService = 0;
     double timeToNextService = 0;
 
     RefPtr<CompositeAnimation> compAnim = m_compositeAnimations.get(renderer);
@@ -126,13 +126,13 @@ void AnimationControllerPrivate::updateAnimationTimerForRenderer(RenderObject* r
         timeToNextService = compAnim->timeToNextService();
 
     if (m_animationTimer.isActive()) {
-        if (previousTimeToNextService < timeToNextService)
+        if (m_previousTimeToNextService < timeToNextService)
             return;
 
         m_animationTimer.stop();
     }
 
-    previousTimeToNextService = timeToNextService;
+    m_previousTimeToNextService = timeToNextService;
     m_animationTimer.startOneShot(timeToNextService);
 }
 
@@ -144,6 +144,8 @@ void AnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/
     if (!timeToNextService) {
         if (!m_animationTimer.isActive() || m_animationTimer.repeatInterval() == 0)
             m_animationTimer.startRepeating(cAnimationTimerDelay);
+
+        m_previousTimeToNextService = timeToNextService;
         return;
     }
 
@@ -157,6 +159,7 @@ void AnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/
     // Otherwise, we want to start a one-shot timer so we get here again
     if (m_animationTimer.isActive())
         m_animationTimer.stop();
+    m_previousTimeToNextService = timeToNextService;
     m_animationTimer.startOneShot(timeToNextService);
 }
 
@@ -380,9 +383,6 @@ PassRefPtr<RenderStyle> AnimationControllerPrivate::getAnimatedStyleForRenderer(
     if (!rendererAnimations)
         return renderer->style();
     
-    // Make sure animationUpdateTime is updated, so that it is current even if no
-    // styleChange has happened (e.g. accelerated animations).
-    setBeginAnimationUpdateTime(cBeginAnimationUpdateTimeNotSet);
     RefPtr<RenderStyle> animatingStyle = rendererAnimations->getAnimatedStyle();
     if (!animatingStyle)
         animatingStyle = renderer->style();
@@ -494,6 +494,7 @@ PassRefPtr<WebKitAnimationList> AnimationControllerPrivate::animationsForRendere
 
 AnimationController::AnimationController(Frame* frame)
     : m_data(adoptPtr(new AnimationControllerPrivate(frame)))
+    , m_beginAnimationUpdateCount(0)
 {
 }
 
@@ -619,12 +620,17 @@ void AnimationController::resumeAnimationsForDocument(Document* document)
 
 void AnimationController::beginAnimationUpdate()
 {
-    m_data->setBeginAnimationUpdateTime(cBeginAnimationUpdateTimeNotSet);
+    if (!m_beginAnimationUpdateCount)
+        m_data->setBeginAnimationUpdateTime(cBeginAnimationUpdateTimeNotSet);
+    ++m_beginAnimationUpdateCount;
 }
 
 void AnimationController::endAnimationUpdate()
 {
-    m_data->endAnimationUpdate();
+    ASSERT(m_beginAnimationUpdateCount > 0);
+    --m_beginAnimationUpdateCount;
+    if (!m_beginAnimationUpdateCount)
+        m_data->endAnimationUpdate();
 }
 
 bool AnimationController::supportsAcceleratedAnimationOfProperty(CSSPropertyID property)

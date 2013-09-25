@@ -36,19 +36,16 @@ namespace JSC {
 
 WeakBlock* WeakBlock::create()
 {
-    PageAllocation allocation = PageAllocation::allocate(blockSize, OSAllocator::JSGCHeapPages);
-    if (!static_cast<bool>(allocation))
-        CRASH();
-    return new (NotNull, allocation.base()) WeakBlock(allocation);
+    void* allocation = fastMalloc(blockSize);
+    return new (NotNull, allocation) WeakBlock;
 }
 
 void WeakBlock::destroy(WeakBlock* block)
 {
-    block->m_allocation.deallocate();
+    fastFree(block);
 }
 
-WeakBlock::WeakBlock(PageAllocation& allocation)
-    : m_allocation(allocation)
+WeakBlock::WeakBlock()
 {
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
@@ -56,10 +53,10 @@ WeakBlock::WeakBlock(PageAllocation& allocation)
         addToFreeList(&m_sweepResult.freeList, weakImpl);
     }
 
-    ASSERT(!m_sweepResult.isNull() && m_sweepResult.blockIsFree);
+    ASSERT(isEmpty());
 }
 
-void WeakBlock::finalizeAll()
+void WeakBlock::lastChanceToFinalize()
 {
     for (size_t i = 0; i < weakImplCount(); ++i) {
         WeakImpl* weakImpl = &weakImpls()[i];
@@ -72,7 +69,8 @@ void WeakBlock::finalizeAll()
 
 void WeakBlock::sweep()
 {
-    if (!m_sweepResult.isNull())
+    // If a block is completely empty, a sweep won't have any effect.
+    if (isEmpty())
         return;
 
     SweepResult sweepResult;
@@ -90,10 +88,10 @@ void WeakBlock::sweep()
     ASSERT(!m_sweepResult.isNull());
 }
 
-void WeakBlock::visitLiveWeakImpls(HeapRootVisitor& heapRootVisitor)
+void WeakBlock::visit(HeapRootVisitor& heapRootVisitor)
 {
     // If a block is completely empty, a visit won't have any effect.
-    if (!m_sweepResult.isNull() && m_sweepResult.blockIsFree)
+    if (isEmpty())
         return;
 
     SlotVisitor& visitor = heapRootVisitor.visitor();
@@ -118,10 +116,10 @@ void WeakBlock::visitLiveWeakImpls(HeapRootVisitor& heapRootVisitor)
     }
 }
 
-void WeakBlock::visitDeadWeakImpls(HeapRootVisitor&)
+void WeakBlock::reap()
 {
-    // If a block is completely empty, a visit won't have any effect.
-    if (!m_sweepResult.isNull() && m_sweepResult.blockIsFree)
+    // If a block is completely empty, a reaping won't have any effect.
+    if (isEmpty())
         return;
 
     for (size_t i = 0; i < weakImplCount(); ++i) {

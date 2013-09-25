@@ -21,6 +21,7 @@
 #include "config.h"
 #include "RenderFileUploadControl.h"
 
+#include "ElementShadow.h"
 #include "FileList.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
@@ -32,7 +33,6 @@
 #include "RenderText.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "TextRun.h"
 #include "VisiblePosition.h"
 #include <math.h>
@@ -109,8 +109,8 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
     // Push a clip.
     GraphicsContextStateSaver stateSaver(*paintInfo.context, false);
     if (paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseChildBlockBackgrounds) {
-        IntRect clipRect = pixelSnappedIntRect(paintOffset.x() + borderLeft(), paintOffset.y() + borderTop(),
-                         width() - borderLeft() - borderRight(), height() - borderBottom() - borderTop() + buttonShadowHeight);
+        IntRect clipRect = enclosingIntRect(LayoutRect(paintOffset.x() + borderLeft(), paintOffset.y() + borderTop(),
+                         width() - borderLeft() - borderRight(), height() - borderBottom() - borderTop() + buttonShadowHeight));
         if (clipRect.isEmpty())
             return;
         stateSaver.save();
@@ -223,9 +223,9 @@ HTMLInputElement* RenderFileUploadControl::uploadButton() const
 {
     HTMLInputElement* input = static_cast<HTMLInputElement*>(node());
 
-    ASSERT(input->hasShadowRoot());
+    ASSERT(input->shadow());
 
-    Node* buttonNode = input->shadowTree()->oldestShadowRoot()->firstChild();
+    Node* buttonNode = input->shadow()->oldestShadowRoot()->firstChild();
     return buttonNode && buttonNode->isHTMLElement() && buttonNode->hasTagName(inputTag) ? static_cast<HTMLInputElement*>(buttonNode) : 0;
 }
 

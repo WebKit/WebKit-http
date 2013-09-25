@@ -33,14 +33,18 @@
 
 #if ENABLE(PAGE_POPUP)
 #include "DOMWindow.h"
-#include "PagePopupClient.h"
+#include "PagePopupController.h"
 
 namespace WebCore {
 
 DOMWindowPagePopup::DOMWindowPagePopup(PagePopupClient* popupClient)
-    : m_popupClient(popupClient)
+    : m_controller(PagePopupController::create(popupClient))
 {
     ASSERT(popupClient);
+}
+
+DOMWindowPagePopup::~DOMWindowPagePopup()
+{
 }
 
 const AtomicString& DOMWindowPagePopup::supplementName()
@@ -49,12 +53,11 @@ const AtomicString& DOMWindowPagePopup::supplementName()
     return name;
 }
 
-void DOMWindowPagePopup::setValueAndClosePopup(DOMWindow* window, int intValue, const String& stringValue)
+PagePopupController* DOMWindowPagePopup::pagePopupController(DOMWindow* window)
 {
     DOMWindowPagePopup* supplement = static_cast<DOMWindowPagePopup*>(from(window, supplementName()));
     ASSERT(supplement);
-    supplement->m_popupClient->setValueAndClosePopup(intValue, stringValue);
-    // setValueAndClosePopup() deletes the window and this object. Do not access them.
+    return supplement->m_controller.get();
 }
 
 void DOMWindowPagePopup::install(DOMWindow* window, PagePopupClient* popupClient)

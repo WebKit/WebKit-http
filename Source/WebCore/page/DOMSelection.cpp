@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -58,9 +59,15 @@ static Node* selectionShadowAncestor(Frame* frame)
     return shadowAncestor;
 }
 
-DOMSelection::DOMSelection(Frame* frame)
-    : DOMWindowProperty(frame)
+DOMSelection::DOMSelection(const TreeScope* treeScope)
+    : DOMWindowProperty(treeScope->rootNode()->document()->frame())
+    , m_treeScope(treeScope)
 {
+}
+
+void DOMSelection::clearTreeScope()
+{
+    m_treeScope = 0;
 }
 
 const VisibleSelection& DOMSelection::visibleSelection() const
@@ -95,72 +102,64 @@ Node* DOMSelection::anchorNode() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->parentNodeGuaranteedHostFree();
-    return anchorPosition(visibleSelection()).containerNode();
+
+    return shadowAdjustedNode(anchorPosition(visibleSelection()));
 }
 
 int DOMSelection::anchorOffset() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->nodeIndex();
-    return anchorPosition(visibleSelection()).offsetInContainerNode();
+
+    return shadowAdjustedOffset(anchorPosition(visibleSelection()));
 }
 
 Node* DOMSelection::focusNode() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->parentNodeGuaranteedHostFree();
-    return focusPosition(visibleSelection()).containerNode();
+
+    return shadowAdjustedNode(focusPosition(visibleSelection()));
 }
 
 int DOMSelection::focusOffset() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->nodeIndex();
-    return focusPosition(visibleSelection()).offsetInContainerNode();
+
+    return shadowAdjustedOffset(focusPosition(visibleSelection()));
 }
 
 Node* DOMSelection::baseNode() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->parentNodeGuaranteedHostFree();
-    return basePosition(visibleSelection()).containerNode();
+
+    return shadowAdjustedNode(basePosition(visibleSelection()));
 }
 
 int DOMSelection::baseOffset() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->nodeIndex();
-    return basePosition(visibleSelection()).offsetInContainerNode();
+
+    return shadowAdjustedOffset(basePosition(visibleSelection()));
 }
 
 Node* DOMSelection::extentNode() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->parentNodeGuaranteedHostFree();
-    return extentPosition(visibleSelection()).containerNode();
+
+    return shadowAdjustedNode(extentPosition(visibleSelection()));
 }
 
 int DOMSelection::extentOffset() const
 {
     if (!m_frame)
         return 0;
-    if (Node* shadowAncestor = selectionShadowAncestor(m_frame))
-        return shadowAncestor->nodeIndex();
-    return extentPosition(visibleSelection()).offsetInContainerNode();
+
+    return shadowAdjustedOffset(extentPosition(visibleSelection()));
 }
 
 bool DOMSelection::isCollapsed() const
@@ -498,6 +497,40 @@ String DOMSelection::toString()
         return String();
 
     return plainText(m_frame->selection()->selection().toNormalizedRange().get());
+}
+
+Node* DOMSelection::shadowAdjustedNode(const Position& position) const
+{
+    if (position.isNull())
+        return 0;
+
+    Node* containerNode = position.containerNode();
+    Node* adjustedNode = m_treeScope->ancestorInThisScope(containerNode);
+
+    if (!adjustedNode)
+        return 0;
+
+    if (containerNode == adjustedNode)
+        return containerNode;
+
+    return adjustedNode->parentNodeGuaranteedHostFree();
+}
+
+int DOMSelection::shadowAdjustedOffset(const Position& position) const
+{
+    if (position.isNull())
+        return 0;
+
+    Node* containerNode = position.containerNode();
+    Node* adjustedNode = m_treeScope->ancestorInThisScope(containerNode);
+
+    if (!adjustedNode)
+        return 0;
+
+    if (containerNode == adjustedNode)
+        return position.computeOffsetInContainerNode();
+
+    return adjustedNode->nodeIndex();
 }
 
 bool DOMSelection::isValidForPosition(Node* node) const

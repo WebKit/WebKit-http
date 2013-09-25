@@ -41,7 +41,9 @@ public:
         Fixed,
         Variable
     };
-
+    
+    enum { Size = 3 };
+    
     AdjacencyList(Kind kind)
 #if !ASSERT_DISABLED
         : m_kind(kind)
@@ -74,21 +76,21 @@ public:
     
     const Edge& child(unsigned i) const
     {
-        ASSERT(i < 3);
+        ASSERT(i < Size);
         ASSERT(m_kind == Fixed);
         return m_words[i];
     }    
     
     Edge& child(unsigned i)
     {
-        ASSERT(i < 3);
+        ASSERT(i < Size);
         ASSERT(m_kind == Fixed);
         return m_words[i];
     }
     
     void setChild(unsigned i, Edge nodeUse)
     {
-        ASSERT(i < 30);
+        ASSERT(i < Size);
         ASSERT(m_kind == Fixed);
         m_words[i] = nodeUse;
     }
@@ -114,9 +116,26 @@ public:
         child(2) = child3;
     }
     
-    void initialize(NodeIndex child1, NodeIndex child2, NodeIndex child3)
+    void initialize(NodeIndex child1 = NoNode, NodeIndex child2 = NoNode, NodeIndex child3 = NoNode)
     {
         initialize(Edge(child1), Edge(child2), Edge(child3));
+    }
+    
+    void reset()
+    {
+#if !ASSERT_DISABLED
+        m_kind = Fixed;
+#endif
+        initialize();
+    }
+    
+    // Call this if you wish to remove an edge and the node treats the list of children
+    // as a "bag" - an unordered set where the index of the edge does not matter.
+    void removeEdgeFromBag(unsigned edgeIndex)
+    {
+        for (unsigned i = edgeIndex; i < Size - 1; ++i)
+            setChild(i, child(i + 1));
+        setChild(Size - 1, Edge());
     }
 
     unsigned firstChild() const
@@ -142,7 +161,7 @@ public:
     }
     
 private:
-    Edge m_words[3];
+    Edge m_words[Size];
 #if !ASSERT_DISABLED
     Kind m_kind;
 #endif

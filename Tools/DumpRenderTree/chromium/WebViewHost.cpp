@@ -32,7 +32,9 @@
 #include "WebViewHost.h"
 
 #include "LayoutTestController.h"
+#include "MockGrammarCheck.h"
 #include "MockWebSpeechInputController.h"
+#include "MockWebSpeechRecognizer.h"
 #include "TestNavigationController.h"
 #include "TestShell.h"
 #include "TestWebPlugin.h"
@@ -42,20 +44,24 @@
 #include "WebDOMMessageEvent.h"
 #include "WebDataSource.h"
 #include "WebDeviceOrientationClientMock.h"
+#include "WebDocument.h"
 #include "platform/WebDragData.h"
 #include "WebElement.h"
 #include "WebFrame.h"
 #include "WebGeolocationClientMock.h"
 #include "WebHistoryItem.h"
 #include "WebIntent.h"
+#include "WebIntentServiceInfo.h"
 #include "WebKit.h"
 #include "WebNode.h"
 #include "WebPluginParams.h"
 #include "WebPopupMenu.h"
 #include "WebPopupType.h"
+#include "WebPrintParams.h"
 #include "WebRange.h"
 #include "platform/WebRect.h"
 #include "WebScreenInfo.h"
+#include "platform/WebSerializedScriptValue.h"
 #include "platform/WebSize.h"
 #include "WebStorageNamespace.h"
 #include "WebTextCheckingCompletion.h"
@@ -256,6 +262,7 @@ WebWidget* WebViewHost::createPopupMenu(WebPopupType type)
     switch (type) {
     case WebKit::WebPopupTypeNone:
     case WebKit::WebPopupTypePage:
+    case WebKit::WebPopupTypeHelperPlugin:
         break;
     case WebKit::WebPopupTypeSelect:
     case WebKit::WebPopupTypeSuggestion:
@@ -445,6 +452,15 @@ bool WebViewHost::handleCurrentKeyboardEvent()
     return frame->executeCommand(WebString::fromUTF8(m_editCommandName), WebString::fromUTF8(m_editCommandValue));
 }
 
+// WebKit::WebPrerendererClient
+
+void WebViewHost::willAddPrerender(WebKit::WebPrerender*)
+{
+}
+
+
+// WebKit::WebSpellCheckClient
+
 void WebViewHost::spellCheck(const WebString& text, int& misspelledOffset, int& misspelledLength, WebVector<WebString>* optionalSuggestions)
 {
     // Check the spelling of the given text.
@@ -467,7 +483,6 @@ void WebViewHost::requestCheckingOfText(const WebString& text, WebTextCheckingCo
 void WebViewHost::finishLastTextCheck()
 {
     Vector<WebTextCheckingResult> results;
-    // FIXME: Do the grammar check.
     int offset = 0;
     String text(m_lastRequestedTextCheckString.data(), m_lastRequestedTextCheckString.length());
     while (text.length()) {
@@ -483,7 +498,7 @@ void WebViewHost::finishLastTextCheck()
         text = text.substring(misspelledPosition + misspelledLength);
         offset += misspelledPosition + misspelledLength;
     }
-
+    MockGrammarCheck::checkGrammarOfString(m_lastRequestedTextCheckString, &results);
     m_lastRequestedTextCheckingCompletion->didFinishCheckingText(results);
     m_lastRequestedTextCheckingCompletion = 0;
 }
@@ -545,7 +560,7 @@ void WebViewHost::setStatusText(const WebString& text)
     printf("UI DELEGATE STATUS CALLBACK: setStatusText:%s\n", text.utf8().data());
 }
 
-void WebViewHost::startDragging(const WebDragData& data, WebDragOperationsMask mask, const WebImage&, const WebPoint&)
+void WebViewHost::startDragging(WebFrame*, const WebDragData& data, WebDragOperationsMask mask, const WebImage&, const WebPoint&)
 {
     WebDragData mutableDragData = data;
     if (layoutTestController()->shouldAddFileToPasteboard()) {
@@ -673,10 +688,12 @@ void WebViewHost::postAccessibilityNotification(const WebAccessibilityObject& ob
     }
 }
 
+#if ENABLE(NOTIFICATIONS)
 WebNotificationPresenter* WebViewHost::notificationPresenter()
 {
     return m_shell->notificationPresenter();
 }
+#endif
 
 WebKit::WebGeolocationClient* WebViewHost::geolocationClient()
 {
@@ -690,12 +707,23 @@ WebKit::WebGeolocationClientMock* WebViewHost::geolocationClientMock()
     return m_geolocationClientMock.get();
 }
 
+#if ENABLE(INPUT_SPEECH)
 WebSpeechInputController* WebViewHost::speechInputController(WebKit::WebSpeechInputListener* listener)
 {
     if (!m_speechInputControllerMock)
         m_speechInputControllerMock = MockWebSpeechInputController::create(listener);
     return m_speechInputControllerMock.get();
 }
+#endif
+
+#if ENABLE(SCRIPTED_SPEECH)
+WebSpeechRecognizer* WebViewHost::speechRecognizer()
+{
+    if (!m_mockSpeechRecognizer)
+        m_mockSpeechRecognizer = MockWebSpeechRecognizer::create();
+    return m_mockSpeechRecognizer.get();
+}
+#endif
 
 WebDeviceOrientationClientMock* WebViewHost::deviceOrientationClientMock()
 {
@@ -817,7 +845,8 @@ bool WebViewHost::requestPointerLock()
 
 void WebViewHost::requestPointerUnlock()
 {
-    postDelayedTask(new HostMethodTask(this, &WebViewHost::didLosePointerLock), 0);
+    if (m_pointerLocked)
+        postDelayedTask(new HostMethodTask(this, &WebViewHost::didLosePointerLock), 0);
 }
 
 bool WebViewHost::isPointerLocked()
@@ -1198,7 +1227,22 @@ void WebViewHost::removeIdentifierForRequest(unsigned identifier)
     m_resourceIdentifierMap.remove(identifier);
 }
 
-void WebViewHost::willSendRequest(WebFrame*, unsigned identifier, WebURLRequest& request, const WebURLResponse& redirectResponse)
+static void blockRequest(WebURLRequest& request)
+{
+    request.setURL(WebURL());
+}
+
+static bool isLocalhost(const string& host)
+{
+    return host == "127.0.0.1" || host == "localhost";
+}
+
+static bool hostIsUsedBySomeTestsToGenerateError(const string& host)
+{
+    return host == "255.255.255.255";
+}
+
+void WebViewHost::willSendRequest(WebFrame* frame, unsigned identifier, WebURLRequest& request, const WebURLResponse& redirectResponse)
 {
     // Need to use GURL for host() and SchemeIs()
     GURL url = request.url();
@@ -1216,31 +1260,29 @@ void WebViewHost::willSendRequest(WebFrame*, unsigned identifier, WebURLRequest&
         fputs("\n", stdout);
     }
 
+    request.setExtraData(webkit_support::CreateWebURLRequestExtraData(frame->document().referrerPolicy()));
+
     if (!redirectResponse.isNull() && m_blocksRedirects) {
         fputs("Returning null for this redirect\n", stdout);
-        // To block the request, we set its URL to an empty one.
-        request.setURL(WebURL());
+        blockRequest(request);
         return;
     }
 
     if (m_requestReturnNull) {
-        // To block the request, we set its URL to an empty one.
-        request.setURL(WebURL());
+        blockRequest(request);
         return;
     }
 
     string host = url.host();
-    // 255.255.255.255 is used in some tests that expect to get back an error.
-    if (!host.empty() && (url.SchemeIs("http") || url.SchemeIs("https"))
-        && host != "127.0.0.1"
-        && host != "255.255.255.255"
-        && host != "localhost"
-        && !m_shell->allowExternalPages()) {
-        printf("Blocked access to external URL %s\n", requestURL.c_str());
-
-        // To block the request, we set its URL to an empty one.
-        request.setURL(WebURL());
-        return;
+    if (!host.empty() && (url.SchemeIs("http") || url.SchemeIs("https"))) {
+        GURL testURL = webView()->mainFrame()->document().url();
+        const string& testHost = testURL.host();
+        if (!isLocalhost(host) && !hostIsUsedBySomeTestsToGenerateError(host) && ((!testURL.SchemeIs("http") && !testURL.SchemeIs("https")) || isLocalhost(testHost))
+            && !m_shell->allowExternalPages()) {
+            printf("Blocked access to external URL %s\n", requestURL.c_str());
+            blockRequest(request);
+            return;
+        }
     }
 
     HashSet<String>::const_iterator end = m_clearHeaders.end();
@@ -1322,6 +1364,12 @@ bool WebViewHost::willCheckAndDispatchMessageEvent(WebFrame* source, WebSecurity
     return false;
 }
 
+void WebViewHost::registerIntentService(WebKit::WebFrame*, const WebKit::WebIntentServiceInfo& service)
+{
+    printf("Registered Web Intent Service: action=%s type=%s title=%s url=%s disposition=%s\n",
+           service.action().utf8().data(), service.type().utf8().data(), service.title().utf8().data(), service.url().spec().data(), service.disposition().utf8().data());
+}
+
 void WebViewHost::dispatchIntent(WebFrame* source, const WebIntentRequest& request)
 {
     printf("Received Web Intent: action=%s type=%s\n",
@@ -1335,13 +1383,29 @@ void WebViewHost::dispatchIntent(WebFrame* source, const WebIntentRequest& reque
             (*ports)[i]->destroy();
         delete ports;
     }
+
     if (!request.intent().service().isEmpty())
         printf("Explicit intent service: %s\n", request.intent().service().spec().data());
+
     WebVector<WebString> extras = request.intent().extrasNames();
     for (size_t i = 0; i < extras.size(); ++i) {
         printf("Extras[%s] = %s\n", extras[i].utf8().data(),
                request.intent().extrasValue(extras[i]).utf8().data());
     }
+
+    WebVector<WebURL> suggestions = request.intent().suggestions();
+    for (size_t i = 0; i < suggestions.size(); ++i)
+        printf("Have suggestion %s\n", suggestions[i].spec().data());
+}
+
+void WebViewHost::deliveredIntentResult(WebFrame* frame, int id, const WebSerializedScriptValue& data)
+{
+    printf("Web intent success for id %d\n", id);
+}
+
+void WebViewHost::deliveredIntentFailure(WebFrame* frame, int id, const WebSerializedScriptValue& data)
+{
+    printf("Web intent failure for id %d\n", id);
 }
 
 // Public functions -----------------------------------------------------------
@@ -1377,6 +1441,8 @@ void WebViewHost::setWebWidget(WebKit::WebWidget* widget)
 {
     m_webWidget = widget;
     webView()->setSpellCheckClient(this);
+    webView()->setPrerendererClient(this);
+    webView()->setCompositorSurfaceReady();
 }
 
 WebView* WebViewHost::webView() const
@@ -1429,8 +1495,10 @@ void WebViewHost::reset()
     if (m_geolocationClientMock.get())
         m_geolocationClientMock->resetMock();
 
+#if ENABLE(INPUT_SPEECH)
     if (m_speechInputControllerMock.get())
         m_speechInputControllerMock->clearResults();
+#endif
 
     m_currentCursor = WebCursorInfo();
     m_windowRect = WebRect();
@@ -1693,15 +1761,10 @@ void WebViewHost::exitFullScreenNow()
 }
 
 #if ENABLE(MEDIA_STREAM)
-webkit_support::MediaStreamUtil* WebViewHost::mediaStreamUtil()
-{
-    return userMediaClientMock();
-}
-
 webkit_support::TestMediaStreamClient* WebViewHost::testMediaStreamClient()
 {
     if (!m_testMediaStreamClient.get())
-        m_testMediaStreamClient = adoptPtr(new webkit_support::TestMediaStreamClient(mediaStreamUtil()));
+        m_testMediaStreamClient = adoptPtr(new webkit_support::TestMediaStreamClient());
     return m_testMediaStreamClient.get();
 }
 #endif
@@ -1729,12 +1792,7 @@ void WebViewHost::paintRect(const WebRect& rect)
     ASSERT(!m_isPainting);
     ASSERT(canvas());
     m_isPainting = true;
-#if USE(CG)
-    webWidget()->paint(skia::BeginPlatformPaint(canvas()), rect);
-    skia::EndPlatformPaint(canvas());
-#else
     webWidget()->paint(canvas(), rect);
-#endif
     m_isPainting = false;
 }
 
@@ -1793,21 +1851,7 @@ void WebViewHost::paintPagesWithBoundaries()
         return;
     }
 
-#if WEBKIT_USING_SKIA
-    WebCanvas* webCanvas = canvas();
-#elif WEBKIT_USING_CG
-    const SkBitmap& canvasBitmap = canvas()->getDevice()->accessBitmap(false);
-    WebCanvas* webCanvas = CGBitmapContextCreate(canvasBitmap.getPixels(),
-                                                 pageSizeInPixels.width, totalHeight,
-                                                 8, pageSizeInPixels.width * 4,
-                                                 CGColorSpaceCreateDeviceRGB(),
-                                                 kCGImageAlphaPremultipliedFirst |
-                                                 kCGBitmapByteOrder32Host);
-    CGContextTranslateCTM(webCanvas, 0.0, totalHeight);
-    CGContextScaleCTM(webCanvas, 1.0, -1.0f);
-#endif
-
-    webFrame->printPagesWithBoundaries(webCanvas, pageSizeInPixels);
+    webFrame->printPagesWithBoundaries(canvas(), pageSizeInPixels);
     webFrame->printEnd();
 
     m_isPainting = false;
@@ -1843,7 +1887,7 @@ void WebViewHost::displayRepaintMask()
 void WebViewHost::printPage(WebKit::WebFrame* frame)
 {
     WebSize pageSizeInPixels = webWidget()->size();
-
-    frame->printBegin(pageSizeInPixels);
+    WebPrintParams printParams(pageSizeInPixels);
+    frame->printBegin(printParams);
     frame->printEnd();
 }

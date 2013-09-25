@@ -342,6 +342,10 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         if (encoding.isNull()) {
             userChosen = false;
             encoding = response().textEncodingName();
+#if ENABLE(WEB_ARCHIVE)
+            if (m_archive && m_archive->type() == Archive::WebArchive)
+                encoding = m_archive->mainResource()->textEncoding();
+#endif
         }
         m_writer.setEncoding(encoding, userChosen);
     }
@@ -837,17 +841,7 @@ void DocumentLoader::startLoadingMainResource()
     // FIXME: Is there any way the extra fields could have not been added by now?
     // If not, it would be great to remove this line of code.
     frameLoader()->addExtraFieldsToMainResourceRequest(m_request);
-    
-    // Protect MainResourceLoader::load() method chain from clearMainResourceLoader() stomping m_mainResourceLoader.
-    RefPtr<MainResourceLoader> protectedMainResourceLoader(m_mainResourceLoader);
-    if (!protectedMainResourceLoader->load(m_request, m_substituteData)) {
-        // FIXME: If this should really be caught, we should just ASSERT this doesn't happen;
-        // should it be caught by other parts of WebKit or other parts of the app?
-        LOG_ERROR("could not create WebResourceHandle for URL %s -- should be caught by policy handler level", m_request.url().string().ascii().data());
-        m_mainResourceLoader = 0;
-        ASSERT(!isLoading());
-        checkLoadComplete();
-    }
+    m_mainResourceLoader->load(m_request, m_substituteData);
 }
 
 void DocumentLoader::cancelMainResourceLoad(const ResourceError& error)

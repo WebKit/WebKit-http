@@ -10,11 +10,16 @@ InspectorTest.timelinePropertyFormatters = {
     width: "formatAsTypeName",
     stackTrace: "formatAsTypeName",
     url: "formatAsTypeName",
+    scriptName: "formatAsTypeName",
     usedHeapSize: "formatAsTypeName",
     totalHeapSize: "formatAsTypeName",
     mimeType: "formatAsTypeName",
     id: "formatAsTypeName",
-    counters: "formatAsTypeName"
+    counters: "formatAsTypeName",
+    timerId: "formatAsTypeName",
+    scriptLine: "formatAsTypeName",
+    lineNumber: "formatAsTypeName",
+    frameId: "formatAsTypeName"
 };
 
 InspectorTest.startTimeline = function(callback)

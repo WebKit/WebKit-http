@@ -42,6 +42,7 @@ public:
 
 private:
     virtual void pageDestroyed() OVERRIDE;
+    virtual void frameWillDetachPage(WebCore::Frame*) OVERRIDE { }
 
     virtual bool shouldDeleteRange(WebCore::Range*) OVERRIDE;
     virtual bool shouldShowDeleteInterface(WebCore::HTMLElement*) OVERRIDE;
@@ -99,10 +100,12 @@ private:
     virtual NSURL* canonicalizeURLString(NSString*) OVERRIDE;
 #endif
 
-#if PLATFORM(MAC) && !defined(BUILDING_ON_LEOPARD)
+#if USE(APPKIT)
     virtual void uppercaseWord() OVERRIDE;
     virtual void lowercaseWord() OVERRIDE;
     virtual void capitalizeWord() OVERRIDE;
+#endif
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
     virtual void showSubstitutionsPanel(bool show) OVERRIDE;
     virtual bool substitutionsPanelIsShowing() OVERRIDE;
     virtual void toggleSmartInsertDelete() OVERRIDE;
@@ -126,6 +129,7 @@ private:
 
     TextCheckerClient* textChecker()  OVERRIDE { return this; }
 
+    virtual bool shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType) const OVERRIDE;
     virtual void ignoreWordInSpellDocument(const String&) OVERRIDE;
     virtual void learnWord(const String&) OVERRIDE;
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation, int* misspellingLength) OVERRIDE;
@@ -141,7 +145,7 @@ private:
     virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) OVERRIDE;
     virtual void willSetInputMethodState() OVERRIDE;
     virtual void setInputMethodState(bool enabled) OVERRIDE;
-    virtual void requestCheckingOfString(WebCore::SpellChecker*, const WebCore::TextCheckingRequest&) OVERRIDE;
+    virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) OVERRIDE;
 #if PLATFORM(GTK)
     virtual bool shouldShowUnicodeMenu() OVERRIDE;
 #endif

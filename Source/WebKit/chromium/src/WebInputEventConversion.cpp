@@ -123,11 +123,14 @@ PlatformWheelEventBuilder::PlatformWheelEventBuilder(Widget* widget, const WebMo
     if (e.modifiers & WebInputEvent::MetaKey)
         m_modifiers |= PlatformEvent::MetaKey;
 
-#if OS(DARWIN)
     m_hasPreciseScrollingDeltas = e.hasPreciseScrollingDeltas;
+#if OS(DARWIN)
     m_phase = static_cast<WebCore::PlatformWheelEventPhase>(e.phase);
     m_momentumPhase = static_cast<WebCore::PlatformWheelEventPhase>(e.momentumPhase);
     m_timestamp = e.timeStampSeconds;
+    m_scrollCount = 0;
+    m_unacceleratedScrollingDeltaX = e.deltaX;
+    m_unacceleratedScrollingDeltaY = e.deltaY;
 #endif
 }
 
@@ -148,12 +151,16 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
         break;
     case WebInputEvent::GestureTap:
         m_type = PlatformEvent::GestureTap;
+        m_area = IntSize(e.deltaX * 2, e.deltaY * 2);
         break;
     case WebInputEvent::GestureTapDown:
         m_type = PlatformEvent::GestureTapDown;
         break;
     case WebInputEvent::GestureDoubleTap:
         m_type = PlatformEvent::GestureDoubleTap;
+        break;
+    case WebInputEvent::GestureTwoFingerTap:
+        m_type = PlatformEvent::GestureTwoFingerTap;
         break;
     case WebInputEvent::GestureLongPress:
         m_type = PlatformEvent::GestureLongPress;
@@ -174,8 +181,6 @@ PlatformGestureEventBuilder::PlatformGestureEventBuilder(Widget* widget, const W
     m_globalPosition = IntPoint(e.globalX, e.globalY);
     m_deltaX = e.deltaX;
     m_deltaY = e.deltaY;
-    m_gammaX = e.gammaX;
-    m_gammaY = e.gammaY;
     m_timestamp = e.timeStampSeconds;
 
     m_modifiers = 0;
@@ -439,7 +444,11 @@ WebKeyboardEventBuilder::WebKeyboardEventBuilder(const KeyboardEvent& event)
         type = WebInputEvent::Char;
     else
         return; // Skip all other keyboard events.
+
     modifiers = getWebInputModifiers(event);
+    if (event.keyLocation() & KeyboardEvent::DOM_KEY_LOCATION_NUMPAD)
+        modifiers |= WebInputEvent::IsKeyPad;
+
     timeStampSeconds = event.timeStamp() / millisPerSecond;
     windowsKeyCode = event.keyCode();
 

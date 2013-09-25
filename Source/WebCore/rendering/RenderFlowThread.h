@@ -81,6 +81,9 @@ public:
 
     bool hasRegions() const { return m_regionList.size(); }
     bool hasValidRegions() const { ASSERT(!m_regionsInvalidated); return m_hasValidRegions; }
+    // Check if the content is flown into at least a region with region styling rules.
+    bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
+    void checkRegionsWithStyling();
 
     void invalidateRegions() { m_regionsInvalidated = true; setNeedsLayout(true); }
     bool hasValidRegionInfo() const { return !m_regionsInvalidated && hasValidRegions(); }
@@ -115,13 +118,13 @@ public:
     void setRegionRangeForBox(const RenderBox*, LayoutUnit offsetFromLogicalTopOfFirstPage);
     void getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
 
-    void clearRenderBoxCustomStyle(const RenderBox*,
+    void clearRenderObjectCustomStyle(const RenderObject*,
                                       const RenderRegion* oldStartRegion = 0, const RenderRegion* oldEndRegion = 0,
                                       const RenderRegion* newStartRegion = 0, const RenderRegion* newEndRegion = 0);
     
     void computeOverflowStateForRegions(LayoutUnit oldClientAfterEdge);
 
-    bool overflow() const { return m_overflow; }
+    bool overset() const { return m_overset; }
 
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
@@ -169,7 +172,8 @@ protected:
     bool m_regionsInvalidated;
     bool m_regionsHaveUniformLogicalWidth;
     bool m_regionsHaveUniformLogicalHeight;
-    bool m_overflow;
+    bool m_overset;
+    bool m_hasRegionsWithStyling;
     Timer<RenderFlowThread> m_regionLayoutUpdateEventTimer;
 };
 

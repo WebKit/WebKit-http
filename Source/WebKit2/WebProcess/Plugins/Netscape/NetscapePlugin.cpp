@@ -26,6 +26,8 @@
 #include "config.h"
 #include "NetscapePlugin.h"
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
+
 #include "NPRuntimeObjectMap.h"
 #include "NPRuntimeUtilities.h"
 #include "NetscapePluginStream.h"
@@ -69,6 +71,7 @@ NetscapePlugin::NetscapePlugin(PassRefPtr<NetscapePluginModule> pluginModule)
     , m_isTransparent(false)
     , m_inNPPNew(false)
     , m_shouldUseManualLoader(false)
+    , m_hasCalledSetWindow(false)
     , m_nextTimerID(0)
 #if PLATFORM(MAC)
     , m_drawingModel(static_cast<NPDrawingModel>(-1))
@@ -308,7 +311,7 @@ void NetscapePlugin::popPopupsEnabledState()
 
 void NetscapePlugin::pluginThreadAsyncCall(void (*function)(void*), void* userData)
 {
-    RunLoop::main()->dispatch(bind(&NetscapePlugin::handlePluginThreadAsyncCall, this, function, userData));
+    RunLoop::main()->dispatch(WTF::bind(&NetscapePlugin::handlePluginThreadAsyncCall, this, function, userData));
 }
     
 void NetscapePlugin::handlePluginThreadAsyncCall(void (*function)(void*), void* userData)
@@ -504,6 +507,7 @@ void NetscapePlugin::callSetWindow()
     m_npWindow.clipRect.bottom = m_npWindow.clipRect.top + m_clipRect.height();
 
     NPP_SetWindow(&m_npWindow);
+    m_hasCalledSetWindow = true;
 }
 
 bool NetscapePlugin::shouldLoadSrcURL()
@@ -676,6 +680,11 @@ bool NetscapePlugin::isTransparent()
     return m_isTransparent;
 }
 
+bool NetscapePlugin::wantsWheelEvents()
+{
+    return m_pluginModule->pluginQuirks().contains(PluginQuirks::WantsWheelEvents);
+}
+
 void NetscapePlugin::geometryDidChange(const IntSize& pluginSize, const IntRect& clipRect, const AffineTransform& pluginToRootViewTransform)
 {
     ASSERT(m_isStarted);
@@ -685,11 +694,11 @@ void NetscapePlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&
         return;
     }
 
-    bool shouldCallWindow = true;
+    bool shouldCallSetWindow = true;
 
     // If the plug-in doesn't want window relative coordinates, we don't need to call setWindow unless its size or clip rect changes.
-    if (wantsPluginRelativeNPWindowCoordinates() && m_pluginSize == pluginSize && m_clipRect == clipRect)
-        shouldCallWindow = false;
+    if (m_hasCalledSetWindow && wantsPluginRelativeNPWindowCoordinates() && m_pluginSize == pluginSize && m_clipRect == clipRect)
+        shouldCallSetWindow = false;
 
     m_pluginSize = pluginSize;
     m_clipRect = clipRect;
@@ -700,7 +709,7 @@ void NetscapePlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&
 
     platformGeometryDidChange();
 
-    if (!shouldCallWindow)
+    if (!shouldCallSetWindow)
         return;
 
     callSetWindow();
@@ -965,3 +974,5 @@ bool NetscapePlugin::convertFromRootView(const IntPoint& pointInRootViewCoordina
 }
 
 } // namespace WebKit
+
+#endif // ENABLE(NETSCAPE_PLUGIN_API)

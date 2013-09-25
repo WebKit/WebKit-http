@@ -35,12 +35,14 @@ namespace WebKit {
 InRegionScrollableArea::InRegionScrollableArea()
     : m_webPage(0)
     , m_layer(0)
+    , m_hasWindowVisibleRectCalculated(false)
 {
 }
 
 InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLayer* layer)
     : m_webPage(webPage)
     , m_layer(layer)
+    , m_hasWindowVisibleRectCalculated(false)
 {
     ASSERT(webPage);
     ASSERT(layer);
@@ -63,21 +65,10 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
         m_contentsSize = m_webPage->mapToTransformed(view->contentsSize());
         m_viewportSize = m_webPage->mapToTransformed(view->visibleContentRect(false /*includeScrollbars*/)).size();
 
-        m_visibleWindowRect = m_webPage->mapToTransformed(m_webPage->getRecursiveVisibleWindowRect(view));
-        IntRect transformedWindowRect = IntRect(IntPoint::zero(), m_webPage->transformedViewportSize());
-        m_visibleWindowRect.intersect(transformedWindowRect);
-
         m_scrollsHorizontally = view->contentsWidth() > view->visibleWidth();
         m_scrollsVertically = view->contentsHeight() > view->visibleHeight();
 
-        m_minimumScrollPosition = m_webPage->mapToTransformed(calculateMinimumScrollPosition(
-            view->visibleContentRect().size(),
-            0.0 /*overscrollLimit*/));
-        m_maximumScrollPosition = m_webPage->mapToTransformed(calculateMaximumScrollPosition(
-            view->visibleContentRect().size(),
-            view->contentsSize(),
-            0.0 /*overscrollLimit*/));
-
+        m_overscrollLimitFactor = 0.0; // FIXME eventually support overscroll
     } else { // RenderBox-based elements case (scrollable boxes (div's, p's, textarea's, etc)).
 
         RenderBox* box = m_layer->renderBox();
@@ -89,43 +80,23 @@ InRegionScrollableArea::InRegionScrollableArea(WebPagePrivate* webPage, RenderLa
         m_contentsSize = m_webPage->mapToTransformed(scrollableArea->contentsSize());
         m_viewportSize = m_webPage->mapToTransformed(scrollableArea->visibleContentRect(false /*includeScrollbars*/)).size();
 
-        m_visibleWindowRect = m_layer->renderer()->absoluteClippedOverflowRect();
-        m_visibleWindowRect = m_layer->renderer()->frame()->view()->contentsToWindow(m_visibleWindowRect);
-        IntRect visibleFrameWindowRect = m_webPage->getRecursiveVisibleWindowRect(m_layer->renderer()->frame()->view());
-        m_visibleWindowRect.intersect(visibleFrameWindowRect);
-        m_visibleWindowRect = m_webPage->mapToTransformed(m_visibleWindowRect);
-        IntRect transformedWindowRect = IntRect(IntPoint::zero(), m_webPage->transformedViewportSize());
-        m_visibleWindowRect.intersect(transformedWindowRect);
-
         m_scrollsHorizontally = box->scrollWidth() != box->clientWidth() && box->scrollsOverflowX();
         m_scrollsVertically = box->scrollHeight() != box->clientHeight() && box->scrollsOverflowY();
 
-        m_minimumScrollPosition = m_webPage->mapToTransformed(calculateMinimumScrollPosition(
-            Platform::IntSize(box->clientWidth(), box->clientHeight()),
-            0.0 /*overscrollLimit*/));
-        m_maximumScrollPosition = m_webPage->mapToTransformed(calculateMaximumScrollPosition(
-            Platform::IntSize(box->clientWidth(), box->clientHeight()),
-            Platform::IntSize(box->scrollWidth(), box->scrollHeight()),
-            0.0 /*overscrollLimit*/));
+        m_overscrollLimitFactor = 0.0; // FIXME eventually support overscroll
     }
 }
 
-Platform::IntPoint InRegionScrollableArea::calculateMinimumScrollPosition(const Platform::IntSize& viewportSize, float overscrollLimitFactor) const
+void InRegionScrollableArea::setVisibleWindowRect(const WebCore::IntRect& rect)
 {
-    // FIXME: Eventually we should support overscroll like iOS5 does.
-    ASSERT(!allowsOverscroll());
-
-    return Platform::IntPoint(-(viewportSize.width() * overscrollLimitFactor),
-                              -(viewportSize.height() * overscrollLimitFactor));
+    m_hasWindowVisibleRectCalculated = true;
+    m_visibleWindowRect = rect;
 }
 
-Platform::IntPoint InRegionScrollableArea::calculateMaximumScrollPosition(const Platform::IntSize& viewportSize, const Platform::IntSize& contentsSize, float overscrollLimitFactor) const
+Platform::IntRect InRegionScrollableArea::visibleWindowRect() const
 {
-    // FIXME: Eventually we should support overscroll like iOS5 does.
-    ASSERT(!allowsOverscroll());
-
-    return Platform::IntPoint(std::max(contentsSize.width() - viewportSize.width(), 0) + overscrollLimitFactor,
-                              std::max(contentsSize.height() - viewportSize.height(), 0) + overscrollLimitFactor);
+    ASSERT(m_hasWindowVisibleRectCalculated);
+    return m_visibleWindowRect;
 }
 
 RenderLayer* InRegionScrollableArea::layer() const

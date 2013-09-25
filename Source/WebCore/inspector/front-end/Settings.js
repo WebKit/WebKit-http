@@ -44,7 +44,8 @@ var Preferences = {
     exposeWorkersInspection: false,
     applicationTitle: "Web Inspector - %s",
     showHeapSnapshotObjectsHiddenProperties: false,
-    showDockToRight: false
+    showDockToRight: false,
+    exposeFileSystemInspection: false
 }
 
 var Capabilities = {
@@ -53,7 +54,8 @@ var Capabilities = {
     profilerCausesRecompilation: true,
     nativeInstrumentationEnabled: false,
     heapProfilerPresent: false,
-    canOverrideDeviceMetrics: false
+    canOverrideDeviceMetrics: false,
+    timelineSupportsFrameInstrumentation: false,
 }
 
 /**
@@ -179,10 +181,10 @@ WebInspector.ExperimentsSettings = function()
     this._enabledForTest = {};
     
     // Add currently running experiments here.
-    this.timelineVerticalOverview = this._createExperiment("timelineStartAtZero", "Enable vertical overview mode in the Timeline panel");
     this.showShadowDOM = this._createExperiment("showShadowDOM", "Show shadow DOM");
     this.snippetsSupport = this._createExperiment("snippetsSupport", "Snippets support");
-    this.showStylesPanel = this._createExperiment("stylesPanel", "Show styles panel");
+    this.nativeMemorySnapshots = this._createExperiment("nativeMemorySnapshots", "Native memory profiling");
+    this.fileSystemInspection = this._createExperiment("fileSystemInspection", "FileSystem inspection");
 
     this._cleanUpSetting();
 }

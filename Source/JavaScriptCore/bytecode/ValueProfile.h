@@ -33,8 +33,9 @@
 
 #if ENABLE(VALUE_PROFILER)
 
+#include "Heap.h"
 #include "JSArray.h"
-#include "PredictedType.h"
+#include "SpeculatedType.h"
 #include "Structure.h"
 #include "WriteBarrier.h"
 
@@ -49,8 +50,9 @@ struct ValueProfileBase {
     
     ValueProfileBase()
         : m_bytecodeOffset(-1)
-        , m_prediction(PredictNone)
+        , m_prediction(SpecNone)
         , m_numberOfSamplesInPrediction(0)
+        , m_singletonValueIsTop(false)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i)
             m_buckets[i] = JSValue::encode(JSValue());
@@ -58,8 +60,9 @@ struct ValueProfileBase {
     
     ValueProfileBase(int bytecodeOffset)
         : m_bytecodeOffset(bytecodeOffset)
-        , m_prediction(PredictNone)
+        , m_prediction(SpecNone)
         , m_numberOfSamplesInPrediction(0)
+        , m_singletonValueIsTop(false)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i)
             m_buckets[i] = JSValue::encode(JSValue());
@@ -111,7 +114,12 @@ struct ValueProfileBase {
         fprintf(out,
                 "samples = %u, prediction = %s",
                 totalNumberOfSamples(),
-                predictionToString(m_prediction));
+                speculationToString(m_prediction));
+        fprintf(out, ", value = ");
+        if (m_singletonValueIsTop)
+            fprintf(out, "TOP");
+        else
+            fprintf(out, "%s", m_singletonValue.description());
         bool first = true;
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i) {
             JSValue value = JSValue::decode(m_buckets[i]);
@@ -127,7 +135,7 @@ struct ValueProfileBase {
     }
     
     // Updates the prediction and returns the new one.
-    PredictedType computeUpdatedPrediction()
+    SpeculatedType computeUpdatedPrediction(OperationInProgress operation = NoOperation)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i) {
             JSValue value = JSValue::decode(m_buckets[i]);
@@ -135,19 +143,36 @@ struct ValueProfileBase {
                 continue;
             
             m_numberOfSamplesInPrediction++;
-            mergePrediction(m_prediction, predictionFromValue(value));
+            mergeSpeculation(m_prediction, speculationFromValue(value));
+            
+            if (!m_singletonValueIsTop && !!value) {
+                if (!m_singletonValue)
+                    m_singletonValue = value;
+                else if (m_singletonValue != value)
+                    m_singletonValueIsTop = true;
+            }
             
             m_buckets[i] = JSValue::encode(JSValue());
         }
         
+        if (operation == Collection
+            && !m_singletonValueIsTop
+            && !!m_singletonValue
+            && m_singletonValue.isCell()
+            && !Heap::isMarked(m_singletonValue.asCell()))
+            m_singletonValueIsTop = true;
+            
         return m_prediction;
     }
     
     int m_bytecodeOffset; // -1 for prologue
     
-    PredictedType m_prediction;
+    SpeculatedType m_prediction;
     unsigned m_numberOfSamplesInPrediction;
     
+    bool m_singletonValueIsTop;
+    JSValue m_singletonValue;
+
     EncodedJSValue m_buckets[totalNumberOfBuckets];
 };
 

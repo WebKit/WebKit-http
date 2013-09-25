@@ -54,7 +54,7 @@ PassRefPtr<HTMLSourceElement> HTMLSourceElement::create(const QualifiedName& tag
     return adoptRef(new HTMLSourceElement(tagName, document));
 }
 
-Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     Element* parent = parentElement();
@@ -63,14 +63,16 @@ Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(Node* inserti
     return InsertionDone;
 }
 
-void HTMLSourceElement::willRemove()
+void HTMLSourceElement::removedFrom(ContainerNode* removalRoot)
 {
     Element* parent = parentElement();
+    if (!parent && removalRoot->isElementNode())
+        parent = toElement(removalRoot);
     if (parent && parent->isMediaElement())
-        static_cast<HTMLMediaElement*>(parentNode())->sourceWillBeRemoved(this);
-    HTMLElement::willRemove();
+        toMediaElement(parent)->sourceWasRemoved(this);
+    HTMLElement::removedFrom(removalRoot);
 }
-    
+
 void HTMLSourceElement::setSrc(const String& url)
 {
     setAttribute(srcAttr, url);
@@ -117,9 +119,9 @@ void HTMLSourceElement::errorEventTimerFired(Timer<HTMLSourceElement>*)
     dispatchEvent(Event::create(eventNames().errorEvent, false, true));
 }
 
-bool HTMLSourceElement::isURLAttribute(Attribute* attribute) const
+bool HTMLSourceElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute->name() == srcAttr || HTMLElement::isURLAttribute(attribute);
+    return attribute.name() == srcAttr || HTMLElement::isURLAttribute(attribute);
 }
 
 #if ENABLE(MICRODATA)

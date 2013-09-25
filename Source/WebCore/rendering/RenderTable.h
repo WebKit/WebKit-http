@@ -143,9 +143,12 @@ public:
 
     // This function returns 0 if the table has no section.
     RenderTableSection* topSection() const;
+    RenderTableSection* bottomSection() const;
 
     // This function returns 0 if the table has no non-empty sections.
     RenderTableSection* topNonEmptySection() const;
+
+    unsigned lastColumnIndex() const { return numEffCols() - 1; }
 
     void splitColumn(unsigned position, unsigned firstSpan);
     void appendColumn(unsigned span);
@@ -175,8 +178,10 @@ public:
                (collapseBorders() ? ZERO_LAYOUT_UNIT : (paddingStart() + paddingEnd() + static_cast<LayoutUnit>(numEffCols() + 1) * hBorderSpacing()));
     }
 
+    // Return the first column or column-group.
+    RenderTableCol* firstColumn() const;
+
     RenderTableCol* colElement(unsigned col, bool* startEdge = 0, bool* endEdge = 0) const;
-    RenderTableCol* nextColElement(RenderTableCol* current) const;
 
     bool needsSectionRecalc() const { return m_needsSectionRecalc; }
     void setNeedsSectionRecalc()
@@ -217,6 +222,9 @@ public:
         return createAnonymousWithParentRenderer(parent);
     }
 
+    const BorderValue& tableStartBorderAdjoiningCell(const RenderTableCell*) const;
+    const BorderValue& tableEndBorderAdjoiningCell(const RenderTableCell*) const;
+
 protected:
     virtual void styleDidChange(StyleDifference, const RenderStyle* oldStyle);
 
@@ -237,7 +245,8 @@ private:
     virtual void computePreferredLogicalWidths();
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
     
-    virtual LayoutUnit firstLineBoxBaseline() const;
+    virtual LayoutUnit firstLineBoxBaseline() const OVERRIDE;
+    virtual LayoutUnit lastLineBoxBaseline() const OVERRIDE;
 
     virtual RenderBlock* firstLineBlock() const;
     virtual void updateFirstLetter();

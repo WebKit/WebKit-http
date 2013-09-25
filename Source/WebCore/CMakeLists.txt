@@ -3,6 +3,8 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/filesystem"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
+    "${WEBCORE_DIR}/Modules/intents"
+    "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/websockets"
@@ -95,6 +97,7 @@ SET(WebCore_IDL_INCLUDES
     Modules/filesystem
     Modules/geolocation
     Modules/indexeddb
+    Modules/quota
     Modules/webaudio
     Modules/webdatabase
     Modules/websockets
@@ -199,6 +202,7 @@ SET(WebCore_IDL_FILES
     dom/Document.idl
     dom/DocumentType.idl
     dom/DOMCoreException.idl
+    dom/DOMError.idl
     dom/DOMImplementation.idl
     dom/DOMStringList.idl
     dom/DOMStringMap.idl
@@ -208,6 +212,7 @@ SET(WebCore_IDL_FILES
     dom/ErrorEvent.idl
     dom/EventException.idl
     dom/Event.idl
+    dom/EventTarget.idl
     dom/HashChangeEvent.idl
     dom/KeyboardEvent.idl
     dom/MessageChannel.idl
@@ -243,6 +248,8 @@ SET(WebCore_IDL_FILES
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
+
+    editing/UndoManager.idl
 
     fileapi/Blob.idl
     fileapi/FileError.idl
@@ -286,6 +293,7 @@ SET(WebCore_IDL_FILES
     html/HTMLHtmlElement.idl
     html/HTMLIFrameElement.idl
     html/HTMLImageElement.idl
+    html/HTMLIntentElement.idl
     html/HTMLInputElement.idl
     html/HTMLKeygenElement.idl
     html/HTMLLabelElement.idl
@@ -331,6 +339,7 @@ SET(WebCore_IDL_FILES
     html/ImageData.idl
     html/MediaController.idl
     html/MediaError.idl
+    html/RadioNodeList.idl
     html/TextMetrics.idl
     html/TimeRanges.idl
     html/ValidityState.idl
@@ -381,6 +390,7 @@ SET(WebCore_IDL_FILES
     page/Location.idl
     page/MemoryInfo.idl
     page/Navigator.idl
+    page/NavigatorRegisterProtocolHandler.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
@@ -401,10 +411,6 @@ SET(WebCore_IDL_FILES
 
     storage/Storage.idl
     storage/StorageEvent.idl
-    storage/StorageInfo.idl
-    storage/StorageInfoErrorCallback.idl
-    storage/StorageInfoQuotaCallback.idl
-    storage/StorageInfoUsageCallback.idl
 
     xml/DOMParser.idl
     xml/XMLHttpRequest.idl
@@ -453,6 +459,7 @@ SET(WebCore_SOURCES
     bindings/ScriptControllerBase.cpp
 
     bindings/generic/ActiveDOMCallback.cpp
+    bindings/generic/ContextEnabledFeatures.cpp
     bindings/generic/RuntimeEnabledFeatures.cpp
 
     css/CSSAspectRatioValue.cpp
@@ -472,6 +479,7 @@ SET(WebCore_SOURCES
     css/CSSFunctionValue.cpp
     css/CSSGradientValue.cpp
     css/CSSImageGeneratorValue.cpp
+    css/CSSImageSetValue.cpp
     css/CSSImageValue.cpp
     css/CSSImportRule.cpp
     css/CSSInheritedValue.cpp
@@ -491,7 +499,6 @@ SET(WebCore_SOURCES
     css/CSSSegmentedFontFace.cpp
     css/CSSSelector.cpp
     css/CSSSelectorList.cpp
-    css/CSSStyleDeclaration.cpp
     css/CSSStyleRule.cpp
     css/CSSStyleSheet.cpp
     css/CSSTimingFunctionValue.cpp
@@ -521,7 +528,9 @@ SET(WebCore_SOURCES
     css/StylePropertyShorthand.cpp
     css/StyleResolver.cpp
     css/StyleRule.cpp
+    css/StyleRuleImport.cpp
     css/StyleSheet.cpp
+    css/StyleSheetContents.cpp
     css/StyleSheetList.cpp
     css/WebKitCSSFilterValue.cpp
     css/WebKitCSSKeyframeRule.cpp
@@ -568,12 +577,14 @@ SET(WebCore_SOURCES
     dom/DocumentOrderedMap.cpp
     dom/DocumentType.cpp
     dom/DOMCoreException.cpp
+    dom/DOMError.cpp
     dom/DOMImplementation.cpp
     dom/DOMStringList.cpp
     dom/DOMStringMap.cpp
     dom/DynamicNodeList.cpp
     dom/EditingText.cpp
     dom/Element.cpp
+    dom/ElementShadow.cpp
     dom/ElementAttributeData.cpp
     dom/EntityReference.cpp
     dom/ErrorEvent.cpp
@@ -629,7 +640,6 @@ SET(WebCore_SOURCES
     dom/SecurityContext.cpp
     dom/SelectorQuery.cpp
     dom/ShadowRoot.cpp
-    dom/ShadowTree.cpp
     dom/SpaceSplitString.cpp
     dom/StaticHashSetNodeList.cpp
     dom/StaticNodeList.cpp
@@ -644,7 +654,6 @@ SET(WebCore_SOURCES
     dom/TransformSourceLibxslt.cpp
     dom/Traversal.cpp
     dom/TreeScope.cpp
-    dom/TreeScopeAdjuster.cpp
     dom/TreeScopeAdopter.cpp
     dom/TreeWalker.cpp
     dom/UIEvent.cpp
@@ -712,6 +721,7 @@ SET(WebCore_SOURCES
     editing/TextInsertionBaseCommand.cpp
     editing/TextIterator.cpp
     editing/TypingCommand.cpp
+    editing/UndoManager.cpp
     editing/UnlinkCommand.cpp
     editing/VisiblePosition.cpp
     editing/VisibleSelection.cpp
@@ -725,7 +735,6 @@ SET(WebCore_SOURCES
     fileapi/File.cpp
     fileapi/FileException.cpp
     fileapi/FileList.cpp
-    fileapi/OperationNotAllowedException.cpp
     fileapi/ThreadableBlobRegistry.cpp
     fileapi/WebKitBlobBuilder.cpp
 
@@ -756,6 +765,7 @@ SET(WebCore_SOURCES
     html/FTPDirectoryDocument.cpp
     html/FileInputType.cpp
     html/FormAssociatedElement.cpp
+    html/FormController.cpp
     html/FormDataList.cpp
     html/HTMLAllCollection.cpp
     html/HTMLAnchorElement.cpp
@@ -793,6 +803,7 @@ SET(WebCore_SOURCES
     html/HTMLIFrameElement.cpp
     html/HTMLImageElement.cpp
     html/HTMLImageLoader.cpp
+    html/HTMLIntentElement.cpp
     html/HTMLInputElement.cpp
     html/HTMLKeygenElement.cpp
     html/HTMLLIElement.cpp
@@ -855,6 +866,7 @@ SET(WebCore_SOURCES
     html/PasswordInputType.cpp
     html/PluginDocument.cpp
     html/RadioInputType.cpp
+    html/RadioNodeList.cpp
     html/RangeInputType.cpp
     html/ResetInputType.cpp
     html/SearchInputType.cpp
@@ -898,10 +910,10 @@ SET(WebCore_SOURCES
     html/parser/TextViewSourceParser.cpp
     html/parser/XSSAuditor.cpp
 
+    html/shadow/ContentDistributor.cpp
     html/shadow/ContentSelectorQuery.cpp
     html/shadow/DetailsMarkerControl.cpp
     html/shadow/HTMLContentElement.cpp
-    html/shadow/HTMLContentSelector.cpp
     html/shadow/HTMLShadowElement.cpp
     html/shadow/InsertionPoint.cpp
     html/shadow/MediaControls.cpp
@@ -951,6 +963,7 @@ SET(WebCore_SOURCES
     inspector/InspectorStyleTextEditor.cpp
     inspector/InspectorTimelineAgent.cpp
     inspector/InspectorValues.cpp
+    inspector/InspectorWebGLAgent.cpp
     inspector/InspectorWorkerAgent.cpp
     inspector/InstrumentingAgents.cpp
     inspector/NetworkResourcesData.cpp
@@ -1052,6 +1065,7 @@ SET(WebCore_SOURCES
     page/FrameTree.cpp
     page/FrameView.cpp
     page/GroupSettings.cpp
+    page/GestureTapHighlighter.cpp
     page/History.cpp
     page/Location.cpp
     page/MemoryInfo.cpp
@@ -1081,6 +1095,7 @@ SET(WebCore_SOURCES
     page/WebKitAnimation.cpp
     page/WebKitAnimationList.cpp
     page/WindowFeatures.cpp
+    page/WindowFocusAllowedIndicator.cpp
 
     page/animation/AnimationBase.cpp
     page/animation/AnimationController.cpp
@@ -1100,8 +1115,10 @@ SET(WebCore_SOURCES
     platform/ContentType.cpp
     platform/CrossThreadCopier.cpp
     platform/DateComponents.cpp
+    platform/Decimal.cpp
     platform/DragData.cpp
     platform/DragImage.cpp
+    platform/EventTracer.cpp
     platform/FileChooser.cpp
     platform/FileIconLoader.cpp
     platform/FileSystem.cpp
@@ -1111,6 +1128,7 @@ SET(WebCore_SOURCES
     platform/KillRingNone.cpp
     platform/Language.cpp
     platform/Length.cpp
+    platform/LengthBox.cpp
     platform/LinkHash.cpp
     platform/Logging.cpp
     platform/MemoryUsageSupport.cpp
@@ -1133,6 +1151,7 @@ SET(WebCore_SOURCES
     platform/ThreadTimers.cpp
     platform/Timer.cpp
     platform/UUID.cpp
+    platform/VisitedLinks.cpp
     platform/Widget.cpp
 
     platform/animation/Animation.cpp
@@ -1154,8 +1173,8 @@ SET(WebCore_SOURCES
     platform/graphics/FontFamily.cpp
     platform/graphics/FontFastPath.cpp
     platform/graphics/FontFeatureSettings.cpp
+    platform/graphics/FractionalLayoutBoxExtent.cpp
     platform/graphics/FractionalLayoutRect.cpp
-    platform/graphics/FractionalLayoutSize.cpp  
     platform/graphics/GeneratorGeneratedImage.cpp
     platform/graphics/GlyphPageTreeNode.cpp
     platform/graphics/Gradient.cpp
@@ -1210,7 +1229,6 @@ SET(WebCore_SOURCES
     platform/graphics/filters/SourceAlpha.cpp
     platform/graphics/filters/SourceGraphic.cpp
 
-    platform/graphics/filters/arm/FECompositeArithmeticNEON.cpp
     platform/graphics/filters/arm/FECompositeArithmeticNEON.h
     platform/graphics/filters/arm/FEGaussianBlurNEON.cpp
     platform/graphics/filters/arm/FEGaussianBlurNEON.h
@@ -1332,6 +1350,7 @@ SET(WebCore_SOURCES
     rendering/RenderFrameBase.cpp
     rendering/RenderFrameSet.cpp
     rendering/RenderFullScreen.cpp
+    rendering/RenderGeometryMap.cpp
     rendering/RenderHTMLCanvas.cpp
     rendering/RenderIFrame.cpp
     rendering/RenderImage.cpp
@@ -1400,6 +1419,7 @@ SET(WebCore_SOURCES
     rendering/style/StyleBackgroundData.cpp
     rendering/style/StyleBoxData.cpp
     rendering/style/StyleCachedImage.cpp
+    rendering/style/StyleCachedImageSet.cpp
     rendering/style/StyleDeprecatedFlexibleBoxData.cpp
     rendering/style/StyleFilterData.cpp
     rendering/style/StyleFlexibleBoxData.cpp
@@ -1422,7 +1442,6 @@ SET(WebCore_SOURCES
     storage/StorageAreaSync.cpp
     storage/StorageEvent.cpp
     storage/StorageEventDispatcher.cpp
-    storage/StorageInfo.cpp
     storage/StorageMap.cpp
     storage/StorageNamespace.cpp
     storage/StorageNamespaceImpl.cpp
@@ -1496,7 +1515,6 @@ IF (ENABLE_BLOB)
     LIST(APPEND WebCore_IDL_FILES
         fileapi/FileException.idl
         fileapi/FileReaderSync.idl
-        fileapi/OperationNotAllowedException.idl
     )
 ENDIF ()
 
@@ -1675,7 +1693,7 @@ IF (ENABLE_NETWORK_INFO)
         Modules/networkinfo/NetworkInfoConnection.cpp
         Modules/networkinfo/NetworkInfoController.cpp
     )
- 
+
     LIST(APPEND WebCore_IDL_FILES
         Modules/networkinfo/NavigatorNetworkInfoConnection.idl
         Modules/networkinfo/NetworkInfoConnection.idl
@@ -1796,7 +1814,6 @@ IF (ENABLE_SVG)
         rendering/svg/RenderSVGViewportContainer.cpp
         rendering/svg/SVGInlineFlowBox.cpp
         rendering/svg/SVGInlineTextBox.cpp
-        rendering/svg/SVGMarkerLayoutInfo.cpp
         rendering/svg/SVGPathData.cpp
         rendering/svg/SVGRenderSupport.cpp
         rendering/svg/SVGRenderTreeAsText.cpp
@@ -1967,8 +1984,8 @@ IF (ENABLE_SVG)
         svg/SVGURIReference.cpp
         svg/SVGUseElement.cpp
         svg/SVGViewElement.cpp
-        svg/SVGVKernElement.cpp
         svg/SVGViewSpec.cpp
+        svg/SVGVKernElement.cpp
         svg/SVGZoomAndPan.cpp
         svg/SVGZoomEvent.cpp
         svg/animation/SMILTime.cpp
@@ -2126,7 +2143,9 @@ IF (ENABLE_SVG)
         svg/SVGUnitTypes.idl
         svg/SVGUseElement.idl
         svg/SVGViewElement.idl
+        svg/SVGViewSpec.idl
         svg/SVGVKernElement.idl
+        svg/SVGZoomAndPan.idl
         svg/SVGZoomEvent.idl
     )
 
@@ -2449,6 +2468,7 @@ IF (ENABLE_WEB_AUDIO)
         Modules/webaudio/AudioParamTimeline.cpp
         Modules/webaudio/AudioProcessingEvent.cpp
         Modules/webaudio/AudioScheduledSourceNode.cpp
+        Modules/webaudio/AudioSummingJunction.cpp
         Modules/webaudio/BiquadDSPKernel.cpp
         Modules/webaudio/BiquadFilterNode.cpp
         Modules/webaudio/BiquadProcessor.cpp
@@ -2502,6 +2522,37 @@ IF (ENABLE_WEB_AUDIO)
         platform/audio/SincResampler.cpp
         platform/audio/VectorMath.cpp
         platform/audio/ZeroPole.cpp
+    )
+ENDIF ()
+
+IF (ENABLE_WEB_INTENTS)
+    LIST(APPEND WebCore_IDL_FILES
+        Modules/intents/DeliveredIntent.idl
+        Modules/intents/DOMWindowIntents.idl
+        Modules/intents/Intent.idl
+        Modules/intents/IntentResultCallback.idl
+        Modules/intents/NavigatorIntents.idl
+    )
+    LIST(APPEND WebCore_SOURCES
+       Modules/intents/DeliveredIntent.cpp
+       Modules/intents/DOMWindowIntents.cpp
+       Modules/intents/Intent.cpp
+       Modules/intents/IntentRequest.cpp
+       Modules/intents/NavigatorIntents.cpp
+    )
+ENDIF ()
+
+if (ENABLE_QUOTA)
+    LIST(APPEND WebCore_SOURCES
+        Modules/quota/DOMWindowQuota.cpp
+        Modules/quota/StorageInfo.cpp
+    )
+    LIST(APPEND WebCore_IDL_FILES
+        Modules/quota/DOMWindowQuota.idl
+        Modules/quota/StorageInfo.idl
+        Modules/quota/StorageInfoErrorCallback.idl
+        Modules/quota/StorageInfoQuotaCallback.idl
+        Modules/quota/StorageInfoUsageCallback.idl
     )
 ENDIF ()
 
@@ -2565,6 +2616,17 @@ ADD_CUSTOM_COMMAND(
     COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedScriptSource_js ${WEBCORE_DIR}/inspector/InjectedScriptSource.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h
     VERBATIM)
 LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h)
+
+
+# Generate InjectedWebGLScriptSource.h
+IF (ENABLE_WEBGL)
+    ADD_CUSTOM_COMMAND(
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h
+        MAIN_DEPENDENCY inspector/InjectedWebGLScriptSource.js
+        COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedWebGLScriptSource_js ${WEBCORE_DIR}/inspector/InjectedWebGLScriptSource.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h
+        VERBATIM)
+    LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h)
+ENDIF ()
 
 
 MAKE_HASH_TOOLS(${WEBCORE_DIR}/platform/ColorData)

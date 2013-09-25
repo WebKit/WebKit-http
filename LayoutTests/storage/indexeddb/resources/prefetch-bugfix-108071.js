@@ -36,7 +36,7 @@ function setVersionSuccess()
 {
     debug("setVersionSuccess():");
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = iterateAndDeleteFirstElement;
 
@@ -62,7 +62,7 @@ function iterateAndDeleteFirstElement()
 {
     debug("iterateAndDeleteFirstElement():");
 
-    evalAndLog("trans = db.transaction(['store'], IDBTransaction.READ_WRITE)");
+    evalAndLog("trans = db.transaction(['store'], 'readwrite')");
     trans.onabort = transactionAborted;
     trans.oncomplete = unexpectedCompleteCallback;
 

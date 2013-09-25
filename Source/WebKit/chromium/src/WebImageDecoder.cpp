@@ -35,13 +35,12 @@
 #include "ICOImageDecoder.h"
 #include "SharedBuffer.h"
 #include "platform/WebData.h"
-#include "platform/WebImage.h"
 #include "platform/WebSize.h"
 
-#if WEBKIT_USING_SKIA
+#include <public/WebImage.h>
+
 #include <wtf/OwnPtr.h>
 #include <wtf/PassOwnPtr.h>
-#endif
 
 #include <wtf/PassRefPtr.h>
 
@@ -111,13 +110,8 @@ WebImage WebImageDecoder::getFrameAtIndex(int index = 0) const
     ImageFrame* const frameBuffer = m_private->frameBufferAtIndex(index);
     if (!frameBuffer)
         return WebImage();
-#if WEBKIT_USING_SKIA
     OwnPtr<NativeImageSkia> image = adoptPtr(frameBuffer->asNewNativeImage());
     return WebImage(image->bitmap());
-#elif WEBKIT_USING_CG
-    // FIXME: Implement CG side of this.
-    return WebImage(frameBuffer->asNewNativeImage());
-#endif
 }
 
 } // namespace WebKit

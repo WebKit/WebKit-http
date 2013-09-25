@@ -39,13 +39,9 @@ class ThirdpartyTest(unittest.TestCase):
             def __init__(self):
                 AutoinstallImportHook.__init__(self)
                 self._eliza_installed = False
-                self._pywebsocket_installed = False
 
             def _install_eliza(self):
                 self.eliza_installed = True
-
-            def _install_pywebsocket(self):
-                self.pywebsocket_installed = True
 
         mock_import_hook = MockImportHook()
         try:
@@ -55,8 +51,6 @@ class ThirdpartyTest(unittest.TestCase):
             from webkitpy.thirdparty.autoinstalled import eliza
             self.assertTrue(mock_import_hook.eliza_installed)
 
-            from webkitpy.thirdparty.autoinstalled.pywebsocket import mod_pywebsocket
-            self.assertTrue(mock_import_hook.pywebsocket_installed)
         finally:
             sys.meta_path.remove(mock_import_hook)
 

@@ -22,6 +22,7 @@
 #define V8Float64Array_h
 
 #include "V8ArrayBufferView.h"
+#include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include "WrapperTypeInfo.h"
 #include <v8.h>
@@ -52,7 +53,7 @@ private:
 
 v8::Handle<v8::Object> V8Float64Array::wrap(Float64Array* impl, v8::Isolate* isolate)
 {
-        v8::Handle<v8::Object> wrapper = getDOMObjectMap().get(impl);
+        v8::Handle<v8::Object> wrapper = getDOMObjectMap(isolate).get(impl);
         if (!wrapper.IsEmpty())
             return wrapper;
     return V8Float64Array::wrapSlow(impl, isolate);

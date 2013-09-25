@@ -32,24 +32,22 @@ import signal
 import subprocess
 
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
-from webkitpy.layout_tests.port.webkit import WebKitDriver, WebKitPort
+from webkitpy.layout_tests.port.webkit import WebKitPort
 from webkitpy.layout_tests.port.pulseaudio_sanitizer import PulseAudioSanitizer
-
-
-class EflDriver(WebKitDriver):
-    def cmd_line(self, pixel_tests, per_test_args):
-        wrapper_path = self._port.path_from_webkit_base("Tools", "efl", "run-with-jhbuild")
-        return [wrapper_path] + WebKitDriver.cmd_line(self, pixel_tests, per_test_args)
 
 
 class EflPort(WebKitPort, PulseAudioSanitizer):
     port_name = 'efl'
 
+    def __init__(self, *args, **kwargs):
+        WebKitPort.__init__(self, *args, **kwargs)
+
+        self._jhbuild_wrapper_path = self.path_from_webkit_base('Tools', 'efl', 'run-with-jhbuild')
+
+        self.set_option_default('wrapper', self._jhbuild_wrapper_path)
+
     def _port_flag_for_scripts(self):
         return "--efl"
-
-    def _driver_class(self):
-        return EflDriver
 
     def setup_test_run(self):
         self._unload_pulseaudio_module()
@@ -66,13 +64,12 @@ class EflPort(WebKitPort, PulseAudioSanitizer):
     def _path_to_image_diff(self):
         return self._build_path('bin', 'ImageDiff')
 
-    # FIXME: I doubt EFL wants to override this method.
-    def check_build(self, needs_http):
-        return self._check_driver()
+    def _image_diff_command(self, *args, **kwargs):
+        return [self._jhbuild_wrapper_path] + super(EflPort, self)._image_diff_command(*args, **kwargs)
 
     def _path_to_webcore_library(self):
-        static_path = self._build_path('WebCore', 'libwebcore_efl.a')
-        dyn_path = self._build_path('WebCore', 'libwebcore_efl.so')
+        static_path = self._build_path('lib', 'libwebcore_efl.a')
+        dyn_path = self._build_path('lib', 'libwebcore_efl.so')
         return static_path if self._filesystem.exists(static_path) else dyn_path
 
     def show_results_html_file(self, results_filename):

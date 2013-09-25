@@ -129,11 +129,13 @@ WebInspector.panels = {};
 WebInspector.inspectorView;
 
 /**
+ * @param {Element} element
  * @param {WebInspector.View} view
+ * @param {function()=} onclose
  */
-WebInspector.showViewInDrawer = function(view) {}
+WebInspector.showViewInDrawer = function(element, view, onclose) {}
 
-WebInspector.closeDrawerView = function() {}
+WebInspector.closeViewInDrawer = function() {}
 
 /**
  * @param {string=} messageLevel
@@ -145,18 +147,11 @@ WebInspector.addMainEventListeners = function(doc) {}
 
 WebInspector.openResource = function(url, external) {}
 
-/** @param {WebInspector.NetworkRequest} request */
-WebInspector.openRequestInNetworkPanel = function(request) {}
-
-WebInspector.populateResourceContextMenu = function(contextMenu, url, preferredLineNumber) {}
-
 /**
  * @param {string} expression
  * @param {boolean=} showResultOnly
  */
 WebInspector.evaluateInConsole = function(expression, showResultOnly) {}
-
-WebInspector.isURLSaved = function(url) {}
 
 var InjectedFakeWorker = function() {}
 

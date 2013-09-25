@@ -85,6 +85,21 @@ def has_pixel_failures(actual_results):
     return IMAGE in actual_results or IMAGE_PLUS_TEXT in actual_results
 
 
+# FIXME: Perhas these two routines should be part of the Port instead?
+BASELINE_SUFFIX_LIST = ('png', 'wav', 'txt')
+
+
+def suffixes_for_expectations(expectations):
+    suffixes = set()
+    if expectations.intersection(set([TEXT, IMAGE_PLUS_TEXT, FAIL])):
+        suffixes.add('txt')
+    if expectations.intersection(set([IMAGE, IMAGE_PLUS_TEXT, FAIL])):
+        suffixes.add('png')
+    if AUDIO in expectations:
+        suffixes.add('wav')
+    return set(suffixes)
+
+
 # FIXME: This method is no longer used here in this module. Remove remaining callsite in manager.py and this method.
 def strip_comments(line):
     """Strips comments from a line and return None if the line is empty
@@ -292,7 +307,7 @@ class TestExpectationParser(object):
         if (not self._port.test_exists(expectation_line.name)
             and not self._port.test_exists(expectation_line.name + '-disabled')):
             # Log a warning here since you hit this case any
-            # time you update test_expectations.txt without syncing
+            # time you update TestExpectations without syncing
             # the LayoutTests directory
             expectation_line.warnings.append('Path does not exist.')
             return True
@@ -323,7 +338,7 @@ class TestExpectationParser(object):
 
     @classmethod
     def _tokenize(cls, expectation_string, line_number=None):
-        """Tokenizes a line from test_expectations.txt and returns an unparsed TestExpectationLine instance.
+        """Tokenizes a line from TestExpectations and returns an unparsed TestExpectationLine instance.
 
         The format of a test expectation line is:
 
@@ -673,8 +688,6 @@ class TestExpectations(object):
       -CRASH tests cannot be WONTFIX
     """
 
-    TEST_LIST = "test_expectations.txt"
-
     EXPECTATIONS = {'pass': PASS,
                     'fail': FAIL,
                     'text': TEXT,
@@ -722,42 +735,26 @@ class TestExpectations(object):
         assert(' ' not in string)  # This only handles one expectation at a time.
         return cls.EXPECTATIONS.get(string.lower())
 
-    def __init__(self, port, tests, expectations,
-                 test_config, is_lint_mode=False, overrides=None,
-                 skipped_tests=None):
-        """Loads and parses the test expectations given in the string.
-        Args:
-            port: handle to object containing platform-specific functionality
-            tests: list of all of the test files
-            expectations: test expectations as a string
-            test_config: specific values to check against when
-                parsing the file (usually port.test_config(),
-                but may be different when linting or doing other things).
-            is_lint_mode: If True, parse the expectations string and raise
-                an exception if warnings are encountered.
-            overrides: test expectations that are allowed to override any
-                entries in |expectations|. This is used by callers
-                that need to manage two sets of expectations (e.g., upstream
-                and downstream expectations).
-            skipped_tests: test paths to skip.
-        """
+    def __init__(self, port, tests=None, is_lint_mode=False, include_overrides=True):
         self._full_test_list = tests
-        self._test_config = test_config
+        self._test_config = port.test_configuration()
         self._is_lint_mode = is_lint_mode
         self._model = TestExpectationsModel()
         self._parser = TestExpectationParser(port, tests, is_lint_mode)
         self._port = port
         self._skipped_tests_warnings = []
 
-        self._expectations = self._parser.parse(expectations)
+        self._expectations = self._parser.parse(port.test_expectations())
         self._add_expectations(self._expectations, in_overrides=False)
 
-        if overrides:
+        overrides = port.test_expectations_overrides()
+        if overrides and include_overrides:
             overrides_expectations = self._parser.parse(overrides)
             self._add_expectations(overrides_expectations, in_overrides=True)
             self._expectations += overrides_expectations
 
-        self._add_skipped_tests(skipped_tests or [])
+        # FIXME: move ignore_tests into port.skipped_layout_tests()
+        self._add_skipped_tests(port.skipped_layout_tests(tests).union(set(port.get_option('ignore_tests', []))))
 
         self._has_warnings = False
         self._report_warnings()

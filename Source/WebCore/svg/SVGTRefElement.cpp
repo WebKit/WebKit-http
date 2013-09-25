@@ -24,6 +24,7 @@
 #if ENABLE(SVG)
 #include "SVGTRefElement.h"
 
+#include "ElementShadow.h"
 #include "EventListener.h"
 #include "EventNames.h"
 #include "MutationEvent.h"
@@ -32,7 +33,6 @@
 #include "RenderSVGInlineText.h"
 #include "RenderSVGResource.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "SVGDocument.h"
 #include "SVGElementInstance.h"
 #include "SVGNames.h"
@@ -129,7 +129,7 @@ private:
     SVGShadowText(Document* document, const String& data)
         : Text(document, data)
     {
-         setHasCustomWillOrDidRecalcStyle();
+        setHasCustomCallbacks();
     }
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     virtual void willRecalcTextStyle(StyleChange);
@@ -142,9 +142,9 @@ RenderObject* SVGShadowText::createRenderer(RenderArena* arena, RenderStyle*)
 
 void SVGShadowText::willRecalcTextStyle(StyleChange change)
 {
-    if (change != NoChange && parentNode()->shadowHost()) {
+    if (change != NoChange && parentNode()->isShadowRoot()) {
         if (renderer())
-            renderer()->setStyle(parentNode()->shadowHost()->renderer()->style());
+            renderer()->setStyle(toShadowRoot(parentNode())->host()->renderer()->style());
     }
 }
 
@@ -164,8 +164,8 @@ void SVGTRefElement::updateReferencedText()
     if (Element* target = SVGURIReference::targetElementFromIRIString(href(), document()))
         textContent = target->textContent();
 
-    ASSERT(hasShadowRoot());
-    ShadowRoot* root = shadowTree()->oldestShadowRoot();
+    ASSERT(shadow());
+    ShadowRoot* root = shadow()->oldestShadowRoot();
     if (!root->firstChild())
         root->appendChild(SVGShadowText::create(document(), textContent), ASSERT_NO_EXCEPTION);
     else
@@ -180,8 +180,8 @@ void SVGTRefElement::detachTarget()
     String emptyContent;
     ExceptionCode ignore = 0;
 
-    ASSERT(hasShadowRoot());
-    Node* container = shadowTree()->oldestShadowRoot()->firstChild();
+    ASSERT(shadow());
+    Node* container = shadow()->oldestShadowRoot()->firstChild();
     if (container)
         container->setTextContent(emptyContent, ignore);
 
@@ -200,14 +200,14 @@ bool SVGTRefElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
 }
 
-void SVGTRefElement::parseAttribute(Attribute* attr)
+void SVGTRefElement::parseAttribute(const Attribute& attribute)
 {
-    if (!isSupportedAttribute(attr->name())) {
-        SVGTextPositioningElement::parseAttribute(attr);
+    if (!isSupportedAttribute(attribute.name())) {
+        SVGTextPositioningElement::parseAttribute(attribute);
         return;
     }
 
-    if (SVGURIReference::parseAttribute(attr)) {
+    if (SVGURIReference::parseAttribute(attribute)) {
         return;
     }
 
@@ -292,7 +292,7 @@ void SVGTRefElement::buildPendingResource()
     }
 }
 
-Node::InsertionNotificationRequest SVGTRefElement::insertedInto(Node* rootParent)
+Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode* rootParent)
 {
     SVGStyledElement::insertedInto(rootParent);
     if (rootParent->inDocument())
@@ -300,7 +300,7 @@ Node::InsertionNotificationRequest SVGTRefElement::insertedInto(Node* rootParent
     return InsertionDone;
 }
 
-void SVGTRefElement::removedFrom(Node* rootParent)
+void SVGTRefElement::removedFrom(ContainerNode* rootParent)
 {
     SVGStyledElement::removedFrom(rootParent);
     if (rootParent->inDocument())

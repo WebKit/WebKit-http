@@ -156,8 +156,6 @@ void InitWebCoreSystemInterface(void)
         INIT(CopyCFURLResponseSuggestedFilename);
         INIT(SetCFURLResponseMIMEType);
 
-        INIT(SetMetadataURL);
-
 #if !defined(BUILDING_ON_SNOW_LEOPARD)
         INIT(CreateVMPressureDispatchOnMainQueue);
 #endif
@@ -171,6 +169,9 @@ void InitWebCoreSystemInterface(void)
         INIT(CGPathAddRoundedRect);
 #endif
 
+#if !defined(BUILDING_ON_SNOW_LEOPARD)
+        INIT(CFURLRequestAllowAllPostCaching);
+#endif
 #if PLATFORM(MAC) && !defined(BUILDING_ON_SNOW_LEOPARD) && !defined(BUILDING_ON_LION) && !PLATFORM(IOS)
         INIT(FilterIsManagedSession);
         INIT(FilterCreateInstance);
@@ -178,6 +179,10 @@ void InitWebCoreSystemInterface(void)
         INIT(FilterWasBlocked);
         INIT(FilterAddData);
         INIT(FilterDataComplete);
+
+        INIT(NSElasticDeltaForTimeDelta);
+        INIT(NSElasticDeltaForReboundDelta);
+        INIT(NSReboundDeltaForElasticDelta);
 #endif
 
     });

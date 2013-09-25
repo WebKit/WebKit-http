@@ -22,46 +22,4 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebWorkerRunLoop_h
-#define WebWorkerRunLoop_h
-
-#include "platform/WebCommon.h"
-
-namespace WebCore {
-class WorkerRunLoop;
-}
-
-namespace WebKit {
-
-class WebWorkerRunLoop {
-public:
-    class Task {
-    public:
-        virtual ~Task() { }
-        virtual void Run() = 0;
-    };
-    WEBKIT_EXPORT void postTask(Task*);
-    WEBKIT_EXPORT bool equals(const WebWorkerRunLoop&) const;
-    WEBKIT_EXPORT bool lessThan(const WebWorkerRunLoop&) const;
-
-#if WEBKIT_IMPLEMENTATION
-    WebWorkerRunLoop(WebCore::WorkerRunLoop*);
-#endif
-
-private:
-    WebCore::WorkerRunLoop* m_workerRunLoop;
-};
-
-inline bool operator==(const WebWorkerRunLoop& a, const WebWorkerRunLoop& b)
-{
-    return a.equals(b);
-}
-
-inline bool operator<(const WebWorkerRunLoop& a, const WebWorkerRunLoop& b)
-{
-    return a.lessThan(b);
-}
-
-}
-
-#endif
+#include "../../../Platform/chromium/public/WebWorkerRunLoop.h"

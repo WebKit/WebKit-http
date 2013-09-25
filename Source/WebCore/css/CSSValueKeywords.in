@@ -332,12 +332,12 @@ table-cell
 table-caption
 -webkit-box
 -webkit-inline-box
--webkit-flexbox
--webkit-inline-flexbox
-#if defined(ENABLE_CSS_GRID_LAYOUT) && ENABLE_CSS_GRID_LAYOUT
+#if defined(ENABLE_CSS3_FLEXBOX) && ENABLE_CSS3_FLEXBOX
+-webkit-flex
+-webkit-inline-flex
+#endif
 -webkit-grid
 -webkit-inline-grid
-#endif
 //none
 //
 // CSS_PROP_CURSOR:
@@ -463,6 +463,10 @@ end
 //center
 //baseline
 
+// CSS_PROP_BOX_DECORATION_BREAK
+clone
+slice
+
 // CSS_PROP_BOX_DIRECTION
 // normal
 reverse
@@ -483,19 +487,28 @@ block-axis
 single
 multiple
 
-// CSS_PROP_FLEX_ALIGN
-// start
-// end
+#if defined(ENABLE_CSS3_FLEXBOX) && ENABLE_CSS3_FLEXBOX
+// CSS_PROP_ALIGN_CONTENT
+flex-start
+flex-end
+// center
+space-between
+space-around
+// stretch
+
+// CSS_PROP_ALIGN_ITEMS / CSS_PROP_ALIGN_SELF
+// flex-start
+// flex-end
 // center
 // baseline
 // stretch
 
-// CSS_PROP_FLEX_PACK
-// start
-// end
+// CSS_PROP_JUSTIFY_CONTENT
+// flex-start
+// flex-end
 // center
-// justify
-distribute
+// space-between
+// space-around
 
 // CSS_PROP_FLEX_FLOW
 row
@@ -506,13 +519,7 @@ column-reverse
 // wrap
 wrap-reverse
 
-// CSS_PROP_FLEX_LINE_PACK
-// start
-// end
-// center
-// justify
-// distribute
-// stretch
+#endif
 
 // CSS_PROP_MARQUEE_DIRECTION
 forwards
@@ -813,7 +820,7 @@ no-limit
 manual
 // auto
 
-#if defined(ENABLE_OVERFLOW_SCROLLING)
+#if defined(ENABLE_OVERFLOW_SCROLLING) && ENABLE_OVERFLOW_SCROLLING
 // -webkit-overflow-scrolling
 // auto
 touch
@@ -898,6 +905,11 @@ wrap
 
 // -webkit-line-align
 edges
+
+// (pointer:) media feature
+// none
+coarse
+fine
 
 #if defined(ENABLE_CSS_FILTERS) && ENABLE_CSS_FILTERS
 // -webkit-filter

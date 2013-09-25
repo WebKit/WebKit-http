@@ -132,8 +132,10 @@ static inline void notifyObserverEnteredObject(Observer* observer, RenderObject*
         return;
     }
     if (isIsolated(unicodeBidi)) {
+        // Make sure that explicit embeddings are committed before we enter the isolated content.
+        observer->commitExplicitEmbedding();
         observer->enterIsolate();
-        // Embedding/Override characters implied by dir= are handled when
+        // Embedding/Override characters implied by dir= will be handled when
         // we process the isolated span, not when laying out the "parent" run.
         return;
     }
@@ -451,12 +453,14 @@ public:
 
     // We don't care if we encounter bidi directional overrides.
     void embed(WTF::Unicode::Direction, BidiEmbeddingSource) { }
+    void commitExplicitEmbedding() { }
 
     void addFakeRunIfNecessary(RenderObject* obj, unsigned pos, InlineBidiResolver& resolver)
     {
         // We only need to add a fake run for a given isolated span once during each call to createBidiRunsForLine.
         // We'll be called for every span inside the isolated span so we just ignore subsequent calls.
-        if (m_haveAddedFakeRunForRootIsolate)
+        // We also avoid creating a fake run until we hit a child that warrants one, e.g. we skip floats.
+        if (m_haveAddedFakeRunForRootIsolate || RenderBlock::shouldSkipCreatingRunsForObject(obj))
             return;
         m_haveAddedFakeRunForRootIsolate = true;
         // obj and pos together denote a single position in the inline, from which the parsing of the isolate will start.

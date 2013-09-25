@@ -109,7 +109,7 @@ JSObject* JSValue::synthesizePrototype(ExecState* exec) const
 }
 
 // ECMA 8.7.2
-void JSValue::putToPrimitive(ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSGlobalData& globalData = exec->globalData();
 
@@ -172,7 +172,7 @@ void JSValue::putToPrimitive(ExecState* exec, const Identifier& propertyName, JS
     return;
 }
 
-char* JSValue::description()
+char* JSValue::description() const
 {
     static const size_t size = 128;
     static char description[size];

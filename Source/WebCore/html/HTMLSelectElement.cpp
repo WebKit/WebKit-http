@@ -41,6 +41,7 @@
 #include "HTMLOptionElement.h"
 #include "HTMLOptionsCollection.h"
 #include "KeyboardEvent.h"
+#include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NodeRenderingContext.h"
 #include "Page.h"
@@ -145,8 +146,22 @@ bool HTMLSelectElement::hasPlaceholderLabelOption() const
     return !listIndex && option->value().isEmpty();
 }
 
+String HTMLSelectElement::validationMessage() const
+{
+    if (!willValidate())
+        return String();
+
+    if (customError())
+        return customValidationMessage();
+
+    return valueMissing() ? validationMessageValueMissingForSelectText() : String();
+}
+
 bool HTMLSelectElement::valueMissing() const
 {
+    if (!willValidate())
+        return false;
+
     if (!isRequiredFormControl())
         return false;
 
@@ -268,15 +283,15 @@ bool HTMLSelectElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFormControlElementWithState::isPresentationAttribute(name);
 }
 
-void HTMLSelectElement::parseAttribute(Attribute* attr)
+void HTMLSelectElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == sizeAttr) {
+    if (attribute.name() == sizeAttr) {
         int oldSize = m_size;
         // Set the attribute value to a number.
         // This is important since the style rules for this attribute can determine the appearance property.
-        int size = attr->value().toInt();
+        int size = attribute.value().toInt();
         String attrSize = String::number(size);
-        if (attrSize != attr->value()) {
+        if (attrSize != attribute.value()) {
             // FIXME: This is horribly factored.
             if (Attribute* sizeAttribute = getAttributeItem(sizeAttr))
                 sizeAttribute->setValue(attrSize);
@@ -293,14 +308,14 @@ void HTMLSelectElement::parseAttribute(Attribute* attr)
             reattach();
             setRecalcListItems();
         }
-    } else if (attr->name() == multipleAttr)
-        parseMultipleAttribute(attr);
-    else if (attr->name() == accesskeyAttr) {
+    } else if (attribute.name() == multipleAttr)
+        parseMultipleAttribute(attribute);
+    else if (attribute.name() == accesskeyAttr) {
         // FIXME: ignore for the moment.
-    } else if (attr->name() == onchangeAttr)
-        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attr));
+    } else if (attribute.name() == onchangeAttr)
+        setAttributeEventListener(eventNames().changeEvent, createAttributeEventListener(this, attribute));
     else
-        HTMLFormControlElementWithState::parseAttribute(attr);
+        HTMLFormControlElementWithState::parseAttribute(attribute);
 }
 
 bool HTMLSelectElement::isKeyboardFocusable(KeyboardEvent* event) const
@@ -413,7 +428,7 @@ void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement* option, Exc
     if (index > maxSelectItems - 1)
         index = maxSelectItems - 1;
     int diff = index - length();
-    HTMLElement* before = 0;
+    RefPtr<HTMLElement> before = 0;
     // Out of array bounds? First insert empty dummies.
     if (diff > 0) {
         setLength(index, ec);
@@ -424,7 +439,7 @@ void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement* option, Exc
     }
     // Finally add the new element.
     if (!ec) {
-        add(option, before, ec);
+        add(option, before.get(), ec);
         if (diff >= 0 && option->selected())
             optionSelectionStateChanged(option, true);
     }
@@ -938,10 +953,10 @@ void HTMLSelectElement::restoreFormControlState(const String& state)
     setNeedsValidityCheck();
 }
 
-void HTMLSelectElement::parseMultipleAttribute(const Attribute* attribute)
+void HTMLSelectElement::parseMultipleAttribute(const Attribute& attribute)
 {
     bool oldUsesMenuList = usesMenuList();
-    m_multiple = !attribute->isNull();
+    m_multiple = !attribute.isNull();
     setNeedsValidityCheck();
     if (oldUsesMenuList != usesMenuList())
         reattachIfAttached();
@@ -1475,7 +1490,7 @@ void HTMLSelectElement::typeAheadFind(KeyboardEvent* event)
     }
 }
 
-Node::InsertionNotificationRequest HTMLSelectElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLSelectElement::insertedInto(ContainerNode* insertionPoint)
 {
     // When the element is created during document parsing, it won't have any
     // items yet - but for innerHTML and related methods, this method is called

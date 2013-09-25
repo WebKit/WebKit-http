@@ -146,6 +146,11 @@ void WKBundleSetFrameFlatteningEnabled(WKBundleRef bundleRef, WKBundlePageGroupR
     toImpl(bundleRef)->setFrameFlatteningEnabled(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetPluginsEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
+{
+    toImpl(bundleRef)->setPluginsEnabled(toImpl(pageGroupRef), enabled);
+}
+
 void WKBundleSetGeolocationPermission(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
 {
     toImpl(bundleRef)->setGeoLocationPermission(toImpl(pageGroupRef), enabled);
@@ -241,7 +246,7 @@ bool WKBundleIsProcessingUserGesture(WKBundleRef)
     return InjectedBundle::isProcessingUserGesture();
 }
 
-void WKBundleSetPageVisibilityState(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, int state, bool isInitialState)
+void WKBundleSetPageVisibilityState(WKBundleRef bundleRef, WKBundlePageRef pageRef, int state, bool isInitialState)
 {
-    toImpl(bundleRef)->setPageVisibilityState(toImpl(pageGroupRef), state, isInitialState);
+    toImpl(bundleRef)->setPageVisibilityState(toImpl(pageRef), state, isInitialState);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2011 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2009, 2010, 2011, 2012 Research In Motion Limited. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -136,11 +136,6 @@ bool NetworkManager::startJob(int playerId, const String& pageGroupName, PassRef
 
     m_jobs.append(networkJob);
 
-    if (url.protocolIs("data")) {
-        networkJob->loadDataURL();
-        return true;
-    }
-
     if (url.protocolIs("about")) {
         // If the protocol matches "about", loadAboutURL should recognize and handle it.
         networkJob->loadAboutURL();
@@ -165,10 +160,10 @@ NetworkJob* NetworkManager::findJobForHandle(PassRefPtr<ResourceHandle> job)
 {
     for (unsigned i = 0; i < m_jobs.size(); ++i) {
         NetworkJob* networkJob = m_jobs[i];
-        if (networkJob->handle() == job) {
-            // We have only one job for one handle.
+        // We have only one job for one handle (not including cancelled jobs which may hang
+        // around briefly), so return the first non-cancelled job.
+        if (!networkJob->isCancelled() && networkJob->handle() == job)
             return networkJob;
-        }
     }
     return 0;
 }

@@ -27,6 +27,7 @@
 #ifndef ComposedShadowTreeWalker_h
 #define ComposedShadowTreeWalker_h
 
+#include "InsertionPoint.h"
 #include "ShadowRoot.h"
 
 namespace WebCore {
@@ -78,9 +79,7 @@ private:
             ASSERT(!m_node->isShadowRoot());
         else
             ASSERT(!m_node->isShadowRoot() || toShadowRoot(m_node)->isYoungest());
-        // FIXME: Add an assertion once InsertionPoint have isActive() function.
-        // https://bugs.webkit.org/show_bug.cgi?id=82010
-        // ASSERT(!isInsertionPoint(m_node) || !toInsertionPoint(node)->isActive());
+        ASSERT(!isActiveInsertionPoint(m_node));
 #endif
     }
 
@@ -115,6 +114,18 @@ private:
 
     const Node* m_node;
     Policy m_policy;
+};
+
+// A special walker class which is only used for traversing a parent node, including
+// insertion points and shadow roots.
+class ComposedShadowTreeParentWalker {
+public:
+    ComposedShadowTreeParentWalker(const Node*);
+    void parentIncludingInsertionPointAndShadowRoot();
+    Node* get() const { return const_cast<Node*>(m_node); }
+private:
+    Node* traverseParentIncludingInsertionPointAndShadowRoot(const Node*) const;
+    const Node* m_node;
 };
 
 } // namespace

@@ -221,29 +221,16 @@ _llint_op_create_arguments:
 
 _llint_op_create_this:
     traceExecution()
-    loadis 16[PB, PC, 8], t0
-    assertNotConstant(t0)
-    loadp [cfr, t0, 8], t0
-    btpnz t0, tagMask, .opCreateThisSlow
-    loadp JSCell::m_structure[t0], t1
-    bbb Structure::m_typeInfo + TypeInfo::m_type[t1], ObjectType, .opCreateThisSlow
-    loadp JSObject::m_inheritorID[t0], t2
+    loadp Callee[cfr], t0
+    loadp JSFunction::m_cachedInheritorID[t0], t2
     btpz t2, .opCreateThisSlow
     allocateBasicJSObject(JSFinalObjectSizeClassIndex, JSGlobalData::jsFinalObjectClassInfo, t2, t0, t1, t3, .opCreateThisSlow)
     loadis 8[PB, PC, 8], t1
     storep t0, [cfr, t1, 8]
-    dispatch(3)
+    dispatch(2)
 
 .opCreateThisSlow:
     callSlowPath(_llint_slow_path_create_this)
-    dispatch(3)
-
-
-_llint_op_get_callee:
-    traceExecution()
-    loadis 8[PB, PC, 8], t0
-    loadp Callee[cfr], t1
-    storep t1, [cfr, t0, 8]
     dispatch(2)
 
 
@@ -254,11 +241,13 @@ _llint_op_convert_this:
     btpnz t0, tagMask, .opConvertThisSlow
     loadp JSCell::m_structure[t0], t0
     bbb Structure::m_typeInfo + TypeInfo::m_type[t0], ObjectType, .opConvertThisSlow
-    dispatch(2)
+    loadp 16[PB, PC, 8], t1
+    valueProfile(t0, t1)
+    dispatch(3)
 
 .opConvertThisSlow:
     callSlowPath(_llint_slow_path_convert_this)
-    dispatch(2)
+    dispatch(3)
 
 
 _llint_op_new_object:
@@ -906,28 +895,22 @@ _llint_op_put_scoped_var:
 
 _llint_op_get_global_var:
     traceExecution()
-    loadis 16[PB, PC, 8], t1
+    loadp 16[PB, PC, 8], t0
     loadis 8[PB, PC, 8], t3
-    loadp CodeBlock[cfr], t0
-    loadp CodeBlock::m_globalObject[t0], t0
-    loadp JSGlobalObject::m_registers[t0], t0
-    loadp [t0, t1, 8], t2
-    storep t2, [cfr, t3, 8]
-    loadp 24[PB, PC, 8], t3
-    valueProfile(t2, t3)
+    loadp [t0], t1
+    storep t1, [cfr, t3, 8]
+    loadp 24[PB, PC, 8], t0
+    valueProfile(t1, t0)
     dispatch(4)
 
 
 _llint_op_put_global_var:
     traceExecution()
     loadis 16[PB, PC, 8], t1
-    loadp CodeBlock[cfr], t0
-    loadp CodeBlock::m_globalObject[t0], t0
-    loadp JSGlobalObject::m_registers[t0], t0
+    loadp 8[PB, PC, 8], t0
     loadConstantOrVariable(t1, t2)
-    loadis 8[PB, PC, 8], t1
     writeBarrier(t2)
-    storep t2, [t0, t1, 8]
+    storep t2, [t0]
     dispatch(3)
 
 
@@ -1071,8 +1054,10 @@ _llint_op_get_argument_by_val:
     negi t2
     sxi2p t2, t2
     loadis 8[PB, PC, 8], t3
+    loadp 32[PB, PC, 8], t1
     loadp ThisArgumentOffset[cfr, t2, 8], t0
     storep t0, [cfr, t3, 8]
+    valueProfile(t0, t1)
     dispatch(5)
 
 .opGetArgumentByValSlow:
@@ -1292,8 +1277,9 @@ _llint_op_switch_char:
     btpnz t1, tagMask, .opSwitchCharFallThrough
     loadp JSCell::m_structure[t1], t0
     bbneq Structure::m_typeInfo + TypeInfo::m_type[t0], StringType, .opSwitchCharFallThrough
+    bineq JSString::m_length[t1], 1, .opSwitchCharFallThrough
     loadp JSString::m_value[t1], t0
-    bineq StringImpl::m_length[t0], 1, .opSwitchCharFallThrough
+    btpz  t0, .opSwitchOnRope
     loadp StringImpl::m_data8[t0], t1
     btinz StringImpl::m_hashAndFlags[t0], HashFlags8BitBuffer, .opSwitchChar8Bit
     loadh [t1], t0
@@ -1310,6 +1296,10 @@ _llint_op_switch_char:
 
 .opSwitchCharFallThrough:
     dispatchInt(16[PB, PC, 8])
+
+.opSwitchOnRope:
+    callSlowPath(_llint_slow_path_switch_char)
+    dispatch(0)
 
 
 _llint_op_new_func:

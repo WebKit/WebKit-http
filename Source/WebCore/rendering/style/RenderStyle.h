@@ -51,6 +51,8 @@
 #include "StyleBoxData.h"
 #include "StyleDeprecatedFlexibleBoxData.h"
 #include "StyleFlexibleBoxData.h"
+#include "StyleGridData.h"
+#include "StyleGridItemData.h"
 #include "StyleInheritedData.h"
 #include "StyleMarqueeData.h"
 #include "StyleMultiColData.h"
@@ -74,11 +76,6 @@
 #if ENABLE(CSS_FILTERS)
 #include "FilterOperations.h"
 #include "StyleFilterData.h"
-#endif
-
-#if ENABLE(CSS_GRID_LAYOUT)
-#include "StyleGridData.h"
-#include "StyleGridItemData.h"
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
@@ -390,10 +387,15 @@ private:
 public:
     static PassRefPtr<RenderStyle> create();
     static PassRefPtr<RenderStyle> createDefaultStyle();
-    static PassRefPtr<RenderStyle> createAnonymousStyle(const RenderStyle* parentStyle);
+    static PassRefPtr<RenderStyle> createAnonymousStyleWithDisplay(const RenderStyle* parentStyle, EDisplay);
     static PassRefPtr<RenderStyle> clone(const RenderStyle*);
 
-    void inheritFrom(const RenderStyle* inheritParent);
+    enum IsAtShadowBoundary {
+        AtShadowBoundary,
+        NotAtShadowBoundary,
+    };
+
+    void inheritFrom(const RenderStyle* inheritParent, IsAtShadowBoundary = NotAtShadowBoundary);
     void copyNonInheritedFrom(const RenderStyle*);
 
     PseudoId styleType() const { return static_cast<PseudoId>(noninherited_flags._styleType); }
@@ -501,10 +503,10 @@ public:
     Length bottom() const { return surround->offset.bottom(); }
 
     // Accessors for positioned object edges that take into account writing mode.
-    Length logicalLeft() const { return isHorizontalWritingMode() ? left() : top(); }
-    Length logicalRight() const { return isHorizontalWritingMode() ? right() : bottom(); }
-    Length logicalTop() const { return isHorizontalWritingMode() ? (isFlippedBlocksWritingMode() ? bottom() : top()) : (isFlippedBlocksWritingMode() ? right() : left()); }
-    Length logicalBottom() const { return isHorizontalWritingMode() ? (isFlippedBlocksWritingMode() ? top() : bottom()) : (isFlippedBlocksWritingMode() ? left() : right()); }
+    Length logicalLeft() const { return surround->offset.logicalLeft(this); }
+    Length logicalRight() const { return surround->offset.logicalRight(this); }
+    Length logicalTop() const { return surround->offset.before(this); }
+    Length logicalBottom() const { return surround->offset.after(this); }
 
     // Whether or not a positioned element requires normal flow x/y to be computed
     // to determine its position.
@@ -741,24 +743,24 @@ public:
     Length marginBottom() const { return surround->margin.bottom(); }
     Length marginLeft() const { return surround->margin.left(); }
     Length marginRight() const { return surround->margin.right(); }
-    Length marginBefore() const;
-    Length marginAfter() const;
-    Length marginStart() const;
-    Length marginEnd() const;
-    Length marginStartUsing(const RenderStyle* otherStyle) const;
-    Length marginEndUsing(const RenderStyle* otherStyle) const;
-    Length marginBeforeUsing(const RenderStyle* otherStyle) const;
-    Length marginAfterUsing(const RenderStyle* otherStyle) const;
+    Length marginBefore() const { return surround->margin.before(this); }
+    Length marginAfter() const { return surround->margin.after(this); }
+    Length marginStart() const { return surround->margin.start(this); }
+    Length marginEnd() const { return surround->margin.end(this); }
+    Length marginStartUsing(const RenderStyle* otherStyle) const { return surround->margin.start(otherStyle); }
+    Length marginEndUsing(const RenderStyle* otherStyle) const { return surround->margin.end(otherStyle); }
+    Length marginBeforeUsing(const RenderStyle* otherStyle) const { return surround->margin.before(otherStyle); }
+    Length marginAfterUsing(const RenderStyle* otherStyle) const { return surround->margin.after(otherStyle); }
 
     LengthBox paddingBox() const { return surround->padding; }
     Length paddingTop() const { return surround->padding.top(); }
     Length paddingBottom() const { return surround->padding.bottom(); }
     Length paddingLeft() const { return surround->padding.left(); }
     Length paddingRight() const { return surround->padding.right(); }
-    Length paddingBefore() const;
-    Length paddingAfter() const;
-    Length paddingStart() const;
-    Length paddingEnd() const;
+    Length paddingBefore() const { return surround->padding.before(this); }
+    Length paddingAfter() const { return surround->padding.after(this); }
+    Length paddingStart() const { return surround->padding.start(this); }
+    Length paddingEnd() const { return surround->padding.end(this); }
 
     ECursor cursor() const { return static_cast<ECursor>(inherited_flags._cursor_style); }
 
@@ -807,26 +809,24 @@ public:
     EBoxOrient boxOrient() const { return static_cast<EBoxOrient>(rareNonInheritedData->m_deprecatedFlexibleBox->orient); }
     EBoxPack boxPack() const { return static_cast<EBoxPack>(rareNonInheritedData->m_deprecatedFlexibleBox->pack); }
 
+    float order() const { return rareNonInheritedData->m_order; }
     float positiveFlex() const { return rareNonInheritedData->m_flexibleBox->m_positiveFlex; }
     float negativeFlex() const { return rareNonInheritedData->m_flexibleBox->m_negativeFlex; }
     Length flexPreferredSize() const { return rareNonInheritedData->m_flexibleBox->m_preferredSize; }
-    int flexOrder() const { return rareNonInheritedData->m_flexibleBox->m_flexOrder; }
-    EFlexPack flexPack() const { return static_cast<EFlexPack>(rareNonInheritedData->m_flexibleBox->m_flexPack); }
-    EFlexAlign flexAlign() const { return static_cast<EFlexAlign>(rareNonInheritedData->m_flexibleBox->m_flexAlign); }
-    EFlexAlign flexItemAlign() const { return static_cast<EFlexAlign>(rareNonInheritedData->m_flexibleBox->m_flexItemAlign); }
+    EAlignContent alignContent() const { return static_cast<EAlignContent>(rareNonInheritedData->m_alignContent); }
+    EAlignItems alignItems() const { return static_cast<EAlignItems>(rareNonInheritedData->m_alignItems); }
+    EAlignItems alignSelf() const { return static_cast<EAlignItems>(rareNonInheritedData->m_alignSelf); }
     EFlexDirection flexDirection() const { return static_cast<EFlexDirection>(rareNonInheritedData->m_flexibleBox->m_flexDirection); }
     bool isColumnFlexDirection() const { return flexDirection() == FlowColumn || flexDirection() == FlowColumnReverse; }
     bool isReverseFlexDirection() const { return flexDirection() == FlowRowReverse || flexDirection() == FlowColumnReverse; }
     EFlexWrap flexWrap() const { return static_cast<EFlexWrap>(rareNonInheritedData->m_flexibleBox->m_flexWrap); }
-    EFlexLinePack flexLinePack() const { return static_cast<EFlexLinePack>(rareNonInheritedData->m_flexibleBox->m_flexLinePack); }
+    EJustifyContent justifyContent() const { return static_cast<EJustifyContent>(rareNonInheritedData->m_justifyContent); }
 
-#if ENABLE(CSS_GRID_LAYOUT)
     const Vector<Length>& gridColumns() const { return rareNonInheritedData->m_grid->m_gridColumns; }
     const Vector<Length>& gridRows() const { return rareNonInheritedData->m_grid->m_gridRows; }
 
     const Length& gridItemColumn() const { return rareNonInheritedData->m_gridItem->m_gridColumn; }
     const Length& gridItemRow() const { return rareNonInheritedData->m_gridItem->m_gridRow; }
-#endif
 
     const ShadowData* boxShadow() const { return rareNonInheritedData->m_boxShadow.get(); }
     void getBoxShadowExtent(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const { getShadowExtent(boxShadow(), top, right, bottom, left); }
@@ -835,6 +835,7 @@ public:
     void getBoxShadowInlineDirectionExtent(LayoutUnit& logicalLeft, LayoutUnit& logicalRight) { getShadowInlineDirectionExtent(boxShadow(), logicalLeft, logicalRight); }
     void getBoxShadowBlockDirectionExtent(LayoutUnit& logicalTop, LayoutUnit& logicalBottom) { getShadowBlockDirectionExtent(boxShadow(), logicalTop, logicalBottom); }
 
+    EBoxDecorationBreak boxDecorationBreak() const { return m_box->boxDecorationBreak(); }
     StyleReflection* boxReflect() const { return rareNonInheritedData->m_boxReflect.get(); }
     EBoxSizing boxSizing() const { return m_box->boxSizing(); }
     Length marqueeIncrement() const { return rareNonInheritedData->m_marquee->increment; }
@@ -909,6 +910,9 @@ public:
 
     TextCombine textCombine() const { return static_cast<TextCombine>(rareNonInheritedData->m_textCombine); }
     bool hasTextCombine() const { return textCombine() != TextCombineNone; }
+
+    unsigned tabSize() const { return rareInheritedData->m_tabSize; }
+
     // End CSS3 Getters
 
     const AtomicString& flowThread() const { return rareNonInheritedData->m_flowThread; }
@@ -969,6 +973,10 @@ public:
     bool isFlippedBlocksWritingMode() const { return writingMode() == RightToLeftWritingMode || writingMode() == BottomToTopWritingMode; }
 
     EImageRendering imageRendering() const { return static_cast<EImageRendering>(rareInheritedData->m_imageRendering); }
+
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    float imageResolution() const { return rareInheritedData->m_imageResolution; }
+#endif
     
     ESpeak speak() const { return static_cast<ESpeak>(rareInheritedData->speak); }
 
@@ -1136,6 +1144,10 @@ public:
     bool setEffectiveZoom(float);
     void setImageRendering(EImageRendering v) { SET_VAR(rareInheritedData, m_imageRendering, v) }
 
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    void setImageResolution(float f) { SET_VAR(rareInheritedData, m_imageResolution, f) }
+#endif
+
     void setWhiteSpace(EWhiteSpace v) { inherited_flags._white_space = v; }
 
     void setWordSpacing(int v) { inherited.access()->font.setWordSpacing(v); }
@@ -1236,6 +1248,7 @@ public:
     void setAppearance(ControlPart a) { SET_VAR(rareNonInheritedData, m_appearance, a); }
     // For valid values of box-align see http://www.w3.org/TR/2009/WD-css3-flexbox-20090723/#alignment
     void setBoxAlign(EBoxAlignment a) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, align, a); }
+    void setBoxDecorationBreak(EBoxDecorationBreak b) { SET_VAR(m_box, m_boxDecorationBreak, b); }
     void setBoxDirection(EBoxDirection d) { inherited_flags._box_direction = d; }
     void setBoxFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, flex, f); }
     void setBoxFlexGroup(unsigned int fg) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, flex_group, fg); }
@@ -1249,20 +1262,17 @@ public:
     void setPositiveFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_positiveFlex, f); }
     void setNegativeFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_negativeFlex, f); }
     void setFlexPreferredSize(Length l) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_preferredSize, l); }
-    void setFlexOrder(int o) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexOrder, o); }
-    void setFlexPack(EFlexPack p) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexPack, p); }
-    void setFlexAlign(EFlexAlign a) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexAlign, a); }
-    void setFlexItemAlign(EFlexAlign a) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexItemAlign, a); }
+    void setOrder(float o) { SET_VAR(rareNonInheritedData, m_order, o); }
+    void setAlignContent(EAlignContent p) { SET_VAR(rareNonInheritedData, m_alignContent, p); }
+    void setAlignItems(EAlignItems a) { SET_VAR(rareNonInheritedData, m_alignItems, a); }
+    void setAlignSelf(EAlignItems a) { SET_VAR(rareNonInheritedData, m_alignSelf, a); }
     void setFlexDirection(EFlexDirection direction) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexDirection, direction); }
     void setFlexWrap(EFlexWrap w) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexWrap, w); }
-    void setFlexLinePack(EFlexLinePack p) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexLinePack, p); }
-#if ENABLE(CSS_GRID_LAYOUT)
+    void setJustifyContent(EJustifyContent p) { SET_VAR(rareNonInheritedData, m_justifyContent, p); }
     void setGridColumns(const Vector<Length>& lengths) { SET_VAR(rareNonInheritedData.access()->m_grid, m_gridColumns, lengths); }
     void setGridRows(const Vector<Length>& lengths) { SET_VAR(rareNonInheritedData.access()->m_grid, m_gridRows, lengths); }
-
     void setGridItemColumn(const Length& columnPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridColumn, columnPosition); }
     void setGridItemRow(const Length& rowPosition) { SET_VAR(rareNonInheritedData.access()->m_gridItem, m_gridRow, rowPosition); }
-#endif
 
     void setMarqueeIncrement(const Length& f) { SET_VAR(rareNonInheritedData.access()->m_marquee, increment, f); }
     void setMarqueeSpeed(int f) { SET_VAR(rareNonInheritedData.access()->m_marquee, speed, f); }
@@ -1324,6 +1334,8 @@ public:
 #if ENABLE(CSS_FILTERS)
     void setFilter(const FilterOperations& ops) { SET_VAR(rareNonInheritedData.access()->m_filter, m_operations, ops); }
 #endif
+
+    void setTabSize(unsigned size) { SET_VAR(rareInheritedData, m_tabSize, size); }
 
     // End CSS3 Setters
 
@@ -1571,6 +1583,7 @@ public:
     static int initialOutlineOffset() { return 0; }
     static float initialOpacity() { return 1.0f; }
     static EBoxAlignment initialBoxAlign() { return BSTRETCH; }
+    static EBoxDecorationBreak initialBoxDecorationBreak() { return DSLICE; }
     static EBoxDirection initialBoxDirection() { return BNORMAL; }
     static EBoxLines initialBoxLines() { return SINGLE; }
     static EBoxOrient initialBoxOrient() { return HORIZONTAL; }
@@ -1580,16 +1593,16 @@ public:
     static unsigned int initialBoxOrdinalGroup() { return 1; }
     static EBoxSizing initialBoxSizing() { return CONTENT_BOX; }
     static StyleReflection* initialBoxReflect() { return 0; }
-    static float initialPositiveFlex() { return 0; }
-    static float initialNegativeFlex() { return 0; }
+    static float initialPositiveFlex() { return 1; }
+    static float initialNegativeFlex() { return 1; }
     static Length initialFlexPreferredSize() { return Length(Auto); }
-    static int initialFlexOrder() { return 0; }
-    static EFlexPack initialFlexPack() { return PackStart; }
-    static EFlexAlign initialFlexAlign() { return AlignStretch; }
-    static EFlexAlign initialFlexItemAlign() { return AlignAuto; }
+    static float initialOrder() { return 0; }
+    static EAlignContent initialAlignContent() { return AlignContentStretch; }
+    static EAlignItems initialAlignItems() { return AlignStretch; }
+    static EAlignItems initialAlignSelf() { return AlignAuto; }
     static EFlexDirection initialFlexDirection() { return FlowRow; }
     static EFlexWrap initialFlexWrap() { return FlexWrapNone; }
-    static EFlexLinePack initialFlexLinePack() { return LinePackStretch; }
+    static EJustifyContent initialJustifyContent() { return JustifyFlexStart; }
     static int initialMarqueeLoopCount() { return -1; }
     static int initialMarqueeSpeed() { return 85; }
     static Length initialMarqueeIncrement() { return Length(6, Fixed); }
@@ -1642,11 +1655,11 @@ public:
     static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver; }
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
     static EImageRendering initialImageRendering() { return ImageRenderingAuto; }
+    static float initialImageResolution() { return 1; }
     static StyleImage* initialBorderImageSource() { return 0; }
     static StyleImage* initialMaskBoxImageSource() { return 0; }
     static PrintColorAdjust initialPrintColorAdjust() { return PrintColorAdjustEconomy; }
 
-#if ENABLE(CSS_GRID_LAYOUT)
     // The initial value is 'none' for grid tracks.
     static Vector<Length> initialGridTrackValue()
     {
@@ -1662,7 +1675,8 @@ public:
     // 'auto' is the default.
     static Length initialGridItemColumn() { return Length(); }
     static Length initialGridItemRow() { return Length(); }
-#endif
+
+    static unsigned initialTabSize() { return 8; }
 
     static const AtomicString& initialLineGrid() { return nullAtom; }
     static LineSnap initialLineSnap() { return LineSnapNone; }

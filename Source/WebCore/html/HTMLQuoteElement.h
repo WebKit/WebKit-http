@@ -36,8 +36,8 @@ public:
 private:
     HTMLQuoteElement(const QualifiedName&, Document*);
     
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 };
 
 } //namespace

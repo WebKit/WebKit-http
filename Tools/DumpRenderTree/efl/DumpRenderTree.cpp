@@ -35,6 +35,7 @@
 #include "NotImplemented.h"
 #include "PixelDumpSupport.h"
 #include "WebCoreSupport/DumpRenderTreeSupportEfl.h"
+#include "WebCoreTestSupport.h"
 #include "WorkQueue.h"
 #include "ewk_private.h"
 #include <EWebKit.h>
@@ -53,6 +54,8 @@
 OwnPtr<DumpRenderTreeChrome> browser;
 Evas_Object* topLoadingFrame = 0;
 bool waitForPolicy = false;
+bool policyDelegateEnabled = false;
+bool policyDelegatePermissive = false;
 Ecore_Timer* waitToDumpWatchdog = 0;
 extern Ewk_History_Item* prevTestBFItem;
 
@@ -196,6 +199,11 @@ static String getExpectedPixelHash(const String& testURL)
     return (hashSeparatorPos != notFound) ? testURL.substring(hashSeparatorPos + 1) : String();
 }
 
+static inline bool isGlobalHistoryTest(const String& cTestPathOrURL)
+{
+    return cTestPathOrURL.contains("/globalhistory/");
+}
+
 static void createLayoutTestController(const String& testURL, const String& expectedPixelHash)
 {
     gLayoutTestController =
@@ -211,6 +219,7 @@ static void createLayoutTestController(const String& testURL, const String& expe
         gLayoutTestController->setDumpFrameLoadCallbacks(true);
 
     gLayoutTestController->setDeveloperExtrasEnabled(true);
+    gLayoutTestController->setDumpHistoryDelegateCallbacks(isGlobalHistoryTest(testURL));
 
     if (shouldDumpAsText(testURL)) {
         gLayoutTestController->setDumpAsText(true);
@@ -249,6 +258,11 @@ static void runTest(const char* cTestPathOrURL)
 
     gLayoutTestController->closeWebInspector();
     gLayoutTestController->setDeveloperExtrasEnabled(false);
+
+    browser->clearExtraViews();
+
+    // FIXME: Move to DRTChrome::resetDefaultsToConsistentValues() after bug 85209 lands.
+    WebCoreTestSupport::resetInternalsObject(DumpRenderTreeSupportEfl::globalContextRefForFrame(browser->mainFrame()));
 
     ewk_view_uri_set(browser->mainView(), "about:blank");
 

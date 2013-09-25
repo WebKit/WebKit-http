@@ -24,8 +24,11 @@
 #include "Image.h"
 #include "TextureMapper.h"
 #include "TextureMapperPlatformLayer.h"
-
 #include <wtf/RefPtr.h>
+
+#if USE(GRAPHICS_SURFACE)
+#include "GraphicsSurface.h"
+#endif
 
 namespace WebCore {
 
@@ -37,6 +40,39 @@ public:
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float, BitmapTexture*) = 0;
     virtual ~TextureMapperBackingStore() { }
 };
+
+#if USE(GRAPHICS_SURFACE)
+struct GraphicsSurfaceData {
+    void setSurface(PassRefPtr<GraphicsSurface> surface)
+    {
+        m_graphicsSurface = surface;
+        m_graphicsSurfaceToken = m_graphicsSurface->exportToken();
+        m_textureID = m_graphicsSurface->getTextureID();
+    }
+
+    GraphicsSurfaceData()
+        : m_textureID(0)
+        , m_graphicsSurfaceToken(0)
+    { }
+
+    uint32_t m_textureID;
+    uint32_t m_graphicsSurfaceToken;
+    RefPtr<WebCore::GraphicsSurface> m_graphicsSurface;
+};
+
+class TextureMapperSurfaceBackingStore : public TextureMapperBackingStore {
+public:
+    static PassRefPtr<TextureMapperSurfaceBackingStore> create() { return adoptRef(new TextureMapperSurfaceBackingStore); }
+    void setGraphicsSurface(uint32_t graphicsSurfaceToken, const IntSize& surfaceSize);
+    virtual PassRefPtr<BitmapTexture> texture() const;
+    virtual void paintToTextureMapper(TextureMapper*, const FloatRect&, const TransformationMatrix&, float, BitmapTexture*);
+    virtual ~TextureMapperSurfaceBackingStore() { }
+private:
+    IntSize m_graphicsSurfaceSize;
+    GraphicsSurfaceData m_frontBufferGraphicsSurfaceData;
+    GraphicsSurfaceData m_backBufferGraphicsSurfaceData;
+};
+#endif
 
 class TextureMapperTile {
 public:
@@ -72,13 +108,20 @@ public:
     void setContentsToImage(Image* image) { m_image = image; }
     void updateContentsFromImageIfNeeded(TextureMapper*);
 
+    void setShowDebugBorders(bool drawsDebugBorders) { m_drawsDebugBorders = drawsDebugBorders; }
+    void setDebugBorder(const Color&, float width);
+
 private:
-    TextureMapperTiledBackingStore() { }
+    TextureMapperTiledBackingStore();
     void createOrDestroyTilesIfNeeded(const FloatSize& backingStoreSize, const IntSize& tileSize, bool hasAlpha);
 
     Vector<TextureMapperTile> m_tiles;
     FloatSize m_size;
     RefPtr<Image> m_image;
+
+    bool m_drawsDebugBorders;
+    Color m_debugBorderColor;
+    float m_debugBorderWidth;
 };
 
 }

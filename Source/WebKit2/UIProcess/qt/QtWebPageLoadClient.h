@@ -22,7 +22,9 @@
 #define QtWebPageLoadClient_h
 
 #include <QtGlobal>
+#include <WebFrameProxy.h>
 #include <WKPage.h>
+#include <wtf/text/WTFString.h>
 
 QT_BEGIN_NAMESPACE
 class QUrl;
@@ -32,30 +34,28 @@ class QQuickWebView;
 
 namespace WebKit {
 
-class WebPageProxy;
+class QtWebError;
 
 class QtWebPageLoadClient {
 public:
     QtWebPageLoadClient(WKPageRef, QQuickWebView*);
 
-    int loadProgress() const { return m_loadProgress; }
-    void completeLoadWhenProcessDidCrashIfNeeded();
-
 private:
-    void didStartProvisionalLoad(const QUrl&);
+    void didStartProvisionalLoad(const WTF::String&);
+    void didReceiveServerRedirectForProvisionalLoad(const WTF::String&);
     void didCommitLoad();
     void didSameDocumentNavigation();
     void didReceiveTitle();
-    void didFirstVisuallyNonEmptyLayout();
+    void didChangeProgress(int);
     void didChangeBackForwardList();
 
     void dispatchLoadSucceeded();
-    void dispatchLoadFailed(WKErrorRef);
+    void dispatchLoadFailed(WebFrameProxy*, const QtWebError&);
 
-    void setLoadProgress(int);
 
     // WKPageLoadClient callbacks.
     static void didStartProvisionalLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef userData, const void* clientInfo);
+    static void didReceiveServerRedirectForProvisionalLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef userData, const void* clientInfo);
     static void didFailProvisionalLoadWithErrorForFrame(WKPageRef, WKFrameRef, WKErrorRef, WKTypeRef userData, const void* clientInfo);
     static void didCommitLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef userData, const void* clientInfo);
     static void didFinishLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef userData, const void* clientInfo);
@@ -65,12 +65,9 @@ private:
     static void didStartProgress(WKPageRef, const void* clientInfo);
     static void didChangeProgress(WKPageRef, const void* clientInfo);
     static void didFinishProgress(WKPageRef, const void* clientInfo);
-    static void didFirstVisuallyNonEmptyLayoutForFrame(WKPageRef, WKFrameRef, WKTypeRef userData, const void* clientInfo);
     static void didChangeBackForwardList(WKPageRef, WKBackForwardListItemRef, WKArrayRef, const void *clientInfo);
 
     QQuickWebView* m_webView;
-    WebPageProxy* m_webPageProxy;
-    int m_loadProgress;
 };
 
 } // namespace Webkit

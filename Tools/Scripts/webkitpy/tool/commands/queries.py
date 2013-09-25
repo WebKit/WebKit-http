@@ -373,7 +373,7 @@ and PID and prints it to stdout."""
     argument_names = "PROCESS_NAME [PID]"
 
     def execute(self, options, args, tool):
-        crash_logs = CrashLogs(tool.filesystem)
+        crash_logs = CrashLogs(tool)
         pid = None
         if len(args) > 1:
             pid = int(args[1])
@@ -395,7 +395,7 @@ class PrintExpectations(AbstractDeclarativeCommand):
             make_option('--csv', action='store_true', default=False,
                         help='Print a CSV-style report that includes the port name, modifiers, tests, and expectations'),
             make_option('-f', '--full', action='store_true', default=False,
-                        help='Print a full test_expectations.txt-style line for every match'),
+                        help='Print a full TestExpectations-style line for every match'),
         ] + port_options(platform='port/platform to use. Use glob-style wildcards for multiple ports (implies --csv)')
 
         AbstractDeclarativeCommand.__init__(self, options=options)
@@ -456,13 +456,7 @@ class PrintExpectations(AbstractDeclarativeCommand):
         port = self._tool.port_factory.get(port_name, options)
         expectations_path = port.path_to_test_expectations_file()
         if not expectations_path in self._expectation_models:
-            lint_mode = False
-            self._expectation_models[expectations_path] = TestExpectations(port, tests,
-                port.test_expectations(),
-                port.test_configuration(),
-                lint_mode,
-                port.test_expectations_overrides(),
-                port.skipped_layout_tests(tests)).model()
+            self._expectation_models[expectations_path] = TestExpectations(port, tests).model()
         return self._expectation_models[expectations_path]
 
 

@@ -154,7 +154,7 @@ void ImageLoader::updateFromElement()
 
     // Do not load any image if the 'src' attribute is missing or if it is
     // an empty string.
-    CachedImage* newImage = 0;
+    CachedResourceHandle<CachedImage> newImage = 0;
     if (!attr.isNull() && !stripLeadingAndTrailingHTMLSpaces(attr).isEmpty()) {
         ResourceRequest request = ResourceRequest(document->completeURL(sourceURI(attr)));
 
@@ -170,7 +170,7 @@ void ImageLoader::updateFromElement()
             newImage = new CachedImage(request);
             newImage->setLoading(true);
             newImage->setOwningCachedResourceLoader(document->cachedResourceLoader());
-            document->cachedResourceLoader()->m_documentResources.set(newImage->url(), newImage);
+            document->cachedResourceLoader()->m_documentResources.set(newImage->url(), newImage.get());
             document->cachedResourceLoader()->setAutoLoadImages(autoLoadOtherImages);
         } else
             newImage = document->cachedResourceLoader()->requestImage(request);
@@ -194,15 +194,18 @@ void ImageLoader::updateFromElement()
             errorEventSender().cancelEvent(this);
 
         m_image = newImage;
-        m_hasPendingBeforeLoadEvent = newImage;
+        m_hasPendingBeforeLoadEvent = !m_element->document()->isImageDocument() && newImage;
         m_hasPendingLoadEvent = newImage;
         m_imageComplete = !newImage;
 
         if (newImage) {
-            if (!m_element->document()->hasListenerType(Document::BEFORELOAD_LISTENER))
-                dispatchPendingBeforeLoadEvent();
-            else
-                beforeLoadEventSender().dispatchEventSoon(this);
+            if (!m_element->document()->isImageDocument()) {
+                if (!m_element->document()->hasListenerType(Document::BEFORELOAD_LISTENER))
+                    dispatchPendingBeforeLoadEvent();
+                else
+                    beforeLoadEventSender().dispatchEventSoon(this);
+            } else
+                updateRenderer();
 
             // If newImage is cached, addClient() will result in the load event
             // being queued to fire. Ensure this happens after beforeload is

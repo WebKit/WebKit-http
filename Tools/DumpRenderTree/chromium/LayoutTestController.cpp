@@ -34,6 +34,7 @@
 
 #include "DRTDevToolsAgent.h"
 #include "MockWebSpeechInputController.h"
+#include "MockWebSpeechRecognizer.h"
 #include "TestShell.h"
 #include "WebAnimationController.h"
 #include "WebBindings.h"
@@ -49,10 +50,12 @@
 #include "WebGeolocationClientMock.h"
 #include "WebIDBFactory.h"
 #include "WebInputElement.h"
+#include "WebIntent.h"
 #include "WebIntentRequest.h"
 #include "WebKit.h"
 #include "WebNotificationPresenter.h"
 #include "WebPermissions.h"
+#include "WebPrintParams.h"
 #include "WebScriptSource.h"
 #include "WebSecurityPolicy.h"
 #include "platform/WebSerializedScriptValue.h"
@@ -75,9 +78,24 @@
 #include <wtf/OwnArrayPtr.h>
 #endif
 
+#if OS(LINUX)
+#include "linux/WebFontInfo.h"
+#include "linux/WebFontRendering.h"
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 using namespace std;
+
+class EmptyWebDeliveredIntentClient : public WebKit::WebDeliveredIntentClient {
+public:
+    EmptyWebDeliveredIntentClient() { }
+    ~EmptyWebDeliveredIntentClient() { }
+
+    virtual void postResult(const WebSerializedScriptValue& data) const { }
+    virtual void postFailure(const WebSerializedScriptValue& data) const { }
+    virtual void destroy() { }
+};
 
 LayoutTestController::LayoutTestController(TestShell* shell)
     : m_shell(shell)
@@ -85,6 +103,7 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     , m_deferMainResourceDataLoad(false)
     , m_showDebugLayerTree(false)
     , m_workQueue(this)
+    , m_intentClient(adoptPtr(new EmptyWebDeliveredIntentClient))
     , m_shouldStayOnPageAfterHandlingBeforeUnload(false)
 {
 
@@ -93,8 +112,13 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     // names to their methods will be done by calling bindToJavaScript() (defined
     // by CppBoundClass, the parent to LayoutTestController).
     bindMethod("addFileToPasteboardOnDrag", &LayoutTestController::addFileToPasteboardOnDrag);
+#if ENABLE(INPUT_SPEECH)
     bindMethod("addMockSpeechInputResult", &LayoutTestController::addMockSpeechInputResult);
     bindMethod("setMockSpeechInputDumpRect", &LayoutTestController::setMockSpeechInputDumpRect);
+#endif
+#if ENABLE(SCRIPTED_SPEECH)
+    bindMethod("addMockSpeechRecognitionResult", &LayoutTestController::addMockSpeechRecognitionResult);
+#endif
     bindMethod("addOriginAccessWhitelistEntry", &LayoutTestController::addOriginAccessWhitelistEntry);
     bindMethod("addUserScript", &LayoutTestController::addUserScript);
     bindMethod("addUserStyleSheet", &LayoutTestController::addUserStyleSheet);
@@ -132,11 +156,12 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setIsolatedWorldSecurityOrigin", &LayoutTestController::setIsolatedWorldSecurityOrigin);
     bindMethod("execCommand", &LayoutTestController::execCommand);
     bindMethod("forceRedSelectionColors", &LayoutTestController::forceRedSelectionColors);
+#if ENABLE(NOTIFICATIONS)
     bindMethod("grantDesktopNotificationPermission", &LayoutTestController::grantDesktopNotificationPermission);
+#endif
     bindMethod("findString", &LayoutTestController::findString);
     bindMethod("isCommandEnabled", &LayoutTestController::isCommandEnabled);
     bindMethod("hasCustomPageSizeStyle", &LayoutTestController::hasCustomPageSizeStyle);
-    bindMethod("isPageBoxVisible", &LayoutTestController::isPageBoxVisible);
     bindMethod("layerTreeAsText", &LayoutTestController::layerTreeAsText);
     bindMethod("loseCompositorContext", &LayoutTestController::loseCompositorContext);
     bindMethod("markerTextForListItem", &LayoutTestController::markerTextForListItem);
@@ -162,7 +187,6 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("removeOriginAccessWhitelistEntry", &LayoutTestController::removeOriginAccessWhitelistEntry);
     bindMethod("repaintSweepHorizontally", &LayoutTestController::repaintSweepHorizontally);
     bindMethod("resetPageVisibility", &LayoutTestController::resetPageVisibility);
-    bindMethod("resumeAnimations", &LayoutTestController::resumeAnimations);
     bindMethod("setAcceptsEditing", &LayoutTestController::setAcceptsEditing);
     bindMethod("setAllowDisplayOfInsecureContent", &LayoutTestController::setAllowDisplayOfInsecureContent);
     bindMethod("setAllowFileAccessFromFileURLs", &LayoutTestController::setAllowFileAccessFromFileURLs);
@@ -177,12 +201,10 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setDatabaseQuota", &LayoutTestController::setDatabaseQuota);
     bindMethod("setDeferMainResourceDataLoad", &LayoutTestController::setDeferMainResourceDataLoad);
     bindMethod("setDomainRelaxationForbiddenForURLScheme", &LayoutTestController::setDomainRelaxationForbiddenForURLScheme);
-    bindMethod("setEditingBehavior", &LayoutTestController::setEditingBehavior);
     bindMethod("setAudioData", &LayoutTestController::setAudioData);
     bindMethod("setGeolocationPermission", &LayoutTestController::setGeolocationPermission);
     bindMethod("setIconDatabaseEnabled", &LayoutTestController::setIconDatabaseEnabled);
     bindMethod("setJavaScriptCanAccessClipboard", &LayoutTestController::setJavaScriptCanAccessClipboard);
-    bindMethod("setJavaScriptProfilingEnabled", &LayoutTestController::setJavaScriptProfilingEnabled);
     bindMethod("setMinimumTimerInterval", &LayoutTestController::setMinimumTimerInterval);
     bindMethod("setMockDeviceOrientation", &LayoutTestController::setMockDeviceOrientation);
     bindMethod("setMockGeolocationError", &LayoutTestController::setMockGeolocationError);
@@ -198,6 +220,7 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setPrinting", &LayoutTestController::setPrinting);
     bindMethod("setScrollbarPolicy", &LayoutTestController::setScrollbarPolicy);
     bindMethod("setSelectTrailingWhitespaceEnabled", &LayoutTestController::setSelectTrailingWhitespaceEnabled);
+    bindMethod("setTextSubpixelPositioning", &LayoutTestController::setTextSubpixelPositioning);
     bindMethod("setSmartInsertDeleteEnabled", &LayoutTestController::setSmartInsertDeleteEnabled);
     bindMethod("setStopProvisionalFrameLoads", &LayoutTestController::setStopProvisionalFrameLoads);
     bindMethod("setTabKeyCyclesThroughElements", &LayoutTestController::setTabKeyCyclesThroughElements);
@@ -211,9 +234,10 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setXSSAuditorEnabled", &LayoutTestController::setXSSAuditorEnabled);
     bindMethod("setAsynchronousSpellCheckingEnabled", &LayoutTestController::setAsynchronousSpellCheckingEnabled);
     bindMethod("showWebInspector", &LayoutTestController::showWebInspector);
+#if ENABLE(NOTIFICATIONS)
     bindMethod("simulateDesktopNotificationClick", &LayoutTestController::simulateDesktopNotificationClick);
+#endif
     bindMethod("startSpeechInput", &LayoutTestController::startSpeechInput);
-    bindMethod("suspendAnimations", &LayoutTestController::suspendAnimations);
     bindMethod("testRepaint", &LayoutTestController::testRepaint);
     bindMethod("waitForPolicyDelegate", &LayoutTestController::waitForPolicyDelegate);
     bindMethod("waitUntilDone", &LayoutTestController::waitUntilDone);
@@ -268,6 +292,7 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindProperty("interceptPostMessage", &m_interceptPostMessage);
     bindProperty("workerThreadCount", &LayoutTestController::workerThreadCount);
     bindMethod("sendWebIntentResponse", &LayoutTestController::sendWebIntentResponse);
+    bindMethod("deliverWebIntent", &LayoutTestController::deliverWebIntent);
 }
 
 LayoutTestController::~LayoutTestController()
@@ -677,6 +702,10 @@ void LayoutTestController::reset()
     m_taskList.revokeAll();
     m_shouldStayOnPageAfterHandlingBeforeUnload = false;
     m_hasCustomFullScreenBehavior = false;
+#if OS(LINUX)
+    WebFontInfo::setSubpixelPositioning(false);
+    WebFontRendering::setSubpixelPositioning(false);
+#endif
 }
 
 void LayoutTestController::locationChangeDone()
@@ -1060,32 +1089,6 @@ int LayoutTestController::numberOfActiveAnimations()
     return controller->numberOfActiveAnimations();
 }
 
-void LayoutTestController::suspendAnimations()
-{
-    WebFrame* webFrame = m_shell->webView()->mainFrame();
-    if (!webFrame)
-        return;
-
-    WebAnimationController* controller = webFrame->animationController();
-    if (!controller)
-        return;
-
-    controller->suspendAnimations();
-}
-
-void LayoutTestController::resumeAnimations()
-{
-    WebFrame* webFrame = m_shell->webView()->mainFrame();
-    if (!webFrame)
-        return;
-
-    WebAnimationController* controller = webFrame->animationController();
-    if (!controller)
-        return;
-
-    controller->resumeAnimations();
-}
-
 void LayoutTestController::pauseAnimationAtTimeOnElementWithId(const CppArgumentList& arguments, CppVariant* result)
 {
     result->set(false);
@@ -1157,18 +1160,6 @@ void LayoutTestController::numberOfActiveAnimations(const CppArgumentList&, CppV
     result->set(numberOfActiveAnimations());
 }
 
-void LayoutTestController::suspendAnimations(const CppArgumentList&, CppVariant* result)
-{
-    suspendAnimations();
-    result->setNull();
-}
-
-void LayoutTestController::resumeAnimations(const CppArgumentList&, CppVariant* result)
-{
-    resumeAnimations();
-    result->setNull();
-}
-
 void LayoutTestController::disableImageLoading(const CppArgumentList&, CppVariant* result)
 {
     m_shell->preferences()->loadsImagesAutomatically = false;
@@ -1187,6 +1178,7 @@ void LayoutTestController::callShouldCloseOnWebView(const CppArgumentList&, CppV
     result->set(m_shell->webView()->dispatchBeforeUnloadEvent());
 }
 
+#if ENABLE(NOTIFICATIONS)
 void LayoutTestController::grantDesktopNotificationPermission(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() != 1 || !arguments[0].isString()) {
@@ -1212,6 +1204,7 @@ void LayoutTestController::simulateDesktopNotificationClick(const CppArgumentLis
 #endif
         result->set(false);
 }
+#endif
 
 void LayoutTestController::setDomainRelaxationForbiddenForURLScheme(const CppArgumentList& arguments, CppVariant* result)
 {
@@ -1577,6 +1570,8 @@ void LayoutTestController::overridePreference(const CppArgumentList& arguments, 
         prefs->experimentalWebGLEnabled = cppVariantToBool(value);
     else if (key == "WebKitCSSRegionsEnabled")
         prefs->experimentalCSSRegionsEnabled = cppVariantToBool(value);
+    else if (key == "WebKitCSSGridLayoutEnabled")
+        prefs->experimentalCSSGridLayoutEnabled = cppVariantToBool(value);
     else if (key == "WebKitHyperlinkAuditingEnabled")
         prefs->hyperlinkAuditingEnabled = cppVariantToBool(value);
     else if (key == "WebKitEnableCaretBrowsing")
@@ -1798,18 +1793,6 @@ void LayoutTestController::hasCustomPageSizeStyle(const CppArgumentList& argumen
     result->set(frame->hasCustomPageSizeStyle(pageIndex));
 }
 
-void LayoutTestController::isPageBoxVisible(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->setNull();
-    int pageNumber = 0;
-    if (!parsePageNumber(arguments, 0, &pageNumber))
-        return;
-    WebFrame* frame = m_shell->webView()->mainFrame();
-    if (!frame)
-        return;
-    result->set(frame->isPageBoxVisible(pageNumber));
-}
-
 void LayoutTestController::pageProperty(const CppArgumentList& arguments, CppVariant* result)
 {
     result->set("");
@@ -1838,8 +1821,8 @@ void LayoutTestController::numberOfPages(const CppArgumentList& arguments, CppVa
     WebFrame* frame = m_shell->webView()->mainFrame();
     if (!frame)
         return;
-    WebSize size(pageWidthInPixels, pageHeightInPixels);
-    int numberOfPages = frame->printBegin(size);
+    WebPrintParams printParams(WebSize(pageWidthInPixels, pageHeightInPixels));
+    int numberOfPages = frame->printBegin(printParams);
     frame->printEnd();
     result->set(numberOfPages);
 }
@@ -1859,14 +1842,6 @@ void LayoutTestController::logErrorToConsole(const std::string& text)
     m_shell->webViewHost()->didAddMessageToConsole(
         WebConsoleMessage(WebConsoleMessage::LevelError, WebString::fromUTF8(text)),
         WebString(), 0);
-}
-
-void LayoutTestController::setJavaScriptProfilingEnabled(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->setNull();
-    if (arguments.size() < 1 || !arguments[0].isBool())
-        return;
-    m_shell->drtDevToolsAgent()->setJavaScriptProfilingEnabled(arguments[0].toBoolean());
 }
 
 void LayoutTestController::evaluateInWebInspector(const CppArgumentList& arguments, CppVariant* result)
@@ -1907,29 +1882,21 @@ void LayoutTestController::addUserStyleSheet(const CppArgumentList& arguments, C
         WebView::UserStyleInjectInExistingDocuments);
 }
 
-void LayoutTestController::setEditingBehavior(const CppArgumentList& arguments, CppVariant* results)
-{
-    string key = arguments[0].toString();
-    if (key == "mac") {
-        m_shell->preferences()->editingBehavior = WebSettings::EditingBehaviorMac;
-        m_shell->applyPreferences();
-    } else if (key == "win") {
-        m_shell->preferences()->editingBehavior = WebSettings::EditingBehaviorWin;
-        m_shell->applyPreferences();
-    } else if (key == "unix") {
-        m_shell->preferences()->editingBehavior = WebSettings::EditingBehaviorUnix;
-        m_shell->applyPreferences();
-    } else
-        logErrorToConsole("Passed invalid editing behavior. Should be 'mac', 'win', or 'unix'.");
-}
-
 void LayoutTestController::setMockDeviceOrientation(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
     if (arguments.size() < 6 || !arguments[0].isBool() || !arguments[1].isNumber() || !arguments[2].isBool() || !arguments[3].isNumber() || !arguments[4].isBool() || !arguments[5].isNumber())
         return;
 
-    WebDeviceOrientation orientation(arguments[0].toBoolean(), arguments[1].toDouble(), arguments[2].toBoolean(), arguments[3].toDouble(), arguments[4].toBoolean(), arguments[5].toDouble());
+    WebDeviceOrientation orientation;
+    orientation.setNull(false);
+    if (arguments[0].toBoolean())
+        orientation.setAlpha(arguments[1].toDouble());
+    if (arguments[2].toBoolean())
+        orientation.setBeta(arguments[3].toDouble());
+    if (arguments[4].toBoolean())
+        orientation.setGamma(arguments[5].toDouble());
+
     // Note that we only call setOrientation on the main page's mock since this is all that the
     // tests require. If necessary, we could get a list of WebViewHosts from the TestShell and
     // call setOrientation on each DeviceOrientationClientMock.
@@ -1973,6 +1940,7 @@ void LayoutTestController::abortModal(const CppArgumentList& arguments, CppVaria
     result->setNull();
 }
 
+#if ENABLE(INPUT_SPEECH)
 void LayoutTestController::addMockSpeechInputResult(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
@@ -1992,6 +1960,19 @@ void LayoutTestController::setMockSpeechInputDumpRect(const CppArgumentList& arg
     if (MockWebSpeechInputController* controller = m_shell->webViewHost()->speechInputControllerMock())
         controller->setDumpRect(arguments[0].value.boolValue);
 }
+#endif
+
+#if ENABLE(SCRIPTED_SPEECH)
+void LayoutTestController::addMockSpeechRecognitionResult(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    if (arguments.size() < 2 || !arguments[0].isString() || !arguments[1].isNumber())
+        return;
+
+    if (MockWebSpeechRecognizer* recognizer = m_shell->webViewHost()->mockSpeechRecognizer())
+        recognizer->addMockResult(cppVariantToWebString(arguments[0]), arguments[1].toDouble());
+}
+#endif
 
 void LayoutTestController::startSpeechInput(const CppArgumentList& arguments, CppVariant* result)
 {
@@ -2196,6 +2177,40 @@ void LayoutTestController::sendWebIntentResponse(const CppArgumentList& argument
     result->setNull();
 }
 
+void LayoutTestController::deliverWebIntent(const CppArgumentList& arguments, CppVariant* result)
+{
+    if (arguments.size() <  3)
+        return;
+
+    v8::HandleScope scope;
+    v8::Local<v8::Context> ctx = m_shell->webView()->mainFrame()->mainWorldScriptContext();
+    result->set(m_shell->webView()->mainFrame()->selectionAsMarkup().utf8());
+    v8::Context::Scope cscope(ctx);
+
+    WebString action = cppVariantToWebString(arguments[0]);
+    WebString type = cppVariantToWebString(arguments[1]);
+    WebKit::WebCString data = cppVariantToWebString(arguments[2]).utf8();
+    WebSerializedScriptValue serializedData = WebSerializedScriptValue::serialize(
+        v8::String::New(data.data(), data.length()));
+
+    WebIntent intent = WebIntent::create(action, type, serializedData.toString(), WebVector<WebString>(), WebVector<WebString>());
+
+    m_shell->webView()->mainFrame()->deliverIntent(intent, 0, m_intentClient.get());
+}
+
+void LayoutTestController::setTextSubpixelPositioning(const CppArgumentList& arguments, CppVariant* result)
+{
+#if OS(LINUX)
+    // Since FontConfig doesn't provide a variable to control subpixel positioning, we'll fall back
+    // to setting it globally for all fonts.
+    if (arguments.size() > 0 && arguments[0].isBool()) {
+        WebFontInfo::setSubpixelPositioning(arguments[0].value.boolValue);
+        WebFontRendering::setSubpixelPositioning(arguments[0].value.boolValue);
+    }
+#endif
+    result->setNull();
+}
+
 void LayoutTestController::setPluginsEnabled(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() > 0 && arguments[0].isBool()) {
@@ -2223,6 +2238,11 @@ void LayoutTestController::setPageVisibility(const CppArgumentList& arguments, C
         else if (newVisibility == "preview")
             m_shell->webView()->setVisibilityState(WebPageVisibilityStatePreview, false);
     }
+}
+
+void LayoutTestController::setAutomaticLinkDetectionEnabled(bool)
+{
+    // Not Implemented
 }
 
 void LayoutTestController::setTextDirection(const CppArgumentList& arguments, CppVariant* result)

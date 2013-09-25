@@ -43,13 +43,17 @@
 #endif
 
 #if (OS(LINUX) || OS(FREEBSD) || OS(HAIKU)) && CPU(X86_64)
-#define SYMBOL_STRING_RELOCATION(name) #name "@plt"
-#elif OS(DARWIN) || (CPU(X86_64) && COMPILER(MINGW) && !GCC_VERSION_AT_LEAST(4, 5, 0))
-#define SYMBOL_STRING_RELOCATION(name) "_" #name
+#define GLOBAL_REFERENCE(name) #name "@plt"
 #elif CPU(X86) && COMPILER(MINGW)
-#define SYMBOL_STRING_RELOCATION(name) "@" #name "@4"
+#define GLOBAL_REFERENCE(name) "@" #name "@4"
 #else
-#define SYMBOL_STRING_RELOCATION(name) SYMBOL_STRING(name)
+#define GLOBAL_REFERENCE(name) SYMBOL_STRING(name)
+#endif
+
+#if HAVE(INTERNAL_VISIBILITY)
+#define LOCAL_REFERENCE(name) SYMBOL_STRING(name)
+#else
+#define LOCAL_REFERENCE(name) GLOBAL_REFERENCE(name)
 #endif
 
 #if OS(DARWIN)
@@ -75,6 +79,8 @@
 // Don't know about any of the others.
 #if PLATFORM(MAC)
 #define LOCAL_LABEL_STRING(name) "L" #name
+#elif OS(LINUX)
+#define LOCAL_LABEL_STRING(name) ".L" #name
 #endif
 
 #endif // InlineASM_h

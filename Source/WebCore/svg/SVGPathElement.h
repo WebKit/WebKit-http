@@ -108,7 +108,7 @@ private:
     virtual bool supportsFocus() const { return true; }
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
     virtual bool supportsMarkers() const { return true; }
 
@@ -131,8 +131,6 @@ private:
 private:
     OwnPtr<SVGPathByteStream> m_pathByteStream;
     mutable SVGSynchronizableAnimatedProperty<SVGPathSegList> m_pathSegList;
-    FloatRect m_cachedBBoxRect;
-    bool m_cachedBBoxRectIsValid;                       
     bool m_isAnimValObserved;
 };
 

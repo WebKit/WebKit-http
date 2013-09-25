@@ -45,8 +45,9 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const double dateDefaultStep = 1.0;
-static const double dateStepScaleFactor = 86400000.0;
+static const int dateDefaultStep = 1;
+static const int dateDefaultStepBase = 0;
+static const int dateStepScaleFactor = 86400000;
 
 inline DateInputType::DateInputType(HTMLInputElement* element)
     : BaseDateAndTimeInputType(element)
@@ -68,29 +69,15 @@ DateComponents::Type DateInputType::dateType() const
     return DateComponents::Date;
 }
 
-double DateInputType::minimum() const
+StepRange DateInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
-    return parseToDouble(element()->fastGetAttribute(minAttr), DateComponents::minimumDate());
-}
+    DEFINE_STATIC_LOCAL(const StepRange::StepDescription, stepDescription, (dateDefaultStep, dateDefaultStepBase, dateStepScaleFactor, StepRange::ParsedStepValueShouldBeInteger));
 
-double DateInputType::maximum() const
-{
-    return parseToDouble(element()->fastGetAttribute(maxAttr), DateComponents::maximumDate());
-}
-
-double DateInputType::defaultStep() const
-{
-    return dateDefaultStep;
-}
-
-double DateInputType::stepScaleFactor() const
-{
-    return dateStepScaleFactor;
-}
-
-bool DateInputType::parsedStepValueShouldBeInteger() const
-{
-    return true;
+    const InputNumber stepBase = parseToNumber(element()->fastGetAttribute(minAttr), 0);
+    const InputNumber minimum = parseToNumber(element()->fastGetAttribute(minAttr), convertDoubleToInputNumber(DateComponents::minimumDate()));
+    const InputNumber maximum = parseToNumber(element()->fastGetAttribute(maxAttr), convertDoubleToInputNumber(DateComponents::maximumDate()));
+    const InputNumber step = StepRange::parseStep(anyStepHandling, stepDescription, element()->fastGetAttribute(stepAttr));
+    return StepRange(stepBase, minimum, maximum, step, stepDescription);
 }
 
 bool DateInputType::parseToDateComponentsInternal(const UChar* characters, unsigned length, DateComponents* out) const
@@ -104,6 +91,11 @@ bool DateInputType::setMillisecondToDateComponents(double value, DateComponents*
 {
     ASSERT(date);
     return date->setMillisecondsSinceEpochForDate(value);
+}
+
+bool DateInputType::isDateField() const
+{
+    return true;
 }
 
 #if ENABLE(CALENDAR_PICKER)

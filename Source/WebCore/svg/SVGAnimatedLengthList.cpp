@@ -70,7 +70,7 @@ void SVGAnimatedLengthListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGA
     ASSERT(from->type() == AnimatedLengthList);
     ASSERT(from->type() == to->type());
 
-    SVGLengthList& fromLengthList = from->lengthList();
+    const SVGLengthList& fromLengthList = from->lengthList();
     SVGLengthList& toLengthList = to->lengthList();
 
     unsigned fromLengthListSize = fromLengthList.size();
@@ -97,15 +97,21 @@ void SVGAnimatedLengthListAnimator::calculateAnimatedValue(float percentage, uns
     ASSERT(m_animationElement);
     ASSERT(m_contextElement);
 
-    SVGLengthList& fromLengthList = from->lengthList();
-    SVGLengthList& toLengthList = to->lengthList();
-    SVGLengthList& toAtEndOfDurationLengthList = toAtEndOfDuration->lengthList();
+    SVGLengthList fromLengthList = m_animationElement->animationMode() == ToAnimation ? animated->lengthList() : from->lengthList();
+    SVGLengthList toLengthList = to->lengthList();
+    const SVGLengthList& toAtEndOfDurationLengthList = toAtEndOfDuration->lengthList();
     SVGLengthList& animatedLengthList = animated->lengthList();
-    if (!m_animationElement->adjustFromToListValues<SVGLengthList>(parseLengthListFromString, fromLengthList, toLengthList, animatedLengthList, percentage, m_contextElement))
+
+    // Apply CSS inheritance rules.
+    m_animationElement->adjustForInheritance<SVGLengthList>(parseLengthListFromString, m_animationElement->fromPropertyValueType(), fromLengthList, m_contextElement);
+    m_animationElement->adjustForInheritance<SVGLengthList>(parseLengthListFromString, m_animationElement->toPropertyValueType(), toLengthList, m_contextElement);
+
+    if (!m_animationElement->adjustFromToListValues<SVGLengthList>(fromLengthList, toLengthList, animatedLengthList, percentage))
         return;
 
     unsigned fromLengthListSize = fromLengthList.size();
     unsigned toLengthListSize = toLengthList.size();
+    unsigned toAtEndOfDurationListSize = toAtEndOfDurationLengthList.size();
 
     SVGLengthContext lengthContext(m_contextElement);
     ExceptionCode ec = 0;
@@ -118,8 +124,9 @@ void SVGAnimatedLengthListAnimator::calculateAnimatedValue(float percentage, uns
                 unitType = fromLengthList[i].unitType();
             effectiveFrom = fromLengthList[i].value(lengthContext);
         }
+        float effectiveToAtEnd = i < toAtEndOfDurationListSize ? toAtEndOfDurationLengthList[i].value(lengthContext) : 0;
 
-        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom, toLengthList[i].value(lengthContext), toAtEndOfDurationLengthList[i].value(lengthContext), animatedNumber);
+        m_animationElement->animateAdditiveNumber(percentage, repeatCount, effectiveFrom, toLengthList[i].value(lengthContext), effectiveToAtEnd, animatedNumber);
         animatedLengthList[i].setValue(lengthContext, animatedNumber, m_lengthMode, unitType, ec);
         ASSERT(!ec);
     }

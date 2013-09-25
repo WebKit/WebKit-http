@@ -25,13 +25,13 @@
 #include "Logging.h"
 #include "PageCache.h"
 #include "PageGroup.h"
+#include "PlatformStrategiesEfl.h"
 #include "ResourceHandle.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "StorageTracker.h"
 #include "StorageTrackerClientEfl.h"
-#include "ewk_auth_soup.h"
-#include "ewk_logging.h"
+#include "ewk_auth_soup_private.h"
 #include "ewk_network.h"
 #include "ewk_private.h"
 #include "ewk_settings.h"
@@ -149,10 +149,12 @@ Eina_Bool _ewk_init_body(void)
     WebCore::initializeLoggingChannelsIfNecessary();
     WebCore::Settings::setDefaultMinDOMTimerInterval(0.004);
 
+    PlatformStrategiesEfl::initialize();
+
     // Page cache capacity (in pages). Comment from Mac port:
     // (Research indicates that value / page drops substantially after 3 pages.)
-    // FIXME: Expose this with an API and/or calculate based on available resources
-    WebCore::pageCache()->setCapacity(3);
+    // FIXME: Calculate based on available resources
+    ewk_settings_page_cache_capacity_set(3);
     WebCore::PageGroup::setShouldTrackVisitedLinks(true);
 
     String home = WebCore::homeDirectoryPath();
@@ -166,10 +168,8 @@ Eina_Bool _ewk_init_body(void)
     }
 
     WTF::String webkitDirectory = home + "/.webkit";
-    if (WebCore::makeAllDirectories(webkitDirectory)) {
+    if (WebCore::makeAllDirectories(webkitDirectory))
         ewk_settings_web_database_path_set(webkitDirectory.utf8().data());
-        ewk_settings_application_cache_path_set(webkitDirectory.utf8().data());
-    }
 
     ewk_network_tls_certificate_check_set(false);
 

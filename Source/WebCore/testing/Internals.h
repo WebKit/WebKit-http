@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -75,7 +75,6 @@ public:
     ShadowRootIfShadowDOMEnabledOrNode* oldestShadowRoot(Element* host, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* youngerShadowRoot(Node* shadow, ExceptionCode&);
     ShadowRootIfShadowDOMEnabledOrNode* olderShadowRoot(Node* shadow, ExceptionCode&);
-    void removeShadowRoot(Element* host, ExceptionCode&);
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
@@ -97,6 +96,8 @@ public:
     void selectColorInColorChooser(Element*, const String& colorValue);
 #endif
 
+    PassRefPtr<ClientRect> absoluteCaretBounds(Document*, ExceptionCode&);
+
     PassRefPtr<ClientRect> boundingBox(Element*, ExceptionCode&);
 
     PassRefPtr<ClientRectList> inspectorHighlightRects(Document*, ExceptionCode&);
@@ -114,6 +115,7 @@ public:
     bool wasLastChangeUserEdit(Element* textField, ExceptionCode&);
     String suggestedValue(Element* inputElement, ExceptionCode&);
     void setSuggestedValue(Element* inputElement, const String&, ExceptionCode&);
+    void setEditingValue(Element* inputElement, const String&, ExceptionCode&);
     void scrollElementToRect(Element*, long x, long y, long w, long h, ExceptionCode&);
 
     void paintControlTints(Document*, ExceptionCode&);
@@ -153,6 +155,8 @@ public:
 
     unsigned numberOfScrollableAreas(Document*, ExceptionCode&);
 
+    bool isPageBoxVisible(Document*, int pageNumber, ExceptionCode&);
+
     static const char* internalsId;
 
     InternalSettings* settings() const { return m_settings.get(); }
@@ -160,6 +164,11 @@ public:
     void setBatteryStatus(Document*, const String& eventType, bool charging, double chargingTime, double dischargingTime, double level, ExceptionCode&);
 
     void setNetworkInformation(Document*, const String& eventType, long bandwidth, bool metered, ExceptionCode&);
+
+    void suspendAnimations(Document*, ExceptionCode&) const;
+    void resumeAnimations(Document*, ExceptionCode&) const;
+
+    void allowRoundingHacks() const;
 
 #if ENABLE(INSPECTOR)
     unsigned numberOfLiveNodes() const;
@@ -177,6 +186,7 @@ public:
 private:
     explicit Internals(Document*);
     DocumentMarker* markerAt(Node*, const String& markerType, unsigned index, ExceptionCode&);
+    void resetDefaultsToConsistentValues();
 
     RefPtr<InternalSettings> m_settings;
 };

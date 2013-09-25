@@ -216,9 +216,6 @@ void FrameLoader::init()
     // It would be better if this could be done with even fewer steps.
     m_stateMachine.advanceTo(FrameLoaderStateMachine::CreatingInitialEmptyDocument);
     setPolicyDocumentLoader(m_client->createDocumentLoader(ResourceRequest(KURL(ParsedURLString, emptyString())), SubstituteData()).get());
-    // FIXME: Make this an ASSERT() instead once we figured out what's going wrong.
-    if (!m_policyDocumentLoader.get())
-        CRASH();
     setProvisionalDocumentLoader(m_policyDocumentLoader.get());
     setState(FrameStateProvisional);
     m_provisionalDocumentLoader->setResponse(ResourceResponse(KURL(), "text/html", 0, String(), String()));
@@ -518,9 +515,7 @@ void FrameLoader::clear(bool clearWindowProperties, bool clearScriptObjects, boo
         m_frame->document()->cancelParsing();
         m_frame->document()->stopActiveDOMObjects();
         if (m_frame->document()->attached()) {
-            m_frame->document()->willRemove();
-            m_frame->document()->detach();
-            
+            m_frame->document()->prepareForDestruction();
             m_frame->document()->removeFocusedNodeOfSubtree(m_frame->document());
         }
     }
@@ -544,6 +539,8 @@ void FrameLoader::clear(bool clearWindowProperties, bool clearScriptObjects, boo
 
     if (clearScriptObjects)
         m_frame->script()->clearScriptObjects();
+
+    m_frame->script()->enableEval();
 
     m_frame->navigationScheduler()->clear();
 
@@ -606,6 +603,7 @@ void FrameLoader::didBeginDocument(bool dispatch)
         dispatchDidClearWindowObjectsInAllWorlds();
 
     updateFirstPartyForCookies();
+    m_frame->document()->initContentSecurityPolicy();
 
     Settings* settings = m_frame->document()->settings();
     m_frame->document()->cachedResourceLoader()->setAutoLoadImages(settings && settings->loadsImagesAutomatically());
@@ -873,10 +871,8 @@ bool FrameLoader::isMixedContent(SecurityOrigin* context, const KURL& url)
     if (context->protocol() != "https")
         return false;  // We only care about HTTPS security origins.
 
-    if (!url.isValid() || SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol()))
-        return false;  // Loading these protocols is secure.
-
-    return true;
+    // We're in a secure context, so |url| is mixed content if it's insecure.
+    return !SecurityOrigin::isSecure(url);
 }
 
 bool FrameLoader::checkIfDisplayInsecureContent(SecurityOrigin* context, const KURL& url)
@@ -980,6 +976,7 @@ void FrameLoader::loadInSameDocument(const KURL& url, SerializedScriptValue* sta
     // Update the data source's request with the new URL to fake the URL change
     KURL oldURL = m_frame->document()->url();
     m_frame->document()->setURL(url);
+    setOutgoingReferrer(url);
     documentLoader()->replaceRequestURLForSameDocumentNavigation(url);
     if (isNewNavigation && !shouldTreatURLAsSameAsCurrent(url) && !stateObject) {
         // NB: must happen after replaceRequestURLForSameDocumentNavigation(), since we add 
@@ -1095,9 +1092,6 @@ void FrameLoader::prepareForLoadStart()
 
 void FrameLoader::setupForReplace()
 {
-    // FIXME: Make this an ASSERT() instead once we figured out what's going wrong.
-    if (!m_documentLoader.get())
-        CRASH();
     setState(FrameStateProvisional);
     m_provisionalDocumentLoader = m_documentLoader;
     m_documentLoader = 0;
@@ -1506,8 +1500,6 @@ void FrameLoader::stopAllLoaders(ClearProvisionalItemPolicy clearProvisionalItem
         m_documentLoader->stopLoading();
 
     setProvisionalDocumentLoader(0);
-    if (m_state == FrameStateProvisional)
-        setState(FrameStateComplete);
 
     m_checkTimer.stop();
 
@@ -1622,9 +1614,9 @@ void FrameLoader::setState(FrameState newState)
 
 void FrameLoader::clearProvisionalLoad()
 {
+    setProvisionalDocumentLoader(0);
     if (Page* page = m_frame->page())
         page->progress()->progressCompleted(m_frame);
-    setProvisionalDocumentLoader(0);
     setState(FrameStateComplete);
 }
 
@@ -1640,7 +1632,7 @@ void FrameLoader::commitProvisionalLoad()
     // Check to see if we need to cache the page we are navigating away from into the back/forward cache.
     // We are doing this here because we know for sure that a new page is about to be loaded.
     HistoryItem* item = history()->currentItem();
-    if (!m_frame->tree()->parent() && PageCache::canCache(m_frame->page()) && !item->isInPageCache())
+    if (!m_frame->tree()->parent() && pageCache()->canCache(m_frame->page()) && !item->isInPageCache())
         pageCache()->add(item, m_frame->page());
 
     if (m_loadType != FrameLoadTypeReplace)
@@ -2025,6 +2017,8 @@ void FrameLoader::checkLoadCompleteForThisFrame()
 {
     ASSERT(m_client->hasWebView());
 
+    Settings* settings = m_frame->settings();
+
     switch (m_state) {
         case FrameStateProvisional: {
             if (m_delegateIsHandlingProvisionalLoadError)
@@ -2099,11 +2093,13 @@ void FrameLoader::checkLoadCompleteForThisFrame()
             if (m_stateMachine.creatingInitialEmptyDocument() || !m_stateMachine.committedFirstRealDocumentLoad())
                 return;
 
-            if (Page* page = m_frame->page()) {
-                page->progress()->progressCompleted(m_frame);
+            if (!settings->needsDidFinishLoadOrderQuirk()) {
+                if (Page* page = m_frame->page()) {
+                    page->progress()->progressCompleted(m_frame);
 
-                if (m_frame == page->mainFrame())
-                    page->resetRelevantPaintedObjectCounter();
+                    if (m_frame == page->mainFrame())
+                        page->resetRelevantPaintedObjectCounter();
+                }
             }
 
             const ResourceError& error = dl->mainDocumentError();
@@ -2117,6 +2113,15 @@ void FrameLoader::checkLoadCompleteForThisFrame()
                 loadingEvent = AXObjectCache::AXLoadingFinished;
             }
 
+            if (settings->needsDidFinishLoadOrderQuirk()) {
+                if (Page* page = m_frame->page()) {
+                    page->progress()->progressCompleted(m_frame);
+
+                    if (m_frame == page->mainFrame())
+                        page->resetRelevantPaintedObjectCounter();
+                }
+            }
+
             // Notify accessibility.
             if (AXObjectCache::accessibilityEnabled())
                 m_frame->document()->axObjectCache()->frameLoadingEventNotification(m_frame, loadingEvent);
@@ -2125,6 +2130,7 @@ void FrameLoader::checkLoadCompleteForThisFrame()
         }
         
         case FrameStateComplete:
+            m_loadType = FrameLoadTypeStandard;
             frameLoadCompleted();
             return;
     }
@@ -2579,9 +2585,6 @@ void FrameLoader::continueFragmentScrollAfterNavigationPolicy(const ResourceRequ
     if (m_provisionalDocumentLoader && !equalIgnoringFragmentIdentifier(m_provisionalDocumentLoader->request().url(), request.url())) {
         m_provisionalDocumentLoader->stopLoading();
         setProvisionalDocumentLoader(0);
-        // FIXME: Make this an ASSERT() instead once we figured out what's going wrong.
-        if (m_state == FrameStateProvisional)
-            CRASH();
     }
 
     bool isRedirect = m_quickRedirectComing || policyChecker()->loadType() == FrameLoadTypeRedirectWithLockedBackForwardList;    
@@ -2744,9 +2747,6 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest&, Pass
     }
 #endif
 
-    // FIXME: Make this an ASSERT() instead once we figured out what's going wrong.
-    if (!m_policyDocumentLoader.get())
-        CRASH();
     setProvisionalDocumentLoader(m_policyDocumentLoader.get());
     m_loadType = type;
     setState(FrameStateProvisional);
@@ -2787,8 +2787,10 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
 
     mainFrame->page()->setOpenedByDOM();
     mainFrame->loader()->m_client->dispatchShow();
-    if (!m_suppressOpenerInNewFrame)
+    if (!m_suppressOpenerInNewFrame) {
         mainFrame->loader()->setOpener(frame.get());
+        mainFrame->document()->setReferrerPolicy(frame->document()->referrerPolicy());
+    }
     mainFrame->loader()->loadWithNavigationAction(request, NavigationAction(request), false, FrameLoadTypeStandard, formState);
 }
 

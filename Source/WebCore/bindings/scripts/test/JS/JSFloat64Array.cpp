@@ -68,12 +68,12 @@ void JSFloat64ArrayConstructor::finishCreation(ExecState* exec, JSDOMGlobalObjec
     putDirect(exec->globalData(), exec->propertyNames().length, jsNumber(123), ReadOnly | DontDelete | DontEnum);
 }
 
-bool JSFloat64ArrayConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSFloat64ArrayConstructor::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     return getStaticValueSlot<JSFloat64ArrayConstructor, JSDOMWrapper>(exec, &JSFloat64ArrayConstructorTable, jsCast<JSFloat64ArrayConstructor*>(cell), propertyName, slot);
 }
 
-bool JSFloat64ArrayConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSFloat64ArrayConstructor::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     return getStaticValueDescriptor<JSFloat64ArrayConstructor, JSDOMWrapper>(exec, &JSFloat64ArrayConstructorTable, jsCast<JSFloat64ArrayConstructor*>(object), propertyName, descriptor);
 }
@@ -105,13 +105,13 @@ JSObject* JSFloat64ArrayPrototype::self(ExecState* exec, JSGlobalObject* globalO
     return getDOMPrototype<JSFloat64Array>(exec, globalObject);
 }
 
-bool JSFloat64ArrayPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSFloat64ArrayPrototype::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSFloat64ArrayPrototype* thisObject = jsCast<JSFloat64ArrayPrototype*>(cell);
     return getStaticFunctionSlot<JSObject>(exec, getJSFloat64ArrayPrototypeTable(exec), thisObject, propertyName, slot);
 }
 
-bool JSFloat64ArrayPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSFloat64ArrayPrototype::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSFloat64ArrayPrototype* thisObject = jsCast<JSFloat64ArrayPrototype*>(object);
     return getStaticFunctionDescriptor<JSObject>(exec, getJSFloat64ArrayPrototypeTable(exec), thisObject, propertyName, descriptor);
@@ -144,26 +144,24 @@ JSObject* JSFloat64Array::createPrototype(ExecState* exec, JSGlobalObject* globa
     return JSFloat64ArrayPrototype::create(exec->globalData(), globalObject, JSFloat64ArrayPrototype::createStructure(exec->globalData(), globalObject, JSArrayBufferViewPrototype::self(exec, globalObject)));
 }
 
-bool JSFloat64Array::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSFloat64Array::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSFloat64Array* thisObject = jsCast<JSFloat64Array*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    bool ok;
-    unsigned index = propertyName.toUInt32(ok);
-    if (ok && index < static_cast<Float64Array*>(thisObject->impl())->length()) {
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex && index < static_cast<Float64Array*>(thisObject->impl())->length()) {
         slot.setValue(thisObject->getByIndex(exec, index));
         return true;
     }
     return getStaticValueSlot<JSFloat64Array, Base>(exec, getJSFloat64ArrayTable(exec), thisObject, propertyName, slot);
 }
 
-bool JSFloat64Array::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSFloat64Array::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     JSFloat64Array* thisObject = jsCast<JSFloat64Array*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    bool ok;
-    unsigned index = propertyName.toUInt32(ok);
-    if (ok && index < static_cast<Float64Array*>(thisObject->impl())->length()) {
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex && index < static_cast<Float64Array*>(thisObject->impl())->length()) {
         descriptor.setDescriptor(thisObject->getByIndex(exec, index), DontDelete);
         return true;
     }
@@ -181,19 +179,18 @@ bool JSFloat64Array::getOwnPropertySlotByIndex(JSCell* cell, ExecState* exec, un
     return thisObject->methodTable()->getOwnPropertySlot(thisObject, exec, Identifier::from(exec, propertyName), slot);
 }
 
-JSValue jsFloat64ArrayConstructor(ExecState* exec, JSValue slotBase, const Identifier&)
+JSValue jsFloat64ArrayConstructor(ExecState* exec, JSValue slotBase, PropertyName)
 {
     JSFloat64Array* domObject = jsCast<JSFloat64Array*>(asObject(slotBase));
     return JSFloat64Array::getConstructor(exec, domObject->globalObject());
 }
 
-void JSFloat64Array::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void JSFloat64Array::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     JSFloat64Array* thisObject = jsCast<JSFloat64Array*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, &s_info);
-    bool ok;
-    unsigned index = propertyName.toUInt32(ok);
-    if (ok) {
+    unsigned index = propertyName.asIndex();
+    if (index != PropertyName::NotAnIndex) {
         thisObject->indexSetter(exec, index, value);
         return;
     }

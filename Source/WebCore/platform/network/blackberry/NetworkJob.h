@@ -60,7 +60,6 @@ public:
     bool isRunning() const { return m_isRunning; }
 #endif
     bool isCancelled() const { return m_cancelled; }
-    void loadDataURL() { m_loadDataTimer.startOneShot(0); }
     void loadAboutURL();
     int cancelJob();
     bool isDeferringLoading() const { return m_deferLoadingCount > 0; }
@@ -70,6 +69,7 @@ public:
     virtual void notifyHeadersReceived(BlackBerry::Platform::NetworkRequest::HeaderList& headers);
     virtual void notifyMultipartHeaderReceived(const char* key, const char* value);
     // Exists only to resolve ambiguity between char* and String parameters
+    virtual void notifyAuthReceived(BlackBerry::Platform::NetworkRequest::AuthType, const char* realm);
     void notifyStringHeaderReceived(const String& key, const String& value);
     void handleNotifyHeaderReceived(const String& key, const String& value);
     void handleNotifyMultipartHeaderReceived(const String& key, const String& value);
@@ -96,7 +96,8 @@ private:
 
     bool shouldSendClientData() const;
 
-    bool shouldNotifyClientFinished();
+    bool shouldReleaseClientResource();
+    bool shouldNotifyClientFailed() const;
 
     bool shouldDeferLoading() const
     {
@@ -113,11 +114,6 @@ private:
     void sendResponseIfNeeded();
     void sendMultipartResponseIfNeeded();
 
-    void fireLoadDataTimer(Timer<NetworkJob>*)
-    {
-        parseData();
-    }
-
     void fireLoadAboutTimer(Timer<NetworkJob>*)
     {
         handleAbout();
@@ -125,23 +121,19 @@ private:
 
     void fireDeleteJobTimer(Timer<NetworkJob>*);
 
-    void parseData();
-
     void handleAbout();
-
-    // The server needs authentication credentials. Search in the
-    // CredentialStorage or prompt the user via dialog.
-    bool handleAuthHeader(const ProtectionSpaceServerType, const String& header);
 
     bool handleFTPHeader(const String& header);
 
+    // The server needs authentication credentials. Search in the CredentialStorage
+    // or prompt the user via dialog, then resend the request with the credentials.
     bool sendRequestWithCredentials(ProtectionSpaceServerType, ProtectionSpaceAuthenticationScheme, const String& realm);
 
     void storeCredentials();
 
     void purgeCredentials();
 
-    bool isError(int statusCode)
+    bool isError(int statusCode) const
     {
         return statusCode < 0 || (400 <= statusCode && statusCode < 600);
     }
@@ -151,7 +143,6 @@ private:
     String m_pageGroupName;
     RefPtr<ResourceHandle> m_handle;
     ResourceResponse m_response;
-    Timer<NetworkJob> m_loadDataTimer;
     Timer<NetworkJob> m_loadAboutTimer;
     OwnPtr<ResourceResponse> m_multipartResponse;
     Timer<NetworkJob> m_deleteJobTimer;
@@ -160,7 +151,6 @@ private:
     String m_contentDisposition;
     BlackBerry::Platform::NetworkStreamFactory* m_streamFactory;
     bool m_isFile;
-    bool m_isData;
     bool m_isAbout;
     bool m_isFTP;
     bool m_isFTPDir;

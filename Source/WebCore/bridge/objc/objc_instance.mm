@@ -181,7 +181,7 @@ bool ObjcInstance::supportsInvokeDefaultMethod() const
 
 class ObjCRuntimeMethod : public RuntimeMethod {
 public:
-    static ObjCRuntimeMethod* create(ExecState* exec, JSGlobalObject* globalObject, const Identifier& name, Bindings::MethodList& list)
+    static ObjCRuntimeMethod* create(ExecState* exec, JSGlobalObject* globalObject, const UString& name, Bindings::MethodList& list)
     {
         // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object
         // We need to pass in the right global object for "i".
@@ -206,7 +206,7 @@ private:
     {
     }
 
-    void finishCreation(JSGlobalData& globalData, const Identifier& name)
+    void finishCreation(JSGlobalData& globalData, const UString& name)
     {
         Base::finishCreation(globalData, name);
         ASSERT(inherits(&s_info));
@@ -215,10 +215,10 @@ private:
 
 const ClassInfo ObjCRuntimeMethod::s_info = { "ObjCRuntimeMethod", &RuntimeMethod::s_info, 0, 0, CREATE_METHOD_TABLE(ObjCRuntimeMethod) };
 
-JSValue ObjcInstance::getMethod(ExecState* exec, const Identifier& propertyName)
+JSValue ObjcInstance::getMethod(ExecState* exec, PropertyName propertyName)
 {
     MethodList methodList = getClass()->methodsNamed(propertyName, this);
-    return ObjCRuntimeMethod::create(exec, exec->lexicalGlobalObject(), propertyName, methodList);
+    return ObjCRuntimeMethod::create(exec, exec->lexicalGlobalObject(), propertyName.publicName(), methodList);
 }
 
 JSValue ObjcInstance::invokeMethod(ExecState* exec, RuntimeMethod* runtimeMethod)
@@ -315,7 +315,7 @@ JSValue ObjcInstance::invokeObjcMethod(ExecState* exec, ObjcMethod* method)
                     // the assert above should have fired in the impossible case
                     // of an invalid type anyway).
                     fprintf(stderr, "%s: invalid type (%d)\n", __PRETTY_FUNCTION__, (int)objcValueType);
-                    ASSERT(false);
+                    ASSERT_NOT_REACHED();
             }
         }
     }
@@ -401,8 +401,12 @@ JSValue ObjcInstance::invokeDefaultMethod(ExecState* exec)
     return const_cast<JSValue&>(result);
 }
 
-bool ObjcInstance::setValueOfUndefinedField(ExecState* exec, const Identifier& property, JSValue aValue)
+bool ObjcInstance::setValueOfUndefinedField(ExecState* exec, PropertyName propertyName, JSValue aValue)
 {
+    UString name(propertyName.publicName());
+    if (name.isNull())
+        return false;
+
     id targetObject = getObject();
     if (![targetObject respondsToSelector:@selector(setValue:forUndefinedKey:)])
         return false;
@@ -418,7 +422,7 @@ bool ObjcInstance::setValueOfUndefinedField(ExecState* exec, const Identifier& p
         ObjcValue objcValue = convertValueToObjcValue(exec, aValue, ObjcObjectType);
 
         @try {
-            [targetObject setValue:objcValue.objectValue forUndefinedKey:[NSString stringWithCString:property.ascii().data() encoding:NSASCIIStringEncoding]];
+            [targetObject setValue:objcValue.objectValue forUndefinedKey:[NSString stringWithCString:name.ascii().data() encoding:NSASCIIStringEncoding]];
         } @catch(NSException* localException) {
             // Do nothing.  Class did not override valueForUndefinedKey:.
         }
@@ -429,8 +433,12 @@ bool ObjcInstance::setValueOfUndefinedField(ExecState* exec, const Identifier& p
     return true;
 }
 
-JSValue ObjcInstance::getValueOfUndefinedField(ExecState* exec, const Identifier& property) const
+JSValue ObjcInstance::getValueOfUndefinedField(ExecState* exec, PropertyName propertyName) const
 {
+    UString name(propertyName.publicName());
+    if (name.isNull())
+        return jsUndefined();
+
     JSValue result = jsUndefined();
     
     id targetObject = getObject();
@@ -444,7 +452,7 @@ JSValue ObjcInstance::getValueOfUndefinedField(ExecState* exec, const Identifier
         setGlobalException(nil);
     
         @try {
-            id objcValue = [targetObject valueForUndefinedKey:[NSString stringWithCString:property.ascii().data() encoding:NSASCIIStringEncoding]];
+            id objcValue = [targetObject valueForUndefinedKey:[NSString stringWithCString:name.ascii().data() encoding:NSASCIIStringEncoding]];
             result = convertObjcValueToValue(exec, &objcValue, ObjcObjectType, m_rootObject.get());
         } @catch(NSException* localException) {
             // Do nothing.  Class did not override valueForUndefinedKey:.

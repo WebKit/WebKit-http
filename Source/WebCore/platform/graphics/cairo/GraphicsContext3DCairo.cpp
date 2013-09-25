@@ -63,7 +63,7 @@ PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attri
     return context.release();
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, HostWindow* hostWindow, bool)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, HostWindow*, bool)
     : m_currentWidth(0)
     , m_currentHeight(0)
     , m_attrs(attributes)
@@ -71,10 +71,12 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
     , m_fbo(0)
     , m_depthStencilBuffer(0)
     , m_boundFBO(0)
+    , m_activeTexture(GL_TEXTURE0)
+    , m_boundTexture0(0)
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(GraphicsContext3DPrivate::create(this, hostWindow))
+    , m_private(GraphicsContext3DPrivate::create(this))
 {
     makeContextCurrent();
 
@@ -185,7 +187,12 @@ bool GraphicsContext3D::getImageData(Image* image, unsigned int format, unsigned
             ++srcUnpackAlignment;
     }
 
-    outputVector.resize(width * height * 4);
+    unsigned int packedSize;
+    // Output data is tightly packed (alignment == 1).
+    if (computeImageSizeInBytes(format, type, width, height, 1, &packedSize, 0) != GraphicsContext3D::NO_ERROR)
+        return false;
+    outputVector.resize(packedSize);
+
     return packPixels(cairo_image_surface_get_data(imageSurface.get()), SourceFormatBGRA8,
                       width, height, srcUnpackAlignment, format, type, alphaOp, outputVector.data());
 }

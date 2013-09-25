@@ -66,13 +66,13 @@ IDBTransactionBackendImpl::~IDBTransactionBackendImpl()
 PassRefPtr<IDBObjectStoreBackendInterface> IDBTransactionBackendImpl::objectStore(const String& name, ExceptionCode& ec)
 {
     if (m_state == Finished) {
-        ec = IDBDatabaseException::NOT_ALLOWED_ERR;
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
 
     // Does a linear search, but it really shouldn't be that slow in practice.
     if (m_mode != IDBTransaction::VERSION_CHANGE && !m_objectStoreNames->contains(name)) {
-        ec = IDBDatabaseException::NOT_FOUND_ERR;
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
         return 0;
     }
 
@@ -82,7 +82,7 @@ PassRefPtr<IDBObjectStoreBackendInterface> IDBTransactionBackendImpl::objectStor
     //        There's a bug to make this impossible in the spec. When we make it impossible here, we
     //        can remove this check.
     if (!objectStore) {
-        ec = IDBDatabaseException::NOT_FOUND_ERR;
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
         return 0;
     }
     return objectStore.release();
@@ -197,8 +197,10 @@ void IDBTransactionBackendImpl::commit()
 
     m_state = Finished;
     closeOpenCursors();
-    m_transaction->commit();
-    m_callbacks->onComplete();
+    if (m_transaction->commit())
+        m_callbacks->onComplete();
+    else
+        m_callbacks->onAbort();
     m_database->transactionCoordinator()->didFinishTransaction(this);
     m_database->transactionFinished(this);
     m_database = 0;

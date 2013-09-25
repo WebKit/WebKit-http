@@ -46,6 +46,7 @@
 #include "IDBFactoryBackendInterface.h"
 #include "IDBIndexBackendInterface.h"
 #include "IDBKey.h"
+#include "IDBKeyPath.h"
 #include "IDBKeyRange.h"
 #include "IDBObjectStoreBackendInterface.h"
 #include "IDBPendingTransactionMonitor.h"
@@ -69,6 +70,7 @@ using WebCore::TypeBuilder::IndexedDB::SecurityOriginWithDatabaseNames;
 using WebCore::TypeBuilder::IndexedDB::DatabaseWithObjectStores;
 using WebCore::TypeBuilder::IndexedDB::DataEntry;
 using WebCore::TypeBuilder::IndexedDB::Key;
+using WebCore::TypeBuilder::IndexedDB::KeyPath;
 using WebCore::TypeBuilder::IndexedDB::KeyRange;
 using WebCore::TypeBuilder::IndexedDB::ObjectStore;
 using WebCore::TypeBuilder::IndexedDB::ObjectStoreIndex;
@@ -225,6 +227,33 @@ static PassRefPtr<IDBIndexBackendInterface> indexForObjectStore(IDBObjectStoreBa
     return idbIndex;
 }
 
+static PassRefPtr<KeyPath> keyPathFromIDBKeyPath(const IDBKeyPath& idbKeyPath)
+{
+    RefPtr<KeyPath> keyPath;
+    switch (idbKeyPath.type()) {
+    case IDBKeyPath::NullType:
+        keyPath = KeyPath::create().setType(KeyPath::Type::Null);
+        break;
+    case IDBKeyPath::StringType:
+        keyPath = KeyPath::create().setType(KeyPath::Type::String);
+        keyPath->setString(idbKeyPath.string());
+        break;
+    case IDBKeyPath::ArrayType: {
+        keyPath = KeyPath::create().setType(KeyPath::Type::Array);
+        RefPtr<TypeBuilder::Array<String> > array = TypeBuilder::Array<String>::create();
+        const Vector<String>& stringArray = idbKeyPath.array();
+        for (size_t i = 0; i < stringArray.size(); ++i)
+            array->addItem(stringArray[i]);
+        keyPath->setArray(array);
+        break;
+    }
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return keyPath.release();
+}
+
 class DatabaseLoaderCallback : public ExecutableWithDatabase {
 public:
     static PassRefPtr<DatabaseLoaderCallback> create(InspectorIndexedDBAgent::FrontendProvider* frontendProvider, int requestId)
@@ -260,7 +289,7 @@ public:
 
                 RefPtr<ObjectStoreIndex> objectStoreIndex = ObjectStoreIndex::create()
                     .setName(idbIndex->name())
-                    .setKeyPath(idbIndex->keyPath())
+                    .setKeyPath(keyPathFromIDBKeyPath(idbIndex->keyPath()))
                     .setUnique(idbIndex->unique())
                     .setMultiEntry(idbIndex->multiEntry());
                 indexes->addItem(objectStoreIndex);
@@ -268,7 +297,7 @@ public:
 
             RefPtr<ObjectStore> objectStore = ObjectStore::create()
                 .setName(idbObjectStore->name())
-                .setKeyPath(idbObjectStore->keyPath())
+                .setKeyPath(keyPathFromIDBKeyPath(idbObjectStore->keyPath()))
                 .setIndexes(indexes);
             objectStores->addItem(objectStore);
         }
@@ -361,7 +390,7 @@ static PassRefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(InspectorObject* keyRange
 
 static PassRefPtr<Key> keyFromIDBKey(IDBKey* idbKey)
 {
-    if (!idbKey || !idbKey->valid())
+    if (!idbKey || !idbKey->isValid())
         return 0;
 
     RefPtr<Key> key;

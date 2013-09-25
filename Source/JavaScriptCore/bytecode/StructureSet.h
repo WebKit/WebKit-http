@@ -26,7 +26,7 @@
 #ifndef StructureSet_h
 #define StructureSet_h
 
-#include "PredictedType.h"
+#include "SpeculatedType.h"
 #include "Structure.h"
 #include <stdio.h>
 #include <wtf/Vector.h>
@@ -115,18 +115,26 @@ public:
         return true;
     }
     
+    // Call this if you know that the structure set must consist of exactly
+    // one structure.
+    Structure* singletonStructure() const
+    {
+        ASSERT(m_structures.size() == 1);
+        return m_structures[0];
+    }
+    
     Structure* at(size_t i) const { return m_structures.at(i); }
     
     Structure* operator[](size_t i) const { return at(i); }
     
     Structure* last() const { return m_structures.last(); }
 
-    PredictedType predictionFromStructures() const
+    SpeculatedType speculationFromStructures() const
     {
-        PredictedType result = PredictNone;
+        SpeculatedType result = SpecNone;
         
         for (size_t i = 0; i < m_structures.size(); ++i)
-            mergePrediction(result, predictionFromStructure(m_structures[i]));
+            mergeSpeculation(result, speculationFromStructure(m_structures[i]));
         
         return result;
     }

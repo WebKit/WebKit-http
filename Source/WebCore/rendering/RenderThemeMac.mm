@@ -47,6 +47,7 @@
 #import "StyleResolver.h"
 #import "TimeRanges.h"
 #import "ThemeMac.h"
+#import "WebCoreNSCellExtras.h"
 #import "WebCoreSystemInterface.h"
 #import "UserAgentStyleSheets.h"
 #import <Carbon/Carbon.h>
@@ -103,6 +104,25 @@ const double progressAnimationNumFrames = 256;
     _theme->platformColorsDidChange();
 }
 
+@end
+
+@interface NSTextFieldCell (WKDetails)
+- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
+@end
+
+
+@interface WebCoreTextFieldCell : NSTextFieldCell
+- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus;
+@end
+
+@implementation WebCoreTextFieldCell
+- (CFDictionaryRef)_coreUIDrawOptionsWithFrame:(NSRect)cellFrame inView:(NSView *)controlView includeFocus:(BOOL)includeFocus
+{
+    // FIXME: This is a post-Lion-only workaround for <rdar://problem/11385461>. When that bug is resolved, we should remove this code.
+    CFMutableDictionaryRef coreUIDrawOptions = CFDictionaryCreateMutableCopy(NULL, 0, [super _coreUIDrawOptionsWithFrame:cellFrame inView:controlView includeFocus:includeFocus]);
+    CFDictionarySetValue(coreUIDrawOptions, @"borders only", kCFBooleanTrue);
+    return (CFDictionaryRef)[NSMakeCollectable(coreUIDrawOptions) autorelease];
+}
 @end
 
 namespace WebCore {
@@ -489,7 +509,7 @@ NSView* RenderThemeMac::documentViewFor(RenderObject* o) const
 bool RenderThemeMac::isControlStyled(const RenderStyle* style, const BorderData& border,
                                      const FillLayer& background, const Color& backgroundColor) const
 {
-    if (style->appearance() == TextAreaPart || style->appearance() == ListboxPart)
+    if (style->appearance() == TextFieldPart || style->appearance() == TextAreaPart || style->appearance() == ListboxPart)
         return style->border() != border;
         
     // FIXME: This is horrible, but there is not much else that can be done.  Menu lists cannot draw properly when
@@ -714,7 +734,23 @@ NSControlSize RenderThemeMac::controlSizeForSystemFont(RenderStyle* style) const
 bool RenderThemeMac::paintTextField(RenderObject* o, const PaintInfo& paintInfo, const IntRect& r)
 {
     LocalCurrentGraphicsContext localContext(paintInfo.context);
-    NSTextFieldCell* textField = this->textField();
+
+#if defined(BUILDING_ON_LION) || defined(BUILDING_ON_SNOW_LEOPARD)
+    bool useNSTextFieldCell = o->style()->hasAppearance()
+        && o->style()->visitedDependentColor(CSSPropertyBackgroundColor) == Color::white
+        && !o->style()->hasBackgroundImage();
+
+    // We do not use NSTextFieldCell to draw styled text fields on Lion and SnowLeopard because
+    // there are a number of bugs on those platforms that require NSTextFieldCell to be in charge
+    // of painting its own background. We need WebCore to paint styled backgrounds, so we'll use
+    // this WebCoreSystemInterface function instead.
+    if (!useNSTextFieldCell) {
+        wkDrawBezeledTextFieldCell(r, isEnabled(o) && !isReadOnlyControl(o));
+        return false;
+    }
+#endif
+
+    NSTextFieldCell *textField = this->textField();
 
     GraphicsContextStateSaver stateSaver(*paintInfo.context);
 
@@ -810,7 +846,12 @@ bool RenderThemeMac::paintMenuList(RenderObject* o, const PaintInfo& paintInfo, 
         paintInfo.context->translate(-inflatedRect.x(), -inflatedRect.y());
     }
 
-    [popupButton drawWithFrame:inflatedRect inView:documentViewFor(o)];
+    NSView *view = documentViewFor(o);
+    [popupButton drawWithFrame:inflatedRect inView:view];
+#if !BUTTON_CELL_DRAW_WITH_FRAME_DRAWS_FOCUS_RING
+    if (isFocused(o) && o->style()->outlineStyleIsAuto())
+        [popupButton _web_drawFocusRingWithFrame:inflatedRect inView:view];
+#endif
     [popupButton setControlView:nil];
 
     return false;
@@ -1289,7 +1330,9 @@ void RenderThemeMac::setPopupButtonCellState(const RenderObject* o, const IntRec
     updateCheckedState(popupButton, o);
     updateEnabledState(popupButton, o);
     updatePressedState(popupButton, o);
+#if BUTTON_CELL_DRAW_WITH_FRAME_DRAWS_FOCUS_RING
     updateFocusedState(popupButton, o);
+#endif
 }
 
 const IntSize* RenderThemeMac::menuListSizes() const
@@ -1704,7 +1747,7 @@ const int sliderThumbHeight = 15;
 const int mediaSliderThumbWidth = 13;
 const int mediaSliderThumbHeight = 14;
 
-void RenderThemeMac::adjustSliderThumbSize(RenderStyle* style) const
+void RenderThemeMac::adjustSliderThumbSize(RenderStyle* style, Element*) const
 {
     float zoomLevel = style->effectiveZoom();
     if (style->appearance() == SliderThumbHorizontalPart || style->appearance() == SliderThumbVerticalPart) {
@@ -2136,10 +2179,19 @@ NSSliderCell* RenderThemeMac::sliderThumbVertical() const
 NSTextFieldCell* RenderThemeMac::textField() const
 {
     if (!m_textField) {
-        m_textField.adoptNS([[NSTextFieldCell alloc] initTextCell:@""]);
+        m_textField.adoptNS([[WebCoreTextFieldCell alloc] initTextCell:@""]);
         [m_textField.get() setBezeled:YES];
         [m_textField.get() setEditable:YES];
         [m_textField.get() setFocusRingType:NSFocusRingTypeExterior];
+#if defined(BUILDING_ON_LION) || defined(BUILDING_ON_SNOW_LEOPARD)
+        [m_textField.get() setDrawsBackground:YES];
+        [m_textField.get() setBackgroundColor:[NSColor whiteColor]];
+#else
+        // Post-Lion, WebCore can be in charge of paintinng the background thanks to
+        // the workaround in place for <rdar://problem/11385461>, which is implemented
+        // above as _coreUIDrawOptionsWithFrame.
+        [m_textField.get() setDrawsBackground:NO];
+#endif
     }
 
     return m_textField.get();

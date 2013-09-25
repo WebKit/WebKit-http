@@ -87,6 +87,9 @@ if __name__ == '__main__':
       envsetup_location = os.path.join(chrome_src, 'build', 'android', 'envsetup.sh')
       exit(subprocess.call(['bash', '-c', 'source %s && python gyp_webkit --no-envsetup-recursion %s' % (envsetup_location, ' '.join(args))]))
     else:
+      # FIXME: v8 requires the CXX_target variable to determine whether -m32 should be
+      # set. The current Android build set-up is not sustainable and breaks too often.
+      os.environ['CXX_target'] = glob.glob('%s/*-g++' % os.environ.get('ANDROID_TOOLCHAIN'))[0]
       args.remove('--no-envsetup-recursion')
 
   # Add includes.
@@ -119,6 +122,7 @@ if __name__ == '__main__':
                '-Dinside_chromium_build=0',
                '-Dv8_use_snapshot=false',
                '-Dmsvs_use_common_release=0',
+               '-Gmsvs_error_on_missing_sources=1',
 
                # WebKit doesn't use the chromium style checker.
                '-Dmake_clang_dir=Source/WebKit/chromium/third_party/llvm-build/Release+Asserts',

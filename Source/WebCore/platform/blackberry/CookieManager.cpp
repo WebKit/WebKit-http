@@ -131,68 +131,16 @@ static bool shouldIgnoreDomain(const String protocol)
     return protocol == "file" || protocol == "local";
 }
 
-void CookieManager::setCookies(const KURL& url, const String& value)
+void CookieManager::setCookies(const KURL& url, const String& value, CookieFilter filter)
 {
     CookieLog("CookieManager - Setting cookies");
     CookieParser parser(url);
     Vector<ParsedCookie*> cookies = parser.parse(value);
 
     for (size_t i = 0; i < cookies.size(); ++i) {
-        ParsedCookie* cookie = cookies[i];
-        if (!shouldRejectForSecurityReason(cookie, url)) {
-            BackingStoreRemovalPolicy treatment = m_privateMode ? DoNotRemoveFromBackingStore : RemoveFromBackingStore;
-            checkAndTreatCookie(cookie, treatment);
-        } else
-            delete cookie;
+        BackingStoreRemovalPolicy treatment = m_privateMode ? DoNotRemoveFromBackingStore : RemoveFromBackingStore;
+        checkAndTreatCookie(cookies[i], treatment, filter);
     }
-}
-
-bool CookieManager::shouldRejectForSecurityReason(const ParsedCookie* cookie, const KURL& url)
-{
-    // We have to disable the following check because sites like Facebook and
-    // Gmail currently do not follow the spec.
-#if 0
-    // Check if path attribute is a prefix of the request URI.
-    if (!url.path().startsWith(cookie->path())) {
-        LOG_ERROR("Cookie %s is rejected because its path does not math the URL %s\n", cookie->toString().utf8().data(), url.string().utf8().data());
-        return true;
-    }
-#endif
-
-    // ignore domain security if protocol doesn't have domains
-    if (shouldIgnoreDomain(cookie->protocol()))
-        return false;
-
-    // Reject Cookie if domain is empty
-    if (!cookie->domain().length())
-        return true;
-
-    // If an explicitly specified value does not start with a dot, the user agent supplies. (RFC 2965 3.2.2)
-    // Domain: Defaults to the effective request-host. There is no dot at the beginning of request-host. (RFC 2965 3.3.1)
-    if (cookie->domain()[0] == '.') {
-        // Check if the domain contains an embedded dot.
-        size_t dotPosition = cookie->domain().find(".", 1);
-        if (dotPosition == notFound || dotPosition == cookie->domain().length()) {
-            LOG_ERROR("Cookie %s is rejected because its domain does not contain an embedded dot.\n", cookie->toString().utf8().data());
-            return true;
-        }
-    }
-
-    // The request host should domain match the Domain attribute.
-    // Domain string starts with a dot, so a.b.com should domain match .a.b.com.
-    // add a "." at beginning of host name, because it can handle many cases such as
-    // a.b.com matches b.com, a.b.com matches .B.com and a.b.com matches .A.b.Com
-    // and so on.
-    String hostDomainName = url.host();
-    hostDomainName = hostDomainName.startsWith('.') ? hostDomainName : "." + hostDomainName;
-    if (!hostDomainName.endsWith(cookie->domain(), false)) {
-        LOG_ERROR("Cookie %s is rejected because its domain does not domain match the URL %s\n", cookie->toString().utf8().data(), url.string().utf8().data());
-        return true;
-    }
-    // We should check for an embedded dot in the portion of string in the host not in the domain
-    // but to match firefox behaviour we do not.
-
-    return false;
 }
 
 String CookieManager::getCookie(const KURL& url, CookieFilter filter) const
@@ -358,9 +306,15 @@ void CookieManager::setCookieJar(const char* fileName)
     m_cookieBackingStore->open(m_cookieJarFileName);
 }
 
-void CookieManager::checkAndTreatCookie(ParsedCookie* candidateCookie, BackingStoreRemovalPolicy postToBackingStore)
+void CookieManager::checkAndTreatCookie(ParsedCookie* candidateCookie, BackingStoreRemovalPolicy postToBackingStore, CookieFilter filter)
 {
     CookieLog("CookieManager - checkAndTreatCookie - processing url with domain - %s & protocol %s\n", candidateCookie->domain().utf8().data(), candidateCookie->protocol().utf8().data());
+
+    // A cookie which is not from http shouldn't have a httpOnly property.
+    if (filter == NoHttpOnlyCookie && candidateCookie->isHttpOnly()) {
+        delete candidateCookie;
+        return;
+    }
 
     const bool ignoreDomain = shouldIgnoreDomain(candidateCookie->protocol());
 
@@ -408,7 +362,7 @@ void CookieManager::checkAndTreatCookie(ParsedCookie* candidateCookie, BackingSt
             m_cookieBackingStore->remove(candidateCookie);
         else if (curMap) {
             // RemoveCookie will return 0 if the cookie doesn't exist.
-            ParsedCookie* expired = curMap->removeCookie(candidateCookie);
+            ParsedCookie* expired = curMap->removeCookie(candidateCookie, filter);
             // Cookie is useless, Remove the cookie from the backingstore if it exists.
             // Backup check for BackingStoreCookieEntry incase someone incorrectly uses this enum.
             if (expired && postToBackingStore != BackingStoreCookieEntry && !expired->isSession()) {
@@ -421,15 +375,23 @@ void CookieManager::checkAndTreatCookie(ParsedCookie* candidateCookie, BackingSt
             delete candidateCookie;
     } else {
         ASSERT(curMap);
-        addCookieToMap(curMap, candidateCookie, postToBackingStore);
+        addCookieToMap(curMap, candidateCookie, postToBackingStore, filter);
     }
 }
 
-void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidateCookie, BackingStoreRemovalPolicy postToBackingStore)
+void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidateCookie, BackingStoreRemovalPolicy postToBackingStore, CookieFilter filter)
 {
-    ParsedCookie* prevCookie = targetMap->addOrReplaceCookie(candidateCookie);
-    if (prevCookie) {
+    ParsedCookie* replacedCookie = 0;
 
+    if (!targetMap->addOrReplaceCookie(candidateCookie, &replacedCookie, filter)) {
+
+        CookieLog("CookieManager - rejecting new cookie - %s.\n", candidateCookie->toString().utf8().data());
+
+        delete candidateCookie;
+        return;
+    }
+
+    if (replacedCookie) {
         CookieLog("CookieManager - updating new cookie - %s.\n", candidateCookie->toString().utf8().data());
 
         // A cookie was replaced in targetMap.
@@ -437,7 +399,7 @@ void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidate
         // If new cookie is non-session and old one is, we have to add it to backingstore
         // If both sessions are non-session, then we update it in the backingstore
         bool newIsSession = candidateCookie->isSession();
-        bool oldIsSession = prevCookie->isSession();
+        bool oldIsSession = replacedCookie->isSession();
 
         if (postToBackingStore == RemoveFromBackingStore) {
             if (!newIsSession && !oldIsSession)
@@ -446,7 +408,7 @@ void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidate
                 // Must manually decrease the counter because it was not counted when
                 // the cookie was removed in cookieVector.
                 removedCookie();
-                m_cookieBackingStore->remove(prevCookie);
+                m_cookieBackingStore->remove(replacedCookie);
             } else if (!newIsSession && oldIsSession) {
                 // Must manually increase the counter because it was not counted when
                 // the cookie was added in cookieVector.
@@ -454,7 +416,7 @@ void CookieManager::addCookieToMap(CookieMap* targetMap, ParsedCookie* candidate
                 m_cookieBackingStore->insert(candidateCookie);
             }
         }
-        delete prevCookie;
+        delete replacedCookie;
         return;
     }
 
@@ -508,7 +470,7 @@ void CookieManager::getBackingStoreCookies()
     }
 }
 
-void CookieManager::setPrivateMode(const bool mode)
+void CookieManager::setPrivateMode(bool mode)
 {
     if (m_privateMode == mode)
         return;
@@ -551,7 +513,6 @@ CookieMap* CookieManager::findOrCreateCookieMap(CookieMap* protocolMap, const St
     }
     return curMap;
 }
-
 
 void CookieManager::removeCookieWithName(const KURL& url, const String& cookieName)
 {

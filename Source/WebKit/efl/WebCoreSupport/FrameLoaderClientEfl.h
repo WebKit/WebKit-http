@@ -61,7 +61,7 @@ class FrameLoaderClientEfl : public FrameLoaderClient {
 
     void callPolicyFunction(FramePolicyFunction, PolicyAction);
 
-    virtual void makeRepresentation(DocumentLoader*);
+    virtual void makeRepresentation(DocumentLoader*) { }
     virtual void forceLayout();
     virtual void forceLayoutForNonHTML();
 
@@ -122,7 +122,7 @@ class FrameLoaderClientEfl : public FrameLoaderClient {
     virtual void dispatchWillSendSubmitEvent(WTF::PassRefPtr<FormState>) { }
     virtual void dispatchWillSubmitForm(FramePolicyFunction, WTF::PassRefPtr<FormState>);
 
-    virtual void revertToProvisionalState(DocumentLoader*);
+    virtual void revertToProvisionalState(DocumentLoader*) { }
     virtual void setMainDocumentError(DocumentLoader*, const ResourceError&);
 
     virtual void postProgressStartedNotification();
@@ -185,6 +185,12 @@ class FrameLoaderClientEfl : public FrameLoaderClient {
     virtual void provisionalLoadStarted();
     virtual void didFinishLoad();
     virtual void prepareForDataSourceReplacement();
+#if ENABLE(WEB_INTENTS)
+    virtual void dispatchIntent(PassRefPtr<WebCore::IntentRequest>);
+#endif
+#if ENABLE(WEB_INTENTS_TAG)
+    virtual void registerIntentService(const String& action, const String& type, const KURL& href, const String& title, const String& disposition);
+#endif
 
     virtual WTF::PassRefPtr<DocumentLoader> createDocumentLoader(const ResourceRequest&, const SubstituteData&);
     virtual void setTitle(const StringWithDirection& title, const KURL&);
@@ -217,7 +223,6 @@ class FrameLoaderClientEfl : public FrameLoaderClient {
     // Plugin view to redirect data to
     PluginView* m_pluginView;
     bool m_hasSentResponseToPlugin;
-    bool m_hasRepresentation;
 };
 
 }

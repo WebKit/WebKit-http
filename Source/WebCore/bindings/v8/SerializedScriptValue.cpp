@@ -1263,13 +1263,13 @@ public:
             *value = v8::Undefined();
             break;
         case NullTag:
-            *value = v8::Null();
+            *value = v8NullWithCheck(m_isolate);
             break;
         case TrueTag:
-            *value = v8::True();
+            *value = v8BooleanWithCheck(true, m_isolate);
             break;
         case FalseTag:
-            *value = v8::False();
+            *value = v8BooleanWithCheck(false, m_isolate);
             break;
         case TrueObjectTag:
             *value = v8::BooleanObject::New(true);
@@ -1828,15 +1828,15 @@ public:
     v8::Handle<v8::Value> deserialize()
     {
         if (!m_reader.readVersion(m_version) || m_version > wireFormatVersion)
-            return v8::Null();
+            return v8NullWithCheck(m_reader.getIsolate());
         m_reader.setVersion(m_version);
         v8::HandleScope scope;
         while (!m_reader.isEof()) {
             if (!doDeserialize())
-                return v8::Null();
+                return v8NullWithCheck(m_reader.getIsolate());
         }
         if (stackDepth() != 1 || m_openCompositeReferenceStack.size())
-            return v8::Null();
+            return v8NullWithCheck(m_reader.getIsolate());
         v8::Handle<v8::Value> result = scope.Close(element(0));
         return result;
     }
@@ -2098,18 +2098,12 @@ PassRefPtr<SerializedScriptValue> SerializedScriptValue::create()
     return adoptRef(new SerializedScriptValue());
 }
 
-SerializedScriptValue* SerializedScriptValue::nullValue(v8::Isolate* isolate)
+PassRefPtr<SerializedScriptValue> SerializedScriptValue::nullValue(v8::Isolate* isolate)
 {
-    // FIXME: This is not thread-safe. Move caching to callers.
-    // https://bugs.webkit.org/show_bug.cgi?id=70833
-    DEFINE_STATIC_LOCAL(RefPtr<SerializedScriptValue>, nullValue, (0));
-    if (!nullValue) {
-        Writer writer(isolate);
-        writer.writeNull();
-        String wireData = StringImpl::adopt(writer.data());
-        nullValue = adoptRef(new SerializedScriptValue(wireData));
-    }
-    return nullValue.get();
+    Writer writer(isolate);
+    writer.writeNull();
+    String wireData = StringImpl::adopt(writer.data());
+    return adoptRef(new SerializedScriptValue(wireData));
 }
 
 PassRefPtr<SerializedScriptValue> SerializedScriptValue::undefinedValue(v8::Isolate* isolate)
@@ -2160,11 +2154,11 @@ static void neuterBinding(void* domObject)
     }
 }
 
-PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValue::transferArrayBuffers(ArrayBufferArray& arrayBuffers, bool& didThrow) 
+PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValue::transferArrayBuffers(ArrayBufferArray& arrayBuffers, bool& didThrow, v8::Isolate* isolate)
 {
     for (size_t i = 0; i < arrayBuffers.size(); i++) {
         if (arrayBuffers[i]->isNeutered()) {
-            throwError(INVALID_STATE_ERR);
+            throwError(INVALID_STATE_ERR, isolate);
             didThrow = true;
             return nullptr;
         }
@@ -2182,7 +2176,7 @@ PassOwnPtr<SerializedScriptValue::ArrayBufferContentsArray> SerializedScriptValu
 
         bool result = arrayBuffers[i]->transfer(contents->at(i), neuteredViews);
         if (!result) {
-            throwError(INVALID_STATE_ERR);
+            throwError(INVALID_STATE_ERR, isolate);
             didThrow = true;
             return nullptr;
         }
@@ -2219,11 +2213,11 @@ SerializedScriptValue::SerializedScriptValue(v8::Handle<v8::Value> value,
         // If there was an input error, throw a new exception outside
         // of the TryCatch scope.
         didThrow = true;
-        throwError(DATA_CLONE_ERR);
+        throwError(DATA_CLONE_ERR, isolate);
         return;
     case Serializer::InvalidStateError:
         didThrow = true;
-        throwError(INVALID_STATE_ERR);
+        throwError(INVALID_STATE_ERR, isolate);
         return;
     case Serializer::JSFailure:
         // If there was a JS failure (but no exception), there's not
@@ -2234,7 +2228,7 @@ SerializedScriptValue::SerializedScriptValue(v8::Handle<v8::Value> value,
     case Serializer::Success:
         m_data = String(StringImpl::adopt(writer.data())).isolatedCopy();
         if (arrayBuffers)
-            m_arrayBufferContentsArray = transferArrayBuffers(*arrayBuffers, didThrow);
+            m_arrayBufferContentsArray = transferArrayBuffers(*arrayBuffers, didThrow, isolate);
         return;
     case Serializer::JSException:
         // We should never get here because this case was handled above.
@@ -2251,7 +2245,7 @@ SerializedScriptValue::SerializedScriptValue(const String& wireData)
 v8::Handle<v8::Value> SerializedScriptValue::deserialize(MessagePortArray* messagePorts, v8::Isolate* isolate)
 {
     if (!m_data.impl())
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     COMPILE_ASSERT(sizeof(BufferValueType) == 2, BufferValueTypeIsTwoBytes);
     Reader reader(reinterpret_cast<const uint8_t*>(m_data.impl()->characters()), 2 * m_data.length(), isolate);
     Deserializer deserializer(reader, messagePorts, m_arrayBufferContentsArray.get());

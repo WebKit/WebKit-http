@@ -27,6 +27,7 @@
 #include "ConservativeRoots.h"
 #include "GCActivityCallback.h"
 #include "HeapRootVisitor.h"
+#include "IncrementalSweeper.h"
 #include "Interpreter.h"
 #include "JSGlobalData.h"
 #include "JSGlobalObject.h"
@@ -35,8 +36,8 @@
 #include "Tracing.h"
 #include "WeakSetInlines.h"
 #include <algorithm>
+#include <wtf/RAMSize.h>
 #include <wtf/CurrentTime.h>
-
 
 using namespace std;
 using namespace JSC;
@@ -45,14 +46,8 @@ namespace JSC {
 
 namespace { 
 
-#if CPU(X86) || CPU(X86_64)
-static const size_t largeHeapSize = 16 * 1024 * 1024;
-#elif PLATFORM(IOS)
-static const size_t largeHeapSize = 8 * 1024 * 1024;
-#else
-static const size_t largeHeapSize = 512 * 1024;
-#endif
-static const size_t smallHeapSize = 512 * 1024;
+static const size_t largeHeapSize = 32 * MB; // About 1.5X the average webpage.
+static const size_t smallHeapSize = 1 * MB; // Matches the FastMalloc per-thread cache.
 
 #if ENABLE(GC_LOGGING)
 #if COMPILER(CLANG)
@@ -148,12 +143,21 @@ struct GCCounter {
 #define GCCOUNTER(name, value) do { } while (false)
 #endif
 
-static size_t heapSizeForHint(HeapSize heapSize)
+static inline size_t minHeapSize(HeapType heapType, size_t ramSize)
 {
-    if (heapSize == LargeHeap)
-        return largeHeapSize;
-    ASSERT(heapSize == SmallHeap);
+    if (heapType == LargeHeap)
+        return min(largeHeapSize, ramSize / 4);
     return smallHeapSize;
+}
+
+static inline size_t proportionalHeapSize(size_t heapSize, size_t ramSize)
+{
+    // Try to stay under 1/2 RAM size to leave room for the DOM, rendering, networking, etc.
+    if (heapSize < ramSize / 4)
+        return 2 * heapSize;
+    if (heapSize < ramSize / 2)
+        return 1.5 * heapSize;
+    return 1.25 * heapSize;
 }
 
 static inline bool isValidSharedInstanceThreadState()
@@ -178,99 +182,19 @@ static inline bool isValidThreadState(JSGlobalData* globalData)
     return true;
 }
 
-class CountFunctor {
-public:
-    typedef size_t ReturnType;
-
-    CountFunctor();
-    void count(size_t);
-    ReturnType returnValue();
-
-private:
-    ReturnType m_count;
+struct Count : public MarkedBlock::CountFunctor {
+    void operator()(JSCell*) { count(1); }
 };
 
-inline CountFunctor::CountFunctor()
-    : m_count(0)
-{
-}
-
-inline void CountFunctor::count(size_t count)
-{
-    m_count += count;
-}
-
-inline CountFunctor::ReturnType CountFunctor::returnValue()
-{
-    return m_count;
-}
-
-struct ClearMarks : MarkedBlock::VoidFunctor {
-    void operator()(MarkedBlock*);
+struct CountIfGlobalObject : MarkedBlock::CountFunctor {
+    void operator()(JSCell* cell) {
+        if (!cell->isObject())
+            return;
+        if (!asObject(cell)->isGlobalObject())
+            return;
+        count(1);
+    }
 };
-
-inline void ClearMarks::operator()(MarkedBlock* block)
-{
-    block->clearMarks();
-}
-
-struct Sweep : MarkedBlock::VoidFunctor {
-    void operator()(MarkedBlock*);
-};
-
-inline void Sweep::operator()(MarkedBlock* block)
-{
-    block->sweep();
-}
-
-struct MarkCount : CountFunctor {
-    void operator()(MarkedBlock*);
-};
-
-inline void MarkCount::operator()(MarkedBlock* block)
-{
-    count(block->markCount());
-}
-
-struct Size : CountFunctor {
-    void operator()(MarkedBlock*);
-};
-
-inline void Size::operator()(MarkedBlock* block)
-{
-    count(block->markCount() * block->cellSize());
-}
-
-struct Capacity : CountFunctor {
-    void operator()(MarkedBlock*);
-};
-
-inline void Capacity::operator()(MarkedBlock* block)
-{
-    count(block->capacity());
-}
-
-struct Count : public CountFunctor {
-    void operator()(JSCell*);
-};
-
-inline void Count::operator()(JSCell*)
-{
-    count(1);
-}
-
-struct CountIfGlobalObject : CountFunctor {
-    void operator()(JSCell*);
-};
-
-inline void CountIfGlobalObject::operator()(JSCell* cell)
-{
-    if (!cell->isObject())
-        return;
-    if (!asObject(cell)->isGlobalObject())
-        return;
-    count(1);
-}
 
 class RecordType {
 public:
@@ -310,21 +234,22 @@ inline PassOwnPtr<TypeCountSet> RecordType::returnValue()
 
 } // anonymous namespace
 
-Heap::Heap(JSGlobalData* globalData, HeapSize heapSize)
-    : m_heapSize(heapSize)
-    , m_minBytesPerCycle(heapSizeForHint(heapSize))
+Heap::Heap(JSGlobalData* globalData, HeapType heapType)
+    : m_heapType(heapType)
+    , m_ramSize(ramSize())
+    , m_minBytesPerCycle(minHeapSize(m_heapType, m_ramSize))
     , m_sizeAfterLastCollect(0)
     , m_bytesAllocatedLimit(m_minBytesPerCycle)
     , m_bytesAllocated(0)
+    , m_bytesAbandoned(0)
     , m_operationInProgress(NoOperation)
     , m_objectSpace(this)
     , m_storageSpace(this)
-    , m_markListSet(0)
     , m_activityCallback(DefaultGCActivityCallback::create(this))
+    , m_sweeper(IncrementalSweeper::create(this))
     , m_machineThreads(this)
     , m_sharedData(globalData)
     , m_slotVisitor(m_sharedData)
-    , m_weakSet(this)
     , m_handleSet(globalData)
     , m_isSafeToCollect(false)
     , m_globalData(globalData)
@@ -336,13 +261,6 @@ Heap::Heap(JSGlobalData* globalData, HeapSize heapSize)
 
 Heap::~Heap()
 {
-    delete m_markListSet;
-
-    m_objectSpace.shrink();
-    m_storageSpace.freeAllBlocks();
-
-    ASSERT(!size());
-    ASSERT(!capacity());
 }
 
 bool Heap::isPagedOut(double deadline)
@@ -361,11 +279,7 @@ void Heap::lastChanceToFinalize()
     if (size_t size = m_protectedValues.size())
         WTFLogAlways("ERROR: JavaScriptCore heap deallocated while %ld values were still protected", static_cast<unsigned long>(size));
 
-    m_weakSet.finalizeAll();
-    canonicalizeCellLivenessData();
-    clearMarks();
-    sweep();
-    m_globalData->smallStrings.finalizeSmallStrings();
+    m_objectSpace.lastChanceToFinalize();
 
 #if ENABLE(SIMPLE_HEAP_PROFILING)
     m_slotVisitor.m_visitedTypeCounts.dump(WTF::dataFile(), "Visited Type Counts");
@@ -401,7 +315,13 @@ void Heap::reportAbandonedObjectGraph()
     // been abandoned, the next collection has the potential to 
     // be more profitable. Since allocation is the trigger for collection, 
     // we hasten the next collection by pretending that we've allocated more memory. 
-    didAllocate(abandonedBytes);
+    didAbandon(abandonedBytes);
+}
+
+void Heap::didAbandon(size_t bytes)
+{
+    m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
+    m_bytesAbandoned += bytes;
 }
 
 void Heap::protect(JSValue k)
@@ -483,9 +403,6 @@ inline RegisterFile& Heap::registerFile()
 void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
 {
     ASSERT(isValidThreadState(m_globalData));
-    if (m_operationInProgress != NoOperation)
-        CRASH();
-    m_operationInProgress = Collection;
     ConservativeRoots registerFileRoots(&m_objectSpace.blocks(), &m_storageSpace);
     registerFile().gatherConservativeRoots(registerFileRoots);
     size_t registerFileRootCount = registerFileRoots.size();
@@ -494,7 +411,6 @@ void Heap::getConservativeRegisterRoots(HashSet<JSCell*>& roots)
         setMarked(registerRoots[i]);
         roots.add(registerRoots[i]);
     }
-    m_operationInProgress = NoOperation;
 }
 
 void Heap::markRoots(bool fullGC)
@@ -504,9 +420,10 @@ void Heap::markRoots(bool fullGC)
     COND_GCPHASE(fullGC, MarkFullRoots, MarkYoungRoots);
     UNUSED_PARAM(fullGC);
     ASSERT(isValidThreadState(m_globalData));
-    if (m_operationInProgress != NoOperation)
-        CRASH();
-    m_operationInProgress = Collection;
+
+#if ENABLE(OBJECT_MARK_LOGGING)
+    double gcStartTime = WTF::currentTime();
+#endif
 
     void* dummy;
     
@@ -524,6 +441,15 @@ void Heap::markRoots(bool fullGC)
         GCPHASE(GatherRegisterFileRoots);
         registerFile().gatherConservativeRoots(registerFileRoots, m_dfgCodeBlocks);
     }
+
+#if ENABLE(DFG_JIT)
+    ConservativeRoots scratchBufferRoots(&m_objectSpace.blocks(), &m_storageSpace);
+    {
+        GCPHASE(GatherScratchBufferRoots);
+        m_globalData->gatherConservativeRoots(scratchBufferRoots);
+    }
+#endif
+
 #if ENABLE(GGC)
     MarkedBlock::DirtyCellVector dirtyCells;
     if (!fullGC) {
@@ -533,7 +459,7 @@ void Heap::markRoots(bool fullGC)
 #endif
     {
         GCPHASE(clearMarks);
-        clearMarks();
+        m_objectSpace.clearMarks();
     }
 
     m_storageSpace.startedCopying();
@@ -562,21 +488,33 @@ void Heap::markRoots(bool fullGC)
     
         {
             GCPHASE(VisitMachineRoots);
+            MARK_LOG_ROOT(visitor, "C++ Stack");
             visitor.append(machineThreadRoots);
             visitor.donateAndDrain();
         }
         {
             GCPHASE(VisitRegisterFileRoots);
+            MARK_LOG_ROOT(visitor, "Register File");
             visitor.append(registerFileRoots);
             visitor.donateAndDrain();
         }
+#if ENABLE(DFG_JIT)
+        {
+            GCPHASE(VisitScratchBufferRoots);
+            MARK_LOG_ROOT(visitor, "Scratch Buffers");
+            visitor.append(scratchBufferRoots);
+            visitor.donateAndDrain();
+        }
+#endif
         {
             GCPHASE(VisitProtectedObjects);
+            MARK_LOG_ROOT(visitor, "Protected Objects");
             markProtectedObjects(heapRootVisitor);
             visitor.donateAndDrain();
         }
         {
             GCPHASE(VisitTempSortVectors);
+            MARK_LOG_ROOT(visitor, "Temp Sort Vectors");
             markTempSortVectors(heapRootVisitor);
             visitor.donateAndDrain();
         }
@@ -584,30 +522,35 @@ void Heap::markRoots(bool fullGC)
         {
             GCPHASE(MarkingArgumentBuffers);
             if (m_markListSet && m_markListSet->size()) {
+                MARK_LOG_ROOT(visitor, "Argument Buffers");
                 MarkedArgumentBuffer::markLists(heapRootVisitor, *m_markListSet);
                 visitor.donateAndDrain();
             }
         }
         if (m_globalData->exception) {
             GCPHASE(MarkingException);
+            MARK_LOG_ROOT(visitor, "Exceptions");
             heapRootVisitor.visit(&m_globalData->exception);
             visitor.donateAndDrain();
         }
     
         {
             GCPHASE(VisitStrongHandles);
+            MARK_LOG_ROOT(visitor, "Strong Handles");
             m_handleSet.visitStrongHandles(heapRootVisitor);
             visitor.donateAndDrain();
         }
     
         {
             GCPHASE(HandleStack);
+            MARK_LOG_ROOT(visitor, "Handle Stack");
             m_handleStack.visit(heapRootVisitor);
             visitor.donateAndDrain();
         }
     
         {
             GCPHASE(TraceCodeBlocks);
+            MARK_LOG_ROOT(visitor, "Trace Code Blocks");
             m_dfgCodeBlocks.traceMarkedCodeBlocks(visitor);
             visitor.donateAndDrain();
         }
@@ -624,8 +567,9 @@ void Heap::markRoots(bool fullGC)
     // the liveness of the rest of the object graph.
     {
         GCPHASE(VisitingLiveWeakHandles);
+        MARK_LOG_ROOT(visitor, "Live Weak Handles");
         while (true) {
-            m_weakSet.visitLiveWeakImpls(heapRootVisitor);
+            m_objectSpace.visitWeakSets(heapRootVisitor);
             harvestWeakReferences();
             if (visitor.isEmpty())
                 break;
@@ -639,44 +583,39 @@ void Heap::markRoots(bool fullGC)
         }
     }
 
-    {
-        GCPHASE(VisitingDeadWeakHandles);
-        m_weakSet.visitDeadWeakImpls(heapRootVisitor);
-    }
-
     GCCOUNTER(VisitedValueCount, visitor.visitCount());
 
     visitor.doneCopying();
+#if ENABLE(OBJECT_MARK_LOGGING)
+    size_t visitCount = visitor.visitCount();
+#if ENABLE(PARALLEL_GC)
+    visitCount += m_sharedData.childVisitCount();
+#endif
+    MARK_LOG_MESSAGE2("\nNumber of live Objects after full GC %lu, took %.6f secs\n", visitCount, WTF::currentTime() - gcStartTime);
+#endif
+
     visitor.reset();
     m_sharedData.reset();
+#if ENABLE(PARALLEL_GC)
+    m_sharedData.resetChildren();
+#endif
     m_storageSpace.doneCopying();
 
-    m_operationInProgress = NoOperation;
-}
-
-void Heap::clearMarks()
-{
-    m_objectSpace.forEachBlock<ClearMarks>();
-}
-
-void Heap::sweep()
-{
-    m_objectSpace.forEachBlock<Sweep>();
 }
 
 size_t Heap::objectCount()
 {
-    return m_objectSpace.forEachBlock<MarkCount>();
+    return m_objectSpace.objectCount();
 }
 
 size_t Heap::size()
 {
-    return m_objectSpace.forEachBlock<Size>() + m_storageSpace.size();
+    return m_objectSpace.size() + m_storageSpace.size();
 }
 
 size_t Heap::capacity()
 {
-    return m_objectSpace.forEachBlock<Capacity>() + m_storageSpace.capacity();
+    return m_objectSpace.capacity() + m_storageSpace.capacity();
 }
 
 size_t Heap::protectedGlobalObjectCount()
@@ -704,15 +643,38 @@ PassOwnPtr<TypeCountSet> Heap::objectTypeCounts()
     return m_objectSpace.forEachCell<RecordType>();
 }
 
-void Heap::discardAllCompiledCode()
+void Heap::deleteAllCompiledCode()
 {
-    // If JavaScript is running, it's not safe to recompile, since we'll end
-    // up throwing away code that is live on the stack.
+    // If JavaScript is running, it's not safe to delete code, since we'll end
+    // up deleting code that is live on the stack.
     if (m_globalData->dynamicGlobalObject)
         return;
 
-    for (FunctionExecutable* current = m_functions.head(); current; current = current->next())
-        current->discardCode();
+    for (ExecutableBase* current = m_compiledCode.head(); current; current = current->next()) {
+        if (!current->isFunctionExecutable())
+            continue;
+        static_cast<FunctionExecutable*>(current)->clearCodeIfNotCompiling();
+    }
+
+    m_dfgCodeBlocks.clearMarks();
+    m_dfgCodeBlocks.deleteUnmarkedJettisonedCodeBlocks();
+}
+
+void Heap::deleteUnmarkedCompiledCode()
+{
+    ExecutableBase* next;
+    for (ExecutableBase* current = m_compiledCode.head(); current; current = next) {
+        next = current->next();
+        if (isMarked(current))
+            continue;
+
+        // We do this because executable memory is limited on some platforms and because
+        // CodeBlock requires eager finalization.
+        ExecutableBase::clearCodeVirtual(current);
+        m_compiledCode.remove(current);
+    }
+
+    m_dfgCodeBlocks.deleteUnmarkedJettisonedCodeBlocks();
 }
 
 void Heap::collectAllGarbage()
@@ -733,12 +695,15 @@ void Heap::collect(SweepToggle sweepToggle)
     ASSERT(globalData()->identifierTable == wtfThreadData().currentIdentifierTable());
     ASSERT(m_isSafeToCollect);
     JAVASCRIPTCORE_GC_BEGIN();
+    if (m_operationInProgress != NoOperation)
+        CRASH();
+    m_operationInProgress = Collection;
 
     m_activityCallback->willCollect();
 
     double lastGCStartTime = WTF::currentTime();
     if (lastGCStartTime - m_lastCodeDiscardTime > minute) {
-        discardAllCompiledCode();
+        deleteAllCompiledCode();
         m_lastCodeDiscardTime = WTF::currentTime();
     }
 
@@ -751,67 +716,65 @@ void Heap::collect(SweepToggle sweepToggle)
 #endif
     {
         GCPHASE(Canonicalize);
-        canonicalizeCellLivenessData();
+        m_objectSpace.canonicalizeCellLivenessData();
     }
 
     markRoots(fullGC);
     
     {
-        GCPHASE(FinalizeUnconditionalFinalizers);
-        finalizeUnconditionalFinalizers();
+        GCPHASE(ReapingWeakHandles);
+        m_objectSpace.reapWeakSets();
     }
-        
-    {
-        GCPHASE(FinalizeWeakHandles);
-        m_weakSet.sweep();
-        m_globalData->smallStrings.finalizeSmallStrings();
-    }
-    
+
     JAVASCRIPTCORE_GC_MARKED();
 
     {
-        GCPHASE(ResetAllocator);
-        resetAllocators();
+        GCPHASE(FinalizeUnconditionalFinalizers);
+        finalizeUnconditionalFinalizers();
     }
-    
+
+    {
+        GCPHASE(finalizeSmallStrings);
+        m_globalData->smallStrings.finalizeSmallStrings();
+    }
+
     {
         GCPHASE(DeleteCodeBlocks);
-        m_dfgCodeBlocks.deleteUnmarkedJettisonedCodeBlocks();
+        deleteUnmarkedCompiledCode();
     }
 
     if (sweepToggle == DoSweep) {
         SamplingRegion samplingRegion("Garbage Collection: Sweeping");
         GCPHASE(Sweeping);
-        sweep();
+        m_objectSpace.sweep();
         m_objectSpace.shrink();
-        m_weakSet.shrink();
     }
 
-    // To avoid pathological GC churn in large heaps, we set the new allocation 
-    // limit to be the current size of the heap. This heuristic 
-    // is a bit arbitrary. Using the current size of the heap after this 
-    // collection gives us a 2X multiplier, which is a 1:1 (heap size :
-    // new bytes allocated) proportion, and seems to work well in benchmarks.
-    size_t newSize = size();
+    m_sweeper->startSweeping(m_objectSpace.blocks().set());
+    m_bytesAbandoned = 0;
+
+    {
+        GCPHASE(ResetAllocators);
+        m_objectSpace.resetAllocators();
+    }
+    
+    size_t currentHeapSize = size();
     if (fullGC) {
-        m_sizeAfterLastCollect = newSize;
-        m_bytesAllocatedLimit = max(newSize, m_minBytesPerCycle);
+        m_sizeAfterLastCollect = currentHeapSize;
+
+        // To avoid pathological GC churn in very small and very large heaps, we set
+        // the new allocation limit based on the current size of the heap, with a
+        // fixed minimum.
+        size_t maxHeapSize = max(minHeapSize(m_heapType, m_ramSize), proportionalHeapSize(currentHeapSize, m_ramSize));
+        m_bytesAllocatedLimit = maxHeapSize - currentHeapSize;
     }
     m_bytesAllocated = 0;
     double lastGCEndTime = WTF::currentTime();
     m_lastGCLength = lastGCEndTime - lastGCStartTime;
+    if (m_operationInProgress != Collection)
+        CRASH();
+    m_operationInProgress = NoOperation;
     JAVASCRIPTCORE_GC_END();
-}
-
-void Heap::canonicalizeCellLivenessData()
-{
-    m_objectSpace.canonicalizeCellLivenessData();
-}
-
-void Heap::resetAllocators()
-{
-    m_objectSpace.resetAllocators();
-    m_weakSet.resetAllocator();
 }
 
 void Heap::setActivityCallback(PassOwnPtr<GCActivityCallback> activityCallback)
@@ -824,9 +787,19 @@ GCActivityCallback* Heap::activityCallback()
     return m_activityCallback.get();
 }
 
+IncrementalSweeper* Heap::sweeper()
+{
+    return m_sweeper.get();
+}
+
+void Heap::setGarbageCollectionTimerEnabled(bool enable)
+{
+    activityCallback()->setEnabled(enable);
+}
+
 void Heap::didAllocate(size_t bytes)
 {
-    m_activityCallback->didAllocate(m_bytesAllocated);
+    m_activityCallback->didAllocate(m_bytesAllocated + m_bytesAbandoned);
     m_bytesAllocated += bytes;
 }
 
@@ -857,14 +830,9 @@ void Heap::FinalizerOwner::finalize(Handle<Unknown> handle, void* context)
     WeakSet::deallocate(WeakImpl::asWeakImpl(slot));
 }
 
-void Heap::addFunctionExecutable(FunctionExecutable* executable)
+void Heap::addCompiledCode(ExecutableBase* executable)
 {
-    m_functions.append(executable);
-}
-
-void Heap::removeFunctionExecutable(FunctionExecutable* executable)
-{
-    m_functions.remove(executable);
+    m_compiledCode.append(executable);
 }
 
 } // namespace JSC

@@ -287,9 +287,13 @@ controllers.FailingBuilders = base.extends(Object, {
         this._message = message;
         this._notification = null;
     },
-    update: function(builderNameList)
+    hasFailures: function()
     {
-        if (builderNameList.length == 0) {
+        return !!this._notification;
+    },
+    update: function(failuresList)
+    {
+        if (Object.keys(failuresList).length == 0) {
             if (this._notification) {
                 this._notification.dismiss();
                 this._notification = null;
@@ -302,7 +306,7 @@ controllers.FailingBuilders = base.extends(Object, {
         }
         // FIXME: We should provide regression ranges for the failing builders.
         // This doesn't seem to happen often enough to worry too much about that, however.
-        this._notification.setFailingBuilders(builderNameList);
+        this._notification.setFailingBuilders(failuresList);
     }
 });
 

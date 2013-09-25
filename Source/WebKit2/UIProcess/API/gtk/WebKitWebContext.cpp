@@ -24,8 +24,13 @@
 #include "WebKitCookieManagerPrivate.h"
 #include "WebKitDownloadClient.h"
 #include "WebKitDownloadPrivate.h"
+#include "WebKitGeolocationProvider.h"
+#include "WebKitPluginPrivate.h"
 #include "WebKitPrivate.h"
+#include "WebKitRequestManagerClient.h"
+#include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitWebContextPrivate.h"
+#include <WebCore/FileSystem.h>
 #include <wtf/HashMap.h>
 #include <wtf/gobject/GRefPtr.h>
 #include <wtf/text/CString.h>
@@ -38,10 +43,35 @@ enum {
     LAST_SIGNAL
 };
 
+struct WebKitURISchemeHandler {
+    WebKitURISchemeHandler()
+        : callback(0)
+        , userData(0)
+    {
+    }
+    WebKitURISchemeHandler(WebKitURISchemeRequestCallback callback, void* userData)
+        : callback(callback)
+        , userData(userData)
+    {
+    }
+
+    WebKitURISchemeRequestCallback callback;
+    void* userData;
+};
+
+typedef HashMap<String, WebKitURISchemeHandler> URISchemeHandlerMap;
+typedef HashMap<uint64_t, GRefPtr<WebKitURISchemeRequest> > URISchemeRequestMap;
+
 struct _WebKitWebContextPrivate {
     WKRetainPtr<WKContextRef> context;
 
     GRefPtr<WebKitCookieManager> cookieManager;
+    WKRetainPtr<WKSoupRequestManagerRef> requestManager;
+    URISchemeHandlerMap uriSchemeHandlers;
+    URISchemeRequestMap uriSchemeRequests;
+#if ENABLE(GEOLOCATION)
+    RefPtr<WebKitGeolocationProvider> geolocationProvider;
+#endif
 };
 
 static guint signals[LAST_SIGNAL] = { 0, };
@@ -89,8 +119,14 @@ static gpointer createDefaultWebContext(gpointer)
 {
     static GRefPtr<WebKitWebContext> webContext = adoptGRef(WEBKIT_WEB_CONTEXT(g_object_new(WEBKIT_TYPE_WEB_CONTEXT, NULL)));
     webContext->priv->context = WKContextGetSharedProcessContext();
+    webContext->priv->requestManager = WKContextGetSoupRequestManager(webContext->priv->context.get());
     WKContextSetCacheModel(webContext->priv->context.get(), kWKCacheModelPrimaryWebBrowser);
     attachDownloadClientToContext(webContext.get());
+    attachRequestManagerClientToContext(webContext.get());
+#if ENABLE(GEOLOCATION)
+    WKGeolocationManagerRef wkGeolocationManager = WKContextGetGeolocationManager(webContext->priv->context.get());
+    webContext->priv->geolocationProvider = WebKitGeolocationProvider::create(wkGeolocationManager);
+#endif
     return webContext.get();
 }
 
@@ -236,6 +272,138 @@ WebKitCookieManager* webkit_web_context_get_cookie_manager(WebKitWebContext* con
     return priv->cookieManager.get();
 }
 
+/**
+ * webkit_web_context_set_additional_plugins_directory:
+ * @context: a #WebKitWebContext
+ * @directory: the directory to add
+ *
+ * Set an additional directory where WebKit will look for plugins.
+ */
+void webkit_web_context_set_additional_plugins_directory(WebKitWebContext* context, const char* directory)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+    g_return_if_fail(directory);
+
+    toImpl(context->priv->context.get())->setAdditionalPluginsDirectory(WebCore::filenameToString(directory));
+}
+
+struct GetPluginsAsyncData {
+    Vector<PluginModuleInfo> plugins;
+};
+WEBKIT_DEFINE_ASYNC_DATA_STRUCT(GetPluginsAsyncData)
+
+static void webkitWebContextGetPluginThread(GSimpleAsyncResult* result, GObject* object, GCancellable*)
+{
+    GetPluginsAsyncData* data = static_cast<GetPluginsAsyncData*>(g_simple_async_result_get_op_res_gpointer(result));
+    data->plugins = toImpl(WEBKIT_WEB_CONTEXT(object)->priv->context.get())->pluginInfoStore().plugins();
+}
+
+/**
+ * webkit_web_context_get_plugins:
+ * @context: a #WebKitWebContext
+ * @cancellable: (allow-none): a #GCancellable or %NULL to ignore
+ * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
+ * @user_data: (closure): the data to pass to callback function
+ *
+ * Asynchronously get the list of installed plugins.
+ *
+ * When the operation is finished, @callback will be called. You can then call
+ * webkit_web_context_get_plugins_finish() to get the result of the operation.
+ */
+void webkit_web_context_get_plugins(WebKitWebContext* context, GCancellable* cancellable, GAsyncReadyCallback callback, gpointer userData)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+
+    GRefPtr<GSimpleAsyncResult> result = adoptGRef(g_simple_async_result_new(G_OBJECT(context), callback, userData,
+                                                                             reinterpret_cast<gpointer>(webkit_web_context_get_plugins)));
+    g_simple_async_result_set_op_res_gpointer(result.get(), createGetPluginsAsyncData(),
+                                              reinterpret_cast<GDestroyNotify>(destroyGetPluginsAsyncData));
+    g_simple_async_result_run_in_thread(result.get(), webkitWebContextGetPluginThread, G_PRIORITY_DEFAULT, cancellable);
+}
+
+/**
+ * webkit_web_context_get_plugins_finish:
+ * @context: a #WebKitWebContext
+ * @result: a #GAsyncResult
+ * @error: return location for error or %NULL to ignore
+ *
+ * Finish an asynchronous operation started with webkit_web_context_get_plugins.
+ *
+ * Returns: (element-type WebKitPlugin) (transfer full): a #GList of #WebKitPlugin. You must free the #GList with
+ *    g_list_free() and unref the #WebKitPlugin<!-- -->s with g_object_unref() when you're done with them.
+ */
+GList* webkit_web_context_get_plugins_finish(WebKitWebContext* context, GAsyncResult* result, GError** error)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), 0);
+    g_return_val_if_fail(G_IS_ASYNC_RESULT(result), 0);
+
+    GSimpleAsyncResult* simpleResult = G_SIMPLE_ASYNC_RESULT(result);
+    g_warn_if_fail(g_simple_async_result_get_source_tag(simpleResult) == webkit_web_context_get_plugins);
+
+    if (g_simple_async_result_propagate_error(simpleResult, error))
+        return 0;
+
+    GetPluginsAsyncData* data = static_cast<GetPluginsAsyncData*>(g_simple_async_result_get_op_res_gpointer(simpleResult));
+    GList* plugins = 0;
+    for (size_t i = 0; i < data->plugins.size(); ++i)
+        plugins = g_list_prepend(plugins, webkitPluginCreate(data->plugins[i]));
+
+    return plugins;
+}
+
+/**
+ * webkit_web_context_register_uri_scheme:
+ * @context: a #WebKitWebContext
+ * @scheme: the network scheme to register
+ * @callback: a #WebKitURISchemeRequestCallback
+ * @user_data: data to pass to callback function
+ *
+ * Register @scheme in @context, so that when an URI request with @scheme is made in the
+ * #WebKitWebContext, the #WebKitURISchemeRequestCallback registered will be called with a
+ * #WebKitURISchemeRequest.
+ * It is possible to handle URI scheme requests asynchronously, by calling g_object_ref() on the
+ * #WebKitURISchemeRequest and calling webkit_uri_scheme_request_finish() later when the data of
+ * the request is available.
+ *
+ * <informalexample><programlisting>
+ * static void
+ * about_uri_scheme_request_cb (WebKitURISchemeRequest *request,
+ *                              gpointer                user_data)
+ * {
+ *     GInputStream *stream;
+ *     gsize         stream_length;
+ *     const gchar  *path;
+ *
+ *     path = webkit_uri_scheme_request_get_path (request);
+ *     if (!g_strcmp0 (path, "plugins")) {
+ *         /<!-- -->* Create a GInputStream with the contents of plugins about page, and set its length to stream_length *<!-- -->/
+ *     } else if (!g_strcmp0 (path, "memory")) {
+ *         /<!-- -->* Create a GInputStream with the contents of memory about page, and set its length to stream_length *<!-- -->/
+ *     } else if (!g_strcmp0 (path, "applications")) {
+ *         /<!-- -->* Create a GInputStream with the contents of applications about page, and set its length to stream_length *<!-- -->/
+ *     } else {
+ *         gchar *contents;
+ *
+ *         contents = g_strdup_printf ("&lt;html&gt;&lt;body&gt;&lt;p&gt;Invalid about:%s page&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;", path);
+ *         stream_length = strlen (contents);
+ *         stream = g_memory_input_stream_new_from_data (contents, stream_length, g_free);
+ *     }
+ *     webkit_uri_scheme_request_finish (request, stream, stream_length, "text/html");
+ *     g_object_unref (stream);
+ * }
+ * </programlisting></informalexample>
+ */
+void webkit_web_context_register_uri_scheme(WebKitWebContext* context, const char* scheme, WebKitURISchemeRequestCallback callback, gpointer userData)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_CONTEXT(context));
+    g_return_if_fail(scheme);
+    g_return_if_fail(callback);
+
+    context->priv->uriSchemeHandlers.set(String::fromUTF8(scheme), WebKitURISchemeHandler(callback, userData));
+    WKRetainPtr<WKStringRef> wkScheme(AdoptWK, WKStringCreateWithUTF8CString(scheme));
+    WKSoupRequestManagerRegisterURIScheme(context->priv->requestManager.get(), wkScheme.get());
+}
+
 WebKitDownload* webkitWebContextGetOrCreateDownload(WKDownloadRef wkDownload)
 {
     GRefPtr<WebKitDownload> download = downloadsMap().get(wkDownload);
@@ -264,3 +432,30 @@ WKContextRef webkitWebContextGetWKContext(WebKitWebContext* context)
     return context->priv->context.get();
 }
 
+WKSoupRequestManagerRef webkitWebContextGetRequestManager(WebKitWebContext* context)
+{
+    return context->priv->requestManager.get();
+}
+
+void webkitWebContextReceivedURIRequest(WebKitWebContext* context, WebKitURISchemeRequest* request)
+{
+    WebKitURISchemeHandler handler = context->priv->uriSchemeHandlers.get(webkit_uri_scheme_request_get_scheme(request));
+    if (!handler.callback)
+        return;
+
+    context->priv->uriSchemeRequests.set(webkitURISchemeRequestGetID(request), request);
+    handler.callback(request, handler.userData);
+}
+
+void webkitWebContextDidFailToLoadURIRequest(WebKitWebContext* context, uint64_t requestID)
+{
+    GRefPtr<WebKitURISchemeRequest> request = context->priv->uriSchemeRequests.get(requestID);
+    if (!request.get())
+        return;
+    webkitURISchemeRequestCancel(request.get());
+}
+
+void webkitWebContextDidFinishURIRequest(WebKitWebContext* context, uint64_t requestID)
+{
+    context->priv->uriSchemeRequests.remove(requestID);
+}

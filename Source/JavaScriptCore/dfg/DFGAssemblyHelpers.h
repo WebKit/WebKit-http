@@ -115,34 +115,31 @@ public:
 #endif
     }
     
-    static Address addressForGlobalVar(GPRReg global, int32_t varNumber)
-    {
-        return Address(global, varNumber * sizeof(Register));
-    }
-
-    static Address tagForGlobalVar(GPRReg global, int32_t varNumber)
-    {
-        return Address(global, varNumber * sizeof(Register) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
-    }
-
-    static Address payloadForGlobalVar(GPRReg global, int32_t varNumber)
-    {
-        return Address(global, varNumber * sizeof(Register) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
-    }
-
     static Address addressFor(VirtualRegister virtualRegister)
     {
         return Address(GPRInfo::callFrameRegister, virtualRegister * sizeof(Register));
+    }
+    static Address addressFor(int operand)
+    {
+        return addressFor(static_cast<VirtualRegister>(operand));
     }
 
     static Address tagFor(VirtualRegister virtualRegister)
     {
         return Address(GPRInfo::callFrameRegister, virtualRegister * sizeof(Register) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag));
     }
+    static Address tagFor(int operand)
+    {
+        return tagFor(static_cast<VirtualRegister>(operand));
+    }
 
     static Address payloadFor(VirtualRegister virtualRegister)
     {
         return Address(GPRInfo::callFrameRegister, virtualRegister * sizeof(Register) + OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload));
+    }
+    static Address payloadFor(int operand)
+    {
+        return payloadFor(static_cast<VirtualRegister>(operand));
     }
 
     Jump branchIfNotObject(GPRReg structureReg)
@@ -170,14 +167,21 @@ public:
     // Add a debug call. This call has no effect on JIT code execution state.
     void debugCall(V_DFGDebugOperation_EP function, void* argument)
     {
-        EncodedJSValue* buffer = static_cast<EncodedJSValue*>(m_globalData->scratchBufferForSize(sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters)));
-        
+        size_t scratchSize = sizeof(EncodedJSValue) * (GPRInfo::numberOfRegisters + FPRInfo::numberOfRegisters);
+        ScratchBuffer* scratchBuffer = m_globalData->scratchBufferForSize(scratchSize);
+        EncodedJSValue* buffer = static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer());
+
         for (unsigned i = 0; i < GPRInfo::numberOfRegisters; ++i)
             storePtr(GPRInfo::toRegister(i), buffer + i);
         for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
             move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
             storeDouble(FPRInfo::toRegister(i), GPRInfo::regT0);
         }
+
+        // Tell GC mark phase how much of the scratch buffer is active during call.
+        move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+        storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
+
 #if CPU(X86_64) || CPU(ARM_THUMB2)
         move(TrustedImmPtr(argument), GPRInfo::argumentGPR1);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
@@ -191,6 +195,10 @@ public:
 #endif
         move(TrustedImmPtr(reinterpret_cast<void*>(function)), scratch);
         call(scratch);
+
+        move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+        storePtr(TrustedImmPtr(0), GPRInfo::regT0);
+
         for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
             move(TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
             loadDouble(GPRInfo::regT0, FPRInfo::toRegister(i));
@@ -308,6 +316,8 @@ public:
         return codeOrigin.inlineCallFrame->callee->jsExecutable()->isStrictMode();
     }
     
+    ExecutableBase* executableFor(const CodeOrigin& codeOrigin);
+    
     CodeBlock* baselineCodeBlockFor(const CodeOrigin& codeOrigin)
     {
         return baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, baselineCodeBlock());
@@ -316,6 +326,20 @@ public:
     CodeBlock* baselineCodeBlock()
     {
         return m_baselineCodeBlock;
+    }
+    
+    int argumentsRegisterFor(InlineCallFrame* inlineCallFrame)
+    {
+        if (!inlineCallFrame)
+            return codeBlock()->argumentsRegister();
+        
+        return baselineCodeBlockForInlineCallFrame(
+            inlineCallFrame)->argumentsRegister() + inlineCallFrame->stackOffset;
+    }
+    
+    int argumentsRegisterFor(const CodeOrigin& codeOrigin)
+    {
+        return argumentsRegisterFor(codeOrigin.inlineCallFrame);
     }
     
     Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);

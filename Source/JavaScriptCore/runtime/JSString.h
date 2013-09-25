@@ -67,6 +67,7 @@ namespace JSC {
         friend class JSGlobalData;
         friend class SpecializedThunkJIT;
         friend class JSRopeString;
+        friend class SlotVisitor;
         friend struct ThunkHelpers;
 
         typedef JSCell Base;
@@ -134,14 +135,14 @@ namespace JSC {
         unsigned length() { return m_length; }
 
         JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
-        JS_EXPORT_PRIVATE bool toBoolean(ExecState*) const;
+        JS_EXPORT_PRIVATE bool toBoolean() const;
         bool getPrimitiveNumber(ExecState*, double& number, JSValue&) const;
         JSObject* toObject(ExecState*, JSGlobalObject*) const;
         double toNumber(ExecState*) const;
         
-        bool getStringPropertySlot(ExecState*, const Identifier& propertyName, PropertySlot&);
+        bool getStringPropertySlot(ExecState*, PropertyName, PropertySlot&);
         bool getStringPropertySlot(ExecState*, unsigned propertyName, PropertySlot&);
-        bool getStringPropertyDescriptor(ExecState*, const Identifier& propertyName, PropertyDescriptor&);
+        bool getStringPropertyDescriptor(ExecState*, PropertyName, PropertyDescriptor&);
 
         bool canGetIndex(unsigned i) { return i < m_length; }
         JSString* getIndex(ExecState*, unsigned);
@@ -173,7 +174,7 @@ namespace JSC {
         static JSObject* toThisObject(JSCell*, ExecState*);
 
         // Actually getPropertySlot, not getOwnPropertySlot (see JSCell).
-        static bool getOwnPropertySlot(JSCell*, ExecState*, const Identifier& propertyName, PropertySlot&);
+        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
         static bool getOwnPropertySlotByIndex(JSCell*, ExecState*, unsigned propertyName, PropertySlot&);
 
         UString& string() { ASSERT(!isRope()); return m_value; }
@@ -200,9 +201,7 @@ namespace JSC {
             {
                 if (m_index == JSRopeString::s_maxInternalRopeLength)
                     expand();
-                m_jsString->m_fibers[m_index++].set(m_globalData, m_jsString, jsString);
-                m_jsString->m_length += jsString->m_length;
-                m_jsString->m_is8Bit = m_jsString->m_is8Bit && jsString->m_is8Bit;
+                m_jsString->append(m_globalData, m_index++, jsString);
             }
 
             JSRopeString* release()
@@ -250,6 +249,13 @@ namespace JSC {
         void finishCreation(JSGlobalData& globalData)
         {
             JSString::finishCreation(globalData);
+        }
+
+        void append(JSGlobalData& globalData, size_t index, JSString* jsString)
+        {
+            m_fibers[index].set(globalData, this, jsString);
+            m_length += jsString->m_length;
+            m_is8Bit = m_is8Bit && jsString->m_is8Bit;
         }
 
         static JSRopeString* createNull(JSGlobalData& globalData)
@@ -439,16 +445,16 @@ namespace JSC {
     inline JSString* jsNontrivialString(ExecState* exec, const char* s) { return jsNontrivialString(&exec->globalData(), s); }
     inline JSString* jsOwnedString(ExecState* exec, const UString& s) { return jsOwnedString(&exec->globalData(), s); } 
 
-    ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+    ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
     {
         if (propertyName == exec->propertyNames().length) {
             slot.setValue(jsNumber(m_length));
             return true;
         }
 
-        bool isStrictUInt32;
-        unsigned i = propertyName.toUInt32(isStrictUInt32);
-        if (isStrictUInt32 && i < m_length) {
+        unsigned i = propertyName.asIndex();
+        if (i < m_length) {
+            ASSERT(i != PropertyName::NotAnIndex); // No need for an explicit check, the above test would always fail!
             slot.setValue(getIndex(exec, i));
             return true;
         }
@@ -468,23 +474,23 @@ namespace JSC {
 
     inline bool isJSString(JSValue v) { return v.isCell() && v.asCell()->classInfo() == &JSString::s_info; }
 
-    inline bool JSCell::toBoolean(ExecState* exec) const
+    inline bool JSCell::toBoolean() const
     {
         if (isString()) 
-            return static_cast<const JSString*>(this)->toBoolean(exec);
+            return static_cast<const JSString*>(this)->toBoolean();
         return !structure()->typeInfo().masqueradesAsUndefined();
     }
 
     // --- JSValue inlines ----------------------------
     
-    inline bool JSValue::toBoolean(ExecState* exec) const
+    inline bool JSValue::toBoolean() const
     {
         if (isInt32())
             return asInt32();
         if (isDouble())
             return asDouble() > 0.0 || asDouble() < 0.0; // false for NaN
         if (isCell())
-            return asCell()->toBoolean(exec);
+            return asCell()->toBoolean();
         return isTrue(); // false, null, and undefined all convert to false.
     }
 

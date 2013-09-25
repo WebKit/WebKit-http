@@ -11,7 +11,7 @@ db = event.target.result
 db.setVersion('new version')
 setVersionSuccess():
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 createObjectStore():
 store = db.createObjectStore('storeName', null)
@@ -20,6 +20,7 @@ PASS 'name' in store is true
 PASS 'keyPath' in store is true
 PASS 'indexNames' in store is true
 PASS 'transaction' in store is true
+PASS 'autoIncrement' in store is true
 PASS 'put' in store is true
 PASS typeof store.put is "function"
 PASS 'add' in store is true
@@ -42,26 +43,31 @@ PASS 'count' in store is true
 PASS typeof store.count is "function"
 PASS store.name is "storeName"
 PASS store.keyPath is null
+PASS store.autoIncrement is false
 PASS storeNames.contains('storeName') is true
 PASS storeNames.length is 1
+PASS db.createObjectStore('storeWithKeyPath', {keyPath: 'path'}).keyPath is "path"
+PASS db.createObjectStore('storeWithKeyGenerator', {autoIncrement: true}).autoIncrement is true
 Ask for an index that doesn't exist:
-index = store.index('asdf')
-PASS Exception thrown.
-PASS code is IDBDatabaseException.NOT_FOUND_ERR
+Expecting exception from store.index('asdf')
+PASS Exception was thrown.
+PASS code is DOMException.NOT_FOUND_ERR
+PASS ename is 'NotFoundError'
 createIndex():
 index = store.createIndex('indexName', 'x', {unique: true})
-PASS index !== null is true
+PASS index is non-null.
 PASS store.indexNames.contains('indexName') is true
 index = store.index('indexName')
-PASS index !== null is true
+PASS index is non-null.
 Ask for an index that doesn't exist:
-index = store.index('asdf')
-PASS Exception thrown.
-PASS code is IDBDatabaseException.NOT_FOUND_ERR
+Expecting exception from store.index('asdf')
+PASS Exception was thrown.
+PASS code is DOMException.NOT_FOUND_ERR
+PASS ename is 'NotFoundError'
 db.setVersion("version fail")
 PASS db.version is "version fail"
 setVersionTrans = event.target.result
-PASS setVersionTrans !== null is true
+PASS setVersionTrans is non-null.
 store = setVersionTrans.objectStore('storeName')
 index = store.createIndex('indexFail', 'x')
 PASS db.version is "new version"
@@ -76,14 +82,14 @@ PASS store.indexNames[1] is null
 PASS store.indexNames[100] is null
 PASS store.indexNames.item(1) is null
 PASS store.indexNames.item(100) is null
-transaction = db.transaction(['storeName'], IDBTransaction.READ_WRITE)
+transaction = db.transaction(['storeName'], 'readwrite')
 store = transaction.objectStore('storeName')
 Try to insert data with a Date key:
 store.add({x: 'foo'}, testDate)
 Try to insert a value not handled by structured clone:
-store.add({x: 'bar', y: self}, 'bar')
-PASS Exception thrown
-PASS code is 25
+Expecting exception from store.add({x: 'bar', y: self}, 'bar')
+PASS Exception was thrown.
+PASS code is DOMException.DATA_CLONE_ERR
 Try to insert data where key path yields a Date key:
 store.add({x: testDateB, y: 'value'}, 'key')
 addSuccess():
@@ -91,19 +97,20 @@ PASS event.target.result is "key"
 event.target.source.add({x: 'foo'}, 'zzz')
 addAgainFailure():
 PASS event.target.errorCode is IDBDatabaseException.CONSTRAINT_ERR
+PASS event.target.error.name is 'ConstraintError'
 event.preventDefault()
-db.transaction(['storeName'], IDBTransaction.READ_WRITE)
+db.transaction(['storeName'], 'readwrite')
 store = transaction.objectStore('storeName')
 store.add({x: 'somevalue'}, 'somekey')
 Expecting exception from store.add({x: 'othervalue'}, null)
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
-db.transaction(['storeName'], IDBTransaction.READ_WRITE)
+PASS ename is 'DataError'
+db.transaction(['storeName'], 'readwrite')
 store = transaction.objectStore('storeName')
-Expecting exception from store.add({x: null}, 'validkey')
-PASS Exception was thrown.
-PASS code is IDBDatabaseException.DATA_ERR
-db.transaction(['storeName'], IDBTransaction.READ_WRITE)
+Ensure invalid key pointed at by index keyPath is ignored
+store.add({x: null}, 'validkey')
+db.transaction(['storeName'], 'readwrite')
 store = transaction.objectStore('storeName')
 store.get('key')
 getSuccess():
@@ -123,18 +130,22 @@ Passing an invalid key into store.get().
 Expecting exception from store.get({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 Passing an invalid key into store.delete().
 Expecting exception from store.delete({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 Passing an invalid key into store.add().
 Expecting exception from store.add(null, {})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 Passing an invalid key into store.put().
 Expecting exception from store.put(null, {})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 
 testPreConditions():
 db.setVersion('precondition version')
@@ -148,50 +159,50 @@ The object store uses in-line keys and the key parameter was provided.
 Expecting exception from storeWithInLineKeys.put({key: 1}, 'key')
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses out-of-line keys and has no key generator and the key parameter was not provided.
 Expecting exception from storeWithOutOfLineKeys.put({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses in-line keys and the result of evaluating the object store's key path yields a value and that value is not a valid key.
 Expecting exception from storeWithInLineKeys.put({key: null})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses in-line keys but no key generator and the result of evaluating the object store's key path does not yield a value.
 Expecting exception from storeWithInLineKeys.put({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The key parameter was provided but does not contain a valid key.
 Expecting exception from storeWithOutOfLineKeys.put({}, null)
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
-If there are any indexes referencing this object store whose key path is a string, evaluating their key path on the value parameter yields a value, and that value is not a valid key.
-Expecting exception from storeWithIndex.put({indexKey: null}, 'key')
-PASS Exception was thrown.
-PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 
 IDBObjectStore.add()
 The object store uses in-line keys and the key parameter was provided.
 Expecting exception from storeWithInLineKeys.add({key: 1}, 'key')
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses out-of-line keys and has no key generator and the key parameter was not provided.
 Expecting exception from storeWithOutOfLineKeys.add({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses in-line keys and the result of evaluating the object store's key path yields a value and that value is not a valid key.
 Expecting exception from storeWithInLineKeys.add({key: null})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 The object store uses in-line keys but no key generator and the result of evaluating the object store's key path does not yield a value.
 Expecting exception from storeWithInLineKeys.add({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
 The key parameter was provided but does not contain a valid key.
 Expecting exception from storeWithOutOfLineKeys.add({}, null)
-PASS Exception was thrown.
-PASS code is IDBDatabaseException.DATA_ERR
-If there are any indexes referencing this object store whose key path is a string, evaluating their key path on the value parameter yields a value, and that value is not a valid key.
-Expecting exception from storeWithIndex.add({indexKey: null}, 'key')
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
 PASS successfullyParsed is true

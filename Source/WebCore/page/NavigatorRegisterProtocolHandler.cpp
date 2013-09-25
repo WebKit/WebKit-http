@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011, Google Inc. All rights reserved.
+ * Copyright (C) 2012, Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -26,9 +27,10 @@
 #include "config.h"
 #include "NavigatorRegisterProtocolHandler.h"
 
-#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+#if ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
 
 #include "Chrome.h"
+#include "ChromeClient.h"
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
@@ -116,6 +118,7 @@ NavigatorRegisterProtocolHandler::~NavigatorRegisterProtocolHandler()
 {
 }
 
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
 void NavigatorRegisterProtocolHandler::registerProtocolHandler(Navigator* navigator, const String& scheme, const String& url, const String& title, ExceptionCode& ec)
 {
     if (!navigator->frame())
@@ -137,9 +140,76 @@ void NavigatorRegisterProtocolHandler::registerProtocolHandler(Navigator* naviga
     if (!page)
         return;
 
-    page->chrome()->registerProtocolHandler(scheme, baseURL, url, navigator->frame()->displayStringModifiedByEncoding(title));
+    page->chrome()->client()->registerProtocolHandler(scheme, baseURL, url, navigator->frame()->displayStringModifiedByEncoding(title));
 }
+#endif
+
+#if ENABLE(CUSTOM_SCHEME_HANDLER)
+static String customHandlersStateString(const ChromeClient::CustomHandlersState state)
+{
+    DEFINE_STATIC_LOCAL(const String, newHandler, ("new"));
+    DEFINE_STATIC_LOCAL(const String, registeredHandler, ("registered"));
+    DEFINE_STATIC_LOCAL(const String, declinedHandler, ("declined"));
+
+    switch (state) {
+    case ChromeClient::CustomHandlersNew:
+        return newHandler;
+    case ChromeClient::CustomHandlersRegistered:
+        return registeredHandler;
+    case ChromeClient::CustomHandlersDeclined:
+        return declinedHandler;
+    }
+
+    ASSERT_NOT_REACHED();
+    return String();
+}
+
+String NavigatorRegisterProtocolHandler::isProtocolHandlerRegistered(Navigator* navigator, const String& scheme, const String& url, ExceptionCode& ec)
+{
+    DEFINE_STATIC_LOCAL(const String, declined, ("declined"));
+
+    if (!navigator->frame())
+        return declined;
+
+    Document* document = navigator->frame()->document();
+    String baseURL = document->baseURL().baseAsString();
+
+    if (!verifyCustomHandlerURL(baseURL, url, ec))
+        return declined;
+
+    if (!verifyProtocolHandlerScheme(scheme, ec))
+        return declined;
+
+    Page* page = navigator->frame()->page();
+    if (!page)
+        return declined;
+
+    return customHandlersStateString(page->chrome()->client()->isProtocolHandlerRegistered(scheme, baseURL, url));
+}
+
+void NavigatorRegisterProtocolHandler::unregisterProtocolHandler(Navigator* navigator, const String& scheme, const String& url, ExceptionCode& ec)
+{
+    if (!navigator->frame())
+        return;
+
+    Document* document = navigator->frame()->document();
+    String baseURL = document->baseURL().baseAsString();
+
+    if (!verifyCustomHandlerURL(baseURL, url, ec))
+        return;
+
+    if (!verifyProtocolHandlerScheme(scheme, ec))
+        return;
+
+    Page* page = navigator->frame()->page();
+    if (!page)
+        return;
+
+    page->chrome()->client()->unregisterProtocolHandler(scheme, baseURL, url);
+}
+#endif
 
 } // namespace WebCore
 
-#endif // ENABLE(REGISTER_PROTOCOL_HANDLER)
+#endif // ENABLE(REGISTER_PROTOCOL_HANDLER) || ENABLE(CUSTOM_SCHEME_HANDLER)
+

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google, Inc. All Rights Reserved.
+ * Copyright (C) 2012 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,32 +34,81 @@ namespace WebCore {
 
 DOMWindowProperty::DOMWindowProperty(Frame* frame)
     : m_frame(frame)
+    , m_associatedDOMWindow(0)
 {
-    if (m_frame)
-        m_frame->domWindow()->registerProperty(this);
+    // FIXME: For now it *is* acceptable for a DOMWindowProperty to be created with a null frame.
+    // See fast/dom/navigator-detached-no-crash.html for the recipe.
+    // We should fix that.  <rdar://problem/11567132>
+    if (m_frame) {
+        m_associatedDOMWindow = m_frame->domWindow();
+        m_associatedDOMWindow->registerProperty(this);
+    }
 }
 
 DOMWindowProperty::~DOMWindowProperty()
 {
-    if (m_frame)
-        m_frame->domWindow()->unregisterProperty(this);
-}
+    if (m_associatedDOMWindow)
+        m_associatedDOMWindow->unregisterProperty(this);
 
-void DOMWindowProperty::disconnectFrame()
-{
+    m_associatedDOMWindow = 0;
     m_frame = 0;
 }
 
-void DOMWindowProperty::reconnectFrame(Frame* frame)
+void DOMWindowProperty::disconnectFrameForPageCache()
 {
+    // If this property is being disconnected from its Frame to enter the PageCache, it must have
+    // been created with a Frame in the first place.
+    ASSERT(m_frame);
+    ASSERT(m_associatedDOMWindow);
+
+    m_frame = 0;
+}
+
+void DOMWindowProperty::reconnectFrameFromPageCache(Frame* frame)
+{
+    // If this property is being reconnected to its Frame to enter the PageCache, it must have
+    // been disconnected from its Frame in the first place and it should still have an associated DOMWindow.
     ASSERT(frame);
     ASSERT(!m_frame);
+    ASSERT(frame->domWindow() == m_associatedDOMWindow);
+
     m_frame = frame;
 }
 
-void DOMWindowProperty::willDetachPage()
+void DOMWindowProperty::willDestroyGlobalObjectInCachedFrame()
 {
-    // Subclasses should override this function to handle this notification.
+    // If the property has been disconnected from its Frame for the page cache, then it must have originally had a Frame
+    // and therefore should still have an associated DOMWindow.
+    ASSERT(!m_frame);
+    ASSERT(m_associatedDOMWindow);
+
+    // DOMWindowProperty lifetime isn't tied directly to the DOMWindow itself so it is important that it unregister
+    // itself from any DOMWindow it is associated with if that DOMWindow is going away.
+    if (m_associatedDOMWindow)
+        m_associatedDOMWindow->unregisterProperty(this);
+    m_associatedDOMWindow = 0;
+    m_frame = 0;
+}
+
+void DOMWindowProperty::willDestroyGlobalObjectInFrame()
+{
+    // If the property is getting this callback it must have been created with a Frame/DOMWindow and it should still have them.
+    ASSERT(m_frame);
+    ASSERT(m_associatedDOMWindow);
+
+    // DOMWindowProperty lifetime isn't tied directly to the DOMWindow itself so it is important that it unregister
+    // itself from any DOMWindow it is associated with if that DOMWindow is going away.
+    if (m_associatedDOMWindow)
+        m_associatedDOMWindow->unregisterProperty(this);
+    m_associatedDOMWindow = 0;
+    m_frame = 0;
+}
+
+void DOMWindowProperty::willDetachGlobalObjectFromFrame()
+{
+    // If the property is getting this callback it must have been created with a Frame/DOMWindow and it should still have them.
+    ASSERT(m_frame);
+    ASSERT(m_associatedDOMWindow);
 }
 
 }

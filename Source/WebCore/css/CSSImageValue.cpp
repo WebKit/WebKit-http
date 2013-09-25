@@ -82,8 +82,8 @@ StyleCachedImage* CSSImageValue::cachedImage(CachedResourceLoader* loader, const
         m_accessedImage = true;
 
         ResourceRequest request(loader->document()->completeURL(url));
-        if (CachedImage* cachedImage = loader->requestImage(request))
-            m_image = StyleCachedImage::create(cachedImage);
+        if (CachedResourceHandle<CachedImage> cachedImage = loader->requestImage(request))
+            m_image = StyleCachedImage::create(cachedImage.get());
     }
 
     return (m_image && m_image->isCachedImage()) ? static_cast<StyleCachedImage*>(m_image.get()) : 0;
@@ -105,6 +105,14 @@ void CSSImageValue::clearCachedImage()
 String CSSImageValue::customCssText() const
 {
     return "url(" + quoteCSSURLIfNeeded(m_url) + ")";
+}
+
+PassRefPtr<CSSValue> CSSImageValue::cloneForCSSOM() const
+{
+    // NOTE: We expose CSSImageValues as URI primitive values in CSSOM to maintain old behavior.
+    RefPtr<CSSPrimitiveValue> uriValue = CSSPrimitiveValue::create(m_url, CSSPrimitiveValue::CSS_URI);
+    uriValue->setCSSOMSafe();
+    return uriValue.release();
 }
 
 } // namespace WebCore

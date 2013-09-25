@@ -21,7 +21,6 @@
 #include "config.h"
 #include "StepRange.h"
 
-#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include <wtf/MathExtras.h>
@@ -33,54 +32,138 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-StepRange::StepRange(const HTMLInputElement* element)
+StepRange::StepRange()
+    : m_maximum(100)
+    , m_minimum(0)
+    , m_step(1)
+    , m_stepBase(0)
+    , m_hasStep(false)
 {
-    step = 1;
-    const AtomicString& precisionValue = element->fastGetAttribute(precisionAttr);
-    if (!precisionValue.isNull())
-        hasStep = !equalIgnoringCase(precisionValue, "float");
-    else
-        hasStep = element->getAllowedValueStep(&step);
-
-    maximum = element->maximum();
-    minimum = element->minimum();
 }
 
-double StepRange::clampValue(double value)
+StepRange::StepRange(const StepRange& stepRange)
+    : m_maximum(stepRange.m_maximum)
+    , m_minimum(stepRange.m_minimum)
+    , m_step(stepRange.m_step)
+    , m_stepBase(stepRange.m_stepBase)
+    , m_stepDescription(stepRange.m_stepDescription)
+    , m_hasStep(stepRange.m_hasStep)
 {
-    double clampedValue = max(minimum, min(value, maximum));
-    if (!hasStep)
-        return clampedValue;
-    // Rounds clampedValue to minimum + N * step.
-    clampedValue = minimum + round((clampedValue - minimum) / step) * step;
-    if (clampedValue > maximum)
-       clampedValue -= step;
-    ASSERT(clampedValue >= minimum);
-    ASSERT(clampedValue <= maximum);
+}
+
+StepRange::StepRange(const InputNumber& stepBase, const InputNumber& minimum, const InputNumber& maximum, const InputNumber& step, const StepDescription& stepDescription)
+    : m_maximum(maximum)
+    , m_minimum(minimum)
+    , m_step(step.isFinite() ? step : 1)
+    , m_stepBase(stepBase.isFinite() ? stepBase : 1)
+    , m_stepDescription(stepDescription)
+    , m_hasStep(step.isFinite())
+{
+    ASSERT(m_maximum.isFinite());
+    ASSERT(m_minimum.isFinite());
+    ASSERT(m_step.isFinite());
+    ASSERT(m_stepBase.isFinite());
+}
+
+InputNumber StepRange::acceptableError() const
+{
+    // FIXME: We should use DBL_MANT_DIG instead of FLT_MANT_DIG regarding to HTML5 specification.
+    DEFINE_STATIC_LOCAL(const Decimal, twoPowerOfFloatMantissaBits, (Decimal::Positive, 0, UINT64_C(1) << FLT_MANT_DIG));
+    return m_step / twoPowerOfFloatMantissaBits;
+}
+
+InputNumber StepRange::alignValueForStep(const InputNumber& currentValue, const InputNumber& newValue) const
+{
+    DEFINE_STATIC_LOCAL(const Decimal, tenPowerOf21, (Decimal::Positive, 21, 1));
+    if (newValue >= tenPowerOf21)
+        return newValue;
+
+    return stepMismatch(currentValue) ? newValue : roundByStep(newValue, m_stepBase);
+}
+
+InputNumber StepRange::clampValue(const InputNumber& value) const
+{
+    const InputNumber inRangeValue = max(m_minimum, min(value, m_maximum));
+    if (!m_hasStep)
+        return inRangeValue;
+    // Rounds inRangeValue to minimum + N * step.
+    const InputNumber roundedValue = roundByStep(inRangeValue, m_minimum);
+    const InputNumber clampedValue = roundedValue > m_maximum ? roundedValue - m_step : roundedValue;
+    ASSERT(clampedValue >= m_minimum);
+    ASSERT(clampedValue <= m_maximum);
     return clampedValue;
 }
 
-double StepRange::clampValue(const String& stringValue)
+InputNumber StepRange::parseStep(AnyStepHandling anyStepHandling, const StepDescription& stepDescription, const String& stepString)
 {
-    double value;
-    bool parseSuccess = parseToDoubleForNumberType(stringValue, &value);
-    if (!parseSuccess)
-        value = (minimum + maximum) / 2;
-    return clampValue(value);
+    if (stepString.isEmpty())
+        return stepDescription.defaultValue();
+
+    if (equalIgnoringCase(stepString, "any")) {
+        switch (anyStepHandling) {
+        case RejectAny:
+            return Decimal::nan();
+        case AnyIsDefaultStep:
+            return stepDescription.defaultValue();
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+
+    Decimal step = parseToDecimalForNumberType(stepString);
+    if (!step.isFinite() || step <= 0)
+        return stepDescription.defaultValue();
+
+    switch (stepDescription.stepValueShouldBe) {
+    case StepValueShouldBeReal:
+        step *= stepDescription.stepScaleFactor;
+        break;
+    case ParsedStepValueShouldBeInteger:
+        // For date, month, and week, the parsed value should be an integer for some types.
+        step = max(step.round(), Decimal(1));
+        step *= stepDescription.stepScaleFactor;
+        break;
+    case ScaledStepValueShouldBeInteger:
+        // For datetime, datetime-local, time, the result should be an integer.
+        step *= stepDescription.stepScaleFactor;
+        step = max(step.round(), Decimal(1));
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    ASSERT(step > 0);
+    return step;
 }
 
-double StepRange::valueFromElement(HTMLInputElement* element, bool* wasClamped)
+InputNumber StepRange::roundByStep(const InputNumber& value, const InputNumber& base) const
 {
-    double oldValue;
-    bool parseSuccess = parseToDoubleForNumberType(element->value(), &oldValue);
-    if (!parseSuccess)
-        oldValue = (minimum + maximum) / 2;
-    double newValue = clampValue(oldValue);
-
-    if (wasClamped)
-        *wasClamped = !parseSuccess || newValue != oldValue;
-
-    return newValue;
+    return base + ((value - base) / m_step).round() * m_step;
 }
 
+bool StepRange::stepMismatch(const InputNumber& valueForCheck) const
+{
+    if (!m_hasStep)
+        return false;
+    if (!valueForCheck.isFinite())
+        return false;
+    const InputNumber value = (valueForCheck - m_stepBase).abs();
+    if (!value.isFinite())
+        return false;
+    // InputNumber's fractional part size is DBL_MAN_DIG-bit. If the current value
+    // is greater than step*2^DBL_MANT_DIG, the following computation for
+    // remainder makes no sense.
+    DEFINE_STATIC_LOCAL(const Decimal, twoPowerOfDoubleMantissaBits, (Decimal::Positive, 0, UINT64_C(1) << DBL_MANT_DIG));
+    if (value / twoPowerOfDoubleMantissaBits > m_step)
+        return false;
+    // The computation follows HTML5 4.10.7.2.10 `The step attribute' :
+    // ... that number subtracted from the step base is not an integral multiple
+    // of the allowed value step, the element is suffering from a step mismatch.
+    const InputNumber remainder = (value - m_step * (value / m_step).round()).abs();
+    // Accepts erros in lower fractional part which IEEE 754 single-precision
+    // can't represent.
+    const InputNumber computedAcceptableError = acceptableError();
+    return computedAcceptableError < remainder && remainder < (m_step - computedAcceptableError);
 }
+
+} // namespace WebCore

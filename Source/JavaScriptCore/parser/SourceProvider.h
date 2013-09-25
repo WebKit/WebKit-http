@@ -40,6 +40,8 @@ namespace JSC {
 
     class SourceProvider : public RefCounted<SourceProvider> {
     public:
+        static const intptr_t nullID = 1;
+        
         SourceProvider(const UString& url, const TextPosition& startPosition, SourceProviderCache* cache = 0)
             : m_url(url)
             , m_startPosition(startPosition)
@@ -61,7 +63,13 @@ namespace JSC {
         
         const UString& url() { return m_url; }
         TextPosition startPosition() const { return m_startPosition; }
-        intptr_t asID() { return reinterpret_cast<intptr_t>(this); }
+        intptr_t asID()
+        {
+            ASSERT(this);
+            if (!this) // Be defensive in release mode.
+                return nullID;
+            return reinterpret_cast<intptr_t>(this);
+        }
 
         bool isValid() const { return m_validated; }
         void setValid() { m_validated = true; }

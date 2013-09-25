@@ -27,6 +27,8 @@
 #define Operands_h
 
 #include "CallFrame.h"
+#include "JSObject.h"
+#include "ScopeChain.h"
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -122,6 +124,16 @@ public:
         }
         
         setLocal(operand, value);
+    }
+    
+    void setOperandFirstTime(int operand, const T& value)
+    {
+        if (operandIsArgument(operand)) {
+            setArgumentFirstTime(operandToArgument(operand), value);
+            return;
+        }
+        
+        setLocalFirstTime(operand, value);
     }
     
     void clear()

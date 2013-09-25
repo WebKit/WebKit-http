@@ -99,25 +99,25 @@ bool SVGAElement::isSupportedAttribute(const QualifiedName& attrName)
     return supportedAttributes.contains<QualifiedName, SVGAttributeHashTranslator>(attrName);
 }
 
-void SVGAElement::parseAttribute(Attribute* attr)
+void SVGAElement::parseAttribute(const Attribute& attribute)
 {
-    if (!isSupportedAttribute(attr->name())) {
-        SVGStyledTransformableElement::parseAttribute(attr);
+    if (!isSupportedAttribute(attribute.name())) {
+        SVGStyledTransformableElement::parseAttribute(attribute);
         return;
     }
 
-    if (attr->name() == SVGNames::targetAttr) {
-        setSVGTargetBaseValue(attr->value());
+    if (attribute.name() == SVGNames::targetAttr) {
+        setSVGTargetBaseValue(attribute.value());
         return;
     }
 
-    if (SVGURIReference::parseAttribute(attr))
+    if (SVGURIReference::parseAttribute(attribute))
         return;
-    if (SVGTests::parseAttribute(attr))
+    if (SVGTests::parseAttribute(attribute))
         return;
-    if (SVGLangSpace::parseAttribute(attr))
+    if (SVGLangSpace::parseAttribute(attribute))
         return;
-    if (SVGExternalResourcesRequired::parseAttribute(attr))
+    if (SVGExternalResourcesRequired::parseAttribute(attribute))
         return;
 
     ASSERT_NOT_REACHED();
@@ -236,19 +236,6 @@ bool SVGAElement::childShouldCreateRenderer(const NodeRenderingContext& childCon
         return parentNode()->childShouldCreateRenderer(childContext);
 
     return SVGElement::childShouldCreateRenderer(childContext);
-}
-
-void SVGAElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
-{
-    SVGStyledTransformableElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
-
-    if (changedByParser || !renderer())
-        return;
-
-    // Invalidate the TextPosition cache in SVGTextLayoutAttributesBuilder as it may now point
-    // to no-longer existing SVGTextPositioningElements and thus needs to be rebuilt.
-    if (RenderSVGText* textRenderer = RenderSVGText::locateRenderSVGTextAncestor(renderer()))
-        textRenderer->invalidateTextPositioningElements();
 }
 
 } // namespace WebCore

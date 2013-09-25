@@ -39,6 +39,9 @@
  *     were changed due new layout, script actions or any other events.
  *  - "editorclient,contents,changed", void: reports that editor client's
  *    contents were changed
+ *  - "icon,changed", void: frame favicon changed.
+ *  - "intent,new", Ewk_Intent_Request*: reports new intent.
+ *  - "intent,service,register", Ewk_Intent_Service_Info*: reports new intent service registration.
  *  - "load,committed", void: reports load committed.
  *  - "load,document,finished", void: frame finished loading the document.
  *  - "load,error", const Ewk_Frame_Load_Error*: reports load failed
@@ -56,11 +59,14 @@
  *  - "load,progress", double*: load progress is changed (overall value
  *    from 0.0 to 1.0, connect to individual frames for fine grained).
  *  - "load,provisional", void: frame started provisional load.
+ *  - "load,provisional,failed", Ewk_Frame_Load_Error*: frame provisional load failed.
  *  - "load,started", void: frame started loading the document.
  *  - "mixedcontent,displayed", void: frame has loaded and displayed mixed content.
  *  - "mixedcontent,run", void: frame has loaded and run mixed content.
  *  - "navigation,first", void: first navigation was occurred.
  *  - "redirect,cancelled", void: client redirect was cancelled.
+ *  - "redirect,load,provisional", void: received server redirect for provisional load.
+ *  - "redirect,requested", const char*: url of the client redirect that will be performed.
  *  - "resource,request,new", Ewk_Frame_Resource_Request*: reports that
  *    there's a new resource request.
  *  - "resource,request,willsend", Ewk_Frame_Resource_Messages*: a resource will be requested.
@@ -68,7 +74,7 @@
  *  - "resource,response,received", Ewk_Frame_Resource_Response*: reports that a response
  *    to a resource request was received.
  *  - "state,save", void: frame's state will be saved as a history item.
- *  - "title,changed", const char*: title of the main frame was changed.
+ *  - "title,changed", Ewk_Text_With_Direction*: title of the main frame was changed.
  *  - "uri,changed", const char*: uri of the main frame was changed.
  *  - "xss,detected", Ewk_Frame_Xss_Notification*: reflected XSS is encountered in the page and suppressed.
  */
@@ -76,6 +82,7 @@
 #ifndef ewk_frame_h
 #define ewk_frame_h
 
+#include "ewk_intent.h"
 #include "ewk_security_origin.h"
 
 #include <Evas.h>
@@ -135,6 +142,8 @@ typedef struct _Ewk_Frame_Resource_Response Ewk_Frame_Resource_Response;
 struct _Ewk_Frame_Resource_Response {
     const char *url; /**< url of the resource */
     int status_code; /**< http status code */
+    unsigned long identifier; /**< identifier of resource */
+    const char *mime_type; /**< MIME type of the resource */
 };
 
 /// Creates a type name for _Ewk_Frame_Resource_Messages.
@@ -143,6 +152,21 @@ typedef struct _Ewk_Frame_Resource_Messages Ewk_Frame_Resource_Messages;
 struct _Ewk_Frame_Resource_Messages {
     Ewk_Frame_Resource_Request *request; /**< resource request */
     Ewk_Frame_Resource_Response *redirect_response; /**< redirect response, can not be changed */
+};
+
+/// Enum containing text directionality values.
+typedef enum {
+    EWK_TEXT_DIRECTION_DEFAULT, /**< Natural writing direction ("inherit") */
+    EWK_TEXT_DIRECTION_LEFT_TO_RIGHT,
+    EWK_TEXT_DIRECTION_RIGHT_TO_LEFT
+} Ewk_Text_Direction;
+
+/// Creates a type name for Ewk_Text_With_Direction.
+typedef struct _Ewk_Text_With_Direction Ewk_Text_With_Direction;
+
+struct _Ewk_Text_With_Direction {
+    const char *string;
+    Ewk_Text_Direction direction;
 };
 
 /// Creates a type name for Ewk_Frame_Xss_Notification.
@@ -160,6 +184,17 @@ struct _Ewk_Frame_Xss_Notification {
     Eina_Bool is_entire_page_blocked; /** < indicates if the entire page was blocked by XSSAuditor */
 };
 
+/// Creates a type name for Ewk_Intent_Service_Info.
+typedef struct _Ewk_Intent_Service_Info Ewk_Intent_Service_Info;
+
+struct _Ewk_Intent_Service_Info {
+    const char *action; /**< an opaque string indicating the behavior class the service supports. */
+    const char *type; /**< a string specifying the type of payload data the service can accept. */
+    const char *href; /**< service URI. */
+    const char *title; /**< A human-readable title for the service. */
+    const char *disposition; /**< A hint about whether the service can be run "inline" or in a new "window". */
+};
+
 /// Enum containing hit test data types
 typedef enum {
     EWK_HIT_TEST_RESULT_CONTEXT_DOCUMENT = 1 << 1,
@@ -170,6 +205,16 @@ typedef enum {
     EWK_HIT_TEST_RESULT_CONTEXT_EDITABLE = 1 << 6
 } Ewk_Hit_Test_Result_Context;
 
+/// Enum containing navigation types
+typedef enum  {
+    EWK_NAVIGATION_TYPE_LINK_CLICKED,
+    EWK_NAVIGATION_TYPE_FORM_SUBMITTED,
+    EWK_NAVIGATION_TYPE_BACK_FORWARD,
+    EWK_NAVIGATION_TYPE_RELOAD,
+    EWK_NAVIGATION_TYPE_FORM_RESUBMITTED,
+    EWK_NAVIGATION_TYPE_OTHER
+} Ewk_Navigation_Type;
+
 /// Creates a type name for _Ewk_Hit_Test.
 typedef struct _Ewk_Hit_Test Ewk_Hit_Test;
 /// Structure used to report hit test result.
@@ -179,7 +224,7 @@ struct _Ewk_Hit_Test {
     struct {
         int x, y, w, h;
     } bounding_box; /**< DEPRECATED, see ewk_frame_hit_test_new() */
-    const char *title; /**< title of the element */
+    Ewk_Text_With_Direction title; /**< title of the element */
     const char *alternate_text; /**< the alternate text for image, area, input and applet */
     Evas_Object *frame; /**< the pointer to frame where hit test was requested */
     struct {
@@ -334,7 +379,7 @@ EAPI const char  *ewk_frame_uri_get(const Evas_Object *o);
  *
  * @return frame title on success or @c 0 on failure
  */
-EAPI const char  *ewk_frame_title_get(const Evas_Object *o);
+EAPI const Ewk_Text_With_Direction  *ewk_frame_title_get(const Evas_Object *o);
 
 /**
  * Gets the name of this frame.
@@ -392,7 +437,7 @@ EAPI Eina_Bool    ewk_frame_contents_set(Evas_Object *o, const char *contents, s
  * @param base_uri base URI to use for relative resources, may be @c 0,
  *        if provided must be an absolute uri
  * @param unreachable_uri the URI that failed to load and is getting the
- *        alternative representation
+ *        alternative representation, must @b not be @c 0
  *
  * @return @c EINA_TRUE on successful request, @c EINA_FALSE on errors
  */
@@ -670,6 +715,14 @@ EAPI void          ewk_frame_hit_test_free(Ewk_Hit_Test *hit_test);
 EAPI Ewk_Hit_Test *ewk_frame_hit_test_new(const Evas_Object *o, int x, int y);
 
 /**
+ * Delivers an intent to a target service page in the frame.
+ *
+ * @param o frame object to deliver the intent to.
+ * @param ewkIntent intent object to deliver.
+ */
+EAPI void ewk_frame_intent_deliver(const Evas_Object *o, Ewk_Intent *ewk_intent);
+
+/**
  * Sets a relative scroll of the given frame.
  *
  * This function does scroll @a dx and @a dy pixels
@@ -845,11 +898,11 @@ EAPI Eina_Bool    ewk_frame_feed_mouse_move(Evas_Object *o, const Evas_Event_Mou
  * @param o frame object to feed touch event
  * @param action the action of touch event
  * @param points a list of points (Ewk_Touch_Point) to process
- * @param metaState DEPRECTAED, not supported for now
+ * @param metaState modifiers state of touch event. Users are expected to pass ORed values of the ECORE_EVENT_MODIFIER macros in Ecore_Input.h, such as ECORE_EVENT_MODIFIER_ALT or ECORE_EVENT_MODIFIER_SHIFT
  *
  * @return @c EINA_TRUE if touch event was handled, @c EINA_FALSE otherwise
  */
-EAPI Eina_Bool    ewk_frame_feed_touch_event(Evas_Object *o, Ewk_Touch_Event_Type action, Eina_List *points, int metaState);
+EAPI Eina_Bool    ewk_frame_feed_touch_event(Evas_Object *o, Ewk_Touch_Event_Type action, Eina_List *points, unsigned modifiers);
 
 /**
  * Feeds the keyboard key down event to the frame.

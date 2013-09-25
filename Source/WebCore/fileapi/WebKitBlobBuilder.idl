@@ -33,14 +33,16 @@ module html {
         Conditional=LEGACY_WEBKIT_BLOB_BUILDER,
         Constructor,
         JSGenerateToNativeObject,
-        JSNoStaticTables
+        JSNoStaticTables,
+        CallWith=ScriptExecutionContext
     ] WebKitBlobBuilder {
 #if !defined(LANGUAGE_OBJECTIVE_C)
         Blob getBlob(in [Optional, TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString contentType);
 #endif
         void append(in Blob blob);
 #if defined(ENABLE_BLOB) && ENABLE_BLOB
-        void append(in ArrayBuffer arrayBuffer);
+        [CallWith=ScriptExecutionContext] void append(in ArrayBuffer arrayBuffer);
+        void append(in ArrayBufferView arrayBufferView);
 #endif
         void append(in DOMString value, in [Optional, TreatNullAs=NullString, TreatUndefinedAs=NullString] DOMString endings) raises (DOMException);
     };

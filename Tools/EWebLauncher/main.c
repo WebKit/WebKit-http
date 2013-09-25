@@ -2,6 +2,7 @@
  * Copyright (C) 2008 INdT - Instituto Nokia de Tecnologia
  * Copyright (C) 2009, 2010 ProFUSION embedded systems
  * Copyright (C) 2009, 2010, 2011 Samsung Electronics
+ * Copyright (C) 2012 Intel Corporation
  *
  * All rights reserved.
  *
@@ -37,6 +38,7 @@
 #include <Ecore_X.h>
 #include <Edje.h>
 #include <Evas.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -99,7 +101,8 @@ static const Ecore_Getopt options = {
     "0.0.1",
     "(C)2008 INdT (The Nokia Technology Institute)\n"
     "(C)2009, 2010 ProFUSION embedded systems\n"
-    "(C)2009, 2010, 2011 Samsung Electronics",
+    "(C)2009, 2010, 2011 Samsung Electronics\n"
+    "(C)2012 Intel Corporation\n",
     "GPL",
     "Test Web Browser using the Enlightenment Foundation Libraries of WebKit",
     EINA_TRUE, {
@@ -226,22 +229,22 @@ on_ecore_evas_resize(Ecore_Evas *ee)
 }
 
 static void
-title_set(Ecore_Evas *ee, const char *title, int progress)
+title_set(Ecore_Evas *ee, const Ewk_Text_With_Direction *title, int progress)
 {
     const char *appname = "EFL Test Launcher";
     const char *separator = " - ";
     char label[4096];
     int size;
 
-    if (!title || !strcmp(title, "")) {
+    if (!title || !title->string || !strcmp(title->string, "")) {
         ecore_evas_title_set(ee, appname);
         return;
     }
 
     if (progress < 100)
-        size = snprintf(label, sizeof(label), "%s (%d%%)%s%s", title, progress, separator, appname);
+        size = snprintf(label, sizeof(label), "%s (%d%%)%s%s", title->string, progress, separator, appname);
     else
-        size = snprintf(label, sizeof(label), "%s %s%s", title, separator, appname);
+        size = snprintf(label, sizeof(label), "%s %s%s", title->string, separator, appname);
 
     if (size >= (int)sizeof(label))
         return;
@@ -253,7 +256,7 @@ static void
 on_title_changed(void *user_data, Evas_Object *webview, void *event_info)
 {
     ELauncher *app = (ELauncher *)user_data;
-    const char *title = (const char *)event_info;
+    const Ewk_Text_With_Direction *title = (const Ewk_Text_With_Direction *)event_info;
 
     title_set(app->ee, title, 100);
 }
@@ -489,7 +492,7 @@ on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
                    x, y,
                    ht->x, ht->y,
                    ht->bounding_box.x, ht->bounding_box.y, ht->bounding_box.w, ht->bounding_box.h,
-                   ht->title,
+                   ht->title.string,
                    ht->alternate_text,
                    ht->frame, evas_object_name_get(ht->frame),
                    ht->link.text,
@@ -552,6 +555,37 @@ on_key_down(void *data, Evas *e, Evas_Object *obj, void *event_info)
     } else if (!strcmp(ev->key, "e") && ctrlPressed) {
         info("Render resumed");
         ewk_view_enable_render(obj);
+    } else if (!strcmp(ev->key, "s") && ctrlPressed) {
+        Evas_Object *frame = ewk_view_frame_main_get(obj);
+        Ewk_Security_Origin *origin = ewk_frame_security_origin_get(frame);
+        printf("Security origin information:\n"
+               "  protocol=%s\n"
+               "  host=%s\n"
+               "  port=%d\n"
+               "  web database quota=%" PRIu64 "\n",
+               ewk_security_origin_protocol_get(origin),
+               ewk_security_origin_host_get(origin),
+               ewk_security_origin_port_get(origin),
+               ewk_security_origin_web_database_quota_get(origin));
+
+        Eina_List *databaseList = ewk_security_origin_web_database_get_all(origin);
+        Eina_List *listIterator = 0;
+        Ewk_Web_Database *database;
+        EINA_LIST_FOREACH(databaseList, listIterator, database)
+            printf("Database information:\n"
+                   "  name=%s\n"
+                   "  display name=%s\n"
+                   "  filename=%s\n"
+                   "  expected size=%" PRIu64 "\n"
+                   "  size=%" PRIu64 "\n",
+                   ewk_web_database_name_get(database),
+                   ewk_web_database_display_name_get(database),
+                   ewk_web_database_filename_get(database),
+                   ewk_web_database_expected_size_get(database),
+                   ewk_web_database_size_get(database));
+
+        ewk_security_origin_free(origin);
+        ewk_web_database_list_free(databaseList);
     }
 }
 

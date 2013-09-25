@@ -25,6 +25,9 @@
  */
 
 #include "config.h"
+
+#if HAVE(ACCESSIBILITY)
+
 #include "AXObjectCache.h"
 
 #include "AccessibilityObject.h"
@@ -39,16 +42,15 @@
 
 namespace WebCore {
 
+
 void AXObjectCache::detachWrapper(AccessibilityObject* obj)
 {
-    // In Chromium, AccessibilityObjects are wrapped lazily.
-    if (AccessibilityObjectWrapper* wrapper = obj->wrapper())
-        wrapper->detach();
+    // In Chromium, AccessibilityObjects are not wrapped.
 }
 
 void AXObjectCache::attachWrapper(AccessibilityObject*)
 {
-    // In Chromium, AccessibilityObjects are wrapped lazily.
+    // In Chromium, AccessibilityObjects are not wrapped.
 }
 
 void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotification notification)
@@ -135,3 +137,5 @@ void AXObjectCache::handleScrolledToAnchor(const Node* anchorNode)
 }
 
 } // namespace WebCore
+
+#endif // HAVE(ACCESSIBILITY)

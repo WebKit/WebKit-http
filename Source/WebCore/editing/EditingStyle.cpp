@@ -1033,10 +1033,8 @@ static PassRefPtr<StylePropertySet> styleFromMatchedRulesForElement(Element* ele
     RefPtr<CSSRuleList> matchedRules = element->document()->styleResolver()->styleRulesForElement(element, rulesToInclude);
     if (matchedRules) {
         for (unsigned i = 0; i < matchedRules->length(); i++) {
-            if (matchedRules->item(i)->type() == CSSRule::STYLE_RULE) {
-                RefPtr<StylePropertySet> s = static_cast<CSSStyleRule*>(matchedRules->item(i))->styleRule()->properties();
-                style->merge(s.get(), true);
-            }
+            if (matchedRules->item(i)->type() == CSSRule::STYLE_RULE)
+                style->merge(static_cast<CSSStyleRule*>(matchedRules->item(i))->styleRule()->properties(), true);
         }
     }
     
@@ -1493,7 +1491,7 @@ PassRefPtr<StylePropertySet> getPropertiesNotIn(StylePropertySet* styleWithRedun
     diffTextDecorations(result.get(), CSSPropertyTextDecoration, baseTextDecorationsInEffect.get());
     diffTextDecorations(result.get(), CSSPropertyWebkitTextDecorationsInEffect, baseTextDecorationsInEffect.get());
 
-    if (baseStyle->getPropertyCSSValueInternal(CSSPropertyFontSize) && fontWeightIsBold(result.get()) == fontWeightIsBold(baseStyle))
+    if (baseStyle->getPropertyCSSValueInternal(CSSPropertyFontWeight) && fontWeightIsBold(result.get()) == fontWeightIsBold(baseStyle))
         result->removeProperty(CSSPropertyFontWeight);
 
     if (baseStyle->getPropertyCSSValueInternal(CSSPropertyColor) && getRGBAFontColor(result.get()) == getRGBAFontColor(baseStyle))

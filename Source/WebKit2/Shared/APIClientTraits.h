@@ -37,7 +37,7 @@ template <typename ClientInterface> struct APIClientTraits {
 template <typename ClientInterface> const size_t APIClientTraits<ClientInterface>::interfaceSizesByVersion[] = { sizeof(ClientInterface) };
 
 template<> struct APIClientTraits<WKBundlePageLoaderClient> {
-    static const size_t interfaceSizesByVersion[2];
+    static const size_t interfaceSizesByVersion[3];
 };
 
 template<> struct APIClientTraits<WKBundlePageResourceLoadClient> {
@@ -57,6 +57,10 @@ template<> struct APIClientTraits<WKPageLoaderClient> {
 };
 
 template<> struct APIClientTraits<WKPageUIClient> {
+    static const size_t interfaceSizesByVersion[2];
+};
+
+template<> struct APIClientTraits<WKBundlePageFormClient> {
     static const size_t interfaceSizesByVersion[2];
 };
 

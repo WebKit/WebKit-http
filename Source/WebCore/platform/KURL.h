@@ -159,6 +159,7 @@ public:
     bool protocolIsData() const { return protocolIs("data"); }
     bool protocolIsInHTTPFamily() const;
     bool isLocalFile() const;
+    bool isBlankURL() const;
 
     bool setProtocol(const String&);
     void setHost(const String&);
@@ -282,7 +283,7 @@ bool operator!=(const String&, const KURL&);
 
 bool equalIgnoringFragmentIdentifier(const KURL&, const KURL&);
 bool protocolHostAndPortAreEqual(const KURL&, const KURL&);
-    
+
 const KURL& blankURL();
 
 // Functions to do URL operations on strings.

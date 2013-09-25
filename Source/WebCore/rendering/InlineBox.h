@@ -90,8 +90,6 @@ public:
     virtual void paint(PaintInfo&, const LayoutPoint&, LayoutUnit lineTop, LayoutUnit lineBottom);
     virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit lineTop, LayoutUnit lineBottom);
 
-    InlineBox* next() const { return m_next; }
-
     // Overloaded new operator.
     void* operator new(size_t, RenderArena*);
 
@@ -267,7 +265,9 @@ public:
     // visibleLeftEdge, visibleRightEdge are in the parent's coordinate system.
     virtual float placeEllipsisBox(bool ltr, float visibleLeftEdge, float visibleRightEdge, float ellipsisWidth, bool&);
 
+#ifndef NDEBUG
     void setHasBadParent();
+#endif
 
     int expansion() const { return m_bitfields.expansion(); }
 
@@ -420,12 +420,12 @@ inline InlineBox::~InlineBox()
 }
 #endif
 
+#ifndef NDEBUG
 inline void InlineBox::setHasBadParent()
 {
-#ifndef NDEBUG
     m_hasBadParent = true;
-#endif
 }
+#endif
 
 } // namespace WebCore
 

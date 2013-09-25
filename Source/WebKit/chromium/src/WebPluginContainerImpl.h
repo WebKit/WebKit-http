@@ -61,6 +61,8 @@ class PlatformGestureEvent;
 
 namespace WebKit {
 
+struct WebPrintParams;
+
 class ScrollbarGroup;
 class WebPlugin;
 class WebPluginLoadObserver;
@@ -110,7 +112,7 @@ public:
 
     // This cannot be null.
     WebPlugin* plugin() { return m_webPlugin; }
-    void setPlugin(WebPlugin* plugin) { m_webPlugin = plugin; }
+    void setPlugin(WebPlugin*);
 
     // Printing interface. The plugin can support custom printing
     // (which means it controls the layout, number of pages etc).
@@ -120,10 +122,8 @@ public:
     // If the plugin content should not be scaled to the printable area of
     // the page, then this method should return true.
     bool isPrintScalingDisabled() const;
-    // Sets up printing at the given print rect and printer DPI. printableArea
-    // is in points (a point is 1/72 of an inch).Returns the number of pages to
-    // be printed at these settings.
-    int printBegin(const WebCore::IntRect& printableArea, int printerDPI) const;
+    // Sets up printing at the specified WebPrintParams. Returns the number of pages to be printed at these settings.
+    int printBegin(const WebPrintParams&) const;
     // Prints the page specified by pageNumber (0-based index) into the supplied canvas.
     bool printPage(int pageNumber, WebCore::GraphicsContext* gc);
     // Ends the print operation.

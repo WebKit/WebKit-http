@@ -268,6 +268,9 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyFontVariant:
     case CSSPropertyFontWeight:
     case CSSPropertyImageRendering:
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    case CSSPropertyImageResolution:
+#endif
     case CSSPropertyLetterSpacing:
     case CSSPropertyLineHeight:
     case CSSPropertyListStyle:
@@ -279,6 +282,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyQuotes:
     case CSSPropertyResize:
     case CSSPropertySpeak:
+    case CSSPropertyTabSize:
     case CSSPropertyTextAlign:
     case CSSPropertyTextDecoration:
     case CSSPropertyTextIndent:
@@ -512,6 +516,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitBorderStartStyle:
     case CSSPropertyWebkitBorderStartWidth:
     case CSSPropertyWebkitBoxAlign:
+    case CSSPropertyWebkitBoxDecorationBreak:
     case CSSPropertyWebkitBoxFlex:
     case CSSPropertyWebkitBoxFlexGroup:
     case CSSPropertyWebkitBoxLines:
@@ -536,23 +541,22 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
 #if ENABLE(CSS_FILTERS)
     case CSSPropertyWebkitFilter:
 #endif
+#if ENABLE(CSS3_FLEXBOX)
+    case CSSPropertyWebkitAlignContent:
+    case CSSPropertyWebkitAlignItems:
+    case CSSPropertyWebkitAlignSelf:
     case CSSPropertyWebkitFlex:
-    case CSSPropertyWebkitFlexOrder:
-    case CSSPropertyWebkitFlexPack:
-    case CSSPropertyWebkitFlexAlign:
-    case CSSPropertyWebkitFlexItemAlign:
     case CSSPropertyWebkitFlexDirection:
     case CSSPropertyWebkitFlexFlow:
-    case CSSPropertyWebkitFlexLinePack:
     case CSSPropertyWebkitFlexWrap:
+    case CSSPropertyWebkitJustifyContent:
+    case CSSPropertyWebkitOrder:
+#endif
     case CSSPropertyWebkitFontSizeDelta:
-#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyWebkitGridColumns:
     case CSSPropertyWebkitGridRows:
-
     case CSSPropertyWebkitGridColumn:
     case CSSPropertyWebkitGridRow:
-#endif
     case CSSPropertyWebkitLineClamp:
     case CSSPropertyWebkitLogicalWidth:
     case CSSPropertyWebkitLogicalHeight:
@@ -615,12 +619,15 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitTransitionProperty:
     case CSSPropertyWebkitTransitionTimingFunction:
     case CSSPropertyWebkitUserDrag:
+#if ENABLE(CSS_REGIONS)
     case CSSPropertyWebkitFlowInto:
     case CSSPropertyWebkitFlowFrom:
     case CSSPropertyWebkitRegionOverflow:
     case CSSPropertyWebkitRegionBreakAfter:
     case CSSPropertyWebkitRegionBreakBefore:
     case CSSPropertyWebkitRegionBreakInside:
+#endif
+#if ENABLE(CSS_EXCLUSIONS)
     case CSSPropertyWebkitWrap:
     case CSSPropertyWebkitWrapFlow:
     case CSSPropertyWebkitWrapMargin:
@@ -628,6 +635,7 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID propertyID)
     case CSSPropertyWebkitShapeInside:
     case CSSPropertyWebkitShapeOutside:
     case CSSPropertyWebkitWrapThrough:
+#endif
 #if ENABLE(SVG)
     case CSSPropertyClipPath:
     case CSSPropertyMask:

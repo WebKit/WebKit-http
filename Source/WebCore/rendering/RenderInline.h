@@ -41,15 +41,15 @@ public:
     virtual LayoutUnit marginRight() const;
     virtual LayoutUnit marginTop() const;
     virtual LayoutUnit marginBottom() const;
-    virtual LayoutUnit marginBefore() const;
-    virtual LayoutUnit marginAfter() const;
-    virtual LayoutUnit marginStart() const;
-    virtual LayoutUnit marginEnd() const;
+    virtual LayoutUnit marginBefore(const RenderStyle* otherStyle = 0) const;
+    virtual LayoutUnit marginAfter(const RenderStyle* otherStyle = 0) const;
+    virtual LayoutUnit marginStart(const RenderStyle* otherStyle = 0) const;
+    virtual LayoutUnit marginEnd(const RenderStyle* otherStyle = 0) const;
 
     virtual void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const;
     virtual void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const;
 
-    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&) const;
+    virtual LayoutSize offsetFromContainer(RenderObject*, const LayoutPoint&, bool* offsetDependsOnPoint = 0) const;
 
     IntRect linesBoundingBox() const;
     LayoutRect linesVisualOverflowBoundingBox() const;
@@ -57,6 +57,7 @@ public:
     InlineFlowBox* createAndAppendInlineFlowBox();
 
     void dirtyLineBoxes(bool fullLayout);
+    void deleteLineBoxTree();
 
     RenderLineBoxList* lineBoxes() { return &m_lineBoxes; }
     const RenderLineBoxList* lineBoxes() const { return &m_lineBoxes; }
@@ -83,6 +84,8 @@ public:
     void setAlwaysCreateLineBoxes() { m_alwaysCreateLineBoxes = true; }
     void updateAlwaysCreateLineBoxes(bool fullLayout);
 
+    virtual LayoutRect localCaretRect(InlineBox*, int, LayoutUnit* extraWidthToEndOfLine) OVERRIDE;
+
 protected:
     virtual void willBeDestroyed();
 
@@ -98,12 +101,14 @@ private:
 
     virtual bool isRenderInline() const { return true; }
 
-    FloatRect culledInlineBoundingBox(const RenderInline* container) const;
     LayoutRect culledInlineVisualOverflowBoundingBox() const;
     InlineBox* culledInlineFirstLineBox() const;
     InlineBox* culledInlineLastLineBox() const;
-    void culledInlineAbsoluteRects(const RenderInline* container, Vector<IntRect>&, const LayoutSize&) const;
-    void culledInlineAbsoluteQuads(const RenderInline* container, Vector<FloatQuad>&) const;
+
+    template<typename GeneratorContext>
+    void generateLineBoxRects(GeneratorContext yield) const;
+    template<typename GeneratorContext>
+    void generateCulledLineBoxRects(GeneratorContext yield, const RenderInline* container) const;
 
     void addChildToContinuation(RenderObject* newChild, RenderObject* beforeChild);
     virtual void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = 0);
@@ -130,7 +135,8 @@ private:
     virtual LayoutRect rectWithOutlineForRepaint(RenderBoxModelObject* repaintContainer, LayoutUnit outlineWidth) const;
     virtual void computeRectForRepaint(RenderBoxModelObject* repaintContainer, LayoutRect&, bool fixed) const;
 
-    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState&, bool* wasFixed = 0) const;
+    virtual void mapLocalToContainer(RenderBoxModelObject* repaintContainer, bool fixed, bool useTransforms, TransformState&, ApplyContainerFlipOrNot = ApplyContainerFlip, bool* wasFixed = 0) const;
+    virtual const RenderObject* pushMappingToContainer(const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap&) const;
 
     virtual VisiblePosition positionForPoint(const LayoutPoint&);
 

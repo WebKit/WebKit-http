@@ -152,6 +152,11 @@ class BugzillaQueries(object):
 
     def _fetch_bugs_from_advanced_query(self, query):
         results_page = self._load_query(query)
+        # Some simple searches can return a single result.
+        results_url = results_page.geturl()
+        if results_url.find("/show_bug.cgi?id=") != -1:
+            bug_id = int(results_url.split("=")[-1])
+            return [self._fetch_bug(bug_id)]
         if not self._parse_result_count(results_page):
             return []
         # Bugzilla results pages have an "XML" submit button at the bottom
@@ -303,7 +308,7 @@ class Bugzilla(object):
     def bug_url_for_bug_id(self, bug_id, xml=False):
         if not bug_id:
             return None
-        content_type = "&ctype=xml" if xml else ""
+        content_type = "&ctype=xml&excludefield=attachmentdata" if xml else ""
         return "%sshow_bug.cgi?id=%s%s" % (config_urls.bug_server_url, bug_id, content_type)
 
     def short_bug_url_for_bug_id(self, bug_id):
@@ -493,6 +498,7 @@ class Bugzilla(object):
             self.browser.select_form(name="login")
             self.browser['Bugzilla_login'] = username
             self.browser['Bugzilla_password'] = password
+            self.browser.find_control("Bugzilla_restrictlogin").items[0].selected = False
             response = self.browser.submit()
 
             match = re.search("<title>(.+?)</title>", response.read())
@@ -509,10 +515,21 @@ class Bugzilla(object):
                 self.authenticated = True
                 self.username = username
 
+    # FIXME: Use enum instead of two booleans
     def _commit_queue_flag(self, mark_for_landing, mark_for_commit_queue):
         if mark_for_landing:
+            user = self.committers.account_by_email(self.username)
+            mark_for_commit_queue = True
+            if not user:
+                log("Your Bugzilla login is not listed in committers.py. Uploading with cq? instead of cq+")
+                mark_for_landing = False
+            elif not user.can_commit:
+                log("You're not a committer yet or haven't updated committers.py yet. Uploading with cq? instead of cq+")
+                mark_for_landing = False
+
+        if mark_for_landing:
             return '+'
-        elif mark_for_commit_queue:
+        if mark_for_commit_queue:
             return '?'
         return 'X'
 

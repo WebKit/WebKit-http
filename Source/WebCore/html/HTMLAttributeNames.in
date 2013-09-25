@@ -58,6 +58,7 @@ bgcolor
 bgproperties
 border
 bordercolor
+capture
 cellpadding
 cellspacing
 char
@@ -92,6 +93,7 @@ dir
 direction
 dirname
 disabled
+disposition
 download
 draggable
 webkitdropzone
@@ -251,6 +253,9 @@ onwebkitkeyadded
 onwebkitkeyerror
 onwebkitkeymessage
 onwebkitneedkey
+onwebkitsourceclose
+onwebkitsourceended
+onwebkitsourceopen
 onwebkittransitionend
 open
 optimum

@@ -49,7 +49,7 @@ SET(JavaScriptCore_SOURCES
     bytecode/MethodOfGettingAValueProfile.cpp
     bytecode/Opcode.cpp
     bytecode/PolymorphicPutByIdList.cpp
-    bytecode/PredictedType.cpp
+    bytecode/SpeculatedType.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/SamplingTool.cpp
     bytecode/StructureStubInfo.cpp
@@ -58,12 +58,16 @@ SET(JavaScriptCore_SOURCES
     bytecompiler/NodesCodegen.cpp
 
     dfg/DFGAbstractState.cpp
+    dfg/DFGArgumentsSimplificationPhase.cpp
     dfg/DFGAssemblyHelpers.cpp
     dfg/DFGByteCodeParser.cpp
     dfg/DFGCapabilities.cpp
     dfg/DFGCFAPhase.cpp
+    dfg/DFGCFGSimplificationPhase.cpp
+    dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGCorrectableJumpPoint.cpp
     dfg/DFGCSEPhase.cpp
+    dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGFixupPhase.cpp
     dfg/DFGGraph.cpp
@@ -83,6 +87,7 @@ SET(JavaScriptCore_SOURCES
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
     dfg/DFGThunks.cpp
+    dfg/DFGValidate.cpp
     dfg/DFGVirtualRegisterAllocationPhase.cpp
 
     heap/BlockAllocator.cpp
@@ -92,6 +97,7 @@ SET(JavaScriptCore_SOURCES
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
+    heap/IncrementalSweeper.cpp
     heap/MachineStackMarker.cpp
     heap/MarkedAllocator.cpp
     heap/MarkedBlock.cpp
@@ -180,15 +186,23 @@ SET(JavaScriptCore_SOURCES
     runtime/JSObject.cpp
     runtime/JSONObject.cpp
     runtime/JSPropertyNameIterator.cpp
+    runtime/JSSegmentedVariableObject.cpp
     runtime/JSStaticScopeObject.cpp
     runtime/JSString.cpp
     runtime/JSStringJoiner.cpp
+    runtime/JSSymbolTableObject.cpp
     runtime/JSValue.cpp
     runtime/JSVariableObject.cpp
     runtime/JSWrapperObject.cpp
     runtime/LiteralParser.cpp
     runtime/Lookup.cpp
     runtime/MathObject.cpp
+    runtime/NameConstructor.cpp
+    runtime/NameConstructor.h
+    runtime/NameInstance.cpp
+    runtime/NameInstance.h
+    runtime/NamePrototype.cpp
+    runtime/NamePrototype.h
     runtime/NativeErrorConstructor.cpp
     runtime/NativeErrorPrototype.cpp
     runtime/NumberConstructor.cpp
@@ -240,6 +254,7 @@ SET(JavaScriptCore_LUT_FILES
     runtime/JSGlobalObject.cpp
     runtime/JSONObject.cpp
     runtime/MathObject.cpp
+    runtime/NamePrototype.cpp
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp

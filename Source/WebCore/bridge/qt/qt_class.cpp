@@ -66,12 +66,12 @@ const char* QtClass::name() const
 // and not get wrapped in RuntimeMethod). Also, use this for methods,
 // so we can cache the object and return the same object for the same
 // identifier.
-JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, const Identifier& identifier)
+JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName identifier)
 {
     QtInstance* qtinst = static_cast<QtInstance*>(inst);
 
-    const UString& ustring = identifier.ustring();
-    const QByteArray name = QString(reinterpret_cast<const QChar*>(ustring.characters()), ustring.length()).toAscii();
+    UString ustring(identifier.publicName());
+    const QByteArray name = QString(reinterpret_cast<const QChar*>(ustring.characters()), ustring.length()).toLatin1();
 
     // First see if we have a cache hit
     JSObject* val = qtinst->m_methods.value(name).get();
@@ -86,8 +86,8 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, const Identifie
     if (normal.contains('(') && (index = m_metaObject->indexOfMethod(normal)) != -1) {
         QMetaMethod m = m_metaObject->method(index);
         if (m.access() != QMetaMethod::Private) {
-            QtRuntimeMetaMethod* val = QtRuntimeMetaMethod::create(exec, identifier, static_cast<QtInstance*>(inst), index, normal, false);
-            qtinst->m_methods.insert(name, WriteBarrier<JSObject>(exec->globalData(), qtinst->createRuntimeObject(exec), val));
+            QtRuntimeMetaMethod* val = QtRuntimeMetaMethod::create(exec, ustring, static_cast<QtInstance*>(inst), index, normal, false);
+            qtinst->m_methods.insert(name, val);
             return val;
         }
     }
@@ -99,14 +99,18 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, const Identifie
         if (m.access() == QMetaMethod::Private)
             continue;
 
+#if !HAVE(QT5)
         int iter = 0;
         const char* signature = m.signature();
         while (signature[iter] && signature[iter] != '(')
             ++iter;
 
         if (normal == QByteArray::fromRawData(signature, iter)) {
-            QtRuntimeMetaMethod* val = QtRuntimeMetaMethod::create(exec, identifier, static_cast<QtInstance*>(inst), index, normal, false);
-            qtinst->m_methods.insert(name, WriteBarrier<JSObject>(exec->globalData(), qtinst->createRuntimeObject(exec), val));
+#else
+        if (normal == m.name()) {
+#endif
+            QtRuntimeMetaMethod* val = QtRuntimeMetaMethod::create(exec, ustring, static_cast<QtInstance*>(inst), index, normal, false);
+            qtinst->m_methods.insert(name, val);
             return val;
         }
     }
@@ -115,7 +119,7 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, const Identifie
 }
 
 // This functionality is handled by the fallback case above...
-MethodList QtClass::methodsNamed(const Identifier&, Instance*) const
+MethodList QtClass::methodsNamed(PropertyName, Instance*) const
 {
     return MethodList();
 }
@@ -123,15 +127,15 @@ MethodList QtClass::methodsNamed(const Identifier&, Instance*) const
 // ### we may end up with a different search order than QtScript by not
 // folding this code into the fallbackMethod above, but Fields propagate out
 // of the binding code
-Field* QtClass::fieldNamed(const Identifier& identifier, Instance* instance) const
+Field* QtClass::fieldNamed(PropertyName identifier, Instance* instance) const
 {
     // Check static properties first
     QtInstance* qtinst = static_cast<QtInstance*>(instance);
 
     QObject* obj = qtinst->getObject();
-    const UString& ustring = identifier.ustring();
+    UString ustring(identifier.publicName());
     const QString name(reinterpret_cast<const QChar*>(ustring.characters()), ustring.length());
-    const QByteArray ascii = name.toAscii();
+    const QByteArray ascii = name.toLatin1();
 
     // First check for a cached field
     QtField* f = qtinst->m_fields.value(name);

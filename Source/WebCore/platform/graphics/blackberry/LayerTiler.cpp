@@ -75,6 +75,7 @@ LayerTiler::LayerTiler(LayerWebKitThread* layer)
     , m_hasMissingTextures(false)
     , m_contentsScale(0.0)
 {
+    ref(); // This ref() is matched by a deref in layerCompositingThreadDestroyed();
 }
 
 LayerTiler::~LayerTiler()
@@ -90,9 +91,10 @@ void LayerTiler::layerWebKitThreadDestroyed()
     m_layer = 0;
 }
 
-void LayerTiler::layerCompositingThreadDestroyed()
+void LayerTiler::layerCompositingThreadDestroyed(LayerCompositingThread*)
 {
     ASSERT(isCompositingThread());
+    deref(); // Matched by ref() in constructor;
 }
 
 void LayerTiler::setNeedsDisplay(const FloatRect& dirtyRect)
@@ -119,6 +121,11 @@ void LayerTiler::updateTextureContentsIfNeeded(double scale)
             return;
         renderJobs = m_renderJobs;
     }
+
+    // There's no point in drawing contents at a higher resolution for scale
+    // invariant layers.
+    if (m_layer->sizeIsScaleInvariant())
+        scale = 1.0;
 
     bool isZoomJob = false;
     if (scale != m_contentsScale) {
@@ -349,7 +356,7 @@ void LayerTiler::commitPendingTextureUploads()
     m_pendingTextureJobs.clear();
 }
 
-void LayerTiler::layerVisibilityChanged(bool visible)
+void LayerTiler::layerVisibilityChanged(LayerCompositingThread*, bool visible)
 {
     // For visible layers, we handle the tile-level visibility
     // in the draw loop, see LayerTiler::drawTextures().
@@ -369,7 +376,7 @@ void LayerTiler::layerVisibilityChanged(bool visible)
     }
 }
 
-void LayerTiler::uploadTexturesIfNeeded()
+void LayerTiler::uploadTexturesIfNeeded(LayerCompositingThread*)
 {
     TileJobsMap tileJobsMap;
     Deque<TextureJob>::const_iterator textureJobIterEnd = m_textureJobs.end();
@@ -468,20 +475,25 @@ void LayerTiler::performTileJob(LayerTile* tile, const TextureJob& job, const In
     ASSERT_NOT_REACHED();
 }
 
-void LayerTiler::drawTextures(LayerCompositingThread* layer, int pos, int texCoord)
+void LayerTiler::drawTextures(LayerCompositingThread* layer, double scale, int pos, int texCoord)
 {
-    drawTexturesInternal(layer, pos, texCoord, false /* drawMissing */);
+    drawTexturesInternal(layer, scale, pos, texCoord, false /* drawMissing */);
 }
 
-void LayerTiler::drawMissingTextures(LayerCompositingThread* layer, int pos, int texCoord)
+void LayerTiler::drawMissingTextures(LayerCompositingThread* layer, double scale, int pos, int texCoord)
 {
-    drawTexturesInternal(layer, pos, texCoord, true /* drawMissing */);
+    drawTexturesInternal(layer, scale, pos, texCoord, true /* drawMissing */);
 }
 
-void LayerTiler::drawTexturesInternal(LayerCompositingThread* layer, int positionLocation, int texCoordLocation, bool drawMissing)
+void LayerTiler::drawTexturesInternal(LayerCompositingThread* layer, double scale, int positionLocation, int texCoordLocation, bool drawMissing)
 {
     const TransformationMatrix& drawTransform = layer->drawTransform();
-    IntSize bounds = layer->bounds();
+    FloatSize bounds = layer->bounds();
+
+    if (layer->sizeIsScaleInvariant()) {
+        bounds.setWidth(bounds.width() / scale);
+        bounds.setHeight(bounds.width() / scale);
+    }
 
     float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
     float vertices[4 * 4];
@@ -611,7 +623,7 @@ void LayerTiler::removeRenderJob(const TileIndex& index)
     m_renderJobs.remove(index);
 }
 
-void LayerTiler::deleteTextures()
+void LayerTiler::deleteTextures(LayerCompositingThread*)
 {
     // Since textures are deleted by a synchronous message
     // from WebKit thread to compositing thread, we don't need
@@ -675,6 +687,14 @@ void LayerTiler::disableTiling(bool disable)
     updateTileSize();
 }
 
+void LayerTiler::scheduleCommit()
+{
+    ASSERT(isWebKitThread());
+
+    if (m_layer)
+        m_layer->setNeedsCommit();
+}
+
 bool LayerTiler::shouldPrefillTile(const TileIndex& index)
 {
     // For now, we use the heuristic of prefilling the first screenful of tiles.
@@ -716,18 +736,7 @@ IntRect LayerTiler::rectForTile(const TileIndex& index, const IntSize& bounds)
     return IntRect(origin, size);
 }
 
-bool LayerTiler::hasDirtyTiles() const
-{
-    for (TileMap::const_iterator it = m_tilesCompositingThread.begin(); it != m_tilesCompositingThread.end(); ++it) {
-        const LayerTile* tile = (*it).second;
-        if (tile->isDirty())
-            return true;
-    }
-
-    return false;
-}
-
-void LayerTiler::bindContentsTexture()
+void LayerTiler::bindContentsTexture(LayerCompositingThread*)
 {
     ASSERT(m_tilesCompositingThread.size() == 1);
     if (m_tilesCompositingThread.size() != 1)

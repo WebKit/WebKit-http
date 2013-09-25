@@ -24,7 +24,7 @@
 #include "LayerCompositingThread.h"
 #include "LayerRenderer.h"
 
-#include <BlackBerryPlatformAnimation.h>
+#include <BlackBerryPlatformAnimationFrameRateController.h>
 #include <BlackBerryPlatformGLES2Context.h>
 #include <wtf/OwnPtr.h>
 #include <wtf/RefCounted.h>
@@ -50,7 +50,13 @@ public:
 
     ~WebPageCompositorPrivate();
 
-    bool hardwareCompositing() const;
+    // Public API
+    void prepareFrame(double animationTime);
+    void render(const WebCore::IntRect& targetRect,
+                const WebCore::IntRect& clipRect,
+                const WebCore::TransformationMatrix&,
+                const WebCore::FloatRect& contents, // This is public API, thus takes transformed contents
+                const WebCore::FloatRect& viewport);
 
     Platform::Graphics::GLES2Context* context() const { return m_context; }
     void setContext(Platform::Graphics::GLES2Context*);
@@ -58,12 +64,11 @@ public:
     WebCore::LayerCompositingThread* rootLayer() const { return m_rootLayer.get(); }
     void setRootLayer(WebCore::LayerCompositingThread*);
 
-    void commit(WebCore::LayerWebKitThread* rootLayerProxy);
+    WebCore::LayerCompositingThread* overlayLayer() const { return m_overlayLayer.get(); }
+    void setOverlayLayer(WebCore::LayerCompositingThread*);
 
-    // This is mapped from the public API, thus takes transformed contents
-    void render(const WebCore::IntRect& dstRect, const WebCore::IntRect& transformedContents);
+    WebCore::LayerCompositingThread* compositingThreadOverlayLayer() const { return m_compositingThreadOverlayLayer.get(); }
 
-    // Returns true if the WebPageCompositor draws the root layer, false if the BackingStore draws the root layer
     bool drawsRootLayer() const;
     void setDrawsRootLayer(bool drawsRootLayer) { m_drawsRootLayer = drawsRootLayer; }
 
@@ -79,26 +84,37 @@ public:
     WebCore::LayerRenderingResults lastCompositingResults() const { return m_lastCompositingResults; }
     void setLastCompositingResults(const WebCore::LayerRenderingResults& results) { m_lastCompositingResults = results; }
 
+    WebCore::Color backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(const WebCore::Color&);
+
     void releaseLayerResources();
 
     WebPagePrivate* page() const { return m_webPage; }
+    void setPage(WebPagePrivate* page) { m_webPage = page; }
     WebPageCompositorClient* client() const { return m_client; }
     void compositorDestroyed();
+
+    void addOverlay(WebCore::LayerCompositingThread*);
+    void removeOverlay(WebCore::LayerCompositingThread*);
 
 protected:
     WebPageCompositorPrivate(WebPagePrivate*, WebPageCompositorClient*);
 
 private:
     void animationFrameChanged();
+    void compositeLayers(const WebCore::TransformationMatrix&);
 
     WebPageCompositorClient* m_client;
     WebPagePrivate* m_webPage;
     Platform::Graphics::GLES2Context* m_context;
     OwnPtr<WebCore::LayerRenderer> m_layerRenderer;
     RefPtr<WebCore::LayerCompositingThread> m_rootLayer;
+    RefPtr<WebCore::LayerCompositingThread> m_overlayLayer;
+    RefPtr<WebCore::LayerCompositingThread> m_compositingThreadOverlayLayer;
     WebCore::IntRect m_layoutRectForCompositing;
     WebCore::IntSize m_contentsSizeForCompositing;
     WebCore::LayerRenderingResults m_lastCompositingResults;
+    WebCore::Color m_backgroundColor;
     bool m_drawsRootLayer;
 };
 

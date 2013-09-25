@@ -61,6 +61,7 @@
 #include "InspectorResourceAgent.h"
 #include "InspectorState.h"
 #include "InspectorTimelineAgent.h"
+#include "InspectorWebGLAgent.h"
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "PageConsoleAgent.h"
@@ -84,7 +85,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_inspectorAgent = inspectorAgentPtr.get();
     m_agents.append(inspectorAgentPtr.release());
 
-    OwnPtr<InspectorPageAgent> pageAgentPtr(InspectorPageAgent::create(m_instrumentingAgents.get(), page, m_state.get(), m_injectedScriptManager.get(), inspectorClient));
+    OwnPtr<InspectorPageAgent> pageAgentPtr(InspectorPageAgent::create(m_instrumentingAgents.get(), page, m_inspectorAgent, m_state.get(), m_injectedScriptManager.get(), inspectorClient));
     InspectorPageAgent* pageAgent = pageAgentPtr.get();
     m_pageAgent = pageAgentPtr.get();
     m_agents.append(pageAgentPtr.release());
@@ -112,7 +113,8 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     InspectorDOMStorageAgent* domStorageAgent = domStorageAgentPtr.get();
     m_agents.append(domStorageAgentPtr.release());
     m_agents.append(InspectorMemoryAgent::create(m_instrumentingAgents.get(), m_state.get(), m_page, m_domAgent));
-    m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), m_state.get(), InspectorTimelineAgent::PageInspector));
+    m_agents.append(InspectorTimelineAgent::create(m_instrumentingAgents.get(), pageAgent, m_state.get(), InspectorTimelineAgent::PageInspector,
+       inspectorClient));
     m_agents.append(InspectorApplicationCacheAgent::create(m_instrumentingAgents.get(), m_state.get(), pageAgent));
 
     OwnPtr<InspectorResourceAgent> resourceAgentPtr(InspectorResourceAgent::create(m_instrumentingAgents.get(), pageAgent, inspectorClient, m_state.get()));
@@ -143,6 +145,10 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
     m_agents.append(InspectorWorkerAgent::create(m_instrumentingAgents.get(), m_state.get()));
 #endif
 
+#if ENABLE(WEBGL)
+    m_agents.append(InspectorWebGLAgent::create(m_instrumentingAgents.get(), m_state.get(), m_injectedScriptManager.get()));
+#endif
+
     ASSERT_ARG(inspectorClient, inspectorClient);
     m_injectedScriptManager->injectedScriptHost()->init(m_inspectorAgent
         , consoleAgent
@@ -151,6 +157,7 @@ InspectorController::InspectorController(Page* page, InspectorClient* inspectorC
 #endif
         , domStorageAgent
         , m_domAgent
+        , m_debuggerAgent
     );
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
@@ -273,7 +280,6 @@ void InspectorController::restoreInspectorStateFromCookie(const String& inspecto
 
     for (Agents::iterator it = m_agents.begin(); it != m_agents.end(); ++it)
         (*it)->restore();
-    m_inspectorAgent->emitCommitLoadIfNeeded();
 }
 
 void InspectorController::setProcessId(long processId)
@@ -339,21 +345,18 @@ Node* InspectorController::highlightedNode() const
 }
 
 #if ENABLE(JAVASCRIPT_DEBUGGER)
-void InspectorController::enableProfiler()
-{
-    ErrorString error;
-    m_profilerAgent->enable(&error);
-}
-
-void InspectorController::disableProfiler()
-{
-    ErrorString error;
-    m_profilerAgent->disable(&error);
-}
-
 bool InspectorController::profilerEnabled()
 {
     return m_profilerAgent->enabled();
+}
+
+void InspectorController::setProfilerEnabled(bool enable)
+{
+    ErrorString error;
+    if (enable)
+        m_profilerAgent->enable(&error);
+    else
+        m_profilerAgent->disable(&error);
 }
 
 void InspectorController::resume()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (C) 2010 Google Inc. All rights reserved.
 # Copyright (C) 2010 Gabor Rapcsanyi <rgabor@inf.u-szeged.hu>, University of Szeged
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -76,10 +76,6 @@ class WebKitPort(Port):
         if self.name() != self.port_name:
             search_paths.append(self.port_name)
         return map(self._webkit_baseline_path, search_paths)
-
-    def path_to_test_expectations_file(self):
-        # test_expectations are always in mac/ not mac-leopard/ by convention, hence we use port_name instead of name().
-        return self._filesystem.join(self._webkit_baseline_path(self.port_name), 'test_expectations.txt')
 
     def _port_flag_for_scripts(self):
         # This is overrriden by ports which need a flag passed to scripts to distinguish the use of that port.
@@ -170,7 +166,7 @@ class WebKitPort(Port):
         process = self._start_image_diff_process(expected_contents, actual_contents, tolerance=tolerance)
         return self._read_image_diff(process)
 
-    def _start_image_diff_process(self, expected_contents, actual_contents, tolerance=None):
+    def _image_diff_command(self, tolerance=None):
         # FIXME: There needs to be a more sane way of handling default
         # values for options so that you can distinguish between a default
         # value of None and a default value that wasn't set.
@@ -179,8 +175,14 @@ class WebKitPort(Port):
                 tolerance = self.get_option('tolerance')
             else:
                 tolerance = 0.1
+
         command = [self._path_to_image_diff(), '--tolerance', str(tolerance)]
-        process = server_process.ServerProcess(self, 'ImageDiff', command)
+        return command
+
+    def _start_image_diff_process(self, expected_contents, actual_contents, tolerance=None):
+        command = self._image_diff_command(tolerance)
+        environment = self.setup_environ_for_server('ImageDiff')
+        process = server_process.ServerProcess(self, 'ImageDiff', command, environment)
 
         process.write('Content-Length: %d\n%sContent-Length: %d\n%s' % (
             len(actual_contents), actual_contents,
@@ -256,12 +258,15 @@ class WebKitPort(Port):
         """If a port makes certain features available only through runtime flags, it can override this routine to indicate which ones are available."""
         return None
 
+    def nm_command(self):
+        return 'nm'
+
     def _webcore_symbols_string(self):
         webcore_library_path = self._path_to_webcore_library()
         if not webcore_library_path:
             return None
         try:
-            return self._executive.run_command(['nm', webcore_library_path], error_handler=Executive.ignore_error)
+            return self._executive.run_command([self.nm_command(), webcore_library_path], error_handler=Executive.ignore_error)
         except OSError, e:
             _log.warn("Failed to run nm: %s.  Can't determine WebCore supported features." % e)
         return None
@@ -294,6 +299,7 @@ class WebKitPort(Port):
             "WebCoreHas3DRendering": ["animations/3d", "transforms/3d"],
             "WebGLShader": ["fast/canvas/webgl", "compositing/webgl", "http/tests/canvas/webgl"],
             "MHTMLArchive": ["mhtml"],
+            "CSSVariableValue": ["fast/css/variables"],
         }
 
     def _has_test_in_directories(self, directory_lists, test_list):
@@ -351,11 +357,11 @@ class WebKitPort(Port):
         return search_paths
 
     def test_expectations(self):
-        # This allows ports to use a combination of test_expectations.txt files and Skipped lists.
+        # This allows ports to use a combination of TestExpectations files and Skipped lists.
         expectations = ''
         expectations_path = self.path_to_test_expectations_file()
         if self._filesystem.exists(expectations_path):
-            _log.debug("Using test_expectations.txt: %s" % expectations_path)
+            _log.debug("Using test expectations: %s" % expectations_path)
             expectations = self._filesystem.read_text_file(expectations_path)
         return expectations
 
@@ -431,13 +437,17 @@ class WebKitDriver(Driver):
 
     def __init__(self, port, worker_number, pixel_tests, no_timeout=False):
         Driver.__init__(self, port, worker_number, pixel_tests, no_timeout)
-        self._driver_tempdir = port._filesystem.mkdtemp(prefix='%s-' % self._port.driver_name())
+        self._driver_tempdir = None
         # WebKitTestRunner can report back subprocess crashes by printing
         # "#CRASHED - PROCESSNAME".  Since those can happen at any time
         # and ServerProcess won't be aware of them (since the actual tool
         # didn't crash, just a subprocess) we record the crashed subprocess name here.
         self._crashed_process_name = None
         self._crashed_pid = None
+
+        # WebKitTestRunner can report back subprocesses that became unresponsive
+        # This could mean they crashed.
+        self._subprocess_was_unresponsive = False
 
         # stderr reading is scoped on a per-test (not per-block) basis, so we store the accumulated
         # stderr output, as well as if we've seen #EOF on this driver instance.
@@ -447,10 +457,8 @@ class WebKitDriver(Driver):
         self.err_seen_eof = False
         self._server_process = None
 
-    # FIXME: This may be unsafe, as python does not guarentee any ordering of __del__ calls
-    # I believe it's possible that self._port or self._port._filesystem may already be destroyed.
     def __del__(self):
-        self._port._filesystem.rmtree(str(self._driver_tempdir))
+        self.stop()
 
     def cmd_line(self, pixel_tests, per_test_args):
         cmd = self._command_wrapper(self._port.get_option('wrapper'))
@@ -475,6 +483,8 @@ class WebKitDriver(Driver):
         return cmd
 
     def _start(self, pixel_tests, per_test_args):
+        self.stop()
+        self._driver_tempdir = self._port._filesystem.mkdtemp(prefix='%s-' % self._port.driver_name())
         server_name = self._port.driver_name()
         environment = self._port.setup_environ_for_server(server_name)
         environment['DYLD_LIBRARY_PATH'] = self._port._build_path()
@@ -503,7 +513,8 @@ class WebKitDriver(Driver):
             # See http://trac.webkit.org/changeset/65537.
             self._crashed_process_name = self._server_process.name()
             self._crashed_pid = self._server_process.pid()
-        elif error_line.startswith("#CRASHED - WebProcess"):
+        elif (error_line.startswith("#CRASHED - WebProcess")
+            or error_line.startswith("#PROCESS UNRESPONSIVE - WebProcess")):
             # WebKitTestRunner uses this to report that the WebProcess subprocess crashed.
             pid = None
             m = re.search('pid (\d+)', error_line)
@@ -513,11 +524,16 @@ class WebKitDriver(Driver):
             self._crashed_pid = pid
             # FIXME: delete this after we're sure this code is working :)
             _log.debug('WebProcess crash, pid = %s, error_line = %s' % (str(pid), error_line))
+            if error_line.startswith("#PROCESS UNRESPONSIVE - WebProcess"):
+                self._subprocess_was_unresponsive = True
             return True
         return self.has_crashed()
 
     def _command_from_driver_input(self, driver_input):
-        if self.is_http_test(driver_input.test_name):
+        # FIXME: performance tests pass in full URLs instead of test names.
+        if driver_input.test_name.startswith('http://') or driver_input.test_name.startswith('https://'):
+            command = driver_input.test_name
+        elif self.is_http_test(driver_input.test_name):
             command = self.test_to_uri(driver_input.test_name)
         else:
             command = self._port.abspath_for_test(driver_input.test_name)
@@ -545,8 +561,7 @@ class WebKitDriver(Driver):
 
     def run_test(self, driver_input):
         start_time = time.time()
-        if not self._server_process:
-            self._start(driver_input.should_run_pixel_test, driver_input.args)
+        self.start(driver_input.should_run_pixel_test, driver_input.args)
         self.error_from_test = str()
         self.err_seen_eof = False
 
@@ -563,10 +578,17 @@ class WebKitDriver(Driver):
         # FIXME: We may need to also read stderr until the process dies?
         self.error_from_test += self._server_process.pop_all_buffered_stderr()
 
-        crash_log = ''
+        crash_log = None
         if self.has_crashed():
             crash_log = self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, text, self.error_from_test,
                                                   newer_than=start_time)
+
+            # If we don't find a crash log use a placeholder error message instead.
+            if not crash_log:
+                crash_log = 'no crash log found for %s:%d.' % (self._crashed_process_name, self._crashed_pid)
+                # If we were unresponsive append a message informing there may not have been a crash.
+                if self._subprocess_was_unresponsive:
+                    crash_log += '  Process failed to become responsive before timing out.'
 
         timeout = self._server_process.timed_out
         if timeout:
@@ -657,6 +679,10 @@ class WebKitDriver(Driver):
         if self._server_process:
             self._server_process.stop()
             self._server_process = None
+
+        if self._driver_tempdir:
+            self._port._filesystem.rmtree(str(self._driver_tempdir))
+            self._driver_tempdir = None
 
 
 class ContentBlock(object):

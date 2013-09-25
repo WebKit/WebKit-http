@@ -54,6 +54,8 @@
 #include "StyleResolver.h"
 #include "TiledBacking.h"
 
+#include <wtf/CurrentTime.h>
+
 #if ENABLE(CSS_FILTERS)
 #include "FilterEffectRenderer.h"
 #endif
@@ -262,10 +264,10 @@ void RenderLayerBacking::updateCompositedBounds()
         RenderLayer* rootLayer = view->layer();
 
         // Start by clipping to the view's bounds.
-        LayoutRect clippingBounds = view->layoutOverflowRect();
+        LayoutRect clippingBounds = view->unscaledDocumentRect();
 
         if (m_owningLayer != rootLayer)
-            clippingBounds.intersect(m_owningLayer->backgroundClipRect(rootLayer, 0, true).rect()); // FIXME: Incorrect for CSS regions.
+            clippingBounds.intersect(m_owningLayer->backgroundClipRect(rootLayer, 0, AbsoluteClipRects).rect()); // FIXME: Incorrect for CSS regions.
 
         LayoutPoint delta;
         m_owningLayer->convertToLayerCoords(rootLayer, delta);
@@ -322,6 +324,8 @@ bool RenderLayerBacking::updateGraphicsLayerConfiguration()
 {
     RenderLayerCompositor* compositor = this->compositor();
     RenderObject* renderer = this->renderer();
+
+    m_owningLayer->updateZOrderLists();
 
     bool layerConfigChanged = false;
     if (updateForegroundLayer(compositor->needsContentsCompositingLayer(m_owningLayer)))
@@ -461,7 +465,7 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
         // Call calculateRects to get the backgroundRect which is what is used to clip the contents of this
         // layer. Note that we call it with temporaryClipRects = true because normally when computing clip rects
         // for a compositing layer, rootLayer is the layer itself.
-        IntRect parentClipRect = pixelSnappedIntRect(m_owningLayer->backgroundClipRect(compAncestor, 0, true).rect()); // FIXME: Incorrect for CSS regions.
+        IntRect parentClipRect = pixelSnappedIntRect(m_owningLayer->backgroundClipRect(compAncestor, 0, TemporaryClipRects).rect()); // FIXME: Incorrect for CSS regions.
         ASSERT(parentClipRect != PaintInfo::infiniteRect());
         m_ancestorClippingLayer->setPosition(FloatPoint() + (parentClipRect.location() - graphicsLayerParentLocation));
         m_ancestorClippingLayer->setSize(parentClipRect.size());
@@ -907,6 +911,9 @@ bool RenderLayerBacking::containsNonEmptyRenderers() const
 // Conservative test for having no rendered children.
 bool RenderLayerBacking::hasVisibleNonCompositingDescendantLayers() const
 {
+    // FIXME: We shouldn't be called with a stale z-order lists. See bug 85512.
+    m_owningLayer->updateLayerListsIfNeeded();
+
 #if !ASSERT_DISABLED
     LayerListMutationDetector mutationChecker(m_owningLayer);
 #endif
@@ -1105,6 +1112,19 @@ bool RenderLayerBacking::paintsIntoWindow() const
     return false;
 }
 
+void RenderLayerBacking::setRequiresOwnBackingStore(bool requiresOwnBacking)
+{
+    if (requiresOwnBacking == m_requiresOwnBackingStore)
+        return;
+    
+    // This affects the answer to paintsIntoCompositedAncestor(), which in turn affects
+    // cached clip rects, so when it changes we have to clear clip rects on descendants.
+    m_owningLayer->clearClipRectsIncludingDescendants(PaintingClipRects);
+    m_requiresOwnBackingStore = requiresOwnBacking;
+    
+    compositor()->repaintInCompositedAncestor(m_owningLayer, compositedBounds());
+}
+
 void RenderLayerBacking::setContentsNeedDisplay()
 {
     ASSERT(!paintsIntoCompositedAncestor());
@@ -1166,6 +1186,9 @@ void RenderLayerBacking::paintIntoLayer(RenderLayer* rootLayer, GraphicsContext*
     // FIXME: GraphicsLayers need a way to split for RenderRegions.
     m_owningLayer->paintLayerContents(rootLayer, context, paintDirtyRect, paintBehavior, paintingRoot, 0, 0, paintFlags);
 
+    if (m_owningLayer->containsDirtyOverlayScrollbars())
+        m_owningLayer->paintOverlayScrollbars(context, paintDirtyRect, paintBehavior, paintingRoot);
+
     ASSERT(!m_owningLayer->m_usedTransparency);
 }
 
@@ -1199,6 +1222,9 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
 
         // We have to use the same root as for hit testing, because both methods can compute and cache clipRects.
         paintIntoLayer(m_owningLayer, &context, dirtyRect, PaintBehaviorNormal, paintingPhase, renderer());
+
+        if (m_usingTiledCacheLayer)
+            m_owningLayer->renderer()->frame()->view()->setLastPaintTime(currentTime());
 
         InspectorInstrumentation::didPaint(cookie);
     } else if (graphicsLayer == layerForHorizontalScrollbar()) {
@@ -1303,21 +1329,15 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
     bool didAnimateFilter = false;
 #endif
     
-    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, toRenderBox(renderer())->pixelSnappedBorderBoxRect().size(), anim, keyframes.animationName(), timeOffset)) {
+    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, toRenderBox(renderer())->pixelSnappedBorderBoxRect().size(), anim, keyframes.animationName(), timeOffset))
         didAnimateTransform = true;
-        compositor()->didStartAcceleratedAnimation(CSSPropertyWebkitTransform);
-    }
 
-    if (hasOpacity && m_graphicsLayer->addAnimation(opacityVector, IntSize(), anim, keyframes.animationName(), timeOffset)) {
+    if (hasOpacity && m_graphicsLayer->addAnimation(opacityVector, IntSize(), anim, keyframes.animationName(), timeOffset))
         didAnimateOpacity = true;
-        compositor()->didStartAcceleratedAnimation(CSSPropertyOpacity);
-    }
 
 #if ENABLE(CSS_FILTERS)
-    if (hasFilter && m_graphicsLayer->addAnimation(filterVector, IntSize(), anim, keyframes.animationName(), timeOffset)) {
+    if (hasFilter && m_graphicsLayer->addAnimation(filterVector, IntSize(), anim, keyframes.animationName(), timeOffset))
         didAnimateFilter = true;
-        compositor()->didStartAcceleratedAnimation(CSSPropertyWebkitFilter);
-    }
 #endif
 
 #if ENABLE(CSS_FILTERS)
@@ -1392,17 +1412,6 @@ bool RenderLayerBacking::startTransition(double timeOffset, CSSPropertyID proper
     }
 #endif
 
-    if (didAnimateOpacity)
-        compositor()->didStartAcceleratedAnimation(CSSPropertyOpacity);
-
-    if (didAnimateTransform)
-        compositor()->didStartAcceleratedAnimation(CSSPropertyWebkitTransform);
-    
-#if ENABLE(CSS_FILTERS)
-    if (didAnimateFilter)
-        compositor()->didStartAcceleratedAnimation(CSSPropertyWebkitFilter);
-#endif
-
 #if ENABLE(CSS_FILTERS)
     return didAnimateOpacity || didAnimateTransform || didAnimateFilter;
 #else
@@ -1454,8 +1463,8 @@ IntRect RenderLayerBacking::compositedBounds() const
 void RenderLayerBacking::setCompositedBounds(const IntRect& bounds)
 {
     m_compositedBounds = bounds;
-
 }
+
 CSSPropertyID RenderLayerBacking::graphicsLayerToCSSProperty(AnimatedPropertyID property)
 {
     CSSPropertyID cssProperty = CSSPropertyInvalid;

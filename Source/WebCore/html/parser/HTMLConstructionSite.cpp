@@ -106,11 +106,12 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
         task.child->finishParsingChildren();
 }
 
-void HTMLConstructionSite::attachLater(ContainerNode* parent, PassRefPtr<Node> prpChild)
+void HTMLConstructionSite::attachLater(ContainerNode* parent, PassRefPtr<Node> prpChild, bool selfClosing)
 {
     HTMLConstructionSiteTask task;
     task.parent = parent;
     task.child = prpChild;
+    task.selfClosing = selfClosing;
 
     if (shouldFosterParent()) {
         fosterParent(task.child);
@@ -145,7 +146,7 @@ void HTMLConstructionSite::executeQueuedTasks()
 HTMLConstructionSite::HTMLConstructionSite(Document* document, unsigned maximumDOMTreeDepth)
     : m_document(document)
     , m_attachmentRoot(document)
-    , m_fragmentScriptingPermission(FragmentScriptingAllowed)
+    , m_fragmentScriptingPermission(AllowScriptingContent)
     , m_isParsingFragment(false)
     , m_redirectAttachToFosterParent(false)
     , m_maximumDOMTreeDepth(maximumDOMTreeDepth)
@@ -315,11 +316,10 @@ void HTMLConstructionSite::insertHTMLElement(AtomicHTMLToken& token)
 void HTMLConstructionSite::insertSelfClosingHTMLElement(AtomicHTMLToken& token)
 {
     ASSERT(token.type() == HTMLTokenTypes::StartTag);
-    attachLater(currentNode(), createHTMLElement(token));
     // Normally HTMLElementStack is responsible for calling finishParsingChildren,
     // but self-closing elements are never in the element stack so the stack
     // doesn't get a chance to tell them that we're done parsing their children.
-    m_attachmentQueue.last().selfClosing = true;
+    attachLater(currentNode(), createHTMLElement(token), true);
     // FIXME: Do we want to acknowledge the token's self-closing flag?
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/tokenization.html#acknowledge-self-closing-flag
 }
@@ -335,8 +335,15 @@ void HTMLConstructionSite::insertFormattingElement(AtomicHTMLToken& token)
 
 void HTMLConstructionSite::insertScriptElement(AtomicHTMLToken& token)
 {
-    RefPtr<HTMLScriptElement> element = HTMLScriptElement::create(scriptTag, currentNode()->document(), true);
-    if (m_fragmentScriptingPermission == FragmentScriptingAllowed)
+    // http://www.whatwg.org/specs/web-apps/current-work/multipage/scripting-1.html#already-started
+    // http://html5.org/specs/dom-parsing.html#dom-range-createcontextualfragment
+    // For createContextualFragment, the specifications say to mark it parser-inserted and already-started and later unmark them.
+    // However, we short circuit that logic to avoid the subtree traversal to find script elements since scripts can never see
+    // those flags or effects thereof.
+    const bool parserInserted = m_fragmentScriptingPermission != AllowScriptingContentAndDoNotMarkAlreadyStarted;
+    const bool alreadyStarted = m_isParsingFragment && parserInserted;
+    RefPtr<HTMLScriptElement> element = HTMLScriptElement::create(scriptTag, currentNode()->document(), parserInserted, alreadyStarted);
+    if (m_fragmentScriptingPermission != DisallowScriptingContent)
         element->parserSetAttributes(token.attributes(), m_fragmentScriptingPermission);
     attachLater(currentNode(), element);
     m_openElements.push(element.release());
@@ -348,9 +355,7 @@ void HTMLConstructionSite::insertForeignElement(AtomicHTMLToken& token, const At
     notImplemented(); // parseError when xmlns or xmlns:xlink are wrong.
 
     RefPtr<Element> element = createElement(token, namespaceURI);
-    attachLater(currentNode(), element);
-    // FIXME: Don't we need to set the selfClosing flag on the task if we're
-    // not going to push the element on to the stack of open elements?
+    attachLater(currentNode(), element, token.selfClosing());
     if (!token.selfClosing())
         m_openElements.push(element.release());
 }

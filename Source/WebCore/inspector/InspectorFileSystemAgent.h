@@ -47,11 +47,10 @@ class InstrumentingAgents;
 
 class InspectorFileSystemAgent : public InspectorBaseAgent<InspectorFileSystemAgent>, public InspectorBackendDispatcher::FileSystemCommandHandler {
 public:
+    class FrontendProvider;
+
     static PassOwnPtr<InspectorFileSystemAgent> create(InstrumentingAgents*, InspectorState*);
     virtual ~InspectorFileSystemAgent();
-
-    void didOpenFileSystem(PassRefPtr<DOMFileSystem>);
-    void fileSystemInvalidated(PassRefPtr<DOMFileSystem>);
 
     virtual void enable(ErrorString*);
     virtual void disable(ErrorString*);
@@ -62,7 +61,7 @@ public:
 private:
     InspectorFileSystemAgent(InstrumentingAgents*, InspectorState*);
 
-    InspectorFrontend::FileSystem* m_frontend;
+    RefPtr<FrontendProvider> m_frontendProvider;
     bool m_enabled;
 };
 

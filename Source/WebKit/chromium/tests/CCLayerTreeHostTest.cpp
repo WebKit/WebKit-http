@@ -26,595 +26,36 @@
 
 #include "cc/CCLayerTreeHost.h"
 
-#include "CCAnimationTestCommon.h"
+#include "AnimationIdVendor.h"
 #include "CCOcclusionTrackerTestCommon.h"
-#include "CCTiledLayerTestCommon.h"
-#include "CompositorFakeWebGraphicsContext3D.h"
+#include "CCThreadedTest.h"
 #include "ContentLayerChromium.h"
-#include "FilterOperations.h"
 #include "GraphicsContext3DPrivate.h"
-#include "LayerChromium.h"
-#include "TextureManager.h"
-#include "WebCompositor.h"
-#include "WebKit.h"
-#include "cc/CCActiveAnimation.h"
-#include "cc/CCLayerAnimationController.h"
-#include "cc/CCLayerAnimationDelegate.h"
-#include "cc/CCLayerImpl.h"
 #include "cc/CCLayerTreeHostImpl.h"
-#include "cc/CCScopedThreadProxy.h"
 #include "cc/CCTextureUpdater.h"
-#include "cc/CCThreadTask.h"
-#include "platform/WebKitPlatformSupport.h"
+#include "cc/CCTimingFunction.h"
 #include "platform/WebThread.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <public/Platform.h>
 #include <wtf/MainThread.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/Vector.h>
+#include <wtf/OwnArrayPtr.h>
 
 using namespace WebCore;
 using namespace WebKit;
 using namespace WebKitTests;
 using namespace WTF;
 
+#define EXPECT_EQ_RECT(a, b) \
+    EXPECT_EQ(a.x(), b.x()); \
+    EXPECT_EQ(a.y(), b.y()); \
+    EXPECT_EQ(a.width(), b.width()); \
+    EXPECT_EQ(a.height(), b.height());
+
 namespace {
 
-// Used by test stubs to notify the test when something interesting happens.
-class TestHooks : public CCLayerAnimationDelegate {
-public:
-    virtual void beginCommitOnCCThread(CCLayerTreeHostImpl*) { }
-    virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl*) { }
-    virtual void prepareToDrawOnCCThread(CCLayerTreeHostImpl*) { }
-    virtual void drawLayersOnCCThread(CCLayerTreeHostImpl*) { }
-    virtual void animateLayers(CCLayerTreeHostImpl*, double monotonicTime) { }
-    virtual void willAnimateLayers(CCLayerTreeHostImpl*, double monotonicTime) { }
-    virtual void applyScrollAndScale(const IntSize&, float) { }
-    virtual void updateAnimations(double monotonicTime) { }
-    virtual void layout() { }
-    virtual void didRecreateContext(bool succeded) { }
-    virtual void didCommitAndDrawFrame() { }
-
-    // Implementation of CCLayerAnimationDelegate
-    virtual void notifyAnimationStarted(double time) { }
-    virtual void notifyAnimationFinished(double time) { }
-};
-
-// Adapts CCLayerTreeHostImpl for test. Runs real code, then invokes test hooks.
-class MockLayerTreeHostImpl : public CCLayerTreeHostImpl {
-public:
-    static PassOwnPtr<MockLayerTreeHostImpl> create(TestHooks* testHooks, const CCSettings& settings, CCLayerTreeHostImplClient* client)
-    {
-        return adoptPtr(new MockLayerTreeHostImpl(testHooks, settings, client));
-    }
-
-    virtual void beginCommit()
-    {
-        CCLayerTreeHostImpl::beginCommit();
-        m_testHooks->beginCommitOnCCThread(this);
-    }
-
-    virtual void commitComplete()
-    {
-        CCLayerTreeHostImpl::commitComplete();
-        m_testHooks->commitCompleteOnCCThread(this);
-    }
-
-    virtual bool prepareToDraw(FrameData& frame)
-    {
-        bool result = CCLayerTreeHostImpl::prepareToDraw(frame);
-        m_testHooks->prepareToDrawOnCCThread(this);
-        return result;
-    }
-
-    virtual void drawLayers(const FrameData& frame)
-    {
-        CCLayerTreeHostImpl::drawLayers(frame);
-        m_testHooks->drawLayersOnCCThread(this);
-    }
-
-protected:
-    virtual void animateLayers(double monotonicTime, double wallClockTime)
-    {
-        m_testHooks->willAnimateLayers(this, monotonicTime);
-        CCLayerTreeHostImpl::animateLayers(monotonicTime, wallClockTime);
-        m_testHooks->animateLayers(this, monotonicTime);
-    }
-
-private:
-    MockLayerTreeHostImpl(TestHooks* testHooks, const CCSettings& settings, CCLayerTreeHostImplClient* client)
-        : CCLayerTreeHostImpl(settings, client)
-        , m_testHooks(testHooks)
-    {
-    }
-
-    TestHooks* m_testHooks;
-};
-
-// Adapts CCLayerTreeHost for test. Injects MockLayerTreeHostImpl.
-class MockLayerTreeHost : public CCLayerTreeHost {
-public:
-    static PassOwnPtr<MockLayerTreeHost> create(TestHooks* testHooks, CCLayerTreeHostClient* client, PassRefPtr<LayerChromium> rootLayer, const CCSettings& settings)
-    {
-        // For these tests, we will enable threaded animations.
-        CCSettings settingsCopy = settings;
-        settingsCopy.threadedAnimationEnabled = true;
-
-        OwnPtr<MockLayerTreeHost> layerTreeHost(adoptPtr(new MockLayerTreeHost(testHooks, client, settingsCopy)));
-        bool success = layerTreeHost->initialize();
-        EXPECT_TRUE(success);
-        layerTreeHost->setRootLayer(rootLayer);
-
-        // LayerTreeHostImpl won't draw if it has 1x1 viewport.
-        layerTreeHost->setViewportSize(IntSize(1, 1));
-
-        layerTreeHost->rootLayer()->setLayerAnimationDelegate(testHooks);
-
-        return layerTreeHost.release();
-    }
-
-    virtual PassOwnPtr<CCLayerTreeHostImpl> createLayerTreeHostImpl(CCLayerTreeHostImplClient* client)
-    {
-        // For these tests, we will enable threaded animations.
-        CCSettings settings;
-        settings.threadedAnimationEnabled = true;
-        return MockLayerTreeHostImpl::create(m_testHooks, settings, client);
-    }
-
-private:
-    MockLayerTreeHost(TestHooks* testHooks, CCLayerTreeHostClient* client, const CCSettings& settings)
-        : CCLayerTreeHost(client, settings)
-        , m_testHooks(testHooks)
-    {
-    }
-
-    TestHooks* m_testHooks;
-};
-
-class CompositorFakeWebGraphicsContext3DWithTextureTracking : public CompositorFakeWebGraphicsContext3D {
-public:
-    static PassOwnPtr<CompositorFakeWebGraphicsContext3DWithTextureTracking> create(Attributes attrs)
-    {
-        return adoptPtr(new CompositorFakeWebGraphicsContext3DWithTextureTracking(attrs));
-    }
-
-    virtual WebGLId createTexture()
-    {
-        WebGLId texture = m_textures.size() + 1;
-        m_textures.append(texture);
-        return texture;
-    }
-
-    virtual void deleteTexture(WebGLId texture)
-    {
-        for (size_t i = 0; i < m_textures.size(); i++) {
-            if (m_textures[i] == texture) {
-                m_textures.remove(i);
-                break;
-            }
-        }
-    }
-
-    virtual void bindTexture(WGC3Denum /* target */, WebGLId texture)
-    {
-        m_usedTextures.add(texture);
-    }
-
-    int numTextures() const { return static_cast<int>(m_textures.size()); }
-    int texture(int i) const { return m_textures[i]; }
-    void resetTextures() { m_textures.clear(); }
-
-    int numUsedTextures() const { return static_cast<int>(m_usedTextures.size()); }
-    bool usedTexture(int texture) const { return m_usedTextures.find(texture) != m_usedTextures.end(); }
-    void resetUsedTextures() { m_usedTextures.clear(); }
-
-private:
-    explicit CompositorFakeWebGraphicsContext3DWithTextureTracking(Attributes attrs) : CompositorFakeWebGraphicsContext3D(attrs)
-    {
-    }
-
-    Vector<WebGLId> m_textures;
-    HashSet<WebGLId, DefaultHash<WebGLId>::Hash, UnsignedWithZeroKeyHashTraits<WebGLId> > m_usedTextures;
-};
-
-// Implementation of CCLayerTreeHost callback interface.
-class MockLayerTreeHostClient : public CCLayerTreeHostClient {
-public:
-    static PassOwnPtr<MockLayerTreeHostClient> create(TestHooks* testHooks)
-    {
-        return adoptPtr(new MockLayerTreeHostClient(testHooks));
-    }
-
-    virtual void willBeginFrame() OVERRIDE
-    {
-    }
-
-    virtual void updateAnimations(double monotonicTime) OVERRIDE
-    {
-        m_testHooks->updateAnimations(monotonicTime);
-    }
-
-    virtual void layout() OVERRIDE
-    {
-        m_testHooks->layout();
-    }
-
-    virtual void applyScrollAndScale(const IntSize& scrollDelta, float scale) OVERRIDE
-    {
-        m_testHooks->applyScrollAndScale(scrollDelta, scale);
-    }
-
-    virtual PassRefPtr<GraphicsContext3D> createContext() OVERRIDE
-    {
-        GraphicsContext3D::Attributes attrs;
-        WebGraphicsContext3D::Attributes webAttrs;
-        webAttrs.alpha = attrs.alpha;
-
-        OwnPtr<WebGraphicsContext3D> webContext = CompositorFakeWebGraphicsContext3DWithTextureTracking::create(webAttrs);
-        return GraphicsContext3DPrivate::createGraphicsContextFromWebContext(webContext.release(), GraphicsContext3D::RenderDirectlyToHostWindow);
-    }
-
-    virtual void didCommit() OVERRIDE
-    {
-    }
-
-    virtual void didCommitAndDrawFrame() OVERRIDE
-    {
-        m_testHooks->didCommitAndDrawFrame();
-    }
-
-    virtual void didCompleteSwapBuffers() OVERRIDE
-    {
-    }
-
-    virtual void didRecreateContext(bool succeeded) OVERRIDE
-    {
-        m_testHooks->didRecreateContext(succeeded);
-    }
-
-    virtual void scheduleComposite() OVERRIDE
-    {
-    }
-
-private:
-    explicit MockLayerTreeHostClient(TestHooks* testHooks) : m_testHooks(testHooks) { }
-
-    TestHooks* m_testHooks;
-};
-
-// The CCLayerTreeHostTest runs with the main loop running. It instantiates a single MockLayerTreeHost and associated
-// MockLayerTreeHostImpl/MockLayerTreeHostClient.
-//
-// beginTest() is called once the main message loop is running and the layer tree host is initialized.
-//
-// Key stages of the drawing loop, e.g. drawing or commiting, redirect to CCLayerTreeHostTest methods of similar names.
-// To track the commit process, override these functions.
-//
-// The test continues until someone calls endTest. endTest can be called on any thread, but be aware that
-// ending the test is an asynchronous process.
-class CCLayerTreeHostTest : public testing::Test, TestHooks {
-public:
-    virtual void afterTest() = 0;
-    virtual void beginTest() = 0;
-
-    void endTest();
-
-    void postSetNeedsAnimateToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchSetNeedsAnimate, this);
-    }
-
-    void postAddAnimationToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchAddAnimation, this);
-    }
-
-    void postAddInstantAnimationToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchAddInstantAnimation, this);
-    }
-
-    void postSetNeedsCommitToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchSetNeedsCommit, this);
-    }
-
-    void AcquireLayerTextures()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchAcquireLayerTextures, this);
-    }
-
-    void postSetNeedsRedrawToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchSetNeedsRedraw, this);
-    }
-
-    void postSetNeedsAnimateAndCommitToMainThread()
-    {
-        callOnMainThread(CCLayerTreeHostTest::dispatchSetNeedsAnimateAndCommit, this);
-    }
-
-    void postSetVisibleToMainThread(bool visible)
-    {
-        callOnMainThread(visible ? CCLayerTreeHostTest::dispatchSetVisible : CCLayerTreeHostTest::dispatchSetInvisible, this);
-    }
-
-    void timeout()
-    {
-        m_timedOut = true;
-        endTest();
-    }
-
-    void clearTimeout()
-    {
-        m_timeoutTask = 0;
-    }
-
-    CCLayerTreeHost* layerTreeHost() { return m_layerTreeHost.get(); }
-
-
-protected:
-    CCLayerTreeHostTest()
-        : m_beginning(false)
-        , m_endWhenBeginReturns(false)
-        , m_timedOut(false) { }
-
-    void doBeginTest();
-
-    static void onEndTest(void* self)
-    {
-        ASSERT(isMainThread());
-        webKitPlatformSupport()->currentThread()->exitRunLoop();
-    }
-
-    static void dispatchSetNeedsAnimate(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost)
-            test->m_layerTreeHost->setNeedsAnimate();
-    }
-
-    static void dispatchAddInstantAnimation(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost && test->m_layerTreeHost->rootLayer())
-            addOpacityTransitionToLayer(*test->m_layerTreeHost->rootLayer(), 0, 0, 0.5, false);
-    }
-
-    static void dispatchAddAnimation(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost && test->m_layerTreeHost->rootLayer())
-            addOpacityTransitionToLayer(*test->m_layerTreeHost->rootLayer(), 10, 0, 0.5, true);
-    }
-
-    static void dispatchSetNeedsAnimateAndCommit(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost) {
-            test->m_layerTreeHost->setNeedsAnimate();
-            test->m_layerTreeHost->setNeedsCommit();
-        }
-    }
-
-    static void dispatchSetNeedsCommit(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT_TRUE(test);
-        if (test->m_layerTreeHost)
-            test->m_layerTreeHost->setNeedsCommit();
-    }
-
-    static void dispatchAcquireLayerTextures(void* self)
-    {
-      ASSERT(isMainThread());
-      CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-      ASSERT_TRUE(test);
-      if (test->m_layerTreeHost)
-          test->m_layerTreeHost->acquireLayerTextures();
-    }
-
-    static void dispatchSetNeedsRedraw(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT_TRUE(test);
-        if (test->m_layerTreeHost)
-            test->m_layerTreeHost->setNeedsRedraw();
-    }
-
-    static void dispatchSetVisible(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost)
-            test->m_layerTreeHost->setVisible(true);
-    }
-
-    static void dispatchSetInvisible(void* self)
-    {
-        ASSERT(isMainThread());
-        CCLayerTreeHostTest* test = static_cast<CCLayerTreeHostTest*>(self);
-        ASSERT(test);
-        if (test->m_layerTreeHost)
-            test->m_layerTreeHost->setVisible(false);
-    }
-
-    class TimeoutTask : public WebThread::Task {
-    public:
-        explicit TimeoutTask(CCLayerTreeHostTest* test)
-            : m_test(test)
-        {
-        }
-
-        void clearTest()
-        {
-            m_test = 0;
-        }
-
-        virtual ~TimeoutTask()
-        {
-            if (m_test)
-                m_test->clearTimeout();
-        }
-
-        virtual void run()
-        {
-            if (m_test)
-                m_test->timeout();
-        }
-
-    private:
-        CCLayerTreeHostTest* m_test;
-    };
-
-    class BeginTask : public WebThread::Task {
-    public:
-        explicit BeginTask(CCLayerTreeHostTest* test)
-            : m_test(test)
-        {
-        }
-
-        virtual ~BeginTask() { }
-        virtual void run()
-        {
-            m_test->doBeginTest();
-        }
-    private:
-        CCLayerTreeHostTest* m_test;
-    };
-
-    virtual void runTest(bool threaded)
-    {
-        if (threaded) {
-            m_webThread = adoptPtr(WebKit::Platform::current()->createThread("CCLayerTreeHostTest"));
-            WebCompositor::initialize(m_webThread.get());
-        } else
-            WebCompositor::initialize(0);
-
-        ASSERT(CCProxy::isMainThread());
-        m_mainThreadProxy = CCScopedThreadProxy::create(CCProxy::mainThread());
-
-        m_beginTask = new BeginTask(this);
-        webKitPlatformSupport()->currentThread()->postDelayedTask(m_beginTask, 0); // postDelayedTask takes ownership of the task
-        m_timeoutTask = new TimeoutTask(this);
-        webKitPlatformSupport()->currentThread()->postDelayedTask(m_timeoutTask, 5000);
-        webKitPlatformSupport()->currentThread()->enterRunLoop();
-
-        if (m_layerTreeHost && m_layerTreeHost->rootLayer())
-            m_layerTreeHost->rootLayer()->setLayerTreeHost(0);
-        m_layerTreeHost.clear();
-
-        if (m_timeoutTask)
-            m_timeoutTask->clearTest();
-
-        ASSERT_FALSE(m_layerTreeHost.get());
-        m_client.clear();
-        if (m_timedOut) {
-            FAIL() << "Test timed out";
-            WebCompositor::shutdown();
-            return;
-        }
-        afterTest();
-        WebCompositor::shutdown();
-    }
-
-    CCSettings m_settings;
-    OwnPtr<MockLayerTreeHostClient> m_client;
-    OwnPtr<CCLayerTreeHost> m_layerTreeHost;
-
-private:
-    bool m_beginning;
-    bool m_endWhenBeginReturns;
-    bool m_timedOut;
-
-    OwnPtr<WebThread> m_webThread;
-    RefPtr<CCScopedThreadProxy> m_mainThreadProxy;
-    TimeoutTask* m_timeoutTask;
-    BeginTask* m_beginTask;
-};
-
-void CCLayerTreeHostTest::doBeginTest()
-{
-    ASSERT(isMainThread());
-    m_client = MockLayerTreeHostClient::create(this);
-
-    RefPtr<LayerChromium> rootLayer = LayerChromium::create();
-    m_layerTreeHost = MockLayerTreeHost::create(this, m_client.get(), rootLayer, m_settings);
-    ASSERT_TRUE(m_layerTreeHost);
-    rootLayer->setLayerTreeHost(m_layerTreeHost.get());
-    m_layerTreeHost->setSurfaceReady();
-
-    m_beginning = true;
-    beginTest();
-    m_beginning = false;
-    if (m_endWhenBeginReturns)
-        onEndTest(static_cast<void*>(this));
-}
-
-void CCLayerTreeHostTest::endTest()
-{
-    // If we are called from the CCThread, re-call endTest on the main thread.
-    if (!isMainThread())
-        m_mainThreadProxy->postTask(createCCThreadTask(this, &CCLayerTreeHostTest::endTest));
-    else {
-        // For the case where we endTest during beginTest(), set a flag to indicate that
-        // the test should end the second beginTest regains control.
-        if (m_beginning)
-            m_endWhenBeginReturns = true;
-        else
-            onEndTest(static_cast<void*>(this));
-    }
-}
-
-class CCLayerTreeHostTestThreadOnly : public CCLayerTreeHostTest {
-public:
-    void runTestThreaded()
-    {
-        CCLayerTreeHostTest::runTest(true);
-    }
-};
-
-// Shortlived layerTreeHosts shouldn't die.
-class CCLayerTreeHostTestShortlived1 : public CCLayerTreeHostTest {
-public:
-    CCLayerTreeHostTestShortlived1() { }
-
-    virtual void beginTest()
-    {
-        // Kill the layerTreeHost immediately.
-        m_layerTreeHost->setRootLayer(0);
-        m_layerTreeHost.clear();
-
-        endTest();
-    }
-
-    virtual void afterTest()
-    {
-    }
-};
-
-#define SINGLE_AND_MULTI_THREAD_TEST_F(TEST_FIXTURE_NAME) \
-    TEST_F(TEST_FIXTURE_NAME, runSingleThread)            \
-    {                                                     \
-        runTest(false);                                   \
-    }                                                     \
-    TEST_F(TEST_FIXTURE_NAME, runMultiThread)             \
-    {                                                     \
-        runTest(true);                                    \
-    }
-
-SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestShortlived1)
+class CCLayerTreeHostTest : public CCThreadedTest { };
+class CCLayerTreeHostTestThreadOnly : public CCThreadedTestThreadOnly { };
 
 // Shortlived layerTreeHosts shouldn't die with a commit in flight.
 class CCLayerTreeHostTestShortlived2 : public CCLayerTreeHostTest {
@@ -788,7 +229,12 @@ private:
     int m_numDraws;
 };
 
+#if OS(WINDOWS)
+// http://webkit.org/b/74623
+TEST_F(CCLayerTreeHostTestSetNeedsCommit2, FLAKY_runMultiThread)
+#else
 TEST_F(CCLayerTreeHostTestSetNeedsCommit2, runMultiThread)
+#endif
 {
     runTestThreaded();
 }
@@ -840,6 +286,59 @@ TEST_F(CCLayerTreeHostTestSetNeedsRedraw, runMultiThread)
     runTestThreaded();
 }
 
+// If the layerTreeHost says it can't draw, then we should not try to draw.
+class CCLayerTreeHostTestCanDrawBlocksDrawing : public CCLayerTreeHostTestThreadOnly {
+public:
+    CCLayerTreeHostTestCanDrawBlocksDrawing()
+        : m_numCommits(0)
+    {
+    }
+
+    virtual void beginTest()
+    {
+        postSetNeedsCommitToMainThread();
+    }
+
+    virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl)
+    {
+        // Only the initial draw should bring us here.
+        EXPECT_TRUE(impl->canDraw());
+        EXPECT_EQ(0, impl->sourceFrameNumber());
+    }
+
+    virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
+    {
+        if (m_numCommits >= 1) {
+            // After the first commit, we should not be able to draw.
+            EXPECT_FALSE(impl->canDraw());
+        }
+    }
+
+    virtual void didCommit()
+    {
+        m_numCommits++;
+        if (m_numCommits == 1) {
+            // Make the viewport empty so the host says it can't draw.
+            m_layerTreeHost->setViewportSize(IntSize(0, 0));
+
+            OwnArrayPtr<char> pixels(adoptArrayPtr(new char[4]));
+            m_layerTreeHost->compositeAndReadback(static_cast<void*>(pixels.get()), IntRect(0, 0, 1, 1));
+        } else if (m_numCommits == 2) {
+            m_layerTreeHost->setNeedsRedraw();
+            m_layerTreeHost->setNeedsCommit();
+        } else
+            endTest();
+    }
+
+    virtual void afterTest()
+    {
+    }
+
+private:
+    int m_numCommits;
+};
+
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestCanDrawBlocksDrawing)
 
 // beginLayerWrite should prevent draws from executing until a commit occurs
 class CCLayerTreeHostTestWriteLayersRedraw : public CCLayerTreeHostTestThreadOnly {
@@ -852,15 +351,15 @@ public:
 
     virtual void beginTest()
     {
-        AcquireLayerTextures();
+        postAcquireLayerTextures();
         postSetNeedsRedrawToMainThread(); // should be inhibited without blocking
         postSetNeedsCommitToMainThread();
     }
 
     virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        EXPECT_EQ(1, impl->sourceFrameNumber());
         m_numDraws++;
+        EXPECT_EQ(m_numDraws, m_numCommits);
     }
 
     virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl*)
@@ -871,7 +370,6 @@ public:
 
     virtual void afterTest()
     {
-        EXPECT_EQ(0, m_numDraws);
         EXPECT_EQ(1, m_numCommits);
     }
 
@@ -910,7 +408,7 @@ public:
         else {
             postSetVisibleToMainThread(false);
             postSetVisibleToMainThread(true);
-            AcquireLayerTextures();
+            postAcquireLayerTextures();
             postSetNeedsCommitToMainThread();
         }
     }
@@ -1077,11 +575,16 @@ public:
         postAddAnimationToMainThread();
     }
 
-    virtual void animateLayers(CCLayerTreeHostImpl* layerTreeHostImpl, double monotonicTime)
+    // Use willAnimateLayers to set visible false before the animation runs and
+    // causes a commit, so we block the second visible animate in single-thread
+    // mode.
+    virtual void willAnimateLayers(CCLayerTreeHostImpl* layerTreeHostImpl, double monotonicTime)
     {
-        if (!m_numAnimates) {
-            // We have a long animation running. It should continue to tick even if we are not visible.
-            postSetVisibleToMainThread(false);
+        if (m_numAnimates < 2) {
+            if (!m_numAnimates) {
+                // We have a long animation running. It should continue to tick even if we are not visible.
+                postSetVisibleToMainThread(false);
+            }
             m_numAnimates++;
             return;
         }
@@ -1096,10 +599,7 @@ private:
     int m_numAnimates;
 };
 
-TEST_F(CCLayerTreeHostTestTickAnimationWhileBackgrounded, runMultiThread)
-{
-    runTestThreaded();
-}
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestTickAnimationWhileBackgrounded)
 
 // Ensures that animations continue to be ticked when we are backgrounded.
 class CCLayerTreeHostTestAddAnimationWithTimingFunction : public CCLayerTreeHostTestThreadOnly {
@@ -1115,7 +615,10 @@ public:
 
     virtual void animateLayers(CCLayerTreeHostImpl* layerTreeHostImpl, double monotonicTime)
     {
-        const CCFloatAnimationCurve* curve = m_layerTreeHost->rootLayer()->layerAnimationController()->getActiveAnimation(0, CCActiveAnimation::Opacity)->curve()->toFloatAnimationCurve();
+        const CCActiveAnimation* animation = m_layerTreeHost->rootLayer()->layerAnimationController()->getActiveAnimation(0, CCActiveAnimation::Opacity);
+        if (!animation)
+            return;
+        const CCFloatAnimationCurve* curve = animation->curve()->toFloatAnimationCurve();
         float startOpacity = curve->getValue(0);
         float endOpacity = curve->getValue(curve->duration());
         float linearlyInterpolatedOpacity = 0.25 * endOpacity + 0.75 * startOpacity;
@@ -1134,10 +637,7 @@ public:
 private:
 };
 
-TEST_F(CCLayerTreeHostTestAddAnimationWithTimingFunction, runMultiThread)
-{
-    runTestThreaded();
-}
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestAddAnimationWithTimingFunction)
 
 // Ensures that when opacity is being animated, this value does not cause the subtree to be skipped.
 class CCLayerTreeHostTestDoNotSkipLayersWithAnimatedOpacity : public CCLayerTreeHostTestThreadOnly {
@@ -1168,7 +668,12 @@ public:
     }
 };
 
+#if OS(WINDOWS)
+// http://webkit.org/b/74623
+TEST_F(CCLayerTreeHostTestDoNotSkipLayersWithAnimatedOpacity, FLAKY_runMultiThread)
+#else
 TEST_F(CCLayerTreeHostTestDoNotSkipLayersWithAnimatedOpacity, runMultiThread)
+#endif
 {
     runTestThreaded();
 }
@@ -1214,10 +719,7 @@ private:
     CCLayerTreeHostImpl* m_layerTreeHostImpl;
 };
 
-TEST_F(CCLayerTreeHostTestSynchronizeAnimationStartTimes, runMultiThread)
-{
-    runTestThreaded();
-}
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestSynchronizeAnimationStartTimes)
 
 // Ensures that main thread animations have their start times synchronized with impl thread animations.
 class CCLayerTreeHostTestAnimationFinishedEvents : public CCLayerTreeHostTestThreadOnly {
@@ -1243,10 +745,7 @@ public:
 private:
 };
 
-TEST_F(CCLayerTreeHostTestAnimationFinishedEvents, runMultiThread)
-{
-    runTestThreaded();
-}
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestAnimationFinishedEvents)
 
 class CCLayerTreeHostTestScrollSimple : public CCLayerTreeHostTestThreadOnly {
 public:
@@ -1287,11 +786,11 @@ public:
         root->setMaxScrollPosition(IntSize(100, 100));
         root->scrollBy(m_scrollAmount);
 
-        if (impl->frameNumber() == 1) {
+        if (!impl->sourceFrameNumber()) {
             EXPECT_EQ(root->scrollPosition(), m_initialScroll);
             EXPECT_EQ(root->scrollDelta(), m_scrollAmount);
             postSetNeedsCommitToMainThread();
-        } else if (impl->frameNumber() == 2) {
+        } else if (impl->sourceFrameNumber() == 1) {
             EXPECT_EQ(root->scrollPosition(), m_secondScroll);
             EXPECT_EQ(root->scrollDelta(), m_scrollAmount);
             endTest();
@@ -1340,11 +839,11 @@ public:
     virtual void beginCommitOnCCThread(CCLayerTreeHostImpl* impl)
     {
         LayerChromium* root = m_layerTreeHost->rootLayer();
-        if (!m_layerTreeHost->frameNumber())
+        if (!impl->sourceFrameNumber())
             EXPECT_EQ(root->scrollPosition(), m_initialScroll);
-        else if (m_layerTreeHost->frameNumber() == 1)
+        else if (impl->sourceFrameNumber() == 1)
             EXPECT_EQ(root->scrollPosition(), m_initialScroll + m_scrollAmount + m_scrollAmount);
-        else if (m_layerTreeHost->frameNumber() == 2)
+        else if (impl->sourceFrameNumber() == 2)
             EXPECT_EQ(root->scrollPosition(), m_initialScroll + m_scrollAmount + m_scrollAmount);
     }
 
@@ -1354,21 +853,25 @@ public:
         root->setScrollable(true);
         root->setMaxScrollPosition(IntSize(100, 100));
 
-        if (impl->frameNumber() == 1) {
+        if (!impl->sourceFrameNumber() && impl->frameNumber() == 1) {
+            // First draw after first commit.
             EXPECT_EQ(root->scrollDelta(), IntSize());
             root->scrollBy(m_scrollAmount);
             EXPECT_EQ(root->scrollDelta(), m_scrollAmount);
 
             EXPECT_EQ(root->scrollPosition(), m_initialScroll);
             postSetNeedsRedrawToMainThread();
-        } else if (impl->frameNumber() == 2) {
+        } else if (!impl->sourceFrameNumber() && impl->frameNumber() == 2) {
+            // Second draw after first commit.
             EXPECT_EQ(root->scrollDelta(), m_scrollAmount);
             root->scrollBy(m_scrollAmount);
             EXPECT_EQ(root->scrollDelta(), m_scrollAmount + m_scrollAmount);
 
             EXPECT_EQ(root->scrollPosition(), m_initialScroll);
             postSetNeedsCommitToMainThread();
-        } else if (impl->frameNumber() == 3) {
+        } else if (impl->sourceFrameNumber() == 1) {
+            // Third or later draw after second commit.
+            EXPECT_GE(impl->frameNumber(), 3);
             EXPECT_EQ(root->scrollDelta(), IntSize());
             EXPECT_EQ(root->scrollPosition(), m_initialScroll + m_scrollAmount + m_scrollAmount);
             endTest();
@@ -1429,6 +932,113 @@ TEST_F(CCLayerTreeHostTestCommit, runTest)
     runTest(true);
 }
 
+class CCLayerTreeHostTestVisibilityAndAllocationControlDrawing : public CCLayerTreeHostTest {
+public:
+
+    CCLayerTreeHostTestVisibilityAndAllocationControlDrawing() { }
+
+    virtual void beginTest()
+    {
+        postSetNeedsCommitToMainThread();
+    }
+
+    virtual void didCommitAndDrawFrame()
+    {
+        int lastFrame = m_layerTreeHost->frameNumber() - 1;
+
+        // These frames should draw.
+        switch (lastFrame) {
+        case 0:
+            // Set the tree invisible, this should not draw.
+            m_layerTreeHost->setVisible(false);
+            break;
+        case 2:
+            // Set the tree invisible and give a non-visible allocation, this
+            // should not draw.
+            m_layerTreeHost->setVisible(false);
+            m_layerTreeHost->setContentsMemoryAllocationLimitBytes(0);
+            break;
+        case 5:
+            // Give a memory allocation not for display, but while we are
+            // visible. This should not be used and we should remain
+            // ready for display and it should draw.
+            m_layerTreeHost->setContentsMemoryAllocationLimitBytes(0);
+            break;
+        case 6:
+            endTest();
+            break;
+
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+
+    virtual void didCommit()
+    {
+        int lastFrame = m_layerTreeHost->frameNumber() - 1;
+
+        // These frames should not draw.
+        switch (lastFrame) {
+        case 1:
+            // Set the tree visible, this should draw.
+            m_layerTreeHost->setVisible(true);
+            break;
+        case 3:
+            // Set visible without giving a visible memory allocation, this
+            // shouldn't make the impl side ready for display, so it should
+            // not draw.
+            m_layerTreeHost->setVisible(true);
+            break;
+        case 4:
+            // Now give a memory allocation for display, this should draw.
+            m_layerTreeHost->setContentsMemoryAllocationLimitBytes(1);
+            break;
+        }
+    }
+
+    virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
+    {
+        switch (impl->sourceFrameNumber()) {
+        case 0:
+            // The host starts out visible and able to display before we do any commit.
+            EXPECT_TRUE(impl->visible());
+            EXPECT_TRUE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 1:
+            // We still have a memory allocation for display.
+            EXPECT_FALSE(impl->visible());
+            EXPECT_TRUE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 2:
+            EXPECT_TRUE(impl->visible());
+            EXPECT_TRUE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 3:
+            EXPECT_FALSE(impl->visible());
+            EXPECT_FALSE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 4:
+            EXPECT_TRUE(impl->visible());
+            EXPECT_FALSE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 5:
+            EXPECT_TRUE(impl->visible());
+            EXPECT_TRUE(impl->sourceFrameCanBeDrawn());
+            break;
+        case 6:
+            EXPECT_TRUE(impl->visible());
+            EXPECT_TRUE(impl->sourceFrameCanBeDrawn());
+            break;
+        }
+    }
+
+    virtual void afterTest()
+    {
+    }
+};
+
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestVisibilityAndAllocationControlDrawing)
+
 // Verifies that startPageScaleAnimation events propagate correctly from CCLayerTreeHost to
 // CCLayerTreeHostImpl in the MT compositor.
 class CCLayerTreeHostTestStartPageScaleAnimation : public CCLayerTreeHostTest {
@@ -1476,9 +1086,8 @@ public:
     virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
     {
         impl->processScrollDeltas();
-        // We get one commit before the first draw, and the animation doesn't happen until the second draw,
-        // so results available on the third commit.
-        if (impl->frameNumber() == 2) {
+        // We get one commit before the first draw, and the animation doesn't happen until the second draw.
+        if (impl->sourceFrameNumber() == 1) {
             EXPECT_EQ(1.25, impl->pageScale());
             endTest();
         } else
@@ -1550,7 +1159,6 @@ public:
     }
 
     virtual bool preserves3D() { return false; }
-    virtual void didScroll(const IntSize&) { }
 
 private:
     CCLayerTreeHostTest* m_test;
@@ -1634,61 +1242,121 @@ TEST_F(CCLayerTreeHostTestOpacityChange, runMultiThread)
     runTest(true);
 }
 
-class CCLayerTreeHostTestSetViewportSize : public CCLayerTreeHostTest {
+class MockContentLayerDelegate : public ContentLayerDelegate {
+public:
+    bool drawsContent() const { return true; }
+    MOCK_CONST_METHOD0(preserves3D, bool());
+    void paintContents(GraphicsContext&, const IntRect&) { }
+    void notifySyncRequired() { }
+};
+
+class CCLayerTreeHostTestDeviceScaleFactorScalesViewportAndLayers : public CCLayerTreeHostTest {
 public:
 
-    CCLayerTreeHostTestSetViewportSize()
-        : m_numCommits(0)
-        , m_numDraws(0)
+    CCLayerTreeHostTestDeviceScaleFactorScalesViewportAndLayers()
+        : m_rootLayer(ContentLayerChromium::create(&m_delegate))
+        , m_childLayer(ContentLayerChromium::create(&m_delegate))
     {
+        m_settings.deviceScaleFactor = 1.5;
     }
 
     virtual void beginTest()
     {
-        IntSize viewportSize(10, 10);
-        layerTreeHost()->setViewportSize(viewportSize);
+        // The device viewport should be scaled by the device scale factor.
+        m_layerTreeHost->setViewportSize(IntSize(40, 40));
+        EXPECT_EQ(IntSize(40, 40), m_layerTreeHost->viewportSize());
+        EXPECT_EQ(IntSize(60, 60), m_layerTreeHost->deviceViewportSize());
 
-        CCTextureUpdater updater;
-        layerTreeHost()->updateLayers(updater);
+        m_rootLayer->addChild(m_childLayer);
 
-        EXPECT_EQ(viewportSize, layerTreeHost()->viewportSize());
-        EXPECT_EQ(TextureManager::highLimitBytes(viewportSize), layerTreeHost()->contentsTextureManager()->maxMemoryLimitBytes());
-        EXPECT_EQ(TextureManager::reclaimLimitBytes(viewportSize), layerTreeHost()->contentsTextureManager()->preferredMemoryLimitBytes());
+        m_rootLayer->setIsDrawable(true);
+        m_rootLayer->setBounds(IntSize(30, 30));
+        m_rootLayer->setAnchorPoint(FloatPoint(0, 0));
 
-        // setViewportSize() should not call TextureManager::setMaxMemoryLimitBytes() or TextureManager::setPreferredMemoryLimitBytes()
-        // if the viewport size is not changed.
-        IntSize fakeSize(5, 5);
-        layerTreeHost()->contentsTextureManager()->setMaxMemoryLimitBytes(TextureManager::highLimitBytes(fakeSize));
-        layerTreeHost()->contentsTextureManager()->setPreferredMemoryLimitBytes(TextureManager::reclaimLimitBytes(fakeSize));
-        layerTreeHost()->setViewportSize(viewportSize);
-        EXPECT_EQ(TextureManager::highLimitBytes(fakeSize), layerTreeHost()->contentsTextureManager()->maxMemoryLimitBytes());
-        EXPECT_EQ(TextureManager::reclaimLimitBytes(fakeSize), layerTreeHost()->contentsTextureManager()->preferredMemoryLimitBytes());
+        m_childLayer->setIsDrawable(true);
+        m_childLayer->setPosition(IntPoint(2, 2));
+        m_childLayer->setBounds(IntSize(10, 10));
+        m_childLayer->setAnchorPoint(FloatPoint(0, 0));
+
+        m_layerTreeHost->setRootLayer(m_rootLayer);
+    }
+
+    virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
+    {
+        // Get access to protected methods.
+        MockLayerTreeHostImpl* mockImpl = static_cast<MockLayerTreeHostImpl*>(impl);
+
+        // Should only do one commit.
+        EXPECT_EQ(0, impl->sourceFrameNumber());
+        // Device scale factor should come over to impl.
+        EXPECT_NEAR(impl->settings().deviceScaleFactor, 1.5, 0.00001);
+
+        // Both layers are on impl.
+        ASSERT_EQ(1u, impl->rootLayer()->children().size());
+
+        // Device viewport is scaled.
+        EXPECT_EQ(IntSize(40, 40), impl->viewportSize());
+        EXPECT_EQ(IntSize(60, 60), impl->deviceViewportSize());
+
+        CCLayerImpl* root = impl->rootLayer();
+        CCLayerImpl* child = impl->rootLayer()->children()[0].get();
+
+        // Positions remain in layout pixels.
+        EXPECT_EQ(IntPoint(0, 0), root->position());
+        EXPECT_EQ(IntPoint(2, 2), child->position());
+
+        // Compute all the layer transforms for the frame.
+        MockLayerTreeHostImpl::CCLayerList renderSurfaceLayerList;
+        mockImpl->calculateRenderSurfaceLayerList(renderSurfaceLayerList);
+
+        // Both layers should be drawing into the root render surface.
+        ASSERT_EQ(1u, renderSurfaceLayerList.size());
+        ASSERT_EQ(root->renderSurface(), renderSurfaceLayerList[0]->renderSurface());
+        ASSERT_EQ(2u, root->renderSurface()->layerList().size());
+
+        // The root render surface is the size of the viewport.
+        EXPECT_EQ_RECT(IntRect(0, 0, 60, 60), root->renderSurface()->contentRect());
+
+        WebTransformationMatrix scaleTransform;
+        scaleTransform.scale(impl->settings().deviceScaleFactor);
+
+        // The root layer is scaled by 2x.
+        WebTransformationMatrix rootScreenSpaceTransform = scaleTransform;
+        WebTransformationMatrix rootDrawTransform = scaleTransform;
+        rootDrawTransform.translate(root->bounds().width() * 0.5, root->bounds().height() * 0.5);
+
+        EXPECT_EQ(rootDrawTransform, root->drawTransform());
+        EXPECT_EQ(rootScreenSpaceTransform, root->screenSpaceTransform());
+
+        // The child is at position 2,2, so translate by 2,2 before applying the scale by 2x.
+        WebTransformationMatrix childScreenSpaceTransform = scaleTransform;
+        childScreenSpaceTransform.translate(2, 2);
+        WebTransformationMatrix childDrawTransform = scaleTransform;
+        childDrawTransform.translate(2, 2);
+        childDrawTransform.translate(child->bounds().width() * 0.5, child->bounds().height() * 0.5);
+
+        EXPECT_EQ(childDrawTransform, child->drawTransform());
+        EXPECT_EQ(childScreenSpaceTransform, child->screenSpaceTransform());
 
         endTest();
     }
 
     virtual void afterTest()
     {
+        m_rootLayer.clear();
+        m_childLayer.clear();
     }
 
 private:
-    int m_numCommits;
-    int m_numDraws;
+    MockContentLayerDelegate m_delegate;
+    RefPtr<ContentLayerChromium> m_rootLayer;
+    RefPtr<ContentLayerChromium> m_childLayer;
 };
 
-TEST_F(CCLayerTreeHostTestSetViewportSize, runSingleThread)
+TEST_F(CCLayerTreeHostTestDeviceScaleFactorScalesViewportAndLayers, runMultiThread)
 {
-    runTest(false);
+    runTest(true);
 }
-
-class MockContentLayerDelegate : public ContentLayerDelegate {
-public:
-    bool drawsContent() const { return true; }
-    MOCK_CONST_METHOD0(preserves3D, bool());
-    virtual void paintContents(GraphicsContext&, const IntRect&) { }
-    virtual void didScroll(const IntSize&) { }
-    void notifySyncRequired() { }
-};
 
 // Verify atomicity of commits and reuse of textures.
 class CCLayerTreeHostTestAtomicCommit : public CCLayerTreeHostTest {
@@ -1711,12 +1379,12 @@ public:
 
     virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()));
+        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()->context3D()));
 
-        switch (impl->frameNumber()) {
+        switch (impl->sourceFrameNumber()) {
         case 0:
             // Number of textures should be one.
-            EXPECT_EQ(1, context->numTextures());
+            ASSERT_EQ(1, context->numTextures());
             // Number of textures used for commit should be one.
             EXPECT_EQ(1, context->numUsedTextures());
             // Verify that used texture is correct.
@@ -1727,7 +1395,7 @@ public:
         case 1:
             // Number of textures should be two as the first texture
             // is used by impl thread and cannot by used for update.
-            EXPECT_EQ(2, context->numTextures());
+            ASSERT_EQ(2, context->numTextures());
             // Number of textures used for commit should still be one.
             EXPECT_EQ(1, context->numUsedTextures());
             // First texture should not have been used.
@@ -1745,12 +1413,12 @@ public:
 
     virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()));
+        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()->context3D()));
 
         // Number of textures used for draw should always be one.
         EXPECT_EQ(1, context->numUsedTextures());
 
-        if (impl->frameNumber() < 2) {
+        if (impl->sourceFrameNumber() < 1) {
             context->resetUsedTextures();
             postSetNeedsAnimateAndCommitToMainThread();
             postSetNeedsRedrawToMainThread();
@@ -1777,7 +1445,7 @@ TEST_F(CCLayerTreeHostTestAtomicCommit, runMultiThread)
     runTest(true);
 }
 
-static void setLayerPropertiesForTesting(LayerChromium* layer, LayerChromium* parent, const TransformationMatrix& transform, const FloatPoint& anchor, const FloatPoint& position, const IntSize& bounds, bool opaque)
+static void setLayerPropertiesForTesting(LayerChromium* layer, LayerChromium* parent, const WebTransformationMatrix& transform, const FloatPoint& anchor, const FloatPoint& position, const IntSize& bounds, bool opaque)
 {
     layer->removeAllChildren();
     if (parent)
@@ -1805,7 +1473,7 @@ public:
         m_layerTreeHost->setRootLayer(m_parent);
         m_layerTreeHost->setViewportSize(IntSize(10, 20));
 
-        TransformationMatrix identityMatrix;
+        WebTransformationMatrix identityMatrix;
         setLayerPropertiesForTesting(m_parent.get(), 0, identityMatrix, FloatPoint(0, 0), FloatPoint(0, 0), IntSize(10, 20), true);
         setLayerPropertiesForTesting(m_child.get(), m_parent.get(), identityMatrix, FloatPoint(0, 0), FloatPoint(0, 10), IntSize(10, 10), false);
 
@@ -1815,12 +1483,12 @@ public:
 
     virtual void commitCompleteOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()));
+        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()->context3D()));
 
-        switch (impl->frameNumber()) {
+        switch (impl->sourceFrameNumber()) {
         case 0:
             // Number of textures should be two.
-            EXPECT_EQ(2, context->numTextures());
+            ASSERT_EQ(2, context->numTextures());
             // Number of textures used for commit should be two.
             EXPECT_EQ(2, context->numUsedTextures());
             // Verify that used textures are correct.
@@ -1832,7 +1500,7 @@ public:
         case 1:
             // Number of textures should be four as the first two
             // textures are used by the impl thread.
-            EXPECT_EQ(4, context->numTextures());
+            ASSERT_EQ(4, context->numTextures());
             // Number of textures used for commit should still be two.
             EXPECT_EQ(2, context->numUsedTextures());
             // First two textures should not have been used.
@@ -1848,7 +1516,7 @@ public:
             // Number of textures should be three as we allow one
             // partial update and the first two textures are used by
             // the impl thread.
-            EXPECT_EQ(3, context->numTextures());
+            ASSERT_EQ(3, context->numTextures());
             // Number of textures used for commit should still be two.
             EXPECT_EQ(2, context->numUsedTextures());
             // First texture should have been used.
@@ -1884,16 +1552,16 @@ public:
 
     virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()));
+        CompositorFakeWebGraphicsContext3DWithTextureTracking* context = static_cast<CompositorFakeWebGraphicsContext3DWithTextureTracking*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(impl->context()->context3D()));
 
         // Number of textures used for drawing should two except for frame 4
         // where the viewport only contains one layer.
-        if (impl->frameNumber() == 4)
+        if (impl->sourceFrameNumber() == 3)
             EXPECT_EQ(1, context->numUsedTextures());
         else
             EXPECT_EQ(2, context->numUsedTextures());
 
-        if (impl->frameNumber() < 5) {
+        if (impl->sourceFrameNumber() < 4) {
             context->resetUsedTextures();
             postSetNeedsAnimateAndCommitToMainThread();
             postSetNeedsRedrawToMainThread();
@@ -1943,12 +1611,6 @@ TEST_F(CCLayerTreeHostTestAtomicCommitWithPartialUpdate, runMultiThread)
     runTest(true);
 }
 
-#define EXPECT_EQ_RECT(a, b) \
-    EXPECT_EQ(a.x(), b.x()); \
-    EXPECT_EQ(a.y(), b.y()); \
-    EXPECT_EQ(a.width(), b.width()); \
-    EXPECT_EQ(a.height(), b.height());
-
 class TestLayerChromium : public LayerChromium {
 public:
     static PassRefPtr<TestLayerChromium> create() { return adoptRef(new TestLayerChromium()); }
@@ -1971,7 +1633,7 @@ private:
     Region m_occludedScreenSpace;
 };
 
-static void setTestLayerPropertiesForTesting(TestLayerChromium* layer, LayerChromium* parent, const TransformationMatrix& transform, const FloatPoint& anchor, const FloatPoint& position, const IntSize& bounds, bool opaque)
+static void setTestLayerPropertiesForTesting(TestLayerChromium* layer, LayerChromium* parent, const WebTransformationMatrix& transform, const FloatPoint& anchor, const FloatPoint& position, const IntSize& bounds, bool opaque)
 {
     setLayerPropertiesForTesting(layer, parent, transform, anchor, position, bounds, opaque);
     layer->clearOccludedScreenSpace();
@@ -1989,8 +1651,8 @@ public:
         RefPtr<TestLayerChromium> grandChild = TestLayerChromium::create();
         RefPtr<TestLayerChromium> mask = TestLayerChromium::create();
 
-        TransformationMatrix identityMatrix;
-        TransformationMatrix childTransform;
+        WebTransformationMatrix identityMatrix;
+        WebTransformationMatrix childTransform;
         childTransform.translate(250, 250);
         childTransform.rotate(90);
         childTransform.translate(-250, -250);
@@ -2191,8 +1853,8 @@ public:
         RefPtr<TestLayerChromium> grandChild = TestLayerChromium::create();
         RefPtr<TestLayerChromium> mask = TestLayerChromium::create();
 
-        TransformationMatrix identityMatrix;
-        TransformationMatrix childTransform;
+        WebTransformationMatrix identityMatrix;
+        WebTransformationMatrix childTransform;
         childTransform.translate(250, 250);
         childTransform.rotate(90);
         childTransform.translate(-250, -250);
@@ -2207,8 +1869,8 @@ public:
         setTestLayerPropertiesForTesting(child2.get(), rootLayer.get(), identityMatrix, FloatPoint(0, 0), FloatPoint(10, 70), IntSize(500, 500), true);
 
         {
-            FilterOperations filters;
-            filters.operations().append(BasicComponentTransferFilterOperation::create(0.5, FilterOperation::OPACITY));
+            WebFilterOperations filters;
+            filters.append(WebFilterOperation::createOpacityFilter(0.5));
             child->setFilters(filters);
         }
 
@@ -2235,8 +1897,8 @@ public:
         setTestLayerPropertiesForTesting(child2.get(), rootLayer.get(), identityMatrix, FloatPoint(0, 0), FloatPoint(10, 70), IntSize(500, 500), true);
 
         {
-            FilterOperations filters;
-            filters.operations().append(BlurFilterOperation::create(Length(10, WebCore::Percent), FilterOperation::BLUR));
+            WebFilterOperations filters;
+            filters.append(WebFilterOperation::createBlurFilter(10));
             child->setFilters(filters);
         }
 
@@ -2277,7 +1939,7 @@ public:
     {
         // We create enough RenderSurfaces that it will trigger Vector reallocation while computing occlusion.
         Region occluded;
-        const TransformationMatrix identityMatrix;
+        const WebTransformationMatrix identityMatrix;
         Vector<RefPtr<TestLayerChromium> > layers;
         Vector<RefPtr<TestLayerChromium> > children;
         int numSurfaces = 20;
@@ -2414,15 +2076,15 @@ public:
         root->setMaxScrollPosition(IntSize(100, 100));
 
         // Check that a fractional scroll delta is correctly accumulated over multiple commits.
-        if (impl->frameNumber() == 1) {
+        if (!impl->sourceFrameNumber()) {
             EXPECT_EQ(root->scrollPosition(), IntPoint(0, 0));
             EXPECT_EQ(root->scrollDelta(), FloatSize(0, 0));
             postSetNeedsCommitToMainThread();
-        } else if (impl->frameNumber() == 2) {
+        } else if (impl->sourceFrameNumber() == 1) {
             EXPECT_EQ(root->scrollPosition(), flooredIntPoint(m_scrollAmount));
             EXPECT_EQ(root->scrollDelta(), FloatSize(fmod(m_scrollAmount.width(), 1), 0));
             postSetNeedsCommitToMainThread();
-        } else if (impl->frameNumber() == 3) {
+        } else if (impl->sourceFrameNumber() == 2) {
             EXPECT_EQ(root->scrollPosition(), flooredIntPoint(m_scrollAmount + m_scrollAmount));
             EXPECT_EQ(root->scrollDelta(), FloatSize(fmod(2 * m_scrollAmount.width(), 1), 0));
             endTest();
@@ -2448,70 +2110,96 @@ TEST_F(CCLayerTreeHostTestFractionalScroll, runMultiThread)
     runTestThreaded();
 }
 
-class CCLayerTreeHostTestScrollChildLayer : public CCLayerTreeHostTest {
+class CCLayerTreeHostTestFinishAllRendering : public CCLayerTreeHostTest {
 public:
-    CCLayerTreeHostTestScrollChildLayer()
-        : m_scrollAmount(2, 1)
+    CCLayerTreeHostTestFinishAllRendering()
+        : m_once(false)
+        , m_mutex()
+        , m_drawCount(0)
     {
     }
 
     virtual void beginTest()
     {
-        m_layerTreeHost->setViewportSize(IntSize(10, 10));
-        m_rootScrollLayer = ContentLayerChromium::create(&m_mockDelegate);
-        m_rootScrollLayer->setBounds(IntSize(10, 10));
-        m_rootScrollLayer->setIsDrawable(true);
-        m_rootScrollLayer->setScrollable(true);
-        m_rootScrollLayer->setMaxScrollPosition(IntSize(100, 100));
-        m_layerTreeHost->rootLayer()->addChild(m_rootScrollLayer);
-        m_childLayer = ContentLayerChromium::create(&m_mockDelegate);
-        m_childLayer->setBounds(IntSize(50, 50));
-        m_childLayer->setIsDrawable(true);
-        m_childLayer->setScrollable(true);
-        m_childLayer->setMaxScrollPosition(IntSize(100, 100));
-        m_rootScrollLayer->addChild(m_childLayer);
-        postSetNeedsCommitToMainThread();
+        m_layerTreeHost->setNeedsRedraw();
     }
 
-    virtual void applyScrollAndScale(const IntSize& scrollDelta, float)
+    virtual void didCommitAndDrawFrame()
     {
-        IntPoint position = m_rootScrollLayer->scrollPosition();
-        m_rootScrollLayer->setScrollPosition(position + scrollDelta);
-    }
-
-    virtual void beginCommitOnCCThread(CCLayerTreeHostImpl* impl)
-    {
-        EXPECT_EQ(m_rootScrollLayer->scrollPosition(), IntPoint());
-        if (!m_layerTreeHost->frameNumber())
-            EXPECT_EQ(m_childLayer->scrollPosition(), IntPoint());
-        else
-            EXPECT_EQ(m_childLayer->scrollPosition(), IntPoint() + m_scrollAmount);
+        if (m_once)
+            return;
+        m_once = true;
+        m_layerTreeHost->setNeedsRedraw();
+        m_layerTreeHost->acquireLayerTextures();
+        {
+            Locker<Mutex> lock(m_mutex);
+            m_drawCount = 0;
+        }
+        m_layerTreeHost->finishAllRendering();
+        {
+            Locker<Mutex> lock(m_mutex);
+            EXPECT_EQ(0, m_drawCount);
+        }
+        endTest();
     }
 
     virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl)
     {
-        if (impl->frameNumber() == 1) {
-            EXPECT_EQ(impl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
-            impl->scrollBy(m_scrollAmount);
-            impl->scrollEnd();
-        } else if (impl->frameNumber() == 2)
-            endTest();
+        Locker<Mutex> lock(m_mutex);
+        ++m_drawCount;
     }
 
     virtual void afterTest()
     {
     }
-
 private:
-    const IntSize m_scrollAmount;
-    MockContentLayerDelegate m_mockDelegate;
-    RefPtr<LayerChromium> m_childLayer;
-    RefPtr<LayerChromium> m_rootScrollLayer;
+
+    bool m_once;
+    Mutex m_mutex;
+    int m_drawCount;
 };
 
-TEST_F(CCLayerTreeHostTestScrollChildLayer, runMultiThread)
-{
-    runTest(true);
-}
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestFinishAllRendering)
+
+// Layers added to tree with existing active animations should have the animation
+// correctly recognized.
+class CCLayerTreeHostTestLayerAddedWithAnimation : public CCLayerTreeHostTest {
+public:
+    CCLayerTreeHostTestLayerAddedWithAnimation()
+        : m_addedAnimation(false)
+    {
+    }
+
+    virtual void beginTest()
+    {
+        EXPECT_FALSE(m_addedAnimation);
+
+        RefPtr<LayerChromium> layer = LayerChromium::create();
+        layer->setLayerAnimationDelegate(this);
+
+        // Any valid CCAnimationCurve will do here.
+        OwnPtr<CCAnimationCurve> curve(CCEaseTimingFunction::create());
+        OwnPtr<CCActiveAnimation> animation(CCActiveAnimation::create(curve.release(), AnimationIdVendor::getNextAnimationId(), AnimationIdVendor::getNextGroupId(), CCActiveAnimation::Opacity));
+        layer->layerAnimationController()->addAnimation(animation.release());
+
+        // We add the animation *before* attaching the layer to the tree.
+        m_layerTreeHost->rootLayer()->addChild(layer);
+        EXPECT_TRUE(m_addedAnimation);
+
+        endTest();
+    }
+
+    virtual void didAddAnimation()
+    {
+        m_addedAnimation = true;
+    }
+
+    virtual void afterTest() { }
+
+private:
+    bool m_addedAnimation;
+};
+
+SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestLayerAddedWithAnimation)
 
 } // namespace

@@ -31,6 +31,7 @@
 #include "JSEventListener.h"
 #include "NotImplemented.h"
 #include "ScriptValue.h"
+#include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,6 +44,7 @@ class EventListener;
 
 class Dictionary {
 public:
+    Dictionary();
     Dictionary(JSC::ExecState*, JSC::JSValue);
 
     // Returns true if a value was found for the provided property.
@@ -58,7 +60,8 @@ public:
 
     bool isObject() const { return m_dictionary.isValid(); }
     bool isUndefinedOrNull() const { return !m_dictionary.isValid(); }
-    bool getWithUndefinedOrNullCheck(const String&, String&) const { notImplemented(); return false; }
+    bool getOwnPropertiesAsStringHashMap(WTF::HashMap<String, String>&) const;
+    bool getWithUndefinedOrNullCheck(const String& propertyName, String& value) const;
 
 private:
     template <typename T>

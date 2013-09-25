@@ -27,7 +27,7 @@
 
 #include "IntRect.h"
 #include "IntSize.h"
-#include "TransformationMatrix.h"
+#include <public/WebTransformationMatrix.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -39,16 +39,15 @@ class LayerChromium;
 
 class CCLayerTreeHostCommon {
 public:
-    static IntRect calculateVisibleRect(const IntRect& targetSurfaceRect, const IntRect& layerBoundRect, const TransformationMatrix&);
+    static IntRect calculateVisibleRect(const IntRect& targetSurfaceRect, const IntRect& layerBoundRect, const WebKit::WebTransformationMatrix&);
 
-    static void calculateDrawTransformsAndVisibility(LayerChromium*, LayerChromium* rootLayer, const TransformationMatrix& parentMatrix, const TransformationMatrix& fullHierarchyMatrix, Vector<RefPtr<LayerChromium> >& renderSurfaceLayerList, Vector<RefPtr<LayerChromium> >& layerList, int maxTextureSize);
-    static void calculateDrawTransformsAndVisibility(CCLayerImpl*, CCLayerImpl* rootLayer, const TransformationMatrix& parentMatrix, const TransformationMatrix& fullHierarchyMatrix, Vector<CCLayerImpl*>& renderSurfaceLayerList, Vector<CCLayerImpl*>& layerList, CCLayerSorter*, int maxTextureSize);
+    static void calculateDrawTransforms(LayerChromium*, LayerChromium* rootLayer, const WebKit::WebTransformationMatrix& parentMatrix, const WebKit::WebTransformationMatrix& fullHierarchyMatrix, Vector<RefPtr<LayerChromium> >& renderSurfaceLayerList, Vector<RefPtr<LayerChromium> >& layerList, int maxTextureSize);
+    static void calculateDrawTransforms(CCLayerImpl*, CCLayerImpl* rootLayer, const WebKit::WebTransformationMatrix& parentMatrix, const WebKit::WebTransformationMatrix& fullHierarchyMatrix, Vector<CCLayerImpl*>& renderSurfaceLayerList, Vector<CCLayerImpl*>& layerList, CCLayerSorter*, int maxTextureSize);
+
+    static void calculateVisibleAndScissorRects(Vector<CCLayerImpl*>& renderSurfaceLayerList, const FloatRect& rootScissorRect);
+    static void calculateVisibleAndScissorRects(Vector<RefPtr<LayerChromium> >& renderSurfaceLayerList, const FloatRect& rootScissorRect);
 
     template<typename LayerType> static bool renderSurfaceContributesToTarget(LayerType*, int targetSurfaceLayerID);
-
-    // Returns a layer with the given id if one exists in the subtree starting
-    // from the given root layer (including mask and replica layers).
-    template<typename LayerType> static LayerType* findLayerInSubtree(LayerType* rootLayer, int layerId);
 
     struct ScrollUpdateInfo {
         int layerId;
@@ -73,25 +72,6 @@ bool CCLayerTreeHostCommon::renderSurfaceContributesToTarget(LayerType* layer, i
     // Otherwise, the layer just contributes itself to the target surface.
 
     return layer->renderSurface() && layer->id() != targetSurfaceLayerID;
-}
-
-template<typename LayerType>
-LayerType* CCLayerTreeHostCommon::findLayerInSubtree(LayerType* rootLayer, int layerId)
-{
-    if (rootLayer->id() == layerId)
-        return rootLayer;
-
-    if (rootLayer->maskLayer() && rootLayer->maskLayer()->id() == layerId)
-        return rootLayer->maskLayer();
-
-    if (rootLayer->replicaLayer() && rootLayer->replicaLayer()->id() == layerId)
-        return rootLayer->replicaLayer();
-
-    for (size_t i = 0; i < rootLayer->children().size(); ++i) {
-        if (LayerType* found = findLayerInSubtree(rootLayer->children()[i].get(), layerId))
-            return found;
-    }
-    return 0;
 }
 
 } // namespace WebCore

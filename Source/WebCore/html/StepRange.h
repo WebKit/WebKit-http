@@ -21,6 +21,7 @@
 #ifndef StepRange_h
 #define StepRange_h
 
+#include "Decimal.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
@@ -28,40 +29,103 @@ namespace WebCore {
 
 class HTMLInputElement;
 
-class StepRange {
-    WTF_MAKE_NONCOPYABLE(StepRange);
-public:
-    bool hasStep;
-    double step;
-    double minimum;
-    double maximum; // maximum must be >= minimum.
+enum AnyStepHandling { RejectAny, AnyIsDefaultStep };
 
-    explicit StepRange(const HTMLInputElement*);
-    double clampValue(double value);
-    double clampValue(const String& stringValue);
+// FIXME: We should rename InputNumber to Decimal in all places.
+typedef Decimal InputNumber;
+
+inline InputNumber convertDoubleToInputNumber(double doubleValue)
+{
+    return Decimal::fromDouble(doubleValue);
+}
+
+inline double convertInputNumberToDouble(const InputNumber& numericValue)
+{
+    return numericValue.toDouble();
+}
+
+class StepRange {
+public:
+    enum StepValueShouldBe {
+        StepValueShouldBeReal,
+        ParsedStepValueShouldBeInteger,
+        ScaledStepValueShouldBeInteger,
+    };
+
+    struct StepDescription {
+        int defaultStep;
+        int defaultStepBase;
+        int stepScaleFactor;
+        StepValueShouldBe stepValueShouldBe;
+
+        StepDescription(int defaultStep, int defaultStepBase, int stepScaleFactor, StepValueShouldBe stepValueShouldBe = StepValueShouldBeReal)
+            : defaultStep(defaultStep)
+            , defaultStepBase(defaultStepBase)
+            , stepScaleFactor(stepScaleFactor)
+            , stepValueShouldBe(stepValueShouldBe)
+        {
+        }
+
+        StepDescription()
+            : defaultStep(1)
+            , defaultStepBase(0)
+            , stepScaleFactor(1)
+            , stepValueShouldBe(StepValueShouldBeReal)
+        {
+        }
+
+        InputNumber defaultValue() const
+        {
+            return defaultStep * stepScaleFactor;
+        }
+    };
+
+    StepRange();
+    StepRange(const StepRange&);
+    StepRange(const InputNumber& stepBase, const InputNumber& minimum, const InputNumber& maximum, const InputNumber& step, const StepDescription&);
+    InputNumber acceptableError() const;
+    InputNumber alignValueForStep(const InputNumber& currentValue, const InputNumber& newValue) const;
+    InputNumber clampValue(const InputNumber& value) const;
+    bool hasStep() const { return m_hasStep; }
+    InputNumber maximum() const { return m_maximum; }
+    InputNumber minimum() const { return m_minimum; }
+    static InputNumber parseStep(AnyStepHandling, const StepDescription&, const String&);
+    InputNumber step() const { return m_step; }
+    InputNumber stepBase() const { return m_stepBase; }
+    int stepScaleFactor() const { return m_stepDescription.stepScaleFactor; }
+    bool stepMismatch(const InputNumber&) const;
 
     // Clamp the middle value according to the step
-    double defaultValue()
+    InputNumber defaultValue() const
     {
-        return clampValue((minimum + maximum) / 2);
+        return clampValue((m_minimum + m_maximum) / 2);
     }
 
     // Map value into 0-1 range
-    double proportionFromValue(double value)
+    InputNumber proportionFromValue(const InputNumber& value) const
     {
-        if (minimum == maximum)
+        if (m_minimum == m_maximum)
             return 0;
 
-        return (value - minimum) / (maximum - minimum);
+        return (value - m_minimum) / (m_maximum - m_minimum);
     }
 
     // Map from 0-1 range to value
-    double valueFromProportion(double proportion)
+    InputNumber valueFromProportion(const InputNumber& proportion) const
     {
-        return minimum + proportion * (maximum - minimum);
+        return m_minimum + proportion * (m_maximum - m_minimum);
     }
 
-    double valueFromElement(HTMLInputElement*, bool* wasClamped = 0);
+private:
+    StepRange& operator =(const StepRange&);
+    InputNumber roundByStep(const InputNumber& value, const InputNumber& base) const;
+
+    const InputNumber m_maximum; // maximum must be >= minimum.
+    const InputNumber m_minimum;
+    const InputNumber m_step;
+    const InputNumber m_stepBase;
+    const StepDescription m_stepDescription;
+    const bool m_hasStep;
 };
 
 }

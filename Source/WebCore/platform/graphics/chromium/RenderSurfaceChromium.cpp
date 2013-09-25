@@ -30,10 +30,13 @@
 #include "RenderSurfaceChromium.h"
 
 #include "FilterOperations.h"
-#include "GraphicsContext3D.h"
 #include "LayerChromium.h"
 #include "LayerRendererChromium.h"
+#include "cc/CCMathUtil.h"
+#include <public/WebTransformationMatrix.h>
 #include <wtf/text/CString.h>
+
+using WebKit::WebTransformationMatrix;
 
 namespace WebCore {
 
@@ -64,9 +67,33 @@ FloatRect RenderSurfaceChromium::drawableContentRect() const
     return drawableContentRect;
 }
 
+RenderSurfaceChromium* RenderSurfaceChromium::targetRenderSurface() const
+{
+    LayerChromium* parent = m_owningLayer->parent();
+    if (!parent)
+        return 0;
+    return parent->targetRenderSurface();
+}
+
 bool RenderSurfaceChromium::hasReplica() const
 {
     return m_owningLayer->replicaLayer();
+}
+
+bool RenderSurfaceChromium::hasMask() const
+{
+    return m_maskLayer;
+}
+
+bool RenderSurfaceChromium::replicaHasMask() const
+{
+    return hasReplica() && (m_maskLayer || m_owningLayer->replicaLayer()->maskLayer());
+}
+
+FloatRect RenderSurfaceChromium::computeRootScissorRectInCurrentSurface(const FloatRect& rootScissorRect) const
+{
+    WebTransformationMatrix inverseScreenSpaceTransform = m_screenSpaceTransform.inverse();
+    return CCMathUtil::projectClippedRect(inverseScreenSpaceTransform, rootScissorRect);
 }
 
 }

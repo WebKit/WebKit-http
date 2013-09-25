@@ -40,8 +40,7 @@ BEGIN {
    our ($VERSION, @ISA, @EXPORT, @EXPORT_OK, %EXPORT_TAGS);
    $VERSION     = 1.00;
    @ISA         = qw(Exporter);
-   @EXPORT      = qw(&checkWebCoreFeatureSupport
-                     &removeLibraryDependingOnFeature);
+   @EXPORT      = qw(&checkWebCoreFeatureSupport);
    %EXPORT_TAGS = ( );
    @EXPORT_OK   = ();
 }
@@ -92,16 +91,6 @@ sub checkWebCoreFeatureSupport($$)
         die "$libraryName at \"$path\" does not include $hasFeature support.  See build-webkit --help\n";
     }
     return $hasFeature;
-}
-
-sub removeLibraryDependingOnFeature($$$)
-{
-    my ($libraryName, $featureName, $shouldHaveFeature) = @_;
-    my $path = builtDylibPathForName($libraryName);
-    return unless -x $path;
-
-    my $hasFeature = hasFeature($featureName, $path);
-    system "rm -f $path" if ($shouldHaveFeature xor $hasFeature);
 }
 
 1;

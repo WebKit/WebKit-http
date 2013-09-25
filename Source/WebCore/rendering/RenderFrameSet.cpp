@@ -181,9 +181,9 @@ void RenderFrameSet::GridAxis::resize(int size)
     m_deltas.resize(size);
     m_deltas.fill(0);
     
-    // To track edges for resizability and borders, we need to be (size + 1).  This is because a parent frameset
+    // To track edges for resizability and borders, we need to be (size + 1). This is because a parent frameset
     // may ask us for information about our left/top/right/bottom edges in order to make its own decisions about
-    // what to do.  We are capable of tainting that parent frameset's borders, so we have to cache this info.
+    // what to do. We are capable of tainting that parent frameset's borders, so we have to cache this info.
     m_preventResize.resize(size + 1);
     m_allowBorder.resize(size + 1);
 }
@@ -342,11 +342,10 @@ void RenderFrameSet::layOutAxis(GridAxis& axis, const Length* grid, int availabl
                 remainingLen -= changePercent;
             }
         }
-    } 
-    
-    // If we don't have any percentage columns/rows we only have fixed columns. Spread
-    // the remainder equally over all fixed columns/rows.
-    else if (remainingLen && countFixed) {
+    } else if (remainingLen && countFixed) {
+        // If we don't have any percentage columns/rows we only have
+        // fixed columns. Spread the remainder equally over all fixed
+        // columns/rows.
         int remainingFixed = remainingLen;
         int changeFixed = 0;
         
@@ -668,7 +667,7 @@ bool RenderFrameSet::flattenFrameSet() const
 void RenderFrameSet::startResizing(GridAxis& axis, int position)
 {
     int split = hitTestSplit(axis, position);
-    if (split == noSplit || !axis.m_allowBorder[split] || axis.m_preventResize[split]) {
+    if (split == noSplit || axis.m_preventResize[split]) {
         axis.m_splitBeingResized = noSplit;
         return;
     }
@@ -684,7 +683,7 @@ void RenderFrameSet::continueResizing(GridAxis& axis, int position)
         return;
     int currentSplitPosition = splitPosition(axis, axis.m_splitBeingResized);
     int delta = (position - currentSplitPosition) - axis.m_splitResizeOffset;
-    if (delta == 0)
+    if (!delta)
         return;
     axis.m_deltas[axis.m_splitBeingResized - 1] += delta;
     axis.m_deltas[axis.m_splitBeingResized] -= delta;
@@ -747,13 +746,13 @@ bool RenderFrameSet::isResizingColumn() const
 bool RenderFrameSet::canResizeRow(const IntPoint& p) const
 {
     int r = hitTestSplit(m_rows, p.y());
-    return r != noSplit && m_rows.m_allowBorder[r] && !m_rows.m_preventResize[r];
+    return r != noSplit && !m_rows.m_preventResize[r];
 }
 
 bool RenderFrameSet::canResizeColumn(const IntPoint& p) const
 {
     int c = hitTestSplit(m_cols, p.x());
-    return c != noSplit && m_cols.m_allowBorder[c] && !m_cols.m_preventResize[c];
+    return c != noSplit && !m_cols.m_preventResize[c];
 }
 
 int RenderFrameSet::splitPosition(const GridAxis& axis, int split) const

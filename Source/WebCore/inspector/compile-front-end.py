@@ -28,8 +28,14 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import os
+import os.path
+import generate_protocol_externs
 
-inspector_frontend_path = "Source/WebCore/inspector/front-end"
+inspector_path = "Source/WebCore/inspector"
+inspector_frontend_path = inspector_path + "/front-end"
+
+generate_protocol_externs.generate_protocol_externs(inspector_frontend_path + "/protocol-externs.js", inspector_path + "/Inspector.json")
+
 externs = ["externs.js", "protocol-externs.js"]
 jsmodule_name_prefix = "jsmodule_"
 modules = [
@@ -73,7 +79,10 @@ modules = [
             "DOMAgent.js",
             "DOMStorage.js",
             "DebuggerModel.js",
-            "DebuggerPresentationModel.js",
+            "DebuggerResourceBinding.js",
+            "DebuggerScriptMapping.js",
+            "FileManager.js",
+            "FileSystemModel.js",
             "HAREntry.js",
             "IndexedDBModel.js",
             "Linkifier.js",
@@ -81,8 +90,9 @@ modules = [
             "Placard.js",
             "Script.js",
             "ScriptFormatter.js",
-            "ScriptMapping.js",
-            "SnippetsModel.js",
+            "ScriptSnippetModel.js",
+            "SnippetStorage.js",
+            "SourceMapping.js",
             "TimelineManager.js",
             "TimelineModel.js",
             "RawSourceCode.js",
@@ -212,10 +222,12 @@ modules = [
             "CallStackSidebarPane.js",
             "ScopeChainSidebarPane.js",
             "JavaScriptSourceFrame.js",
-            "TabbedEditorContainer.js",
+            "PresentationConsoleMessageHelper.js",
+            "RevisionHistoryView.js",
             "ScriptsNavigator.js",
             "ScriptsPanel.js",
             "ScriptsSearchScope.js",
+            "TabbedEditorContainer.js",
             "WatchExpressionsSidebarPane.js",
             "WorkerManager.js",
             "WorkersSidebarPane.js",
@@ -289,6 +301,7 @@ modules = [
         "dependencies": ["components"],
         "sources": [
             "BottomUpProfileDataGridTree.js",
+            "CPUProfileView.js",
             "CSSSelectorProfileView.js",
             "HeapSnapshot.js",
             "HeapSnapshotDataGrids.js",
@@ -298,10 +311,10 @@ modules = [
             "HeapSnapshotView.js",
             "HeapSnapshotWorker.js",
             "HeapSnapshotWorkerDispatcher.js",
+            "NativeMemorySnapshotView.js",
             "ProfileDataGridTree.js",
             "ProfilesPanel.js",
             "ProfileLauncherView.js",
-            "ProfileView.js",
             "TopDownProfileDataGridTree.js",
         ]
     },
@@ -324,7 +337,9 @@ modules = [
 # JavaScriptFormatter
 # ScriptFormatterWorker
 
-command = "java -jar ~/closure/compiler.jar --summary_detail_level 3 --compilation_level SIMPLE_OPTIMIZATIONS --warning_level VERBOSE --language_in ECMASCRIPT5 --accept_const_keyword \\\n"
+compiler_command = "java -jar ~/closure/compiler.jar --summary_detail_level 3 --compilation_level SIMPLE_OPTIMIZATIONS --warning_level VERBOSE --language_in ECMASCRIPT5 --accept_const_keyword \\\n"
+
+command = compiler_command
 for extern in externs:
     command += "    --externs " + inspector_frontend_path + "/" + extern
     command += " \\\n"
@@ -344,5 +359,15 @@ for module in modules:
         command += "        --js " + inspector_frontend_path + "/" + script
         command += " \\\n"
 command += "\n"
-
 os.system(command)
+
+print "Compiling InjectedScriptSource.js..."
+os.system("echo \"var injectedScriptValue = \" > " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+os.system("cat  " + inspector_path + "/" + "InjectedScriptSource.js" + " >> " + inspector_path + "/" + "InjectedScriptSourceTmp.js")
+command = compiler_command
+command += "    --externs " + inspector_path + "/" + "InjectedScriptExterns.js" + " \\\n"
+command += "    --module " + jsmodule_name_prefix + "injected_script" + ":" + "1" + " \\\n"
+command += "        --js " + inspector_path + "/" + "InjectedScriptSourceTmp.js" + " \\\n"
+command += "\n"
+os.system(command)
+os.system("rm " + inspector_path + "/" + "InjectedScriptSourceTmp.js")

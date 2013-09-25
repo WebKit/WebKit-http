@@ -44,6 +44,15 @@ using namespace std;
 
 namespace WebCore {
 
+class ExpectedSVGInlineTextBoxSize : public InlineTextBox {
+    float float1;
+    uint32_t bitfields : 5;
+    void* pointer;
+    Vector<SVGTextFragment> vector;
+};
+
+COMPILE_ASSERT(sizeof(SVGInlineTextBox) == sizeof(ExpectedSVGInlineTextBoxSize), SVGInlineTextBox_is_not_of_expected_size);
+
 SVGInlineTextBox::SVGInlineTextBox(RenderObject* object)
     : InlineTextBox(object)
     , m_logicalHeight(0)
@@ -422,7 +431,6 @@ TextRun SVGInlineTextBox::constructTextRun(RenderStyle* style, const SVGTextFrag
 
     TextRun run(text->characters() + fragment.characterOffset
                 , fragment.length
-                , false /* allowTabs */
                 , 0 /* xPos, only relevant with allowTabs=true */
                 , 0 /* padding, only relevant for justified text, not relevant for SVG */
                 , TextRun::AllowTrailingExpansion

@@ -89,7 +89,7 @@ void SVGResourcesCache::removeResourcesFromRenderObject(RenderObject* object)
     delete m_cache.take(object);
 }
 
-static inline SVGResourcesCache* resourcesCacheFromRenderObject(RenderObject* renderer)
+static inline SVGResourcesCache* resourcesCacheFromRenderObject(const RenderObject* renderer)
 {
     Document* document = renderer->document();
     ASSERT(document);
@@ -103,7 +103,7 @@ static inline SVGResourcesCache* resourcesCacheFromRenderObject(RenderObject* re
     return cache;
 }
 
-SVGResources* SVGResourcesCache::cachedResourcesForRenderObject(RenderObject* renderer)
+SVGResources* SVGResourcesCache::cachedResourcesForRenderObject(const RenderObject* renderer)
 {
     ASSERT(renderer);
     SVGResourcesCache* cache = resourcesCacheFromRenderObject(renderer);
@@ -128,26 +128,52 @@ void SVGResourcesCache::clientLayoutChanged(RenderObject* object)
 void SVGResourcesCache::clientStyleChanged(RenderObject* renderer, StyleDifference diff, const RenderStyle* newStyle)
 {
     ASSERT(renderer);
-    if (diff == StyleDifferenceEqual)
+    if (diff == StyleDifferenceEqual || !renderer->parent())
         return;
 
     // In this case the proper SVGFE*Element will decide whether the modified CSS properties require a relayout or repaint.
     if (renderer->isSVGResourceFilterPrimitive() && diff == StyleDifferenceRepaint)
         return;
 
-    clientUpdatedFromElement(renderer, newStyle);
-}
-
-void SVGResourcesCache::clientUpdatedFromElement(RenderObject* renderer, const RenderStyle* newStyle)
-{
-    ASSERT(renderer);
-    ASSERT(renderer->parent());
-
+    // Dynamic changes of CSS properties like 'clip-path' may require us to recompute the associated resources for a renderer.
+    // FIXME: Avoid passing in a useless StyleDifference, but instead compare oldStyle/newStyle to see which resources changed
+    // to be able to selectively rebuild individual resources, instead of all of them.
     SVGResourcesCache* cache = resourcesCacheFromRenderObject(renderer);
     cache->removeResourcesFromRenderObject(renderer);
     cache->addResourcesFromRenderObject(renderer, newStyle);
 
     RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer, false);
+}
+
+static inline bool rendererCanHaveResources(RenderObject* renderer)
+{
+    ASSERT(renderer);
+    ASSERT(renderer->parent());
+    return renderer->node() && !renderer->isSVGInlineText();
+}
+
+void SVGResourcesCache::clientWasAddedToTree(RenderObject* renderer, const RenderStyle* newStyle)
+{
+    if (!renderer->node())
+        return;
+    RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer, false);
+
+    if (!rendererCanHaveResources(renderer))
+        return;
+    SVGResourcesCache* cache = resourcesCacheFromRenderObject(renderer);
+    cache->addResourcesFromRenderObject(renderer, newStyle);
+}
+
+void SVGResourcesCache::clientWillBeRemovedFromTree(RenderObject* renderer)
+{
+    if (!renderer->node())
+        return;
+    RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer, false);
+
+    if (!rendererCanHaveResources(renderer))
+        return;
+    SVGResourcesCache* cache = resourcesCacheFromRenderObject(renderer);
+    cache->removeResourcesFromRenderObject(renderer);
 }
 
 void SVGResourcesCache::clientDestroyed(RenderObject* renderer)
@@ -170,8 +196,8 @@ void SVGResourcesCache::resourceDestroyed(RenderSVGResourceContainer* resource)
     // The resource itself may have clients, that need to be notified.
     cache->removeResourcesFromRenderObject(resource);
 
-    HashMap<RenderObject*, SVGResources*>::iterator end = cache->m_cache.end();
-    for (HashMap<RenderObject*, SVGResources*>::iterator it = cache->m_cache.begin(); it != end; ++it) {
+    HashMap<const RenderObject*, SVGResources*>::iterator end = cache->m_cache.end();
+    for (HashMap<const RenderObject*, SVGResources*>::iterator it = cache->m_cache.begin(); it != end; ++it) {
         it->second->resourceDestroyed(resource);
 
         // Mark users of destroyed resources as pending resolution based on the id of the old resource.

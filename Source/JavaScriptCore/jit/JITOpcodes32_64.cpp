@@ -1523,44 +1523,24 @@ void JIT::emit_op_init_lazy_reg(Instruction* currentInstruction)
     emitStore(dst, JSValue());
 }
 
-void JIT::emit_op_get_callee(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    emitGetFromCallFrameHeaderPtr(RegisterFile::Callee, regT0);
-    emitStoreCell(dst, regT0);
-}
-
 void JIT::emit_op_create_this(Instruction* currentInstruction)
 {
-    emitLoad(currentInstruction[2].u.operand, regT1, regT0);
-    emitJumpSlowCaseIfNotJSCell(currentInstruction[2].u.operand, regT1);
-    loadPtr(Address(regT0, JSCell::structureOffset()), regT1);
-    addSlowCase(emitJumpIfNotObject(regT1));
-    
-    // now we know that the prototype is an object, but we don't know if it's got an
-    // inheritor ID
-    
-    loadPtr(Address(regT0, JSObject::offsetOfInheritorID()), regT2);
+    emitGetFromCallFrameHeaderPtr(RegisterFile::Callee, regT0);
+    loadPtr(Address(regT0, JSFunction::offsetOfCachedInheritorID()), regT2);
     addSlowCase(branchTestPtr(Zero, regT2));
     
     // now regT2 contains the inheritorID, which is the structure that the newly
     // allocated object will have.
     
     emitAllocateJSFinalObject(regT2, regT0, regT1);
-
     emitStoreCell(currentInstruction[1].u.operand, regT0);
 }
 
 void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    linkSlowCaseIfNotJSCell(iter, currentInstruction[2].u.operand); // not a cell
-    linkSlowCase(iter); // not an object
     linkSlowCase(iter); // doesn't have an inheritor ID
     linkSlowCase(iter); // allocation failed
-    unsigned protoRegister = currentInstruction[2].u.operand;
-    emitLoad(protoRegister, regT1, regT0);
     JITStubCall stubCall(this, cti_op_create_this);
-    stubCall.addArgument(regT1, regT0);
     stubCall.call(currentInstruction[1].u.operand);
 }
 
@@ -1568,12 +1548,15 @@ void JIT::emit_op_convert_this(Instruction* currentInstruction)
 {
     unsigned thisRegister = currentInstruction[1].u.operand;
 
-    emitLoad(thisRegister, regT1, regT0);
+    emitLoad(thisRegister, regT3, regT2);
 
-    addSlowCase(branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag)));
-    addSlowCase(branchPtr(Equal, Address(regT0, JSCell::classInfoOffset()), TrustedImmPtr(&JSString::s_info)));
-
-    map(m_bytecodeOffset + OPCODE_LENGTH(op_convert_this), thisRegister, regT1, regT0);
+    addSlowCase(branch32(NotEqual, regT3, TrustedImm32(JSValue::CellTag)));
+    if (shouldEmitProfiling()) {
+        loadPtr(Address(regT2, JSCell::structureOffset()), regT0);
+        move(regT3, regT1);
+        emitValueProfilingSite();
+    }
+    addSlowCase(branchPtr(Equal, Address(regT2, JSCell::classInfoOffset()), TrustedImmPtr(&JSString::s_info)));
 }
 
 void JIT::emitSlow_op_convert_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
@@ -1582,39 +1565,41 @@ void JIT::emitSlow_op_convert_this(Instruction* currentInstruction, Vector<SlowC
     unsigned thisRegister = currentInstruction[1].u.operand;
 
     linkSlowCase(iter);
-    Jump isNotUndefined = branch32(NotEqual, regT1, TrustedImm32(JSValue::UndefinedTag));
+    if (shouldEmitProfiling()) {
+        move(TrustedImm32(JSValue::UndefinedTag), regT1);
+        move(TrustedImm32(0), regT0);
+    }
+    Jump isNotUndefined = branch32(NotEqual, regT3, TrustedImm32(JSValue::UndefinedTag));
+    emitValueProfilingSite();
     move(TrustedImmPtr(globalThis), regT0);
     move(TrustedImm32(JSValue::CellTag), regT1);
     emitStore(thisRegister, regT1, regT0);
     emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_convert_this));
 
-    isNotUndefined.link(this);
     linkSlowCase(iter);
+    if (shouldEmitProfiling()) {
+        move(TrustedImm32(JSValue::CellTag), regT1);
+        move(TrustedImmPtr(m_globalData->stringStructure.get()), regT0);
+    }
+    isNotUndefined.link(this);
+    emitValueProfilingSite();
     JITStubCall stubCall(this, cti_op_convert_this);
-    stubCall.addArgument(regT1, regT0);
+    stubCall.addArgument(regT3, regT2);
     stubCall.call(thisRegister);
 }
 
 void JIT::emit_op_profile_will_call(Instruction* currentInstruction)
 {
-    peek(regT2, OBJECT_OFFSETOF(JITStackFrame, enabledProfilerReference) / sizeof(void*));
-    Jump noProfiler = branchTestPtr(Zero, Address(regT2));
-
     JITStubCall stubCall(this, cti_op_profile_will_call);
     stubCall.addArgument(currentInstruction[1].u.operand);
     stubCall.call();
-    noProfiler.link(this);
 }
 
 void JIT::emit_op_profile_did_call(Instruction* currentInstruction)
 {
-    peek(regT2, OBJECT_OFFSETOF(JITStackFrame, enabledProfilerReference) / sizeof(void*));
-    Jump noProfiler = branchTestPtr(Zero, Address(regT2));
-
     JITStubCall stubCall(this, cti_op_profile_did_call);
     stubCall.addArgument(currentInstruction[1].u.operand);
     stubCall.call();
-    noProfiler.link(this);
 }
 
 void JIT::emit_op_get_arguments_length(Instruction* currentInstruction)
@@ -1656,6 +1641,7 @@ void JIT::emit_op_get_argument_by_val(Instruction* currentInstruction)
     neg32(regT2);
     loadPtr(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.payload) + CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))), regT0);
     loadPtr(BaseIndex(callFrameRegister, regT2, TimesEight, OBJECT_OFFSETOF(JSValue, u.asBits.tag) + CallFrame::thisArgumentOffset() * static_cast<int>(sizeof(Register))), regT1);
+    emitValueProfilingSite();
     emitStore(dst, regT1, regT0);
 }
 
@@ -1678,7 +1664,7 @@ void JIT::emitSlow_op_get_argument_by_val(Instruction* currentInstruction, Vecto
     JITStubCall stubCall(this, cti_op_get_by_val);
     stubCall.addArgument(arguments);
     stubCall.addArgument(property);
-    stubCall.call(dst);
+    stubCall.callWithValueProfiling(dst);
 }
 
 } // namespace JSC

@@ -34,17 +34,11 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
-#include "FloatQuad.h"
-#include "IntRect.h"
 #include "TextureCopier.h"
-#include "TextureUploader.h"
+#include "ThrottledTextureUploader.h"
 #include "TrackingTextureAllocator.h"
-#include "cc/CCLayerTreeHost.h"
-#include <wtf/HashMap.h>
-#include <wtf/Noncopyable.h>
+#include "cc/CCRenderer.h"
 #include <wtf/PassOwnPtr.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -52,8 +46,7 @@ class CCCheckerboardDrawQuad;
 class CCDebugBorderDrawQuad;
 class CCDrawQuad;
 class CCIOSurfaceDrawQuad;
-class CCRenderPass;
-class CCRenderSurfaceDrawQuad;
+class CCRenderPassDrawQuad;
 class CCSolidColorDrawQuad;
 class CCTextureDrawQuad;
 class CCTileDrawQuad;
@@ -64,79 +57,60 @@ class LayerRendererGpuMemoryAllocationChangedCallbackAdapter;
 class LayerRendererSwapBuffersCompleteCallbackAdapter;
 class ScopedEnsureFramebufferAllocation;
 
-class LayerRendererChromiumClient {
-public:
-    virtual const IntSize& viewportSize() const = 0;
-    virtual const CCSettings& settings() const = 0;
-    virtual void didLoseContext() = 0;
-    virtual void onSwapBuffersComplete() = 0;
-    virtual void setFullRootLayerDamage() = 0;
-    virtual void setContentsMemoryAllocationLimitBytes(size_t) = 0;
-};
+enum TextureUploaderOption { ThrottledUploader, UnthrottledUploader };
 
 // Class that handles drawing of composited render layers using GL.
-class LayerRendererChromium {
+class LayerRendererChromium : public CCRenderer {
     WTF_MAKE_NONCOPYABLE(LayerRendererChromium);
 public:
-    static PassOwnPtr<LayerRendererChromium> create(LayerRendererChromiumClient*, PassRefPtr<GraphicsContext3D>);
+    static PassOwnPtr<LayerRendererChromium> create(CCRendererClient*, PassRefPtr<GraphicsContext3D>, TextureUploaderOption);
 
-    ~LayerRendererChromium();
+    virtual ~LayerRendererChromium();
 
-    const CCSettings& settings() const { return m_client->settings(); }
-    const LayerRendererCapabilities& capabilities() const { return m_capabilities; }
+    virtual const LayerRendererCapabilities& capabilities() const OVERRIDE { return m_capabilities; }
 
     GraphicsContext3D* context();
-    bool contextSupportsMapSub() const { return m_capabilities.usingMapSub; }
 
-    const IntSize& viewportSize() { return m_client->viewportSize(); }
-    int viewportWidth() { return viewportSize().width(); }
-    int viewportHeight() { return viewportSize().height(); }
+    virtual void viewportChanged() OVERRIDE;
 
-    void viewportChanged();
+    const FloatQuad& sharedGeometryQuad() const { return m_sharedGeometryQuad; }
 
-    void beginDrawingFrame(CCRenderSurface* defaultRenderSurface);
-    void drawRenderPass(const CCRenderPass*);
-    void finishDrawingFrame();
+    virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) OVERRIDE;
+    virtual void drawRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect) OVERRIDE;
+    virtual void finishDrawingFrame() OVERRIDE;
 
-    void drawHeadsUpDisplay(ManagedTexture*, const IntSize& hudSize);
+    virtual void drawHeadsUpDisplay(ManagedTexture*, const IntSize& hudSize) OVERRIDE;
 
     // waits for rendering to finish
-    void finish();
+    virtual void finish() OVERRIDE;
 
-    void doNoOp();
+    virtual void doNoOp() OVERRIDE;
     // puts backbuffer onscreen
-    bool swapBuffers(const IntRect& subBuffer);
+    virtual bool swapBuffers(const IntRect& subBuffer) OVERRIDE;
 
     static void debugGLCall(GraphicsContext3D*, const char* command, const char* file, int line);
 
-    const TransformationMatrix& projectionMatrix() const { return m_projectionMatrix; }
-    const TransformationMatrix& windowMatrix() const { return m_windowMatrix; }
-
     const GeometryBinding* sharedGeometry() const { return m_sharedGeometry.get(); }
-    const FloatQuad& sharedGeometryQuad() const { return m_sharedGeometryQuad; }
 
-
-    void getFramebufferPixels(void *pixels, const IntRect&);
+    virtual void getFramebufferPixels(void *pixels, const IntRect&) OVERRIDE;
     bool getFramebufferTexture(ManagedTexture*, const IntRect& deviceRect);
 
-    TextureManager* renderSurfaceTextureManager() const { return m_renderSurfaceTextureManager.get(); }
-    TextureCopier* textureCopier() const { return m_textureCopier.get(); }
-    TextureUploader* textureUploader() const { return m_textureUploader.get(); }
-    TextureAllocator* renderSurfaceTextureAllocator() const { return m_renderSurfaceTextureAllocator.get(); }
-    TextureAllocator* contentsTextureAllocator() const { return m_contentsTextureAllocator.get(); }
+    virtual TextureManager* implTextureManager() const OVERRIDE { return m_implTextureManager.get(); }
+    virtual TextureCopier* textureCopier() const OVERRIDE { return m_textureCopier.get(); }
+    virtual TextureUploader* textureUploader() const OVERRIDE { return m_textureUploader.get(); }
+    virtual TextureAllocator* implTextureAllocator() const OVERRIDE { return m_implTextureAllocator.get(); }
+    virtual TextureAllocator* contentsTextureAllocator() const OVERRIDE { return m_contentsTextureAllocator.get(); }
 
-    void setScissorToRect(const IntRect&);
+    virtual void setScissorToRect(const IntRect&) OVERRIDE;
 
-    bool isContextLost();
+    virtual bool isContextLost() OVERRIDE;
 
-    void setVisible(bool);
+    virtual void setVisible(bool) OVERRIDE;
 
-    GC3Denum bestTextureFormat();
-
-    static void toGLMatrix(float*, const TransformationMatrix&);
-    void drawTexturedQuad(const TransformationMatrix& layerMatrix,
+    void drawTexturedQuad(const WebKit::WebTransformationMatrix& layerMatrix,
                           float width, float height, float opacity, const FloatQuad&,
                           int matrixLocation, int alphaLocation, int quadLocation);
+    void copyTextureToFramebuffer(int textureId, const IntSize& bounds, const WebKit::WebTransformationMatrix& drawMatrix);
 
 protected:
     friend class LayerRendererGpuMemoryAllocationChangedCallbackAdapter;
@@ -144,15 +118,17 @@ protected:
     void ensureFramebuffer();
     bool isFramebufferDiscarded() const { return m_isFramebufferDiscarded; }
 
-    LayerRendererChromium(LayerRendererChromiumClient*, PassRefPtr<GraphicsContext3D>);
+    LayerRendererChromium(CCRendererClient*, PassRefPtr<GraphicsContext3D>, TextureUploaderOption);
     bool initialize();
 
 private:
-    void drawQuad(const CCDrawQuad*, const FloatRect& surfaceDamageRect);
+    static void toGLMatrix(float*, const WebKit::WebTransformationMatrix&);
+
+    void drawQuad(const CCDrawQuad*);
     void drawCheckerboardQuad(const CCCheckerboardDrawQuad*);
     void drawDebugBorderQuad(const CCDebugBorderDrawQuad*);
-    void drawBackgroundFilters(const CCRenderSurfaceDrawQuad*);
-    void drawRenderSurfaceQuad(const CCRenderSurfaceDrawQuad*);
+    void drawBackgroundFilters(const CCRenderPassDrawQuad*, const WebKit::WebTransformationMatrix& deviceTransform);
+    void drawRenderPassQuad(const CCRenderPassDrawQuad*);
     void drawSolidColorQuad(const CCSolidColorDrawQuad*);
     void drawTextureQuad(const CCTextureDrawQuad*);
     void drawIOSurfaceQuad(const CCIOSurfaceDrawQuad*);
@@ -167,18 +143,18 @@ private:
     void drawRGBA(const CCVideoDrawQuad*);
     void drawYUV(const CCVideoDrawQuad*);
 
-    void setDrawViewportRect(const IntRect&, bool flipY);
+    void setDrawFramebufferRect(const IntRect&, bool flipY);
 
-    // The current drawing target is either a RenderSurface or ManagedTexture. Use these functions to switch to a new drawing target.
-    bool useRenderSurface(CCRenderSurface*);
+    // The current drawing target is either a RenderPass or ManagedTexture. Use these functions to switch to a new drawing target.
+    bool useRenderPass(const CCRenderPass*);
     bool useManagedTexture(ManagedTexture*, const IntRect& viewportRect);
-    bool isCurrentRenderSurface(CCRenderSurface*);
+    bool isCurrentRenderPass(const CCRenderPass*);
 
     bool bindFramebufferToTexture(ManagedTexture*, const IntRect& viewportRect);
 
-    void clearRenderSurface(CCRenderSurface*, CCRenderSurface* rootRenderSurface, const FloatRect& surfaceDamageRect);
+    void clearRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect);
 
-    void releaseRenderSurfaceTextures();
+    void releaseRenderPassTextures();
 
     bool makeContextCurrent();
 
@@ -188,18 +164,14 @@ private:
     friend class LayerRendererSwapBuffersCompleteCallbackAdapter;
     void onSwapBuffersComplete();
 
-    LayerRendererChromiumClient* m_client;
-
     LayerRendererCapabilities m_capabilities;
 
-    TransformationMatrix m_projectionMatrix;
-    TransformationMatrix m_windowMatrix;
-
-    CCRenderSurface* m_currentRenderSurface;
+    const CCRenderPass* m_currentRenderPass;
     ManagedTexture* m_currentManagedTexture;
     unsigned m_offscreenFramebufferId;
 
     OwnPtr<GeometryBinding> m_sharedGeometry;
+    FloatQuad m_sharedGeometryQuad;
 
     // This block of bindings defines all of the programs used by the compositor itself.
 
@@ -213,13 +185,10 @@ private:
     typedef ProgramBinding<VertexShaderPosTex, FragmentShaderCheckerboard> TileCheckerboardProgram;
 
     // Render surface shaders.
-    // CCRenderSurface::drawLayers() needs to see these programs currently.
-    // FIXME: Draw with a quad type for render surfaces and get rid of this friendlyness.
-    friend class CCRenderSurface;
-    typedef ProgramBinding<VertexShaderPosTex, FragmentShaderRGBATexAlpha> RenderSurfaceProgram;
-    typedef ProgramBinding<VertexShaderPosTex, FragmentShaderRGBATexAlphaMask> RenderSurfaceMaskProgram;
-    typedef ProgramBinding<VertexShaderQuad, FragmentShaderRGBATexAlphaAA> RenderSurfaceProgramAA;
-    typedef ProgramBinding<VertexShaderQuad, FragmentShaderRGBATexAlphaMaskAA> RenderSurfaceMaskProgramAA;
+    typedef ProgramBinding<VertexShaderPosTex, FragmentShaderRGBATexAlpha> RenderPassProgram;
+    typedef ProgramBinding<VertexShaderPosTex, FragmentShaderRGBATexAlphaMask> RenderPassMaskProgram;
+    typedef ProgramBinding<VertexShaderQuad, FragmentShaderRGBATexAlphaAA> RenderPassProgramAA;
+    typedef ProgramBinding<VertexShaderQuad, FragmentShaderRGBATexAlphaMaskAA> RenderPassMaskProgramAA;
 
     // Texture shaders.
     typedef ProgramBinding<VertexShaderPosTexTransform, FragmentShaderRGBATexAlpha> TextureProgram;
@@ -245,10 +214,10 @@ private:
     const TileProgramSwizzleAA* tileProgramSwizzleAA();
     const TileCheckerboardProgram* tileCheckerboardProgram();
 
-    const RenderSurfaceProgram* renderSurfaceProgram();
-    const RenderSurfaceProgramAA* renderSurfaceProgramAA();
-    const RenderSurfaceMaskProgram* renderSurfaceMaskProgram();
-    const RenderSurfaceMaskProgramAA* renderSurfaceMaskProgramAA();
+    const RenderPassProgram* renderPassProgram();
+    const RenderPassProgramAA* renderPassProgramAA();
+    const RenderPassMaskProgram* renderPassMaskProgram();
+    const RenderPassMaskProgramAA* renderPassMaskProgramAA();
 
     const TextureProgram* textureProgram();
     const TextureProgramFlip* textureProgramFlip();
@@ -269,10 +238,10 @@ private:
     OwnPtr<TileProgramSwizzleAA> m_tileProgramSwizzleAA;
     OwnPtr<TileCheckerboardProgram> m_tileCheckerboardProgram;
 
-    OwnPtr<RenderSurfaceProgram> m_renderSurfaceProgram;
-    OwnPtr<RenderSurfaceProgramAA> m_renderSurfaceProgramAA;
-    OwnPtr<RenderSurfaceMaskProgram> m_renderSurfaceMaskProgram;
-    OwnPtr<RenderSurfaceMaskProgramAA> m_renderSurfaceMaskProgramAA;
+    OwnPtr<RenderPassProgram> m_renderPassProgram;
+    OwnPtr<RenderPassProgramAA> m_renderPassProgramAA;
+    OwnPtr<RenderPassMaskProgram> m_renderPassMaskProgram;
+    OwnPtr<RenderPassMaskProgramAA> m_renderPassMaskProgramAA;
 
     OwnPtr<TextureProgram> m_textureProgram;
     OwnPtr<TextureProgramFlip> m_textureProgramFlip;
@@ -284,20 +253,19 @@ private:
     OwnPtr<SolidColorProgram> m_solidColorProgram;
     OwnPtr<HeadsUpDisplayProgram> m_headsUpDisplayProgram;
 
-    OwnPtr<TextureManager> m_renderSurfaceTextureManager;
+    OwnPtr<TextureManager> m_implTextureManager;
     OwnPtr<AcceleratedTextureCopier> m_textureCopier;
-    OwnPtr<AcceleratedTextureUploader> m_textureUploader;
+    OwnPtr<TextureUploader> m_textureUploader;
     OwnPtr<TrackingTextureAllocator> m_contentsTextureAllocator;
-    OwnPtr<TrackingTextureAllocator> m_renderSurfaceTextureAllocator;
+    OwnPtr<TrackingTextureAllocator> m_implTextureAllocator;
 
     RefPtr<GraphicsContext3D> m_context;
 
-    CCRenderSurface* m_defaultRenderSurface;
-
-    FloatQuad m_sharedGeometryQuad;
+    const CCRenderPass* m_defaultRenderPass;
 
     bool m_isViewportChanged;
     bool m_isFramebufferDiscarded;
+    TextureUploaderOption m_textureUploaderSetting;
 };
 
 

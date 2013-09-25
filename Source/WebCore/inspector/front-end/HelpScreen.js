@@ -30,67 +30,84 @@
 
 /**
  * @constructor
+ * @param {string=} title
+ * @extends {WebInspector.View}
  */
 WebInspector.HelpScreen = function(title)
 {
-    this._element = document.createElement("div");
-    this._element.className = "help-window-outer";
-    this._element.addEventListener("keydown", this._onKeyDown.bind(this), false);
-    this._element.tabIndex = 0;
-    this._element.addEventListener("focus", this._onBlur.bind(this), false);
+    WebInspector.View.call(this);
+    this.markAsRoot();
+    this.registerRequiredCSS("helpScreen.css");
 
-    var mainWindow = this._element.createChild("div", "help-window-main");
-    var captionWindow = mainWindow.createChild("div", "help-window-caption");
-    var closeButton = captionWindow.createChild("button", "help-close-button");
-    this.contentElement = mainWindow.createChild("div", "help-content");
-    captionWindow.createChild("h1", "help-window-title").textContent = title;
+    this.element.className = "help-window-outer";
+    this.element.addEventListener("keydown", this._onKeyDown.bind(this), false);
+    this.element.tabIndex = 0;
+    this.element.addEventListener("focus", this._onBlur.bind(this), false);
 
-    closeButton.textContent = "\u2716"; // Code stands for HEAVY MULTIPLICATION X.
-    closeButton.addEventListener("click", this.hide.bind(this), false);
-    this._closeKeys = [
-        WebInspector.KeyboardShortcut.Keys.Enter.code,
-        WebInspector.KeyboardShortcut.Keys.Esc.code,
-        WebInspector.KeyboardShortcut.Keys.Space.code,
-    ];
+    if (title) {
+        var mainWindow = this.element.createChild("div", "help-window-main");
+        var captionWindow = mainWindow.createChild("div", "help-window-caption");
+        captionWindow.appendChild(this._createCloseButton());
+        this.contentElement = mainWindow.createChild("div", "help-content");
+        captionWindow.createChild("h1", "help-window-title").textContent = title;
+    }
 }
 
-WebInspector.HelpScreen.visibleScreen_ = null;
+/**
+ * @type {WebInspector.HelpScreen}
+ */
+WebInspector.HelpScreen._visibleScreen = null;
 
 WebInspector.HelpScreen.prototype = {
-    show: function(onHide)
+    _createCloseButton: function()
     {
-        if (this._isShown)
+        var closeButton = document.createElement("button");
+        closeButton.className = "help-close-button";
+        closeButton.textContent = "\u2716"; // Code stands for HEAVY MULTIPLICATION X.
+        closeButton.addEventListener("click", this.hide.bind(this), false);
+        return closeButton;
+    },
+
+    showModal: function()
+    {
+        var visibleHelpScreen = WebInspector.HelpScreen._visibleScreen;
+        if (visibleHelpScreen === this)
             return;
 
-        if (WebInspector.HelpScreen.visibleScreen_)
-            WebInspector.HelpScreen.visibleScreen_.hide();
-        WebInspector.HelpScreen.visibleScreen_ = this;
-
-        document.body.appendChild(this._element);
-        this._isShown = true;
-        this._onHide = onHide;
-        this._previousFocusElement = WebInspector.currentFocusElement();
-        WebInspector.setCurrentFocusElement(this._element);
+        if (visibleHelpScreen)
+            visibleHelpScreen.hide();
+        WebInspector.HelpScreen._visibleScreen = this;
+        this.show(document.body);
+        this.focus();
     },
 
     hide: function()
     {
-        if (!this._isShown)
+        if (!this.isShowing())
             return;
 
-        this._isShown = false;
-        document.body.removeChild(this._element);
-        WebInspector.setCurrentFocusElement(this._previousFocusElement);
-        WebInspector.HelpScreen.visibleScreen_ = null;
-        if (this._onHide) {
-            this._onHide();
-            delete this._onHide;
-        }
+        WebInspector.HelpScreen._visibleScreen = null;
+
+        WebInspector.restoreFocusFromElement(this.element);
+        this.detach();
+    },
+
+    /**
+     * @param {number} keyCode
+     * @return {boolean}
+     */
+    isClosingKey: function(keyCode)
+    {
+        return [
+            WebInspector.KeyboardShortcut.Keys.Enter.code,
+            WebInspector.KeyboardShortcut.Keys.Esc.code,
+            WebInspector.KeyboardShortcut.Keys.Space.code,
+        ].indexOf(keyCode) >= 0;
     },
 
     _onKeyDown: function(event)
     {
-        if (this._isShown && this._closeKeys.indexOf(event.keyCode) >= 0) {
+        if (this.isShowing() && this.isClosingKey(event.keyCode)) {
             this.hide();
             event.consume();
         }
@@ -99,7 +116,9 @@ WebInspector.HelpScreen.prototype = {
     _onBlur: function(event)
     {
         // Pretend we're modal, grab focus back if we're still shown.
-        if (this._isShown && !this._element.isSelfOrAncestor(event.target))
-            WebInspector.setCurrentFocusElement(this._element);
+        if (this.isShowing() && !this.element.isSelfOrAncestor(event.target))
+            WebInspector.setCurrentFocusElement(this.element);
     }
 }
+
+WebInspector.HelpScreen.prototype.__proto__ = WebInspector.View.prototype;

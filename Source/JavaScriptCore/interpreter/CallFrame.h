@@ -90,6 +90,7 @@ namespace JSC  {
         static const HashTable* numberPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().numberPrototypeTable; }
         static const HashTable* objectConstructorTable(CallFrame* callFrame) { return callFrame->globalData().objectConstructorTable; }
         static const HashTable* objectPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().objectPrototypeTable; }
+        static const HashTable* privateNamePrototypeTable(CallFrame* callFrame) { return callFrame->globalData().privateNamePrototypeTable; }
         static const HashTable* regExpTable(CallFrame* callFrame) { return callFrame->globalData().regExpTable; }
         static const HashTable* regExpConstructorTable(CallFrame* callFrame) { return callFrame->globalData().regExpConstructorTable; }
         static const HashTable* regExpPrototypeTable(CallFrame* callFrame) { return callFrame->globalData().regExpPrototypeTable; }
@@ -237,11 +238,15 @@ namespace JSC  {
         // to the caller. This resolves issues surrounding inlining and the
         // HostCallFrameFlag stuff.
         CallFrame* trueCallerFrame();
+        
+        CodeBlock* someCodeBlockForPossiblyInlinedCode();
 #else
         bool isInlineCallFrame() { return false; }
         
         CallFrame* trueCallFrame(AbstractPC) { return this; }
         CallFrame* trueCallerFrame() { return callerFrame()->removeHostCallFrameFlag(); }
+        
+        CodeBlock* someCodeBlockForPossiblyInlinedCode() { return codeBlock(); }
 #endif
         
         // Call this to get the true call frame (accounted for inlining and any

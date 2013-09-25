@@ -286,6 +286,8 @@ EventSender::EventSender(TestShell* shell)
     bindMethod("gestureScrollFirstPoint", &EventSender::gestureScrollFirstPoint);
     bindMethod("gestureScrollUpdate", &EventSender::gestureScrollUpdate);
     bindMethod("gestureTap", &EventSender::gestureTap);
+    bindMethod("gestureLongPress", &EventSender::gestureLongPress);
+    bindMethod("gestureTwoFingerTap", &EventSender::gestureTwoFingerTap);
     bindMethod("zoomPageIn", &EventSender::zoomPageIn);
     bindMethod("zoomPageOut", &EventSender::zoomPageOut);
     bindMethod("scalePageBy", &EventSender::scalePageBy);
@@ -556,6 +558,24 @@ void EventSender::keyDown(const CppArgumentList& arguments, CppVariant* result)
     else if ("menu" == codeStr)
         // FIXME: Change this to webkit_support::VKEY_APPS.
         code = 0x5D;
+    else if ("leftControl" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_LCONTROL.
+        code = 0xA2;
+    else if ("rightControl" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_RCONTROL.
+        code = 0xA3;
+    else if ("leftShift" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_LSHIFT.
+        code = 0xA0;
+    else if ("rightShift" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_RSHIFT.
+        code = 0xA1;
+    else if ("leftAlt" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_LMENU.
+        code = 0xA4;
+    else if ("rightAlt" == codeStr)
+        // FIXME: Change this to webkit_support::VKEY_RMENU.
+        code = 0xA5;
     else {
         // Compare the input string with the function-key names defined by the
         // DOM spec (i.e. "F1",...,"F24"). If the input string is a function-key
@@ -1092,6 +1112,18 @@ void EventSender::gestureTap(const CppArgumentList& arguments, CppVariant* resul
     gestureEvent(WebInputEvent::GestureTap, arguments);
 }
 
+void EventSender::gestureLongPress(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    gestureEvent(WebInputEvent::GestureLongPress, arguments);
+}
+
+void EventSender::gestureTwoFingerTap(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    gestureEvent(WebInputEvent::GestureTwoFingerTap, arguments);
+}
+
 void EventSender::gestureScrollFirstPoint(const CppArgumentList& arguments, CppVariant* result)
 {
     result->setNull();
@@ -1138,6 +1170,14 @@ void EventSender::gestureEvent(WebInputEvent::Type type, const CppArgumentList& 
             event.deltaX = static_cast<float>(arguments[2].toDouble());
             event.deltaY = static_cast<float>(arguments[3].toDouble());
         }
+        event.x = point.x;
+        event.y = point.y;
+        break;
+    case WebInputEvent::GestureLongPress:
+        event.x = point.x;
+        event.y = point.y;
+        break;
+    case WebInputEvent::GestureTwoFingerTap:
         event.x = point.x;
         event.y = point.y;
         break;

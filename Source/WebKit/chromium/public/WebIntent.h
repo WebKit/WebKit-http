@@ -56,6 +56,10 @@ public:
        assign(other);
        return *this;
     }
+
+    WEBKIT_EXPORT static WebIntent create(const WebString& action, const WebString& type, const WebString& data,
+                                          const WebVector<WebString>& extrasNames, const WebVector<WebString>& extrasValues);
+
     WEBKIT_EXPORT void reset();
     WEBKIT_EXPORT bool isNull() const;
     WEBKIT_EXPORT bool equals(const WebIntent&) const;
@@ -65,6 +69,7 @@ public:
     WEBKIT_EXPORT WebString type() const;
     WEBKIT_EXPORT WebString data() const;
     WEBKIT_EXPORT WebURL service() const;
+    WEBKIT_EXPORT WebVector<WebURL> suggestions() const;
 
     // Retrieve a list of the names of extra metadata associated with the
     // intent.
@@ -80,6 +85,7 @@ public:
 
 #if WEBKIT_IMPLEMENTATION
     WebIntent(const WTF::PassRefPtr<WebCore::Intent>&);
+    operator WebCore::Intent*() const;
 #endif
 
 private:

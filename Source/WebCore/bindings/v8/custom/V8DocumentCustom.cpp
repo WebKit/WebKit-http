@@ -43,6 +43,7 @@
 #include "V8CanvasRenderingContext2D.h"
 #include "V8CustomXPathNSResolver.h"
 #include "V8DOMImplementation.h"
+#include "V8DOMWrapper.h"
 #include "V8HTMLDocument.h"
 #include "V8IsolatedContext.h"
 #include "V8Node.h"
@@ -76,7 +77,7 @@ v8::Handle<v8::Value> V8Document::evaluateCallback(const v8::Arguments& args)
 
     RefPtr<XPathNSResolver> resolver = V8DOMWrapper::getXPathNSResolver(args[2]);
     if (!resolver && !args[2]->IsNull() && !args[2]->IsUndefined())
-        return throwError(TYPE_MISMATCH_ERR);
+        return throwError(TYPE_MISMATCH_ERR, args.GetIsolate());
 
     int type = toInt32(args[3]);
     RefPtr<XPathResult> inResult;
@@ -86,10 +87,10 @@ v8::Handle<v8::Value> V8Document::evaluateCallback(const v8::Arguments& args)
     v8::TryCatch exceptionCatcher;
     RefPtr<XPathResult> result = document->evaluate(expression, contextNode.get(), resolver.get(), type, inResult.get(), ec);
     if (exceptionCatcher.HasCaught())
-        return throwError(exceptionCatcher.Exception());
+        return throwError(exceptionCatcher.Exception(), args.GetIsolate());
 
     if (ec)
-        return throwError(ec);
+        return throwError(ec, args.GetIsolate());
 
     return toV8(result.release(), args.GetIsolate());
 }
@@ -119,7 +120,7 @@ v8::Handle<v8::Value> V8Document::getCSSCanvasContextCallback(const v8::Argument
 v8::Handle<v8::Value> toV8(Document* impl, v8::Isolate* isolate, bool forceNewObject)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     if (impl->isHTMLDocument())
         return toV8(static_cast<HTMLDocument*>(impl), isolate, forceNewObject);
 #if ENABLE(SVG)
@@ -142,9 +143,8 @@ v8::Handle<v8::Value> V8Document::createTouchListCallback(const v8::Arguments& a
     RefPtr<TouchList> touchList = TouchList::create();
 
     for (int i = 0; i < args.Length(); i++) {
-        if (!args[i]->IsObject())
-            return v8::Undefined();
-        touchList->append(V8Touch::toNative(args[i]->ToObject()));
+        Touch* touch = V8DOMWrapper::isWrapperOfType(args[i], &V8Touch::info) ? V8Touch::toNative(args[i]->ToObject()) : 0;
+        touchList->append(touch);
     }
 
     return toV8(touchList.release(), args.GetIsolate());

@@ -47,7 +47,7 @@ void JSRopeString::RopeBuilder::expand()
 
 void JSString::destroy(JSCell* cell)
 {
-    JSString* thisObject = jsCast<JSString*>(cell);
+    JSString* thisObject = static_cast<JSString*>(cell);
     thisObject->JSString::~JSString();
 }
 
@@ -56,6 +56,19 @@ void JSString::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSString* thisObject = jsCast<JSString*>(cell);
     Base::visitChildren(thisObject, visitor);
     
+    MARK_LOG_MESSAGE1("[%u]: ", thisObject->length());
+
+#if ENABLE(OBJECT_MARK_LOGGING)
+    if (!thisObject->isRope()) {
+        WTF::StringImpl* ourImpl = thisObject->m_value.impl();
+        if (ourImpl->is8Bit())
+            MARK_LOG_MESSAGE1("[8 %p]", ourImpl->characters8());
+        else
+            MARK_LOG_MESSAGE1("[16 %p]", ourImpl->characters16());
+    } else
+        MARK_LOG_MESSAGE0("[rope]: ");
+#endif
+
     if (thisObject->isRope())
         static_cast<JSRopeString*>(thisObject)->visitFibers(visitor);
 }
@@ -230,7 +243,7 @@ bool JSString::getPrimitiveNumber(ExecState* exec, double& number, JSValue& resu
     return false;
 }
 
-bool JSString::toBoolean(ExecState*) const
+bool JSString::toBoolean() const
 {
     return m_length;
 }
@@ -257,7 +270,7 @@ JSObject* JSString::toThisObject(JSCell* cell, ExecState* exec)
     return StringObject::create(exec, exec->lexicalGlobalObject(), jsCast<JSString*>(cell));
 }
 
-bool JSString::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool JSString::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     JSString* thisObject = jsCast<JSString*>(cell);
     // The semantics here are really getPropertySlot, not getOwnPropertySlot.
@@ -275,16 +288,16 @@ bool JSString::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifie
     return true;
 }
 
-bool JSString::getStringPropertyDescriptor(ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     if (propertyName == exec->propertyNames().length) {
         descriptor.setDescriptor(jsNumber(m_length), DontEnum | DontDelete | ReadOnly);
         return true;
     }
     
-    bool isStrictUInt32;
-    unsigned i = propertyName.toUInt32(isStrictUInt32);
-    if (isStrictUInt32 && i < m_length) {
+    unsigned i = propertyName.asIndex();
+    if (i < m_length) {
+        ASSERT(i != PropertyName::NotAnIndex); // No need for an explicit check, the above test would always fail!
         descriptor.setDescriptor(getIndex(exec, i), DontDelete | ReadOnly);
         return true;
     }

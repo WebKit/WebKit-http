@@ -148,16 +148,14 @@ void RenderMathMLBlock::computePreferredLogicalWidths()
 
 RenderMathMLBlock* RenderMathMLBlock::createAlmostAnonymousBlock(EDisplay display)
 {
-    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyle(style());
-    newStyle->setDisplay(display);
-    
+    RefPtr<RenderStyle> newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), display);
     RenderMathMLBlock* newBlock = new (renderArena()) RenderMathMLBlock(node() /* "almost" anonymous block */);
     newBlock->setStyle(newStyle.release());
     return newBlock;
 }
 
 // An arbitrary large value, like RenderBlock.cpp BLOCK_MAX_WIDTH or FixedTableLayout.cpp TABLE_MAX_WIDTH.
-static const LayoutUnit cLargeLogicalWidth = 15000;
+static const int cLargeLogicalWidth = 15000;
 
 void RenderMathMLBlock::computeChildrenPreferredLogicalHeights()
 {

@@ -28,6 +28,21 @@
 
 namespace WebCore {
 
+class ExpectedTextRunSize {
+    const void* pointer;;
+    int integers[2];
+    float float1;
+#if ENABLE(SVG)
+    float float2;
+#endif
+    float float3;
+    uint32_t bitfields : 9;
+    unsigned anUnsigned;
+    RefPtr<TextRun::RenderingContext> renderingContext;
+};
+
+COMPILE_ASSERT(sizeof(TextRun) == sizeof(ExpectedTextRunSize), TextRun_is_not_of_expected_size);
+
 bool TextRun::s_allowsRoundingHacks = false;
 
 void TextRun::setAllowsRoundingHacks(bool allowsRoundingHacks)

@@ -42,29 +42,20 @@ public:
 private:
     NumberInputType(HTMLInputElement* element) : TextFieldInputType(element) { }
     virtual const AtomicString& formControlType() const OVERRIDE;
-    virtual double valueAsNumber() const OVERRIDE;
-    virtual void setValueAsNumber(double, TextFieldEventBehavior, ExceptionCode&) const OVERRIDE;
+    virtual double valueAsDouble() const OVERRIDE;
+    virtual void setValueAsDouble(double, TextFieldEventBehavior, ExceptionCode&) const OVERRIDE;
+    virtual void setValueAsInputNumber(const InputNumber&, TextFieldEventBehavior, ExceptionCode&) const OVERRIDE;
     virtual bool typeMismatchFor(const String&) const OVERRIDE;
     virtual bool typeMismatch() const OVERRIDE;
-    virtual bool rangeUnderflow(const String&) const OVERRIDE;
-    virtual bool rangeOverflow(const String&) const OVERRIDE;
-    virtual bool supportsRangeLimitation() const OVERRIDE;
-    virtual double minimum() const OVERRIDE;
-    virtual double maximum() const OVERRIDE;
     virtual bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const OVERRIDE;
     virtual bool isSteppable() const OVERRIDE;
-    virtual bool stepMismatch(const String&, double) const OVERRIDE;
-    virtual double stepBase() const OVERRIDE;
-    virtual double stepBaseWithDecimalPlaces(unsigned*) const OVERRIDE;
-    virtual double defaultStep() const OVERRIDE;
-    virtual double stepScaleFactor() const OVERRIDE;
+    virtual StepRange createStepRange(AnyStepHandling) const OVERRIDE;
     virtual void handleKeydownEvent(KeyboardEvent*) OVERRIDE;
     virtual void handleWheelEvent(WheelEvent*) OVERRIDE;
-    virtual double parseToDouble(const String&, double) const OVERRIDE;
-    virtual double parseToDoubleWithDecimalPlaces(const String&, double, unsigned*) const OVERRIDE;
-    virtual String serialize(double) const OVERRIDE;
-    virtual double acceptableError(double) const OVERRIDE;
+    virtual InputNumber parseToNumber(const String&, const InputNumber&) const OVERRIDE;
+    virtual String serialize(const InputNumber&) const OVERRIDE;
     virtual void handleBlurEvent() OVERRIDE;
+    virtual String localizeValue(const String&) const OVERRIDE;
     virtual String visibleValue() const OVERRIDE;
     virtual String convertFromVisibleValue(const String&) const OVERRIDE;
     virtual bool isAcceptableValue(const String&) OVERRIDE;

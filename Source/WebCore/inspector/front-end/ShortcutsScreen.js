@@ -30,13 +30,10 @@
 
 /**
  * @constructor
- * @extends {WebInspector.HelpScreen}
  */
 WebInspector.ShortcutsScreen = function()
 {
-    WebInspector.HelpScreen.call(this, WebInspector.UIString("Keyboard Shortcuts"));
     this._sections = {};
-    this._tableReady = false;
 }
 
 WebInspector.ShortcutsScreen.prototype = {
@@ -48,65 +45,27 @@ WebInspector.ShortcutsScreen.prototype = {
         return section;
     },
 
-    show: function(onHide)
+    _createShortcutsTabView: function()
     {
-        this._buildTable(this.contentElement);
-        WebInspector.HelpScreen.prototype.show.call(this, onHide);
-    },
-
-    /**
-     * @param parent{Node}
-     */
-    _buildTable: function(parent)
-    {
-        if (this._tableReady)
-            return;
-        this._tableReady = true;
-
-        var totalHeight = 0;
         var orderedSections = [];
-        for (var section in this._sections) {
-            totalHeight += this._sections[section]._height;
-            orderedSections.push(this._sections[section])
-        }
+        for (var section in this._sections)
+            orderedSections.push(this._sections[section]);
         function compareSections(a, b)
         {
             return a.order - b.order;
         }
         orderedSections.sort(compareSections);
 
-        // We're minimizing the height of the tallest column.
-        var minMax = totalHeight;
-        var minMaxIndex = -1;
-        var sum = 0;
-        for (var sectionIndex = 0; sectionIndex < orderedSections.length; ++sectionIndex) {
-            sum += orderedSections[sectionIndex]._height;
-            var max = Math.max(sum, totalHeight - sum);
-            if (minMax > max) {
-                minMax = max;
-                minMaxIndex = sectionIndex;
-            }
-        }
+        var view = new WebInspector.View();
 
-        var table = document.createElement("table");
-        table.className = "help-table";
-        var row = table.createChild("tr");
+        var container = view.element;
+        container.className = "help-content help-container";
+        for (var i = 0; i < orderedSections.length; ++i)
+            orderedSections[i].renderSection(container);
 
-        var stopIndices = [0, minMaxIndex + 1, orderedSections.length];
-
-        for (var columnIndex = 1; columnIndex < stopIndices.length; ++columnIndex) {
-            var td = row.createChild("td");
-            td.style.width = "50%";
-            var column = td.createChild("table");
-            column.className = "help-column-table";
-            for (var i = stopIndices[columnIndex - 1]; i < stopIndices[columnIndex]; ++i)
-                orderedSections[i].renderSection(column);
-        }
-        parent.appendChild(table);
+        return view;
     }
 }
-
-WebInspector.ShortcutsScreen.prototype.__proto__ = WebInspector.HelpScreen.prototype;
 
 /**
  * We cannot initialize it here as localized strings are not loaded yet.
@@ -147,29 +106,24 @@ WebInspector.ShortcutsSection.prototype = {
         this._lines.push({ key: keyElement, text: description })
     },
 
-    renderSection: function(parent)
+    /**
+     * @param {!Element} container
+     */
+    renderSection: function(container)
     {
-        this._renderHeader(parent);
+        var parent = container.createChild("div", "help-block");
 
-        for (var line = 0; line < this._lines.length; ++line) {
-            var tr = parent.createChild("tr");
-            var td = tr.createChild("td", "help-key-cell");
-            td.appendChild(this._lines[line].key);
-            td.appendChild(this._createSpan("help-key-delimiter", ":"));
-            tr.createChild("td").textContent = this._lines[line].text;
+        var headLine = parent.createChild("div", "help-line");
+        headLine.createChild("div", "help-key-cell");
+        headLine.createChild("div", "help-section-title help-cell").textContent = this.name;
+
+        for (var i = 0; i < this._lines.length; ++i) {
+            var line = parent.createChild("div", "help-line");
+            var keyCell = line.createChild("div", "help-key-cell");
+            keyCell.appendChild(this._lines[i].key);
+            keyCell.appendChild(this._createSpan("help-key-delimiter", ":"));
+            line.createChild("div", "help-cell").textContent = this._lines[i].text;
         }
-    },
-
-    _renderHeader: function(parent)
-    {
-        var trHead = parent.createChild("tr");
-        var thTitle;
-
-        trHead.createChild("th");
-
-        thTitle = trHead.createChild("th");
-        thTitle.className = "help-section-title";
-        thTitle.textContent = this.name;
     },
 
     _renderSequence: function(sequence, delimiter)
@@ -182,11 +136,6 @@ WebInspector.ShortcutsSection.prototype = {
     {
         var plus = this._createSpan("help-combine-keys", "+");
         return this._joinNodes(key.split(" + ").map(this._createSpan.bind(this, "help-key monospace")), plus);
-    },
-
-    get _height()
-    {
-        return this._lines.length + 2; // add some space for header
     },
 
     _createSpan: function(className, textContent)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,6 @@ module window {
         Node youngerShadowRoot(in Node root) raises (DOMException);
 #endif
         Element includerFor(in Node node) raises (DOMException);
-        void removeShadowRoot(in Element host) raises (DOMException);
         DOMString shadowPseudoId(in Element element) raises (DOMException);
         Element createContentElement(in Document document) raises(DOMException);
         Element getElementByIdInShadowRoot(in Node shadowRoot, in DOMString id) raises(DOMException);
@@ -69,6 +68,8 @@ module window {
         void selectColorInColorChooser(in Element element, in DOMString colorValue);
 #endif
 
+        ClientRect absoluteCaretBounds(in Document document) raises(DOMException);
+
         ClientRect boundingBox(in Element element) raises(DOMException);
 
         ClientRectList inspectorHighlightRects(in Document document) raises (DOMException);
@@ -86,6 +87,7 @@ module window {
         boolean wasLastChangeUserEdit(in Element textField) raises (DOMException);
         DOMString suggestedValue(in Element inputElement) raises (DOMException);
         void setSuggestedValue(in Element inputElement, in DOMString value) raises (DOMException);
+        void setEditingValue(in Element inputElement, in DOMString value) raises (DOMException);
 
         void paintControlTints(in Document document) raises (DOMException);
 
@@ -128,7 +130,14 @@ module window {
 
         unsigned long numberOfScrollableAreas(in Document document) raises (DOMException);
 
+        boolean isPageBoxVisible(in Document document, in long pageNumber) raises (DOMException);
+
         readonly attribute InternalSettings settings;
+
+        void suspendAnimations(in Document document) raises (DOMException);
+        void resumeAnimations(in Document document) raises (DOMException);
+
+        void allowRoundingHacks();
 
 #if defined(ENABLE_BATTERY_STATUS) && ENABLE_BATTERY_STATUS
         void setBatteryStatus(in Document document, in DOMString eventType, in boolean charging, in double chargingTime, in double dischargingTime, in double level) raises (DOMException);

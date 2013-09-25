@@ -26,14 +26,15 @@
 
 #include "cc/CCRenderSurface.h"
 
-#include "TransformationMatrix.h"
 #include "cc/CCLayerImpl.h"
 #include "cc/CCSharedQuadState.h"
 #include "cc/CCSingleThreadProxy.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <public/WebTransformationMatrix.h>
 
 using namespace WebCore;
+using WebKit::WebTransformationMatrix;
 
 namespace {
 
@@ -77,7 +78,7 @@ TEST(CCRenderSurfaceTest, verifySurfaceChangesAreTrackedProperly)
     EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setContentRect(testRect));
 
     OwnPtr<CCLayerImpl> dummyMask = CCLayerImpl::create(1);
-    TransformationMatrix dummyMatrix;
+    WebTransformationMatrix dummyMatrix;
     dummyMatrix.translate(1.0, 2.0);
 
     // The rest of the surface properties are either internal and should not cause change,
@@ -86,9 +87,7 @@ TEST(CCRenderSurfaceTest, verifySurfaceChangesAreTrackedProperly)
     EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setDrawTransform(dummyMatrix));
     EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setReplicaDrawTransform(dummyMatrix));
     EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setOriginTransform(dummyMatrix));
-    EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setSkipsDraw(true));
     EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->clearLayerList());
-    EXECUTE_AND_VERIFY_SURFACE_DID_NOT_CHANGE(renderSurface->setMaskLayer(dummyMask.get()));
 }
 
 TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
@@ -103,8 +102,8 @@ TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
 
     IntRect contentRect = IntRect(IntPoint::zero(), IntSize(50, 50));
     IntRect clipRect = IntRect(IntPoint(5, 5), IntSize(40, 40));
-    TransformationMatrix draw;
-    TransformationMatrix origin;
+    WebTransformationMatrix draw;
+    WebTransformationMatrix origin;
 
     draw.translate(30, 40);
 
@@ -112,6 +111,7 @@ TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
     renderSurface->setOriginTransform(origin);
     renderSurface->setContentRect(contentRect);
     renderSurface->setClipRect(clipRect);
+    renderSurface->setScissorRect(clipRect);
     renderSurface->setDrawOpacity(1);
 
     OwnPtr<CCSharedQuadState> sharedQuadState = renderSurface->createSharedQuadState();
@@ -120,7 +120,7 @@ TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
     EXPECT_EQ(30, sharedQuadState->layerTransform().m41());
     EXPECT_EQ(40, sharedQuadState->layerTransform().m42());
     EXPECT_EQ(contentRect, sharedQuadState->layerRect());
-    EXPECT_EQ(clipRect, sharedQuadState->clipRect());
+    EXPECT_EQ(clipRect, sharedQuadState->scissorRect());
     EXPECT_EQ(1, sharedQuadState->opacity());
     EXPECT_FALSE(sharedQuadState->isOpaque());
 }

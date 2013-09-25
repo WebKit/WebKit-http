@@ -151,9 +151,7 @@ bool ContainerNode::insertBefore(PassRefPtr<Node> newChild, Node* refChild, Exce
     if (targets.isEmpty())
         return true;
 
-#if ENABLE(INSPECTOR)
     InspectorInstrumentation::willInsertDOMNode(document(), this);
-#endif
 
 #if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(this);
@@ -188,6 +186,7 @@ void ContainerNode::insertBeforeCommon(Node* nextChild, Node* newChild)
     ASSERT(!newChild->parentNode()); // Use insertBefore if you need to handle reparenting (and want DOM mutation events).
     ASSERT(!newChild->nextSibling());
     ASSERT(!newChild->previousSibling());
+    ASSERT(!newChild->isShadowRoot());
 
     forbidEventDispatch();
     Node* prev = nextChild->previousSibling();
@@ -201,7 +200,7 @@ void ContainerNode::insertBeforeCommon(Node* nextChild, Node* newChild)
         ASSERT(m_firstChild == nextChild);
         m_firstChild = newChild;
     }
-    newChild->setParent(this);
+    newChild->setParentOrHostNode(this);
     newChild->setPreviousSibling(prev);
     newChild->setNextSibling(nextChild);
     allowEventDispatch();
@@ -277,9 +276,7 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
     if (ec)
         return false;
 
-#if ENABLE(INSPECTOR)
     InspectorInstrumentation::willInsertDOMNode(document(), this);
-#endif
 
     // Add the new child(ren)
     for (NodeVector::const_iterator it = targets.begin(); it != targets.end(); ++it) {
@@ -311,21 +308,6 @@ bool ContainerNode::replaceChild(PassRefPtr<Node> newChild, Node* oldChild, Exce
     return true;
 }
 
-void ContainerNode::willRemove()
-{
-    RefPtr<Node> protect(this);
-
-    NodeVector children;
-    getChildNodes(this, children);
-    for (size_t i = 0; i < children.size(); ++i) {
-        if (children[i]->parentNode() != this) // Check for child being removed from subtree while removing.
-            continue;
-        children[i]->willRemove();
-    }
-
-    Node::willRemove();
-}
-
 static void willRemoveChild(Node* child)
 {
 #if ENABLE(MUTATION_OBSERVERS)
@@ -336,15 +318,15 @@ static void willRemoveChild(Node* child)
 
     dispatchChildRemovalEvents(child);
     child->document()->nodeWillBeRemoved(child); // e.g. mutation event listener can create a new range.
-    child->willRemove();
+    ChildFrameDisconnector(child).disconnect();
 }
 
 static void willRemoveChildren(ContainerNode* container)
 {
-    container->document()->nodeChildrenWillBeRemoved(container);
-
     NodeVector children;
     getChildNodes(container, children);
+
+    container->document()->nodeChildrenWillBeRemoved(container);
 
 #if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(container);
@@ -360,8 +342,13 @@ static void willRemoveChildren(ContainerNode* container)
 
         // fire removed from document mutation events.
         dispatchChildRemovalEvents(child);
-        child->willRemove();
+        ChildFrameDisconnector(child).disconnect();
     }
+}
+
+void ContainerNode::disconnectDescendantFrames()
+{
+    ChildFrameDisconnector(this).disconnect();
 }
 
 bool ContainerNode::removeChild(Node* oldChild, ExceptionCode& ec)
@@ -442,7 +429,7 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node* ol
 
     oldChild->setPreviousSibling(0);
     oldChild->setNextSibling(0);
-    oldChild->setParent(0);
+    oldChild->setParentOrHostNode(0);
 
     document()->adoptIfNeeded(oldChild);
 
@@ -495,7 +482,7 @@ void ContainerNode::removeChildren()
         // this discrepancy between removeChild() and its optimized version removeChildren().
         n->setPreviousSibling(0);
         n->setNextSibling(0);
-        n->setParent(0);
+        n->setParentOrHostNode(0);
         document()->adoptIfNeeded(n.get());
 
         m_firstChild = next;
@@ -554,9 +541,7 @@ bool ContainerNode::appendChild(PassRefPtr<Node> newChild, ExceptionCode& ec, bo
     if (targets.isEmpty())
         return true;
 
-#if ENABLE(INSPECTOR)
     InspectorInstrumentation::willInsertDOMNode(document(), this);
-#endif
 
 #if ENABLE(MUTATION_OBSERVERS)
     ChildListMutationScope mutation(this);
@@ -599,10 +584,8 @@ void ContainerNode::parserAddChild(PassRefPtr<Node> newChild)
     
     allowEventDispatch();
 
-    // FIXME: Why doesn't this use notify(newChild.get()) instead?
-    if (inDocument())
-        ChildNodeInsertionNotifier(this).notifyInsertedIntoDocument(newChild.get());
     childrenChanged(true, last, 0, 1);
+    ChildNodeInsertionNotifier(this).notify(newChild.get());
 }
 
 void ContainerNode::suspendPostAttachCallbacks()
@@ -965,9 +948,7 @@ static void dispatchChildRemovalEvents(Node* child)
 
     ASSERT(!eventDispatchForbidden());
 
-#if ENABLE(INSPECTOR)
     InspectorInstrumentation::willRemoveDOMNode(child->document(), child);
-#endif
 
     RefPtr<Node> c = child;
     RefPtr<Document> document = child->document();

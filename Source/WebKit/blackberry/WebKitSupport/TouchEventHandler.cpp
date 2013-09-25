@@ -44,6 +44,7 @@
 #include "RenderedDocumentMarker.h"
 #include "SelectionHandler.h"
 #include "WebPage_p.h"
+#include "WebTapHighlight.h"
 
 #include <wtf/MathExtras.h>
 
@@ -93,9 +94,9 @@ static bool shouldConvertTouchToMouse(Element* element)
     // won't operate on the shadow node of other element type, because the webpages
     // aren't able to attach listeners to shadow content.
     do {
-        element = toElement(element->shadowAncestorNode()); // If an element is not in shadow tree, shadowAncestorNode returns itself.
         if (isRangeControlElement(element))
             return true;
+        element = toElement(element->shadowAncestorNode()); // If an element is not in shadow tree, shadowAncestorNode returns itself.
     } while (element->isInShadowTree());
 
     // Check if the element has a mouse listener and no touch listener. If so,
@@ -153,12 +154,6 @@ void TouchEventHandler::touchEventCancel()
     }
 
     m_lastFatFingersResult.reset();
-}
-
-void TouchEventHandler::touchEventCancelAndClearFocusedNode()
-{
-    touchEventCancel();
-    m_webPage->clearFocusNode();
 }
 
 void TouchEventHandler::touchHoldEvent()
@@ -395,12 +390,9 @@ void TouchEventHandler::drawTapHighlight()
 
     Color highlightColor = element->renderStyle()->tapHighlightColor();
 
-    m_webPage->m_client->drawTapHighlight(region,
-                                          highlightColor.red(),
-                                          highlightColor.green(),
-                                          highlightColor.blue(),
-                                          highlightColor.alpha(),
-                                          shouldHideTapHighlightRightAfterScrolling);
+    m_webPage->m_tapHighlight->draw(region,
+                                    highlightColor.red(), highlightColor.green(), highlightColor.blue(), highlightColor.alpha(),
+                                    shouldHideTapHighlightRightAfterScrolling);
 }
 
 }

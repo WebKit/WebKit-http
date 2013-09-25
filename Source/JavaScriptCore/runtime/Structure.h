@@ -27,11 +27,11 @@
 #define Structure_h
 
 #include "ClassInfo.h"
-#include "Identifier.h"
 #include "JSCell.h"
 #include "JSType.h"
 #include "JSValue.h"
 #include "PropertyMapHashTable.h"
+#include "PropertyName.h"
 #include "PropertyNameArray.h"
 #include "Protect.h"
 #include "StructureTransitionTable.h"
@@ -86,12 +86,12 @@ namespace JSC {
     public:
         static void dumpStatistics();
 
-        JS_EXPORT_PRIVATE static Structure* addPropertyTransition(JSGlobalData&, Structure*, const Identifier& propertyName, unsigned attributes, JSCell* specificValue, size_t& offset);
-        JS_EXPORT_PRIVATE static Structure* addPropertyTransitionToExistingStructure(Structure*, const Identifier& propertyName, unsigned attributes, JSCell* specificValue, size_t& offset);
-        static Structure* removePropertyTransition(JSGlobalData&, Structure*, const Identifier& propertyName, size_t& offset);
+        JS_EXPORT_PRIVATE static Structure* addPropertyTransition(JSGlobalData&, Structure*, PropertyName, unsigned attributes, JSCell* specificValue, size_t& offset);
+        JS_EXPORT_PRIVATE static Structure* addPropertyTransitionToExistingStructure(Structure*, PropertyName, unsigned attributes, JSCell* specificValue, size_t& offset);
+        static Structure* removePropertyTransition(JSGlobalData&, Structure*, PropertyName, size_t& offset);
         JS_EXPORT_PRIVATE static Structure* changePrototypeTransition(JSGlobalData&, Structure*, JSValue prototype);
-        JS_EXPORT_PRIVATE static Structure* despecifyFunctionTransition(JSGlobalData&, Structure*, const Identifier&);
-        static Structure* attributeChangeTransition(JSGlobalData&, Structure*, const Identifier& propertyName, unsigned attributes);
+        JS_EXPORT_PRIVATE static Structure* despecifyFunctionTransition(JSGlobalData&, Structure*, PropertyName);
+        static Structure* attributeChangeTransition(JSGlobalData&, Structure*, PropertyName, unsigned attributes);
         static Structure* toCacheableDictionaryTransition(JSGlobalData&, Structure*);
         static Structure* toUncacheableDictionaryTransition(JSGlobalData&, Structure*);
         static Structure* sealTransition(JSGlobalData&, Structure*);
@@ -110,8 +110,8 @@ namespace JSC {
         static void destroy(JSCell*);
 
         // These should be used with caution.  
-        JS_EXPORT_PRIVATE size_t addPropertyWithoutTransition(JSGlobalData&, const Identifier& propertyName, unsigned attributes, JSCell* specificValue);
-        size_t removePropertyWithoutTransition(JSGlobalData&, const Identifier& propertyName);
+        JS_EXPORT_PRIVATE size_t addPropertyWithoutTransition(JSGlobalData&, PropertyName, unsigned attributes, JSCell* specificValue);
+        size_t removePropertyWithoutTransition(JSGlobalData&, PropertyName);
         void setPrototypeWithoutTransition(JSGlobalData& globalData, JSValue prototype) { m_prototype.set(globalData, this, prototype); }
         
         bool isDictionary() const { return m_dictionaryKind != NoneDictionaryKind; }
@@ -127,6 +127,8 @@ namespace JSC {
         
         JSValue storedPrototype() const { return m_prototype.get(); }
         JSValue prototypeForLookup(ExecState*) const;
+        JSValue prototypeForLookup(JSGlobalObject*) const;
+        JSValue prototypeForLookup(CodeBlock*) const;
         StructureChain* prototypeChain(ExecState*) const;
         static void visitChildren(JSCell*, SlotVisitor&);
 
@@ -138,15 +140,9 @@ namespace JSC {
         unsigned propertyStorageSize() const { ASSERT(structure()->classInfo() == &s_info); return (m_propertyTable ? m_propertyTable->propertyStorageSize() : static_cast<unsigned>(m_offset + 1)); }
         bool isUsingInlineStorage() const;
 
-        size_t get(JSGlobalData&, const Identifier& propertyName);
+        size_t get(JSGlobalData&, PropertyName);
         size_t get(JSGlobalData&, const UString& name);
-        JS_EXPORT_PRIVATE size_t get(JSGlobalData&, StringImpl* propertyName, unsigned& attributes, JSCell*& specificValue);
-        size_t get(JSGlobalData& globalData, const Identifier& propertyName, unsigned& attributes, JSCell*& specificValue)
-        {
-            ASSERT(!propertyName.isNull());
-            ASSERT(structure()->classInfo() == &s_info);
-            return get(globalData, propertyName.impl(), attributes, specificValue);
-        }
+        JS_EXPORT_PRIVATE size_t get(JSGlobalData&, PropertyName, unsigned& attributes, JSCell*& specificValue);
 
         bool hasGetterSetterProperties() const { return m_hasGetterSetterProperties; }
         bool hasReadOnlyOrGetterSetterPropertiesExcludingProto() const { return m_hasReadOnlyOrGetterSetterPropertiesExcludingProto; }
@@ -165,7 +161,7 @@ namespace JSC {
         
         bool isEmpty() const { return m_propertyTable ? m_propertyTable->isEmpty() : m_offset == noOffset; }
 
-        JS_EXPORT_PRIVATE void despecifyDictionaryFunction(JSGlobalData&, const Identifier& propertyName);
+        JS_EXPORT_PRIVATE void despecifyDictionaryFunction(JSGlobalData&, PropertyName);
         void disableSpecificFunctionTracking() { m_specificFunctionThrashCount = maxSpecificFunctionThrashCount; }
 
         void setEnumerationCache(JSGlobalData&, JSPropertyNameIterator* enumerationCache); // Defined in JSPropertyNameIterator.h.
@@ -218,7 +214,7 @@ namespace JSC {
 
     private:
         friend class LLIntOffsetsExtractor;
-        
+
         JS_EXPORT_PRIVATE Structure(JSGlobalData&, JSGlobalObject*, JSValue prototype, const TypeInfo&, const ClassInfo*);
         Structure(JSGlobalData&);
         Structure(JSGlobalData&, const Structure*);
@@ -238,13 +234,13 @@ namespace JSC {
         } DictionaryKind;
         static Structure* toDictionaryTransition(JSGlobalData&, Structure*, DictionaryKind);
 
-        size_t putSpecificValue(JSGlobalData&, const Identifier& propertyName, unsigned attributes, JSCell* specificValue);
-        size_t remove(const Identifier& propertyName);
+        size_t putSpecificValue(JSGlobalData&, PropertyName, unsigned attributes, JSCell* specificValue);
+        size_t remove(PropertyName);
 
         void createPropertyMap(unsigned keyCount = 0);
         void checkConsistency();
 
-        bool despecifyFunction(JSGlobalData&, const Identifier&);
+        bool despecifyFunction(JSGlobalData&, PropertyName);
         void despecifyAllFunctions(JSGlobalData&);
 
         PassOwnPtr<PropertyTable> copyPropertyTable(JSGlobalData&, Structure* owner);
@@ -316,14 +312,14 @@ namespace JSC {
         unsigned m_staticFunctionReified;
     };
 
-    inline size_t Structure::get(JSGlobalData& globalData, const Identifier& propertyName)
+    inline size_t Structure::get(JSGlobalData& globalData, PropertyName propertyName)
     {
         ASSERT(structure()->classInfo() == &s_info);
         materializePropertyMapIfNecessary(globalData);
         if (!m_propertyTable)
             return notFound;
 
-        PropertyMapEntry* entry = m_propertyTable->find(propertyName.impl()).first;
+        PropertyMapEntry* entry = m_propertyTable->find(propertyName.uid()).first;
         return entry ? entry->offset : notFound;
     }
 
@@ -338,6 +334,13 @@ namespace JSC {
         return entry ? entry->offset : notFound;
     }
     
+    inline JSValue JSValue::structureOrUndefined() const
+    {
+        if (isCell())
+            return JSValue(asCell()->structure());
+        return jsUndefined();
+    }
+
     inline bool JSCell::isObject() const
     {
         return m_structure->isObject();
@@ -381,10 +384,13 @@ namespace JSC {
 #if ENABLE(GC_VALIDATION)
         validate(cell);
 #endif
-        m_visitCount++;
         if (Heap::testAndSetMarked(cell) || !cell->structure())
             return;
+
+        m_visitCount++;
         
+        MARK_LOG_CHILD(*this, cell);
+
         // Should never attempt to mark something that is zapped.
         ASSERT(!cell->isZapped());
         

@@ -32,7 +32,7 @@
 #include "WebContext.h"
 #include "WebContextMenuProxy.h"
 #include "WebPageProxy.h"
-#include "ewk_private.h"
+#include "ewk_view_private.h"
 
 using namespace WebCore;
 
@@ -185,6 +185,13 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent&, bool)
 {
     notImplemented();
 }
+
+#if ENABLE(TOUCH_EVENTS)
+void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled)
+{
+    notImplemented();
+}
+#endif
 
 PassRefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy*)
 {

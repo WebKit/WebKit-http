@@ -92,6 +92,7 @@ void WKAccessibilityHandleFocusChanged(void);
 AXUIElementRef WKCreateAXUIElementRef(id element);
 void WKUnregisterUniqueIdForElement(id element);
 
+BOOL WKShouldBlockPlugin(NSString *bundleIdentifier, NSString *bundleVersionString);
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
 // Remote Accessibility API.
@@ -486,6 +487,21 @@ bool WKExecutableWasLinkedOnOrBeforeLion(void);
 
 #if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void WKCGPathAddRoundedRect(CGMutablePathRef path, const CGAffineTransform* matrix, CGRect rect, CGFloat cornerWidth, CGFloat cornerHeight);
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+void WKCFURLRequestAllowAllPostCaching(CFURLRequestRef);
+#endif
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
+@class WebFilterEvaluator;
+
+BOOL WKFilterIsManagedSession(void);
+WebFilterEvaluator *WKFilterCreateInstance(NSURLResponse *);
+void WKFilterRelease(WebFilterEvaluator *);
+BOOL WKFilterWasBlocked(WebFilterEvaluator *);
+const char* WKFilterAddData(WebFilterEvaluator *, const char* data, int* length);
+const char* WKFilterDataComplete(WebFilterEvaluator *, int* length);
 #endif
 
 #ifdef __cplusplus

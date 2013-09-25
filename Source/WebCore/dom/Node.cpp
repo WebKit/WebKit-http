@@ -47,6 +47,7 @@
 #include "DocumentType.h"
 #include "DynamicNodeList.h"
 #include "Element.h"
+#include "ElementShadow.h"
 #include "Event.h"
 #include "EventContext.h"
 #include "EventDispatchMediator.h"
@@ -76,6 +77,7 @@
 #include "PlatformWheelEvent.h"
 #include "ProcessingInstruction.h"
 #include "ProgressEvent.h"
+#include "RadioNodeList.h"
 #include "RegisteredEventListener.h"
 #include "RenderBlock.h"
 #include "RenderBox.h"
@@ -85,7 +87,6 @@
 #include "SelectorQuery.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "StaticNodeList.h"
 #include "StorageEvent.h"
 #include "StyleResolver.h"
@@ -109,11 +110,6 @@
 
 #if ENABLE(INSPECTOR)
 #include "InspectorController.h"
-#endif
-
-#if ENABLE(SVG)
-#include "SVGElementInstance.h"
-#include "SVGUseElement.h"
 #endif
 
 #if USE(JSC)
@@ -501,17 +497,6 @@ void Node::clearRareData()
     clearFlag(HasRareDataFlag);
 }
 
-Element* Node::shadowHost() const
-{
-    return toElement(isShadowRoot() ? parent() : 0);
-}
-
-void Node::setShadowHost(Element* host)
-{
-    ASSERT(!parentNode() && isShadowRoot());
-    setParent(host);
-}
-
 Node* Node::toNode()
 {
     return this;
@@ -731,7 +716,7 @@ void Node::inspect()
 
 bool Node::rendererIsEditable(EditableLevel editableLevel) const
 {
-    if (document()->frame() && document()->frame()->page() && document()->frame()->page()->isEditable() && !shadowTreeRootNode())
+    if (document()->frame() && document()->frame()->page() && document()->frame()->page()->isEditable() && !shadowRoot())
         return true;
 
     // Ideally we'd call ASSERT(!needsStyleRecalc()) here, but
@@ -835,7 +820,11 @@ bool Node::hasNonEmptyBoundingBox() const
 
 inline static ShadowRoot* oldestShadowRootFor(const Node* node)
 {
-    return node->isElementNode() && toElement(node)->hasShadowRoot() ? toElement(node)->shadowTree()->oldestShadowRoot() : 0;
+    if (!node->isElementNode())
+        return 0;
+    if (ElementShadow* shadow = toElement(node)->shadow())
+        return shadow->oldestShadowRoot();
+    return 0;
 }
 
 inline void Node::setStyleChange(StyleChangeType changeType)
@@ -976,7 +965,7 @@ void Node::unregisterDynamicSubtreeNodeList(DynamicSubtreeNodeList* list)
     removeNodeListCacheIfPossible(this, data);
 }
 
-void Node::invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName& attrName)
+void Node::invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName& attrName, Element* attributeOwnerElement)
 {
     if (hasRareData() && isAttributeNode()) {
         NodeRareData* data = rareData();
@@ -984,7 +973,16 @@ void Node::invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName& at
         data->clearChildNodeListCache();
     }
 
-    // This list should be sync'ed with NodeListsNodeData.
+    // Modifications to attributes that are not associated with an Element can't invalidate NodeList caches.
+    if (!attributeOwnerElement)
+        return;
+
+    // FIXME: Move the list of attributes each NodeList type cares about to be a static on the
+    // appropriate NodeList class. Then use those lists here and in invalidateCachesThatDependOnAttributes
+    // to only invalidate the cache types that depend on the attribute that changed.
+    // FIXME: Keep track of when we have no caches of a given type so that we can avoid the for-loop
+    // below even if a related attribute changed (e.g. if we have no RadioNodeLists, we don't need
+    // to invalidate any caches when id attributes change.)
     if (attrName != classAttr
 #if ENABLE(MICRODATA)
         && attrName != itemscopeAttr
@@ -992,7 +990,8 @@ void Node::invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName& at
         && attrName != itemtypeAttr
 #endif
         && attrName != nameAttr
-        && attrName != forAttr)
+        && attrName != forAttr
+        && (attrName != idAttr || !attributeOwnerElement->isFormControlElement()))
         return;
 
     if (!treeScope()->hasNodeListCaches())
@@ -1084,33 +1083,26 @@ void Node::removeCachedChildNodeList()
     rareData()->setChildNodeList(0);
 }
 
-Node* Node::traverseNextNode(const Node* stayWithin) const
+Node* Node::traverseNextAncestorSibling() const
 {
-    if (firstChild())
-        return firstChild();
-    if (this == stayWithin)
-        return 0;
-    if (nextSibling())
-        return nextSibling();
-    const Node *n = this;
-    while (n && !n->nextSibling() && (!stayWithin || n->parentNode() != stayWithin))
-        n = n->parentNode();
-    if (n)
-        return n->nextSibling();
+    ASSERT(!nextSibling());
+    for (const Node* node = parentNode(); node; node = node->parentNode()) {
+        if (node->nextSibling())
+            return node->nextSibling();
+    }
     return 0;
 }
 
-Node* Node::traverseNextSibling(const Node* stayWithin) const
+Node* Node::traverseNextAncestorSibling(const Node* stayWithin) const
 {
-    if (this == stayWithin)
-        return 0;
-    if (nextSibling())
-        return nextSibling();
-    const Node *n = this;
-    while (n && !n->nextSibling() && (!stayWithin || n->parentNode() != stayWithin))
-        n = n->parentNode();
-    if (n)
-        return n->nextSibling();
+    ASSERT(!nextSibling());
+    ASSERT(this != stayWithin);
+    for (const Node* node = parentNode(); node; node = node->parentNode()) {
+        if (node == stayWithin)
+            return 0;
+        if (node->nextSibling())
+            return node->nextSibling();
+    }
     return 0;
 }
 
@@ -1338,13 +1330,21 @@ void Node::attach()
     clearNeedsStyleRecalc();
 }
 
-void Node::willRemove()
+#ifndef NDEBUG
+static Node* detachingNode;
+
+bool Node::inDetach() const
 {
+    return detachingNode == this;
 }
+#endif
 
 void Node::detach()
 {
-    setFlag(InDetachFlag);
+#ifndef NDEBUG
+    ASSERT(!detachingNode);
+    detachingNode = this;
+#endif
 
     if (renderer())
         renderer()->destroyAndCleanupAnonymousWrappers();
@@ -1361,7 +1361,9 @@ void Node::detach()
     clearFlag(InActiveChainFlag);
     clearFlag(IsAttachedFlag);
 
-    clearFlag(InDetachFlag);
+#ifndef NDEBUG
+    detachingNode = 0;
+#endif
 }
 
 // FIXME: This code is used by editing.  Seems like it could move over there and not pollute Node.
@@ -1434,7 +1436,7 @@ bool Node::rendererIsNeeded(const NodeRenderingContext& context)
 
 RenderObject* Node::createRenderer(RenderArena*, RenderStyle*)
 {
-    ASSERT(false);
+    ASSERT_NOT_REACHED();
     return 0;
 }
     
@@ -1489,18 +1491,18 @@ Node* Node::shadowAncestorNode() const
         return const_cast<Node*>(this);
 #endif
 
-    Node* root = shadowTreeRootNode();
-    if (root)
-        return root->shadowHost();
+    if (ShadowRoot* root = shadowRoot())
+        return root->host();
+
     return const_cast<Node*>(this);
 }
 
-Node* Node::shadowTreeRootNode() const
+ShadowRoot* Node::shadowRoot() const
 {
     Node* root = const_cast<Node*>(this);
     while (root) {
         if (root->isShadowRoot())
-            return root;
+            return toShadowRoot(root);
         root = root->parentNodeGuaranteedHostFree();
     }
     return 0;
@@ -1539,7 +1541,7 @@ Element* Node::parentOrHostElement() const
         return 0;
 
     if (parent->isShadowRoot())
-        return parent->shadowHost();
+        return toShadowRoot(parent)->host();
 
     if (!parent->isElementNode())
         return 0;
@@ -1572,6 +1574,12 @@ Element *Node::enclosingBlockFlowElement() const
             return static_cast<Element *>(n);
     }
     return 0;
+}
+
+bool Node::isRootEditableElement() const
+{
+    return rendererIsEditable() && isElementNode() && (!parentNode() || !parentNode()->rendererIsEditable()
+        || !parentNode()->isElementNode() || hasTagName(bodyTag));
 }
 
 Element* Node::rootEditableElement(EditableType editableType) const
@@ -1664,54 +1672,30 @@ PassRefPtr<NodeList> Node::getElementsByClassName(const String& classNames)
     return list.release();
 }
 
-PassRefPtr<Element> Node::querySelector(const String& selectors, ExceptionCode& ec)
+PassRefPtr<Element> Node::querySelector(const AtomicString& selectors, ExceptionCode& ec)
 {
     if (selectors.isEmpty()) {
         ec = SYNTAX_ERR;
         return 0;
     }
-    CSSParser parser(document());
-    CSSSelectorList querySelectorList;
-    parser.parseSelector(selectors, querySelectorList);
 
-    if (!querySelectorList.first() || querySelectorList.hasUnknownPseudoElements()) {
-        ec = SYNTAX_ERR;
+    SelectorQuery* selectorQuery = document()->selectorQueryCache()->add(selectors, document(), ec);
+    if (!selectorQuery)
         return 0;
-    }
-
-    // throw a NAMESPACE_ERR if the selector includes any namespace prefixes.
-    if (querySelectorList.selectorsNeedNamespaceResolution()) {
-        ec = NAMESPACE_ERR;
-        return 0;
-    }
-    
-    SelectorQuery selectorQuery(this, querySelectorList);
-    return selectorQuery.queryFirst();
+    return selectorQuery->queryFirst(this);
 }
 
-PassRefPtr<NodeList> Node::querySelectorAll(const String& selectors, ExceptionCode& ec)
+PassRefPtr<NodeList> Node::querySelectorAll(const AtomicString& selectors, ExceptionCode& ec)
 {
     if (selectors.isEmpty()) {
         ec = SYNTAX_ERR;
         return 0;
     }
-    CSSParser p(document());
-    CSSSelectorList querySelectorList;
-    p.parseSelector(selectors, querySelectorList);
 
-    if (!querySelectorList.first() || querySelectorList.hasUnknownPseudoElements()) {
-        ec = SYNTAX_ERR;
+    SelectorQuery* selectorQuery = document()->selectorQueryCache()->add(selectors, document(), ec);
+    if (!selectorQuery)
         return 0;
-    }
-
-    // Throw a NAMESPACE_ERR if the selector includes any namespace prefixes.
-    if (querySelectorList.selectorsNeedNamespaceResolution()) {
-        ec = NAMESPACE_ERR;
-        return 0;
-    }
-
-    SelectorQuery selectorQuery(this, querySelectorList);
-    return selectorQuery.queryAll();
+    return selectorQuery->queryAll(this);
 }
 
 Document *Node::ownerDocument() const
@@ -2210,6 +2194,57 @@ void Node::showTreeForThis() const
     showTreeAndMark(this, "*");
 }
 
+void Node::showNodePathForThis() const
+{
+    Vector<const Node*, 16> chain;
+    const Node* node = this;
+    while (node->parentOrHostNode()) {
+        chain.append(node);
+        node = node->parentOrHostNode();
+    }
+    for (unsigned index = chain.size(); index > 0; --index) {
+        const Node* node = chain[index - 1];
+        if (node->isShadowRoot()) {
+            int count = 0;
+            for (ShadowRoot* shadowRoot = oldestShadowRootFor(node); shadowRoot && shadowRoot != node; shadowRoot = shadowRoot->youngerShadowRoot())
+                ++count;
+            fprintf(stderr, "/#shadow-root[%d]", count);
+            continue;
+        }
+
+        switch (node->nodeType()) {
+        case ELEMENT_NODE: {
+            fprintf(stderr, "/%s", node->nodeName().utf8().data());
+
+            const Element* element = toElement(node);
+            const AtomicString& idattr = element->getIdAttribute();
+            bool hasIdAttr = !idattr.isNull() && !idattr.isEmpty();
+            if (node->previousSibling() || node->nextSibling()) {
+                int count = 0;
+                for (Node* previous = node->previousSibling(); previous; previous = previous->previousSibling())
+                    if (previous->nodeName() == node->nodeName())
+                        ++count;
+                if (hasIdAttr)
+                    fprintf(stderr, "[@id=\"%s\" and position()=%d]", idattr.string().utf8().data(), count);
+                else
+                    fprintf(stderr, "[%d]", count);
+            } else if (hasIdAttr)
+                fprintf(stderr, "[@id=\"%s\"]", idattr.string().utf8().data());
+            break;
+        }
+        case TEXT_NODE:
+            fprintf(stderr, "/text()");
+            break;
+        case ATTRIBUTE_NODE:
+            fprintf(stderr, "/@%s", node->nodeName().utf8().data());
+            break;
+        default:
+            break;
+        }
+    }
+    fprintf(stderr, "\n");
+}
+
 static void traverseTreeAndMark(const String& baseIndent, const Node* rootNode, const Node* markedNode1, const char* markedLabel1, const Node* markedNode2, const char* markedLabel2)
 {
     for (const Node* node = rootNode; node; node = node->traverseNextNode()) {
@@ -2329,6 +2364,10 @@ void NodeListsNodeData::invalidateCachesThatDependOnAttributes()
     for (MicroDataItemListCache::iterator it = m_microDataItemListCache.begin(); it != itemListCacheEnd; ++it)
         it->second->invalidateCache();
 #endif
+
+    RadioNodeListCache::iterator radioNodeListCacheEnd = m_radioNodeListCache.end();
+    for (RadioNodeListCache::iterator it = m_radioNodeListCache.begin(); it != radioNodeListCacheEnd; ++it)
+        it->second->invalidateCache();
 }
 
 bool NodeListsNodeData::isEmpty() const
@@ -2351,7 +2390,10 @@ bool NodeListsNodeData::isEmpty() const
 
     if (m_labelsNodeListCache)
         return false;
-    
+
+    if (!m_radioNodeListCache.isEmpty())
+        return false;
+
     return true;
 }
 
@@ -2383,7 +2425,7 @@ ScriptExecutionContext* Node::scriptExecutionContext() const
     return document();
 }
 
-Node::InsertionNotificationRequest Node::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest Node::insertedInto(ContainerNode* insertionPoint)
 {
     ASSERT(insertionPoint->inDocument() || isContainerNode());
     if (insertionPoint->inDocument())
@@ -2391,7 +2433,7 @@ Node::InsertionNotificationRequest Node::insertedInto(Node* insertionPoint)
     return InsertionDone;
 }
 
-void Node::removedFrom(Node* insertionPoint)
+void Node::removedFrom(ContainerNode* insertionPoint)
 {
     ASSERT(insertionPoint->inDocument() || isContainerNode());
     if (insertionPoint->inDocument())
@@ -2419,26 +2461,6 @@ void Node::didMoveToNewDocument(Document* oldDocument)
 #endif
 }
 
-#if ENABLE(SVG)
-static inline HashSet<SVGElementInstance*> instancesForSVGElement(Node* node)
-{
-    HashSet<SVGElementInstance*> instances;
- 
-    ASSERT(node);
-    if (!node->isSVGElement() || node->shadowTreeRootNode())
-        return HashSet<SVGElementInstance*>();
-
-    SVGElement* element = static_cast<SVGElement*>(node);
-    if (!element->isStyled())
-        return HashSet<SVGElementInstance*>();
-
-    SVGStyledElement* styledElement = static_cast<SVGStyledElement*>(element);
-    ASSERT(!styledElement->instanceUpdatesBlocked());
-
-    return styledElement->instancesForElement();
-}
-#endif
-
 static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
 {
     if (!targetNode->EventTarget::addEventListener(eventType, listener, useCapture))
@@ -2451,42 +2473,13 @@ static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eve
         else if (eventNames().isTouchEventType(eventType))
             document->didAddTouchEventHandler();
     }
-        
+
     return true;
 }
 
 bool Node::addEventListener(const AtomicString& eventType, PassRefPtr<EventListener> listener, bool useCapture)
 {
-#if !ENABLE(SVG)
     return tryAddEventListener(this, eventType, listener, useCapture);
-#else
-    if (!isSVGElement())
-        return tryAddEventListener(this, eventType, listener, useCapture);
-
-    HashSet<SVGElementInstance*> instances = instancesForSVGElement(this);
-    if (instances.isEmpty())
-        return tryAddEventListener(this, eventType, listener, useCapture);
-
-    RefPtr<EventListener> listenerForRegularTree = listener;
-    RefPtr<EventListener> listenerForShadowTree = listenerForRegularTree;
-
-    // Add event listener to regular DOM element
-    if (!tryAddEventListener(this, eventType, listenerForRegularTree.release(), useCapture))
-        return false;
-
-    // Add event listener to all shadow tree DOM element instances
-    const HashSet<SVGElementInstance*>::const_iterator end = instances.end();
-    for (HashSet<SVGElementInstance*>::const_iterator it = instances.begin(); it != end; ++it) {
-        ASSERT((*it)->shadowTreeElement());
-        ASSERT((*it)->correspondingElement() == this);
-
-        RefPtr<EventListener> listenerForCurrentShadowTreeElement = listenerForShadowTree;
-        bool result = tryAddEventListener((*it)->shadowTreeElement(), eventType, listenerForCurrentShadowTreeElement.release(), useCapture);
-        ASSERT_UNUSED(result, result);
-    }
-
-    return true;
-#endif
 }
 
 static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& eventType, EventListener* listener, bool useCapture)
@@ -2502,61 +2495,13 @@ static inline bool tryRemoveEventListener(Node* targetNode, const AtomicString& 
         else if (eventNames().isTouchEventType(eventType))
             document->didRemoveTouchEventHandler();
     }
-    
+
     return true;
 }
 
 bool Node::removeEventListener(const AtomicString& eventType, EventListener* listener, bool useCapture)
 {
-#if !ENABLE(SVG)
     return tryRemoveEventListener(this, eventType, listener, useCapture);
-#else
-    if (!isSVGElement())
-        return tryRemoveEventListener(this, eventType, listener, useCapture);
-
-    HashSet<SVGElementInstance*> instances = instancesForSVGElement(this);
-    if (instances.isEmpty())
-        return tryRemoveEventListener(this, eventType, listener, useCapture);
-
-    // EventTarget::removeEventListener creates a PassRefPtr around the given EventListener
-    // object when creating a temporary RegisteredEventListener object used to look up the
-    // event listener in a cache. If we want to be able to call removeEventListener() multiple
-    // times on different nodes, we have to delay its immediate destruction, which would happen
-    // after the first call below.
-    RefPtr<EventListener> protector(listener);
-
-    // Remove event listener from regular DOM element
-    if (!tryRemoveEventListener(this, eventType, listener, useCapture))
-        return false;
-
-    // Remove event listener from all shadow tree DOM element instances
-    const HashSet<SVGElementInstance*>::const_iterator end = instances.end();
-    for (HashSet<SVGElementInstance*>::const_iterator it = instances.begin(); it != end; ++it) {
-        ASSERT((*it)->correspondingElement() == this);
-
-        SVGElement* shadowTreeElement = (*it)->shadowTreeElement();
-        ASSERT(shadowTreeElement);
-
-        if (tryRemoveEventListener(shadowTreeElement, eventType, listener, useCapture))
-            continue;
-
-        // This case can only be hit for event listeners created from markup
-        ASSERT(listener->wasCreatedFromMarkup());
-
-        // If the event listener 'listener' has been created from markup and has been fired before
-        // then JSLazyEventListener::parseCode() has been called and m_jsFunction of that listener
-        // has been created (read: it's not 0 anymore). During shadow tree creation, the event
-        // listener DOM attribute has been cloned, and another event listener has been setup in
-        // the shadow tree. If that event listener has not been used yet, m_jsFunction is still 0,
-        // and tryRemoveEventListener() above will fail. Work around that very seldom problem.
-        EventTargetData* data = shadowTreeElement->eventTargetData();
-        ASSERT(data);
-
-        data->eventListenerMap.removeFirstEventListenerCreatedFromMarkup(eventType);
-    }
-
-    return true;
-#endif
 }
 
 EventTargetData* Node::eventTargetData()
@@ -2780,12 +2725,13 @@ void Node::dispatchFocusOutEvent(const AtomicString& eventType, PassRefPtr<Node>
     dispatchScopedEventDispatchMediator(FocusOutEventDispatchMediator::create(UIEvent::create(eventType, true, false, document()->defaultView(), 0), newFocusedNode));
 }
 
-void Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
+bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
 {
     ASSERT(!eventDispatchForbidden());
     RefPtr<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document()->defaultView(), detail);
     event->setUnderlyingEvent(underlyingEvent);
-    dispatchScopedEvent(event.release());
+    dispatchScopedEvent(event);
+    return event->defaultHandled();
 }
 
 bool Node::dispatchKeyEvent(const PlatformKeyboardEvent& event)
@@ -2862,7 +2808,8 @@ void Node::defaultEventHandler(Event* event)
                 frame->eventHandler()->defaultKeyboardEventHandler(static_cast<KeyboardEvent*>(event));
     } else if (eventType == eventNames().clickEvent) {
         int detail = event->isUIEvent() ? static_cast<UIEvent*>(event)->detail() : 0;
-        dispatchDOMActivateEvent(detail, event);
+        if (dispatchDOMActivateEvent(detail, event))
+            event->setDefaultHandled();
 #if ENABLE(CONTEXT_MENUS)
     } else if (eventType == eventNames().contextmenuEvent) {
         if (Frame* frame = document()->frame())
@@ -2958,6 +2905,59 @@ void NodeRareData::clearChildNodeListCache()
         m_childNodeList->invalidateCache();
 }
 
+PassRefPtr<RadioNodeList> Node::radioNodeList(const AtomicString& name)
+{
+    ASSERT(hasTagName(formTag) || hasTagName(fieldsetTag));
+
+    NodeListsNodeData* nodeLists = ensureRareData()->ensureNodeLists(this);
+
+    NodeListsNodeData::RadioNodeListCache::AddResult result = nodeLists->m_radioNodeListCache.add(name, 0);
+    if (!result.isNewEntry)
+        return PassRefPtr<RadioNodeList>(result.iterator->second);
+
+    RefPtr<RadioNodeList> list = RadioNodeList::create(name, toElement(this));
+    result.iterator->second = list.get();
+    return list.release();
+}
+
+void Node::removeCachedRadioNodeList(RadioNodeList* list, const AtomicString& name)
+{
+    ASSERT(rareData());
+    ASSERT(rareData()->nodeLists());
+
+    NodeListsNodeData* data = rareData()->nodeLists();
+    ASSERT_UNUSED(list, list == data->m_radioNodeListCache.get(name));
+    data->m_radioNodeListCache.remove(name);
+}
+
+void Node::resetCachedRadioNodeListRootNode()
+{
+    ASSERT(hasTagName(formTag));
+    if (!hasRareData() || !rareData()->nodeLists())
+        return;
+
+    NodeListsNodeData::RadioNodeListCache cache = rareData()->nodeLists()->m_radioNodeListCache;
+    for (NodeListsNodeData::RadioNodeListCache::iterator it = cache.begin(); it != cache.end(); ++it)
+        it->second->setRootElement(toElement(this));
+}
+
+// It's important not to inline removedLastRef, because we don't want to inline the code to
+// delete a Node at each deref call site.
+void Node::removedLastRef()
+{
+    // An explicit check for Document here is better than a virtual function since it is
+    // faster for non-Document nodes, and because the call to removedLastRef that is inlined
+    // at all deref call sites is smaller if it's a non-virtual function.
+    if (isDocumentNode()) {
+        static_cast<Document*>(this)->removedLastRef();
+        return;
+    }
+#ifndef NDEBUG
+    m_deletionHasBegun = true;
+#endif
+    delete this;
+}
+
 } // namespace WebCore
 
 #ifndef NDEBUG
@@ -2966,6 +2966,12 @@ void showTree(const WebCore::Node* node)
 {
     if (node)
         node->showTreeForThis();
+}
+
+void showNodePath(const WebCore::Node* node)
+{
+    if (node)
+        node->showNodePathForThis();
 }
 
 #endif

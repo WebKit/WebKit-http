@@ -51,6 +51,9 @@ class SVGSVGElement : public SVGStyledLocatableElement,
 public:
     static PassRefPtr<SVGSVGElement> create(const QualifiedName&, Document*);
 
+    using SVGStyledLocatableElement::ref;
+    using SVGStyledLocatableElement::deref;
+
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const { return true; }
 
@@ -68,10 +71,8 @@ public:
     float screenPixelToMillimeterX() const;
     float screenPixelToMillimeterY() const;
 
-    bool useCurrentView() const;
-    void setUseCurrentView(bool currentView);
-
-    SVGViewSpec* currentView() const;
+    bool useCurrentView() const { return m_useCurrentView; }
+    SVGViewSpec* currentView();
 
     enum ConsiderCSSMode {
         RespectCSSProperties,
@@ -131,6 +132,9 @@ public:
     bool widthAttributeEstablishesViewport() const;
     bool heightAttributeEstablishesViewport() const;
 
+    SVGZoomAndPanType zoomAndPan() const { return m_zoomAndPan; }
+    void setZoomAndPan(unsigned short zoomAndPan) { m_zoomAndPan = SVGZoomAndPan::parseFromNumber(zoomAndPan); }
+
 protected:
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
@@ -140,13 +144,13 @@ private:
 
     virtual bool isSVG() const { return true; }
     
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
 
     virtual bool rendererIsNeeded(const NodeRenderingContext& context) { return StyledElement::rendererIsNeeded(context); }
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
 
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual void removedFrom(Node*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
 
     virtual void svgAttributeChanged(const QualifiedName&);
 
@@ -182,9 +186,10 @@ private:
     virtual AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const;
 
     bool m_useCurrentView;
+    SVGZoomAndPanType m_zoomAndPan;
     RefPtr<SMILTimeContainer> m_timeContainer;
     FloatPoint m_translation;
-    mutable OwnPtr<SVGViewSpec> m_viewSpec;
+    RefPtr<SVGViewSpec> m_viewSpec;
 };
 
 } // namespace WebCore

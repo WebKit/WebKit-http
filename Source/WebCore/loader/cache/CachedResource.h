@@ -74,7 +74,6 @@ public:
 #endif
 #if ENABLE(LINK_PREFETCH)
         , LinkPrefetch
-        , LinkPrerender
         , LinkSubresource
 #endif
 #if ENABLE(VIDEO_TRACK)
@@ -127,6 +126,7 @@ public:
     PreloadResult preloadResult() const { return static_cast<PreloadResult>(m_preloadResult); }
 
     virtual void didAddClient(CachedResourceClient*);
+    virtual void didRemoveClient(CachedResourceClient*) { }
     virtual void allClientsRemoved() { }
 
     unsigned count() const { return m_clients.size(); }
@@ -150,7 +150,6 @@ public:
         return false
 #if ENABLE(LINK_PREFETCH)
             || type() == LinkPrefetch
-            || type() == LinkPrerender
             || type() == LinkSubresource
 #endif
             || type() == RawResource;
@@ -172,7 +171,6 @@ public:
     void setInCache(bool inCache) { m_inCache = inCache; }
     bool inCache() const { return m_inCache; }
     
-    void setInLiveDecodedResourcesList(bool b) { m_inLiveDecodedResourcesList = b; }
     bool inLiveDecodedResourcesList() { return m_inLiveDecodedResourcesList; }
     
     void stopLoading();

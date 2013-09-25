@@ -59,7 +59,8 @@ void PageWidgetDelegate::animate(Page* page, double monotonicFrameBeginTime)
     FrameView* view = mainFrameView(page);
     if (!view)
         return;
-    view->serviceScriptedAnimations(monotonicFrameBeginTime);
+    double timeShift = currentTime() - monotonicallyIncreasingTime();
+    view->serviceScriptedAnimations(convertSecondsToDOMTimeStamp(monotonicFrameBeginTime + timeShift));
 #endif
 }
 
@@ -87,6 +88,7 @@ void PageWidgetDelegate::paint(Page* page, PageOverlayList* overlays, WebCanvas*
         return;
     GraphicsContextBuilder builder(canvas);
     GraphicsContext& gc = builder.context();
+    gc.applyDeviceScaleFactor(page->deviceScaleFactor());
     IntRect dirtyRect(rect);
     gc.save();
     FrameView* view = mainFrameView(page);
@@ -152,6 +154,8 @@ bool PageWidgetDelegate::handleInputEvent(Page* page, PageWidgetEventHandler& ha
     case WebInputEvent::GestureTap:
     case WebInputEvent::GestureTapDown:
     case WebInputEvent::GestureDoubleTap:
+    case WebInputEvent::GestureTwoFingerTap:
+    case WebInputEvent::GestureLongPress:
         return handler.handleGestureEvent(*static_cast<const WebGestureEvent*>(&event));
 #endif
 

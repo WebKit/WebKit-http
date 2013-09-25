@@ -35,15 +35,17 @@ namespace WebCore {
 class FakeCCLayerTreeHostClient : public CCLayerTreeHostClient {
 public:
     virtual void willBeginFrame() OVERRIDE { }
+    virtual void didBeginFrame() OVERRIDE { }
     virtual void updateAnimations(double monotonicFrameBeginTime) OVERRIDE { }
     virtual void layout() OVERRIDE { }
     virtual void applyScrollAndScale(const IntSize& scrollDelta, float pageScale) OVERRIDE { }
-    virtual PassRefPtr<GraphicsContext3D> createContext() OVERRIDE
+    virtual PassRefPtr<GraphicsContext3D> createContext3D() OVERRIDE
     {
         GraphicsContext3D::Attributes attrs;
         return createCompositorMockGraphicsContext3D(attrs);
     }
     virtual void didRecreateContext(bool success) OVERRIDE { }
+    virtual void willCommit() OVERRIDE { }
     virtual void didCommit() OVERRIDE { }
     virtual void didCommitAndDrawFrame() OVERRIDE { }
     virtual void didCompleteSwapBuffers() OVERRIDE { }

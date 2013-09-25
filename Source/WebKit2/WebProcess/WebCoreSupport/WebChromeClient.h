@@ -121,8 +121,8 @@ private:
     virtual void contentsSizeChanged(WebCore::Frame*, const WebCore::IntSize&) const OVERRIDE;
     virtual void scrollRectIntoView(const WebCore::IntRect&) const OVERRIDE; // Currently only Mac has a non empty implementation.
 
-    virtual bool shouldMissingPluginMessageBeButton() const OVERRIDE;
-    virtual void missingPluginButtonClicked(WebCore::Element*) const OVERRIDE;
+    virtual bool shouldUnavailablePluginMessageBeButton(WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const OVERRIDE;
+    virtual void unavailablePluginButtonClicked(WebCore::Element*, WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const OVERRIDE;
 
     virtual void scrollbarsModeDidChange() const OVERRIDE;
     virtual void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) OVERRIDE;
@@ -152,6 +152,10 @@ private:
     virtual String generateReplacementFile(const String& path) OVERRIDE;
     
     virtual bool paintCustomOverhangArea(WebCore::GraphicsContext*, const WebCore::IntRect&, const WebCore::IntRect&, const WebCore::IntRect&) OVERRIDE;
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    virtual PassOwnPtr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient*, const WebCore::Color&) OVERRIDE;
+#endif
 
     virtual void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>) OVERRIDE;
     virtual void loadIconForFiles(const Vector<String>&, WebCore::FileIconLoader*) OVERRIDE;
@@ -211,6 +215,10 @@ private:
     
     virtual void numWheelEventHandlersChanged(unsigned) OVERRIDE;
     virtual void numTouchEventHandlersChanged(unsigned) OVERRIDE { }
+
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+    virtual void registerProtocolHandler(const String& scheme, const String& baseURL, const String& url, const String& title) OVERRIDE { }
+#endif
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

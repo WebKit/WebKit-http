@@ -96,6 +96,11 @@ bool AccessibilityMenuListOption::canSetSelectedAttribute() const
     return isEnabled();
 }
 
+bool AccessibilityMenuListOption::accessibilityIsIgnored() const
+{
+    return accessibilityPlatformIncludesObject() != IncludeObject;
+}
+
 LayoutRect AccessibilityMenuListOption::elementRect() const
 {
     AccessibilityObject* parent = parentObject();

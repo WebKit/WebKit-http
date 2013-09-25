@@ -605,6 +605,10 @@
 			>
 		</File>
 		<File
+			RelativePath="..\wtf\BitArray.h"
+			>
+		</File>
+		<File
 			RelativePath="..\wtf\BitVector.cpp"
 			>
 		</File>
@@ -722,6 +726,10 @@
 		</File>
 		<File
 			RelativePath="..\wtf\FastAllocBase.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\FastBitVector.h"
 			>
 		</File>
 		<File
@@ -898,6 +906,14 @@
 		</File>
 		<File
 			RelativePath="..\wtf\NullPtr.h"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\RAMSize.cpp"
+			>
+		</File>
+		<File
+			RelativePath="..\wtf\RAMSize.h"
 			>
 		</File>
 		<File

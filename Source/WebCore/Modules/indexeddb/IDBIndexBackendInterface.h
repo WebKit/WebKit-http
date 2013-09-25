@@ -36,6 +36,7 @@ namespace WebCore {
 
 class IDBCallbacks;
 class IDBKey;
+class IDBKeyPath;
 class IDBKeyRange;
 class IDBTransactionBackendInterface;
 
@@ -46,8 +47,7 @@ public:
     virtual ~IDBIndexBackendInterface() { }
 
     virtual String name() = 0;
-    virtual String storeName() = 0;
-    virtual String keyPath() = 0;
+    virtual IDBKeyPath keyPath() = 0;
     virtual bool unique() = 0;
     virtual bool multiEntry() = 0;
 

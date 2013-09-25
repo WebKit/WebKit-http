@@ -43,12 +43,6 @@ typedef enum {
     WebTextDirectionSubmenuAlwaysIncluded
 } WebTextDirectionSubmenuInclusionBehavior;
 
-typedef enum {
-    WebKitEditingMacBehavior,
-    WebKitEditingWinBehavior,
-    WebKitEditingUnixBehavior
-} WebKitEditingBehavior;
-
 extern NSString *WebPreferencesChangedNotification;
 extern NSString *WebPreferencesRemovedNotification;
 extern NSString *WebPreferencesChangedInternalNotification;
@@ -62,6 +56,9 @@ extern NSString *WebPreferencesChangedInternalNotification;
 
 - (BOOL)developerExtrasEnabled;
 - (void)setDeveloperExtrasEnabled:(BOOL)flag;
+
+- (BOOL)javaScriptExperimentsEnabled;
+- (void)setJavaScriptExperimentsEnabled:(BOOL)flag;
 
 - (BOOL)authorAndUserStylesEnabled;
 - (void)setAuthorAndUserStylesEnabled:(BOOL)flag;
@@ -148,9 +145,6 @@ extern NSString *WebPreferencesChangedInternalNotification;
 - (WebKitEditableLinkBehavior)editableLinkBehavior;
 - (void)setEditableLinkBehavior:(WebKitEditableLinkBehavior)behavior;
 
-- (WebKitEditingBehavior)editingBehavior;
-- (void)setEditingBehavior:(WebKitEditingBehavior)behavior;
-
 - (WebTextDirectionSubmenuInclusionBehavior)textDirectionSubmenuInclusionBehavior;
 - (void)setTextDirectionSubmenuInclusionBehavior:(WebTextDirectionSubmenuInclusionBehavior)behavior;
 
@@ -191,6 +185,9 @@ extern NSString *WebPreferencesChangedInternalNotification;
 
 - (BOOL)cssRegionsEnabled;
 - (void)setCSSRegionsEnabled:(BOOL)enabled;
+
+- (BOOL)cssGridLayoutEnabled;
+- (void)setCSSGridLayoutEnabled:(BOOL)enabled;
 
 - (BOOL)showDebugBorders;
 - (void)setShowDebugBorders:(BOOL)show;
@@ -297,6 +294,9 @@ extern NSString *WebPreferencesChangedInternalNotification;
 
 - (void)setShouldRespectImageOrientation:(BOOL)flag;
 - (BOOL)shouldRespectImageOrientation;
+
+- (BOOL)requestAnimationFrameEnabled;
+- (void)setRequestAnimationFrameEnabled:(BOOL)enabled;
 
 - (void)setIncrementalRenderingSuppressionTimeoutInSeconds:(NSTimeInterval)timeout;
 - (NSTimeInterval)incrementalRenderingSuppressionTimeoutInSeconds;

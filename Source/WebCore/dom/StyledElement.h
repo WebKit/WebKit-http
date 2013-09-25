@@ -55,17 +55,17 @@ public:
 
     const SpaceSplitString& classNames() const;
 
-    virtual void collectStyleForAttribute(Attribute*, StylePropertySet*) { }
+    virtual void collectStyleForAttribute(const Attribute&, StylePropertySet*) { }
+
+    // May be called by ElementAttributeData::cloneDataFrom().
+    enum ShouldReparseStyleAttribute { DoNotReparseStyleAttribute = 0, ReparseStyleAttribute = 1 };
+    void styleAttributeChanged(const AtomicString& newStyleString, ShouldReparseStyleAttribute = ReparseStyleAttribute);
 
 protected:
-    StyledElement(const QualifiedName& name, Document* document, ConstructionType type)
-        : Element(name, document, type)
-    {
-    }
+    StyledElement(const QualifiedName&, Document*, ConstructionType);
 
-    virtual void attributeChanged(Attribute*) OVERRIDE;
-    virtual void parseAttribute(Attribute*);
-    virtual void copyNonAttributeProperties(const Element*);
+    virtual void attributeChanged(const Attribute&) OVERRIDE;
+    virtual void parseAttribute(const Attribute&);
 
     virtual bool isPresentationAttribute(const QualifiedName&) const { return false; }
 

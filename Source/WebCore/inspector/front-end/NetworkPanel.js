@@ -1000,13 +1000,13 @@ WebInspector.NetworkLogView.prototype = {
             log: (new WebInspector.HARLog(this._requests)).build()
         };
         
-        WebInspector.save(WebInspector.inspectedPageDomain + ".har", JSON.stringify(harArchive, null, 2), true);
+        WebInspector.fileManager.save(WebInspector.inspectedPageDomain + ".har", JSON.stringify(harArchive, null, 2), true);
     },
 
     _exportRequest: function(request)
     {
         var har = (new WebInspector.HAREntry(request)).build();
-        WebInspector.save(request.displayName + ".har", JSON.stringify(har, null, 2), true);
+        WebInspector.fileManager.save(request.displayName + ".har", JSON.stringify(har, null, 2), true);
     },
 
     _clearBrowserCache: function(event)
@@ -1228,6 +1228,7 @@ WebInspector.NetworkLogView.EventTypes = {
 /**
  * @constructor
  * @extends {WebInspector.Panel}
+ * @implements {WebInspector.ContextMenu.Provider}
  */
 WebInspector.NetworkPanel = function()
 {
@@ -1262,6 +1263,7 @@ WebInspector.NetworkPanel = function()
         return this.visibleView;
     }
     WebInspector.GoToLineDialog.install(this, viewGetter.bind(this));
+    WebInspector.ContextMenu.registerProvider(this);
 }
 
 WebInspector.NetworkPanel.prototype = {
@@ -1437,6 +1439,23 @@ WebInspector.NetworkPanel.prototype = {
     searchCanceled: function()
     {
         this._networkLogView.searchCanceled();
+    },
+
+    /** 
+     * @param {WebInspector.ContextMenu} contextMenu
+     * @param {Object} target
+     */
+    appendApplicableItems: function(contextMenu, target)
+    {
+        if (!(target instanceof WebInspector.NetworkRequest))
+            return;
+
+        function reveal()
+        {
+            WebInspector.inspectorView.setCurrentPanel(this);
+            this.revealAndHighlightRequest(/** @type {WebInspector.NetworkRequest} */ target);
+        }
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Reveal in network panel" : "Reveal in Network Panel"), reveal.bind(this));
     }
 }
 

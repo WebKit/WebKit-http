@@ -219,10 +219,7 @@ my @macPlatforms = ("mac-leopard", "mac-snowleopard", "mac-lion", "mac");
 my @winPlatforms = ("win-xp", "win-vista", "win-7sp0", "win");
 
 if (isAppleMacWebKit()) {
-    if (isLeopard()) {
-        $platform = "mac-leopard";
-        $tolerance = 0.1;
-    } elsif (isSnowLeopard()) {
+    if (isSnowLeopard()) {
         $platform = "mac-snowleopard";
         $tolerance = 0.1;
     } elsif (isLion()) {
@@ -284,7 +281,7 @@ Usage: $programName [options] [testdir|testpath ...]
   --complex-text                  Use the complex text code path for all text (Mac OS X and Windows only)
   -c|--configuration config       Set DumpRenderTree build configuration
   --gc-between-tests              Force garbage collection between each test
-  -g|--guard-malloc               Enable malloc guard
+  -g|--guard-malloc               Enable Guard Malloc
   --exit-after-n-failures N       Exit after the first N failures (includes crashes) instead of running all tests
   --exit-after-n-crashes-or-timeouts N
                                   Exit after the first N crashes instead of running all tests
@@ -1203,8 +1200,8 @@ if (isGtk()) {
   push(@configurationArgs, '-2') if $useWebKitTestRunner;
   system "Tools/Scripts/run-launcher", @configurationArgs, "file://".$testResults if $launchSafari;
 } elsif (isQt()) {
-  unshift @configurationArgs, qw(-style windows);
   if (getQtVersion() lt "5.0") {
+    unshift @configurationArgs, qw(-style windows);
     unshift @configurationArgs, qw(-graphicssystem raster);
   }
   if (isCygwin()) {
@@ -1244,20 +1241,6 @@ sub countAndPrintLeaks($$$)
         "Flash_EnforceLocalSecurity", # leaks in Flash plug-in code, rdar://problem/4449747
         "ScanFromString", # <http://code.google.com/p/angleproject/issues/detail?id=249> leak in ANGLE
     );
-
-    if (isLeopard()) {
-        # Leak list for the version of Leopard used on the build bot.
-        push @callStacksToExclude, (
-            "CFHTTPMessageAppendBytes", # leak in CFNetwork, rdar://problem/5435912
-            "sendDidReceiveDataCallback", # leak in CFNetwork, rdar://problem/5441619
-            "_CFHTTPReadStreamReadMark", # leak in CFNetwork, rdar://problem/5441468
-            "httpProtocolStart", # leak in CFNetwork, rdar://problem/5468837
-            "_CFURLConnectionSendCallbacks", # leak in CFNetwork, rdar://problem/5441600
-            "DispatchQTMsg", # leak in QuickTime, PPC only, rdar://problem/5667132
-            "QTMovieContentView createVisualContext", # leak in QuickTime, PPC only, rdar://problem/5667132
-            "_CopyArchitecturesForJVMVersion", # leak in Java, rdar://problem/5910823
-        );
-    }
 
     if (isSnowLeopard()) {
         push @callStacksToExclude, (
@@ -1799,14 +1782,7 @@ sub captureSavedCrashLog($$)
     if (isCygwin()) {
         $glob = File::Spec->catfile($testResultsDirectory, $windowsCrashLogFilePrefix . "*.txt");
     } elsif (isAppleMacWebKit()) {
-        my $crashLogDirectoryName;
-        if (isLeopard()) {
-            $crashLogDirectoryName = "CrashReporter";
-        } else {
-            $crashLogDirectoryName = "DiagnosticReports";
-        }
-
-        $glob = File::Spec->catfile("~", "Library", "Logs", $crashLogDirectoryName, ($webProcessCrashed ? "WebProcess" : $dumpToolName) . "_*.crash");
+        $glob = File::Spec->catfile("~", "Library", "Logs", "DiagnosticReports", ($webProcessCrashed ? "WebProcess" : $dumpToolName) . "_*.crash");
 
         # Even though the dump tool has exited, CrashReporter might still be running. We need to
         # wait for it to exit to ensure it has saved its crash log to disk. For simplicitly, we'll
@@ -2182,8 +2158,11 @@ sub buildPlatformResultHierarchy()
             @platforms = $platform;
         }
     } elsif ($platform =~ /^qt/) {
-        if ($platform eq "qt-5.0-wk2") {
-            push @platforms, $platform;
+        if ($platform eq "qt-5.0-wk2" || getQtVersion() eq "5.0" && $useWebKitTestRunner) {
+            push @platforms, "qt-5.0-wk2";
+        }
+        elsif ($platform eq "qt-5.0-wk1" || getQtVersion() eq "5.0" && !$useWebKitTestRunner) {
+            push @platforms, "qt-5.0-wk1"
         }
 
         if (isARM() || $platform eq "qt-arm") {
@@ -2511,9 +2490,6 @@ sub readSkippedFiles($)
     # cross-platform issues, the Windows and Qt ports use the Mac skipped list
     # additionally to their own to avoid maintaining separate lists.
     push(@skippedFileDirectories, catdir($platformBaseDirectory, "wk2")) if ($platform eq "win-wk2" || $platform eq "qt-5.0-wk2" || $platform eq "mac-wk2" || $platform eq "gtk-wk2");
-
-    # Add Qt WK1-only skipped tests.
-    push(@skippedFileDirectories, catdir($platformBaseDirectory, "qt-5.0-wk1")) if (isQt() && !$useWebKitTestRunner);
 
     if ($verbose) {
         foreach my $skippedPath (@skippedFileDirectories) {

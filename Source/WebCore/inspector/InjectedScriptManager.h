@@ -7,13 +7,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Computer, Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -55,31 +55,42 @@ public:
 
     InjectedScriptHost* injectedScriptHost();
 
-    pair<long, ScriptObject> injectScript(const String& source, ScriptState*);
+    pair<int, ScriptObject> injectScript(const String& source, ScriptState*);
     InjectedScript injectedScriptFor(ScriptState*);
-    InjectedScript injectedScriptForId(long);
+    InjectedScript injectedScriptForId(int);
+    int injectedScriptIdFor(ScriptState*);
     InjectedScript injectedScriptForObjectId(const String& objectId);
     void discardInjectedScripts();
     void discardInjectedScriptsFor(DOMWindow*);
     void releaseObjectGroup(const String& objectGroup);
 
+#if ENABLE(WEBGL)
+    ScriptObject wrapWebGLRenderingContextForInstrumentation(const ScriptObject&);
+#endif
 
 private:
     typedef bool (*InspectedStateAccessCheck)(ScriptState*);
     explicit InjectedScriptManager(InspectedStateAccessCheck);
 
     String injectedScriptSource();
-    ScriptObject createInjectedScript(const String& source, ScriptState*, long id);
+    ScriptObject createInjectedScript(const String& source, ScriptState*, int id);
     void discardInjectedScript(ScriptState*);
+
+#if ENABLE(WEBGL)
+    String injectedWebGLScriptSource();
+    ScriptObject injectWebGLScript(const String& source, const ScriptObject&);
+#endif
 
     static bool canAccessInspectedWindow(ScriptState*);
     static bool canAccessInspectedWorkerContext(ScriptState*);
 
-    long m_nextInjectedScriptId;
-    typedef HashMap<long, InjectedScript> IdToInjectedScriptMap;
+    int m_nextInjectedScriptId;
+    typedef HashMap<int, InjectedScript> IdToInjectedScriptMap;
     IdToInjectedScriptMap m_idToInjectedScript;
     RefPtr<InjectedScriptHost> m_injectedScriptHost;
     InspectedStateAccessCheck m_inspectedStateAccessCheck;
+    typedef HashMap<ScriptState*, int> ScriptStateToId;
+    ScriptStateToId m_scriptStateToId;
 };
 
 } // namespace WebCore

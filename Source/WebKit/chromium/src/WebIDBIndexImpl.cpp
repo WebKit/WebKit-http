@@ -53,21 +53,9 @@ WebString WebIDBIndexImpl::name() const
     return m_backend->name();
 }
 
-WebString WebIDBIndexImpl::storeName() const
-{
-    return m_backend->storeName();
-}
-
 WebIDBKeyPath WebIDBIndexImpl::keyPath() const
 {
     return WebIDBKeyPath(m_backend->keyPath());
-}
-
-// FIXME: Remove this method once callers are updated.
-// http://webkit.org/b/84207
-WebString WebIDBIndexImpl::keyPathString() const
-{
-    return m_backend->keyPath();
 }
 
 bool WebIDBIndexImpl::unique() const

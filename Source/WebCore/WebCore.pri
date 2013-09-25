@@ -13,6 +13,7 @@ SOURCE_DIR = $${ROOT_WEBKIT_DIR}/Source/WebCore
 CONFIG += texmap
 
 QT *= network sql
+haveQt(5): QT *= gui-private
 
 WEBCORE_GENERATED_SOURCES_DIR = $${ROOT_BUILD_DIR}/Source/WebCore/$${GENERATED_SOURCES_DESTDIR}
 
@@ -21,6 +22,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/Modules/filesystem \
     $$SOURCE_DIR/Modules/geolocation \
     $$SOURCE_DIR/Modules/indexeddb \
+    $$SOURCE_DIR/Modules/quota \
     $$SOURCE_DIR/Modules/webaudio \
     $$SOURCE_DIR/Modules/webdatabase \
     $$SOURCE_DIR/Modules/websockets \
@@ -64,6 +66,12 @@ INCLUDEPATH += \
     $$SOURCE_DIR/platform/graphics/texmap \
     $$SOURCE_DIR/platform/graphics/transforms \
     $$SOURCE_DIR/platform/image-decoders \
+    $$SOURCE_DIR/platform/image-decoders/bmp \
+    $$SOURCE_DIR/platform/image-decoders/ico \
+    $$SOURCE_DIR/platform/image-decoders/gif \
+    $$SOURCE_DIR/platform/image-decoders/jpeg \
+    $$SOURCE_DIR/platform/image-decoders/png \
+    $$SOURCE_DIR/platform/image-decoders/webp \
     $$SOURCE_DIR/platform/leveldb \
     $$SOURCE_DIR/platform/mock \
     $$SOURCE_DIR/platform/network \
@@ -134,7 +142,7 @@ contains(DEFINES, ENABLE_NETSCAPE_PLUGIN_API=1) {
             INCLUDEPATH += platform/mac
             # Note: XP_MACOSX is defined in npapi.h
         } else {
-            !embedded {
+            xlibAvailable() {
                 CONFIG += x11
                 LIBS += -lXrender
                 DEFINES += MOZ_X11
@@ -222,25 +230,28 @@ contains(DEFINES, WTF_USE_TEXTURE_MAPPER_GL=1)|contains(DEFINES, ENABLE_WEBGL=1)
     LIBS += -lsqlite3
 }
 
-contains(DEFINES, WTF_USE_QT_IMAGE_DECODER=0) {
-    INCLUDEPATH += \
-        $$SOURCE_DIR/platform/image-decoders/bmp \
-        $$SOURCE_DIR/platform/image-decoders/gif \
-        $$SOURCE_DIR/platform/image-decoders/ico \
-        $$SOURCE_DIR/platform/image-decoders/jpeg \
-        $$SOURCE_DIR/platform/image-decoders/png
-
-    haveQt(5) {
-        # Qt5 allows us to use config tests to check for the presence of these libraries
-        !contains(config_test_libjpeg, yes): error("JPEG library not found!")
-        !contains(config_test_libpng, yes): error("PNG 1.2 library not found!")
+haveQt(5) {
+    # Qt5 allows us to use config tests to check for the presence of these libraries
+    contains(config_test_libjpeg, yes) {
+        DEFINES += WTF_USE_LIBJPEG=1
+        LIBS += -ljpeg
+    } else {
+        warning("JPEG library not found! QImageDecoder will decode JPEG images.")
     }
-
-    LIBS += -ljpeg -lpng12
-
-    contains(DEFINES, WTF_USE_WEBP=1) {
-        INCLUDEPATH += $$SOURCE_DIR/platform/image-decoders/webp
+    contains(config_test_libpng, yes) {
+        DEFINES += WTF_USE_LIBPNG=1
+        LIBS += -lpng
+    } else {
+        warning("PNG library not found! QImageDecoder will decode PNG images.")
+    }
+    contains(config_test_libwebp, yes) {
+        DEFINES += WTF_USE_WEBP=1
         LIBS += -lwebp
+    }
+} else {
+    !win32-*:!mac {
+        DEFINES += WTF_USE_LIBJPEG=1 WTF_USE_LIBPNG=1
+        LIBS += -ljpeg -lpng
     }
 }
 

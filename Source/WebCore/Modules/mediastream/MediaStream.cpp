@@ -32,7 +32,6 @@
 #include "ExceptionCode.h"
 #include "MediaStreamCenter.h"
 #include "MediaStreamSource.h"
-#include "ScriptExecutionContext.h"
 #include "UUID.h"
 
 namespace WebCore {
@@ -75,22 +74,18 @@ PassRefPtr<MediaStream> MediaStream::create(ScriptExecutionContext* context, Pas
         return 0;
 
     RefPtr<MediaStreamDescriptor> descriptor = MediaStreamDescriptor::create(createCanonicalUUIDString(), audioSources, videoSources);
-    MediaStreamCenter::instance().didConstructMediaStream(descriptor.get());
+    MediaStreamCenter::instance().didCreateMediaStream(descriptor.get());
 
-    RefPtr<MediaStream> stream = adoptRef(new MediaStream(context, descriptor.release()));
-    stream->suspendIfNeeded();
-    return stream.release();
+    return adoptRef(new MediaStream(context, descriptor.release()));
 }
 
 PassRefPtr<MediaStream> MediaStream::create(ScriptExecutionContext* context, PassRefPtr<MediaStreamDescriptor> streamDescriptor)
 {
-    RefPtr<MediaStream> stream = adoptRef(new MediaStream(context, streamDescriptor));
-    stream->suspendIfNeeded();
-    return stream.release();
+    return adoptRef(new MediaStream(context, streamDescriptor));
 }
 
 MediaStream::MediaStream(ScriptExecutionContext* context, PassRefPtr<MediaStreamDescriptor> streamDescriptor)
-    : ActiveDOMObject(context, this)
+    : ContextDestructionObserver(context)
     , m_descriptor(streamDescriptor)
 {
     m_descriptor->setOwner(this);
@@ -137,7 +132,7 @@ const AtomicString& MediaStream::interfaceName() const
 
 ScriptExecutionContext* MediaStream::scriptExecutionContext() const
 {
-    return ActiveDOMObject::scriptExecutionContext();
+    return ContextDestructionObserver::scriptExecutionContext();
 }
 
 EventTargetData* MediaStream::eventTargetData()

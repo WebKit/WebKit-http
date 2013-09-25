@@ -97,13 +97,6 @@ void ScrollingTree::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
     m_rootNode->handleWheelEvent(wheelEvent);
 }
 
-void ScrollingTree::setMainFrameScrollPosition(const IntPoint& scrollPosition)
-{
-    ASSERT(ScrollingThread::isCurrentThread());
-
-    m_rootNode->setScrollPosition(scrollPosition);
-}
-
 static void derefScrollingCoordinator(ScrollingCoordinator* scrollingCoordinator)
 {
     ASSERT(isMainThread());
@@ -128,9 +121,11 @@ void ScrollingTree::commitNewTreeState(PassOwnPtr<ScrollingTreeState> scrollingT
 {
     ASSERT(ScrollingThread::isCurrentThread());
 
-    if (scrollingTreeState->changedProperties() & (ScrollingTreeState::WheelEventHandlerCount | ScrollingTreeState::NonFastScrollableRegion)) {
+    if (scrollingTreeState->changedProperties() & (ScrollingTreeState::WheelEventHandlerCount | ScrollingTreeState::NonFastScrollableRegion | ScrollingTreeState::ScrollLayer)) {
         MutexLocker lock(m_mutex);
 
+        if (scrollingTreeState->changedProperties() & ScrollingTreeState::ScrollLayer)
+            m_mainFrameScrollPosition = IntPoint();
         if (scrollingTreeState->changedProperties() & ScrollingTreeState::WheelEventHandlerCount)
             m_hasWheelEventHandlers = scrollingTreeState->wheelEventHandlerCount();
         if (scrollingTreeState->changedProperties() & ScrollingTreeState::NonFastScrollableRegion)

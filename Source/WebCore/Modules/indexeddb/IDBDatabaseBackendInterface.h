@@ -38,6 +38,7 @@ class DOMStringList;
 class Frame;
 class IDBCallbacks;
 class IDBDatabaseCallbacks;
+class IDBKeyPath;
 class IDBObjectStoreBackendInterface;
 class IDBTransactionBackendInterface;
 
@@ -55,13 +56,13 @@ public:
     virtual String version() const = 0;
     virtual PassRefPtr<DOMStringList> objectStoreNames() const = 0;
 
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(const String& name, const String& keyPath, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&) = 0;
+    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&) = 0;
     virtual void deleteObjectStore(const String& name, IDBTransactionBackendInterface*, ExceptionCode&) = 0;
     virtual void setVersion(const String& version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, ExceptionCode&) = 0;
     virtual PassRefPtr<IDBTransactionBackendInterface> transaction(DOMStringList* storeNames, unsigned short mode, ExceptionCode&) = 0;
     virtual void close(PassRefPtr<IDBDatabaseCallbacks>) = 0;
 
-    virtual void open(PassRefPtr<IDBDatabaseCallbacks>) = 0;
+    virtual void registerFrontendCallbacks(PassRefPtr<IDBDatabaseCallbacks>) = 0;
 };
 
 } // namespace WebCore

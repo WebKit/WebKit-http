@@ -51,7 +51,7 @@ public:
     void setFormMethod(const String&);
     bool formNoValidate() const;
 
-    void updateAncestors() const;
+    void ancestorDisabledStateWasChanged();
 
     virtual void reset() { }
 
@@ -95,13 +95,12 @@ public:
     virtual void setActivatedSubmit(bool) { }
 
     virtual bool willValidate() const;
-    String validationMessage();
     void updateVisibleValidationMessage();
     void hideVisibleValidationMessage();
     bool checkValidity(Vector<RefPtr<FormAssociatedElement> >* unhandledInvalidControls = 0);
     // This must be called when a validation constraint or control value is changed.
     void setNeedsValidityCheck();
-    void setCustomValidity(const String&);
+    virtual void setCustomValidity(const String&) OVERRIDE;
 
     bool readOnly() const { return m_readOnly; }
 
@@ -110,28 +109,27 @@ public:
 
     static HTMLFormControlElement* enclosingFormControlElement(Node*);
 
-    using TreeShared<ContainerNode>::ref;
-    using TreeShared<ContainerNode>::deref;
+    using Node::ref;
+    using Node::deref;
 
 protected:
     HTMLFormControlElement(const QualifiedName& tagName, Document*, HTMLFormElement*);
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual void requiredAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void attach();
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual void removedFrom(Node*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void didMoveToNewDocument(Document* oldDocument) OVERRIDE;
 
     virtual bool supportsFocus() const;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
 
-    virtual void didRecalcStyle(StyleChange);
+    virtual void didRecalcStyle(StyleChange) OVERRIDE;
 
     virtual void dispatchBlurEvent(PassRefPtr<Node> newFocusedNode);
-    virtual void detach();
 
     // This must be called any time the result of willValidate() has changed.
     void setNeedsWillValidateCheck();
@@ -149,15 +147,18 @@ private:
     virtual bool isDefaultButtonForForm() const;
     virtual bool isValidFormControlElement();
     String visibleValidationMessage() const;
+    void updateAncestorDisabledState() const;
 
-    mutable HTMLFieldSetElement* m_fieldSetAncestor;
-    mutable HTMLLegendElement* m_legendAncestor;
     OwnPtr<ValidationMessage> m_validationMessage;
-    mutable bool m_ancestorsValid : 1;
     bool m_disabled : 1;
     bool m_readOnly : 1;
     bool m_required : 1;
     bool m_valueMatchesRenderer : 1;
+
+    enum AncestorDisabledState { AncestorDisabledStateUnknown, AncestorDisabledStateEnabled, AncestorDisabledStateDisabled };
+    mutable AncestorDisabledState m_ancestorDisabledState;
+    enum DataListAncestorState { Unknown, InsideDataList, NotInsideDataList };
+    mutable enum DataListAncestorState m_dataListAncestorState;
 
     // The initial value of m_willValidate depends on the derived class. We can't
     // initialize it with a virtual function in the constructor. m_willValidate
@@ -172,7 +173,6 @@ private:
     bool m_wasChangedSinceLastFormControlChangeEvent : 1;
 
     bool m_hasAutofocused : 1;
-    mutable bool m_hasDataListAncestor : 1;
 };
 
 } // namespace

@@ -32,6 +32,7 @@
 #include "XSLStyleSheet.h"
 #include "XMLDocumentParser.h" // for parseAttributes()
 #include "MediaList.h"
+#include "StyleSheetContents.h"
 
 namespace WebCore {
 
@@ -213,7 +214,7 @@ void ProcessingInstruction::setCSSStyleSheet(const String& href, const KURL& bas
     ASSERT(m_isCSS);
     CSSParserContext parserContext(document(), baseURL, charset);
 
-    RefPtr<StyleSheetInternal> newSheet = StyleSheetInternal::create(href, baseURL, parserContext);
+    RefPtr<StyleSheetContents> newSheet = StyleSheetContents::create(href, baseURL, parserContext);
 
     RefPtr<CSSStyleSheet> cssSheet = CSSStyleSheet::create(newSheet, this);
     cssSheet->setDisabled(m_alternate);
@@ -240,7 +241,7 @@ void ProcessingInstruction::setXSLStyleSheet(const String& href, const KURL& bas
 void ProcessingInstruction::parseStyleSheet(const String& sheet)
 {
     if (m_isCSS)
-        static_cast<CSSStyleSheet*>(m_sheet.get())->internal()->parseString(sheet);
+        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->parseString(sheet);
 #if ENABLE(XSLT)
     else if (m_isXSL)
         static_cast<XSLStyleSheet*>(m_sheet.get())->parseString(sheet);
@@ -253,7 +254,7 @@ void ProcessingInstruction::parseStyleSheet(const String& sheet)
     m_loading = false;
 
     if (m_isCSS)
-        static_cast<CSSStyleSheet*>(m_sheet.get())->internal()->checkLoaded();
+        static_cast<CSSStyleSheet*>(m_sheet.get())->contents()->checkLoaded();
 #if ENABLE(XSLT)
     else if (m_isXSL)
         static_cast<XSLStyleSheet*>(m_sheet.get())->checkLoaded();
@@ -287,7 +288,7 @@ void ProcessingInstruction::addSubresourceAttributeURLs(ListHashSet<KURL>& urls)
     addSubresourceURL(urls, sheet()->baseURL());
 }
 
-Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(ContainerNode* insertionPoint)
 {
     Node::insertedInto(insertionPoint);
     if (!insertionPoint->inDocument())
@@ -297,7 +298,7 @@ Node::InsertionNotificationRequest ProcessingInstruction::insertedInto(Node* ins
     return InsertionDone;
 }
 
-void ProcessingInstruction::removedFrom(Node* insertionPoint)
+void ProcessingInstruction::removedFrom(ContainerNode* insertionPoint)
 {
     Node::removedFrom(insertionPoint);
     if (!insertionPoint->inDocument())

@@ -68,7 +68,7 @@ typedef unsigned int GLuint;
 #if PLATFORM(MAC)
 typedef CGLContextObj PlatformGraphicsContext3D;
 #elif PLATFORM(QT)
-#if QT_VERSION >= QT_VERSION_CHECK(5, 0, 0)
+#if HAVE(QT5)
 typedef QOpenGLContext* PlatformGraphicsContext3D;
 typedef QSurface* PlatformGraphicsSurface3D;
 #else
@@ -92,7 +92,6 @@ const Platform3DObject NullPlatform3DObject = 0;
 #endif
 
 namespace WebCore {
-class CanvasRenderingContext;
 class DrawingBuffer;
 class Extensions3D;
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
@@ -395,6 +394,7 @@ public:
         STENCIL_INDEX = 0x1901,
         STENCIL_INDEX8 = 0x8D48,
         DEPTH_STENCIL = 0x84F9,
+        UNSIGNED_INT_24_8 = 0x84FA,
         RENDERBUFFER_WIDTH = 0x8D42,
         RENDERBUFFER_HEIGHT = 0x8D43,
         RENDERBUFFER_INTERNAL_FORMAT = 0x8D44,
@@ -807,9 +807,9 @@ public:
     void markLayerComposited();
     bool layerComposited() const;
 
-    void paintRenderingResultsToCanvas(CanvasRenderingContext*, DrawingBuffer*);
+    void paintRenderingResultsToCanvas(ImageBuffer*, DrawingBuffer*);
     PassRefPtr<ImageData> paintRenderingResultsToImageData(DrawingBuffer*);
-    bool paintCompositedResultsToCanvas(CanvasRenderingContext*);
+    bool paintCompositedResultsToCanvas(ImageBuffer*);
 
     // Support for buffer creation and deletion
     Platform3DObject createBuffer();
@@ -912,6 +912,9 @@ public:
 
     bool reshapeFBOs(const IntSize&);
     void resolveMultisamplingIfNecessary(const IntRect& = IntRect());
+#if PLATFORM(QT) && USE(GRAPHICS_SURFACE)
+    void createGraphicsSurfaces(const IntSize&);
+#endif
 
     int m_currentWidth, m_currentHeight;
     bool isResourceSafe();
@@ -930,29 +933,21 @@ public:
     HashMap<Platform3DObject, ShaderSourceEntry> m_shaderSourceMap;
 
     ANGLEWebKitBridge m_compiler;
-#if PLATFORM(QT) && defined(QT_OPENGL_ES_2)
-    friend class Extensions3DQt;
-    OwnPtr<Extensions3DQt> m_extensions;
-#else
+
     friend class Extensions3DOpenGL;
     OwnPtr<Extensions3DOpenGL> m_extensions;
-#endif
 
     Attributes m_attrs;
     Vector<Vector<float> > m_vertexArray;
 
     GC3Duint m_texture, m_compositorTexture;
     GC3Duint m_fbo;
-#if PLATFORM(QT) && defined(QT_OPENGL_ES_2)
-    GC3Duint m_depthBuffer;
-    GC3Duint m_stencilBuffer;
-#else
 #if USE(OPENGL_ES_2)
     GC3Duint m_depthBuffer;
     GC3Duint m_stencilBuffer;
 #endif
     GC3Duint m_depthStencilBuffer;
-#endif
+
     bool m_layerComposited;
     GC3Duint m_internalColorFormat;
 

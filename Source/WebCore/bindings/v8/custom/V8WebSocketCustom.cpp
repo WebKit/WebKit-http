@@ -56,25 +56,25 @@ v8::Handle<v8::Value> V8WebSocket::constructorCallback(const v8::Arguments& args
     INC_STATS("DOM.WebSocket.Constructor");
 
     if (!args.IsConstructCall())
-        return throwError("DOM object constructor cannot be called as a function.", V8Proxy::TypeError);
+        return V8Proxy::throwTypeError("DOM object constructor cannot be called as a function.", args.GetIsolate());
 
     if (ConstructorMode::current() == ConstructorMode::WrapExistingObject)
         return args.Holder();
 
     if (args.Length() == 0)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     v8::TryCatch tryCatch;
     v8::Handle<v8::String> urlstring = args[0]->ToString();
     if (tryCatch.HasCaught())
-        return throwError(tryCatch.Exception());
+        return throwError(tryCatch.Exception(), args.GetIsolate());
     if (urlstring.IsEmpty())
-        return throwError("Empty URL", V8Proxy::SyntaxError);
+        return V8Proxy::throwError(V8Proxy::SyntaxError, "Empty URL", args.GetIsolate());
 
     // Get the script execution context.
     ScriptExecutionContext* context = getScriptExecutionContext();
     if (!context)
-        return throwError("WebSocket constructor's associated frame is not available", V8Proxy::ReferenceError);
+        return V8Proxy::throwError(V8Proxy::ReferenceError, "WebSocket constructor's associated frame is not available", args.GetIsolate());
 
     const KURL& url = context->completeURL(toWebCoreString(urlstring));
 
@@ -92,7 +92,7 @@ v8::Handle<v8::Value> V8WebSocket::constructorCallback(const v8::Arguments& args
                 v8::TryCatch tryCatchProtocol;
                 v8::Handle<v8::String> protocol = protocolsArray->Get(v8::Int32::New(i))->ToString();
                 if (tryCatchProtocol.HasCaught())
-                    return throwError(tryCatchProtocol.Exception());
+                    return throwError(tryCatchProtocol.Exception(), args.GetIsolate());
                 protocols.append(toWebCoreString(protocol));
             }
             webSocket->connect(url, protocols, ec);
@@ -100,12 +100,12 @@ v8::Handle<v8::Value> V8WebSocket::constructorCallback(const v8::Arguments& args
             v8::TryCatch tryCatchProtocol;
             v8::Handle<v8::String> protocol = protocolsValue->ToString();
             if (tryCatchProtocol.HasCaught())
-                return throwError(tryCatchProtocol.Exception());
+                return throwError(tryCatchProtocol.Exception(), args.GetIsolate());
             webSocket->connect(url, toWebCoreString(protocol), ec);
         }
     }
     if (ec)
-        return throwError(ec);
+        return throwError(ec, args.GetIsolate());
 
     V8DOMWrapper::setDOMWrapper(args.Holder(), &info, webSocket.get());
     V8DOMWrapper::setJSWrapperForActiveDOMObject(webSocket.release(), v8::Persistent<v8::Object>::New(args.Holder()));
@@ -117,7 +117,7 @@ v8::Handle<v8::Value> V8WebSocket::sendCallback(const v8::Arguments& args)
     INC_STATS("DOM.WebSocket.send()");
 
     if (!args.Length())
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
 
     WebSocket* webSocket = V8WebSocket::toNative(args.Holder());
     v8::Handle<v8::Value> message = args[0];
@@ -135,13 +135,13 @@ v8::Handle<v8::Value> V8WebSocket::sendCallback(const v8::Arguments& args)
         v8::TryCatch tryCatch;
         v8::Handle<v8::String> stringMessage = message->ToString();
         if (tryCatch.HasCaught())
-            return throwError(tryCatch.Exception());
+            return throwError(tryCatch.Exception(), args.GetIsolate());
         result = webSocket->send(toWebCoreString(stringMessage), ec);
     }
     if (ec)
-        return throwError(ec);
+        return throwError(ec, args.GetIsolate());
 
-    return v8Boolean(result);
+    return v8Boolean(result, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8WebSocket::closeCallback(const v8::Arguments& args)
@@ -165,14 +165,14 @@ v8::Handle<v8::Value> V8WebSocket::closeCallback(const v8::Arguments& args)
             v8::TryCatch tryCatch;
             v8::Handle<v8::String> reasonValue = args[1]->ToString();
             if (tryCatch.HasCaught())
-                return throwError(tryCatch.Exception());
+                return throwError(tryCatch.Exception(), args.GetIsolate());
             reason = toWebCoreString(reasonValue);
         }
     }
     ExceptionCode ec = 0;
     webSocket->close(code, reason, ec);
     if (ec)
-        return throwError(ec);
+        return throwError(ec, args.GetIsolate());
     return v8::Undefined();
 }
 

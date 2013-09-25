@@ -5,6 +5,7 @@ SET(WTF_HEADERS
     AlwaysInline.h
     Assertions.h
     Atomics.h
+    BitArray.h
     BitVector.h
     Bitmap.h
     BoundsCheckedPointer.h
@@ -51,6 +52,7 @@ SET(WTF_HEADERS
     NotFound.h
     NullPtr.h
     NumberOfCores.h
+    RAMSize.h
     OSAllocator.h
     OSRandomSource.h
     OwnArrayPtr.h
@@ -148,6 +150,7 @@ SET(WTF_SOURCES
     MetaAllocator.cpp
     OSRandomSource.cpp
     NumberOfCores.cpp
+    RAMSize.cpp
     PageAllocationAligned.cpp
     PageBlock.cpp
     ParallelJobsGeneric.cpp

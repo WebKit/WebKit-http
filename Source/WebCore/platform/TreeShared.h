@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2012 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,13 +28,13 @@
 namespace WebCore {
 
 #ifndef NDEBUG
-template<typename T> class TreeShared;
-template<typename T> void adopted(TreeShared<T>*);
+template<typename NodeType, typename ParentNodeType> class TreeShared;
+template<typename NodeType, typename ParentNodeType> void adopted(TreeShared<NodeType, ParentNodeType>*);
 #endif
 
-template<typename T> class TreeShared {
+template<typename NodeType, typename ParentNodeType> class TreeShared {
     WTF_MAKE_NONCOPYABLE(TreeShared);
-public:
+protected:
     TreeShared()
         : m_parent(0)
         , m_refCount(1)
@@ -48,7 +48,8 @@ public:
         m_inRemovedLastRefFunction = false;
 #endif
     }
-    virtual ~TreeShared()
+
+    ~TreeShared()
     {
         ASSERT(isMainThread());
         ASSERT(!m_refCount);
@@ -56,6 +57,7 @@ public:
         ASSERT(!m_adoptionIsRequired);
     }
 
+public:
     void ref()
     {
         ASSERT(isMainThread());
@@ -76,7 +78,7 @@ public:
 #ifndef NDEBUG
             m_inRemovedLastRefFunction = true;
 #endif
-            removedLastRef();
+            static_cast<NodeType*>(this)->removedLastRef();
         }
     }
 
@@ -92,13 +94,13 @@ public:
         return m_refCount;
     }
 
-    void setParent(T* parent)
+    void setParent(ParentNodeType* parent)
     { 
         ASSERT(isMainThread());
         m_parent = parent; 
     }
 
-    T* parent() const
+    ParentNodeType* parent() const
     {
         ASSERT(isMainThreadOrGCThread());
         return m_parent;
@@ -109,21 +111,12 @@ public:
     bool m_inRemovedLastRefFunction;
 #endif
 
-protected:
-    virtual void removedLastRef()
-    {
-#ifndef NDEBUG
-        m_deletionHasBegun = true;
-#endif
-        delete this;
-    }
-
 private:
 #ifndef NDEBUG
-    friend void adopted<>(TreeShared<T>*);
+    friend void adopted<>(TreeShared<NodeType, ParentNodeType>*);
 #endif
 
-    T* m_parent;
+    ParentNodeType* m_parent;
     int m_refCount;
 
 #ifndef NDEBUG
@@ -133,7 +126,7 @@ private:
 
 #ifndef NDEBUG
 
-template<typename T> inline void adopted(TreeShared<T>* object)
+template<typename NodeType, typename ParentNodeType> inline void adopted(TreeShared<NodeType, ParentNodeType>* object)
 {
     if (!object)
         return;

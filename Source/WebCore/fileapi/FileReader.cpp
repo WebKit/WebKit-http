@@ -35,9 +35,9 @@
 #include "FileReader.h"
 
 #include "CrossThreadTask.h"
+#include "ExceptionCode.h"
 #include "File.h"
 #include "Logging.h"
-#include "OperationNotAllowedException.h"
 #include "ProgressEvent.h"
 #include "ScriptExecutionContext.h"
 #include <wtf/ArrayBuffer.h>
@@ -74,11 +74,6 @@ const AtomicString& FileReader::interfaceName() const
     return eventNames().interfaceForFileReader;
 }
 
-bool FileReader::hasPendingActivity() const
-{
-    return m_state == LOADING || ActiveDOMObject::hasPendingActivity();
-}
-
 bool FileReader::canSuspend() const
 {
     // FIXME: It is not currently possible to suspend a FileReader, so pages with FileReader can not go into page cache.
@@ -95,7 +90,7 @@ void FileReader::readAsArrayBuffer(Blob* blob, ExceptionCode& ec)
     if (!blob)
         return;
 
-    LOG(FileAPI, "FileReader: reading as array buffer: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? static_cast<File*>(blob)->path().utf8().data() : "");
+    LOG(FileAPI, "FileReader: reading as array buffer: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? toFile(blob)->path().utf8().data() : "");
 
     readInternal(blob, FileReaderLoader::ReadAsArrayBuffer, ec);
 }
@@ -105,7 +100,7 @@ void FileReader::readAsBinaryString(Blob* blob, ExceptionCode& ec)
     if (!blob)
         return;
 
-    LOG(FileAPI, "FileReader: reading as binary: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? static_cast<File*>(blob)->path().utf8().data() : "");
+    LOG(FileAPI, "FileReader: reading as binary: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? toFile(blob)->path().utf8().data() : "");
 
     readInternal(blob, FileReaderLoader::ReadAsBinaryString, ec);
 }
@@ -115,7 +110,7 @@ void FileReader::readAsText(Blob* blob, const String& encoding, ExceptionCode& e
     if (!blob)
         return;
 
-    LOG(FileAPI, "FileReader: reading as text: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? static_cast<File*>(blob)->path().utf8().data() : "");
+    LOG(FileAPI, "FileReader: reading as text: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? toFile(blob)->path().utf8().data() : "");
 
     m_encoding = encoding;
     readInternal(blob, FileReaderLoader::ReadAsText, ec);
@@ -131,18 +126,20 @@ void FileReader::readAsDataURL(Blob* blob, ExceptionCode& ec)
     if (!blob)
         return;
 
-    LOG(FileAPI, "FileReader: reading as data URL: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? static_cast<File*>(blob)->path().utf8().data() : "");
+    LOG(FileAPI, "FileReader: reading as data URL: %s %s\n", blob->url().string().utf8().data(), blob->isFile() ? toFile(blob)->path().utf8().data() : "");
 
     readInternal(blob, FileReaderLoader::ReadAsDataURL, ec);
 }
 
 void FileReader::readInternal(Blob* blob, FileReaderLoader::ReadType type, ExceptionCode& ec)
 {
-    // If multiple concurrent read methods are called on the same FileReader, OperationNotAllowedException should be thrown when the state is LOADING.
+    // If multiple concurrent read methods are called on the same FileReader, INVALID_STATE_ERR should be thrown when the state is LOADING.
     if (m_state == LOADING) {
-        ec = OperationNotAllowedException::NOT_ALLOWED_ERR;
+        ec = INVALID_STATE_ERR;
         return;
     }
+
+    setPendingActivity(this);
 
     m_blob = blob;
     m_readType = type;
@@ -175,6 +172,8 @@ void FileReader::abort()
 
 void FileReader::doAbort()
 {
+    ASSERT(m_state != DONE);
+
     terminate();
     m_aborting = false;
 
@@ -183,6 +182,9 @@ void FileReader::doAbort()
     fireEvent(eventNames().errorEvent);
     fireEvent(eventNames().abortEvent);
     fireEvent(eventNames().loadendEvent);
+
+    // All possible events have fired and we're done, no more pending activity.
+    unsetPendingActivity(this);
 }
 
 void FileReader::terminate()
@@ -213,10 +215,15 @@ void FileReader::didReceiveData()
 
 void FileReader::didFinishLoading()
 {
+    ASSERT(m_state != DONE);
     m_state = DONE;
 
+    fireEvent(eventNames().progressEvent);
     fireEvent(eventNames().loadEvent);
     fireEvent(eventNames().loadendEvent);
+    
+    // All possible events have fired and we're done, no more pending activity.
+    unsetPendingActivity(this);
 }
 
 void FileReader::didFail(int errorCode)
@@ -225,11 +232,15 @@ void FileReader::didFail(int errorCode)
     if (m_aborting)
         return;
 
+    ASSERT(m_state != DONE);
     m_state = DONE;
 
     m_error = FileError::create(static_cast<FileError::ErrorCode>(errorCode));
     fireEvent(eventNames().errorEvent);
     fireEvent(eventNames().loadendEvent);
+    
+    // All possible events have fired and we're done, no more pending activity.
+    unsetPendingActivity(this);
 }
 
 void FileReader::fireEvent(const AtomicString& type)
@@ -239,12 +250,16 @@ void FileReader::fireEvent(const AtomicString& type)
 
 PassRefPtr<ArrayBuffer> FileReader::arrayBufferResult() const
 {
-    return m_loader ? m_loader->arrayBufferResult() : 0;
+    if (!m_loader || m_error)
+        return 0;
+    return m_loader->arrayBufferResult();
 }
 
 String FileReader::stringResult()
 {
-    return m_loader ? m_loader->stringResult() : "";
+    if (!m_loader || m_error)
+        return String();
+    return m_loader->stringResult();
 }
 
 } // namespace WebCore

@@ -33,6 +33,7 @@ PassRefPtr<WebSoupRequestManagerProxy> WebSoupRequestManagerProxy::create(WebCon
 
 WebSoupRequestManagerProxy::WebSoupRequestManagerProxy(WebContext* context)
     : m_webContext(context)
+    , m_loadFailed(false)
 {
 }
 
@@ -60,16 +61,31 @@ void WebSoupRequestManagerProxy::registerURIScheme(const String& scheme)
     m_webContext->sendToAllProcessesRelaunchingThemIfNecessary(Messages::WebSoupRequestManager::RegisterURIScheme(scheme));
 }
 
-void WebSoupRequestManagerProxy::handleURIRequest(const WebData* requestData, const String& mimeType, uint64_t requestID)
+void WebSoupRequestManagerProxy::didHandleURIRequest(const WebData* requestData, uint64_t contentLength, const String& mimeType, uint64_t requestID)
 {
     ASSERT(m_webContext);
-    m_webContext->sendToAllProcesses(Messages::WebSoupRequestManager::HandleURIRequest(requestData->dataReference(), mimeType, requestID));
+    m_webContext->sendToAllProcesses(Messages::WebSoupRequestManager::DidHandleURIRequest(requestData->dataReference(), contentLength, mimeType, requestID));
+}
+
+void WebSoupRequestManagerProxy::didReceiveURIRequestData(const WebData* requestData, uint64_t requestID)
+{
+    if (m_loadFailed)
+        return;
+
+    ASSERT(m_webContext);
+    m_webContext->sendToAllProcesses(Messages::WebSoupRequestManager::DidReceiveURIRequestData(requestData->dataReference(), requestID));
 }
 
 void WebSoupRequestManagerProxy::didReceiveURIRequest(const String& uriString, uint64_t requestID)
 {
     if (!m_client.didReceiveURIRequest(this, WebURL::create(uriString).get(), requestID))
-        handleURIRequest(WebData::create(0, 0).get(), String(), requestID);
+        didHandleURIRequest(WebData::create(0, 0).get(), 0, String(), requestID);
+}
+
+void WebSoupRequestManagerProxy::didFailToLoadURIRequest(uint64_t requestID)
+{
+    m_loadFailed = true;
+    m_client.didFailToLoadURIRequest(this, requestID);
 }
 
 } // namespace WebKit

@@ -40,9 +40,6 @@ class SVGAElement : public SVGStyledTransformableElement,
 public:
     static PassRefPtr<SVGAElement> create(const QualifiedName&, Document*);
 
-protected:
-    virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0) OVERRIDE;
-
 private:
     SVGAElement(const QualifiedName&, Document*);
 
@@ -52,7 +49,7 @@ private:
     virtual String target() const { return svgTarget(); }
 
     bool isSupportedAttribute(const QualifiedName&);
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual void svgAttributeChanged(const QualifiedName&);
 
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);

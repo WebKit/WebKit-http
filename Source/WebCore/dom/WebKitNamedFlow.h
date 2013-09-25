@@ -49,7 +49,8 @@ public:
 
     ~WebKitNamedFlow();
 
-    bool overflow() const;
+    String name() const;
+    bool overset() const;
     PassRefPtr<NodeList> getRegionsByContentNode(Node*);
     PassRefPtr<NodeList> contentNodes() const;
 

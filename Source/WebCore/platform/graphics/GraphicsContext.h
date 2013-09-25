@@ -100,7 +100,7 @@ typedef unsigned char UInt8;
 #endif
 #endif
 
-#if PLATFORM(QT) && defined(Q_WS_WIN)
+#if PLATFORM(QT) && OS(WINDOWS)
 #include <windows.h>
 #endif
 
@@ -428,6 +428,7 @@ namespace WebCore {
         // Create an image buffer compatible with this context, with suitable resolution
         // for drawing into the buffer and then into this context.
         PassOwnPtr<ImageBuffer> createCompatibleBuffer(const IntSize&) const;
+        bool isCompatibleWithBuffer(ImageBuffer*) const;
 
         // This function applies the device scale factor to the context, making the context capable of
         // acting as a base-level context for a HiDPI environment.
@@ -491,7 +492,7 @@ namespace WebCore {
         void drawWindowsBitmap(WindowsBitmap*, const IntPoint&);
 #endif
 
-#if (PLATFORM(QT) && defined(Q_WS_WIN)) || (PLATFORM(WX) && OS(WINDOWS))
+#if (PLATFORM(QT) && OS(WINDOWS)) || (PLATFORM(WX) && OS(WINDOWS))
         HDC getWindowsContext(const IntRect&, bool supportAlphaBlend = true, bool mayCreateBitmap = true);
         void releaseWindowsContext(HDC, const IntRect&, bool supportAlphaBlend = true, bool mayCreateBitmap = true);
         bool shouldIncludeChildWindows() const { return false; }

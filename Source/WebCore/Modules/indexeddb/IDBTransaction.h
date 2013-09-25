@@ -29,6 +29,7 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "ActiveDOMObject.h"
+#include "DOMError.h"
 #include "DOMStringList.h"
 #include "Event.h"
 #include "EventListener.h"
@@ -56,11 +57,23 @@ public:
         VERSION_CHANGE = 2
     };
 
-    IDBTransactionBackendInterface* backend() const;
-    bool finished() const;
+    static const AtomicString& modeReadOnly();
+    static const AtomicString& modeReadWrite();
+    static const AtomicString& modeVersionChange();
+    static const AtomicString& modeReadOnlyLegacy();
+    static const AtomicString& modeReadWriteLegacy();
 
-    unsigned short mode() const;
+    static unsigned short stringToMode(const String&, ExceptionCode&);
+    static const AtomicString& modeToString(unsigned short, ExceptionCode&);
+
+    IDBTransactionBackendInterface* backend() const;
+    bool isFinished() const;
+
+    const String& mode() const;
     IDBDatabase* db() const;
+    PassRefPtr<DOMError> error(ExceptionCode&) const;
+    void setError(PassRefPtr<DOMError>);
+
     PassRefPtr<IDBObjectStore> objectStore(const String& name, ExceptionCode&);
     void abort();
 
@@ -117,9 +130,10 @@ private:
 
     RefPtr<IDBTransactionBackendInterface> m_backend;
     RefPtr<IDBDatabase> m_database;
-    unsigned short m_mode;
+    const unsigned short m_mode;
     bool m_transactionFinished; // Is it possible that we'll fire any more events or allow any new requests? If not, we're finished.
     bool m_contextStopped;
+    RefPtr<DOMError> m_error;
 
     ListHashSet<IDBRequest*> m_childRequests;
 

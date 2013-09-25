@@ -53,7 +53,7 @@ v8::Handle<v8::Value> V8History::stateAccessorGetter(v8::Local<v8::String> name,
         return value;
 
     SerializedScriptValue* serialized = history->state();
-    value = serialized ? serialized->deserialize(0, info.GetIsolate()) : v8::Handle<v8::Value>(v8::Null());
+    value = serialized ? serialized->deserialize(0, info.GetIsolate()) : v8::Handle<v8::Value>(v8::Null(info.GetIsolate()));
     info.Holder()->SetHiddenValue(V8HiddenPropertyName::state(), value);
 
     return value;
@@ -81,7 +81,7 @@ v8::Handle<v8::Value> V8History::pushStateCallback(const v8::Arguments& args)
     History* history = V8History::toNative(args.Holder());
     history->stateObjectAdded(historyState.release(), title, url, History::StateObjectPush, ec);
     args.Holder()->DeleteHiddenValue(V8HiddenPropertyName::state());
-    return throwError(ec);
+    return throwError(ec, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
@@ -106,7 +106,7 @@ v8::Handle<v8::Value> V8History::replaceStateCallback(const v8::Arguments& args)
     History* history = V8History::toNative(args.Holder());
     history->stateObjectAdded(historyState.release(), title, url, History::StateObjectReplace, ec);
     args.Holder()->DeleteHiddenValue(V8HiddenPropertyName::state());
-    return throwError(ec);
+    return throwError(ec, args.GetIsolate());
 }
 
 bool V8History::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t index, v8::AccessType type, v8::Local<v8::Value>)

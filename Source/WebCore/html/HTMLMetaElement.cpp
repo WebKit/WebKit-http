@@ -42,19 +42,19 @@ PassRefPtr<HTMLMetaElement> HTMLMetaElement::create(const QualifiedName& tagName
     return adoptRef(new HTMLMetaElement(tagName, document));
 }
 
-void HTMLMetaElement::parseAttribute(Attribute* attr)
+void HTMLMetaElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == http_equivAttr)
+    if (attribute.name() == http_equivAttr)
         process();
-    else if (attr->name() == contentAttr)
+    else if (attribute.name() == contentAttr)
         process();
-    else if (attr->name() == nameAttr) {
+    else if (attribute.name() == nameAttr) {
         // Do nothing
     } else
-        HTMLElement::parseAttribute(attr);
+        HTMLElement::parseAttribute(attribute);
 }
 
-Node::InsertionNotificationRequest HTMLMetaElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLMetaElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     if (insertionPoint->inDocument())
@@ -72,10 +72,15 @@ void HTMLMetaElement::process()
         return;
 
     if (equalIgnoringCase(name(), "viewport"))
-        document()->processViewport(contentValue);
-
-    if (equalIgnoringCase(name(), "referrer"))
+        document()->processViewport(contentValue, ViewportArguments::ViewportMeta);
+    else if (equalIgnoringCase(name(), "referrer"))
         document()->processReferrerPolicy(contentValue);
+#if ENABLE(LEGACY_VIEWPORT_ADAPTION)
+    else if (equalIgnoringCase(name(), "handheldfriendly") && equalIgnoringCase(contentValue, "true"))
+        document()->processViewport("width=device-width", ViewportArguments::HandheldFriendlyMeta);
+    else if (equalIgnoringCase(name(), "mobileoptimized"))
+        document()->processViewport("width=device-width, initial-scale=1", ViewportArguments::MobileOptimizedMeta);
+#endif
 
     // Get the document to process the tag, but only if we're actually part of DOM tree (changing a meta tag while
     // it's not in the tree shouldn't have any effect on the document)

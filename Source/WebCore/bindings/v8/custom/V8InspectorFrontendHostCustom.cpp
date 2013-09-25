@@ -44,28 +44,67 @@
 
 namespace WebCore {
 
-v8::Handle<v8::Value> V8InspectorFrontendHost::platformCallback(const v8::Arguments&)
+v8::Handle<v8::Value> V8InspectorFrontendHost::platformCallback(const v8::Arguments& args)
 {
 #if defined(OS_MACOSX)
-    return v8String("mac");
+    return v8String("mac", args.GetIsolate());
 #elif defined(OS_LINUX)
-    return v8String("linux");
+    return v8String("linux", args.GetIsolate());
 #elif defined(OS_FREEBSD)
-    return v8String("freebsd");
+    return v8String("freebsd", args.GetIsolate());
 #elif defined(OS_OPENBSD)
-    return v8String("openbsd");
+    return v8String("openbsd", args.GetIsolate());
 #elif defined(OS_SOLARIS)
-    return v8String("solaris");
+    return v8String("solaris", args.GetIsolate());
 #elif defined(OS_WIN)
-    return v8String("windows");
+    return v8String("windows", args.GetIsolate());
 #else
-    return v8String("unknown");
+    return v8String("unknown", args.GetIsolate());
 #endif
 }
 
 v8::Handle<v8::Value> V8InspectorFrontendHost::portCallback(const v8::Arguments&)
 {
     return v8::Undefined();
+}
+
+static void populateContextMenuItems(v8::Local<v8::Array>& itemArray, ContextMenu& menu)
+{
+    for (size_t i = 0; i < itemArray->Length(); ++i) {
+        v8::Local<v8::Object> item = v8::Local<v8::Object>::Cast(itemArray->Get(i));
+        v8::Local<v8::Value> type = item->Get(v8::String::New("type"));
+        v8::Local<v8::Value> id = item->Get(v8::String::New("id"));
+        v8::Local<v8::Value> label = item->Get(v8::String::New("label"));
+        v8::Local<v8::Value> enabled = item->Get(v8::String::New("enabled"));
+        v8::Local<v8::Value> checked = item->Get(v8::String::New("checked"));
+        v8::Local<v8::Value> subItems = item->Get(v8::String::New("subItems"));
+        if (!type->IsString())
+            continue;
+        String typeString = toWebCoreStringWithNullCheck(type);
+        if (typeString == "separator") {
+            ContextMenuItem item(ContextMenuItem(SeparatorType,
+                                 ContextMenuItemCustomTagNoAction,
+                                 String()));
+            menu.appendItem(item);
+        } else if (typeString == "subMenu" && subItems->IsArray()) {
+            ContextMenu subMenu;
+            v8::Local<v8::Array> subItemsArray = v8::Local<v8::Array>::Cast(subItems);
+            populateContextMenuItems(subItemsArray, subMenu);
+            ContextMenuItem item(SubmenuType,
+                                 ContextMenuItemCustomTagNoAction,
+                                 toWebCoreStringWithNullCheck(label),
+                                 &subMenu);
+            menu.appendItem(item);
+        } else {
+            ContextMenuAction typedId = static_cast<ContextMenuAction>(ContextMenuItemBaseCustomTag + id->ToInt32()->Value());
+            ContextMenuItem menuItem((typeString == "checkbox" ? CheckableActionType : ActionType), typedId, toWebCoreStringWithNullCheck(label));
+            if (checked->IsBoolean())
+                menuItem.setChecked(checked->ToBoolean()->Value());
+            if (enabled->IsBoolean())
+                menuItem.setEnabled(enabled->ToBoolean()->Value());
+            menu.appendItem(menuItem);
+        }
+    }
 }
 
 v8::Handle<v8::Value> V8InspectorFrontendHost::showContextMenuCallback(const v8::Arguments& args)
@@ -82,34 +121,15 @@ v8::Handle<v8::Value> V8InspectorFrontendHost::showContextMenuCallback(const v8:
         return v8::Undefined();
 
     v8::Local<v8::Array> array = v8::Local<v8::Array>::Cast(args[1]);
-    Vector<ContextMenuItem*> items;
-
-    for (size_t i = 0; i < array->Length(); ++i) {
-        v8::Local<v8::Object> item = v8::Local<v8::Object>::Cast(array->Get(i));
-        v8::Local<v8::Value> type = item->Get(v8::String::New("type"));
-        v8::Local<v8::Value> id = item->Get(v8::String::New("id"));
-        v8::Local<v8::Value> label = item->Get(v8::String::New("label"));
-        v8::Local<v8::Value> enabled = item->Get(v8::String::New("enabled"));
-        v8::Local<v8::Value> checked = item->Get(v8::String::New("checked"));
-        if (!type->IsString())
-            continue;
-        String typeString = toWebCoreStringWithNullCheck(type);
-        if (typeString == "separator") {
-            items.append(new ContextMenuItem(SeparatorType,
-                                             ContextMenuItemCustomTagNoAction,
-                                             String()));
-        } else {
-            ContextMenuAction typedId = static_cast<ContextMenuAction>(ContextMenuItemBaseCustomTag + id->ToInt32()->Value());
-            ContextMenuItem* menuItem = new ContextMenuItem((typeString == "checkbox" ? CheckableActionType : ActionType), typedId, toWebCoreStringWithNullCheck(label));
-            if (checked->IsBoolean())
-                menuItem->setChecked(checked->ToBoolean()->Value());
-            if (enabled->IsBoolean())
-                menuItem->setEnabled(enabled->ToBoolean()->Value());
-            items.append(menuItem);
-        }
-    }
+    ContextMenu menu;
+    populateContextMenuItems(array, menu);
 
     InspectorFrontendHost* frontendHost = V8InspectorFrontendHost::toNative(args.Holder());
+#if !USE(CROSS_PLATFORM_CONTEXT_MENUS)
+    Vector<ContextMenuItem> items = contextMenuItemVector(menu.platformDescription());
+#else
+    Vector<ContextMenuItem> items = menu.items();
+#endif
     frontendHost->showContextMenu(event, items);
 
     return v8::Undefined();

@@ -542,7 +542,8 @@ function pathToBuilderResultsFile(builderName)
 }
 
 // FIXME: Make the dashboard understand different ports' expectations files.
-var CHROMIUM_EXPECTATIONS_URL = 'http://svn.webkit.org/repository/webkit/trunk/LayoutTests/platform/chromium/test_expectations.txt';
+var CHROMIUM_EXPECTATIONS_URL = 'http://svn.webkit.org/repository/webkit/trunk/LayoutTests/platform/chromium/TestExpectations';
+var LEGACY_CHROMIUM_EXPECTATIONS_URL = 'http://svn.webkit.org/repository/webkit/trunk/LayoutTests/platform/chromium/test_expectations.txt';
 
 function requestExpectationsFile()
 {
@@ -552,7 +553,13 @@ function requestExpectationsFile()
         handleResourceLoad();
     },
     function() {
-        console.error('Could not load expectations file from ' + CHROMIUM_EXPECTATIONS_URL);
+        request(LEGACY_CHROMIUM_EXPECTATIONS_URL, function(xhr) {
+            g_waitingOnExpectations = false;
+            g_expectations = xhr.responseText;
+            handleResourceLoad();
+        }, function() {
+            console.error('Could not load expectations file from ' + CHROMIUM_EXPECTATIONS_URL + ' or ' + LEGACY_CHROMIUM_EXPECTATIONS_URL);
+        });
     });
 }
 
@@ -585,10 +592,8 @@ function appendJSONScriptElements()
 
     parseParameters();
 
-    if (g_crossDashboardState.useTestData) {
-        appendScript('flakiness_dashboard_unittests.js');
+    if (g_crossDashboardState.useTestData)
         return;
-    }
 
     for (var builderName in g_builders)
         appendJSONScriptElementFor(builderName);
@@ -807,7 +812,7 @@ function hidePopup()
         popup.parentNode.removeChild(popup);
 }
 
-function showPopup(e, html)
+function showPopup(target, html)
 {
     var popup = $('popup');
     if (!popup) {
@@ -819,7 +824,7 @@ function showPopup(e, html)
     // Set html first so that we can get accurate size metrics on the popup.
     popup.innerHTML = html;
 
-    var targetRect = e.target.getBoundingClientRect();
+    var targetRect = target.getBoundingClientRect();
 
     var x = Math.min(targetRect.left - 10, document.documentElement.clientWidth - popup.offsetWidth);
     x = Math.max(0, x);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #define DFGCapabilities_h
 
 #include "Intrinsic.h"
+#include "DFGCommon.h"
 #include "DFGNode.h"
 #include "Executable.h"
 #include "Options.h"
@@ -67,13 +68,12 @@ inline bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
 }
 
 // Opcode checking.
-inline bool canCompileOpcode(OpcodeID opcodeID)
+inline CapabilityLevel canCompileOpcode(OpcodeID opcodeID, CodeBlock*, Instruction*)
 {
     switch (opcodeID) {
     case op_enter:
     case op_convert_this:
     case op_create_this:
-    case op_get_callee:
     case op_bitand:
     case op_bitor:
     case op_bitxor:
@@ -164,16 +164,24 @@ inline bool canCompileOpcode(OpcodeID opcodeID)
     case op_init_lazy_reg:
     case op_create_activation:
     case op_tear_off_activation:
+    case op_create_arguments:
+    case op_tear_off_arguments:
     case op_new_func:
     case op_new_func_exp:
-        return true;
+    case op_get_argument_by_val:
+    case op_get_arguments_length:
+    case op_jneq_ptr:
+        return CanCompile;
         
+    case op_call_varargs:
+        return ShouldProfile;
+
     default:
-        return false;
+        return CannotCompile;
     }
 }
 
-inline bool canInlineOpcode(OpcodeID opcodeID)
+inline bool canInlineOpcode(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction* pc)
 {
     switch (opcodeID) {
         
@@ -191,22 +199,25 @@ inline bool canInlineOpcode(OpcodeID opcodeID)
         
     // Inlining doesn't correctly remap regular expression operands.
     case op_new_regexp:
-        return false;
         
     // We don't support inlining code that creates activations or has nested functions.
-    case op_init_lazy_reg:
     case op_create_activation:
     case op_tear_off_activation:
     case op_new_func:
     case op_new_func_exp:
         return false;
         
+    // Inlining supports op_call_varargs if it's a call that just forwards the caller's
+    // arguments.
+    case op_call_varargs:
+        return codeBlock->usesArguments() && pc[3].u.operand == codeBlock->argumentsRegister();
+        
     default:
-        return canCompileOpcode(opcodeID);
+        return canCompileOpcode(opcodeID, codeBlock, pc) == CanCompile;
     }
 }
 
-bool canCompileOpcodes(CodeBlock*);
+CapabilityLevel canCompileOpcodes(CodeBlock*);
 bool canInlineOpcodes(CodeBlock*);
 #else // ENABLE(DFG_JIT)
 inline bool mightCompileEval(CodeBlock*) { return false; }
@@ -216,30 +227,42 @@ inline bool mightCompileFunctionForConstruct(CodeBlock*) { return false; }
 inline bool mightInlineFunctionForCall(CodeBlock*) { return false; }
 inline bool mightInlineFunctionForConstruct(CodeBlock*) { return false; }
 
-inline bool canCompileOpcode(OpcodeID) { return false; }
-inline bool canInlineOpcode(OpcodeID) { return false; }
-inline bool canCompileOpcodes(CodeBlock*) { return false; }
+inline CapabilityLevel canCompileOpcode(OpcodeID, CodeBlock*, Instruction*) { return CannotCompile; }
+inline bool canInlineOpcode(OpcodeID, CodeBlock*, Instruction*) { return false; }
+inline CapabilityLevel canCompileOpcodes(CodeBlock*) { return CannotCompile; }
 inline bool canInlineOpcodes(CodeBlock*) { return false; }
 #endif // ENABLE(DFG_JIT)
 
-inline bool canCompileEval(CodeBlock* codeBlock)
+inline CapabilityLevel canCompileEval(CodeBlock* codeBlock)
 {
-    return mightCompileEval(codeBlock) && canCompileOpcodes(codeBlock);
+    if (!mightCompileEval(codeBlock))
+        return CannotCompile;
+    
+    return canCompileOpcodes(codeBlock);
 }
 
-inline bool canCompileProgram(CodeBlock* codeBlock)
+inline CapabilityLevel canCompileProgram(CodeBlock* codeBlock)
 {
-    return mightCompileProgram(codeBlock) && canCompileOpcodes(codeBlock);
+    if (!mightCompileProgram(codeBlock))
+        return CannotCompile;
+    
+    return canCompileOpcodes(codeBlock);
 }
 
-inline bool canCompileFunctionForCall(CodeBlock* codeBlock)
+inline CapabilityLevel canCompileFunctionForCall(CodeBlock* codeBlock)
 {
-    return mightCompileFunctionForCall(codeBlock) && canCompileOpcodes(codeBlock);
+    if (!mightCompileFunctionForCall(codeBlock))
+        return CannotCompile;
+    
+    return canCompileOpcodes(codeBlock);
 }
 
-inline bool canCompileFunctionForConstruct(CodeBlock* codeBlock)
+inline CapabilityLevel canCompileFunctionForConstruct(CodeBlock* codeBlock)
 {
-    return mightCompileFunctionForConstruct(codeBlock) && canCompileOpcodes(codeBlock);
+    if (!mightCompileFunctionForConstruct(codeBlock))
+        return CannotCompile;
+    
+    return canCompileOpcodes(codeBlock);
 }
 
 inline bool canInlineFunctionForCall(CodeBlock* codeBlock)

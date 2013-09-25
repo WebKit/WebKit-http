@@ -37,6 +37,7 @@
 #include "PolicyDelegate.h"
 #include "ResourceLoadDelegate.h"
 #include "UIDelegate.h"
+#include "WebCoreTestSupport.h"
 #include "WorkQueueItem.h"
 #include "WorkQueue.h"
 
@@ -841,7 +842,6 @@ static void resetDefaultsToConsistentValues(IWebPreferences* preferences)
     preferences->setTabsToLinks(FALSE);
     preferences->setShouldPrintBackgrounds(TRUE);
     preferences->setLoadsImagesAutomatically(TRUE);
-    preferences->setEditingBehavior(WebKitEditingWinBehavior);
 
     if (persistentUserStyleSheetLocation) {
         Vector<wchar_t> urlCharacters(CFStringGetLength(persistentUserStyleSheetLocation.get()));
@@ -894,6 +894,11 @@ static void resetWebViewToConsistentStateBeforeTesting()
     if (SUCCEEDED(webView->preferences(&preferences)))
         resetDefaultsToConsistentValues(preferences.get());
 
+    if (gLayoutTestController) {
+        JSGlobalContextRef context = frame->globalContext();
+        WebCoreTestSupport::resetInternalsObject(context);
+    }
+
     COMPtr<IWebViewEditing> viewEditing;
     if (SUCCEEDED(webView->QueryInterface(&viewEditing)))
         viewEditing->setSmartInsertDeleteEnabled(TRUE);
@@ -905,10 +910,6 @@ static void resetWebViewToConsistentStateBeforeTesting()
     double minimumInterval = 0;
     if (SUCCEEDED(webViewPrivate->defaultMinimumTimerInterval(&minimumInterval)))
         webViewPrivate->setMinimumTimerInterval(minimumInterval);
-
-    COMPtr<IWebInspector> inspector;
-    if (SUCCEEDED(webViewPrivate->inspector(&inspector)))
-        inspector->setJavaScriptProfilingEnabled(FALSE);
 
     HWND viewWindow;
     if (SUCCEEDED(webViewPrivate->viewWindow(reinterpret_cast<OLE_HANDLE*>(&viewWindow))) && viewWindow)

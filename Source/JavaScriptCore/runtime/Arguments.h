@@ -41,16 +41,20 @@ namespace JSC {
 
         unsigned numArguments;
 
+        // We make these full byte booleans to make them easy to test from the JIT,
+        // and because even if they were single-bit booleans we still wouldn't save
+        // any space.
+        bool overrodeLength; 
+        bool overrodeCallee;
+        bool overrodeCaller;
+        bool isStrictMode;
+
         WriteBarrier<Unknown>* registers;
         OwnArrayPtr<WriteBarrier<Unknown> > registerArray;
 
         OwnArrayPtr<bool> deletedArguments;
 
         WriteBarrier<JSFunction> callee;
-        bool overrodeLength : 1;
-        bool overrodeCallee : 1;
-        bool overrodeCaller : 1;
-        bool isStrictMode : 1;
     };
 
     class Arguments : public JSNonFinalObject {
@@ -63,6 +67,13 @@ namespace JSC {
             arguments->finishCreation(callFrame);
             return arguments;
         }
+        
+        static Arguments* create(JSGlobalData& globalData, CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
+        {
+            Arguments* arguments = new (NotNull, allocateCell<Arguments>(globalData.heap)) Arguments(callFrame);
+            arguments->finishCreation(callFrame, inlineCallFrame);
+            return arguments;
+        }
 
         enum { MaxArguments = 0x10000 };
 
@@ -71,6 +82,8 @@ namespace JSC {
         
         Arguments(CallFrame*);
         Arguments(CallFrame*, NoParametersType);
+        
+        void tearOffForInlineCallFrame(JSGlobalData& globalData, Register*, InlineCallFrame*);
 
     public:
         static const ClassInfo s_info;
@@ -88,6 +101,7 @@ namespace JSC {
         
         void copyToArguments(ExecState*, CallFrame*, uint32_t length);
         void tearOff(CallFrame*);
+        void tearOff(CallFrame*, InlineCallFrame*);
         bool isTornOff() const { return d->registerArray; }
         void didTearOffActivation(JSGlobalData& globalData, JSActivation* activation)
         {
@@ -101,23 +115,26 @@ namespace JSC {
         { 
             return Structure::create(globalData, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info); 
         }
+        
+        static ptrdiff_t offsetOfData() { return OBJECT_OFFSETOF(Arguments, d); }
 
     protected:
         static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesVisitChildren | OverridesGetPropertyNames | JSObject::StructureFlags;
 
         void finishCreation(CallFrame*);
+        void finishCreation(CallFrame*, InlineCallFrame*);
 
     private:
         static void destroy(JSCell*);
-        static bool getOwnPropertySlot(JSCell*, ExecState*, const Identifier& propertyName, PropertySlot&);
+        static bool getOwnPropertySlot(JSCell*, ExecState*, PropertyName, PropertySlot&);
         static bool getOwnPropertySlotByIndex(JSCell*, ExecState*, unsigned propertyName, PropertySlot&);
-        static bool getOwnPropertyDescriptor(JSObject*, ExecState*, const Identifier&, PropertyDescriptor&);
+        static bool getOwnPropertyDescriptor(JSObject*, ExecState*, PropertyName, PropertyDescriptor&);
         static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
-        static void put(JSCell*, ExecState*, const Identifier& propertyName, JSValue, PutPropertySlot&);
+        static void put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
         static void putByIndex(JSCell*, ExecState*, unsigned propertyName, JSValue, bool shouldThrow);
-        static bool deleteProperty(JSCell*, ExecState*, const Identifier& propertyName);
+        static bool deleteProperty(JSCell*, ExecState*, PropertyName);
         static bool deletePropertyByIndex(JSCell*, ExecState*, unsigned propertyName);
-        static bool defineOwnProperty(JSObject*, ExecState*, const Identifier& propertyName, PropertyDescriptor&, bool shouldThrow);
+        static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, PropertyDescriptor&, bool shouldThrow);
         void createStrictModeCallerIfNecessary(ExecState*);
         void createStrictModeCalleeIfNecessary(ExecState*);
 
@@ -171,6 +188,26 @@ namespace JSC {
         // declared parameters, so we need to tear off immediately.
         if (d->isStrictMode || !callee->jsExecutable()->parameterCount())
             tearOff(callFrame);
+    }
+
+    inline void Arguments::finishCreation(CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
+    {
+        Base::finishCreation(callFrame->globalData());
+        ASSERT(inherits(&s_info));
+
+        JSFunction* callee = inlineCallFrame->callee.get();
+        d->numArguments = inlineCallFrame->arguments.size() - 1;
+        d->registers = reinterpret_cast<WriteBarrier<Unknown>*>(callFrame->registers()) + inlineCallFrame->stackOffset;
+        d->callee.set(callFrame->globalData(), this, callee);
+        d->overrodeLength = false;
+        d->overrodeCallee = false;
+        d->overrodeCaller = false;
+        d->isStrictMode = jsCast<FunctionExecutable*>(inlineCallFrame->executable.get())->isStrictMode();
+
+        // The bytecode generator omits op_tear_off_activation in cases of no
+        // declared parameters, so we need to tear off immediately.
+        if (d->isStrictMode || !callee->jsExecutable()->parameterCount())
+            tearOff(callFrame, inlineCallFrame);
     }
 
 } // namespace JSC

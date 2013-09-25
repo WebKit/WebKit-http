@@ -36,7 +36,9 @@
 #include "JSObject.h"
 #include "ScopeChain.h"
 #include "Structure.h"
+#include "UString.h"
 #include "WriteBarrier.h"
+#include <wtf/DataLog.h>
 #include <wtf/MainThread.h>
 
 namespace JSC {
@@ -218,17 +220,35 @@ void MarkStackArray::stealSomeCellsFrom(MarkStackArray& other)
 }
 
 #if ENABLE(PARALLEL_GC)
-void MarkStackThreadSharedData::markingThreadMain()
+void MarkStackThreadSharedData::resetChildren()
 {
-    WTF::registerGCThread();
-    SlotVisitor slotVisitor(*this);
-    ParallelModeEnabler enabler(slotVisitor);
-    slotVisitor.drainFromShared(SlotVisitor::SlaveDrain);
+    for (unsigned i = 0; i < m_markingThreadsMarkStack.size(); ++i)
+       m_markingThreadsMarkStack[i]->reset();
+}   
+
+size_t MarkStackThreadSharedData::childVisitCount()
+{       
+    unsigned long result = 0;
+    for (unsigned i = 0; i < m_markingThreadsMarkStack.size(); ++i)
+        result += m_markingThreadsMarkStack[i]->visitCount();
+    return result;
 }
 
-void MarkStackThreadSharedData::markingThreadStartFunc(void* shared)
+void MarkStackThreadSharedData::markingThreadMain(SlotVisitor* slotVisitor)
 {
-    static_cast<MarkStackThreadSharedData*>(shared)->markingThreadMain();
+    WTF::registerGCThread();
+    {
+        ParallelModeEnabler enabler(*slotVisitor);
+        slotVisitor->drainFromShared(SlotVisitor::SlaveDrain);
+    }
+    delete slotVisitor;
+}
+
+void MarkStackThreadSharedData::markingThreadStartFunc(void* myVisitor)
+{               
+    SlotVisitor* slotVisitor = static_cast<SlotVisitor*>(myVisitor);
+
+    slotVisitor->sharedData().markingThreadMain(slotVisitor);
 }
 #endif
 
@@ -241,7 +261,9 @@ MarkStackThreadSharedData::MarkStackThreadSharedData(JSGlobalData* globalData)
 {
 #if ENABLE(PARALLEL_GC)
     for (unsigned i = 1; i < Options::numberOfGCMarkers; ++i) {
-        m_markingThreads.append(createThread(markingThreadStartFunc, this, "JavaScriptCore::Marking"));
+        SlotVisitor* slotVisitor = new SlotVisitor(*this);
+        m_markingThreadsMarkStack.append(slotVisitor);
+        m_markingThreads.append(createThread(markingThreadStartFunc, slotVisitor, "JavaScriptCore::Marking"));
         ASSERT(m_markingThreads.last());
     }
 #endif
@@ -273,7 +295,6 @@ void MarkStackThreadSharedData::reset()
 #else
     ASSERT(m_opaqueRoots.isEmpty());
 #endif
-    
     m_weakReferenceHarvesters.removeAll();
 }
 
@@ -533,16 +554,29 @@ void SlotVisitor::finalizeUnconditionalFinalizers()
 #if ENABLE(GC_VALIDATION)
 void MarkStack::validate(JSCell* cell)
 {
-    if (!cell)
+    if (!cell) {
+        dataLog("cell is NULL\n");
         CRASH();
+    }
 
-    if (!cell->structure())
+    if (!cell->structure()) {
+        dataLog("cell at %p has a null structure\n" , cell);
         CRASH();
+    }
 
     // Both the cell's structure, and the cell's structure's structure should be the Structure Structure.
     // I hate this sentence.
-    if (cell->structure()->structure()->JSCell::classInfo() != cell->structure()->JSCell::classInfo())
+    if (cell->structure()->structure()->JSCell::classInfo() != cell->structure()->JSCell::classInfo()) {
+        const char* parentClassName = 0;
+        const char* ourClassName = 0;
+        if (cell->structure()->structure() && cell->structure()->structure()->JSCell::classInfo())
+            parentClassName = cell->structure()->structure()->JSCell::classInfo()->className;
+        if (cell->structure()->JSCell::classInfo())
+            ourClassName = cell->structure()->JSCell::classInfo()->className;
+        dataLog("parent structure (%p <%s>) of cell at %p doesn't match cell's structure (%p <%s>)\n",
+                cell->structure()->structure(), parentClassName, cell, cell->structure(), ourClassName);
         CRASH();
+    }
 }
 #else
 void MarkStack::validate(JSCell*)

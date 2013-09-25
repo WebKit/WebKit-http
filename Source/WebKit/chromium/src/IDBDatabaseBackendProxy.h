@@ -46,13 +46,13 @@ public:
     virtual String version() const;
     virtual PassRefPtr<WebCore::DOMStringList> objectStoreNames() const;
 
-    virtual PassRefPtr<WebCore::IDBObjectStoreBackendInterface> createObjectStore(const String& name, const String& keyPath, bool autoIncrement, WebCore::IDBTransactionBackendInterface*, WebCore::ExceptionCode&);
+    virtual PassRefPtr<WebCore::IDBObjectStoreBackendInterface> createObjectStore(const String& name, const WebCore::IDBKeyPath&, bool autoIncrement, WebCore::IDBTransactionBackendInterface*, WebCore::ExceptionCode&);
     virtual void deleteObjectStore(const String& name, WebCore::IDBTransactionBackendInterface*, WebCore::ExceptionCode&);
     virtual void setVersion(const String& version, PassRefPtr<WebCore::IDBCallbacks>, PassRefPtr<WebCore::IDBDatabaseCallbacks>, WebCore::ExceptionCode&);
     virtual PassRefPtr<WebCore::IDBTransactionBackendInterface> transaction(WebCore::DOMStringList* storeNames, unsigned short mode, WebCore::ExceptionCode&);
     virtual void close(PassRefPtr<WebCore::IDBDatabaseCallbacks>);
 
-    virtual void open(PassRefPtr<WebCore::IDBDatabaseCallbacks>);
+    virtual void registerFrontendCallbacks(PassRefPtr<WebCore::IDBDatabaseCallbacks>);
 
 private:
     IDBDatabaseBackendProxy(PassOwnPtr<WebIDBDatabase>);

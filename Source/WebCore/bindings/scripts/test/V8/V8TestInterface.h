@@ -24,6 +24,7 @@
 #define V8TestInterface_h
 
 #include "TestInterface.h"
+#include "V8Binding.h"
 #include "V8DOMWrapper.h"
 #include "WrapperTypeInfo.h"
 #include <v8.h>
@@ -55,7 +56,7 @@ private:
 
 v8::Handle<v8::Object> V8TestInterface::wrap(TestInterface* impl, v8::Isolate* isolate)
 {
-        v8::Handle<v8::Object> wrapper = getActiveDOMObjectMap().get(impl);
+        v8::Handle<v8::Object> wrapper = getActiveDOMObjectMap(isolate).get(impl);
         if (!wrapper.IsEmpty())
             return wrapper;
     return V8TestInterface::wrapSlow(impl, isolate);
@@ -64,7 +65,7 @@ v8::Handle<v8::Object> V8TestInterface::wrap(TestInterface* impl, v8::Isolate* i
 inline v8::Handle<v8::Value> toV8(TestInterface* impl, v8::Isolate* isolate = 0)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     return V8TestInterface::wrap(impl, isolate);
 }
 inline v8::Handle<v8::Value> toV8(PassRefPtr< TestInterface > impl, v8::Isolate* isolate = 0)

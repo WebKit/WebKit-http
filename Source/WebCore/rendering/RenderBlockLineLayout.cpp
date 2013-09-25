@@ -98,7 +98,7 @@ public:
 private:
     void computeAvailableWidthFromLeftAndRight()
     {
-        m_availableWidth = max(0, m_right - m_left) + m_overhangWidth;
+        m_availableWidth = max(0.0f, m_right - m_left) + m_overhangWidth;
     }
 
 private:
@@ -106,8 +106,8 @@ private:
     float m_uncommittedWidth;
     float m_committedWidth;
     float m_overhangWidth; // The amount by which |m_availableWidth| has been inflated to account for possible contraction due to ruby overhang.
-    int m_left;
-    int m_right;
+    float m_left;
+    float m_right;
     float m_availableWidth;
     bool m_isFirstLine;
 };
@@ -115,8 +115,8 @@ private:
 inline void LineWidth::updateAvailableWidth()
 {
     LayoutUnit height = m_block->logicalHeight();
-    m_left = m_block->pixelSnappedLogicalLeftOffsetForLine(height, m_isFirstLine);
-    m_right = m_block->pixelSnappedLogicalRightOffsetForLine(height, m_isFirstLine);
+    m_left = m_block->logicalLeftOffsetForLine(height, m_isFirstLine);
+    m_right = m_block->logicalRightOffsetForLine(height, m_isFirstLine);
 
     computeAvailableWidthFromLeftAndRight();
 }
@@ -315,8 +315,7 @@ static inline BidiRun* createRun(int start, int end, RenderObject* obj, InlineBi
 
 void RenderBlock::appendRunsForObject(BidiRunList<BidiRun>& runs, int start, int end, RenderObject* obj, InlineBidiResolver& resolver)
 {
-    if (start > end || obj->isFloating() ||
-        (obj->isPositioned() && !obj->style()->isOriginalDisplayInlineType() && !obj->container()->isRenderInline()))
+    if (start > end || shouldSkipCreatingRunsForObject(obj))
         return;
 
     LineMidpointState& lineMidpointState = resolver.midpointState();
@@ -1001,7 +1000,11 @@ static inline void constructBidiRuns(InlineBidiResolver& topResolver, BidiRunLis
         // rniwa says previousLineBrokeCleanly is just a WinIE hack and could always be false here?
         isolatedResolver.createBidiRunsForLine(endOfLine, NoVisualOverride, previousLineBrokeCleanly);
         // Note that we do not delete the runs from the resolver.
-        bidiRuns.replaceRunWithRuns(isolatedRun, isolatedResolver.runs());
+        // We're not guaranteed to get any BidiRuns in the previous step. If we don't, we allow the placeholder
+        // itself to be turned into an InlineBox. We can't remove it here without potentially losing track of
+        // the logically last run.
+        if (isolatedResolver.runs().runCount())
+            bidiRuns.replaceRunWithRuns(isolatedRun, isolatedResolver.runs());
 
         // If we encountered any nested isolate runs, just move them
         // to the top resolver's list for later processing.
@@ -1499,7 +1502,6 @@ void RenderBlock::layoutInlineChildren(bool relayoutChildren, LayoutUnit& repain
                 else if (layoutState.isFullLayout() || o->needsLayout()) {
                     // Replaced elements
                     toRenderBox(o)->dirtyLineBoxes(layoutState.isFullLayout());
-                    o->layoutIfNeeded();
                 }
             } else if (o->isText() || (o->isRenderInline() && !walker.atEndOfInline())) {
                 if (!o->isText())
@@ -1948,7 +1950,7 @@ static inline float textWidth(RenderText* text, unsigned from, unsigned len, con
     ASSERT(run.charactersLength() >= run.length());
 
     run.setCharacterScanForCodePath(!text->canUseSimpleFontCodePath());
-    run.setAllowTabs(!collapseWhiteSpace);
+    run.setTabSize(!collapseWhiteSpace, text->style()->tabSize());
     run.setXPos(xPos);
     return font.width(run);
 }
@@ -1980,7 +1982,7 @@ static void tryHyphenating(RenderText* text, const Font& font, const AtomicStrin
     run.setCharactersLength(text->textLength() - lastSpace);
     ASSERT(run.charactersLength() >= run.length());
 
-    run.setAllowTabs(!collapseWhiteSpace);
+    run.setTabSize(!collapseWhiteSpace, text->style()->tabSize());
     run.setXPos(xPos + lastSpaceWordSpacing);
 
     unsigned prefixLength = font.offsetForPosition(run, maxPrefixWidth, false);
@@ -2269,6 +2271,7 @@ InlineIterator RenderBlock::LineBreaker::nextLineBreak(InlineBidiResolver& resol
             width.addUncommittedWidth(borderPaddingMarginStart(flowBox) + borderPaddingMarginEnd(flowBox));
         } else if (current.m_obj->isReplaced()) {
             RenderBox* replacedBox = toRenderBox(current.m_obj);
+            replacedBox->layoutIfNeeded();
 
             // Break on replaced elements if either has normal white-space.
             if ((autoWrap || RenderStyle::autoWrap(lastWS)) && (!current.m_obj->isImage() || allowImagesToBreak)) {
@@ -2668,7 +2671,7 @@ void RenderBlock::addOverflowFromInlineChildren()
 {
     LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : ZERO_LAYOUT_UNIT;
     // FIXME: Need to find another way to do this, since scrollbars could show when we don't want them to.
-    if (hasOverflowClip() && !endPadding && node() && node()->rendererIsEditable() && node() == node()->rootEditableElement() && style()->isLeftToRightDirection())
+    if (hasOverflowClip() && !endPadding && node() && node()->isRootEditableElement() && style()->isLeftToRightDirection())
         endPadding = 1;
     for (RootInlineBox* curr = firstRootBox(); curr; curr = curr->nextRootBox()) {
         addLayoutOverflow(curr->paddedLayoutOverflowRect(endPadding));

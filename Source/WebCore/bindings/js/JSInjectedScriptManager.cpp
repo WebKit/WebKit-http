@@ -49,7 +49,7 @@ using namespace JSC;
 
 namespace WebCore {
 
-ScriptObject InjectedScriptManager::createInjectedScript(const String& source, ScriptState* scriptState, long id)
+static ScriptObject injectAndExecuteFunction(const String& source, ScriptState* scriptState, const MarkedArgumentBuffer& args)
 {
     JSLock lock(SilenceAssertionsOnly);
 
@@ -68,15 +68,36 @@ ScriptObject InjectedScriptManager::createInjectedScript(const String& source, S
     if (callType == CallTypeNone)
         return ScriptObject();
 
-    MarkedArgumentBuffer args;
-    args.append(toJS(scriptState, globalObject, m_injectedScriptHost.get()));
-    args.append(globalThisValue);
-    args.append(jsNumber(id));
     JSValue result = JSC::call(scriptState, functionValue, callType, callData, globalThisValue, args);
     if (result.isObject())
         return ScriptObject(scriptState, result.getObject());
     return ScriptObject();
 }
+
+ScriptObject InjectedScriptManager::createInjectedScript(const String& source, ScriptState* scriptState, int id)
+{
+    JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(scriptState->lexicalGlobalObject());
+    JSValue globalThisValue = scriptState->globalThisValue();
+
+    MarkedArgumentBuffer args;
+    args.append(toJS(scriptState, globalObject, m_injectedScriptHost.get()));
+    args.append(globalThisValue);
+    args.append(jsNumber(id));
+
+    return injectAndExecuteFunction(source, scriptState, args);
+}
+
+#if ENABLE(WEBGL)
+ScriptObject InjectedScriptManager::injectWebGLScript(const String& source, const ScriptObject& glContext)
+{
+    ScriptState* scriptState = glContext.scriptState();
+
+    MarkedArgumentBuffer args;
+    args.append(glContext.jsValue());
+
+    return injectAndExecuteFunction(source, scriptState, args);
+}
+#endif
 
 void InjectedScriptManager::discardInjectedScript(ScriptState* scriptState)
 {
@@ -95,7 +116,7 @@ InjectedScript InjectedScriptManager::injectedScriptFor(ScriptState* scriptState
     if (!m_inspectedStateAccessCheck(scriptState))
         return InjectedScript();
 
-    pair<long, ScriptObject> injectedScriptObject = injectScript(injectedScriptSource(), scriptState);
+    pair<int, ScriptObject> injectedScriptObject = injectScript(injectedScriptSource(), scriptState);
     globalObject->setInjectedScript(injectedScriptObject.second.jsObject());
     InjectedScript result(injectedScriptObject.second, m_inspectedStateAccessCheck);
     m_idToInjectedScript.set(injectedScriptObject.first, result);

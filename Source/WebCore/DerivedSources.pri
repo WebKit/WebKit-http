@@ -57,9 +57,11 @@ WALDOCSSVALUES = $$PWD/css/CSSValueKeywords.in
 
 INSPECTOR_JSON = $$PWD/inspector/Inspector.json
 
-INSPECTOR_BACKEND_STUB_QRC = $$PWD/inspector/front-end/InspectorBackendStub.qrc
+INSPECTOR_BACKEND_COMMANDS_QRC = $$PWD/inspector/front-end/InspectorBackendCommands.qrc
 
 INJECTED_SCRIPT_SOURCE = $$PWD/inspector/InjectedScriptSource.js
+
+INJECTED_WEBGL_SCRIPT_SOURCE = $$PWD/inspector/InjectedWebGLScriptSource.js
 
 DEBUGGER_SCRIPT_SOURCE = $$PWD/bindings/v8/DebuggerScript.js
 
@@ -128,6 +130,11 @@ IDL_BINDINGS += \
     $$PWD/Modules/indexeddb/IDBRequest.idl \
     $$PWD/Modules/indexeddb/IDBTransaction.idl \
     $$PWD/Modules/indexeddb/WorkerContextIndexedDatabase.idl \
+    $$PWD/Modules/quota/DOMWindowQuota.idl \
+    $$PWD/Modules/quota/StorageInfo.idl \
+    $$PWD/Modules/quota/StorageInfoErrorCallback.idl \
+    $$PWD/Modules/quota/StorageInfoQuotaCallback.idl \
+    $$PWD/Modules/quota/StorageInfoUsageCallback.idl \
     $$PWD/Modules/webaudio/AudioBuffer.idl \
     $$PWD/Modules/webaudio/AudioBufferSourceNode.idl \
     $$PWD/Modules/webaudio/AudioChannelMerger.idl \
@@ -212,6 +219,7 @@ IDL_BINDINGS += \
     $$PWD/dom/Document.idl \
     $$PWD/dom/DocumentType.idl \
     $$PWD/dom/DOMCoreException.idl \
+    $$PWD/dom/DOMError.idl \
     $$PWD/dom/DOMImplementation.idl \
     $$PWD/dom/DOMStringList.idl \
     $$PWD/dom/DOMStringMap.idl \
@@ -222,7 +230,7 @@ IDL_BINDINGS += \
     $$PWD/dom/Event.idl \
     $$PWD/dom/EventException.idl \
 #    $$PWD/dom/EventListener.idl \
-#    $$PWD/dom/EventTarget.idl \
+    $$PWD/dom/EventTarget.idl \
     $$PWD/dom/HashChangeEvent.idl \
     $$PWD/dom/KeyboardEvent.idl \
     $$PWD/dom/MouseEvent.idl \
@@ -257,6 +265,7 @@ IDL_BINDINGS += \
     $$PWD/dom/WebKitNamedFlow.idl \
     $$PWD/dom/WebKitTransitionEvent.idl \
     $$PWD/dom/WheelEvent.idl \
+    $$PWD/editing/UndoManager.idl \
     $$PWD/fileapi/Blob.idl \
     $$PWD/fileapi/File.idl \
     $$PWD/fileapi/FileError.idl \
@@ -264,7 +273,6 @@ IDL_BINDINGS += \
     $$PWD/fileapi/FileList.idl \
     $$PWD/fileapi/FileReader.idl \
     $$PWD/fileapi/FileReaderSync.idl \
-    $$PWD/fileapi/OperationNotAllowedException.idl \
     $$PWD/fileapi/WebKitBlobBuilder.idl \
     $$PWD/html/canvas/ArrayBufferView.idl \
     $$PWD/html/canvas/ArrayBuffer.idl \
@@ -383,6 +391,7 @@ IDL_BINDINGS += \
     $$PWD/html/ImageData.idl \
     $$PWD/html/MediaController.idl \
     $$PWD/html/MediaError.idl \
+    $$PWD/html/RadioNodeList.idl \
     $$PWD/html/TextMetrics.idl \
     $$PWD/html/TimeRanges.idl \
     $$PWD/html/ValidityState.idl \
@@ -430,10 +439,6 @@ IDL_BINDINGS += \
     $$PWD/plugins/DOMMimeTypeArray.idl \
     $$PWD/storage/Storage.idl \
     $$PWD/storage/StorageEvent.idl \
-    $$PWD/storage/StorageInfo.idl \
-    $$PWD/storage/StorageInfoErrorCallback.idl \
-    $$PWD/storage/StorageInfoQuotaCallback.idl \
-    $$PWD/storage/StorageInfoUsageCallback.idl \
     $$PWD/testing/Internals.idl \
     $$PWD/testing/InternalSettings.idl \
     $$PWD/workers/AbstractWorker.idl \
@@ -464,7 +469,6 @@ v8 {
 
 contains(DEFINES, ENABLE_SVG=1) {
   IDL_BINDINGS += \
-    $$PWD/svg/SVGZoomEvent.idl \
     $$PWD/svg/SVGAElement.idl \
     $$PWD/svg/SVGAltGlyphDefElement.idl \
     $$PWD/svg/SVGAltGlyphElement.idl \
@@ -604,7 +608,10 @@ contains(DEFINES, ENABLE_SVG=1) {
     $$PWD/svg/SVGUnitTypes.idl \
     $$PWD/svg/SVGUseElement.idl \
     $$PWD/svg/SVGViewElement.idl \
-    $$PWD/svg/SVGVKernElement.idl
+    $$PWD/svg/SVGVKernElement.idl \
+    $$PWD/svg/SVGViewSpec.idl \
+    $$PWD/svg/SVGZoomAndPan.idl \
+    $$PWD/svg/SVGZoomEvent.idl
 }
 
 contains(DEFINES, ENABLE_VIDEO_TRACK=1) {
@@ -678,7 +685,8 @@ EOC = $$escape_expand(\\n\\t)
 win_cmd_shell: preprocessIdls.commands = type nul > $$IDL_FILES_TMP $$EOC
 else: preprocessIdls.commands = cat /dev/null > $$IDL_FILES_TMP $$EOC
 for(binding, IDL_BINDINGS) {
-    preprocessIdls.commands += echo $$binding >> $$IDL_FILES_TMP $$EOC
+    # We need "$$binding" instead of "$$binding ", because Windows' echo writes trailing whitespaces. (http://wkb.ug/88304)
+    preprocessIdls.commands += echo $$binding>> $$IDL_FILES_TMP $$EOC
 }
 preprocessIdls.commands += perl -I$$PWD/bindings/scripts $$preprocessIdls.script \
                                --defines \"$${FEATURE_DEFINES_JAVASCRIPT}\" \
@@ -702,6 +710,7 @@ generateBindings.commands = perl -I$$PWD/bindings/scripts $$generateBindings.scr
                             --include $$PWD/Modules/filesystem \
                             --include $$PWD/Modules/geolocation \
                             --include $$PWD/Modules/indexeddb \
+                            --include $$PWD/Modules/quota \
                             --include $$PWD/Modules/webaudio \
                             --include $$PWD/Modules/webdatabase \
                             --include $$PWD/Modules/websockets \
@@ -754,20 +763,27 @@ inspectorJSON.commands = python $$inspectorJSON.script $$PWD/inspector/Inspector
 inspectorJSON.depends = $$inspectorJSON.script
 GENERATORS += inspectorJSON
 
-inspectorBackendStub.output = InspectorBackendStub.qrc
-inspectorBackendStub.input = INSPECTOR_BACKEND_STUB_QRC
-inspectorBackendStub.commands = $$QMAKE_COPY $$toSystemPath($$INSPECTOR_BACKEND_STUB_QRC) ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}InspectorBackendStub.qrc
-inspectorBackendStub.add_output_to_sources = false
-GENERATORS += inspectorBackendStub
+inspectorBackendCommands.output = InspectorBackendCommands.qrc
+inspectorBackendCommands.input = INSPECTOR_BACKEND_COMMANDS_QRC
+inspectorBackendCommands.commands = $$QMAKE_COPY $$toSystemPath($$INSPECTOR_BACKEND_COMMANDS_QRC) ${QMAKE_FUNC_FILE_OUT_PATH}$${QMAKE_DIR_SEP}InspectorBackendCommands.qrc
+inspectorBackendCommands.add_output_to_sources = false
+GENERATORS += inspectorBackendCommands
 
 # GENERATOR 2-a: inspector injected script source compiler
 injectedScriptSource.output = InjectedScriptSource.h
 injectedScriptSource.input = INJECTED_SCRIPT_SOURCE
-injectedScriptSource.commands = perl $$PWD/inspector/xxd.pl InjectedScriptSource_js $$PWD/inspector/InjectedScriptSource.js ${QMAKE_FILE_OUT}
+injectedScriptSource.commands = perl $$PWD/inspector/xxd.pl InjectedScriptSource_js ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
 injectedScriptSource.add_output_to_sources = false
 GENERATORS += injectedScriptSource
 
-# GENERATOR 2-b: inspector debugger script source compiler
+# GENERATOR 2-b: inspector webgl injected script source compiler
+InjectedWebGLScriptSource.output = InjectedWebGLScriptSource.h
+InjectedWebGLScriptSource.input = INJECTED_WEBGL_SCRIPT_SOURCE
+InjectedWebGLScriptSource.commands = perl $$PWD/inspector/xxd.pl InjectedWebGLScriptSource_js ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}
+InjectedWebGLScriptSource.add_output_to_sources = false
+GENERATORS += InjectedWebGLScriptSource
+
+# GENERATOR 2-c: inspector debugger script source compiler
 debuggerScriptSource.output = DebuggerScriptSource.h
 debuggerScriptSource.input = DEBUGGER_SCRIPT_SOURCE
 debuggerScriptSource.commands = perl $$PWD/inspector/xxd.pl DebuggerScriptSource_js ${QMAKE_FILE_IN} ${QMAKE_FILE_OUT}

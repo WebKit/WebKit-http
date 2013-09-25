@@ -68,6 +68,7 @@
 #include "WebFrameClient.h"
 #include "WebFrameImpl.h"
 #include "WebIntentRequest.h"
+#include "WebIntentServiceInfo.h"
 #include "WebKit.h"
 #include "WebNode.h"
 #include "WebPermissionClient.h"
@@ -110,7 +111,6 @@ enum {
 
 FrameLoaderClientImpl::FrameLoaderClientImpl(WebFrameImpl* frame)
     : m_webFrame(frame)
-    , m_hasRepresentation(false)
     , m_sentInitialResponseToPlugin(false)
     , m_nextNavigationPolicy(WebNavigationPolicyIgnore)
 {
@@ -239,6 +239,24 @@ bool FrameLoaderClientImpl::allowRunningInsecureContent(bool enabledPerSettings,
     return enabledPerSettings;
 }
 
+bool FrameLoaderClientImpl::allowShadowDOM(bool enabledAsRuntimeFeature)
+{
+    WebViewImpl* webview = m_webFrame->viewImpl();
+    if (webview && webview->permissionClient())
+        return webview->permissionClient()->allowWebComponents(m_webFrame, enabledAsRuntimeFeature);
+
+    return enabledAsRuntimeFeature;
+}
+
+bool FrameLoaderClientImpl::allowStyleScoped(bool enabledAsRuntimeFeature)
+{
+    WebViewImpl* webview = m_webFrame->viewImpl();
+    if (webview && webview->permissionClient())
+        return webview->permissionClient()->allowWebComponents(m_webFrame, enabledAsRuntimeFeature);
+
+    return enabledAsRuntimeFeature;
+}
+
 void FrameLoaderClientImpl::didNotAllowScript()
 {
     WebViewImpl* webview = m_webFrame->viewImpl();
@@ -270,11 +288,6 @@ bool FrameLoaderClientImpl::hasFrameView() const
 void FrameLoaderClientImpl::makeDocumentView()
 {
     m_webFrame->createFrameView();
-}
-
-void FrameLoaderClientImpl::makeRepresentation(DocumentLoader*)
-{
-    m_hasRepresentation = true;
 }
 
 void FrameLoaderClientImpl::forceLayout()
@@ -640,8 +653,14 @@ void FrameLoaderClientImpl::dispatchDidNavigateWithinPage()
     // didStopLoading only when loader is completed so that we don't fire
     // them for fragment redirection that happens in window.onload handler.
     // See https://bugs.webkit.org/show_bug.cgi?id=31838
-    bool loaderCompleted =
-        !webView->page()->mainFrame()->loader()->activeDocumentLoader()->isLoadingInAPISense();
+    //
+    // FIXME: Although FrameLoader::loadInSameDocument which invokes this
+    // method does not have a provisional document loader, we're seeing crashes
+    // where the FrameLoader is in provisional state, and thus
+    // activeDocumentLoader returns 0. Lacking any understanding of how this
+    // can happen, we do this check here to avoid crashing.
+    FrameLoader* loader = webView->page()->mainFrame()->loader();
+    bool loaderCompleted = !(loader->activeDocumentLoader() && loader->activeDocumentLoader()->isLoadingInAPISense());
 
     // Generate didStartLoading if loader is completed.
     if (webView->client() && loaderCompleted)
@@ -1049,11 +1068,6 @@ void FrameLoaderClientImpl::dispatchWillSubmitForm(FramePolicyFunction function,
     (m_webFrame->frame()->loader()->policyChecker()->*function)(PolicyUse);
 }
 
-void FrameLoaderClientImpl::revertToProvisionalState(DocumentLoader*)
-{
-    m_hasRepresentation = true;
-}
-
 void FrameLoaderClientImpl::setMainDocumentError(DocumentLoader*,
                                                  const ResourceError& error)
 {
@@ -1150,18 +1164,12 @@ void FrameLoaderClientImpl::committedLoad(DocumentLoader* loader, const char* da
     }
 }
 
-void FrameLoaderClientImpl::finishedLoading(DocumentLoader* dl)
+void FrameLoaderClientImpl::finishedLoading(DocumentLoader*)
 {
     if (m_pluginWidget) {
         m_pluginWidget->didFinishLoading();
         m_pluginWidget = 0;
         m_sentInitialResponseToPlugin = false;
-    } else {
-        // This is necessary to create an empty document. See bug 634004.
-        // However, we only want to do this if makeRepresentation has been called, to
-        // match the behavior on the Mac.
-        if (m_hasRepresentation)
-            dl->writer()->setEncoding("", false);
     }
 }
 
@@ -1393,6 +1401,10 @@ void FrameLoaderClientImpl::setTitle(const StringWithDirection& title, const KUR
 
 String FrameLoaderClientImpl::userAgent(const KURL& url)
 {
+    WebString override;
+    if (m_webFrame->client()->userAgent(WebURL(url), &override))
+        return override;
+
     return WebKit::Platform::current()->userAgent(url);
 }
 
@@ -1608,9 +1620,27 @@ bool FrameLoaderClientImpl::willCheckAndDispatchMessageEvent(
     if (!m_webFrame->client())
         return false;
 
+    WebFrame* source = 0;
+    if (event && event->source() && event->source()->document())
+        source = WebFrameImpl::fromFrame(event->source()->document()->frame());
     return m_webFrame->client()->willCheckAndDispatchMessageEvent(
-        m_webFrame, WebSecurityOrigin(target), WebDOMMessageEvent(event));
+        source, WebSecurityOrigin(target), WebDOMMessageEvent(event));
 }
+
+#if ENABLE(WEB_INTENTS_TAG)
+void FrameLoaderClientImpl::registerIntentService(
+        const String& action,
+        const String& type,
+        const KURL& href,
+        const String& title,
+        const String& disposition) {
+    if (!m_webFrame->client())
+        return;
+
+    WebIntentServiceInfo service(action, type, href, title, disposition);
+    m_webFrame->client()->registerIntentService(m_webFrame, service);
+}
+#endif
 
 #if ENABLE(WEB_INTENTS)
 void FrameLoaderClientImpl::dispatchIntent(PassRefPtr<WebCore::IntentRequest> intentRequest)

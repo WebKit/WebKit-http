@@ -26,12 +26,15 @@
 #ifndef DFGGraph_h
 #define DFGGraph_h
 
+#include <wtf/Platform.h>
+
 #if ENABLE(DFG_JIT)
 
 #include "CodeBlock.h"
 #include "DFGArgumentPosition.h"
 #include "DFGAssemblyHelpers.h"
 #include "DFGBasicBlock.h"
+#include "DFGDominators.h"
 #include "DFGNode.h"
 #include "MethodOfGettingAValueProfile.h"
 #include "RegisterFile.h"
@@ -77,6 +80,7 @@ public:
         : m_globalData(globalData)
         , m_codeBlock(codeBlock)
         , m_profiledBlock(codeBlock->alternative())
+        , m_hasArguments(false)
     {
         ASSERT(m_profiledBlock);
     }
@@ -105,12 +109,32 @@ public:
     
     void deref(NodeIndex nodeIndex)
     {
+        if (!at(nodeIndex).refCount())
+            dump();
         if (at(nodeIndex).deref())
             derefChildren(nodeIndex);
     }
     void deref(Edge nodeUse)
     {
         deref(nodeUse.index());
+    }
+    
+    void changeIndex(Edge& edge, NodeIndex newIndex, bool changeRef = true)
+    {
+        if (changeRef) {
+            ref(newIndex);
+            deref(edge.index());
+        }
+        edge.setIndex(newIndex);
+    }
+    
+    void changeEdge(Edge& edge, Edge newEdge, bool changeRef = true)
+    {
+        if (changeRef) {
+            ref(newEdge);
+            deref(edge);
+        }
+        edge = newEdge;
     }
     
     void clearAndDerefChild1(Node& node)
@@ -136,6 +160,22 @@ public:
         deref(node.child3());
         node.children.child3() = Edge();
     }
+    
+    // Call this if you've modified the reference counts of nodes that deal with
+    // local variables. This is necessary because local variable references can form
+    // cycles, and hence reference counting is not enough. This will reset the
+    // reference counts according to reachability.
+    void collectGarbage();
+    
+    void convertToConstant(NodeIndex nodeIndex, unsigned constantNumber)
+    {
+        at(nodeIndex).convertToConstant(constantNumber);
+    }
+    
+    void convertToConstant(NodeIndex nodeIndex, JSValue value)
+    {
+        convertToConstant(nodeIndex, m_codeBlock->addOrFindConstant(value));
+    }
 
     // CodeBlock is optional, but may allow additional information to be dumped (e.g. Identifier names).
     void dump();
@@ -147,9 +187,9 @@ public:
 
     BlockIndex blockIndexForBytecodeOffset(Vector<BlockIndex>& blocks, unsigned bytecodeBegin);
 
-    PredictedType getJSConstantPrediction(Node& node)
+    SpeculatedType getJSConstantSpeculation(Node& node)
     {
-        return predictionFromValue(node.valueOfJSConstant(m_codeBlock));
+        return speculationFromValue(node.valueOfJSConstant(m_codeBlock));
     }
     
     bool addShouldSpeculateInteger(Node& add)
@@ -165,6 +205,21 @@ public:
             return addImmediateShouldSpeculateInteger(add, left, right);
         
         return Node::shouldSpeculateInteger(left, right) && add.canSpeculateInteger();
+    }
+    
+    bool mulShouldSpeculateInteger(Node& mul)
+    {
+        ASSERT(mul.op() == ArithMul);
+        
+        Node& left = at(mul.child1());
+        Node& right = at(mul.child2());
+        
+        if (left.hasConstant())
+            return mulImmediateShouldSpeculateInteger(mul, right, left);
+        if (right.hasConstant())
+            return mulImmediateShouldSpeculateInteger(mul, left, right);
+        
+        return Node::shouldSpeculateInteger(left, right) && mul.canSpeculateInteger() && !nodeMayOverflow(mul.arithNodeFlags());
     }
     
     bool negateShouldSpeculateInteger(Node& negate)
@@ -255,9 +310,57 @@ public:
         return &m_structureTransitionData.last();
     }
     
+    JSGlobalObject* globalObjectFor(CodeOrigin codeOrigin)
+    {
+        return m_codeBlock->globalObjectFor(codeOrigin);
+    }
+    
+    ExecutableBase* executableFor(InlineCallFrame* inlineCallFrame)
+    {
+        if (!inlineCallFrame)
+            return m_codeBlock->ownerExecutable();
+        
+        return inlineCallFrame->executable.get();
+    }
+    
+    ExecutableBase* executableFor(const CodeOrigin& codeOrigin)
+    {
+        return executableFor(codeOrigin.inlineCallFrame);
+    }
+    
     CodeBlock* baselineCodeBlockFor(const CodeOrigin& codeOrigin)
     {
         return baselineCodeBlockForOriginAndBaselineCodeBlock(codeOrigin, m_profiledBlock);
+    }
+    
+    int argumentsRegisterFor(const CodeOrigin& codeOrigin)
+    {
+        if (!codeOrigin.inlineCallFrame)
+            return m_codeBlock->argumentsRegister();
+        
+        return baselineCodeBlockForInlineCallFrame(
+            codeOrigin.inlineCallFrame)->argumentsRegister() +
+            codeOrigin.inlineCallFrame->stackOffset;
+    }
+    
+    int uncheckedArgumentsRegisterFor(const CodeOrigin& codeOrigin)
+    {
+        if (!codeOrigin.inlineCallFrame)
+            return m_codeBlock->uncheckedArgumentsRegister();
+        
+        CodeBlock* codeBlock = baselineCodeBlockForInlineCallFrame(
+            codeOrigin.inlineCallFrame);
+        if (!codeBlock->usesArguments())
+            return InvalidVirtualRegister;
+        
+        return codeBlock->argumentsRegister() +
+            codeOrigin.inlineCallFrame->stackOffset;
+    }
+    
+    int uncheckedActivationRegisterFor(const CodeOrigin& codeOrigin)
+    {
+        ASSERT_UNUSED(codeOrigin, !codeOrigin.inlineCallFrame);
+        return m_codeBlock->uncheckedActivationRegister();
     }
     
     ValueProfile* valueProfileFor(NodeIndex nodeIndex)
@@ -303,37 +406,86 @@ public:
     
     bool needsActivation() const
     {
-#if DFG_ENABLE(ALL_VARIABLES_CAPTURED)
-        return true;
-#else
         return m_codeBlock->needsFullScopeChain() && m_codeBlock->codeType() != GlobalCode;
-#endif
     }
     
-    // Pass an argument index. Currently it's ignored, but that's somewhat
-    // of a bug.
-    bool argumentIsCaptured(int) const
+    bool usesArguments() const
     {
-        return needsActivation();
-    }
-    bool localIsCaptured(int operand) const
-    {
-#if DFG_ENABLE(ALL_VARIABLES_CAPTURED)
-        return operand < m_codeBlock->m_numVars;
-#else
-        return operand < m_codeBlock->m_numCapturedVars;
-#endif
+        return m_codeBlock->usesArguments();
     }
     
-    bool isCaptured(int operand) const
+    unsigned numSuccessors(BasicBlock* block)
     {
-        if (operandIsArgument(operand))
-            return argumentIsCaptured(operandToArgument(operand));
-        return localIsCaptured(operand);
+        return at(block->last()).numSuccessors();
     }
-    bool isCaptured(VirtualRegister virtualRegister) const
+    BlockIndex successor(BasicBlock* block, unsigned index)
     {
-        return isCaptured(static_cast<int>(virtualRegister));
+        return at(block->last()).successor(index);
+    }
+    BlockIndex successorForCondition(BasicBlock* block, bool condition)
+    {
+        return at(block->last()).successorForCondition(condition);
+    }
+    
+    bool isPredictedNumerical(Node& node)
+    {
+        SpeculatedType left = at(node.child1()).prediction();
+        SpeculatedType right = at(node.child2()).prediction();
+        return isNumberSpeculation(left) && isNumberSpeculation(right);
+    }
+    
+    bool byValIsPure(Node& node)
+    {
+        return at(node.child2()).shouldSpeculateInteger()
+            && ((node.op() == PutByVal || node.op() == PutByValAlias)
+                ? isActionableMutableArraySpeculation(at(node.child1()).prediction())
+                : isActionableArraySpeculation(at(node.child1()).prediction()));
+    }
+    
+    bool clobbersWorld(Node& node)
+    {
+        if (node.flags() & NodeClobbersWorld)
+            return true;
+        if (!(node.flags() & NodeMightClobber))
+            return false;
+        switch (node.op()) {
+        case ValueAdd:
+        case CompareLess:
+        case CompareLessEq:
+        case CompareGreater:
+        case CompareGreaterEq:
+        case CompareEq:
+            return !isPredictedNumerical(node);
+        case GetByVal:
+            return !byValIsPure(node);
+        default:
+            ASSERT_NOT_REACHED();
+            return true; // If by some oddity we hit this case in release build it's safer to have CSE assume the worst.
+        }
+    }
+    
+    bool clobbersWorld(NodeIndex nodeIndex)
+    {
+        return clobbersWorld(at(nodeIndex));
+    }
+    
+    void determineReachability();
+    void resetReachability();
+    
+    void resetExitStates();
+    
+    unsigned numChildren(Node& node)
+    {
+        if (node.flags() & NodeHasVarArgs)
+            return node.numChildren();
+        return AdjacencyList::Size;
+    }
+    
+    Edge child(Node& node, unsigned index)
+    {
+        if (node.flags() & NodeHasVarArgs)
+            return m_varArgChildren[node.firstChild() + index];
+        return node.children.child(index);
     }
     
     JSGlobalData& m_globalData;
@@ -349,10 +501,15 @@ public:
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
     SegmentedVector<StructureSet, 16> m_structureSet;
     SegmentedVector<StructureTransitionData, 8> m_structureTransitionData;
+    bool m_hasArguments;
+    HashSet<ExecutableBase*> m_executablesWhoseArgumentsEscaped;
     BitVector m_preservedVars;
+    Dominators m_dominators;
     unsigned m_localVars;
     unsigned m_parameterSlots;
 private:
+    
+    void handleSuccessor(Vector<BlockIndex, 16>& worklist, BlockIndex blockIndex, BlockIndex successorIndex);
     
     bool addImmediateShouldSpeculateInteger(Node& add, Node& variable, Node& immediate)
     {
@@ -374,6 +531,30 @@ private:
             return false;
         
         return nodeCanTruncateInteger(add.arithNodeFlags());
+    }
+    
+    bool mulImmediateShouldSpeculateInteger(Node& mul, Node& variable, Node& immediate)
+    {
+        ASSERT(immediate.hasConstant());
+        
+        JSValue immediateValue = immediate.valueOfJSConstant(m_codeBlock);
+        if (!immediateValue.isInt32())
+            return false;
+        
+        if (!variable.shouldSpeculateInteger())
+            return false;
+        
+        int32_t intImmediate = immediateValue.asInt32();
+        // Doubles have a 53 bit mantissa so we expect a multiplication of 2^31 (the highest
+        // magnitude possible int32 value) and any value less than 2^22 to not result in any
+        // rounding in a double multiplication - hence it will be equivalent to an integer
+        // multiplication, if we are doing int32 truncation afterwards (which is what
+        // canSpeculateInteger() implies).
+        const int32_t twoToThe22 = 1 << 22;
+        if (intImmediate <= -twoToThe22 || intImmediate >= twoToThe22)
+            return mul.canSpeculateInteger() && !nodeMayOverflow(mul.arithNodeFlags());
+
+        return mul.canSpeculateInteger();
     }
     
     // When a node's refCount goes from 0 to 1, it must (logically) recursively ref all of its children, and vice versa.

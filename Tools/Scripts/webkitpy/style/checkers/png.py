@@ -27,9 +27,9 @@
 import os
 import re
 
+from webkitpy.common import read_checksum_from_png
 from webkitpy.common.system.systemhost import SystemHost
 from webkitpy.common.checkout.scm.detection import SCMDetector
-
 
 class PNGChecker(object):
     """Check svn:mime-type for checking style"""
@@ -40,13 +40,18 @@ class PNGChecker(object):
         self._file_path = file_path
         self._handle_style_error = handle_style_error
         self._host = host or SystemHost()
-        self._fs = host.filesystem
+        self._fs = self._host.filesystem
         self._detector = scm or SCMDetector(self._fs, self._host.executive).detect_scm_system(self._fs.getcwd())
 
     def check(self, inline=None):
         errorstr = ""
         config_file_path = ""
         detection = self._detector.display_name()
+
+        if self._fs.exists(self._file_path) and self._file_path.endswith("-expected.png"):
+            with self._fs.open_binary_file_for_reading(self._file_path) as filehandle:
+                if not read_checksum_from_png.read_checksum(filehandle):
+                    self._handle_style_error(0, 'image/png', 5, "Image lacks a checksum. Generate pngs using run-webkit-tests to ensure they have a checksum.")
 
         if detection == "git":
             config_file_path = self._config_file_path()

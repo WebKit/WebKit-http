@@ -9,12 +9,14 @@ SET(DumpRenderTree_SOURCES
     ${TOOLS_DIR}/DumpRenderTree/efl/DumpRenderTree.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/DumpRenderTreeChrome.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/DumpRenderTreeView.cpp
+    ${TOOLS_DIR}/DumpRenderTree/efl/EditingCallbacks.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/EventSender.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/FontManagement.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/GCControllerEfl.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/JSStringUtils.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/LayoutTestControllerEfl.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/PixelDumpSupportEfl.cpp
+    ${TOOLS_DIR}/DumpRenderTree/efl/TextInputController.cpp
     ${TOOLS_DIR}/DumpRenderTree/efl/WorkQueueItemEfl.cpp
 )
 
@@ -27,7 +29,7 @@ SET(DumpRenderTree_LIBRARIES
     ${WebCoreTestSupport_LIBRARY_NAME}
     ${WebCore_LIBRARY_NAME}
     ${WebKit_LIBRARY_NAME}
-    ${Cairo_LIBRARIES}
+    ${CAIRO_LIBRARIES}
     ${ECORE_X_LIBRARIES}
     ${EDJE_LIBRARIES}
     ${EFLDEPS_LIBRARIES}
@@ -43,6 +45,7 @@ SET(DumpRenderTree_LIBRARIES
 SET(DumpRenderTree_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/efl/ewk"
     ${WEBKIT_DIR}/efl
+    ${WEBKIT_DIR}/efl/WebCoreSupport
     ${WEBCORE_DIR}
     ${WEBCORE_DIR}/bridge
     ${WEBCORE_DIR}/bridge/jsc
@@ -59,6 +62,7 @@ SET(DumpRenderTree_INCLUDE_DIRECTORIES
     ${WEBCORE_DIR}/platform/text
     ${WEBCORE_DIR}/platform/graphics
     ${WEBCORE_DIR}/platform/graphics/cairo
+    ${WEBCORE_DIR}/platform/graphics/transforms
     ${WEBCORE_DIR}/platform/network
     ${WEBCORE_DIR}/platform/network/soup
     ${WEBCORE_DIR}/plugins
@@ -88,7 +92,7 @@ SET(DumpRenderTree_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_WEBCORE_DIR}
     ${WEBCORE_DIR}/bindings/js
     ${WEBCORE_DIR}/testing/js
-    ${Cairo_INCLUDE_DIRS}
+    ${CAIRO_INCLUDE_DIRS}
     ${EDJE_INCLUDE_DIRS}
     ${EFLDEPS_INCLUDE_DIRS}
     ${EVAS_INCLUDE_DIRS}
@@ -108,7 +112,7 @@ SET(DumpRenderTree_LINK_FLAGS
 # FIXME: DOWNLOADED_FONTS_DIR should not hardcode the directory
 # structure. See <https://bugs.webkit.org/show_bug.cgi?id=81475>.
 ADD_DEFINITIONS(-DFONTS_CONF_DIR="${TOOLS_DIR}/DumpRenderTree/gtk/fonts"
-                -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts-0.0.1"
+                -DDOWNLOADED_FONTS_DIR="${CMAKE_SOURCE_DIR}/WebKitBuild/Dependencies/Source/webkitgtk-test-fonts-0.0.3"
                 -DDATA_DIR="${THEME_BINARY_DIR}")
 
 INCLUDE_DIRECTORIES(${DumpRenderTree_INCLUDE_DIRECTORIES})

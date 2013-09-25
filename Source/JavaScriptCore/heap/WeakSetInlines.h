@@ -32,7 +32,7 @@ namespace JSC {
 
 inline WeakImpl* WeakSet::allocate(JSValue jsValue, WeakHandleOwner* weakHandleOwner, void* context)
 {
-    WeakSet& weakSet = *Heap::heap(jsValue.asCell())->weakSet();
+    WeakSet& weakSet = MarkedBlock::blockFor(jsValue.asCell())->weakSet();
     WeakBlock::FreeCell* allocator = weakSet.m_allocator;
     if (UNLIKELY(!allocator))
         allocator = weakSet.findAllocator();
@@ -40,6 +40,19 @@ inline WeakImpl* WeakSet::allocate(JSValue jsValue, WeakHandleOwner* weakHandleO
 
     WeakImpl* weakImpl = WeakBlock::asWeakImpl(allocator);
     return new (NotNull, weakImpl) WeakImpl(jsValue, weakHandleOwner, context);
+}
+
+inline void WeakBlock::finalize(WeakImpl* weakImpl)
+{
+    ASSERT(weakImpl->state() == WeakImpl::Dead);
+    weakImpl->setState(WeakImpl::Finalized);
+    WeakHandleOwner* weakHandleOwner = weakImpl->weakHandleOwner();
+    if (!weakHandleOwner)
+        return;
+#if !ASSERT_DISABLED || ENABLE(GC_VALIDATION)
+    weakImpl->jsValue().asCell()->clearStructure();
+#endif
+    weakHandleOwner->finalize(Handle<Unknown>::wrapSlot(&const_cast<JSValue&>(weakImpl->jsValue())), weakImpl->context());
 }
 
 } // namespace JSC

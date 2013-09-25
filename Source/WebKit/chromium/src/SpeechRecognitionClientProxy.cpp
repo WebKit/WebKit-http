@@ -26,11 +26,14 @@
 #include "config.h"
 #include "SpeechRecognitionClientProxy.h"
 
+#include "ScriptExecutionContext.h"
+#include "SecurityOrigin.h"
 #include "SpeechGrammarList.h"
 #include "SpeechRecognition.h"
 #include "SpeechRecognitionError.h"
 #include "SpeechRecognitionResult.h"
 #include "SpeechRecognitionResultList.h"
+#include "WebSecurityOrigin.h"
 #include "WebSpeechGrammar.h"
 #include "WebSpeechRecognitionHandle.h"
 #include "WebSpeechRecognitionParams.h"
@@ -58,7 +61,8 @@ void SpeechRecognitionClientProxy::start(SpeechRecognition* recognition, const S
     for (unsigned long i = 0; i < grammarList->length(); ++i)
         webSpeechGrammars[i] = grammarList->item(i);
 
-    m_recognizer->start(WebSpeechRecognitionHandle(recognition), WebSpeechRecognitionParams(webSpeechGrammars, lang, continuous), this);
+    WebSpeechRecognitionParams params(webSpeechGrammars, lang, continuous, WebSecurityOrigin(recognition->scriptExecutionContext()->securityOrigin()));
+    m_recognizer->start(WebSpeechRecognitionHandle(recognition), params, this);
 }
 
 void SpeechRecognitionClientProxy::stop(SpeechRecognition* recognition)
@@ -136,7 +140,7 @@ void SpeechRecognitionClientProxy::didDeleteResult(const WebSpeechRecognitionHan
     recognition->didDeleteResult(resultIndex, SpeechRecognitionResultList::create(resultHistoryVector));
 }
 
-void SpeechRecognitionClientProxy::didReceiveError(const WebSpeechRecognitionHandle& handle, const WebString& message, unsigned short code)
+void SpeechRecognitionClientProxy::didReceiveError(const WebSpeechRecognitionHandle& handle, const WebString& message, WebSpeechRecognizerClient::ErrorCode code)
 {
     RefPtr<SpeechRecognition> recognition = PassRefPtr<SpeechRecognition>(handle);
     SpeechRecognitionError::Code errorCode = static_cast<SpeechRecognitionError::Code>(code);

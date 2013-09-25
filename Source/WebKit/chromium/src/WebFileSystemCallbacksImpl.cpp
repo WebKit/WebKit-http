@@ -37,21 +37,20 @@
 #include "FileMetadata.h"
 #include "ScriptExecutionContext.h"
 #include "WebFileInfo.h"
-#include "platform/WebFileSystem.h"
 #include "WebFileSystemEntry.h"
 #include "platform/WebString.h"
 #include "WorkerAsyncFileSystemChromium.h"
+#include <public/WebFileSystem.h>
 #include <wtf/Vector.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-WebFileSystemCallbacksImpl::WebFileSystemCallbacksImpl(PassOwnPtr<AsyncFileSystemCallbacks> callbacks, AsyncFileSystem::Type type, WebCore::ScriptExecutionContext* context, bool synchronous)
+WebFileSystemCallbacksImpl::WebFileSystemCallbacksImpl(PassOwnPtr<AsyncFileSystemCallbacks> callbacks, ScriptExecutionContext* context, FileSystemSynchronousType synchronousType)
     : m_callbacks(callbacks)
-    , m_type(type)
     , m_context(context)
-    , m_synchronous(synchronous)
+    , m_synchronousType(synchronousType)
 {
     ASSERT(m_callbacks);
 }
@@ -92,11 +91,11 @@ void WebFileSystemCallbacksImpl::didOpenFileSystem(const WebString& name, const 
 
 #if ENABLE(WORKERS)
     if (m_context && m_context->isWorkerContext()) {
-        m_callbacks->didOpenFileSystem(name, WorkerAsyncFileSystemChromium::create(m_context, m_type, rootURL, m_synchronous));
+        m_callbacks->didOpenFileSystem(name, rootURL, WorkerAsyncFileSystemChromium::create(m_context, m_synchronousType));
         return;
     }
 #endif
-    m_callbacks->didOpenFileSystem(name, AsyncFileSystemChromium::create(m_type, rootURL));
+    m_callbacks->didOpenFileSystem(name, rootURL, AsyncFileSystemChromium::create());
 }
 
 void WebFileSystemCallbacksImpl::didFail(WebFileError error)

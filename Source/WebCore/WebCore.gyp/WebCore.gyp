@@ -59,6 +59,7 @@
       '../Modules/intents',
       '../Modules/indexeddb',
       '../Modules/mediastream',
+      '../Modules/quota',
       '../Modules/speech',
       '../Modules/webaudio',
       '../Modules/webdatabase',
@@ -120,7 +121,6 @@
       '../platform/image-decoders/jpeg',
       '../platform/image-decoders/png',
       '../platform/image-decoders/skia',
-      '../platform/image-decoders/xbm',
       '../platform/image-decoders/webp',
       '../platform/image-encoders/skia',
       '../platform/leveldb',
@@ -157,7 +157,6 @@
     'bindings_idl_files!': [
       # Custom bindings in bindings/v8/custom exist for these.
       '../dom/EventListener.idl',
-      '../dom/EventTarget.idl',
       '../html/VoidCallback.idl',
 
       # Bindings with custom Objective-C implementations.
@@ -174,8 +173,6 @@
       '../svg/SVGStylable.idl',
       '../svg/SVGTests.idl',
       '../svg/SVGTransformable.idl',
-      '../svg/SVGViewSpec.idl',
-      '../svg/SVGZoomAndPan.idl',
 
       # FIXME: I don't know why these are excluded, either.
       # Someone (me?) should figure it out and add appropriate comments.
@@ -329,6 +326,9 @@
           'link_settings': {
             'libraries': [
               '<(adjusted_library_path)',
+
+              # libWebKitSystemInterfaceLeopard.a references _kCIFormatRGBA8.
+              '$(SDKROOT)/System/Library/Frameworks/QuartzCore.framework',
             ],
           },  # link_settings
         },  # target webkit_system_interface
@@ -367,7 +367,7 @@
             '<(SHARED_INTERMEDIATE_DIR)/webkit/InspectorFrontend.h',
             '<(SHARED_INTERMEDIATE_DIR)/webcore/InspectorTypeBuilder.cpp',
             '<(SHARED_INTERMEDIATE_DIR)/webkit/InspectorTypeBuilder.h',
-            '<(SHARED_INTERMEDIATE_DIR)/webcore/InspectorBackendStub.js',
+            '<(SHARED_INTERMEDIATE_DIR)/webcore/InspectorBackendCommands.js',
           ],
           'variables': {
             'generator_include_dirs': [
@@ -431,6 +431,29 @@
             '<@(_outputs)'
           ],
           'message': 'Generating InjectedScriptSource.h from InjectedScriptSource.js',
+        },
+      ]
+    },
+    {
+      'target_name': 'injected_webgl_script_source',
+      'type': 'none',
+      'actions': [
+        {
+          'action_name': 'generateInjectedWebGLScriptSource',
+          'inputs': [
+            '../inspector/InjectedWebGLScriptSource.js',
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/webkit/InjectedWebGLScriptSource.h',
+          ],
+          'action': [
+            'perl',
+            '../inspector/xxd.pl',
+            'InjectedWebGLScriptSource_js',
+            '<@(_inputs)',
+            '<@(_outputs)'
+          ],
+          'message': 'Generating InjectedWebGLScriptSource.h from InjectedWebGLScriptSource.js',
         },
       ]
     },
@@ -574,6 +597,7 @@
         {
           'action_name': 'HTMLEntityTable',
           'inputs': [
+            '../html/parser/create-html-entity-table',
             '../html/parser/HTMLEntityNames.in',
           ],
           'outputs': [
@@ -1019,6 +1043,7 @@
             'generator_include_dirs': [
               '--include', '../Modules/filesystem',
               '--include', '../Modules/indexeddb',
+              '--include', '../Modules/intents',
               '--include', '../Modules/mediastream',
               '--include', '../Modules/webaudio',
               '--include', '../Modules/webdatabase',
@@ -1073,6 +1098,7 @@
         'webcore_bindings_sources',
         'inspector_protocol_sources',
         'injected_script_source',
+        'injected_webgl_script_source',
         'debugger_script_source',
         '../../JavaScriptCore/JavaScriptCore.gyp/JavaScriptCore.gyp:yarr',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
@@ -1178,6 +1204,8 @@
           'direct_dependent_settings': {
             'include_dirs+++': ['../dom'],
           },
+          # In generated bindings code: 'switch contains default but no case'.
+          'msvs_disabled_warnings': [ 4065 ],
         }],
         ['OS=="linux" and "WTF_USE_WEBAUDIO_IPP=1" in feature_defines', {
           'cflags': [
@@ -1194,11 +1222,13 @@
       'dependencies': [
         'debugger_script_source',
         'injected_script_source',
+        'injected_webgl_script_source',
         'inspector_protocol_sources',
         'webcore_bindings_sources',
         '../../ThirdParty/glu/glu.gyp:libtess',
         '../../JavaScriptCore/JavaScriptCore.gyp/JavaScriptCore.gyp:yarr',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
+        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
         '<(chromium_src_dir)/third_party/iccjpeg/iccjpeg.gyp:iccjpeg',
@@ -1217,6 +1247,7 @@
       'export_dependent_settings': [
         '../../JavaScriptCore/JavaScriptCore.gyp/JavaScriptCore.gyp:yarr',
         '../../WTF/WTF.gyp/WTF.gyp:wtf',
+        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
         '<(chromium_src_dir)/build/temp_gyp/googleurl.gyp:googleurl',
         '<(chromium_src_dir)/skia/skia.gyp:skia',
         '<(chromium_src_dir)/third_party/iccjpeg/iccjpeg.gyp:iccjpeg',
@@ -1246,9 +1277,6 @@
           '<(chromium_src_dir)/third_party/angle/include/GLSLANG',
           '<(SHARED_INTERMEDIATE_DIR)/webkit',
           '<(SHARED_INTERMEDIATE_DIR)/webkit/bindings',
-        ],
-        'mac_framework_dirs': [
-          '$(SDKROOT)/System/Library/Frameworks/ApplicationServices.framework/Frameworks',
         ],
         'msvs_disabled_warnings': [
           4138, 4244, 4291, 4305, 4344, 4355, 4521, 4099,
@@ -1300,16 +1328,10 @@
             '<(chromium_src_dir)/build/linux/system.gyp:gtk',
           ],
         }],
-        ['OS=="linux"', {
-          'direct_dependent_settings': {
-            'defines': [
-              # Mozilla on Linux effectively uses uname -sm, but when running
-              # 32-bit x86 code on an x86_64 processor, it uses
-              # "Linux i686 (x86_64)".  Matching that would require making a
-              # run-time determination.
-              'WEBCORE_NAVIGATOR_PLATFORM="Linux i686"',
-            ],
-          },
+        ['OS=="android"', {
+          'sources/': [
+            ['exclude', 'accessibility/'],
+          ],
         }],
         ['OS=="mac"', {
           'dependencies': [
@@ -1361,7 +1383,7 @@
                 'postbuild_name': 'Check Objective-C Rename',
                 'variables': {
                   'class_whitelist_regex':
-                      'ChromiumWebCoreObjC|TCMVisibleView|RTCMFlippedView',
+                      'ChromiumWebCoreObjC|TCMVisibleView|RTCMFlippedView|WebCoreTextFieldCell',
                   'category_whitelist_regex':
                       'TCMInterposing|ScrollAnimatorChromiumMacExt',
                 },
@@ -1475,11 +1497,10 @@
       'type': 'static_library',
       'dependencies': [
         'webcore_prerequisites',
-        '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
       ],
-      'defines': [ 
-        'WEBKIT_IMPLEMENTATION=1', 
-      ], 
+      'defines': [
+        'WEBKIT_IMPLEMENTATION=1',
+      ],
       # This is needed for mac because of webkit_system_interface. It'd be nice
       # if this hard dependency could be split off the rest.
       'hard_dependency': 1,
@@ -1652,7 +1673,6 @@
             ['include', 'platform/graphics/cg/IntPointCG\\.cpp$'],
             ['include', 'platform/graphics/cg/IntRectCG\\.cpp$'],
             ['include', 'platform/graphics/cg/IntSizeCG\\.cpp$'],
-            ['exclude', 'platform/graphics/chromium/ImageChromiumMac\\.mm$'],
             ['exclude', 'platform/graphics/mac/FontMac\\.mm$'],
             ['exclude', 'platform/graphics/skia/FontCacheSkia\\.cpp$'],
             ['exclude', 'platform/graphics/skia/GlyphPageTreeNodeSkia\\.cpp$'],
@@ -1822,6 +1842,9 @@
     {
       'target_name': 'webcore_remaining',
       'type': 'static_library',
+      'defines': [
+        'WEBKIT_IMPLEMENTATION=1',
+      ],
       'dependencies': [
         'webcore_prerequisites',
         '<(chromium_src_dir)/third_party/v8-i18n/build/all.gyp:v8-i18n',
@@ -1994,16 +2017,6 @@
         'include_dirs': [
           '<@(webcore_include_dirs)',
         ],
-        'mac_framework_dirs': [
-          '$(SDKROOT)/System/Library/Frameworks/ApplicationServices.framework/Frameworks',
-          '$(SDKROOT)/System/Library/Frameworks/Accelerate.framework',
-          '$(SDKROOT)/System/Library/Frameworks/CoreServices.framework',
-          '$(SDKROOT)/System/Library/Frameworks/Foundation.framework',
-          '$(SDKROOT)/System/Library/Frameworks/CoreFoundation.framework',
-          '$(SDKROOT)/System/Library/Frameworks/AudioToolbox.framework',
-          '$(SDKROOT)/System/Library/Frameworks/AudioUnit.framework',
-          '$(SDKROOT)/System/Library/Frameworks/CoreAudio.framework',
-        ],
       },
       'conditions': [
         ['OS=="mac"', {
@@ -2050,6 +2063,7 @@
         '<@(webcore_include_dirs)',
         '../testing',
         '../testing/v8',
+        '../../Platform/chromium',
       ],
       'sources': [
         '<@(webcore_test_support_files)',

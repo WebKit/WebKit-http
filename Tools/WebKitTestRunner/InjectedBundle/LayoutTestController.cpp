@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -102,6 +102,8 @@ LayoutTestController::LayoutTestController()
     , m_dumpTitleChanges(false)
     , m_dumpPixels(true)
     , m_dumpFullScreenCallbacks(false)
+    , m_dumpFrameLoadCallbacks(false)
+    , m_dumpProgressFinishedCallback(false)
     , m_waitToDump(false)
     , m_testRepaint(false)
     , m_testRepaintSweepHorizontally(false)
@@ -206,12 +208,6 @@ void LayoutTestController::suspendAnimations()
 {
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
     WKBundleFrameSuspendAnimations(mainFrame);
-}
-
-void LayoutTestController::resumeAnimations()
-{
-    WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(InjectedBundle::shared().page()->page());
-    WKBundleFrameResumeAnimations(mainFrame);
 }
 
 JSRetainPtr<JSStringRef> LayoutTestController::layerTreeAsText() const
@@ -375,6 +371,11 @@ void LayoutTestController::setFrameFlatteningEnabled(bool enabled)
     WKBundleSetFrameFlatteningEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
 }
 
+void LayoutTestController::setPluginsEnabled(bool enabled)
+{
+    WKBundleSetPluginsEnabled(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
+}
+
 void LayoutTestController::setGeolocationPermission(bool enabled)
 {
     WKBundleSetGeolocationPermission(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), enabled);
@@ -458,6 +459,7 @@ void LayoutTestController::clearBackForwardList()
 void LayoutTestController::makeWindowObject(JSContextRef context, JSObjectRef windowObject, JSValueRef* exception)
 {
     setProperty(context, windowObject, "layoutTestController", this, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, exception);
+    setProperty(context, windowObject, "testRunner", this, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, exception);
 }
 
 void LayoutTestController::showWebInspector()
@@ -479,13 +481,6 @@ void LayoutTestController::evaluateInWebInspector(long callID, JSStringRef scrip
 #if ENABLE(INSPECTOR)
     WKRetainPtr<WKStringRef> scriptWK = toWK(script);
     WKBundleInspectorEvaluateScriptForTest(WKBundlePageGetInspector(InjectedBundle::shared().page()->page()), callID, scriptWK.get());
-#endif // ENABLE(INSPECTOR)
-}
-
-void LayoutTestController::setJavaScriptProfilingEnabled(bool enabled)
-{
-#if ENABLE(INSPECTOR)
-    WKBundleInspectorSetJavaScriptProfilingEnabled(WKBundlePageGetInspector(InjectedBundle::shared().page()->page()), enabled);
 #endif // ENABLE(INSPECTOR)
 }
 
@@ -547,22 +542,28 @@ void LayoutTestController::setShouldStayOnPageAfterHandlingBeforeUnload(bool sho
     InjectedBundle::shared().postNewBeforeUnloadReturnValue(!shouldStayOnPage);
 }
 
+void LayoutTestController::setDefersLoading(bool shouldDeferLoading)
+{
+    WKBundlePageSetDefersLoading(InjectedBundle::shared().page()->page(), shouldDeferLoading);
+}
+
 void LayoutTestController::setPageVisibility(JSStringRef state)
 {
-    WKStringRef visibilityStateKey = toWK(state).get();
     WebCore::PageVisibilityState visibilityState = WebCore::PageVisibilityStateVisible;
 
-    if (WKStringIsEqualToUTF8CString(visibilityStateKey, "hidden"))
+    if (JSStringIsEqualToUTF8CString(state, "hidden"))
         visibilityState = WebCore::PageVisibilityStateHidden;
-    else if (WKStringIsEqualToUTF8CString(visibilityStateKey, "prerender"))
+    else if (JSStringIsEqualToUTF8CString(state, "prerender"))
         visibilityState = WebCore::PageVisibilityStatePrerender;
+    else if (JSStringIsEqualToUTF8CString(state, "preview"))
+        visibilityState = WebCore::PageVisibilityStatePreview;
 
-    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), visibilityState, /* isInitialState */ false);
+    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().page()->page(), visibilityState, /* isInitialState */ false);
 }
 
 void LayoutTestController::resetPageVisibility()
 {
-    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().pageGroup(), WebCore::PageVisibilityStateVisible, /* isInitialState */ true);
+    WKBundleSetPageVisibilityState(InjectedBundle::shared().bundle(), InjectedBundle::shared().page()->page(), WebCore::PageVisibilityStateVisible, /* isInitialState */ true);
 }
 
 void LayoutTestController::dumpConfigurationForViewport(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight)

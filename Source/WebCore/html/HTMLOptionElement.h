@@ -73,9 +73,9 @@ private:
     virtual void detach();
     virtual void setRenderStyle(PassRefPtr<RenderStyle>);
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
 
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
     virtual void accessKeyAction(bool);
 
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);

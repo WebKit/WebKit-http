@@ -57,6 +57,8 @@ class ChromiumLinuxPort(chromium.ChromiumPort):
         ],
     }
 
+    DEFAULT_BUILD_DIRECTORIES = ('sconsbuild', 'out')
+
     @classmethod
     def _determine_driver_path_statically(cls, host, options):
         config_object = config.Config(host.executive, host.filesystem)
@@ -68,18 +70,6 @@ class ChromiumLinuxPort(chromium.ChromiumPort):
         else:
             configuration = config_object.default_configuration()
         return cls._static_build_path(host.filesystem, build_directory, chromium_base, webkit_base, configuration, 'DumpRenderTree')
-
-    @staticmethod
-    def _static_build_path(filesystem, build_directory, chromium_base, webkit_base, *comps):
-        if build_directory:
-            return filesystem.join(build_directory, *comps)
-        if filesystem.exists(filesystem.join(chromium_base, 'sconsbuild')):
-            return filesystem.join(chromium_base, 'sconsbuild', *comps)
-        if filesystem.exists(filesystem.join(chromium_base, 'out')):
-            return filesystem.join(chromium_base, 'out', *comps)
-        if filesystem.exists(filesystem.join(webkit_base, 'sconsbuild')):
-            return filesystem.join(webkit_base, 'sconsbuild', *comps)
-        return filesystem.join(webkit_base, 'out', *comps)
 
     @staticmethod
     def _determine_architecture(filesystem, executive, driver_path):
@@ -137,9 +127,6 @@ class ChromiumLinuxPort(chromium.ChromiumPort):
     # PROTECTED METHODS
     #
 
-    def _build_path(self, *comps):
-        return self._static_build_path(self._filesystem, self.get_option('build_directory'), self.path_from_chromium_base(), self.path_from_webkit_base(), *comps)
-
     def _check_apache_install(self):
         result = self._check_file_exists(self._path_to_apache(), "apache2")
         result = self._check_file_exists(self._path_to_apache_config_file(), "apache2 config file") and result
@@ -192,7 +179,7 @@ class ChromiumLinuxPort(chromium.ChromiumPort):
     def _path_to_driver(self, configuration=None):
         if not configuration:
             configuration = self.get_option('configuration')
-        binary_name = 'DumpRenderTree'
+        binary_name = self.driver_name()
         return self._build_path(configuration, binary_name)
 
     def _path_to_helper(self):

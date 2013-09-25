@@ -27,17 +27,17 @@
 #include "config.h"
 #include "ShadowRoot.h"
 
+#include "ContentDistributor.h"
 #include "DOMSelection.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
+#include "ElementShadow.h"
 #include "HTMLContentElement.h"
-#include "HTMLContentSelector.h"
 #include "HTMLNames.h"
 #include "InsertionPoint.h"
 #include "NodeRareData.h"
-#include "ShadowTree.h"
 #include "SVGNames.h"
 #include "StyleResolver.h"
 #include "markup.h"
@@ -49,7 +49,8 @@ ShadowRoot::ShadowRoot(Document* document)
     , TreeScope(this)
     , m_prev(0)
     , m_next(0)
-    , m_applyAuthorSheets(false)
+    , m_applyAuthorStyles(false)
+    , m_resetStyleInheritance(false)
     , m_insertionPointAssignedTo(0)
 {
     ASSERT(document);
@@ -118,11 +119,11 @@ PassRefPtr<ShadowRoot> ShadowRoot::create(Element* element, ShadowRootCreationPu
     RefPtr<ShadowRoot> shadowRoot = adoptRef(new ShadowRoot(element->document()));
 
     ec = 0;
-    element->ensureShadowTree()->addShadowRoot(element, shadowRoot, ec);
+    element->ensureShadow()->addShadowRoot(element, shadowRoot, ec);
     if (ec)
         return 0;
     ASSERT(element == shadowRoot->host());
-    ASSERT(element->hasShadowRoot());
+    ASSERT(element->shadow());
     return shadowRoot.release();
 }
 
@@ -144,16 +145,8 @@ String ShadowRoot::innerHTML() const
 
 void ShadowRoot::setInnerHTML(const String& markup, ExceptionCode& ec)
 {
-    RefPtr<DocumentFragment> fragment = createFragmentFromSource(markup, host(), ec);
-    if (fragment)
+    if (RefPtr<DocumentFragment> fragment = createFragmentForInnerOuterHTML(markup, host(), AllowScriptingContent, ec))
         replaceChildrenWithFragment(this, fragment.release(), ec);
-}
-
-DOMSelection* ShadowRoot::selection()
-{
-    if (document() && document()->domWindow())
-        return document()->domWindow()->getSelection();
-    return 0;
 }
 
 bool ShadowRoot::childTypeAllowed(NodeType type) const
@@ -171,10 +164,10 @@ bool ShadowRoot::childTypeAllowed(NodeType type) const
     }
 }
 
-ShadowTree* ShadowRoot::tree() const
+ElementShadow* ShadowRoot::owner() const
 {
     if (host())
-        return host()->shadowTree();
+        return host()->shadow();
     return 0;
 }
 
@@ -188,22 +181,46 @@ bool ShadowRoot::hasInsertionPoint() const
     return false;
 }
 
-bool ShadowRoot::applyAuthorSheets() const
+bool ShadowRoot::applyAuthorStyles() const
 {
-    return m_applyAuthorSheets;
+    return m_applyAuthorStyles;
 }
 
-void ShadowRoot::setApplyAuthorSheets(bool value)
+void ShadowRoot::setApplyAuthorStyles(bool value)
 {
-    m_applyAuthorSheets = value;
+    if (m_applyAuthorStyles != value) {
+        m_applyAuthorStyles = value;
+        host()->setNeedsStyleRecalc();
+    }
+}
+
+bool ShadowRoot::resetStyleInheritance() const
+{
+    return m_resetStyleInheritance;
+}
+
+void ShadowRoot::setResetStyleInheritance(bool value)
+{
+    if (value != m_resetStyleInheritance) {
+        m_resetStyleInheritance = value;
+        if (attached() && owner())
+            owner()->recalcStyle(Force);
+    }
 }
 
 void ShadowRoot::attach()
 {
     StyleResolver* styleResolver = document()->styleResolver();
     styleResolver->pushParentShadowRoot(this);
-    DocumentFragment::attach();
+    attachChildrenIfNeeded();
+    attachAsNode();
     styleResolver->popParentShadowRoot(this);
+}
+
+void ShadowRoot::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
+{
+    ContainerNode::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
+    owner()->invalidateDistribution();
 }
 
 }

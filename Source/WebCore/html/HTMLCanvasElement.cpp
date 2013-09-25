@@ -59,7 +59,7 @@
 #endif
 
 #if PLATFORM(CHROMIUM)
-#include "PlatformSupport.h"
+#include <public/Platform.h>
 #endif
 
 namespace WebCore {
@@ -116,12 +116,11 @@ HTMLCanvasElement::~HTMLCanvasElement()
     m_context.clear(); // Ensure this goes away before the ImageBuffer.
 }
 
-void HTMLCanvasElement::parseAttribute(Attribute* attr)
+void HTMLCanvasElement::parseAttribute(const Attribute& attribute)
 {
-    const QualifiedName& attrName = attr->name();
-    if (attrName == widthAttr || attrName == heightAttr)
+    if (attribute.name() == widthAttr || attribute.name() == heightAttr)
         reset();
-    HTMLElement::parseAttribute(attr);
+    HTMLElement::parseAttribute(attribute);
 }
 
 RenderObject* HTMLCanvasElement::createRenderer(RenderArena* arena, RenderStyle* style)
@@ -486,7 +485,7 @@ bool HTMLCanvasElement::shouldAccelerate(const IntSize& size) const
         return false;
 
 #if PLATFORM(CHROMIUM)
-    if (!PlatformSupport::canAccelerate2dCanvas())
+    if (!WebKit::Platform::current()->canAccelerate2dCanvas())
         return false;
 #endif
 

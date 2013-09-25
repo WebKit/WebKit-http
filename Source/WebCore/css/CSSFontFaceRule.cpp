@@ -42,7 +42,7 @@ CSSFontFaceRule::~CSSFontFaceRule()
 CSSStyleDeclaration* CSSFontFaceRule::style() const
 {
     if (!m_propertiesCSSOMWrapper)
-        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_fontFaceRule->properties(), const_cast<CSSFontFaceRule*>(this));
+        m_propertiesCSSOMWrapper = StyleRuleCSSStyleDeclaration::create(m_fontFaceRule->mutableProperties(), const_cast<CSSFontFaceRule*>(this));
     return m_propertiesCSSOMWrapper.get();
 }
 
@@ -53,6 +53,14 @@ String CSSFontFaceRule::cssText() const
     result += m_fontFaceRule->properties()->asText();
     result += "}";
     return result;
+}
+
+void CSSFontFaceRule::reattach(StyleRuleFontFace* rule)
+{
+    ASSERT(rule);
+    m_fontFaceRule = rule;
+    if (m_propertiesCSSOMWrapper)
+        m_propertiesCSSOMWrapper->reattach(m_fontFaceRule->mutableProperties());
 }
 
 } // namespace WebCore

@@ -48,6 +48,8 @@
 #include "Page.h"
 #include "PlatformScreen.h"
 #include "ScheduledAction.h"
+#include "ScriptCallStack.h"
+#include "ScriptCallStackFactory.h"
 #include "ScriptSourceCode.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -77,10 +79,8 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
     DOMWindow* imp = V8DOMWindow::toNative(args.Holder());
     ScriptExecutionContext* scriptContext = static_cast<ScriptExecutionContext*>(imp->document());
 
-    if (!scriptContext) {
-        V8Proxy::setDOMException(INVALID_ACCESS_ERR, args.GetIsolate());
-        return v8::Undefined();
-    }
+    if (!scriptContext)
+        return V8Proxy::setDOMException(INVALID_ACCESS_ERR, args.GetIsolate());
 
     v8::Handle<v8::Value> function = args[0];
     WTF::String functionString;
@@ -129,7 +129,8 @@ v8::Handle<v8::Value> WindowSetTimeoutImpl(const v8::Arguments& args, bool singl
 
         id = DOMTimer::install(scriptContext, action.release(), timeout, singleShot);
     } else {
-        if (imp->document() && !imp->document()->contentSecurityPolicy()->allowEval())
+        RefPtr<ScriptCallStack> callStack(createScriptCallStackForInspector());
+        if (imp->document() && !imp->document()->contentSecurityPolicy()->allowEval(callStack.release()))
             return v8::Integer::New(0);
         id = DOMTimer::install(scriptContext, adoptPtr(new ScheduledAction(V8Proxy::context(imp->frame()), functionString)), timeout, singleShot);
     }
@@ -296,7 +297,7 @@ static bool isLegacyTargetOriginDesignation(v8::Handle<v8::Value> value)
 }
 
 
-static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args, bool extendedTransfer)
+static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args)
 {
     // None of these need to be RefPtr because args and context are guaranteed
     // to hold on to them.
@@ -335,7 +336,7 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
     RefPtr<SerializedScriptValue> message =
         SerializedScriptValue::create(args[0],
                                       &portArray,
-                                      extendedTransfer ? &arrayBufferArray : 0,
+                                      &arrayBufferArray,
                                       didThrow,
                                       args.GetIsolate());
     if (didThrow)
@@ -343,19 +344,19 @@ static v8::Handle<v8::Value> handlePostMessageCallback(const v8::Arguments& args
 
     ExceptionCode ec = 0;
     window->postMessage(message.release(), &portArray, targetOrigin, source, ec);
-    return throwError(ec);
+    return throwError(ec, args.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8DOMWindow::postMessageCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DOMWindow.postMessage()");
-    return handlePostMessageCallback(args, false);
+    return handlePostMessageCallback(args);
 }
 
 v8::Handle<v8::Value> V8DOMWindow::webkitPostMessageCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.DOMWindow.webkitPostMessage()");
-    return handlePostMessageCallback(args, true);
+    return handlePostMessageCallback(args);
 }
 
 // FIXME(fqian): returning string is cheating, and we should
@@ -473,17 +474,17 @@ v8::Handle<v8::Value> V8DOMWindow::indexedPropertyGetter(uint32_t index, const v
 
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
     if (!window)
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     Frame* frame = window->frame();
     if (!frame)
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     Frame* child = frame->tree()->scopedChild(index);
     if (child)
         return toV8(child->domWindow(), info.GetIsolate());
 
-    return notHandledByInterceptor();
+    return v8::Handle<v8::Value>();
 }
 
 
@@ -493,12 +494,12 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
 
     DOMWindow* window = V8DOMWindow::toNative(info.Holder());
     if (!window)
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     Frame* frame = window->frame();
     // window is detached from a frame.
     if (!frame)
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     // Search sub-frames.
     AtomicString propName = v8StringToAtomicWebCoreString(name);
@@ -508,7 +509,7 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
 
     // Search IDL functions defined in the prototype
     if (!info.Holder()->GetRealNamedProperty(name).IsEmpty())
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     // Search named items in the document.
     Document* doc = frame->document();
@@ -524,7 +525,7 @@ v8::Handle<v8::Value> V8DOMWindow::namedPropertyGetter(v8::Local<v8::String> nam
         }
     }
 
-    return notHandledByInterceptor();
+    return v8::Handle<v8::Value>();
 }
 
 
@@ -602,7 +603,7 @@ bool V8DOMWindow::indexedSecurityCheck(v8::Local<v8::Object> host, uint32_t inde
 v8::Handle<v8::Value> toV8(DOMWindow* window, v8::Isolate* isolate)
 {
     if (!window)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     // Initializes environment of a frame, and return the global object
     // of the frame.
     Frame* frame = window->frame();

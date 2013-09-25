@@ -3,10 +3,13 @@
 <style>
 .flexbox {
     position: relative;
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: grey;
     max-width: 600px;
-    -webkit-flex-line-pack: start;
+    -webkit-align-content: flex-start;
+}
+.flexbox > * {
+    -webkit-flex: none;
 }
 .title {
     margin-top: 1em;
@@ -64,8 +67,8 @@
 }
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">
@@ -701,7 +704,7 @@ function mainAxisDirection(writingMode, flexDirection)
 function addChild(flexbox, mainAxis, crossAxis, preferredSize, crossAxisLength, expectations)
 {
     var child = document.createElement('div');
-    child.setAttribute('style', '-webkit-flex: 1 ' + preferredSize + 'px;'
+    child.setAttribute('style', '-webkit-flex: 1 0 ' + preferredSize + 'px;'
         + crossAxis + ': ' + crossAxisLength + 'px;');
 
     child.setAttribute("data-expected-width", expectations[0]);

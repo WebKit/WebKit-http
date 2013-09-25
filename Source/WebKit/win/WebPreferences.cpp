@@ -273,6 +273,8 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitMediaPlaybackRequiresUserGesturePreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitMediaPlaybackAllowsInlinePreferenceKey), kCFBooleanTrue);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitRequestAnimationFrameEnabledPreferenceKey), kCFBooleanTrue);
+
     defaultSettings = defaults;
 }
 
@@ -1212,18 +1214,16 @@ HRESULT STDMETHODCALLTYPE WebPreferences::setEditableLinkBehavior(
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE WebPreferences::editingBehavior(
-    /* [out, retval] */ WebKitEditingBehavior* editingBehavior)
+HRESULT WebPreferences::unused5()
 {
-    *editingBehavior = (WebKitEditingBehavior) integerValueForKey(CFSTR(WebKitEditingBehaviorPreferenceKey));
-    return S_OK;
+    ASSERT_NOT_REACHED();
+    return E_FAIL;
 }
 
-HRESULT STDMETHODCALLTYPE WebPreferences::setEditingBehavior(
-    /* [in] */ WebKitEditingBehavior behavior)
+HRESULT WebPreferences::unused6()
 {
-    setIntegerValue(CFSTR(WebKitEditingBehaviorPreferenceKey), behavior);
-    return S_OK;
+    ASSERT_NOT_REACHED();
+    return E_FAIL;
 }
 
 HRESULT STDMETHODCALLTYPE WebPreferences::hyperlinkAuditingEnabled(
@@ -1736,3 +1736,16 @@ HRESULT WebPreferences::setShouldDisplayTextDescriptions(BOOL enabled)
     return E_NOTIMPL;
 #endif
 }
+
+HRESULT WebPreferences::setRequestAnimationFrameEnabled(BOOL enabled)
+{
+    setBoolValue(CFSTR(WebKitRequestAnimationFrameEnabledPreferenceKey), enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::requestAnimationFrameEnabled(BOOL* enabled)
+{
+    *enabled = boolValueForKey(CFSTR(WebKitRequestAnimationFrameEnabledPreferenceKey));
+    return S_OK;
+}
+

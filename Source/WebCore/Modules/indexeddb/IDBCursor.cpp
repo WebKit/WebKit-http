@@ -45,6 +45,31 @@ PassRefPtr<IDBCursor> IDBCursor::create(PassRefPtr<IDBCursorBackendInterface> ba
     return adoptRef(new IDBCursor(backend, request, source, transaction));
 }
 
+const AtomicString& IDBCursor::directionNext()
+{
+    DEFINE_STATIC_LOCAL(AtomicString, next, ("next"));
+    return next;
+}
+
+const AtomicString& IDBCursor::directionNextUnique()
+{
+    DEFINE_STATIC_LOCAL(AtomicString, nextunique, ("nextunique"));
+    return nextunique;
+}
+
+const AtomicString& IDBCursor::directionPrev()
+{
+    DEFINE_STATIC_LOCAL(AtomicString, prev, ("prev"));
+    return prev;
+}
+
+const AtomicString& IDBCursor::directionPrevUnique()
+{
+    DEFINE_STATIC_LOCAL(AtomicString, prevunique, ("prevunique"));
+    return prevunique;
+}
+
+
 IDBCursor::IDBCursor(PassRefPtr<IDBCursorBackendInterface> backend, IDBRequest* request, IDBAny* source, IDBTransaction* transaction)
     : m_backend(backend)
     , m_request(request)
@@ -63,10 +88,13 @@ IDBCursor::~IDBCursor()
 {
 }
 
-unsigned short IDBCursor::direction() const
+const String& IDBCursor::direction() const
 {
     IDB_TRACE("IDBCursor::direction");
-    return m_backend->direction();
+    ExceptionCode ec = 0;
+    const AtomicString& direction = directionToString(m_backend->direction(), ec);
+    ASSERT(!ec);
+    return direction;
 }
 
 PassRefPtr<IDBKey> IDBCursor::key() const
@@ -97,13 +125,13 @@ PassRefPtr<IDBRequest> IDBCursor::update(ScriptExecutionContext* context, PassRe
     IDB_TRACE("IDBCursor::update");
 
     if (!m_gotValue) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
     RefPtr<SerializedScriptValue> value = prpValue;
     if (value->blobURLs().size() > 0) {
         // FIXME: Add Blob/File/FileList support
-        ec = DATA_CLONE_ERR;
+        ec = IDBDatabaseException::IDB_DATA_CLONE_ERR;
         return 0;
     }
 
@@ -120,7 +148,7 @@ void IDBCursor::advance(unsigned long count, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursor::advance");
     if (!m_gotValue) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
     }
 
@@ -130,13 +158,13 @@ void IDBCursor::advance(unsigned long count, ExceptionCode& ec)
     }
 
     if (!count) {
-        // FIXME: spec says we should throw a JavaScript TypeError
-        ec = TYPE_MISMATCH_ERR;
+        ec = IDBDatabaseException::IDB_TYPE_ERR;
         return;
     }
 
     if (!m_request->resetReadyState(m_transaction.get())) {
-        ec = IDBDatabaseException::NOT_ALLOWED_ERR;
+        ASSERT_NOT_REACHED();
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
     }
     m_request->setCursor(this);
@@ -158,7 +186,7 @@ void IDBCursor::continueFunction(PassRefPtr<IDBKey> key, ExceptionCode& ec)
     }
 
     if (!m_gotValue) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
     }
 
@@ -168,15 +196,17 @@ void IDBCursor::continueFunction(PassRefPtr<IDBKey> key, ExceptionCode& ec)
         m_request->setCursor(this);
         m_gotValue = false;
         m_backend->continueFunction(key, m_request, ec);
-    } else
-        ec = IDBDatabaseException::NOT_ALLOWED_ERR;
+    } else {
+        ASSERT_NOT_REACHED();
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+    }
 }
 
 PassRefPtr<IDBRequest> IDBCursor::deleteFunction(ScriptExecutionContext* context, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursor::delete");
     if (!m_gotValue) {
-        ec = INVALID_STATE_ERR;
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
@@ -206,6 +236,42 @@ void IDBCursor::setValueReady()
     m_currentPrimaryKey = m_backend->primaryKey();
     m_currentValue = IDBAny::create(m_backend->value());
     m_gotValue = true;
+}
+
+unsigned short IDBCursor::stringToDirection(const String& directionString, ExceptionCode& ec)
+{
+    if (directionString == IDBCursor::directionNext())
+        return IDBCursor::NEXT;
+    if (directionString == IDBCursor::directionNextUnique())
+        return IDBCursor::NEXT_NO_DUPLICATE;
+    if (directionString == IDBCursor::directionPrev())
+        return IDBCursor::PREV;
+    if (directionString == IDBCursor::directionPrevUnique())
+        return IDBCursor::PREV_NO_DUPLICATE;
+
+    ec = IDBDatabaseException::IDB_TYPE_ERR;
+    return 0;
+}
+
+const AtomicString& IDBCursor::directionToString(unsigned short direction, ExceptionCode& ec)
+{
+    switch (direction) {
+    case IDBCursor::NEXT:
+        return IDBCursor::directionNext();
+
+    case IDBCursor::NEXT_NO_DUPLICATE:
+        return IDBCursor::directionNextUnique();
+
+    case IDBCursor::PREV:
+        return IDBCursor::directionPrev();
+
+    case IDBCursor::PREV_NO_DUPLICATE:
+        return IDBCursor::directionPrevUnique();
+
+    default:
+        ec = IDBDatabaseException::IDB_TYPE_ERR;
+        return IDBCursor::directionNext();
+    }
 }
 
 } // namespace WebCore

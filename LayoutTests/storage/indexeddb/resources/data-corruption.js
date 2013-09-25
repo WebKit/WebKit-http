@@ -27,7 +27,7 @@ function setVersionSuccess()
 {
     debug("setVersionSuccess():");
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = addData;
 
@@ -41,7 +41,7 @@ var testDate = new Date('February 24, 1955 12:00:08');
 function addData()
 {
     debug("addData():");
-    var transaction = evalAndLog("transaction = db.transaction(['storeName'], IDBTransaction.READ_WRITE)");
+    var transaction = evalAndLog("transaction = db.transaction(['storeName'], 'readwrite')");
     var request = evalAndLog("request = transaction.objectStore('storeName').add({x: testDate}, 'key')");
     request.onerror = unexpectedErrorCallback;
     transaction.oncomplete = getData;
@@ -50,7 +50,7 @@ function addData()
 function getData()
 {
     debug("addData():");
-    var transaction = evalAndLog("transaction = db.transaction(['storeName'], IDBTransaction.READ_ONLY)");
+    var transaction = evalAndLog("transaction = db.transaction(['storeName'], 'readonly')");
     var request = evalAndLog("request = transaction.objectStore('storeName').get('key')");
     request.onerror = unexpectedErrorCallback;
     request.onsuccess = doCheck;
@@ -58,7 +58,7 @@ function getData()
 
 function doCheck()
 {
-    shouldBeTrue("event.target.result.x.toString() == testDate.toString()");
+    shouldBe("event.target.result.x.toString()", "testDate.toString()");
     finishJSTest();
 }
 

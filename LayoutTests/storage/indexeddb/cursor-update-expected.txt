@@ -10,7 +10,7 @@ db = event.target.result
 db.setVersion('new version')
 setVersionSuccess():
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 objectStore = db.createObjectStore('basicStore')
 objectStore.add('myValue1', 'myKey1').onerror = unexpectedErrorCallback
@@ -29,7 +29,7 @@ objectStore.add({number: 2, id: 2}).onerror = unexpectedErrorCallback
 objectStore.add({number: 3, id: 3}).onerror = unexpectedErrorCallback
 objectStore.add({number: 4, id: 4}).onerror = unexpectedErrorCallback
 openBasicCursor()
-trans = db.transaction(['basicStore', 'autoIncrementStore', 'keyPathStore'], IDBTransaction.READ_WRITE)
+trans = db.transaction(['basicStore', 'autoIncrementStore', 'keyPathStore'], 'readwrite')
 trans.objectStore('basicStore')
 objectStore.openCursor(keyRange)
 basicUpdateCursor()
@@ -109,24 +109,28 @@ keyPathUpdateCursor()
 Expecting exception from event.target.result.update({id: 100 + counter, number: 100 + counter})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 event.target.result.update({id: counter, number: 100 + counter++})
 event.target.source.continue()
 keyPathUpdateCursor()
 Expecting exception from event.target.result.update({id: 100 + counter, number: 100 + counter})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 event.target.result.update({id: counter, number: 100 + counter++})
 event.target.source.continue()
 keyPathUpdateCursor()
 Expecting exception from event.target.result.update({id: 100 + counter, number: 100 + counter})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 event.target.result.update({id: counter, number: 100 + counter++})
 event.target.source.continue()
 keyPathUpdateCursor()
 Expecting exception from event.target.result.update({id: 100 + counter, number: 100 + counter})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 event.target.result.update({id: counter, number: 100 + counter++})
 event.target.source.continue()
 keyPathUpdateCursor()
@@ -158,23 +162,31 @@ trans.objectStore('keyPathStore').index('numberIndex').openKeyCursor(keyRange)
 keyCursor()
 PASS event.target.result.key is counter + 100
 PASS event.target.result.primaryKey is counter
-event.target.result.update({id: counter, number: counter + 200})
-PASS code is IDBDatabaseException.NOT_ALLOWED_ERR
+Expecting exception from event.target.result.update({id: counter, number: counter + 200})
+PASS Exception was thrown.
+PASS code is DOMException.INVALID_STATE_ERR
+PASS ename is 'InvalidStateError'
 keyCursor()
 PASS event.target.result.key is counter + 100
 PASS event.target.result.primaryKey is counter
-event.target.result.update({id: counter, number: counter + 200})
-PASS code is IDBDatabaseException.NOT_ALLOWED_ERR
+Expecting exception from event.target.result.update({id: counter, number: counter + 200})
+PASS Exception was thrown.
+PASS code is DOMException.INVALID_STATE_ERR
+PASS ename is 'InvalidStateError'
 keyCursor()
 PASS event.target.result.key is counter + 100
 PASS event.target.result.primaryKey is counter
-event.target.result.update({id: counter, number: counter + 200})
-PASS code is IDBDatabaseException.NOT_ALLOWED_ERR
+Expecting exception from event.target.result.update({id: counter, number: counter + 200})
+PASS Exception was thrown.
+PASS code is DOMException.INVALID_STATE_ERR
+PASS ename is 'InvalidStateError'
 keyCursor()
 PASS event.target.result.key is counter + 100
 PASS event.target.result.primaryKey is counter
-event.target.result.update({id: counter, number: counter + 200})
-PASS code is IDBDatabaseException.NOT_ALLOWED_ERR
+Expecting exception from event.target.result.update({id: counter, number: counter + 200})
+PASS Exception was thrown.
+PASS code is DOMException.INVALID_STATE_ERR
+PASS ename is 'InvalidStateError'
 keyCursor()
 PASS counter is 5
 transactionComplete()

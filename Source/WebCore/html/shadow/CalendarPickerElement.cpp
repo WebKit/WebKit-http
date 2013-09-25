@@ -68,6 +68,12 @@ PassRefPtr<CalendarPickerElement> CalendarPickerElement::create(Document* docume
     return adoptRef(new CalendarPickerElement(document));
 }
 
+CalendarPickerElement::~CalendarPickerElement()
+{
+    closePopup();
+    ASSERT(!m_popup);
+}
+
 RenderObject* CalendarPickerElement::createRenderer(RenderArena* arena, RenderStyle*)
 {
     return new (arena) RenderDetailsMarker(this);
@@ -202,7 +208,7 @@ void CalendarPickerElement::writeDocument(DocumentWriter& writer)
     String minString = date.toString();
     date.setMillisecondsSinceEpochForDate(input->maximum());
     String maxString = date.toString();
-    double step;
+    InputNumber step;
     String stepString = input->fastGetAttribute(stepAttr);
     if (stepString.isEmpty() || !input->getAllowedValueStep(&step))
         stepString = "1";

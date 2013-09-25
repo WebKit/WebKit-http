@@ -304,11 +304,14 @@ void CompositeEditCommand::insertLineBreak()
 
 bool CompositeEditCommand::isRemovableBlock(const Node* node)
 {
-    Node* parentNode = node->parentNode();
-    if ((parentNode && parentNode->firstChild() != parentNode->lastChild()) || !node->hasTagName(divTag))
+    if (!node->hasTagName(divTag))
         return false;
 
-    if (!node->isElementNode() || !toElement(node)->hasAttributes())
+    Node* parentNode = node->parentNode();
+    if (parentNode && parentNode->firstChild() != parentNode->lastChild())
+        return false;
+
+    if (!toElement(node)->hasAttributes())
         return true;
 
     return false;
@@ -401,6 +404,28 @@ void CompositeEditCommand::removeNodeAndPruneAncestors(PassRefPtr<Node> node)
     RefPtr<ContainerNode> parent = node->parentNode();
     removeNode(node);
     prune(parent.release());
+}
+
+void CompositeEditCommand::moveRemainingSiblingsToNewParent(Node* node, Node* pastLastNodeToMove, PassRefPtr<Element> prpNewParent)
+{
+    NodeVector nodesToRemove;
+    RefPtr<Element> newParent = prpNewParent;
+
+    for (; node && node != pastLastNodeToMove; node = node->nextSibling())
+        nodesToRemove.append(node);
+
+    for (unsigned i = 0; i < nodesToRemove.size(); i++) {
+        removeNode(nodesToRemove[i]);
+        appendNode(nodesToRemove[i], newParent);
+    }
+}
+
+void CompositeEditCommand::updatePositionForNodeRemovalPreservingChildren(Position& position, Node* node)
+{
+    int offset = (position.anchorType() == Position::PositionIsOffsetInAnchor) ? position.offsetInContainerNode() : 0;
+    updatePositionForNodeRemoval(position, node);
+    if (offset)
+        position.moveToOffset(offset);    
 }
 
 HTMLElement* CompositeEditCommand::replaceElementWithSpanPreservingChildrenAndAttributes(PassRefPtr<HTMLElement> node)
@@ -542,16 +567,16 @@ void CompositeEditCommand::insertNodeAtTabSpanPosition(PassRefPtr<Node> node, co
     insertNodeAt(node, positionOutsideTabSpan(pos));
 }
 
-void CompositeEditCommand::deleteSelection(bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements)
+void CompositeEditCommand::deleteSelection(bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements, bool sanitizeMarkup)
 {
     if (endingSelection().isRange())
-        applyCommandToComposite(DeleteSelectionCommand::create(document(), smartDelete, mergeBlocksAfterDelete, replace, expandForSpecialElements));
+        applyCommandToComposite(DeleteSelectionCommand::create(document(), smartDelete, mergeBlocksAfterDelete, replace, expandForSpecialElements, sanitizeMarkup));
 }
 
-void CompositeEditCommand::deleteSelection(const VisibleSelection &selection, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements)
+void CompositeEditCommand::deleteSelection(const VisibleSelection &selection, bool smartDelete, bool mergeBlocksAfterDelete, bool replace, bool expandForSpecialElements, bool sanitizeMarkup)
 {
     if (selection.isRange())
-        applyCommandToComposite(DeleteSelectionCommand::create(selection, smartDelete, mergeBlocksAfterDelete, replace, expandForSpecialElements));
+        applyCommandToComposite(DeleteSelectionCommand::create(selection, smartDelete, mergeBlocksAfterDelete, replace, expandForSpecialElements, sanitizeMarkup));
 }
 
 void CompositeEditCommand::removeCSSProperty(PassRefPtr<StyledElement> element, CSSPropertyID property)
@@ -918,8 +943,8 @@ PassRefPtr<Node> CompositeEditCommand::moveParagraphContentsToNewBlockIfNecessar
             // We can bail as we have a full block to work with.
             ASSERT(upstreamStart.deprecatedNode()->isDescendantOf(enclosingBlock(upstreamEnd.deprecatedNode())));
             return 0;
-        } else if (isEndOfDocument(visibleEnd)) {
-            // At the end of the document. We can bail here as well.
+        } else if (isEndOfEditableOrNonEditableContent(visibleEnd)) {
+            // At the end of the editable region. We can bail here as well.
             return 0;
         }
     }
@@ -956,17 +981,14 @@ void CompositeEditCommand::pushAnchorElementDown(Node* anchorNode)
 void CompositeEditCommand::cloneParagraphUnderNewElement(Position& start, Position& end, Node* passedOuterNode, Element* blockElement)
 {
     // First we clone the outerNode
-    RefPtr<Node> topNode;
     RefPtr<Node> lastNode;
     RefPtr<Node> outerNode = passedOuterNode;
 
-    if (outerNode == outerNode->rootEditableElement()) {
-        topNode = blockElement;
+    if (outerNode->isRootEditableElement()) {
         lastNode = blockElement;
     } else {
-        topNode = outerNode->cloneNode(isTableElement(outerNode.get()));
-        appendNode(topNode, blockElement);
-        lastNode = topNode;
+        lastNode = outerNode->cloneNode(isTableElement(outerNode.get()));
+        appendNode(lastNode, blockElement);
     }
 
     if (start.deprecatedNode() != outerNode && lastNode->isElementNode()) {
@@ -991,21 +1013,26 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(Position& start, Positi
     
     if (start.deprecatedNode() != end.deprecatedNode() && !start.deprecatedNode()->isDescendantOf(end.deprecatedNode())) {
         // If end is not a descendant of outerNode we need to
-        // find the first common ancestor and adjust the insertion
-        // point accordingly.
+        // find the first common ancestor to increase the scope
+        // of our nextSibling traversal.
         while (!end.deprecatedNode()->isDescendantOf(outerNode.get())) {
             outerNode = outerNode->parentNode();
-            topNode = topNode->parentNode();
         }
 
-        for (Node* n = start.deprecatedNode()->traverseNextSibling(outerNode.get()); n; n = n->traverseNextSibling(outerNode.get())) {
-            if (n->parentNode() != start.deprecatedNode()->parentNode())
-                lastNode = topNode->lastChild();
+        Node* startNode = start.deprecatedNode();
+        for (Node* node = startNode->traverseNextSibling(outerNode.get()); node; node = node->traverseNextSibling(outerNode.get())) {
+            // Move lastNode up in the tree as much as node was moved up in the
+            // tree by traverseNextSibling, so that the relative depth between
+            // node and the original start node is maintained in the clone.
+            while (startNode->parentNode() != node->parentNode()) {
+                startNode = startNode->parentNode();
+                lastNode = lastNode->parentNode();
+            }
 
-            RefPtr<Node> clonedNode = n->cloneNode(true);
+            RefPtr<Node> clonedNode = node->cloneNode(true);
             insertNodeAfter(clonedNode, lastNode);
             lastNode = clonedNode.release();
-            if (n == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(n))
+            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node))
                 break;
         }
     }
@@ -1233,14 +1260,14 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
 // FIXME: Send an appropriate shouldDeleteRange call.
 bool CompositeEditCommand::breakOutOfEmptyListItem()
 {
-    Node* emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
+    RefPtr<Node> emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
     if (!emptyListItem)
         return false;
 
     RefPtr<EditingStyle> style = EditingStyle::create(endingSelection().start());
     style->mergeTypingStyle(document());
 
-    ContainerNode* listNode = emptyListItem->parentNode();
+    RefPtr<ContainerNode> listNode = emptyListItem->parentNode();
     // FIXME: Can't we do something better when the immediate parent wasn't a list node?
     if (!listNode
         || (!listNode->hasTagName(ulTag) && !listNode->hasTagName(olTag))
@@ -1251,7 +1278,7 @@ bool CompositeEditCommand::breakOutOfEmptyListItem()
     RefPtr<Element> newBlock = 0;
     if (ContainerNode* blockEnclosingList = listNode->parentNode()) {
         if (blockEnclosingList->hasTagName(liTag)) { // listNode is inside another list item
-            if (visiblePositionAfterNode(blockEnclosingList) == visiblePositionAfterNode(listNode)) {
+            if (visiblePositionAfterNode(blockEnclosingList) == visiblePositionAfterNode(listNode.get())) {
                 // If listNode appears at the end of the outer list item, then move listNode outside of this list item
                 // e.g. <ul><li>hello <ul><li><br></li></ul> </li></ul> should become <ul><li>hello</li> <ul><li><br></li></ul> </ul> after this section
                 // If listNode does NOT appear at the end, then we should consider it as a regular paragraph.
@@ -1267,12 +1294,12 @@ bool CompositeEditCommand::breakOutOfEmptyListItem()
     if (!newBlock)
         newBlock = createDefaultParagraphElement(document());
 
-    Node* previousListNode = emptyListItem->isElementNode() ? toElement(emptyListItem)->previousElementSibling(): emptyListItem->previousSibling();
-    Node* nextListNode = emptyListItem->isElementNode() ? toElement(emptyListItem)->nextElementSibling(): emptyListItem->nextSibling();
-    if (isListItem(nextListNode) || isListElement(nextListNode)) {
+    RefPtr<Node> previousListNode = emptyListItem->isElementNode() ? toElement(emptyListItem.get())->previousElementSibling(): emptyListItem->previousSibling();
+    RefPtr<Node> nextListNode = emptyListItem->isElementNode() ? toElement(emptyListItem.get())->nextElementSibling(): emptyListItem->nextSibling();
+    if (isListItem(nextListNode.get()) || isListElement(nextListNode.get())) {
         // If emptyListItem follows another list item or nested list, split the list node.
-        if (isListItem(previousListNode) || isListElement(previousListNode))
-            splitElement(static_cast<Element*>(listNode), emptyListItem);
+        if (isListItem(previousListNode.get()) || isListElement(previousListNode.get()))
+            splitElement(static_cast<Element*>(listNode.get()), emptyListItem);
 
         // If emptyListItem is followed by other list item or nested list, then insert newBlock before the list node.
         // Because we have splitted the element, emptyListItem is the first element in the list node.
@@ -1283,7 +1310,7 @@ bool CompositeEditCommand::breakOutOfEmptyListItem()
         // When emptyListItem does not follow any list item or nested list, insert newBlock after the enclosing list node.
         // Remove the enclosing node if emptyListItem is the only child; otherwise just remove emptyListItem.
         insertNodeAfter(newBlock, listNode);
-        removeNode(isListItem(previousListNode) || isListElement(previousListNode) ? emptyListItem : listNode);
+        removeNode(isListItem(previousListNode.get()) || isListElement(previousListNode.get()) ? emptyListItem.get() : listNode.get());
     }
 
     appendBlockPlaceholder(newBlock);

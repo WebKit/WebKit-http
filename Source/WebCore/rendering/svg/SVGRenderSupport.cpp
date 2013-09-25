@@ -28,6 +28,7 @@
 #include "SVGRenderSupport.h"
 
 #include "NodeRenderStyle.h"
+#include "RenderGeometryMap.h"
 #include "RenderLayer.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceClipper.h"
@@ -82,7 +83,24 @@ void SVGRenderSupport::mapLocalToContainer(const RenderObject* object, RenderBox
     if (parent->isSVGRoot())
         transformState.applyTransform(toRenderSVGRoot(parent)->localToBorderBoxTransform());
     
-    parent->mapLocalToContainer(repaintContainer, false, true, transformState, wasFixed);
+    parent->mapLocalToContainer(repaintContainer, false, true, transformState, RenderObject::DoNotApplyContainerFlip, wasFixed);
+}
+
+const RenderObject* SVGRenderSupport::pushMappingToContainer(const RenderObject* object, const RenderBoxModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap)
+{
+    ASSERT_UNUSED(ancestorToStopAt, ancestorToStopAt != object);
+
+    RenderObject* parent = object->parent();
+
+    // At the SVG/HTML boundary (aka RenderSVGRoot), we apply the localToBorderBoxTransform 
+    // to map an element from SVG viewport coordinates to CSS box coordinates.
+    // RenderSVGRoot's mapLocalToContainer method expects CSS box coordinates.
+    if (parent->isSVGRoot())
+        geometryMap.push(object, TransformationMatrix(toRenderSVGRoot(parent)->localToBorderBoxTransform()));
+    else
+        geometryMap.push(object, LayoutSize());
+
+    return parent;
 }
 
 // Update a bounding box taking into account the validity of the other bounding box.
@@ -197,8 +215,10 @@ void SVGRenderSupport::layoutChildren(RenderObject* start, bool selfNeedsLayout)
                     // When the layout size changed and when using relative values tell the RenderSVGShape to update its shape object
                     if (child->isSVGShape())
                         toRenderSVGShape(child)->setNeedsShapeUpdate();
-                    else if (child->isSVGText())
+                    else if (child->isSVGText()) {
+                        toRenderSVGText(child)->setNeedsTextMetricsUpdate();
                         toRenderSVGText(child)->setNeedsPositioningValuesUpdate();
+                    }
 
                     needsLayout = true;
                 }

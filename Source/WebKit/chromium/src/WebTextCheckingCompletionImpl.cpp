@@ -31,6 +31,7 @@
 #include "config.h"
 #include "WebTextCheckingCompletionImpl.h"
 
+#include "EditorClientImpl.h"
 #include "SpellChecker.h"
 #include "TextCheckerClient.h"
 #include "WebTextCheckingResult.h"
@@ -51,13 +52,13 @@ static Vector<TextCheckingResult> toCoreResults(const WebVector<WebTextCheckingR
 
 void WebTextCheckingCompletionImpl::didFinishCheckingText(const WebVector<WebTextCheckingResult>& results)
 {
-    m_spellChecker->didCheckSucceeded(m_identifier, toCoreResults(results));
+    m_request->didSucceed(toCoreResults(results));
     delete this;
 }
 
 void WebTextCheckingCompletionImpl::didCancelCheckingText()
 {
-    m_spellChecker->didCheckCanceled(m_identifier);
+    m_request->didCancel();
     delete this;
 }
 

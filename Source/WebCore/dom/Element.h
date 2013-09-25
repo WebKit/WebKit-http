@@ -42,7 +42,7 @@ class DOMTokenList;
 class ElementRareData;
 class IntSize;
 class ShadowRoot;
-class ShadowTree;
+class ElementShadow;
 class WebKitAnimationList;
 
 enum SpellcheckAttributeState {
@@ -146,7 +146,7 @@ public:
     const AtomicString& getAttributeNS(const String& namespaceURI, const String& localName) const;
 
     void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
-    void setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode&, FragmentScriptingPermission = FragmentScriptingAllowed);
+    void setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode&, FragmentScriptingPermission = AllowScriptingContent);
 
     bool isIdAttributeName(const QualifiedName&) const;
     const AtomicString& getIdAttribute() const;
@@ -241,7 +241,7 @@ public:
     NamedNodeMap* attributes() const;
 
     // This method is called whenever an attribute is added, changed or removed.
-    virtual void attributeChanged(Attribute*);
+    virtual void attributeChanged(const Attribute&);
 
     // Only called by the parser immediately after element construction.
     void parserSetAttributes(const Vector<Attribute>&, FragmentScriptingPermission);
@@ -251,19 +251,23 @@ public:
     ElementAttributeData* updatedAttributeData() const;
     ElementAttributeData* ensureUpdatedAttributeData() const;
 
-    void setAttributesFromElement(const Element&);
+    // Clones attributes only.
+    void cloneAttributesFromElement(const Element&);
+
+    // Clones all attribute-derived data, including subclass specifics (through copyNonAttributeProperties.)
+    void cloneDataFromElement(const Element&);
+
     bool hasEquivalentAttributes(const Element* other) const;
 
-    virtual void copyNonAttributeProperties(const Element* source);
+    virtual void copyNonAttributePropertiesFromElement(const Element&) { }
 
     virtual void attach();
     virtual void detach();
     virtual RenderObject* createRenderer(RenderArena*, RenderStyle*);
     void recalcStyle(StyleChange = NoChange);
 
-    bool hasShadowRoot() const;
-    ShadowTree* shadowTree() const;
-    ShadowTree* ensureShadowTree();
+    ElementShadow* shadow() const;
+    ElementShadow* ensureShadow();
 
     // FIXME: Remove Element::ensureShadowRoot
     // https://bugs.webkit.org/show_bug.cgi?id=77608
@@ -281,7 +285,7 @@ public:
 
     virtual void accessKeyAction(bool /*sendToAnyEvent*/) { }
 
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual bool isURLAttribute(const Attribute&) const { return false; }
 
     KURL getURLAttribute(const QualifiedName&) const;
     KURL getNonEmptyURLAttribute(const QualifiedName&) const;
@@ -299,12 +303,13 @@ public:
     virtual String title() const;
 
     void updateId(const AtomicString& oldId, const AtomicString& newId);
+    void updateId(TreeScope*, const AtomicString& oldId, const AtomicString& newId);
     void updateName(const AtomicString& oldName, const AtomicString& newName);
 
     void willModifyAttribute(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue);
     void willRemoveAttribute(const QualifiedName&, const AtomicString& value);
-    void didAddAttribute(Attribute*);
-    void didModifyAttribute(Attribute*);
+    void didAddAttribute(const Attribute&);
+    void didModifyAttribute(const Attribute&);
     void didRemoveAttribute(const QualifiedName&);
 
     LayoutSize minimumSizeForResizing() const;
@@ -420,18 +425,16 @@ protected:
     {
     }
 
-    virtual void willRemove();
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual void removedFrom(Node*) OVERRIDE;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
-    virtual bool willRecalcStyle(StyleChange) { return true; }
-    virtual void didRecalcStyle(StyleChange) { }
+
+    virtual bool willRecalcStyle(StyleChange);
+    virtual void didRecalcStyle(StyleChange);
     virtual PassRefPtr<RenderStyle> customStyleForRenderer();
 
     virtual bool shouldRegisterAsNamedItem() const { return false; }
     virtual bool shouldRegisterAsExtraNamedItem() const { return false; }
-
-    void idAttributeChanged(Attribute*);
 
     HTMLCollection* ensureCachedHTMLCollection(CollectionType);
 
@@ -565,12 +568,6 @@ inline ElementAttributeData* Element::ensureUpdatedAttributeData() const
     return ensureAttributeData();
 }
 
-inline void Element::setAttributesFromElement(const Element& other)
-{
-    if (ElementAttributeData* attributeData = other.updatedAttributeData())
-        ensureUpdatedAttributeData()->setAttributes(*attributeData, this);
-}
-
 inline void Element::updateName(const AtomicString& oldName, const AtomicString& newName)
 {
     if (!inDocument())
@@ -591,7 +588,14 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
     if (oldId == newId)
         return;
 
-    TreeScope* scope = treeScope();
+    updateId(treeScope(), oldId, newId);
+}
+
+inline void Element::updateId(TreeScope* scope, const AtomicString& oldId, const AtomicString& newId)
+{
+    ASSERT(inDocument());
+    ASSERT(oldId != newId);
+
     if (!oldId.isEmpty())
         scope->removeElementById(oldId, this);
     if (!newId.isEmpty())
@@ -715,6 +719,11 @@ inline bool Node::hasID() const
 inline bool Node::hasClass() const
 {
     return isElementNode() && toElement(this)->hasClass();
+}
+
+inline bool isShadowHost(const Node* node)
+{
+    return node && node->isElementNode() && toElement(node)->shadow();
 }
 
 } // namespace

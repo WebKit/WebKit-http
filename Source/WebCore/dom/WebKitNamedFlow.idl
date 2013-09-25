@@ -31,7 +31,8 @@ module core {
     interface [
         JSGenerateToJSObject
     ] WebKitNamedFlow {
-        readonly attribute boolean overflow;
+        readonly attribute DOMString name;
+        readonly attribute boolean overset;
         NodeList getRegionsByContentNode(in Node contentNode);
         readonly attribute NodeList contentNodes;
     };

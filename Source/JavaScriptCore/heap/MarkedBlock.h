@@ -25,6 +25,7 @@
 #include "CardSet.h"
 #include "HeapBlock.h"
 
+#include "WeakSet.h"
 #include <wtf/Bitmap.h>
 #include <wtf/DataLog.h>
 #include <wtf/DoublyLinkedList.h>
@@ -100,20 +101,37 @@ namespace JSC {
             void returnValue() { }
         };
 
-        static MarkedBlock* create(Heap*, size_t cellSize, bool cellsNeedDestruction);
-        static MarkedBlock* recycle(MarkedBlock*, Heap*, size_t cellSize, bool cellsNeedDestruction);
-        static void destroy(MarkedBlock*);
+        class CountFunctor {
+        public:
+            typedef size_t ReturnType;
+
+            CountFunctor() : m_count(0) { }
+            void count(size_t count) { m_count += count; }
+            ReturnType returnValue() { return m_count; }
+
+        private:
+            ReturnType m_count;
+        };
+
+        static MarkedBlock* create(const PageAllocationAligned&, Heap*, size_t cellSize, bool cellsNeedDestruction);
+        static PageAllocationAligned destroy(MarkedBlock*);
 
         static bool isAtomAligned(const void*);
         static MarkedBlock* blockFor(const void*);
         static size_t firstAtom();
         
-        Heap* heap() const;
-        
-        void* allocate();
+        void lastChanceToFinalize();
 
+        Heap* heap() const;
+        WeakSet& weakSet();
+        
         enum SweepMode { SweepOnly, SweepToFreeList };
         FreeList sweep(SweepMode = SweepOnly);
+
+        void shrink();
+
+        void visitWeakSet(HeapRootVisitor&);
+        void reapWeakSet();
 
         // While allocating from a free list, MarkedBlock temporarily has bogus
         // cell liveness data. To restore accurate cell liveness data, call one
@@ -123,7 +141,7 @@ namespace JSC {
 
         void clearMarks();
         size_t markCount();
-        bool markCountIsZero(); // Faster than markCount().
+        bool isEmpty();
 
         size_t cellSize();
         bool cellsNeedDestruction();
@@ -137,6 +155,8 @@ namespace JSC {
         bool isLiveCell(const void*);
         void setMarked(const void*);
         
+        bool needsSweeping();
+
 #if ENABLE(GGC)
         void setDirtyObject(const void* atom)
         {
@@ -175,7 +195,7 @@ namespace JSC {
 
         typedef char Atom[atomSize];
 
-        MarkedBlock(PageAllocationAligned&, Heap*, size_t cellSize, bool cellsNeedDestruction);
+        MarkedBlock(const PageAllocationAligned&, Heap*, size_t cellSize, bool cellsNeedDestruction);
         Atom* atoms();
         size_t atomNumber(const void*);
         void callDestructor(JSCell*);
@@ -194,7 +214,7 @@ namespace JSC {
 #endif
         bool m_cellsNeedDestruction;
         BlockState m_state;
-        Heap* m_heap;
+        WeakSet m_weakSet;
     };
 
     inline MarkedBlock::FreeList::FreeList()
@@ -229,9 +249,37 @@ namespace JSC {
         return reinterpret_cast<MarkedBlock*>(reinterpret_cast<Bits>(p) & blockMask);
     }
 
+    inline void MarkedBlock::lastChanceToFinalize()
+    {
+        m_weakSet.lastChanceToFinalize();
+
+        clearMarks();
+        sweep();
+    }
+
     inline Heap* MarkedBlock::heap() const
     {
-        return m_heap;
+        return m_weakSet.heap();
+    }
+
+    inline WeakSet& MarkedBlock::weakSet()
+    {
+        return m_weakSet;
+    }
+
+    inline void MarkedBlock::shrink()
+    {
+        m_weakSet.shrink();
+    }
+
+    inline void MarkedBlock::visitWeakSet(HeapRootVisitor& heapRootVisitor)
+    {
+        m_weakSet.visit(heapRootVisitor);
+    }
+
+    inline void MarkedBlock::reapWeakSet()
+    {
+        m_weakSet.reap();
     }
 
     inline void MarkedBlock::didConsumeFreeList()
@@ -259,9 +307,9 @@ namespace JSC {
         return m_marks.count();
     }
 
-    inline bool MarkedBlock::markCountIsZero()
+    inline bool MarkedBlock::isEmpty()
     {
-        return m_marks.isEmpty();
+        return m_marks.isEmpty() && m_weakSet.isEmpty();
     }
 
     inline size_t MarkedBlock::cellSize()
@@ -358,6 +406,11 @@ namespace JSC {
         }
     }
 
+    inline bool MarkedBlock::needsSweeping()
+    {
+        return m_state == Marked;
+    }
+
 #if ENABLE(GGC)
 template <int _cellSize> void MarkedBlock::gatherDirtyCellsWithSize(DirtyCellVector& dirtyCells)
 {
@@ -398,7 +451,7 @@ void MarkedBlock::gatherDirtyCells(DirtyCellVector& dirtyCells)
     // blocks twice during GC.
     m_state = Marked;
     
-    if (markCountIsZero())
+    if (isEmpty())
         return;
     
     size_t cellSize = this->cellSize();

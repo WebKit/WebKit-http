@@ -43,24 +43,28 @@ public:
 protected:
     SVGAnimateElement(const QualifiedName&, Document*);
 
-    virtual void resetToBaseValue();
+    virtual void resetAnimatedType();
+    virtual void clearAnimatedType(SVGElement* targetElement);
+    virtual bool calculateToAtEndOfDurationValue(const String& toAtEndOfDurationString);
     virtual bool calculateFromAndToValues(const String& fromString, const String& toString);
     virtual bool calculateFromAndByValues(const String& fromString, const String& byString);
-    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, const String& toAtEndOfDurationString, SVGSMILElement* resultElement);
+    virtual void calculateAnimatedValue(float percentage, unsigned repeatCount, SVGSMILElement* resultElement);
     virtual void applyResultsToTarget();
     virtual float calculateDistance(const String& fromString, const String& toString);
     virtual bool isAdditive() const OVERRIDE;
 
     virtual void targetElementWillChange(SVGElement* currentTarget, SVGElement* oldTarget) OVERRIDE;
 
+    AnimatedPropertyType m_animatedPropertyType;
+
 private:
     SVGAnimatedTypeAnimator* ensureAnimator();
 
     virtual bool hasValidAttributeType();
-    AnimatedPropertyType m_animatedPropertyType;
 
     OwnPtr<SVGAnimatedType> m_fromType;
     OwnPtr<SVGAnimatedType> m_toType;
+    OwnPtr<SVGAnimatedType> m_toAtEndOfDurationType;
     OwnPtr<SVGAnimatedType> m_animatedType;
 
     SVGElementAnimatedPropertyList m_animatedProperties;

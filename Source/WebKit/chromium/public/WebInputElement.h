@@ -40,6 +40,7 @@ namespace WebCore { class HTMLInputElement; }
 namespace WebKit {
 
     class WebNodeCollection;
+    class WebTextFieldDecoratorClient;
 
     // Provides readonly access to some properties of a DOM input element node.
     class WebInputElement : public WebFormControlElement {
@@ -74,6 +75,12 @@ namespace WebKit {
         WEBKIT_EXPORT int size() const;
         WEBKIT_EXPORT void setValue(const WebString&, bool sendChangeEvent = false);
         WEBKIT_EXPORT WebString value() const;
+        // This returns the non-sanitized, exact value inside the text field.
+        WEBKIT_EXPORT WebString editingValue() const;
+        // Sets the value inside the text field without being sanitized.
+        // Can't be used if a renderer doesn't exist or on a non text field type.
+        // Caret will be moved to the end.
+        WEBKIT_EXPORT void setEditingValue(const WebString&);
         WEBKIT_EXPORT void setSuggestedValue(const WebString&);
         WEBKIT_EXPORT WebString suggestedValue() const;
         WEBKIT_EXPORT void setPlaceholder(const WebString&);
@@ -85,8 +92,12 @@ namespace WebKit {
         WEBKIT_EXPORT int selectionEnd() const;
         WEBKIT_EXPORT bool isValidValue(const WebString&) const;
         WEBKIT_EXPORT bool isChecked() const;
+        WEBKIT_EXPORT bool isMultiple() const;
 
         WEBKIT_EXPORT WebNodeCollection dataListOptions() const;
+
+        // Return the localized value for this input type.
+        WEBKIT_EXPORT WebString localizeValue(const WebString&) const;
 
         WEBKIT_EXPORT bool isSpeechInputEnabled() const;
         WEBKIT_EXPORT SpeechInputState getSpeechInputState() const;
@@ -95,6 +106,9 @@ namespace WebKit {
 
         // Exposes the default value of the maxLength attribute.
         WEBKIT_EXPORT static int defaultMaxLength();
+
+        // Return the decoration added by the specified decorator if one exists.
+        WEBKIT_EXPORT WebElement decorationElementFor(WebTextFieldDecoratorClient*);
 
 #if WEBKIT_IMPLEMENTATION
         WebInputElement(const WTF::PassRefPtr<WebCore::HTMLInputElement>&);

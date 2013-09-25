@@ -47,7 +47,7 @@ v8::Handle<v8::Array> V8Storage::namedPropertyEnumerator(const v8::AccessorInfo&
         String key = storage->key(i);
         ASSERT(!key.isNull());
         String val = storage->getItem(key);
-        properties->Set(v8::Integer::New(i), v8String(key));
+        properties->Set(v8::Integer::New(i), v8String(key, info.GetIsolate()));
     }
 
     return properties;
@@ -59,9 +59,9 @@ static v8::Handle<v8::Value> storageGetter(v8::Local<v8::String> v8Name, const v
     String name = toWebCoreString(v8Name);
 
     if (name != "length" && storage->contains(name))
-        return v8String(storage->getItem(name));
+        return v8String(storage->getItem(name), info.GetIsolate());
 
-    return notHandledByInterceptor();
+    return v8::Handle<v8::Value>();
 }
 
 v8::Handle<v8::Value> V8Storage::indexedPropertyGetter(uint32_t index, const v8::AccessorInfo& info)
@@ -75,7 +75,7 @@ v8::Handle<v8::Value> V8Storage::namedPropertyGetter(v8::Local<v8::String> name,
 {
     INC_STATS("DOM.Storage.NamedPropertyGetter");
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
     return storageGetter(name, info);
 }
 
@@ -103,12 +103,12 @@ static v8::Handle<v8::Value> storageSetter(v8::Local<v8::String> v8Name, v8::Loc
         return v8Value;
 
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(v8Name).IsEmpty())
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     ExceptionCode ec = 0;
     storage->setItem(name, value, ec);
     if (ec)
-        return throwError(ec);
+        return throwError(ec, info.GetIsolate());
 
     return v8Value;
 }
@@ -133,10 +133,10 @@ static v8::Handle<v8::Boolean> storageDeleter(v8::Local<v8::String> v8Name, cons
     
     if (storage->contains(name)) {
         storage->removeItem(name);
-        return v8::True();
+        return v8Boolean(true, info.GetIsolate());
     }
 
-    return deletionNotHandledByInterceptor();
+    return v8::Handle<v8::Boolean>();
 }
 
 v8::Handle<v8::Boolean> V8Storage::indexedPropertyDeleter(uint32_t index, const v8::AccessorInfo& info)

@@ -54,7 +54,7 @@ void Arguments::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 void Arguments::destroy(JSCell* cell)
 {
-    jsCast<Arguments*>(cell)->Arguments::~Arguments();
+    static_cast<Arguments*>(cell)->Arguments::~Arguments();
 }
 
 void Arguments::copyToArguments(ExecState* exec, CallFrame* callFrame, uint32_t length)
@@ -124,12 +124,12 @@ void Arguments::createStrictModeCalleeIfNecessary(ExecState* exec)
     methodTable()->defineOwnProperty(this, exec, exec->propertyNames().callee, descriptor, false);
 }
 
-bool Arguments::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifier& propertyName, PropertySlot& slot)
+bool Arguments::getOwnPropertySlot(JSCell* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     Arguments* thisObject = jsCast<Arguments*>(cell);
-    bool isArrayIndex;
-    unsigned i = propertyName.toArrayIndex(isArrayIndex);
-    if (isArrayIndex && i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+    unsigned i = propertyName.asIndex();
+    if (i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+        ASSERT(i < PropertyName::NotAnIndex);
         slot.setValue(thisObject->argument(i).get());
         return true;
     }
@@ -153,12 +153,12 @@ bool Arguments::getOwnPropertySlot(JSCell* cell, ExecState* exec, const Identifi
     return JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 }
 
-bool Arguments::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor)
+bool Arguments::getOwnPropertyDescriptor(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
 {
     Arguments* thisObject = jsCast<Arguments*>(object);
-    bool isArrayIndex;
-    unsigned i = propertyName.toArrayIndex(isArrayIndex);
-    if (isArrayIndex && i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+    unsigned i = propertyName.asIndex();
+    if (i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+        ASSERT(i < PropertyName::NotAnIndex);
         descriptor.setDescriptor(thisObject->argument(i).get(), None);
         return true;
     }
@@ -208,12 +208,12 @@ void Arguments::putByIndex(JSCell* cell, ExecState* exec, unsigned i, JSValue va
     JSObject::put(thisObject, exec, Identifier(exec, UString::number(i)), value, slot);
 }
 
-void Arguments::put(JSCell* cell, ExecState* exec, const Identifier& propertyName, JSValue value, PutPropertySlot& slot)
+void Arguments::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     Arguments* thisObject = jsCast<Arguments*>(cell);
-    bool isArrayIndex;
-    unsigned i = propertyName.toArrayIndex(isArrayIndex);
-    if (isArrayIndex && i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+    unsigned i = propertyName.asIndex();
+    if (i < thisObject->d->numArguments && (!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i])) {
+        ASSERT(i < PropertyName::NotAnIndex);
         thisObject->argument(i).set(exec->globalData(), thisObject, value);
         return;
     }
@@ -259,15 +259,15 @@ bool Arguments::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned i)
     return JSObject::deleteProperty(thisObject, exec, Identifier(exec, UString::number(i)));
 }
 
-bool Arguments::deleteProperty(JSCell* cell, ExecState* exec, const Identifier& propertyName) 
+bool Arguments::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName) 
 {
     if (exec->globalData().isInDefineOwnProperty())
         return Base::deleteProperty(cell, exec, propertyName);
 
     Arguments* thisObject = jsCast<Arguments*>(cell);
-    bool isArrayIndex;
-    unsigned i = propertyName.toArrayIndex(isArrayIndex);
-    if (isArrayIndex && i < thisObject->d->numArguments) {
+    unsigned i = propertyName.asIndex();
+    if (i < thisObject->d->numArguments) {
+        ASSERT(i < PropertyName::NotAnIndex);
         if (!Base::deleteProperty(cell, exec, propertyName))
             return false;
 
@@ -300,12 +300,12 @@ bool Arguments::deleteProperty(JSCell* cell, ExecState* exec, const Identifier& 
     return JSObject::deleteProperty(thisObject, exec, propertyName);
 }
 
-bool Arguments::defineOwnProperty(JSObject* object, ExecState* exec, const Identifier& propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
+bool Arguments::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor, bool shouldThrow)
 {
     Arguments* thisObject = jsCast<Arguments*>(object);
-    bool isArrayIndex;
-    unsigned i = propertyName.toArrayIndex(isArrayIndex);
-    if (isArrayIndex && i < thisObject->d->numArguments) {
+    unsigned i = propertyName.asIndex();
+    if (i < thisObject->d->numArguments) {
+        ASSERT(i < PropertyName::NotAnIndex);
         // If the property is not yet present on the object, and is not yet marked as deleted, then add it now.
         PropertySlot slot;
         if ((!thisObject->d->deletedArguments || !thisObject->d->deletedArguments[i]) && !JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot))
@@ -358,6 +358,9 @@ void Arguments::tearOff(CallFrame* callFrame)
     if (!d->numArguments)
         return;
 
+    // Must be called for the same call frame from which it was created.
+    ASSERT(bitwise_cast<WriteBarrier<Unknown>*>(callFrame) == d->registers);
+    
     d->registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[d->numArguments]);
     d->registers = d->registerArray.get() + CallFrame::offsetFor(d->numArguments + 1);
 
@@ -367,7 +370,28 @@ void Arguments::tearOff(CallFrame* callFrame)
         return;
     }
 
-    InlineCallFrame* inlineCallFrame = callFrame->inlineCallFrame();
+    tearOffForInlineCallFrame(
+        callFrame->globalData(), callFrame->registers(), callFrame->inlineCallFrame());
+}
+
+void Arguments::tearOff(CallFrame* callFrame, InlineCallFrame* inlineCallFrame)
+{
+    if (isTornOff())
+        return;
+    
+    if (!d->numArguments)
+        return;
+    
+    d->registerArray = adoptArrayPtr(new WriteBarrier<Unknown>[d->numArguments]);
+    d->registers = d->registerArray.get() + CallFrame::offsetFor(d->numArguments + 1);
+
+    tearOffForInlineCallFrame(
+        callFrame->globalData(), callFrame->registers() + inlineCallFrame->stackOffset,
+        inlineCallFrame);
+}
+
+void Arguments::tearOffForInlineCallFrame(JSGlobalData& globalData, Register* registers, InlineCallFrame* inlineCallFrame)
+{
     for (size_t i = 0; i < d->numArguments; ++i) {
         ValueRecovery& recovery = inlineCallFrame->arguments[i + 1];
         // In the future we'll support displaced recoveries (indicating that the
@@ -376,7 +400,7 @@ void Arguments::tearOff(CallFrame* callFrame)
         // it's much less likely that we'll support in-register recoveries since
         // this code does not (easily) have access to registers.
         JSValue value;
-        Register* location = &callFrame->registers()[CallFrame::argumentOffset(i)];
+        Register* location = &registers[CallFrame::argumentOffset(i)];
         switch (recovery.technique()) {
         case AlreadyInRegisterFile:
             value = location->jsValue();
@@ -404,7 +428,7 @@ void Arguments::tearOff(CallFrame* callFrame)
             ASSERT_NOT_REACHED();
             break;
         }
-        argument(i).set(callFrame->globalData(), this, value);
+        argument(i).set(globalData, this, value);
     }
 }
 

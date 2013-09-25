@@ -1,0 +1,723 @@
+// These are the layout test expectations for the EFL port(s) of WebKit.
+//
+// See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
+
+// We divide our test_expectations.txt into several categories:
+// 1. TESTS EXPECTED TO FAIL
+//    Test cases related to features that we don't expect to be activated for EFL since e.g.
+//    * the feature implementation in WebCore is not complete yet
+//    * the feature is not relevant for the EFL port
+//    * the feature is meant to solve a backwards compatibility issue on other platforms
+//    Test cases that don't apply for the EFL platform permanently.
+//    If in doubt, please discuss on webkit-efl mailing list whether a set of test cases
+//    should be moved here.
+
+// 2. CRASHES
+
+// 3. FLAKY TESTS
+
+// 4. FAILING TESTS
+//    * Interim failures that are moved here for further investigation as a result of daily
+//      gardening. They should be analysed quickly and either resolved or moved to 1).
+//    * Remaining failures that are moved here until further investigation after
+//      unskipping a directory or block of tests in the Skipped list. Mark cases as MISSING
+//      if you cannot yet generate new results since another feature is missing.
+//    * Tests that we expect to pass once the respective fix for DRT is available or
+//      a relevant compile time feature can be enabled for EFL.
+
+
+// Each line should have an associated bug. Please don't file new lines without one.
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// TESTS EXPECTED TO FAIL
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// These tests require DASHBOARD_SUPPORT but this feature is specific to Mac port.
+BUGWKEFL SKIP : fast/canvas/canvas-gradient-addStop-error.html = PASS
+BUGWKEFL SKIP : fast/canvas/fill-stroke-clip-reset-path.html = PASS
+BUGWKEFL SKIP : http/tests/xmlhttprequest/default-content-type-dashboard.html = PASS
+
+// Doesn't apply to platforms that don't enforce the CFNetwork-style 3rd party cookie policy
+BUGWK35824 SKIP : http/tests/cookies/third-party-cookie-relaxing.html = PASS
+
+// CSS Regions support not yet enabled, tracking in a separate EFL bug.
+BUGWK83897 SKIP : fast/regions = PASS
+
+// Exclusions implementation not complete yet.
+BUGWK83898 SKIP : fast/exclusions = PASS
+
+// CSS Regions & Exclusions implementation not complete yet.
+BUGWK83898 : fast/css/getComputedStyle/computed-style-without-renderer.html = TEXT
+
+// CSS Filters support not yet enabled (needs ENABLE_CSS_FILTERS).
+BUGWK85465 SKIP : css3/filters = TEXT
+BUGWK85465 SKIP : fast/css/getComputedStyle/computed-style.html = TEXT
+
+// CSS image-resolution is not yet enabled.
+BUGWK85262 SKIP : fast/css/image-resolution = PASS FAIL
+
+// This test assumes we cannot play RTSP, but we can.
+BUGWKEFL SKIP : media/unsupported-rtsp.html = TIMEOUT
+
+// Link prefetch is disabled by default
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/link-and-subresource-test-nonexistent.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/link-and-subresource-test.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch-beforeload.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch-detached.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch-onerror.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch-onload.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch-too-many-clients.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/prefetch.html = PASS
+BUGWKEFL SKIP : fast/dom/HTMLLinkElement/subresource.html = PASS
+BUGWKEFL SKIP : http/tests/misc/link-rel-prefetch-and-subresource.html = PASS
+BUGWKEFL SKIP : http/tests/misc/prefetch-purpose.html = PASS
+BUGWKEFL SKIP : loader/reload-subresource-when-type-changes.html = PASS
+
+// Perf tests are way too slow and some may fail due to timeout.
+WONTFIX : perf/adding-radio-buttons.html = TEXT PASS TIMEOUT
+WONTFIX : perf/array-binary-search.html = TEXT PASS TIMEOUT
+WONTFIX : perf/mouse-event.html = TEXT PASS TIMEOUT
+
+// Newly added test which fails on other bots too
+BUGWK85969 : http/tests/loading/post-in-iframe-with-back-navigation.html = TEXT
+
+// Missing drag'n'drop support.
+BUGWK86623 : editing/pasteboard/drag-and-drop-image-contenteditable.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-and-drop-inputimage-contenteditable.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-and-drop-objectimage-contenteditable.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-drop-to-data-url.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-image-in-about-blank-frame.html = TEXT
+BUGWK86623 : editing/pasteboard/files-during-page-drags.html = TEXT
+BUGWK86623 : editing/selection/drag-text-delay.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-drop-input-textarea.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-drop-list.html = TEXT
+BUGWK86623 : editing/pasteboard/drag-drop-url-text.html = TEXT
+BUGWK86623 : editing/pasteboard/drop-inputtext-acquires-style.html = TEXT
+BUGWK86623 : editing/pasteboard/drop-link.html = TEXT
+BUGWK86623 : editing/pasteboard/drop-text-events.html = TEXT
+BUGWK86623 : editing/pasteboard/get-data-text-plain-drop.html = TEXT
+BUGWK86623 : http/tests/local/fileapi/file-last-modified-after-delete.html = TEXT
+
+BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
+
+// Missing drag'n'drop, needs baselines
+BUGWK86623 : editing/pasteboard/drag-drop-dead-frame.html = MISSING
+BUGWK86623 : editing/pasteboard/drag-drop-modifies-page.html = MISSING
+BUGWK86623 : editing/pasteboard/drag-image-to-contenteditable-in-iframe.html = MISSING
+BUGWK86623 : editing/pasteboard/drop-text-without-selection.html = MISSING
+BUGWK86623 : editing/pasteboard/smart-drag-drop.html = MISSING
+BUGWK86623 : editing/pasteboard/subframe-dragndrop-1.html = MISSING
+
+// The EFL port has no support for webarchives.
+BUGWKEFL SKIP : webarchive = PASS
+BUGWKEFL SKIP : http/tests/webarchive = PASS
+BUGWKEFL SKIP : svg/webarchive = PASS
+BUGWKEFL SKIP : svg/custom/image-with-prefix-in-webarchive.svg = PASS
+
+// Feature not mature yet and disabled by default on WebCore
+BUGWK87088 : fast/js/names.html = TEXT
+
+// The EFL port uses different keyboard accelerators than Safari (via Chromium).
+BUGWKEFL SKIP : fast/events/option-tab.html = PASS
+
+// These tests are valid for ports where RenderTheme::shouldShowPlaceholderWhenFocused() returns true.
+BUGWKEFL : fast/forms/input-placeholder-paint-order.html = MISSING
+BUGWKEFL : fast/forms/textarea/textarea-placeholder-paint-order.html = MISSING
+
+// Implementing copy{En,De}codedHostName only to test them does not make sense
+BUGWK86080 SKIP : fast/encoding/idn-security.html = TEXT
+
+// UndoManager is not yet enabled.
+BUGWK87908 SKIP : editing/undomanager = PASS
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// CRASHES
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// FLAKY TESTS
+//////////////////////////////////////////////////////////////////////////////////////////
+
+BUGWK85603 : fast/forms/textarea-placeholder-set-attribute.html = TEXT IMAGE PASS
+BUGWK59801 : fast/workers/storage/use-same-database-in-page-and-workers.html = TEXT PASS
+BUGWK83878 : media/track/track-mode.html = TEXT PASS
+BUGWK85180 : media/audio-delete-while-step-button-clicked.html = TEXT PASS
+BUGWK86072 : media/sources-fallback-codecs.html = TEXT PASS
+BUGWK86073 : ietestcenter/css3/flexbox/flexbox-layout-001.htm = IMAGE PASS
+BUGWK86073 : ietestcenter/css3/flexbox/flexbox-layout-003.htm = IMAGE PASS
+BUGWK86074 : media/svg-as-image-with-media-blocked.html = CRASH PASS
+BUGWK86075 : fast/events/message-port-close.html = CRASH PASS
+BUGWK86078 : http/tests/misc/favicon-loads-with-icon-loading-override.html = TEXT PASS
+BUGWK86079 : http/tests/misc/link-rel-icon-beforeload.html = TEXT PASS
+BUGWK86081 : loader/navigation-while-deferring-loads.html = TEXT PASS
+BUGWK86082 : security/block-test.html = TEXT PASS
+BUGWK86084 : svg/dom/SVGScriptElement/script-onerror-bubbling.svg = TEXT PASS
+BUGWK60103 : fast/replaced/border-radius-clip.html = TEXT PASS
+
+//////////////////////////////////////////////////////////////////////////////////////////
+// FAILING TESTS
+//////////////////////////////////////////////////////////////////////////////////////////
+
+// Needs ENABLE_SHADOW_DOM
+BUGWK76439 DEBUG : fast/dom/shadow/content-element-api.html = TEXT
+BUGWK76439 DEBUG : fast/dom/shadow/content-element-outside-shadow.html = TEXT
+
+// Needs inner spin button to respect -webkit-inner-spin-button style
+BUGWK87619 : fast/forms/number/input-appearance-number-rtl.html = TEXT
+BUGWK87619 : fast/forms/number/input-appearance-spinbutton-disabled-readonly.html = TEXT
+BUGWK87619 : fast/forms/number/input-appearance-spinbutton-layer.html = TEXT
+BUGWK87619 : fast/forms/number/input-number-size.html = TEXT
+
+BUGWK83007 : fast/repaint/region-painting-invalidation.html = TEXT IMAGE IMAGE+TEXT MISSING
+
+// Needs to have PNG generated, which currently fails for this case.
+BUGWK83274 : fast/repaint/transform-rotate-and-remove.html = PASS
+
+// Not able to generate a meaningful expected result, since complex font rendering fails.
+BUGWK83275 : fast/text/international/text-spliced-font.html = TEXT IMAGE IMAGE+TEXT MISSING
+
+BUGWK83906 : ietestcenter/css3/grid/grid-column-001.htm = IMAGE
+BUGWK83907 : ietestcenter/css3/grid/grid-column-002.htm = IMAGE
+BUGWK83909 : ietestcenter/css3/grid/grid-column-003.htm = IMAGE
+BUGWK83912 : ietestcenter/css3/grid/grid-items-002.htm = IMAGE
+BUGWK83913 : ietestcenter/css3/grid/grid-items-003.htm = IMAGE
+
+// Font feature settings is not implemented.
+BUGWK84239 : css3/font-feature-settings-rendering.html = TEXT IMAGE IMAGE+TEXT
+
+// EventSender.beginDragWithFiles is not implemented
+BUGWK84333 : editing/pasteboard/data-transfer-items-drag-drop-entry.html = TEXT
+BUGWK84333 : editing/pasteboard/data-transfer-items-drag-drop-file.html = TEXT
+BUGWK84333 : editing/pasteboard/drag-files-to-editable-element.html = TEXT
+BUGWK84333 : editing/pasteboard/drop-file-svg.html = TEXT
+BUGWK84333 : editing/pasteboard/file-drag-to-editable.html = TEXT
+BUGWK84333 : editing/pasteboard/file-input-files-access.html = TEXT
+BUGWK84333 : fast/dom/Window/window-postmessage-clone-frames.html = TEXT
+BUGWK84333 : fast/dom/Window/window-postmessage-clone.html = TEXT
+BUGWK84333 : fast/events/drag-file-crash.html = TEXT
+BUGWK84333 : fast/events/drag-to-navigate.html = TEXT
+BUGWK84333 : fast/events/drop-handler-should-not-stop-navigate.html = TEXT
+BUGWK84333 : fast/events/drop-with-file-paths.html = TEXT
+BUGWK84333 : fast/events/dropzone-004.html = TEXT
+BUGWK84333 : fast/events/file-input-hidden-in-ondrop.html = TEXT
+BUGWK84333 : fast/events/input-element-display-none-in-dragleave-crash.html = TEXT
+BUGWK84333 : fast/events/prevent-drag-to-navigate.html = TEXT
+BUGWK84333 : fast/files/apply-blob-url-to-img.html = TEXT
+BUGWK84333 : fast/files/apply-blob-url-to-xhr.html = TEXT
+BUGWK84333 : fast/files/file-list-test.html = TEXT
+BUGWK84333 : fast/files/file-reader-abort.html = TEXT
+BUGWK84333 : fast/files/file-reader-directory-crash.html = TEXT
+BUGWK84333 : fast/files/file-reader-event-listener.html = TEXT
+BUGWK84333 : fast/files/null-origin-string.html = TEXT
+BUGWK84333 : fast/files/read-blob-async.html = TEXT
+BUGWK84333 : fast/files/read-file-async.html = TEXT
+BUGWK84333 : fast/files/workers/worker-apply-blob-url-to-xhr.html = TEXT
+BUGWK84333 : fast/files/workers/worker-read-blob-async.html = TEXT
+BUGWK84333 : fast/files/workers/worker-read-blob-sync.html = TEXT
+BUGWK84333 : fast/files/workers/worker-read-file-async.html = TEXT
+BUGWK84333 : fast/files/workers/worker-read-file-sync.html = TEXT
+BUGWK84333 : fast/forms/file/file-input-change-event.html = TEXT
+BUGWK84333 : fast/forms/file/file-input-reset.html = IMAGE
+BUGWK84333 : fast/forms/file/get-file-upload.html = TEXT
+BUGWK84333 : fast/forms/file/input-file-directory-upload.html = TEXT
+BUGWK84333 : fast/forms/file/input-file-re-render.html = MISSING
+BUGWK84333 : fast/forms/file/input-file-write-files.html = TEXT
+BUGWK84333 : fast/forms/file/recover-file-input-in-unposted-form.html = TEXT
+BUGWK84333 : http/tests/local/blob/send-hybrid-blob.html = TEXT
+BUGWK84333 : http/tests/local/fileapi/file-last-modified.html = TEXT
+BUGWK84333 : http/tests/local/fileapi/send-dragged-file.html = TEXT
+BUGWK84333 : http/tests/local/fileapi/send-sliced-dragged-file.html = TEXT
+BUGWK84333 : http/tests/local/formdata = TEXT
+BUGWK84333 : http/tests/security/clipboard/clipboard-file-access.html = TEXT
+
+// Missing execCommand('copy') and execCommand('paste').
+BUGWK84338 : editing/deleting/paste-with-transparent-background-color.html = TEXT
+BUGWK84338 : editing/execCommand/find-after-replace.html = TEXT MISSING
+BUGWK84338 : editing/execCommand/paste-1.html = TEXT MISSING
+BUGWK84338 : editing/execCommand/paste-2.html = TEXT MISSING
+BUGWK84338 : editing/input/paste-text-ending-with-interchange-newline.html = TEXT
+BUGWK84338 : editing/input/reveal-contenteditable-on-paste-vertically.html = TEXT
+BUGWK84338 : editing/inserting/insert-3786362-fix.html = TEXT
+BUGWK84338 : editing/inserting/insert-3907422-fix.html = TEXT
+BUGWK84338 : editing/inserting/insert-paste-bidi-control.html = TEXT
+BUGWK84338 : editing/pasteboard/19644-1.html = TEXT
+BUGWK84338 : editing/pasteboard/19644-2.html = TEXT
+BUGWK84338 : editing/pasteboard/4242293-1.html = TEXT
+BUGWK84338 : editing/pasteboard/4922709.html = TEXT
+BUGWK84338 : editing/pasteboard/5065605.html = TEXT
+BUGWK84338 : editing/pasteboard/5665299.html = TEXT
+BUGWK84338 : editing/pasteboard/5761530-1.html = TEXT
+BUGWK84338 : editing/pasteboard/5780697-2.html = TEXT
+BUGWK84338 : editing/pasteboard/avoid-copying-body-with-background.html = TEXT
+BUGWK84338 : editing/pasteboard/block-wrappers-necessary.html = TEXT
+BUGWK84338 : editing/pasteboard/clipboard-customData.html = TEXT
+BUGWK84338 : editing/pasteboard/contenteditable-pre-2.html = TEXT
+BUGWK84338 : editing/pasteboard/contenteditable-pre.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-backslash-with-euc.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-in-password-field.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-null-characters.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-paste-bidi.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-paste-float.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-resolves-urls.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-text-with-backgroundcolor.html = TEXT
+BUGWK84338 : editing/pasteboard/copy-two-pasteboard-types-both-work.html = TEXT
+BUGWK84338 : editing/pasteboard/data-transfer-items.html = TEXT
+BUGWK84338 : editing/pasteboard/display-block-on-spans.html = TEXT
+BUGWK84338 : editing/pasteboard/do-not-copy-unnecessary-styles-2.html = TEXT
+BUGWK84338 : editing/pasteboard/do-not-copy-unnecessary-styles.html = TEXT
+BUGWK84338 : editing/pasteboard/emacs-ctrl-k-with-move.html = TEXT
+BUGWK84338 : editing/pasteboard/get-data-text-plain-paste.html = TEXT
+BUGWK84338 : editing/pasteboard/onpaste-text-html-types.html = TEXT
+BUGWK84338 : editing/pasteboard/onpaste-text-html.html = TEXT
+BUGWK84338 : editing/pasteboard/page-zoom.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-4039777-fix.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-and-sanitize.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-before-tab-span.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-blockquote-and-paragraph-break.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-blockquote-before-blockquote.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-code-in-pre.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-double-nested-blockquote-before-blockquote.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-event-only-once.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-into-table-cell.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-list-001.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-list-002.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-list-003.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-list-004.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-noscript-svg.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-noscript-xhtml.xhtml = TEXT
+BUGWK84338 : editing/pasteboard/paste-noscript.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-placeholder-input.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-plaintext-user-select-none.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-pre-001.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-removing-iframe.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-sanitize-crash-1.html = TEXT
+BUGWK84338 : editing/pasteboard/paste-sanitize-crash-2.html = TEXT
+BUGWK84338 : editing/style/apply-through-end-of-document.html = TEXT
+BUGWK84338 : editing/style/non-inheritable-styles.html = TEXT
+BUGWK84338 : editing/style/smoosh-styles-003.html = TEXT
+BUGWK84338 : fast/events/clipboard-dataTransferItemList.html = TEXT
+BUGWK84338 : fast/forms/plaintext-mode-2.html = TEXT MISSING
+BUGWK84338 : fast/forms/textarea-paste-newline.html = TEXT
+
+// Missing showModalDialog implementation
+BUGWK84589 : fast/animation/request-animation-frame-during-modal.html = TEXT
+BUGWK84589 : fast/events/show-modal-dialog-onblur-onfocus.html = TEXT
+BUGWK84589 : fast/harness/show-modal-dialog.html = TEXT
+BUGWK84589 : fast/events/scroll-event-during-modal-dialog.html = TEXT
+BUGWK84589 : http/tests/security/cross-frame-access-call.html = TEXT
+BUGWK84589 : http/tests/security/cross-frame-access-get.html = TEXT
+
+// Issue with timing for suspend/resumeAnimations()?
+BUGWK84592 : animations/stop-animation-on-suspend.html = TEXT
+
+// Animation API not available.
+BUGWK84593 : animations/animation-api-1.html = TEXT
+
+// IndexedDB is not yet enabled.
+BUGWKEFL SKIP : storage/indexeddb = PASS
+BUGWKEFL SKIP : http/tests/inspector/indexeddb = PASS
+
+// Quota API is not supported.
+BUGWKEFL SKIP : storage/storageinfo-missing-arguments.html = PASS
+BUGWKEFL SKIP : storage/storageinfo-no-callbacks.html = PASS
+BUGWKEFL SKIP : storage/storageinfo-query-usage.html = PASS
+BUGWKEFL SKIP : storage/storageinfo-request-quota.html = PASS
+
+// EFL's LayoutTestController does not implement originsWithLocalStorage.
+BUGWKEFL SKIP : storage/domstorage/localstorage/storagetracker = PASS
+
+// JSC does not support setIsolatedWorldSecurityOrigin.
+BUGWK61540 : http/tests/security/isolatedWorld/cross-origin-xhr.html = TEXT
+
+//__worldID is undefined in isolated world
+BUGWKEFL SKIP : http/tests/security/isolatedWorld/didClearWindowObject.html = PASS
+
+// Needs custom policy delegate enhancement to log downloads - EFL port is missing api for getting header fields from HTTP responses. 
+BUGWK87974 : http/tests/download = TEXT IMAGE IMAGE+TEXT
+
+// Needs custom policy delegate enhancement to log DOM node info - EFL port is missing DOM node abstraction
+BUGWK87972 : fast/loader/stop-provisional-loads.html = TEXT
+BUGWK87972 : fast/loader/policy-delegate-action-hit-test-zoomed.html = TEXT
+BUGWK87972 : fast/encoding/mailto-always-utf-8.html = TEXT
+BUGWK87972 : fast/forms/mailto/formenctype-attribute-button-html.html = TEXT
+BUGWK87972 : fast/forms/mailto/formenctype-attribute-input-html.html = TEXT
+
+// EFL's LayoutTestController does not implement layerTreeAsText
+BUGWK82294 : compositing/animation/animation-compositing.html = TEXT
+BUGWK82294 : compositing/geometry/ancestor-overflow-change.html = TEXT
+BUGWK82294 : compositing/geometry/clip.html = TEXT
+BUGWK82294 : compositing/geometry/composited-in-columns.html = TEXT
+BUGWK82294 : compositing/geometry/flipped-writing-mode.html = TEXT
+BUGWK82294 : compositing/geometry/foreground-layer.html = TEXT
+BUGWK82294 : compositing/geometry/layer-due-to-layer-children-deep-switch.html = TEXT
+BUGWK82294 : compositing/geometry/layer-due-to-layer-children-switch.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-clipping-ancestor.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-fixed-positioned.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-opacity-transition.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-overflow-root.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-positioned-transition.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-positioned.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-transformed-overflow.html = TEXT
+BUGWK82294 : compositing/geometry/limit-layer-bounds-transformed.html = TEXT
+BUGWK82294 : compositing/geometry/preserve-3d-switching.html = TEXT
+BUGWK82294 : compositing/iframes/become-composited-nested-iframes.html = TEXT
+BUGWK82294 : compositing/iframes/become-overlapped-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/composited-parent-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/connect-compositing-iframe-delayed.html = TEXT
+BUGWK82294 : compositing/iframes/connect-compositing-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/connect-compositing-iframe2.html = TEXT
+BUGWK82294 : compositing/iframes/connect-compositing-iframe3.html = TEXT
+BUGWK82294 : compositing/iframes/enter-compositing-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/iframe-resize.html = TEXT
+BUGWK82294 : compositing/iframes/iframe-size-from-zero.html = TEXT
+BUGWK82294 : compositing/iframes/iframe-size-to-zero.html = TEXT
+BUGWK82294 : compositing/iframes/iframe-src-change.html = TEXT
+BUGWK82294 : compositing/iframes/invisible-nested-iframe-hide.html = TEXT
+BUGWK82294 : compositing/iframes/invisible-nested-iframe-show.html = TEXT
+BUGWK82294 : compositing/iframes/overlapped-iframe-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/overlapped-iframe.html = TEXT
+BUGWK82294 : compositing/iframes/overlapped-nested-iframes.html = TEXT
+BUGWK82294 : compositing/iframes/page-cache-layer-tree.html = TEXT
+BUGWK82294 : compositing/iframes/resizer.html = MISSING
+BUGWK82294 : compositing/iframes/scrolling-iframe.html = TEXT
+BUGWK82294 : compositing/images/clip-on-directly-composited-image.html = TEXT
+BUGWK82294 : compositing/layer-creation/fixed-position-and-transform.html = TEXT
+BUGWK82294 : compositing/layer-creation/fixed-position-under-transform.html = TEXT
+BUGWK82294 : compositing/layer-creation/overflow-scroll-overlap.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-child-layer.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-clipping.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-transformed-layer.html = TEXT
+BUGWK82294 : compositing/layer-creation/rotate3d-overlap.html = TEXT
+BUGWK82294 : compositing/layer-creation/scroll-partial-update.html = TEXT
+BUGWK82294 : compositing/layer-creation/spanOverlapsCanvas.html = TEXT
+BUGWK82294 : compositing/layer-creation/translatez-overlap.html = TEXT
+BUGWK82294 : compositing/overflow/clip-descendents.html = TEXT
+BUGWK82294 : compositing/overflow/content-gains-scrollbars.html = TEXT
+BUGWK82294 : compositing/overflow/content-loses-scrollbars.html = TEXT
+BUGWK82294 : compositing/overflow/overflow-scrollbar-layers.html = TEXT
+BUGWK82294 : compositing/overflow/resize-painting.html = TEXT
+BUGWK82294 : compositing/plugins/small-to-large-composited-plugin.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-absolute-overflow-scrolled.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-absolute-overflow.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-absolute.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-fixed-overflow-scrolled.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-fixed-overflow.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-fixed.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-absolute-overflow-scrolled.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-absolute-overflow.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-absolute.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-fixed-overflow-scrolled.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-fixed-overflow.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-fixed.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-iframe-relative.html = TEXT
+BUGWK82294 : compositing/rtl/rtl-relative.html = TEXT
+BUGWK82294 : compositing/tiling/crash-reparent-tiled-layer.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer-add-remove-child.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer-img.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer-resize.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer-with-layer-children-resize.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer-with-layer-children.html = TEXT
+BUGWK82294 : compositing/tiling/huge-layer.html = TEXT
+BUGWK82294 : compositing/video/video-poster.html = TEXT
+BUGWK82294 : compositing/backing/no-backing-for-clip-overlap.html = TEXT
+BUGWK82294 : compositing/backing/no-backing-for-clip.html = TEXT
+BUGWK82294 : compositing/backing/no-backing-for-perspective.html = TEXT
+BUGWK82294 : compositing/clip-child-by-non-stacking-ancestor.html = TEXT
+BUGWK82294 : compositing/geometry/bounds-clipped-composited-child.html = TEXT
+BUGWK82294 : compositing/geometry/fixed-position-composited-switch.html = TEXT
+BUGWK82294 : compositing/layer-creation/fixed-position-out-of-view.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-animation.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-transformed-and-clipped.html = TEXT
+BUGWK82294 : compositing/layer-creation/overlap-transforms.html = TEXT
+BUGWK82294 : compositing/layer-creation/stacking-context-overlap-nested.html = TEXT
+BUGWK82294 : compositing/layer-creation/stacking-context-overlap.html = TEXT
+BUGWK82294 : compositing/overflow-trumps-transform-style.html = TEXT
+BUGWK82294 : compositing/tiled-layers-hidpi.html = TEXT
+BUGWK82294 : compositing/visibility/layer-visible-content.html = TEXT
+BUGWK82294 : compositing/visibility/visibility-image-layers-dynamic.html = TEXT
+BUGWK82294 : compositing/layer-creation/no-compositing-for-preserve-3d.html = TEXT
+
+// EFL's LayoutTestController does not implement displayInvalidatedRegion
+BUGWK86727 : compositing/plugins/invalidate_rect.html = TEXT
+
+// EFL's LayoutTestController does not implement display
+BUGWK86730 : compositing/layer-creation/fixed-position-scroll.html = MISSING
+
+// EFL does not support WebGL
+BUGWK77219 : compositing/visibility/visibility-simple-webgl-layer.html = TEXT
+BUGWK77219 : fast/dom/constructed-objects-prototypes.html = TEXT
+
+BUGWK84759 : ietestcenter/css3/multicolumn/column-containing-block-001.htm = IMAGE
+BUGWK84760 : ietestcenter/css3/multicolumn/column-containing-block-002.htm = IMAGE
+BUGWK84761 : ietestcenter/css3/multicolumn/column-filling-001.htm = IMAGE
+BUGWK84764 : ietestcenter/css3/multicolumn/column-width-applies-to-001.htm = IMAGE
+BUGWK84767 : ietestcenter/css3/multicolumn/column-width-applies-to-002.htm = IMAGE
+BUGWK84768 : ietestcenter/css3/multicolumn/column-width-applies-to-003.htm = IMAGE
+BUGWK84769 : ietestcenter/css3/multicolumn/column-width-applies-to-004.htm = IMAGE
+BUGWK84770 : ietestcenter/css3/multicolumn/column-width-applies-to-007.htm = IMAGE
+BUGWK84771 : ietestcenter/css3/multicolumn/column-width-applies-to-009.htm = IMAGE
+BUGWK84772 : ietestcenter/css3/multicolumn/column-width-applies-to-010.htm = IMAGE
+BUGWK84773 : ietestcenter/css3/multicolumn/column-width-applies-to-012.htm = IMAGE
+BUGWK84775 : ietestcenter/css3/multicolumn/column-width-applies-to-013.htm = IMAGE
+BUGWK84776 : ietestcenter/css3/multicolumn/column-width-applies-to-014.htm = IMAGE
+BUGWK84777 : ietestcenter/css3/multicolumn/column-width-applies-to-015.htm = IMAGE
+BUGWK84778 : ietestcenter/css3/multicolumn/column-width-negative-001.htm = IMAGE
+
+// Expose title direction in WebKit API
+BUGWK58845 : fast/dom/title-directionality.html = TEXT
+BUGWK58845 : fast/dom/title-directionality-removeChild.html = TEXT
+
+// Tests that sometimes fail on the bot (for GTK and Chromium ports as well)
+BUGWK77631 : fast/multicol/span/span-as-immediate-child-property-removal.html = TEXT PASS
+BUGWK77631 : fast/multicol/span/span-as-immediate-columns-child-removal.html = TEXT PASS
+
+BUGWK72363 : fast/dom/Window/window-postmessage-arrays.html = TEXT
+
+// Expando properties on attribute nodes disappear
+BUGWK88045 : fast/dom/gc-attribute-node.html = TEXT
+
+BUGWK84037 : fast/text/international/spaces-combined-in-vertical-text.html = TEXT
+
+// Requires WebP support.
+BUGWKEFL SKIP : fast/canvas/canvas-toDataURL-webp.html = PASS
+BUGWKEFL SKIP : fast/images/webp-image-decoding.html = PASS
+
+// This tests fails by one on 32 bits machines due to rounding issues.
+BUGWKEFL : fast/css/percentage-non-integer.html = TEXT PASS
+
+// Test is timeouting, passes in all other platforms.
+BUGWKEFL SKIP : fast/css/device-aspect-ratio.html = PASS
+
+// These test -apple- prefixed CSS properties, which we don't support.
+WONTFIX SKIP : fast/css/apple-prefix.html = TEXT
+
+BUGWK75747 : fast/css/color-correction-on-background-image.html = TEXT
+BUGWK75747 : fast/css/color-correction-on-backgrounds.html = TEXT
+BUGWK75747 : fast/css/color-correction-on-box-shadow.html = TEXT
+BUGWK75747 : fast/css/color-correction-on-text-shadow.html = TEXT
+BUGWK75747 : fast/css/color-correction-untagged-images.html = TEXT
+
+BUGWK65536 : fast/css/text-rendering.html = TEXT
+
+BUGWK49142 : fast/css/style-scoped = TEXT
+
+// ENABLE(INPUT_TYPE_*) are not enabled.
+BUGWK29359 : fast/css/pseudo-in-range.html = TEXT
+BUGWK29359 : fast/css/pseudo-out-of-range.html = TEXT
+BUGWK29359 : fast/css/pseudo-in-range-invalid-value.html = TEXT
+
+BUGWK85484 : fast/css/resize-corner-tracking-transformed.html = TEXT
+BUGWK85484 : fast/css/resize-corner-tracking.html = TEXT
+
+BUGWK85493 : fast/css/square-button-appearance.html = TEXT
+
+BUGWK85494 : fast/css/button-height.html = TEXT
+
+BUGWK73766 : css3/unicode-bidi-isolate-aharon-failing.html = IMAGE IMAGE+TEXT
+
+BUGWK85466 : css3/images/cross-fade-background-size.html = TEXT
+
+BUGWK85492 : css3/zoom-coords.xhtml = TEXT
+
+// Occasionally missing chunks of output
+BUGWK66873:  http/tests/loading/redirect-methods.html = TEXT
+
+// IETC flexbox failures
+BUGWK85211 : ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm = IMAGE
+BUGWK85212 : ietestcenter/css3/flexbox/flexbox-layout-002.htm = IMAGE
+
+// Issue related to hit testing
+BUGWK86971 : svg/hittest/svg-shapes-non-scale-stroke.html = TEXT
+
+// Issue related to battery status and vibration API
+BUGWK85594 : fast/dom/navigator-detached-no-crash.html = TEXT
+
+// Incorrect rendering results after r115846
+BUGWK85599 : http/tests/navigation/postredirect-basic.html = TEXT
+BUGWK85599 : http/tests/navigation/postredirect-goback1.html = TEXT
+
+// Interferes with the rAF tests that are enabled
+BUGWK85689 SKIP : fast/animation/request-animation-frame-disabled.html = TEXT
+
+// Crash shared with the GTK+ port
+BUGWK30724 DEBUG : fast/loader/opaque-base-url.html = CRASH
+
+// EFL's DumpRenderTree should support LayoutTestController's dumpEditingCallbacks()
+BUGWK84835 : editing/execCommand/4128080-2.html = TEXT
+BUGWK84835 : editing/execCommand/copy-without-selection.html = TEXT
+BUGWK84835 : editing/execCommand/findString-diacriticals.html = TEXT
+BUGWK84835 : editing/execCommand/indent-paragraphs.html = TEXT
+
+BUGWK86961 : editing/execCommand/paste-and-match-style-event.html = CRASH
+
+// DRT doesn't check for isPrinting().
+BUGWK87226 : printing/iframe-print.html = TEXT
+BUGWK87226 : printing/media-queries-print.html = MISSING
+BUGWK87226 : printing/setPrinting.html = MISSING
+BUGWK87226 : printing/simultaneous-position-float-change.html = MISSING
+BUGWK87226 : printing/single-line-must-not-be-split-into-two-pages.html = MISSING
+BUGWK87226 : printing/width-overflow.html = MISSING
+
+BUGWK79757 : fast/selectors/selection-window-inactive.html = IMAGE
+
+// Font kerning issue, fails on GTK as well.
+BUGWK76048 : fast/text/font-kerning.html = IMAGE
+
+// Aborting application cache downloads is flaky.
+BUGWK87633 : http/tests/appcache/abort-cache-onchecking-manifest-404.html = TEXT PASS
+BUGWK87633 : http/tests/appcache/abort-cache-ondownloading-resource-404.html = TEXT PASS
+
+// Fails on GTK as well
+BUGWK84678 : fast/spatial-navigation/snav-container-white-space.html = TEXT
+BUGWK84678 : fast/spatial-navigation/snav-fully-aligned-horizontally.html = TEXT
+BUGWK84678 : fast/spatial-navigation/snav-iframe-no-scrollable-content.html = TEXT
+
+// Ligatures rendering issue.
+BUGWK85606 : fast/text/font-variant-ligatures.html = IMAGE
+
+// Off-by-few-pixels issue for this selection reftest, fails on GTK as well.
+BUGWK84701 : fast/block/line-layout/selection-highlight-overlap.html = TEXT IMAGE IMAGE+TEXT
+
+// Times-out with debug build during heavy cpu loads
+BUGWK85902 SLOW DEBUG : fast/overflow/lots-of-sibling-inline-boxes.html = PASS
+
+BUGWK82675 : http/tests/local/link-stylesheet-load-order.html = TEXT
+
+BUGWKEFL SLOW DEBUG : http/tests/incremental/slow-utf8-html.pl = PASS
+
+// Tests imported in r116658
+BUGWK85308 : ietestcenter/css3/valuesandunits/units-000.htm = IMAGE CRASH
+BUGWK85310 : ietestcenter/css3/valuesandunits/units-010.htm = IMAGE
+
+// New test introduced in r116694 fails
+BUGWK86182 : fast/frames/seamless/seamless-inherited-document-style.html = TEXT
+
+// LEGACY_VIEWPORT_ADAPTION flag is not enabled on EFL port
+BUGWK88191 : fast/viewport/viewport-legacy-handheldfriendly.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-mobileoptimized-2.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-mobileoptimized-3.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-mobileoptimized.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-ordering-5.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-ordering-6.html = TEXT
+BUGWK88191 : fast/viewport/viewport-legacy-xhtmlmp.html = TEXT
+
+// The EFL port has no support for the FileSystem API
+BUGWK68591 SKIP : fast/filesystem = FAIL
+BUGWK68591 SKIP : fast/mutation/filesystem-callback-delivery.html = FAIL
+BUGWK68591 SKIP : http/tests/filesystem = FAIL
+BUGWK68591 SKIP : http/tests/security/filesystem-iframe-from-remote.html = FAIL
+BUGWK68591 SKIP : http/tests/security/mixedContent/filesystem-url-in-iframe.html = FAIL
+
+// New test introduced in r119911 failing on GTK and EFL ports
+BUGWK88727 : http/tests/xmlhttprequest/origin-exact-matching.html = TEXT
+
+// EFL's EventSender does not implement contextClick yet
+BUGWK86091 : editing/pasteboard/copy-standalone-image-crash.html = TEXT
+BUGWK86091 : editing/selection/5354455-1.html = TEXT
+BUGWK86091 : editing/selection/button-right-click.html = TEXT
+BUGWK86091 : editing/selection/context-menu-on-text.html = TEXT
+BUGWK86091 : editing/selection/context-menu-text-selection.html = TEXT
+BUGWK86091 : editing/selection/empty-cell-right-click.html = TEXT
+BUGWK86091 : editing/spelling/context-menu-suggestions.html = TEXT
+BUGWK86091 : editing/spelling/spellcheck-input-search-crash.html = TEXT
+BUGWK86091 : fast/events/context-onmousedown-event.html = TEXT
+BUGWK86091 : fast/events/contextmenu-scrolled-page-with-frame.html = TEXT
+BUGWK86091 : fast/events/right-click-focus.html = TEXT
+BUGWK86091 : fast/events/selectstart-prevent-selection-on-right-click.html = TEXT
+BUGWK86091 : media/context-menu-actions.html = TEXT
+BUGWK86091 : media/controls-right-click-on-timebar.html = TEXT
+
+// EFL's EventSender contextClick, needs baselines
+BUGWK86091 : editing/selection/5354455-2.html = MISSING
+BUGWK86091 : fast/events/context-no-deselect.html = MISSING
+
+// IETC namespace failures
+BUGWK86137 : ietestcenter/css3/namespaces/prefix-007.xml = IMAGE
+BUGWK86139 : ietestcenter/css3/namespaces/prefix-010.xml = IMAGE
+BUGWK86142 : ietestcenter/css3/namespaces/syntax-021.xml = IMAGE
+
+// New test introduced in r116858 fails
+BUGWK86310 : media/media-continues-playing-after-replace-source.html = TEXT
+
+// Fullscreen API is enabled but not fully implemented.
+BUGWK86597 : fullscreen/video-controls-drag.html = TEXT
+BUGWK86187 : media/media-fullscreen-not-in-document.html = TEXT
+BUGWK86187 SKIP : media/media-fullscreen-inline.html = PASS
+
+// This test is specific to QuickTime media engine.
+BUGWKEFL SKIP : media/video-does-not-loop.html = PASS
+
+// This test fails if mixer is not at 100%
+BUGWK83704 : media/event-attributes.html = TEXT
+
+// Rebaseline required after https://bugs.webkit.org/show_bug.cgi?id=84167
+BUGWK84167 : editing/pasteboard/innerText-inline-table.html = IMAGE+TEXT
+BUGWK84167 : editing/selection/iframe.html = IMAGE+TEXT
+BUGWK84167 : editing/selection/inline-table.html = IMAGE+TEXT
+BUGWK84167 : editing/selection/table-caret-3.html = IMAGE+TEXT
+BUGWK84167 : tables/mozilla/bugs/bug2479-2.html = IMAGE+TEXT
+
+// EFL's LayoutTestController does not implement setAutomaticLinkDetectionEnabled
+BUGWK85463 SKIP : editing/inserting/typing-space-to-trigger-smart-link.html = PASS
+
+// Missing deletebutton controller implementation.
+BUGWK86615 : editing/deleting/5408255.html = TEXT
+BUGWK86615 : editing/deleting/regional-indicators.html = TEXT
+
+// Newly introduced test which is failing on GTK as well.
+BUGWK87575 : http/tests/media/video-buffered-range-contains-currentTime.html = TEXT
+
+// Custom font loading delaying text drawing on Canvas
+BUGWK87355 : canvas/philip/tests/2d.text.draw.fontface.notinpage.html = TEXT
+
+// Missing spell checking support (Efl's port does not support spell checking, Gtk port uses Enchant library https://bugs.webkit.org/show_bug.cgi?id=61787)
+BUGWK86637 : editing/spelling/grammar.html = TEXT
+BUGWK86637 : editing/spelling/grammar-paste.html = TEXT
+BUGWK86637 : editing/spelling/markers.html = TEXT
+BUGWK86633 : editing/spelling/spellcheck-attribute.html = TEXT
+BUGWK86633 : editing/spelling/spelling-attribute-at-child.html = TEXT
+BUGWK86633 : editing/spelling/spelling-attribute-change.html = TEXT
+BUGWK86633 : editing/spelling/spelling-backspace-between-lines.html = TEXT
+BUGWK86633 : editing/spelling/spelling-hasspellingmarker.html = TEXT
+BUGWK86633 : editing/spelling/spelling-insert-html.html = TEXT
+BUGWK86633 : editing/spelling/spelling-linebreak.html = TEXT
+BUGWK86633 : editing/spelling/spelling-unified-emulation.html = TEXT
+
+// Failing after r119268 on GTK and EFL
+BUGWK88138 : http/tests/media/video-buffered.html = TEXT
+
+// EFL's LayoutTestController does not implement setAsynchronousSpellCheckingEnabled
+BUGWK86637 : editing/spelling/spellcheck-async.html = TEXT
+BUGWK86637 : editing/spelling/spellcheck-async-mutation.html = TEXT
+BUGWK86637 : editing/spelling/spellcheck-paste.html = TEXT
+BUGWK86637 : editing/spelling/spellcheck-paste-disabled.html = TEXT
+BUGWK86637 : editing/spelling/spellcheck-queue.html = TEXT
+BUGWK86637 : editing/spelling/spellcheck-sequencenum.html = TEXT
+BUGWK86637 : editing/spelling/spelling-marker-description.html = TEXT
+
+// New test added in r119947 which fails on almost all ports
+BUGWK87208 : http/tests/cookies/js-get-and-set-http-only-cookie.html = TEXT
+
+// It is unclear whether a new baseline is needed or it is a JSC failure
+BUGWK77413 : fast/parser/nested-fragment-parser-crash.html = TEXT
+
+// Looks like some race condition during loading.
+BUGWK85977 : fast/css/font-face-download-error.html = TIMEOUT
+
+// Fails on GTK+ and Qt as well.
+BUGWK86445 : fast/multicol/split-in-top-margin.html = IMAGE
+
+// Paletted PNG with ICC color profiles not working.
+BUGWK86722 SKIP : fast/images/paletted-png-with-color-profile.html = PASS
+
+// These tests cause flakiness (extra console messages in output)
+BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-1.html = FAIL
+BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-2.html = FAIL
+
+// Needs rebaseline after the bots cycle.
+BUG_OJAN : tables/mozilla/bugs/bug131020.html = TEXT IMAGE IMAGE+TEXT
+
+// These tests do not seem to fail anywhere else.
+BUGWK88030 : fast/multicol/column-break-with-balancing.html = IMAGE
+BUGWK88031 : fast/multicol/span/generated-child-split-flow-crash.html = TEXT

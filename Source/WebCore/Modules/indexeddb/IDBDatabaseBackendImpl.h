@@ -45,10 +45,7 @@ class IDBTransactionCoordinator;
 
 class IDBDatabaseBackendImpl : public IDBDatabaseBackendInterface {
 public:
-    static PassRefPtr<IDBDatabaseBackendImpl> create(const String& name, IDBBackingStore* database, IDBTransactionCoordinator* coordinator, IDBFactoryBackendImpl* factory, const String& uniqueIdentifier)
-    {
-        return adoptRef(new IDBDatabaseBackendImpl(name, database, coordinator, factory, uniqueIdentifier));
-    }
+    static PassRefPtr<IDBDatabaseBackendImpl> create(const String& name, IDBBackingStore* database, IDBTransactionCoordinator*, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
     virtual ~IDBDatabaseBackendImpl();
 
     PassRefPtr<IDBBackingStore> backingStore() const;
@@ -56,8 +53,7 @@ public:
     static const int64_t InvalidId = 0;
     int64_t id() const { return m_id; }
 
-    // FIXME: Rename "open" to something more descriptive, like registerFrontEndCallbacks.
-    void open(PassRefPtr<IDBDatabaseCallbacks>);
+    void registerFrontendCallbacks(PassRefPtr<IDBDatabaseCallbacks>);
     void openConnection(PassRefPtr<IDBCallbacks>);
     void deleteDatabase(PassRefPtr<IDBCallbacks>);
 
@@ -65,7 +61,7 @@ public:
     virtual String version() const { return m_version; }
     virtual PassRefPtr<DOMStringList> objectStoreNames() const;
 
-    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(const String& name, const String& keyPath, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&);
+    virtual PassRefPtr<IDBObjectStoreBackendInterface> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement, IDBTransactionBackendInterface*, ExceptionCode&);
     virtual void deleteObjectStore(const String& name, IDBTransactionBackendInterface*, ExceptionCode&);
     virtual void setVersion(const String& version, PassRefPtr<IDBCallbacks>, PassRefPtr<IDBDatabaseCallbacks>, ExceptionCode&);
     virtual PassRefPtr<IDBTransactionBackendInterface> transaction(DOMStringList* objectStoreNames, unsigned short mode, ExceptionCode&);
@@ -79,7 +75,7 @@ public:
 private:
     IDBDatabaseBackendImpl(const String& name, IDBBackingStore* database, IDBTransactionCoordinator*, IDBFactoryBackendImpl*, const String& uniqueIdentifier);
 
-    void openInternal();
+    bool openInternal();
     void loadObjectStores();
     void processPendingCalls();
 

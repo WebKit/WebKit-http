@@ -40,54 +40,12 @@ WeakSet::~WeakSet()
     m_blocks.clear();
 }
 
-void WeakSet::finalizeAll()
-{
-    for (WeakBlock* block = m_blocks.head(); block; block = block->next())
-        block->finalizeAll();
-}
-
-void WeakSet::visitLiveWeakImpls(HeapRootVisitor& visitor)
-{
-    for (WeakBlock* block = m_blocks.head(); block; block = block->next())
-        block->visitLiveWeakImpls(visitor);
-}
-
-void WeakSet::visitDeadWeakImpls(HeapRootVisitor& visitor)
-{
-    for (WeakBlock* block = m_blocks.head(); block; block = block->next())
-        block->visitDeadWeakImpls(visitor);
-}
-
 void WeakSet::sweep()
 {
-    WeakBlock* next;
-    for (WeakBlock* block = m_blocks.head(); block; block = next) {
-        next = block->next();
-
-        // If a block is completely empty, a new sweep won't have any effect.
-        if (!block->sweepResult().isNull() && block->sweepResult().blockIsFree)
-            continue;
-
-        block->takeSweepResult(); // Force a new sweep by discarding the last sweep.
+    for (WeakBlock* block = m_blocks.head(); block; block = block->next())
         block->sweep();
-    }
-}
 
-void WeakSet::shrink()
-{
-    WeakBlock* next;
-    for (WeakBlock* block = m_blocks.head(); block; block = next) {
-        next = block->next();
-
-        if (!block->sweepResult().isNull() && block->sweepResult().blockIsFree)
-            removeAllocator(block);
-    }
-}
-
-void WeakSet::resetAllocator()
-{
-    m_allocator = 0;
-    m_nextAllocator = m_blocks.head();
+    resetAllocator();
 }
 
 WeakBlock::FreeCell* WeakSet::findAllocator()
@@ -104,7 +62,6 @@ WeakBlock::FreeCell* WeakSet::tryFindAllocator()
         WeakBlock* block = m_nextAllocator;
         m_nextAllocator = m_nextAllocator->next();
 
-        block->sweep();
         WeakBlock::SweepResult sweepResult = block->takeSweepResult();
         if (sweepResult.freeList)
             return sweepResult.freeList;

@@ -32,12 +32,14 @@
 #include "V8HTMLCollection.h"
 
 #include "HTMLCollection.h"
+#include "RadioNodeList.h"
 #include "V8Binding.h"
 #include "V8HTMLAllCollection.h"
 #include "V8NamedNodesCollection.h"
 #include "V8Node.h"
 #include "V8NodeList.h"
 #include "V8Proxy.h"
+#include "V8RadioNodeList.h"
 
 namespace WebCore {
 
@@ -52,6 +54,9 @@ static v8::Handle<v8::Value> getNamedItems(HTMLCollection* collection, AtomicStr
     if (namedItems.size() == 1)
         return toV8(namedItems.at(0).release(), isolate);
 
+    if (collection->type() == FormControls)
+        return toV8(collection->base()->radioNodeList(name).get(), isolate);
+
     return toV8(V8NamedNodesCollection::create(namedItems), isolate);
 }
 
@@ -60,9 +65,9 @@ v8::Handle<v8::Value> V8HTMLCollection::namedPropertyGetter(v8::Local<v8::String
     INC_STATS("DOM.HTMLCollection.NamedPropertyGetter");
 
     if (!info.Holder()->GetRealNamedPropertyInPrototypeChain(name).IsEmpty())
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
     if (info.Holder()->HasRealNamedCallbackProperty(name))
-        return notHandledByInterceptor();
+        return v8::Handle<v8::Value>();
 
     HTMLCollection* imp = V8HTMLCollection::toNative(info.Holder());
     return getNamedItems(imp, v8StringToAtomicWebCoreString(name), info.GetIsolate());

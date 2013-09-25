@@ -42,15 +42,15 @@ PassRefPtr<HTMLBaseElement> HTMLBaseElement::create(const QualifiedName& tagName
     return adoptRef(new HTMLBaseElement(tagName, document));
 }
 
-void HTMLBaseElement::parseAttribute(Attribute* attribute)
+void HTMLBaseElement::parseAttribute(const Attribute& attribute)
 {
-    if (attribute->name() == hrefAttr || attribute->name() == targetAttr)
+    if (attribute.name() == hrefAttr || attribute.name() == targetAttr)
         document()->processBaseElement();
     else
         HTMLElement::parseAttribute(attribute);
 }
 
-Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     if (insertionPoint->inDocument())
@@ -58,16 +58,16 @@ Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(Node* insertion
     return InsertionDone;
 }
 
-void HTMLBaseElement::removedFrom(Node* insertionPoint)
+void HTMLBaseElement::removedFrom(ContainerNode* insertionPoint)
 {
     HTMLElement::removedFrom(insertionPoint);
     if (insertionPoint->inDocument())
         document()->processBaseElement();
 }
 
-bool HTMLBaseElement::isURLAttribute(Attribute* attribute) const
+bool HTMLBaseElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute->name() == hrefAttr || HTMLElement::isURLAttribute(attribute);
+    return attribute.name() == hrefAttr || HTMLElement::isURLAttribute(attribute);
 }
 
 String HTMLBaseElement::target() const

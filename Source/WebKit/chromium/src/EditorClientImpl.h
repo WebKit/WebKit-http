@@ -35,15 +35,16 @@
 #include "TextCheckerClient.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 class Frame;
 class HTMLInputElement;
-class SpellChecker;
 }
 
 namespace WebKit {
 class WebViewImpl;
+class WebTextCheckingCompletionImpl;
 
 class EditorClientImpl : public WebCore::EditorClient, public WebCore::TextCheckerClient {
 public:
@@ -51,6 +52,7 @@ public:
 
     virtual ~EditorClientImpl();
     virtual void pageDestroyed();
+    virtual void frameWillDetachPage(WebCore::Frame*) OVERRIDE;
 
     virtual bool shouldShowDeleteInterface(WebCore::HTMLElement*);
     virtual bool smartInsertDeleteEnabled();
@@ -94,6 +96,7 @@ public:
     virtual bool doTextFieldCommandFromEvent(WebCore::Element*, WebCore::KeyboardEvent*);
     virtual void textWillBeDeletedInTextField(WebCore::Element*);
     virtual void textDidChangeInTextArea(WebCore::Element*);
+    virtual bool shouldEraseMarkersAfterChangeSelection(WebCore::TextCheckingType) const;
     virtual void ignoreWordInSpellDocument(const WTF::String&);
     virtual void learnWord(const WTF::String&);
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation, int* misspellingLength);
@@ -109,7 +112,7 @@ public:
     virtual void getGuessesForWord(const WTF::String& word, const WTF::String& context, WTF::Vector<WTF::String>& guesses);
     virtual void willSetInputMethodState();
     virtual void setInputMethodState(bool enabled);
-    virtual void requestCheckingOfString(WebCore::SpellChecker*, const WebCore::TextCheckingRequest&);
+    virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>);
 
     virtual WebCore::TextCheckerClient* textChecker() { return this; }
 

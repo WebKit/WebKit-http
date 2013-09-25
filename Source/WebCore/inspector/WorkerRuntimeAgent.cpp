@@ -34,6 +34,7 @@
 
 #include "WorkerRuntimeAgent.h"
 
+#include "InjectedScript.h"
 #include "ScriptState.h"
 
 namespace WebCore {
@@ -48,14 +49,19 @@ WorkerRuntimeAgent::~WorkerRuntimeAgent()
 {
 }
 
-ScriptState* WorkerRuntimeAgent::scriptStateForFrameId(const String&)
+void WorkerRuntimeAgent::setReportExecutionContextCreation(ErrorString* error, bool)
 {
-    return 0;
+    *error = "Isolated contexts are not supported for workers.";
 }
 
-ScriptState* WorkerRuntimeAgent::getDefaultInspectedState()
+InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString* error, const int* executionContextId)
 {
-    return scriptStateFromWorkerContext(m_workerContext);
+    if (executionContextId) {
+        *error = "Execution context id is not supported for workers as there is only one execution context.";
+        return InjectedScript();
+    }
+    ScriptState* scriptState = scriptStateFromWorkerContext(m_workerContext);
+    return injectedScriptManager()->injectedScriptFor(scriptState);
 }
 
 void WorkerRuntimeAgent::muteConsole()

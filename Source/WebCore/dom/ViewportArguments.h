@@ -27,7 +27,7 @@
 #ifndef ViewportArguments_h
 #define ViewportArguments_h
 
-#include "IntSize.h"
+#include "FloatSize.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -39,11 +39,11 @@ enum ViewportErrorCode {
     UnrecognizedViewportArgumentValueError,
     TruncatedViewportArgumentValueError,
     MaximumScaleTooLargeError,
-    TargetDensityDpiTooSmallOrLargeError
+    TargetDensityDpiUnsupported
 };
 
 struct ViewportAttributes {
-    IntSize layoutSize;
+    FloatSize layoutSize;
 
     float devicePixelRatio;
 
@@ -57,7 +57,13 @@ struct ViewportAttributes {
 struct ViewportArguments {
 
     enum Type {
+        // These are ordered in increasing importance.
         Implicit,
+#if ENABLE(LEGACY_VIEWPORT_ADAPTION)
+        XHTMLMobileProfile,
+        HandheldFriendlyMeta,
+        MobileOptimizedMeta,
+#endif
         ViewportMeta
     } type;
 
@@ -79,7 +85,6 @@ struct ViewportArguments {
         , maximumScale(ValueAuto)
         , width(ValueAuto)
         , height(ValueAuto)
-        , targetDensityDpi(ValueAuto)
         , userScalable(ValueAuto)
     {
     }
@@ -89,7 +94,6 @@ struct ViewportArguments {
     float maximumScale;
     float width;
     float height;
-    float targetDensityDpi;
     float userScalable;
 
     bool operator==(const ViewportArguments& other) const
@@ -101,7 +105,6 @@ struct ViewportArguments {
             && maximumScale == other.maximumScale
             && width == other.width
             && height == other.height
-            && targetDensityDpi == other.targetDensityDpi
             && userScalable == other.userScalable;
     }
 };
@@ -109,6 +112,7 @@ struct ViewportArguments {
 ViewportAttributes computeViewportAttributes(ViewportArguments args, int desktopWidth, int deviceWidth, int deviceHeight, int deviceDPI, IntSize visibleViewport);
 void restrictMinimumScaleFactorToViewportSize(ViewportAttributes& result, IntSize visibleViewport);
 void restrictScaleFactorToInitialScaleIfNotUserScalable(ViewportAttributes& result);
+float computeMinimumScaleFactorForContentContained(const ViewportAttributes& result, const IntSize& viewportSize, const IntSize& contentSize);
 
 void setViewportFeature(const String& keyString, const String& valueString, Document*, void* data);
 void reportViewportWarning(Document*, ViewportErrorCode, const String& replacement1, const String& replacement2);

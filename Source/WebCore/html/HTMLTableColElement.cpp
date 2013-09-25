@@ -54,23 +54,23 @@ bool HTMLTableColElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLTablePartElement::isPresentationAttribute(name);
 }
 
-void HTMLTableColElement::collectStyleForAttribute(Attribute* attr, StylePropertySet* style)
+void HTMLTableColElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
 {
-    if (attr->name() == widthAttr)
-        addHTMLLengthToStyle(style, CSSPropertyWidth, attr->value());
+    if (attribute.name() == widthAttr)
+        addHTMLLengthToStyle(style, CSSPropertyWidth, attribute.value());
     else
-        HTMLTablePartElement::collectStyleForAttribute(attr, style);
+        HTMLTablePartElement::collectStyleForAttribute(attribute, style);
 }
 
-void HTMLTableColElement::parseAttribute(Attribute* attr)
+void HTMLTableColElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == spanAttr) {
-        m_span = !attr->isNull() ? attr->value().toInt() : 1;
-        if (renderer() && renderer()->isTableCol())
+    if (attribute.name() == spanAttr) {
+        m_span = !attribute.isNull() ? attribute.value().toInt() : 1;
+        if (renderer() && renderer()->isRenderTableCol())
             renderer()->updateFromElement();
-    } else if (attr->name() == widthAttr) {
-        if (!attr->value().isEmpty()) {
-            if (renderer() && renderer()->isTableCol()) {
+    } else if (attribute.name() == widthAttr) {
+        if (!attribute.isEmpty()) {
+            if (renderer() && renderer()->isRenderTableCol()) {
                 RenderTableCol* col = toRenderTableCol(renderer());
                 int newWidth = width().toInt();
                 if (newWidth != col->width())
@@ -78,7 +78,7 @@ void HTMLTableColElement::parseAttribute(Attribute* attr)
             }
         }
     } else
-        HTMLTablePartElement::parseAttribute(attr);
+        HTMLTablePartElement::parseAttribute(attribute);
 }
 
 StylePropertySet* HTMLTableColElement::additionalAttributeStyle()

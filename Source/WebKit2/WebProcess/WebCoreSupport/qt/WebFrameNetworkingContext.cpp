@@ -22,50 +22,25 @@
 
 #include "WebFrame.h"
 #include "WebPage.h"
-#include "WebProcess.h"
-#include <QNetworkAccessManager>
 #include <QObject>
 #include <QVariant>
 
-namespace WebCore {
+namespace WebKit {
 
-WebFrameNetworkingContext::WebFrameNetworkingContext(WebKit::WebFrame* frame)
+WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
     : FrameNetworkingContext(frame->coreFrame())
-    , m_originatingObject(adoptPtr(new QObject))
     , m_mimeSniffingEnabled(true)
 {
-    // The page ID is needed later for HTTP authentication and SSL errors.
-    m_originatingObject->setProperty("pageID", qulonglong(frame->page()->pageID()));
+    // Save the page ID for a valid page as it is needed later for HTTP authentication and SSL errors.
+    if (frame->page()) {
+        m_originatingObject = adoptPtr(new QObject);
+        m_originatingObject->setProperty("pageID", qulonglong(frame->page()->pageID()));
+    }
 }
 
-WebFrameNetworkingContext::~WebFrameNetworkingContext()
-{
-}
-
-PassRefPtr<WebFrameNetworkingContext> WebFrameNetworkingContext::create(WebKit::WebFrame* frame)
+PassRefPtr<WebFrameNetworkingContext> WebFrameNetworkingContext::create(WebFrame* frame)
 {
     return adoptRef(new WebFrameNetworkingContext(frame));
-}
-
-QObject* WebFrameNetworkingContext::originatingObject() const
-{
-    return m_originatingObject.get();
-}
-
-QNetworkAccessManager* WebFrameNetworkingContext::networkAccessManager() const
-{
-    return WebKit::WebProcess::shared().networkAccessManager();
-}
-
-bool WebFrameNetworkingContext::mimeSniffingEnabled() const
-{
-    return m_mimeSniffingEnabled;
-}
-
-bool WebFrameNetworkingContext::thirdPartyCookiePolicyPermission(const QUrl &) const
-{
-    // ### TODO. Used QWebSettings in WK1.
-    return true;
 }
 
 }

@@ -31,33 +31,17 @@
 #include "TextChecking.h"
 
 #include <wtf/Forward.h>
+#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class SpellChecker;
-class TextCheckingRequest;
-
-struct GrammarDetail {
-    int location;
-    int length;
-    Vector<String> guesses;
-    String userDescription;
-};
-
-struct TextCheckingResult {
-    TextCheckingType type;
-    int location;
-    int length;
-    Vector<GrammarDetail> details;
-    String replacement;
-};
-
 class TextCheckerClient {
 public:
     virtual ~TextCheckerClient() {}
 
+    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const = 0;
     virtual void ignoreWordInSpellDocument(const String&) = 0;
     virtual void learnWord(const String&) = 0;
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation, int* misspellingLength) = 0;
@@ -72,7 +56,7 @@ public:
     // provide more accurate correction suggestions. Caller can pass in more text in "context" to aid such spellcheckers on language
     // identification. Noramlly it's the text surrounding the "word" for which we are getting correction suggestions.
     virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) = 0;
-    virtual void requestCheckingOfString(SpellChecker*, const TextCheckingRequest&) = 0;
+    virtual void requestCheckingOfString(PassRefPtr<TextCheckingRequest>) = 0;
 };
 
 }

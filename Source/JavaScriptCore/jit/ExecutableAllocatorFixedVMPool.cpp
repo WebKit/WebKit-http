@@ -78,12 +78,29 @@ protected:
     
     virtual void notifyNeedPage(void* page)
     {
+#if OS(DARWIN)
+        UNUSED_PARAM(page);
+#else
         m_reservation.commit(page, pageSize());
+#endif
     }
     
     virtual void notifyPageIsFree(void* page)
     {
+#if OS(DARWIN)
+        for (;;) {
+            int result = madvise(page, pageSize(), MADV_FREE);
+            if (!result)
+                return;
+            ASSERT(result == -1);
+            if (errno != EAGAIN) {
+                ASSERT_NOT_REACHED(); // In debug mode, this should be a hard failure.
+                break; // In release mode, we should just ignore the error - not returning memory to the OS is better than crashing, especially since we _will_ be able to reuse the memory internally anyway.
+            }
+        }
+#else
         m_reservation.decommit(page, pageSize());
+#endif
     }
 
 private:

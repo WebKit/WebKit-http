@@ -42,14 +42,14 @@ inline HTMLScriptElement::HTMLScriptElement(const QualifiedName& tagName, Docume
     ASSERT(hasTagName(scriptTag));
 }
 
-PassRefPtr<HTMLScriptElement> HTMLScriptElement::create(const QualifiedName& tagName, Document* document, bool wasInsertedByParser)
+PassRefPtr<HTMLScriptElement> HTMLScriptElement::create(const QualifiedName& tagName, Document* document, bool wasInsertedByParser, bool alreadyStarted)
 {
-    return adoptRef(new HTMLScriptElement(tagName, document, wasInsertedByParser, false));
+    return adoptRef(new HTMLScriptElement(tagName, document, wasInsertedByParser, alreadyStarted));
 }
 
-bool HTMLScriptElement::isURLAttribute(Attribute* attr) const
+bool HTMLScriptElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attr->name() == srcAttr || HTMLElement::isURLAttribute(attr);
+    return attribute.name() == srcAttr || HTMLElement::isURLAttribute(attribute);
 }
 
 void HTMLScriptElement::childrenChanged(bool changedByParser, Node* beforeChange, Node* afterChange, int childCountDelta)
@@ -58,23 +58,21 @@ void HTMLScriptElement::childrenChanged(bool changedByParser, Node* beforeChange
     ScriptElement::childrenChanged();
 }
 
-void HTMLScriptElement::parseAttribute(Attribute* attr)
+void HTMLScriptElement::parseAttribute(const Attribute& attribute)
 {
-    const QualifiedName& attrName = attr->name();
-
-    if (attrName == srcAttr)
-        handleSourceAttribute(attr->value());
-    else if (attr->name() == asyncAttr)
+    if (attribute.name() == srcAttr)
+        handleSourceAttribute(attribute.value());
+    else if (attribute.name() == asyncAttr)
         handleAsyncAttribute();
-    else if (attrName == onloadAttr)
-        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attr));
-    else if (attrName == onbeforeloadAttr)
-        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, attr));
+    else if (attribute.name() == onloadAttr)
+        setAttributeEventListener(eventNames().loadEvent, createAttributeEventListener(this, attribute));
+    else if (attribute.name() == onbeforeloadAttr)
+        setAttributeEventListener(eventNames().beforeloadEvent, createAttributeEventListener(this, attribute));
     else
-        HTMLElement::parseAttribute(attr);
+        HTMLElement::parseAttribute(attribute);
 }
 
-Node::InsertionNotificationRequest HTMLScriptElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLScriptElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
     ScriptElement::insertedInto(insertionPoint);

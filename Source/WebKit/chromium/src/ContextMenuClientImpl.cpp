@@ -279,18 +279,25 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
         // a mouse on a word, Chrome just needs to find a spelling marker on the word instread of spellchecking it.
         if (selectedFrame->settings() && selectedFrame->settings()->asynchronousSpellCheckingEnabled()) {
             RefPtr<Range> range = selectedFrame->selection()->toNormalizedRange();
-            Vector<DocumentMarker*> markers = selectedFrame->document()->markers()->markersInRange(range.get(), DocumentMarker::Spelling);
-            if (!markers.isEmpty()) {
-                Vector<String> suggestions;
-                for (size_t i = 0; i < markers.size(); ++i) {
-                    if (!markers[i]->description().isEmpty()) {
-                        Vector<String> descriptions;
-                        markers[i]->description().split('\n', descriptions);
-                        suggestions.append(descriptions);
+            if (range.get()) {
+                Vector<DocumentMarker*> markers = selectedFrame->document()->markers()->markersInRange(range.get(), DocumentMarker::Spelling | DocumentMarker::Grammar);
+                if (!markers.isEmpty()) {
+                    Vector<String> suggestions;
+                    for (size_t i = 0; i < markers.size(); ++i) {
+                        if (!markers[i]->description().isEmpty()) {
+                            Vector<String> descriptions;
+                            markers[i]->description().split('\n', descriptions);
+                            suggestions.append(descriptions);
+                        }
+                    }
+                    data.misspelledWord = selectMisspelledWord(defaultMenu, selectedFrame);
+                    if (!suggestions.isEmpty())
+                        data.dictionarySuggestions = suggestions;
+                    else if (m_webView->spellCheckClient()) {
+                        int misspelledOffset, misspelledLength;
+                        m_webView->spellCheckClient()->spellCheck(data.misspelledWord, misspelledOffset, misspelledLength, &data.dictionarySuggestions);
                     }
                 }
-                data.dictionarySuggestions = suggestions;
-                data.misspelledWord = selectMisspelledWord(defaultMenu, selectedFrame);
             }
         } else if (m_webView->focusedWebCoreFrame()->editor()->isContinuousSpellCheckingEnabled()) {
             data.isSpellCheckingEnabled = true;
@@ -345,12 +352,12 @@ PlatformMenuDescription ContextMenuClientImpl::getCustomMenuFromDefaultItems(
     return 0;
 }
 
-void ContextMenuClientImpl::populateCustomMenuItems(WebCore::ContextMenu* defaultMenu, WebContextMenuData* data)
+static void populateSubMenuItems(PlatformMenuDescription inputMenu, WebVector<WebMenuItemInfo>& subMenuItems)
 {
-    Vector<WebMenuItemInfo> customItems;
-    for (size_t i = 0; i < defaultMenu->itemCount(); ++i) {
-        ContextMenuItem* inputItem = defaultMenu->itemAtIndex(i, defaultMenu->platformDescription());
-        if (inputItem->action() < ContextMenuItemBaseCustomTag || inputItem->action() >  ContextMenuItemLastCustomTag)
+    Vector<WebMenuItemInfo> subItems;
+    for (size_t i = 0; i < inputMenu->size(); ++i) {
+        const ContextMenuItem* inputItem = &inputMenu->at(i);
+        if (inputItem->action() < ContextMenuItemBaseCustomTag || inputItem->action() > ContextMenuItemLastCustomTag)
             continue;
 
         WebMenuItemInfo outputItem;
@@ -369,16 +376,22 @@ void ContextMenuClientImpl::populateCustomMenuItems(WebCore::ContextMenu* defaul
             outputItem.type = WebMenuItemInfo::Separator;
             break;
         case SubmenuType:
-            outputItem.type = WebMenuItemInfo::Group;
+            outputItem.type = WebMenuItemInfo::SubMenu;
+            populateSubMenuItems(inputItem->platformSubMenu(), outputItem.subMenuItems);
             break;
         }
-        customItems.append(outputItem);
+        subItems.append(outputItem);
     }
 
-    WebVector<WebMenuItemInfo> outputItems(customItems.size());
-    for (size_t i = 0; i < customItems.size(); ++i)
-        outputItems[i] = customItems[i];
-    data->customItems.swap(outputItems);
+    WebVector<WebMenuItemInfo> outputItems(subItems.size());
+    for (size_t i = 0; i < subItems.size(); ++i)
+        outputItems[i] = subItems[i];
+    subMenuItems.swap(outputItems);
+}
+
+void ContextMenuClientImpl::populateCustomMenuItems(WebCore::ContextMenu* defaultMenu, WebContextMenuData* data)
+{
+    populateSubMenuItems(defaultMenu->platformDescription(), data->customItems);
 }
 
 } // namespace WebKit

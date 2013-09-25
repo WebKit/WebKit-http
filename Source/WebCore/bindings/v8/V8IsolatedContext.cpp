@@ -34,6 +34,7 @@
 
 #include "Frame.h"
 #include "FrameLoaderClient.h"
+#include "InspectorInstrumentation.h"
 #include "SecurityOrigin.h"
 #include "V8BindingPerContextData.h"
 #include "V8DOMWindow.h"
@@ -105,6 +106,7 @@ V8IsolatedContext::V8IsolatedContext(V8Proxy* proxy, int extensionGroup, int wor
 
 void V8IsolatedContext::destroy()
 {
+    m_perContextData.clear();
     m_frame->loader()->client()->willReleaseScriptContext(context(), m_world->id());
     m_context->get().MakeWeak(this, &contextWeakReferenceCallback);
     m_frame = 0;
@@ -117,6 +119,11 @@ V8IsolatedContext::~V8IsolatedContext()
 
 void V8IsolatedContext::setSecurityOrigin(PassRefPtr<SecurityOrigin> securityOrigin)
 {
+    if (!m_securityOrigin && InspectorInstrumentation::hasFrontends() && !context().IsEmpty()) {
+        v8::HandleScope handleScope;
+        ScriptState* scriptState = ScriptState::forContext(v8::Local<v8::Context>::New(context()));
+        InspectorInstrumentation::didCreateIsolatedContext(m_frame, scriptState, securityOrigin.get());
+    }
     m_securityOrigin = securityOrigin;
 }
 

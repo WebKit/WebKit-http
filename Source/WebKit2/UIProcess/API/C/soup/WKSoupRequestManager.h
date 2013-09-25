@@ -34,11 +34,13 @@ extern "C" {
 #endif
 
 typedef void (*WKSoupRequestManagerDidReceiveURIRequestCallback)(WKSoupRequestManagerRef soupRequestManagerRef, WKURLRef urlRef, uint64_t requestID, const void* clientInfo);
+typedef void (*WKSoupRequestManagerDidFailToLoadURIRequestCallback)(WKSoupRequestManagerRef soupRequestManagerRef, uint64_t requestID, const void* clientInfo);
 
 struct WKSoupRequestManagerClient {
-    int                                              version;
-    const void*                                      clientInfo;
-    WKSoupRequestManagerDidReceiveURIRequestCallback didReceiveURIRequest;
+    int                                                 version;
+    const void*                                         clientInfo;
+    WKSoupRequestManagerDidReceiveURIRequestCallback    didReceiveURIRequest;
+    WKSoupRequestManagerDidFailToLoadURIRequestCallback didFailToLoadURIRequest;
 };
 typedef struct WKSoupRequestManagerClient WKSoupRequestManagerClient;
 
@@ -48,7 +50,8 @@ WK_EXPORT WKTypeID WKSoupRequestManagerGetTypeID();
 
 WK_EXPORT void WKSoupRequestManagerSetClient(WKSoupRequestManagerRef, const WKSoupRequestManagerClient* client);
 WK_EXPORT void WKSoupRequestManagerRegisterURIScheme(WKSoupRequestManagerRef, WKStringRef schemeRef);
-WK_EXPORT void WKSoupRequestManagerHandleURIRequest(WKSoupRequestManagerRef, WKDataRef, WKStringRef mimeTypeRef, uint64_t requestID);
+WK_EXPORT void WKSoupRequestManagerDidHandleURIRequest(WKSoupRequestManagerRef, WKDataRef, uint64_t contentLength, WKStringRef mimeTypeRef, uint64_t requestID);
+WK_EXPORT void WKSoupRequestManagerDidReceiveURIRequestData(WKSoupRequestManagerRef, WKDataRef, uint64_t requestID);
 
 #ifdef __cplusplus
 }

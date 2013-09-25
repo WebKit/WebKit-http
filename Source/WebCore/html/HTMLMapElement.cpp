@@ -98,14 +98,13 @@ HTMLImageElement* HTMLMapElement::imageElement()
     return 0;    
 }
 
-void HTMLMapElement::parseAttribute(Attribute* attribute)
+void HTMLMapElement::parseAttribute(const Attribute& attribute)
 {
     // FIXME: This logic seems wrong for XML documents.
     // Either the id or name will be used depending on the order the attributes are parsed.
 
-    const QualifiedName& attrName = attribute->name();
-    if (isIdAttributeName(attrName) || attrName == nameAttr) {
-        if (isIdAttributeName(attrName)) {
+    if (isIdAttributeName(attribute.name()) || attribute.name() == nameAttr) {
+        if (isIdAttributeName(attribute.name())) {
             // Call base class so that hasID bit gets set.
             HTMLElement::parseAttribute(attribute);
             if (document()->isHTMLDocument())
@@ -113,7 +112,7 @@ void HTMLMapElement::parseAttribute(Attribute* attribute)
         }
         if (inDocument())
             treeScope()->removeImageMap(this);
-        String mapName = attribute->value();
+        String mapName = attribute.value();
         if (mapName[0] == '#')
             mapName = mapName.substring(1);
         m_name = document()->isHTMLDocument() ? mapName.lower() : mapName;
@@ -131,14 +130,14 @@ HTMLCollection* HTMLMapElement::areas()
     return ensureCachedHTMLCollection(MapAreas);
 }
 
-Node::InsertionNotificationRequest HTMLMapElement::insertedInto(Node* insertionPoint)
+Node::InsertionNotificationRequest HTMLMapElement::insertedInto(ContainerNode* insertionPoint)
 {
     if (insertionPoint->inDocument())
         treeScope()->addImageMap(this);
     return HTMLElement::insertedInto(insertionPoint);
 }
 
-void HTMLMapElement::removedFrom(Node* insertionPoint)
+void HTMLMapElement::removedFrom(ContainerNode* insertionPoint)
 {
     if (insertionPoint->inDocument())
         treeScope()->removeImageMap(this);

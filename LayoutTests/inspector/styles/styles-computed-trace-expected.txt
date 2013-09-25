@@ -2,6 +2,9 @@ Tests that computed styles expand and allow tracing to style rules.
 
 ==== Computed style for ID1 ====
 [expanded] 
+-webkit-background-clip: border-box;
+-webkit-background-origin: padding-box;
+-webkit-background-size: auto;
 background-attachment: scroll;
     #id1 - initial styles-computed-trace.html:23
 background-clip: border-box;
@@ -13,6 +16,8 @@ background-color: gray;
 background-image: none;
     #id1 - initial styles-computed-trace.html:23
 background-origin: padding-box;
+    #id1 - initial styles-computed-trace.html:23
+background-size: auto;
     #id1 - initial styles-computed-trace.html:23
 display: block;
     div - block user agent stylesheet

@@ -5,7 +5,7 @@
     margin: 120px;
     width: 100px;
     height: 100px;
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: #aaa;
     position: relative;
     outline: 2px solid red;
@@ -16,6 +16,7 @@
 .flexbox > div {
     height: 110px;
     width: 110px;
+    -webkit-flex: none;
 }
 .flexbox :nth-child(1) {
     background-color: blue;
@@ -52,8 +53,8 @@
 }
 </style>
 <script>
-if (window.layoutTestController)
-    layoutTestController.dumpAsText();
+if (window.testRunner)
+    testRunner.dumpAsText();
 </script>
 <script src="resources/flexbox.js"></script>
 <body onload="checkFlexBoxen()">
@@ -106,7 +107,7 @@ writingModes.forEach(function(writingMode) {
             document.body.appendChild(title);
 
             var container = document.createElement('div');
-            container.innerHTML = '<div class="flexbox ' + flexboxClassName + '" style="-webkit-flex-align: end;">\n' +
+            container.innerHTML = '<div class="flexbox ' + flexboxClassName + '" style="-webkit-align-items: flex-end;">\n' +
                 '<div ' + positionAsString(expectations[writingMode][flexFlow][direction]) + '></div><div></div>\n' +
             '</div>';
 

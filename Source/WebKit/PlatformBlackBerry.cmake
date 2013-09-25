@@ -47,15 +47,19 @@ ADD_DEFINITIONS(-DUSER_PROCESSES)
 LIST(APPEND WebKit_SOURCES
     blackberry/Api/BackingStore.cpp
     blackberry/Api/BlackBerryGlobal.cpp
-    blackberry/Api/WebString.cpp
+    blackberry/Api/WebAnimation.cpp
     blackberry/Api/WebKitMIMETypeConverter.cpp
     blackberry/Api/WebKitTextCodec.cpp
+    blackberry/Api/WebOverlay.cpp
+    blackberry/Api/WebOverlayOverride.cpp
     blackberry/Api/WebPage.cpp
     blackberry/Api/WebPageCompositor.cpp
     blackberry/Api/WebPageGroupLoadDeferrer.cpp
     blackberry/Api/WebSettings.cpp
+    blackberry/Api/WebString.cpp
     blackberry/Api/WebViewportArguments.cpp
     blackberry/WebCoreSupport/AboutData.cpp
+    blackberry/WebCoreSupport/AutofillManager.cpp
     blackberry/WebCoreSupport/CacheClientBlackBerry.cpp
     blackberry/WebCoreSupport/ChromeClientBlackBerry.cpp
     blackberry/WebCoreSupport/ClientExtension.cpp
@@ -71,18 +75,23 @@ LIST(APPEND WebKit_SOURCES
     blackberry/WebCoreSupport/GeolocationControllerClientBlackBerry.cpp
     blackberry/WebCoreSupport/IconDatabaseClientBlackBerry.cpp
     blackberry/WebCoreSupport/InspectorClientBlackBerry.cpp
+    blackberry/WebCoreSupport/InspectorOverlay.cpp
     blackberry/WebCoreSupport/JavaScriptDebuggerBlackBerry.cpp
     blackberry/WebCoreSupport/NotificationPresenterImpl.cpp
     blackberry/WebCoreSupport/VibrationClientBlackBerry.cpp
+    blackberry/WebCoreSupport/PagePopupBlackBerry.cpp
+    blackberry/WebCoreSupport/SelectPopupClient.cpp
     blackberry/WebKitSupport/BackingStoreCompositingSurface.cpp
     blackberry/WebKitSupport/BackingStoreTile.cpp
     blackberry/WebKitSupport/BackingStoreClient.cpp
+    blackberry/WebKitSupport/DefaultTapHighlight.cpp
     blackberry/WebKitSupport/DOMSupport.cpp
     blackberry/WebKitSupport/FrameLayers.cpp
     blackberry/WebKitSupport/InPageSearchManager.cpp
     blackberry/WebKitSupport/InputHandler.cpp
     blackberry/WebKitSupport/RenderQueue.cpp
     blackberry/WebKitSupport/SelectionHandler.cpp
+    blackberry/WebKitSupport/SelectionOverlay.cpp
     blackberry/WebKitSupport/SurfacePool.cpp
     blackberry/WebKitSupport/TouchEventHandler.cpp
     blackberry/WebKitSupport/FatFingers.cpp
@@ -186,9 +195,9 @@ FILE (STRINGS ${WEBCORE_DIR}/inspector/front-end/inspector.html SCRIPT_TAGS REGE
 FOREACH (_line IN LISTS SCRIPT_TAGS)
     STRING (STRIP ${_line} _stripped_line)
     STRING (REGEX REPLACE "<script.* src=\"(.*\\.js)\".*></script>" "\\1" _js_file ${_stripped_line})
-    STRING (COMPARE EQUAL ${_js_file} "InspectorBackendStub.js" _comp_result)
+    STRING (COMPARE EQUAL ${_js_file} "InspectorBackendCommands.js" _comp_result)
     IF ( ${_comp_result} )
-        # InspectorBackendStub.js was generated with the build, should get it from DERIVED_SOURCES_WEBCORE_DIR.
+        # InspectorBackendCommands.js was generated with the build, should get it from DERIVED_SOURCES_WEBCORE_DIR.
         SET (_js_file "${DERIVED_SOURCES_WEBCORE_DIR}/${_js_file}")
     ELSE ()
         SET (_js_file "${WEBCORE_DIR}/inspector/front-end/${_js_file}")

@@ -36,6 +36,7 @@
 
 #include "LayerCompositingThread.h"
 
+#include "LayerCompositingThreadClient.h"
 #include "LayerMessage.h"
 #include "LayerRenderer.h"
 #include "LayerWebKitThread.h"
@@ -54,12 +55,22 @@
 
 namespace WebCore {
 
-PassRefPtr<LayerCompositingThread> LayerCompositingThread::create(LayerType type, PassRefPtr<LayerTiler> tiler)
+void LayerOverride::removeAnimation(const String& name)
 {
-    return adoptRef(new LayerCompositingThread(type, tiler));
+    for (size_t i = 0; i < m_animations.size(); ++i) {
+        if (m_animations[i]->name() == name) {
+            m_animations.remove(i);
+            return;
+        }
+    }
 }
 
-LayerCompositingThread::LayerCompositingThread(LayerType type, PassRefPtr<LayerTiler> tiler)
+PassRefPtr<LayerCompositingThread> LayerCompositingThread::create(LayerType type, LayerCompositingThreadClient* client)
+{
+    return adoptRef(new LayerCompositingThread(type, client));
+}
+
+LayerCompositingThread::LayerCompositingThread(LayerType type, LayerCompositingThreadClient* client)
     : LayerData(type)
     , m_layerRenderer(0)
     , m_superlayer(0)
@@ -67,15 +78,13 @@ LayerCompositingThread::LayerCompositingThread(LayerType type, PassRefPtr<LayerT
     , m_drawOpacity(0)
     , m_visible(false)
     , m_commitScheduled(false)
-    , m_tiler(tiler)
+    , m_client(client)
 {
 }
 
 LayerCompositingThread::~LayerCompositingThread()
 {
     ASSERT(isCompositingThread());
-
-    m_tiler->layerCompositingThreadDestroyed();
 
     ASSERT(!superlayer());
 
@@ -90,6 +99,9 @@ LayerCompositingThread::~LayerCompositingThread()
     // layer renderer to track us anymore
     if (m_layerRenderer)
         m_layerRenderer->removeLayer(this);
+
+    if (m_client)
+        m_client->layerCompositingThreadDestroyed(this);
 }
 
 void LayerCompositingThread::setLayerRenderer(LayerRenderer* renderer)
@@ -106,15 +118,22 @@ void LayerCompositingThread::deleteTextures()
 {
     releaseTextureResources();
 
-    m_tiler->deleteTextures();
+    if (m_client)
+        m_client->deleteTextures(this);
 }
 
-void LayerCompositingThread::setDrawTransform(const TransformationMatrix& matrix)
+void LayerCompositingThread::setDrawTransform(double scale, const TransformationMatrix& matrix)
 {
     m_drawTransform = matrix;
 
     float bx = m_bounds.width() / 2.0;
     float by = m_bounds.height() / 2.0;
+
+    if (sizeIsScaleInvariant()) {
+        bx /= scale;
+        by /= scale;
+    }
+
     m_transformedBounds.setP1(matrix.mapPoint(FloatPoint(-bx, -by)));
     m_transformedBounds.setP2(matrix.mapPoint(FloatPoint(-bx, by)));
     m_transformedBounds.setP3(matrix.mapPoint(FloatPoint(bx, by)));
@@ -185,9 +204,9 @@ FloatQuad LayerCompositingThread::getTransformedHolePunchRect() const
     return getTransformedRect(m_bounds, drawRect, m_drawTransform);
 }
 
-void LayerCompositingThread::drawTextures(int positionLocation, int texCoordLocation, const FloatRect& visibleRect)
+void LayerCompositingThread::drawTextures(double scale, int positionLocation, int texCoordLocation, const FloatRect& visibleRect)
 {
-    float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
+    static float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
 
     if (m_pluginView) {
         if (m_isVisible) {
@@ -256,7 +275,8 @@ void LayerCompositingThread::drawTextures(int positionLocation, int texCoordLoca
         return;
     }
 
-    m_tiler->drawTextures(this, positionLocation, texCoordLocation);
+    if (m_client)
+        m_client->drawTextures(this, scale, positionLocation, texCoordLocation);
 }
 
 void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransform, LayerCompositingThread* mask, int positionLocation, int texCoordLocation)
@@ -279,23 +299,21 @@ void LayerCompositingThread::drawSurface(const TransformationMatrix& drawTransfo
         FloatQuad surfaceQuad = getTransformedRect(m_bounds, IntRect(IntPoint::zero(), m_bounds), drawTransform);
         glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, 0, &surfaceQuad);
 
-        float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
+        static float texcoords[4 * 2] = { 0, 0,  0, 1,  1, 1,  1, 0 };
         glVertexAttribPointer(texCoordLocation, 2, GL_FLOAT, GL_FALSE, 0, texcoords);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 }
 
-void LayerCompositingThread::drawMissingTextures(int positionLocation, int texCoordLocation, const FloatRect& visibleRect)
+bool LayerCompositingThread::hasMissingTextures() const
 {
-    if (m_pluginView || m_texID)
-        return;
+    return m_client ? m_client->hasMissingTextures(this) : false;
+}
 
-#if ENABLE(VIDEO)
-    if (m_mediaPlayer)
-        return;
-#endif
-
-    m_tiler->drawMissingTextures(this, positionLocation, texCoordLocation);
+void LayerCompositingThread::drawMissingTextures(double scale, int positionLocation, int texCoordLocation, const FloatRect& /*visibleRect*/)
+{
+    if (m_client)
+        m_client->drawMissingTextures(this, scale, positionLocation, texCoordLocation);
 }
 
 void LayerCompositingThread::releaseTextureResources()
@@ -305,7 +323,7 @@ void LayerCompositingThread::releaseTextureResources()
         m_pluginBuffer = 0;
         m_pluginView->unlockFrontBuffer();
     }
-    if (m_texID && m_frontBufferLock)
+    if (m_frontBufferLock && (m_texID || layerType() == LayerData::WebGLLayer))
         pthread_mutex_unlock(m_frontBufferLock);
 }
 
@@ -380,6 +398,13 @@ const LayerCompositingThread* LayerCompositingThread::rootLayer() const
     return layer;
 }
 
+void LayerCompositingThread::addSublayer(LayerCompositingThread* layer)
+{
+    layer->removeFromSuperlayer();
+    layer->setSuperlayer(this);
+    m_sublayers.append(layer);
+}
+
 void LayerCompositingThread::removeFromSuperlayer()
 {
     if (m_superlayer)
@@ -410,15 +435,14 @@ void LayerCompositingThread::setSublayers(const Vector<RefPtr<LayerCompositingTh
 
 void LayerCompositingThread::updateTextureContentsIfNeeded()
 {
-    if (m_texID || pluginView())
-        return;
+    if (m_client)
+        m_client->uploadTexturesIfNeeded(this);
+}
 
-#if ENABLE(VIDEO)
-    if (mediaPlayer())
-        return;
-#endif
-
-    m_tiler->uploadTexturesIfNeeded();
+void LayerCompositingThread::bindContentsTexture()
+{
+    if (m_client)
+        m_client->bindContentsTexture(this);
 }
 
 void LayerCompositingThread::setVisible(bool visible)
@@ -428,15 +452,8 @@ void LayerCompositingThread::setVisible(bool visible)
 
     m_visible = visible;
 
-    if (m_texID || pluginView())
-        return;
-
-#if ENABLE(VIDEO)
-    if (mediaPlayer())
-        return;
-#endif
-
-    m_tiler->layerVisibilityChanged(visible);
+    if (m_client)
+        m_client->layerVisibilityChanged(this, visible);
 }
 
 void LayerCompositingThread::setNeedsCommit()
@@ -447,6 +464,9 @@ void LayerCompositingThread::setNeedsCommit()
 
 void LayerCompositingThread::scheduleCommit()
 {
+    if (!m_client)
+        return;
+
     if (!isWebKitThread()) {
         if (m_commitScheduled)
             return;
@@ -459,9 +479,7 @@ void LayerCompositingThread::scheduleCommit()
 
     m_commitScheduled = false;
 
-    // FIXME: The only way to get at our LayerWebKitThread is to go through the tiler.
-    if (LayerWebKitThread* layer = m_tiler->layer())
-        layer->setNeedsCommit();
+    m_client->scheduleCommit();
 }
 
 bool LayerCompositingThread::updateAnimations(double currentTime)
@@ -484,7 +502,30 @@ bool LayerCompositingThread::updateAnimations(double currentTime)
         animation->apply(this, elapsedTime);
     }
 
-    return !m_runningAnimations.isEmpty();
+    bool hasRunningAnimations = !m_runningAnimations.isEmpty();
+
+    // If there are any overrides, apply them
+    if (m_override) {
+        if (m_override->isPositionSet())
+            m_position = m_override->position();
+        if (m_override->isAnchorPointSet())
+            m_anchorPoint = m_override->anchorPoint();
+        if (m_override->isBoundsSet())
+            m_bounds = m_override->bounds();
+        if (m_override->isTransformSet())
+            m_transform = m_override->transform();
+        if (m_override->isOpacitySet())
+            m_opacity = m_override->opacity();
+
+        for (size_t i = 0; i < m_override->animations().size(); ++i) {
+            LayerAnimation* animation = m_override->animations()[i].get();
+            double elapsedTime = (m_suspendTime ? m_suspendTime : currentTime) - animation->startTime() + animation->timeOffset();
+            animation->apply(this, elapsedTime);
+            hasRunningAnimations |= true;
+        }
+    }
+
+    return hasRunningAnimations;
 }
 
 bool LayerCompositingThread::hasVisibleHolePunchRect() const
@@ -504,6 +545,28 @@ void LayerCompositingThread::createLayerRendererSurface()
 {
     ASSERT(!m_layerRendererSurface);
     m_layerRendererSurface = adoptPtr(new LayerRendererSurface(m_layerRenderer, this));
+}
+
+void LayerCompositingThread::removeAnimation(const String& name)
+{
+    for (size_t i = 0; i < m_runningAnimations.size(); ++i) {
+        if (m_runningAnimations[i]->name() == name) {
+            m_runningAnimations.remove(i);
+            return;
+        }
+    }
+}
+
+LayerOverride* LayerCompositingThread::override()
+{
+    if (!m_override)
+        m_override = LayerOverride::create();
+    return m_override.get();
+}
+
+void LayerCompositingThread::clearOverride()
+{
+    m_override.clear();
 }
 
 }

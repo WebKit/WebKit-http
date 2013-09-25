@@ -26,6 +26,8 @@
 #import "config.h"
 #import "NetscapePluginModule.h"
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
+
 #import "PluginProcessProxy.h"
 #import <WebCore/WebCoreNSStringExtras.h>
 #import <wtf/HashSet.h>
@@ -518,6 +520,13 @@ void NetscapePluginModule::determineQuirks()
         m_pluginQuirks.add(PluginQuirks::AllowHalfBakedQuickDrawSupport);
     }
 #endif
+
+    if (plugin.bundleIdentifier == "com.adobe.acrobat.pdfviewerNPAPI") {
+        // The Adobe Reader plug-in wants wheel events.
+        m_pluginQuirks.add(PluginQuirks::WantsWheelEvents);
+    }
 }
 
 } // namespace WebKit
+
+#endif // ENABLE(NETSCAPE_PLUGIN_API)

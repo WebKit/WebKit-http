@@ -141,7 +141,7 @@ module core {
         boolean            queryCommandIndeterm(in [Optional=DefaultIsUndefined] DOMString command);
         boolean            queryCommandState(in [Optional=DefaultIsUndefined] DOMString command);
         boolean            queryCommandSupported(in [Optional=DefaultIsUndefined] DOMString command);
-        [TreatReturnedNullStringAs=False] DOMString queryCommandValue(in [Optional=DefaultIsUndefined] DOMString command);
+        DOMString          queryCommandValue(in [Optional=DefaultIsUndefined] DOMString command);
 
         // Moved down from HTMLDocument
 
@@ -208,6 +208,10 @@ module core {
         CSSStyleDeclaration createCSSStyleDeclaration();
 #endif
 
+#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
+        readonly attribute [Conditional=UNDO_MANAGER] UndoManager undoManager;
+#endif
+
 #if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
         // DOM Level 2 Style Interface
         [ObjCLegacyUnnamedParameters, ObjCUseDefaultView] CSSStyleDeclaration getComputedStyle(in Element element,
@@ -253,7 +257,9 @@ module core {
         [V8EnabledAtRuntime] void webkitExitFullscreen();
 #endif
 
+#if defined(ENABLE_CSS_REGIONS) && ENABLE_CSS_REGIONS
         WebKitNamedFlow webkitGetFlowByName(in DOMString name);
+#endif
 
 #if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
         // Event handler DOM attributes
@@ -328,6 +334,8 @@ module core {
         attribute [NotEnumerable,Conditional=TOUCH_EVENTS,V8EnabledAtRuntime] EventListener ontouchcancel;
         attribute [NotEnumerable, Conditional=FULLSCREEN_API] EventListener onwebkitfullscreenchange;
         attribute [NotEnumerable, Conditional=FULLSCREEN_API] EventListener onwebkitfullscreenerror;
+        attribute [NotEnumerable, Conditional=POINTER_LOCK] EventListener onwebkitpointerlockchange;
+        attribute [NotEnumerable, Conditional=POINTER_LOCK] EventListener onwebkitpointerlockerror;
 #endif
 
 #if defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS

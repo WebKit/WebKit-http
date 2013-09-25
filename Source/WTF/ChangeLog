@@ -1,3 +1,783 @@
+2012-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix make distcheck issues.
+
+        * GNUmakefile.list.am: Add missing header file.
+
+2012-06-09  Dominic Cooney  <dominicc@chromium.org>
+
+        [Chromium] Remove JavaScriptCore dependencies from gyp
+        https://bugs.webkit.org/show_bug.cgi?id=88510
+
+        Reviewed by Adam Barth.
+
+        Chromium doesn't support JSC any more and there doesn't seem to be
+        a strong interest in using GYP as the common build system in other
+        ports.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-06-08  Andy Wingo  <wingo@igalia.com>
+
+        Explictly mark stubs called by JIT as being internal
+        https://bugs.webkit.org/show_bug.cgi?id=88552
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/ExportMacros.h (WTF_INTERNAL, HAVE_INTERNAL_VISIBILITY): New
+        defines.  Regardless of what the port does about visibility in
+        general, for code referenced only from assembly it is useful to
+        give it internal visibility.
+        * wtf/InlineASM.h: Split SYMBOL_STRING_RELOCATION into
+        LOCAL_REFERENCE and GLOBAL_REFERENCE; the former will try to avoid
+        indirection if HAVE(INTERNAL_VISIBILITY).
+
+2012-06-07  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][Win] Fix linking WTF with ICU
+        https://bugs.webkit.org/show_bug.cgi?id=88302
+
+        Reviewed by Simon Hausmann.
+
+        * WTF.pri: Use proper library names on win32 platforms.
+
+2012-06-06  Michael Saboff  <msaboff@apple.com>
+
+        ENH: Add Logging to GC Marking Phase
+        https://bugs.webkit.org/show_bug.cgi?id=88364
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/DataLog.cpp:
+        (WTF::dataLogString): Additional method to support GC Mark logging.
+        * wtf/DataLog.h:
+        * wtf/Platform.h: New ENABLE_OBJECT_MARK_LOGGING flag macro.
+
+2012-06-06  Andy Wingo  <wingo@igalia.com>
+
+        [GTK] Enable the LLInt
+        https://bugs.webkit.org/show_bug.cgi?id=88315
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/InlineASM.h: Add an implementation of LOCAL_LABEL_STRING for
+        OS(LINUX).
+        * wtf/Platform.h: Add OS(LINUX) to the set of operating systems
+        for ENABLE_LLINT.  Add a specific check for PLATFORM(MAC) or
+        PLATFORM(IOS), and add to that a check for PLATFORM(GTK).
+
+2012-06-05  Roland Takacs  <takacs.roland@stud.u-szeged.hu>
+
+        [Qt] Use GraphicsContext3DOpenGLES.cpp when using OpenGL ES
+        https://bugs.webkit.org/show_bug.cgi?id=78720
+
+        Reviewed by Noam Rosenthal.
+
+        Defined a global Opengl ES macro to check OpenGL ES on every platforms.
+
+        * wtf/Platform.h:
+
+2012-06-04  Takashi Toyoshima  <toyoshim@chromium.org>
+
+        [WebSocket] Send requires super linear time against data size
+        https://bugs.webkit.org/show_bug.cgi?id=87383
+
+        Reviewed by Kent Tamura.
+
+        * wtf/StreamBuffer.h: Added.
+        (WTF):
+        (StreamBuffer):
+        (WTF::StreamBuffer::StreamBuffer):
+        (WTF::StreamBuffer::~StreamBuffer):
+        (WTF::StreamBuffer::isEmpty):
+        (WTF::StreamBuffer::append):
+        (WTF::StreamBuffer::consume):
+        (WTF::StreamBuffer::size):
+        (WTF::StreamBuffer::firstBlockData):
+        (WTF::StreamBuffer::firstBlockSize):
+
+2012-06-04  Patrick Gansterer  <paroga@webkit.org>
+
+        Port RAMSize to WinCE
+        https://bugs.webkit.org/show_bug.cgi?id=87854
+
+        Reviewed by Geoffrey Garen.
+
+        WinCE has no GlobalMemoryStatusEx() function. Use GlobalMemoryStatus() instead.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2012-06-01  Xianzhu Wang  <wangxianzhu@chromium.org>
+
+        Remove dependency from ImageDiff to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=88147
+
+        Reviewed by Adam Barth.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-06-01  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Save one copy when going from 8-bit WTF::String to QString
+
+        Asking for characters() of an 8-bit string will make a 16-bit copy internally
+        in WTF::String. Since we're going to copy the data to QStringData anyways, which
+        is 16-bit, we can do the conversion ourselves and save one copy.
+
+        Reviewed by Simon Hausmann.
+
+        * wtf/qt/StringQt.cpp:
+        (WTF::String::operator QString):
+
+2012-05-30  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make conversion from QString to WTF::String (and back again) ~free
+
+        https://bugs.webkit.org/show_bug.cgi?id=87847
+
+        Instead of copying the QString data when converting to a WTF::String we
+        make the WTF::String adopt the QString data by introducing a new buffer
+        ownership type, and pointing the internal WTF::StringImpl 16-bit data
+        member to the string data managed by QStringData.
+
+        We make sure to reference the QStringData when adopting, so that the
+        data will stay alive, and then dereference it when the WTF::StringImpl
+        is deleted, which will free the QStringData (either straight away, if
+        we're the only one holding a reference still, or later, when the ref
+        count goes to 0).
+
+        In the case of going back from a WTF::String to a QString we can cheat
+        a bit (avoid a copy), if we know that the WTF::String was adopted from
+        a QString, since it's then just a matter of having the QString adopt
+        the existing QStringData (just like a regular QString copy).
+
+        If the WTF::String buffer is not owned by QStringData, eg a regular
+        8-bit or 16-bit string/substring, we have to fall back to copying,
+        as before (though there are potential optimization tricks we can
+        apply here later on).
+
+        Reviewed by Gavin Barraclough.
+
+        * wtf/qt/StringQt.cpp:
+        * wtf/text/StringImpl.cpp:
+        * wtf/text/StringImpl.h:
+
+2012-06-01  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
+
+        [EFL] Implement PlatformStrategies
+        https://bugs.webkit.org/show_bug.cgi?id=86946
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Enable PLATFORM_STRATEGIES for EFL platform.
+
+2012-05-31  Anders Carlsson  <andersca@apple.com>
+
+        Enable support for rvalue references when building with a version of clang that supports them
+        https://bugs.webkit.org/show_bug.cgi?id=88018
+
+        Re-enable support for rvalue references when building with a version of Xcode newer than 4.2.
+
+        * wtf/Compiler.h:
+
+2012-05-31  Filip Pizlo  <fpizlo@apple.com>
+
+        DataLog should be usable outside of JSC
+        https://bugs.webkit.org/show_bug.cgi?id=88015
+
+        Reviewed by Oliver Hunt.
+
+        * wtf/DataLog.h:
+        (WTF):
+
+2012-05-31  Anders Carlsson  <andersca@apple.com>
+
+        Disable support for rvalue references until I figure out why this is breaking the Xcode 4.2 build.
+
+        * wtf/Compiler.h:
+
+2012-05-31  Anders Carlsson  <andersca@apple.com>
+
+        Vector should have a move constructor and move assignment operator
+        https://bugs.webkit.org/show_bug.cgi?id=87997
+
+        Reviewed by Andreas Kling.
+
+        * wtf/Compiler.h:
+        Use __has_extension so we can use move semantics and other C++11 features even when building as C++98.
+
+        * wtf/Vector.h:
+        Add a move constructor and a move assignment operator to Vector.
+
+2012-05-31  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Simplify QT_VERSION_CHECKS for Qt5 by introducing HAVE(QT5)
+        https://bugs.webkit.org/show_bug.cgi?id=87955
+
+        Reviewed by Simon Hausmann.
+
+        * wtf/qt/UtilsQt.h:
+
+2012-05-30  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        HashTable.h has using directives for std::pair and std::make_pair
+        https://bugs.webkit.org/show_bug.cgi?id=29919
+
+        Reviewed by Darin Adler.
+
+        * wtf/HashTraits.h:
+        (WTF): Remove the directives.
+
+2012-05-30  Caio Marcelo de Oliveira Filho  <caio.oliveira@openbossa.org>
+
+        HashTable.h has using directives for std::pair and std::make_pair
+        https://bugs.webkit.org/show_bug.cgi?id=29919
+
+        Reviewed by Darin Adler.
+
+        Change code to use std::pair and std::make_pair. Later patch will remove the
+        'using' directives.
+
+        * wtf/HashTable.h:
+        (WTF::hashTableSwap):
+        (HashTable):
+        * wtf/HashTraits.h:
+        (PairHashTraits):
+        (WTF::PairHashTraits::emptyValue):
+
+2012-05-30  Patrick Gansterer  <paroga@webkit.org>
+
+        Build fix for WinCE after r118603.
+
+        * wtf/Atomics.h:
+        (WTF::weakCompareAndSwap):
+
+2012-05-29  Anders Carlsson  <andersca@apple.com>
+
+        String should be move enabled/optimized
+        https://bugs.webkit.org/show_bug.cgi?id=87596
+
+        Reviewed by Andreas Kling.
+
+        Add move constructors and move assignment operators to String and AtomicString when building with
+        compilers that support rvalue references. This gets rid of ref-churn when the source of the 
+        constructor or assignment is a temporary object.
+
+        * wtf/text/AtomicString.h:
+        (AtomicString):
+        (WTF::AtomicString::AtomicString):
+        (WTF::AtomicString::operator=):
+        * wtf/text/WTFString.h:
+        (String):
+        (WTF::String::String):
+        (WTF::String::operator=):
+
+2012-05-29  Alexandre Elias  <aelias@google.com>
+
+        Support WebKit log messages on Android
+        https://bugs.webkit.org/show_bug.cgi?id=87773
+
+        Reviewed by Darin Adler.
+
+        This sends WebKit log messages to the Android "logcat" facility, as
+        Android sends stderr to /dev/null.
+
+        * wtf/Assertions.cpp:
+
+2012-05-29  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Remove duplication of logic for disabling selected warnings related to C++11
+
+        This is already handled in unix/default_post.prf
+
+        Reviewed by Simon Hausmann.
+
+        * WTF.pro:
+
+2012-05-27  Darin Adler  <darin@apple.com>
+
+        Fix an incorrect assertion in Vector::remove
+        https://bugs.webkit.org/show_bug.cgi?id=87612
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Vector.h: There's no good reason to disallow calling remove
+        with a size of 0, even when the position is at the end of the vector,
+        so changed the two-argument Vector::remove assertion to assert that
+        the position is <= size rather than < size.
+
+2012-05-27  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [WTF] Introduce UINT64_C to MathExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=87485
+
+        Reviewed by Kent Tamura.
+
+        * wtf/MathExtras.h:
+
+2012-05-25  Filip Pizlo  <fpizlo@apple.com>
+
+        weakCompareAndSwap should work on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=87549
+
+        Reviewed by Jessie Berlin.
+
+        * wtf/Atomics.h:
+        (WTF):
+        (WTF::weakCompareAndSwap):
+
+2012-05-24  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        cti_vm_throw gets kicked out by gcc 4.6 -flto
+        https://bugs.webkit.org/show_bug.cgi?id=56088
+
+        Reviewed by Darin Adler.
+
+        Define REFERENCED_FROM_ASM to __attribute__((used)) on GCC.
+
+        * wtf/Compiler.h:
+
+2012-05-23  Darin Adler  <darin@apple.com>
+
+        Optimize iteration of empty hash tables
+        https://bugs.webkit.org/show_bug.cgi?id=87215
+
+        Reviewed by Geoffrey Garen.
+
+        Iteration of empty hash tables was showing up on simple page loading
+        profiles due to the use of hash tables in the
+        NodeListsNodeData::invalidateCaches and
+        NodeListsNodeData::invalidateCachesThatDependOnAttributes functions.
+        It's worth optimizing the case of an empty table.
+
+        * wtf/HashTable.h:
+        (WTF::HashTable::begin): Return the known-good end iterator when the
+        table is empty. This makes iterating an empty table faster because we
+        avoid skipping empty and deleted buckets.
+
+2012-05-22  Geoffrey Garen  <ggaren@apple.com>
+
+        Build fix.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize): sysctl expects a uint64_t, so use that and then
+        cast back to size_t. Since it's coneivable that a 32bit process would
+        run on a system with more than 4GB RAM, I added a paranoid check for
+        that condition.
+
+2012-05-22  Jessie Berlin  <jberlin@apple.com>
+
+        Build fix.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+        If you say you are going to return a size_t, actually return a size_t.
+
+2012-05-21  Geoffrey Garen  <ggaren@apple.com>
+
+        GC allocation trigger should be tuned to system RAM
+        https://bugs.webkit.org/show_bug.cgi?id=87039
+
+        Reviewed by Darin Adler.
+
+        Added a helper function for measuring system RAM.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AmountOfRAM.cpp: Added.
+        (WTF):
+        (WTF::computeAmountOfRAM):
+        (WTF::amountOfRAM):
+        * wtf/AmountOfRAM.h: Added.
+        (WTF):
+        * wtf/CMakeLists.txt:
+        * wtf/StdLibExtras.h:
+        (WTF):
+
+2012-05-22  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        GCC 4.7 and C++11 support.
+        https://bugs.webkit.org/show_bug.cgi?id=86465
+
+        Reviewed by Darin Adler.
+
+        Detect C++11 mode in GCC 4.7 and set appropiate compiler feature flags.
+        Turn C++11 override control into a compiler feature flag.
+        Fix non-clang support of compiler feature CXX_DELETED_FUNCTIONS.
+
+        * wtf/Compiler.h:
+        * wtf/Noncopyable.h:
+
+2012-05-22  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r117861): It made almost all tests crash on Qt
+        https://bugs.webkit.org/show_bug.cgi?id=87082
+
+        Reviewed by Csaba Osztrogonác.
+        
+        Using OwnArrayPtr is a bad idea if you allocate array with fastCalloc.
+
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::FastBitVector):
+        (WTF::FastBitVector::~FastBitVector):
+        (FastBitVector):
+        (WTF::FastBitVector::operator=):
+        (WTF::FastBitVector::resize):
+        (WTF::FastBitVector::setAll):
+        (WTF::FastBitVector::clearAll):
+        (WTF::FastBitVector::set):
+
+2012-05-21  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to compute dominators
+        https://bugs.webkit.org/show_bug.cgi?id=85269
+
+        Reviewed by Oliver Hunt.
+        
+        Merged r115754 from dfgopt.
+        
+        Added a bitvector class suitable for cheap static analysis. This class
+        differs from BitVector in that instead of optimizing for space, it
+        optimizes for execution time. Its API is also somewhat less friendly,
+        which is intentional; it's meant to be used in places where you know
+        up front how bit your bitvectors are going to be.
+
+        * GNUmakefile.list.am:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/FastBitVector.h: Added.
+        (WTF):
+        (FastBitVector):
+        (WTF::FastBitVector::FastBitVector):
+        (WTF::FastBitVector::operator=):
+        (WTF::FastBitVector::numBits):
+        (WTF::FastBitVector::resize):
+        (WTF::FastBitVector::setAll):
+        (WTF::FastBitVector::clearAll):
+        (WTF::FastBitVector::set):
+        (WTF::FastBitVector::setAndCheck):
+        (WTF::FastBitVector::equals):
+        (WTF::FastBitVector::merge):
+        (WTF::FastBitVector::filter):
+        (WTF::FastBitVector::exclude):
+        (WTF::FastBitVector::clear):
+        (WTF::FastBitVector::get):
+        (WTF::FastBitVector::arrayLength):
+
+2012-05-15  Gavin Barraclough  <barraclough@apple.com>
+
+        Add support for private names
+        https://bugs.webkit.org/show_bug.cgi?id=86509
+
+        Reviewed by Oliver Hunt.
+
+        The spec isn't final, but we can start adding support to allow property maps
+        to contain keys that aren't identifiers.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StringImpl):
+        (StringImpl):
+        (WTF::StringImpl::createEmptyUnique):
+        (WTF::StringImpl::isEmptyUnique):
+            - Allow empty string impls to be allocated, which can be used as unique keys.
+
+2012-05-21  Emil A Eklund <eae@chromium.org> and Levi Weintraub  <leviw@chromium.org>
+
+        Enable SUBPIXEL_LAYOUT feature flag on Chromium
+        https://bugs.webkit.org/show_bug.cgi?id=85555
+
+        Reviewed by Eric Seidel.
+
+        Enabling sub-pixel layout on Chromium port.
+
+        * wtf/Platform.h:
+
+2012-05-21  Andreas Kling  <kling@webkit.org>
+
+        CSS: Move duplicate property elimination to parser.
+        <http://webkit.org/b/86948>
+
+        Reviewed by Antti Koivisto.
+
+        Add WTF::BitArray, a simple, malloc free, fixed-size bit array class.
+
+        * GNUmakefile.list.am:
+        * WTF.gypi:
+        * WTF.pro:
+        * WTF.vcproj/WTF.vcproj:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BitArray.h: Added.
+        (WTF):
+        (BitArray):
+        (WTF::BitArray::BitArray):
+        (WTF::BitArray::set):
+        (WTF::BitArray::get):
+        * wtf/CMakeLists.txt:
+
+2012-05-21  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        Colliding isinf/isnan between C99 and C++11 with GCC >=4.6
+        https://bugs.webkit.org/show_bug.cgi?id=59249
+
+        Reviewed by Darin Adler.
+
+        Workaround the isinf and isnan conflict in GCC C++11.
+
+        * wtf/Compiler.h:
+        * wtf/MathExtras.h:
+        (std::wtf_isinf):
+        (std::wtf_isnan):
+
+2012-05-21  Andreas Kling  <kling@webkit.org>
+
+        REGRESSION(r117501): IconDatabase asserts on startup in synchronousIconForPageURL().
+        <http://webkit.org/b/86935>
+        <rdar://problem/11480012>
+
+        Reviewed by Anders Carlsson.
+
+        Added a swap() to HashCountedSet.
+
+        * wtf/HashCountedSet.h:
+        (HashCountedSet::swap):
+
+2012-05-16  Geoffrey Garen  <ggaren@apple.com>
+
+        This is not a joke: 3.7X speedup from removing a call to sleep
+        https://bugs.webkit.org/show_bug.cgi?id=86702
+
+        Reviewed by Eric Seidel.
+
+        The speedup was on a GC benchmark, with a custom VM caching layer
+        not in TOT yet.
+
+        Instruments showed most GC threads spending the majority of their
+        time sleeping instead of doing useful work. Removing the call to
+        sleep sped up the benchmark.
+
+        * wtf/TCSpinLock.h:
+        (TCMalloc_SlowLock): Since a spin lock is only ever held for a short
+        amount of time, don't sleep for a long amount of time waiting for it
+        to unlock -- yielding to the scheduler is sufficient.
+
+        If we find a case where someone is sitting on a spin lock for over 2ms,
+        we should fix the spin lock holder, not the spin lock.
+
+2012-05-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Make things build with DUMP_HASHTABLE_STATS=1
+        https://bugs.webkit.org/show_bug.cgi?id=86571
+
+        Reviewed by Geoffrey Garen.
+        
+        DUMP_HASHTABLE_STATS bitrotted after the WTF separation. This patch
+        makes it build.
+        
+        Added WTF_EXPORTDATA to the global data, and WTF_EXPORT_PRIVATE to
+        the static HashTableStats methods. Added a dumpStats() method
+        that is not yet called anywhere; we can no longer rely on destroying
+        a global object to dump the stats because global destructors are
+        disallowed.
+
+        * wtf/HashTable.cpp:
+        (WTF):
+        (WTF::HashTableStats::recordCollisionAtCount):
+        (WTF::HashTableStats::dumpStats):
+        * wtf/HashTable.h:
+        (HashTableStats):
+
+2012-05-15  Filip Pizlo  <fpizlo@apple.com>
+
+        shrinkToFit() is often not called for Vectors in CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=86436
+
+        Reviewed by Oliver Hunt.
+        
+        Gave SegmentedVector a shrinkToFit() method. This only shrinks the segment
+        lookup table, which is likely to not be hugely profitable, but it is better
+        than nothing.
+
+        * wtf/SegmentedVector.h:
+        (SegmentedVector):
+        (WTF::SegmentedVector::shrinkToFit):
+
+2012-05-15  Andy Estes  <aestes@apple.com>
+
+        Add WTF_USE_SECURITY_FRAMEWORK and use it in place of the less specific PLATFORM(MAC)
+        https://bugs.webkit.org/show_bug.cgi?id=86508
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+
+2012-05-15  Zoltan Herczeg  <zherczeg@webkit.org>
+
+        NEONizing forceValidPreMultipliedPixels
+        https://bugs.webkit.org/show_bug.cgi?id=86468
+
+        Reviewed by Nikolas Zimmermann.
+
+        Allow to disable all intrinsics with a single macro.
+
+        * wtf/Platform.h:
+
+2012-05-14  Andy Estes  <aestes@apple.com>
+
+        Add WTF_USE_APPKIT to differentiate platforms that use AppKit.framework from other Darwin platforms
+        https://bugs.webkit.org/show_bug.cgi?id=86432
+
+        Reviewed by Maciej Stachowiak.
+
+        * wtf/Platform.h:
+
+2012-05-14  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/86320> WTF.xcodeproj builds with -O3 in debug builds
+
+        Reviewed by Simon Fraser.
+
+        * WTF.xcodeproj/project.pbxproj: Ensure that the debug configuration uses the
+        same settings as the debug variant would.
+
+2012-05-14  Wei James  <james.wei@intel.com>
+
+        [Chromium] ImageDiff should be build for host on Android
+        https://bugs.webkit.org/show_bug.cgi?id=82039
+
+        Reviewed by Adam Barth.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-05-14  Yong Li  <yoli@rim.com>
+
+        DFG JIT is not ARM EABI compatible
+        https://bugs.webkit.org/show_bug.cgi?id=84449
+
+        Reviewed by Filip Pizlo.
+
+        Add COMPILER_SUPPORTS(EABI) when __ARM_EABI__
+        or __EABI__ is defined.
+
+        * wtf/Compiler.h:
+
+2012-05-10  Michał Pakuła vel Rutka  <m.pakula@samsung.com>
+
+        [EFL] Add OwnPtr specialization for Eina_Hash.
+        https://bugs.webkit.org/show_bug.cgi?id=85046
+
+        Reviewed by Andreas Kling.
+
+        Add an override for Eina_Hash for EFL port.
+
+        * wtf/OwnPtrCommon.h:
+        (WTF):
+        * wtf/efl/OwnPtrEfl.cpp:
+        (WTF::deleteOwnedPtr):
+        (WTF):
+
+2012-05-09  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to get useful debug logging from the JIT memory allocator
+        https://bugs.webkit.org/show_bug.cgi?id=86042
+
+        Reviewed by Geoff Garen.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::findAndRemoveFreeSpace):
+        (WTF::MetaAllocator::addFreeSpace):
+        (WTF::MetaAllocator::dumpProfile):
+
+2012-05-08  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r116440.
+        http://trac.webkit.org/changeset/116440
+        https://bugs.webkit.org/show_bug.cgi?id=85904
+
+        Broke the Chromium Android bot (Requested by beverloo on
+        #webkit).
+
+        * WTF.gyp/WTF.gyp:
+
+2012-05-08  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] OS(ANDROID) ImageDiff requires us to build WTF for both host and target
+        https://bugs.webkit.org/show_bug.cgi?id=85897
+
+        Reviewed by Tony Chang.
+
+        * WTF.gyp/WTF.gyp:
+
+2012-05-08  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] Assertions.cpp should work on OS(ANDROID)
+        https://bugs.webkit.org/show_bug.cgi?id=85867
+
+        Reviewed by Eric Seidel.
+
+        Some minor ifdefs for OS(ANDROID) on PLATFORM(CHROMIUM).
+
+        * wtf/Assertions.cpp:
+
+2012-05-07  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] Android wishes to use an empty implementation if AXObjectCache
+        https://bugs.webkit.org/show_bug.cgi?id=85842
+
+        Reviewed by Eric Seidel.
+
+        Disable accessibility on OS(ANDROID) for PLATFORM(CHROMIUM).
+
+        * wtf/Platform.h:
+
+2012-05-04  Jeff Rogers  <jrogers@rim.com>
+
+        [BlackBerry] Implement numberOfProcessorCores() for QNX
+        https://bugs.webkit.org/show_bug.cgi?id=85638
+
+        Reviewed by Antonio Gomes.
+
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+
+2012-05-03  Yong Li  <yoli@rim.com>
+
+        Mutex failure when HashTable is memory moved in debug build
+        https://bugs.webkit.org/show_bug.cgi?id=84970
+
+        Reviewed by Rob Buis.
+
+        1. Replace m_mutex with OwnPtr<m_mutex> so HashTable is still
+           memory movable in debug build.
+        2. Assert successes of pthread_mutex_init() and pthread_mutex_destroy().
+
+        * wtf/HashTable.h:
+        (HashTable):
+        (WTF::::HashTable):
+        (WTF::::invalidateIterators):
+        (WTF::addIterator):
+        (WTF::removeIterator):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+
+2012-05-02  Antti Koivisto  <antti@apple.com>
+
+        Add temporary feature define for parsed stylesheet caching
+        https://bugs.webkit.org/show_bug.cgi?id=85413
+
+        Rubber-stamped by Nikolas Zimmermann.
+
+        While not an externally visible feature this is still a significant internal change.
+        It is good to have define in case someone has an urgent need to turn it off.
+        
+        Caching is enabled by default on all platforms. The define should be removed after some bake time.
+
+        * wtf/Platform.h:
+
 2012-05-02  Lauro Neto  <lauro.neto@openbossa.org>
 
         [Qt]r57240 broke Qt build (gcc bug)

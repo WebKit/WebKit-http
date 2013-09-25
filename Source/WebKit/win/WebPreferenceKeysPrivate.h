@@ -82,7 +82,6 @@
 #define WebKitPDFDisplayModePreferenceKey "WebKitPDFDisplayMode"
 #define WebKitPDFScaleFactorPreferenceKey "WebKitPDFScaleFactor"
 #define WebKitEditableLinkBehaviorPreferenceKey "WebKitEditableLinkBehavior"
-#define WebKitEditingBehaviorPreferenceKey "WebKitEditingBehavior"
 #define WebKitShouldInvertColorsPreferenceKey "WebKitShouldInvertColors"
 
 // Window display is throttled to 60 frames per second if WebKitThrottleWindowDisplayPreferenceKey
@@ -162,3 +161,6 @@
 #define WebKitMediaPlaybackAllowsInlinePreferenceKey "WebKitMediaPlaybackAllowsInline"
 
 #define WebKitAVFoundationEnabledPreferenceKey "WebKitAVFoundationEnabled"
+
+#define WebKitRequestAnimationFrameEnabledPreferenceKey "WebKitRequestAnimationFrameEnabled"
+

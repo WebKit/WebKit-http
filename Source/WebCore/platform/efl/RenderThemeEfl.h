@@ -65,6 +65,7 @@ enum FormType { // KEEP IN SYNC WITH edjeGroupFromFormType()
     SeekBackwardButton,
     FullScreenButton,
 #endif
+    Spinner,
     FormTypeLast
 };
 
@@ -158,9 +159,12 @@ public:
 
     virtual void adjustSliderThumbStyle(StyleResolver*, RenderStyle*, Element*) const;
 
-    virtual void adjustSliderThumbSize(RenderStyle*) const;
+    virtual void adjustSliderThumbSize(RenderStyle*, Element*) const;
 
     virtual bool paintSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
+
+    virtual void adjustInnerSpinButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
+    virtual bool paintInnerSpinButton(RenderObject*, const PaintInfo&, const IntRect&);
 
     static void setDefaultFontSize(int fontsize);
 
@@ -173,6 +177,9 @@ public:
 
 #if ENABLE(VIDEO)
     virtual String extraMediaControlsStyleSheet();
+#if ENABLE(FULLSCREEN_API)
+    virtual String extraFullScreenStyleSheet();
+#endif
     virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const;
     virtual bool hasOwnDisabledStateHandlingFor(ControlPart) const { return true; }
 
@@ -212,14 +219,6 @@ private:
     Color m_inactiveSelectionBackgroundColor;
     Color m_inactiveSelectionForegroundColor;
     Color m_focusRingColor;
-    Color m_buttonTextBackgroundColor;
-    Color m_buttonTextForegroundColor;
-    Color m_comboTextBackgroundColor;
-    Color m_comboTextForegroundColor;
-    Color m_entryTextBackgroundColor;
-    Color m_entryTextForegroundColor;
-    Color m_searchTextBackgroundColor;
-    Color m_searchTextForegroundColor;
     Color m_sliderThumbColor;
 
 #if ENABLE(VIDEO)

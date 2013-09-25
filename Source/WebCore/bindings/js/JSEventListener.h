@@ -22,6 +22,7 @@
 
 #include "EventListener.h"
 #include "JSDOMWindow.h"
+#include <heap/StrongInlines.h>
 #include <heap/Weak.h>
 
 namespace WebCore {
@@ -74,6 +75,11 @@ namespace WebCore {
 
     inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* scriptExecutionContext) const
     {
+        // initializeJSFunction can trigger code that deletes this event listener
+        // before we're done. It should always return 0 in this case.
+        RefPtr<JSEventListener> protect(const_cast<JSEventListener*>(this));
+        JSC::Strong<JSC::JSObject> wrapper(*m_isolatedWorld->globalData(), m_wrapper.get());
+
         if (!m_jsFunction) {
             JSC::JSObject* function = initializeJSFunction(scriptExecutionContext);
             m_jsFunction.setMayBeNull(*scriptExecutionContext->globalData(), m_wrapper.get(), function);

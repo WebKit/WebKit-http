@@ -39,12 +39,9 @@
 #include "PlatformString.h"
 #include "V8CustomXPathNSResolver.h"
 #include "V8DOMMap.h"
-#include "V8Event.h"
 #include "V8IsolatedContext.h"
 #include "V8Utilities.h"
-#include "V8XPathNSResolver.h"
 #include "WrapperTypeInfo.h"
-#include "XPathNSResolver.h"
 #include <v8.h>
 #include <wtf/MainThread.h>
 #include <wtf/PassRefPtr.h>
@@ -58,6 +55,7 @@ namespace WebCore {
     class V8BindingPerContextData;
     class V8Proxy;
     class WorkerContext;
+    class XPathResolver;
 
     enum ListenerLookupType {
         ListenerFindOnly,
@@ -86,12 +84,12 @@ namespace WebCore {
 
         static WrapperTypeInfo* domWrapperType(v8::Handle<v8::Object>);
 
-        static v8::Handle<v8::Value> convertEventTargetToV8Object(PassRefPtr<EventTarget> eventTarget)
+        static v8::Handle<v8::Value> convertEventTargetToV8Object(PassRefPtr<EventTarget> eventTarget, v8::Isolate* isolate = 0)
         {
-            return convertEventTargetToV8Object(eventTarget.get());
+            return convertEventTargetToV8Object(eventTarget.get(), isolate);
         }
 
-        static v8::Handle<v8::Value> convertEventTargetToV8Object(EventTarget*);
+        static v8::Handle<v8::Value> convertEventTargetToV8Object(EventTarget*, v8::Isolate* = 0);
 
         static PassRefPtr<EventListener> getEventListener(v8::Local<v8::Value> value, bool isAttribute, ListenerLookupType lookup);
 

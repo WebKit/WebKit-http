@@ -21,6 +21,7 @@
 #include "config.h"
 #include "V8TestCustomNamedGetter.h"
 
+#include "ContextEnabledFeatures.h"
 #include "ExceptionCode.h"
 #include "RuntimeEnabledFeatures.h"
 #include "V8Binding.h"
@@ -33,7 +34,7 @@
 
 namespace WebCore {
 
-WrapperTypeInfo V8TestCustomNamedGetter::info = { V8TestCustomNamedGetter::GetTemplate, V8TestCustomNamedGetter::derefObject, 0, 0 };
+WrapperTypeInfo V8TestCustomNamedGetter::info = { V8TestCustomNamedGetter::GetTemplate, V8TestCustomNamedGetter::derefObject, 0, 0, WrapperTypeObjectPrototype };
 
 namespace TestCustomNamedGetterV8Internal {
 
@@ -43,7 +44,7 @@ static v8::Handle<v8::Value> anotherFunctionCallback(const v8::Arguments& args)
 {
     INC_STATS("DOM.TestCustomNamedGetter.anotherFunction");
     if (args.Length() < 1)
-        return V8Proxy::throwNotEnoughArgumentsError();
+        return V8Proxy::throwNotEnoughArgumentsError(args.GetIsolate());
     TestCustomNamedGetter* imp = V8TestCustomNamedGetter::toNative(args.Holder());
     STRING_TO_V8PARAMETER_EXCEPTION_BLOCK(V8Parameter<>, str, MAYBE_MISSING_PARAMETER(args, 0, DefaultIsUndefined));
     imp->anotherFunction(str);

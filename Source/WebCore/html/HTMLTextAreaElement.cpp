@@ -30,19 +30,21 @@
 #include "BeforeTextInsertedEvent.h"
 #include "CSSValueKeywords.h"
 #include "Document.h"
+#include "ElementShadow.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
 #include "FormDataList.h"
 #include "Frame.h"
 #include "HTMLNames.h"
+#include "LocalizedStrings.h"
 #include "RenderTextControlMultiLine.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
 #include "TextIterator.h"
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -85,7 +87,7 @@ PassRefPtr<HTMLTextAreaElement> HTMLTextAreaElement::create(const QualifiedName&
 
 void HTMLTextAreaElement::createShadowSubtree()
 {
-    ASSERT(!hasShadowRoot());
+    ASSERT(!shadow());
     RefPtr<ShadowRoot> root = ShadowRoot::create(this, ShadowRoot::CreatingUserAgentShadowRoot);
     root->appendChild(TextControlInnerTextElement::create(document()), ASSERT_NO_EXCEPTION);
 }
@@ -114,9 +116,10 @@ void HTMLTextAreaElement::childrenChanged(bool changedByParser, Node* beforeChan
 {
     HTMLElement::childrenChanged(changedByParser, beforeChange, afterChange, childCountDelta);
     setLastChangeWasNotUserEdit();
-    if (!m_isDirty)
+    if (m_isDirty)
+        setInnerTextValue(value());
+    else
         setNonDirtyValue(defaultValue());
-    setInnerTextValue(value());
 }
 
 bool HTMLTextAreaElement::isPresentationAttribute(const QualifiedName& name) const
@@ -132,9 +135,9 @@ bool HTMLTextAreaElement::isPresentationAttribute(const QualifiedName& name) con
     return HTMLTextFormControlElement::isPresentationAttribute(name);
 }
 
-void HTMLTextAreaElement::collectStyleForAttribute(Attribute* attr, StylePropertySet* style)
+void HTMLTextAreaElement::collectStyleForAttribute(const Attribute& attribute, StylePropertySet* style)
 {
-    if (attr->name() == wrapAttr) {
+    if (attribute.name() == wrapAttr) {
         if (shouldWrapText()) {
             addPropertyToAttributeStyle(style, CSSPropertyWhiteSpace, CSSValuePreWrap);
             addPropertyToAttributeStyle(style, CSSPropertyWordWrap, CSSValueBreakWord);
@@ -143,13 +146,13 @@ void HTMLTextAreaElement::collectStyleForAttribute(Attribute* attr, StylePropert
             addPropertyToAttributeStyle(style, CSSPropertyWordWrap, CSSValueNormal);
         }
     } else
-        HTMLTextFormControlElement::collectStyleForAttribute(attr, style);
+        HTMLTextFormControlElement::collectStyleForAttribute(attribute, style);
 }
 
-void HTMLTextAreaElement::parseAttribute(Attribute* attr)
+void HTMLTextAreaElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == rowsAttr) {
-        int rows = attr->value().toInt();
+    if (attribute.name() == rowsAttr) {
+        int rows = attribute.value().toInt();
         if (rows <= 0)
             rows = defaultRows;
         if (m_rows != rows) {
@@ -157,8 +160,8 @@ void HTMLTextAreaElement::parseAttribute(Attribute* attr)
             if (renderer())
                 renderer()->setNeedsLayoutAndPrefWidthsRecalc();
         }
-    } else if (attr->name() == colsAttr) {
-        int cols = attr->value().toInt();
+    } else if (attribute.name() == colsAttr) {
+        int cols = attribute.value().toInt();
         if (cols <= 0)
             cols = defaultCols;
         if (m_cols != cols) {
@@ -166,13 +169,13 @@ void HTMLTextAreaElement::parseAttribute(Attribute* attr)
             if (renderer())
                 renderer()->setNeedsLayoutAndPrefWidthsRecalc();
         }
-    } else if (attr->name() == wrapAttr) {
+    } else if (attribute.name() == wrapAttr) {
         // The virtual/physical values were a Netscape extension of HTML 3.0, now deprecated.
         // The soft/hard /off values are a recommendation for HTML 4 extension by IE and NS 4.
         WrapMethod wrap;
-        if (equalIgnoringCase(attr->value(), "physical") || equalIgnoringCase(attr->value(), "hard") || equalIgnoringCase(attr->value(), "on"))
+        if (equalIgnoringCase(attribute.value(), "physical") || equalIgnoringCase(attribute.value(), "hard") || equalIgnoringCase(attribute.value(), "on"))
             wrap = HardWrap;
-        else if (equalIgnoringCase(attr->value(), "off"))
+        else if (equalIgnoringCase(attribute.value(), "off"))
             wrap = NoWrap;
         else
             wrap = SoftWrap;
@@ -181,12 +184,12 @@ void HTMLTextAreaElement::parseAttribute(Attribute* attr)
             if (renderer())
                 renderer()->setNeedsLayoutAndPrefWidthsRecalc();
         }
-    } else if (attr->name() == accesskeyAttr) {
+    } else if (attribute.name() == accesskeyAttr) {
         // ignore for the moment
-    } else if (attr->name() == maxlengthAttr)
+    } else if (attribute.name() == maxlengthAttr)
         setNeedsValidityCheck();
     else
-        HTMLTextFormControlElement::parseAttribute(attr);
+        HTMLTextFormControlElement::parseAttribute(attribute);
 }
 
 RenderObject* HTMLTextAreaElement::createRenderer(RenderArena* arena, RenderStyle*)
@@ -294,7 +297,7 @@ String HTMLTextAreaElement::sanitizeUserInputValue(const String& proposedValue, 
 
 HTMLElement* HTMLTextAreaElement::innerTextElement() const
 {
-    Node* node = shadowTree()->oldestShadowRoot()->firstChild();
+    Node* node = shadow()->oldestShadowRoot()->firstChild();
     ASSERT(!node || node->hasTagName(divTag));
     return toHTMLElement(node);
 }
@@ -371,15 +374,15 @@ void HTMLTextAreaElement::setValueCommon(const String& newValue)
 
 String HTMLTextAreaElement::defaultValue() const
 {
-    String value = "";
+    StringBuilder value;
 
     // Since there may be comments, ignore nodes other than text nodes.
     for (Node* n = firstChild(); n; n = n->nextSibling()) {
         if (n->isTextNode())
-            value += toText(n)->data();
+            value.append(toText(n)->data());
     }
 
-    return value;
+    return value.toString();
 }
 
 void HTMLTextAreaElement::setDefaultValue(const String& defaultValue)
@@ -421,6 +424,33 @@ void HTMLTextAreaElement::setMaxLength(int newValue, ExceptionCode& ec)
         ec = INDEX_SIZE_ERR;
     else
         setAttribute(maxlengthAttr, String::number(newValue));
+}
+
+String HTMLTextAreaElement::validationMessage() const
+{
+    if (!willValidate())
+        return String();
+
+    if (customError())
+        return customValidationMessage();
+
+    if (valueMissing())
+        return validationMessageValueMissingText();
+
+    if (tooLong())
+        return validationMessageTooLongText(computeLengthForSubmission(value()), maxLength());
+
+    return String();
+}
+
+bool HTMLTextAreaElement::valueMissing() const
+{
+    return willValidate() && valueMissing(value());
+}
+
+bool HTMLTextAreaElement::tooLong() const
+{
+    return willValidate() && tooLong(value(), CheckDirtyFlag);
 }
 
 bool HTMLTextAreaElement::tooLong(const String& value, NeedsToCheckDirtyFlag check) const
@@ -466,13 +496,19 @@ HTMLElement* HTMLTextAreaElement::placeholderElement() const
     return m_placeholder.get();
 }
 
+void HTMLTextAreaElement::attach()
+{
+    HTMLTextFormControlElement::attach();
+    fixPlaceholderRenderer(m_placeholder.get(), innerTextElement());
+}
+
 void HTMLTextAreaElement::updatePlaceholderText()
 {
     ExceptionCode ec = 0;
     String placeholderText = strippedPlaceholder();
     if (placeholderText.isEmpty()) {
         if (m_placeholder) {
-            shadowTree()->oldestShadowRoot()->removeChild(m_placeholder.get(), ec);
+            shadow()->oldestShadowRoot()->removeChild(m_placeholder.get(), ec);
             ASSERT(!ec);
             m_placeholder.clear();
         }
@@ -481,11 +517,12 @@ void HTMLTextAreaElement::updatePlaceholderText()
     if (!m_placeholder) {
         m_placeholder = HTMLDivElement::create(document());
         m_placeholder->setShadowPseudoId("-webkit-input-placeholder");
-        shadowTree()->oldestShadowRoot()->insertBefore(m_placeholder, shadowTree()->oldestShadowRoot()->firstChild()->nextSibling(), ec);
+        shadow()->oldestShadowRoot()->insertBefore(m_placeholder, innerTextElement()->nextSibling(), ec);
         ASSERT(!ec);
     }
     m_placeholder->setInnerText(placeholderText, ec);
     ASSERT(!ec);
+    fixPlaceholderRenderer(m_placeholder.get(), innerTextElement());
 }
 
 }

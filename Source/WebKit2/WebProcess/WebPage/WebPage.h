@@ -52,6 +52,9 @@
 #include <WebCore/Editor.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IntRect.h>
+#if ENABLE(PAGE_VISIBILITY_API)
+#include <WebCore/PageVisibilityState.h>
+#endif
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
@@ -100,6 +103,7 @@ namespace WebCore {
     class GraphicsContext;
     class Frame;
     class FrameView;
+    class HTMLPlugInElement;
     class KeyboardEvent;
     class Page;
     class PrintContext;
@@ -253,7 +257,7 @@ public:
     WebCore::Frame* mainFrame() const; // May return 0.
     WebCore::FrameView* mainFrameView() const; // May return 0.
 
-    PassRefPtr<Plugin> createPlugin(WebFrame*, const Plugin::Parameters&);
+    PassRefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&);
 
     EditorState editorState() const;
 
@@ -302,10 +306,10 @@ public:
     void exitAcceleratedCompositingMode();
 #endif
 
-#if PLATFORM(MAC)
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
+#if PLATFORM(MAC)
     LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
     void setLayerHostingMode(LayerHostingMode);
 
@@ -450,6 +454,8 @@ public:
 
     void replaceSelectionWithText(WebCore::Frame*, const String&);
     void clearSelection();
+
+#if ENABLE(DRAG_SUPPORT)
 #if PLATFORM(WIN)
     void performDragControllerAction(uint64_t action, WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t draggingSourceOperationMask, const WebCore::DragDataMap&, uint32_t flags);
 #elif PLATFORM(QT) || PLATFORM(GTK)
@@ -461,6 +467,7 @@ public:
 
     void willPerformLoadDragDestinationAction();
     void mayPerformUploadDragDestinationAction();
+#endif // ENABLE(DRAG_SUPPORT)
 
     void beginPrinting(uint64_t frameID, const PrintInfo&);
     void endPrinting();
@@ -516,6 +523,7 @@ public:
     void registerApplicationScheme(const String& scheme);
     void applicationSchemeReply(const QtNetworkReplyData&);
     void receivedApplicationSchemeRequest(const QNetworkRequest&, QtNetworkReply*);
+    void setUserScripts(const Vector<String>&);
 #endif
     void wheelEvent(const WebWheelEvent&);
 #if ENABLE(GESTURE_EVENTS)
@@ -674,11 +682,13 @@ private:
 
     void advanceToNextMisspelling(bool startBeforeSelection);
     void changeSpellingToWord(const String& word);
-#if PLATFORM(MAC)
+#if USE(APPKIT)
     void uppercaseWord();
     void lowercaseWord();
     void capitalizeWord();
+#endif
 
+#if PLATFORM(MAC)
     void setSmartInsertDeleteEnabled(bool isSmartInsertDeleteEnabled) { m_isSmartInsertDeleteEnabled = isSmartInsertDeleteEnabled; }
 #endif
 
@@ -700,6 +710,9 @@ private:
 
     WebCore::IntSize m_viewSize;
     OwnPtr<DrawingArea> m_drawingArea;
+
+    HashSet<PluginView*> m_pluginViews;
+
     bool m_useFixedLayout;
 
     bool m_drawsBackground;
@@ -726,9 +739,6 @@ private:
     // The accessibility position of the view.
     WebCore::IntPoint m_accessibilityPosition;
     
-    // All plug-in views on this web page.
-    HashSet<PluginView*> m_pluginViews;
-
     // The layer hosting mode.
     LayerHostingMode m_layerHostingMode;
 
@@ -827,6 +837,9 @@ private:
 #endif
 #if PLATFORM(QT)
     HashMap<String, QtNetworkReply*> m_applicationSchemeReplies;
+#endif
+#if ENABLE(PAGE_VISIBILITY_API)
+    WebCore::PageVisibilityState m_visibilityState;
 #endif
 };
 

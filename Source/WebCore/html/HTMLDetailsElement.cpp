@@ -23,6 +23,7 @@
 
 #if ENABLE(DETAILS)
 
+#include "ElementShadow.h"
 #include "HTMLContentElement.h"
 #include "HTMLNames.h"
 #include "HTMLSummaryElement.h"
@@ -31,7 +32,6 @@
 #include "NodeRenderingContext.h"
 #include "RenderBlock.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 #include "Text.h"
 
 namespace WebCore {
@@ -110,7 +110,7 @@ RenderObject* HTMLDetailsElement::createRenderer(RenderArena* arena, RenderStyle
 
 void HTMLDetailsElement::createShadowSubtree()
 {
-    ASSERT(!hasShadowRoot());
+    ASSERT(!shadow());
 
     RefPtr<ShadowRoot> root = ShadowRoot::create(this, ShadowRoot::CreatingUserAgentShadowRoot);
     root->appendChild(DetailsSummaryElement::create(document()), ASSERT_NO_EXCEPTION, true);
@@ -124,18 +124,18 @@ Element* HTMLDetailsElement::findMainSummary() const
             return toElement(child);
     }
 
-    return static_cast<DetailsSummaryElement*>(shadowTree()->oldestShadowRoot()->firstChild())->fallbackSummary();
+    return static_cast<DetailsSummaryElement*>(shadow()->oldestShadowRoot()->firstChild())->fallbackSummary();
 }
 
-void HTMLDetailsElement::parseAttribute(Attribute* attr)
+void HTMLDetailsElement::parseAttribute(const Attribute& attribute)
 {
-    if (attr->name() == openAttr) {
+    if (attribute.name() == openAttr) {
         bool oldValue = m_isOpen;
-        m_isOpen =  !attr->value().isNull();
+        m_isOpen =  !attribute.isNull();
         if (oldValue != m_isOpen)
             reattachIfAttached();
     } else
-        HTMLElement::parseAttribute(attr);
+        HTMLElement::parseAttribute(attribute);
 }
 
 bool HTMLDetailsElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const

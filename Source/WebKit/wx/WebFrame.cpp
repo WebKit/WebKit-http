@@ -30,6 +30,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "FloatRect.h"
+#include "FormState.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClientWx.h"
@@ -37,6 +38,7 @@
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "HostWindow.h"
+#include "HTMLFormElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "markup.h"
 #include "Page.h"
@@ -126,7 +128,7 @@ public:
             pageRect.height = pageRect.height * mmToPoints;
         }
         m_pageWidth = pageRect.width;
-        m_printContext.begin(m_pageWidth);
+        m_printContext.begin(m_pageWidth, pageRect.height);
         // isPrinting is from the perspective of the PrintContext, so we need this when we call begin.
         m_isPrinting = true;
 

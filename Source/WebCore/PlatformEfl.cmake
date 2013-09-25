@@ -4,7 +4,6 @@ LIST(APPEND WebCore_LINK_FLAGS
 )
 
 LIST(APPEND WebCore_INCLUDE_DIRECTORIES
-  "${JAVASCRIPTCORE_DIR}/wtf/gobject"
   "${WEBCORE_DIR}/accessibility/efl"
   "${WEBCORE_DIR}/page/efl"
   "${WEBCORE_DIR}/platform/efl"
@@ -84,6 +83,7 @@ LIST(APPEND WebCore_SOURCES
   platform/network/soup/ResourceResponseSoup.cpp
   platform/network/soup/SocketStreamHandleSoup.cpp
   platform/network/soup/SoupURIUtils.cpp
+  platform/PlatformStrategies.cpp
   platform/posix/FileSystemPOSIX.cpp
   platform/text/efl/TextBreakIteratorInternalICUEfl.cpp
 )
@@ -96,13 +96,11 @@ IF (ENABLE_NETSCAPE_PLUGIN_API)
     plugins/PluginStream.cpp
     plugins/PluginView.cpp
 
-    plugins/efl/PluginDataEfl.cpp
     plugins/efl/PluginPackageEfl.cpp
     plugins/efl/PluginViewEfl.cpp
   )
 ELSE ()
   LIST(APPEND WebCore_SOURCES
-    plugins/PluginDataNone.cpp
     plugins/PluginPackageNone.cpp
     plugins/PluginViewNone.cpp
   )
@@ -110,6 +108,7 @@ ENDIF ()
 
 LIST(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/mediaControlsEfl.css
+    ${WEBCORE_DIR}/css/mediaControlsEflFullscreen.css
 )
 
 IF (WTF_USE_CAIRO)
@@ -184,7 +183,7 @@ IF (WTF_USE_ICU_UNICODE)
 ENDIF ()
 
 LIST(APPEND WebCore_LIBRARIES
-  ${Cairo_LIBRARIES}
+  ${CAIRO_LIBRARIES}
   ${ECORE_X_LIBRARIES}
   ${EFLDEPS_LIBRARIES}
   ${EVAS_LIBRARIES}
@@ -201,7 +200,7 @@ LIST(APPEND WebCore_LIBRARIES
 )
 
 LIST(APPEND WebCore_INCLUDE_DIRECTORIES
-  ${Cairo_INCLUDE_DIRS}
+  ${CAIRO_INCLUDE_DIRS}
   ${ECORE_X_INCLUDE_DIRS}
   ${EFLDEPS_INCLUDE_DIRS}
   ${EVAS_INCLUDE_DIRS}
@@ -219,9 +218,11 @@ IF (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/gstreamer"
 
-    ${GStreamer-App_INCLUDE_DIRS}
-    ${GStreamer-Interfaces_INCLUDE_DIRS}
-    ${GStreamer-Pbutils_INCLUDE_DIRS}
+    ${GSTREAMER_INCLUDE_DIRS}
+    ${GSTREAMER_BASE_INCLUDE_DIRS}
+    ${GSTREAMER_APP_INCLUDE_DIRS}
+    ${GSTREAMER_INTERFACES_INCLUDE_DIRS}
+    ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
   )
   LIST(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/GRefPtrGStreamer.cpp
@@ -229,15 +230,17 @@ IF (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     platform/graphics/gstreamer/GStreamerVersioning.cpp
   )
   LIST(APPEND WebCore_LIBRARIES
-    ${GStreamer-App_LIBRARIES}
-    ${GStreamer-Interfaces_LIBRARIES}
-    ${GStreamer-Pbutils_LIBRARIES}
+    ${GSTREAMER_LIBRARIES}
+    ${GSTREAMER_BASE_LIBRARIES}
+    ${GSTREAMER_APP_LIBRARIES}
+    ${GSTREAMER_INTERFACES_LIBRARIES}
+    ${GSTREAMER_PBUTILS_LIBRARIES}
   )
 ENDIF ()
 
 IF (ENABLE_VIDEO)
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
-    ${GStreamer-Video_INCLUDE_DIRS}
+    ${GSTREAMER_VIDEO_INCLUDE_DIRS}
   )
   LIST(APPEND WebCore_SOURCES
     platform/graphics/gstreamer/GStreamerGWorld.cpp
@@ -248,7 +251,7 @@ IF (ENABLE_VIDEO)
     platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
   )
   LIST(APPEND WebCore_LIBRARIES
-    ${GStreamer-Video_LIBRARIES}
+    ${GSTREAMER_VIDEO_LIBRARIES}
   )
 ENDIF ()
 
@@ -280,8 +283,8 @@ IF (ENABLE_WEB_AUDIO)
   LIST(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/audio/gstreamer"
 
-    ${GStreamer-Audio_INCLUDE_DIRS}
-    ${GStreamer-FFT_INCLUDE_DIRS}
+    ${GSTREAMER_AUDIO_INCLUDE_DIRS}
+    ${GSTREAMER_FFT_INCLUDE_DIRS}
   )
   LIST(APPEND WebCore_SOURCES
     platform/audio/efl/AudioBusEfl.cpp
@@ -291,8 +294,8 @@ IF (ENABLE_WEB_AUDIO)
     platform/audio/gstreamer/WebKitWebAudioSourceGStreamer.cpp
   )
   LIST(APPEND WebCore_LIBRARIES
-    ${GStreamer-Audio_LIBRARIES}
-    ${GStreamer-FFT_LIBRARIES}
+    ${GSTREAMER_AUDIO_LIBRARIES}
+    ${GSTREAMER_FFT_LIBRARIES}
   )
   SET(WEB_AUDIO_DIR ${CMAKE_INSTALL_PREFIX}/${DATA_INSTALL_DIR}/webaudio/resources)
   FILE(GLOB WEB_AUDIO_DATA "${WEBCORE_DIR}/platform/audio/resources/*.wav")

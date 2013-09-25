@@ -20,7 +20,7 @@
 #include "config.h"
 #include "ewk_auth.h"
 
-#include "ewk_auth_soup.h"
+#include "ewk_auth_soup_private.h"
 
 void ewk_auth_show_dialog_callback_set(Ewk_Auth_Show_Dialog_Callback callback)
 {

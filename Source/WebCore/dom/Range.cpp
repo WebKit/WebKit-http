@@ -1111,58 +1111,7 @@ String Range::text() const
     return plainText(this);
 }
 
-static inline void removeElementPreservingChildren(PassRefPtr<DocumentFragment> fragment, HTMLElement* element)
-{
-    ExceptionCode ignoredExceptionCode;
-
-    RefPtr<Node> nextChild;
-    for (RefPtr<Node> child = element->firstChild(); child; child = nextChild) {
-        nextChild = child->nextSibling();
-        element->removeChild(child.get(), ignoredExceptionCode);
-        ASSERT(!ignoredExceptionCode);
-        fragment->insertBefore(child, element, ignoredExceptionCode);
-        ASSERT(!ignoredExceptionCode);
-    }
-    fragment->removeChild(element, ignoredExceptionCode);
-    ASSERT(!ignoredExceptionCode);
-}
-
-PassRefPtr<DocumentFragment> Range::createDocumentFragmentForElement(const String& markup, Element* element,  FragmentScriptingPermission scriptingPermission)
-{
-    ASSERT(element);
-    HTMLElement* htmlElement = toHTMLElement(element);
-    if (htmlElement->ieForbidsInsertHTML())
-        return 0;
-
-    if (htmlElement->hasLocalName(colTag) || htmlElement->hasLocalName(colgroupTag) || htmlElement->hasLocalName(framesetTag)
-        || htmlElement->hasLocalName(headTag) || htmlElement->hasLocalName(styleTag) || htmlElement->hasLocalName(titleTag))
-        return 0;
-
-    RefPtr<DocumentFragment> fragment = element->document()->createDocumentFragment();
-
-    if (element->document()->isHTMLDocument())
-        fragment->parseHTML(markup, element, scriptingPermission);
-    else if (!fragment->parseXML(markup, element, scriptingPermission))
-        return 0; // FIXME: We should propagate a syntax error exception out here.
-
-    // We need to pop <html> and <body> elements and remove <head> to
-    // accommodate folks passing complete HTML documents to make the
-    // child of an element.
-
-    RefPtr<Node> nextNode;
-    for (RefPtr<Node> node = fragment->firstChild(); node; node = nextNode) {
-        nextNode = node->nextSibling();
-        if (node->hasTagName(htmlTag) || node->hasTagName(headTag) || node->hasTagName(bodyTag)) {
-            HTMLElement* element = toHTMLElement(node.get());
-            if (Node* firstChild = element->firstChild())
-                nextNode = firstChild;
-            removeElementPreservingChildren(fragment, element);
-        }
-    }
-    return fragment.release();
-}
-
-PassRefPtr<DocumentFragment> Range::createContextualFragment(const String& markup, ExceptionCode& ec, FragmentScriptingPermission scriptingPermission)
+PassRefPtr<DocumentFragment> Range::createContextualFragment(const String& markup, ExceptionCode& ec)
 {
     if (!m_start.container()) {
         ec = INVALID_STATE_ERR;
@@ -1175,12 +1124,9 @@ PassRefPtr<DocumentFragment> Range::createContextualFragment(const String& marku
         return 0;
     }
 
-    RefPtr<DocumentFragment> fragment = createDocumentFragmentForElement(markup, toElement(element), scriptingPermission);
-
-    if (!fragment) {
-        ec = NOT_SUPPORTED_ERR;
+    RefPtr<DocumentFragment> fragment = WebCore::createContextualFragment(markup, toHTMLElement(element), AllowScriptingContentAndDoNotMarkAlreadyStarted, ec);
+    if (!fragment)
         return 0;
-    }
 
     return fragment.release();
 }
@@ -1651,9 +1597,9 @@ Node* Range::firstNode() const
     return m_start.container()->traverseNextSibling();
 }
 
-Node* Range::shadowTreeRootNode() const
+ShadowRoot* Range::shadowRoot() const
 {
-    return startContainer() ? startContainer()->shadowTreeRootNode() : 0;
+    return startContainer() ? startContainer()->shadowRoot() : 0;
 }
 
 Node* Range::pastLastNode() const
@@ -1994,25 +1940,6 @@ PassRefPtr<ClientRect> Range::getBoundingClientRect() const
     return ClientRect::create(boundingRect());
 }
 
-static void adjustFloatQuadsForScrollAndAbsoluteZoomAndPageScale(Vector<FloatQuad>& quads, Document* document, RenderObject* renderer)
-{
-    FrameView* view = document->view();
-    if (!view)
-        return;
-
-    float pageScale = 1;
-    if (Page* page = document->page())
-        pageScale = page->pageScaleFactor();
-
-    LayoutRect visibleContentRect = view->visibleContentRect();
-    for (size_t i = 0; i < quads.size(); ++i) {
-        quads[i].move(-visibleContentRect.x(), -visibleContentRect.y());
-        adjustFloatQuadForAbsoluteZoom(quads[i], renderer);
-        if (pageScale != 1)
-            adjustFloatQuadForPageScale(quads[i], pageScale);
-    }
-}
-
 void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
 {
     Node* startContainer = m_start.container();
@@ -2031,7 +1958,7 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
                 if (RenderBoxModelObject* renderBoxModelObject = static_cast<Element*>(node)->renderBoxModelObject()) {
                     Vector<FloatQuad> elementQuads;
                     renderBoxModelObject->absoluteQuads(elementQuads);
-                    adjustFloatQuadsForScrollAndAbsoluteZoomAndPageScale(elementQuads, m_ownerDocument.get(), renderBoxModelObject);
+                    m_ownerDocument->adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(elementQuads, renderBoxModelObject);
 
                     quads.append(elementQuads);
                 }
@@ -2044,7 +1971,7 @@ void Range::getBorderAndTextQuads(Vector<FloatQuad>& quads) const
                 
                 Vector<FloatQuad> textQuads;
                 renderText->absoluteQuadsForRange(textQuads, startOffset, endOffset);
-                adjustFloatQuadsForScrollAndAbsoluteZoomAndPageScale(textQuads, m_ownerDocument.get(), renderText);
+                m_ownerDocument->adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(textQuads, renderText);
 
                 quads.append(textQuads);
             }

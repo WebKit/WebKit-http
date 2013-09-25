@@ -31,19 +31,14 @@
 
 namespace WebCore {
 
-PassOwnPtr<GraphicsContext3DPrivate> GraphicsContext3DPrivate::create(GraphicsContext3D* context, HostWindow* window)
+PassOwnPtr<GraphicsContext3DPrivate> GraphicsContext3DPrivate::create(GraphicsContext3D* context)
 {
-    return adoptPtr(new GraphicsContext3DPrivate(context, window));
+    return adoptPtr(new GraphicsContext3DPrivate(context));
 }
 
-GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, HostWindow* window)
+GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context)
     : m_context(context)
-    , m_window(window)
-#if PLATFORM(GTK)
-    , m_glContext(GLContext::createOffscreenContext(GLContext::getContextForWidget(m_window->platformPageClient())))
-#else
-    , m_glContext(GLContext::createOffscreenContext())
-#endif
+    , m_glContext(GLContext::createOffscreenContext(GLContext::sharingContext()))
 {
 }
 
@@ -74,11 +69,11 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
 
     if (m_context->m_attrs.antialias && m_context->m_boundFBO == m_context->m_multisampleFBO) {
         GLContext* previousActiveContext = GLContext::getCurrent();
-
         if (previousActiveContext != m_glContext)
             m_context->makeContextCurrent();
 
         m_context->resolveMultisamplingIfNecessary();
+        glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_context->m_boundFBO);
 
         if (previousActiveContext && previousActiveContext != m_glContext)
             previousActiveContext->makeContextCurrent();

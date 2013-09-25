@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,70 +29,11 @@
 #include "config.h"
 #include "JSVariableObject.h"
 
-#include "JSActivation.h"
-#include "JSGlobalObject.h"
-#include "JSStaticScopeObject.h"
-#include "PropertyNameArray.h"
-#include "PropertyDescriptor.h"
-
 namespace JSC {
 
 void JSVariableObject::destroy(JSCell* cell)
 {
-    jsCast<JSVariableObject*>(cell)->JSVariableObject::~JSVariableObject();
-}
-
-bool JSVariableObject::deleteProperty(JSCell* cell, ExecState* exec, const Identifier& propertyName)
-{
-    JSVariableObject* thisObject = jsCast<JSVariableObject*>(cell);
-    if (thisObject->symbolTable().contains(propertyName.impl()))
-        return false;
-
-    return JSObject::deleteProperty(thisObject, exec, propertyName);
-}
-
-void JSVariableObject::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
-{
-    JSVariableObject* thisObject = jsCast<JSVariableObject*>(object);
-    SymbolTable::const_iterator end = thisObject->symbolTable().end();
-    for (SymbolTable::const_iterator it = thisObject->symbolTable().begin(); it != end; ++it) {
-        if (!(it->second.getAttributes() & DontEnum) || (mode == IncludeDontEnumProperties))
-            propertyNames.add(Identifier(exec, it->first.get()));
-    }
-    
-    JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
-}
-
-bool JSVariableObject::symbolTableGet(const Identifier& propertyName, PropertyDescriptor& descriptor)
-{
-    SymbolTableEntry entry = symbolTable().inlineGet(propertyName.impl());
-    if (!entry.isNull()) {
-        descriptor.setDescriptor(registerAt(entry.getIndex()).get(), entry.getAttributes() | DontDelete);
-        return true;
-    }
-    return false;
-}
-
-void JSVariableObject::putDirectVirtual(JSObject*, ExecState*, const Identifier&, JSValue, unsigned)
-{
-    ASSERT_NOT_REACHED();
-}
-
-bool JSVariableObject::isDynamicScope(bool& requiresDynamicChecks) const
-{
-    switch (structure()->typeInfo().type()) {
-    case GlobalObjectType:
-        return static_cast<const JSGlobalObject*>(this)->isDynamicScope(requiresDynamicChecks);
-    case ActivationObjectType:
-        return static_cast<const JSActivation*>(this)->isDynamicScope(requiresDynamicChecks);
-    case StaticScopeObjectType:
-        return static_cast<const JSStaticScopeObject*>(this)->isDynamicScope(requiresDynamicChecks);
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
-
-    return false;
+    static_cast<JSVariableObject*>(cell)->JSVariableObject::~JSVariableObject();
 }
 
 } // namespace JSC

@@ -34,6 +34,7 @@ class HTMLOptGroupElement : public HTMLElement {
 public:
     static PassRefPtr<HTMLOptGroupElement> create(const QualifiedName&, Document*);
 
+    virtual bool disabled() const OVERRIDE;
     HTMLSelectElement* ownerSelectElement() const;
     
     String groupLabelText() const;
@@ -44,7 +45,8 @@ private:
     virtual const AtomicString& formControlType() const;
     virtual bool supportsFocus() const;
     virtual bool isFocusable() const;
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual bool isEnabledFormControl() const OVERRIDE { return !disabled(); }
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual bool rendererIsNeeded(const NodeRenderingContext&) { return false; }
     virtual void attach();
     virtual void detach();

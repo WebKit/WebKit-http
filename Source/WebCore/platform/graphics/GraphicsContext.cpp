@@ -482,8 +482,12 @@ void GraphicsContext::drawImage(Image* image, ColorSpace styleColorSpace, const 
 
     if (useLowQualityScale) {
         previousInterpolationQuality = imageInterpolationQuality();
+#if PLATFORM(CHROMIUM)
+        setImageInterpolationQuality(InterpolationLow);
+#else
         // FIXME (49002): Should be InterpolationLow
         setImageInterpolationQuality(InterpolationNone);
+#endif
     }
 
     if (image->isBitmapImage())
@@ -572,8 +576,12 @@ void GraphicsContext::drawImageBuffer(ImageBuffer* image, ColorSpace styleColorS
 
     if (useLowQualityScale) {
         InterpolationQuality previousInterpolationQuality = imageInterpolationQuality();
+#if PLATFORM(CHROMIUM)
+        setImageInterpolationQuality(InterpolationLow);
+#else
         // FIXME (49002): Should be InterpolationLow
         setImageInterpolationQuality(InterpolationNone);
+#endif
         image->draw(this, styleColorSpace, FloatRect(dest.location(), FloatSize(tw, th)), FloatRect(src.location(), FloatSize(tsw, tsh)), op, useLowQualityScale);
         setImageInterpolationQuality(previousInterpolationQuality);
     } else
@@ -753,6 +761,11 @@ void GraphicsContext::adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2
     }
 }
 
+static bool scalesMatch(AffineTransform a, AffineTransform b)
+{
+    return a.xScale() == b.xScale() && a.yScale() == b.yScale();
+}
+
 PassOwnPtr<ImageBuffer> GraphicsContext::createCompatibleBuffer(const IntSize& size) const
 {
     // Make the buffer larger if the context's transform is scaling it so we need a higher
@@ -770,6 +783,13 @@ PassOwnPtr<ImageBuffer> GraphicsContext::createCompatibleBuffer(const IntSize& s
         static_cast<float>(scaledSize.height()) / size.height()));
 
     return buffer.release();
+}
+
+bool GraphicsContext::isCompatibleWithBuffer(ImageBuffer* buffer) const
+{
+    GraphicsContext* bufferContext = buffer->context();
+
+    return scalesMatch(getCTM(), bufferContext->getCTM()) && isAcceleratedContext() == bufferContext->isAcceleratedContext();
 }
 
 #if !USE(CG)

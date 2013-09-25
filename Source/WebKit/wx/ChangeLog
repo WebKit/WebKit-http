@@ -1,3 +1,92 @@
+2012-05-31  Hajime Morrita  <morrita@chromium.org>
+
+        REGRESSION(r117572): editing/spelling/spellcheck-async-remove-frame.html crashes on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=86859
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitSupport/EditorClientWx.h:
+        (WebCore::EditorClientWx::requestCheckingOfString):
+
+2012-05-18  MORITA Hajime <morrita@google.com>
+
+        Another unreviewed attempt to fix build breakage on r117572.
+
+        * WebKitSupport/EditorClientWx.h:
+        (WebCore::EditorClientWx::frameWillDetachPage):
+
+2012-05-18  MORITA Hajime  <morrita@google.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=85515
+        Stale frame in WebCore::SpellChecker::didCheckSucceeded
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitSupport/EditorClientWx.h:
+        (WebCore::EditorClientWx::frameWillDetachPage):
+
+2012-05-17  Hironori Bono  <hbono@chromium.org>
+
+        [Refactoring] Move platform-specific code in Editor::respondToChangedSelection to the WebKit layer
+        https://bugs.webkit.org/show_bug.cgi?id=86591
+
+        Reviewed by Ryosuke Niwa.
+
+        This change adds a TextCheckerClient::shouldEraseMarkersAfterChangeSelection
+        function to remove platform-specific code from Editor::respondToChangedSelection
+        function.
+
+        No new tests, no change in behavior.
+
+        * WebKitSupport/EditorClientWx.cpp:
+        (WebCore::EditorClientWx::shouldEraseMarkersAfterChangeSelection):
+        (WebCore):
+        * WebKitSupport/EditorClientWx.h:
+        (EditorClientWx):
+
+2012-05-14  Kevin Ollivier  <kevino@theolliviers.com>
+
+        [wx] Unreviewed build fix. Add a couple missing headers.
+
+        * WebFrame.cpp:
+
+2012-05-12  Robin Dunn  <robin@alldunn.com>
+
+        [wx] Fix a bug with CanDecreaseTextSize and handling page breaks.
+        https://bugs.webkit.org/show_bug.cgi?id=86311
+
+        Reviewed by Kevin Ollivier.
+
+        * WebFrame.cpp:
+        (WebKit::wxWebFramePrintout::InitializeWithPageSize):
+        * WebView.cpp:
+        (WebKit::WebView::CanDecreaseTextSize):
+
+2012-05-11  Robin Dunn  <robin@alldunn.com>
+
+        [wx] Fix backing bitmap creation under wxMSW.
+        https://bugs.webkit.org/show_bug.cgi?id=86304
+
+        Reviewed by Kevin Ollivier.
+
+        * WebView.cpp:
+        (WebKit::WebView::OnPaint):
+
+2012-05-04  Nate Chapin  <japhet@chromium.org>
+
+        Don't require FrameLoaderClient to manufacture a commitData() call for empty documents.
+        https://bugs.webkit.org/show_bug.cgi?id=85533
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKitSupport/FrameLoaderClientWx.cpp:
+        (WebCore::FrameLoaderClientWx::finishedLoading):
+        (WebCore::FrameLoaderClientWx::setMainDocumentError):
+        (WebCore::FrameLoaderClientWx::dispatchDidReceiveResponse):
+        (WebCore::FrameLoaderClientWx::dispatchDidFailLoading):
+        * WebKitSupport/FrameLoaderClientWx.h:
+        (FrameLoaderClientWx):
+
 2012-04-18  Jon Honeycutt  <jhoneycutt@apple.com>
 
         FrameLoaderClient::dispatchWillSendSubmitEvent() should be given more

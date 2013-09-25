@@ -10,21 +10,22 @@ db = event.target.result
 db.setVersion('new version')
 setVersionSuccess():
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 objectStore = db.createObjectStore('test')
 objectStore.add('myValue', 'myKey')
 Opening cursor
 event.target.source.openCursor(keyRange)
 Cursor opened successfully.
-PASS cursor.direction is 0
-PASS cursor.key is 'myKey'
-PASS cursor.value is 'myValue'
+PASS cursor.direction is "next"
+PASS cursor.key is "myKey"
+PASS cursor.value is "myValue"
 
 Passing an invalid key into .continue({}).
 Expecting exception from event.target.result.continue({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 
 Opening an empty cursor.
 objectStore.openCursor(keyRange)
@@ -33,14 +34,15 @@ PASS cursor is null
 Opening cursor
 event.target.source.openCursor("myKey")
 Cursor opened successfully.
-PASS cursor.direction is 0
-PASS cursor.key is 'myKey'
-PASS cursor.value is 'myValue'
+PASS cursor.direction is "next"
+PASS cursor.key is "myKey"
+PASS cursor.value is "myValue"
 
 Passing an invalid key into .continue({}).
 Expecting exception from cursor.continue({})
 PASS Exception was thrown.
 PASS code is IDBDatabaseException.DATA_ERR
+PASS ename is 'DataError'
 
 Opening an empty cursor.
 objectStore.openCursor("InexistentKey")

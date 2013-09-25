@@ -66,6 +66,7 @@
 #include "Navigator.h"
 #include "NodeList.h"
 #include "Page.h"
+#include "PageCache.h"
 #include "PageGroup.h"
 #include "RegularExpression.h"
 #include "RenderPart.h"
@@ -261,12 +262,12 @@ void Frame::setView(PassRefPtr<FrameView> view)
     if (m_view)
         m_view->detachCustomScrollbars();
 
-    // Detach the document now, so any onUnload handlers get run - if
-    // we wait until the view is destroyed, then things won't be
-    // hooked up enough for some JavaScript calls to work.
+    // Prepare for destruction now, so any unload event handlers get run and the DOMWindow is
+    // notified. If we wait until the view is destroyed, then things won't be hooked up enough for
+    // these calls to work.
     if (!view && m_doc && m_doc->attached() && !m_doc->inPageCache()) {
         // FIXME: We don't call willRemove here. Why is that OK?
-        m_doc->detach();
+        m_doc->prepareForDestruction();
     }
     
     if (m_view)
@@ -521,9 +522,9 @@ void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSiz
     view()->adjustMediaTypeForPrinting(printing);
 
     m_doc->styleResolverChanged(RecalcStyleImmediately);
-    if (printing)
+    if (shouldUsePrintingLayout()) {
         view()->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
-    else {
+    } else {
         view()->forceLayout();
         if (shouldAdjustViewSize == AdjustViewSize)
             view()->adjustViewSize();
@@ -534,6 +535,13 @@ void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSiz
         child->setPrinting(printing, FloatSize(), FloatSize(), 0, shouldAdjustViewSize);
 }
 
+bool Frame::shouldUsePrintingLayout() const
+{
+    // Only top frame being printed should be fit to page size.
+    // Subframes should be constrained by parents only.
+    return m_doc->printing() && (!tree()->parent() || !tree()->parent()->m_doc->printing());
+}
+
 FloatSize Frame::resizePageRectsKeepingRatio(const FloatSize& originalSize, const FloatSize& expectedSize)
 {
     FloatSize resultSize;
@@ -541,10 +549,12 @@ FloatSize Frame::resizePageRectsKeepingRatio(const FloatSize& originalSize, cons
         return FloatSize();
 
     if (contentRenderer()->style()->isHorizontalWritingMode()) {
+        ASSERT(fabs(originalSize.width()) > numeric_limits<float>::epsilon());
         float ratio = originalSize.height() / originalSize.width();
         resultSize.setWidth(floorf(expectedSize.width()));
         resultSize.setHeight(floorf(resultSize.width() * ratio));
     } else {
+        ASSERT(fabs(originalSize.height()) > numeric_limits<float>::epsilon());
         float ratio = originalSize.width() / originalSize.height();
         resultSize.setHeight(floorf(expectedSize.height()));
         resultSize.setWidth(floorf(resultSize.height() * ratio));
@@ -953,7 +963,7 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
     }
 
     if (page->mainFrame() == this)
-        page->backForward()->markPagesForFullStyleRecalc();
+        pageCache()->markPagesForFullStyleRecalc(page);
 }
 
 float Frame::frameScaleFactor() const

@@ -2,15 +2,17 @@
 <html>
 <style>
 .flexbox {
-    display: -webkit-flexbox;
+    display: -webkit-flex;
     background-color: #aaa;
     position: relative;
     -webkit-flex-wrap: wrap;
     -webkit-flex-direction: column;
     float: left;
-    -webkit-flex-line-pack: start;
+    -webkit-align-content: flex-start;
 }
-
+.flexbox > * {
+    -webkit-flex: none;
+}
 .flexbox :nth-child(1) {
     background-color: lightblue;
 }

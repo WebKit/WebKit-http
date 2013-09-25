@@ -27,9 +27,10 @@
 #include "NodeRenderingContext.h"
 
 #include "ContainerNode.h"
+#include "ContentDistributor.h"
+#include "ElementShadow.h"
 #include "FlowThreadController.h"
 #include "HTMLContentElement.h"
-#include "HTMLContentSelector.h"
 #include "HTMLNames.h"
 #include "HTMLShadowElement.h"
 #include "Node.h"
@@ -38,7 +39,6 @@
 #include "RenderObject.h"
 #include "RenderView.h"
 #include "ShadowRoot.h"
-#include "ShadowTree.h"
 
 #if ENABLE(SVG)
 #include "SVGNames.h"
@@ -55,7 +55,8 @@ NodeRenderingContext::NodeRenderingContext(Node* node)
     : m_phase(AttachingNotInTree)
     , m_node(node)
     , m_parentNodeForRenderingAndStyle(0)
-    , m_visualParentShadowTree(0)
+    , m_resetStyleInheritance(false)
+    , m_visualParentShadow(0)
     , m_insertionPoint(0)
     , m_style(0)
     , m_parentFlowRenderer(0)
@@ -66,21 +67,26 @@ NodeRenderingContext::NodeRenderingContext(Node* node)
 
     if (parent->isShadowRoot() && toShadowRoot(parent)->isYoungest()) {
         m_phase = AttachingShadowChild;
-        m_parentNodeForRenderingAndStyle = parent->shadowHost();
+        m_parentNodeForRenderingAndStyle = toShadowRoot(parent)->host();
+        m_resetStyleInheritance = toShadowRoot(parent)->resetStyleInheritance();
         return;
     }
 
     if (parent->isElementNode() || parent->isShadowRoot()) {
-        if (parent->isElementNode() && toElement(parent)->hasShadowRoot())
-            m_visualParentShadowTree = toElement(parent)->shadowTree();
+        if (parent->isElementNode())
+            m_visualParentShadow = toElement(parent)->shadow();
         else if (parent->isShadowRoot())
-            m_visualParentShadowTree = toShadowRoot(parent)->tree();
+            m_visualParentShadow = toShadowRoot(parent)->owner();
 
-        if (m_visualParentShadowTree) {
-            if ((m_insertionPoint = m_visualParentShadowTree->insertionPointFor(m_node))) {
-                if (toShadowRoot(m_insertionPoint->shadowTreeRootNode())->isUsedForRendering()) {
+        if (m_visualParentShadow) {
+            m_visualParentShadow->ensureDistribution();
+
+            if ((m_insertionPoint = m_visualParentShadow->insertionPointFor(m_node))) {
+                if (m_insertionPoint->shadowRoot()->isUsedForRendering()) {
                     m_phase = AttachingDistributed;
-                    m_parentNodeForRenderingAndStyle = NodeRenderingContext(m_insertionPoint).parentNodeForRenderingAndStyle();
+                    NodeRenderingContext insertionPointContext(m_insertionPoint);
+                    m_parentNodeForRenderingAndStyle = insertionPointContext.parentNodeForRenderingAndStyle();
+                    m_resetStyleInheritance = insertionPointContext.resetStyleInheritance();
                     return;
                 }
             }
@@ -91,20 +97,25 @@ NodeRenderingContext::NodeRenderingContext(Node* node)
         }
 
         if (isShadowBoundary(parent)) {
-            if (!toShadowRoot(parent->shadowTreeRootNode())->isUsedForRendering()) {
+            ShadowRoot* parentShadowRoot = parent->shadowRoot();
+            parentShadowRoot->owner()->ensureDistribution();
+
+            if (!parentShadowRoot->isUsedForRendering()) {
                 m_phase = AttachingNotDistributed;
                 m_parentNodeForRenderingAndStyle = parent;
                 return;
             }
 
-            if (toInsertionPoint(parent)->hasSelection())
+            if (toInsertionPoint(parent)->hasDistribution())
                 m_phase = AttachingNotFallbacked;
             else
                 m_phase = AttachingFallbacked;
 
-            if (toInsertionPoint(parent)->isActive())
-                m_parentNodeForRenderingAndStyle = NodeRenderingContext(parent).parentNodeForRenderingAndStyle();
-            else
+            if (toInsertionPoint(parent)->isActive()) {
+                NodeRenderingContext parentContext(parent);
+                m_parentNodeForRenderingAndStyle = parentContext.parentNodeForRenderingAndStyle();
+                m_resetStyleInheritance = parentContext.resetStyleInheritance();
+            } else
                 m_parentNodeForRenderingAndStyle = parent;
             return;
         }
@@ -118,7 +129,8 @@ NodeRenderingContext::NodeRenderingContext(Node* node, RenderStyle* style)
     : m_phase(Calculating)
     , m_node(node)
     , m_parentNodeForRenderingAndStyle(0)
-    , m_visualParentShadowTree(0)
+    , m_resetStyleInheritance(false)
+    , m_visualParentShadow(0)
     , m_insertionPoint(0)
     , m_style(style)
     , m_parentFlowRenderer(0)
@@ -142,12 +154,12 @@ PassRefPtr<RenderStyle> NodeRenderingContext::releaseStyle()
 
 static inline RenderObject* nextRendererOfInsertionPoint(InsertionPoint* parent, Node* current)
 {
-    HTMLContentSelection* currentSelection = parent->selections()->find(current);
-    if (!currentSelection)
+    size_t start = parent->indexOf(current);
+    if (notFound == start)
         return 0;
 
-    for (HTMLContentSelection* selection = currentSelection->next(); selection; selection = selection->next()) {
-        if (RenderObject* renderer = selection->node()->renderer())
+    for (size_t i = start + 1; i < parent->size(); ++i) {
+        if (RenderObject* renderer = parent->at(i)->renderer())
             return renderer;
     }
 
@@ -158,10 +170,10 @@ static inline RenderObject* previousRendererOfInsertionPoint(InsertionPoint* par
 {
     RenderObject* lastRenderer = 0;
 
-    for (HTMLContentSelection* selection = parent->selections()->first(); selection; selection = selection->next()) {
-        if (selection->node() == current)
+    for (size_t i = 0; i < parent->size(); ++i) {
+        if (parent->at(i) == current)
             break;
-        if (RenderObject* renderer = selection->node()->renderer())
+        if (RenderObject* renderer = parent->at(i)->renderer())
             lastRenderer = renderer;
     }
 
@@ -170,13 +182,10 @@ static inline RenderObject* previousRendererOfInsertionPoint(InsertionPoint* par
 
 static inline RenderObject* firstRendererOfInsertionPoint(InsertionPoint* parent)
 {
-    if (parent->hasSelection()) {
-        for (HTMLContentSelection* selection = parent->selections()->first(); selection; selection = selection->next()) {
-            if (RenderObject* renderer = selection->node()->renderer())
-                return renderer;
-        }
-
-        return 0;
+    size_t size = parent->size();
+    for (size_t i = 0; i < size; ++i) {
+        if (RenderObject* renderer = parent->at(i)->renderer())
+            return renderer;
     }
 
     return firstRendererOf(parent->firstChild());
@@ -184,13 +193,10 @@ static inline RenderObject* firstRendererOfInsertionPoint(InsertionPoint* parent
 
 static inline RenderObject* lastRendererOfInsertionPoint(InsertionPoint* parent)
 {
-    if (parent->hasSelection()) {
-        for (HTMLContentSelection* selection = parent->selections()->last(); selection; selection = selection->previous()) {
-            if (RenderObject* renderer = selection->node()->renderer())
-                return renderer;
-        }
-
-        return 0;
+    size_t size = parent->size();
+    for (size_t i = 0; i < size; ++i) {
+        if (RenderObject* renderer = parent->at(size - 1 - i)->renderer())
+            return renderer;
     }
 
     return lastRendererOf(parent->lastChild());
@@ -291,12 +297,6 @@ RenderObject* NodeRenderingContext::parentRenderer() const
     return m_parentNodeForRenderingAndStyle ? m_parentNodeForRenderingAndStyle->renderer() : 0;
 }
 
-void NodeRenderingContext::hostChildrenChanged()
-{
-    if (m_phase == AttachingNotDistributed && m_visualParentShadowTree)
-        m_visualParentShadowTree->hostChildrenChanged();
-}
-
 bool NodeRenderingContext::shouldCreateRenderer() const
 {
     ASSERT(m_phase != Calculating);
@@ -371,9 +371,6 @@ void NodeRendererFactory::createRendererIfNeeded()
 
     ASSERT(!node->renderer());
     ASSERT(document->shouldCreateRenderers());
-
-    // FIXME: This side effect should be visible from attach() code.
-    m_context.hostChildrenChanged();
 
     if (!m_context.shouldCreateRenderer())
         return;

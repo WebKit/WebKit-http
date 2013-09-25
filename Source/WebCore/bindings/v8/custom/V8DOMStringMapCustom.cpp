@@ -51,8 +51,8 @@ v8::Handle<v8::Value> V8DOMStringMap::namedPropertyGetter(v8::Local<v8::String> 
     INC_STATS("DOM.DOMStringMap.NamedPropertyGetter");
     String value = V8DOMStringMap::toNative(info.Holder())->item(toWebCoreString(name));
     if (value.isNull())
-        return notHandledByInterceptor();
-    return v8StringOrUndefined(value);
+        return v8::Handle<v8::Value>();
+    return v8StringOrUndefined(value, info.GetIsolate());
 }
 
 v8::Handle<v8::Array> V8DOMStringMap::namedPropertyEnumerator(const v8::AccessorInfo& info)
@@ -62,7 +62,7 @@ v8::Handle<v8::Array> V8DOMStringMap::namedPropertyEnumerator(const v8::Accessor
     V8DOMStringMap::toNative(info.Holder())->getNames(names);
     v8::Handle<v8::Array> properties = v8::Array::New(names.size());
     for (size_t i = 0; i < names.size(); ++i)
-        properties->Set(v8::Integer::New(i), v8String(names[i]));
+        properties->Set(v8::Integer::New(i), v8String(names[i], info.GetIsolate()));
     return properties;
 }
 
@@ -71,7 +71,7 @@ v8::Handle<v8::Boolean> V8DOMStringMap::namedPropertyDeleter(v8::Local<v8::Strin
     INC_STATS("DOM.DOMStringMap.NamedPropertyDeleter");
     ExceptionCode ec = 0;
     V8DOMStringMap::toNative(info.Holder())->deleteItem(toWebCoreString(name), ec);
-    return ec ? v8::False() : v8::True();
+    return v8Boolean(!ec, info.GetIsolate());
 }
 
 v8::Handle<v8::Value> V8DOMStringMap::namedPropertySetter(v8::Local<v8::String> name, v8::Local<v8::Value> value, const v8::AccessorInfo& info)
@@ -80,14 +80,14 @@ v8::Handle<v8::Value> V8DOMStringMap::namedPropertySetter(v8::Local<v8::String> 
     ExceptionCode ec = 0;
     V8DOMStringMap::toNative(info.Holder())->setItem(toWebCoreString(name), toWebCoreString(value), ec);
     if (ec)
-        return throwError(ec);
+        return throwError(ec, info.GetIsolate());
     return value;
 }
 
 v8::Handle<v8::Value> toV8(DOMStringMap* impl, v8::Isolate* isolate)
 {
     if (!impl)
-        return v8::Null();
+        return v8NullWithCheck(isolate);
     v8::Handle<v8::Object> wrapper = V8DOMStringMap::wrap(impl, isolate);
     // Add a hidden reference from the element to the DOMStringMap.
     Element* element = impl->element();

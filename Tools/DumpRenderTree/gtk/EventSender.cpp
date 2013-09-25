@@ -205,8 +205,10 @@ static JSValueRef contextClickCallback(JSContextRef context, JSObjectRef functio
 {
     GdkEvent* pressEvent = gdk_event_new(GDK_BUTTON_PRESS);
 
-    if (!prepareMouseButtonEvent(pressEvent, 2, 0))
+    if (!prepareMouseButtonEvent(pressEvent, 2, 0)) {
+        gdk_event_free(pressEvent);
         return JSObjectMakeArray(context, 0, 0, 0);
+    }
 
     GdkEvent* releaseEvent = gdk_event_copy(pressEvent);
     sendOrQueueEvent(pressEvent);
@@ -298,7 +300,8 @@ static guint gdkModifersFromJSValue(JSContextRef context, const JSValueRef modif
         return 0;
 
     guint gdkModifiers = 0;
-    int modifiersCount = JSValueToNumber(context, JSObjectGetProperty(context, modifiersArray, JSStringCreateWithUTF8CString("length"), 0), 0);
+    JSRetainPtr<JSStringRef> lengthProperty(Adopt, JSStringCreateWithUTF8CString("length"));
+    int modifiersCount = JSValueToNumber(context, JSObjectGetProperty(context, modifiersArray, lengthProperty.get(), 0), 0);
     for (int i = 0; i < modifiersCount; ++i)
         gdkModifiers |= gdkModifierFromJSValue(context, JSObjectGetPropertyAtIndex(context, modifiersArray, i, 0));
     return gdkModifiers;
@@ -314,12 +317,16 @@ static JSValueRef mouseDownCallback(JSContextRef context, JSObjectRef function, 
     guint modifiers = argumentCount >= 2 ? gdkModifersFromJSValue(context, arguments[1]) : 0;
 
     GdkEvent* event = gdk_event_new(GDK_BUTTON_PRESS);
-    if (!prepareMouseButtonEvent(event, button, modifiers))
+    if (!prepareMouseButtonEvent(event, button, modifiers)) {
+        gdk_event_free(event);
         return JSValueMakeUndefined(context);
+    }
 
     // If the same mouse button is already in the down position don't send another event as it may confuse Xvfb.
-    if (buttonCurrentlyDown == event->button.button)
+    if (buttonCurrentlyDown == event->button.button) {
+        gdk_event_free(event);
         return JSValueMakeUndefined(context);
+    }
 
     buttonCurrentlyDown = event->button.button;
 
@@ -362,8 +369,10 @@ static JSValueRef mouseUpCallback(JSContextRef context, JSObjectRef function, JS
     guint modifiers = argumentCount >= 2 ? gdkModifersFromJSValue(context, arguments[1]) : 0;
 
     GdkEvent* event = gdk_event_new(GDK_BUTTON_RELEASE);
-    if (!prepareMouseButtonEvent(event, button, modifiers))
+    if (!prepareMouseButtonEvent(event, button, modifiers)) {
+        gdk_event_free(event);
         return JSValueMakeUndefined(context);
+    }
 
     lastClickPositionX = lastMousePositionX;
     lastClickPositionY = lastMousePositionY;
@@ -704,6 +713,18 @@ static GdkEvent* createKeyPressEvent(JSContextRef context, size_t argumentCount,
             gdkKeySym = GDK_F11;
         else if (JSStringIsEqualToUTF8CString(character, "F12"))
             gdkKeySym = GDK_F12;
+        else if (JSStringIsEqualToUTF8CString(character, "leftAlt"))
+            gdkKeySym = GDK_Alt_L;
+        else if (JSStringIsEqualToUTF8CString(character, "leftControl"))
+            gdkKeySym = GDK_Control_L;
+        else if (JSStringIsEqualToUTF8CString(character, "leftShift"))
+            gdkKeySym = GDK_Shift_L;
+        else if (JSStringIsEqualToUTF8CString(character, "rightAlt"))
+            gdkKeySym = GDK_Alt_R;
+        else if (JSStringIsEqualToUTF8CString(character, "rightControl"))
+            gdkKeySym = GDK_Control_R;
+        else if (JSStringIsEqualToUTF8CString(character, "rightShift"))
+            gdkKeySym = GDK_Shift_R;
         else {
             int charCode = JSStringGetCharactersPtr(character)[0];
             if (charCode == '\n' || charCode == '\r')

@@ -151,12 +151,14 @@ static const char PlatformFilePathSeparator = '\\';
 static const char PlatformFilePathSeparator = '/';
 #endif
 
-void revealFolderInOS(const String&);
+struct FileMetadata;
+
 bool fileExists(const String&);
 bool deleteFile(const String&);
 bool deleteEmptyDirectory(const String&);
 bool getFileSize(const String&, long long& result);
 bool getFileModificationTime(const String&, time_t& result);
+bool getFileMetadata(const String&, FileMetadata&);
 String pathByAppendingComponent(const String& path, const String& component);
 bool makeAllDirectories(const String& path);
 String homeDirectoryPath();
@@ -203,6 +205,8 @@ String filenameToString(const char*);
 String filenameForDisplay(const String&);
 CString applicationDirectoryPath();
 CString sharedResourcesPath();
+#endif
+#if PLATFORM(GTK) || PLATFORM(QT)
 uint64_t getVolumeFreeSizeForPath(const char*);
 #endif
 

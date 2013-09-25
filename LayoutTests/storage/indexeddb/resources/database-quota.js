@@ -26,7 +26,7 @@ function setVersionSuccess()
 {
     debug("setVersionSuccess():");
     self.trans = evalAndLog("trans = event.target.result");
-    shouldBeTrue("trans !== null");
+    shouldBeNonNull("trans");
     trans.onabort = unexpectedAbortCallback;
     trans.oncomplete = checkQuotaEnforcing;
 
@@ -53,7 +53,7 @@ function checkObjectStore()
 
 function checkQuotaEnforcing()
 {
-    var trans = evalAndLog("trans = db.transaction(['test123'], IDBTransaction.READ_WRITE)");
+    var trans = evalAndLog("trans = db.transaction(['test123'], 'readwrite')");
     trans.onabort = testComplete;
     trans.oncomplete = unexpectedCompleteCallback;
     debug("Creating 'data' which contains 64K of data");
@@ -84,7 +84,7 @@ function addData()
 
 function logError()
 {
-    debug("Error function called: (" + event.target.errorCode + ") " + event.target.webkitErrorMessage);
+    debug("Error function called: (" + event.target.error.name + ") " + event.target.webkitErrorMessage);
     evalAndLog("event.preventDefault()");
 }
 

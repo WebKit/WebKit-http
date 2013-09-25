@@ -11,7 +11,7 @@ db.setVersion('1')
 
 Creating empty stores and indexes
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 Deleted all object stores.
 store = db.createObjectStore('store')
 store.createIndex('index', 'x', {multiEntry: true})
@@ -19,7 +19,7 @@ store2 = db.createObjectStore('store-unique')
 store2.createIndex('index-unique', 'x', {multiEntry: true, unique: true})
 
 Populating stores (and indexes)
-transaction = db.transaction(['store'], IDBTransaction.READ_WRITE)
+transaction = db.transaction(['store'], 'readwrite')
 First try some keys that aren't what we're expecting
 transaction.objectStore('store').put({x: [7, 8, 9], y: 'a'}, 'foo')
 Now overwrite them with what we're expecting
@@ -27,43 +27,43 @@ transaction.objectStore('store').put({x: [1, 2, 3], y: 'a'}, 'foo')
 transaction.objectStore('store').put({x: [4, 5, 6], y: 'b'}, 'bar')
 
 Verifying index: index
-transaction = db.transaction(['store'], IDBTransaction.READ_ONLY)
+transaction = db.transaction(['store'], 'readonly')
 transaction.objectStore('store').index('index').openCursor()
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 1
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 2
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 3
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 4
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 5
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 6
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS expected.length === 0 is true
+PASS expected.length is 0
 
 Verifying unique constraint on multiEntry index
-transaction = db.transaction(['store-unique'], IDBTransaction.READ_WRITE)
+transaction = db.transaction(['store-unique'], 'readwrite')
 transaction.objectStore('store-unique').put({x: [1, 2, 3], y: 'a'}, 'foo')
 success!
 Replace an existing record - this should work
@@ -77,45 +77,45 @@ Transaction aborted as expected
 Create an index on a populated store
 db.setVersion('2')
 trans = event.target.result
-PASS trans !== null is true
+PASS trans is non-null.
 store = trans.objectStore('store')
 store.createIndex('index-new', 'x', {multiEntry: true})
 
 Verifying index: index-new
-transaction = db.transaction(['store'], IDBTransaction.READ_ONLY)
+transaction = db.transaction(['store'], 'readonly')
 transaction.objectStore('store').index('index-new').openCursor()
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 1
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 2
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 3
 PASS cursor.primaryKey is "foo"
 PASS cursor.value.y is "a"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 4
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 5
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS ex != null is true
+PASS ex is non-null.
 PASS cursor.key is 6
 PASS cursor.primaryKey is "bar"
 PASS cursor.value.y is "b"
 cursor = event.target.result
-PASS expected.length === 0 is true
+PASS expected.length is 0
 PASS successfullyParsed is true
 
 TEST COMPLETE

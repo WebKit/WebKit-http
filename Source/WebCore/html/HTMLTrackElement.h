@@ -75,11 +75,12 @@ private:
     HTMLTrackElement(const QualifiedName&, Document*);
     virtual ~HTMLTrackElement();
 
-    virtual void parseAttribute(Attribute*) OVERRIDE;
+    virtual void parseAttribute(const Attribute&) OVERRIDE;
 
-    virtual InsertionNotificationRequest insertedInto(Node*) OVERRIDE;
-    virtual void willRemove() OVERRIDE;
-    virtual bool isURLAttribute(Attribute*) const;
+    virtual InsertionNotificationRequest insertedInto(ContainerNode*) OVERRIDE;
+
+    virtual void removedFrom(ContainerNode*) OVERRIDE;
+    virtual bool isURLAttribute(const Attribute&) const OVERRIDE;
 
 #if ENABLE(MICRODATA)
     virtual String itemValueText() const OVERRIDE;

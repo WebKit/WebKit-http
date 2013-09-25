@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGValidate.h"
+
 namespace JSC { namespace DFG {
 
 #if DFG_ENABLE(DEBUG_PROPAGATION_VERBOSE)
@@ -37,9 +39,12 @@ void Phase::beginPhase()
     dataLog("Graph before %s:\n", m_name);
     m_graph.dump();
 }
+#endif
 
+#if DFG_ENABLE(PER_PHASE_VALIDATION)
 void Phase::endPhase()
 {
+    validate(m_graph, DumpGraph);
 }
 #endif
 

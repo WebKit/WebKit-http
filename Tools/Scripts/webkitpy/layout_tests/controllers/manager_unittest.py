@@ -32,6 +32,7 @@
 
 import StringIO
 import sys
+import time
 import unittest
 
 from webkitpy.common.system.filesystem_mock import MockFileSystem
@@ -73,6 +74,7 @@ class ShardingTests(unittest.TestCase):
         "dom/html/level2/html/HTMLAnchorElement03.html",
         "ietestcenter/Javascript/11.1.5_4-4-c-1.html",
         "dom/html/level2/html/HTMLAnchorElement06.html",
+        "perf/object-keys.html",
     ]
 
     def get_shards(self, num_workers, fully_parallel, test_list=None, max_locked_shards=None):
@@ -95,7 +97,8 @@ class ShardingTests(unittest.TestCase):
               ['http/tests/security/view-source-no-refresh.html',
                'http/tests/websocket/tests/unicode.htm',
                'http/tests/websocket/tests/websocket-protocol-ignored.html',
-               'http/tests/xmlhttprequest/supported-xml-content-types.html'])])
+               'http/tests/xmlhttprequest/supported-xml-content-types.html',
+               'perf/object-keys.html'])])
         self.assertEquals(unlocked,
             [TestShard('animations',
                        ['animations/keyframes.html']),
@@ -113,7 +116,8 @@ class ShardingTests(unittest.TestCase):
             [TestShard('.', ['http/tests/websocket/tests/unicode.htm']),
              TestShard('.', ['http/tests/security/view-source-no-refresh.html']),
              TestShard('.', ['http/tests/websocket/tests/websocket-protocol-ignored.html']),
-             TestShard('.', ['http/tests/xmlhttprequest/supported-xml-content-types.html'])])
+             TestShard('.', ['http/tests/xmlhttprequest/supported-xml-content-types.html']),
+             TestShard('.', ['perf/object-keys.html'])]),
         self.assertEquals(unlocked,
             [TestShard('.', ['animations/keyframes.html']),
              TestShard('.', ['fast/css/display-none-inline-style-change-crash.html']),
@@ -128,7 +132,8 @@ class ShardingTests(unittest.TestCase):
                        ['http/tests/websocket/tests/unicode.htm',
                         'http/tests/security/view-source-no-refresh.html',
                         'http/tests/websocket/tests/websocket-protocol-ignored.html',
-                        'http/tests/xmlhttprequest/supported-xml-content-types.html'])])
+                        'http/tests/xmlhttprequest/supported-xml-content-types.html',
+                        'perf/object-keys.html'])])
         self.assertEquals(unlocked,
             [TestShard('unlocked_tests',
                        ['animations/keyframes.html',
@@ -157,7 +162,8 @@ class ShardingTests(unittest.TestCase):
                         'http/tests/websocket/tests/unicode.htm',
                         'http/tests/websocket/tests/websocket-protocol-ignored.html']),
              TestShard('locked_shard_2',
-                        ['http/tests/xmlhttprequest/supported-xml-content-types.html'])])
+                        ['http/tests/xmlhttprequest/supported-xml-content-types.html',
+                         'perf/object-keys.html'])])
 
         locked, unlocked = self.get_shards(num_workers=4, fully_parallel=False)
         self.assertEquals(locked,
@@ -165,7 +171,29 @@ class ShardingTests(unittest.TestCase):
                        ['http/tests/security/view-source-no-refresh.html',
                         'http/tests/websocket/tests/unicode.htm',
                         'http/tests/websocket/tests/websocket-protocol-ignored.html',
-                        'http/tests/xmlhttprequest/supported-xml-content-types.html'])])
+                        'http/tests/xmlhttprequest/supported-xml-content-types.html',
+                        'perf/object-keys.html'])])
+
+
+class LockCheckingManager(Manager):
+    def __init__(self, port, options, printer, tester, http_lock):
+        super(LockCheckingManager, self).__init__(port, options, printer)
+        self._finished_list_called = False
+        self._tester = tester
+        self._should_have_http_lock = http_lock
+
+    def handle_finished_list(self, source, list_name, num_tests, elapsed_time):
+        if not self._finished_list_called:
+            self._tester.assertEquals(list_name, 'locked_tests')
+            self._tester.assertTrue(self._remaining_locked_shards)
+            self._tester.assertTrue(self._has_http_lock is self._should_have_http_lock)
+
+        super(LockCheckingManager, self).handle_finished_list(source, list_name, num_tests, elapsed_time)
+
+        if not self._finished_list_called:
+            self._tester.assertEquals(self._remaining_locked_shards, [])
+            self._tester.assertFalse(self._has_http_lock)
+            self._finished_list_called = True
 
 
 class ManagerTest(unittest.TestCase):
@@ -192,30 +220,25 @@ class ManagerTest(unittest.TestCase):
         self.assertTrue('Baseline search path: test-mac-leopard -> test-mac-snowleopard -> generic' in printer.output)
 
     def test_http_locking(tester):
-        class LockCheckingManager(Manager):
-            def __init__(self, port, options, printer):
-                super(LockCheckingManager, self).__init__(port, options, printer)
-                self._finished_list_called = False
-
-            def handle_finished_list(self, source, list_name, num_tests, elapsed_time):
-                if not self._finished_list_called:
-                    tester.assertEquals(list_name, 'locked_tests')
-                    tester.assertTrue(self._remaining_locked_shards)
-                    tester.assertTrue(self._has_http_lock)
-
-                super(LockCheckingManager, self).handle_finished_list(source, list_name, num_tests, elapsed_time)
-
-                if not self._finished_list_called:
-                    tester.assertEquals(self._remaining_locked_shards, [])
-                    tester.assertFalse(self._has_http_lock)
-                    self._finished_list_called = True
-
         options, args = run_webkit_tests.parse_args(['--platform=test', '--print=nothing', 'http/tests/passes', 'passes'])
         host = MockHost()
         port = host.port_factory.get(port_name=options.platform, options=options)
         run_webkit_tests._set_up_derived_options(port, options)
         printer = printing.Printer(port, options, StringIO.StringIO(), StringIO.StringIO())
-        manager = LockCheckingManager(port, options, printer)
+        manager = LockCheckingManager(port, options, printer, tester, True)
+        manager.collect_tests(args)
+        manager.parse_expectations()
+        num_unexpected_results = manager.run()
+        printer.cleanup()
+        tester.assertEquals(num_unexpected_results, 0)
+
+    def test_perf_locking(tester):
+        options, args = run_webkit_tests.parse_args(['--platform=test', '--print=nothing', '--no-http', 'passes', 'perf/'])
+        host = MockHost()
+        port = host.port_factory.get(port_name=options.platform, options=options)
+        run_webkit_tests._set_up_derived_options(port, options)
+        printer = printing.Printer(port, options, StringIO.StringIO(), StringIO.StringIO())
+        manager = LockCheckingManager(port, options, printer, tester, False)
         manager.collect_tests(args)
         manager.parse_expectations()
         num_unexpected_results = manager.run()
@@ -257,9 +280,8 @@ class ManagerTest(unittest.TestCase):
         host = MockHost()
         port = host.port_factory.get('test-win-xp')
         test = 'failures/expected/reftest.html'
-        expectations = TestExpectations(port, tests=[test],
-             expectations='WONTFIX : failures/expected/reftest.html = IMAGE',
-             test_config=port.test_configuration())
+        port.test_expectations = lambda: 'WONTFIX : failures/expected/reftest.html = IMAGE'
+        expectations = TestExpectations(port, tests=[test])
         # Reftests expected to be image mismatch should be respected when pixel_tests=False.
         manager = Manager(port=port, options=MockOptions(pixel_tests=False, exit_after_n_failures=None, exit_after_n_crashes_or_timeouts=None), printer=Mock())
         manager._expectations = expectations
@@ -304,6 +326,21 @@ class ManagerTest(unittest.TestCase):
 
             manager = get_manager_with_tests(['http\\tests\\mime'])
             self.assertTrue(manager.needs_servers())
+
+    def test_look_for_new_crash_logs(self):
+        def get_manager_with_tests(test_names):
+            host = MockHost()
+            port = host.port_factory.get('test-mac-leopard')
+            manager = Manager(port, options=MockOptions(test_list=None, http=True), printer=Mock())
+            manager.collect_tests(test_names)
+            return manager
+        host = MockHost()
+        port = host.port_factory.get('test-mac-leopard')
+        tests = ['failures/expected/crash.html']
+        expectations = test_expectations.TestExpectations(port, tests)
+        rs = result_summary.ResultSummary(expectations, tests)
+        manager = get_manager_with_tests(tests)
+        manager._look_for_new_crash_logs(rs, time.time())
 
 
 class NaturalCompareTest(unittest.TestCase):
@@ -385,7 +422,8 @@ class ResultSummaryTest(unittest.TestCase):
         return test_results.TestResult(test_name, failures=failures, test_run_time=run_time)
 
     def get_result_summary(self, port, test_names, expectations_str):
-        expectations = test_expectations.TestExpectations(port, test_names, expectations_str, port.test_configuration(), is_lint_mode=False)
+        port.test_expectations = lambda: expectations_str
+        expectations = test_expectations.TestExpectations(port, test_names)
         return test_names, result_summary.ResultSummary(expectations, test_names), expectations
 
     # FIXME: Use this to test more of summarize_results. This was moved from printing_unittest.py.

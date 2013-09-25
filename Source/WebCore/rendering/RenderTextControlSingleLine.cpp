@@ -478,10 +478,6 @@ PassRefPtr<RenderStyle> RenderTextControlSingleLine::createInnerTextStyle(const 
 
     textBlockStyle->setDisplay(BLOCK);
 
-    // We're adding one extra pixel of padding to match WinIE.
-    textBlockStyle->setPaddingLeft(Length(1, Fixed));
-    textBlockStyle->setPaddingRight(Length(1, Fixed));
-
     return textBlockStyle.release();
 }
 
@@ -750,7 +746,7 @@ PassRefPtr<Scrollbar> RenderTextControlSingleLine::createScrollbar(ScrollableAre
     RefPtr<Scrollbar> widget;
     bool hasCustomScrollbarStyle = style()->hasPseudoStyle(SCROLLBAR);
     if (hasCustomScrollbarStyle)
-        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, this);
+        widget = RenderScrollbar::createCustomScrollbar(scrollableArea, orientation, this->node());
     else
         widget = Scrollbar::createNativeScrollbar(scrollableArea, orientation, controlSize);
     return widget.release();
