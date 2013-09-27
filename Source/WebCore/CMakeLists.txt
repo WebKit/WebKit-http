@@ -1,6 +1,5 @@
 SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
-    "${WEBCORE_DIR}/Modules/filesystem"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/intents"
@@ -13,11 +12,8 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bindings/generic"
     "${WEBCORE_DIR}/bridge"
     "${WEBCORE_DIR}/bridge/c"
-    "${WEBCORE_DIR}/css"
-    "${WEBCORE_DIR}/dom"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
-    "${WEBCORE_DIR}/fileapi"
     "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html"
     "${WEBCORE_DIR}/html/canvas"
@@ -36,10 +32,8 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
     "${WEBCORE_DIR}/page/scrolling"
-    "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
-    "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/filters"
     "${WEBCORE_DIR}/platform/graphics/filters/arm"
     "${WEBCORE_DIR}/platform/graphics/transforms"
@@ -83,7 +77,6 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
     "${JAVASCRIPTCORE_DIR}/llint"
-    "${JAVASCRIPTCORE_DIR}/parser"
     "${JAVASCRIPTCORE_DIR}/profiler"
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${JAVASCRIPTCORE_DIR}/yarr"
@@ -91,6 +84,16 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
     "${CMAKE_BINARY_DIR}"
+)
+
+SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/Modules/filesystem"
+    "${WEBCORE_DIR}/css"
+    "${WEBCORE_DIR}/dom"
+    "${WEBCORE_DIR}/fileapi"
+    "${WEBCORE_DIR}/platform/graphics"
+    "${WEBCORE_DIR}/platform"
+    "${JAVASCRIPTCORE_DIR}/parser"
 )
 
 SET(WebCore_IDL_INCLUDES
@@ -2787,7 +2790,18 @@ WEBKIT_WRAP_SOURCELIST(${WebCore_IDL_FILES} ${WebCore_SOURCES})
 WEBKIT_WRAP_SOURCELIST(${WebCoreTestSupport_IDL_FILES} ${WebCoreTestSupport_SOURCES})
 
 ADD_DEFINITIONS(-DBUILDING_WebCore)
-INCLUDE_DIRECTORIES(${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_DIRECTORIES})
+
+
+IF (HAIKU)
+    # Can't use INCLUDE_DIRECTORIES, because some header file names conflicts between Haiku and WebKit
+    foreach(inc ${WebCore_LOCAL_INCLUDE_DIRECTORIES})
+        ADD_DEFINITIONS(-iquote ${inc})
+    endforeach(inc)
+
+    INCLUDE_DIRECTORIES(${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_DIRECTORIES})
+ELSE (HAIKU)
+    INCLUDE_DIRECTORIES(${WebCore_LOCAL_INCLUDE_DIRECTORIES} ${WebCore_INCLUDE_DIRECTORIES} ${WebCoreTestSupport_INCLUDE_DIRECTORIES})
+ENDIF (HAIKU)
 
 ADD_LIBRARY(${WebCore_LIBRARY_NAME} ${WebCore_LIBRARY_TYPE} ${WebCore_SOURCES})
 SET_TARGET_PROPERTIES(${WebCore_LIBRARY_NAME} PROPERTIES FOLDER "WebCore")

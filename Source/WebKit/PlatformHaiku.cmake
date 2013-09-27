@@ -1,0 +1,62 @@
+LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${CMAKE_SOURCE_DIR}/Source"
+    "${WEBKIT_DIR}/haiku/API"
+    "${WEBKIT_DIR}/haiku/WebCoreSupport"
+    "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
+    "${WEBCORE_DIR}/platform/haiku"
+    "${WEBCORE_DIR}/platform/graphics/haiku"
+    "${WEBCORE_DIR}/platform/network/haiku"
+    ${LIBXML2_INCLUDE_DIR}
+    ${LIBXSLT_INCLUDE_DIR}
+    ${SQLITE_INCLUDE_DIR}
+)
+
+IF (ENABLE_SVG)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/svg"
+    "${WEBCORE_DIR}/svg/animation"
+    "${WEBCORE_DIR}/rendering/svg"
+  )
+ENDIF ()
+
+IF (ENABLE_VIDEO_TRACK)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/html/track"
+  )
+ENDIF ()
+
+IF (ENABLE_NOTIFICATIONS)
+  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/notifications"
+  )
+ENDIF ()
+
+LIST(APPEND WebKit_SOURCES
+    haiku/WebCoreSupport/ChromeClientHaiku.cpp
+    haiku/WebCoreSupport/ContextMenuClientHaiku.cpp
+    haiku/WebCoreSupport/CookieJarClientHaiku.cpp
+    haiku/WebCoreSupport/DragClientHaiku.cpp
+    haiku/WebCoreSupport/EditorClientHaiku.cpp
+    haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
+    haiku/WebCoreSupport/InspectorClientHaiku.cpp
+
+    haiku/API/WebDownload.cpp
+    haiku/API/WebDownloadPrivate.cpp
+    haiku/API/WebFrame.cpp
+    haiku/API/WebKitInfo.cpp
+    haiku/API/WebPage.cpp
+    haiku/API/WebSettings.cpp
+    haiku/API/WebSettingsPrivate.cpp
+    haiku/API/WebView.cpp
+    haiku/API/WebWindow.cpp
+)
+
+LIST(APPEND WebKit_LIBRARIES
+    ${LIBXML2_LIBRARIES}
+    ${SQLITE_LIBRARIES}
+    ${PNG_LIBRARY}
+    ${JPEG_LIBRARY}
+    ${CMAKE_DL_LIBS}
+    be bnetapi translation tracker
+)
+

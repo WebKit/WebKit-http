@@ -93,6 +93,7 @@ my $isWinCE;
 my $isWinCairo;
 my $isWx;
 my $isEfl;
+my $isHaiku;
 my @wxArgs;
 my $isBlackBerry;
 my $isChromium;
@@ -315,7 +316,7 @@ sub determineArchitecture
             chomp $supports64Bit;
             $architecture = 'x86_64' if $supports64Bit;
         }
-    } elsif (isEfl()) {
+    } elsif (isEfl() || isHaiku()) {
         my $host_processor = "";
         $host_processor = `cmake --system-information | grep CMAKE_SYSTEM_PROCESSOR`;
         if ($host_processor =~ m/^CMAKE_SYSTEM_PROCESSOR \"([^"]+)\"/) {
@@ -325,7 +326,7 @@ sub determineArchitecture
         }
     }
 
-    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl())) {
+    if (!$architecture && (isGtk() || isAppleMacWebKit() || isEfl() || isHaiku())) {
         # Fall back to output of `arch', if it is present.
         $architecture = `arch`;
         chomp $architecture;
@@ -337,6 +338,8 @@ sub determineNumberOfCPUs
     return if defined $numberOfCPUs;
     if (defined($ENV{NUMBER_OF_PROCESSORS})) {
         $numberOfCPUs = $ENV{NUMBER_OF_PROCESSORS};
+    } elsif (isHaiku()) {
+        $numberOfCPUs = `sysinfo -cpu | grep "CPU #" | wc -l`
     } elsif (isLinux()) {
         # First try the nproc utility, if it exists. If we get no
         # results fall back to just interpretting /proc directly.
@@ -374,6 +377,7 @@ sub argumentsForConfiguration()
     push(@args, '--qt') if isQt();
     push(@args, '--gtk') if isGtk();
     push(@args, '--efl') if isEfl();
+    push(@args, '--haiku') if isHaiku();
     push(@args, '--wincairo') if isWinCairo();
     push(@args, '--wince') if isWinCE();
     push(@args, '--wx') if isWx();
@@ -460,7 +464,7 @@ sub productDir
 sub jscProductDir
 {
     my $productDir = productDir();
-    $productDir .= "/bin" if (isQt() || isEfl());
+    $productDir .= "/bin" if (isQt() || isEfl() || isHaiku());
     $productDir .= "/Programs" if isGtk();
 
     return $productDir;
@@ -736,7 +740,7 @@ sub builtDylibPathForName
         }
         return "NotFound";
     }
-    if (isEfl()) {
+    if (isEfl() || isHaiku()) {
         return "$configurationProductDir/lib/libewebkit.so";
     }
     if (isWinCE()) {
@@ -886,8 +890,8 @@ sub determineIsQt()
         return;
     }
 
-    # The presence of QTDIR only means Qt if --gtk or --wx or --efl or --blackberry or --chromium or --wincairo are not on the command-line
-    if (isGtk() || isWx() || isEfl() || isBlackBerry() || isChromium() || isWinCairo()) {
+    # The presence of QTDIR only means Qt if --gtk or --wx or --efl or or --haiku --blackberry or --chromium or --wincairo are not on the command-line
+    if (isGtk() || isWx() || isEfl() || isHaiku() || isBlackBerry() || isChromium() || isWinCairo()) {
         $isQt = 0;
         return;
     }
@@ -1033,6 +1037,18 @@ sub isEfl()
 {
     determineIsEfl();
     return $isEfl;
+}
+
+sub determineIsHaiku()
+{
+    return if defined($isHaiku);
+    $isHaiku = checkForArgumentAndRemoveFromARGV("--haiku");
+}
+
+sub isHaiku()
+{
+    determineIsHaiku();
+    return $isHaiku;
 }
 
 sub isGtk()
@@ -1293,7 +1309,7 @@ sub isCrossCompilation()
 
 sub isAppleWebKit()
 {
-    return !(isQt() or isGtk() or isWx() or isChromium() or isEfl() or isWinCE() or isBlackBerry());
+    return !(isQt() or isGtk() or isWx() or isChromium() or isEfl() or isHaiku() or isWinCE() or isBlackBerry());
 }
 
 sub isAppleMacWebKit()
@@ -1430,7 +1446,7 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk() || isQt() || isWx() || isEfl() || isWinCE()) {
+    if (isGtk() || isQt() || isWx() || isEfl() || isHaiku() || isWinCE()) {
         return "$relativeScriptsPath/run-launcher";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
@@ -1449,6 +1465,8 @@ sub launcherName()
         return "Safari";
     } elsif (isEfl()) {
         return "EWebLauncher";
+    } elsif (isHaiku()) {
+        return "HaikuLauncher";
     } elsif (isWinCE()) {
         return "WinCELauncher";
     }
@@ -1477,7 +1495,7 @@ sub checkRequiredSystemConfig
             print "http://developer.apple.com/tools/xcode\n";
             print "*************************************************************\n";
         }
-    } elsif (isGtk() or isQt() or isWx() or isEfl()) {
+    } elsif (isGtk() or isQt() or isWx() or isEfl() or isHaiku()) {
         my @cmds = qw(flex bison gperf);
         my @missing = ();
         foreach my $cmd (@cmds) {
@@ -1654,6 +1672,9 @@ sub copyInspectorFrontendFiles
     } elsif (isEfl()) {
         my $prefix = $ENV{"WebKitInstallationPrefix"};
         $inspectorResourcesDirPath = (defined($prefix) ? $prefix : "/usr/share") . "/ewebkit/webinspector";
+    } elsif (isHaiku()) {
+        my $prefix = $ENV{"WebKitInstallationPrefix"};
+        $inspectorResourcesDirPath = (defined($prefix) ? $prefix : "/boot/common/data") . "/webkit-1.0/webinspector";
     }
 
     if (! -d $inspectorResourcesDirPath) {
@@ -2156,6 +2177,7 @@ sub cmakeBasedPortName()
 {
     return "BlackBerry" if isBlackBerry();
     return "Efl" if isEfl();
+    return "Haiku" if isHaiku();
     return "WinCE" if isWinCE();
     return "";
 }

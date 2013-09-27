@@ -8,37 +8,38 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 ### Requirements ###
 
 - You need a recent version of Haiku with the GCC 4 development tools
-- The following dependencies: `GPerf, ICU, ICU-devel, Perl, Python`
+- The following dependencies: `CMake, GPerf, ICU, ICU-devel, Perl, Python`
 - And a fast computer!
 
 Dependencies can be installed via:
 
-    $ installoptionalpackage GPerf ICU ICU-devel Curl Perl Python
+    $ installoptionalpackage CMake GPerf ICU ICU-devel Curl Perl Python
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddOptionalHaikuImagePackages GPerf ICU ICU-devel Curl Perl Python ;
+    AddOptionalHaikuImagePackages CMake GPerf ICU ICU-devel Curl Perl Python ;
 
 Those packages can also be manually downloaded and installed from http://haiku-files.org/files/optional-packages/
 
 
 ### Building WebKit ###
 
+#### Configuring your build for the first time ####
     $ setgcc gcc4
-    $ cd Source/JavaScriptCore
-    $ ./make-generated-sources.sh
-    $ cd Source/WebCore
-    $ ./make-generated-sources.sh
-    $ NDEBUG=1 jam -qj4
+    $ Tools/Scripts/build-webkit --haiku
 
-This will build a release version of WebKit libraries on a quad core cpu. Remove `NDEBUG=1` to build a debug version.
+#### Regular build, once configured ####
+    $ cd WebKitBuild/Release
+    $ make -j4
 
-On a successful build, executables and libraries are generated in the generated/release directory.
+This will build a release version of WebKit libraries on a quad core cpu.
+
+On a successful build, executables and libraries are generated in the WebKitBuild/Release directory.
 
 
-### Advanced Build, other jam targets ###
+### Advanced Build, other targets ###
 
-The following jam targets are available:
+The following make targets are available:
 
 - libwtf.so - The Web Template Library
 - libjavascriptcore.so -  The JavaScriptCore library
@@ -50,19 +51,23 @@ The following jam targets are available:
 
 Example given, this will build the JavaScriptCore library in debug mode:
 
-    $ jam -q libjavascriptcore.so
-
-The following variables can be set (either in the environment, or using jam -svar=value):
-- NDEBUG - Build in release mode
-- NOCURL - Use experimental Services Kit backend instead of the default curl-based one
-
-To rebuild from scratch a target and all it's dependencies, use the `-a` option:
-
-    $ NDEBUG=1 jam -aqj4 HaikuLauncher
+    $ make libjavascriptcore.so
 
 In some rare cases the build system can be confused, to be sure that everything gets rebuilt from scratch,
-you can remove the generated/ directory.
+you can remove the WebKitBuild/ directory and start over.
 
+There are several cmake variable available to configure the build in various ways.
+These can be given to build-webkit using the --cmakearg option, or changed later on
+using "cmake -Dvar=value WebKitBuild/Release".
+
+### Speeding up the build with distcc ###
+
+You can set the compiler while calling the configure script:
+    $ CC="distcc gcc" CXX="distcc g++" build-webkit ...
+
+It is a good idea to set the NUMBER_OF_PROCESSORS environment variable as well
+(this will be given to cmake through the -j option). If you don't set it, only
+the local CPUs will be counted, leading to a sub-optimal distcc distribution.
 
 ## Notes ##
 
@@ -74,15 +79,14 @@ libjavascriptcore.so, since it didn't change. But you need the matching version.
 As long as our build system doesn't take care of that, you need to make sure of
 this manually.
 
-Changing other variables (such as NOCURL) currently does not result in another
-output directory being used. Make sure you do a clean build when changing their
-values, or you will get strange results (either link errors or incorrect runtime
-behavior).
+cmake is smart enough to detect when a variable has changed and will rebuild everything.
+You can keep several generated folders with different settings if you need to switch
+between them very often (eg. debug and release builds).
 
 You can copy a WebPositive binary from your Haiku installation into the
-generated/release folder. Launching it will then use the freshly built
+WebKitBuild/Release folder. Launching it will then use the freshly built
 libraries instead of the system ones.
 
-This document was last updated September 3, 2013
+This document was last updated September 27, 2013
 
 Authors: Maxime Simon, Alexandre Deckner, Adrien Destugues

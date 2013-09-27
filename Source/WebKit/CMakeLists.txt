@@ -9,8 +9,6 @@ SET(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge"
     "${WEBCORE_DIR}/bridge/c"
     "${WEBCORE_DIR}/bridge/jsc"
-    "${WEBCORE_DIR}/css"
-    "${WEBCORE_DIR}/dom"
     "${WEBCORE_DIR}/dom/default"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
@@ -22,9 +20,7 @@ SET(WebKit_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/loader/cache"
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
-    "${WEBCORE_DIR}/platform"
     "${WEBCORE_DIR}/platform/animation"
-    "${WEBCORE_DIR}/platform/graphics"
     "${WEBCORE_DIR}/platform/graphics/filters"
     "${WEBCORE_DIR}/platform/graphics/transforms"
     "${WEBCORE_DIR}/platform/network"
@@ -49,12 +45,19 @@ SET(WebKit_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/interpreter"
     "${JAVASCRIPTCORE_DIR}/jit"
     "${JAVASCRIPTCORE_DIR}/llint"
-    "${JAVASCRIPTCORE_DIR}/parser"
     "${JAVASCRIPTCORE_DIR}/profiler"
     "${JAVASCRIPTCORE_DIR}/runtime"
     "${WTF_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
     "${CMAKE_BINARY_DIR}"
+)
+
+SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/css"
+    "${WEBCORE_DIR}/dom"
+    "${WEBCORE_DIR}/platform"
+    "${WEBCORE_DIR}/platform/graphics"
+    "${JAVASCRIPTCORE_DIR}/parser"
 )
 
 IF (WTF_USE_SOUP)
@@ -72,7 +75,17 @@ SET(WebKit_LIBRARIES
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 ADD_DEFINITIONS(-DBUILDING_WebKit)
-INCLUDE_DIRECTORIES(${WebKit_INCLUDE_DIRECTORIES})
+
+IF (HAIKU)
+    foreach(inc ${WebKit_LOCAL_INCLUDE_DIRECTORIES})
+        ADD_DEFINITIONS(-iquote ${inc})
+    endforeach(inc)
+
+    INCLUDE_DIRECTORIES(${WebKit_INCLUDE_DIRECTORIES})
+ELSE (HAIKU)
+    INCLUDE_DIRECTORIES(${WebKit_INCLUDE_DIRECTORIES} ${WebKit_LOCAL_INCLUDE_DIRECTORIES})
+ENDIF (HAIKU)
+
 ADD_LIBRARY(${WebKit_LIBRARY_NAME} ${WebKit_LIBRARY_TYPE} ${WebKit_SOURCES})
 ADD_DEPENDENCIES(${WebKit_LIBRARY_NAME} ${WebCore_LIBRARY_NAME})
 TARGET_LINK_LIBRARIES(${WebKit_LIBRARY_NAME} ${WebKit_LIBRARIES})
