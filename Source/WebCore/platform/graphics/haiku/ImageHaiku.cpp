@@ -75,10 +75,6 @@ WTF::PassRefPtr<Image> Image::loadPlatformResource(const char* name)
     return image;
 }
 
-void BitmapImage::initPlatformData()
-{
-}
-
 void BitmapImage::invalidatePlatformData()
 {
 }

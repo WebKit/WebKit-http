@@ -112,6 +112,7 @@ public:
 
     // TextCheckerClient
 
+    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const;
     virtual void ignoreWordInSpellDocument(const String&);
     virtual void learnWord(const String&);
     virtual void checkSpellingOfString(const UChar*, int length, int* misspellingLocation,
@@ -121,7 +122,7 @@ public:
                                       int* badGrammarLocation, int* badGrammarLength);
 
     virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
-    virtual void requestCheckingOfString(SpellChecker*, const TextCheckingRequest&);
+    virtual void requestCheckingOfString(SpellChecker*);
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,

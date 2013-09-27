@@ -537,6 +537,10 @@ void EditorClientHaiku::textDidChangeInTextArea(Element*)
     notImplemented();
 }
 
+bool EditorClientHaiku::shouldEraseMarkersAfterChangeSelection(TextCheckingType) const {
+    return true;
+}
+
 void EditorClientHaiku::ignoreWordInSpellDocument(const String&)
 {
     notImplemented();
@@ -594,7 +598,7 @@ void EditorClientHaiku::getGuessesForWord(const String&, const String&, Vector<S
     notImplemented();
 }
 
-void EditorClientHaiku::requestCheckingOfString(SpellChecker*, const TextCheckingRequest&)
+void EditorClientHaiku::requestCheckingOfString(SpellChecker*)
 {
     notImplemented();
 }
