@@ -1576,13 +1576,13 @@ QQuickWebPage* QQuickWebViewExperimental::page()
 }
 
 /*!
-    \page index.html
-    \title QtWebKit: QML WebView version 3.0
+    \page qtwebkit-index.html
+    \title Qt WebKit
 
-    The WebView API allows QML applications to render regions of dynamic
-    web content. A \e{WebView} component may share the screen with other
-    QML components or encompass the full screen as specified within the
-    QML application.
+    The Qt WebKit module provides the WebView API which allows QML applications
+    to render regions of dynamic web content. A \e{WebView} component may share
+    the screen with other QML components or encompass the full screen as
+    specified within the QML application.
 
     QML WebView version 3.0 is incompatible with previous QML \l
     WebView API versions.  It allows an
