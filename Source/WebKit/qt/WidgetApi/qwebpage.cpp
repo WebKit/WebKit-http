@@ -1628,7 +1628,7 @@ void QWebPage::setFeaturePermission(QWebFrame* frame, Feature feature, Permissio
 #endif
         break;
     case Geolocation:
-#if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
+#if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
         if (policy != PermissionUnknown)
             d->setGeolocationEnabledForFrame(frame->d, (policy == PermissionGrantedByUser));
 #endif

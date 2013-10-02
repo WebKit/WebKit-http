@@ -117,7 +117,7 @@
 #if ENABLE(GEOLOCATION)
 #include "GeolocationClientMock.h"
 #include "GeolocationController.h"
-#if HAVE(QTLOCATION)
+#if HAVE(QTPOSITIONING)
 #include "GeolocationClientQt.h"
 #endif
 #endif
@@ -254,7 +254,7 @@ void QWebPageAdapter::initializeWebCorePage()
         WebCore::provideGeolocationTo(page, mock);
         mock->setController(WebCore::GeolocationController::from(page));
     }
-#if HAVE(QTLOCATION)
+#if HAVE(QTPOSITIONING)
     else
         WebCore::provideGeolocationTo(page, new GeolocationClientQt(this));
 #endif
@@ -1295,7 +1295,7 @@ void QWebPageAdapter::setSystemTrayIcon(QObject *icon)
 #endif // QT_NO_SYSTEMTRAYICON
 #endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 
-#if ENABLE(GEOLOCATION) && HAVE(QTLOCATION)
+#if ENABLE(GEOLOCATION) && HAVE(QTPOSITIONING)
 void QWebPageAdapter::setGeolocationEnabledForFrame(QWebFrameAdapter* frame, bool on)
 {
     GeolocationPermissionClientQt::geolocationPermissionClient()->setPermission(frame, on);
