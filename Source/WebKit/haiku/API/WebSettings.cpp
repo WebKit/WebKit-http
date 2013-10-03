@@ -34,9 +34,6 @@
 #include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
-#if !defined(NOCURL) || !NOCURL
-#include "ResourceHandleManager.h"
-#endif
 #include "Settings.h"
 #include "WebSettingsPrivate.h"
 #include <Application.h>
@@ -494,32 +491,7 @@ void BWebSettings::_HandleSetProxyInfo(BMessage* message)
 		|| message->FindString("password", &password) != B_OK)
 		return;
 
-#if !defined(NOCURL) || !NOCURL
-	WebCore::ResourceHandleManager::ProxyType curlProxyType;
-	switch (type) {
-    default:
-	case B_PROXY_TYPE_HTTP:
-		curlProxyType = WebCore::ResourceHandleManager::HTTP;
-		break;
-	case B_PROXY_TYPE_SOCKS4:
-		curlProxyType = WebCore::ResourceHandleManager::Socks4;
-		break;
-	case B_PROXY_TYPE_SOCKS4A:
-		curlProxyType = WebCore::ResourceHandleManager::Socks4A;
-		break;
-	case B_PROXY_TYPE_SOCKS5:
-		curlProxyType = WebCore::ResourceHandleManager::Socks5;
-		break;
-	case B_PROXY_TYPE_SOCKS5_HOSTNAME:
-		curlProxyType = WebCore::ResourceHandleManager::Socks5Hostname;
-		break;
-	}
-
-	WebCore::ResourceHandleManager::sharedInstance()->setProxyInfo(host, port,
-		curlProxyType, username, password);
-#else
-	// TODO : Services Kit proxy
-#endif
+    // TODO handles proxy with services kit
 }
 
 void BWebSettings::_HandleApply()

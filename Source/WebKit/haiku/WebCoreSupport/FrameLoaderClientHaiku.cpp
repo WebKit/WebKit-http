@@ -843,10 +843,12 @@ bool FrameLoaderClientHaiku::canShowMIMEType(const String& mimeType) const
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return true;
 
+#if 0
     Frame* frame = m_webFrame->Frame();
     if (frame && frame->settings() && frame->settings()->arePluginsEnabled()
         && PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         return true;
+#endif
 
     return false;
 }
@@ -1032,8 +1034,10 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const KURL& url, con
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
         return ObjectContentImage;
 
+#if 0
     if (PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType))
         return ObjectContentNetscapePlugin;
+#endif
 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
         return ObjectContentFrame;
