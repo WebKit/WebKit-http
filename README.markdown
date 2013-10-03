@@ -11,13 +11,15 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 - The following dependencies: `CMake, GPerf, ICU, ICU-devel, Perl, Python`
 - And a fast computer!
 
-Dependencies can be installed via:
+Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ installoptionalpackage CMake GPerf ICU ICU-devel Curl Perl Python
+    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel
+    $ installoptionalpackage ICU ICU-devel Curl Perl Python
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddOptionalHaikuImagePackages CMake GPerf ICU ICU-devel Curl Perl Python ;
+    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel ;
+    AddOptionalHaikuImagePackages ICU ICU-devel Curl Perl Python ;
 
 Those packages can also be manually downloaded and installed from http://haiku-files.org/files/optional-packages/
 
@@ -25,8 +27,10 @@ Those packages can also be manually downloaded and installed from http://haiku-f
 ### Building WebKit ###
 
 #### Configuring your build for the first time ####
-    $ setgcc gcc4
-    $ Tools/Scripts/build-webkit --haiku
+    $ PKG_CONFIG_LIBDIR=/boot/common/develop/lib/x86/pkgconfig \
+        CC=/boot/common/develop/tools/x86/bin/gcc \
+        CXX=/boot/common/develop/tools/x86/bin/g++ \
+        Tools/Scripts/build-webkit --haiku --no-webkit2
 
 #### Regular build, once configured ####
     $ cd WebKitBuild/Release
