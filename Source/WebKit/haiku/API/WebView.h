@@ -35,7 +35,7 @@
 class BWebPage;
 
 
-class BWebView : public BView {
+class __attribute__ ((visibility ("default"))) BWebView : public BView {
 public:
 	class UserData {
 	public:

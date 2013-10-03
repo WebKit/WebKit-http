@@ -33,13 +33,9 @@
 #include <String.h>
 #include <wtf/text/CString.h>
 
-#if defined(NOCURL) && NOCURL
 #include <Url.h>
-#endif
 
 namespace WebCore {
-
-#if defined(NOCURL) && NOCURL
 
 KURL::KURL(const BUrl& url)
 {
@@ -54,8 +50,6 @@ KURL::operator BUrl() const
     BUrl url = BUrl(str);
     return url;
 }
-
-#endif
 
 String KURL::fileSystemPath() const
 {

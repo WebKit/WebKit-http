@@ -30,11 +30,9 @@
 #include "CookieJar.h"
 
 #include "Cookie.h"
-#include "CString.h"
 #include "KURL.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
-#include "StringHash.h"
 #include <wtf/HashMap.h>
 #include <stdio.h>
 

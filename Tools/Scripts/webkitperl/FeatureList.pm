@@ -341,7 +341,7 @@ my @features = (
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },
 
     { option => "system-malloc", desc => "Toggle system allocator instead of TCmalloc",
-      define => "USE_SYSTEM_MALLOC", default => isWinCE(), value => \$systemMallocSupport },
+      define => "USE_SYSTEM_MALLOC", default => (isWinCE() || isHaiku()), value => \$systemMallocSupport },
 
     { option => "tiled-backing-store", desc => "Toggle Tiled Backing Store support",
       define => "WTF_USE_TILED_BACKING_STORE", default => isQt(), value => \$tiledBackingStoreSupport },

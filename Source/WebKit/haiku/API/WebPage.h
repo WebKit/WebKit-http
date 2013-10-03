@@ -74,7 +74,7 @@ typedef enum {
 	B_WEBKIT_CACHE_MODEL_WEB_BROWSER
 } BWebKitCacheModel;
 
-class BWebPage : private BHandler {
+class __attribute__ ((visibility ("default"))) BWebPage : private BHandler {
 public:
 	static	void				InitializeOnce();
 	static	void				ShutdownOnce();

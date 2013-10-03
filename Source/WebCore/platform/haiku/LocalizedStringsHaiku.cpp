@@ -46,12 +46,17 @@ String submitButtonDefaultLabel()
 
 String inputElementAltText()
 {
-    return String();
+    return "Submit";
 }
 
 String resetButtonDefaultLabel()
 {
     return "Reset";
+}
+
+String defaultDetailsSummaryText()
+{
+    return "Details";
 }
 
 String searchableIndexIntroduction()

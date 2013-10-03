@@ -15,7 +15,7 @@ LIST(APPEND WebCore_SOURCES
   page/haiku/FrameHaiku.cpp
   platform/text/haiku/TextBreakIteratorInternalICUHaiku.cpp
   platform/text/haiku/StringHaiku.cpp
-  platform/haiku/Language.cpp
+  platform/haiku/LanguageHaiku.cpp
   platform/graphics/haiku/ColorHaiku.cpp
   platform/graphics/haiku/FontCacheHaiku.cpp
   platform/graphics/haiku/FontCustomPlatformData.cpp
@@ -44,12 +44,18 @@ LIST(APPEND WebCore_SOURCES
   platform/haiku/FileSystemHaiku.cpp
   platform/haiku/KURLHaiku.cpp
   platform/haiku/LocalizedStringsHaiku.cpp
+  platform/haiku/LoggingHaiku.cpp
   platform/haiku/MIMETypeRegistryHaiku.cpp
   platform/haiku/PasteboardHaiku.cpp
   platform/haiku/PlatformKeyboardEventHaiku.cpp
+  platform/haiku/PlatformMouseEventHaiku.cpp
   platform/haiku/PlatformScreenHaiku.cpp
+  platform/haiku/PlatformWheelEventHaiku.cpp
+  platform/haiku/PopupMenuHaiku.cpp
   platform/haiku/RenderThemeHaiku.cpp
   platform/haiku/ScrollbarThemeHaiku.cpp
+  platform/haiku/SearchPopupMenuHaiku.cpp
+  platform/posix/SharedBufferPOSIX.cpp
   platform/haiku/SharedTimerHaiku.cpp
   platform/haiku/SoundHaiku.cpp
   platform/haiku/TemporaryLinkStubs.cpp
@@ -62,12 +68,12 @@ LIST(APPEND WebCore_SOURCES
   platform/network/haiku/DNSHaiku.cpp
   platform/network/haiku/ResourceHandleHaiku.cpp
   platform/network/haiku/ResourceRequestHaiku.cpp
-  #platform/network/soup/CookieJarSoup.cpp
+  platform/haiku/CookieJarHaiku.cpp # FIXME move to network
   #platform/network/soup/CredentialStorageSoup.cpp
   #platform/network/soup/GOwnPtrSoup.cpp
   #platform/network/soup/ProxyServerSoup.cpp
   #platform/network/soup/ResourceResponseSoup.cpp
-  #platform/network/soup/SocketStreamHandleSoup.cpp
+  platform/network/curl/SocketStreamHandleCurl.cpp # not implemented
   #platform/network/soup/SoupURIUtils.cpp
   
   platform/graphics/ImageSource.cpp
@@ -98,6 +104,7 @@ IF (ENABLE_NETSCAPE_PLUGIN_API)
   )
 ELSE ()
   LIST(APPEND WebCore_SOURCES
+    plugins/PluginDataNone.cpp
     plugins/PluginPackageNone.cpp
     plugins/PluginViewNone.cpp
   )

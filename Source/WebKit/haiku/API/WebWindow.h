@@ -35,7 +35,7 @@
 class BWebView;
 
 
-class BWebWindow : public BWindow {
+class __attribute__ ((visibility ("default"))) BWebWindow : public BWindow {
 public:
 								BWebWindow(BRect frame, const char* title,
 									window_look look, window_feel feel,

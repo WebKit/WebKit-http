@@ -31,7 +31,7 @@
 #include "IntPoint.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
-#include "StringHash.h"
+#include "wtf/text/StringHash.h"
 
 #include <support/Locker.h>
 #include <app/Clipboard.h>

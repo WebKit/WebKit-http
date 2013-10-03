@@ -604,11 +604,7 @@ bool EditorClientHaiku::spellingUIIsShowing()
     return false;
 }
 
-<<<<<<< HEAD
-void EditorClientHaiku::requestCheckingOfString(SpellChecker*)
-=======
 void EditorClientHaiku::willSetInputMethodState()
->>>>>>> 26c3ee7... Fix build, evrything seems to work again
 {
     notImplemented();
 }
