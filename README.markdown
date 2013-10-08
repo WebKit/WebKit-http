@@ -8,21 +8,22 @@ For more information, please visit the [project's wiki and issue tracker](http:/
 ### Requirements ###
 
 - You need a recent version of Haiku with the GCC 4 development tools
-- The following dependencies: `CMake, GPerf, ICU, ICU-devel, Perl, Python`
+- The following dependencies: `CMake, GPerf, ICU, libxml, sqlite3, libxslt, Perl, Python`
 - And a fast computer!
 
 Dependencies can be installed (for a gcc2hybrid version) via:
 
-    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel
-    $ installoptionalpackage ICU ICU-devel Curl Perl Python
+    $ pkgman install cmake gperf sqlite_x86_devel libxml2_x86_devel icu_x86_devel icu_devel perl python
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
-    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel ;
-    AddOptionalHaikuImagePackages ICU ICU-devel Curl Perl Python ;
+    AddHaikuImagePackages cmake gperf sqlite_x86_devel libxml2_x86_devel icu_x86_devel icu_devel perl python ;
 
 Those packages can also be manually downloaded and installed from http://haiku-files.org/files/optional-packages/
 
+Important notes:
+ * the packages currently available for sqlite3 and libxml2 have broken pkg-config files. Please rebuild them with a newer version of HaikuPorter, and don't try using the one available in pkgman.
+ * pkgman has no libxslt package. You'll have to build it yourself.
 
 ### Building WebKit ###
 
