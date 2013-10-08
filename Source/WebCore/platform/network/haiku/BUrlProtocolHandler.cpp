@@ -35,7 +35,7 @@
 #include <Url.h>
 #include <UrlRequest.h>
 #include <UrlResult.h>
-#include <UrlProtocolHttp.h>
+#include <HttpRequest.h>
 
 static const int gMaxRecursionLimit = 10;
 
@@ -46,14 +46,39 @@ BFormDataIO::BFormDataIO(FormData* form)
 	, m_currentFile(NULL)
 	, m_currentOffset(0)
 {
-	printf("BFormDataIO::__construct() : Form size : %d\n", m_formElements.size());
+	printf("BFormDataIO::__construct() : Form size : %ld\n", m_formElements.size());
 }
 
 BFormDataIO::~BFormDataIO()
 {
 	delete m_currentFile;
 }
-	
+
+ssize_t BFormDataIO::Size()
+{
+    ssize_t size = 0;
+    for(int i = m_formElements.size() - 1; i >= 0; i--)
+    {
+        FormDataElement& element = m_formElements[i];
+        switch(element.m_type)
+        {
+            case FormDataElement::data:
+                size += element.m_data.size();
+                break;
+            case FormDataElement::encodedFile:
+            {
+                BNode node(BString(element.m_filename).String());
+                off_t filesize = 0;
+                node.GetSize(&filesize);
+                size += filesize;
+                break;
+            }
+        }
+    }
+
+    return size;
+}
+
 ssize_t
 BFormDataIO::Read(void* buffer, size_t size)
 {
@@ -130,13 +155,16 @@ BFormDataIO::_NextElement()
     m_currentFile->GetSize(&m_currentFileSize);
 }
 
+static BUrlContext gContext; // FIXME move elsewhere
+
 BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     : BUrlProtocolAsynchronousListener(true)
     , m_resourceHandle(handle)
     , m_redirected(false)
     , m_responseSent(false)
     , m_responseDataSent(false)
-    , m_request(handle->firstRequest().toNetworkRequest())
+    , m_postData(NULL)
+    , m_request(handle->firstRequest().toNetworkRequest(gContext))
     , m_listener(this)
     , m_shouldStart(true)
     , m_shouldFinish(false)
@@ -173,7 +201,7 @@ void BUrlProtocolHandler::abort()
     if (m_resourceHandle == NULL)
         return;
 
-    m_request.Abort();
+    m_request->Stop();
     m_resourceHandle = NULL;
 }
 
@@ -190,7 +218,7 @@ static bool ignoreHttpError(BUrlRequest* reply, bool receivedData)
     return false;
 }
 
-void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
+void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 {
     printf("UPH[%p]::RequestCompleted()\n", this);
     sendResponseIfNeeded();
@@ -203,13 +231,14 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
         return;
 
     if (m_redirected) {
-        m_request = m_nextRequest.toNetworkRequest();
+        delete m_request;
+        m_request = m_nextRequest.toNetworkRequest(gContext);
         resetState();
         start();
-    } else if (success || ignoreHttpError(&m_request, m_responseDataSent)) {
+    } else if (success || ignoreHttpError(m_request, m_responseDataSent)) {
         client->didFinishLoading(m_resourceHandle, 1.0); // TODO
     } else {
-        const BUrlResult& result = m_request.Result();
+        const BUrlResult& result = m_request->Result();
         int httpStatusCode = result.StatusCode();
 
         if (httpStatusCode) {
@@ -224,8 +253,9 @@ void BUrlProtocolHandler::RequestCompleted(BUrlProtocol* caller, bool success)
 
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
-    if (m_request.Status() != B_PROT_SUCCESS && m_request.Status() != B_PROT_RUNNING
-        && !ignoreHttpError(&m_request, m_responseDataSent))
+    if (m_request->Status() != B_PROT_SUCCESS
+            && m_request->Status() != B_PROT_RUNNING
+            && !ignoreHttpError(m_request, m_responseDataSent))
         return;
 
     if (m_responseSent || !m_resourceHandle)
@@ -236,13 +266,13 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     if (!client)
         return;
 
-    WTF::String contentType = m_request.Result().Headers()["Content-Type"];
+    WTF::String contentType = m_request->Result().Headers()["Content-Type"];
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
     if (mimeType.isEmpty()) {
         // let's try to guess from the extension
-        BString extension = m_request.Url().Path();
+        BString extension = m_request->Url().Path();
         int index = extension.FindLast('.');
 
         if (index > 0) {
@@ -251,11 +281,11 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         }
     }
 
-    KURL url(m_request.Url());
+    KURL url(m_request->Url());
 
     int contentLength = 0;
     const char* contentLengthString
-        = m_request.Result().Headers()["Content-Length"];
+        = m_request->Result().Headers()["Content-Length"];
     if (contentLengthString != NULL)
         contentLength = atoi(contentLengthString);
 
@@ -267,9 +297,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    int statusCode = m_request.Result().StatusCode();
+    int statusCode = m_request->Result().StatusCode();
     if (url.protocolIsInHTTPFamily()) {
-        String suggestedFilename = filenameFromHTTPContentDisposition(m_request.Result().Headers()["Content-Disposition"]);
+        String suggestedFilename = filenameFromHTTPContentDisposition(
+            m_request->Result().Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
@@ -277,10 +308,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             response.setSuggestedFilename(url.lastPathComponent());
 
         response.setHTTPStatusCode(statusCode);
-        response.setHTTPStatusText(m_request.Result().StatusText());
+        response.setHTTPStatusText(m_request->Result().StatusText());
 
         // Add remaining headers.
-        const BHttpHeaders& resultHeaders = m_request.Result().Headers();
+        const BHttpHeaders& resultHeaders = m_request->Result().Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
@@ -288,18 +319,18 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    BString locationString(m_request.Result().Headers()["Location"]);
+    BString locationString(m_request->Result().Headers()["Location"]);
     if (locationString.Length()) {
         BUrl location;
 
         if (locationString[0] == '/') {
-            location = BUrl(m_request.Url());
+            location = BUrl(m_request->Url());
             location.SetPath(locationString);
         }
         else if (locationString[0] == '.') {
-            location = BUrl(m_request.Url());
+            location = BUrl(m_request->Url());
             locationString = location.Path();
-            locationString += m_request.Result().Headers()["Location"];
+            locationString += m_request->Result().Headers()["Location"];
             location.SetPath(locationString);
         }
         else
@@ -330,12 +361,12 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     client->didReceiveResponse(m_resourceHandle, response);
 }
 
-void BUrlProtocolHandler::HeadersReceived(BUrlProtocol* caller)
+void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller)
 {
     sendResponseIfNeeded();
 }
 
-void BUrlProtocolHandler::DataReceived(BUrlProtocol* caller, const char* data, ssize_t size)
+void BUrlProtocolHandler::DataReceived(BUrlRequest* caller, const char* data, ssize_t size)
 {
     sendResponseIfNeeded();
 
@@ -356,7 +387,7 @@ void BUrlProtocolHandler::DataReceived(BUrlProtocol* caller, const char* data, s
     }
 }
 
-void BUrlProtocolHandler::UploadProgress(BUrlProtocol* caller, ssize_t bytesSent, ssize_t bytesTotal)
+void BUrlProtocolHandler::UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal)
 {
     if (!m_resourceHandle)
         return;
@@ -380,23 +411,23 @@ void BUrlProtocolHandler::start()
             break;
         case B_HTTP_POST:
     		delete m_postData;
+                // FIXME remove this and have m_request take ownership
     		m_postData = new BFormDataIO(m_resourceHandle->firstRequest().httpBody());
-    		m_request.SetProtocolOption(B_HTTPOPT_INPUTDATA, m_postData);
+            m_request->SetInputData(m_postData, m_postData->Size());
             break;
     }
 
-    bool followLocation = false;
-    m_request.SetProtocolOption(B_HTTPOPT_FOLLOWLOCATION, &followLocation);
-    m_request.SetProtocolOption(B_HTTPOPT_METHOD, &m_method);
-    m_request.SetProtocolListener(this->SynchronousListener());
+    m_request->SetFollowLocation(false);
+    m_request->SetMethod(m_method);
+    m_request->SetListener(this->SynchronousListener());
 
-    printf("UPH[%p]::start(%s)\n", this, m_request.Url().UrlString().String());
-    if (m_request.InitCheck() != B_OK || m_request.Start() != B_OK) {
+    printf("UPH[%p]::start(%s)\n", this, m_request->Url().UrlString().String());
+    if (m_request->Run() < B_OK) {
         ResourceHandleClient* client = m_resourceHandle->client();
         if (!client)
             return;
 
-        ResourceError error("BUrlProtocol", 42, m_request.Url().UrlString().String(),
+        ResourceError error("BUrlProtocol", 42, m_request->Url().UrlString().String(),
             "The request protocol is not handled by Services Kit.");
         client->didFail(m_resourceHandle, error);
     }

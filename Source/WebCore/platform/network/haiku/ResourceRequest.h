@@ -29,7 +29,8 @@
 
 #include "ResourceRequestBase.h"
 
-class BUrlRequest;
+class BHttpRequest;
+class BUrlContext;
 
 namespace WebCore {
 
@@ -56,7 +57,7 @@ namespace WebCore {
         {
         }
 
-        BUrlRequest toNetworkRequest() const;
+        BHttpRequest* toNetworkRequest(BUrlContext& context) const;
 
     private:
         friend class ResourceRequestBase;

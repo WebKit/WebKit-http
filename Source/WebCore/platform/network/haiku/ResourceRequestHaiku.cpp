@@ -20,20 +20,36 @@
 #include "config.h"
 #include "ResourceRequest.h"
 
+#include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
+#include <HttpRequest.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
 
-BUrlRequest ResourceRequest::toNetworkRequest() const
+// FIXME must handle other types of requests (at least Ftp and File), and
+// callers should be prepared to handle that
+BHttpRequest* ResourceRequest::toNetworkRequest(BUrlContext& context) const
 {
-    BUrlRequest request(url());
+    BHttpRequest* request = dynamic_cast<BHttpRequest*>(
+        BUrlProtocolRoster::MakeRequest(url()));
 
-    const HTTPHeaderMap &headers = httpHeaderFields();
-    for (HTTPHeaderMap::const_iterator it = headers.begin(), end = headers.end();
-         it != end; ++it)
-         if (request.Protocol() != NULL)
-         	const_cast<BUrlProtocol*>(request.Protocol())->Headers().AddHeader(it->first.string().utf8().data(), it->second.utf8().data());
+    request->SetContext(&context);
+
+    if (request != NULL) {
+        const HTTPHeaderMap &headers = httpHeaderFields();
+        BHttpHeaders* requestHeaders = new BHttpHeaders();
+            // FIXME this is leaked - maybe the request should own or copy it
+
+        for (HTTPHeaderMap::const_iterator it = headers.begin(),
+                end = headers.end(); it != end; ++it)
+        {
+            requestHeaders->AddHeader(it->first.string().utf8().data(),
+                it->second.utf8().data());
+        }
+
+        request->SetHeaders(requestHeaders);
+    }
 
     return request;
 }

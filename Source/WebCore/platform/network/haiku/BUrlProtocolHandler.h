@@ -24,8 +24,7 @@
 
 #include <DataIO.h>
 #include <Messenger.h>
-#include <UrlRequest.h>
-#include <UrlProtocol.h>
+#include <HttpRequest.h>
 #include <UrlProtocolAsynchronousListener.h>
 
 class BFile;
@@ -40,6 +39,7 @@ public:
 	BFormDataIO(FormData* form);
 	~BFormDataIO();
 	
+    ssize_t Size();
 	ssize_t Read(void* buffer, size_t size);
 	ssize_t Write(const void* buffer, size_t size);
 	
@@ -64,10 +64,10 @@ public:
 private:
     void sendResponseIfNeeded();
     
-	void HeadersReceived(BUrlProtocol* caller);
-	void DataReceived(BUrlProtocol* caller, const char* data, ssize_t size);
-	void UploadProgress(BUrlProtocol* caller, ssize_t bytesSent, ssize_t bytesTotal);
-	void RequestCompleted(BUrlProtocol* caller, bool success);
+	void HeadersReceived(BUrlRequest* caller);
+	void DataReceived(BUrlRequest* caller, const char* data, ssize_t size);
+	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal);
+	void RequestCompleted(BUrlRequest* caller, bool success);
 
 private:
     void start();
@@ -80,7 +80,7 @@ private:
     bool m_responseDataSent;
     status_t m_method;
     BFormDataIO* m_postData;
-    BUrlRequest m_request;
+    BHttpRequest* m_request; // FIXME should handle Ftp and File
     BUrlProtocolDispatchingListener m_listener;
 
     // defer state holding
