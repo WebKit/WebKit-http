@@ -28,12 +28,14 @@
 
 #include "config.h"
 #include "CookieJar.h"
+#include <UrlContext.h>
 
 #include "Cookie.h"
 #include "KURL.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include <wtf/HashMap.h>
+#include <wtf/text/CString.h>
 #include <stdio.h>
 
 #define TRACE_COOKIE_JAR 0
@@ -44,78 +46,85 @@ namespace WebCore {
 // This temporary cookie jar is used when the client has not provided one.
 static HashMap<String, String> cookieJar;
 
-// This global CookieJarClient will be used, if set.
-static CookieJarClient* gCookieJarClient;
+static BUrlContext gDefaultContext;
+static BUrlContext* gNetworkContext = &gDefaultContext;
 
-void setCookieJarClient(CookieJarClient* client)
+void setNetworkContext(BUrlContext* context)
 {
-    gCookieJarClient = client;
+#if TRACE_COOKIE_JAR
+    printf("CookieJar: Set context %p (was %p)\n", context, gNetworkContext);
+#endif
+
+    // TODO should delete previous context ?
+    if (context == NULL) context = &gDefaultContext;
+    gNetworkContext = context;
+}
+
+BUrlContext& networkContext()
+{
+#if TRACE_COOKIE_JAR
+    printf("CookieJar: Get context %p\n", gNetworkContext);
+#endif
+    return *gNetworkContext;
 }
 
 void setCookies(Document* document, const KURL& url, const String& value)
 {
+	BNetworkCookie* heapCookie
+		= new BNetworkCookie(value, BUrl(url.string().utf8().data()));
+
 #if TRACE_COOKIE_JAR
-printf("setCookies(%s): %s\n\n", url.string().utf8().data(), value.utf8().data());
+	printf("CookieJar: Add %s for %s\n", heapCookie->RawCookie(true).String(),
+        url.string().utf8().data());
+	printf("  from %s\n", value.utf8().data());
 #endif
-    if (gCookieJarClient)
-        gCookieJarClient->setCookies(document, url, value);
-    else
-        cookieJar.set(url.string(), value);
+    gNetworkContext->GetCookieJar().AddCookie(heapCookie);
 }
 
 String cookies(const Document* document, const KURL& url)
 {
-    if (gCookieJarClient)
 #if TRACE_COOKIE_JAR
-{
-String result = gCookieJarClient->cookies(document, url);
-printf("cookies(%s): %s\n\n", url.string().utf8().data(), result.utf8().data());
-return result;
-}
-#else
-        return gCookieJarClient->cookies(document, url);
+	printf("CookieJar: Request for %s\n", url.string().utf8().data());
 #endif
-    return cookieJar.get(url.string());
+	return cookieRequestHeaderFieldValue(document, url);
 }
 
 String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 {
-    if (gCookieJarClient)
+	BString result;
+	BUrl hUrl(url.string().utf8().data());
+
 #if TRACE_COOKIE_JAR
-{
-String result = gCookieJarClient->cookieRequestHeaderFieldValue(document, url);
-printf("cookies(%s): %s\n\n", url.string().utf8().data(), result.utf8().data());
-return result;
-}
-#else
-        return gCookieJarClient->cookieRequestHeaderFieldValue(document, url);
+	printf("CookieJar: RequestHeaderField for %s\n", hUrl.UrlString().String());
 #endif
-    return cookieJar.get(url.string());
+
+	BNetworkCookie* c;
+	for (BNetworkCookieJar::UrlIterator it(
+            gNetworkContext->GetCookieJar().GetUrlIterator(hUrl));
+		    (c = it.Next()); ) {
+		result << "; " << c->RawCookie(false);
+	}
+	result.Remove(0, 2);
+
+    return result;
 }
 
 bool cookiesEnabled(const Document* document)
 {
-	if (gCookieJarClient)
-	    return gCookieJarClient->cookiesEnabled(document);
     return true;
 }
 
 bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
 {
-	if (gCookieJarClient)
-	    return gCookieJarClient->getRawCookies(document, url, rawCookies);
-    // FIXME: Not yet implemented
+	notImplemented();
+
     rawCookies.clear();
     return false; // return true when implemented
 }
 
 void deleteCookie(const Document* document, const KURL& url, const String& name)
 {
-	if (gCookieJarClient)
-	    gCookieJarClient->deleteCookie(document, url, name);
-	else {
-        // FIXME: Not yet implemented
-	}
+	notImplemented();
 }
 
 void setCookieStoragePrivateBrowsingEnabled(bool)

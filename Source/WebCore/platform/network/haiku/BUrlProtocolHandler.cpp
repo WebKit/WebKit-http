@@ -155,8 +155,6 @@ BFormDataIO::_NextElement()
     m_currentFile->GetSize(&m_currentFileSize);
 }
 
-static BUrlContext gContext; // FIXME move elsewhere
-
 BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     : BUrlProtocolAsynchronousListener(true)
     , m_resourceHandle(handle)
@@ -164,7 +162,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
     , m_responseSent(false)
     , m_responseDataSent(false)
     , m_postData(NULL)
-    , m_request(handle->firstRequest().toNetworkRequest(gContext))
+    , m_request(handle->firstRequest().toNetworkRequest())
     , m_listener(this)
     , m_shouldStart(true)
     , m_shouldFinish(false)
@@ -232,7 +230,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
 
     if (m_redirected) {
         delete m_request;
-        m_request = m_nextRequest.toNetworkRequest(gContext);
+        m_request = m_nextRequest.toNetworkRequest();
         resetState();
         start();
     } else if (success || ignoreHttpError(m_request, m_responseDataSent)) {
@@ -406,6 +404,18 @@ void BUrlProtocolHandler::start()
 
     m_shouldStart = false;
 
+    if (m_request == NULL) {
+        ResourceHandleClient* client = m_resourceHandle->client();
+        if (!client)
+            return;
+
+        ResourceError error("BUrlProtocol", 41,
+            BUrl(m_resourceHandle->firstRequest().url()).UrlString().String(),
+            "The request protocol is not handled by Services Kit.");
+        client->didFail(m_resourceHandle, error);
+        return;
+    }
+
     switch (m_method) {
         case B_HTTP_GET:
             break;
@@ -428,7 +438,7 @@ void BUrlProtocolHandler::start()
             return;
 
         ResourceError error("BUrlProtocol", 42, m_request->Url().UrlString().String(),
-            "The request protocol is not handled by Services Kit.");
+            "The service kit failed to start the request.");
         client->didFail(m_resourceHandle, error);
     }
 }

@@ -36,6 +36,7 @@
 
 class BNetworkCookieJar;
 class BRegion;
+class BUrlContext;
 class BView;
 class BWebDownload;
 class BWebFrame;
@@ -86,7 +87,7 @@ public:
 			void				SetListener(const BMessenger& listener);
 	static	void				SetDownloadListener(const BMessenger& listener);
 
-	static	void				SetCookieJar(BNetworkCookieJar* cookieJar);
+	static	void				SetNetworkContext(BUrlContext* context);
 
 			BWebFrame*			MainFrame() const;
 			BWebSettings*		Settings() const;

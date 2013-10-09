@@ -34,7 +34,6 @@ ENDIF ()
 LIST(APPEND WebKit_SOURCES
     haiku/WebCoreSupport/ChromeClientHaiku.cpp
     haiku/WebCoreSupport/ContextMenuClientHaiku.cpp
-    haiku/WebCoreSupport/CookieJarClientHaiku.cpp
     haiku/WebCoreSupport/DragClientHaiku.cpp
     haiku/WebCoreSupport/EditorClientHaiku.cpp
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp

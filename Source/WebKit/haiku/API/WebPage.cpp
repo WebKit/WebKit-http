@@ -35,7 +35,7 @@
 #include "ContextMenu.h"
 #include "ContextMenuClientHaiku.h"
 #include "ContextMenuController.h"
-#include "CookieJarClientHaiku.h"
+#include "CookieJar.h"
 #include "Cursor.h"
 #include "DOMTimer.h"
 #include "DragClientHaiku.h"
@@ -253,10 +253,9 @@ void BWebPage::SetDownloadListener(const BMessenger& listener)
     sDownloadListener = listener;
 }
 
-/*static*/ void BWebPage::SetCookieJar(BNetworkCookieJar* cookieJar)
+/*static*/ void BWebPage::SetNetworkContext(BUrlContext* context)
 {
-	static WebCore::CookieJarClientHaiku cookieJarClient(cookieJar);
-	WebCore::setCookieJarClient(&cookieJarClient);
+	WebCore::setNetworkContext(context);
 }
 
 void BWebPage::LoadURL(const char* urlString)

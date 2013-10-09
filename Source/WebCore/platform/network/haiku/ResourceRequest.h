@@ -57,7 +57,7 @@ namespace WebCore {
         {
         }
 
-        BHttpRequest* toNetworkRequest(BUrlContext& context) const;
+        BHttpRequest* toNetworkRequest() const;
 
     private:
         friend class ResourceRequestBase;

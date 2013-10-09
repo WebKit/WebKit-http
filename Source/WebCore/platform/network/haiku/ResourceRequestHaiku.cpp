@@ -20,6 +20,8 @@
 #include "config.h"
 #include "ResourceRequest.h"
 
+#include "CookieJar.h"
+
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
 #include <HttpRequest.h>
@@ -29,12 +31,10 @@ namespace WebCore {
 
 // FIXME must handle other types of requests (at least Ftp and File), and
 // callers should be prepared to handle that
-BHttpRequest* ResourceRequest::toNetworkRequest(BUrlContext& context) const
+BHttpRequest* ResourceRequest::toNetworkRequest() const
 {
     BHttpRequest* request = dynamic_cast<BHttpRequest*>(
         BUrlProtocolRoster::MakeRequest(url()));
-
-    request->SetContext(&context);
 
     if (request != NULL) {
         const HTTPHeaderMap &headers = httpHeaderFields();
@@ -49,6 +49,7 @@ BHttpRequest* ResourceRequest::toNetworkRequest(BUrlContext& context) const
         }
 
         request->SetHeaders(requestHeaders);
+        request->SetContext(&networkContext());
     }
 
     return request;

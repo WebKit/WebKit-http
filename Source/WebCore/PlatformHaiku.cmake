@@ -68,7 +68,7 @@ LIST(APPEND WebCore_SOURCES
   platform/network/haiku/DNSHaiku.cpp
   platform/network/haiku/ResourceHandleHaiku.cpp
   platform/network/haiku/ResourceRequestHaiku.cpp
-  platform/haiku/CookieJarHaiku.cpp # FIXME move to network
+  platform/network/haiku/CookieJarHaiku.cpp
   #platform/network/soup/CredentialStorageSoup.cpp
   #platform/network/soup/GOwnPtrSoup.cpp
   #platform/network/soup/ProxyServerSoup.cpp
