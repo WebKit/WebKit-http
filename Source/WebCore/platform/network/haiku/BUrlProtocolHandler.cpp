@@ -196,7 +196,7 @@ BUrlProtocolHandler::~BUrlProtocolHandler()
 
 void BUrlProtocolHandler::abort()
 {
-    if (m_resourceHandle == NULL)
+    if (m_resourceHandle == NULL || m_request == NULL)
         return;
 
     m_request->Stop();
@@ -319,20 +319,8 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     BString locationString(m_request->Result().Headers()["Location"]);
     if (locationString.Length()) {
-        BUrl location;
-
-        if (locationString[0] == '/') {
-            location = BUrl(m_request->Url());
-            location.SetPath(locationString);
-        }
-        else if (locationString[0] == '.') {
-            location = BUrl(m_request->Url());
-            locationString = location.Path();
-            locationString += m_request->Result().Headers()["Location"];
-            location.SetPath(locationString);
-        }
-        else
-            location = BUrl(locationString);
+        BUrl location = BUrl(m_request->Url());
+        location.Redirect(locationString);
 
         m_redirectionTries--;
 
