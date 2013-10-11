@@ -102,7 +102,10 @@ String cookieRequestHeaderFieldValue(const Document* document, const KURL& url)
 	for (BNetworkCookieJar::UrlIterator it(
             gNetworkContext->GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
-		result << "; " << c->RawCookie(false);
+        // filter out httpOnly cookies,as this method is used to get cookies
+        // from JS code and these shouldn't be visible there.
+        if(!c->HttpOnly())
+		    result << "; " << c->RawCookie(false);
 	}
 	result.Remove(0, 2);
 
