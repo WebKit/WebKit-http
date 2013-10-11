@@ -1,4 +1,5 @@
-LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+ource/WebKit/PlatformHaiku.cmake
+
     "${CMAKE_SOURCE_DIR}/Source"
     "${WEBKIT_DIR}/haiku/API"
     "${WEBKIT_DIR}/haiku/WebCoreSupport"
@@ -59,3 +60,14 @@ LIST(APPEND WebKit_LIBRARIES
     be bnetapi translation tracker
 )
 
+INSTALL(FILES
+    haiku/API/WebWindow.h
+    haiku/API/WebViewConstants.h
+    haiku/API/WebView.h
+    haiku/API/WebSettings.h
+    haiku/API/WebPage.h
+    haiku/API/WebKitInfo.h
+    haiku/API/WebFrame.h
+    haiku/API/WebDownload.h
+    DESTINATION headers
+)
