@@ -68,5 +68,5 @@ INSTALL(FILES
     haiku/API/WebKitInfo.h
     haiku/API/WebFrame.h
     haiku/API/WebDownload.h
-    DESTINATION headers
+    DESTINATION develop/headers${CMAKE_HAIKU_SECONDARY_ARCH}
 )
