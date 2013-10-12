@@ -1,5 +1,4 @@
-ource/WebKit/PlatformHaiku.cmake
-
+LIST(APPEND WebKit_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
     "${WEBKIT_DIR}/haiku/API"
     "${WEBKIT_DIR}/haiku/WebCoreSupport"
