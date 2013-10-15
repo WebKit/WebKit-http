@@ -1217,6 +1217,17 @@ QUrl QWebHitTestResult::imageUrl() const
 }
 
 /*!
+    Returns the url of the video or audio element.
+    \since 5.2
+*/
+QUrl QWebHitTestResult::mediaUrl() const
+{
+    if (!d)
+        return QUrl();
+    return d->mediaUrl;
+}
+
+/*!
     Returns a QPixmap containing the image. A null pixmap is returned if the
     element being tested is not an image.
 */

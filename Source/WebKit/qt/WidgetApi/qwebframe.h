@@ -87,6 +87,7 @@ public:
 
     QUrl imageUrl() const;
     QPixmap pixmap() const;
+    QUrl mediaUrl() const;
 
     bool isContentEditable() const;
     bool isContentSelected() const;

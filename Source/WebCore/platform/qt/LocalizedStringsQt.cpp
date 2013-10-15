@@ -133,6 +133,11 @@ String contextMenuItemTagOpenAudioInNewWindow()
     return QCoreApplication::translate("QWebPage", "Open Audio", "Open Audio in New Window");
 }
 
+String contextMenuItemTagOpenMediaInNewWindow()
+{
+    return QCoreApplication::translate("QWebPage", "Open Media", "Open Media in New Window context menu item");
+}
+
 String contextMenuItemTagDownloadVideoToDisk()
 {
     return QCoreApplication::translate("QWebPage", "Download Video", "Download Video context menu item");
@@ -143,19 +148,29 @@ String contextMenuItemTagDownloadAudioToDisk()
     return QCoreApplication::translate("QWebPage", "Download Audio", "Download Audio context menu item");
 }
 
+String contextMenuItemTagDownloadMediaToDisk()
+{
+    return QCoreApplication::translate("QWebPage", "Download Media", "Download Media context menu item");
+}
+
 String contextMenuItemTagCopyVideoLinkToClipboard()
 {
-    return QCoreApplication::translate("QWebPage", "Copy Video", "Copy Video Link Location");
+    return QCoreApplication::translate("QWebPage", "Copy Video Address", "Copy Video Link to Clipboard");
 }
 
 String contextMenuItemTagCopyAudioLinkToClipboard()
 {
-    return QCoreApplication::translate("QWebPage", "Copy Audio", "Copy Audio Link Location");
+    return QCoreApplication::translate("QWebPage", "Copy Audio Address", "Copy Audio Link to Clipboard");
+}
+
+String contextMenuItemTagCopyMediaLinkToClipboard()
+{
+    return QCoreApplication::translate("QWebPage", "Copy Media Address", "Copy Media Link to Clipboard");
 }
 
 String contextMenuItemTagToggleMediaControls()
 {
-    return QCoreApplication::translate("QWebPage", "Toggle Controls", "Toggle Media Controls");
+    return QCoreApplication::translate("QWebPage", "Show Controls", "Toggle Media Controls checkable context menu item");
 }
 
 String contextMenuItemTagShowMediaControls()
@@ -170,7 +185,7 @@ String contextMenuItemTagHideMediaControls()
 
 String contextMenuItemTagToggleMediaLoop()
 {
-    return QCoreApplication::translate("QWebPage", "Toggle Loop", "Toggle Media Loop Playback");
+    return QCoreApplication::translate("QWebPage", "Looping", "Toggle Media Loop Playback");
 }
 
 String contextMenuItemTagEnterVideoFullscreen()
@@ -188,9 +203,19 @@ String contextMenuItemTagMediaPause()
     return QCoreApplication::translate("QWebPage", "Pause", "Pause");
 }
 
+String contextMenuItemTagMediaPlayPause()
+{
+    return QCoreApplication::translate("QWebPage", "Play/Pause", "Toggle Play and Pause state");
+}
+
 String contextMenuItemTagMediaMute()
 {
-    return QCoreApplication::translate("QWebPage", "Mute", "Mute");
+    return QCoreApplication::translate("QWebPage", "Mute", "Media Mute context menu item");
+}
+
+String contextMenuItemTagMediaUnmute()
+{
+    return QCoreApplication::translate("QWebPage", "Unmute", "Media Unmute context menu item");
 }
 
 String contextMenuItemTagOpenFrameInNewWindow()

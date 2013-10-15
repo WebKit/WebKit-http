@@ -521,7 +521,12 @@ String contextMenuItemTagMediaMute()
 {
     return WEB_UI_STRING("Mute", "Media Mute context menu item");
 }
-    
+
+String contextMenuItemTagMediaUnmute()
+{
+    return WEB_UI_STRING("Unmute", "Media Unmute context menu item");
+}
+
 String contextMenuItemTagInspectElement()
 {
     return WEB_UI_STRING("Inspect Element", "Inspect Element context menu item");

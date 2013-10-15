@@ -756,7 +756,7 @@ void ContextMenuController::populate()
     ContextMenuItem CopyMediaLinkItem(ActionType, ContextMenuItemTagCopyMediaLinkToClipboard, String());
     ContextMenuItem MediaPlayPause(ActionType, ContextMenuItemTagMediaPlayPause, 
         contextMenuItemTagMediaPlay());
-    ContextMenuItem MediaMute(ActionType, ContextMenuItemTagMediaMute, 
+    ContextMenuItem MediaMute(ActionType, ContextMenuItemTagMediaMute,
         contextMenuItemTagMediaMute());
 #if SUPPORTS_TOGGLE_SHOW_HIDE_MEDIA_CONTROLS
     ContextMenuItem ToggleMediaControls(ActionType, ContextMenuItemTagToggleMediaControls,
@@ -1415,6 +1415,11 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
                 item.setTitle(contextMenuItemTagMediaPlay());
             break;
         case ContextMenuItemTagMediaMute:
+            if (m_context.hitTestResult().mediaMuted())
+                item.setTitle(contextMenuItemTagMediaUnmute());
+            else
+                item.setTitle(contextMenuItemTagMediaMute());
+            break;
             shouldEnable = m_context.hitTestResult().mediaHasAudio();
             shouldCheck = shouldEnable &&  m_context.hitTestResult().mediaMuted();
             break;

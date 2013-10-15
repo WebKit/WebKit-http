@@ -91,7 +91,13 @@ public:
     F(ToggleBold, WebCore::ContextMenuItemTagBold) SEPARATOR \
     F(ToggleItalic, WebCore::ContextMenuItemTagItalic) SEPARATOR \
     F(ToggleUnderline, WebCore::ContextMenuItemTagUnderline) SEPARATOR \
-    F(SelectAll, WebCore::ContextMenuItemTagSelectAll)
+    F(SelectAll, WebCore::ContextMenuItemTagSelectAll) SEPARATOR \
+    F(DownloadMediaToDisk, WebCore::ContextMenuItemTagDownloadMediaToDisk) SEPARATOR \
+    F(CopyMediaUrlToClipboard, WebCore::ContextMenuItemTagCopyMediaLinkToClipboard) SEPARATOR \
+    F(ToggleMediaControls, WebCore::ContextMenuItemTagToggleMediaControls) SEPARATOR \
+    F(ToggleMediaLoop, WebCore::ContextMenuItemTagToggleMediaLoop) SEPARATOR \
+    F(ToggleMediaPlayPause, WebCore::ContextMenuItemTagMediaPlayPause) SEPARATOR \
+    F(ToggleMediaMute, WebCore::ContextMenuItemTagMediaMute)
 #define COMMA_SEPARATOR ,
 #define SEMICOLON_SEPARATOR ;
 #define DEFINE_ACTION(Name, Value) \
@@ -248,7 +254,7 @@ public:
         Q_DECLARE_FLAGS(Traits, Trait);
         Traits traits;
         QList<MenuItemDescription> subMenu;
-        QString subMenuTitle;
+        QString title;
     };
     virtual void createAndSetCurrentContextMenu(const QList<MenuItemDescription>&, QBitArray*) = 0;
     virtual bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) = 0;
