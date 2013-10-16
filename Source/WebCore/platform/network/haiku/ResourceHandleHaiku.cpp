@@ -136,6 +136,7 @@ void ResourceHandle::cancel()
 {
     if (d->m_urlrequest) {
         d->m_urlrequest->abort();
+        delete d->m_urlrequest;
         d->m_urlrequest = 0;
     }
 }
