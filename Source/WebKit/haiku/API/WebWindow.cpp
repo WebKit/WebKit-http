@@ -119,8 +119,7 @@ void BWebWindow::MessageReceived(BMessage* message)
         if (message->FindPointer("view", reinterpret_cast<void**>(&view)) != B_OK)
         	break;
         BRect windowFrame;
-        if (message->FindRect("frame", &windowFrame) != B_OK)
-        	windowFrame = BRect();
+        message->FindRect("frame", &windowFrame);
         bool modalDialog;
         if (message->FindBool("modal", &modalDialog) != B_OK)
         	modalDialog = false;
