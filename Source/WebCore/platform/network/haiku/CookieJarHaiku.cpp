@@ -43,9 +43,6 @@
 
 namespace WebCore {
 
-// This temporary cookie jar is used when the client has not provided one.
-static HashMap<String, String> cookieJar;
-
 static BUrlContext gDefaultContext;
 static BUrlContext* gNetworkContext = &gDefaultContext;
 
@@ -119,6 +116,9 @@ bool cookiesEnabled(const Document* document)
 
 bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& rawCookies)
 {
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
+#endif
 	notImplemented();
 
     rawCookies.clear();
@@ -127,11 +127,17 @@ bool getRawCookies(const Document* document, const KURL& url, Vector<Cookie>& ra
 
 void deleteCookie(const Document* document, const KURL& url, const String& name)
 {
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: delete cookie for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
+#endif
 	notImplemented();
 }
 
 void setCookieStoragePrivateBrowsingEnabled(bool)
 {
+#if TRACE_COOKIE_JAR
+	printf("CookieJar: private browsing (NOT IMPLEMENTED)\n");
+#endif
     notImplemented();
 }
 
