@@ -42,6 +42,7 @@ struct ExtensionMap {
 };
 
 static const ExtensionMap extensionMap[] = {
+    { "aspx", "text/html" },
     { "bmp", "image/bmp" },
     { "gif", "image/gif" },
     { "html", "text/html" },
