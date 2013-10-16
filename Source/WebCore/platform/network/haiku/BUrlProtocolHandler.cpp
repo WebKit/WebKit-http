@@ -37,12 +37,14 @@
 #include <UrlResult.h>
 #include <HttpRequest.h>
 
+#include <assert.h>
+
 static const int gMaxRecursionLimit = 10;
 
 namespace WebCore {
 	
-BFormDataIO::BFormDataIO(FormData* form)
-	: m_formElements(form->elements())
+BFormDataIO::BFormDataIO(FormData& form)
+	: m_formElements(form.elements())
 	, m_currentFile(NULL)
 	, m_currentOffset(0)
 {
@@ -155,37 +157,21 @@ BFormDataIO::_NextElement()
     m_currentFile->GetSize(&m_currentFileSize);
 }
 
-BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle)
-    : BUrlProtocolAsynchronousListener(true)
+BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle, bool synchronous)
+    : BUrlProtocolAsynchronousListener(!synchronous)
     , m_resourceHandle(handle)
     , m_redirected(false)
     , m_responseSent(false)
     , m_responseDataSent(false)
     , m_postData(NULL)
     , m_request(handle->firstRequest().toNetworkRequest())
-    , m_listener(this)
     , m_shouldStart(true)
     , m_shouldFinish(false)
     , m_shouldSendResponse(false)
     , m_shouldForwardData(false)
     , m_redirectionTries(gMaxRecursionLimit)
 {
-    const ResourceRequest &r = m_resourceHandle->firstRequest();
-
-    if (r.httpMethod() == "GET")
-        m_method = B_HTTP_GET;
-    else if (r.httpMethod() == "HEAD")
-        m_method = B_HTTP_HEAD;
-    else if (r.httpMethod() == "POST")
-        m_method = B_HTTP_POST;
-    else if (r.httpMethod() == "PUT")
-        m_method = B_HTTP_PUT;
-    else if (r.httpMethod() == "DELETE")
-        m_method = B_HTTP_DELETE;
-    else if (r.httpMethod() == "OPTIONS")
-        m_method = B_HTTP_OPTIONS;
-    else
-        m_method = B_ERROR;
+    m_method = BString(m_resourceHandle->firstRequest().httpMethod());
 
     start();
 }
@@ -234,7 +220,8 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         resetState();
         start();
     } else if (success || ignoreHttpError(m_request, m_responseDataSent)) {
-        client->didFinishLoading(m_resourceHandle, 1.0); // TODO
+        client->didFinishLoading(m_resourceHandle, 1.0);
+            // TODO put the actual finish time instead of 1.0.
     } else {
         const BUrlResult& result = m_request->Result();
         int httpStatusCode = result.StatusCode();
@@ -273,11 +260,12 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
         BString extension = m_request->Url().Path();
         int index = extension.FindLast('.');
 
-        if (index > 0) {
-            extension.Remove(0, index);
+        if (index >= 0) {
+            extension.Remove(0, index + 1);
             mimeType = MIMETypeRegistry::getMIMETypeForExtension(extension);
         }
     }
+
 
     KURL url(m_request->Url());
 
@@ -320,7 +308,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     BString locationString(m_request->Result().Headers()["Location"]);
     if (locationString.Length()) {
         BUrl location = BUrl(m_request->Url());
-        location.Redirect(locationString);
+        location = BUrl(location, locationString);
 
         m_redirectionTries--;
 
@@ -338,7 +326,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
         if (((statusCode >= 301 && statusCode <= 303) || statusCode == 307) && m_method == B_HTTP_POST) {
             m_method = B_HTTP_GET;
-            m_nextRequest.setHTTPMethod("GET");
+            m_nextRequest.setHTTPMethod(m_method.String());
         }
 
         client->willSendRequest(m_resourceHandle, m_nextRequest, response);
@@ -404,20 +392,28 @@ void BUrlProtocolHandler::start()
         return;
     }
 
-    switch (m_method) {
-        case B_HTTP_GET:
-            break;
-        case B_HTTP_POST:
-    		delete m_postData;
-                // FIXME remove this and have m_request take ownership
-    		m_postData = new BFormDataIO(m_resourceHandle->firstRequest().httpBody());
+    // TODO maybe we have data to send in other cases ?
+    if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
+        delete m_postData;
+        // FIXME remove this and have m_request take ownership
+        FormData* form = m_resourceHandle->firstRequest().httpBody();
+        if(form) {
+            m_postData = new BFormDataIO(*form);
             m_request->SetInputData(m_postData, m_postData->Size());
-            break;
+        } else
+            m_postData = NULL;
     }
 
     m_request->SetFollowLocation(false);
-    m_request->SetMethod(m_method);
-    m_request->SetListener(this->SynchronousListener());
+    m_request->SetMethod(m_method.String());
+
+    // In synchronous mode, call this listener directly.
+    // In asynchronous mode, go through a BMessage
+    if(this->SynchronousListener()) {
+        m_request->SetListener(this->SynchronousListener());
+    } else {
+        m_request->SetListener(this);
+    }
 
     printf("UPH[%p]::start(%s)\n", this, m_request->Url().UrlString().String());
     if (m_request->Run() < B_OK) {

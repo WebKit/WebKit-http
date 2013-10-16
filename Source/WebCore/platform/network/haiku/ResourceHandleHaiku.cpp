@@ -47,10 +47,10 @@ public:
 
     void waitForCompletion();
 
-    virtual void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
-    virtual void didReceiveData(ResourceHandle*, const char*, int, int lengthReceived);
-    virtual void didFinishLoading(ResourceHandle*);
-    virtual void didFail(ResourceHandle*, const ResourceError&);
+    void didReceiveResponse(ResourceHandle*, const ResourceResponse&);
+    void didReceiveData(ResourceHandle*, const char*, int, int lengthReceived);
+    void didFinishLoading(ResourceHandle*, double /*finishTime*/);
+    void didFail(ResourceHandle*, const ResourceError&);
 
     ResourceResponse resourceResponse() const { return m_response; }
     ResourceError resourceError() const { return m_error; }
@@ -79,7 +79,7 @@ void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data,
     m_data.append(data, length);
 }
 
-void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*)
+void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*, double)
 {
 	fFinished = true;
 }
@@ -125,10 +125,10 @@ bool ResourceHandle::start(NetworkingContext* context)
         urlWithCredentials.setPass(d->m_pass);
         d->m_firstRequest.setURL(urlWithCredentials);
     }
-    
+
     ResourceHandleInternal *d = getInternal();
 	printf("ProtocolHandler::__construct()\n");
-    d->m_urlrequest = new BUrlProtocolHandler(this);
+    d->m_urlrequest = new BUrlProtocolHandler(this, false);
     return true;
 }
 
@@ -168,7 +168,7 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
     //d->m_context = context;
     
     // haiku
-    d->m_urlrequest = new BUrlProtocolHandler(handle.get());
+    d->m_urlrequest = new BUrlProtocolHandler(handle.get(), true);
     syncLoader.waitForCompletion();
     error = syncLoader.resourceError();
     data = syncLoader.data();

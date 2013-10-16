@@ -36,7 +36,7 @@ class ResourceHandle;
 class BFormDataIO : public BDataIO
 {
 public:
-	BFormDataIO(FormData* form);
+	BFormDataIO(FormData& form);
 	~BFormDataIO();
 	
     ssize_t Size();
@@ -57,7 +57,7 @@ private:
 class BUrlProtocolHandler : public BUrlProtocolAsynchronousListener
 {
 public:
-    BUrlProtocolHandler(ResourceHandle *handle);
+    BUrlProtocolHandler(ResourceHandle *handle, bool synchronous);
     virtual ~BUrlProtocolHandler();
     void abort();
 
@@ -78,10 +78,9 @@ private:
     bool m_redirected;
     bool m_responseSent;
     bool m_responseDataSent;
-    status_t m_method;
+    BString m_method;
     BFormDataIO* m_postData;
     BHttpRequest* m_request; // FIXME should handle Ftp and File
-    BUrlProtocolDispatchingListener m_listener;
 
     // defer state holding
     bool m_shouldStart;
