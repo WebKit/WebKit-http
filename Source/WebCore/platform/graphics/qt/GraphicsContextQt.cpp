@@ -685,6 +685,7 @@ void GraphicsContext::strokePath(const Path& path)
     QPainterPathStroker pathStroker;
     pathStroker.setJoinStyle(pen.joinStyle());
     pathStroker.setDashOffset(pen.dashOffset());
+    pathStroker.setDashPattern(pen.dashPattern());
     pathStroker.setMiterLimit(pen.miterLimit());
     pathStroker.setCapStyle(pen.capStyle());
     pathStroker.setWidth(pen.widthF());
