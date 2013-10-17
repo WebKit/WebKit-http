@@ -39,7 +39,6 @@ BHttpRequest* ResourceRequest::toNetworkRequest() const
     if (request != NULL) {
         const HTTPHeaderMap &headers = httpHeaderFields();
         BHttpHeaders* requestHeaders = new BHttpHeaders();
-            // FIXME this is leaked - maybe the request should own or copy it
 
         for (HTTPHeaderMap::const_iterator it = headers.begin(),
                 end = headers.end(); it != end; ++it)
@@ -48,7 +47,7 @@ BHttpRequest* ResourceRequest::toNetworkRequest() const
                 it->second.utf8().data());
         }
 
-        request->SetHeaders(requestHeaders);
+        request->AdoptHeaders(requestHeaders);
         request->SetContext(&networkContext());
     }
 

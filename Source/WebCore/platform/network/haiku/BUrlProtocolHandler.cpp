@@ -178,6 +178,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(ResourceHandle* handle, bool synchronou
 
 BUrlProtocolHandler::~BUrlProtocolHandler()
 {
+    delete m_request;
 }
 
 void BUrlProtocolHandler::abort()
@@ -394,12 +395,10 @@ void BUrlProtocolHandler::start()
 
     // TODO maybe we have data to send in other cases ?
     if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
-        delete m_postData;
-        // FIXME remove this and have m_request take ownership
         FormData* form = m_resourceHandle->firstRequest().httpBody();
         if(form) {
             m_postData = new BFormDataIO(*form);
-            m_request->SetInputData(m_postData, m_postData->Size());
+            m_request->AdoptInputData(m_postData, m_postData->Size());
         } else
             m_postData = NULL;
     }
