@@ -53,7 +53,7 @@ enum {
 };
 
 
-class BWebDownload : public BHandler {
+class __attribute__ ((visibility ("default"))) BWebDownload : public BHandler {
 // TODO: Inherit from BReferenceable.
 public:
 			void				Start(const BPath& path);

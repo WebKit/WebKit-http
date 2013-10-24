@@ -8,7 +8,7 @@
 #include <String.h>
 
 
-class WebKitInfo {
+class __attribute__ ((visibility ("default"))) WebKitInfo {
 public:
 	static	BString				HaikuWebKitVersion();
 	static	BString				HaikuWebKitRevision();

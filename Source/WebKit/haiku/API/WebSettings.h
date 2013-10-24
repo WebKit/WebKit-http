@@ -54,7 +54,7 @@ enum BProxyType {
 };
 
 
-class BWebSettings : public BHandler {
+class __attribute__ ((visibility ("default"))) BWebSettings : public BHandler {
 // TODO: Inherit from BReferenceable.
 public:
 	static	BWebSettings*		Default();
