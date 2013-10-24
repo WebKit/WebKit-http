@@ -141,11 +141,6 @@ INCLUDE(Options${PORT})
 OPTION(SHOULD_INSTALL_JS_SHELL "generate an installation rule to install the built JavaScript shell")
 
 # -----------------------------------------------------------------------------
-# Define packaging
-# -----------------------------------------------------------------------------
-INCLUDE(WebKitPackaging)
-
-# -----------------------------------------------------------------------------
 # Add module directories
 # -----------------------------------------------------------------------------
 ADD_SUBDIRECTORY(Source)
@@ -156,4 +151,9 @@ ADD_SUBDIRECTORY(Source)
 IF (ENABLE_TOOLS)
     ADD_SUBDIRECTORY(Tools)
 ENDIF ()
+
+# -----------------------------------------------------------------------------
+# Define packaging
+# -----------------------------------------------------------------------------
+INCLUDE(WebKitPackaging)
 
