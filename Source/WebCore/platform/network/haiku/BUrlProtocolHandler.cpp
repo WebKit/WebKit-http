@@ -34,7 +34,6 @@
 #include <File.h>
 #include <Url.h>
 #include <UrlRequest.h>
-#include <UrlResult.h>
 #include <HttpRequest.h>
 
 #include <assert.h>
@@ -190,8 +189,12 @@ void BUrlProtocolHandler::abort()
     m_resourceHandle = NULL;
 }
 
-static bool ignoreHttpError(BUrlRequest* reply, bool receivedData)
+static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
 {
+    // Not an HTTP request - the error can't be relevant
+    if(reply == NULL)
+        return true;
+
     int httpStatusCode = reply->Result().StatusCode();
 
     if (httpStatusCode == 401 || httpStatusCode == 407)
@@ -215,33 +218,48 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     if (!client)
         return;
 
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+
     if (m_redirected) {
         delete m_request;
         m_request = m_nextRequest.toNetworkRequest();
         resetState();
         start();
-    } else if (success || ignoreHttpError(m_request, m_responseDataSent)) {
-        client->didFinishLoading(m_resourceHandle, 1.0);
-            // TODO put the actual finish time instead of 1.0.
-    } else {
-        const BUrlResult& result = m_request->Result();
+        return;
+    }
+    
+    if (success || ignoreHttpError(httpRequest, m_responseDataSent)) {
+        client->didFinishLoading(m_resourceHandle, 0);
+            // TODO put the actual finish time instead of 0
+            // (this isn't done on other platforms either...)
+        return;
+    }
+    
+    if(httpRequest) {
+        const BHttpResult& result = httpRequest->Result();
         int httpStatusCode = result.StatusCode();
 
         if (httpStatusCode) {
             ResourceError error("HTTP", httpStatusCode, caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
             client->didFail(m_resourceHandle, error);
-        } else {
-            ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
-            client->didFail(m_resourceHandle, error);
+            return;
         }
     }
+    
+    ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
+    client->didFail(m_resourceHandle, error);
 }
 
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    if(!httpRequest)
+        return;
+    // TODO maybe other types of requests need a response ?
+
     if (m_request->Status() != B_PROT_SUCCESS
             && m_request->Status() != B_PROT_RUNNING
-            && !ignoreHttpError(m_request, m_responseDataSent))
+            && !ignoreHttpError(httpRequest, m_responseDataSent))
         return;
 
     if (m_responseSent || !m_resourceHandle)
@@ -252,7 +270,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     if (!client)
         return;
 
-    WTF::String contentType = m_request->Result().Headers()["Content-Type"];
+    WTF::String contentType = httpRequest->Result().Headers()["Content-Type"];
     WTF::String encoding = extractCharsetFromMediaType(contentType);
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
@@ -272,7 +290,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
 
     int contentLength = 0;
     const char* contentLengthString
-        = m_request->Result().Headers()["Content-Length"];
+        = httpRequest->Result().Headers()["Content-Length"];
     if (contentLengthString != NULL)
         contentLength = atoi(contentLengthString);
 
@@ -284,10 +302,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    int statusCode = m_request->Result().StatusCode();
+    int statusCode = httpRequest->Result().StatusCode();
     if (url.protocolIsInHTTPFamily()) {
         String suggestedFilename = filenameFromHTTPContentDisposition(
-            m_request->Result().Headers()["Content-Disposition"]);
+            httpRequest->Result().Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
@@ -295,10 +313,10 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             response.setSuggestedFilename(url.lastPathComponent());
 
         response.setHTTPStatusCode(statusCode);
-        response.setHTTPStatusText(m_request->Result().StatusText());
+        response.setHTTPStatusText(httpRequest->Result().StatusText());
 
         // Add remaining headers.
-        const BHttpHeaders& resultHeaders = m_request->Result().Headers();
+        const BHttpHeaders& resultHeaders = httpRequest->Result().Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
@@ -306,7 +324,7 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
     }
 
 
-    BString locationString(m_request->Result().Headers()["Location"]);
+    BString locationString(httpRequest->Result().Headers()["Location"]);
     if (locationString.Length()) {
         BUrl location = BUrl(m_request->Url());
         location = BUrl(location, locationString);
@@ -393,18 +411,22 @@ void BUrlProtocolHandler::start()
         return;
     }
 
-    // TODO maybe we have data to send in other cases ?
-    if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
-        FormData* form = m_resourceHandle->firstRequest().httpBody();
-        if(form) {
-            m_postData = new BFormDataIO(*form);
-            m_request->AdoptInputData(m_postData, m_postData->Size());
-        } else
-            m_postData = NULL;
-    }
+    m_postData = NULL;
 
-    m_request->SetFollowLocation(false);
-    m_request->SetMethod(m_method.String());
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
+    if(httpRequest) {
+        // TODO maybe we have data to send in other cases ?
+        if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
+            FormData* form = m_resourceHandle->firstRequest().httpBody();
+            if(form) {
+                m_postData = new BFormDataIO(*form);
+                httpRequest->AdoptInputData(m_postData, m_postData->Size());
+            }
+        }
+
+        httpRequest->SetFollowLocation(false);
+        httpRequest->SetMethod(m_method.String());
+    }
 
     // In synchronous mode, call this listener directly.
     // In asynchronous mode, go through a BMessage

@@ -80,7 +80,7 @@ private:
     bool m_responseDataSent;
     BString m_method;
     BFormDataIO* m_postData;
-    BHttpRequest* m_request; // FIXME should handle Ftp and File
+    BUrlRequest* m_request;
 
     // defer state holding
     bool m_shouldStart;

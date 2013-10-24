@@ -29,14 +29,17 @@
 
 namespace WebCore {
 
-// FIXME must handle other types of requests (at least Ftp and File), and
-// callers should be prepared to handle that
-BHttpRequest* ResourceRequest::toNetworkRequest() const
+BUrlRequest* ResourceRequest::toNetworkRequest() const
 {
-    BHttpRequest* request = dynamic_cast<BHttpRequest*>(
-        BUrlProtocolRoster::MakeRequest(url()));
+    BUrlRequest* request = BUrlProtocolRoster::MakeRequest(url());
 
-    if (request != NULL) {
+    if(!request)
+        return NULL;
+
+    request->SetContext(&networkContext());
+
+    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(request);
+    if (httpRequest != NULL) {
         const HTTPHeaderMap &headers = httpHeaderFields();
         BHttpHeaders* requestHeaders = new BHttpHeaders();
 
@@ -47,8 +50,7 @@ BHttpRequest* ResourceRequest::toNetworkRequest() const
                 it->second.utf8().data());
         }
 
-        request->AdoptHeaders(requestHeaders);
-        request->SetContext(&networkContext());
+        httpRequest->AdoptHeaders(requestHeaders);
     }
 
     return request;
