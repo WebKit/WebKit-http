@@ -24,6 +24,11 @@ ENDIF ()
 
 SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 
-SET(LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)")
+IF(HAIKU)
+    SET(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
+        "Define suffix of directory name (x86/x86_gcc2)")
+ELSE()
+    SET(LIB_SUFFIX "" CACHE STRING "Define suffix of directory name (32/64)")
+ENDIF()
 
 SET(LIB_INSTALL_DIR "lib${LIB_SUFFIX}" CACHE PATH "Where to install libraries (lib${LIB_SUFFIX})")

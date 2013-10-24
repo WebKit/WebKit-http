@@ -1,5 +1,5 @@
-SET(PROJECT_VERSION_MAJOR 0)
-SET(PROJECT_VERSION_MINOR 1)
+SET(PROJECT_VERSION_MAJOR 1)
+SET(PROJECT_VERSION_MINOR 2)
 SET(PROJECT_VERSION_PATCH 0)
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
@@ -39,9 +39,6 @@ SET(WTF_USE_ICU_UNICODE 1)
 ADD_DEFINITIONS(-DWTF_USE_ICU_UNICODE=1)
 
 SET(JSC_EXECUTABLE_NAME jsc)
-
-SET(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
-    "Define suffix of directory name (32/64)")
 
 WEBKIT_OPTION_BEGIN()
 WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_BATTERY_STATUS OFF)
@@ -102,4 +99,56 @@ IF (ENABLE_WEBGL)
   FIND_PACKAGE(OpenGL REQUIRED)
 ENDIF ()
 
-SET(CPACK_SOURCE_GENERATOR TBZ2)
+# Packaging data
+if(CMAKE_HAIKU_SECONDARY_ARCH)
+    # Building for secondary architecture, setup the suffix
+    set(PACKAGE_SUFFIX _${CMAKE_HAIKU_SECONDARY_ARCH})
+endif()
+
+SET(CPACK_SOURCE_GENERATOR HPKG)
+set(CPACK_GENERATOR HPKG)
+
+set(CPACK_PACKAGE_NAME "haikuwebkit${PACKAGE_SUFFIX}")
+set(CPACK_PACKAGE_VENDOR "Haiku Project")
+set(CPACK_HAIKU_PACKAGE_COPYRIGHT "1998-2013 Apple Inc., Google Inc., Haiku Inc., et al")
+set(CPACK_HAIKU_PACKAGE_LICENSES "GNU LGPL v2" "GNU LGPL v2.1" "MIT")
+    # TODO apple webkit (needs to be added inside package)
+
+set(CPACK_HAIKU_PACKAGE_PROVIDES
+    "lib:libWebKit${PACKAGE_SUFFIX} = 1.2.0"
+)
+set(CPACK_HAIKU_PACKAGE_REQUIRES
+    "haiku${PACKAGE_SUFFIX} >= r1~alpha4_pm-1"
+    "icu${PACKAGE_SUFFIX} >= 4.8.1.1"
+    "lib:libjpeg${PACKAGE_SUFFIX} >= 9"
+    "lib:libpng${PACKAGE_SUFFIX} >= 15.12.0"
+    "lib:libsqlite3${PACKAGE_SUFFIX} >= 0.8.6"
+    "lib:libxml2${PACKAGE_SUFFIX} >= 2.8.0"
+    "lib:libxslt${PACKAGE_SUFFIX} >= 1.1.18"
+)
+
+set(CPACK_HAIKU_devel_PACKAGE_PROVIDES
+    "devel:libWebKit${PACKAGE_SUFFIX} = 1.2.0"
+)
+set(CPACK_HAIKU_devel_PACKAGE_REQUIRES
+    "haiku${PACKAGE_SUFFIX}_devel >= r1~alpha4_pm-1"
+    "icu${PACKAGE_SUFFIX}_devel >= 4.8.1.1"
+    "devel:libjpeg${PACKAGE_SUFFIX} >= 9"
+    "devel:libpng${PACKAGE_SUFFIX} >= 15.12.0"
+    "devel:libsqlite3${PACKAGE_SUFFIX} >= 0.8.6"
+    "devel:libxml2${PACKAGE_SUFFIX} >= 2.8.0"
+    "devel:libxslt${PACKAGE_SUFFIX} >= 1.1.18"
+)
+
+include(CPackComponent)
+cpack_add_component(devel)
+
+# These could be shared with other flavors of CPack, if they are used anywhere.
+# Maybe move them to non-Haiku specific place.
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Open source web browser engine")
+set(CPACK_PACKAGE_DESCRIPTION "WebKit is an open source web browser engine.
+WebKit is also the name of the Mac OS X system framework version of the engine
+that's used by Safari, Dashboard, Mail, and many other OS X applications.
+WebKit's HTML and JavaScript code began as a branch of the KHTML and KJS
+libraries from KDE.")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
