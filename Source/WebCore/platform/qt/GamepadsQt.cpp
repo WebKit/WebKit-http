@@ -30,18 +30,22 @@
 #include "GamepadDeviceLinux.h"
 #include "GamepadList.h"
 
+#include <QLibrary>
 #include <QObject>
 #include <QSocketNotifier>
-
-extern "C" {
-#include <libudev.h>
-}
 
 #include <unistd.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
+
+// Forward declarations for libudev, they are all used opaque so we don't need the definitions.
+struct udev;
+struct udev_device;
+struct udev_monitor;
+struct udev_enumerate;
+struct udev_list_entry;
 
 namespace WebCore {
 
@@ -87,7 +91,108 @@ bool GamepadDeviceLinuxQt::readCallback()
     return true;
 }
 
-class GamepadsQt : public QObject {
+class LibUdevWrapper {
+public:
+    LibUdevWrapper()
+        : m_loaded(false)
+    {
+        load();
+    }
+
+    virtual ~LibUdevWrapper()
+    {
+        m_libUdev.unload();
+    }
+
+    bool isLoaded() const { return m_loaded; }
+
+private:
+    QLibrary m_libUdev;
+    bool m_loaded;
+    bool load()
+    {
+        m_libUdev.setLoadHints(QLibrary::ResolveAllSymbolsHint);
+        m_libUdev.setFileNameAndVersion(QStringLiteral("udev"), 1);
+        m_loaded = m_libUdev.load();
+        if (resolveMethods())
+            return true;
+
+        m_libUdev.setFileNameAndVersion(QStringLiteral("udev"), 0);
+        m_loaded = m_libUdev.load();
+        return resolveMethods();
+    }
+
+    QFunctionPointer resolve(const char* name)
+    {
+        QFunctionPointer ptr = m_libUdev.resolve(name);
+        if (!ptr) {
+            qWarning("libudev could not resolve expected symbol %s", name);
+            m_loaded = false;
+        }
+        return ptr;
+    }
+
+    bool resolveMethods()
+    {
+        if (!m_loaded)
+            return false;
+        udev_new = (udev* (*)())resolve("udev_new");
+        udev_unref = (void (*)(udev*))resolve("udev_unref");
+        udev_monitor_new_from_netlink = (udev_monitor* (*)(udev*, const char*))resolve("udev_monitor_new_from_netlink");
+        udev_monitor_unref = (void (*)(udev_monitor*))resolve("udev_monitor_unref");
+        udev_monitor_enable_receiving = (int (*)(udev_monitor*))resolve("udev_monitor_enable_receiving");
+        udev_monitor_get_fd = (int (*)(udev_monitor*))resolve("udev_monitor_get_fd");
+        udev_monitor_filter_add_match_subsystem_devtype = (int (*)(udev_monitor*, const char*, const char*))resolve("udev_monitor_filter_add_match_subsystem_devtype");
+        udev_monitor_receive_device = (udev_device* (*)(udev_monitor*))resolve("udev_monitor_receive_device");
+        udev_enumerate_new = (udev_enumerate* (*)(udev*))resolve("udev_enumerate_new");
+        udev_enumerate_unref = (void (*)(udev_enumerate*))resolve("udev_enumerate_unref");
+        udev_enumerate_add_match_subsystem = (int (*)(udev_enumerate*, const char*))resolve("udev_enumerate_add_match_subsystem");
+        udev_enumerate_add_match_property = (int (*)(udev_enumerate*, const char*, const char*))resolve("udev_enumerate_add_match_property");
+        udev_enumerate_scan_devices = (int (*)(udev_enumerate*))resolve("udev_enumerate_scan_devices");
+        udev_enumerate_get_list_entry = (udev_list_entry* (*)(udev_enumerate*))resolve("udev_enumerate_get_list_entry");
+        udev_list_entry_get_next = (udev_list_entry* (*)(udev_list_entry*))resolve("udev_list_entry_get_next");
+        udev_list_entry_get_name = (const char* (*)(udev_list_entry*))resolve("udev_list_entry_get_name");
+        udev_device_new_from_syspath = (udev_device* (*)(udev*, const char*))resolve("udev_device_new_from_syspath");
+        udev_device_unref = (void (*)(udev_device*))resolve("udev_device_unref");
+        udev_device_get_syspath = (const char* (*)(udev_device*))resolve("udev_device_get_syspath");
+        udev_device_get_devnode = (const char* (*)(udev_device*))resolve("udev_device_get_devnode");
+        udev_device_get_property_value = (const char* (*)(udev_device*, const char*))resolve("udev_device_get_property_value");
+        udev_device_get_action = (const char* (*)(udev_device*))resolve("udev_device_get_action");
+
+        return m_loaded;
+    }
+
+public:
+    struct udev* (*udev_new)();
+    void (*udev_unref)(struct udev*);
+
+    struct udev_monitor* (*udev_monitor_new_from_netlink)(struct udev*, const char *name);
+    void (*udev_monitor_unref)(struct udev_monitor*);
+    int (*udev_monitor_enable_receiving)(struct udev_monitor*);
+    int (*udev_monitor_get_fd)(struct udev_monitor*);
+    int (*udev_monitor_filter_add_match_subsystem_devtype)(struct udev_monitor*, const char *subsystem, const char *devtype);
+    struct udev_device* (*udev_monitor_receive_device)(struct udev_monitor*);
+
+    struct udev_enumerate* (*udev_enumerate_new)(struct udev*);
+    void (*udev_enumerate_unref)(struct udev_enumerate*);
+    int (*udev_enumerate_add_match_subsystem)(struct udev_enumerate*, const char *subsystem);
+    int (*udev_enumerate_add_match_property)(struct udev_enumerate*, const char *property, const char *value);
+    int (*udev_enumerate_scan_devices)(struct udev_enumerate*);
+    struct udev_list_entry* (*udev_enumerate_get_list_entry)(struct udev_enumerate*);
+
+    struct udev_list_entry* (*udev_list_entry_get_next)(struct udev_list_entry*);
+    const char* (*udev_list_entry_get_name)(struct udev_list_entry*);
+
+    struct udev_device* (*udev_device_new_from_syspath)(struct udev *udev, const char *syspath);
+    void (*udev_device_unref)(struct udev_device *udev_device);
+    const char* (*udev_device_get_syspath)(struct udev_device *udev_device);
+    const char* (*udev_device_get_devnode)(struct udev_device *udev_device);
+    const char* (*udev_device_get_property_value)(struct udev_device *udev_device, const char *key);
+    const char* (*udev_device_get_action)(struct udev_device *udev_device);
+};
+
+
+class GamepadsQt : public QObject, protected LibUdevWrapper {
     Q_OBJECT
 public:
     GamepadsQt(unsigned);
@@ -114,8 +219,12 @@ private:
 
 GamepadsQt::GamepadsQt(unsigned length)
     : QObject()
+    , LibUdevWrapper()
     , m_slots(length)
 {
+    if (!LibUdevWrapper::isLoaded())
+        return;
+
     m_udev = udev_new();
     m_gamepadsMonitor = udev_monitor_new_from_netlink(m_udev, "udev");
     udev_monitor_enable_receiving(m_gamepadsMonitor);
@@ -129,8 +238,7 @@ GamepadsQt::GamepadsQt(unsigned length)
     udev_enumerate_scan_devices(enumerate);
     struct udev_list_entry* cur;
     struct udev_list_entry* devs = udev_enumerate_get_list_entry(enumerate);
-    udev_list_entry_foreach(cur, devs)
-    {
+    for (cur = devs; cur; cur = udev_list_entry_get_next(cur)) {
         const char* devname = udev_list_entry_get_name(cur);
         struct udev_device* device = udev_device_new_from_syspath(m_udev, devname);
         if (isGamepadDevice(device))
@@ -142,6 +250,8 @@ GamepadsQt::GamepadsQt(unsigned length)
 
 GamepadsQt::~GamepadsQt()
 {
+    if (!LibUdevWrapper::isLoaded())
+        return;
     udev_unref(m_udev);
     udev_monitor_unref(m_gamepadsMonitor);
 }
