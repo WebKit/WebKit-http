@@ -42,8 +42,9 @@ public:
     {
     }
 
-    AuthenticationClient* authenticationClient() const { return 0; } // FIXME: Implement!
+    AuthenticationClient* authenticationClient() const { return m_authenticationClient.get(); }
 
+    RefPtr<AuthenticationClient> m_authenticationClient;
 };
 
 }

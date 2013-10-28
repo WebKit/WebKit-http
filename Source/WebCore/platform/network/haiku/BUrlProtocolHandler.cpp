@@ -23,6 +23,7 @@
 
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
+#include "ProtectionSpace.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleClient.h"
 #include "ResourceHandleInternal.h"
@@ -198,7 +199,7 @@ static bool ignoreHttpError(BHttpRequest* reply, bool receivedData)
     int httpStatusCode = reply->Result().StatusCode();
 
     if (httpStatusCode == 401 || httpStatusCode == 407)
-        return true;
+        return false;
 
     if (receivedData && (httpStatusCode >= 400 && httpStatusCode < 600))
         return true;
@@ -227,7 +228,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         start();
         return;
     }
-    
+
     if (success || ignoreHttpError(httpRequest, m_responseDataSent)) {
         client->didFinishLoading(m_resourceHandle, 0);
             // TODO put the actual finish time instead of 0
@@ -240,7 +241,9 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
         int httpStatusCode = result.StatusCode();
 
         if (httpStatusCode) {
-            ResourceError error("HTTP", httpStatusCode, caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
+            ResourceError error("HTTP", httpStatusCode,
+                caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
+
             client->didFail(m_resourceHandle, error);
             return;
         }
@@ -249,6 +252,73 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     ResourceError error("BUrlRequest", caller->Status(), caller->Url().UrlString().String(), caller->StatusString(caller->Status()));
     client->didFail(m_resourceHandle, error);
 }
+
+
+void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceResponse& response)
+{
+    ResourceHandleInternal* d = m_resourceHandle->getInternal();
+    unsigned failureCount = 0;
+
+    const KURL& url = m_resourceHandle->firstRequest().url();
+    ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
+    if (url.protocolIs("https"))
+        serverType = ProtectionSpaceServerHTTPS;
+    
+    String challenge = request->Result().Headers()["WWW-Authenticate"];
+    ProtectionSpaceAuthenticationScheme scheme = ProtectionSpaceAuthenticationSchemeDefault;
+    if (challenge.startsWith("Digest", false))
+        scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
+    else if (challenge.startsWith("Basic", false))
+        scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
+
+    String realm;
+    int realmStart = challenge.find("realm=\"", 0, false);
+    if (realmStart > 0) {
+        realmStart += 7;
+        int realmEnd = challenge.find("\"", realmStart);
+        if (realmEnd >= 0)
+            realm = challenge.substring(realmStart, realmEnd - realmStart);
+    }
+
+    ProtectionSpace protectionSpace(url.host(), url.port(), serverType, realm, scheme);
+    ResourceError resourceError(url.host(), 401, url.string(), String());
+
+    ResourceHandleClient* client = m_resourceHandle->client();
+    
+    m_redirectionTries--;
+    if(m_redirectionTries == 0)
+    {
+        client->didFinishLoading(m_resourceHandle, 0);
+        return;
+    }
+
+    m_nextRequest = m_resourceHandle->firstRequest();
+
+    Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
+
+    AuthenticationChallenge authenticationChallenge(protectionSpace,
+        proposedCredential, failureCount++, response, resourceError);
+    authenticationChallenge.m_authenticationClient = m_resourceHandle;
+    m_resourceHandle->didReceiveAuthenticationChallenge(authenticationChallenge);
+            // will set m_user and m_pass in ResourceHandleInternal
+
+    if (d->m_user != "") {
+printf("We have a password, let's add it to the request! U:%s P:%s\n", d->m_user.utf8().data(), d->m_pass.utf8().data());
+
+        // Handle this just like redirects.
+        m_redirected = true;
+
+        // We just reuse the same request, it's already set up like we want it.
+        //m_nextRequest = m_resourceHandle->firstRequest();
+        //m_nextRequest.setURL(location);
+        m_nextRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
+        client->willSendRequest(m_resourceHandle, m_nextRequest, response);
+    } else {
+puts("No password... too bad!");
+        client->didFinishLoading(m_resourceHandle, 0);
+    }
+}
+
 
 void BUrlProtocolHandler::sendResponseIfNeeded()
 {
@@ -321,6 +391,11 @@ void BUrlProtocolHandler::sendResponseIfNeeded()
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
         }
+    }
+
+
+    if (statusCode == 401) {
+        AuthenticationNeeded(httpRequest, response);
     }
 
 

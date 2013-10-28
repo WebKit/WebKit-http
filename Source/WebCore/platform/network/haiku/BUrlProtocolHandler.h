@@ -32,6 +32,7 @@ class BFile;
 namespace WebCore {
 
 class ResourceHandle;
+class ResourceResponse;
 
 class BFormDataIO : public BDataIO
 {
@@ -68,6 +69,7 @@ private:
 	void DataReceived(BUrlRequest* caller, const char* data, ssize_t size);
 	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal);
 	void RequestCompleted(BUrlRequest* caller, bool success);
+    void AuthenticationNeeded(BHttpRequest* caller, ResourceResponse& response);
 
 private:
     void start();

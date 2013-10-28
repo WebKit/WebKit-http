@@ -96,7 +96,7 @@ enum StoredCredentials {
 template <typename T> class Timer;
 
 class ResourceHandle : public RefCounted<ResourceHandle>
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(HAIKU)
     , public AuthenticationClient
 #endif
     {
@@ -113,7 +113,7 @@ public:
     void willSendRequest(ResourceRequest&, const ResourceResponse& redirectResponse);
     bool shouldUseCredentialStorage();
 #endif
-#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL)
+#if PLATFORM(MAC) || USE(CFNETWORK) || USE(CURL) || USE(HAIKU)
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
     virtual void receivedCredential(const AuthenticationChallenge&, const Credential&);
     virtual void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);

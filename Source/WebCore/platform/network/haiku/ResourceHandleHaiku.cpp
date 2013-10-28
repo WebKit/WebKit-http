@@ -189,6 +189,53 @@ void ResourceHandle::loadResourceSynchronously(NetworkingContext* context, const
 }
 
  
+//stubs needed for windows version
+void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
+{
+    ResourceHandleInternal* internal = getInternal();
+    ASSERT(internal->m_currentWebChallenge.isNull());
+    ASSERT(challenge.authenticationClient() == this); // Should be already set.
+    internal->m_currentWebChallenge = challenge;
+
+    if (client())
+        client()->didReceiveAuthenticationChallenge(this, challenge);
+}
+
+void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
+{
+    printf("### REC CREDS for %p\n", this);
+    ASSERT(!challenge.isNull());
+    ResourceHandleInternal* internal = getInternal();
+    if (challenge != internal->m_currentWebChallenge)
+        return;
+
+    internal->m_user = credential.user();
+    internal->m_pass = credential.password();
+
+    clearAuthentication();
+}
+
+void ResourceHandle::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& challenge)
+{
+    puts("### REC NO CREDS");
+    ASSERT(!challenge.isNull());
+    ResourceHandleInternal* internal = getInternal();
+    if (challenge != internal->m_currentWebChallenge)
+        return;
+
+    internal->m_user = "";
+    internal->m_pass = "";
+
+    clearAuthentication();
+}
+
+void ResourceHandle::receivedCancellation(const AuthenticationChallenge&)
+{
+    puts("### REC NO CANCEL");
+    // TODO
+}
+
+
 void ResourceHandle::platformSetDefersLoading(bool defers)
 {
     d->m_defersLoading = defers;

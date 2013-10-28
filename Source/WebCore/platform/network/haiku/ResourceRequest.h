@@ -29,6 +29,8 @@
 
 #include "ResourceRequestBase.h"
 
+#include <String.h>
+
 class BUrlRequest;
 class BUrlContext;
 
@@ -59,6 +61,8 @@ namespace WebCore {
 
         BUrlRequest* toNetworkRequest() const;
 
+        void setCredentials(const char* username, const char* password);
+
     private:
         friend class ResourceRequestBase;
 
@@ -67,6 +71,9 @@ namespace WebCore {
 
         PassOwnPtr<CrossThreadResourceRequestData> doPlatformCopyData(PassOwnPtr<CrossThreadResourceRequestData> data) const { return data; }
         void doPlatformAdopt(PassOwnPtr<CrossThreadResourceRequestData>) { }
+
+        BString fUsername;
+        BString fPassword;
     };
     
     struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {

@@ -50,10 +50,22 @@ BUrlRequest* ResourceRequest::toNetworkRequest() const
                 it->second.utf8().data());
         }
 
+        if(!fUsername.IsEmpty()) {
+            httpRequest->SetUserName(fUsername);
+            httpRequest->SetPassword(fPassword);
+        }
+
         httpRequest->AdoptHeaders(requestHeaders);
     }
 
     return request;
+}
+
+
+void ResourceRequest::setCredentials(const char* username, const char* password)
+{
+    fUsername = username;
+    fPassword = password;
 }
 
 }
