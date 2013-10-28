@@ -225,7 +225,7 @@ bool RenderThemeHaiku::paintTextField(RenderObject* object, const PaintInfo& inf
         return true;
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
-    rgb_color background = base;
+    //rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect = intRect;
     BView* view = info.context->platformContext();
@@ -297,7 +297,7 @@ bool RenderThemeHaiku::paintMenuListButton(RenderObject* object, const PaintInfo
         return true;
 
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
-    rgb_color background = base;
+    //rgb_color background = base;
     	// TODO: From PaintInfo?
     BRect rect = intRect;
     BView* view = info.context->platformContext();

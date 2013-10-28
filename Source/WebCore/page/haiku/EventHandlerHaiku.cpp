@@ -50,6 +50,7 @@ namespace WebCore {
 
 const double EventHandler::TextDragDelay = 0.0;
 
+#if 0
 static bool isKeyboardOptionTab(KeyboardEvent* event)
 {
     return event
@@ -58,6 +59,7 @@ static bool isKeyboardOptionTab(KeyboardEvent* event)
         && event->altKey()
         && event->keyIdentifier() == "U+0009";
 }
+#endif
 
 bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
