@@ -52,8 +52,12 @@ void setNetworkContext(BUrlContext* context)
     printf("CookieJar: Set context %p (was %p)\n", context, gNetworkContext);
 #endif
 
-    // TODO should delete previous context ?
-    if (context == NULL) context = &gDefaultContext;
+    if(gNetworkContext != &gDefaultContext)
+        delete gNetworkContext;
+
+    if (context == NULL)
+        context = &gDefaultContext;
+
     gNetworkContext = context;
 }
 
