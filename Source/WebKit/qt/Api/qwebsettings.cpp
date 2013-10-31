@@ -182,9 +182,6 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::CSSRegionsEnabled,
                                  global->attributes.value(QWebSettings::CSSRegionsEnabled));
         WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(value);
-        value = attributes.value(QWebSettings::CSSCompositingEnabled,
-                                 global->attributes.value(QWebSettings::CSSCompositingEnabled));
-        WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(value);
 
         value = attributes.value(QWebSettings::HyperlinkAuditingEnabled,
                                  global->attributes.value(QWebSettings::HyperlinkAuditingEnabled));
@@ -558,7 +555,6 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::WebAudioEnabled, false);
     d->attributes.insert(QWebSettings::MediaSourceEnabled, false);
     d->attributes.insert(QWebSettings::CSSRegionsEnabled, true);
-    d->attributes.insert(QWebSettings::CSSCompositingEnabled, true);
     d->attributes.insert(QWebSettings::CSSGridLayoutEnabled, false);
     d->attributes.insert(QWebSettings::HyperlinkAuditingEnabled, false);
     d->attributes.insert(QWebSettings::TiledBackingStoreEnabled, false);

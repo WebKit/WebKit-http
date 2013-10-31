@@ -40,6 +40,7 @@
 #include "Page.h"
 #include "PlatformStrategiesQt.h"
 #include "RenderThemeQStyle.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptController.h"
 #include "ScrollbarThemeQStyle.h"
 #include "SecurityPolicy.h"
@@ -103,6 +104,7 @@ Q_DECL_EXPORT void initializeWebCoreQt()
     auto& memoryCache = MemoryCache::singleton();
     if (!memoryCache.disabled())
         memoryCache.setDeadDecodedDataDeletionInterval(std::chrono::seconds{60});
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(true);
 
     initialized = true;
 }
