@@ -109,6 +109,7 @@
 #include "Logging.h"
 #include "MediaQueryList.h"
 #include "MediaQueryMatcher.h"
+#include "MemoryInstrumentation.h"
 #include "MouseEventWithHitTestResults.h"
 #include "NameNodeList.h"
 #include "NestingLevelIncrementer.h"
@@ -214,6 +215,10 @@
 
 #if ENABLE(LINK_PRERENDER)
 #include "Prerenderer.h"
+#endif
+
+#if ENABLE(TEXT_AUTOSIZING)
+#include "TextAutosizer.h"
 #endif
 
 using namespace std;
@@ -342,19 +347,6 @@ static bool acceptsEditingFocus(Node* node)
     return frame->editor()->shouldBeginEditing(rangeOfContents(root).get());
 }
 
-static bool disableRangeMutation(Page* page)
-{
-    // This check is made on super-hot code paths, so we only want this on Leopard.
-#ifdef TARGETING_LEOPARD
-    // Disable Range mutation on document modifications in Leopard Mail.
-    // See <rdar://problem/5865171>
-    return page && page->settings()->needsLeopardMailQuirks();
-#else
-    UNUSED_PARAM(page);
-    return false;
-#endif
-}
-
 static bool canAccessAncestor(const SecurityOrigin* activeSecurityOrigin, Frame* targetFrame)
 {
     // targetFrame can be 0 when we're trying to navigate a top-level frame
@@ -470,6 +462,7 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     , m_isViewSource(false)
     , m_sawElementsInKnownNamespaces(false)
     , m_isSrcdocDocument(false)
+    , m_documentRareData(0)
     , m_eventQueue(DocumentEventQueue::create(this))
     , m_weakReference(DocumentWeakReference::create(this))
     , m_idAttributeName(idAttr)
@@ -528,6 +521,9 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
 #if ENABLE(LINK_PRERENDER)
     m_prerenderer = Prerenderer::create(this);
 #endif
+#if ENABLE(TEXT_AUTOSIZING)
+    m_textAutosizer = TextAutosizer::create(this);
+#endif
     m_visuallyOrdered = false;
     m_bParsing = false;
     m_wellFormed = false;
@@ -569,6 +565,9 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     static int docID = 0;
     m_docID = docID++;
     
+    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(m_collections); i++)
+        m_collections[i] = 0;
+
     InspectorCounters::incrementCounter(InspectorCounters::DocumentCounter);
 }
 
@@ -606,7 +605,6 @@ Document::~Document()
     // if the DocumentParser outlives the Document it won't cause badness.
     ASSERT(!m_parser || m_parser->refCount() == 1);
     detachParser();
-    m_document = 0;
 
     m_renderArena.clear();
 
@@ -649,6 +647,8 @@ Document::~Document()
     // as well as Node. See a comment on TreeScope.h for the reason.
     if (hasRareData())
         clearRareData();
+
+    m_document = 0;
 
     InspectorCounters::decrementCounter(InspectorCounters::DocumentCounter);
 }
@@ -2009,6 +2009,11 @@ void Document::pageSizeAndMarginsInPixels(int pageIndex, IntSize& pageSize, int&
     marginLeft = style->marginLeft().isAuto() ? marginLeft : intValueForLength(style->marginLeft(), width, view);
 }
 
+void Document::setDocumentRareData(NodeRareData* rareData)
+{
+    m_documentRareData = rareData;
+}
+
 void Document::setIsViewSource(bool isViewSource)
 {
     m_isViewSource = isViewSource;
@@ -2682,6 +2687,7 @@ void Document::setURL(const KURL& url)
     m_url = newURL;
     m_documentURI = m_url.string();
     updateBaseURL();
+    contextFeatures()->urlDidChange(this);
 }
 
 void Document::updateBaseURL()
@@ -3401,14 +3407,11 @@ void Document::removeStyleSheetCandidateNode(Node* node)
 
 void Document::collectActiveStylesheets(Vector<RefPtr<StyleSheet> >& sheets)
 {
-    bool matchAuthorAndUserStyles = true;
-    if (Settings* settings = this->settings())
-        matchAuthorAndUserStyles = settings->authorAndUserStylesEnabled();
+    if (settings() && !settings()->authorAndUserStylesEnabled())
+        return;
 
     StyleSheetCandidateListHashSet::iterator begin = m_styleSheetCandidateNodes.begin();
     StyleSheetCandidateListHashSet::iterator end = m_styleSheetCandidateNodes.end();
-    if (!matchAuthorAndUserStyles)
-        end = begin;
     for (StyleSheetCandidateListHashSet::iterator it = begin; it != end; ++it) {
         Node* n = *it;
         StyleSheet* sheet = 0;
@@ -3864,14 +3867,19 @@ void Document::setCSSTarget(Element* n)
 
 void Document::registerDynamicSubtreeNodeList(DynamicSubtreeNodeList* list)
 {
-    ensureRareData()->ensureNodeLists(this)->m_listsInvalidatedAtDocument.add(list);
+    m_listsInvalidatedAtDocument.add(list);
 }
 
 void Document::unregisterDynamicSubtreeNodeList(DynamicSubtreeNodeList* list)
 {
-    ASSERT(hasRareData());
-    ASSERT(rareData()->nodeLists());
-    rareData()->nodeLists()->m_listsInvalidatedAtDocument.remove(list);
+    m_listsInvalidatedAtDocument.remove(list);
+}
+
+void Document::clearNodeListCaches()
+{
+    HashSet<DynamicSubtreeNodeList*>::iterator end = m_listsInvalidatedAtDocument.end();
+    for (HashSet<DynamicSubtreeNodeList*>::iterator it = m_listsInvalidatedAtDocument.begin(); it != end; ++it)
+        (*it)->invalidateCache();
 }
 
 void Document::attachNodeIterator(NodeIterator* ni)
@@ -3900,7 +3908,7 @@ void Document::moveNodeIteratorsToNewDocument(Node* node, Document* newDocument)
 
 void Document::updateRangesAfterChildrenChanged(ContainerNode* container)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->nodeChildrenChanged(container);
@@ -3909,7 +3917,7 @@ void Document::updateRangesAfterChildrenChanged(ContainerNode* container)
 
 void Document::nodeChildrenWillBeRemoved(ContainerNode* container)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->nodeChildrenWillBeRemoved(container);
@@ -3936,7 +3944,7 @@ void Document::nodeWillBeRemoved(Node* n)
     for (HashSet<NodeIterator*>::const_iterator it = m_nodeIterators.begin(); it != nodeIteratorsEnd; ++it)
         (*it)->nodeWillBeRemoved(n);
 
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator rangesEnd = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != rangesEnd; ++it)
             (*it)->nodeWillBeRemoved(n);
@@ -3951,7 +3959,7 @@ void Document::nodeWillBeRemoved(Node* n)
 
 void Document::textInserted(Node* text, unsigned offset, unsigned length)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->textInserted(text, offset, length);
@@ -3963,7 +3971,7 @@ void Document::textInserted(Node* text, unsigned offset, unsigned length)
 
 void Document::textRemoved(Node* text, unsigned offset, unsigned length)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->textRemoved(text, offset, length);
@@ -3976,7 +3984,7 @@ void Document::textRemoved(Node* text, unsigned offset, unsigned length)
 
 void Document::textNodesMerged(Text* oldNode, unsigned offset)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         NodeWithIndex oldNodeWithIndex(oldNode);
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
@@ -3988,7 +3996,7 @@ void Document::textNodesMerged(Text* oldNode, unsigned offset)
 
 void Document::textNodeSplit(Text* oldNode)
 {
-    if (!disableRangeMutation(page()) && !m_ranges.isEmpty()) {
+    if (!m_ranges.isEmpty()) {
         HashSet<Range*>::const_iterator end = m_ranges.end();
         for (HashSet<Range*>::const_iterator it = m_ranges.begin(); it != end; ++it)
             (*it)->textNodeSplit(oldNode);
@@ -4126,7 +4134,7 @@ HTMLFrameOwnerElement* Document::ownerElement() const
 
 String Document::cookie(ExceptionCode& ec) const
 {
-    if (page() && !page()->cookieEnabled())
+    if (page() && !page()->settings()->cookieEnabled())
         return String();
 
     // FIXME: The HTML5 DOM spec states that this attribute can raise an
@@ -4147,7 +4155,7 @@ String Document::cookie(ExceptionCode& ec) const
 
 void Document::setCookie(const String& value, ExceptionCode& ec)
 {
-    if (page() && !page()->cookieEnabled())
+    if (page() && !page()->settings()->cookieEnabled())
         return;
 
     // FIXME: The HTML5 DOM spec states that this attribute can raise an
@@ -4575,8 +4583,8 @@ KURL Document::openSearchDescriptionURL()
     if (!head())
         return KURL();
 
-    HTMLCollection* children = head()->children();
-    for (Node* child = children->firstItem(); child; child = children->nextItem()) {
+    RefPtr<HTMLCollection> children = head()->children();
+    for (unsigned i = 0; Node* child = children->item(i); i++) {
         if (!child->hasTagName(linkTag))
             continue;
         HTMLLinkElement* linkElement = static_cast<HTMLLinkElement*>(child);
@@ -4693,81 +4701,113 @@ bool Document::hasSVGRootNode() const
 }
 #endif
 
-HTMLCollection* Document::cachedCollection(CollectionType type)
+// FIXME: This caching mechanism should be merged that of DynamicNodeList in NodeRareData.
+PassRefPtr<HTMLCollection> Document::cachedCollection(CollectionType type)
 {
     ASSERT(static_cast<unsigned>(type) < NumUnnamedDocumentCachedTypes);
-    if (!m_collections[type])
-        m_collections[type] = HTMLCollection::create(this, type);
-    return m_collections[type].get();
+    if (m_collections[type])
+        return m_collections[type];
+
+    RefPtr<HTMLCollection> collection;
+    if (type == DocAll)
+        collection = HTMLAllCollection::create(this);
+    else
+        collection = HTMLCollection::create(this, type);
+    m_collections[type] = collection.get();
+
+    return collection.release();
 }
 
-HTMLCollection* Document::images()
+void Document::removeCachedHTMLCollection(HTMLCollection* collection, CollectionType type)
+{
+    ASSERT_UNUSED(collection, m_collections[type] == collection);
+    m_collections[type] = 0;
+}
+
+PassRefPtr<HTMLCollection> Document::images()
 {
     return cachedCollection(DocImages);
 }
 
-HTMLCollection* Document::applets()
+PassRefPtr<HTMLCollection> Document::applets()
 {
     return cachedCollection(DocApplets);
 }
 
-HTMLCollection* Document::embeds()
+PassRefPtr<HTMLCollection> Document::embeds()
 {
     return cachedCollection(DocEmbeds);
 }
 
-HTMLCollection* Document::plugins()
+PassRefPtr<HTMLCollection> Document::plugins()
 {
     // This is an alias for embeds() required for the JS DOM bindings.
     return cachedCollection(DocEmbeds);
 }
 
-HTMLCollection* Document::objects()
+PassRefPtr<HTMLCollection> Document::objects()
 {
     return cachedCollection(DocObjects);
 }
 
-HTMLCollection* Document::scripts()
+PassRefPtr<HTMLCollection> Document::scripts()
 {
     return cachedCollection(DocScripts);
 }
 
-HTMLCollection* Document::links()
+PassRefPtr<HTMLCollection> Document::links()
 {
     return cachedCollection(DocLinks);
 }
 
-HTMLCollection* Document::forms()
+PassRefPtr<HTMLCollection> Document::forms()
 {
     return cachedCollection(DocForms);
 }
 
-HTMLCollection* Document::anchors()
+PassRefPtr<HTMLCollection> Document::anchors()
 {
     return cachedCollection(DocAnchors);
 }
 
-HTMLAllCollection* Document::all()
+PassRefPtr<HTMLCollection> Document::all()
 {
-    if (!m_allCollection)
-        m_allCollection = HTMLAllCollection::create(this);
-    return m_allCollection.get();
+    return cachedCollection(DocAll);
 }
 
-HTMLCollection* Document::windowNamedItems(const AtomicString& name)
+PassRefPtr<HTMLCollection> Document::windowNamedItems(const AtomicString& name)
 {
-    OwnPtr<HTMLNameCollection>& collection = m_windowNamedItemCollections.add(name.impl(), nullptr).iterator->second;
-    if (!collection)
-        collection = HTMLNameCollection::create(this, WindowNamedItems, name);
-    return collection.get();
+    NamedCollectionMap::AddResult result = m_windowNamedItemCollections.add(name, 0);
+    if (!result.isNewEntry)
+        return result.iterator->second;
+
+    RefPtr<HTMLNameCollection> collection = HTMLNameCollection::create(this, WindowNamedItems, name);
+    result.iterator->second = collection.get();
+    return collection.release();
 }
 
-HTMLCollection* Document::documentNamedItems(const AtomicString& name)
+PassRefPtr<HTMLCollection> Document::documentNamedItems(const AtomicString& name)
 {
-    OwnPtr<HTMLNameCollection>& collection = m_documentNamedItemCollections.add(name.impl(), nullptr).iterator->second;
-    if (!collection)
-        collection = HTMLNameCollection::create(this, DocumentNamedItems, name);
-    return collection.get();
+    NamedCollectionMap::AddResult result = m_documentNamedItemCollections.add(name, 0);
+    if (!result.isNewEntry)
+        return result.iterator->second;
+
+    RefPtr<HTMLNameCollection> collection = HTMLNameCollection::create(this, DocumentNamedItems, name);
+    result.iterator->second = collection.get();
+    return collection.release();
+}
+
+// FIXME: This caching mechanism should be merged that of DynamicNodeList in NodeRareData.
+void Document::removeWindowNamedItemCache(HTMLCollection* collection, const AtomicString& name)
+{
+    ASSERT_UNUSED(collection, m_windowNamedItemCollections.get(name) == collection);
+    m_windowNamedItemCollections.remove(name);
+}
+
+void Document::removeDocumentNamedItemCache(HTMLCollection* collection, const AtomicString& name)
+{
+    ASSERT_UNUSED(collection, m_documentNamedItemCollections.get(name) == collection);
+    m_documentNamedItemCollections.remove(name);
 }
 
 void Document::finishedParsing()
@@ -5921,31 +5961,11 @@ DocumentLoader* Document::loader() const
 #if ENABLE(MICRODATA)
 PassRefPtr<NodeList> Document::getItems(const String& typeNames)
 {
-    NodeListsNodeData* nodeLists = ensureRareData()->ensureNodeLists(this);
-
     // Since documet.getItem() is allowed for microdata, typeNames will be null string.
     // In this case we need to create an unique string identifier to map such request in the cache.
-    String localTypeNames = typeNames.isNull() ? String("http://webkit.org/microdata/undefinedItemType") : typeNames;
+    String localTypeNames = typeNames.isNull() ? MicroDataItemList::undefinedItemType() : typeNames;
 
-    NodeListsNodeData::MicroDataItemListCache::AddResult result = nodeLists->m_microDataItemListCache.add(localTypeNames, 0);
-    if (!result.isNewEntry)
-        return PassRefPtr<NodeList>(result.iterator->second);
-
-    RefPtr<MicroDataItemList> list = MicroDataItemList::create(this, typeNames);
-    result.iterator->second = list.get();
-    return list.release();
-}
-
-void Document::removeCachedMicroDataItemList(MicroDataItemList* list, const String& typeNames)
-{
-    ASSERT(rareData());
-    ASSERT(rareData()->nodeLists());
-
-    NodeListsNodeData* data = rareData()->nodeLists();
-
-    String localTypeNames = typeNames.isNull() ? String("http://webkit.org/microdata/undefinedItemType") : typeNames;
-    ASSERT_UNUSED(list, list == data->m_microDataItemListCache.get(localTypeNames));
-    data->m_microDataItemListCache.remove(localTypeNames);
+    return ensureRareData()->ensureNodeLists(this)->addCacheWithName<MicroDataItemList>(this, DynamicNodeList::MicroDataItemListType, localTypeNames);
 }
 #endif
 
@@ -6009,6 +6029,42 @@ void Document::adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect& r
 void Document::setContextFeatures(PassRefPtr<ContextFeatures> features)
 {
     m_contextFeatures = features;
+}
+
+void Document::reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+{
+    memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
+    ContainerNode::reportMemoryUsage(memoryObjectInfo);
+    memoryObjectInfo->reportVector(m_customFonts);
+    memoryObjectInfo->reportString(m_documentURI);
+    memoryObjectInfo->reportString(m_baseTarget);
+    if (m_pageGroupUserSheets)
+        memoryObjectInfo->reportVector(*m_pageGroupUserSheets.get());
+    if (m_userSheets)
+        memoryObjectInfo->reportVector(*m_userSheets.get());
+    memoryObjectInfo->reportHashSet(m_nodeIterators);
+    memoryObjectInfo->reportHashSet(m_ranges);
+    memoryObjectInfo->reportListHashSet(m_styleSheetCandidateNodes);
+    memoryObjectInfo->reportString(m_preferredStylesheetSet);
+    memoryObjectInfo->reportString(m_selectedStylesheetSet);
+    memoryObjectInfo->reportString(m_title.string());
+    memoryObjectInfo->reportString(m_rawTitle.string());
+    memoryObjectInfo->reportString(m_xmlEncoding);
+    memoryObjectInfo->reportString(m_xmlVersion);
+    memoryObjectInfo->reportString(m_contentLanguage);
+    memoryObjectInfo->reportHashMap(m_documentNamedItemCollections);
+    memoryObjectInfo->reportHashMap(m_windowNamedItemCollections);
+#if ENABLE(DASHBOARD_SUPPORT)
+    memoryObjectInfo->reportVector(m_dashboardRegions);
+#endif
+    memoryObjectInfo->reportHashMap(m_cssCanvasElements);
+    memoryObjectInfo->reportVector(m_iconURLs);
+    memoryObjectInfo->reportHashSet(m_documentSuspensionCallbackElements);
+    memoryObjectInfo->reportHashSet(m_mediaVolumeCallbackElements);
+    memoryObjectInfo->reportHashSet(m_privateBrowsingStateChangedElements);
+    memoryObjectInfo->reportHashMap(m_elementsByAccessKey);
+    memoryObjectInfo->reportHashSet(m_mediaCanStartListeners);
+    memoryObjectInfo->reportVector(m_pendingTasks);
 }
 
 #if ENABLE(UNDO_MANAGER)

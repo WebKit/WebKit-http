@@ -53,26 +53,6 @@ WebIDBObjectStoreImpl::~WebIDBObjectStoreImpl()
 {
 }
 
-WebString WebIDBObjectStoreImpl::name() const
-{
-    return m_objectStore->name();
-}
-
-WebIDBKeyPath WebIDBObjectStoreImpl::keyPath() const
-{
-    return m_objectStore->keyPath();
-}
-
-WebDOMStringList WebIDBObjectStoreImpl::indexNames() const
-{
-    return m_objectStore->indexNames();
-}
-
-bool WebIDBObjectStoreImpl::autoIncrement() const
-{
-    return m_objectStore->autoIncrement();
-}
-
 void WebIDBObjectStoreImpl::get(const WebIDBKeyRange& keyRange, WebIDBCallbacks* callbacks, const WebIDBTransaction& transaction, WebExceptionCode& ec)
 {
     m_objectStore->get(keyRange, IDBCallbacksProxy::create(adoptPtr(callbacks)), transaction.getIDBTransactionBackendInterface(), ec);
@@ -81,11 +61,6 @@ void WebIDBObjectStoreImpl::get(const WebIDBKeyRange& keyRange, WebIDBCallbacks*
 void WebIDBObjectStoreImpl::put(const WebSerializedScriptValue& value, const WebIDBKey& key, PutMode putMode, WebIDBCallbacks* callbacks, const WebIDBTransaction& transaction, WebExceptionCode& ec)
 {
     m_objectStore->put(value, key, static_cast<IDBObjectStoreBackendInterface::PutMode>(putMode), IDBCallbacksProxy::create(adoptPtr(callbacks)), transaction.getIDBTransactionBackendInterface(), ec);
-}
-
-void WebIDBObjectStoreImpl::deleteFunction(const WebIDBKey& key, WebIDBCallbacks* callbacks, const WebIDBTransaction& transaction, WebExceptionCode& ec)
-{
-    m_objectStore->deleteFunction(key, IDBCallbacksProxy::create(adoptPtr(callbacks)), transaction.getIDBTransactionBackendInterface(), ec);
 }
 
 void WebIDBObjectStoreImpl::deleteFunction(const WebIDBKeyRange& keyRange, WebIDBCallbacks* callbacks, const WebIDBTransaction& transaction, WebExceptionCode& ec)

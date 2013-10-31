@@ -140,6 +140,7 @@ void RenderImage::styleDidChange(StyleDifference diff, const RenderStyle* oldSty
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     if (diff == StyleDifferenceLayout
         && (oldStyle->imageResolution() != style()->imageResolution()
+            || oldStyle->imageResolutionSnap() != style()->imageResolutionSnap()
             || oldStyle->imageResolutionSource() != style()->imageResolutionSource()))
         imageDimensionsChanged(true /* imageSizeChanged */);
 #endif
@@ -198,7 +199,12 @@ bool RenderImage::updateIntrinsicSizeIfNeeded(const IntSize& newSize, bool image
 void RenderImage::imageDimensionsChanged(bool imageSizeChanged, const IntRect* rect)
 {
 #if ENABLE(CSS_IMAGE_RESOLUTION)
-    bool intrinsicSizeChanged = updateIntrinsicSizeIfNeeded(m_imageResource->imageSize(style()->effectiveZoom() / style()->imageResolution()), imageSizeChanged);
+    double scale = style()->imageResolution();
+    if (style()->imageResolutionSnap() == ImageResolutionSnapPixels)
+        scale = roundForImpreciseConversion<int>(scale);
+    if (scale <= 0)
+        scale = 1;
+    bool intrinsicSizeChanged = updateIntrinsicSizeIfNeeded(m_imageResource->imageSize(style()->effectiveZoom() / scale), imageSizeChanged);
 #else
     bool intrinsicSizeChanged = updateIntrinsicSizeIfNeeded(m_imageResource->imageSize(style()->effectiveZoom()), imageSizeChanged);
 #endif
@@ -213,8 +219,8 @@ void RenderImage::imageDimensionsChanged(bool imageSizeChanged, const IntRect* r
     bool shouldRepaint = true;
     if (intrinsicSizeChanged) {
         // lets see if we need to relayout at all..
-        int oldwidth = width();
-        int oldheight = height();
+        LayoutUnit oldwidth = width();
+        LayoutUnit oldheight = height();
         if (!preferredLogicalWidthsDirty())
             setPreferredLogicalWidthsDirty(true);
         computeLogicalWidth();
@@ -447,6 +453,14 @@ void RenderImage::paintIntoRect(GraphicsContext* context, const LayoutRect& rect
     context->drawImage(m_imageResource->image(alignedRect.width(), alignedRect.height()).get(), style()->colorSpace(), alignedRect, compositeOperator, shouldRespectImageOrientation(), useLowQualityScaling);
 }
 
+bool RenderImage::boxShadowShouldBeAppliedToBackground(BackgroundBleedAvoidance bleedAvoidance, InlineFlowBox*) const
+{
+    if (!RenderBoxModelObject::boxShadowShouldBeAppliedToBackground(bleedAvoidance))
+        return false;
+
+    return !backgroundIsObscured();
+}
+
 bool RenderImage::backgroundIsObscured() const
 {
     if (!m_imageResource->hasImage() || m_imageResource->errorOccurred())
@@ -484,18 +498,18 @@ HTMLMapElement* RenderImage::imageMap() const
     return i ? i->treeScope()->getImageMap(i->fastGetAttribute(usemapAttr)) : 0;
 }
 
-bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
+bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
 {
-    HitTestResult tempResult(result.point(), result.topPadding(), result.rightPadding(), result.bottomPadding(), result.leftPadding(), result.shadowContentFilterPolicy());
+    HitTestResult tempResult(result.hitTestPoint(), result.shadowContentFilterPolicy());
     bool inside = RenderReplaced::nodeAtPoint(request, tempResult, pointInContainer, accumulatedOffset, hitTestAction);
 
     if (tempResult.innerNode() && node()) {
         if (HTMLMapElement* map = imageMap()) {
             LayoutRect contentBox = contentBoxRect();
             float scaleFactor = 1 / style()->effectiveZoom();
-            LayoutPoint mapLocation(pointInContainer.x() - accumulatedOffset.x() - this->x() - contentBox.x(), pointInContainer.y() - accumulatedOffset.y() - this->y() - contentBox.y());
+            LayoutPoint mapLocation = pointInContainer.point() - toLayoutSize(accumulatedOffset) - LayoutSize(this->x(), this->y()) - toLayoutSize(contentBox.location());
             mapLocation.scale(scaleFactor, scaleFactor);
-            
+
             if (map->mapMouseEvent(mapLocation, contentBox.size(), tempResult))
                 tempResult.setInnerNonSharedNode(node());
         }
@@ -535,7 +549,7 @@ void RenderImage::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, dou
 
     // Our intrinsicSize is empty if we're rendering generated images with relative width/height. Figure out the right intrinsic size to use.
     if (intrinsicSize.isEmpty() && (m_imageResource->imageHasRelativeWidth() || m_imageResource->imageHasRelativeHeight())) {
-        RenderObject* containingBlock = isPositioned() ? container() : this->containingBlock();
+        RenderObject* containingBlock = isOutOfFlowPositioned() ? container() : this->containingBlock();
         if (containingBlock->isBox()) {
             RenderBox* box = toRenderBox(containingBlock);
             intrinsicSize.setWidth(box->availableLogicalWidth());

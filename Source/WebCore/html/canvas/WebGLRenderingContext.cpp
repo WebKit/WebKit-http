@@ -3634,6 +3634,19 @@ void WebGLRenderingContext::texImage2D(GC3Denum target, GC3Dint level, GC3Denum 
         ec = SECURITY_ERR;
         return;
     }
+
+    WebGLTexture* texture = validateTextureBinding("texImage2D", target, true);
+    // If possible, copy from the canvas element directly to the texture
+    // via the GPU, without a read-back to system memory.
+    if (GraphicsContext3D::TEXTURE_2D == target && texture && type == texture->getType(target, level)) {
+        ImageBuffer* buffer = canvas->buffer();
+        if (buffer && buffer->copyToPlatformTexture(*m_context.get(), texture->object(), internalformat, m_unpackPremultiplyAlpha, m_unpackFlipY)) {
+            texture->setLevelInfo(target, level, internalformat, canvas->width(), canvas->height(), type);
+            cleanupAfterGraphicsCall(false);
+            return;
+        }
+    }
+
     RefPtr<ImageData> imageData = canvas->getImageData();
     if (imageData)
         texImage2D(target, level, internalformat, format, type, imageData.get(), ec);
@@ -4713,10 +4726,11 @@ bool WebGLRenderingContext::validateTexFuncFormatAndType(const char* functionNam
     case GraphicsContext3D::RGB:
     case GraphicsContext3D::RGBA:
         break;
+    case GraphicsContext3D::DEPTH_STENCIL:
     case GraphicsContext3D::DEPTH_COMPONENT:
         if (m_webglDepthTexture)
             break;
-        synthesizeGLError(GraphicsContext3D::INVALID_ENUM, functionName, "DEPTH_COMPONENT texture format not enabled");
+        synthesizeGLError(GraphicsContext3D::INVALID_ENUM, functionName, "depth texture formats not enabled");
         return false;
     default:
         synthesizeGLError(GraphicsContext3D::INVALID_ENUM, functionName, "invalid texture format");
@@ -4735,6 +4749,7 @@ bool WebGLRenderingContext::validateTexFuncFormatAndType(const char* functionNam
         synthesizeGLError(GraphicsContext3D::INVALID_ENUM, functionName, "invalid texture type");
         return false;
     case GraphicsContext3D::UNSIGNED_INT:
+    case GraphicsContext3D::UNSIGNED_INT_24_8:
     case GraphicsContext3D::UNSIGNED_SHORT:
         if (m_webglDepthTexture)
             break;
@@ -4785,6 +4800,20 @@ bool WebGLRenderingContext::validateTexFuncFormatAndType(const char* functionNam
         }
         if (level > 0) {
           synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "level must be 0 for DEPTH_COMPONENT format");
+          return false;
+        }
+        break;
+    case GraphicsContext3D::DEPTH_STENCIL:
+        if (!m_webglDepthTexture) {
+            synthesizeGLError(GraphicsContext3D::INVALID_ENUM, functionName, "invalid format. DEPTH_STENCIL not enabled");
+            return false;
+        }
+        if (type != GraphicsContext3D::UNSIGNED_INT_24_8) {
+            synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "invalid type for DEPTH_STENCIL format");
+            return false;
+        }
+        if (level > 0) {
+          synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, functionName, "level must be 0 for DEPTH_STENCIL format");
           return false;
         }
         break;

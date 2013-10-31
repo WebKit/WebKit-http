@@ -237,9 +237,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitAlignContent,
     CSSPropertyWebkitAlignItems,
     CSSPropertyWebkitAlignSelf,
-    CSSPropertyWebkitFlex,
+    CSSPropertyWebkitFlexBasis,
+    CSSPropertyWebkitFlexGrow,
+    CSSPropertyWebkitFlexShrink,
     CSSPropertyWebkitFlexDirection,
-    CSSPropertyWebkitFlexFlow,
     CSSPropertyWebkitFlexWrap,
     CSSPropertyWebkitJustifyContent,
 #endif
@@ -598,11 +599,12 @@ static PassRefPtr<CSSValue> getPositionOffsetValue(RenderStyle* style, CSSProper
         return cssValuePool().createValue(l);
     }
 
-    if (style->position() == RelativePosition)
+    if (style->position() == RelativePosition) {
         // FIXME: It's not enough to simply return "auto" values for one offset if the other side is defined.
         // In other words if left is auto and right is not auto, then left's computed value is negative right().
         // So we should get the opposite length unit and see if it is auto.
         return cssValuePool().createValue(l);
+    }
 
     return cssValuePool().createIdentifierValue(CSSValueAuto);
 }
@@ -783,7 +785,7 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::valueForFilter(RenderStyle* st
         case FilterOperation::REFERENCE: {
             ReferenceFilterOperation* referenceOperation = static_cast<ReferenceFilterOperation*>(filterOperation);
             filterValue = WebKitCSSFilterValue::create(WebKitCSSFilterValue::ReferenceFilterOperation);
-            filterValue->append(cssValuePool().createValue(referenceOperation->reference(), CSSPrimitiveValue::CSS_STRING));
+            filterValue->append(cssValuePool().createValue(referenceOperation->url(), CSSPrimitiveValue::CSS_STRING));
             break;
         }
         case FilterOperation::GRAYSCALE: {
@@ -1650,25 +1652,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
         case CSSPropertyEmptyCells:
             return cssValuePool().createValue(style->emptyCells());
 #if ENABLE(CSS3_FLEXBOX)
-        case CSSPropertyWebkitFlex: {
-            RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-            list->append(cssValuePool().createValue(style->flexGrow()));
-            list->append(cssValuePool().createValue(style->flexShrink()));
-
-            Length flexBasis = style->flexBasis();
-            if (flexBasis.isAuto())
-                list->append(cssValuePool().createIdentifierValue(CSSValueAuto));
-            else if (flexBasis.isPercent())
-                list->append(cssValuePool().createValue(flexBasis.value(), CSSPrimitiveValue::CSS_PERCENTAGE));
-            else
-                list->append(cssValuePool().createValue(flexBasis.value(), CSSPrimitiveValue::CSS_PX));
-
-            return list.release();
-        }
-        case CSSPropertyWebkitOrder:
-            return cssValuePool().createValue(style->order());
-        case CSSPropertyWebkitJustifyContent:
-            return cssValuePool().createValue(style->justifyContent());
+        case CSSPropertyWebkitAlignContent:
+            return cssValuePool().createValue(style->alignContent());
         case CSSPropertyWebkitAlignItems:
             return cssValuePool().createValue(style->alignItems());
         case CSSPropertyWebkitAlignSelf:
@@ -1678,18 +1663,24 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
                 return cssValuePool().createValue(AlignStretch);
             }
             return cssValuePool().createValue(style->alignSelf());
+        case CSSPropertyWebkitFlex:
+            return getCSSPropertyValuesForShorthandProperties(webkitFlexShorthand());
+        case CSSPropertyWebkitFlexBasis:
+            return cssValuePool().createValue(style->flexBasis());
         case CSSPropertyWebkitFlexDirection:
             return cssValuePool().createValue(style->flexDirection());
+        case CSSPropertyWebkitFlexFlow:
+            return getCSSPropertyValuesForShorthandProperties(webkitFlexFlowShorthand());
+        case CSSPropertyWebkitFlexGrow:
+            return cssValuePool().createValue(style->flexGrow());
+        case CSSPropertyWebkitFlexShrink:
+            return cssValuePool().createValue(style->flexShrink());
         case CSSPropertyWebkitFlexWrap:
             return cssValuePool().createValue(style->flexWrap());
-        case CSSPropertyWebkitAlignContent:
-            return cssValuePool().createValue(style->alignContent());
-        case CSSPropertyWebkitFlexFlow: {
-            RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-            list->append(cssValuePool().createValue(style->flexDirection()));
-            list->append(cssValuePool().createValue(style->flexWrap()));
-            return list.release();
-        }
+        case CSSPropertyWebkitJustifyContent:
+            return cssValuePool().createValue(style->justifyContent());
+        case CSSPropertyWebkitOrder:
+            return cssValuePool().createValue(style->order());
 #endif
         case CSSPropertyFloat:
             return cssValuePool().createValue(style->floating());

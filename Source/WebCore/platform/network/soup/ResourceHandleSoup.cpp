@@ -88,7 +88,7 @@ public:
         loadingSynchronousRequest = true;
         GRefPtr<GMainContext> innerMainContext = adoptGRef(g_main_context_new());
         g_main_context_push_thread_default(innerMainContext.get());
-        m_mainLoop = g_main_loop_new(innerMainContext.get(), false);
+        m_mainLoop = adoptGRef(g_main_loop_new(innerMainContext.get(), false));
 
         adjustMaxConnections(1);
     }
@@ -200,11 +200,13 @@ static void ensureSessionIsInitialized(SoupSession* session)
             setSoupCookieJar(jar);
     }
 
+#if !LOG_DISABLED
     if (!soup_session_get_feature(session, SOUP_TYPE_LOGGER) && LogNetwork.state == WTFLogChannelOn) {
         SoupLogger* logger = soup_logger_new(static_cast<SoupLoggerLogLevel>(SOUP_LOGGER_LOG_BODY), -1);
         soup_session_add_feature(session, SOUP_SESSION_FEATURE(logger));
         g_object_unref(logger);
     }
+#endif // !LOG_DISABLED
 
     if (!soup_session_get_feature(session, SOUP_TYPE_REQUESTER)) {
         SoupRequester* requester = soup_requester_new();

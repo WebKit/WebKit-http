@@ -39,17 +39,10 @@ _log = logging.getLogger(__name__)
 
 
 class ChromiumMacPort(chromium.ChromiumPort):
-    SUPPORTED_OS_VERSIONS = ('leopard', 'snowleopard', 'lion', 'future')
+    SUPPORTED_OS_VERSIONS = ('snowleopard', 'lion', 'future')
     port_name = 'chromium-mac'
 
     FALLBACK_PATHS = {
-        'leopard': [
-            'chromium-mac-leopard',
-            'chromium-mac-snowleopard',
-            'chromium-mac',
-            'chromium',
-            'mac',
-        ],
         'snowleopard': [
             'chromium-mac-snowleopard',
             'chromium-mac',
@@ -78,19 +71,18 @@ class ChromiumMacPort(chromium.ChromiumPort):
 
     def __init__(self, host, port_name, **kwargs):
         chromium.ChromiumPort.__init__(self, host, port_name, **kwargs)
-
-        # We're a little generic here because this code is reused by the
-        # 'google-chrome' port as well as the 'mock-' and 'dryrun-' ports.
-        self._version = port_name[port_name.index('-mac-') + len('-mac-'):]
+        self._version = port_name[port_name.index('chromium-mac-') + len('chromium-mac-'):]
         assert self._version in self.SUPPORTED_OS_VERSIONS
 
     def baseline_search_path(self):
         fallback_paths = self.FALLBACK_PATHS
         return map(self._webkit_baseline_path, fallback_paths[self._version])
 
+    def _modules_to_search_for_symbols(self):
+        return [self._build_path(self.get_option('configuration'), 'ffmpegsumo.so')]
+
     def check_build(self, needs_http):
         result = chromium.ChromiumPort.check_build(self, needs_http)
-        result = self.check_wdiff() and result
         if not result:
             _log.error('For complete Mac build requirements, please see:')
             _log.error('')
@@ -105,17 +97,11 @@ class ChromiumMacPort(chromium.ChromiumPort):
     # PROTECTED METHODS
     #
 
-    def check_wdiff(self, logging=True):
-        try:
-            # We're ignoring the return and always returning True
-            self._executive.run_command([self._path_to_wdiff()], error_handler=self._executive.ignore_error)
-        except OSError:
-            if logging:
-                _log.warning('wdiff not found. Install using MacPorts or some other means')
-        return True
-
     def _lighttpd_path(self, *comps):
         return self.path_from_chromium_base('third_party', 'lighttpd', 'mac', *comps)
+
+    def _wdiff_missing_message(self):
+        return 'wdiff is not installed; please install from MacPorts or elsewhere'
 
     def _path_to_apache(self):
         return '/usr/sbin/httpd'

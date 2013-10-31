@@ -142,31 +142,6 @@ QWebPageClient* PluginView::platformPageClient() const
     return hostWindow->platformPageClient();
 }
 
-#if !HAVE(QT5) && USE(ACCELERATED_COMPOSITING)
-// Qt's GraphicsLayer (GraphicsLayerQt) requires layers to be QGraphicsWidgets
-class PluginGraphicsLayerQt : public QGraphicsWidget {
-public:
-    PluginGraphicsLayerQt(PluginView* view) : m_view(view) { }
-    ~PluginGraphicsLayerQt() { }
-
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = 0)
-    {
-        Q_UNUSED(widget);
-        m_view->paintUsingXPixmap(painter, option->exposedRect.toRect());
-    }
-
-private:
-    PluginView* m_view;
-};
-
-bool PluginView::shouldUseAcceleratedCompositing() const
-{
-    return m_parentFrame->page()->chrome()->client()->allowsAcceleratedCompositing()
-           && m_parentFrame->page()->settings()
-           && m_parentFrame->page()->settings()->acceleratedCompositingEnabled();
-}
-#endif
-
 void PluginView::updatePluginWidget()
 {
     if (!parent())
@@ -373,7 +348,7 @@ bool PluginView::dispatchNPEvent(NPEvent& event)
 
     PluginView::setCurrentPluginView(this);
 #if USE(JSC)
-    JSC::JSLock::DropAllLocks dropAllLocks(JSC::SilenceAssertionsOnly);
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
 #endif
     setCallingPlugin(true);
     bool accepted = !m_plugin->pluginFuncs()->event(m_instance, &event);
@@ -687,7 +662,7 @@ void PluginView::setNPWindowIfNeeded()
 
     PluginView::setCurrentPluginView(this);
 #if USE(JSC)
-    JSC::JSLock::DropAllLocks dropAllLocks(JSC::SilenceAssertionsOnly);
+    JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
 #endif
     setCallingPlugin(true);
     m_plugin->pluginFuncs()->setwindow(m_instance, &m_npWindow);
@@ -801,13 +776,6 @@ bool PluginView::platformGetValue(NPNVariable variable, void* value, NPError* re
 
 void PluginView::invalidateRect(const IntRect& rect)
 {
-#if USE(ACCELERATED_COMPOSITING) && !USE(TEXTURE_MAPPER)
-    if (m_platformLayer) {
-        m_platformLayer->update(QRectF(rect));
-        return;
-    }
-#endif
-
 #if !HAVE(QT5) // Windowed mode is not supported with Qt5 yet.
     if (m_isWindowed) {
         if (platformWidget()) {
@@ -949,7 +917,7 @@ bool PluginView::platformStart()
     if (m_plugin->pluginFuncs()->getvalue) {
         PluginView::setCurrentPluginView(this);
 #if USE(JSC)
-        JSC::JSLock::DropAllLocks dropAllLocks(JSC::SilenceAssertionsOnly);
+        JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonJSGlobalData());
 #endif
         setCallingPlugin(true);
         m_plugin->pluginFuncs()->getvalue(m_instance, NPPVpluginNeedsXEmbed, &m_needsXEmbed);
@@ -973,14 +941,6 @@ bool PluginView::platformStart()
     {
         setPlatformWidget(0);
         m_pluginDisplay = getPluginDisplay();
-
-#if USE(ACCELERATED_COMPOSITING) && !USE(TEXTURE_MAPPER)
-        if (shouldUseAcceleratedCompositing()) {
-            m_platformLayer = adoptPtr(new PluginGraphicsLayerQt(this));
-            // Trigger layer computation in RenderLayerCompositor
-            m_element->setNeedsStyleRecalc(SyntheticStyleChange);
-        }
-#endif
     }
 
     // If the width and the height are not zero we show the PluginView.

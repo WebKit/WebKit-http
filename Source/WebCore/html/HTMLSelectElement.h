@@ -34,7 +34,6 @@
 namespace WebCore {
 
 class HTMLOptionElement;
-class HTMLOptionsCollection;
 
 class HTMLSelectElement : public HTMLFormControlElementWithState {
 public:
@@ -63,11 +62,13 @@ public:
     String value() const;
     void setValue(const String&);
 
-    HTMLOptionsCollection* options();
+    PassRefPtr<HTMLOptionsCollection> options();
+    PassRefPtr<HTMLCollection> selectedOptions();
 
     void optionElementChildrenChanged();
 
     void setRecalcListItems();
+    void invalidateSelectedItems();
     void updateListItemSelectedStates();
 
     const Vector<HTMLElement*>& listItems() const;
@@ -164,6 +165,7 @@ private:
     bool platformHandleKeydownEvent(KeyboardEvent*);
     void listBoxDefaultEventHandler(Event*);
     void setOptionsChangedOnRenderer();
+    size_t searchOptionsForValue(const String&, size_t listIndexStart, size_t listIndexEnd) const;
 
     enum SkipDirection {
         SkipBackwards = -1,
@@ -177,8 +179,6 @@ private:
     int nextSelectableListIndexPageAway(int startIndex, SkipDirection) const;
 
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
-
-    OwnPtr<HTMLOptionsCollection> m_optionsCollection;
 
     // m_listItems contains HTMLOptionElement, HTMLOptGroupElement, and HTMLHRElement objects.
     mutable Vector<HTMLElement*> m_listItems;

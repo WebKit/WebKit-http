@@ -7,8 +7,6 @@
 TEMPLATE = subdirs
 CONFIG += ordered
 
-load(features)
-
 WEBKIT_TESTS_DIR = $$PWD/WebKit/qt/tests
 
 SUBDIRS += \
@@ -50,5 +48,6 @@ SUBDIRS += \
         $$WEBKIT2_TESTS_DIR/inspectorserver \
         $$WEBKIT2_TESTS_DIR/publicapi \
         $$WEBKIT2_TESTS_DIR/qquickwebview \
-        $$WEBKIT2_TESTS_DIR/qmltests
+        $$WEBKIT2_TESTS_DIR/qmltests \
+        $$WEBKIT2_TESTS_DIR/qrawwebview
 }

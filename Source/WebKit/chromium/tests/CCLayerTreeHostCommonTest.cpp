@@ -28,6 +28,7 @@
 
 #include "CCAnimationTestCommon.h"
 #include "CCLayerTreeTestCommon.h"
+#include "ContentLayerChromium.h"
 #include "LayerChromium.h"
 #include "TranslateTransformOperation.h"
 #include "cc/CCLayerAnimationController.h"
@@ -2182,7 +2183,11 @@ TEST(CCLayerTreeHostCommonTest, verifyAnimationsForRenderSurfaceHierarchy)
     childOfRS1->addChild(grandChildOfRS1);
     childOfRS2->addChild(grandChildOfRS2);
 
-    // In combination with descendantDrawsContent, opacity != 1 forces the layer to have a new renderSurface.
+    // Make our render surfaces.
+    renderSurface1->setForceRenderSurface(true);
+    renderSurface2->setForceRenderSurface(true);
+
+    // Put an animated opacity on the render surface.
     addOpacityTransitionToController(*renderSurface1->layerAnimationController(), 10, 1, 0, false);
 
     // Also put an animated opacity on a layer without descendants.
@@ -2193,9 +2198,8 @@ TEST(CCLayerTreeHostCommonTest, verifyAnimationsForRenderSurfaceHierarchy)
     WebTransformationMatrix sublayerTransform;
     sublayerTransform.scale3d(10.0, 1.0, 1.0);
 
-    // In combination with descendantDrawsContent and masksToBounds, an animated transform forces the layer to have a new renderSurface.
+    // Put a transform animation on the render surface.
     addAnimatedTransformToController(*renderSurface2->layerAnimationController(), 10, 30, 0);
-    renderSurface2->setMasksToBounds(true);
 
     // Also put transform animations on grandChildOfRoot, and grandChildOfRS2
     addAnimatedTransformToController(*grandChildOfRoot->layerAnimationController(), 10, 30, 0);
@@ -2792,9 +2796,11 @@ TEST(CCLayerTreeHostCommonTest, verifyBackFaceCullingWithAnimatingTransforms)
     backfaceMatrix.rotate3d(0, 1, 0, 180);
     backfaceMatrix.translate(-50, -50);
 
-    // Having a descendant that draws, masksToBounds, and animating transforms, will make the animatingSurface own a render surface.
+    // Make our render surface.
+    animatingSurface->setForceRenderSurface(true);
+
+    // Animate the transform on the render surface.
     addAnimatedTransformToController(*animatingSurface->layerAnimationController(), 10, 30, 0);
-    animatingSurface->setMasksToBounds(true);
     // This is just an animating layer, not a surface.
     addAnimatedTransformToController(*animatingChild->layerAnimationController(), 10, 30, 0);
 
@@ -3660,6 +3666,98 @@ TEST(CCLayerTreeHostCommonTest, verifyHitTestingForMultipleLayerLists)
     resultLayer = CCLayerTreeHostCommon::findLayerThatIsHitByPoint(testPoint, renderSurfaceLayerList);
     ASSERT_TRUE(resultLayer);
     EXPECT_EQ(4, resultLayer->id());
+}
+
+class MockContentLayerDelegate : public ContentLayerDelegate {
+public:
+    MockContentLayerDelegate() { }
+    virtual ~MockContentLayerDelegate() { }
+    virtual void paintContents(SkCanvas*, const IntRect& clip, FloatRect& opaque) OVERRIDE { }
+};
+
+PassRefPtr<ContentLayerChromium> createDrawableContentLayerChromium(ContentLayerDelegate* delegate)
+{
+    RefPtr<ContentLayerChromium> toReturn = ContentLayerChromium::create(delegate);
+    toReturn->setIsDrawable(true);
+    return toReturn.release();
+}
+
+TEST(CCLayerTreeHostCommonTest, verifyRenderSurfaceTranformsInHighDPI)
+{
+    MockContentLayerDelegate delegate;
+    WebTransformationMatrix identityMatrix;
+    WebTransformationMatrix parentMatrix;
+
+    RefPtr<ContentLayerChromium> parent = createDrawableContentLayerChromium(&delegate);
+    setLayerPropertiesForTesting(parent.get(), identityMatrix, identityMatrix, FloatPoint(0, 0), FloatPoint(0, 0), IntSize(30, 30), true);
+
+    RefPtr<ContentLayerChromium> child = createDrawableContentLayerChromium(&delegate);
+    setLayerPropertiesForTesting(child.get(), identityMatrix, identityMatrix, FloatPoint(0, 0), FloatPoint(2, 2), IntSize(10, 10), true);
+
+    WebTransformationMatrix replicaTransform;
+    replicaTransform.scaleNonUniform(1, -1);
+    RefPtr<ContentLayerChromium> replica = createDrawableContentLayerChromium(&delegate);
+    setLayerPropertiesForTesting(replica.get(), replicaTransform, identityMatrix, FloatPoint(0, 0), FloatPoint(2, 2), IntSize(10, 10), true);
+
+    parent->addChild(child);
+    child->setReplicaLayer(replica.get());
+
+    Vector<RefPtr<LayerChromium> > renderSurfaceLayerList;
+    Vector<RefPtr<LayerChromium> > dummyLayerList;
+    int dummyMaxTextureSize = 512;
+
+    parent->createRenderSurface();
+    parent->renderSurface()->setContentRect(IntRect(IntPoint(), parent->bounds()));
+    parent->setClipRect(IntRect(IntPoint::zero(), parent->bounds()));
+    renderSurfaceLayerList.append(parent.get());
+
+    const double deviceScaleFactor = 1.5;
+    parentMatrix.scale(deviceScaleFactor);
+    parent->setContentsScale(deviceScaleFactor);
+    child->setContentsScale(deviceScaleFactor);
+    replica->setContentsScale(deviceScaleFactor);
+
+    CCLayerTreeHostCommon::calculateDrawTransforms(parent.get(), parent.get(), parentMatrix, identityMatrix, renderSurfaceLayerList, dummyLayerList, dummyMaxTextureSize);
+
+    // We should have two render surfaces. The root's render surface and child's
+    // render surface (it needs one because it has a replica layer).
+    EXPECT_EQ(2u, renderSurfaceLayerList.size());
+
+    WebTransformationMatrix expectedDrawTransform;
+    expectedDrawTransform.setM11(deviceScaleFactor);
+    expectedDrawTransform.setM22(deviceScaleFactor);
+    expectedDrawTransform.setM41(0.5 * deviceScaleFactor * child->bounds().width());
+    expectedDrawTransform.setM42(0.5 * deviceScaleFactor * child->bounds().height());
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedDrawTransform, child->drawTransform());
+
+    WebTransformationMatrix expectedRenderSurfaceDrawTransform;
+    expectedRenderSurfaceDrawTransform.translate(deviceScaleFactor * (child->position().x() + 0.5 * child->bounds().width()), deviceScaleFactor * (child->position().y() + 0.5 * child->bounds().height()));
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedRenderSurfaceDrawTransform, child->renderSurface()->drawTransform());
+
+    WebTransformationMatrix expectedOriginTransform;
+    expectedOriginTransform.translate(deviceScaleFactor * 2, deviceScaleFactor * 2);
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedOriginTransform, child->renderSurface()->originTransform());
+
+    WebTransformationMatrix expectedScreenSpaceTransform;
+    expectedScreenSpaceTransform.translate(deviceScaleFactor * 2, deviceScaleFactor * 2);
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedScreenSpaceTransform, child->renderSurface()->screenSpaceTransform());
+
+    WebTransformationMatrix expectedReplicaDrawTransform;
+    expectedReplicaDrawTransform.setM22(-1);
+    expectedReplicaDrawTransform.setM41(13.5);
+    expectedReplicaDrawTransform.setM42(-1.5);
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedReplicaDrawTransform, child->renderSurface()->replicaDrawTransform());
+
+    WebTransformationMatrix expectedReplicaOriginTransform = expectedReplicaDrawTransform;
+    expectedReplicaOriginTransform.setM41(6);
+    expectedReplicaOriginTransform.setM42(6);
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedReplicaOriginTransform, child->renderSurface()->replicaOriginTransform());
+
+    WebTransformationMatrix expectedReplicaScreenSpaceTransform;
+    expectedReplicaScreenSpaceTransform.setM22(-1);
+    expectedReplicaScreenSpaceTransform.setM41(6);
+    expectedReplicaScreenSpaceTransform.setM42(6);
+    EXPECT_TRANSFORMATION_MATRIX_EQ(expectedReplicaScreenSpaceTransform, child->renderSurface()->replicaScreenSpaceTransform());
 }
 
 TEST(CCLayerTreeHostCommonTest, verifySubtreeSearch)

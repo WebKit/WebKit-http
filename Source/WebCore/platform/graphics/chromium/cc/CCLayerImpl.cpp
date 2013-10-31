@@ -29,13 +29,13 @@
 
 #include "cc/CCLayerImpl.h"
 
-#include "LayerChromium.h"
-#include "LayerRendererChromium.h"
+#include "TextStream.h"
+#include "TraceEvent.h"
 #include "cc/CCDebugBorderDrawQuad.h"
 #include "cc/CCLayerSorter.h"
 #include "cc/CCMathUtil.h"
+#include "cc/CCProxy.h"
 #include "cc/CCQuadCuller.h"
-#include "cc/CCSolidColorDrawQuad.h"
 #include <wtf/text/WTFString.h>
 
 using WebKit::WebTransformationMatrix;
@@ -50,9 +50,11 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_layerTreeHostImpl(0)
     , m_anchorPoint(0.5, 0.5)
     , m_anchorPointZ(0)
+    , m_contentsScale(1)
     , m_scrollable(false)
     , m_shouldScrollOnMainThread(false)
     , m_haveWheelEventHandlers(false)
+    , m_backgroundColor(0)
     , m_doubleSided(true)
     , m_layerPropertyChanged(false)
     , m_layerSurfacePropertyChanged(false)
@@ -60,6 +62,7 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_opaque(false)
     , m_opacity(1.0)
     , m_preserves3D(false)
+    , m_useParentBackfaceVisibility(false)
     , m_drawCheckerboardForMissingTiles(false)
     , m_usesLayerClipping(false)
     , m_isNonCompositedContent(false)
@@ -72,7 +75,7 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_drawDepth(0)
     , m_drawOpacity(0)
     , m_drawOpacityIsAnimating(false)
-    , m_debugBorderColor(0, 0, 0, 0)
+    , m_debugBorderColor(0)
     , m_debugBorderWidth(0)
     , m_drawTransformIsAnimating(false)
     , m_screenSpaceTransformIsAnimating(false)
@@ -82,6 +85,7 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_layerAnimationController(CCLayerAnimationController::create(this))
 {
     ASSERT(CCProxy::isImplThread());
+    ASSERT(m_layerId >= 0);
 }
 
 CCLayerImpl::~CCLayerImpl()
@@ -227,7 +231,7 @@ const IntRect CCLayerImpl::getDrawRect() const
     // Form the matrix used by the shader to map the corners of the layer's
     // bounds into the view space.
     FloatRect layerRect(-0.5 * bounds().width(), -0.5 * bounds().height(), bounds().width(), bounds().height());
-    IntRect mappedRect = enclosingIntRect(drawTransform().mapRect(layerRect));
+    IntRect mappedRect = enclosingIntRect(CCMathUtil::mapClippedRect(drawTransform(), layerRect));
     return mappedRect;
 }
 
@@ -437,7 +441,7 @@ void CCLayerImpl::setAnchorPointZ(float anchorPointZ)
     noteLayerPropertyChangedForSubtree();
 }
 
-void CCLayerImpl::setBackgroundColor(const Color& backgroundColor)
+void CCLayerImpl::setBackgroundColor(SkColor backgroundColor)
 {
     if (m_backgroundColor == backgroundColor)
         return;
@@ -538,7 +542,7 @@ bool CCLayerImpl::transformIsAnimating() const
     return m_layerAnimationController->isAnimatingProperty(CCActiveAnimation::Transform);
 }
 
-void CCLayerImpl::setDebugBorderColor(Color debugBorderColor)
+void CCLayerImpl::setDebugBorderColor(SkColor debugBorderColor)
 {
     if (m_debugBorderColor == debugBorderColor)
         return;
@@ -558,7 +562,7 @@ void CCLayerImpl::setDebugBorderWidth(float debugBorderWidth)
 
 bool CCLayerImpl::hasDebugBorders() const
 {
-    return debugBorderColor().alpha() && debugBorderWidth() > 0;
+    return SkColorGetA(m_debugBorderColor) && debugBorderWidth() > 0;
 }
 
 void CCLayerImpl::setContentBounds(const IntSize& contentBounds)

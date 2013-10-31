@@ -26,6 +26,9 @@
 #include "QtWebPageEventHandler.h"
 #include "QtWebUndoController.h"
 #include "ShareableBitmap.h"
+#if ENABLE(INPUT_TYPE_COLOR)
+#include "WebColorChooserProxyQt.h"
+#endif
 #include "WebContextMenuProxyQt.h"
 #include "WebEditCommandProxy.h"
 #include "WebPopupMenuProxyQt.h"
@@ -204,6 +207,13 @@ PassRefPtr<WebContextMenuProxy> QtPageClient::createContextMenuProxy(WebPageProx
 {
     return WebContextMenuProxyQt::create(webPageProxy);
 }
+
+#if ENABLE(INPUT_TYPE_COLOR)
+PassRefPtr<WebColorChooserProxy> QtPageClient::createColorChooserProxy(WebPageProxy* webPageProxy, const WebCore::Color& initialColor)
+{
+    return WebColorChooserProxyQt::create(webPageProxy, m_webView, initialColor);
+}
+#endif
 
 void QtPageClient::flashBackingStoreUpdates(const Vector<IntRect>&)
 {

@@ -43,6 +43,9 @@ typedef UINT_PTR PlatformTimerRef;
 typedef QTimer PlatformTimerRef;
 #elif PLATFORM(GTK)
 typedef unsigned int PlatformTimerRef;
+#elif PLATFORM(EFL)
+typedef struct _Ecore_Timer Ecore_Timer;
+typedef Ecore_Timer* PlatformTimerRef;
 #endif
 
 namespace WTR {
@@ -63,6 +66,7 @@ public:
     void dumpChildFramesAsText() { m_whatToDump = AllFramesText; }
     void waitUntilDone();
     void notifyDone();
+    double preciseTime();
 
     // Other dumping.
     void dumpBackForwardList() { m_shouldDumpBackForwardListsForAllWindows = true; }

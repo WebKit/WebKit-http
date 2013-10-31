@@ -122,7 +122,11 @@ PlatformContextSkia::State::State()
     , m_lineJoin(SkPaint::kDefault_Join)
     , m_dash(0)
     , m_textDrawingMode(TextModeFill)
+#if USE(LOW_QUALITY_IMAGE_INTERPOLATION)
+    , m_interpolationQuality(InterpolationLow)
+#else
     , m_interpolationQuality(InterpolationHigh)
+#endif
 {
 }
 
@@ -182,6 +186,7 @@ PlatformContextSkia::PlatformContextSkia(SkCanvas* canvas)
     , m_trackOpaqueRegion(false)
     , m_printing(false)
     , m_accelerated(false)
+    , m_deferred(false)
     , m_drawingToImageBuffer(false)
 {
     m_stateStack.append(State());

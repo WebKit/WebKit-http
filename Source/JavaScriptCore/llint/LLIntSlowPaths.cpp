@@ -264,6 +264,8 @@ inline bool shouldJIT(ExecState* exec)
 // Returns true if we should try to OSR.
 inline bool jitCompileAndSetHeuristics(CodeBlock* codeBlock, ExecState* exec)
 {
+    codeBlock->updateAllPredictions();
+    
     if (!codeBlock->checkIfJITThresholdReached()) {
 #if ENABLE(JIT_VERBOSE_OSR)
         dataLog("    JIT threshold should be lifted.\n");
@@ -300,7 +302,8 @@ enum EntryKind { Prologue, ArityCheck };
 static SlowPathReturnType entryOSR(ExecState* exec, Instruction* pc, CodeBlock* codeBlock, const char *name, EntryKind kind)
 {
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("%p: Entered %s with executeCounter = %d\n", codeBlock, name, codeBlock->llintExecuteCounter());
+    dataLog("%p: Entered %s with executeCounter = %s\n", codeBlock, name,
+            codeBlock->llintExecuteCounter().status());
 #endif
     
     if (!shouldJIT(exec)) {
@@ -346,7 +349,8 @@ LLINT_SLOW_PATH_DECL(loop_osr)
     CodeBlock* codeBlock = exec->codeBlock();
     
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("%p: Entered loop_osr with executeCounter = %d\n", codeBlock, codeBlock->llintExecuteCounter());
+    dataLog("%p: Entered loop_osr with executeCounter = %s\n", codeBlock,
+            codeBlock->llintExecuteCounter().status());
 #endif
     
     if (!shouldJIT(exec)) {
@@ -376,7 +380,8 @@ LLINT_SLOW_PATH_DECL(replace)
     CodeBlock* codeBlock = exec->codeBlock();
     
 #if ENABLE(JIT_VERBOSE_OSR)
-    dataLog("%p: Entered replace with executeCounter = %d\n", codeBlock, codeBlock->llintExecuteCounter());
+    dataLog("%p: Entered replace with executeCounter = %s\n", codeBlock,
+            codeBlock->llintExecuteCounter().status());
 #endif
     
     if (shouldJIT(exec))
@@ -890,7 +895,13 @@ LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
             && !structure->typeInfo().prohibitsPropertyCaching()) {
             pc[4].u.structure.set(
                 globalData, codeBlock->ownerExecutable(), structure);
-            pc[5].u.operand = slot.cachedOffset() * sizeof(JSValue);
+            if (isInlineOffset(slot.cachedOffset())) {
+                pc[0].u.opcode = bitwise_cast<void*>(&llint_op_get_by_id);
+                pc[5].u.operand = offsetInInlineStorage(slot.cachedOffset()) * sizeof(JSValue) + JSObject::offsetOfInlineStorage();
+            } else {
+                pc[0].u.opcode = bitwise_cast<void*>(&llint_op_get_by_id_out_of_line);
+                pc[5].u.operand = offsetInOutOfLineStorage(slot.cachedOffset()) * sizeof(JSValue);
+            }
         }
     }
 
@@ -935,7 +946,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
             && baseCell == slot.base()) {
             
             if (slot.type() == PutPropertySlot::NewProperty) {
-                if (!structure->isDictionary() && structure->previousID()->propertyStorageCapacity() == structure->propertyStorageCapacity()) {
+                if (!structure->isDictionary() && structure->previousID()->outOfLineCapacity() == structure->outOfLineCapacity()) {
                     ASSERT(structure->previousID()->transitionWatchpointSetHasBeenInvalidated());
                     
                     // This is needed because some of the methods we call
@@ -947,7 +958,10 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
                     ASSERT(structure->previousID()->isObject());
                     pc[4].u.structure.set(
                         globalData, codeBlock->ownerExecutable(), structure->previousID());
-                    pc[5].u.operand = slot.cachedOffset() * sizeof(JSValue);
+                    if (isInlineOffset(slot.cachedOffset()))
+                        pc[5].u.operand = offsetInInlineStorage(slot.cachedOffset()) * sizeof(JSValue) + JSObject::offsetOfInlineStorage();
+                    else
+                        pc[5].u.operand = offsetInOutOfLineStorage(slot.cachedOffset()) * sizeof(JSValue);
                     pc[6].u.structure.set(
                         globalData, codeBlock->ownerExecutable(), structure);
                     StructureChain* chain = structure->prototypeChain(exec);
@@ -955,16 +969,28 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
                     pc[7].u.structureChain.set(
                         globalData, codeBlock->ownerExecutable(), chain);
                     
-                    if (pc[8].u.operand)
-                        pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_direct);
-                    else
-                        pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_normal);
+                    if (pc[8].u.operand) {
+                        if (isInlineOffset(slot.cachedOffset()))
+                            pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_direct);
+                        else
+                            pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_direct_out_of_line);
+                    } else {
+                        if (isInlineOffset(slot.cachedOffset()))
+                            pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_normal);
+                        else
+                            pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_transition_normal_out_of_line);
+                    }
                 }
             } else {
-                pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id);
                 pc[4].u.structure.set(
                     globalData, codeBlock->ownerExecutable(), structure);
-                pc[5].u.operand = slot.cachedOffset() * sizeof(JSValue);
+                if (isInlineOffset(slot.cachedOffset())) {
+                    pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id);
+                    pc[5].u.operand = offsetInInlineStorage(slot.cachedOffset()) * sizeof(JSValue) + JSObject::offsetOfInlineStorage();
+                } else {
+                    pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id_out_of_line);
+                    pc[5].u.operand = offsetInOutOfLineStorage(slot.cachedOffset()) * sizeof(JSValue);
+                }
             }
         }
     }

@@ -42,8 +42,6 @@
 WebInspector.Resource = function(request, url, documentURL, frameId, loaderId, type, mimeType, isHidden)
 {
     this._request = request;
-    if (this._request)
-        this._request.setResource(this);
     this.url = url;
     this._documentURL = documentURL;
     this._frameId = frameId;
@@ -56,17 +54,8 @@ WebInspector.Resource = function(request, url, documentURL, frameId, loaderId, t
     /** @type {?string} */ this._content;
     /** @type {boolean} */ this._contentEncoded;
     this._pendingContentCallbacks = [];
-}
-
-WebInspector.Resource._domainModelBindings = [];
-
-/**
- * @param {WebInspector.ResourceType} type
- * @param {WebInspector.ResourceDomainModelBinding} binding
- */
-WebInspector.Resource.registerDomainModelBinding = function(type, binding)
-{
-    WebInspector.Resource._domainModelBindings[type.name()] = binding;
+    if (this._request && !this._request.finished)
+        this._request.addEventListener(WebInspector.NetworkRequest.Events.FinishedLoading, this._requestFinished, this);
 }
 
 WebInspector.Resource._resourceRevisionRegistry = function()
@@ -326,30 +315,16 @@ WebInspector.Resource.prototype = {
     },
 
     /**
-     * @return {boolean}
-     */
-    isEditable: function()
-    {
-        if (this._actualResource)
-            return false;
-        var binding = WebInspector.Resource._domainModelBindings[this.type.name()];
-        return binding && binding.canSetContent(this);
-    },
-
-    /**
      * @param {string} newContent
-     * @param {boolean} majorChange
-     * @param {function(?string)} callback
+     * @param {function(String)=} callback
      */
-    setContent: function(newContent, majorChange, callback)
+    _setContent: function(newContent, callback)
     {
-        if (!this.isEditable()) {
-            if (callback)
-                callback("Resource is not editable");
+        var uiSourceCode = this._uiSourceCode;
+        if (!this._uiSourceCode || !this._uiSourceCode.isEditable())
             return;
-        }
-        var binding = WebInspector.Resource._domainModelBindings[this.type.name()];
-        binding.setContent(this, newContent, majorChange, callback);
+        this._uiSourceCode.setWorkingCopy(newContent);
+        this._uiSourceCode.commitWorkingCopy(callback);
     },
 
     /**
@@ -400,7 +375,8 @@ WebInspector.Resource.prototype = {
         }
 
         this._pendingContentCallbacks.push(callback);
-        this._innerRequestContent();
+        if (!this._request || this._request.finished)
+            this._innerRequestContent();
     },
 
     canonicalMimeType: function()
@@ -457,6 +433,15 @@ WebInspector.Resource.prototype = {
         return "data:" + this.mimeType + (this._contentEncoded ? ";base64," : ",") + this._content;
     },
 
+
+    _requestFinished: function()
+    {
+        this._request.removeEventListener(WebInspector.NetworkRequest.Events.FinishedLoading, this._requestFinished, this);
+        if (this._pendingContentCallbacks.length)
+            this._innerRequestContent();
+    },
+
+
     _innerRequestContent: function()
     {
         if (this._contentRequested)
@@ -485,19 +470,25 @@ WebInspector.Resource.prototype = {
     {
         function revert(content)
         {
-            this.setContent(content, true, function() {});
+            this._setContent(content, function() {});
         }
         this.requestContent(revert.bind(this));
     },
 
-    revertAndClearHistory: function()
+    revertAndClearHistory: function(callback)
     {
         function revert(content)
         {
-            this.setContent(content, true, function() {});
+            this._setContent(content, clearHistory.bind(this));
+        }
+
+        function clearHistory()
+        {
             WebInspector.Resource._clearResourceHistory(this);
             this.history = [];
+            callback();
         }
+
         this.requestContent(revert.bind(this));
     },
 
@@ -572,7 +563,7 @@ WebInspector.ResourceRevision.prototype = {
         function revert(content)
         {
             if (this._resource._content !== content)
-                this._resource.setContent(content, true, function() {});
+                this._resource._setContent(content, function() {});
         }
         this.requestContent(revert.bind(this));
     },
@@ -616,25 +607,4 @@ WebInspector.ResourceRevision.prototype = {
     {
         WebInspector.Resource.persistRevision(this);
     }
-}
-
-/**
- * @interface
- */
-WebInspector.ResourceDomainModelBinding = function() { }
-
-WebInspector.ResourceDomainModelBinding.prototype = {
-    /**
-     * @param {WebInspector.Resource} resource
-     * @return {boolean}
-     */
-    canSetContent: function(resource) { return true; },
-
-    /**
-     * @param {WebInspector.Resource} resource
-     * @param {string} content
-     * @param {boolean} majorChange
-     * @param {function(?string)} callback
-     */
-    setContent: function(resource, content, majorChange, callback) { }
 }

@@ -38,9 +38,7 @@
 #include "TestShell.h"
 #include "WebAnimationController.h"
 #include "WebBindings.h"
-#include "WebWorkerInfo.h"
 #include "WebConsoleMessage.h"
-#include "platform/WebData.h"
 #include "WebDeviceOrientation.h"
 #include "WebDeviceOrientationClientMock.h"
 #include "WebDocument.h"
@@ -58,12 +56,15 @@
 #include "WebPrintParams.h"
 #include "WebScriptSource.h"
 #include "WebSecurityPolicy.h"
-#include "platform/WebSerializedScriptValue.h"
 #include "WebSettings.h"
-#include "platform/WebSize.h"
-#include "platform/WebURL.h"
+#include "WebSurroundingText.h"
 #include "WebView.h"
 #include "WebViewHost.h"
+#include "WebWorkerInfo.h"
+#include "platform/WebData.h"
+#include "platform/WebSerializedScriptValue.h"
+#include "platform/WebSize.h"
+#include "platform/WebURL.h"
 #include "v8/include/v8.h"
 #include "webkit/support/webkit_support.h"
 #include <algorithm>
@@ -72,11 +73,8 @@
 #include <cstdlib>
 #include <limits>
 #include <sstream>
-#include <wtf/text/WTFString.h>
-
-#if OS(WINDOWS)
 #include <wtf/OwnArrayPtr.h>
-#endif
+#include <wtf/text/WTFString.h>
 
 #if OS(LINUX) || OS(ANDROID)
 #include "linux/WebFontRendering.h"
@@ -118,6 +116,7 @@ LayoutTestController::LayoutTestController(TestShell* shell)
 #if ENABLE(SCRIPTED_SPEECH)
     bindMethod("addMockSpeechRecognitionResult", &LayoutTestController::addMockSpeechRecognitionResult);
     bindMethod("setMockSpeechRecognitionError", &LayoutTestController::setMockSpeechRecognitionError);
+    bindMethod("wasMockSpeechRecognitionAborted", &LayoutTestController::wasMockSpeechRecognitionAborted);
 #endif
     bindMethod("addOriginAccessWhitelistEntry", &LayoutTestController::addOriginAccessWhitelistEntry);
     bindMethod("addUserScript", &LayoutTestController::addUserScript);
@@ -220,6 +219,7 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setScrollbarPolicy", &LayoutTestController::setScrollbarPolicy);
     bindMethod("setSelectTrailingWhitespaceEnabled", &LayoutTestController::setSelectTrailingWhitespaceEnabled);
     bindMethod("setTextSubpixelPositioning", &LayoutTestController::setTextSubpixelPositioning);
+    bindMethod("setBackingScaleFactor", &LayoutTestController::setBackingScaleFactor);
     bindMethod("setSmartInsertDeleteEnabled", &LayoutTestController::setSmartInsertDeleteEnabled);
     bindMethod("setStopProvisionalFrameLoads", &LayoutTestController::setStopProvisionalFrameLoads);
     bindMethod("setTabKeyCyclesThroughElements", &LayoutTestController::setTabKeyCyclesThroughElements);
@@ -276,7 +276,8 @@ LayoutTestController::LayoutTestController(TestShell* shell)
     bindMethod("setFixedLayoutSize", &LayoutTestController::setFixedLayoutSize);
     bindMethod("selectionAsMarkup", &LayoutTestController::selectionAsMarkup);
     bindMethod("setHasCustomFullScreenBehavior", &LayoutTestController::setHasCustomFullScreenBehavior);
-    
+    bindMethod("textSurroundingNode", &LayoutTestController::textSurroundingNode);
+
     // The fallback method is called when an unknown method is invoked.
     bindFallbackMethod(&LayoutTestController::fallbackMethod);
 
@@ -651,6 +652,7 @@ void LayoutTestController::reset()
         m_shell->webView()->removeAllUserContent();
         WebKit::WebSize empty;
         m_shell->webView()->disableAutoResizeMode();
+        m_shell->webView()->setDeviceScaleFactor(1);
     }
     m_dumpAsText = false;
     m_dumpAsAudio = false;
@@ -1966,6 +1968,13 @@ void LayoutTestController::setMockSpeechRecognitionError(const CppArgumentList& 
     if (MockWebSpeechRecognizer* recognizer = m_shell->webViewHost()->mockSpeechRecognizer())
         recognizer->setError(arguments[0].toInt32(), cppVariantToWebString(arguments[1]));
 }
+
+void LayoutTestController::wasMockSpeechRecognitionAborted(const CppArgumentList&, CppVariant* result)
+{
+    result->set(false);
+    if (MockWebSpeechRecognizer* recognizer = m_shell->webViewHost()->mockSpeechRecognizer())
+        result->set(recognizer->wasAborted());
+}
 #endif
 
 void LayoutTestController::startSpeechInput(const CppArgumentList& arguments, CppVariant* result)
@@ -2203,6 +2212,40 @@ void LayoutTestController::setTextSubpixelPositioning(const CppArgumentList& arg
     result->setNull();
 }
 
+class InvokeCallbackTask : public MethodTask<LayoutTestController> {
+public:
+    InvokeCallbackTask(LayoutTestController* object, PassOwnArrayPtr<CppVariant> callbackArguments, uint32_t numberOfArguments)
+        : MethodTask<LayoutTestController>(object)
+        , m_callbackArguments(callbackArguments)
+        , m_numberOfArguments(numberOfArguments)
+    {
+    }
+
+    virtual void runIfValid()
+    {
+        CppVariant invokeResult;
+        m_callbackArguments[0].invokeDefault(m_callbackArguments.get(), m_numberOfArguments, invokeResult);
+    }
+
+private:
+    OwnArrayPtr<CppVariant> m_callbackArguments;
+    uint32_t m_numberOfArguments;
+};
+
+void LayoutTestController::setBackingScaleFactor(const CppArgumentList& arguments, CppVariant* result)
+{
+    if (arguments.size() < 2 || !arguments[0].isNumber() || !arguments[1].isObject())
+        return;
+    
+    float value = arguments[0].value.doubleValue;
+    m_shell->webView()->setDeviceScaleFactor(value);
+
+    OwnArrayPtr<CppVariant> callbackArguments = adoptArrayPtr(new CppVariant[1]);
+    callbackArguments[0].set(arguments[1]);
+    result->setNull();
+    postTask(new InvokeCallbackTask(this, callbackArguments.release(), 1));
+}
+
 void LayoutTestController::setPluginsEnabled(const CppArgumentList& arguments, CppVariant* result)
 {
     if (arguments.size() > 0 && arguments[0].isBool()) {
@@ -2302,3 +2345,28 @@ void LayoutTestController::setPointerLockWillFailSynchronously(const CppArgument
     result->setNull();
 }
 #endif
+
+void LayoutTestController::textSurroundingNode(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    if (arguments.size() < 3 || !arguments[0].isObject() || !arguments[1].isNumber() || !arguments[2].isNumber())
+        return;
+
+    WebNode node;
+    if (!WebBindings::getNode(arguments[0].value.objectValue, &node))
+        return;
+
+    if (node.isNull() || !node.isTextNode())
+        return;
+
+    unsigned offset = arguments[1].toInt32();
+    if (offset >= node.nodeValue().length()) {
+        result->set(WebString().utf8());
+        return;
+    }
+
+    WebSurroundingText surroundingText;
+    unsigned maxLength = arguments[2].toInt32();
+    surroundingText.initialize(node, offset, maxLength);
+    result->set(surroundingText.textContent().utf8());
+}

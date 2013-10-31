@@ -38,7 +38,18 @@ HTMLNameCollection::HTMLNameCollection(Document* document, CollectionType type, 
 {
 }
 
-Element* HTMLNameCollection::itemAfter(Element* previous) const
+HTMLNameCollection::~HTMLNameCollection()
+{
+    ASSERT(base());
+    ASSERT(base()->isDocumentNode());
+    ASSERT(type() == WindowNamedItems || type() == DocumentNamedItems);
+    if (type() == WindowNamedItems)
+        static_cast<Document*>(base())->removeWindowNamedItemCache(this, m_name);
+    else
+        static_cast<Document*>(base())->removeDocumentNamedItemCache(this, m_name);
+}
+
+Element* HTMLNameCollection::itemAfter(Node* previous) const
 {
     ASSERT(previous != base());
 

@@ -48,7 +48,7 @@ public:
     {
     }
     
-    void compileExit(const OSRExit&, SpeculationRecovery*);
+    void compileExit(const OSRExit&, const Operands<ValueRecovery>&, SpeculationRecovery*);
 
 private:
 #if !ASSERT_DISABLED

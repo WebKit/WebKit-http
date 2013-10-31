@@ -71,6 +71,7 @@ BEGIN {
 }
 
 use constant USE_OPEN_COMMAND => 1; # Used in runMacWebKitApp().
+use constant INCLUDE_OPTIONS_FOR_DEBUGGING => 1;
 
 our @EXPORT_OK;
 
@@ -83,6 +84,7 @@ my $configurationForVisualStudio;
 my $configurationProductDir;
 my $sourceDir;
 my $currentSVNRevision;
+my $debugger;
 my $nmPath;
 my $osXVersion;
 my $generateDsym;
@@ -205,8 +207,12 @@ sub determineBaseProductDir
                 my $buildLocationType = join '', readXcodeUserDefault("CustomBuildLocationType");
                 # FIXME: Read CustomBuildIntermediatesPath and set OBJROOT accordingly.
                 $baseProductDir = readXcodeUserDefault("CustomBuildProductsPath") if $buildLocationType eq "Absolute";
-                $setSharedPrecompsDir = 1;
             }
+
+            # DeterminedByTargets corresponds to a setting of "Legacy" in Xcode.
+            # It is the only build location style for which SHARED_PRECOMPS_DIR is not
+            # overridden when building from within Xcode.
+            $setSharedPrecompsDir = 1 if $buildLocationStyle ne "DeterminedByTargets";
         }
 
         if (!defined($baseProductDir)) {
@@ -225,9 +231,8 @@ sub determineBaseProductDir
         }
     }
 
-    if (!defined($baseProductDir)) { # Port-spesific checks failed, use default
+    if (!defined($baseProductDir)) { # Port-specific checks failed, use default
         $baseProductDir = "$sourceDir/WebKitBuild";
-        undef $setSharedPrecompsDir;
     }
 
     if (isBlackBerry()) {
@@ -637,12 +642,22 @@ sub setArchitecture
     $architecture = $passedArchitecture if $passedArchitecture;
 }
 
+sub executableHasEntitlements
+{
+    my $executablePath = shift;
+    return (`codesign -d --entitlements - $executablePath 2>&1` =~ /<key>/);
+}
 
 sub safariPathFromSafariBundle
 {
     my ($safariBundle) = @_;
 
-    return "$safariBundle/Contents/MacOS/Safari" if isAppleMacWebKit();
+    if (isAppleMacWebKit()) {
+        my $safariPath = "$safariBundle/Contents/MacOS/Safari";
+        my $safariForWebKitDevelopmentPath = "$safariBundle/Contents/MacOS/SafariForWebKitDevelopment";
+        return $safariForWebKitDevelopmentPath if -f $safariForWebKitDevelopmentPath && executableHasEntitlements($safariPath);
+        return $safariPath;
+    }
     return $safariBundle if isAppleWinWebKit();
 }
 
@@ -811,26 +826,39 @@ sub qtFeatureDefaults
 
     my $originalCwd = getcwd();
 
-    my $file;
+    my $file = File::Spec->catfile($qmakepath, "configure.pro");
     my @buildArgs;
+    my $qconfigs;
 
     if (@_) {
         @buildArgs = (@buildArgs, @{$_[0]});
+        $qconfigs = $_[1];
         my $dir = File::Spec->catfile(productDir(), "Tools", "qmake");
         File::Path::mkpath($dir);
         chdir $dir or die "Failed to cd into " . $dir . "\n";
-        $file = File::Spec->catfile($qmakepath, "configure.pro");
     } else {
         # Do a quick check of the features without running the config tests
-        $file = File::Spec->catfile($qmakepath, "mkspecs", "features", "features.prf");
-        push @buildArgs, "CONFIG+=compute_defaults";
+        push @buildArgs, "CONFIG+=quick_check";
     }
 
-    my $defaults = `$qmakecommand @buildArgs $file 2>&1`;
+    my @defaults = `$qmakecommand @buildArgs -nocache $file 2>&1`;
 
     my %qtFeatureDefaults;
-    while ($defaults =~ m/(\S+?)=(\S+?)/gi) {
-        $qtFeatureDefaults{$1}=$2;
+    for (@defaults) {
+        if (/ DEFINES: /) {
+            while (/(\S+?)=(\S+?)/gi) {
+                $qtFeatureDefaults{$1}=$2;
+            }
+        } elsif (/ CONFIG:(.*)$/) {
+            if (@_) {
+                $$qconfigs = $1;
+            }
+        } elsif (/Done computing defaults/) {
+            print "\n";
+            last;
+        } elsif (@_) {
+            print $_;
+        }
     }
 
     chdir $originalCwd;
@@ -968,7 +996,7 @@ sub blackberryCMakeArguments()
     }
 
     push @cmakeExtraOptions, "-DCMAKE_SKIP_RPATH='ON'" if isDarwin();
-    push @cmakeExtraOptions, "-DENABLE_DRT=1" if $ENV{"ENABLE_DRT"};
+    push @cmakeExtraOptions, "-DPUBLIC_BUILD=1" if $ENV{"PUBLIC_BUILD"};
     push @cmakeExtraOptions, "-DENABLE_GLES2=1" unless $ENV{"DISABLE_GLES2"};
 
     my @includeSystemDirectories;
@@ -1406,6 +1434,22 @@ sub determineShouldTargetWebProcess
 {
     return if defined($shouldTargetWebProcess);
     $shouldTargetWebProcess = checkForArgumentAndRemoveFromARGV("--target-web-process");
+}
+
+sub debugger
+{
+    determineDebugger();
+    return $debugger;
+}
+
+sub determineDebugger
+{
+    return if defined($debugger);
+    if (checkForArgumentAndRemoveFromARGV("--use-lldb")) {
+        $debugger = "lldb";
+    } else {
+        $debugger = "gdb";
+    }
 }
 
 sub appendToEnvironmentVariableList
@@ -2043,6 +2087,9 @@ sub buildAutotoolsProject($@)
         push @buildArgs, "--disable-debug";
     }
 
+    # Enable unstable features when building through build-webkit.
+    push @buildArgs, "--enable-unstable-features";
+
     # We might need to update jhbuild dependencies.
     my $needUpdate = 0;
     if (jhbuildConfigurationChanged()) {
@@ -2221,6 +2268,7 @@ sub buildQMakeProjects
     my ($projects, $clean, @buildParams) = @_;
 
     my @buildArgs = ();
+    my $qconfigs = "";
 
     my $make = qtMakeCommand($qmakebin);
     my $makeargs = "";
@@ -2267,6 +2315,8 @@ sub buildQMakeProjects
     } elsif ($passedConfig =~ m/release/i) {
         push @buildArgs, "CONFIG+=release";
         push @buildArgs, "CONFIG-=debug";
+    } elsif ($passedConfig) {
+        die "Build type $passedConfig is not supported with --qt.\n";
     }
     push @buildArgs, "CONFIG-=debug_and_release" if ($passedConfig && isDarwin());
 
@@ -2275,7 +2325,7 @@ sub buildQMakeProjects
     File::Path::mkpath($dir);
     chdir $dir or die "Failed to cd into " . $dir . "\n";
 
-    my %defines = qtFeatureDefaults(\@buildArgs);
+    my %defines = qtFeatureDefaults(\@buildArgs, \$qconfigs);
 
     my $svnRevision = currentSVNRevision();
 
@@ -2283,6 +2333,8 @@ sub buildQMakeProjects
 
     my $pathToDefinesCache = File::Spec->catfile($dir, ".webkit.config");
     my $pathToOldDefinesFile = File::Spec->catfile($dir, "defaults.txt");
+
+    # FIXME: Get rid of .webkit.config and defaults.txt and move all the logic to .qmake.cache
 
     # Ease transition to new build layout
     if (-e $pathToOldDefinesFile) {
@@ -2343,14 +2395,21 @@ sub buildQMakeProjects
             File::Path::rmtree($dir);
             File::Path::mkpath($dir);
             chdir $dir or die "Failed to cd into " . $dir . "\n";
-
-            # After removing WebKitBuild directory, we have to call qtFeatureDefaults()
-            # to run config tests and generate the removed Tools/qmake/.qmake.cache again.
-            qtFeatureDefaults(\@buildArgs);
         #}
 
         # Still trigger an incremental build
         $buildHint = "incremental";
+    }
+
+    if ($buildHint eq "incremental") {
+        my $qmakeDefines = "DEFINES +=";
+        foreach my $key (sort keys %defines) {
+            $qmakeDefines .= " \\\n    $key=$defines{$key}";
+        }
+        open(QMAKE_CACHE, ">.qmake.cache") or die "Cannot create .qmake.cache!\n";
+        print QMAKE_CACHE "CONFIG += webkit_configured $qconfigs\n";
+        print QMAKE_CACHE $qmakeDefines."\n";
+        close(QMAKE_CACHE);
     }
 
     # Save config up-front so we can detect changes to the build config even
@@ -2490,6 +2549,7 @@ sub buildChromiumVisualStudioProject($$)
     } else {
         $vsInstallDir = "$programFilesPath/Microsoft Visual Studio 8";
     }
+    $vsInstallDir =~ s,\\,/,g;
     $vsInstallDir = `cygpath "$vsInstallDir"` if isCygwin();
     chomp $vsInstallDir;
     $vcBuildPath = "$vsInstallDir/Common7/IDE/devenv.com";
@@ -2609,15 +2669,26 @@ sub setPathForRunningWebKitApp
     }
 }
 
-sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded()
+sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded
 {
     return unless checkForArgumentAndRemoveFromARGV("--help");
+
+    my ($includeOptionsForDebugging) = @_;
+
     print STDERR <<EOF;
 Usage: @{[basename($0)]} [options] [args ...]
   --help                Show this help message
   --no-saved-state      Disable application resume for the session on Mac OS 10.7
   --guard-malloc        Enable Guard Malloc (Mac OS X only)
 EOF
+
+    if ($includeOptionsForDebugging) {
+        print STDERR <<EOF;
+  --target-web-process  Debug the web process
+  --use-lldb            Use LLDB
+EOF
+    }
+
     exit(1);
 }
 
@@ -2650,9 +2721,22 @@ sub runMacWebKitApp($;$)
 sub execMacWebKitAppForDebugging($)
 {
     my ($appPath) = @_;
+    my $architectureSwitch;
+    my $argumentsSeparator;
 
-    my $gdbPath = "/usr/bin/gdb";
-    die "Can't find gdb executable. Is gdb installed?\n" unless -x $gdbPath;
+    if (debugger() eq "lldb") {
+        $architectureSwitch = "--arch";
+        $argumentsSeparator = "--";
+    } elsif (debugger() eq "gdb") {
+        $architectureSwitch = "-arch";
+        $argumentsSeparator = "--args";
+    } else {
+        die "Unknown debugger $debugger.\n";
+    }
+
+    my $debuggerPath = `xcrun -find $debugger`;
+    chomp $debuggerPath;
+    die "Can't find the $debugger executable.\n" unless -x $debuggerPath;
 
     my $productDir = productDir();
     $ENV{DYLD_FRAMEWORK_PATH} = $productDir;
@@ -2660,10 +2744,10 @@ sub execMacWebKitAppForDebugging($)
 
     setUpGuardMallocIfNeeded();
 
-    my @architectureFlags = ("-arch", architecture());
+    my @architectureFlags = ($architectureSwitch, architecture());
     if (!shouldTargetWebProcess()) {
-        print "Starting @{[basename($appPath)]} under gdb with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
-        exec { $gdbPath } $gdbPath, @architectureFlags, "--args", $appPath, argumentsForRunAndDebugMacWebKitApp() or die;
+        print "Starting @{[basename($appPath)]} under $debugger with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
+        exec { $debuggerPath } $debuggerPath, @architectureFlags, $argumentsSeparator, $appPath, argumentsForRunAndDebugMacWebKitApp() or die;
     } else {
         my $webProcessShimPath = File::Spec->catfile($productDir, "WebProcessShim.dylib");
         my $webProcessPath = File::Spec->catdir($productDir, "WebProcess.app");
@@ -2671,8 +2755,8 @@ sub execMacWebKitAppForDebugging($)
 
         appendToEnvironmentVariableList("DYLD_INSERT_LIBRARIES", $webProcessShimPath);
 
-        print "Starting WebProcess under gdb with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
-        exec { $gdbPath } $gdbPath, @architectureFlags, "--args", $webProcessPath, $webKit2ExecutablePath, "-type", "webprocess", "-client-executable", $appPath or die;
+        print "Starting WebProcess under $debugger with DYLD_FRAMEWORK_PATH set to point to built WebKit in $productDir.\n";
+        exec { $debuggerPath } $debuggerPath, @architectureFlags, $argumentsSeparator, $webProcessPath, $webKit2ExecutablePath, "-type", "webprocess", "-client-executable", $appPath or die;
     }
 }
 

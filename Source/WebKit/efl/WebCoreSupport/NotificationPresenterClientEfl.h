@@ -22,11 +22,11 @@
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "Notification.h"
-#include "NotificationPresenter.h"
+#include "NotificationClient.h"
 
 namespace WebCore {
 
-class NotificationPresenterClientEfl : public NotificationPresenter {
+class NotificationPresenterClientEfl : public NotificationClient {
 
 public:
     NotificationPresenterClientEfl();
@@ -37,7 +37,7 @@ public:
     virtual void notificationObjectDestroyed(Notification*);
     virtual void notificationControllerDestroyed();
     virtual void requestPermission(ScriptExecutionContext*, PassRefPtr<VoidCallback>);
-    virtual NotificationPresenter::Permission checkPermission(ScriptExecutionContext*);
+    virtual NotificationClient::Permission checkPermission(ScriptExecutionContext*);
     virtual void cancelRequestsForPermission(ScriptExecutionContext*);
 };
 

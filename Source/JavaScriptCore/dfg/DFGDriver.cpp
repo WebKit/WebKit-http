@@ -40,18 +40,31 @@
 #include "DFGRedundantPhiEliminationPhase.h"
 #include "DFGValidate.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
+#include "Options.h"
 
 namespace JSC { namespace DFG {
+
+static unsigned numCompilations;
+
+unsigned getNumCompilations()
+{
+    return numCompilations;
+}
 
 enum CompileMode { CompileFunction, CompileOther };
 inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlock, JITCode& jitCode, MacroAssemblerCodePtr* jitCodeWithArityCheck)
 {
     SamplingRegion samplingRegion("DFG Compilation (Driver)");
     
+    numCompilations++;
+    
     ASSERT(codeBlock);
     ASSERT(codeBlock->alternative());
     ASSERT(codeBlock->alternative()->getJITType() == JITCode::BaselineJIT);
-    
+
+    if (!Options::useDFGJIT())
+        return false;
+
 #if DFG_ENABLE(DEBUG_VERBOSE)
     dataLog("DFG compiling code block %p(%p) for executable %p, number of instructions = %u.\n", codeBlock, codeBlock->alternative(), codeBlock->ownerExecutable(), codeBlock->instructionCount());
 #endif
@@ -92,7 +105,6 @@ inline bool compile(CompileMode compileMode, ExecState* exec, CodeBlock* codeBlo
 #if DFG_ENABLE(DEBUG_VERBOSE)
     dataLog("DFG optimization fixpoint converged in %u iterations.\n", cnt);
 #endif
-    dfg.m_dominators.compute(dfg);
     performVirtualRegisterAllocation(dfg);
 
     GraphDumpMode modeForFinalValidate = DumpGraph;

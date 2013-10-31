@@ -87,6 +87,10 @@
 #include "TiledBackingStore.h"
 #endif
 
+#if ENABLE(TEXT_AUTOSIZING)
+#include "TextAutosizer.h"
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -745,6 +749,10 @@ bool FrameView::syncCompositingStateForThisFrame(Frame* rootFrameForSync)
     if (needsLayout())
         return false;
 
+    // If we sync compositing layers and allow the repaint to be deferred, there is time for a
+    // visible flash to occur. Instead, stop the deferred repaint timer and repaint immediately.
+    stopDelayingDeferredRepaints();
+
     root->compositor()->flushPendingLayerChanges(rootFrameForSync == m_frame);
 
     return true;
@@ -1107,6 +1115,11 @@ void FrameView::layout(bool allowSubtree)
             beginDeferredRepaints();
             forceLayoutParentViewIfNeeded();
             root->layout();
+#if ENABLE(TEXT_AUTOSIZING)
+            bool autosized = document->textAutosizer()->processSubtree(root);
+            if (autosized && root->needsLayout())
+                root->layout();
+#endif
             endDeferredRepaints();
             m_inLayout = false;
 
@@ -1440,11 +1453,7 @@ IntPoint FrameView::currentMousePosition() const
 
 bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect)
 {
-    RenderBlock::PositionedObjectsListHashSet* positionedObjects = 0;
-    if (RenderView* root = rootRenderer(this))
-        positionedObjects = root->positionedObjects();
-
-    if (!positionedObjects || positionedObjects->isEmpty()) {
+    if (!m_fixedObjects || m_fixedObjects->isEmpty()) {
         hostWindow()->scroll(scrollDelta, rectToScroll, clipRect);
         return true;
     }
@@ -1453,16 +1462,28 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
 
     // Get the rects of the fixed objects visible in the rectToScroll
     Region regionToUpdate;
-    RenderBlock::PositionedObjectsListHashSet::const_iterator end = positionedObjects->end();
-    for (RenderBlock::PositionedObjectsListHashSet::const_iterator it = positionedObjects->begin(); it != end; ++it) {
-        RenderBox* renderBox = *it;
-        if (renderBox->style()->position() != FixedPosition)
+    FixedObjectSet::const_iterator end = m_fixedObjects->end();
+    for (FixedObjectSet::const_iterator it = m_fixedObjects->begin(); it != end; ++it) {
+        RenderObject* renderer = *it;
+        if (renderer->style()->position() != FixedPosition)
             continue;
 #if USE(ACCELERATED_COMPOSITING)
-        if (renderBox->isComposited())
+        if (renderer->isComposited())
             continue;
 #endif
-        IntRect updateRect = pixelSnappedIntRect(renderBox->layer()->repaintRectIncludingNonCompositingDescendants());
+    
+        // Fixed items should always have layers.
+        ASSERT(renderer->hasLayer());
+        RenderLayer* layer = toRenderBoxModelObject(renderer)->layer();
+        
+#if ENABLE(CSS_FILTERS)
+        if (layer->hasAncestorWithFilterOutsets()) {
+            // If the fixed layer has a blur/drop-shadow filter applied on at least one of its parents, we cannot 
+            // scroll using the fast path, otherwise the outsets of the filter will be moved around the page.
+            return false;
+        }
+#endif
+        IntRect updateRect = pixelSnappedIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
         if (!isCompositedContentLayer && clipsRepaints())
             updateRect.intersect(rectToScroll);
@@ -1918,13 +1939,18 @@ void FrameView::startDeferredRepaintTimer(double delay)
 
 void FrameView::checkStopDelayingDeferredRepaints()
 {
-    if (!m_deferredRepaintTimer.isActive())
-        return;
-
     Document* document = m_frame->document();
     if (document && (document->parsing() || document->cachedResourceLoader()->requestCount()))
         return;
+
+    stopDelayingDeferredRepaints();
+}
     
+void FrameView::stopDelayingDeferredRepaints()
+{
+    if (!m_deferredRepaintTimer.isActive())
+        return;
+
     m_deferredRepaintTimer.stop();
 
     doDeferredRepaints();

@@ -1,3 +1,218 @@
+2012-07-08  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL] Change notifications directory path of WebKit_INCLUDE_DIRECTORIES in the PlatformEfl.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=90650
+
+        Reviewed by Laszlo Gombos.
+
+        Change directory path for including notifications of WebCore
+        from WebCore/notifications to WebCore/Modules/notifications
+
+        * PlatformEfl.cmake:
+
+2012-07-07  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL][CMake] Remove non-existent include directory
+        https://bugs.webkit.org/show_bug.cgi?id=90605
+
+        Reviewed by Kentaro Hara.
+
+        * PlatformEfl.cmake:
+
+2012-07-06  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL][CMake] Move gtest sources to an upper level
+        https://bugs.webkit.org/show_bug.cgi?id=90602
+
+        Reviewed by Chang Shu.
+
+        Removed gtest since it is now built as a separated component.
+        This will allow us to share it with WebKit 2 API tests.
+
+        * PlatformEfl.cmake:
+
+2012-07-06  Seokju Kwon  <seokju.kwon@samsung.com>
+
+        [EFL] Add Web Inspector to WebKit-EFL
+        https://bugs.webkit.org/show_bug.cgi?id=83865
+
+        Reviewed by Pavel Feldman.
+
+        EFL port implementation for Web Inspector.
+        Prepare Web Inspector resources.
+
+        * PlatformEfl.cmake:
+
+2012-07-05  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL] Change class name from NotificationClientEfl to NotificationPresenterClientEfl.
+        https://bugs.webkit.org/show_bug.cgi?id=90542
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        NotificationClientEfl.cpp is changed to NotificationPresenterClientEfl.cpp
+        to be in line with other ports(qt, chromium, gtk).
+
+        * PlatformEfl.cmake:
+
+2012-07-04  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Remove a few un-needed load(features) after r121777
+
+        The features are computed by configure.pro and cached in .qmake.cache.
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WebKit1.pro:
+
+2012-07-04  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Fix broken OR-operator in project file
+
+        Qmake expects |, not ||. The result was that the block was entered, even
+        if none of the two defines were set to 1.
+
+        Reviewed by Jocelyn Turcotte.
+
+        * WebKit1.pri:
+
+2012-07-03  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Move BatteryClientEfl from WebKit to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=90063
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Move BatteryClientEfl class from WebKit to WebCore
+        so that it can be reused in WebKit2.
+
+        * PlatformEfl.cmake:
+
+2012-07-02  Xiaobo Wang  <xbwang@torchmobile.com.cn>
+
+        [BlackBerry] Use PUBLIC_BUILD to enable/disable DRT
+        https://bugs.webkit.org/show_bug.cgi?id=90271
+
+        Reviewed by George Staikos.
+
+        RIM PR #154707
+
+        Currently DRT code will be compiled only if ENABLE_DRT is set, and it's not
+        defined by default.
+        We should enable DRT by default unless PUBLIC_BUILD is set. In this way we don't
+        need to rebuild webkit before running DRT.
+
+        * PlatformBlackBerry.cmake:
+
+2012-07-02  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL][CMake] Integrate API unit tests with CTest
+        https://bugs.webkit.org/show_bug.cgi?id=87251
+
+        Reviewed by Daniel Bates.
+
+        Add every test to the test runner build target.
+
+        * PlatformEfl.cmake:
+
+2012-07-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Rename NotificationPresenterEfl with NotificationClientEfl
+        https://bugs.webkit.org/show_bug.cgi?id=90370
+
+        Reviewed by Csaba Osztrogonác.
+
+        Bug 80488 renamed NotificationPresenter with NotificationClient. So, EFL port needs to adjust
+        it as well.
+
+        * PlatformEfl.cmake:
+
+2012-06-29  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Add support for Unit Tests, based on the gtest library.
+        https://bugs.webkit.org/show_bug.cgi?id=68509
+
+        Reviewed by Chang Shu.
+
+        Add configuration for building gtest library, testing framework and unit tests.
+
+        * PlatformEfl.cmake:
+
+2012-06-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121398.
+        http://trac.webkit.org/changeset/121398
+        https://bugs.webkit.org/show_bug.cgi?id=90136
+
+        broke efl build (Requested by ryuan on #webkit).
+
+        * PlatformEfl.cmake:
+
+2012-06-27  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Add support for Unit Tests, based on the gtest library.
+        https://bugs.webkit.org/show_bug.cgi?id=68509
+
+        Reviewed by Chang Shu.
+
+        Add configuration for building gtest library, testing framework and unit tests.
+
+        * PlatformEfl.cmake:
+
+2012-06-26  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt][Win] Symbols are not exported in QtWebKit5.dll
+        https://bugs.webkit.org/show_bug.cgi?id=88873
+
+        Reviewed by Tor Arne Vestbø.
+
+        * api.pri: Remove MAKEDLL setting done now in win32/default_post.prf.
+
+2012-06-25  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed build fix: Don't do QT += widgets with Qt 4
+
+        * WebKit1.pro: This is already done in WebKit1.pri.
+
+2012-06-25  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Make it possible to build WebKit without QtWidgets
+        https://bugs.webkit.org/show_bug.cgi?id=78109
+
+        Reviewed by Tor Arne Vestbø.
+
+        Moved WebKit1 sources into a separate static library. Only WK1
+        depends on QtWidgets.
+
+        * WebKit1.pri: Added.
+        * WebKit1.pro: Added.
+
+2012-06-25  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Implement Network Information API
+        https://bugs.webkit.org/show_bug.cgi?id=87067
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * PlatformEfl.cmake: Add dependency of eeze library.
+
+2012-06-22  Joshua Netterfield  <jnetterfield@rim.com>
+
+        [BlackBerry] Sanitize GLSL code using ANGLE.
+
+        BlackBerry port does not sanitize GLSL code with ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=89583
+
+        Reviewed by Rob Buis.
+
+        * PlatformBlackBerry.cmake: Add ANGLE sources to BlackBerry builds.
+
+2012-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [CMake] Unreviewed speculative buildfix after r120786.
+
+        * CMakeLists.txt:
+
 2012-06-13  Robin Cao  <robin.cao@torchmobile.com.cn>
 
         [BlackBerry] Enable MEDIA_STREAM by default

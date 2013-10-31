@@ -1,3 +1,584 @@
+2012-07-09  Mike Lattanzio  <mlattanzio@rim.com>
+
+        [BlackBerry] meta viewport initial-scale doesn't factor in device pixel ratio
+        https://bugs.webkit.org/show_bug.cgi?id=90575
+
+        Reviewed by Rob Buis.
+
+        Add a manual test to verify wide content doesn't interfere
+        with initial-scale calculations.
+
+        Internal review from Konrad Piascik.
+
+        * ManualTests/blackberry/meta-viewport-initial-scale-wide-content.html: Added.
+
+2012-07-09  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122107.
+        http://trac.webkit.org/changeset/122107
+        https://bugs.webkit.org/show_bug.cgi?id=90794
+
+        Build failure on Mac debug bots (Requested by falken_ on
+        #webkit).
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-09  Matt Falkenhagen  <falken@chromium.org>
+
+        Add ENABLE_DIALOG_ELEMENT and skeleton files
+        https://bugs.webkit.org/show_bug.cgi?id=90521
+
+        Reviewed by Kent Tamura.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-06  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL][CMake] Move gtest sources to an upper level
+        https://bugs.webkit.org/show_bug.cgi?id=90602
+
+        Reviewed by Chang Shu.
+
+        CTest was enabled for all the ports, but used only by EFL. Now
+        ENABLE_API_TESTS has to be defined, which will also build gtest.
+
+        * CMakeLists.txt:
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmake/gtest/CMakeLists.txt: Added.
+
+2012-07-06  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Add a configuration option for disabling unstable features in releases
+        https://bugs.webkit.org/show_bug.cgi?id=87995
+
+        Reviewed by Martin Robinson.
+
+        Add a configuration flag for enabling the unstable features - features of which
+        support in the Gtk port is being worked on but is not yet complete. The primary
+        use of this flag is when compiling through the build-webkit script.
+
+        All the features that are currently enabled when building through build-webkit but
+        are disabled by default when executing the configure script directly have their default
+        value (when the correspondent flag is not passed) set to 'yes' when unstable features
+        are enabled and 'no' otherwise. This way unstable features are kept disabled when performing
+        a release build (unless they are specifically enabled).
+
+        * configure.ac:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Remove custom qmake logic for module creation
+
+        Qmake now has the necessary hooks to cleanly override the build locations.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/api.pri:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Add top-level .qmake.conf
+
+        With Qt5, this makes setting $QMAKEPATH externally unnecessary.
+
+        The magic in the perl scripts to set QMAKEPATH is still there, as it doesn't
+        hurt, and is still required for Qt4.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * .qmake.conf: Added.
+        * WebKit.pro:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Let qt_module_config create the forwarding module pri file
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/sync.profile:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Don't let qt_webkit.pri proclaim its own location
+
+        This won't work any more with recent Qt5 versions, as the forwarding
+        pri is created by qt_module_config, which needs MODULE_PRI to be set
+        up already.
+
+        We also need to load build_config, not qt_module.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/api.pri:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Remove redundant CONFIG+=module
+
+        qt_module_config takes care of that.
+
+        In api.pri we are actually testing the flag ourselves, so now we need to
+        test a related flag qt_module_config sets instead.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/api.pri:
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Adjust to changed generation of master include file
+
+        The responsiblity for creating the master include was moved out of syncqt.
+        @ignore_for_master_contents still stays, as syncqt (ab-)uses this for
+        determining whether a header is private.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/sync.profile:
+
+2012-07-05  Rob Buis  <rbuis@rim.com>
+
+        [CMake] Fix some CMake warnings
+        https://bugs.webkit.org/show_bug.cgi?id=90558
+
+        Fix WebKit options so they match with FeatureList.pm.
+
+        Reviewed by Dan Bates.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-05  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Move Webkit1 before WebKit2 in the build order
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebKit.pro:
+
+2012-07-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Unreviewd typo fix after r121857
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-07-05  Dongwoo Im  <dw.im@samsung.com>
+
+        [EFL] Enable the CUSTOM_SCHEME_HANDLER feature as default.
+        https://bugs.webkit.org/show_bug.cgi?id=88608
+
+        Reviewed by Hajime Morita.
+
+        * Source/cmake/OptionsEfl.cmake: Enable the CUSTOM_SCHEME_HANDLER feature as default.
+
+2012-07-05  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [Wk2][EFL] EFL needs a WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=87659
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Source/CMakeLists.txt:
+        Set compiler flags for WebCoreTestSupport to be linked into TestRunnerInjectedBundle
+        shared library.
+        * Source/cmake/WebKitMacros.cmake: Remove unnecessary dependency.
+
+2012-07-04  John Mellor  <johnme@chromium.org>
+
+        Text Autosizing: Add compile flag and runtime setting
+        https://bugs.webkit.org/show_bug.cgi?id=87394
+
+        This patch renames Font Boosting to Text Autosizing.
+
+        Reviewed by Adam Barth.
+
+        * configure.ac:
+
+2012-07-04  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [CMAKE] Add GENERATE_BINDINGS macro to share the codes which use generate-bindings.pl.
+        https://bugs.webkit.org/show_bug.cgi?id=90258
+
+        Reviewed by Rob Buis.
+
+        This new macro calls generate-bindings.pl and append generated sources
+        into proper source list.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2012-07-04  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Get rid of un-needed QT += declarative for Qt 5
+
+        The declarative module has been renamed to quick1 in Qt 5, and the
+        engine-only module for Qt 5 is named 'qml'. For many of the instances
+        we could just remove 'declarative', since the project file was only
+        used for Qt5/WebKit2 builds. In the other cases the module was wrapped
+        in a haveQt(4) scope.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * Source/api.pri:
+
+2012-07-03  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable CSS variables support at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=90448
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Turn on CSS_VARIABLES flag by default on EFL port.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-03  George Staikos  <staikos@webkit.org>
+
+        [BlackBerry] Enable microdata support for BlackBerry.
+        https://bugs.webkit.org/show_bug.cgi?id=90429
+
+        Reviewed by Rob Buis.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-07-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make use of .qmake.cache for caching features
+
+        Instead of loading() features from the files that need them (and re-running
+        a bunch of checks), we now run feature detection as part of configure.pro,
+        and have build-webkit write the computed feature-defines and CONFIG to
+        .qmake.cache, which is then loaded by qmake _before_ even defaults_pre
+        when building WebKit.pro.
+
+        At some point we'll be able to selectivly prevent running of config tests
+        in configure.pro, which means we don't need a separate code-path for
+        the build-webkit --help case.
+
+        We should also move the code in build-webkit that now uses .webkit.config
+        to detect clean builds, to use .qmake.cache, since we now store the same
+        thing there.
+
+        Original patch by Oswald Buddenhagen <oswald.buddenhagen@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/QtWebKit.pro:
+        * Source/api.pri:
+        * Source/tests.pri:
+        * WebKit.pro:
+
+2012-07-03  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121766.
+        http://trac.webkit.org/changeset/121766
+        https://bugs.webkit.org/show_bug.cgi?id=90465
+
+        It caused flakey build errors on the bots (Requested by Ossy
+        on #webkit).
+
+        * Source/QtWebKit.pro:
+        * Source/api.pri:
+        * Source/tests.pri:
+        * WebKit.pro:
+
+2012-07-03  George Staikos  <staikos@webkit.org>
+
+        [BlackBerry] Enable Custom Scheme Handlers for BlackBerry.
+        https://bugs.webkit.org/show_bug.cgi?id=90422
+
+        Reviewed by Rob Buis.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-07-03  George Staikos  <staikos@webkit.org>
+
+        [BlackBerry] Enable RegisterProtocolHandler for BlackBerry.
+        https://bugs.webkit.org/show_bug.cgi?id=90422
+
+        Reviewed by Rob Buis.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-07-03  Priit Laes  <plaes@plaes.org>
+
+        [GTK] Need to bump libsoup requirements (for `soup_cookie_jar_get_cookie_list`)
+        https://bugs.webkit.org/show_bug.cgi?id=90332
+
+        Reviewed by Gustavo Noronha Silva.
+
+        * configure.ac: Bump libsoup requirements to 2.39.2
+
+2012-07-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make use of .qmake.cache for caching features
+
+        Instead of loading() features from the files that need them (and re-running
+        a bunch of checks), we now run feature detection as part of configure.pro,
+        and have build-webkit write the computed feature-defines and CONFIG to
+        .qmake.cache, which is then loaded by qmake _before_ even defaults_pre
+        when building WebKit.pro.
+
+        At some point we'll be able to selectivly prevent running of config tests
+        in configure.pro, which means we don't need a separate code-path for
+        the build-webkit --help case.
+
+        We should also move the code in build-webkit that now uses .webkit.config
+        to detect clean builds, to use .qmake.cache, since we now store the same
+        thing there.
+
+        Original patch by Oswald Buddenhagen <oswald.buddenhagen@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/QtWebKit.pro:
+        * Source/api.pri:
+        * Source/tests.pri:
+        * WebKit.pro:
+
+2012-07-03  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable MICRODATA support
+        https://bugs.webkit.org/show_bug.cgi?id=90377
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Turn on MICRODATA support by default for EFL port.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-07-02  George Staikos  <staikos@webkit.org>
+
+        [BlackBerry] Enable scoped style for BlackBerry.
+        https://bugs.webkit.org/show_bug.cgi?id=90418
+
+        Reviewed by Rob Buis.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-02  Xiaobo Wang  <xbwang@torchmobile.com.cn>
+
+        [BlackBerry] Use PUBLIC_BUILD to enable/disable DRT
+        https://bugs.webkit.org/show_bug.cgi?id=90271
+
+        Reviewed by George Staikos.
+
+        RIM PR #154707
+
+        Currently DRT code will be compiled only if ENABLE_DRT is set, and it's not
+        defined by default.
+        We should enable DRT by default unless PUBLIC_BUILD is set. In this way we don't
+        need to rebuild webkit before running DRT.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-02  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [EFL][CMake] Integrate API unit tests with CTest
+        https://bugs.webkit.org/show_bug.cgi?id=87251
+
+        Reviewed by Daniel Bates.
+
+        Enable CTest on the root CMakeLists.txt as it is expected
+        to be here. This will create a new build target ("make test")
+        to run all the API unit tests.
+
+        * CMakeLists.txt:
+
+2012-07-01  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Add Gamepad support
+        https://bugs.webkit.org/show_bug.cgi?id=90170
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Source/cmake/FindEFL.cmake: Bump EFL libs dependencies.
+        * Source/cmake/OptionsEfl.cmake: Turn on GAMEPAD flag on EFL port.
+        * Source/cmakeconfig.h.cmake: Add GAMEPAD flag to CMake.
+
+2012-06-30  Jason Liu  <jason.liu@torchmobile.com.cn>
+
+        [BlackBerry] WebView/Browser cause blank screen when selecting a dropdown field.
+        https://bugs.webkit.org/show_bug.cgi?id=90241
+
+        This issue is caused by single quotes in option's labels.
+        We should use the escape character of single quotes in JavaScript's string which 
+        starts and ends with single quotes.
+        So we replace lablels' single quotes with its escape character during generating the 
+        select popUp's HTML.
+
+
+        Reviewed by George Staikos.
+
+        * ManualTests/blackberry/select-popup-items-unicode-display.html:
+
+2012-06-29  Luiz Agostini  <luiz.agostini@nokia.com>
+
+        [Qt][WK2] Private non-QtQuick API
+        https://bugs.webkit.org/show_bug.cgi?id=84532
+
+        Reviewed by Noam Rosenthal.
+
+        API tests for QRawWebView.
+
+        * Source/tests.pri:
+
+2012-06-29  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed build fix after r121518, adding a missing symbol to symbols.filter.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-28  MORITA Hajime  <morrita@google.com>
+
+        [Refactoring] NodeRenderingContext ctor could be built on top of the ComposedShadowTreeWalker
+        https://bugs.webkit.org/show_bug.cgi?id=89732
+
+        Reviewed by Dimitri Glazkov.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-28  Jason Liu  <jason.liu@torchmobile.com.cn>
+
+        [BlackBerry] Selection items show as garbage for non-ascii characters.
+        https://bugs.webkit.org/show_bug.cgi?id=89969
+
+        Add charset utf-8 to the select popup's page.
+
+        Reviewed by Antonio Gomes.
+
+        * ManualTests/blackberry/select-popup-items-unicode-display.html: Added.
+
+2012-06-28  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable support for HTML5 datalist
+        https://bugs.webkit.org/show_bug.cgi?id=90157
+
+        Reviewed by Martin Robinson.
+
+        Turn on DATALIST flag by default on EFL port to
+        support HTML5 datalist tag.
+
+        * Source/cmake/OptionsEfl.cmake:
+
+2012-06-27  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Add support for the Gamepad API
+        https://bugs.webkit.org/show_bug.cgi?id=87503
+
+        Reviewed by Carlos Garcia Campos.
+
+        Only enable the Gamepad feature on Linux as support
+        for other operating systems is not present.
+
+        Check for the GIO Unix and GUdev dependencies when the
+        Gamepad feature is enabled.
+
+        * configure.ac:
+
+2012-06-25  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Make it possible to build WebKit without QtWidgets
+        https://bugs.webkit.org/show_bug.cgi?id=78109
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/QtWebKit.pro: Don't build WK1 tests and examples if WK1 is disabled.
+        * Source/api.pri: Move WK1 sources away from here and use WEBKIT += webkit1 instead
+        * WebKit.pro: Add WK1 to SUBDIRS unless no_webkit1 is set.
+
+2012-06-25  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Implement Network Information API
+        https://bugs.webkit.org/show_bug.cgi?id=87067
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        * Source/cmake/FindEFL.cmake: Find eeze library in build system.
+
+2012-06-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.9.4 release
+
+        * configure.ac: Bump version number.
+
+2012-06-22  Joshua Netterfield  <jnetterfield@rim.com>
+
+        [BlackBerry] Sanitize GLSL code using ANGLE.
+
+        BlackBerry port does not sanitize GLSL code with ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=89583
+
+        Reviewed by Rob Buis.
+
+        * Source/cmake/OptionsBlackBerry.cmake: Include ANGLE openGL headers as system headers in BlackBerry port.
+
+2012-06-21  Kalev Lember  <kalevlember@gmail.com>
+
+        [GTK] Fix NPAPI plugins on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=54531
+
+        Reviewed by Martin Robinson.
+
+        Define XP_WIN on Windows for plugin support.
+
+        * GNUmakefile.am:
+
+2012-06-21  Ryuan Choi  <ryuan.choi@gmail.com>
+
+        [EFL][WK2] Make WebKit2/Efl headers and resources installable.
+        https://bugs.webkit.org/show_bug.cgi?id=88207
+
+        Reviewed by Chang Shu.
+
+        * Source/cmake/OptionsCommon.cmake:
+        Provide new variable, EXEC_INSTALL_DIR to determine where to install
+        executables.
+
+2012-06-21  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL[WK2] Add WKViewEfl and WebKit2 API Object to represent Evas_Object.
+        https://bugs.webkit.org/show_bug.cgi?id=88935
+
+        Reviewed by Chang Shu.
+
+        * Source/cmake/OptionsEfl.cmake: Defines BUILDING_EFL__.
+
+2012-06-20  Varun Jain  <varunjain@chromium.org>
+
+        Account for device scale factor when creating image for dragging.
+        https://bugs.webkit.org/show_bug.cgi?id=89489
+
+        Reviewed by Adam Barth.
+
+        * ManualTests/chromium/drag-image-accounts-for-device-scale.html: Added.
+
+2012-06-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] 0.11 video-sink
+        https://bugs.webkit.org/show_bug.cgi?id=77087
+
+        Reviewed by Martin Robinson.
+
+        * configure.ac: Fix required gstreamer 0.11 version
+
 2012-06-19  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
 
         [Qt] Fix the Windows build when Qt is built without -release or -debug

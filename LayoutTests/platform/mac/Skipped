@@ -262,6 +262,10 @@ http/tests/misc/webtiming-ssl.php
 http/tests/misc/webtiming-two-redirects.php
 fast/performance/
 
+# Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
+# https://bugs.webkit.org/show_bug.cgi?id=85558
+http/tests/security/contentSecurityPolicy/1.1
+
 # Still working out flakiness issues with the perf tests.
 # https://bugs.webkit.org/show_bug.cgi?id=44199
 perf/
@@ -303,6 +307,9 @@ http/tests/inspector/resource-tree/resource-tree-reload.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=40300
 inspector/debugger/live-edit.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=89652
+inspector/debugger/debugger-compile-and-run.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=53003
 http/tests/inspector/compiler-source-mapping-debug.html
@@ -447,9 +454,6 @@ http/tests/media/video-cross-site.html
 # https://bugs.webkit.org/show_bug.cgi?id=63169
 webarchive/loading/mainresource-null-mimetype-crash.html
 
-# CSS Grid Layout is not yet enabled. http://webkit.org/b/60731
-fast/css-grid-layout
-
 # <style scoped> is not yet enabled. http://webkit.org/b/49142
 fast/css/style-scoped
 # CSS Regions tests for region styling and scoped styles
@@ -503,9 +507,6 @@ scrollbars/scrollbar-drag-thumb-with-large-content.html
 
 # Font feature settings is not implemented.
 css3/font-feature-settings-rendering.html
-
-# CSS Shaders not enabled
-css3/filters/custom
 
 # This test verifies that a mismatch reftest will fail as intended if both results are same.
 fast/harness/sample-fail-mismatch-reftest.html
@@ -850,6 +851,9 @@ http/tests/security/referrer-policy-redirect-link.html
 inspector/extensions/extensions-eval-content-script.html
 inspector/extensions/extensions-audits-content-script.html
 
+# https://bugs.webkit.org/show_bug.cgi?id=89790
+inspector/extensions/extensions-panel.html
+
 # https://bugs.webkit.org/show_bug.cgi?id=86480
 plugins/npruntime/delete-plugin-within-setProperty.html
 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html
@@ -884,10 +888,6 @@ fast/events/message-port-clone.html
 # https://bugs.webkit.org/show_bug.cgi?id=87748
 fast/forms/select/optgroup-clicking.html
 
-# Assertion failure on mac-lion-wk2, no reftest results on mac
-# https://bugs.webkit.org/show_bug.cgi?id=88356
-fast/hidpi/device-scale-factor-paint.html
-
 # https://bugs.webkit.org/show_bug.cgi?id=88672
 svg/filters/color-space-conversion.svg
 
@@ -897,3 +897,50 @@ svg/filters/feSpecularLight-premultiplied.svg
 
 # https://bugs.webkit.org/show_bug.cgi?id=88736
 http/tests/security/mixedContent/blob-url-in-iframe.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=89680
+fast/canvas/canvas-imageSmoothingEnabled-repaint.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=89845
+fast/forms/input-set-composition-scroll.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90649
+fast/canvas/webgl/tex-image-with-format-and-type.html
+fast/canvas/webgl/tex-sub-image-2d.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90706
+inspector/timeline/timeline-frames.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90707
+inspector/timeline/timeline-receive-response-event.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90708
+fullscreen/exit-full-screen-iframe.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90709
+http/tests/inspector/console-cd-completions.html
+http/tests/inspector/console-cd.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90710
+plugins/npruntime/leak-window-scriptable-object.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90711
+fast/canvas/webgl/gl-vertexattribpointer.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90722
+inspector/profiler/heap-snapshot-comparison-show-next.html
+inspector/profiler/heap-snapshot-comparison-shown-node-count-preserved-when-sorting.html
+inspector/profiler/heap-snapshot-comparison-sorting.html
+inspector/profiler/heap-snapshot-containment-expansion-preserved-when-sorting.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90723
+inspector/debugger/set-breakpoint.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90724
+compositing/iframes/iframe-size-from-zero.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90725
+media/media-blocked-by-beforeload.html
+
+# https://bugs.webkit.org/show_bug.cgi?id=90742
+sputnik/Conformance/08_Types/8.4_The_String_Type/S8.4_A7.2.html

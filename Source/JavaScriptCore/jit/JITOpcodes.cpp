@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2012 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -211,7 +211,7 @@ PassRefPtr<ExecutableMemoryHandle> JIT::privateCompileCTIMachineTrampolines(JSGl
     patchBuffer.link(callCallNotJSFunction, FunctionPtr(cti_op_call_NotJSFunction));
     patchBuffer.link(callConstructNotJSFunction, FunctionPtr(cti_op_construct_NotJSConstruct));
 
-    CodeRef finalCode = patchBuffer.finalizeCode();
+    CodeRef finalCode = FINALIZE_CODE(patchBuffer, ("JIT CTI machine trampolines"));
     RefPtr<ExecutableMemoryHandle> executableMemory = finalCode.executableMemory();
 
     trampolines->ctiVirtualCallLink = patchBuffer.trampolineAt(virtualCallLinkBegin);
@@ -576,8 +576,6 @@ void JIT::emit_op_tear_off_arguments(Instruction* currentInstruction)
 
 void JIT::emit_op_ret(Instruction* currentInstruction)
 {
-    emitOptimizationCheck(RetOptimizationCheck);
-    
     ASSERT(callFrameRegister != regT1);
     ASSERT(regT1 != returnValueRegister);
     ASSERT(returnValueRegister != callFrameRegister);
@@ -598,8 +596,6 @@ void JIT::emit_op_ret(Instruction* currentInstruction)
 
 void JIT::emit_op_ret_object_or_this(Instruction* currentInstruction)
 {
-    emitOptimizationCheck(RetOptimizationCheck);
-    
     ASSERT(callFrameRegister != regT1);
     ASSERT(regT1 != returnValueRegister);
     ASSERT(returnValueRegister != callFrameRegister);
@@ -705,9 +701,8 @@ void JIT::emit_op_resolve_global(Instruction* currentInstruction, bool)
 
     // Load cached property
     // Assume that the global object always uses external storage.
-    loadPtr(Address(regT0, OBJECT_OFFSETOF(JSGlobalObject, m_propertyStorage)), regT0);
     load32(Address(regT2, OBJECT_OFFSETOF(GlobalResolveInfo, offset)), regT1);
-    loadPtr(BaseIndex(regT0, regT1, ScalePtr), regT0);
+    compileGetDirectOffset(regT0, regT0, regT1, regT0, KnownNotFinal);
     emitValueProfilingSite();
     emitPutVirtualRegister(currentInstruction[1].u.operand);
 }
@@ -1218,13 +1213,14 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
 
 void JIT::emit_op_enter(Instruction*)
 {
+    emitOptimizationCheck(EnterOptimizationCheck);
+    
     // Even though CTI doesn't use them, we initialize our constant
     // registers to zap stale pointers, to avoid unnecessarily prolonging
     // object lifetime and increasing GC pressure.
     size_t count = m_codeBlock->m_numVars;
     for (size_t j = 0; j < count; ++j)
         emitInitRegister(j);
-
 }
 
 void JIT::emit_op_create_activation(Instruction* currentInstruction)
@@ -1621,11 +1617,9 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
 #endif
     }
 
-    FunctionExecutable* executable = m_codeBlock->functionDecl(currentInstruction[2].u.operand);
-    emitGetFromCallFrameHeaderPtr(RegisterFile::ScopeChain, regT2);
-    emitAllocateJSFunction(executable, regT2, regT0, regT1);
-
-    emitStoreCell(dst, regT0);
+    JITStubCall stubCall(this, cti_op_new_func);
+    stubCall.addArgument(TrustedImmPtr(m_codeBlock->functionDecl(currentInstruction[2].u.operand)));
+    stubCall.call(dst);
 
     if (currentInstruction[3].u.operand) {
 #if USE(JSVALUE32_64)        
@@ -1637,41 +1631,10 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
     }
 }
 
-void JIT::emitSlow_op_new_func(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    linkSlowCase(iter);
-    JITStubCall stubCall(this, cti_op_new_func);
-    stubCall.addArgument(TrustedImmPtr(m_codeBlock->functionDecl(currentInstruction[2].u.operand)));
-    stubCall.call(currentInstruction[1].u.operand);
-}
-
 void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
 {
-    FunctionExecutable* executable = m_codeBlock->functionExpr(currentInstruction[2].u.operand);
-
-    // We only inline the allocation of a anonymous function expressions
-    // If we want to be able to allocate a named function expression, we would
-    // need to be able to do inline allocation of a JSStaticScopeObject.
-    if (executable->name().isNull()) {
-        emitGetFromCallFrameHeaderPtr(RegisterFile::ScopeChain, regT2);
-        emitAllocateJSFunction(executable, regT2, regT0, regT1);
-        emitStoreCell(currentInstruction[1].u.operand, regT0);
-        return;
-    }
-
     JITStubCall stubCall(this, cti_op_new_func_exp);
     stubCall.addArgument(TrustedImmPtr(m_codeBlock->functionExpr(currentInstruction[2].u.operand)));
-    stubCall.call(currentInstruction[1].u.operand);
-}
-
-void JIT::emitSlow_op_new_func_exp(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    FunctionExecutable* executable = m_codeBlock->functionExpr(currentInstruction[2].u.operand);
-    if (!executable->name().isNull())
-        return;
-    linkSlowCase(iter);
-    JITStubCall stubCall(this, cti_op_new_func_exp);
-    stubCall.addArgument(TrustedImmPtr(executable));
     stubCall.call(currentInstruction[1].u.operand);
 }
 

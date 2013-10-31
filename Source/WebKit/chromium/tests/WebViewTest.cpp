@@ -92,6 +92,29 @@ private:
     TestData m_testData;
 };
 
+class FormChangeWebViewClient : public WebViewClient {
+public:
+    // WebViewClient methods
+    virtual void didChangeFormState(const WebNode& node)
+    {
+        m_focused = node.focused();
+        m_called = true;
+    }
+
+    // Local methods
+    void reset()
+    {
+        m_called = false;
+        m_focused = false;
+    }
+    bool called() { return m_called; }
+    bool focused() { return m_focused; }
+
+private:
+    bool m_called;
+    bool m_focused;
+};
+
 class WebViewTest : public testing::Test {
 public:
     WebViewTest()
@@ -304,6 +327,53 @@ TEST_F(WebViewTest, DISABLED_TextInputType)
     testTextInputType(WebTextInputTypeWeek, "input_field_week.html");
 #endif
 
+}
+
+TEST_F(WebViewTest, SetEditableSelectionOffsetsAndTextInputInfo)
+{
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, "input_field_populated.html");
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "input_field_populated.html");
+    webView->setInitialFocus(false);
+    webView->setEditableSelectionOffsets(5, 13);
+    WebFrameImpl* frame = static_cast<WebFrameImpl*>(webView->mainFrame());
+    EXPECT_EQ("56789abc", frame->selectionAsText());
+    WebTextInputInfo info = webView->textInputInfo();
+    EXPECT_EQ("0123456789abcdefghijklmnopqrstuvwxyz", info.value);
+    EXPECT_EQ(5, info.selectionStart);
+    EXPECT_EQ(13, info.selectionEnd);
+    EXPECT_EQ(-1, info.compositionStart);
+    EXPECT_EQ(-1, info.compositionEnd);
+    webView->close();
+
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, "content_editable_populated.html");
+    webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "content_editable_populated.html");
+    webView->setInitialFocus(false);
+    webView->setEditableSelectionOffsets(8, 19);
+    frame = static_cast<WebFrameImpl*>(webView->mainFrame());
+    EXPECT_EQ("89abcdefghi", frame->selectionAsText());
+    info = webView->textInputInfo();
+    EXPECT_EQ("0123456789abcdefghijklmnopqrstuvwxyz", info.value);
+    EXPECT_EQ(8, info.selectionStart);
+    EXPECT_EQ(19, info.selectionEnd);
+    EXPECT_EQ(-1, info.compositionStart);
+    EXPECT_EQ(-1, info.compositionEnd);
+    webView->close();
+}
+
+TEST_F(WebViewTest, FormChange)
+{
+    FormChangeWebViewClient client;
+    client.reset();
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, "input_field_set_value_while_focused.html");
+    WebView* webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "input_field_set_value_while_focused.html", true, 0, &client);
+    EXPECT_TRUE(client.called());
+    EXPECT_TRUE(client.focused());
+    client.reset();
+    FrameTestHelpers::registerMockedURLLoad(m_baseURL, "input_field_set_value_while_not_focused.html");
+    webView = FrameTestHelpers::createWebViewAndLoad(m_baseURL + "input_field_set_value_while_not_focused.html", true, 0, &client);
+    EXPECT_TRUE(client.called());
+    EXPECT_FALSE(client.focused());
+    webView->close();
 }
 
 }

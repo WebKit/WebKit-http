@@ -56,6 +56,8 @@ class NotificationPermissionRequest;
 class WebApplicationCacheManagerProxy;
 class WebBackForwardList;
 class WebBackForwardListItem;
+class WebBatteryManagerProxy;
+class WebBatteryStatus;
 class WebResourceCacheManagerProxy;
 class WebContext;
 class WebCookieManagerProxy;
@@ -75,6 +77,8 @@ class WebIntentServiceInfo;
 class WebKeyValueStorageManagerProxy;
 class WebMediaCacheManagerProxy;
 class WebNavigationData;
+class WebNetworkInfoManagerProxy;
+class WebNetworkInfo;
 class WebNotification;
 class WebNotificationProvider;
 class WebNotificationManagerProxy;
@@ -94,6 +98,8 @@ WK_ADD_API_MAPPING(WKAuthenticationChallengeRef, AuthenticationChallengeProxy)
 WK_ADD_API_MAPPING(WKAuthenticationDecisionListenerRef, AuthenticationDecisionListener)
 WK_ADD_API_MAPPING(WKBackForwardListItemRef, WebBackForwardListItem)
 WK_ADD_API_MAPPING(WKBackForwardListRef, WebBackForwardList)
+WK_ADD_API_MAPPING(WKBatteryManagerRef, WebBatteryManagerProxy)
+WK_ADD_API_MAPPING(WKBatteryStatusRef, WebBatteryStatus)
 WK_ADD_API_MAPPING(WKResourceCacheManagerRef, WebResourceCacheManagerProxy)
 WK_ADD_API_MAPPING(WKContextRef, WebContext)
 WK_ADD_API_MAPPING(WKCookieManagerRef, WebCookieManagerProxy)
@@ -114,6 +120,8 @@ WK_ADD_API_MAPPING(WKIntentServiceInfoRef, WebIntentServiceInfo)
 WK_ADD_API_MAPPING(WKKeyValueStorageManagerRef, WebKeyValueStorageManagerProxy)
 WK_ADD_API_MAPPING(WKMediaCacheManagerRef, WebMediaCacheManagerProxy)
 WK_ADD_API_MAPPING(WKNavigationDataRef, WebNavigationData)
+WK_ADD_API_MAPPING(WKNetworkInfoManagerRef, WebNetworkInfoManagerProxy)
+WK_ADD_API_MAPPING(WKNetworkInfoRef, WebNetworkInfo)
 WK_ADD_API_MAPPING(WKNotificationManagerRef, WebNotificationManagerProxy)
 WK_ADD_API_MAPPING(WKNotificationPermissionRequestRef, NotificationPermissionRequest)
 WK_ADD_API_MAPPING(WKNotificationProviderRef, WebNotificationProvider)
@@ -366,6 +374,10 @@ inline ProxyingRefPtr<WebGrammarDetail> toAPI(const WebCore::GrammarDetail& gram
 
 #if USE(SOUP)
 #include "WKAPICastSoup.h"
+#endif
+
+#if defined(BUILDING_EFL__)
+#include "WKAPICastEfl.h"
 #endif
 
 #endif // WKAPICast_h

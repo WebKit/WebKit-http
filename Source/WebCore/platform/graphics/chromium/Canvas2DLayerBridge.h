@@ -26,6 +26,7 @@
 #ifndef Canvas2DLayerBridge_h
 #define Canvas2DLayerBridge_h
 
+#include "GraphicsContext3D.h"
 #include "ImageBuffer.h" // For DeferralMode enum.
 #include "IntSize.h"
 #include <public/WebExternalTextureLayer.h>
@@ -61,6 +62,8 @@ public:
     SkCanvas* skCanvas(SkDevice*);
     LayerChromium* layer() const;
     void contextAcquired();
+
+    unsigned backBufferTexture();
 
 private:
     Canvas2DLayerBridge(PassRefPtr<GraphicsContext3D>, const IntSize&, DeferralMode, unsigned textureId);

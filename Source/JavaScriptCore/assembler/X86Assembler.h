@@ -1730,6 +1730,11 @@ public:
         m_indexOfTailOfLastWatchpoint = result.m_offset + maxJumpReplacementSize();
         return result;
     }
+    
+    AssemblerLabel labelIgnoringWatchpoints()
+    {
+        return m_formatter.label();
+    }
 
     AssemblerLabel label()
     {
@@ -1832,6 +1837,42 @@ public:
     static ptrdiff_t maxJumpReplacementSize()
     {
         return 5;
+    }
+    
+    static void replaceWithLoad(void* instructionStart)
+    {
+        uint8_t* ptr = reinterpret_cast<uint8_t*>(instructionStart);
+#if CPU(X86_64)
+        if ((*ptr & ~15) == PRE_REX)
+            ptr++;
+#endif
+        switch (*ptr) {
+        case OP_MOV_GvEv:
+            break;
+        case OP_LEA:
+            *ptr = OP_MOV_GvEv;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+    }
+    
+    static void replaceWithAddressComputation(void* instructionStart)
+    {
+        uint8_t* ptr = reinterpret_cast<uint8_t*>(instructionStart);
+#if CPU(X86_64)
+        if ((*ptr & ~15) == PRE_REX)
+            ptr++;
+#endif
+        switch (*ptr) {
+        case OP_MOV_GvEv:
+            *ptr = OP_LEA;
+            break;
+        case OP_LEA:
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
     }
     
     static unsigned getCallReturnOffset(AssemblerLabel call)

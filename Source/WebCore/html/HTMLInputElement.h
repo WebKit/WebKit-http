@@ -77,7 +77,6 @@ public:
     void stepDown(ExceptionCode& ec) { stepDown(1, ec); }
     // stepUp()/stepDown() for user-interaction.
     bool isSteppable() const;
-    void stepUpFromRenderer(int);
 
     bool isTextButton() const;
 
@@ -239,11 +238,12 @@ public:
     HTMLInputElement* checkedRadioButtonForGroup() const;
     bool isInRequiredRadioButtonGroup() const;
 
+    // Functions for InputType classes.
     void setValueInternal(const String&, TextFieldEventBehavior);
-
     bool isTextFormControlFocusable() const;
     bool isTextFormControlKeyboardFocusable(KeyboardEvent*) const;
     bool isTextFormControlMouseFocusable() const;
+    bool valueAttributeWasUpdatedAfterParsing() const { return m_valueAttributeWasUpdatedAfterParsing; }
 
     void cacheSelectionInResponseToSetValue(int caretOffset) { cacheSelection(caretOffset, caretOffset, SelectionHasNoDirection); }
 
@@ -387,6 +387,7 @@ private:
 #endif
     bool m_stateRestored : 1;
     bool m_parsingInProgress : 1;
+    bool m_valueAttributeWasUpdatedAfterParsing : 1;
     bool m_wasModifiedByUser : 1;
     bool m_canReceiveDroppedFiles : 1;
     OwnPtr<InputType> m_inputType;

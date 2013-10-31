@@ -40,6 +40,7 @@
 #include "JSValue.h"
 #include "Operands.h"
 #include "SpeculatedType.h"
+#include "StructureSet.h"
 #include "ValueProfile.h"
 
 namespace JSC { namespace DFG {
@@ -707,7 +708,7 @@ struct Node {
         ASSERT(m_virtualRegister != InvalidVirtualRegister);
         return m_virtualRegister;
     }
-
+    
     void setVirtualRegister(VirtualRegister virtualRegister)
     {
         ASSERT(hasResult());
@@ -729,6 +730,23 @@ struct Node {
     bool shouldGenerate()
     {
         return m_refCount;
+    }
+    
+    bool willHaveCodeGenOrOSR()
+    {
+        switch (op()) {
+        case SetLocal:
+        case Int32ToDouble:
+        case ValueToInt32:
+        case UInt32ToNumber:
+        case DoubleAsInt32:
+            return true;
+        case Phantom:
+        case Nop:
+            return false;
+        default:
+            return shouldGenerate();
+        }
     }
 
     unsigned refCount()

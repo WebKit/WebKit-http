@@ -1,3 +1,282 @@
+2012-07-09  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Implement dumpFrameScrollPosition in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=89356
+
+        Reviewed by Martin Robinson.
+
+        Add a new method for returning the WebKitDOMDocument that is loaded
+        in a given frame, webkit_web_frame_get_dom_document.
+
+        * docs/webkitgtk-sections.txt:
+        * webkit/webkitwebframe.cpp:
+        (webkit_web_frame_get_dom_document):
+        * webkit/webkitwebframe.h:
+        * webkit/webkitwebview.cpp: State explicitly that the document being returned
+        when calling webkit_web_view_get_dom_document is loaded in the main frame.
+        Also call the webkit_web_frame_get_dom_document on WebKitWebView's main frame
+        to get the document.
+
+2012-07-09  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Unskip the CSS Regions layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=90771
+
+        Reviewed by Martin Robinson.
+
+        Add a method to DumpRenderTreeSupportGtk for enabling or disabling
+        CSS Regions from DumpRenderTree.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setCSSRegionsEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-07-09  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
+
+        [GTK] Memory leak in webkitwebnavigationaction.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=90787
+
+        Reviewed by Martin Robinson.
+
+        Fixed a memory leak in WebKitWebNavigationAction.
+
+        * webkit/webkitwebnavigationaction.cpp:
+        (webkit_web_navigation_action_finalize): Free the g_strdup()'d string.
+
+2012-07-07  Zan Dobersek  <zandobersek@gmail.com>
+
+        REGRESSION (r122035): fullscreen/exit-full-screen-iframe.html failing on GTK Linux 64-bit Release
+        https://bugs.webkit.org/show_bug.cgi?id=90719
+
+        Reviewed by Martin Robinson.
+
+        Follow the approach of the BlackBerry port outlined in r122035, using in exitFullScreenForElement
+        the fullscreen element to which the reference was saved when enterFullScreenForElement was called.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::exitFullScreenForElement):
+
+2012-07-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Do not do any logging initialization when logging is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=90228
+
+        Reviewed by Simon Fraser.
+
+        * webkit/webkitglobals.cpp:
+        (webkitInit):
+
+2012-06-29  Tony Chang  <tony@chromium.org>
+
+        [GTK] Enable CSS grid layout LayoutTests on GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=90226
+
+        Reviewed by Martin Robinson.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled): Pass through to Settings object.
+        * WebCoreSupport/DumpRenderTreeSupportGtk.h:
+        (DumpRenderTreeSupportGtk):
+
+2012-06-29  Konrad Piascik  <kpiascik@rim.com>
+
+        Don't hardcode target dpi of 160 (it should be 96 on desktop)
+        https://bugs.webkit.org/show_bug.cgi?id=88114
+
+        Reviewed by Adam Barth.
+
+        Updated the call to computeViewportAttributes.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::dumpConfigurationForViewport):
+        * webkit/webkitviewportattributes.cpp:
+        (webkitViewportAttributesRecompute):
+
+2012-06-25  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Geoffrey Garen.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection. Also added a couple JSLocks to places that didn't already 
+        have it that needed it.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::gcCountJavascriptObjects):
+
+2012-06-27  Martin Robinson  <mrobinson@igalia.com>
+
+        [gtk] Spell checker doesn't recognize contractions (apostrophes)
+        https://bugs.webkit.org/show_bug.cgi?id=86118
+
+        Reviewed by Gustavo Noronha Silva.
+
+        Work-around a bug in Pango by trying to detect apostrophes
+        that create contractions. This work-around is similar to one
+        found in gtkspell.
+
+        * webkit/webkitspellcheckerenchant.cpp:
+        (wordEndIsAContractionApostrophe): Added this helper which tries to detect
+        situations where a word end is both an apostrophe and followed by a alphabetic
+        character.
+        (checkSpellingOfString): When searching for the end of a word, skip over
+        apostrophes that appear to be part of contractions.
+
+2012-06-27  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Add support for the Gamepad API
+        https://bugs.webkit.org/show_bug.cgi?id=87503
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the Gamepad feature dependencies libraries to the LIBADD
+        list for the libwebkitgtk library.
+
+        * GNUmakefile.am:
+
+2012-06-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update NEWS and configure.ac for 1.9.4 release
+
+        * NEWS: Added release notes for 1.9.4.
+
+2012-06-23  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121058.
+        http://trac.webkit.org/changeset/121058
+        https://bugs.webkit.org/show_bug.cgi?id=89809
+
+        Patch causes plugins tests to crash in GTK debug builds
+        (Requested by zdobersek on #webkit).
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::gcCountJavascriptObjects):
+
+2012-06-20  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Gavin Barraclough.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection.
+
+        * WebCoreSupport/DumpRenderTreeSupportGtk.cpp:
+        (DumpRenderTreeSupportGtk::gcCountJavascriptObjects):
+
+2012-06-22  Amy Ousterhout  <aousterh@chromium.org>
+
+        Renamed DeviceOrientation to DeviceOrientationData
+        https://bugs.webkit.org/show_bug.cgi?id=88663
+
+        Reviewed by Steve Block.
+
+        Updated files to use the renamed DeviceOrientationData instead of DeviceOrientation.
+        This change makes DeviceOrientationData consistent with DeviceMotionData.
+        
+        * WebCoreSupport/DeviceOrientationClientGtk.h:
+        (DeviceOrientationClientGtk):
+
+2012-06-21  Daniel Drake  <dsd@laptop.org>
+
+        [GTK] Backport run-file-chooser to WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=87283
+
+        Reviewed by Gustavo Noronha Silva.
+
+        This is a relatively straightforward backport of Mario Sanchez
+        Prada's WebKit2 run-file-chooser signal work, intended for use by
+        OLPC and others who are not quite ready to move to WebKit2.
+
+        Add a new public class to the API, WebKitFileChooserRequest, to be
+        emitted along with a new WebKitWebView::run-file-chooser signal to
+        let client applications to provide their own file chooser dialog
+        when the use interacts with HTML Input elements of type 'file'.
+
+        * GNUmakefile.am: Added new source files and headers.
+        * webkit/webkitfilechooserrequest.cpp: Added.
+        (_WebKitFileChooserRequestPrivate):
+        (webkit_file_chooser_request_init):
+        (webkit_file_chooser_request_finalize):
+        (webkit_file_chooser_request_get_property):
+        (webkit_file_chooser_request_class_init):
+        (webkit_file_chooser_request_create):
+        (webkit_file_chooser_request_get_mime_types):
+        (webkit_file_chooser_request_get_mime_types_filter):
+        (webkit_file_chooser_request_get_select_multiple):
+        (webkit_file_chooser_request_select_files):
+        (webkit_file_chooser_request_get_selected_files):
+        * webkit/webkitfilechooserrequest.h: Added.
+        (_WebKitFileChooserRequest):
+        (_WebKitFileChooserRequestClass):
+        * webkit/webkitfilechooserrequestprivate.h: Added, 
+        containing the prototype of webkit_file_chooser_request_create.
+
+        Provide private API to make a file chooser request from the
+        WebView, and provide a default handler for it.
+
+        * webkit/webkitwebview.cpp:
+        (fileChooserDialogResponseCallback): Handler for the 'response'
+        signal for the GtkFileChooserDialog used in the default
+        handler. It will call to webkit_file_chooser_request_select_files
+        or webkit_file_chooser_request_cancel as needed.
+        (webkitWebViewRealRunFileChooser): Default handler for the new
+        'run-file-chooser' signal. It will create a GtkFileChooserDialog,
+        connect to the 'response' signal and show it.
+        (webkit_web_view_class_init): Connect the 'run-file-chooser'
+        signal to the default handler, webkitWebViewRunFileChooser.
+        (webkit_web_view_new):
+        (webkitWebViewRunFileChooserRequest):
+        * webkit/webkitwebview.h:
+        (_WebKitWebViewClass): Added prototype for the handler of the new
+        'run-file-chooser' signal.
+        * webkit/webkitwebviewprivate.h: Added prototype for
+        private new function webkitWebViewRunFileChooserRequest.
+
+        Update runOpenPanel to use the new API, including a default handler
+        with similar behaviour to before.
+
+        * WebCoreSupport/ChromeClientGtk.cpp:
+        (WebKit::ChromeClient::runOpenPanel): Now creates an instance of
+        WebKitFileChooserRequest and asks the WebView to emit the
+        new 'run-file-chooser' signal with it.
+
+        Added the new public header to the main header.
+
+        * webkit/webkit.h: Added webkitfilechooserrequest.h
+
+        New unit tests for the new WebKitFileChooserRequest API.
+
+        * tests/testwebview.c: Various WebKitFileChooserRequest tests,
+        including MIME type filtering and selection handling.
+
+        Updated documentation related files with the new API.
+
+        * docs/webkitgtk-docs.sgml: Added new section.
+        * docs/webkitgtk-sections.txt: Added new API.
+        * docs/webkitgtk.types: Added get_type function.
+
+2012-06-19  Chang Wan Hong  <jourmoon@company100.net>
+
+        Refine syncLayersTimeoutCallback for Accelerated Compositing.
+        https://bugs.webkit.org/show_bug.cgi?id=89538
+
+        Reviewed by Martin Robinson.
+
+        syncLayersTimeout reschedules the timer so that it can render each frame
+        every 1/60 seconds on animation. However, because it takes to time to execute
+        renderLayersToWindow, the timer is delayed. To fix this, we must reschedule
+        the timer before calling renderLayersToWindow.
+
+        * WebCoreSupport/AcceleratedCompositingContextGL.cpp:
+        (WebKit::AcceleratedCompositingContext::syncLayersTimeout):
+
 2012-06-19  Sergio Villar Senin  <svillar@igalia.com>
 
         Calling nativeImageForCurrentFrame() causes assertion failure: m_verifier.isSafeToUse()

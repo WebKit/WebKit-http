@@ -812,6 +812,10 @@ inspector/styles/override-screen-size.html
 # https://bugs.webkit.org/show_bug.cgi?id=86000
 http/tests/security/referrer-policy-redirect-link.html
 
+# Text Autosizing is not yet enabled.
+# https://bugs.webkit.org/show_bug.cgi?id=84186
+fast/text-autosizing
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -1058,6 +1062,10 @@ editing/inserting/typing-space-to-trigger-smart-link.html
 # No CORS support for media elements is implemented yet.
 http/tests/security/video-cross-origin-readback.html
 
+# Content Security Policy 1.1 (ENABLE_CSP_NEXT) is not enabled
+# https://bugs.webkit.org/show_bug.cgi?id=85558
+http/tests/security/contentSecurityPolicy/1.1
+
 ### END OF (2) Classified failures without bug reports (yet)
 ########################################
 
@@ -1169,9 +1177,6 @@ http/tests/navigation/fallback-anchor-reload.html
 http/tests/navigation/history-back-across-form-submission-to-fragment.html
 http/tests/security/cross-frame-access-put.html
 http/tests/security/originHeader/origin-header-for-https.html
-http/tests/ssl/referer-301.html
-http/tests/ssl/referer-303.html
-http/tests/ssl/verify-ssl-enabled.php
 http/tests/storage/callbacks-are-called-in-correct-context.html
 media/controls-after-reload.html
 media/controls-styling.html
@@ -1293,10 +1298,6 @@ http/tests/security/local-image-from-remote-whitelisted.html
 # https://bugs.webkit.org/show_bug.cgi?id=87168
 fast/forms/input-search-press-escape-key.html
 
-# [WK2] fast/hidpi/device-scale-factor-paint.html crashes
-# https://bugs.webkit.org/show_bug.cgi?id=88350
-fast/hidpi/device-scale-factor-paint.html
-
 # Editing input tests that time out unexpectedly.
 # https://bugs.webkit.org/show_bug.cgi?id=81547
 editing/input/reveal-edit-on-input-vertically.html
@@ -1415,6 +1416,10 @@ platform/mac/fast/events/objc-keyboard-event-creation.html
 # WebKit2 does not (should not?) support setting WebKitUsePreHTML5ParserQuirks
 # in its WebPreferences implementation.
 fast/parser/pre-html5-parser-quirks.html
+
+# [WK2] New fast/events/drag-display-none-element.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=90177
+fast/events/drag-display-none-element.html
 
 ### END OF (4) Features that are not supported in WebKit2 and likely never will be
 ########################################

@@ -35,7 +35,35 @@
 
 namespace WebCore {
 
-class RenderGeometryMapStep;
+class RenderLayer;
+
+// Stores data about how to map from one renderer to its container.
+struct RenderGeometryMapStep {
+    RenderGeometryMapStep(const RenderGeometryMapStep& o)
+        : m_renderer(o.m_renderer)
+        , m_accumulatingTransform(o.m_accumulatingTransform)
+        , m_isNonUniform(o.m_isNonUniform)
+        , m_isFixedPosition(o.m_isFixedPosition)
+        , m_hasTransform(o.m_hasTransform)
+    {
+        ASSERT(!o.m_transform);
+    }
+    RenderGeometryMapStep(const RenderObject* renderer, bool accumulatingTransform, bool isNonUniform, bool isFixedPosition, bool hasTransform)
+        : m_renderer(renderer)
+        , m_accumulatingTransform(accumulatingTransform)
+        , m_isNonUniform(isNonUniform)
+        , m_isFixedPosition(isFixedPosition)
+        , m_hasTransform(hasTransform)
+    {
+    }
+    const RenderObject* m_renderer;
+    LayoutSize m_offset;
+    OwnPtr<TransformationMatrix> m_transform; // Includes offset if non-null.
+    bool m_accumulatingTransform;
+    bool m_isNonUniform; // Mapping depends on the input point, e.g. because of CSS columns.
+    bool m_isFixedPosition;
+    bool m_hasTransform;
+};
 
 // Can be used while walking the Renderer tree to cache data about offsets and transforms.
 class RenderGeometryMap {
@@ -47,7 +75,9 @@ public:
     FloatRect absoluteRect(const FloatRect&) const;
     
     // Called by code walking the renderer or layer trees.
-    void pushMappingsToAncestor(const RenderObject*, const RenderBoxModelObject* ancestor);
+    void pushMappingsToAncestor(const RenderLayer*, const RenderLayer* ancestorLayer);
+    void popMappingsToAncestor(const RenderLayer*);
+    void pushMappingsToAncestor(const RenderObject*, const RenderBoxModelObject* ancestorRenderer);
     void popMappingsToAncestor(const RenderBoxModelObject*);
     
     // The following methods should only be called by renderers inside a call to pushMappingsToAncestor().
@@ -69,9 +99,9 @@ private:
     bool hasNonUniformStep() const { return m_nonUniformStepsCount; }
     bool hasTransformStep() const { return m_transformedStepsCount; }
     bool hasFixedPositionStep() const { return m_fixedStepsCount; }
-    
-    typedef Vector<OwnPtr<RenderGeometryMapStep> > RenderGeometryMapSteps; // FIXME: inline capacity?
-    
+
+    typedef Vector<RenderGeometryMapStep, 32> RenderGeometryMapSteps;
+
     size_t m_insertionPosition;
     int m_nonUniformStepsCount;
     int m_transformedStepsCount;
@@ -81,5 +111,11 @@ private:
 };
 
 } // namespace WebCore
+
+namespace WTF {
+// This is required for a struct with OwnPtr. We know RenderGeometryMapStep is simple enough that
+// initializing to 0 and moving with memcpy (and then not destructing the original) will work.
+template<> struct VectorTraits<WebCore::RenderGeometryMapStep> : SimpleClassVectorTraits { };
+}
 
 #endif // RenderGeometryMap_h

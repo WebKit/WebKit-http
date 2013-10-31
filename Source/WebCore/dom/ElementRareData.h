@@ -26,12 +26,13 @@
 #include "DatasetDOMStringMap.h"
 #include "Element.h"
 #include "ElementShadow.h"
-#include "HTMLCollection.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include <wtf/OwnPtr.h>
 
 namespace WebCore {
+
+class HTMLCollection;
 
 class ElementRareData : public NodeRareData {
 public:
@@ -43,24 +44,27 @@ public:
     using NodeRareData::needsFocusAppearanceUpdateSoonAfterAttach;
     using NodeRareData::setNeedsFocusAppearanceUpdateSoonAfterAttach;
 
-    typedef FixedArray<OwnPtr<HTMLCollection>, NumNodeCollectionTypes> CachedHTMLCollectionArray;
-
     bool hasCachedHTMLCollections() const
     {
         return m_cachedCollections;
     }
 
-    HTMLCollection* ensureCachedHTMLCollection(Element* element, CollectionType type)
+    PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(Element*, CollectionType);
+    HTMLCollection* cachedHTMLCollection(CollectionType type)
     {
         if (!m_cachedCollections)
-            m_cachedCollections = adoptPtr(new CachedHTMLCollectionArray);
+            return 0;
 
-        OwnPtr<HTMLCollection>& collection = (*m_cachedCollections)[type - FirstNodeCollectionType];
-        if (!collection)
-            collection = HTMLCollection::create(element, type);
-        return collection.get();
+        return (*m_cachedCollections)[type - FirstNodeCollectionType];
+    }
+    void removeCachedHTMLCollection(HTMLCollection* collection, CollectionType type)
+    {
+        ASSERT(m_cachedCollections);
+        ASSERT_UNUSED(collection, (*m_cachedCollections)[type - FirstNodeCollectionType] == collection);
+        (*m_cachedCollections)[type - FirstNodeCollectionType] = 0;
     }
 
+    typedef FixedArray<HTMLCollection*, NumNodeCollectionTypes> CachedHTMLCollectionArray;
     OwnPtr<CachedHTMLCollectionArray> m_cachedCollections;
 
     LayoutSize m_minimumSizeForResizing;

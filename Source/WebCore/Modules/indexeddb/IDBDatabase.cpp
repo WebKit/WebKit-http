@@ -64,6 +64,7 @@ IDBDatabase::IDBDatabase(ScriptExecutionContext* context, PassRefPtr<IDBDatabase
     // We pass a reference of this object before it can be adopted.
     relaxAdoptionRequirement();
     m_databaseCallbacks = IDBDatabaseCallbacksImpl::create(this);
+    m_metadata = m_backend->metadata();
 }
 
 IDBDatabase::~IDBDatabase()
@@ -81,6 +82,7 @@ void IDBDatabase::transactionCreated(IDBTransaction* transaction)
     if (transaction->isVersionChange()) {
         ASSERT(!m_versionChangeTransaction);
         m_versionChangeTransaction = transaction;
+        m_metadata = m_backend->metadata();
     }
 }
 
@@ -93,16 +95,30 @@ void IDBDatabase::transactionFinished(IDBTransaction* transaction)
     if (transaction->isVersionChange()) {
         ASSERT(m_versionChangeTransaction == transaction);
         m_versionChangeTransaction = 0;
+        m_metadata = m_backend->metadata();
     }
 
     if (m_closePending && m_transactions.isEmpty())
         closeConnection();
 }
 
+PassRefPtr<DOMStringList> IDBDatabase::objectStoreNames() const
+{
+    RefPtr<DOMStringList> objectStoreNames = DOMStringList::create();
+    for (IDBDatabaseMetadata::ObjectStoreMap::const_iterator it = m_metadata.objectStores.begin(); it != m_metadata.objectStores.end(); ++it)
+        objectStoreNames->append(it->first);
+    objectStoreNames->sort();
+    return objectStoreNames.release();
+}
+
 PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const Dictionary& options, ExceptionCode& ec)
 {
     if (!m_versionChangeTransaction) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+        return 0;
+    }
+    if (!m_versionChangeTransaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
         return 0;
     }
 
@@ -114,6 +130,11 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
             keyPath = IDBKeyPath(keyPathArray);
         else if (options.getWithUndefinedOrNullCheck("keyPath", keyPathString))
             keyPath = IDBKeyPath(keyPathString);
+    }
+
+    if (m_metadata.objectStores.contains(name)) {
+        ec = IDBDatabaseException::CONSTRAINT_ERR;
+        return 0;
     }
 
     if (!keyPath.isNull() && !keyPath.isValid()) {
@@ -136,7 +157,10 @@ PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, co
         return 0;
     }
 
-    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(objectStoreBackend.release(), m_versionChangeTransaction.get());
+    IDBObjectStoreMetadata metadata(name, keyPath, autoIncrement);
+    RefPtr<IDBObjectStore> objectStore = IDBObjectStore::create(metadata, objectStoreBackend.release(), m_versionChangeTransaction.get());
+    m_metadata.objectStores.set(name, metadata);
+
     m_versionChangeTransaction->objectStoreCreated(name, objectStore);
     return objectStore.release();
 }
@@ -147,10 +171,20 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
     }
+    if (!m_versionChangeTransaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
+        return;
+    }
+    if (!m_metadata.objectStores.contains(name)) {
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
+        return;
+    }
 
     m_backend->deleteObjectStore(name, m_versionChangeTransaction->backend(), ec);
-    if (!ec)
+    if (!ec) {
         m_versionChangeTransaction->objectStoreDeleted(name);
+        m_metadata.objectStores.remove(name);
+    }
 }
 
 PassRefPtr<IDBVersionChangeRequest> IDBDatabase::setVersion(ScriptExecutionContext* context, const String& version, ExceptionCode& ec)
@@ -261,6 +295,9 @@ void IDBDatabase::closeConnection()
 void IDBDatabase::onVersionChange(const String& version)
 {
     if (m_contextStopped || !scriptExecutionContext())
+        return;
+
+    if (m_closePending)
         return;
 
     enqueueEvent(IDBVersionChangeEvent::create(version, eventNames().versionchangeEvent));

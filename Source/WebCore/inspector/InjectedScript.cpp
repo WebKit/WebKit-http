@@ -35,6 +35,7 @@
 #include "InjectedScript.h"
 
 #include "InjectedScriptHost.h"
+#include "InjectedScriptModule.h"
 #include "InspectorValues.h"
 #include "Node.h"
 #include "PlatformString.h"
@@ -50,11 +51,12 @@ using WebCore::TypeBuilder::Runtime::RemoteObject;
 namespace WebCore {
 
 InjectedScript::InjectedScript()
+    : InjectedScriptBase("InjectedScript")
 {
 }
 
 InjectedScript::InjectedScript(ScriptObject injectedScriptObject, InspectedStateAccessCheck accessCheck)
-    : InjectedScriptBase(injectedScriptObject, accessCheck)
+    : InjectedScriptBase("InjectedScript", injectedScriptObject, accessCheck)
 {
 }
 
@@ -178,7 +180,7 @@ PassRefPtr<Array<CallFrame> > InjectedScript::wrapCallFrames(const ScriptValue& 
 }
 #endif
 
-PassRefPtr<TypeBuilder::Runtime::RemoteObject> InjectedScript::wrapObject(ScriptValue value, const String& groupName) const
+PassRefPtr<TypeBuilder::Runtime::RemoteObject> InjectedScript::wrapObject(const ScriptValue& value, const String& groupName) const
 {
     ASSERT(!hasNoValue());
     ScriptFunctionCall wrapFunction(injectedScriptObject(), "wrapObject");

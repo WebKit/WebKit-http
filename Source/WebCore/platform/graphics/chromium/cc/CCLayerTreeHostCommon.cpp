@@ -31,8 +31,6 @@
 #include "IntRect.h"
 #include "LayerChromium.h"
 #include "RenderSurfaceChromium.h"
-#include "cc/CCActiveAnimation.h"
-#include "cc/CCLayerAnimationController.h"
 #include "cc/CCLayerImpl.h"
 #include "cc/CCLayerIterator.h"
 #include "cc/CCLayerSorter.h"
@@ -190,19 +188,6 @@ static bool isScaleOrTranslation(const WebTransformationMatrix& m)
            && m.m44();
 }
 
-static inline bool layerOpacityIsOpaque(CCLayerImpl* layer)
-{
-    return layer->opacity() == 1;
-}
-
-static inline bool layerOpacityIsOpaque(LayerChromium* layer)
-{
-    // If the opacity is being animated then the opacity on the main thread is unreliable
-    // (since the impl thread may be using a different opacity), so it should not be trusted.
-    // In particular, it should not be treated as opaque.
-    return layer->opacity() == 1 && !layer->opacityIsAnimating();
-}
-
 static inline bool transformToParentIsKnown(CCLayerImpl*)
 {
     return true;
@@ -243,8 +228,15 @@ static bool layerShouldBeSkipped(LayerType* layer)
     if (!layer->drawsContent() || layer->bounds().isEmpty())
         return true;
 
+    LayerType* backfaceTestLayer = layer;
+    if (layer->useParentBackfaceVisibility()) {
+        ASSERT(layer->parent());
+        ASSERT(!layer->parent()->useParentBackfaceVisibility());
+        backfaceTestLayer = layer->parent();
+    }
+
     // The layer should not be drawn if (1) it is not double-sided and (2) the back of the layer is known to be facing the screen.
-    if (!layer->doubleSided() && transformToScreenIsKnown(layer) && isLayerBackFaceVisible(layer))
+    if (!backfaceTestLayer->doubleSided() && transformToScreenIsKnown(backfaceTestLayer) && isLayerBackFaceVisible(backfaceTestLayer))
         return true;
 
     return false;
@@ -298,16 +290,11 @@ static bool subtreeShouldRenderToSeparateSurface(LayerType* layer, bool axisAlig
         return true;
 
     // If the layer clips its descendants but it is not axis-aligned with respect to its parent.
-    // On the main thread, when the transform is being animated, it is treated as unknown and we
-    // always error on the side of making a render surface, to let us consider descendents as
-    // not animating relative to their target to aid culling.
-    if (layer->masksToBounds() && (!axisAlignedWithRespectToParent || !transformToParentIsKnown(layer)) && descendantDrawsContent)
+    if (layer->masksToBounds() && !axisAlignedWithRespectToParent && descendantDrawsContent)
         return true;
 
     // If the layer has opacity != 1 and does not have a preserves-3d transform style.
-    // On the main thread, when opacity is being animated, it is treated as neither 1
-    // nor 0.
-    if (!layerOpacityIsOpaque(layer) && !layer->preserves3D() && descendantDrawsContent)
+    if (layer->opacity() != 1 && !layer->preserves3D() && descendantDrawsContent)
         return true;
 
     return false;
@@ -483,18 +470,20 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
     // When a render surface has a replica layer, that layer's transform is used to draw a second copy of the surface.
     // Transforms named here are relative to the surface, unless they specify they are relative to the replica layer.
     //
+    // We will denote a scale by contents scale S[contentsScale]
+    //
     // The render surface origin transform to its target surface origin is:
-    //        M[surfaceOrigin] = M[owningLayer->Draw] * Tr[origin2center].inverse()
+    //        M[surfaceOrigin] = M[owningLayer->Draw] * S[contentsScale].inverse() * Tr[origin2centerInScreenSpace].inverse()
     //
     // The render surface origin transform to its the root (screen space) origin is:
-    //        M[surface2root] = M[owningLayer->screenspace]
+    //        M[surface2root] =  M[owningLayer->screenspace] * S[contentsScale].inverse()
     //
     // The replica draw transform is:
-    //        M[replicaDraw] = M[surfaceOrigin] * Tr[replica->position()] * Tr[replica] * Tr[anchor2center]
-    //                       = M[owningLayer->draw] * Tr[origin2center].inverse() * Tr[replica->position()] * Tr[replica] * Tr[anchor2clippedCenter]
+    //        M[replicaDraw] = M[surfaceOrigin] * S[contentsScale] * Tr[replica->position()] * Tr[replica] * Tr[anchor2center] * S[contentsScale].inverse()
+    //                       = M[owningLayer->draw] * Tr[origin2center].inverse() * S[contentsScale] * Tr[replica->position()] * Tr[replica] * Tr[anchor2clippedCenter] * S[contentsScale].inverse()
     //
     // The replica origin transform to its target surface origin is:
-    //        M[replicaOrigin] = M[surfaceOrigin] * Tr[replica->position()] * Tr[replica] * Tr[origin2anchor].inverse()
+    //        M[replicaOrigin] = S[contentsScale] * M[surfaceOrigin] * Tr[replica->position()] * Tr[replica] * Tr[origin2anchor].inverse() * S[contentsScale].invers()
     //
     // The replica origin transform to the root (screen space) origin is:
     //        M[replica2root] = M[surface2root] * Tr[replica->position()] * Tr[replica] * Tr[origin2anchor].inverse()
@@ -547,6 +536,8 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
         animatingTransformToScreen |= layer->parent()->screenSpaceTransformIsAnimating();
     }
 
+    float contentsScale = layer->contentsScale();
+
     FloatRect layerRect(-0.5 * layer->bounds().width(), -0.5 * layer->bounds().height(), layer->bounds().width(), layer->bounds().height());
     IntRect transformedLayerRect;
 
@@ -570,10 +561,11 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
 
         // The origin of the new surface is the upper left corner of the layer.
         WebTransformationMatrix drawTransform;
+        drawTransform.scale(contentsScale);
         drawTransform.translate3d(0.5 * bounds.width(), 0.5 * bounds.height(), 0);
         layer->setDrawTransform(drawTransform);
 
-        transformedLayerRect = IntRect(0, 0, bounds.width(), bounds.height());
+        transformedLayerRect = IntRect(0, 0, contentsScale * bounds.width(), contentsScale * bounds.height());
 
         // The opacity value is moved from the layer to its surface, so that the entire subtree properly inherits opacity.
         renderSurface->setDrawOpacity(drawOpacity);
@@ -582,7 +574,16 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
         layer->setDrawOpacityIsAnimating(false);
 
         WebTransformationMatrix surfaceOriginTransform = combinedTransform;
-        surfaceOriginTransform.translate3d(-0.5 * bounds.width(), -0.5 * bounds.height(), 0);
+        // The surfaceOriginTransform transforms points in the surface's content space
+        // to its parent's content space. Distances in these spaces are both in physical
+        // pixels, so we need to 'undo' the scale by contentsScale. Ultimately, the
+        // transform should map (0, 0) to contentsScale * position, and preserve distances.
+        // Note, the following two lines are not equivalent to translating by (bounds.width(),
+        // bounds.height). The effect on m41 and m42 would be identical, but the scale
+        // affects the entire matrix. We need to scale these other entries to avoid
+        // double scaling; we must remain in physical pixels.
+        surfaceOriginTransform.scale(1 / contentsScale);
+        surfaceOriginTransform.translate3d(-0.5 * transformedLayerRect.width(), -0.5 * transformedLayerRect.height(), 0);
         renderSurface->setOriginTransform(surfaceOriginTransform);
 
         renderSurface->setTargetSurfaceTransformsAreAnimating(animatingTransformToTarget);
@@ -763,21 +764,33 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
         drawTransform.translate3d(surfaceCenter.x() + centerOffsetDueToClipping.width(), surfaceCenter.y() + centerOffsetDueToClipping.height(), 0);
         renderSurface->setDrawTransform(drawTransform);
 
-        // The layer's origin is equal to the surface's origin so the screenSpaceTransform is the same.
-        renderSurface->setScreenSpaceTransform(layer->screenSpaceTransform());
+        WebTransformationMatrix screenSpaceTransform = layer->screenSpaceTransform();
+        // The layer's screen space transform operates on layer rects, but the surfaces
+        // screen space transform operates on surface rects, which are in physical pixels,
+        // so we have to 'undo' the scale here.
+        screenSpaceTransform.scale(1 / contentsScale);
+        renderSurface->setScreenSpaceTransform(screenSpaceTransform);
 
         if (layer->replicaLayer()) {
             // Compute the transformation matrix used to draw the surface's replica to the target surface.
             WebTransformationMatrix replicaDrawTransform = renderSurface->originTransform();
+
+            replicaDrawTransform.scale(contentsScale);
             replicaDrawTransform.translate(layer->replicaLayer()->position().x(), layer->replicaLayer()->position().y());
             replicaDrawTransform.multiply(layer->replicaLayer()->transform());
-            replicaDrawTransform.translate(surfaceCenter.x() - anchorPoint.x() * bounds.width(), surfaceCenter.y() - anchorPoint.y() * bounds.height());
+            FloatPoint layerSpaceSurfaceCenter = surfaceCenter;
+            layerSpaceSurfaceCenter.scale(1 / contentsScale, 1 / contentsScale);
+            replicaDrawTransform.translate(layerSpaceSurfaceCenter.x() - anchorPoint.x() * bounds.width(), layerSpaceSurfaceCenter.y() - anchorPoint.y() * bounds.height());
+            replicaDrawTransform.scale(1 / contentsScale);
+
             renderSurface->setReplicaDrawTransform(replicaDrawTransform);
 
             WebTransformationMatrix surfaceOriginToReplicaOriginTransform;
+            surfaceOriginToReplicaOriginTransform.scale(contentsScale);
             surfaceOriginToReplicaOriginTransform.translate(layer->replicaLayer()->position().x(), layer->replicaLayer()->position().y());
             surfaceOriginToReplicaOriginTransform.multiply(layer->replicaLayer()->transform());
             surfaceOriginToReplicaOriginTransform.translate(-anchorPoint.x() * bounds.width(), -anchorPoint.y() * bounds.height());
+            surfaceOriginToReplicaOriginTransform.scale(1 / contentsScale);
 
             // Compute the replica's "originTransform" that maps from the replica's origin space to the target surface origin space.
             WebTransformationMatrix replicaOriginTransform = layer->renderSurface()->originTransform() * surfaceOriginToReplicaOriginTransform;

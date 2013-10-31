@@ -33,9 +33,6 @@
 #if USE(ACCELERATED_COMPOSITING)
 #include "LayerChromium.h"
 
-#include "NativeImageSkia.h"
-#include "PlatformContextSkia.h"
-#include "RenderLayerBacking.h"
 #include "TextStream.h"
 #include "cc/CCActiveAnimation.h"
 #include "cc/CCAnimationEvents.h"
@@ -44,7 +41,6 @@
 #include "cc/CCLayerImpl.h"
 #include "cc/CCLayerTreeHost.h"
 #include "cc/CCSettings.h"
-#include "skia/ext/platform_canvas.h"
 
 using namespace std;
 using WebKit::WebTransformationMatrix;
@@ -70,7 +66,8 @@ LayerChromium::LayerChromium()
     , m_haveWheelEventHandlers(false)
     , m_nonFastScrollableRegionChanged(false)
     , m_anchorPoint(0.5, 0.5)
-    , m_backgroundColor(0, 0, 0, 0)
+    , m_backgroundColor(0)
+    , m_debugBorderColor(0)
     , m_debugBorderWidth(0)
     , m_opacity(1.0)
     , m_anchorPointZ(0)
@@ -83,6 +80,7 @@ LayerChromium::LayerChromium()
     , m_usesLayerClipping(false)
     , m_isNonCompositedContent(false)
     , m_preserves3D(false)
+    , m_useParentBackfaceVisibility(false)
     , m_alwaysReserveTextures(false)
     , m_drawCheckerboardForMissingTiles(false)
     , m_forceRenderSurface(false)
@@ -96,6 +94,10 @@ LayerChromium::LayerChromium()
     , m_layerAnimationDelegate(0)
     , m_layerScrollDelegate(0)
 {
+    if (m_layerId < 0) {
+        s_nextLayerId = 1;
+        m_layerId = s_nextLayerId++;
+    }
 }
 
 LayerChromium::~LayerChromium()
@@ -223,7 +225,7 @@ void LayerChromium::setBounds(const IntSize& size)
     if (bounds() == size)
         return;
 
-    bool firstResize = !bounds().width() && !bounds().height() && size.width() && size.height();
+    bool firstResize = bounds().isEmpty() && !size.isEmpty();
 
     m_bounds = size;
 
@@ -276,7 +278,7 @@ void LayerChromium::setAnchorPointZ(float anchorPointZ)
     setNeedsCommit();
 }
 
-void LayerChromium::setBackgroundColor(const Color& backgroundColor)
+void LayerChromium::setBackgroundColor(SkColor backgroundColor)
 {
     if (m_backgroundColor == backgroundColor)
         return;
@@ -533,6 +535,7 @@ void LayerChromium::pushPropertiesTo(CCLayerImpl* layer)
     layer->setBackgroundColor(m_backgroundColor);
     layer->setBounds(m_bounds);
     layer->setContentBounds(contentBounds());
+    layer->setContentsScale(contentsScale());
     layer->setDebugBorderColor(m_debugBorderColor);
     layer->setDebugBorderWidth(m_debugBorderWidth);
     layer->setDebugName(m_debugName.isolatedCopy()); // We have to use isolatedCopy() here to safely pass ownership to another thread.
@@ -560,6 +563,7 @@ void LayerChromium::pushPropertiesTo(CCLayerImpl* layer)
     layer->setIsContainerForFixedPositionLayers(m_isContainerForFixedPositionLayers);
     layer->setFixedToContainerLayer(m_fixedToContainerLayer);
     layer->setPreserves3D(preserves3D());
+    layer->setUseParentBackfaceVisibility(m_useParentBackfaceVisibility);
     layer->setScrollPosition(m_scrollPosition);
     layer->setMaxScrollPosition(m_maxScrollPosition);
     layer->setSublayerTransform(m_sublayerTransform);
@@ -594,7 +598,7 @@ PassOwnPtr<CCLayerImpl> LayerChromium::createCCLayerImpl()
     return CCLayerImpl::create(m_layerId);
 }
 
-void LayerChromium::setDebugBorderColor(const Color& color)
+void LayerChromium::setDebugBorderColor(SkColor color)
 {
     m_debugBorderColor = color;
     setNeedsCommit();

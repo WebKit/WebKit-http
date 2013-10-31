@@ -111,27 +111,30 @@ public:
     class WebGraphicsContextLostCallback {
     public:
         virtual void onContextLost() = 0;
+
+    protected:
         virtual ~WebGraphicsContextLostCallback() { }
     };
 
     class WebGraphicsErrorMessageCallback {
     public:
         virtual void onErrorMessage(const WebString&, WGC3Dint) = 0;
+
+    protected:
         virtual ~WebGraphicsErrorMessageCallback() { }
     };
 
     class WebGraphicsSwapBuffersCompleteCallbackCHROMIUM {
     public:
         virtual void onSwapBuffersComplete() = 0;
+
+    protected:
         virtual ~WebGraphicsSwapBuffersCompleteCallbackCHROMIUM() { }
     };
 
     class WebGraphicsMemoryAllocationChangedCallbackCHROMIUM {
     public:
-        // FIXME: Remove this once we switch to WebGraphicsMemoryAllocation version.
-        virtual void onMemoryAllocationChanged(size_t gpuResourceSizeInBytes) = 0;
-        // FIXME: Make this pure virtual once we implement everywhere.
-        virtual void onMemoryAllocationChanged(WebGraphicsMemoryAllocation) { }
+        virtual void onMemoryAllocationChanged(WebGraphicsMemoryAllocation) = 0;
 
     protected:
         virtual ~WebGraphicsMemoryAllocationChangedCallbackCHROMIUM() { }
@@ -410,6 +413,13 @@ public:
     virtual void endQueryEXT(WGC3Denum target) { }
     virtual void getQueryivEXT(WGC3Denum target, WGC3Denum pname, WGC3Dint* params) { }
     virtual void getQueryObjectuivEXT(WebGLId query, WGC3Denum pname, WGC3Duint* params) { }
+
+    // GL_CHROMIUM_bind_uniform_location
+    virtual void bindUniformLocationCHROMIUM(WebGLId program, WGC3Dint location, const WGC3Dchar* uniform) { }
+
+    // GL_CHROMIUM_copy_texture
+    virtual void copyTextureCHROMIUM(WGC3Denum target, WGC3Duint sourceId,
+                                     WGC3Duint destId, WGC3Dint level, WGC3Denum internalFormat) { }
 
     GrGLInterface* createGrGLInterface();
 

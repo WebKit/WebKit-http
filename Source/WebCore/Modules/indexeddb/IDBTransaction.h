@@ -35,6 +35,7 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "EventTarget.h"
+#include "IDBMetadata.h"
 #include "IDBTransactionBackendInterface.h"
 #include "IDBTransactionCallbacks.h"
 #include <wtf/HashSet.h>
@@ -67,12 +68,13 @@ public:
     static const AtomicString& modeToString(Mode, ExceptionCode&);
 
     IDBTransactionBackendInterface* backend() const;
-    bool isFinished() const;
+    bool isActive() const { return m_active; }
+    bool isFinished() const { return m_state == Finished; }
+    bool isReadOnly() const { return m_mode == READ_ONLY; }
     bool isVersionChange() const { return m_mode == VERSION_CHANGE; }
 
     // Implement the IDBTransaction IDL
     const String& mode() const;
-    bool isReadOnly() const { return m_mode == READ_ONLY; }
     IDBDatabase* db() const;
     PassRefPtr<DOMError> error(ExceptionCode&) const;
     void setError(PassRefPtr<DOMError>);
@@ -93,6 +95,7 @@ public:
     void unregisterRequest(IDBRequest*);
     void objectStoreCreated(const String&, PassRefPtr<IDBObjectStore>);
     void objectStoreDeleted(const String&);
+    void setActive(bool);
 
     DEFINE_ATTRIBUTE_EVENT_LISTENER(abort);
     DEFINE_ATTRIBUTE_EVENT_LISTENER(complete);
@@ -131,17 +134,28 @@ private:
     virtual EventTargetData* eventTargetData();
     virtual EventTargetData* ensureEventTargetData();
 
+    enum State {
+        Unused, // No requests have been made.
+        Used, // At least one request has been made.
+        Finishing, // In the process of aborting or completing.
+        Finished, // No more events will fire and no new requests may be filed.
+    };
+
     RefPtr<IDBTransactionBackendInterface> m_backend;
     RefPtr<IDBDatabase> m_database;
     const Mode m_mode;
-    bool m_transactionFinished; // Is it possible that we'll fire any more events or allow any new requests? If not, we're finished.
+    bool m_active;
+    State m_state;
     bool m_contextStopped;
     RefPtr<DOMError> m_error;
 
-    ListHashSet<IDBRequest*> m_childRequests;
+    ListHashSet<IDBRequest*> m_requestList;
 
     typedef HashMap<String, RefPtr<IDBObjectStore> > IDBObjectStoreMap;
     IDBObjectStoreMap m_objectStoreMap;
+
+    typedef HashMap<RefPtr<IDBObjectStore>, IDBObjectStoreMetadata> IDBObjectStoreMetadataMap;
+    IDBObjectStoreMetadataMap m_objectStoreCleanupMap;
 
     HashSet<IDBCursor*> m_openCursors;
 

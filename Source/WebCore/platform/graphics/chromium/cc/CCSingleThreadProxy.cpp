@@ -26,10 +26,12 @@
 
 #include "cc/CCSingleThreadProxy.h"
 
-#include "LayerRendererChromium.h"
 #include "TraceEvent.h"
+#include "cc/CCDrawQuad.h"
 #include "cc/CCFontAtlas.h"
+#include "cc/CCGraphicsContext.h"
 #include "cc/CCLayerTreeHost.h"
+#include "cc/CCRenderingStats.h"
 #include "cc/CCTextureUpdater.h"
 #include "cc/CCTimer.h"
 #include <wtf/CurrentTime.h>
@@ -37,26 +39,6 @@
 using namespace WTF;
 
 namespace WebCore {
-
-class CCSingleThreadProxyAnimationTimer : public CCTimer, CCTimerClient {
-public:
-    static PassOwnPtr<CCSingleThreadProxyAnimationTimer> create(CCSingleThreadProxy* proxy) { return adoptPtr(new CCSingleThreadProxyAnimationTimer(proxy)); }
-
-    virtual void onTimerFired() OVERRIDE
-    {
-        if (m_proxy->m_layerRendererInitialized)
-            m_proxy->compositeImmediately();
-    }
-
-private:
-    explicit CCSingleThreadProxyAnimationTimer(CCSingleThreadProxy* proxy)
-        : CCTimer(CCProxy::mainThread(), this)
-        , m_proxy(proxy)
-    {
-    }
-
-    CCSingleThreadProxy* m_proxy;
-};
 
 PassOwnPtr<CCProxy> CCSingleThreadProxy::create(CCLayerTreeHost* layerTreeHost)
 {
@@ -67,11 +49,10 @@ CCSingleThreadProxy::CCSingleThreadProxy(CCLayerTreeHost* layerTreeHost)
     : m_layerTreeHost(layerTreeHost)
     , m_contextLost(false)
     , m_compositorIdentifier(-1)
-    , m_animationTimer(CCSingleThreadProxyAnimationTimer::create(this))
     , m_layerRendererInitialized(false)
     , m_nextFrameIsNewlyCommittedFrame(false)
 {
-    TRACE_EVENT("CCSingleThreadProxy::CCSingleThreadProxy", this, 0);
+    TRACE_EVENT0("cc", "CCSingleThreadProxy::CCSingleThreadProxy");
     ASSERT(CCProxy::isMainThread());
 }
 
@@ -83,14 +64,14 @@ void CCSingleThreadProxy::start()
 
 CCSingleThreadProxy::~CCSingleThreadProxy()
 {
-    TRACE_EVENT("CCSingleThreadProxy::~CCSingleThreadProxy", this, 0);
+    TRACE_EVENT0("cc", "CCSingleThreadProxy::~CCSingleThreadProxy");
     ASSERT(CCProxy::isMainThread());
     ASSERT(!m_layerTreeHostImpl && !m_layerTreeHost); // make sure stop() got called.
 }
 
 bool CCSingleThreadProxy::compositeAndReadback(void *pixels, const IntRect& rect)
 {
-    TRACE_EVENT("CCSingleThreadProxy::compositeAndReadback", this, 0);
+    TRACE_EVENT0("cc", "CCSingleThreadProxy::compositeAndReadback");
     ASSERT(CCProxy::isMainThread());
 
     if (!commitAndComposite())
@@ -112,15 +93,6 @@ void CCSingleThreadProxy::startPageScaleAnimation(const IntSize& targetPosition,
     m_layerTreeHostImpl->startPageScaleAnimation(targetPosition, useAnchor, scale, monotonicallyIncreasingTime(), duration);
 }
 
-CCGraphicsContext* CCSingleThreadProxy::context()
-{
-    ASSERT(CCProxy::isMainThread());
-    if (m_contextBeforeInitialization)
-        return m_contextBeforeInitialization.get();
-    DebugScopedSetImplThread impl;
-    return m_layerTreeHostImpl->context();
-}
-
 void CCSingleThreadProxy::finishAllRendering()
 {
     ASSERT(CCProxy::isMainThread());
@@ -139,17 +111,22 @@ bool CCSingleThreadProxy::isStarted() const
 bool CCSingleThreadProxy::initializeContext()
 {
     ASSERT(CCProxy::isMainThread());
-    RefPtr<CCGraphicsContext> context = m_layerTreeHost->createContext();
+    OwnPtr<CCGraphicsContext> context = m_layerTreeHost->createContext();
     if (!context)
         return false;
-    ASSERT(context->hasOneRef());
-    m_contextBeforeInitialization = context;
+    m_contextBeforeInitialization = context.release();
     return true;
 }
 
 void CCSingleThreadProxy::setSurfaceReady()
 {
     // Scheduling is controlled by the embedder in the single thread case, so nothing to do.
+}
+
+void CCSingleThreadProxy::setVisible(bool visible)
+{
+    DebugScopedSetImplThread impl;
+    m_layerTreeHostImpl->setVisible(visible);
 }
 
 bool CCSingleThreadProxy::initializeLayerRenderer()
@@ -162,9 +139,7 @@ bool CCSingleThreadProxy::initializeLayerRenderer()
         if (ok) {
             m_layerRendererInitialized = true;
             m_layerRendererCapabilitiesForMainThread = m_layerTreeHostImpl->layerRendererCapabilities();
-        } else
-            // If we couldn't initialize the layer renderer, we shouldn't process any future animation events.
-            m_animationTimer->stop();
+        }
 
         return ok;
     }
@@ -176,16 +151,15 @@ bool CCSingleThreadProxy::recreateContext()
     ASSERT(CCProxy::isMainThread());
     ASSERT(m_contextLost);
 
-    RefPtr<CCGraphicsContext> context = m_layerTreeHost->createContext();
+    OwnPtr<CCGraphicsContext> context = m_layerTreeHost->createContext();
     if (!context)
         return false;
 
-    ASSERT(context->hasOneRef());
     bool initialized;
     {
         DebugScopedSetImplThread impl;
         m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->contentsTextureAllocator());
-        initialized = m_layerTreeHostImpl->initializeLayerRenderer(context, UnthrottledUploader);
+        initialized = m_layerTreeHostImpl->initializeLayerRenderer(context.release(), UnthrottledUploader);
         if (initialized) {
             m_layerRendererCapabilitiesForMainThread = m_layerTreeHostImpl->layerRendererCapabilities();
         }
@@ -195,6 +169,11 @@ bool CCSingleThreadProxy::recreateContext()
         m_contextLost = false;
 
     return initialized;
+}
+
+void CCSingleThreadProxy::implSideRenderingStats(CCRenderingStats& stats)
+{
+    stats.numFramesSentToScreen = m_layerTreeHostImpl->sourceAnimationFrameNumber();
 }
 
 const LayerRendererCapabilities& CCSingleThreadProxy::layerRendererCapabilities() const
@@ -257,12 +236,6 @@ void CCSingleThreadProxy::setNeedsCommit()
     m_layerTreeHost->scheduleComposite();
 }
 
-void CCSingleThreadProxy::setNeedsForcedCommit()
-{
-    // This proxy doesn't block commits when not visible so use a normal commit.
-    setNeedsCommit();
-}
-
 void CCSingleThreadProxy::setNeedsRedraw()
 {
     // FIXME: Once we move render_widget scheduling into this class, we can
@@ -278,18 +251,18 @@ bool CCSingleThreadProxy::commitRequested() const
 
 void CCSingleThreadProxy::didAddAnimation()
 {
-    m_animationTimer->startOneShot(animationTimerDelay());
 }
 
 void CCSingleThreadProxy::stop()
 {
-    TRACE_EVENT("CCSingleThreadProxy::stop", this, 0);
+    TRACE_EVENT0("cc", "CCSingleThreadProxy::stop");
     ASSERT(CCProxy::isMainThread());
     {
         DebugScopedSetMainThreadBlocked mainThreadBlocked;
         DebugScopedSetImplThread impl;
 
-        m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->contentsTextureAllocator());
+        if (!m_layerTreeHostImpl->contentsTexturesWerePurgedSinceLastCommit())
+            m_layerTreeHost->deleteContentsTexturesOnImplThread(m_layerTreeHostImpl->contentsTextureAllocator());
         m_layerTreeHostImpl.clear();
     }
     m_layerTreeHost = 0;
@@ -309,14 +282,6 @@ void CCSingleThreadProxy::postAnimationEventsToMainThreadOnImplThread(PassOwnPtr
     m_layerTreeHost->setAnimationEvents(events, wallClockTime);
 }
 
-void CCSingleThreadProxy::postSetContentsMemoryAllocationLimitBytesToMainThreadOnImplThread(size_t bytes)
-{
-    ASSERT(CCProxy::isImplThread());
-    DebugScopedSetMainThread main;
-    ASSERT(m_layerTreeHost);
-    m_layerTreeHost->setContentsMemoryAllocationLimitBytes(bytes);
-}
-
 // Called by the legacy scheduling path (e.g. where render_widget does the scheduling)
 void CCSingleThreadProxy::compositeImmediately()
 {
@@ -324,11 +289,6 @@ void CCSingleThreadProxy::compositeImmediately()
         m_layerTreeHostImpl->swapBuffers();
         didSwapFrame();
     }
-}
-
-double CCSingleThreadProxy::animationTimerDelay()
-{
-    return 1 / 60.0;
 }
 
 void CCSingleThreadProxy::forceSerializeOnSwapBuffers()
@@ -344,10 +304,15 @@ bool CCSingleThreadProxy::commitAndComposite()
 {
     ASSERT(CCProxy::isMainThread());
 
-    CCTextureUpdater updater;
 
-    if (!m_layerTreeHost->updateLayers(updater))
+    if (!m_layerTreeHost->initializeLayerRendererIfNeeded())
         return false;
+
+    if (m_layerTreeHostImpl->contentsTexturesWerePurgedSinceLastCommit())
+        m_layerTreeHost->evictAllContentTextures();
+
+    CCTextureUpdater updater;
+    m_layerTreeHost->updateLayers(updater, m_layerTreeHostImpl->memoryAllocationLimitBytes());
 
     m_layerTreeHost->willCommit();
     doCommit(updater);

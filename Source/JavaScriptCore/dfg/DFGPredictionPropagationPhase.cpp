@@ -535,6 +535,12 @@ private:
             break;
         }
             
+        case NewArrayWithSize: {
+            changed |= setPrediction(SpecArray);
+            changed |= m_graph[node.child1()].mergeFlags(NodeUsedAsNumber | NodeUsedAsInt);
+            break;
+        }
+            
         case NewArrayBuffer: {
             changed |= setPrediction(SpecArray);
             break;
@@ -902,6 +908,7 @@ private:
     
 bool performPredictionPropagation(Graph& graph)
 {
+    SamplingRegion samplingRegion("DFG Prediction Propagation Phase");
     return runPhase<PredictionPropagationPhase>(graph);
 }
 

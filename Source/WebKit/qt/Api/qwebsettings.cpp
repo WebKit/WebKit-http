@@ -156,10 +156,8 @@ void QWebSettingsPrivate::apply()
         settings->setAcceleratedCompositingEnabled(value);
         settings->setAcceleratedCompositingFor3DTransformsEnabled(value);
         settings->setAcceleratedCompositingForAnimationEnabled(value);
-#if USE(TEXTURE_MAPPER)
         settings->setAcceleratedCompositingForVideoEnabled(false);
         settings->setAcceleratedCompositingForPluginsEnabled(false);
-#endif
 #endif
 #if ENABLE(WEBGL)
         value = attributes.value(QWebSettings::WebGLEnabled,
@@ -174,6 +172,9 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::CSSRegionsEnabled,
                                  global->attributes.value(QWebSettings::CSSRegionsEnabled));
         settings->setCSSRegionsEnabled(value);
+        value = attributes.value(QWebSettings::CSSGridLayoutEnabled,
+                                 global->attributes.value(QWebSettings::CSSGridLayoutEnabled));
+        settings->setCSSGridLayoutEnabled(value);
 
         value = attributes.value(QWebSettings::HyperlinkAuditingEnabled,
                                  global->attributes.value(QWebSettings::HyperlinkAuditingEnabled));
@@ -522,6 +523,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::AcceleratedCompositingEnabled, true);
     d->attributes.insert(QWebSettings::WebGLEnabled, false);
     d->attributes.insert(QWebSettings::CSSRegionsEnabled, false);
+    d->attributes.insert(QWebSettings::CSSGridLayoutEnabled, false);
     d->attributes.insert(QWebSettings::HyperlinkAuditingEnabled, false);
     d->attributes.insert(QWebSettings::TiledBackingStoreEnabled, false);
     d->attributes.insert(QWebSettings::FrameFlatteningEnabled, false);

@@ -29,9 +29,11 @@
 
 #include "cc/CCTiledLayerImpl.h"
 
-#include "LayerRendererChromium.h"
+#include "SkColor.h"
+#include "TextStream.h"
 #include "cc/CCCheckerboardDrawQuad.h"
 #include "cc/CCDebugBorderDrawQuad.h"
+#include "cc/CCLayerTilingData.h"
 #include "cc/CCQuadCuller.h"
 #include "cc/CCSolidColorDrawQuad.h"
 #include "cc/CCTileDrawQuad.h"
@@ -152,12 +154,12 @@ void CCTiledLayerImpl::appendQuads(CCQuadCuller& quadList, const CCSharedQuadSta
             for (int i = left; i <= right; ++i) {
                 DrawableTile* tile = tileAt(i, j);
                 IntRect tileRect = m_tiler->tileBounds(i, j);
-                Color borderColor;
+                SkColor borderColor;
 
                 if (m_skipsDraw || !tile || !tile->textureId())
-                    borderColor = Color(debugTileBorderMissingTileColorRed, debugTileBorderMissingTileColorGreen, debugTileBorderMissingTileColorBlue, debugTileBorderAlpha);
+                    borderColor = SkColorSetARGB(debugTileBorderAlpha, debugTileBorderMissingTileColorRed, debugTileBorderMissingTileColorGreen, debugTileBorderMissingTileColorBlue);
                 else
-                    borderColor = Color(debugTileBorderColorRed, debugTileBorderColorGreen, debugTileBorderColorBlue, debugTileBorderAlpha);
+                    borderColor = SkColorSetARGB(debugTileBorderAlpha, debugTileBorderColorRed, debugTileBorderColorGreen, debugTileBorderColorBlue);
                 quadList.append(CCDebugBorderDrawQuad::create(sharedQuadState, tileRect, borderColor, debugTileBorderWidth));
             }
         }

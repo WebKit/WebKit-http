@@ -9,8 +9,6 @@ TEMPLATE = app
 TARGET = DumpRenderTree
 DESTDIR = $$ROOT_BUILD_DIR/bin
 
-load(features)
-
 WEBKIT += wtf webcore
 !v8: WEBKIT += javascriptcore
 
@@ -37,7 +35,6 @@ HEADERS += \
     testplugin.h
 
 SOURCES += \
-    $${ROOT_WEBKIT_DIR}/Source/WTF/wtf/Assertions.cpp \
     $$PWD/../WorkQueue.cpp \
     DumpRenderTreeQt.cpp \
     EventSenderQt.cpp \

@@ -137,4 +137,9 @@ FloatRect screenAvailableRect(Widget* widget)
 
 }
 
+void screenColorProfile(Widget*, ColorProfile&)
+{
+    notImplemented();
+}
+
 } // namespace WebCore

@@ -284,6 +284,28 @@ TEST_F(WebFrameTest, FixedLayoutInitializeAtMinimumPageScale)
 }
 #endif
 
+TEST_F(WebFrameTest, CanOverrideMaximumScaleFactor)
+{
+    registerMockedHttpURLLoad("no_scale_for_you.html");
+
+    FixedLayoutTestWebViewClient client;
+    client.m_screenInfo.horizontalDPI = 160;
+    int viewportWidth = 640;
+    int viewportHeight = 480;
+    client.m_windowRect = WebRect(0, 0, viewportWidth, viewportHeight);
+
+    WebViewImpl* webViewImpl = static_cast<WebViewImpl*>(FrameTestHelpers::createWebViewAndLoad(m_baseURL + "no_scale_for_you.html", true, 0, &client));
+    webViewImpl->enableFixedLayoutMode(true);
+    webViewImpl->settings()->setViewportEnabled(true);
+    webViewImpl->resize(WebSize(viewportWidth, viewportHeight));
+
+    EXPECT_EQ(1.0f, webViewImpl->maximumPageScaleFactor());
+
+    webViewImpl->setIgnoreViewportTagMaximumScale(true);
+
+    EXPECT_EQ(4.0f, webViewImpl->maximumPageScaleFactor());
+}
+
 #if ENABLE(GESTURE_EVENTS)
 TEST_F(WebFrameTest, DivAutoZoomParamsTest)
 {
@@ -395,6 +417,40 @@ TEST_F(WebFrameTest, ReloadDoesntSetRedirect)
     // start reload before request is delivered.
     webView->mainFrame()->reload(true);
     webkit_support::ServeAsynchronousMockedRequests();
+}
+
+TEST_F(WebFrameTest, ReloadWithOverrideURLPreservesState)
+{
+    const std::string firstURL = "find.html";
+    const std::string secondURL = "form.html";
+    const std::string thirdURL = "history.html";
+    const float pageScaleFactor = 1.1684f;
+    const int pageWidth = 640;
+    const int pageHeight = 480;
+
+    registerMockedHttpURLLoad(firstURL);
+    registerMockedHttpURLLoad(secondURL);
+    registerMockedHttpURLLoad(thirdURL);
+
+    WebViewImpl* webViewImpl = static_cast<WebViewImpl*>(FrameTestHelpers::createWebViewAndLoad(m_baseURL + firstURL, true));
+    webViewImpl->resize(WebSize(pageWidth, pageHeight));
+    webViewImpl->mainFrame()->setScrollOffset(WebSize(pageWidth / 4, pageHeight / 4));
+    webViewImpl->setPageScaleFactorPreservingScrollOffset(pageScaleFactor);
+
+    WebSize previousOffset = webViewImpl->mainFrame()->scrollOffset();
+    float previousScale = webViewImpl->pageScaleFactor();
+
+    // Reload the page using the cache.
+    webViewImpl->mainFrame()->reloadWithOverrideURL(GURL(m_baseURL + secondURL), false);
+    webkit_support::ServeAsynchronousMockedRequests();
+    ASSERT_EQ(previousOffset, webViewImpl->mainFrame()->scrollOffset());
+    ASSERT_EQ(previousScale, webViewImpl->pageScaleFactor());
+
+    // Reload the page while ignoring the cache.
+    webViewImpl->mainFrame()->reloadWithOverrideURL(GURL(m_baseURL + thirdURL), true);
+    webkit_support::ServeAsynchronousMockedRequests();
+    ASSERT_EQ(previousOffset, webViewImpl->mainFrame()->scrollOffset());
+    ASSERT_EQ(previousScale, webViewImpl->pageScaleFactor());
 }
 
 TEST_F(WebFrameTest, IframeRedirect)

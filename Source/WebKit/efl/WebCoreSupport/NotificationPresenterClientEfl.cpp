@@ -59,7 +59,7 @@ void NotificationPresenterClientEfl::requestPermission(ScriptExecutionContext* c
     notImplemented();
 }
 
-NotificationPresenter::Permission NotificationPresenterClientEfl::checkPermission(ScriptExecutionContext* context)
+NotificationClient::Permission NotificationPresenterClientEfl::checkPermission(ScriptExecutionContext* context)
 {
     notImplemented();
     return PermissionDenied;

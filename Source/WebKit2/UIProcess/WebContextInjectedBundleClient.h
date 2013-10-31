@@ -39,6 +39,7 @@ class WebContextInjectedBundleClient : public APIClient<WKContextInjectedBundleC
 public:
     void didReceiveMessageFromInjectedBundle(WebContext*, const String&, APIObject*);
     void didReceiveSynchronousMessageFromInjectedBundle(WebContext*, const String&, APIObject*, RefPtr<APIObject>& returnData);
+    PassRefPtr<APIObject> getInjectedBundleInitializationUserData(WebContext*);
 };
 
 } // namespace WebKit

@@ -65,6 +65,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/assembler/AssemblerBuffer.h \
 	Source/JavaScriptCore/assembler/AssemblerBufferWithConstantPool.h \
 	Source/JavaScriptCore/assembler/CodeLocation.h \
+	Source/JavaScriptCore/assembler/LinkBuffer.cpp \
 	Source/JavaScriptCore/assembler/LinkBuffer.h \
 	Source/JavaScriptCore/assembler/MacroAssembler.h \
 	Source/JavaScriptCore/assembler/MacroAssemblerARM.cpp \
@@ -91,6 +92,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/CodeBlock.cpp \
 	Source/JavaScriptCore/bytecode/CodeBlock.h \
 	Source/JavaScriptCore/bytecode/CodeOrigin.h \
+	Source/JavaScriptCore/bytecode/Comment.h \
 	Source/JavaScriptCore/bytecode/DataFormat.h \
 	Source/JavaScriptCore/bytecode/DFGExitProfile.cpp \
 	Source/JavaScriptCore/bytecode/DFGExitProfile.h \
@@ -125,6 +127,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.cpp \
 	Source/JavaScriptCore/bytecode/PutByIdStatus.h \
 	Source/JavaScriptCore/bytecode/PutKind.h \
+	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.cpp \
+	Source/JavaScriptCore/bytecode/ResolveGlobalStatus.h \
 	Source/JavaScriptCore/bytecode/SamplingTool.cpp \
 	Source/JavaScriptCore/bytecode/SamplingTool.h \
 	Source/JavaScriptCore/bytecode/StructureSet.h \
@@ -167,6 +171,8 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGConstantFoldingPhase.h \
 	Source/JavaScriptCore/dfg/DFGCSEPhase.cpp \
 	Source/JavaScriptCore/dfg/DFGCSEPhase.h \
+	Source/JavaScriptCore/dfg/DFGDisassembler.cpp \
+	Source/JavaScriptCore/dfg/DFGDisassembler.h \
 	Source/JavaScriptCore/dfg/DFGDominators.cpp \
 	Source/JavaScriptCore/dfg/DFGDominators.h \
 	Source/JavaScriptCore/dfg/DFGDoubleFormatState.h \
@@ -182,6 +188,9 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGInsertionSet.h \
 	Source/JavaScriptCore/dfg/DFGJITCompiler.cpp \
 	Source/JavaScriptCore/dfg/DFGJITCompiler.h \
+	Source/JavaScriptCore/dfg/DFGMinifiedGraph.h \
+	Source/JavaScriptCore/dfg/DFGMinifiedNode.cpp \
+	Source/JavaScriptCore/dfg/DFGMinifiedNode.h \
 	Source/JavaScriptCore/dfg/DFGNode.h \
 	Source/JavaScriptCore/dfg/DFGNodeFlags.cpp \
 	Source/JavaScriptCore/dfg/DFGNodeFlags.h \
@@ -216,6 +225,13 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/dfg/DFGSpeculativeJIT.h \
 	Source/JavaScriptCore/dfg/DFGThunks.cpp \
 	Source/JavaScriptCore/dfg/DFGThunks.h \
+	Source/JavaScriptCore/dfg/DFGValueRecoveryOverride.h \
+	Source/JavaScriptCore/dfg/DFGValueSource.cpp \
+	Source/JavaScriptCore/dfg/DFGValueSource.h \
+	Source/JavaScriptCore/dfg/DFGVariableEvent.cpp \
+	Source/JavaScriptCore/dfg/DFGVariableEvent.h \
+	Source/JavaScriptCore/dfg/DFGVariableEventStream.cpp \
+	Source/JavaScriptCore/dfg/DFGVariableEventStream.h \
 	Source/JavaScriptCore/dfg/DFGValidate.cpp \
 	Source/JavaScriptCore/dfg/DFGValidate.h \
 	Source/JavaScriptCore/dfg/DFGVariableAccessData.h \
@@ -566,6 +582,7 @@ javascriptcore_sources += \
 	Source/JavaScriptCore/runtime/PropertyName.h \
 	Source/JavaScriptCore/runtime/PropertyNameArray.cpp \
 	Source/JavaScriptCore/runtime/PropertyNameArray.h \
+	Source/JavaScriptCore/runtime/PropertyOffset.h \
 	Source/JavaScriptCore/runtime/PropertySlot.cpp \
 	Source/JavaScriptCore/runtime/PropertySlot.h \
 	Source/JavaScriptCore/runtime/Protect.h \

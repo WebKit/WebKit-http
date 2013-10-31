@@ -136,7 +136,6 @@ namespace WebCore {
         ContextMenuItemTagRightToLeft,
         ContextMenuItemTagPDFSinglePageScrolling,
         ContextMenuItemTagPDFFacingPagesScrolling,
-        ContextMenuItemTagDictationAlternative,
 #if ENABLE(INSPECTOR)
         ContextMenuItemTagInspectElement,
 #endif
@@ -166,6 +165,7 @@ namespace WebCore {
         ContextMenuItemTagEnterVideoFullscreen,
         ContextMenuItemTagMediaPlayPause,
         ContextMenuItemTagMediaMute,
+        ContextMenuItemTagDictationAlternative,
         ContextMenuItemBaseCustomTag = 5000,
         ContextMenuItemCustomTagNoAction = 5998,
         ContextMenuItemLastCustomTag = 5999,

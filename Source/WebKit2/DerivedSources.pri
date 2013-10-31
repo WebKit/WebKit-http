@@ -11,8 +11,6 @@
 sanitizedFile = $$toSanitizedPath($$_FILE_)
 equals(sanitizedFile, $$toSanitizedPath($$_PRO_FILE_)):TEMPLATE = derived
 
-load(features)
-
 WEBCORE_GENERATED_SOURCES_DIR = ../WebCore/$${GENERATED_SOURCES_DESTDIR}
 
 SOURCE_DIR = $${ROOT_WEBKIT_DIR}/Source
@@ -40,12 +38,14 @@ VPATH = \
     PluginProcess \
     WebProcess/ApplicationCache \
     WebProcess/Authentication \
+    WebProcess/Battery \
     WebProcess/Cookies \
     WebProcess/FullScreen \
     WebProcess/Geolocation \
     WebProcess/IconDatabase \
     WebProcess/KeyValueStorage \
     WebProcess/MediaCache \
+    WebProcess/NetworkInfo \
     WebProcess/Notifications \
     WebProcess/Plugins \
     WebProcess/ResourceCache \
@@ -63,7 +63,7 @@ MESSAGE_RECEIVERS = \
     DownloadProxy.messages.in \
     DrawingAreaProxy.messages.in \
     EventDispatcher.messages.in \
-    LayerTreeHostProxy.messages.in \
+    LayerTreeCoordinatorProxy.messages.in \
     PluginControllerProxy.messages.in \
     PluginProcess.messages.in \
     PluginProcessConnection.messages.in \
@@ -71,6 +71,8 @@ MESSAGE_RECEIVERS = \
     PluginProxy.messages.in \
     WebApplicationCacheManager.messages.in \
     WebApplicationCacheManagerProxy.messages.in \
+    WebBatteryManager.messages.in \
+    WebBatteryManagerProxy.messages.in \
     WebContext.messages.in \
     WebCookieManager.messages.in \
     WebCookieManagerProxy.messages.in \
@@ -85,12 +87,14 @@ MESSAGE_RECEIVERS = \
     WebKeyValueStorageManagerProxy.messages.in \
     WebMediaCacheManager.messages.in \
     WebMediaCacheManagerProxy.messages.in \
+    WebNetworkInfoManager.messages.in \
+    WebNetworkInfoManagerProxy.messages.in \
     WebNotificationManagerProxy.messages.in \
     WebNotificationManager.messages.in \
     WebFullScreenManager.messages.in \
     WebFullScreenManagerProxy.messages.in \
     WebPage/DrawingArea.messages.in \
-    WebPage/LayerTreeHost.messages.in \
+    WebPage/LayerTreeCoordinator/LayerTreeCoordinator.messages.in \
     WebPage/WebInspector.messages.in \
     WebPage/WebPage.messages.in \
     WebPageProxy.messages.in \

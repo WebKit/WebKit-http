@@ -126,6 +126,9 @@ public:
     virtual v8::Handle<v8::Value> createFileSystem(WebFileSystem::Type,
                                                    const WebString& name,
                                                    const WebString& path);
+    virtual v8::Handle<v8::Value> createSerializableFileSystem(WebFileSystem::Type,
+                                                               const WebString& name,
+                                                               const WebString& path);
     virtual v8::Handle<v8::Value> createFileEntry(WebFileSystem::Type,
                                                   const WebString& fileSystemName,
                                                   const WebString& fileSystemPath,
@@ -133,6 +136,7 @@ public:
                                                   bool isDirectory);
 #endif
     virtual void reload(bool ignoreCache);
+    virtual void reloadWithOverrideURL(const WebURL& overrideUrl, bool ignoreCache);
     virtual void loadRequest(const WebURLRequest&);
     virtual void loadHistoryItem(const WebHistoryItem&);
     virtual void loadData(

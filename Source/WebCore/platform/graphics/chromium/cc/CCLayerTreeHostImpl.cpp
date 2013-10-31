@@ -26,26 +26,25 @@
 
 #include "cc/CCLayerTreeHostImpl.h"
 
-#include "Extensions3D.h"
 #include "LayerRendererChromium.h"
+#include "TextStream.h"
 #include "TraceEvent.h"
+#include "TrackingTextureAllocator.h"
 #include "cc/CCActiveGestureAnimation.h"
 #include "cc/CCDamageTracker.h"
 #include "cc/CCDebugRectHistory.h"
 #include "cc/CCDelayBasedTimeSource.h"
 #include "cc/CCFontAtlas.h"
 #include "cc/CCFrameRateCounter.h"
-#include "cc/CCGestureCurve.h"
 #include "cc/CCHeadsUpDisplay.h"
 #include "cc/CCLayerIterator.h"
 #include "cc/CCLayerTreeHost.h"
 #include "cc/CCLayerTreeHostCommon.h"
-#include "cc/CCMathUtil.h"
+#include "cc/CCOverdrawMetrics.h"
 #include "cc/CCPageScaleAnimation.h"
 #include "cc/CCRenderPassDrawQuad.h"
 #include "cc/CCSettings.h"
 #include "cc/CCSingleThreadProxy.h"
-#include "cc/CCThreadTask.h"
 #include <wtf/CurrentTime.h>
 
 using WebKit::WebTransformationMatrix;
@@ -115,20 +114,22 @@ PassOwnPtr<CCLayerTreeHostImpl> CCLayerTreeHostImpl::create(const CCLayerTreeSet
 CCLayerTreeHostImpl::CCLayerTreeHostImpl(const CCLayerTreeSettings& settings, CCLayerTreeHostImplClient* client)
     : m_client(client)
     , m_sourceFrameNumber(-1)
-    , m_frameNumber(0)
+    , m_sourceAnimationFrameNumber(0)
     , m_rootScrollLayerImpl(0)
     , m_currentlyScrollingLayerImpl(0)
     , m_scrollingLayerIdFromPreviousTree(-1)
     , m_settings(settings)
     , m_deviceScaleFactor(1)
     , m_visible(true)
-    , m_sourceFrameCanBeDrawn(true)
+    , m_contentsTexturesWerePurgedSinceLastCommit(false)
+    , m_memoryAllocationLimitBytes(TextureManager::highLimitBytes(viewportSize()))
     , m_headsUpDisplay(CCHeadsUpDisplay::create())
     , m_pageScale(1)
     , m_pageScaleDelta(1)
     , m_sentPageScaleDelta(1)
     , m_minPageScale(0)
     , m_maxPageScale(0)
+    , m_backgroundColor(0)
     , m_hasTransparentBackground(false)
     , m_needsAnimateLayers(false)
     , m_pinchGestureActive(false)
@@ -154,25 +155,35 @@ void CCLayerTreeHostImpl::beginCommit()
 
 void CCLayerTreeHostImpl::commitComplete()
 {
+    TRACE_EVENT0("cc", "CCLayerTreeHostImpl::commitComplete");
     // Recompute max scroll position; must be after layer content bounds are
     // updated.
     updateMaxScrollPosition();
+    m_contentsTexturesWerePurgedSinceLastCommit = false;
 }
 
 bool CCLayerTreeHostImpl::canDraw()
 {
-    if (!m_rootLayerImpl)
+    if (!m_rootLayerImpl) {
+        TRACE_EVENT_INSTANT0("cc", "CCLayerTreeHostImpl::canDraw no root layer");
         return false;
-    if (viewportSize().isEmpty())
+    }
+    if (viewportSize().isEmpty()) {
+        TRACE_EVENT_INSTANT0("cc", "CCLayerTreeHostImpl::canDraw empty viewport");
         return false;
-    if (!m_layerRenderer)
+    }
+    if (!m_layerRenderer) {
+        TRACE_EVENT_INSTANT0("cc", "CCLayerTreeHostImpl::canDraw no layerRenderer");
         return false;
-    if (!m_sourceFrameCanBeDrawn)
+    }
+    if (m_contentsTexturesWerePurgedSinceLastCommit) {
+        TRACE_EVENT_INSTANT0("cc", "CCLayerTreeHostImpl::canDraw contents textures purged");
         return false;
+    }
     return true;
 }
 
-CCGraphicsContext* CCLayerTreeHostImpl::context()
+CCGraphicsContext* CCLayerTreeHostImpl::context() const
 {
     return m_context.get();
 }
@@ -257,11 +268,11 @@ void CCLayerTreeHostImpl::calculateRenderSurfaceLayerList(CCLayerList& renderSur
         deviceScaleTransform.scale(m_deviceScaleFactor);
         CCLayerTreeHostCommon::calculateDrawTransforms(m_rootLayerImpl.get(), m_rootLayerImpl.get(), deviceScaleTransform, identityMatrix, renderSurfaceLayerList, m_rootLayerImpl->renderSurface()->layerList(), &m_layerSorter, layerRendererCapabilities().maxTextureSize);
 
-        if (layerRendererCapabilities().usingPartialSwap || settings().showSurfaceDamageRects)
-            trackDamageForAllSurfaces(m_rootLayerImpl.get(), renderSurfaceLayerList);
-        m_rootScissorRect = m_rootLayerImpl->renderSurface()->damageTracker()->currentDamageRect();
+        trackDamageForAllSurfaces(m_rootLayerImpl.get(), renderSurfaceLayerList);
 
-        if (!layerRendererCapabilities().usingPartialSwap)
+        if (layerRendererCapabilities().usingPartialSwap)
+            m_rootScissorRect = m_rootLayerImpl->renderSurface()->damageTracker()->currentDamageRect();
+        else
             m_rootScissorRect = FloatRect(FloatPoint(0, 0), deviceViewportSize());
 
         CCLayerTreeHostCommon::calculateVisibleAndScissorRects(renderSurfaceLayerList, m_rootScissorRect);
@@ -292,6 +303,9 @@ bool CCLayerTreeHostImpl::calculateRenderPasses(FrameData& frame)
     bool recordMetricsForFrame = true; // FIXME: In the future, disable this when about:tracing is off.
     CCOcclusionTrackerImpl occlusionTracker(enclosingIntRect(m_rootScissorRect), recordMetricsForFrame);
     occlusionTracker.setMinimumTrackingSize(CCOcclusionTrackerImpl::preferredMinimumTrackingSize());
+
+    if (settings().showOccludingRects)
+        occlusionTracker.setOccludingScreenSpaceRectsContainer(&frame.occludingScreenSpaceRects);
 
     // Add quads to the Render passes in FrontToBack order to allow for testing occlusion and performing culling during the tree walk.
     typedef CCLayerIterator<CCLayerImpl, Vector<CCLayerImpl*>, CCRenderSurface, CCLayerIteratorActions::FrontToBack> CCLayerIteratorType;
@@ -469,9 +483,21 @@ bool CCLayerTreeHostImpl::prepareToDraw(FrameData& frame)
     return true;
 }
 
-void CCLayerTreeHostImpl::setContentsMemoryAllocationLimitBytes(size_t bytes)
+void CCLayerTreeHostImpl::releaseContentsTextures()
 {
-    m_client->postSetContentsMemoryAllocationLimitBytesToMainThreadOnImplThread(bytes);
+    contentsTextureAllocator()->deleteAllTextures();
+    m_contentsTexturesWerePurgedSinceLastCommit = true;
+    m_client->setNeedsCommitOnImplThread();
+}
+
+void CCLayerTreeHostImpl::setMemoryAllocationLimitBytes(size_t bytes)
+{
+    if (m_memoryAllocationLimitBytes == bytes)
+        return;
+    m_memoryAllocationLimitBytes = bytes;
+
+    ASSERT(bytes);
+    m_client->setNeedsCommitOnImplThread();
 }
 
 void CCLayerTreeHostImpl::drawLayers(const FrameData& frame)
@@ -500,14 +526,14 @@ void CCLayerTreeHostImpl::drawLayers(const FrameData& frame)
     }
 
     if (m_debugRectHistory->enabled(settings()))
-        m_debugRectHistory->saveDebugRectsForCurrentFrame(m_rootLayerImpl.get(), *frame.renderSurfaceLayerList, settings());
+        m_debugRectHistory->saveDebugRectsForCurrentFrame(m_rootLayerImpl.get(), *frame.renderSurfaceLayerList, frame.occludingScreenSpaceRects, settings());
 
     if (m_headsUpDisplay->enabled(settings()))
         m_headsUpDisplay->draw(this);
 
     m_layerRenderer->finishDrawingFrame();
 
-    ++m_frameNumber;
+    ++m_sourceAnimationFrameNumber;
 
     // The next frame should start by assuming nothing has changed, and changes are noted as they occur.
     m_rootLayerImpl->resetAllChangeTrackingForSubtree();
@@ -637,9 +663,9 @@ void CCLayerTreeHostImpl::setVisible(bool visible)
     setBackgroundTickingEnabled(!m_visible && m_needsAnimateLayers);
 }
 
-bool CCLayerTreeHostImpl::initializeLayerRenderer(PassRefPtr<CCGraphicsContext> context, TextureUploaderOption textureUploader)
+bool CCLayerTreeHostImpl::initializeLayerRenderer(PassOwnPtr<CCGraphicsContext> context, TextureUploaderOption textureUploader)
 {
-    GraphicsContext3D* context3d = context->context3D();
+    WebKit::WebGraphicsContext3D* context3d = context->context3D();
     if (!context3d) {
         // FIXME: Implement this path for software compositing.
         return false;
@@ -709,11 +735,11 @@ static void applyPageScaleDeltaToScrollLayers(CCLayerImpl* layerImpl, float page
         applyPageScaleDeltaToScrollLayers(layerImpl->children()[i].get(), pageScaleDelta);
 }
 
-void CCLayerTreeHostImpl::setDeviceScaleFactor(float newDeviceScaleFactor)
+void CCLayerTreeHostImpl::setDeviceScaleFactor(float deviceScaleFactor)
 {
-    if (newDeviceScaleFactor == deviceScaleFactor())
+    if (deviceScaleFactor == m_deviceScaleFactor)
         return;
-    m_deviceScaleFactor = newDeviceScaleFactor;
+    m_deviceScaleFactor = deviceScaleFactor;
 
     m_deviceViewportSize = viewportSize();
     m_deviceViewportSize.scale(m_deviceScaleFactor);

@@ -288,18 +288,19 @@ void ResourceLoader::willStopBufferingData(const char* data, int length)
 
 void ResourceLoader::didFinishLoading(double finishTime)
 {
-    // If load has been cancelled after finishing (which could happen with a 
-    // JavaScript that changes the window location), do nothing.
+    didFinishLoadingOnePart(finishTime);
+
+    // If the load has been cancelled by a delegate in response to didFinishLoad(), do not release
+    // the resources a second time, they have been released by cancel.
     if (m_cancelled)
         return;
-    ASSERT(!m_reachedTerminalState);
-
-    didFinishLoadingOnePart(finishTime);
     releaseResources();
 }
 
 void ResourceLoader::didFinishLoadingOnePart(double finishTime)
 {
+    // If load has been cancelled after finishing (which could happen with a
+    // JavaScript that changes the window location), do nothing.
     if (m_cancelled)
         return;
     ASSERT(!m_reachedTerminalState);
@@ -425,7 +426,7 @@ void ResourceLoader::didReceiveResponse(ResourceHandle*, const ResourceResponse&
 
 void ResourceLoader::didReceiveData(ResourceHandle*, const char* data, int length, int encodedDataLength)
 {
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceData(m_frame.get(), identifier());
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willReceiveResourceData(m_frame.get(), identifier(), encodedDataLength);
     didReceiveData(data, length, encodedDataLength, false);
     InspectorInstrumentation::didReceiveResourceData(cookie);
 }

@@ -34,10 +34,12 @@ from webkitpy.common.system.executive import ScriptError
 
 
 class MockProcess(object):
-    def __init__(self, stdout='MOCK STDOUT\n'):
+    def __init__(self, stdout='MOCK STDOUT\n', stderr=''):
         self.pid = 42
         self.stdout = StringIO.StringIO(stdout)
+        self.stderr = StringIO.StringIO(stderr)
         self.stdin = StringIO.StringIO()
+        self.returncode = 0
 
     def wait(self):
         return
@@ -86,7 +88,10 @@ class MockExecutive(object):
             env_string = ""
             if env:
                 env_string = ", env=%s" % env
-            log("MOCK run_command: %s, cwd=%s%s" % (args, cwd, env_string))
+            input_string = ""
+            if input:
+                input_string = ", input=%s" % input
+            log("MOCK run_command: %s, cwd=%s%s%s" % (args, cwd, env_string, input_string))
         output = "MOCK output of child process"
         if self._should_throw:
             raise ScriptError("MOCK ScriptError", output=output)

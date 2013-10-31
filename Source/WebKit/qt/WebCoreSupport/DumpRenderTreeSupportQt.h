@@ -117,6 +117,7 @@ public:
 
     static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const QString& scheme);
     static void setFrameFlatteningEnabled(QWebPage*, bool);
+    static void setMockScrollbarsEnabled(QWebPage*, bool);
     static void setCaretBrowsingEnabled(QWebPage* page, bool value);
     static void setAuthorAndUserStylesEnabled(QWebPage*, bool);
     static void setMediaType(QWebFrame* qframe, const QString& type);
@@ -195,6 +196,7 @@ public:
     static QString pageSizeAndMarginsInPixels(QWebFrame* frame, int pageIndex, int width, int height, int marginTop, int marginRight, int marginBottom, int marginLeft);
     static QString pageProperty(QWebFrame* frame, const QString& propertyName, int pageNumber);
     static void addUserStyleSheet(QWebPage* page, const QString& sourceCode);
+    static void removeUserStyleSheets(QWebPage*);
     static void simulateDesktopNotificationClick(const QString& title);
     static QString viewportAsText(QWebPage*, int deviceDPI, const QSize& deviceSize, const QSize& availableSize);
 

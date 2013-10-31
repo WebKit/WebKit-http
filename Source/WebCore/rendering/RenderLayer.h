@@ -115,6 +115,7 @@ public:
 
     bool isEmpty() const { return m_rect.isEmpty(); }
     bool intersects(const LayoutRect& rect) { return m_rect.intersects(rect); }
+    bool intersects(const HitTestPoint&);
 
 private:
     LayoutRect m_rect;
@@ -308,7 +309,7 @@ public:
     int scrollWidth() const;
     int scrollHeight() const;
 
-    void panScrollFromPoint(const LayoutPoint&);
+    void panScrollFromPoint(const IntPoint&);
 
     enum ScrollOffsetClamping {
         ScrollOffsetUnclamped,
@@ -316,15 +317,14 @@ public:
     };
 
     // Scrolling methods for layers that can scroll their overflow.
-    void scrollByRecursively(int xDelta, int yDelta, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollByRecursively(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollToOffset(const IntSize&, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(x, scrollYOffset()), clamp); }
+    void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(IntSize(scrollXOffset(), y), clamp); }
 
     int scrollXOffset() const { return m_scrollOffset.width() + scrollOrigin().x(); }
     int scrollYOffset() const { return m_scrollOffset.height() + scrollOrigin().y(); }
     IntSize scrollOffset() const { return IntSize(scrollXOffset(), scrollYOffset()); }
-
-    void scrollToOffset(int, int, ScrollOffsetClamping = ScrollOffsetUnclamped);
-    void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(x, scrollYOffset(), clamp); }
-    void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(scrollXOffset(), y, clamp); }
 
     void scrollRectToVisible(const LayoutRect&, const ScrollAlignment& alignX, const ScrollAlignment& alignY);
 
@@ -471,7 +471,18 @@ public:
     RenderLayer* enclosingFilterLayer(bool includeSelf = true) const;
     RenderLayer* enclosingFilterRepaintLayer() const;
     void setFilterBackendNeedsRepaintingInRect(const LayoutRect&, bool immediate);
+    bool hasAncestorWithFilterOutsets() const;
 #endif
+
+    bool canUseConvertToLayerCoords() const
+    {
+        // These RenderObject have an impact on their layers' without them knowing about it.
+        return !renderer()->hasColumns() && !renderer()->hasTransform() && !isComposited()
+#if ENABLE(SVG)
+            && !renderer()->isSVGRoot()
+#endif
+            ;
+    }
 
     void convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntPoint& location) const;
     void convertToPixelSnappedLayerCoords(const RenderLayer* ancestorLayer, IntRect&) const;
@@ -677,6 +688,8 @@ private:
     friend IntSize RenderBox::scrolledContentOffset() const;
     IntSize scrolledContentOffset() const { return m_scrollOffset; }
 
+    IntSize clampScrollOffset(const IntSize&) const;
+
     // The normal operator new is disallowed on all render objects.
     void* operator new(size_t) throw();
 
@@ -717,26 +730,26 @@ private:
                                     PaintLayerFlags, const Vector<RenderLayer*>& columnLayers, size_t columnIndex);
 
     RenderLayer* hitTestLayer(RenderLayer* rootLayer, RenderLayer* containerLayer, const HitTestRequest& request, HitTestResult& result,
-                              const LayoutRect& hitTestRect, const LayoutPoint& hitTestPoint, bool appliedTransform,
+                              const LayoutRect& hitTestRect, const HitTestPoint&, bool appliedTransform,
                               const HitTestingTransformState* transformState = 0, double* zOffset = 0);
     RenderLayer* hitTestList(Vector<RenderLayer*>*, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result,
-                             const LayoutRect& hitTestRect, const LayoutPoint& hitTestPoint,
+                             const LayoutRect& hitTestRect, const HitTestPoint&,
                              const HitTestingTransformState* transformState, double* zOffsetForDescendants, double* zOffset,
                              const HitTestingTransformState* unflattenedTransformState, bool depthSortDescendants);
     RenderLayer* hitTestPaginatedChildLayer(RenderLayer* childLayer, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result,
-                                            const LayoutRect& hitTestRect, const LayoutPoint& hitTestPoint,
+                                            const LayoutRect& hitTestRect, const HitTestPoint&,
                                             const HitTestingTransformState* transformState, double* zOffset);
     RenderLayer* hitTestChildLayerColumns(RenderLayer* childLayer, RenderLayer* rootLayer, const HitTestRequest& request, HitTestResult& result,
-                                          const LayoutRect& hitTestRect, const LayoutPoint& hitTestPoint,
+                                          const LayoutRect& hitTestRect, const HitTestPoint&,
                                           const HitTestingTransformState* transformState, double* zOffset,
                                           const Vector<RenderLayer*>& columnLayers, size_t columnIndex);
-                                    
+
     PassRefPtr<HitTestingTransformState> createLocalTransformState(RenderLayer* rootLayer, RenderLayer* containerLayer,
-                            const LayoutRect& hitTestRect, const LayoutPoint& hitTestPoint,
+                            const LayoutRect& hitTestRect, const HitTestPoint&,
                             const HitTestingTransformState* containerTransformState) const;
     
-    bool hitTestContents(const HitTestRequest&, HitTestResult&, const LayoutRect& layerBounds, const LayoutPoint& hitTestPoint, HitTestFilter) const;
-    
+    bool hitTestContents(const HitTestRequest&, HitTestResult&, const LayoutRect& layerBounds, const HitTestPoint&, HitTestFilter) const;
+
     void computeScrollDimensions();
     bool hasHorizontalOverflow() const;
     bool hasVerticalOverflow() const;
@@ -855,16 +868,6 @@ private:
     LayoutUnit overflowBottom() const;
     LayoutUnit overflowLeft() const;
     LayoutUnit overflowRight() const;
-
-    bool canUseConvertToLayerCoords() const
-    {
-        // These RenderObject have an impact on their layers' without them knowing about it.
-        return !renderer()->hasColumns() && !renderer()->hasTransform() && !isComposited()
-#if ENABLE(SVG)
-            && !renderer()->isSVGRoot()
-#endif
-            ;
-    }
 
     LayoutUnit verticalScrollbarStart(int minX, int maxX) const;
     LayoutUnit horizontalScrollbarStart(int minX) const;

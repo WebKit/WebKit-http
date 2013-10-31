@@ -38,32 +38,37 @@ from webkitpy.common.memoized import memoized
 _exact_matches = {
     # These builders are on build.chromium.org.
     "Webkit Win": {"port_name": "chromium-win-xp", "specifiers": set(["xp", "release"])},
-    "Webkit Vista": {"port_name": "chromium-win-vista", "specifiers": set(["vista"])},
     "Webkit Win7": {"port_name": "chromium-win-win7", "specifiers": set(["win7"])},
     "Webkit Win (dbg)(1)": {"port_name": "chromium-win-xp", "specifiers": set(["win", "debug"])},
     "Webkit Win (dbg)(2)": {"port_name": "chromium-win-xp", "specifiers": set(["win", "debug"])},
     "Webkit Linux": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "x86_64", "release"])},
     "Webkit Linux 32": {"port_name": "chromium-linux-x86", "specifiers": set(["linux", "x86"])},
     "Webkit Linux (dbg)": {"port_name": "chromium-linux-x86_64", "specifiers": set(["linux", "debug"])},
-    "Webkit Mac10.5": {"port_name": "chromium-mac-leopard", "specifiers": set(["leopard"])},
-    "Webkit Mac10.5 (dbg)(1)": {"port_name": "chromium-mac-leopard", "specifiers": set(["leopard", "debug"])},
-    "Webkit Mac10.5 (dbg)(2)": {"port_name": "chromium-mac-leopard", "specifiers": set(["leopard", "debug"])},
     "Webkit Mac10.6": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard"])},
     "Webkit Mac10.6 (dbg)": {"port_name": "chromium-mac-snowleopard", "specifiers": set(["snowleopard", "debug"])},
     "Webkit Mac10.7": {"port_name": "chromium-mac-lion", "specifiers": set(["lion"])},
 
     # These builders are on build.webkit.org.
-    "Apple Lion Release WK1 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion"])},
-    "Apple Lion Debug WK1 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion", "debug"])},
+    # FIXME: Remove rebaseline_override_dir once there is an Apple buildbot that corresponds to platform/mac (i.e. a Mountain Lion bot).
+    "Apple Lion Release WK1 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion"]), "rebaseline_override_dir": "mac"},
+    "Apple Lion Debug WK1 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion", "debug"]), "rebaseline_override_dir": "mac"},
     "Apple Lion Release WK2 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion", "wk2"])},
     "Apple Lion Debug WK2 (Tests)": {"port_name": "mac-lion", "specifiers": set(["lion", "wk2", "debug"])},
 
     "Apple Win XP Debug (Tests)": {"port_name": "win-xp", "specifiers": set(["win", "debug"])},
-    "Apple Win 7 Release (Tests)": {"port_name": "win-xp", "specifiers": set(["win"])},
+    # FIXME: Remove rebaseline_override_dir once there is an Apple buildbot that corresponds to platform/win.
+    "Apple Win 7 Release (Tests)": {"port_name": "win-7sp0", "specifiers": set(["win"]), "rebaseline_override_dir": "win"},
 
-    "GTK Linux 32-bit Debug": {"port_name": "gtk", "specifiers": set(["gtk"])},
-    "Qt Linux Release": {"port_name": "qt-linux", "specifiers": set(["win", "linux", "mac"])},
-    "EFL Linux Release": {"port_name": "efl", "specifiers": set(["efl"])},
+    "GTK Linux 32-bit Release": {"port_name": "gtk", "specifiers": set(["gtk", "x86", "release"])},
+    "GTK Linux 64-bit Debug": {"port_name": "gtk", "specifiers": set(["gtk", "x86_64", "debug"])},
+    "GTK Linux 64-bit Release": {"port_name": "gtk", "specifiers": set(["gtk", "x86_64", "release"])},
+    "GTK Linux 64-bit Release WK2 (Tests)": {"port_name": "gtk", "specifiers": set(["gtk", "x86_64", "wk2", "release"])},
+
+    # FIXME: Remove rebaseline_override_dir once there are Qt bots for all the platform/qt-* directories.
+    "Qt Linux Release": {"port_name": "qt-linux", "specifiers": set(["win", "linux", "mac"]), "rebaseline_override_dir": "qt"},
+
+    "EFL Linux 64-bit Debug": {"port_name": "efl", "specifiers": set(["efl", "debug"])},
+    "EFL Linux 64-bit Release": {"port_name": "efl", "specifiers": set(["efl", "release"])},
 }
 
 
@@ -71,7 +76,6 @@ _fuzzy_matches = {
     # These builders are on build.webkit.org.
     r"SnowLeopard": "mac-snowleopard",
     r"Apple Lion": "mac-lion",
-    r"Leopard": "mac-leopard",
     r"Windows": "win",
     r"GTK": "gtk",
     r"Qt": "qt",
@@ -82,8 +86,6 @@ _fuzzy_matches = {
 
 
 _ports_without_builders = [
-    "google-chrome-linux32",
-    "google-chrome-linux64",
     "qt-mac",
     "qt-win",
     "qt-wk2",
@@ -106,6 +108,10 @@ def all_port_names():
 
 def coverage_specifiers_for_builder_name(builder_name):
     return _exact_matches[builder_name].get("specifiers", set())
+
+
+def rebaseline_override_dir(builder_name):
+    return _exact_matches[builder_name].get("rebaseline_override_dir", None)
 
 
 def port_name_for_builder_name(builder_name):

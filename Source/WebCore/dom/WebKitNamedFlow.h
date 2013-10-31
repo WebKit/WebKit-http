@@ -51,8 +51,9 @@ public:
 
     String name() const;
     bool overset() const;
-    PassRefPtr<NodeList> getRegionsByContentNode(Node*);
-    PassRefPtr<NodeList> contentNodes() const;
+    int firstEmptyRegionIndex() const;
+    PassRefPtr<NodeList> getRegionsByContent(Node*);
+    PassRefPtr<NodeList> getContent();
 
 private:
     WebKitNamedFlow(RenderNamedFlowThread*);

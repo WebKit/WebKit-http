@@ -37,9 +37,7 @@ namespace JSC {
     class SpecializedThunkJIT : public JSInterfaceJIT {
     public:
         static const int ThisArgument = -1;
-        SpecializedThunkJIT(int expectedArgCount, JSGlobalData* globalData)
-            : m_expectedArgCount(expectedArgCount)
-            , m_globalData(globalData)
+        SpecializedThunkJIT(int expectedArgCount)
         {
             // Check that we have the expected number of arguments
             m_failures.append(branch32(NotEqual, payloadFor(RegisterFile::ArgumentCount), TrustedImm32(expectedArgCount + 1)));
@@ -132,13 +130,13 @@ namespace JSC {
             ret();
         }
         
-        MacroAssemblerCodeRef finalize(JSGlobalData& globalData, MacroAssemblerCodePtr fallback)
+        MacroAssemblerCodeRef finalize(JSGlobalData& globalData, MacroAssemblerCodePtr fallback, const char* thunkKind)
         {
             LinkBuffer patchBuffer(globalData, this, GLOBAL_THUNK_ID);
             patchBuffer.link(m_failures, CodeLocationLabel(fallback));
             for (unsigned i = 0; i < m_calls.size(); i++)
                 patchBuffer.link(m_calls[i].first, m_calls[i].second);
-            return patchBuffer.finalizeCode();
+            return FINALIZE_CODE(patchBuffer, ("Specialized thunk for %s", thunkKind));
         }
 
         // Assumes that the target function uses fpRegister0 as the first argument
@@ -166,8 +164,6 @@ namespace JSC {
 #endif
         }
         
-        int m_expectedArgCount;
-        JSGlobalData* m_globalData;
         MacroAssembler::JumpList m_failures;
         Vector<std::pair<Call, FunctionPtr> > m_calls;
     };

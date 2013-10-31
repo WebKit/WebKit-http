@@ -46,6 +46,7 @@ namespace WebCore {
 class AffineTransform;
 class AnimationController;
 class Cursor;
+class HitTestPoint;
 class HitTestResult;
 class InlineBox;
 class InlineFlowBox;
@@ -499,7 +500,8 @@ public:
     virtual RenderBoxModelObject* virtualContinuation() const { return 0; }
 
     bool isFloating() const { return m_bitfields.floating(); }
-    bool isPositioned() const { return m_bitfields.positioned(); } // absolute or fixed positioning
+    bool isOutOfFlowPositioned() const { return m_bitfields.positioned(); } // absolute or fixed positioning
+    bool isInFlowPositioned() const { return m_bitfields.relPositioned(); } // relative positioning
     bool isRelPositioned() const { return m_bitfields.relPositioned(); } // relative positioning
     bool isText() const  { return m_bitfields.isText(); }
     bool isBox() const { return m_bitfields.isBox(); }
@@ -537,8 +539,9 @@ public:
 
     bool isSelectionBorder() const;
 
-    bool hasClip() const { return isPositioned() && style()->hasClip(); }
+    bool hasClip() const { return isOutOfFlowPositioned() && style()->hasClip(); }
     bool hasOverflowClip() const { return m_bitfields.hasOverflowClip(); }
+    bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
 
     bool hasTransform() const { return m_bitfields.hasTransform(); }
     bool hasMask() const { return style() && style()->hasMask(); }
@@ -641,9 +644,9 @@ public:
 
     bool isComposited() const;
 
-    bool hitTest(const HitTestRequest&, HitTestResult&, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter = HitTestAll);
-    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
+    bool hitTest(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestFilter = HitTestAll);
     virtual void updateHitTestResult(HitTestResult&, const LayoutPoint&);
+    virtual bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction);
 
     virtual VisiblePosition positionForPoint(const LayoutPoint&);
     VisiblePosition createVisiblePosition(int offset, EAffinity);
@@ -779,7 +782,7 @@ public:
 
     virtual unsigned int length() const { return 1; }
 
-    bool isFloatingOrPositioned() const { return (isFloating() || isPositioned()); }
+    bool isFloatingOrOutOfFlowPositioned() const { return (isFloating() || isOutOfFlowPositioned()); }
 
     bool isTransparent() const { return style()->opacity() < 1.0f; }
     float opacity() const { return style()->opacity(); }
@@ -930,7 +933,11 @@ private:
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
 
     Color selectionColor(int colorProperty) const;
-    
+
+#ifndef NDEBUG
+    void checkBlockPositionedObjectsNeedLayout();
+#endif
+
     RefPtr<RenderStyle> m_style;
 
     Node* m_node;
@@ -1102,6 +1109,9 @@ inline void RenderObject::setNeedsLayout(bool needsLayout, MarkingBehavior markP
         setNormalChildNeedsLayout(false);
         setNeedsPositionedMovementLayout(false);
         setAncestorLineBoxDirty(false);
+#ifndef NDEBUG
+        checkBlockPositionedObjectsNeedLayout();
+#endif
     }
 }
 

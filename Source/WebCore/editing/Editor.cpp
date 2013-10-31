@@ -2119,8 +2119,13 @@ void Editor::markAndReplaceFor(PassRefPtr<SpellCheckRequest> request, const Vect
                 if (canEditRichly())
                     applyCommand(CreateLinkCommand::create(m_frame->document(), result->replacement));
             } else if (canEdit() && shouldInsertText(result->replacement, rangeToReplace.get(), EditorInsertActionTyped)) {
+                int paragraphStartIndex = TextIterator::rangeLength(Range::create(m_frame->document(), m_frame->document(), 0, paragraph.paragraphRange()->startContainer(), paragraph.paragraphRange()->startOffset()).get());
+                int paragraphLength = TextIterator::rangeLength(paragraph.paragraphRange().get());
                 applyCommand(SpellingCorrectionCommand::create(rangeToReplace, result->replacement));
-
+                // Recalculate newParagraphRange, since SpellingCorrectionCommand modifies the DOM, such that the original paragraph range is no longer valid. Radar: 10305315 Bugzilla: 89526
+                RefPtr<Range> newParagraphRange = TextIterator::rangeFromLocationAndLength(m_frame->document(), paragraphStartIndex, paragraphLength+replacementLength-resultLength);
+                paragraph = TextCheckingParagraph(TextIterator::subrange(newParagraphRange.get(), resultLocation, replacementLength), newParagraphRange);
+                
                 if (AXObjectCache::accessibilityEnabled()) {
                     if (Element* root = m_frame->selection()->selection().rootEditableElement())
                         m_frame->document()->axObjectCache()->postNotification(root->renderer(), AXObjectCache::AXAutocorrectionOccured, true);
@@ -2296,12 +2301,12 @@ PassRefPtr<Range> Editor::rangeForPoint(const IntPoint& windowPoint)
     return avoidIntersectionWithNode(selection.toNormalizedRange().get(), m_deleteButtonController->containerElement());
 }
 
-void Editor::revealSelectionAfterEditingOperation(const ScrollAlignment& alignment)
+void Editor::revealSelectionAfterEditingOperation(const ScrollAlignment& alignment, RevealExtentOption revealExtentOption)
 {
     if (m_ignoreCompositionSelectionChange)
         return;
 
-    m_frame->selection()->revealSelection(alignment);
+    m_frame->selection()->revealSelection(alignment, revealExtentOption);
 }
 
 void Editor::setIgnoreCompositionSelectionChange(bool ignore)
@@ -2311,7 +2316,7 @@ void Editor::setIgnoreCompositionSelectionChange(bool ignore)
 
     m_ignoreCompositionSelectionChange = ignore;
     if (!ignore)
-        revealSelectionAfterEditingOperation();
+        revealSelectionAfterEditingOperation(ScrollAlignment::alignToEdgeIfNeeded, RevealExtent);
 }
 
 PassRefPtr<Range> Editor::compositionRange() const
@@ -2345,6 +2350,19 @@ bool Editor::getCompositionSelection(unsigned& selectionStart, unsigned& selecti
     selectionStart = start.deprecatedEditingOffset() - m_compositionStart;
     selectionEnd = start.deprecatedEditingOffset() - m_compositionEnd;
     return true;
+}
+
+bool Editor::setSelectionOffsets(int selectionStart, int selectionEnd)
+{
+    Element* rootEditableElement = m_frame->selection()->rootEditableElement();
+    if (!rootEditableElement)
+        return false;
+
+    RefPtr<Range> range = TextIterator::rangeFromLocationAndLength(rootEditableElement, selectionStart, selectionEnd - selectionStart);
+    if (!range)
+        return false;
+
+    return m_frame->selection()->setSelectedRange(range.get(), VP_DEFAULT_AFFINITY, false);
 }
 
 void Editor::transpose()

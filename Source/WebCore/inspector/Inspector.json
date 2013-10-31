@@ -92,7 +92,7 @@
                 "id": "MemoryBlock",
                 "type": "object",
                 "properties": [
-                    { "name": "size", "type": "integer", "optional": true, "description": "Size of the block in bytes if available" },
+                    { "name": "size", "type": "number", "optional": true, "description": "Size of the block in bytes if available" },
                     { "name": "name", "type": "string", "description": "Unique name used to identify the component that allocated this block" },
                     { "name": "children", "type": "array", "optional": true, "items": { "$ref": "MemoryBlock" }}
                 ]
@@ -471,7 +471,7 @@
                     { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." },
                     { "name": "includeCommandLineAPI", "type": "boolean", "optional": true, "description": "Determines whether Command Line API should be available during the evaluation.", "hidden": true },
                     { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether evaluation should stop on exceptions and mute console. Overrides setPauseOnException state.", "hidden": true },
-                    { "name": "contextId", "type": "integer", "optional": true, "description": "Specifies in which isolated context to perform evaluation. Each content script lives in an isolated context and this parameter may be used to specify on of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page.", "hidden": true },
+                    { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform evaluation. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page.", "hidden": true },
                     { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." }
                 ],
                 "returns": [
@@ -617,7 +617,7 @@
                 "name": "addInspectedHeapObject",
                 "parameters": [
                     { "name": "heapObjectId", "type": "integer" }
-		]
+                ]
             }
         ],
         "events": [
@@ -1097,6 +1097,7 @@
                 "properties": [
                     { "name": "name", "type": "string", "description": "Object store name." },
                     { "name": "keyPath", "$ref": "KeyPath", "description": "Object store key path." },
+                    { "name": "autoIncrement", "type": "boolean", "description": "If true, object store has auto increment flag set." },
                     { "name": "indexes", "type": "array", "items": { "$ref": "ObjectStoreIndex" }, "description": "Indexes in this object store." }
                 ]
             },
@@ -1405,6 +1406,11 @@
         "hidden": true,
         "types": [
             {
+                "id": "RequestId",
+                "type": "integer",
+                "description": "Request Identifier to glue a request and its completion event."
+            },
+            {
                 "id": "Entry",
                 "type": "object",
                 "properties": [
@@ -1412,9 +1418,19 @@
                     { "name": "name", "type": "string", "description": "The name of the file or directory." },
                     { "name": "isDirectory", "type": "boolean", "description": "True if the entry is a directory." },
                     { "name": "mimeType", "type": "string", "optional": true, "description": "MIME type of the entry, available for a file only." },
-                    { "name": "resourceType", "$ref": "Page.ResourceType", "optional": true, "description": "ResourceType of the entry, available for a file only." }
+                    { "name": "resourceType", "$ref": "Page.ResourceType", "optional": true, "description": "ResourceType of the entry, available for a file only." },
+                    { "name": "isTextFile", "type": "boolean", "optional": true, "description": "True if the entry is a text file." }
                 ],
                 "description": "Represents a browser side file or directory."
+            },
+            {
+                "id": "Metadata",
+                "type": "object",
+                "properties": [
+                    { "name": "modificationTime", "type": "number", "description": "Modification time." },
+                    { "name": "size", "type": "number", "description": "File size. This field is always zero for directories." }
+                ],
+                "description": "Represents metadata of a file or entry."
             }
         ],
         "commands": [
@@ -1427,41 +1443,88 @@
                 "description": "Disables events from backend."
             },
             {
-                "name": "getFileSystemRoot",
+                "name": "requestFileSystemRoot",
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier of the command. The backend should pass back this value on corresponding gotFileSystemRoot event." },
                     { "name": "origin", "type": "string", "description": "Security origin of requesting FileSystem. One of frames in current page needs to have this security origin." },
                     { "name": "type", "type": "string", "enum": ["temporary", "persistent"], "description": "FileSystem type of requesting FileSystem." }
                 ],
-                "description": "Returns root directory of the FileSystem if exists."
+                "returns": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding fileSystemRootReceived event should have same requestId with this." }
+                ],
+                "description": "Returns root directory of the FileSystem as fileSystemRootReceived event, if exists."
             },
             {
-                "name": "readDirectory",
+                "name": "requestDirectoryContent",
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier of the command. The backend should pass back this value on corresponding didReadDirectory event." },
                     { "name": "url", "type": "string", "description": "URL of the directory that the frontend is requesting to read from." }
                 ],
-                "description": "Requests to read the directory content. Result should return on didReadDirectory event with request id."
+                "returns": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding directoryContentReceived event should have same requestId with this." }
+                ],
+                "description": "Returns content of the directory as directoryContentReceived event."
+            },
+            {
+                "name": "requestMetadata",
+                "parameters": [
+                    { "name": "url", "type": "string", "description": "URL of the entry that the frontend is requesting to get metadata from." }
+                ],
+                "returns": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding metadataReceived event should have same requestId with this." }
+                ],
+                "description": "Returns metadata of the entry as metadataReceived event."
+            },
+            {
+                "name": "requestFileContent",
+                "parameters": [
+                    { "name": "url", "type": "string", "description": "URL of the file that the frontend is requesting to read from." },
+                    { "name": "readAsText", "type": "boolean", "description": "True if the content should be read as text, otherwise the result will be returned as base64 encoded text." },
+                    { "name": "start", "type": "integer", "optional": true, "description": "Specifies the start of range to read." },
+                    { "name": "end", "type": "integer", "optional": true, "description": "Specifies the end of range to read exclusively." },
+                    { "name": "charset", "type": "string", "optional": true, "description": "Overrides charset of the content when content is served as text." }
+                ],
+                "returns": [
+                    { "name": "requestId", "$ref": "RequestId", "description": "Request identifier. Corresponding fileContentReceived event should have same requestId with this." }
+                ],
+                "description": "Returns content of the file as fileContentReceived event. Result should be sliced into [start, end)."
             }
         ],
         "events": [
             {
-                "name": "gotFileSystemRoot",
+                "name": "fileSystemRootReceived",
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was passed to corresponding getFileSystemRoot command." },
+                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestFileSystemRoot command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
                     { "name": "root", "$ref": "FileSystem.Entry", "optional": true, "description": "Contains root of the requested FileSystem if the command completed successfully." }
                 ],
-                "description": "Completion event of getFileSystemRoot command."
+                "description": "Completion event of requestFileSystemRoot command."
             },
             {
-                "name": "didReadDirectory",
+                "name": "directoryContentReceived",
                 "parameters": [
-                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was passed to corresponding readDirectory request." },
+                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned by corresponding requestDirectoryContent command." },
                     { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
                     { "name": "entries", "type": "array", "items": { "$ref": "FileSystem.Entry" }, "optional": true, "description": "Contains all entries on directory if the command completed successfully." }
                 ],
-                "description": "Completion event of readDirectory command."
+                "description": "Completion event of requestDirectoryContent command."
+            },
+            {
+                "name": "metadataReceived",
+                "parameters": [
+                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding requestMetadata command." },
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
+                    { "name": "metadata", "$ref": "FileSystem.Metadata", "optional": true, "description": "Contains metadata of the entry if the command completed successfully." }
+                ],
+                "description": "Completion event of requestMetadata command."
+            },
+            {
+                "name": "fileContentReceived",
+                "parameters": [
+                    { "name": "requestId", "type": "integer", "description": "Request Identifier that was returned in response to the corresponding requestFileContent command." },
+                    { "name": "errorCode", "type": "integer", "description": "0, if no error. Otherwise, errorCode is set to FileError::ErrorCode value." },
+                    { "name": "content", "type": "string", "optional": true, "description": "Content of the file." },
+                    { "name": "charset", "type": "string", "optional": true, "description": "Charset of the content if it is served as text." }
+                ],
+                "description": "Completion event of requestFileContent command."
             }
         ]
     },
@@ -2368,6 +2431,14 @@
                 "description": "Tells whether enabling debugger causes scripts recompilation."
             },
             {
+                "name": "supportsSeparateScriptCompilationAndExecution",
+                "returns": [
+                    { "name": "result", "type": "boolean", "description": "True if debugger supports separate script compilation and execution." }
+                ],
+                "hidden": true,
+                "description": "Tells whether debugger supports separate script compilation and execution."
+            },
+            {
                 "name": "enable",
                 "description": "Enables debugger for the given page. Clients should not assume that the debugging has been enabled until the result for this command is received."
             },
@@ -2531,6 +2602,34 @@
                     { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." }
                 ],
                 "description": "Evaluates expression on a given call frame."
+            },
+            {
+                "name": "compileScript",
+                "hidden": true,
+                "parameters": [
+                    { "name": "expression", "type": "string", "description": "Expression to compile." },
+                    { "name": "sourceURL", "type": "string", "description": "Source url to be set for the script." }
+                ],
+                "returns": [
+                    { "name": "scriptId", "$ref": "ScriptId", "optional": true, "description": "Id of the script." },
+                    { "name": "syntaxErrorMessage", "type": "string", "optional": true, "description": "Syntax error message if compilation failed." }
+                ],
+                "description": "Compiles expression."
+            },
+            {
+                "name": "runScript",
+                "hidden": true,
+                "parameters": [
+                    { "name": "scriptId", "$ref": "ScriptId", "description": "Id of the script to run." },
+                    { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform script run. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page." },
+                    { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name that can be used to release multiple objects." },
+                    { "name": "doNotPauseOnExceptionsAndMuteConsole", "type": "boolean", "optional": true, "description": "Specifies whether script run should stop on exceptions and mute console. Overrides setPauseOnException state." }
+                ],
+                "returns": [
+                    { "name": "result", "$ref": "Runtime.RemoteObject", "description": "Run result." },
+                    { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the script run." }
+                ],
+                "description": "Runs script with given id in a given context."
             }
         ],
         "events": [

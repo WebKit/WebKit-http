@@ -375,6 +375,7 @@ public:
 #if ENABLE(SCRIPTED_SPEECH)
     void addMockSpeechRecognitionResult(const CppArgumentList&, CppVariant*);
     void setMockSpeechRecognitionError(const CppArgumentList&, CppVariant*);
+    void wasMockSpeechRecognitionAborted(const CppArgumentList&, CppVariant*);
 #endif
     void startSpeechInput(const CppArgumentList&, CppVariant*);
 
@@ -451,6 +452,14 @@ public:
     // all text that they render. If not, an already-cached style will be used,
     // resulting in the changed setting being ignored.
     void setTextSubpixelPositioning(const CppArgumentList&, CppVariant*);
+
+    // Used to set the device scale factor.
+    void setBackingScaleFactor(const CppArgumentList&, CppVariant*);
+
+    // Retrieves the text surrounding a position in a text node.
+    // Expects the first argument to be a text node, the second to be an offset
+    // in the node contents and the third the maximum text length to retrieve.
+    void textSurroundingNode(const CppArgumentList&, CppVariant*);
 
 public:
     // The following methods are not exposed to JavaScript.

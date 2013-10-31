@@ -33,9 +33,9 @@
 #include "ContextMenu.h"
 #include "ContextMenuClientQt.h"
 #include "ContextMenuController.h"
-#include "DeviceOrientation.h"
 #include "DeviceOrientationClientMock.h"
 #include "DeviceOrientationController.h"
+#include "DeviceOrientationData.h"
 #include "DocumentLoader.h"
 #include "Editor.h"
 #include "EditorClientQt.h"
@@ -246,6 +246,11 @@ void DumpRenderTreeSupportQt::setDumpRenderTreeModeEnabled(bool b)
 void DumpRenderTreeSupportQt::setFrameFlatteningEnabled(QWebPage* page, bool enabled)
 {
     QWebPagePrivate::core(page)->settings()->setFrameFlatteningEnabled(enabled);
+}
+
+void DumpRenderTreeSupportQt::setMockScrollbarsEnabled(QWebPage* page, bool enabled)
+{
+    QWebPagePrivate::core(page)->settings()->setMockScrollbarsEnabled(enabled);
 }
 
 void DumpRenderTreeSupportQt::webPageSetGroupName(QWebPage* page, const QString& groupName)
@@ -737,10 +742,10 @@ QString DumpRenderTreeSupportQt::viewportAsText(QWebPage* page, int deviceDPI, c
     WebCore::ViewportArguments args = page->d->viewportArguments();
 
     WebCore::ViewportAttributes conf = WebCore::computeViewportAttributes(args,
-        /* desktop-width */ 980,
-        /* device-width  */ deviceSize.width(),
-        /* device-height */ deviceSize.height(),
-        /* device-dpi    */ deviceDPI,
+        /* desktop-width    */ 980,
+        /* device-width     */ deviceSize.width(),
+        /* device-height    */ deviceSize.height(),
+        /* devicePixelRatio */ deviceDPI / WebCore::ViewportArguments::deprecatedTargetDPI,
         availableSize);
     WebCore::restrictMinimumScaleFactorToViewportSize(conf, availableSize);
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(conf);
@@ -769,7 +774,7 @@ void DumpRenderTreeSupportQt::setMockDeviceOrientation(QWebPage* page, bool canP
 #if ENABLE(DEVICE_ORIENTATION)
     Page* corePage = QWebPagePrivate::core(page);
     DeviceOrientationClientMock* mockClient = toDeviceOrientationClientMock(DeviceOrientationController::from(corePage)->client());
-    mockClient->setOrientation(DeviceOrientation::create(canProvideAlpha, alpha, canProvideBeta, beta, canProvideGamma, gamma));
+    mockClient->setOrientation(DeviceOrientationData::create(canProvideAlpha, alpha, canProvideBeta, beta, canProvideGamma, gamma));
 #endif
 }
 
@@ -915,6 +920,11 @@ QString DumpRenderTreeSupportQt::pageProperty(QWebFrame* frame, const QString& p
 void DumpRenderTreeSupportQt::addUserStyleSheet(QWebPage* page, const QString& sourceCode)
 {
     page->handle()->page->group().addUserStyleSheetToWorld(mainThreadNormalWorld(), sourceCode, QUrl(), nullptr, nullptr, WebCore::InjectInAllFrames);
+}
+
+void DumpRenderTreeSupportQt::removeUserStyleSheets(QWebPage* page)
+{
+    page->handle()->page->group().removeUserStyleSheetsFromWorld(mainThreadNormalWorld());
 }
 
 void DumpRenderTreeSupportQt::simulateDesktopNotificationClick(const QString& title)
@@ -1086,13 +1096,12 @@ void DumpRenderTreeSupportQt::injectInternalsObject(QWebFrame* frame)
 {
     WebCore::Frame* coreFrame = QWebFramePrivate::core(frame);
 #if USE(JSC)
-    JSC::JSLock lock(JSC::SilenceAssertionsOnly);
-
     JSDOMWindow* window = toJSDOMWindow(coreFrame, mainThreadNormalWorld());
     Q_ASSERT(window);
 
     JSC::ExecState* exec = window->globalExec();
     Q_ASSERT(exec);
+    JSC::JSLockHolder lock(exec);
 
     JSContextRef context = toRef(exec);
     WebCoreTestSupport::injectInternalsObject(context);
@@ -1113,13 +1122,12 @@ void DumpRenderTreeSupportQt::resetInternalsObject(QWebFrame* frame)
 {
     WebCore::Frame* coreFrame = QWebFramePrivate::core(frame);
 #if USE(JSC)
-    JSC::JSLock lock(JSC::SilenceAssertionsOnly);
-
     JSDOMWindow* window = toJSDOMWindow(coreFrame, mainThreadNormalWorld());
     Q_ASSERT(window);
 
     JSC::ExecState* exec = window->globalExec();
     Q_ASSERT(exec);
+    JSC::JSLockHolder lock(exec);
 
     JSContextRef context = toRef(exec);
     WebCoreTestSupport::resetInternalsObject(context);

@@ -87,6 +87,7 @@ libwebkitgtk_@WEBKITGTK_API_MAJOR_VERSION@_@WEBKITGTK_API_MINOR_VERSION@_la_LIBA
 	$(ENCHANT_LIBS) \
 	$(FREETYPE_LIBS) \
 	$(GAIL_LIBS) \
+	$(GAMEPAD_LIBS) \
 	$(GEOCLUE_LIBS) \
 	$(GLIB_LIBS) \
 	$(GSTREAMER_LIBS) \
@@ -114,6 +115,7 @@ webkitgtk_static_h_api += \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkitdownload.h \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkiterror.h \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkitfavicondatabase.h \
+	$(srcdir)/Source/WebKit/gtk/webkit/webkitfilechooserrequest.h \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkitgeolocationpolicydecision.h \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkitglobals.h \
 	$(srcdir)/Source/WebKit/gtk/webkit/webkithittestresult.h \
@@ -221,6 +223,9 @@ webkitgtk_sources += \
 	Source/WebKit/gtk/webkit/webkiterror.cpp \
 	Source/WebKit/gtk/webkit/webkitfavicondatabase.cpp \
 	Source/WebKit/gtk/webkit/webkitfavicondatabaseprivate.h \
+	Source/WebKit/gtk/webkit/webkitfilechooserrequest.cpp \
+	Source/WebKit/gtk/webkit/webkitfilechooserrequest.h \
+	Source/WebKit/gtk/webkit/webkitfilechooserrequestprivate.h \
 	Source/WebKit/gtk/webkit/webkitgeolocationpolicydecision.cpp \
 	Source/WebKit/gtk/webkit/webkitgeolocationpolicydecisionprivate.h \
 	Source/WebKit/gtk/webkit/webkitglobals.cpp \

@@ -53,6 +53,7 @@ public:
     virtual void prepare(float opacity, const BitmapTexture*) { }
     GLint matrixLocation() const { return m_matrixLocation; }
     GLint flipLocation() const { return m_flipLocation; }
+    GLint textureSizeLocation() const { return m_textureSizeLocation; }
     GLint sourceTextureLocation() const { return m_sourceTextureLocation; }
     GLint maskTextureLocation() const { return m_maskTextureLocation; }
     GLint opacityLocation() const { return m_opacityLocation; }
@@ -72,6 +73,7 @@ protected:
     GLuint m_fragmentShader;
     GLint m_matrixLocation;
     GLint m_flipLocation;
+    GLint m_textureSizeLocation;
     GLint m_sourceTextureLocation;
     GLint m_opacityLocation;
     GLint m_maskTextureLocation;
@@ -175,11 +177,29 @@ private:
     GLint m_colorLocation;
 };
 
+class TextureMapperShaderProgramAntialiasingNoMask : public TextureMapperShaderProgram {
+public:
+    static PassRefPtr<TextureMapperShaderProgramAntialiasingNoMask> create()
+    {
+        return adoptRef(new TextureMapperShaderProgramAntialiasingNoMask());
+    }
+
+    GLint expandedQuadVerticesInTextureCoordinatesLocation() { return m_expandedQuadVerticesInTextureCordinatesLocation; }
+    GLint expandedQuadEdgesInScreenSpaceLocation() { return m_expandedQuadEdgesInScreenSpaceLocation; }
+
+private:
+    TextureMapperShaderProgramAntialiasingNoMask();
+
+    GLint m_expandedQuadVerticesInTextureCordinatesLocation;
+    GLint m_expandedQuadEdgesInScreenSpaceLocation;
+};
+
 class TextureMapperShaderManager {
 public:
     enum ShaderType {
         Invalid = 0, // HashMaps do not like 0 as a key.
         Simple,
+        AntialiasingNoMask,
         RectSimple,
         OpacityAndMask,
         RectOpacityAndMask,
@@ -196,6 +216,7 @@ public:
 
     PassRefPtr<TextureMapperShaderProgram> getShaderProgram(ShaderType);
     PassRefPtr<TextureMapperShaderProgramSolidColor> solidColorProgram();
+    PassRefPtr<TextureMapperShaderProgramAntialiasingNoMask> antialiasingNoMaskProgram();
 
 private:
     typedef HashMap<ShaderType, RefPtr<TextureMapperShaderProgram>, DefaultHash<int>::Hash, HashTraits<int> > TextureMapperShaderProgramMap;

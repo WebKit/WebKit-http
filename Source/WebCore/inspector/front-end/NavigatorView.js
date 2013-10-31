@@ -161,7 +161,7 @@ WebInspector.NavigatorView.prototype = {
 
             if (this._lastSelectedUISourceCode === oldUISourceCode)
                 selected = true;
-            this._removeUISourceCode(oldUISourceCode);
+            this.removeUISourceCode(oldUISourceCode);
         }
 
         if (!added)
@@ -185,7 +185,7 @@ WebInspector.NavigatorView.prototype = {
     /**
      * @param {WebInspector.UISourceCode} uiSourceCode
      */
-    _removeUISourceCode: function(uiSourceCode)
+    removeUISourceCode: function(uiSourceCode)
     {
         var treeElement = this._scriptTreeElementsByUISourceCode.get(uiSourceCode);
         while (treeElement) {
@@ -252,20 +252,19 @@ WebInspector.NavigatorView.prototype = {
             return;
 
         // Tree outline should be marked as edited as well as the tree element to prevent search from starting.
-        WebInspector.markBeingEdited(scriptTreeElement.treeOutline.element, true);
+        var treeOutlineElement = scriptTreeElement.treeOutline.element;
+        WebInspector.markBeingEdited(treeOutlineElement, true);
 
         function commitHandler(element, newTitle, oldTitle)
         {
             if (newTitle && newTitle !== oldTitle)
                 this._fileRenamed(uiSourceCode, newTitle);
-            else
-                this._updateScriptTitle(uiSourceCode);
-            afterEditing(true);
+            afterEditing.call(this, true);
         }
 
         function cancelHandler()
         {
-            afterEditing(false);
+            afterEditing.call(this, false);
         }
 
         /**
@@ -273,7 +272,8 @@ WebInspector.NavigatorView.prototype = {
          */
         function afterEditing(committed)
         {
-            WebInspector.markBeingEdited(scriptTreeElement.treeOutline.element, false);
+            WebInspector.markBeingEdited(treeOutlineElement, false);
+            this._updateScriptTitle(uiSourceCode);
             if (callback)
                 callback(committed);
         }

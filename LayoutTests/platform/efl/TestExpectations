@@ -46,12 +46,8 @@ BUGWK83897 SKIP : fast/regions = PASS
 // Exclusions implementation not complete yet.
 BUGWK83898 SKIP : fast/exclusions = PASS
 
-// CSS Regions & Exclusions implementation not complete yet.
-BUGWK83898 : fast/css/getComputedStyle/computed-style-without-renderer.html = TEXT
-
 // CSS Filters support not yet enabled (needs ENABLE_CSS_FILTERS).
 BUGWK85465 SKIP : css3/filters = TEXT
-BUGWK85465 SKIP : fast/css/getComputedStyle/computed-style.html = TEXT
 
 // CSS image-resolution is not yet enabled.
 BUGWK85262 SKIP : fast/css/image-resolution = PASS
@@ -98,6 +94,7 @@ BUGWK86623 : editing/pasteboard/drop-text-events.html = TEXT
 BUGWK86623 : editing/pasteboard/get-data-text-plain-drop.html = TEXT
 BUGWK86623 : fast/dom/shadow/drop-event-for-input-in-shadow.html = TEXT
 BUGWK86623 : fast/dom/shadow/drop-event-in-shadow.html = TEXT
+BUGWK86623 : fast/events/drag-display-none-element.html = TEXT
 BUGWK86623 : http/tests/local/fileapi/file-last-modified-after-delete.html = TEXT
 
 BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
@@ -131,6 +128,12 @@ BUGWK86080 SKIP : fast/encoding/idn-security.html = TEXT
 
 // UndoManager is not yet enabled.
 BUGWK87908 SKIP : editing/undomanager = PASS
+
+// Disable webaudio codec tests, including proprietary codecs.
+BUGWK88794 SKIP : webaudio/codec-tests = PASS
+
+// Text Autosizing is not yet enabled.
+BUGWK84186 SKIP : fast/text-autosizing = PASS
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // CRASHES
@@ -443,6 +446,7 @@ BUGWK86727 : compositing/plugins/invalidate_rect.html = TEXT
 BUGWK86730 : compositing/layer-creation/fixed-position-scroll.html = MISSING
 
 // EFL does not support WebGL
+BUGWK77219 : compositing/backface-visibility/backface-visibility-webgl.html = TEXT
 BUGWK77219 : compositing/visibility/visibility-simple-webgl-layer.html = TEXT
 BUGWK77219 : fast/dom/constructed-objects-prototypes.html = TEXT
 
@@ -515,7 +519,7 @@ BUGWK85466 : css3/images/cross-fade-background-size.html = TEXT
 BUGWK85492 : css3/zoom-coords.xhtml = TEXT
 
 // Occasionally missing chunks of output
-BUGWK66873:  http/tests/loading/redirect-methods.html = TEXT
+BUGWK66873 : http/tests/loading/redirect-methods.html = TEXT
 
 // IETC flexbox failures
 BUGWK85211 : ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm = IMAGE
@@ -573,8 +577,6 @@ BUGWK84701 : fast/block/line-layout/selection-highlight-overlap.html = TEXT IMAG
 
 // Times-out with debug build during heavy cpu loads
 BUGWK85902 SLOW DEBUG : fast/overflow/lots-of-sibling-inline-boxes.html = PASS
-
-BUGWK82675 : http/tests/local/link-stylesheet-load-order.html = TEXT
 
 BUGWKEFL SLOW DEBUG : http/tests/incremental/slow-utf8-html.pl = PASS
 
@@ -677,6 +679,9 @@ BUGWK88138 : http/tests/media/video-buffered.html = TEXT
 // Failing after r120145 on both GTK and EFL
 BUGWK88961 : http/tests/misc/redirect-to-about-blank.html = TEXT
 
+// EFL port does not support hyphenation
+BUGWK89830 : fast/text/hyphen-min-preferred-width.html = IMAGE
+
 // EFL's LayoutTestController does not implement setAsynchronousSpellCheckingEnabled
 BUGWK86637 : editing/spelling/spellcheck-async.html = TEXT
 BUGWK86637 : editing/spelling/spellcheck-async-mutation.html = TEXT
@@ -689,6 +694,9 @@ BUGWK86637 : editing/spelling/spelling-marker-description.html = TEXT
 // Looks like some race condition during loading.
 BUGWK85977 : fast/css/font-face-download-error.html = TIMEOUT
 
+// Missing test infrastructure, no gamepads available.
+BUGWKEFL : gamepad/gamepad-polling-access.html = TEXT
+
 // Fails on GTK+ and Qt as well.
 BUGWK86445 : fast/multicol/split-in-top-margin.html = IMAGE
 
@@ -699,12 +707,23 @@ BUGWK86722 SKIP : fast/images/paletted-png-with-color-profile.html = PASS
 BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-1.html = PASS
 BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-2.html = PASS
 
-// Needs rebaseline after the bots cycle.
-BUG_OJAN : tables/mozilla/bugs/bug131020.html = TEXT IMAGE IMAGE+TEXT
-
 // These tests do not seem to fail anywhere else.
 BUGWK88031 : fast/multicol/span/generated-child-split-flow-crash.html = TEXT
 
 // Flexbox test failing on EFL.
 BUGWK88984 : css3/flexbox/flexitem.html = TEXT
 
+// Failing after r121121 on both GTK and EFL
+BUGWK89845 : fast/forms/input-set-composition-scroll.html = TEXT
+
+BUGWK90007 : http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html = TEXT
+
+BUGWK90334 : css3/flexbox/anonymous-block.html = IMAGE
+
+// Require rebaseline after bug 88171
+BUGWK88171 : fast/block/float/independent-align-positioning.html = TEXT
+BUGWK88171 : fast/block/float/010.html = TEXT
+BUGWK88171 : css1/formatting_model/floating_elements.html = TEXT
+
+// Looks like missing multipart/x-mixed-replace support in libsoup. Failing on both GTK and EFL.
+BUGWK68979 : http/tests/multipart/multipart-replace-non-html-content.php = TEXT

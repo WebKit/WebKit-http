@@ -26,53 +26,12 @@
 #include "config.h"
 #include "RenderGeometryMap.h"
 
+#include "RenderLayer.h"
 #include "RenderView.h"
 #include "TransformState.h"
+#include <wtf/TemporaryChange.h>
 
 namespace WebCore {
-
-
-// Stores data about how to map from one renderer to its container.
-class RenderGeometryMapStep {
-    WTF_MAKE_NONCOPYABLE(RenderGeometryMapStep);
-public:
-    RenderGeometryMapStep(const RenderObject* renderer, bool accumulatingTransform, bool isNonUniform, bool isFixedPosition, bool hasTransform)
-        : m_renderer(renderer)
-        , m_accumulatingTransform(accumulatingTransform)
-        , m_isNonUniform(isNonUniform)
-        , m_isFixedPosition(isFixedPosition)
-        , m_hasTransform(hasTransform)
-    {
-    }
-        
-    FloatPoint mapPoint(const FloatPoint& p) const
-    {
-        if (!m_transform)
-            return p + m_offset;
-        
-        return m_transform->mapPoint(p);
-    }
-    
-    FloatQuad mapQuad(const FloatQuad& quad) const
-    {
-        if (!m_transform) {
-            FloatQuad q = quad;
-            q.move(m_offset);
-            return q;
-        }
-        
-        return m_transform->mapQuad(quad);
-    }
-    
-    const RenderObject* m_renderer;
-    LayoutSize m_offset;
-    OwnPtr<TransformationMatrix> m_transform; // Includes offset if non-null.
-    bool m_accumulatingTransform;
-    bool m_isNonUniform; // Mapping depends on the input point, e.g. because of CSS columns.
-    bool m_isFixedPosition;
-    bool m_hasTransform;
-};
-
 
 RenderGeometryMap::RenderGeometryMap()
     : m_insertionPosition(notFound)
@@ -99,7 +58,7 @@ FloatPoint RenderGeometryMap::absolutePoint(const FloatPoint& p) const
     }
 
 #if !ASSERT_DISABLED
-    FloatPoint rendererMappedResult = m_mapping.last()->m_renderer->localToAbsolute(p, false, true);
+    FloatPoint rendererMappedResult = m_mapping.last().m_renderer->localToAbsolute(p, false, true);
     ASSERT(rendererMappedResult == result);
 #endif
 
@@ -120,7 +79,7 @@ FloatRect RenderGeometryMap::absoluteRect(const FloatRect& rect) const
     }
 
 #if !ASSERT_DISABLED
-    FloatRect rendererMappedResult = m_mapping.last()->m_renderer->localToAbsoluteQuad(rect).boundingBox();
+    FloatRect rendererMappedResult = m_mapping.last().m_renderer->localToAbsoluteQuad(rect).boundingBox();
     // Inspector creates renderers with negative width <https://bugs.webkit.org/show_bug.cgi?id=87194>.
     // Taking FloatQuad bounds avoids spurious assertions because of that.
     ASSERT(enclosingIntRect(rendererMappedResult) == enclosingIntRect(FloatQuad(result).boundingBox()));
@@ -134,106 +93,133 @@ void RenderGeometryMap::mapToAbsolute(TransformState& transformState) const
     // If the mapping includes something like columns, we have to go via renderers.
     if (hasNonUniformStep()) {
         bool fixed = false;
-        m_mapping.last()->m_renderer->mapLocalToContainer(0, fixed, true, transformState, RenderObject::ApplyContainerFlip);
+        m_mapping.last().m_renderer->mapLocalToContainer(0, fixed, true, transformState, RenderObject::ApplyContainerFlip);
         return;
     }
     
     bool inFixed = false;
 
     for (int i = m_mapping.size() - 1; i >= 0; --i) {
-        const RenderGeometryMapStep* currStep = m_mapping[i].get();
+        const RenderGeometryMapStep& currentStep = m_mapping[i];
 
         // If this box has a transform, it acts as a fixed position container
         // for fixed descendants, which prevents the propagation of 'fixed'
         // unless the layer itself is also fixed position.
-        if (currStep->m_hasTransform && !currStep->m_isFixedPosition)
+        if (currentStep.m_hasTransform && !currentStep.m_isFixedPosition)
             inFixed = false;
-        else if (currStep->m_isFixedPosition)
+        else if (currentStep.m_isFixedPosition)
             inFixed = true;
 
         if (!i) {
-            if (currStep->m_transform)
-                transformState.applyTransform(*currStep->m_transform.get());
+            if (currentStep.m_transform)
+                transformState.applyTransform(*currentStep.m_transform.get());
 
             // The root gets special treatment for fixed position
             if (inFixed)
-                transformState.move(currStep->m_offset.width(), currStep->m_offset.height());
+                transformState.move(currentStep.m_offset.width(), currentStep.m_offset.height());
         } else {
-            TransformState::TransformAccumulation accumulate = currStep->m_accumulatingTransform ? TransformState::AccumulateTransform : TransformState::FlattenTransform;
-            if (currStep->m_transform)
-                transformState.applyTransform(*currStep->m_transform.get(), accumulate);
+            TransformState::TransformAccumulation accumulate = currentStep.m_accumulatingTransform ? TransformState::AccumulateTransform : TransformState::FlattenTransform;
+            if (currentStep.m_transform)
+                transformState.applyTransform(*currentStep.m_transform.get(), accumulate);
             else
-                transformState.move(currStep->m_offset.width(), currStep->m_offset.height(), accumulate);
+                transformState.move(currentStep.m_offset.width(), currentStep.m_offset.height(), accumulate);
         }
     }
 
     transformState.flatten();    
 }
 
-void RenderGeometryMap::pushMappingsToAncestor(const RenderObject* renderer, const RenderBoxModelObject* ancestor)
+void RenderGeometryMap::pushMappingsToAncestor(const RenderObject* renderer, const RenderBoxModelObject* ancestorRenderer)
 {
-    const RenderObject* currRenderer = renderer;
-    
     // We need to push mappings in reverse order here, so do insertions rather than appends.
-    m_insertionPosition = m_mapping.size();
-    
+    TemporaryChange<size_t> positionChange(m_insertionPosition, m_mapping.size());
     do {
-        currRenderer = currRenderer->pushMappingToContainer(ancestor, *this);
-    } while (currRenderer && currRenderer != ancestor);
-    
-    m_insertionPosition = notFound;
+        renderer = renderer->pushMappingToContainer(ancestorRenderer, *this);
+    } while (renderer && renderer != ancestorRenderer);
+}
+
+void RenderGeometryMap::pushMappingsToAncestor(const RenderLayer* layer, const RenderLayer* ancestorLayer)
+{
+    const RenderObject* renderer = layer->renderer();
+
+    // The simple case can be handled fast in the layer tree.
+    bool canConvertInLayerTree = ancestorLayer && renderer->style()->position() != FixedPosition && !renderer->style()->isFlippedBlocksWritingMode();
+    for (const RenderLayer* current = layer; current != ancestorLayer && canConvertInLayerTree; current = current->parent())
+        canConvertInLayerTree = current->canUseConvertToLayerCoords();
+
+    if (canConvertInLayerTree) {
+        TemporaryChange<size_t> positionChange(m_insertionPosition, m_mapping.size());
+        LayoutPoint layerOffset;
+        layer->convertToLayerCoords(ancestorLayer, layerOffset);
+        push(renderer, toLayoutSize(layerOffset), /*accumulatingTransform*/ true, /*isNonUniform*/ false, /*isFixedPosition*/ false, /*hasTransform*/ false);
+        return;
+    }
+    const RenderBoxModelObject* ancestorRenderer = ancestorLayer ? ancestorLayer->renderer() : 0;
+    pushMappingsToAncestor(renderer, ancestorRenderer);
 }
 
 void RenderGeometryMap::push(const RenderObject* renderer, const LayoutSize& offsetFromContainer, bool accumulatingTransform, bool isNonUniform, bool isFixedPosition, bool hasTransform)
 {
     ASSERT(m_insertionPosition != notFound);
-    
-    OwnPtr<RenderGeometryMapStep> step = adoptPtr(new RenderGeometryMapStep(renderer, accumulatingTransform, isNonUniform, isFixedPosition, hasTransform));
-    step->m_offset = offsetFromContainer;
-    
-    stepInserted(*step.get());
-    m_mapping.insert(m_insertionPosition, step.release());
+
+    m_mapping.insert(m_insertionPosition, RenderGeometryMapStep(renderer, accumulatingTransform, isNonUniform, isFixedPosition, hasTransform));
+
+    RenderGeometryMapStep& step = m_mapping[m_insertionPosition];
+    step.m_offset = offsetFromContainer;
+
+    stepInserted(step);
 }
 
 void RenderGeometryMap::push(const RenderObject* renderer, const TransformationMatrix& t, bool accumulatingTransform, bool isNonUniform, bool isFixedPosition, bool hasTransform)
 {
     ASSERT(m_insertionPosition != notFound);
 
-    OwnPtr<RenderGeometryMapStep> step = adoptPtr(new RenderGeometryMapStep(renderer, accumulatingTransform, isNonUniform, isFixedPosition, hasTransform));
-    step->m_transform = adoptPtr(new TransformationMatrix(t));
+    m_mapping.insert(m_insertionPosition, RenderGeometryMapStep(renderer, accumulatingTransform, isNonUniform, isFixedPosition, hasTransform));
+    
+    RenderGeometryMapStep& step = m_mapping[m_insertionPosition];
+    if (!t.isIntegerTranslation())
+        step.m_transform = adoptPtr(new TransformationMatrix(t));
+    else
+        step.m_offset = LayoutSize(t.e(), t.f());
 
-    stepInserted(*step.get());
-    m_mapping.insert(m_insertionPosition, step.release());
+    stepInserted(step);
 }
 
 void RenderGeometryMap::pushView(const RenderView* view, const LayoutSize& scrollOffset, const TransformationMatrix* t)
 {
     ASSERT(m_insertionPosition != notFound);
-
-    OwnPtr<RenderGeometryMapStep> step = adoptPtr(new RenderGeometryMapStep(view, false, false, false, t));
-    step->m_offset = scrollOffset;
-    if (t)
-        step->m_transform = adoptPtr(new TransformationMatrix(*t));
-        
     ASSERT(!m_mapping.size()); // The view should always be the first thing pushed.
-    stepInserted(*step.get());
-    m_mapping.insert(m_insertionPosition, step.release());
+
+    m_mapping.insert(m_insertionPosition, RenderGeometryMapStep(view, false, false, false, t));
+    
+    RenderGeometryMapStep& step = m_mapping[m_insertionPosition];
+    step.m_offset = scrollOffset;
+    if (t)
+        step.m_transform = adoptPtr(new TransformationMatrix(*t));
+    
+    stepInserted(step);
 }
 
-void RenderGeometryMap::popMappingsToAncestor(const RenderBoxModelObject* ancestor)
+void RenderGeometryMap::popMappingsToAncestor(const RenderBoxModelObject* ancestorRenderer)
 {
     ASSERT(m_mapping.size());
 
-    while (m_mapping.size() && m_mapping.last()->m_renderer != ancestor) {
-        stepRemoved(*m_mapping.last().get());
+    while (m_mapping.size() && m_mapping.last().m_renderer != ancestorRenderer) {
+        stepRemoved(m_mapping.last());
         m_mapping.removeLast();
     }
+}
+
+void RenderGeometryMap::popMappingsToAncestor(const RenderLayer* ancestorLayer)
+{
+    const RenderBoxModelObject* ancestorRenderer = ancestorLayer ? ancestorLayer->renderer() : 0;
+    popMappingsToAncestor(ancestorRenderer);
 }
 
 void RenderGeometryMap::stepInserted(const RenderGeometryMapStep& step)
 {
     // Offset on the first step is the RenderView's offset, which is only applied when we have fixed-position.s
-    if (m_mapping.size())
+    if (m_mapping.size() > 1)
         m_accumulatedOffset += step.m_offset;
 
     if (step.m_isNonUniform)

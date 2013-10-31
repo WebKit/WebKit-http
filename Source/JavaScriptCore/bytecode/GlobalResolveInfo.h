@@ -31,6 +31,8 @@
 namespace JSC {
 
 struct GlobalResolveInfo {
+    GlobalResolveInfo() { }
+    
     GlobalResolveInfo(unsigned bytecodeOffset)
         : offset(0)
         , bytecodeOffset(bytecodeOffset)
@@ -39,8 +41,13 @@ struct GlobalResolveInfo {
     
     WriteBarrier<Structure> structure;
     unsigned offset;
-    unsigned bytecodeOffset;
+    unsigned bytecodeOffset; // Only valid in old JIT code. This means nothing in the DFG.
 };
+
+inline unsigned getGlobalResolveInfoBytecodeOffset(GlobalResolveInfo* globalResolveInfo)
+{
+    return globalResolveInfo->bytecodeOffset;
+}
 
 } // namespace JSC
 

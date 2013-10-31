@@ -560,14 +560,12 @@ bool HTMLTableElement::isURLAttribute(const Attribute& attribute) const
     return attribute.name() == backgroundAttr || HTMLElement::isURLAttribute(attribute);
 }
 
-HTMLCollection* HTMLTableElement::rows()
+PassRefPtr<HTMLCollection> HTMLTableElement::rows()
 {
-    if (!m_rowsCollection)
-        m_rowsCollection = HTMLTableRowsCollection::create(this);
-    return m_rowsCollection.get();
+    return ensureCachedHTMLCollection(TableRows);
 }
 
-HTMLCollection* HTMLTableElement::tBodies()
+PassRefPtr<HTMLCollection> HTMLTableElement::tBodies()
 {
     return ensureCachedHTMLCollection(TableTBodies);
 }

@@ -189,6 +189,7 @@ unsigned short CSSPrimitiveValue::primitiveType() const
     }
     return CSSPrimitiveValue::CSS_UNKNOWN;
 }
+
 static const AtomicString& valueOrPropertyName(int valueOrPropertyID)
 {
     ASSERT_ARG(valueOrPropertyID, valueOrPropertyID >= 0);
@@ -266,6 +267,22 @@ CSSPrimitiveValue::CSSPrimitiveValue(const Length& length)
         case MinIntrinsic:
             m_primitiveUnitType = CSS_IDENT;
             m_value.ident = CSSValueMinIntrinsic;
+            break;
+        case MinContent:
+            m_primitiveUnitType = CSS_IDENT;
+            m_value.ident = CSSValueWebkitMinContent;
+            break;
+        case MaxContent:
+            m_primitiveUnitType = CSS_IDENT;
+            m_value.ident = CSSValueWebkitMaxContent;
+            break;
+        case FillAvailable:
+            m_primitiveUnitType = CSS_IDENT;
+            m_value.ident = CSSValueWebkitFillAvailable;
+            break;
+        case FitContent:
+            m_primitiveUnitType = CSS_IDENT;
+            m_value.ident = CSSValueWebkitFitContent;
             break;
         case Percent:
             m_primitiveUnitType = CSS_PERCENTAGE;
@@ -540,12 +557,7 @@ double CSSPrimitiveValue::computeLengthDouble(RenderStyle* style, RenderStyle* r
     if (computingFontSize || isFontRelativeLength())
         return result;
 
-    // Any original result that was >= 1 should not be allowed to fall below 1.  This keeps border lines from
-    // vanishing.
-    double zoomedResult = result * multiplier;
-    if (zoomedResult < 1.0 && result >= 1.0)
-        return 1.0;
-    return zoomedResult;
+    return result * multiplier;
 }
 
 void CSSPrimitiveValue::setFloatValue(unsigned short, double, ExceptionCode& ec)

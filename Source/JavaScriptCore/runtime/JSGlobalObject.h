@@ -132,7 +132,7 @@ namespace JSC {
         WriteBarrier<Structure> m_functionStructure;
         WriteBarrier<Structure> m_boundFunctionStructure;
         WriteBarrier<Structure> m_namedFunctionStructure;
-        size_t m_functionNameOffset;
+        PropertyOffset m_functionNameOffset;
         WriteBarrier<Structure> m_numberObjectStructure;
         WriteBarrier<Structure> m_privateNameStructure;
         WriteBarrier<Structure> m_regExpMatchesArrayStructure;
@@ -175,14 +175,7 @@ namespace JSC {
         static JS_EXPORTDATA const ClassInfo s_info;
 
     protected:
-        explicit JSGlobalObject(JSGlobalData& globalData, Structure* structure, const GlobalObjectMethodTable* globalObjectMethodTable = 0)
-            : JSSegmentedVariableObject(globalData, structure, &m_symbolTable)
-            , m_globalScopeChain()
-            , m_weakRandom(static_cast<unsigned>(randomNumber() * (std::numeric_limits<unsigned>::max() + 1.0)))
-            , m_evalEnabled(true)
-            , m_globalObjectMethodTable(globalObjectMethodTable ? globalObjectMethodTable : &s_globalObjectMethodTable)
-        {
-        }
+        JS_EXPORT_PRIVATE explicit JSGlobalObject(JSGlobalData&, Structure*, const GlobalObjectMethodTable* = 0);
 
         void finishCreation(JSGlobalData& globalData)
         {
@@ -269,7 +262,7 @@ namespace JSC {
         Structure* functionStructure() const { return m_functionStructure.get(); }
         Structure* boundFunctionStructure() const { return m_boundFunctionStructure.get(); }
         Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(); }
-        size_t functionNameOffset() const { return m_functionNameOffset; }
+        PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
         Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
         Structure* privateNameStructure() const { return m_privateNameStructure.get(); }
         Structure* internalFunctionStructure() const { return m_internalFunctionStructure.get(); }
@@ -328,6 +321,7 @@ namespace JSC {
         }
 
         double weakRandomNumber() { return m_weakRandom.get(); }
+        unsigned weakRandomInteger() { return m_weakRandom.getUint32(); }
     protected:
 
         static const unsigned StructureFlags = OverridesGetOwnPropertySlot | OverridesVisitChildren | OverridesGetPropertyNames | JSSegmentedVariableObject::StructureFlags;
@@ -451,23 +445,10 @@ namespace JSC {
     {
         return constructEmptyArray(exec, exec->lexicalGlobalObject(), initialLength);
     }
-
+ 
     inline JSArray* constructArray(ExecState* exec, JSGlobalObject* globalObject, const ArgList& values)
     {
-        JSGlobalData& globalData = exec->globalData();
-        unsigned length = values.size();
-        JSArray* array = JSArray::tryCreateUninitialized(globalData, globalObject->arrayStructure(), length);
-
-        // FIXME: we should probably throw an out of memory error here, but
-        // when making this change we should check that all clients of this
-        // function will correctly handle an exception being thrown from here.
-        if (!array)
-            CRASH();
-
-        for (unsigned i = 0; i < length; ++i)
-            array->initializeIndex(globalData, i, values.at(i));
-        array->completeInitialization(length);
-        return array;
+        return constructArray(exec, globalObject->arrayStructure(), values);
     }
 
     inline JSArray* constructArray(ExecState* exec, const ArgList& values)
@@ -477,19 +458,7 @@ namespace JSC {
 
     inline JSArray* constructArray(ExecState* exec, JSGlobalObject* globalObject, const JSValue* values, unsigned length)
     {
-        JSGlobalData& globalData = exec->globalData();
-        JSArray* array = JSArray::tryCreateUninitialized(globalData, globalObject->arrayStructure(), length);
-
-        // FIXME: we should probably throw an out of memory error here, but
-        // when making this change we should check that all clients of this
-        // function will correctly handle an exception being thrown from here.
-        if (!array)
-            CRASH();
-
-        for (unsigned i = 0; i < length; ++i)
-            array->initializeIndex(globalData, i, values[i]);
-        array->completeInitialization(length);
-        return array;
+        return constructArray(exec, globalObject->arrayStructure(), values, length);
     }
 
     inline JSArray* constructArray(ExecState* exec, const JSValue* values, unsigned length)

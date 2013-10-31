@@ -34,11 +34,15 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 
+#include "Extensions3DChromium.h"
 #include "TextureCopier.h"
-#include "ThrottledTextureUploader.h"
 #include "TrackingTextureAllocator.h"
 #include "cc/CCRenderer.h"
 #include <wtf/PassOwnPtr.h>
+
+namespace WebKit {
+class WebGraphicsContext3D;
+}
 
 namespace WebCore {
 
@@ -53,24 +57,23 @@ class CCTextureDrawQuad;
 class CCTileDrawQuad;
 class CCYUVVideoDrawQuad;
 class GeometryBinding;
-class GraphicsContext3D;
-class LayerRendererGpuMemoryAllocationChangedCallbackAdapter;
-class LayerRendererSwapBuffersCompleteCallbackAdapter;
+class ManagedTexture;
 class ScopedEnsureFramebufferAllocation;
 
-enum TextureUploaderOption { ThrottledUploader, UnthrottledUploader };
-
 // Class that handles drawing of composited render layers using GL.
-class LayerRendererChromium : public CCRenderer {
+class LayerRendererChromium : public CCRenderer,
+                              public WebKit::WebGraphicsContext3D::WebGraphicsSwapBuffersCompleteCallbackCHROMIUM,
+                              public WebKit::WebGraphicsContext3D::WebGraphicsMemoryAllocationChangedCallbackCHROMIUM ,
+                              public WebKit::WebGraphicsContext3D::WebGraphicsContextLostCallback {
     WTF_MAKE_NONCOPYABLE(LayerRendererChromium);
 public:
-    static PassOwnPtr<LayerRendererChromium> create(CCRendererClient*, PassRefPtr<GraphicsContext3D>, TextureUploaderOption);
+    static PassOwnPtr<LayerRendererChromium> create(CCRendererClient*, WebKit::WebGraphicsContext3D*, TextureUploaderOption);
 
     virtual ~LayerRendererChromium();
 
     virtual const LayerRendererCapabilities& capabilities() const OVERRIDE { return m_capabilities; }
 
-    GraphicsContext3D* context();
+    WebKit::WebGraphicsContext3D* context();
 
     virtual void viewportChanged() OVERRIDE;
 
@@ -90,7 +93,7 @@ public:
     // puts backbuffer onscreen
     virtual bool swapBuffers(const IntRect& subBuffer) OVERRIDE;
 
-    static void debugGLCall(GraphicsContext3D*, const char* command, const char* file, int line);
+    static void debugGLCall(WebKit::WebGraphicsContext3D*, const char* command, const char* file, int line);
 
     const GeometryBinding* sharedGeometry() const { return m_sharedGeometry.get(); }
 
@@ -115,12 +118,9 @@ public:
     void copyTextureToFramebuffer(int textureId, const IntSize& bounds, const WebKit::WebTransformationMatrix& drawMatrix);
 
 protected:
-    friend class LayerRendererGpuMemoryAllocationChangedCallbackAdapter;
-    void discardFramebuffer();
-    void ensureFramebuffer();
-    bool isFramebufferDiscarded() const { return m_isFramebufferDiscarded; }
+    LayerRendererChromium(CCRendererClient*, WebKit::WebGraphicsContext3D*, TextureUploaderOption);
 
-    LayerRendererChromium(CCRendererClient*, PassRefPtr<GraphicsContext3D>, TextureUploaderOption);
+    bool isFramebufferDiscarded() const { return m_isFramebufferDiscarded; }
     bool initialize();
 
 private:
@@ -156,8 +156,17 @@ private:
     bool initializeSharedObjects();
     void cleanupSharedObjects();
 
-    friend class LayerRendererSwapBuffersCompleteCallbackAdapter;
-    void onSwapBuffersComplete();
+    // WebKit::WebGraphicsContext3D::WebGraphicsSwapBuffersCompleteCallbackCHROMIUM implementation.
+    virtual void onSwapBuffersComplete() OVERRIDE;
+
+    // WebKit::WebGraphicsContext3D::WebGraphicsMemoryAllocationChangedCallbackCHROMIUM implementation.
+    virtual void onMemoryAllocationChanged(WebKit::WebGraphicsMemoryAllocation) OVERRIDE;
+    void onMemoryAllocationChangedOnImplThread(WebKit::WebGraphicsMemoryAllocation);
+    void discardFramebuffer();
+    void ensureFramebuffer();
+
+    // WebGraphicsContext3D::WebGraphicsContextLostCallback implementation.
+    virtual void onContextLost() OVERRIDE;
 
     LayerRendererCapabilities m_capabilities;
 
@@ -254,12 +263,14 @@ private:
     OwnPtr<TrackingTextureAllocator> m_contentsTextureAllocator;
     OwnPtr<TrackingTextureAllocator> m_implTextureAllocator;
 
-    RefPtr<GraphicsContext3D> m_context;
+    WebKit::WebGraphicsContext3D* m_context;
 
     const CCRenderPass* m_defaultRenderPass;
 
     bool m_isViewportChanged;
     bool m_isFramebufferDiscarded;
+    bool m_isUsingBindUniform;
+    bool m_visible;
     TextureUploaderOption m_textureUploaderSetting;
 };
 

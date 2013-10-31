@@ -33,6 +33,7 @@
 #include "Extensions3DOpenGL.h"
 #include "GraphicsContext3DPrivate.h"
 #include "Image.h"
+#include "NotImplemented.h"
 #include "OpenGLShims.h"
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
@@ -146,6 +147,11 @@ GraphicsContext3D::~GraphicsContext3D()
     ::glDeleteFramebuffersEXT(1, &m_fbo);
 }
 
+void GraphicsContext3D::releaseShaderCompiler()
+{
+    notImplemented();
+}
+
 bool GraphicsContext3D::getImageData(Image* image, unsigned int format, unsigned int type, bool premultiplyAlpha, bool ignoreGammaAndColorProfile, Vector<uint8_t>& outputVector)
 {
     if (!image)
@@ -159,7 +165,8 @@ bool GraphicsContext3D::getImageData(Image* image, unsigned int format, unsigned
         decoder.setData(image->data(), true);
         if (!decoder.frameCount() || !decoder.frameIsCompleteAtIndex(0))
             return false;
-        imageSurface = decoder.createFrameAtIndex(0)->surface();
+        OwnPtr<NativeImageCairo> nativeImage = adoptPtr(decoder.createFrameAtIndex(0));
+        imageSurface = nativeImage->surface();
     } else {
         imageSurface = image->nativeImageForCurrentFrame()->surface();
         if (!premultiplyAlpha)

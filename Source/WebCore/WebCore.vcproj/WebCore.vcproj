@@ -594,7 +594,7 @@
 				>
 			</File>
 			<File
-				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedWebGLScriptSource.h"
+				RelativePath="$(ConfigurationBuildDir)\obj\$(ProjectName)\DerivedSources\InjectedScriptWebGLModuleSource.h"
 				>
 			</File>
 			<File
@@ -24959,6 +24959,46 @@
 				</File>
 			</Filter>
 			<Filter
+				Name="notifications"
+				>
+				<File
+					RelativePath="..\Modules\notifications\DOMWindowNotifications.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\DOMWindowNotifications.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\Notification.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\Notification.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\NotificationCenter.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\NotificationCenter.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\NotificationClient.h"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\WorkerContextNotifications.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\Modules\notifications\WorkerContextNotifications.h"
+					>
+				</File>
+			</Filter>
+			<Filter
 				Name="webdatabase"
 				>
 				<File
@@ -26876,6 +26916,14 @@
 			</File>
 			<File
 				RelativePath="..\page\PerformanceNavigation.h"
+				>
+			</File>
+			<File
+				RelativePath="..\page\PerformanceResourceTiming.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\page\PerformanceResourceTiming.h"
 				>
 			</File>
 			<File
@@ -29354,6 +29402,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\platform\graphics\PlatformLayer.h"
+					>
+				</File>
+				<File
 					RelativePath="..\platform\graphics\Region.cpp"
 					>
 				</File>
@@ -31469,11 +31521,11 @@
 						>
 					</File>
 					<File
-						RelativePath="..\platform\graphics\filters\CustomFilterShader.cpp"
+						RelativePath="..\platform\graphics\filters\CustomFilterCompiledProgram.cpp"
 						>
 					</File>
 					<File
-						RelativePath="..\platform\graphics\filters\CustomFilterShader.h"
+						RelativePath="..\platform\graphics\filters\CustomFilterCompiledProgram.h"
 						>
 					</File>
 					<File
@@ -31574,10 +31626,6 @@
 					</File>
 					<File
 						RelativePath="..\platform\graphics\filters\FEGaussianBlur.h"
-						>
-					</File>
-					<File
-						RelativePath="..\platform\graphics\filters\arm\FEGaussianBlurNEON.cpp"
 						>
 					</File>
 					<File
@@ -31682,6 +31730,10 @@
 					</File>
 					<File
 						RelativePath="..\platform\graphics\filters\LightSource.h"
+						>
+					</File>
+					<File
+						RelativePath="..\platform\graphics\filters\arm\NEONHelpers.h"
 						>
 					</File>
 					<File
@@ -33187,6 +33239,14 @@
 				</File>
 				<File
 					RelativePath="..\platform\text\BidiRunList.h"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\text\DateTimeFormat.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\platform\text\DateTimeFormat.h"
 					>
 				</File>
 				<File
@@ -36627,6 +36687,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\css\CSSToStyleMap.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\css\CSSToStyleMap.h"
+				>
+			</File>
+			<File
 				RelativePath="..\css\CSSUnicodeRangeValue.cpp"
 				>
 				<FileConfiguration
@@ -37559,11 +37627,15 @@
 				>
 			</File>
 			<File
-				RelativePath="..\css\WebKitCSSShaderValue.cpp"
+				RelativePath="..\css\WebKitCSSSVGDocumentValue.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\css\WebKitCSSShaderValue.h"
+				RelativePath="..\css\WebKitCSSSVGDocumentValue.h"
+				>
+			</File>
+			<File
+				RelativePath="..\css\WebKitCSSShaderValue.cpp"
 				>
 			</File>
 			<File
@@ -39544,6 +39616,14 @@
 			</File>
 			<File
 				RelativePath="..\rendering\RenderGeometryMap.h"
+				>
+			</File>
+                        <File
+				RelativePath="..\rendering\RenderGrid.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\rendering\RenderGrid.h"
 				>
 			</File>
 			<File
@@ -49231,62 +49311,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\dom\DeviceOrientation.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug_Cairo_CFLite|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release_Cairo_CFLite|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug_All|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Production|Win32"
-					ExcludedFromBuild="true"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\dom\DeviceOrientation.h"
-				>
-			</File>
-			<File
 				RelativePath="..\dom\DeviceOrientationClient.h"
 				>
 			</File>
@@ -49346,6 +49370,62 @@
 				RelativePath="..\dom\DeviceOrientationController.h"
 				>
 			</File>
+			<File
+				RelativePath="..\dom\DeviceOrientationData.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug_Cairo_CFLite|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release_Cairo_CFLite|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug_All|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\dom\DeviceOrientationData.h"
+				>
+			</File>	
 			<File
 				RelativePath="..\dom\DeviceOrientationEvent.cpp"
 				>
@@ -51172,6 +51252,10 @@
 			</File>
 			<File
 				RelativePath="..\dom\KeyboardEvent.h"
+				>
+			</File>
+			<File
+				RelativePath="..\dom\MemoryInstrumentation.h"
 				>
 			</File>
 			<File
@@ -54736,46 +54820,6 @@
 			</File>
 			<File
 				RelativePath="..\workers\WorkerThread.h"
-				>
-			</File>
-		</Filter>
-		<Filter
-			Name="notifications"
-			>
-			<File
-				RelativePath="..\notifications\DOMWindowNotifications.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\DOMWindowNotifications.h"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\Notification.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\Notification.h"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\NotificationCenter.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\NotificationCenter.h"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\NotificationClient.h"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\WorkerContextNotifications.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\notifications\WorkerContextNotifications.h"
 				>
 			</File>
 		</Filter>
@@ -73167,6 +73211,10 @@
 			Name="inspector"
 			>
 			<File
+				RelativePath="..\inspector\BindingVisitors.h"
+				>
+			</File>
+			<File
 				RelativePath="..\inspector\ConsoleMessage.cpp"
 				>
 				<FileConfiguration
@@ -73287,10 +73335,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\inspector\DOMWrapperVisitor.h"
-				>
-			</File>
-			<File
 				RelativePath="..\inspector\IdentifiersFactory.cpp"
 				>
 				<FileConfiguration
@@ -73408,6 +73452,54 @@
 			</File>
 			<File
 				RelativePath="..\inspector\InjectedScriptManager.h"
+				>
+			</File>
+			<File
+				RelativePath="..\inspector\InjectedScriptModule.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\inspector\InjectedScriptModule.h"
+				>
+			</File>
+			<File
+				RelativePath="..\inspector\InjectedScriptWebGLModule.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Production|Win32"
+					ExcludedFromBuild="true"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\inspector\InjectedScriptWebGLModule.h"
 				>
 			</File>
 			<File
@@ -74742,10 +74834,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\inspector\front-end\DebuggerResourceBinding.js"
-					>
-				</File>
-				<File
 					RelativePath="..\inspector\front-end\DebuggerScriptMapping.js"
 					>
 				</File>
@@ -74755,6 +74843,10 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\Dialog.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\DirectoryContentView.js"
 					>
 				</File>
 				<File
@@ -74830,11 +74922,19 @@
 					>
 				</File>
 				<File
+					RelativePath="..\inspector\front-end\FileContentView.js"
+					>
+				</File>
+				<File
 					RelativePath="..\inspector\front-end\FileManager.js"
 					>
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\FileSystemModel.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\FileSystemView.js"
 					>
 				</File>
 				<File
@@ -75346,6 +75446,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\inspector\front-end\textEditor.css"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\TextEditor.js"
+					>
+				</File>
+				<File
 					RelativePath="..\inspector\front-end\TextEditorHighlighter.js"
 					>
 				</File>
@@ -75359,14 +75467,6 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\TextPrompt.js"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\textViewer.css"
-					>
-				</File>
-				<File
-					RelativePath="..\inspector\front-end\TextViewer.js"
 					>
 				</File>
 				<File
@@ -75443,6 +75543,10 @@
 				</File>
 				<File
 					RelativePath="..\inspector\front-end\WorkersSidebarPane.js"
+					>
+				</File>
+				<File
+					RelativePath="..\inspector\front-end\Workspace.js"
 					>
 				</File>
 			</Filter>

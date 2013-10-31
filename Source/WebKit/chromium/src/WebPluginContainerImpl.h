@@ -52,6 +52,7 @@ class LayerChromium;
 class MouseEvent;
 class ResourceError;
 class ResourceResponse;
+class TouchEvent;
 class WheelEvent;
 
 #if ENABLE(GESTURE_EVENTS)
@@ -109,10 +110,15 @@ public:
     virtual void zoomLevelChanged(double zoomLevel);    
     virtual void setOpaque(bool);
     virtual bool isRectTopmost(const WebRect&);
+    virtual void setIsAcceptingTouchEvents(bool);
 
     // This cannot be null.
     WebPlugin* plugin() { return m_webPlugin; }
     void setPlugin(WebPlugin*);
+
+    virtual float deviceScaleFactor();
+    virtual float pageScaleFactor();
+    virtual float pageZoomFactor();
 
     // Printing interface. The plugin can support custom printing
     // (which means it controls the layout, number of pages etc).
@@ -160,6 +166,7 @@ private:
     void handleMouseEvent(WebCore::MouseEvent*);
     void handleWheelEvent(WebCore::WheelEvent*);
     void handleKeyboardEvent(WebCore::KeyboardEvent*);
+    void handleTouchEvent(WebCore::TouchEvent*);
 
     void calculateGeometry(const WebCore::IntRect& frameRect,
                            WebCore::IntRect& windowRect,
@@ -186,6 +193,8 @@ private:
     // The associated scrollbar group object, created lazily. Used for Pepper
     // scrollbars.
     OwnPtr<ScrollbarGroup> m_scrollbarGroup;
+
+    bool m_isAcceptingTouchEvents;
 };
 
 } // namespace WebKit

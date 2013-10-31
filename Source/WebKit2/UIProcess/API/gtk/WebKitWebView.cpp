@@ -25,6 +25,8 @@
 #include "WebContextMenuItemData.h"
 #include "WebKitBackForwardListPrivate.h"
 #include "WebKitContextMenuClient.h"
+#include "WebKitContextMenuItemPrivate.h"
+#include "WebKitContextMenuPrivate.h"
 #include "WebKitEnumTypes.h"
 #include "WebKitError.h"
 #include "WebKitFullscreenClient.h"
@@ -50,6 +52,7 @@
 #include "WebPageProxy.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/DragIcon.h>
+#include <WebCore/GOwnPtrGtk.h>
 #include <WebCore/GtkUtilities.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/gobject/GOwnPtr.h>
@@ -65,6 +68,7 @@ enum {
 
     CREATE,
     READY_TO_SHOW,
+    RUN_AS_MODAL,
     CLOSE,
 
     SCRIPT_DIALOG,
@@ -82,6 +86,9 @@ enum {
     LEAVE_FULLSCREEN,
 
     RUN_FILE_CHOOSER,
+
+    CONTEXT_MENU,
+    CONTEXT_MENU_DISMISSED,
 
     LAST_SIGNAL
 };
@@ -117,6 +124,8 @@ struct _WebKitWebViewPrivate {
     GRefPtr<WebKitBackForwardList> backForwardList;
     GRefPtr<WebKitSettings> settings;
     GRefPtr<WebKitWindowProperties> windowProperties;
+
+    GRefPtr<GMainLoop> modalLoop;
 
     GRefPtr<WebKitHitTestResult> mouseTargetHitTestResult;
     unsigned mouseTargetModifiers;
@@ -223,6 +232,14 @@ static gboolean webkitWebViewPermissionRequest(WebKitWebView*, WebKitPermissionR
     return TRUE;
 }
 
+static void allowModalDialogsChanged(WebKitSettings* settings, GParamSpec*, WebKitWebView* webView)
+{
+    WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(webView));
+    if (!page)
+        return;
+    page->setCanRunModal(webkit_settings_get_allow_modal_dialogs(settings));
+}
+
 static void zoomTextOnlyChanged(WebKitSettings* settings, GParamSpec*, WebKitWebView* webView)
 {
     WKPageRef wkPage = toAPI(webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(webView)));
@@ -236,7 +253,16 @@ static void webkitWebViewSetSettings(WebKitWebView* webView, WebKitSettings* set
 {
     webView->priv->settings = settings;
     webkitSettingsAttachSettingsToPage(webView->priv->settings.get(), wkPage);
+    g_signal_connect(settings, "notify::allow-modal-dialogs", G_CALLBACK(allowModalDialogsChanged), webView);
     g_signal_connect(settings, "notify::zoom-text-only", G_CALLBACK(zoomTextOnlyChanged), webView);
+}
+
+static void webkitWebViewDisconnectSettingsSignalHandlers(WebKitWebView* webView)
+{
+    WebKitSettings* settings = webView->priv->settings.get();
+    g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(allowModalDialogsChanged), webView);
+    g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(zoomTextOnlyChanged), webView);
+
 }
 
 static void fileChooserDialogResponseCallback(GtkDialog* dialog, gint responseID, WebKitFileChooserRequest* request)
@@ -353,8 +379,16 @@ static void webkitWebViewGetProperty(GObject* object, guint propId, GValue* valu
 static void webkitWebViewFinalize(GObject* object)
 {
     WebKitWebViewPrivate* priv = WEBKIT_WEB_VIEW(object)->priv;
+
     if (priv->javascriptGlobalContext)
         JSGlobalContextRelease(priv->javascriptGlobalContext);
+
+    // For modal dialogs, make sure the main loop is stopped when finalizing the webView.
+    if (priv->modalLoop && g_main_loop_is_running(priv->modalLoop.get()))
+        g_main_loop_quit(priv->modalLoop.get());
+
+    webkitWebViewDisconnectSettingsSignalHandlers(WEBKIT_WEB_VIEW(object));
+
     priv->~WebKitWebViewPrivate();
     G_OBJECT_CLASS(webkit_web_view_parent_class)->finalize(object);
 }
@@ -603,6 +637,27 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
                      0, 0,
                      g_cclosure_marshal_VOID__VOID,
                      G_TYPE_NONE, 0);
+
+     /**
+     * WebKitWebView::run-as-modal:
+     * @web_view: the #WebKitWebView on which the signal is emitted
+     *
+     * Emitted after #WebKitWebView::ready-to-show on the newly
+     * created #WebKitWebView when JavaScript code calls
+     * <function>window.showModalDialog</function>. The purpose of
+     * this signal is to allow the client application to prepare the
+     * new view to behave as modal. Once the signal is emitted a new
+     * mainloop will be run to block user interaction in the parent
+     * #WebKitWebView until the new dialog is closed.
+     */
+    signals[RUN_AS_MODAL] =
+            g_signal_new("run-as-modal",
+                         G_TYPE_FROM_CLASS(webViewClass),
+                         G_SIGNAL_RUN_LAST,
+                         G_STRUCT_OFFSET(WebKitWebViewClass, run_as_modal),
+                         0, 0,
+                         g_cclosure_marshal_VOID__VOID,
+                         G_TYPE_NONE, 0);
 
     /**
      * WebKitWebView::close:
@@ -933,6 +988,78 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
                      webkit_marshal_BOOLEAN__OBJECT,
                      G_TYPE_BOOLEAN, 1, /* number of parameters */
                      WEBKIT_TYPE_FILE_CHOOSER_REQUEST);
+
+    /**
+     * WebKitWebView::context-menu:
+     * @web_view: the #WebKitWebView on which the signal is emitted
+     * @context_menu: the proposed #WebKitContextMenu
+     * @event: the #GdkEvent that triggered the context menu
+     * @hit_test_result: a #WebKitHitTestResult
+     *
+     * Emmited when a context menu is about to be displayed to give the application
+     * a chance to customize the proposed menu, prevent the menu from being displayed
+     * or build its own context menu.
+     * <itemizedlist>
+     * <listitem><para>
+     *  To customize the proposed menu you can use webkit_context_menu_prepend(),
+     *  webkit_context_menu_append() or webkit_context_menu_insert() to add new
+     *  #WebKitContextMenuItem<!-- -->s to @context_menu, webkit_context_menu_move_item()
+     *  to reorder existing items, or webkit_context_menu_remove() to remove an
+     *  existing item. The signal handler should return %FALSE, and the menu represented
+     *  by @context_menu will be shown.
+     * </para></listitem>
+     * <listitem><para>
+     *  To prevent the menu from being displayed you can just connect to this signal
+     *  and return %TRUE so that the proposed menu will not be shown.
+     * </para></listitem>
+     * <listitem><para>
+     *  To build your own menu, you can remove all items from the proposed menu with
+     *  webkit_context_menu_remove_all(), add your own items and return %FALSE so
+     *  that the menu will be shown. You can also ignore the proposed #WebKitContextMenu,
+     *  build your own #GtkMenu and return %TRUE to prevent the proposed menu from being shown.
+     * </para></listitem>
+     * <listitem><para>
+     *  If you just want the default menu to be shown always, simply don't connect to this
+     *  signal because showing the proposed context menu is the default behaviour.
+     * </para></listitem>
+     * </itemizedlist>
+     *
+     * If the signal handler returns %FALSE the context menu represented by @context_menu
+     * will be shown, if it return %TRUE the context menu will not be shown.
+     *
+     * The proposed #WebKitContextMenu passed in @context_menu argument is only valid
+     * during the signal emission.
+     *
+     * Returns: %TRUE to stop other handlers from being invoked for the event.
+     *    %FALSE to propagate the event further.
+     */
+    signals[CONTEXT_MENU] =
+        g_signal_new("context-menu",
+                     G_TYPE_FROM_CLASS(webViewClass),
+                     G_SIGNAL_RUN_LAST,
+                     G_STRUCT_OFFSET(WebKitWebViewClass, context_menu),
+                     g_signal_accumulator_true_handled, 0,
+                     webkit_marshal_BOOLEAN__OBJECT_BOXED_OBJECT,
+                     G_TYPE_BOOLEAN, 3,
+                     WEBKIT_TYPE_CONTEXT_MENU,
+                     GDK_TYPE_EVENT | G_SIGNAL_TYPE_STATIC_SCOPE,
+                     WEBKIT_TYPE_HIT_TEST_RESULT);
+
+    /**
+     * WebKitWebView::context-menu-dismissed:
+     * @web_view: the #WebKitWebView on which the signal is emitted
+     *
+     * Emitted after #WebKitWebView::context-menu signal, if the context menu is shown,
+     * to notify that the context menu is dismissed.
+     */
+    signals[CONTEXT_MENU_DISMISSED] =
+        g_signal_new("context-menu-dismissed",
+                     G_TYPE_FROM_CLASS(webViewClass),
+                     G_SIGNAL_RUN_LAST,
+                     G_STRUCT_OFFSET(WebKitWebViewClass, context_menu_dismissed),
+                     0, 0,
+                     g_cclosure_marshal_VOID__VOID,
+                     G_TYPE_NONE, 0);
 }
 
 static bool updateReplaceContentStatus(WebKitWebView* webView, WebKitLoadEvent loadEvent)
@@ -1032,6 +1159,16 @@ WKPageRef webkitWebViewCreateNewPage(WebKitWebView* webView, WKDictionaryRef wkW
 void webkitWebViewReadyToShowPage(WebKitWebView* webView)
 {
     g_signal_emit(webView, signals[READY_TO_SHOW], 0, NULL);
+}
+
+void webkitWebViewRunAsModal(WebKitWebView* webView)
+{
+    g_signal_emit(webView, signals[RUN_AS_MODAL], 0, NULL);
+
+    webView->priv->modalLoop = adoptGRef(g_main_loop_new(0, FALSE));
+    GDK_THREADS_ENTER();
+    g_main_loop_run(webView->priv->modalLoop.get());
+    GDK_THREADS_LEAVE();
 }
 
 void webkitWebViewClosePage(WebKitWebView* webView)
@@ -1172,14 +1309,6 @@ void webkitWebViewRunFileChooserRequest(WebKitWebView* webView, WebKitFileChoose
     g_signal_emit(webView, signals[RUN_FILE_CHOOSER], 0, request, &returnValue);
 }
 
-static void webkitWebViewCreateAndAppendDefaultMenuItems(WebKitWebView* webView, WKArrayRef wkProposedMenu, Vector<ContextMenuItem>& contextMenuItems)
-{
-    for (size_t i = 0; i < WKArrayGetSize(wkProposedMenu); ++i) {
-        WKContextMenuItemRef wkItem = static_cast<WKContextMenuItemRef>(WKArrayGetItemAtIndex(wkProposedMenu, i));
-        contextMenuItems.append(toImpl(wkItem)->data()->core());
-    }
-}
-
 static bool webkitWebViewShouldShowInputMethodsMenu(WebKitWebView* webView)
 {
     GtkSettings* settings = gtk_widget_get_settings(GTK_WIDGET(webView));
@@ -1191,33 +1320,72 @@ static bool webkitWebViewShouldShowInputMethodsMenu(WebKitWebView* webView)
     return showInputMethodMenu;
 }
 
-static void webkitWebViewCreateAndAppendInputMethodsMenuItem(WebKitWebView* webView, Vector<ContextMenuItem>& contextMenuItems)
+static int getUnicodeMenuItemPosition(WebKitContextMenu* contextMenu)
+{
+    GList* items = webkit_context_menu_get_items(contextMenu);
+    GList* iter;
+    int i = 0;
+    for (iter = items, i = 0; iter; iter = g_list_next(iter), ++i) {
+        WebKitContextMenuItem* item = WEBKIT_CONTEXT_MENU_ITEM(iter->data);
+
+        if (webkit_context_menu_item_is_separator(item))
+            continue;
+        if (webkit_context_menu_item_get_stock_action(item) == WEBKIT_CONTEXT_MENU_ACTION_UNICODE)
+            return i;
+    }
+    return -1;
+}
+
+static void webkitWebViewCreateAndAppendInputMethodsMenuItem(WebKitWebView* webView, WebKitContextMenu* contextMenu)
 {
     if (!webkitWebViewShouldShowInputMethodsMenu(webView))
         return;
 
+    // Place the im context menu item right before the unicode menu item
+    // if it's present.
+    int unicodeMenuItemPosition = getUnicodeMenuItemPosition(contextMenu);
+    if (unicodeMenuItemPosition == -1)
+        webkit_context_menu_append(contextMenu, webkit_context_menu_item_new_separator());
+
     GtkIMContext* imContext = webkitWebViewBaseGetIMContext(WEBKIT_WEB_VIEW_BASE(webView));
     GtkMenu* imContextMenu = GTK_MENU(gtk_menu_new());
     gtk_im_multicontext_append_menuitems(GTK_IM_MULTICONTEXT(imContext), GTK_MENU_SHELL(imContextMenu));
-    ContextMenu subMenu(imContextMenu);
+    WebKitContextMenuItem* menuItem = webkit_context_menu_item_new_from_stock_action(WEBKIT_CONTEXT_MENU_ACTION_INPUT_METHODS);
+    webkitContextMenuItemSetSubMenuFromGtkMenu(menuItem, imContextMenu);
+    webkit_context_menu_insert(contextMenu, menuItem, unicodeMenuItemPosition);
+}
 
-    ContextMenuItem separator(SeparatorType, ContextMenuItemTagNoAction, String());
-    contextMenuItems.append(separator);
-    ContextMenuItem menuItem(SubmenuType, ContextMenuItemTagNoAction, _("Input _Methods"), &subMenu);
-    contextMenuItems.append(menuItem);
+static void contextMenuDismissed(GtkMenuShell*, WebKitWebView* webView)
+{
+    g_signal_emit(webView, signals[CONTEXT_MENU_DISMISSED], 0, NULL);
 }
 
 void webkitWebViewPopulateContextMenu(WebKitWebView* webView, WKArrayRef wkProposedMenu, WKHitTestResultRef wkHitTestResult)
 {
-    WebContextMenuProxyGtk* contextMenu = webkitWebViewBaseGetActiveContextMenuProxy(WEBKIT_WEB_VIEW_BASE(webView));
-    ASSERT(contextMenu);
+    WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
+    WebContextMenuProxyGtk* contextMenuProxy = webkitWebViewBaseGetActiveContextMenuProxy(webViewBase);
+    ASSERT(contextMenuProxy);
+
+    GRefPtr<WebKitContextMenu> contextMenu = adoptGRef(webkitContextMenuCreate(wkProposedMenu));
+    if (WKHitTestResultIsContentEditable(wkHitTestResult))
+        webkitWebViewCreateAndAppendInputMethodsMenuItem(webView, contextMenu.get());
+
+    GRefPtr<WebKitHitTestResult> hitTestResult = adoptGRef(webkitHitTestResultCreate(wkHitTestResult));
+    GOwnPtr<GdkEvent> contextMenuEvent(webkitWebViewBaseTakeContextMenuEvent(webViewBase));
+
+    gboolean returnValue;
+    g_signal_emit(webView, signals[CONTEXT_MENU], 0, contextMenu.get(), contextMenuEvent.get(), hitTestResult.get(), &returnValue);
+    if (returnValue)
+        return;
 
     Vector<ContextMenuItem> contextMenuItems;
-    webkitWebViewCreateAndAppendDefaultMenuItems(webView, wkProposedMenu, contextMenuItems);
-    if (WKHitTestResultIsContentEditable(wkHitTestResult))
-        webkitWebViewCreateAndAppendInputMethodsMenuItem(webView, contextMenuItems);
+    webkitContextMenuPopulate(contextMenu.get(), contextMenuItems);
+    contextMenuProxy->populate(contextMenuItems);
 
-    contextMenu->populate(contextMenuItems);
+    g_signal_connect(contextMenuProxy->gtkMenu(), "deactivate", G_CALLBACK(contextMenuDismissed), webView);
+
+    // Clear the menu to make sure it's useless after signal emission.
+    webkit_context_menu_remove_all(contextMenu.get());
 }
 
 /**
@@ -1684,7 +1852,7 @@ void webkit_web_view_set_settings(WebKitWebView* webView, WebKitSettings* settin
     if (webView->priv->settings == settings)
         return;
 
-    g_signal_handlers_disconnect_by_func(webView->priv->settings.get(), reinterpret_cast<gpointer>(zoomTextOnlyChanged), webView);
+    webkitWebViewDisconnectSettingsSignalHandlers(webView);
     webkitWebViewSetSettings(webView, settings, toAPI(webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(webView))));
 }
 

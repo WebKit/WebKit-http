@@ -123,6 +123,7 @@ class NotificationPermissionRequestManager;
 class PageOverlay;
 class PluginView;
 class SessionState;
+class WebColorChooser;
 class WebContextMenu;
 class WebContextMenuItemData;
 class WebEvent;
@@ -142,6 +143,10 @@ struct EditorState;
 struct PrintInfo;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
+
+#if ENABLE(WEB_INTENTS)
+struct IntentData;
+#endif
 
 #if ENABLE(GESTURE_EVENTS)
 class WebGestureEvent;
@@ -214,7 +219,14 @@ public:
     bool isInRedo() const { return m_isInRedo; }
 
     void setActivePopupMenu(WebPopupMenu*);
-    
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    WebColorChooser* activeColorChooser() const { return m_activeColorChooser; }
+    void setActiveColorChooser(WebColorChooser*);
+    void didChooseColor(const WebCore::Color&);
+    void didEndColorChooser();
+#endif
+
     WebOpenPanelResultListener* activeOpenPanelResultListener() const { return m_activeOpenPanelResultListener.get(); }
     void setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener>);
 
@@ -635,6 +647,10 @@ private:
     void runJavaScriptInMainFrame(const String&, uint64_t callbackID);
     void forceRepaint(uint64_t callbackID);
 
+#if ENABLE(WEB_INTENTS)
+    void deliverIntentToFrame(uint64_t frameID, const IntentData&);
+#endif
+
     void preferencesDidChange(const WebPreferencesStore&);
     void platformPreferencesDidChange(const WebPreferencesStore&);
     void updatePreferences(const WebPreferencesStore&);
@@ -807,6 +823,9 @@ private:
     RefPtr<WebPopupMenu> m_activePopupMenu;
 #if ENABLE(CONTEXT_MENUS)
     RefPtr<WebContextMenu> m_contextMenu;
+#endif
+#if ENABLE(INPUT_TYPE_COLOR)
+    WebColorChooser* m_activeColorChooser;
 #endif
     RefPtr<WebOpenPanelResultListener> m_activeOpenPanelResultListener;
     RefPtr<NotificationPermissionRequestManager> m_notificationPermissionRequestManager;

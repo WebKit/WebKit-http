@@ -116,7 +116,7 @@ public:
     {
         return adoptRef(new BitmapImage(observer));
     }
-    ~BitmapImage();
+    virtual ~BitmapImage();
     
     virtual bool isBitmapImage() const;
 
@@ -187,6 +187,9 @@ public:
 #if !ASSERT_DISABLED
     virtual bool notSolidColor();
 #endif
+
+private:
+    void updateSize() const;
 
 protected:
     enum RepetitionCountStatus {
@@ -278,8 +281,8 @@ protected:
     mutable IntSize m_sizeRespectingOrientation;
     
     size_t m_currentFrame; // The index of the current frame of animation.
-    Vector<FrameData> m_frames; // An array of the cached frames of the animation. We have to ref frames to pin them in the cache.
-    
+    Vector<FrameData, 1> m_frames; // An array of the cached frames of the animation. We have to ref frames to pin them in the cache.
+
     Timer<BitmapImage>* m_frameTimer;
     int m_repetitionCount; // How many total animation loops we should do.  This will be cAnimationNone if this image type is incapable of animation.
     RepetitionCountStatus m_repetitionCountStatus;

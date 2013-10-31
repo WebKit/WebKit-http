@@ -56,7 +56,7 @@ public:
     virtual void setMinimumFontSize(int);
     virtual void setMinimumLogicalFontSize(int);
     virtual void setApplyDefaultDeviceScaleFactorInCompositor(bool);
-    virtual void setFontBoostingEnabled(bool);
+    virtual void setTextAutosizingEnabled(bool);
     virtual void setDefaultTextEncodingName(const WebString&);
     virtual void setDeviceSupportsTouch(bool);
     virtual void setDeviceSupportsMouse(bool);
@@ -97,6 +97,7 @@ public:
     virtual void setExperimentalCSSRegionsEnabled(bool);
     virtual void setExperimentalCSSGridLayoutEnabled(bool);
     virtual void setExperimentalCSSCustomFilterEnabled(bool);
+    virtual void setExperimentalCSSVariablesEnabled(bool);
     virtual void setOpenGLMultisamplingEnabled(bool);
     virtual void setPrivilegedWebGLExtensionsEnabled(bool);
     virtual void setWebGLErrorsToConsoleEnabled(bool);
@@ -149,6 +150,7 @@ public:
     virtual void setMediaPlaybackRequiresUserGesture(bool);
     virtual bool viewportEnabled() const { return m_viewportEnabled; }
     virtual void setSyncXHRInDocumentsEnabled(bool);
+    virtual void setCookieEnabled(bool);
 
     bool showFPSCounter() const { return m_showFPSCounter; }
     bool showPlatformLayerTree() const { return m_showPlatformLayerTree; }

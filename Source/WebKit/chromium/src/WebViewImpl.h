@@ -150,6 +150,7 @@ public:
     virtual bool compositionRange(size_t* location, size_t* length);
     virtual WebTextInputInfo textInputInfo();
     virtual WebTextInputType textInputType();
+    virtual bool setEditableSelectionOffsets(int start, int end);
     virtual bool selectionBounds(WebRect& start, WebRect& end) const;
     virtual bool selectionTextDirection(WebTextDirection& start, WebTextDirection& end) const;
     virtual bool caretOrSelectionRange(size_t* location, size_t* length);
@@ -194,6 +195,7 @@ public:
     virtual void clearFocusedNode();
     virtual void scrollFocusedNodeIntoView();
     virtual void scrollFocusedNodeIntoRect(const WebRect&);
+    virtual void advanceFocus(bool reverse);
     virtual double zoomLevel();
     virtual double setZoomLevel(bool textOnly, double zoomLevel);
     virtual void zoomLimitsChanged(double minimumZoomLevel,
@@ -205,6 +207,7 @@ public:
     virtual void setPageScaleFactorLimits(float minPageScale, float maxPageScale);
     virtual float minimumPageScaleFactor() const;
     virtual float maximumPageScaleFactor() const;
+    virtual void setIgnoreViewportTagMaximumScale(bool);
 
     virtual float deviceScaleFactor() const;
     virtual void setDeviceScaleFactor(float);
@@ -291,6 +294,7 @@ public:
     virtual void updateBatteryStatus(const WebBatteryStatus&);
 #endif
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&);
+    virtual void renderingStats(WebRenderingStats&) const;
 
     // WebLayerTreeViewClient
     virtual void willBeginFrame();
@@ -449,6 +453,8 @@ public:
         return m_emulatedTextZoomFactor;
     }
 
+    bool ignoreViewportTagMaximumScale() const { return m_ignoreViewportTagMaximumScale; }
+
     // Determines whether a page should e.g. be opened in a background tab.
     // Returns false if it has no opinion, in which case it doesn't set *policy.
     static bool navigationPolicyFromMouseEvent(
@@ -513,13 +519,6 @@ public:
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     void scheduleAnimation();
 #endif
-
-    // Returns the onscreen 3D context used by the compositor. This is
-    // used by the renderer's code to set up resource sharing between
-    // the compositor's context and subordinate contexts for APIs like
-    // WebGL. Returns 0 if compositing support is not compiled in or
-    // we could not successfully instantiate a context.
-    virtual WebGraphicsContext3D* graphicsContext3D();
 
     virtual WebGraphicsContext3D* sharedGraphicsContext3D();
 
@@ -706,6 +705,8 @@ private:
     float m_pageDefinedMaximumPageScaleFactor;
     float m_minimumPageScaleFactor;
     float m_maximumPageScaleFactor;
+
+    bool m_ignoreViewportTagMaximumScale;
 
     bool m_pageScaleFactorIsSet;
 

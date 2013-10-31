@@ -27,12 +27,16 @@
 #include "platform/WebLayerTreeView.h"
 
 #include "GraphicsContext3DPrivate.h"
+#include "LayerChromium.h"
 #include "WebLayerTreeViewImpl.h"
+#include "cc/CCGraphicsContext.h"
 #include "cc/CCLayerTreeHost.h"
+#include "cc/CCRenderingStats.h"
 #include "platform/WebLayer.h"
 #include "platform/WebPoint.h"
 #include "platform/WebRect.h"
 #include "platform/WebSize.h"
+#include <public/WebRenderingStats.h>
 
 using namespace WebCore;
 
@@ -171,9 +175,13 @@ void WebLayerTreeView::finishAllRendering()
     m_private->layerTreeHost()->finishAllRendering();
 }
 
-WebGraphicsContext3D* WebLayerTreeView::context()
+void WebLayerTreeView::renderingStats(WebRenderingStats& stats) const
 {
-    return GraphicsContext3DPrivate::extractWebGraphicsContext3D(m_private->layerTreeHost()->context()->context3D());
+    CCRenderingStats ccStats;
+    m_private->layerTreeHost()->renderingStats(ccStats);
+
+    stats.numAnimationFrames = ccStats.numAnimationFrames;
+    stats.numFramesSentToScreen = ccStats.numFramesSentToScreen;
 }
 
 void WebLayerTreeView::loseCompositorContext(int numTimes)

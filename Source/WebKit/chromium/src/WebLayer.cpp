@@ -118,6 +118,16 @@ WebLayer WebLayer::parent() const
     return WebLayer(const_cast<LayerChromium*>(m_private->parent()));
 }
 
+size_t WebLayer::numberOfChildren() const
+{
+    return m_private->children().size();
+}
+
+WebLayer WebLayer::childAt(size_t index) const
+{
+    return WebLayer(m_private->children()[index]);
+}
+
 void WebLayer::addChild(const WebLayer& child)
 {
     m_private->addChild(child);
@@ -187,7 +197,7 @@ bool WebLayer::masksToBounds() const
 void WebLayer::setMaskLayer(const WebLayer& maskLayer)
 {
     WebLayer ref = maskLayer;
-    return m_private->setMaskLayer(ref.unwrap<LayerChromium>());
+    m_private->setMaskLayer(ref.unwrap<LayerChromium>());
 }
 
 WebLayer WebLayer::maskLayer() const
@@ -270,6 +280,11 @@ void WebLayer::setPreserves3D(bool preserve3D)
     m_private->setPreserves3D(preserve3D);
 }
 
+void WebLayer::setUseParentBackfaceVisibility(bool useParentBackfaceVisibility)
+{
+    m_private->setUseParentBackfaceVisibility(useParentBackfaceVisibility);
+}
+
 void WebLayer::setBackgroundColor(WebColor color)
 {
     m_private->setBackgroundColor(color);
@@ -293,6 +308,11 @@ void WebLayer::setDebugBorderColor(const WebColor& color)
 void WebLayer::setDebugBorderWidth(float width)
 {
     m_private->setDebugBorderWidth(width);
+}
+
+void WebLayer::setAlwaysReserveTextures(bool reserve)
+{
+    m_private->setAlwaysReserveTextures(reserve);
 }
 
 void WebLayer::setForceRenderSurface(bool forceRenderSurface)

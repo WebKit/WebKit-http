@@ -42,10 +42,14 @@ namespace WebCore {
 
 class PerformanceEntry : public RefCounted<PerformanceEntry> {
 public:
+    virtual ~PerformanceEntry();
+
     String name() const;
     String entryType() const;
     double startTime() const;
     double duration() const;
+
+    virtual bool isResource() { return false; }
 
 protected:
     PerformanceEntry(const String& name, const String& entryType, double startTime, double duration);

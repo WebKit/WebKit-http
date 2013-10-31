@@ -34,15 +34,21 @@
 
 #include "InspectorFileSystemAgent.h"
 
+#include "Base64.h"
 #include "DOMFileSystem.h"
+#include "DOMImplementation.h"
 #include "DirectoryEntry.h"
 #include "DirectoryReader.h"
 #include "Document.h"
 #include "EntriesCallback.h"
+#include "Entry.h"
 #include "EntryArray.h"
 #include "EntryCallback.h"
 #include "ErrorCallback.h"
+#include "FileCallback.h"
+#include "FileEntry.h"
 #include "FileError.h"
+#include "FileReader.h"
 #include "FileSystemCallback.h"
 #include "FileSystemCallbacks.h"
 #include "Frame.h"
@@ -52,7 +58,12 @@
 #include "KURL.h"
 #include "LocalFileSystem.h"
 #include "MIMETypeRegistry.h"
+#include "Metadata.h"
+#include "MetadataCallback.h"
+#include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "TextEncoding.h"
+#include "TextResourceDecoder.h"
 
 using WebCore::TypeBuilder::Array;
 
@@ -96,6 +107,40 @@ typedef InspectorFileSystemAgent::FrontendProvider FrontendProvider;
 
 namespace {
 
+template<typename BaseCallback, typename Handler, typename Argument>
+class CallbackDispatcher : public BaseCallback {
+public:
+    typedef bool (Handler::*HandlingMethod)(Argument*);
+
+    static PassRefPtr<CallbackDispatcher> create(PassRefPtr<Handler> handler, HandlingMethod handlingMethod)
+    {
+        return adoptRef(new CallbackDispatcher(handler, handlingMethod));
+    }
+
+    virtual bool handleEvent(Argument* argument) OVERRIDE
+    {
+        return (m_handler.get()->*m_handlingMethod)(argument);
+    }
+
+private:
+    CallbackDispatcher(PassRefPtr<Handler> handler, HandlingMethod handlingMethod)
+        : m_handler(handler)
+        , m_handlingMethod(handlingMethod) { }
+
+    RefPtr<Handler> m_handler;
+    HandlingMethod m_handlingMethod;
+};
+
+template<typename BaseCallback>
+class CallbackDispatcherFactory {
+public:
+    template<typename Handler, typename Argument>
+    static PassRefPtr<CallbackDispatcher<BaseCallback, Handler, Argument> > create(Handler* handler, bool (Handler::*handlingMethod)(Argument*))
+    {
+        return CallbackDispatcher<BaseCallback, Handler, Argument>::create(PassRefPtr<Handler>(handler), handlingMethod);
+    }
+};
+
 class GetFileSystemRootTask : public RefCounted<GetFileSystemRootTask> {
     WTF_MAKE_NONCOPYABLE(GetFileSystemRootTask);
 public:
@@ -107,16 +152,14 @@ public:
     void start(ScriptExecutionContext*);
 
 private:
-    class ErrorCallback;
-    class GetEntryCallback;
-
-    void gotEntry(Entry*);
+    bool didHitError(FileError*);
+    bool didGetEntry(Entry*);
 
     void reportResult(FileError::ErrorCode errorCode, PassRefPtr<TypeBuilder::FileSystem::Entry> entry)
     {
         if (!m_frontendProvider || !m_frontendProvider->frontend())
             return;
-        m_frontendProvider->frontend()->gotFileSystemRoot(m_requestId, static_cast<int>(errorCode), entry);
+        m_frontendProvider->frontend()->fileSystemRootReceived(m_requestId, static_cast<int>(errorCode), entry);
         m_frontendProvider = 0;
     }
 
@@ -130,45 +173,11 @@ private:
     String m_type;
 };
 
-class GetFileSystemRootTask::ErrorCallback : public WebCore::ErrorCallback {
-    WTF_MAKE_NONCOPYABLE(ErrorCallback);
-public:
-    static PassRefPtr<GetFileSystemRootTask::ErrorCallback> create(PassRefPtr<GetFileSystemRootTask> getFileSystemRootTask)
-    {
-        return adoptRef(new GetFileSystemRootTask::ErrorCallback(getFileSystemRootTask));
-    }
-
-    virtual bool handleEvent(FileError* error) OVERRIDE
-    {
-        m_getFileSystemRootTask->reportResult(error->code(), 0);
-        return true;
-    }
-
-private:
-    ErrorCallback(PassRefPtr<GetFileSystemRootTask> getFileSystemRootTask)
-        : m_getFileSystemRootTask(getFileSystemRootTask) { }
-    RefPtr<GetFileSystemRootTask> m_getFileSystemRootTask;
-};
-
-class GetFileSystemRootTask::GetEntryCallback : public WebCore::EntryCallback {
-    WTF_MAKE_NONCOPYABLE(GetEntryCallback);
-public:
-    static PassRefPtr<GetFileSystemRootTask::GetEntryCallback> create(PassRefPtr<GetFileSystemRootTask> getFileSystemRootTask)
-    {
-        return adoptRef(new GetFileSystemRootTask::GetEntryCallback(getFileSystemRootTask));
-    }
-
-    virtual bool handleEvent(Entry* entry) OVERRIDE
-    {
-        m_getFileSystemRootTask->gotEntry(entry);
-        return true;
-    }
-
-private:
-    GetEntryCallback(PassRefPtr<GetFileSystemRootTask> getFileSystemRootTask)
-        : m_getFileSystemRootTask(getFileSystemRootTask) { }
-    RefPtr<GetFileSystemRootTask> m_getFileSystemRootTask;
-};
+bool GetFileSystemRootTask::didHitError(FileError* error)
+{
+    reportResult(error->code(), 0);
+    return true;
+}
 
 void GetFileSystemRootTask::start(ScriptExecutionContext* scriptExecutionContext)
 {
@@ -182,17 +191,18 @@ void GetFileSystemRootTask::start(ScriptExecutionContext* scriptExecutionContext
         return;
     }
 
-    RefPtr<EntryCallback> successCallback = GetFileSystemRootTask::GetEntryCallback::create(this);
-    RefPtr<ErrorCallback> errorCallback = GetFileSystemRootTask::ErrorCallback::create(this);
+    RefPtr<EntryCallback> successCallback = CallbackDispatcherFactory<EntryCallback>::create(this, &GetFileSystemRootTask::didGetEntry);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &GetFileSystemRootTask::didHitError);
     OwnPtr<ResolveURICallbacks> fileSystemCallbacks = ResolveURICallbacks::create(successCallback, errorCallback, scriptExecutionContext, type, "/");
 
     LocalFileSystem::localFileSystem().readFileSystem(scriptExecutionContext, type, fileSystemCallbacks.release());
 }
 
-void GetFileSystemRootTask::gotEntry(Entry* entry)
+bool GetFileSystemRootTask::didGetEntry(Entry* entry)
 {
     RefPtr<TypeBuilder::FileSystem::Entry> result(TypeBuilder::FileSystem::Entry::create().setUrl(entry->toURL()).setName("/").setIsDirectory(true));
     reportResult(static_cast<FileError::ErrorCode>(0), result);
+    return true;
 }
 
 class ReadDirectoryTask : public RefCounted<ReadDirectoryTask> {
@@ -211,18 +221,20 @@ public:
     void start(ScriptExecutionContext*);
 
 private:
-    class ErrorCallback;
-    class GetEntryCallback;
-    class ReadDirectoryEntriesCallback;
+    bool didHitError(FileError* error)
+    {
+        reportResult(error->code(), 0);
+        return true;
+    }
 
-    void gotEntry(Entry*);
-    void didReadDirectoryEntries(EntryArray*);
+    bool didGetEntry(Entry*);
+    bool didReadDirectoryEntries(EntryArray*);
 
     void reportResult(FileError::ErrorCode errorCode, PassRefPtr<Array<TypeBuilder::FileSystem::Entry> > entries)
     {
         if (!m_frontendProvider || !m_frontendProvider->frontend())
             return;
-        m_frontendProvider->frontend()->didReadDirectory(m_requestId, static_cast<int>(errorCode), entries);
+        m_frontendProvider->frontend()->directoryContentReceived(m_requestId, static_cast<int>(errorCode), entries);
         m_frontendProvider = 0;
     }
 
@@ -240,68 +252,6 @@ private:
     RefPtr<DirectoryReader> m_directoryReader;
 };
 
-class ReadDirectoryTask::ErrorCallback : public WebCore::ErrorCallback {
-    WTF_MAKE_NONCOPYABLE(ErrorCallback);
-public:
-    static PassRefPtr<ReadDirectoryTask::ErrorCallback> create(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-    {
-        return adoptRef(new ReadDirectoryTask::ErrorCallback(readDirectoryTask));
-    }
-
-    virtual bool handleEvent(FileError* error) OVERRIDE
-    {
-        if (m_readDirectoryTask)
-            m_readDirectoryTask->reportResult(error->code(), 0);
-        return true;
-    }
-
-private:
-    ErrorCallback(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-        : m_readDirectoryTask(readDirectoryTask) { }
-    RefPtr<ReadDirectoryTask> m_readDirectoryTask;
-};
-
-class ReadDirectoryTask::GetEntryCallback : public EntryCallback {
-    WTF_MAKE_NONCOPYABLE(GetEntryCallback);
-public:
-    static PassRefPtr<ReadDirectoryTask::GetEntryCallback> create(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-    {
-        return adoptRef(new ReadDirectoryTask::GetEntryCallback(readDirectoryTask));
-    }
-
-    virtual bool handleEvent(Entry* fileSystem) OVERRIDE
-    {
-        m_readDirectoryTask->gotEntry(fileSystem);
-        return true;
-    }
-
-private:
-    GetEntryCallback(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-        : m_readDirectoryTask(readDirectoryTask) { }
-    RefPtr<ReadDirectoryTask> m_readDirectoryTask;
-};
-
-class ReadDirectoryTask::ReadDirectoryEntriesCallback : public EntriesCallback {
-    WTF_MAKE_NONCOPYABLE(ReadDirectoryEntriesCallback);
-public:
-    static PassRefPtr<ReadDirectoryTask::ReadDirectoryEntriesCallback> create(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-    {
-        return adoptRef(new ReadDirectoryTask::ReadDirectoryEntriesCallback(readDirectoryTask));
-    }
-
-    virtual bool handleEvent(EntryArray* entries) OVERRIDE
-    {
-        ASSERT(entries);
-        m_readDirectoryTask->didReadDirectoryEntries(entries);
-        return true;
-    }
-
-private:
-    ReadDirectoryEntriesCallback(PassRefPtr<ReadDirectoryTask> readDirectoryTask)
-        : m_readDirectoryTask(readDirectoryTask) { }
-    RefPtr<ReadDirectoryTask> m_readDirectoryTask;
-};
-
 void ReadDirectoryTask::start(ScriptExecutionContext* scriptExecutionContext)
 {
     ASSERT(scriptExecutionContext);
@@ -313,23 +263,24 @@ void ReadDirectoryTask::start(ScriptExecutionContext* scriptExecutionContext)
         return;
     }
 
-    RefPtr<EntryCallback> successCallback = ReadDirectoryTask::GetEntryCallback::create(this);
-    RefPtr<ErrorCallback> errorCallback = ReadDirectoryTask::ErrorCallback::create(this);
+    RefPtr<EntryCallback> successCallback = CallbackDispatcherFactory<EntryCallback>::create(this, &ReadDirectoryTask::didGetEntry);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &ReadDirectoryTask::didHitError);
     OwnPtr<ResolveURICallbacks> fileSystemCallbacks = ResolveURICallbacks::create(successCallback, errorCallback, scriptExecutionContext, type, path);
 
     LocalFileSystem::localFileSystem().readFileSystem(scriptExecutionContext, type, fileSystemCallbacks.release());
 }
 
-void ReadDirectoryTask::gotEntry(Entry* entry)
+bool ReadDirectoryTask::didGetEntry(Entry* entry)
 {
     if (!entry->isDirectory()) {
         reportResult(FileError::TYPE_MISMATCH_ERR, 0);
-        return;
+        return true;
     }
 
     m_directoryReader = static_cast<DirectoryEntry*>(entry)->createReader();
     m_entries = Array<TypeBuilder::FileSystem::Entry>::create();
     readDirectoryEntries();
+    return true;
 }
 
 void ReadDirectoryTask::readDirectoryEntries()
@@ -339,16 +290,16 @@ void ReadDirectoryTask::readDirectoryEntries()
         return;
     }
 
-    RefPtr<EntriesCallback> successCallback = ReadDirectoryTask::ReadDirectoryEntriesCallback::create(this);
-    RefPtr<ErrorCallback> errorCallback = ReadDirectoryTask::ErrorCallback::create(this);
+    RefPtr<EntriesCallback> successCallback = CallbackDispatcherFactory<EntriesCallback>::create(this, &ReadDirectoryTask::didReadDirectoryEntries);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &ReadDirectoryTask::didHitError);
     m_directoryReader->readEntries(successCallback, errorCallback);
 }
 
-void ReadDirectoryTask::didReadDirectoryEntries(EntryArray* entries)
+bool ReadDirectoryTask::didReadDirectoryEntries(EntryArray* entries)
 {
     if (!entries->length()) {
         reportResult(static_cast<FileError::ErrorCode>(0), m_entries);
-        return;
+        return true;
     }
 
     for (unsigned i = 0; i < entries->length(); ++i) {
@@ -359,14 +310,19 @@ void ReadDirectoryTask::didReadDirectoryEntries(EntryArray* entries)
         if (!entry->isDirectory()) {
             String mimeType = MIMETypeRegistry::getMIMETypeForPath(entry->name());
             ResourceType::Enum resourceType;
-            if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
+            if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType)) {
                 resourceType = ResourceType::Image;
-            else if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType))
+                entryForFrontend->setIsTextFile(false);
+            } else if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(mimeType)) {
                 resourceType = ResourceType::Script;
-            else if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
+                entryForFrontend->setIsTextFile(true);
+            } else if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType)) {
                 resourceType = ResourceType::Document;
-            else
+                entryForFrontend->setIsTextFile(true);
+            } else {
                 resourceType = ResourceType::Other;
+                entryForFrontend->setIsTextFile(DOMImplementation::isXMLMIMEType(mimeType) || DOMImplementation::isTextMIMEType(mimeType));
+            }
 
             entryForFrontend->setMimeType(mimeType);
             entryForFrontend->setResourceType(resourceType);
@@ -375,6 +331,223 @@ void ReadDirectoryTask::didReadDirectoryEntries(EntryArray* entries)
         m_entries->addItem(entryForFrontend);
     }
     readDirectoryEntries();
+    return true;
+}
+
+class GetMetadataTask : public RefCounted<GetMetadataTask> {
+    WTF_MAKE_NONCOPYABLE(GetMetadataTask);
+public:
+    static PassRefPtr<GetMetadataTask> create(PassRefPtr<FrontendProvider> frontendProvider, int requestId, const String& url)
+    {
+        return adoptRef(new GetMetadataTask(frontendProvider, requestId, url));
+    }
+
+    virtual ~GetMetadataTask()
+    {
+        reportResult(FileError::ABORT_ERR, 0);
+    }
+
+    bool didHitError(FileError* error)
+    {
+        reportResult(error->code(), 0);
+        return true;
+    }
+
+    void start(ScriptExecutionContext*);
+    bool didGetEntry(Entry*);
+    bool didGetMetadata(Metadata*);
+
+    void reportResult(FileError::ErrorCode errorCode, PassRefPtr<TypeBuilder::FileSystem::Metadata> metadata)
+    {
+        if (!m_frontendProvider || !m_frontendProvider->frontend())
+            return;
+        m_frontendProvider->frontend()->metadataReceived(m_requestId, static_cast<int>(errorCode), metadata);
+        m_frontendProvider = 0;
+    }
+
+private:
+    GetMetadataTask(PassRefPtr<FrontendProvider> frontendProvider, int requestId, const String& url)
+        : m_frontendProvider(frontendProvider)
+        , m_requestId(requestId)
+        , m_url(ParsedURLString, url) { }
+
+    RefPtr<FrontendProvider> m_frontendProvider;
+    int m_requestId;
+    KURL m_url;
+    String m_path;
+    bool m_isDirectory;
+};
+
+void GetMetadataTask::start(ScriptExecutionContext* scriptExecutionContext)
+{
+    FileSystemType type;
+    DOMFileSystemBase::crackFileSystemURL(m_url, type, m_path);
+
+    RefPtr<EntryCallback> successCallback = CallbackDispatcherFactory<EntryCallback>::create(this, &GetMetadataTask::didGetEntry);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &GetMetadataTask::didHitError);
+
+    OwnPtr<ResolveURICallbacks> fileSystemCallbacks = ResolveURICallbacks::create(successCallback, errorCallback, scriptExecutionContext, type, m_path);
+    LocalFileSystem::localFileSystem().readFileSystem(scriptExecutionContext, type, fileSystemCallbacks.release());
+}
+
+bool GetMetadataTask::didGetEntry(Entry* entry)
+{
+    if (!entry->filesystem()->scriptExecutionContext()) {
+        reportResult(FileError::ABORT_ERR, 0);
+        return true;
+    }
+
+    RefPtr<MetadataCallback> successCallback = CallbackDispatcherFactory<MetadataCallback>::create(this, &GetMetadataTask::didGetMetadata);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &GetMetadataTask::didHitError);
+    entry->getMetadata(successCallback, errorCallback);
+    m_isDirectory = entry->isDirectory();
+    return true;
+}
+
+bool GetMetadataTask::didGetMetadata(Metadata* metadata)
+{
+    using TypeBuilder::FileSystem::Metadata;
+    RefPtr<Metadata> result = Metadata::create().setModificationTime(metadata->modificationTime()).setSize(metadata->size());
+    reportResult(static_cast<FileError::ErrorCode>(0), result);
+    return true;
+}
+
+class ReadFileTask : public EventListener {
+    WTF_MAKE_NONCOPYABLE(ReadFileTask);
+public:
+    static PassRefPtr<ReadFileTask> create(PassRefPtr<FrontendProvider> frontendProvider, int requestId, const String& url, bool readAsText, long long start, long long end, const String& charset)
+    {
+        return adoptRef(new ReadFileTask(frontendProvider, requestId, url, readAsText, start, end, charset));
+    }
+
+    virtual ~ReadFileTask()
+    {
+        reportResult(FileError::ABORT_ERR, 0, 0);
+    }
+
+    void start(ScriptExecutionContext*);
+
+
+    virtual bool operator==(const EventListener& other) OVERRIDE
+    {
+        return this == &other;
+    }
+
+    virtual void handleEvent(ScriptExecutionContext*, Event* event) OVERRIDE
+    {
+        if (event->type() == eventNames().loadEvent)
+            didRead();
+        else if (event->type() == eventNames().errorEvent)
+            didHitError(m_reader->error().get());
+    }
+
+private:
+    bool didHitError(FileError* error)
+    {
+        reportResult(error->code(), 0, 0);
+        return true;
+    }
+
+    bool didGetEntry(Entry*);
+    bool didGetFile(File*);
+    void didRead();
+
+    void reportResult(FileError::ErrorCode errorCode, const String* result, const String* charset)
+    {
+        if (!m_frontendProvider || !m_frontendProvider->frontend())
+            return;
+        m_frontendProvider->frontend()->fileContentReceived(m_requestId, static_cast<int>(errorCode), result, charset);
+        m_frontendProvider = 0;
+    }
+
+    ReadFileTask(PassRefPtr<FrontendProvider> frontendProvider, int requestId, const String& url, bool readAsText, long long start, long long end, const String& charset)
+        : EventListener(EventListener::CPPEventListenerType)
+        , m_frontendProvider(frontendProvider)
+        , m_requestId(requestId)
+        , m_url(ParsedURLString, url)
+        , m_readAsText(readAsText)
+        , m_start(start)
+        , m_end(end)
+        , m_charset(charset) { }
+
+    RefPtr<FrontendProvider> m_frontendProvider;
+    int m_requestId;
+    KURL m_url;
+    bool m_readAsText;
+    int m_start;
+    long long m_end;
+    String m_mimeType;
+    String m_charset;
+
+    RefPtr<FileReader> m_reader;
+};
+
+void ReadFileTask::start(ScriptExecutionContext* scriptExecutionContext)
+{
+    ASSERT(scriptExecutionContext);
+
+    FileSystemType type;
+    String path;
+    if (!DOMFileSystemBase::crackFileSystemURL(m_url, type, path)) {
+        reportResult(FileError::SYNTAX_ERR, 0, 0);
+        return;
+    }
+
+    RefPtr<EntryCallback> successCallback = CallbackDispatcherFactory<EntryCallback>::create(this, &ReadFileTask::didGetEntry);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &ReadFileTask::didHitError);
+    OwnPtr<ResolveURICallbacks> fileSystemCallbacks = ResolveURICallbacks::create(successCallback, errorCallback, scriptExecutionContext, type, path);
+
+    LocalFileSystem::localFileSystem().readFileSystem(scriptExecutionContext, type, fileSystemCallbacks.release());
+}
+
+bool ReadFileTask::didGetEntry(Entry* entry)
+{
+    if (entry->isDirectory()) {
+        reportResult(FileError::TYPE_MISMATCH_ERR, 0, 0);
+        return true;
+    }
+
+    if (!entry->filesystem()->scriptExecutionContext()) {
+        reportResult(FileError::ABORT_ERR, 0, 0);
+        return true;
+    }
+
+    RefPtr<FileCallback> successCallback = CallbackDispatcherFactory<FileCallback>::create(this, &ReadFileTask::didGetFile);
+    RefPtr<ErrorCallback> errorCallback = CallbackDispatcherFactory<ErrorCallback>::create(this, &ReadFileTask::didHitError);
+    static_cast<FileEntry*>(entry)->file(successCallback, errorCallback);
+
+    m_reader = FileReader::create(entry->filesystem()->scriptExecutionContext());
+    m_mimeType = MIMETypeRegistry::getMIMETypeForPath(entry->name());
+
+    return true;
+}
+
+bool ReadFileTask::didGetFile(File* file)
+{
+    RefPtr<Blob> blob = file->slice(m_start, m_end);
+    m_reader->setOnload(this);
+    m_reader->setOnerror(this);
+
+    ExceptionCode ec = 0;
+    m_reader->readAsArrayBuffer(blob.get(), ec);
+    return true;
+}
+
+void ReadFileTask::didRead()
+{
+    RefPtr<ArrayBuffer> buffer = m_reader->arrayBufferResult();
+
+    if (!m_readAsText) {
+        String result = base64Encode(static_cast<char*>(buffer->data()), buffer->byteLength());
+        reportResult(static_cast<FileError::ErrorCode>(0), &result, 0);
+        return;
+    }
+
+    RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create(m_mimeType, m_charset, true);
+    String result = decoder->decode(static_cast<char*>(buffer->data()), buffer->byteLength());
+    result += decoder->flush();
+    m_charset = decoder->encoding().domName();
+    reportResult(static_cast<FileError::ErrorCode>(0), &result, &m_charset);
 }
 
 }
@@ -408,28 +581,67 @@ void InspectorFileSystemAgent::disable(ErrorString*)
     m_state->setBoolean(FileSystemAgentState::fileSystemAgentEnabled, m_enabled);
 }
 
-void InspectorFileSystemAgent::getFileSystemRoot(ErrorString*, int requestId, const String& origin, const String& type)
+void InspectorFileSystemAgent::requestFileSystemRoot(ErrorString* error, const String& origin, const String& type, int* requestId)
 {
-    if (!m_enabled || !m_frontendProvider)
+    if (!m_enabled || !m_frontendProvider) {
+        *error = "FileSystem agent is not enabled";
         return;
+    }
     ASSERT(m_frontendProvider->frontend());
 
+    *requestId = m_nextRequestId++;
     if (ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextForOrigin(SecurityOrigin::createFromString(origin).get()))
-        GetFileSystemRootTask::create(m_frontendProvider, requestId, type)->start(scriptExecutionContext);
+        GetFileSystemRootTask::create(m_frontendProvider, *requestId, type)->start(scriptExecutionContext);
     else
-        m_frontendProvider->frontend()->gotFileSystemRoot(requestId, static_cast<int>(FileError::ABORT_ERR), 0);
+        m_frontendProvider->frontend()->fileSystemRootReceived(*requestId, static_cast<int>(FileError::ABORT_ERR), 0);
 }
 
-void InspectorFileSystemAgent::readDirectory(ErrorString*, int requestId, const String& url)
+void InspectorFileSystemAgent::requestDirectoryContent(ErrorString* error, const String& url, int* requestId)
 {
-    if (!m_enabled || !m_frontendProvider)
+    if (!m_enabled || !m_frontendProvider) {
+        *error = "FileSystem agent is not enabled";
         return;
+    }
     ASSERT(m_frontendProvider->frontend());
 
+    *requestId = m_nextRequestId++;
+
     if (ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextForOrigin(SecurityOrigin::createFromString(url).get()))
-        ReadDirectoryTask::create(m_frontendProvider, requestId, url)->start(scriptExecutionContext);
+        ReadDirectoryTask::create(m_frontendProvider, *requestId, url)->start(scriptExecutionContext);
     else
-        m_frontendProvider->frontend()->didReadDirectory(requestId, static_cast<int>(FileError::ABORT_ERR), 0);
+        m_frontendProvider->frontend()->directoryContentReceived(*requestId, static_cast<int>(FileError::ABORT_ERR), 0);
+}
+
+void InspectorFileSystemAgent::requestMetadata(ErrorString* error, const String& url, int* requestId)
+{
+    if (!m_enabled || !m_frontendProvider) {
+        *error = "FileSystem agent is not enabled";
+        return;
+    }
+    ASSERT(m_frontendProvider->frontend());
+
+    *requestId = m_nextRequestId++;
+
+    if (ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextForOrigin(SecurityOrigin::createFromString(url).get()))
+        GetMetadataTask::create(m_frontendProvider, *requestId, url)->start(scriptExecutionContext);
+    else
+        m_frontendProvider->frontend()->metadataReceived(*requestId, static_cast<int>(FileError::ABORT_ERR), 0);
+}
+
+void InspectorFileSystemAgent::requestFileContent(ErrorString* error, const String& url, bool readAsText, const int* start, const int* end, const String* charset, int* requestId)
+{
+    if (!m_enabled || !m_frontendProvider) {
+        *error = "FileSystem agent is not enabled";
+        return;
+    }
+    ASSERT(m_frontendProvider->frontend());
+
+    *requestId = m_nextRequestId++;
+
+    if (ScriptExecutionContext* scriptExecutionContext = scriptExecutionContextForOrigin(SecurityOrigin::createFromString(url).get()))
+        ReadFileTask::create(m_frontendProvider, *requestId, url, readAsText, start ? *start : 0, end ? *end : std::numeric_limits<long long>::max(), charset ? *charset : "")->start(scriptExecutionContext);
+    else
+        m_frontendProvider->frontend()->fileContentReceived(*requestId, static_cast<int>(FileError::ABORT_ERR), 0, 0);
 }
 
 void InspectorFileSystemAgent::setFrontend(InspectorFrontend* frontend)
@@ -457,6 +669,7 @@ InspectorFileSystemAgent::InspectorFileSystemAgent(InstrumentingAgents* instrume
     : InspectorBaseAgent<InspectorFileSystemAgent>("FileSystem", instrumentingAgents, state)
     , m_pageAgent(pageAgent)
     , m_enabled(false)
+    , m_nextRequestId(1)
 {
     ASSERT(instrumentingAgents);
     ASSERT(state);

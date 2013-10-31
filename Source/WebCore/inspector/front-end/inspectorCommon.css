@@ -71,7 +71,7 @@ iframe.view {
 .resources-event-dividers {
     position: absolute;
     left: 0;
-    right: 5px;
+    right: 0;
     height: 100%;
     top: 0;
     z-index: 300;
@@ -113,22 +113,6 @@ iframe.view {
     top: 0;
     bottom: 0;
     z-index: 300;
-}
-
-.resources-red-divider {
-    background-color: rgba(255, 0, 0, 0.5);
-}
-
-.resources-blue-divider {
-    background-color: rgba(0, 0, 255, 0.5);
-}
-
-.resources-orange-divider {
-    background-color: rgba(255, 178, 23, 0.5);
-}
-
-.resources-divider.last {
-    background-color: transparent;
 }
 
 .resources-divider-label {

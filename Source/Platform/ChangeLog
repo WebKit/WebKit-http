@@ -1,3 +1,355 @@
+2012-07-05  Ian Vollick  <vollick@chromium.org>
+
+        [chromium] Create a WebKit::Web* wrapper for the cc animation classes
+        https://bugs.webkit.org/show_bug.cgi?id=90303
+
+        Reviewed by James Robinson.
+
+        * Platform.gypi:
+        * chromium/public/WebAnimation.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebAnimation):
+        (WebKit::WebAnimation::WebAnimation):
+        (WebKit::WebAnimation::~WebAnimation):
+        * chromium/public/WebAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebAnimationCurve):
+        (WebKit::WebAnimationCurve::~WebAnimationCurve):
+        (WebKit::WebAnimationCurve::WebAnimationCurve):
+        * chromium/public/WebFloatAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebFloatAnimationCurve):
+        (WebKit::WebFloatAnimationCurve::WebFloatAnimationCurve):
+        (WebKit::WebFloatAnimationCurve::~WebFloatAnimationCurve):
+        * chromium/public/WebFloatKeyframe.h: Added.
+        (WebKit):
+        (WebKit::WebFloatKeyframe::WebFloatKeyframe):
+        (WebFloatKeyframe):
+        * chromium/public/WebTransformAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebTransformAnimationCurve):
+        (WebKit::WebTransformAnimationCurve::WebTransformAnimationCurve):
+        (WebKit::WebTransformAnimationCurve::~WebTransformAnimationCurve):
+        * chromium/public/WebTransformKeyframe.h: Added.
+        (WebKit):
+        (WebKit::WebTransformKeyframe::WebTransformKeyframe):
+        (WebTransformKeyframe):
+
+2012-07-03  Alex Sakhartchouk  <alexst@chromium.org>
+
+        [chromium] Avoid calling getUniformLocation??() in the compositor startup
+        https://bugs.webkit.org/show_bug.cgi?id=90217
+
+        Reviewed by Adrienne Walker.
+
+        Adding an entry point for bindUniformLocationCHROMIUM.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebGraphicsContext3D):
+        (WebKit::WebGraphicsContext3D::bindUniformLocationCHROMIUM):
+
+2012-07-03  Tony Chang  <tony@chromium.org>
+
+        [chromium] Unreviewed, update .gitignore to handle VS2010 files.
+
+        * Platform.gyp/.gitignore:
+
+2012-07-02  Tommy Widenflycht  <tommyw@google.com>
+
+        MediaStream API: Update MediaStreamTrackList to match the specification
+        https://bugs.webkit.org/show_bug.cgi?id=90171
+
+        Reviewed by Adam Barth.
+
+        The latest update to the specification added add and remove methods with corresponding callbacks.
+        The callbacks can be triggered both from JS and from the platform layer.
+
+        * chromium/public/WebMediaStreamCenterClient.h:
+        (WebKit):
+        (WebMediaStreamCenterClient):
+
+2012-07-01  Keishi Hattori  <keishi@webkit.org>
+
+        Unreviewed, rolling out r121650.
+        http://trac.webkit.org/changeset/121650
+        https://bugs.webkit.org/show_bug.cgi?id=90303
+
+        runhooks is failing for chromium win bots and
+        WebAnimationTest.DefaultSettings is crashing
+
+        * Platform.gypi:
+        * chromium/public/WebAnimation.h: Removed.
+        * chromium/public/WebAnimationCurve.h: Removed.
+        * chromium/public/WebFloatAnimationCurve.h: Removed.
+        * chromium/public/WebFloatKeyframe.h: Removed.
+        * chromium/public/WebTransformAnimationCurve.h: Removed.
+        * chromium/public/WebTransformKeyframe.h: Removed.
+
+2012-07-01  Ian Vollick  <vollick@chromium.org>
+
+        [chromium] Create a WebKit::Web* wrapper for the cc animation classes
+        https://bugs.webkit.org/show_bug.cgi?id=90303
+
+        Reviewed by James Robinson.
+
+        * Platform.gypi:
+        * chromium/public/WebAnimation.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebAnimation):
+        (WebKit::WebAnimation::WebAnimation):
+        (WebKit::WebAnimation::~WebAnimation):
+        * chromium/public/WebAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebAnimationCurve):
+        (WebKit::WebAnimationCurve::~WebAnimationCurve):
+        (WebKit::WebAnimationCurve::WebAnimationCurve):
+        * chromium/public/WebFloatAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebFloatAnimationCurve):
+        (WebKit::WebFloatAnimationCurve::WebFloatAnimationCurve):
+        (WebKit::WebFloatAnimationCurve::~WebFloatAnimationCurve):
+        * chromium/public/WebFloatKeyframe.h: Added.
+        (WebKit):
+        (WebKit::WebFloatKeyframe::WebFloatKeyframe):
+        (WebFloatKeyframe):
+        * chromium/public/WebTransformAnimationCurve.h: Added.
+        (WebCore):
+        (WebKit):
+        (WebTransformAnimationCurve):
+        (WebKit::WebTransformAnimationCurve::WebTransformAnimationCurve):
+        (WebKit::WebTransformAnimationCurve::~WebTransformAnimationCurve):
+        * chromium/public/WebTransformKeyframe.h: Added.
+        (WebKit):
+        (WebKit::WebTransformKeyframe::WebTransformKeyframe):
+        (WebTransformKeyframe):
+
+2012-06-30  Ian Vollick  <vollick@chromium.org>
+
+        [chromium] CanvasLayerTextureUpdater needs to convert opaque rects back to content space.
+        https://bugs.webkit.org/show_bug.cgi?id=90092
+
+        The CanvasLayerTextureUpdater currently receives its opaque rects in
+        layer space, but is expected to return them in content space and does
+        not convert them. This patch adds this conversion. To avoid numerical
+        errors, this patch also switches to using float rects to store opaque
+        rects where appropriate.
+
+        Reviewed by Adrienne Walker.
+
+        * chromium/public/WebContentLayerClient.h:
+        (WebKit):
+        (WebContentLayerClient):
+
+2012-06-29  Tony Payne  <tpayne@chromium.org>
+
+        Remove type from screenColorProfile API
+        https://bugs.webkit.org/show_bug.cgi?id=90299
+
+        Reviewed by Adam Barth.
+
+        * chromium/public/Platform.h:
+        (WebKit::Platform::screenColorProfile): Removed type from chromium
+        public API's version of screenColorProfile().
+
+2012-06-28  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove mapRect and mapQuad from WebTransformationMatrix
+        https://bugs.webkit.org/show_bug.cgi?id=90230
+
+        Reviewed by Adrienne Walker.
+
+        Removes clipping-unaware mapRect, mapQuad and projectPoint functions from the WebTransformationMatrix interface.
+
+        * chromium/public/WebTransformationMatrix.h:
+        (WebTransformationMatrix):
+
+2012-06-28  Adrienne Walker  <enne@google.com>
+
+        [chromium] Split WebScrollbar into WebPluginScrollbar and WebScrollbar
+        https://bugs.webkit.org/show_bug.cgi?id=90117
+
+        Reviewed by James Robinson.
+
+        Move WebScrollbar from client API to Platform.
+
+        * Platform.gypi:
+        * chromium/public/WebScrollbar.h: Copied from Source/WebKit/chromium/public/WebPluginScrollbarClient.h.
+        (WebKit):
+        (WebScrollbar):
+        (WebKit::WebScrollbar::~WebScrollbar):
+
+2012-06-26  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Remove WebView::graphicsContext3D getter
+        https://bugs.webkit.org/show_bug.cgi?id=89916
+
+        Reviewed by Adrienne Walker.
+
+        Remove unused getter.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebLayerTreeView):
+
+2012-06-26  Dave Tu  <dtu@chromium.org>
+
+        [chromium] Expose rendering statistics to WebWidget.
+        https://bugs.webkit.org/show_bug.cgi?id=88268
+
+        Reviewed by James Robinson.
+
+        The WebKit side of a basic framework for exposing rendering statistics
+        to Chromium's --enable-benchmarking extension.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebRenderingStatistics):
+        (WebKit):
+        (WebLayerTreeView):
+
+2012-06-25  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Add WebLayer API for scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=89913
+
+        Reviewed by Adrienne Walker.
+
+        Adds WebScrollableLayer type to represent a layer that can be scrolled by the user. Currently WebContentLayers
+        are scrollable and no other layer types are, although this might change in the future.
+
+        * chromium/public/WebContentLayer.h:
+        (WebKit::WebContentLayer::WebContentLayer):
+        * chromium/public/WebLayer.h:
+        (WebLayer):
+        * chromium/public/WebScrollableLayer.h:
+        (WebKit):
+        (WebScrollableLayer):
+        (WebKit::WebScrollableLayer::WebScrollableLayer):
+        (WebKit::WebScrollableLayer::~WebScrollableLayer):
+        (WebKit::WebScrollableLayer::operator=):
+
+2012-06-25  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121176.
+        http://trac.webkit.org/changeset/121176
+        https://bugs.webkit.org/show_bug.cgi?id=89934
+
+        [chromium] browser_tests assert failed:
+        FATAL:native_theme_win.cc(1541)] Check failed: false. Invalid
+        part: 16 (Requested by ukai on #webkit).
+
+        * chromium/public/win/WebThemeEngine.h:
+        (WebKit::WebThemeEngine::paintProgressBar):
+
+2012-06-25  James Robinson  <jamesr@chromium.org>
+
+        [chromium] Use WebGraphicsContext3D in compositor implementation
+        https://bugs.webkit.org/show_bug.cgi?id=89700
+
+        Reviewed by Adrienne Walker.
+
+        Puts all callback destructors in protected section and removes obsolete memory callback signature.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebGraphicsContextLostCallback):
+        (WebGraphicsErrorMessageCallback):
+        (WebGraphicsSwapBuffersCompleteCallbackCHROMIUM):
+        (WebGraphicsMemoryAllocationChangedCallbackCHROMIUM):
+
+2012-06-25  Scott Graham  <scottmg@chromium.org>
+
+        Plumb Scrollbar button dimensions through WebThemeEngine
+        https://bugs.webkit.org/show_bug.cgi?id=89264
+
+        Reviewed by James Robinson.
+
+        Rather than making the height of the scrollbar buttons the same as the
+        width of the scrollbar, delegate to the WebThemeEngine. This allows
+        matching the Aura theme rather than the standard Windows theme.
+
+        * chromium/public/win/WebThemeEngine.h:
+        (WebKit):
+        (WebThemeEngine):
+
+2012-06-22  Kenneth Russell  <kbr@google.com>
+
+        Unreviewed, rolling out r121064.
+        http://trac.webkit.org/changeset/121064
+        https://bugs.webkit.org/show_bug.cgi?id=88268
+
+        Broke Chromium Mac build.
+
+        * Platform.gypi:
+        * chromium/public/WebLayerTreeView.h:
+        (WebKit):
+        (WebLayerTreeView):
+        * chromium/public/WebRenderingStats.h: Removed.
+
+2012-06-22  Dave Tu  <dtu@chromium.org>
+
+        [chromium] Expose rendering statistics to WebWidget.
+        https://bugs.webkit.org/show_bug.cgi?id=88268
+
+        Reviewed by James Robinson.
+
+        The WebKit side of a basic framework for exposing rendering statistics
+        to Chromium's --enable-benchmarking extension.
+
+        * chromium/public/WebLayerTreeView.h:
+        (WebRenderingStatistics):
+        (WebKit):
+        (WebLayerTreeView):
+
+2012-06-22  Jeff Timanus  <twiz@chromium.org>
+
+        [Chromium] Change implementing a fast-path for copying GPU-accelerated Canvas2D instances to WebGL textures.
+        https://bugs.webkit.org/show_bug.cgi?id=86275
+
+        This change adds the necessary plumbing to the various rendering contexts to copy the backing store texture of
+        a Canvas2D instance to be copied to a WebGL texture.  The GL_CHROMIUM_copy_texture extension is necessary
+        because the backing-store for a GPU-accelerated skia Canvas2D is normally in BGRA format, which is not supported
+        by glCopyTexImage.
+
+        Reviewed by Kenneth Russell.
+
+        * chromium/public/WebGraphicsContext3D.h:
+        (WebGraphicsContext3D):
+        (WebKit::WebGraphicsContext3D::copyTextureCHROMIUM):
+
+2012-06-20  Christopher Cameron  <ccameron@chromium.org>
+
+        [chromium] webkit-backface-visibility doesn't work with video
+        https://bugs.webkit.org/show_bug.cgi?id=88908
+
+        When determining a contents layer's backface culling, use the parent
+        layer's transform and backface-visibility properties. Track which
+        layers need this special treatment with useParentBackfaceVisibility
+        and setUseParentBackfaceVisibility functions in WebCore::LayerChromium,
+        WebKit::WebLayer, and WebCore::CCLayerImpl.
+
+        Reviewed by Adrienne Walker.
+
+        * chromium/public/WebLayer.h:
+            (WebLayer):
+                Add an accessor to specify that a layer should use its parent's
+                backface culling behavior.
+
+2012-06-19  Tony Payne  <tpayne@chromium.org>
+
+        Add monitor profile support for Win
+        https://bugs.webkit.org/show_bug.cgi?id=88565
+
+        Reviewed by Eric Seidel.
+
+        * chromium/public/Platform.h:
+        (Platform):
+        (WebKit::Platform::screenColorProfile):
+
 2012-06-14  James Robinson  <jamesr@chromium.org>
 
         [chromium] Use WebImageLayer in GraphicsLayerChromium for image layers

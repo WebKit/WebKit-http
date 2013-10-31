@@ -27,6 +27,8 @@
 #include "config.h"
 #include "LayerTreeHostGtk.h"
 
+#if USE(TEXTURE_MAPPER_GL)
+
 #include "DrawingAreaImpl.h"
 #include "TextureMapperGL.h"
 #include "WebPage.h"
@@ -262,11 +264,6 @@ bool LayerTreeHostGtk::showRepaintCounter(const GraphicsLayer*) const
     return m_webPage->corePage()->settings()->showRepaintCounter();
 }
 
-float LayerTreeHostGtk::deviceScaleFactor() const
-{
-    return m_webPage->corePage()->deviceScaleFactor();
-}
-
 gboolean LayerTreeHostGtk::layerFlushTimerFiredCallback(LayerTreeHostGtk* layerTreeHost)
 {
     layerTreeHost->layerFlushTimerFired();
@@ -397,3 +394,5 @@ void LayerTreeHostGtk::cancelPendingLayerFlush()
 }
 
 } // namespace WebKit
+
+#endif

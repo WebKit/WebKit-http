@@ -111,8 +111,8 @@ namespace JSC { namespace DFG {
     /* Since a put to 'length' may invalidate optimizations here, */\
     /* this must be the directly subsequent property put. */\
     macro(GetByVal, NodeResultJS | NodeMustGenerate | NodeMightClobber) \
-    macro(PutByVal, NodeMustGenerate | NodeClobbersWorld) \
-    macro(PutByValAlias, NodeMustGenerate | NodeClobbersWorld) \
+    macro(PutByVal, NodeMustGenerate | NodeMightClobber) \
+    macro(PutByValAlias, NodeMustGenerate | NodeMightClobber) \
     macro(GetById, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
     macro(GetByIdFlush, NodeResultJS | NodeMustGenerate | NodeClobbersWorld) \
     macro(PutById, NodeMustGenerate | NodeClobbersWorld) \
@@ -184,6 +184,7 @@ namespace JSC { namespace DFG {
     /* Allocations. */\
     macro(NewObject, NodeResultJS) \
     macro(NewArray, NodeResultJS | NodeHasVarArgs) \
+    macro(NewArrayWithSize, NodeResultJS) \
     macro(NewArrayBuffer, NodeResultJS) \
     macro(NewRegexp, NodeResultJS) \
     \

@@ -35,6 +35,12 @@
 
 namespace WebCore {
 
+struct SameSizeAsStyleRuleBase : public WTF::RefCountedBase {
+    unsigned bitfields;
+};
+
+COMPILE_ASSERT(sizeof(StyleRuleBase) == sizeof(SameSizeAsStyleRuleBase), StyleRuleBase_should_stay_small);
+
 PassRefPtr<CSSRule> StyleRuleBase::createCSSOMWrapper(CSSStyleSheet* parentSheet) const
 {
     return createCSSOMWrapper(parentSheet, 0);
@@ -279,8 +285,9 @@ StyleRuleMedia::StyleRuleMedia(PassRefPtr<MediaQuerySet> media, Vector<RefPtr<St
 
 StyleRuleMedia::StyleRuleMedia(const StyleRuleMedia& o)
     : StyleRuleBlock(o)
-    , m_mediaQueries(o.m_mediaQueries->copy())
 {
+    if (o.m_mediaQueries)
+        m_mediaQueries = o.m_mediaQueries->copy();
 }
 
 StyleRuleRegion::StyleRuleRegion(Vector<OwnPtr<CSSParserSelector> >* selectors, Vector<RefPtr<StyleRuleBase> >& adoptRules)

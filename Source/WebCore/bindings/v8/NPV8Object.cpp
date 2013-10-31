@@ -31,11 +31,11 @@
 #include "PlatformSupport.h"
 #include "DOMWindow.h"
 #include "Frame.h"
-#include "NPObjectWrapper.h"
 #include <wtf/OwnArrayPtr.h>
 #include "PlatformString.h"
 #include "ScriptSourceCode.h"
 #include "UserGestureIndicator.h"
+#include "V8Binding.h"
 #include "V8GCController.h"
 #include "V8Helpers.h"
 #include "V8NPUtils.h"
@@ -53,7 +53,7 @@ namespace WebCore {
 
 WrapperTypeInfo* npObjectTypeInfo()
 {
-    static WrapperTypeInfo typeInfo = { 0, 0, 0, 0, WrapperTypeObjectPrototype };
+    static WrapperTypeInfo typeInfo = { 0, 0, 0, 0, 0, WrapperTypeObjectPrototype };
     return &typeInfo;
 }
 
@@ -75,29 +75,7 @@ static NPObject* allocV8NPObject(NPP, NPClass*)
 static void freeV8NPObject(NPObject* npObject)
 {
     V8NPObject* v8NpObject = reinterpret_cast<V8NPObject*>(npObject);
-    if (int v8ObjectHash = v8NpObject->v8Object->GetIdentityHash()) {
-        V8NPObjectMap::iterator iter = staticV8NPObjectMap()->find(v8ObjectHash);
-        if (iter != staticV8NPObjectMap()->end()) {
-            V8NPObjectVector& objects = iter->second;
-            for (size_t index = 0; index < objects.size(); ++index) {
-                if (objects.at(index) == v8NpObject) {
-                    objects.remove(index);
-                    break;
-                }
-            }
-            if (objects.isEmpty())
-                staticV8NPObjectMap()->remove(v8ObjectHash);
-        } else
-            ASSERT_NOT_REACHED();
-    } else {
-        ASSERT(!v8::Context::InContext());
-        staticV8NPObjectMap()->clear();
-    }
-
-#ifndef NDEBUG
-    V8GCController::unregisterGlobalHandle(v8NpObject, v8NpObject->v8Object);
-#endif
-    v8NpObject->v8Object.Dispose();
+    disposeUnderlyingV8Object(npObject);
     free(v8NpObject);
 }
 
@@ -178,6 +156,38 @@ NPObject* npCreateV8ScriptObject(NPP npp, v8::Handle<v8::Object> object, DOMWind
     return reinterpret_cast<NPObject*>(v8npObject);
 }
 
+void disposeUnderlyingV8Object(NPObject* npObject)
+{
+    ASSERT(npObject->_class == npScriptObjectClass);
+    V8NPObject* v8NpObject = reinterpret_cast<V8NPObject*>(npObject);
+    if (v8NpObject->v8Object.IsEmpty())
+        return;
+    if (int v8ObjectHash = v8NpObject->v8Object->GetIdentityHash()) {
+        V8NPObjectMap::iterator iter = staticV8NPObjectMap()->find(v8ObjectHash);
+        if (iter != staticV8NPObjectMap()->end()) {
+            V8NPObjectVector& objects = iter->second;
+            for (size_t index = 0; index < objects.size(); ++index) {
+                if (objects.at(index) == v8NpObject) {
+                    objects.remove(index);
+                    break;
+                }
+            }
+            if (objects.isEmpty())
+                staticV8NPObjectMap()->remove(v8ObjectHash);
+        } else
+            ASSERT_NOT_REACHED();
+    } else {
+        ASSERT(!v8::Context::InContext());
+        staticV8NPObjectMap()->clear();
+    }
+
+#ifndef NDEBUG
+    V8GCController::unregisterGlobalHandle(v8NpObject, v8NpObject->v8Object);
+#endif
+    v8NpObject->v8Object.Dispose();
+    v8NpObject->v8Object.Clear();
+}
+
 } // namespace WebCore
 
 bool _NPN_Invoke(NPP npp, NPObject* npObject, NPIdentifier methodName, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
@@ -194,6 +204,8 @@ bool _NPN_Invoke(NPP npp, NPObject* npObject, NPIdentifier methodName, const NPV
     }
 
     V8NPObject* v8NpObject = reinterpret_cast<V8NPObject*>(npObject);
+    if (v8NpObject->v8Object.IsEmpty())
+        return false;
 
     PrivateIdentifier* identifier = static_cast<PrivateIdentifier*>(methodName);
     if (!identifier->isString)
@@ -258,6 +270,8 @@ bool _NPN_InvokeDefault(NPP npp, NPObject* npObject, const NPVariant* arguments,
     }
 
     V8NPObject* v8NpObject = reinterpret_cast<V8NPObject*>(npObject);
+    if (v8NpObject->v8Object.IsEmpty())
+        return false;
 
     VOID_TO_NPVARIANT(*result);
 
@@ -304,13 +318,8 @@ bool _NPN_EvaluateHelper(NPP npp, bool popupsAllowed, NPObject* npObject, NPStri
     if (!npObject)
         return false;
 
-    if (npObject->_class != npScriptObjectClass) {
-        // Check if the object passed in is wrapped. If yes, then we need to invoke on the underlying object.
-        NPObject* actualObject = NPObjectWrapper::getUnderlyingNPObject(npObject);
-        if (!actualObject)
-            return false;
-        npObject = actualObject;
-    }
+    if (npObject->_class != npScriptObjectClass)
+        return false;
 
     v8::HandleScope handleScope;
     v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -348,6 +357,8 @@ bool _NPN_GetProperty(NPP npp, NPObject* npObject, NPIdentifier propertyName, NP
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -383,6 +394,8 @@ bool _NPN_SetProperty(NPP npp, NPObject* npObject, NPIdentifier propertyName, co
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -412,6 +425,8 @@ bool _NPN_RemoveProperty(NPP npp, NPObject* npObject, NPIdentifier propertyName)
         return false;
 
     V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+    if (object->v8Object.IsEmpty())
+        return false;
 
     v8::HandleScope handleScope;
     v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -433,6 +448,8 @@ bool _NPN_HasProperty(NPP npp, NPObject* npObject, NPIdentifier propertyName)
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -457,6 +474,8 @@ bool _NPN_HasMethod(NPP npp, NPObject* npObject, NPIdentifier methodName)
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -501,6 +520,8 @@ bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);
@@ -537,7 +558,7 @@ bool _NPN_Enumerate(NPP npp, NPObject* npObject, NPIdentifier** identifier, uint
         *count = props->Length();
         *identifier = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier*) * *count));
         for (uint32_t i = 0; i < *count; ++i) {
-            v8::Local<v8::Value> name = props->Get(v8::Integer::New(i));
+            v8::Local<v8::Value> name = props->Get(v8Integer(i));
             (*identifier)[i] = getStringIdentifier(v8::Local<v8::String>::Cast(name));
         }
         return true;
@@ -556,6 +577,8 @@ bool _NPN_Construct(NPP npp, NPObject* npObject, const NPVariant* arguments, uin
 
     if (npObject->_class == npScriptObjectClass) {
         V8NPObject* object = reinterpret_cast<V8NPObject*>(npObject);
+        if (object->v8Object.IsEmpty())
+            return false;
 
         v8::HandleScope handleScope;
         v8::Handle<v8::Context> context = toV8Context(npp, npObject);

@@ -507,8 +507,7 @@ void GraphicsContext::fillPath(const Path& path)
             if (shadowContext) {
                 QPainter* shadowPainter = shadowContext->platformContext();
                 if (m_state.fillPattern) {
-                    AffineTransform affine;
-                    shadowPainter->fillPath(platformPath, QBrush(m_state.fillPattern->createPlatformPattern(affine)));
+                    shadowPainter->fillPath(platformPath, QBrush(m_state.fillPattern->createPlatformPattern()));
                 } else if (m_state.fillGradient) {
                     QBrush brush(*m_state.fillGradient->platformGradient());
                     brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
@@ -528,8 +527,7 @@ void GraphicsContext::fillPath(const Path& path)
         }
     }
     if (m_state.fillPattern) {
-        AffineTransform affine;
-        p->fillPath(platformPath, QBrush(m_state.fillPattern->createPlatformPattern(affine)));
+        p->fillPath(platformPath, QBrush(m_state.fillPattern->createPlatformPattern()));
     } else if (m_state.fillGradient) {
         QBrush brush(*m_state.fillGradient->platformGradient());
         brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
@@ -590,8 +588,7 @@ void GraphicsContext::strokePath(const Path& path)
     }
 
     if (m_state.strokePattern) {
-        AffineTransform affine;
-        QBrush brush = m_state.strokePattern->createPlatformPattern(affine);
+        QBrush brush = m_state.strokePattern->createPlatformPattern();
         fillPathStroke(p, pathStroker, platformPath, brush);
     } else if (m_state.strokeGradient) {
         QBrush brush(*m_state.strokeGradient->platformGradient());
@@ -605,8 +602,7 @@ static inline void drawRepeatPattern(QPainter* p, PassRefPtr<Pattern> pattern, c
 {
     ASSERT(pattern);
 
-    AffineTransform affine;
-    const QBrush brush = pattern->createPlatformPattern(affine);
+    const QBrush brush = pattern->createPlatformPattern();
     if (brush.style() != Qt::TexturePattern)
         return;
 
@@ -703,28 +699,19 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color, ColorS
     if (paintingDisabled() || !color.isValid())
         return;
 
-    m_data->solidColor.setColor(color);
+    QRectF platformRect(rect);
     QPainter* p = m_data->p();
-    QRectF normalizedRect = rect.normalized();
-
     if (hasShadow()) {
         ShadowBlur* shadow = shadowBlur();
         if (shadow->mustUseShadowBlur(this)) {
-            GraphicsContext* shadowContext = shadow->beginShadowLayer(this, normalizedRect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
-                shadowPainter->setCompositionMode(QPainter::CompositionMode_Source);
-                shadowPainter->fillRect(normalizedRect, m_state.shadowColor);
-                shadow->endShadowLayer(this);
-            }
+            shadow->drawRectShadow(this, platformRect, RoundedRect::Radii());
         } else {
             QColor shadowColor = m_state.shadowColor;
             shadowColor.setAlphaF(shadowColor.alphaF() * p->brush().color().alphaF());
-            p->fillRect(normalizedRect.translated(QPointF(m_state.shadowOffset.width(), m_state.shadowOffset.height())), shadowColor);
+            p->fillRect(platformRect.translated(QPointF(m_state.shadowOffset.width(), m_state.shadowOffset.height())), shadowColor);
         }
     }
-
-    p->fillRect(normalizedRect, m_data->solidColor);
+    p->fillRect(platformRect, QColor(color));
 }
 
 void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLeft, const IntSize& topRight, const IntSize& bottomLeft, const IntSize& bottomRight, const Color& color, ColorSpace colorSpace)
@@ -738,13 +725,7 @@ void GraphicsContext::fillRoundedRect(const IntRect& rect, const IntSize& topLef
     if (hasShadow()) {
         ShadowBlur* shadow = shadowBlur();
         if (shadow->mustUseShadowBlur(this)) {
-            GraphicsContext* shadowContext = shadow->beginShadowLayer(this, rect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
-                shadowPainter->setCompositionMode(QPainter::CompositionMode_Source);
-                shadowPainter->fillPath(path.platformPath(), QColor(m_state.shadowColor));
-                shadow->endShadowLayer(this);
-            }
+            shadow->drawRectShadow(this, rect, RoundedRect::Radii(topLeft, topRight, bottomLeft, bottomRight));
         } else {
             const QPointF shadowOffset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
             p->translate(shadowOffset);
@@ -1045,7 +1026,10 @@ void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opa
 {
     QPainter* p = m_data->p();
 
-    QRect deviceClip = p->transform().mapRect(rect);
+    QTransform deviceTransform = p->transform();
+    QRect deviceClip = deviceTransform.mapRect(rect);
+
+    alphaMask = alphaMask.transformed(deviceTransform);
     if (alphaMask.width() != deviceClip.width() || alphaMask.height() != deviceClip.height())
         alphaMask = alphaMask.scaled(deviceClip.width(), deviceClip.height());
 
@@ -1334,7 +1318,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     m_data->p()->setWorldTransform(transform);
 }
 
-#if ENABLE(3D_RENDERING) && USE(TEXTURE_MAPPER)
+#if ENABLE(3D_RENDERING)
 TransformationMatrix GraphicsContext::get3DTransform() const
 {
     if (paintingDisabled())

@@ -462,6 +462,14 @@ WebInspector.ResourcesPanel.prototype = {
         this._innerShowView(this._applicationCacheViews[frameId]);
     },
 
+    /**
+     *  @param {WebInspector.View} view
+     */
+    showFileSystem: function(view)
+    {
+        this._innerShowView(view);
+    },
+
     showCategoryView: function(categoryName)
     {
         if (!this._categoryView)
@@ -1525,6 +1533,7 @@ WebInspector.FileSystemListTreeElement.prototype = {
         var fileSystemTreeElement = this._fileSystemTreeElementByName(fileSystem.name);
         if (!fileSystemTreeElement)
             return;
+        fileSystemTreeElement.clear();
         this.removeChild(fileSystemTreeElement);
     },
 
@@ -1722,8 +1731,12 @@ WebInspector.IDBObjectStoreTreeElement.prototype = {
 
     _updateTooltip: function()
     {
+        
         var keyPathString = this._objectStore.keyPathString;
-        this.tooltip = keyPathString !== null ? (WebInspector.UIString("Key path: ") + keyPathString) : "";
+        var tooltipString = keyPathString !== null ? (WebInspector.UIString("Key path: ") + keyPathString) : "";
+        if (this._objectStore.autoIncrement)
+            tooltipString += "\n" + WebInspector.UIString("autoIncrement");
+        this.tooltip = tooltipString
     },
 
     onselect: function()
@@ -1977,6 +1990,19 @@ WebInspector.FileSystemTreeElement.prototype = {
     get itemURL()
     {
         return "filesystem://" + this._fileSystem.name;
+    },
+
+    onselect: function()
+    {
+        WebInspector.BaseStorageTreeElement.prototype.onselect.call(this);
+        this._fileSystemView = new WebInspector.FileSystemView(this._fileSystem);
+        this._storagePanel.showFileSystem(this._fileSystemView);
+    },
+
+    clear: function()
+    {
+        if (this.fileSystemView && this._storagePanel.visibleView == this.fileSystemView)
+            this._storagePanel.closeVisibleView();
     }
 }
 

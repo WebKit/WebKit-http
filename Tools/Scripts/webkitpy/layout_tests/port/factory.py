@@ -60,8 +60,9 @@ def port_options(**help_strings):
 
 def _builder_options(builder_name):
     configuration = "Debug" if re.search(r"[d|D](ebu|b)g", builder_name) else "Release"
+    is_webkit2 = builder_name.find("WK2") != -1
     builder_name = builder_name
-    return optparse.Values({'builder_name': builder_name, 'configuration': configuration})
+    return optparse.Values({'builder_name': builder_name, 'configuration': configuration, 'webkit_test_runner': is_webkit2})
 
 
 class PortFactory(object):
@@ -71,10 +72,6 @@ class PortFactory(object):
         'chromium_mac.ChromiumMacPort',
         'chromium_win.ChromiumWinPort',
         'efl.EflPort',
-        'google_chrome.GoogleChromeLinux32Port',
-        'google_chrome.GoogleChromeLinux64Port',
-        'google_chrome.GoogleChromeMacPort',
-        'google_chrome.GoogleChromeWinPort',
         'gtk.GtkPort',
         'mac.MacPort',
         'mock_drt.MockDRTPort',
@@ -115,7 +112,7 @@ class PortFactory(object):
             if port_name.startswith(cls.port_name):
                 port_name = cls.determine_full_port_name(self._host, options, port_name)
                 return cls(self._host, port_name, options=options, **kwargs)
-        raise NotImplementedError('unsupported port: %s' % port_name)
+        raise NotImplementedError('unsupported platform: "%s"' % port_name)
 
     def all_port_names(self):
         """Return a list of all valid, fully-specified, "real" port names.

@@ -185,10 +185,12 @@ void SVGTRefElement::detachTarget()
     if (container)
         container->setTextContent(emptyContent, ignore);
 
+    ASSERT(inDocument());
+
     // Mark the referenced ID as pending.
     String id;
     SVGURIReference::targetElementFromIRIString(href(), document(), &id);
-    if (!hasPendingResources() && !id.isEmpty())
+    if (!id.isEmpty())
         document()->accessSVGExtensions()->addPendingResource(id, this);
 }
 
@@ -270,10 +272,9 @@ void SVGTRefElement::buildPendingResource()
     String id;
     Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
     if (!target) {
-        if (hasPendingResources() || id.isEmpty())
+        if (id.isEmpty())
             return;
 
-        ASSERT(!hasPendingResources());
         document()->accessSVGExtensions()->addPendingResource(id, this);
         ASSERT(hasPendingResources());
         return;

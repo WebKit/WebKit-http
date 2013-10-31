@@ -36,8 +36,10 @@
 #include "Base64.h"
 #include "BitmapImage.h"
 #include "BitmapImageSingleFrameSkia.h"
+#include "Extensions3D.h"
 #include "GrContext.h"
 #include "GraphicsContext.h"
+#include "GraphicsContext3D.h"
 #include "ImageData.h"
 #include "JPEGImageEncoder.h"
 #include "MIMETypeRegistry.h"
@@ -166,6 +168,33 @@ PlatformLayer* ImageBuffer::platformLayer() const
     return m_data.m_layerBridge ? m_data.m_layerBridge->layer() : 0;
 }
 
+bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D& context, Platform3DObject texture, GC3Denum internalFormat, bool premultiplyAlpha, bool flipY)
+{
+    if (!m_data.m_layerBridge || !platformLayer())
+        return false;
+
+    Platform3DObject sourceTexture = m_data.m_layerBridge->backBufferTexture();
+
+    if (!context.makeContextCurrent())
+        return false;
+
+    Extensions3D* extensions = context.getExtensions();
+    if (!extensions->supports("GL_CHROMIUM_copy_texture") || !extensions->supports("GL_CHROMIUM_flipy"))
+        return false;
+
+    // The canvas is stored in a premultiplied format, so unpremultiply if necessary.
+    context.pixelStorei(Extensions3D::UNPACK_UNPREMULTIPLY_ALPHA_CHROMIUM, !premultiplyAlpha);
+
+    // The canvas is stored in an inverted position, so the flip semantics are reversed.
+    context.pixelStorei(Extensions3D::UNPACK_FLIP_Y_CHROMIUM, !flipY);
+
+    extensions->copyTextureCHROMIUM(GraphicsContext3D::TEXTURE_2D, sourceTexture, texture, 0, internalFormat);
+
+    context.pixelStorei(Extensions3D::UNPACK_FLIP_Y_CHROMIUM, false);
+    context.pixelStorei(Extensions3D::UNPACK_UNPREMULTIPLY_ALPHA_CHROMIUM, false);
+    return true;
+}
+
 void ImageBuffer::clip(GraphicsContext* context, const FloatRect& rect) const
 {
     context->platformContext()->beginLayerClippedToImage(rect, this);
@@ -173,12 +202,7 @@ void ImageBuffer::clip(GraphicsContext* context, const FloatRect& rect) const
 
 static bool drawNeedsCopy(GraphicsContext* src, GraphicsContext* dst)
 {
-    if (src == dst)
-        return true;
-    // If we're rendering into a deferred canvas, we need to make a deep copy of the source pixels because Skia does not
-    // retain a reference to the actual pixels otherwise. We check if we're drawing into a deferred canvas by seeing if the
-    // device's bitmap configuration is set or not - if it's not, then we must not have a bitmap target yet.
-    return dst->platformContext()->canvas()->getDevice()->config() == SkBitmap::kNo_Config;
+    return dst->platformContext()->isDeferred() || src == dst;
 }
 
 void ImageBuffer::draw(GraphicsContext* context, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,

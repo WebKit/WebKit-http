@@ -1,3 +1,312 @@
+2012-07-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Buildfix for newer Qt5
+        https://bugs.webkit.org/show_bug.cgi?id=90519
+
+        Reviewed by Tor Arne Vestbø.
+
+        * WebCoreSupport/QtFallbackWebPopup.cpp: Include QtGui/QStandardItemModel instead of deprecated QStandardItemModel.
+
+2012-07-06  Oswald Buddenhagen  <oswald.buddenhagen@nokia.com>
+
+        [Qt] Adjust to changed generation of master include file
+
+        The responsiblity for creating the master include was moved out of syncqt.
+        @ignore_for_master_contents still stays, as syncqt (ab-)uses this for
+        determining whether a header is private.
+
+        https://bugs.webkit.org/show_bug.cgi?id=90461
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Api/qwebscriptworld.h:
+        * tests/util.h:
+
+2012-07-04  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Get rid of un-needed QT += declarative for Qt 5
+
+        The declarative module has been renamed to quick1 in Qt 5, and the
+        engine-only module for Qt 5 is named 'qml'. For many of the instances
+        we could just remove 'declarative', since the project file was only
+        used for Qt5/WebKit2 builds. In the other cases the module was wrapped
+        in a haveQt(4) scope.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * declarative/experimental/experimental.pri:
+        * declarative/public.pri:
+
+2012-07-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make use of .qmake.cache for caching features
+
+        Instead of loading() features from the files that need them (and re-running
+        a bunch of checks), we now run feature detection as part of configure.pro,
+        and have build-webkit write the computed feature-defines and CONFIG to
+        .qmake.cache, which is then loaded by qmake _before_ even defaults_pre
+        when building WebKit.pro.
+
+        At some point we'll be able to selectivly prevent running of config tests
+        in configure.pro, which means we don't need a separate code-path for
+        the build-webkit --help case.
+
+        We should also move the code in build-webkit that now uses .webkit.config
+        to detect clean builds, to use .qmake.cache, since we now store the same
+        thing there.
+
+        Original patch by Oswald Buddenhagen <oswald.buddenhagen@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        * declarative/declarative.pro:
+        * declarative/public.pri:
+        * tests/qgraphicswebview/qgraphicswebview.pro:
+
+2012-07-03  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121766.
+        http://trac.webkit.org/changeset/121766
+        https://bugs.webkit.org/show_bug.cgi?id=90465
+
+        It caused flakey build errors on the bots (Requested by Ossy
+        on #webkit).
+
+        * declarative/declarative.pro:
+        * declarative/public.pri:
+        * tests/qgraphicswebview/qgraphicswebview.pro:
+
+2012-07-03  Tor Arne Vestbø  <tor.arne.vestbo@nokia.com>
+
+        [Qt] Make use of .qmake.cache for caching features
+
+        Instead of loading() features from the files that need them (and re-running
+        a bunch of checks), we now run feature detection as part of configure.pro,
+        and have build-webkit write the computed feature-defines and CONFIG to
+        .qmake.cache, which is then loaded by qmake _before_ even defaults_pre
+        when building WebKit.pro.
+
+        At some point we'll be able to selectivly prevent running of config tests
+        in configure.pro, which means we don't need a separate code-path for
+        the build-webkit --help case.
+
+        We should also move the code in build-webkit that now uses .webkit.config
+        to detect clean builds, to use .qmake.cache, since we now store the same
+        thing there.
+
+        Original patch by Oswald Buddenhagen <oswald.buddenhagen@nokia.com>
+
+        Reviewed by Tor Arne Vestbø.
+
+        * declarative/declarative.pro:
+        * declarative/public.pri:
+        * tests/qgraphicswebview/qgraphicswebview.pro:
+
+2012-07-02  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        [Qt] Get rid of GraphicsLayerQt
+        https://bugs.webkit.org/show_bug.cgi?id=78598
+
+        Reviewed by Luiz Agostini.
+
+        Removed all references to GraphicsLayerQt, including #ifdef code paths that only apply
+        when TEXTURE_MAPPER is disabled.
+
+        * Api/qgraphicswebview.cpp:
+        (QGraphicsWebView::paint):
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::renderFromTiledBackingStore):
+        (QWebFramePrivate::renderRelativeCoords):
+        * Api/qwebframe_p.h:
+        (QWebFramePrivate::QWebFramePrivate):
+        (QWebFramePrivate):
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        * WebCoreSupport/PageClientQt.cpp:
+        (WebCore):
+        (WebCore::PageClientQGraphicsWidget::~PageClientQGraphicsWidget):
+        (WebCore::PageClientQGraphicsWidget::update):
+        (WebCore::PageClientQGraphicsWidget::syncLayers):
+        (WebCore::PageClientQGraphicsWidget::setRootGraphicsLayer):
+        * WebCoreSupport/PageClientQt.h:
+        (WebCore):
+        (WebCore::PageClientQWidget::PageClientQWidget):
+        (PageClientQWidget):
+        (PageClientQGraphicsWidget):
+
+2012-07-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Do not do any logging initialization when logging is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=90228
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/InitWebCoreQt.cpp:
+        (WebCore::initializeWebCoreQt):
+
+2012-06-29  Konrad Piascik  <kpiascik@rim.com>
+
+        Don't hardcode target dpi of 160 (it should be 96 on desktop)
+        https://bugs.webkit.org/show_bug.cgi?id=88114
+
+        Reviewed by Adam Barth.
+
+        Updated the call to computeViewportAttributes.
+
+        * Api/qwebpage.cpp:
+        (QWebPage::viewportAttributesForSize):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::viewportAsText):
+
+2012-06-28  Alexander Pavlov  <apavlov@chromium.org>
+
+        [Qt] inspector/styles/inject-stylesheet.html makes 4 tests flakey (TEXT PASS)
+        https://bugs.webkit.org/show_bug.cgi?id=90167
+
+        Reviewed by Csaba Osztrogonác.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::removeUserStyleSheets):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-06-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Restore original value of mock scrollbars between tests
+        https://bugs.webkit.org/show_bug.cgi?id=90155
+
+        Reviewed by Simon Hausmann.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setMockScrollbarsEnabled):
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-06-25  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Geoffrey Garen.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection. Also added a couple JSLocks to places that didn't already 
+        have it that needed it.
+
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::addQtSenderToGlobalObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+
+2012-06-27  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Fix compilation of example platform plugin with Qt 5
+
+        Reviewed by Kenneth Christiansen.
+
+        Use QLatin1String where appropriate and use the Qt 5 plugin
+        system with Qt 5.
+
+        * examples/platformplugin/WebPlugin.cpp:
+        (SingleSelectionPopup::SingleSelectionPopup):
+        (MultipleItemListDelegate::MultipleItemListDelegate):
+        (MultipleSelectionPopup::MultipleSelectionPopup):
+        * examples/platformplugin/WebPlugin.h:
+        (WebPlugin):
+
+2012-06-26  Tony Chang  <tony@chromium.org>
+
+        [Qt] Enable grid layout LayoutTests
+        https://bugs.webkit.org/show_bug.cgi?id=89909
+
+        Reviewed by Csaba Osztrogonác.
+
+        These tests pass, we just need to hook up the overridePreference.
+
+        * Api/qwebsettings.cpp:
+        (QWebSettingsPrivate::apply):
+        (QWebSettings::QWebSettings):
+        * Api/qwebsettings.h: Add enum value for CSS grid layout
+
+2012-06-25  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        Unreviewed build fix: Don't do QT += widgets with Qt 4
+
+        * examples/platformplugin/platformplugin.pro:
+
+2012-06-23  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121058.
+        http://trac.webkit.org/changeset/121058
+        https://bugs.webkit.org/show_bug.cgi?id=89809
+
+        Patch causes plugins tests to crash in GTK debug builds
+        (Requested by zdobersek on #webkit).
+
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::addQtSenderToGlobalObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+
+2012-06-20  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Gavin Barraclough.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection.
+
+        * Api/qwebframe.cpp:
+        (QWebFramePrivate::addQtSenderToGlobalObject):
+        (QWebFrame::addToJavaScriptWindowObject):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::injectInternalsObject):
+        (DumpRenderTreeSupportQt::resetInternalsObject):
+
+2012-06-22  Amy Ousterhout  <aousterh@chromium.org>
+
+        Renamed DeviceOrientation to DeviceOrientationData
+        https://bugs.webkit.org/show_bug.cgi?id=88663
+
+        Reviewed by Steve Block.
+
+        Updated files to use the renamed DeviceOrientationData instead of DeviceOrientation.
+        This change makes DeviceOrientationData consistent with DeviceMotionData.
+        
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        (DumpRenderTreeSupportQt::setMockDeviceOrientation):
+        
+2012-06-21  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [WK2][Qt] Color chooser API missing
+        https://bugs.webkit.org/show_bug.cgi?id=87749
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Added ColorChooser API stub to WebKit. Otherwise
+        it will break the build for Qt WebKit2 (that now has
+        complete support for color chooser) when INPUT_TYPE_COLOR is set.
+
+        * WebCoreSupport/ChromeClientQt.cpp:
+        (WebCore):
+        (WebCore::ChromeClientQt::createColorChooser):
+        * WebCoreSupport/ChromeClientQt.h:
+        (ChromeClientQt):
+
+2012-06-20  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Unreviewed build fix
+
+        The platform plugin example uses QGridLayout and thus needs QT += widgets
+
+        * examples/platformplugin/platformplugin.pro:
+
 2012-06-19  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Qt] Buildfix for newer Qt5, use QPointer instead of the deprecated QWeakPointer.

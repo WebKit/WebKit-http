@@ -70,7 +70,7 @@ bool unloadModule(PlatformModule module)
     // caution, closing handle will make memory vanish and any remaining
     // timer, idler, threads or any other left-over will crash,
     // maybe just ignore this is a safer solution?
-    return !dlclose(module);
+    return eina_module_free(module);
 }
 
 String homeDirectoryPath()
@@ -86,50 +86,25 @@ String homeDirectoryPath()
 
 Vector<String> listDirectory(const String& path, const String& filter)
 {
-    Vector<String> entries;
-    CString cpath = path.utf8();
+    Vector<String> matchingEntries;
     CString cfilter = filter.utf8();
-    char filePath[PATH_MAX];
-    char* fileName;
-    size_t fileNameSpace;
-    DIR* dir;
+    const char *f_name;
 
-    if (cpath.length() + NAME_MAX >= sizeof(filePath))
-        return entries;
-    // loop invariant: directory part + '/'
-    memcpy(filePath, cpath.data(), cpath.length());
-    fileName = filePath + cpath.length();
-    if (cpath.length() > 0 && filePath[cpath.length() - 1] != '/') {
-        fileName[0] = '/';
-        fileName++;
+    Eina_Iterator* it = eina_file_ls(path.utf8().data());
+    // FIXME: Early return if the iterator is null to avoid error messages from eina_iterator_free().
+    // This check can be removed once the magic check on _free() removed in Eina.
+    // http://www.mail-archive.com/enlightenment-devel@lists.sourceforge.net/msg42944.html
+    if (!it)
+        return matchingEntries;
+
+    EINA_ITERATOR_FOREACH(it, f_name) {
+        if (!fnmatch(cfilter.data(), f_name, 0))
+            matchingEntries.append(String::fromUTF8(f_name));
+        eina_stringshare_del(f_name);
     }
-    fileNameSpace = sizeof(filePath) - (fileName - filePath) - 1;
+    eina_iterator_free(it);
 
-    dir = opendir(cpath.data());
-    if (!dir)
-        return entries;
-
-    struct dirent* de;
-    while (de = readdir(dir)) {
-        size_t nameLen;
-        if (de->d_name[0] == '.') {
-            if (de->d_name[1] == '\0')
-                continue;
-            if (de->d_name[1] == '.' && de->d_name[2] == '\0')
-                continue;
-        }
-        if (fnmatch(cfilter.data(), de->d_name, 0))
-            continue;
-
-        nameLen = strlen(de->d_name);
-        if (nameLen >= fileNameSpace)
-            continue; // maybe assert? it should never happen anyway...
-
-        memcpy(fileName, de->d_name, nameLen + 1);
-        entries.append(filePath);
-    }
-    closedir(dir);
-    return entries;
+    return matchingEntries;
 }
 
 }

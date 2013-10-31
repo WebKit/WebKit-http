@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +48,7 @@
 #include "WebBackForwardListItem.h"
 #include "WebBackForwardListProxy.h"
 #include "WebChromeClient.h"
+#include "WebColorChooser.h"
 #include "WebContextMenu.h"
 #include "WebContextMenuClient.h"
 #include "WebContextMessages.h"
@@ -122,6 +124,14 @@
 #if PLATFORM(MAC)
 #include "MachPort.h"
 #endif
+#endif
+
+#if ENABLE(BATTERY_STATUS)
+#include "WebBatteryClient.h"
+#endif
+
+#if ENABLE(WEB_INTENTS)
+#include "IntentData.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -206,6 +216,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     , m_tapHighlightController(this)
 #endif
 #endif
+#if ENABLE(INPUT_TYPE_COLOR)
+    , m_activeColorChooser(0)
+#endif
 #if ENABLE(GEOLOCATION)
     , m_geolocationPermissionRequestManager(this)
 #endif
@@ -253,6 +266,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     
     m_page = adoptPtr(new Page(pageClients));
 
+#if ENABLE(BATTERY_STATUS)
+    WebCore::provideBatteryTo(m_page.get(), new WebBatteryClient(this));
+#endif
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), new WebGeolocationClient(this));
 #endif
@@ -631,6 +647,13 @@ void WebPage::close()
         m_activeOpenPanelResultListener = 0;
     }
 
+#if ENABLE(INPUT_TYPE_COLOR)
+    if (m_activeColorChooser) {
+        m_activeColorChooser->disconnectFromPage();
+        m_activeColorChooser = 0;
+    }
+#endif
+
     m_sandboxExtensionTracker.invalidate();
 
     m_underlayPage = nullptr;
@@ -902,7 +925,7 @@ void WebPage::sendViewportAttributesChanged()
     int deviceWidth = (settings->deviceWidth() > 0) ? settings->deviceWidth() : m_viewportSize.width();
     int deviceHeight = (settings->deviceHeight() > 0) ? settings->deviceHeight() : m_viewportSize.height();
 
-    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, static_cast<int>(160 * m_page->deviceScaleFactor()), m_viewportSize);
+    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, m_page->deviceScaleFactor(), m_viewportSize);
 
     setResizesToContentsUsingLayoutSize(IntSize(static_cast<int>(attr.layoutSize.width()), static_cast<int>(attr.layoutSize.height())));
     send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
@@ -1423,9 +1446,7 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
     if (!handled)
         handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 
-    // The receiving end relies on DidReceiveEvent and InterpretQueuedKeyEvent arriving in the same order they are sent
-    // (for keyboard events.) We set the DispatchMessageEvenWhenWaitingForSyncReply flag to ensure consistent ordering.
-    connection()->send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled), m_pageID, CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
 }
 
 void WebPage::keyEventSyncForTesting(const WebKeyboardEvent& keyboardEvent, bool& handled)
@@ -1799,7 +1820,7 @@ void WebPage::runJavaScriptInMainFrame(const String& script, uint64_t callbackID
     RefPtr<SerializedScriptValue> serializedResultValue;
     CoreIPC::DataReference dataReference;
 
-    JSLock lock(SilenceAssertionsOnly);
+    JSLockHolder lock(JSDOMWindow::commonJSGlobalData());
     if (JSValue resultValue = m_mainFrame->coreFrame()->script()->executeScript(script, true).jsValue()) {
         if ((serializedResultValue = SerializedScriptValue::create(m_mainFrame->jsContext(), toRef(m_mainFrame->coreFrame()->script()->globalObject(mainThreadNormalWorld())->globalExec(), resultValue), 0)))
             dataReference = serializedResultValue->data();
@@ -1913,6 +1934,17 @@ void WebPage::forceRepaint(uint64_t callbackID)
     forceRepaintWithoutCallback();
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
+
+#if ENABLE(WEB_INTENTS)
+void WebPage::deliverIntentToFrame(uint64_t frameID, const IntentData& intentData)
+{
+    WebFrame* frame = WebProcess::shared().webFrame(frameID);
+    if (!frame)
+        return;
+
+    frame->deliverIntent(intentData);
+}
+#endif
 
 void WebPage::preferencesDidChange(const WebPreferencesStore& store)
 {
@@ -2315,6 +2347,23 @@ void WebPage::setActivePopupMenu(WebPopupMenu* menu)
     m_activePopupMenu = menu;
 }
 
+#if ENABLE(INPUT_TYPE_COLOR)
+void WebPage::setActiveColorChooser(WebColorChooser* colorChooser)
+{
+    m_activeColorChooser = colorChooser;
+}
+
+void WebPage::didEndColorChooser()
+{
+    m_activeColorChooser->didEndChooser();
+}
+
+void WebPage::didChooseColor(const WebCore::Color& color)
+{
+    m_activeColorChooser->didChooseColor(color);
+}
+#endif
+
 void WebPage::setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener> openPanelResultListener)
 {
     m_activeOpenPanelResultListener = openPanelResultListener;
@@ -2563,9 +2612,9 @@ void WebPage::didReceiveMessage(CoreIPC::Connection* connection, CoreIPC::Messag
     }
 
 #if USE(TILED_BACKING_STORE) && USE(ACCELERATED_COMPOSITING)
-    if (messageID.is<CoreIPC::MessageClassLayerTreeHost>()) {
+    if (messageID.is<CoreIPC::MessageClassLayerTreeCoordinator>()) {
         if (m_drawingArea)
-            m_drawingArea->didReceiveLayerTreeHostMessage(connection, messageID, arguments);
+            m_drawingArea->didReceiveLayerTreeCoordinatorMessage(connection, messageID, arguments);
         return;
     }
 #endif
@@ -3080,7 +3129,8 @@ void WebPage::simulateMouseMotion(WebCore::IntPoint position, double time)
 String WebPage::viewportConfigurationAsText(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight)
 {
     ViewportArguments arguments = mainFrame()->document()->viewportArguments();
-    ViewportAttributes attrs = WebCore::computeViewportAttributes(arguments, /* default layout width for non-mobile pages */ 980, deviceWidth, deviceHeight, deviceDPI, IntSize(availableWidth, availableHeight));
+    ViewportAttributes attrs = WebCore::computeViewportAttributes(arguments, /* default layout width for non-mobile pages */ 980,
+                                                                  deviceWidth, deviceHeight, deviceDPI / ViewportArguments::deprecatedTargetDPI, IntSize(availableWidth, availableHeight));
     WebCore::restrictMinimumScaleFactorToViewportSize(attrs, IntSize(availableWidth, availableHeight));
     WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(attrs);
     return String::format("viewport size %dx%d scale %f with limits [%f, %f] and userScalable %f\n", static_cast<int>(attrs.layoutSize.width()), static_cast<int>(attrs.layoutSize.height()), attrs.initialScale, attrs.minimumScale, attrs.maximumScale, attrs.userScalable);

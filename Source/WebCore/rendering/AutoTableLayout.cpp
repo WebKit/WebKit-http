@@ -186,10 +186,10 @@ static bool shouldScaleColumns(RenderTable* table)
     bool scale = true;
     while (table) {
         Length tw = table->style()->width();
-        if ((tw.isAuto() || tw.isPercent()) && !table->isPositioned()) {
+        if ((tw.isAuto() || tw.isPercent()) && !table->isOutOfFlowPositioned()) {
             RenderBlock* cb = table->containingBlock();
             while (cb && !cb->isRenderView() && !cb->isTableCell() &&
-                cb->style()->width().isAuto() && !cb->isPositioned())
+                cb->style()->width().isAuto() && !cb->isOutOfFlowPositioned())
                 cb = cb->containingBlock();
 
             table = 0;
@@ -498,8 +498,11 @@ void AutoTableLayout::layout()
     int available = tableLogicalWidth;
     size_t nEffCols = m_table->numEffCols();
 
+    // FIXME: It is possible to be called without having properly updated our internal representation.
+    // This means that our preferred logical widths were not recomputed as expected.
     if (nEffCols != m_layoutStruct.size()) {
         fullRecalc();
+        // FIXME: Table layout shouldn't modify our table structure (but does due to columns and column-groups).
         nEffCols = m_table->numEffCols();
     }
 

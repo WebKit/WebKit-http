@@ -44,6 +44,7 @@ public:
     static PassRefPtr<ScrollbarLayerChromium> create(Scrollbar*, int scrollLayerId);
 
     // LayerChromium interface
+    virtual void setTexturePriorities(const CCPriorityCalculator&) OVERRIDE;
     virtual void update(CCTextureUpdater&, const CCOcclusionTracker*) OVERRIDE;
     virtual void setLayerTreeHost(CCLayerTreeHost*) OVERRIDE;
     virtual void pushPropertiesTo(CCLayerImpl*) OVERRIDE;
@@ -66,11 +67,13 @@ private:
 
     GC3Denum m_textureFormat;
 
-    RefPtr<LayerTextureUpdater> m_backgroundUpdater;
+    RefPtr<LayerTextureUpdater> m_backTrackUpdater;
+    RefPtr<LayerTextureUpdater> m_foreTrackUpdater;
     RefPtr<LayerTextureUpdater> m_thumbUpdater;
 
     // All the parts of the scrollbar except the thumb
-    OwnPtr<LayerTextureUpdater::Texture> m_background;
+    OwnPtr<LayerTextureUpdater::Texture> m_backTrack;
+    OwnPtr<LayerTextureUpdater::Texture> m_foreTrack;
     OwnPtr<LayerTextureUpdater::Texture> m_thumb;
 
     ScrollbarOverlayStyle m_scrollbarOverlayStyle;

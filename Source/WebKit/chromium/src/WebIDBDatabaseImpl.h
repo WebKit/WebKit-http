@@ -40,6 +40,7 @@ namespace WebKit {
 
 class IDBDatabaseCallbacksProxy;
 class WebIDBDatabaseCallbacks;
+class WebIDBDatabaseMetadata;
 class WebIDBObjectStore;
 class WebIDBTransaction;
 
@@ -49,9 +50,7 @@ public:
     WebIDBDatabaseImpl(WTF::PassRefPtr<WebCore::IDBDatabaseBackendInterface>);
     virtual ~WebIDBDatabaseImpl();
 
-    virtual WebString name() const;
-    virtual WebString version() const;
-    virtual WebDOMStringList objectStoreNames() const;
+    virtual WebIDBMetadata metadata() const;
 
     virtual WebIDBObjectStore* createObjectStore(const WebString& name, const WebIDBKeyPath&, bool autoIncrement, const WebIDBTransaction&, WebExceptionCode&);
     virtual void deleteObjectStore(const WebString& name, const WebIDBTransaction&, WebExceptionCode&);

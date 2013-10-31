@@ -78,15 +78,15 @@ int comparePositions(const Position& a, const Position& b)
     if (!commonScope)
         return 0;
 
-    Node* nodeA = commonScope->ancestorInThisScope(a.deprecatedNode());
+    Node* nodeA = commonScope->ancestorInThisScope(a.containerNode());
     ASSERT(nodeA);
-    bool hasDescendentA = nodeA != a.deprecatedNode();
-    int offsetA = hasDescendentA ? 0 : a.deprecatedEditingOffset();
+    bool hasDescendentA = nodeA != a.containerNode();
+    int offsetA = hasDescendentA ? 0 : a.computeOffsetInContainerNode();
 
-    Node* nodeB = commonScope->ancestorInThisScope(b.deprecatedNode());
+    Node* nodeB = commonScope->ancestorInThisScope(b.containerNode());
     ASSERT(nodeB);
-    bool hasDescendentB = nodeB != b.deprecatedNode();
-    int offsetB = hasDescendentB ? 0 : b.deprecatedEditingOffset();
+    bool hasDescendentB = nodeB != b.containerNode();
+    int offsetB = hasDescendentB ? 0 : b.computeOffsetInContainerNode();
 
     int bias = 0;
     if (nodeA == nodeB) {
@@ -145,12 +145,16 @@ Node* lowestEditableAncestor(Node* node)
     return lowestRoot;
 }
 
-bool isEditablePosition(const Position& p, EditableType editableType)
+bool isEditablePosition(const Position& p, EditableType editableType, EUpdateStyle updateStyle)
 {
     Node* node = p.deprecatedNode();
     if (!node)
         return false;
-        
+    if (updateStyle == UpdateStyle)
+        node->document()->updateLayoutIgnorePendingStylesheets();
+    else
+        ASSERT(updateStyle == DoNotUpdateStyle);
+
     if (node->renderer() && node->renderer()->isTable())
         node = node->parentNode();
     
@@ -255,11 +259,15 @@ VisiblePosition firstEditablePositionAfterPositionInRoot(const Position& positio
         return firstPositionInNode(highestRoot);
 
     Position p = position;
-    
-    if (Node* shadowAncestor = p.deprecatedNode()->shadowAncestorNode())
-        if (shadowAncestor != p.deprecatedNode())
-            p = positionAfterNode(shadowAncestor);
-    
+
+    if (position.deprecatedNode()->treeScope() != highestRoot->treeScope()) {
+        Node* shadowAncestor = highestRoot->treeScope()->ancestorInThisScope(p.deprecatedNode());
+        if (!shadowAncestor)
+            return VisiblePosition();
+
+        p = positionAfterNode(shadowAncestor);
+    }
+
     while (p.deprecatedNode() && !isEditablePosition(p) && p.deprecatedNode()->isDescendantOf(highestRoot))
         p = isAtomicNode(p.deprecatedNode()) ? positionInParentAfterNode(p.deprecatedNode()) : nextVisuallyDistinctCandidate(p);
     
@@ -277,9 +285,12 @@ VisiblePosition lastEditablePositionBeforePositionInRoot(const Position& positio
 
     Position p = position;
 
-    if (Node* shadowAncestor = p.deprecatedNode()->shadowAncestorNode()) {
-        if (shadowAncestor != p.deprecatedNode())
-            p = firstPositionInOrBeforeNode(shadowAncestor);
+    if (position.deprecatedNode()->treeScope() != highestRoot->treeScope()) {
+        Node* shadowAncestor = highestRoot->treeScope()->ancestorInThisScope(p.deprecatedNode());
+        if (!shadowAncestor)
+            return VisiblePosition();
+
+        p = firstPositionInOrBeforeNode(shadowAncestor);
     }
     
     while (p.deprecatedNode() && !isEditablePosition(p) && p.deprecatedNode()->isDescendantOf(highestRoot))

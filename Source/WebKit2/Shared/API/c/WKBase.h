@@ -41,6 +41,10 @@
 #include <WebKit2/WKBaseSoup.h>
 #endif
 
+#if defined(BUILDING_EFL__)
+#include <WebKit2/WKBaseEfl.h>
+#endif
+
 /* WebKit2 shared types */
 
 typedef uint32_t WKTypeID;
@@ -82,6 +86,8 @@ typedef const struct OpaqueWKAuthenticationChallenge* WKAuthenticationChallengeR
 typedef const struct OpaqueWKAuthenticationDecisionListener* WKAuthenticationDecisionListenerRef;
 typedef const struct OpaqueWKBackForwardList* WKBackForwardListRef;
 typedef const struct OpaqueWKBackForwardListItem* WKBackForwardListItemRef;
+typedef const struct OpaqueWKBatteryManager* WKBatteryManagerRef;
+typedef const struct OpaqueWKBatteryStatus* WKBatteryStatusRef;
 typedef const struct OpaqueWKResourceCacheManager* WKResourceCacheManagerRef;
 typedef const struct OpaqueWKContext* WKContextRef;
 typedef const struct OpaqueWKCookieManager* WKCookieManagerRef;
@@ -103,6 +109,8 @@ typedef const struct OpaqueWKIntentServiceInfo* WKIntentServiceInfoRef;
 typedef const struct OpaqueWKKeyValueStorageManager* WKKeyValueStorageManagerRef;
 typedef const struct OpaqueWKMediaCacheManager* WKMediaCacheManagerRef;
 typedef const struct OpaqueWKNavigationData* WKNavigationDataRef;
+typedef const struct OpaqueWKNetworkInfoManager* WKNetworkInfoManagerRef;
+typedef const struct OpaqueWKNetworkInfo* WKNetworkInfoRef;
 typedef const struct OpaqueWKNotification* WKNotificationRef;
 typedef const struct OpaqueWKNotificationManager* WKNotificationManagerRef;
 typedef const struct OpaqueWKNotificationPermissionRequest* WKNotificationPermissionRequestRef;

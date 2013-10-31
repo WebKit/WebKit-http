@@ -86,6 +86,14 @@ public:
 #endif
     FractionalLayoutUnit(const FractionalLayoutUnit& value) { m_value = value.rawValue(); }
 
+    static FractionalLayoutUnit fromFloatCeil(float value)
+    {
+      REPORT_OVERFLOW(isInBounds(value));
+      FractionalLayoutUnit v;
+      v.m_value = ceilf(value * kFixedPointDenominator);
+      return v;
+    }
+
 #if ENABLE(SUBPIXEL_LAYOUT)
     int toInt() const { return m_value / kFixedPointDenominator; }
     float toFloat() const { return static_cast<float>(m_value) / kFixedPointDenominator; }
@@ -153,7 +161,7 @@ public:
         return toInt();
     }
 
-    static float epsilon() { return 1 / kFixedPointDenominator; }
+    static float epsilon() { return 1.0f / kFixedPointDenominator; }
     static const FractionalLayoutUnit max()
     {
         FractionalLayoutUnit m;
@@ -168,15 +176,15 @@ public:
     }
     
 private:
-    bool isInBounds(int value)
+    static bool isInBounds(int value)
     {
         return ::abs(value) <= std::numeric_limits<int>::max() / kFixedPointDenominator;
     }
-    bool isInBounds(unsigned value)
+    static bool isInBounds(unsigned value)
     {
         return value <= static_cast<unsigned>(std::numeric_limits<int>::max()) / kFixedPointDenominator;
     }
-    bool isInBounds(double value)
+    static bool isInBounds(double value)
     {
         return ::fabs(value) <= std::numeric_limits<int>::max() / kFixedPointDenominator;
     }

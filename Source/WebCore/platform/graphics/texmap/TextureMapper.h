@@ -112,8 +112,17 @@ public:
     static PassOwnPtr<TextureMapper> create(AccelerationMode newMode = SoftwareMode);
     virtual ~TextureMapper() { }
 
+    enum ExposedEdges {
+        NoEdges = 0,
+        LeftEdge = 1 << 0,
+        RightEdge = 1 << 1,
+        TopEdge = 1 << 2,
+        BottomEdge = 1 << 3,
+        AllEdges = LeftEdge | RightEdge | TopEdge | BottomEdge,
+    };
+
     virtual void drawBorder(const Color&, float borderWidth, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix = TransformationMatrix()) = 0;
-    virtual void drawTexture(const BitmapTexture&, const FloatRect& target, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0f, const BitmapTexture* maskTexture = 0) = 0;
+    virtual void drawTexture(const BitmapTexture&, const FloatRect& target, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0f, const BitmapTexture* maskTexture = 0, unsigned exposedEdges = AllEdges) = 0;
 
     // makes a surface the target for the following drawTexture calls.
     virtual void bindSurface(BitmapTexture* surface) = 0;
@@ -128,7 +137,7 @@ public:
 
     InterpolationQuality imageInterpolationQuality() const { return m_interpolationQuality; }
     TextDrawingModeFlags textDrawingMode() const { return m_textDrawingMode; }
-    virtual AccelerationMode accelerationMode() const = 0;
+    AccelerationMode accelerationMode() const { return m_accelerationMode; }
 
     virtual void beginPainting(PaintFlags flags = 0) { }
     virtual void endPainting() { }
@@ -139,9 +148,10 @@ public:
     virtual PassRefPtr<BitmapTexture> acquireTextureFromPool(const IntSize&);
 
 protected:
-    TextureMapper()
+    TextureMapper(AccelerationMode accelerationMode)
         : m_interpolationQuality(InterpolationDefault)
         , m_textDrawingMode(TextModeFill)
+        , m_accelerationMode(accelerationMode)
     {}
 
 private:
@@ -157,6 +167,7 @@ private:
     TextDrawingModeFlags m_textDrawingMode;
     Vector<RefPtr<BitmapTexture> > m_texturePool;
     GraphicsContext* m_context;
+    AccelerationMode m_accelerationMode;
 };
 
 }

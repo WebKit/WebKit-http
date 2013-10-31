@@ -32,10 +32,12 @@
 #define WebViewClient_h
 
 #include "WebAccessibilityNotification.h"
+#include "WebContentDetectionResult.h"
 #include "WebDragOperation.h"
 #include "WebEditingAction.h"
 #include "WebFileChooserCompletion.h"
 #include "WebFileChooserParams.h"
+#include "WebHitTestResult.h"
 #include "WebPageVisibilityState.h"
 #include "WebPopupType.h"
 #include "WebTextAffinity.h"
@@ -185,6 +187,7 @@ public:
     virtual void didChangeContents() { }
     virtual void didExecuteCommand(const WebString& commandName) { }
     virtual void didEndEditing() { }
+    virtual void didChangeFormState(const WebNode&) { }
 
     // This method is called in response to WebView's handleInputEvent()
     // when the default action for the current keyboard event is not
@@ -362,6 +365,15 @@ public:
     // Media Streams -------------------------------------------------------
 
     virtual WebUserMediaClient* userMediaClient() { return 0; }
+
+
+    // Content detection ----------------------------------------------------
+
+    // Retrieves detectable content (e.g., email addresses, phone numbers)
+    // around a hit test result. The embedder should use platform-specific
+    // content detectors (e.g., from the Android intent system) to analyze the
+    // region around the hit test result.
+    virtual WebContentDetectionResult detectContentAround(const WebHitTestResult&) { return WebContentDetectionResult(); }
 
 protected:
     ~WebViewClient() { }

@@ -62,6 +62,13 @@ class PortTestCase(unittest.TestCase):
         port_name = self.port_maker.determine_full_port_name(host, options, port_name)
         return self.port_maker(host, port_name, options=options, config=config, **kwargs)
 
+    def test_default_timeout_ms(self):
+        self.assertEquals(self.make_port(options=MockOptions(configuration='Release')).default_timeout_ms(), 35000)
+        self.assertEquals(self.make_port(options=MockOptions(configuration='Debug')).default_timeout_ms(), 35000)
+
+    def test_default_pixel_tests(self):
+        self.assertEquals(self.make_port().default_pixel_tests(), False)
+
     def test_driver_cmd_line(self):
         port = self.make_port()
         self.assertTrue(len(port.driver_cmd_line()))

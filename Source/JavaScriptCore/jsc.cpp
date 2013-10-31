@@ -117,11 +117,13 @@ struct CommandLine {
     CommandLine()
         : interactive(false)
         , dump(false)
+        , exitCode(false)
     {
     }
 
     bool interactive;
     bool dump;
+    bool exitCode;
     Vector<Script> scripts;
     Vector<UString> arguments;
 };
@@ -299,7 +301,7 @@ EncodedJSValue JSC_HOST_CALL functionJSCStack(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
 {
-    JSLock lock(SilenceAssertionsOnly);
+    JSLockHolder lock(exec);
     exec->heap()->collectAllGarbage();
     return JSValue::encode(jsUndefined());
 }
@@ -307,7 +309,7 @@ EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
 #ifndef NDEBUG
 EncodedJSValue JSC_HOST_CALL functionReleaseExecutableMemory(ExecState* exec)
 {
-    JSLock lock(SilenceAssertionsOnly);
+    JSLockHolder lock(exec);
     exec->globalData().releaseExecutableMemory();
     return JSValue::encode(jsUndefined());
 }
@@ -611,6 +613,12 @@ static NO_RETURN void printUsageStatement(bool help = false)
 #if HAVE(SIGNAL_H)
     fprintf(stderr, "  -s         Installs signal handlers that exit on a crash (Unix platforms only)\n");
 #endif
+    fprintf(stderr, "  -x         Output exit code before terminating\n");
+    fprintf(stderr, "\n");
+    fprintf(stderr, "  --options                  Dumps all JSC VM options and exits\n");
+    fprintf(stderr, "  --dumpOptions              Dumps all JSC VM options before continuing\n");
+    fprintf(stderr, "  --<jsc VM option>=<value>  Sets the specified JSC VM option\n");
+    fprintf(stderr, "\n");
 
     exit(help ? EXIT_SUCCESS : EXIT_FAILURE);
 }
@@ -618,6 +626,9 @@ static NO_RETURN void printUsageStatement(bool help = false)
 static void parseArguments(int argc, char** argv, CommandLine& options)
 {
     int i = 1;
+    bool needToDumpOptions = false;
+    bool needToExit = false;
+
     for (; i < argc; ++i) {
         const char* arg = argv[i];
         if (!strcmp(arg, "-f")) {
@@ -649,12 +660,36 @@ static void parseArguments(int argc, char** argv, CommandLine& options)
 #endif
             continue;
         }
+        if (!strcmp(arg, "-x")) {
+            options.exitCode = true;
+            continue;
+        }
         if (!strcmp(arg, "--")) {
             ++i;
             break;
         }
         if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
             printUsageStatement(true);
+
+        if (!strcmp(arg, "--options")) {
+            needToDumpOptions = true;
+            needToExit = true;
+            continue;
+        }
+        if (!strcmp(arg, "--dumpOptions")) {
+            needToDumpOptions = true;
+            continue;
+        }
+
+        // See if the -- option is a JSC VM option.
+        // NOTE: At this point, we know that the arg starts with "--". Skip it.
+        if (JSC::Options::setOption(&arg[2])) {
+            // The arg was recognized as a VM option and has been parsed.
+            continue; // Just continue with the next arg. 
+        }
+
+        // This arg is not recognized by the VM nor by jsc. Pass it on to the
+        // script.
         options.scripts.append(Script(true, argv[i]));
     }
 
@@ -663,13 +698,18 @@ static void parseArguments(int argc, char** argv, CommandLine& options)
 
     for (; i < argc; ++i)
         options.arguments.append(argv[i]);
+
+    if (needToDumpOptions)
+        JSC::Options::dumpAllOptions(stderr);
+    if (needToExit)
+        exit(EXIT_SUCCESS);
 }
 
 int jscmain(int argc, char** argv)
 {
-    JSLock lock(SilenceAssertionsOnly);
-
     RefPtr<JSGlobalData> globalData = JSGlobalData::create(ThreadStackTypeLarge, LargeHeap);
+    JSLockHolder lock(globalData.get());
+    int result;
 
     CommandLine options;
     parseArguments(argc, argv, options);
@@ -679,7 +719,12 @@ int jscmain(int argc, char** argv)
     if (options.interactive && success)
         runInteractive(globalObject);
 
-    return success ? 0 : 3;
+    result = success ? 0 : 3;
+
+    if (options.exitCode)
+        printf("jsc exiting %d\n", result);
+
+    return result;
 }
 
 static bool fillBufferWithContentsOfFile(const UString& fileName, Vector<char>& buffer)

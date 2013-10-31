@@ -30,14 +30,23 @@
 
 namespace WebCore {
 
-IDBKey::IDBKey()
-    : m_type(InvalidType)
-    , m_sizeEstimate(kOverheadSize)
+IDBKey::~IDBKey()
 {
 }
 
-IDBKey::~IDBKey()
+bool IDBKey::isValid() const
 {
+    if (m_type == InvalidType)
+        return false;
+
+    if (m_type == ArrayType) {
+        for (size_t i = 0; i < m_array.size(); i++) {
+            if (!m_array[i]->isValid())
+                return false;
+        }
+    }
+
+    return true;
 }
 
 int IDBKey::compare(const IDBKey* other) const
@@ -60,8 +69,6 @@ int IDBKey::compare(const IDBKey* other) const
     case StringType:
         return -codePointCompare(other->m_string, m_string);
     case DateType:
-        return (m_date < other->m_date) ? -1 :
-                (m_date > other->m_date) ? 1 : 0;
     case NumberType:
         return (m_number < other->m_number) ? -1 :
                 (m_number > other-> m_number) ? 1 : 0;

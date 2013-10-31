@@ -42,7 +42,7 @@
 #include <WebKit2/WKPagePrivateMac.h>
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK)
+#if PLATFORM(MAC) || PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
 #include "EventSenderProxy.h"
 #endif
 
@@ -319,7 +319,8 @@ void TestController::initialize(int argc, const char* argv[])
         kWKContextInjectedBundleClientCurrentVersion,
         this,
         didReceiveMessageFromInjectedBundle,
-        didReceiveSynchronousMessageFromInjectedBundle
+        didReceiveSynchronousMessageFromInjectedBundle,
+        0 // getInjectedBundleInitializationUserData
     };
     WKContextSetInjectedBundleClient(m_context.get(), &injectedBundleClient);
 

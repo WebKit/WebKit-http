@@ -655,7 +655,12 @@ void ChromeClientImpl::dispatchViewportPropertiesDidChange(const ViewportArgumen
     // Call the common viewport computing logic in ViewportArguments.cpp.
     ViewportAttributes computed = computeViewportAttributes(
         args, settings->layoutFallbackWidth(), deviceRect.width, deviceRect.height,
-        dpi, IntSize(deviceRect.width, deviceRect.height));
+        dpi / ViewportArguments::deprecatedTargetDPI, IntSize(deviceRect.width, deviceRect.height));
+
+    if (m_webView->ignoreViewportTagMaximumScale()) {
+        computed.maximumScale = max(computed.maximumScale, m_webView->maxPageScaleFactor);
+        computed.userScalable = true;
+    }
 
     int layoutWidth = computed.layoutSize.width();
     int layoutHeight = computed.layoutSize.height();
@@ -836,6 +841,9 @@ void ChromeClientImpl::setNewWindowNavigationPolicy(WebNavigationPolicy policy)
 
 void ChromeClientImpl::formStateDidChange(const Node* node)
 {
+    if (m_webView->client())
+        m_webView->client()->didChangeFormState(WebNode(const_cast<Node*>(node)));
+
     // The current history item is not updated yet.  That happens lazily when
     // WebFrame::currentHistoryItem is requested.
     WebFrameImpl* webframe = WebFrameImpl::fromFrame(node->document()->frame());

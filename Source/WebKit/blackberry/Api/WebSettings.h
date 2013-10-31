@@ -168,6 +168,8 @@ public:
 
     unsigned long long localStorageQuota() const;
     void setLocalStorageQuota(unsigned long long);
+    unsigned long long sessionStorageQuota() const;
+    void setSessionStorageQuota(unsigned long long);
 
     // Page cache
     void setMaximumPagesInCache(int);
@@ -234,6 +236,9 @@ public:
 
     bool isFormAutofillEnabled() const;
     void setFormAutofillEnabled(bool);
+
+    double devicePixelRatio() const;
+    void setDevicePixelRatio(double);
 
 private:
     WebSettingsPrivate* m_private;

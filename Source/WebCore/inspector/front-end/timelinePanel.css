@@ -45,6 +45,10 @@
     bottom: auto;
 }
 
+.timeline .split-view-resizer {
+    top: 20px;
+}
+
 .timeline-sidebar-background {
     top: 90px;
     bottom: 0;
@@ -568,7 +572,27 @@
 
 .timeline .resources-event-divider {
     height: 19px;
+    width: 8px;
+    border-left-width: 2px;
+    border-left-style: solid;
     bottom: auto;
+    pointer-events: auto;
+}
+
+.resources-red-divider {
+    border-color: rgba(255, 0, 0, 0.5);
+}
+
+.resources-blue-divider {
+    border-color: rgba(0, 0, 255, 0.5);
+}
+
+.resources-orange-divider {
+    border-color: rgba(255, 178, 23, 0.5);
+}
+
+.resources-divider.last {
+    border-color: transparent;
 }
 
 .timeline.timeline-frame-overview .resources-divider {
@@ -578,6 +602,7 @@
 
 .timeline .resources-event-divider.timeline-frame-divider {
     background-color: rgba(180, 180, 180, 0.8);
+    border-style: none;
     width: 1px;
     height: 100%;
 }
@@ -590,11 +615,7 @@
 
 .timeline-frame-container {
     height: 19px;
-}
-
-.timeline-frame-strip {
-    position: absolute;
-    height: 19px;
+    overflow: hidden;
     background-color: rgb(220, 220, 220);
     opacity: 0.6;
     color: black;
@@ -602,4 +623,18 @@
     padding-top: 3px;
     z-index: 350;
     pointer-events: auto;
+}
+
+.timeline-frame-strip {
+    position: absolute;
+    height: 19px;
+}
+
+#timeline-grid-header {
+    position: absolute;
+    left: 200px;
+    right: 0;
+    top: 90px;
+    bottom: 0;
+    pointer-events: none;
 }

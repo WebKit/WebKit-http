@@ -50,9 +50,7 @@ HEADERS += \
 
 DESTDIR = $${ROOT_BUILD_DIR}/lib
 
-QT += declarative widgets webkit
-
-load(features)
+QT += widgets webkit
 
 WEBKIT += wtf javascriptcore webcore
 

@@ -36,6 +36,10 @@
 #include <wtf/text/AtomicStringHash.h>
 #include <wtf/unicode/Unicode.h>
 
+#if ENABLE(TEXT_AUTOSIZING)
+#include "IntSize.h"
+#endif
+
 namespace WebCore {
 
     class Page;
@@ -103,8 +107,14 @@ namespace WebCore {
         void setDefaultFixedFontSize(int);
         int defaultFixedFontSize() const { return m_defaultFixedFontSize; }
 
-        void setFontBoostingEnabled(bool);
-        bool fontBoostingEnabled() const { return m_fontBoostingEnabled; }
+#if ENABLE(TEXT_AUTOSIZING)
+        void setTextAutosizingEnabled(bool);
+        bool textAutosizingEnabled() const { return m_textAutosizingEnabled; }
+
+        // Only set by Layout Tests, and only used if textAutosizingEnabled() returns true.
+        void setTextAutosizingWindowSizeOverride(const IntSize&);
+        const IntSize& textAutosizingWindowSizeOverride() const { return m_textAutosizingWindowSizeOverride; }
+#endif
 
         // Unlike areImagesEnabled, this only suppresses the network load of
         // the image URL.  A cached image will still be rendered if requested.
@@ -329,6 +339,14 @@ namespace WebCore {
 #else
         void setCSSRegionsEnabled(bool) { }
         bool cssRegionsEnabled() const { return false; }
+#endif
+
+#if ENABLE(CSS_VARIABLES)
+        void setCSSVariablesEnabled(bool enabled) { m_cssVariablesEnabled = enabled; }
+        bool cssVariablesEnabled() const { return m_cssVariablesEnabled; }
+#else
+        void setCSSVariablesEnabled(bool) { }
+        bool cssVariablesEnabled() const { return false; }
 #endif
 
         void setRegionBasedColumnsEnabled(bool enabled) { m_regionBasedColumnsEnabled = enabled; }
@@ -586,6 +604,9 @@ namespace WebCore {
         static bool shouldRespectPriorityInCSSAttributeSetters();
 #endif
 
+        void setCookieEnabled(bool enabled) { m_cookieEnabled = enabled; }
+        bool cookieEnabled() const { return m_cookieEnabled; }
+
     private:
         Settings(Page*);
 
@@ -620,7 +641,10 @@ namespace WebCore {
         unsigned m_sessionStorageQuota;
         unsigned m_editingBehaviorType;
         unsigned m_maximumHTMLParserDOMTreeDepth;
-        bool m_fontBoostingEnabled : 1;
+#if ENABLE(TEXT_AUTOSIZING)
+        IntSize m_textAutosizingWindowSizeOverride;
+        bool m_textAutosizingEnabled : 1;
+#endif
         bool m_isSpatialNavigationEnabled : 1;
         bool m_isJavaEnabled : 1;
         bool m_isJavaEnabledForLocalFiles : 1;
@@ -673,6 +697,9 @@ namespace WebCore {
         bool m_isCSSCustomFilterEnabled : 1;
 #if ENABLE(CSS_REGIONS)
         bool m_cssRegionsEnabled : 1;
+#endif
+#if ENABLE(CSS_VARIABLES)
+        bool m_cssVariablesEnabled : 1;
 #endif
         bool m_regionBasedColumnsEnabled : 1;
         bool m_cssGridLayoutEnabled : 1;
@@ -750,6 +777,7 @@ namespace WebCore {
 
         bool m_fixedPositionCreatesStackingContext : 1;
         bool m_syncXHRInDocumentsEnabled : 1;
+        bool m_cookieEnabled : 1;
 
         bool m_windowFocusRestricted : 1;
 

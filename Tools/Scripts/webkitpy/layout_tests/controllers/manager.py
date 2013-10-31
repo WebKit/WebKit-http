@@ -266,9 +266,7 @@ class TestRunInterruptedException(Exception):
         return self.__class__, (self.reason,)
 
 
-class WorkerException(Exception):
-    """Raised when we receive an unexpected/unknown exception from a worker."""
-    pass
+WorkerException = manager_worker_broker.WorkerException
 
 
 class TestShard(object):
@@ -365,6 +363,9 @@ class Manager(object):
 
     def _http_tests(self):
         return set(test for test in self._test_files if self._is_http_test(test))
+
+    def _websocket_tests(self):
+        return set(test for test in self._test_files if self.WEBSOCKET_SUBDIR in test)
 
     def _is_perf_test(self, test):
         return self.PERF_SUBDIR == test or (self.PERF_SUBDIR + self._port.TEST_PATH_SEPARATOR) in test
@@ -763,30 +764,22 @@ class Manager(object):
         all_shards = locked_shards + unlocked_shards
         self._remaining_locked_shards = locked_shards
         if locked_shards and self._options.http:
-            self.start_servers_with_lock()
+            self.start_servers_with_lock(2 * min(num_workers, len(locked_shards)))
 
         num_workers = min(num_workers, len(all_shards))
         self._log_num_workers(num_workers, len(all_shards), len(locked_shards))
 
-        manager_connection = manager_worker_broker.get(num_workers, self, worker.Worker)
+        def worker_factory(worker_connection, worker_number):
+            return worker.Worker(worker_connection, worker_number, self.results_directory(), self._options)
+
+        manager_connection = manager_worker_broker.get(num_workers, self, worker_factory, self._port.host)
 
         if self._options.dry_run:
             return (keyboard_interrupted, interrupted, thread_timings, self._group_stats, self._all_results)
 
         self._printer.print_update('Starting %s ...' % grammar.pluralize('worker', num_workers))
         for worker_number in xrange(num_workers):
-            worker_arguments = worker.WorkerArguments(worker_number, self.results_directory(), self._options)
-            worker_connection = manager_connection.start_worker(worker_arguments)
-            if num_workers == 1:
-                # FIXME: We need to be able to share a port with the work so
-                # that some of the tests can query state on the port; ideally
-                # we'd rewrite the tests so that this wasn't necessary.
-                #
-                # Note that this only works because in the inline case
-                # the worker hasn't really started yet and won't start
-                # running until we call run_message_loop(), below.
-                worker_connection.set_inline_arguments(self._port)
-
+            worker_connection = manager_connection.start_worker(worker_number)
             worker_state = _WorkerState(worker_number, worker_connection)
             self._worker_states[worker_connection.name()] = worker_state
 
@@ -966,22 +959,25 @@ class Manager(object):
 
         return self._port.exit_code_from_summarized_results(unexpected_results)
 
-    def start_servers_with_lock(self):
-        assert(self._options.http)
+    def start_servers_with_lock(self, number_of_servers):
         self._printer.print_update('Acquiring http lock ...')
         self._port.acquire_http_lock()
-        self._printer.print_update('Starting HTTP server ...')
-        self._port.start_http_server()
-        self._printer.print_update('Starting WebSocket server ...')
-        self._port.start_websocket_server()
+        if self._http_tests():
+            self._printer.print_update('Starting HTTP server ...')
+            self._port.start_http_server(number_of_servers=number_of_servers)
+        if self._websocket_tests():
+            self._printer.print_update('Starting WebSocket server ...')
+            self._port.start_websocket_server()
         self._has_http_lock = True
 
     def stop_servers_with_lock(self):
         if self._has_http_lock:
-            self._printer.print_update('Stopping HTTP server ...')
-            self._port.stop_http_server()
-            self._printer.print_update('Stopping WebSocket server ...')
-            self._port.stop_websocket_server()
+            if self._http_tests():
+                self._printer.print_update('Stopping HTTP server ...')
+                self._port.stop_http_server()
+            if self._websocket_tests():
+                self._printer.print_update('Stopping WebSocket server ...')
+                self._port.stop_websocket_server()
             self._printer.print_update('Releasing server lock ...')
             self._port.release_http_lock()
             self._has_http_lock = False
@@ -1509,7 +1505,7 @@ class Manager(object):
 
     def _log_messages(self, messages):
         for message in messages:
-            self._printer.writeln(*message)
+            logging.root.handle(message)
 
     def _log_worker_stack(self, stack):
         webkitpydir = self._port.path_from_webkit_base('Tools', 'Scripts', 'webkitpy') + self._filesystem.sep

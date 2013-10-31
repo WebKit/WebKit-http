@@ -71,6 +71,7 @@ var WebInspector = {
     _createGlobalStatusBarItems: function()
     {
         this._dockToggleButton = new WebInspector.StatusBarButton("", "dock-status-bar-item", 3);
+        this._dockToggleButton.makeLongClickEnabled(this._createDockOptions.bind(this));
         this._dockToggleButton.addEventListener("click", this._toggleAttach.bind(this), false);
         this._updateDockButtonState();
 
@@ -84,6 +85,41 @@ var WebInspector = {
         if (this.panels.elements)
             anchoredStatusBar.appendChild(this.panels.elements.nodeSearchButton.element);
         anchoredStatusBar.appendChild(this.settingsController.statusBarItem);
+    },
+
+    _createDockOptions: function()
+    {
+        var alternateDockToggleButton1 = new WebInspector.StatusBarButton("Dock to main window.", "dock-status-bar-item", 3);
+        var alternateDockToggleButton2 = new WebInspector.StatusBarButton("Undock into separate window.", "dock-status-bar-item", 3);
+
+        if (this.attached) {
+            alternateDockToggleButton1.state = WebInspector.settings.dockToRight.get() ? "bottom" : "right";
+            alternateDockToggleButton2.state = "undock";
+        } else {
+            alternateDockToggleButton1.state = WebInspector.settings.dockToRight.get() ? "bottom" : "right";
+            alternateDockToggleButton2.state = WebInspector.settings.dockToRight.get() ? "right" : "bottom";
+        }
+
+        alternateDockToggleButton1.addEventListener("click", onClick.bind(this), false);
+        alternateDockToggleButton2.addEventListener("click", onClick.bind(this), false);
+
+        function onClick(e)
+        {
+            var state = e.target.state;
+            if (state === "undock")
+                this._toggleAttach();
+            else if (state === "right") {
+                if (!this.attached)
+                    this._toggleAttach();
+                WebInspector.settings.dockToRight.set(true);
+            } else if (state === "bottom") {
+                if (!this.attached)
+                    this._toggleAttach();
+                WebInspector.settings.dockToRight.set(false);
+            }
+        }
+
+        return [alternateDockToggleButton1, alternateDockToggleButton2];
     },
 
     _updateDockButtonState: function()
@@ -224,9 +260,6 @@ var WebInspector = {
         // not be created yet.
         if (WebInspector.toolbar)
             WebInspector.toolbar.compact = x;
-
-        if (WebInspector.searchController)
-            WebInspector.searchController.updateSearchLabel();
 
         if (WebInspector.drawer)
             WebInspector.drawer.resize();
@@ -396,6 +429,7 @@ WebInspector.doLoadedDone = function()
     WebInspector.WorkerManager.loaded();
 
     DebuggerAgent.causesRecompilation(WebInspector._initializeCapability.bind(WebInspector, "debuggerCausesRecompilation", null));
+    DebuggerAgent.supportsSeparateScriptCompilationAndExecution(WebInspector._initializeCapability.bind(WebInspector, "separateScriptCompilationAndExecutionEnabled", null));
     ProfilerAgent.causesRecompilation(WebInspector._initializeCapability.bind(WebInspector, "profilerCausesRecompilation", null));
     ProfilerAgent.isSampling(WebInspector._initializeCapability.bind(WebInspector, "samplingCPUProfiler", null));
     ProfilerAgent.hasHeapProfiler(WebInspector._initializeCapability.bind(WebInspector, "heapProfilerPresent", null));
@@ -454,6 +488,8 @@ WebInspector._doLoadedDoneWithCapabilities = function()
     var openAnchorLocationSetting = WebInspector.settings.createSetting("openLinkHandler", autoselectPanel);
     this.openAnchorLocationRegistry = new WebInspector.HandlerRegistry(openAnchorLocationSetting);
     this.openAnchorLocationRegistry.registerHandler(autoselectPanel, function() { return false; });
+
+    this.workspace = new WebInspector.Workspace();
 
     this._createPanels();
     this._createGlobalStatusBarItems();
@@ -780,7 +816,7 @@ WebInspector.postDocumentKeyDown = function(event)
     if (event.handled)
         return;
 
-    if (event.keyIdentifier === "U+001B") { // Escape key
+    if (event.keyCode === WebInspector.KeyboardShortcut.Keys.Esc.code) {
         // If drawer is open with some view other than console then close it.
         if (!this._toggleConsoleButton.toggled && WebInspector.drawer.visible)
             this.closeViewInDrawer();
@@ -822,8 +858,11 @@ WebInspector.toggleSearchingForNode = function()
 
 WebInspector.showConsole = function()
 {
-    if (WebInspector._toggleConsoleButton && !WebInspector._toggleConsoleButton.toggled)
+    if (WebInspector._toggleConsoleButton && !WebInspector._toggleConsoleButton.toggled) {
+        if (WebInspector.drawer.visible)
+            this._closePreviousDrawerView();
         WebInspector._toggleConsoleButtonClicked();
+    }
 }
 
 WebInspector.showPanel = function(panel)

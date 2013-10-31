@@ -71,6 +71,7 @@
 #include "ScrollAnimator.h"
 #include "ScrollView.h"
 #include "ScrollbarTheme.h"
+#include "TouchEvent.h"
 #include "UserGestureIndicator.h"
 #include "WebPrintParams.h"
 #include "WheelEvent.h"
@@ -185,6 +186,8 @@ void WebPluginContainerImpl::handleEvent(Event* event)
         handleWheelEvent(static_cast<WheelEvent*>(event));
     else if (event->isKeyboardEvent())
         handleKeyboardEvent(static_cast<KeyboardEvent*>(event));
+    else if (eventNames().isTouchEventType(event->type()))
+        handleTouchEvent(static_cast<TouchEvent*>(event));
 
     // FIXME: it would be cleaner if Widget::handleEvent returned true/false and
     // HTMLPluginElement called setDefaultHandled or defaultEventHandler.
@@ -240,6 +243,30 @@ void WebPluginContainerImpl::setPlugin(WebPlugin* plugin)
         m_element->resetInstance();
         m_webPlugin = plugin;
     }
+}
+
+float WebPluginContainerImpl::deviceScaleFactor()
+{
+    Page* page = m_element->document()->page();
+    if (!page)
+        return 1.0;
+    return page->deviceScaleFactor();
+}
+
+float WebPluginContainerImpl::pageScaleFactor()
+{
+    Page* page = m_element->document()->page();
+    if (!page)
+        return 1.0;
+    return page->pageScaleFactor();
+}
+
+float WebPluginContainerImpl::pageZoomFactor()
+{
+    Frame* frame = m_element->document()->frame();
+    if (!frame)
+        return 1.0;
+    return frame->pageZoomFactor();
 }
 
 bool WebPluginContainerImpl::supportsPaginatedPrint() const
@@ -461,8 +488,8 @@ void WebPluginContainerImpl::setOpaque(bool opaque)
 
 bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
 {
-    Page* page = m_element->document()->page();
-    if (!page)
+    Frame* frame = m_element->document()->frame();
+    if (!frame)
         return false;
 
     // hitTestResultAtPoint() takes a padding rectangle.
@@ -471,12 +498,23 @@ bool WebPluginContainerImpl::isRectTopmost(const WebRect& rect)
     LayoutPoint center = documentRect.center();
     // Make the rect we're checking (the point surrounded by padding rects) contained inside the requested rect. (Note that -1/2 is 0.)
     LayoutSize padding((documentRect.width() - 1) / 2, (documentRect.height() - 1) / 2);
-    HitTestResult result =
-        page->mainFrame()->eventHandler()->hitTestResultAtPoint(center, false, false, DontHitTestScrollbars, HitTestRequest::ReadOnly | HitTestRequest::Active, padding);
+    HitTestResult result = frame->eventHandler()->hitTestResultAtPoint(center, false, false, DontHitTestScrollbars, HitTestRequest::ReadOnly | HitTestRequest::Active, padding);
     const HitTestResult::NodeSet& nodes = result.rectBasedTestResult();
     if (nodes.size() != 1)
         return false;
     return (nodes.first().get() == m_element);
+}
+
+void WebPluginContainerImpl::setIsAcceptingTouchEvents(bool acceptingTouchEvents)
+{
+    if (m_isAcceptingTouchEvents == acceptingTouchEvents)
+        return;
+    m_isAcceptingTouchEvents = acceptingTouchEvents;
+    if (m_isAcceptingTouchEvents) {
+        m_element->document()->didAddTouchEventHandler();
+        m_element->document()->addListenerType(Document::TOUCH_LISTENER);
+    } else
+        m_element->document()->didRemoveTouchEventHandler();
 }
 
 void WebPluginContainerImpl::didReceiveResponse(const ResourceResponse& response)
@@ -577,11 +615,15 @@ WebPluginContainerImpl::WebPluginContainerImpl(WebCore::HTMLPlugInElement* eleme
     , m_textureId(0)
     , m_ioSurfaceId(0)
 #endif
+    , m_isAcceptingTouchEvents(false)
 {
 }
 
 WebPluginContainerImpl::~WebPluginContainerImpl()
 {
+    if (m_isAcceptingTouchEvents)
+        m_element->document()->didRemoveTouchEventHandler();
+
     for (size_t i = 0; i < m_pluginLoadObservers.size(); ++i)
         m_pluginLoadObservers[i]->clearPluginContainer();
     m_webPlugin->destroy();
@@ -681,6 +723,17 @@ void WebPluginContainerImpl::handleKeyboardEvent(KeyboardEvent* event)
     WebCursorInfo cursorInfo;
     if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
         event->setDefaultHandled();
+}
+
+void WebPluginContainerImpl::handleTouchEvent(TouchEvent* event)
+{
+    WebTouchEventBuilder webEvent(this, *event);
+    if (webEvent.type == WebInputEvent::Undefined)
+        return;
+    WebCursorInfo cursorInfo;
+    if (m_webPlugin->handleInputEvent(webEvent, cursorInfo))
+        event->setDefaultHandled();
+    // FIXME: Can a plugin change the cursor from a touch-event callback?
 }
 
 void WebPluginContainerImpl::calculateGeometry(const IntRect& frameRect,

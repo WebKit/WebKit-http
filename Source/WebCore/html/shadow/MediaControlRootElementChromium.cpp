@@ -74,9 +74,7 @@ MediaControlRootElementChromium::MediaControlRootElementChromium(Document* docum
     , m_timeline(0)
     , m_panelMuteButton(0)
     , m_volumeSlider(0)
-#if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
     , m_fullscreenButton(0)
-#endif
     , m_panel(0)
     , m_enclosure(0)
 #if ENABLE(VIDEO_TRACK)
@@ -146,13 +144,11 @@ PassRefPtr<MediaControlRootElementChromium> MediaControlRootElementChromium::cre
     if (ec)
         return 0;
 
-#if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
     RefPtr<MediaControlFullscreenButtonElement> fullscreenButton = MediaControlFullscreenButtonElement::create(document, controls.get());
     controls->m_fullscreenButton = fullscreenButton.get();
     panel->appendChild(fullscreenButton.release(), ec, true);
     if (ec)
         return 0;
-#endif
 
     controls->m_panel = panel.get();
     enclosure->appendChild(panel.release(), ec, true);
@@ -185,10 +181,8 @@ void MediaControlRootElementChromium::setMediaController(MediaControllerInterfac
         m_panelMuteButton->setMediaController(controller);
     if (m_volumeSlider)
         m_volumeSlider->setMediaController(controller);
-#if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
     if (m_fullscreenButton)
         m_fullscreenButton->setMediaController(controller);
-#endif
     if (m_panel)
         m_panel->setMediaController(controller);
     if (m_enclosure)
@@ -242,12 +236,19 @@ void MediaControlRootElementChromium::reset()
 
     m_panelMuteButton->show();
 
-    if (m_volumeSlider)
-        m_volumeSlider->setVolume(m_mediaController->volume());
+    if (m_volumeSlider) {
+        if (!m_mediaController->hasAudio())
+            m_volumeSlider->hide();
+        else {
+            m_volumeSlider->show();
+            m_volumeSlider->setVolume(m_mediaController->volume());
+        }
+    }
 
-#if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
-    m_fullscreenButton->show();
-#endif
+    if (m_mediaController->supportsFullscreen())
+        m_fullscreenButton->show();
+    else
+        m_fullscreenButton->hide();
     makeOpaque();
 }
 
@@ -309,12 +310,9 @@ void MediaControlRootElementChromium::reportedError()
     if (!page)
         return;
 
-    m_timeline->hide();
     m_panelMuteButton->hide();
     m_volumeSlider->hide();
-#if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
     m_fullscreenButton->hide();
-#endif
 }
 
 void MediaControlRootElementChromium::updateStatusDisplay()

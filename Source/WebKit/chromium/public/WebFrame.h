@@ -297,6 +297,12 @@ public:
     virtual v8::Handle<v8::Value> createFileSystem(WebFileSystem::Type,
                                                    const WebString& name,
                                                    const WebString& rootURL) = 0;
+    // Creates an instance of serializable file system object.
+    // FIXME: Remove this API after we have a better way of creating serialized
+    // file system object.
+    virtual v8::Handle<v8::Value> createSerializableFileSystem(WebFileSystem::Type,
+                                                               const WebString& name,
+                                                               const WebString& rootURL) = 0;
     // Creates an instance of file or directory entry object.
     virtual v8::Handle<v8::Value> createFileEntry(WebFileSystem::Type,
                                                   const WebString& fileSystemName,
@@ -312,6 +318,9 @@ public:
     // True |ignoreCache| explicitly bypasses caches.
     // False |ignoreCache| revalidates any existing cache entries.
     virtual void reload(bool ignoreCache = false) = 0;
+
+    // This is used for situations where we want to reload a different URL because of a redirect.
+    virtual void reloadWithOverrideURL(const WebURL& overrideUrl, bool ignoreCache = false) = 0;
 
     // Load the given URL.
     virtual void loadRequest(const WebURLRequest&) = 0;

@@ -33,8 +33,9 @@ module core {
     ] WebKitNamedFlow {
         readonly attribute DOMString name;
         readonly attribute boolean overset;
-        NodeList getRegionsByContentNode(in Node contentNode);
-        readonly attribute NodeList contentNodes;
+        readonly attribute int firstEmptyRegionIndex;
+        NodeList getRegionsByContent(in Node contentNode);
+        NodeList getContent();
     };
 }
 

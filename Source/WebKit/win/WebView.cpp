@@ -1652,7 +1652,7 @@ bool WebView::gesture(WPARAM wParam, LPARAM lParam)
             return false;
 
         // We negate here since panning up moves the content up, but moves the scrollbar down.
-        m_gestureTargetNode->renderer()->enclosingLayer()->scrollByRecursively(-deltaX, -deltaY);
+        m_gestureTargetNode->renderer()->enclosingLayer()->scrollByRecursively(IntSize(-deltaX, -deltaY));
            
         if (!(UpdatePanningFeedbackPtr() && BeginPanningFeedbackPtr() && EndPanningFeedbackPtr())) {
             CloseGestureInfoHandlePtr()(gestureHandle);
@@ -2641,7 +2641,9 @@ HRESULT STDMETHODCALLTYPE WebView::initWithFrame(
 
     static bool didOneTimeInitialization;
     if (!didOneTimeInitialization) {
+#if !LOG_DISABLED
         initializeLoggingChannelsIfNecessary();
+#endif // !LOG_DISABLED
 #if ENABLE(SQL_DATABASE)
         WebKitInitializeWebDatabasesIfNecessary();
 #endif
@@ -3194,8 +3196,8 @@ HRESULT STDMETHODCALLTYPE WebView::stringByEvaluatingJavaScriptFromString(
     if (!scriptExecutionResult)
         return E_FAIL;
     else if (scriptExecutionResult.isString()) {
-        JSLock lock(JSC::SilenceAssertionsOnly);
         JSC::ExecState* exec = coreFrame->script()->globalObject(mainThreadNormalWorld())->globalExec();
+        JSC::JSLockHolder lock(exec);
         *result = BString(ustringToString(scriptExecutionResult.getString(exec)));
     }
 
@@ -4668,6 +4670,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     settings->setPluginsEnabled(!!enabled);
 
+    hr = preferences->isCSSRegionsEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings->setCSSRegionsEnabled(!!enabled);
+
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5851,8 +5858,8 @@ HRESULT STDMETHODCALLTYPE WebView::reportException(
     if (!context || !exception)
         return E_FAIL;
 
-    JSLock lock(JSC::SilenceAssertionsOnly);
     JSC::ExecState* execState = toJS(context);
+    JSC::JSLockHolder lock(execState);
 
     // Make sure the context has a DOMWindow global object, otherwise this context didn't originate from a WebView.
     if (!toJSDOMWindow(execState->lexicalGlobalObject()))
@@ -5878,8 +5885,9 @@ HRESULT STDMETHODCALLTYPE WebView::elementFromJS(
     if (!nodeObject)
         return E_FAIL;
 
-    JSLock lock(JSC::SilenceAssertionsOnly);
-    Element* elt = toElement(toJS(toJS(context), nodeObject));
+    JSC::ExecState* exec = toJS(context);
+    JSC::JSLockHolder lock(exec);
+    Element* elt = toElement(toJS(exec, nodeObject));
     if (!elt)
         return E_FAIL;
 
@@ -6020,7 +6028,7 @@ HRESULT STDMETHODCALLTYPE WebView::setCookieEnabled(BOOL enable)
     if (!m_page)
         return E_FAIL;
 
-    m_page->setCookieEnabled(enable);
+    m_page->settings()->setCookieEnabled(enable);
     return S_OK;
 }
 
@@ -6032,7 +6040,7 @@ HRESULT STDMETHODCALLTYPE WebView::cookieEnabled(BOOL* enabled)
     if (!m_page)
         return E_FAIL;
 
-    *enabled = m_page->cookieEnabled();
+    *enabled = m_page->settings()->cookieEnabled();
     return S_OK;
 }
 

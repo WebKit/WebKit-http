@@ -55,6 +55,7 @@ module window {
         Element getElementByIdInShadowRoot(in Node shadowRoot, in DOMString id) raises(DOMException);
         boolean isValidContentSelect(in Element contentElement) raises(DOMException);
         Node treeScopeRootNode(in Node node) raises (DOMException);
+        Node parentTreeScope(in Node node) raises (DOMException);
 
         Node nextSiblingByWalker(in Node node) raises(DOMException);
         Node firstChildByWalker(in Node node) raises(DOMException);
@@ -131,6 +132,7 @@ module window {
 
         boolean hasSpellingMarker(in Document document, in long from, in long length) raises (DOMException);
         boolean hasGrammarMarker(in Document document, in long from, in long length) raises (DOMException);
+        boolean hasAutocorrectedMarker(in Document document, in long from, in long length) raises (DOMException);
 
         unsigned long numberOfScrollableAreas(in Document document) raises (DOMException);
 
@@ -148,7 +150,7 @@ module window {
 #endif
 
 #if defined(ENABLE_NETWORK_INFO) && ENABLE_NETWORK_INFO
-        void setNetworkInformation(in Document document, in DOMString eventType, in long bandwidth, in boolean metered) raises (DOMException);
+        void setNetworkInformation(in Document document, in DOMString eventType, in double bandwidth, in boolean metered) raises (DOMException);
 #endif
 
         [Conditional=INSPECTOR] unsigned long numberOfLiveNodes();

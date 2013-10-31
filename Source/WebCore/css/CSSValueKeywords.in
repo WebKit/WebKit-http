@@ -571,6 +571,14 @@ intrinsic
 min-intrinsic
 
 //
+// CSS3 intrinsic dimension keywords
+//
+-webkit-min-content
+-webkit-max-content
+-webkit-fill-available
+-webkit-fit-content
+
+//
 // CSS_PROP_TEXT_OVERFLOW
 //
 clip
@@ -926,4 +934,6 @@ detached
 
 #if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
 from-image
+snap
 #endif
+

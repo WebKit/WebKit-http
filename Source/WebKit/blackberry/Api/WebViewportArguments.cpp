@@ -85,12 +85,12 @@ void WebViewportArguments::setHeight(float height)
     d->height = height;
 }
 
-float WebViewportArguments::targetDensityDpi() const
+float WebViewportArguments::devicePixelRatio() const
 {
     return 0;
 }
 
-void WebViewportArguments::setTargetDensityDpi(float)
+void WebViewportArguments::setDevicePixelRatio(float)
 {
 }
 
@@ -111,7 +111,7 @@ bool WebViewportArguments::operator==(const WebViewportArguments& other)
 
 bool WebViewportArguments::operator!=(const WebViewportArguments& other)
 {
-    return !(*this == other);
+    return *d != *(other.d);
 }
 
 } // namespace WebKit

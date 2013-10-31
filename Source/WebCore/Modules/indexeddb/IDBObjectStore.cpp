@@ -30,6 +30,8 @@
 
 #include "DOMStringList.h"
 #include "IDBAny.h"
+#include "IDBBindingUtilities.h"
+#include "IDBDatabase.h"
 #include "IDBDatabaseException.h"
 #include "IDBIndex.h"
 #include "IDBKey.h"
@@ -44,8 +46,9 @@ namespace WebCore {
 
 static const unsigned short defaultDirection = IDBCursor::NEXT;
 
-IDBObjectStore::IDBObjectStore(PassRefPtr<IDBObjectStoreBackendInterface> idbObjectStore, IDBTransaction* transaction)
-    : m_backend(idbObjectStore)
+IDBObjectStore::IDBObjectStore(const IDBObjectStoreMetadata& metadata, PassRefPtr<IDBObjectStoreBackendInterface> idbObjectStore, IDBTransaction* transaction)
+    : m_metadata(metadata)
+    , m_backend(idbObjectStore)
     , m_transaction(transaction)
     , m_deleted(false)
 {
@@ -55,42 +58,29 @@ IDBObjectStore::IDBObjectStore(PassRefPtr<IDBObjectStoreBackendInterface> idbObj
     relaxAdoptionRequirement();
 }
 
-String IDBObjectStore::name() const
-{
-    IDB_TRACE("IDBObjectStore::name");
-    return m_backend->name();
-}
-
-PassRefPtr<IDBAny> IDBObjectStore::keyPath() const
-{
-    IDB_TRACE("IDBObjectStore::keyPath");
-    return m_backend->keyPath();
-}
-
 PassRefPtr<DOMStringList> IDBObjectStore::indexNames() const
 {
     IDB_TRACE("IDBObjectStore::indexNames");
-    return m_backend->indexNames();
-}
-
-IDBTransaction* IDBObjectStore::transaction() const
-{
-    IDB_TRACE("IDBObjectStore::transaction");
-    return m_transaction.get();
-}
-
-bool IDBObjectStore::autoIncrement() const
-{
-    IDB_TRACE("IDBObjectStore::autoIncrement");
-    return m_backend->autoIncrement();
+    RefPtr<DOMStringList> indexNames = DOMStringList::create();
+    for (IDBObjectStoreMetadata::IndexMap::const_iterator it = m_metadata.indexes.begin(); it != m_metadata.indexes.end(); ++it)
+        indexNames->append(it->first);
+    indexNames->sort();
+    return indexNames.release();
 }
 
 PassRefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context, PassRefPtr<IDBKeyRange> keyRange, ExceptionCode& ec)
 {
     IDB_TRACE("IDBObjectStore::get");
-
+    if (m_deleted) {
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+        return 0;
+    }
     if (!keyRange) {
         ec = IDBDatabaseException::DATA_ERR;
+        return 0;
+    }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
         return 0;
     }
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
@@ -105,81 +95,86 @@ PassRefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context, Pass
 PassRefPtr<IDBRequest> IDBObjectStore::get(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, ExceptionCode& ec)
 {
     IDB_TRACE("IDBObjectStore::get");
-    if (m_deleted) {
-        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
-        return 0;
-    }
-
-    if (!key || (key->type() == IDBKey::InvalidType)) {
-        ec = IDBDatabaseException::DATA_ERR;
-        return 0;
-    }
-
     RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(key, ec);
     if (ec)
         return 0;
     return get(context, keyRange.release(), ec);
 }
 
-PassRefPtr<IDBRequest> IDBObjectStore::add(ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> prpValue, PassRefPtr<IDBKey> key, ExceptionCode& ec)
+PassRefPtr<IDBRequest> IDBObjectStore::add(ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBKey> key, ExceptionCode& ec)
 {
     IDB_TRACE("IDBObjectStore::add");
-    if (m_deleted) {
-        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
-        return 0;
-    }
-    if (m_transaction->isReadOnly()) {
-        ec = IDBDatabaseException::READ_ONLY_ERR;
-        return 0;
-    }
-
-    if (key && (key->type() == IDBKey::InvalidType)) {
-        ec = IDBDatabaseException::DATA_ERR;
-        return 0;
-    }
-
-    RefPtr<SerializedScriptValue> value = prpValue;
-    if (value->blobURLs().size() > 0) {
-        // FIXME: Add Blob/File/FileList support
-        ec = IDBDatabaseException::IDB_DATA_CLONE_ERR;
-        return 0;
-    }
-
-    RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->put(value, key, IDBObjectStoreBackendInterface::AddOnly, request, m_transaction->backend(), ec);
-    if (ec) {
-        request->markEarlyDeath();
-        return 0;
-    }
-    return request.release();
+    return put(IDBObjectStoreBackendInterface::AddOnly, context, value, key, ec);
 }
 
-PassRefPtr<IDBRequest> IDBObjectStore::put(ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> prpValue, PassRefPtr<IDBKey> key, ExceptionCode& ec)
+PassRefPtr<IDBRequest> IDBObjectStore::put(ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBKey> key, ExceptionCode& ec)
 {
     IDB_TRACE("IDBObjectStore::put");
+    return put(IDBObjectStoreBackendInterface::AddOrUpdate, context, value, key, ec);
+}
+
+PassRefPtr<IDBRequest> IDBObjectStore::put(IDBObjectStoreBackendInterface::PutMode putMode, ScriptExecutionContext* context, PassRefPtr<SerializedScriptValue> prpValue, PassRefPtr<IDBKey> prpKey, ExceptionCode& ec)
+{
+    IDB_TRACE("IDBObjectStore::put");
+    RefPtr<SerializedScriptValue> value = prpValue;
+    RefPtr<IDBKey> key = prpKey;
     if (m_deleted) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+        return 0;
+    }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
         return 0;
     }
     if (m_transaction->isReadOnly()) {
         ec = IDBDatabaseException::READ_ONLY_ERR;
         return 0;
     }
-
-    if (key && (key->type() == IDBKey::InvalidType)) {
-        ec = IDBDatabaseException::DATA_ERR;
-        return 0;
-    }
-
-    RefPtr<SerializedScriptValue> value = prpValue;
     if (value->blobURLs().size() > 0) {
         // FIXME: Add Blob/File/FileList support
         ec = IDBDatabaseException::IDB_DATA_CLONE_ERR;
         return 0;
     }
 
+    const IDBKeyPath& keyPath = m_metadata.keyPath;
+    const bool usesInLineKeys = !keyPath.isNull();
+    const bool hasKeyGenerator = autoIncrement();
+
+    if (usesInLineKeys && key) {
+        ec = IDBDatabaseException::DATA_ERR;
+        return 0;
+    }
+    if (!usesInLineKeys && !hasKeyGenerator && !key) {
+        ec = IDBDatabaseException::DATA_ERR;
+        return 0;
+    }
+    if (usesInLineKeys) {
+        RefPtr<IDBKey> keyPathKey = createIDBKeyFromSerializedValueAndKeyPath(value, keyPath);
+        if (keyPathKey && !keyPathKey->isValid()) {
+            ec = IDBDatabaseException::DATA_ERR;
+            return 0;
+        }
+        if (!hasKeyGenerator && !keyPathKey) {
+            ec = IDBDatabaseException::DATA_ERR;
+            return 0;
+        }
+        if (hasKeyGenerator && !keyPathKey) {
+            RefPtr<IDBKey> dummyKey = IDBKey::createNumber(-1);
+            RefPtr<SerializedScriptValue> valueAfterInjection = injectIDBKeyIntoSerializedValue(dummyKey, value, keyPath);
+            if (!valueAfterInjection) {
+                ec = IDBDatabaseException::DATA_ERR;
+                return 0;
+            }
+        }
+    }
+    if (key && !key->isValid()) {
+        ec = IDBDatabaseException::DATA_ERR;
+        return 0;
+    }
+
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->put(value, key, IDBObjectStoreBackendInterface::AddOrUpdate, request, m_transaction->backend(), ec);
+    // FIXME: Pass through keyPathKey as key to simplify back end implementation.
+    m_backend->put(value.release(), key.release(), putMode, request, m_transaction->backend(), ec);
     if (ec) {
         request->markEarlyDeath();
         return 0;
@@ -194,11 +189,14 @@ PassRefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* co
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
+        return 0;
+    }
     if (m_transaction->isReadOnly()) {
         ec = IDBDatabaseException::READ_ONLY_ERR;
         return 0;
     }
-
     if (!keyRange) {
         ec = IDBDatabaseException::DATA_ERR;
         return 0;
@@ -216,27 +214,10 @@ PassRefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* co
 PassRefPtr<IDBRequest> IDBObjectStore::deleteFunction(ScriptExecutionContext* context, PassRefPtr<IDBKey> key, ExceptionCode& ec)
 {
     IDB_TRACE("IDBObjectStore::delete");
-    if (m_deleted) {
-        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(key, ec);
+    if (ec)
         return 0;
-    }
-    if (m_transaction->isReadOnly()) {
-        ec = IDBDatabaseException::READ_ONLY_ERR;
-        return 0;
-    }
-
-    if (!key || !key->isValid()) {
-        ec = IDBDatabaseException::DATA_ERR;
-        return 0;
-    }
-
-    RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    m_backend->deleteFunction(key, request, m_transaction->backend(), ec);
-    if (ec) {
-        request->markEarlyDeath();
-        return 0;
-    }
-    return request.release();
+    return deleteFunction(context, keyRange.release(), ec);
 }
 
 PassRefPtr<IDBRequest> IDBObjectStore::clear(ScriptExecutionContext* context, ExceptionCode& ec)
@@ -244,6 +225,10 @@ PassRefPtr<IDBRequest> IDBObjectStore::clear(ScriptExecutionContext* context, Ex
     IDB_TRACE("IDBObjectStore::clear");
     if (m_deleted) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+        return 0;
+    }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
         return 0;
     }
     if (m_transaction->isReadOnly()) {
@@ -281,9 +266,20 @@ PassRefPtr<IDBIndex> IDBObjectStore::createIndex(const String& name, const IDBKe
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
-
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
+        return 0;
+    }
     if (!keyPath.isValid()) {
         ec = IDBDatabaseException::IDB_SYNTAX_ERR;
+        return 0;
+    }
+    if (name.isNull()) {
+        ec = IDBDatabaseException::IDB_TYPE_ERR;
+        return 0;
+    }
+    if (m_metadata.indexes.contains(name)) {
+        ec = IDBDatabaseException::CONSTRAINT_ERR;
         return 0;
     }
 
@@ -303,8 +299,10 @@ PassRefPtr<IDBIndex> IDBObjectStore::createIndex(const String& name, const IDBKe
     if (ec)
         return 0;
 
-    RefPtr<IDBIndex> index = IDBIndex::create(indexBackend.release(), this, m_transaction.get());
+    IDBIndexMetadata metadata(name, keyPath, unique, multiEntry);
+    RefPtr<IDBIndex> index = IDBIndex::create(metadata, indexBackend.release(), this, m_transaction.get());
     m_indexMap.set(name, index);
+    m_metadata.indexes.set(name, metadata);
 
     return index.release();
 }
@@ -330,7 +328,10 @@ PassRefPtr<IDBIndex> IDBObjectStore::index(const String& name, ExceptionCode& ec
     if (ec)
         return 0;
 
-    RefPtr<IDBIndex> index = IDBIndex::create(indexBackend.release(), this, m_transaction.get());
+    IDBObjectStoreMetadata::IndexMap::const_iterator mdit = m_metadata.indexes.find(name);
+    ASSERT(mdit != m_metadata.indexes.end());
+
+    RefPtr<IDBIndex> index = IDBIndex::create(mdit->second, indexBackend.release(), this, m_transaction.get());
     m_indexMap.set(name, index);
     return index.release();
 }
@@ -341,6 +342,14 @@ void IDBObjectStore::deleteIndex(const String& name, ExceptionCode& ec)
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
     }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
+        return;
+    }
+    if (!m_metadata.indexes.contains(name)) {
+        ec = IDBDatabaseException::IDB_NOT_FOUND_ERR;
+        return;
+    }
 
     m_backend->deleteIndex(name, m_transaction->backend(), ec);
     if (!ec) {
@@ -349,6 +358,9 @@ void IDBObjectStore::deleteIndex(const String& name, ExceptionCode& ec)
             it->second->markDeleted();
             m_indexMap.remove(name);
         }
+
+        ASSERT(m_metadata.indexes.contains(name));
+        m_metadata.indexes.remove(name);
     }
 }
 
@@ -359,12 +371,16 @@ PassRefPtr<IDBRequest> IDBObjectStore::openCursor(ScriptExecutionContext* contex
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
-    unsigned short direction = IDBCursor::stringToDirection(directionString, ec);
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
+        return 0;
+    }
+    IDBCursor::Direction direction = IDBCursor::stringToDirection(directionString, ec);
     if (ec)
         return 0;
 
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());
-    request->setCursorType(IDBCursorBackendInterface::ObjectStoreCursor);
+    request->setCursorDetails(IDBCursorBackendInterface::ObjectStoreCursor, direction);
     m_backend->openCursor(range, direction, request, m_transaction->backend(), ec);
     if (ec) {
         request->markEarlyDeath();
@@ -407,6 +423,10 @@ PassRefPtr<IDBRequest> IDBObjectStore::count(ScriptExecutionContext* context, Pa
     IDB_TRACE("IDBObjectStore::count");
     if (m_deleted) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
+        return 0;
+    }
+    if (!m_transaction->isActive()) {
+        ec = IDBDatabaseException::TRANSACTION_INACTIVE_ERR;
         return 0;
     }
     RefPtr<IDBRequest> request = IDBRequest::create(context, IDBAny::create(this), m_transaction.get());

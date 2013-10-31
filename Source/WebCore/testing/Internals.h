@@ -84,6 +84,7 @@ public:
     Element* getElementByIdInShadowRoot(Node* shadowRoot, const String& id, ExceptionCode&);
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
     Node* treeScopeRootNode(Node*, ExceptionCode&);
+    Node* parentTreeScope(Node*, ExceptionCode&);
 
     bool attached(Node*, ExceptionCode&);
 
@@ -157,6 +158,7 @@ public:
 
     bool hasSpellingMarker(Document*, int from, int length, ExceptionCode&);
     bool hasGrammarMarker(Document*, int from, int length, ExceptionCode&);
+    bool hasAutocorrectedMarker(Document*, int from, int length, ExceptionCode&);
 
     unsigned numberOfScrollableAreas(Document*, ExceptionCode&);
 
@@ -168,7 +170,7 @@ public:
 
     void setBatteryStatus(Document*, const String& eventType, bool charging, double chargingTime, double dischargingTime, double level, ExceptionCode&);
 
-    void setNetworkInformation(Document*, const String& eventType, long bandwidth, bool metered, ExceptionCode&);
+    void setNetworkInformation(Document*, const String& eventType, double bandwidth, bool metered, ExceptionCode&);
 
     void suspendAnimations(Document*, ExceptionCode&) const;
     void resumeAnimations(Document*, ExceptionCode&) const;

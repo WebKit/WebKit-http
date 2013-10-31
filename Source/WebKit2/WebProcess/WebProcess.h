@@ -57,6 +57,14 @@ class QNetworkAccessManager;
 #include <dispatch/dispatch.h>
 #endif
 
+#if ENABLE(BATTERY_STATUS)
+#include "WebBatteryManager.h"
+#endif
+
+#if ENABLE(NETWORK_INFO)
+#include "WebNetworkInfoManager.h"
+#endif
+
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "WebNotificationManager.h"
 #endif
@@ -142,6 +150,14 @@ public:
 
     // Geolocation
     WebGeolocationManager& geolocationManager() { return m_geolocationManager; }
+
+#if ENABLE(BATTERY_STATUS)
+    WebBatteryManager& batteryManager() { return m_batteryManager; }
+#endif
+
+#if ENABLE(NETWORK_INFO)
+    WebNetworkInfoManager& networkInfoManager() { return m_networkInfoManager; }
+#endif
     
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebNotificationManager& notificationManager() { return m_notificationManager; }
@@ -286,6 +302,12 @@ private:
 
     TextCheckerState m_textCheckerState;
     WebGeolocationManager m_geolocationManager;
+#if ENABLE(BATTERY_STATUS)
+    WebBatteryManager m_batteryManager;
+#endif
+#if ENABLE(NETWORK_INFO)
+    WebNetworkInfoManager m_networkInfoManager;
+#endif
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebNotificationManager m_notificationManager;
 #endif

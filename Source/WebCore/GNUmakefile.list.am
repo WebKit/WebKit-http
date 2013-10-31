@@ -20,7 +20,7 @@ webcore_built_sources += \
 	DerivedSources/WebCore/HTMLNames.cpp \
 	DerivedSources/WebCore/HTMLNames.h \
 	DerivedSources/WebCore/InjectedScriptSource.h \
-	DerivedSources/WebCore/InjectedWebGLScriptSource.h \
+	DerivedSources/WebCore/InjectedScriptWebGLModuleSource.h \
 	DerivedSources/WebCore/InspectorBackendDispatcher.cpp \
 	DerivedSources/WebCore/InspectorBackendDispatcher.h \
 	DerivedSources/WebCore/InspectorFrontend.cpp \
@@ -192,6 +192,10 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSFloat32Array.h \
 	DerivedSources/WebCore/JSFloat64Array.cpp \
 	DerivedSources/WebCore/JSFloat64Array.h \
+	DerivedSources/WebCore/JSGamepad.cpp \
+	DerivedSources/WebCore/JSGamepad.h \
+	DerivedSources/WebCore/JSGamepadList.cpp \
+	DerivedSources/WebCore/JSGamepadList.h \
 	DerivedSources/WebCore/JSGeolocation.cpp \
 	DerivedSources/WebCore/JSGeolocation.h \
 	DerivedSources/WebCore/JSGeoposition.cpp \
@@ -387,6 +391,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSMediaStreamList.h \
 	DerivedSources/WebCore/JSMediaStreamTrack.cpp \
 	DerivedSources/WebCore/JSMediaStreamTrack.h \
+	DerivedSources/WebCore/JSMediaStreamTrackEvent.cpp \
+	DerivedSources/WebCore/JSMediaStreamTrackEvent.h \
 	DerivedSources/WebCore/JSMediaStreamTrackList.cpp \
 	DerivedSources/WebCore/JSMediaStreamTrackList.h \
 	DerivedSources/WebCore/JSMediaQueryList.cpp \
@@ -677,6 +683,9 @@ webcore_built_sources += \
 	DerivedSources/WebCore/XPathGrammar.h
 
 dom_binding_idls += \
+	$(WebCore)/Modules/gamepad/Gamepad.idl \
+	$(WebCore)/Modules/gamepad/GamepadList.idl \
+	$(WebCore)/Modules/gamepad/NavigatorGamepad.idl \
 	$(WebCore)/Modules/geolocation/Geolocation.idl \
 	$(WebCore)/Modules/geolocation/Geoposition.idl \
 	$(WebCore)/Modules/geolocation/NavigatorGeolocation.idl \
@@ -692,6 +701,7 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/MediaStreamEvent.idl \
 	$(WebCore)/Modules/mediastream/MediaStreamList.idl \
 	$(WebCore)/Modules/mediastream/MediaStreamTrack.idl \
+	$(WebCore)/Modules/mediastream/MediaStreamTrackEvent.idl \
 	$(WebCore)/Modules/mediastream/MediaStreamTrackList.idl \
 	$(WebCore)/Modules/mediastream/NavigatorMediaStream.idl \
 	$(WebCore)/Modules/mediastream/NavigatorUserMediaError.idl \
@@ -700,6 +710,9 @@ dom_binding_idls += \
 	$(WebCore)/Modules/mediastream/PeerConnection00.idl \
 	$(WebCore)/Modules/mediastream/SessionDescription.idl \
 	$(WebCore)/Modules/mediastream/SignalingCallback.idl \
+	$(WebCore)/Modules/notifications/Notification.idl \
+	$(WebCore)/Modules/notifications/NotificationCenter.idl \
+	$(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
 	$(WebCore)/Modules/webaudio/AudioContext.idl \
 	$(WebCore)/Modules/webaudio/AudioPannerNode.idl \
 	$(WebCore)/Modules/webaudio/DynamicsCompressorNode.idl \
@@ -939,9 +952,6 @@ dom_binding_idls += \
 	$(WebCore)/inspector/ScriptProfile.idl \
 	$(WebCore)/inspector/ScriptProfileNode.idl \
 	$(WebCore)/loader/appcache/DOMApplicationCache.idl \
-	$(WebCore)/notifications/Notification.idl \
-	$(WebCore)/notifications/NotificationCenter.idl \
-	$(WebCore)/notifications/NotificationPermissionCallback.idl \
 	$(WebCore)/page/BarInfo.idl \
 	$(WebCore)/page/Console.idl \
 	$(WebCore)/page/Coordinates.idl \
@@ -957,6 +967,7 @@ dom_binding_idls += \
 	$(WebCore)/page/PerformanceEntry.idl \
 	$(WebCore)/page/PerformanceEntryList.idl \
 	$(WebCore)/page/PerformanceNavigation.idl \
+	$(WebCore)/page/PerformanceResourceTiming.idl \
 	$(WebCore)/page/PerformanceTiming.idl \
 	$(WebCore)/page/Screen.idl \
 	$(WebCore)/page/SpeechInputEvent.idl \
@@ -1052,6 +1063,12 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/filesystem/WebKitFlags.h \
 	Source/WebCore/Modules/filesystem/WorkerContextFileSystem.cpp \
 	Source/WebCore/Modules/filesystem/WorkerContextFileSystem.h \
+	Source/WebCore/Modules/gamepad/Gamepad.cpp \
+	Source/WebCore/Modules/gamepad/Gamepad.h \
+	Source/WebCore/Modules/gamepad/GamepadList.cpp \
+	Source/WebCore/Modules/gamepad/GamepadList.h \
+	Source/WebCore/Modules/gamepad/NavigatorGamepad.cpp \
+	Source/WebCore/Modules/gamepad/NavigatorGamepad.h \
 	Source/WebCore/Modules/geolocation/Geolocation.cpp \
 	Source/WebCore/Modules/geolocation/Geolocation.h \
 	Source/WebCore/Modules/geolocation/GeolocationController.cpp \
@@ -1114,6 +1131,7 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/indexeddb/IDBLevelDBBackingStore.h \
 	Source/WebCore/Modules/indexeddb/IDBLevelDBCoding.cpp \
 	Source/WebCore/Modules/indexeddb/IDBLevelDBCoding.h \
+	Source/WebCore/Modules/indexeddb/IDBMetadata.h \
 	Source/WebCore/Modules/indexeddb/IDBObjectStoreBackendImpl.cpp \
 	Source/WebCore/Modules/indexeddb/IDBObjectStoreBackendImpl.h \
 	Source/WebCore/Modules/indexeddb/IDBObjectStoreBackendInterface.h \
@@ -1157,6 +1175,8 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/mediastream/MediaStreamRegistry.h \
 	Source/WebCore/Modules/mediastream/MediaStreamTrack.cpp \
 	Source/WebCore/Modules/mediastream/MediaStreamTrack.h \
+	Source/WebCore/Modules/mediastream/MediaStreamTrackEvent.cpp \
+	Source/WebCore/Modules/mediastream/MediaStreamTrackEvent.h \
 	Source/WebCore/Modules/mediastream/MediaStreamTrackList.cpp \
 	Source/WebCore/Modules/mediastream/MediaStreamTrackList.h \
 	Source/WebCore/Modules/mediastream/NavigatorMediaStream.cpp \
@@ -1174,6 +1194,18 @@ webcore_modules_sources += \
 	Source/WebCore/Modules/mediastream/UserMediaController.cpp \
 	Source/WebCore/Modules/mediastream/UserMediaRequest.cpp \
 	Source/WebCore/Modules/mediastream/UserMediaRequest.h \
+	Source/WebCore/Modules/notifications/DOMWindowNotifications.cpp \
+	Source/WebCore/Modules/notifications/DOMWindowNotifications.h \
+	Source/WebCore/Modules/notifications/NotificationCenter.cpp \
+	Source/WebCore/Modules/notifications/NotificationCenter.h \
+	Source/WebCore/Modules/notifications/NotificationClient.h \
+	Source/WebCore/Modules/notifications/NotificationController.cpp \
+	Source/WebCore/Modules/notifications/NotificationController.h \
+	Source/WebCore/Modules/notifications/Notification.cpp \
+	Source/WebCore/Modules/notifications/Notification.h \
+	Source/WebCore/Modules/notifications/NotificationPermissionCallback.h \
+	Source/WebCore/Modules/notifications/WorkerContextNotifications.cpp \
+	Source/WebCore/Modules/notifications/WorkerContextNotifications.h \
 	Source/WebCore/Modules/webdatabase/AbstractDatabase.cpp \
 	Source/WebCore/Modules/webdatabase/AbstractDatabase.h \
 	Source/WebCore/Modules/webdatabase/ChangeVersionWrapper.cpp \
@@ -1677,6 +1709,8 @@ webcore_sources += \
 	Source/WebCore/css/CSSStyleSheet.h \
 	Source/WebCore/css/CSSTimingFunctionValue.cpp \
 	Source/WebCore/css/CSSTimingFunctionValue.h \
+	Source/WebCore/css/CSSToStyleMap.cpp \
+	Source/WebCore/css/CSSToStyleMap.h \
 	Source/WebCore/css/CSSWrapShapes.cpp \
 	Source/WebCore/css/CSSWrapShapes.h \
 	Source/WebCore/css/CSSUnicodeRangeValue.cpp \
@@ -1755,6 +1789,8 @@ webcore_sources += \
 	Source/WebCore/css/WebKitCSSMatrix.h \
 	Source/WebCore/css/WebKitCSSRegionRule.cpp \
 	Source/WebCore/css/WebKitCSSRegionRule.h \
+	Source/WebCore/css/WebKitCSSSVGDocumentValue.cpp \
+	Source/WebCore/css/WebKitCSSSVGDocumentValue.h \
 	Source/WebCore/css/WebKitCSSShaderValue.cpp \
 	Source/WebCore/css/WebKitCSSShaderValue.h \
 	Source/WebCore/css/WebKitCSSTransformValue.cpp \
@@ -1823,10 +1859,10 @@ webcore_sources += \
 	Source/WebCore/dom/DeviceOrientationClient.h \
 	Source/WebCore/dom/DeviceOrientationController.cpp \
 	Source/WebCore/dom/DeviceOrientationController.h \
-	Source/WebCore/dom/DeviceOrientation.cpp \
+	Source/WebCore/dom/DeviceOrientationData.cpp \
+	Source/WebCore/dom/DeviceOrientationData.h \
 	Source/WebCore/dom/DeviceOrientationEvent.cpp \
 	Source/WebCore/dom/DeviceOrientationEvent.h \
-	Source/WebCore/dom/DeviceOrientation.h \
 	Source/WebCore/dom/Document.cpp \
 	Source/WebCore/dom/DocumentFragment.cpp \
 	Source/WebCore/dom/DocumentFragment.h \
@@ -1906,6 +1942,7 @@ webcore_sources += \
 	Source/WebCore/dom/HashChangeEvent.h \
 	Source/WebCore/dom/KeyboardEvent.cpp \
 	Source/WebCore/dom/KeyboardEvent.h \
+	Source/WebCore/dom/MemoryInstrumentation.h \
 	Source/WebCore/dom/MessageChannel.cpp \
 	Source/WebCore/dom/MessageChannel.h \
 	Source/WebCore/dom/MessageEvent.cpp \
@@ -2640,6 +2677,7 @@ webcore_sources += \
 	Source/WebCore/icu/unicode/utf_old.h \
 	Source/WebCore/icu/unicode/utypes.h \
 	Source/WebCore/icu/unicode/uversion.h \
+	Source/WebCore/inspector/BindingVisitors.h \
 	Source/WebCore/inspector/ConsoleMessage.cpp \
 	Source/WebCore/inspector/ConsoleMessage.h \
 	Source/WebCore/inspector/ContentSearchUtils.cpp \
@@ -2650,7 +2688,6 @@ webcore_sources += \
 	Source/WebCore/inspector/DOMNodeHighlighter.h \
 	Source/WebCore/inspector/DOMPatchSupport.cpp \
 	Source/WebCore/inspector/DOMPatchSupport.h \
-	Source/WebCore/inspector/DOMWrapperVisitor.h \
 	Source/WebCore/inspector/IdentifiersFactory.cpp \
 	Source/WebCore/inspector/IdentifiersFactory.h \
 	Source/WebCore/inspector/InjectedScript.cpp \
@@ -2661,6 +2698,10 @@ webcore_sources += \
 	Source/WebCore/inspector/InjectedScriptHost.h \
 	Source/WebCore/inspector/InjectedScriptManager.cpp \
 	Source/WebCore/inspector/InjectedScriptManager.h \
+	Source/WebCore/inspector/InjectedScriptModule.cpp \
+	Source/WebCore/inspector/InjectedScriptModule.h \
+	Source/WebCore/inspector/InjectedScriptWebGLModule.cpp \
+	Source/WebCore/inspector/InjectedScriptWebGLModule.h \
 	Source/WebCore/inspector/InspectorAgent.cpp \
 	Source/WebCore/inspector/InspectorAgent.h \
 	Source/WebCore/inspector/InspectorApplicationCacheAgent.cpp \
@@ -2920,18 +2961,6 @@ webcore_sources += \
 	Source/WebCore/mathml/MathMLMathElement.h \
 	Source/WebCore/mathml/MathMLTextElement.cpp \
 	Source/WebCore/mathml/MathMLTextElement.h \
-	Source/WebCore/notifications/DOMWindowNotifications.cpp \
-	Source/WebCore/notifications/DOMWindowNotifications.h \
-	Source/WebCore/notifications/NotificationCenter.cpp \
-	Source/WebCore/notifications/NotificationCenter.h \
-	Source/WebCore/notifications/NotificationClient.h \
-	Source/WebCore/notifications/NotificationController.cpp \
-	Source/WebCore/notifications/NotificationController.h \
-	Source/WebCore/notifications/Notification.cpp \
-	Source/WebCore/notifications/Notification.h \
-	Source/WebCore/notifications/NotificationPermissionCallback.h \
-	Source/WebCore/notifications/WorkerContextNotifications.cpp \
-	Source/WebCore/notifications/WorkerContextNotifications.h \
 	Source/WebCore/page/animation/AnimationBase.cpp \
 	Source/WebCore/page/animation/AnimationBase.h \
 	Source/WebCore/page/animation/AnimationController.cpp \
@@ -3038,6 +3067,8 @@ webcore_sources += \
 	Source/WebCore/page/PerformanceEntryList.h \
 	Source/WebCore/page/PerformanceNavigation.cpp \
 	Source/WebCore/page/PerformanceNavigation.h \
+	Source/WebCore/page/PerformanceResourceTiming.cpp \
+	Source/WebCore/page/PerformanceResourceTiming.h \
 	Source/WebCore/page/PerformanceTiming.cpp \
 	Source/WebCore/page/PerformanceTiming.h \
 	Source/WebCore/page/PointerLock.h \
@@ -3149,6 +3180,7 @@ webcore_sources += \
 	Source/WebCore/platform/FileSystem.h \
 	Source/WebCore/platform/FloatConversion.h \
 	Source/WebCore/platform/FractionalLayoutUnit.h \
+	Source/WebCore/platform/Gamepads.h \
 	Source/WebCore/platform/HashTools.h \
 	Source/WebCore/platform/HistogramSupport.cpp \
 	Source/WebCore/platform/HistogramSupport.h \
@@ -3195,8 +3227,8 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/filters/CustomFilterParameter.h \
 	Source/WebCore/platform/graphics/filters/CustomFilterProgram.cpp \
 	Source/WebCore/platform/graphics/filters/CustomFilterProgram.h \
-	Source/WebCore/platform/graphics/filters/CustomFilterShader.cpp \
-	Source/WebCore/platform/graphics/filters/CustomFilterShader.h \
+	Source/WebCore/platform/graphics/filters/CustomFilterCompiledProgram.cpp \
+	Source/WebCore/platform/graphics/filters/CustomFilterCompiledProgram.h \
 	Source/WebCore/platform/graphics/filters/DistantLightSource.cpp \
 	Source/WebCore/platform/graphics/filters/DistantLightSource.h \
 	Source/WebCore/platform/graphics/filters/FEBlend.cpp \
@@ -3252,8 +3284,8 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/filters/SourceGraphic.h \
 	Source/WebCore/platform/graphics/filters/SpotLightSource.cpp \
 	Source/WebCore/platform/graphics/filters/SpotLightSource.h \
+	Source/WebCore/platform/graphics/filters/arm/NEONHelpers.h \
 	Source/WebCore/platform/graphics/filters/arm/FECompositeArithmeticNEON.h \
-	Source/WebCore/platform/graphics/filters/arm/FEGaussianBlurNEON.cpp \
 	Source/WebCore/platform/graphics/filters/arm/FEGaussianBlurNEON.h \
 	Source/WebCore/platform/graphics/filters/arm/FELightingNEON.cpp \
 	Source/WebCore/platform/graphics/filters/arm/FELightingNEON.h \
@@ -3343,6 +3375,7 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/PathTraversalState.h \
 	Source/WebCore/platform/graphics/Pattern.cpp \
 	Source/WebCore/platform/graphics/Pattern.h \
+	Source/WebCore/platform/graphics/PlatformLayer.h \
 	Source/WebCore/platform/graphics/Region.cpp \
 	Source/WebCore/platform/graphics/Region.h \
 	Source/WebCore/platform/graphics/RoundedRect.cpp \
@@ -3397,6 +3430,7 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/WOFFFileFormat.h \
 	Source/WebCore/platform/gtk/ErrorsGtk.cpp \
 	Source/WebCore/platform/gtk/ErrorsGtk.h \
+	Source/WebCore/platform/gtk/GamepadsGtk.cpp \
 	Source/WebCore/platform/gtk/KURLGtk.cpp \
 	Source/WebCore/platform/gtk/LanguageGtk.cpp \
 	Source/WebCore/platform/gtk/LoggingGtk.cpp \
@@ -3457,6 +3491,8 @@ webcore_sources += \
 	Source/WebCore/platform/image-decoders/webp/WEBPImageDecoder.h \
 	Source/WebCore/platform/image-decoders/png/PNGImageDecoder.cpp \
 	Source/WebCore/platform/image-decoders/png/PNGImageDecoder.h \
+	Source/WebCore/platform/linux/GamepadDeviceLinux.cpp \
+	Source/WebCore/platform/linux/GamepadDeviceLinux.h \
 	Source/WebCore/platform/mediastream/DeprecatedPeerConnectionHandler.h \
 	Source/WebCore/platform/mediastream/DeprecatedPeerConnectionHandlerClient.h \
 	Source/WebCore/platform/mediastream/IceCandidateDescriptor.cpp \
@@ -3479,6 +3515,8 @@ webcore_sources += \
 	Source/WebCore/platform/mediastream/gstreamer/DeprecatedPeerConnectionHandler.cpp \
 	Source/WebCore/platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp \
 	Source/WebCore/platform/mediastream/gstreamer/MediaStreamCenterGStreamer.h \
+	Source/WebCore/platform/mock/DeviceMotionClientMock.cpp \
+	Source/WebCore/platform/mock/DeviceMotionClientMock.h \
 	Source/WebCore/platform/mock/DeviceOrientationClientMock.cpp \
 	Source/WebCore/platform/mock/DeviceOrientationClientMock.h \
 	Source/WebCore/platform/mock/GeolocationClientMock.cpp \
@@ -3648,6 +3686,8 @@ webcore_sources += \
 	Source/WebCore/platform/text/BidiContext.h \
 	Source/WebCore/platform/text/BidiResolver.h \
 	Source/WebCore/platform/text/BidiRunList.h \
+	Source/WebCore/platform/text/DateTimeFormat.cpp \
+	Source/WebCore/platform/text/DateTimeFormat.h \
 	Source/WebCore/platform/text/DecodeEscapeSequences.h \
 	Source/WebCore/platform/text/Hyphenation.cpp \
 	Source/WebCore/platform/text/Hyphenation.h \
@@ -3833,6 +3873,8 @@ webcore_sources += \
 	Source/WebCore/rendering/RenderFrameSet.h \
 	Source/WebCore/rendering/RenderFullScreen.cpp \
 	Source/WebCore/rendering/RenderFullScreen.h \
+	Source/WebCore/rendering/RenderGrid.cpp \
+	Source/WebCore/rendering/RenderGrid.h \
 	Source/WebCore/rendering/RenderGeometryMap.cpp \
 	Source/WebCore/rendering/RenderGeometryMap.h \
 	Source/WebCore/rendering/RenderHTMLCanvas.cpp \
@@ -4812,9 +4854,7 @@ webcoregtk_sources += \
 	Source/WebCore/platform/gtk/SoundGtk.cpp \
 	Source/WebCore/platform/gtk/WidgetGtk.cpp \
 	Source/WebCore/platform/gtk/WidgetRenderingContext.cpp \
-	Source/WebCore/platform/gtk/WidgetRenderingContext.h \
-	Source/WebCore/plugins/gtk/PluginPackageGtk.cpp \
-	Source/WebCore/plugins/gtk/PluginViewGtk.cpp
+	Source/WebCore/platform/gtk/WidgetRenderingContext.h
 
 if TARGET_X11
 webcoregtk_sources += \
@@ -4825,19 +4865,36 @@ webcoregtk_sources += \
 	Source/WebCore/platform/gtk/GtkWidgetBackingStoreX11.cpp \
 	Source/WebCore/plugins/gtk/gtk2xtbin.c \
 	Source/WebCore/plugins/gtk/gtk2xtbin.h \
+	Source/WebCore/plugins/gtk/PluginPackageGtk.cpp \
+	Source/WebCore/plugins/gtk/PluginViewGtk.cpp \
 	Source/WebCore/plugins/gtk/xembed.h
-endif
-
+else
 if TARGET_WIN32
 webcore_sources += \
+	Source/WebCore/platform/graphics/win/DIBPixelData.cpp \
+	Source/WebCore/platform/graphics/win/GraphicsContextCairoWin.cpp \
+	Source/WebCore/platform/graphics/win/GraphicsContextWin.cpp \
+	Source/WebCore/platform/graphics/win/LocalWindowsContext.h \
+	Source/WebCore/platform/graphics/win/TransformationMatrixWin.cpp \
+	Source/WebCore/platform/win/BitmapInfo.cpp \
+	Source/WebCore/platform/win/BitmapInfo.h \
 	Source/WebCore/platform/win/SystemInfo.cpp \
 	Source/WebCore/platform/win/SystemInfo.h \
+	Source/WebCore/platform/win/WebCoreInstanceHandle.cpp \
+	Source/WebCore/platform/win/WebCoreInstanceHandle.h \
 	Source/WebCore/plugins/win/PluginDatabaseWin.cpp \
 	Source/WebCore/plugins/win/PluginMessageThrottlerWin.cpp \
-	Source/WebCore/plugins/win/PluginMessageThrottlerWin.h
+	Source/WebCore/plugins/win/PluginMessageThrottlerWin.h \
+	Source/WebCore/plugins/win/PluginPackageWin.cpp
 webcoregtk_sources += \
-	Source/WebCore/platform/cairo/WidgetBackingStoreCairo.cpp
-endif
+	Source/WebCore/platform/cairo/WidgetBackingStoreCairo.cpp \
+	Source/WebCore/plugins/win/PluginViewWin.cpp
+else
+webcore_sources += \
+	Source/WebCore/plugins/PluginPackageNone.cpp \
+	Source/WebCore/plugins/PluginViewNone.cpp
+endif # END TARGET_WIN32
+endif # END TARGET_X11
 
 # ----
 # icu unicode backend
@@ -5997,6 +6054,7 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/OpenGLShims.cpp \
 	Source/WebCore/platform/graphics/OpenGLShims.h \
 	Source/WebCore/platform/graphics/opengl/Extensions3DOpenGL.cpp \
+	Source/WebCore/platform/graphics/opengl/Extensions3DOpenGLCommon.cpp \
 	Source/WebCore/platform/graphics/opengl/Extensions3DOpenGL.h \
 	Source/WebCore/platform/graphics/opengl/GraphicsContext3DOpenGL.cpp \
 	Source/WebCore/platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp

@@ -172,8 +172,6 @@ static inline bool compositingLogEnabled()
 #endif
 }
 
-#define PIXELS_PER_MEGAPIXEL 1000000.0
-
 RenderLayerCompositor::RenderLayerCompositor(RenderView* renderView)
     : m_renderView(renderView)
     , m_updateCompositingLayersTimer(this, &RenderLayerCompositor::updateCompositingLayersTimerFired)
@@ -194,8 +192,8 @@ RenderLayerCompositor::RenderLayerCompositor(RenderView* renderView)
     , m_rootLayerUpdateCount(0)
     , m_obligateCompositedLayerCount(0)
     , m_secondaryCompositedLayerCount(0)
-    , m_obligatoryBackingAreaMegaPixels(0)
-    , m_secondaryBackingAreaMegaPixels(0)
+    , m_obligatoryBackingStoreBytes(0)
+    , m_secondaryBackingStoreBytes(0)
 #endif
 {
 }
@@ -415,8 +413,8 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     if (compositingLogEnabled() && isFullUpdate && (needHierarchyUpdate || needGeometryUpdate)) {
         m_obligateCompositedLayerCount = 0;
         m_secondaryCompositedLayerCount = 0;
-        m_obligatoryBackingAreaMegaPixels = 0;
-        m_secondaryBackingAreaMegaPixels = 0;
+        m_obligatoryBackingStoreBytes = 0;
+        m_secondaryBackingStoreBytes = 0;
 
         Frame* frame = m_renderView->frameView()->frame();
         bool isMainFrame = !m_renderView->document()->ownerElement();
@@ -448,11 +446,11 @@ void RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 #if !LOG_DISABLED
     if (compositingLogEnabled() && isFullUpdate && (needHierarchyUpdate || needGeometryUpdate)) {
         double endTime = currentTime();
-        LOG(Compositing, "Total layers   primary   secondary   obligatory backing (MP)   secondary backing(MP)   total backing (MP)  update time (ms)\n");
+        LOG(Compositing, "Total layers   primary   secondary   obligatory backing (KB)   secondary backing(KB)   total backing (KB)  update time (ms)\n");
 
         LOG(Compositing, "%8d %11d %9d %20.2f %22.2f %22.2f %18.2f\n",
             m_obligateCompositedLayerCount + m_secondaryCompositedLayerCount, m_obligateCompositedLayerCount,
-            m_secondaryCompositedLayerCount, m_obligatoryBackingAreaMegaPixels, m_secondaryBackingAreaMegaPixels, m_obligatoryBackingAreaMegaPixels + m_secondaryBackingAreaMegaPixels, 1000.0 * (endTime - startTime));
+            m_secondaryCompositedLayerCount, m_obligatoryBackingStoreBytes / 1024, m_secondaryBackingStoreBytes / 1024, (m_obligatoryBackingStoreBytes + m_secondaryBackingStoreBytes) / 1024, 1000.0 * (endTime - startTime));
     }
 #endif
     ASSERT(updateRoot || !m_compositingLayersNeedRebuild);
@@ -470,14 +468,14 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer* layer, int depth)
     RenderLayerBacking* backing = layer->backing();
     if (requiresCompositingLayer(layer) || layer->isRootLayer()) {
         ++m_obligateCompositedLayerCount;
-        m_obligatoryBackingAreaMegaPixels += backing->backingStoreArea() / PIXELS_PER_MEGAPIXEL;
+        m_obligatoryBackingStoreBytes += backing->backingStoreMemoryEstimate();
     } else {
         ++m_secondaryCompositedLayerCount;
-        m_secondaryBackingAreaMegaPixels += backing->backingStoreArea() / PIXELS_PER_MEGAPIXEL;
+        m_secondaryBackingStoreBytes += backing->backingStoreMemoryEstimate();
     }
 
-    LOG(Compositing, "%*p %dx%d %.3fMP (%s) %s\n", 12 + depth * 2, layer, backing->compositedBounds().width(), backing->compositedBounds().height(),
-        backing->backingStoreArea() / PIXELS_PER_MEGAPIXEL,
+    LOG(Compositing, "%*p %dx%d %.2fKB (%s) %s\n", 12 + depth * 2, layer, backing->compositedBounds().width(), backing->compositedBounds().height(),
+        backing->backingStoreMemoryEstimate() / 1024,
         reasonForCompositing(layer), layer->backing()->nameForLayer().utf8().data());
 }
 #endif
@@ -639,7 +637,7 @@ RenderLayer* RenderLayerCompositor::enclosingNonStackingClippingLayer(const Rend
         if (curr->isStackingContext())
             return 0;
 
-        if (curr->renderer()->hasOverflowClip() || curr->renderer()->hasClip())
+        if (curr->renderer()->hasClipOrOverflowClip())
             return curr;
     }
     return 0;
@@ -671,7 +669,7 @@ void RenderLayerCompositor::addToOverlapMapRecursive(OverlapMap& overlapMap, Ren
 
     // A null ancestorLayer is an indication that 'layer' has already been pushed.
     if (ancestorLayer)
-        overlapMap.geometryMap().pushMappingsToAncestor(layer->renderer(), ancestorLayer->renderer());
+        overlapMap.geometryMap().pushMappingsToAncestor(layer, ancestorLayer);
     
     IntRect bounds;
     bool haveComputedBounds = false;
@@ -710,7 +708,7 @@ void RenderLayerCompositor::addToOverlapMapRecursive(OverlapMap& overlapMap, Ren
     }
     
     if (ancestorLayer)
-        overlapMap.geometryMap().popMappingsToAncestor(ancestorLayer->renderer());
+        overlapMap.geometryMap().popMappingsToAncestor(ancestorLayer);
 }
 
 //  Recurse through the layers in z-index and overflow order (which is equivalent to painting order)
@@ -727,7 +725,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     layer->updateLayerListsIfNeeded();
     
     if (overlapMap)
-        overlapMap->geometryMap().pushMappingsToAncestor(layer->renderer(), ancestorLayer ? ancestorLayer->renderer() : 0);
+        overlapMap->geometryMap().pushMappingsToAncestor(layer, ancestorLayer);
     
     // Clear the flag
     layer->setHasCompositingDescendant(false);
@@ -910,7 +908,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     descendantHas3DTransform |= anyDescendantHas3DTransform || layer->has3DTransform();
 
     if (overlapMap)
-        overlapMap->geometryMap().popMappingsToAncestor(ancestorLayer ? ancestorLayer->renderer() : 0);
+        overlapMap->geometryMap().popMappingsToAncestor(ancestorLayer);
 }
 
 void RenderLayerCompositor::setCompositingParent(RenderLayer* childLayer, RenderLayer* parentLayer)
@@ -1612,8 +1610,7 @@ bool RenderLayerCompositor::clippedByAncestor(RenderLayer* layer) const
 // into the hierarchy between this layer and its children in the z-order hierarchy.
 bool RenderLayerCompositor::clipsCompositingDescendants(const RenderLayer* layer) const
 {
-    return layer->hasCompositingDescendant() &&
-           (layer->renderer()->hasOverflowClip() || layer->renderer()->hasClip());
+    return layer->hasCompositingDescendant() && layer->renderer()->hasClipOrOverflowClip();
 }
 
 // Return true if there is an ancestor layer that is fixed positioned to the view.
@@ -1813,7 +1810,7 @@ bool RenderLayerCompositor::requiresCompositingForPosition(RenderObject* rendere
     // position:fixed elements that create their own stacking context (e.g. have an explicit z-index,
     // opacity, transform) can get their own composited layer. A stacking context is required otherwise
     // z-index and clipping will be broken.
-    if (!(renderer->isPositioned() && renderer->style()->position() == FixedPosition && layer->isStackingContext()))
+    if (!(renderer->isOutOfFlowPositioned() && renderer->style()->position() == FixedPosition && layer->isStackingContext()))
         return false;
 
     if (Settings* settings = m_renderView->document()->settings())
@@ -2087,12 +2084,12 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresHorizontalScrollbarLayer()) {
         if (!m_layerForHorizontalScrollbar) {
             m_layerForHorizontalScrollbar = GraphicsLayer::create(this);
-    #ifndef NDEBUG
+#ifndef NDEBUG
             m_layerForHorizontalScrollbar->setName("horizontal scrollbar");
-    #endif
-    #if PLATFORM(MAC) && USE(CA)
+#endif
+#if PLATFORM(MAC) && USE(CA)
             m_layerForHorizontalScrollbar->setAcceleratesDrawing(acceleratedDrawingEnabled());
-    #endif
+#endif
             m_overflowControlsHostLayer->addChild(m_layerForHorizontalScrollbar.get());
 
             if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
@@ -2109,12 +2106,12 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresVerticalScrollbarLayer()) {
         if (!m_layerForVerticalScrollbar) {
             m_layerForVerticalScrollbar = GraphicsLayer::create(this);
-    #ifndef NDEBUG
+#ifndef NDEBUG
             m_layerForVerticalScrollbar->setName("vertical scrollbar");
-    #endif
-    #if PLATFORM(MAC) && USE(CA)
-            m_layerForVerticalScrollbar->setAcceleratesDrawing(acceleratedDrawingEnabled());
-    #endif
+#endif
+#if PLATFORM(MAC) && USE(CA)
+        m_layerForVerticalScrollbar->setAcceleratesDrawing(acceleratedDrawingEnabled());
+#endif
             m_overflowControlsHostLayer->addChild(m_layerForVerticalScrollbar.get());
 
             if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
@@ -2131,12 +2128,12 @@ void RenderLayerCompositor::updateOverflowControlsLayers()
     if (requiresScrollCornerLayer()) {
         if (!m_layerForScrollCorner) {
             m_layerForScrollCorner = GraphicsLayer::create(this);
-    #ifndef NDEBUG
+#ifndef NDEBUG
             m_layerForScrollCorner->setName("scroll corner");
-    #endif
-    #if PLATFORM(MAC) && USE(CA)
+#endif
+#if PLATFORM(MAC) && USE(CA)
             m_layerForScrollCorner->setAcceleratesDrawing(acceleratedDrawingEnabled());
-    #endif
+#endif
             m_overflowControlsHostLayer->addChild(m_layerForScrollCorner.get());
         }
     } else if (m_layerForScrollCorner) {

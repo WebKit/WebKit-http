@@ -78,7 +78,7 @@ public:
     static bool parseSystemColor(RGBA32& color, const String&, Document*);
     static PassRefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     PassRefPtr<CSSPrimitiveValue> parseValidPrimitive(int ident, CSSParserValue*);
-    bool parseDeclaration(StylePropertySet*, const String&, PassRefPtr<CSSStyleSourceData>, StyleSheetContents* contextStyleSheet);
+    bool parseDeclaration(StylePropertySet*, const String&, PassRefPtr<CSSRuleSourceData>, StyleSheetContents* contextStyleSheet);
     PassOwnPtr<MediaQuery> parseMediaQuery(const String&);
 
     void addProperty(CSSPropertyID, PassRefPtr<CSSValue>, bool important, bool implicit = false);
@@ -92,6 +92,8 @@ public:
     bool parseQuotes(CSSPropertyID, bool important);
 
 #if ENABLE(CSS_VARIABLES)
+    static bool parseValue(StylePropertySet*, CSSPropertyID, const String&, bool important, Document*);
+    bool cssVariablesEnabled() const;
     void storeVariableDeclaration(const CSSParserString&, PassOwnPtr<CSSParserValueList>, bool important);
 #endif
 
@@ -187,7 +189,7 @@ public:
 
     bool parseReflect(CSSPropertyID, bool important);
 
-    PassRefPtr<CSSValue> parseFlex(CSSParserValueList* args);
+    bool parseFlex(CSSParserValueList* args, bool important);
 
     // Image generators
     bool parseCanvas(CSSParserValueList*, RefPtr<CSSValue>&);
@@ -253,7 +255,7 @@ public:
     MediaQuerySet* createMediaQuerySet();
     StyleRuleBase* createImportRule(const CSSParserString&, MediaQuerySet*);
     StyleKeyframe* createKeyframe(CSSParserValueList*);
-    StyleRuleKeyframes* createKeyframesRule();
+    StyleRuleKeyframes* createKeyframesRule(const String&, PassOwnPtr<Vector<RefPtr<StyleKeyframe> > >);
 
     typedef Vector<RefPtr<StyleRuleBase> > RuleList;
     StyleRuleBase* createMediaRule(MediaQuerySet*, RuleList*);
@@ -273,6 +275,9 @@ public:
     MediaQuery* createFloatingMediaQuery(MediaQuery::Restrictor, const String&, PassOwnPtr<Vector<OwnPtr<MediaQueryExp> > >);
     MediaQuery* createFloatingMediaQuery(PassOwnPtr<Vector<OwnPtr<MediaQueryExp> > >);
     PassOwnPtr<MediaQuery> sinkFloatingMediaQuery(MediaQuery*);
+
+    Vector<RefPtr<StyleKeyframe> >* createFloatingKeyframeVector();
+    PassOwnPtr<Vector<RefPtr<StyleKeyframe> > > sinkFloatingKeyframeVector(Vector<RefPtr<StyleKeyframe> >*);
 
     void addNamespace(const AtomicString& prefix, const AtomicString& uri);
     QualifiedName determineNameInNamespace(const AtomicString& prefix, const AtomicString& localName);
@@ -319,27 +324,20 @@ public:
 
     // tokenizer methods and data
     size_t m_parsedTextPrefixLength;
-    bool m_inStyleRuleOrDeclaration;
-    SourceRange m_selectorListRange;
-    SourceRange m_ruleBodyRange;
     SourceRange m_propertyRange;
     OwnPtr<RuleSourceDataList> m_currentRuleDataStack;
     RuleSourceDataList* m_ruleSourceDataResult;
 
     void fixUnparsedPropertyRanges(CSSRuleSourceData*);
-    void markStyleRuleHeaderStart();
+    void markRuleHeaderStart(CSSRuleSourceData::Type);
     void markRuleHeaderEnd();
-
-    void markSelectorListStart();
-    void markSelectorListEnd();
     void markRuleBodyStart();
     void markRuleBodyEnd();
     void markPropertyStart();
     void markPropertyEnd(bool isImportantFound, bool isPropertyParsed);
+    void processAndAddNewRuleToSourceTreeIfNeeded();
     void addNewRuleToSourceTree(PassRefPtr<CSSRuleSourceData>);
     PassRefPtr<CSSRuleSourceData> popRuleData();
-    void resetSelectorListMarks() { m_selectorListRange.start = m_selectorListRange.end = 0; }
-    void resetRuleBodyMarks() { m_ruleBodyRange.start = m_ruleBodyRange.end = 0; }
     void resetPropertyRange() { m_propertyRange.start = m_propertyRange.end = UINT_MAX; }
     bool isExtractingSourceData() const { return !!m_currentRuleDataStack; }
     int lex(void* yylval);
@@ -436,6 +434,8 @@ private:
     OwnPtr<MediaQuery> m_floatingMediaQuery;
     OwnPtr<MediaQueryExp> m_floatingMediaQueryExp;
     OwnPtr<Vector<OwnPtr<MediaQueryExp> > > m_floatingMediaQueryExpList;
+
+    OwnPtr<Vector<RefPtr<StyleKeyframe> > > m_floatingKeyframeVector;
 
     Vector<OwnPtr<CSSParserSelector> > m_reusableSelectorVector;
     Vector<OwnPtr<CSSParserSelector> > m_reusableRegionSelectorVector;

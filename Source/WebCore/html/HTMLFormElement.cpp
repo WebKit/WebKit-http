@@ -92,6 +92,7 @@ PassRefPtr<HTMLFormElement> HTMLFormElement::create(const QualifiedName& tagName
 
 HTMLFormElement::~HTMLFormElement()
 {
+    document()->formController()->willDeleteForm(this);
     if (!shouldAutocomplete())
         document()->unregisterForPageCacheSuspensionCallbacks(this);
 
@@ -534,11 +535,9 @@ void HTMLFormElement::removeImgElement(HTMLImageElement* e)
     removeFromVector(m_imageElements, e);
 }
 
-HTMLCollection* HTMLFormElement::elements()
+PassRefPtr<HTMLCollection> HTMLFormElement::elements()
 {
-    if (!m_elementsCollection)
-        m_elementsCollection = HTMLFormCollection::create(this);
-    return m_elementsCollection.get();
+    return ensureCachedHTMLCollection(FormControls);
 }
 
 String HTMLFormElement::name() const

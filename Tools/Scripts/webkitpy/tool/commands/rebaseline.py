@@ -32,6 +32,7 @@ import optparse
 import os.path
 import re
 import shutil
+import sys
 import urllib
 
 import webkitpy.common.config.urls as config_urls
@@ -67,26 +68,31 @@ class AbstractRebaseliningCommand(AbstractDeclarativeCommand):
 
 
 class RebaselineTest(AbstractRebaseliningCommand):
-    name = "rebaseline-test"
-    help_text = "Rebaseline a single test from a buildbot.  (Currently works only with build.chromium.org buildbots.)"
-    argument_names = "BUILDER_NAME TEST_NAME [PLATFORMS_TO_MOVE_EXISTING_BASELINES_TO]"
+    name = "rebaseline-test-internal"
+    help_text = "Rebaseline a single test from a buildbot. Only intended for use by other webkit-patch commands."
 
     def __init__(self):
         options = [
-            optparse.make_option("--print-scm-changes", action="store_true", help="Print modifcations to the scm (as a json dict) rather than actually modifying the scm"),
+            optparse.make_option("--builder", help="Builder to pull new baselines from"),
+            optparse.make_option("--platform-to-move-to", help="Platform to move existing baselines to before rebaselining. This is for dealing with bringing up new ports that interact with non-tree portions of the fallback graph."),
+            optparse.make_option("--test", help="Test to rebaseline"),
         ]
         AbstractRebaseliningCommand.__init__(self, options=options)
-        self._print_scm_changes = False
-        self._scm_changes = {}
+        self._scm_changes = {'add': []}
 
     def _results_url(self, builder_name):
-        # FIXME: Generalize this command to work with non-build.chromium.org builders.
-        builder = self._tool.chromium_buildbot().builder_with_name(builder_name)
-        return builder.accumulated_results_url()
+        port = self._tool.port_factory.get_from_builder_name(builder_name)
+        # FIXME: Come up with a better way than string manipulation to see if the port is a chromium port.
+        if port.name().startswith('chromium-'):
+            return self._tool.chromium_buildbot().builder_with_name(builder_name).accumulated_results_url()
+        return self._tool.buildbot.builder_with_name(builder_name).latest_cached_build().results_url()
 
     def _baseline_directory(self, builder_name):
         port = self._tool.port_factory.get_from_builder_name(builder_name)
-        return port.baseline_path()
+        override_dir = builders.rebaseline_override_dir(builder_name)
+        if override_dir:
+            return self._tool.filesystem.join(port.layout_tests_dir(), 'platform', override_dir)
+        return port.baseline_version_dir()
 
     def _copy_existing_baseline(self, platforms_to_move_existing_baselines_to, test_name, suffix):
         old_baselines = []
@@ -129,10 +135,7 @@ class RebaselineTest(AbstractRebaseliningCommand):
             self._add_to_scm(target_baseline)
 
     def _add_to_scm(self, path):
-        if self._print_scm_changes:
-            self._scm_changes['add'].append(path)
-        else:
-            self._tool.scm().add(path)
+        self._scm_changes['add'].append(path)
 
     def _update_expectations_file(self, builder_name, test_name):
         port = self._tool.port_factory.get_from_builder_name(builder_name)
@@ -173,16 +176,8 @@ class RebaselineTest(AbstractRebaseliningCommand):
 
     def execute(self, options, args, tool):
         self._baseline_suffix_list = options.suffixes.split(',')
-        self._print_scm_changes = options.print_scm_changes
-        self._scm_changes = {'add': [], 'delete': []}
-
-        if len(args) > 2:
-            platforms_to_move_existing_baselines_to = args[2:]
-        else:
-            platforms_to_move_existing_baselines_to = None
-        self._rebaseline_test_and_update_expectations(args[0], args[1], platforms_to_move_existing_baselines_to)
-        if self._print_scm_changes:
-            print json.dumps(self._scm_changes)
+        self._rebaseline_test_and_update_expectations(options.builder, options.test, options.platform_to_move_to)
+        print json.dumps(self._scm_changes)
 
 
 class OptimizeBaselines(AbstractRebaseliningCommand):
@@ -233,10 +228,7 @@ class AnalyzeBaselines(AbstractRebaseliningCommand):
             self._analyze_baseline(test_name)
 
 
-class RebaselineExpectations(AbstractDeclarativeCommand):
-    name = "rebaseline-expectations"
-    help_text = "Rebaselines the tests indicated in TestExpectations."
-
+class AbstractParallelRebaselineCommand(AbstractDeclarativeCommand):
     def __init__(self):
         options = [
             optparse.make_option('--no-optimize', dest='optimize', action='store_false', default=True,
@@ -250,15 +242,89 @@ class RebaselineExpectations(AbstractDeclarativeCommand):
         try:
             self._tool.executive.run_command([self._tool.path()] + args, cwd=self._tool.scm().checkout_root)
         except ScriptError, e:
-            pass
+            _log.error(e)
 
-    def _is_supported_port(self, port_name):
-        # FIXME: Support non-Chromium ports.
-        return port_name.startswith('chromium-')
+    def _builders_to_fetch_from(self, builders):
+        # This routine returns the subset of builders that will cover all of the baseline search paths
+        # used in the input list. In particular, if the input list contains both Release and Debug
+        # versions of a configuration, we *only* return the Release version (since we don't save
+        # debug versions of baselines).
+        release_builders = set()
+        debug_builders = set()
+        builders_to_fallback_paths = {}
+        for builder in builders:
+            port = self._tool.port_factory.get_from_builder_name(builder)
+            if port.test_configuration().build_type == 'Release':
+                release_builders.add(builder)
+            else:
+                debug_builders.add(builder)
+        for builder in list(release_builders) + list(debug_builders):
+            port = self._tool.port_factory.get_from_builder_name(builder)
+            fallback_path = port.baseline_search_path()
+            if fallback_path not in builders_to_fallback_paths.values():
+                builders_to_fallback_paths[builder] = fallback_path
+        return builders_to_fallback_paths.keys()
+
+    def _rebaseline_commands(self, test_list):
+        path_to_webkit_patch = self._tool.path()
+        cwd = self._tool.scm().checkout_root
+        commands = []
+        for test in test_list:
+            for builder in self._builders_to_fetch_from(test_list[test]):
+                suffixes = ','.join(test_list[test][builder])
+                cmd_line = [path_to_webkit_patch, 'rebaseline-test-internal', '--suffixes', suffixes, '--builder', builder, '--test', test]
+                commands.append(tuple([cmd_line, cwd]))
+        return commands
+
+    def _files_to_add(self, command_results):
+        files_to_add = set()
+        for output in [result[1].split('\n') for result in command_results]:
+            file_added = False
+            for line in output:
+                try:
+                    files_to_add.update(json.loads(line)['add'])
+                    file_added = True
+                except ValueError, e:
+                    _log.debug('"%s" is not a JSON object, ignoring' % line)
+
+            if not file_added:
+                _log.debug('Could not add file based off output "%s"' % output)
+
+
+        return list(files_to_add)
+
+    def _optimize_baselines(self, test_list):
+        # We don't run this in parallel because modifying the SCM in parallel is unreliable.
+        for test in test_list:
+            all_suffixes = set()
+            for builder in self._builders_to_fetch_from(test_list[test]):
+                all_suffixes.update(test_list[test][builder])
+            self._run_webkit_patch(['optimize-baselines', '--suffixes', ','.join(all_suffixes), test])
+
+    def _rebaseline(self, options, test_list):
+        commands = self._rebaseline_commands(test_list)
+        command_results = self._tool.executive.run_in_parallel(commands)
+
+        files_to_add = self._files_to_add(command_results)
+        self._tool.scm().add_list(list(files_to_add))
+
+        if options.optimize:
+            self._optimize_baselines(test_list)
+
+
+class RebaselineJson(AbstractParallelRebaselineCommand):
+    name = "rebaseline-json"
+    help_text = "Rebaseline based off JSON passed to stdin. Intended to only be called from other scripts."
+
+    def execute(self, options, args, tool):
+        self._rebaseline(options, json.loads(sys.stdin.read()))
+
+
+class RebaselineExpectations(AbstractParallelRebaselineCommand):
+    name = "rebaseline-expectations"
+    help_text = "Rebaselines the tests indicated in TestExpectations."
 
     def _update_expectations_file(self, port_name):
-        if not self._is_supported_port(port_name):
-            return
         port = self._tool.port_factory.get(port_name)
 
         # FIXME: This will intentionally skip over any REBASELINE expectations that were in an overrides file.
@@ -276,33 +342,32 @@ class RebaselineExpectations(AbstractDeclarativeCommand):
             tests_to_rebaseline[test] = suffixes_for_expectations(expectations.get_expectations(test))
         return tests_to_rebaseline
 
-    def _rebaseline_port(self, port_name):
-        if not self._is_supported_port(port_name):
-            return
+    def _add_tests_to_rebaseline_for_port(self, port_name):
         builder_name = builders.builder_name_for_port_name(port_name)
         if not builder_name:
             return
-        _log.info("Retrieving results for %s from %s." % (port_name, builder_name))
-        for test_name, suffixes in self._tests_to_rebaseline(self._tool.port_factory.get(port_name)).iteritems():
-            self._touched_tests.setdefault(test_name, set()).update(set(suffixes))
+        tests = self._tests_to_rebaseline(self._tool.port_factory.get(port_name)).items()
+
+        if tests:
+            _log.info("Retrieving results for %s from %s." % (port_name, builder_name))
+
+        for test_name, suffixes in tests:
             _log.info("    %s (%s)" % (test_name, ','.join(suffixes)))
-            # FIXME: we should use executive.run_in_parallel() to speed this up.
-            self._run_webkit_patch(['rebaseline-test', '--suffixes', ','.join(suffixes), builder_name, test_name])
+            if test_name not in self._test_list:
+                self._test_list[test_name] = {}
+            self._test_list[test_name][builder_name] = suffixes
 
     def execute(self, options, args, tool):
-        self._touched_tests = {}
+        self._test_list = {}
         for port_name in tool.port_factory.all_port_names():
-            self._rebaseline_port(port_name)
+            self._add_tests_to_rebaseline_for_port(port_name)
+        self._rebaseline(options, self._test_list)
+
         for port_name in tool.port_factory.all_port_names():
             self._update_expectations_file(port_name)
-        if not options.optimize:
-            return
-        for test_name, suffixes in self._touched_tests.iteritems():
-            _log.info("Optimizing baselines for %s (%s)." % (test_name, ','.join(suffixes)))
-            self._run_webkit_patch(['optimize-baselines', '--suffixes', ','.join(suffixes), test_name])
 
 
-class Rebaseline(AbstractDeclarativeCommand):
+class Rebaseline(AbstractParallelRebaselineCommand):
     name = "rebaseline"
     help_text = "Replaces local expected.txt files with new results from build bots"
 
@@ -318,29 +383,16 @@ class Rebaseline(AbstractDeclarativeCommand):
             if status["name"] == chosen_name:
                 return (self._tool.buildbot.builder_with_name(chosen_name), status["build_number"])
 
-    def _replace_expectation_with_remote_result(self, local_file, remote_file):
-        (downloaded_file, headers) = urllib.urlretrieve(remote_file)
-        shutil.move(downloaded_file, local_file)
-
     def _tests_to_update(self, build):
         failing_tests = build.layout_test_results().tests_matching_failure_types([test_failures.FailureTextMismatch])
         return self._tool.user.prompt_with_list("Which test(s) to rebaseline:", failing_tests, can_choose_multiple=True)
 
-    def _results_url_for_test(self, build, test):
-        test_base = os.path.splitext(test)[0]
-        actual_path = test_base + "-actual.txt"
-        return build.results_url() + "/" + actual_path
-
     def execute(self, options, args, tool):
         builder, build_number = self._builder_to_pull_from()
         build = builder.build(build_number)
-        port = tool.port_factory.get_from_builder_name(builder.name())
 
+        builder_name = builder.name()
+        test_list = {}
         for test in self._tests_to_update(build):
-            results_url = self._results_url_for_test(build, test)
-            # Port operates with absolute paths.
-            expected_file = port.expected_filename(test, '.txt')
-            _log.info(test)
-            self._replace_expectation_with_remote_result(expected_file, results_url)
-
-        # FIXME: We should handle new results too.
+            test_list[test] = {builder_name: ['txt']}
+        self._rebaseline(options, test_list)

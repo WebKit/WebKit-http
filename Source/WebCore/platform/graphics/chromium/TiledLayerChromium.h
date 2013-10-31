@@ -29,11 +29,10 @@
 #if USE(ACCELERATED_COMPOSITING)
 
 #include "LayerChromium.h"
+#include "LayerTextureUpdater.h"
 #include "cc/CCLayerTilingData.h"
-#include "cc/CCTiledLayerImpl.h"
 
 namespace WebCore {
-class LayerTextureUpdater;
 class UpdatableTile;
 
 class TiledLayerChromium : public LayerChromium {
@@ -57,11 +56,7 @@ public:
 
     virtual void setLayerTreeHost(CCLayerTreeHost*) OVERRIDE;
 
-    // Reserves all existing and valid tile textures to protect them from being
-    // recycled by the texture manager.
-    void protectTileTextures(const IntRect& layerRect);
-
-    virtual void reserveTextures() OVERRIDE;
+    virtual void setTexturePriorities(const CCPriorityCalculator&) OVERRIDE;
 
     virtual Region visibleContentOpaqueRegion() const OVERRIDE;
 
@@ -101,7 +96,7 @@ protected:
     bool skipsDraw() const { return m_skipsDraw; }
 
     // Virtual for testing
-    virtual TextureManager* textureManager() const;
+    virtual CCPrioritizedTextureManager* textureManager() const;
 
 private:
     virtual PassOwnPtr<CCLayerImpl> createCCLayerImpl() OVERRIDE;
@@ -111,6 +106,8 @@ private:
 
     bool tileOnlyNeedsPartialUpdate(UpdatableTile*);
     bool tileNeedsBufferedUpdate(UpdatableTile*);
+
+    void setTexturePrioritiesInRect(const CCPriorityCalculator&, const IntRect& visibleLayerRect);
 
     void updateTiles(bool idle, int left, int top, int right, int bottom, CCTextureUpdater&, const CCOcclusionTracker*);
 

@@ -30,9 +30,7 @@
 
 #include "SkPictureCanvasLayerTextureUpdater.h"
 
-#include "GraphicsContext.h"
 #include "LayerPainterChromium.h"
-#include "PlatformContextSkia.h"
 #include "SkCanvas.h"
 #include "TraceEvent.h"
 
@@ -48,16 +46,16 @@ SkPictureCanvasLayerTextureUpdater::~SkPictureCanvasLayerTextureUpdater()
 {
 }
 
-void SkPictureCanvasLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect, const IntSize&, float contentsScale, IntRect& resultingOpaqueRect)
+void SkPictureCanvasLayerTextureUpdater::prepareToUpdate(const IntRect& contentRect, const IntSize&, float contentsWidthScale, float contentsHeightScale, IntRect& resultingOpaqueRect)
 {
     SkCanvas* canvas = m_picture.beginRecording(contentRect.width(), contentRect.height());
-    paintContents(canvas, contentRect, contentsScale, resultingOpaqueRect);
+    paintContents(canvas, contentRect, contentsWidthScale, contentsHeightScale, resultingOpaqueRect);
     m_picture.endRecording();
 }
 
 void SkPictureCanvasLayerTextureUpdater::drawPicture(SkCanvas* canvas)
 {
-    TRACE_EVENT("SkPictureCanvasLayerTextureUpdater::drawPicture", this, 0);
+    TRACE_EVENT0("cc", "SkPictureCanvasLayerTextureUpdater::drawPicture");
     canvas->drawPicture(m_picture);
 }
 

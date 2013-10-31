@@ -27,6 +27,8 @@
 #include <BlackBerryPlatformWebContext.h>
 #include <imf/input_data.h>
 #include <network/NetworkRequest.h>
+#include <string>
+#include <vector>
 
 struct OpaqueJSContext;
 typedef const struct OpaqueJSContext* JSContextRef;
@@ -103,12 +105,16 @@ public:
     // Takes a UTF16 encoded script that is used explicitly by the pattern matching code
     bool executeJavaScriptInIsolatedWorld(const std::wstring& script, JavaScriptDataType& returnType, WebString& returnValue);
 
+    bool executeJavaScriptFunction(const std::vector<std::string> &script, const std::vector<std::string> &args, JavaScriptDataType& returnType, WebString& returnValue);
+
     void initializeIconDataBase();
 
     void stopLoading();
 
     // This will force any unload handlers to run.
     void prepareToDestroy();
+
+    void enableCrossSiteXHR();
 
     void reload();
     void reloadFromCache();
@@ -119,6 +125,7 @@ public:
     bool isVisible() const;
 
     void setScreenOrientation(int);
+    void setHasPendingSurfaceSizeChange();
     void applyPendingOrientationIfNeeded();
 
     Platform::IntSize viewportSize() const;
@@ -137,7 +144,7 @@ public:
 
     // For conversion to mouse events.
     void touchEventCancel();
-    bool touchPointAsMouseEvent(const Platform::TouchPoint&);
+    bool touchPointAsMouseEvent(const Platform::TouchPoint&, bool useFatFingers = true);
 
     // Returns true if the key stroke was handled by WebKit.
     bool keyEvent(const Platform::KeyboardEvent&);
@@ -248,6 +255,7 @@ public:
     int32_t commitText(spannable_string_t*, int32_t relativeCursorPosition);
 
     void setSpellCheckingEnabled(bool);
+    void spellCheckingRequestProcessed(int32_t id, spannable_string_t*);
 
     void setSelection(const Platform::IntPoint& startPoint, const Platform::IntPoint& endPoint);
     void setCaretPosition(const Platform::IntPoint&);

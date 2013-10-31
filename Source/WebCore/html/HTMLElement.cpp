@@ -56,6 +56,7 @@
 #include <wtf/text/CString.h>
 
 #if ENABLE(MICRODATA)
+#include "HTMLPropertiesCollection.h"
 #include "MicroDataItemValue.h"
 #endif
 
@@ -745,7 +746,7 @@ void HTMLElement::setTranslate(bool enable)
 }
 
 
-HTMLCollection* HTMLElement::children()
+PassRefPtr<HTMLCollection> HTMLElement::children()
 {
     return ensureCachedHTMLCollection(NodeChildren);
 }
@@ -986,6 +987,11 @@ String HTMLElement::itemValueText() const
 void HTMLElement::setItemValueText(const String& value, ExceptionCode& ec)
 {
     setTextContent(value, ec);
+}
+
+HTMLPropertiesCollection* HTMLElement::properties()
+{
+    return static_cast<HTMLPropertiesCollection*>(ensureCachedHTMLCollection(ItemProperties).get());
 }
 #endif
 

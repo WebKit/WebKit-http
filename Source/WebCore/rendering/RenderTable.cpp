@@ -114,7 +114,7 @@ void RenderTable::addChild(RenderObject* child, RenderObject* beforeChild)
     if (!beforeChild)
         beforeChild = afterPseudoElementRenderer();
 
-    bool wrapInAnonymousSection = !child->isPositioned();
+    bool wrapInAnonymousSection = !child->isOutOfFlowPositioned();
 
     if (child->isTableCaption()) {
         m_captions.append(toRenderTableCaption(child));
@@ -213,7 +213,7 @@ void RenderTable::computeLogicalWidth()
 {
     recalcSectionsIfNeeded();
 
-    if (isPositioned())
+    if (isOutOfFlowPositioned())
         computePositionedLogicalWidth();
 
     RenderBlock* cb = containingBlock();
@@ -273,7 +273,8 @@ LayoutUnit RenderTable::convertStyleLogicalWidthToComputedWidth(const Length& st
     bool isCSSTable = !node() || !node()->hasTagName(tableTag);
     if (isCSSTable && styleLogicalWidth.isFixed() && styleLogicalWidth.isPositive()) {
         recalcBordersInRowDirection();
-        borders = borderStart() + borderEnd() + (collapseBorders() ? ZERO_LAYOUT_UNIT : paddingStart() + paddingEnd());
+        if (style()->boxSizing() == CONTENT_BOX)
+            borders = borderStart() + borderEnd() + (collapseBorders() ? ZERO_LAYOUT_UNIT : paddingStart() + paddingEnd());
     }
     return minimumValueForLength(styleLogicalWidth, availableWidth, view()) + borders;
 }
@@ -390,14 +391,17 @@ void RenderTable::layout()
 
     setLogicalHeight(logicalHeight() + borderAndPaddingBefore);
 
-    if (!isPositioned())
+    if (!isOutOfFlowPositioned())
         computeLogicalHeight();
 
     Length logicalHeightLength = style()->logicalHeight();
     LayoutUnit computedLogicalHeight = 0;
     if (logicalHeightLength.isFixed()) {
         // HTML tables size as though CSS height includes border/padding, CSS tables do not.
-        LayoutUnit borders = node() && node()->hasTagName(tableTag) ? (borderAndPaddingBefore + borderAndPaddingAfter) : ZERO_LAYOUT_UNIT;
+        LayoutUnit borders = ZERO_LAYOUT_UNIT;
+        // FIXME: We cannot apply box-sizing: content-box on <table> which other browsers allow.
+        if ((node() && node()->hasTagName(tableTag)) || style()->boxSizing() == BORDER_BOX)
+            borders = borderAndPaddingBefore + borderAndPaddingAfter;
         computedLogicalHeight = logicalHeightLength.value() - borders;
     } else if (logicalHeightLength.isPercent())
         computedLogicalHeight = computePercentageLogicalHeight(logicalHeightLength);
@@ -439,7 +443,7 @@ void RenderTable::layout()
         layoutCaption(m_captions[i]);
     }
 
-    if (isPositioned())
+    if (isOutOfFlowPositioned())
         computeLogicalHeight();
 
     // table can be containing block of positioned elements.
@@ -1275,17 +1279,17 @@ LayoutRect RenderTable::overflowClipRect(const LayoutPoint& location, RenderRegi
     return rect;
 }
 
-bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
+bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
 {
     LayoutPoint adjustedLocation = accumulatedOffset + location();
 
     // Check kids first.
-    if (!hasOverflowClip() || overflowClipRect(adjustedLocation, result.region()).intersects(result.rectForPoint(pointInContainer))) {
+    if (!hasOverflowClip() || pointInContainer.intersects(overflowClipRect(adjustedLocation, result.region()))) {
         for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
             if (child->isBox() && !toRenderBox(child)->hasSelfPaintingLayer() && (child->isTableSection() || child->isTableCaption())) {
                 LayoutPoint childPoint = flipForWritingModeForChild(toRenderBox(child), adjustedLocation);
                 if (child->nodeAtPoint(request, result, pointInContainer, childPoint, action)) {
-                    updateHitTestResult(result, toLayoutPoint(pointInContainer - childPoint));
+                    updateHitTestResult(result, toLayoutPoint(pointInContainer.point() - childPoint));
                     return true;
                 }
             }
@@ -1294,8 +1298,8 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
 
     // Check our bounds next.
     LayoutRect boundsRect(adjustedLocation, size());
-    if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && boundsRect.intersects(result.rectForPoint(pointInContainer))) {
-        updateHitTestResult(result, flipForWritingMode(pointInContainer - toLayoutSize(adjustedLocation)));
+    if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && pointInContainer.intersects(boundsRect)) {
+        updateHitTestResult(result, flipForWritingMode(pointInContainer.point() - toLayoutSize(adjustedLocation)));
         if (!result.addNodeToRectBasedTestResult(node(), pointInContainer, boundsRect))
             return true;
     }

@@ -32,6 +32,7 @@ class HTMLCollection;
 class HTMLFormElement;
 
 #if ENABLE(MICRODATA)
+class HTMLPropertiesCollection;
 class MicroDataItemValue;
 #endif
 
@@ -45,7 +46,7 @@ class HTMLElement : public StyledElement {
 public:
     static PassRefPtr<HTMLElement> create(const QualifiedName& tagName, Document*);
 
-    HTMLCollection* children();
+    PassRefPtr<HTMLCollection> children();
 
     virtual String title() const;
 
@@ -96,6 +97,7 @@ public:
 #if ENABLE(MICRODATA)
     void setItemValue(const String&, ExceptionCode&);
     PassRefPtr<MicroDataItemValue> itemValue() const;
+    HTMLPropertiesCollection* properties();
 #endif
 
 #ifndef NDEBUG

@@ -38,15 +38,15 @@ class HTMLTableRowElement;
 
 class HTMLTableRowsCollection : public HTMLCollection {
 public:
-    static PassOwnPtr<HTMLTableRowsCollection> create(HTMLTableElement*);
+    static PassRefPtr<HTMLTableRowsCollection> create(Element*);
 
     static HTMLTableRowElement* rowAfter(HTMLTableElement*, HTMLTableRowElement*);
     static HTMLTableRowElement* lastRow(HTMLTableElement*);
 
 private:
-    HTMLTableRowsCollection(HTMLTableElement*);
+    HTMLTableRowsCollection(Element*);
 
-    virtual Element* itemAfter(Element*) const;
+    virtual Element* itemAfter(Node*) const OVERRIDE;
 };
 
 } // namespace

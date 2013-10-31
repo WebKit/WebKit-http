@@ -138,7 +138,14 @@ Settings::Settings(Page* page)
     , m_sessionStorageQuota(StorageMap::noQuota)
     , m_editingBehaviorType(editingBehaviorTypeForPlatform())
     , m_maximumHTMLParserDOMTreeDepth(defaultMaximumHTMLParserDOMTreeDepth)
-    , m_fontBoostingEnabled(true)
+#if ENABLE(TEXT_AUTOSIZING)
+#if HACK_FORCE_TEXT_AUTOSIZING_ON_DESKTOP
+    , m_textAutosizingWindowSizeOverride(320, 480)
+    , m_textAutosizingEnabled(true)
+#else
+    , m_textAutosizingEnabled(false)
+#endif
+#endif
     , m_isSpatialNavigationEnabled(false)
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
@@ -191,6 +198,9 @@ Settings::Settings(Page* page)
     , m_isCSSCustomFilterEnabled(false)
 #if ENABLE(CSS_REGIONS)
     , m_cssRegionsEnabled(false)
+#endif
+#if ENABLE(CSS_VARIABLES)
+    , m_cssVariablesEnabled(false)
 #endif
     , m_regionBasedColumnsEnabled(false)
     , m_cssGridLayoutEnabled(false)
@@ -270,6 +280,7 @@ Settings::Settings(Page* page)
     , m_needsDidFinishLoadOrderQuirk(false)
     , m_fixedPositionCreatesStackingContext(false)
     , m_syncXHRInDocumentsEnabled(true)
+    , m_cookieEnabled(true)
     , m_windowFocusRestricted(true)
     , m_loadsImagesAutomaticallyTimer(this, &Settings::loadsImagesAutomaticallyTimerFired)
     , m_incrementalRenderingSuppressionTimeoutInSeconds(defaultIncrementalRenderingSuppressionTimeoutInSeconds)
@@ -399,14 +410,25 @@ void Settings::setDefaultFixedFontSize(int defaultFontSize)
     m_page->setNeedsRecalcStyleInAllFrames();
 }
 
-void Settings::setFontBoostingEnabled(bool fontBoostingEnabled)
+#if ENABLE(TEXT_AUTOSIZING)
+void Settings::setTextAutosizingEnabled(bool textAutosizingEnabled)
 {
-    if (m_fontBoostingEnabled == fontBoostingEnabled)
+    if (m_textAutosizingEnabled == textAutosizingEnabled)
         return;
 
-    m_fontBoostingEnabled = fontBoostingEnabled;
+    m_textAutosizingEnabled = textAutosizingEnabled;
     m_page->setNeedsRecalcStyleInAllFrames();
 }
+
+void Settings::setTextAutosizingWindowSizeOverride(const IntSize& textAutosizingWindowSizeOverride)
+{
+    if (m_textAutosizingWindowSizeOverride == textAutosizingWindowSizeOverride)
+        return;
+
+    m_textAutosizingWindowSizeOverride = textAutosizingWindowSizeOverride;
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+#endif
 
 void Settings::setLoadsImagesAutomatically(bool loadsImagesAutomatically)
 {

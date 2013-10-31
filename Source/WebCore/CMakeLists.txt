@@ -3,6 +3,7 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/intents"
+    "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
@@ -28,7 +29,6 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/loader/cache"
     "${WEBCORE_DIR}/loader/icon"
     "${WEBCORE_DIR}/mathml"
-    "${WEBCORE_DIR}/notifications"
     "${WEBCORE_DIR}/page"
     "${WEBCORE_DIR}/page/animation"
     "${WEBCORE_DIR}/page/scrolling"
@@ -99,6 +99,7 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
 
 SET(WebCore_IDL_INCLUDES
     Modules/filesystem
+    Modules/gamepad
     Modules/geolocation
     Modules/indexeddb
     Modules/quota
@@ -399,6 +400,7 @@ SET(WebCore_IDL_FILES
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
     page/PerformanceNavigation.idl
+    page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
     page/Screen.idl
     page/SpeechInputEvent.idl
@@ -505,6 +507,7 @@ SET(WebCore_SOURCES
     css/CSSStyleRule.cpp
     css/CSSStyleSheet.cpp
     css/CSSTimingFunctionValue.cpp
+    css/CSSToStyleMap.cpp
     css/CSSUnicodeRangeValue.cpp
     css/CSSValue.cpp
     css/CSSValueList.cpp
@@ -540,6 +543,7 @@ SET(WebCore_SOURCES
     css/WebKitCSSKeyframesRule.cpp
     css/WebKitCSSMatrix.cpp
     css/WebKitCSSRegionRule.cpp
+    css/WebKitCSSSVGDocumentValue.cpp
     css/WebKitCSSTransformValue.cpp
 
     dom/ActiveDOMObject.cpp
@@ -569,8 +573,8 @@ SET(WebCore_SOURCES
     dom/DeviceMotionController.cpp
     dom/DeviceMotionData.cpp
     dom/DeviceMotionEvent.cpp
-    dom/DeviceOrientation.cpp
     dom/DeviceOrientationController.cpp
+    dom/DeviceOrientationData.cpp
     dom/DeviceOrientationEvent.cpp
     dom/Document.cpp
     dom/DocumentMarkerController.cpp
@@ -937,6 +941,8 @@ SET(WebCore_SOURCES
     inspector/InjectedScriptBase.cpp
     inspector/InjectedScriptHost.cpp
     inspector/InjectedScriptManager.cpp
+    inspector/InjectedScriptModule.cpp
+    inspector/InjectedScriptWebGLModule.cpp
     inspector/InspectorAgent.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorBaseAgent.cpp
@@ -1088,6 +1094,7 @@ SET(WebCore_SOURCES
     page/PerformanceEntry.cpp
     page/PerformanceEntryList.cpp
     page/PerformanceNavigation.cpp
+    page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
     page/PrintContext.cpp
     page/Screen.cpp
@@ -1206,7 +1213,7 @@ SET(WebCore_SOURCES
     platform/graphics/filters/CustomFilterGlobalContext.cpp
     platform/graphics/filters/CustomFilterMesh.cpp
     platform/graphics/filters/CustomFilterProgram.cpp
-    platform/graphics/filters/CustomFilterShader.cpp
+    platform/graphics/filters/CustomFilterCompiledProgram.cpp
     platform/graphics/filters/DistantLightSource.cpp
     platform/graphics/filters/FEBlend.cpp
     platform/graphics/filters/FEColorMatrix.cpp
@@ -1235,8 +1242,8 @@ SET(WebCore_SOURCES
     platform/graphics/filters/SourceAlpha.cpp
     platform/graphics/filters/SourceGraphic.cpp
 
+    platform/graphics/filters/arm/NEONHelpers.h
     platform/graphics/filters/arm/FECompositeArithmeticNEON.h
-    platform/graphics/filters/arm/FEGaussianBlurNEON.cpp
     platform/graphics/filters/arm/FEGaussianBlurNEON.h
     platform/graphics/filters/arm/FELightingNEON.cpp
     platform/graphics/filters/arm/FELightingNEON.h
@@ -1253,6 +1260,7 @@ SET(WebCore_SOURCES
     platform/graphics/transforms/TransformState.cpp
     platform/graphics/transforms/TranslateTransformOperation.cpp
 
+    platform/mock/DeviceMotionClientMock.cpp
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
     platform/mock/ScrollbarThemeMock.cpp
@@ -1292,6 +1300,7 @@ SET(WebCore_SOURCES
 
     platform/text/Base64.cpp
     platform/text/BidiContext.cpp
+    platform/text/DateTimeFormat.cpp
     platform/text/Hyphenation.cpp
     platform/text/LineEnding.cpp
     platform/text/LocaleToScriptMappingDefault.cpp
@@ -1351,6 +1360,7 @@ SET(WebCore_SOURCES
     rendering/RenderFieldset.cpp
     rendering/RenderFileUploadControl.cpp
     rendering/RenderFlexibleBox.cpp
+    rendering/RenderGrid.cpp
     rendering/RenderFlowThread.cpp
     rendering/RenderFrame.cpp
     rendering/RenderFrameBase.cpp
@@ -1709,19 +1719,19 @@ ENDIF ()
 
 IF (ENABLE_NOTIFICATIONS)
     LIST(APPEND WebCore_SOURCES
-        notifications/DOMWindowNotifications.cpp
-        notifications/NotificationCenter.cpp
-        notifications/NotificationController.cpp
-        notifications/Notification.cpp
-        notifications/WorkerContextNotifications.cpp
+        Modules/notifications/DOMWindowNotifications.cpp
+        Modules/notifications/NotificationCenter.cpp
+        Modules/notifications/NotificationController.cpp
+        Modules/notifications/Notification.cpp
+        Modules/notifications/WorkerContextNotifications.cpp
     )
 
     LIST(APPEND WebCore_IDL_FILES
-        notifications/DOMWindowNotifications.idl
-        notifications/Notification.idl
-        notifications/NotificationCenter.idl
-        notifications/NotificationPermissionCallback.idl
-        notifications/WorkerContextNotifications.idl
+        Modules/notifications/DOMWindowNotifications.idl
+        Modules/notifications/Notification.idl
+        Modules/notifications/NotificationCenter.idl
+        Modules/notifications/NotificationPermissionCallback.idl
+        Modules/notifications/WorkerContextNotifications.idl
     )
 ENDIF ()
 
@@ -2293,22 +2303,27 @@ IF (ENABLE_MHTML)
 ENDIF ()
 
 IF (ENABLE_WEBGL)
+    #ANGLE
     LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${OPENGL_INCLUDE_DIR}
         ${THIRDPARTY_DIR}/ANGLE/src
-        ${THIRDPARTY_DIR}/ANGLE/include
+       #${THIRDPARTY_DIR}/ANGLE/include #Defined as SYSTEM include in order to have less priority than actual system headers
         ${THIRDPARTY_DIR}/ANGLE/include/GLSLANG
-        ${WEBCORE_DIR}/platform/graphics/gpu
+    )
+    LIST(APPEND WebCore_LIBRARIES
+        ${OPENGL_gl_LIBRARY}
     )
     LIST(APPEND WebCore_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/glslang.cpp
         ${DERIVED_SOURCES_WEBCORE_DIR}/glslang_tab.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/CodeGenGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/BuiltInFunctionEmulator.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/CodeGenGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Compiler.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/debug.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/DetectRecursion.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ForLoopUnroll.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/glslang_lex.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/glslang_tab.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/InfoSink.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/Initialize.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/InitializeDll.cpp
@@ -2336,7 +2351,6 @@ IF (ENABLE_WEBGL)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/SearchSymbol.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ShaderLang.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/SymbolTable.cpp
-        ${THIRDPARTY_DIR}/ANGLE/src/compiler/VersionGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/TranslatorESSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/TranslatorGLSL.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/TranslatorHLSL.cpp
@@ -2344,6 +2358,13 @@ IF (ENABLE_WEBGL)
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/util.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/ValidateLimitations.cpp
         ${THIRDPARTY_DIR}/ANGLE/src/compiler/VariableInfo.cpp
+        ${THIRDPARTY_DIR}/ANGLE/src/compiler/VersionGLSL.cpp
+    )
+
+    LIST(APPEND WebCore_SOURCES
+        html/canvas/OESStandardDerivatives.cpp
+        html/canvas/OESTextureFloat.cpp
+        html/canvas/OESVertexArrayObject.cpp
         html/canvas/WebGLBuffer.cpp
         html/canvas/WebGLCompressedTextureS3TC.cpp
         html/canvas/WebGLContextAttributes.cpp
@@ -2458,6 +2479,22 @@ IF (ENABLE_BATTERY_STATUS)
     )
 ENDIF ()
 
+IF (ENABLE_GAMEPAD)
+    LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/Modules/gamepad"
+    )
+    LIST(APPEND WebCore_IDL_FILES
+        Modules/gamepad/Gamepad.idl
+        Modules/gamepad/GamepadList.idl
+        Modules/gamepad/NavigatorGamepad.idl
+    )
+    LIST(APPEND WebCore_SOURCES
+        Modules/gamepad/Gamepad.cpp
+        Modules/gamepad/GamepadList.cpp
+        Modules/gamepad/NavigatorGamepad.cpp
+    )
+ENDIF ()
+
 IF (ENABLE_MEDIA_STREAM)
     LIST(APPEND WebCore_INCLUDE_DIRECTORIES
         ${WEBCORE_DIR}/Modules/mediastream
@@ -2473,6 +2510,7 @@ IF (ENABLE_MEDIA_STREAM)
         Modules/mediastream/MediaStreamEvent.idl
         Modules/mediastream/MediaStreamList.idl
         Modules/mediastream/MediaStreamTrack.idl
+        Modules/mediastream/MediaStreamTrackEvent.idl
         Modules/mediastream/MediaStreamTrackList.idl
         Modules/mediastream/NavigatorMediaStream.idl
         Modules/mediastream/NavigatorUserMediaError.idl
@@ -2491,6 +2529,7 @@ IF (ENABLE_MEDIA_STREAM)
         Modules/mediastream/MediaStreamList.cpp
         Modules/mediastream/MediaStreamRegistry.cpp
         Modules/mediastream/MediaStreamTrack.cpp
+        Modules/mediastream/MediaStreamTrackEvent.cpp
         Modules/mediastream/MediaStreamTrackList.cpp
         Modules/mediastream/NavigatorMediaStream.cpp
         Modules/mediastream/PeerConnection00.cpp
@@ -2553,6 +2592,7 @@ IF (ENABLE_WEB_AUDIO)
         platform/audio/AudioBus.cpp
         platform/audio/AudioChannel.cpp
         platform/audio/AudioDSPKernelProcessor.cpp
+        platform/audio/AudioFIFO.cpp
         platform/audio/AudioPullFIFO.cpp
         platform/audio/AudioResampler.cpp
         platform/audio/AudioResamplerKernel.cpp
@@ -2678,14 +2718,14 @@ ADD_CUSTOM_COMMAND(
 LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptSource.h)
 
 
-# Generate InjectedWebGLScriptSource.h
+# Generate InjectedScriptWebGLModuleSource.h
 IF (ENABLE_WEBGL)
     ADD_CUSTOM_COMMAND(
-        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h
-        MAIN_DEPENDENCY inspector/InjectedWebGLScriptSource.js
-        COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedWebGLScriptSource_js ${WEBCORE_DIR}/inspector/InjectedWebGLScriptSource.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h
+        OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptWebGLModuleSource.h
+        MAIN_DEPENDENCY inspector/InjectedScriptWebGLModuleSource.js
+        COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/inspector/xxd.pl InjectedScriptWebGLModuleSource_js ${WEBCORE_DIR}/inspector/InjectedScriptWebGLModuleSource.js ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptWebGLModuleSource.h
         VERBATIM)
-    LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedWebGLScriptSource.h)
+    LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InjectedScriptWebGLModuleSource.h)
 ENDIF ()
 
 

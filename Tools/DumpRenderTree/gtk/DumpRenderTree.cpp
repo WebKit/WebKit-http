@@ -123,7 +123,29 @@ static bool shouldEnableDeveloperExtras(const string& pathOrURL)
 
 void dumpFrameScrollPosition(WebKitWebFrame* frame)
 {
+    WebKitDOMDocument* document = webkit_web_frame_get_dom_document(frame);
+    if (!document)
+        return;
 
+    WebKitDOMDOMWindow* domWindow = webkit_dom_document_get_default_view(document);
+    if (!domWindow)
+        return;
+
+    glong x = webkit_dom_dom_window_get_page_x_offset(domWindow);
+    glong y = webkit_dom_dom_window_get_page_y_offset(domWindow);
+
+    if (abs(x) > 0 || abs(y) > 0) {
+        if (webkit_web_frame_get_parent(frame))
+            printf("frame '%s' ", webkit_web_frame_get_name(frame));
+        printf("scrolled to %ld,%ld\n", x, y);
+    }
+
+    if (gLayoutTestController->dumpChildFrameScrollPositions()) {
+        GSList* children = DumpRenderTreeSupportGtk::getFrameChildren(frame);
+        for (GSList* child = children; child; child = g_slist_next(child))
+            dumpFrameScrollPosition(static_cast<WebKitWebFrame*>(child->data));
+        g_slist_free(children);
+    }
 }
 
 void displayWebView()
@@ -169,6 +191,32 @@ CString getTopLevelPath()
     return TOP_LEVEL_DIR;
 }
 
+CString getOutputDir()
+{
+    const char* webkitOutputDir = g_getenv("WEBKITOUTPUTDIR");
+    if (webkitOutputDir)
+        return webkitOutputDir;
+
+    CString topLevelPath = getTopLevelPath();
+    GOwnPtr<char> outputDir(g_build_filename(topLevelPath.data(), "WebKitBuild", NULL));
+    return outputDir.get();
+}
+
+static CString getFontsPath()
+{
+    CString webkitOutputDir = getOutputDir();
+    GOwnPtr<char> fontsPath(g_build_filename(webkitOutputDir.data(), "Dependencies", "Root", "webkitgtk-test-fonts", NULL));
+    if (g_file_test(fontsPath.get(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR)))
+        return fontsPath.get();
+
+    // Try alternative fonts path.
+    fontsPath.set(g_build_filename(webkitOutputDir.data(), "webkitgtk-test-fonts", NULL));
+    if (g_file_test(fontsPath.get(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR)))
+        return fontsPath.get();
+
+    return CString();
+}
+
 static void initializeFonts(const char* testURL = 0)
 {
 #if PLATFORM(X11)
@@ -190,18 +238,16 @@ static void initializeFonts(const char* testURL = 0)
     if (!FcConfigParseAndLoad(config, reinterpret_cast<FcChar8*>(fontConfigFilename.get()), true))
         g_error("Couldn't load font configuration file from: %s", fontConfigFilename.get());
 
-    CString topLevelPath = getTopLevelPath();
-    GOwnPtr<char> fontsPath(g_build_filename(topLevelPath.data(), "WebKitBuild", "Dependencies",
-                                             "Root", "webkitgtk-test-fonts", NULL));
-    if (!g_file_test(fontsPath.get(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR)))
-        g_error("Could not locate test fonts at %s. Is WEBKIT_TOP_LEVEL set?", fontsPath.get());
+    CString fontsPath = getFontsPath();
+    if (fontsPath.isNull())
+        g_error("Could not locate test fonts at %s. Is WEBKIT_TOP_LEVEL set?", fontsPath.data());
 
     GOwnPtr<GError> error;
-    GOwnPtr<GDir> fontsDirectory(g_dir_open(fontsPath.get(), 0, &error.outPtr()));
+    GOwnPtr<GDir> fontsDirectory(g_dir_open(fontsPath.data(), 0, &error.outPtr()));
     while (const char* directoryEntry = g_dir_read_name(fontsDirectory.get())) {
         if (!g_str_has_suffix(directoryEntry, ".ttf") && !g_str_has_suffix(directoryEntry, ".otf"))
             continue;
-        GOwnPtr<gchar> fontPath(g_build_filename(fontsPath.get(), directoryEntry, NULL));
+        GOwnPtr<gchar> fontPath(g_build_filename(fontsPath.data(), directoryEntry, NULL));
         if (!FcConfigAppFontAddFile(config, reinterpret_cast<const FcChar8*>(fontPath.get())))
             g_error("Could not load font at %s!", fontPath.get());
 
@@ -467,6 +513,8 @@ static void resetDefaultsToConsistentValues()
     DumpRenderTreeSupportGtk::resetGeolocationClientMock(webView);
 
     DumpRenderTreeSupportGtk::setHixie76WebSocketProtocolEnabled(webView, true);
+    DumpRenderTreeSupportGtk::setCSSGridLayoutEnabled(webView, false);
+    DumpRenderTreeSupportGtk::setCSSRegionsEnabled(webView, true);
 }
 
 static bool useLongRunningServerMode(int argc, char *argv[])
@@ -1273,6 +1321,13 @@ static void didRunInsecureContent(WebKitWebFrame*, WebKitSecurityOrigin*, const 
         printf("didRunInsecureContent\n");
 }
 
+static gboolean webViewRunFileChooser(WebKitWebView*, WebKitFileChooserRequest*)
+{
+    // We return TRUE to not propagate the event further so the
+    // default file chooser dialog is not shown.
+    return TRUE;
+}
+
 static WebKitWebView* createWebView()
 {
     // It is important to declare DRT is running early so when creating
@@ -1307,6 +1362,7 @@ static WebKitWebView* createWebView()
                      "signal::resource-response-received", didReceiveResponse, 0,
                      "signal::resource-load-finished", didFinishLoading, 0,
                      "signal::resource-load-failed", didFailLoadingWithError, 0,
+                     "signal::run-file-chooser", webViewRunFileChooser, 0,
                      NULL);
     connectEditingCallbacks(view);
 

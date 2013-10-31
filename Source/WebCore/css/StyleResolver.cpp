@@ -8,6 +8,7 @@
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -135,8 +136,12 @@
 #endif
 
 #if ENABLE(SVG)
+#include "CachedSVGDocument.h"
+#include "SVGDocument.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
+#include "SVGURIReference.h"
+#include "WebKitCSSSVGDocumentValue.h"
 #endif
 
 #if ENABLE(CSS_SHADERS)
@@ -372,7 +377,9 @@ StyleResolver::StyleResolver(Document* document, bool matchAuthorAndUserStyles)
 #endif
 #if ENABLE(STYLE_SCOPED)
     , m_scopeStackParent(0)
+    , m_scopeStackParentBoundsIndex(0)
 #endif
+    , m_styleMap(this)
 {
     Element* root = document->documentElement();
 
@@ -564,13 +571,17 @@ void StyleResolver::setupScopeStack(const ContainerNode* parent)
     ASSERT(!m_scopedAuthorStyles.isEmpty());
 
     m_scopeStack.shrink(0);
+    int authorStyleBoundsIndex = 0;
     for (const ContainerNode* scope = parent; scope; scope = scope->parentOrHostNode()) {
         RuleSet* ruleSet = ruleSetForScope(scope);
         if (ruleSet)
-            m_scopeStack.append(ScopeStackFrame(scope, ruleSet));
+            m_scopeStack.append(ScopeStackFrame(scope, authorStyleBoundsIndex, ruleSet));
+        if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
+            --authorStyleBoundsIndex;
     }
     m_scopeStack.reverse();
     m_scopeStackParent = parent;
+    m_scopeStackParentBoundsIndex = 0;
 }
 
 void StyleResolver::pushScope(const ContainerNode* scope, const ContainerNode* scopeParent)
@@ -587,10 +598,12 @@ void StyleResolver::pushScope(const ContainerNode* scope, const ContainerNode* s
         setupScopeStack(scope);
         return;
     }
+    if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
+        ++m_scopeStackParentBoundsIndex;
     // Otherwise just push the parent onto the stack.
     RuleSet* ruleSet = ruleSetForScope(scope);
     if (ruleSet)
-        m_scopeStack.append(ScopeStackFrame(scope, ruleSet));
+        m_scopeStack.append(ScopeStackFrame(scope, m_scopeStackParentBoundsIndex, ruleSet));
     m_scopeStackParent = scope;
 }
 
@@ -600,6 +613,8 @@ void StyleResolver::popScope(const ContainerNode* scope)
     if (scopeStackIsConsistent(scope)) {
         if (!m_scopeStack.isEmpty() && m_scopeStack.last().m_scope == scope)
             m_scopeStack.removeLast();
+        if (scope->isShadowRoot() && !toShadowRoot(scope)->applyAuthorStyles())
+            --m_scopeStackParentBoundsIndex;
         m_scopeStackParent = scope->parentOrHostNode();
     }
 }
@@ -926,21 +941,37 @@ void StyleResolver::matchScopedAuthorRules(MatchResult& result, bool includeEmpt
     MatchOptions options(includeEmptyRules);
 
     // Match scoped author rules by traversing the scoped element stack (rebuild it if it got inconsistent).
-    const ContainerNode* parent = m_element->parentOrHostNode();
-    if (!scopeStackIsConsistent(parent))
-        setupScopeStack(parent);
-    for (size_t i = m_scopeStack.size(); i; --i) {
-        const ScopeStackFrame& frame = m_scopeStack[i - 1];
+    if (!scopeStackIsConsistent(m_element))
+        setupScopeStack(m_element);
+
+    unsigned int firstShadowScopeIndex = 0;
+    if (m_element->treeScope()->applyAuthorStyles()) {
+        unsigned i;
+        for (i = 0; i < m_scopeStack.size() && !m_scopeStack[i].m_scope->isInShadowTree(); ++i) {
+            const ScopeStackFrame& frame = m_scopeStack[i];
+            options.scope = frame.m_scope;
+            collectMatchingRules(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
+            collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
+        }
+        firstShadowScopeIndex = i;
+    }
+
+    if (!m_element->isInShadowTree() || m_scopeStack.isEmpty())
+        return;
+
+    unsigned scopedIndex = m_scopeStack.size();
+    int authorStyleBoundsIndex = m_scopeStackParentBoundsIndex;
+    for ( ; scopedIndex > firstShadowScopeIndex; --scopedIndex) {
+        if (authorStyleBoundsIndex != m_scopeStack[scopedIndex - 1].m_authorStyleBoundsIndex)
+            break;
+    }
+
+    // Ruleset for ancestor nodes should be applied first.
+    for (unsigned i = scopedIndex; i < m_scopeStack.size(); ++i) {
+        const ScopeStackFrame& frame = m_scopeStack[i];
         options.scope = frame.m_scope;
         collectMatchingRules(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
         collectMatchingRulesForRegion(frame.m_ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-    }
-    // Also include the current element.
-    RuleSet* ruleSet = ruleSetForScope(m_element);
-    if (ruleSet) {
-        options.scope = m_element;
-        collectMatchingRules(ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
-        collectMatchingRulesForRegion(ruleSet, result.ranges.firstAuthorRule, result.ranges.lastAuthorRule, options);
     }
 #else
     UNUSED_PARAM(result);
@@ -1766,14 +1797,9 @@ PassRefPtr<RenderStyle> StyleResolver::styleForKeyframe(const RenderStyle* eleme
     // go ahead and update it a second time.
     updateFont();
 
-    // Start loading images referenced by this style.
-    loadPendingImages();
+    // Start loading resources referenced by this style.
+    loadPendingResources();
     
-#if ENABLE(CSS_SHADERS)
-    // Start loading the shaders referenced by this style.
-    loadPendingShaders();
-#endif
-
     // Add all the animating properties to the keyframe.
     if (StylePropertySet* styleDeclaration = keyframe->properties()) {
         unsigned propertyCount = styleDeclaration->propertyCount();
@@ -1887,13 +1913,8 @@ PassRefPtr<RenderStyle> StyleResolver::pseudoStyleForElement(PseudoId pseudo, El
     // Clean up our style object's display and text decorations (among other fixups).
     adjustRenderStyle(style(), parentStyle, 0);
 
-    // Start loading images referenced by this style.
-    loadPendingImages();
-
-#if ENABLE(CSS_SHADERS)
-    // Start loading the shaders referenced by this style.
-    loadPendingShaders();
-#endif
+    // Start loading resources referenced by this style.
+    loadPendingResources();
 
     // Now return the style.
     return m_style.release();
@@ -1931,13 +1952,8 @@ PassRefPtr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
 
     applyMatchedProperties<LowPriorityProperties>(result, false, 0, result.matchedProperties.size() - 1, inheritedOnly);
 
-    // Start loading images referenced by this style.
-    loadPendingImages();
-
-#if ENABLE(CSS_SHADERS)
-    // Start loading the shaders referenced by this style.
-    loadPendingShaders();
-#endif
+    // Start loading resources referenced by this style.
+    loadPendingResources();
 
     // Now return the style.
     return m_style.release();
@@ -1963,36 +1979,6 @@ static void addIntrinsicMargins(RenderStyle* style)
         if (style->marginBottom().quirk())
             style->setMarginBottom(Length(intrinsicMargin, Fixed));
     }
-}
-
-static bool shouldBecomeBlockWhenParentIsFlexbox(const Element* element)
-{
-    return element->hasTagName(imgTag)
-        || element->hasTagName(canvasTag)
-#if ENABLE(SVG)
-        || element->hasTagName(SVGNames::svgTag)
-#endif
-#if ENABLE(MATHML)
-        || element->hasTagName(MathMLNames::mathTag)
-#endif
-#if ENABLE(VIDEO)
-        || element->hasTagName(audioTag)
-        || element->hasTagName(videoTag)
-#endif
-        || element->hasTagName(iframeTag)
-        || element->hasTagName(objectTag)
-        || element->hasTagName(embedTag)
-        || element->hasTagName(appletTag)
-#if ENABLE(PROGRESS_TAG)
-        || element->hasTagName(progressTag)
-#endif
-#if ENABLE(METER_TAG)
-        || element->hasTagName(meterTag)
-#endif
-        || element->hasTagName(inputTag)
-        || element->hasTagName(buttonTag)
-        || element->hasTagName(selectTag)
-        || element->hasTagName(textareaTag);
 }
 
 static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool strictParsing)
@@ -2051,7 +2037,7 @@ static bool doesNotInheritTextDecoration(RenderStyle* style, Element* e)
 {
     return style->display() == TABLE || style->display() == INLINE_TABLE || style->display() == RUN_IN
         || style->display() == INLINE_BLOCK || style->display() == INLINE_BOX || isAtShadowBoundary(e)
-        || style->isFloating() || style->isPositioned();
+        || style->isFloating() || style->isOutOfFlowPositioned();
 }
 
 void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentStyle, Element *e)
@@ -2139,12 +2125,8 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         if (style->writingMode() != TopToBottomWritingMode && (style->display() == BOX || style->display() == INLINE_BOX))
             style->setWritingMode(TopToBottomWritingMode);
 
-        if (e && e->parentNode() && e->parentNode()->renderer() && e->parentNode()->renderer()->isFlexibleBox()) {
-            if (shouldBecomeBlockWhenParentIsFlexbox(e))
-                style->setDisplay(BLOCK);
-            else if (style->display() != INLINE)
-                style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_checker.strictParsing()));
-        }
+        if (e && e->parentNode() && e->parentNode()->renderer() && e->parentNode()->renderer()->isFlexibleBox())
+            style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_checker.strictParsing()));
     }
 
     // Make sure our z-index value is only applied if the object is positioned.
@@ -2924,11 +2906,12 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         // style declarations. We then only need to apply the inherited properties, if any, as their values can depend on the 
         // element context. This is fast and saves memory by reusing the style data structures.
         m_style->copyNonInheritedFrom(cacheItem->renderStyle.get());
-        if (m_parentStyle->inheritedDataShared(cacheItem->parentRenderStyle.get())) {
+        if (m_parentStyle->inheritedDataShared(cacheItem->parentRenderStyle.get()) && !isAtShadowBoundary(element)) {
             EInsideLink linkStatus = m_style->insideLink();
             // If the cache item parent style has identical inherited properties to the current parent style then the
             // resulting style will be identical too. We copy the inherited properties over from the cache and are done.
-            m_style->inheritFrom(cacheItem->renderStyle.get(), isAtShadowBoundary(element) ? RenderStyle::AtShadowBoundary : RenderStyle::NotAtShadowBoundary);
+            m_style->inheritFrom(cacheItem->renderStyle.get());
+
             // Unfortunately the link status is treated like an inherited property. We need to explicitly restore it.
             m_style->setInsideLink(linkStatus);
             return;
@@ -2981,12 +2964,9 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
     applyMatchedProperties<LowPriorityProperties>(matchResult, true, matchResult.ranges.firstAuthorRule, matchResult.ranges.lastAuthorRule, applyInheritedOnly);
     applyMatchedProperties<LowPriorityProperties>(matchResult, true, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
     applyMatchedProperties<LowPriorityProperties>(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
-    
-    loadPendingImages();
-    
-#if ENABLE(CSS_SHADERS)
-    loadPendingShaders();
-#endif
+   
+    // Start loading resources referenced by this style.
+    loadPendingResources();
     
     ASSERT(!m_fontDirty);
     
@@ -3297,7 +3277,7 @@ void StyleResolver::resolveVariables(CSSPropertyID id, CSSValue* value, Vector<s
 
     // FIXME: It would be faster not to re-parse from strings, but for now CSS property validation lives inside the parser so we do it there.
     RefPtr<StylePropertySet> resultSet = StylePropertySet::create();
-    if (!CSSParser::parseValue(resultSet.get(), id, expression.second, false, CSSStrictMode, 0))
+    if (!CSSParser::parseValue(resultSet.get(), id, expression.second, false, document()))
         return; // expression failed to parse.
 
     for (unsigned i = 0; i < resultSet->propertyCount(); i++) {
@@ -3714,7 +3694,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
             reflection->setOffset(reflectValue->offset()->convertToLength<FixedIntegerConversion | PercentConversion | CalculatedConversion>(style(), m_rootElementStyle, zoomFactor));
         NinePieceImage mask;
         mask.setMaskDefaults();
-        mapNinePieceImage(id, reflectValue->mask(), mask);
+        m_styleMap.mapNinePieceImage(id, reflectValue->mask(), mask);
         reflection->setMask(mask);
 
         m_style->setBoxReflect(reflection.release());
@@ -3955,6 +3935,19 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return;
     }
 #endif
+#if ENABLE(CSS3_FLEXBOX)
+    case CSSPropertyWebkitFlex:
+        if (isInherit) {
+            m_style->setFlexGrow(m_parentStyle->flexGrow());
+            m_style->setFlexShrink(m_parentStyle->flexShrink());
+            m_style->setFlexBasis(m_parentStyle->flexBasis());
+        } else if (isInitial) {
+            m_style->setFlexGrow(RenderStyle::initialFlexGrow());
+            m_style->setFlexShrink(RenderStyle::initialFlexShrink());
+            m_style->setFlexBasis(RenderStyle::initialFlexBasis());
+        }
+        return;
+#endif
     case CSSPropertyInvalid:
         return;
     // Directional properties are resolved by resolveDirectionAwareProperty() before the switch.
@@ -4047,27 +4040,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         m_style->setLineBoxContain(lineBoxContainValue->value());
         return;
     }
-#if ENABLE(CSS_EXCLUSIONS)
-    case CSSPropertyWebkitShapeInside:
-        HANDLE_INHERIT_AND_INITIAL(wrapShapeInside, WrapShapeInside);
-        if (!primitiveValue)
-            return;
-        if (primitiveValue->getIdent() == CSSValueAuto)
-            m_style->setWrapShapeInside(0);
-        else if (primitiveValue->isShape())
-            m_style->setWrapShapeInside(primitiveValue->getShapeValue());
-        return;
 
-    case CSSPropertyWebkitShapeOutside:
-        HANDLE_INHERIT_AND_INITIAL(wrapShapeOutside, WrapShapeOutside);
-        if (!primitiveValue)
-            return;
-        if (primitiveValue->getIdent() == CSSValueAuto)
-            m_style->setWrapShapeOutside(0);
-        else if (primitiveValue->isShape())
-            m_style->setWrapShapeOutside(primitiveValue->getShapeValue());
-        return;
-#endif
     // CSS Fonts Module Level 3
     case CSSPropertyWebkitFontFeatureSettings: {
         if (primitiveValue && primitiveValue->getIdent() == CSSValueNormal) {
@@ -4132,7 +4105,11 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         m_style->setGridItemRow(row);
         return;
     }
-
+#if ENABLE(CSS_VARIABLES)
+    case CSSPropertyVariable:
+        // FIXME: This should have an actual implementation.
+        return;
+#endif
     // These properties are implemented in the StyleBuilder lookup table.
     case CSSPropertyBackgroundAttachment:
     case CSSPropertyBackgroundClip:
@@ -4300,9 +4277,11 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitAlignContent:
     case CSSPropertyWebkitAlignItems:
     case CSSPropertyWebkitAlignSelf:
-    case CSSPropertyWebkitFlex:
+    case CSSPropertyWebkitFlexBasis:
     case CSSPropertyWebkitFlexDirection:
     case CSSPropertyWebkitFlexFlow:
+    case CSSPropertyWebkitFlexGrow:
+    case CSSPropertyWebkitFlexShrink:
     case CSSPropertyWebkitFlexWrap:
     case CSSPropertyWebkitJustifyContent:
     case CSSPropertyWebkitOrder:
@@ -4382,6 +4361,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
     case CSSPropertyWebkitWrapMargin:
     case CSSPropertyWebkitWrapPadding:
     case CSSPropertyWebkitWrapThrough:
+    case CSSPropertyWebkitShapeInside:
+    case CSSPropertyWebkitShapeOutside:
 #endif
     case CSSPropertyWhiteSpace:
     case CSSPropertyWidows:
@@ -4400,74 +4381,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
         return;
 #endif
     }
-}
-
-void StyleResolver::mapFillAttachment(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setAttachment(FillLayer::initialFillAttachment(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    switch (primitiveValue->getIdent()) {
-    case CSSValueFixed:
-        layer->setAttachment(FixedBackgroundAttachment);
-        break;
-    case CSSValueScroll:
-        layer->setAttachment(ScrollBackgroundAttachment);
-        break;
-    case CSSValueLocal:
-        layer->setAttachment(LocalBackgroundAttachment);
-        break;
-    default:
-        return;
-    }
-}
-
-void StyleResolver::mapFillClip(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setClip(FillLayer::initialFillClip(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    layer->setClip(*primitiveValue);
-}
-
-void StyleResolver::mapFillComposite(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setComposite(FillLayer::initialFillComposite(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    layer->setComposite(*primitiveValue);
-}
-
-void StyleResolver::mapFillOrigin(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setOrigin(FillLayer::initialFillOrigin(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    layer->setOrigin(*primitiveValue);
 }
 
 PassRefPtr<StyleImage> StyleResolver::styleImage(CSSPropertyID property, CSSValue* value)
@@ -4512,532 +4425,6 @@ PassRefPtr<StyleImage> StyleResolver::setOrPendingFromValue(CSSPropertyID proper
     return image.release();
 }
 #endif
-
-void StyleResolver::mapFillImage(CSSPropertyID property, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setImage(FillLayer::initialFillImage(layer->type()));
-        return;
-    }
-
-    layer->setImage(styleImage(property, value));
-}
-
-void StyleResolver::mapFillRepeatX(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setRepeatX(FillLayer::initialFillRepeatX(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    layer->setRepeatX(*primitiveValue);
-}
-
-void StyleResolver::mapFillRepeatY(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setRepeatY(FillLayer::initialFillRepeatY(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    layer->setRepeatY(*primitiveValue);
-}
-
-void StyleResolver::mapFillSize(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (!value->isPrimitiveValue()) {
-        layer->setSizeType(SizeNone);
-        return;
-    }
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    if (primitiveValue->getIdent() == CSSValueContain)
-        layer->setSizeType(Contain);
-    else if (primitiveValue->getIdent() == CSSValueCover)
-        layer->setSizeType(Cover);
-    else
-        layer->setSizeType(SizeLength);
-
-    LengthSize b = FillLayer::initialFillSizeLength(layer->type());
-
-    if (value->isInitialValue() || primitiveValue->getIdent() == CSSValueContain || primitiveValue->getIdent() == CSSValueCover) {
-        layer->setSizeLength(b);
-        return;
-    }
-
-    float zoomFactor = m_style->effectiveZoom();
-
-    Length firstLength;
-    Length secondLength;
-
-    if (Pair* pair = primitiveValue->getPairValue()) {
-        CSSPrimitiveValue* first = static_cast<CSSPrimitiveValue*>(pair->first());
-        CSSPrimitiveValue* second = static_cast<CSSPrimitiveValue*>(pair->second());
-        firstLength = first->convertToLength<AnyConversion>(style(), m_rootElementStyle, zoomFactor);
-        secondLength = second->convertToLength<AnyConversion>(style(), m_rootElementStyle, zoomFactor);
-    } else {
-        firstLength = primitiveValue->convertToLength<AnyConversion>(style(), m_rootElementStyle, zoomFactor);
-        secondLength = Length();
-    }
-
-    if (firstLength.isUndefined() || secondLength.isUndefined())
-        return;
-
-    b.setWidth(firstLength);
-    b.setHeight(secondLength);
-    layer->setSizeLength(b);
-}
-
-void StyleResolver::mapFillXPosition(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setXPosition(FillLayer::initialFillXPosition(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    float zoomFactor = m_style->effectiveZoom();
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    Length length;
-    if (primitiveValue->isLength())
-        length = primitiveValue->computeLength<Length>(style(), m_rootElementStyle, zoomFactor);
-    else if (primitiveValue->isPercentage())
-        length = Length(primitiveValue->getDoubleValue(), Percent);
-    else if (primitiveValue->isCalculatedPercentageWithLength())
-        length = Length(primitiveValue->cssCalcValue()->toCalcValue(style(), m_rootElementStyle, zoomFactor));
-    else if (primitiveValue->isViewportPercentageLength())
-        length = primitiveValue->viewportPercentageLength();
-    else
-        return;
-    layer->setXPosition(length);
-}
-
-void StyleResolver::mapFillYPosition(CSSPropertyID, FillLayer* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setYPosition(FillLayer::initialFillYPosition(layer->type()));
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    float zoomFactor = m_style->effectiveZoom();
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    Length length;
-    if (primitiveValue->isLength())
-        length = primitiveValue->computeLength<Length>(style(), m_rootElementStyle, zoomFactor);
-    else if (primitiveValue->isPercentage())
-        length = Length(primitiveValue->getDoubleValue(), Percent);
-    else if (primitiveValue->isCalculatedPercentageWithLength())
-        length = Length(primitiveValue->cssCalcValue()->toCalcValue(style(), m_rootElementStyle, zoomFactor));
-    else if (primitiveValue->isViewportPercentageLength())
-        length = primitiveValue->viewportPercentageLength();
-    else
-        return;
-    layer->setYPosition(length);
-}
-
-void StyleResolver::mapAnimationDelay(Animation* animation, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        animation->setDelay(Animation::initialAnimationDelay());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    animation->setDelay(primitiveValue->computeTime<float, CSSPrimitiveValue::Seconds>());
-}
-
-void StyleResolver::mapAnimationDirection(Animation* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setDirection(Animation::initialAnimationDirection());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    switch (primitiveValue->getIdent()) {
-    case CSSValueNormal:
-        layer->setDirection(Animation::AnimationDirectionNormal);
-        break;
-    case CSSValueAlternate:
-        layer->setDirection(Animation::AnimationDirectionAlternate);
-        break;
-    case CSSValueReverse:
-        layer->setDirection(Animation::AnimationDirectionReverse);
-        break;
-    case CSSValueAlternateReverse:
-        layer->setDirection(Animation::AnimationDirectionAlternateReverse);
-        break;
-    }
-}
-
-void StyleResolver::mapAnimationDuration(Animation* animation, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        animation->setDuration(Animation::initialAnimationDuration());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    animation->setDuration(primitiveValue->computeTime<float, CSSPrimitiveValue::Seconds>());
-}
-
-void StyleResolver::mapAnimationFillMode(Animation* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setFillMode(Animation::initialAnimationFillMode());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    switch (primitiveValue->getIdent()) {
-    case CSSValueNone:
-        layer->setFillMode(AnimationFillModeNone);
-        break;
-    case CSSValueForwards:
-        layer->setFillMode(AnimationFillModeForwards);
-        break;
-    case CSSValueBackwards:
-        layer->setFillMode(AnimationFillModeBackwards);
-        break;
-    case CSSValueBoth:
-        layer->setFillMode(AnimationFillModeBoth);
-        break;
-    }
-}
-
-void StyleResolver::mapAnimationIterationCount(Animation* animation, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        animation->setIterationCount(Animation::initialAnimationIterationCount());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    if (primitiveValue->getIdent() == CSSValueInfinite)
-        animation->setIterationCount(-1);
-    else
-        animation->setIterationCount(primitiveValue->getFloatValue());
-}
-
-void StyleResolver::mapAnimationName(Animation* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setName(Animation::initialAnimationName());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    if (primitiveValue->getIdent() == CSSValueNone)
-        layer->setIsNoneAnimation(true);
-    else
-        layer->setName(primitiveValue->getStringValue());
-}
-
-void StyleResolver::mapAnimationPlayState(Animation* layer, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        layer->setPlayState(Animation::initialAnimationPlayState());
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    EAnimPlayState playState = (primitiveValue->getIdent() == CSSValuePaused) ? AnimPlayStatePaused : AnimPlayStatePlaying;
-    layer->setPlayState(playState);
-}
-
-void StyleResolver::mapAnimationProperty(Animation* animation, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        animation->setAnimationMode(Animation::AnimateAll);
-        animation->setProperty(CSSPropertyInvalid);
-        return;
-    }
-
-    if (!value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    if (primitiveValue->getIdent() == CSSValueAll) {
-        animation->setAnimationMode(Animation::AnimateAll);
-        animation->setProperty(CSSPropertyInvalid);
-    } else if (primitiveValue->getIdent() == CSSValueNone) {
-        animation->setAnimationMode(Animation::AnimateNone);
-        animation->setProperty(CSSPropertyInvalid);
-    } else {
-        animation->setAnimationMode(Animation::AnimateSingleProperty);
-        animation->setProperty(static_cast<CSSPropertyID>(primitiveValue->getIdent()));
-    }
-}
-
-void StyleResolver::mapAnimationTimingFunction(Animation* animation, CSSValue* value)
-{
-    if (value->isInitialValue()) {
-        animation->setTimingFunction(Animation::initialAnimationTimingFunction());
-        return;
-    }
-
-    if (value->isPrimitiveValue()) {
-        CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-        switch (primitiveValue->getIdent()) {
-        case CSSValueLinear:
-            animation->setTimingFunction(LinearTimingFunction::create());
-            break;
-        case CSSValueEase:
-            animation->setTimingFunction(CubicBezierTimingFunction::create());
-            break;
-        case CSSValueEaseIn:
-            animation->setTimingFunction(CubicBezierTimingFunction::create(0.42, 0.0, 1.0, 1.0));
-            break;
-        case CSSValueEaseOut:
-            animation->setTimingFunction(CubicBezierTimingFunction::create(0.0, 0.0, 0.58, 1.0));
-            break;
-        case CSSValueEaseInOut:
-            animation->setTimingFunction(CubicBezierTimingFunction::create(0.42, 0.0, 0.58, 1.0));
-            break;
-        case CSSValueStepStart:
-            animation->setTimingFunction(StepsTimingFunction::create(1, true));
-            break;
-        case CSSValueStepEnd:
-            animation->setTimingFunction(StepsTimingFunction::create(1, false));
-            break;
-        }
-        return;
-    }
-
-    if (value->isCubicBezierTimingFunctionValue()) {
-        CSSCubicBezierTimingFunctionValue* cubicTimingFunction = static_cast<CSSCubicBezierTimingFunctionValue*>(value);
-        animation->setTimingFunction(CubicBezierTimingFunction::create(cubicTimingFunction->x1(), cubicTimingFunction->y1(), cubicTimingFunction->x2(), cubicTimingFunction->y2()));
-    } else if (value->isStepsTimingFunctionValue()) {
-        CSSStepsTimingFunctionValue* stepsTimingFunction = static_cast<CSSStepsTimingFunctionValue*>(value);
-        animation->setTimingFunction(StepsTimingFunction::create(stepsTimingFunction->numberOfSteps(), stepsTimingFunction->stepAtStart()));
-    } else if (value->isLinearTimingFunctionValue())
-        animation->setTimingFunction(LinearTimingFunction::create());
-}
-
-void StyleResolver::mapNinePieceImage(CSSPropertyID property, CSSValue* value, NinePieceImage& image)
-{
-    // If we're not a value list, then we are "none" and don't need to alter the empty image at all.
-    if (!value || !value->isValueList())
-        return;
-
-    // Retrieve the border image value.
-    CSSValueList* borderImage = static_cast<CSSValueList*>(value);
-
-    // Set the image (this kicks off the load).
-    CSSPropertyID imageProperty;
-    if (property == CSSPropertyWebkitBorderImage)
-        imageProperty = CSSPropertyBorderImageSource;
-    else if (property == CSSPropertyWebkitMaskBoxImage)
-        imageProperty = CSSPropertyWebkitMaskBoxImageSource;
-    else
-        imageProperty = property;
-
-    for (unsigned i = 0 ; i < borderImage->length() ; ++i) {
-        CSSValue* current = borderImage->item(i);
-
-        if (current->isImageValue() || current->isImageGeneratorValue()
-#if ENABLE(CSS_IMAGE_SET)
-            || current->isImageSetValue()
-#endif
-            )
-            image.setImage(styleImage(imageProperty, current));
-        else if (current->isBorderImageSliceValue())
-            mapNinePieceImageSlice(current, image);
-        else if (current->isValueList()) {
-            CSSValueList* slashList = static_cast<CSSValueList*>(current);
-            // Map in the image slices.
-            if (slashList->item(0) && slashList->item(0)->isBorderImageSliceValue())
-                mapNinePieceImageSlice(slashList->item(0), image);
-
-            // Map in the border slices.
-            if (slashList->item(1))
-                image.setBorderSlices(mapNinePieceImageQuad(slashList->item(1)));
-
-            // Map in the outset.
-            if (slashList->item(2))
-                image.setOutset(mapNinePieceImageQuad(slashList->item(2)));
-        } else if (current->isPrimitiveValue()) {
-            // Set the appropriate rules for stretch/round/repeat of the slices.
-            mapNinePieceImageRepeat(current, image);
-        }
-    }
-
-    if (property == CSSPropertyWebkitBorderImage) {
-        // We have to preserve the legacy behavior of -webkit-border-image and make the border slices
-        // also set the border widths. We don't need to worry about percentages, since we don't even support
-        // those on real borders yet.
-        if (image.borderSlices().top().isFixed())
-            style()->setBorderTopWidth(image.borderSlices().top().value());
-        if (image.borderSlices().right().isFixed())
-            style()->setBorderRightWidth(image.borderSlices().right().value());
-        if (image.borderSlices().bottom().isFixed())
-            style()->setBorderBottomWidth(image.borderSlices().bottom().value());
-        if (image.borderSlices().left().isFixed())
-            style()->setBorderLeftWidth(image.borderSlices().left().value());
-    }
-}
-
-void StyleResolver::mapNinePieceImageSlice(CSSValue* value, NinePieceImage& image)
-{
-    if (!value || !value->isBorderImageSliceValue())
-        return;
-
-    // Retrieve the border image value.
-    CSSBorderImageSliceValue* borderImageSlice = static_cast<CSSBorderImageSliceValue*>(value);
-
-    // Set up a length box to represent our image slices.
-    LengthBox box;
-    Quad* slices = borderImageSlice->slices();
-    if (slices->top()->isPercentage())
-        box.m_top = Length(slices->top()->getDoubleValue(), Percent);
-    else
-        box.m_top = Length(slices->top()->getIntValue(CSSPrimitiveValue::CSS_NUMBER), Fixed);
-    if (slices->bottom()->isPercentage())
-        box.m_bottom = Length(slices->bottom()->getDoubleValue(), Percent);
-    else
-        box.m_bottom = Length((int)slices->bottom()->getFloatValue(CSSPrimitiveValue::CSS_NUMBER), Fixed);
-    if (slices->left()->isPercentage())
-        box.m_left = Length(slices->left()->getDoubleValue(), Percent);
-    else
-        box.m_left = Length(slices->left()->getIntValue(CSSPrimitiveValue::CSS_NUMBER), Fixed);
-    if (slices->right()->isPercentage())
-        box.m_right = Length(slices->right()->getDoubleValue(), Percent);
-    else
-        box.m_right = Length(slices->right()->getIntValue(CSSPrimitiveValue::CSS_NUMBER), Fixed);
-    image.setImageSlices(box);
-
-    // Set our fill mode.
-    image.setFill(borderImageSlice->m_fill);
-}
-
-LengthBox StyleResolver::mapNinePieceImageQuad(CSSValue* value)
-{
-    if (!value || !value->isPrimitiveValue())
-        return LengthBox();
-
-    // Get our zoom value.
-    float zoom = useSVGZoomRules() ? 1.0f : style()->effectiveZoom();
-
-    // Retrieve the primitive value.
-    CSSPrimitiveValue* borderWidths = static_cast<CSSPrimitiveValue*>(value);
-
-    // Set up a length box to represent our image slices.
-    LengthBox box; // Defaults to 'auto' so we don't have to handle that explicitly below.
-    Quad* slices = borderWidths->getQuadValue();
-    if (slices->top()->isNumber())
-        box.m_top = Length(slices->top()->getIntValue(), Relative);
-    else if (slices->top()->isPercentage())
-        box.m_top = Length(slices->top()->getDoubleValue(CSSPrimitiveValue::CSS_PERCENTAGE), Percent);
-    else if (slices->top()->getIdent() != CSSValueAuto)
-        box.m_top = slices->top()->computeLength<Length>(style(), rootElementStyle(), zoom);
-
-    if (slices->right()->isNumber())
-        box.m_right = Length(slices->right()->getIntValue(), Relative);
-    else if (slices->right()->isPercentage())
-        box.m_right = Length(slices->right()->getDoubleValue(CSSPrimitiveValue::CSS_PERCENTAGE), Percent);
-    else if (slices->right()->getIdent() != CSSValueAuto)
-        box.m_right = slices->right()->computeLength<Length>(style(), rootElementStyle(), zoom);
-
-    if (slices->bottom()->isNumber())
-        box.m_bottom = Length(slices->bottom()->getIntValue(), Relative);
-    else if (slices->bottom()->isPercentage())
-        box.m_bottom = Length(slices->bottom()->getDoubleValue(CSSPrimitiveValue::CSS_PERCENTAGE), Percent);
-    else if (slices->bottom()->getIdent() != CSSValueAuto)
-        box.m_bottom = slices->bottom()->computeLength<Length>(style(), rootElementStyle(), zoom);
-
-    if (slices->left()->isNumber())
-        box.m_left = Length(slices->left()->getIntValue(), Relative);
-    else if (slices->left()->isPercentage())
-        box.m_left = Length(slices->left()->getDoubleValue(CSSPrimitiveValue::CSS_PERCENTAGE), Percent);
-    else if (slices->left()->getIdent() != CSSValueAuto)
-        box.m_left = slices->left()->computeLength<Length>(style(), rootElementStyle(), zoom);
-
-    return box;
-}
-
-void StyleResolver::mapNinePieceImageRepeat(CSSValue* value, NinePieceImage& image)
-{
-    if (!value || !value->isPrimitiveValue())
-        return;
-
-    CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
-    Pair* pair = primitiveValue->getPairValue();
-    if (!pair || !pair->first() || !pair->second())
-        return;
-
-    int firstIdentifier = pair->first()->getIdent();
-    int secondIdentifier = pair->second()->getIdent();
-
-    ENinePieceImageRule horizontalRule;
-    switch (firstIdentifier) {
-    case CSSValueStretch:
-        horizontalRule = StretchImageRule;
-        break;
-    case CSSValueRound:
-        horizontalRule = RoundImageRule;
-        break;
-    case CSSValueSpace:
-        horizontalRule = SpaceImageRule;
-        break;
-    default: // CSSValueRepeat
-        horizontalRule = RepeatImageRule;
-        break;
-    }
-    image.setHorizontalRule(horizontalRule);
-
-    ENinePieceImageRule verticalRule;
-    switch (secondIdentifier) {
-    case CSSValueStretch:
-        verticalRule = StretchImageRule;
-        break;
-    case CSSValueRound:
-        verticalRule = RoundImageRule;
-        break;
-    case CSSValueSpace:
-        verticalRule = SpaceImageRule;
-        break;
-    default: // CSSValueRepeat
-        verticalRule = RepeatImageRule;
-        break;
-    }
-    image.setVerticalRule(verticalRule);
-}
 
 void StyleResolver::checkForTextSizeAdjust()
 {
@@ -5657,6 +5044,34 @@ static FilterOperation::OperationType filterOperationForType(WebKitCSSFilterValu
     return FilterOperation::NONE;
 }
 
+#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+void StyleResolver::loadPendingSVGDocuments()
+{
+    if (!m_style->hasFilter() || m_pendingSVGDocuments.isEmpty())
+        return;
+
+    CachedResourceLoader* cachedResourceLoader = m_element->document()->cachedResourceLoader();
+    Vector<RefPtr<FilterOperation> >& filterOperations = m_style->filter().operations();
+    for (unsigned i = 0; i < filterOperations.size(); ++i) {
+        RefPtr<FilterOperation> filterOperation = filterOperations.at(i);
+        if (filterOperation->getOperationType() == FilterOperation::REFERENCE) {
+            ReferenceFilterOperation* referenceFilter = static_cast<ReferenceFilterOperation*>(filterOperation.get());
+
+            WebKitCSSSVGDocumentValue* value = m_pendingSVGDocuments.get(referenceFilter);
+            if (!value)
+                continue;
+            CachedSVGDocument* cachedDocument = value->load(cachedResourceLoader);
+            if (!cachedDocument)
+                continue;
+
+            // Stash the CachedSVGDocument on the reference filter.
+            referenceFilter->setData(cachedDocument);
+        }
+    }
+    m_pendingSVGDocuments.clear();
+}
+#endif
+
 #if ENABLE(CSS_SHADERS)
 StyleShader* StyleResolver::styleShader(CSSValue* value)
 {
@@ -5902,6 +5317,29 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
             continue;
         }
 #endif
+        if (operationType == FilterOperation::REFERENCE) {
+#if ENABLE(SVG)
+            if (filterValue->length() != 1)
+                continue;
+            CSSValue* argument = filterValue->itemWithoutBoundsCheck(0);
+
+            if (!argument->isWebKitCSSSVGDocumentValue())
+                continue;
+
+            WebKitCSSSVGDocumentValue* svgDocumentValue = static_cast<WebKitCSSSVGDocumentValue*>(argument);
+            KURL url = m_element->document()->completeURL(svgDocumentValue->url());
+
+            RefPtr<ReferenceFilterOperation> operation = ReferenceFilterOperation::create(svgDocumentValue->url(), url.fragmentIdentifier(), operationType);
+            if (SVGURIReference::isExternalURIReference(svgDocumentValue->url(), m_element->document())) {
+                if (!svgDocumentValue->loadRequested())
+                    m_pendingSVGDocuments.set(operation.get(), svgDocumentValue);
+                else
+                    operation->setData(svgDocumentValue->cachedSVGDocument());
+            }
+            operations.operations().append(operation);
+#endif
+            continue;
+        }
 
         // Check that all parameters are primitive values, with the
         // exception of drop shadow which has a ShadowValue parameter.
@@ -5919,11 +5357,6 @@ bool StyleResolver::createFilterOperations(CSSValue* inValue, RenderStyle* style
 
         CSSPrimitiveValue* firstValue = filterValue->length() ? static_cast<CSSPrimitiveValue*>(filterValue->itemWithoutBoundsCheck(0)) : 0;
         switch (filterValue->operationType()) {
-        case WebKitCSSFilterValue::ReferenceFilterOperation: {
-            if (firstValue)
-                operations.operations().append(ReferenceFilterOperation::create(firstValue->getStringValue(), operationType));
-            break;
-        }
         case WebKitCSSFilterValue::GrayscaleFilterOperation:
         case WebKitCSSFilterValue::SepiaFilterOperation:
         case WebKitCSSFilterValue::SaturateFilterOperation: {
@@ -6106,6 +5539,22 @@ void StyleResolver::loadPendingImages()
     }
 
     m_pendingImageProperties.clear();
+}
+
+void StyleResolver::loadPendingResources()
+{
+    // Start loading images referenced by this style.
+    loadPendingImages();
+
+#if ENABLE(CSS_SHADERS)
+    // Start loading the shaders referenced by this style.
+    loadPendingShaders();
+#endif
+    
+#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+    // Start loading the SVG Documents referenced by this style.
+    loadPendingSVGDocuments();
+#endif
 }
 
 } // namespace WebCore

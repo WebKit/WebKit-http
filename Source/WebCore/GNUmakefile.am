@@ -12,9 +12,11 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/ThirdParty/ANGLE/include/GLSLANG \
 	-I$(srcdir)/Source/WebCore \
 	-I$(srcdir)/Source/WebCore/Modules/filesystem \
+	-I$(srcdir)/Source/WebCore/Modules/gamepad \
 	-I$(srcdir)/Source/WebCore/Modules/geolocation \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
 	-I$(srcdir)/Source/WebCore/Modules/mediastream \
+	-I$(srcdir)/Source/WebCore/Modules/notifications \
 	-I$(srcdir)/Source/WebCore/Modules/webaudio \
 	-I$(srcdir)/Source/WebCore/Modules/webdatabase \
 	-I$(srcdir)/Source/WebCore/Modules/websockets \
@@ -45,7 +47,6 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/loader/cache \
 	-I$(srcdir)/Source/WebCore/loader/icon \
 	-I$(srcdir)/Source/WebCore/mathml \
-	-I$(srcdir)/Source/WebCore/notifications \
 	-I$(srcdir)/Source/WebCore/page \
 	-I$(srcdir)/Source/WebCore/page/animation \
 	-I$(srcdir)/Source/WebCore/page/scrolling \
@@ -67,6 +68,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/platform/image-decoders/webp \
 	-I$(srcdir)/Source/WebCore/platform/image-decoders/png \
 	-I$(srcdir)/Source/WebCore/platform/leveldb \
+	-I$(srcdir)/Source/WebCore/platform/linux \
 	-I$(srcdir)/Source/WebCore/platform/mediastream \
 	-I$(srcdir)/Source/WebCore/platform/mediastream/gstreamer \
 	-I$(srcdir)/Source/WebCore/platform/mock \
@@ -154,6 +156,14 @@ webcoregtk_cppflags += \
 	-DWTF_USE_PANGO=1 \
 	-I$(srcdir)/Source/WebCore/platform/graphics/pango
 endif # END USE_PANGO
+
+# ---
+# Windows plugin support
+# ---
+if TARGET_WIN32
+webcoregtk_cppflags += \
+	-I$(srcdir)/Source/WebCore/platform/graphics/win
+endif # END TARGET_WIN32
 
 # ----
 # HTML Details Element
@@ -676,12 +686,12 @@ webcore_cppflags += -DENABLE_DEVICE_ORIENTATION=1
 endif  # END ENABLE_DEVICE_ORIENTATION
 
 # ---
-# Font Boosting support
+# Text Autosizing support
 # ---
-if ENABLE_FONT_BOOSTING
-FEATURE_DEFINES += ENABLE_FONT_BOOSTING=1
-webcore_cppflags += -DENABLE_FONT_BOOSTING=1
-endif  # END ENABLE_FONT_BOOSTING
+if ENABLE_TEXT_AUTOSIZING
+FEATURE_DEFINES += ENABLE_TEXT_AUTOSIZING=1
+webcore_cppflags += -DENABLE_TEXT_AUTOSIZING=1
+endif  # END ENABLE_TEXT_AUTOSIZING
 
 # ---
 # Web Timing support
@@ -838,8 +848,8 @@ DerivedSources/WebCore/InspectorBackendCommands.js: DerivedSources/WebCore/Inspe
 DerivedSources/WebCore/InspectorBackendDispatcher.h: DerivedSources/WebCore/InspectorBackendDispatcher.cpp
 DerivedSources/WebCore/InjectedScriptSource.h: $(WebCore)/inspector/InjectedScriptSource.js
 	$(AM_V_GEN)$(PERL) $(WebCore)/inspector/xxd.pl InjectedScriptSource_js $(WebCore)/inspector/InjectedScriptSource.js $(GENSOURCES_WEBCORE)/InjectedScriptSource.h
-DerivedSources/WebCore/InjectedWebGLScriptSource.h: $(WebCore)/inspector/InjectedWebGLScriptSource.js
-	$(AM_V_GEN)$(PERL) $(WebCore)/inspector/xxd.pl InjectedWebGLScriptSource_js $(WebCore)/inspector/InjectedWebGLScriptSource.js $(GENSOURCES_WEBCORE)/InjectedWebGLScriptSource.h
+DerivedSources/WebCore/InjectedScriptWebGLModuleSource.h: $(WebCore)/inspector/InjectedScriptWebGLModuleSource.js
+	$(AM_V_GEN)$(PERL) $(WebCore)/inspector/xxd.pl InjectedScriptWebGLModuleSource_js $(WebCore)/inspector/InjectedScriptWebGLModuleSource.js $(GENSOURCES_WEBCORE)/InjectedScriptWebGLModuleSource.h
 
 if ENABLE_WEB_AUDIO
 # Installing HRTF database wav files
@@ -858,9 +868,11 @@ DerivedSources/ANGLE/glslang_tab.h: DerivedSources/ANGLE/glslang_tab.cpp
 
 IDL_PATH := \
     $(WebCore)/Modules/filesystem \
+    $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
     $(WebCore)/Modules/indexeddb \
     $(WebCore)/Modules/mediastream \
+    $(WebCore)/Modules/notifications \
     $(WebCore)/Modules/webaudio \
     $(WebCore)/Modules/webdatabase \
     $(WebCore)/Modules/websockets \
@@ -875,7 +887,6 @@ IDL_PATH := \
     $(WebCore)/html/track \
     $(WebCore)/inspector \
     $(WebCore)/loader/appcache \
-    $(WebCore)/notifications \
     $(WebCore)/page \
     $(WebCore)/plugins \
     $(WebCore)/storage \
@@ -953,6 +964,7 @@ libWebCore_la_CPPFLAGS = \
 	$(CLUTTER_CFLAGS) \
 	$(COVERAGE_CFLAGS) \
 	$(ENCHANT_CFLAGS) \
+	$(GAMEPAD_CFLAGS) \
 	$(GEOCLUE_CFLAGS) \
 	$(GLIB_CFLAGS) \
 	$(GSTREAMER_CFLAGS) \
@@ -964,6 +976,11 @@ libWebCore_la_CPPFLAGS = \
 	$(UNICODE_CFLAGS) \
 	$(XRENDER_CFLAGS) \
 	$(XT_CFLAGS)
+
+if TARGET_WIN32
+# PluginPackageWin.cpp needs the symbols from version dll
+libWebCore_la_LIBADD = -lversion
+endif
 
 libWebCoreModules_la_SOURCES = \
 	$(webcore_modules_sources)
@@ -1019,9 +1036,11 @@ libWebCoreGtk_la_CPPFLAGS = \
 
 EXTRA_DIST += \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/filesystem/*.idl) \
+	$(shell ls $(srcdir)/Source/WebCore/Modules/gamepad/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/geolocation/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/indexeddb/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/mediastream/*.idl) \
+	$(shell ls $(srcdir)/Source/WebCore/Modules/notifications/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/webaudio/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/webdatabase/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/Modules/websockets/*.idl) \
@@ -1035,7 +1054,6 @@ EXTRA_DIST += \
 	$(shell ls $(srcdir)/Source/WebCore/html/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/inspector/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/loader/appcache/*.idl) \
-	$(shell ls $(srcdir)/Source/WebCore/notifications/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/page/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/plugins/*.idl) \
 	$(shell ls $(srcdir)/Source/WebCore/storage/*.idl) \
@@ -1091,7 +1109,7 @@ EXTRA_DIST += \
 	Source/WebCore/icu/LICENSE \
 	Source/WebCore/inspector/CodeGeneratorInspector.py \
 	Source/WebCore/inspector/InjectedScriptSource.js \
-	Source/WebCore/inspector/InjectedWebGLScriptSource.js \
+	Source/WebCore/inspector/InjectedScriptWebGLModuleSource.js \
 	Source/WebCore/inspector/Inspector.json \
 	Source/WebCore/inspector/Inspector-1.0.json \
 	Source/WebCore/inspector/generate-inspector-protocol-version \

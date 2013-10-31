@@ -64,4 +64,9 @@ FloatRect screenRect(Widget* widget)
     return FloatRect(FloatPoint(), FloatSize(IntSize(BlackBerry::Platform::Graphics::Screen::primaryScreen()->size())));
 }
 
+void screenColorProfile(Widget*, ColorProfile&)
+{
+    notImplemented();
+}
+
 } // namespace WebCore

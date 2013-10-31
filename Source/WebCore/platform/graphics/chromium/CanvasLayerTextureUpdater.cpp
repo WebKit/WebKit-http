@@ -30,9 +30,8 @@
 
 #include "CanvasLayerTextureUpdater.h"
 
-#include "GraphicsContext.h"
+#include "FloatRect.h"
 #include "LayerPainterChromium.h"
-#include "PlatformContextSkia.h"
 #include "SkCanvas.h"
 #include "SkPaint.h"
 #include "SkRect.h"
@@ -50,30 +49,34 @@ CanvasLayerTextureUpdater::~CanvasLayerTextureUpdater()
 {
 }
 
-void CanvasLayerTextureUpdater::paintContents(SkCanvas* canvas, const IntRect& contentRect, float contentsScale, IntRect& resultingOpaqueRect)
+void CanvasLayerTextureUpdater::paintContents(SkCanvas* canvas, const IntRect& contentRect, float contentsWidthScale, float contentsHeightScale, IntRect& resultingOpaqueRect)
 {
     TRACE_EVENT0("cc", "CanvasLayerTextureUpdater::paintContents");
     canvas->save();
     canvas->translate(WebCoreFloatToSkScalar(-contentRect.x()), WebCoreFloatToSkScalar(-contentRect.y()));
 
-    IntRect scaledContentRect = contentRect;
+    IntRect layerRect = contentRect;
 
-    if (contentsScale != 1.0) {
-        canvas->scale(WebCoreFloatToSkScalar(contentsScale), WebCoreFloatToSkScalar(contentsScale));
+    if (contentsWidthScale != 1 || contentsHeightScale != 1) {
+        canvas->scale(WebCoreFloatToSkScalar(contentsWidthScale), WebCoreFloatToSkScalar(contentsHeightScale));
 
         FloatRect rect = contentRect;
-        rect.scale(1 / contentsScale);
-        scaledContentRect = enclosingIntRect(rect);
+        rect.scale(1 / contentsWidthScale, 1 / contentsHeightScale);
+        layerRect = enclosingIntRect(rect);
     }
 
     SkPaint paint;
     paint.setAntiAlias(false);
     paint.setXfermodeMode(SkXfermode::kClear_Mode);
-    canvas->drawRect(scaledContentRect, paint);
-    canvas->clipRect(scaledContentRect);
+    canvas->drawRect(layerRect, paint);
+    canvas->clipRect(layerRect);
 
-    m_painter->paint(canvas, scaledContentRect, resultingOpaqueRect);
+    FloatRect opaqueLayerRect;
+    m_painter->paint(canvas, layerRect, opaqueLayerRect);
     canvas->restore();
+
+    opaqueLayerRect.scale(contentsWidthScale, contentsHeightScale);
+    resultingOpaqueRect = enclosedIntRect(opaqueLayerRect);
 
     m_contentRect = contentRect;
 }

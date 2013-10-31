@@ -50,6 +50,9 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
         },
+        builderApplies: function(builderName) {
+            return builderName.indexOf('Apple') != -1;
+        },
     },
     'chromium' : {
         label : 'Chromium',
@@ -58,16 +61,12 @@ config.kPlatforms = {
         waterfallURL: 'http://build.chromium.org/p/chromium.webkit/waterfall',
         builders: {
             'Webkit Win': {version: 'xp'},
-            'Webkit Vista': {version: 'vista'},
             'Webkit Win7': {version: 'win7'},
             'Webkit Win (dbg)(1)': {version: 'xp', debug: true},
             'Webkit Win (dbg)(2)': {version: 'xp', debug: true},
             'Webkit Linux': {version: 'lucid', is64bit: true},
             'Webkit Linux 32': {version: 'lucid'},
             'Webkit Linux (dbg)': {version: 'lucid', is64bit: true, debug: true},
-            'Webkit Mac10.5': {version: 'leopard'},
-            'Webkit Mac10.5 (dbg)(1)': {version: 'leopard', debug: true},
-            'Webkit Mac10.5 (dbg)(2)': {version: 'leopard', debug: true},
             'Webkit Mac10.6': {version: 'snowleopard'},
             'Webkit Mac10.6 (dbg)': {version: 'snowleopard', debug: true},
             'Webkit Mac10.7': {version: 'lion'},
@@ -81,6 +80,12 @@ config.kPlatforms = {
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return buildNumber;
         },
+        builderApplies: function(builderName) {
+            // FIXME: Should garden-o-matic show these? I can imagine showing the deps bots being useful at least so
+            // that the gardener only need to look at garden-o-matic and never at the waterfall. Not really sure who
+            // watches the GPU bots.
+            return builderName.indexOf('GPU') == -1 && builderName.indexOf('deps') == -1 && builderName.indexOf('ASAN') == -1;
+        },
     },
     'gtk' : {
         label : 'GTK',
@@ -90,7 +95,7 @@ config.kPlatforms = {
         builders: {
             'GTK Linux 32-bit Release' : {version: '32-bit release'},
             'GTK Linux 64-bit Release' : {version: '64-bit release'},
-            'GTK Linux 64-bit Debug' : {version: '64-bit debug',debug: true},
+            'GTK Linux 64-bit Debug' : {version: '64-bit debug', debug: true},
         },
         haveBuilderAccumulatedResults : false,
         useDirectoryListingForOldBuilds: false,
@@ -100,6 +105,30 @@ config.kPlatforms = {
         },
         resultsDirectoryForBuildNumber: function(buildNumber, revision) {
             return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
+        },
+        builderApplies: function(builderName) {
+            return builderName.indexOf('GTK') != -1;
+        },
+    },
+    'qt' : {
+        label : 'Qt',
+        buildConsoleURL: 'http://build.webkit.org',
+        layoutTestResultsURL: 'http://build.webkit.org/results',
+        waterfallURL: 'http://build.webkit.org/waterfall',
+        builders: {
+            'Qt Linux Release' : {version : '32-bit release'},
+        },
+        haveBuilderAccumulatedResults : false,
+        useDirectoryListingForOldBuilds: false,
+        useFlakinessDashboard: false,
+        resultsDirectoryNameFromBuilderName: function(builderName) {
+            return encodeURIComponent(builderName);
+        },
+        resultsDirectoryForBuildNumber: function(buildNumber, revision) {
+            return encodeURIComponent('r' + revision + ' (' + buildNumber + ')');
+        },
+        builderApplies: function(builderName) {
+            return builderName.indexOf('Qt') != -1;
         },
     },
 };

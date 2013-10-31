@@ -8,6 +8,8 @@ LIST(APPEND WebCore_INCLUDE_DIRECTORIES
   "${WEBCORE_DIR}/page/efl"
   "${WEBCORE_DIR}/platform/efl"
   "${WEBCORE_DIR}/platform/graphics/efl"
+  "${WEBCORE_DIR}/platform/linux"
+  "${WEBCORE_DIR}/platform/mediastream/gstreamer"
   "${WEBCORE_DIR}/platform/network/soup"
   "${WEBCORE_DIR}/platform/text/efl"
   "${WEBCORE_DIR}/plugins/efl"
@@ -21,6 +23,7 @@ LIST(APPEND WebCore_SOURCES
   page/efl/DragControllerEfl.cpp
   page/efl/EventHandlerEfl.cpp
   platform/Cursor.cpp
+  platform/efl/BatteryClientEfl.cpp
   platform/efl/ClipboardEfl.cpp
   platform/efl/ColorChooserEfl.cpp
   platform/efl/ContextMenuEfl.cpp
@@ -32,6 +35,7 @@ LIST(APPEND WebCore_SOURCES
   platform/efl/EflScreenUtilities.cpp
   platform/efl/EventLoopEfl.cpp
   platform/efl/FileSystemEfl.cpp
+  platform/efl/GamepadsEfl.cpp
   platform/efl/KURLEfl.cpp
   platform/efl/LanguageEfl.cpp
   platform/efl/LocalizedStringsEfl.cpp
@@ -73,6 +77,9 @@ LIST(APPEND WebCore_SOURCES
   platform/image-decoders/jpeg/JPEGImageDecoder.cpp
   platform/image-decoders/png/PNGImageDecoder.cpp
   platform/image-decoders/webp/WEBPImageDecoder.cpp
+  platform/linux/GamepadDeviceLinux.cpp
+  platform/mediastream/gstreamer/DeprecatedPeerConnectionHandler.cpp
+  platform/mediastream/gstreamer/MediaStreamCenterGStreamer.cpp
   platform/network/soup/CookieJarSoup.cpp
   platform/network/soup/CredentialStorageSoup.cpp
   platform/network/soup/DNSSoup.cpp
@@ -302,5 +309,14 @@ IF (ENABLE_WEB_AUDIO)
   FILE(GLOB WEB_AUDIO_DATA "${WEBCORE_DIR}/platform/audio/resources/*.wav")
   INSTALL(FILES ${WEB_AUDIO_DATA} DESTINATION ${WEB_AUDIO_DIR})
   ADD_DEFINITIONS(-DUNINSTALLED_AUDIO_RESOURCES_DIR="${WEBCORE_DIR}/platform/audio/resources")
+ENDIF ()
+
+IF (ENABLE_GAMEPAD)
+  LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+    ${EEZE_INCLUDE_DIRS}
+  )
+  LIST(APPEND WebCore_LIBRARIES
+    ${EEZE_LIBRARIES}
+  )
 ENDIF ()
 

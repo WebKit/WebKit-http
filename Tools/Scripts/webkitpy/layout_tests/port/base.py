@@ -104,7 +104,7 @@ class Port(object):
         self.host = host
         self._executive = host.executive
         self._filesystem = host.filesystem
-        self._config = config or port_config.Config(self._executive, self._filesystem)
+        self._config = config or port_config.Config(self._executive, self._filesystem, self.port_name)
 
         self._helper = None
         self._http_server = None
@@ -136,8 +136,12 @@ class Port(object):
         self._reftest_list = {}
         self._results_directory = None
 
-    def default_test_timeout_ms(self):
-        return 6 * 1000
+    def default_pixel_tests(self):
+        # FIXME: Disable until they are run by default on build.webkit.org.
+        return False
+
+    def default_timeout_ms(self):
+        return 35 * 1000
 
     def wdiff_available(self):
         if self._wdiff_available is None:
@@ -208,14 +212,14 @@ class Port(object):
         except OSError, e:
             if e.errno in [errno.ENOENT, errno.EACCES, errno.ECHILD]:
                 if logging:
-                    _log.error("Ruby is not installed; can't generate pretty patches.")
-                    _log.error('')
+                    _log.warning("Ruby is not installed; can't generate pretty patches.")
+                    _log.warning('')
                 return False
 
         if not self._filesystem.exists(self._pretty_patch_path):
             if logging:
-                _log.error("Unable to find %s; can't generate pretty patches." % self._pretty_patch_path)
-                _log.error('')
+                _log.warning("Unable to find %s; can't generate pretty patches." % self._pretty_patch_path)
+                _log.warning('')
             return False
 
         return True
@@ -229,10 +233,17 @@ class Port(object):
             _ = self._executive.run_command([self._path_to_wdiff(), '--help'])
         except OSError:
             if logging:
-                _log.error("wdiff is not installed.")
+                message = self._wdiff_missing_message()
+                if message:
+                    for line in message.splitlines():
+                        _log.warning('    ' + line)
+                        _log.warning('')
             return False
 
         return True
+
+    def _wdiff_missing_message(self):
+        return 'wdiff is not installed; please install it to generate word-by-word diffs.'
 
     def check_httpd(self):
         if self._uses_apache():
@@ -686,7 +697,7 @@ class Port(object):
 
         # test_expectations are always in mac/ not mac-leopard/ by convention, hence we use port_name instead of name().
         port_name = self.port_name
-        if port_name.startswith('chromium') or port_name.startswith('google-chrome'):
+        if port_name.startswith('chromium'):
             port_name = 'chromium'
 
         return self._filesystem.join(self._webkit_baseline_path(port_name), 'TestExpectations')
@@ -786,16 +797,16 @@ class Port(object):
         method."""
         pass
 
-    def start_http_server(self, additional_dirs=None):
+    def start_http_server(self, additional_dirs=None, number_of_servers=None):
         """Start a web server. Raise an error if it can't start or is already running.
 
         Ports can stub this out if they don't need a web server to be running."""
         assert not self._http_server, 'Already running an http server.'
 
         if self._uses_apache():
-            server = apache_http_server.LayoutTestApacheHttpd(self, self.results_directory(), additional_dirs=additional_dirs)
+            server = apache_http_server.LayoutTestApacheHttpd(self, self.results_directory(), additional_dirs=additional_dirs, number_of_servers=number_of_servers)
         else:
-            server = http_server.Lighttpd(self, self.results_directory(), additional_dirs=additional_dirs)
+            server = http_server.Lighttpd(self, self.results_directory(), additional_dirs=additional_dirs, number_of_servers=number_of_servers)
 
         server.start()
         self._http_server = server

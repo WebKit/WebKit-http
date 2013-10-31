@@ -190,8 +190,10 @@ namespace JSC {
         void* preservedR4;
         void* preservedR5;
         void* preservedR6;
-        void* preservedR7;
         void* preservedR8;
+        void* preservedR9;
+        void* preservedR10;
+        void* preservedR11;
         void* preservedLink;
 
         RegisterFile* registerFile;
@@ -450,8 +452,7 @@ extern "C" {
     void JIT_STUB cti_op_tear_off_arguments(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     void JIT_STUB cti_op_throw_reference_error(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 #if ENABLE(DFG_JIT)
-    void JIT_STUB cti_optimize_from_loop(STUB_ARGS_DECLARATION) WTF_INTERNAL;
-    void JIT_STUB cti_optimize_from_ret(STUB_ARGS_DECLARATION) WTF_INTERNAL;
+    void JIT_STUB cti_optimize(STUB_ARGS_DECLARATION) WTF_INTERNAL;
 #endif
     void* JIT_STUB cti_op_call_arityCheck(STUB_ARGS_DECLARATION) WTF_INTERNAL;
     void* JIT_STUB cti_op_construct_arityCheck(STUB_ARGS_DECLARATION) WTF_INTERNAL;

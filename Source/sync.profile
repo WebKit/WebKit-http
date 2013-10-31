@@ -6,13 +6,4 @@
 );
 %classnames = (
 );
-%mastercontent = (
-    "core" => "#include <QtCore/QtCore>\n",
-    "gui" => "#include <QtGui/QtGui>\n",
-    "network" => "#include <QtNetwork/QtNetwork>\n",
-    "script" => "#include <QtScript/QtScript>\n",
-);
-%modulepris = (
-    "QtWebKit" => "$basedir/../Tools/qmake/qt_webkit.pri",
-);
 @ignore_for_master_contents = ( "qwebscriptworld.h", "testwindow.h", "util.h", "bytearraytestdata.h" );

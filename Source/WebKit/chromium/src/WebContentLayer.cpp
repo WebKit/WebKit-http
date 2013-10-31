@@ -54,7 +54,7 @@ void WebContentLayer::setContentsScale(float scale)
 }
 
 WebContentLayer::WebContentLayer(const PassRefPtr<ContentLayerChromium>& node)
-    : WebLayer(node)
+    : WebScrollableLayer(node)
 {
 }
 

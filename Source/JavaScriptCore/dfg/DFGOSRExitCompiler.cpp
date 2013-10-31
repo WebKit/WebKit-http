@@ -29,6 +29,7 @@
 #if ENABLE(DFG_JIT)
 
 #include "CallFrame.h"
+#include "DFGCommon.h"
 #include "LinkBuffer.h"
 #include "RepatchBuffer.h"
 
@@ -38,6 +39,8 @@ extern "C" {
 
 void compileOSRExit(ExecState* exec)
 {
+    SamplingRegion samplingRegion("DFG OSR Exit Compilation");
+    
     CodeBlock* codeBlock = exec->codeBlock();
     
     ASSERT(codeBlock);
@@ -63,12 +66,22 @@ void compileOSRExit(ExecState* exec)
             ->jitCompile(exec);
     }
     
+    // Compute the value recoveries.
+    Operands<ValueRecovery> operands;
+    codeBlock->variableEventStream().reconstruct(codeBlock, exit.m_codeOrigin, codeBlock->minifiedDFG(), exit.m_streamIndex, operands);
+    
+    // There may be an override, for forward speculations.
+    if (!!exit.m_valueRecoveryOverride) {
+        operands.setOperand(
+            exit.m_valueRecoveryOverride->operand, exit.m_valueRecoveryOverride->recovery);
+    }
+    
     SpeculationRecovery* recovery = 0;
     if (exit.m_recoveryIndex)
         recovery = &codeBlock->speculationRecovery(exit.m_recoveryIndex - 1);
 
 #if DFG_ENABLE(DEBUG_VERBOSE)
-    dataLog("Generating OSR exit #%u (bc#%u, @%u, %s) for code block %p.\n", exitIndex, exit.m_codeOrigin.bytecodeIndex, exit.m_nodeIndex, exitKindToString(exit.m_kind), codeBlock);
+    dataLog("Generating OSR exit #%u (seq#%u, bc#%u, @%u, %s) for code block %p.\n", exitIndex, exit.m_streamIndex, exit.m_codeOrigin.bytecodeIndex, exit.m_nodeIndex, exitKindToString(exit.m_kind), codeBlock);
 #endif
 
     {
@@ -76,14 +89,15 @@ void compileOSRExit(ExecState* exec)
         OSRExitCompiler exitCompiler(jit);
 
         jit.jitAssertHasValidCallFrame();
-        exitCompiler.compileExit(exit, recovery);
+        exitCompiler.compileExit(exit, operands, recovery);
         
         LinkBuffer patchBuffer(*globalData, &jit, codeBlock);
-        exit.m_code = patchBuffer.finalizeCode();
-
-#if DFG_ENABLE(DEBUG_VERBOSE)
-        dataLog("OSR exit code at [%p, %p).\n", patchBuffer.debugAddress(), static_cast<char*>(patchBuffer.debugAddress()) + patchBuffer.debugSize());
-#endif
+        exit.m_code = FINALIZE_CODE_IF(
+            shouldShowDisassembly(),
+            patchBuffer,
+            ("DFG OSR exit #%u (bc#%u, @%u, %s) from CodeBlock %p",
+             exitIndex, exit.m_codeOrigin.bytecodeIndex, exit.m_nodeIndex,
+             exitKindToString(exit.m_kind), codeBlock));
     }
     
     {
@@ -102,42 +116,23 @@ void OSRExitCompiler::handleExitCounts(const OSRExit& exit)
     
     m_jit.move(AssemblyHelpers::TrustedImmPtr(m_jit.codeBlock()), GPRInfo::regT0);
     
-    AssemblyHelpers::JumpList tooFewFails;
+    AssemblyHelpers::Jump tooFewFails;
     
-    if (exit.m_kind == InadequateCoverage) {
-        // Proceed based on the assumption that we can profitably optimize this code once
-        // it has executed enough times.
-        
-        m_jit.load32(AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfForcedOSRExitCounter()), GPRInfo::regT2);
-        m_jit.load32(AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeSuccessCounter()), GPRInfo::regT1);
-        m_jit.add32(AssemblyHelpers::TrustedImm32(1), GPRInfo::regT2);
-        m_jit.add32(AssemblyHelpers::TrustedImm32(-1), GPRInfo::regT1);
-        m_jit.store32(GPRInfo::regT2, AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfForcedOSRExitCounter()));
-        m_jit.store32(GPRInfo::regT1, AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeSuccessCounter()));
-        
-        tooFewFails.append(m_jit.branch32(AssemblyHelpers::BelowOrEqual, GPRInfo::regT2, AssemblyHelpers::TrustedImm32(Options::forcedOSRExitCountForReoptimization)));
-    } else {
-        // Proceed based on the assumption that we can handle these exits so long as they
-        // don't get too frequent.
-        
-        m_jit.load32(AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeFailCounter()), GPRInfo::regT2);
-        m_jit.load32(AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeSuccessCounter()), GPRInfo::regT1);
-        m_jit.add32(AssemblyHelpers::TrustedImm32(1), GPRInfo::regT2);
-        m_jit.add32(AssemblyHelpers::TrustedImm32(-1), GPRInfo::regT1);
-        m_jit.store32(GPRInfo::regT2, AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeFailCounter()));
-        m_jit.store32(GPRInfo::regT1, AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfSpeculativeSuccessCounter()));
+    m_jit.load32(AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfOSRExitCounter()), GPRInfo::regT2);
+    m_jit.add32(AssemblyHelpers::TrustedImm32(1), GPRInfo::regT2);
+    m_jit.store32(GPRInfo::regT2, AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfOSRExitCounter()));
+    m_jit.move(AssemblyHelpers::TrustedImmPtr(m_jit.baselineCodeBlock()), GPRInfo::regT0);
+    tooFewFails = m_jit.branch32(AssemblyHelpers::BelowOrEqual, GPRInfo::regT2, AssemblyHelpers::TrustedImm32(m_jit.codeBlock()->exitCountThresholdForReoptimization()));
     
-        m_jit.move(AssemblyHelpers::TrustedImmPtr(m_jit.baselineCodeBlock()), GPRInfo::regT0);
-    
-        tooFewFails.append(m_jit.branch32(AssemblyHelpers::BelowOrEqual, GPRInfo::regT2, AssemblyHelpers::TrustedImm32(m_jit.codeBlock()->largeFailCountThreshold())));
-        m_jit.mul32(AssemblyHelpers::TrustedImm32(Options::desiredSpeculativeSuccessFailRatio), GPRInfo::regT2, GPRInfo::regT2);
-    
-        tooFewFails.append(m_jit.branch32(AssemblyHelpers::BelowOrEqual, GPRInfo::regT2, GPRInfo::regT1));
-    }
-
     // Reoptimize as soon as possible.
-    m_jit.store32(AssemblyHelpers::TrustedImm32(0), AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfJITExecuteCounter()));
-    m_jit.store32(AssemblyHelpers::TrustedImm32(0), AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfJITExecutionActiveThreshold()));
+#if !NUMBER_OF_ARGUMENT_REGISTERS
+    m_jit.poke(GPRInfo::regT0);
+#else
+    m_jit.move(GPRInfo::regT0, GPRInfo::argumentGPR0);
+    ASSERT(GPRInfo::argumentGPR0 != GPRInfo::regT1);
+#endif
+    m_jit.move(AssemblyHelpers::TrustedImmPtr(bitwise_cast<void*>(triggerReoptimizationNow)), GPRInfo::regT1);
+    m_jit.call(GPRInfo::regT1);
     AssemblyHelpers::Jump doneAdjusting = m_jit.jump();
     
     tooFewFails.link(&m_jit);
@@ -148,6 +143,7 @@ void OSRExitCompiler::handleExitCounts(const OSRExit& exit)
             m_jit.baselineCodeBlock()->counterValueForOptimizeAfterLongWarmUp(),
             m_jit.baselineCodeBlock());
     m_jit.store32(AssemblyHelpers::TrustedImm32(-targetValue), AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfJITExecuteCounter()));
+    targetValue = ExecutionCounter::clippedThreshold(m_jit.codeBlock()->globalObject(), targetValue);
     m_jit.store32(AssemblyHelpers::TrustedImm32(targetValue), AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfJITExecutionActiveThreshold()));
     m_jit.store32(AssemblyHelpers::TrustedImm32(ExecutionCounter::formattedTotalCount(targetValue)), AssemblyHelpers::Address(GPRInfo::regT0, CodeBlock::offsetOfJITExecutionTotalCount()));
     

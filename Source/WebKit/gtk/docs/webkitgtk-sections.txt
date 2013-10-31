@@ -86,6 +86,7 @@ WebKitLoadStatus
 WebKitWebFrame
 webkit_web_frame_find_frame
 webkit_web_frame_get_data_source
+webkit_web_frame_get_dom_document
 webkit_web_frame_get_global_context
 webkit_web_frame_get_horizontal_scrollbar_policy
 webkit_web_frame_get_load_status
@@ -700,6 +701,30 @@ WEBKIT_IS_FAVICON_DATABASE_CLASS
 <SUBSECTION Private>
 WebKitFaviconDatabaseClass
 WebKitFaviconDatabasePrivate
+</SECTION>
+
+<SECTION>
+<FILE>webkitfilechooserrequest</FILE>
+<TITLE>WebKitFileChooserRequest</TITLE>
+WebKitFileChooserRequest
+webkit_file_chooser_request_get_select_multiple
+webkit_file_chooser_request_get_mime_types
+webkit_file_chooser_request_get_mime_types_filter
+webkit_file_chooser_request_get_selected_files
+webkit_file_chooser_request_select_files
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_FILE_CHOOSER_REQUEST
+WEBKIT_FILE_CHOOSER_REQUEST
+WEBKIT_IS_FILE_CHOOSER_REQUEST
+WEBKIT_FILE_CHOOSER_REQUEST_CLASS
+WEBKIT_IS_FILE_CHOOSER_REQUEST_CLASS
+WEBKIT_FILE_CHOOSER_REQUEST_GET_CLASS
+
+<SUBSECTION Private>
+WebKitFileChooserRequestClass
+WebKitFileChooserRequestPrivate
+webkit_file_chooser_request_get_type
 </SECTION>
 
 <SECTION>

@@ -37,9 +37,9 @@
     <file>DatabaseTableView.js</file>
     <file>DataGrid.js</file>
     <file>DebuggerModel.js</file>
-    <file>DebuggerResourceBinding.js</file>
     <file>DebuggerScriptMapping.js</file>
     <file>Dialog.js</file>
+    <file>DirectoryContentView.js</file>
     <file>DOMAgent.js</file>
     <file>DOMBreakpointsSidebarPane.js</file>
     <file>DOMExtension.js</file>
@@ -57,8 +57,10 @@
     <file>ExtensionPanel.js</file>
     <file>ExtensionRegistryStub.js</file>
     <file>ExtensionServer.js</file>
+    <file>FileContentView.js</file>
     <file>FileManager.js</file>
     <file>FileSystemModel.js</file>
+    <file>FileSystemView.js</file>
     <file>FilteredItemSelectionDialog.js</file>
     <file>FontView.js</file>
     <file>GoToLineDialog.js</file>
@@ -164,10 +166,10 @@
     <file>TabbedEditorContainer.js</file>
     <file>TabbedPane.js</file>
     <file>TestController.js</file>
+    <file>TextEditor.js</file>
     <file>TextEditorHighlighter.js</file>
     <file>TextEditorModel.js</file>
     <file>TextPrompt.js</file>
-    <file>TextViewer.js</file>
     <file>TimelineFrameController.js</file>
     <file>TimelineManager.js</file>
     <file>TimelineModel.js</file>
@@ -187,6 +189,7 @@
     <file>WatchExpressionsSidebarPane.js</file>
     <file>WorkerManager.js</file>
     <file>WorkersSidebarPane.js</file>
+    <file>Workspace.js</file>
     <file>UglifyJS/parse-js.js</file>
     <file>auditsPanel.css</file>
     <file>dataGrid.css</file>
@@ -212,8 +215,8 @@
     <file>scriptsPanel.css</file>
     <file>splitView.css</file>
     <file>tabbedPane.css</file>
+    <file>textEditor.css</file>
     <file>textPrompt.css</file>
-    <file>textViewer.css</file>
     <file>timelinePanel.css</file>
     <file>Images/applicationCache.png</file>
     <file>Images/back.png</file>

@@ -25,14 +25,12 @@
 #ifndef CCLayerTreeHostImpl_h
 #define CCLayerTreeHostImpl_h
 
-#include "Color.h"
-#include "LayerRendererChromium.h"
+#include "SkColor.h"
 #include "cc/CCAnimationEvents.h"
 #include "cc/CCInputHandler.h"
 #include "cc/CCLayerSorter.h"
-#include "cc/CCLayerTreeHost.h"
-#include "cc/CCLayerTreeHostCommon.h"
 #include "cc/CCRenderPass.h"
+#include "cc/CCRenderer.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/RefPtr.h>
 
@@ -59,7 +57,6 @@ public:
     virtual void setNeedsRedrawOnImplThread() = 0;
     virtual void setNeedsCommitOnImplThread() = 0;
     virtual void postAnimationEventsToMainThreadOnImplThread(PassOwnPtr<CCAnimationEventsVector>, double wallClockTime) = 0;
-    virtual void postSetContentsMemoryAllocationLimitBytesToMainThreadOnImplThread(size_t) = 0;
 };
 
 // CCLayerTreeHostImpl owns the CCLayerImpl tree as well as associated rendering state
@@ -85,6 +82,7 @@ public:
     virtual void scheduleAnimation();
 
     struct FrameData {
+        Vector<IntRect> occludingScreenSpaceRects;
         CCRenderPassList renderPasses;
         CCRenderPassList skippedPasses;
         CCLayerList* renderSurfaceLayerList;
@@ -111,19 +109,20 @@ public:
     virtual void didLoseContext() OVERRIDE;
     virtual void onSwapBuffersComplete() OVERRIDE;
     virtual void setFullRootLayerDamage() OVERRIDE;
-    virtual void setContentsMemoryAllocationLimitBytes(size_t) OVERRIDE;
+    virtual void releaseContentsTextures() OVERRIDE;
+    virtual void setMemoryAllocationLimitBytes(size_t) OVERRIDE;
 
     // Implementation
     bool canDraw();
-    CCGraphicsContext* context();
+    CCGraphicsContext* context() const;
 
     String layerTreeAsText() const;
     void setFontAtlas(PassOwnPtr<CCFontAtlas>);
 
     void finishAllRendering();
-    int frameNumber() const { return m_frameNumber; }
+    int sourceAnimationFrameNumber() const { return m_sourceAnimationFrameNumber; }
 
-    bool initializeLayerRenderer(PassRefPtr<CCGraphicsContext>, TextureUploaderOption);
+    bool initializeLayerRenderer(PassOwnPtr<CCGraphicsContext>, TextureUploaderOption);
     bool isContextLost();
     CCRenderer* layerRenderer() { return m_layerRenderer.get(); }
     const LayerRendererCapabilities& layerRendererCapabilities() const;
@@ -148,8 +147,8 @@ public:
     int sourceFrameNumber() const { return m_sourceFrameNumber; }
     void setSourceFrameNumber(int frameNumber) { m_sourceFrameNumber = frameNumber; }
 
-    bool sourceFrameCanBeDrawn() const { return m_sourceFrameCanBeDrawn; }
-    void setSourceFrameCanBeDrawn(bool sourceFrameCanBeDrawn) { m_sourceFrameCanBeDrawn = sourceFrameCanBeDrawn; }
+    bool contentsTexturesWerePurgedSinceLastCommit() const { return m_contentsTexturesWerePurgedSinceLastCommit; }
+    size_t memoryAllocationLimitBytes() const { return m_memoryAllocationLimitBytes; }
 
     const IntSize& viewportSize() const { return m_viewportSize; }
     void setViewportSize(const IntSize&);
@@ -164,8 +163,8 @@ public:
 
     void startPageScaleAnimation(const IntSize& tragetPosition, bool useAnchor, float scale, double durationSec);
 
-    const Color& backgroundColor() const { return m_backgroundColor; }
-    void setBackgroundColor(const Color& color) { m_backgroundColor = color; }
+    SkColor backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(SkColor color) { m_backgroundColor = color; }
 
     bool hasTransparentBackground() const { return m_hasTransparentBackground; }
     void setHasTransparentBackground(bool transparent) { m_hasTransparentBackground = transparent; }
@@ -198,7 +197,7 @@ protected:
 
     CCLayerTreeHostImplClient* m_client;
     int m_sourceFrameNumber;
-    int m_frameNumber;
+    int m_sourceAnimationFrameNumber;
 
 private:
     void computeDoubleTapZoomDeltas(CCScrollAndScaleSet* scrollInfo);
@@ -226,7 +225,7 @@ private:
 
     void dumpRenderSurfaces(TextStream&, int indent, const CCLayerImpl*) const;
 
-    RefPtr<CCGraphicsContext> m_context;
+    OwnPtr<CCGraphicsContext> m_context;
     OwnPtr<CCRenderer> m_layerRenderer;
     OwnPtr<CCLayerImpl> m_rootLayerImpl;
     CCLayerImpl* m_rootScrollLayerImpl;
@@ -237,7 +236,8 @@ private:
     IntSize m_deviceViewportSize;
     float m_deviceScaleFactor;
     bool m_visible;
-    bool m_sourceFrameCanBeDrawn;
+    bool m_contentsTexturesWerePurgedSinceLastCommit;
+    size_t m_memoryAllocationLimitBytes;
 
     OwnPtr<CCHeadsUpDisplay> m_headsUpDisplay;
 
@@ -246,7 +246,7 @@ private:
     float m_sentPageScaleDelta;
     float m_minPageScale, m_maxPageScale;
 
-    Color m_backgroundColor;
+    SkColor m_backgroundColor;
     bool m_hasTransparentBackground;
 
     // If this is true, it is necessary to traverse the layer tree ticking the animators.

@@ -320,9 +320,9 @@ class TestPort(Port):
 
     """Test implementation of the Port interface."""
     ALL_BASELINE_VARIANTS = (
-        'test-mac-snowleopard', 'test-mac-leopard',
-        'test-win-win7', 'test-win-vista', 'test-win-xp',
         'test-linux-x86_64',
+        'test-mac-snowleopard', 'test-mac-leopard',
+        'test-win-vista', 'test-win-win7', 'test-win-xp',
     )
 
     @classmethod
@@ -356,6 +356,9 @@ class TestPort(Port):
             'test-linux-x86_64': 'lucid',
         }
         self._version = version_map[port_name]
+
+    def default_pixel_tests(self):
+        return True
 
     def _path_to_driver(self):
         # This routine shouldn't normally be called, but it is called by
@@ -428,7 +431,7 @@ class TestPort(Port):
     def _driver_class(self):
         return TestDriver
 
-    def start_http_server(self):
+    def start_http_server(self, additional_dirs=None, number_of_servers=None):
         pass
 
     def start_websocket_server(self):
@@ -454,6 +457,12 @@ class TestPort(Port):
 
     def _path_to_lighttpd_php(self):
         return "/usr/bin/php-cgi"
+
+    def _path_to_apache(self):
+        return "/usr/sbin/httpd"
+
+    def _path_to_apache_config_file(self):
+        return self._filesystem.join(self.layout_tests_dir(), 'http', 'conf', 'httpd.conf')
 
     def path_to_test_expectations_file(self):
         return self._expectations_path

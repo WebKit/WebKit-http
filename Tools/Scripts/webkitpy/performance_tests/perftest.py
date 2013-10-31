@@ -40,7 +40,7 @@ import sys
 import time
 
 # Import for auto-install
-if sys.platform != 'win32':
+if sys.platform not in ('cygwin', 'win32'):
     # FIXME: webpagereplay doesn't work on win32. See https://bugs.webkit.org/show_bug.cgi?id=88279.
     import webkitpy.thirdparty.autoinstalled.webpagereplay.replay
 
@@ -95,7 +95,7 @@ class PerfTest(object):
         re.compile(r'^Running \d+ times$'),
         re.compile(r'^Ignoring warm-up '),
         re.compile(r'^Info:'),
-        re.compile(r'^\d+(.\d+)?(\s*(runs\/s|ms))?$'),
+        re.compile(r'^\d+(.\d+)?(\s*(runs\/s|ms|fps))?$'),
         # Following are for handle existing test like Dromaeo
         re.compile(re.escape("""main frame - has 1 onunload handler(s)""")),
         re.compile(re.escape("""frame "<!--framePath //<!--frame0-->-->" - has 1 onunload handler(s)""")),

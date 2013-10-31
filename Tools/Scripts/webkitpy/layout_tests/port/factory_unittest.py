@@ -35,7 +35,6 @@ from webkitpy.layout_tests.port import chromium_linux
 from webkitpy.layout_tests.port import chromium_mac
 from webkitpy.layout_tests.port import chromium_win
 from webkitpy.layout_tests.port import factory
-from webkitpy.layout_tests.port import google_chrome
 from webkitpy.layout_tests.port import gtk
 from webkitpy.layout_tests.port import mac
 from webkitpy.layout_tests.port import qt
@@ -59,8 +58,8 @@ class FactoryTest(unittest.TestCase):
     def test_mac(self):
         self.assert_port(port_name='mac-leopard', cls=mac.MacPort)
         self.assert_port(port_name='mac-leopard-wk2', cls=mac.MacPort)
-        self.assert_port(port_name='mac', os_name='mac', os_version='leopard', cls=mac.MacPort)
-        self.assert_port(port_name=None,  os_name='mac', os_version='leopard', cls=mac.MacPort)
+        self.assert_port(port_name='mac', os_name='mac', os_version='lion', cls=mac.MacPort)
+        self.assert_port(port_name=None,  os_name='mac', os_version='lion', cls=mac.MacPort)
 
     def test_win(self):
         self.assert_port(port_name='win-xp', cls=win.WinPort)
@@ -69,26 +68,6 @@ class FactoryTest(unittest.TestCase):
         self.assert_port(port_name=None, os_name='win', os_version='xp', cls=win.WinPort)
         self.assert_port(port_name=None, os_name='win', os_version='xp', options=self.webkit_options, cls=win.WinPort)
 
-    def test_google_chrome(self):
-        self.assert_port(port_name='google-chrome-linux32',
-                         cls=google_chrome.GoogleChromeLinux32Port)
-        self.assert_port(port_name='google-chrome-linux64', os_name='linux', os_version='lucid',
-                         cls=google_chrome.GoogleChromeLinux64Port)
-        self.assert_port(port_name='google-chrome-linux64',
-                         cls=google_chrome.GoogleChromeLinux64Port)
-        self.assert_port(port_name='google-chrome-win-xp',
-                         cls=google_chrome.GoogleChromeWinPort)
-        self.assert_port(port_name='google-chrome-win', os_name='win', os_version='xp',
-                         cls=google_chrome.GoogleChromeWinPort)
-        self.assert_port(port_name='google-chrome-win-xp', os_name='win', os_version='xp',
-                         cls=google_chrome.GoogleChromeWinPort)
-        self.assert_port(port_name='google-chrome-mac', os_name='mac', os_version='leopard',
-                         cls=google_chrome.GoogleChromeMacPort)
-        self.assert_port(port_name='google-chrome-mac-leopard', os_name='mac', os_version='leopard',
-                         cls=google_chrome.GoogleChromeMacPort)
-        self.assert_port(port_name='google-chrome-mac-leopard',
-                         cls=google_chrome.GoogleChromeMacPort)
-
     def test_gtk(self):
         self.assert_port(port_name='gtk', cls=gtk.GtkPort)
 
@@ -96,10 +75,9 @@ class FactoryTest(unittest.TestCase):
         self.assert_port(port_name='qt', cls=qt.QtPort)
 
     def test_chromium_mac(self):
-        self.assert_port(port_name='chromium-mac-leopard', cls=chromium_mac.ChromiumMacPort)
-        self.assert_port(port_name='chromium-mac', os_name='mac', os_version='leopard',
+        self.assert_port(port_name='chromium-mac', os_name='mac', os_version='snowleopard',
                          cls=chromium_mac.ChromiumMacPort)
-        self.assert_port(port_name='chromium', os_name='mac', os_version='leopard',
+        self.assert_port(port_name='chromium', os_name='mac', os_version='lion',
                          cls=chromium_mac.ChromiumMacPort)
 
     def test_chromium_linux(self):

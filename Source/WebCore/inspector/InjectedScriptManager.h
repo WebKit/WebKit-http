@@ -64,20 +64,14 @@ public:
     void discardInjectedScriptsFor(DOMWindow*);
     void releaseObjectGroup(const String& objectGroup);
 
-#if ENABLE(WEBGL)
-    ScriptObject wrapWebGLRenderingContextForInstrumentation(const ScriptObject&);
-#endif
+    typedef bool (*InspectedStateAccessCheck)(ScriptState*);
+    InspectedStateAccessCheck inspectedStateAccessCheck() const { return m_inspectedStateAccessCheck; }
 
 private:
-    typedef bool (*InspectedStateAccessCheck)(ScriptState*);
     explicit InjectedScriptManager(InspectedStateAccessCheck);
 
     String injectedScriptSource();
     ScriptObject createInjectedScript(const String& source, ScriptState*, int id);
-
-#if ENABLE(WEBGL)
-    String injectedWebGLScriptSource();
-#endif
 
     static bool canAccessInspectedWindow(ScriptState*);
     static bool canAccessInspectedWorkerContext(ScriptState*);

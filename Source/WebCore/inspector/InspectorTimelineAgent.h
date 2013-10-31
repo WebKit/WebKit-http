@@ -125,12 +125,15 @@ public:
     void didMarkDOMContentEvent(Frame*);
     void didMarkLoadEvent(Frame*);
 
+    void time(const String&);
+    void timeEnd(const String&);
+
     void didScheduleResourceRequest(const String& url, Frame*);
     void willSendResourceRequest(unsigned long, const ResourceRequest&, Frame*);
     void willReceiveResourceResponse(unsigned long, const ResourceResponse&, Frame*);
     void didReceiveResourceResponse();
     void didFinishLoadingResource(unsigned long, bool didFail, double finishTime, Frame*);
-    void willReceiveResourceData(unsigned long identifier, Frame*);
+    void willReceiveResourceData(unsigned long identifier, Frame*, int length);
     void didReceiveResourceData();
 
     void didRequestAnimationFrame(int callbackId, Frame*);
@@ -145,8 +148,8 @@ public:
 
 private:
     struct TimelineRecordEntry {
-        TimelineRecordEntry(PassRefPtr<InspectorObject> record, PassRefPtr<InspectorObject> data, PassRefPtr<InspectorArray> children, const String& type, const String& frameId, bool cancelable = false)
-            : record(record), data(data), children(children), type(type), frameId(frameId), cancelable(cancelable)
+        TimelineRecordEntry(PassRefPtr<InspectorObject> record, PassRefPtr<InspectorObject> data, PassRefPtr<InspectorArray> children, const String& type, const String& frameId)
+            : record(record), data(data), children(children), type(type), frameId(frameId)
         {
         }
         RefPtr<InspectorObject> record;
@@ -154,19 +157,16 @@ private:
         RefPtr<InspectorArray> children;
         String type;
         String frameId;
-        bool cancelable;
     };
         
     InspectorTimelineAgent(InstrumentingAgents*, InspectorPageAgent*, InspectorState*, InspectorType, InspectorClient*);
 
-    void pushCurrentRecord(PassRefPtr<InspectorObject>, const String& type, bool captureCallStack, Frame*);
+    void pushCurrentRecord(PassRefPtr<InspectorObject>, const String& type, bool captureCallStack, Frame*, bool hasOrphanDetails = false);
     void setHeapSizeStatistic(InspectorObject* record);
-        
+
     void didCompleteCurrentRecord(const String& type);
+    void commitFrameRecord();
     void appendRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame*);
-    void pushCancelableRecord(PassRefPtr<InspectorObject>, const String& type, Frame*);
-    void commitCancelableRecords();
-    void cancelRecord(const String& type);
     void addRecordToTimeline(PassRefPtr<InspectorObject>, const String& type, const String& frameId);
     void innerAddRecordToTimeline(PassRefPtr<InspectorObject>, const String& type, const String& frameId);
 
@@ -196,6 +196,8 @@ private:
     typedef Vector<GCEvent> GCEvents;
     GCEvents m_gcEvents;
     int m_maxCallStackDepth;
+    unsigned m_orphanEventsEnabledStackMark;
+    RefPtr<InspectorObject> m_pendingFrameRecord;
     InspectorType m_inspectorType;
     InspectorClient* m_client;
 };

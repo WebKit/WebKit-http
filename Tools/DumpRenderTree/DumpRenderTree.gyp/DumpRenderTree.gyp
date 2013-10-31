@@ -256,6 +256,8 @@
                         'destination': '<(PRODUCT_DIR)',
                         'files': [
                             '<(ahem_path)',
+                            '<(tools_dir)/DumpRenderTree/chromium/android_main_fonts.xml',
+                            '<(tools_dir)/DumpRenderTree/chromium/android_fallback_fonts.xml',
                             '<(INTERMEDIATE_DIR)/repack/DumpRenderTree.pak',
                         ]
                     }],
@@ -398,7 +400,7 @@
                 },
             }],
         }],
-        ['os_posix==1 and OS!="mac" and OS!="android" and gcc_version==46', {
+        ['os_posix==1 and OS!="mac" and gcc_version==46', {
             'target_defaults': {
                 # Disable warnings about c++0x compatibility, as some names (such
                 # as nullptr) conflict with upcoming c++0x types.

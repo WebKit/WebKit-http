@@ -55,22 +55,25 @@ WebInspector.TimelineOverviewPane = function(model)
 
     var topPaneSidebarTree = new TreeOutline(overviewTreeElement);
 
-    var eventsOverviewItem = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-events", WebInspector.UIString("Events"));
-    topPaneSidebarTree.appendChild(eventsOverviewItem);
-    eventsOverviewItem.revealAndSelect(false);
-    eventsOverviewItem.onselect = this._showEvents.bind(this);
-
-    if (Capabilities.timelineSupportsFrameInstrumentation) {
-        var framesOverviewItem = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-frames", WebInspector.UIString("Frames"));
-        topPaneSidebarTree.appendChild(framesOverviewItem);
-        framesOverviewItem.onselect = this._showFrames.bind(this);
-    }
-
-    var memoryOverviewItem = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-memory", WebInspector.UIString("Memory"));
-    topPaneSidebarTree.appendChild(memoryOverviewItem);
-    memoryOverviewItem.onselect = this._showMemoryGraph.bind(this);
-
     this._currentMode = WebInspector.TimelineOverviewPane.Mode.Events;
+
+    this._overviewItems = {};
+    this._overviewItems[WebInspector.TimelineOverviewPane.Mode.Events] = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-events",
+        WebInspector.UIString("Events"));
+    if (Capabilities.timelineSupportsFrameInstrumentation) {
+        this._overviewItems[WebInspector.TimelineOverviewPane.Mode.Frames] = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-frames",
+            WebInspector.UIString("Frames"));
+    }
+    this._overviewItems[WebInspector.TimelineOverviewPane.Mode.Memory] = new WebInspector.SidebarTreeElement("timeline-overview-sidebar-memory",
+        WebInspector.UIString("Memory"));
+
+    for (var mode in this._overviewItems) {
+        var item = this._overviewItems[mode];
+        item.onselect = this.setMode.bind(this, mode);
+        topPaneSidebarTree.appendChild(item);
+    }
+    
+    this._overviewItems[this._currentMode].revealAndSelect(false);
 
     this._overviewContainer = this.element.createChild("div", "fill");
     this._overviewContainer.id = "timeline-overview-container";
@@ -134,39 +137,24 @@ WebInspector.TimelineOverviewPane.prototype = {
         this._update();
     },
 
-    _showEvents: function()
+    setMode: function(newMode)
     {
-        if (this._currentMode === WebInspector.TimelineOverviewPane.Mode.Events)
+        if (this._currentMode === newMode)
             return;
-        this._heapGraph.hide();
-        this._setFrameMode(false);
-        this._overviewGrid.itemsGraphsElement.removeStyleClass("hidden");
-        this._setMode(WebInspector.TimelineOverviewPane.Mode.Events);
-    },
 
-    _showFrames: function()
-    {
-        if (this._currentMode === WebInspector.TimelineOverviewPane.Mode.Frames)
-            return;
-        this._heapGraph.hide();
-        this._setFrameMode(true);
-        this._overviewGrid.itemsGraphsElement.removeStyleClass("hidden");
-        this._setMode(WebInspector.TimelineOverviewPane.Mode.Frames);
-    },
-
-    _showMemoryGraph: function()
-    {
-        if (this._currentMode === WebInspector.TimelineOverviewPane.Mode.Memory)
-            return;
-        this._setFrameMode(false);
-        this._overviewGrid.itemsGraphsElement.addStyleClass("hidden");
-        this._heapGraph.show();
-        this._setMode(WebInspector.TimelineOverviewPane.Mode.Memory);
-    },
-
-    _setMode: function(newMode)
-    {
         this._currentMode = newMode;
+        this._setFrameMode(this._currentMode === WebInspector.TimelineOverviewPane.Mode.Frames);
+        switch (this._currentMode) {
+            case WebInspector.TimelineOverviewPane.Mode.Events:
+            case WebInspector.TimelineOverviewPane.Mode.Frames:
+                this._heapGraph.hide();
+                this._overviewGrid.itemsGraphsElement.removeStyleClass("hidden");
+                break;
+            case WebInspector.TimelineOverviewPane.Mode.Memory:
+                this._overviewGrid.itemsGraphsElement.addStyleClass("hidden");
+                this._heapGraph.show();
+        }
+        this._overviewItems[this._currentMode].revealAndSelect(false);
         this.dispatchEventToListeners(WebInspector.TimelineOverviewPane.Events.ModeChanged, this._currentMode);
         this._update();
     },
@@ -196,6 +184,7 @@ WebInspector.TimelineOverviewPane.prototype = {
     {
         delete this._refreshTimeout;
 
+        this._updateWindow();
         this._overviewCalculator.setWindow(this._model.minimumRecordTime(), this._model.maximumRecordTime());
         this._overviewCalculator.setDisplayWindow(0, this._overviewContainer.clientWidth);
 
@@ -232,6 +221,7 @@ WebInspector.TimelineOverviewPane.prototype = {
     {
         this._overviewContainer.style.left = width + "px";
         this._topPaneSidebarElement.style.width = width + "px";
+        this._update();
     },
 
     /**
@@ -311,6 +301,8 @@ WebInspector.TimelineOverviewPane.prototype = {
 
     _onWindowChanged: function()
     {
+        if (this._ignoreWindowChangedEvent)
+            return;
         if (this._frameOverview) {
             var times = this._frameOverview.getWindowTimes(this.windowLeft(), this.windowRight());
             this._windowStartTime = times.startTime;
@@ -322,6 +314,28 @@ WebInspector.TimelineOverviewPane.prototype = {
             this._windowEndTime = absoluteMin + (absoluteMax - absoluteMin) * this.windowRight();
         }
         this.dispatchEventToListeners(WebInspector.TimelineOverviewPane.Events.WindowChanged);
+    },
+
+    /**
+     * @param {Number} left
+     * @param {Number} right
+     */
+    setWindowTimes: function(left, right)
+    {
+        this._windowStartTime = left;
+        this._windowEndTime = right;
+        this._updateWindow();
+    },
+
+    _updateWindow: function()
+    {
+        var offset = this._model.minimumRecordTime();
+        var timeSpan = this._model.maximumRecordTime() - offset;
+        var left = this._windowStartTime ? (this._windowStartTime - offset) / timeSpan : 0;
+        var right = this._windowEndTime < Infinity ? (this._windowEndTime - offset) / timeSpan : 1;
+        this._ignoreWindowChangedEvent = true;
+        this._overviewWindow._setWindow(left, right);
+        this._ignoreWindowChangedEvent = false;
     },
 
     /**
@@ -338,7 +352,7 @@ WebInspector.TimelineOverviewPane.prototype = {
             return;
         if (!this.isShowing())
             return;
-        this._refreshTimeout = setTimeout(this._update.bind(this), 100);
+        this._refreshTimeout = setTimeout(this._update.bind(this), 300);
     }
 }
 
@@ -509,6 +523,16 @@ WebInspector.TimelineOverviewWindow.prototype = {
         this._setWindowPosition(0, this._parentElement.clientWidth);
     },
 
+    /**
+     * @param {number} left
+     * @param {number} right
+     */
+    _setWindow: function(left, right)
+    {
+        var clientWidth = this._parentElement.clientWidth;
+        this._setWindowPosition(left * clientWidth, right * clientWidth);
+    },
+
     _setWindowPosition: function(start, end)
     {
         var clientWidth = this._parentElement.clientWidth;
@@ -559,10 +583,12 @@ WebInspector.TimelineOverviewWindow.prototype = {
         var left = this._leftResizeElement.offsetLeft + WebInspector.TimelineOverviewPane.ResizerOffset;
         var right = this._rightResizeElement.offsetLeft + WebInspector.TimelineOverviewPane.ResizerOffset;
 
-        if (factor < 1 && factor * (right - left) < WebInspector.TimelineOverviewPane.MinSelectableSize)
+        var delta = factor * (right - left);
+        if (factor < 1 && delta < WebInspector.TimelineOverviewPane.MinSelectableSize)
             return;
-        left = Math.max(0, referencePoint + (left - referencePoint) * factor);
-        right = Math.min(this._parentElement.clientWidth, referencePoint + (right - referencePoint) * factor);
+        var max = this._parentElement.clientWidth;
+        left = Math.max(0, Math.min(max - delta, referencePoint + (left - referencePoint) * factor));
+        right = Math.min(max, left + delta);
         this._setWindowPosition(left, right);
     }
 }

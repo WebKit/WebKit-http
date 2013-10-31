@@ -142,7 +142,7 @@ public:
     bool hasAttribute(const String& name) const;
     bool hasAttributeNS(const String& namespaceURI, const String& localName) const;
 
-    const AtomicString& getAttribute(const String& name) const;
+    const AtomicString& getAttribute(const AtomicString& name) const;
     const AtomicString& getAttributeNS(const String& namespaceURI, const String& localName) const;
 
     void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
@@ -165,7 +165,7 @@ public:
     Attribute* attributeItem(unsigned index) const;
     Attribute* getAttributeItem(const QualifiedName&) const;
     size_t getAttributeItemIndex(const QualifiedName& name) const { return attributeData()->getAttributeItemIndex(name); }
-    size_t getAttributeItemIndex(const String& name, bool shouldIgnoreAttributeCase) const { return attributeData()->getAttributeItemIndex(name, shouldIgnoreAttributeCase); }
+    size_t getAttributeItemIndex(const AtomicString& name, bool shouldIgnoreAttributeCase) const { return attributeData()->getAttributeItemIndex(name, shouldIgnoreAttributeCase); }
 
     void scrollIntoView(bool alignToTop = true);
     void scrollIntoViewIfNeeded(bool centerIfNeeded = true);
@@ -312,6 +312,8 @@ public:
     void didModifyAttribute(const Attribute&);
     void didRemoveAttribute(const QualifiedName&);
 
+    void removeCachedHTMLCollection(HTMLCollection*, CollectionType);
+
     LayoutSize minimumSizeForResizing() const;
     void setMinimumSizeForResizing(const LayoutSize&);
 
@@ -421,6 +423,14 @@ public:
     IntSize savedLayerScrollOffset() const;
     void setSavedLayerScrollOffset(const IntSize&);
 
+    virtual void reportMemoryUsage(MemoryObjectInfo* memoryObjectInfo) const
+    {
+        memoryObjectInfo->reportObjectInfo(this, MemoryInstrumentation::DOM);
+        ContainerNode::reportMemoryUsage(memoryObjectInfo);
+        memoryObjectInfo->reportInstrumentedObject(m_tagName);
+        memoryObjectInfo->reportInstrumentedPointer(m_attributeData.get());
+    }
+
 protected:
     Element(const QualifiedName& tagName, Document* document, ConstructionType type)
         : ContainerNode(document, type)
@@ -439,7 +449,8 @@ protected:
     virtual bool shouldRegisterAsNamedItem() const { return false; }
     virtual bool shouldRegisterAsExtraNamedItem() const { return false; }
 
-    HTMLCollection* ensureCachedHTMLCollection(CollectionType);
+    PassRefPtr<HTMLCollection> ensureCachedHTMLCollection(CollectionType);
+    HTMLCollection* cachedHTMLCollection(CollectionType);
 
 private:
     void updateInvalidAttributes() const;
@@ -481,9 +492,6 @@ private:
     QualifiedName m_tagName;
     virtual OwnPtr<NodeRareData> createRareData();
 
-    ElementRareData* rareData() const;
-    ElementRareData* ensureRareData();
-
     SpellcheckAttributeState spellcheckAttributeState() const;
 
     void updateNamedItemRegistration(const AtomicString& oldName, const AtomicString& newName);
@@ -492,6 +500,9 @@ private:
     void unregisterNamedFlowContentNode();
 
 private:
+    ElementRareData* elementRareData() const;
+    ElementRareData* ensureElementRareData();
+
     mutable OwnPtr<ElementAttributeData> m_attributeData;
 };
     

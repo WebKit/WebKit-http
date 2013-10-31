@@ -32,12 +32,12 @@ import unittest
 from webkitpy.common.system import outputcapture
 from webkitpy.common.system.executive_mock import MockExecutive
 from webkitpy.common.system.filesystem_mock import MockFileSystem
+from webkitpy.layout_tests.port import chromium_port_testcase
 from webkitpy.layout_tests.port import chromium_win
-from webkitpy.layout_tests.port import port_testcase
 from webkitpy.tool.mocktool import MockOptions
 
 
-class ChromiumWinTest(port_testcase.PortTestCase):
+class ChromiumWinTest(chromium_port_testcase.ChromiumPortTestCase):
     port_name = 'chromium-win'
     port_maker = chromium_win.ChromiumWinPort
     os_name = 'win'
@@ -74,34 +74,25 @@ class ChromiumWinTest(port_testcase.PortTestCase):
 
     def test_versions(self):
         port = self.make_port()
-        self.assertTrue(port.name() in ('chromium-win-xp', 'chromium-win-vista', 'chromium-win-win7'))
+        self.assertTrue(port.name() in ('chromium-win-xp', 'chromium-win-win7'))
 
         self.assert_name(None, 'xp', 'chromium-win-xp')
         self.assert_name('chromium-win', 'xp', 'chromium-win-xp')
         self.assert_name('chromium-win-xp', 'xp', 'chromium-win-xp')
-        self.assert_name('chromium-win-xp', 'vista', 'chromium-win-xp')
         self.assert_name('chromium-win-xp', '7sp0', 'chromium-win-xp')
 
-        self.assert_name(None, 'vista', 'chromium-win-vista')
-        self.assert_name('chromium-win', 'vista', 'chromium-win-vista')
-        self.assert_name('chromium-win-vista', 'xp', 'chromium-win-vista')
-        self.assert_name('chromium-win-vista', 'vista', 'chromium-win-vista')
-        self.assert_name('chromium-win-vista', '7sp0', 'chromium-win-vista')
-
         self.assert_name(None, '7sp0', 'chromium-win-win7')
+        self.assert_name(None, 'vista', 'chromium-win-win7')
         self.assert_name('chromium-win', '7sp0', 'chromium-win-win7')
         self.assert_name('chromium-win-win7', 'xp', 'chromium-win-win7')
-        self.assert_name('chromium-win-win7', 'vista', 'chromium-win-win7')
         self.assert_name('chromium-win-win7', '7sp0', 'chromium-win-win7')
+        self.assert_name('chromium-win-win7', 'vista', 'chromium-win-win7')
 
         self.assertRaises(AssertionError, self.assert_name, None, 'w2k', 'chromium-win-xp')
 
     def test_baseline_path(self):
         port = self.make_port(port_name='chromium-win-xp')
         self.assertEquals(port.baseline_path(), port._webkit_baseline_path('chromium-win-xp'))
-
-        port = self.make_port(port_name='chromium-win-vista')
-        self.assertEquals(port.baseline_path(), port._webkit_baseline_path('chromium-win-vista'))
 
         port = self.make_port(port_name='chromium-win-win7')
         self.assertEquals(port.baseline_path(), port._webkit_baseline_path('chromium-win'))

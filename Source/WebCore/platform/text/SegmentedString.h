@@ -22,6 +22,7 @@
 
 #include "PlatformString.h"
 #include <wtf/Deque.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/TextPosition.h>
 
 namespace WebCore {
@@ -54,15 +55,12 @@ public:
 
     int numberOfCharactersConsumed() const { return m_string.length() - m_length; }
 
-    void appendTo(String& str) const
+    void appendTo(StringBuilder& builder) const
     {
-        if (m_string.characters() == m_current) {
-            if (str.isEmpty())
-                str = m_string;
-            else
-                str.append(m_string);
-        } else
-            str.append(String(m_current, m_length));
+        if (m_string.characters() == m_current)
+            builder.append(m_string);
+        else
+            builder.append(String(m_current, m_length));
     }
 
 public:
@@ -159,12 +157,11 @@ public:
         advance();
     }
 
-    void advancePastNewline(int& lineNumber)
+    void advancePastNewlineAndUpdateLineNumber()
     {
         ASSERT(*current() == '\n');
         if (!m_pushedChar1 && m_currentString.m_length > 1) {
             int newLineFlag = m_currentString.doNotExcludeLineNumbers();
-            lineNumber += newLineFlag;
             m_currentLine += newLineFlag;
             if (newLineFlag)
                 m_numberOfCharactersConsumedPriorToCurrentLine = numberOfCharactersConsumed() + 1;
@@ -172,7 +169,7 @@ public:
             m_currentChar = ++m_currentString.m_current;
             return;
         }
-        advanceSlowCase(lineNumber);
+        advanceAndUpdateLineNumberSlowCase();
     }
     
     void advancePastNonNewline()
@@ -186,11 +183,10 @@ public:
         advanceSlowCase();
     }
     
-    void advance(int& lineNumber)
+    void advanceAndUpdateLineNumber()
     {
         if (!m_pushedChar1 && m_currentString.m_length > 1) {
             int newLineFlag = (*m_currentString.m_current == '\n') & m_currentString.doNotExcludeLineNumbers();
-            lineNumber += newLineFlag;
             m_currentLine += newLineFlag;
             if (newLineFlag)
                 m_numberOfCharactersConsumedPriorToCurrentLine = numberOfCharactersConsumed() + 1;
@@ -198,7 +194,7 @@ public:
             m_currentChar = ++m_currentString.m_current;
             return;
         }
-        advanceSlowCase(lineNumber);
+        advanceAndUpdateLineNumberSlowCase();
     }
 
     // Writes the consumed characters into consumedCharacters, which must
@@ -236,7 +232,7 @@ private:
     void prepend(const SegmentedSubstring&);
 
     void advanceSlowCase();
-    void advanceSlowCase(int& lineNumber);
+    void advanceAndUpdateLineNumberSlowCase();
     void advanceSubstring();
     const UChar* current() const { return m_currentChar; }
 

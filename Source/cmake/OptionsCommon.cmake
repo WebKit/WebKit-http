@@ -32,3 +32,4 @@ ELSE()
 ENDIF()
 
 SET(LIB_INSTALL_DIR "lib${LIB_SUFFIX}" CACHE PATH "Where to install libraries (lib${LIB_SUFFIX})")
+SET(EXEC_INSTALL_DIR "bin" CACHE PATH "Where to install executables")

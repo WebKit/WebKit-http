@@ -42,6 +42,7 @@
 
 namespace WebCore {
 
+class InjectedScriptModule;
 class Node;
 class SerializedScriptValue;
 
@@ -85,7 +86,7 @@ public:
     PassRefPtr<TypeBuilder::Array<TypeBuilder::Debugger::CallFrame> > wrapCallFrames(const ScriptValue&);
 #endif
 
-    PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapObject(ScriptValue, const String& groupName) const;
+    PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapObject(const ScriptValue&, const String& groupName) const;
     PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapNode(Node*, const String& groupName);
     PassRefPtr<TypeBuilder::Runtime::RemoteObject> wrapSerializedObject(SerializedScriptValue*, const String& groupName) const;
     ScriptValue findObjectById(const String& objectId) const;
@@ -94,6 +95,7 @@ public:
     void releaseObjectGroup(const String&);
 
 private:
+    friend class InjectedScriptModule;
     friend InjectedScript InjectedScriptManager::injectedScriptFor(ScriptState*);
     InjectedScript(ScriptObject, InspectedStateAccessCheck);
 

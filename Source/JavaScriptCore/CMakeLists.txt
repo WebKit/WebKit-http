@@ -36,6 +36,8 @@ SET(JavaScriptCore_SOURCES
     API/JSValueRef.cpp
     API/JSWeakObjectMapRefPrivate.cpp
     API/OpaqueJSString.cpp
+    
+    assembler/LinkBuffer.cpp
 
     bytecode/CallLinkInfo.cpp
     bytecode/CallLinkStatus.cpp
@@ -52,6 +54,7 @@ SET(JavaScriptCore_SOURCES
     bytecode/PolymorphicPutByIdList.cpp
     bytecode/SpeculatedType.cpp
     bytecode/PutByIdStatus.cpp
+    bytecode/ResolveGlobalStatus.cpp
     bytecode/SamplingTool.cpp
     bytecode/StructureStubInfo.cpp
     bytecode/Watchpoint.cpp
@@ -69,11 +72,13 @@ SET(JavaScriptCore_SOURCES
     dfg/DFGConstantFoldingPhase.cpp
     dfg/DFGCorrectableJumpPoint.cpp
     dfg/DFGCSEPhase.cpp
+    dfg/DFGDisassembler.cpp
     dfg/DFGDominators.cpp
     dfg/DFGDriver.cpp
     dfg/DFGFixupPhase.cpp
     dfg/DFGGraph.cpp
     dfg/DFGJITCompiler.cpp
+    dfg/DFGMinifiedNode.cpp
     dfg/DFGNodeFlags.cpp
     dfg/DFGOSREntry.cpp
     dfg/DFGOSRExit.cpp
@@ -89,6 +94,9 @@ SET(JavaScriptCore_SOURCES
     dfg/DFGSpeculativeJIT32_64.cpp
     dfg/DFGSpeculativeJIT64.cpp
     dfg/DFGThunks.cpp
+    dfg/DFGValueSource.cpp
+    dfg/DFGVariableEvent.cpp
+    dfg/DFGVariableEventStream.cpp
     dfg/DFGValidate.cpp
     dfg/DFGVirtualRegisterAllocationPhase.cpp
 

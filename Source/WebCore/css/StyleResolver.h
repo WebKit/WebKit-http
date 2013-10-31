@@ -23,6 +23,7 @@
 #define StyleResolver_h
 
 #include "CSSRule.h"
+#include "CSSToStyleMap.h"
 #include "CSSValueList.h"
 #include "LinkHash.h"
 #include "MediaQueryExp.h"
@@ -86,6 +87,7 @@ class StyleSheetList;
 class StyledElement;
 class WebKitCSSFilterValue;
 class WebKitCSSShaderValue;
+class WebKitCSSSVGDocumentValue;
 
 #if ENABLE(CSS_SHADERS)
 typedef Vector<RefPtr<CustomFilterParameter> > CustomFilterParameterList;
@@ -261,7 +263,12 @@ public:
     PassRefPtr<CustomFilterOperation> createCustomFilterOperation(WebKitCSSFilterValue*);
     void loadPendingShaders();
 #endif
+#if ENABLE(SVG)
+    void loadPendingSVGDocuments();
+#endif
 #endif // ENABLE(CSS_FILTERS)
+
+    void loadPendingResources();
 
     struct RuleFeature {
         RuleFeature(StyleRule* rule, CSSSelector* selector, bool hasDocumentSecurityOrigin)
@@ -411,6 +418,8 @@ public:
     static Length convertToIntLength(CSSPrimitiveValue*, RenderStyle*, RenderStyle* rootStyle, double multiplier = 1);
     static Length convertToFloatLength(CSSPrimitiveValue*, RenderStyle*, RenderStyle* rootStyle, double multiplier = 1);
 
+    CSSToStyleMap* styleMap() { return &m_styleMap; }
+    
 private:
     static RenderStyle* s_styleNotYetAvailable;
 
@@ -419,32 +428,6 @@ private:
 
     void cacheBorderAndBackground();
 
-    void mapFillAttachment(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillClip(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillComposite(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillOrigin(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillImage(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillRepeatX(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillRepeatY(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillSize(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillXPosition(CSSPropertyID, FillLayer*, CSSValue*);
-    void mapFillYPosition(CSSPropertyID, FillLayer*, CSSValue*);
-
-    void mapAnimationDelay(Animation*, CSSValue*);
-    void mapAnimationDirection(Animation*, CSSValue*);
-    void mapAnimationDuration(Animation*, CSSValue*);
-    void mapAnimationFillMode(Animation*, CSSValue*);
-    void mapAnimationIterationCount(Animation*, CSSValue*);
-    void mapAnimationName(Animation*, CSSValue*);
-    void mapAnimationPlayState(Animation*, CSSValue*);
-    void mapAnimationProperty(Animation*, CSSValue*);
-    void mapAnimationTimingFunction(Animation*, CSSValue*);
-
-public:
-    void mapNinePieceImage(CSSPropertyID, CSSValue*, NinePieceImage&);
-    void mapNinePieceImageSlice(CSSValue*, NinePieceImage&);
-    LengthBox mapNinePieceImageQuad(CSSValue*);
-    void mapNinePieceImageRepeat(CSSValue*, NinePieceImage&);
 private:
     bool canShareStyleWithControl(StyledElement*) const;
 
@@ -518,6 +501,10 @@ private:
     bool m_hasPendingShaders;
 #endif
 
+#if ENABLE(CSS_FILTERS) && ENABLE(SVG)
+    HashMap<FilterOperation*, WebKitCSSSVGDocumentValue*> m_pendingSVGDocuments;
+#endif
+
 #if ENABLE(STYLE_SCOPED)
     const ContainerNode* determineScope(const CSSStyleSheet*);
 
@@ -531,9 +518,10 @@ private:
     ScopedRuleSetMap m_scopedAuthorStyles;
     
     struct ScopeStackFrame {
-        ScopeStackFrame() : m_scope(0), m_ruleSet(0) { }
-        ScopeStackFrame(const ContainerNode* scope, RuleSet* ruleSet) : m_scope(scope), m_ruleSet(ruleSet) { }
+        ScopeStackFrame() : m_scope(0), m_authorStyleBoundsIndex(0), m_ruleSet(0) { }
+        ScopeStackFrame(const ContainerNode* scope, int authorStyleBoundsIndex, RuleSet* ruleSet) : m_scope(scope), m_authorStyleBoundsIndex(authorStyleBoundsIndex), m_ruleSet(ruleSet) { }
         const ContainerNode* m_scope;
+        int m_authorStyleBoundsIndex;
         RuleSet* m_ruleSet;
     };
     // Vector (used as stack) that keeps track of scoping elements (i.e., elements with a <style scoped> child)
@@ -542,7 +530,10 @@ private:
     // Element last seen as parent element when updating m_scopingElementStack.
     // This is used to decide whether m_scopingElementStack is consistent, separately from SelectorChecker::m_parentStack.
     const ContainerNode* m_scopeStackParent;
+    int m_scopeStackParentBoundsIndex;
 #endif
+
+    CSSToStyleMap m_styleMap;
 
     friend class StyleBuilder;
     friend bool operator==(const MatchedProperties&, const MatchedProperties&);

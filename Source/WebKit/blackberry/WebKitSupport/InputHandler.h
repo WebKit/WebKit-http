@@ -57,7 +57,8 @@ public:
     enum FocusElementType { TextEdit, TextPopup /* Date/Time & Color */, SelectPopup, Plugin };
     enum CaretScrollType { CenterAlways, CenterIfNeeded, EdgeIfNeeded };
 
-    void enableInputMode(bool inputModeAllowed = true);
+    bool isInputModeEnabled() const;
+    void setInputModeEnabled(bool active = true);
 
     void focusedNodeChanged();
     void nodeTextChanged(const WebCore::Node*);
@@ -119,6 +120,8 @@ public:
     int32_t finishComposition();
     int32_t setComposingText(spannable_string_t*, int32_t relativeCursorPosition);
     int32_t commitText(spannable_string_t*, int32_t relativeCursorPosition);
+
+    void spellCheckingRequestProcessed(int32_t id, spannable_string_t*);
 
 private:
     enum PendingKeyboardStateChange { NoChange, Visible, NotVisible };

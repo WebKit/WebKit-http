@@ -47,6 +47,7 @@ SOURCES += \
     API/OpaqueJSString.cpp \
     assembler/ARMAssembler.cpp \
     assembler/ARMv7Assembler.cpp \
+    assembler/LinkBuffer.cpp \
     assembler/MacroAssemblerARM.cpp \
     assembler/MacroAssemblerSH4.cpp \
     bytecode/CallLinkInfo.cpp \
@@ -63,6 +64,7 @@ SOURCES += \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
     bytecode/PutByIdStatus.cpp \
+    bytecode/ResolveGlobalStatus.cpp \
     bytecode/SamplingTool.cpp \
     bytecode/SpeculatedType.cpp \
     bytecode/StructureStubInfo.cpp \
@@ -101,11 +103,13 @@ SOURCES += \
     dfg/DFGConstantFoldingPhase.cpp \
     dfg/DFGCorrectableJumpPoint.cpp \
     dfg/DFGCSEPhase.cpp \
+    dfg/DFGDisassembler.cpp \
     dfg/DFGDominators.cpp \
     dfg/DFGDriver.cpp \
     dfg/DFGFixupPhase.cpp \
     dfg/DFGGraph.cpp \
     dfg/DFGJITCompiler.cpp \
+    dfg/DFGMinifiedNode.cpp \
     dfg/DFGNodeFlags.cpp \
     dfg/DFGOperations.cpp \
     dfg/DFGOSREntry.cpp \
@@ -121,6 +125,9 @@ SOURCES += \
     dfg/DFGSpeculativeJIT32_64.cpp \
     dfg/DFGSpeculativeJIT64.cpp \
     dfg/DFGThunks.cpp \
+    dfg/DFGValueSource.cpp \
+    dfg/DFGVariableEvent.cpp \
+    dfg/DFGVariableEventStream.cpp \
     dfg/DFGValidate.cpp \
     dfg/DFGVirtualRegisterAllocationPhase.cpp \
     interpreter/AbstractPC.cpp \
@@ -245,6 +252,8 @@ SOURCES += \
     tools/CodeProfiling.cpp \
     yarr/YarrJIT.cpp \
 
+HEADERS += $$files(*.h, true)
+
 *sh4* {
     QMAKE_CXXFLAGS += -mieee -w
     QMAKE_CFLAGS   += -mieee -w
@@ -255,16 +264,5 @@ lessThan(QT_GCC_MAJOR_VERSION, 5) {
     lessThan(QT_GCC_MINOR_VERSION, 6) {
         # Disable C++0x mode in JSC for those who enabled it in their Qt's mkspec.
         *-g++*:QMAKE_CXXFLAGS -= -std=c++0x -std=gnu++0x
-    }
-
-    # GCC 4.6 and after.
-    greaterThan(QT_GCC_MINOR_VERSION, 5) {
-        if (!contains(QMAKE_CXXFLAGS, -std=c++0x) && !contains(QMAKE_CXXFLAGS, -std=gnu++0x)) {
-            # We need to deactivate those warnings because some names conflicts with upcoming c++0x types (e.g.nullptr).
-            QMAKE_CFLAGS_WARN_ON += -Wno-c++0x-compat
-            QMAKE_CXXFLAGS_WARN_ON += -Wno-c++0x-compat
-            QMAKE_CFLAGS += -Wno-c++0x-compat
-            QMAKE_CXXFLAGS += -Wno-c++0x-compat
-        }
     }
 }

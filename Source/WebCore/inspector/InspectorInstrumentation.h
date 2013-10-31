@@ -165,7 +165,7 @@ public:
     static void continueAfterPingLoader(Frame*, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse&);
     static void markResourceAsCached(Page*, unsigned long identifier);
     static void didLoadResourceFromMemoryCache(Page*, DocumentLoader*, CachedResource*);
-    static InspectorInstrumentationCookie willReceiveResourceData(Frame*, unsigned long identifier);
+    static InspectorInstrumentationCookie willReceiveResourceData(Frame*, unsigned long identifier, int length);
     static void didReceiveResourceData(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willReceiveResourceResponse(Frame*, unsigned long identifier, const ResourceResponse&);
     static void didReceiveResourceResponse(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&);
@@ -252,6 +252,8 @@ public:
     static bool hasFrontends() { return s_frontendCounter; }
     static bool hasFrontendForScriptContext(ScriptExecutionContext*);
     static bool collectingHTMLParseErrors(Page*);
+    static InspectorTimelineAgent* timelineAgentForOrphanEvents();
+    static void setTimelineAgentForOrphanEvents(InspectorTimelineAgent*);
 #else
     static bool hasFrontends() { return false; }
     static bool hasFrontendForScriptContext(ScriptExecutionContext*) { return false; }
@@ -260,6 +262,8 @@ public:
 
 private:
 #if ENABLE(INSPECTOR)
+    static WTF::ThreadSpecific<InspectorTimelineAgent*>& threadSpecificTimelineAgentForOrphanEvents();
+
     static void didClearWindowObjectInWorldImpl(InstrumentingAgents*, Frame*, DOMWrapperWorld*);
     static bool isDebuggerPausedImpl(InstrumentingAgents*);
 
@@ -330,7 +334,7 @@ private:
     static void continueAfterPingLoaderImpl(InstrumentingAgents*, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse&);
     static void markResourceAsCachedImpl(InstrumentingAgents*, unsigned long identifier);
     static void didLoadResourceFromMemoryCacheImpl(InstrumentingAgents*, DocumentLoader*, CachedResource*);
-    static InspectorInstrumentationCookie willReceiveResourceDataImpl(InstrumentingAgents*, unsigned long identifier, Frame*);
+    static InspectorInstrumentationCookie willReceiveResourceDataImpl(InstrumentingAgents*, unsigned long identifier, Frame*, int length);
     static void didReceiveResourceDataImpl(const InspectorInstrumentationCookie&);
     static InspectorInstrumentationCookie willReceiveResourceResponseImpl(InstrumentingAgents*, unsigned long identifier, const ResourceResponse&, Frame*);
     static void didReceiveResourceResponseImpl(const InspectorInstrumentationCookie&, unsigned long identifier, DocumentLoader*, const ResourceResponse&);
@@ -1014,12 +1018,12 @@ inline void InspectorInstrumentation::didLoadResourceFromMemoryCache(Page* page,
 #endif
 }
 
-inline InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceData(Frame* frame, unsigned long identifier)
+inline InspectorInstrumentationCookie InspectorInstrumentation::willReceiveResourceData(Frame* frame, unsigned long identifier, int length)
 {
 #if ENABLE(INSPECTOR)
     FAST_RETURN_IF_NO_FRONTENDS(InspectorInstrumentationCookie());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
-        return willReceiveResourceDataImpl(instrumentingAgents, identifier, frame);
+        return willReceiveResourceDataImpl(instrumentingAgents, identifier, frame, length);
 #endif
     return InspectorInstrumentationCookie();
 }

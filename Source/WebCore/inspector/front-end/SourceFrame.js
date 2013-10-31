@@ -43,8 +43,8 @@ WebInspector.SourceFrame = function(contentProvider)
 
     this._textModel = new WebInspector.TextEditorModel();
 
-    var textViewerDelegate = new WebInspector.TextViewerDelegateForSourceFrame(this);
-    this._textViewer = new WebInspector.TextViewer(this._textModel, WebInspector.platform(), this._url, textViewerDelegate);
+    var textEditorDelegate = new WebInspector.TextEditorDelegateForSourceFrame(this);
+    this._textEditor = new WebInspector.TextEditor(this._textModel, this._url, textEditorDelegate);
 
     this._currentSearchResultIndex = -1;
     this._searchResults = [];
@@ -53,7 +53,7 @@ WebInspector.SourceFrame = function(contentProvider)
     this._rowMessages = {};
     this._messageBubbles = {};
 
-    this._textViewer.setReadOnly(!this.canEditSource());
+    this._textEditor.setReadOnly(!this.canEditSource());
 }
 
 WebInspector.SourceFrame.createSearchRegex = function(query)
@@ -75,18 +75,24 @@ WebInspector.SourceFrame.createSearchRegex = function(query)
     return regex;
 }
 
+WebInspector.SourceFrame.Events = {
+    ScrollChanged: "ScrollChanged",
+    SelectionChanged: "SelectionChanged"
+}
+
 WebInspector.SourceFrame.prototype = {
     wasShown: function()
     {
         this._ensureContentLoaded();
-        this._textViewer.show(this.element);
+        this._textEditor.show(this.element);
+        this._wasShownOrLoaded();
     },
 
     willHide: function()
     {
         WebInspector.View.prototype.willHide.call(this);
         if (this.loaded)
-            this._textViewer.freeCachedElements();
+            this._textEditor.freeCachedElements();
 
         this._clearLineHighlight();
         this._clearLineToReveal();
@@ -94,7 +100,7 @@ WebInspector.SourceFrame.prototype = {
 
     defaultFocusedElement: function()
     {
-        return this._textViewer.defaultFocusedElement();
+        return this._textEditor.defaultFocusedElement();
     },
 
     get loaded()
@@ -107,9 +113,9 @@ WebInspector.SourceFrame.prototype = {
         return true;
     },
 
-    get textViewer()
+    get textEditor()
     {
-        return this._textViewer;
+        return this._textEditor;
     },
 
     _ensureContentLoaded: function()
@@ -138,7 +144,7 @@ WebInspector.SourceFrame.prototype = {
         this._rowMessages = {};
         this._messageBubbles = {};
 
-        this._textViewer.doResize();
+        this._textEditor.doResize();
     },
 
     get textModel()
@@ -146,40 +152,117 @@ WebInspector.SourceFrame.prototype = {
         return this._textModel;
     },
 
+    /**
+     * @param {number} line
+     */
     canHighlightLine: function(line)
     {
         return true;
     },
 
+    /**
+     * @param {number} line
+     */
     highlightLine: function(line)
     {
         this._clearLineToReveal();
-        if (this.loaded)
-            this._textViewer.highlightLine(line);
-        else
-            this._lineToHighlight = line;
+        this._clearLineToScrollTo();
+        this._lineToHighlight = line;
+        this._innerHighlightLineIfNeeded();
+        this._textEditor.setSelection(WebInspector.TextRange.createFromLocation(line, 0));
+    },
+
+    _innerHighlightLineIfNeeded: function()
+    {
+        if (typeof this._lineToHighlight === "number") {
+            if (this.loaded && this._textEditor.isShowing()) {
+                this._textEditor.highlightLine(this._lineToHighlight);
+                delete this._lineToHighlight
+            }
+        }
     },
 
     _clearLineHighlight: function()
     {
-        if (this.loaded)
-            this._textViewer.clearLineHighlight();
-        else
-            delete this._lineToHighlight;
+        this._textEditor.clearLineHighlight();
+        delete this._lineToHighlight;
     },
 
+    /**
+     * @param {number} line
+     */
     revealLine: function(line)
     {
         this._clearLineHighlight();
-        if (this.loaded)
-            this._textViewer.revealLine(line);
-        else
-            this._lineToReveal = line;
+        this._clearLineToScrollTo();
+        this._lineToReveal = line;
+        this._innerRevealLineIfNeeded();
+    },
+
+    _innerRevealLineIfNeeded: function()
+    {
+        if (typeof this._lineToReveal === "number") {
+            if (this.loaded && this._textEditor.isShowing()) {
+                this._textEditor.revealLine(this._lineToReveal);
+                delete this._lineToReveal
+            }
+        }
     },
 
     _clearLineToReveal: function()
     {
         delete this._lineToReveal;
+    },
+
+    /**
+     * @param {number} line
+     */
+    scrollToLine: function(line)
+    {
+        this._clearLineHighlight();
+        this._clearLineToReveal();
+        this._lineToScrollTo = line;
+        this._innerScrollToLineIfNeeded();
+    },
+
+    _innerScrollToLineIfNeeded: function()
+    {
+        if (typeof this._lineToScrollTo === "number") {
+            if (this.loaded && this._textEditor.isShowing()) {
+                this._textEditor.scrollToLine(this._lineToScrollTo);
+                delete this._lineToScrollTo
+            }
+        }
+    },
+
+    _clearLineToScrollTo: function()
+    {
+        delete this._lineToScrollTo;
+    },
+
+    /**
+     * @param {WebInspector.TextRange} textRange
+     */
+    setSelection: function(textRange)
+    {
+        this._selectionToSet = textRange;
+        this._innerSetSelectionIfNeeded();
+    },
+
+    _innerSetSelectionIfNeeded: function()
+    {
+        if (this._selectionToSet && this.loaded && this._textEditor.isShowing()) {
+            this._textEditor.setSelection(this._selectionToSet);
+            delete this._selectionToSet;
+        }
+    },
+
+    _wasShownOrLoaded: function()
+    {
+        this._innerHighlightLineIfNeeded();
+        this._innerRevealLineIfNeeded();
+        this._innerScrollToLineIfNeeded();
+        this._innerSetSelectionIfNeeded();
     },
 
     beforeTextChanged: function()
@@ -199,49 +282,41 @@ WebInspector.SourceFrame.prototype = {
      */
     setContent: function(content, contentEncoded, mimeType)
     {
-        this._textViewer.mimeType = mimeType;
+        this._textEditor.mimeType = mimeType;
 
         this._loaded = true;
         this._textModel.setText(content || "");
 
-        this._textViewer.beginUpdates();
+        this._textEditor.beginUpdates();
 
-        this._setTextViewerDecorations();
+        this._setTextEditorDecorations();
 
-        if (typeof this._lineToHighlight === "number") {
-            this.highlightLine(this._lineToHighlight);
-            delete this._lineToHighlight;
-        }
-
-        if (typeof this._lineToReveal === "number") {
-            this.revealLine(this._lineToReveal);
-            delete this._lineToReveal;
-        }
+        this._wasShownOrLoaded();
 
         if (this._delayedFindSearchMatches) {
             this._delayedFindSearchMatches();
             delete this._delayedFindSearchMatches;
         }
 
-        this.onTextViewerContentLoaded();
+        this.onTextEditorContentLoaded();
 
-        this._textViewer.endUpdates();
+        this._textEditor.endUpdates();
     },
 
-    onTextViewerContentLoaded: function() {},
+    onTextEditorContentLoaded: function() {},
 
-    _setTextViewerDecorations: function()
+    _setTextEditorDecorations: function()
     {
         this._rowMessages = {};
         this._messageBubbles = {};
 
-        this._textViewer.beginUpdates();
+        this._textEditor.beginUpdates();
 
         this._addExistingMessagesToSource();
 
-        this._textViewer.doResize();
+        this._textEditor.doResize();
 
-        this._textViewer.endUpdates();
+        this._textEditor.endUpdates();
     },
 
     performSearch: function(query, callback)
@@ -256,6 +331,13 @@ WebInspector.SourceFrame.prototype = {
 
             var regex = WebInspector.SourceFrame.createSearchRegex(query);
             this._searchResults = this._collectRegexMatches(regex);
+            var selection = this._textEditor.lastSelection();
+            for (var i = 0; selection && i < this._searchResults.length; ++i) {
+                if (this._searchResults[i].compareTo(selection) > 0) {
+                    this._currentSearchResultIndex = i - 1;
+                    break;
+                }
+            }
 
             callback(this, this._searchResults.length);
         }
@@ -276,7 +358,7 @@ WebInspector.SourceFrame.prototype = {
 
         this._currentSearchResultIndex = -1;
         this._searchResults = [];
-        this._textViewer.markAndRevealRange(null);
+        this._textEditor.markAndRevealRange(null);
     },
 
     hasSearchResults: function()
@@ -324,7 +406,7 @@ WebInspector.SourceFrame.prototype = {
         if (!this.loaded || !this._searchResults.length)
             return;
         this._currentSearchResultIndex = (index + this._searchResults.length) % this._searchResults.length;
-        this._textViewer.markAndRevealRange(this._searchResults[this._currentSearchResultIndex]);
+        this._textEditor.markAndRevealRange(this._searchResults[this._currentSearchResultIndex]);
     },
 
     _collectRegexMatches: function(regexObject)
@@ -365,7 +447,7 @@ WebInspector.SourceFrame.prototype = {
             messageBubbleElement = document.createElement("div");
             messageBubbleElement.className = "webkit-html-message-bubble";
             this._messageBubbles[lineNumber] = messageBubbleElement;
-            this._textViewer.addDecoration(lineNumber, messageBubbleElement);
+            this._textEditor.addDecoration(lineNumber, messageBubbleElement);
         }
 
         var rowMessages = this._rowMessages[lineNumber];
@@ -447,7 +529,7 @@ WebInspector.SourceFrame.prototype = {
             if (!rowMessages.length)
                 delete this._rowMessages[lineNumber];
             if (!messageBubbleElement.childElementCount) {
-                this._textViewer.removeDecoration(lineNumber, messageBubbleElement);
+                this._textEditor.removeDecoration(lineNumber, messageBubbleElement);
                 delete this._messageBubbles[lineNumber];
             }
             break;
@@ -464,7 +546,7 @@ WebInspector.SourceFrame.prototype = {
 
     inheritScrollPositions: function(sourceFrame)
     {
-        this._textViewer.inheritScrollPositions(sourceFrame._textViewer);
+        this._textEditor.inheritScrollPositions(sourceFrame._textEditor);
     },
 
     /**
@@ -480,6 +562,22 @@ WebInspector.SourceFrame.prototype = {
      */
     commitEditing: function(text)
     {
+    },
+
+    /**
+     * @param {WebInspector.TextRange} textRange
+     */
+    selectionChanged: function(textRange)
+    {
+        this.dispatchEventToListeners(WebInspector.SourceFrame.Events.SelectionChanged, textRange);
+    },
+
+    /**
+     * @param {number} lineNumber
+     */
+    scrollChanged: function(lineNumber)
+    {
+        this.dispatchEventToListeners(WebInspector.SourceFrame.Events.ScrollChanged, lineNumber);
     }
 }
 
@@ -487,15 +585,15 @@ WebInspector.SourceFrame.prototype.__proto__ = WebInspector.View.prototype;
 
 
 /**
- * @implements {WebInspector.TextViewerDelegate}
+ * @implements {WebInspector.TextEditorDelegate}
  * @constructor
  */
-WebInspector.TextViewerDelegateForSourceFrame = function(sourceFrame)
+WebInspector.TextEditorDelegateForSourceFrame = function(sourceFrame)
 {
     this._sourceFrame = sourceFrame;
 }
 
-WebInspector.TextViewerDelegateForSourceFrame.prototype = {
+WebInspector.TextEditorDelegateForSourceFrame.prototype = {
     beforeTextChanged: function()
     {
         this._sourceFrame.beforeTextChanged();
@@ -511,6 +609,22 @@ WebInspector.TextViewerDelegateForSourceFrame.prototype = {
         this._sourceFrame.commitEditing(this._sourceFrame._textModel.text);
     },
 
+    /**
+     * @param {WebInspector.TextRange} textRange
+     */
+    selectionChanged: function(textRange)
+    {
+        this._sourceFrame.selectionChanged(textRange);
+    },
+
+    /**
+     * @param {number} lineNumber
+     */
+    scrollChanged: function(lineNumber)
+    {
+        this._sourceFrame.scrollChanged(lineNumber);
+    },
+
     populateLineGutterContextMenu: function(contextMenu, lineNumber)
     {
         this._sourceFrame.populateLineGutterContextMenu(contextMenu, lineNumber);
@@ -522,4 +636,4 @@ WebInspector.TextViewerDelegateForSourceFrame.prototype = {
     }
 }
 
-WebInspector.TextViewerDelegateForSourceFrame.prototype.__proto__ = WebInspector.TextViewerDelegate.prototype;
+WebInspector.TextEditorDelegateForSourceFrame.prototype.__proto__ = WebInspector.TextEditorDelegate.prototype;

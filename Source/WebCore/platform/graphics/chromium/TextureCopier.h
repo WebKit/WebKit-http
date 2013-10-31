@@ -29,9 +29,13 @@
 #include "ProgramBinding.h"
 #include "ShaderChromium.h"
 #include "cc/CCGraphicsContext.h"
-#include <wtf/PassRefPtr.h>
+
+namespace WebKit {
+class WebGraphicsContext3D;
+}
 
 namespace WebCore {
+class IntSize;
 
 class TextureCopier {
 public:
@@ -49,24 +53,25 @@ protected:
 class AcceleratedTextureCopier : public TextureCopier {
     WTF_MAKE_NONCOPYABLE(AcceleratedTextureCopier);
 public:
-    static PassOwnPtr<AcceleratedTextureCopier> create(PassRefPtr<GraphicsContext3D> context)
+    static PassOwnPtr<AcceleratedTextureCopier> create(WebKit::WebGraphicsContext3D* context, bool usingBindUniforms)
     {
-        return adoptPtr(new AcceleratedTextureCopier(context));
+        return adoptPtr(new AcceleratedTextureCopier(context, usingBindUniforms));
     }
     virtual ~AcceleratedTextureCopier();
 
     virtual void copyTexture(CCGraphicsContext*, unsigned sourceTextureId, unsigned destTextureId, const IntSize&);
 
 protected:
-    explicit AcceleratedTextureCopier(PassRefPtr<GraphicsContext3D>);
+    AcceleratedTextureCopier(WebKit::WebGraphicsContext3D*, bool usingBindUniforms);
 
 private:
     typedef ProgramBinding<VertexShaderPosTexIdentity, FragmentShaderRGBATex> BlitProgram;
 
-    RefPtr<GraphicsContext3D> m_context;
+    WebKit::WebGraphicsContext3D* m_context;
     Platform3DObject m_fbo;
     Platform3DObject m_positionBuffer;
     OwnPtr<BlitProgram> m_blitProgram;
+    bool m_usingBindUniforms;
 };
 
 #endif // USE(ACCELERATED_COMPOSITING)

@@ -26,17 +26,17 @@
 #ifndef CCRenderPass_h
 #define CCRenderPass_h
 
-#include "cc/CCDrawQuad.h"
+#include "SkColor.h"
 #include "cc/CCOcclusionTracker.h"
 #include <wtf/PassOwnPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
+class CCDrawQuad;
 class CCLayerImpl;
 class CCRenderSurface;
 class CCSharedQuadState;
-class Color;
 
 // A list of CCDrawQuad objects, sorted internally in front-to-back order.
 class CCQuadList : public Vector<OwnPtr<CCDrawQuad> > {
@@ -57,7 +57,7 @@ public:
 
     void appendQuadsForLayer(CCLayerImpl*, CCOcclusionTrackerImpl*, bool& hadMissingTiles);
     void appendQuadsForRenderSurfaceLayer(CCLayerImpl*, const CCRenderPass* contributingRenderPass, CCOcclusionTrackerImpl*);
-    void appendQuadsToFillScreen(CCLayerImpl* rootLayer, const Color& screenBackgroundColor, const CCOcclusionTrackerImpl&);
+    void appendQuadsToFillScreen(CCLayerImpl* rootLayer, SkColor screenBackgroundColor, const CCOcclusionTrackerImpl&);
 
     const CCQuadList& quadList() const { return m_quadList; }
     CCRenderSurface* targetSurface() const { return m_targetSurface; }

@@ -29,7 +29,6 @@
 
 #if USE(ACCELERATED_COMPOSITING)
 #include "LayerTextureSubImage.h"
-#include "PlatformColor.h"
 #include "SkBitmap.h"
 #include "SkPictureCanvasLayerTextureUpdater.h"
 
@@ -41,7 +40,7 @@ class BitmapSkPictureCanvasLayerTextureUpdater : public SkPictureCanvasLayerText
 public:
     class Texture : public CanvasLayerTextureUpdater::Texture {
     public:
-        Texture(BitmapSkPictureCanvasLayerTextureUpdater*, PassOwnPtr<ManagedTexture>);
+        Texture(BitmapSkPictureCanvasLayerTextureUpdater*, PassOwnPtr<CCPrioritizedTexture>);
 
         virtual void prepareRect(const IntRect& sourceRect) OVERRIDE;
         virtual void updateRect(CCGraphicsContext*, TextureAllocator*, const IntRect& sourceRect, const IntRect& destRect) OVERRIDE;
@@ -56,9 +55,9 @@ public:
     static PassRefPtr<BitmapSkPictureCanvasLayerTextureUpdater> create(PassOwnPtr<LayerPainterChromium>, bool useMapTexSubImage);
     virtual ~BitmapSkPictureCanvasLayerTextureUpdater();
 
-    virtual PassOwnPtr<LayerTextureUpdater::Texture> createTexture(TextureManager*) OVERRIDE;
+    virtual PassOwnPtr<LayerTextureUpdater::Texture> createTexture(CCPrioritizedTextureManager*) OVERRIDE;
     virtual SampledTexelFormat sampledTexelFormat(GC3Denum textureFormat) OVERRIDE;
-    virtual void prepareToUpdate(const IntRect& contentRect, const IntSize& tileSize, float contentsScale, IntRect& resultingOpaqueRect) OVERRIDE;
+    virtual void prepareToUpdate(const IntRect& contentRect, const IntSize& tileSize, float contentsWidthScale, float contentsHeightScale, IntRect& resultingOpaqueRect) OVERRIDE;
     void paintContentsRect(SkCanvas*, const IntRect& sourceRect);
     void updateTextureRect(CCGraphicsContext*, GC3Denum format, const IntRect& destRect, const uint8_t* pixels);
 

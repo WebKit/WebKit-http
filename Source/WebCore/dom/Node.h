@@ -29,6 +29,7 @@
 #include "EventTarget.h"
 #include "KURLHash.h"
 #include "LayoutTypes.h"
+#include "MemoryInstrumentation.h"
 #include "RenderStyleConstants.h"
 #include "ScriptWrappable.h"
 #include "TreeShared.h"
@@ -69,6 +70,7 @@ class NSResolver;
 class NamedNodeMap;
 class NameNodeList;
 class NodeList;
+class NodeListsNodeData;
 class NodeRareData;
 class NodeRenderingContext;
 class PlatformKeyboardEvent;
@@ -558,23 +560,14 @@ public:
 
     void invalidateNodeListsCacheAfterAttributeChanged(const QualifiedName&, Element* attributeOwnerElement);
     void invalidateNodeListsCacheAfterChildrenChanged();
-    void removeCachedClassNodeList(ClassNodeList*, const String&);
-
-    void removeCachedNameNodeList(NameNodeList*, const String&);
-    void removeCachedTagNodeList(TagNodeList*, const AtomicString&);
-    void removeCachedTagNodeList(TagNodeList*, const QualifiedName&);
-    void removeCachedLabelsNodeList(DynamicSubtreeNodeList*);
-
+    NodeListsNodeData* nodeLists();
     void removeCachedChildNodeList();
-
-    PassRefPtr<RadioNodeList> radioNodeList(const AtomicString&);
-    void removeCachedRadioNodeList(RadioNodeList*, const AtomicString&);
-    void resetCachedRadioNodeListRootNode();
 
     PassRefPtr<NodeList> getElementsByTagName(const AtomicString&);
     PassRefPtr<NodeList> getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName);
     PassRefPtr<NodeList> getElementsByName(const String& elementName);
     PassRefPtr<NodeList> getElementsByClassName(const String& classNames);
+    PassRefPtr<RadioNodeList> radioNodeList(const AtomicString&);
 
     PassRefPtr<Element> querySelector(const AtomicString& selectors, ExceptionCode&);
     PassRefPtr<NodeList> querySelectorAll(const AtomicString& selectors, ExceptionCode&);
@@ -637,7 +630,6 @@ public:
     DOMSettableTokenList* itemProp();
     DOMSettableTokenList* itemRef();
     DOMSettableTokenList* itemType();
-    HTMLPropertiesCollection* properties();
 #endif
 
 #if ENABLE(MUTATION_OBSERVERS)
@@ -655,6 +647,8 @@ public:
 #endif
     bool hasScopedHTMLStyleChild() const;
     size_t numberOfScopedHTMLStyleChildren() const;
+
+    virtual void reportMemoryUsage(MemoryObjectInfo*) const;
 
 private:
     enum NodeFlags {
@@ -813,9 +807,9 @@ protected:
     bool isSynchronizingSVGAttributes() const { return getFlag(IsSynchronizingSVGAttributesFlag); }
     void setIsSynchronizingSVGAttributes() const { setFlag(IsSynchronizingSVGAttributesFlag); }
     void clearIsSynchronizingSVGAttributes() const { clearFlag(IsSynchronizingSVGAttributesFlag); }
-    bool hasRareSVGData() const { return getFlag(HasSVGRareDataFlag); }
-    void setHasRareSVGData() { setFlag(HasSVGRareDataFlag); }
-    void clearHasRareSVGData() { clearFlag(HasSVGRareDataFlag); }
+    bool hasSVGRareData() const { return getFlag(HasSVGRareDataFlag); }
+    void setHasSVGRareData() { setFlag(HasSVGRareDataFlag); }
+    void clearHasSVGRareData() { clearFlag(HasSVGRareDataFlag); }
 #endif
 
 #if ENABLE(MICRODATA)

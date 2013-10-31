@@ -1,3 +1,121 @@
+2012-07-03  Jan Keromnes  <janx@linux.com>
+
+        Web Inspector: WebInspector.TextViewer should be renamed WebInspector.TextEditor
+        https://bugs.webkit.org/show_bug.cgi?id=89939
+
+        Reviewed by Vsevolod Vlasov.
+
+        * inspector/first-open-scripts.html.broken:
+
+2012-06-22  Philip Rogers  <pdr@google.com>
+
+        Make SvgCubics performance test more consistent
+        https://bugs.webkit.org/show_bug.cgi?id=89778
+
+        Reviewed by Ryosuke Niwa.
+
+        Previously this test ran twice for each iteration, but this led to inconsistent repaints.
+        This change updates the test to only run once per iteration, and adds even more cubics
+        so that the test runs consistently in the 80ms range on my Linux desktop.
+
+        Performance results on my desktop:
+            RESULT SVG: SvgCubics= 80.5 ms
+            median= 82.0 ms, stdev= 3.04138126515 ms, min= 75.0 ms, max= 85.0 ms
+
+            RESULT SVG: SvgCubics= 80.1 ms
+            median= 81.0 ms, stdev= 4.27668095607 ms, min= 74.0 ms, max= 88.0 ms
+
+            RESULT SVG: SvgCubics= 81.45 ms
+            median= 83.0 ms, stdev= 4.01839520207 ms, min= 75.0 ms, max= 89.0 ms
+
+            RESULT SVG: SvgCubics= 78.9 ms
+            median= 80.0 ms, stdev= 4.75289385533 ms, min= 72.0 ms, max= 87.0 ms
+
+        * SVG/SvgCubics.html:
+
+2012-06-22  Ilya Tikhonovsky  <loislo@chromium.org>
+
+        Web Inspector: partially instrument DOM Tree native memory.
+        https://bugs.webkit.org/show_bug.cgi?id=89568
+
+        This patch adds MemoryInstrumentation class that counts all visited
+        objects and calls reportMemoryUsage.
+
+        Reviewed by Yury Semikhatsky.
+
+        * inspector/native-memory-snapshot.html:
+
+2012-06-21  Kentaro Hara  <haraken@chromium.org>
+
+        Add a perf-test for innerHTML setter for a large DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=89723
+
+        Reviewed by Ryosuke Niwa.
+
+        We want a benchmark for innerHTML setter for the following reason:
+
+        - innerHTML setter is widely used in the real world.
+        - I am planning to optimize innerHTML setter in the near future.
+        - I want to use the innerHTML setter benchmark for the patch of bug 88834.
+
+        Performance results in my Linux desktop:
+
+        RESULT Parser: innerHTML-setter= 289.782649995 runs/s
+        median= 290.046269741 runs/s, stdev= 1.06575112224 runs/s, min= 286.831812256 runs/s, max= 291.005291005 runs/s
+
+        RESULT Parser: innerHTML-setter= 289.020706132 runs/s
+        median= 289.093298292 runs/s, stdev= 0.985203313093 runs/s, min= 286.831812256 runs/s, max= 290.620871863 runs/s
+
+        RESULT Parser: innerHTML-setter= 288.912051701 runs/s
+        median= 291.005291005 runs/s, stdev= 3.65241325588 runs/s, min= 283.505154639 runs/s, max= 292.553191489 runs/s
+
+        RESULT Parser: innerHTML-setter= 288.644186666 runs/s
+        median= 288.713910761 runs/s, stdev= 1.31889053717 runs/s, min= 286.085825748 runs/s, max= 290.620871863 runs/s
+
+        RESULT Parser: innerHTML-setter= 288.698714577 runs/s
+        median= 288.713910761 runs/s, stdev= 1.03938198202 runs/s, min= 286.458333333 runs/s, max= 290.237467018 runs/s
+
+        * Parser/innerHTML-setter.html: Added.
+
+2012-06-20  Philip Rogers  <pdr@google.com>
+
+        Add a performance test for paths in SVG
+        https://bugs.webkit.org/show_bug.cgi?id=89547
+
+        Reviewed by Ryosuke Niwa.
+
+        This change adds the first performance test for SVG paths.
+        In the test we modify complex cubic paths in several ways, testing:
+        transformations, clipping, d attribute changes, stroke properties,
+        text on a path, and opacity.
+
+        Sample test results on my Linux desktop:
+            RESULT SVG: SvgCubics= 68.85 ms
+            median= 69.5 ms, stdev= 4.70398767005 ms, min= 56.0 ms, max= 75.0 ms
+
+            RESULT SVG: SvgCubics= 68.4 ms
+            median= 69.0 ms, stdev= 3.51283361405 ms, min= 59.0 ms, max= 74.0 ms
+
+            RESULT SVG: SvgCubics= 66.95 ms
+            median= 67.0 ms, stdev= 3.4420197559 ms, min= 59.0 ms, max= 74.0 ms
+
+            RESULT SVG: SvgCubics= 70.2 ms
+            median= 71.5 ms, stdev= 3.23419232576 ms, min= 63.0 ms, max= 74.0 ms
+
+        * SVG: Added.
+        * SVG/SvgCubics.html: Added.
+
+2012-06-20  Tom Zakrajsek  <tomz@codeaurora.org>
+
+        Import themaninblue.com/experiment/AnimationBenchmark/ as performance tests
+        https://bugs.webkit.org/show_bug.cgi?id=78789
+
+        Reviewed by Ryosuke Niwa.
+
+        Added PerfTestRunner fixture around it.
+
+        * Animation/balls.html: Added.
+
 2012-06-18  Ilya Tikhonovsky  <loislo@chromium.org>
 
         Web Inspector: native memory snapshot performance and coverage test implementation.

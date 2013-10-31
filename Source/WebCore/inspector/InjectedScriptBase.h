@@ -49,14 +49,16 @@ class InjectedScriptBase {
 public:
     virtual ~InjectedScriptBase() { }
 
+    const String& name() const { return m_name; }
     bool hasNoValue() const { return m_injectedScriptObject.hasNoValue(); }
     ScriptState* scriptState() const { return m_injectedScriptObject.scriptState(); }
 
 protected:
     typedef bool (*InspectedStateAccessCheck)(ScriptState*);
-    InjectedScriptBase();
-    InjectedScriptBase(ScriptObject, InspectedStateAccessCheck);
+    InjectedScriptBase(const String& name);
+    InjectedScriptBase(const String& name, ScriptObject, InspectedStateAccessCheck);
 
+    void initialize(ScriptObject, InspectedStateAccessCheck);
     bool canAccessInspectedWindow() const;
     const ScriptObject& injectedScriptObject() const;
     ScriptValue callFunctionWithEvalEnabled(ScriptFunctionCall&, bool& hadException) const;
@@ -64,6 +66,7 @@ protected:
     void makeEvalCall(ErrorString*, ScriptFunctionCall&, RefPtr<TypeBuilder::Runtime::RemoteObject>* result, TypeBuilder::OptOutput<bool>* wasThrown);
 
 private:
+    String m_name;
     ScriptObject m_injectedScriptObject;
     InspectedStateAccessCheck m_inspectedStateAccessCheck;
 };

@@ -1,3 +1,53 @@
+2012-07-04  John Mellor  <johnme@chromium.org>
+
+        Text Autosizing: Add compile flag and runtime setting
+        https://bugs.webkit.org/show_bug.cgi?id=87394
+
+        This patch renames Font Boosting to Text Autosizing.
+
+        Reviewed by Adam Barth.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-06-29  Mihai Balan  <mibalan@adobe.com>
+
+        [CSS Regions] Adding feature defines for CSS Regions for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=88645
+
+        Reviewed by Tony Chang.
+
+        Re-trying to enable CSS regions on Windows. This time only enabling
+        regions since exclusions lead to some very strange compiling/linking
+        problems.
+
+        * win/tools/vsprops/FeatureDefines.vsprops: Added default value for ENABLE_CSS_REGIONS
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: ditto
+
+2012-06-28  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build correction.  Add two missing macro
+        declarations to vsprops file.
+
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: Add missing
+        ENABLE_HIGH_DPI_CANVAS and ENABLE_REQUEST_ANIMATION_FRAME macros.
+
+2012-06-27  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build correction.  Accidentally turned on
+        CSS_FILTERS, which is not available in tree.
+
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: Turn CSS_FILTERS
+        back off for WinCairo target.
+
+2012-06-27  Brent Fulgham  <bfulgham@webkit.org>
+
+        [WinCairo] Unreviewed build correction.  Resync feature defines with
+        Apple port. Things have drifted apart a little.
+
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: Update to match
+        Apple port, define some missing features.
+
 2012-06-19  Mike West  <mkwst@chromium.org>
 
         Introduce ENABLE_CSP_NEXT configuration flag.

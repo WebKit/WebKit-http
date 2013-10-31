@@ -62,14 +62,13 @@ JSValue JSHTMLDocument::nameGetter(ExecState* exec, JSValue slotBase, PropertyNa
     JSHTMLDocument* thisObj = jsCast<JSHTMLDocument*>(asObject(slotBase));
     HTMLDocument* document = static_cast<HTMLDocument*>(thisObj->impl());
 
-    HTMLCollection* collection = document->documentNamedItems(propertyNameToAtomicString(propertyName));
+    RefPtr<HTMLCollection> collection = document->documentNamedItems(propertyNameToAtomicString(propertyName));
 
-    unsigned length = collection->length();
-    if (!length)
+    if (collection->isEmpty())
         return jsUndefined();
 
-    if (length == 1) {
-        Node* node = collection->firstItem();
+    if (collection->hasExactlyOneItem()) {
+        Node* node = collection->item(0);
 
         Frame* frame;
         if (node->hasTagName(iframeTag) && (frame = static_cast<HTMLIFrameElement*>(node)->contentFrame()))
@@ -78,7 +77,7 @@ JSValue JSHTMLDocument::nameGetter(ExecState* exec, JSValue slotBase, PropertyNa
         return toJS(exec, thisObj->globalObject(), node);
     } 
 
-    return toJS(exec, thisObj->globalObject(), collection);
+    return toJS(exec, thisObj->globalObject(), WTF::getPtr(collection));
 }
 
 // Custom attributes

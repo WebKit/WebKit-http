@@ -347,14 +347,21 @@ RenderObject* HTMLSelectElement::createRenderer(RenderArena* arena, RenderStyle*
 
 bool HTMLSelectElement::childShouldCreateRenderer(const NodeRenderingContext& childContext) const
 {
-    return childContext.isOnUpperEncapsulationBoundary() && HTMLFormControlElementWithState::childShouldCreateRenderer(childContext);
+    if (!HTMLFormControlElementWithState::childShouldCreateRenderer(childContext))
+        return false;
+    if (!usesMenuList())
+        return true;
+    return validationMessageShadowTreeContains(childContext.node());
 }
 
-HTMLOptionsCollection* HTMLSelectElement::options()
+PassRefPtr<HTMLCollection> HTMLSelectElement::selectedOptions()
 {
-    if (!m_optionsCollection)
-        m_optionsCollection = HTMLOptionsCollection::create(this);
-    return m_optionsCollection.get();
+    return ensureCachedHTMLCollection(SelectedOptions);
+}
+
+PassRefPtr<HTMLOptionsCollection> HTMLSelectElement::options()
+{
+    return static_cast<HTMLOptionsCollection*>(ensureCachedHTMLCollection(SelectOptions).get());
 }
 
 void HTMLSelectElement::updateListItemSelectedStates()
@@ -700,6 +707,12 @@ const Vector<HTMLElement*>& HTMLSelectElement::listItems() const
     return m_listItems;
 }
 
+void HTMLSelectElement::invalidateSelectedItems()
+{
+    if (HTMLCollection* collection = cachedHTMLCollection(SelectedOptions))
+        collection->invalidateCache();
+}
+
 void HTMLSelectElement::setRecalcListItems()
 {
     m_shouldRecalcListItems = true;
@@ -707,8 +720,12 @@ void HTMLSelectElement::setRecalcListItems()
     m_activeSelectionAnchorIndex = -1;
     setOptionsChangedOnRenderer();
     setNeedsStyleRecalc();
-    if (!inDocument() && m_optionsCollection)
-        m_optionsCollection->invalidateCacheIfNeeded();
+    if (!inDocument()) {
+        if (HTMLCollection* collection = cachedHTMLCollection(SelectOptions))
+            collection->invalidateCache();
+    }
+    if (!inDocument())
+        invalidateSelectedItems();
 }
 
 void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
@@ -919,14 +936,31 @@ FormControlState HTMLSelectElement::saveFormControlState() const
 {
     const Vector<HTMLElement*>& items = listItems();
     size_t length = items.size();
-    StringBuilder builder;
-    builder.reserveCapacity(length);
+    FormControlState state;
     for (unsigned i = 0; i < length; ++i) {
-        HTMLElement* element = items[i];
-        bool selected = element->hasTagName(optionTag) && toHTMLOptionElement(element)->selected();
-        builder.append(selected ? 'X' : '.');
+        if (!items[i]->hasTagName(optionTag))
+            continue;
+        HTMLOptionElement* option = toHTMLOptionElement(items[i]);
+        if (!option->selected())
+            continue;
+        state.append(option->value());
+        if (!multiple())
+            break;
     }
-    return FormControlState(builder.toString());
+    return state;
+}
+
+size_t HTMLSelectElement::searchOptionsForValue(const String& value, size_t listIndexStart, size_t listIndexEnd) const
+{
+    const Vector<HTMLElement*>& items = listItems();
+    size_t loopEndIndex = std::min(items.size(), listIndexEnd);
+    for (size_t i = listIndexStart; i < loopEndIndex; ++i) {
+        if (!items[i]->hasLocalName(optionTag))
+            continue;
+        if (static_cast<HTMLOptionElement*>(items[i])->value() == value)
+            return i;
+    }
+    return notFound;
 }
 
 void HTMLSelectElement::restoreFormControlState(const FormControlState& state)
@@ -934,13 +968,32 @@ void HTMLSelectElement::restoreFormControlState(const FormControlState& state)
     recalcListItems();
 
     const Vector<HTMLElement*>& items = listItems();
-    size_t length = items.size();
+    size_t itemsSize = items.size();
+    if (!itemsSize)
+        return;
 
-    String mask = state.value();
-    for (size_t i = 0; i < length; ++i) {
-        HTMLElement* element = items[i];
-        if (element->hasTagName(optionTag))
-            toHTMLOptionElement(element)->setSelectedState(mask[i] == 'X');
+    for (size_t i = 0; i < itemsSize; ++i) {
+        if (!items[i]->hasLocalName(optionTag))
+            continue;
+        static_cast<HTMLOptionElement*>(items[i])->setSelectedState(false);
+    }
+
+    if (!multiple()) {
+        size_t foundIndex = searchOptionsForValue(state[0], 0, itemsSize);
+        if (foundIndex != notFound)
+            toHTMLOptionElement(items[foundIndex])->setSelectedState(true);
+    } else {
+        size_t startIndex = 0;
+        for (size_t i = 0; i < state.valueSize(); ++i) {
+            const String& value = state[i];
+            size_t foundIndex = searchOptionsForValue(value, startIndex, itemsSize);
+            if (foundIndex == notFound)
+                foundIndex = searchOptionsForValue(value, 0, startIndex);
+            if (foundIndex == notFound)
+                continue;
+            toHTMLOptionElement(items[foundIndex])->setSelectedState(true);
+            startIndex = foundIndex + 1;
+        }
     }
 
     setOptionsChangedOnRenderer();

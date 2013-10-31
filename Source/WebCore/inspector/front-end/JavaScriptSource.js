@@ -86,6 +86,7 @@ WebInspector.JavaScriptSource.prototype = {
 
         // Re-request content
         this._contentLoaded = false;
+        this._content = false;
         WebInspector.UISourceCode.prototype.requestContent.call(this, didGetContent.bind(this));
   
         /**
@@ -160,6 +161,14 @@ WebInspector.JavaScriptSource.prototype = {
     },
 
     /**
+     * @return {boolean}
+     */
+    supportsEnabledBreakpointsWhileEditing: function()
+    {
+        return false;
+    },
+
+    /**
      * @return {string}
      */
     breakpointStorageId: function()
@@ -188,7 +197,7 @@ WebInspector.JavaScriptSource.prototype = {
      * @param {function(?string)} callback
      */
     workingCopyCommitted: function(callback)
-    {  
+    {
         /**
          * @param {?string} error
          */
@@ -198,7 +207,9 @@ WebInspector.JavaScriptSource.prototype = {
             callback(error);
         }
 
-        WebInspector.DebuggerResourceBinding.setScriptSource(this, this.workingCopy(), innerCallback.bind(this));
+        var rawLocation = this.uiLocationToRawLocation(0, 0);
+        var script = WebInspector.debuggerModel.scriptForId(rawLocation.scriptId);
+        WebInspector.debuggerModel.setScriptSource(script.scriptId, this.workingCopy(), innerCallback.bind(this));
     },
 
     /**

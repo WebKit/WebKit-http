@@ -38,7 +38,7 @@ public:
     static PassRefPtr<HTMLFieldSetElement> create(const QualifiedName&, Document*, HTMLFormElement*);
     HTMLLegendElement* legend() const;
 
-    HTMLCollection* elements();
+    PassRefPtr<HTMLCollection> elements();
 
     const Vector<FormAssociatedElement*>& associatedElements() const;
     unsigned length() const;
@@ -59,7 +59,6 @@ private:
     static void invalidateDisabledStateUnder(Element*);
     void refreshElementsIfNeeded() const;
 
-    OwnPtr<HTMLFormCollection> m_elementsCollection;
     mutable Vector<FormAssociatedElement*> m_associatedElements;
     // When dom tree is modified, we have to refresh the m_associatedElements array.
     mutable uint64_t m_documentVersion;

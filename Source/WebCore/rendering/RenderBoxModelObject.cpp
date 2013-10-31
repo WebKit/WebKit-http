@@ -517,11 +517,11 @@ LayoutSize RenderBoxModelObject::relativePositionOffset() const
 
 LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const LayoutPoint& startPoint) const
 {
-    // If the element is the HTML body element or does not have an associated box
+    // If the element is the HTML body element or doesn't have a parent
     // return 0 and stop this algorithm.
-    if (isBody())
+    if (isBody() || !parent())
         return LayoutPoint();
-    
+
     LayoutPoint referencePoint = startPoint;
     referencePoint.move(parent()->offsetForColumns(referencePoint));
     
@@ -531,7 +531,7 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
     if (const RenderBoxModelObject* offsetParent = this->offsetParent()) {
         if (offsetParent->isBox() && !offsetParent->isBody())
             referencePoint.move(-toRenderBox(offsetParent)->borderLeft(), -toRenderBox(offsetParent)->borderTop());
-        if (!isPositioned()) {
+        if (!isOutOfFlowPositioned()) {
             if (isRelPositioned())
                 referencePoint.move(relativePositionOffset());
             const RenderObject* curr = parent();
@@ -542,7 +542,7 @@ LayoutPoint RenderBoxModelObject::adjustedPositionRelativeToOffsetParent(const L
                 referencePoint.move(curr->parent()->offsetForColumns(referencePoint));
                 curr = curr->parent();
             }
-            if (offsetParent->isBox() && offsetParent->isBody() && !offsetParent->isRelPositioned() && !offsetParent->isPositioned())
+            if (offsetParent->isBox() && offsetParent->isBody() && !offsetParent->isRelPositioned() && !offsetParent->isOutOfFlowPositioned())
                 referencePoint.moveBy(toRenderBox(offsetParent)->topLeftLocation());
         }
     }
@@ -1070,7 +1070,7 @@ IntSize RenderBoxModelObject::calculateFillTileSize(const FillLayer* fillLayer, 
                 h = imageIntrinsicSize.height();
             }
             
-            return IntSize(max(1, w), max(1, h));
+            return IntSize(max(0, w), max(0, h));
         }
         case SizeNone: {
             // If both values are ‘auto’ then the intrinsic width and/or height of the image should be used, if any.
@@ -2740,7 +2740,7 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(bool fixed, bool useTransform
 
     LayoutSize containerOffset = offsetFromContainer(o, LayoutPoint());
 
-    if (!style()->isPositioned() && o->hasColumns()) {
+    if (!style()->isOutOfFlowPositioned() && o->hasColumns()) {
         RenderBlock* block = static_cast<RenderBlock*>(o);
         LayoutPoint point(roundedLayoutPoint(transformState.mappedPoint()));
         point -= containerOffset;
@@ -2758,6 +2758,11 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(bool fixed, bool useTransform
 
 void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, RenderObject* child, RenderObject* beforeChild, bool fullRemoveInsert)
 {
+    // FIXME: We need a performant way to handle clearing positioned objects from our list that are
+    // in |child|'s subtree so we could just clear them here. Because of this, we assume that callers
+    // have cleared their positioned objects list for child moves (!fullRemoveInsert) to avoid any badness.
+    ASSERT(!fullRemoveInsert || !isRenderBlock() || !toRenderBlock(this)->hasPositionedObjects());
+
     ASSERT(this == child->parent());
     ASSERT(!beforeChild || toBoxModelObject == beforeChild->parent());
     if (fullRemoveInsert && (toBoxModelObject->isRenderBlock() || toBoxModelObject->isRenderInline())) {
@@ -2770,6 +2775,15 @@ void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, R
 
 void RenderBoxModelObject::moveChildrenTo(RenderBoxModelObject* toBoxModelObject, RenderObject* startChild, RenderObject* endChild, RenderObject* beforeChild, bool fullRemoveInsert)
 {
+    // This condition is rarely hit since this function is usually called on
+    // anonymous blocks which can no longer carry positioned objects (see r120761)
+    // or when fullRemoveInsert is false.
+    if (fullRemoveInsert && isRenderBlock()) {
+        RenderBlock* block = toRenderBlock(this);
+        if (block->hasPositionedObjects())
+            block->removePositionedObjects(0);
+    }
+
     ASSERT(!beforeChild || toBoxModelObject == beforeChild->parent());
     for (RenderObject* child = startChild; child && child != endChild; ) {
         // Save our next sibling as moveChildTo will clear it.

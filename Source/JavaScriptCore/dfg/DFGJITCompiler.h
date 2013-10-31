@@ -30,6 +30,7 @@
 
 #include "CodeBlock.h"
 #include "DFGCCallHelpers.h"
+#include "DFGDisassembler.h"
 #include "DFGFPRInfo.h"
 #include "DFGGPRInfo.h"
 #include "DFGGraph.h"
@@ -135,6 +136,7 @@ struct PropertyAccessRecord {
         CodeOrigin codeOrigin,
         MacroAssembler::DataLabelPtr structureImm,
         MacroAssembler::PatchableJump structureCheck,
+        MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
         MacroAssembler::DataLabelCompact loadOrStore,
         SlowPathGenerator* slowPathGenerator,
         MacroAssembler::Label done,
@@ -147,6 +149,7 @@ struct PropertyAccessRecord {
         CodeOrigin codeOrigin,
         MacroAssembler::DataLabelPtr structureImm,
         MacroAssembler::PatchableJump structureCheck,
+        MacroAssembler::ConvertibleLoadLabel propertyStorageLoad,
         MacroAssembler::DataLabelCompact tagLoadOrStore,
         MacroAssembler::DataLabelCompact payloadLoadOrStore,
         SlowPathGenerator* slowPathGenerator,
@@ -160,6 +163,7 @@ struct PropertyAccessRecord {
         : m_codeOrigin(codeOrigin)
         , m_structureImm(structureImm)
         , m_structureCheck(structureCheck)
+        , m_propertyStorageLoad(propertyStorageLoad)
 #if USE(JSVALUE64)
         , m_loadOrStore(loadOrStore)
 #elif USE(JSVALUE32_64)
@@ -181,6 +185,7 @@ struct PropertyAccessRecord {
     CodeOrigin m_codeOrigin;
     MacroAssembler::DataLabelPtr m_structureImm;
     MacroAssembler::PatchableJump m_structureCheck;
+    MacroAssembler::ConvertibleLoadLabel m_propertyStorageLoad;
 #if USE(JSVALUE64)
     MacroAssembler::DataLabelCompact m_loadOrStore;
 #elif USE(JSVALUE32_64)
@@ -208,18 +213,49 @@ struct PropertyAccessRecord {
 // call to be linked).
 class JITCompiler : public CCallHelpers {
 public:
-    JITCompiler(Graph& dfg)
-        : CCallHelpers(&dfg.m_globalData, dfg.m_codeBlock)
-        , m_graph(dfg)
-        , m_currentCodeOriginIndex(0)
-    {
-    }
+    JITCompiler(Graph& dfg);
     
     bool compile(JITCode& entry);
     bool compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWithArityCheck);
 
     // Accessors for properties.
     Graph& graph() { return m_graph; }
+    
+    // Methods to set labels for the disassembler.
+    void setStartOfCode()
+    {
+        if (LIKELY(!m_disassembler))
+            return;
+        m_disassembler->setStartOfCode(labelIgnoringWatchpoints());
+    }
+    
+    void setForBlock(BlockIndex blockIndex)
+    {
+        if (LIKELY(!m_disassembler))
+            return;
+        m_disassembler->setForBlock(blockIndex, labelIgnoringWatchpoints());
+    }
+    
+    void setForNode(NodeIndex nodeIndex)
+    {
+        if (LIKELY(!m_disassembler))
+            return;
+        m_disassembler->setForNode(nodeIndex, labelIgnoringWatchpoints());
+    }
+    
+    void setEndOfMainPath()
+    {
+        if (LIKELY(!m_disassembler))
+            return;
+        m_disassembler->setEndOfMainPath(labelIgnoringWatchpoints());
+    }
+    
+    void setEndOfCode()
+    {
+        if (LIKELY(!m_disassembler))
+            return;
+        m_disassembler->setEndOfCode(labelIgnoringWatchpoints());
+    }
     
     // Get a token for beginning a call, and set the current code origin index in
     // the call frame.
@@ -353,6 +389,8 @@ private:
     // The dataflow graph currently being generated.
     Graph& m_graph;
 
+    OwnPtr<Disassembler> m_disassembler;
+    
     // Vector of calls out from JIT code, including exception handler information.
     // Count of the number of CallRecords with exception handlers.
     Vector<CallLinkRecord> m_calls;

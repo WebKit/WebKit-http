@@ -55,19 +55,13 @@ NetworkInfoConnection::~NetworkInfoConnection()
 {
 }
 
-unsigned int NetworkInfoConnection::bandwidth() const
+double NetworkInfoConnection::bandwidth() const
 {
-    if (m_networkInfo)
-        return m_networkInfo->bandwidth();
-    
     return m_controller->client()->bandwidth();
 }
 
 bool NetworkInfoConnection::metered() const
 {
-    if (m_networkInfo)
-        return m_networkInfo->metered();
-    
     return m_controller->client()->metered();
 }
 

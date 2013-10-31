@@ -107,6 +107,10 @@ InternalSettings::InternalSettings(Frame* frame)
     , m_originalWindowFocusRestricted(settings()->windowFocusRestricted())
     , m_originalDeviceSupportsTouch(settings()->deviceSupportsTouch())
     , m_originalDeviceSupportsMouse(settings()->deviceSupportsMouse())
+#if ENABLE(TEXT_AUTOSIZING)
+    , m_originalTextAutosizingEnabled(settings()->textAutosizingEnabled())
+    , m_originalTextAutosizingWindowSizeOverride(settings()->textAutosizingWindowSizeOverride())
+#endif
 {
 }
 
@@ -128,6 +132,10 @@ void InternalSettings::restoreTo(Settings* settings)
     settings->setWindowFocusRestricted(m_originalWindowFocusRestricted);
     settings->setDeviceSupportsTouch(m_originalDeviceSupportsTouch);
     settings->setDeviceSupportsMouse(m_originalDeviceSupportsMouse);
+#if ENABLE(TEXT_AUTOSIZING)
+    settings->setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
+    settings->setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
+#endif
 }
 
 Settings* InternalSettings::settings() const
@@ -270,12 +278,6 @@ void InternalSettings::setDeviceSupportsMouse(bool enabled, ExceptionCode& ec)
     settings()->setDeviceSupportsMouse(enabled);
 }
 
-void InternalSettings::setDeviceScaleFactor(float scaleFactor, ExceptionCode& ec)
-{
-    InternalSettingsGuardForPage();
-    page()->setDeviceScaleFactor(scaleFactor);
-}
-
 typedef void (Settings::*SetFontFamilyFunction)(const AtomicString&, UScriptCode);
 static void setFontFamily(Settings* settings, const String& family, const String& script, SetFontFamilyFunction setter)
 {
@@ -326,6 +328,29 @@ void InternalSettings::setPictographFontFamily(const String& family, const Strin
     setFontFamily(settings(), family, script, &Settings::setPictographFontFamily);
 }
 
+void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
+{
+#if ENABLE(TEXT_AUTOSIZING)
+    InternalSettingsGuardForSettings();
+    settings()->setTextAutosizingEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+    UNUSED_PARAM(ec);
+#endif
+}
+
+void InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode& ec)
+{
+#if ENABLE(TEXT_AUTOSIZING)
+    InternalSettingsGuardForSettings();
+    settings()->setTextAutosizingWindowSizeOverride(IntSize(width, height));
+#else
+    UNUSED_PARAM(width);
+    UNUSED_PARAM(height);
+    UNUSED_PARAM(ec);
+#endif
+}
+
 void InternalSettings::setEnableScrollAnimator(bool enabled, ExceptionCode& ec)
 {
 #if ENABLE(SMOOTH_SCROLLING)
@@ -352,6 +377,18 @@ void InternalSettings::setCSSExclusionsEnabled(bool enabled, ExceptionCode& ec)
 {
     UNUSED_PARAM(ec);
     RuntimeEnabledFeatures::setCSSExclusionsEnabled(enabled);
+}
+
+void InternalSettings::setCSSVariablesEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setCSSVariablesEnabled(enabled);
+}
+
+bool InternalSettings::cssVariablesEnabled(ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettingsReturn(false);
+    return settings()->cssVariablesEnabled();
 }
 
 void InternalSettings::setMediaPlaybackRequiresUserGesture(bool enabled, ExceptionCode& ec)

@@ -25,23 +25,28 @@
 #ifndef TrackingTextureAllocator_h
 #define TrackingTextureAllocator_h
 
-#include "GraphicsContext3D.h"
 #include "TextureManager.h"
+#include <wtf/HashSet.h>
 #include <wtf/PassRefPtr.h>
+
+namespace WebKit {
+class WebGraphicsContext3D;
+}
 
 namespace WebCore {
 
 class TrackingTextureAllocator : public TextureAllocator {
     WTF_MAKE_NONCOPYABLE(TrackingTextureAllocator);
 public:
-    static PassOwnPtr<TrackingTextureAllocator> create(PassRefPtr<GraphicsContext3D> context)
+    static PassOwnPtr<TrackingTextureAllocator> create(WebKit::WebGraphicsContext3D* context)
     {
         return adoptPtr(new TrackingTextureAllocator(context));
     }
     virtual ~TrackingTextureAllocator();
 
-    virtual unsigned createTexture(const IntSize&, GC3Denum format);
-    virtual void deleteTexture(unsigned texture, const IntSize&, GC3Denum format);
+    virtual unsigned createTexture(const IntSize&, GC3Denum format) OVERRIDE;
+    virtual void deleteTexture(unsigned texture, const IntSize&, GC3Denum format) OVERRIDE;
+    virtual void deleteAllTextures() OVERRIDE;
 
     size_t currentMemoryUseBytes() const { return m_currentMemoryUseBytes; }
 
@@ -51,12 +56,13 @@ public:
     void setUseTextureStorageExt(bool useStorageExt) { m_useTextureStorageExt = useStorageExt; }
 
 protected:
-    explicit TrackingTextureAllocator(PassRefPtr<GraphicsContext3D>);
+    explicit TrackingTextureAllocator(WebKit::WebGraphicsContext3D*);
 
-    RefPtr<GraphicsContext3D> m_context;
+    WebKit::WebGraphicsContext3D* m_context;
     size_t m_currentMemoryUseBytes;
     TextureUsageHint m_textureUsageHint;
     bool m_useTextureStorageExt;
+    HashSet<unsigned> m_allocatedTextureIds;
 };
 
 }

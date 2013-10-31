@@ -39,24 +39,23 @@ import sys
 import time
 
 from webkitpy.common.system import executive
+from webkitpy.common.system.path import cygpath
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.layout_tests.port.base import Port, VirtualTestSuite
 from webkitpy.layout_tests.port.driver import DriverOutput
-from webkitpy.layout_tests.port.webkit import WebKitDriver
+from webkitpy.layout_tests.port.webkit import WebKitPort, WebKitDriver
 
 
 _log = logging.getLogger(__name__)
 
 
-class ChromiumPort(Port):
+class ChromiumPort(WebKitPort):
     """Abstract base class for Chromium implementations of the Port class."""
 
     ALL_SYSTEMS = (
-        ('leopard', 'x86'),
         ('snowleopard', 'x86'),
         ('lion', 'x86'),
         ('xp', 'x86'),
-        ('vista', 'x86'),
         ('win7', 'x86'),
         ('lucid', 'x86'),
         ('lucid', 'x86_64'),
@@ -66,13 +65,13 @@ class ChromiumPort(Port):
 
     ALL_BASELINE_VARIANTS = [
         'chromium-mac-lion', 'chromium-mac-snowleopard', 'chromium-mac-leopard',
-        'chromium-win-win7', 'chromium-win-vista', 'chromium-win-xp',
+        'chromium-win-win7', 'chromium-win-xp',
         'chromium-linux-x86_64', 'chromium-linux-x86',
     ]
 
     CONFIGURATION_SPECIFIER_MACROS = {
-        'mac': ['leopard', 'snowleopard', 'lion'],
-        'win': ['xp', 'vista', 'win7'],
+        'mac': ['snowleopard', 'lion'],
+        'win': ['xp', 'win7'],
         'linux': ['lucid'],
         'android': ['icecreamsandwich'],
     }
@@ -107,9 +106,17 @@ class ChromiumPort(Port):
             return module_path[0:offset]
 
     def __init__(self, host, port_name, **kwargs):
-        Port.__init__(self, host, port_name, **kwargs)
+        super(ChromiumPort, self).__init__(host, port_name, **kwargs)
         # All sub-classes override this, but we need an initial value for testing.
         self._chromium_base_dir_path = None
+
+    def default_pixel_tests(self):
+        return True
+
+    def default_timeout_ms(self):
+        if self.get_option('configuration') == 'Debug':
+            return 12 * 1000
+        return 6 * 1000
 
     def _check_file_exists(self, path_to_file, file_description,
                            override_step=None, logging=True):
@@ -130,6 +137,11 @@ class ChromiumPort(Port):
             return False
         return True
 
+    def driver_name(self):
+        # FIXME: merge this with Port.driver_name, WebKitPort.driver_name
+        if self.get_option('driver_name'):
+            return self.get_option('driver_name')
+        return 'DumpRenderTree'
 
     def check_build(self, needs_http):
         result = True
@@ -152,9 +164,9 @@ class ChromiumPort(Port):
             result = self.check_image_diff(
                 'To override, invoke with --no-pixel-tests') and result
 
-        # It's okay if pretty patch isn't available, but we will at
-        # least log a message.
+        # It's okay if pretty patch and wdiff aren't available, but we will at least log messages.
         self._pretty_patch_available = self.check_pretty_patch()
+        self._wdiff_available = self.check_wdiff()
 
         return result
 
@@ -257,6 +269,20 @@ class ChromiumPort(Port):
         except AssertionError:
             return self._build_path(self.get_option('configuration'), 'layout-test-results')
 
+    def _driver_class(self):
+        return ChromiumDriver
+
+    def _missing_symbol_to_skipped_tests(self):
+        # FIXME: Should WebKitPort have these definitions also?
+        return {
+            "ff_mp3_decoder": ["webaudio/codec-tests/mp3"],
+            "ff_aac_decoder": ["webaudio/codec-tests/aac"],
+        }
+
+    def skipped_layout_tests(self, test_list):
+        # FIXME: Merge w/ WebKitPort.skipped_layout_tests()
+        return set(self._skipped_tests_for_unsupported_features(test_list))
+
     def setup_test_run(self):
         # Delete the disk cache if any to ensure a clean test run.
         dump_render_tree_binary_path = self._path_to_driver()
@@ -264,9 +290,6 @@ class ChromiumPort(Port):
         cachedir = self._filesystem.join(cachedir, "cache")
         if self._filesystem.exists(cachedir):
             self._filesystem.rmtree(cachedir)
-
-    def _driver_class(self):
-        return ChromiumDriver
 
     def start_helper(self):
         helper_path = self._path_to_helper()
@@ -322,7 +345,13 @@ class ChromiumPort(Port):
     ])
 
     def expectations_files(self):
-        paths = [self.path_to_test_expectations_file(), self.path_from_chromium_base('skia', 'skia_test_expectations.txt')]
+        paths = [self.path_to_test_expectations_file()]
+        skia_expectations_path = self.path_from_chromium_base('skia', 'skia_test_expectations.txt')
+        if self._filesystem.exists(skia_expectations_path):
+            paths.append(skia_expectations_path)
+        else:
+            _log.warning("Using the chromium port without having the downstream skia_test_expectations.txt file checked out. Expectations related things might be wonky.")
+
         builder_name = self.get_option('builder_name', 'DUMMY_BUILDER_NAME')
         if builder_name == 'DUMMY_BUILDER_NAME' or '(deps)' in builder_name or builder_name in self.try_builder_names:
             paths.append(self.path_from_chromium_base('webkit', 'tools', 'layout_tests', 'test_expectations.txt'))
@@ -366,6 +395,10 @@ class ChromiumPort(Port):
     def _build_path(self, *comps):
         return self._static_build_path(self._filesystem, self.get_option('build_directory'), self.path_from_chromium_base(), self.path_from_webkit_base(), *comps)
 
+    def _path_to_image_diff(self):
+        binary_name = 'ImageDiff'
+        return self._build_path(self.get_option('configuration'), binary_name)
+
     def _check_driver_build_up_to_date(self, configuration):
         if configuration in ('Debug', 'Release'):
             try:
@@ -400,10 +433,6 @@ class ChromiumPort(Port):
         if sys.platform == 'cygwin':
             return cygpath(path)
         return path
-
-    def _path_to_image_diff(self):
-        binary_name = 'ImageDiff'
-        return self._build_path(self.get_option('configuration'), binary_name)
 
 
 class ChromiumDriver(WebKitDriver):
@@ -664,7 +693,7 @@ class ChromiumDriver(WebKitDriver):
             self._proc.stderr.close()
         time_out_ms = self._port.get_option('time_out_ms')
         if time_out_ms and not self._no_timeout:
-            timeout_ratio = float(time_out_ms) / self._port.default_test_timeout_ms()
+            timeout_ratio = float(time_out_ms) / self._port.default_timeout_ms()
             kill_timeout_seconds = self.KILL_TIMEOUT_DEFAULT * timeout_ratio if timeout_ratio > 1.0 else self.KILL_TIMEOUT_DEFAULT
         else:
             kill_timeout_seconds = self.KILL_TIMEOUT_DEFAULT

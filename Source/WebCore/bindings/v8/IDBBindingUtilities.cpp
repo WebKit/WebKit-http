@@ -65,8 +65,9 @@ static PassRefPtr<IDBKey> createIDBKeyFromValue(v8::Handle<v8::Value> value, Vec
             v8::Local<v8::Value> item = array->Get(v8::Int32::New(i));
             RefPtr<IDBKey> subkey = createIDBKeyFromValue(item, stack);
             if (!subkey)
-                return 0;
-            subkeys.append(subkey);
+                subkeys.append(IDBKey::createInvalid());
+            else
+                subkeys.append(subkey);
         }
 
         stack.removeLast();
@@ -153,12 +154,14 @@ v8::Handle<v8::Value> ensureNthValueOnKeyPath(v8::Handle<v8::Value>& rootValue, 
 
 } // anonymous namespace
 
-static PassRefPtr<IDBKey> createIDBKeyFromSerializedValueAndKeyPath(PassRefPtr<SerializedScriptValue> value, const String& keyPath)
+static PassRefPtr<IDBKey> createIDBKeyFromSerializedValueAndKeyPath(PassRefPtr<SerializedScriptValue> prpValue, const String& keyPath)
 {
     Vector<String> keyPathElements;
     IDBKeyPathParseError error;
     IDBParseKeyPath(keyPath, keyPathElements, error);
     ASSERT(error == IDBKeyPathParseErrorNone);
+
+    RefPtr<SerializedScriptValue> value = prpValue;
 
     V8AuxiliaryContext context;
     v8::Handle<v8::Value> v8Value(value->deserialize());

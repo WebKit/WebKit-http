@@ -32,9 +32,11 @@
 #include "IDBCallbacksProxy.h"
 #include "IDBDatabaseBackendInterface.h"
 #include "IDBDatabaseCallbacksProxy.h"
+#include "IDBMetadata.h"
 #include "IDBTransactionBackendInterface.h"
 #include "WebIDBCallbacks.h"
 #include "WebIDBDatabaseCallbacks.h"
+#include "WebIDBMetadata.h"
 #include "WebIDBObjectStoreImpl.h"
 #include "WebIDBTransactionImpl.h"
 
@@ -51,19 +53,9 @@ WebIDBDatabaseImpl::~WebIDBDatabaseImpl()
 {
 }
 
-WebString WebIDBDatabaseImpl::name() const
+WebIDBMetadata WebIDBDatabaseImpl::metadata() const
 {
-    return m_databaseBackend->name();
-}
-
-WebString WebIDBDatabaseImpl::version() const
-{
-    return m_databaseBackend->version();
-}
-
-WebDOMStringList WebIDBDatabaseImpl::objectStoreNames() const
-{
-    return m_databaseBackend->objectStoreNames();
+    return m_databaseBackend->metadata();
 }
 
 WebIDBObjectStore* WebIDBDatabaseImpl::createObjectStore(const WebString& name, const WebIDBKeyPath& keyPath, bool autoIncrement, const WebIDBTransaction& transaction, WebExceptionCode& ec)

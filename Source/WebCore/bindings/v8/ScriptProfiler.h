@@ -40,7 +40,10 @@
 
 namespace WebCore {
 
-class DOMWrapperVisitor;
+class ExternalArrayVisitor;
+class ExternalStringVisitor;
+class MemoryInstrumentation;
+class NodeWrapperVisitor;
 class Page;
 class ScriptObject;
 class ScriptValue;
@@ -60,7 +63,7 @@ public:
 
     static void collectGarbage();
     static ScriptObject objectByHeapObjectId(unsigned id);
-    static unsigned getHeapObjectId(ScriptValue);
+    static unsigned getHeapObjectId(const ScriptValue&);
     static void start(ScriptState* state, const String& title);
     static void startForPage(Page*, const String& title);
 #if ENABLE(WORKERS)
@@ -76,8 +79,10 @@ public:
     static bool isSampling() { return true; }
     static bool hasHeapProfiler() { return true; }
     static void initialize();
-    static void visitJSDOMWrappers(DOMWrapperVisitor*);
-    static void visitExternalJSStrings(DOMWrapperVisitor*);
+    static void visitNodeWrappers(NodeWrapperVisitor*);
+    static void visitExternalStrings(ExternalStringVisitor*);
+    static void visitExternalArrays(ExternalArrayVisitor*);
+    static void collectBindingMemoryInfo(MemoryInstrumentation*);
     static size_t profilerSnapshotsSize();
 };
 

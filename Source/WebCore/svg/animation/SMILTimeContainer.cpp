@@ -112,10 +112,11 @@ void SMILTimeContainer::pause()
 
 void SMILTimeContainer::resume()
 {
-    if (!m_beginTime)
-        return;
     ASSERT(isPaused());
-    m_accumulatedPauseTime += currentTime() - m_pauseTime;
+
+    if (m_beginTime)
+        m_accumulatedPauseTime += currentTime() - m_pauseTime;
+
     m_pauseTime = 0;
     startTimer(0);
 }
@@ -131,8 +132,12 @@ void SMILTimeContainer::setElapsed(SMILTime time)
     if (m_beginTime)
         m_timer.stop();
 
-    m_beginTime = currentTime() - time.value();
+    double now = currentTime();
+    m_beginTime = now - time.value();
+
     m_accumulatedPauseTime = 0;
+    if (m_pauseTime)
+        m_pauseTime = now;
 
     Vector<SVGSMILElement*> toReset;
     copyToVector(m_scheduledAnimations, toReset);

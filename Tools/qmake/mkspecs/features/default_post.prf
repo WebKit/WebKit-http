@@ -5,8 +5,6 @@
 # See 'Tools/qmake/README' for an overview of the build system
 # -------------------------------------------------------------------
 
-load(features)
-
 # Flag that we're now done processing the project file. This allows
 # a feature to distinguish between being processed due to a load()
 # or include() and a CONFIG += feature.
@@ -133,7 +131,7 @@ contains(TEMPLATE, lib) {
 
     # Prevent name clashes when building both debug and release. Qt5's module
     # system already takes care of this for the top level QtWebKit library.
-    !module:debug_and_release: TARGET = $$qtLibraryTarget($$TARGET)
+    !qt_install_module:debug_and_release: TARGET = $$qtLibraryTarget($$TARGET)
 
     isEmpty(DESTDIR): DESTDIR = $$activeBuildConfig()
 
@@ -164,7 +162,7 @@ contains(QT, webkit) {
 
 # Reorder libraries so that the link and include order is correct,
 # and make sure the case matches the original case.
-libraries = WebKit2 WebCore JavaScriptCore WTF
+libraries = WebKit1 WebKit2 WebCore JavaScriptCore WTF
 for(library, libraries) {
     contains(WEBKIT, $$lower($$library)) {
         WEBKIT -= $$lower($$library)
@@ -212,6 +210,12 @@ for(library, WEBKIT) {
         LIBS += $$dependent_libs
     }
 
+    # Anything not linking dynamically to QtWebKit should make sure to have its export
+    # macros syncrhonized with the code that it will be linked with statically.
+    !contains(QT, webkit) {
+        DEFINES += STATICALLY_LINKED_WITH_$$library
+    }
+
     LIBS = $$existing_libs $$LIBS
 }
 
@@ -232,8 +236,9 @@ for(subdir, SUBDIRS) {
     }
 }
 
-# Doing `$(MAKE) qmake' should recurse through all subdirs
-contains(TEMPLATE, subdirs):!no_recursive_qmake {
+# Doing '$(MAKE) qmake' should recurse through all subdirs. In Qt5, this is
+# automatic (for 'qmake_all', while 'qmake' does not enter subdirs at all).
+haveQt(4):contains(TEMPLATE, subdirs):!no_recursive_qmake {
     recursive_qmake.target = qmake_all
 
     # We could do this using CONFIG += recurse but that adds
@@ -269,7 +274,7 @@ contains(TEMPLATE, subdirs):!no_recursive_qmake {
 }
 
 incremental.target = incremental
-incremental.commands = $(MAKE) -f $(MAKEFILE) qmake && $(MAKE) -f $(MAKEFILE)
+incremental.commands = $(MAKE) -f $(MAKEFILE) qmake_all && $(MAKE) -f $(MAKEFILE)
 QMAKE_EXTRA_TARGETS += incremental
 
 # Don't set OBJECTS_DIR for subdirs, as that will unconditionally

@@ -42,19 +42,12 @@ class ChromiumWinPort(chromium.ChromiumPort):
     port_name = 'chromium-win'
 
     # FIXME: Figure out how to unify this with base.TestConfiguration.all_systems()?
-    SUPPORTED_VERSIONS = ('xp', 'vista', 'win7')
+    SUPPORTED_VERSIONS = ('xp', 'win7')
 
     # FIXME: Do we need mac-snowleopard here, like the base win port?
     FALLBACK_PATHS = {
         'xp': [
             'chromium-win-xp',
-            'chromium-win-vista',
-            'chromium-win',
-            'chromium',
-            'mac',
-        ],
-        'vista': [
-            'chromium-win-vista',
             'chromium-win',
             'chromium',
             'mac',
@@ -72,7 +65,8 @@ class ChromiumWinPort(chromium.ChromiumPort):
     def determine_full_port_name(cls, host, options, port_name):
         if port_name.endswith('-win'):
             assert host.platform.is_win()
-            if host.platform.os_version in ('7sp0', '7sp1', 'future'):
+            # We don't maintain separate baselines for vista, so we pretend it is win7.
+            if host.platform.os_version in ('vista', '7sp0', '7sp1', 'future'):
                 version = 'win7'
             else:
                 version = host.platform.os_version
@@ -81,10 +75,7 @@ class ChromiumWinPort(chromium.ChromiumPort):
 
     def __init__(self, host, port_name, **kwargs):
         chromium.ChromiumPort.__init__(self, host, port_name, **kwargs)
-
-        # We're a little generic here because this code is reused by the
-        # 'google-chrome' port as well as the 'mock-' and 'dryrun-' ports.
-        self._version = port_name[port_name.index('-win-') + len('-win-'):]
+        self._version = port_name[port_name.index('chromium-win-') + len('chromium-win-'):]
         assert self._version in self.SUPPORTED_VERSIONS, "%s is not in %s" % (self._version, self.SUPPORTED_VERSIONS)
 
     def setup_environ_for_server(self, server_name=None):
@@ -111,6 +102,11 @@ class ChromiumWinPort(chromium.ChromiumPort):
     def baseline_search_path(self):
         port_names = self.FALLBACK_PATHS[self.version()]
         return map(self._webkit_baseline_path, port_names)
+
+    def _modules_to_search_for_symbols(self):
+        # FIXME: we should return the path to the ffmpeg equivalents to detect if we have the mp3 and aac codecs installed.
+        # See https://bugs.webkit.org/show_bug.cgi?id=89706.
+        return []
 
     def check_build(self, needs_http):
         result = chromium.ChromiumPort.check_build(self, needs_http)

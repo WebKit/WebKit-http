@@ -22,6 +22,7 @@
 #include "TextureMapperGL.h"
 
 #include "GraphicsContext.h"
+#include "GraphicsContext3D.h"
 #include "Image.h"
 #include "TextureMapperShaderManager.h"
 #include "Timer.h"
@@ -36,9 +37,8 @@
 #endif
 
 #if PLATFORM(QT)
-#if QT_VERSION >= 0x050000
+#if HAVE(QT5)
 #include <QOpenGLContext>
-#include <qpa/qplatformpixmap.h>
 #else
 #include <QGLContext>
 #endif // QT_VERSION
@@ -48,12 +48,6 @@
 #include <AGL/agl.h>
 #elif defined(XP_UNIX)
 #include <GL/glx.h>
-#endif
-
-#if USE(CAIRO)
-#include "CairoUtilities.h"
-#include "RefPtrCairo.h"
-#include <cairo.h>
 #endif
 
 #define GL_CMD(...) do { __VA_ARGS__; ASSERT_ARG(__VA_ARGS__, !glGetError()); } while (0)
@@ -239,8 +233,10 @@ BitmapTextureGL* toBitmapTextureGL(BitmapTexture* texture)
 }
 
 TextureMapperGL::TextureMapperGL()
-    : m_data(new TextureMapperGLData)
+    : TextureMapper(OpenGLMode)
+    , m_data(new TextureMapperGLData)
     , m_context(0)
+    , m_enableEdgeDistanceAntialiasing(false)
 {
 }
 
@@ -309,19 +305,24 @@ void TextureMapperGL::endPainting()
 #endif
 }
 
-void TextureMapperGL::drawRect(const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, TextureMapperShaderProgram* shaderProgram, GLenum drawingMode, bool needsBlending)
+void TextureMapperGL::drawQuad(const DrawQuad& quadToDraw, const TransformationMatrix& modelViewMatrix, TextureMapperShaderProgram* shaderProgram, GLenum drawingMode, bool needsBlending)
 {
     GL_CMD(glEnableVertexAttribArray(shaderProgram->vertexAttrib()));
     GL_CMD(glBindBuffer(GL_ARRAY_BUFFER, 0));
-    const GLfloat unitRect[] = {0, 0, 1, 0, 1, 1, 0, 1};
-    GL_CMD(glVertexAttribPointer(shaderProgram->vertexAttrib(), 2, GL_FLOAT, GL_FALSE, 0, unitRect));
+
+    const GLfloat quad[] = {
+        quadToDraw.targetRectMappedToUnitSquare.p1().x(), quadToDraw.targetRectMappedToUnitSquare.p1().y(),
+        quadToDraw.targetRectMappedToUnitSquare.p2().x(), quadToDraw.targetRectMappedToUnitSquare.p2().y(),
+        quadToDraw.targetRectMappedToUnitSquare.p3().x(), quadToDraw.targetRectMappedToUnitSquare.p3().y(),
+        quadToDraw.targetRectMappedToUnitSquare.p4().x(), quadToDraw.targetRectMappedToUnitSquare.p4().y()
+    };
+    GL_CMD(glVertexAttribPointer(shaderProgram->vertexAttrib(), 2, GL_FLOAT, GL_FALSE, 0, quad));
 
     TransformationMatrix matrix = TransformationMatrix(data().projectionMatrix).multiply(modelViewMatrix).multiply(TransformationMatrix(
-            targetRect.width(), 0, 0, 0,
-            0, targetRect.height(), 0, 0,
+            quadToDraw.originalTargetRect.width(), 0, 0, 0,
+            0, quadToDraw.originalTargetRect.height(), 0, 0,
             0, 0, 1, 0,
-            targetRect.x(), targetRect.y(), 0, 1));
-
+            quadToDraw.originalTargetRect.x(), quadToDraw.originalTargetRect.y(), 0, 1));
     const GLfloat m4[] = {
         matrix.m11(), matrix.m12(), matrix.m13(), matrix.m14(),
         matrix.m21(), matrix.m22(), matrix.m23(), matrix.m24(),
@@ -356,10 +357,10 @@ void TextureMapperGL::drawBorder(const Color& color, float width, const FloatRec
                        alpha));
     GL_CMD(glLineWidth(width));
 
-    drawRect(targetRect, modelViewMatrix, program.get(), GL_LINE_LOOP, color.hasAlpha());
+    drawQuad(targetRect, modelViewMatrix, program.get(), GL_LINE_LOOP, color.hasAlpha());
 }
 
-void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, const BitmapTexture* mask)
+void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity, const BitmapTexture* mask, unsigned exposedEdges)
 {
     if (!texture.isValid())
         return;
@@ -368,7 +369,7 @@ void TextureMapperGL::drawTexture(const BitmapTexture& texture, const FloatRect&
         return;
 
     const BitmapTextureGL& textureGL = static_cast<const BitmapTextureGL&>(texture);
-    drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : SupportsBlending, textureGL.size(), targetRect, matrix, opacity, mask);
+    drawTexture(textureGL.id(), textureGL.isOpaque() ? 0 : SupportsBlending, textureGL.size(), targetRect, matrix, opacity, mask, exposedEdges);
 }
 
 #if defined(GL_ARB_texture_rectangle)
@@ -387,6 +388,7 @@ void TextureMapperGL::drawTextureRectangleARB(uint32_t texture, Flags flags, con
     GL_CMD(glUniform1i(program->sourceTextureLocation(), 0));
 
     GL_CMD(glUniform1f(program->flipLocation(), !!(flags & ShouldFlipTexture)));
+    GL_CMD(glUniform2f(program->textureSizeLocation(), textureSize.width(), textureSize.height()));
 
     if (TextureMapperShaderProgram::isValidUniformLocation(program->opacityLocation()))
         GL_CMD(glUniform1f(program->opacityLocation(), opacity));
@@ -400,12 +402,16 @@ void TextureMapperGL::drawTextureRectangleARB(uint32_t texture, Flags flags, con
     }
 
     bool needsBlending = (flags & SupportsBlending) || opacity < 0.99 || maskTexture;
-    drawRect(targetRect, modelViewMatrix, program.get(), GL_TRIANGLE_FAN, needsBlending);
+    drawQuad(targetRect, modelViewMatrix, program.get(), GL_TRIANGLE_FAN, needsBlending);
 }
 #endif // defined(GL_ARB_texture_rectangle) 
 
-void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& textureSize, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture)
+void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& /* textureSize */, const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges)
 {
+    bool needsAntiliaing = m_enableEdgeDistanceAntialiasing && !modelViewMatrix.isIntegerTranslation();
+    if (needsAntiliaing && drawTextureWithAntialiasing(texture, flags, targetRect, modelViewMatrix, opacity, maskTexture, exposedEdges))
+       return;
+
     RefPtr<TextureMapperShaderProgram> program;
     if (maskTexture)
         program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::OpacityAndMask);
@@ -413,6 +419,142 @@ void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& 
         program = data().sharedGLData().textureMapperShaderManager.getShaderProgram(TextureMapperShaderManager::Simple);
     GL_CMD(glUseProgram(program->id()));
 
+    drawTexturedQuadWithProgram(program.get(), texture, flags, targetRect, modelViewMatrix, opacity, maskTexture);
+}
+
+static TransformationMatrix viewportMatrix()
+{
+    GLint viewport[4];
+    GL_CMD(glGetIntegerv(GL_VIEWPORT, viewport));
+
+    TransformationMatrix matrix;
+    matrix.translate3d(viewport[0], viewport[1], 0);
+    matrix.scale3d(viewport[2], viewport[3], 0);
+
+    // Map x, y and z to unit square from OpenGL normalized device
+    // coordinates which are -1 to 1 on every axis.
+    matrix.translate3d(0.5, 0.5, 0.5);
+    matrix.scale3d(0.5, 0.5, 0.5);
+
+    return matrix;
+}
+
+static void scaleLineEquationCoeffecientsToOptimizeDistanceCalculation(float* coeffecients)
+{
+    // In the fragment shader we want to calculate the distance from this
+    // line to a point (p), which is given by the formula:
+    // (A*p.x + B*p.y + C) / sqrt (a^2 + b^2)
+    // We can do a small amount of precalculation here to reduce the
+    // amount of math in the shader by scaling the coeffecients now.
+    float scale = 1.0 / FloatPoint(coeffecients[0], coeffecients[1]).length();
+    coeffecients[0] = coeffecients[0] * scale;
+    coeffecients[1] = coeffecients[1] * scale;
+    coeffecients[2] = coeffecients[2] * scale;
+}
+
+static void getStandardEquationCoeffecientsForLine(const FloatPoint& p1, const FloatPoint& p2, float* coeffecients)
+{
+    // Given two points, the standard equation of a line (Ax + By + C = 0)
+    // can be calculated via the formula:
+    // (p1.y – p2.y)x + (p1.x – p2.x)y + ((p1.x*p2.y) – (p2.x*p1.y)) = 0
+    coeffecients[0] = p1.y() - p2.y();
+    coeffecients[1] = p2.x() - p1.x();
+    coeffecients[2] = p1.x() * p2.y() - p2.x() * p1.y();
+    scaleLineEquationCoeffecientsToOptimizeDistanceCalculation(coeffecients);
+}
+
+static void quadToEdgeArray(const FloatQuad& quad, float* edgeArray)
+{
+    if (quad.isCounterclockwise()) {
+        getStandardEquationCoeffecientsForLine(quad.p4(), quad.p3(), edgeArray);
+        getStandardEquationCoeffecientsForLine(quad.p3(), quad.p2(), edgeArray + 3);
+        getStandardEquationCoeffecientsForLine(quad.p2(), quad.p1(), edgeArray + 6);
+        getStandardEquationCoeffecientsForLine(quad.p1(), quad.p4(), edgeArray + 9);
+        return;
+    }
+    getStandardEquationCoeffecientsForLine(quad.p4(), quad.p1(), edgeArray);
+    getStandardEquationCoeffecientsForLine(quad.p1(), quad.p2(), edgeArray + 3);
+    getStandardEquationCoeffecientsForLine(quad.p2(), quad.p3(), edgeArray + 6);
+    getStandardEquationCoeffecientsForLine(quad.p3(), quad.p4(), edgeArray + 9);
+}
+
+static FloatSize scaledVectorDifference(const FloatPoint& point1, const FloatPoint& point2, float scale)
+{
+    FloatSize vector = point1 - point2;
+    if (vector.diagonalLengthSquared())
+        vector.scale(1.0 / vector.diagonalLength());
+
+    vector.scale(scale);
+    return vector;
+}
+
+static FloatQuad inflateQuad(const FloatQuad& quad, float distance)
+{
+    FloatQuad expandedQuad = quad;
+    expandedQuad.setP1(expandedQuad.p1() + scaledVectorDifference(quad.p1(), quad.p2(), distance));
+    expandedQuad.setP4(expandedQuad.p4() + scaledVectorDifference(quad.p4(), quad.p3(), distance));
+
+    expandedQuad.setP1(expandedQuad.p1() + scaledVectorDifference(quad.p1(), quad.p4(), distance));
+    expandedQuad.setP2(expandedQuad.p2() + scaledVectorDifference(quad.p2(), quad.p3(), distance));
+
+    expandedQuad.setP2(expandedQuad.p2() + scaledVectorDifference(quad.p2(), quad.p1(), distance));
+    expandedQuad.setP3(expandedQuad.p3() + scaledVectorDifference(quad.p3(), quad.p4(), distance));
+
+    expandedQuad.setP3(expandedQuad.p3() + scaledVectorDifference(quad.p3(), quad.p2(), distance));
+    expandedQuad.setP4(expandedQuad.p4() + scaledVectorDifference(quad.p4(), quad.p1(), distance));
+
+    return expandedQuad;
+}
+
+bool TextureMapperGL::drawTextureWithAntialiasing(uint32_t texture, Flags flags, const FloatRect& originalTargetRect, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture, unsigned exposedEdges)
+{
+    // The antialiasing path does not support mask textures at the moment.
+    if (maskTexture)
+        return false;
+
+    // For now we punt on rendering tiled layers with antialiasing. It's quite hard
+    // to render them without seams.
+    if (exposedEdges != AllEdges)
+        return false;
+
+    // The goal here is render a slightly larger (0.75 pixels in screen space) quad and to
+    // gradually taper off the alpha values to do a simple version of edge distance
+    // antialiasing. Note here that we are also including the viewport matrix (which
+    // translates from normalized device coordinates to screen coordinates), because these
+    // values are consumed in the fragment shader, which works in screen coordinates.
+    TransformationMatrix screenSpaceTransform = viewportMatrix().multiply(TransformationMatrix(data().projectionMatrix)).multiply(modelViewMatrix).to2dTransform();
+    if (!screenSpaceTransform.isInvertible())
+        return false;
+    FloatQuad quadInScreenSpace = screenSpaceTransform.mapQuad(originalTargetRect);
+
+    const float inflationDistance = 0.75;
+    FloatQuad expandedQuadInScreenSpace = inflateQuad(quadInScreenSpace, inflationDistance);
+
+    // In the non-antialiased case the vertices passed are the unit rectangle and double
+    // as the texture coordinates (0,0 1,0, 1,1 and 0,1). Here we map the expanded quad
+    // coordinates in screen space back to the original rect's texture coordinates.
+    // This has the effect of slightly increasing the size of the original quad's geometry
+    // in the vertex shader.
+    FloatQuad expandedQuadInTextureCoordinates = screenSpaceTransform.inverse().mapQuad(expandedQuadInScreenSpace);
+    expandedQuadInTextureCoordinates.move(-originalTargetRect.x(), -originalTargetRect.y());
+    expandedQuadInTextureCoordinates.scale(1 / originalTargetRect.width(), 1 / originalTargetRect.height());
+
+    // We prepare both the expanded quad for the fragment shader as well as the rectangular bounding
+    // box of that quad, as that seems necessary to properly antialias backfacing quads.
+    float targetQuadEdges[24];
+    quadToEdgeArray(expandedQuadInScreenSpace, targetQuadEdges);
+    quadToEdgeArray(inflateQuad(quadInScreenSpace.boundingBox(),  inflationDistance), targetQuadEdges + 12);
+
+    RefPtr<TextureMapperShaderProgramAntialiasingNoMask> program = data().sharedGLData().textureMapperShaderManager.antialiasingNoMaskProgram();
+    GL_CMD(glUseProgram(program->id()));
+    GL_CMD(glUniform3fv(program->expandedQuadEdgesInScreenSpaceLocation(), 8, targetQuadEdges));
+
+    drawTexturedQuadWithProgram(program.get(), texture, flags, DrawQuad(originalTargetRect, expandedQuadInTextureCoordinates), modelViewMatrix, opacity, 0 /* maskTexture */);
+    return true;
+}
+
+void TextureMapperGL::drawTexturedQuadWithProgram(TextureMapperShaderProgram* program, uint32_t texture, Flags flags, const DrawQuad& quadToDraw, const TransformationMatrix& modelViewMatrix, float opacity, const BitmapTexture* maskTexture)
+{
     GL_CMD(glEnableVertexAttribArray(program->vertexAttrib()));
     GL_CMD(glActiveTexture(GL_TEXTURE0));
     GL_CMD(glBindTexture(GL_TEXTURE_2D, texture));
@@ -432,7 +574,7 @@ void TextureMapperGL::drawTexture(uint32_t texture, Flags flags, const IntSize& 
     }
 
     bool needsBlending = (flags & SupportsBlending) || opacity < 0.99 || maskTexture;
-    drawRect(targetRect, modelViewMatrix, program.get(), GL_TRIANGLE_FAN, needsBlending);
+    drawQuad(quadToDraw, modelViewMatrix, program, GL_TRIANGLE_FAN, needsBlending);
 }
 
 bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, Flags)
@@ -445,26 +587,6 @@ bool BitmapTextureGL::canReuseWith(const IntSize& contentsSize, Flags)
 #else
 #define DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE GL_UNSIGNED_BYTE
 #endif
-
-static void swizzleBGRAToRGBA(uint32_t* data, const IntRect& rect, int stride = 0)
-{
-    stride = stride ? stride : rect.width();
-    for (int y = rect.y(); y < rect.maxY(); ++y) {
-        uint32_t* p = data + y * stride;
-        for (int x = rect.x(); x < rect.maxX(); ++x)
-            p[x] = ((p[x] << 16) & 0xff0000) | ((p[x] >> 16) & 0xff) | (p[x] & 0xff00ff00);
-    }
-}
-
-static bool driverSupportsBGRASwizzling()
-{
-#if defined(TEXMAP_OPENGL_ES_2)
-    // FIXME: Implement reliable detection. See also https://bugs.webkit.org/show_bug.cgi?id=81103.
-    return false;
-#else
-    return true;
-#endif
-}
 
 static bool driverSupportsSubImage()
 {
@@ -485,57 +607,50 @@ void BitmapTextureGL::didReset()
     if (m_textureSize == contentSize())
         return;
 
-    GLuint format = driverSupportsBGRASwizzling() ? GL_BGRA : GL_RGBA;
-
     m_textureSize = contentSize();
     GL_CMD(glBindTexture(GL_TEXTURE_2D, m_id));
     GL_CMD(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
     GL_CMD(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
     GL_CMD(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
     GL_CMD(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
-    GL_CMD(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureSize.width(), m_textureSize.height(), 0, format, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, 0));
+    GL_CMD(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_textureSize.width(), m_textureSize.height(), 0, GL_RGBA, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, 0));
 }
 
 
 void BitmapTextureGL::updateContents(const void* data, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine)
 {
-    GLuint glFormat = GL_RGBA;
     GL_CMD(glBindTexture(GL_TEXTURE_2D, m_id));
 
-    if (driverSupportsBGRASwizzling())
-        glFormat = GL_BGRA;
-    else
-        swizzleBGRAToRGBA(reinterpret_cast<uint32_t*>(const_cast<void*>(data)), IntRect(sourceOffset, targetRect.size()), bytesPerLine / 4);
-
-    if (bytesPerLine == targetRect.width() / 4 && sourceOffset == IntPoint::zero()) {
-        GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, (const char*)data));
+    const unsigned bytesPerPixel = 4;
+    if (bytesPerLine == targetRect.width() * bytesPerPixel && sourceOffset == IntPoint::zero()) {
+        GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), GL_RGBA, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, (const char*)data));
         return;
     }
 
     // For ES drivers that don't support sub-images.
     if (!driverSupportsSubImage()) {
         const char* bits = static_cast<const char*>(data);
-        const char* src = bits + sourceOffset.y() * bytesPerLine + sourceOffset.x() * 4;
-        Vector<char> temporaryData(targetRect.width() * targetRect.height() * 4);
+        const char* src = bits + sourceOffset.y() * bytesPerLine + sourceOffset.x() * bytesPerPixel;
+        Vector<char> temporaryData(targetRect.width() * targetRect.height() * bytesPerPixel);
         char* dst = temporaryData.data();
 
-        const int targetBytesPerLine = targetRect.width() * 4;
+        const int targetBytesPerLine = targetRect.width() * bytesPerPixel;
         for (int y = 0; y < targetRect.height(); ++y) {
             memcpy(dst, src, targetBytesPerLine);
             src += bytesPerLine;
             dst += targetBytesPerLine;
         }
 
-        GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, temporaryData.data()));
+        GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), GL_RGBA, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, temporaryData.data()));
         return;
     }
 
 #if !defined(TEXMAP_OPENGL_ES_2)
     // Use the OpenGL sub-image extension, now that we know it's available.
-    GL_CMD(glPixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / 4));
+    GL_CMD(glPixelStorei(GL_UNPACK_ROW_LENGTH, bytesPerLine / bytesPerPixel));
     GL_CMD(glPixelStorei(GL_UNPACK_SKIP_ROWS, sourceOffset.y()));
     GL_CMD(glPixelStorei(GL_UNPACK_SKIP_PIXELS, sourceOffset.x()));
-    GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), glFormat, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, (const char*)data));
+    GL_CMD(glTexSubImage2D(GL_TEXTURE_2D, 0, targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height(), GL_RGBA, DEFAULT_TEXTURE_PIXEL_TRANSFER_TYPE, (const char*)data));
     GL_CMD(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
     GL_CMD(glPixelStorei(GL_UNPACK_SKIP_ROWS, 0));
     GL_CMD(glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0));
@@ -546,31 +661,12 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
 {
     if (!image)
         return;
-    NativeImagePtr frameImage = image->nativeImageForCurrentFrame();
-    if (!frameImage)
-        return;
 
-    int bytesPerLine;
-    const char* imageData;
+    Vector<uint8_t> imageData;
+    GraphicsContext3D::extractImageData(image, GraphicsContext3D::RGBA, GraphicsContext3D::UNSIGNED_BYTE, false /* flipY */, true /* premultiplyAlpha */, false /* ignoreGammaAndColorProfile */, imageData);
 
-#if PLATFORM(QT)
-    QImage qtImage;
-#if HAVE(QT5)
-    // With QPA, we can avoid a deep copy.
-    qtImage = *frameImage->handle()->buffer();
-#else
-    // This might be a deep copy, depending on other references to the pixmap.
-    qtImage = frameImage->toImage();
-#endif
-    imageData = reinterpret_cast<const char*>(qtImage.constBits());
-    bytesPerLine = qtImage.bytesPerLine();
-#elif USE(CAIRO)
-    cairo_surface_t* surface = frameImage->surface();
-    imageData = reinterpret_cast<const char*>(cairo_image_surface_get_data(surface));
-    bytesPerLine = cairo_image_surface_get_stride(surface);
-#endif
-
-    updateContents(imageData, targetRect, offset, bytesPerLine);
+    const unsigned bytesPerPixel = 4;
+    updateContents(imageData.data(), targetRect, offset, image->width() * bytesPerPixel);
 }
 
 #if ENABLE(CSS_FILTERS)

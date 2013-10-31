@@ -47,7 +47,7 @@ public:
     static PassRefPtr<HTMLFormElement> create(const QualifiedName&, Document*);
     virtual ~HTMLFormElement();
 
-    HTMLCollection* elements();
+    PassRefPtr<HTMLCollection> elements();
     void getNamedElements(const AtomicString&, Vector<RefPtr<Node> >&);
 
     unsigned length() const;
@@ -150,7 +150,6 @@ private:
 
     FormSubmission::Attributes m_attributes;
     OwnPtr<AliasMap> m_elementAliases;
-    OwnPtr<HTMLFormCollection> m_elementsCollection;
 
     CheckedRadioButtons m_checkedRadioButtons;
 

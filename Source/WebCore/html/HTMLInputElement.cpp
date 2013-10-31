@@ -95,6 +95,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document* docum
     , m_isAutofilled(false)
     , m_stateRestored(false)
     , m_parsingInProgress(createdByParser)
+    , m_valueAttributeWasUpdatedAfterParsing(false)
     , m_wasModifiedByUser(false)
     , m_canReceiveDroppedFiles(false)
     , m_inputType(InputType::createText(this))
@@ -594,6 +595,7 @@ void HTMLInputElement::parseAttribute(const Attribute& attribute)
         }
         setFormControlValueMatchesRenderer(false);
         setNeedsValidityCheck();
+        m_valueAttributeWasUpdatedAfterParsing = !m_parsingInProgress;
     } else if (attribute.name() == checkedAttr) {
         // Another radio button in the same group might be checked by state
         // restore. We shouldn't call setChecked() even if this has the checked
@@ -1459,11 +1461,6 @@ HTMLDataListElement* HTMLInputElement::dataList() const
 bool HTMLInputElement::isSteppable() const
 {
     return m_inputType->isSteppable();
-}
-
-void HTMLInputElement::stepUpFromRenderer(int n)
-{
-    m_inputType->stepUpFromRenderer(n);
 }
 
 #if ENABLE(INPUT_SPEECH)

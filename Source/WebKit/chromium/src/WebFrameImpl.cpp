@@ -950,6 +950,15 @@ v8::Handle<v8::Value> WebFrameImpl::createFileSystem(WebFileSystem::Type type,
     return toV8(DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create()));
 }
 
+v8::Handle<v8::Value> WebFrameImpl::createSerializableFileSystem(WebFileSystem::Type type,
+                                                                 const WebString& name,
+                                                                 const WebString& path)
+{
+    RefPtr<DOMFileSystem> fs = DOMFileSystem::create(frame()->document(), name, static_cast<WebCore::FileSystemType>(type), KURL(ParsedURLString, path.utf8().data()), AsyncFileSystemChromium::create());
+    fs->makeClonable();
+    return toV8(fs.release());
+}
+
 v8::Handle<v8::Value> WebFrameImpl::createFileEntry(WebFileSystem::Type type,
                                                     const WebString& fileSystemName,
                                                     const WebString& fileSystemPath,
@@ -967,6 +976,12 @@ void WebFrameImpl::reload(bool ignoreCache)
 {
     m_frame->loader()->history()->saveDocumentAndScrollState();
     m_frame->loader()->reload(ignoreCache);
+}
+
+void WebFrameImpl::reloadWithOverrideURL(const WebURL& overrideUrl, bool ignoreCache)
+{
+    m_frame->loader()->history()->saveDocumentAndScrollState();
+    m_frame->loader()->reloadWithOverrideURL(overrideUrl, ignoreCache);
 }
 
 void WebFrameImpl::loadRequest(const WebURLRequest& request)
@@ -1162,7 +1177,7 @@ void WebFrameImpl::replaceSelection(const WebString& text)
 {
     bool selectReplacement = false;
     bool smartReplace = true;
-    return frame()->editor()->replaceSelectionWithText(text, selectReplacement, smartReplace);
+    frame()->editor()->replaceSelectionWithText(text, selectReplacement, smartReplace);
 }
 
 void WebFrameImpl::insertText(const WebString& text)

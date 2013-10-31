@@ -476,8 +476,9 @@ void WebPageSerializerImpl::collectTargetFrames()
         // Get current using document.
         Document* currentDoc = currentFrame->frame()->document();
         // Go through sub-frames.
-        RefPtr<HTMLAllCollection> all = currentDoc->all();
-        for (Node* node = all->firstItem(); node; node = all->nextItem()) {
+        RefPtr<HTMLCollection> all = currentDoc->all();
+
+        for (unsigned i = 0; Node* node = all->item(i); i++) {
             if (!node->isHTMLElement())
                 continue;
             Element* element = static_cast<Element*>(node);

@@ -79,8 +79,8 @@ String ScriptDebugServer::setBreakpoint(const String& sourceID, const ScriptBrea
 
     v8::Local<v8::Object> args = v8::Object::New();
     args->Set(v8::String::New("sourceID"), v8String(sourceID));
-    args->Set(v8::String::New("lineNumber"), v8::Integer::New(scriptBreakpoint.lineNumber));
-    args->Set(v8::String::New("columnNumber"), v8::Integer::New(scriptBreakpoint.columnNumber));
+    args->Set(v8::String::New("lineNumber"), v8Integer(scriptBreakpoint.lineNumber));
+    args->Set(v8::String::New("columnNumber"), v8Integer(scriptBreakpoint.columnNumber));
     args->Set(v8::String::New("condition"), v8String(scriptBreakpoint.condition));
 
     v8::Handle<v8::Function> setBreakpointFunction = v8::Local<v8::Function>::Cast(m_debuggerScript.get()->Get(v8::String::New("setBreakpoint")));
@@ -415,6 +415,72 @@ v8::Local<v8::Value> ScriptDebugServer::functionScopes(v8::Handle<v8::Function> 
 bool ScriptDebugServer::isPaused()
 {
     return !m_executionState.get().IsEmpty();
+}
+
+void ScriptDebugServer::compileScript(ScriptState* state, const String& expression, const String& sourceURL, String* scriptId, String* exceptionMessage)
+{
+    v8::HandleScope handleScope;
+    v8::Handle<v8::Context> context = state->context();
+    if (context.IsEmpty())
+        return;
+    v8::Context::Scope contextScope(context);
+
+    v8::Local<v8::String> code = v8ExternalString(expression);
+    v8::TryCatch tryCatch;
+
+    v8::ScriptOrigin origin(v8ExternalString(sourceURL), v8Integer(0), v8Integer(0));
+    v8::Handle<v8::Script> script = v8::Script::New(code, &origin);
+
+    if (tryCatch.HasCaught()) {
+        v8::Local<v8::Message> message = tryCatch.Message();
+        if (!message.IsEmpty())
+            *exceptionMessage = toWebCoreStringWithNullOrUndefinedCheck(message->Get());
+        return;
+    }
+    if (script.IsEmpty())
+        return;
+
+    *scriptId = toWebCoreStringWithNullOrUndefinedCheck(script->Id());
+    m_compiledScripts.set(*scriptId, adoptPtr(new OwnHandle<v8::Script>(script)));
+}
+
+void ScriptDebugServer::clearCompiledScripts()
+{
+    m_compiledScripts.clear();
+}
+
+void ScriptDebugServer::runScript(ScriptState* state, const String& scriptId, ScriptValue* result, bool* wasThrown, String* exceptionMessage)
+{
+    if (!m_compiledScripts.contains(scriptId))
+        return;
+    v8::HandleScope handleScope;
+    OwnHandle<v8::Script>* scriptOwnHandle = m_compiledScripts.get(scriptId);
+    v8::Local<v8::Script> script = v8::Local<v8::Script>::New(scriptOwnHandle->get());
+    m_compiledScripts.remove(scriptId);
+    if (script.IsEmpty())
+        return;
+
+    v8::Handle<v8::Context> context = state->context();
+    if (context.IsEmpty())
+        return;
+    v8::Context::Scope contextScope(context);
+
+    v8::Local<v8::Value> value;
+    v8::TryCatch tryCatch;
+    {
+        V8RecursionScope recursionScope(state->scriptExecutionContext());
+        value = script->Run();
+    }
+
+    *wasThrown = false;
+    if (tryCatch.HasCaught()) {
+        *wasThrown = true;
+        *result = ScriptValue(tryCatch.Exception());
+        v8::Local<v8::Message> message = tryCatch.Message();
+        if (!message.IsEmpty())
+            *exceptionMessage = toWebCoreStringWithNullOrUndefinedCheck(message->Get());
+    } else
+        *result = ScriptValue(value);
 }
 
 } // namespace WebCore

@@ -74,7 +74,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8AudioContextCustom.cpp
     bindings/v8/custom/V8CSSRuleCustom.cpp
     bindings/v8/custom/V8CSSStyleDeclarationCustom.cpp
-    bindings/v8/custom/V8CSSStyleSheetCustom.cpp
     bindings/v8/custom/V8CSSValueCustom.cpp
     bindings/v8/custom/V8CanvasRenderingContext2DCustom.cpp
     bindings/v8/custom/V8ClipboardCustom.cpp
@@ -85,7 +84,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8CustomXPathNSResolver.cpp
     bindings/v8/custom/V8DOMFormDataCustom.cpp
     bindings/v8/custom/V8DOMStringMapCustom.cpp
-    bindings/v8/custom/V8DOMTokenListCustom.cpp
     bindings/v8/custom/V8DOMWindowCustom.cpp
     bindings/v8/custom/V8DataViewCustom.cpp
     bindings/v8/custom/V8DedicatedWorkerContextCustom.cpp
@@ -140,6 +138,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8NotificationCustom.cpp
     bindings/v8/custom/V8NotificationCenterCustom.cpp
     bindings/v8/custom/V8PerformanceCustom.cpp
+    bindings/v8/custom/V8PerformanceEntryCustom.cpp
     bindings/v8/custom/V8PopStateEventCustom.cpp
     bindings/v8/custom/V8SQLResultSetRowListCustom.cpp
     bindings/v8/custom/V8SQLTransactionCustom.cpp
@@ -147,7 +146,6 @@ LIST(APPEND WebCore_SOURCES
     bindings/v8/custom/V8StorageCustom.cpp
     bindings/v8/custom/V8StyleSheetCustom.cpp
     bindings/v8/custom/V8StyleSheetListCustom.cpp
-    bindings/v8/custom/V8TextTrackListCustom.cpp
     bindings/v8/custom/V8Uint16ArrayCustom.cpp
     bindings/v8/custom/V8Uint32ArrayCustom.cpp
     bindings/v8/custom/V8Uint8ArrayCustom.cpp
@@ -275,24 +273,18 @@ ADD_CUSTOM_COMMAND(
     COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/preprocess-idls.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --idlFilesList ${IDL_FILES_TMP} --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} --idlAttributesFile ${IDL_ATTRIBUTES_FILE}
     VERBATIM)
 
-FOREACH (_file ${WebCore_IDL_FILES})
-    GET_FILENAME_COMPONENT (_name ${_file} NAME_WE)
-    ADD_CUSTOM_COMMAND(
-        OUTPUT  ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.h
-        MAIN_DEPENDENCY ${_file}
-        DEPENDS ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl ${SCRIPTS_BINDINGS} ${WEBCORE_DIR}/bindings/scripts/CodeGeneratorV8.pm ${SUPPLEMENTAL_DEPENDENCY_FILE}
-        COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --generator V8 ${IDL_INCLUDES} --outputDir "${DERIVED_SOURCES_WEBCORE_DIR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WEBCORE_DIR}/${_file}
-        VERBATIM)
-    LIST(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.cpp)
-ENDFOREACH ()
+GENERATE_BINDINGS(WebCore_SOURCES
+    "${WebCore_IDL_FILES}"
+    "${WEBCORE_DIR}"
+    "${IDL_INCLUDES}"
+    "${FEATURE_DEFINES_JAVASCRIPT}"
+    ${DERIVED_SOURCES_WEBCORE_DIR} V8 V8
+    ${SUPPLEMENTAL_DEPENDENCY_FILE})
 
-FOREACH (_file ${WebCoreTestSupport_IDL_FILES})
-    GET_FILENAME_COMPONENT (_name ${_file} NAME_WE)
-    ADD_CUSTOM_COMMAND(
-        OUTPUT  ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.h
-        MAIN_DEPENDENCY ${_file}
-        DEPENDS ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl ${SCRIPTS_BINDINGS} ${WEBCORE_DIR}/bindings/scripts/CodeGeneratorV8.pm ${SUPPLEMENTAL_DEPENDENCY_FILE}
-        COMMAND ${PERL_EXECUTABLE} -I${WEBCORE_DIR}/bindings/scripts ${WEBCORE_DIR}/bindings/scripts/generate-bindings.pl --defines "${FEATURE_DEFINES_JAVASCRIPT}" --generator V8 ${IDL_INCLUDES} --outputDir "${DERIVED_SOURCES_WEBCORE_DIR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --supplementalDependencyFile ${SUPPLEMENTAL_DEPENDENCY_FILE} ${WEBCORE_DIR}/${_file}
-        VERBATIM)
-    LIST(APPEND WebCoreTestSupport_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/V8${_name}.cpp)
-ENDFOREACH ()
+GENERATE_BINDINGS(WebCoreTestSupport_SOURCES
+    "${WebCoreTestSupport_IDL_FILES}"
+    "${WEBCORE_DIR}"
+    "${IDL_INCLUDES}"
+    "${FEATURE_DEFINES_JAVASCRIPT}"
+    ${DERIVED_SOURCES_WEBCORE_DIR} V8 V8
+    ${SUPPLEMENTAL_DEPENDENCY_FILE})

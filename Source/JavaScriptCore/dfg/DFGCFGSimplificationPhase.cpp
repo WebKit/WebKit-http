@@ -613,7 +613,7 @@ private:
                 
                 ASSERT(node.shouldGenerate());
                 Node& possibleLocalOp = m_graph[node.child1()];
-                if (possibleLocalOp.hasLocal()) {
+                if (possibleLocalOp.hasLocal() && !possibleLocalOp.variableAccessData()->isCaptured()) {
                     NodeIndex setLocalIndex =
                         firstBlock->variablesAtTail.operand(possibleLocalOp.local());
                     Node& setLocal = m_graph[setLocalIndex];
@@ -745,6 +745,7 @@ private:
 
 bool performCFGSimplification(Graph& graph)
 {
+    SamplingRegion samplingRegion("DFG CFG Simplification Phase");
     return runPhase<CFGSimplificationPhase>(graph);
 }
 

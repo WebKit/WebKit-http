@@ -155,10 +155,20 @@ public:
     virtual bool allowsAcceleratedCompositing() const;
 #endif
 
+#if ENABLE(REGISTER_PROTOCOL_HANDLER)
+    virtual void registerProtocolHandler(const WTF::String&, const WTF::String&, const WTF::String&, const WTF::String&);
+#endif
+
+#if ENABLE(CUSTOM_SCHEME_HANDLER)
+    virtual CustomHandlersState isProtocolHandlerRegistered(const String&, const String&, const String&);
+    virtual void unregisterProtocolHandler(const String&, const String&, const String&);
+#endif
+
     BlackBerry::WebKit::WebPagePrivate* webPagePrivate() const { return m_webPagePrivate; }
 
 private:
     BlackBerry::WebKit::WebPagePrivate* m_webPagePrivate;
+    RefPtr<WebCore::Element> m_fullScreenElement;
 };
 
 } // WebCore

@@ -66,7 +66,6 @@ my (
     $downloadAttributeSupport,
     $fileSystemSupport,
     $filtersSupport,
-    $fontBoostingSupport,
     $ftpDirSupport,
     $fullscreenAPISupport,
     $gamepadSupport,
@@ -116,6 +115,7 @@ my (
     $svgFontsSupport,
     $svgSupport,
     $systemMallocSupport,
+    $textAutosizingSupport,
     $tiledBackingStoreSupport,
     $touchEventsSupport,
     $touchIconLoadingSupport,
@@ -172,16 +172,16 @@ my @features = (
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
 
     { option => "css-shaders", desc => "Toggle CSS Shaders support",
-      define => "ENABLE_CSS_SHADERS", default => 0, value => \$cssShadersSupport },
+      define => "ENABLE_CSS_SHADERS", default => isAppleMacWebKit(), value => \$cssShadersSupport },
 
     { option => "css-variables", desc => "Toggle CSS Variable support",
-      define => "ENABLE_CSS_VARIABLES", default => 0, value => \$cssVariablesSupport },
+      define => "ENABLE_CSS_VARIABLES", default => isEfl(), value => \$cssVariablesSupport },
 
     { option => "custom-scheme-handler", desc => "Toggle Custom Scheme Handler support",
-      define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => 0, value => \$customSchemeHandlerSupport },
+      define => "ENABLE_CUSTOM_SCHEME_HANDLER", default => (isBlackBerry() || isEfl()), value => \$customSchemeHandlerSupport },
 
     { option => "datalist", desc => "Toggle Datalist support",
-      define => "ENABLE_DATALIST", default => 0, value => \$datalistSupport },
+      define => "ENABLE_DATALIST", default => isEfl(), value => \$datalistSupport },
 
     { option => "data-transfer-items", desc => "Toggle Data Transfer Items support",
       define => "ENABLE_DATA_TRANSFER_ITEMS", default => 0, value => \$dataTransferItemsSupport },
@@ -204,9 +204,6 @@ my @features = (
     { option => "filters", desc => "Toggle Filters support",
       define => "ENABLE_FILTERS", default => (isAppleWebKit() || isGtk() || isQt() || isEfl() || isBlackBerry()), value => \$filtersSupport },
 
-    { option => "font-boosting", desc => "Toggle Font Boosting support",
-      define => "ENABLE_FONT_BOOSTING", default => 0, value => \$fontBoostingSupport },
-
     { option => "ftpdir", desc => "Toggle FTP Directory support",
       define => "ENABLE_FTPDIR", default => !isWinCE(), value => \$ftpDirSupport },
 
@@ -214,7 +211,7 @@ my @features = (
       define => "ENABLE_FULLSCREEN_API", default => (isAppleMacWebKit() || isEfl() || isGtk() || isBlackBerry() || isQt()), value => \$fullscreenAPISupport },
 
     { option => "gamepad", desc => "Toggle Gamepad support",
-      define => "ENABLE_GAMEPAD", default => 0, value => \$gamepadSupport },
+      define => "ENABLE_GAMEPAD", default => (isEfl() || isGtk()), value => \$gamepadSupport },
 
     { option => "geolocation", desc => "Toggle Geolocation support",
       define => "ENABLE_GEOLOCATION", default => (isAppleWebKit() || isGtk() || isBlackBerry()), value => \$geolocationSupport },
@@ -235,7 +232,7 @@ my @features = (
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
 
     { option => "input-type-color", desc => "Toggle Input Type Color support",
-      define => "ENABLE_INPUT_TYPE_COLOR", default => (isBlackBerry() || isEfl()), value => \$inputTypeColorSupport },
+      define => "ENABLE_INPUT_TYPE_COLOR", default => (isBlackBerry() || isEfl() || isQt()), value => \$inputTypeColorSupport },
 
     { option => "input-type-date", desc => "Toggle Input Type Date support",
       define => "ENABLE_INPUT_TYPE_DATE", default => 0, value => \$inputTypeDateSupport },
@@ -292,7 +289,7 @@ my @features = (
       define => "ENABLE_MHTML", default => 0, value => \$mhtmlSupport },
 
     { option => "microdata", desc => "Toggle Microdata support",
-      define => "ENABLE_MICRODATA", default => 0, value => \$microdataSupport },
+      define => "ENABLE_MICRODATA", default => (isEfl() || isBlackBerry()), value => \$microdataSupport },
 
     { option => "mutation-observers", desc => "Toggle Mutation Observers support",
       define => "ENABLE_MUTATION_OBSERVERS", default => 1, value => \$mutationObserversSupport },
@@ -319,7 +316,7 @@ my @features = (
       define => "ENABLE_QUOTA", default => 0, value => \$quotaSupport },
 
     { option => "register-protocol-handler", desc => "Toggle Register Protocol Handler support",
-      define => "ENABLE_REGISTER_PROTOCOL_HANDLER", default => isEfl(), value => \$registerProtocolHandlerSupport },
+      define => "ENABLE_REGISTER_PROTOCOL_HANDLER", default => (isBlackBerry() || isEfl()), value => \$registerProtocolHandlerSupport },
 
     { option => "request-animation-frame", desc => "Toggle Request Animation Frame support",
       define => "ENABLE_REQUEST_ANIMATION_FRAME", default => (isAppleMacWebKit() || isGtk() || isEfl() || isBlackBerry()), value => \$requestAnimationFrameSupport },
@@ -337,7 +334,7 @@ my @features = (
       define => "ENABLE_SQL_DATABASE", default => 1, value => \$sqlDatabaseSupport },
 
     { option => "style-scoped", desc => "Toggle Style Scoped support",
-      define => "ENABLE_STYLE_SCOPED", default => 0, value => \$styleScopedSupport },
+      define => "ENABLE_STYLE_SCOPED", default => isBlackBerry(), value => \$styleScopedSupport },
 
     { option => "svg", desc => "Toggle SVG support",
       define => "ENABLE_SVG", default => 1, value => \$svgSupport },
@@ -350,6 +347,9 @@ my @features = (
 
     { option => "system-malloc", desc => "Toggle system allocator instead of TCmalloc",
       define => "USE_SYSTEM_MALLOC", default => (isWinCE() || isHaiku()), value => \$systemMallocSupport },
+
+    { option => "text-autosizing", desc => "Toggle Text Autosizing support",
+      define => "ENABLE_TEXT_AUTOSIZING", default => 0, value => \$textAutosizingSupport },
 
     { option => "tiled-backing-store", desc => "Toggle Tiled Backing Store support",
       define => "WTF_USE_TILED_BACKING_STORE", default => isQt(), value => \$tiledBackingStoreSupport },

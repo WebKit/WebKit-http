@@ -27,18 +27,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if [[ $# -ne 2 ]];then
-echo "Usage: start-queue.sh QUEUE_NAME BOT_ID"
-echo
-echo "QUEUE_NAME will be passed as a command to webkit-patch"
-echo "QUEUE_NAME will also be used as the path to the queue: /mnt/git/webkit-QUEUE_NAME"
-echo "BOT_ID may not have spaces. It will appear as the bots name on queues.webkit.org"
-echo
-echo "For example, to run the mac-ews on a machine we're calling 'eseidel-cq-sf' run:"
-echo "start-queue.sh mac-ews eseidel-cq-sf"
-exit 1
-fi
-
 QUEUE_NAME=$1
 BOT_ID=$2
 
@@ -50,7 +38,9 @@ do
   git clean -f # Remove any left-over layout test results, added files, etc.
   git rebase --abort # If we got killed during a git rebase, we need to clean up.
   git fetch origin # Avoid updating the working copy to a stale revision.
-  git checkout origin/master -fB master # Re-create master from origin/master.
+  git checkout origin/master -f
+  git branch -D master
+  git checkout origin/master -b master
 
   # Most queues auto-update as part of their normal operation, but updating
   # here makes sure that we get the latest version of the master process.

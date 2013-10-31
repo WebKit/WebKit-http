@@ -144,10 +144,10 @@ def archiveBuiltProduct(configuration, platform):
         if platform == 'qt' or platform == 'efl':
             neededDirectories = ["bin", "lib"]
         elif platform == 'gtk':
-            neededDirectories = ["Programs", ".libs"]
+            neededDirectories = ["Programs", ".libs", "Libraries"]
 
         for dirname in neededDirectories:
-            fromDir = os.path.join(configurationBuildDirectory, dirname, "*")
+            fromDir = os.path.join(configurationBuildDirectory, dirname, ".")
             toDir = os.path.join(thinDirectory, dirname)
             os.makedirs(toDir)
             if subprocess.call('cp -R %s %s' % (fromDir, toDir), shell=True):
@@ -166,7 +166,8 @@ def archiveBuiltProduct(configuration, platform):
 
         removeDirectoryIfExists(thinDirectory)
         copyBuildFiles(configurationBuildDirectory, thinDirectory,
-            ['.svn', '*.a', '*.d', '*.dSYM', '*.o', '*.ilk', '*.lib', '*.idb', 'BuildLog.htm', '*.obj', '*.pdb'])
+            ['.svn', '*.a', '*.d', '*.dSYM', '*.o', '*.ilk', '*.lib', '*.idb', 'BuildLog.htm', '*.obj',
+            '*.pdb', '*.pch', '*.tlog', '*.lastbuildstate'])
         if createZip(thinDirectory, configuration):
             return 1
 

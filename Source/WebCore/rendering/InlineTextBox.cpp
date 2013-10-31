@@ -233,7 +233,7 @@ void InlineTextBox::attachLine()
     toRenderText(renderer())->attachTextBox(this);
 }
 
-float InlineTextBox::placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, float visibleRightEdge, float ellipsisWidth, bool& foundBox)
+float InlineTextBox::placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, float visibleRightEdge, float ellipsisWidth, float &truncatedWidth, bool& foundBox)
 {
     if (foundBox) {
         m_truncation = cFullTruncation;
@@ -275,6 +275,7 @@ float InlineTextBox::placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, flo
             // No characters should be rendered.  Set ourselves to full truncation and place the ellipsis at the min of our start
             // and the ellipsis edge.
             m_truncation = cFullTruncation;
+            truncatedWidth += ellipsisWidth;
             return min(ellipsisX, x());
         }
 
@@ -290,11 +291,13 @@ float InlineTextBox::placeEllipsisBox(bool flowIsLTR, float visibleLeftEdge, flo
         // box directionality.
         // e.g. In the case of an LTR inline box truncated in an RTL flow then we can
         // have a situation such as |Hello| -> |...He|
+        truncatedWidth += widthOfVisibleText + ellipsisWidth;
         if (flowIsLTR)
             return left() + widthOfVisibleText;
         else
             return right() - widthOfVisibleText - ellipsisWidth;
     }
+    truncatedWidth += logicalWidth();
     return -1;
 }
 
@@ -346,7 +349,7 @@ bool InlineTextBox::isLineBreak() const
     return renderer()->isBR() || (renderer()->style()->preserveNewline() && len() == 1 && (*textRenderer()->text())[start()] == '\n');
 }
 
-bool InlineTextBox::nodeAtPoint(const HitTestRequest&, HitTestResult& result, const LayoutPoint& pointInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit /* lineTop */, LayoutUnit /*lineBottom*/)
+bool InlineTextBox::nodeAtPoint(const HitTestRequest&, HitTestResult& result, const HitTestPoint& pointInContainer, const LayoutPoint& accumulatedOffset, LayoutUnit /* lineTop */, LayoutUnit /*lineBottom*/)
 {
     if (isLineBreak())
         return false;
@@ -354,8 +357,8 @@ bool InlineTextBox::nodeAtPoint(const HitTestRequest&, HitTestResult& result, co
     FloatPoint boxOrigin = locationIncludingFlipping();
     boxOrigin.moveBy(accumulatedOffset);
     FloatRect rect(boxOrigin, size());
-    if (m_truncation != cFullTruncation && visibleToHitTesting() && rect.intersects(result.rectForPoint(pointInContainer))) {
-        renderer()->updateHitTestResult(result, flipForWritingMode(pointInContainer - toLayoutSize(accumulatedOffset)));
+    if (m_truncation != cFullTruncation && visibleToHitTesting() && pointInContainer.intersects(rect)) {
+        renderer()->updateHitTestResult(result, flipForWritingMode(pointInContainer.point() - toLayoutSize(accumulatedOffset)));
         if (!result.addNodeToRectBasedTestResult(renderer()->node(), pointInContainer, rect))
             return true;
     }

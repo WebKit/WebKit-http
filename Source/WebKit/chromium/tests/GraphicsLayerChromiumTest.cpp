@@ -27,7 +27,7 @@
 #include "GraphicsLayerChromium.h"
 
 #include "CCAnimationTestCommon.h"
-#include "CompositorFakeGraphicsContext3D.h"
+#include "CompositorFakeWebGraphicsContext3D.h"
 #include "GraphicsContext3D.h"
 #include "GraphicsContext3DPrivate.h"
 #include "GraphicsLayer.h"
@@ -42,6 +42,7 @@
 #include "cc/CCSingleThreadProxy.h"
 
 #include <gtest/gtest.h>
+#include <public/WebGraphicsContext3D.h>
 #include <wtf/PassOwnPtr.h>
 
 using namespace WebCore;
@@ -57,6 +58,7 @@ class MockGraphicsLayerClient : public GraphicsLayerClient {
     virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const IntRect& inClip) OVERRIDE { }
     virtual bool showDebugBorders(const GraphicsLayer*) const OVERRIDE { return false; }
     virtual bool showRepaintCounter(const GraphicsLayer*) const OVERRIDE { return false; }
+    virtual float deviceScaleFactor() const OVERRIDE { return 2; }
 };
 
 class MockLayerTreeHostClient : public CCLayerTreeHostClient {
@@ -66,10 +68,9 @@ public:
     virtual void updateAnimations(double frameBeginTime) OVERRIDE { }
     virtual void layout() OVERRIDE { }
     virtual void applyScrollAndScale(const IntSize& scrollDelta, float pageScale) OVERRIDE { }
-    virtual PassRefPtr<GraphicsContext3D> createContext3D() OVERRIDE
+    virtual PassOwnPtr<WebGraphicsContext3D> createContext3D() OVERRIDE
     {
-        GraphicsContext3D::Attributes attrs;
-        return createCompositorMockGraphicsContext3D(attrs);
+        return CompositorFakeWebGraphicsContext3D::create(WebGraphicsContext3D::Attributes());
     }
     virtual void didRecreateContext(bool success) OVERRIDE { }
     virtual void willCommit() OVERRIDE { }
@@ -255,6 +256,50 @@ TEST_F(GraphicsLayerChromiumTest, createTransformAnimationWithBigRotation)
     EXPECT_FALSE(m_platformLayer->layerAnimationController()->hasActiveAnimation());
 }
 
+TEST_F(GraphicsLayerChromiumTest, createTransformAnimationWithRotationInvolvingNegativeAngles)
+{
+    const double duration = 1;
+    WebCore::KeyframeValueList values(AnimatedPropertyWebkitTransform);
+
+    TransformOperations operations1;
+    operations1.operations().append(RotateTransformOperation::create(-330, TransformOperation::ROTATE));
+    values.insert(new TransformAnimationValue(0, &operations1));
+
+    TransformOperations operations2;
+    operations2.operations().append(RotateTransformOperation::create(-320, TransformOperation::ROTATE));
+    values.insert(new TransformAnimationValue(duration, &operations2));
+
+    RefPtr<Animation> animation = Animation::create();
+    animation->setDuration(duration);
+
+    IntSize boxSize;
+    m_graphicsLayer->addAnimation(values, boxSize, animation.get(), "", 0);
+
+    EXPECT_TRUE(m_platformLayer->layerAnimationController()->hasActiveAnimation());
+}
+
+TEST_F(GraphicsLayerChromiumTest, createTransformAnimationWithSmallRotationInvolvingLargeAngles)
+{
+    const double duration = 1;
+    WebCore::KeyframeValueList values(AnimatedPropertyWebkitTransform);
+
+    TransformOperations operations1;
+    operations1.operations().append(RotateTransformOperation::create(270, TransformOperation::ROTATE));
+    values.insert(new TransformAnimationValue(0, &operations1));
+
+    TransformOperations operations2;
+    operations2.operations().append(RotateTransformOperation::create(360, TransformOperation::ROTATE));
+    values.insert(new TransformAnimationValue(duration, &operations2));
+
+    RefPtr<Animation> animation = Animation::create();
+    animation->setDuration(duration);
+
+    IntSize boxSize;
+    m_graphicsLayer->addAnimation(values, boxSize, animation.get(), "", 0);
+
+    EXPECT_TRUE(m_platformLayer->layerAnimationController()->hasActiveAnimation());
+}
+
 TEST_F(GraphicsLayerChromiumTest, createTransformAnimationWithSingularMatrix)
 {
     const double duration = 1;
@@ -393,6 +438,11 @@ TEST_F(GraphicsLayerChromiumTest, createReversedAlternatingAnimation)
 
     expectTranslateX(4, curve->getValue(0));
     expectTranslateX(2, curve->getValue(duration));
+}
+
+TEST_F(GraphicsLayerChromiumTest, shouldStartWithCorrectContentsScale)
+{
+    EXPECT_EQ(2, m_platformLayer->contentsScale());
 }
 
 } // namespace

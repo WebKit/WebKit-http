@@ -263,7 +263,7 @@ void MediaPlayerPrivateQuickTimeVisualContext::setUpCookiesForQuickTime(const St
     // download the movie into WinInet before asking QuickTime to open it.
     Document* document = m_player->mediaPlayerClient()->mediaPlayerOwningDocument();
     Frame* frame = document ? document->frame() : 0;
-    if (!frame || !frame->page() || !frame->page()->cookieEnabled())
+    if (!frame || !frame->page() || !frame->page()->settings()->cookieEnabled())
         return;
 
     KURL movieURL = KURL(KURL(), url);
@@ -1011,7 +1011,7 @@ bool MediaPlayerPrivateQuickTimeVisualContext::isAvailable()
     return QTMovie::initializeQuickTime();
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateQuickTimeVisualContext::supportsType(const String& type, const String& codecs)
+MediaPlayer::SupportsType MediaPlayerPrivateQuickTimeVisualContext::supportsType(const String& type, const String& codecs, const KURL&)
 {
     // only return "IsSupported" if there is no codecs parameter for now as there is no way to ask QT if it supports an
     //  extended MIME type

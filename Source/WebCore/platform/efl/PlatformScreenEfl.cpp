@@ -34,6 +34,7 @@
 #include "config.h"
 #include "PlatformScreen.h"
 
+#include "EflScreenUtilities.h"
 #include "NotImplemented.h"
 #include "PlatformString.h"
 #include "Widget.h"
@@ -57,14 +58,19 @@ int screenVerticalDPI(Widget* widget)
 
 int screenDepth(Widget* widget)
 {
-    notImplemented();
-    return 8;
+    if (!widget || !widget->evas())
+        return 0;
+
+    return getPixelDepth(widget->evas());
 }
 
-int screenDepthPerComponent(Widget*)
+int screenDepthPerComponent(Widget* widget)
 {
-    notImplemented();
-    return 8;
+    if (!widget || !widget->evas())
+        return 0;
+
+    // FIXME: How to support this functionality based on EFL library ?
+    return getPixelDepth(widget->evas());
 }
 
 bool screenIsMonochrome(Widget*)
@@ -80,6 +86,8 @@ FloatRect screenRect(Widget* widget)
 
     int x, y, w, h;
     Evas* e = widget->evas();
+    if (!e)
+        return FloatRect();
 
     ecore_evas_screen_geometry_get(ecore_evas_ecore_evas_get(e), &x, &y, &w, &h);
 
@@ -90,6 +98,11 @@ FloatRect screenAvailableRect(Widget* widget)
 {
     notImplemented();
     return screenRect(widget);
+}
+
+void screenColorProfile(Widget*, ColorProfile&)
+{
+    notImplemented();
 }
 
 }

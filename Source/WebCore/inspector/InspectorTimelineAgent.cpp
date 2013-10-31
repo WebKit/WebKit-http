@@ -40,6 +40,7 @@
 #include "InspectorClient.h"
 #include "InspectorCounters.h"
 #include "InspectorFrontend.h"
+#include "InspectorInstrumentation.h"
 #include "InspectorPageAgent.h"
 #include "InspectorState.h"
 #include "InstrumentingAgents.h"
@@ -79,6 +80,8 @@ static const char MarkLoad[] = "MarkLoad";
 static const char MarkDOMContent[] = "MarkDOMContent";
 
 static const char TimeStamp[] = "TimeStamp";
+static const char Time[] = "Time";
+static const char TimeEnd[] = "TimeEnd";
 
 static const char ScheduleResourceRequest[] = "ScheduleResourceRequest";
 static const char ResourceSendRequest[] = "ResourceSendRequest";
@@ -192,12 +195,12 @@ void InspectorTimelineAgent::supportsFrameInstrumentation(ErrorString*, bool* re
 
 void InspectorTimelineAgent::didBeginFrame()
 {
-    pushCancelableRecord(InspectorObject::create(), TimelineRecordType::BeginFrame, 0);
+    m_pendingFrameRecord = TimelineRecordFactory::createGenericRecord(timestamp(), 0);
 }
 
 void InspectorTimelineAgent::didCancelFrame()
 {
-    cancelRecord(TimelineRecordType::BeginFrame);
+    m_pendingFrameRecord.clear();
 }
 
 void InspectorTimelineAgent::willCallFunction(const String& scriptName, int scriptLine, Frame* frame)
@@ -242,7 +245,7 @@ void InspectorTimelineAgent::didRecalculateStyle()
 
 void InspectorTimelineAgent::willPaint(const LayoutRect& rect, Frame* frame)
 {
-    pushCurrentRecord(TimelineRecordFactory::createPaintData(rect), TimelineRecordType::Paint, true, frame);
+    pushCurrentRecord(TimelineRecordFactory::createPaintData(rect), TimelineRecordType::Paint, true, frame, true);
 }
 
 void InspectorTimelineAgent::didPaint()
@@ -318,7 +321,7 @@ void InspectorTimelineAgent::willEvaluateScript(const String& url, int lineNumbe
 {
     pushCurrentRecord(TimelineRecordFactory::createEvaluateScriptData(url, lineNumber), TimelineRecordType::EvaluateScript, true, frame);
 }
-    
+
 void InspectorTimelineAgent::didEvaluateScript()
 {
     didCompleteCurrentRecord(TimelineRecordType::EvaluateScript);
@@ -346,17 +349,17 @@ void InspectorTimelineAgent::willSendResourceRequest(unsigned long identifier, c
     m_frontend->eventRecorded(record.release());
 }
 
-void InspectorTimelineAgent::willReceiveResourceData(unsigned long identifier, Frame* frame)
+void InspectorTimelineAgent::willReceiveResourceData(unsigned long identifier, Frame* frame, int length)
 {
     String requestId = IdentifiersFactory::requestId(identifier);
-    pushCurrentRecord(TimelineRecordFactory::createReceiveResourceData(requestId), TimelineRecordType::ResourceReceivedData, false, frame);
+    pushCurrentRecord(TimelineRecordFactory::createReceiveResourceData(requestId, length), TimelineRecordType::ResourceReceivedData, false, frame);
 }
 
 void InspectorTimelineAgent::didReceiveResourceData()
 {
     didCompleteCurrentRecord(TimelineRecordType::ResourceReceivedData);
 }
-    
+
 void InspectorTimelineAgent::willReceiveResourceResponse(unsigned long identifier, const ResourceResponse& response, Frame* frame)
 {
     String requestId = IdentifiersFactory::requestId(identifier);
@@ -376,6 +379,16 @@ void InspectorTimelineAgent::didFinishLoadingResource(unsigned long identifier, 
 void InspectorTimelineAgent::didTimeStamp(const String& message)
 {
     appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeStamp, true, 0);
+}
+
+void InspectorTimelineAgent::time(const String& message)
+{
+    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::Time, true, 0);
+}
+
+void InspectorTimelineAgent::timeEnd(const String& message)
+{
+    appendRecord(TimelineRecordFactory::createTimeStampData(message), TimelineRecordType::TimeEnd, true, 0);
 }
 
 void InspectorTimelineAgent::didMarkDOMContentEvent(Frame* frame)
@@ -425,7 +438,7 @@ void InspectorTimelineAgent::didProcessTask()
 
 void InspectorTimelineAgent::addRecordToTimeline(PassRefPtr<InspectorObject> record, const String& type, const String& frameId)
 {
-    commitCancelableRecords();
+    commitFrameRecord();
     innerAddRecordToTimeline(record, type, frameId);
 }
 
@@ -469,6 +482,11 @@ void InspectorTimelineAgent::didCompleteCurrentRecord(const String& type)
     // An empty stack could merely mean that the timeline agent was turned on in the middle of
     // an event.  Don't treat as an error.
     if (!m_recordStack.isEmpty()) {
+        if (m_orphanEventsEnabledStackMark == m_recordStack.size()) {
+            m_orphanEventsEnabledStackMark = 0;
+            InspectorInstrumentation::setTimelineAgentForOrphanEvents(0);
+        }
+
         pushGCEventRecords();
         TimelineRecordEntry entry = m_recordStack.last();
         m_recordStack.removeLast();
@@ -487,6 +505,7 @@ InspectorTimelineAgent::InspectorTimelineAgent(InstrumentingAgents* instrumentin
     , m_timestampOffset(0)
     , m_id(1)
     , m_maxCallStackDepth(5)
+    , m_orphanEventsEnabledStackMark(0)
     , m_inspectorType(type)
     , m_client(client)
 {
@@ -504,55 +523,33 @@ void InspectorTimelineAgent::appendRecord(PassRefPtr<InspectorObject> data, cons
     addRecordToTimeline(record.release(), type, frameId);
 }
 
-void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame* frame)
+void InspectorTimelineAgent::pushCurrentRecord(PassRefPtr<InspectorObject> data, const String& type, bool captureCallStack, Frame* frame, bool hasOrphanDetails)
 {
     pushGCEventRecords();
-    commitCancelableRecords();
+    commitFrameRecord();
     RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(timestamp(), captureCallStack ? m_maxCallStackDepth : 0);
     String frameId;
     if (frame && m_pageAgent)
         frameId = m_pageAgent->frameId(frame);
     m_recordStack.append(TimelineRecordEntry(record.release(), data, InspectorArray::create(), type, frameId));
-}
-
-void InspectorTimelineAgent::pushCancelableRecord(PassRefPtr<InspectorObject> data, const String& type, Frame* frame)
-{
-    RefPtr<InspectorObject> record = TimelineRecordFactory::createGenericRecord(timestamp(), 0);
-    String frameId;
-    if (frame && m_pageAgent)
-        frameId = m_pageAgent->frameId(frame);
-    m_recordStack.append(TimelineRecordEntry(record.release(), data, 0, type, frameId, true));
-}
-
-void InspectorTimelineAgent::commitCancelableRecords()
-{
-    Vector<TimelineRecordEntry> cancelableRecords;
-    while (!m_recordStack.isEmpty()) {
-        TimelineRecordEntry entry = m_recordStack.last();
-        if (!m_recordStack.last().cancelable)
-            break;
-        m_recordStack.removeLast();
-        cancelableRecords.append(entry);
-    }
-    while (!cancelableRecords.isEmpty()) {
-        TimelineRecordEntry entry = cancelableRecords.last();
-        cancelableRecords.removeLast();
-        entry.record->setObject("data", entry.data);
-        innerAddRecordToTimeline(entry.record.release(), entry.type, entry.frameId);
+    if (hasOrphanDetails && !m_orphanEventsEnabledStackMark && !InspectorInstrumentation::timelineAgentForOrphanEvents()) {
+        m_orphanEventsEnabledStackMark = m_recordStack.size();
+        InspectorInstrumentation::setTimelineAgentForOrphanEvents(this);
     }
 }
 
-void InspectorTimelineAgent::cancelRecord(const String& type)
+void InspectorTimelineAgent::commitFrameRecord()
 {
-    if (m_recordStack.isEmpty())
+    if (!m_pendingFrameRecord)
         return;
-    TimelineRecordEntry entry = m_recordStack.last();
-    if (entry.cancelable && entry.type == type)
-        m_recordStack.removeLast();
+    
+    m_pendingFrameRecord->setObject("data", InspectorObject::create());
+    innerAddRecordToTimeline(m_pendingFrameRecord.release(), TimelineRecordType::BeginFrame, "");
 }
 
 void InspectorTimelineAgent::clearRecordStack()
 {
+    m_pendingFrameRecord.clear();
     m_recordStack.clear();
     m_id++;
 }

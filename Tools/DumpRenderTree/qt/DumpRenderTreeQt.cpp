@@ -189,10 +189,14 @@ void WebPage::resetSettings()
     settings()->resetAttribute(QWebSettings::JavascriptCanAccessClipboard);
     settings()->resetAttribute(QWebSettings::AutoLoadImages);
     settings()->resetAttribute(QWebSettings::ZoomTextOnly);
+    settings()->resetAttribute(QWebSettings::CSSRegionsEnabled);
+    settings()->resetAttribute(QWebSettings::CSSGridLayoutEnabled);
+    settings()->resetAttribute(QWebSettings::AcceleratedCompositingEnabled);
 
     m_drt->layoutTestController()->setCaretBrowsingEnabled(false);
     m_drt->layoutTestController()->setAuthorAndUserStylesEnabled(true);
     m_drt->layoutTestController()->setFrameFlatteningEnabled(false);
+    m_drt->layoutTestController()->setMockScrollbarsEnabled(false);
     m_drt->layoutTestController()->setSmartInsertDeleteEnabled(true);
     m_drt->layoutTestController()->setSelectTrailingWhitespaceEnabled(false);
     m_drt->layoutTestController()->setDefersLoading(false);
@@ -534,10 +538,11 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
 #ifndef QT_NO_UNDOSTACK
     m_page->undoStack()->clear();
 #endif
-    
+
     clearHistory(m_page);
     DumpRenderTreeSupportQt::scalePageBy(m_page->mainFrame(), 1, QPoint(0, 0));
     DumpRenderTreeSupportQt::clearFrameName(m_page->mainFrame());
+    DumpRenderTreeSupportQt::removeUserStyleSheets(m_page);
 
     m_page->mainFrame()->setScrollBarPolicy(Qt::Vertical, Qt::ScrollBarAsNeeded);
     m_page->mainFrame()->setScrollBarPolicy(Qt::Horizontal, Qt::ScrollBarAsNeeded);
@@ -666,7 +671,7 @@ void DumpRenderTree::processArgsLine(const QStringList &args)
         for (int i = 0; i < m_standAloneModeTestList.size(); ++i)
             m_standAloneModeTestList[i] = folderEntry.absoluteFilePath(m_standAloneModeTestList[i]);
     }
-    connect(this, SIGNAL(ready()), this, SLOT(loadNextTestInStandAloneMode()));
+    connect(this, SIGNAL(ready()), this, SLOT(loadNextTestInStandAloneMode()), Qt::QueuedConnection);
 
     if (!m_standAloneModeTestList.isEmpty()) {
         QString first = m_standAloneModeTestList.takeFirst();
@@ -700,7 +705,8 @@ void DumpRenderTree::processLine(const QString &input)
 
     if (line.startsWith(QLatin1String("http:"))
             || line.startsWith(QLatin1String("https:"))
-            || line.startsWith(QLatin1String("file:"))) {
+            || line.startsWith(QLatin1String("file:"))
+            || line == QLatin1String("about:blank")) {
         open(QUrl(line));
     } else {
         QFileInfo fi(line);

@@ -7,15 +7,18 @@
 TEMPLATE = subdirs
 CONFIG += ordered
 
-load(features)
-
-SUBDIRS += QtTestBrowser/QtTestBrowser.pro
-SUBDIRS += DumpRenderTree/qt/DumpRenderTree.pro
-SUBDIRS += DumpRenderTree/qt/ImageDiff.pro
+!no_webkit1 {
+    SUBDIRS += QtTestBrowser/QtTestBrowser.pro
+    SUBDIRS += DumpRenderTree/qt/DumpRenderTree.pro
+    SUBDIRS += DumpRenderTree/qt/ImageDiff.pro
+}
 
 !no_webkit2 {
-    SUBDIRS += MiniBrowser/qt/MiniBrowser.pro \
-               WebKitTestRunner/WebKitTestRunner.pro
+    # WTR's InjectedBundle depends currently on WK1's DumpRenderTreeSupport
+    !no_webkit1: SUBDIRS += WebKitTestRunner/WebKitTestRunner.pro
+
+    SUBDIRS += MiniBrowser/qt/MiniBrowser.pro
+    SUBDIRS += MiniBrowser/qt/raw/MiniBrowserRaw.pro
 }
 
 # FIXME: with Qt 5 the test plugin cause some trouble during layout tests.
@@ -32,8 +35,7 @@ OTHER_FILES = \
     $$files(Scripts/webkitpy/*.py, true) \
     $$files(Scripts/webkitperl/*.p[l|m], true) \
     qmake/README \
-    qmake/configure.pro \
-    qmake/sync.profile \
+    qmake/configure.* \
     qmake/qt_webkit.pri \
     qmake/config.tests/README \
     qmake/config.tests/fontconfig/* \

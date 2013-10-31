@@ -521,7 +521,7 @@ public:
     bool hasStaticBlockPosition(bool horizontal) const { return horizontal ? hasAutoTopAndBottom() : hasAutoLeftAndRight(); }
 
     EPosition position() const { return static_cast<EPosition>(noninherited_flags._position); }
-    bool isPositioned() const { return position() == AbsolutePosition || position() == FixedPosition; }
+    bool isOutOfFlowPositioned() const { return position() == AbsolutePosition || position() == FixedPosition; }
     EFloat floating() const { return static_cast<EFloat>(noninherited_flags._floating); }
 
     Length width() const { return m_box->width(); }
@@ -983,6 +983,7 @@ public:
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     ImageResolutionSource imageResolutionSource() const { return static_cast<ImageResolutionSource>(rareInheritedData->m_imageResolutionSource); }
+    ImageResolutionSnap imageResolutionSnap() const { return static_cast<ImageResolutionSnap>(rareInheritedData->m_imageResolutionSnap); }
     float imageResolution() const { return rareInheritedData->m_imageResolution; }
 #endif
     
@@ -1154,6 +1155,7 @@ public:
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     void setImageResolutionSource(ImageResolutionSource v) { SET_VAR(rareInheritedData, m_imageResolutionSource, v) }
+    void setImageResolutionSnap(ImageResolutionSnap v) { SET_VAR(rareInheritedData, m_imageResolutionSnap, v) }
     void setImageResolution(float f) { SET_VAR(rareInheritedData, m_imageResolution, f) }
 #endif
 
@@ -1490,7 +1492,7 @@ public:
 
     bool isDisplayReplacedType() const
     {
-        return display() == INLINE_BLOCK || display() == INLINE_BOX || display() == INLINE_TABLE;
+        return display() == INLINE_BLOCK || display() == INLINE_BOX || display() == INLINE_TABLE || display() == INLINE_GRID;
     }
 
     bool isDisplayInlineType() const
@@ -1501,7 +1503,14 @@ public:
     bool isOriginalDisplayInlineType() const
     {
         return originalDisplay() == INLINE || originalDisplay() == INLINE_BLOCK
-            || originalDisplay() == INLINE_BOX || originalDisplay() == INLINE_TABLE;
+            || originalDisplay() == INLINE_BOX || originalDisplay() == INLINE_TABLE || originalDisplay() == INLINE_GRID;
+    }
+
+    bool isDisplayRegionType() const
+    {
+        return display() == BLOCK || display() == INLINE_BLOCK
+            || display() == TABLE_CELL || display() == TABLE_CAPTION
+            || display() == LIST_ITEM;
     }
 
     void setWritingMode(WritingMode v) { inherited_flags.m_writingMode = v; }
@@ -1667,6 +1676,7 @@ public:
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
     static EImageRendering initialImageRendering() { return ImageRenderingAuto; }
     static ImageResolutionSource initialImageResolutionSource() { return ImageResolutionSpecified; }
+    static ImageResolutionSnap initialImageResolutionSnap() { return ImageResolutionNoSnap; }
     static float initialImageResolution() { return 1; }
     static StyleImage* initialBorderImageSource() { return 0; }
     static StyleImage* initialMaskBoxImageSource() { return 0; }

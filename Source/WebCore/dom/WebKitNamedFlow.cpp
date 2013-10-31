@@ -56,7 +56,23 @@ bool WebKitNamedFlow::overset() const
     return m_parentFlowThread->overset();
 }
 
-PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContentNode(Node* contentNode)
+int WebKitNamedFlow::firstEmptyRegionIndex() const
+{
+    m_parentFlowThread->document()->updateLayoutIgnorePendingStylesheets();
+
+    const RenderRegionList& regionList = m_parentFlowThread->renderRegionList();
+    if (regionList.isEmpty())
+        return -1;
+    RenderRegionList::const_iterator iter = regionList.begin();
+    for (int index = 0; iter != regionList.end(); ++index, ++iter) {
+        const RenderRegion* renderRegion = *iter;
+        if (renderRegion->regionState() == RenderRegion::RegionEmpty)
+            return index;
+    }
+    return -1;
+}
+
+PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContent(Node* contentNode)
 {
     if (!contentNode)
         return 0;
@@ -79,7 +95,7 @@ PassRefPtr<NodeList> WebKitNamedFlow::getRegionsByContentNode(Node* contentNode)
     return StaticNodeList::adopt(regionNodes);
 }
 
-PassRefPtr<NodeList> WebKitNamedFlow::contentNodes() const
+PassRefPtr<NodeList> WebKitNamedFlow::getContent()
 {
     m_parentFlowThread->document()->updateLayoutIgnorePendingStylesheets();
 

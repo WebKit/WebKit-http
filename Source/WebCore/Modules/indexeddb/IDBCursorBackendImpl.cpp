@@ -63,12 +63,6 @@ IDBCursorBackendImpl::~IDBCursorBackendImpl()
     m_objectStore.clear();
 }
 
-unsigned short IDBCursorBackendImpl::direction() const
-{
-    IDB_TRACE("IDBCursorBackendImpl::direction");
-    return m_direction;
-}
-
 PassRefPtr<IDBKey> IDBCursorBackendImpl::key() const
 {
     IDB_TRACE("IDBCursorBackendImpl::key");
@@ -93,10 +87,9 @@ void IDBCursorBackendImpl::update(PassRefPtr<SerializedScriptValue> value, PassR
 {
     IDB_TRACE("IDBCursorBackendImpl::update");
     ASSERT(m_transaction->mode() != IDBTransaction::READ_ONLY);
-    if (!m_cursor || m_cursorType == IndexKeyCursor) {
-        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
-        return;
-    }
+
+    ASSERT(m_cursor);
+    ASSERT(m_cursorType != IndexKeyCursor);
 
     m_objectStore->put(value, m_cursor->primaryKey(), IDBObjectStoreBackendInterface::CursorUpdate, callbacks, m_transaction.get(), ec);
 }
@@ -171,7 +164,10 @@ void IDBCursorBackendImpl::deleteFunction(PassRefPtr<IDBCallbacks> prpCallbacks,
         return;
     }
 
-    m_objectStore->deleteFunction(m_cursor->primaryKey(), prpCallbacks, m_transaction.get(), ec);
+    RefPtr<IDBKeyRange> keyRange = IDBKeyRange::only(m_cursor->primaryKey(), ec);
+    ASSERT(!ec);
+
+    m_objectStore->deleteFunction(keyRange.release(), prpCallbacks, m_transaction.get(), ec);
 }
 
 void IDBCursorBackendImpl::prefetchContinue(int numberToFetch, PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode& ec)

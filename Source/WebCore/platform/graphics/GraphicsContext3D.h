@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef GraphicsContext3D_h
@@ -43,7 +43,7 @@
 #undef VERSION
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
 #include "ANGLEWebKitBridge.h"
 #endif
 
@@ -94,7 +94,9 @@ const Platform3DObject NullPlatform3DObject = 0;
 namespace WebCore {
 class DrawingBuffer;
 class Extensions3D;
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if USE(OPENGL_ES_2)
+class Extensions3DOpenGLES;
+#else
 class Extensions3DOpenGL;
 #endif
 #if PLATFORM(QT)
@@ -108,6 +110,8 @@ class IntRect;
 class IntSize;
 #if USE(CAIRO)
 class PlatformContextCairo;
+#elif PLATFORM(BLACKBERRY)
+class GraphicsContext;
 #endif
 
 struct ActiveInfo {
@@ -549,7 +553,7 @@ public:
     // return the suggested GL error indicating the cause of the failure:
     //   INVALID_VALUE if width/height is negative or overflow happens.
     //   INVALID_ENUM if format/type is illegal.
-    GC3Denum computeImageSizeInBytes(GC3Denum format,
+    static GC3Denum computeImageSizeInBytes(GC3Denum format,
                                      GC3Denum type,
                                      GC3Dsizei width,
                                      GC3Dsizei height,
@@ -561,7 +565,7 @@ public:
     // packing the pixel data according to the given format and type,
     // and obeying the flipY, premultiplyAlpha, and ignoreGammaAndColorProfile
     // flags. Returns true upon success.
-    bool extractImageData(Image* image,
+    static bool extractImageData(Image*,
                           GC3Denum format,
                           GC3Denum type,
                           bool flipY,
@@ -573,7 +577,7 @@ public:
     // packing the pixel data according to the given format and type,
     // and obeying the flipY and premultiplyAlpha flags. Returns true
     // upon success.
-    bool extractImageData(ImageData*,
+    static bool extractImageData(ImageData*,
                           GC3Denum format,
                           GC3Denum type,
                           bool flipY,
@@ -585,7 +589,7 @@ public:
     // If the data is not tightly packed according to the passed
     // unpackAlignment, the output data will be tightly packed.
     // Returns true if successful, false if any error occurred.
-    bool extractTextureData(unsigned int width, unsigned int height,
+    static bool extractTextureData(unsigned int width, unsigned int height,
                             GC3Denum format, GC3Denum type,
                             unsigned int unpackAlignment,
                             bool flipY, bool premultiplyAlpha,
@@ -593,7 +597,7 @@ public:
                             Vector<uint8_t>& data);
 
     // Flips the given image data vertically, in-place.
-    void flipVertically(void* imageData,
+    static void flipVertically(void* imageData,
                         unsigned int width,
                         unsigned int height,
                         unsigned int bytesPerPixel,
@@ -882,7 +886,7 @@ public:
     //
     // No vertical flip of the image data is performed by this
     // method.
-    bool getImageData(Image* image,
+    static bool getImageData(Image*,
                       GC3Denum format,
                       GC3Denum type,
                       bool premultiplyAlpha,
@@ -903,7 +907,7 @@ public:
     // A sourceUnpackAlignment of zero indicates that the source
     // data is tightly packed. Non-zero values may take a slow path.
     // Destination data will have no gaps between rows.
-    bool packPixels(const uint8_t* sourceData,
+    static bool packPixels(const uint8_t* sourceData,
                     SourceDataFormat sourceDataFormat,
                     unsigned int width,
                     unsigned int height,
@@ -918,6 +922,7 @@ public:
     // in particular stencil and antialias, and determine which could or
     // could not be honored based on the capabilities of the OpenGL
     // implementation.
+    void validateDepthStencil(const char* packedDepthStencilExtension);
     void validateAttributes();
 
     // Read rendering results into a pixel array with the same format as the
@@ -940,7 +945,7 @@ public:
     RetainPtr<WebGLLayer> m_webGLLayer;
 #endif
 
-#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(QT) || PLATFORM(EFL) || PLATFORM(BLACKBERRY)
     typedef struct {
         String source;
         String log;
@@ -949,16 +954,30 @@ public:
     HashMap<Platform3DObject, ShaderSourceEntry> m_shaderSourceMap;
 
     ANGLEWebKitBridge m_compiler;
+#endif
 
+#if PLATFORM(QT) && defined(QT_OPENGL_ES_2)
+    friend class Extensions3DQt;
+    OwnPtr<Extensions3DQt> m_extensions;
+#elif PLATFORM(BLACKBERRY)
+    friend class Extensions3DOpenGLES;
+    OwnPtr<Extensions3DOpenGLES> m_extensions;
+#elif !PLATFORM(CHROMIUM)
     friend class Extensions3DOpenGL;
     OwnPtr<Extensions3DOpenGL> m_extensions;
+#endif
+    friend class Extensions3DOpenGLCommon;
 
     Attributes m_attrs;
     Vector<Vector<float> > m_vertexArray;
 
-    GC3Duint m_texture, m_compositorTexture;
+    GC3Duint m_texture;
+#if !PLATFORM(BLACKBERRY)
+    GC3Duint m_compositorTexture;
+#endif
     GC3Duint m_fbo;
-#if USE(OPENGL_ES_2)
+
+#if !PLATFORM(BLACKBERRY)
     GC3Duint m_depthBuffer;
     GC3Duint m_stencilBuffer;
 #endif
@@ -979,10 +998,11 @@ public:
 
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
-#endif
 
     friend class GraphicsContext3DPrivate;
     OwnPtr<GraphicsContext3DPrivate> m_private;
+
+    bool systemAllowsMultisamplingOnATICards() const; 
 };
 
 } // namespace WebCore

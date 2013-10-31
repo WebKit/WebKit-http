@@ -41,29 +41,29 @@ namespace JSC { namespace DFG {
 // check opcodes.
 inline bool mightCompileEval(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount;
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
 }
 inline bool mightCompileProgram(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount;
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
 }
 inline bool mightCompileFunctionForCall(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount;
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
 }
 inline bool mightCompileFunctionForConstruct(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount;
+    return codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount();
 }
 
 inline bool mightInlineFunctionForCall(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount
+    return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount()
         && !codeBlock->ownerExecutable()->needsActivation();
 }
 inline bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount
+    return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
         && !codeBlock->ownerExecutable()->needsActivation();
 }
 
@@ -119,9 +119,13 @@ inline CapabilityLevel canCompileOpcode(OpcodeID opcodeID, CodeBlock*, Instructi
     case op_get_scoped_var:
     case op_put_scoped_var:
     case op_get_by_id:
+    case op_get_by_id_out_of_line:
     case op_put_by_id:
+    case op_put_by_id_out_of_line:
     case op_put_by_id_transition_direct:
+    case op_put_by_id_transition_direct_out_of_line:
     case op_put_by_id_transition_normal:
+    case op_put_by_id_transition_normal_out_of_line:
     case op_get_global_var:
     case op_get_global_var_watchable:
     case op_put_global_var:
@@ -193,7 +197,6 @@ inline bool canInlineOpcode(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction
     case op_put_scoped_var:
     case op_resolve:
     case op_resolve_base:
-    case op_resolve_global:
         
     // Constant buffers aren't copied correctly. This is easy to fix, but for
     // now we just disable inlining for functions that use them.

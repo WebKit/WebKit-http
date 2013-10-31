@@ -27,6 +27,8 @@
 #include "Logging.h"
 #include "PlatformString.h"
 
+#if !LOG_DISABLED
+
 namespace WebCore {
 
 WTFLogChannel LogNotYetImplemented = { 0x00000001, "WebCoreLogLevel", WTFLogChannelOff };
@@ -63,6 +65,7 @@ WTFLogChannel LogFileAPI =           { 0x10000000, "WebCoreLogLevel", WTFLogChan
 
 WTFLogChannel LogWebAudio =          { 0x20000000, "WebCoreLogLevel", WTFLogChannelOff };
 WTFLogChannel LogCompositing =       { 0x40000000, "WebCoreLogLevel", WTFLogChannelOff };
+WTFLogChannel LogGamepad =           { 0x80000000, "WebCoreLogLevel", WTFLogChannelOff };
 
 
 WTFLogChannel* getChannelFromName(const String& channelName)
@@ -145,7 +148,12 @@ WTFLogChannel* getChannelFromName(const String& channelName)
     if (equalIgnoringCase(channelName, String("Compositing")))
         return &LogCompositing;
 
+    if (equalIgnoringCase(channelName, String("Gamepad")))
+        return &LogGamepad;
+
     return 0;
 }
 
 }
+
+#endif // !LOG_DISABLED

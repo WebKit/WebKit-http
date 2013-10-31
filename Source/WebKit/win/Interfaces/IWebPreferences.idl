@@ -207,4 +207,7 @@ interface IWebPreferences : IUnknown
 
     HRESULT setShouldDisplayTextDescriptions(BOOL shouldDisplayTextDescriptions);
     HRESULT shouldDisplayTextDescriptions(BOOL *shouldDisplayTextDescriptions);
+
+    HRESULT isCSSRegionsEnabled([out, retval] BOOL* enabled);
+    HRESULT setCSSRegionsEnabled([in] BOOL enabled);
 }

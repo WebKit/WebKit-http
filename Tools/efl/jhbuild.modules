@@ -14,6 +14,7 @@
       <dep package="libsoup"/>
       <dep package="edje"/>
       <dep package="e_dbus"/>
+      <dep package="eeze"/>
     </dependencies>
   </metamodule>
 
@@ -50,7 +51,8 @@
     </branch>
   </autotools>
 
-  <autotools id="pixman" autogen-sh="configure">
+  <autotools id="pixman" autogen-sh="configure"
+             autogenargs="--enable-gtk=no">
     <branch module="releases/pixman-0.24.0.tar.gz" version="0.24.0"
             repo="cairographics.org"
             hash="sha256:a5647c7158f103eedff5fba799018f4169f6b26b573ab7685812ebc9a1c5d2e4"
@@ -69,10 +71,10 @@
   </autotools>
 
   <autotools id="libffi" autogen-sh="configure">
-    <branch module="/pub/libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+    <branch module="/pub/libffi/libffi-3.0.11.tar.gz" version="3.0.11"
              repo="sourceware.org"
-             hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"
-             md5sum="79390673f5d07a8fb342bc09b5055b6f"/>
+             hash="sha256:70bfb01356360089aa97d3e71e3edf05d195599fd822e922e50d46a0055a6283"
+             md5sum="f69b9693227d976835b4857b1ba7d0e3"/>
   </autotools>
 
   <tarball id="freetype6">
@@ -159,13 +161,13 @@
   <autotools id="eina" >
     <branch module="eina"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
   </autotools>
 
   <autotools id="embryo">
     <branch module="embryo"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
     <dependencies>
       <dep package="eina"/>
     </dependencies>
@@ -174,13 +176,13 @@
   <autotools id="evas">
     <branch module="evas"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
   </autotools>
 
   <autotools id="ecore">
     <branch module="ecore"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
     <dependencies>
       <dep package="eina"/>
       <dep package="evas"/>
@@ -190,7 +192,7 @@
   <autotools id="eet">
     <branch module="eet"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
     <dependencies>
       <dep package="eina"/>
     </dependencies>
@@ -199,7 +201,7 @@
   <autotools id="edje">
     <branch module="edje"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
     <dependencies>
       <dep package="eet"/>
       <dep package="ecore"/>
@@ -211,7 +213,17 @@
   <autotools id="e_dbus">
     <branch module="e_dbus"
             repo="enlightenment.org"
-            revision="68629"/>
+            revision="73027"/>
+    <dependencies>
+      <dep package="ecore"/>
+      <dep package="eina"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="eeze">
+    <branch module="eeze"
+            repo="enlightenment.org"
+            revision="73027"/>
     <dependencies>
       <dep package="ecore"/>
       <dep package="eina"/>

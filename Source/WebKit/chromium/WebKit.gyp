@@ -68,7 +68,7 @@
             'variables': { 'enable_wexit_time_destructors': 1, },
             'dependencies': [
                 '../../WebCore/WebCore.gyp/WebCore.gyp:webcore',
-                '../../Platform/Platform.gyp/Platform.gyp:webkit_platform', # actually WebCore should depend on this
+                '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
                 '<(chromium_src_dir)/skia/skia.gyp:skia',
                 '<(chromium_src_dir)/third_party/icu/icu.gyp:icuuc',
                 '<(chromium_src_dir)/third_party/npapi/npapi.gyp:npapi',
@@ -76,6 +76,7 @@
                 '<(chromium_src_dir)/v8/tools/gyp/v8.gyp:v8',
             ],
             'export_dependent_settings': [
+                '../../Platform/Platform.gyp/Platform.gyp:webkit_platform',
                 '<(chromium_src_dir)/skia/skia.gyp:skia',
                 '<(chromium_src_dir)/third_party/icu/icu.gyp:icuuc',
                 '<(chromium_src_dir)/third_party/npapi/npapi.gyp:npapi',
@@ -116,6 +117,7 @@
                 'public/WebCompositorInputHandler.h',
                 'public/WebCompositorInputHandlerClient.h',
                 'public/WebConsoleMessage.h',
+                'public/WebContentDetectionResult.h',
                 'public/WebContextMenuData.h',
                 'public/WebCrossOriginPreflightResultCache.h',
                 'public/WebCursorInfo.h',
@@ -222,6 +224,8 @@
                 'public/WebPluginContainer.h',
                 'public/WebPluginDocument.h',
                 'public/WebPluginListBuilder.h',
+                'public/WebPluginScrollbar.h',
+                'public/WebPluginScrollbarClient.h',
                 'public/WebPrintParams.h',
                 'public/WebPrintScalingOption.h',
                 'public/WebPopupMenu.h',
@@ -236,8 +240,6 @@
                 'public/WebScreenInfo.h',
                 'public/WebScriptController.h',
                 'public/WebScriptSource.h',
-                'public/WebScrollbar.h',
-                'public/WebScrollbarClient.h',
                 'public/WebSearchableFormData.h',
                 'public/WebSecurityOrigin.h',
                 'public/WebSecurityPolicy.h',
@@ -475,8 +477,11 @@
                 'src/WebTextCheckingCompletionImpl.cpp',
                 'src/WebTextCheckingResult.cpp',
                 'src/WebAccessibilityObject.cpp',
+                'src/WebAnimation.cpp',
                 'src/WebAnimationControllerImpl.cpp',
                 'src/WebAnimationControllerImpl.h',
+                'src/WebAnimationCurveCommon.cpp',
+                'src/WebAnimationCurveCommon.h',
                 'src/WebArrayBuffer.cpp',
                 'src/WebArrayBufferView.cpp',
                 'src/WebBindings.cpp',
@@ -525,6 +530,7 @@
                 'src/WebFileChooserCompletionImpl.h',
                 'src/WebFileSystemCallbacksImpl.cpp',
                 'src/WebFileSystemCallbacksImpl.h',
+                'src/WebFloatAnimationCurve.cpp',
                 'src/WebFontCache.cpp',
                 'src/WebFontDescription.cpp',
                 'src/WebFontImpl.cpp',
@@ -561,6 +567,7 @@
                 'src/WebIDBKey.cpp',
                 'src/WebIDBKeyPath.cpp',
                 'src/WebIDBKeyRange.cpp',
+                'src/WebIDBMetadata.cpp',
                 'src/WebIDBObjectStoreImpl.cpp',
                 'src/WebIDBObjectStoreImpl.h',
                 'src/WebIDBTransactionImpl.cpp',
@@ -612,6 +619,8 @@
                 'src/WebPluginListBuilderImpl.h',
                 'src/WebPluginLoadObserver.cpp',
                 'src/WebPluginLoadObserver.h',
+                'src/WebPluginScrollbarImpl.cpp',
+                'src/WebPluginScrollbarImpl.h',
                 'src/WebPopupMenuImpl.cpp',
                 'src/WebPopupMenuImpl.h',
                 'src/WebRange.cpp',
@@ -620,8 +629,7 @@
                 'src/WebScopedMicrotaskSuppression.cpp',
                 'src/WebScopedUserGesture.cpp',
                 'src/WebScriptController.cpp',
-                'src/WebScrollbarImpl.cpp',
-                'src/WebScrollbarImpl.h',
+                'src/WebScrollableLayer.cpp',
                 'src/WebSearchableFormData.cpp',
                 'src/WebSecurityOrigin.cpp',
                 'src/WebSecurityPolicy.cpp',
@@ -647,6 +655,7 @@
                 'src/WebSurroundingText.cpp',
                 'src/WebTextInputInfo.cpp',
                 'src/WebTextRun.cpp',
+                'src/WebTransformAnimationCurve.cpp',
                 'src/WebURLLoadTiming.cpp',
                 'src/WebScopedUserGesture.cpp',
                 'src/WebTextFieldDecoratorClient.cpp',
@@ -1036,7 +1045,7 @@
         },
     ], # targets
     'conditions': [
-        ['os_posix==1 and OS!="mac" and OS!="android" and gcc_version==46', {
+        ['os_posix==1 and OS!="mac" and gcc_version==46', {
             'target_defaults': {
                 # Disable warnings about c++0x compatibility, as some names (such
                 # as nullptr) conflict with upcoming c++0x types.

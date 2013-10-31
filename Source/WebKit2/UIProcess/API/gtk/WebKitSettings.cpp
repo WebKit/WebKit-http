@@ -33,6 +33,7 @@
 
 #include "WebKitPrivate.h"
 #include "WebKitSettingsPrivate.h"
+#include "WebPageProxy.h"
 #include <glib/gi18n-lib.h>
 #include <wtf/text/CString.h>
 
@@ -46,6 +47,7 @@ struct _WebKitSettingsPrivate {
     CString fantasyFontFamily;
     CString pictographFontFamily;
     CString defaultCharset;
+    bool allowModalDialogs;
     bool zoomTextOnly;
 };
 
@@ -105,11 +107,14 @@ enum {
     PROP_PRINT_BACKGROUNDS,
     PROP_ENABLE_WEBAUDIO,
     PROP_ENABLE_WEBGL,
+    PROP_ALLOW_MODAL_DIALOGS,
     PROP_ZOOM_TEXT_ONLY,
     PROP_JAVASCRIPT_CAN_ACCESS_CLIPBOARD,
     PROP_MEDIA_PLAYBACK_REQUIRES_USER_GESTURE,
     PROP_MEDIA_PLAYBACK_ALLOWS_INLINE,
-    PROP_DRAW_COMPOSITING_INDICATORS
+    PROP_DRAW_COMPOSITING_INDICATORS,
+    PROP_ENABLE_SITE_SPECIFIC_QUIRKS,
+    PROP_ENABLE_PAGE_CACHE
 };
 
 static void webKitSettingsSetProperty(GObject* object, guint propId, const GValue* value, GParamSpec* paramSpec)
@@ -216,6 +221,9 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
     case PROP_ENABLE_WEBGL:
         webkit_settings_set_enable_webgl(settings, g_value_get_boolean(value));
         break;
+    case PROP_ALLOW_MODAL_DIALOGS:
+        webkit_settings_set_allow_modal_dialogs(settings, g_value_get_boolean(value));
+        break;
     case PROP_ZOOM_TEXT_ONLY:
         webkit_settings_set_zoom_text_only(settings, g_value_get_boolean(value));
         break;
@@ -230,6 +238,12 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
         break;
     case PROP_DRAW_COMPOSITING_INDICATORS:
         webkit_settings_set_draw_compositing_indicators(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ENABLE_SITE_SPECIFIC_QUIRKS:
+        webkit_settings_set_enable_site_specific_quirks(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ENABLE_PAGE_CACHE:
+        webkit_settings_set_enable_page_cache(settings, g_value_get_boolean(value));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -341,6 +355,9 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
     case PROP_ENABLE_WEBGL:
         g_value_set_boolean(value, webkit_settings_get_enable_webgl(settings));
         break;
+    case PROP_ALLOW_MODAL_DIALOGS:
+        g_value_set_boolean(value, webkit_settings_get_allow_modal_dialogs(settings));
+        break;
     case PROP_ZOOM_TEXT_ONLY:
         g_value_set_boolean(value, webkit_settings_get_zoom_text_only(settings));
         break;
@@ -355,6 +372,12 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
         break;
     case PROP_DRAW_COMPOSITING_INDICATORS:
         g_value_set_boolean(value, webkit_settings_get_draw_compositing_indicators(settings));
+        break;
+    case PROP_ENABLE_SITE_SPECIFIC_QUIRKS:
+        g_value_set_boolean(value, webkit_settings_get_enable_site_specific_quirks(settings));
+        break;
+    case PROP_ENABLE_PAGE_CACHE:
+        g_value_set_boolean(value, webkit_settings_get_enable_page_cache(settings));
         break;
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
@@ -853,6 +876,24 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                          readWriteConstructParamFlags));
 
     /**
+     * WebKitSettings:allow-modal-dialogs:
+     *
+     * Determine whether it's allowed to create and run modal dialogs
+     * from a #WebKitWebView through JavaScript with
+     * <function>window.showModalDialog</function>. If it's set to
+     * %FALSE, the associated #WebKitWebView won't be able to create
+     * new modal dialogs, so not even the #WebKitWebView::create
+     * signal will be emitted.
+     */
+    g_object_class_install_property(gObjectClass,
+                                    PROP_ALLOW_MODAL_DIALOGS,
+                                    g_param_spec_boolean("allow-modal-dialogs",
+                                                         _("Allow modal dialogs"),
+                                                         _("Whether it is possible to create modal dialogs"),
+                                                         FALSE,
+                                                         readWriteConstructParamFlags));
+
+    /**
      * WebKitSettings:zoom-text-only:
      *
      * Whether #WebKitWebView:zoom-level affects only the
@@ -930,6 +971,45 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                          FALSE,
                                                          readWriteConstructParamFlags));
 
+    /**
+     * WebKitSettings:enable-site-specific-quirks:
+     *
+     * Whether to turn on site-specific quirks. Turning this on will
+     * tell WebKit to use some site-specific workarounds for
+     * better web compatibility. For example, older versions of
+     * MediaWiki will incorrectly send to WebKit a css file with KHTML
+     * workarounds. By turning on site-specific quirks, WebKit will
+     * special-case this and other cases to make some specific sites work.
+     */
+    g_object_class_install_property(gObjectClass,
+                                    PROP_ENABLE_SITE_SPECIFIC_QUIRKS,
+                                    g_param_spec_boolean("enable-site-specific-quirks",
+                                                         _("Enable Site Specific Quirks"),
+                                                         _("Enables the site-specific compatibility workarounds"),
+                                                         FALSE,
+                                                         readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:enable-page-cache:
+     *
+     * Enable or disable the page cache. Disabling the page cache is
+     * generally only useful for special circumstances like low-memory
+     * scenarios or special purpose applications like static HTML
+     * viewers. This setting only controls the Page Cache, this cache
+     * is different than the disk-based or memory-based traditional
+     * resource caches, its point is to make going back and forth
+     * between pages much faster. For details about the different types
+     * of caches and their purposes see:
+     * http://webkit.org/blog/427/webkit-page-cache-i-the-basics/
+     */
+    g_object_class_install_property(gObjectClass,
+                                    PROP_ENABLE_PAGE_CACHE,
+                                    g_param_spec_boolean("enable-page-cache",
+                                                         _("Enable page cache"),
+                                                         _("Whether the page cache should be used"),
+                                                         TRUE,
+                                                         readWriteConstructParamFlags));
+
     g_type_class_add_private(klass, sizeof(WebKitSettingsPrivate));
 }
 
@@ -969,6 +1049,7 @@ static void webkit_settings_init(WebKitSettings* settings)
 void webkitSettingsAttachSettingsToPage(WebKitSettings* settings, WKPageRef wkPage)
 {
     WKPageGroupSetPreferences(WKPageGetPageGroup(wkPage), settings->priv->preferences.get());
+    WebKit::toImpl(wkPage)->setCanRunModal(settings->priv->allowModalDialogs);
 }
 
 /**
@@ -2189,6 +2270,39 @@ void webkit_settings_set_enable_webgl(WebKitSettings* settings, gboolean enabled
 }
 
 /**
+ * webkit_settings_set_allow_modal_dialogs:
+ * @settings: a #WebKitSettings
+ * @allowed: Value to be set
+ *
+ * Set the #WebKitSettings:allow-modal-dialogs property.
+ */
+void webkit_settings_set_allow_modal_dialogs(WebKitSettings* settings, gboolean allowed)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    if (priv->allowModalDialogs == allowed)
+        return;
+
+    priv->allowModalDialogs = allowed;
+    g_object_notify(G_OBJECT(settings), "allow-modal-dialogs");
+}
+
+/**
+ * webkit_settings_get_allow_modal_dialogs:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:allow-modal-dialogs property.
+ *
+ * Returns: %TRUE if it's allowed to create and run modal dialogs or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_allow_modal_dialogs(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+    return settings->priv->allowModalDialogs;
+}
+
+/**
  * webkit_settings_set_zoom_text_only:
  * @settings: a #WebKitSettings
  * @zoom_text_only: Value to be set
@@ -2370,4 +2484,74 @@ gboolean webkit_settings_get_draw_compositing_indicators(WebKitSettings* setting
     g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
     return WKPreferencesGetCompositingBordersVisible(settings->priv->preferences.get())
            && WKPreferencesGetCompositingRepaintCountersVisible(settings->priv->preferences.get());
+}
+
+/**
+ * webkit_settings_get_enable_site_specific_quirks:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-site-specific-quirks property.
+ *
+ * Returns: %TRUE if site specific quirks are enabled or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_enable_site_specific_quirks(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return WKPreferencesGetNeedsSiteSpecificQuirks(settings->priv->preferences.get());
+}
+
+/**
+ * webkit_settings_set_enable_site_specific_quirks:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-site-specific-quirks property.
+ */
+void webkit_settings_set_enable_site_specific_quirks(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = WKPreferencesGetNeedsSiteSpecificQuirks(priv->preferences.get());
+    if (currentValue == enabled)
+        return;
+
+    WKPreferencesSetNeedsSiteSpecificQuirks(priv->preferences.get(), enabled);
+    g_object_notify(G_OBJECT(settings), "enable-site-specific-quirks");
+}
+
+/**
+ * webkit_settings_get_enable_page_cache:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-page-cache property.
+ *
+ * Returns: %TRUE if page cache enabled or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_enable_page_cache(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return WKPreferencesGetPageCacheEnabled(settings->priv->preferences.get());
+}
+
+/**
+ * webkit_settings_set_enable_page_cache:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-page-cache property.
+ */
+void webkit_settings_set_enable_page_cache(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = WKPreferencesGetPageCacheEnabled(priv->preferences.get());
+    if (currentValue == enabled)
+        return;
+
+    WKPreferencesSetPageCacheEnabled(priv->preferences.get(), enabled);
+    g_object_notify(G_OBJECT(settings), "enable-page-cache");
 }

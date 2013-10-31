@@ -1047,38 +1047,39 @@ void Frame::notifyChromeClientTouchEventHandlerCountChanged() const
 
 #if !PLATFORM(MAC) && !PLATFORM(WIN)
 struct ScopedFramePaintingState {
-    ScopedFramePaintingState(Frame* theFrame, RenderObject* theRenderer)
-        : frame(theFrame)
-        , renderer(theRenderer)
+    ScopedFramePaintingState(Frame* frame, Node* node)
+        : frame(frame)
+        , node(node)
         , paintBehavior(frame->view()->paintBehavior())
         , backgroundColor(frame->view()->baseBackgroundColor())
     {
+        ASSERT(!node || node->renderer());
+        if (node)
+            node->renderer()->updateDragState(true);
     }
 
     ~ScopedFramePaintingState()
     {
-        if (renderer)
-            renderer->updateDragState(false);
+        if (node && node->renderer())
+            node->renderer()->updateDragState(false);
         frame->view()->setPaintBehavior(paintBehavior);
         frame->view()->setBaseBackgroundColor(backgroundColor);
         frame->view()->setNodeToDraw(0);
     }
 
     Frame* frame;
-    RenderObject* renderer;
+    Node* node;
     PaintBehavior paintBehavior;
     Color backgroundColor;
 };
 
 DragImageRef Frame::nodeImage(Node* node)
 {
-    RenderObject* renderer = node->renderer();
-    if (!renderer)
+    if (!node->renderer())
         return 0;
 
-    const ScopedFramePaintingState state(this, renderer);
+    const ScopedFramePaintingState state(this, node);
 
-    renderer->updateDragState(true);
     m_view->setPaintBehavior(state.paintBehavior | PaintBehaviorFlattenCompositingLayers);
 
     // When generating the drag image for an element, ignore the document background.
@@ -1086,12 +1087,24 @@ DragImageRef Frame::nodeImage(Node* node)
     m_doc->updateLayout();
     m_view->setNodeToDraw(node); // Enable special sub-tree drawing mode.
 
+    // Document::updateLayout may have blown away the original RenderObject.
+    RenderObject* renderer = node->renderer();
+    if (!renderer)
+      return 0;
+
     LayoutRect topLevelRect;
     IntRect paintingRect = pixelSnappedIntRect(renderer->paintingRootRect(topLevelRect));
+
+    float deviceScaleFactor = 1;
+    if (m_page)
+        deviceScaleFactor = m_page->deviceScaleFactor();
+    paintingRect.setWidth(paintingRect.width() * deviceScaleFactor);
+    paintingRect.setHeight(paintingRect.height() * deviceScaleFactor);
 
     OwnPtr<ImageBuffer> buffer(ImageBuffer::create(paintingRect.size(), 1, ColorSpaceDeviceRGB));
     if (!buffer)
         return 0;
+    buffer->context()->scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
     buffer->context()->translate(-paintingRect.x(), -paintingRect.y());
     buffer->context()->clip(FloatRect(0, 0, paintingRect.maxX(), paintingRect.maxY()));
 
@@ -1112,9 +1125,16 @@ DragImageRef Frame::dragImageForSelection()
 
     IntRect paintingRect = enclosingIntRect(selection()->bounds());
 
+    float deviceScaleFactor = 1;
+    if (m_page)
+        deviceScaleFactor = m_page->deviceScaleFactor();
+    paintingRect.setWidth(paintingRect.width() * deviceScaleFactor);
+    paintingRect.setHeight(paintingRect.height() * deviceScaleFactor);
+
     OwnPtr<ImageBuffer> buffer(ImageBuffer::create(paintingRect.size(), 1, ColorSpaceDeviceRGB));
     if (!buffer)
         return 0;
+    buffer->context()->scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
     buffer->context()->translate(-paintingRect.x(), -paintingRect.y());
     buffer->context()->clip(FloatRect(0, 0, paintingRect.maxX(), paintingRect.maxY()));
 

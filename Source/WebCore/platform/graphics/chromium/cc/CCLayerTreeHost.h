@@ -25,15 +25,18 @@
 #ifndef CCLayerTreeHost_h
 #define CCLayerTreeHost_h
 
-#include "Color.h"
+#include "GraphicsContext3D.h"
 #include "GraphicsTypes3D.h"
 #include "IntRect.h"
-#include "LayerChromium.h"
 #include "RateLimiter.h"
+#include "SkColor.h"
 #include "cc/CCAnimationEvents.h"
 #include "cc/CCGraphicsContext.h"
 #include "cc/CCLayerTreeHostCommon.h"
+#include "cc/CCOcclusionTracker.h"
+#include "cc/CCPrioritizedTextureManager.h"
 #include "cc/CCProxy.h"
+
 
 #include <limits>
 #include <wtf/HashMap.h>
@@ -43,13 +46,17 @@
 
 namespace WebCore {
 
+class CCGraphicsContext;
+class CCLayerChromium;
 class CCLayerTreeHostImpl;
 class CCLayerTreeHostImplClient;
 class CCTextureUpdater;
-class GraphicsContext3D;
+class ManagedTexture;
 class Region;
 class TextureAllocator;
-class TextureManager;
+class CCPrioritizedTextureManager;
+struct CCRenderingStats;
+struct CCScrollAndScaleSet;
 
 class CCLayerTreeHostClient {
 public:
@@ -59,7 +66,7 @@ public:
     virtual void updateAnimations(double frameBeginTime) = 0;
     virtual void layout() = 0;
     virtual void applyScrollAndScale(const IntSize& scrollDelta, float pageScale) = 0;
-    virtual PassRefPtr<GraphicsContext3D> createContext3D() = 0;
+    virtual PassOwnPtr<WebKit::WebGraphicsContext3D> createContext3D() = 0;
     virtual void didRecreateContext(bool success) = 0;
     virtual void willCommit() = 0;
     virtual void didCommit() = 0;
@@ -82,6 +89,9 @@ struct CCLayerTreeSettings {
             , showPaintRects(false)
             , showPropertyChangedRects(false)
             , showSurfaceDamageRects(false)
+            , showScreenSpaceRects(false)
+            , showReplicaScreenSpaceRects(false)
+            , showOccludingRects(false)
             , refreshRate(0)
             , maxPartialTextureUpdates(std::numeric_limits<size_t>::max())
             , defaultTileSize(IntSize(256, 256))
@@ -95,6 +105,9 @@ struct CCLayerTreeSettings {
     bool showPaintRects;
     bool showPropertyChangedRects;
     bool showSurfaceDamageRects;
+    bool showScreenSpaceRects;
+    bool showReplicaScreenSpaceRects;
+    bool showOccludingRects;
     double refreshRate;
     size_t maxPartialTextureUpdates;
     IntSize defaultTileSize;
@@ -115,6 +128,7 @@ struct LayerRendererCapabilities {
         , usingTextureStorageExtension(false)
         , usingGpuMemoryManager(false)
         , usingDiscardFramebuffer(false)
+        , usingEglImage(false)
         , maxTextureSize(0) { }
 
     GC3Denum bestTextureFormat;
@@ -128,6 +142,7 @@ struct LayerRendererCapabilities {
     bool usingTextureStorageExtension;
     bool usingGpuMemoryManager;
     bool usingDiscardFramebuffer;
+    bool usingEglImage;
     int maxTextureSize;
 };
 
@@ -144,6 +159,7 @@ public:
 
     static bool needsFilterContext() { return s_needsFilterContext; }
     static void setNeedsFilterContext(bool needsFilterContext) { s_needsFilterContext = needsFilterContext; }
+    bool needsSharedContext() const { return needsFilterContext() || settings().acceleratePainting; }
 
     // CCLayerTreeHost interface to CCProxy.
     void willBeginFrame() { m_client->willBeginFrame(); }
@@ -153,7 +169,7 @@ public:
     void beginCommitOnImplThread(CCLayerTreeHostImpl*);
     void finishCommitOnImplThread(CCLayerTreeHostImpl*);
     void commitComplete();
-    PassRefPtr<CCGraphicsContext> createContext();
+    PassOwnPtr<CCGraphicsContext> createContext();
     virtual PassOwnPtr<CCLayerTreeHostImpl> createLayerTreeHostImpl(CCLayerTreeHostImplClient*);
     void didLoseContext();
     enum RecreateResult {
@@ -168,7 +184,8 @@ public:
     void deleteContentsTexturesOnImplThread(TextureAllocator*);
     virtual void acquireLayerTextures();
     // Returns false if we should abort this frame due to initialization failure.
-    bool updateLayers(CCTextureUpdater&);
+    bool initializeLayerRendererIfNeeded();
+    void updateLayers(CCTextureUpdater&, size_t contentsMemoryLimitBytes);
 
     CCLayerTreeHostClient* client() { return m_client; }
 
@@ -178,10 +195,6 @@ public:
     void composite();
     void scheduleComposite();
 
-    // NOTE: The returned value can only be used to make GL calls or make the
-    // context current on the thread the compositor is running on!
-    CCGraphicsContext* context();
-
     // Composites and attempts to read back the result into the provided
     // buffer. If it wasn't possible, e.g. due to context lost, will return
     // false.
@@ -189,7 +202,11 @@ public:
 
     void finishAllRendering();
 
-    int frameNumber() const { return m_frameNumber; }
+    int animationFrameNumber() const { return m_animationFrameNumber; }
+
+    int commitNumber() const { return m_commitNumber; }
+
+    void renderingStats(CCRenderingStats&) const;
 
     const LayerRendererCapabilities& layerRendererCapabilities() const;
 
@@ -199,7 +216,6 @@ public:
     void setNeedsAnimate();
     // virtual for testing
     virtual void setNeedsCommit();
-    void setNeedsForcedCommit();
     void setNeedsRedraw();
     bool commitRequested() const;
 
@@ -220,12 +236,17 @@ public:
 
     void setPageScaleFactorAndLimits(float pageScaleFactor, float minPageScaleFactor, float maxPageScaleFactor);
 
-    void setBackgroundColor(const Color& color) { m_backgroundColor = color; }
+    void setBackgroundColor(SkColor color) { m_backgroundColor = color; }
 
     void setHasTransparentBackground(bool transparent) { m_hasTransparentBackground = transparent; }
 
-    TextureManager* contentsTextureManager() const;
-    void setContentsMemoryAllocationLimitBytes(size_t);
+    CCPrioritizedTextureManager* contentsTextureManager() const;
+
+    // This will cause contents texture manager to evict all textures, but
+    // without deleting them. This happens after all content textures have
+    // already been deleted on impl, after getting a 0 allocation limit.
+    // Set during a commit, but before updateLayers.
+    void evictAllContentTextures();
 
     bool visible() const { return m_visible; }
     void setVisible(bool);
@@ -242,7 +263,7 @@ public:
 
     bool bufferedUpdates();
     bool requestPartialTextureUpdate();
-    void deleteTextureAfterCommit(PassOwnPtr<ManagedTexture>);
+    void deleteTextureAfterCommit(PassOwnPtr<CCPrioritizedTexture>);
 
     void setDeviceScaleFactor(float);
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
@@ -253,7 +274,7 @@ protected:
 
 private:
     typedef Vector<RefPtr<LayerChromium> > LayerList;
-    typedef Vector<OwnPtr<ManagedTexture> > TextureList;
+    typedef Vector<OwnPtr<CCPrioritizedTexture> > TextureList;
 
     void initializeLayerRenderer();
 
@@ -263,8 +284,8 @@ private:
     void paintMasksForRenderSurface(LayerChromium*, PaintType, CCTextureUpdater&);
 
     void updateLayers(LayerChromium*, CCTextureUpdater&);
-    // Pre-reserve textures for any layer marked "always reserve textures"
-    void reserveTextures(const LayerList&);
+
+    void prioritizeTextures(const LayerList& updateList);
 
     void animateLayers(double monotonicTime);
     bool animateLayersRecursive(LayerChromium* current, double monotonicTime);
@@ -277,8 +298,8 @@ private:
 
     CCLayerTreeHostClient* m_client;
 
-    int m_frameNumber;
-    bool m_frameIsForDisplay;
+    int m_animationFrameNumber;
+    int m_commitNumber;
 
     OwnPtr<CCProxy> m_proxy;
     bool m_layerRendererInitialized;
@@ -287,7 +308,7 @@ private:
     int m_numFailedRecreateAttempts;
 
     RefPtr<LayerChromium> m_rootLayer;
-    OwnPtr<TextureManager> m_contentsTextureManager;
+    OwnPtr<CCPrioritizedTextureManager> m_contentsTextureManager;
 
     CCLayerTreeSettings m_settings;
 
@@ -297,16 +318,13 @@ private:
 
     bool m_visible;
 
-    size_t m_memoryAllocationBytes;
-    bool m_memoryAllocationIsForDisplay;
-
     typedef HashMap<WebKit::WebGraphicsContext3D*, RefPtr<RateLimiter> > RateLimiterMap;
     RateLimiterMap m_rateLimiters;
 
     float m_pageScaleFactor;
     float m_minPageScaleFactor, m_maxPageScaleFactor;
     bool m_triggerIdlePaints;
-    Color m_backgroundColor;
+    SkColor m_backgroundColor;
     bool m_hasTransparentBackground;
 
     TextureList m_deleteTextureAfterCommitList;

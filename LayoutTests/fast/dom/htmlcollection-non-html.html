@@ -57,8 +57,8 @@ function testElementProperty(elementName, attributeName, subelementName, base) {
 }
 
 function runTest() {
-  if (window.layoutTestController)
-    window.layoutTestController.dumpAsText();
+  if (window.testRunner)
+    window.testRunner.dumpAsText();
 
   description('Tests that HTMLCollection only properly contains HTML elements');
 
@@ -67,6 +67,7 @@ function runTest() {
   elem = document.createElementNS(ns, "option");
   select.appendChild(elem);
   shouldBe("select.options.length", "0");
+  shouldBe("select.selectedOptions.length", "0");
 
   elem = document.createElement("option");
   select.appendChild(elem);

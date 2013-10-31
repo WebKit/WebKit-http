@@ -26,6 +26,7 @@
 #include "config.h"
 #include "NodeRenderingContext.h"
 
+#include "ComposedShadowTreeWalker.h"
 #include "ContainerNode.h"
 #include "ContentDistributor.h"
 #include "ElementShadow.h"
@@ -52,86 +53,15 @@ static RenderObject* firstRendererOf(Node*);
 static RenderObject* lastRendererOf(Node*);
 
 NodeRenderingContext::NodeRenderingContext(Node* node)
-    : m_phase(AttachingNotInTree)
-    , m_node(node)
-    , m_parentNodeForRenderingAndStyle(0)
-    , m_resetStyleInheritance(false)
-    , m_visualParentShadow(0)
-    , m_insertionPoint(0)
+    : m_node(node)
     , m_style(0)
     , m_parentFlowRenderer(0)
 {
-    ContainerNode* parent = m_node->parentOrHostNode();
-    if (!parent)
-        return;
-
-    if (parent->isShadowRoot() && toShadowRoot(parent)->isYoungest()) {
-        m_phase = AttachingShadowChild;
-        m_parentNodeForRenderingAndStyle = toShadowRoot(parent)->host();
-        m_resetStyleInheritance = toShadowRoot(parent)->resetStyleInheritance();
-        return;
-    }
-
-    if (parent->isElementNode() || parent->isShadowRoot()) {
-        if (parent->isElementNode())
-            m_visualParentShadow = toElement(parent)->shadow();
-        else if (parent->isShadowRoot())
-            m_visualParentShadow = toShadowRoot(parent)->owner();
-
-        if (m_visualParentShadow) {
-            m_visualParentShadow->ensureDistribution();
-
-            if ((m_insertionPoint = m_visualParentShadow->insertionPointFor(m_node))) {
-                if (m_insertionPoint->shadowRoot()->isUsedForRendering()) {
-                    m_phase = AttachingDistributed;
-                    NodeRenderingContext insertionPointContext(m_insertionPoint);
-                    m_parentNodeForRenderingAndStyle = insertionPointContext.parentNodeForRenderingAndStyle();
-                    m_resetStyleInheritance = insertionPointContext.resetStyleInheritance();
-                    return;
-                }
-            }
-
-            m_phase = AttachingNotDistributed;
-            m_parentNodeForRenderingAndStyle = parent;
-            return;
-        }
-
-        if (isShadowBoundary(parent)) {
-            ShadowRoot* parentShadowRoot = parent->shadowRoot();
-            parentShadowRoot->owner()->ensureDistribution();
-
-            if (!parentShadowRoot->isUsedForRendering()) {
-                m_phase = AttachingNotDistributed;
-                m_parentNodeForRenderingAndStyle = parent;
-                return;
-            }
-
-            if (toInsertionPoint(parent)->hasDistribution())
-                m_phase = AttachingNotFallbacked;
-            else
-                m_phase = AttachingFallbacked;
-
-            if (toInsertionPoint(parent)->isActive()) {
-                NodeRenderingContext parentContext(parent);
-                m_parentNodeForRenderingAndStyle = parentContext.parentNodeForRenderingAndStyle();
-                m_resetStyleInheritance = parentContext.resetStyleInheritance();
-            } else
-                m_parentNodeForRenderingAndStyle = parent;
-            return;
-        }
-    }
-
-    m_phase = AttachingStraight;
-    m_parentNodeForRenderingAndStyle = parent;
+    ComposedShadowTreeWalker::findParent(m_node, &m_parentDetails);
 }
 
 NodeRenderingContext::NodeRenderingContext(Node* node, RenderStyle* style)
-    : m_phase(Calculating)
-    , m_node(node)
-    , m_parentNodeForRenderingAndStyle(0)
-    , m_resetStyleInheritance(false)
-    , m_visualParentShadow(0)
-    , m_insertionPoint(0)
+    : m_node(node)
     , m_style(style)
     , m_parentFlowRenderer(0)
 {
@@ -241,17 +171,16 @@ static inline RenderObject* lastRendererOf(Node* node)
 
 RenderObject* NodeRenderingContext::nextRenderer() const
 {
-    ASSERT(m_node->renderer() || m_phase != Calculating);
     if (RenderObject* renderer = m_node->renderer())
         return renderer->nextSibling();
 
     if (m_parentFlowRenderer)
         return m_parentFlowRenderer->nextRendererForNode(m_node);
 
-    if (m_phase == AttachingDistributed) {
-        if (RenderObject* found = nextRendererOfInsertionPoint(m_insertionPoint, m_node))
+    if (m_parentDetails.insertionPoint()) {
+        if (RenderObject* found = nextRendererOfInsertionPoint(m_parentDetails.insertionPoint(), m_node))
             return found;
-        return NodeRenderingContext(m_insertionPoint).nextRenderer();
+        return NodeRenderingContext(m_parentDetails.insertionPoint()).nextRenderer();
     }
 
     // Avoid an O(N^2) problem with this function by not checking for
@@ -264,18 +193,16 @@ RenderObject* NodeRenderingContext::nextRenderer() const
 
 RenderObject* NodeRenderingContext::previousRenderer() const
 {
-    ASSERT(m_node->renderer() || m_phase != Calculating);
-
     if (RenderObject* renderer = m_node->renderer())
         return renderer->previousSibling();
 
     if (m_parentFlowRenderer)
         return m_parentFlowRenderer->previousRendererForNode(m_node);
 
-    if (m_phase == AttachingDistributed) {
-        if (RenderObject* found = previousRendererOfInsertionPoint(m_insertionPoint, m_node))
+    if (m_parentDetails.insertionPoint()) {
+        if (RenderObject* found = previousRendererOfInsertionPoint(m_parentDetails.insertionPoint(), m_node))
             return found;
-        return NodeRenderingContext(m_insertionPoint).previousRenderer();
+        return NodeRenderingContext(m_parentDetails.insertionPoint()).previousRenderer();
     }
 
     // FIXME: We should have the same O(N^2) avoidance as nextRenderer does
@@ -285,31 +212,24 @@ RenderObject* NodeRenderingContext::previousRenderer() const
 
 RenderObject* NodeRenderingContext::parentRenderer() const
 {
-    if (RenderObject* renderer = m_node->renderer()) {
-        ASSERT(m_phase == Calculating);
+    if (RenderObject* renderer = m_node->renderer())
         return renderer->parent();
-    }
-
     if (m_parentFlowRenderer)
         return m_parentFlowRenderer;
 
-    ASSERT(m_phase != Calculating);
-    return m_parentNodeForRenderingAndStyle ? m_parentNodeForRenderingAndStyle->renderer() : 0;
+    return m_parentDetails.node() ? m_parentDetails.node()->renderer() : 0;
 }
 
 bool NodeRenderingContext::shouldCreateRenderer() const
 {
-    ASSERT(m_phase != Calculating);
-    ASSERT(parentNodeForRenderingAndStyle());
-
-    if (m_phase == AttachingNotInTree || m_phase == AttachingNotDistributed || m_phase == AttachingNotFallbacked)
+    if (!m_parentDetails.node())
         return false;
     RenderObject* parentRenderer = this->parentRenderer();
     if (!parentRenderer)
         return false;
     if (!parentRenderer->canHaveChildren())
         return false;
-    if (!m_parentNodeForRenderingAndStyle->childShouldCreateRenderer(*this))
+    if (!m_parentDetails.node()->childShouldCreateRenderer(*this))
         return false;
     return true;
 }
@@ -338,6 +258,16 @@ void NodeRenderingContext::moveToFlowThreadIfNeeded()
     FlowThreadController* flowThreadController = m_node->document()->renderView()->flowThreadController();
     m_parentFlowRenderer = flowThreadController->ensureRenderFlowThreadWithName(m_flowThread);
     flowThreadController->registerNamedFlowContentNode(m_node, m_parentFlowRenderer);
+}
+
+bool NodeRenderingContext::isOnEncapsulationBoundary() const
+{
+    return isOnUpperEncapsulationBoundary() || isLowerEncapsulationBoundary(m_parentDetails.insertionPoint()) || isLowerEncapsulationBoundary(m_node->parentNode());
+}
+
+bool NodeRenderingContext::isOnUpperEncapsulationBoundary() const
+{
+    return m_node->parentNode() && m_node->parentNode()->isShadowRoot();
 }
 
 NodeRendererFactory::NodeRendererFactory(Node* node)

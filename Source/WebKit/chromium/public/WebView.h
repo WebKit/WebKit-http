@@ -62,6 +62,7 @@ struct WebActiveWheelFlingParameters;
 struct WebMediaPlayerAction;
 struct WebPluginAction;
 struct WebPoint;
+struct WebRenderingStats;
 
 class WebView : public WebWidget {
 public:
@@ -191,6 +192,10 @@ public:
     // window space.
     virtual void scrollFocusedNodeIntoRect(const WebRect&) { }
 
+    // Advance the focus of the WebView forward to the next element or to the
+    // previous element in the tab sequence (if reverse is true).
+    virtual void advanceFocus(bool reverse) { }
+
 
     // Zoom ----------------------------------------------------------------
 
@@ -244,6 +249,11 @@ public:
 
     virtual float minimumPageScaleFactor() const = 0;
     virtual float maximumPageScaleFactor() const = 0;
+
+    // Prevent the web page from setting a maximum scale via the viewport meta
+    // tag. This is an accessibility feature that lets folks zoom in to web
+    // pages even if the web page tries to block scaling.
+    virtual void setIgnoreViewportTagMaximumScale(bool) = 0;
 
     // The ratio of the current device's screen DPI to the target device's screen DPI.
     virtual float deviceScaleFactor() const = 0;
@@ -438,13 +448,6 @@ public:
 
     // GPU acceleration support --------------------------------------------
 
-    // Returns the (on-screen) WebGraphicsContext3D associated with
-    // this WebView. One will be created if it doesn't already exist.
-    // This is used to set up sharing between this context (which is
-    // that used by the compositor) and contexts for WebGL and other
-    // APIs.
-    virtual WebGraphicsContext3D* graphicsContext3D() = 0;
-
     // Context that's in the compositor's share group, but is not the compositor context itself.
     // Can be used for allocating resources that the compositor will later access.
     virtual WebGraphicsContext3D* sharedGraphicsContext3D() = 0;
@@ -452,6 +455,12 @@ public:
     // Called to inform the WebView that a wheel fling animation was started externally (for instance
     // by the compositor) but must be completed by the WebView.
     virtual void transferActiveWheelFlingAnimation(const WebActiveWheelFlingParameters&) = 0;
+
+    virtual bool setEditableSelectionOffsets(int start, int end) = 0;
+
+    // Fills in a WebRenderingStats struct containing information about the state of the compositor.
+    // This call is relatively expensive in threaded mode as it blocks on the compositor thread.
+    virtual void renderingStats(WebRenderingStats&) const { }
 
     // Visibility -----------------------------------------------------------
 

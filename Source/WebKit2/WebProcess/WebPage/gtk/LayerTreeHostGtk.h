@@ -27,6 +27,8 @@
 #ifndef LayerTreeHostGtk_h
 #define LayerTreeHostGtk_h
 
+#if USE(TEXTURE_MAPPER_GL)
+
 #include "LayerTreeContext.h"
 #include "LayerTreeHost.h"
 #include "TextureMapperLayer.h"
@@ -77,7 +79,6 @@ private:
     virtual void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::IntRect& clipRect);
     virtual bool showDebugBorders(const WebCore::GraphicsLayer*) const;
     virtual bool showRepaintCounter(const WebCore::GraphicsLayer*) const;
-    virtual float deviceScaleFactor() const;
     virtual void didCommitChangesForLayer(const WebCore::GraphicsLayer*) const { }
 
     void createPageOverlayLayer();
@@ -104,5 +105,7 @@ private:
 };
 
 } // namespace WebKit
+
+#endif
 
 #endif // LayerTreeHostGtk_h

@@ -28,8 +28,8 @@
 #include "CCTestCommon.h"
 #include "FakeWebGraphicsContext3D.h"
 #include "GraphicsContext3D.h"
-#include "GraphicsContext3DPrivate.h"
 #include "WebCompositor.h"
+#include "cc/CCDrawQuad.h"
 #include "cc/CCSettings.h"
 #include "cc/CCSingleThreadProxy.h"
 
@@ -83,12 +83,13 @@ public:
     }
 
     // CCRendererClient methods.
-    virtual const IntSize& deviceViewportSize() const OVERRIDE { static IntSize fakeSize; return fakeSize; }
+    virtual const IntSize& deviceViewportSize() const OVERRIDE { static IntSize fakeSize(1, 1); return fakeSize; }
     virtual const CCLayerTreeSettings& settings() const OVERRIDE { static CCLayerTreeSettings fakeSettings; return fakeSettings; }
     virtual void didLoseContext() OVERRIDE { }
     virtual void onSwapBuffersComplete() OVERRIDE { }
     virtual void setFullRootLayerDamage() OVERRIDE { m_setFullRootLayerDamageCount++; }
-    virtual void setContentsMemoryAllocationLimitBytes(size_t bytes) OVERRIDE { m_memoryAllocationLimitBytes = bytes; }
+    virtual void releaseContentsTextures() OVERRIDE { }
+    virtual void setMemoryAllocationLimitBytes(size_t bytes) OVERRIDE { m_memoryAllocationLimitBytes = bytes; }
 
     // Methods added for test.
     int setFullRootLayerDamageCount() const { return m_setFullRootLayerDamageCount; }
@@ -107,7 +108,7 @@ private:
 
 class FakeLayerRendererChromium : public LayerRendererChromium {
 public:
-    FakeLayerRendererChromium(CCRendererClient* client, PassRefPtr<GraphicsContext3D> context) : LayerRendererChromium(client, context, UnthrottledUploader) { }
+    FakeLayerRendererChromium(CCRendererClient* client, WebGraphicsContext3D* context) : LayerRendererChromium(client, context, UnthrottledUploader) { }
 
     // LayerRendererChromium methods.
 
@@ -121,9 +122,8 @@ protected:
     LayerRendererChromiumTest()
         : m_suggestHaveBackbufferYes(1, true)
         , m_suggestHaveBackbufferNo(1, false)
-        , m_context(GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new FrameCountingMemoryAllocationSettingContext()), GraphicsContext3D::RenderDirectlyToHostWindow))
-        , m_mockContext(*static_cast<FrameCountingMemoryAllocationSettingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(m_context.get())))
-        , m_layerRendererChromium(&m_mockClient, m_context.release())
+        , m_context(adoptPtr(new FrameCountingMemoryAllocationSettingContext))
+        , m_layerRendererChromium(&m_mockClient, m_context.get())
     {
     }
 
@@ -146,8 +146,7 @@ protected:
     WebGraphicsMemoryAllocation m_suggestHaveBackbufferYes;
     WebGraphicsMemoryAllocation m_suggestHaveBackbufferNo;
 
-    RefPtr<GraphicsContext3D> m_context;
-    FrameCountingMemoryAllocationSettingContext& m_mockContext;
+    OwnPtr<FrameCountingMemoryAllocationSettingContext> m_context;
     FakeCCRendererClient m_mockClient;
     FakeLayerRendererChromium m_layerRendererChromium;
     CCScopedSettings m_scopedSettings;
@@ -158,70 +157,84 @@ protected:
 // Expected: it does nothing.
 TEST_F(LayerRendererChromiumTest, SuggestBackbufferYesWhenItAlreadyExistsShouldDoNothing)
 {
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferYes);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferYes);
     EXPECT_EQ(0, m_mockClient.setFullRootLayerDamageCount());
     EXPECT_FALSE(m_layerRendererChromium.isFramebufferDiscarded());
 
     swapBuffers();
-    EXPECT_EQ(1, m_mockContext.frameCount());
+    EXPECT_EQ(1, m_context->frameCount());
 }
 
 // Test LayerRendererChromium discardFramebuffer functionality:
-// Suggest discarding framebuffer when one exists.
+// Suggest discarding framebuffer when one exists and the renderer is not visible.
 // Expected: it is discarded and damage tracker is reset.
-TEST_F(LayerRendererChromiumTest, SuggestBackbufferNoShouldDiscardBackbufferAndDamageRootLayer)
+TEST_F(LayerRendererChromiumTest, SuggestBackbufferNoShouldDiscardBackbufferAndDamageRootLayerWhileNotVisible)
 {
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferNo);
+    m_layerRendererChromium.setVisible(false);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
     EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
     EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
 }
+
+// Test LayerRendererChromium discardFramebuffer functionality:
+// Suggest discarding framebuffer when one exists and the renderer is visible.
+// Expected: the allocation is ignored.
+TEST_F(LayerRendererChromiumTest, SuggestBackbufferNoDoNothingWhenVisible)
+{
+    m_layerRendererChromium.setVisible(true);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
+    EXPECT_EQ(0, m_mockClient.setFullRootLayerDamageCount());
+    EXPECT_FALSE(m_layerRendererChromium.isFramebufferDiscarded());
+}
+
 
 // Test LayerRendererChromium discardFramebuffer functionality:
 // Suggest discarding framebuffer when one does not exist.
 // Expected: it does nothing.
 TEST_F(LayerRendererChromiumTest, SuggestBackbufferNoWhenItDoesntExistShouldDoNothing)
 {
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferNo);
+    m_layerRendererChromium.setVisible(false);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
     EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
     EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
 
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferNo);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
     EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
     EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
-}
-
-// Test LayerRendererChromium discardFramebuffer functionality:
-// Suggest discarding framebuffer, then try to swapBuffers.
-// Expected: framebuffer is discarded, swaps are ignored, and damage is reset after discard and after each swap.
-TEST_F(LayerRendererChromiumTest, SwapBuffersWhileBackbufferDiscardedShouldIgnoreSwapAndDamageRootLayer)
-{
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferNo);
-    EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
-    EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
-
-    swapBuffers();
-    EXPECT_EQ(0, m_mockContext.frameCount());
-    EXPECT_EQ(2, m_mockClient.setFullRootLayerDamageCount());
-
-    swapBuffers();
-    EXPECT_EQ(0, m_mockContext.frameCount());
-    EXPECT_EQ(3, m_mockClient.setFullRootLayerDamageCount());
 }
 
 // Test LayerRendererChromium discardFramebuffer functionality:
 // Begin drawing a frame while a framebuffer is discarded.
 // Expected: will recreate framebuffer.
-TEST_F(LayerRendererChromiumTest, DiscardedBackbufferIsRecreatredForScopeDuration)
+TEST_F(LayerRendererChromiumTest, DiscardedBackbufferIsRecreatedForScopeDuration)
 {
-    m_mockContext.setMemoryAllocation(m_suggestHaveBackbufferNo);
+    m_layerRendererChromium.setVisible(false);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
     EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
     EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
 
+    m_layerRendererChromium.setVisible(true);
     m_layerRendererChromium.beginDrawingFrame(m_mockClient.rootRenderPass());
     EXPECT_FALSE(m_layerRendererChromium.isFramebufferDiscarded());
 
     swapBuffers();
-    EXPECT_EQ(1, m_mockContext.frameCount());
+    EXPECT_EQ(1, m_context->frameCount());
+}
+
+TEST_F(LayerRendererChromiumTest, FramebufferDiscardedAfterReadbackWhenNotVisible)
+{
+    m_layerRendererChromium.setVisible(false);
+    m_context->setMemoryAllocation(m_suggestHaveBackbufferNo);
+    EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
+    EXPECT_EQ(1, m_mockClient.setFullRootLayerDamageCount());
+
+    char pixels[4];
+    m_layerRendererChromium.beginDrawingFrame(m_mockClient.rootRenderPass());
+    EXPECT_FALSE(m_layerRendererChromium.isFramebufferDiscarded());
+
+    m_layerRendererChromium.getFramebufferPixels(pixels, IntRect(0, 0, 1, 1));
+    EXPECT_TRUE(m_layerRendererChromium.isFramebufferDiscarded());
+    EXPECT_EQ(2, m_mockClient.setFullRootLayerDamageCount());
 }
 
 class ForbidSynchronousCallContext : public FakeWebGraphicsContext3D {
@@ -295,7 +308,8 @@ TEST(LayerRendererChromiumTest2, initializationDoesNotMakeSynchronousCalls)
 {
     CCScopedSettings scopedSettings;
     FakeCCRendererClient mockClient;
-    FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ForbidSynchronousCallContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+    OwnPtr<WebGraphicsContext3D> context(adoptPtr(new ForbidSynchronousCallContext));
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context.get());
 
     EXPECT_TRUE(layerRendererChromium.initialize());
 }
@@ -337,7 +351,8 @@ TEST(LayerRendererChromiumTest2, initializationWithQuicklyLostContextDoesNotAsse
 {
     CCScopedSettings scopedSettings;
     FakeCCRendererClient mockClient;
-    FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new LoseContextOnFirstGetContext), GraphicsContext3D::RenderDirectlyToHostWindow));
+    OwnPtr<WebGraphicsContext3D> context(adoptPtr(new LoseContextOnFirstGetContext));
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context.get());
 
     layerRendererChromium.initialize();
 }
@@ -357,7 +372,8 @@ public:
 TEST(LayerRendererChromiumTest2, initializationWithoutGpuMemoryManagerExtensionSupportShouldDefaultToNonZeroAllocation)
 {
     FakeCCRendererClient mockClient;
-    FakeLayerRendererChromium layerRendererChromium(&mockClient, GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ContextThatDoesNotSupportMemoryManagmentExtensions), GraphicsContext3D::RenderDirectlyToHostWindow));
+    OwnPtr<WebGraphicsContext3D> context(adoptPtr(new ContextThatDoesNotSupportMemoryManagmentExtensions));
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context.get());
 
     layerRendererChromium.initialize();
 
@@ -382,8 +398,8 @@ private:
 TEST(LayerRendererChromiumTest2, opaqueBackground)
 {
     FakeCCRendererClient mockClient;
-    RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ClearCountingContext), GraphicsContext3D::RenderDirectlyToHostWindow);
-    FakeLayerRendererChromium layerRendererChromium(&mockClient, context);
+    OwnPtr<ClearCountingContext> context(adoptPtr(new ClearCountingContext));
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context.get());
 
     mockClient.rootRenderPass()->setHasTransparentBackground(false);
 
@@ -396,17 +412,17 @@ TEST(LayerRendererChromiumTest2, opaqueBackground)
     // On DEBUG builds, render passes with opaque background clear to blue to
     // easily see regions that were not drawn on the screen.
 #if defined(NDEBUG)
-    EXPECT_EQ(0, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
+    EXPECT_EQ(0, context->clearCount());
 #else
-    EXPECT_EQ(1, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
+    EXPECT_EQ(1, context->clearCount());
 #endif
 }
 
 TEST(LayerRendererChromiumTest2, transparentBackground)
 {
     FakeCCRendererClient mockClient;
-    RefPtr<GraphicsContext3D> context = GraphicsContext3DPrivate::createGraphicsContextFromWebContext(adoptPtr(new ClearCountingContext), GraphicsContext3D::RenderDirectlyToHostWindow);
-    FakeLayerRendererChromium layerRendererChromium(&mockClient, context);
+    OwnPtr<ClearCountingContext> context(adoptPtr(new ClearCountingContext));
+    FakeLayerRendererChromium layerRendererChromium(&mockClient, context.get());
 
     mockClient.rootRenderPass()->setHasTransparentBackground(true);
 
@@ -416,5 +432,5 @@ TEST(LayerRendererChromiumTest2, transparentBackground)
     layerRendererChromium.drawRenderPass(mockClient.rootRenderPass(), FloatRect());
     layerRendererChromium.finishDrawingFrame();
 
-    EXPECT_EQ(1, static_cast<ClearCountingContext*>(GraphicsContext3DPrivate::extractWebGraphicsContext3D(context.get()))->clearCount());
+    EXPECT_EQ(1, context->clearCount());
 }

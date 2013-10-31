@@ -35,12 +35,15 @@
 #include "CallReturnOffsetToBytecodeOffset.h"
 #include "CodeOrigin.h"
 #include "CodeType.h"
+#include "Comment.h"
 #include "CompactJITCodeMap.h"
 #include "DFGCodeBlocks.h"
 #include "DFGCommon.h"
 #include "DFGExitProfile.h"
+#include "DFGMinifiedGraph.h"
 #include "DFGOSREntry.h"
 #include "DFGOSRExit.h"
+#include "DFGVariableEventStream.h"
 #include "EvalCodeCache.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
@@ -66,10 +69,34 @@
 #include <wtf/RefCountedArray.h>
 #include <wtf/FastAllocBase.h>
 #include <wtf/PassOwnPtr.h>
+#include <wtf/Platform.h>
 #include <wtf/RefPtr.h>
 #include <wtf/SegmentedVector.h>
 #include <wtf/Vector.h>
-#include "StructureStubInfo.h"
+
+// Set ENABLE_BYTECODE_COMMENTS to 1 to enable recording bytecode generator
+// comments for the bytecodes that it generates. This will allow
+// CodeBlock::dump() to provide some contextual info about the bytecodes.
+//
+// The way this comment system works is as follows:
+// 1. The BytecodeGenerator calls prependComment() with a constant comment
+//    string in .text. The string must not be a stack or heap allocated
+//    string.
+// 2. When the BytecodeGenerator's emitOpcode() is called, the last
+//    prepended comment will be recorded with the PC of the opcode being
+//    emitted. This comment is being recorded in the CodeBlock's
+//    m_bytecodeComments.
+// 3. When CodeBlock::dump() is called, it will pair up the comments with
+//    their corresponding bytecodes based on the bytecode and comment's
+//    PC. If a matching pair is found, the comment will be printed after
+//    the bytecode. If not, no comment is printed.
+//
+// NOTE: Enabling this will consume additional memory at runtime to store
+// the comments. Since these comments are only useful for VM debugging
+// (as opposed to app debugging), this feature is to be disabled by default,
+// and can be enabled as needed for VM development use only.
+
+#define ENABLE_BYTECODE_COMMENTS 0
 
 namespace JSC {
 
@@ -155,6 +182,12 @@ namespace JSC {
         {
             return index >= m_numVars;
         }
+
+        void dumpBytecodeCommentAndNewLine(int location);
+#if ENABLE(BYTECODE_COMMENTS)
+        const char* commentForBytecodeOffset(unsigned bytecodeOffset);
+        void dumpBytecodeComments();
+#endif
 
         HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset);
         int lineNumberForBytecodeOffset(unsigned bytecodeOffset);
@@ -351,6 +384,18 @@ namespace JSC {
             m_dfgData->transitions.append(
                 WeakReferenceTransition(*globalData(), ownerExecutable(), codeOrigin, from, to));
         }
+        
+        DFG::MinifiedGraph& minifiedDFG()
+        {
+            createDFGDataIfNecessary();
+            return m_dfgData->minifiedDFG;
+        }
+        
+        DFG::VariableEventStream& variableEventStream()
+        {
+            createDFGDataIfNecessary();
+            return m_dfgData->variableEventStream;
+        }
 #endif
 
         unsigned bytecodeOffset(Instruction* returnAddress)
@@ -366,6 +411,10 @@ namespace JSC {
         RefCountedArray<Instruction>& instructions() { return m_instructions; }
         const RefCountedArray<Instruction>& instructions() const { return m_instructions; }
         
+#if ENABLE(BYTECODE_COMMENTS)
+        Vector<Comment>& bytecodeComments() { return m_bytecodeComments; }
+#endif
+
         size_t predictedMachineCodeSize();
         
         bool usesOpcode(OpcodeID);
@@ -553,6 +602,8 @@ namespace JSC {
         }
         GlobalResolveInfo& globalResolveInfo(int index) { return m_globalResolveInfos[index]; }
         bool hasGlobalResolveInfoAtBytecodeOffset(unsigned bytecodeOffset);
+        GlobalResolveInfo& globalResolveInfoForBytecodeOffset(unsigned bytecodeOffset);
+        unsigned numberOfGlobalResolveInfos() { return m_globalResolveInfos.size(); }
 
         void setNumberOfCallLinkInfos(size_t size) { m_callLinkInfos.grow(size); }
         size_t numberOfCallLinkInfos() const { return m_callLinkInfos.size(); }
@@ -634,7 +685,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold;
+            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
         }
         
         bool couldTakeSlowCase(int bytecodeOffset)
@@ -642,7 +693,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned value = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return value >= Options::couldTakeSlowCaseMinimumCount && static_cast<double>(value) / m_executionEntryCount >= Options::couldTakeSlowCaseThreshold;
+            return value >= Options::couldTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::couldTakeSlowCaseThreshold();
         }
         
         RareCaseProfile* addSpecialFastCaseProfile(int bytecodeOffset)
@@ -662,7 +713,7 @@ namespace JSC {
             if (!numberOfRareCaseProfiles())
                 return false;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
-            return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold;
+            return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
         }
         
         bool likelyToTakeDeepestSlowCase(int bytecodeOffset)
@@ -672,7 +723,7 @@ namespace JSC {
             unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned value = slowCaseCount - specialFastCaseCount;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold;
+            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
         }
         
         bool likelyToTakeAnySlowCase(int bytecodeOffset)
@@ -682,7 +733,7 @@ namespace JSC {
             unsigned slowCaseCount = rareCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             unsigned value = slowCaseCount + specialFastCaseCount;
-            return value >= Options::likelyToTakeSlowCaseMinimumCount && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold;
+            return value >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(value) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
         }
         
         unsigned executionEntryCount() const { return m_executionEntryCount; }
@@ -904,17 +955,17 @@ namespace JSC {
         
         void jitAfterWarmUp()
         {
-            m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITAfterWarmUp, this);
+            m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITAfterWarmUp(), this);
         }
         
         void jitSoon()
         {
-            m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITSoon, this);
+            m_llintExecuteCounter.setNewThreshold(Options::thresholdForJITSoon(), this);
         }
         
-        int32_t llintExecuteCounter() const
+        const ExecutionCounter& llintExecuteCounter() const
         {
-            return m_llintExecuteCounter.m_counter;
+            return m_llintExecuteCounter;
         }
         
         // Functions for controlling when tiered compilation kicks in. This
@@ -940,25 +991,25 @@ namespace JSC {
         // to avoid thrashing.
         unsigned reoptimizationRetryCounter() const
         {
-            ASSERT(m_reoptimizationRetryCounter <= Options::reoptimizationRetryCounterMax);
+            ASSERT(m_reoptimizationRetryCounter <= Options::reoptimizationRetryCounterMax());
             return m_reoptimizationRetryCounter;
         }
         
         void countReoptimization()
         {
             m_reoptimizationRetryCounter++;
-            if (m_reoptimizationRetryCounter > Options::reoptimizationRetryCounterMax)
-                m_reoptimizationRetryCounter = Options::reoptimizationRetryCounterMax;
+            if (m_reoptimizationRetryCounter > Options::reoptimizationRetryCounterMax())
+                m_reoptimizationRetryCounter = Options::reoptimizationRetryCounterMax();
         }
         
         int32_t counterValueForOptimizeAfterWarmUp()
         {
-            return Options::thresholdForOptimizeAfterWarmUp << reoptimizationRetryCounter();
+            return Options::thresholdForOptimizeAfterWarmUp() << reoptimizationRetryCounter();
         }
         
         int32_t counterValueForOptimizeAfterLongWarmUp()
         {
-            return Options::thresholdForOptimizeAfterLongWarmUp << reoptimizationRetryCounter();
+            return Options::thresholdForOptimizeAfterLongWarmUp() << reoptimizationRetryCounter();
         }
         
         int32_t* addressOfJITExecuteCounter()
@@ -970,7 +1021,7 @@ namespace JSC {
         static ptrdiff_t offsetOfJITExecutionActiveThreshold() { return OBJECT_OFFSETOF(CodeBlock, m_jitExecuteCounter) + OBJECT_OFFSETOF(ExecutionCounter, m_activeThreshold); }
         static ptrdiff_t offsetOfJITExecutionTotalCount() { return OBJECT_OFFSETOF(CodeBlock, m_jitExecuteCounter) + OBJECT_OFFSETOF(ExecutionCounter, m_totalCount); }
 
-        int32_t jitExecuteCounter() const { return m_jitExecuteCounter.m_counter; }
+        const ExecutionCounter& jitExecuteCounter() const { return m_jitExecuteCounter; }
         
         unsigned optimizationDelayCounter() const { return m_optimizationDelayCounter; }
         
@@ -1038,81 +1089,64 @@ namespace JSC {
         // in the baseline code.
         void optimizeSoon()
         {
-            m_jitExecuteCounter.setNewThreshold(Options::thresholdForOptimizeSoon << reoptimizationRetryCounter(), this);
+            m_jitExecuteCounter.setNewThreshold(Options::thresholdForOptimizeSoon() << reoptimizationRetryCounter(), this);
         }
         
-        // The speculative JIT tracks its success rate, so that we can
-        // decide when to reoptimize. It's interesting to note that these
-        // counters may overflow without any protection. The success
-        // counter will overflow before the fail one does, becuase the
-        // fail one is used as a trigger to reoptimize. So the worst case
-        // is that the success counter overflows and we reoptimize without
-        // needing to. But this is harmless. If a method really did
-        // execute 2^32 times then compiling it again probably won't hurt
-        // anyone.
+        uint32_t osrExitCounter() const { return m_osrExitCounter; }
         
-        void countSpeculationSuccess()
-        {
-            m_speculativeSuccessCounter++;
-        }
+        void countOSRExit() { m_osrExitCounter++; }
         
-        void countSpeculationFailure()
-        {
-            m_speculativeFailCounter++;
-        }
+        uint32_t* addressOfOSRExitCounter() { return &m_osrExitCounter; }
         
-        uint32_t speculativeSuccessCounter() const { return m_speculativeSuccessCounter; }
-        uint32_t speculativeFailCounter() const { return m_speculativeFailCounter; }
-        uint32_t forcedOSRExitCounter() const { return m_forcedOSRExitCounter; }
-        
-        uint32_t* addressOfSpeculativeSuccessCounter() { return &m_speculativeSuccessCounter; }
-        uint32_t* addressOfSpeculativeFailCounter() { return &m_speculativeFailCounter; }
-        uint32_t* addressOfForcedOSRExitCounter() { return &m_forcedOSRExitCounter; }
-        
-        static ptrdiff_t offsetOfSpeculativeSuccessCounter() { return OBJECT_OFFSETOF(CodeBlock, m_speculativeSuccessCounter); }
-        static ptrdiff_t offsetOfSpeculativeFailCounter() { return OBJECT_OFFSETOF(CodeBlock, m_speculativeFailCounter); }
-        static ptrdiff_t offsetOfForcedOSRExitCounter() { return OBJECT_OFFSETOF(CodeBlock, m_forcedOSRExitCounter); }
+        static ptrdiff_t offsetOfOSRExitCounter() { return OBJECT_OFFSETOF(CodeBlock, m_osrExitCounter); }
 
 #if ENABLE(JIT)
-        // The number of failures that triggers the use of the ratio.
-        unsigned largeFailCountThreshold() { return Options::largeFailCountThresholdBase << baselineVersion()->reoptimizationRetryCounter(); }
-        unsigned largeFailCountThresholdForLoop() { return Options::largeFailCountThresholdBaseForLoop << baselineVersion()->reoptimizationRetryCounter(); }
+        uint32_t adjustedExitCountThreshold(uint32_t desiredThreshold)
+        {
+            ASSERT(getJITType() == JITCode::DFGJIT);
+            // Compute this the lame way so we don't saturate. This is called infrequently
+            // enough that this loop won't hurt us.
+            unsigned result = desiredThreshold;
+            for (unsigned n = baselineVersion()->reoptimizationRetryCounter(); n--;) {
+                unsigned newResult = result << 1;
+                if (newResult < result)
+                    return std::numeric_limits<uint32_t>::max();
+                result = newResult;
+            }
+            return result;
+        }
+        
+        uint32_t exitCountThresholdForReoptimization()
+        {
+            return adjustedExitCountThreshold(Options::osrExitCountForReoptimization());
+        }
+        
+        uint32_t exitCountThresholdForReoptimizationFromLoop()
+        {
+            return adjustedExitCountThreshold(Options::osrExitCountForReoptimizationFromLoop());
+        }
 
         bool shouldReoptimizeNow()
         {
-            return (Options::desiredSpeculativeSuccessFailRatio *
-                        speculativeFailCounter() >= speculativeSuccessCounter()
-                    && speculativeFailCounter() >= largeFailCountThreshold())
-                || forcedOSRExitCounter() >=
-                       Options::forcedOSRExitCountForReoptimization;
+            return osrExitCounter() >= exitCountThresholdForReoptimization();
         }
-
+        
         bool shouldReoptimizeFromLoopNow()
         {
-            return (Options::desiredSpeculativeSuccessFailRatio *
-                        speculativeFailCounter() >= speculativeSuccessCounter()
-                    && speculativeFailCounter() >= largeFailCountThresholdForLoop())
-                || forcedOSRExitCounter() >=
-                       Options::forcedOSRExitCountForReoptimization;
+            return osrExitCounter() >= exitCountThresholdForReoptimizationFromLoop();
         }
 #endif
 
 #if ENABLE(VALUE_PROFILER)
         bool shouldOptimizeNow();
+        void updateAllPredictions(OperationInProgress = NoOperation);
 #else
         bool shouldOptimizeNow() { return false; }
+        void updateAllPredictions(OperationInProgress = NoOperation) { }
 #endif
         
 #if ENABLE(JIT)
-        void reoptimize()
-        {
-            ASSERT(replacement() != this);
-            ASSERT(replacement()->alternative() == this);
-            replacement()->tallyFrequentExitSites();
-            replacement()->jettison();
-            countReoptimization();
-            optimizeAfterWarmUp();
-        }
+        void reoptimize();
 #endif
 
 #if ENABLE(VERBOSE_VALUE_PROFILE)
@@ -1140,6 +1174,9 @@ namespace JSC {
         void tallyFrequentExitSites();
 #else
         void tallyFrequentExitSites() { }
+#endif
+#if ENABLE(VALUE_PROFILER)
+        void updateAllPredictionsAndCountLiveness(OperationInProgress, unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles);
 #endif
         
         void dump(ExecState*, const Vector<Instruction>::const_iterator& begin, Vector<Instruction>::const_iterator&);
@@ -1257,6 +1294,8 @@ namespace JSC {
             SegmentedVector<Watchpoint, 1, 0> watchpoints;
             Vector<WeakReferenceTransition> transitions;
             Vector<WriteBarrier<JSCell> > weakReferences;
+            DFG::VariableEventStream variableEventStream;
+            DFG::MinifiedGraph minifiedDFG;
             bool mayBeExecuting;
             bool isJettisoned;
             bool livenessHasBeenProved; // Initialized and used on every GC.
@@ -1297,13 +1336,15 @@ namespace JSC {
         
         ExecutionCounter m_jitExecuteCounter;
         int32_t m_totalJITExecutions;
-        uint32_t m_speculativeSuccessCounter;
-        uint32_t m_speculativeFailCounter;
-        uint32_t m_forcedOSRExitCounter;
+        uint32_t m_osrExitCounter;
         uint16_t m_optimizationDelayCounter;
         uint16_t m_reoptimizationRetryCounter;
 
         Vector<LineInfo> m_lineInfo;
+#if ENABLE(BYTECODE_COMMENTS)
+        Vector<Comment>  m_bytecodeComments;
+        size_t m_bytecodeCommentIterator;
+#endif
 
         struct RareData {
            WTF_MAKE_FAST_ALLOCATED;

@@ -3,6 +3,37 @@ var initialize_FileSystemTest = function()
     var nextCallbackId = 0;
     var callbacks = {};
 
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "requestFileSystemRoot", incrementRequestCount, true);
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "requestDirectoryContent", incrementRequestCount, true);
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "requestMetadata", incrementRequestCount, true);
+
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "_fileSystemRootReceived", decrementRequestCount, true);
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "_directoryContentReceived", decrementRequestCount, true);
+    InspectorTest.addSniffer(WebInspector.FileSystemRequestManager.prototype, "_metadataReceived", decrementRequestCount, true);
+
+    var idleCallbacks = [];
+    var requestCount = 0;
+    function incrementRequestCount()
+    {
+        ++requestCount;
+    }
+
+    function decrementRequestCount()
+    {
+        if (--requestCount !== 0)
+            return;
+
+        var callbacks = idleCallbacks;
+        idleCallbacks = [];
+        for (var i = 0; i < callbacks.length; ++i)
+            callbacks[i]();
+    }
+
+    InspectorTest.callOnRequestCompleted = function(callback)
+    {
+        idleCallbacks.push(callback);
+    };
+
     InspectorTest.registerCallback = function(callback)
     {
         var callbackId = ++nextCallbackId;
@@ -29,14 +60,18 @@ var initialize_FileSystemTest = function()
         InspectorTest.evaluateInPage("createFile(unescape(\"" + escape(path) + "\"), " + InspectorTest.registerCallback(callback) + ")");
     };
 
+    InspectorTest.writeFile = function(path, content, callback)
+    {
+        InspectorTest.evaluateInPage("writeFile(unescape(\"" + escape(path) + "\"), unescape(\"" + escape(content) + "\"), " + InspectorTest.registerCallback(callback) + ")");
+    };
+
     InspectorTest.clearFileSystem = function(callback)
     {
         InspectorTest.evaluateInPage("clearFileSystem(" + InspectorTest.registerCallback(callback) + ")");
     };
 
-    InspectorTest.dumpReadDirectoryResult = function(requestId, errorCode, entries)
+    InspectorTest.dumpReadDirectoryResult = function(errorCode, entries)
     {
-        InspectorTest.addResult("requestId: " + requestId);
         InspectorTest.addResult("errorCode: " + errorCode);
 
         if (!entries) {
@@ -51,6 +86,18 @@ var initialize_FileSystemTest = function()
             InspectorTest.addResult("    " + j + ": " + entries[i][j]);
         }
     };
+
+    InspectorTest.dumpMetadataRequestResult = function(errorCode, metadata)
+    {
+        InspectorTest.addResult("errorCode: " + errorCode);
+        if (metadata) {
+            InspectorTest.addResult("metadata:");
+            InspectorTest.addResult("  modificationTime: " + ("modificationTime" in metadata ? "(exists)" : "(null)"));
+            InspectorTest.addResult("  size: " + ("size" in metadata ? metadata.size : "(null)"));
+        } else {
+            InspectorTest.addResult("metadata: (null)");
+        }
+    };
 }
 
 function dispatchCallback()
@@ -61,9 +108,9 @@ function dispatchCallback()
 
 function createDirectory(path, callback)
 {
-    webkitRequestFileSystem(TEMPORARY, 1, gotFileSystem);
+    webkitRequestFileSystem(TEMPORARY, 1, didGetFileSystem);
 
-    function gotFileSystem(fileSystem)
+    function didGetFileSystem(fileSystem)
     {
         fileSystem.root.getDirectory(path, {create:true}, function(entry) {
             callback();
@@ -73,9 +120,9 @@ function createDirectory(path, callback)
 
 function createFile(path, callback)
 {
-    webkitRequestFileSystem(TEMPORARY, 1, gotFileSystem);
+    webkitRequestFileSystem(TEMPORARY, 1, didGetFileSystem);
 
-    function gotFileSystem(fileSystem)
+    function didGetFileSystem(fileSystem)
     {
         fileSystem.root.getFile(path, {create:true}, function(entry) {
             callback();
@@ -83,11 +130,35 @@ function createFile(path, callback)
     }
 }
 
+function writeFile(path, content, callback)
+{
+    webkitRequestFileSystem(TEMPORARY, 1, didGetFileSystem);
+
+    function didGetFileSystem(fileSystem)
+    {
+        fileSystem.root.getFile(path, {create:true}, didGetFileEntry);
+    }
+
+    function didGetFileEntry(fileEntry)
+    {
+        fileEntry.createWriter(didGetWriter);
+    }
+
+    function didGetWriter(writer)
+    {
+        writer.write(new Blob([content]));
+        writer.onwrite = function() {
+            if (writer.readyState === writer.DONE)
+                callback();
+        };
+    }
+}
+
 function clearFileSystem(callback)
 {
-    webkitResolveLocalFileSystemURL("filesystem:" + location.origin + "/temporary/", gotRoot, onError);
+    webkitResolveLocalFileSystemURL("filesystem:" + location.origin + "/temporary/", didGetRoot, onError);
 
-    function gotRoot(root)
+    function didGetRoot(root)
     {
         var reader = root.createReader();
         reader.readEntries(didReadEntries);

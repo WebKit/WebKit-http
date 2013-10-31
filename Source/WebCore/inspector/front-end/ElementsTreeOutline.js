@@ -35,8 +35,9 @@
  * @param {boolean=} selectEnabled
  * @param {boolean=} showInElementsPanelEnabled
  * @param {function(WebInspector.ContextMenu, WebInspector.DOMNode)=} contextMenuCallback
+ * @param {function(DOMAgent.NodeId, string, boolean)=} setPseudoClassCallback
  */
-WebInspector.ElementsTreeOutline = function(omitRootDOMNode, selectEnabled, showInElementsPanelEnabled, contextMenuCallback)
+WebInspector.ElementsTreeOutline = function(omitRootDOMNode, selectEnabled, showInElementsPanelEnabled, contextMenuCallback, setPseudoClassCallback)
 {
     this.element = document.createElement("ol");
     this.element.addEventListener("mousedown", this._onmousedown.bind(this), false);
@@ -62,6 +63,8 @@ WebInspector.ElementsTreeOutline = function(omitRootDOMNode, selectEnabled, show
 
     this.element.addEventListener("contextmenu", this._contextMenuEventFired.bind(this), true);
     this._contextMenuCallback = contextMenuCallback;
+    this._setPseudoClassCallback = setPseudoClassCallback;
+    this._createNodeDecorators();
 }
 
 WebInspector.ElementsTreeOutline.Events = {
@@ -69,6 +72,12 @@ WebInspector.ElementsTreeOutline.Events = {
 }
 
 WebInspector.ElementsTreeOutline.prototype = {
+    _createNodeDecorators: function()
+    {
+        this._nodeDecorators = [];
+        this._nodeDecorators.push(new WebInspector.ElementsTreeOutline.PseudoStateDecorator());
+    },
+
     wireToDomAgent: function()
     {
         this._elementsTreeUpdater = new WebInspector.ElementsTreeUpdater(this);
@@ -182,11 +191,28 @@ WebInspector.ElementsTreeOutline.prototype = {
         element.updateSelection();
     },
 
+    /**
+     * @param {WebInspector.DOMNode} node
+     */
+    updateOpenCloseTags: function(node)
+    {
+        var treeElement = this.findTreeElement(node);
+        if (treeElement)
+            treeElement.updateTitle();
+        var children = treeElement.children;
+        var closingTagElement = children[children.length - 1];
+        if (closingTagElement && closingTagElement._elementCloseTag)
+            closingTagElement.updateTitle();
+    },
+
     _selectedNodeChanged: function()
     {
         this._eventSupport.dispatchEventToListeners(WebInspector.ElementsTreeOutline.Events.SelectedNodeChanged, this._selectedDOMNode);
     },
 
+    /**
+     * @param {WebInspector.DOMNode} node
+     */
     findTreeElement: function(node)
     {
         function isAncestorNode(ancestor, node)
@@ -208,6 +234,9 @@ WebInspector.ElementsTreeOutline.prototype = {
         return treeElement;
     },
 
+    /**
+     * @param {WebInspector.DOMNode} node
+     */
     createTreeElementFor: function(node)
     {
         var treeElement = this.findTreeElement(node);
@@ -449,19 +478,21 @@ WebInspector.ElementsTreeOutline.prototype = {
         if (!treeElement)
             return false;
 
-        var tag = event.target.enclosingNodeOrSelfWithClass("webkit-html-tag");
+        var isTag = treeElement.representedObject.nodeType() === Node.ELEMENT_NODE;
         var textNode = event.target.enclosingNodeOrSelfWithClass("webkit-html-text-node");
+        if (textNode && textNode.hasStyleClass("bogus"))
+            textNode = null;
         var commentNode = event.target.enclosingNodeOrSelfWithClass("webkit-html-comment");
         var populated = WebInspector.populateHrefContextMenu(contextMenu, this.selectedDOMNode(), event);
-        if (tag && treeElement._populateTagContextMenu) {
-            if (populated)
-                contextMenu.appendSeparator();
-            treeElement._populateTagContextMenu(contextMenu, event);
-            populated = true;
-        } else if (textNode && treeElement._populateTextContextMenu) {
+        if (textNode && treeElement._populateTextContextMenu) {
             if (populated)
                 contextMenu.appendSeparator();
             treeElement._populateTextContextMenu(contextMenu, textNode);
+            populated = true;
+        } else if (isTag && treeElement._populateTagContextMenu) {
+            if (populated)
+                contextMenu.appendSeparator();
+            treeElement._populateTagContextMenu(contextMenu, event);
             populated = true;
         } else if (commentNode && treeElement._populateNodeContextMenu) {
             if (populated)
@@ -550,6 +581,67 @@ WebInspector.ElementsTreeOutline.prototype = {
 }
 
 WebInspector.ElementsTreeOutline.prototype.__proto__ = TreeOutline.prototype;
+
+/**
+ * @interface
+ */
+WebInspector.ElementsTreeOutline.ElementDecorator = function()
+{
+}
+
+WebInspector.ElementsTreeOutline.ElementDecorator.prototype = {
+    /**
+     * @param {WebInspector.DOMNode} node
+     */
+    decorate: function(node)
+    {
+    },
+
+    /**
+     * @param {WebInspector.DOMNode} node
+     */
+    decorateAncestor: function(node)
+    {
+    }
+}
+
+/**
+ * @constructor
+ * @implements {WebInspector.ElementsTreeOutline.ElementDecorator}
+ */
+WebInspector.ElementsTreeOutline.PseudoStateDecorator = function()
+{
+    WebInspector.ElementsTreeOutline.ElementDecorator.call(this);
+}
+
+WebInspector.ElementsTreeOutline.PseudoStateDecorator.PropertyName = "pseudoState";
+
+WebInspector.ElementsTreeOutline.PseudoStateDecorator.prototype = {
+    decorate: function(node)
+    {
+        if (node.nodeType() !== Node.ELEMENT_NODE)
+            return null;
+        var propertyValue = node.getUserProperty(WebInspector.ElementsTreeOutline.PseudoStateDecorator.PropertyName);
+        if (!propertyValue)
+            return null;
+        return WebInspector.UIString("Element state: %s", ":" + propertyValue.join(", :"));
+    },
+
+    decorateAncestor: function(node)
+    {
+        if (node.nodeType() !== Node.ELEMENT_NODE)
+            return null;
+
+        var descendantCount = node.descendantUserPropertyCount(WebInspector.ElementsTreeOutline.PseudoStateDecorator.PropertyName);
+        if (!descendantCount)
+            return null;
+        if (descendantCount === 1)
+            return WebInspector.UIString("%d descendant with forced state", descendantCount);
+        return WebInspector.UIString("%d descendants with forced state", descendantCount);
+    }
+}
+
+WebInspector.ElementsTreeOutline.PseudoStateDecorator.prototype.__proto__ = WebInspector.ElementsTreeOutline.ElementDecorator.prototype;
 
 /**
  * @constructor
@@ -1062,9 +1154,29 @@ WebInspector.ElementsTreeElement.prototype = {
         if (attribute && !newAttribute)
             contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Edit attribute" : "Edit Attribute"), this._startEditingAttribute.bind(this, attribute, event.target));
         contextMenu.appendSeparator();
+        if (this.treeOutline._setPseudoClassCallback) {
+            var pseudoSubMenu = contextMenu.appendSubMenuItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Force element state" : "Force Element State"));
+            this._populateForcedPseudoStateItems(pseudoSubMenu);
+            contextMenu.appendSeparator();
+        }
 
         this._populateNodeContextMenu(contextMenu);
         this.treeOutline._populateContextMenu(contextMenu, this.representedObject);
+
+        contextMenu.appendSeparator();
+        contextMenu.appendItem(WebInspector.UIString(WebInspector.useLowerCaseMenuTitles() ? "Scroll into view" : "Scroll Into View"), this._scrollIntoView.bind(this)); 
+    },
+
+    _populateForcedPseudoStateItems: function(subMenu)
+    {
+        const pseudoClasses = ["active", "hover", "focus", "visited"];
+        var node = this.representedObject;
+        var forcedPseudoState = (node ? node.getUserProperty("pseudoState") : null) || [];
+        var elementsPanel = WebInspector.panels.elements;
+        for (var i = 0; i < pseudoClasses.length; ++i) {
+            var pseudoClassForced = forcedPseudoState.indexOf(pseudoClasses[i]) >= 0;
+            subMenu.appendCheckboxItem(":" + pseudoClasses[i], this.treeOutline._setPseudoClassCallback.bind(null, node.id, pseudoClasses[i], !pseudoClassForced), pseudoClassForced, false);
+        }
     },
 
     _populateTextContextMenu: function(contextMenu, textNode)
@@ -1165,6 +1277,26 @@ WebInspector.ElementsTreeElement.prototype = {
         removeZeroWidthSpaceRecursive(attribute);
 
         var config = new WebInspector.EditingConfig(this._attributeEditingCommitted.bind(this), this._editingCancelled.bind(this), attributeName);
+        
+        function handleKeyDownEvents(event)
+        {
+            var isMetaOrCtrl = WebInspector.isMac() ?
+                event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey :
+                event.ctrlKey && !event.shiftKey && !event.metaKey && !event.altKey;
+            if (isEnterKey(event) && (event.isMetaOrCtrlForTest || !config.multiline || isMetaOrCtrl))
+                return "commit";
+            else if (event.keyCode === WebInspector.KeyboardShortcut.Keys.Esc.code || event.keyIdentifier === "U+001B")
+                return "cancel";
+            else if (event.keyIdentifier === "U+0009") // Tab key
+                return "move-" + (event.shiftKey ? "backward" : "forward");
+            else {
+                WebInspector.handleElementValueModifications(event, attribute);
+                return "";
+            }
+        }
+
+        config.customFinishHandler = handleKeyDownEvents.bind(this);
+        
         this._editing = WebInspector.startEditing(attribute, config);
 
         window.getSelection().setBaseAndExtent(elementForSelection, 0, elementForSelection, 1);
@@ -1177,6 +1309,9 @@ WebInspector.ElementsTreeElement.prototype = {
         if (WebInspector.isBeingEdited(textNode))
             return true;
 
+        var container = textNode.enclosingNodeOrSelfWithClass("webkit-html-text-node");
+        if (container)
+            container.innerText = container.innerText; // Strip the CSS or JS highlighting if present.
         var config = new WebInspector.EditingConfig(this._textNodeEditingCommitted.bind(this), this._editingCancelled.bind(this));
         this._editing = WebInspector.startEditing(textNode, config);
         window.getSelection().setBaseAndExtent(textNode, 0, textNode, 1);
@@ -1464,13 +1599,55 @@ WebInspector.ElementsTreeElement.prototype = {
             highlightElement.className = "highlight";
             highlightElement.appendChild(this._nodeTitleInfo(WebInspector.linkifyURLAsNode).titleDOM);
             this.title = highlightElement;
+            this._updateDecorations();
             delete this._highlightResult;
         }
 
         delete this.selectionElement;
-        this.updateSelection();
+        if (this.selected)
+            this.updateSelection();
         this._preventFollowingLinksOnDoubleClick();
         this._highlightSearchResults();
+    },
+
+    _createDecoratorElement: function()
+    {
+        var node = this.representedObject;
+        var decoratorMessages = [];
+        var parentDecoratorMessages = [];
+        for (var i = 0; i < this.treeOutline._nodeDecorators.length; ++i) {
+            var decorator = this.treeOutline._nodeDecorators[i];
+            var message = decorator.decorate(node);
+            if (message) {
+                decoratorMessages.push(message);
+                continue;
+            }
+
+            if (this.expanded || this._elementCloseTag)
+                continue;
+
+            message = decorator.decorateAncestor(node);
+            if (message)
+                parentDecoratorMessages.push(message)
+        }
+        if (!decoratorMessages.length && !parentDecoratorMessages.length)
+            return null;
+
+        var decoratorElement = document.createElement("div");
+        decoratorElement.addStyleClass("elements-gutter-decoration");
+        if (!decoratorMessages.length)
+            decoratorElement.addStyleClass("elements-has-decorated-children");
+        decoratorElement.title = decoratorMessages.concat(parentDecoratorMessages).join("\n");
+        return decoratorElement;
+    },
+
+    _updateDecorations: function()
+    {
+        if (this._decoratorElement && this._decoratorElement.parentElement)
+            this._decoratorElement.parentElement.removeChild(this._decoratorElement);
+        this._decoratorElement = this._createDecoratorElement();
+        if (this._decoratorElement && this.listItemElement)
+            this.listItemElement.insertBefore(this._decoratorElement, this.listItemElement.firstChild);
     },
 
     /**
@@ -1561,7 +1738,7 @@ WebInspector.ElementsTreeElement.prototype = {
 
                 if (!this.expanded && (!showInlineText && (this.treeOutline.isXMLMimeType || !WebInspector.ElementsTreeElement.ForbiddenClosingTagElements[tagName]))) {
                     if (this.hasChildren) {
-                        var textNodeElement = info.titleDOM.createChild("span", "webkit-html-text-node");
+                        var textNodeElement = info.titleDOM.createChild("span", "webkit-html-text-node bogus");
                         textNodeElement.textContent = "\u2026";
                         info.titleDOM.appendChild(document.createTextNode("\u200B"));
                     }
@@ -1758,6 +1935,23 @@ WebInspector.ElementsTreeElement.prototype = {
 
         this._highlightResult = [];
         WebInspector.highlightSearchResults(this.listItemElement, matchRanges, this._highlightResult);
+    },
+
+    _scrollIntoView: function()
+    {
+        function scrollIntoViewCallback(object)
+        {
+            function scrollIntoView()
+            {
+                this.scrollIntoViewIfNeeded(true);
+            }
+
+            if (object)
+                object.callFunction(scrollIntoView);
+        }
+        
+        var node = /** @type {WebInspector.DOMNode} */ this.representedObject;
+        WebInspector.RemoteObject.resolveNode(node, "", scrollIntoViewCallback);
     }
 }
 
@@ -1843,6 +2037,9 @@ WebInspector.ElementsTreeUpdater.prototype = {
         }
 
         var updatedParentTreeElements = [];
+        var treeOutlineContainerElement = this._treeOutline.element.parentNode;
+        var originalScrollTop = treeOutlineContainerElement ? treeOutlineContainerElement.scrollTop : 0;
+        this._treeOutline.element.addStyleClass("hidden");
 
         for (var i = 0; i < this._recentlyModifiedNodes.length; ++i) {
             var parent = this._recentlyModifiedNodes[i].parent;
@@ -1850,6 +2047,7 @@ WebInspector.ElementsTreeUpdater.prototype = {
             if (parent === this._treeOutline._rootDOMNode) {
                 // Document's children have changed, perform total update.
                 this._treeOutline.update();
+                this._treeOutline.element.removeStyleClass("hidden");
                 return;
             }
 
@@ -1876,6 +2074,9 @@ WebInspector.ElementsTreeUpdater.prototype = {
         for (var i = 0; i < updatedParentTreeElements.length; ++i)
             delete updatedParentTreeElements[i].alreadyUpdatedChildren;
 
+        this._treeOutline.element.removeStyleClass("hidden");
+        if (originalScrollTop)
+            treeOutlineContainerElement.scrollTop = originalScrollTop;
         this._recentlyModifiedNodes = [];
     },
 

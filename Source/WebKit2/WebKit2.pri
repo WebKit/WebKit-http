@@ -33,9 +33,11 @@ INCLUDEPATH += \
     $$SOURCE_DIR/UIProcess/Notifications \
     $$SOURCE_DIR/UIProcess/Plugins \
     $$SOURCE_DIR/UIProcess/qt \
+    $$SOURCE_DIR/UIProcess/texmap \
     $$SOURCE_DIR/WebProcess \
     $$SOURCE_DIR/WebProcess/ApplicationCache \
     $$SOURCE_DIR/WebProcess/Authentication \
+    $$SOURCE_DIR/WebProcess/Battery \
     $$SOURCE_DIR/WebProcess/Cookies \
     $$SOURCE_DIR/WebProcess/Cookies/qt \
     $$SOURCE_DIR/WebProcess/Downloads \
@@ -48,6 +50,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/WebProcess/InjectedBundle/API/c \
     $$SOURCE_DIR/WebProcess/KeyValueStorage \
     $$SOURCE_DIR/WebProcess/MediaCache \
+    $$SOURCE_DIR/WebProcess/NetworkInfo \
     $$SOURCE_DIR/WebProcess/Notifications \
     $$SOURCE_DIR/WebProcess/Plugins \
     $$SOURCE_DIR/WebProcess/Plugins/Netscape \
@@ -55,6 +58,7 @@ INCLUDEPATH += \
     $$SOURCE_DIR/WebProcess/WebCoreSupport \
     $$SOURCE_DIR/WebProcess/WebCoreSupport/qt \
     $$SOURCE_DIR/WebProcess/WebPage \
+    $$SOURCE_DIR/WebProcess/WebPage/LayerTreeCoordinator \
     $$SOURCE_DIR/WebProcess/qt \
     $$SOURCE_DIR/PluginProcess
 
@@ -69,3 +73,7 @@ linux-*: {
     # -lrt is required for shm_open and shm_unlink.
     LIBS += -lrt
 }
+
+QT += qml quick
+
+contains(DEFINES, ENABLE_GEOLOCATION=1):haveQt(5): QT += location

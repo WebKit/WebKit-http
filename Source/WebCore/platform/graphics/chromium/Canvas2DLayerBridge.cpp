@@ -33,8 +33,8 @@
 #include "LayerRendererChromium.h" // For GLC() macro.
 #include "SkCanvas.h"
 #include "SkDeferredCanvas.h"
+#include "TraceEvent.h"
 #include "cc/CCProxy.h"
-#include "cc/CCTextureUpdater.h"
 #include <public/WebGraphicsContext3D.h>
 
 using WebKit::WebExternalTextureLayer;
@@ -164,6 +164,15 @@ void Canvas2DLayerBridge::contextAcquired()
 {
     if (m_deferralMode == NonDeferred && !m_useDoubleBuffering)
         m_layer.willModifyTexture();
+}
+
+unsigned Canvas2DLayerBridge::backBufferTexture()
+{
+    contextAcquired();
+    if (m_canvas)
+        m_canvas->flush();
+    m_context->flush();
+    return m_backBufferTexture;
 }
 
 }

@@ -160,15 +160,9 @@ static inline size_t proportionalHeapSize(size_t heapSize, size_t ramSize)
     return 1.25 * heapSize;
 }
 
-static inline bool isValidSharedInstanceThreadState()
+static inline bool isValidSharedInstanceThreadState(JSGlobalData* globalData)
 {
-    if (!JSLock::lockCount())
-        return false;
-
-    if (!JSLock::currentThreadIsHoldingLock())
-        return false;
-
-    return true;
+    return globalData->apiLock().currentThreadIsHoldingLock();
 }
 
 static inline bool isValidThreadState(JSGlobalData* globalData)
@@ -176,7 +170,7 @@ static inline bool isValidThreadState(JSGlobalData* globalData)
     if (globalData->identifierTable != wtfThreadData().currentIdentifierTable())
         return false;
 
-    if (globalData->isSharedInstance() && !isValidSharedInstanceThreadState())
+    if (globalData->isSharedInstance() && !isValidSharedInstanceThreadState(globalData))
         return false;
 
     return true;
@@ -275,10 +269,6 @@ void Heap::lastChanceToFinalize()
     ASSERT(!m_globalData->dynamicGlobalObject);
     ASSERT(m_operationInProgress == NoOperation);
 
-    // FIXME: Make this a release-mode crash once we're sure no one's doing this.
-    if (size_t size = m_protectedValues.size())
-        WTFLogAlways("ERROR: JavaScriptCore heap deallocated while %ld values were still protected", static_cast<unsigned long>(size));
-
     m_objectSpace.lastChanceToFinalize();
 
 #if ENABLE(SIMPLE_HEAP_PROFILING)
@@ -327,7 +317,7 @@ void Heap::didAbandon(size_t bytes)
 void Heap::protect(JSValue k)
 {
     ASSERT(k);
-    ASSERT(JSLock::currentThreadIsHoldingLock() || !m_globalData->isSharedInstance());
+    ASSERT(m_globalData->apiLock().currentThreadIsHoldingLock());
 
     if (!k.isCell())
         return;
@@ -338,7 +328,7 @@ void Heap::protect(JSValue k)
 bool Heap::unprotect(JSValue k)
 {
     ASSERT(k);
-    ASSERT(JSLock::currentThreadIsHoldingLock() || !m_globalData->isSharedInstance());
+    ASSERT(m_globalData->apiLock().currentThreadIsHoldingLock());
 
     if (!k.isCell())
         return false;
@@ -464,6 +454,7 @@ void Heap::markRoots(bool fullGC)
 
     m_storageSpace.startedCopying();
     SlotVisitor& visitor = m_slotVisitor;
+    visitor.setup();
     HeapRootVisitor heapRootVisitor(visitor);
 
     {
@@ -595,12 +586,11 @@ void Heap::markRoots(bool fullGC)
 #endif
 
     visitor.reset();
-    m_sharedData.reset();
 #if ENABLE(PARALLEL_GC)
     m_sharedData.resetChildren();
 #endif
+    m_sharedData.reset();
     m_storageSpace.doneCopying();
-
 }
 
 size_t Heap::objectCount()
@@ -692,6 +682,7 @@ void Heap::collect(SweepToggle sweepToggle)
     SamplingRegion samplingRegion("Garbage Collection");
     
     GCPHASE(Collect);
+    ASSERT(globalData()->apiLock().currentThreadIsHoldingLock());
     ASSERT(globalData()->identifierTable == wtfThreadData().currentIdentifierTable());
     ASSERT(m_isSafeToCollect);
     JAVASCRIPTCORE_GC_BEGIN();
@@ -777,19 +768,19 @@ void Heap::collect(SweepToggle sweepToggle)
     JAVASCRIPTCORE_GC_END();
 }
 
-void Heap::setActivityCallback(PassOwnPtr<GCActivityCallback> activityCallback)
+void Heap::setActivityCallback(GCActivityCallback* activityCallback)
 {
     m_activityCallback = activityCallback;
 }
 
 GCActivityCallback* Heap::activityCallback()
 {
-    return m_activityCallback.get();
+    return m_activityCallback;
 }
 
 IncrementalSweeper* Heap::sweeper()
 {
-    return m_sweeper.get();
+    return m_sweeper;
 }
 
 void Heap::setGarbageCollectionTimerEnabled(bool enable)

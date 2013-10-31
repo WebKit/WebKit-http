@@ -26,12 +26,12 @@
 #include "config.h"
 #include "WebDeviceOrientation.h"
 
-#include "DeviceOrientation.h"
+#include "DeviceOrientationData.h"
 #include <wtf/PassRefPtr.h>
 
 namespace WebKit {
 
-WebDeviceOrientation::WebDeviceOrientation(const WebCore::DeviceOrientation* orientation)
+WebDeviceOrientation::WebDeviceOrientation(const WebCore::DeviceOrientationData* orientation)
 {
     if (!orientation) {
         m_isNull = true;
@@ -57,38 +57,11 @@ WebDeviceOrientation::WebDeviceOrientation(const WebCore::DeviceOrientation* ori
     m_absolute = orientation->absolute();
 }
 
-WebDeviceOrientation& WebDeviceOrientation::operator=(const WebCore::DeviceOrientation* orientation)
-{
-    if (!orientation) {
-        m_isNull = true;
-        m_canProvideAlpha = false;
-        m_alpha = 0;
-        m_canProvideBeta = false;
-        m_beta = 0;
-        m_canProvideGamma = false;
-        m_gamma = 0;
-        m_canProvideAbsolute = false;
-        m_absolute = false;
-        return *this;
-    }
-
-    m_isNull = false;
-    m_canProvideAlpha = orientation->canProvideAlpha();
-    m_alpha = orientation->alpha();
-    m_canProvideBeta = orientation->canProvideBeta();
-    m_beta = orientation->beta();
-    m_canProvideGamma = orientation->canProvideGamma();
-    m_gamma = orientation->gamma();
-    m_canProvideAbsolute = orientation->canProvideAbsolute();
-    m_absolute = orientation->absolute();
-    return *this;
-}
-
-WebDeviceOrientation::operator PassRefPtr<WebCore::DeviceOrientation>() const
+WebDeviceOrientation::operator PassRefPtr<WebCore::DeviceOrientationData>() const
 {
     if (m_isNull)
         return 0;
-    return WebCore::DeviceOrientation::create(m_canProvideAlpha, m_alpha, m_canProvideBeta, m_beta, m_canProvideGamma, m_gamma, m_canProvideAbsolute, m_absolute);
+    return WebCore::DeviceOrientationData::create(m_canProvideAlpha, m_alpha, m_canProvideBeta, m_beta, m_canProvideGamma, m_gamma, m_canProvideAbsolute, m_absolute);
 }
 
 } // namespace WebKit

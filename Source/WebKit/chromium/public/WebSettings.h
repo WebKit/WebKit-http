@@ -65,7 +65,7 @@ public:
     virtual void setMinimumFontSize(int) = 0;
     virtual void setMinimumLogicalFontSize(int) = 0;
     virtual void setApplyDefaultDeviceScaleFactorInCompositor(bool) = 0;
-    virtual void setFontBoostingEnabled(bool) = 0;
+    virtual void setTextAutosizingEnabled(bool) = 0;
     virtual void setDefaultTextEncodingName(const WebString&) = 0;
     virtual void setDeviceSupportsTouch(bool) = 0;
     virtual void setDeviceSupportsMouse(bool) = 0;
@@ -105,6 +105,7 @@ public:
     virtual void setExperimentalCSSRegionsEnabled(bool) = 0;
     virtual void setExperimentalCSSGridLayoutEnabled(bool) = 0;
     virtual void setExperimentalCSSCustomFilterEnabled(bool) = 0;
+    virtual void setExperimentalCSSVariablesEnabled(bool) = 0;
     virtual void setOpenGLMultisamplingEnabled(bool) = 0;
     virtual void setPrivilegedWebGLExtensionsEnabled(bool) = 0;
     virtual void setWebGLErrorsToConsoleEnabled(bool) = 0;
@@ -154,6 +155,7 @@ public:
     virtual void setMaxUntiledLayerSize(WebSize) = 0;
     virtual void setFixedPositionCreatesStackingContext(bool) = 0;
     virtual void setSyncXHRInDocumentsEnabled(bool) = 0;
+    virtual void setCookieEnabled(bool) = 0;
 
     virtual bool forceSoftwareCompositing() const = 0;
 

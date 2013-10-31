@@ -22,7 +22,7 @@ InspectorTest.startDebuggerTest = function(callback, quiet)
     }
 };
 
-InspectorTest.completeDebuggerTest = function()
+InspectorTest.finishDebuggerTest = function(callback)
 {
     var scriptsPanel = WebInspector.panels.scripts;
 
@@ -34,16 +34,21 @@ InspectorTest.completeDebuggerTest = function()
         if (!scriptsPanel._debuggerEnabled)
             completeTest();
         else {
-            InspectorTest.addSniffer(WebInspector.debuggerModel, "_debuggerWasDisabled", completeTest);
+            InspectorTest.addSniffer(WebInspector.debuggerModel, "_debuggerWasDisabled", debuggerDisabled);
             scriptsPanel.toggleDebugging(false);
         }
     }
 
-    function completeTest()
+    function debuggerDisabled()
     {
         InspectorTest.addResult("Debugger was disabled.");
-        InspectorTest.completeTest();
+        callback();
     }
+};
+
+InspectorTest.completeDebuggerTest = function()
+{
+    InspectorTest.finishDebuggerTest(InspectorTest.completeTest.bind(InspectorTest));
 };
 
 InspectorTest.runDebuggerTestSuite = function(testSuite)
@@ -155,7 +160,7 @@ InspectorTest._resumedScript = function()
 
 InspectorTest.showScriptSourceOnScriptsPanel = function(panel, scriptName, callback)
 {
-    var uiSourceCodes = panel._uiSourceCodeProvider.uiSourceCodes();
+    var uiSourceCodes = panel._workspace.uiSourceCodes();
     for (var i = 0; i < uiSourceCodes.length; ++i) {
         if (uiSourceCodes[i].parsedURL.lastPathComponent === scriptName) {
             panel.showUISourceCode(uiSourceCodes[i]);
@@ -163,7 +168,7 @@ InspectorTest.showScriptSourceOnScriptsPanel = function(panel, scriptName, callb
             if (sourceFrame.loaded)
                 callback(sourceFrame);
             else
-                InspectorTest.addSniffer(sourceFrame, "onTextViewerContentLoaded", callback.bind(null, sourceFrame));
+                InspectorTest.addSniffer(sourceFrame, "onTextEditorContentLoaded", callback.bind(null, sourceFrame));
             return;
         }
     }

@@ -26,6 +26,15 @@
  *
  * The following signals (see evas_object_smart_callback_add()) are emitted:
  *
+ * - "intent,request,new", Ewk_Intent_Request*: reports new Web intent request.
+ * - "intent,service,register", Ewk_Intent_Service*: reports new Web intent service registration.
+ * - "load,error", const Ewk_Web_Error*: reports main frame load failed.
+ * - "load,finished", void: reports load finished.
+ * - "load,progress", double*: load progress has changed (value from 0.0 to 1.0).
+ * - "load,provisional,failed", const Ewk_Web_Error*: view provisional load failed.
+ * - "load,provisional,redirect", void: view received redirect for provisional load.
+ * - "load,provisional,started", void: view started provisional load.
+ * - "resource,request,new", const Ewk_Web_Resource_Request*: a resource request was initiated.
  * - "title,changed", const char*: title of the main frame was changed.
  */
 
@@ -33,6 +42,9 @@
 #define ewk_view_h
 
 #include "ewk_context.h"
+#include "ewk_intent.h"
+#include "ewk_url_request.h"
+#include "ewk_web_resource.h"
 #include <Evas.h>
 
 #ifdef __cplusplus
@@ -128,6 +140,19 @@ struct _Ewk_View_Smart_Data {
     } changed;
 };
 
+/// Creates a type name for _Ewk_Web_Resource_Request.
+typedef struct _Ewk_Web_Resource_Request Ewk_Web_Resource_Request;
+
+/**
+ * @brief Structure containing details about a resource request.
+ *
+ * Details given about a resource is loaded.
+ */
+struct _Ewk_Web_Resource_Request {
+    Ewk_Web_Resource *resource; /**< resource being requested */
+    Ewk_Url_Request *request; /**< URL request for the resource */
+};
+
 /**
  * Creates a new EFL WebKit view object.
  *
@@ -176,9 +201,18 @@ EAPI const char *ewk_view_uri_get(const Evas_Object *o);
  *
  * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
  *
- * @see ewk_view_reload_full()
+ * @see ewk_view_reload_bypass_cache()
  */
 EAPI Eina_Bool    ewk_view_reload(Evas_Object *o);
+
+/**
+ * Reloads the current page's document without cache.
+ *
+ * @param o view object to reload current document
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_reload_bypass_cache(Evas_Object *o);
 
 /**
  * Asks the main frame to stop loading.
@@ -189,7 +223,16 @@ EAPI Eina_Bool    ewk_view_reload(Evas_Object *o);
  */
 EAPI Eina_Bool    ewk_view_stop(Evas_Object *o);
 
-/*
+/**
+ * Delivers a Web intent to the view's main frame.
+ *
+ * @param o view object to deliver the intent to
+ *
+ * @return @c EINA_TRUE on success or @c EINA_FALSE otherwise.
+ */
+EAPI Eina_Bool    ewk_view_intent_deliver(Evas_Object *o, Ewk_Intent *intent);
+
+/**
  * Asks the main frame to navigate back in the history.
  *
  * @param o view object to navigate back
@@ -240,6 +283,84 @@ EAPI Eina_Bool    ewk_view_forward_possible(Evas_Object *o);
  * @return current title on success or @c 0 on failure
  */
 EAPI const char *ewk_view_title_get(const Evas_Object *o);
+
+/**
+ * Gets the current load progress of page.
+ *
+ * The progress estimation from 0.0 to 1.0.
+ *
+ * @param o view object to get the current progress
+ *
+ * @return the load progres of page, value from 0.0 to 1.0.
+ */
+EAPI double ewk_view_load_progress_get(const Evas_Object *o);
+
+/**
+ * Loads the specified @a html string as the content of the view.
+ *
+ * External objects such as stylesheets or images referenced in the HTML
+ * document are located relative to @a baseUrl.
+ *
+ * If an @a unreachableUrl is passed it is used as the url for the loaded
+ * content. This is typically used to display error pages for a failed
+ * load.
+ *
+ * @param o view object to load the HTML into
+ * @param html HTML data to load
+ * @param baseUrl Base URL used for relative paths to external objects (optional)
+ * @param unreachableUrl URL that could not be reached (optional)
+ *
+ * @return @c EINA_TRUE if it the HTML was successfully loaded, @c EINA_FALSE otherwise
+ */
+EAPI Eina_Bool ewk_view_html_string_load(Evas_Object *o, const char *html, const char *baseUrl, const char *unreachableUrl);
+
+/**
+ * Queries the ratio between the CSS units and device pixels when the content is unscaled.
+ *
+ * When designing touch-friendly contents, knowing the approximated target size on a device
+ * is important for contents providers in order to get the intented layout and element
+ * sizes.
+ *
+ * As most first generation touch devices had a PPI of approximately 160, this became a
+ * de-facto value, when used in conjunction with the viewport meta tag.
+ *
+ * Devices with a higher PPI learning towards 240 or 320, applies a pre-scaling on all
+ * content, of either 1.5 or 2.0, not affecting the CSS scale or pinch zooming.
+ *
+ * This value can be set using this property and it is exposed to CSS media queries using
+ * the -webkit-device-pixel-ratio query.
+ *
+ * For instance, if you want to load an image without having it upscaled on a web view
+ * using a device pixel ratio of 2.0 it can be done by loading an image of say 100x100
+ * pixels but showing it at half the size.
+ *
+ * @media (-webkit-min-device-pixel-ratio: 1.5) {
+ *     .icon {
+ *         width: 50px;
+ *         height: 50px;
+ *         url: "/images/icon@2x.png"; // This is actually a 100x100 image
+ *     }
+ * }
+ *
+ * If the above is used on a device with device pixel ratio of 1.5, it will be scaled
+ * down but still provide a better looking image.
+ *
+ * @param o view object to get device pixel ratio
+ *
+ * @return the ratio between the CSS units and device pixels.
+ */
+EAPI float ewk_view_device_pixel_ratio_get(const Evas_Object *o);
+
+/**
+ * Sets the ratio between the CSS units and device pixels when the content is unscaled.
+ *
+ * @param o view object to set device pixel ratio
+ *
+ * @return @c EINA_TRUE if the device pixel ratio was set, @c EINA_FALSE otherwise
+ *
+ * @see ewk_view_device_pixel_ratio_get()
+ */
+EAPI Eina_Bool ewk_view_device_pixel_ratio_set(Evas_Object *o, float ratio);
 
 #ifdef __cplusplus
 }

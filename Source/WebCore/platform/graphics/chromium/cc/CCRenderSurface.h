@@ -32,10 +32,10 @@
 #include "FloatRect.h"
 #include "IntRect.h"
 #include "TextureManager.h"
-#include "cc/CCLayerQuad.h"
 #include <public/WebFilterOperations.h>
 #include <public/WebTransformationMatrix.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -46,6 +46,7 @@ class CCSharedQuadState;
 class CCLayerImpl;
 class LayerRendererChromium;
 class ManagedTexture;
+class TextStream;
 
 class CCRenderSurface {
     WTF_MAKE_NONCOPYABLE(CCRenderSurface);

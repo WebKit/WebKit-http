@@ -6,7 +6,7 @@
 //
 // Microsoft extensions are documented here:
 // http://msdn.microsoft.com/workshop/author/css/reference/attributes.asp
-//
+// 
 
 // high-priority property names have to be listed first, to simplify the check
 // for applying them first.
@@ -268,8 +268,11 @@ z-index
 -webkit-align-items
 -webkit-align-self
 -webkit-flex
+-webkit-flex-basis
 -webkit-flex-direction
 -webkit-flex-flow
+-webkit-flex-grow
+-webkit-flex-shrink
 -webkit-flex-wrap
 -webkit-justify-content
 #endif

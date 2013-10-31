@@ -41,48 +41,57 @@ public:
 
     static PassRefPtr<IDBKey> createInvalid()
     {
-        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey());
-        idbKey->m_type = InvalidType;
-        return idbKey.release();
+        return adoptRef(new IDBKey());
     }
 
     static PassRefPtr<IDBKey> createNumber(double number)
     {
-        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey());
-        idbKey->m_type = NumberType;
-        idbKey->m_number = number;
-        idbKey->m_sizeEstimate += sizeof(double);
-        return idbKey.release();
+        return adoptRef(new IDBKey(NumberType, number));
     }
 
     static PassRefPtr<IDBKey> createString(const String& string)
     {
-        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey());
-        idbKey->m_type = StringType;
-        idbKey->m_string = string;
-        idbKey->m_sizeEstimate += string.length() * sizeof(UChar);
-        return idbKey.release();
+        return adoptRef(new IDBKey(string));
     }
 
     static PassRefPtr<IDBKey> createDate(double date)
     {
-        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey());
-        idbKey->m_type = DateType;
-        idbKey->m_date = date;
-        idbKey->m_sizeEstimate += sizeof(double);
+        return adoptRef(new IDBKey(DateType, date));
+    }
+
+    static PassRefPtr<IDBKey> createMultiEntryArray(const KeyArray& array)
+    {
+        KeyArray result;
+
+        size_t sizeEstimate = 0;
+        for (size_t i = 0; i < array.size(); i++) {
+            if (!array[i]->isValid())
+                continue;
+
+            bool skip = false;
+            for (size_t j = 0; j < result.size(); j++) {
+                if (array[i]->isEqual(result[j].get())) {
+                    skip = true;
+                    break;
+                }
+            }
+            if (!skip) {
+                result.append(array[i]);
+                sizeEstimate += array[i]->m_sizeEstimate;
+            }
+        }
+        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey(result, sizeEstimate));
+        ASSERT(idbKey->isValid());
         return idbKey.release();
     }
 
     static PassRefPtr<IDBKey> createArray(const KeyArray& array)
     {
-        RefPtr<IDBKey> idbKey = adoptRef(new IDBKey());
-        idbKey->m_type = ArrayType;
-        idbKey->m_array = array;
-
+        size_t sizeEstimate = 0;
         for (size_t i = 0; i < array.size(); ++i)
-            idbKey->m_sizeEstimate += array[i]->m_sizeEstimate;
+            sizeEstimate += array[i]->m_sizeEstimate;
 
-        return idbKey.release();
+        return adoptRef(new IDBKey(array, sizeEstimate));
     }
 
     ~IDBKey();
@@ -98,7 +107,7 @@ public:
     };
 
     Type type() const { return m_type; }
-    bool isValid() const { return m_type != InvalidType; }
+    bool isValid() const;
 
     const KeyArray& array() const
     {
@@ -115,7 +124,7 @@ public:
     double date() const
     {
         ASSERT(m_type == DateType);
-        return m_date;
+        return m_number;
     }
 
     double number() const
@@ -139,15 +148,17 @@ public:
     using ThreadSafeRefCounted<IDBKey>::deref;
 
 private:
-    IDBKey();
+    IDBKey() : m_type(InvalidType), m_number(0), m_sizeEstimate(kOverheadSize) { }
+    IDBKey(Type type, double number) : m_type(type), m_number(number), m_sizeEstimate(kOverheadSize + sizeof(double)) { }
+    explicit IDBKey(const String& value) : m_type(StringType), m_string(value), m_number(0), m_sizeEstimate(kOverheadSize + value.length() * sizeof(UChar)) { }
+    IDBKey(const KeyArray& keyArray, size_t arraySize) : m_type(ArrayType), m_array(keyArray), m_number(0), m_sizeEstimate(kOverheadSize + arraySize) { }
 
-    Type m_type;
-    KeyArray m_array;
-    String m_string;
-    double m_date;
-    double m_number;
+    const Type m_type;
+    const KeyArray m_array;
+    const String m_string;
+    const double m_number;
 
-    size_t m_sizeEstimate;
+    const size_t m_sizeEstimate;
 
     // Very rough estimate of minimum key size overhead.
     enum { kOverheadSize = 16 };

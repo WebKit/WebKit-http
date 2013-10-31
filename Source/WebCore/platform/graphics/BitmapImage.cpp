@@ -178,25 +178,26 @@ void BitmapImage::didDecodeProperties() const
         imageObserver()->decodedSizeChanged(this, deltaBytes);
 }
 
+void BitmapImage::updateSize() const
+{
+    if (!m_sizeAvailable || m_haveSize)
+        return;
+
+    m_size = m_source.size();
+    m_sizeRespectingOrientation = m_source.size(RespectImageOrientation);
+    m_haveSize = true;
+    didDecodeProperties();
+}
+
 IntSize BitmapImage::size() const
 {
-    if (m_sizeAvailable && !m_haveSize) {
-        m_size = m_source.size();
-        m_sizeRespectingOrientation = m_source.size(RespectImageOrientation);
-        m_haveSize = true;
-        didDecodeProperties();
-    }
+    updateSize();
     return m_size;
 }
 
 IntSize BitmapImage::sizeRespectingOrientation() const
 {
-    if (m_sizeAvailable && !m_haveSize) {
-        m_size = m_source.size();
-        m_sizeRespectingOrientation = m_source.size(RespectImageOrientation);
-        m_haveSize = true;
-        didDecodeProperties();
-    }
+    updateSize();
     return m_sizeRespectingOrientation;
 }
 
@@ -318,8 +319,10 @@ NativeImagePtr BitmapImage::nativeImageForCurrentFrame()
 
 bool BitmapImage::frameHasAlphaAtIndex(size_t index)
 {
+    // When a frame has not finished decoding, always mark it as having alpha.
+    // See ImageSource::framehasAlphaAtIndex for explanation of why incomplete images claim to have alpha.
     if (!ensureFrameIsCached(index))
-        return true; // Why does an invalid index mean alpha?
+        return true;
     return m_frames[index].m_hasAlpha;
 }
 

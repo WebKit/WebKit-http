@@ -1,3 +1,403 @@
+2012-07-09  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Simplify runTest function by defining default arguments.
+        https://bugs.webkit.org/show_bug.cgi?id=90525
+
+        Reviewed by Chang Shu.
+
+        Default arguments will simplify macro RUN_TEST.
+        Function will only have one mandatory argument, callback test function.
+        Added static modifiers to callback functions.
+
+        * tests/UnitTestUtils/EWKTestBase.h:
+        (EWKTestBase):
+        * tests/test_ewk_view.cpp:
+        (ewkViewEditableGetCb):
+        (TEST):
+        (ewkViewUriGetCb):
+
+2012-07-08  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] REGRESSION (r122035): fullscreen/exit-full-screen-iframe.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=90735
+
+        Reviewed by Antonio Gomes.
+
+        Keep a reference to the Element passed to enterFullScreenForElement() so
+        that we can reuse it later in exitFullScreenForElement(). This is needed
+        because the Element passed to exitFullScreenForElement() may be null.
+        This fixes the crash for the fullscreen/exit-full-screen-iframe.html
+        test introduced in r122035.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::enterFullScreenForElement):
+        (WebCore::ChromeClientEfl::exitFullScreenForElement):
+        * WebCoreSupport/ChromeClientEfl.h:
+        (ChromeClientEfl):
+
+2012-07-07  Jinwoo Song  <jinwoo7.song@samsung.com>
+
+        [EFL] Fix build break when Accelerated Compositing is on.
+        https://bugs.webkit.org/show_bug.cgi?id=90718
+
+        Unreviewed build fix.
+
+        ewk_view_accelerated_compositing_XXX APIs are in ewk_view_private.h
+
+        * WebCoreSupport/PageClientEfl.cpp:
+        (PageClientEfl::createEvasObjectForAcceleratedCompositing):
+        (PageClientEfl::acceleratedCompositingContext):
+        * WebCoreSupport/PageClientEfl.h:
+        (PageClientEfl):
+
+2012-07-06  Seokju Kwon  <seokju.kwon@samsung.com>
+
+        [EFL] Add Web Inspector to WebKit-EFL
+        https://bugs.webkit.org/show_bug.cgi?id=83865
+
+        Reviewed by Pavel Feldman.
+
+        EFL port implementation for Web Inspector.
+        Implementation of InspectorClientEfl and InspectorFrontendClientEfl
+        for using the Web Inspector in WebKit-EFL with new EWK APIs.
+
+        * WebCoreSupport/InspectorClientEfl.cpp:
+        (WebCore::notifyWebInspectorDestroy):
+        (WebCore):
+        (InspectorFrontendSettingsEfl):
+        (WebCore::InspectorFrontendSettingsEfl::getProperty):
+        (WebCore::InspectorFrontendSettingsEfl::setProperty):
+        (WebCore::InspectorClientEfl::InspectorClientEfl):
+        (WebCore::InspectorClientEfl::~InspectorClientEfl):
+        (WebCore::InspectorClientEfl::inspectorDestroyed):
+        (WebCore::InspectorClientEfl::openInspectorFrontend):
+        (WebCore::InspectorClientEfl::closeInspectorFrontend):
+        (WebCore::InspectorClientEfl::bringFrontendToFront):
+        (WebCore::InspectorClientEfl::sendMessageToFrontend):
+        (WebCore::InspectorClientEfl::releaseFrontendPage):
+        (WebCore::InspectorClientEfl::inspectorFilesPath):
+        (WebCore::InspectorFrontendClientEfl::InspectorFrontendClientEfl):
+        (WebCore::InspectorFrontendClientEfl::~InspectorFrontendClientEfl):
+        (WebCore::InspectorFrontendClientEfl::localizedStringsURL):
+        (WebCore::InspectorFrontendClientEfl::hiddenPanels):
+        (WebCore::InspectorFrontendClientEfl::bringToFront):
+        (WebCore::InspectorFrontendClientEfl::closeWindow):
+        (WebCore::InspectorFrontendClientEfl::inspectedURLChanged):
+        (WebCore::InspectorFrontendClientEfl::attachWindow):
+        (WebCore::InspectorFrontendClientEfl::detachWindow):
+        (WebCore::InspectorFrontendClientEfl::setAttachedWindowHeight):
+        (WebCore::InspectorFrontendClientEfl::destroyInspectorWindow):
+        * WebCoreSupport/InspectorClientEfl.h:
+        (WebCore):
+        (InspectorClientEfl):
+        (InspectorFrontendClientEfl):
+        (WebCore::InspectorFrontendClientEfl::disconnectInspectorClient):
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new):
+        (ewk_view_web_inspector_show):
+        (ewk_view_web_inspector_close):
+        (ewk_view_web_inspector_view_get):
+        (ewk_view_web_inspector_view_set):
+        * ewk/ewk_view.h:
+
+2012-07-05  Kihong Kwon  <kihong.kwon@samsung.com>
+
+        [EFL] Change class name from NotificationClientEfl to NotificationPresenterClientEfl.
+        https://bugs.webkit.org/show_bug.cgi?id=90542
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Change class name from NotificationClientEfl to NotificationPresenterClientEfl
+        to be in line with other ports.(qt, chromium, blackberry)
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        * WebCoreSupport/NotificationPresenterClientEfl.cpp: Renamed from Source/WebKit/efl/WebCoreSupport/NotificationClientEfl.cpp.
+        (WebCore):
+        (WebCore::NotificationPresenterClientEfl::NotificationPresenterClientEfl):
+        (WebCore::NotificationPresenterClientEfl::~NotificationPresenterClientEfl):
+        (WebCore::NotificationPresenterClientEfl::show):
+        (WebCore::NotificationPresenterClientEfl::cancel):
+        (WebCore::NotificationPresenterClientEfl::notificationObjectDestroyed):
+        (WebCore::NotificationPresenterClientEfl::notificationControllerDestroyed):
+        (WebCore::NotificationPresenterClientEfl::requestPermission):
+        (WebCore::NotificationPresenterClientEfl::checkPermission):
+        (WebCore::NotificationPresenterClientEfl::cancelRequestsForPermission):
+        * WebCoreSupport/NotificationPresenterClientEfl.h: Renamed from Source/WebKit/efl/WebCoreSupport/NotificationClientEfl.h.
+        (WebCore):
+        (NotificationPresenterClientEfl):
+
+2012-07-02  Benjamin Poulain  <bpoulain@apple.com>
+
+        Do not do any logging initialization when logging is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=90228
+
+        Reviewed by Simon Fraser.
+
+        * ewk/ewk_main.cpp:
+        (_ewk_init_body):
+
+2012-07-02  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Rename NotificationPresenterEfl with NotificationClientEfl
+        https://bugs.webkit.org/show_bug.cgi?id=90370
+
+        Reviewed by Csaba Osztrogonác.
+
+        Bug 80488 renamed NotificationPresenter with NotificationClient. So, EFL port needs to adjust it as well.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        * WebCoreSupport/NotificationClientEfl.cpp: Renamed from Source/WebKit/efl/WebCoreSupport/NotificationPresenterClientEfl.cpp.
+        (WebCore):
+        (WebCore::NotificationClientEfl::NotificationClientEfl):
+        (WebCore::NotificationClientEfl::~NotificationClientEfl):
+        (WebCore::NotificationClientEfl::show):
+        (WebCore::NotificationClientEfl::cancel):
+        (WebCore::NotificationClientEfl::notificationObjectDestroyed):
+        (WebCore::NotificationClientEfl::notificationControllerDestroyed):
+        (WebCore::NotificationClientEfl::requestPermission):
+        (WebCore::NotificationClientEfl::checkPermission):
+        (WebCore::NotificationClientEfl::cancelRequestsForPermission):
+        * WebCoreSupport/NotificationClientEfl.h: Renamed from Source/WebKit/efl/WebCoreSupport/NotificationPresenterClientEfl.h.
+        (WebCore):
+        (NotificationClientEfl):
+
+2012-06-29  Krzysztof Czech  <k.czech@samsung.com>, Tomasz Morawski <t.morawski@samsung.com>
+
+        [EFL] Implementation of testing framework and unit tests for WebKit-EFL port.
+        https://bugs.webkit.org/show_bug.cgi?id=68509
+
+        Reviewed by Chang Shu.
+
+        Testing framework is based on gtest library. Gtest library is part of the WebKit project. Framework is devided into base part and view part.
+        Base part takes care of efl initialization, defines test macros and prepares test to run. View part is a context of each test.
+
+        * tests/UnitTestUtils/EWKTestBase.cpp: Added.
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestBase::init):
+        (EWKUnitTests::EWKTestBase::shutdown):
+        (EWKUnitTests::EWKTestBase::shutdownAll):
+        (EWKUnitTests::EWKTestBase::startTest):
+        (EWKUnitTests::EWKTestBase::endTest):
+        (EWKUnitTests::EWKTestBase::createTest):
+        (EWKUnitTests::EWKTestBase::runTest):
+        * tests/UnitTestUtils/EWKTestBase.h: Added.
+        (EWKUnitTests):
+        (EWKTestBase):
+        * tests/UnitTestUtils/EWKTestConfig.h: Added.
+        (Config):
+        * tests/UnitTestUtils/EWKTestView.cpp: Added.
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestEcoreEvas::EWKTestEcoreEvas):
+        (EWKUnitTests::EWKTestEcoreEvas::evas):
+        (EWKUnitTests::EWKTestEcoreEvas::show):
+        (EWKUnitTests::EWKTestView::EWKTestView):
+        (EWKUnitTests::EWKTestView::init):
+        (EWKUnitTests::EWKTestView::show):
+        (EWKUnitTests::EWKTestView::mainFrame):
+        (EWKUnitTests::EWKTestView::evas):
+        (EWKUnitTests::EWKTestView::bindEvents):
+        * tests/UnitTestUtils/EWKTestView.h: Added.
+        (EWKUnitTests):
+        (EWKTestEcoreEvas):
+        (EWKTestView):
+        (EWKUnitTests::EWKTestView::webView):
+        * tests/resources/default_test_page.html: Added.
+        * tests/test_ewk_view.cpp: Added.
+        (ewkViewEditableGetCb):
+        (TEST):
+        (ewkViewUriGetCb):
+        * tests/test_runner.cpp: Added.
+        (parseCustomArguments):
+        (main):
+
+2012-06-29  Konrad Piascik  <kpiascik@rim.com>
+
+        Don't hardcode target dpi of 160 (it should be 96 on desktop)
+        https://bugs.webkit.org/show_bug.cgi?id=88114
+
+        Reviewed by Adam Barth.
+
+        Updated the call to computeViewportAttributes.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::dumpConfigurationForViewport):
+        * ewk/ewk_view.cpp:
+        (_ewk_view_viewport_attributes_compute):
+
+2012-06-27  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121398.
+        http://trac.webkit.org/changeset/121398
+        https://bugs.webkit.org/show_bug.cgi?id=90136
+
+        broke efl build (Requested by ryuan on #webkit).
+
+        * tests/UnitTestUtils/EWKTestBase.cpp: Removed.
+        * tests/UnitTestUtils/EWKTestBase.h: Removed.
+        * tests/UnitTestUtils/EWKTestConfig.h: Removed.
+        * tests/UnitTestUtils/EWKTestView.cpp: Removed.
+        * tests/UnitTestUtils/EWKTestView.h: Removed.
+        * tests/resources/default_test_page.html: Removed.
+        * tests/test_ewk_view.cpp: Removed.
+        * tests/test_runner.cpp: Removed.
+
+2012-06-27  Krzysztof Czech  <k.czech@samsung.com>
+
+        [EFL] Implementation of testing framework and unit tests for WebKit-EFL port.
+        https://bugs.webkit.org/show_bug.cgi?id=68509
+
+        Reviewed by Chang Shu.
+
+        Testing framework is based on gtest library. Gtest library is part of the WebKit project. Framework is devided into base part and view part.
+        Base part takes care of efl initialization, defines test macros and prepares test to run. View part is a context of each test.
+
+        * tests/UnitTestUtils/EWKTestBase.cpp: Added.
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestBase::init):
+        (EWKUnitTests::EWKTestBase::shutdown):
+        (EWKUnitTests::EWKTestBase::shutdownAll):
+        (EWKUnitTests::EWKTestBase::startTest):
+        (EWKUnitTests::EWKTestBase::endTest):
+        (EWKUnitTests::EWKTestBase::createTest):
+        (EWKUnitTests::EWKTestBase::runTest):
+        * tests/UnitTestUtils/EWKTestBase.h: Added.
+        (EWKUnitTests):
+        (EWKTestBase):
+        * tests/UnitTestUtils/EWKTestConfig.h: Added.
+        (Config):
+        * tests/UnitTestUtils/EWKTestView.cpp: Added.
+        (EWKUnitTests):
+        (EWKUnitTests::EWKTestEcoreEvas::EWKTestEcoreEvas):
+        (EWKUnitTests::EWKTestEcoreEvas::evas):
+        (EWKUnitTests::EWKTestEcoreEvas::show):
+        (EWKUnitTests::EWKTestView::EWKTestView):
+        (EWKUnitTests::EWKTestView::init):
+        (EWKUnitTests::EWKTestView::show):
+        (EWKUnitTests::EWKTestView::mainFrame):
+        (EWKUnitTests::EWKTestView::evas):
+        (EWKUnitTests::EWKTestView::bindEvents):
+        * tests/UnitTestUtils/EWKTestView.h: Added.
+        (EWKUnitTests):
+        (EWKTestEcoreEvas):
+        (EWKTestView):
+        (EWKUnitTests::EWKTestView::webView):
+        * tests/resources/default_test_page.html: Added.
+        * tests/test_ewk_view.cpp: Added.
+        (ewkViewEditableGetCb):
+        (TEST):
+        (ewkViewUriGetCb):
+        * tests/test_runner.cpp: Added.
+        (parseCustomArguments):
+        (main):
+
+2012-06-25  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Geoffrey Garen.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection. Also added a couple JSLocks to places that didn't already 
+        have it that needed it.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_script_execute):
+        * ewk/ewk_view.cpp:
+        (ewk_view_js_object_add):
+
+2012-06-26  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        Change return type in bandwidth attribute of network information API
+        https://bugs.webkit.org/show_bug.cgi?id=89959
+
+        Reviewed by Adam Barth.
+
+        According to network information API spec, bandwidth attribute should return double type.
+        But, existing implementation has used *long* and *unsigned int* types.
+
+        * WebCoreSupport/NetworkInfoClientEfl.cpp:
+        (WebCore::NetworkInfoClientEfl::bandwidth):
+        * WebCoreSupport/NetworkInfoClientEfl.h:
+        (NetworkInfoClientEfl):
+
+2012-06-25  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [EFL] Implement Network Information API
+        https://bugs.webkit.org/show_bug.cgi?id=87067
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        Implement NetworkInfoClientEfl.cpp using eeze library. However, this patch only
+        supports this feature on ethernet interface.
+
+        * WebCoreSupport/NetworkInfoClientEfl.cpp:
+        (WebCore):
+        (WebCore::NetworkInfoClientEfl::NetworkInfoClientEfl):
+        (WebCore::NetworkInfoClientEfl::startUpdating):
+        (WebCore::NetworkInfoClientEfl::stopUpdating):
+        (WebCore::NetworkInfoClientEfl::bandwidth):
+        (WebCore::NetworkInfoClientEfl::metered):
+        * WebCoreSupport/NetworkInfoClientEfl.h:
+        (NetworkInfoClientEfl):
+
+2012-06-23  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r121058.
+        http://trac.webkit.org/changeset/121058
+        https://bugs.webkit.org/show_bug.cgi?id=89809
+
+        Patch causes plugins tests to crash in GTK debug builds
+        (Requested by zdobersek on #webkit).
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_script_execute):
+        * ewk/ewk_view.cpp:
+        (ewk_view_js_object_add):
+
+2012-06-22  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL][WK2] Support keyboard event
+        https://bugs.webkit.org/show_bug.cgi?id=89268
+
+        Reviewed by Chang Shu.
+
+        Extract keyDownCommandsMap and keyPressCommandsMap to share WebKit1/Efl and WebKit2/Efl.
+
+        * WebCoreSupport/EditorClientEfl.cpp:
+        (WebCore::EditorClientEfl::interpretKeyEvent):
+
+2012-06-20  Mark Hahnenberg  <mhahnenberg@apple.com>
+
+        JSLock should be per-JSGlobalData
+        https://bugs.webkit.org/show_bug.cgi?id=89123
+
+        Reviewed by Gavin Barraclough.
+
+        Changed all sites that used JSLock to instead use the new JSLockHolder
+        and pass in the correct JS context that the code is about to interact with that 
+        needs protection.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_script_execute):
+        * ewk/ewk_view.cpp:
+        (ewk_view_js_object_add):
+
+2012-06-22  Amy Ousterhout  <aousterh@chromium.org>
+
+        Renamed DeviceOrientation to DeviceOrientationData
+        https://bugs.webkit.org/show_bug.cgi?id=88663
+
+        Reviewed by Steve Block.
+
+        Updated files to use the renamed DeviceOrientationData instead of DeviceOrientation.
+        This change makes DeviceOrientationData consistent with DeviceMotionData.
+        
+        * WebCoreSupport/DeviceOrientationClientEfl.h:
+        (DeviceOrientationClientEfl):
+
 2012-06-19  Sergio Villar Senin  <svillar@igalia.com>
 
         Calling nativeImageForCurrentFrame() causes assertion failure: m_verifier.isSafeToUse()

@@ -43,6 +43,20 @@ WebInspector.TextRange = function(startLine, startColumn, endLine, endColumn)
     this.endColumn = endColumn;
 }
 
+WebInspector.TextRange.createFromLocation = function(line, column)
+{
+    return new WebInspector.TextRange(line, column, line, column);
+}
+
+/**
+ * @param {Object} serializedTextRange
+ * @return {WebInspector.TextRange}
+ */
+WebInspector.TextRange.fromObject = function (serializedTextRange)
+{
+    return new WebInspector.TextRange(serializedTextRange.startLine, serializedTextRange.startColumn, serializedTextRange.endLine, serializedTextRange.endColumn);
+}
+
 WebInspector.TextRange.prototype = {
     /**
      * @return {boolean}
@@ -82,6 +96,36 @@ WebInspector.TextRange.prototype = {
     clone: function()
     {
         return new WebInspector.TextRange(this.startLine, this.startColumn, this.endLine, this.endColumn);
+    },
+
+    /**
+     * @return {Object}
+     */
+    serializeToObject: function()
+    {
+        var serializedTextRange = {};
+        serializedTextRange.startLine = this.startLine;
+        serializedTextRange.startColumn = this.startColumn;
+        serializedTextRange.endLine = this.endLine;
+        serializedTextRange.endColumn = this.endColumn;
+        return serializedTextRange;
+    },
+
+    /**
+     * @param {WebInspector.TextRange} other
+     * @return {number}
+     */
+    compareTo: function(other)
+    {
+        if (this.startLine > other.startLine)
+            return 1;
+        if (this.startLine < other.startLine)
+            return -1;
+        if (this.startColumn > other.startColumn)
+            return 1;
+        if (this.startColumn < other.startColumn)
+            return -1;
+        return 0;
     }
 }
 
