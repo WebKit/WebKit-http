@@ -151,7 +151,6 @@ inactivecaption
 inactivecaptiontext
 infobackground
 infotext
-match
 menutext
 scrollbar
 threeddarkshadow
@@ -463,9 +462,11 @@ end
 //center
 //baseline
 
+#if defined(ENABLE_CSS_BOX_DECORATION_BREAK) && ENABLE_CSS_BOX_DECORATION_BREAK
 // CSS_PROP_BOX_DECORATION_BREAK
 clone
 slice
+#endif
 
 // CSS_PROP_BOX_DIRECTION
 // normal
@@ -922,3 +923,7 @@ filter-box
 detached
 #endif // CSS_SHADERS
 #endif // CSS_FILTERS
+
+#if defined(ENABLE_CSS_IMAGE_RESOLUTION) && ENABLE_CSS_IMAGE_RESOLUTION
+from-image
+#endif

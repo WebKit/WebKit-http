@@ -33,9 +33,8 @@
 
 namespace WebCore {
 
-NotificationController::NotificationController(Page* page, NotificationClient* client)
-    : m_page(page)
-    , m_client(client)
+NotificationController::NotificationController(NotificationClient* client)
+    : m_client(client)
 {
 }
 
@@ -45,9 +44,9 @@ NotificationController::~NotificationController()
         m_client->notificationControllerDestroyed();
 }
 
-PassOwnPtr<NotificationController> NotificationController::create(Page* page, NotificationClient* client)
+PassOwnPtr<NotificationController> NotificationController::create(NotificationClient* client)
 {
-    return adoptPtr(new NotificationController(page, client));
+    return adoptPtr(new NotificationController(client));
 }
 
 NotificationClient* NotificationController::clientFrom(Page* page)
@@ -65,7 +64,7 @@ const AtomicString& NotificationController::supplementName()
 
 void provideNotification(Page* page, NotificationClient* client)
 {
-    NotificationController::provideTo(page, NotificationController::supplementName(), NotificationController::create(page, client));
+    NotificationController::provideTo(page, NotificationController::supplementName(), NotificationController::create(client));
 }
 
 } // namespace WebCore

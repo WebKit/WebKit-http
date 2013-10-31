@@ -62,6 +62,7 @@
 #include "UString.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
+#include "Watchpoint.h"
 #include <wtf/RefCountedArray.h>
 #include <wtf/FastAllocBase.h>
 #include <wtf/PassOwnPtr.h>
@@ -273,10 +274,12 @@ namespace JSC {
             return result;
         }
         
-        void appendOSRExit(const DFG::OSRExit& osrExit)
+        unsigned appendOSRExit(const DFG::OSRExit& osrExit)
         {
             createDFGDataIfNecessary();
+            unsigned result = m_dfgData->osrExit.size();
             m_dfgData->osrExit.append(osrExit);
+            return result;
         }
         
         DFG::OSRExit& lastOSRExit()
@@ -284,10 +287,20 @@ namespace JSC {
             return m_dfgData->osrExit.last();
         }
         
-        void appendSpeculationRecovery(const DFG::SpeculationRecovery& recovery)
+        unsigned appendSpeculationRecovery(const DFG::SpeculationRecovery& recovery)
         {
             createDFGDataIfNecessary();
+            unsigned result = m_dfgData->speculationRecovery.size();
             m_dfgData->speculationRecovery.append(recovery);
+            return result;
+        }
+        
+        unsigned appendWatchpoint(const Watchpoint& watchpoint)
+        {
+            createDFGDataIfNecessary();
+            unsigned result = m_dfgData->watchpoints.size();
+            m_dfgData->watchpoints.append(watchpoint);
+            return result;
         }
         
         unsigned numberOfOSRExits()
@@ -304,6 +317,13 @@ namespace JSC {
             return m_dfgData->speculationRecovery.size();
         }
         
+        unsigned numberOfWatchpoints()
+        {
+            if (!m_dfgData)
+                return 0;
+            return m_dfgData->watchpoints.size();
+        }
+        
         DFG::OSRExit& osrExit(unsigned index)
         {
             return m_dfgData->osrExit[index];
@@ -312,6 +332,11 @@ namespace JSC {
         DFG::SpeculationRecovery& speculationRecovery(unsigned index)
         {
             return m_dfgData->speculationRecovery[index];
+        }
+        
+        Watchpoint& watchpoint(unsigned index)
+        {
+            return m_dfgData->watchpoints[index];
         }
         
         void appendWeakReference(JSCell* target)
@@ -686,8 +711,7 @@ namespace JSC {
 
         void addLineInfo(unsigned bytecodeOffset, int lineNo)
         {
-            createRareDataIfNecessary();
-            Vector<LineInfo>& lineInfo = m_rareData->m_lineInfo;
+            Vector<LineInfo>& lineInfo = m_lineInfo;
             if (!lineInfo.size() || lineInfo.last().lineNumber != lineNo) {
                 LineInfo info = { bytecodeOffset, lineNo };
                 lineInfo.append(info);
@@ -695,14 +719,6 @@ namespace JSC {
         }
 
         bool hasExpressionInfo() { return m_rareData && m_rareData->m_expressionInfo.size(); }
-        bool hasLineInfo() { return m_rareData && m_rareData->m_lineInfo.size(); }
-        //  We only generate exception handling info if the user is debugging
-        // (and may want line number info), or if the function contains exception handler.
-        bool needsCallReturnIndices()
-        {
-            return m_rareData &&
-                (m_rareData->m_expressionInfo.size() || m_rareData->m_lineInfo.size() || m_rareData->m_exceptionHandlers.size());
-        }
 
 #if ENABLE(JIT)
         Vector<CallReturnOffsetToBytecodeOffset>& callReturnIndexVector()
@@ -1238,6 +1254,7 @@ namespace JSC {
             Vector<DFG::OSREntryData> osrEntry;
             SegmentedVector<DFG::OSRExit, 8> osrExit;
             Vector<DFG::SpeculationRecovery> speculationRecovery;
+            SegmentedVector<Watchpoint, 1, 0> watchpoints;
             Vector<WeakReferenceTransition> transitions;
             Vector<WriteBarrier<JSCell> > weakReferences;
             bool mayBeExecuting;
@@ -1285,7 +1302,9 @@ namespace JSC {
         uint32_t m_forcedOSRExitCounter;
         uint16_t m_optimizationDelayCounter;
         uint16_t m_reoptimizationRetryCounter;
-        
+
+        Vector<LineInfo> m_lineInfo;
+
         struct RareData {
            WTF_MAKE_FAST_ALLOCATED;
         public:
@@ -1307,7 +1326,6 @@ namespace JSC {
             // Expression info - present if debugging.
             Vector<ExpressionRangeInfo> m_expressionInfo;
             // Line info - present if profiling or debugging.
-            Vector<LineInfo> m_lineInfo;
 #if ENABLE(JIT)
             Vector<CallReturnOffsetToBytecodeOffset> m_callReturnIndexVector;
 #endif

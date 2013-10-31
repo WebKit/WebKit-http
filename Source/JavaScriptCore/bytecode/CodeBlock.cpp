@@ -228,6 +228,7 @@ void CodeBlock::printGetByIdOp(ExecState* exec, int location, Vector<Instruction
     it += 5;
 }
 
+#if ENABLE(JIT) || ENABLE(LLINT) // unused in some configurations
 static void dumpStructure(const char* name, ExecState* exec, Structure* structure, Identifier& ident)
 {
     if (!structure)
@@ -239,7 +240,9 @@ static void dumpStructure(const char* name, ExecState* exec, Structure* structur
     if (offset != notFound)
         dataLog(" (offset = %lu)", static_cast<unsigned long>(offset));
 }
+#endif
 
+#if ENABLE(JIT) // unused when not ENABLE(JIT), leading to silly warnings
 static void dumpChain(ExecState* exec, StructureChain* chain, Identifier& ident)
 {
     dataLog("chain = %p: [", chain);
@@ -255,6 +258,7 @@ static void dumpChain(ExecState* exec, StructureChain* chain, Identifier& ident)
     }
     dataLog("]");
 }
+#endif
 
 void CodeBlock::printGetByIdCacheStatus(ExecState* exec, int location)
 {
@@ -264,6 +268,8 @@ void CodeBlock::printGetByIdCacheStatus(ExecState* exec, int location)
         instruction++;
     
     Identifier& ident = identifier(instruction[3].u.operand);
+    
+    UNUSED_PARAM(ident); // tell the compiler to shut up in certain platform configurations.
     
 #if ENABLE(LLINT)
     Structure* structure = instruction[4].u.structure.get();
@@ -928,10 +934,26 @@ void CodeBlock::dump(ExecState* exec, const Vector<Instruction>::const_iterator&
             it++;
             break;
         }
+        case op_get_global_var_watchable: {
+            int r0 = (++it)->u.operand;
+            WriteBarrier<Unknown>* registerPointer = (++it)->u.registerPointer;
+            dataLog("[%4d] get_global_var_watchable\t %s, g%d(%p)\n", location, registerName(exec, r0).data(), m_globalObject->findRegisterIndex(registerPointer), registerPointer);
+            it++;
+            it++;
+            break;
+        }
         case op_put_global_var: {
             WriteBarrier<Unknown>* registerPointer = (++it)->u.registerPointer;
             int r0 = (++it)->u.operand;
             dataLog("[%4d] put_global_var\t g%d(%p), %s\n", location, m_globalObject->findRegisterIndex(registerPointer), registerPointer, registerName(exec, r0).data());
+            break;
+        }
+        case op_put_global_var_check: {
+            WriteBarrier<Unknown>* registerPointer = (++it)->u.registerPointer;
+            int r0 = (++it)->u.operand;
+            dataLog("[%4d] put_global_var_check\t g%d(%p), %s\n", location, m_globalObject->findRegisterIndex(registerPointer), registerPointer, registerName(exec, r0).data());
+            it++;
+            it++;
             break;
         }
         case op_resolve_base: {
@@ -1306,7 +1328,7 @@ void CodeBlock::dump(ExecState* exec, const Vector<Instruction>::const_iterator&
         }
         case op_call_put_result: {
             int r0 = (++it)->u.operand;
-            dataLog("[%4d] op_call_put_result\t\t %s\n", location, registerName(exec, r0).data());
+            dataLog("[%4d] call_put_result\t\t %s\n", location, registerName(exec, r0).data());
             it++;
             break;
         }
@@ -1578,6 +1600,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other, SymbolTable* symTab)
     , m_forcedOSRExitCounter(0)
     , m_optimizationDelayCounter(0)
     , m_reoptimizationRetryCounter(0)
+    , m_lineInfo(other.m_lineInfo)
 #if ENABLE(JIT)
     , m_canCompileWithDFGState(DFG::CapabilityLevelNotSet)
 #endif
@@ -1585,7 +1608,7 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other, SymbolTable* symTab)
     setNumParameters(other.numParameters());
     optimizeAfterWarmUp();
     jitAfterWarmUp();
-    
+
     if (other.m_rareData) {
         createRareDataIfNecessary();
         
@@ -1596,7 +1619,6 @@ CodeBlock::CodeBlock(CopyParsedBlockTag, CodeBlock& other, SymbolTable* symTab)
         m_rareData->m_characterSwitchJumpTables = other.m_rareData->m_characterSwitchJumpTables;
         m_rareData->m_stringSwitchJumpTables = other.m_rareData->m_stringSwitchJumpTables;
         m_rareData->m_expressionInfo = other.m_rareData->m_expressionInfo;
-        m_rareData->m_lineInfo = other.m_rareData->m_lineInfo;
     }
 }
 
@@ -2141,10 +2163,7 @@ int CodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
 {
     ASSERT(bytecodeOffset < instructions().size());
 
-    if (!m_rareData)
-        return m_ownerExecutable->source().firstLine();
-
-    Vector<LineInfo>& lineInfo = m_rareData->m_lineInfo;
+    Vector<LineInfo>& lineInfo = m_lineInfo;
 
     int low = 0;
     int high = lineInfo.size();
@@ -2269,6 +2288,7 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
         m_constantRegisters.shrinkToFit();
     } // else don't shrink these, because we would have already pointed pointers into these tables.
 
+    m_lineInfo.shrinkToFit();
     if (m_rareData) {
         m_rareData->m_exceptionHandlers.shrinkToFit();
         m_rareData->m_regexps.shrinkToFit();
@@ -2276,7 +2296,6 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
         m_rareData->m_characterSwitchJumpTables.shrinkToFit();
         m_rareData->m_stringSwitchJumpTables.shrinkToFit();
         m_rareData->m_expressionInfo.shrinkToFit();
-        m_rareData->m_lineInfo.shrinkToFit();
 #if ENABLE(JIT)
         m_rareData->m_callReturnIndexVector.shrinkToFit();
 #endif

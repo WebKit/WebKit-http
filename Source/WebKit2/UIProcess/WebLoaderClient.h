@@ -47,6 +47,14 @@ class WebFrameProxy;
 class WebPageProxy;
 class WebProtectionSpace;
 
+#if ENABLE(WEB_INTENTS)
+class WebIntentData;
+#endif
+
+#if ENABLE(WEB_INTENTS_TAG)
+class WebIntentServiceInfo;
+#endif
+
 class WebLoaderClient : public APIClient<WKPageLoaderClient, kWKPageLoaderClientCurrentVersion> {
 public:
     void didStartProvisionalLoadForFrame(WebPageProxy*, WebFrameProxy*, APIObject*);
@@ -64,6 +72,13 @@ public:
     void didDisplayInsecureContentForFrame(WebPageProxy*, WebFrameProxy*, APIObject*);
     void didRunInsecureContentForFrame(WebPageProxy*, WebFrameProxy*, APIObject*);
     void didDetectXSSForFrame(WebPageProxy*, WebFrameProxy*, APIObject*);
+#if ENABLE(WEB_INTENTS)
+    void didReceiveIntentForFrame(WebPageProxy*, WebFrameProxy*, WebIntentData*);
+#endif
+
+#if ENABLE(WEB_INTENTS_TAG)
+    void registerIntentServiceForFrame(WebPageProxy*, WebFrameProxy*, WebIntentServiceInfo*);
+#endif
 
     // FIXME: didFirstVisuallyNonEmptyLayoutForFrame and didNewFirstVisuallyNonEmptyLayout should be merged.
     // The only reason for both to exist is to experiment with different heuristics for the time being.

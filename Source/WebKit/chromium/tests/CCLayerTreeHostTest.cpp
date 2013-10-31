@@ -32,6 +32,7 @@
 #include "ContentLayerChromium.h"
 #include "GraphicsContext3DPrivate.h"
 #include "cc/CCLayerTreeHostImpl.h"
+#include "cc/CCSettings.h"
 #include "cc/CCTextureUpdater.h"
 #include "cc/CCTimingFunction.h"
 #include "platform/WebThread.h"
@@ -56,6 +57,25 @@ namespace {
 
 class CCLayerTreeHostTest : public CCThreadedTest { };
 class CCLayerTreeHostTestThreadOnly : public CCThreadedTestThreadOnly { };
+
+// Shortlived layerTreeHosts shouldn't die.
+class CCLayerTreeHostTestShortlived1 : public CCLayerTreeHostTest {
+public:
+    CCLayerTreeHostTestShortlived1() { }
+
+    virtual void beginTest()
+    {
+        // Kill the layerTreeHost immediately.
+        m_layerTreeHost->setRootLayer(0);
+        m_layerTreeHost.clear();
+
+        endTest();
+    }
+
+    virtual void afterTest()
+    {
+    }
+};
 
 // Shortlived layerTreeHosts shouldn't die with a commit in flight.
 class CCLayerTreeHostTestShortlived2 : public CCLayerTreeHostTest {
@@ -558,6 +578,50 @@ private:
 };
 
 TEST_F(CCLayerTreeHostTestAddAnimation, runMultiThread)
+{
+    runTestThreaded();
+}
+
+// Add a layer animation to a layer, but continually fail to draw. Confirm that after
+// a while, we do eventually force a draw.
+class CCLayerTreeHostTestCheckerboardDoesNotStarveDraws : public CCLayerTreeHostTestThreadOnly {
+public:
+    CCLayerTreeHostTestCheckerboardDoesNotStarveDraws()
+        : m_startedAnimating(false)
+    {
+    }
+
+    virtual void beginTest()
+    {
+        postAddAnimationToMainThread();
+    }
+
+    virtual void afterTest()
+    {
+    }
+
+    virtual void animateLayers(CCLayerTreeHostImpl* layerTreeHostImpl, double monotonicTime)
+    {
+        m_startedAnimating = true;
+    }
+
+    virtual void drawLayersOnCCThread(CCLayerTreeHostImpl*)
+    {
+        if (m_startedAnimating)
+            endTest();
+    }
+
+    virtual bool prepareToDrawOnCCThread(CCLayerTreeHostImpl*)
+    {
+        return false;
+    }
+
+private:
+    bool m_startedAnimating;
+};
+
+// Starvation can only be an issue with the MT compositor.
+TEST_F(CCLayerTreeHostTestCheckerboardDoesNotStarveDraws, runMultiThread)
 {
     runTestThreaded();
 }
@@ -1111,8 +1175,7 @@ class CCLayerTreeHostTestSetVisible : public CCLayerTreeHostTest {
 public:
 
     CCLayerTreeHostTestSetVisible()
-        : m_numCommits(0)
-        , m_numDraws(0)
+        : m_numDraws(0)
     {
     }
 
@@ -1136,7 +1199,6 @@ public:
     }
 
 private:
-    int m_numCommits;
     int m_numDraws;
 };
 
@@ -1152,7 +1214,7 @@ public:
     {
     }
 
-    virtual void paintContents(GraphicsContext&, const IntRect&)
+    virtual void paintContents(SkCanvas*, const IntRect&, IntRect&)
     {
         // Set layer opacity to 0.
         m_test->layerTreeHost()->rootLayer()->setOpacity(0);
@@ -1246,7 +1308,7 @@ class MockContentLayerDelegate : public ContentLayerDelegate {
 public:
     bool drawsContent() const { return true; }
     MOCK_CONST_METHOD0(preserves3D, bool());
-    void paintContents(GraphicsContext&, const IntRect&) { }
+    void paintContents(SkCanvas*, const IntRect&, IntRect&) { }
     void notifySyncRequired() { }
 };
 
@@ -1257,13 +1319,13 @@ public:
         : m_rootLayer(ContentLayerChromium::create(&m_delegate))
         , m_childLayer(ContentLayerChromium::create(&m_delegate))
     {
-        m_settings.deviceScaleFactor = 1.5;
     }
 
     virtual void beginTest()
     {
         // The device viewport should be scaled by the device scale factor.
         m_layerTreeHost->setViewportSize(IntSize(40, 40));
+        m_layerTreeHost->setDeviceScaleFactor(1.5);
         EXPECT_EQ(IntSize(40, 40), m_layerTreeHost->viewportSize());
         EXPECT_EQ(IntSize(60, 60), m_layerTreeHost->deviceViewportSize());
 
@@ -1289,7 +1351,7 @@ public:
         // Should only do one commit.
         EXPECT_EQ(0, impl->sourceFrameNumber());
         // Device scale factor should come over to impl.
-        EXPECT_NEAR(impl->settings().deviceScaleFactor, 1.5, 0.00001);
+        EXPECT_NEAR(impl->deviceScaleFactor(), 1.5, 0.00001);
 
         // Both layers are on impl.
         ASSERT_EQ(1u, impl->rootLayer()->children().size());
@@ -1318,7 +1380,7 @@ public:
         EXPECT_EQ_RECT(IntRect(0, 0, 60, 60), root->renderSurface()->contentRect());
 
         WebTransformationMatrix scaleTransform;
-        scaleTransform.scale(impl->settings().deviceScaleFactor);
+        scaleTransform.scale(impl->deviceScaleFactor());
 
         // The root layer is scaled by 2x.
         WebTransformationMatrix rootScreenSpaceTransform = scaleTransform;
@@ -2201,5 +2263,79 @@ private:
 };
 
 SINGLE_AND_MULTI_THREAD_TEST_F(CCLayerTreeHostTestLayerAddedWithAnimation)
+
+class CCLayerTreeHostTestScrollChildLayer : public CCLayerTreeHostTest, public LayerChromiumScrollDelegate {
+public:
+    CCLayerTreeHostTestScrollChildLayer()
+        : m_scrollAmount(2, 1)
+    {
+    }
+
+    virtual void beginTest() OVERRIDE
+    {
+        m_layerTreeHost->setViewportSize(IntSize(10, 10));
+        m_rootScrollLayer = ContentLayerChromium::create(&m_mockDelegate);
+        m_rootScrollLayer->setBounds(IntSize(10, 10));
+        m_rootScrollLayer->setIsDrawable(true);
+        m_rootScrollLayer->setScrollable(true);
+        m_rootScrollLayer->setMaxScrollPosition(IntSize(100, 100));
+        m_layerTreeHost->rootLayer()->addChild(m_rootScrollLayer);
+        m_childLayer = ContentLayerChromium::create(&m_mockDelegate);
+        m_childLayer->setLayerScrollDelegate(this);
+        m_childLayer->setBounds(IntSize(50, 50));
+        m_childLayer->setIsDrawable(true);
+        m_childLayer->setScrollable(true);
+        m_childLayer->setMaxScrollPosition(IntSize(100, 100));
+        m_rootScrollLayer->addChild(m_childLayer);
+        postSetNeedsCommitToMainThread();
+    }
+
+    virtual void didScroll(const IntSize& scrollDelta) OVERRIDE
+    {
+        m_reportedScrollAmount = scrollDelta;
+    }
+
+    virtual void applyScrollAndScale(const IntSize& scrollDelta, float) OVERRIDE
+    {
+        IntPoint position = m_rootScrollLayer->scrollPosition();
+        m_rootScrollLayer->setScrollPosition(position + scrollDelta);
+    }
+
+    virtual void beginCommitOnCCThread(CCLayerTreeHostImpl* impl) OVERRIDE
+    {
+        EXPECT_EQ(m_rootScrollLayer->scrollPosition(), IntPoint());
+        if (!m_layerTreeHost->frameNumber())
+            EXPECT_EQ(m_childLayer->scrollPosition(), IntPoint());
+        else
+            EXPECT_EQ(m_childLayer->scrollPosition(), IntPoint() + m_scrollAmount);
+    }
+
+    virtual void drawLayersOnCCThread(CCLayerTreeHostImpl* impl) OVERRIDE
+    {
+        if (impl->frameNumber() == 1) {
+            EXPECT_EQ(impl->scrollBegin(IntPoint(5, 5), CCInputHandlerClient::Wheel), CCInputHandlerClient::ScrollStarted);
+            impl->scrollBy(m_scrollAmount);
+            impl->scrollEnd();
+        } else if (impl->frameNumber() == 2)
+            endTest();
+    }
+
+    virtual void afterTest() OVERRIDE
+    {
+        EXPECT_EQ(m_scrollAmount, m_reportedScrollAmount);
+    }
+
+private:
+    const IntSize m_scrollAmount;
+    IntSize m_reportedScrollAmount;
+    MockContentLayerDelegate m_mockDelegate;
+    RefPtr<LayerChromium> m_childLayer;
+    RefPtr<LayerChromium> m_rootScrollLayer;
+};
+
+TEST_F(CCLayerTreeHostTestScrollChildLayer, runMultiThread)
+{
+    runTest(true);
+}
 
 } // namespace

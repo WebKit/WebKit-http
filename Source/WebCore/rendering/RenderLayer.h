@@ -441,8 +441,13 @@ public:
     // ditto for hasVisibleDescendant(), see https://bugs.webkit.org/show_bug.cgi?id=71277
     bool hasVisibleContent() const { return m_hasVisibleContent; }
     bool hasVisibleDescendant() const { return m_hasVisibleDescendant; }
-    void setHasVisibleContent(bool);
+
+    void setHasVisibleContent();
     void dirtyVisibleContentStatus();
+
+    // FIXME: We should ASSERT(!m_hasSelfPaintingLayerDescendantDirty); here but we hit the same bugs as visible content above.
+    // Part of the issue is with subtree relayout: we don't check if our ancestors have some descendant flags dirty, missing some updates.
+    bool hasSelfPaintingLayerDescendant() const { return m_hasSelfPaintingLayerDescendant; }
 
     // Gets the nearest enclosing positioned ancestor layer (also includes
     // the <html> layer and the root layer).
@@ -651,6 +656,9 @@ private:
     bool isStackingContext(const RenderStyle* style) const { return !style->hasAutoZIndex() || isRootLayer(); }
     bool isDirtyStackingContext() const { return m_zOrderListsDirty && isStackingContext(); }
 
+    void setAncestorChainHasSelfPaintingLayerDescendant();
+    void dirtyAncestorChainHasSelfPaintingLayerDescendantStatus();
+
     void computeRepaintRects(LayoutPoint* offsetFromRoot = 0);
     void clearRepaintRects();
 
@@ -660,6 +668,7 @@ private:
 
     bool shouldRepaintAfterLayout() const;
 
+    void updateSelfPaintingLayerAfterStyleChange(const RenderStyle* oldStyle);
     void updateStackingContextsAfterStyleChange(const RenderStyle* oldStyle);
 
     void updateScrollbarsAfterStyleChange(const RenderStyle* oldStyle);
@@ -774,9 +783,10 @@ private:
     
     void updateScrollableAreaSet(bool hasOverflow);
 
-    void childVisibilityChanged(bool newVisibility);
-    void dirtyVisibleDescendantStatus();
-    void updateVisibilityStatus();
+    void dirtyAncestorChainVisibleDescendantStatus();
+    void setAncestorChainHasVisibleDescendant();
+
+    void updateDescendantDependentFlags();
 
     // This flag is computed by RenderLayerCompositor, which knows more about 3d hierarchies than we do.
     void setHas3DTransformedDescendant(bool b) { m_has3DTransformedDescendant = b; }
@@ -871,6 +881,11 @@ protected:
     bool m_isNormalFlowOnly : 1;
 
     bool m_isSelfPaintingLayer : 1;
+
+    // If have no self-painting descendants, we don't have to walk our children during painting. This can lead to
+    // significant savings, especially if the tree has lots of non-self-painting layers grouped together (e.g. table cells).
+    bool m_hasSelfPaintingLayerDescendant : 1;
+    bool m_hasSelfPaintingLayerDescendantDirty : 1;
 
     const bool m_isRootLayer : 1;
 

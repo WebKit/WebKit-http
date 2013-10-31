@@ -66,7 +66,6 @@
 #include "NodeList.h"
 #include "Page.h"
 #include "Pasteboard.h"
-#include "TextCheckingHelper.h"
 #include "RemoveFormatCommand.h"
 #include "RenderBlock.h"
 #include "RenderPart.h"
@@ -481,13 +480,13 @@ bool Editor::shouldShowDeleteInterface(HTMLElement* element) const
     return client() && client()->shouldShowDeleteInterface(element);
 }
 
-void Editor::respondToChangedSelection(const VisibleSelection& oldSelection)
+void Editor::notifyComponentsOnChangedSelection(const VisibleSelection& oldSelection, FrameSelection::SetSelectionOptions options)
 {
     if (client())
         client()->respondToChangedSelection(m_frame);
     setStartNewKillRingSequence(true);
     m_deleteButtonController->respondToChangedSelection(oldSelection);
-    m_alternativeTextController->respondToChangedSelection(oldSelection);
+    m_alternativeTextController->respondToChangedSelection(oldSelection, options);
 }
 
 void Editor::respondToChangedContents(const VisibleSelection& endingSelection)
@@ -790,7 +789,8 @@ void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
     m_alternativeTextController->respondToAppliedEditing(cmd.get());
 
     // Don't clear the typing style with this selection change.  We do those things elsewhere if necessary.
-    changeSelectionAfterCommand(newSelection, false, false);
+    FrameSelection::SetSelectionOptions options = cmd->isDictationCommand() ? FrameSelection::DictationTriggered : 0;
+    changeSelectionAfterCommand(newSelection, options);
 
     if (!cmd->preservesTypingStyle())
         m_frame->selection()->clearTypingStyle();
@@ -816,7 +816,7 @@ void Editor::unappliedEditing(PassRefPtr<EditCommandComposition> cmd)
     dispatchEditableContentChangedEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement());
     
     VisibleSelection newSelection(cmd->startingSelection());
-    changeSelectionAfterCommand(newSelection, true, true);
+    changeSelectionAfterCommand(newSelection, FrameSelection::CloseTyping | FrameSelection::ClearTypingStyle);
     m_alternativeTextController->respondToUnappliedEditing(cmd.get());
     
     m_lastEditCommand = 0;
@@ -832,7 +832,7 @@ void Editor::reappliedEditing(PassRefPtr<EditCommandComposition> cmd)
     dispatchEditableContentChangedEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement());
     
     VisibleSelection newSelection(cmd->endingSelection());
-    changeSelectionAfterCommand(newSelection, true, true);
+    changeSelectionAfterCommand(newSelection, FrameSelection::CloseTyping | FrameSelection::ClearTypingStyle);
     
     m_lastEditCommand = 0;
     if (client())
@@ -2203,7 +2203,7 @@ void Editor::unappliedSpellCorrection(const VisibleSelection& selectionOfCorrect
 
 void Editor::updateMarkersForWordsAffectedByEditing(bool doNotRemoveIfSelectionAtWordBoundary)
 {
-    if (!m_alternativeTextController->shouldRemoveMarkersUponEditing())
+    if (!m_alternativeTextController->shouldRemoveMarkersUponEditing() && (!textChecker() || textChecker()->shouldEraseMarkersAfterChangeSelection(TextCheckingTypeSpelling)))
         return;
 
     // We want to remove the markers from a word if an editing command will change the word. This can happen in one of
@@ -2267,7 +2267,11 @@ void Editor::updateMarkersForWordsAffectedByEditing(bool doNotRemoveIfSelectionA
     Document* document = m_frame->document();
     RefPtr<Range> wordRange = Range::create(document, startOfFirstWord.deepEquivalent(), endOfLastWord.deepEquivalent());
 
-    document->markers()->removeMarkers(wordRange.get(), DocumentMarker::Spelling | DocumentMarker::CorrectionIndicator | DocumentMarker::SpellCheckingExemption | DocumentMarker::DictationAlternatives, DocumentMarkerController::RemovePartiallyOverlappingMarker);
+    Vector<DocumentMarker*> markers = document->markers()->markersInRange(wordRange.get(), DocumentMarker::DictationAlternatives);
+    for (size_t i = 0; i < markers.size(); ++i)
+        m_alternativeTextController->removeDictationAlternativesForMarker(markers[i]);
+
+    document->markers()->removeMarkers(wordRange.get(), DocumentMarker::Spelling | DocumentMarker::Grammar | DocumentMarker::CorrectionIndicator | DocumentMarker::SpellCheckingExemption | DocumentMarker::DictationAlternatives, DocumentMarkerController::RemovePartiallyOverlappingMarker);
     document->markers()->clearDescriptionOnMarkersIntersectingRange(wordRange.get(), DocumentMarker::Replacement);
 }
 
@@ -2414,7 +2418,7 @@ void Editor::dismissCorrectionPanelAsIgnored()
     m_alternativeTextController->dismiss(ReasonForDismissingAlternativeTextIgnored);
 }
 
-void Editor::changeSelectionAfterCommand(const VisibleSelection& newSelection, bool closeTyping, bool clearTypingStyle)
+void Editor::changeSelectionAfterCommand(const VisibleSelection& newSelection,  FrameSelection::SetSelectionOptions options)
 {
     // If the new selection is orphaned, then don't update the selection.
     if (newSelection.start().isOrphan() || newSelection.end().isOrphan())
@@ -2425,14 +2429,8 @@ void Editor::changeSelectionAfterCommand(const VisibleSelection& newSelection, b
     // The old selection can be invalid here and calling shouldChangeSelection can produce some strange calls.
     // See <rdar://problem/5729315> Some shouldChangeSelectedDOMRange contain Ranges for selections that are no longer valid
     bool selectionDidNotChangeDOMPosition = newSelection == m_frame->selection()->selection();
-    if (selectionDidNotChangeDOMPosition || m_frame->selection()->shouldChangeSelection(newSelection)) {
-        FrameSelection::SetSelectionOptions options = 0;
-        if (closeTyping)
-            options |= FrameSelection::CloseTyping;
-        if (clearTypingStyle)
-            options |= FrameSelection::ClearTypingStyle;
+    if (selectionDidNotChangeDOMPosition || m_frame->selection()->shouldChangeSelection(newSelection))
         m_frame->selection()->setSelection(newSelection, options);
-    }
 
     // Some editing operations change the selection visually without affecting its position within the DOM.
     // For example when you press return in the following (the caret is marked by ^):
@@ -2827,7 +2825,7 @@ void Editor::respondToChangedSelection(const VisibleSelection& oldSelection, Fra
     if (!isContinuousGrammarCheckingEnabled)
         m_frame->document()->markers()->removeMarkers(DocumentMarker::Grammar);
 
-    respondToChangedSelection(oldSelection);
+    notifyComponentsOnChangedSelection(oldSelection, options);
 }
 
 static Node* findFirstMarkable(Node* node)
@@ -2916,6 +2914,16 @@ void Editor::willDetachPage()
 {
     if (EditorClient* editorClient = client())
         editorClient->frameWillDetachPage(frame());
+}
+
+Vector<String> Editor::dictationAlternativesForMarker(const DocumentMarker* marker)
+{
+    return m_alternativeTextController->dictationAlternativesForMarker(marker);
+}
+
+void Editor::applyDictationAlternativelternative(const String& alternativeString)
+{
+    m_alternativeTextController->applyDictationAlternative(alternativeString);
 }
 
 } // namespace WebCore

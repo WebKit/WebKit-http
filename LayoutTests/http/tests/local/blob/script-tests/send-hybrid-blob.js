@@ -17,7 +17,7 @@ function runHybridBlobTest(fileIndexOrStrings, opt_range)
     var blob = util.appendAndCreateBlob(fileIndexOrStrings);
     var urlParameter = util.createUrlParameter(fileIndexOrStrings, opt_range);
     if (opt_range)
-        blob = blob.webkitSlice(opt_range.start, opt_range.start + opt_range.length);
+        blob = blob.slice(opt_range.start, opt_range.start + opt_range.length);
     util.uploadBlob(blob, urlParameter);
 }
 
@@ -83,11 +83,11 @@ function runTests()
                         F('abe.png') ],
                       { 'start': 20, 'length': 3000 });
 
-    layoutTestController.notifyDone();
+    testRunner.notifyDone();
 }
 
 if (window.eventSender) {
-    layoutTestController.waitUntilDone();
+    testRunner.waitUntilDone();
     util.runTests();
 } else
     testFailed("This test is not interactive, please run using DumpRenderTree");

@@ -83,10 +83,9 @@ public:
 
     bool canSetScriptSource();
     bool setScriptSource(const String& sourceID, const String& newContent, bool preview, String* error, ScriptValue* newCallFrames, ScriptObject* result);
+    void updateCallStack(ScriptValue* callFrame);
 
     bool causesRecompilation() { return true; }
-    // FIXME: Need to remove this. Refer to bug: 88759.
-    bool supportsNativeBreakpoints() { return true; }
 
     void recompileAllJSFunctionsSoon();
     virtual void recompileAllJSFunctions(Timer<ScriptDebugServer>* = 0) = 0;

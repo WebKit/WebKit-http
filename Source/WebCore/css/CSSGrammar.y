@@ -101,7 +101,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 
 %}
 
-%expect 59
+%expect 63
 
 %nonassoc LOWEST_PREC
 
@@ -135,6 +135,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 %token FONT_FACE_SYM
 %token CHARSET_SYM
 %token NAMESPACE_SYM
+%token VARFUNCTION
 %token WEBKIT_RULE_SYM
 %token WEBKIT_DECLS_SYM
 %token WEBKIT_KEYFRAME_RULE_SYM
@@ -194,6 +195,8 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 %token <number> VH
 %token <number> VMIN
 %token <number> DPPX
+%token <number> DPI
+%token <number> DPCM
 
 %token <string> URI
 %token <string> FUNCTION
@@ -202,6 +205,7 @@ static int cssyylex(YYSTYPE* yylval, void* parser)
 %token <string> CALCFUNCTION
 %token <string> MINFUNCTION
 %token <string> MAXFUNCTION
+%token <string> VAR_DEFINITION
 
 %token <string> UNICODERANGE
 
@@ -411,9 +415,7 @@ rule_list:
  ;
 
 valid_rule:
-    before_ruleset ruleset {
-        $$ = $2;
-    }
+    ruleset
   | media
   | page
   | font_face
@@ -841,7 +843,7 @@ maybe_space_before_declaration:
     }
   ;
 
-before_ruleset:
+before_selector_list:
     /* empty */ {
         CSSParser* p = static_cast<CSSParser*>(parser);
         p->markSelectorListStart();
@@ -856,9 +858,9 @@ before_rule_opening_brace:
   ;
 
 ruleset:
-    selector_list before_rule_opening_brace '{' maybe_space_before_declaration declaration_list closing_brace {
+    before_selector_list selector_list before_rule_opening_brace '{' maybe_space_before_declaration declaration_list closing_brace {
         CSSParser* p = static_cast<CSSParser*>(parser);
-        $$ = p->createStyleRule($1);
+        $$ = p->createStyleRule($2);
     }
   ;
 
@@ -1297,6 +1299,17 @@ decl_list:
     ;
 
 declaration:
+    VAR_DEFINITION ':' maybe_space expr prio {
+#if ENABLE(CSS_VARIABLES)
+        CSSParser* p = static_cast<CSSParser*>(parser);
+        p->storeVariableDeclaration($1, p->sinkFloatingValueList($4), $5);
+        $$ = true;
+        p->markPropertyEnd($5, $$);
+#else
+        $$ = false;
+#endif
+    }
+    |
     property ':' maybe_space expr prio {
         $$ = false;
         CSSParser* p = static_cast<CSSParser*>(parser);
@@ -1429,6 +1442,13 @@ term:
   | UNICODERANGE maybe_space { $$.id = 0; $$.string = $1; $$.unit = CSSPrimitiveValue::CSS_UNICODE_RANGE; }
   | HEX maybe_space { $$.id = 0; $$.string = $1; $$.unit = CSSPrimitiveValue::CSS_PARSER_HEXCOLOR; }
   | '#' maybe_space { $$.id = 0; $$.string = CSSParserString(); $$.unit = CSSPrimitiveValue::CSS_PARSER_HEXCOLOR; } /* Handle error case: "color: #;" */
+  | VARFUNCTION maybe_space IDENT ')' maybe_space {
+#if ENABLE(CSS_VARIABLES)
+      $$.id = 0;
+      $$.string = $3;
+      $$.unit = CSSPrimitiveValue::CSS_VARIABLE_NAME;
+#endif
+  }
   /* FIXME: according to the specs a function can have a unary_operator in front. I know no case where this makes sense */
   | function {
       $$ = $1;
@@ -1477,6 +1497,8 @@ unary_term:
   | VH maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_VH; }
   | VMIN maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_VMIN; }
   | DPPX maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_DPPX; }
+  | DPI maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_DPI; }
+  | DPCM maybe_space { $$.id = 0; $$.fValue = $1; $$.unit = CSSPrimitiveValue::CSS_DPCM; }
   ;
 
 function:

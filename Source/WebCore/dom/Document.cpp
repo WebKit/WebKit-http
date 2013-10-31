@@ -44,6 +44,7 @@
 #include "Comment.h"
 #include "Console.h"
 #include "ContentSecurityPolicy.h"
+#include "ContextFeatures.h"
 #include "CookieJar.h"
 #include "DOMImplementation.h"
 #include "DOMSelection.h"
@@ -114,12 +115,14 @@
 #include "NewXMLDocumentParser.h"
 #include "NodeFilter.h"
 #include "NodeIterator.h"
+#include "NodeRareData.h"
 #include "NodeWithIndex.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "PlatformKeyboardEvent.h"
 #include "PluginDocument.h"
+#include "PointerLockController.h"
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
 #include "RegisteredEventListener.h"
@@ -427,6 +430,7 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     : ContainerNode(0, CreateDocument)
     , TreeScope(this)
     , m_guardRefCount(0)
+    , m_contextFeatures(ContextFeatures::defaultSwitch())
     , m_compatibilityMode(NoQuirksMode)
     , m_compatibilityModeLocked(false)
     , m_domTreeVersion(++s_globalTreeVersion)
@@ -505,6 +509,8 @@ Document::Document(Frame* frame, const KURL& url, bool isXHTML, bool isHTML)
     m_ignoreAutofocus = false;
 
     m_frame = frame;
+    if (m_frame)
+        provideContextFeaturesToDocumentFrom(this, m_frame->page());
 
     // We depend on the url getting immediately set in subframes, but we
     // also depend on the url NOT getting immediately set in opened windows.
@@ -665,6 +671,7 @@ void Document::removedLastRef()
         m_activeNode = 0;
         m_titleElement = 0;
         m_documentElement = 0;
+        m_contextFeatures = ContextFeatures::defaultSwitch();
 #if ENABLE(FULLSCREEN_API)
         m_fullScreenElement = 0;
         m_fullScreenElementStack.clear();
@@ -1315,6 +1322,7 @@ void Document::setXMLStandalone(bool standalone, ExceptionCode& ec)
 
 void Document::setDocumentURI(const String& uri)
 {
+    // This property is read-only from JavaScript, but writable from Objective-C.
     m_documentURI = uri;
     updateBaseURL();
 }
@@ -2687,8 +2695,9 @@ void Document::updateBaseURL()
     else if (!m_baseURLOverride.isEmpty())
         m_baseURL = m_baseURLOverride;
     else {
-        // The documentURI attribute is an arbitrary string. DOM 3 Core does not specify how it should be resolved,
-        // so we use a null base URL.
+        // The documentURI attribute is read-only from JavaScript, but writable from Objective C, so we need to retain
+        // this fallback behavior. We use a null base URL, since the documentURI attribute is an arbitrary string
+        // and DOM 3 Core does not specify how it should be resolved.
         m_baseURL = KURL(KURL(), documentURI());
     }
     selectorQueryCache()->invalidate();
@@ -3189,7 +3198,7 @@ bool Document::canReplaceChild(Node* newChild, Node* oldChild)
     
     // Then, see how many doctypes and elements might be added by the new child.
     if (newChild->nodeType() == DOCUMENT_FRAGMENT_NODE) {
-        for (Node* c = firstChild(); c; c = c->nextSibling()) {
+        for (Node* c = newChild->firstChild(); c; c = c->nextSibling()) {
             switch (c->nodeType()) {
             case ATTRIBUTE_NODE:
             case CDATA_SECTION_NODE:
@@ -3851,6 +3860,18 @@ void Document::setCSSTarget(Element* n)
     m_cssTarget = n;
     if (n)
         n->setNeedsStyleRecalc();
+}
+
+void Document::registerDynamicSubtreeNodeList(DynamicSubtreeNodeList* list)
+{
+    ensureRareData()->ensureNodeLists(this)->m_listsInvalidatedAtDocument.add(list);
+}
+
+void Document::unregisterDynamicSubtreeNodeList(DynamicSubtreeNodeList* list)
+{
+    ASSERT(hasRareData());
+    ASSERT(rareData()->nodeLists());
+    rareData()->nodeLists()->m_listsInvalidatedAtDocument.remove(list);
 }
 
 void Document::attachNodeIterator(NodeIterator* ni)
@@ -5731,6 +5752,19 @@ void Document::addDocumentToFullScreenChangeEventQueue(Document* doc)
 }
 #endif
 
+#if ENABLE(POINTER_LOCK)
+void Document::webkitExitPointerLock()
+{
+    if (page())
+        page()->pointerLockController()->requestPointerUnlock();
+}
+
+Element* Document::webkitPointerLockElement() const
+{
+    return page() ? page()->pointerLockController()->element() : 0;
+}
+#endif
+
 void Document::decrementLoadEventDelayCount()
 {
     ASSERT(m_loadEventDelayCount);
@@ -5970,6 +6004,11 @@ void Document::adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect& r
     adjustFloatRectForAbsoluteZoom(rect, renderer);
     if (inverseFrameScale != 1)
         rect.scale(inverseFrameScale);
+}
+
+void Document::setContextFeatures(PassRefPtr<ContextFeatures> features)
+{
+    m_contextFeatures = features;
 }
 
 #if ENABLE(UNDO_MANAGER)

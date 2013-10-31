@@ -506,7 +506,6 @@ private:
     WebPluginContainerImpl* m_plugin;
     int m_pageCount;
     WebPrintParams m_printParams;
-    WebPrintScalingOption m_printScalingOption;
 
 };
 
@@ -1345,6 +1344,24 @@ void WebFrameImpl::requestTextChecking(const WebElement& webElem)
     frame()->editor()->spellChecker()->requestCheckingFor(SpellCheckRequest::create(TextCheckingTypeSpelling | TextCheckingTypeGrammar, TextCheckingProcessBatch, rangeToCheck, rangeToCheck));
 }
 
+void WebFrameImpl::replaceMisspelledRange(const WebString& text)
+{
+    // If this caret selection has two or more markers, this function replace the range covered by the first marker with the specified word as Microsoft Word does.
+    if (pluginContainerFromFrame(frame()))
+        return;
+    RefPtr<Range> caretRange = frame()->selection()->toNormalizedRange();
+    if (!caretRange)
+        return;
+    Vector<DocumentMarker*> markers = frame()->document()->markers()->markersInRange(caretRange.get(), DocumentMarker::Spelling | DocumentMarker::Grammar);
+    if (markers.size() < 1 || markers[0]->startOffset() >= markers[0]->endOffset())
+        return;
+    RefPtr<Range> markerRange = TextIterator::rangeFromLocationAndLength(frame()->selection()->rootEditableElementOrDocumentElement(), markers[0]->startOffset(), markers[0]->endOffset() - markers[0]->startOffset());
+    if (!markerRange.get() || !frame()->selection()->shouldChangeSelection(markerRange.get()))
+        return;
+    frame()->selection()->setSelection(markerRange.get(), CharacterGranularity);
+    frame()->editor()->replaceSelectionWithText(text, false, true);
+}
+
 bool WebFrameImpl::hasSelection() const
 {
     WebPluginContainerImpl* pluginContainer = pluginContainerFromFrame(frame());
@@ -1573,11 +1590,13 @@ bool WebFrameImpl::find(int identifier,
 {
     WebFrameImpl* mainFrameImpl = viewImpl()->mainFrameImpl();
 
-    if (!options.findNext) {
+    if (!options.findNext)
         frame()->page()->unmarkAllTextMatches();
-        m_activeMatch = 0;
-    } else
+    else
         setMarkerActive(m_activeMatch.get(), false);
+
+    if (m_activeMatch && m_activeMatch->ownerDocument() != frame()->document())
+        m_activeMatch = 0;
 
     // If the user has selected something since the last Find operation we want
     // to start from there. Otherwise, we start searching from where the last Find
@@ -1958,18 +1977,6 @@ WebString WebFrameImpl::renderTreeAsText(RenderAsTextControls toShow) const
     return externalRepresentation(m_frame, behavior);
 }
 
-WebString WebFrameImpl::counterValueForElementById(const WebString& id) const
-{
-    if (!m_frame)
-        return WebString();
-
-    Element* element = m_frame->document()->getElementById(id);
-    if (!element)
-        return WebString();
-
-    return counterValueForElement(element);
-}
-
 WebString WebFrameImpl::markerTextForListItem(const WebElement& webElement) const
 {
     return WebCore::markerTextForListItem(const_cast<Element*>(webElement.constUnwrap<Element>()));
@@ -2221,6 +2228,14 @@ void WebFrameImpl::setFindEndstateFocusAndSelection()
         // a link focused, which is weird).
         frame()->selection()->setSelection(m_activeMatch.get());
         frame()->document()->setFocusedNode(0);
+
+        // Finally clear the active match, for two reasons:
+        // We just finished the find 'session' and we don't want future (potentially
+        // unrelated) find 'sessions' operations to start at the same place.
+        // The WebFrameImpl could get reused and the m_activeMatch could end up pointing
+        // to a document that is no longer valid. Keeping an invalid reference around
+        // is just asking for trouble.
+        m_activeMatch = 0;
     }
 }
 

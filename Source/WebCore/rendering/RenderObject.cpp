@@ -389,6 +389,14 @@ RenderObject* RenderObject::previousInPreOrder() const
     return parent();
 }
 
+RenderObject* RenderObject::previousInPreOrder(const RenderObject* stayWithin) const
+{
+    if (this == stayWithin)
+        return 0;
+
+    return previousInPreOrder();
+}
+
 RenderObject* RenderObject::childAt(unsigned index) const
 {
     RenderObject* child = firstChild();
@@ -716,7 +724,11 @@ RenderBlock* RenderObject::containingBlock() const
     if (!o && isRenderScrollbarPart())
         o = toRenderScrollbarPart(this)->rendererOwningScrollbar();
     if (!isText() && m_style->position() == FixedPosition) {
-        while (o && !o->isRenderView() && !(o->hasTransform() && o->isRenderBlock())) {
+        while (o) {
+            if (o->isRenderView())
+                break;
+            if (o->hasTransform() && o->isRenderBlock())
+                break;
 #if ENABLE(SVG)
             // foreignObject is the containing block for its contents.
             if (o->isSVGForeignObject())
@@ -724,18 +736,24 @@ RenderBlock* RenderObject::containingBlock() const
 #endif
             o = o->parent();
         }
+        ASSERT(!o->isAnonymousBlock());
     } else if (!isText() && m_style->position() == AbsolutePosition) {
-        while (o && (o->style()->position() == StaticPosition || (o->isInline() && !o->isReplaced())) && !o->isRenderView() && !(o->hasTransform() && o->isRenderBlock())) {
+        while (o) {
             // For relpositioned inlines, we return the nearest non-anonymous enclosing block. We don't try
             // to return the inline itself.  This allows us to avoid having a positioned objects
             // list in all RenderInlines and lets us return a strongly-typed RenderBlock* result
             // from this method.  The container() method can actually be used to obtain the
             // inline directly.
+            if (!o->style()->position() == StaticPosition && !(o->isInline() && !o->isReplaced()))
+                break;
+            if (o->isRenderView())
+                break;
+            if (o->hasTransform() && o->isRenderBlock())
+                break;
+
             if (o->style()->position() == RelativePosition && o->isInline() && !o->isReplaced()) {
-                RenderBlock* relPositionedInlineContainingBlock = o->containingBlock();
-                while (relPositionedInlineContainingBlock->isAnonymousBlock())
-                    relPositionedInlineContainingBlock = relPositionedInlineContainingBlock->containingBlock();
-                return relPositionedInlineContainingBlock;
+                o = o->containingBlock();
+                break;
             }
 #if ENABLE(SVG)
             if (o->isSVGForeignObject()) //foreignObject is the containing block for contents inside it
@@ -744,6 +762,9 @@ RenderBlock* RenderObject::containingBlock() const
 
             o = o->parent();
         }
+
+        while (o && o->isAnonymousBlock())
+            o = o->containingBlock();
     } else {
         while (o && ((o->isInline() && !o->isReplaced()) || !o->isRenderBlock()))
             o = o->parent();
@@ -1768,7 +1789,7 @@ void RenderObject::styleWillChange(StyleDifference diff, const RenderStyle* newS
             if (m_style->visibility() != newStyle->visibility()) {
                 if (RenderLayer* l = enclosingLayer()) {
                     if (newStyle->visibility() == VISIBLE)
-                        l->setHasVisibleContent(true);
+                        l->setHasVisibleContent();
                     else if (l->hasVisibleContent() && (this == l->renderer() || l->renderer()->style()->visibility() != VISIBLE)) {
                         l->dirtyVisibleContentStatus();
                         if (diff > StyleDifferenceRepaintLayer)
@@ -2193,13 +2214,14 @@ RenderObject* RenderObject::container(const RenderBoxModelObject* repaintContain
         // FIXME: The definition of view() has changed to not crawl up the render tree.  It might
         // be safe now to use it.
         while (o && o->parent() && !(o->hasTransform() && o->isRenderBlock())) {
-            if (repaintContainerSkipped && o == repaintContainer)
-                *repaintContainerSkipped = true;
 #if ENABLE(SVG)
             // foreignObject is the containing block for its contents.
             if (o->isSVGForeignObject())
                 break;
 #endif
+            if (repaintContainerSkipped && o == repaintContainer)
+                *repaintContainerSkipped = true;
+
             o = o->parent();
         }
     } else if (pos == AbsolutePosition) {
@@ -2207,12 +2229,13 @@ RenderObject* RenderObject::container(const RenderBoxModelObject* repaintContain
         // we may not have one if we're part of an uninstalled subtree.  We'll
         // climb as high as we can though.
         while (o && o->style()->position() == StaticPosition && !o->isRenderView() && !(o->hasTransform() && o->isRenderBlock())) {
-            if (repaintContainerSkipped && o == repaintContainer)
-                *repaintContainerSkipped = true;
 #if ENABLE(SVG)
             if (o->isSVGForeignObject()) // foreignObject is the containing block for contents inside it
                 break;
 #endif
+            if (repaintContainerSkipped && o == repaintContainer)
+                *repaintContainerSkipped = true;
+
             o = o->parent();
         }
     }

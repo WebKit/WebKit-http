@@ -51,6 +51,7 @@
 #include <PrintContext.h>
 #include <RenderTreeAsText.h>
 #include <ResourceLoadScheduler.h>
+#include <SchemeRegistry.h>
 #include <ScriptValue.h>
 #include <Settings.h>
 #include <TextIterator.h>
@@ -95,21 +96,6 @@ void DumpRenderTreeSupportEfl::clearOpener(Evas_Object* ewkFrame)
 {
     if (WebCore::Frame* frame = EWKPrivate::coreFrame(ewkFrame))
         frame->loader()->setOpener(0);
-}
-
-String DumpRenderTreeSupportEfl::counterValueByElementId(const Evas_Object* ewkFrame, const char* elementId)
-{
-    WebCore::Frame* frame = EWKPrivate::coreFrame(ewkFrame);
-
-    if (!frame)
-        return String();
-
-    WebCore::Element* element = frame->document()->getElementById(elementId);
-
-    if (!element)
-        return String();
-
-    return WebCore::counterValueForElement(element);
 }
 
 bool DumpRenderTreeSupportEfl::elementDoesAutoCompleteForElementWithId(const Evas_Object* ewkFrame, const String& elementId)
@@ -817,4 +803,9 @@ bool DumpRenderTreeSupportEfl::selectedRange(Evas_Object* ewkView, int* start, i
     *length = WebCore::TextIterator::rangeLength(testRange.get());
 
     return true;
+}
+
+void DumpRenderTreeSupportEfl::setDomainRelaxationForbiddenForURLScheme(bool forbidden, const String& scheme)
+{
+    WebCore::SchemeRegistry::setDomainRelaxationForbiddenForURLScheme(forbidden, scheme);
 }

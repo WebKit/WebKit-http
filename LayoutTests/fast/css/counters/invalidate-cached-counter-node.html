@@ -19,10 +19,10 @@
         document.body.offsetTop;
         document.getElementById("keep-me").style.fontSize = "20px";
 
-        if (window.layoutTestController) {
-            layoutTestController.dumpAsText();
+        if (window.testRunner) {
+            testRunner.dumpAsText();
             var testResult;
-            var counterValue = layoutTestController.counterValueForElementById("keep-me");
+            var counterValue = window.internals.counterValue(document.getElementById("keep-me"));
             if (counterValue == "1")
                 testResult = "PASS";
             else

@@ -63,6 +63,8 @@ public:
     static const size_t persistentPathPrefixLength;
     static const char temporaryPathPrefix[];
     static const size_t temporaryPathPrefixLength;
+    static const char isolatedPathPrefix[];
+    static const size_t isolatedPathPrefixLength;
 
     static PassRefPtr<DOMFileSystemBase> create(ScriptExecutionContext* context, const String& name, FileSystemType type, const KURL& rootURL, PassOwnPtr<AsyncFileSystem> asyncFileSystem)
     {
@@ -75,6 +77,12 @@ public:
     KURL rootURL() const { return m_filesystemRootURL; }
     AsyncFileSystem* asyncFileSystem() const { return m_asyncFileSystem.get(); }
     SecurityOrigin* securityOrigin() const;
+
+    // The clonable flag is used in the structured clone algorithm to test
+    // whether the FileSystem API object is permitted to be cloned. It defaults
+    // to false, and must be explicitly set by internal code permit cloning.
+    void makeClonable() { m_clonable = true; }
+    bool clonable() const { return m_clonable; }
 
     static bool isValidType(FileSystemType);
     static bool crackFileSystemURL(const KURL&, FileSystemType&, String& filePath);
@@ -102,6 +110,7 @@ protected:
     String m_name;
     FileSystemType m_type;
     KURL m_filesystemRootURL;
+    bool m_clonable;
 
     mutable OwnPtr<AsyncFileSystem> m_asyncFileSystem;
 };

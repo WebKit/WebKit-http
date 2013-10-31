@@ -434,6 +434,7 @@ public:
     virtual void enableContinuousSpellChecking(bool) = 0;
     virtual bool isContinuousSpellCheckingEnabled() const = 0;
     virtual void requestTextChecking(const WebElement&) = 0;
+    virtual void replaceMisspelledRange(const WebString&) = 0;
 
     // Selection -----------------------------------------------------------
 
@@ -616,10 +617,6 @@ public:
     // Returns a text representation of the render tree.  This method is used
     // to support layout tests.
     virtual WebString renderTreeAsText(RenderAsTextControls toShow = RenderAsTextNormal) const = 0;
-
-    // Returns the counter value for the specified element.  This method is
-    // used to support layout tests.
-    virtual WebString counterValueForElementById(const WebString& id) const = 0;
 
     // Calls markerTextForListItem() defined in WebCore/rendering/RenderTreeAsText.h.
     virtual WebString markerTextForListItem(const WebElement&) const = 0;

@@ -114,13 +114,16 @@ class WebKitPort(Port):
         # These two projects should be factored out into their own
         # projects.
         try:
-            self._run_script("build-dumprendertree", env=env)
+            self._run_script("build-dumprendertree", args=self._build_driver_flags(), env=env)
             if self.get_option('webkit_test_runner'):
-                self._run_script("build-webkittestrunner", env=env)
+                self._run_script("build-webkittestrunner", args=self._build_driver_flags(), env=env)
         except ScriptError, e:
             _log.error(e.message_with_output(output_limit=None))
             return False
         return True
+
+    def _build_driver_flags(self):
+        return []
 
     def _check_driver(self):
         driver_path = self._path_to_driver()
@@ -355,15 +358,6 @@ class WebKitPort(Port):
         search_paths.update(self.get_option("additional_platform_directory", []))
 
         return search_paths
-
-    def test_expectations(self):
-        # This allows ports to use a combination of TestExpectations files and Skipped lists.
-        expectations = ''
-        expectations_path = self.path_to_test_expectations_file()
-        if self._filesystem.exists(expectations_path):
-            _log.debug("Using test expectations: %s" % expectations_path)
-            expectations = self._filesystem.read_text_file(expectations_path)
-        return expectations
 
     def skipped_layout_tests(self, test_list):
         tests_to_skip = set(self._expectations_from_skipped_files(self._skipped_file_search_paths()))

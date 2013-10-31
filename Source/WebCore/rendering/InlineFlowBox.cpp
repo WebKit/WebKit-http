@@ -27,7 +27,6 @@
 #include "GraphicsContext.h"
 #include "InlineTextBox.h"
 #include "HitTestResult.h"
-#include "RootInlineBox.h"
 #include "RenderBlock.h"
 #include "RenderInline.h"
 #include "RenderLayer.h"
@@ -45,7 +44,7 @@ using namespace std;
 
 namespace WebCore {
 
-class SameSizeAsInlineFlowBox : public InlineBox {
+struct SameSizeAsInlineFlowBox : public InlineBox {
     void* pointers[5];
     uint32_t bitfields : 24;
 };

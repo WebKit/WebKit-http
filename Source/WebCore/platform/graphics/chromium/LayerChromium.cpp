@@ -43,6 +43,7 @@
 #include "cc/CCLayerAnimationDelegate.h"
 #include "cc/CCLayerImpl.h"
 #include "cc/CCLayerTreeHost.h"
+#include "cc/CCSettings.h"
 #include "skia/ext/platform_canvas.h"
 
 using namespace std;
@@ -74,7 +75,7 @@ LayerChromium::LayerChromium()
     , m_opacity(1.0)
     , m_anchorPointZ(0)
     , m_isContainerForFixedPositionLayers(false)
-    , m_fixedToContainerLayerVisibleRect(false)
+    , m_fixedToContainerLayer(false)
     , m_isDrawable(false)
     , m_masksToBounds(false)
     , m_opaque(false)
@@ -93,6 +94,7 @@ LayerChromium::LayerChromium()
     , m_screenSpaceTransformIsAnimating(false)
     , m_contentsScale(1.0)
     , m_layerAnimationDelegate(0)
+    , m_layerScrollDelegate(0)
 {
 }
 
@@ -394,6 +396,14 @@ void LayerChromium::setScrollPosition(const IntPoint& scrollPosition)
     setNeedsCommit();
 }
 
+void LayerChromium::setMaxScrollPosition(const IntSize& maxScrollPosition)
+{
+    if (m_maxScrollPosition == maxScrollPosition)
+        return;
+    m_maxScrollPosition = maxScrollPosition;
+    setNeedsCommit();
+}
+
 void LayerChromium::setScrollable(bool scrollable)
 {
     if (m_scrollable == scrollable)
@@ -425,6 +435,13 @@ void LayerChromium::setNonFastScrollableRegion(const Region& region)
     m_nonFastScrollableRegion = region;
     m_nonFastScrollableRegionChanged = true;
     setNeedsCommit();
+}
+
+void LayerChromium::scrollBy(const IntSize& scrollDelta)
+{
+    setScrollPosition(scrollPosition() + scrollDelta);
+    if (m_layerScrollDelegate)
+        m_layerScrollDelegate->didScroll(scrollDelta);
 }
 
 void LayerChromium::setDrawCheckerboardForMissingTiles(bool checkerboard)
@@ -478,6 +495,37 @@ void LayerChromium::setNeedsDisplayRect(const FloatRect& dirtyRect)
     setNeedsCommit();
 }
 
+bool LayerChromium::descendantIsFixedToContainerLayer() const
+{
+    for (size_t i = 0; i < m_children.size(); ++i) {
+        if (m_children[i]->fixedToContainerLayer() || m_children[i]->descendantIsFixedToContainerLayer())
+            return true;
+    }
+    return false;
+}
+
+void LayerChromium::setIsContainerForFixedPositionLayers(bool isContainerForFixedPositionLayers)
+{
+    if (m_isContainerForFixedPositionLayers == isContainerForFixedPositionLayers)
+        return;
+    m_isContainerForFixedPositionLayers = isContainerForFixedPositionLayers;
+
+    if (m_layerTreeHost && m_layerTreeHost->commitRequested())
+        return;
+
+    // Only request a commit if we have a fixed positioned descendant.
+    if (descendantIsFixedToContainerLayer())
+        setNeedsCommit();
+}
+
+void LayerChromium::setFixedToContainerLayer(bool fixedToContainerLayer)
+{
+    if (m_fixedToContainerLayer == fixedToContainerLayer)
+        return;
+    m_fixedToContainerLayer = fixedToContainerLayer;
+    setNeedsCommit();
+}
+
 void LayerChromium::pushPropertiesTo(CCLayerImpl* layer)
 {
     layer->setAnchorPoint(m_anchorPoint);
@@ -510,9 +558,10 @@ void LayerChromium::pushPropertiesTo(CCLayerImpl* layer)
         layer->setOpacity(m_opacity);
     layer->setPosition(m_position);
     layer->setIsContainerForFixedPositionLayers(m_isContainerForFixedPositionLayers);
-    layer->setFixedToContainerLayerVisibleRect(m_fixedToContainerLayerVisibleRect);
+    layer->setFixedToContainerLayer(m_fixedToContainerLayer);
     layer->setPreserves3D(preserves3D());
     layer->setScrollPosition(m_scrollPosition);
+    layer->setMaxScrollPosition(m_maxScrollPosition);
     layer->setSublayerTransform(m_sublayerTransform);
     if (!transformIsAnimating())
         layer->setTransform(m_transform);
@@ -606,12 +655,14 @@ void LayerChromium::setTransformFromAnimation(const WebTransformationMatrix& tra
 
 bool LayerChromium::addAnimation(PassOwnPtr<CCActiveAnimation> animation)
 {
-    if (!m_layerTreeHost || !m_layerTreeHost->settings().threadedAnimationEnabled)
+    if (!CCSettings::acceleratedAnimationEnabled())
         return false;
 
     m_layerAnimationController->addAnimation(animation);
-    m_layerTreeHost->didAddAnimation();
-    setNeedsCommit();
+    if (m_layerTreeHost) {
+        m_layerTreeHost->didAddAnimation();
+        setNeedsCommit();
+    }
     return true;
 }
 

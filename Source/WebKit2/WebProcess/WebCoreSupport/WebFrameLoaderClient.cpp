@@ -74,6 +74,8 @@
 #include <WebCore/WindowFeatures.h>
 
 #if ENABLE(WEB_INTENTS)
+#include "IntentData.h"
+#include "IntentServiceInfo.h"
 #include <WebCore/IntentRequest.h>
 #endif
 
@@ -1219,6 +1221,8 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     m_frame->coreFrame()->createView(webPage->size(), backgroundColor, /* transparent */ false, IntSize(), shouldUseFixedLayout);
     m_frame->coreFrame()->view()->setTransparent(!webPage->drawsBackground());
+    if (shouldUseFixedLayout)
+        m_frame->coreFrame()->view()->setFixedVisibleContentRect(webPage->bounds());
 }
 
 void WebFrameLoaderClient::didSaveToPageCache()
@@ -1538,9 +1542,41 @@ bool WebFrameLoaderClient::shouldCacheResponse(DocumentLoader*, unsigned long id
 #endif // PLATFORM(WIN) && USE(CFNETWORK)
 
 #if ENABLE(WEB_INTENTS)
-void WebFrameLoaderClient::dispatchIntent(PassRefPtr<IntentRequest>)
+void WebFrameLoaderClient::dispatchIntent(PassRefPtr<IntentRequest> request)
 {
-    notImplemented();
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    IntentData intentData;
+    Intent* coreIntent = request->intent();
+    ASSERT(coreIntent);
+    intentData.action = coreIntent->action();
+    intentData.type = coreIntent->type();
+    intentData.service = coreIntent->service();
+    intentData.data = coreIntent->data()->data();
+    intentData.extras = coreIntent->extras();
+    intentData.suggestions = coreIntent->suggestions();
+
+    webPage->send(Messages::WebPageProxy::DidReceiveIntentForFrame(m_frame->frameID(), intentData));
+}
+#endif
+
+#if ENABLE(WEB_INTENTS_TAG)
+void WebFrameLoaderClient::registerIntentService(const String& action, const String& type, const KURL& href, const String& title, const String& disposition)
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    IntentServiceInfo serviceInfo;
+    serviceInfo.action = action;
+    serviceInfo.type = type;
+    serviceInfo.href = href;
+    serviceInfo.title = title;
+    serviceInfo.disposition = disposition;
+
+    webPage->send(Messages::WebPageProxy::RegisterIntentServiceForFrame(m_frame->frameID(), serviceInfo));
 }
 #endif
 

@@ -1,3 +1,385 @@
+2012-06-19  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Should check the return value of fromUTF8() before executing the script.
+        https://bugs.webkit.org/show_bug.cgi?id=89500
+
+        Reviewed by Rob Buis.
+        PR# 166623.
+
+        WebPagePrivate::executeJavaScript() should check the return value of fromUTF8()
+        before executing the script to avoid potential crash on invalid script source.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::executeJavaScript):
+
+2012-06-19  Jakob Petsovits  <jpetsovits@rim.com>
+
+        [BlackBerry] Missing notifyContentRendered() when resuming rendering
+        https://bugs.webkit.org/show_bug.cgi?id=89507
+        RIM PR 150049
+
+        Reviewed by Antonio Gomes.
+
+        All the current calls to notifyContentRendered() are
+        located in the RenderQueue, but this omits the case
+        when we force rendering from resumeBackingStore()
+        after rendering had been suspended for a while.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::resumeBackingStore):
+
+2012-06-19  Sergio Villar Senin  <svillar@igalia.com>
+
+        Calling nativeImageForCurrentFrame() causes assertion failure: m_verifier.isSafeToUse()
+        https://bugs.webkit.org/show_bug.cgi?id=67582
+
+        Reviewed by David Levin.
+
+        Use synchronousNativeIconForPageURL() to retrieve favicons.
+
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchDidReceiveIcon):
+
+2012-06-18  Antonio Gomes  <agomes@rim.com>
+
+       [BlackBerry] Overscroll can get reset while interacting with a page, due to style recalculations and scroll position clamping
+       https://bugs.webkit.org/show_bug.cgi?id=89371
+       PR #166982
+
+       Reviewed by Adam Treat.
+
+       While scrolling, the WebKit thread gets intercalated WebPage::setScrollPosition
+       calls dispatched from the UI thread. These calls are wrapped with
+       ScrollableArea::setConstrainsScrollingToContentEdge(false|true) calls, which
+       can clamp the scroll position (removes overscroll) if set to 'true'.
+
+       The following situation can happen: user is scrolling, and WebKit
+       thread is not in the middle of a WebPage::setScrollPosition call
+       (so setConstrainsScrollingToContentEdge is 'true'), and a relayout happens.
+       In this scenario, the scroll position will get clamped to 0,0, removing any
+       possible overscrolling.
+
+       See the stack trace below, paying special attention to frame 16:
+       #0  ScrollHandlerUserInterfaceThread::updateScrollPosition
+       #1  0x782b4a3e in WebPageClientImpl::scrollChanged
+       #2  0x78147484 in BlackBerry::WebKit::WebPagePrivate::notifyTransformedScrollChanged
+       #3  0x78171f68 in BlackBerry::WebKit::BackingStoreClient::checkOriginOfCurrentScrollOperation
+       #4  0x7816480a in WebCore::ChromeClientBlackBerry::scroll
+       #5  0x7a78b290 in WebCore::Chrome::scroll
+       #6  0x7a7ac8d0 in WebCore::FrameView::scrollContentsFastPath
+       #7  0x7a7eba72 in WebCore::ScrollView::scrollContents
+       #8  0x7a7ebb34 in WebCore::ScrollView::scrollTo
+       #9  0x7a7a8dae in WebCore::FrameView::scrollTo
+       #10 0x7a7e966e in WebCore::ScrollView::setScrollOffset
+       #11 0x7a7e77cc in WebCore::ScrollableArea::scrollPositionChanged
+       #12 0x7a7e7048 in WebCore::ScrollAnimator::notifyPositionChanged
+       #13 0x7a7e700c in WebCore::ScrollAnimator::scrollToOffsetWithoutAnimation
+       #14 0x7a7e7588 in WebCore::ScrollableArea::scrollToOffsetWithoutAnimation
+       #16 WebCore::ScrollView::updateScrollbars
+       #18 WebCore::ScrollView::setContentsSize
+       #19 0x7a7accd8 in WebCore::FrameView::setContentsSize
+       #20 0x7a7a85f4 in WebCore::FrameView::adjustViewSize
+       #22 WebCore::FrameView::layout
+       #23 0x7a59d66e in WebCore::Document::updateLayoutIgnorePendingStylesheets
+       #24 0x7a5ada92 in WebCore::Element::offsetHeight
+       #25 0x7ab226b6 in WebCore::jsElementOffsetHeight
+       #27 JSC::JSValue::get
+       #28 0x796dd662 in JSC::JITStubThunked_op_get_by_id_generic
+
+       Patch fixes this issue by tying ScrollableArea::setConstrainsScrollingToContentEdge
+       to BackingStore::m_isZoomingOrScrolling, when we are sure clamping should not happen.
+
+       * Api/BackingStore.cpp:
+       (BlackBerry::WebKit::BackingStorePrivate::setScrollingOrZooming):
+       * Api/WebPage.cpp:
+       (BlackBerry::WebKit::WebPage::setScrollPosition):
+
+2012-06-15  Eli Fidler  <efidler@rim.com>
+
+        [BlackBerry] Use platform font settings for the standard settings.
+        https://bugs.webkit.org/show_bug.cgi?id=89232
+
+        Reviewed by Rob Buis.
+
+        RIM PR 159708
+
+        * Api/WebSettings.cpp:
+        (BlackBerry::WebKit::WebSettings::standardSettings):
+
+2012-06-15  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry] Remove touch events handling hook for popup
+        https://bugs.webkit.org/show_bug.cgi?id=89245
+
+        Reviewed by Rob Buis.
+
+        In the old patches we create our own WebPage for popup, so we need to hook up our own
+        touch handling functions, since we don't use our own WebPage any more, no need to keep
+        the touch handling code, because it just does nothing other than passing out the events
+        which might cause the touch events being handled twice.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::handleMouseEvent):
+        * WebCoreSupport/PagePopupBlackBerry.cpp:
+        * WebCoreSupport/PagePopupBlackBerry.h:
+        (PagePopupBlackBerry):
+
+2012-06-15  Antonio Gomes  <agomes@rim.com>
+
+        [BlackBerry] Disable WebCore::EventHandler synthesized mouse events during touch scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=89227
+        PR #146642
+
+        Reviewed by Rob Buis.
+
+        Make use of the Settings::supportsMouseDevice setting in order to
+        prevent mouse move event to fire as a response to a scroll action.
+        We might still want to dynamically toggle this setting ON, in case for
+        example of a mouse wheel driven scroll action, but we can revisit it
+        when it becomes a fully supported/primary use case.
+
+        Internally reviewed by Eli Fidler.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::didChangeSettings):
+        * Api/WebSettings.cpp:
+        (WebKit):
+        (BlackBerry::WebKit::WebSettings::isDeviceSupportsMouseEnabled):
+        (BlackBerry::WebKit::WebSettings::setDeviceSupportsMouseEnabled):
+        * Api/WebSettings.h:
+
+2012-06-15  Jacky Jiang  <zhajiang@rim.com>
+
+        [BlackBerry] Certain web pages (i.e., http://www.cloudtweaks.com/) are allowed to be wider than the screen
+        https://bugs.webkit.org/show_bug.cgi?id=89211
+
+        Reviewed by Rob Buis.
+        Patch by Jacky Jiang <zhajiang@rim.com>
+
+        PR: 135215
+        Make simpler rules for zoom to fit scale:
+        - Zoom to fit horizontally first without clamping the contents width.
+        - Zoom to fit vertically instead without clamping the contents height
+          if the horizontal zoom to fit can cause a grey area below the web
+          page. Get rid of the virtual viewport guard as there may be cases
+          that zooming can cause a grey area without a virtual viewport.
+        - Clamp the scale by the minimum zoom to fit scale 0.25 and apply
+          this rule to image documents as well. This minimum scale can be
+          changed if there is a better vaule in the future.
+        In this way, we can get rid of the issue that many web pages don't fit
+        the screen.
+
+        Reviewed internally by Arvid Nilsson.
+
+        * Api/WebPage.cpp:
+        (WebKit):
+        (BlackBerry::WebKit::WebPagePrivate::zoomToFitScale):
+
+2012-06-15  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Remove BackingStoreClient::scrollsHorizontally/scrollsVeritically()
+        https://bugs.webkit.org/show_bug.cgi?id=89210
+
+        Reviewed by Antonio Gomes.
+
+        Remove BackingStoreClient::scrollsHorizontally()/scrollsVeritically(), because
+        calling them is neither nessary nor safe.
+
+        * Api/BackingStore.cpp:
+        (BlackBerry::WebKit::BackingStorePrivate::blitContents):
+        (BlackBerry::WebKit::BackingStorePrivate::blitHorizontalScrollbar):
+        (BlackBerry::WebKit::BackingStorePrivate::blitVerticalScrollbar):
+        * WebKitSupport/BackingStoreClient.cpp:
+        * WebKitSupport/BackingStoreClient.h:
+        (BackingStoreClient):
+
+2012-06-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r120404.
+        http://trac.webkit.org/changeset/120404
+        https://bugs.webkit.org/show_bug.cgi?id=89193
+
+        This patch breaks [BlackBerry]'s text selection handles moving
+        in editable elements. (Requested by Sean1 on #webkit).
+
+        * WebKitSupport/SelectionHandler.cpp:
+        (BlackBerry::WebKit::visiblePositionForPointIgnoringClipping):
+
+2012-06-14  Sean Wang  <Xuewen.Wang@torchmobile.com.cn>
+
+        [BlackBerry] Selection - Crash when manipulating selection by dragging handle
+        https://bugs.webkit.org/show_bug.cgi?id=89160
+
+        RIMBUG:164970
+        Avoid to set position in shadow tree to the new selection's base. It
+        crashes when setting a shadow position to a selection' base.
+
+        Reviewed by Antonio Gomes.
+
+        * WebKitSupport/SelectionHandler.cpp:
+        (BlackBerry::WebKit::visiblePositionForPointIgnoringClipping):
+
+2012-06-14  Mary Wu  <mary.wu@torchmobile.com.cn>
+
+        [BlackBerry] empty plugin cause browser hang
+        https://bugs.webkit.org/show_bug.cgi?id=89091
+
+        Reviewed by Rob Buis.
+
+        Add check before clean pluginView in FrameLoaderBlackBerry in case
+        it didn't have any content.
+        RIM PR# 165336
+        Reviewed internally by George Staikos
+
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::finishedLoading):
+
+2012-06-14  Genevieve Mak  <gmak@rim.com>
+
+        Always convert touch events to mouse events if the
+        meta-tag TouchEventMode::PureWithMouseConversion is set.
+        Minor style fix.
+        https://bugs.webkit.org/show_bug.cgi?id=89115
+
+        Reviewed by Antonio Gomes.
+
+        Reviewed Internally by Antonio Gomes.
+
+        * WebKitSupport/TouchEventHandler.cpp:
+        (BlackBerry::WebKit::TouchEventHandler::touchEventCancel):
+        (BlackBerry::WebKit::TouchEventHandler::handleTouchPoint):
+
+2012-06-14  Chris Guan  <chris.guan@torchmobile.com.cn>
+
+        [Blackberry] add a new Api named setAllowNotification
+        https://bugs.webkit.org/show_bug.cgi?id=88950
+
+        Reviewed by Antonio Gomes.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPage::setAllowNotification):
+        (WebKit):
+        * Api/WebPage.h:
+
+2012-06-13  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry] Apply New Style and JS for Select Popup
+        https://bugs.webkit.org/show_bug.cgi?id=89020
+
+        Reviewed by Rob Buis.
+
+        PR 162854
+
+        Use new styled CSS files for select popup, also remove most JS functions
+        to a separate JS file, only pass the parameters to JS, and use new python
+        script for data generating, as the old one is too simple and problematic.
+
+        * WebCoreSupport/SelectPopupClient.cpp:
+        (WebCore::SelectPopupClient::generateHTML):
+
+2012-06-13  Amy Ousterhout  <aousterh@chromium.org>
+
+        Rename currentDeviceMotion to lastMotion in DeviceMotionClient
+        https://bugs.webkit.org/show_bug.cgi?id=88854
+
+        Reviewed by Adam Barth.
+
+        Rename the function currentDeviceMotion to lastMotion in DeviceMotionClient.
+        This makes it consistent with the similar function lastOrientation in DeviceOrientationClient.
+
+        * WebCoreSupport/DeviceMotionClientBlackBerry.cpp:
+        (DeviceMotionClientBlackBerry::lastMotion):
+        (DeviceMotionClientBlackBerry::onMotion):
+        * WebCoreSupport/DeviceMotionClientBlackBerry.h:
+        (DeviceMotionClientBlackBerry):
+
+2012-06-13  Robin Cao  <robin.cao@torchmobile.com.cn>
+
+        [BlackBerry] Enable MEDIA_STREAM by default
+        https://bugs.webkit.org/show_bug.cgi?id=88849
+
+        Reviewed by Antonio Gomes.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::init):
+        * WebCoreSupport/UserMediaClientImpl.cpp: Added.
+        (WebCore):
+        (WebCore::UserMediaClientImpl::UserMediaClientImpl):
+        (WebCore::UserMediaClientImpl::~UserMediaClientImpl):
+        (WebCore::UserMediaClientImpl::pageDestroyed):
+        (WebCore::UserMediaClientImpl::requestUserMedia):
+        (WebCore::UserMediaClientImpl::cancelUserMediaRequest):
+        * WebCoreSupport/UserMediaClientImpl.h: Added.
+        (WebKit):
+        (WebCore):
+        (UserMediaClientImpl):
+
+2012-06-12  Arvid Nilsson  <anilsson@rim.com>
+
+        [BlackBerry] Crash when rendering web page that's being destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=88915
+
+        Reviewed by Rob Buis.
+
+        PR #164943
+
+        This was a null pointer dereference that happened when the compositor
+        was asked to render after being disconnected from its web page.
+
+        * Api/WebPageCompositor.cpp:
+        (BlackBerry::WebKit::WebPageCompositorPrivate::render):
+
+2012-06-12  Jacky Jiang  <zhajiang@rim.com>
+
+        [BlackBerry] Scale was incorrect when reloading a simple web page after initial load
+        https://bugs.webkit.org/show_bug.cgi?id=88889
+
+        Reviewed by Adam Treat.
+        Patch by Jacky Jiang <zhajiang@rim.com>
+
+        PR: 164442
+        When we were reloading a web page with the load type FrameLoadTypeSame
+        after the initial load, the first layout timer was fired after the load
+        Finished state, in which case the web page would have no chance to zoom
+        to the initial scale during the layout as it was only for load
+        Committed state. This patch takes care of it.
+
+        * Api/WebPage.cpp:
+        (BlackBerry::WebKit::WebPagePrivate::layoutFinished):
+        (BlackBerry::WebKit::WebPagePrivate::shouldZoomToInitialScaleOnLoad):
+        (WebKit):
+        (BlackBerry::WebKit::WebPagePrivate::zoomToInitialScaleOnLoad):
+        * Api/WebPage_p.h:
+        (WebPagePrivate):
+        * WebCoreSupport/FrameLoaderClientBlackBerry.cpp:
+        (WebCore::FrameLoaderClientBlackBerry::dispatchDidFirstVisuallyNonEmptyLayout):
+
+2012-06-12  Crystal Zhang  <haizhang@rim.com>
+
+        [BlackBerry] Fix crash in InputHandler
+        https://bugs.webkit.org/show_bug.cgi?id=88808
+
+        Reviewed by Antonio Gomes.
+
+        m_page is destroyed before InputHandler, so should move the call to destroy popup to chromeDestroyed().
+
+        * WebCoreSupport/ChromeClientBlackBerry.cpp:
+        (WebCore::ChromeClientBlackBerry::chromeDestroyed():
+        * WebKitSupport/InputHandler.cpp:
+        (BlackBerry::WebKit::InputHandler::~InputHandler):
+
+2012-06-12  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Use a safer way to shrink JS memory usage
+        https://bugs.webkit.org/show_bug.cgi?id=88811
+
+        Reviewed by Antonio Gomes.
+
+        We should just make a GC request and JSC will check if it is safe to do anything.
+
+        * Api/BlackBerryGlobal.cpp:
+        (BlackBerry::WebKit::clearMemoryCaches):
+
 2012-06-11  Jonathan Dong  <jonathan.dong@torchmobile.com.cn>
 
         [BlackBerry] Autofill feature implementation for BlackBerry porting

@@ -797,7 +797,7 @@ JITThunks::JITThunks(JSGlobalData* globalData)
     ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, registerFile) == REGISTER_FILE_OFFSET);
     ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, callFrame) == CALLFRAME_OFFSET);
     // The fifth argument is the first item already on the stack.
-    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, unused2) == FIRST_STACK_ARGUMENT);
+    ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, unused1) == FIRST_STACK_ARGUMENT);
 
     ASSERT(OBJECT_OFFSETOF(struct JITStackFrame, thunkReturnAddress) == THUNK_RETURN_ADDRESS_OFFSET);
 
@@ -866,6 +866,7 @@ NEVER_INLINE void JITThunks::tryCachePutByID(CallFrame* callFrame, CodeBlock* co
         normalizePrototypeChain(callFrame, baseCell);
 
         StructureChain* prototypeChain = structure->prototypeChain(callFrame);
+        ASSERT(structure->previousID()->transitionWatchpointSetHasBeenInvalidated());
         stubInfo->initPutByIdTransition(callFrame->globalData(), codeBlock->ownerExecutable(), structure->previousID(), structure, prototypeChain, direct);
         JIT::compilePutByIdTransition(callFrame->scopeChain()->globalData, codeBlock, stubInfo, structure->previousID(), structure, slot.cachedOffset(), prototypeChain, returnAddress, direct);
         return;
@@ -2375,6 +2376,15 @@ DEFINE_STUB_FUNCTION(JSObject*, op_new_array_buffer)
     STUB_INIT_STACK_FRAME(stackFrame);
     
     return constructArray(stackFrame.callFrame, stackFrame.callFrame->codeBlock()->constantBuffer(stackFrame.args[0].int32()), stackFrame.args[1].int32());
+}
+
+DEFINE_STUB_FUNCTION(void, op_put_global_var_check)
+{
+    STUB_INIT_STACK_FRAME(stackFrame);
+    
+    CallFrame* callFrame = stackFrame.callFrame;
+    CodeBlock* codeBlock = callFrame->codeBlock();
+    symbolTablePut(codeBlock->globalObject(), callFrame, codeBlock->identifier(stackFrame.args[1].int32()), stackFrame.args[0].jsValue(), true);
 }
 
 DEFINE_STUB_FUNCTION(EncodedJSValue, op_resolve)

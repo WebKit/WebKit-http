@@ -31,7 +31,7 @@ body:-webkit-full-page-media {
 
 audio {
     width: 300px;
-    height: 32px;
+    height: 30px;
 }
 
 audio:-webkit-full-page-media, video:-webkit-full-page-media {
@@ -39,90 +39,84 @@ audio:-webkit-full-page-media, video:-webkit-full-page-media {
     max-width: 100%;
 }
 
-audio::-webkit-media-controls-panel, video::-webkit-media-controls-panel {
-    -webkit-user-select: none;
-    -webkit-box-pack: end;
-    position: relative;
-    overflow: visible;
-    bottom: 0;
-    width: 100%;
-    height: 32px;
-    z-index: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-}
-
+audio:-webkit-full-page-media::-webkit-media-controls-panel,
 video:-webkit-full-page-media::-webkit-media-controls-panel {
     bottom: 0px;
 }
 
+::-webkit-media-controls {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-box-pack: end;
+    -webkit-box-align: center;
+}
+
+audio::-webkit-media-controls-enclosure, video::-webkit-media-controls-enclosure {
+    width: 100%;
+    max-width: 800px;
+    height: 30px;
+    bottom: 0;
+    text-indent: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+video::-webkit-media-controls-enclosure {
+    padding: 0px 5px 5px 5px;
+    height: 35px;
+}
+
 audio::-webkit-media-controls-panel, video::-webkit-media-controls-panel {
-    -webkit-box-align: end;
+    display: -webkit-box;
+    -webkit-box-orient: horizontal;
+    -webkit-box-align: center;
+    -webkit-box-pack: center;
+    bottom: auto;
+    height: 30px;
+    background-color: rgba(20, 20, 20, 0.8);
+    border-radius: 5px;
 }
 
 audio::-webkit-media-controls-mute-button, video::-webkit-media-controls-mute-button {
     -webkit-appearance: media-mute-button;
-    position: relative;
-    top: auto;
-    bottom: 0;
-    right: 0;
-    left: auto;
-
-    width: 34px;
-    height: 32px;
+    display: inline;
+    border: none;
+    box-sizing: border-box;
+    width: 35px;
+    height: 30px;
+    line-height: 30px;
+    margin: 0 6px 0 0;
+    padding: 0;
 }
 
 audio::-webkit-media-controls-play-button, video::-webkit-media-controls-play-button {
     -webkit-appearance: media-play-button;
-
-    position: absolute;
-    top: auto;
-    bottom: 7px;
-    left: 7px;
-    right: 6px;
-
-    width: 18px;
-    height: 19px;
+    display: inline;
+    border: none;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    margin-left: 9px;
+    margin-right: 9px;
+    padding: 0;
 }
 
-audio::-webkit-media-controls-timeline-container, video::-webkit-media-controls-timeline-container {
-    -webkit-appearance: media-timeline-container;
-    -webkit-user-select: none;
-    -webkit-box-orient: horizontal;
-    -webkit-box-align: center;
-    -webkit-box-pack: center;
-    -webkit-box-flex: 1;
-
-    position: absolute;
-    top: auto;
-    bottom: 0;
-    left: 30px;
-    right: 34px;
-
-    width: auto;
-    height: 32px;
-
-    border-left: 1px solid rgba(255, 255, 255, 0.2);
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-audio::-webkit-media-controls-current-time-display, video::-webkit-media-controls-current-time-display {
+audio::-webkit-media-controls-current-time-display, video::-webkit-media-controls-current-time-display,
+audio::-webkit-media-controls-time-remaining-display, video::-webkit-media-controls-time-remaining-display {
     -webkit-appearance: media-current-time-display;
     -webkit-user-select: none;
-    display: -webkit-box;
-    -webkit-box-flex: 0;
-    -webkit-box-pack: center;
-    -webkit-box-align: center;
-
-    overflow: hidden;
+    display: block;
+    border: none;
     cursor: default;
 
-    line-height: 21px;
-    height: 20px;
-    width: 58px;
+    height: 30px;
+    margin: 0 9px 0 0;
+    padding: 0;
 
-    text-align: center;
-    font-family: Arial;
-    font-size: 16px;
+    line-height: 30px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
     font-weight: bold;
     color: white;
 
@@ -137,40 +131,61 @@ audio::-webkit-media-controls-current-time-display, video::-webkit-media-control
 audio::-webkit-media-controls-timeline, video::-webkit-media-controls-timeline {
     -webkit-appearance: media-slider;
     display: -webkit-box;
-    box-sizing: border-box;
     -webkit-box-flex: 1;
-
-    padding: 0px;
-    margin: 0px 6px;
-    height: 18px;
-
-    border-color: rgba(255, 255, 255, 0.2);
-    border-style: solid;
-    border-width: 1px;
-    border-radius: 2px;
-    background-color: rgba(255, 255, 255, 0.08);
-    color: rgb(50, 140, 223);
-}
-
-audio::-webkit-media-controls-volume-slider-container, video::-webkit-media-controls-volume-slider-container {
-    -webkit-appearance: media-volume-slider-container;
-    position: absolute;
-    bottom: 32px;
-
-    width: 34px;
-    height: 100px;
-
-    background-color: rgba(0, 0, 0, 0.6);
+    height: 8px;
+    margin: 0 15px 0 0;
+    padding: 0;
+    background-color: transparent;
+    min-width: 25px;
 }
 
 audio::-webkit-media-controls-volume-slider, video::-webkit-media-controls-volume-slider {
     -webkit-appearance: media-volume-slider;
+    display: -webkit-box;
+    -webkit-box-flex: 1;
+    height: 8px;
+    max-width: 70px;
+    margin: 0 15px 0 0;
+    padding: 0;
+    background-color: transparent;
+    min-width: 15px;
+}
+
+/* FIXME these shouldn't use special pseudoShadowIds, but nicer rules.
+   https://code.google.com/p/chromium/issues/detail?id=112508
+   https://bugs.webkit.org/show_bug.cgi?id=62218
+*/
+input[type="range"]::-webkit-media-slider-container {
+    display: -webkit-box;
+    -webkit-box-align: center;
+    -webkit-box-orient: horizontal; /* This property is updated by C++ code. */
+    -webkit-box-sizing: border-box;
+    height: 100%;
+    width: 100%;
+    border: 1px solid rgb(130, 130, 130);
+    border-radius: 4px;
+    background-color: transparent; /* Background drawing is managed by C++ code to draw ranges. */
+}
+
+input[type="range"]::-webkit-media-slider-thumb {
+    display: block;
+    -webkit-appearance: sliderthumb-horizontal;
+    -webkit-box-sizing: border-box;
+    position: relative;
+    bottom: 1px;
+    margin-left: -7px;
+    margin-right: -7px;
+}
+
+audio::-webkit-media-controls-fullscreen-button, video::-webkit-media-controls-fullscreen-button {
+    -webkit-appearance: media-enter-fullscreen-button;
     display: inline;
-    position: absolute;
-
-    top: 10px;
-    left: 12px;
-
-    width: 10px;
-    height: 80px;
+    border: none;
+    box-sizing: border-box;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    margin-left: -5px;
+    margin-right: 9px;
+    padding: 0;
 }

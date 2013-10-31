@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc. All Rights Reserved.
+ * Copyright (C) 2012 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +39,10 @@ public:
     URLString() { }
 
     const String& string() const { return m_string;}
+
+#ifndef NDEBUG
+    WTF_EXPORT_PRIVATE void print() const;
+#endif
 
 private:
     friend class ParsedURL;

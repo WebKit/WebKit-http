@@ -16,8 +16,7 @@ function test()
     removeVendorPrefixes();
 
     name = self.location.pathname;
-    description = "My Test Database";
-    request = evalAndLog("indexedDB.open(name, description)");
+    request = evalAndLog("indexedDB.open(name)");
     request.onsuccess = openSuccess;
     request.onerror = unexpectedErrorCallback;
 }
@@ -71,6 +70,7 @@ function setVersion()
 
 function createObjectStore()
 {
+    transaction = event.target.result;
     deleteAllObjectStores(db);
 
     if (test.keyName) {
@@ -115,7 +115,7 @@ function finalCheck()
 {
     shouldBeTrue("event.target.result === undefined");
     i++;
-    setVersion();
+    transaction.oncomplete = setVersion;
 }
 
 test();

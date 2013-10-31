@@ -3470,7 +3470,23 @@ void SpeculativeJIT::compile(Node& node)
         break;
     }
         
+    case StructureTransitionWatchpoint: {
+        m_jit.addWeakReference(node.structure());
+        node.structure()->addTransitionWatchpoint(speculationWatchpoint());
+
+#if !ASSERT_DISABLED
+        SpeculateCellOperand op1(this, node.child1());
+        JITCompiler::Jump isOK = m_jit.branchPtr(JITCompiler::Equal, JITCompiler::Address(op1.gpr(), JSCell::structureOffset()), TrustedImmPtr(node.structure()));
+        m_jit.breakpoint();
+        isOK.link(&m_jit);
+#endif
+        
+        noResult(m_compileIndex);
+        break;
+    }
+        
     case PhantomPutStructure: {
+        ASSERT(node.structureTransitionData().previousStructure->transitionWatchpointSetHasBeenInvalidated());
         m_jit.addWeakReferenceTransition(
             node.codeOrigin.codeOriginOwner(),
             node.structureTransitionData().previousStructure,
@@ -3480,6 +3496,8 @@ void SpeculativeJIT::compile(Node& node)
     }
         
     case PutStructure: {
+        ASSERT(node.structureTransitionData().previousStructure->transitionWatchpointSetHasBeenInvalidated());
+
         SpeculateCellOperand base(this, node.child1());
         GPRReg baseGPR = base.gpr();
         
@@ -3611,6 +3629,52 @@ void SpeculativeJIT::compile(Node& node)
         
         m_jit.storePtr(value.gpr(), node.registerPointer());
 
+        noResult(m_compileIndex);
+        break;
+    }
+
+    case PutGlobalVarCheck: {
+        JSValueOperand value(this, node.child1());
+        
+        WatchpointSet* watchpointSet =
+            m_jit.globalObjectFor(node.codeOrigin)->symbolTable().get(
+                identifier(node.identifierNumberForCheck())->impl()).watchpointSet();
+        addSlowPathGenerator(
+            slowPathCall(
+                m_jit.branchTest8(
+                    JITCompiler::NonZero,
+                    JITCompiler::AbsoluteAddress(watchpointSet->addressOfIsWatched())),
+                this, operationNotifyGlobalVarWrite, NoResult, watchpointSet));
+        
+        if (Heap::isWriteBarrierEnabled()) {
+            GPRTemporary scratch(this);
+            GPRReg scratchReg = scratch.gpr();
+            
+            writeBarrier(m_jit.globalObjectFor(node.codeOrigin), value.gpr(), node.child1(), WriteBarrierForVariableAccess, scratchReg);
+        }
+        
+        m_jit.storePtr(value.gpr(), node.registerPointer());
+
+        noResult(m_compileIndex);
+        break;
+    }
+        
+    case GlobalVarWatchpoint: {
+        m_jit.globalObjectFor(node.codeOrigin)->symbolTable().get(
+            identifier(node.identifierNumberForCheck())->impl()).addWatchpoint(
+                speculationWatchpoint());
+        
+#if DFG_ENABLE(JIT_ASSERT)
+        GPRTemporary scratch(this);
+        GPRReg scratchGPR = scratch.gpr();
+        m_jit.loadPtr(node.registerPointer(), scratchGPR);
+        JITCompiler::Jump ok = m_jit.branchPtr(
+            JITCompiler::Equal, scratchGPR,
+            TrustedImmPtr(bitwise_cast<void*>(JSValue::encode(node.registerPointer()->get()))));
+        m_jit.breakpoint();
+        ok.link(&m_jit);
+#endif
+        
         noResult(m_compileIndex);
         break;
     }

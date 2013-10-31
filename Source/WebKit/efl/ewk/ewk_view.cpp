@@ -66,6 +66,8 @@
 #include "ewk_view_private.h"
 #include "ewk_window_features_private.h"
 #include <Ecore.h>
+#include <Ecore_Evas.h>
+#include <Edje.h>
 #include <Eina.h>
 #include <Evas.h>
 #include <eina_safety_checks.h>
@@ -340,6 +342,11 @@ struct _Ewk_View_Private_Data {
         Ecore_Animator* animator;
     } animatedZoom;
     SoupSession* soupSession;
+    const char* cursorGroup;
+    Evas_Object* cursorObject;
+#ifdef HAVE_ECORE_X
+    bool isUsingEcoreX;
+#endif
 };
 
 #ifndef EWK_TYPE_CHECK
@@ -857,6 +864,10 @@ static Ewk_View_Private_Data* _ewk_view_priv_new(Ewk_View_Smart_Data* smartData)
 
     priv->pageClient = adoptPtr(new PageClientEfl(smartData->self));
 
+#ifdef HAVE_ECORE_X
+    priv->isUsingEcoreX = WebCore::isUsingEcoreX(smartData->base.evas);
+#endif
+
     return priv;
 }
 
@@ -887,6 +898,9 @@ static void _ewk_view_priv_del(Ewk_View_Private_Data* priv)
 
     ewk_history_free(priv->history);
 
+    if (priv->cursorObject)
+        evas_object_del(priv->cursorObject);
+
     delete priv;
 }
 
@@ -913,11 +927,11 @@ static void _ewk_view_smart_add(Evas_Object* ewkView)
     smartData->bg_color.a = 255;
 
     smartData->self = ewkView;
-    smartData->_priv = _ewk_view_priv_new(smartData);
     smartData->api = api;
 
     _parent_sc.add(ewkView);
 
+    smartData->_priv = _ewk_view_priv_new(smartData);
     if (!smartData->_priv)
         return;
 
@@ -3945,6 +3959,26 @@ float ewk_view_device_pixel_ratio_get(const Evas_Object* ewkView)
     return priv->settings.devicePixelRatio;
 }
 
+void ewk_view_text_direction_set(Evas_Object* ewkView, Ewk_Text_Direction direction)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    // The Editor::setBaseWritingDirection() function checks if we can change
+    // the text direction of the selected node and updates its DOM "dir"
+    // attribute and its CSS "direction" property.
+    // So, we just call the function as Safari does.
+    WebCore::Frame* focusedFrame = priv->page->focusController()->focusedOrMainFrame();
+    if (!focusedFrame)
+        return;
+
+    WebCore::Editor* editor = focusedFrame->editor();
+    if (!editor->canEdit())
+        return;
+
+    editor->setBaseWritingDirection(static_cast<WritingDirection>(direction));
+}
+
 void ewk_view_did_first_visually_nonempty_layout(Evas_Object* ewkView)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
@@ -4366,6 +4400,57 @@ Eina_Bool ewk_view_setting_web_audio_set(Evas_Object* ewkView, Eina_Bool enable)
 #else
     return false;
 #endif
+}
+
+void ewk_view_cursor_set(Evas_Object* ewkView, const WebCore::Cursor& cursor)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv);
+
+    const char* group = cursor.platformCursor();
+    if (!group || group == priv->cursorGroup)
+        return;
+
+    priv->cursorGroup = group;
+
+    if (priv->cursorObject)
+        evas_object_del(priv->cursorObject);
+    priv->cursorObject = edje_object_add(smartData->base.evas);
+
+    Ecore_Evas* ecoreEvas = ecore_evas_ecore_evas_get(smartData->base.evas);
+    if (!priv->settings.theme || !edje_object_file_set(priv->cursorObject, priv->settings.theme, group)) {
+        evas_object_del(priv->cursorObject);
+        priv->cursorObject = 0;
+
+        ecore_evas_object_cursor_set(ecoreEvas, 0, 0, 0, 0);
+#ifdef HAVE_ECORE_X
+        if (priv->isUsingEcoreX)
+            WebCore::applyFallbackCursor(ecoreEvas, group);
+#endif
+    } else {
+        Evas_Coord width, height;
+        edje_object_size_min_get(priv->cursorObject, &width, &height);
+        if (width <= 0 || height <= 0)
+            edje_object_size_min_calc(priv->cursorObject, &width, &height);
+        if (width <= 0 || height <= 0) {
+            width = 16;
+            height = 16;
+        }
+        evas_object_resize(priv->cursorObject, width, height);
+
+        const char* data;
+        int hotspotX = 0;
+        data = edje_object_data_get(priv->cursorObject, "hot.x");
+        if (data)
+            hotspotX = atoi(data);
+
+        int hotspotY = 0;
+        data = edje_object_data_get(priv->cursorObject, "hot.y");
+        if (data)
+            hotspotY = atoi(data);
+
+        ecore_evas_object_cursor_set(ecoreEvas, priv->cursorObject, EVAS_LAYER_MAX, hotspotX, hotspotY);
+    }
 }
 
 namespace EWKPrivate {

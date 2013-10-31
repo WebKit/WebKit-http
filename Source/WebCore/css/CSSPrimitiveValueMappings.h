@@ -743,6 +743,7 @@ template<> inline CSSPrimitiveValue::operator EBoxAlignment() const
     }
 }
 
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EBoxDecorationBreak e)
     : CSSValue(PrimitiveClass)
 {
@@ -769,6 +770,7 @@ template<> inline CSSPrimitiveValue::operator EBoxDecorationBreak() const
         return DSLICE;
     }
 }
+#endif
 
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EBoxSizing e)
     : CSSValue(PrimitiveClass)
@@ -1902,33 +1904,6 @@ template<> inline CSSPrimitiveValue::operator EMarqueeDirection() const
     }
 }
 
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(EMatchNearestMailBlockquoteColor e)
-    : CSSValue(PrimitiveClass)
-{
-    m_primitiveUnitType = CSS_IDENT;
-    switch (e) {
-        case BCNORMAL:
-            m_value.ident = CSSValueNormal;
-            break;
-        case MATCH:
-            m_value.ident = CSSValueMatch;
-            break;
-    }
-}
-
-template<> inline CSSPrimitiveValue::operator EMatchNearestMailBlockquoteColor() const
-{
-    switch (m_value.ident) {
-        case CSSValueNormal:
-            return BCNORMAL;
-        case CSSValueMatch:
-            return MATCH;
-        default:
-            ASSERT_NOT_REACHED();
-            return BCNORMAL;
-    }
-}
-
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ENBSPMode e)
     : CSSValue(PrimitiveClass)
 {
@@ -2146,9 +2121,6 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ETextAlign e)
 {
     m_primitiveUnitType = CSS_IDENT;
     switch (e) {
-    case TAAUTO:
-        m_value.ident = CSSValueWebkitAuto;
-        break;
     case TASTART:
         m_value.ident = CSSValueStart;
         break;
@@ -2182,12 +2154,13 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ETextAlign e)
 template<> inline CSSPrimitiveValue::operator ETextAlign() const
 {
     switch (m_value.ident) {
-        case CSSValueStart:
-            return TASTART;
-        case CSSValueEnd:
-            return TAEND;
-        default:
-            return static_cast<ETextAlign>(m_value.ident - CSSValueWebkitAuto);
+    case CSSValueWebkitAuto: // Legacy -webkit-auto. Eqiuvalent to start.
+    case CSSValueStart:
+        return TASTART;
+    case CSSValueEnd:
+        return TAEND;
+    default:
+        return static_cast<ETextAlign>(m_value.ident - CSSValueLeft);
     }
 }
 
@@ -3711,6 +3684,33 @@ template<> inline CSSPrimitiveValue::operator ColumnAxis() const
     default:
         ASSERT_NOT_REACHED();
         return AutoColumnAxis;
+    }
+}
+
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ColumnProgression e)
+    : CSSValue(PrimitiveClass)
+{
+    m_primitiveUnitType = CSS_IDENT;
+    switch (e) {
+    case NormalColumnProgression:
+        m_value.ident = CSSValueNormal;
+        break;
+    case ReverseColumnProgression:
+        m_value.ident = CSSValueReverse;
+        break;
+    }
+}
+
+template<> inline CSSPrimitiveValue::operator ColumnProgression() const
+{
+    switch (m_value.ident) {
+    case CSSValueNormal:
+        return NormalColumnProgression;
+    case CSSValueReverse:
+        return ReverseColumnProgression;
+    default:
+        ASSERT_NOT_REACHED();
+        return NormalColumnProgression;
     }
 }
 

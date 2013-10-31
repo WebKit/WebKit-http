@@ -172,14 +172,14 @@ WTF_EXPORT_PRIVATE void WTFInvokeCrashHook();
     WTFInvokeCrashHook(); \
     *(int *)(uintptr_t)0xbbadbeef = 0; \
     __builtin_trap(); \
-} while (false)
+} while (0)
 #else
 #define CRASH() do { \
     WTFReportBacktrace(); \
     WTFInvokeCrashHook(); \
     *(int *)(uintptr_t)0xbbadbeef = 0; \
     ((void(*)())0)(); /* More reliable, but doesn't say BBADBEEF */ \
-} while (false)
+} while (0)
 #endif
 #endif
 
@@ -374,6 +374,22 @@ while (0)
 #define LOG_VERBOSE(channel, ...) ((void)0)
 #else
 #define LOG_VERBOSE(channel, ...) WTFLogVerbose(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, &JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, channel), __VA_ARGS__)
+#endif
+
+/* UNREACHABLE_FOR_PLATFORM */
+
+#if COMPILER(CLANG)
+// This would be a macro except that its use of #pragma works best around
+// a function. Hence it uses macro naming convention.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+static inline void UNREACHABLE_FOR_PLATFORM()
+{
+    ASSERT_NOT_REACHED();
+}
+#pragma clang diagnostic pop
+#else
+#define UNREACHABLE_FOR_PLATFORM() ASSERT_NOT_REACHED()
 #endif
 
 #endif /* WTF_Assertions_h */

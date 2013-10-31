@@ -166,7 +166,7 @@ rect: style.getPropertyValue(table-layout) : auto
 rect: style.getPropertyCSSValue(table-layout) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(tab-size) : 8
 rect: style.getPropertyCSSValue(tab-size) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(text-align) : -webkit-auto
+rect: style.getPropertyValue(text-align) : start
 rect: style.getPropertyCSSValue(text-align) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(text-decoration) : none
 rect: style.getPropertyCSSValue(text-decoration) : [object CSSPrimitiveValue]
@@ -276,6 +276,8 @@ rect: style.getPropertyValue(-webkit-column-count) : auto
 rect: style.getPropertyCSSValue(-webkit-column-count) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-column-gap) : normal
 rect: style.getPropertyCSSValue(-webkit-column-gap) : [object CSSPrimitiveValue]
+rect: style.getPropertyValue(-webkit-column-progression) : normal
+rect: style.getPropertyCSSValue(-webkit-column-progression) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-column-rule-color) : rgb(0, 0, 0)
 rect: style.getPropertyCSSValue(-webkit-column-rule-color) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-column-rule-style) : none
@@ -294,7 +296,7 @@ rect: style.getPropertyValue(-webkit-align-items) : stretch
 rect: style.getPropertyCSSValue(-webkit-align-items) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-align-self) : stretch
 rect: style.getPropertyCSSValue(-webkit-align-self) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-flex) : 1 1 auto
+rect: style.getPropertyValue(-webkit-flex) : 0 1 auto
 rect: style.getPropertyCSSValue(-webkit-flex) : [object CSSValueList]
 rect: style.getPropertyValue(-webkit-flex-direction) : row
 rect: style.getPropertyCSSValue(-webkit-flex-direction) : [object CSSPrimitiveValue]
@@ -700,7 +702,7 @@ g: style.getPropertyValue(table-layout) : auto
 g: style.getPropertyCSSValue(table-layout) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(tab-size) : 8
 g: style.getPropertyCSSValue(tab-size) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(text-align) : -webkit-auto
+g: style.getPropertyValue(text-align) : start
 g: style.getPropertyCSSValue(text-align) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(text-decoration) : none
 g: style.getPropertyCSSValue(text-decoration) : [object CSSPrimitiveValue]
@@ -810,6 +812,8 @@ g: style.getPropertyValue(-webkit-column-count) : auto
 g: style.getPropertyCSSValue(-webkit-column-count) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-column-gap) : normal
 g: style.getPropertyCSSValue(-webkit-column-gap) : [object CSSPrimitiveValue]
+g: style.getPropertyValue(-webkit-column-progression) : normal
+g: style.getPropertyCSSValue(-webkit-column-progression) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-column-rule-color) : rgb(0, 0, 0)
 g: style.getPropertyCSSValue(-webkit-column-rule-color) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-column-rule-style) : none
@@ -828,7 +832,7 @@ g: style.getPropertyValue(-webkit-align-items) : stretch
 g: style.getPropertyCSSValue(-webkit-align-items) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-align-self) : stretch
 g: style.getPropertyCSSValue(-webkit-align-self) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-flex) : 1 1 auto
+g: style.getPropertyValue(-webkit-flex) : 0 1 auto
 g: style.getPropertyCSSValue(-webkit-flex) : [object CSSValueList]
 g: style.getPropertyValue(-webkit-flex-direction) : row
 g: style.getPropertyCSSValue(-webkit-flex-direction) : [object CSSPrimitiveValue]

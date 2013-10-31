@@ -16,8 +16,7 @@ function test()
     removeVendorPrefixes();
 
     name = self.location.pathname;
-    description = "My Test Database";
-    request = evalAndLog("indexedDB.open(name, description)");
+    request = evalAndLog("indexedDB.open(name)");
     request.onsuccess = openSuccess;
     request.onerror = unexpectedErrorCallback;
 }
@@ -34,21 +33,17 @@ function openSuccess()
 
 function createAndPopulateObjectStore()
 {
+    var v1_transaction = event.target.result;
     deleteAllObjectStores(db);
 
     objectStoreName = evalAndLog("objectStoreName = 'Objects';");
     objectStore = evalAndLog("objectStore = db.createObjectStore(objectStoreName, { keyPath: 'foo' });");
 
-    addedCount = evalAndLog("addedCount = 0;");
     for (i = 0; i < 100; i++) {
         request = evalAndLog("request = objectStore.add({foo: i});");
         request.onerror = unexpectedErrorCallback;
-        request.onsuccess = function(event) {
-            if (++addedCount == 100) {
-                checkObjectStore();
-            }
-        }
     }
+    v1_transaction.oncomplete = checkObjectStore;
 }
 
 function checkObjectStore()
@@ -63,6 +58,7 @@ function checkObjectStore()
 
 function postSetVersion2()
 {
+    var v2_transaction = event.target.result;
     evalAndLog("db.deleteObjectStore(objectStore.name);");
     shouldBe("db.objectStoreNames.length", "0");
 
@@ -75,14 +71,14 @@ function postSetVersion2()
     request.onsuccess = function(event) {
         shouldBe("event.target.result", "null");
         deleteSecondObjectStore();
-    }
+    };
+    v2_transaction.oncomplete = setVersion3;
 }
 
 function deleteSecondObjectStore()
 {
     evalAndLog("db.deleteObjectStore(objectStore.name);");
     shouldBe("db.objectStoreNames.length", "0");
-    setVersion3();
 }
 
 function setVersion3()

@@ -44,7 +44,11 @@ void JITCompiler::linkOSRExits()
 {
     for (unsigned i = 0; i < codeBlock()->numberOfOSRExits(); ++i) {
         OSRExit& exit = codeBlock()->osrExit(i);
-        exit.m_check.initialJump().link(this);
+        ASSERT(!exit.m_check.isSet() == (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max()));
+        if (exit.m_watchpointIndex == std::numeric_limits<unsigned>::max())
+            exit.m_check.initialJump().link(this);
+        else
+            codeBlock()->watchpoint(exit.m_watchpointIndex).setDestination(label());
         jitAssertHasValidCallFrame();
         store32(TrustedImm32(i), &globalData()->osrExitIndex);
         exit.m_check.switchToLateJump(patchableJump());
@@ -124,16 +128,14 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     for (unsigned i = 0; i < m_calls.size(); ++i)
         linkBuffer.link(m_calls[i].m_call, m_calls[i].m_function);
 
-    if (m_codeBlock->needsCallReturnIndices()) {
-        m_codeBlock->callReturnIndexVector().reserveCapacity(m_exceptionChecks.size());
-        for (unsigned i = 0; i < m_exceptionChecks.size(); ++i) {
-            unsigned returnAddressOffset = linkBuffer.returnAddressOffset(m_exceptionChecks[i].m_call);
-            CodeOrigin codeOrigin = m_exceptionChecks[i].m_codeOrigin;
-            while (codeOrigin.inlineCallFrame)
-                codeOrigin = codeOrigin.inlineCallFrame->caller;
-            unsigned exceptionInfo = codeOrigin.bytecodeIndex;
-            m_codeBlock->callReturnIndexVector().append(CallReturnOffsetToBytecodeOffset(returnAddressOffset, exceptionInfo));
-        }
+    m_codeBlock->callReturnIndexVector().reserveCapacity(m_exceptionChecks.size());
+    for (unsigned i = 0; i < m_exceptionChecks.size(); ++i) {
+        unsigned returnAddressOffset = linkBuffer.returnAddressOffset(m_exceptionChecks[i].m_call);
+        CodeOrigin codeOrigin = m_exceptionChecks[i].m_codeOrigin;
+        while (codeOrigin.inlineCallFrame)
+            codeOrigin = codeOrigin.inlineCallFrame->caller;
+        unsigned exceptionInfo = codeOrigin.bytecodeIndex;
+        m_codeBlock->callReturnIndexVector().append(CallReturnOffsetToBytecodeOffset(returnAddressOffset, exceptionInfo));
     }
 
     Vector<CodeOriginAtCallReturnOffset>& codeOrigins = m_codeBlock->codeOrigins();
@@ -190,6 +192,8 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
         OSRExit& exit = codeBlock()->osrExit(i);
         linkBuffer.link(exit.m_check.lateJump(), target);
         exit.m_check.correctLateJump(linkBuffer);
+        if (exit.m_watchpointIndex != std::numeric_limits<unsigned>::max())
+            codeBlock()->watchpoint(exit.m_watchpointIndex).correctLabels(linkBuffer);
     }
     
     codeBlock()->shrinkToFit(CodeBlock::LateShrink);
@@ -217,6 +221,9 @@ bool JITCompiler::compile(JITCode& entry)
     speculative.linkOSREntries(linkBuffer);
 
     entry = JITCode(linkBuffer.finalizeCode(), JITCode::DFGJIT);
+#if DFG_ENABLE(DEBUG_VERBOSE)
+    entry.tryToDisassemble();
+#endif
     return true;
 }
 
@@ -299,6 +306,9 @@ bool JITCompiler::compileFunction(JITCode& entry, MacroAssemblerCodePtr& entryWi
 
     entryWithArityCheck = linkBuffer.locationOf(arityCheck);
     entry = JITCode(linkBuffer.finalizeCode(), JITCode::DFGJIT);
+#if DFG_ENABLE(DEBUG_VERBOSE)
+    entry.tryToDisassemble();
+#endif
     return true;
 }
 

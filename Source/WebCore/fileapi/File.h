@@ -56,7 +56,7 @@ public:
 #if ENABLE(FILE_SYSTEM)
     // If filesystem files live in the remote filesystem, the port might pass the valid metadata (whose length field is non-negative) and cache in the File object.
     //
-    // Otherwise calling size(), lastModifiedTime() and webkitSlice() will synchronously query the file metadata.
+    // Otherwise calling size(), lastModifiedTime() and slice() will synchronously query the file metadata.
     static PassRefPtr<File> createForFileSystemFile(const String& name, const FileMetadata& metadata)
     {
         return adoptRef(new File(name, metadata));
@@ -77,11 +77,8 @@ public:
     const String& path() const { return m_path; }
     const String& name() const { return m_name; }
 
-    // This may return zero if getFileModificationTime() platform call has failed or zero snapshot lastModifiedTime is given at construction time.
+    // This may return NaN (which is converted to null Date in javascript layer) if getFileModificationTime() platform call has failed or the information is not available.
     double lastModifiedDate() const;
-
-    // For binding. We want to return null Date if we get the value 0 Date (which is used to indicate the information is unavailable).
-    double lastModifiedDateForBinding() const;
 
 #if ENABLE(DIRECTORY_UPLOAD)
     // Returns the relative path of this file in the context of a directory selection.

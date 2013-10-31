@@ -1254,6 +1254,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\runtime\SymbolTable.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\runtime\SymbolTable.h"
 				>
 			</File>
@@ -1681,6 +1685,14 @@
 				RelativePath="..\..\bytecode\ValueProfile.h"
 				>
 			</File>
+			<File
+				RelativePath="..\..\bytecode\Watchpoint.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\bytecode\Watchpoint.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="debugger"
@@ -1923,6 +1935,14 @@
 			>
 			<File
 				RelativePath="..\..\llint\LLIntData.h"
+				>
+			</File>
+		</Filter>
+		<Filter
+			Name="disassembler"
+			>
+			<File
+				RelativePath="..\..\disassembler\Disassembler.h"
 				>
 			</File>
 		</Filter>
@@ -2171,6 +2191,14 @@
 			</File>
 			<File
 				RelativePath="..\..\heap\HandleSet.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\HeapTimer.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\HeapTimer.h"
 				>
 			</File>
 			<File

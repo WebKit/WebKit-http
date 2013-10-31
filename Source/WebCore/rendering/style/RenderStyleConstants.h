@@ -219,10 +219,6 @@ enum EKHTMLLineBreak {
     LBNORMAL, AFTER_WHITE_SPACE
 };
 
-enum EMatchNearestMailBlockquoteColor {
-    BCNORMAL, MATCH
-};
-
 enum EResize {
     RESIZE_NONE, RESIZE_BOTH, RESIZE_HORIZONTAL, RESIZE_VERTICAL
 };
@@ -335,7 +331,7 @@ enum EWhiteSpace {
 
 // The order of this enum must match the order of the text align values in CSSValueKeywords.in.
 enum ETextAlign {
-    TAAUTO, LEFT, RIGHT, CENTER, JUSTIFY, WEBKIT_LEFT, WEBKIT_RIGHT, WEBKIT_CENTER, TASTART, TAEND,
+    LEFT, RIGHT, CENTER, JUSTIFY, WEBKIT_LEFT, WEBKIT_RIGHT, WEBKIT_CENTER, TASTART, TAEND,
 };
 
 enum ETextTransform {
@@ -454,11 +450,15 @@ enum TextOverflow { TextOverflowClip = 0, TextOverflowEllipsis };
 
 enum EImageRendering { ImageRenderingAuto, ImageRenderingOptimizeSpeed, ImageRenderingOptimizeQuality, ImageRenderingOptimizeContrast };
 
+enum ImageResolutionSource { ImageResolutionSpecified = 0, ImageResolutionFromImage };
+
 enum Order { LogicalOrder = 0, VisualOrder };
 
 enum RegionOverflow { AutoRegionOverflow, BreakRegionOverflow };
 
 enum ColumnAxis { HorizontalColumnAxis, VerticalColumnAxis, AutoColumnAxis };
+
+enum ColumnProgression { NormalColumnProgression, ReverseColumnProgression };
 
 enum LineSnap { LineSnapNone, LineSnapBaseline, LineSnapContain };
 

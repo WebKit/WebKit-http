@@ -66,6 +66,7 @@ WebInspector.ExtensionServer = function()
     this._registerHandler(commands.SetSidebarHeight, this._onSetSidebarHeight.bind(this));
     this._registerHandler(commands.SetSidebarContent, this._onSetSidebarContent.bind(this));
     this._registerHandler(commands.SetSidebarPage, this._onSetSidebarPage.bind(this));
+    this._registerHandler(commands.ShowPanel, this._onShowPanel.bind(this));
     this._registerHandler(commands.StopAuditCategoryRun, this._onStopAuditCategoryRun.bind(this));
     this._registerHandler(commands.Subscribe, this._onSubscribe.bind(this));
     this._registerHandler(commands.Unsubscribe, this._onUnsubscribe.bind(this));
@@ -202,6 +203,12 @@ WebInspector.ExtensionServer.prototype = {
         WebInspector.panels[id] = panel;
         WebInspector.addPanel(panel);
         return this._status.OK();
+    },
+
+    _onShowPanel: function(message)
+    {
+        // Note: WebInspector.showPanel already sanitizes input.
+        WebInspector.showPanel(message.id);
     },
 
     _onCreateStatusBarButton: function(message, port)
@@ -467,7 +474,7 @@ WebInspector.ExtensionServer.prototype = {
         var resource = WebInspector.resourceTreeModel.resourceForURL(message.url);
         if (!resource)
             return this._status.E_NOTFOUND(message.url);
-        this._getResourceContent(resource, message, port);
+        this._getResourceContent(resource.uiSourceCode() || resource, message, port);
     },
 
     _onSetResourceContent: function(message, port)

@@ -1,6 +1,7 @@
 /*
     Copyright (C) 2009-2010 ProFUSION embedded systems
     Copyright (C) 2009-2010 Samsung Electronics
+    Copyright (C) 2012 Intel Corporation
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -33,6 +34,7 @@
 #include "KURL.h"
 #include "MemoryCache.h"
 #include "PageCache.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "ewk_private.h"
 #include "ewk_util_private.h"
@@ -205,15 +207,11 @@ cairo_surface_t* ewk_settings_icon_database_icon_surface_get(const char* url)
     EINA_SAFETY_ON_NULL_RETURN_VAL(url, 0);
 
     WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
-    WebCore::Image* icon = WebCore::iconDatabase().synchronousIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
-
-    if (!icon) {
+    WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
+    if (!icon)
         ERR("no icon for url %s", url);
-        return 0;
-    }
 
-    WebCore::NativeImageCairo* nativeImage = icon->nativeImageForCurrentFrame();
-    return nativeImage ? nativeImage->surface() : 0;
+    return icon ? icon->surface() : 0;
 }
 
 Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* canvas)
@@ -222,15 +220,15 @@ Evas_Object* ewk_settings_icon_database_icon_object_get(const char* url, Evas* c
     EINA_SAFETY_ON_NULL_RETURN_VAL(canvas, 0);
 
     WebCore::KURL kurl(WebCore::KURL(), WTF::String::fromUTF8(url));
-    WebCore::Image* icon = WebCore::iconDatabase().synchronousIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
+    WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(kurl.string(), WebCore::IntSize(16, 16));
 
     if (!icon) {
         ERR("no icon for url %s", url);
         return 0;
     }
 
-    WebCore::NativeImageCairo* nativeImage = icon->nativeImageForCurrentFrame();
-    return nativeImage ? ewk_util_image_from_cairo_surface_add(canvas, nativeImage->surface()) : 0;
+    cairo_surface_t* surface = icon->surface();
+    return surface ? ewk_util_image_from_cairo_surface_add(canvas, surface) : 0;
 }
 
 void ewk_settings_object_cache_capacity_set(unsigned minDeadCapacity, unsigned maxDeadCapacity, unsigned totalCapacity)
@@ -246,6 +244,26 @@ Eina_Bool ewk_settings_object_cache_enable_get()
 void ewk_settings_object_cache_enable_set(Eina_Bool enable)
 {
     WebCore::memoryCache()->setDisabled(!enable);
+}
+
+Eina_Bool ewk_settings_shadow_dom_enable_get()
+{
+#if ENABLE(SHADOW_DOM)
+    return WebCore::RuntimeEnabledFeatures::shadowDOMEnabled();
+#else
+    return false;
+#endif
+}
+
+Eina_Bool ewk_settings_shadow_dom_enable_set(Eina_Bool enable)
+{
+#if ENABLE(SHADOW_DOM)
+    enable = !!enable;
+    WebCore::RuntimeEnabledFeatures::setShadowDOMEnabled(enable);
+    return true;
+#else
+    return false;
+#endif
 }
 
 unsigned ewk_settings_page_cache_capacity_get()

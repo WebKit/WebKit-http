@@ -77,6 +77,7 @@ IDBCursor::IDBCursor(PassRefPtr<IDBCursorBackendInterface> backend, IDBRequest* 
     , m_transaction(transaction)
     , m_transactionNotifier(transaction, this)
     , m_gotValue(false)
+    , m_valueIsDirty(true)
 {
     ASSERT(m_backend);
     ASSERT(m_request);
@@ -109,9 +110,10 @@ PassRefPtr<IDBKey> IDBCursor::primaryKey() const
     return m_currentPrimaryKey;
 }
 
-PassRefPtr<IDBAny> IDBCursor::value() const
+PassRefPtr<IDBAny> IDBCursor::value()
 {
     IDB_TRACE("IDBCursor::value");
+    m_valueIsDirty = false;
     return m_currentValue;
 }
 
@@ -128,6 +130,12 @@ PassRefPtr<IDBRequest> IDBCursor::update(ScriptExecutionContext* context, PassRe
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
+
+    if (m_transaction->isReadOnly()) {
+        ec = IDBDatabaseException::READ_ONLY_ERR;
+        return 0;
+    }
+
     RefPtr<SerializedScriptValue> value = prpValue;
     if (value->blobURLs().size() > 0) {
         // FIXME: Add Blob/File/FileList support
@@ -205,6 +213,11 @@ void IDBCursor::continueFunction(PassRefPtr<IDBKey> key, ExceptionCode& ec)
 PassRefPtr<IDBRequest> IDBCursor::deleteFunction(ScriptExecutionContext* context, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursor::delete");
+    if (m_transaction->isReadOnly()) {
+        ec = IDBDatabaseException::READ_ONLY_ERR;
+        return 0;
+    }
+
     if (!m_gotValue) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
@@ -236,6 +249,7 @@ void IDBCursor::setValueReady()
     m_currentPrimaryKey = m_backend->primaryKey();
     m_currentValue = IDBAny::create(m_backend->value());
     m_gotValue = true;
+    m_valueIsDirty = true;
 }
 
 unsigned short IDBCursor::stringToDirection(const String& directionString, ExceptionCode& ec)

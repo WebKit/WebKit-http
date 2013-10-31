@@ -35,6 +35,12 @@ from webkitpy.layout_tests.models.test_configuration import *
 from webkitpy.layout_tests.models.test_expectations import *
 from webkitpy.layout_tests.models.test_configuration import *
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Needed for Python < 2.7
+    from webkitpy.thirdparty.ordered_dict import OrderedDict
+
 
 class MockBugManager(object):
     def close_bug(self, bug_id, reference_bug_id=None):
@@ -50,16 +56,6 @@ class FunctionsTest(unittest.TestCase):
         self.assertEquals(result_was_expected(PASS, set([PASS]),
                                               False, False), True)
         self.assertEquals(result_was_expected(TEXT, set([PASS]),
-                                              False, False), False)
-
-        # test handling of FAIL expectations
-        self.assertEquals(result_was_expected(IMAGE_PLUS_TEXT, set([FAIL]),
-                                              False, False), True)
-        self.assertEquals(result_was_expected(IMAGE, set([FAIL]),
-                                              False, False), True)
-        self.assertEquals(result_was_expected(TEXT, set([FAIL]),
-                                              False, False), True)
-        self.assertEquals(result_was_expected(CRASH, set([FAIL]),
                                               False, False), False)
 
         # test handling of SKIPped tests and results
@@ -88,11 +84,10 @@ class FunctionsTest(unittest.TestCase):
 
     def test_suffixes_for_expectations(self):
         self.assertEquals(suffixes_for_expectations(set([TEXT])), set(['txt']))
-        self.assertEquals(suffixes_for_expectations(set([FAIL])), set(['txt', 'png']))
         self.assertEquals(suffixes_for_expectations(set([IMAGE_PLUS_TEXT])), set(['txt', 'png']))
         self.assertEquals(suffixes_for_expectations(set([IMAGE])), set(['png']))
         self.assertEquals(suffixes_for_expectations(set([AUDIO])), set(['wav']))
-        self.assertEquals(suffixes_for_expectations(set([TEXT, FAIL, CRASH])), set(['txt', 'png']))
+        self.assertEquals(suffixes_for_expectations(set([TEXT, IMAGE, CRASH])), set(['txt', 'png']))
         self.assertEquals(suffixes_for_expectations(set()), set())
 
 
@@ -128,8 +123,11 @@ BUG_TEST WONTFIX MAC : failures/expected/image.html = IMAGE
 """
 
     def parse_exp(self, expectations, overrides=None, is_lint_mode=False):
-        self._port.test_expectations = lambda: expectations
-        self._port.test_expectations_overrides = lambda: overrides
+        self._expectations_dict = OrderedDict()
+        self._expectations_dict['expectations'] = expectations
+        if overrides:
+            self._expectations_dict['overrides'] = overrides
+        self._port.expectations_dict = lambda: self._expectations_dict
         self._exp = TestExpectations(self._port, self.get_basic_tests(), is_lint_mode)
 
     def assert_exp(self, test, result):
@@ -206,17 +204,17 @@ BUGX WONTFIX : failures/expected = IMAGE
 SKIP : failures/expected/image.html""", is_lint_mode=True)
             self.assertFalse(True, "ParseError wasn't raised")
         except ParseError, e:
-            warnings = [u":1 Test lacks BUG modifier. failures/expected/text.html",
-                        u":1 Unrecognized modifier 'foo' failures/expected/text.html",
-                        u":2 Missing expectations SKIP : failures/expected/image.html"]
-            self.assertEqual(str(e), '\n'.join(self._port.path_to_test_expectations_file() + str(warning) for warning in warnings))
+            warnings = ("expectations:1 Test lacks BUG modifier. failures/expected/text.html\n"
+                        "expectations:1 Unrecognized modifier 'foo' failures/expected/text.html\n"
+                        "expectations:2 Missing expectations SKIP : failures/expected/image.html")
+            self.assertEqual(str(e), warnings)
 
         try:
             self.parse_exp('SKIP : failures/expected/text.html = TEXT', is_lint_mode=True)
             self.assertFalse(True, "ParseError wasn't raised")
         except ParseError, e:
-            warnings = [u':1 Test lacks BUG modifier. failures/expected/text.html']
-            self.assertEqual(str(e), '\n'.join(self._port.path_to_test_expectations_file() + str(warning) for warning in warnings))
+            warnings = u'expectations:1 Test lacks BUG modifier. failures/expected/text.html'
+            self.assertEqual(str(e), warnings)
 
     def test_error_on_different_platform(self):
         # parse_exp uses a Windows port. Assert errors on Mac show up in lint mode.
@@ -234,6 +232,12 @@ SKIP : failures/expected/image.html""", is_lint_mode=True)
         self.parse_exp("BUG_EXP: failures/expected/text.html = TEXT",
                        "BUG_OVERRIDE : failures/expected/text.html = IMAGE")
         self.assert_exp('failures/expected/text.html', IMAGE)
+
+    def test_overrides__directory(self):
+        self.parse_exp("BUG_EXP: failures/expected/text.html = TEXT",
+                       "BUG_OVERRIDE: failures/expected = CRASH")
+        self.assert_exp('failures/expected/text.html', CRASH)
+        self.assert_exp('failures/expected/image.html', CRASH)
 
     def test_overrides__duplicate(self):
         self.assert_bad_expectations("BUG_EXP: failures/expected/text.html = TEXT",
@@ -270,8 +274,11 @@ class SkippedTests(Base):
     def check(self, expectations, overrides, skips, lint=False):
         port = MockHost().port_factory.get('qt')
         port._filesystem.write_text_file(port._filesystem.join(port.layout_tests_dir(), 'failures/expected/text.html'), 'foo')
-        port.test_expectations = lambda: expectations
-        port.test_expectations_overrides = lambda: overrides
+        self._expectations_dict = OrderedDict()
+        self._expectations_dict['expectations'] = expectations
+        if overrides:
+            self._expectations_dict['overrides'] = overrides
+        port.expectations_dict = lambda: self._expectations_dict
         port.skipped_layout_tests = lambda tests: set(skips)
         exp = TestExpectations(port, ['failures/expected/text.html'], lint)
 
@@ -416,9 +423,9 @@ class RemoveConfigurationsTest(Base):
         test_port.test_isfile = lambda test: True
 
         test_config = test_port.test_configuration()
-        test_port.test_expectations = lambda: """BUGX LINUX WIN RELEASE : failures/expected/foo.html = TEXT
+        test_port.expectations_dict = lambda: {"expectations": """BUGX LINUX WIN RELEASE : failures/expected/foo.html = TEXT
 BUGY WIN MAC DEBUG : failures/expected/foo.html = CRASH
-"""
+"""}
         expectations = TestExpectations(test_port, self.get_basic_tests())
 
         actual_expectations = expectations.remove_configuration_from_test('failures/expected/foo.html', test_config)
@@ -434,9 +441,9 @@ BUGY WIN MAC DEBUG : failures/expected/foo.html = CRASH
         test_port.test_isfile = lambda test: True
 
         test_config = test_port.test_configuration()
-        test_port.test_expectations = lambda: """BUGX WIN RELEASE : failures/expected/foo.html = TEXT
+        test_port.expectations_dict = lambda: {'expectations': """BUGX WIN RELEASE : failures/expected/foo.html = TEXT
 BUGY WIN DEBUG : failures/expected/foo.html = CRASH
-"""
+"""}
         expectations = TestExpectations(test_port)
 
         actual_expectations = expectations.remove_configuration_from_test('failures/expected/foo.html', test_config)
@@ -468,51 +475,54 @@ class RebaseliningTest(Base):
 
 
 class TestExpectationParserTests(unittest.TestCase):
+    def _tokenize(self, line):
+        return TestExpectationParser._tokenize('path', line, 0)
+
     def test_tokenize_blank(self):
-        expectation = TestExpectationParser._tokenize('')
+        expectation = self._tokenize('')
         self.assertEqual(expectation.comment, None)
         self.assertEqual(len(expectation.warnings), 0)
 
     def test_tokenize_missing_colon(self):
-        expectation = TestExpectationParser._tokenize('Qux.')
+        expectation = self._tokenize('Qux.')
         self.assertEqual(str(expectation.warnings), '["Missing a \':\'"]')
 
     def test_tokenize_extra_colon(self):
-        expectation = TestExpectationParser._tokenize('FOO : : bar')
+        expectation = self._tokenize('FOO : : bar')
         self.assertEqual(str(expectation.warnings), '["Extraneous \':\'"]')
 
     def test_tokenize_empty_comment(self):
-        expectation = TestExpectationParser._tokenize('//')
+        expectation = self._tokenize('//')
         self.assertEqual(expectation.comment, '')
         self.assertEqual(len(expectation.warnings), 0)
 
     def test_tokenize_comment(self):
-        expectation = TestExpectationParser._tokenize('//Qux.')
+        expectation = self._tokenize('//Qux.')
         self.assertEqual(expectation.comment, 'Qux.')
         self.assertEqual(len(expectation.warnings), 0)
 
     def test_tokenize_missing_equal(self):
-        expectation = TestExpectationParser._tokenize('FOO : bar')
+        expectation = self._tokenize('FOO : bar')
         self.assertEqual(str(expectation.warnings), "['Missing expectations\']")
 
     def test_tokenize_extra_equal(self):
-        expectation = TestExpectationParser._tokenize('FOO : bar = BAZ = Qux.')
+        expectation = self._tokenize('FOO : bar = BAZ = Qux.')
         self.assertEqual(str(expectation.warnings), '["Extraneous \'=\'"]')
 
     def test_tokenize_valid(self):
-        expectation = TestExpectationParser._tokenize('FOO : bar = BAZ')
+        expectation = self._tokenize('FOO : bar = BAZ')
         self.assertEqual(expectation.comment, None)
         self.assertEqual(len(expectation.warnings), 0)
 
     def test_tokenize_valid_with_comment(self):
-        expectation = TestExpectationParser._tokenize('FOO : bar = BAZ //Qux.')
+        expectation = self._tokenize('FOO : bar = BAZ //Qux.')
         self.assertEqual(expectation.comment, 'Qux.')
         self.assertEqual(str(expectation.modifiers), '[\'foo\']')
         self.assertEqual(str(expectation.expectations), '[\'baz\']')
         self.assertEqual(len(expectation.warnings), 0)
 
     def test_tokenize_valid_with_multiple_modifiers(self):
-        expectation = TestExpectationParser._tokenize('FOO1 FOO2 : bar = BAZ //Qux.')
+        expectation = self._tokenize('FOO1 FOO2 : bar = BAZ //Qux.')
         self.assertEqual(expectation.comment, 'Qux.')
         self.assertEqual(str(expectation.modifiers), '[\'foo1\', \'foo2\']')
         self.assertEqual(str(expectation.expectations), '[\'baz\']')
@@ -524,7 +534,7 @@ class TestExpectationParserTests(unittest.TestCase):
         test_port.test_exists = lambda test: True
         test_config = test_port.test_configuration()
         full_test_list = []
-        expectation_line = TestExpectationParser._tokenize('')
+        expectation_line = self._tokenize('')
         parser = TestExpectationParser(test_port, full_test_list, allow_rebaseline_modifier=False)
         parser._parse_line(expectation_line)
         self.assertFalse(expectation_line.is_invalid())
@@ -538,14 +548,17 @@ class TestExpectationSerializerTests(unittest.TestCase):
         self._serializer = TestExpectationSerializer(self._converter)
         unittest.TestCase.__init__(self, testFunc)
 
+    def _tokenize(self, line):
+        return TestExpectationParser._tokenize('path', line, 0)
+
     def assert_round_trip(self, in_string, expected_string=None):
-        expectation = TestExpectationParser._tokenize(in_string)
+        expectation = self._tokenize(in_string)
         if expected_string is None:
             expected_string = in_string
         self.assertEqual(expected_string, self._serializer.to_string(expectation))
 
     def assert_list_round_trip(self, in_string, expected_string=None):
-        expectations = TestExpectationParser._tokenize_list(in_string)
+        expectations = TestExpectationParser._tokenize_list('path', in_string)
         if expected_string is None:
             expected_string = in_string
         self.assertEqual(expected_string, TestExpectationSerializer.list_to_string(expectations, self._converter))
@@ -597,10 +610,10 @@ class TestExpectationSerializerTests(unittest.TestCase):
         self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), '')
         expectation_line.parsed_expectations = set([IMAGE_PLUS_TEXT])
         self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), 'image+text')
-        expectation_line.parsed_expectations = set([PASS, FAIL])
-        self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), 'pass fail')
-        expectation_line.parsed_expectations = set([FAIL, PASS])
-        self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), 'pass fail')
+        expectation_line.parsed_expectations = set([PASS, IMAGE])
+        self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), 'pass image')
+        expectation_line.parsed_expectations = set([TEXT, PASS])
+        self.assertEqual(self._serializer._parsed_expectations_string(expectation_line), 'pass text')
 
     def test_parsed_modifier_string(self):
         expectation_line = TestExpectationLine()

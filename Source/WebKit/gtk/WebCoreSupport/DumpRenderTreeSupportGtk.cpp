@@ -189,28 +189,6 @@ CString DumpRenderTreeSupportGtk::dumpRenderTree(WebKitWebFrame* frame)
 }
 
 /**
- * counterValueForElementById:
- * @frame: a #WebKitWebFrame
- * @id: an element ID string
- *
- * Return value: The counter value of element @id in @frame
- */
-CString DumpRenderTreeSupportGtk::counterValueForElementById(WebKitWebFrame* frame, const char* id)
-{
-    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), CString());
-
-    Frame* coreFrame = core(frame);
-    if (!coreFrame)
-        return CString();
-
-    Element* coreElement = coreFrame->document()->getElementById(AtomicString(id));
-    if (!coreElement)
-        return CString();
-
-    return counterValueForElement(coreElement).utf8();
-}
-
-/**
  * numberForElementById
  * @frame: a #WebKitWebFrame
  * @id: an element ID string
@@ -682,31 +660,6 @@ void DumpRenderTreeSupportGtk::setMinimumTimerInterval(WebKitWebView* webView, d
     core(webView)->settings()->setMinDOMTimerInterval(interval);
 }
 
-static void modifyAccessibilityValue(AtkObject* axObject, bool increment)
-{
-    if (!axObject || !WEBKIT_IS_ACCESSIBLE(axObject))
-        return;
-
-    AccessibilityObject* coreObject = webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(axObject));
-    if (!coreObject)
-        return;
-
-    if (increment)
-        coreObject->increment();
-    else
-        coreObject->decrement();
-}
-
-void DumpRenderTreeSupportGtk::incrementAccessibilityValue(AtkObject* axObject)
-{
-    modifyAccessibilityValue(axObject, true);
-}
-
-void DumpRenderTreeSupportGtk::decrementAccessibilityValue(AtkObject* axObject)
-{
-    modifyAccessibilityValue(axObject, false);
-}
-
 CString DumpRenderTreeSupportGtk::accessibilityHelpText(AtkObject* axObject)
 {
     if (!axObject || !WEBKIT_IS_ACCESSIBLE(axObject))
@@ -897,4 +850,55 @@ void DumpRenderTreeSupportGtk::setDomainRelaxationForbiddenForURLScheme(bool for
 void DumpRenderTreeSupportGtk::setSerializeHTTPLoads(bool enabled)
 {
     resourceLoadScheduler()->setSerialLoadingEnabled(enabled);
+}
+
+void DumpRenderTreeSupportGtk::setTracksRepaints(WebKitWebFrame* frame, bool tracks)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_FRAME(frame));
+
+    Frame* coreFrame = core(frame);
+    if (coreFrame && coreFrame->view())
+        coreFrame->view()->setTracksRepaints(tracks);
+}
+
+bool DumpRenderTreeSupportGtk::isTrackingRepaints(WebKitWebFrame* frame)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), false);
+
+    Frame* coreFrame = core(frame);
+    if (coreFrame && coreFrame->view())
+        return coreFrame->view()->isTrackingRepaints();
+
+    return false;
+}
+
+GSList* DumpRenderTreeSupportGtk::trackedRepaintRects(WebKitWebFrame* frame)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_FRAME(frame), 0);
+
+    Frame* coreFrame = core(frame);
+    if (!coreFrame || !coreFrame->view())
+        return 0;
+
+    GSList* rects = 0;
+    const Vector<IntRect>& repaintRects = coreFrame->view()->trackedRepaintRects();
+    for (unsigned i = 0; i < repaintRects.size(); i++) {
+        GdkRectangle* rect = g_new0(GdkRectangle, 1);
+        rect->x = repaintRects[i].x();
+        rect->y = repaintRects[i].y();
+        rect->width = repaintRects[i].width();
+        rect->height = repaintRects[i].height();
+        rects = g_slist_append(rects, rect);
+    }
+
+    return rects;
+}
+
+void DumpRenderTreeSupportGtk::resetTrackedRepaints(WebKitWebFrame* frame)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_FRAME(frame));
+
+    Frame* coreFrame = core(frame);
+    if (coreFrame && coreFrame->view())
+        coreFrame->view()->resetTrackedRepaints();
 }

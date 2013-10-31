@@ -60,21 +60,7 @@ class PortTest(unittest.TestCase):
 
     def test_default_child_processes(self):
         port = self.make_port()
-        # Even though the MockPlatformInfo shows 1GB free memory (enough for 5 DRT instances)
-        # we're still limited by the 2 mock cores we have:
-        self.assertEqual(port.default_child_processes(), 2)
-        bytes_for_drt = 200 * 1024 * 1024
-
-        port.host.platform.free_bytes_memory = lambda: bytes_for_drt
-        expected_stdout = "This machine could support 2 child processes, but only has enough memory for 1.\n"
-        child_processes = OutputCapture().assert_outputs(self, port.default_child_processes, (), expected_stdout=expected_stdout)
-        self.assertEqual(child_processes, 1)
-
-        # Make sure that we always use one process, even if we don't have the memory for it.
-        port.host.platform.free_bytes_memory = lambda: bytes_for_drt - 1
-        expected_stdout = "This machine could support 2 child processes, but only has enough memory for 1.\n"
-        child_processes = OutputCapture().assert_outputs(self, port.default_child_processes, (), expected_stdout=expected_stdout)
-        self.assertEqual(child_processes, 1)
+        self.assertNotEquals(port.default_child_processes(), None)
 
     def test_format_wdiff_output_as_html(self):
         output = "OUTPUT %s %s %s" % (Port._WDIFF_DEL, Port._WDIFF_ADD, Port._WDIFF_END)
@@ -280,31 +266,33 @@ class PortTest(unittest.TestCase):
 
     def test_additional_expectations(self):
         port = self.make_port(port_name='foo')
-
+        port.port_name = 'foo'
+        port._filesystem.write_text_file('/mock-checkout/LayoutTests/platform/foo/TestExpectations', '')
         port._filesystem.write_text_file(
             '/tmp/additional-expectations-1.txt', 'content1\n')
         port._filesystem.write_text_file(
             '/tmp/additional-expectations-2.txt', 'content2\n')
 
-        self.assertEquals(None, port.test_expectations_overrides())
+        self.assertEquals('\n'.join(port.expectations_dict().values()), '')
 
         port._options.additional_expectations = [
             '/tmp/additional-expectations-1.txt']
-        self.assertEquals('content1\n', port.test_expectations_overrides())
+        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
 
         port._options.additional_expectations = [
             '/tmp/nonexistent-file', '/tmp/additional-expectations-1.txt']
-        self.assertEquals('content1\n', port.test_expectations_overrides())
+        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n')
 
         port._options.additional_expectations = [
             '/tmp/additional-expectations-1.txt', '/tmp/additional-expectations-2.txt']
-        self.assertEquals('content1\ncontent2\n', port.test_expectations_overrides())
+        self.assertEquals('\n'.join(port.expectations_dict().values()), '\ncontent1\n\ncontent2\n')
 
     def test_uses_test_expectations_file(self):
         port = self.make_port(port_name='foo')
-        port.path_to_test_expectations_file = lambda: '/mock-results/test_expectations.txt'
+        port.port_name = 'foo'
+        port.path_to_test_expectations_file = lambda: '/mock-results/TestExpectations'
         self.assertFalse(port.uses_test_expectations_file())
-        port._filesystem = MockFileSystem({'/mock-results/test_expectations.txt': ''})
+        port._filesystem = MockFileSystem({'/mock-results/TestExpectations': ''})
         self.assertTrue(port.uses_test_expectations_file())
 
     def test_find_no_paths_specified(self):

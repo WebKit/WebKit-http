@@ -38,6 +38,7 @@ CopiedSpace::CopiedSpace(Heap* heap)
     , m_inCopyingPhase(false)
     , m_numberOfLoanedBlocks(0)
 {
+    m_toSpaceLock.Init();
 }
 
 CopiedSpace::~CopiedSpace()
@@ -57,8 +58,7 @@ void CopiedSpace::init()
     m_toSpace = &m_blocks1;
     m_fromSpace = &m_blocks2;
     
-    if (!addNewBlock())
-        CRASH();
+    allocateBlock();
 }   
 
 CheckedBoolean CopiedSpace::tryAllocateSlowCase(size_t bytes, void** outPtr)
@@ -68,10 +68,8 @@ CheckedBoolean CopiedSpace::tryAllocateSlowCase(size_t bytes, void** outPtr)
     
     m_heap->didAllocate(m_allocator.currentCapacity());
 
-    if (!addNewBlock()) {
-        *outPtr = 0;
-        return false;
-    }
+    allocateBlock();
+
     *outPtr = m_allocator.allocate(bytes);
     ASSERT(*outPtr);
     return true;
@@ -167,8 +165,10 @@ void CopiedSpace::doneFillingBlock(CopiedBlock* block)
         return;
     }
 
+    block->zeroFillToEnd();
+
     {
-        MutexLocker locker(m_toSpaceLock);
+        SpinLockHolder locker(&m_toSpaceLock);
         m_toSpace->push(block);
         m_blockSet.add(block);
         m_blockFilter.add(reinterpret_cast<Bits>(block));
@@ -222,33 +222,10 @@ void CopiedSpace::doneCopying()
         curr = next;
     }
 
-    if (!m_toSpace->head()) {
-        if (!addNewBlock())
-            CRASH();
-    } else
+    if (!m_toSpace->head())
+        allocateBlock();
+    else
         m_allocator.resetCurrentBlock(static_cast<CopiedBlock*>(m_toSpace->head()));
-}
-
-CheckedBoolean CopiedSpace::getFreshBlock(AllocationEffort allocationEffort, CopiedBlock** outBlock)
-{
-    CopiedBlock* block = 0;
-    if (allocationEffort == AllocationMustSucceed)
-        block = CopiedBlock::create(m_heap->blockAllocator().allocate());
-    else {
-        ASSERT(allocationEffort == AllocationCanFail);
-        if (m_heap->shouldCollect())
-            m_heap->collect(Heap::DoNotSweep);
-        
-        if (!getFreshBlock(AllocationMustSucceed, &block)) {
-            *outBlock = 0;
-            ASSERT_NOT_REACHED();
-            return false;
-        }
-    }
-    ASSERT(block);
-    ASSERT(is8ByteAligned(block->m_offset));
-    *outBlock = block;
-    return true;
 }
 
 size_t CopiedSpace::size()

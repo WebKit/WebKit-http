@@ -407,6 +407,11 @@ public:
 
     const PseudoStyleCache* cachedPseudoStyles() const { return m_cachedPseudoStyles.get(); }
 
+#if ENABLE(CSS_VARIABLES)
+    void setVariable(const AtomicString& name, const String& value) { rareInheritedData.access()->m_variables.access()->setVariable(name, value); }
+    const HashMap<AtomicString, String>* variables() { return &(rareInheritedData->m_variables->m_data); }
+#endif
+
     bool affectedByHoverRules() const { return noninherited_flags.affectedByHover(); }
     bool affectedByActiveRules() const { return noninherited_flags.affectedByActive(); }
     bool affectedByDragRules() const { return noninherited_flags.affectedByDrag(); }
@@ -810,9 +815,9 @@ public:
     EBoxPack boxPack() const { return static_cast<EBoxPack>(rareNonInheritedData->m_deprecatedFlexibleBox->pack); }
 
     float order() const { return rareNonInheritedData->m_order; }
-    float positiveFlex() const { return rareNonInheritedData->m_flexibleBox->m_positiveFlex; }
-    float negativeFlex() const { return rareNonInheritedData->m_flexibleBox->m_negativeFlex; }
-    Length flexPreferredSize() const { return rareNonInheritedData->m_flexibleBox->m_preferredSize; }
+    float flexGrow() const { return rareNonInheritedData->m_flexibleBox->m_flexGrow; }
+    float flexShrink() const { return rareNonInheritedData->m_flexibleBox->m_flexShrink; }
+    Length flexBasis() const { return rareNonInheritedData->m_flexibleBox->m_flexBasis; }
     EAlignContent alignContent() const { return static_cast<EAlignContent>(rareNonInheritedData->m_alignContent); }
     EAlignItems alignItems() const { return static_cast<EAlignItems>(rareNonInheritedData->m_alignItems); }
     EAlignItems alignSelf() const { return static_cast<EAlignItems>(rareNonInheritedData->m_alignSelf); }
@@ -835,7 +840,9 @@ public:
     void getBoxShadowInlineDirectionExtent(LayoutUnit& logicalLeft, LayoutUnit& logicalRight) { getShadowInlineDirectionExtent(boxShadow(), logicalLeft, logicalRight); }
     void getBoxShadowBlockDirectionExtent(LayoutUnit& logicalTop, LayoutUnit& logicalBottom) { getShadowBlockDirectionExtent(boxShadow(), logicalTop, logicalBottom); }
 
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     EBoxDecorationBreak boxDecorationBreak() const { return m_box->boxDecorationBreak(); }
+#endif
     StyleReflection* boxReflect() const { return rareNonInheritedData->m_boxReflect.get(); }
     EBoxSizing boxSizing() const { return m_box->boxSizing(); }
     Length marqueeIncrement() const { return rareNonInheritedData->m_marquee->increment; }
@@ -853,7 +860,6 @@ public:
     EWordWrap wordWrap() const { return static_cast<EWordWrap>(rareInheritedData->wordWrap); }
     ENBSPMode nbspMode() const { return static_cast<ENBSPMode>(rareInheritedData->nbspMode); }
     EKHTMLLineBreak khtmlLineBreak() const { return static_cast<EKHTMLLineBreak>(rareInheritedData->khtmlLineBreak); }
-    EMatchNearestMailBlockquoteColor matchNearestMailBlockquoteColor() const { return static_cast<EMatchNearestMailBlockquoteColor>(rareNonInheritedData->matchNearestMailBlockquoteColor); }
     const AtomicString& highlight() const { return rareInheritedData->highlight; }
     Hyphens hyphens() const { return static_cast<Hyphens>(rareInheritedData->hyphens); }
     short hyphenationLimitBefore() const { return rareInheritedData->hyphenationLimitBefore; }
@@ -868,6 +874,7 @@ public:
         ColumnAxis axis = columnAxis();
         return axis == AutoColumnAxis || isHorizontalWritingMode() == (axis == HorizontalColumnAxis);
     }
+    ColumnProgression columnProgression() const { return static_cast<ColumnProgression>(rareNonInheritedData->m_multiCol->m_progression); }
     float columnWidth() const { return rareNonInheritedData->m_multiCol->m_width; }
     bool hasAutoColumnWidth() const { return rareNonInheritedData->m_multiCol->m_autoWidth; }
     unsigned short columnCount() const { return rareNonInheritedData->m_multiCol->m_count; }
@@ -975,6 +982,7 @@ public:
     EImageRendering imageRendering() const { return static_cast<EImageRendering>(rareInheritedData->m_imageRendering); }
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
+    ImageResolutionSource imageResolutionSource() const { return static_cast<ImageResolutionSource>(rareInheritedData->m_imageResolutionSource); }
     float imageResolution() const { return rareInheritedData->m_imageResolution; }
 #endif
     
@@ -1145,6 +1153,7 @@ public:
     void setImageRendering(EImageRendering v) { SET_VAR(rareInheritedData, m_imageRendering, v) }
 
 #if ENABLE(CSS_IMAGE_RESOLUTION)
+    void setImageResolutionSource(ImageResolutionSource v) { SET_VAR(rareInheritedData, m_imageResolutionSource, v) }
     void setImageResolution(float f) { SET_VAR(rareInheritedData, m_imageResolution, f) }
 #endif
 
@@ -1248,7 +1257,9 @@ public:
     void setAppearance(ControlPart a) { SET_VAR(rareNonInheritedData, m_appearance, a); }
     // For valid values of box-align see http://www.w3.org/TR/2009/WD-css3-flexbox-20090723/#alignment
     void setBoxAlign(EBoxAlignment a) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, align, a); }
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     void setBoxDecorationBreak(EBoxDecorationBreak b) { SET_VAR(m_box, m_boxDecorationBreak, b); }
+#endif
     void setBoxDirection(EBoxDirection d) { inherited_flags._box_direction = d; }
     void setBoxFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, flex, f); }
     void setBoxFlexGroup(unsigned int fg) { SET_VAR(rareNonInheritedData.access()->m_deprecatedFlexibleBox, flex_group, fg); }
@@ -1259,9 +1270,9 @@ public:
     void setBoxShadow(PassOwnPtr<ShadowData>, bool add = false);
     void setBoxReflect(PassRefPtr<StyleReflection> reflect) { if (rareNonInheritedData->m_boxReflect != reflect) rareNonInheritedData.access()->m_boxReflect = reflect; }
     void setBoxSizing(EBoxSizing s) { SET_VAR(m_box, m_boxSizing, s); }
-    void setPositiveFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_positiveFlex, f); }
-    void setNegativeFlex(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_negativeFlex, f); }
-    void setFlexPreferredSize(Length l) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_preferredSize, l); }
+    void setFlexGrow(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexGrow, f); }
+    void setFlexShrink(float f) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexShrink, f); }
+    void setFlexBasis(Length length) { SET_VAR(rareNonInheritedData.access()->m_flexibleBox, m_flexBasis, length); }
     void setOrder(float o) { SET_VAR(rareNonInheritedData, m_order, o); }
     void setAlignContent(EAlignContent p) { SET_VAR(rareNonInheritedData, m_alignContent, p); }
     void setAlignItems(EAlignItems a) { SET_VAR(rareNonInheritedData, m_alignItems, a); }
@@ -1289,7 +1300,6 @@ public:
     void setWordWrap(EWordWrap b) { SET_VAR(rareInheritedData, wordWrap, b); }
     void setNBSPMode(ENBSPMode b) { SET_VAR(rareInheritedData, nbspMode, b); }
     void setKHTMLLineBreak(EKHTMLLineBreak b) { SET_VAR(rareInheritedData, khtmlLineBreak, b); }
-    void setMatchNearestMailBlockquoteColor(EMatchNearestMailBlockquoteColor c) { SET_VAR(rareNonInheritedData, matchNearestMailBlockquoteColor, c); }
     void setHighlight(const AtomicString& h) { SET_VAR(rareInheritedData, highlight, h); }
     void setHyphens(Hyphens h) { SET_VAR(rareInheritedData, hyphens, h); }
     void setHyphenationLimitBefore(short limit) { SET_VAR(rareInheritedData, hyphenationLimitBefore, limit); }
@@ -1300,6 +1310,7 @@ public:
     void setBorderFit(EBorderFit b) { SET_VAR(rareNonInheritedData, m_borderFit, b); }
     void setResize(EResize r) { SET_VAR(rareInheritedData, resize, r); }
     void setColumnAxis(ColumnAxis axis) { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_axis, axis); }
+    void setColumnProgression(ColumnProgression progression) { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_progression, progression); }
     void setColumnWidth(float f) { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_autoWidth, false); SET_VAR(rareNonInheritedData.access()->m_multiCol, m_width, f); }
     void setHasAutoColumnWidth() { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_autoWidth, true); SET_VAR(rareNonInheritedData.access()->m_multiCol, m_width, 0); }
     void setColumnCount(unsigned short c) { SET_VAR(rareNonInheritedData.access()->m_multiCol, m_autoCount, false); SET_VAR(rareNonInheritedData.access()->m_multiCol, m_count, c); }
@@ -1539,6 +1550,7 @@ public:
     static EClear initialClear() { return CNONE; }
     static ColorSpace initialColorSpace() { return ColorSpaceDeviceRGB; }
     static ColumnAxis initialColumnAxis() { return AutoColumnAxis; }
+    static ColumnProgression initialColumnProgression() { return NormalColumnProgression; }
     static TextDirection initialDirection() { return LTR; }
     static WritingMode initialWritingMode() { return TopToBottomWritingMode; }
     static TextCombine initialTextCombine() { return TextCombineNone; }
@@ -1577,7 +1589,7 @@ public:
     static short initialWidows() { return 2; }
     static short initialOrphans() { return 2; }
     static Length initialLineHeight() { return Length(-100.0, Percent); }
-    static ETextAlign initialTextAlign() { return TAAUTO; }
+    static ETextAlign initialTextAlign() { return TASTART; }
     static ETextDecoration initialTextDecoration() { return TDNONE; }
     static float initialZoom() { return 1.0f; }
     static int initialOutlineOffset() { return 0; }
@@ -1593,9 +1605,9 @@ public:
     static unsigned int initialBoxOrdinalGroup() { return 1; }
     static EBoxSizing initialBoxSizing() { return CONTENT_BOX; }
     static StyleReflection* initialBoxReflect() { return 0; }
-    static float initialPositiveFlex() { return 1; }
-    static float initialNegativeFlex() { return 1; }
-    static Length initialFlexPreferredSize() { return Length(Auto); }
+    static float initialFlexGrow() { return 0; }
+    static float initialFlexShrink() { return 1; }
+    static Length initialFlexBasis() { return Length(Auto); }
     static float initialOrder() { return 0; }
     static EAlignContent initialAlignContent() { return AlignContentStretch; }
     static EAlignItems initialAlignItems() { return AlignStretch; }
@@ -1618,7 +1630,6 @@ public:
     static EWordWrap initialWordWrap() { return NormalWordWrap; }
     static ENBSPMode initialNBSPMode() { return NBNORMAL; }
     static EKHTMLLineBreak initialKHTMLLineBreak() { return LBNORMAL; }
-    static EMatchNearestMailBlockquoteColor initialMatchNearestMailBlockquoteColor() { return BCNORMAL; }
     static const AtomicString& initialHighlight() { return nullAtom; }
     static ESpeak initialSpeak() { return SpeakNormal; }
     static Hyphens initialHyphens() { return HyphensManual; }
@@ -1655,6 +1666,7 @@ public:
     static TextEmphasisPosition initialTextEmphasisPosition() { return TextEmphasisPositionOver; }
     static LineBoxContain initialLineBoxContain() { return LineBoxContainBlock | LineBoxContainInline | LineBoxContainReplaced; }
     static EImageRendering initialImageRendering() { return ImageRenderingAuto; }
+    static ImageResolutionSource initialImageResolutionSource() { return ImageResolutionSpecified; }
     static float initialImageResolution() { return 1; }
     static StyleImage* initialBorderImageSource() { return 0; }
     static StyleImage* initialMaskBoxImageSource() { return 0; }

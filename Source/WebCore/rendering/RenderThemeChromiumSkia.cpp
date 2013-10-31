@@ -378,18 +378,6 @@ bool RenderThemeChromiumSkia::paintSearchFieldResultsButton(RenderObject* magnif
     return false;
 }
 
-bool RenderThemeChromiumSkia::paintMediaControlsBackground(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
-{
-#if ENABLE(VIDEO)
-    return RenderMediaControlsChromium::paintMediaControlsPart(MediaTimelineContainer, object, paintInfo, rect);
-#else
-    UNUSED_PARAM(object);
-    UNUSED_PARAM(paintInfo);
-    UNUSED_PARAM(rect);
-    return false;
-#endif
-}
-
 bool RenderThemeChromiumSkia::paintMediaSliderTrack(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
 {
 #if ENABLE(VIDEO)
@@ -463,6 +451,50 @@ bool RenderThemeChromiumSkia::paintMediaMuteButton(RenderObject* object, const P
 {
 #if ENABLE(VIDEO)
     return RenderMediaControlsChromium::paintMediaControlsPart(MediaMuteButton, object, paintInfo, rect);
+#else
+    UNUSED_PARAM(object);
+    UNUSED_PARAM(paintInfo);
+    UNUSED_PARAM(rect);
+    return false;
+#endif
+}
+
+String RenderThemeChromiumSkia::formatMediaControlsTime(float time) const
+{
+#if ENABLE(VIDEO)
+    return RenderMediaControlsChromium::formatMediaControlsTime(time);
+#else
+    UNUSED_PARAM(time);
+    return 0;
+#endif
+}
+
+String RenderThemeChromiumSkia::formatMediaControlsCurrentTime(float currentTime, float duration) const
+{
+#if ENABLE(VIDEO)
+    return RenderMediaControlsChromium::formatMediaControlsCurrentTime(currentTime, duration);
+#else
+    UNUSED_PARAM(currentTime);
+    UNUSED_PARAM(duration);
+    return 0;
+#endif
+}
+
+String RenderThemeChromiumSkia::formatMediaControlsRemainingTime(float currentTime, float duration) const
+{
+#if ENABLE(VIDEO)
+    return RenderMediaControlsChromium::formatMediaControlsRemainingTime(currentTime, duration);
+#else
+    UNUSED_PARAM(currentTime);
+    UNUSED_PARAM(duration);
+    return 0;
+#endif
+}
+
+bool RenderThemeChromiumSkia::paintMediaFullscreenButton(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
+{
+#if ENABLE(VIDEO)
+    return RenderMediaControlsChromium::paintMediaControlsPart(MediaEnterFullscreenButton, object, paintInfo, rect);
 #else
     UNUSED_PARAM(object);
     UNUSED_PARAM(paintInfo);

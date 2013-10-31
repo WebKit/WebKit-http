@@ -30,6 +30,35 @@
 
 namespace WebCore {
 
+struct SameSizeAsStyleRareInheritedData : public RefCounted<SameSizeAsStyleRareInheritedData> {
+    Color firstColor;
+    float firstFloat;
+    Color colors[5];
+    void* ownPtrs[1];
+    AtomicString atomicStrings[5];
+    void* refPtrs[2];
+    Length lengths[1];
+    float secondFloat;
+    unsigned m_bitfields[2];
+    short pagedMediaShorts[2];
+    unsigned unsigneds[1];
+    short hyphenationShorts[3];
+
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    float imageResolutionFloats;
+#endif
+
+#if ENABLE(TOUCH_EVENTS)
+    Color touchColors;
+#endif
+
+#if ENABLE(CSS_VARIABLES)
+    void* variableDataRefs[1];
+#endif
+};
+
+COMPILE_ASSERT(sizeof(StyleRareInheritedData) == sizeof(SameSizeAsStyleRareInheritedData), StyleRareInheritedData_should_bit_pack);
+
 StyleRareInheritedData::StyleRareInheritedData()
     : textStrokeWidth(RenderStyle::initialTextStrokeWidth())
     , indent(RenderStyle::initialTextIndent())
@@ -58,6 +87,9 @@ StyleRareInheritedData::StyleRareInheritedData()
 #if ENABLE(OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(RenderStyle::initialUseTouchOverflowScrolling())
 #endif
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    , m_imageResolutionSource(RenderStyle::initialImageResolutionSource())
+#endif
     , hyphenationLimitBefore(-1)
     , hyphenationLimitAfter(-1)
     , hyphenationLimitLines(-1)
@@ -70,6 +102,9 @@ StyleRareInheritedData::StyleRareInheritedData()
     , tapHighlightColor(RenderStyle::initialTapHighlightColor())
 #endif    
 {
+#if ENABLE(CSS_VARIABLES)
+    m_variables.init();
+#endif
 }
 
 StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
@@ -110,6 +145,9 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
 #if ENABLE(OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(o.useTouchOverflowScrolling)
 #endif
+#if ENABLE(CSS_IMAGE_RESOLUTION)
+    , m_imageResolutionSource(o.m_imageResolutionSource)
+#endif
     , hyphenationString(o.hyphenationString)
     , hyphenationLimitBefore(o.hyphenationLimitBefore)
     , hyphenationLimitAfter(o.hyphenationLimitAfter)
@@ -123,6 +161,9 @@ StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedData& o)
 #endif
 #if ENABLE(TOUCH_EVENTS)
     , tapHighlightColor(o.tapHighlightColor)
+#endif
+#if ENABLE(CSS_VARIABLES)
+    , m_variables(o.m_variables)
 #endif
 {
 }
@@ -189,9 +230,13 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && m_lineGrid == o.m_lineGrid
         && m_imageRendering == o.m_imageRendering
 #if ENABLE(CSS_IMAGE_RESOLUTION)
+        && m_imageResolutionSource == o.m_imageResolutionSource
         && m_imageResolution == o.m_imageResolution
 #endif
         && m_lineSnap == o.m_lineSnap
+#if ENABLE(CSS_VARIABLES)
+        && m_variables == o.m_variables
+#endif
         && m_lineAlign == o.m_lineAlign;
 }
 

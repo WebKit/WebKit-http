@@ -64,7 +64,6 @@ public:
     void setValue(const String&);
 
     HTMLOptionsCollection* options();
-    HTMLCollection* selectedOptions();
 
     void optionElementChildrenChanged();
 
@@ -121,8 +120,8 @@ private:
     virtual bool isEnumeratable() const { return true; }
     virtual bool supportLabels() const OVERRIDE { return true; }
 
-    virtual bool saveFormControlState(String& value) const;
-    virtual void restoreFormControlState(const String&);
+    virtual FormControlState saveFormControlState() const OVERRIDE;
+    virtual void restoreFormControlState(const FormControlState&) OVERRIDE;
 
     virtual void parseAttribute(const Attribute&) OVERRIDE;
     virtual bool isPresentationAttribute(const QualifiedName&) const OVERRIDE;
@@ -180,7 +179,6 @@ private:
     virtual void childrenChanged(bool changedByParser = false, Node* beforeChange = 0, Node* afterChange = 0, int childCountDelta = 0);
 
     OwnPtr<HTMLOptionsCollection> m_optionsCollection;
-    OwnPtr<HTMLCollection> m_selectedOptionsCollection;
 
     // m_listItems contains HTMLOptionElement, HTMLOptGroupElement, and HTMLHRElement objects.
     mutable Vector<HTMLElement*> m_listItems;

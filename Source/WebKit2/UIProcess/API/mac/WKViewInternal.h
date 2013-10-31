@@ -99,5 +99,9 @@ namespace WebKit {
 - (void)_cacheWindowBottomCornerRect;
 
 - (NSInteger)spellCheckerDocumentTag;
-- (void)handleCorrectionPanelResult:(NSString*)result;
+- (void)handleAcceptedAlternativeText:(NSString*)text;
+
+- (void)_setSuppressVisibilityUpdates:(BOOL)suppressVisibilityUpdates;
+- (BOOL)_suppressVisibilityUpdates;
+
 @end

@@ -180,7 +180,7 @@ public:
     virtual IconLoadDecision synchronousLoadDecisionForIconURL(const String&, DocumentLoader*) { return IconLoadNo; }
     virtual Image* synchronousIconForPageURL(const String&, const IntSize&) { return 0; }
     virtual NativeImagePtr synchronousNativeIconForPageURL(const String&, const IntSize&) { return 0; }
-    
+
     // Asynchronous calls we should use to replace the above when supported.
     virtual bool supportsAsynchronousMode() { return false; }
     virtual void loadDecisionForIconURL(const String&, PassRefPtr<IconLoadDecisionCallback>) { }

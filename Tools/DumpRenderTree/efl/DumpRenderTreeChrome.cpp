@@ -217,6 +217,7 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
 
     ewk_settings_memory_cache_clear();
     ewk_settings_application_cache_clear();
+    ewk_settings_shadow_dom_enable_set(EINA_TRUE);
 
     ewk_view_setting_private_browsing_set(mainView(), EINA_FALSE);
     ewk_view_setting_spatial_navigation_set(mainView(), EINA_FALSE);
@@ -246,11 +247,13 @@ void DumpRenderTreeChrome::resetDefaultsToConsistentValues()
     ewk_view_setting_enable_hyperlink_auditing_set(mainView(), EINA_FALSE);
     ewk_view_setting_include_links_in_focus_chain_set(mainView(), EINA_FALSE);
     ewk_view_setting_scripts_can_access_clipboard_set(mainView(), EINA_TRUE);
+    ewk_view_setting_web_audio_set(mainView(), EINA_FALSE);
 
     ewk_view_zoom_set(mainView(), 1.0, 0, 0);
     ewk_view_scale_set(mainView(), 1.0, 0, 0);
     ewk_view_text_zoom_set(mainView(), 1.0);
     ewk_view_visibility_state_set(mainView(), EWK_PAGE_VISIBILITY_STATE_VISIBLE, true);
+    ewk_view_text_direction_set(mainView(), EWK_TEXT_DIRECTION_DEFAULT);
 
     ewk_history_clear(ewk_view_history_get(mainView()));
 
@@ -467,6 +470,8 @@ void DumpRenderTreeChrome::onFrameTitleChanged(void*, Evas_Object* frame, void* 
     if (!done && gLayoutTestController->dumpHistoryDelegateCallbacks())
         printf("WebView updated the title for history URL \"%s\" to \"%s\".\n", ewk_frame_uri_get(frame)
                , (titleText && titleText->string) ? titleText->string : "");
+
+    gLayoutTestController->setTitleTextDirection(titleText->direction == EWK_TEXT_DIRECTION_LEFT_TO_RIGHT ? "ltr" : "rtl");
 }
 
 void DumpRenderTreeChrome::onDocumentLoadFinished(void*, Evas_Object*, void* eventInfo)

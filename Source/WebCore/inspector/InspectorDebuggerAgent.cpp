@@ -118,11 +118,6 @@ void InspectorDebuggerAgent::canSetScriptSource(ErrorString*, bool* result)
     *result = scriptDebugServer().canSetScriptSource();
 }
 
-void InspectorDebuggerAgent::supportsNativeBreakpoints(ErrorString*, bool* result)
-{
-    *result = scriptDebugServer().supportsNativeBreakpoints();
-}
-
 void InspectorDebuggerAgent::enable(ErrorString*)
 {
     if (enabled())
@@ -273,8 +268,10 @@ void InspectorDebuggerAgent::setBreakpoint(ErrorString* errorString, const RefPt
     String condition = optionalCondition ? *optionalCondition : emptyString();
 
     String breakpointId = scriptId + ':' + String::number(lineNumber) + ':' + String::number(columnNumber);
-    if (m_breakpointIdToDebugServerBreakpointIds.find(breakpointId) != m_breakpointIdToDebugServerBreakpointIds.end())
+    if (m_breakpointIdToDebugServerBreakpointIds.find(breakpointId) != m_breakpointIdToDebugServerBreakpointIds.end()) {
+        *errorString = "Breakpoint at specified location already exists.";
         return;
+    }
     ScriptBreakpoint breakpoint(lineNumber, columnNumber, condition);
     actualLocation = resolveBreakpoint(breakpointId, scriptId, breakpoint);
     if (actualLocation)
@@ -375,6 +372,18 @@ void InspectorDebuggerAgent::setScriptSource(ErrorString* error, const String& s
     RefPtr<InspectorObject> object = scriptToInspectorObject(resultObject);
     if (object)
         result = object;
+}
+void InspectorDebuggerAgent::restartFrame(ErrorString* errorString, const String& callFrameId, RefPtr<Array<TypeBuilder::Debugger::CallFrame> >& newCallFrames, RefPtr<InspectorObject>& result)
+{
+    InjectedScript injectedScript = m_injectedScriptManager->injectedScriptForObjectId(callFrameId);
+    if (injectedScript.hasNoValue()) {
+        *errorString = "Inspected frame has gone";
+        return;
+    }
+
+    injectedScript.restartFrame(errorString, m_currentCallStack, callFrameId, &result);
+    scriptDebugServer().updateCallStack(&m_currentCallStack);
+    newCallFrames = currentCallFrames();
 }
 
 void InspectorDebuggerAgent::getScriptSource(ErrorString* error, const String& scriptId, String* scriptSource)

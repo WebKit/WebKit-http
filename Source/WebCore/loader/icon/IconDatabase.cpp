@@ -418,7 +418,7 @@ void IconDatabase::retainIconForPageURL(const String& pageURL)
 
     {
         MutexLocker locker(m_urlsToRetainOrReleaseLock);
-        m_urlsToRetain.add(pageURL);
+        m_urlsToRetain.add(pageURL.isolatedCopy());
         m_retainOrReleaseIconRequested = true;
     }
 
@@ -471,7 +471,7 @@ void IconDatabase::releaseIconForPageURL(const String& pageURL)
 
     {
         MutexLocker locker(m_urlsToRetainOrReleaseLock);
-        m_urlsToRelease.add(pageURL);
+        m_urlsToRelease.add(pageURL.isolatedCopy());
         m_retainOrReleaseIconRequested = true;
     }
     scheduleOrDeferSyncTimer();
@@ -1546,10 +1546,15 @@ void IconDatabase::performPendingRetainAndReleaseOperations()
         m_retainOrReleaseIconRequested = false;
     }
 
-    for (HashCountedSet<String>::const_iterator it = toRetain.begin(), end = toRetain.end(); it != end; ++it)
+    for (HashCountedSet<String>::const_iterator it = toRetain.begin(), end = toRetain.end(); it != end; ++it) {
+        ASSERT(!it->first.impl() || it->first.impl()->hasOneRef());
         performRetainIconForPageURL(it->first, it->second);
-    for (HashCountedSet<String>::const_iterator it = toRelease.begin(), end = toRelease.end(); it != end; ++it)
+    }
+
+    for (HashCountedSet<String>::const_iterator it = toRelease.begin(), end = toRelease.end(); it != end; ++it) {
+        ASSERT(!it->first.impl() || it->first.impl()->hasOneRef());
         performReleaseIconForPageURL(it->first, it->second);
+    }
 }
 
 bool IconDatabase::readFromDatabase()

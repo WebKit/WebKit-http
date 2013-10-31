@@ -96,6 +96,8 @@ public:
         CSS_VH = 27,
         CSS_VMIN = 28,
         CSS_DPPX = 29,
+        CSS_DPI = 30,
+        CSS_DPCM = 31,
         CSS_PAIR = 100, // We envision this being exposed as a means of getting computed style values for pairs (border-spacing/radius, background-position, etc.)
         CSS_DASHBOARD_REGION = 101, // FIXME: Dashboard region should not be a primitive value.
         CSS_UNICODE_RANGE = 102,
@@ -123,7 +125,11 @@ public:
 
         CSS_CALC = 112,
         CSS_CALC_PERCENTAGE_WITH_NUMBER = 113,
-        CSS_CALC_PERCENTAGE_WITH_LENGTH = 114
+        CSS_CALC_PERCENTAGE_WITH_LENGTH = 114,
+
+#if ENABLE(CSS_VARIABLES)
+        CSS_VARIABLE_NAME = 115,
+#endif
     };
 
     // This enum follows the CSSParser::Units enum augmented with UNIT_FREQUENCY for frequencies.
@@ -173,6 +179,9 @@ public:
     bool isCalculated() const { return m_primitiveUnitType == CSS_CALC; }
     bool isCalculatedPercentageWithNumber() const { return primitiveType() == CSS_CALC_PERCENTAGE_WITH_NUMBER; }
     bool isCalculatedPercentageWithLength() const { return primitiveType() == CSS_CALC_PERCENTAGE_WITH_LENGTH; }
+#if ENABLE(CSS_VARIABLES)
+    bool isVariableName() const { return primitiveType() == CSS_VARIABLE_NAME; }
+#endif
     bool isViewportPercentageLength() const { return m_primitiveUnitType >= CSS_VW && m_primitiveUnitType <= CSS_VMIN; }
 
     static PassRefPtr<CSSPrimitiveValue> createIdentifier(int identifier) { return adoptRef(new CSSPrimitiveValue(identifier)); }
@@ -284,6 +293,9 @@ public:
     template<typename T> inline operator T() const; // Defined in CSSPrimitiveValueMappings.h
 
     String customCssText() const;
+#if ENABLE(CSS_VARIABLES)
+    String customSerializeResolvingVariables(const HashMap<AtomicString, String>&) const;
+#endif
 
     bool isQuirkValue() { return m_isQuirkValue; }
 

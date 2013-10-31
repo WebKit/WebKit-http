@@ -62,6 +62,8 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue:: CSS_DIMENSION:
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     case CSSPrimitiveValue:: CSS_DPPX:
+    case CSSPrimitiveValue:: CSS_DPI:
+    case CSSPrimitiveValue:: CSS_DPCM:
 #endif
     case CSSPrimitiveValue:: CSS_EMS:
     case CSSPrimitiveValue:: CSS_EXS:
@@ -90,6 +92,8 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue:: CSS_DASHBOARD_REGION:
 #if !ENABLE(CSS_IMAGE_RESOLUTION)
     case CSSPrimitiveValue:: CSS_DPPX:
+    case CSSPrimitiveValue:: CSS_DPI:
+    case CSSPrimitiveValue:: CSS_DPCM:
 #endif
     case CSSPrimitiveValue:: CSS_IDENT:
     case CSSPrimitiveValue:: CSS_PAIR:
@@ -105,6 +109,9 @@ static inline bool isValidCSSUnitTypeForDoubleConversion(CSSPrimitiveValue::Unit
     case CSSPrimitiveValue:: CSS_UNICODE_RANGE:
     case CSSPrimitiveValue:: CSS_UNKNOWN:
     case CSSPrimitiveValue:: CSS_URI:
+#if ENABLE(CSS_VARIABLES)
+    case CSSPrimitiveValue:: CSS_VARIABLE_NAME:
+#endif
         return false;
     }
 
@@ -145,6 +152,8 @@ static CSSPrimitiveValue::UnitCategory unitCategory(CSSPrimitiveValue::UnitTypes
         return CSSPrimitiveValue::UViewportPercentageLength;
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     case CSSPrimitiveValue:: CSS_DPPX:
+    case CSSPrimitiveValue:: CSS_DPI:
+    case CSSPrimitiveValue:: CSS_DPCM:
         return CSSPrimitiveValue::UResolution;
 #endif
     default:
@@ -561,11 +570,17 @@ static double conversionToCanonicalUnitsScaleFactor(unsigned short unitType)
         case CSSPrimitiveValue::CSS_CM:
             factor = cssPixelsPerInch / 2.54; // (2.54 cm/in)
             break;
+        case CSSPrimitiveValue::CSS_DPCM:
+            factor = 2.54 / cssPixelsPerInch; // (2.54 cm/in)
+            break;
         case CSSPrimitiveValue::CSS_MM:
             factor = cssPixelsPerInch / 25.4;
             break;
         case CSSPrimitiveValue::CSS_IN:
             factor = cssPixelsPerInch;
+            break;
+        case CSSPrimitiveValue::CSS_DPI:
+            factor = 1 / cssPixelsPerInch;
             break;
         case CSSPrimitiveValue::CSS_PT:
             factor = cssPixelsPerInch / 72.0;
@@ -711,6 +726,9 @@ String CSSPrimitiveValue::getStringValue(ExceptionCode& ec) const
         case CSS_STRING:
         case CSS_ATTR:
         case CSS_URI:
+#if ENABLE(CSS_VARIABLES)
+        case CSS_VARIABLE_NAME:
+#endif
             return m_value.string;
         case CSS_IDENT:
             return valueOrPropertyName(m_value.ident);
@@ -728,7 +746,10 @@ String CSSPrimitiveValue::getStringValue() const
         case CSS_STRING:
         case CSS_ATTR:
         case CSS_URI:
-             return m_value.string;
+#if ENABLE(CSS_VARIABLES)
+        case CSS_VARIABLE_NAME:
+#endif
+            return m_value.string;
         case CSS_IDENT:
             return valueOrPropertyName(m_value.ident);
         default:
@@ -845,6 +866,12 @@ String CSSPrimitiveValue::customCssText() const
 #if ENABLE(CSS_IMAGE_RESOLUTION)
         case CSS_DPPX:
             text = formatNumber(m_value.num) + "dppx";
+            break;
+        case CSS_DPI:
+            text = formatNumber(m_value.num) + "dpi";
+            break;
+        case CSS_DPCM:
+            text = formatNumber(m_value.num) + "dpcm";
             break;
 #endif
         case CSS_MM:
@@ -1075,6 +1102,13 @@ String CSSPrimitiveValue::customCssText() const
         case CSS_VMIN:
             text = formatNumber(m_value.num) + "vmin";
             break;
+#if ENABLE(CSS_VARIABLES)
+        case CSS_VARIABLE_NAME:
+            text = "-webkit-var(";
+            text += m_value.string;
+            text += ")";
+            break;
+#endif
     }
 
     ASSERT(!cssTextCache().contains(this));
@@ -1082,6 +1116,15 @@ String CSSPrimitiveValue::customCssText() const
     m_hasCachedCSSText = true;
     return text;
 }
+
+#if ENABLE(CSS_VARIABLES)
+String CSSPrimitiveValue::customSerializeResolvingVariables(const HashMap<AtomicString, String>& variables) const
+{
+    if (m_primitiveUnitType == CSS_VARIABLE_NAME && variables.contains(m_value.string))
+        return variables.get(m_value.string);
+    return customCssText();
+}
+#endif
 
 void CSSPrimitiveValue::addSubresourceStyleURLs(ListHashSet<KURL>& urls, const StyleSheetContents* styleSheet) const
 {
@@ -1172,6 +1215,8 @@ PassRefPtr<CSSPrimitiveValue> CSSPrimitiveValue::cloneForCSSOM() const
     case CSS_VMIN:
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     case CSS_DPPX:
+    case CSS_DPI:
+    case CSS_DPCM:
 #endif
         result = CSSPrimitiveValue::create(m_value.num, static_cast<UnitTypes>(m_primitiveUnitType));
         break;

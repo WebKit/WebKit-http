@@ -902,7 +902,7 @@ void WebPage::sendViewportAttributesChanged()
     int deviceWidth = (settings->deviceWidth() > 0) ? settings->deviceWidth() : m_viewportSize.width();
     int deviceHeight = (settings->deviceHeight() > 0) ? settings->deviceHeight() : m_viewportSize.height();
 
-    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, static_cast<int>(160 * settings->devicePixelRatio()), m_viewportSize);
+    ViewportAttributes attr = computeViewportAttributes(m_page->viewportArguments(), minimumLayoutFallbackWidth, deviceWidth, deviceHeight, static_cast<int>(160 * m_page->deviceScaleFactor()), m_viewportSize);
 
     setResizesToContentsUsingLayoutSize(IntSize(static_cast<int>(attr.layoutSize.width()), static_cast<int>(attr.layoutSize.height())));
     send(Messages::WebPageProxy::DidChangeViewportProperties(attr));
@@ -1423,7 +1423,9 @@ void WebPage::keyEvent(const WebKeyboardEvent& keyboardEvent)
     if (!handled)
         handled = performDefaultBehaviorForKeyEvent(keyboardEvent);
 
-    send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled));
+    // The receiving end relies on DidReceiveEvent and InterpretQueuedKeyEvent arriving in the same order they are sent
+    // (for keyboard events.) We set the DispatchMessageEvenWhenWaitingForSyncReply flag to ensure consistent ordering.
+    connection()->send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(keyboardEvent.type()), handled), m_pageID, CoreIPC::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void WebPage::keyEventSyncForTesting(const WebKeyboardEvent& keyboardEvent, bool& handled)
@@ -1972,7 +1974,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings->setDefaultFontSize(store.getUInt32ValueForKey(WebPreferencesKey::defaultFontSizeKey()));
     settings->setDefaultFixedFontSize(store.getUInt32ValueForKey(WebPreferencesKey::defaultFixedFontSizeKey()));
     settings->setLayoutFallbackWidth(store.getUInt32ValueForKey(WebPreferencesKey::layoutFallbackWidthKey()));
-    settings->setDevicePixelRatio(store.getDoubleValueForKey(WebPreferencesKey::devicePixelRatioKey()));
     settings->setDeviceWidth(store.getUInt32ValueForKey(WebPreferencesKey::deviceWidthKey()));
     settings->setDeviceHeight(store.getUInt32ValueForKey(WebPreferencesKey::deviceHeightKey()));
     settings->setEditableLinkBehavior(static_cast<WebCore::EditableLinkBehavior>(store.getUInt32ValueForKey(WebPreferencesKey::editableLinkBehaviorKey())));

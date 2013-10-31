@@ -30,7 +30,6 @@
 
 #include "EventQueue.h"
 #include "ExceptionCode.h"
-#include "EventQueue.h"
 #include "IDBAny.h"
 #include "IDBDatabaseCallbacksImpl.h"
 #include "IDBDatabaseError.h"
@@ -73,16 +72,31 @@ IDBDatabase::~IDBDatabase()
     m_databaseCallbacks->unregisterDatabase(this);
 }
 
-void IDBDatabase::setVersionChangeTransaction(IDBTransaction* transaction)
+void IDBDatabase::transactionCreated(IDBTransaction* transaction)
 {
-    ASSERT(!m_versionChangeTransaction);
-    m_versionChangeTransaction = transaction;
+    ASSERT(transaction);
+    ASSERT(!m_transactions.contains(transaction));
+    m_transactions.add(transaction);
+
+    if (transaction->isVersionChange()) {
+        ASSERT(!m_versionChangeTransaction);
+        m_versionChangeTransaction = transaction;
+    }
 }
 
-void IDBDatabase::clearVersionChangeTransaction(IDBTransaction* transaction)
+void IDBDatabase::transactionFinished(IDBTransaction* transaction)
 {
-    ASSERT_UNUSED(transaction, m_versionChangeTransaction == transaction);
-    m_versionChangeTransaction = 0;
+    ASSERT(transaction);
+    ASSERT(m_transactions.contains(transaction));
+    m_transactions.remove(transaction);
+
+    if (transaction->isVersionChange()) {
+        ASSERT(m_versionChangeTransaction == transaction);
+        m_versionChangeTransaction = 0;
+    }
+
+    if (m_closePending && m_transactions.isEmpty())
+        closeConnection();
 }
 
 PassRefPtr<IDBObjectStore> IDBDatabase::createObjectStore(const String& name, const Dictionary& options, ExceptionCode& ec)
@@ -135,13 +149,19 @@ void IDBDatabase::deleteObjectStore(const String& name, ExceptionCode& ec)
     }
 
     m_backend->deleteObjectStore(name, m_versionChangeTransaction->backend(), ec);
-    m_versionChangeTransaction->objectStoreDeleted(name);
+    if (!ec)
+        m_versionChangeTransaction->objectStoreDeleted(name);
 }
 
 PassRefPtr<IDBVersionChangeRequest> IDBDatabase::setVersion(ScriptExecutionContext* context, const String& version, ExceptionCode& ec)
 {
     if (version.isNull()) {
         ec = IDBDatabaseException::IDB_TYPE_ERR;
+        return 0;
+    }
+
+    if (m_versionChangeTransaction) {
+        ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
 
@@ -158,11 +178,11 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
         return 0;
     }
 
-    unsigned short mode = IDBTransaction::stringToMode(modeString, ec);
+    IDBTransaction::Mode mode = IDBTransaction::stringToMode(modeString, ec);
     if (ec)
         return 0;
 
-    if (m_closePending) {
+    if (m_versionChangeTransaction || m_closePending) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return 0;
     }
@@ -176,7 +196,7 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
         ASSERT(ec);
         return 0;
     }
-    RefPtr<IDBTransaction> transaction = IDBTransaction::create(context, transactionBackend, this);
+    RefPtr<IDBTransaction> transaction = IDBTransaction::create(context, transactionBackend, mode, this);
     transactionBackend->setCallbacks(transaction.get());
     return transaction.release();
 }
@@ -199,13 +219,12 @@ PassRefPtr<IDBTransaction> IDBDatabase::transaction(ScriptExecutionContext* cont
 {
     DEFINE_STATIC_LOCAL(String, consoleMessage, ("Numeric transaction modes are deprecated in IDBDatabase.transaction. Use \"readonly\" or \"readwrite\"."));
     context->addConsoleMessage(JSMessageSource, LogMessageType, WarningMessageLevel, consoleMessage);
-    AtomicString modeString = IDBTransaction::modeToString(mode, ec);
+    AtomicString modeString = IDBTransaction::modeToString(IDBTransaction::Mode(mode), ec);
     if (ec)
         return 0;
 
     return transaction(context, prpStoreNames, modeString, ec);
 }
-
 
 void IDBDatabase::close()
 {
@@ -213,6 +232,16 @@ void IDBDatabase::close()
         return;
 
     m_closePending = true;
+
+    if (m_transactions.isEmpty())
+        closeConnection();
+}
+
+void IDBDatabase::closeConnection()
+{
+    ASSERT(m_closePending);
+    ASSERT(m_transactions.isEmpty());
+
     m_backend->close(m_databaseCallbacks);
 
     if (m_contextStopped || !scriptExecutionContext())

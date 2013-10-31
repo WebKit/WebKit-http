@@ -173,11 +173,6 @@ bool RenderThemeChromiumMac::paintMediaSliderTrack(RenderObject* object, const P
     return RenderMediaControlsChromium::paintMediaControlsPart(MediaSlider, object, paintInfo, rect);
 }
 
-bool RenderThemeChromiumMac::paintMediaControlsBackground(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
-{
-    return RenderMediaControlsChromium::paintMediaControlsPart(MediaTimelineContainer, object, paintInfo, rect);
-}
-
 String RenderThemeChromiumMac::extraMediaControlsStyleSheet()
 {
     return String(mediaControlsChromiumUserAgentStyleSheet, sizeof(mediaControlsChromiumUserAgentStyleSheet));
@@ -227,6 +222,26 @@ bool RenderThemeChromiumMac::paintMediaSliderThumb(RenderObject* object, const P
 IntPoint RenderThemeChromiumMac::volumeSliderOffsetFromMuteButton(RenderBox* muteButtonBox, const IntSize& size) const
 {
     return RenderTheme::volumeSliderOffsetFromMuteButton(muteButtonBox, size);
+}
+
+String RenderThemeChromiumMac::formatMediaControlsTime(float time) const
+{
+    return RenderMediaControlsChromium::formatMediaControlsTime(time);
+}
+
+String RenderThemeChromiumMac::formatMediaControlsCurrentTime(float currentTime, float duration) const
+{
+    return RenderMediaControlsChromium::formatMediaControlsCurrentTime(currentTime, duration);
+}
+
+String RenderThemeChromiumMac::formatMediaControlsRemainingTime(float currentTime, float duration) const
+{
+    return RenderThemeChromiumMac::formatMediaControlsRemainingTime(currentTime, duration);
+}
+
+bool RenderThemeChromiumMac::paintMediaFullscreenButton(RenderObject* object, const PaintInfo& paintInfo, const IntRect& rect)
+{
+    return RenderMediaControlsChromium::paintMediaControlsPart(MediaEnterFullscreenButton, object, paintInfo, rect);
 }
 #endif
 

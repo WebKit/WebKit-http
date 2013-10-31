@@ -259,6 +259,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_get_by_val)
         DEFINE_OP(op_get_argument_by_val)
         DEFINE_OP(op_get_by_pname)
+        DEFINE_OP(op_get_global_var_watchable)
         DEFINE_OP(op_get_global_var)
         DEFINE_OP(op_get_pnames)
         DEFINE_OP(op_get_scoped_var)
@@ -324,6 +325,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_put_by_val)
         DEFINE_OP(op_put_getter_setter)
         DEFINE_OP(op_put_global_var)
+        DEFINE_OP(op_put_global_var_check)
         DEFINE_OP(op_put_scoped_var)
         DEFINE_OP(op_resolve)
         DEFINE_OP(op_resolve_base)
@@ -481,6 +483,7 @@ void JIT::privateCompileSlowCases()
         case op_put_by_id_transition_normal:
         DEFINE_SLOWCASE_OP(op_put_by_id)
         DEFINE_SLOWCASE_OP(op_put_by_val)
+        DEFINE_SLOWCASE_OP(op_put_global_var_check);
         DEFINE_SLOWCASE_OP(op_resolve_global)
         DEFINE_SLOWCASE_OP(op_resolve_global_dynamic)
         DEFINE_SLOWCASE_OP(op_rshift)
@@ -715,11 +718,9 @@ JITCode JIT::privateCompile(CodePtr* functionEntryArityCheck, JITCompilationEffo
             patchBuffer.link(iter->from, FunctionPtr(iter->to));
     }
 
-    if (m_codeBlock->needsCallReturnIndices()) {
-        m_codeBlock->callReturnIndexVector().reserveCapacity(m_calls.size());
-        for (Vector<CallRecord>::iterator iter = m_calls.begin(); iter != m_calls.end(); ++iter)
-            m_codeBlock->callReturnIndexVector().append(CallReturnOffsetToBytecodeOffset(patchBuffer.returnAddressOffset(iter->from), iter->bytecodeOffset));
-    }
+    m_codeBlock->callReturnIndexVector().reserveCapacity(m_calls.size());
+    for (Vector<CallRecord>::iterator iter = m_calls.begin(); iter != m_calls.end(); ++iter)
+        m_codeBlock->callReturnIndexVector().append(CallReturnOffsetToBytecodeOffset(patchBuffer.returnAddressOffset(iter->from), iter->bytecodeOffset));
 
     m_codeBlock->setNumberOfStructureStubInfos(m_propertyAccessCompilationInfo.size());
     for (unsigned i = 0; i < m_propertyAccessCompilationInfo.size(); ++i)

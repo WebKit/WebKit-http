@@ -31,6 +31,7 @@
 #include "IntRect.h"
 #include "Region.h"
 #include "TextStream.h"
+#include "cc/CCInputHandler.h"
 #include "cc/CCLayerAnimationController.h"
 #include "cc/CCRenderSurface.h"
 #include "cc/CCSharedQuadState.h"
@@ -134,8 +135,8 @@ public:
     void setIsContainerForFixedPositionLayers(bool isContainerForFixedPositionLayers) { m_isContainerForFixedPositionLayers = isContainerForFixedPositionLayers; }
     bool isContainerForFixedPositionLayers() const { return m_isContainerForFixedPositionLayers; }
 
-    void setFixedToContainerLayerVisibleRect(bool fixedToContainerLayerVisibleRect = true) { m_fixedToContainerLayerVisibleRect = fixedToContainerLayerVisibleRect;}
-    bool fixedToContainerLayerVisibleRect() const { return m_fixedToContainerLayerVisibleRect; }
+    void setFixedToContainerLayer(bool fixedToContainerLayer = true) { m_fixedToContainerLayer = fixedToContainerLayer;}
+    bool fixedToContainerLayer() const { return m_fixedToContainerLayer; }
 
     void setPreserves3D(bool);
     bool preserves3D() const { return m_preserves3D; }
@@ -218,6 +219,8 @@ public:
     void setDrawCheckerboardForMissingTiles(bool checkerboard) { m_drawCheckerboardForMissingTiles = checkerboard; }
     bool drawCheckerboardForMissingTiles() const { return m_drawCheckerboardForMissingTiles; }
 
+    CCInputHandlerClient::ScrollStatus tryScroll(const IntPoint& viewportPoint, CCInputHandlerClient::ScrollInputType) const;
+
     const IntRect& visibleLayerRect() const { return m_visibleLayerRect; }
     void setVisibleLayerRect(const IntRect& visibleLayerRect) { m_visibleLayerRect = visibleLayerRect; }
 
@@ -250,6 +253,8 @@ public:
     void setStackingOrderChanged(bool);
 
     bool layerPropertyChanged() const { return m_layerPropertyChanged; }
+    bool layerSurfacePropertyChanged() const;
+
     void resetAllChangeTrackingForSubtree();
 
     CCLayerAnimationController* layerAnimationController() { return m_layerAnimationController.get(); }
@@ -313,6 +318,12 @@ private:
     // Tracks if drawing-related properties have changed since last redraw.
     bool m_layerPropertyChanged;
 
+    // Indicates that a property has changed on this layer that would not
+    // affect the pixels on its target surface, but would require redrawing
+    // but would require redrawing the targetSurface onto its ancestor targetSurface.
+    // For layers that do not own a surface this flag acts as m_layerPropertyChanged.
+    bool m_layerSurfacePropertyChanged;
+
     // Uses layer's content space.
     IntRect m_visibleLayerRect;
     bool m_masksToBounds;
@@ -332,7 +343,7 @@ private:
     // Set for the layer that other layers are fixed to.
     bool m_isContainerForFixedPositionLayers;
     // This is true if the layer should be fixed to the closest ancestor container.
-    bool m_fixedToContainerLayerVisibleRect;
+    bool m_fixedToContainerLayer;
 
     FloatSize m_scrollDelta;
     IntSize m_sentScrollDelta;

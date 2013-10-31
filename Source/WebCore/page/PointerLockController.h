@@ -46,10 +46,11 @@ public:
     void requestPointerLock(Element* target, PassRefPtr<VoidCallback> successCallback, PassRefPtr<VoidCallback> failureCallback);
     void requestPointerUnlock();
     bool isLocked();
+    Element* element() const;
 
     void didAcquirePointerLock();
     void didNotAcquirePointerLock();
-    void didLosePointerLock();
+    void didLosePointerLock(bool sendChangeEvent = true); // FIXME: Remove sendChangeEvent parameter when removing old API. (https://bugs.webkit.org/show_bug.cgi?id=84402)
     void dispatchLockedMouseEvent(const PlatformMouseEvent&, const AtomicString& eventType);
 
 private:

@@ -430,9 +430,20 @@ struct Node {
         return m_opInfo;
     }
     
+    bool hasIdentifierNumberForCheck()
+    {
+        return op() == GlobalVarWatchpoint || op() == PutGlobalVarCheck;
+    }
+    
+    unsigned identifierNumberForCheck()
+    {
+        ASSERT(hasIdentifierNumberForCheck());
+        return m_opInfo2;
+    }
+    
     bool hasRegisterPointer()
     {
-        return op() == GetGlobalVar || op() == PutGlobalVar;
+        return op() == GetGlobalVar || op() == PutGlobalVar || op() == GlobalVarWatchpoint || op() == PutGlobalVarCheck;
     }
     
     WriteBarrier<Unknown>* registerPointer()
@@ -638,6 +649,17 @@ struct Node {
     {
         ASSERT(hasStructureSet());
         return *reinterpret_cast<StructureSet*>(m_opInfo);
+    }
+    
+    bool hasStructure()
+    {
+        return op() == StructureTransitionWatchpoint;
+    }
+    
+    Structure* structure()
+    {
+        ASSERT(hasStructure());
+        return reinterpret_cast<Structure*>(m_opInfo);
     }
     
     bool hasStorageAccessData()

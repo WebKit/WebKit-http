@@ -57,7 +57,7 @@ namespace {
 class MockCCLayerTreeHost : public CCLayerTreeHost {
 public:
     MockCCLayerTreeHost()
-        : CCLayerTreeHost(&m_fakeClient, CCSettings())
+        : CCLayerTreeHost(&m_fakeClient, CCLayerTreeSettings())
     {
         initialize();
     }
@@ -70,7 +70,7 @@ private:
 
 class MockLayerPainterChromium : public LayerPainterChromium {
 public:
-    virtual void paint(GraphicsContext&, const IntRect&) { }
+    virtual void paint(SkCanvas*, const IntRect&, IntRect&) { }
 };
 
 
@@ -616,7 +616,7 @@ public:
 
 private:
     FakeCCLayerTreeHost()
-        : CCLayerTreeHost(&m_client, CCSettings())
+        : CCLayerTreeHost(&m_client, CCLayerTreeSettings())
     {
     }
 

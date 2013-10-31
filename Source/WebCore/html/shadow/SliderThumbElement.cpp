@@ -51,10 +51,10 @@ using namespace std;
 
 namespace WebCore {
 
-inline static InputNumber sliderPosition(HTMLInputElement* element)
+inline static Decimal sliderPosition(HTMLInputElement* element)
 {
     const StepRange stepRange(element->createStepRange(RejectAny));
-    const InputNumber oldValue = parseToDecimalForNumberType(element->value(), stepRange.defaultValue());
+    const Decimal oldValue = parseToDecimalForNumberType(element->value(), stepRange.defaultValue());
     return stepRange.proportionFromValue(stepRange.clampValue(oldValue));
 }
 
@@ -62,7 +62,13 @@ inline static bool hasVerticalAppearance(HTMLInputElement* input)
 {
     ASSERT(input->renderer());
     RenderStyle* sliderStyle = input->renderer()->style();
-    return sliderStyle->appearance() == SliderVerticalPart || sliderStyle->appearance() == MediaVolumeSliderPart;
+
+#if ENABLE(VIDEO)
+    if (sliderStyle->appearance() == MediaVolumeSliderPart && input->renderer()->theme()->usesVerticalVolumeSlider())
+        return true;
+#endif
+
+    return sliderStyle->appearance() == SliderVerticalPart;
 }
 
 SliderThumbElement* sliderThumbElementOf(Node* node)
@@ -108,9 +114,9 @@ void RenderSliderThumb::layout()
     // Do not cast node() to SliderThumbElement. This renderer is used for
     // TrackLimitElement too.
     HTMLInputElement* input = node()->shadowAncestorNode()->toInputElement();
-    bool isVertical = style()->appearance() == SliderThumbVerticalPart || style()->appearance() == MediaVolumeSliderThumbPart;
+    bool isVertical = hasVerticalAppearance(input);
 
-    double fraction = convertInputNumberToDouble(sliderPosition(input) * 100);
+    double fraction = (sliderPosition(input) * 100).toDouble();
     if (isVertical)
         style()->setTop(Length(100 - fraction, Percent));
     else if (style()->isLeftToRightDirection())
@@ -236,10 +242,10 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& point)
     if (position == currentPosition)
         return;
 
-    const InputNumber ratio = convertDoubleToInputNumber(static_cast<double>(position) / trackSize);
-    const InputNumber fraction = isVertical || !renderBox()->style()->isLeftToRightDirection() ? InputNumber(1) - ratio : ratio;
+    const Decimal ratio = Decimal::fromDouble(static_cast<double>(position) / trackSize);
+    const Decimal fraction = isVertical || !renderBox()->style()->isLeftToRightDirection() ? Decimal(1) - ratio : ratio;
     StepRange stepRange(input->createStepRange(RejectAny));
-    const InputNumber value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
+    const Decimal value = stepRange.clampValue(stepRange.valueFromProportion(fraction));
 
     // FIXME: This is no longer being set from renderer. Consider updating the method name.
     input->setValueFromRenderer(serializeForNumberType(value));
@@ -321,10 +327,36 @@ HTMLInputElement* SliderThumbElement::hostInput() const
     return shadowAncestorNode()->toInputElement();
 }
 
+static const AtomicString& sliderThumbShadowPseudoId()
+{
+    DEFINE_STATIC_LOCAL(const AtomicString, sliderThumb, ("-webkit-slider-thumb"));
+    return sliderThumb;
+}
+
+static const AtomicString& mediaSliderThumbShadowPseudoId()
+{
+    DEFINE_STATIC_LOCAL(const AtomicString, mediaSliderThumb, ("-webkit-media-slider-thumb"));
+    return mediaSliderThumb;
+}
+
 const AtomicString& SliderThumbElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, sliderThumb, ("-webkit-slider-thumb"));
-    return sliderThumb;
+    HTMLInputElement* input = hostInput();
+    if (!input)
+        return sliderThumbShadowPseudoId();
+
+    RenderStyle* sliderStyle = input->renderer()->style();
+    switch (sliderStyle->appearance()) {
+    case MediaSliderPart:
+    case MediaSliderThumbPart:
+    case MediaVolumeSliderPart:
+    case MediaVolumeSliderThumbPart:
+    case MediaFullScreenVolumeSliderPart:
+    case MediaFullScreenVolumeSliderThumbPart:
+        return mediaSliderThumbShadowPseudoId();
+    default:
+        return sliderThumbShadowPseudoId();
+    }
 }
 
 // --------------------------------
@@ -351,8 +383,22 @@ RenderObject* TrackLimiterElement::createRenderer(RenderArena* arena, RenderStyl
 
 const AtomicString& TrackLimiterElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, sliderThumb, ("-webkit-slider-thumb"));
-    return sliderThumb;
+    HTMLInputElement* input = shadowAncestorNode()->toInputElement();
+    if (!input)
+        return sliderThumbShadowPseudoId();
+
+    RenderStyle* sliderStyle = input->renderer()->style();
+    switch (sliderStyle->appearance()) {
+    case MediaSliderPart:
+    case MediaSliderThumbPart:
+    case MediaVolumeSliderPart:
+    case MediaVolumeSliderThumbPart:
+    case MediaFullScreenVolumeSliderPart:
+    case MediaFullScreenVolumeSliderThumbPart:
+        return mediaSliderThumbShadowPseudoId();
+    default:
+        return sliderThumbShadowPseudoId();
+    }
 }
 
 TrackLimiterElement* trackLimiterElementOf(Node* node)
@@ -385,8 +431,25 @@ RenderObject* SliderContainerElement::createRenderer(RenderArena* arena, RenderS
 
 const AtomicString& SliderContainerElement::shadowPseudoId() const
 {
-    DEFINE_STATIC_LOCAL(AtomicString, sliderThumb, ("-webkit-slider-container"));
-    return sliderThumb;
+    DEFINE_STATIC_LOCAL(const AtomicString, mediaSliderContainer, ("-webkit-media-slider-container"));
+    DEFINE_STATIC_LOCAL(const AtomicString, sliderContainer, ("-webkit-slider-container"));
+
+    HTMLInputElement* input = shadowAncestorNode()->toInputElement();
+    if (!input)
+        return sliderContainer;
+
+    RenderStyle* sliderStyle = input->renderer()->style();
+    switch (sliderStyle->appearance()) {
+    case MediaSliderPart:
+    case MediaSliderThumbPart:
+    case MediaVolumeSliderPart:
+    case MediaVolumeSliderThumbPart:
+    case MediaFullScreenVolumeSliderPart:
+    case MediaFullScreenVolumeSliderThumbPart:
+        return mediaSliderContainer;
+    default:
+        return sliderContainer;
+    }
 }
 
 }

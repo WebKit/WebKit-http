@@ -107,13 +107,6 @@ void LayoutTestController::display()
     displayWebView();
 }
 
-JSRetainPtr<JSStringRef> LayoutTestController::counterValueForElementById(JSStringRef id)
-{
-    const Evas_Object* mainFrame = browser->mainFrame();
-    const String counterValue(DumpRenderTreeSupportEfl::counterValueByElementId(mainFrame, id->ustring().utf8().data()));
-    return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(counterValue.utf8().data()));
-}
-
 void LayoutTestController::keepWebHistory()
 {
     notImplemented();
@@ -673,9 +666,9 @@ void LayoutTestController::syncLocalStorage()
     notImplemented();
 }
 
-void LayoutTestController::setDomainRelaxationForbiddenForURLScheme(bool, JSStringRef)
+void LayoutTestController::setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme)
 {
-    notImplemented();
+    DumpRenderTreeSupportEfl::setDomainRelaxationForbiddenForURLScheme(forbidden, WTF::String(scheme->ustring().impl()));
 }
 
 void LayoutTestController::goBack()
@@ -858,9 +851,21 @@ void LayoutTestController::setMinimumTimerInterval(double minimumTimerInterval)
     ewk_view_setting_minimum_timer_interval_set(browser->mainView(), minimumTimerInterval);
 }
 
-void LayoutTestController::setTextDirection(JSStringRef)
+void LayoutTestController::setTextDirection(JSStringRef direction)
 {
-    notImplemented();
+    Ewk_Text_Direction ewkDirection;
+    if (JSStringIsEqualToUTF8CString(direction, "auto"))
+        ewkDirection = EWK_TEXT_DIRECTION_DEFAULT;
+    else if (JSStringIsEqualToUTF8CString(direction, "rtl"))
+        ewkDirection = EWK_TEXT_DIRECTION_RIGHT_TO_LEFT;
+    else if (JSStringIsEqualToUTF8CString(direction, "ltr"))
+        ewkDirection = EWK_TEXT_DIRECTION_LEFT_TO_RIGHT;
+    else {
+        fprintf(stderr, "LayoutTestController::setTextDirection called with unknown direction: '%s'.\n", direction->ustring().utf8().data());
+        return;
+    }
+
+    ewk_view_text_direction_set(browser->mainView(), ewkDirection);
 }
 
 void LayoutTestController::addChromeInputField()

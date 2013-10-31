@@ -16,11 +16,7 @@ CONFIG += staticlib
 
 DEFINES += QT_MAKEDLL
 
-haveQt(5) {
-    # Add a QtScript dependency for the time being, in order to pull in the include
-    # path for QtScript when it's built as a standalone module
-    QT += script
-} else {
+!haveQt(5) {
     INCLUDEPATH += $$PWD/../WTF/wtf/qt/compat
 }
 
@@ -72,7 +68,6 @@ SOURCES += \
     accessibility/AccessibilityTableRow.cpp \
     accessibility/AXObjectCache.cpp \
     bindings/generic/ActiveDOMCallback.cpp \
-    bindings/generic/ContextEnabledFeatures.cpp \
     bindings/generic/RuntimeEnabledFeatures.cpp
 
 v8 {
@@ -279,6 +274,7 @@ v8 {
         bindings/js/JSDOMMimeTypeArrayCustom.cpp \
         bindings/js/JSDOMPluginArrayCustom.cpp \
         bindings/js/JSDOMPluginCustom.cpp \
+        bindings/js/JSDOMStringListCustom.cpp \
         bindings/js/JSDOMStringMapCustom.cpp \
         bindings/js/JSDOMTokenListCustom.cpp \
         bindings/js/JSDOMWindowBase.cpp \
@@ -529,6 +525,7 @@ SOURCES += \
     dom/ContainerNode.cpp \
     dom/ContainerNodeAlgorithms.cpp \
     dom/ContextDestructionObserver.cpp \
+    dom/ContextFeatures.cpp \
     dom/CustomEvent.cpp \
     dom/DecodedDataDocumentParser.cpp \
     dom/DeviceMotionController.cpp \
@@ -894,6 +891,7 @@ SOURCES += \
     inspector/DOMPatchSupport.cpp \
     inspector/IdentifiersFactory.cpp \
     inspector/InjectedScript.cpp \
+    inspector/InjectedScriptBase.cpp \
     inspector/InjectedScriptHost.cpp \
     inspector/InjectedScriptManager.cpp \
     inspector/InspectorAgent.cpp \
@@ -1312,6 +1310,7 @@ SOURCES += \
     rendering/RenderScrollbar.cpp \
     rendering/RenderScrollbarPart.cpp \
     rendering/RenderScrollbarTheme.cpp \
+    rendering/RenderSearchField.cpp \
     rendering/RenderSlider.cpp \
     rendering/RenderTable.cpp \
     rendering/RenderTableCaption.cpp \
@@ -1424,7 +1423,6 @@ HEADERS += \
     accessibility/AXObjectCache.h \
     bindings/ScriptControllerBase.h \
     bindings/generic/ActiveDOMCallback.h \
-    bindings/generic/ContextEnabledFeatures.h \
     bindings/generic/RuntimeEnabledFeatures.h
 
 v8 {
@@ -1652,6 +1650,7 @@ HEADERS += \
     css/CSSValue.h \
     css/CSSValueList.h \
     css/CSSValuePool.h \
+    css/CSSVariableValue.h \
     css/CSSWrapShapes.h \
     css/FontFeatureValue.h \
     css/FontValue.h \
@@ -1702,6 +1701,7 @@ HEADERS += \
     dom/ComposedShadowTreeWalker.h \
     dom/ContainerNode.h \
     dom/ContainerNodeAlgorithms.h \
+    dom/ContextFeatures.h \
     dom/CustomEvent.h \
     dom/default/PlatformMessagePortChannel.h \
     dom/DeviceMotionClient.h \
@@ -2039,6 +2039,7 @@ HEADERS += \
     inspector/DOMWrapperVisitor.h \
     inspector/IdentifiersFactory.h \
     inspector/InjectedScript.h \
+    inspector/InjectedScriptBase.h \
     inspector/InjectedScriptHost.h \
     inspector/InjectedScriptManager.h \
     inspector/InspectorAgent.h \
@@ -2226,6 +2227,7 @@ HEADERS += \
     platform/graphics/BitmapImage.h \
     platform/graphics/Color.h \
     platform/graphics/CrossfadeGeneratedImage.h \
+    platform/graphics/filters/CustomFilterGlobalContext.h \
     platform/graphics/filters/CustomFilterMesh.h \
     platform/graphics/filters/CustomFilterNumberParameter.h \
     platform/graphics/filters/CustomFilterShader.h \
@@ -2516,6 +2518,7 @@ HEADERS += \
     rendering/RenderScrollbar.h \
     rendering/RenderScrollbarPart.h \
     rendering/RenderScrollbarTheme.h \
+    rendering/RenderSearchField.h \
     rendering/RenderSlider.h \
     rendering/RenderTableCaption.h \
     rendering/RenderTableCell.h \
@@ -2565,6 +2568,7 @@ HEADERS += \
     rendering/style/StyleShader.h \
     rendering/style/StyleSurroundData.h \
     rendering/style/StyleTransformData.h \
+    rendering/style/StyleVariableData.h \
     rendering/style/StyleVisualData.h \
     rendering/style/SVGRenderStyleDefs.h \
     rendering/style/SVGRenderStyle.h \
@@ -3404,6 +3408,7 @@ contains(DEFINES, ENABLE_XSLT=1) {
 
 contains(DEFINES, ENABLE_FILTERS=1) {
     SOURCES += \
+        platform/graphics/filters/CustomFilterGlobalContext.cpp \
         platform/graphics/filters/CustomFilterOperation.cpp \
         platform/graphics/filters/CustomFilterProgram.cpp \
         platform/graphics/filters/CustomFilterShader.cpp \
@@ -3853,6 +3858,7 @@ contains(DEFINES, ENABLE_WEBGL=1) {
         html/canvas/WebGLContextObject.h \
         html/canvas/WebGLDebugRendererInfo.h \
         html/canvas/WebGLDebugShaders.h \
+        html/canvas/WebGLDepthTexture.h \
         html/canvas/WebGLExtension.h \
         html/canvas/WebGLFramebuffer.h \
         html/canvas/WebGLGetInfo.h \
@@ -3895,6 +3901,7 @@ contains(DEFINES, ENABLE_WEBGL=1) {
         html/canvas/WebGLContextObject.cpp \
         html/canvas/WebGLDebugRendererInfo.cpp \
         html/canvas/WebGLDebugShaders.cpp \
+        html/canvas/WebGLDepthTexture.cpp \
         html/canvas/WebGLExtension.cpp \
         html/canvas/WebGLFramebuffer.cpp \
         html/canvas/WebGLGetInfo.cpp \

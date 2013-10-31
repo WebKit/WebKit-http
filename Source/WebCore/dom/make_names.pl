@@ -380,7 +380,7 @@ END
     my $contextConditional = $enabledTags{$tagName}{contextConditional};
     if ($contextConditional) {
         print F <<END
-    if (!ContextEnabledFeatures::${contextConditional}Enabled(document->domWindow()))
+    if (!ContextFeatures::${contextConditional}Enabled(document))
         return 0;
 END
 ;
@@ -806,7 +806,7 @@ printConditionalElementIncludes($F);
 
 print F <<END
 
-#include "ContextEnabledFeatures.h"
+#include "ContextFeatures.h"
 
 #if ENABLE(DASHBOARD_SUPPORT) || ENABLE(VIDEO)
 #include "Document.h"
@@ -1015,7 +1015,7 @@ END
                 print F <<END
 static JSDOMWrapper* create${JSInterfaceName}Wrapper(ExecState* exec, JSDOMGlobalObject* globalObject, PassRefPtr<$parameters{namespace}Element> element)
 {
-    if (!ContextEnabledFeatures::${contextConditional}Enabled(element->document()->domWindow())) {
+    if (!ContextFeatures::${contextConditional}Enabled(element->document())) {
         ASSERT(!element || element->is$parameters{fallbackInterfaceName}());
         return CREATE_DOM_WRAPPER(exec, globalObject, $parameters{fallbackInterfaceName}, element.get());
     }
@@ -1052,7 +1052,7 @@ END
                 print F <<END
 static v8::Handle<v8::Value> create${JSInterfaceName}Wrapper($parameters{namespace}Element* element, v8::Isolate* isolate)
 {
-    if (!ContextEnabledFeatures::${contextConditional}Enabled(element->document()->domWindow()))
+    if (!ContextFeatures::${contextConditional}Enabled(element->document()))
         return V8$parameters{fallbackInterfaceName}::wrap(to$parameters{fallbackInterfaceName}(element), isolate);
     return toV8(static_cast<${JSInterfaceName}*>(element), isolate);
 }
@@ -1113,7 +1113,7 @@ sub printWrapperFactoryCppFile
 
     print F <<END
 
-#include "ContextEnabledFeatures.h"
+#include "ContextFeatures.h"
 
 #if ENABLE(VIDEO)
 #include "Document.h"

@@ -491,7 +491,8 @@ private:
             break;
         }
             
-        case PutGlobalVar: {
+        case PutGlobalVar:
+        case PutGlobalVarCheck: {
             changed |= m_graph[node.child1()].mergeFlags(NodeUsedAsValue);
             break;
         }
@@ -663,12 +664,14 @@ private:
         case ForceOSRExit:
         case SetArgument:
         case CheckStructure:
+        case StructureTransitionWatchpoint:
         case CheckFunction:
         case PutStructure:
         case TearOffActivation:
         case TearOffArguments:
         case CheckNumber:
         case CheckArgumentsNotCreated:
+        case GlobalVarWatchpoint:
             changed |= mergeDefaultFlags(node);
             break;
             

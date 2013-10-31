@@ -378,7 +378,6 @@ public:
 
     virtual bool canContainRangeEndPoint() const { return true; }
 
-    virtual const AtomicString& formControlName() const { return nullAtom; }
     virtual const AtomicString& formControlType() const { return nullAtom; }
 
     virtual bool wasChangedSinceLastFormControlChangeEvent() const;
@@ -402,6 +401,10 @@ public:
 
     // W3C API
     void webkitRequestFullscreen();
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    void webkitRequestPointerLock();
 #endif
 
     virtual bool isSpellCheckingEnabled() const;

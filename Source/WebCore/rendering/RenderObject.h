@@ -193,6 +193,7 @@ public:
     RenderObject* nextInPreOrderAfterChildren() const;
     RenderObject* nextInPreOrderAfterChildren(const RenderObject* stayWithin) const;
     RenderObject* previousInPreOrder() const;
+    RenderObject* previousInPreOrder(const RenderObject* stayWithin) const;
     RenderObject* childAt(unsigned) const;
 
     RenderObject* firstLeafChild() const;
@@ -484,6 +485,9 @@ public:
 #if ENABLE(FULLSCREEN_API)
             && !isRenderFullScreen()
             && !isRenderFullScreenPlaceholder()
+#endif
+#if ENABLE(MATHML)
+            && !isRenderMathMLBlock()
 #endif
             ;
     }

@@ -51,7 +51,7 @@ class TestHooks : public WebCore::CCLayerAnimationDelegate {
 public:
     virtual void beginCommitOnCCThread(WebCore::CCLayerTreeHostImpl*) { }
     virtual void commitCompleteOnCCThread(WebCore::CCLayerTreeHostImpl*) { }
-    virtual void prepareToDrawOnCCThread(WebCore::CCLayerTreeHostImpl*) { }
+    virtual bool prepareToDrawOnCCThread(WebCore::CCLayerTreeHostImpl*) { return true; }
     virtual void drawLayersOnCCThread(WebCore::CCLayerTreeHostImpl*) { }
     virtual void animateLayers(WebCore::CCLayerTreeHostImpl*, double monotonicTime) { }
     virtual void willAnimateLayers(WebCore::CCLayerTreeHostImpl*, double monotonicTime) { }
@@ -135,7 +135,7 @@ protected:
 
     virtual void runTest(bool threaded);
 
-    WebCore::CCSettings m_settings;
+    WebCore::CCLayerTreeSettings m_settings;
     OwnPtr<MockCCLayerTreeHostClient> m_client;
     OwnPtr<WebCore::CCLayerTreeHost> m_layerTreeHost;
 
@@ -165,7 +165,7 @@ public:
 // Adapts CCLayerTreeHostImpl for test. Runs real code, then invokes test hooks.
 class MockLayerTreeHostImpl : public WebCore::CCLayerTreeHostImpl {
 public:
-    static PassOwnPtr<MockLayerTreeHostImpl> create(TestHooks*, const WebCore::CCSettings&, WebCore::CCLayerTreeHostImplClient*);
+    static PassOwnPtr<MockLayerTreeHostImpl> create(TestHooks*, const WebCore::CCLayerTreeSettings&, WebCore::CCLayerTreeHostImplClient*);
 
     virtual void beginCommit();
     virtual void commitComplete();
@@ -181,7 +181,7 @@ protected:
     virtual double lowFrequencyAnimationInterval() const;
 
 private:
-    MockLayerTreeHostImpl(TestHooks*, const WebCore::CCSettings&, WebCore::CCLayerTreeHostImplClient*);
+    MockLayerTreeHostImpl(TestHooks*, const WebCore::CCLayerTreeSettings&, WebCore::CCLayerTreeHostImplClient*);
 
     TestHooks* m_testHooks;
 };

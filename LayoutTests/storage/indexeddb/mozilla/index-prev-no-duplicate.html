@@ -17,8 +17,8 @@
 <script>
 
 description("Test IndexedDB: iterating backwards through an index, skipping duplicates");
-if (window.layoutTestController)
-    layoutTestController.waitUntilDone();
+if (window.testRunner)
+    testRunner.waitUntilDone();
 
 function test()
 {
@@ -34,8 +34,7 @@ function test()
     shouldBeFalse("IDBKeyRange == null");
 
     name = window.location.pathname;
-    description = "My Test Database";
-    request = evalAndLog("indexedDB.open(name, description)");
+    request = evalAndLog("indexedDB.open(name)");
     request.onsuccess = openSuccess;
     request.onerror = unexpectedErrorCallback;
 }
@@ -78,16 +77,16 @@ function openSuccess()
     ];
 
     request = evalAndLog("request = db.setVersion('1')");
-    request.onsuccess = createAndPopulateObjectStore;
+    request.onsuccess = createObjectStore;
     request.onerror = unexpectedErrorCallback;
 }
 
-function createAndPopulateObjectStore()
+function createObjectStore()
 {
     deleteAllObjectStores(db);
 
+    evalAndLog("trans = request.result");
     objectStore = evalAndLog("objectStore = db.createObjectStore(objectStoreName);");
-
     debug("First, add all our data to the object store.");
     addedData = 0;
     for (i in objectStoreData) {
@@ -100,6 +99,11 @@ function createAndPopulateObjectStore()
         }
       }
     }
+    trans.oncomplete = function() {
+        evalAndLog("trans = db.transaction(objectStoreName, 'readwrite')");
+        evalAndLog("objectStore = trans.objectStore(objectStoreName)");
+        testPrev();
+    };
 }
 
 function createIndexes()
@@ -108,9 +112,6 @@ function createIndexes()
     for (i in indexData) {
       evalAndLog("objectStore.createIndex(indexData[i].name, indexData[i].keyPath, indexData[i].options);");
     }
-
-
-    testPrev();
 }
 
 function testPrev()

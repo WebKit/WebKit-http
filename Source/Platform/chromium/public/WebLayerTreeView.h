@@ -34,7 +34,7 @@
 
 namespace WebCore {
 class CCLayerTreeHost;
-struct CCSettings;
+struct CCLayerTreeSettings;
 }
 
 namespace WebKit {
@@ -55,12 +55,8 @@ public:
             , showPlatformLayerTree(false)
             , showPaintRects(false)
             , refreshRate(0)
-            , perTilePainting(false)
-            , partialSwapEnabled(false)
-            , threadedAnimationEnabled(false)
             , defaultTileSize(WebSize(256, 256))
             , maxUntiledLayerSize(WebSize(512, 512))
-            , deviceScaleFactor(1)
         {
         }
 
@@ -70,14 +66,10 @@ public:
         bool showPlatformLayerTree;
         bool showPaintRects;
         double refreshRate;
-        bool perTilePainting;
-        bool partialSwapEnabled;
-        bool threadedAnimationEnabled;
         WebSize defaultTileSize;
         WebSize maxUntiledLayerSize;
-        float deviceScaleFactor;
 #if WEBKIT_IMPLEMENTATION
-        operator WebCore::CCSettings() const;
+        operator WebCore::CCLayerTreeSettings() const;
 #endif
     };
 
@@ -114,6 +106,9 @@ public:
 
     WEBKIT_EXPORT void setViewportSize(const WebSize&);
     WEBKIT_EXPORT WebSize viewportSize() const;
+
+    WEBKIT_EXPORT void setDeviceScaleFactor(float);
+    WEBKIT_EXPORT float deviceScaleFactor() const;
 
     // Sets the background color for the viewport.
     WEBKIT_EXPORT void setBackgroundColor(WebColor);

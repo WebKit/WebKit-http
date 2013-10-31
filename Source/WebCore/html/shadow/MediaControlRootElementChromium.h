@@ -40,6 +40,7 @@ class Event;
 class MediaControlPanelMuteButtonElement;
 class MediaControlPlayButtonElement;
 class MediaControlCurrentTimeDisplayElement;
+class MediaControlTimeRemainingDisplayElement;
 class MediaControlTimelineElement;
 class MediaControlVolumeSliderElement;
 class MediaControlFullscreenButtonElement;
@@ -47,8 +48,8 @@ class MediaControlTimeDisplayElement;
 class MediaControlTimelineContainerElement;
 class MediaControlMuteButtonElement;
 class MediaControlVolumeSliderElement;
-class MediaControlVolumeSliderContainerElement;
 class MediaControlPanelElement;
+class MediaControlChromiumEnclosureElement;
 class MediaControllerInterface;
 class MediaPlayer;
 
@@ -59,6 +60,24 @@ class RenderMedia;
 class MediaControlTextTrackContainerElement;
 class MediaControlTextTrackDisplayElement;
 #endif
+
+class MediaControlChromiumEnclosureElement : public HTMLDivElement {
+public:
+    static PassRefPtr<MediaControlChromiumEnclosureElement> create(Document*);
+
+    virtual const AtomicString& shadowPseudoId() const;
+
+    void setMediaController(MediaControllerInterface* controller) { m_mediaController = controller; }
+    MediaControllerInterface* mediaController() const { return m_mediaController; }
+
+protected:
+    MediaControlChromiumEnclosureElement(Document*);
+
+private:
+    virtual bool isMediaControlElement() const { return true; }
+
+    MediaControllerInterface* m_mediaController;
+};
 
 class MediaControlRootElementChromium : public MediaControls {
 public:
@@ -107,6 +126,9 @@ private:
     MediaControlRootElementChromium(Document*);
 
     virtual void defaultEventHandler(Event*);
+    void hideFullscreenControlsTimerFired(Timer<MediaControlRootElementChromium>*);
+    void startHideFullscreenControlsTimer();
+    void stopHideFullscreenControlsTimer();
 
     virtual const AtomicString& shadowPseudoId() const;
 
@@ -116,22 +138,24 @@ private:
 
     MediaControlPlayButtonElement* m_playButton;
     MediaControlCurrentTimeDisplayElement* m_currentTimeDisplay;
+    MediaControlTimeRemainingDisplayElement* m_durationDisplay;
     MediaControlTimelineElement* m_timeline;
     MediaControlTimelineContainerElement* m_timelineContainer;
     MediaControlPanelMuteButtonElement* m_panelMuteButton;
     MediaControlVolumeSliderElement* m_volumeSlider;
-    MediaControlVolumeSliderContainerElement* m_volumeSliderContainer;
 #if ENABLE(FULLSCREEN_MEDIA_CONTROLS)
     MediaControlFullscreenButtonElement* m_fullscreenButton;
 #endif
     MediaControlPanelElement* m_panel;
+    MediaControlChromiumEnclosureElement* m_enclosure;
 #if ENABLE(VIDEO_TRACK)
     MediaControlTextTrackContainerElement* m_textDisplayContainer;
-    MediaControlTextTrackDisplayElement* m_textTrackDisplay;
 #endif
 
     bool m_opaque;
+    Timer<MediaControlRootElementChromium> m_hideFullscreenControlsTimer;
     bool m_isMouseOverControls;
+    bool m_isFullscreen;
 };
 
 }

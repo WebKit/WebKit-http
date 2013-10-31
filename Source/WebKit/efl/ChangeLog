@@ -1,3 +1,125 @@
+2012-06-19  Sergio Villar Senin  <svillar@igalia.com>
+
+        Calling nativeImageForCurrentFrame() causes assertion failure: m_verifier.isSafeToUse()
+        https://bugs.webkit.org/show_bug.cgi?id=67582
+
+        Reviewed by David Levin.
+
+        Use synchronousNativeIconForPageURL() to retrieve favicons.
+
+        * ewk/ewk_history.cpp:
+        (ewk_history_item_icon_surface_get):
+        (ewk_history_item_icon_object_add):
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_icon_database_icon_surface_get):
+        (ewk_settings_icon_database_icon_object_add):
+
+2012-06-19  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] EFL's LayoutTestController does not support setTextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=87481
+
+        Reviewed by Hajime Morita.
+
+        Add new Ewk_View method to set the text direction, by calling
+        Editor::setBaseWritingDirection() internally, as Mac and Chromium
+        ports do.
+
+        * WebCoreSupport/AssertMatchingEnums.cpp:
+        * ewk/ewk_view.cpp:
+        (ewk_view_text_direction_set):
+        * ewk/ewk_view.h:
+
+2012-06-15  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] EFL's LayoutTestController does not support titleTextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=86475
+
+        Reviewed by Hajime Morita.
+
+        Emit the "title,changed" signal even if the title direction has
+        changed but not its text.
+
+        * ewk/ewk_frame.cpp:
+        (ewk_frame_title_set):
+
+2012-06-14  Ryuan Choi  <ryuan.choi@samsung.com>
+
+        [EFL] Move cursor related code from WidgetEfl to ewk_view and EflScreenUtilities.
+        https://bugs.webkit.org/show_bug.cgi?id=88803
+
+        Reviewed by Chang Shu.
+
+        Because WebProcess can not control cursor,
+        setCursor should be passed to ChromeClient like other ports.
+
+        * WebCoreSupport/ChromeClientEfl.cpp:
+        (WebCore::ChromeClientEfl::setCursor):
+        * ewk/ewk_view.cpp:
+        (_Ewk_View_Private_Data):
+        (_ewk_view_priv_new): Check whether ecore_x can be used.
+        (_ewk_view_priv_del):
+        (_ewk_view_smart_add):
+        Change order of initialization to use base structure in _ewk_view_priv_new.
+        (ewk_view_cursor_set): Moved from Widget::applyCursor.
+        * ewk/ewk_view_private.h:
+        (WebCore):
+
+2012-06-14  Sudarsana Nagineni  <sudarsana.nagineni@linux.intel.com>
+
+        [EFL] [DRT] Implement setDomainRelaxationForbiddenForURLScheme in EFL DRT
+        https://bugs.webkit.org/show_bug.cgi?id=84577
+
+        Reviewed by Ryosuke Niwa.
+
+        Add missing implementation setDomainRelaxationForbiddenForURLScheme to
+        EFL's DumpRenderTreeSupport to allow disabling domain relaxation.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+        (DumpRenderTreeSupportEfl::setDomainRelaxationForbiddenForURLScheme):
+        * WebCoreSupport/DumpRenderTreeSupportEfl.h:
+
+2012-06-13  Amy Ousterhout  <aousterh@chromium.org>
+
+        Rename currentDeviceMotion to lastMotion in DeviceMotionClient
+        https://bugs.webkit.org/show_bug.cgi?id=88854
+
+        Reviewed by Adam Barth.
+
+        Rename the function currentDeviceMotion to lastMotion in DeviceMotionClient.
+        This makes it consistent with the similar function lastOrientation in DeviceOrientationClient.
+
+        * WebCoreSupport/DeviceMotionClientEfl.cpp:
+        (WebCore::DeviceMotionClientEfl::lastMotion):
+        * WebCoreSupport/DeviceMotionClientEfl.h:
+        (DeviceMotionClientEfl):
+
+2012-06-12  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable SHADOW_DOM flag
+        https://bugs.webkit.org/show_bug.cgi?id=87732
+
+        Reviewed by Kentaro Hara.
+
+        Add Ewk setting to toggle Shadow DOM support at runtime.
+
+        * ewk/ewk_settings.cpp:
+        (ewk_settings_shadow_dom_enable_get):
+        (ewk_settings_shadow_dom_enable_set):
+        * ewk/ewk_settings.h:
+
+2012-06-11  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: counterValueForElementById() could be moved to Internals.
+        https://bugs.webkit.org/show_bug.cgi?id=84406
+
+        Reviewed by Hajime Morita.
+
+        Move the counterValueForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebCoreSupport/DumpRenderTreeSupportEfl.cpp:
+
 2012-06-05  Adam Barth  <abarth@webkit.org>
 
         Remove support for target-densitydpi in the viewport meta tag

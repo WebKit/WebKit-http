@@ -31,11 +31,6 @@
 #include "platform/WebString.h"
 #include "platform/WebVector.h"
 
-namespace WTF {
-template<typename T, size_t inlineCapacity> class Vector;
-class String;
-}
-
 namespace WebCore { class IDBKeyPath; }
 
 namespace WebKit {
@@ -45,8 +40,17 @@ public:
     WEBKIT_EXPORT static WebIDBKeyPath create(const WebString&);
     WEBKIT_EXPORT static WebIDBKeyPath create(const WebVector<WebString>&);
     WEBKIT_EXPORT static WebIDBKeyPath createNull();
-    WEBKIT_EXPORT WebIDBKeyPath(const WebIDBKeyPath&);
-    WEBKIT_EXPORT ~WebIDBKeyPath();
+
+    WebIDBKeyPath(const WebIDBKeyPath& keyPath) { assign(keyPath); }
+    virtual ~WebIDBKeyPath() { reset(); }
+    WebIDBKeyPath& operator=(const WebIDBKeyPath& keyPath)
+    {
+        assign(keyPath);
+        return *this;
+    }
+
+    WEBKIT_EXPORT void reset();
+    WEBKIT_EXPORT void assign(const WebIDBKeyPath&);
 
     enum Type {
         NullType = 0,

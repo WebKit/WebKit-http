@@ -165,7 +165,7 @@ static IntRect calculateVisibleLayerRect(LayerType* layer)
         targetSurfaceRect.intersect(layer->clipRect());
 
     if (targetSurfaceRect.isEmpty() || layer->contentBounds().isEmpty())
-        return targetSurfaceRect;
+        return IntRect();
 
     // Note carefully these are aliases
     const IntSize& bounds = layer->bounds();
@@ -533,7 +533,7 @@ static bool calculateDrawTransformsInternal(LayerType* layer, LayerType* rootLay
     WebTransformationMatrix combinedTransform = parentMatrix;
     combinedTransform.multiply(layerLocalTransform);
 
-    if (layer->fixedToContainerLayerVisibleRect()) {
+    if (layer->fixedToContainerLayer()) {
         // Special case: this layer is a composited fixed-position layer; we need to
         // explicitly compensate for all ancestors' nonzero scrollDeltas to keep this layer
         // fixed correctly.
@@ -830,11 +830,17 @@ static void calculateVisibleAndScissorRectsInternal(const LayerList& renderSurfa
 
     CCLayerIteratorType end = CCLayerIteratorType::end(&renderSurfaceLayerList);
     for (CCLayerIteratorType it = CCLayerIteratorType::begin(&renderSurfaceLayerList); it != end; ++it) {
-        if (!it.representsTargetRenderSurface()) {
+        if (it.representsTargetRenderSurface()) {
+            LayerType* maskLayer = it->maskLayer();
+            if (maskLayer)
+                maskLayer->setVisibleLayerRect(IntRect(IntPoint(), it->contentBounds()));
+            LayerType* replicaMaskLayer = it->replicaLayer() ? it->replicaLayer()->maskLayer() : 0;
+            if (replicaMaskLayer)
+                replicaMaskLayer->setVisibleLayerRect(IntRect(IntPoint(), it->contentBounds()));
+        } else if (it.representsItself()) {
             IntRect visibleLayerRect = calculateVisibleLayerRect(*it);
             it->setVisibleLayerRect(visibleLayerRect);
-        }
-        if (it.representsItself()) {
+
             IntRect scissorRect = calculateLayerScissorRect<LayerType, RenderSurfaceType>(*it, rootScissorRect);
             it->setScissorRect(scissorRect);
         } else if (it.representsContributingRenderSurface()) {
@@ -864,6 +870,76 @@ void CCLayerTreeHostCommon::calculateVisibleAndScissorRects(Vector<RefPtr<LayerC
 void CCLayerTreeHostCommon::calculateVisibleAndScissorRects(Vector<CCLayerImpl*>& renderSurfaceLayerList, const FloatRect& rootScissorRect)
 {
     calculateVisibleAndScissorRectsInternal<CCLayerImpl, Vector<CCLayerImpl*>, CCRenderSurface>(renderSurfaceLayerList, rootScissorRect);
+}
+
+static bool pointHitsRect(const IntPoint& viewportPoint, const WebTransformationMatrix& localSpaceToScreenSpaceTransform, FloatRect localSpaceRect)
+{
+    // If the transform is not invertible, then assume that this point doesn't hit this rect.
+    if (!localSpaceToScreenSpaceTransform.isInvertible())
+        return false;
+
+    // Transform the hit test point from screen space to the local space of the given rect.
+    bool clipped = false;
+    FloatPoint hitTestPointInLocalSpace = CCMathUtil::projectPoint(localSpaceToScreenSpaceTransform.inverse(), FloatPoint(viewportPoint), clipped);
+
+    // If projectPoint could not project to a valid value, then we assume that this point doesn't hit this rect.
+    if (clipped)
+        return false;
+
+    return localSpaceRect.contains(hitTestPointInLocalSpace);
+}
+
+static bool pointIsClippedBySurfaceOrClipRect(const IntPoint& viewportPoint, CCLayerImpl* layer)
+{
+    CCLayerImpl* currentLayer = layer;
+
+    // Walk up the layer tree and hit-test any renderSurfaces and any layer clipRects that are active.
+    while (currentLayer) {
+        if (currentLayer->renderSurface() && !pointHitsRect(viewportPoint, currentLayer->renderSurface()->screenSpaceTransform(), currentLayer->renderSurface()->contentRect()))
+            return true;
+
+        // Note that clipRects are actually in targetSurface space, so the transform we
+        // have to provide is the target surface's screenSpaceTransform.
+        if (currentLayer->usesLayerClipping() && !pointHitsRect(viewportPoint, currentLayer->targetRenderSurface()->screenSpaceTransform(), currentLayer->clipRect()))
+            return true;
+
+        currentLayer = currentLayer->parent();
+    }
+
+    // If we have finished walking all ancestors without having already exited, then the point is not clipped by any ancestors.
+    return false;
+}
+
+CCLayerImpl* CCLayerTreeHostCommon::findLayerThatIsHitByPoint(const IntPoint& viewportPoint, Vector<CCLayerImpl*>& renderSurfaceLayerList)
+{
+    CCLayerImpl* foundLayer = 0;
+
+    typedef CCLayerIterator<CCLayerImpl, Vector<CCLayerImpl*>, CCRenderSurface, CCLayerIteratorActions::FrontToBack> CCLayerIteratorType;
+    CCLayerIteratorType end = CCLayerIteratorType::end(&renderSurfaceLayerList);
+
+    for (CCLayerIteratorType it = CCLayerIteratorType::begin(&renderSurfaceLayerList); it != end; ++it) {
+        // We don't want to consider renderSurfaces for hit testing.
+        if (!it.representsItself())
+            continue;
+
+        CCLayerImpl* currentLayer = (*it);
+
+        FloatRect layerRect(FloatPoint::zero(), currentLayer->bounds());
+        if (!pointHitsRect(viewportPoint, currentLayer->screenSpaceTransform(), layerRect))
+            continue;
+
+        // At this point, we think the point does hit the layer, but we need to walk up
+        // the parents to ensure that the layer was not clipped in such a way that the
+        // hit point actually should not hit the layer.
+        if (pointIsClippedBySurfaceOrClipRect(viewportPoint, currentLayer))
+            continue;
+
+        foundLayer = currentLayer;
+        break;
+    }
+
+    // This can potentially return 0, which means the viewportPoint did not successfully hit test any layers, not even the root layer.
+    return foundLayer;
 }
 
 } // namespace WebCore

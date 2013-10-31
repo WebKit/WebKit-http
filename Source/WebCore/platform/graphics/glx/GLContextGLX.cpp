@@ -60,8 +60,15 @@ void GLContextGLX::addActiveContext(GLContextGLX* context)
     activeContextList().append(context);
 }
 
+static bool gCleaningUpAtExit = false;
+
 void GLContextGLX::removeActiveContext(GLContext* context)
 {
+    // If we are cleaning up the context list at exit, don't bother removing the context
+    // from the list, since we don't want to modify the list while it's being iterated.
+    if (gCleaningUpAtExit)
+        return;
+
     ActiveContextList& contextList = activeContextList();
     size_t i = contextList.find(context);
     if (i != notFound)
@@ -70,6 +77,8 @@ void GLContextGLX::removeActiveContext(GLContext* context)
 
 void GLContextGLX::cleanupActiveContextsAtExit()
 {
+    gCleaningUpAtExit = true;
+
     ActiveContextList& contextList = activeContextList();
     for (size_t i = 0; i < contextList.size(); ++i)
         delete contextList[i];
@@ -138,8 +147,10 @@ PassOwnPtr<GLContextGLX> GLContextGLX::createPbufferContext(GLXContext sharingCo
 
     GLXContext context = glXCreateNewContext(display, configs[0], GLX_RGBA_TYPE, sharingContext, GL_TRUE);
     XFree(configs);
-    if (!context)
+    if (!context) {
+        glXDestroyPbuffer(display, pbuffer);
         return nullptr;
+    }
 
     // GLXPbuffer and XID are both the same types underneath, so we have to share
     // a constructor here with the window path.
@@ -183,6 +194,7 @@ PassOwnPtr<GLContextGLX> GLContextGLX::createPixmapContext(GLXContext sharingCon
         return nullptr;
     }
 
+    XFree(visualInfo);
     return adoptPtr(new GLContextGLX(context, pixmap, glxPixmap));
 }
 
@@ -260,6 +272,20 @@ GLContextGLX::~GLContextGLX()
 bool GLContextGLX::canRenderToDefaultFramebuffer()
 {
     return m_window;
+}
+
+IntSize GLContextGLX::defaultFrameBufferSize()
+{
+    if (!canRenderToDefaultFramebuffer() || !m_window)
+        return IntSize();
+
+    int x, y;
+    Window rootWindow;
+    unsigned int width, height, borderWidth, depth;
+    if (!XGetGeometry(sharedDisplay(), m_window, &rootWindow, &x, &y, &width, &height, &borderWidth, &depth))
+        return IntSize();
+
+    return IntSize(width, height);
 }
 
 bool GLContextGLX::makeContextCurrent()

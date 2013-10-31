@@ -1707,16 +1707,16 @@ class ApplyPropertyFlex {
 public:
     static void applyInheritValue(StyleResolver* styleResolver)
     {
-        ApplyPropertyDefaultBase<float, &RenderStyle::positiveFlex, float, &RenderStyle::setPositiveFlex, float, &RenderStyle::initialNegativeFlex>::applyInheritValue(styleResolver);
-        ApplyPropertyDefaultBase<float, &RenderStyle::negativeFlex, float, &RenderStyle::setNegativeFlex, float, &RenderStyle::initialPositiveFlex>::applyInheritValue(styleResolver);
-        ApplyPropertyDefaultBase<Length, &RenderStyle::flexPreferredSize, Length, &RenderStyle::setFlexPreferredSize, Length, &RenderStyle::initialFlexPreferredSize>::applyInheritValue(styleResolver);
+        ApplyPropertyDefaultBase<float, &RenderStyle::flexGrow, float, &RenderStyle::setFlexGrow, float, &RenderStyle::initialFlexGrow>::applyInheritValue(styleResolver);
+        ApplyPropertyDefaultBase<float, &RenderStyle::flexShrink, float, &RenderStyle::setFlexShrink, float, &RenderStyle::initialFlexShrink>::applyInheritValue(styleResolver);
+        ApplyPropertyDefaultBase<Length, &RenderStyle::flexBasis, Length, &RenderStyle::setFlexBasis, Length, &RenderStyle::initialFlexBasis>::applyInheritValue(styleResolver);
     }
 
     static void applyInitialValue(StyleResolver* styleResolver)
     {
-        styleResolver->style()->setPositiveFlex(RenderStyle::initialPositiveFlex());
-        styleResolver->style()->setNegativeFlex(RenderStyle::initialNegativeFlex());
-        styleResolver->style()->setFlexPreferredSize(RenderStyle::initialFlexPreferredSize());
+        styleResolver->style()->setFlexGrow(RenderStyle::initialFlexGrow());
+        styleResolver->style()->setFlexShrink(RenderStyle::initialFlexShrink());
+        styleResolver->style()->setFlexBasis(RenderStyle::initialFlexBasis());
     }
 
     static void applyValue(StyleResolver* styleResolver, CSSValue* value)
@@ -1724,9 +1724,9 @@ public:
         if (value->isPrimitiveValue()) {
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(value);
             if (primitiveValue->getIdent() == CSSValueNone) {
-                styleResolver->style()->setPositiveFlex(0);
-                styleResolver->style()->setNegativeFlex(0);
-                styleResolver->style()->setFlexPreferredSize(Length(Auto));
+                styleResolver->style()->setFlexGrow(0);
+                styleResolver->style()->setFlexShrink(0);
+                styleResolver->style()->setFlexBasis(Length(Auto));
             }
             return;
         }
@@ -1740,13 +1740,13 @@ public:
         float flexValue = 0;
         if (!getFlexValue(valueList->itemWithoutBoundsCheck(0), flexValue))
             return;
-        styleResolver->style()->setPositiveFlex(flexValue);
+        styleResolver->style()->setFlexGrow(flexValue);
 
         if (!getFlexValue(valueList->itemWithoutBoundsCheck(1), flexValue))
             return;
-        styleResolver->style()->setNegativeFlex(flexValue);
+        styleResolver->style()->setFlexShrink(flexValue);
 
-        ApplyPropertyLength<&RenderStyle::flexPreferredSize, &RenderStyle::setFlexPreferredSize, &RenderStyle::initialFlexPreferredSize, AutoEnabled>::applyValue(styleResolver, valueList->itemWithoutBoundsCheck(2));
+        ApplyPropertyLength<&RenderStyle::flexBasis, &RenderStyle::setFlexBasis, &RenderStyle::initialFlexBasis, AutoEnabled>::applyValue(styleResolver, valueList->itemWithoutBoundsCheck(2));
     }
 
     static PropertyHandler createHandler()
@@ -1772,11 +1772,13 @@ class ApplyPropertyImageResolution {
 public:
     static void applyInheritValue(StyleResolver* styleResolver)
     {
+        ApplyPropertyDefaultBase<ImageResolutionSource, &RenderStyle::imageResolutionSource, ImageResolutionSource, &RenderStyle::setImageResolutionSource, ImageResolutionSource, &RenderStyle::initialImageResolutionSource>::applyInheritValue(styleResolver);
         ApplyPropertyDefaultBase<float, &RenderStyle::imageResolution, float, &RenderStyle::setImageResolution, float, &RenderStyle::initialImageResolution>::applyInheritValue(styleResolver);
     }
 
     static void applyInitialValue(StyleResolver* styleResolver)
     {
+        ApplyPropertyDefaultBase<ImageResolutionSource, &RenderStyle::imageResolutionSource, ImageResolutionSource, &RenderStyle::setImageResolutionSource, ImageResolutionSource, &RenderStyle::initialImageResolutionSource>::applyInitialValue(styleResolver);
         ApplyPropertyDefaultBase<float, &RenderStyle::imageResolution, float, &RenderStyle::setImageResolution, float, &RenderStyle::initialImageResolution>::applyInitialValue(styleResolver);
     }
 
@@ -1785,13 +1787,20 @@ public:
         if (!value->isValueList())
             return;
         CSSValueList* valueList = static_cast<CSSValueList*>(value);
+        ImageResolutionSource source = RenderStyle::initialImageResolutionSource();
+        double resolution = RenderStyle::initialImageResolution();
         for (size_t i = 0; i < valueList->length(); i++) {
             CSSValue* item = valueList->itemWithoutBoundsCheck(i);
             if (!item->isPrimitiveValue())
                 continue;
             CSSPrimitiveValue* primitiveValue = static_cast<CSSPrimitiveValue*>(item);
-            styleResolver->style()->setImageResolution(primitiveValue->getDoubleValue(CSSPrimitiveValue::CSS_DPPX));
+            if (primitiveValue->getIdent() == CSSValueFromImage)
+                source = ImageResolutionFromImage;
+            else
+                resolution = primitiveValue->getDoubleValue(CSSPrimitiveValue::CSS_DPPX);
         }
+        styleResolver->style()->setImageResolutionSource(source);
+        styleResolver->style()->setImageResolution(resolution);
     }
 
     static PropertyHandler createHandler()
@@ -1951,7 +1960,9 @@ StyleBuilder::StyleBuilder()
     setPropertyHandler(CSSPropertyWebkitBorderRadius, CSSPropertyBorderRadius);
     setPropertyHandler(CSSPropertyWebkitBorderVerticalSpacing, ApplyPropertyComputeLength<short, &RenderStyle::verticalBorderSpacing, &RenderStyle::setVerticalBorderSpacing, &RenderStyle::initialVerticalBorderSpacing>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBoxAlign, ApplyPropertyDefault<EBoxAlignment, &RenderStyle::boxAlign, EBoxAlignment, &RenderStyle::setBoxAlign, EBoxAlignment, &RenderStyle::initialBoxAlign>::createHandler());
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     setPropertyHandler(CSSPropertyWebkitBoxDecorationBreak, ApplyPropertyDefault<EBoxDecorationBreak, &RenderStyle::boxDecorationBreak, EBoxDecorationBreak, &RenderStyle::setBoxDecorationBreak, EBoxDecorationBreak, &RenderStyle::initialBoxDecorationBreak>::createHandler());
+#endif
     setPropertyHandler(CSSPropertyWebkitBoxDirection, ApplyPropertyDefault<EBoxDirection, &RenderStyle::boxDirection, EBoxDirection, &RenderStyle::setBoxDirection, EBoxDirection, &RenderStyle::initialBoxDirection>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBoxFlex, ApplyPropertyDefault<float, &RenderStyle::boxFlex, float, &RenderStyle::setBoxFlex, float, &RenderStyle::initialBoxFlex>::createHandler());
     setPropertyHandler(CSSPropertyWebkitBoxFlexGroup, ApplyPropertyDefault<unsigned int, &RenderStyle::boxFlexGroup, unsigned int, &RenderStyle::setBoxFlexGroup, unsigned int, &RenderStyle::initialBoxFlexGroup>::createHandler());
@@ -1966,6 +1977,7 @@ StyleBuilder::StyleBuilder()
     setPropertyHandler(CSSPropertyWebkitColumnBreakInside, ApplyPropertyDefault<EPageBreak, &RenderStyle::columnBreakInside, EPageBreak, &RenderStyle::setColumnBreakInside, EPageBreak, &RenderStyle::initialPageBreak>::createHandler());
     setPropertyHandler(CSSPropertyWebkitColumnCount, ApplyPropertyAuto<unsigned short, &RenderStyle::columnCount, &RenderStyle::setColumnCount, &RenderStyle::hasAutoColumnCount, &RenderStyle::setHasAutoColumnCount>::createHandler());
     setPropertyHandler(CSSPropertyWebkitColumnGap, ApplyPropertyAuto<float, &RenderStyle::columnGap, &RenderStyle::setColumnGap, &RenderStyle::hasNormalColumnGap, &RenderStyle::setHasNormalColumnGap, ComputeLength, CSSValueNormal>::createHandler());
+    setPropertyHandler(CSSPropertyWebkitColumnProgression, ApplyPropertyDefault<ColumnProgression, &RenderStyle::columnProgression, ColumnProgression, &RenderStyle::setColumnProgression, ColumnProgression, &RenderStyle::initialColumnProgression>::createHandler());
     setPropertyHandler(CSSPropertyWebkitColumnRuleColor, ApplyPropertyColor<NoInheritFromParent, &RenderStyle::columnRuleColor, &RenderStyle::setColumnRuleColor, &RenderStyle::setVisitedLinkColumnRuleColor, &RenderStyle::color>::createHandler());
     setPropertyHandler(CSSPropertyWebkitColumnRuleWidth, ApplyPropertyComputeLength<unsigned short, &RenderStyle::columnRuleWidth, &RenderStyle::setColumnRuleWidth, &RenderStyle::initialColumnRuleWidth, NormalDisabled, ThicknessEnabled>::createHandler());
     setPropertyHandler(CSSPropertyWebkitColumns, ApplyPropertyExpanding<SuppressValue, CSSPropertyWebkitColumnWidth, CSSPropertyWebkitColumnCount>::createHandler());
@@ -2025,7 +2037,6 @@ StyleBuilder::StyleBuilder()
     setPropertyHandler(CSSPropertyWebkitMaskRepeatX, ApplyPropertyFillLayer<EFillRepeat, CSSPropertyWebkitMaskRepeatX, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isRepeatXSet, &FillLayer::repeatX, &FillLayer::setRepeatX, &FillLayer::clearRepeatX, &FillLayer::initialFillRepeatX, &StyleResolver::mapFillRepeatX>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskRepeatY, ApplyPropertyFillLayer<EFillRepeat, CSSPropertyWebkitMaskRepeatY, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isRepeatYSet, &FillLayer::repeatY, &FillLayer::setRepeatY, &FillLayer::clearRepeatY, &FillLayer::initialFillRepeatY, &StyleResolver::mapFillRepeatY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitMaskSize, ApplyPropertyFillLayer<FillSize, CSSPropertyWebkitMaskSize, MaskFillLayer, &RenderStyle::accessMaskLayers, &RenderStyle::maskLayers, &FillLayer::isSizeSet, &FillLayer::size, &FillLayer::setSize, &FillLayer::clearSize, &FillLayer::initialFillSize, &StyleResolver::mapFillSize>::createHandler());
-    setPropertyHandler(CSSPropertyWebkitMatchNearestMailBlockquoteColor, ApplyPropertyDefault<EMatchNearestMailBlockquoteColor, &RenderStyle::matchNearestMailBlockquoteColor, EMatchNearestMailBlockquoteColor, &RenderStyle::setMatchNearestMailBlockquoteColor, EMatchNearestMailBlockquoteColor, &RenderStyle::initialMatchNearestMailBlockquoteColor>::createHandler());
     setPropertyHandler(CSSPropertyWebkitNbspMode, ApplyPropertyDefault<ENBSPMode, &RenderStyle::nbspMode, ENBSPMode, &RenderStyle::setNBSPMode, ENBSPMode, &RenderStyle::initialNBSPMode>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOrigin, ApplyPropertyExpanding<SuppressValue, CSSPropertyWebkitPerspectiveOriginX, CSSPropertyWebkitPerspectiveOriginY>::createHandler());
     setPropertyHandler(CSSPropertyWebkitPerspectiveOriginX, ApplyPropertyLength<&RenderStyle::perspectiveOriginX, &RenderStyle::setPerspectiveOriginX, &RenderStyle::initialPerspectiveOriginX>::createHandler());

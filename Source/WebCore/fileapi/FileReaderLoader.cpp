@@ -80,7 +80,7 @@ void FileReaderLoader::start(ScriptExecutionContext* scriptExecutionContext, Blo
         failed(FileError::SECURITY_ERR);
         return;
     }
-    ThreadableBlobRegistry::registerBlobURL(m_urlForReading, blob->url());
+    ThreadableBlobRegistry::registerBlobURL(scriptExecutionContext->securityOrigin(), m_urlForReading, blob->url());
 
     // Construct and load the request.
     ResourceRequest request(m_urlForReading);
@@ -298,11 +298,8 @@ void FileReaderLoader::convertToDataURL()
         return;
     }
 
-    if (!m_dataType.isEmpty()) {
-        builder.append(m_dataType);
-        builder.append(";base64,");
-    } else
-        builder.append("base64,");
+    builder.append(m_dataType);
+    builder.append(";base64,");
 
     Vector<char> out;
     base64Encode(static_cast<const char*>(m_rawData->data()), m_bytesLoaded, out);

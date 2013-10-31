@@ -1,3 +1,207 @@
+2012-06-19  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        [Qt] Fix the Windows build when Qt is built without -release or -debug
+        https://bugs.webkit.org/show_bug.cgi?id=89471
+
+        Reviewed by Tor Arne Vestbø.
+
+        Make sure that we at least remove build_all on Windows for api.pri,
+        as WebCore wasn't built for all configurations.
+
+        * Source/api.pri:
+
+2012-06-19  Mike West  <mkwst@chromium.org>
+
+        Introduce ENABLE_CSP_NEXT configuration flag.
+        https://bugs.webkit.org/show_bug.cgi?id=89300
+
+        Reviewed by Adam Barth.
+
+        The 1.0 draft of the Content Security Policy spec is just about to
+        move to Last Call. We'll hide work on the upcoming 1.1 spec behind
+        this ENABLE flag, disabled by default.
+
+        Spec: https://dvcs.w3.org/hg/content-security-policy/raw-file/tip/csp-specification.dev.html
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-06-19  Joel Dillon  <joel.dillon@codethink.co.uk>, Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        [Qt] Allow the modules file generation to work on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=89010
+
+        Reviewed by Csaba Osztrogonác.
+
+        Add calls to toSystemPath and use QMAKE_DIR_SEP where necessary.
+
+        * Source/api.pri:
+
+2012-06-19  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        [Qt] Fix TARGET not properly being set for QtWebKitd5.dll when building in debug.
+        https://bugs.webkit.org/show_bug.cgi?id=88880
+
+        load(qt_module_config) adjusts the TARGET to add the "d" suffix when doing
+        the debug build_pass. When doing the first pass, qt_module_config.prf doesn't
+        adjust the target since it is in debug_and_release and expects the debug
+        build_pass to come later. However, since we remove debug_and_release from CONFIG
+        right after this, the TARGET hasn't been adjusted and the debug build_pass
+        will not happen.
+
+        Work around it by disabling this optimization on Windows.
+
+        Reviewed by Tor Arne Vestbø.
+
+        * Source/api.pri:
+
+2012-06-19  Mike West  <mkwst@chromium.org>
+
+        Add a scheme registry for bypassing Content Security Policy.
+        https://bugs.webkit.org/show_bug.cgi?id=89373
+
+        Reviewed by Adam Barth.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-18  Rob Buis  <rbuis@rim.com>
+
+        [BlackBerry] Enable LEGACY_VIEWPORT_ADAPTION
+        https://bugs.webkit.org/show_bug.cgi?id=89381
+
+        Reviewed by Antonio Gomes.
+
+        PR 163598
+
+        Enable LEGACY_VIEWPORT_ADAPTION.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+
+2012-06-17  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK 64-bit build fix after r120551.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-17  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK build fix after r120397.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-14  Kent Tamura  <tkent@chromium.org>
+
+        Validate form state strings in FormController::setStateForNewFormElements()
+        https://bugs.webkit.org/show_bug.cgi?id=88768
+
+        Reviewed by Hajime Morita.
+
+        * Source/autotools/symbols.filter: Expose some symbols used by Internals.cpp.
+
+2012-06-14  Chris Guan  <chris.guan@torchmobile.com.cn>
+
+        [Blackberry] add a new Api named setAllowNotification
+        https://bugs.webkit.org/show_bug.cgi?id=88950
+
+        Reviewed by Antonio Gomes.
+
+        Add a new API named setAllowNotification in webpage class to
+        let client set those allowed domains into notifications.
+
+        Test case:
+        * ManualTests/blackberry/notification.html: Added.
+
+2012-06-13  Zan Dobersek  <zandobersek@gmail.com>
+
+        [Gtk] Enable link prefetch support in the developer builds
+        https://bugs.webkit.org/show_bug.cgi?id=89011
+
+        Reviewed by Martin Robinson.
+
+        Rather export an automake conditional than define a preprocessor
+        macro for enabling link prefetch support.
+
+        * configure.ac:
+
+2012-06-13  Robin Cao  <robin.cao@torchmobile.com.cn>
+
+        [BlackBerry] Enable MEDIA_STREAM by default
+        https://bugs.webkit.org/show_bug.cgi?id=88849
+
+        Reviewed by Antonio Gomes.
+
+        * Source/cmake/OptionsBlackBerry.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-06-12  MORITA Hajime  <morrita@google.com>
+
+        Shadow Pseudo ID should be able to nest to point nested shadow DOM.
+        https://bugs.webkit.org/show_bug.cgi?id=62218
+
+        Reviewed by Dimitri Glazkov.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-12  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Enable SHADOW_DOM flag
+        https://bugs.webkit.org/show_bug.cgi?id=87732
+
+        Reviewed by Kentaro Hara.
+
+        Enable SHADOW_DOM flag by default at compile time for EFL port.
+
+        * Source/autotools/symbols.filter: Fix GTK build by adding new symbol.
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-06-12  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] enable LEGACY_WEBKIT_BLOB_BUILDER flag
+        https://bugs.webkit.org/show_bug.cgi?id=88715
+
+        Reviewed by Noam Rosenthal.
+
+        Enable LEGACY_WEBKIT_BLOB_BUILDER flag by default on EFL port.
+
+        * Source/cmake/OptionsEfl.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-06-12  Thiago Marcos P. Santos  <thiago.santos@intel.com>
+
+        [CMake] Enabled CSS_BOX_DECORATION_BREAK by default
+        https://bugs.webkit.org/show_bug.cgi?id=88850
+
+        Reviewed by Alexis Menard.
+
+        Enabled it by default on CMake ports like in other ports.
+        This patch is a follow up to r120029.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-06-11  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: counterValueForElementById() could be moved to Internals.
+        https://bugs.webkit.org/show_bug.cgi?id=84406
+
+        Reviewed by Hajime Morita.
+
+        Exporting Internals::counterValueForElement symbols for the Gtk build.
+
+        * Source/autotools/symbols.filter:
+
+2012-06-11  Alexis Menard  <alexis.menard@openbossa.org>
+
+        [CSS3 Backgrounds and Borders] Protect box-decoration-break behind a feature flag.
+        https://bugs.webkit.org/show_bug.cgi?id=88804
+
+        Reviewed by Tony Chang.
+
+        Protect box-decoration-break behind a feature flag enabled by default.
+
+        * configure.ac:
+
 2012-06-11  Arnaud Renevier  <arno@renevier.net>
 
         Replace obsolete mkdir_p variable with MKDIR_P

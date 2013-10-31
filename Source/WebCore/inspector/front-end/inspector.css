@@ -568,12 +568,17 @@ select.status-bar-item:active {
     -webkit-mask-image: url(Images/statusbarButtonGlyphs.png);
 }
 
-button.dock-status-bar-item.status-bar-item .glyph {
+button.dock-status-bar-item.status-bar-item.toggled-undock .glyph {
     -webkit-mask-position: 0 -48px;
 }
 
-button.dock-status-bar-item.status-bar-item.toggled-on .glyph {
+button.dock-status-bar-item.status-bar-item.toggled-bottom .glyph {
     -webkit-mask-position: -32px -24px;
+    background-color: rgba(0, 0, 0, 0.75);
+}
+
+button.dock-status-bar-item.status-bar-item.toggled-right .glyph {
+    -webkit-mask-position: -256px -48px;
     background-color: rgba(0, 0, 0, 0.75);
 }
 
@@ -1838,7 +1843,7 @@ button.edit-source-status-bar-item.toggled-on .glyph {
 .sidebar-tree-section {
     position: relative;
     height: 18px;
-    padding: 4px 10px 6px 10px;
+    padding: 1px 10px 6px 10px;
     white-space: nowrap;
     margin-top: 1px;
     color: rgb(92, 110, 129);
@@ -2743,4 +2748,8 @@ body.platform-mac #drawer-status-bar .search-status-bar-progress {
     -webkit-border-image: url(Images/trackVert.png) 11 0 11 0;
     border-color: transparent;
     border-width: 0 0 11px 0;
+}
+
+#console-context {
+    max-width: 200px;
 }

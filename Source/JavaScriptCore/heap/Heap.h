@@ -119,6 +119,7 @@ namespace JSC {
         void addCompiledCode(ExecutableBase*);
 
         void notifyIsSafeToCollect() { m_isSafeToCollect = true; }
+        bool isSafeToCollect() const { return m_isSafeToCollect; }
 
         JS_EXPORT_PRIVATE void collectAllGarbage();
         enum SweepToggle { DoNotSweep, DoSweep };
@@ -220,9 +221,6 @@ namespace JSC {
         Vector<Vector<ValueStringPair>* > m_tempSortingVectors;
         OwnPtr<HashSet<MarkedArgumentBuffer*> > m_markListSet;
 
-        OwnPtr<GCActivityCallback> m_activityCallback;
-        OwnPtr<IncrementalSweeper> m_sweeper;
-        
         MachineThreads m_machineThreads;
         
         MarkStackThreadSharedData m_sharedData;
@@ -239,6 +237,9 @@ namespace JSC {
         double m_lastGCLength;
         double m_lastCodeDiscardTime;
 
+        OwnPtr<GCActivityCallback> m_activityCallback;
+        OwnPtr<IncrementalSweeper> m_sweeper;
+        
         DoublyLinkedList<ExecutableBase> m_compiledCode;
     };
 

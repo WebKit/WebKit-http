@@ -1,5 +1,6 @@
 /*
  Copyright (C) 2012 Nokia Corporation and/or its subsidiary(-ies)
+ Copyright (C) 2012 Igalia S.L.
 
  This library is free software; you can redistribute it and/or
  modify it under the terms of the GNU Library General Public
@@ -38,105 +39,114 @@ namespace WebCore {
     "precision mediump float; \n"
 #endif
 
-#define VERTEX_SHADER(src...) OES2_PRECISION_DEFINITIONS#src
+#define STRINGIFY_VAL(src...) #src
+#define VERTEX_SHADER(src...) OES2_PRECISION_DEFINITIONS\
+                              STRINGIFY_VAL(src)
 #define FRAGMENT_SHADER(src...) OES2_PRECISION_DEFINITIONS\
                                 OES2_FRAGMENT_SHADER_DEFAULT_PRECISION\
-                                #src
+                                STRINGIFY_VAL(src)
 
 static const char* fragmentShaderSourceOpacityAndMask =
     FRAGMENT_SHADER(
-        uniform sampler2D SourceTexture, MaskTexture;
-        uniform lowp float Opacity;
-        varying highp vec2 OutTexCoordSource, OutTexCoordMask;
+        uniform sampler2D s_source;
+        uniform sampler2D s_mask;
+        uniform lowp float u_opacity;
+        varying highp vec2 v_sourceTexCoord;
+        varying highp vec2 v_maskTexCoord;
         void main(void)
         {
-            lowp vec4 color = texture2D(SourceTexture, OutTexCoordSource);
-            lowp vec4 maskColor = texture2D(MaskTexture, OutTexCoordMask);
-            lowp float fragmentAlpha = Opacity * maskColor.a;
+            lowp vec4 color = texture2D(s_source, v_sourceTexCoord);
+            lowp vec4 maskColor = texture2D(s_mask, v_maskTexCoord);
+            lowp float fragmentAlpha = u_opacity * maskColor.a;
             gl_FragColor = vec4(color.rgb * fragmentAlpha, color.a * fragmentAlpha);
         }
     );
 
 static const char* fragmentShaderSourceRectOpacityAndMask =
     FRAGMENT_SHADER(
-        uniform sampler2DRect SourceTexture, MaskTexture;
-        uniform lowp float Opacity;
-        varying highp vec2 OutTexCoordSource, OutTexCoordMask;
+        uniform sampler2DRect s_source;
+        uniform sampler2DRect s_mask;
+        uniform lowp float u_opacity;
+        varying highp vec2 v_sourceTexCoord;
+        varying highp vec2 v_maskTexCoord;
         void main(void)
         {
-            lowp vec4 color = texture2DRect(SourceTexture, OutTexCoordSource);
-            lowp vec4 maskColor = texture2DRect(MaskTexture, OutTexCoordMask);
-            lowp float fragmentAlpha = Opacity * maskColor.a;
+            lowp vec4 color = texture2DRect(s_source, v_sourceTexCoord);
+            lowp vec4 maskColor = texture2DRect(s_mask, v_maskTexCoord);
+            lowp float fragmentAlpha = u_opacity * maskColor.a;
             gl_FragColor = vec4(color.rgb * fragmentAlpha, color.a * fragmentAlpha);
         }
     );
 
 static const char* vertexShaderSourceOpacityAndMask =
     VERTEX_SHADER(
-        uniform mat4 InMatrix, InSourceMatrix;
-        attribute vec4 InVertex;
-        varying highp vec2 OutTexCoordSource, OutTexCoordMask;
+        uniform mat4 u_matrix;
+        uniform lowp float u_flip;
+        attribute vec4 a_vertex;
+        varying highp vec2 v_sourceTexCoord;
+        varying highp vec2 v_maskTexCoord;
         void main(void)
         {
-            OutTexCoordSource = vec2(InSourceMatrix * InVertex);
-            OutTexCoordMask = vec2(InVertex);
-            gl_Position = InMatrix * InVertex;
+            v_sourceTexCoord = vec2(a_vertex.x, mix(a_vertex.y, 1. - a_vertex.y, u_flip));
+            v_maskTexCoord = vec2(a_vertex);
+            gl_Position = u_matrix * a_vertex;
         }
     );
 
 static const char* fragmentShaderSourceSimple =
     FRAGMENT_SHADER(
-        uniform sampler2D SourceTexture;
-        uniform lowp float Opacity;
-        varying highp vec2 OutTexCoordSource;
+        uniform sampler2D s_source;
+        uniform lowp float u_opacity;
+        varying highp vec2 v_sourceTexCoord;
         void main(void)
         {
-            lowp vec4 color = texture2D(SourceTexture, OutTexCoordSource);
-            gl_FragColor = vec4(color.rgb * Opacity, color.a * Opacity);
+            lowp vec4 color = texture2D(s_source, v_sourceTexCoord);
+            gl_FragColor = vec4(color.rgb * u_opacity, color.a * u_opacity);
         }
     );
 
 static const char* fragmentShaderSourceRectSimple =
     FRAGMENT_SHADER(
-        uniform sampler2DRect SourceTexture;
-        uniform lowp float Opacity;
-        varying highp vec2 OutTexCoordSource;
+        uniform sampler2DRect s_source;
+        uniform lowp float u_opacity;
+        varying highp vec2 v_sourceTexCoord;
         void main(void)
         {
-            lowp vec4 color = texture2DRect(SourceTexture, OutTexCoordSource);
-            gl_FragColor = vec4(color.rgb * Opacity, color.a * Opacity);
+            lowp vec4 color = texture2DRect(s_source, v_sourceTexCoord);
+            gl_FragColor = vec4(color.rgb * u_opacity, color.a * u_opacity);
         }
     );
 
 static const char* vertexShaderSourceSimple =
     VERTEX_SHADER(
-        uniform mat4 InMatrix, InSourceMatrix;
-        attribute vec4 InVertex;
-        varying highp vec2 OutTexCoordSource;
+        uniform mat4 u_matrix;
+        uniform lowp float u_flip;
+        attribute vec4 a_vertex;
+        varying highp vec2 v_sourceTexCoord;
         void main(void)
         {
-            OutTexCoordSource = vec2(InSourceMatrix * InVertex);
-            gl_Position = InMatrix * InVertex;
+            v_sourceTexCoord = vec2(a_vertex.x, mix(a_vertex.y, 1. - a_vertex.y, u_flip));
+            gl_Position = u_matrix * a_vertex;
         }
     );
 
 static const char* vertexShaderSourceSolidColor =
     VERTEX_SHADER(
-        uniform mat4 InMatrix;
-        attribute vec4 InVertex;
+        uniform mat4 u_matrix;
+        attribute vec4 a_vertex;
         void main(void)
         {
-            gl_Position = InMatrix * InVertex;
+            gl_Position = u_matrix * a_vertex;
         }
     );
 
 
 static const char* fragmentShaderSourceSolidColor =
     VERTEX_SHADER(
-        uniform vec4 Color;
+        uniform vec4 u_color;
         void main(void)
         {
-            gl_FragColor = Color;
+            gl_FragColor = u_color;
         }
     );
 
@@ -178,6 +188,21 @@ PassRefPtr<TextureMapperShaderProgram> TextureMapperShaderManager::getShaderProg
     return program;
 }
 
+TextureMapperShaderProgram::TextureMapperShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource)
+    : m_id(0)
+    , m_vertexAttrib(0)
+    , m_vertexShader(0)
+    , m_fragmentShader(0)
+    , m_matrixLocation(-1)
+    , m_flipLocation(-1)
+    , m_sourceTextureLocation(-1)
+    , m_opacityLocation(-1)
+    , m_maskTextureLocation(-1)
+    , m_vertexShaderSource(vertexShaderSource)
+    , m_fragmentShaderSource(fragmentShaderSource)
+{
+}
+
 void TextureMapperShaderProgram::initializeProgram()
 {
     const char* vertexShaderSourceProgram = vertexShaderSource();
@@ -193,7 +218,7 @@ void TextureMapperShaderProgram::initializeProgram()
     glAttachShader(programID, fragmentShader);
     glLinkProgram(programID);
 
-    m_vertexAttrib = glGetAttribLocation(programID, "InVertex");
+    m_vertexAttrib = glGetAttribLocation(programID, "a_vertex");
     m_id = programID;
     m_vertexShader = vertexShader;
     m_fragmentShader = fragmentShader;
@@ -218,128 +243,54 @@ TextureMapperShaderProgram::~TextureMapperShaderProgram()
     glDeleteProgram(programID);
 }
 
-PassRefPtr<TextureMapperShaderProgramSimple> TextureMapperShaderProgramSimple::create()
-{
-    RefPtr<TextureMapperShaderProgramSimple> program = adoptRef(new TextureMapperShaderProgramSimple());
-    // Avoid calling virtual functions in constructor.
-    program->initialize();
-    return program.release();
-}
-
-void TextureMapperShaderProgramSimple::initialize()
+TextureMapperShaderProgramSimple::TextureMapperShaderProgramSimple()
+    : TextureMapperShaderProgram(vertexShaderSourceSimple, fragmentShaderSourceSimple)
 {
     initializeProgram();
-    getUniformLocation(m_sourceMatrixVariable, "InSourceMatrix");
-    getUniformLocation(m_matrixVariable, "InMatrix");
-    getUniformLocation(m_sourceTextureVariable, "SourceTexture");
-    getUniformLocation(m_opacityVariable, "Opacity");
+    getUniformLocation(m_flipLocation, "u_flip");
+    getUniformLocation(m_matrixLocation, "u_matrix");
+    getUniformLocation(m_sourceTextureLocation, "s_source");
+    getUniformLocation(m_opacityLocation, "u_opacity");
 }
 
-const char* TextureMapperShaderProgramSimple::vertexShaderSource() const
-{
-    return vertexShaderSourceSimple;
-}
-
-const char* TextureMapperShaderProgramSimple::fragmentShaderSource() const
-{
-    return fragmentShaderSourceSimple;
-}
-
-void TextureMapperShaderProgramSimple::prepare(float opacity, const BitmapTexture* maskTexture)
-{
-    glUniform1f(m_opacityVariable, opacity);
-}
-
-PassRefPtr<TextureMapperShaderProgramSolidColor> TextureMapperShaderProgramSolidColor::create()
-{
-    RefPtr<TextureMapperShaderProgramSolidColor> program = adoptRef(new TextureMapperShaderProgramSolidColor());
-    // Avoid calling virtual functions in constructor.
-    program->initialize();
-    return program.release();
-}
-
-void TextureMapperShaderProgramSolidColor::initialize()
+TextureMapperShaderProgramSolidColor::TextureMapperShaderProgramSolidColor()
+    : TextureMapperShaderProgram(vertexShaderSourceSolidColor, fragmentShaderSourceSolidColor)
 {
     initializeProgram();
-    getUniformLocation(m_matrixVariable, "InMatrix");
-    getUniformLocation(m_colorVariable, "Color");
+    getUniformLocation(m_matrixLocation, "u_matrix");
+    getUniformLocation(m_colorLocation, "u_color");
 }
 
-const char* TextureMapperShaderProgramSolidColor::vertexShaderSource() const
-{
-    return vertexShaderSourceSolidColor;
-}
-
-const char* TextureMapperShaderProgramSolidColor::fragmentShaderSource() const
-{
-    return fragmentShaderSourceSolidColor;
-}
-
-PassRefPtr<TextureMapperShaderProgramRectSimple> TextureMapperShaderProgramRectSimple::create()
-{
-    RefPtr<TextureMapperShaderProgramRectSimple> program = adoptRef(new TextureMapperShaderProgramRectSimple());
-    // Avoid calling virtual functions in constructor.
-    program->initialize();
-    return program.release();
-}
-
-const char* TextureMapperShaderProgramRectSimple::fragmentShaderSource() const
-{
-    return fragmentShaderSourceRectSimple;
-}
-
-PassRefPtr<TextureMapperShaderProgramOpacityAndMask> TextureMapperShaderProgramOpacityAndMask::create()
-{
-    RefPtr<TextureMapperShaderProgramOpacityAndMask> program = adoptRef(new TextureMapperShaderProgramOpacityAndMask());
-    // Avoid calling virtual functions in constructor.
-    program->initialize();
-    return program.release();
-}
-
-void TextureMapperShaderProgramOpacityAndMask::initialize()
+TextureMapperShaderProgramRectSimple::TextureMapperShaderProgramRectSimple()
+    : TextureMapperShaderProgram(vertexShaderSourceSimple, fragmentShaderSourceRectSimple)
 {
     initializeProgram();
-    getUniformLocation(m_matrixVariable, "InMatrix");
-    getUniformLocation(m_sourceMatrixVariable, "InSourceMatrix");
-    getUniformLocation(m_sourceTextureVariable, "SourceTexture");
-    getUniformLocation(m_maskTextureVariable, "MaskTexture");
-    getUniformLocation(m_opacityVariable, "Opacity");
+    getUniformLocation(m_flipLocation, "u_flip");
+    getUniformLocation(m_matrixLocation, "u_matrix");
+    getUniformLocation(m_sourceTextureLocation, "s_source");
+    getUniformLocation(m_opacityLocation, "u_opacity");
 }
 
-const char* TextureMapperShaderProgramOpacityAndMask::vertexShaderSource() const
+TextureMapperShaderProgramOpacityAndMask::TextureMapperShaderProgramOpacityAndMask()
+    : TextureMapperShaderProgram(vertexShaderSourceOpacityAndMask, fragmentShaderSourceOpacityAndMask)
 {
-    return vertexShaderSourceOpacityAndMask;
+    initializeProgram();
+    getUniformLocation(m_matrixLocation, "u_matrix");
+    getUniformLocation(m_flipLocation, "u_flip");
+    getUniformLocation(m_sourceTextureLocation, "s_source");
+    getUniformLocation(m_maskTextureLocation, "s_mask");
+    getUniformLocation(m_opacityLocation, "u_opacity");
 }
 
-const char* TextureMapperShaderProgramOpacityAndMask::fragmentShaderSource() const
+TextureMapperShaderProgramRectOpacityAndMask::TextureMapperShaderProgramRectOpacityAndMask()
+    : TextureMapperShaderProgram(vertexShaderSourceOpacityAndMask, fragmentShaderSourceRectOpacityAndMask)
 {
-    return fragmentShaderSourceOpacityAndMask;
-}
-
-void TextureMapperShaderProgramOpacityAndMask::prepare(float opacity, const BitmapTexture* maskTexture)
-{
-    glUniform1f(m_opacityVariable, opacity);
-    if (!maskTexture || !maskTexture->isValid())
-        return;
-
-    const BitmapTextureGL* maskTextureGL = static_cast<const BitmapTextureGL*>(maskTexture);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, maskTextureGL->id());
-    glUniform1i(m_maskTextureVariable, 1);
-    glActiveTexture(GL_TEXTURE0);
-}
-
-PassRefPtr<TextureMapperShaderProgramRectOpacityAndMask> TextureMapperShaderProgramRectOpacityAndMask::create()
-{
-    RefPtr<TextureMapperShaderProgramRectOpacityAndMask> program = adoptRef(new TextureMapperShaderProgramRectOpacityAndMask());
-    // Avoid calling virtual functions in constructor.
-    program->initialize();
-    return program.release();
-}
-
-const char* TextureMapperShaderProgramRectOpacityAndMask::fragmentShaderSource() const
-{
-    return fragmentShaderSourceRectOpacityAndMask;
+    initializeProgram();
+    getUniformLocation(m_matrixLocation, "u_matrix");
+    getUniformLocation(m_flipLocation, "u_flip");
+    getUniformLocation(m_sourceTextureLocation, "s_source");
+    getUniformLocation(m_maskTextureLocation, "s_mask");
+    getUniformLocation(m_opacityLocation, "u_opacity");
 }
 
 TextureMapperShaderManager::TextureMapperShaderManager()
@@ -352,6 +303,11 @@ TextureMapperShaderManager::~TextureMapperShaderManager()
 }
 
 #if ENABLE(CSS_FILTERS)
+
+// Create a normal distribution of 21 values between -2 and 2.
+#define GAUSSIAN_KERNEL_HALF_WIDTH 11
+#define GAUSSIAN_KERNEL_STEP 0.2
+
 StandardFilterProgram::~StandardFilterProgram()
 {
     glDetachShader(m_id, m_vertexShader);
@@ -475,15 +431,7 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
             varying highp vec2 v_texCoord;
             uniform lowp vec2 u_blurRadius;
             uniform sampler2D u_texture;
-            const float pi = 3.14159;
-            const float e = 2.71828;
-
-            // FIXME: share gaussian formula between shaders.
-            lowp float gaussian(lowp float value)
-            {
-                // Normal distribution formula, when the mean is 0 and the standard deviation is 1.
-                return pow(e, -pow(value, 2.) / 2.) / (sqrt(2. * pi));
-            }
+            uniform float u_gaussianKernel[GAUSSIAN_KERNEL_HALF_WIDTH];
 
             lowp vec4 sampleColor(float radius)
             {
@@ -493,16 +441,13 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
 
             vec4 blur()
             {
-                // Create a normal distribution of 20 values between 0. and 2.
-                vec4 total = vec4(0., 0., 0., 0.);
-                float totalWeight = 0.;
-                for (float i = -2.; i <= 2.; i += .2) {
-                    float weight = gaussian(i);
-                    total += sampleColor(i) * weight;
-                    totalWeight += weight;
+                vec4 total = sampleColor(0) * u_gaussianKernel[0];
+                for (int i = 1; i < GAUSSIAN_KERNEL_HALF_WIDTH; i++) {
+                    total += sampleColor(float(i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
+                    total += sampleColor(float(-1 * i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
                 }
 
-                return total / totalWeight;
+                return total;
             }
 
             void main(void)
@@ -520,15 +465,7 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
                 uniform lowp float u_shadowBlurRadius;
                 uniform lowp vec2 u_shadowOffset;
                 uniform sampler2D u_texture;
-                const float pi = 3.14159;
-                const float e = 2.71828;
-
-                // FIXME: share gaussian formula between shaders.
-                lowp float gaussian(lowp float value)
-                {
-                    // Normal distribution formula, when the mean is 0 and the standard deviation is 1.
-                    return pow(e, -pow(value, 2.) / 2.) / (sqrt(2. * pi));
-                }
+                uniform float u_gaussianKernel[GAUSSIAN_KERNEL_HALF_WIDTH];
 
                 lowp float sampleAlpha(float radius)
                 {
@@ -538,16 +475,13 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
 
                 lowp float shadowBlurHorizontal()
                 {
-                    // Create a normal distribution of 20 values between -2 and 2.
-                    float total = 0.;
-                    float totalWeight = 0.;
-                    for (float i = -2.; i <= 2.; i += .2) {
-                        float weight = gaussian(i);
-                        total += sampleAlpha(i) * weight;
-                        totalWeight += weight;
+                    float total = sampleAlpha(0) * u_gaussianKernel[0];
+                    for (int i = 1; i < GAUSSIAN_KERNEL_HALF_WIDTH; i++) {
+                        total += sampleAlpha(float(i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
+                        total += sampleAlpha(float(-1 * i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
                     }
 
-                    return total / totalWeight;
+                    return total;
                 }
 
                 void main(void)
@@ -565,16 +499,7 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
                 uniform lowp vec4 u_shadowColor;
                 uniform sampler2D u_texture;
                 uniform sampler2D u_contentTexture;
-
-                // FIXME: share gaussian formula between shaders.
-                const float pi = 3.14159;
-                const float e = 2.71828;
-
-                lowp float gaussian(float value)
-                {
-                    // Normal distribution formula, when the mean is 0 and the standard deviation is 1.
-                    return pow(e, -pow(value, 2.) / 2.) / (sqrt(2. * pi));
-                }
+                uniform float u_gaussianKernel[GAUSSIAN_KERNEL_HALF_WIDTH];
 
                 lowp float sampleAlpha(float r)
                 {
@@ -584,16 +509,13 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
 
                 lowp float shadowBlurVertical()
                 {
-                    // Create a normal distribution of 20 values between -2 and 2.
-                    float total = 0.;
-                    float totalWeight = 0.;
-                    for (float i = -2.; i <= 2.; i += .2) {
-                        float weight = gaussian(i);
-                        total += sampleAlpha(i) * weight;
-                        totalWeight += weight;
+                    float total = sampleAlpha(0) * u_gaussianKernel[0];
+                    for (int i = 1; i < GAUSSIAN_KERNEL_HALF_WIDTH; i++) {
+                        total += sampleAlpha(float(i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
+                        total += sampleAlpha(float(-1 * i) * GAUSSIAN_KERNEL_STEP) * u_gaussianKernel[i];
                     }
 
-                    return total / totalWeight;
+                    return total;
                 }
 
                 lowp vec4 sourceOver(lowp vec4 source, lowp vec4 destination)
@@ -650,9 +572,11 @@ StandardFilterProgram::StandardFilterProgram(FilterOperation::OperationType type
         break;
     case FilterOperation::BLUR:
         m_uniformLocations.blur.radius = glGetUniformLocation(programID, "u_blurRadius");
+        m_uniformLocations.blur.gaussianKernel = glGetUniformLocation(programID, "u_gaussianKernel");
         break;
     case FilterOperation::DROP_SHADOW:
         m_uniformLocations.shadow.blurRadius = glGetUniformLocation(programID, "u_shadowBlurRadius");
+        m_uniformLocations.shadow.gaussianKernel = glGetUniformLocation(programID, "u_gaussianKernel");
         if (!pass)
             m_uniformLocations.shadow.offset = glGetUniformLocation(programID, "u_shadowOffset");
         else {
@@ -676,6 +600,35 @@ PassRefPtr<StandardFilterProgram> StandardFilterProgram::create(FilterOperation:
         return 0;
 
     return program;
+}
+
+static inline float gauss(float x)
+{
+    return exp(-(x * x) / 2.);
+}
+
+static float* gaussianKernel()
+{
+    static bool prepared = false;
+    static float kernel[GAUSSIAN_KERNEL_HALF_WIDTH] = {0, };
+
+    if (prepared)
+        return kernel;
+
+    kernel[0] = gauss(0);
+    float sum = kernel[0];
+    for (unsigned i = 1; i < GAUSSIAN_KERNEL_HALF_WIDTH; ++i) {
+        kernel[i] = gauss(i * GAUSSIAN_KERNEL_STEP);
+        sum += 2 * kernel[i];
+    }
+
+    // Normalize the kernel
+    float scale = 1 / sum;
+    for (unsigned i = 0; i < GAUSSIAN_KERNEL_HALF_WIDTH; ++i)
+        kernel[i] *= scale;
+
+    prepared = true;
+    return kernel;
 }
 
 void StandardFilterProgram::prepare(const FilterOperation& operation, unsigned pass, const IntSize& size, GLuint contentTexture)
@@ -705,6 +658,7 @@ void StandardFilterProgram::prepare(const FilterOperation& operation, unsigned p
             radius.setWidth(floatValueForLength(blur.stdDeviation(), size.width()) / size.width());
 
         glUniform2f(m_uniformLocations.blur.radius, radius.width(), radius.height());
+        glUniform1fv(m_uniformLocations.blur.gaussianKernel, GAUSSIAN_KERNEL_HALF_WIDTH, gaussianKernel());
         break;
     }
     case FilterOperation::DROP_SHADOW: {
@@ -714,10 +668,12 @@ void StandardFilterProgram::prepare(const FilterOperation& operation, unsigned p
             // First pass: vertical alpha blur.
             glUniform2f(m_uniformLocations.shadow.offset, float(shadow.location().x()) / float(size.width()), float(shadow.location().y()) / float(size.height()));
             glUniform1f(m_uniformLocations.shadow.blurRadius, shadow.stdDeviation() / float(size.width()));
+            glUniform1fv(m_uniformLocations.shadow.gaussianKernel, GAUSSIAN_KERNEL_HALF_WIDTH, gaussianKernel());
             break;
         case 1:
             // Second pass: we need the shadow color and the content texture for compositing.
             glUniform1f(m_uniformLocations.shadow.blurRadius, shadow.stdDeviation() / float(size.height()));
+            glUniform1fv(m_uniformLocations.shadow.gaussianKernel, GAUSSIAN_KERNEL_HALF_WIDTH, gaussianKernel());
             glActiveTexture(GL_TEXTURE1);
             glBindTexture(GL_TEXTURE_2D, contentTexture);
             glUniform1i(m_uniformLocations.shadow.contentTexture, 1);

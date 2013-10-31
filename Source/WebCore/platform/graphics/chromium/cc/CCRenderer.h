@@ -29,12 +29,12 @@
 #include "FloatQuad.h"
 #include "IntRect.h"
 #include "cc/CCLayerTreeHost.h"
+#include "cc/CCRenderPass.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-class CCRenderPass;
 class TextureAllocator;
 class TextureCopier;
 class TextureManager;
@@ -43,7 +43,7 @@ class TextureUploader;
 class CCRendererClient {
 public:
     virtual const IntSize& deviceViewportSize() const = 0;
-    virtual const CCSettings& settings() const = 0;
+    virtual const CCLayerTreeSettings& settings() const = 0;
     virtual void didLoseContext() = 0;
     virtual void onSwapBuffersComplete() = 0;
     virtual void setFullRootLayerDamage() = 0;
@@ -57,7 +57,7 @@ public:
 
     virtual const LayerRendererCapabilities& capabilities() const = 0;
 
-    const CCSettings& settings() const { return m_client->settings(); }
+    const CCLayerTreeSettings& settings() const { return m_client->settings(); }
 
     const IntSize& viewportSize() { return m_client->deviceViewportSize(); }
     int viewportWidth() { return viewportSize().width(); }
@@ -68,6 +68,7 @@ public:
     const WebKit::WebTransformationMatrix& projectionMatrix() const { return m_projectionMatrix; }
     const WebKit::WebTransformationMatrix& windowMatrix() const { return m_windowMatrix; }
 
+    virtual void decideRenderPassAllocationsForFrame(const CCRenderPassList&) = 0;
     virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) = 0;
     virtual void drawRenderPass(const CCRenderPass*, const FloatRect& rootScissorRectInCurrentPass) = 0;
     virtual void finishDrawingFrame() = 0;

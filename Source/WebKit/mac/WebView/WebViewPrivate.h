@@ -102,8 +102,10 @@ typedef NSUInteger WebFindOptions;
 
 typedef enum {
     WebPaginationModeUnpaginated,
-    WebPaginationModeHorizontal,
-    WebPaginationModeVertical,
+    WebPaginationModeLeftToRight,
+    WebPaginationModeRightToLeft,
+    WebPaginationModeTopToBottom,
+    WebPaginationModeBottomToTop,
 } WebPaginationMode;
 
 // This needs to be in sync with WebCore::NotificationClient::Permission
@@ -686,9 +688,6 @@ Could be worth adding to the API.
 - (void)toggleAutomaticTextReplacement:(id)sender;
 - (void)setAutomaticSpellingCorrectionEnabled:(BOOL)flag;
 - (void)toggleAutomaticSpellingCorrection:(id)sender;
-#endif
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
-- (void)handleCorrectionPanelResult:(NSString*)result;
 #endif
 @end
 

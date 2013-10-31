@@ -197,18 +197,15 @@ class LintTest(unittest.TestCase, StreamTestingMixin):
                 self.name = name
                 self.path = path
 
-            def test_expectations(self):
-                self.host.ports_parsed.append(self.name)
-                return ''
-
             def path_to_test_expectations_file(self):
                 return self.path
 
             def test_configuration(self):
                 return None
 
-            def test_expectations_overrides(self):
-                return None
+            def expectations_dict(self):
+                self.host.ports_parsed.append(self.name)
+                return {self.path: ''}
 
             def skipped_layout_tests(self, tests):
                 return set([])
@@ -261,7 +258,7 @@ class LintTest(unittest.TestCase, StreamTestingMixin):
         options, parsed_args = parse_args(['--lint-test-files'])
         host = MockHost()
         port_obj = host.port_factory.get(options.platform, options=options)
-        port_obj.test_expectations = lambda: "# syntax error"
+        port_obj.expectations_dict = lambda: {'': '# syntax error'}
         res, out, err = run_and_capture(port_obj, options, parsed_args)
 
         self.assertEqual(res, -1)
@@ -404,19 +401,29 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         tests_run = get_tests_run(['--skip-pixel-test-if-no-baseline'] + tests_to_run, tests_included=True, flatten_batches=True)
         self.assertEquals(tests_run, ['passes/image.html', 'passes/text.html'])
 
-    def test_ignore_tests(self):
-        def assert_ignored(args, tests_expected_to_run):
-            tests_to_run = ['failures/expected/image.html', 'passes/image.html']
-            tests_run = get_tests_run(args + tests_to_run, tests_included=True, flatten_batches=True)
-            self.assertEquals(tests_run, tests_expected_to_run)
+    def test_ignore_flag(self):
+        # Note that passes/image.html is expected to be run since we specified it directly.
+        tests_run = get_tests_run(['-i', 'passes', 'passes/image.html'], flatten_batches=True, tests_included=True)
+        self.assertFalse('passes/text.html' in tests_run)
+        self.assertTrue('passes/image.html' in tests_run)
 
-        assert_ignored(['-i', 'failures/expected/image.html'], ['passes/image.html'])
-        assert_ignored(['-i', 'passes'], ['failures/expected/image.html'])
+    def test_skipped_flag(self):
+        tests_run = get_tests_run(['passes'], tests_included=True, flatten_batches=True)
+        self.assertFalse('passes/skipped/skip.html' in tests_run)
+        num_tests_run_by_default = len(tests_run)
 
-        # Note here that there is an expectation for failures/expected/image.html already, but
-        # it is overriden by the command line arg. This might be counter-intuitive.
-        # FIXME: This isn't currently working ...
-        # assert_ignored(['-i', 'failures/expected'], ['passes/image.html'])
+        # Check that nothing changes when we specify skipped=default.
+        self.assertEquals(len(get_tests_run(['--skipped=default', 'passes'], tests_included=True, flatten_batches=True)),
+                          num_tests_run_by_default)
+
+        # Now check that we run one more test (the skipped one).
+        tests_run = get_tests_run(['--skipped=ignore', 'passes'], tests_included=True, flatten_batches=True)
+        self.assertTrue('passes/skipped/skip.html' in tests_run)
+        self.assertEquals(len(tests_run), num_tests_run_by_default + 1)
+
+        # Now check that we only run the skipped test.
+        self.assertEquals(get_tests_run(['--skipped=only', 'passes'], tests_included=True, flatten_batches=True),
+                          ['passes/skipped/skip.html'])
 
     def test_iterations(self):
         tests_to_run = ['passes/image.html', 'passes/text.html']
@@ -874,6 +881,10 @@ class MainTest(unittest.TestCase, StreamTestingMixin):
         self.assertTrue(MainTest.has_test_of_type(batch_tests_run_http, 'http'))
         self.assertTrue(MainTest.has_test_of_type(batch_tests_run_http, 'websocket'))
 
+    def test_platform_tests_are_found(self):
+        tests_run = get_tests_run(['http'], tests_included=True, flatten_batches=True)
+        self.assertTrue('platform/test-snow-leopard/http/test.html' in tests_run)
+
 
 class EndToEndTest(unittest.TestCase):
     def parse_full_results(self, full_results_text):
@@ -919,7 +930,7 @@ class RebaselineTest(unittest.TestCase, StreamTestingMixin):
         "assert that the file_list contains the baselines."""
         for ext in extensions:
             baseline = file + "-expected" + ext
-            baseline_msg = 'Writing new expected result "%s"\n' % baseline[1:]
+            baseline_msg = 'Writing new expected result "%s"\n' % baseline
             self.assertTrue(any(f.find(baseline) != -1 for f in file_list))
             self.assertContainsLine(err, baseline_msg)
 
@@ -940,8 +951,8 @@ class RebaselineTest(unittest.TestCase, StreamTestingMixin):
         self.assertEquals(res, 0)
         self.assertEmpty(out)
         self.assertEqual(len(file_list), 4)
-        self.assertBaselines(file_list, "/passes/image", [".txt", ".png"], err)
-        self.assertBaselines(file_list, "/failures/expected/missing_image", [".txt", ".png"], err)
+        self.assertBaselines(file_list, "passes/image", [".txt", ".png"], err)
+        self.assertBaselines(file_list, "failures/expected/missing_image", [".txt", ".png"], err)
 
     def test_missing_results(self):
         # Test that we update expectations in place. If the expectation
@@ -958,13 +969,13 @@ class RebaselineTest(unittest.TestCase, StreamTestingMixin):
         self.assertEquals(res, 0)
         self.assertNotEmpty(out)
         self.assertEqual(len(file_list), 6)
-        self.assertBaselines(file_list, "/failures/unexpected/missing_text", [".txt"], err)
-        self.assertBaselines(file_list, "/platform/test-mac-leopard/failures/unexpected/missing_image", [".png"], err)
-        self.assertBaselines(file_list, "/platform/test-mac-leopard/failures/unexpected/missing_render_tree_dump", [".txt"], err)
+        self.assertBaselines(file_list, "failures/unexpected/missing_text", [".txt"], err)
+        self.assertBaselines(file_list, "platform/test/failures/unexpected/missing_image", [".png"], err)
+        self.assertBaselines(file_list, "platform/test/failures/unexpected/missing_render_tree_dump", [".txt"], err)
 
     def test_new_baseline(self):
-        # Test that we update the platform expectations. If the expectation
-        # is mssing, then create a new expectation in the platform dir.
+        # Test that we update the platform expectations in the version-specific directories
+        # for both existing and new baselines.
         host = MockHost()
         res, out, err, _ = logging_run(['--pixel-tests',
                         '--new-baseline',
@@ -977,9 +988,9 @@ class RebaselineTest(unittest.TestCase, StreamTestingMixin):
         self.assertEmpty(out)
         self.assertEqual(len(file_list), 4)
         self.assertBaselines(file_list,
-            "/platform/test-mac-leopard/passes/image", [".txt", ".png"], err)
+            "platform/test-mac-leopard/passes/image", [".txt", ".png"], err)
         self.assertBaselines(file_list,
-            "/platform/test-mac-leopard/failures/expected/missing_image", [".txt", ".png"], err)
+            "platform/test-mac-leopard/failures/expected/missing_image", [".txt", ".png"], err)
 
 
 if __name__ == '__main__':

@@ -78,8 +78,7 @@
 #include <wtf/OwnArrayPtr.h>
 #endif
 
-#if OS(LINUX)
-#include "linux/WebFontInfo.h"
+#if OS(LINUX) || OS(ANDROID)
 #include "linux/WebFontRendering.h"
 #endif
 
@@ -118,13 +117,13 @@ LayoutTestController::LayoutTestController(TestShell* shell)
 #endif
 #if ENABLE(SCRIPTED_SPEECH)
     bindMethod("addMockSpeechRecognitionResult", &LayoutTestController::addMockSpeechRecognitionResult);
+    bindMethod("setMockSpeechRecognitionError", &LayoutTestController::setMockSpeechRecognitionError);
 #endif
     bindMethod("addOriginAccessWhitelistEntry", &LayoutTestController::addOriginAccessWhitelistEntry);
     bindMethod("addUserScript", &LayoutTestController::addUserScript);
     bindMethod("addUserStyleSheet", &LayoutTestController::addUserStyleSheet);
     bindMethod("clearAllDatabases", &LayoutTestController::clearAllDatabases);
     bindMethod("closeWebInspector", &LayoutTestController::closeWebInspector);
-    bindMethod("counterValueForElementById", &LayoutTestController::counterValueForElementById);
 #if ENABLE(POINTER_LOCK)
     bindMethod("didLosePointerLock", &LayoutTestController::didLosePointerLock);
 #endif
@@ -702,8 +701,7 @@ void LayoutTestController::reset()
     m_taskList.revokeAll();
     m_shouldStayOnPageAfterHandlingBeforeUnload = false;
     m_hasCustomFullScreenBehavior = false;
-#if OS(LINUX)
-    WebFontInfo::setSubpixelPositioning(false);
+#if OS(LINUX) || OS(ANDROID)
     WebFontRendering::setSubpixelPositioning(false);
 #endif
 }
@@ -1658,20 +1656,6 @@ void LayoutTestController::setPOSIXLocale(const CppArgumentList& arguments, CppV
         setlocale(LC_ALL, arguments[0].toString().c_str());
 }
 
-void LayoutTestController::counterValueForElementById(const CppArgumentList& arguments, CppVariant* result)
-{
-    result->setNull();
-    if (arguments.size() < 1 || !arguments[0].isString())
-        return;
-    WebFrame* frame = m_shell->webView()->mainFrame();
-    if (!frame)
-        return;
-    WebString counterValue = frame->counterValueForElementById(cppVariantToWebString(arguments[0]));
-    if (counterValue.isNull())
-        return;
-    result->set(counterValue.utf8());
-}
-
 // Parse a single argument. The method returns true if there is an argument that
 // is a number or if there is no argument at all. It returns false only if there
 // is some argument that is not a number. The value parameter is filled with the
@@ -1972,6 +1956,16 @@ void LayoutTestController::addMockSpeechRecognitionResult(const CppArgumentList&
     if (MockWebSpeechRecognizer* recognizer = m_shell->webViewHost()->mockSpeechRecognizer())
         recognizer->addMockResult(cppVariantToWebString(arguments[0]), arguments[1].toDouble());
 }
+
+void LayoutTestController::setMockSpeechRecognitionError(const CppArgumentList& arguments, CppVariant* result)
+{
+    result->setNull();
+    if (arguments.size() < 2 || !arguments[0].isNumber() || !arguments[1].isString())
+        return;
+
+    if (MockWebSpeechRecognizer* recognizer = m_shell->webViewHost()->mockSpeechRecognizer())
+        recognizer->setError(arguments[0].toInt32(), cppVariantToWebString(arguments[1]));
+}
 #endif
 
 void LayoutTestController::startSpeechInput(const CppArgumentList& arguments, CppVariant* result)
@@ -2200,13 +2194,11 @@ void LayoutTestController::deliverWebIntent(const CppArgumentList& arguments, Cp
 
 void LayoutTestController::setTextSubpixelPositioning(const CppArgumentList& arguments, CppVariant* result)
 {
-#if OS(LINUX)
+#if OS(LINUX) || OS(ANDROID)
     // Since FontConfig doesn't provide a variable to control subpixel positioning, we'll fall back
     // to setting it globally for all fonts.
-    if (arguments.size() > 0 && arguments[0].isBool()) {
-        WebFontInfo::setSubpixelPositioning(arguments[0].value.boolValue);
+    if (arguments.size() > 0 && arguments[0].isBool())
         WebFontRendering::setSubpixelPositioning(arguments[0].value.boolValue);
-    }
 #endif
     result->setNull();
 }

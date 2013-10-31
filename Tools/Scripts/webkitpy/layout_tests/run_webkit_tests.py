@@ -157,8 +157,8 @@ def _set_up_derived_options(port, options):
             normalized_platform_directories.append(port.host.filesystem.normpath(path))
         options.additional_platform_directory = normalized_platform_directories
 
-    if not options.http and options.force:
-        warnings.append("--no-http is ignored since --force is also provided")
+    if not options.http and options.skipped in ('ignore', 'only'):
+        warnings.append("--force/--skipped=%s overrides --no-http." % (options.skipped))
         options.http = True
 
     if options.skip_pixel_test_if_no_baseline and not options.pixel_tests:
@@ -166,6 +166,10 @@ def _set_up_derived_options(port, options):
 
     if options.ignore_metrics and (options.new_baseline or options.reset_results):
         warnings.append("--ignore-metrics has no effect with --new-baselines or with --reset-results")
+
+    if options.new_baseline:
+        options.reset_results = True
+        options.add_platform_exceptions = True
 
     return warnings
 
@@ -277,10 +281,12 @@ def parse_args(args=None):
         optparse.make_option("--results-directory", help="Location of test results"),
         optparse.make_option("--build-directory",
             help="Path to the directory under which build files are kept (should not include configuration)"),
+        optparse.make_option("--add-platform-exceptions", action="store_true", default=False,
+            help="Save generated results into the *most-specific-platform* directory rather than the *generic-platform* directory"),
         optparse.make_option("--new-baseline", action="store_true",
             default=False, help="Save generated results as new baselines "
-                 "into the *platform* directory, overwriting whatever's "
-                 "already there."),
+                 "into the *most-specific-platform* directory, overwriting whatever's "
+                 "already there. Equivalent to --reset-results --add-platform-exceptions"),
         optparse.make_option("--reset-results", action="store_true",
             default=False, help="Reset expectations to the "
                  "generated results in their existing location."),
@@ -347,17 +353,14 @@ def parse_args(args=None):
             help="wrapper command to insert before invocations of "
                  "DumpRenderTree; option is split on whitespace before "
                  "running. (Example: --wrapper='valgrind --smc-check=all')"),
-        # old-run-webkit-tests:
-        # -i|--ignore-tests               Comma-separated list of directories
-        #                                 or tests to ignore
         optparse.make_option("-i", "--ignore-tests", action="append", default=[],
             help="directories or test to ignore (may specify multiple times)"),
         optparse.make_option("--test-list", action="append",
             help="read list of tests to run from file", metavar="FILE"),
-        # old-run-webkit-tests uses --skipped==[default|ignore|only]
-        # instead of --force:
-        optparse.make_option("--force", action="store_true", default=False,
-            help="Run all tests, even those marked SKIP in the test list"),
+        optparse.make_option("--skipped", action="store", default="default",
+            help="control how tests marked SKIP are run. 'default' == Skip, 'ignore' == Run them anyway, 'only' == only run the SKIP tests."),
+        optparse.make_option("--force", dest="skipped", action="store_const", const='ignore',
+            help="Run all tests, even those marked SKIP in the test list (same as --skipped=ignore)"),
         optparse.make_option("--time-out-ms",
             help="Set the timeout for each test"),
         # old-run-webkit-tests calls --randomize-order --random:
@@ -443,7 +446,6 @@ def main():
         host = MockHost()
     else:
         host = Host()
-    host._initialize_scm()
     port = host.port_factory.get(options.platform, options)
     logging.getLogger().setLevel(logging.DEBUG if options.verbose else logging.INFO)
     return run(port, options, args)

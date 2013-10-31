@@ -114,6 +114,9 @@
 #include "ThreadCheck.h"
 #include "TouchEventHandler.h"
 #include "TransformationMatrix.h"
+#if ENABLE(MEDIA_STREAM)
+#include "UserMediaClientImpl.h"
+#endif
 #if ENABLE(VIBRATION)
 #include "VibrationClientBlackBerry.h"
 #endif
@@ -203,6 +206,8 @@ const double delayedZoomInterval = 0;
 const IntSize minimumLayoutSize(10, 10); // Needs to be a small size, greater than 0, that we can grow the layout from.
 
 const double minimumExpandingRatio = 0.15;
+
+const double minimumZoomToFitScale = 0.25;
 
 // Helper function to parse a URL and fill in missing parts.
 static KURL parseUrl(const String& url)
@@ -510,6 +515,10 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     WebCore::provideBatteryTo(m_page, new WebCore::BatteryClientBlackBerry);
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    WebCore::provideUserMediaTo(m_page, new UserMediaClientImpl(m_webPage));
+#endif
+
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     WebCore::provideNotification(m_page, NotificationPresenterImpl::instance());
 #endif
@@ -694,9 +703,21 @@ void WebPage::loadString(const char* string, const char* baseURL, const char* mi
     d->loadString(string, baseURL, mimeType, failingURL);
 }
 
-bool WebPagePrivate::executeJavaScript(const char* script, JavaScriptDataType& returnType, WebString& returnValue)
+bool WebPagePrivate::executeJavaScript(const char* scriptUTF8, JavaScriptDataType& returnType, WebString& returnValue)
 {
-    ScriptValue result = m_mainFrame->script()->executeScript(String::fromUTF8(script), false);
+    String script = String::fromUTF8(scriptUTF8);
+
+    if (script.isNull()) {
+        returnType = JSException;
+        return false;
+    }
+
+    if (script.isEmpty()) {
+        returnType = JSUndefined;
+        return true;
+    }
+
+    ScriptValue result = m_mainFrame->script()->executeScript(script, false);
     JSC::JSValue value = result.jsValue();
     if (!value) {
         returnType = JSException;
@@ -1272,9 +1293,7 @@ void WebPage::setScrollPosition(const Platform::IntPoint& point)
         d->m_userPerformedManualScroll = true;
 
     d->m_backingStoreClient->setIsClientGeneratedScroll(true);
-    d->m_mainFrame->view()->setCanOverscroll(true);
     d->setScrollPosition(d->mapFromTransformed(point));
-    d->m_mainFrame->view()->setCanOverscroll(false);
     d->m_backingStoreClient->setIsClientGeneratedScroll(false);
 }
 
@@ -1554,7 +1573,7 @@ void WebPagePrivate::layoutFinished()
 
     m_nestedLayoutFinishedCount++;
 
-    if (loadState() == Committed)
+    if (shouldZoomToInitialScaleOnLoad())
         zoomToInitialScaleOnLoad();
     else if (loadState() != None)
         notifyTransformedContentsSizeChanged();
@@ -1589,6 +1608,18 @@ void WebPagePrivate::layoutFinished()
             }
         }
     }
+}
+
+bool WebPagePrivate::shouldZoomToInitialScaleOnLoad() const
+{
+    // For FrameLoadTypeSame load, the first layout timer can be fired after the load Finished state. We should
+    // zoom to initial scale for this case as well, otherwise the scale of the web page can be incorrect.
+    FrameLoadType frameLoadType = FrameLoadTypeStandard;
+    if (m_mainFrame && m_mainFrame->loader())
+        frameLoadType = m_mainFrame->loader()->loadType();
+    if (m_loadState == Committed || (m_loadState == Finished && frameLoadType == FrameLoadTypeSame))
+        return true;
+    return false;
 }
 
 void WebPagePrivate::zoomToInitialScaleOnLoad()
@@ -1628,7 +1659,7 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
     if (m_mainFrame && m_mainFrame->loader() && m_mainFrame->loader()->shouldRestoreScrollPositionAndViewState())
         shouldZoom = false;
 
-    if (shouldZoom && loadState() == Committed) {
+    if (shouldZoom && shouldZoomToInitialScaleOnLoad()) {
         // Preserve at top and at left position, to avoid scrolling
         // to a non top-left position for web page with viewport meta tag
         // that specifies an initial-scale that is zoomed in.
@@ -1653,31 +1684,13 @@ void WebPagePrivate::zoomToInitialScaleOnLoad()
 
 double WebPagePrivate::zoomToFitScale() const
 {
-    // We must clamp the contents for this calculation so that we do not allow an
-    // arbitrarily small zoomToFitScale much like we clamp the fixedLayoutSize()
-    // so that we do not have arbitrarily large layout size.
-    // If we have a specified viewport, we may need to be able to zoom out more.
-    int contentWidth = std::min(contentsSize().width(), std::max(m_virtualViewportWidth, static_cast<int>(defaultMaxLayoutSize().width())));
+    int contentWidth = contentsSize().width();
+    int contentHeight = contentsSize().height();
+    double zoomToFitScale = contentWidth > 0.0 ? static_cast<double>(m_actualVisibleWidth) / contentWidth : 1.0;
+    if (contentHeight * zoomToFitScale < static_cast<double>(m_defaultLayoutSize.height()))
+        zoomToFitScale = contentHeight > 0 ? static_cast<double>(m_defaultLayoutSize.height()) / contentHeight : 1.0;
 
-    // defaultMaxLayoutSize().width() is a safeguard for excessively large page layouts that
-    // is too restrictive for image documents. In this case, the document width is sufficient.
-    Document* doc = m_page->mainFrame()->document();
-    if (doc && doc->isImageDocument())
-       contentWidth = contentsSize().width();
-
-    // If we have a virtual viewport and its aspect ratio caused content to layout
-    // wider than the default layout aspect ratio we need to zoom to fit the content height
-    // in order to avoid showing a grey area below the web page.
-    // Without virtual viewport we can never get into this situation.
-    if (hasVirtualViewport()) {
-        int contentHeight = std::min(contentsSize().height(), std::max(m_virtualViewportHeight, static_cast<int>(defaultMaxLayoutSize().height())));
-
-        // Aspect ratio check without division.
-        if (contentWidth * m_defaultLayoutSize.height() > contentHeight * m_defaultLayoutSize.width())
-            return contentHeight > 0 ? static_cast<double>(m_defaultLayoutSize.height()) / contentHeight : 1.0;
-    }
-
-    return contentWidth > 0.0 ? static_cast<double>(m_actualVisibleWidth) / contentWidth : 1.0;
+    return std::max(zoomToFitScale, minimumZoomToFitScale);
 }
 
 double WebPage::zoomToFitScale() const
@@ -3512,6 +3525,8 @@ void WebPagePrivate::resumeBackingStore()
         directRendering = m_backingStore->d->shouldDirectRenderingToWindow();
         if (m_backingStore->d->renderVisibleContents() && !m_backingStore->d->isSuspended() && !directRendering)
             m_backingStore->d->blitVisibleContents();
+
+        m_client->notifyContentRendered(m_backingStore->d->visibleContentsRect());
     } else {
         if (m_backingStore->d->isOpenGLCompositing())
            setCompositorDrawsRootLayer(false);
@@ -3913,9 +3928,6 @@ bool WebPagePrivate::handleMouseEvent(PlatformMouseEvent& mouseEvent)
 
     if (mouseEvent.type() == WebCore::PlatformEvent::MouseScroll)
         return true;
-
-    if (m_parentPopup)
-        m_parentPopup->handleMouseEvent(mouseEvent);
 
     Node* node = 0;
     if (mouseEvent.inputMethod() == TouchScreen) {
@@ -6219,6 +6231,7 @@ void WebPagePrivate::didChangeSettings(WebSettings* webSettings)
     coreSettings->setShouldDrawBorderWhileLoadingImages(webSettings->shouldDrawBorderWhileLoadingImages());
     coreSettings->setScriptEnabled(webSettings->isJavaScriptEnabled());
     coreSettings->setPrivateBrowsingEnabled(webSettings->isPrivateBrowsingEnabled());
+    coreSettings->setDeviceSupportsMouse(webSettings->deviceSupportsMouse());
     coreSettings->setDefaultFixedFontSize(webSettings->defaultFixedFontSize());
     coreSettings->setDefaultFontSize(webSettings->defaultFontSize());
     coreSettings->setMinimumLogicalFontSize(webSettings->minimumFontSize());
@@ -6329,6 +6342,16 @@ WebString WebPage::textHasAttribute(const WebString& query) const
         return doc->queryCommandValue(query);
 
     return "";
+}
+
+void WebPage::setAllowNotification(const WebString& domain, bool allow)
+{
+#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    static_cast<NotificationPresenterImpl*>(NotificationPresenterImpl::instance())->onPermission(domain.utf8(), allow);
+#else
+    UNUSED_PARAM(domain);
+    UNUSED_PARAM(allow);
+#endif
 }
 
 void WebPage::setJavaScriptCanAccessClipboard(bool enabled)

@@ -91,7 +91,6 @@ class RenderThemeChromiumSkia : public RenderTheme {
         virtual void adjustSearchFieldResultsButtonStyle(StyleResolver*, RenderStyle*, Element*) const;
         virtual bool paintSearchFieldResultsButton(RenderObject*, const PaintInfo&, const IntRect&);
 
-        virtual bool paintMediaControlsBackground(RenderObject*, const PaintInfo&, const IntRect&);
         virtual bool paintMediaSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
         virtual bool paintMediaVolumeSliderTrack(RenderObject*, const PaintInfo&, const IntRect&);
         virtual void adjustSliderThumbSize(RenderStyle*, Element*) const;
@@ -99,6 +98,10 @@ class RenderThemeChromiumSkia : public RenderTheme {
         virtual bool paintMediaVolumeSliderThumb(RenderObject*, const PaintInfo&, const IntRect&);
         virtual bool paintMediaPlayButton(RenderObject*, const PaintInfo&, const IntRect&);
         virtual bool paintMediaMuteButton(RenderObject*, const PaintInfo&, const IntRect&);
+        virtual String formatMediaControlsTime(float time) const;
+        virtual String formatMediaControlsCurrentTime(float currentTime, float duration) const;
+        virtual String formatMediaControlsRemainingTime(float currentTime, float duration) const;
+        virtual bool paintMediaFullscreenButton(RenderObject*, const PaintInfo&, const IntRect&);
 
         // MenuList refers to an unstyled menulist (meaning a menulist without
         // background-color or border set) and MenuListButton refers to a styled
@@ -127,6 +130,7 @@ class RenderThemeChromiumSkia : public RenderTheme {
 #if ENABLE(VIDEO)
         // Media controls
         virtual bool hasOwnDisabledStateHandlingFor(ControlPart) const { return true; }
+        virtual bool usesVerticalVolumeSlider() const { return false; }
 #endif
 
         // Provide a way to pass the default font size from the Settings object

@@ -73,21 +73,6 @@ class TestExpectationsTestCase(unittest.TestCase):
         else:
             self.assertEquals(None, expected_port_implementation)
 
-        host = MockHost()
-        expectations_path = expectations_path.replace('TestExpectations', 'test_expectations.txt')
-        if not expectations_path.startswith('/mock-checkout'):
-            expectations_full_path = '/mock-checkout/' + expectations_path
-        else:
-            expectations_full_path = expectations_path
-        host.filesystem.files[expectations_full_path] = 'some content'
-
-        checker = TestExpectationsChecker(expectations_path, ErrorCollector(), host=host)
-        port = checker._determine_port_from_expectations_path(host, expectations_path)
-        if port:
-            self.assertTrue(port.name().startswith(expected_port_implementation))
-        else:
-            self.assertEquals(None, expected_port_implementation)
-
     def test_determine_port_from_expectations_path(self):
         self._expect_port_for_expectations_path(None, '/')
         self._expect_port_for_expectations_path(None, 'LayoutTests/chromium-mac/TestExpectations')
@@ -120,7 +105,7 @@ class TestExpectationsTestCase(unittest.TestCase):
         self.assertTrue(self._error_collector.turned_off_filtering)
 
     def test_valid_expectations(self):
-        self.assert_lines_lint(["BUGCR1234 MAC : passes/text.html = PASS FAIL"], should_pass=True)
+        self.assert_lines_lint(["BUGCR1234 MAC : passes/text.html = PASS TEXT"], should_pass=True)
 
     def test_invalid_expectations(self):
         self.assert_lines_lint(["BUG1234 : passes/text.html = GIVE UP"], should_pass=False)

@@ -1,5 +1,6 @@
 /*
    Copyright (C) 2011 Samsung Electronics
+   Copyright (C) 2012 Intel Corporation. All rights reserved.
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Library General Public
@@ -29,6 +30,7 @@
 #include "WKURL.h"
 #include "ewk_context.h"
 #include "ewk_context_private.h"
+#include "ewk_view_loader_client_private.h"
 #include "ewk_view_private.h"
 #include <wtf/text/CString.h>
 
@@ -40,6 +42,7 @@ static const char EWK_VIEW_TYPE_STR[] = "EWK2_View";
 struct _Ewk_View_Private_Data {
     OwnPtr<PageClientImpl> pageClient;
     const char* uri;
+    const char* title;
 };
 
 #define EWK_VIEW_TYPE_CHECK(ewkView, result)                                   \
@@ -267,6 +270,7 @@ static void _ewk_view_priv_del(Ewk_View_Private_Data* priv)
 
     priv->pageClient = nullptr;
     eina_stringshare_del(priv->uri);
+    eina_stringshare_del(priv->title);
     free(priv);
 }
 
@@ -488,6 +492,7 @@ Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef contextRef, WKPageGrou
     }
 
     priv->pageClient = PageClientImpl::create(toImpl(contextRef), toImpl(pageGroupRef), ewkView);
+    ewk_view_loader_client_attach(toAPI(priv->pageClient->page()), ewkView);
 
     return ewkView;
 }
@@ -523,6 +528,46 @@ const char* ewk_view_uri_get(const Evas_Object* ewkView)
     return priv->uri;
 }
 
+Eina_Bool ewk_view_reload(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    WKPageReload(toAPI(priv->pageClient->page()));
+    return true;
+}
+
+Eina_Bool ewk_view_stop(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    WKPageStopLoading(toAPI(priv->pageClient->page()));
+    return true;
+}
+
+const char* ewk_view_title_get(const Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, 0);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, 0);
+
+    CString title = priv->pageClient->page()->pageTitle().utf8();
+    eina_stringshare_replace(&priv->title, title.data());
+
+    return priv->title;
+}
+
+/**
+ * @internal
+ * The view title was changed by the frame loader.
+ *
+ * Emits signal: "title,changed" with pointer to new title string.
+ */
+void ewk_view_title_changed(Evas_Object* ewkView, const char* title)
+{
+    evas_object_smart_callback_call(ewkView, "title,changed", const_cast<char*>(title));
+}
+
 void ewk_view_display(Evas_Object* ewkView, const IntRect& rect)
 {
     EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData);
@@ -530,6 +575,48 @@ void ewk_view_display(Evas_Object* ewkView, const IntRect& rect)
         return;
 
     evas_object_image_data_update_add(smartData->image, rect.x(), rect.y(), rect.width(), rect.height());
+}
+
+Eina_Bool ewk_view_back(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    WKPageRef pageRef = toAPI(priv->pageClient->page());
+    if (WKPageCanGoBack(pageRef)) {
+        WKPageGoBack(pageRef);
+        return true;
+    }
+    return false;
+}
+
+Eina_Bool ewk_view_forward(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    WKPageRef pageRef = toAPI(priv->pageClient->page());
+    if (WKPageCanGoForward(pageRef)) {
+        WKPageGoForward(pageRef);
+        return true;
+    }
+    return false;
+}
+
+Eina_Bool ewk_view_back_possible(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    return WKPageCanGoBack(toAPI(priv->pageClient->page()));
+}
+
+Eina_Bool ewk_view_forward_possible(Evas_Object* ewkView)
+{
+    EWK_VIEW_SD_GET_OR_RETURN(ewkView, smartData, false);
+    EWK_VIEW_PRIV_GET_OR_RETURN(smartData, priv, false);
+
+    return WKPageCanGoForward(toAPI(priv->pageClient->page()));
 }
 
 void ewk_view_image_data_set(Evas_Object* ewkView, void* imageData, const IntSize& size)

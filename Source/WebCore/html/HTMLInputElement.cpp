@@ -131,7 +131,7 @@ HTMLInputElement::~HTMLInputElement()
         document()->formController()->checkedRadioButtons().removeButton(this);
 }
 
-const AtomicString& HTMLInputElement::formControlName() const
+const AtomicString& HTMLInputElement::name() const
 {
     return m_name.isNull() ? emptyAtom : m_name;
 }
@@ -274,7 +274,7 @@ bool HTMLInputElement::stepMismatch() const
     return willValidate() && m_inputType->stepMismatch(value());
 }
 
-bool HTMLInputElement::getAllowedValueStep(InputNumber* step) const
+bool HTMLInputElement::getAllowedValueStep(Decimal* step) const
 {
     return m_inputType->getAllowedValueStep(step);
 }
@@ -296,15 +296,26 @@ void HTMLInputElement::stepDown(int n, ExceptionCode& ec)
 
 bool HTMLInputElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
-    if (isTextField())
-        return HTMLTextFormControlElement::isFocusable();
-    return HTMLTextFormControlElement::isKeyboardFocusable(event) && m_inputType->isKeyboardFocusable();
+    return m_inputType->isKeyboardFocusable(event);
 }
 
 bool HTMLInputElement::isMouseFocusable() const
 {
-    if (isTextField())
-        return HTMLTextFormControlElement::isFocusable();
+    return m_inputType->isMouseFocusable();
+}
+
+bool HTMLInputElement::isTextFormControlFocusable() const
+{
+    return HTMLTextFormControlElement::isFocusable();
+}
+
+bool HTMLInputElement::isTextFormControlKeyboardFocusable(KeyboardEvent* event) const
+{
+    return HTMLTextFormControlElement::isKeyboardFocusable(event);
+}
+
+bool HTMLInputElement::isTextFormControlMouseFocusable() const
+{
     return HTMLTextFormControlElement::isMouseFocusable();
 }
 
@@ -457,7 +468,6 @@ void HTMLInputElement::subtreeHasChanged()
 {
     ASSERT(isTextField());
     ASSERT(renderer());
-    RenderTextControlSingleLine* renderTextControl = toRenderTextControlSingleLine(renderer());
 
     bool wasChanged = wasChangedSinceLastFormControlChangeEvent();
     setChangedSinceLastFormControlChangeEvent(true);
@@ -473,12 +483,7 @@ void HTMLInputElement::subtreeHasChanged()
     // Recalc for :invalid and hasUnacceptableValue() change.
     setNeedsStyleRecalc();
 
-    if (cancelButtonElement())
-        renderTextControl->updateCancelButtonVisibility();
-
-    // If the incremental attribute is set, then dispatch the search event
-    if (searchEventsShouldBeDispatched() && isSearchField() && m_inputType)
-        static_cast<SearchInputType*>(m_inputType.get())->startSearchEventTimer();
+    m_inputType->subtreeHasChanged();
 
     if (!wasChanged && focused()) {
         if (Frame* frame = document()->frame())
@@ -499,12 +504,12 @@ const AtomicString& HTMLInputElement::formControlType() const
     return m_inputType->formControlType();
 }
 
-bool HTMLInputElement::saveFormControlState(String& result) const
+FormControlState HTMLInputElement::saveFormControlState() const
 {
-    return m_inputType->saveFormControlState(result);
+    return m_inputType->saveFormControlState();
 }
 
-void HTMLInputElement::restoreFormControlState(const String& state)
+void HTMLInputElement::restoreFormControlState(const FormControlState& state)
 {
     m_inputType->restoreFormControlState(state);
     m_stateRestored = true;
@@ -554,7 +559,7 @@ void HTMLInputElement::collectStyleForAttribute(const Attribute& attribute, Styl
     } else if (attribute.name() == borderAttr && isImageButton())
         applyBorderAttributeToStyle(attribute, style);
     else
-        return HTMLTextFormControlElement::collectStyleForAttribute(attribute, style);
+        HTMLTextFormControlElement::collectStyleForAttribute(attribute, style);
 }
 
 void HTMLInputElement::parseAttribute(const Attribute& attribute)
@@ -972,11 +977,6 @@ void HTMLInputElement::setPlaceholder(const String& value)
     setAttribute(placeholderAttr, value);
 }
 
-bool HTMLInputElement::searchEventsShouldBeDispatched() const
-{
-    return hasAttribute(incrementalAttr);
-}
-
 void HTMLInputElement::setValueFromRenderer(const String& value)
 {
     // File upload controls will never use this.
@@ -1135,7 +1135,7 @@ static inline bool isRFC2616TokenCharacter(UChar ch)
     return isASCII(ch) && ch > ' ' && ch != '"' && ch != '(' && ch != ')' && ch != ',' && ch != '/' && (ch < ':' || ch > '@') && (ch < '[' || ch > ']') && ch != '{' && ch != '}' && ch != 0x7f;
 }
 
-static inline bool isValidMIMEType(const String& type)
+static bool isValidMIMEType(const String& type)
 {
     size_t slashPosition = type.find('/');
     if (slashPosition == notFound || !slashPosition || slashPosition == type.length() - 1)
@@ -1147,26 +1147,41 @@ static inline bool isValidMIMEType(const String& type)
     return true;
 }
 
-Vector<String> HTMLInputElement::acceptMIMETypes()
+static bool isValidFileExtension(const String& type)
 {
-    Vector<String> mimeTypes;
+    if (type.length() < 2)
+        return false;
+    return type[0] == '.';
+}
 
-    String acceptString = accept();
+static Vector<String> parseAcceptAttribute(const String& acceptString, bool (*predicate)(const String&))
+{
+    Vector<String> types;
     if (acceptString.isEmpty())
-        return mimeTypes;
+        return types;
 
     Vector<String> splitTypes;
     acceptString.split(',', false, splitTypes);
     for (size_t i = 0; i < splitTypes.size(); ++i) {
-        String trimmedMimeType = stripLeadingAndTrailingHTMLSpaces(splitTypes[i]);
-        if (trimmedMimeType.isEmpty())
+        String trimmedType = stripLeadingAndTrailingHTMLSpaces(splitTypes[i]);
+        if (trimmedType.isEmpty())
             continue;
-        if (!isValidMIMEType(trimmedMimeType))
+        if (!predicate(trimmedType))
             continue;
-        mimeTypes.append(trimmedMimeType.lower());
+        types.append(trimmedType.lower());
     }
 
-    return mimeTypes;
+    return types;
+}
+
+Vector<String> HTMLInputElement::acceptMIMETypes()
+{
+    return parseAcceptAttribute(fastGetAttribute(acceptAttr), isValidMIMEType);
+}
+
+Vector<String> HTMLInputElement::acceptFileExtensions()
+{
+    return parseAcceptAttribute(fastGetAttribute(acceptAttr), isValidFileExtension);
 }
 
 String HTMLInputElement::accept() const
@@ -1226,10 +1241,17 @@ void HTMLInputElement::setFiles(PassRefPtr<FileList> files)
     m_inputType->setFiles(files);
 }
 
-void HTMLInputElement::receiveDroppedFiles(const Vector<String>& filenames)
+bool HTMLInputElement::receiveDroppedFiles(const DragData* dragData)
 {
-    m_inputType->receiveDroppedFiles(filenames);
+    return m_inputType->receiveDroppedFiles(dragData);
 }
+
+#if ENABLE(FILE_SYSTEM)
+String HTMLInputElement::droppedFileSystemId()
+{
+    return m_inputType->droppedFileSystemId();
+}
+#endif
 
 Icon* HTMLInputElement::icon() const
 {
@@ -1318,9 +1340,7 @@ bool HTMLInputElement::isRequiredFormControl() const
 
 void HTMLInputElement::addSearchResult()
 {
-    ASSERT(isSearchField());
-    if (renderer())
-        toRenderTextControlSingleLine(renderer())->addSearchResult();
+    m_inputType->addSearchResult();
 }
 
 void HTMLInputElement::onSearch()
@@ -1352,16 +1372,14 @@ void HTMLInputElement::didChangeForm()
 Node::InsertionNotificationRequest HTMLInputElement::insertedInto(ContainerNode* insertionPoint)
 {
     HTMLTextFormControlElement::insertedInto(insertionPoint);
-    if (!insertionPoint->inDocument())
-        return InsertionDone;
-    ASSERT(inDocument());
-    addToRadioButtonGroup();
+    if (insertionPoint->inDocument() && !form())
+        addToRadioButtonGroup();
     return InsertionDone;
 }
 
 void HTMLInputElement::removedFrom(ContainerNode* insertionPoint)
 {
-    if (insertionPoint->inDocument())
+    if (insertionPoint->inDocument() && !form())
         removeFromRadioButtonGroup();
     HTMLTextFormControlElement::removedFrom(insertionPoint);
 }

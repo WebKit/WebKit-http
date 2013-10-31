@@ -89,11 +89,12 @@ ol.notifications>li div.problem {
     }
 
     ol.notifications>li table.failures {
-        visibility: hidden;
+        opacity: 0.2;
+        -webkit-transition: opacity 0.5s;
     }
 
     ol.notifications>li:hover table.failures {
-        visibility: visible;
+        opacity: 1;
     }
 
 ol.notifications>li ul.causes>li>ul.actions {
@@ -143,6 +144,16 @@ ol.notifications>li ul.causes>li>ul.actions {
 
         ol.notifications>li ul.causes>li>div.description>span>span.reviewer {
             color: Gray;
+        }
+
+        ol.notifications>li ul.causes>li>div.description>span>span.bugID::before {
+            content: 'bug ';
+            padding-left: 8px;
+        }
+
+        ol.notifications>li ul.causes>li>div.description>span>span.bugID>a {
+            cursor: hand;
+            pointer-events: auto;
         }
 
         ol.notifications>li ul.causes>li>div.description>span>span.reviewer::before {

@@ -62,10 +62,11 @@ SOURCES += \
     bytecode/MethodOfGettingAValueProfile.cpp \
     bytecode/Opcode.cpp \
     bytecode/PolymorphicPutByIdList.cpp \
-    bytecode/SpeculatedType.cpp \
     bytecode/PutByIdStatus.cpp \
     bytecode/SamplingTool.cpp \
+    bytecode/SpeculatedType.cpp \
     bytecode/StructureStubInfo.cpp \
+    bytecode/Watchpoint.cpp \
     bytecompiler/BytecodeGenerator.cpp \
     bytecompiler/NodesCodegen.cpp \
     heap/CopiedSpace.cpp \
@@ -78,6 +79,7 @@ SOURCES += \
     heap/HandleStack.cpp \
     heap/BlockAllocator.cpp \
     heap/Heap.cpp \
+    heap/HeapTimer.cpp \
     heap/IncrementalSweeper.cpp \
     heap/MachineStackMarker.cpp \
     heap/MarkStack.cpp \
@@ -236,6 +238,7 @@ SOURCES += \
     runtime/StringRecursionChecker.cpp \
     runtime/StructureChain.cpp \
     runtime/Structure.cpp \
+    runtime/SymbolTable.cpp \
     runtime/TimeoutChecker.cpp \
     runtime/UString.cpp \
     tools/CodeProfile.cpp \

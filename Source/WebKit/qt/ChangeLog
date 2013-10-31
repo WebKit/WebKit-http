@@ -1,3 +1,99 @@
+2012-06-19  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Buildfix for newer Qt5, use QPointer instead of the deprecated QWeakPointer.
+        https://bugs.webkit.org/show_bug.cgi?id=89449
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebframe_p.h:
+        (QWebHitTestResultPrivate):
+        * Api/qwebpage_p.h:
+        (QWebPagePrivate):
+        * WebCoreSupport/FrameLoaderClientQt.cpp:
+        (WebCore::FrameLoaderClientQt::createFrame):
+        * WebCoreSupport/PageClientQt.h:
+        (PageClientQGraphicsWidget):
+
+2012-06-19  Albert Astals Cid  <albert.astals@canonical.com>
+
+        [Qt] Document the versions enums where added
+        https://bugs.webkit.org/show_bug.cgi?id=89452
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebpage.cpp:
+
+2012-06-19  Sergio Villar Senin  <svillar@igalia.com>
+
+        Calling nativeImageForCurrentFrame() causes assertion failure: m_verifier.isSafeToUse()
+        https://bugs.webkit.org/show_bug.cgi?id=67582
+
+        Reviewed by David Levin.
+
+        Use synchronousNativeIconForPageURL() to retrieve favicons.
+
+        * Api/qwebhistory.cpp:
+        (QWebHistoryItem::icon):
+        * Api/qwebsettings.cpp:
+        (QWebSettings::iconForUrl):
+
+2012-06-18  Andras Becsi  <andras.becsi@nokia.com>
+
+        [Qt] Update QML plugins to Qt 5 style
+        https://bugs.webkit.org/show_bug.cgi?id=89027
+
+        Reviewed by Csaba Osztrogonác.
+
+        Since support for Qt 4 style plugins was removed from Qt 5
+        we need to update our plugins to the new style to be able
+        to build with a more recent Qt 5 hash.
+        Add empty plugin description json files for now.
+
+        * declarative/experimental/plugin.cpp:
+        * declarative/experimental/plugin.json: Added.
+        * declarative/plugin.cpp:
+        (WebKitQmlPlugin):
+        * declarative/plugin.json: Added.
+
+2012-06-13  Simon Hausmann  <simon.hausmann@nokia.com>
+
+        [Qt] Remove dependency to QtScript for the Qt 5 build
+        https://bugs.webkit.org/show_bug.cgi?id=88993
+
+        Reviewed by Kenneth Rohde Christiansen.
+
+        When building against Qt 5, replace the use of QScriptEngine::ValueOwnership with
+        a (compatible) QWebFrame::ValueOwnership enum.
+
+        * Api/qwebframe.cpp:
+        (qtSenderCallback):
+        (QWebFrame::addToJavaScriptWindowObject):
+        * Api/qwebframe.h:
+        * tests/qobjectbridge/tst_qobjectbridge.cpp:
+        (tst_QObjectBridge::arrayObjectEnumerable):
+        (tst_QObjectBridge::ownership):
+        (tst_QObjectBridge::qObjectWrapperWithSameIdentity):
+
+
+2012-06-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][Mac] Unreviewed buildfix after r120076.
+
+        * WebCoreSupport/QTKitFullScreenVideoHandler.h:
+
+2012-06-11  Kaustubh Atrawalkar  <kaustubh@motorola.com>
+
+        [DRT] LTC:: counterValueForElementById() could be moved to Internals.
+        https://bugs.webkit.org/show_bug.cgi?id=84406
+
+        Reviewed by Hajime Morita.
+
+        Move the counterValueForElementById from LayoutTestCotroller to Internals and
+        remove the old platform specific implementations as it exclusively tests WebCore functionality.
+
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
 2012-06-11  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Qt][Win] Add missing includes to fix the build

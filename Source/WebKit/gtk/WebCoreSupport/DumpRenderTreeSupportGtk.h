@@ -61,7 +61,6 @@ public:
     static GSList* getFrameChildren(WebKitWebFrame*);
     static WTF::CString getInnerText(WebKitWebFrame*);
     static WTF::CString dumpRenderTree(WebKitWebFrame*);
-    static WTF::CString counterValueForElementById(WebKitWebFrame*, const char* id);
     static int pageNumberForElementById(WebKitWebFrame*, const char* id, float pageWidth, float pageHeight);
     static int numberOfPagesForFrame(WebKitWebFrame*, float pageWidth, float pageHeight);
     static WTF::CString pageProperty(WebKitWebFrame*, const char* propertyName, int pageNumber);
@@ -95,8 +94,6 @@ public:
     static void forceWebViewPaint(WebKitWebView*);
 
     // Accessibility
-    static void incrementAccessibilityValue(AtkObject*);
-    static void decrementAccessibilityValue(AtkObject*);
     static WTF::CString accessibilityHelpText(AtkObject*);
 
     // TextInputController
@@ -129,6 +126,11 @@ public:
     static void deliverAllMutationsIfNecessary();
     static void setDomainRelaxationForbiddenForURLScheme(bool forbidden, const char* urlScheme);
     static void setSerializeHTTPLoads(bool enabled);
+
+    static void setTracksRepaints(WebKitWebFrame*, bool tracks);
+    static bool isTrackingRepaints(WebKitWebFrame*);
+    static GSList* trackedRepaintRects(WebKitWebFrame*);
+    static void resetTrackedRepaints(WebKitWebFrame*);
 
 private:
     static bool s_drtRun;

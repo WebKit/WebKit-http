@@ -48,6 +48,8 @@ class TestRebaseline(unittest.TestCase):
         command.bind_to_tool(tool)
 
         lion_port = tool.port_factory.get_from_builder_name("Webkit Mac10.7")
+        for path in lion_port.expectations_files():
+            tool.filesystem.write_text_file(path, '')
         tool.filesystem.write_text_file(lion_port.path_to_test_expectations_file(), """BUGB MAC LINUX XP DEBUG : fast/dom/Window/window-postmessage-clone-really-deep-array.html = PASS
 BUGA DEBUG : fast/css/large-list-of-rules-crash.html = TEXT
 """)
@@ -72,6 +74,7 @@ BUGA DEBUG : fast/css/large-list-of-rules-crash.html = TEXT
         command.bind_to_tool(tool)
 
         lion_port = tool.port_factory.get_from_builder_name("Webkit Mac10.7")
+        tool.filesystem.write_text_file(lion_port.path_from_chromium_base('skia', 'skia_test_expectations.txt'), '')
         tool.filesystem.write_text_file(lion_port.path_to_test_expectations_file(), "BUGX MAC : userscripts/another-test.html = IMAGE\nBUGZ LINUX : userscripts/another-test.html = IMAGE\n")
         tool.filesystem.write_text_file(os.path.join(lion_port.layout_tests_dir(), "userscripts/another-test.html"), "Dummy test contents")
 
@@ -90,6 +93,7 @@ Retrieving http://example.com/f/builders/Webkit Mac10.7/results/layout-test-resu
         command.bind_to_tool(tool)
 
         lion_port = tool.port_factory.get_from_builder_name("Webkit Mac10.7")
+        tool.filesystem.write_text_file(lion_port.path_from_chromium_base('skia', 'skia_test_expectations.txt'), '')
         tool.filesystem.write_text_file(lion_port.path_to_test_expectations_file(), "BUGX MAC : userscripts/another-test.html = IMAGE\nBUGZ LINUX : userscripts/another-test.html = IMAGE\n")
         tool.filesystem.write_text_file(lion_port.path_from_chromium_base('skia', 'skia_test_expectations.txt'), "BUGY MAC : other-test.html = TEXT\n")
         tool.filesystem.write_text_file(os.path.join(lion_port.layout_tests_dir(), "userscripts/another-test.html"), "Dummy test contents")
@@ -179,7 +183,8 @@ Retrieving http://example.com/f/builders/Webkit Mac10.7/results/layout-test-resu
 
         for port_name in tool.port_factory.all_port_names():
             port = tool.port_factory.get(port_name)
-            tool.filesystem.write_text_file(port.path_to_test_expectations_file(), '')
+            for path in port.expectations_files():
+                tool.filesystem.write_text_file(path, '')
 
         # Don't enable logging until after we create the mock expectation files as some Port.__init__'s run subcommands.
         tool.executive = MockExecutive(should_log=True)
@@ -232,11 +237,11 @@ MOCK run_command: ['echo', 'rebaseline-test', '--suffixes', 'png', 'Webkit Win',
         OutputCapture().assert_outputs(self, command.execute, [MockOptions(optimize=False), [], tool], expected_logs=expected_logs, expected_stderr=expected_stderr)
 
         expected_logs_with_optimize = expected_logs + (
-            "Optimizing baselines for userscripts/another-test.html.\n"
-            "Optimizing baselines for userscripts/images.svg.\n")
+            "Optimizing baselines for userscripts/another-test.html (txt).\n"
+            "Optimizing baselines for userscripts/images.svg (png).\n")
         expected_stderr_with_optimize = expected_stderr + (
-            "MOCK run_command: ['echo', 'optimize-baselines', 'userscripts/another-test.html'], cwd=/mock-checkout\n"
-            "MOCK run_command: ['echo', 'optimize-baselines', 'userscripts/images.svg'], cwd=/mock-checkout\n")
+            "MOCK run_command: ['echo', 'optimize-baselines', '--suffixes', 'txt', 'userscripts/another-test.html'], cwd=/mock-checkout\n"
+            "MOCK run_command: ['echo', 'optimize-baselines', '--suffixes', 'png', 'userscripts/images.svg'], cwd=/mock-checkout\n")
 
         command._tests_to_rebaseline = lambda port: {'userscripts/another-test.html': set(['txt']), 'userscripts/images.svg': set(['png'])}
         OutputCapture().assert_outputs(self, command.execute, [MockOptions(optimize=True), [], tool], expected_logs=expected_logs_with_optimize, expected_stderr=expected_stderr_with_optimize)
@@ -249,11 +254,16 @@ MOCK run_command: ['echo', 'rebaseline-test', '--suffixes', 'png', 'Webkit Win',
 
         # This tests that the any tests marked as REBASELINE in the overrides are found, but
         # that the overrides do not get written into the main file.
-        self.overrides = ('BUGX REBASELINE : userscripts/another-test.html = TEXT\n'
-                          'BUGY : userscripts/test.html = CRASH\n')
+        expectations_path = port.expectations_files()[0]
+        expectations_contents = ''
+        port._filesystem.write_text_file(expectations_path, expectations_contents)
+        port.expectations_dict = lambda: {
+            expectations_path: expectations_contents,
+            'overrides': ('BUGX REBASELINE : userscripts/another-test.html = TEXT\n'
+                          'BUGY : userscripts/test.html = CRASH\n')}
 
-        port._filesystem.write_text_file(port.path_to_test_expectations_file(), '')
+        for path in port.expectations_files():
+            port._filesystem.write_text_file(path, '')
         port._filesystem.write_text_file(port.layout_tests_dir() + '/userscripts/another-test.html', '')
-        port.test_expectations_overrides = lambda: self.overrides
         self.assertEquals(command._tests_to_rebaseline(port), {'userscripts/another-test.html': set(['txt'])})
-        self.assertEquals(port._filesystem.read_text_file(port.path_to_test_expectations_file()), '')
+        self.assertEquals(port._filesystem.read_text_file(expectations_path), expectations_contents)

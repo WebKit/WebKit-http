@@ -80,6 +80,11 @@ RegExpJitTables.h: create_regex_tables
 KeywordLookup.h: KeywordLookupGenerator.py Keywords.table
 	python $^ > $@
 
+# udis86 instruction tables
+
+udis86_itab.h: $(JavaScriptCore)/disassembler/udis86/itab.py $(JavaScriptCore)/disassembler/udis86/optable.xml
+	(PYTHONPATH=$(JavaScriptCore)/disassembler/udis86 python $(JavaScriptCore)/disassembler/udis86/itab.py $(JavaScriptCore)/disassembler/udis86/optable.xml || exit 1)
+
 # header detection
 
 ifeq ($(OS),MACOS)

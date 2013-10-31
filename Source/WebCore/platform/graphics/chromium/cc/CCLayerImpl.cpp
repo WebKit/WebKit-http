@@ -33,6 +33,7 @@
 #include "LayerRendererChromium.h"
 #include "cc/CCDebugBorderDrawQuad.h"
 #include "cc/CCLayerSorter.h"
+#include "cc/CCMathUtil.h"
 #include "cc/CCQuadCuller.h"
 #include "cc/CCSolidColorDrawQuad.h"
 #include <wtf/text/WTFString.h>
@@ -54,6 +55,7 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_haveWheelEventHandlers(false)
     , m_doubleSided(true)
     , m_layerPropertyChanged(false)
+    , m_layerSurfacePropertyChanged(false)
     , m_masksToBounds(false)
     , m_opaque(false)
     , m_opacity(1.0)
@@ -64,7 +66,7 @@ CCLayerImpl::CCLayerImpl(int id)
     , m_drawsContent(false)
     , m_forceRenderSurface(false)
     , m_isContainerForFixedPositionLayers(false)
-    , m_fixedToContainerLayerVisibleRect(false)
+    , m_fixedToContainerLayer(false)
     , m_pageScaleDelta(1)
     , m_targetRenderSurface(0)
     , m_drawDepth(0)
@@ -186,6 +188,40 @@ void CCLayerImpl::scrollBy(const FloatSize& scroll)
     noteLayerPropertyChangedForSubtree();
 }
 
+CCInputHandlerClient::ScrollStatus CCLayerImpl::tryScroll(const IntPoint& viewportPoint, CCInputHandlerClient::ScrollInputType type) const
+{
+    if (shouldScrollOnMainThread()) {
+        TRACE_EVENT0("cc", "CCLayerImpl::tryScroll: Failed shouldScrollOnMainThread");
+        return CCInputHandlerClient::ScrollOnMainThread;
+    }
+
+    if (!screenSpaceTransform().isInvertible()) {
+        TRACE_EVENT0("cc", "CCLayerImpl::tryScroll: Ignored nonInvertibleTransform");
+        return CCInputHandlerClient::ScrollIgnored;
+    }
+
+    if (!nonFastScrollableRegion().isEmpty()) {
+        bool clipped = false;
+        FloatPoint hitTestPointInLocalSpace = CCMathUtil::projectPoint(screenSpaceTransform().inverse(), FloatPoint(viewportPoint), clipped);
+        if (!clipped && nonFastScrollableRegion().contains(flooredIntPoint(hitTestPointInLocalSpace))) {
+            TRACE_EVENT0("cc", "CCLayerImpl::tryScroll: Failed nonFastScrollableRegion");
+            return CCInputHandlerClient::ScrollOnMainThread;
+        }
+    }
+
+    if (type == CCInputHandlerClient::Wheel && haveWheelEventHandlers()) {
+        TRACE_EVENT0("cc", "CCLayerImpl::tryScroll: Failed wheelEventHandlers");
+        return CCInputHandlerClient::ScrollOnMainThread;
+    }
+
+    if (!scrollable()) {
+        TRACE_EVENT0("cc", "CCLayerImpl::tryScroll: Ignored not scrollable");
+        return CCInputHandlerClient::ScrollIgnored;
+    }
+
+    return CCInputHandlerClient::ScrollStarted;
+}
+
 const IntRect CCLayerImpl::getDrawRect() const
 {
     // Form the matrix used by the shader to map the corners of the layer's
@@ -238,7 +274,7 @@ void CCLayerImpl::dumpLayerProperties(TextStream& ts, int indent) const
 
 void sortLayers(Vector<CCLayerImpl*>::iterator first, Vector<CCLayerImpl*>::iterator end, CCLayerSorter* layerSorter)
 {
-    TRACE_EVENT("LayerRendererChromium::sortLayers", 0, 0);
+    TRACE_EVENT0("cc", "LayerRendererChromium::sortLayers");
     layerSorter->sort(first, end);
 }
 
@@ -275,6 +311,26 @@ void CCLayerImpl::setStackingOrderChanged(bool stackingOrderChanged)
         noteLayerPropertyChangedForSubtree();
 }
 
+bool CCLayerImpl::layerSurfacePropertyChanged() const
+{
+    if (m_layerSurfacePropertyChanged)
+        return true;
+
+    // If this layer's surface property hasn't changed, we want to see if
+    // some layer above us has changed this property. This is done for the
+    // case when such parent layer does not draw content, and therefore will
+    // not be traversed by the damage tracker. We need to make sure that
+    // property change on such layer will be caught by its descendants.
+    CCLayerImpl* current = this->m_parent;
+    while (current && !current->m_renderSurface) {
+        if (current->m_layerSurfacePropertyChanged)
+            return true;
+        current = current->m_parent;
+    }
+
+    return false;
+}
+
 void CCLayerImpl::noteLayerPropertyChangedForSubtree()
 {
     m_layerPropertyChanged = true;
@@ -290,6 +346,8 @@ void CCLayerImpl::noteLayerPropertyChangedForDescendants()
 void CCLayerImpl::resetAllChangeTrackingForSubtree()
 {
     m_layerPropertyChanged = false;
+    m_layerSurfacePropertyChanged = false;
+
     m_updateRect = FloatRect();
 
     if (m_renderSurface)
@@ -430,7 +488,7 @@ void CCLayerImpl::setOpacity(float opacity)
         return;
 
     m_opacity = opacity;
-    noteLayerPropertyChangedForSubtree();
+    m_layerSurfacePropertyChanged = true;
 }
 
 bool CCLayerImpl::opacityIsAnimating() const
@@ -472,7 +530,7 @@ void CCLayerImpl::setTransform(const WebTransformationMatrix& transform)
         return;
 
     m_transform = transform;
-    noteLayerPropertyChangedForSubtree();
+    m_layerSurfacePropertyChanged = true;
 }
 
 bool CCLayerImpl::transformIsAnimating() const

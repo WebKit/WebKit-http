@@ -42,6 +42,8 @@ WebInspector.UISourceCode = function(url, resource, contentProvider, sourceMappi
 {
     this._url = url;
     this._resource = resource;
+    if (resource)
+        resource.setUISourceCode(this);
     this._parsedURL = new WebInspector.ParsedURL(url);
     this._contentProvider = contentProvider;
     this._sourceMapping = sourceMapping;
@@ -206,8 +208,7 @@ WebInspector.UISourceCode.prototype = {
         function innerCallback(error)
         {
             delete this._committingWorkingCopy;
-            if (!error)
-                this.contentChanged(newContent, this._mimeType);
+            this.contentChanged(newContent, this._mimeType);
             callback(error);
         }
 

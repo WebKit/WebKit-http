@@ -139,7 +139,6 @@ ALWAYS_INLINE RenderStyle::RenderStyle(bool)
     rareNonInheritedData.access()->m_gridItem.init();
     rareInheritedData.init();
     inherited.init();
-
 #if ENABLE(SVG)
     m_svgStyle.init();
 #endif
@@ -474,6 +473,7 @@ StyleDifference RenderStyle::diff(const RenderStyle* other, unsigned& changedCon
             || rareInheritedData->m_lineBoxContain != other->rareInheritedData->m_lineBoxContain
             || rareInheritedData->m_lineGrid != other->rareInheritedData->m_lineGrid
 #if ENABLE(CSS_IMAGE_RESOLUTION)
+            || rareInheritedData->m_imageResolutionSource != other->rareInheritedData->m_imageResolutionSource
             || rareInheritedData->m_imageResolution != other->rareInheritedData->m_imageResolution
 #endif
             || rareInheritedData->m_lineSnap != other->rareInheritedData->m_lineSnap

@@ -47,7 +47,14 @@ public:
     static void calculateVisibleAndScissorRects(Vector<CCLayerImpl*>& renderSurfaceLayerList, const FloatRect& rootScissorRect);
     static void calculateVisibleAndScissorRects(Vector<RefPtr<LayerChromium> >& renderSurfaceLayerList, const FloatRect& rootScissorRect);
 
+    // Performs hit testing for a given renderSurfaceLayerList.
+    static CCLayerImpl* findLayerThatIsHitByPoint(const IntPoint& viewportPoint, Vector<CCLayerImpl*>& renderSurfaceLayerList);
+
     template<typename LayerType> static bool renderSurfaceContributesToTarget(LayerType*, int targetSurfaceLayerID);
+
+    // Returns a layer with the given id if one exists in the subtree starting
+    // from the given root layer (including mask and replica layers).
+    template<typename LayerType> static LayerType* findLayerInSubtree(LayerType* rootLayer, int layerId);
 
     struct ScrollUpdateInfo {
         int layerId;
@@ -72,6 +79,25 @@ bool CCLayerTreeHostCommon::renderSurfaceContributesToTarget(LayerType* layer, i
     // Otherwise, the layer just contributes itself to the target surface.
 
     return layer->renderSurface() && layer->id() != targetSurfaceLayerID;
+}
+
+template<typename LayerType>
+LayerType* CCLayerTreeHostCommon::findLayerInSubtree(LayerType* rootLayer, int layerId)
+{
+    if (rootLayer->id() == layerId)
+        return rootLayer;
+
+    if (rootLayer->maskLayer() && rootLayer->maskLayer()->id() == layerId)
+        return rootLayer->maskLayer();
+
+    if (rootLayer->replicaLayer() && rootLayer->replicaLayer()->id() == layerId)
+        return rootLayer->replicaLayer();
+
+    for (size_t i = 0; i < rootLayer->children().size(); ++i) {
+        if (LayerType* found = findLayerInSubtree(rootLayer->children()[i].get(), layerId))
+            return found;
+    }
+    return 0;
 }
 
 } // namespace WebCore

@@ -49,10 +49,13 @@
 #include "CSSStyleSheet.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSValueList.h"
+#if ENABLE(CSS_VARIABLES)
+#include "CSSVariableValue.h"
+#endif
 #include "CachedImage.h"
 #include "CalculationValue.h"
 #include "ContentData.h"
-#include "ContextEnabledFeatures.h"
+#include "ContextFeatures.h"
 #include "Counter.h"
 #include "CounterContent.h"
 #include "CursorList.h"
@@ -73,6 +76,7 @@
 #include "KeyframeList.h"
 #include "LinkHash.h"
 #include "LocaleToScriptMapping.h"
+#include "MathMLNames.h"
 #include "Matrix3DTransformOperation.h"
 #include "MatrixTransformOperation.h"
 #include "MediaList.h"
@@ -491,7 +495,7 @@ const ContainerNode* StyleResolver::determineScope(const CSSStyleSheet* sheet)
 {
     ASSERT(sheet);
 
-    if (!ContextEnabledFeatures::styleScopedEnabled(document()))
+    if (!ContextFeatures::styleScopedEnabled(document()))
         return 0;
 
     Node* ownerNode = sheet->ownerNode();
@@ -500,7 +504,7 @@ const ContainerNode* StyleResolver::determineScope(const CSSStyleSheet* sheet)
 
     HTMLStyleElement* styleElement = static_cast<HTMLStyleElement*>(ownerNode);
     if (!styleElement->scoped())
-        return 0;
+        return styleElement->isInShadowTree()? styleElement->shadowRoot() : 0;
 
     ContainerNode* parent = styleElement->parentNode();
     if (!parent)
@@ -1585,7 +1589,40 @@ PassRefPtr<RenderStyle> StyleResolver::styleForDocument(Document* document, CSSF
         if (Page* page = frame->page()) {
             const Page::Pagination& pagination = page->pagination();
             if (pagination.mode != Page::Pagination::Unpaginated) {
-                documentStyle->setColumnAxis(pagination.mode == Page::Pagination::HorizontallyPaginated ? HorizontalColumnAxis : VerticalColumnAxis);
+                switch (pagination.mode) {
+                case Page::Pagination::LeftToRightPaginated:
+                    documentStyle->setColumnAxis(HorizontalColumnAxis);
+                    if (documentStyle->isHorizontalWritingMode())
+                        documentStyle->setColumnProgression(documentStyle->isLeftToRightDirection() ? NormalColumnProgression : ReverseColumnProgression);
+                    else
+                        documentStyle->setColumnProgression(documentStyle->isFlippedBlocksWritingMode() ? ReverseColumnProgression : NormalColumnProgression);
+                    break;
+                case Page::Pagination::RightToLeftPaginated:
+                    documentStyle->setColumnAxis(HorizontalColumnAxis);
+                    if (documentStyle->isHorizontalWritingMode())
+                        documentStyle->setColumnProgression(documentStyle->isLeftToRightDirection() ? ReverseColumnProgression : NormalColumnProgression);
+                    else
+                        documentStyle->setColumnProgression(documentStyle->isFlippedBlocksWritingMode() ? NormalColumnProgression : ReverseColumnProgression);
+                    break;
+                case Page::Pagination::TopToBottomPaginated:
+                    documentStyle->setColumnAxis(VerticalColumnAxis);
+                    if (documentStyle->isHorizontalWritingMode())
+                        documentStyle->setColumnProgression(documentStyle->isFlippedBlocksWritingMode() ? ReverseColumnProgression : NormalColumnProgression);
+                    else
+                        documentStyle->setColumnProgression(documentStyle->isLeftToRightDirection() ? NormalColumnProgression : ReverseColumnProgression);
+                    break;
+                case Page::Pagination::BottomToTopPaginated:
+                    documentStyle->setColumnAxis(VerticalColumnAxis);
+                    if (documentStyle->isHorizontalWritingMode())
+                        documentStyle->setColumnProgression(documentStyle->isFlippedBlocksWritingMode() ? NormalColumnProgression : ReverseColumnProgression);
+                    else
+                        documentStyle->setColumnProgression(documentStyle->isLeftToRightDirection() ? ReverseColumnProgression : NormalColumnProgression);
+                    break;
+                case Page::Pagination::Unpaginated:
+                    ASSERT_NOT_REACHED();
+                    break;
+                }
+
                 documentStyle->setColumnGap(pagination.gap);
             }
         }
@@ -1653,16 +1690,19 @@ PassRefPtr<RenderStyle> StyleResolver::styleForElement(Element* element, RenderS
 
     m_style = RenderStyle::create();
 
+    RefPtr<RenderStyle> cloneForParent;
+
     if (m_parentStyle)
         m_style->inheritFrom(m_parentStyle, isAtShadowBoundary(element) ? RenderStyle::AtShadowBoundary : RenderStyle::NotAtShadowBoundary);
     else {
-        m_parentStyle = style();
         // Make sure our fonts are initialized if we don't inherit them from our parent style.
         if (Settings* settings = documentSettings()) {
             initializeFontStyle(settings);
             m_style->font().update(fontSelector());
         } else
             m_style->font().update(0);
+        cloneForParent = RenderStyle::clone(style());
+        m_parentStyle = cloneForParent.get();
     }
 
     if (element->isLink()) {
@@ -1684,6 +1724,9 @@ PassRefPtr<RenderStyle> StyleResolver::styleForElement(Element* element, RenderS
     adjustRenderStyle(style(), m_parentStyle, element);
 
     initElement(0); // Clear out for the next resolve.
+
+    if (cloneForParent)
+        m_parentStyle = 0;
 
     // Now return the style.
     return m_style.release();
@@ -1874,6 +1917,9 @@ PassRefPtr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     matchPageRules(result, m_authorStyle.get(), isLeft, isFirst, page);
     m_lineHeightValue = 0;
     bool inheritedOnly = false;
+#if ENABLE(CSS_VARIABLES)
+    applyMatchedProperties<VariableDefinitions>(result, false, 0, result.matchedProperties.size() - 1, inheritedOnly);
+#endif
     applyMatchedProperties<HighPriorityProperties>(result, false, 0, result.matchedProperties.size() - 1, inheritedOnly);
 
     // If our font got dirtied, go ahead and update it now.
@@ -1917,6 +1963,36 @@ static void addIntrinsicMargins(RenderStyle* style)
         if (style->marginBottom().quirk())
             style->setMarginBottom(Length(intrinsicMargin, Fixed));
     }
+}
+
+static bool shouldBecomeBlockWhenParentIsFlexbox(const Element* element)
+{
+    return element->hasTagName(imgTag)
+        || element->hasTagName(canvasTag)
+#if ENABLE(SVG)
+        || element->hasTagName(SVGNames::svgTag)
+#endif
+#if ENABLE(MATHML)
+        || element->hasTagName(MathMLNames::mathTag)
+#endif
+#if ENABLE(VIDEO)
+        || element->hasTagName(audioTag)
+        || element->hasTagName(videoTag)
+#endif
+        || element->hasTagName(iframeTag)
+        || element->hasTagName(objectTag)
+        || element->hasTagName(embedTag)
+        || element->hasTagName(appletTag)
+#if ENABLE(PROGRESS_TAG)
+        || element->hasTagName(progressTag)
+#endif
+#if ENABLE(METER_TAG)
+        || element->hasTagName(meterTag)
+#endif
+        || element->hasTagName(inputTag)
+        || element->hasTagName(buttonTag)
+        || element->hasTagName(selectTag)
+        || element->hasTagName(textareaTag);
 }
 
 static EDisplay equivalentBlockDisplay(EDisplay display, bool isFloating, bool strictParsing)
@@ -2010,7 +2086,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
 
         // Tables never support the -webkit-* values for text-align and will reset back to the default.
         if (e && e->hasTagName(tableTag) && (style->textAlign() == WEBKIT_LEFT || style->textAlign() == WEBKIT_CENTER || style->textAlign() == WEBKIT_RIGHT))
-            style->setTextAlign(TAAUTO);
+            style->setTextAlign(TASTART);
 
         // Frames and framesets never honor position:relative or position:absolute. This is necessary to
         // fix a crash where a site tries to position these objects. They also never honor display.
@@ -2025,8 +2101,9 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
             style->setFloating(NoFloat);
         }
 
-        // Table headers with a text-align of auto will change the text-align to center.
-        if (e && e->hasTagName(thTag) && style->textAlign() == TAAUTO)
+        // FIXME: We shouldn't be overriding start/-webkit-auto like this. Do it in html.css instead.
+        // Table headers with a text-align of -webkit-auto will change the text-align to center.
+        if (e && e->hasTagName(thTag) && style->textAlign() == TASTART)
             style->setTextAlign(CENTER);
 
         if (e && e->hasTagName(legendTag))
@@ -2061,6 +2138,13 @@ void StyleResolver::adjustRenderStyle(RenderStyle* style, RenderStyle* parentSty
         // https://bugs.webkit.org/show_bug.cgi?id=46418 - Flexible box support.
         if (style->writingMode() != TopToBottomWritingMode && (style->display() == BOX || style->display() == INLINE_BOX))
             style->setWritingMode(TopToBottomWritingMode);
+
+        if (e && e->parentNode() && e->parentNode()->renderer() && e->parentNode()->renderer()->isFlexibleBox()) {
+            if (shouldBecomeBlockWhenParentIsFlexbox(e))
+                style->setDisplay(BLOCK);
+            else if (style->display() != INLINE)
+                style->setDisplay(equivalentBlockDisplay(style->display(), style->isFloating(), m_checker.strictParsing()));
+        }
     }
 
     // Make sure our z-index value is only applied if the object is positioned.
@@ -2679,23 +2763,33 @@ void StyleResolver::applyProperties(const StylePropertySet* properties, StyleRul
         if (filterRegionProperties && !StyleResolver::isValidRegionStyleProperty(property))
             continue;
 
-        if (pass == HighPriorityProperties) {
+        switch (pass) {
+#if ENABLE(CSS_VARIABLES)
+        case VariableDefinitions:
+            COMPILE_ASSERT(CSSPropertyVariable < firstCSSProperty, CSS_variable_is_before_first_property);
+            if (property == CSSPropertyVariable)
+                applyProperty(current.id(), current.value());
+            break;
+#endif
+        case HighPriorityProperties:
             COMPILE_ASSERT(firstCSSProperty == CSSPropertyColor, CSS_color_is_first_property);
             COMPILE_ASSERT(CSSPropertyZoom == CSSPropertyColor + 18, CSS_zoom_is_end_of_first_prop_range);
             COMPILE_ASSERT(CSSPropertyLineHeight == CSSPropertyZoom + 1, CSS_line_height_is_after_zoom);
+#if ENABLE(CSS_VARIABLES)
+            if (property == CSSPropertyVariable)
+                continue;
+#endif
             // give special priority to font-xxx, color properties, etc
-            if (property > CSSPropertyLineHeight)
-                continue;
+            if (property < CSSPropertyLineHeight)
+                applyProperty(current.id(), current.value());
             // we apply line-height later
-            if (property == CSSPropertyLineHeight) {
+            else if (property == CSSPropertyLineHeight)
                 m_lineHeightValue = current.value();
-                continue;
-            }
-            applyProperty(current.id(), current.value());
-            continue;
+            break;
+        case LowPriorityProperties:
+            if (property > CSSPropertyLineHeight)
+                applyProperty(current.id(), current.value());
         }
-        if (property > CSSPropertyLineHeight)
-            applyProperty(current.id(), current.value());
     }
     InspectorInstrumentation::didProcessRule(cookie);
 }
@@ -2841,6 +2935,15 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
         }
         applyInheritedOnly = true; 
     }
+
+#if ENABLE(CSS_VARIABLES)
+    // First apply all variable definitions, as they may be used during application of later properties.
+    applyMatchedProperties<VariableDefinitions>(matchResult, false, 0, matchResult.matchedProperties.size() - 1, applyInheritedOnly);
+    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstAuthorRule, matchResult.ranges.lastAuthorRule, applyInheritedOnly);
+    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstUserRule, matchResult.ranges.lastUserRule, applyInheritedOnly);
+    applyMatchedProperties<VariableDefinitions>(matchResult, true, matchResult.ranges.firstUARule, matchResult.ranges.lastUARule, applyInheritedOnly);
+#endif
+
     // Now we have all of the matched rules in the appropriate order. Walk the rules and apply
     // high-priority properties first, i.e., those properties that other properties depend on.
     // The order is (1) high-priority not important, (2) high-priority important, (3) normal not important
@@ -3002,6 +3105,20 @@ static void collectCSSOMWrappers(HashMap<StyleRule*, RefPtr<CSSStyleRule> >& wra
         collectCSSOMWrappers(wrapperMap, static_cast<CSSStyleSheet*>(styleSheet));
     }
     collectCSSOMWrappers(wrapperMap, document->pageUserSheet());
+    {
+        const Vector<RefPtr<CSSStyleSheet> >* pageGroupUserSheets = document->pageGroupUserSheets();
+        if (pageGroupUserSheets) {
+            for (size_t i = 0, size = pageGroupUserSheets->size(); i < size; ++i)
+                collectCSSOMWrappers(wrapperMap, pageGroupUserSheets->at(i).get());
+        }
+    }
+    {
+        const Vector<RefPtr<CSSStyleSheet> >* documentUserSheets = document->documentUserSheets();
+        if (documentUserSheets) {
+            for (size_t i = 0, size = documentUserSheets->size(); i < size; ++i)
+                collectCSSOMWrappers(wrapperMap, documentUserSheets->at(i).get());
+        }
+    }
 }
 
 CSSStyleRule* StyleResolver::ensureFullCSSOMWrapperForInspector(StyleRule* rule)
@@ -3155,8 +3272,54 @@ static bool createGridPosition(CSSValue* value, Length& position)
     return true;
 }
 
-void StyleResolver::applyProperty(CSSPropertyID id, CSSValue *value)
+#if ENABLE(CSS_VARIABLES)
+static bool hasVariableReference(CSSValue* value)
 {
+    if (value->isPrimitiveValue() && static_cast<CSSPrimitiveValue*>(value)->isVariableName())
+        return true;
+
+    for (CSSValueListIterator i = value; i.hasMore(); i.advance()) {
+        if (hasVariableReference(i.value()))
+            return true;
+    }
+
+    return false;
+}
+
+void StyleResolver::resolveVariables(CSSPropertyID id, CSSValue* value, Vector<std::pair<CSSPropertyID, String> >& knownExpressions)
+{
+    std::pair<CSSPropertyID, String> expression(id, value->serializeResolvingVariables(*style()->variables()));
+
+    if (knownExpressions.contains(expression))
+        return; // cycle detected.
+
+    knownExpressions.append(expression);
+
+    // FIXME: It would be faster not to re-parse from strings, but for now CSS property validation lives inside the parser so we do it there.
+    RefPtr<StylePropertySet> resultSet = StylePropertySet::create();
+    if (!CSSParser::parseValue(resultSet.get(), id, expression.second, false, CSSStrictMode, 0))
+        return; // expression failed to parse.
+
+    for (unsigned i = 0; i < resultSet->propertyCount(); i++) {
+        const CSSProperty& property = resultSet->propertyAt(i);
+        if (property.id() != CSSPropertyVariable && hasVariableReference(property.value()))
+            resolveVariables(property.id(), property.value(), knownExpressions);
+        else
+            applyProperty(property.id(), property.value());
+    }
+}
+#endif
+
+void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value)
+{
+#if ENABLE(CSS_VARIABLES)
+    if (id != CSSPropertyVariable && hasVariableReference(value)) {
+        Vector<std::pair<CSSPropertyID, String> > knownExpressions;
+        resolveVariables(id, value, knownExpressions);
+        return;
+    }
+#endif
+
     bool isInherit = m_parentNode && value->isInheritedValue();
     bool isInitial = value->isInitialValue() || (!m_parentNode && value->isInheritedValue());
 
@@ -3170,7 +3333,18 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue *value)
     if (isInherit && m_parentStyle && !m_parentStyle->hasExplicitlyInheritedProperties() && !CSSProperty::isInheritedProperty(id))
         m_parentStyle->setHasExplicitlyInheritedProperties();
 
-    // check lookup table for implementations and use when available
+#if ENABLE(CSS_VARIABLES)
+    if (id == CSSPropertyVariable) {
+        ASSERT(value->isVariableValue());
+        CSSVariableValue* variable = static_cast<CSSVariableValue*>(value);
+        ASSERT(!variable->name().isEmpty());
+        ASSERT(!variable->value().isEmpty());
+        m_style->setVariable(variable->name(), variable->value());
+        return;
+    }
+#endif
+
+    // Check lookup table for implementations and use when available.
     const PropertyHandler& handler = m_styleBuilder.propertyHandler(id);
     if (handler.isValid()) {
         if (isInherit)
@@ -4098,7 +4272,9 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue *value)
     case CSSPropertyWebkitBorderRadius:
     case CSSPropertyWebkitBorderVerticalSpacing:
     case CSSPropertyWebkitBoxAlign:
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     case CSSPropertyWebkitBoxDecorationBreak:
+#endif
     case CSSPropertyWebkitBoxDirection:
     case CSSPropertyWebkitBoxFlex:
     case CSSPropertyWebkitBoxFlexGroup:
@@ -4113,6 +4289,7 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue *value)
     case CSSPropertyWebkitColumnBreakInside:
     case CSSPropertyWebkitColumnCount:
     case CSSPropertyWebkitColumnGap:
+    case CSSPropertyWebkitColumnProgression:
     case CSSPropertyWebkitColumnRuleColor:
     case CSSPropertyWebkitColumnRuleStyle:
     case CSSPropertyWebkitColumnRuleWidth:
@@ -4167,7 +4344,6 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue *value)
     case CSSPropertyWebkitMaskRepeatX:
     case CSSPropertyWebkitMaskRepeatY:
     case CSSPropertyWebkitMaskSize:
-    case CSSPropertyWebkitMatchNearestMailBlockquoteColor:
     case CSSPropertyWebkitNbspMode:
     case CSSPropertyWebkitPerspectiveOrigin:
     case CSSPropertyWebkitPerspectiveOriginX:
@@ -5211,6 +5387,7 @@ bool StyleResolver::createTransformOperations(CSSValue* inValue, RenderStyle* st
     TransformOperations operations;
     for (CSSValueListIterator i = inValue; i.hasMore(); i.advance()) {
         CSSValue* currValue = i.value();
+
         if (!currValue->isWebKitCSSTransformValue())
             continue;
 

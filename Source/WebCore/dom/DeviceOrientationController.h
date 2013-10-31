@@ -41,7 +41,7 @@ class DeviceOrientationController : public Supplement<Page> {
 public:
     ~DeviceOrientationController();
 
-    static PassOwnPtr<DeviceOrientationController> create(Page*, DeviceOrientationClient*);
+    static PassOwnPtr<DeviceOrientationController> create(DeviceOrientationClient*);
 
     void addListener(DOMWindow*);
     void removeListener(DOMWindow*);
@@ -61,11 +61,10 @@ public:
     static bool isActiveAt(Page*);
 
 private:
-    DeviceOrientationController(Page*, DeviceOrientationClient*);
+    DeviceOrientationController(DeviceOrientationClient*);
 
     void timerFired(Timer<DeviceOrientationController>*);
 
-    Page* m_page;
     DeviceOrientationClient* m_client;
     typedef HashCountedSet<RefPtr<DOMWindow> > ListenersCountedSet;
     ListenersCountedSet m_listeners;

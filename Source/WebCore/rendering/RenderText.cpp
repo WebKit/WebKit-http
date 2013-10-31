@@ -53,7 +53,7 @@ using namespace Unicode;
 
 namespace WebCore {
 
-class SameSizeAsRenderText : public RenderObject {
+struct SameSizeAsRenderText : public RenderObject {
     uint32_t bitfields : 16;
     float widths[4];
     String text;
@@ -687,10 +687,6 @@ LayoutRect RenderText::localCaretRect(InlineBox* inlineBox, int caretOffset, Lay
 
     bool rightAligned = false;
     switch (cbStyle->textAlign()) {
-    case TAAUTO:
-    case JUSTIFY:
-        rightAligned = !cbStyle->isLeftToRightDirection();
-        break;
     case RIGHT:
     case WEBKIT_RIGHT:
         rightAligned = true;
@@ -700,6 +696,7 @@ LayoutRect RenderText::localCaretRect(InlineBox* inlineBox, int caretOffset, Lay
     case CENTER:
     case WEBKIT_CENTER:
         break;
+    case JUSTIFY:
     case TASTART:
         rightAligned = !cbStyle->isLeftToRightDirection();
         break;

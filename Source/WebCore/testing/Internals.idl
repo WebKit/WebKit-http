@@ -34,7 +34,7 @@ module window {
 
         unsigned long numberOfScopedHTMLStyleChildren(in Node scope) raises(DOMException);
 
-#if defined(ENABLE_SHADOW_DOM)
+#if defined(ENABLE_SHADOW_DOM) && ENABLE_SHADOW_DOM
         ShadowRoot ensureShadowRoot(in Element host) raises (DOMException);
         ShadowRoot shadowRoot(in Element host) raises (DOMException);
         ShadowRoot youngestShadowRoot(in Element host) raises (DOMException);
@@ -50,6 +50,7 @@ module window {
 #endif
         Element includerFor(in Node node) raises (DOMException);
         DOMString shadowPseudoId(in Element element) raises (DOMException);
+        void setShadowPseudoId(in Element element, in DOMString id) raises (DOMException);
         Element createContentElement(in Document document) raises(DOMException);
         Element getElementByIdInShadowRoot(in Node shadowRoot, in DOMString id) raises(DOMException);
         boolean isValidContentSelect(in Element contentElement) raises(DOMException);
@@ -67,6 +68,8 @@ module window {
 #if defined(ENABLE_INPUT_TYPE_COLOR) && ENABLE_INPUT_TYPE_COLOR
         void selectColorInColorChooser(in Element element, in DOMString colorValue);
 #endif
+        DOMString[] formControlStateOfPreviousHistoryItem() raises(DOMException);
+        void setFormControlStateOfPreviousHistoryItem(in DOMString[] values) raises(DOMException);
 
         ClientRect absoluteCaretBounds(in Document document) raises(DOMException);
 
@@ -113,7 +116,8 @@ module window {
         boolean shouldDisplayTrackKind(in Document document, in DOMString trackKind) raises (DOMException);
 #endif
 
-        attribute sequence<String> userPreferredLanguages;
+        sequence<String> userPreferredLanguages();
+        void setUserPreferredLanguages(in sequence<String> languages);
 
         unsigned long wheelEventHandlerCount(in Document document) raises (DOMException);
         unsigned long touchEventHandlerCount(in Document document) raises (DOMException);
@@ -151,12 +155,17 @@ module window {
         [Conditional=INSPECTOR] unsigned long numberOfLiveDocuments();
         [Conditional=INSPECTOR] sequence<String> consoleMessageArgumentCounts(in Document document);
 
+        DOMString counterValue(in Element element);
+
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
         void webkitWillEnterFullScreenForElement(in Document document, in Element element);
         void webkitDidEnterFullScreenForElement(in Document document, in Element element);
         void webkitWillExitFullScreenForElement(in Document document, in Element element);
         void webkitDidExitFullScreenForElement(in Document document, in Element element);
 #endif
+
+        void registerURLSchemeAsBypassingContentSecurityPolicy(in DOMString scheme);
+        void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(in DOMString scheme);
     };
 }
 

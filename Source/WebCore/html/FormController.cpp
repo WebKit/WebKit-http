@@ -45,14 +45,19 @@ Vector<String> FormController::formElementsState() const
         HTMLFormControlElementWithState* elementWithState = *it;
         if (!elementWithState->shouldSaveAndRestoreFormControlState())
             continue;
-        String value;
-        if (!elementWithState->saveFormControlState(value))
+        FormControlState state = elementWithState->saveFormControlState();
+        if (!state.hasValue())
             continue;
-        stateVector.append(elementWithState->formControlName().string());
+        stateVector.append(elementWithState->name().string());
         stateVector.append(elementWithState->formControlType().string());
-        stateVector.append(value);
+        stateVector.append(state.value());
     }
     return stateVector;
+}
+
+static bool isNotFormControlTypeCharacter(UChar ch)
+{
+    return ch != '-' && (ch > 'z' || ch < 'a');
 }
 
 void FormController::setStateForNewFormElements(const Vector<String>& stateVector)
@@ -62,18 +67,26 @@ void FormController::setStateForNewFormElements(const Vector<String>& stateVecto
     // in the FormElementStateMap. We're using them like stacks.
     typedef FormElementStateMap::iterator Iterator;
     m_formElementsWithState.clear();
+
+    if (stateVector.size() % 3)
+        return;
+    for (size_t i = 0; i < stateVector.size(); i += 3) {
+        if (stateVector[i + 1].find(isNotFormControlTypeCharacter) != notFound)
+            return;
+    }
+
     for (size_t i = stateVector.size() / 3 * 3; i; i -= 3) {
-        AtomicString a = stateVector[i - 3];
-        AtomicString b = stateVector[i - 2];
-        const String& c = stateVector[i - 1];
-        FormElementKey key(a.impl(), b.impl());
+        AtomicString name = stateVector[i - 3];
+        AtomicString type = stateVector[i - 2];
+        const String& value = stateVector[i - 1];
+        FormElementKey key(name.impl(), type.impl());
         Iterator it = m_stateForNewFormElements.find(key);
         if (it != m_stateForNewFormElements.end())
-            it->second.append(c);
+            it->second.append(value);
         else {
-            Vector<String> v(1);
-            v[0] = c;
-            m_stateForNewFormElements.set(key, v);
+            Vector<String> valueList(1);
+            valueList[0] = value;
+            m_stateForNewFormElements.set(key, valueList);
         }
     }
 }
@@ -83,19 +96,19 @@ bool FormController::hasStateForNewFormElements() const
     return !m_stateForNewFormElements.isEmpty();
 }
 
-bool FormController::takeStateForFormElement(AtomicStringImpl* name, AtomicStringImpl* type, String& state)
+FormControlState FormController::takeStateForFormElement(AtomicStringImpl* name, AtomicStringImpl* type)
 {
     typedef FormElementStateMap::iterator Iterator;
     Iterator it = m_stateForNewFormElements.find(FormElementKey(name, type));
     if (it == m_stateForNewFormElements.end())
-        return false;
+        return FormControlState();
     ASSERT(it->second.size());
-    state = it->second.last();
+    FormControlState state(it->second.last());
     if (it->second.size() > 1)
         it->second.removeLast();
     else
         m_stateForNewFormElements.remove(it);
-    return true;
+    return state;
 }
 
 void FormController::registerFormElementWithFormAttribute(FormAssociatedElement* element)

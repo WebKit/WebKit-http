@@ -31,6 +31,7 @@
 #include "ClientRectList.h"
 #include "ComposedShadowTreeWalker.h"
 #include "DOMNodeHighlighter.h"
+#include "DOMStringList.h"
 #include "Document.h"
 #include "DocumentMarker.h"
 #include "DocumentMarkerController.h"
@@ -43,6 +44,7 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLTextAreaElement.h"
+#include "HistoryItem.h"
 #include "InspectorConsoleAgent.h"
 #include "InspectorController.h"
 #include "InspectorCounters.h"
@@ -56,6 +58,7 @@
 #include "Range.h"
 #include "RenderObject.h"
 #include "RenderTreeAsText.h"
+#include "SchemeRegistry.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SpellChecker.h"
@@ -381,6 +384,16 @@ String Internals::shadowPseudoId(Element* element, ExceptionCode& ec)
     return element->shadowPseudoId().string();
 }
 
+void Internals::setShadowPseudoId(Element* element, const String& id, ExceptionCode& ec)
+{
+    if (!element) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+
+    return element->setShadowPseudoId(id, ec);
+}
+
 String Internals::visiblePlaceholder(Element* element)
 {
     HTMLTextFormControlElement* textControl = toTextFormControl(element);
@@ -400,6 +413,41 @@ void Internals::selectColorInColorChooser(Element* element, const String& colorV
     inputElement->selectColorInColorChooser(Color(colorValue));
 }
 #endif
+
+PassRefPtr<DOMStringList> Internals::formControlStateOfPreviousHistoryItem(ExceptionCode& ec)
+{
+    HistoryItem* mainItem = frame()->loader()->history()->previousItem();
+    if (!mainItem) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    String uniqueName = frame()->tree()->uniqueName();
+    if (mainItem->target() != uniqueName && !mainItem->childItemWithTarget(uniqueName)) {
+        ec = INVALID_ACCESS_ERR;
+        return 0;
+    }
+    const Vector<String>& state = mainItem->target() == uniqueName ? mainItem->documentState() : mainItem->childItemWithTarget(uniqueName)->documentState();
+    RefPtr<DOMStringList> stringList = DOMStringList::create();
+    for (unsigned i = 0; i < state.size(); ++i)
+        stringList->append(state[i]);
+    return stringList.release();
+}
+
+void Internals::setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringList> state, ExceptionCode& ec)
+{
+    HistoryItem* mainItem = frame()->loader()->history()->previousItem();
+    if (!state || !mainItem) {
+        ec = INVALID_ACCESS_ERR;
+        return;
+    }
+    String uniqueName = frame()->tree()->uniqueName();
+    if (mainItem->target() == uniqueName)
+        mainItem->setDocumentState(*state.get());
+    else if (HistoryItem* subItem = mainItem->childItemWithTarget(uniqueName))
+        subItem->setDocumentState(*state.get());
+    else
+        ec = INVALID_ACCESS_ERR;
+}
 
 PassRefPtr<ClientRect> Internals::absoluteCaretBounds(Document* document, ExceptionCode& ec)
 {
@@ -558,10 +606,14 @@ void Internals::setPagination(Document* document, const String& mode, int gap, E
     Page::Pagination pagination;
     if (mode == "Unpaginated")
         pagination.mode = Page::Pagination::Unpaginated;
-    else if (mode == "HorizontallyPaginated")
-        pagination.mode = Page::Pagination::HorizontallyPaginated;
-    else if (mode == "VerticallyPaginated")
-        pagination.mode = Page::Pagination::VerticallyPaginated;
+    else if (mode == "LeftToRightPaginated")
+        pagination.mode = Page::Pagination::LeftToRightPaginated;
+    else if (mode == "RightToLeftPaginated")
+        pagination.mode = Page::Pagination::RightToLeftPaginated;
+    else if (mode == "TopToBottomPaginated")
+        pagination.mode = Page::Pagination::TopToBottomPaginated;
+    else if (mode == "BottomToTopPaginated")
+        pagination.mode = Page::Pagination::BottomToTopPaginated;
     else {
         ec = SYNTAX_ERR;
         return;
@@ -587,6 +639,8 @@ void Internals::reset(Document* document)
 
         if (document->frame() == page->mainFrame())
             setUserPreferredLanguages(Vector<String>());
+
+        page->setPageScaleFactor(1, IntPoint(0, 0));
     }
 
     resetDefaultsToConsistentValues();
@@ -1058,6 +1112,14 @@ void Internals::allowRoundingHacks() const
     TextRun::setAllowsRoundingHacks(true);
 }
 
+String Internals::counterValue(Element* element)
+{
+    if (!element)
+        return String();
+
+    return counterValueForElement(element);
+}
+
 #if ENABLE(FULLSCREEN_API)
 void Internals::webkitWillEnterFullScreenForElement(Document* document, Element* element)
 {
@@ -1087,4 +1149,15 @@ void Internals::webkitDidExitFullScreenForElement(Document* document, Element* e
     document->webkitDidExitFullScreenForElement(element);
 }
 #endif
+
+void Internals::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme)
+{
+    SchemeRegistry::registerURLSchemeAsBypassingContentSecurityPolicy(scheme);
+}
+
+void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme)
+{
+    SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
+}
+
 }

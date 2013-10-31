@@ -574,6 +574,8 @@ webcore_built_sources += \
 	DerivedSources/WebCore/JSWebGLContextAttributes.h \
 	DerivedSources/WebCore/JSWebGLContextEvent.cpp \
 	DerivedSources/WebCore/JSWebGLContextEvent.h \
+	DerivedSources/WebCore/JSWebGLDepthTexture.cpp \
+	DerivedSources/WebCore/JSWebGLDepthTexture.h \
 	DerivedSources/WebCore/JSWebGLFramebuffer.cpp \
 	DerivedSources/WebCore/JSWebGLFramebuffer.h \
 	DerivedSources/WebCore/JSWebGLLoseContext.cpp \
@@ -914,6 +916,7 @@ dom_binding_idls += \
 	$(WebCore)/html/canvas/WebGLCompressedTextureS3TC.idl \
 	$(WebCore)/html/canvas/WebGLContextAttributes.idl \
 	$(WebCore)/html/canvas/WebGLContextEvent.idl \
+	$(WebCore)/html/canvas/WebGLDepthTexture.idl \
 	$(WebCore)/html/canvas/WebGLFramebuffer.idl \
 	$(WebCore)/html/canvas/WebGLLoseContext.idl \
 	$(WebCore)/html/canvas/WebGLProgram.idl \
@@ -1306,8 +1309,6 @@ webcore_sources += \
 	Source/WebCore/accessibility/AXObjectCache.h \
 	Source/WebCore/bindings/generic/ActiveDOMCallback.cpp \
 	Source/WebCore/bindings/generic/ActiveDOMCallback.h \
-	Source/WebCore/bindings/generic/ContextEnabledFeatures.cpp \
-	Source/WebCore/bindings/generic/ContextEnabledFeatures.h \
 	Source/WebCore/bindings/generic/BindingSecurityBase.cpp \
 	Source/WebCore/bindings/generic/BindingSecurityBase.h \
 	Source/WebCore/bindings/generic/BindingSecurity.h \
@@ -1362,6 +1363,7 @@ webcore_sources += \
 	Source/WebCore/bindings/js/JSDOMMimeTypeArrayCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMPluginArrayCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMPluginCustom.cpp \
+	Source/WebCore/bindings/js/JSDOMStringListCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMStringMapCustom.cpp \
 	Source/WebCore/bindings/js/JSDOMStringMapCustom.h \
 	Source/WebCore/bindings/js/JSDOMTokenListCustom.cpp \
@@ -1686,6 +1688,7 @@ webcore_sources += \
 	Source/WebCore/css/CSSValueList.h \
 	Source/WebCore/css/CSSValuePool.cpp \
 	Source/WebCore/css/CSSValuePool.h \
+	Source/WebCore/css/CSSVariableValue.h \
 	Source/WebCore/css/DashboardRegion.h \
 	Source/WebCore/css/FontFeatureValue.cpp \
 	Source/WebCore/css/FontFeatureValue.h \
@@ -1799,6 +1802,8 @@ webcore_sources += \
 	Source/WebCore/dom/ContainerNode.h \
 	Source/WebCore/dom/ContextDestructionObserver.cpp \
 	Source/WebCore/dom/ContextDestructionObserver.h \
+	Source/WebCore/dom/ContextFeatures.cpp \
+	Source/WebCore/dom/ContextFeatures.h \
 	Source/WebCore/dom/CrossThreadTask.h \
 	Source/WebCore/dom/CustomEvent.cpp \
 	Source/WebCore/dom/CustomEvent.h \
@@ -2650,6 +2655,8 @@ webcore_sources += \
 	Source/WebCore/inspector/IdentifiersFactory.h \
 	Source/WebCore/inspector/InjectedScript.cpp \
 	Source/WebCore/inspector/InjectedScript.h \
+	Source/WebCore/inspector/InjectedScriptBase.cpp \
+	Source/WebCore/inspector/InjectedScriptBase.h \
 	Source/WebCore/inspector/InjectedScriptHost.cpp \
 	Source/WebCore/inspector/InjectedScriptHost.h \
 	Source/WebCore/inspector/InjectedScriptManager.cpp \
@@ -3178,6 +3185,8 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/cairo/RefPtrCairo.cpp \
 	Source/WebCore/platform/graphics/cairo/RefPtrCairo.h \
 	Source/WebCore/platform/graphics/cairo/TransformationMatrixCairo.cpp \
+	Source/WebCore/platform/graphics/filters/CustomFilterGlobalContext.cpp \
+	Source/WebCore/platform/graphics/filters/CustomFilterGlobalContext.h \
 	Source/WebCore/platform/graphics/filters/CustomFilterMesh.cpp \
 	Source/WebCore/platform/graphics/filters/CustomFilterMesh.h \
 	Source/WebCore/platform/graphics/filters/CustomFilterNumberParameter.h \
@@ -3585,6 +3594,7 @@ webcore_sources += \
 	Source/WebCore/platform/PrerenderHandle.h \
 	Source/WebCore/platform/PurgeableBuffer.h \
 	Source/WebCore/platform/PurgePriority.h \
+	Source/WebCore/platform/RefCountedSupplement.h \
 	Source/WebCore/platform/ReferrerPolicy.h \
 	Source/WebCore/platform/RunLoop.cpp \
 	Source/WebCore/platform/RunLoop.h \
@@ -3903,6 +3913,8 @@ webcore_sources += \
 	Source/WebCore/rendering/RenderScrollbarPart.h \
 	Source/WebCore/rendering/RenderScrollbarTheme.cpp \
 	Source/WebCore/rendering/RenderScrollbarTheme.h \
+	Source/WebCore/rendering/RenderSearchField.cpp \
+	Source/WebCore/rendering/RenderSearchField.h \
 	Source/WebCore/rendering/RenderSelectionInfo.h \
 	Source/WebCore/rendering/RenderSlider.cpp \
 	Source/WebCore/rendering/RenderSlider.h \
@@ -4035,6 +4047,7 @@ webcore_sources += \
 	Source/WebCore/rendering/style/StyleSurroundData.h \
 	Source/WebCore/rendering/style/StyleTransformData.cpp \
 	Source/WebCore/rendering/style/StyleTransformData.h \
+	Source/WebCore/rendering/style/StyleVariableData.h \
 	Source/WebCore/rendering/style/StyleVisualData.cpp \
 	Source/WebCore/rendering/style/StyleVisualData.h \
 	Source/WebCore/rendering/style/SVGRenderStyle.cpp \
@@ -5937,6 +5950,8 @@ webcore_sources += \
 	Source/WebCore/html/canvas/WebGLDebugRendererInfo.h \
 	Source/WebCore/html/canvas/WebGLDebugShaders.cpp \
 	Source/WebCore/html/canvas/WebGLDebugShaders.h \
+	Source/WebCore/html/canvas/WebGLDepthTexture.cpp \
+	Source/WebCore/html/canvas/WebGLDepthTexture.h \
 	Source/WebCore/html/canvas/WebGLFramebuffer.cpp \
 	Source/WebCore/html/canvas/WebGLFramebuffer.h \
 	Source/WebCore/html/canvas/WebGLGetInfo.cpp \
@@ -6044,6 +6059,8 @@ endif  # END USE_CLUTTER
 
 if USE_TEXTURE_MAPPER_CAIRO
 webcore_sources += \
+	Source/WebCore/platform/graphics/texmap/TextureMapperShaderManager.cpp \
+	Source/WebCore/platform/graphics/texmap/TextureMapperShaderManager.h \
 	Source/WebCore/platform/graphics/texmap/GraphicsLayerTextureMapper.cpp \
 	Source/WebCore/platform/graphics/texmap/GraphicsLayerTextureMapper.h \
 	Source/WebCore/platform/graphics/texmap/LayerTransform.cpp \
@@ -6059,9 +6076,6 @@ webcore_sources += \
 	Source/WebCore/platform/graphics/texmap/TextureMapperLayer.cpp \
 	Source/WebCore/platform/graphics/texmap/TextureMapperLayer.h \
 	Source/WebCore/platform/graphics/texmap/TextureMapperPlatformLayer.h
-webcoregtk_sources += \
-	Source/WebCore/platform/graphics/cairo/TextureMapperCairo.cpp \
-	Source/WebCore/platform/graphics/cairo/TextureMapperCairo.h
 endif  # END USE_TEXTURE_MAPPER_CAIRO
 
 if USE_TEXTURE_MAPPER_GL

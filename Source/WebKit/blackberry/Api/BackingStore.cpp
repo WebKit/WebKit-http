@@ -1557,10 +1557,8 @@ void BackingStorePrivate::blitContents(const Platform::IntRect& dstRect,
 
 #if ENABLE_SCROLLBARS
     if (isScrollingOrZooming() && m_client->isMainFrame()) {
-        if (m_client->scrollsHorizontally())
-            blitHorizontalScrollbar(origin);
-        if (m_client->scrollsVertically())
-            blitVerticalScrollbar(origin);
+        blitHorizontalScrollbar(origin);
+        blitVerticalScrollbar(origin);
     }
 #endif
 
@@ -1800,8 +1798,6 @@ void BackingStorePrivate::blitHorizontalScrollbar(const Platform::IntPoint& scro
     if (!m_webPage->isVisible())
         return;
 
-    ASSERT(m_client->scrollsHorizontally());
-
     m_webPage->client()->drawHorizontalScrollbar();
 }
 
@@ -1809,8 +1805,6 @@ void BackingStorePrivate::blitVerticalScrollbar(const Platform::IntPoint& scroll
 {
     if (!m_webPage->isVisible())
         return;
-
-    ASSERT(m_client->scrollsVertically());
 
     m_webPage->client()->drawVerticalScrollbar();
 }
@@ -2660,6 +2654,8 @@ void BackingStorePrivate::setScrollingOrZooming(bool scrollingOrZooming, bool sh
 
     if (!m_webPage->settings()->shouldRenderAnimationsOnScrollOrZoom())
         m_suspendRegularRenderJobs = scrollingOrZooming; // Suspend the rendering of animations.
+
+    m_webPage->d->m_mainFrame->view()->setConstrainsScrollingToContentEdge(!scrollingOrZooming);
 
     // Clear this flag since we don't care if the render queue is under pressure
     // or not since we are scrolling and it is more important to not lag than

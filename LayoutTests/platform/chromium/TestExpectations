@@ -156,7 +156,7 @@ BUGGBILLOCK SKIP : webintents/intent-tag.html = PASS
 BUGWK85580 SKIP : fast/css/variables = PASS
 
 // CSS image-resolution is not yet enabled.
-BUGWK85262 SKIP : fast/css/image-resolution = PASS FAIL
+BUGWK85262 SKIP : fast/css/image-resolution = PASS
 
 // Chromium needs larger media files to test buffering this way.
 BUGWK88172 SKIP : http/tests/media/video-buffered.html = PASS
@@ -465,7 +465,7 @@ WONTFIX SKIP WIN LINUX : fast/encoding/char-encoding-mac.html = PASS
 // These tests are based on the JSC JavaScript profiler. The V8 JavaScript
 // profiler is in development and will use a different approach than JSC and
 // most likely these tests will always be JSC specific.
-WONTFIX SKIP : fast/profiler = FAIL TIMEOUT
+WONTFIX SKIP : fast/profiler = PASS
 
 // StorageTracker isn't used by Chromium and not all requisite platform code
 // is implemented.
@@ -773,6 +773,11 @@ WONTFIX SKIP : media/video-size-intrinsic-scale.html = PASS
 
 // Doesn't apply to Chromium (QuickTime-specific behavior)
 WONTFIX SKIP : media/video-does-not-loop.html = TIMEOUT
+
+// Doesn't apply to Chromium any longer - volume slider is inline with video controls.
+WONTFIX SKIP : media/video-volume-slider.html = PASS
+WONTFIX SKIP : media/media-volume-slider-rendered-below.html = PASS
+WONTFIX SKIP : media/media-volume-slider-rendered-normal.html = PASS
 
 // QuickTime reference movies not supported.
 WONTFIX SKIP : http/tests/media/video-cross-site.html = PASS
@@ -1100,7 +1105,15 @@ BUGCR27697 SKIP : storage/websql/hash-change-with-xhr.html = PASS
 // Implementation of Date/time input types are incomplete and
 // ENABLE_INPUT_TYPE_* flags are not enabled.
 BUGWK29359 : fast/forms/datetime = TEXT
-BUGWK29359 : fast/forms/datetimelocal = TEXT
+BUGWK29359 : fast/forms/datetimelocal/ValidityState-rangeOverflow-datetimelocal.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/ValidityState-rangeUnderflow-datetimelocal.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/ValidityState-stepMismatch-datetimelocal.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/ValidityState-typeMismatch-datetimelocal.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/datetimelocal-input-type.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/datetimelocal-input-visible-string.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/datetimelocal-stepup-stepdown-from-renderer.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/datetimelocal-stepup-stepdown.html = TEXT
+BUGWK29359 : fast/forms/datetimelocal/input-valueasnumber-datetimelocal.html = TEXT
 BUGWK29359 : fast/forms/month = TEXT
 BUGWK29359 : fast/forms/time = TEXT
 BUGWK29359 : fast/forms/week = TEXT
@@ -1160,10 +1173,6 @@ BUGCR11153 LINUX WIN : platform/chromium/virtual/gpu/fast/canvas/canvas-incremen
 
 // test_shell, DRT do not correctly schedule paints when invalidating.
 BUGCR62433 WIN : fast/images/gif-loop-count.html = IMAGE
-
-// Implement color profile support.
-BUGCR143 : fast/images/jpeg-with-color-profile.html = MISSING
-BUGCR143 : fast/images/png-with-color-profile.html = MISSING
 
 // -----------------------------------------------------------------
 // SVG TESTS
@@ -2338,7 +2347,6 @@ BUGWK52082 LINUX WIN : fast/text/basic/014.html = IMAGE+TEXT
 BUGWK52082 LINUX WIN : fast/text/midword-break-after-breakable-char.html = IMAGE+TEXT
 
 // These have been flaky for as long as we have test history.
-BUGWK52064 DEBUG : fast/events/overflow-events.html = PASS TEXT
 BUGWK52063 WIN : http/tests/navigation/ping-cross-origin.html = PASS TIMEOUT
 BUGWK52063 SLOW MAC : http/tests/navigation/ping-cross-origin.html = PASS
 
@@ -2682,8 +2690,8 @@ BUGCR83504 MAC : fast/css/custom-font-xheight.html = PASS TEXT
 BUGWK61169 LINUX WIN : css3/images/optimize-contrast-canvas.html = IMAGE
 BUGWK61169 LINUX WIN : css3/images/optimize-contrast-image.html = IMAGE
 
-// New tests added in r87274
-BUGCR83865 : fast/forms/color = TEXT IMAGE+TEXT
+BUGWK88951 : fast/forms/color/input-appearance-color.html = IMAGE+TEXT
+BUGWK88951 : fast/forms/color/input-color-onchange-event.html = TEXT
 
 // New test added in r87324
 BUGCR83994 WIN : platform/win/plugins/call-javascript-that-destroys-plugin.html = TEXT
@@ -2820,6 +2828,7 @@ BUGCR97716 : fast/clip/overflow-border-radius-combinations.html = IMAGE
 // Caused by r92618
 BUGWK65874 : fast/js/preventExtensions.html = TEXT
 
+// Need rebaseline
 BUGWK63796 MAC : css3/font-feature-settings-rendering.html = MISSING
 
 BUGWK66417 WIN LINUX : fast/text/midword-break-before-surrogate-pair-2.html = IMAGE+TEXT
@@ -2935,6 +2944,7 @@ BUGWK72039 LINUX RELEASE : fast/forms/form-attribute-elements-order.html = MISSI
 BUGWK72039 LINUX RELEASE : fast/forms/form-attribute-elements-order2.html = MISSING PASS
 BUGWK72039 LINUX RELEASE : fast/forms/form-attribute-nonexistence-form-id.html = MISSING PASS
 BUGWK72039 DEBUG : http/tests/multipart/policy-ignore-crash.php = MISSING PASS
+BUGWK72039 MAC : http/tests/loading/empty-subframe.html = MISSING PASS
 BUGWK78620 : fast/forms/formaction-attribute.html = MISSING PASS
 BUGWK78620 LINUX : fast/forms/formmethod-attribute-button-html.html = MISSING PASS
 BUGWK78620 LINUX : fast/forms/formmethod-attribute-input-html.html = MISSING PASS
@@ -2969,6 +2979,8 @@ BUGWK73865 : media/track/text-track-is-reachable.html = TEXT
 
 BUGWK81402 WIN : media/track/track-active-cues.html = PASS TIMEOUT
 BUGWK83882 : media/track/track-mode.html = PASS TEXT TIMEOUT
+
+BUGWK72271 SNOWLEOPARD DEBUG : fast/dom/node-iterator-reference-node-moved-crash.html = PASS CRASH
 
 BUGWK72376 WIN : fast/forms/file/input-file-label.html = TEXT PASS
 
@@ -3178,7 +3190,7 @@ BUGWK81697 : fast/notifications/notifications-check-permission.html = TEXT
 BUGWK81697 : fast/notifications/notifications-request-permission.html = TEXT
 BUGWK81697 : fast/notifications/notifications-without-permission.html = TEXT
 
-BUGWK81732 : fast/js/integer-division-neg2tothe32-by-neg1.html = CRASH
+BUGWK81732 : fast/js/integer-division-neg2tothe32-by-neg1.html = PASS CRASH
 
 // Old test, has been flaky on and off on all platforms since at least r111389
 BUGWK81801 : fast/forms/basic-textareas.html = PASS TEXT IMAGE+TEXT
@@ -3327,7 +3339,7 @@ BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-99b.xml = TEXT 
 BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d1.xml = IMAGE
 BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d1b.xml = IMAGE
 BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d2.xml = IMAGE
-BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d3.xml = IMAGE
+BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d3.xml = IMAGE IMAGE+TEXT
 BUGWK82122 LEOPARD SNOWLEOPARD : css3/selectors3/xml/css3-modsel-d4.xml = IMAGE
 
 
@@ -3396,13 +3408,12 @@ BUGCR122448 : media/video-seek-past-end-paused.html = PASS TEXT
 
 BUGCR122462 WIN LINUX : http/tests/inspector/inspect-element.html = TEXT
 
-BUGWK83635 : fast/canvas/2d.backingStorePixelRatio.html = TIMEOUT
-BUGWK83635 : platform/chromium/virtual/gpu/fast/canvas/2d.backingStorePixelRatio.html = TIMEOUT
+BUGWK83635 : fast/canvas/2d.backingStorePixelRatio.html = TEXT TIMEOUT
+BUGWK83635 : platform/chromium/virtual/gpu/fast/canvas/2d.backingStorePixelRatio.html = TEXT TIMEOUT
+BUGWK83635 : fast/canvas/2d.imageDataHD.html = TEXT TIMEOUT
+BUGWK83635 : platform/chromium/virtual/gpu/fast/canvas/2d.imageDataHD.html = TEXT TIMEOUT
 
 BUGWK83647 WIN LINUX : fast/multicol/cell-shrinkback.html = IMAGE
-
-BUGWK83941 : fast/canvas/2d.imageDataHD.html = TIMEOUT
-BUGWK83941 : platform/chromium/virtual/gpu/fast/canvas/2d.imageDataHD.html = TIMEOUT
 
 BUGWK84065 MAC DEBUG : fast/canvas/webgl/shader-precision-format.html = TEXT
 BUGWK84065 WIN DEBUG : fast/canvas/webgl/shader-precision-format.html = TEXT
@@ -3540,8 +3551,10 @@ BUGWK85951 WIN DEBUG : fast/css/hover-update.html = TEXT PASS
 BUGWK85958 : fast/forms/file/file-input-capture.html = TEXT
 
 BUGWK85952 : http/tests/media/media-source/video-media-source-play.html = PASS TIMEOUT
-BUGWK85952 : http/tests/media/media-source/video-media-source-seek.html = PASS TIMEOUT
-BUGWK85952 : http/tests/media/media-source/video-media-source-state-changes.html = PASS TIMEOUT TEXT
+BUGWK85952 : http/tests/media/media-source/video-media-source-seek.html = PASS TEXT TIMEOUT
+BUGWK85952 : http/tests/media/media-source/video-media-source-state-changes.html = PASS TIMEOUT TEXT CRASH
+
+BUGWK88949 : http/tests/media/media-source/video-media-source-add-and-remove-ids.html = PASS TEXT CRASH
 
 // Started flaking at around http://trac.webkit.org/changeset/116278.
 BUGWK85950 LINUX DEBUG : compositing/geometry/limit-layer-bounds-transformed-overflow.html = PASS TEXT
@@ -3575,6 +3588,7 @@ BUGWK86592 LINUX : http/tests/xmlhttprequest/zero-length-response-sync.html = TI
 // strange "Unexpected no expected results found" on cr-linux ews
 BUGWK86600 LINUX : http/tests/cache/loaded-from-cache-after-reload-within-iframe.html = MISSING PASS
 BUGWK86600 LINUX : http/tests/cache/loaded-from-cache-after-reload.html = MISSING PASS
+BUGWK88964 MAC : http/tests/misc/embedCrasher.html = MISSING PASS
 
 BUGWK86674 DEBUG : fast/dom/HTMLObjectElement/beforeload-set-text-crash.xhtml = TIMEOUT PASS
 
@@ -3619,13 +3633,8 @@ BUGWK87273 : webaudio/audioparam-connect-audioratesignal.html = TIMEOUT PASS
 BUGWK87321 XP : fast/history/history-subframe-with-name.html = TEXT PASS
 BUGWK87321 XP : fast/history/history-traversal-is-asynchronous.html = TEXT PASS
 
-// File blob tests failing after chromium r138702
-BUGWK87356 : fast/files/read-blob-async.html = TEXT
-BUGWK87356 : fast/files/workers/worker-read-blob-async.html = TEXT
-BUGWK87356 : fast/files/workers/worker-read-blob-sync.html = TEXT
-// The above tests were previously marked as follows:
-// BUGWK79540 DEBUG : fast/files/workers/worker-read-blob-async.html = PASS CRASH
-// BUGWK79540 DEBUG : fast/files/workers/worker-read-blob-sync.html = PASS CRASH
+BUGWK79540 DEBUG : fast/files/workers/worker-read-blob-async.html = PASS CRASH
+BUGWK79540 DEBUG : fast/files/workers/worker-read-blob-sync.html = PASS CRASH
 
 // Shadow DOM drop event tests are very flaky since creation
 BUGWK87364 DEBUG : fast/dom/shadow/drop-event-for-input-in-shadow.html = TEXT PASS
@@ -3671,20 +3680,35 @@ BUGWK88593 : fast/table/multiple-captions-display.xhtml = PASS IMAGE IMAGE+TEXT
 
 // Needs rebaseline after the bots cycle.
 BUG_OJAN WIN MAC : tables/mozilla/bugs/bug131020.html = PASS IMAGE IMAGE+TEXT
-BUGLEVIW LEOPARD LION WIN LINUX : fast/sub-pixel/file-upload-control-at-fractional-offset.html = PASS FAIL MISSING
-BUGLEVIW LEOPARD LION WIN LINUX : fast/borders/border-antialiasing.html = PASS FAIL
-BUGLEVIW LEOPARD LION WIN LINUX : fast/multicol/nested-columns.html = PASS FAIL
-BUGLEVIW LEOPARD LION WIN LINUX : fast/multicol/vertical-lr/nested-columns.html = PASS FAIL
-BUGLEVIW LEOPARD LION WIN LINUX : fast/multicol/vertical-rl/nested-columns.html = PASS FAIL
+
+BUGWK88900 MAC : http/tests/misc/embed-image-load-outlives-gc-without-crashing.html = TEXT
+
+BUGWK88939 DEBUG : fast/events/before-unload-adopt-subframe-to-outside.html = TEXT
 
 BUGCR131187 : canvas/philip/tests/2d.gradient.radial.cone.cylinder.html = TEXT
 BUGCR131187 : fast/canvas/canvas-currentColor.html = TEXT
 
-// Apparently never passing on Vista.
-BUG_DOMINICC VISTA : media/track/track-cue-rendering-inner-timestamps.html = TEXT
+// The test has its own notion of timeouts that manifest timeouts as TEXT.
+BUGWK88833 DEBUG : media/video-played-collapse.html = PASS TEXT
 
-// Timing out in debug. The test has its own notion of timeouts.
-BUG_DOMINICC WIN DEBUG : media/video-played-collapse.html = PASS TEXT
+// HTMLSelectElement::selectedOptions was removed.
+BUGWK89192 : platform/chromium/accessibility/add-to-menu-list-crashes.html = TEXT
 
-BUG_DOMINICC WIN DEBUG : media/track/track-kind.html = PASS TIMEOUT
-BUG_DOMINICC : http/tests/media/video-play-progress.html = PASS TIMEOUT
+BUGWK88833 WIN DEBUG : media/track/track-kind.html = PASS TIMEOUT
+BUGWK88833 : http/tests/media/video-play-progress.html = PASS TIMEOUT
+BUGWK88833 MAC DEBUG : media/track/track-cues-cuechange.html = PASS TIMEOUT
+
+BUGWK88832 XP : http/tests/xmlhttprequest/origin-exact-matching.html = PASS TIMEOUT
+
+BUGCR132898 : http/tests/websocket/tests/hybi/workers/close.html = TEXT
+
+// Flaky
+BUGWK89166 : http/tests/messaging/cross-domain-message-event-dispatch.html = TEXT
+BUGWK89167 : media/track/track-cue-rendering-snap-to-lines-not-set.html = TEXT
+
+// Timing out on some Windows bots
+BUGWK89510 WIN : gamepad/gamepad-polling-access.html = PASS TIMEOUT
+
+BUGWK89529 MAC LEOPARD DEBUG : fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html = PASS CRASH
+
+BUGWK89534 XP DEBUG : platform/chromium/virtual/gpu/fast/canvas/resize-while-save-active.html = TEXT

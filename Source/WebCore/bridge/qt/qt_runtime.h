@@ -27,7 +27,7 @@
 #include "qt_instance.h"
 #include "runtime_method.h"
 
-#include <QWeakPointer>
+#include <QPointer>
 
 #include <qbytearray.h>
 #include <qmetaobject.h>
@@ -73,7 +73,7 @@ private:
     QtFieldType m_type;
     QByteArray m_dynamicProperty;
     QMetaProperty m_property;
-    QWeakPointer<QObject> m_childObject;
+    QPointer<QObject> m_childObject;
 };
 
 
@@ -261,7 +261,7 @@ public:
     static QtConnectionObject* createWithInternalJSC(ExecState*, PassRefPtr<QtInstance> senderInstance, int signalIndex, JSObject* receiver, JSObject* receiverFunction);
 
 private:
-    JSContextRef m_context;
+    JSGlobalContextRef m_context;
     RefPtr<QtInstance> m_senderInstance;
 
     // We use this as key in active connections multimap.

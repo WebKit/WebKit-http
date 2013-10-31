@@ -122,6 +122,14 @@ void iterateBackToFront(Vector<RefPtr<LayerChromium> >* renderSurfaceLayerList)
     }
 }
 
+TEST(CCLayerIteratorTest, emptyTree)
+{
+    Vector<RefPtr<LayerChromium> > renderSurfaceLayerList;
+
+    iterateBackToFront(&renderSurfaceLayerList);
+    iterateFrontToBack(&renderSurfaceLayerList);
+}
+
 TEST(CCLayerIteratorTest, simpleTree)
 {
     RefPtr<TestLayerChromium> rootLayer = TestLayerChromium::create();

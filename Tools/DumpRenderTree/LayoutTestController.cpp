@@ -96,6 +96,7 @@ LayoutTestController::LayoutTestController(const std::string& testPathOrURL, con
     , m_customFullScreenBehavior(false) 
     , m_testPathOrURL(testPathOrURL)
     , m_expectedPixelHash(expectedPixelHash)
+    , m_titleTextDirection("ltr")
 {
 }
 
@@ -660,22 +661,6 @@ static JSValueRef findStringCallback(JSContextRef context, JSObjectRef function,
 
     LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
     return JSValueMakeBoolean(context, controller->findString(context, target.get(), options));
-}
-
-static JSValueRef counterValueForElementByIdCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    if (argumentCount < 1)
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> elementId(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    if (*exception)
-        return JSValueMakeUndefined(context);
-
-    LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
-    JSRetainPtr<JSStringRef> counterValue(controller->counterValueForElementById(elementId.get()));
-    if (!counterValue.get())
-        return JSValueMakeUndefined(context);
-    return JSValueMakeString(context, counterValue.get());
 }
 
 static JSValueRef goBackCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -2174,6 +2159,13 @@ static JSValueRef getPlatformNameCallback(JSContextRef context, JSObjectRef this
 }
 #endif
 
+static JSValueRef getTitleTextDirectionCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
+{
+    LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
+    JSRetainPtr<JSStringRef> titleDirection(Adopt, JSStringCreateWithUTF8CString(controller->titleTextDirection().c_str()));
+    return JSValueMakeString(context, titleDirection.get());
+}
+
 static bool setGlobalFlagCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef value, JSValueRef* exception)
 {
     LayoutTestController* controller = static_cast<LayoutTestController*>(JSObjectGetPrivate(thisObject));
@@ -2277,6 +2269,7 @@ JSStaticValue* LayoutTestController::staticValues()
 #if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WIN)
         { "platformName", getPlatformNameCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
 #endif
+        { "titleTextDirection", getTitleTextDirectionCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { 0, 0, 0, 0 }
     };
     return staticValues;
@@ -2335,7 +2328,6 @@ JSStaticFunction* LayoutTestController::staticFunctions()
         { "evaluateScriptInIsolatedWorld", evaluateScriptInIsolatedWorldCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "execCommand", execCommandCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "findString", findStringCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "counterValueForElementById", counterValueForElementByIdCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "originsWithApplicationCache", originsWithApplicationCacheCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "goBack", goBackCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete }, 
         { "grantDesktopNotificationPermission", grantDesktopNotificationPermissionCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete }, 

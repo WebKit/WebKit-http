@@ -102,11 +102,9 @@ WebInspector.ScriptsPanel = function(uiSourceCodeProviderForTest)
     this.sidebarPanes.callstack = new WebInspector.CallStackSidebarPane();
     this.sidebarPanes.scopechain = new WebInspector.ScopeChainSidebarPane();
     this.sidebarPanes.jsBreakpoints = new WebInspector.JavaScriptBreakpointsSidebarPane(WebInspector.breakpointManager, this._showSourceLine.bind(this));
-    if (Capabilities.nativeInstrumentationEnabled) {
-        this.sidebarPanes.domBreakpoints = WebInspector.domBreakpointsSidebarPane;
-        this.sidebarPanes.xhrBreakpoints = new WebInspector.XHRBreakpointsSidebarPane();
-        this.sidebarPanes.eventListenerBreakpoints = new WebInspector.EventListenerBreakpointsSidebarPane();
-    }
+    this.sidebarPanes.domBreakpoints = WebInspector.domBreakpointsSidebarPane;
+    this.sidebarPanes.xhrBreakpoints = new WebInspector.XHRBreakpointsSidebarPane();
+    this.sidebarPanes.eventListenerBreakpoints = new WebInspector.EventListenerBreakpointsSidebarPane();
 
     if (Preferences.exposeWorkersInspection && !WebInspector.WorkerManager.isWorkerFrontend()) {
         WorkerAgent.setWorkerInspectionEnabled(true);
@@ -216,8 +214,7 @@ WebInspector.ScriptsPanel.prototype = {
     wasShown: function()
     {
         WebInspector.Panel.prototype.wasShown.call(this);
-        if (Capabilities.nativeInstrumentationEnabled)
-            this._debugSidebarContentsElement.insertBefore(this.sidebarPanes.domBreakpoints.element, this.sidebarPanes.xhrBreakpoints.element);
+        this._debugSidebarContentsElement.insertBefore(this.sidebarPanes.domBreakpoints.element, this.sidebarPanes.xhrBreakpoints.element);
         this.sidebarPanes.watchExpressions.show();
 
         this._navigatorController.wasShown();
@@ -369,11 +366,12 @@ WebInspector.ScriptsPanel.prototype = {
         this._navigator.reset();
         this._editorContainer.reset();
         this._updateScriptViewStatusBarItems();
-
         this.sidebarPanes.jsBreakpoints.reset();
         this.sidebarPanes.watchExpressions.reset();
         if (!preserveItems && this.sidebarPanes.workers)
             this.sidebarPanes.workers.reset();
+        WebInspector.RevisionHistoryView.reset();
+
         this._loadUISourceCodes();
     },
 
@@ -420,9 +418,13 @@ WebInspector.ScriptsPanel.prototype = {
         this._showSourceLine(uiLocation.uiSourceCode, uiLocation.lineNumber);
     },
 
-    showUISourceCode: function(uiSourceCode)
+    /**
+     * @param {WebInspector.UISourceCode} uiSourceCode
+     * @param {number} lineNumber
+     */
+    showUISourceCode: function(uiSourceCode, lineNumber)
     {
-        this._showSourceLine(uiSourceCode);
+        this._showSourceLine(uiSourceCode, lineNumber);
     },
 
     /**
@@ -576,7 +578,6 @@ WebInspector.ScriptsPanel.prototype = {
     _editorSelected: function(event)
     {
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ event.data;
-        WebInspector.RevisionHistoryView.uiSourceCodeSelected(uiSourceCode);
         this._showFile(uiSourceCode);
         this._navigatorController.hideNavigatorOverlay();
     },
@@ -655,11 +656,9 @@ WebInspector.ScriptsPanel.prototype = {
         this.sidebarPanes.callstack.update(null);
         this.sidebarPanes.scopechain.update(null);
         this.sidebarPanes.jsBreakpoints.clearBreakpointHighlight();
-        if (Capabilities.nativeInstrumentationEnabled) {
-            this.sidebarPanes.domBreakpoints.clearBreakpointHighlight();
-            this.sidebarPanes.eventListenerBreakpoints.clearBreakpointHighlight();
-            this.sidebarPanes.xhrBreakpoints.clearBreakpointHighlight();
-        }
+        this.sidebarPanes.domBreakpoints.clearBreakpointHighlight();
+        this.sidebarPanes.eventListenerBreakpoints.clearBreakpointHighlight();
+        this.sidebarPanes.xhrBreakpoints.clearBreakpointHighlight();
 
         this._clearCurrentExecutionLine();
         this._updateDebuggerButtons();
@@ -1066,7 +1065,7 @@ WebInspector.ScriptsPanel.prototype = {
             return;
 
         var uiSourceCode = /** @type {WebInspector.UISourceCode} */ target;
-        contextMenu.appendItem(WebInspector.UIString("Revision history..."), this._showLocalHistory.bind(this, uiSourceCode));
+        contextMenu.appendItem(WebInspector.UIString("Local modifications..."), this._showLocalHistory.bind(this, uiSourceCode));
         if (uiSourceCode.resource() && uiSourceCode.resource().request)
             contextMenu.appendApplicableItems(uiSourceCode.resource().request);
     },

@@ -49,6 +49,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/js/JSCoordinatesCustom.cpp
     bindings/js/JSCustomVoidCallback.cpp
     bindings/js/JSCustomXPathNSResolver.cpp
+    bindings/js/JSDeprecatedPeerConnectionCustom.cpp
     bindings/js/JSDictionary.cpp
     bindings/js/JSDOMBinding.cpp
     bindings/js/JSDOMFormDataCustom.cpp
@@ -57,6 +58,7 @@ LIST(APPEND WebCore_SOURCES
     bindings/js/JSDOMMimeTypeArrayCustom.cpp
     bindings/js/JSDOMPluginArrayCustom.cpp
     bindings/js/JSDOMPluginCustom.cpp
+    bindings/js/JSDOMStringListCustom.cpp
     bindings/js/JSDOMStringMapCustom.cpp
     bindings/js/JSDOMTokenListCustom.cpp
     bindings/js/JSDOMWindowBase.cpp

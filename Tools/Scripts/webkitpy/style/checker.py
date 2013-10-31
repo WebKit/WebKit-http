@@ -140,11 +140,17 @@ _PATH_RULES_SPECIFIER = [
       # Qt code uses '_' in some places (such as private slots
       # and on test xxx_data methos on tests)
       "Source/JavaScriptCore/qt/",
-      "Source/WebKit/qt/Api/",
       "Source/WebKit/qt/tests/",
       "Source/WebKit/qt/declarative/",
       "Source/WebKit/qt/examples/"],
      ["-readability/naming"]),
+
+    ([# The Qt APIs use Qt declaration style, it puts the * to
+      # the variable name, not to the class.
+      "Source/WebKit/qt/Api/"],
+     ["-readability/naming",
+      "-whitespace/declaration"]),
+
      ([# Qt's MiniBrowser has no config.h
        "Tools/MiniBrowser/qt"],
       ["-build/include"]),
@@ -524,7 +530,7 @@ class CheckerDispatcher(object):
         basename = os.path.basename(file_path)
         if basename.startswith('ChangeLog'):
             return False
-        elif basename == 'test_expectations.txt' or basename == 'TestExpectations':
+        elif basename == 'TestExpectations':
             return False
         for skipped_file in _SKIPPED_FILES_WITHOUT_WARNING:
             if self._should_skip_file_path(file_path, skipped_file):
@@ -592,7 +598,7 @@ class CheckerDispatcher(object):
             checker = PNGChecker(file_path, handle_style_error)
         elif file_type == FileType.TEXT:
             basename = os.path.basename(file_path)
-            if basename == 'test_expectations.txt' or basename == 'drt_expectations.txt':
+            if basename == 'TestExpectations':
                 checker = TestExpectationsChecker(file_path, handle_style_error)
             else:
                 checker = TextChecker(file_path, handle_style_error)

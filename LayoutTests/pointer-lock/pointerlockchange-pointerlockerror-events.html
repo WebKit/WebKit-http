@@ -37,20 +37,18 @@
             };
     };
 
-    function expectOnlyChangeEvent(message, expectedCalls, targetDocument) {
+    function expectOnlyChangeEvent(message, targetDocument) {
         debug("     " + message);
-        expectedCalls = expectedCalls !== undefined ? expectedCalls : 1;
         targetDocument = targetDocument !== undefined ? targetDocument : document;
-        eventExpected("onwebkitpointerlockchange", message, expectedCalls, targetDocument);
+        eventExpected("onwebkitpointerlockchange", message, 1, targetDocument);
         eventExpected("onwebkitpointerlockerror", message, 0, targetDocument);
     };
 
-    function expectOnlyErrorEvent(message, expectedCalls, targetDocument) {
+    function expectOnlyErrorEvent(message, targetDocument) {
         debug("     " + message);
-        expectedCalls = expectedCalls !== undefined ? expectedCalls : 1;
         targetDocument = targetDocument !== undefined ? targetDocument : document;
         eventExpected("onwebkitpointerlockchange", message, 0, targetDocument);
-        eventExpected("onwebkitpointerlockerror", message, expectedCalls, targetDocument);
+        eventExpected("onwebkitpointerlockerror", message, 1, targetDocument);
     };
 
     function expectNoEvents(message, targetDocument) {
@@ -63,7 +61,7 @@
     currentStep = 0;
     function doNextStep(manual)
     {
-        if (!window.layoutTestController && !manual)
+        if (!window.testRunner && !manual)
             return;
         if (currentStep < todo.length)
             setTimeout(function () { todo[currentStep++](); }, 0);
@@ -73,38 +71,28 @@
     todo = [
         function () {
             expectNoEvents("Unlock.");
-            navigator.webkitPointer.unlock();
+            document.webkitExitPointerLock();
             doNextStep();
         },
         function () {
             expectOnlyChangeEvent("Lock targetDiv1.");
-            navigator.webkitPointer.lock(targetDiv1);
+            targetDiv1.webkitRequestPointerLock();
         },
         function () {
             expectOnlyChangeEvent("Unlock again.");
-            navigator.webkitPointer.unlock();
+            document.webkitExitPointerLock();
         },
         function () {
             expectOnlyChangeEvent("Lock targetDiv1 again.");
-            navigator.webkitPointer.lock(targetDiv1);
+            targetDiv1.webkitRequestPointerLock();
         },
         function () {
-            // FIXME: Only 1 change event should be expected.
-            // But, we will see 2 until we remove the old code for
-            // pointerlocklost and remove the call to didLosePointerLock
-            // made in PointerLockController::requestPointerLock.
-            // (https://bugs.webkit.org/show_bug.cgi?id=84402)
-            expectOnlyChangeEvent("Lock targetDiv2.", 2);
-            navigator.webkitPointer.lock(targetDiv2);
+            expectOnlyChangeEvent("Lock targetDiv2.");
+            targetDiv2.webkitRequestPointerLock();
         },
         function () {
             expectOnlyChangeEvent("Lock targetDiv2 again.");
-            navigator.webkitPointer.lock(targetDiv2);
-        },
-        function () {
-            expectNoEvents("Lock null.");
-            navigator.webkitPointer.lock(null);
-            doNextStep();
+            targetDiv2.webkitRequestPointerLock();
         },
         function () {
             targetIframe1.src = "about:blank";
@@ -115,28 +103,18 @@
             targetIframe2.onload = function () { doNextStep(); }
         },
         function () {
-            // FIXME: Only 1 change event should be expected.
-            // But, we will see 2 until we remove the old code for
-            // pointerlocklost and remove the call to didLosePointerLock
-            // made in PointerLockController::requestPointerLock.
-            // (https://bugs.webkit.org/show_bug.cgi?id=84402)
-            expectOnlyChangeEvent("Lock targetIframe1.", 2);
-            expectOnlyChangeEvent("Lock targetIframe1 (handler for iframe1).", 1, targetIframe1.contentDocument);
-            navigator.webkitPointer.lock(targetIframe1.contentDocument.body);
+            expectOnlyChangeEvent("Lock targetIframe1.");
+            expectOnlyChangeEvent("Lock targetIframe1 (handler for iframe1).", targetIframe1.contentDocument);
+            targetIframe1.contentDocument.body.webkitRequestPointerLock();
         },
         function () {
             // Absorb an extra doNextStep() from previous event handlers.
         },
         function () {
             expectNoEvents("Lock targetIframe2.");
-            // FIXME: Only 1 change event should be expected.
-            // But, we will see 2 until we remove the old code for
-            // pointerlocklost and remove the call to didLosePointerLock
-            // made in PointerLockController::requestPointerLock.
-            // (https://bugs.webkit.org/show_bug.cgi?id=84402)
-            expectOnlyChangeEvent("Lock targetIframe2 (handler for iframe1).", 2, targetIframe1.contentDocument);
-            expectOnlyChangeEvent("Lock targetIframe2 (handler for iframe2).", 1, targetIframe2.contentDocument);
-            navigator.webkitPointer.lock(targetIframe2.contentDocument.body);
+            expectOnlyChangeEvent("Lock targetIframe2 (handler for iframe1).", targetIframe1.contentDocument);
+            expectOnlyChangeEvent("Lock targetIframe2 (handler for iframe2).", targetIframe2.contentDocument);
+            targetIframe2.contentDocument.body.webkitRequestPointerLock();
         },
         function () {
             // Absorb an extra doNextStep() from previous event handlers.
@@ -144,20 +122,20 @@
         function () {
             expectNoEvents("Unlock targetIframe2.");
             expectNoEvents("Unlock targetIframe2 (handler for iframe1).", targetIframe1.contentDocument);
-            expectOnlyChangeEvent("Unlock targetIframe2 (handler for iframe2).", 1, targetIframe2.contentDocument);
-            navigator.webkitPointer.unlock();
+            expectOnlyChangeEvent("Unlock targetIframe2 (handler for iframe2).", targetIframe2.contentDocument);
+            document.webkitExitPointerLock();
         },
         function () {
-            shouldBeDefined("layoutTestController.setPointerLockWillFailSynchronously");
-            layoutTestController.setPointerLockWillFailSynchronously();
+            shouldBeDefined("testRunner.setPointerLockWillFailSynchronously");
+            testRunner.setPointerLockWillFailSynchronously();
             expectOnlyErrorEvent("Lock with synchronous failure.");
-            navigator.webkitPointer.lock(targetDiv1);
+            targetDiv1.webkitRequestPointerLock();
         },
         function () {
-            shouldBeDefined("layoutTestController.setPointerLockWillFailAsynchronously");
-            layoutTestController.setPointerLockWillFailAsynchronously();
+            shouldBeDefined("testRunner.setPointerLockWillFailAsynchronously");
+            testRunner.setPointerLockWillFailAsynchronously();
             expectOnlyErrorEvent("Lock with asynchronous failure.");
-            navigator.webkitPointer.lock(targetDiv1);
+            targetDiv1.webkitRequestPointerLock();
         },
     ];
     doNextStep();

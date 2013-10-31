@@ -74,6 +74,7 @@ typedef const struct __CTFont* CTFontRef;
 
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
 #include "CrossProcessFontLoading.h"  
+#include "HarfBuzzFace.h"
 #endif
 
 #if PLATFORM(WIN)
@@ -257,6 +258,10 @@ public:
     cairo_scaled_font_t* scaledFont() const { return m_scaledFont; }
 #endif
 
+#if PLATFORM(CHROMIUM) && OS(DARWIN)
+    HarfBuzzFace* harfbuzzFace();
+#endif
+
     unsigned hash() const
     {
 #if PLATFORM(WIN) && !USE(CAIRO)
@@ -360,6 +365,7 @@ private:
 
 #if PLATFORM(CHROMIUM) && OS(DARWIN)
     RefPtr<MemoryActivatedFont> m_inMemoryFont;
+    RefPtr<HarfBuzzFace> m_harfbuzzFace;
 #endif
 
     bool m_isColorBitmapFont;

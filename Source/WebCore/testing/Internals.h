@@ -37,6 +37,7 @@ namespace WebCore {
 
 class ClientRect;
 class ClientRectList;
+class DOMStringList;
 class Document;
 class DocumentMarker;
 class Element;
@@ -77,6 +78,8 @@ public:
     ShadowRootIfShadowDOMEnabledOrNode* olderShadowRoot(Node* shadow, ExceptionCode&);
     Element* includerFor(Node*, ExceptionCode&);
     String shadowPseudoId(Element*, ExceptionCode&);
+    void setShadowPseudoId(Element*, const String&, ExceptionCode&);
+
     PassRefPtr<Element> createContentElement(Document*, ExceptionCode&);
     Element* getElementByIdInShadowRoot(Node* shadowRoot, const String& id, ExceptionCode&);
     bool isValidContentSelect(Element* insertionPoint, ExceptionCode&);
@@ -95,6 +98,8 @@ public:
 #if ENABLE(INPUT_TYPE_COLOR)
     void selectColorInColorChooser(Element*, const String& colorValue);
 #endif
+    PassRefPtr<DOMStringList> formControlStateOfPreviousHistoryItem(ExceptionCode&);
+    void setFormControlStateOfPreviousHistoryItem(PassRefPtr<DOMStringList>, ExceptionCode&);
 
     PassRefPtr<ClientRect> absoluteCaretBounds(Document*, ExceptionCode&);
 
@@ -176,12 +181,17 @@ public:
     Vector<String> consoleMessageArgumentCounts(Document*) const;
 #endif
 
+    String counterValue(Element*);
+
 #if ENABLE(FULLSCREEN_API)
     void webkitWillEnterFullScreenForElement(Document*, Element*);
     void webkitDidEnterFullScreenForElement(Document*, Element*);
     void webkitWillExitFullScreenForElement(Document*, Element*);
     void webkitDidExitFullScreenForElement(Document*, Element*);
 #endif
+
+    void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
+    void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
 
 private:
     explicit Internals(Document*);

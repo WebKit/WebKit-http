@@ -4,18 +4,18 @@
     </style>
     <script src="../../js/resources/js-test-pre.js"></script>
     <script>
-        if (window.layoutTestController) {
-            layoutTestController.dumpAsText();
-            layoutTestController.waitUntilDone();
+        if (window.testRunner) {
+            testRunner.dumpAsText();
+            testRunner.waitUntilDone();
         }
         function run()
         {
-            shouldBe("layoutTestController.counterValueForElementById('c2')", "'2'");
+            shouldBe("window.internals.counterValue(document.getElementById('c2'))", "'2'");
 
             debug('');
             debug('TEST COMPLETE');
-            if (window.layoutTestController)
-                layoutTestController.notifyDone();
+            if (window.testRunner)
+                testRunner.notifyDone();
         }
     </script>
 </head><body onload="setTimeout('run()', 0);">

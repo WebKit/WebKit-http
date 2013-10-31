@@ -331,7 +331,7 @@ float MediaPlayerPrivateGStreamer::playbackPosition() const
     // Position is available only if the pipeline is not in GST_STATE_NULL or
     // GST_STATE_READY state.
     if (position != static_cast<gint64>(GST_CLOCK_TIME_NONE))
-        ret = static_cast<float>(position) / static_cast<float>(GST_SECOND);
+        ret = static_cast<double>(position) / GST_SECOND;
 
     LOG_VERBOSE(Media, "Position %" GST_TIME_FORMAT, GST_TIME_ARGS(position));
 
@@ -411,7 +411,7 @@ float MediaPlayerPrivateGStreamer::duration() const
 
     LOG_VERBOSE(Media, "Duration: %" GST_TIME_FORMAT, GST_TIME_ARGS(timeLength));
 
-    return (float) ((guint64) timeLength / 1000000000.0);
+    return static_cast<double>(timeLength) / GST_SECOND;
     // FIXME: handle 3.14.9.5 properly
 }
 
@@ -493,7 +493,7 @@ IntSize MediaPlayerPrivateGStreamer::naturalSize() const
     if (!hasVideo())
         return IntSize();
 
-    GstCaps* caps = webkitGstElementGetPadCaps(m_webkitVideoSink, "sink");
+    GstCaps* caps = webkitGstGetPadCaps(m_videoSinkPad.get());
     if (!caps)
         return IntSize();
 
@@ -1355,9 +1355,9 @@ void MediaPlayerPrivateGStreamer::timeChanged()
 
 void MediaPlayerPrivateGStreamer::didEnd()
 {
-    // EOS was reached but in case of reverse playback the position is
-    // not always 0. So to not confuse the HTMLMediaElement, if we're
-    // doing reverse playback, we synchronize position and duration values.
+    // EOS was reached but the position is not always 0 in case of
+    // reverse playback. So to not confuse the HTMLMediaElement, we
+    // synchronize position and duration values.
     float now = currentTime();
     if (now > 0 && m_playbackRate < 0) {
         m_mediaDuration = now;
@@ -1674,6 +1674,7 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     g_signal_connect(m_playBin, "audio-changed", G_CALLBACK(mediaPlayerPrivateAudioChangedCallback), this);
 
     m_webkitVideoSink = webkitVideoSinkNew(m_gstGWorld.get());
+    m_videoSinkPad = adoptGRef(gst_element_get_static_pad(m_webkitVideoSink, "sink"));
 
     g_signal_connect(m_webkitVideoSink, "repaint-requested", G_CALLBACK(mediaPlayerPrivateRepaintCallback), this);
 

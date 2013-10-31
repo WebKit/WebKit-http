@@ -44,6 +44,10 @@
 #include "RenderLayerCompositor.h"
 #endif
 
+#if ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#include "CustomFilterGlobalContext.h"
+#endif
+
 namespace WebCore {
 
 RenderView::RenderView(Node* node, FrameView* view)
@@ -898,6 +902,15 @@ void RenderView::willMoveOffscreen()
 #endif
 }
 
+#if ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+CustomFilterGlobalContext* RenderView::customFilterGlobalContext()
+{
+    if (!m_customFilterGlobalContext)
+        m_customFilterGlobalContext = adoptPtr(new CustomFilterGlobalContext());
+    return m_customFilterGlobalContext.get();
+}
+#endif
+
 void RenderView::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderBlock::styleDidChange(diff, oldStyle);
@@ -943,22 +956,6 @@ void RenderView::setFixedPositionedObjectsNeedLayout()
         RenderBox* currBox = *it;
         currBox->setNeedsLayout(true);
     }
-}
-
-void RenderView::insertFixedPositionedObject(RenderBox* object)
-{
-    if (!m_positionedObjects)
-        m_positionedObjects = adoptPtr(new PositionedObjectsListHashSet);
-
-    m_positionedObjects->add(object);
-}
-
-void RenderView::removeFixedPositionedObject(RenderBox* object)
-{
-    if (!m_positionedObjects)
-        return;
-
-    m_positionedObjects->remove(object);
 }
 
 } // namespace WebCore

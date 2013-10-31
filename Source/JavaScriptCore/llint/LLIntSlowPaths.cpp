@@ -475,8 +475,10 @@ LLINT_SLOW_PATH_DECL(slow_path_convert_this)
     LLINT_BEGIN();
     JSValue v1 = LLINT_OP(1).jsValue();
     ASSERT(v1.isPrimitive());
+#if ENABLE(VALUE_PROFILER)
     pc[OPCODE_LENGTH(op_convert_this) - 1].u.profile->m_buckets[0] =
         JSValue::encode(v1.structureOrUndefined());
+#endif
     LLINT_RETURN(v1.toThisObject(exec));
 }
 
@@ -856,6 +858,14 @@ LLINT_SLOW_PATH_DECL(slow_path_resolve_with_this)
     LLINT_END();
 }
 
+LLINT_SLOW_PATH_DECL(slow_path_put_global_var_check)
+{
+    LLINT_BEGIN();
+    CodeBlock* codeBlock = exec->codeBlock();
+    symbolTablePut(codeBlock->globalObject(), exec, codeBlock->identifier(pc[4].u.operand), LLINT_OP_C(2).jsValue(), true);
+    LLINT_END();
+}
+
 LLINT_SLOW_PATH_DECL(slow_path_get_by_id)
 {
     LLINT_BEGIN();
@@ -926,6 +936,8 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_id)
             
             if (slot.type() == PutPropertySlot::NewProperty) {
                 if (!structure->isDictionary() && structure->previousID()->propertyStorageCapacity() == structure->propertyStorageCapacity()) {
+                    ASSERT(structure->previousID()->transitionWatchpointSetHasBeenInvalidated());
+                    
                     // This is needed because some of the methods we call
                     // below may GC.
                     pc[0].u.opcode = bitwise_cast<void*>(&llint_op_put_by_id);

@@ -100,10 +100,6 @@ editing/text-iterator/basic-iteration.html
 # EFL's LayoutTestController does not implement setMediaType
 fast/media/print-restores-previous-mediatype.html
 
-# ENABLE(SHADOW_DOM) is disabled
-fast/dom/shadow
-editing/shadow
-
 # ENABLE(DATALIST) is disabled
 fast/forms/datalist
 
@@ -156,9 +152,6 @@ editing/spelling
 editing/style
 editing/undo
 
-# EFL's LayoutTestController does not implement setDomainRelaxationForbiddenForURLScheme
-http/tests/security/setDomainRelaxationForbiddenForURLScheme.html
-
 # EFL's LayoutTestController overridePreference does not implement WebKitUsePreHTML5ParserQuirks preference
 fast/parser/pre-html5-parser-quirks.html
 
@@ -188,9 +181,6 @@ fast/viewport/viewport-125.html
 
 # viewport meta tag tests that failed because window.devicePixelRatio is not implemented
 fast/viewport/viewport-133.html
-
-# EFL's LayoutTestController does not implement setTextDirection
-fast/html/set-text-direction.html
 
 # Frame::findString does nothing on pages that prevent selection
 # https://bugs.webkit.org/show_bug.cgi?id=40361
@@ -395,13 +385,6 @@ canvas/philip/tests/2d.path.rect.selfintersect.html
 # with miter limit set to that) but perhaps there are special steps to be taken because the
 # rectangle has zero height.
 canvas/philip/tests/2d.path.rect.zero.6.html
-
-# Repeat-x/-y doesn't work - not supported in Cairo, workaround needed
-# https://bugs.webkit.org/show_bug.cgi?id=53085
-canvas/philip/tests/2d.pattern.paint.repeatx.coord1.html
-canvas/philip/tests/2d.pattern.paint.repeatx.outside.html
-canvas/philip/tests/2d.pattern.paint.repeaty.coord1.html
-canvas/philip/tests/2d.pattern.paint.repeaty.outside.html
 
 # BUG: Bug in the test itself, as the input box can be big enough for the given coordinates to be inside it.
 fast/forms/input-text-click-outside.html
@@ -757,23 +740,6 @@ http/tests/websocket/tests/hixie76/workers/close-in-onmessage-crash.html
 # Tests for features under development
 # ------------------------------------
 
-# ENABLE(SHADOW_DOM) is disabled.
-fast/dom/shadow/content-element-outside-shadow-style.html
-fast/dom/shadow/content-element-in-media-element.html
-fast/dom/shadow/content-element-in-meter-element.html
-fast/dom/shadow/get-element-by-id-in-shadow-root.html
-fast/dom/shadow/shadow-root-js-api.html
-fast/dom/shadow/shadow-disable.html
-fast/dom/shadow/shadow-dom-event-dispatching.html
-fast/dom/shadow/shadow-root-attached.html
-fast/dom/shadow/shadow-root-new.html
-fast/dom/shadow/shadow-root-append.html
-fast/dom/shadow/shadow-element-rendering-single.html
-fast/dom/shadow/shadow-element-rendering-multiple.html
-fast/dom/shadow/multiple-shadowroot.html
-fast/dom/shadow/multiple-shadowroot-rendering.html
-fast/dom/shadow/multiple-shadowroot-adopt.html
-
 # ENABLE_INPUT_TYPE_* are not enabled.
 # https://bugs.webkit.org/show_bug.cgi?id=29359
 # https://bugs.webkit.org/show_bug.cgi?id=68971
@@ -829,7 +795,6 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 fast/events/pointer-events-2.html
 fast/events/remove-target-with-shadow-in-drag.html
-fast/files/blob-builder-crash.html
 fast/forms/001.html
 fast/forms/float-before-fieldset.html
 fast/forms/form-element-geometry.html
@@ -1157,6 +1122,9 @@ media/media-can-play-flac-audio.html
 # Requires ENABLE(MEDIA_CAPTURE)
 fast/forms/file/file-input-capture.html
 
+# Requires ENABLE(FILE_SYSTEM)
+fast/forms/file/input-file-entries.html
+
 # Transparent image being produced
 fast/frames/transparent-scrollbar.html
 
@@ -1196,3 +1164,7 @@ http/tests/security/dataTransfer-set-data-file-url.html
 # most likely related to https://bugs.webkit.org/show_bug.cgi?id=84102
 fast/profiler/stop-profiling-after-setTimeout.html
 fast/profiler/dead-time.html
+
+# http://webkit.org/b/35981
+# Needs a text rebaseline: 30px height difference.
+fast/block/basic/fieldset-stretch-to-legend.html

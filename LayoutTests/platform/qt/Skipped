@@ -92,12 +92,16 @@ fast/speech
 
 # ENABLE(SCRIPTEDSPEECH) is disabled.
 fast/events/constructors/speech-recognition-event-constructor.html
+fast/events/constructors/speech-recognition-error-constructor.html
 
 # ENABLE(MEDIA_STREAM) is disabled.
 fast/mediastream
 
 # ENABLE(DIRECTORY_UPLOAD) is disabled.
 fast/forms/file/input-file-directory-upload.html
+
+# ENABLE(FILE_SYSTEM) is disabled.
+fast/forms/file/input-file-entries.html
 
 # ENABLE(INDEXED_DATABASE) is disabled.
 storage/indexeddb
@@ -117,6 +121,7 @@ svg/webarchive
 # ENABLE(FILE_SYSTEM) is disabled.
 fast/filesystem
 http/tests/filesystem
+http/tests/inspector/filesystem
 http/tests/security/filesystem-iframe-from-remote.html
 http/tests/security/mixedContent/filesystem-url-in-iframe.html
 http/tests/websocket/tests/hybi/send-file-blob.html
@@ -180,6 +185,7 @@ fast/dom/shadow/content-element-in-media-element.html
 fast/dom/shadow/content-element-in-meter-element.html
 fast/dom/shadow/drop-event-for-input-in-shadow.html
 fast/dom/shadow/drop-event-in-shadow.html
+fast/dom/shadow/elements-in-frameless-document.html
 fast/dom/shadow/focus-navigation.html
 fast/dom/shadow/form-in-shadow.html
 fast/dom/shadow/get-element-by-id-in-shadow-mutation.html
@@ -202,6 +208,7 @@ fast/dom/shadow/shadow-disable.html
 fast/dom/shadow/shadow-element.html
 fast/dom/shadow/shadow-element-rendering-single.html
 fast/dom/shadow/shadow-element-rendering-multiple.html
+fast/dom/shadow/shadow-nested-pseudo-id.html
 fast/dom/shadow/shadow-on-image.html
 fast/dom/shadow/shadow-root-activeElement.html
 fast/dom/shadow/shadow-root-append.html
@@ -327,13 +334,6 @@ fast/mutation/observe-subtree.html
 fast/mutation/shadow-dom.html
 fast/mutation/takeRecords.html
 fast/mutation/transient-gc-crash.html
-
-# USE(ZLIB) is disabled.
-http/tests/websocket/tests/hybi/compressed-control-frame.html
-http/tests/websocket/tests/hybi/deflate-frame-invalid-parameter.html
-http/tests/websocket/tests/hybi/deflate-frame-parameter.html
-http/tests/websocket/tests/hybi/extensions.html
-http/tests/websocket/tests/hybi/handshake-fail-by-extensions-header.html
 
 # Disable private names by default in WebCore
 # https://bugs.webkit.org/show_bug.cgi?id=87088
@@ -684,13 +684,6 @@ http/tests/security/isolatedWorld/cross-origin-xhr.html
 # https://bugs.webkit.org/show_bug.cgi?id=72252
 http/tests/misc/xslt-bad-import.html
 
-# New test http/tests/cookies/js-get-and-set-http-only-cookie fails on Mac, GTK, Qt
-# https://bugs.webkit.org/show_bug.cgi?id=87208
-http/tests/cookies/js-get-and-set-http-only-cookie.php
-
-# http/tests/cache/cancel-in-progress-load.html fails on Qt from r118618
-http/tests/cache/cancel-in-progress-load.html
-
 # New test http/tests/cookies/js-get-and-set-http-only-cookie.php fails on Mac, GTK, Qt, EFL (introduced in r119947)
 # https://bugs.webkit.org/show_bug.cgi?id=87208
 http/tests/cookies/js-get-and-set-http-only-cookie.html
@@ -879,6 +872,10 @@ editing/spelling/spelling-insert-html.html
 # https://bugs.webkit.org/show_bug.cgi?id=72251
 editing/spelling/spelling-unified-emulation.html
 
+# [Qt] new editing/spelling/grammar-edit-word.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=89199
+editing/spelling/grammar-edit-word.html
+
 # =========================================================================== #
 #       Failing plugins tests.                                                #
 # =========================================================================== #
@@ -979,6 +976,10 @@ http/tests/misc/link-rel-icon-beforeload.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=64002
 fast/selectors/unqualified-hover-strict.html
+
+# [Qt] inspector/extensions/extensions-panel.html is flakey
+# https://bugs.webkit.org/show_bug.cgi?id=89333
+inspector/extensions/extensions-panel.html
 
 # =========================================================================== #
 # failing media tests
@@ -1410,7 +1411,6 @@ fast/repaint/moving-shadow-on-path.html
 svg/W3C-SVG-1.1/paths-data-03-f.svg
 svg/css/stars-with-shadow.html
 svg/custom/use-on-symbol-inside-pattern.svg
-svg/transforms/transform-origin-css-property.xhtml
 
 # ============================================================================= #
 # Failing CSS Tests
@@ -1459,6 +1459,10 @@ css3/filters/effect-contrast-hw.html
 # [Qt] new test css3/flexbox/line-wrapping.html failing
 # https://bugs.webkit.org/show_bug.cgi?id=72490
 css3/flexbox/line-wrapping.html
+
+# [Qt] New css3/flexbox/flexitem.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=88963
+css3/flexbox/flexitem.html
 
 # Stuff Kling broke while happy-hacking DRT (r84010, r84012)
 fast/css/font-face-repeated-url.html
@@ -2453,6 +2457,7 @@ fast/table/td-width-fifty-percent-regression.html
 svg/custom/anchor-on-use.svg
 svg/animations/animateTransform-rotate-around-point.svg
 svg/animations/animateMotion-additive-1.svg
+svg/transforms/transformed-text-fill-gradient.html
 
 # REGRESSION(114309) - Exception stack traces aren't complete when the exception starts in native code
 # https://bugs.webkit.org/show_bug.cgi?id=84073
@@ -2509,3 +2514,15 @@ fast/frames/flattening/iframe-tiny.html
 # most likely related to https://bugs.webkit.org/show_bug.cgi?id=84102
 fast/profiler/stop-profiling-after-setTimeout.html
 fast/profiler/dead-time.html
+
+# http://webkit.org/b/35981
+# Needs a text rebaseline: 30px height difference.
+fast/block/basic/fieldset-stretch-to-legend.html
+
+# [Qt]REGRESSION(r120107): It made http/tests/xmlhttprequest/origin-exact-matching.html fails
+# https://bugs.webkit.org/show_bug.cgi?id=88913
+http/tests/xmlhttprequest/origin-exact-matching.html
+
+# [Qt]Web Inspector: inspector/extensions/extensions-network.html makes inspector/extensions/extensions-reload.html timeout
+# https://bugs.webkit.org/show_bug.cgi?id=89349
+inspector/extensions/extensions-reload.html

@@ -278,18 +278,11 @@ bool WebRuntimeFeatures::isScriptedSpeechEnabled()
 
 void WebRuntimeFeatures::enableXHRResponseBlob(bool enable)
 {
-#if ENABLE(XHR_RESPONSE_BLOB)
-    RuntimeEnabledFeatures::setXHRResponseBlobEnabled(enable);
-#endif
 }
 
 bool WebRuntimeFeatures::isXHRResponseBlobEnabled()
 {
-#if ENABLE(XHR_RESPONSE_BLOB)
-    return RuntimeEnabledFeatures::xhrResponseBlobEnabled();
-#else
-    return false;
-#endif
+    return true;
 }
 
 void WebRuntimeFeatures::enableFileSystem(bool enable)
@@ -397,7 +390,7 @@ bool WebRuntimeFeatures::isFullScreenAPIEnabled()
 void WebRuntimeFeatures::enablePointerLock(bool enable)
 {
 #if ENABLE(POINTER_LOCK)
-    RuntimeEnabledFeatures::setWebkitPointerLockEnabled(enable);
+    RuntimeEnabledFeatures::setPointerLockEnabled(enable);
 #else
     UNUSED_PARAM(enable);
 #endif
@@ -406,7 +399,7 @@ void WebRuntimeFeatures::enablePointerLock(bool enable)
 bool WebRuntimeFeatures::isPointerLockEnabled()
 {
 #if ENABLE(POINTER_LOCK)
-    return RuntimeEnabledFeatures::webkitPointerLockEnabled();
+    return RuntimeEnabledFeatures::pointerLockEnabled();
 #else
     return false;
 #endif

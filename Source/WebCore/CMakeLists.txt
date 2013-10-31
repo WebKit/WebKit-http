@@ -72,6 +72,7 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/bytecode"
     "${JAVASCRIPTCORE_DIR}/bytecompiler"
     "${JAVASCRIPTCORE_DIR}/dfg"
+    "${JAVASCRIPTCORE_DIR}/disassembler"
     "${JAVASCRIPTCORE_DIR}/heap"
     "${JAVASCRIPTCORE_DIR}/debugger"
     "${JAVASCRIPTCORE_DIR}/interpreter"
@@ -462,7 +463,6 @@ SET(WebCore_SOURCES
     bindings/ScriptControllerBase.cpp
 
     bindings/generic/ActiveDOMCallback.cpp
-    bindings/generic/ContextEnabledFeatures.cpp
     bindings/generic/RuntimeEnabledFeatures.cpp
 
     css/CSSAspectRatioValue.cpp
@@ -562,6 +562,7 @@ SET(WebCore_SOURCES
     dom/ContainerNode.cpp
     dom/ContainerNodeAlgorithms.cpp
     dom/ContextDestructionObserver.cpp
+    dom/ContextFeatures.cpp
     dom/CustomEvent.cpp
     dom/DatasetDOMStringMap.cpp
     dom/DecodedDataDocumentParser.cpp
@@ -933,6 +934,7 @@ SET(WebCore_SOURCES
     inspector/DOMPatchSupport.cpp
     inspector/IdentifiersFactory.cpp
     inspector/InjectedScript.cpp
+    inspector/InjectedScriptBase.cpp
     inspector/InjectedScriptHost.cpp
     inspector/InjectedScriptManager.cpp
     inspector/InspectorAgent.cpp
@@ -1201,6 +1203,7 @@ SET(WebCore_SOURCES
     platform/graphics/TextRun.cpp
     platform/graphics/WidthIterator.cpp
 
+    platform/graphics/filters/CustomFilterGlobalContext.cpp
     platform/graphics/filters/CustomFilterMesh.cpp
     platform/graphics/filters/CustomFilterProgram.cpp
     platform/graphics/filters/CustomFilterShader.cpp
@@ -1390,6 +1393,7 @@ SET(WebCore_SOURCES
     rendering/RenderScrollbar.cpp
     rendering/RenderScrollbarPart.cpp
     rendering/RenderScrollbarTheme.cpp
+    rendering/RenderSearchField.cpp
     rendering/RenderSlider.cpp
     rendering/RenderTable.cpp
     rendering/RenderTableCaption.cpp
@@ -2202,7 +2206,9 @@ ENDIF ()
 
 IF (ENABLE_SMOOTH_SCROLLING)
     LIST(APPEND WebCore_SOURCES
+        platform/ActivePlatformGestureAnimation.cpp
         platform/ScrollAnimatorNone.cpp
+        platform/TouchpadFlingPlatformGestureCurve.cpp
     )
 ENDIF ()
 
@@ -2346,6 +2352,7 @@ IF (ENABLE_WEBGL)
         html/canvas/WebGLContextObject.cpp
         html/canvas/WebGLDebugRendererInfo.cpp
         html/canvas/WebGLDebugShaders.cpp
+        html/canvas/WebGLDepthTexture.cpp
         html/canvas/WebGLFramebuffer.cpp
         html/canvas/WebGLGetInfo.cpp
         html/canvas/WebGLLoseContext.cpp
@@ -2380,6 +2387,7 @@ IF (ENABLE_WEBGL)
         html/canvas/WebGLContextEvent.idl
         html/canvas/WebGLDebugRendererInfo.idl
         html/canvas/WebGLDebugShaders.idl
+        html/canvas/WebGLDepthTexture.idl
         html/canvas/WebGLFramebuffer.idl
         html/canvas/WebGLLoseContext.idl
         html/canvas/WebGLProgram.idl
@@ -2447,6 +2455,55 @@ IF (ENABLE_BATTERY_STATUS)
         Modules/battery/BatteryController.cpp
         Modules/battery/BatteryManager.cpp
         Modules/battery/BatteryStatus.cpp
+    )
+ENDIF ()
+
+IF (ENABLE_MEDIA_STREAM)
+    LIST(APPEND WebCore_INCLUDE_DIRECTORIES
+        ${WEBCORE_DIR}/Modules/mediastream
+        ${WEBCORE_DIR}/platform/mediastream
+    )
+    LIST(APPEND WebCore_IDL_FILES
+        Modules/mediastream/DeprecatedPeerConnection.idl
+        Modules/mediastream/DOMWindowMediaStream.idl
+        Modules/mediastream/IceCallback.idl
+        Modules/mediastream/IceCandidate.idl
+        Modules/mediastream/LocalMediaStream.idl
+        Modules/mediastream/MediaStream.idl
+        Modules/mediastream/MediaStreamEvent.idl
+        Modules/mediastream/MediaStreamList.idl
+        Modules/mediastream/MediaStreamTrack.idl
+        Modules/mediastream/MediaStreamTrackList.idl
+        Modules/mediastream/NavigatorMediaStream.idl
+        Modules/mediastream/NavigatorUserMediaError.idl
+        Modules/mediastream/NavigatorUserMediaErrorCallback.idl
+        Modules/mediastream/NavigatorUserMediaSuccessCallback.idl
+        Modules/mediastream/PeerConnection00.idl
+        Modules/mediastream/SessionDescription.idl
+        Modules/mediastream/SignalingCallback.idl
+    )
+    LIST(APPEND WebCore_SOURCES
+        Modules/mediastream/DeprecatedPeerConnection.cpp
+        Modules/mediastream/IceCandidate.cpp
+        Modules/mediastream/LocalMediaStream.cpp
+        Modules/mediastream/MediaStream.cpp
+        Modules/mediastream/MediaStreamEvent.cpp
+        Modules/mediastream/MediaStreamList.cpp
+        Modules/mediastream/MediaStreamRegistry.cpp
+        Modules/mediastream/MediaStreamTrack.cpp
+        Modules/mediastream/MediaStreamTrackList.cpp
+        Modules/mediastream/NavigatorMediaStream.cpp
+        Modules/mediastream/PeerConnection00.cpp
+        Modules/mediastream/SessionDescription.cpp
+        Modules/mediastream/UserMediaController.cpp
+        Modules/mediastream/UserMediaRequest.cpp
+
+        platform/mediastream/IceCandidateDescriptor.cpp
+        platform/mediastream/IceOptions.cpp
+        platform/mediastream/MediaHints.cpp
+        platform/mediastream/MediaStreamCenter.cpp
+        platform/mediastream/PeerConnection00Handler.cpp
+        platform/mediastream/SessionDescriptionDescriptor.cpp
     )
 ENDIF ()
 

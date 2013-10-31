@@ -54,7 +54,7 @@ BUGWK85465 SKIP : css3/filters = TEXT
 BUGWK85465 SKIP : fast/css/getComputedStyle/computed-style.html = TEXT
 
 // CSS image-resolution is not yet enabled.
-BUGWK85262 SKIP : fast/css/image-resolution = PASS FAIL
+BUGWK85262 SKIP : fast/css/image-resolution = PASS
 
 // This test assumes we cannot play RTSP, but we can.
 BUGWKEFL SKIP : media/unsupported-rtsp.html = TIMEOUT
@@ -96,6 +96,8 @@ BUGWK86623 : editing/pasteboard/drop-inputtext-acquires-style.html = TEXT
 BUGWK86623 : editing/pasteboard/drop-link.html = TEXT
 BUGWK86623 : editing/pasteboard/drop-text-events.html = TEXT
 BUGWK86623 : editing/pasteboard/get-data-text-plain-drop.html = TEXT
+BUGWK86623 : fast/dom/shadow/drop-event-for-input-in-shadow.html = TEXT
+BUGWK86623 : fast/dom/shadow/drop-event-in-shadow.html = TEXT
 BUGWK86623 : http/tests/local/fileapi/file-last-modified-after-delete.html = TEXT
 
 BUGWK88198 : svg/stroke/non-scaling-stroke-pattern.svg = PASS IMAGE
@@ -134,7 +136,6 @@ BUGWK87908 SKIP : editing/undomanager = PASS
 // CRASHES
 //////////////////////////////////////////////////////////////////////////////////////////
 
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // FLAKY TESTS
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -158,10 +159,6 @@ BUGWK60103 : fast/replaced/border-radius-clip.html = TEXT PASS
 //////////////////////////////////////////////////////////////////////////////////////////
 // FAILING TESTS
 //////////////////////////////////////////////////////////////////////////////////////////
-
-// Needs ENABLE_SHADOW_DOM
-BUGWK76439 DEBUG : fast/dom/shadow/content-element-api.html = TEXT
-BUGWK76439 DEBUG : fast/dom/shadow/content-element-outside-shadow.html = TEXT
 
 // Needs inner spin button to respect -webkit-inner-spin-button style
 BUGWK87619 : fast/forms/number/input-appearance-number-rtl.html = TEXT
@@ -221,6 +218,7 @@ BUGWK84333 : fast/forms/file/file-input-change-event.html = TEXT
 BUGWK84333 : fast/forms/file/file-input-reset.html = IMAGE
 BUGWK84333 : fast/forms/file/get-file-upload.html = TEXT
 BUGWK84333 : fast/forms/file/input-file-directory-upload.html = TEXT
+BUGWK84333 : fast/forms/file/input-file-entries.html = TEXT
 BUGWK84333 : fast/forms/file/input-file-re-render.html = MISSING
 BUGWK84333 : fast/forms/file/input-file-write-files.html = TEXT
 BUGWK84333 : fast/forms/file/recover-file-input-in-unposted-form.html = TEXT
@@ -464,10 +462,6 @@ BUGWK84776 : ietestcenter/css3/multicolumn/column-width-applies-to-014.htm = IMA
 BUGWK84777 : ietestcenter/css3/multicolumn/column-width-applies-to-015.htm = IMAGE
 BUGWK84778 : ietestcenter/css3/multicolumn/column-width-negative-001.htm = IMAGE
 
-// Expose title direction in WebKit API
-BUGWK58845 : fast/dom/title-directionality.html = TEXT
-BUGWK58845 : fast/dom/title-directionality-removeChild.html = TEXT
-
 // Tests that sometimes fail on the bot (for GTK and Chromium ports as well)
 BUGWK77631 : fast/multicol/span/span-as-immediate-child-property-removal.html = TEXT PASS
 BUGWK77631 : fast/multicol/span/span-as-immediate-columns-child-removal.html = TEXT PASS
@@ -549,8 +543,6 @@ BUGWK84835 : editing/execCommand/copy-without-selection.html = TEXT
 BUGWK84835 : editing/execCommand/findString-diacriticals.html = TEXT
 BUGWK84835 : editing/execCommand/indent-paragraphs.html = TEXT
 
-BUGWK86961 : editing/execCommand/paste-and-match-style-event.html = CRASH
-
 // DRT doesn't check for isPrinting().
 BUGWK87226 : printing/iframe-print.html = TEXT
 BUGWK87226 : printing/media-queries-print.html = MISSING
@@ -603,14 +595,11 @@ BUGWK88191 : fast/viewport/viewport-legacy-ordering-6.html = TEXT
 BUGWK88191 : fast/viewport/viewport-legacy-xhtmlmp.html = TEXT
 
 // The EFL port has no support for the FileSystem API
-BUGWK68591 SKIP : fast/filesystem = FAIL
-BUGWK68591 SKIP : fast/mutation/filesystem-callback-delivery.html = FAIL
-BUGWK68591 SKIP : http/tests/filesystem = FAIL
-BUGWK68591 SKIP : http/tests/security/filesystem-iframe-from-remote.html = FAIL
-BUGWK68591 SKIP : http/tests/security/mixedContent/filesystem-url-in-iframe.html = FAIL
-
-// New test introduced in r119911 failing on GTK and EFL ports
-BUGWK88727 : http/tests/xmlhttprequest/origin-exact-matching.html = TEXT
+BUGWK68591 SKIP : fast/filesystem = PASS
+BUGWK68591 SKIP : fast/mutation/filesystem-callback-delivery.html = PASS
+BUGWK68591 SKIP : http/tests/filesystem = PASS
+BUGWK68591 SKIP : http/tests/security/filesystem-iframe-from-remote.html = PASS
+BUGWK68591 SKIP : http/tests/security/mixedContent/filesystem-url-in-iframe.html = PASS
 
 // EFL's EventSender does not implement contextClick yet
 BUGWK86091 : editing/pasteboard/copy-standalone-image-crash.html = TEXT
@@ -627,6 +616,7 @@ BUGWK86091 : fast/events/right-click-focus.html = TEXT
 BUGWK86091 : fast/events/selectstart-prevent-selection-on-right-click.html = TEXT
 BUGWK86091 : media/context-menu-actions.html = TEXT
 BUGWK86091 : media/controls-right-click-on-timebar.html = TEXT
+BUGWK86091 : editing/shadow/rightclick-on-meter-in-shadow-crash.html = TEXT
 
 // EFL's EventSender contextClick, needs baselines
 BUGWK86091 : editing/selection/5354455-2.html = MISSING
@@ -645,18 +635,18 @@ BUGWK86597 : fullscreen/video-controls-drag.html = TEXT
 BUGWK86187 : media/media-fullscreen-not-in-document.html = TEXT
 BUGWK86187 SKIP : media/media-fullscreen-inline.html = PASS
 
+// ecore_x library is not initialized and calls to it cause crashes
+BUGWK86961 : editing/execCommand/paste-and-match-style-event.html = CRASH
+BUGWK86961 : fast/dom/shadow/cppevent-in-shadow.html = CRASH
+
+// Selection problem in Shadow DOM test (passes on GTK)
+BUGWKEFL : fast/dom/shadow/selections-in-shadow.html = TEXT
+
 // This test is specific to QuickTime media engine.
 BUGWKEFL SKIP : media/video-does-not-loop.html = PASS
 
 // This test fails if mixer is not at 100%
 BUGWK83704 : media/event-attributes.html = TEXT
-
-// Rebaseline required after https://bugs.webkit.org/show_bug.cgi?id=84167
-BUGWK84167 : editing/pasteboard/innerText-inline-table.html = IMAGE+TEXT
-BUGWK84167 : editing/selection/iframe.html = IMAGE+TEXT
-BUGWK84167 : editing/selection/inline-table.html = IMAGE+TEXT
-BUGWK84167 : editing/selection/table-caret-3.html = IMAGE+TEXT
-BUGWK84167 : tables/mozilla/bugs/bug2479-2.html = IMAGE+TEXT
 
 // EFL's LayoutTestController does not implement setAutomaticLinkDetectionEnabled
 BUGWK85463 SKIP : editing/inserting/typing-space-to-trigger-smart-link.html = PASS
@@ -664,9 +654,6 @@ BUGWK85463 SKIP : editing/inserting/typing-space-to-trigger-smart-link.html = PA
 // Missing deletebutton controller implementation.
 BUGWK86615 : editing/deleting/5408255.html = TEXT
 BUGWK86615 : editing/deleting/regional-indicators.html = TEXT
-
-// Newly introduced test which is failing on GTK as well.
-BUGWK87575 : http/tests/media/video-buffered-range-contains-currentTime.html = TEXT
 
 // Custom font loading delaying text drawing on Canvas
 BUGWK87355 : canvas/philip/tests/2d.text.draw.fontface.notinpage.html = TEXT
@@ -687,6 +674,9 @@ BUGWK86633 : editing/spelling/spelling-unified-emulation.html = TEXT
 // Failing after r119268 on GTK and EFL
 BUGWK88138 : http/tests/media/video-buffered.html = TEXT
 
+// Failing after r120145 on both GTK and EFL
+BUGWK88961 : http/tests/misc/redirect-to-about-blank.html = TEXT
+
 // EFL's LayoutTestController does not implement setAsynchronousSpellCheckingEnabled
 BUGWK86637 : editing/spelling/spellcheck-async.html = TEXT
 BUGWK86637 : editing/spelling/spellcheck-async-mutation.html = TEXT
@@ -695,12 +685,6 @@ BUGWK86637 : editing/spelling/spellcheck-paste-disabled.html = TEXT
 BUGWK86637 : editing/spelling/spellcheck-queue.html = TEXT
 BUGWK86637 : editing/spelling/spellcheck-sequencenum.html = TEXT
 BUGWK86637 : editing/spelling/spelling-marker-description.html = TEXT
-
-// New test added in r119947 which fails on almost all ports
-BUGWK87208 : http/tests/cookies/js-get-and-set-http-only-cookie.html = TEXT
-
-// It is unclear whether a new baseline is needed or it is a JSC failure
-BUGWK77413 : fast/parser/nested-fragment-parser-crash.html = TEXT
 
 // Looks like some race condition during loading.
 BUGWK85977 : fast/css/font-face-download-error.html = TIMEOUT
@@ -712,12 +696,15 @@ BUGWK86445 : fast/multicol/split-in-top-margin.html = IMAGE
 BUGWK86722 SKIP : fast/images/paletted-png-with-color-profile.html = PASS
 
 // These tests cause flakiness (extra console messages in output)
-BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-1.html = FAIL
-BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-2.html = FAIL
+BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-1.html = PASS
+BUGWK88729 SKIP : userscripts/window-onerror-for-isolated-world-2.html = PASS
 
 // Needs rebaseline after the bots cycle.
 BUG_OJAN : tables/mozilla/bugs/bug131020.html = TEXT IMAGE IMAGE+TEXT
 
 // These tests do not seem to fail anywhere else.
-BUGWK88030 : fast/multicol/column-break-with-balancing.html = IMAGE
 BUGWK88031 : fast/multicol/span/generated-child-split-flow-crash.html = TEXT
+
+// Flexbox test failing on EFL.
+BUGWK88984 : css3/flexbox/flexitem.html = TEXT
+

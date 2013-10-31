@@ -57,8 +57,6 @@ def result_was_expected(result, expected_results, test_needs_rebaselining, test_
         test_is_skipped: whether test was marked as SKIP"""
     if result in expected_results:
         return True
-    if result in (IMAGE, TEXT, IMAGE_PLUS_TEXT) and FAIL in expected_results:
-        return True
     if result == MISSING and test_needs_rebaselining:
         return True
     if result == SKIP and test_is_skipped:
@@ -91,9 +89,9 @@ BASELINE_SUFFIX_LIST = ('png', 'wav', 'txt')
 
 def suffixes_for_expectations(expectations):
     suffixes = set()
-    if expectations.intersection(set([TEXT, IMAGE_PLUS_TEXT, FAIL])):
+    if expectations.intersection(set([TEXT, IMAGE_PLUS_TEXT])):
         suffixes.add('txt')
-    if expectations.intersection(set([IMAGE, IMAGE_PLUS_TEXT, FAIL])):
+    if expectations.intersection(set([IMAGE, IMAGE_PLUS_TEXT])):
         suffixes.add('png')
     if AUDIO in expectations:
         suffixes.add('wav')
@@ -225,8 +223,8 @@ class TestExpectationParser(object):
         self._full_test_list = full_test_list
         self._allow_rebaseline_modifier = allow_rebaseline_modifier
 
-    def parse(self, expectations_string):
-        expectations = TestExpectationParser._tokenize_list(expectations_string)
+    def parse(self, filename, expectations_string):
+        expectations = TestExpectationParser._tokenize_list(filename, expectations_string)
         for expectation_line in expectations:
             self._parse_line(expectation_line)
         return expectations
@@ -236,6 +234,9 @@ class TestExpectationParser(object):
         expectation_line.original_string = test_name
         expectation_line.modifiers = [TestExpectationParser.DUMMY_BUG_MODIFIER, TestExpectationParser.SKIP_MODIFIER]
         expectation_line.name = test_name
+        # FIXME: we should pass in a more descriptive string here.
+        expectation_line.filename = '<Skipped file>'
+        expectation_line.line_number = 0
         expectation_line.expectations = [TestExpectationParser.PASS_EXPECTATION]
         self._parse_line(expectation_line)
         return expectation_line
@@ -337,7 +338,7 @@ class TestExpectationParser(object):
             expectation_line.matching_tests.append(expectation_line.path)
 
     @classmethod
-    def _tokenize(cls, expectation_string, line_number=None):
+    def _tokenize(cls, filename, expectation_string, line_number):
         """Tokenizes a line from TestExpectations and returns an unparsed TestExpectationLine instance.
 
         The format of a test expectation line is:
@@ -350,6 +351,7 @@ class TestExpectationParser(object):
         expectation_line = TestExpectationLine()
         expectation_line.original_string = expectation_string
         expectation_line.line_number = line_number
+        expectation_line.filename = filename
         comment_index = expectation_string.find("//")
         if comment_index == -1:
             comment_index = len(expectation_string)
@@ -376,13 +378,13 @@ class TestExpectationParser(object):
         return expectation_line
 
     @classmethod
-    def _tokenize_list(cls, expectations_string):
+    def _tokenize_list(cls, filename, expectations_string):
         """Returns a list of TestExpectationLines, one for each line in expectations_string."""
         expectation_lines = []
         line_number = 0
         for line in expectations_string.split("\n"):
             line_number += 1
-            expectation_lines.append(cls._tokenize(line, line_number))
+            expectation_lines.append(cls._tokenize(filename, line, line_number))
         return expectation_lines
 
     @classmethod
@@ -392,7 +394,7 @@ class TestExpectationParser(object):
         return [part.strip().lower() for part in space_separated_string.strip().split(' ')]
 
 
-class TestExpectationLine:
+class TestExpectationLine(object):
     """Represents a line in test expectations file."""
 
     def __init__(self):
@@ -432,7 +434,7 @@ class TestExpectationLine:
 class TestExpectationsModel(object):
     """Represents relational store of all expectations and provides CRUD semantics to manage it."""
 
-    def __init__(self):
+    def __init__(self, shorten_filename=None):
         # Maps a test to its list of expectations.
         self._test_to_expectations = {}
 
@@ -442,17 +444,12 @@ class TestExpectationsModel(object):
         # Maps a test to a TestExpectationLine instance.
         self._test_to_expectation_line = {}
 
-        # List of tests that are in the overrides file (used for checking for
-        # duplicates inside the overrides file itself). Note that just because
-        # a test is in this set doesn't mean it's necessarily overridding a
-        # expectation in the regular expectations; the test might not be
-        # mentioned in the regular expectations file at all.
-        self._overridding_tests = set()
-
         self._modifier_to_tests = self._dict_of_sets(TestExpectations.MODIFIERS)
         self._expectation_to_tests = self._dict_of_sets(TestExpectations.EXPECTATIONS)
         self._timeline_to_tests = self._dict_of_sets(TestExpectations.TIMELINES)
         self._result_type_to_tests = self._dict_of_sets(TestExpectations.RESULT_TYPES)
+
+        self._shorten_filename = shorten_filename or (lambda x: x)
 
     def _dict_of_sets(self, strings_to_constants):
         """Takes a dict of strings->constants and returns a dict mapping
@@ -518,31 +515,26 @@ class TestExpectationsModel(object):
     def get_expectations(self, test):
         return self._test_to_expectations[test]
 
-    def add_expectation_line(self, expectation_line, in_overrides=False, in_skipped=False):
+    def add_expectation_line(self, expectation_line, in_skipped=False):
         """Returns a list of warnings encountered while matching modifiers."""
 
         if expectation_line.is_invalid():
             return
 
         for test in expectation_line.matching_tests:
-            if not in_skipped and self._already_seen_better_match(test, expectation_line, in_overrides):
+            if not in_skipped and self._already_seen_better_match(test, expectation_line):
                 continue
 
             self._clear_expectations_for_test(test, expectation_line)
             self._test_to_expectation_line[test] = expectation_line
-            self._add_test(test, expectation_line, in_overrides)
+            self._add_test(test, expectation_line)
 
-    def _add_test(self, test, expectation_line, in_overrides):
+    def _add_test(self, test, expectation_line):
         """Sets the expected state for a given test.
 
         This routine assumes the test has not been added before. If it has,
         use _clear_expectations_for_test() to reset the state prior to
-        calling this.
-
-        Args:
-          test: test to add
-          expectation_line: expectation to add
-          in_overrides: whether we're parsing the regular expectations or the overridding expectations"""
+        calling this."""
         self._test_to_expectations[test] = expectation_line.parsed_expectations
         for expectation in expectation_line.parsed_expectations:
             self._expectation_to_tests[expectation].add(test)
@@ -564,10 +556,8 @@ class TestExpectationsModel(object):
         elif expectation_line.is_flaky():
             self._result_type_to_tests[FLAKY].add(test)
         else:
+            # FIXME: What is this?
             self._result_type_to_tests[FAIL].add(test)
-
-        if in_overrides:
-            self._overridding_tests.add(test)
 
     def _clear_expectations_for_test(self, test, expectation_line):
         """Remove prexisting expectations for this test.
@@ -591,7 +581,7 @@ class TestExpectationsModel(object):
             if test in set_of_tests:
                 set_of_tests.remove(test)
 
-    def _already_seen_better_match(self, test, expectation_line, in_overrides):
+    def _already_seen_better_match(self, test, expectation_line):
         """Returns whether we've seen a better match already in the file.
 
         Returns True if we've already seen a expectation_line.name that matches more of the test
@@ -604,6 +594,10 @@ class TestExpectationsModel(object):
 
         prev_expectation_line = self._test_to_expectation_line[test]
 
+        if prev_expectation_line.filename != expectation_line.filename:
+            # We've moved on to a new expectation file, which overrides older ones.
+            return False
+
         if len(prev_expectation_line.path) > len(expectation_line.path):
             # The previous path matched more of the test.
             return True
@@ -612,19 +606,8 @@ class TestExpectationsModel(object):
             # This path matches more of the test.
             return False
 
-        if in_overrides and test not in self._overridding_tests:
-            # We have seen this path, but that's okay because it is
-            # in the overrides and the earlier path was in the
-            # expectations (not the overrides).
-            return False
-
         # At this point we know we have seen a previous exact match on this
         # base path, so we need to check the two sets of modifiers.
-
-        if in_overrides:
-            expectation_source = "override"
-        else:
-            expectation_source = "expectation"
 
         # FIXME: This code was originally designed to allow lines that matched
         # more modifiers to override lines that matched fewer modifiers.
@@ -634,20 +617,28 @@ class TestExpectationsModel(object):
         # to be warnings and return False".
 
         if prev_expectation_line.matching_configurations == expectation_line.matching_configurations:
-            expectation_line.warnings.append('Duplicate or ambiguous %s.' % expectation_source)
+            expectation_line.warnings.append('Duplicate or ambiguous entry for %s on lines %s:%d and %s:%d.' % (expectation_line.name,
+                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
+                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
             return True
 
         if prev_expectation_line.matching_configurations >= expectation_line.matching_configurations:
-            expectation_line.warnings.append('More specific entry on line %d overrides line %d' % (expectation_line.line_number, prev_expectation_line.line_number))
+            expectation_line.warnings.append('More specific entry for %s on line %s:%d overrides line %s:%d.' % (expectation_line.name,
+                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
+                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
             # FIXME: return False if we want more specific to win.
             return True
 
         if prev_expectation_line.matching_configurations <= expectation_line.matching_configurations:
-            expectation_line.warnings.append('More specific entry on line %d overrides line %d' % (prev_expectation_line.line_number, expectation_line.line_number))
+            expectation_line.warnings.append('More specific entry for %s on line %s:%d overrides line %s:%d.' % (expectation_line.name,
+                self._shorten_filename(expectation_line.filename), expectation_line.line_number,
+                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number))
             return True
 
         if prev_expectation_line.matching_configurations & expectation_line.matching_configurations:
-            expectation_line.warnings.append('Entries on line %d and line %d match overlapping sets of configurations' % (prev_expectation_line.line_number, expectation_line.line_number))
+            expectation_line.warnings.append('Entries for %s on lines %s:%d and %s:%d match overlapping sets of configurations.' % (expectation_line.name,
+                self._shorten_filename(prev_expectation_line.filename), prev_expectation_line.line_number,
+                self._shorten_filename(expectation_line.filename), expectation_line.line_number))
             return True
 
         # Configuration sets are disjoint, then.
@@ -660,9 +651,9 @@ class TestExpectations(object):
     in which case the expectations apply to all test cases in that
     directory and any subdirectory. The format is along the lines of:
 
-      LayoutTests/fast/js/fixme.js = FAIL
-      LayoutTests/fast/js/flaky.js = FAIL PASS
-      LayoutTests/fast/js/crash.js = CRASH TIMEOUT FAIL PASS
+      LayoutTests/fast/js/fixme.js = TEXT
+      LayoutTests/fast/js/flaky.js = TEXT PASS
+      LayoutTests/fast/js/crash.js = CRASH TIMEOUT TEXT PASS
       ...
 
     To add modifiers:
@@ -678,18 +669,13 @@ class TestExpectations(object):
 
     Notes:
       -A test cannot be both SLOW and TIMEOUT
-      -A test should only be one of IMAGE, TEXT, IMAGE+TEXT, AUDIO, or FAIL.
-       FAIL is a legacy value that currently means either IMAGE,
-       TEXT, or IMAGE+TEXT. Once we have finished migrating the expectations,
-       we should change FAIL to have the meaning of IMAGE+TEXT and remove the
-       IMAGE+TEXT identifier.
+      -A test should only be one of IMAGE, TEXT, IMAGE+TEXT, or AUDIO.
       -A test can be included twice, but not via the same path.
       -If a test is included twice, then the more precise path wins.
       -CRASH tests cannot be WONTFIX
     """
 
     EXPECTATIONS = {'pass': PASS,
-                    'fail': FAIL,
                     'text': TEXT,
                     'image': IMAGE,
                     'image+text': IMAGE_PLUS_TEXT,
@@ -700,7 +686,6 @@ class TestExpectations(object):
 
     EXPECTATION_DESCRIPTIONS = {SKIP: ('skipped', 'skipped'),
                                 PASS: ('pass', 'passes'),
-                                FAIL: ('failure', 'failures'),
                                 TEXT: ('text diff mismatch',
                                        'text diff mismatch'),
                                 IMAGE: ('image mismatch', 'image mismatch'),
@@ -712,7 +697,7 @@ class TestExpectations(object):
                                 MISSING: ('no expected result found',
                                           'no expected results found')}
 
-    EXPECTATION_ORDER = (PASS, CRASH, TIMEOUT, MISSING, IMAGE_PLUS_TEXT, TEXT, IMAGE, AUDIO, FAIL, SKIP)
+    EXPECTATION_ORDER = (PASS, CRASH, TIMEOUT, MISSING, IMAGE_PLUS_TEXT, TEXT, IMAGE, AUDIO, SKIP)
 
     BUILD_TYPES = ('debug', 'release')
 
@@ -739,19 +724,20 @@ class TestExpectations(object):
         self._full_test_list = tests
         self._test_config = port.test_configuration()
         self._is_lint_mode = is_lint_mode
-        self._model = TestExpectationsModel()
+        self._model = TestExpectationsModel(self._shorten_filename)
         self._parser = TestExpectationParser(port, tests, is_lint_mode)
         self._port = port
         self._skipped_tests_warnings = []
 
-        self._expectations = self._parser.parse(port.test_expectations())
-        self._add_expectations(self._expectations, in_overrides=False)
+        expectations_dict = port.expectations_dict()
+        self._expectations = self._parser.parse(expectations_dict.keys()[0], expectations_dict.values()[0])
+        self._add_expectations(self._expectations)
 
-        overrides = port.test_expectations_overrides()
-        if overrides and include_overrides:
-            overrides_expectations = self._parser.parse(overrides)
-            self._add_expectations(overrides_expectations, in_overrides=True)
-            self._expectations += overrides_expectations
+        if len(expectations_dict) > 1 and include_overrides:
+            for name in expectations_dict.keys()[1:]:
+                expectations = self._parser.parse(name, expectations_dict[name])
+                self._add_expectations(expectations)
+                self._expectations += expectations
 
         # FIXME: move ignore_tests into port.skipped_layout_tests()
         self._add_skipped_tests(port.skipped_layout_tests(tests).union(set(port.get_option('ignore_tests', []))))
@@ -766,8 +752,7 @@ class TestExpectations(object):
         return self._model
 
     def get_rebaselining_failures(self):
-        return (self._model.get_test_set(REBASELINE, FAIL) |
-                self._model.get_test_set(REBASELINE, IMAGE) |
+        return (self._model.get_test_set(REBASELINE, IMAGE) |
                 self._model.get_test_set(REBASELINE, TEXT) |
                 self._model.get_test_set(REBASELINE, IMAGE_PLUS_TEXT) |
                 self._model.get_test_set(REBASELINE, AUDIO))
@@ -826,17 +811,16 @@ class TestExpectations(object):
     def is_rebaselining(self, test):
         return self._model.has_modifier(test, REBASELINE)
 
+    def _shorten_filename(self, filename):
+        if filename.startswith(self._port.path_from_webkit_base()):
+            return self._port.host.filesystem.relpath(filename, self._port.path_from_webkit_base())
+        return filename
+
     def _report_warnings(self):
         warnings = []
-        test_expectation_path = self._port.path_to_test_expectations_file()
-        if test_expectation_path.startswith(self._port.path_from_webkit_base()):
-            test_expectation_path = self._port.host.filesystem.relpath(test_expectation_path, self._port.path_from_webkit_base())
         for expectation in self._expectations:
             for warning in expectation.warnings:
-                warnings.append('%s:%d %s %s' % (test_expectation_path, expectation.line_number, warning, expectation.name if expectation.expectations else expectation.original_string))
-
-        for warning in self._skipped_tests_warnings:
-            warnings.append('%s%s' % (test_expectation_path, warning))
+                warnings.append('%s:%d %s %s' % (self._shorten_filename(expectation.filename), expectation.line_number, warning, expectation.name if expectation.expectations else expectation.original_string))
 
         if warnings:
             self._has_warnings = True
@@ -859,7 +843,7 @@ class TestExpectations(object):
         for expectation in self._expectations:
             if expectation.name != test or expectation.is_flaky() or not expectation.parsed_expectations:
                 continue
-            if iter(expectation.parsed_expectations).next() not in (FAIL, TEXT, IMAGE, IMAGE_PLUS_TEXT, AUDIO):
+            if iter(expectation.parsed_expectations).next() not in (TEXT, IMAGE, IMAGE_PLUS_TEXT, AUDIO):
                 continue
             if test_configuration not in expectation.matching_configurations:
                 continue
@@ -882,20 +866,20 @@ class TestExpectations(object):
 
         return TestExpectationSerializer.list_to_string(filter(without_rebaseline_modifier, self._expectations))
 
-    def _add_expectations(self, expectation_list, in_overrides):
+    def _add_expectations(self, expectation_list):
         for expectation_line in expectation_list:
             if not expectation_line.expectations:
                 continue
 
             if self._is_lint_mode or self._test_config in expectation_line.matching_configurations:
-                self._model.add_expectation_line(expectation_line, in_overrides)
+                self._model.add_expectation_line(expectation_line)
 
     def _add_skipped_tests(self, tests_to_skip):
         if not tests_to_skip:
             return
-        for index, test in enumerate(self._expectations, start=1):
+        for test in self._expectations:
             if test.name and test.name in tests_to_skip:
-                self._skipped_tests_warnings.append(':%d %s is also in a Skipped file.' % (index, test.name))
+                test.warnings.append('%s:%d %s is also in a Skipped file.' % (test.filename, test.line_number, test.name))
 
         for test_name in tests_to_skip:
             expectation_line = self._parser.expectation_for_skipped_test(test_name)

@@ -24,6 +24,7 @@
 
 #include "WebString.h"
 #include <Base64.h>
+#include <BlackBerryPlatformFontInfo.h>
 #include <Color.h>
 #include <PageCache.h>
 #include <wtf/HashSet.h>
@@ -82,6 +83,7 @@ DEFINE_STATIC_LOCAL(String, WebKitOfflineWebApplicationCachePath, ("WebKitOfflin
 DEFINE_STATIC_LOCAL(String, WebKitPageGroupName, ("WebKitPageGroupName"));
 DEFINE_STATIC_LOCAL(String, WebKitPluginsEnabled, ("WebKitPluginsEnabled"));
 DEFINE_STATIC_LOCAL(String, WebKitPrivateBrowsingEnabled, ("WebKitPrivateBrowsingEnabled"));
+DEFINE_STATIC_LOCAL(String, WebKitDeviceSupportsMouse, ("WebKitDeviceSupportsMouse"));
 DEFINE_STATIC_LOCAL(String, WebKitSansSeriffFontFamily, ("WebKitSansSeriffFontFamily"));
 DEFINE_STATIC_LOCAL(String, WebKitSeriffFontFamily, ("WebKitSeriffFontFamily"));
 DEFINE_STATIC_LOCAL(String, WebKitStandardFontFamily, ("WebKitStandardFontFamily"));
@@ -182,6 +184,11 @@ WebSettings* WebSettings::standardSettings()
     settings->m_private->setInteger(WebKitMinimumFontSize, 8);
     settings->m_private->setBoolean(WebKitWebSocketsEnabled, true);
 
+    settings->m_private->setString(WebKitFixedFontFamily, BlackBerry::Platform::fontFamily("-webkit-monospace", "").c_str());
+    settings->m_private->setString(WebKitSansSeriffFontFamily, BlackBerry::Platform::fontFamily("-webkit-sans-serif", "").c_str());
+    settings->m_private->setString(WebKitSeriffFontFamily, BlackBerry::Platform::fontFamily("-webkit-serif", "").c_str());
+    settings->m_private->setString(WebKitStandardFontFamily, BlackBerry::Platform::fontFamily("-webkit-standard", "").c_str());
+
     return settings;
 }
 
@@ -262,6 +269,16 @@ bool WebSettings::isPrivateBrowsingEnabled() const
 void WebSettings::setPrivateBrowsingEnabled(bool enabled)
 {
     m_private->setBoolean(WebKitPrivateBrowsingEnabled, enabled);
+}
+
+bool WebSettings::deviceSupportsMouse() const
+{
+    return m_private->getBoolean(WebKitDeviceSupportsMouse);
+}
+
+void WebSettings::setDeviceSupportsMouse(bool enabled)
+{
+    m_private->setBoolean(WebKitDeviceSupportsMouse, enabled);
 }
 
 int WebSettings::defaultFixedFontSize() const

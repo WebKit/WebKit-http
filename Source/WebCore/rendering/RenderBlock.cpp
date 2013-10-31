@@ -1233,6 +1233,32 @@ void RenderBlock::removeChild(RenderObject* oldChild)
         // If this was our last child be sure to clear out our line boxes.
         if (childrenInline())
             deleteLineBoxTree();
+
+        // If we are an empty anonymous block in the continuation chain,
+        // we need to remove ourself and fix the continuation chain.
+        if (!beingDestroyed() && isAnonymousBlockContinuation()) {
+            RenderObject* containingBlockIgnoringAnonymous = containingBlock();
+            while (containingBlockIgnoringAnonymous && containingBlockIgnoringAnonymous->isAnonymousBlock())
+                containingBlockIgnoringAnonymous = containingBlockIgnoringAnonymous->containingBlock();
+            for (RenderObject* curr = this; curr; curr = curr->previousInPreOrder(containingBlockIgnoringAnonymous)) {
+                if (curr->virtualContinuation() != this)
+                    continue;
+
+                // Found our previous continuation. We just need to point it to
+                // |this|'s next continuation.
+                RenderBoxModelObject* nextContinuation = continuation();
+                if (curr->isRenderInline())
+                    toRenderInline(curr)->setContinuation(nextContinuation);
+                else if (curr->isRenderBlock())
+                    toRenderBlock(curr)->setContinuation(nextContinuation);
+                else
+                    ASSERT_NOT_REACHED();
+
+                break;
+            }
+            setContinuation(0);
+            destroy();
+        }
     }
 }
 
@@ -2648,17 +2674,18 @@ void RenderBlock::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& pain
     bool antialias = shouldAntialiasLines(paintInfo.context);
 
     if (colInfo->progressionAxis() == ColumnInfo::InlineAxis) {
-        LayoutUnit currLogicalLeftOffset = style()->isLeftToRightDirection() ? ZERO_LAYOUT_UNIT : contentLogicalWidth();
+        bool leftToRight = style()->isLeftToRightDirection() ^ colInfo->progressionIsReversed();
+        LayoutUnit currLogicalLeftOffset = leftToRight ? ZERO_LAYOUT_UNIT : contentLogicalWidth();
         LayoutUnit ruleAdd = logicalLeftOffsetForContent();
-        LayoutUnit ruleLogicalLeft = style()->isLeftToRightDirection() ? ZERO_LAYOUT_UNIT : contentLogicalWidth();
+        LayoutUnit ruleLogicalLeft = leftToRight ? ZERO_LAYOUT_UNIT : contentLogicalWidth();
         LayoutUnit inlineDirectionSize = colInfo->desiredColumnWidth();
         BoxSide boxSide = isHorizontalWritingMode()
-            ? style()->isLeftToRightDirection() ? BSLeft : BSRight
-            : style()->isLeftToRightDirection() ? BSTop : BSBottom;
+            ? leftToRight ? BSLeft : BSRight
+            : leftToRight ? BSTop : BSBottom;
 
         for (unsigned i = 0; i < colCount; i++) {
             // Move to the next position.
-            if (style()->isLeftToRightDirection()) {
+            if (leftToRight) {
                 ruleLogicalLeft += inlineDirectionSize + colGap / 2;
                 currLogicalLeftOffset += inlineDirectionSize + colGap;
             } else {
@@ -2679,20 +2706,31 @@ void RenderBlock::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& pain
             ruleLogicalLeft = currLogicalLeftOffset;
         }
     } else {
-        LayoutUnit ruleLeft = isHorizontalWritingMode() ? borderLeft() + paddingLeft() : colGap / 2 - colGap - ruleThickness / 2 + borderBefore() + paddingBefore();
+        bool topToBottom = !style()->isFlippedBlocksWritingMode() ^ colInfo->progressionIsReversed();
+        LayoutUnit ruleLeft = isHorizontalWritingMode()
+            ? borderLeft() + paddingLeft()
+            : colGap / 2 - colGap - ruleThickness / 2 + (!colInfo->progressionIsReversed() ? borderBefore() + paddingBefore() : borderAfter() + paddingAfter());
         LayoutUnit ruleWidth = isHorizontalWritingMode() ? contentWidth() : ruleThickness;
-        LayoutUnit ruleTop = isHorizontalWritingMode() ? colGap / 2 - colGap - ruleThickness / 2 + borderBefore() + paddingBefore() : borderStart() + paddingStart();
+        LayoutUnit ruleTop = isHorizontalWritingMode()
+            ? colGap / 2 - colGap - ruleThickness / 2 + (!colInfo->progressionIsReversed() ? borderBefore() + paddingBefore() : borderAfter() + paddingAfter())
+            : borderStart() + paddingStart();
         LayoutUnit ruleHeight = isHorizontalWritingMode() ? ruleThickness : contentHeight();
         LayoutRect ruleRect(ruleLeft, ruleTop, ruleWidth, ruleHeight);
 
-        flipForWritingMode(ruleRect);
+        if (!topToBottom) {
+            if (isHorizontalWritingMode())
+                ruleRect.setY(height() - ruleRect.maxY());
+            else
+                ruleRect.setX(width() - ruleRect.maxX());
+        }
+
         ruleRect.moveBy(paintOffset);
 
         BoxSide boxSide = isHorizontalWritingMode()
-            ? !style()->isFlippedBlocksWritingMode() ? BSTop : BSBottom
-            : !style()->isFlippedBlocksWritingMode() ? BSLeft : BSRight;
+            ? topToBottom ? BSTop : BSBottom
+            : topToBottom ? BSLeft : BSRight;
 
-        LayoutSize step(0, !style()->isFlippedBlocksWritingMode() ? colInfo->columnHeight() + colGap : -(colInfo->columnHeight() + colGap));
+        LayoutSize step(0, topToBottom ? colInfo->columnHeight() + colGap : -(colInfo->columnHeight() + colGap));
         if (!isHorizontalWritingMode())
             step = step.transposedSize();
 
@@ -3509,18 +3547,12 @@ void RenderBlock::insertPositionedObject(RenderBox* o)
         m_positionedObjects = adoptPtr(new PositionedObjectsListHashSet);
 
     m_positionedObjects->add(o);
-
-    if (o->style()->position() == FixedPosition && view())
-        view()->insertFixedPositionedObject(o);
 }
 
 void RenderBlock::removePositionedObject(RenderBox* o)
 {
     if (m_positionedObjects)
         m_positionedObjects->remove(o);
-
-    if (view())
-        view()->removeFixedPositionedObject(o);
 }
 
 void RenderBlock::removePositionedObjects(RenderBlock* o)
@@ -4959,6 +4991,7 @@ void RenderBlock::setDesiredColumnCountAndWidth(int count, LayoutUnit width)
         info->setDesiredColumnCount(count);
         info->setDesiredColumnWidth(width);
         info->setProgressionAxis(style()->hasInlineColumnAxis() ? ColumnInfo::InlineAxis : ColumnInfo::BlockAxis);
+        info->setProgressionIsReversed(style()->columnProgression() == ReverseColumnProgression);
     }
 }
 
@@ -5001,12 +5034,16 @@ LayoutRect RenderBlock::columnRectAt(ColumnInfo* colInfo, unsigned index) const
     LayoutUnit colLogicalLeft = logicalLeftOffsetForContent();
     int colGap = columnGap();
     if (colInfo->progressionAxis() == ColumnInfo::InlineAxis) {
-        if (style()->isLeftToRightDirection())
+        if (style()->isLeftToRightDirection() ^ colInfo->progressionIsReversed())
             colLogicalLeft += index * (colLogicalWidth + colGap);
         else
             colLogicalLeft += contentLogicalWidth() - colLogicalWidth - index * (colLogicalWidth + colGap);
-    } else
-        colLogicalTop += index * (colLogicalHeight + colGap);
+    } else {
+        if (!colInfo->progressionIsReversed())
+            colLogicalTop += index * (colLogicalHeight + colGap);
+        else
+            colLogicalTop += contentLogicalHeight() - colLogicalHeight - index * (colLogicalHeight + colGap);
+    }
 
     if (isHorizontalWritingMode())
         return LayoutRect(colLogicalLeft, colLogicalTop, colLogicalWidth, colLogicalHeight);
@@ -5692,9 +5729,6 @@ void RenderBlock::computeInlinePreferredLogicalWidths()
     updatePreferredWidth(m_minPreferredLogicalWidth, inlineMin);
     updatePreferredWidth(m_maxPreferredLogicalWidth, inlineMax);
 }
-
-// Use a very large value (in effect infinite).
-#define BLOCK_MAX_WIDTH 15000
 
 void RenderBlock::computeBlockPreferredLogicalWidths()
 {

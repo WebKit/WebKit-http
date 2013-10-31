@@ -12,13 +12,13 @@
         }
     </style>
     <script type="text/javascript">
-        if (window.layoutTestController)
-            layoutTestController.dumpAsText();
+        if (window.testRunner)
+            testRunner.dumpAsText();
 
         function doTest()
         {
-            if (window.layoutTestController)
-                document.getElementById('counted').innerText = layoutTestController.counterValueForElementById('counted');
+            if (window.testRunner)
+                document.getElementById('counted').innerText = window.internals.counterValue(document.getElementById('counted'));
         }
 
         window.addEventListener('load', doTest, false);

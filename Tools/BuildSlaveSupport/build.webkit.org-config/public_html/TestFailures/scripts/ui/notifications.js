@@ -74,7 +74,7 @@ ui.notifications.Notification = base.extends('li', {
         {
             this.parentNode && this.parentNode.removeChild(this);
         });
-    }
+    },
 });
 
 ui.notifications.Info = base.extends(ui.notifications.Notification, {
@@ -85,16 +85,18 @@ ui.notifications.Info = base.extends(ui.notifications.Notification, {
     update: function(message)
     {
         this._what.textContent = message;
+    },
+    updateWithNode: function(node)
+    {
+        $(this._what).empty();
+        this._what.appendChild(node);
     }
 });
 
 ui.notifications.FailingTestGroup = base.extends('li', {
     init: function(groupName, testNameList)
     {
-        var link = this.appendChild(document.createElement('a'));
-        link.target = '_blank';
-        link.href = ui.urlForFlakinessDashboard(testNameList);
-        link.textContent = groupName;
+        this.appendChild(base.createLinkNode(ui.urlForFlakinessDashboard(testNameList), groupName, '_blank'));
     }
 });
 
@@ -110,20 +112,18 @@ ui.notifications.SuspiciousCommit = base.extends(Cause, {
     init: function(commitData)
     {
         this._revision = commitData.revision;
-        var linkToRevision = this._description.appendChild(document.createElement('a'));
+        this._description.appendChild(base.createLinkNode(trac.changesetURL(commitData.revision), commitData.revision, '_blank'));
         this._details = this._description.appendChild(document.createElement('span'));
-        linkToRevision.href = trac.changesetURL(commitData.revision);
-        linkToRevision.target = '_blank';
-        linkToRevision.textContent = commitData.revision;
         this._addDetail('summary', commitData);
         this._addDetail('author', commitData);
         this._addDetail('reviewer', commitData);
+        this._addDetail('bugID', commitData, bugzilla.bugURL);
     },
     hasRevision: function(revision)
     {
         return this._revision == revision;
     },
-    _addDetail: function(part, commitData)
+    _addDetail: function(part, commitData, linkFunction)
     {
         var content = commitData[part];
         if (!content)
@@ -131,7 +131,12 @@ ui.notifications.SuspiciousCommit = base.extends(Cause, {
 
         var span = this._details.appendChild(document.createElement('span'));
         span.className = part;
-        span.textContent = content;
+        
+        if (linkFunction) {
+            var link = base.createLinkNode(linkFunction(content), content, '_blank');
+            span.appendChild(link);
+        } else
+            span.textContent = content;
     }
 });
 

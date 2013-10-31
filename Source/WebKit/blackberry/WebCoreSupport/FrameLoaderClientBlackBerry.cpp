@@ -369,7 +369,8 @@ void FrameLoaderClientBlackBerry::receivedData(const char* data, int length, con
 void FrameLoaderClientBlackBerry::finishedLoading(DocumentLoader*)
 {
     if (m_pluginView) {
-        m_pluginView->didFinishLoading();
+        if (m_hasSentResponseToPlugin)
+            m_pluginView->didFinishLoading();
         m_pluginView = 0;
         m_hasSentResponseToPlugin = false;
     }
@@ -824,10 +825,7 @@ void FrameLoaderClientBlackBerry::dispatchDidFirstVisuallyNonEmptyLayout()
 
     readyToRender(true);
 
-    // FIXME: We shouldn't be getting here if we are not in the Committed state but we are
-    // so we can not assert on that right now. But we only want to do this on load.
-    // RIM Bug #555
-    if (m_webPagePrivate->loadState() == WebPagePrivate::Committed) {
+    if (m_webPagePrivate->shouldZoomToInitialScaleOnLoad()) {
         m_webPagePrivate->zoomToInitialScaleOnLoad(); // Set the proper zoom level first.
         m_webPagePrivate->m_backingStore->d->clearVisibleZoom(); // Clear the visible zoom since we're explicitly rendering+blitting below.
         m_webPagePrivate->m_backingStore->d->renderVisibleContents();
@@ -1151,13 +1149,10 @@ void FrameLoaderClientBlackBerry::download(ResourceHandle* handle, const Resourc
 void FrameLoaderClientBlackBerry::dispatchDidReceiveIcon()
 {
     String url = m_frame->document()->url().string();
-    Image* img = iconDatabase().synchronousIconForPageURL(url, IntSize(10, 10));
-    if (!img || !img->data())
-        return;
-
-    NativeImageSkia* bitmap = img->nativeImageForCurrentFrame();
+    NativeImageSkia* bitmap = iconDatabase().synchronousNativeIconForPageURL(url, IntSize(10, 10));
     if (!bitmap)
         return;
+
     bitmap->lockPixels();
     String iconUrl = iconDatabase().synchronousIconURLForPageURL(url);
     m_webPagePrivate->m_client->setFavicon(img->width(), img->height(), (unsigned char*)bitmap->getPixels(), iconUrl.utf8().data());

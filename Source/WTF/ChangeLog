@@ -1,3 +1,273 @@
+2012-06-17  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to look at disassembly
+        https://bugs.webkit.org/show_bug.cgi?id=89319
+
+        Reviewed by Sam Weinig.
+        
+        Made changes to Assertions.h to make it friendly to C code again.
+        
+        Added ENABLE(DISASSEMBLER) and USE(UDIS86) logic to Platform.h.
+
+        * wtf/Assertions.h:
+        * wtf/Platform.h:
+
+2012-06-19  Jon Honeycutt  <jhoneycutt@apple.com>
+
+        REGRESSION(r120552): Many tests timing out on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=89433
+
+        Reviewed by Andy Estes.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::lowResUTCTime):
+        It looks like there were two bugs:
+        1) the function was converting from 100ths of nanoseconds to seconds
+           rather than 100s of nanoseconds to seconds by dividing by
+           (nsPerSecond * 100) rather than (nsPerSecond / 100)
+        2) the function should've been returning milliseconds, not seconds
+
+2012-06-18  Tony Payne  <tpayne@chromium.org>
+
+        [chromium] Add iccjpeg and qcms to chromium port.
+        https://bugs.webkit.org/show_bug.cgi?id=81974
+
+        * wtf/Platform.h: Add Chromium USE defines for ICCJPEG and QCMSLIB
+        to each Chromium platform, excluding Android.
+
+        Reviewed by Adam Barth.
+
+2012-06-18  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r120485 and r120582.
+        http://trac.webkit.org/changeset/120485
+        http://trac.webkit.org/changeset/120582
+        https://bugs.webkit.org/show_bug.cgi?id=89345
+
+        chromeos tree breakage (Requested by morrita on #webkit).
+
+        * wtf/Platform.h:
+
+2012-06-17  Patrick Gansterer  <paroga@webkit.org>
+
+        [WIN] Simplify implementation of currentTime()
+        https://bugs.webkit.org/show_bug.cgi?id=83156
+
+        Reviewed by Brent Fulgham.
+
+        Use GetSystemTimeAsFileTime() instead of ftime().
+        This avoids an unneeded call to the MS CRT and
+        brings the Win/WinCE code closer together.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::lowResUTCTime):
+        (WTF::currentTime):
+
+2012-06-15  Tony Payne  <tpayne@chromium.org>
+
+        [chromium] Add iccjpeg and qcms to chromium port.
+        https://bugs.webkit.org/show_bug.cgi?id=81974
+
+        * wtf/Platform.h: Add Chromium USE defines for ICCJPEG and QCMSLIB
+        to each Chromium platform, excluding Android.
+
+        Reviewed by Adam Barth.
+
+2012-06-14  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r120393.
+        http://trac.webkit.org/changeset/120393
+        https://bugs.webkit.org/show_bug.cgi?id=89163
+
+        breaks cr-mac build (Requested by morrita on #webkit).
+
+        * wtf/Platform.h:
+
+2012-06-14  Tony Payne  <tpayne@chromium.org>
+
+        [chromium] Add iccjpeg and qcms to chromium port.
+        https://bugs.webkit.org/show_bug.cgi?id=81974
+
+        * wtf/Platform.h: Add Chromium USE defines for ICCJPEG and QCMSLIB
+        to each Chromium platform, excluding Android.
+
+        Reviewed by Adam Barth.
+
+2012-06-14  Yong Li  <yoli@rim.com>
+
+        [BlackBerry] Implement computeRAMSize for QNX
+        https://bugs.webkit.org/show_bug.cgi?id=89110
+
+        Reviewed by Rob Buis.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2012-06-14  Geoffrey Garen  <ggaren@apple.com>
+
+        ARMv7 should support spinlocks
+        https://bugs.webkit.org/show_bug.cgi?id=88957
+
+        Reviewed by Darin Adler.
+
+        More info @ http://infocenter.arm.com/help/topic/
+        com.arm.doc.genc007826/Barrier_Litmus_Tests_and_Cookbook_A08.pdf
+
+        * wtf/Atomics.h:
+        (WTF::memoryBarrierAfterLock):
+        (WTF::memoryBarrierBeforeUnlock): Added memory barrier primitives since
+        ARMv7 has a weakly ordered memory model.
+
+        * wtf/Platform.h: Enabled compare-and-swap on Windows so our spinlock
+        implementation would continue working on Windows.
+
+        * wtf/TCSpinLock.h:
+        (TCMalloc_SpinLock::Lock):
+        (TCMalloc_SpinLock::Unlock):
+        (TCMalloc_SpinLock): Use our compare-and-swap helper function to avoid
+        rewriting it in assembly here.
+
+        Added memory barriers since ARMv7 needs them.
+
+        Removed PPC support because our helper function doesn't support PPC.
+
+2012-06-13  Arnaud Renevier  <arno@renevier.net>
+
+        make sure headers are included only once per file
+        https://bugs.webkit.org/show_bug.cgi?id=88929
+
+        Reviewed by Kentaro Hara.
+
+        * wtf/FastMalloc.cpp:
+        * wtf/MathExtras.h:
+        * wtf/OSAllocator.h:
+
+2012-06-13  Benjamin Poulain  <benjamin@webkit.org>
+
+        Implement the simple constructors WTFURL's KURL
+        https://bugs.webkit.org/show_bug.cgi?id=85724
+
+        Reviewed by Adam Barth.
+
+        This patch extends WTFURL with:
+        -support basic debugging using print() methods
+        -parsing in the incomming string character set (8bits or 16bits)
+        -add a function for parsing of relative URL (but no implementation yet)
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/text/WTFString.h:
+        (String):
+        * wtf/url/api/ParsedURL.cpp:
+        (WTF::ParsedURL::ParsedURL):
+        (WTF):
+        (WTF::ParsedURL::hasFragment): Add this method to query the framgent availability without
+        allocating a new String.
+        (WTF::ParsedURL::withoutFragment): This method is added to implement KURL::removeFragmentIdentifier() and
+        the parsing of empty relative URL (where we return the base without fragment).
+        (WTF::ParsedURL::print):
+        * wtf/url/api/ParsedURL.h:
+        (ParsedURL):
+        (WTF::ParsedURL::spec):
+        * wtf/url/api/URLString.h:
+        (URLString):
+        * wtf/url/src/URLParser.h:
+        (WTF):
+        (URLParser):
+        (WTF::URLParser::parseURLWithBase):
+        * wtf/url/src/URLSegments.cpp:
+        (WTF::URLSegments::length):
+        (WTF::URLSegments::charactersBefore):
+        * wtf/url/src/URLSegments.h:
+        (URLSegments):
+        Change the boolean argument includeDelimiter in favor of an enum to improve readability.
+
+2012-06-13  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to set watchpoints on global variables
+        https://bugs.webkit.org/show_bug.cgi?id=88692
+
+        Reviewed by Geoffrey Garen.
+        
+        Added ability to set the inline capacity of segmented vectors.
+        
+        Also added the ability ot ASSERT_NOT_REACHED() without having to
+        propagate NO_RETURN macros, which would be a show-stopper for code
+        that is conditionally unreachable.
+
+        * wtf/Assertions.h:
+        (UNREACHABLE_FOR_PLATFORM):
+        * wtf/SegmentedVector.h:
+        (WTF):
+        (SegmentedVectorIterator):
+        (WTF::SegmentedVectorIterator::operator=):
+        (WTF::SegmentedVectorIterator::SegmentedVectorIterator):
+        (SegmentedVector):
+
+2012-06-13  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r120172.
+        http://trac.webkit.org/changeset/120172
+        https://bugs.webkit.org/show_bug.cgi?id=88976
+
+        The patch causes compilation failures on Gtk, Qt and Apple Win
+        bots (Requested by zdobersek on #webkit).
+
+        * wtf/SegmentedVector.h:
+        (WTF):
+        (SegmentedVectorIterator):
+        (WTF::SegmentedVectorIterator::operator=):
+        (WTF::SegmentedVectorIterator::SegmentedVectorIterator):
+        (SegmentedVector):
+
+2012-06-10  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should be able to set watchpoints on global variables
+        https://bugs.webkit.org/show_bug.cgi?id=88692
+
+        Reviewed by Geoffrey Garen.
+        
+        Added ability to set the inline capacity of segmented vectors.
+
+        * wtf/SegmentedVector.h:
+        (WTF):
+        (SegmentedVectorIterator):
+        (WTF::SegmentedVectorIterator::operator=):
+        (WTF::SegmentedVectorIterator::SegmentedVectorIterator):
+        (SegmentedVector):
+
+2012-06-12  Geoffrey Garen  <ggaren@apple.com>
+
+        Try to fix the build.
+
+        Maybe don't export inlined functions.
+
+        * wtf/ThreadingPrimitives.h:
+        (WTF::MutexTryLocker::MutexTryLocker):
+        (WTF::MutexTryLocker::~MutexTryLocker):
+        (WTF::MutexTryLocker::locked):
+
+2012-06-11  Jocelyn Turcotte  <jocelyn.turcotte@nokia.com>
+
+        Using extrernal ICU library on case unsensitive drives will not work
+        https://bugs.webkit.org/show_bug.cgi?id=70913
+
+        Reviewed by Csaba Osztrogonác.
+
+        Properly set the include path for the WTF module and for modules using it.
+        The path should include Source/WTF/wtf only when building WTF itself. Other
+        modules are expected to include the headers as #include <wtf/Header.h>, so
+        only add Source/WTF to their include path.
+
+        "unicode/utf8.h" should now then always reference to ICU in the include path
+        and "wtf/unicode/UTF8.h" reference to the WTF version.
+        This will work as long as WTF object files don't depend on ICU themselves.
+
+        Removed gobject, qt and unicode from the include path as those directories
+        don't exist anymore.
+
+        * WTF.pri:
+        * WTF.pro:
+
 2012-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Fix make distcheck issues.

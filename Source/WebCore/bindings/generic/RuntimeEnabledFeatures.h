@@ -96,11 +96,8 @@ public:
 #endif
 
 #if ENABLE(POINTER_LOCK)
-    static bool webkitPointerLockEnabled() { return isPointerLockEnabled; }
-    static void setWebkitPointerLockEnabled(bool isEnabled) { isPointerLockEnabled = isEnabled; }
-    static bool webkitPointerEnabled() { return isPointerLockEnabled; }
-    static bool webkitMovementXEnabled() { return isPointerLockEnabled; }
-    static bool webkitMovementYEnabled() { return isPointerLockEnabled; }
+    static bool pointerLockEnabled() { return isPointerLockEnabled; }
+    static void setPointerLockEnabled(bool isEnabled) { isPointerLockEnabled = isEnabled; }
 #endif
 
 #if ENABLE(VIDEO)
@@ -170,13 +167,6 @@ public:
     static bool webkitSpeechRecognitionEventEnabled() { return isScriptedSpeechEnabled; }
     static bool webkitSpeechGrammarEnabled() { return isScriptedSpeechEnabled; }
     static bool webkitSpeechGrammarListEnabled() { return isScriptedSpeechEnabled; }
-#endif
-
-#if ENABLE(XHR_RESPONSE_BLOB)
-    static bool xhrResponseBlobEnabled() { return isXHRResponseBlobEnabled; }
-    static void setXHRResponseBlobEnabled(bool isEnabled) { isXHRResponseBlobEnabled = isEnabled; }
-    static bool responseBlobEnabled() { return isXHRResponseBlobEnabled; }
-    static bool asBlobEnabled()  { return isXHRResponseBlobEnabled; }
 #endif
 
 #if ENABLE(FILE_SYSTEM)
@@ -262,10 +252,6 @@ private:
 #if ENABLE(SCRIPTED_SPEECH)
     static bool isScriptedSpeechEnabled;
 #endif
-#if ENABLE(XHR_RESPONSE_BLOB)
-    static bool isXHRResponseBlobEnabled;
-#endif
-
 #if ENABLE(FILE_SYSTEM)
     static bool isFileSystemEnabled;
 #endif

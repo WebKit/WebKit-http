@@ -202,7 +202,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitBorderImage,
     CSSPropertyWebkitBorderVerticalSpacing,
     CSSPropertyWebkitBoxAlign,
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     CSSPropertyWebkitBoxDecorationBreak,
+#endif
     CSSPropertyWebkitBoxDirection,
     CSSPropertyWebkitBoxFlex,
     CSSPropertyWebkitBoxFlexGroup,
@@ -219,6 +221,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitColumnAxis,
     CSSPropertyWebkitColumnCount,
     CSSPropertyWebkitColumnGap,
+    CSSPropertyWebkitColumnProgression,
     CSSPropertyWebkitColumnRuleColor,
     CSSPropertyWebkitColumnRuleStyle,
     CSSPropertyWebkitColumnRuleWidth,
@@ -1360,6 +1363,9 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 
     switch (propertyID) {
         case CSSPropertyInvalid:
+#if ENABLE(CSS_VARIABLES)
+        case CSSPropertyVariable:
+#endif
             break;
 
         case CSSPropertyBackgroundColor:
@@ -1546,10 +1552,12 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return getPositionOffsetValue(style.get(), CSSPropertyBottom, m_node->document()->renderView());
         case CSSPropertyWebkitBoxAlign:
             return cssValuePool().createValue(style->boxAlign());
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
         case CSSPropertyWebkitBoxDecorationBreak:
             if (style->boxDecorationBreak() == DSLICE)
                 return cssValuePool().createIdentifierValue(CSSValueSlice);
         return cssValuePool().createIdentifierValue(CSSValueClone);
+#endif
         case CSSPropertyWebkitBoxDirection:
             return cssValuePool().createValue(style->boxDirection());
         case CSSPropertyWebkitBoxFlex:
@@ -1587,6 +1595,8 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             if (style->hasNormalColumnGap())
                 return cssValuePool().createIdentifierValue(CSSValueNormal);
             return zoomAdjustedPixelValue(style->columnGap(), style.get());
+        case CSSPropertyWebkitColumnProgression:
+            return cssValuePool().createValue(style->columnProgression());
         case CSSPropertyWebkitColumnRuleColor:
             return m_allowVisitedStyle ? cssValuePool().createColorValue(style->visitedDependentColor(CSSPropertyOutlineColor).rgb()) : currentColorOrValidColor(style.get(), style->columnRuleColor());
         case CSSPropertyWebkitColumnRuleStyle:
@@ -1642,16 +1652,16 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
 #if ENABLE(CSS3_FLEXBOX)
         case CSSPropertyWebkitFlex: {
             RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
-            list->append(cssValuePool().createValue(style->positiveFlex()));
-            list->append(cssValuePool().createValue(style->negativeFlex()));
+            list->append(cssValuePool().createValue(style->flexGrow()));
+            list->append(cssValuePool().createValue(style->flexShrink()));
 
-            Length preferredSize = style->flexPreferredSize();
-            if (preferredSize.isAuto())
+            Length flexBasis = style->flexBasis();
+            if (flexBasis.isAuto())
                 list->append(cssValuePool().createIdentifierValue(CSSValueAuto));
-            else if (preferredSize.isPercent())
-                list->append(cssValuePool().createValue(preferredSize.value(), CSSPrimitiveValue::CSS_PERCENTAGE));
+            else if (flexBasis.isPercent())
+                list->append(cssValuePool().createValue(flexBasis.value(), CSSPrimitiveValue::CSS_PERCENTAGE));
             else
-                list->append(cssValuePool().createValue(preferredSize.value(), CSSPrimitiveValue::CSS_PX));
+                list->append(cssValuePool().createValue(flexBasis.value(), CSSPrimitiveValue::CSS_PX));
 
             return list.release();
         }
@@ -2019,8 +2029,6 @@ PassRefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(CSSPropert
             return cssValuePool().createValue(style->khtmlLineBreak());
         case CSSPropertyWebkitNbspMode:
             return cssValuePool().createValue(style->nbspMode());
-        case CSSPropertyWebkitMatchNearestMailBlockquoteColor:
-            return cssValuePool().createValue(style->matchNearestMailBlockquoteColor());
         case CSSPropertyResize:
             return cssValuePool().createValue(style->resize());
         case CSSPropertyWebkitFontKerning:

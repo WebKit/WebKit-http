@@ -143,7 +143,16 @@ public:
 private:
     CCLayerIterator(const LayerList* renderSurfaceLayerList, bool start)
         : m_renderSurfaceLayerList(renderSurfaceLayerList)
+        , m_targetRenderSurfaceLayerIndex(0)
     {
+        for (size_t i = 0; i < renderSurfaceLayerList->size(); ++i) {
+            if (!(*renderSurfaceLayerList)[i]->renderSurface()) {
+                ASSERT_NOT_REACHED();
+                m_actions.end(*this);
+                return;
+            }
+        }
+
         if (start && !renderSurfaceLayerList->isEmpty())
             m_actions.begin(*this);
         else

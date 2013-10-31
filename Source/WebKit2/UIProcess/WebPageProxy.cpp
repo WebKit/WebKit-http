@@ -85,6 +85,13 @@
 #include <WebCore/WindowFeatures.h>
 #include <stdio.h>
 
+#if ENABLE(WEB_INTENTS)
+#include "IntentData.h"
+#include "IntentServiceInfo.h"
+#include "WebIntentData.h"
+#include "WebIntentServiceInfo.h"
+#endif
+
 #if USE(UI_SIDE_COMPOSITING)
 #include "LayerTreeHostProxyMessages.h"
 #endif
@@ -210,6 +217,7 @@ WebPageProxy::WebPageProxy(PageClient* pageClient, PassRefPtr<WebProcessProxy> p
     , m_pageCount(0)
     , m_renderTreeSize(0)
     , m_shouldSendEventsSynchronously(false)
+    , m_suppressVisibilityUpdates(false)
     , m_mediaVolume(1)
 #if ENABLE(PAGE_VISIBILITY_API)
     , m_visibilityState(PageVisibilityStateVisible)
@@ -1866,6 +1874,17 @@ void WebPageProxy::didFinishProgress()
     m_loaderClient.didFinishProgress(this);
 }
 
+#if ENABLE(WEB_INTENTS_TAG)
+void WebPageProxy::registerIntentServiceForFrame(uint64_t frameID, const IntentServiceInfo& serviceInfo)
+{
+    WebFrameProxy* frame = process()->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    RefPtr<WebIntentServiceInfo> webIntentServiceInfo = WebIntentServiceInfo::create(serviceInfo);
+    m_loaderClient.registerIntentServiceForFrame(this, frame, webIntentServiceInfo.get());
+}
+#endif
+
 void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, const String& url, const String& unreachableURL, CoreIPC::ArgumentDecoder* arguments)
 {
     clearPendingAPIRequestURL();
@@ -2135,6 +2154,17 @@ void WebPageProxy::didDetectXSSForFrame(uint64_t frameID, CoreIPC::ArgumentDecod
 
     m_loaderClient.didDetectXSSForFrame(this, frame, userData.get());
 }
+
+#if ENABLE(WEB_INTENTS)
+void WebPageProxy::didReceiveIntentForFrame(uint64_t frameID, const IntentData& intentData)
+{
+    WebFrameProxy* frame = process()->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    RefPtr<WebIntentData> webIntentData = WebIntentData::create(intentData);
+    m_loaderClient.didReceiveIntentForFrame(this, frame, webIntentData.get());
+}
+#endif
 
 void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
 {
@@ -3811,6 +3841,29 @@ void WebPageProxy::handleAlternativeTextUIResult(const String& result)
         process()->send(Messages::WebPage::HandleAlternativeTextUIResult(result), m_pageID, 0);
 #endif
 }
+
+#if USE(DICTATION_ALTERNATIVES)
+void WebPageProxy::showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext)
+{
+    m_pageClient->showDictationAlternativeUI(boundingBoxOfDictatedText, dictationContext);
+}
+
+void WebPageProxy::dismissDictationAlternativeUI()
+{
+    m_pageClient->dismissDictationAlternativeUI();
+}
+
+void WebPageProxy::removeDictationAlternatives(uint64_t dictationContext)
+{
+    m_pageClient->removeDictationAlternatives(dictationContext);
+}
+
+void WebPageProxy::dictationAlternatives(uint64_t dictationContext, Vector<String>& result)
+{
+    result = m_pageClient->dictationAlternatives(dictationContext);
+}
+#endif
+
 #endif // PLATFORM(MAC)
 
 } // namespace WebKit

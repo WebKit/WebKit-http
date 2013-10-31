@@ -171,6 +171,7 @@ public:
     virtual void enableContinuousSpellChecking(bool);
     virtual bool isContinuousSpellCheckingEnabled() const;
     virtual void requestTextChecking(const WebElement&);
+    virtual void replaceMisspelledRange(const WebString&);
     virtual bool hasSelection() const;
     virtual WebRange selectionRange() const;
     virtual WebString selectionAsText() const;
@@ -222,7 +223,6 @@ public:
     virtual WebString contentAsText(size_t maxChars) const;
     virtual WebString contentAsMarkup() const;
     virtual WebString renderTreeAsText(RenderAsTextControls toShow = RenderAsTextNormal) const;
-    virtual WebString counterValueForElementById(const WebString& id) const;
     virtual WebString markerTextForListItem(const WebElement&) const;
     virtual int pageNumberForElementById(const WebString& id,
                                          float pageWidthInPixels,

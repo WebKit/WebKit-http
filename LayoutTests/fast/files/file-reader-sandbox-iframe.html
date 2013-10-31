@@ -1,0 +1,17 @@
+<html>
+<head>
+<script>
+if (window.layoutTestController) {
+    layoutTestController.setAllowUniversalAccessFromFileURLs(false);
+    layoutTestController.setAllowFileAccessFromFileURLs(false);
+    layoutTestController.dumpAsText();
+    layoutTestController.waitUntilDone();
+}
+</script>
+</head>
+<body>
+<iframe src="resources/file-reader-real.html" sandbox="allow-scripts"></iframe>
+<div id="results"></div>
+Test that FileReader works under the sandboxed iframe.
+</body>
+</html>

@@ -70,10 +70,9 @@ var WebInspector = {
 
     _createGlobalStatusBarItems: function()
     {
-        this._dockToggleButton = new WebInspector.StatusBarButton(this._dockButtonTitle(), "dock-status-bar-item");
+        this._dockToggleButton = new WebInspector.StatusBarButton("", "dock-status-bar-item", 3);
         this._dockToggleButton.addEventListener("click", this._toggleAttach.bind(this), false);
-        this._dockToggleButton.toggled = !this.attached;
-        WebInspector.updateDockToggleButton();
+        this._updateDockButtonState();
 
         var anchoredStatusBar = document.getElementById("anchored-status-bar-items");
         anchoredStatusBar.appendChild(this._dockToggleButton.element);
@@ -87,9 +86,20 @@ var WebInspector = {
         anchoredStatusBar.appendChild(this.settingsController.statusBarItem);
     },
 
-    _dockButtonTitle: function()
+    _updateDockButtonState: function()
     {
-        return this.attached ? WebInspector.UIString("Undock into separate window.") : WebInspector.UIString("Dock to main window.");
+        if (!this._dockToggleButton)
+            return;
+
+        if (this.attached) {
+            this._dockToggleButton.disabled = false;
+            this._dockToggleButton.state = "undock";
+            this._dockToggleButton.title = WebInspector.UIString("Undock into separate window.");
+        } else {
+            this._dockToggleButton.disabled = this._isDockingUnavailable;
+            this._dockToggleButton.state = WebInspector.settings.dockToRight.get() ? "right" : "bottom";
+            this._dockToggleButton.title = WebInspector.UIString("Dock to main window.");
+        }
     },
 
     _toggleAttach: function()
@@ -188,17 +198,13 @@ var WebInspector = {
 
         this._attached = x;
 
-        if (this._dockToggleButton) {
-            this._dockToggleButton.title = this._dockButtonTitle();
-            this._dockToggleButton.toggled = !x;
-        }
-
         if (x)
             document.body.removeStyleClass("detached");
         else
             document.body.addStyleClass("detached");
 
         this._setCompactMode(x && !WebInspector.settings.dockToRight.get());
+        this._updateDockButtonState();
     },
 
     isCompactMode: function()
@@ -390,7 +396,6 @@ WebInspector.doLoadedDone = function()
     WebInspector.WorkerManager.loaded();
 
     DebuggerAgent.causesRecompilation(WebInspector._initializeCapability.bind(WebInspector, "debuggerCausesRecompilation", null));
-    DebuggerAgent.supportsNativeBreakpoints(WebInspector._initializeCapability.bind(WebInspector, "nativeInstrumentationEnabled", null));
     ProfilerAgent.causesRecompilation(WebInspector._initializeCapability.bind(WebInspector, "profilerCausesRecompilation", null));
     ProfilerAgent.isSampling(WebInspector._initializeCapability.bind(WebInspector, "samplingCPUProfiler", null));
     ProfilerAgent.hasHeapProfiler(WebInspector._initializeCapability.bind(WebInspector, "heapProfilerPresent", null));
@@ -439,8 +444,7 @@ WebInspector._doLoadedDoneWithCapabilities = function()
     this.advancedSearchController = new WebInspector.AdvancedSearchController();
     this.settingsController = new WebInspector.SettingsController();
 
-    if (Capabilities.nativeInstrumentationEnabled)
-        this.domBreakpointsSidebarPane = new WebInspector.DOMBreakpointsSidebarPane();
+    this.domBreakpointsSidebarPane = new WebInspector.DOMBreakpointsSidebarPane();
 
     this._zoomLevel = WebInspector.settings.zoomLevel.get();
     if (this._zoomLevel)
@@ -519,6 +523,8 @@ WebInspector._installDockToRight = function()
         }
         if (WebInspector.attached)
             WebInspector._setCompactMode(!value);
+        else
+            WebInspector._updateDockButtonState();
     }
 }
 
@@ -539,7 +545,7 @@ var windowLoaded = function()
     } else
         WebInspector.loaded();
 
-    WebInspector.setAttachedWindow(WebInspector.queryParamsObject.docked === "true");
+    WebInspector.attached = WebInspector.queryParamsObject.docked === "true";
 
     window.removeEventListener("DOMContentLoaded", windowLoaded, false);
     delete windowLoaded;
@@ -576,25 +582,13 @@ WebInspector.windowResize = function(event)
     WebInspector.inspectorView.doResize();
     WebInspector.drawer.resize();
     WebInspector.toolbar.resize();
-}
-
-WebInspector.setAttachedWindow = function(attached)
-{
-    this.attached = attached;
-    WebInspector.updateDockToggleButton();
+    WebInspector.settingsController.resize();
 }
 
 WebInspector.setDockingUnavailable = function(unavailable)
 {
     this._isDockingUnavailable = unavailable;
-    WebInspector.updateDockToggleButton();
-}
-
-WebInspector.updateDockToggleButton = function()
-{
-    if (!this._dockToggleButton)
-        return;
-    this._dockToggleButton.disabled = this.attached ? false : this._isDockingUnavailable;
+    this._updateDockButtonState();
 }
 
 WebInspector.close = function(event)

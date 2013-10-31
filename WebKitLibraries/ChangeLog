@@ -1,3 +1,60 @@
+2012-06-19  Mike West  <mkwst@chromium.org>
+
+        Introduce ENABLE_CSP_NEXT configuration flag.
+        https://bugs.webkit.org/show_bug.cgi?id=89300
+
+        Reviewed by Adam Barth.
+
+        The 1.0 draft of the Content Security Policy spec is just about to
+        move to Last Call. We'll hide work on the upcoming 1.1 spec behind
+        this ENABLE flag, disabled by default.
+
+        Spec: https://dvcs.w3.org/hg/content-security-policy/raw-file/tip/csp-specification.dev.html
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-06-15  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r120280.
+        http://trac.webkit.org/changeset/120280
+        https://bugs.webkit.org/show_bug.cgi?id=89273
+
+        Enabling CSS regions broke all Windows tests (Requested by
+        jhomeycutt on #webkit).
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
+2012-06-13  Mihai Balan  <mibalan@adobe.com>
+
+        Fix for #88645 - enabling regions on Windows
+
+        [CSS Regions] Adding feature defines for CSS Regions & exclusions for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=88645
+
+        Reviewed by Sam Weinig.
+
+        Previous work on #87442 added feature defines to allow proper disabling of CSS Regions and
+        exclusions (previously even with the feature disabled, parsing still worked). However, the
+        feature defines were enabled on Mac only - they were broken on Windows. This
+        patch adds the feature defines to (re)enable regions and exclusions on Windows.
+
+        * win/tools/vsprops/FeatureDefines.vsprops: Added default value for ENABLE_CSS_EXCLUSIONS and ENABLE_CSS_REGIONS
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops: ditto
+
+2012-06-11  Alexis Menard  <alexis.menard@openbossa.org>
+
+        [CSS3 Backgrounds and Borders] Protect box-decoration-break behind a feature flag.
+        https://bugs.webkit.org/show_bug.cgi?id=88804
+
+        Reviewed by Tony Chang.
+
+        Protect box-decoration-break behind a feature flag enabled by default.
+
+        * win/tools/vsprops/FeatureDefines.vsprops:
+        * win/tools/vsprops/FeatureDefinesCairo.vsprops:
+
 2012-06-11  Anders Carlsson  <andersca@apple.com>
 
         Pass the right color space over to the web process so we can set it on our CA context

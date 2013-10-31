@@ -768,6 +768,7 @@ sub GenerateNormalAttrGetter
     my $attrExt = $attribute->signature->extendedAttributes;
     my $attrName = $attribute->signature->name;
     my $attrType = GetTypeFromSignature($attribute->signature);
+    $codeGenerator->AssertNotSequenceType($attrType);
     my $nativeType = GetNativeTypeFromSignature($attribute->signature, -1);
 
     my $getterStringUsesImp = $implClassName ne "SVGNumber";
@@ -2417,7 +2418,7 @@ sub GenerateImplementation
     push(@implFixedHeader, GenerateImplementationContentHeader($dataNode));
 
     AddToImplIncludes("RuntimeEnabledFeatures.h");
-    AddToImplIncludes("ContextEnabledFeatures.h");
+    AddToImplIncludes("ContextFeatures.h");
     AddToImplIncludes("V8Proxy.h");
     AddToImplIncludes("V8Binding.h");
     AddToImplIncludes("V8BindingState.h");
@@ -2866,7 +2867,7 @@ END
             my $enableFunction = GetContextEnableFunction($runtimeAttr->signature);
             my $conditionalString = $codeGenerator->GenerateConditionalString($runtimeAttr->signature);
             push(@implContent, "\n#if ${conditionalString}\n") if $conditionalString;
-            push(@implContent, "    if (ContextEnabledFeatures::${enableFunction}(impl)) {\n");
+            push(@implContent, "    if (ContextFeatures::${enableFunction}(impl->document())) {\n");
             push(@implContent, "        static const BatchedAttribute attrData =\\\n");
             GenerateSingleBatchedAttribute($interfaceName, $runtimeAttr, ";", "    ");
             push(@implContent, <<END);
@@ -3469,6 +3470,9 @@ sub GetNativeType
         }
     }
 
+    my $sequenceType = $codeGenerator->GetSequenceType($type);
+    return "Vector<${sequenceType}>" if $sequenceType;
+
     if ($type eq "float" or $type eq "double") {
         return $type;
     }
@@ -3502,6 +3506,7 @@ sub GetNativeType
     # necessary as resolvers could be constructed on fly.
     return "RefPtr<XPathNSResolver>" if $type eq "XPathNSResolver";
 
+    return "RefPtr<DOMStringList>" if $type eq "DOMString[]";
     return "RefPtr<${type}>" if IsRefPtrType($type) and not $isParameter;
 
     return "RefPtr<MediaQueryListListener>" if $type eq "MediaQueryListListener";
@@ -3510,7 +3515,6 @@ sub GetNativeType
     return "Vector<float>" if $type eq "float[]";
     return "Vector<double>" if $type eq "double[]";
     return "RefPtr<DOMStringList>" if $type eq "DOMStringList";
-    return "RefPtr<DOMStringList>" if $type eq "DOMString[]";
 
     # Default, assume native type is a pointer with same type name as idl type
     return "${type}*";
@@ -3628,6 +3632,11 @@ sub JSValueToNative
         return "toNativeArray<$arrayType>($value)";
     }
 
+    my $sequenceType = $codeGenerator->GetSequenceType($type);
+    if ($sequenceType) {
+        return "toNativeArray<$sequenceType>($value)";
+    }
+
     AddIncludesForType($type);
 
     if (IsDOMNodeType($type)) {
@@ -3675,9 +3684,13 @@ sub CreateCustomSignature
                 $result .= "v8::Handle<v8::FunctionTemplate>()";
             } else {
                 my $type = $parameter->type;
-                my $arrayType = $codeGenerator->GetArrayType($type);
-                if ($arrayType) {
-                    AddToImplIncludes("$arrayType.h");
+                my $sequenceType = $codeGenerator->GetSequenceType($type);
+                if ($sequenceType) {
+                    if ($codeGenerator->SkipIncludeHeader($sequenceType)) {
+                        $result .= "v8::Handle<v8::FunctionTemplate>()";
+                        next;
+                    }
+                    AddToImplIncludes("$sequenceType.h");
                 } else {
                     my $header = GetV8HeaderName($type);
                     AddToImplIncludes($header);
@@ -3733,6 +3746,7 @@ my %non_wrapper_types = (
     'CompareHow' => 1,
     'DOMObject' => 1,
     'DOMString' => 1,
+    'DOMString[]' => 1,
     'DOMTimeStamp' => 1,
     'Date' => 1,
     'Dictionary' => 1,
@@ -3851,11 +3865,23 @@ sub NativeToJSValue
 
     my $arrayType = $codeGenerator->GetArrayType($type);
     if ($arrayType) {
-        if (!$codeGenerator->SkipIncludeHeader($arrayType)) {
+        if ($type eq "DOMString[]") {
+            AddToImplIncludes("V8DOMStringList.h");
+            AddToImplIncludes("DOMStringList.h");
+        } elsif (!$codeGenerator->SkipIncludeHeader($arrayType)) {
             AddToImplIncludes("V8$arrayType.h");
             AddToImplIncludes("$arrayType.h");
         }
         return "v8Array($value$getIsolateArg)";
+    }
+
+    my $sequenceType = $codeGenerator->GetSequenceType($type);
+    if ($sequenceType) {
+        if (!$codeGenerator->SkipIncludeHeader($sequenceType)) {
+            AddToImplIncludes("V8$sequenceType.h");
+            AddToImplIncludes("$sequenceType.h");
+        }
+        return "v8Array($value, $getIsolate)";
     }
 
     AddIncludesForType($type);

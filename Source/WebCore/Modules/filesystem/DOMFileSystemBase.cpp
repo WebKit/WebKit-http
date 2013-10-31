@@ -54,12 +54,15 @@ const char DOMFileSystemBase::persistentPathPrefix[] = "persistent";
 const size_t DOMFileSystemBase::persistentPathPrefixLength = sizeof(DOMFileSystemBase::persistentPathPrefix) - 1;
 const char DOMFileSystemBase::temporaryPathPrefix[] = "temporary";
 const size_t DOMFileSystemBase::temporaryPathPrefixLength = sizeof(DOMFileSystemBase::temporaryPathPrefix) - 1;
+const char DOMFileSystemBase::isolatedPathPrefix[] = "isolated";
+const size_t DOMFileSystemBase::isolatedPathPrefixLength = sizeof(DOMFileSystemBase::isolatedPathPrefix) - 1;
 
 DOMFileSystemBase::DOMFileSystemBase(ScriptExecutionContext* context, const String& name, FileSystemType type, const KURL& rootURL, PassOwnPtr<AsyncFileSystem> asyncFileSystem)
     : m_context(context)
     , m_name(name)
     , m_type(type)
     , m_filesystemRootURL(rootURL)
+    , m_clonable(false)
     , m_asyncFileSystem(asyncFileSystem)
 {
 }

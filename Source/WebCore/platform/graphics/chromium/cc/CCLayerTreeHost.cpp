@@ -27,7 +27,6 @@
 #include "cc/CCLayerTreeHost.h"
 
 #include "LayerChromium.h"
-#include "LayerPainterChromium.h"
 #include "LayerRendererChromium.h"
 #include "Region.h"
 #include "TraceEvent.h"
@@ -38,6 +37,7 @@
 #include "cc/CCLayerTreeHostCommon.h"
 #include "cc/CCLayerTreeHostImpl.h"
 #include "cc/CCOcclusionTracker.h"
+#include "cc/CCSettings.h"
 #include "cc/CCSingleThreadProxy.h"
 #include "cc/CCThread.h"
 #include "cc/CCThreadProxy.h"
@@ -58,7 +58,7 @@ bool CCLayerTreeHost::anyLayerTreeHostInstanceExists()
     return numLayerTreeInstances > 0;
 }
 
-PassOwnPtr<CCLayerTreeHost> CCLayerTreeHost::create(CCLayerTreeHostClient* client, const CCSettings& settings)
+PassOwnPtr<CCLayerTreeHost> CCLayerTreeHost::create(CCLayerTreeHostClient* client, const CCLayerTreeSettings& settings)
 {
     OwnPtr<CCLayerTreeHost> layerTreeHost = adoptPtr(new CCLayerTreeHost(client, settings));
     if (!layerTreeHost->initialize())
@@ -66,7 +66,7 @@ PassOwnPtr<CCLayerTreeHost> CCLayerTreeHost::create(CCLayerTreeHostClient* clien
     return layerTreeHost.release();
 }
 
-CCLayerTreeHost::CCLayerTreeHost(CCLayerTreeHostClient* client, const CCSettings& settings)
+CCLayerTreeHost::CCLayerTreeHost(CCLayerTreeHostClient* client, const CCLayerTreeSettings& settings)
     : m_compositorIdentifier(-1)
     , m_animating(false)
     , m_needsAnimateLayers(false)
@@ -78,6 +78,7 @@ CCLayerTreeHost::CCLayerTreeHost(CCLayerTreeHostClient* client, const CCSettings
     , m_numTimesRecreateShouldFail(0)
     , m_numFailedRecreateAttempts(0)
     , m_settings(settings)
+    , m_deviceScaleFactor(1)
     , m_visible(true)
     , m_memoryAllocationBytes(0)
     , m_memoryAllocationIsForDisplay(false)
@@ -242,7 +243,7 @@ void CCLayerTreeHost::finishCommitOnImplThread(CCLayerTreeHostImpl* hostImpl)
 {
     ASSERT(CCProxy::isImplThread());
 
-    hostImpl->setRootLayer(TreeSynchronizer::synchronizeTrees(rootLayer(), hostImpl->releaseRootLayer(), hostImpl));
+    hostImpl->setRootLayer(TreeSynchronizer::synchronizeTrees(rootLayer(), hostImpl->detachLayerTree(), hostImpl));
 
     // We may have added an animation during the tree sync. This will cause both layer tree hosts
     // to visit their controllers.
@@ -251,6 +252,7 @@ void CCLayerTreeHost::finishCommitOnImplThread(CCLayerTreeHostImpl* hostImpl)
 
     hostImpl->setSourceFrameNumber(frameNumber());
     hostImpl->setViewportSize(viewportSize());
+    hostImpl->setDeviceScaleFactor(deviceScaleFactor());
     hostImpl->setPageScaleFactorAndLimits(m_pageScaleFactor, m_minPageScaleFactor, m_maxPageScaleFactor);
     hostImpl->setBackgroundColor(m_backgroundColor);
     hostImpl->setHasTransparentBackground(m_hasTransparentBackground);
@@ -385,7 +387,7 @@ void CCLayerTreeHost::setViewportSize(const IntSize& viewportSize)
     m_viewportSize = viewportSize;
 
     m_deviceViewportSize = viewportSize;
-    m_deviceViewportSize.scale(m_settings.deviceScaleFactor);
+    m_deviceViewportSize.scale(m_deviceScaleFactor);
 
     setNeedsCommit();
 }
@@ -519,7 +521,7 @@ void CCLayerTreeHost::updateLayers(LayerChromium* rootLayer, CCTextureUpdater& u
         TRACE_EVENT("CCLayerTreeHost::updateLayers::calcDrawEtc", this, 0);
         WebTransformationMatrix identityMatrix;
         WebTransformationMatrix deviceScaleTransform;
-        deviceScaleTransform.scale(m_settings.deviceScaleFactor);
+        deviceScaleTransform.scale(m_deviceScaleFactor);
         CCLayerTreeHostCommon::calculateDrawTransforms(rootLayer, rootLayer, deviceScaleTransform, identityMatrix, updateList, rootRenderSurface->layerList(), layerRendererCapabilities().maxTextureSize);
 
         FloatRect rootScissorRect(FloatPoint(0, 0), viewportSize());
@@ -583,16 +585,12 @@ void CCLayerTreeHost::paintMasksForRenderSurface(LayerChromium* renderSurfaceLay
     // mask and replica should be painted.
 
     LayerChromium* maskLayer = renderSurfaceLayer->maskLayer();
-    if (maskLayer) {
-        maskLayer->setVisibleLayerRect(IntRect(IntPoint(), renderSurfaceLayer->contentBounds()));
+    if (maskLayer)
         update(maskLayer, paintType, updater, 0);
-    }
 
     LayerChromium* replicaMaskLayer = renderSurfaceLayer->replicaLayer() ? renderSurfaceLayer->replicaLayer()->maskLayer() : 0;
-    if (replicaMaskLayer) {
-        replicaMaskLayer->setVisibleLayerRect(IntRect(IntPoint(), renderSurfaceLayer->contentBounds()));
+    if (replicaMaskLayer)
         update(replicaMaskLayer, paintType, updater, 0);
-    }
 }
 
 void CCLayerTreeHost::paintLayerContents(const LayerList& renderSurfaceLayerList, PaintType paintType, CCTextureUpdater& updater)
@@ -622,15 +620,42 @@ void CCLayerTreeHost::paintLayerContents(const LayerList& renderSurfaceLayerList
     occlusionTracker.overdrawMetrics().recordMetrics(this);
 }
 
+static LayerChromium* findFirstScrollableLayer(LayerChromium* layer)
+{
+    if (!layer)
+        return 0;
+
+    if (layer->scrollable())
+        return layer;
+
+    for (size_t i = 0; i < layer->children().size(); ++i) {
+        LayerChromium* found = findFirstScrollableLayer(layer->children()[i].get());
+        if (found)
+            return found;
+    }
+
+    return 0;
+}
+
 void CCLayerTreeHost::applyScrollAndScale(const CCScrollAndScaleSet& info)
 {
-    // FIXME: pushing scroll offsets to non-root layers not implemented
-    if (!info.scrolls.size())
+    if (!m_rootLayer)
         return;
 
-    ASSERT(info.scrolls.size() == 1);
-    IntSize scrollDelta = info.scrolls[0].scrollDelta;
-    m_client->applyScrollAndScale(scrollDelta, info.pageScaleDelta);
+    LayerChromium* rootScrollLayer = findFirstScrollableLayer(m_rootLayer.get());
+    IntSize rootScrollDelta;
+
+    for (size_t i = 0; i < info.scrolls.size(); ++i) {
+        LayerChromium* layer = CCLayerTreeHostCommon::findLayerInSubtree(m_rootLayer.get(), info.scrolls[i].layerId);
+        if (!layer)
+            continue;
+        if (layer == rootScrollLayer)
+            rootScrollDelta += info.scrolls[i].scrollDelta;
+        else
+            layer->scrollBy(info.scrolls[i].scrollDelta);
+    }
+    if (!rootScrollDelta.isZero() || info.pageScaleDelta != 1)
+        m_client->applyScrollAndScale(rootScrollDelta, info.pageScaleDelta);
 }
 
 void CCLayerTreeHost::startRateLimiter(WebKit::WebGraphicsContext3D* context)
@@ -684,9 +709,20 @@ void CCLayerTreeHost::deleteTextureAfterCommit(PassOwnPtr<ManagedTexture> textur
     m_deleteTextureAfterCommitList.append(texture);
 }
 
+void CCLayerTreeHost::setDeviceScaleFactor(float deviceScaleFactor)
+{
+    if (deviceScaleFactor ==  m_deviceScaleFactor)
+        return;
+    m_deviceScaleFactor = deviceScaleFactor;
+
+    m_deviceViewportSize = m_viewportSize;
+    m_deviceViewportSize.scale(m_deviceScaleFactor);
+    setNeedsCommit();
+}
+
 void CCLayerTreeHost::animateLayers(double monotonicTime)
 {
-    if (!m_settings.threadedAnimationEnabled || !m_needsAnimateLayers)
+    if (!CCSettings::acceleratedAnimationEnabled() || !m_needsAnimateLayers)
         return;
 
     TRACE_EVENT("CCLayerTreeHostImpl::animateLayers", this, 0);

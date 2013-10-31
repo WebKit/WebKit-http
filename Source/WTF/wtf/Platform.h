@@ -476,19 +476,18 @@
 /* USE(SKIA) for Win/Linux/Mac/Android */
 #if PLATFORM(CHROMIUM)
 #if OS(DARWIN)
-#if USE(SKIA_ON_MAC_CHROMIUM)
 #define WTF_USE_SKIA 1
-#else
-#define WTF_USE_CG 1
-#endif
 #define WTF_USE_ATSUI 1
 #define WTF_USE_CORE_TEXT 1
 #define WTF_USE_ICCJPEG 1
+#define WTF_USE_QCMSLIB 1
 #elif OS(ANDROID)
 #define WTF_USE_SKIA 1
 #else
 #define WTF_USE_SKIA 1
 #define WTF_USE_CHROMIUM_NET 1
+#define WTF_USE_ICCJPEG 1
+#define WTF_USE_QCMSLIB 1
 #endif
 #endif
 
@@ -912,6 +911,17 @@
 #define ENABLE_JIT 1
 #endif
 
+/* If possible, try to enable a disassembler. This is optional. We proceed in two
+   steps: first we try to find some disassembler that we can use, and then we
+   decide if the high-level disassembler API can be enabled. */
+#if !defined(WTF_USE_UDIS86) && ENABLE(JIT) && PLATFORM(MAC) && (CPU(X86) || CPU(X86_64))
+#define WTF_USE_UDIS86 1
+#endif
+
+#if !defined(ENABLE_DISASSEMBLER) && USE(UDIS86)
+#define ENABLE_DISASSEMBLER 1
+#endif
+
 /* On some of the platforms where we have a JIT, we want to also have the 
    low-level interpreter. */
 #if !defined(ENABLE_LLINT) \
@@ -1099,7 +1109,7 @@
 #define WTF_USE_UNIX_DOMAIN_SOCKETS 1
 #endif
 
-#if !defined(ENABLE_COMPARE_AND_SWAP) && COMPILER(GCC) && (CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2))
+#if !defined(ENABLE_COMPARE_AND_SWAP) && (OS(WINDOWS) || (COMPILER(GCC) && (CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2))))
 #define ENABLE_COMPARE_AND_SWAP 1
 #endif
 

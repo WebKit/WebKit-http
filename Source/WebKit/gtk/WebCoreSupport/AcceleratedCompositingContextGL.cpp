@@ -80,7 +80,7 @@ GLContext* AcceleratedCompositingContext::glContext()
     return m_context.get();
 }
 
-bool AcceleratedCompositingContext::renderLayersToWindow(const IntRect& clipRect)
+bool AcceleratedCompositingContext::renderLayersToWindow(cairo_t*, const IntRect& clipRect)
 {
     if (!enabled())
         return false;
@@ -189,7 +189,7 @@ void AcceleratedCompositingContext::syncLayersTimeout()
     if (!m_rootGraphicsLayer)
         return;
 
-    renderLayersToWindow(IntRect());
+    renderLayersToWindow(0, IntRect());
 
     if (toTextureMapperLayer(m_rootGraphicsLayer.get())->descendantsOrSelfHaveRunningAnimations())
         m_syncTimerCallbackId = g_timeout_add_full(GDK_PRIORITY_EVENTS, 1000.0 / 60.0, reinterpret_cast<GSourceFunc>(syncLayersTimeoutCallback), this, 0);

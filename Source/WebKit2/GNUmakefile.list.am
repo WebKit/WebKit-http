@@ -344,10 +344,10 @@ webkit2_sources += \
 	Source/WebKit2/Shared/EditorState.h \
 	Source/WebKit2/Shared/FontSmoothingLevel.h \
 	Source/WebKit2/Shared/ProcessExecutablePath.h \
-	Source/WebKit2/Shared/cairo/LayerTreeContextCairo.cpp \
 	Source/WebKit2/Shared/cairo/ShareableBitmapCairo.cpp \
 	Source/WebKit2/Shared/gtk/ArgumentCodersGtk.h \
 	Source/WebKit2/Shared/gtk/ArgumentCodersGtk.cpp \
+	Source/WebKit2/Shared/gtk/LayerTreeContextGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebKeyboardEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebMouseEventGtk.cpp \
 	Source/WebKit2/Shared/gtk/NativeWebWheelEventGtk.cpp \
@@ -362,6 +362,10 @@ webkit2_sources += \
 	Source/WebKit2/Shared/ImmutableArray.h \
 	Source/WebKit2/Shared/ImmutableDictionary.cpp \
 	Source/WebKit2/Shared/ImmutableDictionary.h \
+	Source/WebKit2/Shared/IntentData.cpp \
+	Source/WebKit2/Shared/IntentData.h \
+	Source/WebKit2/Shared/IntentServiceInfo.cpp \
+	Source/WebKit2/Shared/IntentServiceInfo.h \
 	Source/WebKit2/Shared/LayerTreeContext.h \
 	Source/WebKit2/Shared/MutableArray.cpp \
 	Source/WebKit2/Shared/MutableArray.h \
@@ -571,6 +575,8 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListItem.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitBackForwardListPrivate.h \
+	Source/WebKit2/UIProcess/API/gtk/WebKitContextMenuClient.cpp \
+	Source/WebKit2/UIProcess/API/gtk/WebKitContextMenuClient.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManager.h \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManager.cpp \
 	Source/WebKit2/UIProcess/API/gtk/WebKitCookieManagerPrivate.h \
@@ -801,6 +807,10 @@ webkit2_sources += \
 	Source/WebKit2/UIProcess/WebIconDatabaseClient.h \
 	Source/WebKit2/UIProcess/WebInspectorProxy.cpp \
 	Source/WebKit2/UIProcess/WebInspectorProxy.h \
+	Source/WebKit2/UIProcess/WebIntentData.cpp \
+	Source/WebKit2/UIProcess/WebIntentData.h \
+	Source/WebKit2/UIProcess/WebIntentServiceInfo.cpp \
+	Source/WebKit2/UIProcess/WebIntentServiceInfo.h \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.cpp \
 	Source/WebKit2/UIProcess/WebKeyValueStorageManagerProxy.h \
 	Source/WebKit2/UIProcess/WebMediaCacheManagerProxy.cpp \
@@ -1058,6 +1068,12 @@ webkit2_sources += \
 	Source/WebKit2/WebProcess/WebConnectionToUIProcess.h \
 	Source/WebKit2/WebProcess/WebProcess.cpp \
 	Source/WebKit2/WebProcess/WebProcess.h
+
+if USE_TEXTURE_MAPPER_GL
+webkit2_sources += \
+   Source/WebKit2/WebProcess/WebPage/gtk/LayerTreeHostGtk.cpp \
+   Source/WebKit2/WebProcess/WebPage/gtk/LayerTreeHostGtk.h
+endif # END USE_TEXTURE_MAPPER_GL
 
 if ENABLE_PLUGIN_PROCESS
 

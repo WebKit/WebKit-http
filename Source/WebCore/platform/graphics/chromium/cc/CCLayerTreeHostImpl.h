@@ -68,7 +68,7 @@ class CCLayerTreeHostImpl : public CCInputHandlerClient, CCRendererClient {
     typedef Vector<CCLayerImpl*> CCLayerList;
 
 public:
-    static PassOwnPtr<CCLayerTreeHostImpl> create(const CCSettings&, CCLayerTreeHostImplClient*);
+    static PassOwnPtr<CCLayerTreeHostImpl> create(const CCLayerTreeSettings&, CCLayerTreeHostImplClient*);
     virtual ~CCLayerTreeHostImpl();
 
     // CCInputHandlerClient implementation
@@ -86,7 +86,8 @@ public:
 
     struct FrameData {
         CCRenderPassList renderPasses;
-        CCLayerList renderSurfaceLayerList;
+        CCRenderPassList skippedPasses;
+        CCLayerList* renderSurfaceLayerList;
         CCLayerList willDrawLayers;
     };
 
@@ -106,7 +107,7 @@ public:
 
     // CCRendererClient implementation
     virtual const IntSize& deviceViewportSize() const OVERRIDE { return m_deviceViewportSize; }
-    virtual const CCSettings& settings() const OVERRIDE { return m_settings; }
+    virtual const CCLayerTreeSettings& settings() const OVERRIDE { return m_settings; }
     virtual void didLoseContext() OVERRIDE;
     virtual void onSwapBuffersComplete() OVERRIDE;
     virtual void setFullRootLayerDamage() OVERRIDE;
@@ -133,10 +134,13 @@ public:
     void readback(void* pixels, const IntRect&);
 
     void setRootLayer(PassOwnPtr<CCLayerImpl>);
-    PassOwnPtr<CCLayerImpl> releaseRootLayer() { return m_rootLayerImpl.release(); }
     CCLayerImpl* rootLayer() { return m_rootLayerImpl.get(); }
 
-    CCLayerImpl* scrollLayer() const { return m_scrollLayerImpl; }
+    // Release ownership of the current layer tree and replace it with an empty
+    // tree. Returns the root layer of the detached tree.
+    PassOwnPtr<CCLayerImpl> detachLayerTree();
+
+    CCLayerImpl* rootScrollLayer() const { return m_rootScrollLayerImpl; }
 
     bool visible() const { return m_visible; }
     void setVisible(bool);
@@ -149,6 +153,9 @@ public:
 
     const IntSize& viewportSize() const { return m_viewportSize; }
     void setViewportSize(const IntSize&);
+
+    float deviceScaleFactor() const { return m_deviceScaleFactor; }
+    void setDeviceScaleFactor(float);
 
     float pageScale() const { return m_pageScale; }
     void setPageScaleFactorAndLimits(float pageScale, float minPageScale, float maxPageScale);
@@ -171,8 +178,11 @@ public:
     CCFrameRateCounter* fpsCounter() const { return m_fpsCounter.get(); }
     CCDebugRectHistory* debugRectHistory() const { return m_debugRectHistory.get(); }
 
+    // Removes all render passes for which we have cached textures, and which did not change their content.
+    static void removePassesWithCachedTextures(CCRenderPassList& passes, CCRenderPassList& skippedPasses);
+
 protected:
-    CCLayerTreeHostImpl(const CCSettings&, CCLayerTreeHostImplClient*);
+    CCLayerTreeHostImpl(const CCLayerTreeSettings&, CCLayerTreeHostImplClient*);
 
     void animatePageScale(double monotonicTime);
     void animateGestures(double monotonicTime);
@@ -196,30 +206,36 @@ private:
     void makeScrollAndScaleSet(CCScrollAndScaleSet* scrollInfo, const IntSize& scrollOffset, float pageScale);
 
     void setPageScaleDelta(float);
-    void applyPageScaleDeltaToScrollLayer();
-    void adjustScrollsForPageScaleChange(float);
     void updateMaxScrollPosition();
     void trackDamageForAllSurfaces(CCLayerImpl* rootDrawLayer, const CCLayerList& renderSurfaceLayerList);
 
     // Returns false if the frame should not be displayed. This function should
     // only be called from prepareToDraw, as didDrawAllLayers must be called
     // if this helper function is called.
-    bool calculateRenderPasses(CCRenderPassList&, CCLayerList& renderSurfaceLayerList, CCLayerList& willDrawLayers);
+    bool calculateRenderPasses(FrameData&);
     void animateLayersRecursive(CCLayerImpl*, double monotonicTime, double wallClockTime, CCAnimationEventsVector*, bool& didAnimate, bool& needsAnimateLayers);
     void setBackgroundTickingEnabled(bool);
     IntSize contentSize() const;
+
+    static void removeRenderPassesRecursive(CCRenderPassList& passes, size_t bottomPass, const CCRenderPass* firstToRemove, CCRenderPassList& skippedPasses);
+
     void sendDidLoseContextRecursive(CCLayerImpl*);
-    void clearRenderSurfacesOnCCLayerImplRecursive(CCLayerImpl*);
+    void clearRenderSurfaces();
+    bool ensureRenderSurfaceLayerList();
+    void clearCurrentlyScrollingLayer();
 
     void dumpRenderSurfaces(TextStream&, int indent, const CCLayerImpl*) const;
 
     RefPtr<CCGraphicsContext> m_context;
     OwnPtr<CCRenderer> m_layerRenderer;
     OwnPtr<CCLayerImpl> m_rootLayerImpl;
-    CCLayerImpl* m_scrollLayerImpl;
-    CCSettings m_settings;
+    CCLayerImpl* m_rootScrollLayerImpl;
+    CCLayerImpl* m_currentlyScrollingLayerImpl;
+    int m_scrollingLayerIdFromPreviousTree;
+    CCLayerTreeSettings m_settings;
     IntSize m_viewportSize;
     IntSize m_deviceViewportSize;
+    float m_deviceScaleFactor;
     bool m_visible;
     bool m_sourceFrameCanBeDrawn;
 
@@ -247,6 +263,10 @@ private:
     CCLayerSorter m_layerSorter;
 
     FloatRect m_rootScissorRect;
+
+    // List of visible layers for the most recently prepared frame. Used for
+    // rendering and input event hit testing.
+    CCLayerList m_renderSurfaceLayerList;
 
     OwnPtr<CCFrameRateCounter> m_fpsCounter;
     OwnPtr<CCDebugRectHistory> m_debugRectHistory;

@@ -111,9 +111,8 @@ void TiledLayerChromium::updateTileSizeAndTilingOption()
 {
     ASSERT(layerTreeHost());
 
-    const CCSettings& settings = layerTreeHost()->settings();
-    const IntSize& defaultTileSize = settings.defaultTileSize;
-    const IntSize& maxUntiledLayerSize = settings.maxUntiledLayerSize;
+    const IntSize& defaultTileSize = layerTreeHost()->settings().defaultTileSize;
+    const IntSize& maxUntiledLayerSize = layerTreeHost()->settings().maxUntiledLayerSize;
     int layerWidth = contentBounds().width();
     int layerHeight = contentBounds().height();
 
@@ -217,6 +216,9 @@ void TiledLayerChromium::pushPropertiesTo(CCLayerImpl* layer)
         int i = iter->first.first;
         int j = iter->first.second;
         UpdatableTile* tile = static_cast<UpdatableTile*>(iter->second.get());
+        // FIXME: This should not ever be null.
+        if (!tile)
+            continue;
         tile->isInUseOnImpl = false;
         if (!tile->managedTexture()->isValid(m_tiler->tileSize(), m_textureFormat)) {
             invalidTiles.append(tile);
@@ -244,6 +246,9 @@ void TiledLayerChromium::setLayerTreeHost(CCLayerTreeHost* host)
     if (host && host != layerTreeHost()) {
         for (CCLayerTilingData::TileMap::const_iterator iter = m_tiler->tiles().begin(); iter != m_tiler->tiles().end(); ++iter) {
             UpdatableTile* tile = static_cast<UpdatableTile*>(iter->second.get());
+            // FIXME: This should not ever be null.
+            if (!tile)
+                continue;
             tile->managedTexture()->setTextureManager(host->contentsTextureManager());
         }
     }
@@ -304,6 +309,9 @@ void TiledLayerChromium::invalidateRect(const IntRect& layerRect)
     for (CCLayerTilingData::TileMap::const_iterator iter = m_tiler->tiles().begin(); iter != m_tiler->tiles().end(); ++iter) {
         UpdatableTile* tile = static_cast<UpdatableTile*>(iter->second.get());
         ASSERT(tile);
+        // FIXME: This should not ever be null.
+        if (!tile)
+            continue;
         IntRect bound = m_tiler->tileRect(tile);
         bound.intersect(layerRect);
         tile->dirtyRect.unite(bound);
@@ -419,8 +427,9 @@ void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, in
     for (int j = top; j <= bottom; ++j) {
         for (int i = left; i <= right; ++i) {
             UpdatableTile* tile = tileAt(i, j);
+            // FIXME: This should not ever be null.
             if (!tile)
-                CRASH();
+                continue;
             if (tile->updated)
                 tile->copyAndClearDirty();
             else if (!idle && occlusion && tile->isDirty())
@@ -446,12 +455,15 @@ void TiledLayerChromium::updateTiles(bool idle, int left, int top, int right, in
     // so we grab a local reference here to hold the updater alive until the paint completes.
     RefPtr<LayerTextureUpdater> protector(textureUpdater());
     IntRect paintedOpaqueRect;
-    textureUpdater()->prepareToUpdate(paintRect, m_tiler->tileSize(), m_tiler->hasBorderTexels(), contentsScale(), paintedOpaqueRect);
+    textureUpdater()->prepareToUpdate(paintRect, m_tiler->tileSize(), contentsScale(), paintedOpaqueRect);
     m_didPaint = true;
 
     for (int j = top; j <= bottom; ++j) {
         for (int i = left; i <= right; ++i) {
             UpdatableTile* tile = tileAt(i, j);
+            // FIXME: This should not ever be null.
+            if (!tile)
+                continue;
 
             IntRect tileRect = m_tiler->tileBounds(i, j);
 
@@ -561,6 +573,9 @@ void TiledLayerChromium::resetUpdateState()
     CCLayerTilingData::TileMap::const_iterator end = m_tiler->tiles().end();
     for (CCLayerTilingData::TileMap::const_iterator iter = m_tiler->tiles().begin(); iter != end; ++iter) {
         UpdatableTile* tile = static_cast<UpdatableTile*>(iter->second.get());
+        // FIXME: This should not ever be null.
+        if (!tile)
+            continue;
         tile->updateRect = IntRect();
         tile->partialUpdate = false;
         tile->updated = false;

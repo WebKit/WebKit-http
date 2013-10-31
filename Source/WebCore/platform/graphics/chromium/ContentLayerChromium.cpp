@@ -41,6 +41,7 @@
 #include "LayerRendererChromium.h"
 #include "PlatformSupport.h"
 #include "cc/CCLayerTreeHost.h"
+#include "cc/CCSettings.h"
 #include <public/Platform.h>
 #include <wtf/CurrentTime.h>
 
@@ -54,12 +55,10 @@ public:
         return adoptPtr(new ContentLayerPainter(delegate));
     }
 
-    virtual void paint(GraphicsContext& context, const IntRect& contentRect)
+    virtual void paint(SkCanvas* canvas, const IntRect& contentRect, IntRect& opaque)
     {
         double paintStart = currentTime();
-        context.clearRect(contentRect);
-        context.clip(contentRect);
-        m_delegate->paintContents(context, contentRect);
+        m_delegate->paintContents(canvas, contentRect, opaque);
         double paintEnd = currentTime();
         double pixelsPerSec = (contentRect.width() * contentRect.height()) / (paintEnd - paintStart);
         WebKit::Platform::current()->histogramCustomCounts("Renderer4.AccelContentPaintDurationMS", (paintEnd - paintStart) * 1000, 0, 120, 30);
@@ -127,7 +126,7 @@ void ContentLayerChromium::createTextureUpdaterIfNeeded()
         return;
     if (layerTreeHost()->settings().acceleratePainting)
         m_textureUpdater = FrameBufferSkPictureCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate));
-    else if (layerTreeHost()->settings().perTilePainting)
+    else if (CCSettings::perTilePaintingEnabled())
         m_textureUpdater = BitmapSkPictureCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate), layerTreeHost()->layerRendererCapabilities().usingMapSub);
     else
         m_textureUpdater = BitmapCanvasLayerTextureUpdater::create(ContentLayerPainter::create(m_delegate), layerTreeHost()->layerRendererCapabilities().usingMapSub);

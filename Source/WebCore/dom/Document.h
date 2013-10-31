@@ -67,6 +67,7 @@ class CachedScript;
 class CanvasRenderingContext;
 class CharacterData;
 class Comment;
+class ContextFeatures;
 class DOMImplementation;
 class DOMSelection;
 class DOMWindow;
@@ -711,6 +712,9 @@ public:
     bool isPendingStyleRecalc() const;
     void styleRecalcTimerFired(Timer<Document>*);
 
+    void registerDynamicSubtreeNodeList(DynamicSubtreeNodeList*);
+    void unregisterDynamicSubtreeNodeList(DynamicSubtreeNodeList*);
+
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
     void moveNodeIteratorsToNewDocument(Node*, Document*);
@@ -1064,6 +1068,11 @@ public:
     void webkitExitFullscreen();
 #endif
 
+#if ENABLE(POINTER_LOCK)
+    void webkitExitPointerLock();
+    Element* webkitPointerLockElement() const;
+#endif
+
     // Used to allow element that loads data without going through a FrameLoader to delay the 'load' event.
     void incrementLoadEventDelayCount() { ++m_loadEventDelayCount; }
     void decrementLoadEventDelayCount();
@@ -1118,6 +1127,9 @@ public:
 
     void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, RenderObject*);
     void adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect&, RenderObject*);
+
+    void setContextFeatures(PassRefPtr<ContextFeatures>);
+    ContextFeatures* contextFeatures() { return m_contextFeatures.get(); }
 
 protected:
     Document(Frame*, const KURL&, bool isXHTML, bool isHTML);
@@ -1213,6 +1225,8 @@ private:
     Frame* m_frame;
     OwnPtr<CachedResourceLoader> m_cachedResourceLoader;
     RefPtr<DocumentParser> m_parser;
+    RefPtr<ContextFeatures> m_contextFeatures;
+
     bool m_wellFormed;
 
     // Document URLs.
@@ -1228,6 +1242,8 @@ private:
     // string by content.  Document.documentURI affects m_baseURL unless the
     // document contains a <base> element, in which case the <base> element
     // takes precedence.
+    //
+    // This property is read-only from JavaScript, but writable from Objective C.
     String m_documentURI;
 
     String m_baseTarget;

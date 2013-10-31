@@ -48,9 +48,10 @@ class CCDrawQuad;
 class CCIOSurfaceDrawQuad;
 class CCRenderPassDrawQuad;
 class CCSolidColorDrawQuad;
+class CCStreamVideoDrawQuad;
 class CCTextureDrawQuad;
 class CCTileDrawQuad;
-class CCVideoDrawQuad;
+class CCYUVVideoDrawQuad;
 class GeometryBinding;
 class GraphicsContext3D;
 class LayerRendererGpuMemoryAllocationChangedCallbackAdapter;
@@ -75,6 +76,7 @@ public:
 
     const FloatQuad& sharedGeometryQuad() const { return m_sharedGeometryQuad; }
 
+    virtual void decideRenderPassAllocationsForFrame(const CCRenderPassList&) OVERRIDE;
     virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) OVERRIDE;
     virtual void drawRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect) OVERRIDE;
     virtual void finishDrawingFrame() OVERRIDE;
@@ -130,18 +132,11 @@ private:
     void drawBackgroundFilters(const CCRenderPassDrawQuad*, const WebKit::WebTransformationMatrix& deviceTransform);
     void drawRenderPassQuad(const CCRenderPassDrawQuad*);
     void drawSolidColorQuad(const CCSolidColorDrawQuad*);
+    void drawStreamVideoQuad(const CCStreamVideoDrawQuad*);
     void drawTextureQuad(const CCTextureDrawQuad*);
     void drawIOSurfaceQuad(const CCIOSurfaceDrawQuad*);
     void drawTileQuad(const CCTileDrawQuad*);
-    void drawVideoQuad(const CCVideoDrawQuad*);
-
-    void copyPlaneToTexture(const CCVideoDrawQuad*, const void* plane, int index);
-    bool copyFrameToTextures(const CCVideoDrawQuad*);
-    template<class Program> void drawSingleTextureVideoQuad(const CCVideoDrawQuad*, Program*, float widthScaleFactor, Platform3DObject textureId, GC3Denum target);
-    void drawNativeTexture2D(const CCVideoDrawQuad*);
-    void drawStreamTexture(const CCVideoDrawQuad*);
-    void drawRGBA(const CCVideoDrawQuad*);
-    void drawYUV(const CCVideoDrawQuad*);
+    void drawYUVVideoQuad(const CCYUVVideoDrawQuad*);
 
     void setDrawFramebufferRect(const IntRect&, bool flipY);
 

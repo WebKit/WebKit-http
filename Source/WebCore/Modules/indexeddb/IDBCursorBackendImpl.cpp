@@ -92,6 +92,7 @@ PassRefPtr<SerializedScriptValue> IDBCursorBackendImpl::value() const
 void IDBCursorBackendImpl::update(PassRefPtr<SerializedScriptValue> value, PassRefPtr<IDBCallbacks> callbacks, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursorBackendImpl::update");
+    ASSERT(m_transaction->mode() != IDBTransaction::READ_ONLY);
     if (!m_cursor || m_cursorType == IndexKeyCursor) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
@@ -163,6 +164,8 @@ void IDBCursorBackendImpl::continueFunctionInternal(ScriptExecutionContext*, Pas
 void IDBCursorBackendImpl::deleteFunction(PassRefPtr<IDBCallbacks> prpCallbacks, ExceptionCode& ec)
 {
     IDB_TRACE("IDBCursorBackendImpl::delete");
+    ASSERT(m_transaction->mode() != IDBTransaction::READ_ONLY);
+
     if (!m_cursor || m_cursorType == IndexKeyCursor) {
         ec = IDBDatabaseException::IDB_INVALID_STATE_ERR;
         return;
@@ -248,6 +251,8 @@ void IDBCursorBackendImpl::close()
     m_closed = true;
     if (m_cursor)
         m_cursor->close();
+    m_cursor.clear();
+    m_savedCursor.clear();
 }
 
 } // namespace WebCore

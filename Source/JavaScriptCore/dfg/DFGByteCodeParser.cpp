@@ -750,6 +750,27 @@ private:
         return call;
     }
     
+    NodeIndex addStructureTransitionCheck(JSCell* object, Structure* structure)
+    {
+        // Add a weak JS constant for the object regardless, since the code should
+        // be jettisoned if the object ever dies.
+        NodeIndex objectIndex = cellConstant(object);
+        
+        if (object->structure() == structure && structure->transitionWatchpointSetIsStillValid()) {
+            addToGraph(StructureTransitionWatchpoint, OpInfo(structure), objectIndex);
+            return objectIndex;
+        }
+        
+        addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(structure)), objectIndex);
+        
+        return objectIndex;
+    }
+    
+    NodeIndex addStructureTransitionCheck(JSCell* object)
+    {
+        return addStructureTransitionCheck(object, object->structure());
+    }
+    
     SpeculatedType getPredictionWithoutOSRExit(NodeIndex nodeIndex, unsigned bytecodeIndex)
     {
         UNUSED_PARAM(nodeIndex);
@@ -1234,6 +1255,9 @@ bool ByteCodeParser::handleInlining(bool usesResult, int callTarget, NodeIndex c
     // Does the code block's size match the heuristics/requirements for being
     // an inline candidate?
     CodeBlock* profiledBlock = executable->profiledCodeBlockFor(kind);
+    if (!profiledBlock)
+        return false;
+    
     if (!mightInlineFunctionFor(profiledBlock, kind))
         return false;
     
@@ -1562,6 +1586,8 @@ void ByteCodeParser::handleGetById(
     // execution if it doesn't have a prediction, so we do it manually.
     if (prediction == SpecNone)
         addToGraph(ForceOSRExit);
+    
+    NodeIndex originalBaseForBaselineJIT = base;
                 
     addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(getByIdStatus.structureSet())), base);
     
@@ -1572,17 +1598,25 @@ void ByteCodeParser::handleGetById(
         for (unsigned i = 0; i < getByIdStatus.chain().size(); ++i) {
             currentObject = asObject(currentStructure->prototypeForLookup(m_inlineStackTop->m_codeBlock));
             currentStructure = getByIdStatus.chain()[i];
-            base = addToGraph(WeakJSConstant, OpInfo(currentObject));
-            addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(currentStructure)), base);
+            base = addStructureTransitionCheck(currentObject, currentStructure);
         }
         useInlineStorage = currentStructure->isUsingInlineStorage();
     } else
         useInlineStorage = getByIdStatus.structureSet().allAreUsingInlinePropertyStorage();
     
+    // Unless we want bugs like https://bugs.webkit.org/show_bug.cgi?id=88783, we need to
+    // ensure that the base of the original get_by_id is kept alive until we're done with
+    // all of the speculations. We only insert the Phantom if there had been a CheckStructure
+    // on something other than the base following the CheckStructure on base, or if the
+    // access was compiled to a WeakJSConstant specific value, in which case we might not
+    // have any explicit use of the base at all.
+    if (getByIdStatus.specificValue() || originalBaseForBaselineJIT != base)
+        addToGraph(Phantom, originalBaseForBaselineJIT);
+    
     if (getByIdStatus.specificValue()) {
         ASSERT(getByIdStatus.specificValue().isCell());
-        set(destinationOperand,
-            addToGraph(WeakJSConstant, OpInfo(getByIdStatus.specificValue().asCell())));
+        
+        set(destinationOperand, cellConstant(getByIdStatus.specificValue().asCell()));
         return;
     }
     
@@ -2089,9 +2123,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 // but the slow path (i.e. the normal get_by_id) never fired.
 
                 addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(methodCallStatus.structure())), base);
-                if (methodCallStatus.needsPrototypeCheck())
-                    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(methodCallStatus.prototypeStructure())), cellConstant(methodCallStatus.prototype()));
-                
+                if (methodCallStatus.needsPrototypeCheck()) {
+                    addStructureTransitionCheck(
+                        methodCallStatus.prototype(), methodCallStatus.prototypeStructure());
+                    addToGraph(Phantom, base);
+                }
                 set(getInstruction[1].u.operand, cellConstant(methodCallStatus.function()));
             } else {
                 handleGetById(
@@ -2179,23 +2215,20 @@ bool ByteCodeParser::parseBlock(unsigned limit)
 
                 addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(putByIdStatus.oldStructure())), base);
                 if (!direct) {
-                    if (!putByIdStatus.oldStructure()->storedPrototype().isNull())
-                        addToGraph(
-                            CheckStructure,
-                            OpInfo(m_graph.addStructureSet(putByIdStatus.oldStructure()->storedPrototype().asCell()->structure())),
-                            cellConstant(putByIdStatus.oldStructure()->storedPrototype().asCell()));
+                    if (!putByIdStatus.oldStructure()->storedPrototype().isNull()) {
+                        addStructureTransitionCheck(
+                            putByIdStatus.oldStructure()->storedPrototype().asCell());
+                    }
                     
                     for (WriteBarrier<Structure>* it = putByIdStatus.structureChain()->head(); *it; ++it) {
                         JSValue prototype = (*it)->storedPrototype();
                         if (prototype.isNull())
                             continue;
                         ASSERT(prototype.isCell());
-                        addToGraph(
-                            CheckStructure,
-                            OpInfo(m_graph.addStructureSet(prototype.asCell()->structure())),
-                            cellConstant(prototype.asCell()));
+                        addStructureTransitionCheck(prototype.asCell());
                     }
                 }
+                ASSERT(putByIdStatus.oldStructure()->transitionWatchpointSetHasBeenInvalidated());
                 addToGraph(
                     PutStructure,
                     OpInfo(
@@ -2239,12 +2272,59 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         case op_get_global_var: {
             SpeculatedType prediction = getPrediction();
             
+            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+
             NodeIndex getGlobalVar = addToGraph(
                 GetGlobalVar,
-                OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
+                OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
                 OpInfo(prediction));
             set(currentInstruction[1].u.operand, getGlobalVar);
             NEXT_OPCODE(op_get_global_var);
+        }
+                    
+        case op_get_global_var_watchable: {
+            SpeculatedType prediction = getPrediction();
+            
+            JSGlobalObject* globalObject = m_inlineStackTop->m_codeBlock->globalObject();
+            
+            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+            Identifier identifier = m_codeBlock->identifier(identifierNumber);
+            SymbolTableEntry entry = globalObject->symbolTable().get(identifier.impl());
+            if (!entry.couldBeWatched()) {
+                NodeIndex getGlobalVar = addToGraph(
+                    GetGlobalVar,
+                    OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
+                    OpInfo(prediction));
+                set(currentInstruction[1].u.operand, getGlobalVar);
+                NEXT_OPCODE(op_get_global_var_watchable);
+            }
+            
+            // The watchpoint is still intact! This means that we will get notified if the
+            // current value in the global variable changes. So, we can inline that value.
+            // Moreover, currently we can assume that this value is a JSFunction*, which
+            // implies that it's a cell. This simplifies things, since in general we'd have
+            // to use a JSConstant for non-cells and a WeakJSConstant for cells. So instead
+            // of having both cases we just assert that the value is a cell.
+            
+            // NB. If it wasn't for CSE, GlobalVarWatchpoint would have no need for the
+            // register pointer. But CSE tracks effects on global variables by comparing
+            // register pointers. Because CSE executes multiple times while the backend
+            // executes once, we use the following performance trade-off:
+            // - The node refers directly to the register pointer to make CSE super cheap.
+            // - To perform backend code generation, the node only contains the identifier
+            //   number, from which it is possible to get (via a few average-time O(1)
+            //   lookups) to the WatchpointSet.
+            
+            addToGraph(
+                GlobalVarWatchpoint,
+                OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[2].u.registerPointer)),
+                OpInfo(identifierNumber));
+            
+            JSValue specificValue = globalObject->registerAt(entry.getIndex()).get();
+            ASSERT(specificValue.isCell());
+            set(currentInstruction[1].u.operand, cellConstant(specificValue.asCell()));
+            
+            NEXT_OPCODE(op_get_global_var_watchable);
         }
 
         case op_put_global_var: {
@@ -2254,6 +2334,28 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 OpInfo(m_inlineStackTop->m_codeBlock->globalObject()->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
                 value);
             NEXT_OPCODE(op_put_global_var);
+        }
+
+        case op_put_global_var_check: {
+            NodeIndex value = get(currentInstruction[2].u.operand);
+            CodeBlock* codeBlock = m_inlineStackTop->m_codeBlock;
+            JSGlobalObject* globalObject = codeBlock->globalObject();
+            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[4].u.operand];
+            Identifier identifier = m_codeBlock->identifier(identifierNumber);
+            SymbolTableEntry entry = globalObject->symbolTable().get(identifier.impl());
+            if (!entry.couldBeWatched()) {
+                addToGraph(
+                    PutGlobalVar,
+                    OpInfo(globalObject->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
+                    value);
+                NEXT_OPCODE(op_put_global_var_check);
+            }
+            addToGraph(
+                PutGlobalVarCheck,
+                OpInfo(codeBlock->globalObject()->assertRegisterIsInThisObject(currentInstruction[1].u.registerPointer)),
+                OpInfo(identifierNumber),
+                value);
+            NEXT_OPCODE(op_put_global_var_check);
         }
 
         // === Block terminators. ===

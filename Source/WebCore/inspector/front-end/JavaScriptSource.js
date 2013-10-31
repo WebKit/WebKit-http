@@ -47,11 +47,7 @@ WebInspector.JavaScriptSource = function(url, resource, contentProvider, sourceM
         if (!this._formatted)
             WebInspector.breakpointManager.restoreBreakpoints(this);
     }.bind(this), 0);
-    if (resource)
-        WebInspector.JavaScriptSource.javaScriptSourceForResource.put(resource, this);
 }
-
-WebInspector.JavaScriptSource.javaScriptSourceForResource = new Map();
 
 WebInspector.JavaScriptSource.prototype = {
     /**
@@ -180,11 +176,29 @@ WebInspector.JavaScriptSource.prototype = {
     },
 
     /**
+     * @return {boolean}
+     */
+    isDivergedFromVM: function()
+    {
+        // FIXME: We should return true if this._isDivergedFromVM is set as well once we provide a way to set breakpoints after LiveEdit failure.
+        return this.isDirty();
+    },
+
+    /**
      * @param {function(?string)} callback
      */
     workingCopyCommitted: function(callback)
     {  
-        WebInspector.DebuggerResourceBinding.setScriptSource(this, this.workingCopy(), callback);
+        /**
+         * @param {?string} error
+         */
+        function innerCallback(error)
+        {
+            this._isDivergedFromVM = !!error;
+            callback(error);
+        }
+
+        WebInspector.DebuggerResourceBinding.setScriptSource(this, this.workingCopy(), innerCallback.bind(this));
     },
 
     /**
