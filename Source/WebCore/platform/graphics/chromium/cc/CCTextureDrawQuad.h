@@ -26,32 +26,10 @@
 #ifndef CCTextureDrawQuad_h
 #define CCTextureDrawQuad_h
 
-#include "cc/CCDrawQuad.h"
-#include <wtf/PassOwnPtr.h>
+#include <public/WebCompositorTextureQuad.h>
 
 namespace WebCore {
-
-class CCTextureDrawQuad : public CCDrawQuad {
-    WTF_MAKE_NONCOPYABLE(CCTextureDrawQuad);
-public:
-    static PassOwnPtr<CCTextureDrawQuad> create(const CCSharedQuadState*, const IntRect&, unsigned textureId, bool premultipliedAlpha, const FloatRect& uvRect, bool flipped);
-
-    unsigned textureId() const { return  m_textureId; }
-    bool premultipliedAlpha() const { return  m_premultipliedAlpha; }
-    FloatRect uvRect() const { return m_uvRect; }
-    bool flipped() const { return m_flipped; }
-
-    void setNeedsBlending();
-
-private:
-    CCTextureDrawQuad(const CCSharedQuadState*, const IntRect&, unsigned texture_id, bool premultipliedAlpha, const FloatRect& uvRect, bool flipped);
-    
-    unsigned m_textureId;
-    bool m_premultipliedAlpha;
-    FloatRect m_uvRect;
-    bool m_flipped;
-};
-
+typedef WebKit::WebCompositorTextureQuad CCTextureDrawQuad;
 }
 
 #endif

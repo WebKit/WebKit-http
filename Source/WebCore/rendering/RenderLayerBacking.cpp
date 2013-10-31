@@ -471,7 +471,10 @@ void RenderLayerBacking::updateGraphicsLayerGeometry()
                     scrollingCoordinator->setLayerIsFixedToContainerLayer(m_ancestorClippingLayer.get(), false);
                 scrollingCoordinator->setLayerIsFixedToContainerLayer(m_graphicsLayer.get(), false);
             }
-            bool isContainer = m_owningLayer->hasTransform();
+            // Page scale is applied as a transform on the root render view layer. Because the scroll
+            // layer is further up in the hierarchy, we need to avoid marking the root render view
+            // layer as a container.
+            bool isContainer = m_owningLayer->hasTransform() && !m_owningLayer->isRootLayer();
             scrollingCoordinator->setLayerIsContainerForFixedPositionLayers(childForSuperlayers(), isContainer);
         }
     }
@@ -1010,7 +1013,7 @@ bool RenderLayerBacking::containsPaintedContent() const
     if (renderer()->isVideo() && toRenderVideo(renderer())->shouldDisplayVideo())
         return hasBoxDecorationsOrBackground(renderer());
 #endif
-#if PLATFORM(MAC) && USE(CA) && !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if PLATFORM(MAC) && USE(CA) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 #elif ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
     if (isAcceleratedCanvas(renderer()))
         return hasBoxDecorationsOrBackground(renderer());

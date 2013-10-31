@@ -29,6 +29,7 @@
 
 #include "cc/CCTiledLayerImpl.h"
 
+#include "GraphicsContext3D.h"
 #include "SkColor.h"
 #include "TextStream.h"
 #include "cc/CCCheckerboardDrawQuad.h"
@@ -141,13 +142,13 @@ WebTransformationMatrix CCTiledLayerImpl::quadTransform() const
 
 void CCTiledLayerImpl::appendQuads(CCQuadCuller& quadList, const CCSharedQuadState* sharedQuadState, bool& hadMissingTiles)
 {
-    const IntRect& layerRect = visibleLayerRect();
+    const IntRect& contentRect = visibleContentRect();
 
-    if (!m_tiler || m_tiler->hasEmptyBounds() || layerRect.isEmpty())
+    if (!m_tiler || m_tiler->hasEmptyBounds() || contentRect.isEmpty())
         return;
 
     int left, top, right, bottom;
-    m_tiler->layerRectToTileIndices(layerRect, left, top, right, bottom);
+    m_tiler->contentRectToTileIndices(contentRect, left, top, right, bottom);
 
     if (hasDebugBorders()) {
         for (int j = top; j <= bottom; ++j) {
@@ -173,7 +174,7 @@ void CCTiledLayerImpl::appendQuads(CCQuadCuller& quadList, const CCSharedQuadSta
             DrawableTile* tile = tileAt(i, j);
             IntRect tileRect = m_tiler->tileBounds(i, j);
             IntRect displayRect = tileRect;
-            tileRect.intersect(layerRect);
+            tileRect.intersect(contentRect);
 
             // Skip empty tiles.
             if (tileRect.isEmpty())
@@ -188,7 +189,7 @@ void CCTiledLayerImpl::appendQuads(CCQuadCuller& quadList, const CCSharedQuadSta
             }
 
             IntRect tileOpaqueRect = tile->opaqueRect();
-            tileOpaqueRect.intersect(layerRect);
+            tileOpaqueRect.intersect(contentRect);
 
             // Keep track of how the top left has moved, so the texture can be
             // offset the same amount.
@@ -220,7 +221,7 @@ void CCTiledLayerImpl::setTilingData(const CCLayerTilingData& tiler)
     *m_tiler = tiler;
 }
 
-void CCTiledLayerImpl::pushTileProperties(int i, int j, Platform3DObject textureId, const IntRect& opaqueRect)
+void CCTiledLayerImpl::pushTileProperties(int i, int j, unsigned textureId, const IntRect& opaqueRect)
 {
     DrawableTile* tile = tileAt(i, j);
     if (!tile)
@@ -234,8 +235,8 @@ Region CCTiledLayerImpl::visibleContentOpaqueRegion() const
     if (m_skipsDraw)
         return Region();
     if (opaque())
-        return visibleLayerRect();
-    return m_tiler->opaqueRegionInLayerRect(visibleLayerRect());
+        return visibleContentRect();
+    return m_tiler->opaqueRegionInContentRect(visibleContentRect());
 }
 
 void CCTiledLayerImpl::didLoseContext()

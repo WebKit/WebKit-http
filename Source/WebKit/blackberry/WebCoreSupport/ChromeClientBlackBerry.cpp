@@ -316,11 +316,12 @@ PagePopup* ChromeClientBlackBerry::openPagePopup(PagePopupClient* client, const 
 
 void ChromeClientBlackBerry::closePagePopup(PagePopup*)
 {
-    if (hasOpenedPopup()) {
-        PagePopupBlackBerry* webPopup = m_webPagePrivate->m_webPage->popup();
-        webPopup->closePopup();
-        m_webPagePrivate->m_webPage->popupClosed();
-    }
+    if (!hasOpenedPopup())
+        return;
+
+    PagePopupBlackBerry* webPopup = m_webPagePrivate->m_webPage->popup();
+    webPopup->closePopup();
+    delete webPopup;
 }
 
 void ChromeClientBlackBerry::setToolbarsVisible(bool)

@@ -358,10 +358,6 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
 
     settings = new QWebSettings(page->settings());
 
-#if ENABLE(WEB_SOCKETS)
-    page->settings()->setUseHixie76WebSocketProtocol(false);
-#endif
-
     history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardListImpl*>(page->backForwardList()));
     memset(actions, 0, sizeof(actions));
 
@@ -795,7 +791,8 @@ void QWebPagePrivate::mouseReleaseEvent(T *ev)
         accepted = frame->eventHandler()->handleMouseReleaseEvent(mev);
     ev->setAccepted(accepted);
 
-    handleClipboard(ev, ev->button());
+    if (!ev->isAccepted())
+        handleClipboard(ev, ev->button());
     handleSoftwareInputPanel(ev->button(), QPointF(ev->pos()).toPoint());
 }
 

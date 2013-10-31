@@ -26,7 +26,7 @@
 
 #include "config.h"
 
-#if ENABLE(WEBGL)
+#if USE(3D_GRAPHICS)
 
 #include "GraphicsContext3D.h"
 
@@ -57,15 +57,7 @@ void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int 
 void GraphicsContext3D::validateAttributes()
 {
     Extensions3D* extensions = getExtensions();
-    if (m_attrs.stencil) {
-        const char* packedDepthStencilExtension = isGLES2Compliant() ? "GL_OES_packed_depth_stencil" : "GL_EXT_packed_depth_stencil";
-        if (extensions->supports(packedDepthStencilExtension)) {
-            extensions->ensureEnabled(packedDepthStencilExtension);
-            // Force depth if stencil is true.
-            m_attrs.depth = true;
-        } else
-            m_attrs.stencil = false;
-    }
+    validateDepthStencil("GL_EXT_packed_depth_stencil");
     if (m_attrs.antialias) {
         bool isValidVendor = true;
         // Currently in Mac we only turn on antialias if vendor is NVIDIA,
@@ -292,7 +284,7 @@ void GraphicsContext3D::clearDepth(GC3Dclampf depth)
 bool GraphicsContext3D::systemAllowsMultisamplingOnATICards() const
 {
 #if PLATFORM(MAC)
-#if !defined(BUILDING_ON_SNOW_LEOPARD) && !defined(BUILDING_ON_LION)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1080
     return true;
 #else
     ASSERT(isMainThread());
@@ -316,6 +308,22 @@ Extensions3D* GraphicsContext3D::getExtensions()
     return m_extensions.get();
 }
 
+void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, void* data)
+{
+    // FIXME: remove the two glFlush calls when the driver bug is fixed, i.e.,
+    // all previous rendering calls should be done before reading pixels.
+    makeContextCurrent();
+    ::glFlush();
+    if (m_attrs.antialias && m_boundFBO == m_multisampleFBO) {
+        resolveMultisamplingIfNecessary(IntRect(x, y, width, height));
+        ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_fbo);
+        ::glFlush();
+    }
+    ::glReadPixels(x, y, width, height, format, type, data);
+    if (m_attrs.antialias && m_boundFBO == m_multisampleFBO)
+        ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_multisampleFBO);
 }
 
-#endif // ENABLE(WEBGL)
+}
+
+#endif // USE(3D_GRAPHICS)

@@ -258,12 +258,6 @@ QString LayoutTestController::pathToLocalResource(const QString& url)
     return url;
 }
 
-void LayoutTestController::dumpConfigurationForViewport(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight)
-{
-    QString res = DumpRenderTreeSupportQt::viewportAsText(m_drt->webPage(), deviceDPI, QSize(deviceWidth, deviceHeight), QSize(availableWidth, availableHeight));
-    fputs(qPrintable(res), stdout);
-}
-
 void LayoutTestController::dumpEditingCallbacks()
 {
     qDebug() << ">>>dumpEditingCallbacks";
@@ -678,8 +672,6 @@ void LayoutTestController::overridePreference(const QString& name, const QVarian
         settings->setAttribute(QWebSettings::CSSGridLayoutEnabled, value.toBool());
     else if (name == "WebKitHyperlinkAuditingEnabled")
         settings->setAttribute(QWebSettings::HyperlinkAuditingEnabled, value.toBool());
-    else if (name == "WebKitHixie76WebSocketProtocolEnabled")
-        DumpRenderTreeSupportQt::setHixie76WebSocketProtocolEnabled(m_topLoadingFrame->page(), value.toBool());
     else if (name == "WebKitAcceleratedCompositingEnabled")
         settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, value.toBool());
     else

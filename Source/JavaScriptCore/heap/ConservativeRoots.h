@@ -32,9 +32,10 @@
 
 namespace JSC {
 
-class JSCell;
 class DFGCodeBlocks;
 class Heap;
+class JITStubRoutineSet;
+class JSCell;
 
 class ConservativeRoots {
 public:
@@ -42,7 +43,8 @@ public:
     ~ConservativeRoots();
 
     void add(void* begin, void* end);
-    void add(void* begin, void* end, DFGCodeBlocks&);
+    void add(void* begin, void* end, JITStubRoutineSet&);
+    void add(void* begin, void* end, JITStubRoutineSet&, DFGCodeBlocks&);
     
     size_t size();
     JSCell** roots();

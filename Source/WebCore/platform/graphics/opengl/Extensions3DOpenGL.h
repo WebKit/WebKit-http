@@ -55,13 +55,6 @@ protected:
 
     virtual bool supportsExtension(const WTF::String&);
     virtual String getExtensions();
-
-private:
-    bool m_initializedAvailableExtensions;
-    HashSet<String> m_availableExtensions;
-    
-    // Weak pointer back to GraphicsContext3D
-    GraphicsContext3D* m_context;
 };
 
 } // namespace WebCore

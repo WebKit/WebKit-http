@@ -61,12 +61,14 @@ class Node;
 class RenderArena;
 class RenderObject;
 class RenderStyle;
+class TouchEvent;
 class WheelEvent;
 
 typedef int ExceptionCode;
 
 struct ClickHandlingState {
     WTF_MAKE_FAST_ALLOCATED;
+  
 public:
     bool checked;
     bool indeterminate;
@@ -126,6 +128,7 @@ public:
 
     // Form value functions
 
+    virtual bool shouldSaveAndRestoreFormControlState() const;
     virtual FormControlState saveFormControlState() const;
     virtual void restoreFormControlState(const FormControlState&);
     virtual bool isFormDataAppendable() const;
@@ -190,6 +193,9 @@ public:
     virtual void handleKeyupEvent(KeyboardEvent*);
     virtual void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*);
     virtual void handleWheelEvent(WheelEvent*);
+#if ENABLE(TOUCH_EVENTS)
+    virtual void handleTouchEvent(TouchEvent*);
+#endif
     virtual void forwardEvent(Event*);
     // Helpers for event handlers.
     virtual bool shouldSubmitImplicitly(Event*);
@@ -202,6 +208,9 @@ public:
     virtual void accessKeyAction(bool sendMouseEvents);
     virtual bool canBeSuccessfulSubmitButton();
     virtual void subtreeHasChanged();
+#if ENABLE(TOUCH_EVENTS)
+    virtual bool hasTouchEventHandler() const;
+#endif
 
     // Shadow tree handling
 

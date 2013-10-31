@@ -113,7 +113,7 @@ public:
     PassRefPtr<NodeList> tags(const String&);
 
     // Non-DOM API
-    bool hasNamedItem(const AtomicString& name) const;
+    virtual bool hasNamedItem(const AtomicString& name) const;
     void namedItems(const AtomicString& name, Vector<RefPtr<Node> >&) const;
     bool isEmpty() const
     {
@@ -136,8 +136,9 @@ public:
 
     Node* base() const { return m_base.get(); }
 
-    void invalidateCache();
+    void invalidateCache() const;
     void invalidateCacheIfNeeded() const;
+
 protected:
     HTMLCollection(Node* base, CollectionType);
 
@@ -152,6 +153,18 @@ private:
     bool isAcceptableElement(Element*) const;
 
     RefPtr<Node> m_base;
+};
+
+class HTMLCollectionWithArrayStorage : public HTMLCollection {
+public:
+    HTMLCollectionWithArrayStorage(Node* base, CollectionType type)
+        : HTMLCollection(base, type)
+    { }
+
+    virtual Node* item(unsigned index) const OVERRIDE;
+
+private:
+    virtual HTMLElement* itemInArrayAfter(unsigned& offsetInArray, HTMLElement* previousItem) const = 0;
 };
 
 } // namespace

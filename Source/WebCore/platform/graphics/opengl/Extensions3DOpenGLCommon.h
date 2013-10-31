@@ -58,8 +58,8 @@ protected:
     virtual bool supportsExtension(const String&) = 0;
     virtual String getExtensions() = 0;
 
-private:
     virtual void initializeAvailableExtensions();
+
     bool m_initializedAvailableExtensions;
     HashSet<String> m_availableExtensions;
 

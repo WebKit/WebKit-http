@@ -169,6 +169,11 @@ bool InputType::isRangeControl() const
     return false;
 }
 
+bool InputType::shouldSaveAndRestoreFormControlState() const
+{
+    return true;
+}
+
 FormControlState InputType::saveFormControlState() const
 {
     String currentValue = element()->value();
@@ -417,6 +422,12 @@ void InputType::handleWheelEvent(WheelEvent*)
 {
 }
 
+#if ENABLE(TOUCH_EVENTS)
+void InputType::handleTouchEvent(TouchEvent*)
+{
+}
+#endif
+
 void InputType::forwardEvent(Event*)
 {
 }
@@ -447,6 +458,7 @@ void InputType::destroyShadowSubtree()
         return;
 
     ShadowRoot* root = shadow->oldestShadowRoot();
+    ASSERT(root->type() == ShadowRoot::UserAgentShadowRoot);
     root->removeAllChildren();
 
     // It's ok to clear contents of all other ShadowRoots because they must have
@@ -872,6 +884,13 @@ void InputType::readonlyAttributeChanged()
 void InputType::subtreeHasChanged()
 {
 }
+
+#if ENABLE(TOUCH_EVENTS)
+bool InputType::hasTouchEventHandler() const
+{
+    return false;
+}
+#endif
 
 String InputType::defaultToolTip() const
 {

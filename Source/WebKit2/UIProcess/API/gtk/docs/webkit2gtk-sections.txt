@@ -27,6 +27,7 @@ WebKitCacheModel
 webkit_web_context_get_default
 webkit_web_context_get_cache_model
 webkit_web_context_set_cache_model
+webkit_web_context_clear_cache
 webkit_web_context_download_uri
 webkit_web_context_get_cookie_manager
 webkit_web_context_set_additional_plugins_directory
@@ -635,7 +636,9 @@ webkit_find_controller_get_type
 <SECTION>
 <FILE>WebKitCookieManager</FILE>
 WebKitCookieManager
+WebKitCookiePersistentStorage
 WebKitCookieAcceptPolicy
+webkit_cookie_manager_set_persistent_storage
 webkit_cookie_manager_set_accept_policy
 webkit_cookie_manager_get_accept_policy
 webkit_cookie_manager_get_accept_policy_finish

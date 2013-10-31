@@ -35,6 +35,7 @@
 
 namespace WebCore {
 
+class CCScopedTexture;
 class TextureAllocator;
 class TextureCopier;
 class TextureManager;
@@ -72,11 +73,13 @@ public:
     const WebKit::WebTransformationMatrix& windowMatrix() const { return m_windowMatrix; }
 
     virtual void decideRenderPassAllocationsForFrame(const CCRenderPassList&) = 0;
+    virtual bool haveCachedResourcesForRenderPassId(int) const = 0;
+
     virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) = 0;
     virtual void drawRenderPass(const CCRenderPass*, const FloatRect& rootScissorRectInCurrentPass) = 0;
     virtual void finishDrawingFrame() = 0;
 
-    virtual void drawHeadsUpDisplay(ManagedTexture*, const IntSize& hudSize) = 0;
+    virtual void drawHeadsUpDisplay(const CCScopedTexture*, const IntSize& hudSize) = 0;
 
     // waits for rendering to finish
     virtual void finish() = 0;
@@ -87,7 +90,6 @@ public:
 
     virtual void getFramebufferPixels(void *pixels, const IntRect&) = 0;
 
-    virtual TextureManager* implTextureManager() const = 0;
     virtual TextureCopier* textureCopier() const = 0;
     virtual TextureUploader* textureUploader() const = 0;
     virtual TextureAllocator* implTextureAllocator() const = 0;

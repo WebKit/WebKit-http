@@ -251,6 +251,15 @@ bool FontPlatformData::isFixedPitch() const
     return false;
 }
 
+#if USE(HARFBUZZ_NG)
+HarfBuzzFace* FontPlatformData::harfbuzzFace() const
+{
+    if (!m_harfbuzzFace)
+        m_harfbuzzFace = HarfBuzzFace::create(const_cast<FontPlatformData*>(this), uniqueID());
+
+    return m_harfbuzzFace.get();
+}
+#else
 HarfbuzzFace* FontPlatformData::harfbuzzFace() const
 {
     if (!m_harfbuzzFace)
@@ -258,21 +267,10 @@ HarfbuzzFace* FontPlatformData::harfbuzzFace() const
 
     return m_harfbuzzFace.get();
 }
+#endif
 
 void FontPlatformData::querySystemForRenderStyle()
 {
-    if (!m_family.length()) {
-        // We don't have a family for this, probably because it's a webfont. We
-        // set all the values to 'no preference' and take the system defaults.
-        m_style.useBitmaps = FontRenderStyle::NoPreference;
-        m_style.useAutoHint = FontRenderStyle::NoPreference;
-        m_style.useHinting = FontRenderStyle::NoPreference;
-        m_style.useAntiAlias = FontRenderStyle::NoPreference;
-        m_style.useSubpixelRendering = FontRenderStyle::NoPreference;
-        m_style.useSubpixelPositioning = FontRenderStyle::NoPreference;
-        return;
-    }
-
     PlatformSupport::getRenderStyleForStrike(m_family.data(), (((int)m_textSize) << 2) | (m_typeface->style() & 3), &m_style);
 }
 

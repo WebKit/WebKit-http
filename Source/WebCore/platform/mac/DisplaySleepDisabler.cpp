@@ -29,8 +29,9 @@
 #include <IOKit/pwr_mgt/IOPMLib.h>
 #include <wtf/RetainPtr.h>
 
-#ifdef BUILDING_ON_LEOPARD
+#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
 #include <wtf/UnusedParam.h>
+#include <CoreServices/CoreServices.h>
 #endif
 
 namespace WebCore {
@@ -39,11 +40,11 @@ static const double systemActivityInterval = 1;
 
 DisplaySleepDisabler::DisplaySleepDisabler(const char* reason)
     : m_disableDisplaySleepAssertion(0)
-#ifdef BUILDING_ON_LEOPARD
+#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
     , m_systemActivityTimer(this, &DisplaySleepDisabler::systemActivityTimerFired)
 #endif
 {
-#ifndef BUILDING_ON_LEOPARD
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     RetainPtr<CFStringRef> reasonCF(AdoptCF, CFStringCreateWithCString(kCFAllocatorDefault, reason, kCFStringEncodingUTF8));
     IOPMAssertionCreateWithName(kIOPMAssertionTypeNoDisplaySleep, kIOPMAssertionLevelOn, reasonCF.get(), &m_disableDisplaySleepAssertion);
 #else
@@ -57,8 +58,8 @@ DisplaySleepDisabler::~DisplaySleepDisabler()
 {
     IOPMAssertionRelease(m_disableDisplaySleepAssertion);
 }
-    
-#ifdef BUILDING_ON_LEOPARD
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED == 1050
 void DisplaySleepDisabler::systemActivityTimerFired(Timer<DisplaySleepDisabler>*)
 {
     UpdateSystemActivity(OverallAct);

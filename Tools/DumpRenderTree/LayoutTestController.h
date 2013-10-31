@@ -327,8 +327,6 @@ public:
 
     void abortModal();
 
-    void dumpConfigurationForViewport(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight);
-
     static void setSerializeHTTPLoads(bool serialize);
 
     // The following API test functions should probably be moved to platform-specific 
@@ -365,6 +363,8 @@ public:
     // Custom full screen behavior.
     void setHasCustomFullScreenBehavior(bool value) { m_customFullScreenBehavior = value; }
     bool hasCustomFullScreenBehavior() const { return m_customFullScreenBehavior; }
+
+    void setStorageDatabaseIdleInterval(double);
 
 private:
     LayoutTestController(const std::string& testPathOrURL, const std::string& expectedPixelHash);

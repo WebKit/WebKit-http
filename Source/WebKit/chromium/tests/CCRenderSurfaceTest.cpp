@@ -57,7 +57,7 @@ TEST(CCRenderSurfaceTest, verifySurfaceChangesAreTrackedProperly)
     // This will fake that we are on the correct thread for testing purposes.
     DebugScopedSetImplThread setImplThread;
 
-    OwnPtr<CCLayerImpl> owningLayer = CCLayerImpl::create(0);
+    OwnPtr<CCLayerImpl> owningLayer = CCLayerImpl::create(1);
     owningLayer->createRenderSurface();
     ASSERT_TRUE(owningLayer->renderSurface());
     CCRenderSurface* renderSurface = owningLayer->renderSurface();
@@ -95,19 +95,17 @@ TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
     // This will fake that we are on the correct thread for testing purposes.
     DebugScopedSetImplThread setImplThread;
 
-    OwnPtr<CCLayerImpl> owningLayer = CCLayerImpl::create(0);
+    OwnPtr<CCLayerImpl> owningLayer = CCLayerImpl::create(1);
     owningLayer->createRenderSurface();
     ASSERT_TRUE(owningLayer->renderSurface());
     CCRenderSurface* renderSurface = owningLayer->renderSurface();
 
     IntRect contentRect = IntRect(IntPoint::zero(), IntSize(50, 50));
     IntRect clipRect = IntRect(IntPoint(5, 5), IntSize(40, 40));
-    WebTransformationMatrix draw;
     WebTransformationMatrix origin;
 
-    draw.translate(30, 40);
+    origin.translate(30, 40);
 
-    renderSurface->setDrawTransform(draw);
     renderSurface->setOriginTransform(origin);
     renderSurface->setContentRect(contentRect);
     renderSurface->setClipRect(clipRect);
@@ -116,13 +114,12 @@ TEST(CCRenderSurfaceTest, sanityCheckSurfaceCreatesCorrectSharedQuadState)
 
     OwnPtr<CCSharedQuadState> sharedQuadState = renderSurface->createSharedQuadState();
 
-    EXPECT_TRUE(sharedQuadState->quadTransform().isIdentity());
-    EXPECT_EQ(30, sharedQuadState->layerTransform().m41());
-    EXPECT_EQ(40, sharedQuadState->layerTransform().m42());
-    EXPECT_EQ(contentRect, sharedQuadState->layerRect());
-    EXPECT_EQ(clipRect, sharedQuadState->scissorRect());
-    EXPECT_EQ(1, sharedQuadState->opacity());
-    EXPECT_FALSE(sharedQuadState->isOpaque());
+    EXPECT_EQ(30, sharedQuadState->quadTransform.m41());
+    EXPECT_EQ(40, sharedQuadState->quadTransform.m42());
+    EXPECT_EQ(contentRect, IntRect(sharedQuadState->visibleContentRect));
+    EXPECT_EQ(clipRect, IntRect(sharedQuadState->scissorRect));
+    EXPECT_EQ(1, sharedQuadState->opacity);
+    EXPECT_FALSE(sharedQuadState->opaque);
 }
 
 } // namespace

@@ -29,12 +29,14 @@
  */
 
 #include "config.h"
-#include "LocalizedDate.h"
+#include "LocaleMac.h"
 
 #import <Foundation/NSDateFormatter.h>
+#import <Foundation/NSLocale.h>
+#include "LocalizedDate.h"
 #include "LocalizedStrings.h"
-#include <limits>
 #include <wtf/DateMath.h>
+#include <wtf/PassOwnPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -42,54 +44,61 @@ using namespace std;
 
 namespace WebCore {
 
-static NSDateFormatter *createShortDateFormatter()
+static NSDateFormatter* createDateTimeFormatter(NSLocale* locale, NSDateFormatterStyle dateStyle, NSDateFormatterStyle timeStyle)
 {
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    [formatter setDateStyle:NSDateFormatterShortStyle];
-    [formatter setTimeStyle:NSDateFormatterNoStyle];
+    [formatter setLocale:locale];
+    [formatter setDateStyle:dateStyle];
+    [formatter setTimeStyle:timeStyle];
     [formatter setTimeZone:[NSTimeZone timeZoneWithAbbreviation:@"UTC"]];
     [formatter setCalendar:[[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar]];
     return formatter;
 }
 
-double parseLocalizedDate(const String& input, DateComponents::Type type)
+LocaleMac::LocaleMac(NSLocale* locale)
+    : m_locale(locale)
 {
-    switch (type) {
-    case DateComponents::Date: {
-        RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
-        NSDate *date = [formatter.get() dateFromString:input];
-        if (!date)
-            break;
-        return [date timeIntervalSince1970] * msPerSecond;
-    }
-    case DateComponents::DateTime:
-    case DateComponents::DateTimeLocal:
-    case DateComponents::Month:
-    case DateComponents::Time:
-    case DateComponents::Week:
-    case DateComponents::Invalid:
-        break;
-    }
-    return numeric_limits<double>::quiet_NaN();
 }
 
-String formatLocalizedDate(const DateComponents& dateComponents)
+LocaleMac::LocaleMac(const String& localeIdentifier)
+    : m_locale([[NSLocale alloc] initWithLocaleIdentifier:localeIdentifier])
 {
-    switch (dateComponents.type()) {
-    case DateComponents::Date: {
-        RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
-        NSTimeInterval interval = dateComponents.millisecondsSinceEpoch() / msPerSecond;
-        return String([formatter.get() stringFromDate:[NSDate dateWithTimeIntervalSince1970:interval]]);
-    }
-    case DateComponents::DateTime:
-    case DateComponents::DateTimeLocal:
-    case DateComponents::Month:
-    case DateComponents::Time:
-    case DateComponents::Week:
-    case DateComponents::Invalid:
-        break;
-    }
-    return String();
+}
+
+LocaleMac::~LocaleMac()
+{
+}
+
+PassOwnPtr<LocaleMac> LocaleMac::create(const String& localeIdentifier)
+{
+    return adoptPtr(new LocaleMac(localeIdentifier));
+}
+
+LocaleMac* LocaleMac::currentLocale()
+{
+    static LocaleMac* currentLocale = new LocaleMac([NSLocale currentLocale]);
+    return currentLocale;
+}
+
+NSDateFormatter* LocaleMac::createShortDateFormatter()
+{
+    return createDateTimeFormatter(m_locale.get(), NSDateFormatterShortStyle, NSDateFormatterNoStyle);
+}
+
+double LocaleMac::parseDate(const String& input)
+{
+    RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
+    NSDate *date = [formatter.get() dateFromString:input];
+    if (!date)
+        return std::numeric_limits<double>::quiet_NaN();
+    return [date timeIntervalSince1970] * msPerSecond;
+}
+
+String LocaleMac::formatDate(const DateComponents& dateComponents)
+{
+    RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
+    NSTimeInterval interval = dateComponents.millisecondsSinceEpoch() / msPerSecond;
+    return String([formatter.get() stringFromDate:[NSDate dateWithTimeIntervalSince1970:interval]]);
 }
 
 #if ENABLE(CALENDAR_PICKER)
@@ -140,57 +149,55 @@ static String localizeDateFormat(const String& format)
     return buffer.toString();
 }
 
-String localizedDateFormatText()
+String LocaleMac::dateFormatText()
 {
-    DEFINE_STATIC_LOCAL(String, text, ());
-    if (!text.isEmpty())
-        return text;
+    if (!m_localizedDateFormatText.isEmpty())
+        return m_localizedDateFormatText;
     RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
-    text = localizeDateFormat(String([formatter.get() dateFormat]));
-    return text;
+    m_localizedDateFormatText = localizeDateFormat(String([formatter.get() dateFormat]));
+    return  m_localizedDateFormatText;
 }
 
-const Vector<String>& monthLabels()
+const Vector<String>& LocaleMac::monthLabels()
 {
-    DEFINE_STATIC_LOCAL(Vector<String>, labels, ());
-    if (!labels.isEmpty())
-        return labels;
-    labels.reserveCapacity(12);
+    if (!m_monthLabels.isEmpty())
+        return m_monthLabels;
+    m_monthLabels.reserveCapacity(12);
     RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
     NSArray *array = [formatter.get() monthSymbols];
     if ([array count] == 12) {
         for (unsigned i = 0; i < 12; ++i)
-            labels.append(String([array objectAtIndex:i]));
-        return labels;
+            m_monthLabels.append(String([array objectAtIndex:i]));
+        return m_monthLabels;
     }
     for (unsigned i = 0; i < WTF_ARRAY_LENGTH(WTF::monthFullName); ++i)
-        labels.append(WTF::monthFullName[i]);
-    return labels;
+        m_monthLabels.append(WTF::monthFullName[i]);
+    return m_monthLabels;
 }
 
-const Vector<String>& weekDayShortLabels()
+const Vector<String>& LocaleMac::weekDayShortLabels()
 {
-    DEFINE_STATIC_LOCAL(Vector<String>, labels, ());
-    if (!labels.isEmpty())
-        return labels;
-    labels.reserveCapacity(7);
+    if (!m_weekDayShortLabels.isEmpty())
+        return m_weekDayShortLabels;
+    m_weekDayShortLabels.reserveCapacity(7);
     RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortDateFormatter());
     NSArray *array = [formatter.get() shortWeekdaySymbols];
     if ([array count] == 7) {
         for (unsigned i = 0; i < 7; ++i)
-            labels.append(String([array objectAtIndex:i]));
-        return labels;
+            m_weekDayShortLabels.append(String([array objectAtIndex:i]));
+        return m_weekDayShortLabels;
     }
     for (unsigned i = 0; i < WTF_ARRAY_LENGTH(WTF::weekdayName); ++i) {
         // weekdayName starts with Monday.
-        labels.append(WTF::weekdayName[(i + 6) % 7]);
+        m_weekDayShortLabels.append(WTF::weekdayName[(i + 6) % 7]);
     }
-    return labels;
+    return m_weekDayShortLabels;
 }
 
-unsigned firstDayOfWeek()
+unsigned LocaleMac::firstDayOfWeek()
 {
     RetainPtr<NSCalendar> calendar(AdoptNS, [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar]);
+    [calendar.get() setLocale:m_locale.get()];
     // The document for NSCalendar - firstWeekday doesn't have an explanation of
     // firstWeekday value. We can guess it by the document of NSDateComponents -
     // weekDay, so it can be 1 through 7 and 1 is Sunday.
@@ -198,4 +205,44 @@ unsigned firstDayOfWeek()
 }
 #endif
 
+#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+NSDateFormatter* LocaleMac::createTimeFormatter()
+{
+    return createDateTimeFormatter(m_locale.get(), NSDateFormatterNoStyle, NSDateFormatterMediumStyle);
+}
+
+NSDateFormatter* LocaleMac::createShortTimeFormatter()
+{
+    return createDateTimeFormatter(m_locale.get(), NSDateFormatterNoStyle, NSDateFormatterShortStyle);
+}
+
+String LocaleMac::timeFormatText()
+{
+    if (!m_localizedTimeFormatText.isEmpty())
+        return m_localizedTimeFormatText;
+    RetainPtr<NSDateFormatter> formatter(AdoptNS, createTimeFormatter());
+    m_localizedTimeFormatText = String([formatter.get() dateFormat]);
+    return m_localizedTimeFormatText;
+}
+
+String LocaleMac::shortTimeFormatText()
+{
+    if (!m_localizedShortTimeFormatText.isEmpty())
+        return m_localizedShortTimeFormatText;
+    RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortTimeFormatter());
+    m_localizedShortTimeFormatText = String([formatter.get() dateFormat]);
+    return m_localizedShortTimeFormatText;
+}
+
+const Vector<String>& LocaleMac::timeAMPMLabels()
+{
+    if (!m_timeAMPMLabels.isEmpty())
+        return m_timeAMPMLabels;
+    m_timeAMPMLabels.reserveCapacity(2);
+    RetainPtr<NSDateFormatter> formatter(AdoptNS, createShortTimeFormatter());
+    m_timeAMPMLabels.append(String([formatter.get() AMSymbol]));
+    m_timeAMPMLabels.append(String([formatter.get() PMSymbol]));
+    return m_timeAMPMLabels;
+}
+#endif
 }

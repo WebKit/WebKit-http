@@ -263,9 +263,12 @@ String BitmapImage::filenameExtension() const
 size_t BitmapImage::frameCount()
 {
     if (!m_haveFrameCount) {
-        m_haveFrameCount = true;
         m_frameCount = m_source.frameCount();
-        didDecodeProperties();
+        // If decoder is not initialized yet, m_source.frameCount() returns 0.
+        if (m_frameCount) {
+            didDecodeProperties();
+            m_haveFrameCount = true;
+        }
     }
     return m_frameCount;
 }
@@ -301,7 +304,7 @@ NativeImagePtr BitmapImage::frameAtIndex(size_t index)
 bool BitmapImage::frameIsCompleteAtIndex(size_t index)
 {
     if (!ensureFrameIsCached(index))
-        return true; // Why would an invalid index return true here?
+        return false;
     return m_frames[index].m_isComplete;
 }
 

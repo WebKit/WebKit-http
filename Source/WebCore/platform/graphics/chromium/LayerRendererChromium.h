@@ -37,7 +37,16 @@
 #include "Extensions3DChromium.h"
 #include "TextureCopier.h"
 #include "TrackingTextureAllocator.h"
+#include "cc/CCCheckerboardDrawQuad.h"
+#include "cc/CCDebugBorderDrawQuad.h"
+#include "cc/CCIOSurfaceDrawQuad.h"
+#include "cc/CCRenderPassDrawQuad.h"
 #include "cc/CCRenderer.h"
+#include "cc/CCSolidColorDrawQuad.h"
+#include "cc/CCStreamVideoDrawQuad.h"
+#include "cc/CCTextureDrawQuad.h"
+#include "cc/CCTileDrawQuad.h"
+#include "cc/CCYUVVideoDrawQuad.h"
 #include <wtf/PassOwnPtr.h>
 
 namespace WebKit {
@@ -46,18 +55,8 @@ class WebGraphicsContext3D;
 
 namespace WebCore {
 
-class CCCheckerboardDrawQuad;
-class CCDebugBorderDrawQuad;
-class CCDrawQuad;
-class CCIOSurfaceDrawQuad;
-class CCRenderPassDrawQuad;
-class CCSolidColorDrawQuad;
-class CCStreamVideoDrawQuad;
-class CCTextureDrawQuad;
-class CCTileDrawQuad;
-class CCYUVVideoDrawQuad;
+class CCScopedTexture;
 class GeometryBinding;
-class ManagedTexture;
 class ScopedEnsureFramebufferAllocation;
 
 // Class that handles drawing of composited render layers using GL.
@@ -80,11 +79,13 @@ public:
     const FloatQuad& sharedGeometryQuad() const { return m_sharedGeometryQuad; }
 
     virtual void decideRenderPassAllocationsForFrame(const CCRenderPassList&) OVERRIDE;
+    virtual bool haveCachedResourcesForRenderPassId(int id) const OVERRIDE;
+
     virtual void beginDrawingFrame(const CCRenderPass* defaultRenderPass) OVERRIDE;
     virtual void drawRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect) OVERRIDE;
     virtual void finishDrawingFrame() OVERRIDE;
 
-    virtual void drawHeadsUpDisplay(ManagedTexture*, const IntSize& hudSize) OVERRIDE;
+    virtual void drawHeadsUpDisplay(const CCScopedTexture*, const IntSize& hudSize) OVERRIDE;
 
     // waits for rendering to finish
     virtual void finish() OVERRIDE;
@@ -98,9 +99,8 @@ public:
     const GeometryBinding* sharedGeometry() const { return m_sharedGeometry.get(); }
 
     virtual void getFramebufferPixels(void *pixels, const IntRect&) OVERRIDE;
-    bool getFramebufferTexture(ManagedTexture*, const IntRect& deviceRect);
+    bool getFramebufferTexture(CCScopedTexture*, const IntRect& deviceRect);
 
-    virtual TextureManager* implTextureManager() const OVERRIDE { return m_implTextureManager.get(); }
     virtual TextureCopier* textureCopier() const OVERRIDE { return m_textureCopier.get(); }
     virtual TextureUploader* textureUploader() const OVERRIDE { return m_textureUploader.get(); }
     virtual TextureAllocator* implTextureAllocator() const OVERRIDE { return m_implTextureAllocator.get(); }
@@ -123,13 +123,15 @@ protected:
     bool isFramebufferDiscarded() const { return m_isFramebufferDiscarded; }
     bool initialize();
 
+    void releaseRenderPassTextures();
+
 private:
     static void toGLMatrix(float*, const WebKit::WebTransformationMatrix&);
 
     void drawQuad(const CCDrawQuad*);
     void drawCheckerboardQuad(const CCCheckerboardDrawQuad*);
     void drawDebugBorderQuad(const CCDebugBorderDrawQuad*);
-    void drawBackgroundFilters(const CCRenderPassDrawQuad*, const WebKit::WebTransformationMatrix& deviceTransform);
+    PassOwnPtr<CCScopedTexture> drawBackgroundFilters(const CCRenderPassDrawQuad*, const WebKit::WebTransformationMatrix& deviceTransform);
     void drawRenderPassQuad(const CCRenderPassDrawQuad*);
     void drawSolidColorQuad(const CCSolidColorDrawQuad*);
     void drawStreamVideoQuad(const CCStreamVideoDrawQuad*);
@@ -140,16 +142,14 @@ private:
 
     void setDrawFramebufferRect(const IntRect&, bool flipY);
 
-    // The current drawing target is either a RenderPass or ManagedTexture. Use these functions to switch to a new drawing target.
+    // The current drawing target is either a RenderPass or ScopedTexture. Use these functions to switch to a new drawing target.
     bool useRenderPass(const CCRenderPass*);
-    bool useManagedTexture(ManagedTexture*, const IntRect& viewportRect);
+    bool useScopedTexture(const CCScopedTexture*, const IntRect& viewportRect);
     bool isCurrentRenderPass(const CCRenderPass*);
 
-    bool bindFramebufferToTexture(ManagedTexture*, const IntRect& viewportRect);
+    bool bindFramebufferToTexture(const CCScopedTexture*, const IntRect& viewportRect);
 
     void clearRenderPass(const CCRenderPass*, const FloatRect& framebufferDamageRect);
-
-    void releaseRenderPassTextures();
 
     bool makeContextCurrent();
 
@@ -168,10 +168,13 @@ private:
     // WebGraphicsContext3D::WebGraphicsContextLostCallback implementation.
     virtual void onContextLost() OVERRIDE;
 
+    static IntSize renderPassTextureSize(const CCRenderPass*);
+    static GC3Denum renderPassTextureFormat(const CCRenderPass*);
+
     LayerRendererCapabilities m_capabilities;
 
     const CCRenderPass* m_currentRenderPass;
-    ManagedTexture* m_currentManagedTexture;
+    const CCScopedTexture* m_currentTexture;
     unsigned m_offscreenFramebufferId;
 
     OwnPtr<GeometryBinding> m_sharedGeometry;
@@ -257,11 +260,12 @@ private:
     OwnPtr<SolidColorProgram> m_solidColorProgram;
     OwnPtr<HeadsUpDisplayProgram> m_headsUpDisplayProgram;
 
-    OwnPtr<TextureManager> m_implTextureManager;
     OwnPtr<AcceleratedTextureCopier> m_textureCopier;
     OwnPtr<TextureUploader> m_textureUploader;
     OwnPtr<TrackingTextureAllocator> m_contentsTextureAllocator;
     OwnPtr<TrackingTextureAllocator> m_implTextureAllocator;
+
+    HashMap<int, OwnPtr<CCScopedTexture> > m_renderPassTextures;
 
     WebKit::WebGraphicsContext3D* m_context;
 

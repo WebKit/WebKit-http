@@ -346,7 +346,7 @@ static WebCacheModel cacheModelForMainBundle(void)
         @"0",                           WebKitPDFScaleFactorPreferenceKey,
         @"0",                           WebKitUseSiteSpecificSpoofingPreferenceKey,
         [NSNumber numberWithInt:WebKitEditableLinkDefaultBehavior], WebKitEditableLinkBehaviorPreferenceKey,
-#ifndef BUILDING_ON_LEOPARD
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
         [NSNumber numberWithInt:WebTextDirectionSubmenuAutomaticallyIncluded],
 #else
         [NSNumber numberWithInt:WebTextDirectionSubmenuNeverIncluded],
@@ -386,7 +386,6 @@ static WebCacheModel cacheModelForMainBundle(void)
         [NSNumber numberWithBool:YES],  WebKitHyperlinkAuditingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitUsePreHTML5ParserQuirksKey,
         [NSNumber numberWithBool:YES],  WebKitAVFoundationEnabledKey,
-        [NSNumber numberWithBool:NO],  WebKitHixie76WebSocketProtocolEnabledKey,
         [NSNumber numberWithBool:NO],   WebKitMediaPlaybackRequiresUserGesturePreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitMediaPlaybackAllowsInlinePreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitWebAudioEnabledPreferenceKey,
@@ -1561,12 +1560,11 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitHixie76WebSocketProtocolEnabledKey];
 }
 
 - (BOOL)isHixie76WebSocketProtocolEnabled
 {
-    return [self _boolValueForKey:WebKitHixie76WebSocketProtocolEnabledKey];
+    return false;
 }
 
 - (BOOL)mediaPlaybackRequiresUserGesture

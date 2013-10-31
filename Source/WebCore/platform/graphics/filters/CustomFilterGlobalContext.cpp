@@ -29,7 +29,7 @@
 
 #include "config.h"
 
-#if ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
 #include "CustomFilterGlobalContext.h"
 
 #include "GraphicsContext3D.h"
@@ -53,10 +53,12 @@ void CustomFilterGlobalContext::prepareContextIfNeeded(HostWindow* hostWindow)
     attributes.preserveDrawingBuffer = true;
     attributes.premultipliedAlpha = false;
     m_context = GraphicsContext3D::create(attributes, hostWindow, GraphicsContext3D::RenderOffscreen);
-
+    if (!m_context)
+        return;
+    m_context->makeContextCurrent();
     m_context->enable(GraphicsContext3D::DEPTH_TEST);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#endif // ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)

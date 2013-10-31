@@ -55,6 +55,7 @@
 #include "JITCode.h"
 #include "JITWriteBarrier.h"
 #include "JSGlobalObject.h"
+#include "JumpReplacementWatchpoint.h"
 #include "JumpTable.h"
 #include "LLIntCallLinkInfo.h"
 #include "LazyOperandValueProfile.h"
@@ -328,7 +329,7 @@ namespace JSC {
             return result;
         }
         
-        unsigned appendWatchpoint(const Watchpoint& watchpoint)
+        unsigned appendWatchpoint(const JumpReplacementWatchpoint& watchpoint)
         {
             createDFGDataIfNecessary();
             unsigned result = m_dfgData->watchpoints.size();
@@ -367,7 +368,7 @@ namespace JSC {
             return m_dfgData->speculationRecovery[index];
         }
         
-        Watchpoint& watchpoint(unsigned index)
+        JumpReplacementWatchpoint& watchpoint(unsigned index)
         {
             return m_dfgData->watchpoints[index];
         }
@@ -714,6 +715,14 @@ namespace JSC {
                 return false;
             unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
             return specialFastCaseCount >= Options::likelyToTakeSlowCaseMinimumCount() && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::likelyToTakeSlowCaseThreshold();
+        }
+        
+        bool couldTakeSpecialFastCase(int bytecodeOffset)
+        {
+            if (!numberOfRareCaseProfiles())
+                return false;
+            unsigned specialFastCaseCount = specialFastCaseProfileForBytecodeOffset(bytecodeOffset)->m_counter;
+            return specialFastCaseCount >= Options::couldTakeSlowCaseMinimumCount() && static_cast<double>(specialFastCaseCount) / m_executionEntryCount >= Options::couldTakeSlowCaseThreshold();
         }
         
         bool likelyToTakeDeepestSlowCase(int bytecodeOffset)
@@ -1291,7 +1300,7 @@ namespace JSC {
             Vector<DFG::OSREntryData> osrEntry;
             SegmentedVector<DFG::OSRExit, 8> osrExit;
             Vector<DFG::SpeculationRecovery> speculationRecovery;
-            SegmentedVector<Watchpoint, 1, 0> watchpoints;
+            SegmentedVector<JumpReplacementWatchpoint, 1, 0> watchpoints;
             Vector<WeakReferenceTransition> transitions;
             Vector<WriteBarrier<JSCell> > weakReferences;
             DFG::VariableEventStream variableEventStream;

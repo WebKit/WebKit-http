@@ -1858,6 +1858,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\jit\GCAwareJITStubRoutine.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\jit\GCAwareJITStubRoutine.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\jit\JIT.cpp"
 				>
 			</File>
@@ -1918,11 +1926,27 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\jit\JITStubRoutine.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\jit\JITStubRoutine.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\jit\JITStubs.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\jit\JITStubs.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\jit\JumpReplacementWatchpoint.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\jit\JumpReplacementWatchpoint.h"
 				>
 			</File>
 			<File
@@ -2211,6 +2235,14 @@
 			</File>
 			<File
 				RelativePath="..\..\heap\HeapTimer.h"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\JITStubRoutineSet.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\heap\JITStubRoutineSet.h"
 				>
 			</File>
 			<File

@@ -29,7 +29,7 @@
 
 #include "config.h"
 
-#if ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#if ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
 #include "CustomFilterMesh.h"
 #include "GraphicsContext3D.h"
 
@@ -245,6 +245,8 @@ CustomFilterMesh::CustomFilterMesh(GraphicsContext3D* context, unsigned columns,
     m_indicesCount = generator.indicesCount();
     m_bytesPerVertex = generator.floatsPerVertex() * sizeof(float);    
 
+    m_context->makeContextCurrent();
+
     m_verticesBufferObject = m_context->createBuffer();
     m_context->bindBuffer(GraphicsContext3D::ARRAY_BUFFER, m_verticesBufferObject);
     m_context->bufferData(GraphicsContext3D::ARRAY_BUFFER, generator.vertices().size() * sizeof(float), generator.vertices().data(), GraphicsContext3D::STATIC_DRAW);
@@ -256,11 +258,12 @@ CustomFilterMesh::CustomFilterMesh(GraphicsContext3D* context, unsigned columns,
 
 CustomFilterMesh::~CustomFilterMesh()
 {
+    m_context->makeContextCurrent();
     m_context->deleteBuffer(m_verticesBufferObject);
     m_context->deleteBuffer(m_elementsBufferObject);
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(CSS_SHADERS) && ENABLE(WEBGL)
+#endif // ENABLE(CSS_SHADERS) && USE(3D_GRAPHICS)
 

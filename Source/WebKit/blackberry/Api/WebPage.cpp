@@ -404,7 +404,6 @@ WebPagePrivate::WebPagePrivate(WebPage* webPage, WebPageClient* client, const In
     , m_updateDelegatedOverlaysDispatched(false)
     , m_deferredTasksTimer(this, &WebPagePrivate::deferredTasksTimerFired)
     , m_selectPopup(0)
-    , m_parentPopup(0)
     , m_autofillManager(AutofillManager::create(this))
 {
     static bool isInitialized = false;
@@ -568,7 +567,6 @@ void WebPagePrivate::init(const WebString& pageGroupName)
     m_page->settings()->setTextReflowEnabled(m_webSettings->textReflowMode() == WebSettings::TextReflowEnabled);
 #endif
 
-    m_page->settings()->setUseHixie76WebSocketProtocol(false);
     m_page->settings()->setInteractiveFormValidationEnabled(true);
     m_page->settings()->setAllowUniversalAccessFromFileURLs(false);
     m_page->settings()->setAllowFileAccessFromFileURLs(false);
@@ -1086,14 +1084,13 @@ void WebPagePrivate::setLoadState(LoadState state)
                 frameLoadType = m_mainFrame->loader()->loadType();
             if (!((m_didRestoreFromPageCache && documentHasViewportArguments) || (frameLoadType == FrameLoadTypeReload || frameLoadType == FrameLoadTypeReloadFromOrigin))) {
                 m_viewportArguments = ViewportArguments();
+                m_userScalable = m_webSettings->isUserScalable();
+                resetScales();
 
                 // At the moment we commit a new load, set the viewport arguments
                 // to any fallback values. If there is a meta viewport in the
                 // content it will overwrite the fallback arguments soon.
                 dispatchViewportPropertiesDidChange(m_userViewportArguments);
-
-                m_userScalable = m_webSettings->isUserScalable();
-                resetScales();
             } else {
                 IntSize virtualViewport = recomputeVirtualViewportFromViewportArguments();
                 m_webPage->setVirtualViewportSize(virtualViewport.width(), virtualViewport.height());
@@ -2344,6 +2341,11 @@ bool WebPagePrivate::authenticationChallenge(const KURL& url, const ProtectionSp
 PageClientBlackBerry::SaveCredentialType WebPagePrivate::notifyShouldSaveCredential(bool isNew)
 {
     return static_cast<PageClientBlackBerry::SaveCredentialType>(m_client->notifyShouldSaveCredential(isNew));
+}
+
+void WebPagePrivate::syncProxyCredential(const WebCore::Credential& credential)
+{
+    m_client->syncProxyCredential(credential.user().utf8().data(), credential.password().utf8().data());
 }
 
 void WebPagePrivate::notifyPopupAutofillDialog(const Vector<String>& candidates, const WebCore::IntRect& screenRect)
@@ -6664,11 +6666,6 @@ bool WebPage::hasOpenedPopup() const
 PagePopupBlackBerry* WebPage::popup()
 {
     return d->m_selectPopup;
-}
-
-void WebPagePrivate::setParentPopup(PagePopupBlackBerry* webPopup)
-{
-    m_parentPopup = webPopup;
 }
 
 void WebPagePrivate::setInspectorOverlayClient(WebCore::InspectorOverlay::InspectorOverlayClient* inspectorOverlayClient)

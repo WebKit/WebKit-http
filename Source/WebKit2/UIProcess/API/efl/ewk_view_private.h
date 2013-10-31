@@ -31,8 +31,10 @@ class IntSize;
 }
 
 typedef struct _Ewk_Url_Request Ewk_Url_Request;
+typedef struct _Ewk_Url_Response Ewk_Url_Response;
 typedef struct _Ewk_Web_Error Ewk_Web_Error;
 typedef struct _Ewk_Web_Resource Ewk_Web_Resource;
+typedef struct _Ewk_Navigation_Policy_Decision Ewk_Navigation_Policy_Decision;
 #if ENABLE(WEB_INTENTS)
 typedef struct _Ewk_Intent Ewk_Intent;
 #endif
@@ -48,8 +50,14 @@ void ewk_view_load_progress_changed(Evas_Object* ewkView, double progress);
 void ewk_view_load_provisional_failed(Evas_Object* ewkView, const Ewk_Web_Error* error);
 void ewk_view_load_provisional_redirect(Evas_Object* ewkView);
 void ewk_view_load_provisional_started(Evas_Object* ewkView);
+void ewk_view_navigation_policy_decision(Evas_Object* ewkView, Ewk_Navigation_Policy_Decision* decision);
+void ewk_view_new_window_policy_decision(Evas_Object* ewkView, Ewk_Navigation_Policy_Decision* decision);
 void ewk_view_title_changed(Evas_Object* ewkView, const char* title);
+void ewk_view_resource_load_failed(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Web_Error* error);
+void ewk_view_resource_load_finished(Evas_Object* ewkView, uint64_t resourceIdentifier);
 void ewk_view_resource_load_initiated(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Web_Resource* resource, Ewk_Url_Request* request);
+void ewk_view_resource_load_response(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Url_Response* response);
+void ewk_view_resource_request_sent(Evas_Object* ewkView, uint64_t resourceIdentifier, Ewk_Url_Request* request, Ewk_Url_Response* redirectResponse);
 
 Evas_Object* ewk_view_base_add(Evas* canvas, WKContextRef, WKPageGroupRef);
 

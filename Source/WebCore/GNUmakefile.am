@@ -17,6 +17,7 @@ webcore_cppflags += \
 	-I$(srcdir)/Source/WebCore/Modules/indexeddb \
 	-I$(srcdir)/Source/WebCore/Modules/mediastream \
 	-I$(srcdir)/Source/WebCore/Modules/notifications \
+	-I$(srcdir)/Source/WebCore/Modules/protocolhandler \
 	-I$(srcdir)/Source/WebCore/Modules/webaudio \
 	-I$(srcdir)/Source/WebCore/Modules/webdatabase \
 	-I$(srcdir)/Source/WebCore/Modules/websockets \
@@ -485,6 +486,15 @@ FEATURE_DEFINES += ENABLE_CSS_REGIONS=1
 webcore_cppflags += -DENABLE_CSS_REGIONS=1
 
 endif # END ENABLE_CSS_REGIONS
+
+# ----
+# Filters
+# ----
+if ENABLE_CSS_FILTERS
+FEATURE_DEFINES += ENABLE_CSS_FILTERS=1
+webcore_cppflags += -DENABLE_CSS_FILTERS=1
+
+endif # END ENABLE_CSS_FILTERS
 
 # ----
 # Exclusions

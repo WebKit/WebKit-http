@@ -53,8 +53,6 @@ public:
     static void setSelectTrailingWhitespaceEnabled(bool);
     static bool selectTrailingWhitespaceEnabled();
 
-    static void dumpConfigurationForViewport(WebKitWebView* webView, gint deviceDPI, gint deviceWidth, gint deviceHeight, gint availableWidth, gint availableHeight);
-
     static void clearOpener(WebKitWebFrame*);
 
     // FIXME: Move these to webkitwebframe.h once their API has been discussed.
@@ -120,7 +118,6 @@ public:
     static void setMockGeolocationError(WebKitWebView*, int errorCode, const gchar* errorMessage);
     static int numberOfPendingGeolocationPermissionRequests(WebKitWebView*);
 
-    static void setHixie76WebSocketProtocolEnabled(WebKitWebView*, bool enabled);
     static void setPageCacheSupportsPlugins(WebKitWebView*, bool enabled);
     static void setCSSGridLayoutEnabled(WebKitWebView*, bool enabled);
     static void setCSSRegionsEnabled(WebKitWebView*, bool enabled);

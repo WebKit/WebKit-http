@@ -62,20 +62,19 @@ static const NSTimeInterval DefaultWatchdogTimerInterval = 1;
 - (void)_startExitFullScreenAnimationWithDuration:(NSTimeInterval)duration;
 @end
 
-#if defined(BUILDING_ON_LEOPARD) || defined(BUILDING_ON_SNOW_LEOPARD)
-@interface NSWindow(convertRectToScreenForLeopardAndSnowLeopard)
-- (NSRect)convertRectToScreen:(NSRect)aRect;
-@end
-
-@implementation NSWindow(convertRectToScreenForLeopardAndSnowLeopard)
-- (NSRect)convertRectToScreen:(NSRect)rect
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
+static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
 {
-    NSRect frame = [self frame];
+    return [window convertRectToScreen:rect];
+}
+#else
+static NSRect convertRectToScreen(NSWindow *window, NSRect rect)
+{
+    NSRect frame = [window frame];
     rect.origin.x += frame.origin.x;
     rect.origin.y += frame.origin.y;
     return rect;
 }
-@end
 #endif
 
 @interface NSWindow(IsOnActiveSpaceAdditionForTigerAndLeopard)
@@ -217,8 +216,7 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
         screen = [NSScreen mainScreen];
     NSRect screenFrame = [screen frame];
 
-    NSRect webViewFrame = [[_webView window] convertRectToScreen:
-                           [_webView convertRect:[_webView frame] toView:nil]];
+    NSRect webViewFrame = convertRectToScreen([_webView window], [_webView convertRect:[_webView frame] toView:nil]);
 
     // Flip coordinate system:
     webViewFrame.origin.y = NSMaxY([[[NSScreen screens] objectAtIndex:0] frame]) - NSMaxY(webViewFrame);
@@ -295,14 +293,14 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
         WKWindowSetClipRect([self window], windowBounds);
 
         NSWindow *webWindow = [_webViewPlaceholder.get() window];
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         // In Lion, NSWindow will animate into and out of orderOut operations. Suppress that
         // behavior here, making sure to reset the animation behavior afterward.
         NSWindowAnimationBehavior animationBehavior = [webWindow animationBehavior];
         [webWindow setAnimationBehavior:NSWindowAnimationBehaviorNone];
 #endif
         [webWindow orderOut:self];
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
         [webWindow setAnimationBehavior:animationBehavior];
 #endif
 
@@ -352,7 +350,7 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
     [self _updateMenuAndDockForFullScreen];
     
     NSWindow* webWindow = [_webViewPlaceholder.get() window];
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     // In Lion, NSWindow will animate into and out of orderOut operations. Suppress that
     // behavior here, making sure to reset the animation behavior afterward.
     NSWindowAnimationBehavior animationBehavior = [webWindow animationBehavior];
@@ -368,7 +366,7 @@ static RetainPtr<CGImageRef> createImageWithCopiedData(CGImageRef sourceImage)
     } else
         [webWindow orderWindow:NSWindowBelow relativeTo:[[self window] windowNumber]];
     
-#if !defined(BUILDING_ON_LEOPARD) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
     [webWindow setAnimationBehavior:animationBehavior];
 #endif
 
@@ -460,7 +458,7 @@ static void completeFinishExitFullScreenAnimationAfterRepaint(WKErrorRef, void* 
 - (void)_updateMenuAndDockForFullScreen
 {
     // NSApplicationPresentationOptions is available on > 10.6 only:
-#ifndef BUILDING_ON_LEOPARD
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 1060
     NSApplicationPresentationOptions options = NSApplicationPresentationDefault;
     NSScreen* fullScreenScreen = [[self window] screen];
     

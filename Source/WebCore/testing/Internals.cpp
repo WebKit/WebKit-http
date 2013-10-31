@@ -63,8 +63,8 @@
 #include "ShadowRoot.h"
 #include "SpellChecker.h"
 #include "TextIterator.h"
-#include "TextRun.h"
 #include "TreeScope.h"
+#include "ViewportArguments.h"
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -146,9 +146,31 @@ Internals::~Internals()
 }
 
 Internals::Internals(Document* document)
-    : FrameDestructionObserver(0)
+    : ContextDestructionObserver(document)
 {
-    reset(document);
+}
+
+Document* Internals::contextDocument() const
+{
+    return static_cast<Document*>(scriptExecutionContext());
+}
+
+Frame* Internals::frame() const
+{
+    if (!contextDocument())
+        return 0;
+    return contextDocument()->frame();
+}
+
+InternalSettings* Internals::settings() const
+{
+    Document* document = contextDocument();
+    if (!document)
+        return 0;
+    Page* page = document->page();
+    if (!page)
+        return 0;
+    return InternalSettings::from(page);
 }
 
 String Internals::address(Node* node)
@@ -606,59 +628,14 @@ void Internals::setScrollViewPosition(Document* document, long x, long y, Except
     frameView->setConstrainsScrollingToContentEdge(constrainsScrollingToContentEdgeOldValue);
 }
 
-void Internals::setPagination(Document* document, const String& mode, int gap, ExceptionCode& ec)
+void Internals::setPagination(Document*, const String& mode, int gap, ExceptionCode& ec)
 {
-    if (!document || !document->page()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-
-    Page::Pagination pagination;
-    if (mode == "Unpaginated")
-        pagination.mode = Page::Pagination::Unpaginated;
-    else if (mode == "LeftToRightPaginated")
-        pagination.mode = Page::Pagination::LeftToRightPaginated;
-    else if (mode == "RightToLeftPaginated")
-        pagination.mode = Page::Pagination::RightToLeftPaginated;
-    else if (mode == "TopToBottomPaginated")
-        pagination.mode = Page::Pagination::TopToBottomPaginated;
-    else if (mode == "BottomToTopPaginated")
-        pagination.mode = Page::Pagination::BottomToTopPaginated;
-    else {
-        ec = SYNTAX_ERR;
-        return;
-    }
-
-    pagination.gap = gap;
-
-    document->page()->setPagination(pagination);
+    settings()->setPagination(mode, gap, ec);
 }
 
-void Internals::reset(Document* document)
+String Internals::configurationForViewport(Document*, float devicePixelRatio, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight, ExceptionCode& ec)
 {
-    if (!document || !document->settings())
-        return;
-
-    observeFrame(document->frame());
-
-    if (m_settings)
-        m_settings->restoreTo(document->page()->settings());
-    m_settings = InternalSettings::create(document->frame());
-    if (Page* page = document->page()) {
-        page->setPagination(Page::Pagination());
-
-        if (document->frame() == page->mainFrame())
-            setUserPreferredLanguages(Vector<String>());
-
-        page->setPageScaleFactor(1, IntPoint(0, 0));
-    }
-
-    resetDefaultsToConsistentValues();
-}
-
-void Internals::resetDefaultsToConsistentValues()
-{
-    TextRun::setAllowsRoundingHacks(false);
+    return settings()->configurationForViewport(devicePixelRatio, deviceWidth, deviceHeight, availableWidth, availableHeight, ec);
 }
 
 bool Internals::wasLastChangeUserEdit(Element* textField, ExceptionCode& ec)
@@ -889,61 +866,22 @@ int Internals::lastSpellCheckProcessedSequence(Document* document, ExceptionCode
 
 Vector<String> Internals::userPreferredLanguages() const
 {
-    return WebCore::userPreferredLanguages();
+    return settings()->userPreferredLanguages();
 }
 
 void Internals::setUserPreferredLanguages(const Vector<String>& languages)
 {
-    WebCore::overrideUserPreferredLanguages(languages);
+    settings()->setUserPreferredLanguages(languages);
 }
 
-void Internals::setShouldDisplayTrackKind(Document* document, const String& kind, bool enabled, ExceptionCode& ec)
+void Internals::setShouldDisplayTrackKind(Document*, const String& kind, bool enabled, ExceptionCode& ec)
 {
-    if (!document || !document->frame() || !document->frame()->settings()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
-    
-#if ENABLE(VIDEO_TRACK)
-    Settings* settings = document->frame()->settings();
-    
-    if (equalIgnoringCase(kind, "Subtitles"))
-        settings->setShouldDisplaySubtitles(enabled);
-    else if (equalIgnoringCase(kind, "Captions"))
-        settings->setShouldDisplayCaptions(enabled);
-    else if (equalIgnoringCase(kind, "TextDescriptions"))
-        settings->setShouldDisplayTextDescriptions(enabled);
-    else
-        ec = SYNTAX_ERR;
-#else
-    UNUSED_PARAM(kind);
-    UNUSED_PARAM(enabled);
-#endif
+    settings()->setShouldDisplayTrackKind(kind, enabled, ec);
 }
 
-bool Internals::shouldDisplayTrackKind(Document* document, const String& kind, ExceptionCode& ec)
+bool Internals::shouldDisplayTrackKind(Document*, const String& kind, ExceptionCode& ec)
 {
-    if (!document || !document->frame() || !document->frame()->settings()) {
-        ec = INVALID_ACCESS_ERR;
-        return false;
-    }
-    
-#if ENABLE(VIDEO_TRACK)
-    Settings* settings = document->frame()->settings();
-    
-    if (equalIgnoringCase(kind, "Subtitles"))
-        return settings->shouldDisplaySubtitles();
-    if (equalIgnoringCase(kind, "Captions"))
-        return settings->shouldDisplayCaptions();
-    if (equalIgnoringCase(kind, "TextDescriptions"))
-        return settings->shouldDisplayTextDescriptions();
-
-    ec = SYNTAX_ERR;
-    return false;
-#else
-    UNUSED_PARAM(kind);
-    return false;
-#endif
+    return settings()->shouldDisplayTrackKind(kind, ec);
 }
 
 unsigned Internals::wheelEventHandlerCount(Document* document, ExceptionCode& ec)
@@ -979,12 +917,12 @@ PassRefPtr<NodeList> Internals::nodesFromRect(Document* document, int x, int y, 
 
 void Internals::emitInspectorDidBeginFrame()
 {
-    InspectorInstrumentation::didBeginFrame(frame()->page());
+    InspectorInstrumentation::didBeginFrame(contextDocument()->frame()->page());
 }
 
 void Internals::emitInspectorDidCancelFrame()
 {
-    InspectorInstrumentation::didCancelFrame(frame()->page());
+    InspectorInstrumentation::didCancelFrame(contextDocument()->frame()->page());
 }
 
 void Internals::setBatteryStatus(Document* document, const String& eventType, bool charging, double chargingTime, double dischargingTime, double level, ExceptionCode& ec)
@@ -1127,7 +1065,7 @@ void Internals::resumeAnimations(Document* document, ExceptionCode& ec) const
 
 void Internals::allowRoundingHacks() const
 {
-    TextRun::setAllowsRoundingHacks(true);
+    settings()->allowRoundingHacks();
 }
 
 String Internals::counterValue(Element* element)

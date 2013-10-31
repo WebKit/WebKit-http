@@ -42,6 +42,12 @@
 
 // Feature disabled, see: https://bugs.webkit.org/show_bug.cgi?id=85425
 BUGWKGTK SKIP : fast/viewport/viewport-legacy-xhtmlmp.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-handheldfriendly.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized-2.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized-3.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-mobileoptimized.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-ordering-5.html = TEXT
+BUGWKGTK SKIP : fast/viewport/viewport-legacy-ordering-6.html = TEXT
 
 // Ignored because we do not have OBJC bindings (via Chromium).
 BUGWKGTK SKIP : editing/pasteboard/paste-RTFD.html = TEXT
@@ -131,6 +137,7 @@ BUGWKGTK SKIP : fast/forms/color = TEXT
 BUGWK29359 : fast/forms/date = TEXT
 BUGWK29359 : fast/forms/date/date-stepup-stepdown-from-renderer.html = PASS
 BUGWK29359 : fast/forms/date/no-page-popup-controller.html = PASS
+BUGWK90987 : fast/forms/input-in-table-cell-no-value.html = IMAGE
 BUGWK29359 : fast/css/pseudo-in-range.html = TEXT
 BUGWK29359 : fast/css/pseudo-out-of-range.html = TEXT
 BUGWK29359 : fast/css/pseudo-in-range-invalid-value.html = TEXT
@@ -342,6 +349,8 @@ BUGWK85558 SKIP : http/tests/security/contentSecurityPolicy/1.1 = TEXT
 // Text Autosizing is not yet enabled.
 BUGWK84186 SKIP : fast/text-autosizing = PASS
 
+// Dialog element is not yet enabled.
+BUGWK84635 SKIP : fast/dom/HTMLDialogElement = TEXT
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Expected failures
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -935,11 +944,6 @@ BUGWKGTK : sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T
 BUGWK44316 : platform/gtk/accessibility/object-attributes.html = TEXT
 BUGWK44316 : platform/gtk/accessibility/title-and-alt.html = TEXT
 
-// viewport meta tag tests that differ from the Opera results
-BUGWKGTK : fast/viewport/viewport-87.html = TEXT
-BUGWKGTK : fast/viewport/viewport-126.html = TEXT
-BUGWKGTK : fast/viewport/viewport-127.html = TEXT
-
 // LayoutTestController::addUserScript not implemented for gtk
 BUGWKGTK : plugins/plugin-document-load-prevented-userscript.html = TEXT
 
@@ -1245,6 +1249,10 @@ BUGWK90007 : http/tests/security/mixedContent/insecure-audio-video-in-main-frame
 
 BUGWK74219 : fast/regions/positioned-objects-block-static-spanning-regions-rtl.html = IMAGE
 BUGWK90770 : fast/regions/webkit-flow-renderer-layer.html = IMAGE
+
+BUGWK89231 : fast/js/global-constructors.html = TEXT
+
+BUGWK91009 DEBUG : fast/xsl/xslt-missing-namespace-in-xslt.xml = TEXT
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // End of Tests failing

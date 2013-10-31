@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(WEBGL)
+#if USE(3D_GRAPHICS)
 
 #include "Extensions3DOpenGL.h"
 
@@ -43,8 +43,6 @@ namespace WebCore {
 
 Extensions3DOpenGL::Extensions3DOpenGL(GraphicsContext3D* context)
     : Extensions3DOpenGLCommon(context)
-    , m_initializedAvailableExtensions(false)
-    , m_context(context)
 {
 }
 
@@ -155,4 +153,4 @@ String Extensions3DOpenGL::getExtensions()
 
 } // namespace WebCore
 
-#endif // ENABLE(WEBGL)
+#endif // USE(3D_GRAPHICS)

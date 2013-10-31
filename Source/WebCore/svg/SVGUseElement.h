@@ -56,6 +56,8 @@ public:
 private:
     SVGUseElement(const QualifiedName&, Document*, bool wasInsertedByParser);
 
+    void createShadowSubtree();
+
     virtual bool isValid() const { return SVGTests::isValid(); }
     virtual bool supportsFocus() const { return true; }
 
@@ -82,7 +84,7 @@ private:
     virtual bool selfHasRelativeLengths() const;
 
     // Instance tree handling
-    void buildInstanceTree(SVGElement* target, SVGElementInstance* targetInstance, bool& foundCycle);
+    void buildInstanceTree(SVGElement* target, SVGElementInstance* targetInstance, bool& foundCycle, bool foundUse);
     bool hasCycleUseReferencing(SVGUseElement*, SVGElementInstance* targetInstance, SVGElement*& newTarget);
 
     // Shadow tree handling

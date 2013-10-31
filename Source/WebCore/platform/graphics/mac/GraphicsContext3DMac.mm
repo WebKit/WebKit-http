@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(WEBGL)
+#if USE(3D_GRAPHICS)
 
 #include "GraphicsContext3D.h"
 
@@ -284,9 +284,10 @@ void GraphicsContext3D::setErrorMessageCallback(PassOwnPtr<ErrorMessageCallback>
 
 void GraphicsContext3D::releaseShaderCompiler()
 {
+    makeContextCurrent();
     notImplemented();
 }
 
 }
 
-#endif // ENABLE(WEBGL)
+#endif // USE(3D_GRAPHICS)

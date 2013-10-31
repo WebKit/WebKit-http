@@ -4,6 +4,7 @@ SET(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/intents"
     "${WEBCORE_DIR}/Modules/notifications"
+    "${WEBCORE_DIR}/Modules/protocolhandler"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
@@ -130,6 +131,8 @@ SET(WebCore_IDL_FILES
     Modules/geolocation/PositionError.idl
     Modules/geolocation/PositionErrorCallback.idl
 
+    Modules/protocolhandler/NavigatorRegisterProtocolHandler.idl
+
     Modules/webaudio/AudioBuffer.idl
     Modules/webaudio/AudioBufferCallback.idl
     Modules/webaudio/AudioBufferSourceNode.idl
@@ -226,6 +229,7 @@ SET(WebCore_IDL_FILES
     dom/MouseEvent.idl
     dom/MutationCallback.idl
     dom/MutationEvent.idl
+    dom/MutationObserver.idl
     dom/MutationRecord.idl
     dom/NamedNodeMap.idl
     dom/NodeFilter.idl
@@ -249,7 +253,6 @@ SET(WebCore_IDL_FILES
     dom/TreeWalker.idl
     dom/UIEvent.idl
     dom/WebKitAnimationEvent.idl
-    dom/WebKitMutationObserver.idl
     dom/WebKitNamedFlow.idl
     dom/WebKitTransitionEvent.idl
     dom/WheelEvent.idl
@@ -281,6 +284,7 @@ SET(WebCore_IDL_FILES
     html/HTMLCollection.idl
     html/HTMLDataListElement.idl
     html/HTMLDetailsElement.idl
+    html/HTMLDialogElement.idl
     html/HTMLDirectoryElement.idl
     html/HTMLDivElement.idl
     html/HTMLDListElement.idl
@@ -395,7 +399,6 @@ SET(WebCore_IDL_FILES
     page/Location.idl
     page/MemoryInfo.idl
     page/Navigator.idl
-    page/NavigatorRegisterProtocolHandler.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceEntryList.idl
@@ -436,6 +439,8 @@ SET(WebCore_SOURCES
     Modules/geolocation/Geolocation.cpp
     Modules/geolocation/GeolocationController.cpp
     Modules/geolocation/NavigatorGeolocation.cpp
+
+    Modules/protocolhandler/NavigatorRegisterProtocolHandler.cpp
 
     accessibility/AXObjectCache.cpp
     accessibility/AccessibilityARIAGrid.cpp
@@ -617,6 +622,7 @@ SET(WebCore_SOURCES
     dom/MouseEvent.cpp
     dom/MouseRelatedEvent.cpp
     dom/MutationEvent.cpp
+    dom/MutationObserver.cpp
     dom/MutationObserverInterestGroup.cpp
     dom/MutationObserverRegistration.cpp
     dom/MutationRecord.cpp
@@ -670,7 +676,6 @@ SET(WebCore_SOURCES
     dom/UserTypingGestureIndicator.cpp
     dom/ViewportArguments.cpp
     dom/WebKitAnimationEvent.cpp
-    dom/WebKitMutationObserver.cpp
     dom/WebKitNamedFlow.cpp
     dom/WebKitTransitionEvent.cpp
     dom/WheelEvent.cpp
@@ -789,6 +794,7 @@ SET(WebCore_SOURCES
     html/HTMLDListElement.cpp
     html/HTMLDataListElement.cpp
     html/HTMLDetailsElement.cpp
+    html/HTMLDialogElement.cpp
     html/HTMLDirectoryElement.cpp
     html/HTMLDivElement.cpp
     html/HTMLDocument.cpp
@@ -1083,7 +1089,6 @@ SET(WebCore_SOURCES
     page/MouseEventWithHitTestResults.cpp
     page/Navigator.cpp
     page/NavigatorBase.cpp
-    page/NavigatorRegisterProtocolHandler.cpp
     page/OriginAccessEntry.cpp
     page/Page.cpp
     page/PageGroup.cpp

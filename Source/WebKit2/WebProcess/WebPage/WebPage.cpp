@@ -875,18 +875,12 @@ void WebPage::setResizesToContentsUsingLayoutSize(const IntSize& targetLayoutSiz
     if (view->fixedLayoutSize() == targetLayoutSize)
         return;
 
-    // Always reset even when empty.
-    view->setFixedLayoutSize(targetLayoutSize);
-
     m_page->settings()->setAcceleratedCompositingForFixedPositionEnabled(true);
     m_page->settings()->setFixedElementsLayoutRelativeToFrame(true);
     m_page->settings()->setFixedPositionCreatesStackingContext(true);
 
-    // Schedule a layout to use the new target size.
-    if (!view->layoutPending()) {
-        view->setNeedsLayout();
-        view->scheduleRelayout();
-    }
+    // Always reset even when empty. This also takes care of the relayout.
+    setFixedLayoutSize(targetLayoutSize);
 }
 
 void WebPage::resizeToContentsIfNeeded()
@@ -1087,7 +1081,7 @@ void WebPage::setUseFixedLayout(bool fixed)
 
     view->setUseFixedLayout(fixed);
     if (!fixed)
-        view->setFixedLayoutSize(IntSize());
+        setFixedLayoutSize(IntSize());
 }
 
 void WebPage::setFixedLayoutSize(const IntSize& size)
@@ -2048,10 +2042,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if USE(AVFOUNDATION)
     settings->setAVFoundationEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationEnabledKey()));
-#endif
-
-#if ENABLE(WEB_SOCKETS)
-    settings->setUseHixie76WebSocketProtocol(store.getBoolValueForKey(WebPreferencesKey::hixie76WebSocketProtocolEnabledKey()));
 #endif
 
 #if ENABLE(WEB_AUDIO)
@@ -3101,7 +3091,7 @@ bool WebPage::canHandleRequest(const WebCore::ResourceRequest& request)
     return platformCanHandleRequest(request);
 }
 
-#if PLATFORM(MAC) && !defined(BUILDING_ON_SNOW_LEOPARD)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 1070
 void WebPage::handleAlternativeTextUIResult(const String& result)
 {
     Frame* frame = m_page->focusController()->focusedOrMainFrame();
@@ -3124,16 +3114,6 @@ void WebPage::simulateMouseUp(int button, WebCore::IntPoint position, int clickC
 void WebPage::simulateMouseMotion(WebCore::IntPoint position, double time)
 {
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time));
-}
-
-String WebPage::viewportConfigurationAsText(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight)
-{
-    ViewportArguments arguments = mainFrame()->document()->viewportArguments();
-    ViewportAttributes attrs = WebCore::computeViewportAttributes(arguments, /* default layout width for non-mobile pages */ 980,
-                                                                  deviceWidth, deviceHeight, deviceDPI / ViewportArguments::deprecatedTargetDPI, IntSize(availableWidth, availableHeight));
-    WebCore::restrictMinimumScaleFactorToViewportSize(attrs, IntSize(availableWidth, availableHeight));
-    WebCore::restrictScaleFactorToInitialScaleIfNotUserScalable(attrs);
-    return String::format("viewport size %dx%d scale %f with limits [%f, %f] and userScalable %f\n", static_cast<int>(attrs.layoutSize.width()), static_cast<int>(attrs.layoutSize.height()), attrs.initialScale, attrs.minimumScale, attrs.maximumScale, attrs.userScalable);
 }
 
 void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length)

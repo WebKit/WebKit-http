@@ -148,6 +148,9 @@ EXPORTS
         ??0String@WTF@@QAE@PB_W@Z
         ??1FrameDestructionObserver@WebCore@@MAE@XZ
         ??0FrameDestructionObserver@WebCore@@QAE@PAVFrame@1@@Z
+        ??1ContextDestructionObserver@WebCore@@MAE@XZ
+        ?contextDestroyed@ContextDestructionObserver@WebCore@@UAEXXZ
+        ??0ContextDestructionObserver@WebCore@@QAE@PAVScriptExecutionContext@1@@Z
         ?absoluteBoundingBoxRect@RenderObject@WebCore@@QBE?AVIntRect@2@_N@Z
         ?absoluteBoundingBoxRectIgnoringTransforms@RenderObject@WebCore@@QBE?AVIntRect@2@XZ
 	?description@DocumentMarker@WebCore@@QBEABVString@WTF@@XZ
@@ -250,6 +253,10 @@ EXPORTS
         ?willDetachPage@FrameDestructionObserver@WebCore@@UAEXXZ
         ?nodesFromRect@Document@WebCore@@QBE?AV?$PassRefPtr@VNodeList@WebCore@@@WTF@@HHIIII_N0@Z
         ?selectionStartHasMarkerFor@Editor@WebCore@@QBE_NW4MarkerType@DocumentMarker@2@HH@Z
+        ?restrictScaleFactorToInitialScaleIfNotUserScalable@WebCore@@YAXAAUViewportAttributes@1@@Z
+        ?restrictMinimumScaleFactorToViewportSize@WebCore@@YAXAAUViewportAttributes@1@VIntSize@1@@Z
+        ?computeViewportAttributes@WebCore@@YA?AUViewportAttributes@1@UViewportArguments@1@HHHMVIntSize@1@@Z
+        ?viewportArguments@Page@WebCore@@QBE?AUViewportArguments@2@XZ
         ?isPageBoxVisible@Document@WebCore@@QAE_NH@Z
         ?isActive@InsertionPoint@WebCore@@QBE_NXZ
         ?suspendAnimations@AnimationController@WebCore@@QAEXXZ
@@ -257,6 +264,7 @@ EXPORTS
         ?setAllowsRoundingHacks@TextRun@WebCore@@SAX_N@Z
         ?profilerEnabled@InspectorController@WebCore@@QAE_NXZ
         ?setProfilerEnabled@InspectorController@WebCore@@QAEX_N@Z
+	??1ContextDestructionObserver@WebCore@@MAE@XZ
         ?jsStringSlowCase@WebCore@@YA?AVJSValue@JSC@@PAVExecState@3@AAV?$HashMap@PAVStringImpl@WTF@@V?$Weak@VJSString@JSC@@@JSC@@U?$PtrHash@PAVStringImpl@WTF@@@2@U?$HashTraits@PAVStringImpl@WTF@@@2@U?$HashTraits@V?$Weak@VJSString@JSC@@@JSC@@@2@@WTF@@PAVStringImpl@6@@Z
         ?registerURLSchemeAsBypassingContentSecurityPolicy@SchemeRegistry@WebCore@@SAXABVString@WTF@@@Z
         ?removeURLSchemeRegisteredAsBypassingContentSecurityPolicy@SchemeRegistry@WebCore@@SAXABVString@WTF@@@Z

@@ -60,14 +60,14 @@ typedef CCLayerIterator<CCLayerImpl, Vector<CCLayerImpl*>, CCRenderSurface, CCLa
 
 static PassOwnPtr<CCTiledLayerImpl> makeLayer(CCTiledLayerImpl* parent, const WebTransformationMatrix& drawTransform, const IntRect& layerRect, float opacity, bool opaque, const IntRect& layerOpaqueRect, Vector<CCLayerImpl*>& surfaceLayerList)
 {
-    OwnPtr<CCTiledLayerImpl> layer = CCTiledLayerImpl::create(0);
+    OwnPtr<CCTiledLayerImpl> layer = CCTiledLayerImpl::create(1);
     OwnPtr<CCLayerTilingData> tiler = CCLayerTilingData::create(IntSize(100, 100), CCLayerTilingData::NoBorderTexels);
     tiler->setBounds(layerRect.size());
     layer->setTilingData(*tiler);
     layer->setSkipsDraw(false);
     layer->setDrawTransform(drawTransform);
     layer->setScreenSpaceTransform(drawTransform);
-    layer->setVisibleLayerRect(layerRect);
+    layer->setVisibleContentRect(layerRect);
     layer->setDrawOpacity(opacity);
     layer->setOpaque(opaque);
 

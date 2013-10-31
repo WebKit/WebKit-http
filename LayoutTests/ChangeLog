@@ -1,3 +1,1627 @@
+2012-07-12  Luciano Wolf  <luciano.wolf@openbossa.org>
+
+        [Qt] [Part 1] platform/qt/css1 tests needs update after rebaseline and new testfonts
+        https://bugs.webkit.org/show_bug.cgi?id=90809
+
+        Batch of expected result files reviewed. It comprises
+        /LayoutTests/platform/qt/css1/box_properties directory.
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/qt-5.0-wk1/Skipped:
+        * platform/qt-5.0-wk2/Skipped:
+        * platform/qt-5.0/Skipped:
+        * platform/qt/css1/box_properties/acid_test-expected.png:
+        * platform/qt/css1/box_properties/acid_test-expected.txt:
+        * platform/qt/css1/box_properties/border-expected.png:
+        * platform/qt/css1/box_properties/border-expected.txt:
+        * platform/qt/css1/box_properties/border_bottom-expected.png:
+        * platform/qt/css1/box_properties/border_bottom-expected.txt:
+        * platform/qt/css1/box_properties/border_bottom_inline-expected.png:
+        * platform/qt/css1/box_properties/border_bottom_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_bottom_width-expected.png:
+        * platform/qt/css1/box_properties/border_bottom_width-expected.txt:
+        * platform/qt/css1/box_properties/border_bottom_width_inline-expected.png:
+        * platform/qt/css1/box_properties/border_bottom_width_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_color-expected.png:
+        * platform/qt/css1/box_properties/border_color-expected.txt:
+        * platform/qt/css1/box_properties/border_color_inline-expected.png:
+        * platform/qt/css1/box_properties/border_color_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_inline-expected.png:
+        * platform/qt/css1/box_properties/border_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_left-expected.png:
+        * platform/qt/css1/box_properties/border_left-expected.txt:
+        * platform/qt/css1/box_properties/border_left_inline-expected.png:
+        * platform/qt/css1/box_properties/border_left_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_left_width-expected.png:
+        * platform/qt/css1/box_properties/border_left_width-expected.txt:
+        * platform/qt/css1/box_properties/border_left_width_inline-expected.png:
+        * platform/qt/css1/box_properties/border_left_width_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_right-expected.png:
+        * platform/qt/css1/box_properties/border_right-expected.txt:
+        * platform/qt/css1/box_properties/border_right_inline-expected.png:
+        * platform/qt/css1/box_properties/border_right_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_right_width-expected.png:
+        * platform/qt/css1/box_properties/border_right_width-expected.txt:
+        * platform/qt/css1/box_properties/border_right_width_inline-expected.png:
+        * platform/qt/css1/box_properties/border_right_width_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_style-expected.png:
+        * platform/qt/css1/box_properties/border_style-expected.txt:
+        * platform/qt/css1/box_properties/border_style_inline-expected.png:
+        * platform/qt/css1/box_properties/border_style_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_top-expected.png:
+        * platform/qt/css1/box_properties/border_top-expected.txt:
+        * platform/qt/css1/box_properties/border_top_inline-expected.png:
+        * platform/qt/css1/box_properties/border_top_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_top_width-expected.png:
+        * platform/qt/css1/box_properties/border_top_width-expected.txt:
+        * platform/qt/css1/box_properties/border_top_width_inline-expected.png:
+        * platform/qt/css1/box_properties/border_top_width_inline-expected.txt:
+        * platform/qt/css1/box_properties/border_width-expected.png:
+        * platform/qt/css1/box_properties/border_width-expected.txt:
+        * platform/qt/css1/box_properties/border_width_inline-expected.png:
+        * platform/qt/css1/box_properties/border_width_inline-expected.txt:
+        * platform/qt/css1/box_properties/clear-expected.png:
+        * platform/qt/css1/box_properties/clear-expected.txt:
+        * platform/qt/css1/box_properties/clear_float-expected.png:
+        * platform/qt/css1/box_properties/clear_float-expected.txt:
+        * platform/qt/css1/box_properties/float-expected.png:
+        * platform/qt/css1/box_properties/float-expected.txt:
+        * platform/qt/css1/box_properties/float_elements_in_series-expected.png:
+        * platform/qt/css1/box_properties/float_elements_in_series-expected.txt:
+        * platform/qt/css1/box_properties/float_margin-expected.png:
+        * platform/qt/css1/box_properties/float_margin-expected.txt:
+        * platform/qt/css1/box_properties/float_on_text_elements-expected.png:
+        * platform/qt/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/qt/css1/box_properties/height-expected.png:
+        * platform/qt/css1/box_properties/height-expected.txt:
+        * platform/qt/css1/box_properties/margin-expected.png:
+        * platform/qt/css1/box_properties/margin-expected.txt:
+        * platform/qt/css1/box_properties/margin_bottom-expected.png:
+        * platform/qt/css1/box_properties/margin_bottom-expected.txt:
+        * platform/qt/css1/box_properties/margin_bottom_inline-expected.png:
+        * platform/qt/css1/box_properties/margin_bottom_inline-expected.txt:
+        * platform/qt/css1/box_properties/margin_inline-expected.png:
+        * platform/qt/css1/box_properties/margin_inline-expected.txt:
+        * platform/qt/css1/box_properties/margin_left-expected.png:
+        * platform/qt/css1/box_properties/margin_left-expected.txt:
+        * platform/qt/css1/box_properties/margin_left_inline-expected.png:
+        * platform/qt/css1/box_properties/margin_left_inline-expected.txt:
+        * platform/qt/css1/box_properties/margin_right-expected.png:
+        * platform/qt/css1/box_properties/margin_right-expected.txt:
+        * platform/qt/css1/box_properties/margin_right_inline-expected.png:
+        * platform/qt/css1/box_properties/margin_right_inline-expected.txt:
+        * platform/qt/css1/box_properties/margin_top-expected.png:
+        * platform/qt/css1/box_properties/margin_top-expected.txt:
+        * platform/qt/css1/box_properties/margin_top_inline-expected.png:
+        * platform/qt/css1/box_properties/margin_top_inline-expected.txt:
+        * platform/qt/css1/box_properties/padding-expected.png:
+        * platform/qt/css1/box_properties/padding-expected.txt:
+        * platform/qt/css1/box_properties/padding_bottom-expected.png:
+        * platform/qt/css1/box_properties/padding_bottom-expected.txt:
+        * platform/qt/css1/box_properties/padding_bottom_inline-expected.png:
+        * platform/qt/css1/box_properties/padding_bottom_inline-expected.txt:
+        * platform/qt/css1/box_properties/padding_inline-expected.png:
+        * platform/qt/css1/box_properties/padding_inline-expected.txt:
+        * platform/qt/css1/box_properties/padding_left-expected.png:
+        * platform/qt/css1/box_properties/padding_left-expected.txt:
+        * platform/qt/css1/box_properties/padding_left_inline-expected.png:
+        * platform/qt/css1/box_properties/padding_left_inline-expected.txt:
+        * platform/qt/css1/box_properties/padding_right-expected.png:
+        * platform/qt/css1/box_properties/padding_right-expected.txt:
+        * platform/qt/css1/box_properties/padding_right_inline-expected.png:
+        * platform/qt/css1/box_properties/padding_right_inline-expected.txt:
+        * platform/qt/css1/box_properties/padding_top-expected.png:
+        * platform/qt/css1/box_properties/padding_top-expected.txt:
+        * platform/qt/css1/box_properties/padding_top_inline-expected.png:
+        * platform/qt/css1/box_properties/padding_top_inline-expected.txt:
+        * platform/qt/css1/box_properties/width-expected.png:
+        * platform/qt/css1/box_properties/width-expected.txt:
+
+2012-07-12  Florin Malita  <fmalita@chromium.org>
+
+        Incorrect handling of chained pending resources in SVGUseElement
+        https://bugs.webkit.org/show_bug.cgi?id=89686
+
+        Reviewed by Nikolas Zimmermann.
+
+        Added reftest to verify that nested/indirect <use> constructs are
+        handled correctly WRT pending resource tracking.
+
+        Also updated the svg/hixie/error/017-expected.txt to match the current
+        results. Per comments in SVGUseElement::buildShadowAndInstanceTree, the
+        new behavior is correct: <use> cycles are to be ignored.
+
+        * platform/chromium-win/svg/hixie/error/017-expected.txt:
+        * platform/efl/svg/hixie/error/017-expected.txt:
+        * platform/gtk/svg/hixie/error/017-expected.txt:
+        * platform/mac/svg/hixie/error/017-expected.txt:
+        * platform/qt/svg/hixie/error/017-expected.txt:
+        * svg/custom/use-nested-expected.svg: Added.
+        * svg/custom/use-nested.svg: Added.
+
+2012-07-12  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed GTK gardening, fixing a typo in test's filename in TestExpectations.
+
+        * platform/gtk/TestExpectations:
+
+2012-07-12  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening.
+
+        * platform/qt/Skipped:
+        * platform/qt/fast/forms/state-restore-skip-stateless-expected.txt: Renamed from LayoutTests/platform/qt/fast/forms/state-restore-.
+
+2012-07-12  Kristóf Kosztyó  <kkristof@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip new failing test.
+
+        * platform/qt/Skipped:
+
+2012-07-12  Simon Pena  <spena@igalia.com>
+
+        [GTK] Rebaseline after 122416 and r122408
+        https://bugs.webkit.org/show_bug.cgi?id=91066
+
+        Unreviewed gardening.
+
+        Rebaseline fast/multicol/table-vertical-align.html
+        after r122416 (which updated results missing after the fix
+        from r122408)
+
+        * platform/gtk/fast/multicol/table-vertical-align-expected.png:
+        * platform/gtk/fast/multicol/table-vertical-align-expected.txt:
+
+2012-07-12  Simon Pena  <spena@igalia.com>
+
+        [GTK] Gardening: rebaseline after r122414
+        https://bugs.webkit.org/show_bug.cgi?id=91064
+
+        Unreviewed gardening. Add new baseline after r122414
+        for fast/forms/state-restore-skip-stateless.html
+
+        * platform/gtk/fast/forms/state-restore-skip-stateless-expected.txt: Added.
+
+2012-07-11  Andrey Kosyakov  <caseq@chromium.org>
+
+        Layout Test inspector/timeline/timeline-dom-content-loaded-event.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=90984
+
+        Reviewed by Vsevolod Vlasov.
+
+        - remove test flakiness by only outputting result when page completed reload;
+
+        * inspector/timeline/timeline-dom-content-loaded-event-expected.txt:
+        * inspector/timeline/timeline-dom-content-loaded-event.html:
+
+2012-07-12  Vsevolod Vlasov  <vsevik@chromium.org>
+
+        REGRESSION(r122327): It made http/tests/inspector/network/network-request-revision-content.html fail on Lion, Qt
+        https://bugs.webkit.org/show_bug.cgi?id=90979
+
+        Reviewed by Pavel Feldman.
+
+        * http/tests/inspector/network/network-request-revision-content-expected.txt:
+        * http/tests/inspector/network/network-request-revision-content.html:
+        * platform/qt/Skipped:
+
+2012-07-12  Xingnan Wang  <xingnan.wang@intel.com>
+
+        [IndexedDB] upperOpen set to true in lowerBound()/lowerOpen set to true in upperBound()
+        https://bugs.webkit.org/show_bug.cgi?id=90867
+
+        Reviewed by Tony Chang.
+
+        * storage/indexeddb/keyrange-expected.txt:
+        * storage/indexeddb/resources/keyrange.js:
+        (checkLowerBoundKeyRange):
+        (checkUpperBoundKeyRange):
+
+2012-07-12  Kristóf Kosztyó  <kkristof@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip the new failing test.
+
+        * platform/qt/Skipped:
+
+2012-07-12  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Added new platform specific expected after r122414.
+        https://bugs.webkit.org/show_bug.cgi?id=91060.
+
+        * platform/qt/fast/forms/state-restore-skip-stateless-expected.txt: Added after r122414.
+
+2012-07-12  MORITA Hajime  <morrita@google.com>
+
+        [Shadow DOM] <video> with <shadow> crashes
+        https://bugs.webkit.org/show_bug.cgi?id=91055
+
+        Reviewed by Kent Tamura.
+
+        * fast/dom/shadow/insertion-point-video-crash-expected.txt: Added.
+        * fast/dom/shadow/insertion-point-video-crash.html: Added.
+
+2012-07-12  Kristóf Kosztyó  <kkristof@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip new failing test introduced in r122399
+
+        * platform/qt/Skipped:
+
+2012-07-12  Kent Tamura  <tkent@chromium.org>
+
+        Do not save the form state signature if nothing is saved
+        https://bugs.webkit.org/show_bug.cgi?id=91050
+
+        Reviewed by Hajime Morita.
+
+        * fast/forms/resources/state-restore-empty-state-1.html: Added.
+        * fast/forms/state-restore-empty-state-expected.txt: Added.
+        * fast/forms/state-restore-empty-state.html: Added.
+
+2012-07-11  Matt Falkenhagen  <falken@chromium.org>
+
+        Add dialog element feature toggle to InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=90934
+
+        Reviewed by Hajime Morita.
+
+        * fast/dom/HTMLDialogElement/dialog-disabled-expected.txt: Added.
+        * fast/dom/HTMLDialogElement/dialog-disabled.html: Added.
+        * fast/dom/HTMLDialogElement/dialog-enabled-expected.txt: Added.
+        * fast/dom/HTMLDialogElement/dialog-enabled.html: Added.
+        * platform/efl/TestExpectations: Skipped because ENABLE_DIALOG_ELEMENT is off by default.
+        * platform/gtk/TestExpectations: Ditto.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/qt/TestExpectations: Ditto.
+
+2012-07-11  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+
+        * platform/chromium/TestExpectations: Started TIMEOUT on Mac.
+
+2012-07-11  Kent Tamura  <tkent@chromium.org>
+
+        Accessing width or height of a detached image input element causes crash
+        https://bugs.webkit.org/show_bug.cgi?id=90885
+
+        Reviewed by Kentaro Hara.
+
+        * fast/forms/image/width-and-height-of-detached-input-expected.txt: Added.
+        * fast/forms/image/width-and-height-of-detached-input.html: Added.
+
+2012-07-11  Dan Bernstein  <mitz@apple.com>
+
+        Updated expected results for this test after r122408, which fixed it.
+
+        * platform/mac/fast/multicol/table-vertical-align-expected.txt:
+
+2012-07-11  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+        html5lib/runner.html started crashing after r122359.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-11  Kent Tamura  <tkent@chromium.org>
+
+        Do not save state of stateless form controls
+        https://bugs.webkit.org/show_bug.cgi?id=90964
+
+        Reviewed by Hajime Morita.
+
+        * fast/forms/resources/state-restore-skip-stateless-dump.html: Added.
+        * fast/forms/state-restore-skip-stateless-expected.txt: Added.
+        * fast/forms/state-restore-skip-stateless.html: Added.
+
+2012-07-11  Dan Bernstein  <mitz@apple.com>
+
+        When a table row height grows because of pagination, not all cells’ heights are adjusted
+        https://bugs.webkit.org/show_bug.cgi?id=91043
+
+        Reviewed by Sam Weinig.
+
+        * fast/multicol/table-row-height-increase-expected.html: Added.
+        * fast/multicol/table-row-height-increase.html: Added.
+
+2012-07-11  Ojan Vafai  <ojan@chromium.org>
+
+        Rebaseline after http://trac.webkit.org/changeset/122374.
+
+        * platform/chromium-linux/css3/flexbox/repaint-rtl-column-expected.png: Removed.
+        * platform/chromium-mac-snowleopard/css3/flexbox/repaint-rtl-column-expected.png: Removed.
+        * platform/chromium-mac/css3/flexbox/repaint-rtl-column-expected.png:
+        * platform/chromium-win/css3/flexbox/repaint-rtl-column-expected.png:
+
+2012-07-11  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+        inspector/timeline/timeline-dom-content-loaded-event.html started to fail after r122312.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-11  Robert Kroeger  <rjkroege@chromium.org>
+
+        Suppress horizontal conversion of PlatformWheelEvents when hasPreciseScrollingDeltas is true
+        https://bugs.webkit.org/show_bug.cgi?id=89580
+
+        WebKit GTK and Chromium Linux force vertical wheel events to
+        scroll horizontally when over horizontal scroll bars.  This is
+        undesirable for touchpad scrolling with
+        hasPreciseScrollingDeltas() == true. Added a layout test showing
+        that change correctly suppresses this behaviour.
+
+        Reviewed by Adam Barth.
+
+        * fast/events/touch/gesture/touch-gesture-scroll-sideways-expected.txt: Added.
+        * fast/events/touch/gesture/touch-gesture-scroll-sideways.html: Added.
+        * platform/chromium-linux/fast/events/touch/gesture/touch-gesture-scroll-sideways-expected.txt: Added. Note: test has intentional platform difference.
+
+2012-07-11  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should have fast virtual calls
+        https://bugs.webkit.org/show_bug.cgi?id=90924
+
+        Rubber stamped by Oliver Hunt.
+
+        This changes which piece of code appears on top of the stack at the point of a stack
+        overflow. As far as Oliver and I can tell, it doesn't matter, so I just rebased the
+        test.
+
+        * fast/js/stack-trace-expected.txt:
+
+2012-07-11  Adam Barth  <abarth@webkit.org>
+
+        Unreviewed.  Remove empty directories.
+
+        * http/tests/websocket/tests/resources: Removed.
+        * http/tests/websocket/tests/script-tests: Removed.
+        * http/tests/websocket/tests/workers: Removed.
+        * http/tests/websocket/tests/workers/resources: Removed.
+
+2012-07-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Assertion ASSERTION FAILED: enclosingIntRect(rendererMappedResult) == enclosingIntRect(FloatQuad(result).boundingBox()) when compositing in paginated mode
+        https://bugs.webkit.org/show_bug.cgi?id=90919
+
+        Reviewed by Antti Koivisto.
+
+        Test with a composited element in a document which is put into paginated mode.
+
+        * compositing/columns/geometry-map-paginated-assert-expected.txt: Added.
+        * compositing/columns/geometry-map-paginated-assert.html: Added.
+
+2012-07-11  Ojan Vafai  <ojan@chromium.org>
+
+        Simplify css3/flexbox/repaint-rtl-column.html
+        https://bugs.webkit.org/show_bug.cgi?id=91011
+
+        Reviewed by Tony Chang.
+
+        This test was doing something simple in a complicated way. Also, removing
+        the text should make it so that more ports can fallback to the same png.
+
+        * css3/flexbox/repaint-rtl-column-expected.txt:
+        * css3/flexbox/repaint-rtl-column.html:
+        * platform/chromium-linux/css3/flexbox/repaint-rtl-column-expected.png:
+
+2012-07-11  Chris Fleizach  <cfleizach@apple.com>
+
+        ARIA spinbutton role incorrectly mapped to ProgressIndicatorRole
+        https://bugs.webkit.org/show_bug.cgi?id=77298
+
+        Reviewed by Anders Carlsson.
+
+        * platform/mac/accessibility/aria-spinbutton-expected.txt:
+        * platform/mac/accessibility/aria-spinbutton.html:
+
+2012-07-11  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed GTK gardening, adding an expectation for a test failing on the
+        64-bit Debug builder due to libxml2 2.8.0 being used and updating the
+        bug handle for another test.
+
+        * platform/gtk/TestExpectations:
+
+2012-07-11  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] Enable LEGACY_VIEWPORT_ADAPTION
+        https://bugs.webkit.org/show_bug.cgi?id=90991
+
+        Reviewed by Tony Chang.
+
+        These tests pass now that we've enabled this feature.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-11  Dean Jackson  <dino@apple.com>
+
+        TileCache layers have wrong border debug color
+        https://bugs.webkit.org/show_bug.cgi?id=90922
+
+        Reviewed by Simon Fraser.
+
+        Make sure that the document background color is updated
+        when using a Tile Cache.
+
+        * compositing/document-background-color-expected.html: Added.
+        * compositing/document-background-color.html: Added.
+
+2012-07-11  Allan Sandfeld Jensen  <allan.jensen@nokia.com>
+
+        NodesFromRect doesn't work on SVG root elements.
+        https://bugs.webkit.org/show_bug.cgi?id=89990
+
+        Reviewed by Antonio Gomes.
+
+        Test nodesFromRect on SVG root elements.
+
+        * fast/dom/nodesFromRect-svg-expected.txt: Added.
+        * fast/dom/nodesFromRect-svg.html: Added.
+
+2012-07-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Unreviewed gardening.
+
+        * platform/qt-5.0-wk2/Skipped: Skip a new crashing test.
+        * platform/qt/Skipped: Typo fix.
+
+2012-07-11  Steffen Imhof  <steffen.imhof@basyskom.com>
+
+        [Qt] Middle clicking a scrollbar causes text to be pasted.
+        https://bugs.webkit.org/show_bug.cgi?id=78444
+
+        Updated the scrollbars/scrollbar-middleclick-nopaste.html test to use an
+        <input> field as target for onpaste events. Using <body> did not work
+        (at least for Qt), because the onpaste events are not fired, even if
+        manually middle-clicking into the body. My guess would be that they are
+        not sent, because the body is non-editable. The changed test should
+        reflect the common use-case triggering the problem better.
+
+        Reviewed by Simon Hausmann.
+
+        * scrollbars/scrollbar-middleclick-nopaste.html:
+
+2012-07-11  W. James MacLean  <wjmaclean@chromium.org>
+
+        [Chromium] Unreviewed gardening. fast/forms/textarea/textarea-state-restore.html is flaky (timeouts frquently).
+        https://bugs.webkit.org/show_bug.cgi?id=90980
+
+        Marking this test as possible TIMOUT in test expectations.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-11  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip a failing test after r122327.
+        https://bugs.webkit.org/show_bug.cgi?id=90979.
+
+        * platform/qt/Skipped:
+
+2012-07-11  W. James MacLean  <wjmaclean@chromium.org>
+
+        Unreviewed gardening. Mark inspector/extensions/extensions-events.html as TIMEOUT on non-debug builds.
+        https://bugs.webkit.org/show_bug.cgi?id=86439
+
+        This test has started timing out on non-debug builds as well, adding comment to existing bug.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-11  Vsevolod Vlasov  <vsevik@chromium.org>
+
+        Web Inspector: Move revisions support to UISourceCode.
+        https://bugs.webkit.org/show_bug.cgi?id=90888
+
+        Reviewed by Pavel Feldman.
+
+        * http/tests/inspector/network/network-request-revision-content-expected.txt:
+        * http/tests/inspector/network/network-request-revision-content.html:
+        * inspector/debugger/script-snippet-model.html:
+        * inspector/styles/styles-add-new-rule.html:
+        * inspector/styles/styles-history.html:
+
+2012-07-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Unreviewed gardening.
+
+        Mark fast/js/dfg-poison-fuzz.html as slow, because its runtime is 48 secs on 32 bit in debug mode.
+
+        * platform/qt/TestExpectations:
+
+2012-07-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][ARM] Unreviewed gardening, mark slow tests.
+
+        * platform/qt-arm/TestExpectations:
+
+2012-07-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][ARM] Unreviewed gardening, skip more crashing tests.
+
+        * platform/qt-arm/TestExpectations:
+
+2012-07-11  Balazs Ankes  <bank@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening after r122290.
+
+        * platform/qt/Skipped: Skip fast/forms/input-in-table-cell-no-value.html because  ENABLE(INPUT_TYPE_DATE) is disabled
+
+2012-07-11  Christophe Dumez  <christophe.dumez@intel.com>
+
+        [EFL] Move tests that require ENABLE_INPUT_TYPE_* to TestExpectations
+        https://bugs.webkit.org/show_bug.cgi?id=90948
+
+        Unreviewed EFL gardening. Move tests that require
+        ENABLE_INPUT_TYPE_* to be enabled from Skipped list to
+        TestExpectations.
+
+        * platform/efl/Skipped:
+        * platform/efl/TestExpectations:
+
+2012-07-11  Taiju Tsuiki  <tzik@chromium.org>
+
+        Web Inspector: Clean up FileSystem related code
+        https://bugs.webkit.org/show_bug.cgi?id=90592
+
+        Reviewed by Vsevolod Vlasov.
+
+        Clean up FileSystem related code in Inspector as follows:
+        - Clean up layout tests and add test case for error case,
+        - Fix error handling on request,
+        - s/GetFileSystemRootTask/FileSystemRootRequest/g
+        - s/ReadDirectoryTask/DirectoryContentRequest/g
+        - s/ReadFileTask/FileContentRequest/g
+
+        * http/tests/inspector/filesystem/filesystem-test.js:
+        (initialize_FileSystemTest.InspectorTest.dumpFileSystemRootRequestResult):
+        (initialize_FileSystemTest.InspectorTest.dumpDirectoryContentRequestResult):
+        (initialize_FileSystemTest.InspectorTest.dumpMetadataRequestResult):
+        (initialize_FileSystemTest.InspectorTest.dumpFileContentRequestResult):
+        (initialize_FileSystemTest):
+        * http/tests/inspector/filesystem/request-directory-content-expected.txt: Renamed from LayoutTests/http/tests/inspector/filesystem/read-directory-expected.txt.
+        * http/tests/inspector/filesystem/request-directory-content.html: Renamed from LayoutTests/http/tests/inspector/filesystem/read-directory.html. Changed test steps to unnamed function array. Add failcase test.
+        * http/tests/inspector/filesystem/request-file-content-expected.txt: Renamed from LayoutTests/http/tests/inspector/filesystem/read-file-expected.txt.
+        * http/tests/inspector/filesystem/request-file-content.html: Renamed from LayoutTests/http/tests/inspector/filesystem/read-file.html. Changed test steps to unnamed function array. Add failcase test.
+        * http/tests/inspector/filesystem/request-filesystem-root-expected.txt: Renamed from LayoutTests/http/tests/inspector/filesystem/get-filesystem-expected.txt.
+        * http/tests/inspector/filesystem/request-filesystem-root.html: Renamed from LayoutTests/http/tests/inspector/filesystem/get-filesystem-root.html. Changed test steps to unnamed function array. Add failcase test.
+        * http/tests/inspector/filesystem/request-metadata-expected.txt: Renamed from LayoutTests/http/tests/inspector/filesystem/get-metadata-expected.txt.
+        * http/tests/inspector/filesystem/request-metadata.html: Renamed from LayoutTests/http/tests/inspector/filesystem/get-metadata.html. Changed test steps to unnamed function array. Add failcase test.
+
+2012-07-09  Eugene Klyuchnikov  <eustas.bug@gmail.com>
+
+        Web Inspector: Forward message loop instrumentation data to frontend.
+        https://bugs.webkit.org/show_bug.cgi?id=89584
+
+        Reviewed by Yury Semikhatsky.
+
+        Transmit collected message loop tasks to inspector frontend.
+        Now "Program" should be a top-level event on browsers that
+        support message loop instrumentation.
+        Frontend was changed so that user will not see any changes.
+
+        * inspector/timeline/timeline-enum-stability-expected.txt:
+
+2012-07-11  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed GTK gardening, adding an image expectation for the
+        fast/forms/input-in-table-cell-no-value.html reftest, failing
+        after it was introduced in r122290 due to <input type='date'>
+        being used. The ENABLE_INPUT_TYPE_DATE feature is not enabled
+        on the Gtk port.
+
+        * platform/gtk/TestExpectations:
+
+2012-07-11  Kenneth Russell  <kbr@google.com>
+
+        compositing/webgl/webgl-nonpremultiplied-blend.html is flaky on Lion
+        https://bugs.webkit.org/show_bug.cgi?id=82412
+
+        Reviewed by Adrienne Walker.
+
+        Removed Chromium Mac-specific pixel results and failure expectations.
+
+        * platform/chromium-mac/compositing/webgl/webgl-nonpremultiplied-blend-expected.png: Removed.
+        * platform/chromium/TestExpectations:
+            Removed expectations of failure.
+
+2012-07-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        gc() doesn't exist in svg/animations/dynamic-modify-attributename-crash2.svg
+        https://bugs.webkit.org/show_bug.cgi?id=90945
+
+        Reviewed by Abhishek Arya.
+
+        * svg/animations/dynamic-modify-attributename-crash2.svg: Include fast/js/resources/js-test-pre.js to have gc().
+
+2012-07-10  Douglas Stockwell  <dstockwell@chromium.org>
+
+        Style not updated for element with display:none becoming first/last-child
+        https://bugs.webkit.org/show_bug.cgi?id=90356
+
+        Reviewed by Kent Tamura.
+
+        * fast/css/first-child-display-change-expected.txt: Added.
+        * fast/css/first-child-display-change-inverse-expected.txt: Added.
+        * fast/css/first-child-display-change-inverse.html: Added.
+        * fast/css/first-child-display-change.html: Added.
+        * fast/css/last-child-display-change-expected.txt: Added.
+        * fast/css/last-child-display-change-inverse-expected.txt: Added.
+        * fast/css/last-child-display-change-inverse.html: Added.
+        * fast/css/last-child-display-change.html: Added.
+
+2012-07-10  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+
+        Remove 'true' from testRunner.dumpAsText(true).
+        NRWT complained that an '-expected.png' file was MISSING.
+
+        * animations/animation-shorthand-name-order.html:
+
+2012-07-10  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+
+        * fast/css/deprecated-flexbox-auto-min-size-expected.txt: Renamed from LayoutTests/platform/chromium/fast/css/deprecated-flexbox-auto-min-size-expected.txt.
+
+12012-07-10  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+
+        * platform/chromium/fast/css/deprecated-flexbox-auto-min-size-expected.txt: Renamed from LayoutTests/platform/chromium-linux/fast/css/deprecated-flexbox-auto-min-size-expected.txt.
+
+2012-07-10  Shinya Kawanaka  <shinyak@chromium.org>
+
+        Crash in nextLinePosition() due to accessing a removed root line box.
+        https://bugs.webkit.org/show_bug.cgi?id=90484
+
+        Reviewed by Abhishek Arya.
+
+        This testcase should not be triggered in ASAN.
+
+        * editing/execCommand/crash-extend-selection-forward-expected.txt: Added.
+        * editing/execCommand/crash-extend-selection-forward.html: Added.
+
+2012-07-10  Julien Chaffraix  <jchaffraix@webkit.org>
+
+        REGRESSION(r112113): absolutely positioned INPUT boxes with a table cell containing block have a 0px height
+        https://bugs.webkit.org/show_bug.cgi?id=89209
+
+        Reviewed by Ojan Vafai.
+
+        The 2 tests are very close and differ by the use of min-height. This forces some content to be visible in the expected result
+        but not in the original test case.
+
+        * fast/forms/input-in-table-cell-no-value-expected.html: Added.
+        * fast/forms/input-in-table-cell-no-value.html: Added.
+
+2012-07-10  Kevin Ellis  <kevers@chromium.org>
+
+        Input elements with type=range do not have default touch handlers.
+        https://bugs.webkit.org/show_bug.cgi?id=88807
+
+        Reviewed by Antonio Gomes.
+
+        Add automated test for manipulating an input slider via touch
+        events.
+
+        * fast/events/touch/script-tests/touch-slider-no-js-touch-listener.js: Added.
+        (checkPosition):
+        * fast/events/touch/script-tests/touch-slider.js: Added.
+        (onTouchStart):
+        (onTouchEnd):
+        (onKeyDown):
+        (checkPosition):
+        * fast/events/touch/touch-slider-expected.txt: Added.
+        * fast/events/touch/touch-slider-no-js-touch-listener-expected.txt: Added.
+        * fast/events/touch/touch-slider-no-js-touch-listener.html: Added.
+        * fast/events/touch/touch-slider.html: Added.
+        * platform/chromium/fast/events/touch/touch-slider-expected.txt: Added.
+        * platform/chromium/fast/events/touch/touch-slider-no-js-touch-listener-expected.txt: Added.
+
+2012-07-10  Kenneth Russell  <kbr@google.com>
+
+        Line directive test in fast/canvas/webgl/glsl-conformance.html is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=90897
+
+        Reviewed by Adrienne Walker.
+
+        Removed an invalid test and adjusted the test expectations.
+
+        * fast/canvas/webgl/glsl-conformance-expected.txt:
+        * fast/canvas/webgl/glsl-conformance.html:
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Philip Rogers  <pdr@google.com>
+
+        Crash due to SVG animation element not removed from target (before reset)
+        https://bugs.webkit.org/show_bug.cgi?id=90750
+
+        Reviewed by Abhishek Arya.
+
+        * svg/animations/dynamic-modify-attributename-crash2-expected.txt: Added.
+        * svg/animations/dynamic-modify-attributename-crash2.svg: Added.
+
+2012-07-10  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r109610): Order of values in shorthand animation makes a difference
+        https://bugs.webkit.org/show_bug.cgi?id=84533
+        <rdar://problem/11831924>
+        <rdar://problem/11815787>
+
+        Reviewed by Simon Fraser.
+
+        A new test that exercises many different variants of the animation shorthand
+        property, putting the animation name in different spots in the list of values.
+
+        * animations/animation-shorthand-name-order-expected.txt: Added.
+        * animations/animation-shorthand-name-order.html: Added.
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. Removing duplicated line from TestExpectations.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Ojan Vafai  <ojan@chromium.org>
+
+        Add support for min-height:auto and min-width:auto
+        https://bugs.webkit.org/show_bug.cgi?id=88437
+
+        Reviewed by Tony Chang.
+
+        * fast/css/auto-min-size-expected.txt: Added.
+        * fast/css/auto-min-size.html: Added.
+        * fast/css/deprecated-flexbox-auto-min-size.html: Added.
+        * platform/chromium-linux/fast/css/deprecated-flexbox-auto-min-size-expected.txt: Added.
+
+2012-07-10  Joshua Bell  <jsbell@chromium.org>
+
+        [Chromium] IndexedDB: Need test of Typed Arrays
+        https://bugs.webkit.org/show_bug.cgi?id=81979
+
+        Reviewed by Tony Chang.
+
+        Verify storage of Typed Arrays (Uint8Array and friends). Checks that
+        these types are stored and read back with types and data intact. Also
+        add an index to the object store, so that key paths are evaluated
+        against each type on every write operation.
+
+        * storage/indexeddb/structured-clone-expected.txt:
+        * storage/indexeddb/structured-clone.html:
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        Remove LayoutTestController and WebKitTestRunner support for Hixie76 WebSockets
+        https://bugs.webkit.org/show_bug.cgi?id=90853
+
+        Reviewed by Eric Seidel.
+
+        There's no need to explicitly disable the Hixie76 protocol because it
+        no longer exists in WebKit.
+
+        * http/tests/websocket/tests/hybi/alert-in-event-handler.html:
+        * http/tests/websocket/tests/hybi/bad-handshake-crash.html:
+        * http/tests/websocket/tests/hybi/bad-sub-protocol-control-chars.html:
+        * http/tests/websocket/tests/hybi/bad-sub-protocol-empty.html:
+        * http/tests/websocket/tests/hybi/bad-sub-protocol-non-ascii.html:
+        * http/tests/websocket/tests/hybi/binary-type.html:
+        * http/tests/websocket/tests/hybi/broken-utf8.html:
+        * http/tests/websocket/tests/hybi/bufferedAmount-after-close-in-busy.html:
+        * http/tests/websocket/tests/hybi/bufferedAmount-after-close.html:
+        * http/tests/websocket/tests/hybi/client-close.html:
+        * http/tests/websocket/tests/hybi/close-before-open.html:
+        * http/tests/websocket/tests/hybi/close-code-and-reason.html:
+        * http/tests/websocket/tests/hybi/close-event.html:
+        * http/tests/websocket/tests/hybi/close-on-navigate-new-location.html:
+        * http/tests/websocket/tests/hybi/close-on-unload-and-force-gc.html:
+        * http/tests/websocket/tests/hybi/close-on-unload-reference-in-parent.html:
+        * http/tests/websocket/tests/hybi/close-on-unload.html:
+        * http/tests/websocket/tests/hybi/close-unref-websocket.html:
+        * http/tests/websocket/tests/hybi/close.html:
+        * http/tests/websocket/tests/hybi/compressed-control-frame.html:
+        * http/tests/websocket/tests/hybi/cross-origin.html:
+        * http/tests/websocket/tests/hybi/deflate-frame-comp-bit-onoff.html:
+        * http/tests/websocket/tests/hybi/deflate-frame-invalid-parameter.html:
+        * http/tests/websocket/tests/hybi/deflate-frame-parameter.html:
+        * http/tests/websocket/tests/hybi/echo-with-no-extension.html:
+        * http/tests/websocket/tests/hybi/extensions.html:
+        * http/tests/websocket/tests/hybi/fragmented-binary-frames.html:
+        * http/tests/websocket/tests/hybi/fragmented-control-frame.html:
+        * http/tests/websocket/tests/hybi/fragmented-frames.html:
+        * http/tests/websocket/tests/hybi/frame-lengths.html:
+        * http/tests/websocket/tests/hybi/handshake-challenge-randomness.html:
+        * http/tests/websocket/tests/hybi/handshake-error.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-extensions-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-maxlength.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-mismatch-protocol-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-more-accept-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-more-protocol-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-no-accept-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-no-connection-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-no-cr.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-no-upgrade-header.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-prepended-null.html:
+        * http/tests/websocket/tests/hybi/handshake-fail-by-wrong-accept-header.html:
+        * http/tests/websocket/tests/hybi/httponly-cookie.pl:
+        * http/tests/websocket/tests/hybi/interleaved-fragments.html:
+        * http/tests/websocket/tests/hybi/invalid-continuation.html:
+        * http/tests/websocket/tests/hybi/invalid-encode-length.html:
+        * http/tests/websocket/tests/hybi/invalid-masked-frames-from-server.html:
+        * http/tests/websocket/tests/hybi/invalid-subprotocol-characters.html:
+        * http/tests/websocket/tests/hybi/invalid-subprotocols.html:
+        * http/tests/websocket/tests/hybi/long-control-frame.html:
+        * http/tests/websocket/tests/hybi/long-invalid-header.html:
+        * http/tests/websocket/tests/hybi/multiple-connections.html:
+        * http/tests/websocket/tests/hybi/multiple-subprotocols.html:
+        * http/tests/websocket/tests/hybi/no-subprotocol.html:
+        * http/tests/websocket/tests/hybi/null-character.html:
+        * http/tests/websocket/tests/hybi/pong.html:
+        * http/tests/websocket/tests/hybi/receive-arraybuffer.html:
+        * http/tests/websocket/tests/hybi/receive-blob.html:
+        * http/tests/websocket/tests/hybi/reload-crash.html:
+        * http/tests/websocket/tests/hybi/reserved-bits.html:
+        * http/tests/websocket/tests/hybi/reserved-opcodes.html:
+        * http/tests/websocket/tests/hybi/send-after-close-on-unload.html:
+        * http/tests/websocket/tests/hybi/send-arraybuffer.html:
+        * http/tests/websocket/tests/hybi/send-blob.html:
+        * http/tests/websocket/tests/hybi/send-empty.html:
+        * http/tests/websocket/tests/hybi/send-file-blob-fail.html:
+        * http/tests/websocket/tests/hybi/send-file-blob.html:
+        * http/tests/websocket/tests/hybi/send-object-tostring-check.html:
+        * http/tests/websocket/tests/hybi/send-throw.html:
+        * http/tests/websocket/tests/hybi/send.html:
+        * http/tests/websocket/tests/hybi/server-close.html:
+        * http/tests/websocket/tests/hybi/set-protocol.html:
+        * http/tests/websocket/tests/hybi/simple-stress.html:
+        * http/tests/websocket/tests/hybi/simple.html:
+        * http/tests/websocket/tests/hybi/sub-protocol.html:
+        * http/tests/websocket/tests/hybi/too-long-payload.html:
+        * http/tests/websocket/tests/hybi/unicode.html:
+        * http/tests/websocket/tests/hybi/unmasked-frames.html:
+        * http/tests/websocket/tests/hybi/unpaired-surrogates-in-close-reason.html:
+        * http/tests/websocket/tests/hybi/unpaired-surrogates-in-message.html:
+        * http/tests/websocket/tests/hybi/url-attribute.html:
+        * http/tests/websocket/tests/hybi/url-no-trailing-slash.html:
+        * http/tests/websocket/tests/hybi/url-parsing.html:
+        * http/tests/websocket/tests/hybi/url-with-credential.html:
+        * http/tests/websocket/tests/hybi/url-with-empty-query.html:
+        * http/tests/websocket/tests/hybi/url-with-query.html:
+        * http/tests/websocket/tests/hybi/websocket-event-target.html:
+        * http/tests/websocket/tests/hybi/websocket-pending-activity.html:
+        * http/tests/websocket/tests/hybi/workers/close-code-and-reason.html:
+        * http/tests/websocket/tests/hybi/workers/close-in-onmessage-crash.html:
+        * http/tests/websocket/tests/hybi/workers/close-in-shared-worker.html:
+        * http/tests/websocket/tests/hybi/workers/close-in-worker.html:
+        * http/tests/websocket/tests/hybi/workers/close.html:
+        * http/tests/websocket/tests/hybi/workers/multiple-subprotocols.html:
+        * http/tests/websocket/tests/hybi/workers/no-onmessage-in-sync-op.html:
+        * http/tests/websocket/tests/hybi/workers/no-subprotocol.html:
+        * http/tests/websocket/tests/hybi/workers/receive-arraybuffer.html:
+        * http/tests/websocket/tests/hybi/workers/receive-blob.html:
+        * http/tests/websocket/tests/hybi/workers/send-arraybuffer.html:
+        * http/tests/websocket/tests/hybi/workers/send-blob.html:
+        * http/tests/websocket/tests/hybi/workers/shared-worker-simple.html:
+        * http/tests/websocket/tests/hybi/workers/worker-handshake-challenge-randomness.html:
+        * http/tests/websocket/tests/hybi/workers/worker-reload.html:
+        * http/tests/websocket/tests/hybi/workers/worker-simple.html:
+        * http/tests/websocket/tests/hybi/zero-length-text.html:
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. Adding the majority of the remaining indexeddb/mozilla tests which are all flaky and crashing.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. Added resource-request-content-while-loading.html to flaky wkbug 83890.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-06  David Hyatt  <hyatt@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=90646
+
+        Fix invalid layout test exposed by my changes to logical top estimation.
+
+        Reviewed by Simon Fraser.
+
+        * fast/block/float/previous-sibling-float-002-expected.html:
+        * fast/block/float/previous-sibling-float-002.html:
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. tables/mozilla_expected_failures/other/empty_cells.html marked as flaky.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. platform/chromium/inspector/styles/device-metrics-fit-window.html is timing out in debug and now marked as slow.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. fast/js/dfg-cross-global-object-inline-array-literal.html is racey (and thus flaky).
+
+2012-07-10  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. Adding another flaky test to bug 90469 (storage tests).
+
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Konrad Piascik  <kpiascik@rim.com>
+
+        Web Inspector: Geolocation override
+        https://bugs.webkit.org/show_bug.cgi?id=89365
+
+        Reviewed by Yong Li.
+
+        Added new tests for Web Inspector overriding geolocation.
+
+        * inspector/geolocation-error-expected.txt: Added.
+        * inspector/geolocation-error.html: Added.
+        * inspector/geolocation-success-expected.txt: Added.
+        * inspector/geolocation-success.html: Added.
+
+2012-07-10  Li Yin  <li.yin@intel.com>
+
+        DelayNode test should cover relate attribute
+        https://bugs.webkit.org/show_bug.cgi?id=90876
+
+        Reviewed by Chris Rogers.
+
+        Let the test cover attributes of DelayNode.
+
+        * webaudio/delaynode-expected.txt:
+        * webaudio/delaynode.html:
+
+2012-07-10  Eric Seidel  <eric@webkit.org>
+
+        REGRESSION (r122168): Layout Test http/tests/misc/script-defer.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=90845
+
+        Reviewed by Alexey Proskuryakov.
+
+        The test should no longer flake.
+
+        * platform/chromium/TestExpectations:
+        * platform/qt/Skipped:
+
+2012-07-10  Leandro Gracia Gil  <leandrogracia@chromium.org>
+
+        WebSurroundingText layout tests should use the same code path as the rest of the feature.
+        https://bugs.webkit.org/show_bug.cgi?id=90807
+
+        Reviewed by Adam Barth.
+
+        Make the textSurroundingNode method take a pair of point coordinates
+        instead of a node offset.
+
+        * platform/chromium/editing/surrounding-text/surrounding-text-expected.txt:
+        * platform/chromium/editing/surrounding-text/surrounding-text.html:
+
+2012-07-10  Kevin Ellis  <kevers@chromium.org>
+
+        Input type=range issue with events not being raised when value set in js
+        https://bugs.webkit.org/show_bug.cgi?id=84674
+
+        Ensure that click and change events are properly triggered for range 
+        sliders.  Prior to the fix, change events were not fired if the new
+        value matched the value at last change notification based on expected
+        behavior for text fields.  Clicks were not fired if the thumb element
+        was positioned under the cursor on mouse down.
+
+        Reviewed by Kent Tamura.
+
+        * fast/events/click-range-slider-expected.txt: Added.
+        * fast/events/click-range-slider.html: Added.
+        * fast/events/onchange-range-slider-expected.txt: Added.
+        * fast/events/onchange-range-slider.html: Added.
+
+2012-07-10  Zan Dobersek  <zandobersek@gmail.com>
+
+        Unreviewed GTK gardening, adding a text expectation for the
+        fast/js/global-constructors.html test. The test is failing because
+        of the in-progress removal of vendor prefix from DOM MutationObservers.
+
+        * platform/gtk/TestExpectations:
+
+2012-07-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt] Unreviewed gardening, remove unnecessary expectations.
+
+        * platform/qt-mac/fast/block/float/float-not-removed-from-next-sibling-expected.txt: Removed.
+        * platform/qt-mac/fast/block/float/float-not-removed-from-next-sibling2-expected.txt: Removed.
+        * platform/qt-mac/fast/block/float/float-not-removed-from-next-sibling3-expected.txt: Removed.
+        * platform/qt-mac/fast/block/float/float-not-removed-from-next-sibling4-expected.txt: Removed.
+        * platform/qt-mac/plugins/mouse-click-plugin-clears-selection-expected.txt: Removed.
+        * platform/qt-mac/transforms/svg-vs-css-expected.txt: Removed.
+        * platform/qt-win/Skipped:
+        * platform/qt-win/fast/events/panScroll-click-hyperlink-expected.txt: Removed.
+        * platform/qt/fast/css/first-line-text-decoration-expected.png: Renamed from LayoutTests/platform/qt-linux/fast/css/first-line-text-decoration-expected.png.
+        * platform/qt/fast/css/first-line-text-decoration-expected.txt: Renamed from LayoutTests/platform/qt-linux/fast/css/first-line-text-decoration-expected.txt.
+        * platform/qt/fast/css/first-line-text-decoration-inherited-from-parent-expected.png: Renamed from LayoutTests/platform/qt-linux/fast/css/first-line-text-decoration-inherited-from-parent-expected.png.
+        * platform/qt/fast/css/first-line-text-decoration-inherited-from-parent-expected.txt: Renamed from LayoutTests/platform/qt-linux/fast/css/first-line-text-decoration-inherited-from-parent-expected.txt.
+
+2012-07-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Qt][ARM] Unreviewed gardening, skip failing/crashing tests to try to make the bot green.
+
+        * platform/qt-arm/TestExpectations:
+
+2012-07-09  Andrey Kosyakov  <caseq@chromium.org>
+
+        Web Inspector: [Extensions API] simplify panel size check in extensions-panel.html
+        https://bugs.webkit.org/show_bug.cgi?id=90799
+
+        Reviewed by Vsevolod Vlasov.
+
+        - use window argument in Panel.onShown() to check panel window size;
+
+        * http/tests/inspector/resources/extension-panel.html:
+        * inspector/extensions/extensions-panel-expected.txt:
+        * inspector/extensions/extensions-panel.html:
+        * platform/mac/Skipped:
+        * platform/qt/Skipped:
+        * platform/wincairo/Skipped:
+
+2012-07-10  Ádám Kallai  <kadam@inf.u-szeged.hu>
+
+        [Qt] Unreviewed gardening. Skip a flakey test after r122168.
+        https://bugs.webkit.org/show_bug.cgi?id=90845.
+
+        * platform/qt/Skipped:
+
+2012-07-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed gardening after r122204.
+
+        * fast/viewport/viewport-legacy-xhtmlmp-expected.txt:
+
+2012-07-10  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening
+        Rebaseline.
+
+        * platform/chromium-linux/http/tests/media/video-buffered-range-contains-currentTime-expected.png:
+
+2012-07-10  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122178.
+        http://trac.webkit.org/changeset/122178
+        https://bugs.webkit.org/show_bug.cgi?id=90857
+
+        browser tests, PrerenderBrowserTest.PrerenderFavicon and other
+        tests, started to fail (Requested by hayato on #webkit).
+
+        * fast/dom/icon-url-change-expected.txt: Removed.
+        * fast/dom/icon-url-change.html: Removed.
+        * fast/dom/icon-url-list-expected.txt: Removed.
+        * fast/dom/icon-url-list.html: Removed.
+        * fast/dom/icon-url-property-expected.txt:
+        * fast/dom/icon-url-property.html:
+        * platform/chromium/TestExpectations:
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        LayoutTestController.dumpConfigurationForViewport should move to Internals
+        https://bugs.webkit.org/show_bug.cgi?id=45652
+
+        Reviewed by Eric Seidel.
+
+        Update these tests to use the Internals API rather than the
+        LayoutTestController API.  This changed the output format of the tests
+        slightly because the LayoutTestController API printed directly to
+        stdout whereas the new API just returns a string that we pipe to stdout
+        using alert.
+
+        This patch also cleans up some platform-specific results for these
+        tests that had drifted out of sync a bit. The patch also correctly
+        marks the legacy tests as failing on GTK instead of checking in bogus
+        expected results for them.
+
+        This patch unskips these tests on Chromium. Once this patch lands, I'll
+        go through an unskip them on the other ports as well.
+
+        * fast/viewport/viewport-1-expected.txt:
+        * fast/viewport/viewport-1.html:
+        * fast/viewport/viewport-10-expected.txt:
+        * fast/viewport/viewport-10.html:
+        * fast/viewport/viewport-100-expected.txt:
+        * fast/viewport/viewport-100.html:
+        * fast/viewport/viewport-101-expected.txt:
+        * fast/viewport/viewport-101.html:
+        * fast/viewport/viewport-102-expected.txt:
+        * fast/viewport/viewport-102.html:
+        * fast/viewport/viewport-103-expected.txt:
+        * fast/viewport/viewport-103.html:
+        * fast/viewport/viewport-104-expected.txt:
+        * fast/viewport/viewport-104.html:
+        * fast/viewport/viewport-105-expected.txt:
+        * fast/viewport/viewport-105.html:
+        * fast/viewport/viewport-106-expected.txt:
+        * fast/viewport/viewport-106.html:
+        * fast/viewport/viewport-107-expected.txt:
+        * fast/viewport/viewport-107.html:
+        * fast/viewport/viewport-108-expected.txt:
+        * fast/viewport/viewport-108.html:
+        * fast/viewport/viewport-109-expected.txt:
+        * fast/viewport/viewport-109.html:
+        * fast/viewport/viewport-11-expected.txt:
+        * fast/viewport/viewport-11.html:
+        * fast/viewport/viewport-110-expected.txt:
+        * fast/viewport/viewport-110.html:
+        * fast/viewport/viewport-111-expected.txt:
+        * fast/viewport/viewport-111.html:
+        * fast/viewport/viewport-112-expected.txt:
+        * fast/viewport/viewport-112.html:
+        * fast/viewport/viewport-113-expected.txt:
+        * fast/viewport/viewport-113.html:
+        * fast/viewport/viewport-114-expected.txt:
+        * fast/viewport/viewport-114.html:
+        * fast/viewport/viewport-115-expected.txt:
+        * fast/viewport/viewport-115.html:
+        * fast/viewport/viewport-116-expected.txt:
+        * fast/viewport/viewport-116.html:
+        * fast/viewport/viewport-117-expected.txt:
+        * fast/viewport/viewport-117.html:
+        * fast/viewport/viewport-118-expected.txt:
+        * fast/viewport/viewport-118.html:
+        * fast/viewport/viewport-119-expected.txt:
+        * fast/viewport/viewport-119.html:
+        * fast/viewport/viewport-12-expected.txt:
+        * fast/viewport/viewport-12.html:
+        * fast/viewport/viewport-120-expected.txt:
+        * fast/viewport/viewport-120.html:
+        * fast/viewport/viewport-121-expected.txt:
+        * fast/viewport/viewport-121.html:
+        * fast/viewport/viewport-122-expected.txt:
+        * fast/viewport/viewport-122.html:
+        * fast/viewport/viewport-123-expected.txt:
+        * fast/viewport/viewport-123.html:
+        * fast/viewport/viewport-124-expected.txt:
+        * fast/viewport/viewport-124.html:
+        * fast/viewport/viewport-125-expected.txt:
+        * fast/viewport/viewport-125.html:
+        * fast/viewport/viewport-126-expected.txt: Renamed from LayoutTests/platform/gtk/fast/viewport/viewport-126-expected.txt.
+        * fast/viewport/viewport-126.html:
+        * fast/viewport/viewport-127-expected.txt: Renamed from LayoutTests/platform/gtk/fast/viewport/viewport-127-expected.txt.
+        * fast/viewport/viewport-127.html:
+        * fast/viewport/viewport-128-expected.txt:
+        * fast/viewport/viewport-128.html:
+        * fast/viewport/viewport-129-expected.txt:
+        * fast/viewport/viewport-129.html:
+        * fast/viewport/viewport-13-expected.txt:
+        * fast/viewport/viewport-13.html:
+        * fast/viewport/viewport-130-expected.txt:
+        * fast/viewport/viewport-130.html:
+        * fast/viewport/viewport-131-expected.txt:
+        * fast/viewport/viewport-131.html:
+        * fast/viewport/viewport-132-expected.txt:
+        * fast/viewport/viewport-132.html:
+        * fast/viewport/viewport-14-expected.txt:
+        * fast/viewport/viewport-14.html:
+        * fast/viewport/viewport-15-expected.txt:
+        * fast/viewport/viewport-15.html:
+        * fast/viewport/viewport-16-expected.txt:
+        * fast/viewport/viewport-16.html:
+        * fast/viewport/viewport-17-expected.txt:
+        * fast/viewport/viewport-17.html:
+        * fast/viewport/viewport-18-expected.txt:
+        * fast/viewport/viewport-18.html:
+        * fast/viewport/viewport-19-expected.txt:
+        * fast/viewport/viewport-19.html:
+        * fast/viewport/viewport-2-expected.txt:
+        * fast/viewport/viewport-2.html:
+        * fast/viewport/viewport-20-expected.txt:
+        * fast/viewport/viewport-20.html:
+        * fast/viewport/viewport-21-expected.txt:
+        * fast/viewport/viewport-21.html:
+        * fast/viewport/viewport-22-expected.txt:
+        * fast/viewport/viewport-22.html:
+        * fast/viewport/viewport-23-expected.txt:
+        * fast/viewport/viewport-23.html:
+        * fast/viewport/viewport-24-expected.txt:
+        * fast/viewport/viewport-24.html:
+        * fast/viewport/viewport-25-expected.txt:
+        * fast/viewport/viewport-25.html:
+        * fast/viewport/viewport-26-expected.txt:
+        * fast/viewport/viewport-26.html:
+        * fast/viewport/viewport-27-expected.txt:
+        * fast/viewport/viewport-27.html:
+        * fast/viewport/viewport-28-expected.txt:
+        * fast/viewport/viewport-28.html:
+        * fast/viewport/viewport-29-expected.txt:
+        * fast/viewport/viewport-29.html:
+        * fast/viewport/viewport-3-expected.txt:
+        * fast/viewport/viewport-3.html:
+        * fast/viewport/viewport-30-expected.txt:
+        * fast/viewport/viewport-30.html:
+        * fast/viewport/viewport-31-expected.txt:
+        * fast/viewport/viewport-31.html:
+        * fast/viewport/viewport-32-expected.txt:
+        * fast/viewport/viewport-32.html:
+        * fast/viewport/viewport-33-expected.txt:
+        * fast/viewport/viewport-33.html:
+        * fast/viewport/viewport-34-expected.txt:
+        * fast/viewport/viewport-34.html:
+        * fast/viewport/viewport-35-expected.txt:
+        * fast/viewport/viewport-35.html:
+        * fast/viewport/viewport-36-expected.txt:
+        * fast/viewport/viewport-36.html:
+        * fast/viewport/viewport-37-expected.txt:
+        * fast/viewport/viewport-37.html:
+        * fast/viewport/viewport-38-expected.txt:
+        * fast/viewport/viewport-38.html:
+        * fast/viewport/viewport-39-expected.txt:
+        * fast/viewport/viewport-39.html:
+        * fast/viewport/viewport-4-expected.txt:
+        * fast/viewport/viewport-4.html:
+        * fast/viewport/viewport-40-expected.txt:
+        * fast/viewport/viewport-40.html:
+        * fast/viewport/viewport-41-expected.txt:
+        * fast/viewport/viewport-41.html:
+        * fast/viewport/viewport-42-expected.txt:
+        * fast/viewport/viewport-42.html:
+        * fast/viewport/viewport-43-expected.txt:
+        * fast/viewport/viewport-43.html:
+        * fast/viewport/viewport-44-expected.txt:
+        * fast/viewport/viewport-44.html:
+        * fast/viewport/viewport-45-expected.txt:
+        * fast/viewport/viewport-45.html:
+        * fast/viewport/viewport-46-expected.txt:
+        * fast/viewport/viewport-46.html:
+        * fast/viewport/viewport-47-expected.txt:
+        * fast/viewport/viewport-47.html:
+        * fast/viewport/viewport-48-expected.txt:
+        * fast/viewport/viewport-48.html:
+        * fast/viewport/viewport-49-expected.txt:
+        * fast/viewport/viewport-49.html:
+        * fast/viewport/viewport-5-expected.txt:
+        * fast/viewport/viewport-5.html:
+        * fast/viewport/viewport-50-expected.txt:
+        * fast/viewport/viewport-50.html:
+        * fast/viewport/viewport-51-expected.txt:
+        * fast/viewport/viewport-51.html:
+        * fast/viewport/viewport-52-expected.txt:
+        * fast/viewport/viewport-52.html:
+        * fast/viewport/viewport-53-expected.txt:
+        * fast/viewport/viewport-53.html:
+        * fast/viewport/viewport-54-expected.txt:
+        * fast/viewport/viewport-54.html:
+        * fast/viewport/viewport-55-expected.txt:
+        * fast/viewport/viewport-55.html:
+        * fast/viewport/viewport-56-expected.txt:
+        * fast/viewport/viewport-56.html:
+        * fast/viewport/viewport-57-expected.txt:
+        * fast/viewport/viewport-57.html:
+        * fast/viewport/viewport-58-expected.txt:
+        * fast/viewport/viewport-58.html:
+        * fast/viewport/viewport-59-expected.txt:
+        * fast/viewport/viewport-59.html:
+        * fast/viewport/viewport-6-expected.txt:
+        * fast/viewport/viewport-6.html:
+        * fast/viewport/viewport-60-expected.txt:
+        * fast/viewport/viewport-60.html:
+        * fast/viewport/viewport-61-expected.txt:
+        * fast/viewport/viewport-61.html:
+        * fast/viewport/viewport-62-expected.txt:
+        * fast/viewport/viewport-62.html:
+        * fast/viewport/viewport-63-expected.txt:
+        * fast/viewport/viewport-63.html:
+        * fast/viewport/viewport-64-expected.txt:
+        * fast/viewport/viewport-64.html:
+        * fast/viewport/viewport-65-expected.txt: Renamed from LayoutTests/platform/gtk/fast/viewport/viewport-65-expected.txt.
+        * fast/viewport/viewport-65.html:
+        * fast/viewport/viewport-66-expected.txt:
+        * fast/viewport/viewport-66.html:
+        * fast/viewport/viewport-67-expected.txt:
+        * fast/viewport/viewport-67.html:
+        * fast/viewport/viewport-68-expected.txt:
+        * fast/viewport/viewport-68.html:
+        * fast/viewport/viewport-69-expected.txt:
+        * fast/viewport/viewport-69.html:
+        * fast/viewport/viewport-7-expected.txt:
+        * fast/viewport/viewport-7.html:
+        * fast/viewport/viewport-70-expected.txt:
+        * fast/viewport/viewport-70.html:
+        * fast/viewport/viewport-71-expected.txt:
+        * fast/viewport/viewport-71.html:
+        * fast/viewport/viewport-72-expected.txt:
+        * fast/viewport/viewport-72.html:
+        * fast/viewport/viewport-73-expected.txt:
+        * fast/viewport/viewport-73.html:
+        * fast/viewport/viewport-74-expected.txt:
+        * fast/viewport/viewport-74.html:
+        * fast/viewport/viewport-75-expected.txt:
+        * fast/viewport/viewport-75.html:
+        * fast/viewport/viewport-76-expected.txt:
+        * fast/viewport/viewport-76.html:
+        * fast/viewport/viewport-77-expected.txt:
+        * fast/viewport/viewport-77.html:
+        * fast/viewport/viewport-78-expected.txt:
+        * fast/viewport/viewport-78.html:
+        * fast/viewport/viewport-79-expected.txt:
+        * fast/viewport/viewport-79.html:
+        * fast/viewport/viewport-8-expected.txt:
+        * fast/viewport/viewport-8.html:
+        * fast/viewport/viewport-80-expected.txt:
+        * fast/viewport/viewport-80.html:
+        * fast/viewport/viewport-81-expected.txt:
+        * fast/viewport/viewport-81.html:
+        * fast/viewport/viewport-82-expected.txt: Renamed from LayoutTests/platform/gtk/fast/viewport/viewport-82-expected.txt.
+        * fast/viewport/viewport-82.html:
+        * fast/viewport/viewport-83-expected.txt:
+        * fast/viewport/viewport-83.html:
+        * fast/viewport/viewport-84-expected.txt: Renamed from LayoutTests/platform/efl/fast/viewport/viewport-87-expected.txt.
+        * fast/viewport/viewport-84.html:
+        * fast/viewport/viewport-85-expected.txt:
+        * fast/viewport/viewport-85.html:
+        * fast/viewport/viewport-86-expected.txt:
+        * fast/viewport/viewport-86.html:
+        * fast/viewport/viewport-87-expected.txt: Renamed from LayoutTests/platform/gtk/fast/viewport/viewport-87-expected.txt.
+        * fast/viewport/viewport-87.html:
+        * fast/viewport/viewport-88-expected.txt:
+        * fast/viewport/viewport-88.html:
+        * fast/viewport/viewport-9-expected.txt:
+        * fast/viewport/viewport-9.html:
+        * fast/viewport/viewport-90-expected.txt:
+        * fast/viewport/viewport-90.html:
+        * fast/viewport/viewport-91-expected.txt:
+        * fast/viewport/viewport-91.html:
+        * fast/viewport/viewport-legacy-handheldfriendly-expected.txt:
+        * fast/viewport/viewport-legacy-handheldfriendly.html:
+        * fast/viewport/viewport-legacy-mobileoptimized-2-expected.txt:
+        * fast/viewport/viewport-legacy-mobileoptimized-2.html:
+        * fast/viewport/viewport-legacy-mobileoptimized-3-expected.txt:
+        * fast/viewport/viewport-legacy-mobileoptimized-3.html:
+        * fast/viewport/viewport-legacy-mobileoptimized-expected.txt:
+        * fast/viewport/viewport-legacy-mobileoptimized.html:
+        * fast/viewport/viewport-legacy-ordering-1-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-1.html:
+        * fast/viewport/viewport-legacy-ordering-2-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-2.html:
+        * fast/viewport/viewport-legacy-ordering-3-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-3.html:
+        * fast/viewport/viewport-legacy-ordering-4-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-4.html:
+        * fast/viewport/viewport-legacy-ordering-5-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-5.html:
+        * fast/viewport/viewport-legacy-ordering-6-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-6.html:
+        * fast/viewport/viewport-legacy-ordering-7-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-7.html:
+        * fast/viewport/viewport-legacy-ordering-8-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-8.html:
+        * fast/viewport/viewport-legacy-ordering-9-expected.txt:
+        * fast/viewport/viewport-legacy-ordering-9.html:
+        * fast/viewport/viewport-legacy-xhtmlmp-misplaced-doctype-expected.txt:
+        * fast/viewport/viewport-legacy-xhtmlmp-misplaced-doctype.html:
+        * fast/viewport/viewport-legacy-xhtmlmp-ordering-expected.txt:
+        * fast/viewport/viewport-legacy-xhtmlmp-ordering.html:
+        * fast/viewport/viewport-legacy-xhtmlmp.html:
+        * fast/viewport/viewport-warnings-1-expected.txt:
+        * fast/viewport/viewport-warnings-1.html:
+        * fast/viewport/viewport-warnings-2-expected.txt:
+        * fast/viewport/viewport-warnings-2.html:
+        * fast/viewport/viewport-warnings-3-expected.txt:
+        * fast/viewport/viewport-warnings-3.html:
+        * fast/viewport/viewport-warnings-4-expected.txt:
+        * fast/viewport/viewport-warnings-4.html:
+        * fast/viewport/viewport-warnings-5-expected.txt:
+        * fast/viewport/viewport-warnings-5.html:
+        * fast/viewport/viewport-warnings-6-expected.txt:
+        * fast/viewport/viewport-warnings-6.html:
+        * platform/chromium/TestExpectations:
+        * platform/efl/fast/viewport/viewport-126-expected.txt: Removed.
+        * platform/efl/fast/viewport/viewport-127-expected.txt: Removed.
+        * platform/efl/fast/viewport/viewport-65-expected.txt: Removed.
+        * platform/efl/fast/viewport/viewport-82-expected.txt: Removed.
+        * platform/efl/fast/viewport/viewport-84-expected.txt: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/viewport/viewport-84-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-handheldfriendly-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-mobileoptimized-2-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-mobileoptimized-3-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-mobileoptimized-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-ordering-5-expected.txt: Removed.
+        * platform/gtk/fast/viewport/viewport-legacy-ordering-6-expected.txt: Removed.
+
+2012-07-10  Szilard Ledan  <szledan@inf.u-szeged.hu>
+
+        [Qt] Skipped a new failing test, because of a missing feature
+        (testRunner.setStorageDatabaseIdleInterval()).
+
+        Reviewed by Csaba Osztrogonác.
+
+        * platform/qt/Skipped:
+
+2012-07-10  Yuta Kitamura  <yutak@chromium.org>
+
+        WebSocket: Remove hixie76 protocol implementation
+        https://bugs.webkit.org/show_bug.cgi?id=88620
+
+        Reviewed by Adam Barth.
+
+        Skip tests under hixie76 directory in all ports, because hixie-76 protocol support is
+        being dropped. These tests will be removed later.
+
+        * platform/chromium/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/qt/TestExpectations:
+        * platform/win/Skipped:
+        * platform/wk2/Skipped:
+
+2012-07-09  Kent Tamura  <tkent@chromium.org>
+
+        REGRESSION(r114862-r114886): Fix a crash by switching the input type to hidden.
+        https://bugs.webkit.org/show_bug.cgi?id=90774
+
+        Reviewed by Andreas Kling.
+
+        * fast/forms/hidden/change-type-to-hidden-after-updating-value.html: Added.
+        * fast/forms/hidden/change-type-to-hidden-after-updating-value-expected.txt: Added.
+
+2012-07-09  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening. Update TestExpectations.
+
+        * platform/chromium/TestExpectations: http/tests/misc/script-defer.html started failing after r122168.
+
+2012-07-09  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+        Update TestExpectations.
+
+        * platform/chromium/TestExpectations: Mark fast/forms/select/select-state-restore.html as flaky on WIN DEBUG.
+
+2012-07-09  Joshua Bell  <jsbell@chromium.org>
+
+        IndexedDB: deleteDatabase fails if transaction running in other database
+        https://bugs.webkit.org/show_bug.cgi?id=90822
+
+        Reviewed by Tony Chang.
+
+        * storage/indexeddb/deletedatabase-transaction-expected.txt: Added.
+        * storage/indexeddb/deletedatabase-transaction.html: Added.
+
+2012-07-09  Pete Williamson  <petewil@google.com>
+
+        Add some new unit tests to test the favicon changing dynamically
+        https://bugs.webkit.org/show_bug.cgi?id=88665
+
+        Reviewed by Kent Tamura.
+
+        * fast/dom/icon-url-change-expected.txt: Added.
+        * fast/dom/icon-url-change.html: Added a new test for changing the favicon dynamically
+        * fast/dom/icon-url-list-expected.txt: Added.
+        * fast/dom/icon-url-list.html: Added a new test for multiple favicons in the HTML header
+        * fast/dom/icon-url-property-expected.txt: update unit test expectations
+        * fast/dom/icon-url-property.html: update and enable existing favicon test
+        * platform/chromium/TestExpectations: reenable the url-property test
+
+2012-07-09  Alice Cheng  <alice_cheng@apple.com>
+
+        Editing: Autocorrection in blockquotes causes text to break out of quote
+        https://bugs.webkit.org/show_bug.cgi?id=90487
+        <rdar://problem/11769020> 
+
+        Reviewed by Enrica Casucci.
+
+        * platform/mac/editing/spelling/autocorrection-blockquote-crash-expected.txt:
+        * platform/mac/editing/spelling/autocorrection-blockquote-crash.html:
+
+2012-07-09  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Consider closing unused localStorage database after a timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=90713
+
+        For a localStorage, if there is no active document referencing to it for certain amount of time (300 seconds),
+        we can close the underlying sqlite database.
+
+        Reviewed by Brady Eidson.
+
+        * platform/chromium/TestExpectations: the test needs setCacheModel implementation, skip it in chromium.
+        * storage/domstorage/storage-close-database-on-idle-expected.txt: Added.
+        * storage/domstorage/storage-close-database-on-idle.html: Added.
+        * storage/resources/storage-close-data-on-idle-switch.html: Added.
+
+2012-07-09  Joshua Bell  <jsbell@chromium.org>
+
+        IndexedDB: A null or undefined storeNames argument to IDBDatabase::transaction() should be coerced to string
+        https://bugs.webkit.org/show_bug.cgi?id=90474
+
+        Reviewed by Tony Chang.
+
+        * storage/indexeddb/resources/transaction-basics.js:
+        (testInvalidMode):
+        (testDegenerateNames.request.onsuccess):
+        (testDegenerateNames.verifyDegenerateNames):
+        (testDegenerateNames):
+        * storage/indexeddb/transaction-basics-expected.txt:
+
+2012-07-09  Vincent Scheib  <scheib@chromium.org>
+
+        Pointer Lock requestPointerLock rejects locking an element not in a document.
+        https://bugs.webkit.org/show_bug.cgi?id=90821
+
+        Reviewed by Adrienne Walker.
+
+        * pointer-lock/lock-element-not-in-dom-expected.txt: Added.
+        * pointer-lock/lock-element-not-in-dom.html: Added.
+
+2012-07-09  Eric Seidel  <eric@webkit.org>
+
+        document.write of scripts that also document.write sometimes writes async
+        https://bugs.webkit.org/show_bug.cgi?id=89102
+
+        Reviewed by Adam Barth.
+
+        * fast/parser/cached-script-document-write-expected.txt: Added.
+        * fast/parser/cached-script-document-write.html: Added.
+        * fast/parser/resources/cached-script-document-write.js: Added.
+
+2012-07-09  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG may get stuck in an infinite fix point if it constant folds a mispredicted node
+        https://bugs.webkit.org/show_bug.cgi?id=90829
+
+        Reviewed by Oliver Hunt.
+
+        * fast/js/dfg-constant-fold-misprediction-expected.txt: Added.
+        * fast/js/dfg-constant-fold-misprediction.html: Added.
+        * fast/js/script-tests/dfg-constant-fold-misprediction.js: Added.
+        (foo):
+
+2012-07-09  Filip Pizlo  <fpizlo@apple.com>
+
+        fast/js/global-constructors.html is flaky and mostly useless
+        https://bugs.webkit.org/show_bug.cgi?id=90833
+
+        Unreviewed, skip flaky and useless test.
+
+        * platform/mac/Skipped:
+
+2012-07-09  Rafael Weinstein  <rafaelw@chromium.org>
+
+        Unreviewed gardening. Marked webgl/glsl-conformance tests failing after dependency roll in chromium.
+
+        * platform/chromium/TestExpectations:
+
+2012-07-09  Vincent Scheib  <scheib@chromium.org>
+
+        Refactor common Pointer Lock test code to a harness.
+        https://bugs.webkit.org/show_bug.cgi?id=90813
+
+        Reviewed by Adrienne Walker.
+
+        * pointer-lock/bug90391-move-then-window-open-crash-expected.txt:
+        * pointer-lock/bug90391-move-then-window-open-crash.html:
+        * pointer-lock/lock-already-locked-expected.txt:
+        * pointer-lock/lock-already-locked.html:
+        * pointer-lock/lock-fail-responses-expected.txt:
+        * pointer-lock/lock-fail-responses.html:
+        * pointer-lock/mouse-event-delivery-expected.txt:
+        * pointer-lock/mouse-event-delivery.html:
+        * pointer-lock/pointer-lock-api-expected.txt:
+        * pointer-lock/pointer-lock-api.html:
+        * pointer-lock/pointerlockchange-pointerlockerror-events-expected.txt:
+        * pointer-lock/pointerlockchange-pointerlockerror-events.html:
+        * pointer-lock/pointerlocklost-event-expected.txt:
+        * pointer-lock/pointerlocklost-event.html:
+        * pointer-lock/resources/pointer-lock-test-harness.js: Added.
+        (doNextStep.else):
+        (doNextStepWithUserGesture):
+        (eventExpected.targetHanderNode.eventHandlerName):
+        (eventExpected):
+        (expectOnlyChangeEvent):
+        (expectOnlyErrorEvent):
+        (expectNoEvents):
+
 2012-07-09  Dean Jackson  <dino@apple.com>
 
         Tiled drawing means some elements can disappear behind the page

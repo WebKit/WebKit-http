@@ -833,14 +833,6 @@ void LayoutTestController::abortModal()
     notImplemented();
 }
 
-void LayoutTestController::dumpConfigurationForViewport(int deviceDPI, int deviceWidth, int deviceHeight, int availableWidth, int availableHeight)
-{
-    DumpRenderTreeSupportEfl::dumpConfigurationForViewport(browser->mainView(),
-            deviceDPI,
-            WebCore::IntSize(deviceWidth, deviceHeight),
-            WebCore::IntSize(availableWidth, availableHeight));
-}
-
 void LayoutTestController::setSerializeHTTPLoads(bool serialize)
 {
     DumpRenderTreeSupportEfl::setSerializeHTTPLoads(serialize);
@@ -927,4 +919,9 @@ void LayoutTestController::sendWebIntentResponse(JSStringRef response)
 void LayoutTestController::deliverWebIntent(JSStringRef action, JSStringRef type, JSStringRef data)
 {
     DumpRenderTreeSupportEfl::deliverWebIntent(browser->mainFrame(), action, type, data);
+}
+
+void LayoutTestController::setStorageDatabaseIdleInterval(double)
+{
+    notImplemented();
 }

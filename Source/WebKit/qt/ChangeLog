@@ -1,3 +1,45 @@
+2012-07-11  Steffen Imhof  <steffen.imhof@basyskom.com>
+
+        [Qt] Middle clicking a scrollbar causes text to be pasted.
+        https://bugs.webkit.org/show_bug.cgi?id=78444
+
+        Check if the event was already accepted before handling the clipboard.
+
+        Reviewed by Simon Hausmann.
+
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::mouseReleaseEvent):
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        WebCore::Settings for Hixie76 WebSocket protocol doesn't do anything and should be removed
+        https://bugs.webkit.org/show_bug.cgi?id=90910
+
+        Reviewed by Eric Seidel.
+
+        * Api/qwebpage.cpp:
+        (QWebPagePrivate::QWebPagePrivate):
+        * WebCoreSupport/DumpRenderTreeSupportQt.cpp:
+        * WebCoreSupport/DumpRenderTreeSupportQt.h:
+
+2012-07-09  No'am Rosenthal  <noam.rosenthal@nokia.com>
+
+        Shared code that is guarded with ENABLE(WEBGL) should be guarded with USE()
+        https://bugs.webkit.org/show_bug.cgi?id=90506
+
+        Reviewed by Martin Robinson.
+
+        Updated necessary parts of PageClientQt to be guarded with USE(3D_GRAPHICS) instead of
+        ENABLE(WEBGL). The WebKit1 glue to WebGL still requires the Qt OpenGL module, so it's
+        disable if QT_OPENGL_LIB is not defined.
+
+        * WebCoreSupport/PageClientQt.cpp:
+        (createPlatformGraphicsContext3DFromWidget):
+        (WebCore):
+        * WebCoreSupport/PageClientQt.h:
+        (PageClientQWidget):
+        (PageClientQGraphicsWidget):
+
 2012-07-06  Csaba Osztrogonác  <ossy@webkit.org>
 
         [Qt] Buildfix for newer Qt5

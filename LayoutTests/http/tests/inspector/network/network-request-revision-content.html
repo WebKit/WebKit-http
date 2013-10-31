@@ -2,30 +2,35 @@
 <head>
 <script src="../inspector-test.js"></script>
 <script>
-function loadScript()
+function loadStylesheet()
 {
-    var js = document.createElement("script");
-    js.src = "resources/script.js";
-    document.head.appendChild(js);
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.type = "text/css";
+    css.href = "resource/style.css";
+    document.head.appendChild(css);
 }
 
 function test()
 {
     InspectorTest.addConsoleSniffer(step2, true);
-    InspectorTest.evaluateInPage("loadScript()");
+    InspectorTest.addSniffer(WebInspector.StylesUISourceCodeProvider.prototype, "_resourceAdded", true);
+    InspectorTest.evaluateInPage("loadStylesheet()");
 
     var resource;
-    function step2(msg)
+    function step2(event)
     {
         var request = WebInspector.panels.network.requests[WebInspector.panels.network.requests.length - 1];
-        resource = WebInspector.resourceForURL(request.url);
-        resource.addRevision("");
-        resource.history[0].requestContent(step3);
+        uiSourceCode = WebInspector.workspace.uiSourceCodeForURL(request.url);
+        if (!uiSourceCode)
+            return;
+        uiSourceCode.addRevision("");
+        uiSourceCode.history[0].requestContent(step3);
     }
 
     function step3(content)
     {
-        InspectorTest.addResult(resource.url);
+        InspectorTest.addResult(uiSourceCode.url);
         InspectorTest.addResult(content);
         InspectorTest.completeTest();
     }
@@ -33,7 +38,7 @@ function test()
 </script>
 </head>
 <body onload="runTest()">
-<p>Tests how resource revision requests content if it was not yet loaded for resource itself.</p>
+<p>Tests how revision requests content if original content was not loaded yet.</p>
 <a href="https://bugs.webkit.org/show_bug.cgi?id=63631">Bug 63631</a>
 </body>
 </html>

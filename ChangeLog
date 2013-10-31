@@ -1,3 +1,78 @@
+2012-07-11  Matt Falkenhagen  <falken@chromium.org>
+
+        Add dialog element feature toggle to InternalSettings
+        https://bugs.webkit.org/show_bug.cgi?id=90934
+
+        Reviewed by Hajime Morita.
+
+        * Source/autotools/symbols.filter: Added newly exported symbol.
+
+2012-07-11  Arnaud Renevier  <a.renevier@sisa.samsung.com>
+
+        [Gtk] allow building with css-filters
+        https://bugs.webkit.org/show_bug.cgi?id=90908
+
+        Add support for css-filters in Source/WebCore/GNUmakefile.am
+        configure.ac
+
+        Reviewed by Eric Seidel.
+
+        * configure.ac:
+
+2012-07-10  Gyuyoung Kim  <gyuyoung.kim@samsung.com>
+
+        [CMAKE] Add missing feature macros
+        https://bugs.webkit.org/show_bug.cgi?id=90890
+
+        Reviewed by Eric Seidel.
+
+        ENABLE_CSS_EXCLUSIONS, ENABLE_CSS_REGIONS, ENABLE_TEXT_AUTOSIZING macros
+        haven't defined in cmake feature list.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-10  Kent Tamura  <tkent@chromium.org>
+
+        RTL calendar picker for <input type=date> is too narrow and clipped
+        https://bugs.webkit.org/show_bug.cgi?id=90864
+
+        Reviewed by Kentaro Hara.
+
+        * ManualTests/forms/calendar-picker.html:
+        - Add isRTL:true for the arabic setting
+        - Reset the iframe size when the setting is changed.
+
+2012-07-10  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122178.
+        http://trac.webkit.org/changeset/122178
+        https://bugs.webkit.org/show_bug.cgi?id=90857
+
+        browser tests, PrerenderBrowserTest.PrerenderFavicon and other
+        tests, started to fail (Requested by hayato on #webkit).
+
+        * Source/autotools/symbols.filter:
+
+2012-07-09  Matt Falkenhagen  <falken@chromium.org>
+
+        Add ENABLE_DIALOG_ELEMENT and skeleton files
+        https://bugs.webkit.org/show_bug.cgi?id=90521
+
+        Reviewed by Kent Tamura.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmakeconfig.h.cmake:
+
+2012-07-09  Pete Williamson  <petewil@google.com>
+
+        Expose an export for the iconUrl list so Internals can use it
+        https://bugs.webkit.org/show_bug.cgi?id=88665
+
+        Reviewed by Kent Tamura.
+
+        * Source/autotools/symbols.filter: export iconURLs
+
 2012-07-09  Mike Lattanzio  <mlattanzio@rim.com>
 
         [BlackBerry] meta viewport initial-scale doesn't factor in device pixel ratio

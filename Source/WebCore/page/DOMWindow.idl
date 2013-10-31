@@ -407,6 +407,7 @@ module window {
         attribute HTMLCanvasElementConstructor HTMLCanvasElement;
         attribute HTMLDListElementConstructor HTMLDListElement;
         attribute [Conditional=DATALIST] HTMLDataListElementConstructor HTMLDataListElement;
+        attribute [Conditional=DIALOG_ELEMENT, V8EnabledPerContext=dialogElement] HTMLDialogElementConstructor HTMLDialogElement;
         attribute HTMLDirectoryElementConstructor HTMLDirectoryElement;
         attribute HTMLDivElementConstructor HTMLDivElement;
         attribute HTMLEmbedElementConstructor HTMLEmbedElement;
@@ -778,7 +779,7 @@ module window {
 
         attribute [Conditional=BLOB] DOMURLConstructor webkitURL;
 
-        attribute [Conditional=MUTATION_OBSERVERS] WebKitMutationObserverConstructor WebKitMutationObserver;
+        attribute [Conditional=MUTATION_OBSERVERS] MutationObserverConstructor WebKitMutationObserver;
 
 #endif // defined(LANGUAGE_JAVASCRIPT)
 

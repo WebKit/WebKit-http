@@ -15,8 +15,6 @@ BUGCR24182 SLOW WIN RELEASE : http/tests/loading/onload-vs-immediate-refresh.pl 
 BUGCR24182 SLOW WIN DEBUG : http/tests/loading/redirect-methods.html = PASS
 BUGCR24182 SLOW WIN : http/tests/local/file-url-sent-as-referer.html = PASS
 BUGCR24182 SLOW WIN DEBUG : http/tests/misc/uncacheable-script-repeated.html = PASS
-BUGCR24182 SLOW : http/tests/websocket/tests/hixie76/frame-lengths.html = PASS
-BUGCR24182 SLOW WIN DEBUG : http/tests/websocket/tests/hixie76/simple-stress.html = PASS
 BUGCR24182 SLOW WIN : http/tests/xmlhttprequest/simple-cross-origin-progress-events.html = PASS
 BUGCR24182 SLOW WIN : http/tests/xmlhttprequest/supported-xml-content-types.html = PASS
 BUGCR24182 SLOW WIN : http/tests/xmlhttprequest/XMLHttpRequestException.html = PASS
@@ -508,8 +506,6 @@ WONTFIX SKIP : http/tests/xmlhttprequest/workers/shared-worker-methods-async.htm
 WONTFIX SKIP : http/tests/xmlhttprequest/workers/shared-worker-methods.html = TIMEOUT
 WONTFIX SKIP : http/tests/xmlhttprequest/workers/shared-worker-referer.html = TIMEOUT
 WONTFIX SKIP : http/tests/xmlhttprequest/workers/shared-worker-xhr-file-not-found.html = TIMEOUT
-WONTFIX SKIP : http/tests/websocket/tests/hixie76/workers/close-in-shared-worker.html = TIMEOUT
-WONTFIX SKIP : http/tests/websocket/tests/hixie76/workers/shared-worker-simple.html = TIMEOUT
 WONTFIX SKIP : http/tests/websocket/tests/hybi/workers/close-in-shared-worker.html = TIMEOUT
 WONTFIX SKIP : http/tests/websocket/tests/hybi/workers/shared-worker-simple.html = TIMEOUT
 WONTFIX SKIP : http/tests/inspector/network/network-shared-worker.html = PASS
@@ -734,9 +730,10 @@ WONTFIX SKIP : http/tests/globalhistory = PASS
 // For more details, see discussions at issue 20570.
 WONTFIX SKIP : fast/forms/get-forms-to-about-blank.html = PASS
 
-// This test requires LayoutTestController.setCacheModel, which we don't
+// These tests requires LayoutTestController.setCacheModel, which we don't
 // implement because we can't emulate the caching behaviors it expects.
 WONTFIX SKIP : fast/dom/HTMLScriptElement/nested-execution.html = PASS
+WONTFIX SKIP : storage/domstorage/storage-close-database-on-idle.html = PASS
 
 // Deletion UI is a Mail-ism. We don't need to worry about this.
 WONTFIX SKIP : editing/deleting/deletionUI-single-instance.html = PASS
@@ -930,7 +927,7 @@ WONTFIX SKIP : http/tests/inspector/network/network-content-replacement-embed.ht
 // Works slowly, we have an equivalent test that doesn't open Inspector and runs fast.
 WONTFIX LINUX DEBUG SKIP : inspector/profiler/cpu-profiler-profiling.html = TIMEOUT PASS
 
-BUG_DRT WIN DEBUG : inspector/extensions/extensions-events.html = TIMEOUT
+BUG_DRT WIN : inspector/extensions/extensions-events.html = TIMEOUT
 BUG_DRT WIN DEBUG : inspector/extensions/extensions-sidebar.html = TIMEOUT
 
 BUGFLAKY : http/tests/inspector/extensions-ignore-cache.html = PASS TIMEOUT
@@ -955,6 +952,7 @@ WONTFIX SKIP : http/tests/inspector/network/network-size-sync.html = PASS
 BUGWK65770 SKIP : http/tests/inspector/resource-main-cookies.php = PASS
 
 BUGWK83890 : http/tests/inspector/resource-tree/resource-tree-document-url.html = PASS TEXT TIMEOUT
+BUGWK83890 : http/tests/inspector/resource-tree/resource-request-content-while-loading.html = PASS TEXT TIMEOUT
 
 BUGWK60107 WIN RELEASE : inspector/console/console-object-constructor-name.html = PASS TEXT
 BUGWK60107 WIN RELEASE : inspector/console/console-log-before-inspector-open.html = PASS TEXT
@@ -1130,9 +1128,6 @@ WONTFIX SKIP : media/media-fullscreen-not-in-document.html = TIMEOUT
 
 // We don't expose a step button.
 WONTFIX SKIP : media/audio-delete-while-step-button-clicked.html = TIMEOUT
-
-// Feature disabled on chromium build, see: https://bugs.webkit.org/show_bug.cgi?id=85425
-WONTFIX SKIP : fast/viewport/viewport-legacy-xhtmlmp.html = PASS
 
 // We haven't implemented reverse audio/video playback.
 BUGCR33099 SKIP : media/video-reverse-play-duration.html = TIMEOUT
@@ -2092,17 +2087,8 @@ BUGCR53546 WONTFIX LINUX : userscripts/user-script-video-document.html = TEXT
 // Not focusing an anchor when tab is pressed.
 BUGWK45061 : fast/forms/focus2.html = TEXT
 
-// We don't support LayoutTestController.dumpConfigurationForViewport
-BUGWK45652 : fast/viewport = TEXT
-BUGWK45652 : fast/viewport/viewport-65.html = MISSING
-BUGWK45652 : fast/viewport/viewport-82.html = MISSING
-BUGWK45652 : fast/viewport/viewport-84.html = MISSING
-BUGWK45652 : fast/viewport/viewport-87.html = MISSING
-BUGWK45652 : fast/viewport/viewport-126.html = MISSING
-BUGWK45652 : fast/viewport/viewport-127.html = MISSING
-BUGWK45652 : fast/viewport/viewport-128.html = TIMEOUT TEXT
-BUGWK45652 : fast/viewport/viewport-129.html = TIMEOUT MISSING TEXT
-BUGWK45652 : fast/viewport/scroll-delegates-switch-on-page-with-no-composition-mode-asserts.html = PASS
+// Requires page cache.
+BUGWK45652 : fast/viewport/viewport-128.html = TIMEOUT
 
 BUGWK45737 BUGCR100056 DEBUG : fast/frames/frame-limit.html = TIMEOUT
 
@@ -2405,9 +2391,6 @@ BUGWK49629 SKIP : platform/chromium/compositing/lots-of-img-layers-with-opacity.
 BUGWK49629 SKIP : compositing/iframes/page-cache-layer-tree.html = PASS
 
 BUGNONE SLOW WIN DEBUG : platform/chromium/virtual/gpu/fast/canvas/canvas-getImageData.html = PASS
-
-BUGWK55968 MAC WIN DEBUG : compositing/webgl/webgl-nonpremultiplied-blend.html = IMAGE
-BUGWK82412 LION RELEASE : compositing/webgl/webgl-nonpremultiplied-blend.html = IMAGE PASS
 
 BUGWK53868 : fast/notifications/notifications-document-close-crash.html = PASS TEXT
 
@@ -3521,7 +3504,7 @@ BUGWK85950 LINUX DEBUG : compositing/geometry/limit-layer-bounds-transformed-ove
 
 BUGWK81416 : fast/dom/wrapper-scope.html = TEXT
 
-BUGWK86439 LINUX DEBUG : inspector/extensions/extensions-events.html = TIMEOUT PASS
+BUGWK86439 LINUX : inspector/extensions/extensions-events.html = TIMEOUT PASS
 BUGWK86439 LINUX DEBUG : inspector/extensions/extensions-sidebar.html = TIMEOUT PASS
 
 BUGWK86114 MAC DEBUG : animations/combo-transform-translate+scale.html = PASS TEXT
@@ -3706,14 +3689,11 @@ BUGWK89936 WIN : compositing/shadows/shadow-drawing.html = IMAGE
 BUGWK89936 WIN : fast/text/atsui-kerning-and-ligatures.html = IMAGE
 BUGWK89936 WIN : fast/css/text-rendering.html = IMAGE+TEXT
 
-// Started failing after r121267.
-BUGWK89998 SNOWLEOPARD RELEASE : compositing/webgl/webgl-nonpremultiplied-blend.html = IMAGE
-
 // Started timeout between r121233:r121239.
 BUGWK90003 WIN DEBUG : fast/js/repeat-cached-vm-reentry.html = TIMEOUT PASS
 
-// It times out very frequently on Windows and Mac debug build.
-BUGWK90207 SLOW WIN DEBUG : fast/forms/select/select-state-restore.html = PASS
+// Flaky. It also times out very frequently on Windows and Linux debug build.
+BUGWK90207 SLOW WIN DEBUG : fast/forms/select/select-state-restore.html = PASS TEXT
 BUGWK90207 SLOW LINUX DEBUG : fast/forms/select/select-state-restore.html = PASS TEXT
 
 // Flaky
@@ -3723,7 +3703,15 @@ BUGWK90430 : inspector/timeline/timeline-receive-response-event.html = PASS TEXT
 BUGWK90469 WIN : storage/indexeddb/mozilla/indexes.html = PASS CRASH
 BUGWK90469 WIN : storage/indexeddb/mozilla/key-requirements-inline-and-passed.html = PASS CRASH
 BUGWK90469 WIN : storage/websql/multiple-databases-garbage-collection.html = PASS CRASH
-BUGWK90754 WIN : storage/indexeddb/mozilla/key-requirements.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/key-requirements.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/objectstorenames.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/autoincrement-indexes.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/delete-result.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/key-requirements-put-no-key.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/create-objectstore-null-name.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/index-prev-no-duplicate.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/cursors.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/mozilla/create-index-with-integer-keys.html = PASS CRASH
 
 // Require rebaseline after bug 88171
 BUGWK88171 WIN : css1/formatting_model/floating_elements.html = IMAGE
@@ -3737,10 +3725,24 @@ BUGWK90704 : fullscreen/exit-full-screen-iframe.html = TEXT
 BUGWK90741 MAC : fast/text-autosizing/simple-paragraph.html = IMAGE
 
 // Started flaky after r121629.
-BUGWK90743 WIN : storage/indexeddb/cursor-delete.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/cursor-delete.html = PASS CRASH
+BUGWK90469 WIN : storage/indexeddb/cursor-added-bug.html = PASS CRASH
 
 // Flaky
 BUGWK90743 : fast/events/display-none-on-focus-crash.html = PASS TEXT
 
 // Flaky
 BUGWK90746 : fast/multicol/column-span-parent-continuation-crash.html = PASS TIMEOUT
+
+// Flaky
+BUGWK90896 WIN DEBUG : fast/js/dfg-cross-global-object-inline-new-array-literal.html = PASS TEXT
+
+BUGWK90899 SLOW WIN LINUX DEBUG : platform/chromium/inspector/styles/device-metrics-fit-window.html = PASS
+
+BUGWK90900 MAC : tables/mozilla_expected_failures/other/empty_cells.html = PASS IMAGE+TEXT
+
+BUGWK90980 LINUX MAC DEBUG : fast/forms/textarea/textarea-state-restore.html = PASS TIMEOUT
+BUGWK90980 WIN : fast/forms/textarea/textarea-state-restore.html = PASS TIMEOUT
+
+// Started crashing after r122359
+BUGWK91047 DEBUG : html5lib/runner.html = CRASH

@@ -1,3 +1,637 @@
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/91015> Remove BUILDING_ON / TARGETING macros in favor of system availability macros
+
+        This removal was handled by a script that translates the relevant macros in to the equivalent checks
+        using the system availability macros.
+
+        Reviewed by Filip Pizlo.
+
+        * src/mac/WebInputEventFactory.mm:
+
+2012-07-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-07-11  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122358.
+        http://trac.webkit.org/changeset/122358
+        https://bugs.webkit.org/show_bug.cgi?id=91037
+
+        Build break on WebKit Win (Requested by hayato on #webkit).
+
+        * public/WebView.h:
+        (WebView):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::dragTargetDragEnter):
+        (WebKit):
+        (WebKit::WebViewImpl::dragTargetDragOver):
+        (WebKit::WebViewImpl::dragTargetDrop):
+        * src/WebViewImpl.h:
+        (WebViewImpl):
+
+2012-07-11  Alexandre Elias  <aelias@google.com>
+
+        [chromium] Move compositor quads to Platform/chromium/public
+        https://bugs.webkit.org/show_bug.cgi?id=90582
+
+        Reviewed by Adrienne Walker.
+
+        This moves CCSharedQuadState, CCDrawQuad, and all but two CC*DrawQuad
+        classes to the WebKit namespace, as a first step to pushing them
+        across the process boundary for the ubercompositor.
+
+        - The intent is to serialize the class hierarchy using the same
+        mechanism as WebInputEvent.  In order to do this, there are three
+        requirements: pure POD data, a method returning size, and a packing
+        pragma.
+
+        - Private data members are fine with this kind of serializer, and a
+        default constructor is not needed.  Because of that, we can maintain
+        the same encapsulation and convenient APIs (behind
+        WEBKIT_IMPLEMENTATION) as the original classes.  To ease the
+        transition, the original WebCore headers still exist and typedef to
+        the new classes.
+
+        - However, SharedQuadState will be serialized using the normal
+        IPC_STRUCT_TRAITS macro, so I made its members public.  A custom
+        serializer (on quad lists) will maintain the pointers from quads to
+        SharedQuadStates.
+
+        - I converted the Material casting mechanism to materialCast() methods
+        living in the derived classes.  That way, the WebCompositorQuad header
+        doesn't need to know about all its derived classes.
+
+        - Quad classes not yet transitioned can still be used in
+        non-ubercompositor mode.  CCRenderPassDrawQuad and CCYUVVideoDrawQuad
+        are currently non-POD and I left them in their original files.
+
+        This approach is the best I've found so far, since it preserves all
+        WebCore-facing APIs and avoids unnecessary code duplication (new quad
+        types or members can be added by modifying only one place).  There
+        also should not be an unreasonable amount of custom serializer code
+        required.
+
+        * tests/CCLayerTestCommon.cpp:
+        (CCLayerTestCommon::verifyQuadsExactlyCoverRect):
+        * tests/CCSolidColorLayerImplTest.cpp:
+        (CCLayerTestCommon::TEST):
+
+2012-07-11  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Rename layerRect to contentRect for rects that live in content space
+        https://bugs.webkit.org/show_bug.cgi?id=90843
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerImplTest.cpp:
+        (WebCore::TEST):
+        * tests/CCLayerTreeHostCommonTest.cpp:
+        * tests/CCLayerTreeHostImplTest.cpp:
+        * tests/CCOcclusionTrackerTest.cpp:
+        (WebKitTests::CCOcclusionTrackerTestVisitTargetTwoTimes::runMyTest):
+        (WebKitTests::CCOcclusionTrackerTestSurfaceRotatedOffAxis::runMyTest):
+        (WebKitTests::CCOcclusionTrackerTestLargePixelsOccludeInsideClipRect::runMyTest):
+        * tests/CCQuadCullerTest.cpp:
+        * tests/CCRenderSurfaceTest.cpp:
+        * tests/CCSolidColorLayerImplTest.cpp:
+        (CCLayerTestCommon::TEST):
+        * tests/CCTiledLayerImplTest.cpp:
+        (CCLayerTestCommon::createLayer):
+        (CCLayerTestCommon::TEST):
+        (CCLayerTestCommon::getQuads):
+        (CCLayerTestCommon::coverageVisibleRectIntersectsTiles):
+        (CCLayerTestCommon::coverageVisibleRectIntersectsBounds):
+        * tests/CCTiledLayerTestCommon.cpp:
+        (WebKitTests::FakeLayerTextureUpdater::prepareToUpdate):
+        (WebKitTests::FakeTiledLayerChromium::update):
+        * tests/CCTiledLayerTestCommon.h:
+        (FakeTiledLayerChromium):
+        * tests/LayerChromiumTest.cpp:
+        * tests/TiledLayerChromiumTest.cpp:
+
+2012-07-11  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Minimum size used for occlusion tracking should be a setting on CCLayerTreeHost
+        https://bugs.webkit.org/show_bug.cgi?id=90993
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerTreeHostImplTest.cpp:
+
+2012-07-11  Adam Barth  <abarth@webkit.org>
+
+        [Chromium] Enable LEGACY_VIEWPORT_ADAPTION
+        https://bugs.webkit.org/show_bug.cgi?id=90991
+
+        Reviewed by Tony Chang.
+
+        Chromium wishes to support LEGACY_VIEWPORT_ADAPTION. I actually thought
+        this was enabled before, but the enable bit got lost in the shuffle.
+
+        * features.gypi:
+
+2012-07-11  Tony Chang  <tony@chromium.org>
+
+        [chromium] Remove drag and drop API methods that are no longer used
+        https://bugs.webkit.org/show_bug.cgi?id=90996
+
+        Reviewed by Adam Barth.
+
+        In r117327, we added a parameter for modifier keys to these methods.
+        Chromium has since switched to using the methods that require the
+        extra parameter so we can remove these methods.
+
+        * public/WebView.h:
+        (WebView):
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::dragTargetDragEnter):
+        (WebKit::WebViewImpl::dragTargetDragOver):
+        * src/WebViewImpl.h:
+        (WebViewImpl):
+
+2012-07-11  Shawn Singh  <shawnsingh@chromium.org>
+
+        Unreviewed build fix, forgot to add URLTestHelpers.* when landing r122344
+
+        * tests/URLTestHelpers.cpp: Added.
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::registerMockedURLFromBaseURL):
+        (WebKit::URLTestHelpers::registerMockedURLLoad):
+        * tests/URLTestHelpers.h: Added.
+        (WebKit):
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::toKURL):
+
+2012-07-11  Shawn Singh  <shawnsingh@chromium.org>
+
+        [chromium] Use WEBKIT_IMPLEMENTATION == 1 for webkit_unit_tests
+        https://bugs.webkit.org/show_bug.cgi?id=90094
+
+        Reviewed by Adrienne Walker.
+
+        This patch adds the WEBKIT_IMPLEMENTATION = 1 define to
+        WebKitUnitTests.gyp. To get it to compile correctly, some string
+        and URL code was refactored and fixed, in particular GURL usage is
+        replaced with KURL usage.
+
+        * WebKit.gyp:
+        added WEBKIT_IMPLEMENTATION == 1 for unit test code when in shared library
+        added URLTestHelpers to exclusion in shared library build, because it depends on webkit_support
+
+        * WebKit.gypi:
+        added URLTestHelpers.h and .cpp to the build process
+
+        * WebKitUnitTests.gyp:
+        added WEBKIT_IMPLEMENTATION == 1 for unit test code when not in shared library.
+        note that in shared library build, RunAllTests.cpp does not have WEBKIT_IMPLEMENTATION == 1.
+
+        * public/WebDOMMessageEvent.h:
+        (WebKit::WebDOMMessageEvent::WebDOMMessageEvent):
+        * tests/AssociatedURLLoaderTest.cpp:
+        * tests/EventListenerTest.cpp:
+        * tests/FrameTestHelpers.cpp:
+        (WebKit::FrameTestHelpers::loadFrame):
+        * tests/FrameTestHelpers.h:
+        * tests/ListenerLeakTest.cpp:
+        (WebKit::ListenerLeakTest::RunTest):
+        * tests/PopupMenuTest.cpp:
+        * tests/RunAllTests.cpp:
+        * tests/URLTestHelpers.cpp: Added.
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::registerMockedURLFromBaseURL):
+        (WebKit::URLTestHelpers::registerMockedURLLoad):
+        * tests/URLTestHelpers.h: Copied from Source/WebKit/chromium/public/WebDOMMessageEvent.h.
+        (WebKit):
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::toKURL):
+        * tests/WebFrameTest.cpp:
+        * tests/WebPageNewSerializerTest.cpp:
+        * tests/WebPageSerializerTest.cpp:
+        * tests/WebViewTest.cpp:
+
+2012-07-10  Pavel Feldman  <pfeldman@chromium.org>
+
+        Web Inspector: migrate from background images to CSS for statusbar rendering.
+        https://bugs.webkit.org/show_bug.cgi?id=90902
+
+        Reviewed by Vsevolod Vlasov.
+
+        * WebKit.gypi:
+        * src/js/Images/statusbarBackgroundChromium.png: Removed.
+        * src/js/Images/statusbarBottomBackgroundChromium.png: Removed.
+        * src/js/Images/statusbarButtonsChromium.png: Removed.
+        * src/js/Images/statusbarMenuButtonChromium.png: Removed.
+        * src/js/Images/statusbarMenuButtonSelectedChromium.png: Removed.
+        * src/js/devTools.css:
+        (.status-bar-background):
+
+2012-07-11  Kenichi Ishibashi  <bashi@chromium.org>
+
+        [Chromium] Adding HarfBuzz-ng for Linux
+        https://bugs.webkit.org/show_bug.cgi?id=90362
+
+        Reviewed by Tony Chang.
+
+        * features.gypi: Added use_harfbuzz_ng variable. If the value is set, USE(HARFBUZZ_NG) is defined.
+
+2012-07-10  Hayato Ito  <hayato@chromium.org>
+
+        Unreviewed gardening.
+
+        Android builder started to fail after r122292.
+        My best guess is that '--ant-compile' does not take an argument.
+
+        * WebKitUnitTests.gyp:
+
+2012-07-10  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [Chromium-Windows] Implement functions for localized time format information
+        https://bugs.webkit.org/show_bug.cgi?id=90236
+
+        Reviewed by Kent Tamura.
+
+        This patch introduces test cases for date and time format related
+        functions in LocaleWin.
+
+        * tests/LocaleWinTest.cpp:
+        (LocaleWinTest):
+        (LocaleWinTest::dateComponents): Added.
+        (LocaleWinTest::msForDate): Moved inside class LocaleWinTest.
+        (LocaleWinTest::formatDate): Added.
+        (LocaleWinTest::parseDate): Added.
+        (LocaleWinTest::dateFormatText): Added.
+        (LocaleWinTest::firstDayOfWeek): Added.
+        (LocaleWinTest::monthLabel): Added.
+        (LocaleWinTest::weekDayShortLabel): Added.
+        (LocaleWinTest::timeFormatText): Added.
+        (LocaleWinTest::shortTimeFormatText): Added.
+        (LocaleWinTest::timeAMPMLabel): Added.
+        (TEST_F):
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        [Chromium-Android] Add apk test targets for webkit_unit_tests and TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=90918
+
+        Reviewed by Tony Chang.
+
+        The rules are similar to what we have added for DumpRenderTree apk.
+        All references to gtest_target_type can be removed once we enable APK
+        tests on the all bots.
+
+        * WebKitUnitTests.gyp:
+
+2012-07-10  Kevin Ellis  <kevers@chromium.org>
+
+        Input elements with type=range do not have default touch handlers.
+        https://bugs.webkit.org/show_bug.cgi?id=88807
+
+        Reviewed by Antonio Gomes.
+
+        Adds flag to enable native handling of touch events for input elements
+        with type=range.
+
+        * features.gypi:
+
+2012-07-10  Adam Klein  <adamk@chromium.org>
+
+        [Chromium] REGRESSION(r121909): m_currentInputEvent never set
+        https://bugs.webkit.org/show_bug.cgi?id=90914
+
+        Reviewed by Abhishek Arya.
+
+        The always-null m_currentInputEvent causes a regression when
+        middle-clicking on a link that calls window.open('...', '_blank');
+        that new tab should open in the background, but instead opens in the
+        foreground (see code in ChromeClientImpl::getNavigationPolicy()).
+
+        Fix usage of TemporaryChange to specify a local variable name so that
+        m_currentInputEvent is actually set for the duration of handleInputEvent.
+
+        * src/WebViewImpl.cpp:
+        (WebKit::WebViewImpl::handleInputEvent): Name the TemporaryChange instance.
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        WebCore::Settings for Hixie76 WebSocket protocol doesn't do anything and should be removed
+        https://bugs.webkit.org/show_bug.cgi?id=90910
+
+        Reviewed by Eric Seidel.
+
+        * public/WebSettings.h:
+        (WebKit::WebSettings::setHixie76WebSocketProtocolEnabled):
+        * src/WebSettingsImpl.cpp:
+        * src/WebSettingsImpl.h:
+        (WebSettingsImpl):
+        * src/WebSharedWorkerImpl.cpp:
+        (WebKit::WebSharedWorkerImpl::initializeLoader):
+
+2012-07-09  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Replace use of ManagedTexture with CCScopedTexture for impl thread and remove implTextureManager from LayerRendererChromium
+        https://bugs.webkit.org/show_bug.cgi?id=90841
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerTreeHostImplTest.cpp:
+
+2012-07-10  Xianzhu Wang  <wangxianzhu@chromium.org>
+
+        [Chromium-Android] Use default font rendering styles in FontPlatformData::querySystemForRenderStyle()
+        https://bugs.webkit.org/show_bug.cgi?id=90826
+
+        Reviewed by Adam Barth.
+
+        * WebKit.gyp:
+        * src/PlatformSupport.cpp:
+        (WebCore::PlatformSupport::getRenderStyleForStrike): Call style.setDefault() on Android or when the font is not specified.
+
+2012-07-10  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Avoid allocating render pass textures that have no content
+        https://bugs.webkit.org/show_bug.cgi?id=90702
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerTreeHostImplTest.cpp:
+        * tests/CCLayerTreeHostTest.cpp:
+        (WTF::ContentLayerChromiumWithUpdateTracking::ContentLayerChromiumWithUpdateTracking):
+        (CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit):
+        (WTF::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit):
+        (WTF::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit::beginTest):
+        (WTF::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit::didCommit):
+        (WTF::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit::drawLayersOnCCThread):
+        (WTF::CCLayerTreeHostTestSurfaceNotAllocatedForLayersOutsideMemoryLimit::afterTest):
+        (WTF):
+
+2012-07-10  Leandro Gracia Gil  <leandrogracia@chromium.org>
+
+        Unreviewed Chromium build fix for mac-release.
+
+        Fixing clang build after https://bugs.webkit.org/show_bug.cgi?id=90807
+
+        * public/WebSurroundingText.h:
+        (WebKit):
+
+2012-07-10  Leandro Gracia Gil  <leandrogracia@chromium.org>
+
+        WebSurroundingText layout tests should use the same code path as the rest of the feature.
+        https://bugs.webkit.org/show_bug.cgi?id=90807
+
+        Reviewed by Adam Barth.
+
+        Replace the offset-based initialize method used only by LayoutTestController
+        with a point-based version to follow the same code path.
+
+        * public/WebSurroundingText.h:
+        (WebKit):
+        (WebSurroundingText):
+        * src/WebSurroundingText.cpp:
+        (WebKit::WebSurroundingText::initialize):
+
+2012-07-10  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122207.
+        http://trac.webkit.org/changeset/122207
+        https://bugs.webkit.org/show_bug.cgi?id=90874
+
+        Broke the cr-windows bot (Requested by beverloo on #webkit).
+
+        * DEPS:
+
+2012-07-10  Jochen Eisinger  <jochen@chromium.org>
+
+        Unreviewed.  Rolled DEPS.
+
+        * DEPS:
+
+2012-07-09  Matt Falkenhagen  <falken@chromium.org>
+
+        Add ENABLE_DIALOG_ELEMENT and skeleton files
+        https://bugs.webkit.org/show_bug.cgi?id=90521
+
+        Reviewed by Kent Tamura.
+
+        * features.gypi:
+        * public/WebRuntimeFeatures.h:
+        (WebRuntimeFeatures):
+        * src/WebRuntimeFeatures.cpp:
+        (WebKit::WebRuntimeFeatures::enableDialogElement):
+        (WebKit):
+        (WebKit::WebRuntimeFeatures::isDialogElementEnabled):
+
+2012-07-09  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [Chromium-Mac] Implement functions for localized time format information
+        https://bugs.webkit.org/show_bug.cgi?id=90237
+
+        Reviewed by Kent Tamura.
+
+        * tests/LocaleMacTest.cpp:
+        (LocaleMacTest):
+        (LocaleMacTest::timeFormatText):
+        (LocaleMacTest::shortTimeFormatText):
+        (LocaleMacTest::timeAMPMLabel):
+        (TEST_F):
+
+2012-07-09  Eric Penner  <epenner@google.com>
+
+        [chromium] Merge updates and idle updates into one pass
+        https://bugs.webkit.org/show_bug.cgi?id=90324
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerTreeHostTest.cpp:
+        (WTF::ContentLayerChromiumWithUpdateTracking::resetPaintContentsCount):
+        (WTF::ContentLayerChromiumWithUpdateTracking::ContentLayerChromiumWithUpdateTracking):
+        (ContentLayerChromiumWithUpdateTracking):
+        (WTF::CCLayerTreeHostTestOpacityChange::afterTest):
+        * tests/CCTiledLayerTestCommon.h:
+        (FakeTiledLayerChromium):
+        * tests/TiledLayerChromiumTest.cpp:
+
+2012-07-09  Yoshifumi Inoue  <yosin@chromium.org>
+
+        [Platform] Introduce LocaleMac class
+        https://bugs.webkit.org/show_bug.cgi?id=90248
+
+        Reviewed by Kent Tamura.
+
+        This patch added tests for LocaleMac class.
+
+        * WebKit.gypi:
+        * tests/LocaleMacTest.cpp: Added.
+        (LocaleMacTest):
+        (LocaleMacTest::dateComponents):
+        (LocaleMacTest::msForDate):
+        (LocaleMacTest::formatDate):
+        (LocaleMacTest::parseDate):
+        (LocaleMacTest::dateFormatText):
+        (LocaleMacTest::firstDayOfWeek):
+        (LocaleMacTest::monthLabel):
+        (LocaleMacTest::weekDayShortLabel):
+        (TEST_F):
+
+2012-07-09  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Create CCScopedTexture class for creating/freeing textures
+        https://bugs.webkit.org/show_bug.cgi?id=89485
+
+        Reviewed by Adrienne Walker.
+
+        * WebKit.gypi:
+        * tests/CCScopedTextureTest.cpp: Added.
+        (WebKitTests):
+        (WebKitTests::TEST):
+        (TrackingTextureAllocator):
+        (WebKitTests::TrackingTextureAllocator::TrackingTextureAllocator):
+        (WebKitTests::TrackingTextureAllocator::numTextures):
+
+2012-07-09  Joshua Bell  <jsbell@chromium.org>
+
+        IndexedDB: Remove obsolete accessor plumbing
+        https://bugs.webkit.org/show_bug.cgi?id=90812
+
+        Reviewed by Tony Chang.
+
+        * public/WebIDBCursor.h: Remove direction.
+        * public/WebIDBDatabase.h: Remove name, version, objectStoreNames;
+        (WebKit::WebIDBDatabase::metadata):
+        * public/WebIDBIndex.h: Remove name, keyPath, unique, multiEntry;
+        * public/WebIDBObjectStore.h: Remove name, keyPath, indexNames, autoIncrement;
+        * src/IDBDatabaseBackendProxy.cpp: Remove plumbing.
+        * src/IDBDatabaseBackendProxy.h: Remove plumbing.
+        (IDBDatabaseBackendProxy):
+        * src/IDBIndexBackendProxy.cpp: Remove plumbing.
+        * src/IDBIndexBackendProxy.h: Remove plumbing.
+        (IDBIndexBackendProxy):
+        * src/IDBObjectStoreBackendProxy.cpp: Remove plumbing.
+        * src/IDBObjectStoreBackendProxy.h: Remove plumbing.
+        (IDBObjectStoreBackendProxy):
+        * src/IDBTransactionBackendProxy.cpp: Remove plumbing.
+        * src/IDBTransactionBackendProxy.h: Assert stub is not used - only needed
+        by real IDBTransactionBackendImpl
+        (WebKit::IDBTransactionBackendProxy::mode):
+        * src/WebIDBTransactionImpl.cpp: Remove plumbing.
+        * src/WebIDBTransactionImpl.h: Remove plumbing.
+
+2012-07-09  Sheriff Bot  <webkit.review.bot@gmail.com>
+
+        Unreviewed, rolling out r122161.
+        http://trac.webkit.org/changeset/122161
+        https://bugs.webkit.org/show_bug.cgi?id=90837
+
+        failed to compile on chromium webkit linux bot (Requested by
+        shawnsingh on #webkit).
+
+        * WebKit.gypi:
+        * WebKitUnitTests.gyp:
+        * public/WebDOMMessageEvent.h:
+        * tests/AssociatedURLLoaderTest.cpp:
+        (WebKit::AssociatedURLLoaderTest::AssociatedURLLoaderTest):
+        (WebKit::AssociatedURLLoaderTest::SetUp):
+        (WebKit::AssociatedURLLoaderTest::CheckMethodFails):
+        (WebKit::AssociatedURLLoaderTest::CheckHeaderFails):
+        (WebKit::AssociatedURLLoaderTest::CheckAccessControlHeaders):
+        (WebKit::TEST_F):
+        * tests/EventListenerTest.cpp:
+        * tests/FrameTestHelpers.cpp:
+        (WebKit::FrameTestHelpers::registerMockedURLLoad):
+        (FrameTestHelpers):
+        (WebKit::FrameTestHelpers::loadFrame):
+        * tests/FrameTestHelpers.h:
+        (FrameTestHelpers):
+        * tests/ListenerLeakTest.cpp:
+        (WebKit::ListenerLeakTest::RunTest):
+        * tests/PopupMenuTest.cpp:
+        (WebKit::SelectPopupMenuTest::registerMockedURLLoad):
+        (WebKit::SelectPopupMenuTest::loadFrame):
+        (WebKit::TEST_F):
+        * tests/RunAllTests.cpp:
+        * tests/URLTestHelpers.cpp: Removed.
+        * tests/URLTestHelpers.h: Removed.
+        * tests/WebFrameTest.cpp:
+        (WebKit::WebFrameTest::registerMockedHttpURLLoad):
+        (WebKit::WebFrameTest::registerMockedChromeURLLoad):
+        (WebKit::TEST_F):
+        * tests/WebPageNewSerializerTest.cpp:
+        (WebKit::WebPageNewSerializeTest::registerMockedURLLoad):
+        (WebPageNewSerializeTest):
+        (WebKit::WebPageNewSerializeTest::setUpCSSTestPage):
+        (WebKit::WebPageNewSerializeTest::loadURLInTopFrame):
+        (WebKit::WebPageNewSerializeTest::resourceVectorContains):
+        (WebKit::TEST_F):
+        * tests/WebPageSerializerTest.cpp:
+        (WebKit::WebPageSerializerTest::registerMockedURLLoad):
+        (WebKit::WebPageSerializerTest::loadURLInTopFrame):
+        (WebKit::WebPageSerializerTest::webVectorContains):
+        (WebKit::TEST_F):
+        * tests/WebViewTest.cpp:
+        (WebKit::TEST_F):
+        (WebKit::WebViewTest::testAutoResize):
+        (WebKit::WebViewTest::testTextInputType):
+
+2012-07-09  Shawn Singh  <shawnsingh@chromium.org>
+
+        [chromium] Use WEBKIT_IMPLEMENTATION == 1 for webkit_unit_tests
+        https://bugs.webkit.org/show_bug.cgi?id=90094
+
+        Reviewed by Adam Barth.
+
+        This patch adds the WEBKIT_IMPLEMENTATION = 1 define to
+        WebKitUnitTests.gyp. To get it to compile correctly, some string
+        and URL code was refactored, and GURL types were replaced with KURL types.
+
+        * WebKit.gypi:
+        * WebKitUnitTests.gyp:
+        * public/WebDOMMessageEvent.h:
+        (WebKit::WebDOMMessageEvent::WebDOMMessageEvent):
+        * tests/AssociatedURLLoaderTest.cpp:
+        * tests/EventListenerTest.cpp:
+        * tests/FrameTestHelpers.cpp:
+        (WebKit::FrameTestHelpers::loadFrame):
+        * tests/FrameTestHelpers.h:
+        * tests/ListenerLeakTest.cpp:
+        (WebKit::ListenerLeakTest::RunTest):
+        * tests/PopupMenuTest.cpp:
+        * tests/RunAllTests.cpp:
+        * tests/URLTestHelpers.cpp: Added.
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::registerMockedURLFromBaseURL):
+        (WebKit::URLTestHelpers::registerMockedURLLoad):
+        * tests/URLTestHelpers.h: Copied from Source/WebKit/chromium/public/WebDOMMessageEvent.h.
+        (WebKit):
+        (URLTestHelpers):
+        (WebKit::URLTestHelpers::toKURL):
+        * tests/WebFrameTest.cpp:
+        * tests/WebPageNewSerializerTest.cpp:
+        * tests/WebPageSerializerTest.cpp:
+        * tests/WebViewTest.cpp:
+
+2012-07-09  Dana Jansens  <danakj@chromium.org>
+
+        [chromium] Decouple RenderPass drawing from CCRenderSurface
+        https://bugs.webkit.org/show_bug.cgi?id=90573
+
+        Reviewed by Adrienne Walker.
+
+        * tests/CCLayerTreeHostImplTest.cpp:
+        * tests/LayerRendererChromiumTest.cpp:
+        (FakeCCRendererClient::FakeCCRendererClient):
+
+2012-07-09  Adam Klein  <adamk@chromium.org>
+
+        Rename WebCore::WebKitMutationObserver to WebCore::MutationObserver
+        https://bugs.webkit.org/show_bug.cgi?id=90810
+
+        Reviewed by Ojan Vafai.
+
+        * src/WebKit.cpp:
+
 2012-07-09  Leandro Gracia Gil  <leandrogracia@chromium.org>
 
         SurroundingText should not advance character iterators if they are at end.

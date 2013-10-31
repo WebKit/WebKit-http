@@ -1881,7 +1881,12 @@ bool EventHandler::handleMouseReleaseEvent(const PlatformMouseEvent& mouseEvent)
 
     bool swallowMouseUpEvent = dispatchMouseEvent(eventNames().mouseupEvent, targetNode(mev), true, m_clickCount, mouseEvent, false);
 
-    bool swallowClickEvent = m_clickCount > 0 && mouseEvent.button() != RightButton && targetNode(mev) == m_clickNode && dispatchMouseEvent(eventNames().clickEvent, targetNode(mev), true, m_clickCount, mouseEvent, true);
+    Node* clickTarget = targetNode(mev);
+    if (clickTarget)
+        clickTarget = clickTarget->shadowAncestorNode();
+    Node* adjustedClickNode = m_clickNode ? m_clickNode->shadowAncestorNode() : 0;
+
+    bool swallowClickEvent = m_clickCount > 0 && mouseEvent.button() != RightButton && clickTarget == adjustedClickNode && dispatchMouseEvent(eventNames().clickEvent, targetNode(mev), true, m_clickCount, mouseEvent, true);
 
     if (m_resizeLayer) {
         m_resizeLayer->setInResizeMode(false);
@@ -2285,7 +2290,7 @@ bool EventHandler::dispatchMouseEvent(const AtomicString& eventType, Node* targe
 }
 
 #if !PLATFORM(GTK) && !(PLATFORM(CHROMIUM) && (OS(UNIX) && !OS(DARWIN)))
-bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&) const
+bool EventHandler::shouldTurnVerticalTicksIntoHorizontal(const HitTestResult&, const PlatformWheelEvent&) const
 {
     return false;
 }
@@ -2340,7 +2345,7 @@ bool EventHandler::handleWheelEvent(const PlatformWheelEvent& e)
     // Instead, the handlers should know convert vertical scrolls
     // appropriately.
     PlatformWheelEvent event = e;
-    if (m_baseEventType == PlatformEvent::NoType && shouldTurnVerticalTicksIntoHorizontal(result))
+    if (m_baseEventType == PlatformEvent::NoType && shouldTurnVerticalTicksIntoHorizontal(result, e))
         event = event.copyTurningVerticalTicksIntoHorizontalTicks();
 
     if (node) {

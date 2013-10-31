@@ -1,3 +1,122 @@
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        Fix a logic error in the #if so that the correct code is compiled on Snow Leopard.
+
+        I introduced this in r122403 when I inverted the sense of the #if.
+
+        * WebView/WebFullScreenController.mm:
+
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/91024> Build against the latest SDK when targeting older OS X versions.
+
+        Reviewed by Dan Bernstein.
+
+        The deployment target is already set to the version that we're targeting, and it's that setting
+        which determines which functionality from the SDK is available to us.
+
+        * Configurations/Base.xcconfig:
+
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/91022> WebFullScreenController and WKFullScreenWindowController shouldn't add unprefixed methods to AppKit classes
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebFullScreenController.mm:
+        (convertRectToScreen): Add a static helper method that calls through to -[NSWindow convertRectToScreen:] on OS versions where it exists
+        but otherwise provides a compatibility implementation of it.
+        (-[WebFullScreenController enterFullScreen:]): Call our new helper.
+
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        <http://webkit.org/b/91015> Remove BUILDING_ON / TARGETING macros in favor of system availability macros
+
+        This removal was handled by a script that translates the relevant macros in to the equivalent checks
+        using the system availability macros.
+
+        Reviewed by Filip Pizlo.
+
+        * DefaultDelegates/WebDefaultContextMenuDelegate.mm:
+        * Misc/WebKitErrors.m:
+        * Misc/WebNSControlExtras.m:
+        * Misc/WebNSFileManagerExtras.mm:
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebNetscapePluginView.mm:
+        * WebCoreSupport/WebChromeClient.mm:
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebSystemInterface.mm:
+        * WebView/WebClipView.mm:
+        * WebView/WebDynamicScrollBarsView.mm:
+        * WebView/WebFrameView.mm:
+        * WebView/WebFullScreenController.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebHTMLViewInternal.h:
+        * WebView/WebPDFDocumentExtras.mm:
+        * WebView/WebPreferences.mm:
+        * WebView/WebResourceInternal.h:
+        * WebView/WebScriptDebugDelegate.h:
+        * WebView/WebView.mm:
+        * WebView/WebViewPrivate.h:
+
+2012-07-11  Anders Carlsson  <andersca@apple.com>
+
+        Add -Wtautological-compare and -Wsign-compare warning flags
+        https://bugs.webkit.org/show_bug.cgi?id=90994
+
+        Reviewed by Mark Rowe.
+
+        * Configurations/Base.xcconfig:
+
+2012-07-11  Mark Rowe  <mrowe@apple.com>
+
+        Add a Mountain Lion version of libWebKitSystemInterface.a.
+
+        Reviewed by John Sullivan.
+
+        * Configurations/DebugRelease.xcconfig: Look for the library under its expected name.
+
+2012-07-10  Adam Barth  <abarth@webkit.org>
+
+        WebCore::Settings for Hixie76 WebSocket protocol doesn't do anything and should be removed
+        https://bugs.webkit.org/show_bug.cgi?id=90910
+
+        Reviewed by Eric Seidel.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setHixie76WebSocketProtocolEnabled:]):
+        (-[WebPreferences isHixie76WebSocketProtocolEnabled]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2012-07-09  Matt Falkenhagen  <falken@chromium.org>
+
+        Add ENABLE_DIALOG_ELEMENT and skeleton files
+        https://bugs.webkit.org/show_bug.cgi?id=90521
+
+        Reviewed by Kent Tamura.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2012-07-09  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        Consider closing unused localStorage database after a timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=90713
+
+        For a localStorage, if there is no active document referencing to it for certain amount of time (300 seconds),
+        we can close the underlying sqlite database.
+
+        Reviewed by Brady Eidson.
+
+        * Storage/WebStorageManager.mm:
+        (+[WebStorageManager setStorageDatabaseIdleInterval:]): add a new method for DumpRenderTree to set the timeout
+            that we will wait before closing database.
+        (initializeLocalStoragePath):
+        * Storage/WebStorageManagerPrivate.h:
+
 2012-07-09  Sheriff Bot  <webkit.review.bot@gmail.com>
 
         Unreviewed, rolling out r122107.

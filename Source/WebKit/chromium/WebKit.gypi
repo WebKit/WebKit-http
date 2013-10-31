@@ -50,11 +50,6 @@
             'src/js/Images/segmentHoverEndChromium.png',
             'src/js/Images/segmentSelectedChromium.png',
             'src/js/Images/segmentSelectedEndChromium.png',
-            'src/js/Images/statusbarBackgroundChromium.png',
-            'src/js/Images/statusbarBottomBackgroundChromium.png',
-            'src/js/Images/statusbarButtonsChromium.png',
-            'src/js/Images/statusbarMenuButtonChromium.png',
-            'src/js/Images/statusbarMenuButtonSelectedChromium.png',
         ],
         'webkit_unittest_files': [
             'tests/ArenaTestHelpers.h',
@@ -86,6 +81,7 @@
             'tests/CCSchedulerStateMachineTest.cpp',
             'tests/CCSchedulerTestCommon.h',
             'tests/CCSchedulerTest.cpp',
+            'tests/CCScopedTextureTest.cpp',
             'tests/CCSolidColorLayerImplTest.cpp',
             'tests/CCTestCommon.h',
             'tests/CCTiledLayerImplTest.cpp',
@@ -149,6 +145,8 @@
             'tests/TreeSynchronizerTest.cpp',
             'tests/TreeTestHelpers.cpp',
             'tests/TreeTestHelpers.h',
+            'tests/URLTestHelpers.cpp',
+            'tests/URLTestHelpers.h',
             'tests/WebAnimationTest.cpp',
             'tests/WebCompositorInputHandlerImplTest.cpp',
             'tests/WebFloatAnimationCurveTest.cpp',
@@ -178,6 +176,11 @@
                     'tests/UniscribeHelperTest.cpp',
                     'tests/WebPageNewSerializerTest.cpp',
                     'tests/WebPageSerializerTest.cpp',
+                ],
+            }],
+            ['OS=="mac"', {
+                'webkit_unittest_files': [
+                    'tests/LocaleMacTest.cpp',
                 ],
             }],
             ['OS!="mac"', {

@@ -31,7 +31,7 @@
 #include "config.h"
 #include "LocalizedDate.h"
 
-#include "LocaleWin.h"
+#include "LocaleMac.h"
 #include <limits>
 
 using namespace std;
@@ -42,7 +42,7 @@ double parseLocalizedDate(const String& input, DateComponents::Type type)
 {
     switch (type) {
     case DateComponents::Date:
-        return LocaleWin::currentLocale()->parseDate(input);
+        return LocaleMac::currentLocale()->parseDate(input);
     case DateComponents::DateTime:
     case DateComponents::DateTimeLocal:
     case DateComponents::Month:
@@ -58,7 +58,7 @@ String formatLocalizedDate(const DateComponents& dateComponents)
 {
     switch (dateComponents.type()) {
     case DateComponents::Date:
-        return LocaleWin::currentLocale()->formatDate(dateComponents);
+        return LocaleMac::currentLocale()->formatDate(dateComponents);
     case DateComponents::DateTime:
     case DateComponents::DateTimeLocal:
     case DateComponents::Month:
@@ -73,22 +73,39 @@ String formatLocalizedDate(const DateComponents& dateComponents)
 #if ENABLE(CALENDAR_PICKER)
 String localizedDateFormatText()
 {
-    return LocaleWin::currentLocale()->dateFormatText();
+    return LocaleMac::currentLocale()->dateFormatText();
 }
 
 const Vector<String>& monthLabels()
 {
-    return LocaleWin::currentLocale()->monthLabels();
+    return LocaleMac::currentLocale()->monthLabels();
 }
 
 const Vector<String>& weekDayShortLabels()
 {
-    return LocaleWin::currentLocale()->weekDayShortLabels();
+    return LocaleMac::currentLocale()->weekDayShortLabels();
 }
 
 unsigned firstDayOfWeek()
 {
-    return LocaleWin::currentLocale()->firstDayOfWeek();
+    return LocaleMac::currentLocale()->firstDayOfWeek();
+}
+#endif
+
+#if ENABLE(INPUT_TYPE_TIME_MULTIPLE_FIELDS)
+String localizedTimeFormatText()
+{
+    return LocaleMac::currentLocale()->timeFormatText();
+}
+
+String localizedShortTimeFormatText()
+{
+    return LocaleMac::currentLocale()->shortTimeFormatText();
+}
+
+const Vector<String>& timeAMPMLabels()
+{
+    return LocaleMac::currentLocale()->timeAMPMLabels();
 }
 #endif
 
